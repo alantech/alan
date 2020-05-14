@@ -1,0 +1,77 @@
+#!/bin/bash
+
+# Implement readlink which does not work on mac os https://stackoverflow.com/a/1116890
+# This gives us flexibility to change the Java code and recompile a jar that we can test via `./alan`
+# without blowing away our stable, globally-installed version
+TARGET_FILE=$0
+
+ORIG_DIR=`pwd -P`
+
+cd `dirname $TARGET_FILE`
+TARGET_FILE=`basename $TARGET_FILE`
+
+# Iterate down a (possible) chain of symlinks
+while [ -L "$TARGET_FILE" ]
+do
+    TARGET_FILE=`readlink $TARGET_FILE`
+    cd `dirname $TARGET_FILE`
+    TARGET_FILE=`basename $TARGET_FILE`
+done
+
+# Compute the canonicalized name by finding the physical path
+# for the directory we're in and appending the target file.
+PHYS_DIR=`pwd -P`
+
+# Restore the original directory so the script referenced can be found
+cd $ORIG_DIR
+
+allargs=$@
+del=$1
+args=( "${allargs[@]/$del}" )
+
+case $1 in
+  build)
+    alan-compile -m lntoamm -i $args -o temp.amm
+    alan-runtime ammtoagc temp.amm -o out.agc # TODO: Replace with `alan-compile`
+    rm temp.amm
+    ;;
+
+  build-ir)
+    alan-compile -m lntoamm -i $args -o out.amm
+    ;;
+
+  build-js)
+    alan-compile -m lntoamm -i $args -o temp.amm
+    alan-compile -m ammtojs -i temp.amm -o out.js # TODO: allow output file to be specified
+    rm temp.amm
+    ;;
+
+  install)
+    alan-interpret install $args # TODO: Port this to somewhere else
+    ;;
+
+  interpret)
+    alan-interpret interpret $args
+    ;;
+
+  run)
+    alan-runtime run $args
+    ;;
+
+  help)
+    echo "alan Usage:"
+    echo "alan build path/to/sourcefile.ln      - Loads the specified source file and builds an output alan graphcode file"
+    echo "alan build-ir path/to/sourcefile.ln   - Loads the specified source file and builds an output alan intermediate representation file"
+    echo "alan build-js path/to/sourcefile.ln   - Loads the specified source file and builds an output javascript file"
+    echo "alan install                          - Install '/dependencies' from '.dependencies'"
+    echo "alan interpret path/to/sourcefile.ln  - Loads and interprets the specified source file"
+    echo "alan run path/to/compiled.agc         - Loads and runs the specified build file"
+    echo "alan help                             - Prints this message"
+    exit 0
+    ;;
+
+  *)
+    echo "Unknown command. Run 'alan help' to get a list of commands"
+    exit 1
+    ;;
+esac

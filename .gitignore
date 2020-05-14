@@ -1,0 +1,7 @@
+shellspec/
+interpreter/
+compiler/
+runtime/
+js-runtime/
+bdd/node_modules/
+bdd/temp.*

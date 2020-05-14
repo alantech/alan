@@ -1,0 +1,102 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the master branch
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # The Linux path
+  build-linux:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [12.x, 14.x]
+        java-version: [1.11, 1.12]
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+    - uses: actions/checkout@v2
+    
+    # Add the ssh-key to the keyring
+    - uses: webfactory/ssh-agent@v0.2.0
+      with:
+        ssh-private-key: ${{ secrets.ssh_key }}
+
+    # Rust is automatically set up and included by default according to: https://github.com/actions/starter-workflows/blob/master/ci/rust.yml
+    
+    # Set up Node.js
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node-version }}
+    
+    # Set up Java
+    - name: Set up JDK 1.8
+      uses: actions/setup-java@v1
+      with:
+        java-version: ${{ matrix.java-version }}
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+    
+    # Install ANTLR4
+    - name: Install ANTLR4
+      run: sudo apt install antlr4
+    
+    # Run the BDD tests across all four repos
+    - name: Run BDD tests
+      run: make bdd
+  # The Macos path
+  build-macos:
+    # The type of runner that the job will run on
+    runs-on: macos-latest
+
+    strategy:
+      matrix:
+        node-version: [12.x, 14.x]
+        java-version: [1.11, 1.12]
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+    - uses: actions/checkout@v2
+    
+    # Add the ssh-key to the keyring
+    - uses: webfactory/ssh-agent@v0.2.0
+      with:
+        ssh-private-key: ${{ secrets.ssh_key }}
+
+    # Rust is automatically set up and included by default according to: https://github.com/actions/starter-workflows/blob/master/ci/rust.yml
+    
+    # Set up Node.js
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node-version }}
+    
+    # Set up Java
+    - name: Set up JDK 1.8
+      uses: actions/setup-java@v1
+      with:
+        java-version: ${{ matrix.java-version }}
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+    
+    # Install ANTLR4
+    - name: Install ANTLR4
+      run: |
+        cd /usr/local/lib
+        curl -O https://www.antlr.org/download/antlr-4.7.1-complete.jar
+    
+    # Run the BDD tests across all four repos
+    - name: Run BDD tests
+      run: make bdd

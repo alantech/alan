@@ -1,0 +1,103 @@
+Include build_tools.sh
+
+Describe "Booleans"
+  before() {
+    sourceToTemp "
+      from @std/app import start, print, exit
+
+      on start {
+        print(true)
+        print(false)
+        print(toBool(1))
+        print(toBool(0))
+        print(toBool(15))
+        print(toBool(-1))
+        print(toBool(0.0))
+        print(toBool(1.2))
+        print(toBool(''))
+        print(toBool('hi'))
+
+        print(true && true)
+        print(and(true, false))
+        print(false & true)
+        print(false.and(false))
+
+        print(true || true)
+        print(or(true, false))
+        print(false | true)
+        print(false.or(false))
+
+        print(true ^ true)
+        print(xor(true, false))
+        print(false ^ true)
+        print(false.xor(false))
+
+        print(!true)
+        print(not(false))
+
+        print(true !& true)
+        print(nand(true, false))
+        print(false !& true)
+        false.nand(false).print()
+
+        print(true !| true)
+        print(nor(true, false))
+        print(false !| true)
+        false.nor(false).print()
+
+        print(true !^ true)
+        print(xnor(true, false))
+        print(false !^ true)
+        false.xnor(false).print()
+
+        emit exit 0
+      }
+    "
+  }
+  Before before
+
+  after() {
+    cleanTemp
+  }
+  After after
+
+  It "interprets"
+    When run alan interpret temp.ln
+    The output should eq "true
+false
+true
+false
+true
+true
+false
+true
+false
+true
+true
+false
+false
+false
+true
+true
+true
+false
+false
+true
+true
+false
+false
+true
+false
+true
+true
+true
+false
+false
+false
+true
+true
+false
+false
+true"
+  End
+End
