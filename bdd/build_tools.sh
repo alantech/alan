@@ -20,10 +20,6 @@ sourceToAgc() {
   tempToAgc
 }
 
-jsRuntime() {
-  npm install git+ssh://git@github.com:/alantech/alan-js-runtime 2>/dev/null 1>/dev/null
-}
-
 tempToJs() {
   alan-compile -m ammtojs -i temp.amm -o temp.js 1>/dev/null
 }

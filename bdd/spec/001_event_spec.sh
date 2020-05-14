@@ -1,11 +1,6 @@
 Include build_tools.sh
 
 Describe "Events"
-  before_all() {
-    jsRuntime
-  }
-  BeforeAll before_all
-
   Describe "normal exit code"
     before() {
       sourceToTemp "
