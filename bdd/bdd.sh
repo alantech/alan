@@ -26,7 +26,5 @@ PHYS_DIR=`pwd -P`
 # cd $ORIG_DIR
 
 PATH="${PATH}:${PHYS_DIR}:${PHYS_DIR}/../shellspec:${PHYS_DIR}/../node_modules/.bin:${PHYS_DIR}/../runtime/target/release" shellspec
-# export PATH
-# shellspec
 
 exit $?
