@@ -45,8 +45,6 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: ${{ matrix.java-version }}
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
     
     # Install ANTLR4
     - name: Install ANTLR4
@@ -88,8 +86,6 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: ${{ matrix.java-version }}
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
     
     # Install ANTLR4
     - name: Install ANTLR4
