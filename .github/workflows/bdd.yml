@@ -52,7 +52,9 @@ jobs:
     
     # Run the BDD tests across all four repos
     - name: Run BDD tests
-      run: make bdd
+      run: |
+        make bdd > temp.txt
+        cat temp.txt
   # The Macos path
   build-macos:
     # The type of runner that the job will run on
@@ -95,4 +97,6 @@ jobs:
     
     # Run the BDD tests across all four repos
     - name: Run BDD tests
-      run: make bdd
+      run: |
+        make bdd > temp.txt
+        cat temp.txt
