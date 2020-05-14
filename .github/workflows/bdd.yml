@@ -53,7 +53,8 @@ jobs:
     # Run the BDD tests across all four repos
     - name: Run BDD tests
       run: |
-        make bdd > temp.txt
+        make bdd 2>temp.err 1>temp.txt
+        cat temp.err
         cat temp.txt
   # The Macos path
   build-macos:
@@ -98,5 +99,6 @@ jobs:
     # Run the BDD tests across all four repos
     - name: Run BDD tests
       run: |
-        make bdd > temp.txt
+        make bdd 2>temp.err 1>temp.txt
+        cat temp.err
         cat temp.txt
