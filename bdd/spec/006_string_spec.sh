@@ -64,7 +64,7 @@ Describe "Strings"
   After after
 
   It "interprets"
-    When run alan interpret temp.ln
+    When run alan-interpreter interpret temp.ln
     The output should eq "Hello, World!
 Hello, World!
 hi hi hi hi hi 

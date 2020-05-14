@@ -41,7 +41,7 @@ Describe "Maps"
   After after
 
   It "interprets"
-    When run alan interpret temp.ln
+    When run alan-interpreter interpret temp.ln
     The output should eq "keyVal test
 key: bar
 val: 2

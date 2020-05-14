@@ -25,12 +25,12 @@ Describe "Events"
     AfterAll after
 
     It "interprets"
-      When run alan interpret temp.ln
+      When run alan-interpreter interpret temp.ln
       The status should eq "0"
     End
 
     It "interprets IR"
-      When run alan interpret temp.amm
+      When run alan-interpreter interpret temp.amm
       The status should eq "0"
     End
 
@@ -64,14 +64,14 @@ Describe "Events"
     AfterAll after
 
     It "interprets"
-      When run alan interpret temp.ln
+      When run alan-interpreter interpret temp.ln
       The status should eq "1"
     End
 
     It "interprets IR"
       # Currently fails because the integer type is incorrect (expected int8 got int64)
       Pending correct_type_coersion
-      When run alan interpret temp.amm
+      When run alan-interpreter interpret temp.amm
       The status should eq "1"
     End
 

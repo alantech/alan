@@ -43,7 +43,7 @@ Describe "Type detection"
   After after
 
   It "interprets"
-    When run alan interpret temp.ln
+    When run alan-interpreter interpret temp.ln
     The output should eq "int64
 float64
 int64

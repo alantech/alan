@@ -17,7 +17,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The status should eq "3"
       End
     End
@@ -37,7 +37,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The status should eq "1"
       End
     End
@@ -57,7 +57,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The status should eq "2"
       End
     End
@@ -77,7 +77,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The status should eq "3"
       End
     End
@@ -97,7 +97,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The status should eq "2"
       End
     End
@@ -117,7 +117,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The status should eq "36"
       End
     End
@@ -142,7 +142,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The output should eq "3"
       End
     End
@@ -165,7 +165,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The output should eq "1"
       End
     End
@@ -188,7 +188,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The output should eq "2"
       End
     End
@@ -211,7 +211,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The output should eq "3"
       End
     End
@@ -234,7 +234,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The output should eq "2"
       End
     End
@@ -257,7 +257,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The output should eq "36"
       End
     End
@@ -282,7 +282,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The output should eq "3"
       End
     End
@@ -305,7 +305,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The output should eq "1"
       End
     End
@@ -328,7 +328,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The output should eq "2"
       End
     End
@@ -351,7 +351,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The output should eq "3"
       End
     End
@@ -374,7 +374,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The output should eq "2"
       End
     End
@@ -397,7 +397,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The output should eq "36"
       End
     End
@@ -422,7 +422,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The output should eq "3"
       End
     End
@@ -445,7 +445,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The output should eq "1"
       End
     End
@@ -468,7 +468,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The output should eq "2"
       End
     End
@@ -491,7 +491,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The output should eq "3"
       End
     End
@@ -514,7 +514,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The output should eq "2"
       End
     End
@@ -537,7 +537,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The output should eq "36"
       End
     End
@@ -562,7 +562,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The output should eq "3.0"
       End
     End
@@ -585,7 +585,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The output should eq "1.0"
       End
     End
@@ -608,7 +608,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The output should eq "2.0"
       End
     End
@@ -631,7 +631,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The output should eq "3.0"
       End
     End
@@ -654,7 +654,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The output should eq "6.0"
       End
     End
@@ -677,7 +677,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The output should eq "36.0"
       End
     End
@@ -702,7 +702,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The output should eq "3.0"
       End
     End
@@ -725,7 +725,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The output should eq "1.0"
       End
     End
@@ -748,7 +748,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The output should eq "2.0"
       End
     End
@@ -771,7 +771,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The output should eq "3.0"
       End
     End
@@ -794,7 +794,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The output should eq "6.0"
       End
     End
@@ -817,7 +817,7 @@ Describe "Basic Math"
       After after
 
       It "interprets"
-        When run alan interpret temp.ln
+        When run alan-interpreter interpret temp.ln
         The output should eq "36.0"
       End
     End

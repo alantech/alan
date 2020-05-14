@@ -47,7 +47,7 @@ Describe "Generics"
     After after
 
     It "interprets"
-      When run alan interpret temp.ln
+      When run alan-interpreter interpret temp.ln
       The output should eq "8
 true
 hello, generics!
@@ -83,7 +83,7 @@ hello, nested generics!"
     After after
 
     It "does not interpret"
-      When run alan interpret temp.ln
+      When run alan-interpreter interpret temp.ln
       The error should eq "Assigning integer number to non-numeric type
 Variable type: string"
       The status should not eq "0"

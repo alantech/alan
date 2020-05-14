@@ -3,7 +3,7 @@ sourceToTemp() {
 }
 
 tempToAmm() {
-  alan-compile -m lntoamm temp.ln > temp.amm
+  alan-compile -m lntoamm -i temp.ln -o temp.amm 1>/dev/null
 }
 
 sourceToAmm() {
