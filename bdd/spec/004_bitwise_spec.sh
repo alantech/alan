@@ -28,7 +28,7 @@ Describe "Bitwise"
     After after
 
     It "interprets"
-      When run alan interpret temp.ln
+      When run alan-interpreter interpret temp.ln
       The output should eq "0
 3
 6
@@ -66,7 +66,7 @@ Describe "Bitwise"
     After after
 
     It "interprets"
-      When run alan interpret temp.ln
+      When run alan-interpreter interpret temp.ln
       The output should eq "0
 3
 6
@@ -104,7 +104,7 @@ Describe "Bitwise"
     After after
 
     It "interprets"
-      When run alan interpret temp.ln
+      When run alan-interpreter interpret temp.ln
       The output should eq "0
 3
 6
@@ -140,7 +140,7 @@ Describe "Bitwise"
     After after
 
     It "interprets"
-      When run alan interpret temp.ln
+      When run alan-interpreter interpret temp.ln
       The output should eq "0
 3
 6

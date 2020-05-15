@@ -47,11 +47,11 @@ case $1 in
     ;;
 
   install)
-    alan-interpret install $args # TODO: Port this to somewhere else
+    alan-interpreter install $args # TODO: Port this to somewhere else
     ;;
 
   interpret)
-    alan-interpret interpret $args
+    alan-interpreter interpret $args
     ;;
 
   run)

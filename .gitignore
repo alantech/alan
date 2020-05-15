@@ -5,3 +5,6 @@ runtime/
 js-runtime/
 bdd/node_modules/
 bdd/temp.*
+node_modules/
+package.json
+yarn.lock

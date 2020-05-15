@@ -20,7 +20,7 @@ Describe "Comparators"
     After after
 
     It "doesn't work"
-      When run alan interpret temp.ln
+      When run alan-interpreter interpret temp.ln
       The status should not eq "0"
       The error should eq "Unable to find matching function for name and argument type set"
     End
@@ -68,7 +68,7 @@ Describe "Comparators"
     After after
 
     It "interprets"
-      When run alan interpret temp.ln
+      When run alan-interpreter interpret temp.ln
       The output should eq "true
 false
 true
@@ -130,7 +130,7 @@ false"
     After after
 
     It "interprets"
-      When run alan interpret temp.ln
+      When run alan-interpreter interpret temp.ln
       The output should eq "false
 true
 false
@@ -189,7 +189,7 @@ true"
     After after
 
     It "interprets"
-      When run alan interpret temp.ln
+      When run alan-interpreter interpret temp.ln
       The output should eq "true
 false
 true
@@ -246,7 +246,7 @@ true"
     After after
 
     It "interprets"
-      When run alan interpret temp.ln
+      When run alan-interpreter interpret temp.ln
       The output should eq "true
 false
 true
@@ -303,7 +303,7 @@ true"
     After after
 
     It "interprets"
-      When run alan interpret temp.ln
+      When run alan-interpreter interpret temp.ln
       The output should eq "false
 true
 false
@@ -360,7 +360,7 @@ false"
     After after
 
     It "interprets"
-      When run alan interpret temp.ln
+      When run alan-interpreter interpret temp.ln
       The output should eq "false
 true
 false

@@ -64,7 +64,7 @@ Describe "Arrays"
   After after
 
   It "interprets"
-    When run alan interpret temp.ln
+    When run alan-interpreter interpret temp.ln
     The output should eq "each test
 =
 =

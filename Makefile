@@ -32,11 +32,15 @@ js-runtime:
 	git clone git@github.com:alantech/js-runtime
 
 .PHONY: bdd
-bdd: shellspec build
+bdd: shellspec build node_modules
 	./bdd/bdd.sh
 
 shellspec:
 	git clone git@github.com:shellspec/shellspec
+
+node_modules:
+	yarn add ./compiler
+	yarn add ./js-runtime
 
 .PHONY: clean
 clean:
@@ -44,6 +48,12 @@ clean:
 	rm -rf compiler
 	rm -rf runtime
 	rm -rf js-runtime
+	rm -rf shellspec
+	rm -rf node_modules
+	rm -rf bdd/node_modules
+	rm -f package.json
+	rm -f yarn.lock
+	rm -f bdd/package-lock.json
 
 .PHONY: install
 install: runtime/target/release/alan-runtime interpreter/build/libs/interpreter-1.0.jar interpreter compiler
@@ -52,7 +62,7 @@ install: runtime/target/release/alan-runtime interpreter/build/libs/interpreter-
 	mkdir -p /usr/local/bin/build/libs # TODO: Remove when interpreter dies
 	cp ./interpreter/build/libs/interpreter-1.0.jar /usr/local/bin/build/libs/interpreter-1.0.jar
 	cp ./interpreter/alan-interpreter /usr/local/bin/alan-interpreter
-	cd ./compiler && yarn global add .
+	# npm install -g ./compiler
 
 .PHONY: uninstall
 uninstall:
@@ -60,4 +70,4 @@ uninstall:
 	rm /usr/local/bin/alan
 	rm /usr/local/bin/alan-runtime
 	rm /usr/local/bin/alan-interpreter
-	yarn global rm alan-compiler
+	# npm uninstall -g alan-compile

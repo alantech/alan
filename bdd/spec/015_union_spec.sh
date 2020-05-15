@@ -71,7 +71,7 @@ Describe "Unions"
   After after
 
   It "interprets"
-    When run alan interpret temp.ln
+    When run alan-interpreter interpret temp.ln
     The output should eq "safeFraction
 0.5
 2.0

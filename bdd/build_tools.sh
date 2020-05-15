@@ -3,7 +3,7 @@ sourceToTemp() {
 }
 
 tempToAmm() {
-  alan-compile -m lntoamm temp.ln > temp.amm
+  alan-compile -m lntoamm -i temp.ln -o temp.amm 1>/dev/null
 }
 
 sourceToAmm() {
@@ -18,10 +18,6 @@ tempToAgc() {
 sourceToAgc() {
   sourceToAmm "$1"
   tempToAgc
-}
-
-jsRuntime() {
-  npm install git+ssh://git@github.com:/alantech/alan-js-runtime 2>/dev/null 1>/dev/null
 }
 
 tempToJs() {
