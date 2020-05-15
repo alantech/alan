@@ -48,6 +48,12 @@ clean:
 	rm -rf compiler
 	rm -rf runtime
 	rm -rf js-runtime
+	rm -rf shellspec
+	rm -rf node_modules
+	rm -rf bdd/node_modules
+	rm -f package.json
+	rm -f yarn.lock
+	rm -f bdd/package-lock.json
 
 .PHONY: install
 install: runtime/target/release/alan-runtime interpreter/build/libs/interpreter-1.0.jar interpreter compiler
