@@ -3,7 +3,7 @@ sourceToTemp() {
 }
 
 tempToAmm() {
-  alan-compile -m lntoamm -i temp.ln -o temp.amm 1>/dev/null
+  alan-compile temp.ln temp.amm 1>/dev/null
 }
 
 sourceToAmm() {
@@ -12,20 +12,20 @@ sourceToAmm() {
 }
 
 tempToAgc() {
-  alan-runtime ammtoagc temp.amm -o temp.agc 1>/dev/null
+  alan-compile temp.ln temp.agc 1>/dev/null
 }
 
 sourceToAgc() {
-  sourceToAmm "$1"
+  sourceToTemp "$1"
   tempToAgc
 }
 
 tempToJs() {
-  alan-compile -m ammtojs -i temp.amm -o temp.js 1>/dev/null
+  alan-compile temp.ln temp.js 1>/dev/null
 }
 
 sourceToJs() {
-  sourceToAmm "$1"
+  sourceToTemp "$1"
   tempToJs
 }
 
