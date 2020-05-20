@@ -17,6 +17,7 @@ build-compiler: compiler
 
 compiler:
 	git clone git@github.com:alantech/compiler
+	cd compiler && git submodule init && git submodule update
 
 runtime/target/release/alan-runtime: runtime
 	cd runtime && cargo build --release
