@@ -34,9 +34,8 @@ acorn@^7.0.0:
   resolved "https://registry.yarnpkg.com/acorn/-/acorn-7.2.0.tgz#17ea7e40d7c8640ff54a694c889c26f31704effe"
   integrity sha512-apwXVmYVpQ34m/i71vrApRrRKCWQnZZF1+npOD0WV5xZFfwWOmKGQ2RWlfdy9vWITsenisM8M0Qeq8agcFHNiQ==
 
-"alan-js-runtime@git+ssh://git@github.com:alantech/js-runtime":
+alan-js-runtime@../js-runtime:
   version "0.0.1"
-  resolved "git+ssh://git@github.com:alantech/js-runtime#fe96ff5c5344893d1032c6ca94703d2558bb7016"
 
 antlr4@^4.8.0:
   version "4.8.0"
