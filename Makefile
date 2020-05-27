@@ -41,6 +41,8 @@ clean:
 	rm -rf interpreter
 	rm -rf shellspec
 	rm -rf node_modules
+	rm -rf compiler/node_modules
+	rm -rf js-runtime/node_modules
 	rm -rf bdd/node_modules
 	rm -rf compiler/std
 	rm -f package.json
