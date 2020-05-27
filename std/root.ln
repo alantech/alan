@@ -1,0 +1,309 @@
+/**
+ * The root scope. These definitions are automatically available from every module.
+ * These are almost entirely wrappers around runtime opcodes to provide a friendlier
+ * name and using function dispatch based on input arguments to pick the correct opcode.
+ */
+
+// TODO: See about making an export block scope so we don't have to write `export` so much
+
+// Special _ variable
+export const _: void
+
+// Default Interfaces
+export interface any {}
+export interface Stringifiable {
+  toString(Stringifiable): string
+}
+
+// Type conversion functions
+export fn toFloat64(n: int8) = i8f64(n)
+export fn toFloat64(n: int16) = i16f64(n)
+export fn toFloat64(n: int32) = i32f64(n)
+export fn toFloat64(n: int64) = i64f64(n)
+export fn toFloat64(n: float32) = f32f64(n)
+export fn toFloat64(n: float64) = n
+export fn toFloat64(n: string) = strf64(n)
+export fn toFloat64(n: bool) = boolf64(n)
+
+export fn toFloat32(n: int8) = i8f32(n)
+export fn toFloat32(n: int16) = i16f32(n)
+export fn toFloat32(n: int32) = i32f32(n)
+export fn toFloat32(n: int64) = i64f32(n)
+export fn toFloat32(n: float32) = n
+export fn toFloat32(n: float64) = f64f32(n)
+export fn toFloat32(n: string) = strf32(n)
+export fn toFloat32(n: bool) = boolf32(n)
+
+export fn toInt64(n: int8) = i8i64(n)
+export fn toInt64(n: int16) = i16i64(n)
+export fn toInt64(n: int32) = i32i64(n)
+export fn toInt64(n: int64) = n
+export fn toInt64(n: float32) = f32i64(n)
+export fn toInt64(n: float64) = f64i64(n)
+export fn toInt64(n: string) = stri64(n)
+export fn toInt64(n: bool) = booli64(n)
+
+export fn toInt32(n: int8) = i8i32(n)
+export fn toInt32(n: int16) = i16i32(n)
+export fn toInt32(n: int32) = n
+export fn toInt32(n: int64) = i64i32(n)
+export fn toInt32(n: float32) = f32i32(n)
+export fn toInt32(n: float64) = f64i32(n)
+export fn toInt32(n: string) = stri32(n)
+export fn toInt32(n: bool) = booli32(n)
+
+export fn toInt16(n: int8) = i8i16(n)
+export fn toInt16(n: int16) = n
+export fn toInt16(n: int32) = i32i16(n)
+export fn toInt16(n: int64) = i64i16(n)
+export fn toInt16(n: float32) = f32i16(n)
+export fn toInt16(n: float64) = f64i16(n)
+export fn toInt16(n: string) = stri16(n)
+export fn toInt16(n: bool) = booli16(n)
+
+export fn toInt8(n: int8) = n
+export fn toInt8(n: int16) = i16i8(n)
+export fn toInt8(n: int32) = i32i8(n)
+export fn toInt8(n: int64) = i64i8(n)
+export fn toInt8(n: float32) = f32i8(n)
+export fn toInt8(n: float64) = f64i8(n)
+export fn toInt8(n: string) = stri8(n)
+export fn toInt8(n: bool) = booli8(n)
+
+export fn toBool(n: int8) = i8bool(n)
+export fn toBool(n: int16) = i16bool(n)
+export fn toBool(n: int32) = i32bool(n)
+export fn toBool(n: int64) = i64bool(n)
+export fn toBool(n: float32) = f32bool(n)
+export fn toBool(n: float64) = f64bool(n)
+export fn toBool(n: string) = strbool(n)
+export fn toBool(n: bool) = n
+
+export fn toString(n: int8) = i8str(n)
+export fn toString(n: int16) = i16str(n)
+export fn toString(n: int32) = i32str(n)
+export fn toString(n: int64) = i64str(n)
+export fn toString(n: float32) = f32str(n)
+export fn toString(n: float64) = f64str(n)
+export fn toString(n: string) = n
+export fn toString(n: bool) = boolstr(n)
+
+// Arithmetic functions
+export fn add(a: int8, b: int8) = addi8(a, b)
+export fn add(a: int16, b: int16) = addi16(a, b)
+export fn add(a: int32, b: int32) = addi32(a, b)
+export fn add(a: int64, b: int64) = addi64(a, b)
+export fn add(a: float32, b: float32) = addf32(a, b)
+export fn add(a: float64, b: float64) = addf64(a, b)
+
+export fn sub(a: int8, b: int8) = subi8(a, b)
+export fn sub(a: int16, b: int16) = subi16(a, b)
+export fn sub(a: int32, b: int32) = subi32(a, b)
+export fn sub(a: int64, b: int64) = subi64(a, b)
+export fn sub(a: float32, b: float32) = subf32(a, b)
+export fn sub(a: float64, b: float64) = subf64(a, b)
+
+export fn negate(n: int8) = negi8(n)
+export fn negate(n: int16) = negi16(n)
+export fn negate(n: int32) = negi32(n)
+export fn negate(n: int64) = negi64(n)
+export fn negate(n: float32) = negf32(n)
+export fn negate(n: float64) = negf64(n)
+
+export fn mul(a: int8, b: int8) = muli8(a, b)
+export fn mul(a: int16, b: int16) = muli16(a, b)
+export fn mul(a: int32, b: int32) = muli32(a, b)
+export fn mul(a: int64, b: int64) = muli64(a, b)
+export fn mul(a: float32, b: float32) = mulf32(a, b)
+export fn mul(a: float64, b: float64) = mulf64(a, b)
+
+export fn div(a: int8, b: int8) = divi8(a, b)
+export fn div(a: int16, b: int16) = divi16(a, b)
+export fn div(a: int32, b: int32) = divi32(a, b)
+export fn div(a: int64, b: int64) = divi64(a, b)
+export fn div(a: float32, b: float32) = divf32(a, b)
+export fn div(a: float64, b: float64) = divf64(a, b)
+
+export fn mod(a: int8, b: int8) = modi8(a, b)
+export fn mod(a: int16, b: int16) = modi16(a, b)
+export fn mod(a: int32, b: int32) = modi32(a, b)
+export fn mod(a: int64, b: int64) = modi64(a, b)
+
+export fn pow(a: int8, b: int8) = powi8(a, b)
+export fn pow(a: int16, b: int16) = powi16(a, b)
+export fn pow(a: int32, b: int32) = powi32(a, b)
+export fn pow(a: int64, b: int64) = powi64(a, b)
+export fn pow(a: float32, b: float32) = powf32(a, b)
+export fn pow(a: float64, b: float64) = powf64(a, b)
+
+export fn sqrt(n: float32) = sqrtf32(n)
+export fn sqrt(n: float64) = sqrtf64(n)
+
+// Boolean and bitwise functions
+export fn and(a: int8, b: int8) = andi8(a, b)
+export fn and(a: int16, b: int16) = andi16(a, b)
+export fn and(a: int32, b: int32) = andi32(a, b)
+export fn and(a: int64, b: int64) = andi64(a, b)
+export fn and(a: bool, b: bool) = andbool(a, b)
+
+export fn or(a: int8, b: int8) = ori8(a, b)
+export fn or(a: int16, b: int16) = ori16(a, b)
+export fn or(a: int32, b: int32) = ori32(a, b)
+export fn or(a: int64, b: int64) = ori64(a, b)
+export fn or(a: bool, b: bool) = orbool(a, b)
+
+export fn xor(a: int8, b: int8) = xori8(a, b)
+export fn xor(a: int16, b: int16) = xori16(a, b)
+export fn xor(a: int32, b: int32) = xori32(a, b)
+export fn xor(a: int64, b: int64) = xori64(a, b)
+export fn xor(a: bool, b: bool) = xorbool(a, b)
+
+export fn not(n: int8) = noti8(n)
+export fn not(n: int16) = noti16(n)
+export fn not(n: int32) = noti32(n)
+export fn not(n: int64) = noti64(n)
+export fn not(n: bool) = notbool(n)
+
+export fn nand(a: int8, b: int8) = nandi8(a, b)
+export fn nand(a: int16, b: int16) = nandi16(a, b)
+export fn nand(a: int32, b: int32) = nandi32(a, b)
+export fn nand(a: int64, b: int64) = nandi64(a, b)
+export fn nand(a: bool, b: bool) = nandboo(a, b)
+
+export fn nor(a: int8, b: int8) = nori8(a, b)
+export fn nor(a: int16, b: int16) = nori16(a, b)
+export fn nor(a: int32, b: int32) = nori32(a, b)
+export fn nor(a: int64, b: int64) = nori64(a, b)
+export fn nor(a: bool, b: bool) = norbool(a, b)
+
+export fn xnor(a: int8, b: int8) = xnori8(a, b)
+export fn xnor(a: int16, b: int16) = xnori16(a, b)
+export fn xnor(a: int32, b: int32) = xnori32(a, b)
+export fn xnor(a: int64, b: int64) = xnori64(a, b)
+export fn xnor(a: bool, b: bool) = xnorboo(a, b)
+
+// Equality and order functions
+export fn eq(a: int8, b: int8) = eqi8(a, b)
+export fn eq(a: int16, b: int16) = eqi16(a, b)
+export fn eq(a: int32, b: int32) = eqi32(a, b)
+export fn eq(a: int64, b: int64) = eqi64(a, b)
+export fn eq(a: float32, b: float32) = eqf32(a, b)
+export fn eq(a: float64, b: float64) = eqf64(a, b)
+export fn eq(a: string, b: string) = eqstr(a, b)
+export fn eq(a: bool, b: bool) = eqbool(a, b)
+
+export fn neq(a: int8, b: int8) = neqi8(a, b)
+export fn neq(a: int16, b: int16) = neqi16(a, b)
+export fn neq(a: int32, b: int32) = neqi32(a, b)
+export fn neq(a: int64, b: int64) = neqi64(a, b)
+export fn neq(a: float32, b: float32) = neqf32(a, b)
+export fn neq(a: float64, b: float64) = neqf64(a, b)
+export fn neq(a: string, b: string) = neqstr(a, b)
+export fn neq(a: bool, b: bool) = neqbool(a, b)
+
+export fn lt(a: int8, b: int8) = lti8(a, b)
+export fn lt(a: int16, b: int16) = lti16(a, b)
+export fn lt(a: int32, b: int32) = lti32(a, b)
+export fn lt(a: int64, b: int64) = lti64(a, b)
+export fn lt(a: float32, b: float32) = ltf32(a, b)
+export fn lt(a: float64, b: float64) = ltf64(a, b)
+export fn lt(a: string, b: string) = ltstr(a, b)
+
+export fn lte(a: int8, b: int8) = ltei8(a, b)
+export fn lte(a: int16, b: int16) = ltei16(a, b)
+export fn lte(a: int32, b: int32) = ltei32(a, b)
+export fn lte(a: int64, b: int64) = ltei64(a, b)
+export fn lte(a: float32, b: float32) = ltef32(a, b)
+export fn lte(a: float64, b: float64) = ltef64(a, b)
+export fn lte(a: string, b: string) = ltestr(a, b)
+
+export fn gt(a: int8, b: int8) = gti8(a, b)
+export fn gt(a: int16, b: int16) = gti16(a, b)
+export fn gt(a: int32, b: int32) = gti32(a, b)
+export fn gt(a: int64, b: int64) = gti64(a, b)
+export fn gt(a: float32, b: float32) = gtf32(a, b)
+export fn gt(a: float64, b: float64) = gtf64(a, b)
+export fn gt(a: string, b: string) = gtstr(a, b)
+
+export fn gte(a: int8, b: int8) = gtei8(a, b)
+export fn gte(a: int16, b: int16) = gtei16(a, b)
+export fn gte(a: int32, b: int32) = gtei32(a, b)
+export fn gte(a: int64, b: int64) = gtei64(a, b)
+export fn gte(a: float32, b: float32) = gtef32(a, b)
+export fn gte(a: float64, b: float64) = gtef64(a, b)
+export fn gte(a: string, b: string) = gtestr(a, b)
+
+// Wait functions
+export fn wait(n: int8) = waitop(i8i64(n))
+export fn wait(n: int16) = waitop(i16i64(n))
+export fn wait(n: int32) = waitop(i32i64(n))
+export fn wait(n: int64) = waitop(n)
+
+// String functions
+export fn concat(a: string, b: string) = catstr(a, b)
+export fn split(str: string, spl: string): Array<string> = split(str, spl)
+export fn repeat(s: string, n: int64) = repstr(s, n)
+export fn template(str: string, map: Map<string, string>) = templ(str, map)
+export matches // opcode with signature `fn matches(s: string, t: string): bool`
+export fn index(s: string, t: string) = indstr(s, t)
+export fn length(s: string) = lenstr(s)
+export trim // opcode with signature `fn trim(s: string): string`
+
+// Array functions
+export fn concat(a: Array<any>, b: Array<any>) = catarr(a, b)
+export fn repeat(arr: Array<any>, n: int64) = reparr(arr, n)
+export fn index(arr: Array<any>, val: any) = indarr(arr, val)
+export fn length(arr: Array<any>) = lenarr(arr)
+export each // opcode with signature `fn each(arr: Array<any>, cb: function): void`
+export map // opcode with signature `fn map(arr: Array<any>, cb: function): Array<any>`
+export reduce // opcode with signature `fn reduce(arr: Array<any>, cb: function): any`
+export filter // opcode with signature `fn filter(arr: Array<any>, cb: function): Array<any>`
+export find // opcode with signature `fn find(arr: Array<any>, cb: function): any`
+export every // opcode with signature `fn every(arr: Array<any>, cb: function): bool`
+export some // opcode with signature `fn some(arr: Array<any>, cb: function): bool`
+export join // opcode with signature `fn join(arr: Array<string>, sep: string): string`
+
+// Map functions
+export keyVal // opcode with signature `fn keyVal(map: Map<any, any>): Array<KeyVal<any, any>>`
+export keys // opcode with signature `fn keys(map: Map<any, any>): Array<any>`
+export values // opcode with signature `fn values(map: Map<any, any>): Array<any>`
+
+// Ternary functions
+export pair // opcode with signature `fn pair(trueval: any, falseval: any): Array<any>`
+export fn cond(c: bool, options: Array<any>): any = condarr(c, options)
+export fn cond(c: bool, optional: function): void = condfn(c, optional)
+
+// Operator declarations
+export infix commutative associative + 2 add
+export infix associative + 2 concat
+export infix - 2 sub
+export prefix - 1 negate
+export infix commutative associative * 3 mul
+export infix * 3 repeat
+export infix / 3 div
+export infix / 3 split
+export infix % 3 mod
+export infix % 3 template
+export infix ** 4 pow
+export infix commutative associative & 3 and
+export infix commutative associative && 3 and
+export infix commutative associative | 2 or
+export infix commutative associative || 2 or
+export infix commutative associative ^ 2 xor
+export prefix ! 4 not
+export infix commutative associative !& 3 nand
+export infix commutative associative !| 2 nor
+export infix commutative associative !^ 2 xnor
+export infix commutative associative == 1 eq
+export infix commutative associative != 1 neq
+export infix < 1 lt
+export infix <= 1 lte
+export infix > 1 gt
+export infix >= 1 gte
+export infix ~ 1 matches
+export infix @ 1 index
+export prefix # 4 length
+export prefix ` 4 trim
+export infix : 5 pair
+export infix ? 0 cond
+

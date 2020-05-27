@@ -1,0 +1,37 @@
+{
+  "name": "alan-compile",
+  "version": "0.0.1",
+  "description": "Compile of alan to amm and javascript",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "prepare": "tsc",
+    "bundle": "./browser/genstdlibs.js > ./browser/stdlibs.json && browserify -r alan-js-runtime -r ./browser/runtime.js:alan-runtime -r ./dist/index.js:alan-compiler > bundle.js",
+    "clean": "rm -f bundle.js && rm -rf dist"
+  },
+  "bin": {
+    "alan-compile": "./dist/index.js"
+  },
+  "browser": {
+    "./dist/index.js": "./browser.js",
+    "./dist/lntoamm/Std.js": "./browser/Std.js"
+  },
+  "keywords": [
+    "alan",
+    "compiler",
+    "transpiler"
+  ],
+  "author": "David Ellis <isv.damocles@gmail.com>",
+  "license": "AGPL-3.0",
+  "dependencies": {
+    "@types/node": "^14.0.5",
+    "alan-js-runtime": "file:../js-runtime",
+    "antlr4": "^4.8.0",
+    "commander": "^5.1.0",
+    "uuid": "^8.0.0"
+  },
+  "devDependencies": {
+    "browserify": "^16.5.1",
+    "typescript": "^3.9.3"
+  }
+}
