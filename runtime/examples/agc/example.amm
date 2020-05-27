@@ -1,0 +1,8 @@
+const __unnamed_string_val_0: string = "Hello, Dear World!\n"
+const __unnamed_1: int64 = 2
+const __unnamed_2: int64 = 1
+on _start fn (): void {
+  const __unnamed_3: int64 = addi64(__unnamed_1, __unnamed_2)
+  emit _stdout __unnamed_string_val_0
+  emit _exit __unnamed_3
+}

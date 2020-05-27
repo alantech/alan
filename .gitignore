@@ -1,9 +1,6 @@
 shellspec/
 interpreter/
-compiler/
-runtime/
-js-runtime/
-bdd/node_modules/
+.idea
 bdd/temp.*
 node_modules/
 package.json
