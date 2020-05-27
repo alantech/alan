@@ -1,6 +1,0 @@
-{
-  "dependencies": {
-    "alan-compile": "./compiler",
-    "alan-js-runtime": "./js-runtime"
-  }
-}
