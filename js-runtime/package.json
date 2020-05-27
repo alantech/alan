@@ -1,0 +1,17 @@
+{
+  "name": "alan-js-runtime",
+  "version": "0.0.1",
+  "description": "The runtime component for alan-js. Separately licensed from the compiler.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "alan",
+    "alan-js",
+    "runtime",
+    "transpiler"
+  ],
+  "author": "David Ellis <isv.damocles@gmail.com>",
+  "license": "Apache-2.0"
+}
