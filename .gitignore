@@ -1,6 +1,7 @@
+.idea
 shellspec/
 interpreter/
-.idea
+bdd/node_modules/
 bdd/temp.*
 node_modules/
 package.json
