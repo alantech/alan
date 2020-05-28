@@ -3,14 +3,11 @@ Include build_tools.sh
 Describe "Events"
   Describe "normal exit code"
     before() {
-      sourceToTemp "
+      sourceToAll "
         from @std/app import start, exit
 
         on start { emit exit 0 }
       "
-      tempToAmm
-      tempToAgc
-      tempToJs
     }
     BeforeAll before
 
@@ -19,24 +16,12 @@ Describe "Events"
     }
     AfterAll after
 
-    It "interprets"
-      When run alan-interpreter interpret temp.ln
-      The status should eq "0"
-    End
-
-    It "interprets IR"
-      # Currently fails because the integer type is incorrect (expected int8 got int64)
-      Pending correct_type_coersion
-      When run alan-interpreter interpret temp.amm
-      The status should eq "0"
-    End
-
     It "runs js"
       When run node temp.js
       The status should eq "0"
     End
 
-    It "runs bc"
+    It "runs agc"
       When run alan-runtime run temp.agc
       The status should eq "0"
     End
@@ -44,14 +29,11 @@ Describe "Events"
 
   Describe "error exit code"
     before() {
-      sourceToTemp "
+      sourceToAll "
         from @std/app import start, exit
 
         on start { emit exit 1 }
       "
-      tempToAmm
-      tempToAgc
-      tempToJs
     }
     BeforeAll before
 
@@ -59,18 +41,6 @@ Describe "Events"
       cleanTemp
     }
     AfterAll after
-
-    It "interprets"
-      When run alan-interpreter interpret temp.ln
-      The status should eq "1"
-    End
-
-    It "interprets IR"
-      # Currently fails because the integer type is incorrect (expected int8 got int64)
-      Pending correct_type_coersion
-      When run alan-interpreter interpret temp.amm
-      The status should eq "1"
-    End
 
     It "runs js"
       When run node temp.js

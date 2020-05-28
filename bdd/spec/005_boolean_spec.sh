@@ -2,7 +2,7 @@ Include build_tools.sh
 
 Describe "Booleans"
   before() {
-    sourceToTemp "
+    sourceToAll "
       from @std/app import start, print, exit
 
       on start {
@@ -54,16 +54,14 @@ Describe "Booleans"
       }
     "
   }
-  Before before
+  BeforeAll before
 
   after() {
     cleanTemp
   }
-  After after
+  AfterAll after
 
-  It "interprets"
-    When run alan-interpreter interpret temp.ln
-    The output should eq "true
+  OUTPUT="true
 false
 true
 false
@@ -72,7 +70,7 @@ true
 false
 true
 false
-true
+false
 true
 false
 false
@@ -99,5 +97,15 @@ true
 false
 false
 true"
+
+  It "runs js"
+    When run node temp.js
+    The output should eq "$OUTPUT"
+  End
+
+  It "runs agc"
+    Pending memory access error tracked down
+    When run alan-runtime run temp.agc
+    The output should eq "$OUTPUT"
   End
 End

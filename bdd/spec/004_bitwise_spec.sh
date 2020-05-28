@@ -1,9 +1,17 @@
 Include build_tools.sh
 
 Describe "Bitwise"
+  OUTPUT="0
+3
+6
+-1
+-1
+-4
+-7"
+
   Describe "int8"
     before() {
-      sourceToTemp "
+      sourceToAll "
         from @std/app import start, print, exit
 
         prefix ~ 10 toInt8
@@ -20,28 +28,27 @@ Describe "Bitwise"
         }
       "
     }
-    Before before
+    BeforeAll before
 
     after() {
       cleanTemp
     }
-    After after
+    AfterAll after
 
-    It "interprets"
-      When run alan-interpreter interpret temp.ln
-      The output should eq "0
-3
-6
--1
--1
--4
--7"
+    It "runs js"
+      When run node temp.js
+      The output should eq "$OUTPUT"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
+      The output should eq "$OUTPUT"
     End
   End
 
   Describe "int16"
     before() {
-      sourceToTemp "
+      sourceToAll "
         from @std/app import start, print, exit
 
         prefix ~ 10 toInt16
@@ -58,28 +65,27 @@ Describe "Bitwise"
         }
       "
     }
-    Before before
+    BeforeAll before
 
     after() {
       cleanTemp
     }
-    After after
+    AfterAll after
 
-    It "interprets"
-      When run alan-interpreter interpret temp.ln
-      The output should eq "0
-3
-6
--1
--1
--4
--7"
+    It "runs js"
+      When run node temp.js
+      The output should eq "$OUTPUT"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
+      The output should eq "$OUTPUT"
     End
   End
 
   Describe "int32"
     before() {
-      sourceToTemp "
+      sourceToAll "
         from @std/app import start, print, exit
 
         prefix ~ 10 toInt32
@@ -96,28 +102,27 @@ Describe "Bitwise"
         }
       "
     }
-    Before before
+    BeforeAll before
 
     after() {
       cleanTemp
     }
-    After after
+    AfterAll after
 
-    It "interprets"
-      When run alan-interpreter interpret temp.ln
-      The output should eq "0
-3
-6
--1
--1
--4
--7"
+    It "runs js"
+      When run node temp.js
+      The output should eq "$OUTPUT"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
+      The output should eq "$OUTPUT"
     End
   End
 
   Describe "int64"
     before() {
-      sourceToTemp "
+      sourceToAll "
         from @std/app import start, print, exit
 
         on start {
@@ -132,22 +137,21 @@ Describe "Bitwise"
         }
       "
     }
-    Before before
+    BeforeAll before
 
     after() {
       cleanTemp
     }
-    After after
+    AfterAll after
 
-    It "interprets"
-      When run alan-interpreter interpret temp.ln
-      The output should eq "0
-3
-6
--1
--1
--4
--7"
+    It "runs js"
+      When run node temp.js
+      The output should eq "$OUTPUT"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
+      The output should eq "$OUTPUT"
     End
   End
 End

@@ -3,7 +3,7 @@ Include build_tools.sh
 Describe "Printing"
   Describe "print function"
     before() {
-      sourceToTemp "
+      sourceToAll "
         from @std/app import start, print, exit
         on start {
           print('Hello, World')
@@ -11,38 +11,48 @@ Describe "Printing"
         }
       "
     }
-    Before before
+    BeforeAll before
 
     after() {
       cleanTemp
     }
-    After after
+    AfterAll after
 
-    It "interprets"
-      When run alan-interpreter interpret temp.ln
+    It "runs js"
+      When run node temp.js
+      The output should eq "Hello, World\n"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
       The output should eq "Hello, World\n"
     End
   End
 
   Describe "stdout event"
     before() {
-      sourceToTemp "
+      sourceToAll "
         from @std/app import start, stdout, exit
         on start {
-          emit 'Hello, World'
+          emit stdout 'Hello, World'
           emit exit 0
         }
       "
     }
-    Before before
+    BeforeAll before
 
     after() {
       cleanTemp
     }
-    After after
+    AfterAll after
 
-    It "interprets"
-      When run alan-interpreter interpret temp.ln
+    It "runs js"
+      When run node temp.js
+      The output should eq "Hello, World"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
       The output should eq "Hello, World"
     End
   End

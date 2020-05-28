@@ -12,7 +12,7 @@ sourceToAmm() {
 }
 
 tempToAgc() {
-  alan-compile temp.ln temp.agc 1>/dev/null
+  alan-compile temp.amm temp.agc 1>/dev/null
 }
 
 sourceToAgc() {
@@ -21,11 +21,18 @@ sourceToAgc() {
 }
 
 tempToJs() {
-  alan-compile temp.ln temp.js 1>/dev/null
+  alan-compile temp.amm temp.js 1>/dev/null
 }
 
 sourceToJs() {
   sourceToTemp "$1"
+  tempToJs
+}
+
+sourceToAll() {
+  sourceToTemp "$1"
+  tempToAmm
+  tempToAgc
   tempToJs
 }
 

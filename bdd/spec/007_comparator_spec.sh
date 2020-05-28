@@ -12,23 +12,25 @@ Describe "Comparators"
         }
       "
     }
-    Before before
+    BeforeAll before
 
     after() {
       cleanTemp
     }
-    After after
+    AfterAll after
 
     It "doesn't work"
       When run alan-interpreter interpret temp.ln
       The status should not eq "0"
       The error should eq "Unable to find matching function for name and argument type set"
     End
+
+    # TODO: How to do this test with the compiled paths?
   End
 
   Describe "Equals"
     before() {
-      sourceToTemp "
+      sourceToAll "
         from @std/app import start, print, exit
 
         on start {
@@ -60,16 +62,14 @@ Describe "Comparators"
         }
       "
     }
-    Before before
+    BeforeAll before
 
     after() {
       cleanTemp
     }
-    After after
+    AfterAll after
 
-    It "interprets"
-      When run alan-interpreter interpret temp.ln
-      The output should eq "true
+    EQUALS="true
 false
 true
 false
@@ -85,12 +85,21 @@ true
 false
 true
 false"
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "$EQUALS"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
+      The output should eq "$EQUALS"
     End
   End
 
   Describe "Not Equals"
     before() {
-      sourceToTemp "
+      sourceToAll "
         from @std/app import start, print, exit
 
         on start {
@@ -122,16 +131,14 @@ false"
         }
       "
     }
-    Before before
+    BeforeAll before
 
     after() {
       cleanTemp
     }
-    After after
-
-    It "interprets"
-      When run alan-interpreter interpret temp.ln
-      The output should eq "false
+    AfterAll after
+    
+    NOTEQUALS="false
 true
 false
 true
@@ -147,12 +154,21 @@ false
 true
 false
 true"
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "$NOTEQUALS"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
+      The output should eq "$NOTEQUALS"
     End
   End
 
   Describe "Less Than"
     before() {
-      sourceToTemp "
+      sourceToAll "
         from @std/app import start, print, exit
 
         on start {
@@ -181,16 +197,14 @@ true"
         }
       "
     }
-    Before before
+    BeforeAll before
 
     after() {
       cleanTemp
     }
-    After after
+    AfterAll after
 
-    It "interprets"
-      When run alan-interpreter interpret temp.ln
-      The output should eq "true
+    LESSTHAN="true
 false
 true
 false
@@ -204,12 +218,21 @@ true
 false
 false
 true"
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "$LESSTHAN"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
+      The output should eq "$LESSTHAN"
     End
   End
 
   Describe "Less Than Or Equal"
     before() {
-      sourceToTemp "
+      sourceToAll "
         from @std/app import start, print, exit
 
         on start {
@@ -238,16 +261,14 @@ true"
         }
       "
     }
-    Before before
+    BeforeAll before
 
     after() {
       cleanTemp
     }
-    After after
+    AfterAll after
 
-    It "interprets"
-      When run alan-interpreter interpret temp.ln
-      The output should eq "true
+    LESSTHANOREQUAL="true
 false
 true
 false
@@ -261,12 +282,21 @@ true
 false
 true
 true"
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "$LESSTHANOREQUAL"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
+      The output should eq "$LESSTHANOREQUAL"
     End
   End
 
   Describe "Greater Than"
     before() {
-      sourceToTemp "
+      sourceToAll "
         from @std/app import start, print, exit
 
         on start {
@@ -295,16 +325,14 @@ true"
         }
       "
     }
-    Before before
+    BeforeAll before
 
     after() {
       cleanTemp
     }
-    After after
+    AfterAll after
 
-    It "interprets"
-      When run alan-interpreter interpret temp.ln
-      The output should eq "false
+    GREATERTHAN="false
 true
 false
 true
@@ -318,12 +346,21 @@ false
 true
 false
 false"
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "$GREATERTHAN"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
+      The output should eq "$GREATERTHAN"
     End
   End
 
   Describe "Greater Than Or Equal"
     before() {
-      sourceToTemp "
+      sourceToAll "
         from @std/app import start, print, exit
 
         on start {
@@ -352,16 +389,14 @@ false"
         }
       "
     }
-    Before before
+    BeforeAll before
 
     after() {
       cleanTemp
     }
-    After after
+    AfterAll after
 
-    It "interprets"
-      When run alan-interpreter interpret temp.ln
-      The output should eq "false
+    GREATERTHANOREQUAL="false
 true
 false
 true
@@ -375,6 +410,15 @@ false
 true
 true
 false"
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "$GREATERTHANOREQUAL"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
+      The output should eq "$GREATERTHANOREQUAL"
     End
   End
 End
