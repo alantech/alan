@@ -24,7 +24,7 @@ To transpile to Alan's intermediate representation, `alan--`:
 To transpile to Javascript:
 ```
 ./alan transpile-js <sourcefile>.js
-./alan run out.js
+node out.js
 ```
 
 ## Integration tests

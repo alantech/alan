@@ -36,7 +36,7 @@ impl InstructionScheduler {
     }
   }
 
-  pub async fn sched_event(self: &mut InstructionScheduler, mut frag: HandlerFragment, call_uuid: Uuid, mut mem_frag: MemoryFragment) {
+  pub async fn sched_frag(self: &mut InstructionScheduler, mut frag: HandlerFragment, call_uuid: Uuid, mut mem_frag: MemoryFragment) {
     let instructions = frag.get_instruction_fragment();
     let pgm = self.pgm;
     // io-bound fragment

@@ -52,7 +52,7 @@ impl VM {
     if next_frag.is_none() {
       self.mem_man.dealloc_handler(call_uuid);
     } else {
-      self.ins_sched.sched_event(next_frag.unwrap(), call_uuid, mem_frag).await;
+      self.ins_sched.sched_frag(next_frag.unwrap(), call_uuid, mem_frag).await;
     }
   }
 
@@ -66,7 +66,7 @@ impl VM {
       let mem_frag = self.mem_man.alloc_handler(handler, call_uuid, &payload, event.gmem_addr);
       // first fragment of this handler
       let frag = HandlerFragment::new(self.pgm, event.id, i);
-      self.ins_sched.sched_event(frag, call_uuid, mem_frag).await;
+      self.ins_sched.sched_frag(frag, call_uuid, mem_frag).await;
     }
   }
 

@@ -133,6 +133,7 @@ impl VMMemory {
   fn derive_payload_addr(
     self: &mut VMMemory,
     uuid: &Uuid,
+    handler_mem_start: usize,
     handler: &EventHandler,
     payload: &Vec<u8>,
     gmem_addr: Option<i64>
@@ -149,7 +150,7 @@ impl VMMemory {
         var_mem.insert(0, payload.to_vec());
       } else {
         // allocate payload at beg of handler's memory
-        self.mem.splice(self.mc..self.mc, payload.to_vec());
+        self.mem.splice(handler_mem_start..handler_mem_start, payload.to_vec());
       }
       Some(0)
     } else if gmem_addr.is_some() {
@@ -170,13 +171,13 @@ impl VMMemory {
 
   /// returns a new memory fragment and an optional payload address within it from the event emission
   pub fn alloc_handler(self: &mut VMMemory, handler: &EventHandler, uuid: Uuid, payload: &Vec<u8>, gmem_addr: Option<i64>) -> MemoryFragment {
-    let payload_addr = self.derive_payload_addr(&uuid, handler, payload, gmem_addr);
     let mem_req = if handler.mem_req < 0 { 8 } else { handler.mem_req } as usize;
     // Allocate right behind smallest offset if possible
     let min_offset = self.min_offset();
     if min_offset > mem_req {
       let start = min_offset - mem_req;
       let end = min_offset;
+      let payload_addr = self.derive_payload_addr(&uuid, start, handler, payload, gmem_addr);
       // update internal state
       self.min_offset_heap.push(Reverse(start));
       self.handler_records.insert(uuid, (start, end, payload_addr, HashMap::new()));
@@ -199,6 +200,7 @@ impl VMMemory {
     // Allocated at the end of memory so adjust memory counter
     let old_mc = self.mc;
     let new_mc = old_mc + mem_req;
+    let payload_addr = self.derive_payload_addr(&uuid, old_mc, handler, payload, gmem_addr);
     // resize mem if needed to allocate handler
     if new_mc > self.mem.len() {
       let new_len = (self.mem.len() as f64 * GROWTH_FACTOR) as usize;
