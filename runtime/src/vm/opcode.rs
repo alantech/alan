@@ -822,7 +822,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let a = mem_frag.read(args[0], 1)[0];
     let b = mem_frag.read(args[1], 1)[0];
     let out = if a & b == 0u8 { 0u8 } else { 1u8 };
-    mem_frag.write(args[2], 8, &out.to_le_bytes());
+    mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
 
@@ -858,7 +858,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let a = mem_frag.read(args[0], 1)[0];
     let b = mem_frag.read(args[1], 1)[0];
     let out = if a | b == 0u8 { 0u8 } else { 1u8 };
-    mem_frag.write(args[2], 8, &out.to_le_bytes());
+    mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
 
@@ -894,7 +894,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let a = mem_frag.read(args[0], 1)[0];
     let b = mem_frag.read(args[1], 1)[0];
     let out = if a ^ b == 0u8 { 0u8 } else { 1u8 };
-    mem_frag.write(args[2], 8, &out.to_le_bytes());
+    mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
 
@@ -925,7 +925,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("notbool", |args, mem_frag, _, _| {
     let a = mem_frag.read(args[0], 1)[0];
     let out = if a == 0u8 { 1u8 } else { 0u8 };
-    mem_frag.write(args[2], 8, &out.to_le_bytes());
+    mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
 
@@ -961,7 +961,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let a = mem_frag.read(args[0], 1)[0];
     let b = mem_frag.read(args[1], 1)[0];
     let out = if !(a & b) == 0u8 { 0u8 } else { 1u8 };
-    mem_frag.write(args[2], 8, &out.to_le_bytes());
+    mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
 
@@ -997,7 +997,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let a = mem_frag.read(args[0], 1)[0];
     let b = mem_frag.read(args[1], 1)[0];
     let out = if !(a | b) == 0u8 { 0u8 } else { 1u8 };
-    mem_frag.write(args[2], 8, &out.to_le_bytes());
+    mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
 
@@ -1033,7 +1033,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let a = mem_frag.read(args[0], 1)[0];
     let b = mem_frag.read(args[1], 1)[0];
     let out = if !(a ^ b) == 0u8 { 0u8 } else { 1u8 };
-    mem_frag.write(args[2], 8, &out.to_le_bytes());
+    mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
 
