@@ -10,3 +10,6 @@ gradle
 .gradle
 /package.json
 /yarn.lock
+/test.*
+/temp.*
+/out.agc

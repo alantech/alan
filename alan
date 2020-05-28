@@ -31,8 +31,8 @@ args=( "${allargs[@]/$del}" )
 
 case $1 in
   build)
-    alan-compile -m lntoamm -i $args -o temp.amm
-    alan-runtime ammtoagc temp.amm -o out.agc # TODO: Replace with `alan-compile`
+    alan-compile $args temp.amm
+    alan-compile temp.amm out.agc # TODO: allow output file to be specified
     rm temp.amm
     ;;
 
