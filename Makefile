@@ -16,7 +16,7 @@ runtime-unit:
 
 .PHONY: build-compiler
 build-compiler:
-	cp -R std/ compiler/std/ && cd compiler && yarn
+	cd compiler && yarn
 
 runtime/target/release/alan-runtime: runtime
 	cd runtime && cargo build --release

@@ -4,5 +4,9 @@ interpreter/
 bdd/node_modules/
 bdd/temp.*
 node_modules/
+gradlew
+gradlew.bat
+gradle
+.gradle
 /package.json
 /yarn.lock
