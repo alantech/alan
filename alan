@@ -30,19 +30,19 @@ del=$1
 args=( "${allargs[@]/$del}" )
 
 case $1 in
-  build)
+  compile)
     alan-compile $args temp.amm
     alan-compile temp.amm out.agc # TODO: allow output file to be specified
     rm temp.amm
     ;;
 
-  build-ir)
-    alan-compile -m lntoamm -i $args -o out.amm
+  transpile-amm)
+    alan-compile $args out.amm # TODO: allow output file to be specified
     ;;
 
-  build-js)
-    alan-compile -m lntoamm -i $args -o temp.amm
-    alan-compile -m ammtojs -i temp.amm -o out.js # TODO: allow output file to be specified
+  transpile-js)
+    alan-compile $args temp.amm
+    alan-compile temp.amm out.js # TODO: allow output file to be specified
     rm temp.amm
     ;;
 
@@ -60,13 +60,13 @@ case $1 in
 
   help)
     echo "alan Usage:"
-    echo "alan build path/to/sourcefile.ln      - Loads the specified source file and builds an output alan graphcode file"
-    echo "alan build-ir path/to/sourcefile.ln   - Loads the specified source file and builds an output alan intermediate representation file"
-    echo "alan build-js path/to/sourcefile.ln   - Loads the specified source file and builds an output javascript file"
-    echo "alan install                          - Install '/dependencies' from '.dependencies'"
-    echo "alan interpret path/to/sourcefile.ln  - Loads and interprets the specified source file"
-    echo "alan run path/to/compiled.agc         - Loads and runs the specified build file"
-    echo "alan help                             - Prints this message"
+    echo "alan compile path/to/sourcefile.ln        - Loads the specified source file and builds an output alan graphcode file"
+    echo "alan transpile-amm path/to/sourcefile.ln  - Loads the specified source file and builds an output alan intermediate representation file"
+    echo "alan transpile-js path/to/sourcefile.ln   - Loads the specified source file and builds an output javascript file"
+    echo "alan install                              - Install '/dependencies' from '.dependencies'"
+    echo "alan interpret path/to/sourcefile.ln      - Loads and interprets the specified source file"
+    echo "alan run path/to/compiled.agc             - Loads and runs the specified build file"
+    echo "alan help                                 - Prints this message"
     exit 0
     ;;
 
