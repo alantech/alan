@@ -61,9 +61,7 @@ Describe "Booleans"
   }
   AfterAll after
 
-  It "runs js"
-    When run node temp.js
-    The output should eq "true
+  OUTPUT="true
 false
 true
 false
@@ -99,46 +97,15 @@ true
 false
 false
 true"
+
+  It "runs js"
+    When run node temp.js
+    The output should eq "$OUTPUT"
   End
 
   It "runs agc"
     Pending memory access error tracked down
     When run alan-runtime run temp.agc
-    The output should eq "true
-false
-true
-false
-true
-true
-false
-true
-false
-true
-true
-false
-false
-false
-true
-true
-true
-false
-false
-true
-true
-false
-false
-true
-false
-true
-true
-true
-false
-false
-false
-true
-true
-false
-false
-true"
+    The output should eq "$OUTPUT"
   End
 End

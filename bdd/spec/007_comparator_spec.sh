@@ -69,9 +69,7 @@ Describe "Comparators"
     }
     AfterAll after
 
-    It "runs js"
-      When run node temp.js
-      The output should eq "true
+    EQUALS="true
 false
 true
 false
@@ -87,26 +85,15 @@ true
 false
 true
 false"
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "$EQUALS"
     End
 
     It "runs agc"
       When run alan-runtime run temp.agc
-      The output should eq "true
-false
-true
-false
-true
-false
-true
-false
-true
-false
-true
-false
-true
-false
-true
-false"
+      The output should eq "$EQUALS"
     End
   End
 
@@ -150,10 +137,8 @@ false"
       cleanTemp
     }
     AfterAll after
-
-    It "runs js"
-      When run node temp.js
-      The output should eq "false
+    
+    NOTEQUALS="false
 true
 false
 true
@@ -169,26 +154,15 @@ false
 true
 false
 true"
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "$NOTEQUALS"
     End
 
     It "runs agc"
       When run alan-runtime run temp.agc
-      The output should eq "false
-true
-false
-true
-false
-true
-false
-true
-false
-true
-false
-true
-false
-true
-false
-true"
+      The output should eq "$NOTEQUALS"
     End
   End
 
@@ -230,9 +204,7 @@ true"
     }
     AfterAll after
 
-    It "runs js"
-      When run node temp.js
-      The output should eq "true
+    LESSTHAN="true
 false
 true
 false
@@ -246,24 +218,15 @@ true
 false
 false
 true"
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "$LESSTHAN"
     End
 
     It "runs agc"
       When run alan-runtime run temp.agc
-      The output should eq "true
-false
-true
-false
-true
-false
-true
-false
-true
-false
-true
-false
-false
-true"
+      The output should eq "$LESSTHAN"
     End
   End
 
@@ -305,9 +268,7 @@ true"
     }
     AfterAll after
 
-    It "runs js"
-      When run node temp.js
-      The output should eq "true
+    LESSTHANOREQUAL="true
 false
 true
 false
@@ -321,24 +282,15 @@ true
 false
 true
 true"
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "$LESSTHANOREQUAL"
     End
 
     It "runs agc"
       When run alan-runtime run temp.agc
-      The output should eq "true
-false
-true
-false
-true
-false
-true
-false
-true
-false
-true
-false
-true
-true"
+      The output should eq "$LESSTHANOREQUAL"
     End
   End
 
@@ -380,9 +332,7 @@ true"
     }
     AfterAll after
 
-    It "runs js"
-      When run node temp.js
-      The output should eq "false
+    GREATERTHAN="false
 true
 false
 true
@@ -396,24 +346,15 @@ false
 true
 false
 false"
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "$GREATERTHAN"
     End
 
     It "runs agc"
       When run alan-runtime run temp.agc
-      The output should eq "false
-true
-false
-true
-false
-true
-false
-true
-false
-true
-false
-true
-false
-false"
+      The output should eq "$GREATERTHAN"
     End
   End
 
@@ -455,9 +396,7 @@ false"
     }
     AfterAll after
 
-    It "runs js"
-      When run node temp.js
-      The output should eq "false
+    GREATERTHANOREQUAL="false
 true
 false
 true
@@ -471,24 +410,15 @@ false
 true
 true
 false"
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "$GREATERTHANOREQUAL"
     End
 
     It "runs agc"
       When run alan-runtime run temp.agc
-      The output should eq "false
-true
-false
-true
-false
-true
-false
-true
-false
-true
-false
-true
-true
-false"
+      The output should eq "$GREATERTHANOREQUAL"
     End
   End
 End

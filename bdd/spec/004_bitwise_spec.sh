@@ -1,6 +1,14 @@
 Include build_tools.sh
 
 Describe "Bitwise"
+  OUTPUT="0
+3
+6
+-1
+-1
+-4
+-7"
+
   Describe "int8"
     before() {
       sourceToAll "
@@ -29,24 +37,12 @@ Describe "Bitwise"
 
     It "runs js"
       When run node temp.js
-      The output should eq "0
-3
-6
--1
--1
--4
--7"
+      The output should eq "$OUTPUT"
     End
 
     It "runs agc"
       When run alan-runtime run temp.agc
-      The output should eq "0
-3
-6
--1
--1
--4
--7"
+      The output should eq "$OUTPUT"
     End
   End
 
@@ -78,24 +74,12 @@ Describe "Bitwise"
 
     It "runs js"
       When run node temp.js
-      The output should eq "0
-3
-6
--1
--1
--4
--7"
+      The output should eq "$OUTPUT"
     End
 
     It "runs agc"
       When run alan-runtime run temp.agc
-      The output should eq "0
-3
-6
--1
--1
--4
--7"
+      The output should eq "$OUTPUT"
     End
   End
 
@@ -127,24 +111,12 @@ Describe "Bitwise"
 
     It "runs js"
       When run node temp.js
-      The output should eq "0
-3
-6
--1
--1
--4
--7"
+      The output should eq "$OUTPUT"
     End
 
     It "runs agc"
       When run alan-runtime run temp.agc
-      The output should eq "0
-3
-6
--1
--1
--4
--7"
+      The output should eq "$OUTPUT"
     End
   End
 
@@ -174,24 +146,12 @@ Describe "Bitwise"
 
     It "runs js"
       When run node temp.js
-      The output should eq "0
-3
-6
--1
--1
--4
--7"
+      The output should eq "$OUTPUT"
     End
 
     It "runs agc"
       When run alan-runtime run temp.agc
-      The output should eq "0
-3
-6
--1
--1
--4
--7"
+      The output should eq "$OUTPUT"
     End
   End
 End
