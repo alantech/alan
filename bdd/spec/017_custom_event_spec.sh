@@ -1,36 +1,7 @@
 Include build_tools.sh
 
 Describe "Custom events"
-  before() {
-    sourceToTemp "
-      from @std/app import start, print, exit
-
-      event loop: int64
-
-      on loop fn looper(val: int64) {
-        print(val)
-        if val >= 10 {
-          emit exit 0
-        } else {
-          emit loop val + 1
-        }
-      }
-
-      on start {
-        emit loop 0
-      }
-    "
-  }
-  Before before
-
-  after() {
-    cleanTemp
-  }
-  After after
-
-  It "interprets"
-    When run alan-interpreter interpret temp.ln
-    The output should eq "0
+  OUTPUT="0
 1
 2
 3
@@ -41,5 +12,43 @@ Describe "Custom events"
 8
 9
 10"
+
+  Describe "loop custom event"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+
+        event loop: int64
+
+        on loop fn looper(val: int64) {
+          print(val)
+          if val >= 10 {
+            emit exit 0
+          } else {
+            emit loop val + 1
+          }
+        }
+
+        on start {
+          emit loop 0
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "$OUTPUT"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
+      The output should eq "$OUTPUT"
+    End
   End
 End

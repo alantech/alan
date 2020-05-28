@@ -12,4 +12,4 @@ gradle
 /yarn.lock
 /test.*
 /temp.*
-/out.agc
+/out.*
