@@ -38,6 +38,7 @@ node_modules:
 
 .PHONY: clean
 clean:
+	cd runtime && cargo clean
 	rm -rf interpreter
 	rm -rf shellspec
 	rm -rf node_modules

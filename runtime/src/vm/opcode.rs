@@ -473,7 +473,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   cpu!("boolstr", |args, mem_frag, _, _| {
     let a = mem_frag.read(args[0], 1)[0];
-    let a_str = a.to_string();
+    let a_str = if a == 1 { "true" } else { "false" };
     let mut out = (a_str.len() as u64).to_le_bytes().to_vec();
     out.append(&mut a_str.as_bytes().to_vec());
     mem_frag.write(args[2], 0, &out);
@@ -820,7 +820,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   cpu!("andbool", |args, mem_frag, _, _| {
     let a = mem_frag.read(args[0], 1)[0];
-    let b = mem_frag.read(args[0], 1)[0];
+    let b = mem_frag.read(args[1], 1)[0];
     let out = if a & b == 0u8 { 0u8 } else { 1u8 };
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
@@ -856,7 +856,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   cpu!("orbool", |args, mem_frag, _, _| {
     let a = mem_frag.read(args[0], 1)[0];
-    let b = mem_frag.read(args[0], 1)[0];
+    let b = mem_frag.read(args[1], 1)[0];
     let out = if a | b == 0u8 { 0u8 } else { 1u8 };
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
@@ -892,7 +892,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   cpu!("xorbool", |args, mem_frag, _, _| {
     let a = mem_frag.read(args[0], 1)[0];
-    let b = mem_frag.read(args[0], 1)[0];
+    let b = mem_frag.read(args[1], 1)[0];
     let out = if a ^ b == 0u8 { 0u8 } else { 1u8 };
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
@@ -959,7 +959,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   cpu!("nandboo", |args, mem_frag, _, _| {
     let a = mem_frag.read(args[0], 1)[0];
-    let b = mem_frag.read(args[0], 1)[0];
+    let b = mem_frag.read(args[1], 1)[0];
     let out = if !(a & b) == 0u8 { 0u8 } else { 1u8 };
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
@@ -995,7 +995,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   cpu!("norbool", |args, mem_frag, _, _| {
     let a = mem_frag.read(args[0], 1)[0];
-    let b = mem_frag.read(args[0], 1)[0];
+    let b = mem_frag.read(args[1], 1)[0];
     let out = if !(a | b) == 0u8 { 0u8 } else { 1u8 };
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
@@ -1031,7 +1031,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   cpu!("xnorboo", |args, mem_frag, _, _| {
     let a = mem_frag.read(args[0], 1)[0];
-    let b = mem_frag.read(args[0], 1)[0];
+    let b = mem_frag.read(args[1], 1)[0];
     let out = if !(a ^ b) == 0u8 { 0u8 } else { 1u8 };
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
@@ -1093,7 +1093,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   cpu!("eqbool", |args, mem_frag, _, _| {
     let a = mem_frag.read(args[0], 1)[0];
-    let b = mem_frag.read(args[0], 1)[0];
+    let b = mem_frag.read(args[1], 1)[0];
     let out = if a == b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
@@ -1154,7 +1154,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   cpu!("neqbool", |args, mem_frag, _, _| {
     let a = mem_frag.read(args[0], 1)[0];
-    let b = mem_frag.read(args[0], 1)[0];
+    let b = mem_frag.read(args[1], 1)[0];
     let out = if a != b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
