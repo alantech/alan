@@ -39,9 +39,7 @@ case $1 in
     ;;
 
   transpile-js)
-    alan-compile $args temp.amm
-    alan-compile temp.amm out.js # TODO: allow output file to be specified
-    rm temp.amm
+    alan-compile $args out.js # TODO: allow output file to be specified
     ;;
 
   install)
