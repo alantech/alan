@@ -19,7 +19,6 @@ To compile to Alan GraphCode:
 To transpile to Alan's intermediate representation, `alan--`:
 ```
 ./alan transpile-amm <sourcefile>.ln
-./alan run out.amm
 ```
 
 To transpile to Javascript:
