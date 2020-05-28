@@ -27,6 +27,12 @@ PHYS_DIR=`pwd -P`
 
 PATH="${PATH}:${PHYS_DIR}:${PHYS_DIR}/../shellspec:${PHYS_DIR}/../node_modules/.bin:${PHYS_DIR}/../runtime/target/release:${PHYS_DIR}/../interpreter"
 export PATH
-shellspec -s /bin/bash
+if [ "$1" ]
+  then
+    # Run a single test file if provided
+    shellspec -s /bin/bash "${ORIG_DIR}/${1}"
+  else
+    shellspec -s /bin/bash
+fi
 
 exit $?
