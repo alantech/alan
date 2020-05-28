@@ -31,7 +31,7 @@ args=( "${allargs[@]/$del}" )
 
 case $1 in
   compile)
-    alan-compile temp.ln out.agc # TODO: allow output file to be specified
+    alan-compile $args out.agc # TODO: allow output file to be specified
     ;;
 
   transpile-amm)
