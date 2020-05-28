@@ -13,7 +13,7 @@ Describe "Custom events"
 9
 10"
 
-  Describe "normal exit code"
+  Describe "loop custom event"
     before() {
       sourceToAll "
         from @std/app import start, print, exit
@@ -43,12 +43,12 @@ Describe "Custom events"
 
     It "runs js"
       When run node temp.js
-      The status should eq "$OUTPUT"
+      The output should eq "$OUTPUT"
     End
 
     It "runs agc"
       When run alan-runtime run temp.agc
-      The status should eq "$OUTPUT"
+      The output should eq "$OUTPUT"
     End
   End
 End
