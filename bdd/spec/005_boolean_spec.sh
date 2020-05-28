@@ -104,7 +104,6 @@ true"
   End
 
   It "runs agc"
-    Pending memory access error tracked down
     When run alan-runtime run temp.agc
     The output should eq "$OUTPUT"
   End
