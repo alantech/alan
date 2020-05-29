@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::convert::TryInto;
 use std::future::Future;
 use std::pin::Pin;
+use std::process::Command;
 use std::str;
 use std::time::Duration;
 
@@ -1469,6 +1470,14 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       frag.insert_subhandler(subfn);
     }
     None
+  });
+
+  // Std opcodes
+  unpred_cpu!("execop", |args, mem_frag, _, _| {
+    let pascal_string = mem_frag.read(args[0], 0);
+    let size = LittleEndian::read_u64(&pascal_string[0..8]) as usize;
+    let cmd = str::from_utf8(&pascal_string[8..size + 8]).unwrap();
+    let output = Command::new(cmd).output()
   });
 
   // "Special" opcodes

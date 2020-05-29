@@ -1,4 +1,5 @@
 const EventEmitter = require('events')
+const { exec } = require('child_process')
 
 const e = new EventEmitter()
 
@@ -230,6 +231,9 @@ module.exports = {
   // Ternary functions
   // TODO: pair and condarr after arrays are figured out
   condfn:  (cond, fn) => cond ? fn() : undefined,
+
+  // Std opcodes
+  execop: a => exec(a),
 
   // IO opcodes
   asyncopcodes: ['waitop'],

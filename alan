@@ -46,7 +46,6 @@ case $1 in
     DEP_FILE=./.dependencies.ln
     if [ -f "$DEP_FILE" ]; then
         alan-compile $DEP_FILE out.agc
-        # TODO user still needs to emit the exit opcode
         alan-runtime install out.agc
         rm out.agc
     else
