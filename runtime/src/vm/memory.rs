@@ -262,3 +262,99 @@ impl VMMemory {
     }
   }
 }
+
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  // test handler is allocated at the beginning only when possible
+  #[test]
+  fn test_mem_alloc() {
+    static gmem: Vec<u8> = Vec::new();
+    let mut mem_man = VMMemory::new(&gmem);
+    let hand = EventHandler::new(12, 1);
+    let uuid1 = Uuid::new_v4();
+    mem_man.alloc_handler(&hand, uuid1, &vec![], None);
+    assert_eq!(mem_man.min_offset_heap.len(), 1);
+    assert_eq!(mem_man.min_offset(), 0);
+    assert_eq!(mem_man.stale_offsets.len(), 0);
+    assert_eq!(mem_man.mc, 12);
+    let uuid2 = Uuid::new_v4();
+    mem_man.alloc_handler(&hand, uuid2, &vec![], None);
+    assert_eq!(mem_man.min_offset_heap.len(), 2);
+    assert_eq!(mem_man.min_offset(), 0);
+    assert_eq!(mem_man.stale_offsets.len(), 0);
+    assert_eq!(mem_man.mc, 24);
+    let uuid3 = Uuid::new_v4();
+    mem_man.alloc_handler(&hand, uuid3, &vec![], None);
+    assert_eq!(mem_man.min_offset_heap.len(), 3);
+    assert_eq!(mem_man.min_offset(), 0);
+    assert_eq!(mem_man.stale_offsets.len(), 0);
+    assert_eq!(mem_man.mc, 36);
+    mem_man.dealloc_handler(uuid1);
+    assert_eq!(mem_man.min_offset_heap.len(), 2);
+    assert_eq!(mem_man.min_offset(), 12);
+    assert_eq!(mem_man.stale_offsets.len(), 0);
+    assert_eq!(mem_man.mc, 36);
+    mem_man.dealloc_handler(uuid2);
+    assert_eq!(mem_man.min_offset_heap.len(), 1);
+    assert_eq!(mem_man.min_offset(), 24);
+    assert_eq!(mem_man.stale_offsets.len(), 0);
+    assert_eq!(mem_man.mc, 36);
+    let uuid4 = Uuid::new_v4();
+    mem_man.alloc_handler(&hand, uuid4, &vec![], None);
+    assert_eq!(mem_man.min_offset_heap.len(), 2);
+    assert_eq!(mem_man.min_offset(), 12);
+    assert_eq!(mem_man.stale_offsets.len(), 0);
+    assert_eq!(mem_man.mc, 36);
+    let uuid5 = Uuid::new_v4();
+    mem_man.alloc_handler(&hand, uuid5, &vec![], None);
+    assert_eq!(mem_man.min_offset_heap.len(), 3);
+    assert_eq!(mem_man.min_offset(), 12);
+    assert_eq!(mem_man.stale_offsets.len(), 0);
+    assert_eq!(mem_man.mc, 48);
+  }
+
+  // test stale offset is properly updated
+  #[test]
+  fn test_stale_offset() {
+    static gmem: Vec<u8> = Vec::new();
+    let mut mem_man = VMMemory::new(&gmem);
+    let hand = EventHandler::new(12, 1);
+    let uuid1 = Uuid::new_v4();
+    mem_man.alloc_handler(&hand, uuid1, &vec![], None);
+    assert_eq!(mem_man.min_offset_heap.len(), 1);
+    assert_eq!(mem_man.min_offset(), 0);
+    assert_eq!(mem_man.stale_offsets.len(), 0);
+    assert_eq!(mem_man.mc, 12);
+    let uuid2 = Uuid::new_v4();
+    mem_man.alloc_handler(&hand, uuid2, &vec![], None);
+    assert_eq!(mem_man.min_offset_heap.len(), 2);
+    assert_eq!(mem_man.min_offset(), 0);
+    assert_eq!(mem_man.stale_offsets.len(), 0);
+    assert_eq!(mem_man.mc, 24);
+    let uuid3 = Uuid::new_v4();
+    mem_man.alloc_handler(&hand, uuid3, &vec![], None);
+    assert_eq!(mem_man.min_offset_heap.len(), 3);
+    assert_eq!(mem_man.min_offset(), 0);
+    assert_eq!(mem_man.stale_offsets.len(), 0);
+    assert_eq!(mem_man.mc, 36);
+    mem_man.dealloc_handler(uuid2);
+    assert_eq!(mem_man.min_offset_heap.len(), 3);
+    assert_eq!(mem_man.min_offset(), 0);
+    assert_eq!(mem_man.stale_offsets.len(), 1);
+    assert_eq!(mem_man.mc, 36);
+    mem_man.dealloc_handler(uuid1);
+    assert_eq!(mem_man.min_offset_heap.len(), 1);
+    assert_eq!(mem_man.min_offset(), 24);
+    assert_eq!(mem_man.stale_offsets.len(), 0);
+    assert_eq!(mem_man.mc, 36);
+    let uuid4 = Uuid::new_v4();
+    mem_man.alloc_handler(&hand, uuid4, &vec![], None);
+    assert_eq!(mem_man.min_offset_heap.len(), 2);
+    assert_eq!(mem_man.min_offset(), 12);
+    assert_eq!(mem_man.stale_offsets.len(), 0);
+    assert_eq!(mem_man.mc, 36);
+  }
+}

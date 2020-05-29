@@ -59,7 +59,7 @@ impl EventHandler {
 
   pub fn add_instruction(self: &mut EventHandler, ins: Instruction) {
     self.ins_count += 1;
-    if ins.opcode.pred_exec {
+    if ins.opcode.func.is_some() {
       let mut frag = self.fragments.pop().unwrap_or(Vec::new());
       if frag.len() > 0 && !frag.get(0).unwrap().opcode.pred_exec {
         // if frag is io bound, start a new fragment
@@ -70,11 +70,8 @@ impl EventHandler {
         frag.push(ins);
         self.fragments.push(frag);
       }
-    } else if !ins.opcode.pred_exec && ins.opcode.func.is_some() {
-      // cpu instructions with unpredictable execution always form an unmovable capstone
-      self.fragments.push(vec![ins]);
     } else {
-      // non-predictable opcode is a "capstone" in execution
+      // non-predictable io opcode is a " movable capstone" in execution
       let cur_max_dep = ins.dep_ids.iter().max().unwrap_or(&-1);
       // merge this capstone with an existing one if possible
       for frag_idx in &self.movable_capstones {
@@ -344,7 +341,7 @@ mod tests {
     assert_eq!(hand.get_fragment(3).len(), 1);
   }
 
-  // condfn is an unmovable capstone among cpu operations even when no deps
+  // condfn is an capstone but shares a fragment with cpu operations even when no deps
   #[test]
   fn test_frag_grouping_9() {
     let mut hand = EventHandler::new(123, 123);
@@ -352,10 +349,11 @@ mod tests {
     hand.add_instruction(get_cond_ins(1, vec![]));
     hand.add_instruction(get_cpu_ins(2, vec![]));
     assert_eq!(hand.movable_capstones.len(), 0);
-    assert_eq!(hand.last_frag_idx(), 2);
+    assert_eq!(hand.last_frag_idx(), 0);
   }
 
   // condfn is an unmovable capstone among io operations even when no deps
+  // and gets its own fragment
   #[test]
   fn test_frag_grouping_10() {
     let mut hand = EventHandler::new(123, 123);
