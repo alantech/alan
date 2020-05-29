@@ -46,7 +46,7 @@ case $1 in
     DEP_FILE=./.dependencies.ln
     if [ -f "$DEP_FILE" ]; then
         alan-compile $DEP_FILE out.agc
-        alan-runtime install out.agc
+        alan-runtime run out.agc
         rm out.agc
     else
         echo "$DEP_FILE does not exist. Dependencies can only be installed for .dependencies.ln"

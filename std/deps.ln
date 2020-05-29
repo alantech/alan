@@ -1,11 +1,17 @@
+import @std/app
+import @std/cmd
+
 /**
  * @std/deps - The entrypoint to install dependencies for an alan program
  */
 
-import @std/cmd
-
 // The `install` event
 export event install: void
+
+// Emit the `install` event on app `start`
+on app.start {
+  emit install
+}
 
 // The `add` function takes a string that describes a .git repository and install it in /dependencies
 export fn add(remote: string) {
