@@ -78,10 +78,6 @@ impl Program {
     let start = i64::from(BuiltInEvents::START);
     self.event_declrs.insert(start, 0);
     self.event_handlers.insert(start, Vec::new());
-    // INSTALL
-    let install = i64::from(BuiltInEvents::INSTALL);
-    self.event_declrs.insert(install, 0);
-    self.event_handlers.insert(install, Vec::new());
   }
 
   // Parses and safely initializes the alan graph code program as static, global data
