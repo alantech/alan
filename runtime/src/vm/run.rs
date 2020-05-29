@@ -88,6 +88,16 @@ impl VM {
   }
 }
 
+fn load_vm(fp: &str) -> VM {
+  let bytes = File::open(fp).unwrap().bytes().count();
+  let mut bytecode = vec![0;bytes/8];
+  let mut f = File::open(fp).unwrap();
+  f.read_i64_into::<LittleEndian>(&mut bytecode).unwrap();
+  let program = Program::load(bytecode);
+  PROGRAM.set(program);
+  return VM::new(Program::global());
+}
+
 pub fn exec(fp: &str) {
   let mut rt = runtime::Builder::new()
     .basic_scheduler()
@@ -96,15 +106,23 @@ pub fn exec(fp: &str) {
     .unwrap();
   // Start the root task backed by a single thread
   rt.block_on(async {
-    let bytes = File::open(fp).unwrap().bytes().count();
-    let mut bytecode = vec![0;bytes/8];
-    let mut f = File::open(fp).unwrap();
-    f.read_i64_into::<LittleEndian>(&mut bytecode).unwrap();
-    let program = Program::load(bytecode);
-    PROGRAM.set(program);
-    let mut vm = VM::new(Program::global());
+    let mut vm = load_vm(fp);
     let start = EventEmit { id: i64::from(BuiltInEvents::START), payload: None, gmem_addr: None };
     vm.add(start);
+    vm.run().await;
+  })
+}
+
+pub fn install(fp: &str) {
+  let mut rt = runtime::Builder::new()
+    .basic_scheduler()
+    .enable_time()
+    .build()
+    .unwrap();
+  rt.block_on(async {
+    let mut vm = load_vm(fp);
+    let install = EventEmit { id: i64::from(BuiltInEvents::INSTALL), payload: None, gmem_addr: None };
+    vm.add(install);
     vm.run().await;
   })
 }

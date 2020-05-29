@@ -1,0 +1,5 @@
+/**
+ * @std/cmd - The entrypoint for working with command line processes.
+ */
+
+export fn exec(n: string) = execop(n)

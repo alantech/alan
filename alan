@@ -43,7 +43,16 @@ case $1 in
     ;;
 
   install)
-    alan-interpreter install $args # TODO: Port this to somewhere else
+    DEP_FILE=./.dependencies.ln
+    if [ -f "$DEP_FILE" ]; then
+        alan-compile $DEP_FILE out.agc
+        # TODO user still needs to emit the exit opcode
+        alan-runtime install out.agc
+        rm out.agc
+    else
+        echo "$DEP_FILE does not exist. Dependencies can only be installed for .dependencies.ln"
+        exit 1
+    fi
     ;;
 
   interpret)
@@ -59,7 +68,7 @@ case $1 in
     echo "alan compile path/to/sourcefile.ln        - Loads the specified source file and builds an output alan graphcode file"
     echo "alan transpile-amm path/to/sourcefile.ln  - Loads the specified source file and builds an output alan intermediate representation file"
     echo "alan transpile-js path/to/sourcefile.ln   - Loads the specified source file and builds an output javascript file"
-    echo "alan install                              - Install '/dependencies' from '.dependencies'"
+    echo "alan install                              - Install '/dependencies' from '.dependencies.ln'"
     echo "alan interpret path/to/sourcefile.ln      - Loads and interprets the specified source file"
     echo "alan run path/to/compiled.agc             - Loads and runs the specified build file"
     echo "alan help                                 - Prints this message"

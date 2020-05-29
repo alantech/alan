@@ -10,12 +10,15 @@ pub enum BuiltInEvents {
   /// Alan application start
   /// '"start"' in ASCII or 2273 7461 7274 22(80)
   START,
+  /// 'install' in ASCII or 696e 7374 616c 6c(80)
+  INSTALL,
 }
 
 impl From<BuiltInEvents> for i64 {
   fn from(ev: BuiltInEvents) -> Self {
     match ev {
       BuiltInEvents::START => -9213673853036498142,
+      BuiltInEvents::INSTALL => -29676314707455084,
     }
   }
 }

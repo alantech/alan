@@ -1,0 +1,22 @@
+/**
+ * @std/deps - The entrypoint to install dependencies for an alan program
+ */
+
+import @std/cmd
+
+// The `install` event
+export event install: void
+
+// The `add` function converts its input to a string, appends a newline, and sends it to `stdout`
+export fn add(remote: string) {
+  const parts = remote.split('/')
+  const repo = parts[length(parts)-1]
+  const repoParts = repo.split('.git')
+  const repoName = repoParts[0]
+  const dest = '/dependencies/' + repoName
+  // TODO what to do if shell commands fail?
+  cmd.exec('rm -rf .' + dest)
+  cmd.exec('git clone ' + remote + ' .' + dest)
+  cmd.exec('rm -rf .' + dest + '/.git')
+}
+
