@@ -7,7 +7,7 @@ import @std/cmd
 // The `install` event
 export event install: void
 
-// The `add` function converts its input to a string, appends a newline, and sends it to `stdout`
+// The `add` function takes a string that describes a .git repository and install it in /dependencies
 export fn add(remote: string) {
   const parts = remote.split('/')
   const repo = parts[length(parts)-1]
