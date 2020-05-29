@@ -28,7 +28,10 @@ const Ast = {
   },
 
   resolveDependency: (modulePath, dependency) => {
-    let importPath = null;
+    // Special case path for the standard library importing itself
+    if (modulePath.substring(0, 4) === '@std') return dependency.getText().trim()
+    // For everything else...
+    let importPath = null
     // If the dependency is a local dependency, there's little logic in determining
     // what is being imported. It's either the relative path to a file with the language
     // extension, or the relative path to a directory containing an "index.ln" file
@@ -119,7 +122,7 @@ const Ast = {
         }
         // It's possible for both to exist. Prefer the directory-based one, but warn the user
         if (typeof dirPath === "string" && typeof filePath === "string") {
-          System.err.println(dirPath + " and " + filePath + " both exist. Using " + dirPath)
+          console.error(dirPath + " and " + filePath + " both exist. Using " + dirPath)
         }
         if (typeof filePath === "string") {
           importPath = filePath

@@ -29,21 +29,25 @@ module.exports = {
       // Just remove the root node, already processed
       if (stdAst.name === 'root.ln') {
         stdAsts.splice(i, 1)
+        i = i % stdAsts.length
         continue
       }
       // Immediately add any node with no imports and remove from this list
       if (!stdAst.ast.imports()) {
         orderedAsts.push(stdAst)
         stdAsts.splice(i, 1)
+        i = i % stdAsts.length
         continue
       }
       // For everything else, check if the dependencies are already queued up
       const importAsts = stdAst.ast.imports()
       let safeToAdd = true
       for (importAst of importAsts) {
-        const depName = importAst.standardImport() ?
-          importAst.standardImport().dependency().getText().trim() :
-          importAst.fromImport().dependency().getText().trim()
+        const depName = (
+          importAst.standardImport() ?
+            importAst.standardImport().dependency().getText().trim() :
+            importAst.fromImport().dependency().getText().trim()
+          ).replace('@std/', '').replace(/$/, '.ln')
         if (!orderedAsts.some((ast) => ast.name === depName)) {
           safeToAdd = false
           break
@@ -53,6 +57,7 @@ module.exports = {
       if (safeToAdd) {
         orderedAsts.push(stdAst)
         stdAsts.splice(i, 1)
+        i = i % stdAsts.length
         continue
       }
       // Otherwise, skip this one
