@@ -87,12 +87,7 @@ cd src/ln
 antlr4 -Dlanguage=JavaScript Ln.g4
 ```
 
-The rest of the development is relatively standard Node.js+Typescript work with the source code in `src` and running `yarn build` to recompile (or just `tsc` if you have that installed globally). Don't forget to setup the git submodule:
-
-```
-git submodule init && git submodule update
-yarn install
-```
+The rest of the development is relatively standard Node.js+Typescript work with the source code in `src` and running `yarn build` to recompile (or just `tsc` if you have that installed globally).
 
 ### Contribution Agreement
 

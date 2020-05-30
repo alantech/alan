@@ -48,6 +48,7 @@ case $1 in
         alan-compile $DEP_FILE out.agc
         alan-runtime run out.agc
         rm out.agc
+        exit 0
     else
         echo "$DEP_FILE does not exist. Dependencies can only be installed for .dependencies.ln"
         exit 1
