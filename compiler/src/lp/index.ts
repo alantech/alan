@@ -86,6 +86,7 @@ export class Token implements LPish {
     }
     return matches
   }
+
   apply(lp: LP): Token | Error {
     if (this.check(lp)) {
       lp.advance(this.t.length)
@@ -337,12 +338,58 @@ export class Or implements LPish {
   }
 }
 
-export const CharSet = (lowerChar: string, upperChar: string): LPish | Error => {
-  let chars = []
-  for (let i = lowerChar.charCodeAt(0); i <= upperChar.charCodeAt(0); i++) {
-    chars.push(String.fromCharCode(i))
+export class CharSet implements LPish {
+  t: string
+  lowerCharCode: number
+  upperCharCode: number
+  filename: string
+  line: number
+  char: number
+
+  constructor(
+    t: string,
+    lowerChar: string,
+    upperChar: string,
+    filename: string,
+    line: number,
+    char: number
+  ) {
+    this.t = t
+    this.lowerCharCode = lowerChar.charCodeAt(0)
+    this.upperCharCode = upperChar.charCodeAt(0)
+    this.filename = filename
+    this.line = line
+    this.char = char
   }
-  return Or.build(chars.map(c => Token.build(c)))
+
+  static build(lowerChar: string, upperChar: string): Token {
+    return new CharSet('', lowerChar, upperChar, '', -1, -1)
+  }
+
+  toString(): string {
+    return this.t
+  }
+
+  check(lp: LP): boolean {
+    let lpCharCode = lp.data.charCodeAt(lp.i)
+    return this.lowerCharCode <= lpCharCode && this.upperCharCode >= lpCharCode
+  }
+
+  apply(lp: LP): CharSet | Error {
+    if (this.check(lp)) {
+      const outCharSet = new CharSet(
+        lp.data[lp.i],
+        String.fromCharCode(this.lowerCharCode),
+        String.fromCharCode(this.upperCharCode),
+        lp.filename,
+        lp.line,
+        lp.char,
+      )
+      lp.advance(1)
+      return outCharSet
+    }
+    return lpError(`Token mismatch, expected character in range of ${String.fromCharCode(this.lowerCharCode)}-${String.fromCharCode(this.upperCharCode)}`, lp)
+  }
 }
 
 export const RangeSet = (toRepeat: LPish, min: number, max: number): LPish | Error => {
