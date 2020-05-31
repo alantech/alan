@@ -30,8 +30,8 @@ const convert = {
 
 let inputfile: string, outputfile: string
 commander
-  .name('alan-compile')
-  .version('0.1.0')
+  .name('alan-compiler')
+  .version('0.1.0') // TODO: Try to revive getting this from package.json; it's just weird in TS
   .arguments('<input> <output>')
   .action((input: string, output:string ) => {
     inputfile = input
