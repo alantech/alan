@@ -7,27 +7,26 @@ export class LP {
   char: number
   i: number
 
-  constructor(filename: string) {
+  constructor(filename: string, loadData: boolean = true) {
     this.filename = filename
-    this.data = fs.readFileSync(filename, 'utf8')
+    this.data = loadData ? fs.readFileSync(filename, 'utf8') : ''
     this.line = 0
     this.char = 0
     this.i = 0
   }
 
   advance(n: number) {
-    const strfrags = this.data.substring(this.i, this.i + n).split('\n')
-    this.i += n
-    if (strfrags.length === 1) {
-      this.char += n
-    } else {
-      this.line += strfrags.length - 1
-      this.char = strfrags[strfrags.length - 1].length
+    for (let i = 0; i < n; i++) {
+      this.i += 1
+      if (this.data[this.i] === '\n') {
+        this.line += 1
+        this.char = 0
+      }
     }
   }
 
   clone(): LP {
-    const clone = new LP(this.filename)
+    const clone = new LP(this.filename, false)
     clone.data = this.data
     clone.line = this.line
     clone.char = this.char
@@ -45,7 +44,7 @@ export interface LPmeta {
 export interface LPish {
   t: string
   check(lp: LP): boolean
-  apply(lp: LP): LPish
+  apply(lp: LP): LPish | Error
 }
 
 export const lpError = (message: string, obj: LPmeta) => new Error(`${message} in file ${obj.filename} line ${obj.line}:${obj.char}`)
@@ -72,10 +71,20 @@ export class Token implements LPish {
   }
 
   check(lp: LP): boolean {
-    const tokenCheck = lp.data.substring(lp.i, lp.i + this.t.length)
-    return this.t === tokenCheck
+    let matches = true
+    const t = this.t
+    const len = t.length
+    const data = lp.data
+    const j = lp.i
+    for (let i = 0; i < len; i++) {
+      if (t[i] !== data[i + j]) {
+        matches = false
+        break
+      }
+    }
+    return matches
   }
-  apply(lp: LP): Token {
+  apply(lp: LP): Token | Error {
     if (this.check(lp)) {
       lp.advance(this.t.length)
       return new Token(
@@ -85,7 +94,7 @@ export class Token implements LPish {
         lp.char,
       )
     }
-    throw lpError(`Token mismatch, ${this.t} not found`, lp)
+    return lpError(`Token mismatch, ${this.t} not found`, lp)
   }
 }
 
@@ -122,6 +131,7 @@ export class Maybe implements LPish {
     const char = lp.char
     if (this.maybe.check(lp)) {
       const maybe = this.maybe.apply(lp)
+      if (maybe instanceof Error) return new Maybe('', this.maybe, filename, line, char)
       const t = maybe.toString()
       return new Maybe(t, maybe, filename, line, char)
     }
@@ -240,26 +250,28 @@ export class And implements LPish {
   check(lp: LP): boolean {
     const lpClone = lp.clone()
     let works = true
-    try {
-      this.and.forEach(a => a.apply(lpClone))
-    } catch (e) {
-      works = false
+    for (let i = 0; i < this.and.length; i++) {
+      if (this.and[i].apply(lpClone) instanceof Error) {
+        works = false
+        break
+      }
     }
     return works
   }
 
-  apply(lp: LP): And {
+  apply(lp: LP): And | Error {
     const filename = lp.filename
     const line = lp.line
     const char = lp.char
     let t = ''
     let and = []
     // This can fail, allow the underlying error to bubble up
-    this.and.forEach((a) => {
-      const a2 = a.apply(lp)
-      t += a2.toString()
-      and.push(a2)
-    })
+    for (let i = 0; i < this.and.length; i++) {
+      const a = this.and[i].apply(lp)
+      if (a instanceof Error) return a;
+      t += a.toString()
+      and.push(a)
+    }
     return new And(t, and, filename, line, char)
   }
 }
@@ -290,46 +302,40 @@ export class Or implements LPish {
   check(lp: LP): boolean {
     const lpClone = lp.clone()
     let works = false
-    this.or.forEach((o) => {
+    for (let i = 0; i < this.or.length; i++) {
       const lpClone = lp.clone()
-      let failed = false
-      try {
-        o.apply(lpClone)
-      } catch (e) {
-        failed = true
+      if (!(this.or[i].apply(lpClone) instanceof Error)) {
+        works = true
+        break
       }
-      if (!failed) works = true
-    })
+    }
     return works
   }
 
-  apply(lp: LP): Or {
+  apply(lp: LP): Or | Error {
     const filename = lp.filename
     const line = lp.line
     const char = lp.char
     let t = ''
     let or = []
-    if (!this.check(lp)) throw lpError('No matching tokens found', lp)
     // Return the first match (if there are multiple matches, it is the first one)
     for (let i = 0; i < this.or.length; i++) {
       // We need to test which one will work without mutating the original one
       const lpClone = lp.clone()
-      try {
-        this.or[i].apply(lpClone)
-      } catch (e) {
-        continue;
-      }
+      const ofake = this.or[i].apply(lpClone)
+      if (ofake instanceof Error) continue;
       // We have a match!
       const o = this.or[i].apply(lp)
       t = o.toString()
       or.push(o)
       break
     }
+    if (or.length === 0) return lpError('No matching tokens found', lp)
     return new Or(t, or, filename, line, char)
   }
 }
 
-export const CharSet = (lowerChar: string, upperChar: string): LPish => {
+export const CharSet = (lowerChar: string, upperChar: string): LPish | Error => {
   let chars = []
   for (let i = lowerChar.charCodeAt(0); i <= upperChar.charCodeAt(0); i++) {
     chars.push(String.fromCharCode(i))
@@ -337,7 +343,7 @@ export const CharSet = (lowerChar: string, upperChar: string): LPish => {
   return Or.build(chars.map(c => Token.build(c)))
 }
 
-export const RangeSet = (toRepeat: LPish, min: number, max: number): LPish => {
+export const RangeSet = (toRepeat: LPish, min: number, max: number): LPish | Error => {
   let sets = []
   for (let i = min; i <= max; i++) {
     if (i === 0) {
