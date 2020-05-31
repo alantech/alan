@@ -21,6 +21,8 @@ export class LP {
       if (this.data[this.i] === '\n') {
         this.line += 1
         this.char = 0
+      } else {
+        this.char += 1
       }
     }
   }
