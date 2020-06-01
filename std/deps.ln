@@ -1,0 +1,34 @@
+import @std/app
+import @std/cmd
+
+/**
+ * @std/deps - The entrypoint to install dependencies for an alan program
+ */
+
+// The `install` event
+export event install: void
+
+
+// The `add` function takes a string that describes a .git repository and install it in /dependencies
+// export fn add(remote: string) {
+  // TODO implement once we have arrays and proper error handling
+  // const parts = remote.split('/')
+  // const repo = parts[length(parts)-1]
+  // const repoParts = repo.split('.git')
+  // const repoName = repoParts[0]
+  // const dest = '/dependencies/' + repoName
+  // cmd.exec('rm -rf .' + dest)
+  // cmd.exec('git clone ' + remote + ' .' + dest)
+  // cmd.exec('rm -rf .' + dest + '/.git')
+// }
+
+// Emit the `install` event on app `start`
+on app.start {
+  // TODO: optimize to parse the existing dependencies tree, if any, to build up a list of dependencies
+  // that are already installed so calls by the user to install them again (assuming the version is identical)
+  // are skipped, calls to upgrade or install new dependencies are performed, and then the remaining list
+  // of dependencies at the end are removed.
+  cmd.exec('rm -rf dependencies')
+  cmd.exec('mkdir dependencies')
+  emit install
+}

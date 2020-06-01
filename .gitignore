@@ -13,3 +13,5 @@ gradle
 /test.*
 /temp.*
 /out.*
+/.dependencies.ln
+/dependencies

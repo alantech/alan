@@ -38,7 +38,7 @@ class Module {
       const fromImport = importAst.fromImport()
       // If it's a "standard" import, figure out what name to call it (if the user overrode it)
       // and then attach the entire module with that name to the local scope.
-      if (standardImport != null) {
+      if (!!standardImport) {
         let importName
         if (standardImport.AS() != null) {
           importName = standardImport.VARNAME().getText()
@@ -58,7 +58,7 @@ class Module {
       }
       // If it's a "from" import, we're picking off pieces of the exported scope and inserting them
       // also potentially renaming them if requested by the user
-      if (fromImport != null) {
+      if (!!fromImport) {
         const importedModule = modules[Ast.resolveDependency(path, fromImport.dependency())]
         const vars = fromImport.varlist().renameablevar()
         for (const moduleVar of vars) {
