@@ -101,44 +101,44 @@ export class Token implements LPish {
   }
 }
 
-export class Maybe implements LPish {
+export class ZeroOrOne implements LPish {
   t: string
-  maybe: LPish
+  zeroOrOne: LPish
   filename: string
   line: number
   char: number
 
-  constructor(t: string, maybe: LPish, filename: string, line: number, char: number) {
+  constructor(t: string, zeroOrOne: LPish, filename: string, line: number, char: number) {
     this.t = t
-    this.maybe = maybe
+    this.zeroOrOne = zeroOrOne
     this.filename = filename
     this.line = line
     this.char = char
   }
 
-  static build(maybe: LPish): Maybe {
-    return new Maybe('', maybe, '', -1, -1)
+  static build(zeroOrOne: LPish): ZeroOrOne {
+    return new ZeroOrOne('', zeroOrOne, '', -1, -1)
   }
 
   toString(): string {
     return this.t
   }
 
-  check(lp: LP): boolean {
+  check(): boolean {
     return true
   }
 
-  apply(lp: LP): Maybe {
+  apply(lp: LP): ZeroOrOne {
     const filename = lp.filename
     const line = lp.line
     const char = lp.char
-    if (this.maybe.check(lp)) {
-      const maybe = this.maybe.apply(lp)
-      if (maybe instanceof Error) return new Maybe('', this.maybe, filename, line, char)
-      const t = maybe.toString()
-      return new Maybe(t, maybe, filename, line, char)
+    if (this.zeroOrOne.check(lp)) {
+      const zeroOrOne = this.zeroOrOne.apply(lp)
+      if (zeroOrOne instanceof Error) return new ZeroOrOne('', this.zeroOrOne, filename, line, char)
+      const t = zeroOrOne.toString()
+      return new ZeroOrOne(t, zeroOrOne, filename, line, char)
     }
-    return new Maybe('', this.maybe, filename, line, char)
+    return new ZeroOrOne('', this.zeroOrOne, filename, line, char)
   }
 }
 
@@ -165,7 +165,7 @@ export class ZeroOrMore implements LPish {
     return this.t
   }
 
-  check(lp: LP): boolean {
+  check(): boolean {
     return true
   }
 
@@ -303,7 +303,6 @@ export class Or implements LPish {
   }
 
   check(lp: LP): boolean {
-    const lpClone = lp.clone()
     let works = false
     for (let i = 0; i < this.or.length; i++) {
       const lpClone = lp.clone()
