@@ -1,5 +1,6 @@
 const EventEmitter = require('events')
-const { exec } = require('child_process')
+const util = require('util');
+const exec = util.promisify(require('child_process').exec);
 
 const e = new EventEmitter()
 
@@ -232,12 +233,11 @@ module.exports = {
   // TODO: pair and condarr after arrays are figured out
   condfn:  (cond, fn) => cond ? fn() : undefined,
 
-  // Std opcodes
+  // IO opcodes
+  asyncopcodes: ['waitop', 'execop'],
+  waitop: a => new Promise(resolve => setTimeout(resolve, a)),
   execop: a => exec(a),
 
-  // IO opcodes
-  asyncopcodes: ['waitop'],
-  waitop: a => new Promise(resolve => setTimeout(resolve, a)),
 
   // "Special" opcodes
   stdoutp: out => process.stdout.write(out),

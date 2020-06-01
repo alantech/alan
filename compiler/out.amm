@@ -1,0 +1,17 @@
+const _520e3f87_9677_45c9_b215_cc7e41152eb8: string = "rm -rf /dependencies"
+const _0e85c3e5_c798_4c54_a780_0e1316fa0f2a: string = "start handler"
+const _d143b154_ef19_4338_87b2_e25296a80767: string = "\n"
+const _6d51c084_5030_4899_972d_01fd35b875b3: int64 = 0
+event stdout: string
+event exit: int8
+on _start fn (): void {
+  const _0e93ab12_ad22_4ea9_a521_f6edb7451b01: string = catstr(_0e85c3e5_c798_4c54_a780_0e1316fa0f2a, _d143b154_ef19_4338_87b2_e25296a80767)
+  emit stdout _0e93ab12_ad22_4ea9_a521_f6edb7451b01
+  emit exit _6d51c084_5030_4899_972d_01fd35b875b3
+}
+on stdout fn (out: string): void {
+  const _b1f3e6cf_2d11_4f75_afcd_38c67eb31eec: void = stdoutp(out)
+}
+on exit fn (status: int8): void {
+  const _4ee30718_e002_49a7_8217_9a8df23d8051: void = exitop(status)
+}

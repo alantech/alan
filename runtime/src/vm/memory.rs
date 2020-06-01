@@ -74,7 +74,10 @@ impl MemoryFragment {
     }
     let a = addr as usize;
     return match size {
-      0 => &self.var_mem.get(&(a as i64)).unwrap(),
+      0 => {
+        let result = self.var_mem.get(&(a as i64));
+        return if result.is_none() { &[] } else { result.unwrap() }
+      },
       1 => &self.mem_cpy[a..a + 1],
       2 => &self.mem_cpy[a..a + 2],
       4 => &self.mem_cpy[a..a + 4],

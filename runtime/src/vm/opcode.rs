@@ -1482,8 +1482,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
 
   // "Special" opcodes
-  io!("waitop", |_, mem_frag, _, _| {
-    let payload = mem_frag.read(mem_frag.payload_addr.unwrap(), 1);
+  io!("waitop", |args, mem_frag, _, _| {
+    let payload = mem_frag.read(args[0], 8);
     let ms = LittleEndian::read_i64(&payload[0..8]) as u64;
     return Box::pin(delay_for(Duration::from_millis(ms)));
   });
@@ -1504,18 +1504,16 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("emit to:", |args, mem_frag, event_declrs, _| {
-    let event = if args.len() <= 1 {
+    let pls = event_declrs.get(&args[0]).unwrap().clone() as u8;
+    let payload = mem_frag.read(args[1], pls).to_vec();
+    let event = if args[1] < 0 {
+      // payload addr is in global memory if negative
+      EventEmit { id: args[0], payload: None, gmem_addr: Some(args[1]) }
+    } else if payload.len() == 0 {
+      // no payload or void event
       EventEmit { id: args[0], payload: None, gmem_addr: None }
     } else {
-      if args[1] < 0 {
-        // payload addr is in global memory if negative
-        EventEmit { id: args[0], payload: None, gmem_addr: Some(args[1]) }
-      } else {
-        let addr = args[1];
-        let pls = event_declrs.get(&args[0]).unwrap().clone() as u8;
-        let payload = Some(mem_frag.read(addr, pls).to_vec());
-        EventEmit { id: args[0], payload: payload.clone(), gmem_addr: None }
-      }
+      EventEmit { id: args[0], payload: Some(payload), gmem_addr: None }
     };
     Some(event)
   });
