@@ -337,6 +337,124 @@ export class Or implements LPish {
   }
 }
 
+interface Named {
+  [key: string]: LPish
+}
+
+export class NamedAnd implements LPish {
+  t: string
+  and: Named
+  filename: string
+  line: number
+  char: number
+
+  constructor(t: string, and: Named, filename: string, line: number, char: number) {
+    this.t = t
+    this.and = and
+    this.filename = filename
+    this.line = line
+    this.char = char
+  }
+
+  static build(and: Named): NamedAnd {
+    return new NamedAnd('', and, '', -1, -1)
+  }
+
+  toString(): string {
+    return this.t
+  }
+
+  check(lp: LP): boolean {
+    const lpClone = lp.clone()
+    let works = true
+    const andNames = Object.keys(this.and)
+    for (let i = 0; i < andNames.length; i++) {
+      if (this.and[andNames[i]].apply(lpClone) instanceof Error) {
+        works = false
+        break
+      }
+    }
+    return works
+  }
+
+  apply(lp: LP): NamedAnd | Error {
+    const filename = lp.filename
+    const line = lp.line
+    const char = lp.char
+    let t = ''
+    let and = {}
+    const andNames = Object.keys(this.and)
+    // This can fail, allow the underlying error to bubble up
+    for (let i = 0; i < andNames.length; i++) {
+      const a = this.and[andNames[i]].apply(lp)
+      if (a instanceof Error) return a;
+      t += a.toString()
+      and[andNames[i]] = a
+    }
+    return new NamedAnd(t, and, filename, line, char)
+  }
+}
+
+export class NamedOr implements LPish {
+  t: string
+  or: Named
+  filename: string
+  line: number
+  char: number
+
+  constructor(t: string, or: Named, filename: string, line: number, char: number) {
+    this.t = t
+    this.or = or 
+    this.filename = filename
+    this.line = line
+    this.char = char
+  }
+
+  static build(or: Named): NamedOr {
+    return new NamedOr('', or, '', -1, -1)
+  }
+
+  toString(): string {
+    return this.t
+  }
+
+  check(lp: LP): boolean {
+    let works = false
+    const orNames = Object.keys(this.or)
+    for (let i = 0; i < orNames.length; i++) {
+      const lpClone = lp.clone()
+      if (!(this.or[orNames[i]].apply(lpClone) instanceof Error)) {
+        works = true
+        break
+      }
+    }
+    return works
+  }
+
+  apply(lp: LP): NamedOr | Error {
+    const filename = lp.filename
+    const line = lp.line
+    const char = lp.char
+    let t = ''
+    let or = {}
+    const orNames = Object.keys(this.or)
+    // Return the first match (if there are multiple matches, it is the first one)
+    for (let i = 0; i < orNames.length; i++) {
+      // We need to test which one will work without mutating the original one
+      const lpClone = lp.clone()
+      const ofake = this.or[orNames[i]].apply(lpClone)
+      if (ofake instanceof Error) continue;
+      // We have a match!
+      const o = this.or[i].apply(lp)
+      t = o.toString()
+      or[orNames[i]] = o
+      break
+    }
+    if (Object.keys(or).length === 0) return lpError('No matching tokens found', lp)
+    return new NamedOr(t, or, filename, line, char)
+  }
+}
+
 export class CharSet implements LPish {
   t: string
   lowerCharCode: number

@@ -11,7 +11,14 @@ const space = lp.Token.build(' ')
 const punctuation = lp.Or.build([lp.Token.build(','), lp.Token.build('!')])
 
 const anyspace = lp.ZeroOrMore.build(space)
-const helloWorld = lp.And.build([hello, punctuation, anyspace, world, punctuation, anyspace])
+const helloWorld = lp.NamedAnd.build({
+  hello,
+  a: punctuation,
+  b: anyspace,
+  world,
+  c: punctuation,
+  d: anyspace
+})
 const grammar = Date.now()
 console.log(`Grammar definition time: ${grammar - newLP}ms`)
 const result = helloWorld.apply(helloWorldFile)
