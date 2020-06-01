@@ -10,6 +10,10 @@ YYYY-MM-DD
 
 YYYY-MM-DD
 
+#### Approvers
+
+- Full Name <email@example.com>
+
 ### Implementation
 
 - [ ] Implemented: [One or more PRs](https://github.com/alantech/alan/some-pr-link-here) YYYY-MM-DD
