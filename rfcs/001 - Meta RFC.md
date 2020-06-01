@@ -10,6 +10,10 @@
 
 YYYY-MM-DD
 
+#### Approvers
+
+- Luis de Pombo <luis@alantechnologies.com>
+
 ### Implementation
 
 - [ ] Implemented: [One or more PRs](https://github.com/alantech/alan/some-pr-link-here) YYYY-MM-DD
@@ -17,7 +21,7 @@ YYYY-MM-DD
 
 ## Author
 
-- David Ellis <david@alantechnologies.com> (Can I please have that? :) )
+- David Ellis <david@alantechnologies.com>
 
 ## Summary
 
