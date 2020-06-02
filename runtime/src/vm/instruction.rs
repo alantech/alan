@@ -6,7 +6,7 @@ use tokio::task;
 use crate::vm::event::{EventEmit, HandlerFragment};
 use crate::vm::opcode::{ByteOpcode, EmptyFuture};
 use crate::vm::program::Program;
-use crate::vm::memory::MemoryFragment;
+use crate::vm::memory::HandlerMemory;
 
 pub struct Instruction {
   // only unique per fn/handler
@@ -18,12 +18,12 @@ pub struct Instruction {
 
 pub struct InstructionScheduler {
   event_tx: UnboundedSender<EventEmit>,
-  frag_tx: UnboundedSender<(HandlerFragment, MemoryFragment)>,
+  frag_tx: UnboundedSender<(HandlerFragment, HandlerMemory)>,
   cpu_pool: ThreadPool,
 }
 
 impl InstructionScheduler {
-  pub fn new(event_tx: UnboundedSender<EventEmit>, frag_tx: UnboundedSender<(HandlerFragment, MemoryFragment)>) -> InstructionScheduler {
+  pub fn new(event_tx: UnboundedSender<EventEmit>, frag_tx: UnboundedSender<(HandlerFragment, HandlerMemory)>) -> InstructionScheduler {
     let cpu_threads = num_cpus::get() - 1;
     let cpu_pool = ThreadPoolBuilder::new().num_threads(cpu_threads).build().unwrap();
     return InstructionScheduler {
@@ -33,7 +33,7 @@ impl InstructionScheduler {
     }
   }
 
-  pub async fn sched_frag(self: &mut InstructionScheduler, mut frag: HandlerFragment, mut mem_frag: MemoryFragment) {
+  pub async fn sched_frag(self: &mut InstructionScheduler, mut frag: HandlerFragment, mut hand_mem: HandlerMemory) {
     let instructions = frag.get_instruction_fragment();
     // io-bound fragment
     if !instructions[0].opcode.pred_exec && instructions[0].opcode.async_func.is_some() {
@@ -41,7 +41,7 @@ impl InstructionScheduler {
       let frag_tx = self.frag_tx.clone();
       let futures: Vec<EmptyFuture> = instructions.iter().map(|ins| {
         let async_func = ins.opcode.async_func.unwrap();
-        return async_func(&ins.args, &mut mem_frag, &mut frag);
+        return async_func(&ins.args, &mut hand_mem, &mut frag);
       }).collect();
       task::spawn(async move {
         // Poll futures concurrently, but not in parallel, using a single thread.
@@ -49,7 +49,7 @@ impl InstructionScheduler {
         join_all(futures).await;
         // Unbounded channels, async or not, are non-blocking. `Send` succeeds automatically.
         // https://github.com/tokio-rs/tokio/issues/2447
-        frag_tx.send((frag, mem_frag));
+        frag_tx.send((frag, hand_mem));
       });
     } else {
       // cpu-bound fragment of predictable or unpredictable execution
@@ -59,13 +59,13 @@ impl InstructionScheduler {
         s.spawn(move |_| {
           instructions.iter().for_each( |i| {
             let func = i.opcode.func.unwrap();
-            let event = func(&i.args, &mut mem_frag, &mut frag);
+            let event = func(&i.args, &mut hand_mem, &mut frag);
             if event.is_some() {
               event_tx.send(event.unwrap());
             }
           });
           // register fragment from handler call as done
-          frag_tx.send((frag, mem_frag));
+          frag_tx.send((frag, hand_mem));
         });
       })
     }

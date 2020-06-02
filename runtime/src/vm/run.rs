@@ -7,7 +7,7 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
 use crate::vm::event::{BuiltInEvents, EventEmit, HandlerFragment};
 use crate::vm::instruction::InstructionScheduler;
-use crate::vm::memory::{MemoryFragment, VMMemory};
+use crate::vm::memory::HandlerMemory;
 use crate::vm::program::{PROGRAM, Program};
 
 pub struct VM {
@@ -17,11 +17,8 @@ pub struct VM {
   event_tx: UnboundedSender<EventEmit>,
   event_rx: UnboundedReceiver<EventEmit>,
   /// chan for the done fragments queue of all handler calls
-  /// includes uuid for handler call, fragment done and handler memory
   /// used by io and cpu fragments
-  frag_rx: UnboundedReceiver<(HandlerFragment, MemoryFragment)>,
-  /// memory manager of the program
-  mem_man: VMMemory,
+  frag_rx: UnboundedReceiver<(HandlerFragment, HandlerMemory)>,
   /// Instruction scheduler for fragments that manages the cpu + io threadpools
   ins_sched: InstructionScheduler,
 }
@@ -32,7 +29,6 @@ impl VM {
     let (frag_tx, frag_rx) = unbounded_channel();
     return VM {
       ins_sched: InstructionScheduler::new(event_tx.clone(), frag_tx),
-      mem_man: VMMemory::new(&pgm.gmem),
       pgm,
       event_tx,
       event_rx,
@@ -44,15 +40,13 @@ impl VM {
     self.event_tx.send(event);
   }
 
-  async fn sched_fragment(self: &mut VM, frag_tup: (HandlerFragment, MemoryFragment)) {
-    let (frag, mem_frag) = frag_tup;
-    self.mem_man.update_handler(&mem_frag);
+  async fn sched_fragment(self: &mut VM, frag_tup: (HandlerFragment, HandlerMemory)) {
+    let (frag, hand_mem) = frag_tup;
     let next_frag = frag.get_next_fragment();
-    if next_frag.is_none() {
-      self.mem_man.dealloc_handler(&mem_frag);
-    } else {
-      self.ins_sched.sched_frag(next_frag.unwrap(), mem_frag).await;
+    if next_frag.is_some() {
+      self.ins_sched.sched_frag(next_frag.unwrap(), hand_mem).await;
     }
+    // TODO when next_frag is none drop frag and hand_mem outside event loop
   }
 
   async fn sched_event(self: &mut VM, event: EventEmit) {
@@ -62,8 +56,8 @@ impl VM {
       // first fragment of this handler
       let frag = HandlerFragment::new(self.pgm, event.id, i);
       // memory frag representing the memory of this handler's call
-      let mem_frag = self.mem_man.alloc_handler(handler, &event);
-      self.ins_sched.sched_frag(frag, mem_frag).await;
+      let hand_mem = HandlerMemory::alloc(&self.pgm.gmem, &handler, &event);
+      self.ins_sched.sched_frag(frag, hand_mem).await;
     }
   }
 
