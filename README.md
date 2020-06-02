@@ -1,4 +1,4 @@
-# alan
+# alan ![CI](https://github.com/alantech/alan/workflows/CI/badge.svg)
 
 This repository houses all the components for the Alan programming language.
 
