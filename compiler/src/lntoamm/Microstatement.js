@@ -767,7 +767,14 @@ class Microstatement {
       if (firstArg != null) {
         if (firstArg.alias !== "") {
           for (const m of microstatements) {
-            if (m.outputName === firstArg.outputName) {
+            if (m.outputName === firstArg.outputName && m.outputType.iface === null) {
+              firstArg = m
+              break
+            }
+          }
+        } else if (firstArg.outputType.iface !== null) {
+          for (const m of microstatements) {
+            if (m.outputName === firstArg.outputName && m.outputType.iface === null) {
               firstArg = m
               break
             }
@@ -780,9 +787,9 @@ class Microstatement {
         for (const assignablesAst of callsAst.fncall(i).assignablelist().assignables()) {
           Microstatement.fromAssignablesAst(assignablesAst, scope, microstatements)
           let last = microstatements[microstatements.length - 1]
-          if (last.alias !== "") {
+          if (last.alias !== "" || last.outputType.iface !== null) {
             for (const m of microstatements) {
-              if (m.outputName === last.outputName) {
+              if (m.outputName === last.outputName && m.outputType.iface === null) {
                 last = m
                 break
               }
