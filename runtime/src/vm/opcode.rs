@@ -1487,11 +1487,11 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let ms = LittleEndian::read_i64(&payload[0..8]) as u64;
     return Box::pin(delay_for(Duration::from_millis(ms)));
   });
-  cpu!("exitop", |_, mem_frag, _, _| {
-    std::process::exit(LittleEndian::read_i32(mem_frag.read_payload(4).unwrap()));
+  cpu!("exitop", |args, mem_frag, _, _| {
+    std::process::exit(LittleEndian::read_i32(mem_frag.read(args[0], 4)));
   });
-  cpu!("stdoutp", |_, mem_frag, _, _| {
-    let pascal_string = mem_frag.read_payload(0).unwrap();
+  cpu!("stdoutp", |args, mem_frag, _, _| {
+    let pascal_string = mem_frag.read(args[0], 0);
     let size = LittleEndian::read_u64(&pascal_string[0..8]) as usize;
     let out_str = str::from_utf8(&pascal_string[8..size + 8]).unwrap();
     print!("{}", out_str);

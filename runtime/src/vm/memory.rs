@@ -64,11 +64,6 @@ impl MemoryFragment {
     }
   }
 
-  pub fn read_payload(self: &MemoryFragment, size: u8) -> Option<&[u8]> {
-    if self.payload_addr.is_none() { return None }
-    return Some(self.read(self.payload_addr.unwrap(), size));
-  }
-
   pub fn read(self: &MemoryFragment, addr: i64, size: u8) -> &[u8] {
     if addr < 0 {
       let a = (0 - addr - 1) as usize;
