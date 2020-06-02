@@ -72,14 +72,6 @@ class Microstatement {
           outString += this.fns[0].getName() + "(" + this.inputNames.join(", ") + ")"
         }
         break
-      case StatementType.EXIT:
-        outString = "return "
-        if (this.fns.length > 0) {
-          outString += this.fns[0].getName() + "(" + this.inputNames.join(", ") + ")"
-        } else if (this.inputNames.length > 0) {
-          outString += this.inputNames[0] // Doesn't appear the list is ever used here
-        }
-        break
       case StatementType.EMIT:
         outString = "emit " + this.outputName + " "
         if (this.fns.length > 0) {
@@ -393,6 +385,7 @@ class Microstatement {
       }
       if (maxPrecedence == -1 || maxOperatorLoc == -1) {
         console.error("Cannot resolve operators with remaining statement")
+        console.error(withOperatorsAst.getText())
         let withOperatorsTranslation = []
         for (let i = 0; i < withOperatorsList.length; i++) {
           const node = withOperatorsList[i]
@@ -680,27 +673,25 @@ class Microstatement {
   }
 
   static fromExitsAst(exitsAst, scope, microstatements) {
-    // `alan--` doesn't have the concept of a `return` statement, but this is necessary for
-    // the intermediate state before functions are inlined.
+    // `alan--` doesn't have the concept of a `return` statement, the functions are all inlined
+    // and the last assigned value for the function *is* the return statement
     if (exitsAst.assignables() != null) {
-      // If there's an assignable value here, add it to the list of microstatements first, then
-      // rewrite the final const assignment as the exit statement.
+      // If there's an assignable value here, add it to the list of microstatements
       Microstatement.fromAssignablesAst(
         exitsAst.assignables(),
         scope,
         microstatements
       )
-      microstatements[microstatements.length - 1].statementType = StatementType.EXIT
     } else {
-      // Otherwise, create an exit statement with no value
+      // Otherwise, create a microstatement with no value
       microstatements.push(new Microstatement(
-        StatementType.EXIT,
+        StatementType.CONSTDEC,
         scope,
         true,
-        "void",
-        Box.builtinTypes.void,
-        [],
-        [],
+        constName,
+        scope.deepGet("void").typeval,
+        ["void"],
+        null
       ))
     }
   }
@@ -817,7 +808,7 @@ class Microstatement {
     let letType = null
     for (const microstatement of microstatements) {
       if (microstatement.outputName === letName) {
-        if (microstatement.statementType == StatementType.LETDEC) {
+        if (microstatement.statementType === StatementType.LETDEC) {
           letType = microstatement.outputType
           break
         } else {
@@ -863,6 +854,7 @@ class Microstatement {
       // By definition the last microstatement is the const assignment we care about, so we can just
       // mutate its object to rename the output variable name to the name we need instead.
       microstatements[microstatements.length - 1].outputName = letName
+      microstatements[microstatements.length - 1].statementType = StatementType.ASSIGNMENT
       return
     }
     if (assignmentsAst.assignables().basicassignables() != null) {
@@ -876,6 +868,7 @@ class Microstatement {
       // that we care about, so just rename its variable to the one that will be expected by other
       // code.
       microstatements[microstatements.length - 1].outputName = letName
+      microstatements[microstatements.length - 1].statementType = StatementType.ASSIGNMENT
       return
     }
   }
@@ -930,6 +923,7 @@ class Microstatement {
       // By definition the last microstatement is the const assignment we care about, so we can just
       // mutate its object to rename the output variable name to the name we need instead.
       microstatements[microstatements.length - 1].outputName = letName
+      microstatements[microstatements.length - 1].statementType = StatementType.LETDEC
       return
     }
     if (letdeclarationAst.assignments().assignables().basicassignables() != null) {
@@ -943,6 +937,7 @@ class Microstatement {
       // that we care about, so just rename its variable to the one that will be expected by other
       // code.
       microstatements[microstatements.length - 1].outputName = letName
+      microstatements[microstatements.length - 1].statementType = StatementType.LETDEC
       return
     }
   }
