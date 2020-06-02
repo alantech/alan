@@ -1407,7 +1407,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let a_pascal_string = mem_frag.read(args[0], 0);
     let a_size = LittleEndian::read_u64(&a_pascal_string[0..8]) as usize;
     let a_str = str::from_utf8(&a_pascal_string[8..a_size + 8]).unwrap();
-    let n = LittleEndian::read_i64(mem_frag.read(args[0], 8));
+    let n = LittleEndian::read_i64(mem_frag.read(args[1], 8));
     let out_str = a_str.repeat(n as usize);
     let mut out = out_str.len().to_le_bytes().to_vec();
     out.append(&mut out_str.as_bytes().to_vec());
