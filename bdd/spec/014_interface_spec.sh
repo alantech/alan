@@ -2,7 +2,7 @@ Include build_tools.sh
 
 Describe "Interfaces"
   before() {
-    sourceToTemp "
+    sourceToAll "
       from @std/app import start, print, exit
 
       interface Stringifiable {
@@ -20,15 +20,21 @@ Describe "Interfaces"
       }
     "
   }
-  Before before
+  BeforeAll before
 
   after() {
     cleanTemp
   }
-  After after
+  AfterAll after
 
-  It "interprets"
-    When run alan-interpreter interpret temp.ln
+  It "runs js"
+    When run node temp.js
+    The output should eq "'Hello, World'
+'5'"
+  End
+
+  It "runs agc"
+    When run alan-runtime run temp.agc
     The output should eq "'Hello, World'
 '5'"
   End
