@@ -6,7 +6,7 @@ use crate::vm::event::{EventHandler, EventEmit};
 pub struct HandlerMemory {
   /// global memory reference
   gmem: &'static Vec<u8>,
-  /// a slice of the memory for the fragment to work with. Unfortunately for now it's a copy
+  /// memory of the program for fixed size data types
   mem: Vec<u8>,
   /// optional payload address
   payload_addr: Option<i64>,
