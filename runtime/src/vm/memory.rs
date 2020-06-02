@@ -165,9 +165,6 @@ impl VMMemory {
         self.mem.splice(handler_mem_start..handler_mem_start, payload);
       }
       Some(0)
-    } else if event.gmem_addr.is_some() {
-      // provider gmem address which is negative
-      event.gmem_addr
     } else {
       None
     };
@@ -296,7 +293,6 @@ mod tests {
     let event = EventEmit {
       id: 0,
       payload: None,
-      gmem_addr: None
     };
     let hand1 = mem_man.alloc_handler(&hand, &event);
     assert_eq!(mem_man.min_offset_heap.len(), 1);
@@ -344,7 +340,6 @@ mod tests {
     let event = EventEmit {
       id: 0,
       payload: None,
-      gmem_addr: None
     };
     let hand1 = mem_man.alloc_handler(&hand, &event);
     assert_eq!(mem_man.min_offset_heap.len(), 1);
