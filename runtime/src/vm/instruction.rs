@@ -33,6 +33,17 @@ impl InstructionScheduler {
     }
   }
 
+  fn process_next_frag(mut frag_tx: &UnboundedSender<(HandlerFragment, HandlerMemory)>, mut frag: HandlerFragment, mut hand_mem: HandlerMemory) {
+    let next_frag = frag.get_next_fragment();
+    if next_frag.is_some() {
+      frag_tx.send((next_frag.unwrap(), hand_mem));
+    } else {
+      // This method is being called from a tokio task or a thread within the rayon thread pool
+      // https://abramov.io/rust-dropping-things-in-another-thread
+      drop(hand_mem);
+    }
+  }
+
   pub async fn sched_frag(self: &mut InstructionScheduler, mut frag: HandlerFragment, mut hand_mem: HandlerMemory) {
     let instructions = frag.get_instruction_fragment();
     // io-bound fragment
@@ -47,9 +58,7 @@ impl InstructionScheduler {
         // Poll futures concurrently, but not in parallel, using a single thread.
         // This is akin to Promise.all in JavaScript Promises.
         join_all(futures).await;
-        // Unbounded channels, async or not, are non-blocking. `Send` succeeds automatically.
-        // https://github.com/tokio-rs/tokio/issues/2447
-        frag_tx.send((frag, hand_mem));
+        InstructionScheduler::process_next_frag(&frag_tx, frag, hand_mem);
       });
     } else {
       // cpu-bound fragment of predictable or unpredictable execution
@@ -64,8 +73,7 @@ impl InstructionScheduler {
               event_tx.send(event.unwrap());
             }
           });
-          // register fragment from handler call as done
-          frag_tx.send((frag, hand_mem));
+          InstructionScheduler::process_next_frag(frag_tx, frag, hand_mem);
         });
       })
     }
