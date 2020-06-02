@@ -6,7 +6,7 @@ use crate::vm::event::{EventHandler, EventEmit};
 pub struct HandlerMemory {
   /// global memory reference
   gmem: &'static Vec<u8>,
-  /// memory of the program for fixed size data types
+  /// memory of the handler for fixed size data types
   mem: Vec<u8>,
   /// optional payload address
   payload_addr: Option<i64>,
