@@ -42,11 +42,7 @@ impl VM {
 
   async fn sched_fragment(self: &mut VM, frag_tup: (HandlerFragment, HandlerMemory)) {
     let (frag, hand_mem) = frag_tup;
-    let next_frag = frag.get_next_fragment();
-    if next_frag.is_some() {
-      self.ins_sched.sched_frag(next_frag.unwrap(), hand_mem).await;
-    }
-    // TODO when next_frag is none drop frag and hand_mem outside event loop
+    self.ins_sched.sched_frag(frag, hand_mem).await;
   }
 
   async fn sched_event(self: &mut VM, event: EventEmit) {
