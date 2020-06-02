@@ -31,7 +31,7 @@ impl VM {
     let (event_tx, event_rx) = unbounded_channel();
     let (frag_tx, frag_rx) = unbounded_channel();
     return VM {
-      ins_sched: InstructionScheduler::new(pgm, event_tx.clone(), frag_tx),
+      ins_sched: InstructionScheduler::new(event_tx.clone(), frag_tx),
       mem_man: VMMemory::new(&pgm.gmem),
       pgm,
       event_tx,

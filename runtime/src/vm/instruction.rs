@@ -17,34 +17,31 @@ pub struct Instruction {
 }
 
 pub struct InstructionScheduler {
-  pgm: &'static Program,
   event_tx: UnboundedSender<EventEmit>,
   frag_tx: UnboundedSender<(HandlerFragment, MemoryFragment)>,
   cpu_pool: ThreadPool,
 }
 
 impl InstructionScheduler {
-  pub fn new(pgm: &'static Program, event_tx: UnboundedSender<EventEmit>, frag_tx: UnboundedSender<(HandlerFragment, MemoryFragment)>) -> InstructionScheduler {
+  pub fn new(event_tx: UnboundedSender<EventEmit>, frag_tx: UnboundedSender<(HandlerFragment, MemoryFragment)>) -> InstructionScheduler {
     let cpu_threads = num_cpus::get() - 1;
     let cpu_pool = ThreadPoolBuilder::new().num_threads(cpu_threads).build().unwrap();
     return InstructionScheduler {
       event_tx,
       frag_tx,
-      pgm,
       cpu_pool,
     }
   }
 
   pub async fn sched_frag(self: &mut InstructionScheduler, mut frag: HandlerFragment, mut mem_frag: MemoryFragment) {
     let instructions = frag.get_instruction_fragment();
-    let pgm = self.pgm;
     // io-bound fragment
     if !instructions[0].opcode.pred_exec && instructions[0].opcode.async_func.is_some() {
       // Is there really no way to avoid cloning the reference of the chan txs for tokio tasks? :'(
       let frag_tx = self.frag_tx.clone();
       let futures: Vec<EmptyFuture> = instructions.iter().map(|ins| {
         let async_func = ins.opcode.async_func.unwrap();
-        return async_func(&ins.args, &mut mem_frag, &pgm.event_declrs, &mut frag);
+        return async_func(&ins.args, &mut mem_frag, &mut frag);
       }).collect();
       task::spawn(async move {
         // Poll futures concurrently, but not in parallel, using a single thread.
@@ -62,7 +59,7 @@ impl InstructionScheduler {
         s.spawn(move |_| {
           instructions.iter().for_each( |i| {
             let func = i.opcode.func.unwrap();
-            let event = func(&i.args, &mut mem_frag, &pgm.event_declrs, &mut frag);
+            let event = func(&i.args, &mut mem_frag, &mut frag);
             if event.is_some() {
               event_tx.send(event.unwrap());
             }

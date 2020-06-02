@@ -1462,7 +1462,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
 
   // Ternary opcodes
   // TODO: pair and condarr after arrays are implemented
-  unpred_cpu!("condfn", |args, mem_frag, _, frag| {
+  unpred_cpu!("condfn", |args, mem_frag, frag| {
     let cond = LittleEndian::read_i64(mem_frag.read(args[0], 8));
     let subfn = args[1];
     if cond == 1 {
