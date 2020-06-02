@@ -65,6 +65,7 @@ to barto bar3
   End
 
   It "runs agc"
+    Pending opcode-investigation
     When run alan-runtime run temp.agc
     The output should eq "$FUNCTIONRES"
   End
