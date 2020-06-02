@@ -33,11 +33,12 @@ impl InstructionScheduler {
     }
   }
 
-  pub fn process_next_frag(mut frag_tx: &UnboundedSender<(HandlerFragment, HandlerMemory)>, mut frag: HandlerFragment, mut hand_mem: HandlerMemory) {
+  fn process_next_frag(mut frag_tx: &UnboundedSender<(HandlerFragment, HandlerMemory)>, mut frag: HandlerFragment, mut hand_mem: HandlerMemory) {
     let next_frag = frag.get_next_fragment();
     if next_frag.is_some() {
       frag_tx.send((next_frag.unwrap(), hand_mem));
     } else {
+      // This method is being called from a tokio task or a thread within the rayon thread pool
       // https://abramov.io/rust-dropping-things-in-another-thread
       drop(hand_mem);
     }
