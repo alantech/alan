@@ -65,12 +65,11 @@ impl MemoryFragment {
   }
 
   pub fn read(self: &MemoryFragment, addr: i64, size: u8) -> &[u8] {
-    let mut actual_addr: i64;
-    if addr == 0 && self.payload_addr.is_some() {
-      actual_addr = self.payload_addr.unwrap();
+    let actual_addr = if addr == 0 && self.payload_addr.is_some() {
+      self.payload_addr.unwrap()
     } else {
-      actual_addr = addr;
-    }
+      addr
+    };
     if actual_addr < 0 {
       let a = (0 - actual_addr - 1) as usize;
       return match size {
