@@ -12,6 +12,7 @@ use tokio::time::delay_for;
 
 use crate::vm::event::{EventEmit, HandlerFragment};
 use crate::vm::memory::MemoryFragment;
+use crate::vm::program::Program;
 
 // type aliases
 /// Futures implement an Unpin marker that guarantees to the compiler that the future will not move while it is running
@@ -25,14 +26,12 @@ pub type EmptyFuture = Pin<Box<dyn Future<Output = ()> + Send>>;
 type AsyncFnPtr = fn(
   &Vec<i64>,
   &mut MemoryFragment,
-  &'static HashMap<i64, i64>,
   &mut HandlerFragment
 ) -> EmptyFuture;
 /// Function pointer for cpu bound opcodes
 type FnPtr = fn(
   &Vec<i64>,
   &mut MemoryFragment,
-  &'static HashMap<i64, i64>,
   &mut HandlerFragment
 ) -> Option<EventEmit>;
 
@@ -109,37 +108,37 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   }
 
   // Type conversion opcodes
-  cpu!("i8f64", |args, mem_frag, _, _| {
+  cpu!("i8f64", |args, mem_frag, _| {
     let a = i8::from_le_bytes(mem_frag.read(args[0], 1).try_into().unwrap());
     let out = a as f64;
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
   });
-  cpu!("i16f64", |args, mem_frag, _, _| {
+  cpu!("i16f64", |args, mem_frag, _| {
     let a = LittleEndian::read_i16(mem_frag.read(args[0], 2));
     let out = a as f64;
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
   });
-  cpu!("i32f64", |args, mem_frag, _, _| {
+  cpu!("i32f64", |args, mem_frag, _| {
     let a = LittleEndian::read_i32(mem_frag.read(args[0], 4));
     let out = a as f64;
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
   });
-  cpu!("i64f64", |args, mem_frag, _, _| {
+  cpu!("i64f64", |args, mem_frag, _| {
     let a = LittleEndian::read_i64(mem_frag.read(args[0], 8));
     let out = a as f64;
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
   });
-  cpu!("f32f64", |args, mem_frag, _, _| {
+  cpu!("f32f64", |args, mem_frag, _| {
     let a = LittleEndian::read_f32(mem_frag.read(args[0], 4));
     let out = a as f64;
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
   });
-  cpu!("strf64", |args, mem_frag, _, _| {
+  cpu!("strf64", |args, mem_frag, _| {
     let pascal_string = mem_frag.read(args[0], 0);
     let size = LittleEndian::read_u64(&pascal_string[0..8]) as usize;
     let out_str = str::from_utf8(&pascal_string[8..size + 8]).unwrap();
@@ -147,44 +146,44 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
   });
-  cpu!("boolf64", |args, mem_frag, _, _| {
+  cpu!("boolf64", |args, mem_frag, _| {
     let a = mem_frag.read(args[0], 1)[0];
     let out = a as f64; // This works because bools are 0 or 1 internally
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
   });
 
-  cpu!("i8f32", |args, mem_frag, _, _| {
+  cpu!("i8f32", |args, mem_frag, _| {
     let a = i8::from_le_bytes(mem_frag.read(args[0], 1).try_into().unwrap());
     let out = a as f32;
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("i16f32", |args, mem_frag, _, _| {
+  cpu!("i16f32", |args, mem_frag, _| {
     let a = LittleEndian::read_i16(mem_frag.read(args[0], 2));
     let out = a as f32;
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("i32f32", |args, mem_frag, _, _| {
+  cpu!("i32f32", |args, mem_frag, _| {
     let a = LittleEndian::read_i32(mem_frag.read(args[0], 4));
     let out = a as f32;
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("i64f32", |args, mem_frag, _, _| {
+  cpu!("i64f32", |args, mem_frag, _| {
     let a = LittleEndian::read_i64(mem_frag.read(args[0], 8));
     let out = a as f32;
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("f64f32", |args, mem_frag, _, _| {
+  cpu!("f64f32", |args, mem_frag, _| {
     let a = LittleEndian::read_f64(mem_frag.read(args[0], 8));
     let out = a as f32;
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("strf32", |args, mem_frag, _, _| {
+  cpu!("strf32", |args, mem_frag, _| {
     let pascal_string = mem_frag.read(args[0], 0);
     let size = LittleEndian::read_u64(&pascal_string[0..8]) as usize;
     let out_str = str::from_utf8(&pascal_string[8..size + 8]).unwrap();
@@ -192,44 +191,44 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("boolf32", |args, mem_frag, _, _| {
+  cpu!("boolf32", |args, mem_frag, _| {
     let a = mem_frag.read(args[0], 1)[0];
     let out = a as f32; // This works because bools are 0 or 1 internally
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
 
-  cpu!("i8i64", |args, mem_frag, _, _| {
+  cpu!("i8i64", |args, mem_frag, _| {
     let a = i8::from_le_bytes(mem_frag.read(args[0], 1).try_into().unwrap());
     let out = a as i64;
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
   });
-  cpu!("i16i64", |args, mem_frag, _, _| {
+  cpu!("i16i64", |args, mem_frag, _| {
     let a = LittleEndian::read_i16(mem_frag.read(args[0], 2));
     let out = a as i64;
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
   });
-  cpu!("i32i64", |args, mem_frag, _, _| {
+  cpu!("i32i64", |args, mem_frag, _| {
     let a = LittleEndian::read_i32(mem_frag.read(args[0], 4));
     let out = a as i64;
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
   });
-  cpu!("f64i64", |args, mem_frag, _, _| {
+  cpu!("f64i64", |args, mem_frag, _| {
     let a = LittleEndian::read_f64(mem_frag.read(args[0], 8));
     let out = a as i64;
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
   });
-  cpu!("f32i64", |args, mem_frag, _, _| {
+  cpu!("f32i64", |args, mem_frag, _| {
     let a = LittleEndian::read_f32(mem_frag.read(args[0], 4));
     let out = a as i64;
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
   });
-  cpu!("stri64", |args, mem_frag, _, _| {
+  cpu!("stri64", |args, mem_frag, _| {
     let pascal_string = mem_frag.read(args[0], 0);
     let size = LittleEndian::read_u64(&pascal_string[0..8]) as usize;
     let out_str = str::from_utf8(&pascal_string[8..size + 8]).unwrap();
@@ -237,44 +236,44 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
   });
-  cpu!("booli64", |args, mem_frag, _, _| {
+  cpu!("booli64", |args, mem_frag, _| {
     let a = mem_frag.read(args[0], 1)[0];
     let out = a as i64; // This works because bools are 0 or 1 internally
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
   });
 
-  cpu!("i8i32", |args, mem_frag, _, _| {
+  cpu!("i8i32", |args, mem_frag, _| {
     let a = i8::from_le_bytes(mem_frag.read(args[0], 1).try_into().unwrap());
     let out = a as i32;
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("i16i32", |args, mem_frag, _, _| {
+  cpu!("i16i32", |args, mem_frag, _| {
     let a = LittleEndian::read_i16(mem_frag.read(args[0], 2));
     let out = a as i32;
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("i64i32", |args, mem_frag, _, _| {
+  cpu!("i64i32", |args, mem_frag, _| {
     let a = LittleEndian::read_i64(mem_frag.read(args[0], 8));
     let out = a as i32;
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("f64i32", |args, mem_frag, _, _| {
+  cpu!("f64i32", |args, mem_frag, _| {
     let a = LittleEndian::read_f64(mem_frag.read(args[0], 8));
     let out = a as i32;
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("f32i32", |args, mem_frag, _, _| {
+  cpu!("f32i32", |args, mem_frag, _| {
     let a = LittleEndian::read_f32(mem_frag.read(args[0], 4));
     let out = a as i32;
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("stri32", |args, mem_frag, _, _| {
+  cpu!("stri32", |args, mem_frag, _| {
     let pascal_string = mem_frag.read(args[0], 0);
     let size = LittleEndian::read_u64(&pascal_string[0..8]) as usize;
     let out_str = str::from_utf8(&pascal_string[8..size + 8]).unwrap();
@@ -282,44 +281,44 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("booli32", |args, mem_frag, _, _| {
+  cpu!("booli32", |args, mem_frag, _| {
     let a = mem_frag.read(args[0], 1)[0];
     let out = a as i32; // This works because bools are 0 or 1 internally
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
 
-  cpu!("i8i16", |args, mem_frag, _, _| {
+  cpu!("i8i16", |args, mem_frag, _| {
     let a = i8::from_le_bytes(mem_frag.read(args[0], 1).try_into().unwrap());
     let out = a as i16;
     mem_frag.write(args[2], 2, &out.to_le_bytes());
     None
   });
-  cpu!("i32i16", |args, mem_frag, _, _| {
+  cpu!("i32i16", |args, mem_frag, _| {
     let a = LittleEndian::read_i32(mem_frag.read(args[0], 4));
     let out = a as i16;
     mem_frag.write(args[2], 2, &out.to_le_bytes());
     None
   });
-  cpu!("i64i16", |args, mem_frag, _, _| {
+  cpu!("i64i16", |args, mem_frag, _| {
     let a = LittleEndian::read_i64(mem_frag.read(args[0], 8));
     let out = a as i16;
     mem_frag.write(args[2], 2, &out.to_le_bytes());
     None
   });
-  cpu!("f64i16", |args, mem_frag, _, _| {
+  cpu!("f64i16", |args, mem_frag, _| {
     let a = LittleEndian::read_f64(mem_frag.read(args[0], 8));
     let out = a as i16;
     mem_frag.write(args[2], 2, &out.to_le_bytes());
     None
   });
-  cpu!("f32i16", |args, mem_frag, _, _| {
+  cpu!("f32i16", |args, mem_frag, _| {
     let a = LittleEndian::read_f32(mem_frag.read(args[0], 4));
     let out = a as i16;
     mem_frag.write(args[2], 2, &out.to_le_bytes());
     None
   });
-  cpu!("stri16", |args, mem_frag, _, _| {
+  cpu!("stri16", |args, mem_frag, _| {
     let pascal_string = mem_frag.read(args[0], 0);
     let size = LittleEndian::read_u64(&pascal_string[0..8]) as usize;
     let out_str = str::from_utf8(&pascal_string[8..size + 8]).unwrap();
@@ -327,44 +326,44 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     mem_frag.write(args[2], 2, &out.to_le_bytes());
     None
   });
-  cpu!("booli16", |args, mem_frag, _, _| {
+  cpu!("booli16", |args, mem_frag, _| {
     let a = mem_frag.read(args[0], 1)[0];
     let out = a as i16; // This works because bools are 0 or 1 internally
     mem_frag.write(args[2], 2, &out.to_le_bytes());
     None
   });
 
-  cpu!("i16i8", |args, mem_frag, _, _| {
+  cpu!("i16i8", |args, mem_frag, _| {
     let a = LittleEndian::read_i16(mem_frag.read(args[0], 2));
     let out = a as i8;
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("i32i8", |args, mem_frag, _, _| {
+  cpu!("i32i8", |args, mem_frag, _| {
     let a = LittleEndian::read_i32(mem_frag.read(args[0], 4));
     let out = a as i8;
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("i64i8", |args, mem_frag, _, _| {
+  cpu!("i64i8", |args, mem_frag, _| {
     let a = LittleEndian::read_i64(mem_frag.read(args[0], 8));
     let out = a as i8;
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("f64i8", |args, mem_frag, _, _| {
+  cpu!("f64i8", |args, mem_frag, _| {
     let a = LittleEndian::read_f64(mem_frag.read(args[0], 8));
     let out = a as i8;
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("f32i8", |args, mem_frag, _, _| {
+  cpu!("f32i8", |args, mem_frag, _| {
     let a = LittleEndian::read_f32(mem_frag.read(args[0], 4));
     let out = a as i8;
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("stri8", |args, mem_frag, _, _| {
+  cpu!("stri8", |args, mem_frag, _| {
     let pascal_string = mem_frag.read(args[0], 0);
     let size = LittleEndian::read_u64(&pascal_string[0..8]) as usize;
     let out_str = str::from_utf8(&pascal_string[8..size + 8]).unwrap();
@@ -372,50 +371,50 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("booli8", |args, mem_frag, _, _| {
+  cpu!("booli8", |args, mem_frag, _| {
     let a = mem_frag.read(args[0], 1)[0];
     let out = a as i8; // This works because bools are 0 or 1 internally
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
 
-  cpu!("i8bool", |args, mem_frag, _, _| {
+  cpu!("i8bool", |args, mem_frag, _| {
     let a = i8::from_le_bytes(mem_frag.read(args[0], 1).try_into().unwrap());
     let out = if a != 0 { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("i16bool", |args, mem_frag, _, _| {
+  cpu!("i16bool", |args, mem_frag, _| {
     let a = LittleEndian::read_i16(mem_frag.read(args[0], 2));
     let out = if a != 0 { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("i32bool", |args, mem_frag, _, _| {
+  cpu!("i32bool", |args, mem_frag, _| {
     let a = LittleEndian::read_i32(mem_frag.read(args[0], 4));
     let out = if a != 0 { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("i64bool", |args, mem_frag, _, _| {
+  cpu!("i64bool", |args, mem_frag, _| {
     let a = LittleEndian::read_i64(mem_frag.read(args[0], 8));
     let out = if a != 0 { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("f64bool", |args, mem_frag, _, _| {
+  cpu!("f64bool", |args, mem_frag, _| {
     let a = LittleEndian::read_f64(mem_frag.read(args[0], 8));
     let out = if a != 0.0 { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("f32bool", |args, mem_frag, _, _| {
+  cpu!("f32bool", |args, mem_frag, _| {
     let a = LittleEndian::read_f32(mem_frag.read(args[0], 4));
     let out = if a != 0.0 { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("strbool", |args, mem_frag, _, _| {
+  cpu!("strbool", |args, mem_frag, _| {
     let pascal_string = mem_frag.read(args[0], 0);
     let size = LittleEndian::read_u64(&pascal_string[0..8]) as usize;
     let a_str = str::from_utf8(&pascal_string[8..size + 8]).unwrap();
@@ -424,7 +423,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
 
-  cpu!("i8str", |args, mem_frag, _, _| {
+  cpu!("i8str", |args, mem_frag, _| {
     let a = i8::from_le_bytes(mem_frag.read(args[0], 1).try_into().unwrap());
     let a_str = a.to_string();
     let mut out = (a_str.len() as u64).to_le_bytes().to_vec();
@@ -432,7 +431,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     mem_frag.write(args[2], 0, &out);
     None
   });
-  cpu!("i16str", |args, mem_frag, _, _| {
+  cpu!("i16str", |args, mem_frag, _| {
     let a = LittleEndian::read_i16(mem_frag.read(args[0], 2));
     let a_str = a.to_string();
     let mut out = (a_str.len() as u64).to_le_bytes().to_vec();
@@ -440,7 +439,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     mem_frag.write(args[2], 0, &out);
     None
   });
-  cpu!("i32str", |args, mem_frag, _, _| {
+  cpu!("i32str", |args, mem_frag, _| {
     let a = LittleEndian::read_i32(mem_frag.read(args[0], 4));
     let a_str = a.to_string();
     let mut out = (a_str.len() as u64).to_le_bytes().to_vec();
@@ -448,7 +447,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     mem_frag.write(args[2], 0, &out);
     None
   });
-  cpu!("i64str", |args, mem_frag, _, _| {
+  cpu!("i64str", |args, mem_frag, _| {
     let a = LittleEndian::read_i64(mem_frag.read(args[0], 8));
     let a_str = a.to_string();
     let mut out = (a_str.len() as u64).to_le_bytes().to_vec();
@@ -456,7 +455,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     mem_frag.write(args[2], 0, &out);
     None
   });
-  cpu!("f64str", |args, mem_frag, _, _| {
+  cpu!("f64str", |args, mem_frag, _| {
     let a = LittleEndian::read_f64(mem_frag.read(args[0], 8));
     let a_str = a.to_string();
     let mut out = (a_str.len() as u64).to_le_bytes().to_vec();
@@ -464,7 +463,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     mem_frag.write(args[2], 0, &out);
     None
   });
-  cpu!("f32str", |args, mem_frag, _, _| {
+  cpu!("f32str", |args, mem_frag, _| {
     let a = LittleEndian::read_f32(mem_frag.read(args[0], 4));
     let a_str = a.to_string();
     let mut out = (a_str.len() as u64).to_le_bytes().to_vec();
@@ -472,7 +471,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     mem_frag.write(args[2], 0, &out);
     None
   });
-  cpu!("boolstr", |args, mem_frag, _, _| {
+  cpu!("boolstr", |args, mem_frag, _| {
     let a = mem_frag.read(args[0], 1)[0];
     let a_str = if a == 1 { "true" } else { "false" };
     let mut out = (a_str.len() as u64).to_le_bytes().to_vec();
@@ -482,42 +481,42 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
 
   // Arithmetic opcodes
-  cpu!("addi8", |args, mem_frag, _, _| {
+  cpu!("addi8", |args, mem_frag, _| {
     let a = i8::from_le_bytes(mem_frag.read(args[0], 1).try_into().unwrap());
     let b = i8::from_le_bytes(mem_frag.read(args[1], 1).try_into().unwrap());
     let out = a + b;
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("addi16", |args, mem_frag, _, _| {
+  cpu!("addi16", |args, mem_frag, _| {
     let a = LittleEndian::read_i16(mem_frag.read(args[0], 2));
     let b = LittleEndian::read_i16(mem_frag.read(args[1], 2));
     let out = a + b;
     mem_frag.write(args[2], 2, &out.to_le_bytes());
     None
   });
-  cpu!("addi32", |args, mem_frag, _, _| {
+  cpu!("addi32", |args, mem_frag, _| {
     let a = LittleEndian::read_i32(mem_frag.read(args[0], 4));
     let b = LittleEndian::read_i32(mem_frag.read(args[1], 4));
     let out = a + b;
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("addi64", |args, mem_frag, _, _| {
+  cpu!("addi64", |args, mem_frag, _| {
     let a = LittleEndian::read_i64(mem_frag.read(args[0], 8));
     let b = LittleEndian::read_i64(mem_frag.read(args[1], 8));
     let out = a + b;
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
   });
-  cpu!("addf32", |args, mem_frag, _, _| {
+  cpu!("addf32", |args, mem_frag, _| {
     let a = LittleEndian::read_f32(mem_frag.read(args[0], 4));
     let b = LittleEndian::read_f32(mem_frag.read(args[1], 4));
     let out = a + b;
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("addf64", |args, mem_frag, _, _| {
+  cpu!("addf64", |args, mem_frag, _| {
     let a = LittleEndian::read_f64(mem_frag.read(args[0], 8));
     let b = LittleEndian::read_f64(mem_frag.read(args[1], 8));
     let out = a + b;
@@ -525,42 +524,42 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
 
-  cpu!("subi8", |args, mem_frag, _, _| {
+  cpu!("subi8", |args, mem_frag, _| {
     let a = i8::from_le_bytes(mem_frag.read(args[0], 1).try_into().unwrap());
     let b = i8::from_le_bytes(mem_frag.read(args[1], 1).try_into().unwrap());
     let out = a - b;
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("subi16", |args, mem_frag, _, _| {
+  cpu!("subi16", |args, mem_frag, _| {
     let a = LittleEndian::read_i16(mem_frag.read(args[0], 2));
     let b = LittleEndian::read_i16(mem_frag.read(args[1], 2));
     let out = a - b;
     mem_frag.write(args[2], 2, &out.to_le_bytes());
     None
   });
-  cpu!("subi32", |args, mem_frag, _, _| {
+  cpu!("subi32", |args, mem_frag, _| {
     let a = LittleEndian::read_i32(mem_frag.read(args[0], 4));
     let b = LittleEndian::read_i32(mem_frag.read(args[1], 4));
     let out = a - b;
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("subi64", |args, mem_frag, _, _| {
+  cpu!("subi64", |args, mem_frag, _| {
     let a = LittleEndian::read_i64(mem_frag.read(args[0], 8));
     let b = LittleEndian::read_i64(mem_frag.read(args[1], 8));
     let out = a - b;
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
   });
-  cpu!("subf32", |args, mem_frag, _, _| {
+  cpu!("subf32", |args, mem_frag, _| {
     let a = LittleEndian::read_f32(mem_frag.read(args[0], 4));
     let b = LittleEndian::read_f32(mem_frag.read(args[1], 4));
     let out = a - b;
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("subf64", |args, mem_frag, _, _| {
+  cpu!("subf64", |args, mem_frag, _| {
     let a = LittleEndian::read_f64(mem_frag.read(args[0], 8));
     let b = LittleEndian::read_f64(mem_frag.read(args[1], 8));
     let out = a - b;
@@ -568,79 +567,79 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
 
-  cpu!("negi8", |args, mem_frag, _, _| {
+  cpu!("negi8", |args, mem_frag, _| {
     let a = i8::from_le_bytes(mem_frag.read(args[0], 1).try_into().unwrap());
     let out = 0 - a;
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("negi16", |args, mem_frag, _, _| {
+  cpu!("negi16", |args, mem_frag, _| {
     let a = LittleEndian::read_i16(mem_frag.read(args[0], 2));
     let out = 0 - a;
     mem_frag.write(args[2], 2, &out.to_le_bytes());
     None
   });
-  cpu!("negi32", |args, mem_frag, _, _| {
+  cpu!("negi32", |args, mem_frag, _| {
     let a = LittleEndian::read_i32(mem_frag.read(args[0], 4));
     let out = 0 - a;
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("negi64", |args, mem_frag, _, _| {
+  cpu!("negi64", |args, mem_frag, _| {
     let a = LittleEndian::read_i64(mem_frag.read(args[0], 8));
     let out = 0 - a;
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
   });
-  cpu!("negf32", |args, mem_frag, _, _| {
+  cpu!("negf32", |args, mem_frag, _| {
     let a = LittleEndian::read_f32(mem_frag.read(args[0], 4));
     let out = 0.0 - a;
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("negf64", |args, mem_frag, _, _| {
+  cpu!("negf64", |args, mem_frag, _| {
     let a = LittleEndian::read_f64(mem_frag.read(args[0], 8));
     let out = 0.0 - a;
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
   });
 
-  cpu!("muli8", |args, mem_frag, _, _| {
+  cpu!("muli8", |args, mem_frag, _| {
     let a = i8::from_le_bytes(mem_frag.read(args[0], 1).try_into().unwrap());
     let b = i8::from_le_bytes(mem_frag.read(args[1], 1).try_into().unwrap());
     let out = a * b;
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("muli16", |args, mem_frag, _, _| {
+  cpu!("muli16", |args, mem_frag, _| {
     let a = LittleEndian::read_i16(mem_frag.read(args[0], 2));
     let b = LittleEndian::read_i16(mem_frag.read(args[1], 2));
     let out = a * b;
     mem_frag.write(args[2], 2, &out.to_le_bytes());
     None
   });
-  cpu!("muli32", |args, mem_frag, _, _| {
+  cpu!("muli32", |args, mem_frag, _| {
     let a = LittleEndian::read_i32(mem_frag.read(args[0], 4));
     let b = LittleEndian::read_i32(mem_frag.read(args[1], 4));
     let out = a * b;
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("muli64", |args, mem_frag, _, _| {
+  cpu!("muli64", |args, mem_frag, _| {
     let a = LittleEndian::read_i64(mem_frag.read(args[0], 8));
     let b = LittleEndian::read_i64(mem_frag.read(args[1], 8));
     let out = a * b;
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
   });
-  cpu!("mulf32", |args, mem_frag, _, _| {
+  cpu!("mulf32", |args, mem_frag, _| {
     let a = LittleEndian::read_f32(mem_frag.read(args[0], 4));
     let b = LittleEndian::read_f32(mem_frag.read(args[1], 4));
     let out = a * b;
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("mulf64", |args, mem_frag, _, _| {
+  cpu!("mulf64", |args, mem_frag, _| {
     let a = LittleEndian::read_f64(mem_frag.read(args[0], 8));
     let b = LittleEndian::read_f64(mem_frag.read(args[1], 8));
     let out = a * b;
@@ -648,42 +647,42 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
 
-  cpu!("divi8", |args, mem_frag, _, _| {
+  cpu!("divi8", |args, mem_frag, _| {
     let a = i8::from_le_bytes(mem_frag.read(args[0], 1).try_into().unwrap());
     let b = i8::from_le_bytes(mem_frag.read(args[1], 1).try_into().unwrap());
     let out = a / b;
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("divi16", |args, mem_frag, _, _| {
+  cpu!("divi16", |args, mem_frag, _| {
     let a = LittleEndian::read_i16(mem_frag.read(args[0], 2));
     let b = LittleEndian::read_i16(mem_frag.read(args[1], 2));
     let out = a / b;
     mem_frag.write(args[2], 2, &out.to_le_bytes());
     None
   });
-  cpu!("divi32", |args, mem_frag, _, _| {
+  cpu!("divi32", |args, mem_frag, _| {
     let a = LittleEndian::read_i32(mem_frag.read(args[0], 4));
     let b = LittleEndian::read_i32(mem_frag.read(args[1], 4));
     let out = a / b;
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("divi64", |args, mem_frag, _, _| {
+  cpu!("divi64", |args, mem_frag, _| {
     let a = LittleEndian::read_i64(mem_frag.read(args[0], 8));
     let b = LittleEndian::read_i64(mem_frag.read(args[1], 8));
     let out = a / b;
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
   });
-  cpu!("divf32", |args, mem_frag, _, _| {
+  cpu!("divf32", |args, mem_frag, _| {
     let a = LittleEndian::read_f32(mem_frag.read(args[0], 4));
     let b = LittleEndian::read_f32(mem_frag.read(args[1], 4));
     let out = a / b;
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("divf64", |args, mem_frag, _, _| {
+  cpu!("divf64", |args, mem_frag, _| {
     let a = LittleEndian::read_f64(mem_frag.read(args[0], 8));
     let b = LittleEndian::read_f64(mem_frag.read(args[1], 8));
     let out = a / b;
@@ -691,28 +690,28 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
 
-  cpu!("modi8", |args, mem_frag, _, _| {
+  cpu!("modi8", |args, mem_frag, _| {
     let a = i8::from_le_bytes(mem_frag.read(args[0], 1).try_into().unwrap());
     let b = i8::from_le_bytes(mem_frag.read(args[1], 1).try_into().unwrap());
     let out = a % b;
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("modi16", |args, mem_frag, _, _| {
+  cpu!("modi16", |args, mem_frag, _| {
     let a = LittleEndian::read_i16(mem_frag.read(args[0], 2));
     let b = LittleEndian::read_i16(mem_frag.read(args[1], 2));
     let out = a % b;
     mem_frag.write(args[2], 2, &out.to_le_bytes());
     None
   });
-  cpu!("modi32", |args, mem_frag, _, _| {
+  cpu!("modi32", |args, mem_frag, _| {
     let a = LittleEndian::read_i32(mem_frag.read(args[0], 4));
     let b = LittleEndian::read_i32(mem_frag.read(args[1], 4));
     let out = a % b;
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("modi64", |args, mem_frag, _, _| {
+  cpu!("modi64", |args, mem_frag, _| {
     let a = LittleEndian::read_i64(mem_frag.read(args[0], 8));
     let b = LittleEndian::read_i64(mem_frag.read(args[1], 8));
     let out = a % b;
@@ -720,28 +719,28 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
 
-  cpu!("powi8", |args, mem_frag, _, _| {
+  cpu!("powi8", |args, mem_frag, _| {
     let a = i8::from_le_bytes(mem_frag.read(args[0], 1).try_into().unwrap());
     let b = i8::from_le_bytes(mem_frag.read(args[1], 1).try_into().unwrap());
     let out = if b < 0 { 0i8 } else { i8::pow(a, b as u32) };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("powi16", |args, mem_frag, _, _| {
+  cpu!("powi16", |args, mem_frag, _| {
     let a = LittleEndian::read_i16(mem_frag.read(args[0], 2));
     let b = LittleEndian::read_i16(mem_frag.read(args[1], 2));
     let out = if b < 0 { 0i16 } else { i16::pow(a, b as u32) };
     mem_frag.write(args[2], 2, &out.to_le_bytes());
     None
   });
-  cpu!("powi32", |args, mem_frag, _, _| {
+  cpu!("powi32", |args, mem_frag, _| {
     let a = LittleEndian::read_i32(mem_frag.read(args[0], 4));
     let b = LittleEndian::read_i32(mem_frag.read(args[1], 4));
     let out = if b < 0 { 0i32 } else { i32::pow(a, b as u32) };
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("powi64", |args, mem_frag, _, _| {
+  cpu!("powi64", |args, mem_frag, _| {
     // The inputs may be from local memory or global
     let a = LittleEndian::read_i64(mem_frag.read(args[0], 8));
     let b = LittleEndian::read_i64(mem_frag.read(args[1], 8));
@@ -762,14 +761,14 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
   });
-  cpu!("powf32", |args, mem_frag, _, _| {
+  cpu!("powf32", |args, mem_frag, _| {
     let a = LittleEndian::read_f32(mem_frag.read(args[0], 4));
     let b = LittleEndian::read_f32(mem_frag.read(args[1], 4));
     let out = f32::powf(a, b);
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("powf64", |args, mem_frag, _, _| {
+  cpu!("powf64", |args, mem_frag, _| {
     let a = LittleEndian::read_f64(mem_frag.read(args[0], 8));
     let b = LittleEndian::read_f64(mem_frag.read(args[1], 8));
     let out = f64::powf(a, b);
@@ -777,13 +776,13 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
 
-  cpu!("sqrtf32", |args, mem_frag, _, _| {
+  cpu!("sqrtf32", |args, mem_frag, _| {
     let a = LittleEndian::read_f32(mem_frag.read(args[0], 4));
     let out = f32::sqrt(a);
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("sqrtf64", |args, mem_frag, _, _| {
+  cpu!("sqrtf64", |args, mem_frag, _| {
     let a = LittleEndian::read_f64(mem_frag.read(args[0], 8));
     let out = f64::sqrt(a);
     mem_frag.write(args[2], 8, &out.to_le_bytes());
@@ -791,35 +790,35 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
 
   // Boolean and bitwise opcodes
-  cpu!("andi8", |args, mem_frag, _, _| {
+  cpu!("andi8", |args, mem_frag, _| {
     let a = i8::from_le_bytes(mem_frag.read(args[0], 1).try_into().unwrap());
     let b = i8::from_le_bytes(mem_frag.read(args[1], 1).try_into().unwrap());
     let out = a & b;
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("andi16", |args, mem_frag, _, _| {
+  cpu!("andi16", |args, mem_frag, _| {
     let a = LittleEndian::read_i16(mem_frag.read(args[0], 2));
     let b = LittleEndian::read_i16(mem_frag.read(args[1], 2));
     let out = a & b;
     mem_frag.write(args[2], 2, &out.to_le_bytes());
     None
   });
-  cpu!("andi32", |args, mem_frag, _, _| {
+  cpu!("andi32", |args, mem_frag, _| {
     let a = LittleEndian::read_i32(mem_frag.read(args[0], 4));
     let b = LittleEndian::read_i32(mem_frag.read(args[1], 4));
     let out = a & b;
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("andi64", |args, mem_frag, _, _| {
+  cpu!("andi64", |args, mem_frag, _| {
     let a = LittleEndian::read_i64(mem_frag.read(args[0], 8));
     let b = LittleEndian::read_i64(mem_frag.read(args[1], 8));
     let out = a & b;
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
   });
-  cpu!("andbool", |args, mem_frag, _, _| {
+  cpu!("andbool", |args, mem_frag, _| {
     let a = mem_frag.read(args[0], 1)[0];
     let b = mem_frag.read(args[1], 1)[0];
     let a_bool = if a == 1u8 { true } else { false };
@@ -829,35 +828,35 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
 
-  cpu!("ori8", |args, mem_frag, _, _| {
+  cpu!("ori8", |args, mem_frag, _| {
     let a = i8::from_le_bytes(mem_frag.read(args[0], 1).try_into().unwrap());
     let b = i8::from_le_bytes(mem_frag.read(args[1], 1).try_into().unwrap());
     let out = a | b;
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("ori16", |args, mem_frag, _, _| {
+  cpu!("ori16", |args, mem_frag, _| {
     let a = LittleEndian::read_i16(mem_frag.read(args[0], 2));
     let b = LittleEndian::read_i16(mem_frag.read(args[1], 2));
     let out = a | b;
     mem_frag.write(args[2], 2, &out.to_le_bytes());
     None
   });
-  cpu!("ori32", |args, mem_frag, _, _| {
+  cpu!("ori32", |args, mem_frag, _| {
     let a = LittleEndian::read_i32(mem_frag.read(args[0], 4));
     let b = LittleEndian::read_i32(mem_frag.read(args[1], 4));
     let out = a | b;
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("ori64", |args, mem_frag, _, _| {
+  cpu!("ori64", |args, mem_frag, _| {
     let a = LittleEndian::read_i64(mem_frag.read(args[0], 8));
     let b = LittleEndian::read_i64(mem_frag.read(args[1], 8));
     let out = a | b;
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
   });
-  cpu!("orbool", |args, mem_frag, _, _| {
+  cpu!("orbool", |args, mem_frag, _| {
     let a = mem_frag.read(args[0], 1)[0];
     let b = mem_frag.read(args[1], 1)[0];
     let a_bool = if a == 1u8 { true } else { false };
@@ -867,35 +866,35 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
 
-  cpu!("xori8", |args, mem_frag, _, _| {
+  cpu!("xori8", |args, mem_frag, _| {
     let a = i8::from_le_bytes(mem_frag.read(args[0], 1).try_into().unwrap());
     let b = i8::from_le_bytes(mem_frag.read(args[1], 1).try_into().unwrap());
     let out = a ^ b;
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("xori16", |args, mem_frag, _, _| {
+  cpu!("xori16", |args, mem_frag, _| {
     let a = LittleEndian::read_i16(mem_frag.read(args[0], 2));
     let b = LittleEndian::read_i16(mem_frag.read(args[1], 2));
     let out = a ^ b;
     mem_frag.write(args[2], 2, &out.to_le_bytes());
     None
   });
-  cpu!("xori32", |args, mem_frag, _, _| {
+  cpu!("xori32", |args, mem_frag, _| {
     let a = LittleEndian::read_i32(mem_frag.read(args[0], 4));
     let b = LittleEndian::read_i32(mem_frag.read(args[1], 4));
     let out = a ^ b;
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("xori64", |args, mem_frag, _, _| {
+  cpu!("xori64", |args, mem_frag, _| {
     let a = LittleEndian::read_i64(mem_frag.read(args[0], 8));
     let b = LittleEndian::read_i64(mem_frag.read(args[1], 8));
     let out = a ^ b;
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
   });
-  cpu!("xorbool", |args, mem_frag, _, _| {
+  cpu!("xorbool", |args, mem_frag, _| {
     let a = mem_frag.read(args[0], 1)[0];
     let b = mem_frag.read(args[1], 1)[0];
     let a_bool = if a == 1u8 { true } else { false };
@@ -905,66 +904,66 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
 
-  cpu!("noti8", |args, mem_frag, _, _| {
+  cpu!("noti8", |args, mem_frag, _| {
     let a = i8::from_le_bytes(mem_frag.read(args[0], 1).try_into().unwrap());
     let out = !a;
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("noti16", |args, mem_frag, _, _| {
+  cpu!("noti16", |args, mem_frag, _| {
     let a = LittleEndian::read_i16(mem_frag.read(args[0], 2));
     let out = !a;
     mem_frag.write(args[2], 2, &out.to_le_bytes());
     None
   });
-  cpu!("noti32", |args, mem_frag, _, _| {
+  cpu!("noti32", |args, mem_frag, _| {
     let a = LittleEndian::read_i32(mem_frag.read(args[0], 4));
     let out = !a;
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("noti64", |args, mem_frag, _, _| {
+  cpu!("noti64", |args, mem_frag, _| {
     let a = LittleEndian::read_i64(mem_frag.read(args[0], 8));
     let out = !a;
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
   });
-  cpu!("notbool", |args, mem_frag, _, _| {
+  cpu!("notbool", |args, mem_frag, _| {
     let a = mem_frag.read(args[0], 1)[0];
     let out = if a == 0u8 { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
 
-  cpu!("nandi8", |args, mem_frag, _, _| {
+  cpu!("nandi8", |args, mem_frag, _| {
     let a = i8::from_le_bytes(mem_frag.read(args[0], 1).try_into().unwrap());
     let b = i8::from_le_bytes(mem_frag.read(args[1], 1).try_into().unwrap());
     let out = !(a & b);
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("nandi16", |args, mem_frag, _, _| {
+  cpu!("nandi16", |args, mem_frag, _| {
     let a = LittleEndian::read_i16(mem_frag.read(args[0], 2));
     let b = LittleEndian::read_i16(mem_frag.read(args[1], 2));
     let out = !(a & b);
     mem_frag.write(args[2], 2, &out.to_le_bytes());
     None
   });
-  cpu!("nandi32", |args, mem_frag, _, _| {
+  cpu!("nandi32", |args, mem_frag, _| {
     let a = LittleEndian::read_i32(mem_frag.read(args[0], 4));
     let b = LittleEndian::read_i32(mem_frag.read(args[1], 4));
     let out = !(a & b);
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("nandi64", |args, mem_frag, _, _| {
+  cpu!("nandi64", |args, mem_frag, _| {
     let a = LittleEndian::read_i64(mem_frag.read(args[0], 8));
     let b = LittleEndian::read_i64(mem_frag.read(args[1], 8));
     let out = !(a & b);
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
   });
-  cpu!("nandboo", |args, mem_frag, _, _| {
+  cpu!("nandboo", |args, mem_frag, _| {
     let a = mem_frag.read(args[0], 1)[0];
     let b = mem_frag.read(args[1], 1)[0];
     let a_bool = if a == 1u8 { true } else { false };
@@ -974,35 +973,35 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
 
-  cpu!("nori8", |args, mem_frag, _, _| {
+  cpu!("nori8", |args, mem_frag, _| {
     let a = i8::from_le_bytes(mem_frag.read(args[0], 1).try_into().unwrap());
     let b = i8::from_le_bytes(mem_frag.read(args[1], 1).try_into().unwrap());
     let out = !(a | b);
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("nori16", |args, mem_frag, _, _| {
+  cpu!("nori16", |args, mem_frag, _| {
     let a = LittleEndian::read_i16(mem_frag.read(args[0], 2));
     let b = LittleEndian::read_i16(mem_frag.read(args[1], 2));
     let out = !(a | b);
     mem_frag.write(args[2], 2, &out.to_le_bytes());
     None
   });
-  cpu!("nori32", |args, mem_frag, _, _| {
+  cpu!("nori32", |args, mem_frag, _| {
     let a = LittleEndian::read_i32(mem_frag.read(args[0], 4));
     let b = LittleEndian::read_i32(mem_frag.read(args[1], 4));
     let out = !(a | b);
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("nori64", |args, mem_frag, _, _| {
+  cpu!("nori64", |args, mem_frag, _| {
     let a = LittleEndian::read_i64(mem_frag.read(args[0], 8));
     let b = LittleEndian::read_i64(mem_frag.read(args[1], 8));
     let out = !(a | b);
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
   });
-  cpu!("norbool", |args, mem_frag, _, _| {
+  cpu!("norbool", |args, mem_frag, _| {
     let a = mem_frag.read(args[0], 1)[0];
     let b = mem_frag.read(args[1], 1)[0];
     let a_bool = if a == 1u8 { true } else { false };
@@ -1012,35 +1011,35 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
 
-  cpu!("xnori8", |args, mem_frag, _, _| {
+  cpu!("xnori8", |args, mem_frag, _| {
     let a = i8::from_le_bytes(mem_frag.read(args[0], 1).try_into().unwrap());
     let b = i8::from_le_bytes(mem_frag.read(args[1], 1).try_into().unwrap());
     let out = !(a ^ b);
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("xnori16", |args, mem_frag, _, _| {
+  cpu!("xnori16", |args, mem_frag, _| {
     let a = LittleEndian::read_i16(mem_frag.read(args[0], 2));
     let b = LittleEndian::read_i16(mem_frag.read(args[1], 2));
     let out = !(a ^ b);
     mem_frag.write(args[2], 2, &out.to_le_bytes());
     None
   });
-  cpu!("xnori32", |args, mem_frag, _, _| {
+  cpu!("xnori32", |args, mem_frag, _| {
     let a = LittleEndian::read_i32(mem_frag.read(args[0], 4));
     let b = LittleEndian::read_i32(mem_frag.read(args[1], 4));
     let out = !(a ^ b);
     mem_frag.write(args[2], 4, &out.to_le_bytes());
     None
   });
-  cpu!("xnori64", |args, mem_frag, _, _| {
+  cpu!("xnori64", |args, mem_frag, _| {
     let a = LittleEndian::read_i64(mem_frag.read(args[0], 8));
     let b = LittleEndian::read_i64(mem_frag.read(args[1], 8));
     let out = !(a ^ b);
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
   });
-  cpu!("xnorboo", |args, mem_frag, _, _| {
+  cpu!("xnorboo", |args, mem_frag, _| {
     let a = mem_frag.read(args[0], 1)[0];
     let b = mem_frag.read(args[1], 1)[0];
     let a_bool = if a == 1u8 { true } else { false };
@@ -1051,49 +1050,49 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
 
   // Equality and order opcodes
-  cpu!("eqi8", |args, mem_frag, _, _| {
+  cpu!("eqi8", |args, mem_frag, _| {
     let a = i8::from_le_bytes(mem_frag.read(args[0], 1).try_into().unwrap());
     let b = i8::from_le_bytes(mem_frag.read(args[1], 1).try_into().unwrap());
     let out = if a == b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("eqi16", |args, mem_frag, _, _| {
+  cpu!("eqi16", |args, mem_frag, _| {
     let a = LittleEndian::read_i16(mem_frag.read(args[0], 2));
     let b = LittleEndian::read_i16(mem_frag.read(args[1], 2));
     let out = if a == b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("eqi32", |args, mem_frag, _, _| {
+  cpu!("eqi32", |args, mem_frag, _| {
     let a = LittleEndian::read_i32(mem_frag.read(args[0], 4));
     let b = LittleEndian::read_i32(mem_frag.read(args[1], 4));
     let out = if a == b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("eqi64", |args, mem_frag, _, _| {
+  cpu!("eqi64", |args, mem_frag, _| {
     let a = LittleEndian::read_i64(mem_frag.read(args[0], 8));
     let b = LittleEndian::read_i64(mem_frag.read(args[1], 8));
     let out = if a == b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("eqf32", |args, mem_frag, _, _| {
+  cpu!("eqf32", |args, mem_frag, _| {
     let a = LittleEndian::read_f32(mem_frag.read(args[0], 4));
     let b = LittleEndian::read_f32(mem_frag.read(args[1], 4));
     let out = if a == b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("eqf64", |args, mem_frag, _, _| {
+  cpu!("eqf64", |args, mem_frag, _| {
     let a = LittleEndian::read_f64(mem_frag.read(args[0], 8));
     let b = LittleEndian::read_f64(mem_frag.read(args[1], 8));
     let out = if a == b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("eqstr", |args, mem_frag, _, _| {
+  cpu!("eqstr", |args, mem_frag, _| {
     let a_pascal_string = mem_frag.read(args[0], 0);
     let a_size = LittleEndian::read_u64(&a_pascal_string[0..8]) as usize;
     let a_str = str::from_utf8(&a_pascal_string[8..a_size + 8]).unwrap();
@@ -1104,7 +1103,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("eqbool", |args, mem_frag, _, _| {
+  cpu!("eqbool", |args, mem_frag, _| {
     let a = mem_frag.read(args[0], 1)[0];
     let b = mem_frag.read(args[1], 1)[0];
     let out = if a == b { 1u8 } else { 0u8 };
@@ -1112,49 +1111,49 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
 
-  cpu!("neqi8", |args, mem_frag, _, _| {
+  cpu!("neqi8", |args, mem_frag, _| {
     let a = i8::from_le_bytes(mem_frag.read(args[0], 1).try_into().unwrap());
     let b = i8::from_le_bytes(mem_frag.read(args[1], 1).try_into().unwrap());
     let out = if a != b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("neqi16", |args, mem_frag, _, _| {
+  cpu!("neqi16", |args, mem_frag, _| {
     let a = LittleEndian::read_i16(mem_frag.read(args[0], 2));
     let b = LittleEndian::read_i16(mem_frag.read(args[1], 2));
     let out = if a != b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("neqi32", |args, mem_frag, _, _| {
+  cpu!("neqi32", |args, mem_frag, _| {
     let a = LittleEndian::read_i32(mem_frag.read(args[0], 4));
     let b = LittleEndian::read_i32(mem_frag.read(args[1], 4));
     let out = if a != b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("neqi64", |args, mem_frag, _, _| {
+  cpu!("neqi64", |args, mem_frag, _| {
     let a = LittleEndian::read_i64(mem_frag.read(args[0], 8));
     let b = LittleEndian::read_i64(mem_frag.read(args[1], 8));
     let out = if a != b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("neqf32", |args, mem_frag, _, _| {
+  cpu!("neqf32", |args, mem_frag, _| {
     let a = LittleEndian::read_f32(mem_frag.read(args[0], 4));
     let b = LittleEndian::read_f32(mem_frag.read(args[1], 4));
     let out = if a != b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("neqf64", |args, mem_frag, _, _| {
+  cpu!("neqf64", |args, mem_frag, _| {
     let a = LittleEndian::read_f64(mem_frag.read(args[0], 8));
     let b = LittleEndian::read_f64(mem_frag.read(args[1], 8));
     let out = if a != b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("neqstr", |args, mem_frag, _, _| {
+  cpu!("neqstr", |args, mem_frag, _| {
     let a_pascal_string = mem_frag.read(args[0], 0);
     let a_size = LittleEndian::read_u64(&a_pascal_string[0..8]) as usize;
     let a_str = str::from_utf8(&a_pascal_string[8..a_size + 8]).unwrap();
@@ -1165,7 +1164,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("neqbool", |args, mem_frag, _, _| {
+  cpu!("neqbool", |args, mem_frag, _| {
     let a = mem_frag.read(args[0], 1)[0];
     let b = mem_frag.read(args[1], 1)[0];
     let out = if a != b { 1u8 } else { 0u8 };
@@ -1173,49 +1172,49 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
 
-  cpu!("lti8", |args, mem_frag, _, _| {
+  cpu!("lti8", |args, mem_frag, _| {
     let a = i8::from_le_bytes(mem_frag.read(args[0], 1).try_into().unwrap());
     let b = i8::from_le_bytes(mem_frag.read(args[1], 1).try_into().unwrap());
     let out = if a < b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("lti16", |args, mem_frag, _, _| {
+  cpu!("lti16", |args, mem_frag, _| {
     let a = LittleEndian::read_i16(mem_frag.read(args[0], 2));
     let b = LittleEndian::read_i16(mem_frag.read(args[1], 2));
     let out = if a < b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("lti32", |args, mem_frag, _, _| {
+  cpu!("lti32", |args, mem_frag, _| {
     let a = LittleEndian::read_i32(mem_frag.read(args[0], 4));
     let b = LittleEndian::read_i32(mem_frag.read(args[1], 4));
     let out = if a < b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("lti64", |args, mem_frag, _, _| {
+  cpu!("lti64", |args, mem_frag, _| {
     let a = LittleEndian::read_i64(mem_frag.read(args[0], 8));
     let b = LittleEndian::read_i64(mem_frag.read(args[1], 8));
     let out = if a < b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("ltf32", |args, mem_frag, _, _| {
+  cpu!("ltf32", |args, mem_frag, _| {
     let a = LittleEndian::read_f32(mem_frag.read(args[0], 4));
     let b = LittleEndian::read_f32(mem_frag.read(args[1], 4));
     let out = if a < b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("ltf64", |args, mem_frag, _, _| {
+  cpu!("ltf64", |args, mem_frag, _| {
     let a = LittleEndian::read_f64(mem_frag.read(args[0], 8));
     let b = LittleEndian::read_f64(mem_frag.read(args[1], 8));
     let out = if a < b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("ltstr", |args, mem_frag, _, _| {
+  cpu!("ltstr", |args, mem_frag, _| {
     let a_pascal_string = mem_frag.read(args[0], 0);
     let a_size = LittleEndian::read_u64(&a_pascal_string[0..8]) as usize;
     let a_str = str::from_utf8(&a_pascal_string[8..a_size + 8]).unwrap();
@@ -1227,49 +1226,49 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
 
-  cpu!("ltei8", |args, mem_frag, _, _| {
+  cpu!("ltei8", |args, mem_frag, _| {
     let a = i8::from_le_bytes(mem_frag.read(args[0], 1).try_into().unwrap());
     let b = i8::from_le_bytes(mem_frag.read(args[1], 1).try_into().unwrap());
     let out = if a <= b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("ltei16", |args, mem_frag, _, _| {
+  cpu!("ltei16", |args, mem_frag, _| {
     let a = LittleEndian::read_i16(mem_frag.read(args[0], 2));
     let b = LittleEndian::read_i16(mem_frag.read(args[1], 2));
     let out = if a <= b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("ltei32", |args, mem_frag, _, _| {
+  cpu!("ltei32", |args, mem_frag, _| {
     let a = LittleEndian::read_i32(mem_frag.read(args[0], 4));
     let b = LittleEndian::read_i32(mem_frag.read(args[1], 4));
     let out = if a <= b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("ltei64", |args, mem_frag, _, _| {
+  cpu!("ltei64", |args, mem_frag, _| {
     let a = LittleEndian::read_i64(mem_frag.read(args[0], 8));
     let b = LittleEndian::read_i64(mem_frag.read(args[1], 8));
     let out = if a <= b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("ltef32", |args, mem_frag, _, _| {
+  cpu!("ltef32", |args, mem_frag, _| {
     let a = LittleEndian::read_f32(mem_frag.read(args[0], 4));
     let b = LittleEndian::read_f32(mem_frag.read(args[1], 4));
     let out = if a <= b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("ltef64", |args, mem_frag, _, _| {
+  cpu!("ltef64", |args, mem_frag, _| {
     let a = LittleEndian::read_f64(mem_frag.read(args[0], 8));
     let b = LittleEndian::read_f64(mem_frag.read(args[1], 8));
     let out = if a <= b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("ltestr", |args, mem_frag, _, _| {
+  cpu!("ltestr", |args, mem_frag, _| {
     let a_pascal_string = mem_frag.read(args[0], 0);
     let a_size = LittleEndian::read_u64(&a_pascal_string[0..8]) as usize;
     let a_str = str::from_utf8(&a_pascal_string[8..a_size + 8]).unwrap();
@@ -1281,49 +1280,49 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
 
-  cpu!("gti8", |args, mem_frag, _, _| {
+  cpu!("gti8", |args, mem_frag, _| {
     let a = i8::from_le_bytes(mem_frag.read(args[0], 1).try_into().unwrap());
     let b = i8::from_le_bytes(mem_frag.read(args[1], 1).try_into().unwrap());
     let out = if a > b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("gti16", |args, mem_frag, _, _| {
+  cpu!("gti16", |args, mem_frag, _| {
     let a = LittleEndian::read_i16(mem_frag.read(args[0], 2));
     let b = LittleEndian::read_i16(mem_frag.read(args[1], 2));
     let out = if a > b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("gti32", |args, mem_frag, _, _| {
+  cpu!("gti32", |args, mem_frag, _| {
     let a = LittleEndian::read_i32(mem_frag.read(args[0], 4));
     let b = LittleEndian::read_i32(mem_frag.read(args[1], 4));
     let out = if a > b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("gti64", |args, mem_frag, _, _| {
+  cpu!("gti64", |args, mem_frag, _| {
     let a = LittleEndian::read_i64(mem_frag.read(args[0], 8));
     let b = LittleEndian::read_i64(mem_frag.read(args[1], 8));
     let out = if a > b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("gtf32", |args, mem_frag, _, _| {
+  cpu!("gtf32", |args, mem_frag, _| {
     let a = LittleEndian::read_f32(mem_frag.read(args[0], 4));
     let b = LittleEndian::read_f32(mem_frag.read(args[1], 4));
     let out = if a > b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("gtf64", |args, mem_frag, _, _| {
+  cpu!("gtf64", |args, mem_frag, _| {
     let a = LittleEndian::read_f64(mem_frag.read(args[0], 8));
     let b = LittleEndian::read_f64(mem_frag.read(args[1], 8));
     let out = if a > b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("gtstr", |args, mem_frag, _, _| {
+  cpu!("gtstr", |args, mem_frag, _| {
     let a_pascal_string = mem_frag.read(args[0], 0);
     let a_size = LittleEndian::read_u64(&a_pascal_string[0..8]) as usize;
     let a_str = str::from_utf8(&a_pascal_string[8..a_size + 8]).unwrap();
@@ -1335,49 +1334,49 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
 
-  cpu!("gtei8", |args, mem_frag, _, _| {
+  cpu!("gtei8", |args, mem_frag, _| {
     let a = i8::from_le_bytes(mem_frag.read(args[0], 1).try_into().unwrap());
     let b = i8::from_le_bytes(mem_frag.read(args[1], 1).try_into().unwrap());
     let out = if a >= b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("gtei16", |args, mem_frag, _, _| {
+  cpu!("gtei16", |args, mem_frag, _| {
     let a = LittleEndian::read_i16(mem_frag.read(args[0], 2));
     let b = LittleEndian::read_i16(mem_frag.read(args[1], 2));
     let out = if a >= b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("gtei32", |args, mem_frag, _, _| {
+  cpu!("gtei32", |args, mem_frag, _| {
     let a = LittleEndian::read_i32(mem_frag.read(args[0], 4));
     let b = LittleEndian::read_i32(mem_frag.read(args[1], 4));
     let out = if a >= b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("gtei64", |args, mem_frag, _, _| {
+  cpu!("gtei64", |args, mem_frag, _| {
     let a = LittleEndian::read_i64(mem_frag.read(args[0], 8));
     let b = LittleEndian::read_i64(mem_frag.read(args[1], 8));
     let out = if a >= b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("gtef32", |args, mem_frag, _, _| {
+  cpu!("gtef32", |args, mem_frag, _| {
     let a = LittleEndian::read_f32(mem_frag.read(args[0], 4));
     let b = LittleEndian::read_f32(mem_frag.read(args[1], 4));
     let out = if a >= b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("gtef64", |args, mem_frag, _, _| {
+  cpu!("gtef64", |args, mem_frag, _| {
     let a = LittleEndian::read_f64(mem_frag.read(args[0], 8));
     let b = LittleEndian::read_f64(mem_frag.read(args[1], 8));
     let out = if a >= b { 1u8 } else { 0u8 };
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("gtestr", |args, mem_frag, _, _| {
+  cpu!("gtestr", |args, mem_frag, _| {
     let a_pascal_string = mem_frag.read(args[0], 0);
     let a_size = LittleEndian::read_u64(&a_pascal_string[0..8]) as usize;
     let a_str = str::from_utf8(&a_pascal_string[8..a_size + 8]).unwrap();
@@ -1390,7 +1389,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
 
   // String opcodes
-  cpu!("catstr", |args, mem_frag, _, _| {
+  cpu!("catstr", |args, mem_frag, _| {
     let a = mem_frag.read(args[0], 0);
     let b = mem_frag.read(args[1], 0);
     let a_size = LittleEndian::read_u64(&a[0..8]) as usize;
@@ -1404,7 +1403,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   // TODO: `split` after Arrays work in the runtime
-  cpu!("repstr", |args, mem_frag, _, _| {
+  cpu!("repstr", |args, mem_frag, _| {
     let a_pascal_string = mem_frag.read(args[0], 0);
     let a_size = LittleEndian::read_u64(&a_pascal_string[0..8]) as usize;
     let a_str = str::from_utf8(&a_pascal_string[8..a_size + 8]).unwrap();
@@ -1415,7 +1414,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     mem_frag.write(args[2], 0, &out);
     None
   });
-  cpu!("matches", |args, mem_frag, _, _| {
+  cpu!("matches", |args, mem_frag, _| {
     let a_pascal_string = mem_frag.read(args[0], 0);
     let a_size = LittleEndian::read_u64(&a_pascal_string[0..8]) as usize;
     let a_str = str::from_utf8(&a_pascal_string[8..a_size + 8]).unwrap();
@@ -1426,7 +1425,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     mem_frag.write(args[2], 1, &out.to_le_bytes());
     None
   });
-  cpu!("indstr", |args, mem_frag, _, _| {
+  cpu!("indstr", |args, mem_frag, _| {
     let a_pascal_string = mem_frag.read(args[0], 0);
     let a_size = LittleEndian::read_u64(&a_pascal_string[0..8]) as usize;
     let a_str = str::from_utf8(&a_pascal_string[8..a_size + 8]).unwrap();
@@ -1438,7 +1437,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
   });
-  cpu!("lenstr", |args, mem_frag, _, _| {
+  cpu!("lenstr", |args, mem_frag, _| {
     let a_pascal_string = mem_frag.read(args[0], 0);
     let a_size = LittleEndian::read_u64(&a_pascal_string[0..8]) as usize;
     let a_str = str::from_utf8(&a_pascal_string[8..a_size + 8]).unwrap();
@@ -1446,7 +1445,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     mem_frag.write(args[2], 8, &out.to_le_bytes());
     None
   });
-  cpu!("trim", |args, mem_frag, _, _| {
+  cpu!("trim", |args, mem_frag, _| {
     let a_pascal_string = mem_frag.read(args[0], 0);
     let a_size = LittleEndian::read_u64(&a_pascal_string[0..8]) as usize;
     let a_str = str::from_utf8(&a_pascal_string[8..a_size + 8]).unwrap();
@@ -1463,7 +1462,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
 
   // Ternary opcodes
   // TODO: pair and condarr after arrays are implemented
-  unpred_cpu!("condfn", |args, mem_frag, _, frag| {
+  unpred_cpu!("condfn", |args, mem_frag, frag| {
     let cond = LittleEndian::read_i64(mem_frag.read(args[0], 8));
     let subfn = args[1];
     if cond == 1 {
@@ -1473,7 +1472,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
 
   // Std opcodes
-  unpred_cpu!("execop", |args, mem_frag, _, _| {
+  unpred_cpu!("execop", |args, mem_frag, _| {
     let pascal_string = mem_frag.read(args[0], 0);
     let size = LittleEndian::read_u64(&pascal_string[0..8]) as usize;
     let cmd = str::from_utf8(&pascal_string[8..size + 8]).unwrap();
@@ -1482,29 +1481,29 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
 
   // "Special" opcodes
-  io!("waitop", |args, mem_frag, _, _| {
+  io!("waitop", |args, mem_frag, _| {
     let payload = mem_frag.read(args[0], 8);
     let ms = LittleEndian::read_i64(&payload[0..8]) as u64;
     return Box::pin(delay_for(Duration::from_millis(ms)));
   });
-  cpu!("exitop", |_, mem_frag, _, _| {
-    std::process::exit(LittleEndian::read_i32(mem_frag.read(mem_frag.payload_addr.unwrap(), 4)));
+  cpu!("exitop", |args, mem_frag, _| {
+    std::process::exit(LittleEndian::read_i32(mem_frag.read(args[0], 4)));
   });
-  cpu!("stdoutp", |_, mem_frag, _, _| {
-    let pascal_string = mem_frag.read(mem_frag.payload_addr.unwrap(), 0);
+  cpu!("stdoutp", |args, mem_frag, _| {
+    let pascal_string = mem_frag.read(args[0], 0);
     let size = LittleEndian::read_u64(&pascal_string[0..8]) as usize;
     let out_str = str::from_utf8(&pascal_string[8..size + 8]).unwrap();
     print!("{}", out_str);
     None
   });
   // TODO: Remove this opcode in the future
-  cpu!("set i64", |args, mem_frag, _, _| {
+  cpu!("set i64", |args, mem_frag, _| {
     let data = mem_frag.read(args[1], 8).to_vec();
     mem_frag.write(args[1], 8, &data);
     None
   });
-  cpu!("emit to:", |args, mem_frag, event_declrs, _| {
-    let pls = event_declrs.get(&args[0]).unwrap().clone() as u8;
+  cpu!("emit to:", |args, mem_frag, _| {
+    let pls = Program::global().event_declrs.get(&args[0]).unwrap().clone() as u8;
     let payload = mem_frag.read(args[1], pls).to_vec();
     let event = if args[1] < 0 {
       // payload addr is in global memory if negative

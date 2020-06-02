@@ -4,7 +4,6 @@ use std::io::Read;
 use byteorder::{LittleEndian, ReadBytesExt};
 use tokio::runtime;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
-use uuid::Uuid;
 
 use crate::vm::event::{BuiltInEvents, EventEmit, HandlerFragment};
 use crate::vm::instruction::InstructionScheduler;
@@ -20,7 +19,7 @@ pub struct VM {
   /// chan for the done fragments queue of all handler calls
   /// includes uuid for handler call, fragment done and handler memory
   /// used by io and cpu fragments
-  frag_rx: UnboundedReceiver<(Uuid, HandlerFragment, MemoryFragment)>,
+  frag_rx: UnboundedReceiver<(HandlerFragment, MemoryFragment)>,
   /// memory manager of the program
   mem_man: VMMemory,
   /// Instruction scheduler for fragments that manages the cpu + io threadpools
@@ -32,7 +31,7 @@ impl VM {
     let (event_tx, event_rx) = unbounded_channel();
     let (frag_tx, frag_rx) = unbounded_channel();
     return VM {
-      ins_sched: InstructionScheduler::new(pgm, event_tx.clone(), frag_tx),
+      ins_sched: InstructionScheduler::new(event_tx.clone(), frag_tx),
       mem_man: VMMemory::new(&pgm.gmem),
       pgm,
       event_tx,
@@ -45,28 +44,26 @@ impl VM {
     self.event_tx.send(event);
   }
 
-  async fn sched_fragment(self: &mut VM, frag_tup: (Uuid, HandlerFragment, MemoryFragment)) {
-    let (call_uuid, mut frag, mut mem_frag) = frag_tup;
-    self.mem_man.update_handler(call_uuid, &mem_frag);
+  async fn sched_fragment(self: &mut VM, frag_tup: (HandlerFragment, MemoryFragment)) {
+    let (frag, mem_frag) = frag_tup;
+    self.mem_man.update_handler(&mem_frag);
     let next_frag = frag.get_next_fragment();
     if next_frag.is_none() {
-      self.mem_man.dealloc_handler(call_uuid);
+      self.mem_man.dealloc_handler(&mem_frag);
     } else {
-      self.ins_sched.sched_frag(next_frag.unwrap(), call_uuid, mem_frag).await;
+      self.ins_sched.sched_frag(next_frag.unwrap(), mem_frag).await;
     }
   }
 
   async fn sched_event(self: &mut VM, event: EventEmit) {
-    let payload = event.payload.unwrap_or(Vec::new());
     // schedule 1st fragment of each handler of this event
     let handlers = self.pgm.event_handlers.get(&event.id).unwrap();
     for (i, handler) in handlers.iter().enumerate() {
-      // uuid for this specific handler call
-      let call_uuid = Uuid::new_v4();
-      let mem_frag = self.mem_man.alloc_handler(handler, call_uuid, &payload, event.gmem_addr);
       // first fragment of this handler
       let frag = HandlerFragment::new(self.pgm, event.id, i);
-      self.ins_sched.sched_frag(frag, call_uuid, mem_frag).await;
+      // memory frag representing the memory of this handler's call
+      let mem_frag = self.mem_man.alloc_handler(handler, &event);
+      self.ins_sched.sched_frag(frag, mem_frag).await;
     }
   }
 
