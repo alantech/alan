@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::str;
 
 use crate::vm::event::{BuiltInEvents, EventHandler};
 use crate::vm::instruction::Instruction;
@@ -93,9 +92,9 @@ impl Program {
     };
     program.load_builtin();
     // parse agc version
-    let agcv = parser.next_64_bits();
-    let bytes = agcv.to_le_bytes();
-    let repr = str::from_utf8(&bytes).unwrap();
+    let _agcv = parser.next_64_bits();
+    // let bytes = agcv.to_le_bytes();
+    // let repr = std::str::from_utf8(&bytes).unwrap();
     // println!("using alan graph code version {}", repr);
     // parse size of global memory constants and string literals in bytes
     let gms = parser.next_64_bits();

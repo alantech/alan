@@ -2,7 +2,6 @@ use futures::future::join_all;
 use rayon::{ThreadPool, ThreadPoolBuilder};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::task;
-use uuid::Uuid;
 
 use crate::vm::event::{EventEmit, HandlerFragment};
 use crate::vm::opcode::{ByteOpcode, EmptyFuture};
@@ -20,12 +19,12 @@ pub struct Instruction {
 pub struct InstructionScheduler {
   pgm: &'static Program,
   event_tx: UnboundedSender<EventEmit>,
-  frag_tx: UnboundedSender<(Uuid, HandlerFragment, MemoryFragment)>,
+  frag_tx: UnboundedSender<(HandlerFragment, MemoryFragment)>,
   cpu_pool: ThreadPool,
 }
 
 impl InstructionScheduler {
-  pub fn new(pgm: &'static Program, event_tx: UnboundedSender<EventEmit>, frag_tx: UnboundedSender<(Uuid, HandlerFragment, MemoryFragment)>) -> InstructionScheduler {
+  pub fn new(pgm: &'static Program, event_tx: UnboundedSender<EventEmit>, frag_tx: UnboundedSender<(HandlerFragment, MemoryFragment)>) -> InstructionScheduler {
     let cpu_threads = num_cpus::get() - 1;
     let cpu_pool = ThreadPoolBuilder::new().num_threads(cpu_threads).build().unwrap();
     return InstructionScheduler {
@@ -36,7 +35,7 @@ impl InstructionScheduler {
     }
   }
 
-  pub async fn sched_frag(self: &mut InstructionScheduler, mut frag: HandlerFragment, call_uuid: Uuid, mut mem_frag: MemoryFragment) {
+  pub async fn sched_frag(self: &mut InstructionScheduler, mut frag: HandlerFragment, mut mem_frag: MemoryFragment) {
     let instructions = frag.get_instruction_fragment();
     let pgm = self.pgm;
     // io-bound fragment
@@ -53,7 +52,7 @@ impl InstructionScheduler {
         join_all(futures).await;
         // Unbounded channels, async or not, are non-blocking. `Send` succeeds automatically.
         // https://github.com/tokio-rs/tokio/issues/2447
-        frag_tx.send((call_uuid, frag, mem_frag));
+        frag_tx.send((frag, mem_frag));
       });
     } else {
       // cpu-bound fragment of predictable or unpredictable execution
@@ -69,7 +68,7 @@ impl InstructionScheduler {
             }
           });
           // register fragment from handler call as done
-          frag_tx.send((call_uuid, frag, mem_frag));
+          frag_tx.send((frag, mem_frag));
         });
       })
     }
