@@ -65,8 +65,14 @@ impl MemoryFragment {
   }
 
   pub fn read(self: &MemoryFragment, addr: i64, size: u8) -> &[u8] {
-    if addr < 0 {
-      let a = (0 - addr - 1) as usize;
+    let mut actual_addr: i64;
+    if addr == 0 && self.payload_addr.is_some() {
+      actual_addr = self.payload_addr.unwrap();
+    } else {
+      actual_addr = addr;
+    }
+    if actual_addr < 0 {
+      let a = (0 - actual_addr - 1) as usize;
       return match size {
         0 => &self.gmem[a..],
         1 => &self.gmem[a..a + 1],
@@ -76,7 +82,7 @@ impl MemoryFragment {
         _ => panic!("Impossible size selection on global memory!"),
       }
     }
-    let a = addr as usize;
+    let a = actual_addr as usize;
     return match size {
       0 => {
         let result = self.var_mem.get(&(a as i64));
