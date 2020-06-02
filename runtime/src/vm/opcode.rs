@@ -1505,14 +1505,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("emit to:", |args, mem_frag, _| {
     let pls = Program::global().event_declrs.get(&args[0]).unwrap().clone() as u8;
     let payload = mem_frag.read(args[1], pls).to_vec();
-    let event = if args[1] < 0 {
-      // payload addr is in global memory if negative
-      EventEmit { id: args[0], payload: None, gmem_addr: Some(args[1]) }
-    } else if payload.len() == 0 {
-      // no payload or void event
-      EventEmit { id: args[0], payload: None, gmem_addr: None }
-    } else {
-      EventEmit { id: args[0], payload: Some(payload), gmem_addr: None }
+    let event = EventEmit {
+      id: args[0],
+      payload: if payload.len() == 0 { None } else { Some(payload) }
     };
     Some(event)
   });

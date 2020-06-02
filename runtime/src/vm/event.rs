@@ -26,9 +26,6 @@ pub struct EventEmit {
   pub(crate) id: i64,
   /// payload that event loop will allocate in memory for handlers to consume
   pub(crate) payload: Option<Vec<u8>>,
-  // TODO roll into proper memory management
-  /// payload is address global memory address
-  pub(crate) gmem_addr: Option<i64>,
 }
 
 /// Describes the handler for an event

@@ -100,7 +100,7 @@ pub fn exec(fp: &str) {
     let program = Program::load(bytecode);
     PROGRAM.set(program);
     let mut vm = VM::new(Program::global());
-    let start = EventEmit { id: i64::from(BuiltInEvents::START), payload: None, gmem_addr: None };
+    let start = EventEmit { id: i64::from(BuiltInEvents::START), payload: None };
     vm.add(start);
     vm.run().await;
   })
