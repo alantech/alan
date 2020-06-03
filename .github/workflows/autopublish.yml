@@ -1,0 +1,24 @@
+name: autopublish
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  autopublish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Autopublish Docs
+        uses: peter-evans/repository-dispatch@v1
+        with:
+          token: ${{ secrets.AUTOPUBLISH }}
+          repository: alantech/docs
+          event-type: autopublish
+          client-payload: '{}'
+      - name: Autopublish Homepage
+        uses: peter-evans/repository-dispatch@v1
+        with:
+          token: ${{ secrets.AUTOPUBLISH }}
+          repository: alantech/homepage
+          event-type: autopublish
+          client-payload: '{}'
