@@ -1,6 +1,6 @@
 const EventEmitter = require('events')
-const util = require('util');
-const exec = util.promisify(require('child_process').exec);
+const util = require('util')
+const exec = util.promisify ? util.promisify(require('child_process').exec) : () => {} // browsers
 
 const e = new EventEmitter()
 
