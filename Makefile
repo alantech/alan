@@ -8,7 +8,7 @@ interpreter/build/libs/interpreter-1.0.jar: interpreter
 	cd interpreter && ./gradlew build
 
 interpreter:
-	git clone git@github.com:alantech/interpreter
+	git clone --depth 1 git@github.com:alantech/interpreter
 
 .PHONY: runtime-unit
 runtime-unit:
@@ -30,7 +30,7 @@ bdd: shellspec node_modules
 	./bdd/bdd.sh $(testfile)
 
 shellspec:
-	git clone git@github.com:shellspec/shellspec
+	git clone --depth 1 git@github.com:shellspec/shellspec
 
 node_modules: build
 	yarn add ./compiler
