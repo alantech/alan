@@ -22,6 +22,7 @@ Describe "Closure Functions"
         emit exit 0
       }
     "
+    tempToAmm
     tempToJs
     # TODO: Switch to 'sourceToAll' once ammtoagc works
   }
