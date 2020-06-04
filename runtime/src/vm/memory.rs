@@ -27,13 +27,14 @@ impl HandlerMemory {
     curr_hand_mem: &HandlerMemory,
   ) -> Option<HandlerMemory> {
     let pls = Program::global().event_pls.get(&event_id).unwrap().clone();
-    let mut mem = vec![];
-    let mut fractal_mem = HashMap::new();
-    let mut payload_addr = Some(0);
     if pls == 0 && curr_addr == 0 {
       // no payload, void event
       return None;
-    } else if curr_addr < 0 {
+    }
+    let mut mem = vec![];
+    let mut fractal_mem = HashMap::new();
+    let mut payload_addr = Some(0);
+    if curr_addr < 0 {
       // payload in gmem
       payload_addr = Some(curr_addr);
     } else if pls < 0 {
