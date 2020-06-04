@@ -1,4 +1,5 @@
 use crate::vm::instruction::Instruction;
+use crate::vm::memory::HandlerMemory;
 use crate::vm::program::Program;
 
 #[derive(PartialEq, Eq, Hash)]
@@ -24,16 +25,17 @@ impl From<BuiltInEvents> for i64 {
 pub struct EventEmit {
   /// event id
   pub(crate) id: i64,
-  /// payload that event loop will allocate in memory for handlers to consume
-  pub(crate) payload: Option<Vec<u8>>,
+  /// handler memory with payload allocated that handlers will consume
+  pub(crate) payload: Option<HandlerMemory>,
 }
 
 /// Describes the handler for an event
 pub struct EventHandler {
   /// event id
   pub(crate) event_id: i64,
-  /// number of bytes each handler call requires in memory, or -1 if it's a variable length type
-  pub(crate) mem_req: i64,
+  /// payload size which is the number of bytes if fixed length type, -1 if it's a variable length type,
+  /// -2 of it's an array or fractal data type
+  pub(crate) payload_size: i64,
   /// the indices of fragments that have unpredictable execution and could be moved around
   movable_capstones: Vec<usize>,
   /// topological order of the instructions split into fragments
@@ -44,12 +46,12 @@ pub struct EventHandler {
 }
 
 impl EventHandler {
-  pub fn new(mem_req: i64, event_id: i64) -> EventHandler {
+  pub fn new(payload_size: i64, event_id: i64) -> EventHandler {
     return EventHandler {
       fragments: Vec::new(),
       movable_capstones: Vec::new(),
       ins_count: 0,
-      mem_req,
+      payload_size,
       event_id,
     };
   }
@@ -193,7 +195,7 @@ impl HandlerFragment {
 
 #[cfg(test)]
 mod tests {
-  use crate::vm::opcode::{OPCODES, opcode_id};
+  use crate::vm::opcode::{opcode_id, OPCODES};
 
   use super::*;
 

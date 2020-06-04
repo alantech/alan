@@ -51,8 +51,12 @@ impl VM {
     for (i, handler) in handlers.iter().enumerate() {
       // first fragment of this handler
       let frag = HandlerFragment::new(self.pgm, event.id, i);
-      // memory frag representing the memory of this handler's call
-      let hand_mem = HandlerMemory::alloc(&self.pgm.gmem, &handler, &event);
+      // memory frag representing the memory for each handler call
+      let hand_mem = if event.payload.is_none() {
+        HandlerMemory::new()
+      } else {
+        event.payload.clone().unwrap()
+      };
       self.ins_sched.sched_frag(frag, hand_mem).await;
     }
   }

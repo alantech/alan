@@ -12,7 +12,6 @@ use tokio::time::delay_for;
 
 use crate::vm::event::{EventEmit, HandlerFragment};
 use crate::vm::memory::HandlerMemory;
-use crate::vm::program::Program;
 
 // type aliases
 /// Futures implement an Unpin marker that guarantees to the compiler that the future will not move while it is running
@@ -1503,11 +1502,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("emit to:", |args, hand_mem, _| {
-    let pls = Program::global().event_declrs.get(&args[0]).unwrap().clone() as u8;
-    let payload = hand_mem.read(args[1], pls).to_vec();
     let event = EventEmit {
       id: args[0],
-      payload: if payload.len() == 0 { None } else { Some(payload) }
+      payload: HandlerMemory::alloc(&args[0], &args[1], &hand_mem),
     };
     Some(event)
   });
