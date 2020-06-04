@@ -48,7 +48,7 @@ impl VM {
   async fn sched_event(self: &mut VM, event: EventEmit) {
     // schedule 1st fragment of each handler of this event
     let handlers = self.pgm.event_handlers.get(&event.id).unwrap();
-    for (i, handler) in handlers.iter().enumerate() {
+    for (i, _) in handlers.iter().enumerate() {
       // first fragment of this handler
       let frag = HandlerFragment::new(self.pgm, event.id, i);
       // memory frag representing the memory for each handler call
