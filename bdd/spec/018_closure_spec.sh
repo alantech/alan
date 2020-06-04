@@ -2,7 +2,7 @@ Include build_tools.sh
 
 Describe "Closure Functions"
   before() {
-    sourceToAll "
+    sourceToTemp "
       from @std/app import start, print, exit
 
       fn closure(): function {
@@ -22,6 +22,8 @@ Describe "Closure Functions"
         emit exit 0
       }
     "
+    tempToJs
+    # TODO: Switch to 'sourceToAll' once ammtoagc works
   }
   BeforeAll before
 
