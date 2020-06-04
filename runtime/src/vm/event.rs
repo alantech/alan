@@ -33,9 +33,8 @@ pub struct EventEmit {
 pub struct EventHandler {
   /// event id
   pub(crate) event_id: i64,
-  /// payload size as the number of bytes if fixed length type, or -1 if it's a variable length type
-  /// or 0 if the event is void or payload is in global memory
-  pub(crate) payload_size: i64,
+  /// number of bytes each handler call requires in memory, or -1 if it's a variable length type
+  pub(crate)  mem_req: i64,
   /// the indices of fragments that have unpredictable execution and could be moved around
   movable_capstones: Vec<usize>,
   /// topological order of the instructions split into fragments
@@ -46,12 +45,12 @@ pub struct EventHandler {
 }
 
 impl EventHandler {
-  pub fn new(payload_size: i64, event_id: i64) -> EventHandler {
+  pub fn new(mem_req: i64, event_id: i64) -> EventHandler {
     return EventHandler {
       fragments: Vec::new(),
       movable_capstones: Vec::new(),
       ins_count: 0,
-      payload_size,
+      mem_req,
       event_id,
     };
   }

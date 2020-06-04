@@ -48,15 +48,18 @@ impl VM {
   async fn sched_event(self: &mut VM, event: EventEmit) {
     // schedule 1st fragment of each handler of this event
     let handlers = self.pgm.event_handlers.get(&event.id).unwrap();
-    for (i, _) in handlers.iter().enumerate() {
+    for (i, hand) in handlers.iter().enumerate() {
       // first fragment of this handler
       let frag = HandlerFragment::new(self.pgm, event.id, i);
       // memory frag representing the memory for each handler call
       let hand_mem = if event.payload.is_none() {
-        HandlerMemory::new()
+        HandlerMemory::new(hand.mem_req)
       } else {
-        event.payload.clone().unwrap()
+        let mut res = event.payload.clone().unwrap();
+        res.resize_mem_req(hand.mem_req);
+        res
       };
+      // TODO join on all these futures
       self.ins_sched.sched_frag(frag, hand_mem).await;
     }
   }

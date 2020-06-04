@@ -21,7 +21,7 @@ pub struct HandlerMemory {
 impl HandlerMemory {
   /// Allocates a payload for the given event id from the address within the HandlerMemory
   /// provided to a new HandlerMemory. Called by "emit to" opcode.
-  pub fn alloc(
+  pub fn alloc_payload(
     event_id: i64,
     curr_addr: i64,
     curr_hand_mem: &HandlerMemory,
@@ -31,6 +31,7 @@ impl HandlerMemory {
       // no payload, void event
       return None;
     }
+    // don't currently have the req handler memory so this will be resized later
     let mut mem = vec![];
     let mut fractal_mem = HashMap::new();
     let mut payload_addr = Some(0);
@@ -54,14 +55,18 @@ impl HandlerMemory {
     });
   }
 
-  pub fn new() -> HandlerMemory {
+  pub fn new(mem_req: i64) -> HandlerMemory {
     return HandlerMemory {
       payload_addr: None,
       gmem: &Program::global().gmem,
-      mem: Vec::new(),
+      mem: vec![0; mem_req as usize],
       fractal_mem: HashMap::new(),
       registers_ish: HashMap::new(),
     };
+  }
+
+  pub fn resize_mem_req(self: &mut HandlerMemory, mem_req: i64) {
+    self.mem.resize(mem_req as usize, 0);
   }
 
   pub fn read(self: &HandlerMemory, addr: i64, size: u8) -> &[u8] {
@@ -72,17 +77,18 @@ impl HandlerMemory {
     };
     if actual_addr < 0 {
       let a = (0 - actual_addr - 1) as usize;
-      return match size {
+      let result = match size {
         0 => &self.gmem[a..],
         1 => &self.gmem[a..a + 1],
         2 => &self.gmem[a..a + 2],
         4 => &self.gmem[a..a + 4],
         8 => &self.gmem[a..a + 8],
         _ => panic!("Impossible size selection on global memory!"),
-      }
+      };
+      return result;
     }
     let a = actual_addr as usize;
-    return match size {
+    let result = match size {
       0 => {
         // string as array u8
         let arr = self.fractal_mem.get(&actual_addr);
@@ -93,7 +99,8 @@ impl HandlerMemory {
       4 => &self.mem[a..a + 4],
       8 => &self.mem[a..a + 8],
       _ => panic!("Impossible size selection on local memory!"),
-    }
+    };
+    return result;
   }
 
   pub fn write(self: &mut HandlerMemory, addr: i64, size: u8, payload: &[u8]) {

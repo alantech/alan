@@ -54,13 +54,14 @@ impl From<i64> for GraphOpcode {
   }
 }
 
-// Representation of the alan graph code program as static, global data
+/// Representation of the alan graph code program as static, global data
 pub struct Program {
-  // Event id to Map of handler id to handler obj
+  /// Event id to Map of handler id to handler obj
   pub(crate) event_handlers: HashMap<i64, Vec<EventHandler>>,
-  // Event id to payload size
+  /// Event id to payload size which is the number of bytes if fixed length type,
+  /// or -1 if it's a variable length type or 0 if the event is void or payload is in global memory
   pub(crate) event_pls: HashMap<i64, i64>,
-  // Memory of the program for global variables and string literals
+  /// Memory of the program for global variables and string literals
   pub(crate) gmem: Vec<u8>,
 }
 
@@ -128,8 +129,8 @@ impl Program {
           if !program.event_pls.contains_key(&id) || !program.event_handlers.contains_key(&id) {
             eprintln!("Handler for undefined event with id: {}", id);
           }
-          let payload_size = parser.next_64_bits();
-          cur_handler = EventHandler::new(payload_size, id);
+          let handler_mem= parser.next_64_bits();
+          cur_handler = EventHandler::new(handler_mem, id);
         }
         GraphOpcode::LINENO => {
           let id = parser.next_64_bits();
