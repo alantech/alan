@@ -2,7 +2,7 @@ Include build_tools.sh
 
 Describe "Closure Functions"
   before() {
-    sourceToTemp "
+    sourceToAll "
       from @std/app import start, print, exit
 
       fn closure(): function {
@@ -34,8 +34,14 @@ Describe "Closure Functions"
 2
 1"
 
-  It "interprets"
-    When run alan-interpreter interpret temp.ln
+  It "runs js"
+    When run node temp.js
+    The output should eq "$CLOSURERES"
+  End
+
+  It "runs agc"
+    Pending let-variable-hoisting-solution
+    When run alan-runtime run temp.agc
     The output should eq "$CLOSURERES"
   End
 End
