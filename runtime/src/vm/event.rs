@@ -25,7 +25,7 @@ impl From<BuiltInEvents> for i64 {
 pub struct EventEmit {
   /// event id
   pub(crate) id: i64,
-  /// handler memory with payload allocated that handlers will consume
+  /// optional handler memory with payload. each handler will get its own to consume
   pub(crate) payload: Option<HandlerMemory>,
 }
 
@@ -34,6 +34,7 @@ pub struct EventHandler {
   /// event id
   pub(crate) event_id: i64,
   /// payload size as the number of bytes if fixed length type, or -1 if it's a variable length type
+  /// or 0 if the event is void or payload is in global memory
   pub(crate) payload_size: i64,
   /// the indices of fragments that have unpredictable execution and could be moved around
   movable_capstones: Vec<usize>,

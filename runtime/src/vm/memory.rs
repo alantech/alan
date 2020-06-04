@@ -5,9 +5,9 @@ use crate::vm::program::Program;
 /// Memory representation of a handler call
 #[derive(Clone)]
 pub struct HandlerMemory {
-  /// global memory reference
+  /// Global memory reference
   gmem: &'static Vec<u8>,
-  /// memory of the handler for fixed size data types
+  /// Memory of the handler for fixed size data types
   mem: Vec<u8>,
   /// Optional payload address. None when no payload, negative when payload in gmem, otherwise 0.
   payload_addr: Option<i64>,
@@ -19,8 +19,8 @@ pub struct HandlerMemory {
 }
 
 impl HandlerMemory {
-  /// allocate a payload (new HandlerMemory) for the given event id from the
-  /// address within the HandlerMemory provided. called by emit to opcode
+  /// Allocates a payload for the given event id from the address within the HandlerMemory
+  /// provided to a new HandlerMemory. Called by "emit to" opcode.
   pub fn alloc(
     event_id: i64,
     curr_addr: i64,
@@ -29,7 +29,7 @@ impl HandlerMemory {
     let pls = Program::global().event_pls.get(&event_id).unwrap().clone();
     let mut mem = vec![];
     let mut fractal_mem = HashMap::new();
-    let mut payload_addr = None;
+    let mut payload_addr = Some(0);
     if pls == 0 && curr_addr == 0 {
       // no payload, void event
       return None;
@@ -40,11 +40,9 @@ impl HandlerMemory {
       // payload is a variable-length data type
       let payload: HandlerMemory = *curr_hand_mem.fractal_mem.get(&curr_addr).unwrap().clone();
       fractal_mem.insert(0, Box::new(payload.clone()));
-      payload_addr = Some(0);
     } else {
       // payload is a fixed length data type
       mem = curr_hand_mem.read(curr_addr, pls as u8).to_vec();
-      payload_addr = Some(0);
     };
     return Some(HandlerMemory {
       mem,
