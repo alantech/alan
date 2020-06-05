@@ -1,4 +1,5 @@
 use crate::vm::instruction::Instruction;
+use crate::vm::memory::HandlerMemory;
 use crate::vm::program::Program;
 
 #[derive(PartialEq, Eq, Hash)]
@@ -24,8 +25,8 @@ impl From<BuiltInEvents> for i64 {
 pub struct EventEmit {
   /// event id
   pub(crate) id: i64,
-  /// payload that event loop will allocate in memory for handlers to consume
-  pub(crate) payload: Option<Vec<u8>>,
+  /// optional handler memory with payload. each handler will get its own to consume
+  pub(crate) payload: Option<HandlerMemory>,
 }
 
 /// Describes the handler for an event
@@ -193,7 +194,7 @@ impl HandlerFragment {
 
 #[cfg(test)]
 mod tests {
-  use crate::vm::opcode::{OPCODES, opcode_id};
+  use crate::vm::opcode::{opcode_id, OPCODES};
 
   use super::*;
 

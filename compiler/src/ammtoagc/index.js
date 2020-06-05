@@ -75,11 +75,10 @@ const loadEventDecs = (eventAst, eventLookup) => {
   const eventMem = []
   for (const evt of eventAst) {
     const evtName = evt.typename().getText().trim()
-    const evtSize = evtName === "void" || evtName === "string" ? 0n : 8n
+    const evtSize = evtName === "void" ? 0n : (evtName === "string" ? int64ToUint64(-1n) : 8n);
     eventMem.push(eventdd, customEventIdOffset, evtSize)
     eventLookup[evt.VARNAME().getText().trim()] = {
       eventId: customEventIdOffset,
-      handlerMemOverride: evtName === "string",
     }
     customEventIdOffset++
   }
@@ -335,8 +334,8 @@ const loadHandlers = (handlers, handlerMem, globalMem, eventLookup, closureMap) 
   const vec = []
   for (let i = 0; i < handlers.length; i++) {
     const handler = handlers[i]
-    const { eventId, handlerMemOverride, } = eventLookup[handler.VARNAME().getText().trim()]
-    const memSize = handlerMemOverride ? int64ToUint64(-1n) : handlerMem[i].memSize
+    const { eventId } = eventLookup[handler.VARNAME().getText().trim()]
+    const memSize = handlerMem[i].memSize
     const localMem = handlerMem[i].addressMap
     vec.push(handlerd, eventId, memSize)
     let line = 0n
@@ -392,7 +391,6 @@ const ammToAgc = (amm) => {
         buf.writeUInt8(0x80, 7)
         return buf.readBigUInt64LE(0)
       })(),
-      handlerMemOverride: false,
     },
   }
   // Load the events, get the event id offset (for reuse with closures) and the event declarations

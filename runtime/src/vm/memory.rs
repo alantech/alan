@@ -1,74 +1,93 @@
 use std::collections::HashMap;
 
-use crate::vm::event::{EventHandler, EventEmit};
+use crate::vm::program::Program;
 
 /// Memory representation of a handler call
+#[derive(Clone)]
 pub struct HandlerMemory {
-  /// global memory reference
+  /// Global memory reference
   gmem: &'static Vec<u8>,
-  /// memory of the handler for fixed size data types
+  /// Memory of the handler for fixed size data types
   mem: Vec<u8>,
-  /// optional payload address
-  payload_addr: Option<i64>,
-  /// the memory storage for variable data types (strings, etc)
-  var_mem: HashMap<i64, Vec<u8>>,
-  // Fractal memory storage for variable-length arrays registered as a new uuid to an instance of the same struct
-  // fractal_mem: HashMap<Uuid, Option<Box<MemoryFragment>>>,
+  /// Fractal memory storage for variable-length data types to an instance of the same struct
+  fractal_mem: HashMap<i64, Box<HandlerMemory>>,
+  // Pointers to a nested fractal represented as a vector of (addr, size).
+  // These are not quite registers since they are not used directly by most opcodes
+  // registers_ish: HashMap<i64, Vec<(i64, i64)>>,
 }
 
 impl HandlerMemory {
-  pub fn alloc(
-    gmem: &'static Vec<u8>,
-    handler: &EventHandler,
-    event: &EventEmit,
-  ) -> HandlerMemory {
-    let mem_len = if handler.mem_req < 0 { 0 } else { handler.mem_req as usize };
-    let mut mem = vec![0; mem_len];
-    let mut payload_addr = None;
-    let mut var_mem = HashMap::new();
-    if event.payload.is_some() {
-      let payload = event.payload.to_owned().unwrap();
-      // Signal that this event actually takes a variable memory object
-      if handler.mem_req < 0 {
-        var_mem.insert(0, payload);
-      } else {
-        // allocate payload at beg of handler's memory
-        mem.splice(0..0, payload);
-      }
-      payload_addr = Some(0);
+  /// Allocates a payload for the given event id from the address within the HandlerMemory
+  /// provided to a new HandlerMemory. Called by "emit to" opcode.
+  pub fn alloc_payload(
+    event_id: i64,
+    curr_addr: i64,
+    curr_hand_mem: &HandlerMemory,
+  ) -> Option<HandlerMemory> {
+    let pls = Program::global().event_pls.get(&event_id).unwrap().clone();
+    if pls == 0 {
+      // no payload, void event
+      return None;
+    }
+    // the size of this array will be different for very handler so it will be resized later
+    let mut mem = vec![];
+    let mut fractal_mem = HashMap::new();
+    if pls < 0 {
+      // payload is a variable-length data type
+      let payload: HandlerMemory = *curr_hand_mem.fractal_mem.get(&curr_addr).unwrap().clone();
+      fractal_mem.insert(0, Box::new(payload.clone()));
+    } else {
+      // payload is a fixed length data type
+      mem = curr_hand_mem.read(curr_addr, pls as u8).to_vec();
     };
-    return HandlerMemory {
-      gmem,
+    return Some(HandlerMemory {
       mem,
-      var_mem,
-      payload_addr,
+      fractal_mem,
+      gmem: curr_hand_mem.gmem,
+    });
+  }
+
+  pub fn new() -> HandlerMemory {
+    return HandlerMemory {
+      gmem: &Program::global().gmem,
+      mem: vec![],
+      fractal_mem: HashMap::new(),
     };
+  }
+
+  pub fn resize_mem_req(self: &mut HandlerMemory, mem_req: i64) {
+    let new_size = if mem_req < 0 { 0 } else { mem_req as usize };
+    self.mem.resize(new_size, 0);
   }
 
   pub fn read(self: &HandlerMemory, addr: i64, size: u8) -> &[u8] {
     if addr < 0 {
       let a = (0 - addr - 1) as usize;
-      return match size {
+      let result = match size {
         0 => &self.gmem[a..],
         1 => &self.gmem[a..a + 1],
         2 => &self.gmem[a..a + 2],
         4 => &self.gmem[a..a + 4],
         8 => &self.gmem[a..a + 8],
         _ => panic!("Impossible size selection on global memory!"),
-      }
+      };
+      return result;
     }
     let a = addr as usize;
-    return match size {
+    let result = match size {
       0 => {
-        let result = self.var_mem.get(&(a as i64));
-        return if result.is_none() { &[] } else { result.unwrap() }
+        // string as array u8
+        let arr = self.fractal_mem.get(&addr);
+        let res = if arr.is_none() { &[] } else { arr.unwrap().mem.as_slice() };
+        return res;
       },
       1 => &self.mem[a..a + 1],
       2 => &self.mem[a..a + 2],
       4 => &self.mem[a..a + 4],
       8 => &self.mem[a..a + 8],
       _ => panic!("Impossible size selection on local memory!"),
-    }
+    };
+    return result;
   }
 
   pub fn write(self: &mut HandlerMemory, addr: i64, size: u8, payload: &[u8]) {
@@ -77,7 +96,15 @@ impl HandlerMemory {
     }
     let a = addr as usize;
     match size {
-      0 => { self.var_mem.insert(addr, payload.to_vec()); },
+      0 => {
+        // string as array u8
+        let arr = HandlerMemory {
+          mem: payload.to_vec(),
+          fractal_mem: HashMap::new(),
+          gmem: self.gmem,
+        };
+        self.fractal_mem.insert(addr, Box::new(arr));
+      },
       1 => self.mem[a] = payload[0],
       2 => {
         self.mem[a] = payload[0];

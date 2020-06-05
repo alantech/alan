@@ -5,7 +5,6 @@ use tokio::task;
 
 use crate::vm::event::{EventEmit, HandlerFragment};
 use crate::vm::opcode::{ByteOpcode, EmptyFuture};
-use crate::vm::program::Program;
 use crate::vm::memory::HandlerMemory;
 
 pub struct Instruction {
@@ -33,7 +32,7 @@ impl InstructionScheduler {
     }
   }
 
-  fn process_next_frag(mut frag_tx: &UnboundedSender<(HandlerFragment, HandlerMemory)>, mut frag: HandlerFragment, mut hand_mem: HandlerMemory) {
+  fn process_next_frag(frag_tx: &UnboundedSender<(HandlerFragment, HandlerMemory)>, frag: HandlerFragment, hand_mem: HandlerMemory) {
     let next_frag = frag.get_next_fragment();
     if next_frag.is_some() {
       frag_tx.send((next_frag.unwrap(), hand_mem));

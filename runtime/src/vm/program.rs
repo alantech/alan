@@ -54,13 +54,14 @@ impl From<i64> for GraphOpcode {
   }
 }
 
-// Representation of the alan graph code program as static, global data
+/// Representation of the alan graph code program as static, global data
 pub struct Program {
-  // Event id to Map of handler id to handler obj
+  /// Event id to Map of handler id to handler obj
   pub(crate) event_handlers: HashMap<i64, Vec<EventHandler>>,
-  // Event id to payload size
-  pub(crate) event_declrs: HashMap<i64, i64>,
-  // Memory of the program for global variables and string literals
+  /// Event id to payload size which is the number of bytes if fixed length type,
+  /// or -1 if it's a variable length type or 0 if the event is void
+  pub(crate) event_pls: HashMap<i64, i64>,
+  /// Memory of the program for global variables and string literals
   pub(crate) gmem: Vec<u8>,
 }
 
@@ -75,7 +76,7 @@ impl Program {
   fn load_builtin(self: &mut Program) {
     // START
     let start = i64::from(BuiltInEvents::START);
-    self.event_declrs.insert(start, 0);
+    self.event_pls.insert(start, 0);
     self.event_handlers.insert(start, Vec::new());
   }
 
@@ -87,7 +88,7 @@ impl Program {
     };
     let mut program = Program {
       event_handlers: HashMap::new(),
-      event_declrs: HashMap::new(),
+      event_pls: HashMap::new(),
       gmem: Vec::new()
     };
     program.load_builtin();
@@ -114,7 +115,7 @@ impl Program {
         GraphOpcode::CUSTOMEVENT => {
           let id = parser.next_64_bits();
           let pls = parser.next_64_bits(); // number of bytes payload consumes
-          program.event_declrs.insert(id, pls);
+          program.event_pls.insert(id, pls);
           program.event_handlers.insert(id, Vec::new());
         }
         GraphOpcode::HANDLER => {
@@ -125,7 +126,7 @@ impl Program {
           }
           let id = parser.next_64_bits();
           // error if event has not been defined
-          if !program.event_declrs.contains_key(&id) || !program.event_handlers.contains_key(&id) {
+          if !program.event_pls.contains_key(&id) || !program.event_handlers.contains_key(&id) {
             eprintln!("Handler for undefined event with id: {}", id);
           }
           let handler_mem = parser.next_64_bits();
