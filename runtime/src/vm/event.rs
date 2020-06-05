@@ -153,7 +153,7 @@ impl HandlerFragment {
   }
 
   pub fn get_next_fragment(mut self) -> Option<HandlerFragment> {
-    let mut hand_id = self.handlers.get_mut(0).unwrap();
+    let hand_id = self.handlers.get_mut(0).unwrap();
     let handlers = self.pgm.event_handlers.get(&hand_id.event_id).unwrap();
     let handler: &EventHandler = handlers.get(hand_id.handler_idx).unwrap();
     let last_frag_idx = handler.last_frag_idx();
@@ -171,7 +171,7 @@ impl HandlerFragment {
   }
 
   pub fn insert_subhandler(self: &mut HandlerFragment, event_id: i64) {
-    let mut hand_id = self.handlers.get_mut(0).unwrap();
+    let hand_id = self.handlers.get_mut(0).unwrap();
     let handlers = self.pgm.event_handlers.get(&hand_id.event_id).unwrap();
     let handler: &EventHandler = handlers.get(hand_id.handler_idx).unwrap();
     let last_frag_idx = handler.last_frag_idx();

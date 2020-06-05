@@ -259,6 +259,8 @@ addopcodes({
   pair: [{ trueval: t('any'), falseval: t('any'), }, t('Array<any>')],
   condarr: [{ cond: t('bool'), options: t('Array<any>'), }, t('any')],
   condfn: [{ cond: t('bool'), optional: t('function'), }, t('any')],
+  pusharr: [{ arr: t('Array<any>'), val: t('any')}, t('void')],
+  poparr: [{ arr: t('Array<any>')}, t('any')],
   each: [{ arr: t('Array<any>'), cb: t('function'), }, t('void')],
   map: [{ arr: t('Array<any>'), cb: t('function'), }, t('Array<any>')],
   reduce: [{ arr: t('Array<any>'), cb: t('function'), }, t('any')],
