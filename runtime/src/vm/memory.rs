@@ -29,7 +29,7 @@ impl HandlerMemory {
       // no payload, void event
       return None;
     }
-    // the size of this array will be different for very handler so it will be resized later
+    // the size of this array will be different for every handler so it will be resized later
     let mut mem = vec![];
     let mut fractal_mem = HashMap::new();
     if pls < 0 {
@@ -37,7 +37,7 @@ impl HandlerMemory {
       let payload: HandlerMemory = *curr_hand_mem.fractal_mem.get(&curr_addr).unwrap().clone();
       fractal_mem.insert(0, Box::new(payload.clone()));
     } else {
-      // payload is a fixed length data type
+      // payload is a fixed length data type which could be in global memory
       mem = curr_hand_mem.read(curr_addr, pls as u8).to_vec();
     };
     return Some(HandlerMemory {
