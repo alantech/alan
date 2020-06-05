@@ -43,7 +43,7 @@ impl InstructionScheduler {
     }
   }
 
-  pub async fn sched_frag(self: &mut InstructionScheduler, mut frag: HandlerFragment, mut hand_mem: HandlerMemory) {
+  pub async fn sched_frag(self: &InstructionScheduler, mut frag: HandlerFragment, mut hand_mem: HandlerMemory) {
     let instructions = frag.get_instruction_fragment();
     // io-bound fragment
     if !instructions[0].opcode.pred_exec && instructions[0].opcode.async_func.is_some() {

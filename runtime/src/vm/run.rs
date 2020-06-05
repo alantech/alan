@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io::Read;
 
 use byteorder::{LittleEndian, ReadBytesExt};
+use futures::future::join_all;
 use tokio::runtime;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
@@ -48,6 +49,7 @@ impl VM {
   async fn sched_event(self: &mut VM, event: EventEmit) {
     // schedule 1st fragment of each handler of this event
     let handlers = self.pgm.event_handlers.get(&event.id).unwrap();
+    let mut futures = vec![];
     for (i, hand) in handlers.iter().enumerate() {
       // first fragment of this handler
       let frag = HandlerFragment::new(self.pgm, event.id, i);
@@ -59,8 +61,9 @@ impl VM {
       };
       hand_mem.resize_mem_req(hand.mem_req);
       // TODO join on all these futures
-      self.ins_sched.sched_frag(frag, hand_mem).await;
+      futures.push(self.ins_sched.sched_frag(frag, hand_mem));
     }
+    join_all(futures).await;
   }
 
   // run the vm backed by an event loop
