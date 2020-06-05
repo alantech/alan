@@ -13,9 +13,9 @@ pub struct HandlerMemory {
   payload_addr: Option<i64>,
   /// Fractal memory storage for variable-length data types to an instance of the same struct
   fractal_mem: HashMap<i64, Box<HandlerMemory>>,
-  /// Pointers to a nested fractal represented as a vector of (addr, size).
-  /// These are not quite registers since they are not used directly by most opcodes
-  registers_ish: HashMap<i64, Vec<(i64, i64)>>,
+  // Pointers to a nested fractal represented as a vector of (addr, size).
+  // These are not quite registers since they are not used directly by most opcodes
+  // registers_ish: HashMap<i64, Vec<(i64, i64)>>,
 }
 
 impl HandlerMemory {
@@ -31,7 +31,7 @@ impl HandlerMemory {
       // no payload, void event
       return None;
     }
-    // don't currently have the req handler memory so this will be resized later
+    // the size of this array will be different for very handler so it will be resized later
     let mut mem = vec![];
     let mut fractal_mem = HashMap::new();
     let mut payload_addr = Some(0);
@@ -51,7 +51,6 @@ impl HandlerMemory {
       fractal_mem,
       payload_addr,
       gmem: curr_hand_mem.gmem,
-      registers_ish: HashMap::new(),
     });
   }
 
@@ -61,7 +60,6 @@ impl HandlerMemory {
       gmem: &Program::global().gmem,
       mem: vec![0; mem_req as usize],
       fractal_mem: HashMap::new(),
-      registers_ish: HashMap::new(),
     };
   }
 
@@ -116,7 +114,6 @@ impl HandlerMemory {
           mem: payload.to_vec(),
           fractal_mem: HashMap::new(),
           gmem: self.gmem,
-          registers_ish: HashMap::new(),
         };
         self.fractal_mem.insert(addr, Box::new(arr));
       },

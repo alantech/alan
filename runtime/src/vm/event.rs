@@ -34,7 +34,7 @@ pub struct EventHandler {
   /// event id
   pub(crate) event_id: i64,
   /// number of bytes each handler call requires in memory, or -1 if it's a variable length type
-  pub(crate)  mem_req: i64,
+  pub(crate) mem_req: i64,
   /// the indices of fragments that have unpredictable execution and could be moved around
   movable_capstones: Vec<usize>,
   /// topological order of the instructions split into fragments
