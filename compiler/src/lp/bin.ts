@@ -1,80 +1,58 @@
 import * as fs from 'fs' // This syntax is so dumb
 
-export class LP {
+export class LPBin {
   filename: string
-  data: string
-  line: number
-  char: number
+  data: Buffer
   i: number
 
   constructor(filename: string, loadData: boolean = true) {
     this.filename = filename
-    this.data = loadData ? fs.readFileSync(filename, 'utf8') : ''
-    this.line = 0
-    this.char = 0
+    this.data = loadData ? fs.readFileSync(filename) : new Buffer(0)
     this.i = 0
   }
 
   advance(n: number) {
-    for (let i = 0; i < n; i++) {
-      this.i += 1
-      if (this.data[this.i] === '\n') {
-        this.line += 1
-        this.char = 0
-      } else {
-        this.char += 1
-      }
-    }
+    this.i += n
   }
 
-  clone(): LP {
-    const clone = new LP(this.filename, false)
+  clone(): LPBin {
+    const clone = new LPBin(this.filename, false)
     clone.data = this.data
-    clone.line = this.line
-    clone.char = this.char
     clone.i = this.i
     return clone
   }
 }
 
-export interface LPmeta {
-  filename: string
-  line: number
-  char: number
-}
-
-export interface LPish {
-  t: string
+export interface LPBinish {
+  b: Buffer
   check(lp: LP): boolean
-  apply(lp: LP): LPish | Error
+  apply(lp: LP): LPBinish | Error
 }
 
-export const lpError = (message: string, obj: LPmeta) => new Error(`${message} in file ${obj.filename} line ${obj.line}:${obj.char}`)
+export const lpError = (message: string, obj: LPBin) => new Error(`${message} in file ${obj.filename}`)
 
-export class Token implements LPish {
-  t: string
+export class Token implements LPBinish {
+  b: Buffer
   filename: string
-  line: number
-  char: number
+  i: number
 
-  constructor(t: string, filename: string, line: number, char: number) {
-    this.t = t
+  constructor(b: Buffer, filename: string, i: number) {
+    this.b = b
     this.filename = filename
-    this.line = line
-    this.char = char
+    this.i = i
   }
 
-  static build(t: string): Token {
-    return new Token(t, '', -1, -1)
+  static build(b: Buffer): Token {
+    return new Token(b, '', -1)
   }
 
-  toString(): string {
-    return this.t
+  toBuffer(): Buffer {
+    return this.b
   }
 
-  check(lp: LP): boolean {
+  check(lp: LPBin): boolean {
     let matches = true
-    const t = this.t
+    const b = this.b
     const len = t.length
     const data = lp.data
     const j = lp.i
