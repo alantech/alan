@@ -9,8 +9,6 @@ pub struct HandlerMemory {
   gmem: &'static Vec<u8>,
   /// Memory of the handler for fixed size data types
   mem: Vec<u8>,
-  /// Optional payload address. None when no payload, negative when payload in gmem, otherwise 0.
-  payload_addr: Option<i64>,
   /// Fractal memory storage for variable-length data types to an instance of the same struct
   fractal_mem: HashMap<i64, Box<HandlerMemory>>,
   // Pointers to a nested fractal represented as a vector of (addr, size).
@@ -27,18 +25,14 @@ impl HandlerMemory {
     curr_hand_mem: &HandlerMemory,
   ) -> Option<HandlerMemory> {
     let pls = Program::global().event_pls.get(&event_id).unwrap().clone();
-    if pls == 0 && curr_addr == 0 {
+    if pls == 0 {
       // no payload, void event
       return None;
     }
     // the size of this array will be different for very handler so it will be resized later
     let mut mem = vec![];
     let mut fractal_mem = HashMap::new();
-    let mut payload_addr = Some(0);
-    if curr_addr < 0 {
-      // payload in gmem
-      payload_addr = Some(curr_addr);
-    } else if pls < 0 {
+    if pls < 0 {
       // payload is a variable-length data type
       let payload: HandlerMemory = *curr_hand_mem.fractal_mem.get(&curr_addr).unwrap().clone();
       fractal_mem.insert(0, Box::new(payload.clone()));
@@ -49,16 +43,14 @@ impl HandlerMemory {
     return Some(HandlerMemory {
       mem,
       fractal_mem,
-      payload_addr,
       gmem: curr_hand_mem.gmem,
     });
   }
 
-  pub fn new(mem_req: i64) -> HandlerMemory {
+  pub fn new() -> HandlerMemory {
     return HandlerMemory {
-      payload_addr: None,
       gmem: &Program::global().gmem,
-      mem: vec![0; mem_req as usize],
+      mem: vec![],
       fractal_mem: HashMap::new(),
     };
   }
@@ -69,13 +61,8 @@ impl HandlerMemory {
   }
 
   pub fn read(self: &HandlerMemory, addr: i64, size: u8) -> &[u8] {
-    let actual_addr = if addr == 0 && self.payload_addr.is_some() {
-      self.payload_addr.unwrap()
-    } else {
-      addr
-    };
-    if actual_addr < 0 {
-      let a = (0 - actual_addr - 1) as usize;
+    if addr < 0 {
+      let a = (0 - addr - 1) as usize;
       let result = match size {
         0 => &self.gmem[a..],
         1 => &self.gmem[a..a + 1],
@@ -86,11 +73,11 @@ impl HandlerMemory {
       };
       return result;
     }
-    let a = actual_addr as usize;
+    let a = addr as usize;
     let result = match size {
       0 => {
         // string as array u8
-        let arr = self.fractal_mem.get(&actual_addr);
+        let arr = self.fractal_mem.get(&addr);
         let res = if arr.is_none() { &[] } else { arr.unwrap().mem.as_slice() };
         return res;
       },
@@ -112,7 +99,6 @@ impl HandlerMemory {
       0 => {
         // string as array u8
         let arr = HandlerMemory {
-          payload_addr: None,
           mem: payload.to_vec(),
           fractal_mem: HashMap::new(),
           gmem: self.gmem,

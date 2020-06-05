@@ -52,13 +52,12 @@ impl VM {
       // first fragment of this handler
       let frag = HandlerFragment::new(self.pgm, event.id, i);
       // memory frag representing the memory for each handler call
-      let hand_mem = if event.payload.is_none() {
-        HandlerMemory::new(hand.mem_req)
+      let mut hand_mem = if event.payload.is_none() {
+        HandlerMemory::new()
       } else {
-        let mut res = event.payload.clone().unwrap();
-        res.resize_mem_req(hand.mem_req);
-        res
+        event.payload.clone().unwrap()
       };
+      hand_mem.resize_mem_req(hand.mem_req);
       // TODO join on all these futures
       self.ins_sched.sched_frag(frag, hand_mem).await;
     }
