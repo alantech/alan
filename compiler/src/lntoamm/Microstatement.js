@@ -8,6 +8,7 @@ const UserFunction = require('./UserFunction')
 class Microstatement {
   constructor(...args) {
     if (args.length === 5) {
+      // "Normal" microstatement
       this.statementType = args[0]
       this.scope = args[1]
       this.pure = args[2]
@@ -18,6 +19,7 @@ class Microstatement {
       this.fns = []
       this.closureStatements = args[4]
     } else if (args.length === 8) {
+      // Aliasing microstatement (must be REREF)
       this.statementType = args[0]
       this.scope = args[1]
       this.pure = args[2]
@@ -28,6 +30,7 @@ class Microstatement {
       this.fns = args[7]
       this.closureStatements = []
     } else if (args.length === 7) {
+      // Void-returning closure
       this.statementType = args[0]
       this.scope = args[1]
       this.pure = args[2]
@@ -37,6 +40,17 @@ class Microstatement {
       this.inputNames = args[5]
       this.fns = args[6]
       this.closureStatements = []
+    } else if (args.length === 6) {
+      // Non-void returning closure
+      this.statementType = args[0]
+      this.scope = args[1]
+      this.pure = args[2]
+      this.outputName = args[3]
+      this.alias = ""
+      this.outputType = args[4]
+      this.inputNames = []
+      this.fns = []
+      this.closureStatements = args[5]
     }
   }
 
@@ -177,16 +191,7 @@ class Microstatement {
     // For now we still create the function object and the microstatement to assign it
     if (basicAssignablesAst.functions() != null) {
       const fnToAssign = UserFunction.fromAst(basicAssignablesAst.functions(), scope)
-      const fnName = "fn_" + uuid().replace(/-/g, "_")
-      microstatements.push(new Microstatement(
-        StatementType.CONSTDEC,
-        scope,
-        true, // This assignment, at least
-        fnName,
-        Box.builtinTypes["function"],
-        [],
-        [fnToAssign],
-      ))
+      Microstatement.closureFromUserFunction(fnToAssign, scope, microstatements)
       return
     }
     // Here is where we inline the functions that were defined elsewhere or just above here! Or if
@@ -419,6 +424,31 @@ class Microstatement {
         withOperatorsList.splice(maxOperatorLoc - 1, 1)
       }
     }
+  }
+
+  static closureFromUserFunction(userFunction, scope, microstatements) {
+    // TODO: Add support for closures with arguments
+    let len = microstatements.length;
+    for (const s of userFunction.statements) {
+      if (s.statementOrAssignableAst instanceof LnParser.StatementsContext) {
+        Microstatement.fromStatementsAst(s.statementOrAssignableAst, scope, microstatements)
+      } else {
+        Microstatemnt.fromAssignablesAst(s.statementOrAssignableAst, scope, microstatements)
+      }
+    }
+    let newlen = microstatements.length;
+    // There might be off-by-one bugs in the conversion here
+    const innerMicrostatements = microstatements.slice(len, newlen)
+    microstatements.splice(len, newlen - len)
+    const constName = "_" + uuid().replace(/-/g, "_")
+    microstatements.push(new Microstatement(
+      StatementType.CLOSURE,
+      scope,
+      true, // TODO: Figure out if this is true or not
+      constName,
+      Box.builtinTypes['function'],
+      innerMicrostatements
+    ))
   }
 
   static closureFromBlocklikesAst(blocklikesAst, scope, microstatements) {
@@ -749,17 +779,6 @@ class Microstatement {
         }
         fnBox = scope.deepGet(methodName)
       }
-      if (fnBox == null || fnBox.functionval == null) {
-        console.error(callsAst.varn(i).getText() + " is not a function!")
-        console.error(
-          callsAst.getText() +
-          " on line " +
-          callsAst.start.line +
-          ":" +
-          callsAst.start.column
-        )
-        process.exit(-106)
-      }
       // Build up a list of the arguments to be passed into the function, first 'eval'ing them and
       // getting the relevant microstatements defined.
       let realArgNames = []
@@ -799,6 +818,37 @@ class Microstatement {
           realArgTypes.push(last.outputType)
         }
       }
+      // Do a scan of the microstatements for an inner defined closure that is being called.
+      // TODO: What if they decided to shove this closure into an object but then use it directly?
+      if (fnBox === null || !fnBox.functionval) {
+        const fnName = callsAst.varn(i).getText()
+        let actualFnName
+        for (let i = microstatements.length - 1; i >= 0; i--) {
+          if (microstatements[i].alias === fnName) {
+            actualFnName = microstatements[i].outputName
+            continue
+          }
+          if (
+            microstatements[i].outputName === actualFnName &&
+            microstatements[i].closureStatements &&
+            microstatements[i].closureStatements.length > 0
+          ) {
+            microstatements.push(...microstatements[i].closureStatements)
+            return
+          }
+        }
+      }
+      if (fnBox === null || !fnBox.functionval) {
+        console.error(callsAst.varn(i).getText() + " is not a function!")
+        console.error(
+          callsAst.getText() +
+          " on line " +
+          callsAst.start.line +
+          ":" +
+          callsAst.start.column
+        )
+        process.exit(-106)
+      }
       // Generate the relevant microstatements for this function. UserFunctions get inlined with the
       // return statement turned into a const assignment (TODO: handle conditionals correctly) as
       // the last statement, while built-in functions are kept as function calls with the correct
@@ -813,8 +863,14 @@ class Microstatement {
   static fromAssignmentsAst(assignmentsAst, scope, microstatements) {
     const letName = assignmentsAst.varn().getText()
     let letType = null
-    for (const microstatement of microstatements) {
-      if (microstatement.outputName === letName) {
+    let actualLetName
+    for (let i = microstatements.length - 1; i >= 0; i--) {
+      const microstatement = microstatements[i]
+      if (microstatement.alias === letName) {
+        actualLetName = microstatement.outputName
+        continue
+      }
+      if (microstatement.outputName === actualLetName) {
         if (microstatement.statementType === StatementType.LETDEC) {
           letType = microstatement.outputType
           break
@@ -860,7 +916,7 @@ class Microstatement {
       )
       // By definition the last microstatement is the const assignment we care about, so we can just
       // mutate its object to rename the output variable name to the name we need instead.
-      microstatements[microstatements.length - 1].outputName = letName
+      microstatements[microstatements.length - 1].outputName = actualLetName
       microstatements[microstatements.length - 1].statementType = StatementType.ASSIGNMENT
       return
     }
@@ -874,7 +930,7 @@ class Microstatement {
       // The same rule as above, the last microstatement is already a const assignment for the value
       // that we care about, so just rename its variable to the one that will be expected by other
       // code.
-      microstatements[microstatements.length - 1].outputName = letName
+      microstatements[microstatements.length - 1].outputName = actualLetName
       microstatements[microstatements.length - 1].statementType = StatementType.ASSIGNMENT
       return
     }
@@ -884,16 +940,17 @@ class Microstatement {
     // TODO: Once we figure out how to handle re-assignment to let variables as new variable names
     // with all references to that variable afterwards rewritten, these can just be brought in as
     // constants, too.
-    let letName;
-    let letTypeHint = null;
+    const letName = "_" + uuid().replace(/-/g, "_")
+    let letAlias
+    let letTypeHint = null
     if (letdeclarationAst.VARNAME() != null) {
-      letName = letdeclarationAst.VARNAME().getText()
+      letAlias = letdeclarationAst.VARNAME().getText()
       letTypeHint = letdeclarationAst.assignments().varn().getText()
       if (letdeclarationAst.assignments().typegenerics() != null) {
         letTypeHint += letdeclarationAst.assignments().typegenerics().getText()
       }
     } else {
-      letName = letdeclarationAst.assignments().varn().getText()
+      letAlias = letdeclarationAst.assignments().varn().getText()
       // We don't know the type ahead of time and will have to rely on inference in this case
     }
     if (letdeclarationAst.assignments().assignables() == null) {
@@ -908,9 +965,19 @@ class Microstatement {
         scope.deepGet("void").typeval,
         ["void"],
         null
-      );
+      )
       // This is a terminating condition for the microstatements, though
       microstatements.push(blankLet)
+      microstatements.push(new Microstatement(
+        StatementType.REREF,
+        scope,
+        true,
+        letName,
+        letAlias,
+        Box.builtinTypes.void,
+        [],
+        [],
+      ))
       return
     }
     // An assignable may either be a basic constant or could be broken down into other microstatements
@@ -931,6 +998,16 @@ class Microstatement {
       // mutate its object to rename the output variable name to the name we need instead.
       microstatements[microstatements.length - 1].outputName = letName
       microstatements[microstatements.length - 1].statementType = StatementType.LETDEC
+      microstatements.push(new Microstatement(
+        StatementType.REREF,
+        scope,
+        true,
+        letName,
+        letAlias,
+        microstatements[microstatements.length - 1].outputType,
+        [],
+        [],
+      ))
       return
     }
     if (letdeclarationAst.assignments().assignables().basicassignables() != null) {
@@ -945,22 +1022,33 @@ class Microstatement {
       // code.
       microstatements[microstatements.length - 1].outputName = letName
       microstatements[microstatements.length - 1].statementType = StatementType.LETDEC
+      microstatements.push(new Microstatement(
+        StatementType.REREF,
+        scope,
+        true,
+        letName,
+        letAlias,
+        microstatements[microstatements.length - 1].outputType,
+        [],
+        [],
+      ))
       return
     }
   }
 
   static fromConstdeclarationAst(constdeclarationAst, scope, microstatements) {
     // TODO: Weirdness in the ANTLR grammar around declarations needs to be cleaned up at some point
-    let constName
+    const constName = "_" + uuid().replace(/-/g, "_")
+    let constAlias
     let constTypeHint = null
     if (constdeclarationAst.VARNAME() != null) {
-      constName = constdeclarationAst.VARNAME().getText()
+      constAlias = constdeclarationAst.VARNAME().getText()
       constTypeHint = constdeclarationAst.assignments().varn().getText()
       if (constdeclarationAst.assignments().typegenerics() != null) {
         constTypeHint += constdeclarationAst.assignments().typegenerics().getText()
       }
     } else {
-      constName = constdeclarationAst.assignments().varn().getText()
+      constAlias = constdeclarationAst.assignments().varn().getText()
       // We don't know the type ahead of time and will have to refer on inference in this case
     }
     if (constdeclarationAst.assignments().assignables() == null) {
@@ -971,12 +1059,22 @@ class Microstatement {
         scope,
         true,
         constName,
-        scope.deepGet("void").typeval,
+        Box.builtinTypes.void,
         ["void"],
         null
-      );
+      )
       // This is a terminating condition for the microstatements, though
       microstatements.push(weirdConst)
+      microstatements.push(new Microstatement(
+        StatementType.REREF,
+        scope,
+        true,
+        constName,
+        constAlias,
+        Box.builtinTypes.void,
+        [],
+        [],
+      ))
       return
     }
     // An assignable may either be a basic constant or could be broken down into other microstatements
@@ -996,6 +1094,16 @@ class Microstatement {
       // By definition the last microstatement is the const assignment we care about, so we can just
       // mutate its object to rename the output variable name to the name we need instead.
       microstatements[microstatements.length - 1].outputName = constName
+      microstatements.push(new Microstatement(
+        StatementType.REREF,
+        scope,
+        true,
+        constName,
+        constAlias,
+        microstatements[microstatements.length - 1].outputType,
+        [],
+        [],
+      ))
       return
     }
     if (constdeclarationAst.assignments().assignables().basicassignables() != null) {
@@ -1009,6 +1117,16 @@ class Microstatement {
       // that we care about, so just rename its variable to the one that will be expected by other
       // code.
       microstatements[microstatements.length - 1].outputName = constName
+      microstatements.push(new Microstatement(
+        StatementType.REREF,
+        scope,
+        true,
+        constName,
+        constAlias,
+        microstatements[microstatements.length - 1].outputType,
+        [],
+        [],
+      ))
       return
     }
   }

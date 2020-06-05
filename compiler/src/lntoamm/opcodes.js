@@ -36,7 +36,7 @@ const addopcodes = (opcodes) => {
     const opcodeObj = {
       getName: () => opcodeName,
       getArguments: () => args,
-      getReturnType: () => returnType,
+      getReturnType: () => returnType || Box.builtinTypes.void,
       isNary: () => false,
       isPure: () => true,
       microstatementInlining: (realArgNames, scope, microstatements) => {
