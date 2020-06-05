@@ -926,7 +926,7 @@ class Microstatement {
         StatementType.REREF,
         scope,
         true,
-        microstatements[microstatement.length - 1].outputName,
+        microstatements[microstatements.length - 1].outputName,
         letAlias,
         microstatements[microstatements.length - 1].outputType,
         [],
