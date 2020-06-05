@@ -8,6 +8,7 @@ const UserFunction = require('./UserFunction')
 class Microstatement {
   constructor(...args) {
     if (args.length === 5) {
+      // "Normal" microstatement
       this.statementType = args[0]
       this.scope = args[1]
       this.pure = args[2]
@@ -18,6 +19,7 @@ class Microstatement {
       this.fns = []
       this.closureStatements = args[4]
     } else if (args.length === 8) {
+      // Aliasing microstatement (must be REREF)
       this.statementType = args[0]
       this.scope = args[1]
       this.pure = args[2]
@@ -28,6 +30,7 @@ class Microstatement {
       this.fns = args[7]
       this.closureStatements = []
     } else if (args.length === 7) {
+      // Void-returning closure
       this.statementType = args[0]
       this.scope = args[1]
       this.pure = args[2]
@@ -38,6 +41,7 @@ class Microstatement {
       this.fns = args[6]
       this.closureStatements = []
     } else if (args.length === 6) {
+      // Non-void returning closure
       this.statementType = args[0]
       this.scope = args[1]
       this.pure = args[2]
