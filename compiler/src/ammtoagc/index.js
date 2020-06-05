@@ -247,8 +247,50 @@ const loadStatements = (statements, localMem, globalMem, eventLookup, closureMap
           .filter(v => v !== undefined) // Filter out the handler arg from the dep list
         vec.push(BigInt(deps.length), ...deps, fn, ...args, resultAddress)
       } else if (assignables.constants()) {
-        console.error("This should have been hoisted")
-        process.exit(3)
+        // Only required for `let` statements
+        let fn
+        let val
+        switch (dec.fulltypename().getText().trim()) {
+        case 'int64':
+          fn = fill8('seti64')
+          val = BigInt(assignables.getText())
+          break
+        case 'int32':
+          fn = fill8('seti32')
+          val = BigInt(assignables.getText())
+          break
+        case 'int16':
+          fn = fill8('seti16')
+          val = BigInt(assignables.getText())
+          break
+        case 'int8':
+          fn = fill8('seti8')
+          val = BigInt(assignables.getText())
+          break
+        case 'float64':
+          fn = fill8('setf64')
+          const buf = Buffer.alloc(8)
+          buf.writeDoubleLE(parseFloat(assignables.getText()))
+          val = buf.readBigUInt64LE(0)
+          break
+        case 'float32':
+          fn = fill8('setf32')
+          const buf2 = Buffer.alloc(8)
+          buf2.writeFloatLE(parseFloat(assignables.getText()))
+          val = buf2.readBigUInt64LE(0)
+          break
+        case 'bool':
+          fn = fill8('setbool')
+          val = assignables.getText().trim() === "true" ? 1n : 0n
+          break
+        case 'string':
+          throw new Error('TODO: Decide if this is the responsibility of first or second stage')
+          break
+        default:
+          throw new Error(`Unsupported variable type ${dec.fulltypename().getText()}`)
+          break
+        }
+        vec.push(0n, fn, val, 0n, resultAddress)
       } else if (assignables.objectliterals()) {
         console.error("Not yet implemented")
         process.exit(4)
@@ -259,10 +301,8 @@ const loadStatements = (statements, localMem, globalMem, eventLookup, closureMap
     } else if (statement.assignments()) {
       const asgn = statement.assignments()
       const resultAddress = localMem[asgn.decname().getText().trim()]
-      localMemToLine[resultAddress] = asgn // This is safe because future references to this var
-                                           // should depend on the mutated form
-
-      const assignables = dec.assignables()
+      localMemToLine[resultAddress] = line
+      const assignables = asgn.assignables()
       if (assignables.functions()) {
         console.error("This shouldn't be possible!")
         process.exit(2)
@@ -338,8 +378,6 @@ const loadHandlers = (handlers, handlerMem, globalMem, eventLookup, closureMap) 
     const memSize = handlerMem[i].memSize
     const localMem = handlerMem[i].addressMap
     vec.push(handlerd, eventId, memSize)
-    let line = 0n
-    let localMemToLine = {}
     const statementVec = loadStatements(
       handler.functions().functionbody().statements(),
       localMem,
@@ -360,8 +398,6 @@ const loadClosures = (closures, globalMem, eventLookup, closureMap) => {
     const memSize = closure.closureMem.memSize
     const localMem = closure.closureMem.addressMap
     vec.push(handlerd, eventId, memSize)
-    let line = 0n
-    let localMemToLine = {}
     const statementVec = loadStatements(
       closure.statements,
       localMem,

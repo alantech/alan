@@ -2,7 +2,7 @@ Include build_tools.sh
 
 Describe "Closure Functions"
   before() {
-    sourceToTemp "
+    sourceToAll "
       from @std/app import start, print, exit
 
       fn closure(): function {
@@ -22,9 +22,6 @@ Describe "Closure Functions"
         emit exit 0
       }
     "
-    tempToAmm
-    tempToJs
-    # TODO: Switch to 'sourceToAll' once ammtoagc works
   }
   BeforeAll before
 
@@ -43,7 +40,6 @@ Describe "Closure Functions"
   End
 
   It "runs agc"
-    Pending let-variable-hoisting-solution
     When run alan-runtime run temp.agc
     The output should eq "$CLOSURERES"
   End

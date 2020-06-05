@@ -1495,10 +1495,39 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     print!("{}", out_str);
     None
   });
-  // TODO: Remove this opcode in the future
-  cpu!("set i64", |args, hand_mem, _| {
+  cpu!("seti64", |args, hand_mem, _| {
     let data = hand_mem.read(args[1], 8).to_vec();
     hand_mem.write(args[1], 8, &data);
+    None
+  });
+  cpu!("seti32", |args, hand_mem, _| {
+    let data = hand_mem.read(args[1], 4).to_vec();
+    hand_mem.write(args[1], 4, &data);
+    None
+  });
+  cpu!("seti16", |args, hand_mem, _| {
+    let data = hand_mem.read(args[1], 2).to_vec();
+    hand_mem.write(args[1], 2, &data);
+    None
+  });
+  cpu!("seti8", |args, hand_mem, _| {
+    let data = hand_mem.read(args[1], 1).to_vec();
+    hand_mem.write(args[1], 1, &data);
+    None
+  });
+  cpu!("setf64", |args, hand_mem, _| {
+    let data = hand_mem.read(args[1], 8).to_vec();
+    hand_mem.write(args[1], 8, &data);
+    None
+  });
+  cpu!("setf32", |args, hand_mem, _| {
+    let data = hand_mem.read(args[1], 4).to_vec();
+    hand_mem.write(args[1], 4, &data);
+    None
+  });
+  cpu!("setbool", |args, hand_mem, _| {
+    let data = hand_mem.read(args[1], 1).to_vec();
+    hand_mem.write(args[1], 1, &data);
     None
   });
   cpu!("emit to:", |args, hand_mem, _| {
