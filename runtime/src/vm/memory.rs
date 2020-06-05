@@ -29,7 +29,7 @@ impl HandlerMemory {
       // no payload, void event
       return None;
     }
-    // the size of this array will be different for very handler so it will be resized later
+    // the size of this array will be different for every handler so it will be resized later
     let mut mem = vec![];
     let mut fractal_mem = HashMap::new();
     if pls < 0 {
@@ -37,7 +37,7 @@ impl HandlerMemory {
       let payload: HandlerMemory = *curr_hand_mem.fractal_mem.get(&curr_addr).unwrap().clone();
       fractal_mem.insert(0, Box::new(payload.clone()));
     } else {
-      // payload is a fixed length data type
+      // payload is a fixed length data type which could be in global memory
       mem = curr_hand_mem.read(curr_addr, pls as u8).to_vec();
     };
     return Some(HandlerMemory {
@@ -47,17 +47,19 @@ impl HandlerMemory {
     });
   }
 
-  pub fn new() -> HandlerMemory {
-    return HandlerMemory {
-      gmem: &Program::global().gmem,
-      mem: vec![],
-      fractal_mem: HashMap::new(),
+  pub fn new(payload_mem: Option<HandlerMemory>,  mem_req: i64) -> HandlerMemory {
+    let mut hand_mem = if payload_mem.is_none() {
+      HandlerMemory {
+        gmem: &Program::global().gmem,
+        mem: vec![],
+        fractal_mem: HashMap::new(),
+      }
+    } else {
+      payload_mem.unwrap()
     };
-  }
-
-  pub fn resize_mem_req(self: &mut HandlerMemory, mem_req: i64) {
     let new_size = if mem_req < 0 { 0 } else { mem_req as usize };
-    self.mem.resize(new_size, 0);
+    hand_mem.mem.resize(new_size, 0);
+    return hand_mem;
   }
 
   pub fn read(self: &HandlerMemory, addr: i64, size: u8) -> &[u8] {
