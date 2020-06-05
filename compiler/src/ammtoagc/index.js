@@ -75,11 +75,10 @@ const loadEventDecs = (eventAst, eventLookup) => {
   const eventMem = []
   for (const evt of eventAst) {
     const evtName = evt.typename().getText().trim()
-    const evtSize = evtName === "void" ? 0 : (evtName === "string" ? int64ToUint64(-1n) : 8n);
+    const evtSize = evtName === "void" ? 0n : (evtName === "string" ? int64ToUint64(-1n) : 8n);
     eventMem.push(eventdd, customEventIdOffset, evtSize)
     eventLookup[evt.VARNAME().getText().trim()] = {
       eventId: customEventIdOffset,
-      handlerMemOverride: false,
     }
     customEventIdOffset++
   }
@@ -392,7 +391,6 @@ const ammToAgc = (amm) => {
         buf.writeUInt8(0x80, 7)
         return buf.readBigUInt64LE(0)
       })(),
-      handlerMemOverride: false,
     },
   }
   // Load the events, get the event id offset (for reuse with closures) and the event declarations
