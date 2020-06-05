@@ -192,7 +192,7 @@ const ammFromModuleAsts = (moduleAsts) => {
         handlerDec += argList.join(", ")
         handlerDec += "): " + handler.getReturnType().typename + " {"
         // Extract the handler statements and compile into microstatements
-        const statements = handler.statements;
+        const statements = handler.maybeTransform().statements;
         for (const s of statements) {
           Microstatement.fromStatement(s, microstatements)
         }

@@ -1,3 +1,6 @@
+const { v4: uuid, } = require('uuid')
+
+const Ast = require('./Ast')
 const Box = require('./Box')
 const Statement = require('./Statement')
 const StatementType = require('./StatementType')
@@ -220,10 +223,92 @@ class UserFunction {
     return this.pure
   }
 
+  toFnStr() {
+    if (
+      this.statements.length === 1 &&
+      this.statements[0].statementOrAssignableAst instanceof LnParser.AssignablesContext
+    ) {
+      return `
+        fn ${this.name || ''} (${Object.keys(this.args).map(argName => `${argName}: ${this.args[argName].typename}`).join(', ')}): ${this.returnType.typename} = ${this.statements[0].statementOrAssignableAst.getText()}
+      `.trim()
+    }
+    return `
+      fn ${this.name || ''} (${Object.keys(this.args).map(argName => `${argName}: ${this.args[argName].typename}`).join(', ')}): ${this.returnType.typename} {
+        ${this.statements.map(s => s.statementOrAssignableAst.getText()).join('\n')}
+      }
+    `.trim()
+  }
+
+  static conditionalToCond(cond, scope) {
+    let newStatements = []
+    const condName = "_" + uuid().replace(/-/g, "_")
+    const condStatement = Ast.statementAstFromString(`
+      const ${condName}: bool = ${cond.withoperators().getText()}
+    `.trim() + '\n')
+    const condBlock = cond.blocklikes(0).functionbody() ?
+      `fn ${cond.blocklikes(0).getText()}` :
+      cond.blocklikes(0).varn() ?
+        scope.deepGet(cond.blocklikes(0).varn()).functionval[0].maybeTransform().toFnStr() :
+        cond.blocklikes(0).getText()
+    const condCall = Ast.statementAstFromString(`
+      cond(${condName}, ${condBlock})
+    `.trim() + '\n') // TODO: If the blocklike is a reference, grab it and inline it
+    newStatements.push(condStatement, condCall)
+    if (!!cond.ELSE()) {
+      if (!!cond.blocklikes(1)) {
+        const elseBlock = cond.blocklikes(1).functionbody() ?
+          `fn ${cond.blocklikes(1).getText()}` :
+          cond.blocklikes(1).varn() ?
+            scope.deepGet(cond.blocklikes(1).varn()).functionval[0].maybeTransform().toFnStr() :
+            cond.blocklikes(1).getText()
+        const elseStatement = Ast.statementAstFromString(`
+          cond(!${condName}, ${elseBlock})
+        `.trim() + '\n')
+        newStatements.push(elseStatement)
+      } else {
+        const innerCondStatements = UserFunction.conditionalToCond(cond.conditionals(), scope)
+        const elseStatement = Ast.statementAstFromString(`
+          cond(!${condName}, fn {
+            ${innerCondStatements.map(s => s.getText()).join('\n')}
+          })
+        `.trim() + '\n')
+        newStatements.push(elseStatement)
+      }
+    }
+    return newStatements
+  }
+
+  maybeTransform() {
+    if (this.statements.some(s => s.isConditionalStatement())) {
+      // First pass, convert conditionals to `cond` fn calls
+      let statementAsts = []
+      for (let i = 0; i < this.statements.length; i++) {
+        const s = this.statements[i]
+        if (s.isConditionalStatement()) {
+          const cond = s.statementOrAssignableAst.conditionals()
+          const newStatements = UserFunction.conditionalToCond(cond, this.closureScope)
+          statementAsts.push(...newStatements)
+        } else {
+          statementAsts.push(s.statementOrAssignableAst)
+        }
+      }
+
+      const fnStr = `
+        fn ${this.name || ''} (${Object.keys(this.args).map(argName => `${argName}: ${this.args[argName].typename}`)}): ${this.returnType.typename} {
+          ${statementAsts.map(s => s.getText()).join('\n')}
+        }
+      `.trim()
+      return UserFunction.fromAst(Ast.functionAstFromString(fnStr), this.closureScope)
+    }
+    return this
+  }
+
   microstatementInlining(realArgNames, scope, microstatements) {
+    // Perform a transform, if necessary, before generating the microstatements
+    const fn = this.maybeTransform()
     // Resolve circular dependency issue
     const Microstatement = require('./Microstatement')
-    const internalNames = Object.keys(this.args)
+    const internalNames = Object.keys(fn.args)
     for (let i = 0; i < internalNames.length; i++) {
       const realArgName = realArgNames[i]
       // Instead of copying the relevant data, define a reference to where the data is located with
@@ -235,12 +320,12 @@ class UserFunction {
         true,
         realArgName,
         internalNames[i],
-        this.args[internalNames[i]],
+        fn.args[internalNames[i]],
         [],
         [],
       ))
     }
-    for (const s of this.statements) {
+    for (const s of fn.statements) {
       Microstatement.fromStatement(s, microstatements)
     }
   }

@@ -210,10 +210,19 @@ const Ast = {
   functionAstFromString: (fn) => {
     const inputStream = new InputStream(fn)
     const langLexer = new LnLexer(inputStream);
-    const commonTokenStream = new CommonTokenStream(langLexer);
-    const langParser = new LnParser(commonTokenStream);
+    const commonTokenStream = new CommonTokenStream(langLexer)
+    const langParser = new LnParser(commonTokenStream)
 
-    return langParser.functions();
+    return langParser.functions()
+  },
+
+  statementAstFromString: (s) => {
+    const inputStream = new InputStream(s)
+    const langLexer = new LnLexer(inputStream);
+    const commonTokenStream = new CommonTokenStream(langLexer)
+    const langParser = new LnParser(commonTokenStream)
+
+    return langParser.statements()
   },
 }
 module.exports = Ast

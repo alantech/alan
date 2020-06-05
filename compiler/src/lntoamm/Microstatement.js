@@ -300,6 +300,18 @@ class Microstatement {
   }
 
   static fromWithOperatorsAst(withOperatorsAst, returnTypeHint, scope, microstatements) {
+    // Short circuit on the trivial case
+    if (
+      withOperatorsAst.operatororassignable().length === 1 &&
+      !!withOperatorsAst.operatororassignable(1).basicassignables()
+    ) {
+      Microstatement.fromBasicAssignablesAst(
+        withOperatorsAst.operatororassignable(1).basicassignables(),
+        returnTypeHint,
+        scope,
+        microstatements,
+      )
+    }
     let withOperatorsList = []
     for (const operatorOrAssignable of withOperatorsAst.operatororassignable()) {
       if (operatorOrAssignable.operators() != null) {
@@ -508,115 +520,6 @@ class Microstatement {
         innerMicrostatements
       ))
     }
-  }
-
-  static fromConditionalsAst(conditionalsAst, scope, microstatements) {
-    // Solve circular dependency issue
-    const opcodeScope = require('./opcodes').exportScope
-    // TODO: There are two kinds of conditionals, the ones that are side-effect-only and the ones
-    // that return in one or more branches. First pass they all stay the same, but in the second
-    // pass when all functions are inlined into the handlers, returns are transformed into
-    // assignments and a trick will be necessary to handle conditional assignment with constants. It
-    // might be possible to turn all conditionals into ternary operators and maintain the same
-    // logical behavior, but it'll be complicated.
-    
-    // First, pull out the conditional and turn it into microstatements
-    Microstatement.fromWithOperatorsAst(
-      conditionalsAst.withoperators(),
-      "bool",
-      scope,
-      microstatements
-    )
-    // Now we grab that conditional assignment and hold onto a reference for use later
-    const conditional = microstatements[microstatements.length - 1]
-    // Next, we take the if statement body and turn it into a closure assignment. This is almost the
-    // same as function inlining, except we don't inline it and wrap it in `fn (): void { }`. We are
-    // guaranteed that there are no arguments passed to this closure explicitly due to how `if`
-    // statements work.
-    Microstatement.closureFromBlocklikesAst(
-      conditionalsAst.blocklikes()[0],
-      scope,
-      microstatements
-    )
-    // Time to grab a reference to the closure
-    const closure = microstatements[microstatements.length - 1]
-    // Next, we take the closure and feed it to the `condfn` function/opcode along with
-    // the conditional value.
-    microstatements.push(new Microstatement(
-      StatementType.CALL,
-      scope,
-      true,
-      "",
-      Box.builtinTypes.void,
-      [conditional.outputName, closure.outputName],
-      opcodeScope.get("condfn").functionval,
-    ))
-    if (conditionalsAst.ELSE()) {
-      // First we need to invert the boolean
-      // TODO: Should we create another opcode instead to reduce the instruction size?
-      const elseBoolName = "_" + uuid().replace(/-/g, "_")
-      microstatements.push(new Microstatement(
-        StatementType.CONSTDEC,
-        scope,
-        true,
-        elseBoolName,
-        Box.builtinTypes.bool,
-        [conditional.outputName],
-        opcodeScope.get('notbool').functionval,
-      ))
-      // Get a reference to the inverted boolean for checking
-      const otherwise = microstatements[microstatements.length - 1]
-      if (conditionalsAst.blocklikes()[1]) {
-        // This is just like the above and we're terminating our work here
-        Microstatement.closureFromBlocklikesAst(
-          conditionalsAst.blocklikes()[1],
-          scope,
-          microstatements
-        )
-      } else {
-        // Solve circular dependency issue again
-        const Scope = require('./Scope')
-        // This path is a bit different. We need to wrap the follow-up else if branch inside of a
-        // new microstatement closure definition and then conditionally call that closure
-        // We're creating this structure wholesale, so we can't re-use other closure code
-        const otherClosureName = "_" + uuid().replace(/-/g, "_")
-        let innerMicrostatements = []
-        // Since we blow away the microstatements list with a new sub-array, we need to let the
-        // inner scope have access to the original microstatements in case it's referencing the
-        // outer scope. We do this with a new scope that contains all of the microstatements placed
-        // in that scope. Ideally we can be a bit more picky in the future
-        let innerScope = new Scope(scope)
-        for (const m of microstatements) {
-          if (m.outputName != "") {
-            innerScope.put(m.outputName, m)
-          }
-        }
-        Microstatement.fromConditionalsAst(
-          conditionalsAst.conditionals(),
-          innerScope,
-          innerMicrostatements,
-        )
-        microstatements.push(new Microstatement(
-          StatementType.CLOSURE,
-          scope,
-          true, // TODO: Is this really true?
-          otherClosureName,
-          innerMicrostatements,
-        ))
-      }
-      // Time to grab a reference to the closure
-      const otherClosure = microstatements[microstatements.length - 1]
-      microstatements.push(new Microstatement(
-        StatementType.CALL,
-        scope,
-        true,
-        "",
-        Box.builtinTypes.void,
-        [otherwise.outputName, otherClosure.outputName],
-        opcodeScope.get("condfn").functionval,
-      ))
-    }
-    // TODO: Continue on this. Add early return detection and support
   }
 
   static fromEmitsAst(emitsAst, scope, microstatements) {
@@ -850,9 +753,8 @@ class Microstatement {
         process.exit(-106)
       }
       // Generate the relevant microstatements for this function. UserFunctions get inlined with the
-      // return statement turned into a const assignment (TODO: handle conditionals correctly) as
-      // the last statement, while built-in functions are kept as function calls with the correct
-      // renaming.
+      // return statement turned into a const assignment as the last statement, while built-in
+      // functions are kept as function calls with the correct renaming.
       UserFunction
         .dispatchFn(fnBox.functionval, realArgTypes, scope)
         .microstatementInlining(realArgNames, scope, microstatements)
@@ -996,13 +898,12 @@ class Microstatement {
       )
       // By definition the last microstatement is the const assignment we care about, so we can just
       // mutate its object to rename the output variable name to the name we need instead.
-      microstatements[microstatements.length - 1].outputName = letName
       microstatements[microstatements.length - 1].statementType = StatementType.LETDEC
       microstatements.push(new Microstatement(
         StatementType.REREF,
         scope,
         true,
-        letName,
+        microstatements[microstatements.length - 1].outputName,
         letAlias,
         microstatements[microstatements.length - 1].outputType,
         [],
@@ -1020,13 +921,12 @@ class Microstatement {
       // The same rule as above, the last microstatement is already a const assignment for the value
       // that we care about, so just rename its variable to the one that will be expected by other
       // code.
-      microstatements[microstatements.length - 1].outputName = letName
       microstatements[microstatements.length - 1].statementType = StatementType.LETDEC
       microstatements.push(new Microstatement(
         StatementType.REREF,
         scope,
         true,
-        letName,
+        microstatements[microstatements.length - 1].outputName,
         letAlias,
         microstatements[microstatements.length - 1].outputType,
         [],
@@ -1093,12 +993,11 @@ class Microstatement {
       )
       // By definition the last microstatement is the const assignment we care about, so we can just
       // mutate its object to rename the output variable name to the name we need instead.
-      microstatements[microstatements.length - 1].outputName = constName
       microstatements.push(new Microstatement(
         StatementType.REREF,
         scope,
         true,
-        constName,
+        microstatements[microstatements.length - 1].outputName,
         constAlias,
         microstatements[microstatements.length - 1].outputType,
         [],
@@ -1116,12 +1015,11 @@ class Microstatement {
       // The same rule as above, the last microstatement is already a const assignment for the value
       // that we care about, so just rename its variable to the one that will be expected by other
       // code.
-      microstatements[microstatements.length - 1].outputName = constName
       microstatements.push(new Microstatement(
         StatementType.REREF,
         scope,
         true,
-        constName,
+        microstatements[microstatements.length - 1].outputName,
         constAlias,
         microstatements[microstatements.length - 1].outputType,
         [],
@@ -1172,13 +1070,6 @@ class Microstatement {
     if (statementAst.emits() != null) {
       Microstatement.fromEmitsAst(
         statementAst.emits(),
-        scope,
-        microstatements
-      )
-    }
-    if (statementAst.conditionals() != null) {
-      Microstatement.fromConditionalsAst(
-        statementAst.conditionals(),
         scope,
         microstatements
       )

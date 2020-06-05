@@ -9,6 +9,11 @@ class Statement {
     this.pure = pure
   }
 
+  isConditionalStatement() {
+    return this.statementOrAssignableAst instanceof LnParser.StatementsContext &&
+      this.statementOrAssignableAst.conditionals() !== null
+  }
+
   static isCallPure(callAst, scope) {
     // TODO: Add purity checking for chained method-style calls
     const functionBox = scope.deepGet(callAst.varn(0))
