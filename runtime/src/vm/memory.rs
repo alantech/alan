@@ -64,7 +64,8 @@ impl HandlerMemory {
   }
 
   pub fn resize_mem_req(self: &mut HandlerMemory, mem_req: i64) {
-    self.mem.resize(mem_req as usize, 0);
+    let new_size = if mem_req < 0 { 0 } else { mem_req as usize };
+    self.mem.resize(new_size, 0);
   }
 
   pub fn read(self: &HandlerMemory, addr: i64, size: u8) -> &[u8] {
@@ -90,7 +91,8 @@ impl HandlerMemory {
       0 => {
         // string as array u8
         let arr = self.fractal_mem.get(&actual_addr);
-        return if arr.is_none() { &[] } else { arr.unwrap().mem.as_slice() }
+        let res = if arr.is_none() { &[] } else { arr.unwrap().mem.as_slice() };
+        return res;
       },
       1 => &self.mem[a..a + 1],
       2 => &self.mem[a..a + 2],
