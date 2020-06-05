@@ -60,7 +60,6 @@ impl VM {
         event.payload.clone().unwrap()
       };
       hand_mem.resize_mem_req(hand.mem_req);
-      // TODO join on all these futures
       futures.push(self.ins_sched.sched_frag(frag, hand_mem));
     }
     join_all(futures).await;
