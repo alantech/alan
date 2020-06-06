@@ -119,8 +119,7 @@ struct HandlerFragmentID {
 pub struct HandlerFragment {
   /// reference to the static program definition
   pgm: &'static Program,
-  /// Handler stack for other handlers sequentially running within itself *and* in a single fragment.
-  /// If this does not run within a single fragment it will not run sequentially.
+  /// handler stack for other handlers sequentially running within itself.
   /// Required IDs to identify the event handler placed into a Vec
   handlers: Vec<HandlerFragmentID>,
 }
@@ -190,6 +189,9 @@ impl HandlerFragment {
     self.handlers.insert(0, HandlerFragmentID {
       event_id,
       handler_idx: 0,
+      // Finally, because of how `get_next_fragment` works, it will assume the first fragment
+      // in the new subhandler has already been run, which is not true, so we start it out at None
+      // and from there increment it to 0.
       fragment_idx: None,
     });
   }
@@ -355,6 +357,7 @@ mod tests {
   }
 
   // condfn is an unmovable capstone among io operations even when no deps
+  // and gets its own fragment
   #[test]
   fn test_frag_grouping_10() {
     let mut hand = EventHandler::new(123, 123);
