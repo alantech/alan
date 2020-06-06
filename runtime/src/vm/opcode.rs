@@ -46,6 +46,8 @@ type FnPtr = fn(
 pub struct ByteOpcode {
   /// Opcode value as an i64 number
   pub(crate) id: i64,
+  /// Human readable name for id
+  pub(crate) name: String,
   /// Boolean that is true if this opcode has predictable execution
   pub(crate) pred_exec: bool,
   /// void function pointer that describes the side-effect of cpu bound opcode
@@ -72,6 +74,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let id = opcode_id($name);
       let opcode = ByteOpcode {
         id,
+        name: $name.to_string(),
         pred_exec: false,
         func: None,
         async_func: Some($async_func),
@@ -85,6 +88,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let id = opcode_id($name);
       let opcode = ByteOpcode {
         id,
+        name: $name.to_string(),
         pred_exec: true,
         func: Some($func),
         async_func: None,
@@ -98,6 +102,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let id = opcode_id($name);
       let opcode = ByteOpcode {
         id,
+        name: $name.to_string(),
         pred_exec: false,
         func: Some($func),
         async_func: None,
@@ -1463,9 +1468,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   // TODO: pair and condarr after arrays are implemented
   unpred_cpu!("condfn", |args, hand_mem, frag| {
     let cond = LittleEndian::read_i64(hand_mem.read(args[0], 8));
-    let subfn = args[1];
+    let event_id = args[1];
     if cond == 1 {
-      frag.insert_subhandler(subfn);
+      frag.insert_subhandler(event_id);
     }
     None
   });
