@@ -70,7 +70,7 @@ impl EventHandler {
         self.fragments.push(frag);
       }
     } else {
-      // non-predictable io opcode is a "capstone" in execution
+      // non-predictable io opcode is a "movable capstone" in execution
       let cur_max_dep = ins.dep_ids.iter().max().unwrap_or(&-1);
       // merge this capstone with an existing one if possible
       for frag_idx in &self.movable_capstones {
