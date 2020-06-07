@@ -60,7 +60,6 @@ It's true!"
     End
 
     It "runs agc"
-      Pending condfn-regression-debugging
       When run alan-runtime run temp.agc
       The output should eq "Math is sane...
 Math is still sane, for now...
