@@ -26,12 +26,7 @@ Box.builtinTypes['Map'].solidify(['any', 'any'], opcodeScope)
 Box.builtinTypes['KeyVal'].solidify(['any', 'any'], opcodeScope)
 Box.builtinTypes['Array'].solidify(['KeyVal<any, any>'], opcodeScope)
 opcodeScope.put("start", new Box(new Event("_start", Box.builtinTypes.void, true), true))
-const t = (str) => {
-  if (opcodeScope.get(str) === null) {
-    console.log(str)
-  }
-  return opcodeScope.get(str).typeval
-}
+const t = (str) => opcodeScope.get(str).typeval
 
 // opcode declarations
 const addopcodes = (opcodes) => {
