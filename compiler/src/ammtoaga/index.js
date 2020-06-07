@@ -334,7 +334,7 @@ const loadHandlers = (handlers, handlerMem, globalMem) => {
     const eventName = handler.VARNAME().getText().trim()
     const memSize = handlerMem[i].memSize
     const localMem = handlerMem[i].addressMap
-    let h = `handler: ${eventName} size ${memSize}\n`
+    let h = `handler for ${eventName} with size ${memSize}\n`
     const statements = loadStatements(
       handler.functions().functionbody().statements(),
       localMem,
@@ -353,7 +353,7 @@ const loadClosures = (closures, globalMem) => {
     const eventName = closure.name
     const memSize = closure.closureMem.memSize
     const localMem = closure.closureMem.addressMap
-    let c = `handler: ${eventName} size ${memSize}\n`
+    let c = `handler for ${eventName} with size ${memSize}\n`
     const statements = loadStatements(
       closure.statements,
       localMem,
