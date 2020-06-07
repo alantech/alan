@@ -3,64 +3,37 @@ const Ast = require('../amm/Ast')
 // This project depends on BigNum and associated support in Node's Buffer, so must be >= Node 10.20
 // and does not work in the browser. It would be possible to implement a browser-compatible version
 // but there is no need for it and it would make it harder to work with.
-const header   = Buffer.from('agc00001', 'utf8').readBigUInt64LE(0)
-const eventdd  = Buffer.from('eventdd:', 'utf8').readBigUInt64LE(0)
-const handlerd = Buffer.from('handler:', 'utf8').readBigUInt64LE(0)
-const lineno   = Buffer.from('lineno: ', 'utf8').readBigUInt64LE(0)
-const emitd    = Buffer.from('emit    ', 'utf8').readBigUInt64LE(0)
-
-const ceil8 = n => Math.ceil(n / 8) * 8
-const int64ToUint64 = n => {
-  const buf = Buffer.alloc(8)
-  buf.writeBigInt64LE(n, 0)
-  return buf.readBigUInt64LE(0)
-}
 
 const loadGlobalMem = (globalMemAst, addressMap) => {
-  const globalMem = []
-  let currentOffset = -1n
+  const globalMem = {}
+  let currentOffset = -1
   for (const globalConst of globalMemAst) {
     let val
     switch (globalConst.fulltypename().getText().trim()) {
     case "int64":
       val = BigInt(globalConst.assignables().getText())
-      globalMem.push(val)
-      addressMap[globalConst.decname().getText()] = int64ToUint64(currentOffset)
-      currentOffset -= 8n
+      globalMem[`@${currentOffset}`] = val
+      addressMap[globalConst.decname().getText()] = currentOffset
+      currentOffset -= 8
       break
     case "float64":
-      const buf = Buffer.alloc(8)
-      buf.writeDoubleLE(parseFloat(globalConst.assignables().getText()))
-      val = buf.readBigUInt64LE(0)
-      globalMem.push(val)
-      addressMap[globalConst.decname().getText()] = int64ToUint64(currentOffset)
-      currentOffset -= 8n
+      val = parseFloat(globalConst.assignables().getText())
+      globalMem[`@${currentOffset}`] = val
+      addressMap[globalConst.decname().getText()] = currentOffset
+      currentOffset -= 8
       break
     case "string":
-      let str
-      try {                                                                                               
-        str = JSON.parse(globalConst.assignables().getText()) // Will fail on strings with escape chars
-      } catch (e) {
-        // Hackery to get these strings to work
-        str = JSON.stringify(globalConst.assignables().getText().replace(/^["']/, '').replace(/["']$/, ''))
-      }
-      let len = BigInt(ceil8(str.length) + 8)
-      val = Buffer.alloc(Number(len))
-      val.writeBigInt64LE(BigInt(str.length), 0)
-      for (let i = 8; i < str.length + 8; i++) {
-        val.writeInt8(str.charCodeAt(i - 8), i)
-      }
-      for (let i = 0; i < Number(len) / 8; i++) {
-        globalMem.push(val.readBigUInt64LE(i * 8))
-      }
-      addressMap[globalConst.decname().getText()] = int64ToUint64(currentOffset)
+      val = globalConst.assignables().getText().trim()
+      let len = val.length + 8
+      globalMem[`@${currentOffset}`] = val
+      addressMap[globalConst.decname().getText()] = currentOffset
       currentOffset -= len
       break
     case "bool":
-      val = globalConst.assignables().getText() == "true" ? 1n : 0n
-      globalMem.push(val)
-      addressMap[globalConst.decname().getText()] = int64ToUint64(currentOffset)
-      currentOffset -= 8n
+      val = globalConst.assignables().getText().trim()
+      globalMem[`@${currentOffset}`] = val
+      addressMap[globalConst.decname().getText()] = currentOffset
+      currentOffset -= 8
       break
     default:
       console.error(globalConst.fulltypename().getText() + " not yet implemented")
@@ -70,23 +43,19 @@ const loadGlobalMem = (globalMemAst, addressMap) => {
   return globalMem
 }
 
-const loadEventDecs = (eventAst, eventLookup) => {
-  let customEventIdOffset = 0n
-  const eventMem = []
+const loadEventDecs = (eventAst) => {
+  const eventMem = {}
   for (const evt of eventAst) {
-    const evtName = evt.typename().getText().trim()
-    const evtSize = evtName === "void" ? 0n : (evtName === "string" ? int64ToUint64(-1n) : 8n);
-    eventMem.push(eventdd, customEventIdOffset, evtSize)
-    eventLookup[evt.VARNAME().getText().trim()] = {
-      eventId: customEventIdOffset,
-    }
-    customEventIdOffset++
+    const evtName = evt.VARNAME().getText().trim()
+    const evtType = evt.typename().getText().trim()
+    const evtSize = evtType === "void" ? 0 : (evtType === "string" ? -1 : 8)
+    eventMem[evtName] = evtSize
   }
-  return [customEventIdOffset, eventMem]
+  return eventMem
 }
 
 const getFunctionbodyMem = (functionbody) => {
-  let memSize = 0n
+  let memSize = 0
   const addressMap = {}
   for (const statement of functionbody.statements()) {
     if (statement.declarations()) {
@@ -102,11 +71,11 @@ const getFunctionbodyMem = (functionbody) => {
           memSize += closureMem.memSize
         } else {
           addressMap[statement.declarations().constdeclaration().decname().getText().trim()] = memSize
-          memSize += 8n
+          memSize += 8
         }
       } else {
         addressMap[statement.declarations().letdeclaration().decname().getText().trim()] = memSize
-        memSize += 8n
+        memSize += 8
       }
     }
   }
@@ -120,14 +89,14 @@ const getHandlersMem = handlers => handlers.map(handler => {
   const handlerMem = getFunctionbodyMem(handler.functions().functionbody())
   if (handler.functions().VARNAME()) {
     // Increase the memory usage and shift *everything* down, then add the new address
-    handlerMem.memSize += 8n
-    Object.keys(handlerMem.addressMap).forEach(name => handlerMem.addressMap[name] += 8n)
-    handlerMem.addressMap[handler.functions().VARNAME().getText().trim()] = 0n
+    handlerMem.memSize += 8
+    Object.keys(handlerMem.addressMap).forEach(name => handlerMem.addressMap[name] += 8)
+    handlerMem.addressMap[handler.functions().VARNAME().getText().trim()] = 0
   }
   return handlerMem
 })
 
-const closuresFromDeclaration = (declaration, closureMem, customEventIdOffset) => {
+const closuresFromDeclaration = (declaration, closureMem, eventDecs) => {
   const name = declaration.constdeclaration().decname().getText().trim()
   const allStatements = declaration
     .constdeclaration()
@@ -143,24 +112,24 @@ const closuresFromDeclaration = (declaration, closureMem, customEventIdOffset) =
     statement.declarations().constdeclaration() &&
     statement.declarations().constdeclaration().assignables().functions()
   ).map(
-    (s, i) => closuresFromDeclaration(s.declarations(), closureMem, customEventIdOffset + BigInt(i))
+    s => closuresFromDeclaration(s.declarations(), closureMem, eventDecs)
   ).reduce((obj, rec) => ({
     ...obj,
     ...rec,
   }), {})
-  customEventIdOffset += BigInt(allStatements.length - statements.length)
+  eventDecs[name] = 0
 
   return {
     [name]: {
+      name,
       statements,
       closureMem,
-      eventId: customEventIdOffset,
     },
     ...otherClosures,
   }
 }
 
-const extractClosures = (handlers, handlerMem, customEventIdOffset, closureMap) => {
+const extractClosures = (handlers, handlerMem, eventDecs) => {
   let closures = {}
   for (let i = 0; i < handlers.length; i++) {
     const closureMem = handlerMem[i]
@@ -175,42 +144,21 @@ const extractClosures = (handlers, handlerMem, customEventIdOffset, closureMap) 
         const innerClosures = closuresFromDeclaration(
           statement.declarations(),
           closureMem,
-          customEventIdOffset,
+          eventDecs,
         )
-        customEventIdOffset = Object.values(innerClosures)
-          .map(c => c.eventId)
-          .reduce((m, i) => i > m ? i : m, -1n)
         closures = {
           ...closures,
           ...innerClosures,
         }
-        customEventIdOffset++
       }
     }
   }
-  Object.keys(closures).forEach(name => closureMap[name] = closures[name].eventId)
   return Object.values(closures)
 }
 
-const fakeEventsForClosures = (closures) => {
-  const vec = []
-  for (const closure of closures) {
-    vec.push(eventdd, closure.eventId, 0n)
-  }
-  return vec
-}
-
-const fill8 = name => {
-  const buf = Buffer.alloc(8, ' '.charCodeAt(0))
-  for (let i = 0; i < name.length; i++) {
-    buf.writeInt8(name.charCodeAt(i), i)
-  }
-  return buf.readBigUInt64LE(0)
-}
-
-const loadStatements = (statements, localMem, globalMem, eventLookup, closureMap) => {
+const loadStatements = (statements, localMem, globalMem) => {
   let vec = []
-  let line = 0n
+  let line = 0
   let localMemToLine = {}
   for (const statement of statements) {
     if (
@@ -221,67 +169,68 @@ const loadStatements = (statements, localMem, globalMem, eventLookup, closureMap
       // It's a closure, skip it
       continue
     }
-    vec.push(lineno, line)
+    // let s = `line ${line}`
+    let s = ''
     if (statement.declarations()) {
       const dec = statement.declarations().constdeclaration() || statement.declarations().letdeclaration()
       const resultAddress = localMem[dec.decname().getText().trim()]
-      localMemToLine[resultAddress] = line
+      localMemToLine[dec.decname().getText().trim()] = line
       const assignables = dec.assignables()
       if (assignables.functions()) {
         console.error("This shouldn't be possible!")
         process.exit(2)
       } else if (assignables.calls()) {
         const call = assignables.calls()
-        const fn = fill8(call.VARNAME().getText().trim())
+        const fn = call.VARNAME().getText().trim()
         const vars = (call.calllist() ? call.calllist().VARNAME() : []).map(v => v.getText().trim())
         const args = vars.map(v => localMem.hasOwnProperty(v) ?
           localMem[v] :
-          closureMap.hasOwnProperty(v) ?
-            closureMap[v] :
-            globalMem[v]
-        )
-        while (args.length < 2) args.push(0n)
+          globalMem.hasOwnProperty(v) ?
+            globalMem[v] :
+            v
+        ).map(a => typeof a === 'string' ? a : `@${a}`)
+        while (args.length < 2) args.push('@0')
         const deps = vars
           .filter(v => localMem.hasOwnProperty(v))
           .map(v => localMemToLine[localMem[v]])
           .filter(v => v !== undefined) // Filter out the handler arg from the dep list
-        vec.push(BigInt(deps.length), ...deps, fn, ...args, resultAddress)
+          .map(v => `#${v}`)
+        s += `@${resultAddress} = ${fn}(${args.join(', ')}) #${line}`
+        if (deps.length > 0) {
+          s += ` <- [${deps.join(', ')}]`
+        }
       } else if (assignables.constants()) {
         // Only required for `let` statements
         let fn
         let val
         switch (dec.fulltypename().getText().trim()) {
         case 'int64':
-          fn = fill8('seti64')
-          val = BigInt(assignables.getText())
+          fn = 'seti64'
+          val = assignables.getText()
           break
         case 'int32':
-          fn = fill8('seti32')
-          val = BigInt(assignables.getText())
+          fn = 'seti32'
+          val = assignables.getText()
           break
         case 'int16':
-          fn = fill8('seti16')
-          val = BigInt(assignables.getText())
+          fn = 'seti16'
+          val = assignables.getText()
           break
         case 'int8':
-          fn = fill8('seti8')
-          val = BigInt(assignables.getText())
+          fn = 'seti8'
+          val = assignables.getText()
           break
         case 'float64':
-          fn = fill8('setf64')
-          const buf = Buffer.alloc(8)
-          buf.writeDoubleLE(parseFloat(assignables.getText()))
-          val = buf.readBigUInt64LE(0)
+          fn = 'setf64'
+          val = assignables.getText()
           break
         case 'float32':
-          fn = fill8('setf32')
-          const buf2 = Buffer.alloc(8)
-          buf2.writeFloatLE(parseFloat(assignables.getText()))
-          val = buf2.readBigUInt64LE(0)
+          fn = 'setf32'
+          val = assignables.getText()
           break
         case 'bool':
-          fn = fill8('setbool')
-          val = assignables.getText().trim() === "true" ? 1n : 0n
+          fn = 'setbool'
+          val = assignables.getText()
           break
         case 'string':
           throw new Error('TODO: Decide if this is the responsibility of first or second stage')
@@ -290,7 +239,7 @@ const loadStatements = (statements, localMem, globalMem, eventLookup, closureMap
           throw new Error(`Unsupported variable type ${dec.fulltypename().getText()}`)
           break
         }
-        vec.push(0n, fn, val, 0n, resultAddress)
+        s += `@${resultAddress} = ${fn}(${val}, @0) #${line}`
       } else if (assignables.objectliterals()) {
         console.error("Not yet implemented")
         process.exit(4)
@@ -308,20 +257,24 @@ const loadStatements = (statements, localMem, globalMem, eventLookup, closureMap
         process.exit(2)
       } else if (assignables.calls()) {
         const call = assignables.calls()
-        const fn = fill8(call.VARNAME().getText().trim())
+        const fn = call.VARNAME().getText().trim()
         const vars = (call.calllist() ? call.calllist().VARNAME() : [])
         const args = vars.map(v => v.getText().trim()).map(v => localMem.hasOwnProperty(v) ?
           localMem[v] :
-          closureMap.hasOwnProperty(v) ?
-            closureMap[v] :
-            globalMem[v]
-        )
-        while (args.length < 2) args.push(0n)
+          globalMem.hasOwnProperty(v) ?
+            globalMem[v] :
+            v
+        ).map(a => typeof a === 'string' ? a : `@${a}`)
+        while (args.length < 2) args.push('@0')
         const deps = vars
           .filter(v => localMem.hasOwnProperty(v))
           .map(v => localMemToLine[localMem[v]])
           .filter(v => v !== undefined) // Filter out the handler arg from the dep list
-        vec.push(BigInt(deps.length), ...deps, fn, ...args, resultAddress)
+          .map(v => `#${v}`)
+        s += `@${resultAddress} = ${fn}(${args.join(', ')}) #${line}`
+        if (deps.length > 0) {
+          s += ` <- [${deps.join(', ')}]`
+        }
       } else if (assignables.constants()) {
         console.error("This should have been hoisted")
         process.exit(3)
@@ -334,128 +287,124 @@ const loadStatements = (statements, localMem, globalMem, eventLookup, closureMap
       }
     } else if (statement.calls()) {
       const call = statement.calls()
-      const fn = fill8(call.VARNAME().getText().trim())
+      const fn = call.VARNAME().getText().trim()
       const vars = (call.calllist() ? call.calllist().VARNAME() : [])
       const args = vars.map(v => v.getText().trim()).map(v => localMem.hasOwnProperty(v) ?
         localMem[v] :
-        closureMap.hasOwnProperty(v) ?
-          closureMap[v] :
-          globalMem[v]
-      )
-      while (args.length < 2) args.push(0n)
+        globalMem.hasOwnProperty(v) ?
+          globalMem[v] :
+          v
+      ).map(a => typeof a === 'string' ? a : `@${a}`)
+      while (args.length < 2) args.push(0)
       const deps = vars
         .filter(v => localMem.hasOwnProperty(v))
         .map(v => localMemToLine[localMem[v]])
         .filter(v => v !== undefined) // Filter out the handler arg from the dep list
-      vec.push(BigInt(deps.length), ...deps, fn, ...args, 0n)
+        .map(v => `#${v}`)
+      s += `${fn}(${args.join(', ')}) #${line}`
+      if (deps.length > 0) {
+        s += ` <- [${deps.join(', ')}]`
+      }
     } else if (statement.emits()) {
       const emit = statement.emits()
-      const { eventId, } = eventLookup[emit.VARNAME(0).getText().trim()]
-      const payloadVar = emit.VARNAME(1)
+      const evtName = emit.VARNAME(0).getText().trim()
+      const payloadVar = emit.VARNAME(1).getText().trim()
       const payload = !payloadVar ?
-        0n :
+        0 :
         localMem.hasOwnProperty(payloadVar) ?
           localMem[payloadVar] :
-          closureMap.hasOwnProperty(payloadVar) ?
-            closureMap[payloadVar] :
-            globalMem[payloadVar]
-      const dep = !payloadVar ? [] :
-        localMem.hasOwnProperty(payloadVar) ?
-          [localMemToLine[payloadVar]].filter(v => v !== undefined) :
-          []
-      vec.push(BigInt(dep.length), ...dep, emitd, eventId, payload, 0n)
+          globalMem.hasOwnProperty(payloadVar) ?
+            globalMem[payloadVar] :
+            payloadVar
+      const deps = (
+        !payloadVar ? [] :
+          localMem.hasOwnProperty(payloadVar) ?
+            [localMemToLine[payloadVar]].filter(v => v !== undefined) :
+            []
+      ).map(v => `#${v}`)
+      s += `emit(${evtName}, ${typeof payload === 'string' ? payload : `@${payload}`}) #${line}`
+      if (deps.length > 0) {
+        s += ` <- [${deps.join(', ')}]`
+      }
     }
-    line += 1n
+    vec.push(s)
+    line += 1
   }
   return vec
 }
 
-const loadHandlers = (handlers, handlerMem, globalMem, eventLookup, closureMap) => {
+const loadHandlers = (handlers, handlerMem, globalMem) => {
   const vec = []
   for (let i = 0; i < handlers.length; i++) {
     const handler = handlers[i]
-    const { eventId } = eventLookup[handler.VARNAME().getText().trim()]
+    const eventName = handler.VARNAME().getText().trim()
     const memSize = handlerMem[i].memSize
     const localMem = handlerMem[i].addressMap
-    vec.push(handlerd, eventId, memSize)
-    const statementVec = loadStatements(
+    let h = `handler for ${eventName} with size ${memSize}\n`
+    const statements = loadStatements(
       handler.functions().functionbody().statements(),
       localMem,
       globalMem,
-      eventLookup,
-      closureMap
     )
-    vec.push(...statementVec)
+    statements.forEach(s => h += `  ${s}\n`)
+    vec.push(h)
   }
-  return vec
+  return vec 
 }
           
-const loadClosures = (closures, globalMem, eventLookup, closureMap) => {
+const loadClosures = (closures, globalMem) => {
   const vec = []
   for (let i = 0; i < closures.length; i++) {
     const closure = closures[i]
-    const eventId = closure.eventId
+    const eventName = closure.name
     const memSize = closure.closureMem.memSize
     const localMem = closure.closureMem.addressMap
-    vec.push(handlerd, eventId, memSize)
-    const statementVec = loadStatements(
+    let c = `handler for ${eventName} with size ${memSize}\n`
+    const statements = loadStatements(
       closure.statements,
       localMem,
       globalMem,
-      eventLookup,
-      closureMap
     )
-    vec.push(...statementVec)
+    statements.forEach(s => c += `  ${s}\n`)
+    vec.push(c)
   }
-  return vec
+  return vec 
 }
 
-const ammToAgc = (amm) => {
-  // Declare the AGC header
-  const vec = [header]
+const ammToAga = (amm) => {
+  // Declare the AGA header
+  let outStr = 'Alan Graphcode Assembler v0.0.1\n\n'
   // Get the global memory and the memory address map (var name to address ID)
   const addressMap = {}
   const globalMem = loadGlobalMem(amm.constdeclaration(), addressMap)
-  // Compute the global memory size and declare that and add all of the global memory
-  const memSize = BigInt(globalMem.length * 8)
-  vec.push(memSize, ...globalMem)
-  // Declare the event lookup table (event string to id) with the singular special event `"start"`
-  const eventLookup = {
-    _start: {
-      eventId: (() => {
-        const buf = Buffer.from('"start" ', 'utf8')
-        buf.writeUInt8(0x80, 7)
-        return buf.readBigUInt64LE(0)
-      })(),
-    },
-  }
+  // Output the global memory
+  outStr += 'globalMem\n'
+  Object.keys(globalMem).forEach(addr => outStr += `  ${addr}: ${globalMem[addr]}\n`)
+  outStr += '\n'
   // Load the events, get the event id offset (for reuse with closures) and the event declarations
-  let [customEventIdOffset, eventDecs] = loadEventDecs(amm.events(), eventLookup)
-  // Then add that to the output vector
-  vec.push(...eventDecs)
+  let eventDecs = loadEventDecs(amm.events())
   // Skipping types for now as exactly how we deal with them and what metadata the runtime needs is
   // not yet decided.
-
   // Determine the amount of memory to allocate per handler and map declarations to addresses
   const handlerMem = getHandlersMem(amm.handlers())
-  const closureMap = {}
-  const closures = extractClosures(amm.handlers(), handlerMem, customEventIdOffset, closureMap)
-  // Generate event records for the closures for the runtime to register them to
-  const fakeEvents = fakeEventsForClosures(closures)
-  vec.push(...fakeEvents)
+  const closures = extractClosures(amm.handlers(), handlerMem, eventDecs)
+  // Then output the custom events, which may include closures, if needed
+  if (Object.keys(eventDecs).length > 0) {
+    outStr += 'customEvents\n'
+    Object.keys(eventDecs).forEach(evt => outStr += `  ${evt}: ${eventDecs[evt]}\n`)
+    outStr += '\n'
+  }
   // Load the handlers
-  const handlerVec = loadHandlers(amm.handlers(), handlerMem, addressMap, eventLookup, closureMap)
-  vec.push(...handlerVec)
-  // And load the closures (as handlers)
-  const closureVec = loadClosures(closures, addressMap, eventLookup, closureMap)
-  vec.push(...closureVec)
-  // All done, convert the BigInt array to a big buffer to write to a file
-  const outBuf = Buffer.alloc(vec.length * 8)
-  vec.forEach((n, i) => {
-    outBuf.writeBigUInt64LE(n, i * 8)
-  })
-  return outBuf
+  const handlerVec = loadHandlers(amm.handlers(), handlerMem, addressMap)
+  outStr += handlerVec.join('\n')
+  // And load the closures (as handlers) if present
+  const closureVec = loadClosures(closures, addressMap)
+  if (closureVec.length > 0) {
+    outStr += '\n'
+    outStr += closureVec.join('\n')
+  }
+  return outStr
 }
 
-module.exports = (filename) => ammToAgc(Ast.fromFile(filename))
-module.exports.ammTextToAgc = (str) => ammToAgc(Ast.fromString(str))
+module.exports = (filename) => ammToAga(Ast.fromFile(filename))
+module.exports.ammTextToAga = (str) => ammToAga(Ast.fromString(str))

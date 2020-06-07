@@ -1535,7 +1535,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     hand_mem.write(args[1], 1, &data);
     None
   });
-  cpu!("emit to:", |args, hand_mem, _| {
+  cpu!("emit", |args, hand_mem, _| {
     let event = EventEmit {
       id: args[0],
       payload: HandlerMemory::alloc_payload(args[0], args[1], &hand_mem),
