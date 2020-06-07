@@ -61,7 +61,6 @@ impl EventHandler {
       let mut frag = self.fragments.pop().unwrap_or(Vec::new());
       if frag.len() > 0 && !frag.get(frag.len() - 1).unwrap().opcode.pred_exec {
         // if last instruction in the last fragment is a (io or cpu) capstone start a new fragment
-        // no instruction can go ahead of a unpred cpu instruction
         self.fragments.push(frag);
         self.fragments.push(vec![ins]);
       } else {
@@ -70,16 +69,8 @@ impl EventHandler {
         self.fragments.push(frag);
       }
     } else if !ins.opcode.pred_exec && ins.opcode.func.is_some() {
-      let mut frag = self.fragments.pop().unwrap_or(Vec::new());
-      if frag.len() > 0 && frag.get(frag.len() - 1).unwrap().opcode.async_func.is_some() {
-        // an unpred cpu instruction can go ahead of a cpu instruction, but not an io one
-        self.fragments.push(frag);
-        self.fragments.push(vec![ins]);
-      } else {
-        // add to last fragment
-        frag.push(ins);
-        self.fragments.push(frag);
-      }
+      // cpu instructions with unpredictable execution always form an unmovable capstone
+      self.fragments.push(vec![ins]);
     } else if !ins.opcode.pred_exec && ins.opcode.async_func.is_some() {
       // non-predictable io opcode is a "movable capstone" in execution
       let cur_max_dep = ins.dep_ids.iter().max().unwrap_or(&-1);
