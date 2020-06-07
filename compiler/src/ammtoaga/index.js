@@ -12,26 +12,26 @@ const loadGlobalMem = (globalMemAst, addressMap) => {
     switch (globalConst.fulltypename().getText().trim()) {
     case "int64":
       val = BigInt(globalConst.assignables().getText())
-      globalMem[currentOffset] = val
+      globalMem[`@${currentOffset}`] = val
       addressMap[globalConst.decname().getText()] = currentOffset
       currentOffset -= 8
       break
     case "float64":
       val = parseFloat(globalConst.assignables().getText())
-      globalMem[currentOffset] = val
+      globalMem[`@${currentOffset}`] = val
       addressMap[globalConst.decname().getText()] = currentOffset
       currentOffset -= 8
       break
     case "string":
       val = globalConst.assignables().getText().trim()
       let len = val.length + 8
-      globalMem[currentOffset] = val
+      globalMem[`@${currentOffset}`] = val
       addressMap[globalConst.decname().getText()] = currentOffset
       currentOffset -= len
       break
     case "bool":
       val = globalConst.assignables().getText().trim()
-      globalMem[currentOffset] = val
+      globalMem[`@${currentOffset}`] = val
       addressMap[globalConst.decname().getText()] = currentOffset
       currentOffset -= 8
       break
@@ -169,7 +169,8 @@ const loadStatements = (statements, localMem, globalMem) => {
       // It's a closure, skip it
       continue
     }
-    let s = `line ${line}`
+    // let s = `line ${line}`
+    let s = ''
     if (statement.declarations()) {
       const dec = statement.declarations().constdeclaration() || statement.declarations().letdeclaration()
       const resultAddress = localMem[dec.decname().getText().trim()]
@@ -187,16 +188,17 @@ const loadStatements = (statements, localMem, globalMem) => {
           globalMem.hasOwnProperty(v) ?
             globalMem[v] :
             v
-        )
-        while (args.length < 2) args.push(0)
+        ).map(a => typeof a === 'string' ? a : `@${a}`)
+        while (args.length < 2) args.push('@0')
         const deps = vars
           .filter(v => localMem.hasOwnProperty(v))
           .map(v => localMemToLine[localMem[v]])
           .filter(v => v !== undefined) // Filter out the handler arg from the dep list
+          .map(v => `#${v}`)
+        s += `@${resultAddress} = ${fn}(${args.join(', ')}) #${line}`
         if (deps.length > 0) {
-          s += ` depends on [${deps.join(', ')}]`
+          s += ` <- [${deps.join(', ')}]`
         }
-        s += `: ${fn}(${args.join(', ')}) -> ${resultAddress}`
       } else if (assignables.constants()) {
         // Only required for `let` statements
         let fn
@@ -237,7 +239,7 @@ const loadStatements = (statements, localMem, globalMem) => {
           throw new Error(`Unsupported variable type ${dec.fulltypename().getText()}`)
           break
         }
-        s += `: ${fn}(${val}, 0) -> ${resultAddress}`
+        s += `@${resultAddress} = ${fn}(${val}, @0) #${line}`
       } else if (assignables.objectliterals()) {
         console.error("Not yet implemented")
         process.exit(4)
@@ -262,16 +264,17 @@ const loadStatements = (statements, localMem, globalMem) => {
           globalMem.hasOwnProperty(v) ?
             globalMem[v] :
             v
-        )
-        while (args.length < 2) args.push(0)
+        ).map(a => typeof a === 'string' ? a : `@${a}`)
+        while (args.length < 2) args.push('@0')
         const deps = vars
           .filter(v => localMem.hasOwnProperty(v))
           .map(v => localMemToLine[localMem[v]])
           .filter(v => v !== undefined) // Filter out the handler arg from the dep list
+          .map(v => `#${v}`)
+        s += `@${resultAddress} = ${fn}(${args.join(', ')}) #${line}`
         if (deps.length > 0) {
-          s += ` depends on [${deps.join(', ')}]`
+          s += ` <- [${deps.join(', ')}]`
         }
-        s += `: ${fn}(${args.join(', ')}) -> ${resultAddress}`
       } else if (assignables.constants()) {
         console.error("This should have been hoisted")
         process.exit(3)
@@ -291,16 +294,17 @@ const loadStatements = (statements, localMem, globalMem) => {
         globalMem.hasOwnProperty(v) ?
           globalMem[v] :
           v
-      )
+      ).map(a => typeof a === 'string' ? a : `@${a}`)
       while (args.length < 2) args.push(0)
       const deps = vars
         .filter(v => localMem.hasOwnProperty(v))
         .map(v => localMemToLine[localMem[v]])
         .filter(v => v !== undefined) // Filter out the handler arg from the dep list
+        .map(v => `#${v}`)
+      s += `${fn}(${args.join(', ')}) #${line}`
       if (deps.length > 0) {
-        s += ` depends on [${deps.join(', ')}]`
+        s += ` <- [${deps.join(', ')}]`
       }
-      s += `: ${fn}(${args.join(', ')}) -> 0`
     } else if (statement.emits()) {
       const emit = statement.emits()
       const evtName = emit.VARNAME(0).getText().trim()
@@ -312,14 +316,16 @@ const loadStatements = (statements, localMem, globalMem) => {
           globalMem.hasOwnProperty(payloadVar) ?
             globalMem[payloadVar] :
             payloadVar
-      const deps = !payloadVar ? [] :
-        localMem.hasOwnProperty(payloadVar) ?
-          [localMemToLine[payloadVar]].filter(v => v !== undefined) :
-          []
+      const deps = (
+        !payloadVar ? [] :
+          localMem.hasOwnProperty(payloadVar) ?
+            [localMemToLine[payloadVar]].filter(v => v !== undefined) :
+            []
+      ).map(v => `#${v}`)
+      s += `emit(${evtName}, ${typeof payload === 'string' ? payload : `@${payload}`}) #${line}`
       if (deps.length > 0) {
-        s += ` depends on [${deps.join(', ')}]`
+        s += ` <- [${deps.join(', ')}]`
       }
-      s += `: emit(${evtName}, ${payload}) -> 0`
     }
     vec.push(s)
     line += 1
