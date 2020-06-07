@@ -360,7 +360,7 @@ class UserFunction {
             ) continue
             if (
               propVal.iface != null &&
-              propValiface.typeApplies(
+              propVal.iface.typeApplies(
                 argumentTypeList[j].properties[propKey],
                 scope
               )

@@ -241,7 +241,7 @@ export fn wait(n: int64) = waitop(n)
 
 // String functions
 export fn concat(a: string, b: string) = catstr(a, b)
-export fn split(str: string, spl: string): Array<string> = split(str, spl)
+export split // opcode with signature `fn split(str: string, spl: string): Array<string>`
 export fn repeat(s: string, n: int64) = repstr(s, n)
 export fn template(str: string, map: Map<string, string>) = templ(str, map)
 export matches // opcode with signature `fn matches(s: string, t: string): bool`
