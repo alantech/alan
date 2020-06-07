@@ -57,7 +57,7 @@ impl EventHandler {
 
   pub fn add_instruction(self: &mut EventHandler, ins: Instruction) {
     self.ins_count += 1;
-    if ins.opcode.pred_exec && ins.opcode.func.is_some() {
+    if ins.opcode.func.is_some() {
       let mut frag = self.fragments.pop().unwrap_or(Vec::new());
       if frag.len() > 0 && !frag.get(frag.len() - 1).unwrap().opcode.pred_exec {
         // if last instruction in the last fragment is a (io or cpu) capstone start a new fragment
@@ -68,9 +68,6 @@ impl EventHandler {
         frag.push(ins);
         self.fragments.push(frag);
       }
-    } else if !ins.opcode.pred_exec && ins.opcode.func.is_some() {
-      // cpu instructions with unpredictable execution always form an unmovable capstone
-      self.fragments.push(vec![ins]);
     } else if !ins.opcode.pred_exec && ins.opcode.async_func.is_some() {
       // non-predictable io opcode is a "movable capstone" in execution
       let cur_max_dep = ins.dep_ids.iter().max().unwrap_or(&-1);
@@ -354,8 +351,7 @@ mod tests {
     hand.add_instruction(get_cpu_ins(0, vec![]));
     hand.add_instruction(get_cpu_ins(1, vec![]));
     hand.add_instruction(get_cond_ins(2, vec![]));
-    hand.add_instruction(get_cond_ins(3, vec![]));
-    hand.add_instruction(get_cpu_ins(4, vec![]));
+    hand.add_instruction(get_cpu_ins(3, vec![]));
     assert_eq!(hand.movable_capstones.len(), 0);
     assert_eq!(hand.last_frag_idx(), 1);
   }
@@ -371,7 +367,7 @@ mod tests {
     assert_eq!(hand.last_frag_idx(), 1);
   }
 
-  // multiple condfns can run within a single fragment
+  // multiple condfns each run in their own fragment
   #[test]
   fn test_frag_grouping_11() {
     let mut hand = EventHandler::new(123, 123);
@@ -379,6 +375,6 @@ mod tests {
     hand.add_instruction(get_cond_ins(1, vec![]));
     hand.add_instruction(get_cond_ins(2, vec![]));
     assert_eq!(hand.movable_capstones.len(), 0);
-    assert_eq!(hand.last_frag_idx(), 0);
+    assert_eq!(hand.last_frag_idx(), 2);
   }
 }
