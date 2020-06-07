@@ -123,6 +123,15 @@ class Microstatement {
       }
       if (microstatement.alias === varName) {
         original = microstatement
+        for (let j = i - 1; j >= 0; j--) {
+          if (
+            microstatements[j].outputName === original.outputName &&
+            microstatements[j].statementType !== StatementType.REREF
+          ) {
+            original = microstatements[j]
+            break
+          }
+        }
         break
       }
     }

@@ -13,8 +13,7 @@ const opcodeScope = new Scope()
 const opcodeModule = new Module(opcodeScope)
 
 // Base types
-const t = (str) => Box.builtinTypes[str]
-const addBuiltIn = (name) => { opcodeScope.put(name, new Box(t(name))) }
+const addBuiltIn = (name) => { opcodeScope.put(name, new Box(Box.builtinTypes[name])) }
 ([
   'void', 'int8', 'int16', 'int32', 'int64', 'float32', 'float64', 'bool', 'string', 'function',
   'operator', 'Error', 'Array', 'Map', 'KeyVal',
@@ -25,7 +24,14 @@ opcodeScope.put('any', new Box(new Type('any', true, new Interface('any'))))
 Box.builtinTypes['Array'].solidify(['any'], opcodeScope)
 Box.builtinTypes['Map'].solidify(['any', 'any'], opcodeScope)
 Box.builtinTypes['KeyVal'].solidify(['any', 'any'], opcodeScope)
+Box.builtinTypes['Array'].solidify(['KeyVal<any, any>'], opcodeScope)
 opcodeScope.put("start", new Box(new Event("_start", Box.builtinTypes.void, true), true))
+const t = (str) => {
+  if (opcodeScope.get(str) === null) {
+    console.log(str)
+  }
+  return opcodeScope.get(str).typeval
+}
 
 // opcode declarations
 const addopcodes = (opcodes) => {
