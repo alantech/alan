@@ -68,7 +68,7 @@ impl EventHandler {
         frag.push(ins);
         self.fragments.push(frag);
       }
-    } else if !ins.opcode.pred_exec && ins.opcode.async_func.is_some() {
+    } else {
       // non-predictable io opcode is a "movable capstone" in execution
       let cur_max_dep = ins.dep_ids.iter().max().unwrap_or(&-1);
       // merge this capstone with an existing one if possible
