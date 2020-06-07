@@ -48,7 +48,8 @@ const loadEventDecs = (eventAst) => {
   for (const evt of eventAst) {
     const evtName = evt.VARNAME().getText().trim()
     const evtType = evt.typename().getText().trim()
-    eventMem[evtName] = evtType
+    const evtSize = evtType === "void" ? 0 : (evtType === "string" ? -1 : 8)
+    eventMem[evtName] = evtSize
   }
   return eventMem
 }
@@ -116,7 +117,7 @@ const closuresFromDeclaration = (declaration, closureMem, eventDecs) => {
     ...obj,
     ...rec,
   }), {})
-  eventDecs[name] = 'void'
+  eventDecs[name] = 0
 
   return {
     [name]: {
