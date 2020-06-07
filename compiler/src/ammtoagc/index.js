@@ -7,7 +7,7 @@ const header   = Buffer.from('agc00001', 'utf8').readBigUInt64LE(0)
 const eventdd  = Buffer.from('eventdd:', 'utf8').readBigUInt64LE(0)
 const handlerd = Buffer.from('handler:', 'utf8').readBigUInt64LE(0)
 const lineno   = Buffer.from('lineno: ', 'utf8').readBigUInt64LE(0)
-const emitd    = Buffer.from('emit to:', 'utf8').readBigUInt64LE(0)
+const emitd    = Buffer.from('emit    ', 'utf8').readBigUInt64LE(0)
 
 const ceil8 = n => Math.ceil(n / 8) * 8
 const int64ToUint64 = n => {

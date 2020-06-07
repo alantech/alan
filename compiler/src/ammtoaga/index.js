@@ -319,7 +319,7 @@ const loadStatements = (statements, localMem, globalMem) => {
       if (deps.length > 0) {
         s += ` depends on [${deps.join(', ')}]`
       }
-      s += `: emit to:(${evtName}, ${payload}) -> 0`
+      s += `: emit(${evtName}, ${payload}) -> 0`
     }
     vec.push(s)
     line += 1
