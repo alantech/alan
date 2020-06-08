@@ -5,7 +5,8 @@ import * as fs from 'fs'
 import commander = require('commander')
 
 import ammtoaga = require('./ammtoaga')
-import ammtoagc = require('./ammtoagc')
+import * as agatoagc from './agatoagc'
+import * as ammtoagc from './ammtoagc'
 import ammtojs = require('./ammtojs')
 import lntoaga = require('./lntoaga')
 import lntoagc = require('./lntoagc')
@@ -23,15 +24,18 @@ const convert = {
   },
   amm: {
     aga: ammtoaga,
-    agc: ammtoagc,
+    agc: ammtoagc.ammToAgc,
     js: ammtojs,
+  },
+  aga: {
+    agc: agatoagc.agaToAgc,
   }
 }
 
 let inputfile: string, outputfile: string
 commander
-  .name('alan-compile')
-  .version('0.1.0')
+  .name('alan-compiler')
+  .version('0.1.0') // TODO: Try to revive getting this from package.json; it's just weird in TS
   .arguments('<input> <output>')
   .action((input: string, output:string ) => {
     inputfile = input

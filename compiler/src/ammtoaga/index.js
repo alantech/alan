@@ -3,6 +3,7 @@ const Ast = require('../amm/Ast')
 // This project depends on BigNum and associated support in Node's Buffer, so must be >= Node 10.20
 // and does not work in the browser. It would be possible to implement a browser-compatible version
 // but there is no need for it and it would make it harder to work with.
+const ceil8 = n => Math.ceil(n / 8) * 8
 
 const loadGlobalMem = (globalMemAst, addressMap) => {
   const globalMem = {}
@@ -11,20 +12,30 @@ const loadGlobalMem = (globalMemAst, addressMap) => {
     let val
     switch (globalConst.fulltypename().getText().trim()) {
     case "int64":
-      val = BigInt(globalConst.assignables().getText())
+      val = globalConst.assignables().getText().trim() + 'i64'
       globalMem[`@${currentOffset}`] = val
       addressMap[globalConst.decname().getText()] = currentOffset
       currentOffset -= 8
       break
     case "float64":
-      val = parseFloat(globalConst.assignables().getText())
+      val = globalConst.assignables().getText().trim() + 'f64'
       globalMem[`@${currentOffset}`] = val
       addressMap[globalConst.decname().getText()] = currentOffset
       currentOffset -= 8
       break
     case "string":
+      let str
+      try {
+        // Will fail on strings with escape chars
+        str = JSON.parse(globalConst.assignables().getText().trim())
+      } catch (e) {
+        // Hackery to get these strings to work
+        str = JSON.stringify(
+          globalConst.assignables().getText().trim().replace(/^["']/, '').replace(/["']$/, '')
+        )
+      }
+      let len = ceil8(str.length) + 8
       val = globalConst.assignables().getText().trim()
-      let len = val.length + 8
       globalMem[`@${currentOffset}`] = val
       addressMap[globalConst.decname().getText()] = currentOffset
       currentOffset -= len
@@ -206,31 +217,31 @@ const loadStatements = (statements, localMem, globalMem) => {
         switch (dec.fulltypename().getText().trim()) {
         case 'int64':
           fn = 'seti64'
-          val = assignables.getText()
+          val = assignables.getText() + 'i64'
           break
         case 'int32':
           fn = 'seti32'
-          val = assignables.getText()
+          val = assignables.getText() + 'i32'
           break
         case 'int16':
           fn = 'seti16'
-          val = assignables.getText()
+          val = assignables.getText() + 'i16'
           break
         case 'int8':
           fn = 'seti8'
-          val = assignables.getText()
+          val = assignables.getText() + 'i8'
           break
         case 'float64':
           fn = 'setf64'
-          val = assignables.getText()
+          val = assignables.getText() + 'f64'
           break
         case 'float32':
           fn = 'setf32'
-          val = assignables.getText()
+          val = assignables.getText() + 'f32'
           break
         case 'bool':
           fn = 'setbool'
-          val = assignables.getText()
+          val = assignables.getText() + 'i8' // Bools are just bytes in the runtime
           break
         case 'string':
           throw new Error('TODO: Decide if this is the responsibility of first or second stage')
@@ -349,9 +360,9 @@ const loadHandlers = (handlers, handlerMem, globalMem) => {
     statements.forEach(s => h += `  ${s}\n`)
     vec.push(h)
   }
-  return vec 
+  return vec
 }
-          
+
 const loadClosures = (closures, globalMem) => {
   const vec = []
   for (let i = 0; i < closures.length; i++) {
@@ -368,7 +379,7 @@ const loadClosures = (closures, globalMem) => {
     statements.forEach(s => c += `  ${s}\n`)
     vec.push(c)
   }
-  return vec 
+  return vec
 }
 
 const ammToAga = (amm) => {
