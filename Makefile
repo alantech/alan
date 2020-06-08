@@ -1,14 +1,8 @@
 SHELL = /bin/bash
 
 .PHONY: build
-build: interpreter/build/libs/interpreter-1.0.jar build-compiler runtime/target/release/alan-runtime build-js-runtime
+build: build-compiler runtime/target/release/alan-runtime build-js-runtime
 	echo Done
-
-interpreter/build/libs/interpreter-1.0.jar: interpreter
-	cd interpreter && ./gradlew build
-
-interpreter:
-	git clone --depth 1 git@github.com:alantech/interpreter
 
 .PHONY: runtime-unit
 runtime-unit:
@@ -39,7 +33,6 @@ node_modules: build
 .PHONY: clean
 clean:
 	cd runtime && cargo clean
-	rm -rf interpreter
 	rm -rf shellspec
 	rm -rf node_modules
 	rm -rf compiler/node_modules
@@ -51,12 +44,9 @@ clean:
 	rm -f bdd/package-lock.json
 
 .PHONY: install
-install: runtime/target/release/alan-runtime interpreter/build/libs/interpreter-1.0.jar interpreter node_modules
+install: runtime/target/release/alan-runtime node_modules
 	cp ./alan /usr/local/bin/alan
 	cp ./runtime/target/release/alan-runtime /usr/local/bin/alan-runtime
-	mkdir -p /usr/local/bin/build/libs # TODO: Remove when interpreter dies
-	cp ./interpreter/build/libs/interpreter-1.0.jar /usr/local/bin/build/libs/interpreter-1.0.jar
-	cp ./interpreter/alan-interpreter /usr/local/bin/alan-interpreter
 	npm install -g ./compiler
 
 .PHONY: uninstall
@@ -64,5 +54,4 @@ uninstall:
 	rm -rf /usr/local/bin/build
 	rm /usr/local/bin/alan
 	rm /usr/local/bin/alan-runtime
-	rm /usr/local/bin/alan-interpreter
 	npm uninstall -g alan-compile

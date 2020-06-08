@@ -25,7 +25,7 @@ PHYS_DIR=`pwd -P`
 # Restore the original directory so the script referenced can be found
 # cd $ORIG_DIR
 
-PATH="${PATH}:${PHYS_DIR}:${PHYS_DIR}/../shellspec:${PHYS_DIR}/../node_modules/.bin:${PHYS_DIR}/../runtime/target/release:${PHYS_DIR}/../interpreter"
+PATH="${PATH}:${PHYS_DIR}:${PHYS_DIR}/../shellspec:${PHYS_DIR}/../node_modules/.bin:${PHYS_DIR}/../runtime/target/release"
 export PATH
 if [ "$1" ]
   then

@@ -2,6 +2,7 @@ Include build_tools.sh
 
 Describe "Maps"
   before() {
+    # TODO: sourceToAll
     sourceToTemp "
       from @std/app import start, print, exit
 
@@ -33,16 +34,14 @@ Describe "Maps"
 
     "
   }
-  Before before
+  BeforeAll before
 
   after() {
     cleanTemp
   }
-  After after
+  AfterAll after
 
-  It "interprets"
-    When run alan-interpreter interpret temp.ln
-    The output should eq "keyVal test
+  MAPOUTPUT="keyVal test
 key: bar
 val: 2
 key: foo
@@ -60,5 +59,16 @@ values test
 length test
 3
 3"
+
+  It "runs js"
+    Pending map-support
+    When run node temp.js
+    The output should eq "$MAPOUTPUT"
+  End
+
+  It "runs agc"
+    Pending map-support
+    When run alan-runtime run temp.agc
+    The output should eq "$MAPOUTPUT"
   End
 End

@@ -3,6 +3,7 @@ Include build_tools.sh
 Describe "Generics"
   Describe "valid generic type definition"
     before() {
+      # TODO: sourceToAll
       sourceToTemp "
         from @std/app import start, print, exit
 
@@ -39,24 +40,34 @@ Describe "Generics"
         }
       "
     }
-    Before before
+    BeforeAll before
 
     after() {
       cleanTemp
     }
-    After after
+    AfterAll after
 
-    It "interprets"
-      When run alan-interpreter interpret temp.ln
-      The output should eq "8
+    GENERICOUTPUT="8
 true
 hello, generics!
 true
 true
 true
 hello, nested generics!"
+
+    It "runs js"
+      Pending generics-support
+      When run node temp.js
+      The output should eq "$GENERICOUTPUT"
+    End
+
+    It "runs agc"
+      Pending generics-support
+      When run alan-runtime run temp.agc
+      The output should eq "$GENERICOUTPUT"
     End
   End
+
   Describe "invalid generic usage"
     before() {
       sourceToTemp "
@@ -82,11 +93,12 @@ hello, nested generics!"
     }
     After after
 
-    It "does not interpret"
-      When run alan-interpreter interpret temp.ln
+    It "does not compile"
+      Pending generics-support
+      When run alan-compile temp.ln
       The error should eq "Assigning integer number to non-numeric type
 Variable type: string"
       The status should not eq "0"
     End
-  End      
+  End
 End

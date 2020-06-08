@@ -70,6 +70,7 @@ It's true!"
 
   Describe "Advanced"
     before() {
+      # TODO: sourceToAll
       sourceToTemp "
         from @std/app import start, print, exit
 
@@ -110,16 +111,14 @@ It's true!"
         }
       "
     }
-    Before before
+    BeforeAll before
 
     after() {
       cleanTemp
     }
-    After after
+    AfterAll after
 
-    It "interprets"
-      When run alan-interpreter interpret temp.ln
-      The output should eq "Near!
+    ADVOUTPUT="Near!
 Far!
 2
 4
@@ -130,6 +129,17 @@ Far!
 3
 4
 5"
+
+    It "runs js"
+      Pending advanced-conditional-support
+      When run node temp.js
+      The output should eq "$ADVOUTPUT"
+    End
+
+    It "runs agc"
+      Pending advanced-conditional-support
+      When run alan-runtime run temp.agc
+      The output should eq "$ADVOUTPUT"
     End
   End
 End

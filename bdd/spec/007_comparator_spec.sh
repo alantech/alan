@@ -20,12 +20,12 @@ Describe "Comparators"
     AfterAll after
 
     It "doesn't work"
-      When run alan-interpreter interpret temp.ln
+      When run alan-compile temp.ln temp.amm
       The status should not eq "0"
-      The error should eq "Unable to find matching function for name and argument type set"
+      The error should eq "Cannot resolve operators with remaining statement
+true == 1
+<bool> == <int64>"
     End
-
-    # TODO: How to do this test with the compiled paths?
   End
 
   Describe "Equals"

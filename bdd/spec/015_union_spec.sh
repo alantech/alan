@@ -2,6 +2,7 @@ Include build_tools.sh
 
 Describe "Unions"
   before() {
+    # TODO: sourceToAll (or delete this test?)
     sourceToTemp "
       from @std/app import start, print, exit
 
@@ -41,8 +42,7 @@ Describe "Unions"
           }
         }
         // TODO: This is another example where, when the type checking is down to just one, it no longer
-        // needs safeguards. The interpreter can just roll with this, but not sure how to compile-time
-        // validate this, yet.
+        // needs safeguards, but not sure how to compile-time validate this, yet.
         return numerator * recipDenom
       }
 
@@ -63,16 +63,14 @@ Describe "Unions"
       }
     "
   }
-  Before before
+  BeforeAll before
 
   after() {
     cleanTemp
   }
-  After after
+  AfterAll after
 
-  It "interprets"
-    When run alan-interpreter interpret temp.ln
-    The output should eq "safeFraction
+  UNIONOUTPUT="safeFraction
 0.5
 2.0
 0.0
@@ -82,5 +80,16 @@ safeFraction2
 2.0
 0.0
 Infinity"
+
+  It "runs js"
+    Pending union-support
+    When run node temp.js
+    The output should eq "$UNIONOUTPUT"
+  End
+
+  It "runs agc"
+    Pending union-support
+    When run alan-runtime run temp.agc
+    The output should eq "$UNIONOUTPUT"
   End
 End
