@@ -217,31 +217,31 @@ const loadStatements = (statements, localMem, globalMem) => {
         switch (dec.fulltypename().getText().trim()) {
         case 'int64':
           fn = 'seti64'
-          val = assignables.getText()
+          val = assignables.getText() + 'i64'
           break
         case 'int32':
           fn = 'seti32'
-          val = assignables.getText()
+          val = assignables.getText() + 'i32'
           break
         case 'int16':
           fn = 'seti16'
-          val = assignables.getText()
+          val = assignables.getText() + 'i16'
           break
         case 'int8':
           fn = 'seti8'
-          val = assignables.getText()
+          val = assignables.getText() + 'i8'
           break
         case 'float64':
           fn = 'setf64'
-          val = assignables.getText()
+          val = assignables.getText() + 'f64'
           break
         case 'float32':
           fn = 'setf32'
-          val = assignables.getText()
+          val = assignables.getText() + 'f32'
           break
         case 'bool':
           fn = 'setbool'
-          val = assignables.getText()
+          val = assignables.getText() + 'i8' // Bools are just bytes in the runtime
           break
         case 'string':
           throw new Error('TODO: Decide if this is the responsibility of first or second stage')
@@ -360,9 +360,9 @@ const loadHandlers = (handlers, handlerMem, globalMem) => {
     statements.forEach(s => h += `  ${s}\n`)
     vec.push(h)
   }
-  return vec 
+  return vec
 }
-          
+
 const loadClosures = (closures, globalMem) => {
   const vec = []
   for (let i = 0; i < closures.length; i++) {
@@ -379,7 +379,7 @@ const loadClosures = (closures, globalMem) => {
     statements.forEach(s => c += `  ${s}\n`)
     vec.push(c)
   }
-  return vec 
+  return vec
 }
 
 const ammToAga = (amm) => {
