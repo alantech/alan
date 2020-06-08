@@ -2,6 +2,7 @@ Include build_tools.sh
 
 Describe "Arrays"
   before() {
+    # TODO: sourceToAll
     sourceToTemp "
       from @std/app import start, print, exit
 
@@ -56,16 +57,14 @@ Describe "Arrays"
       }
     "
   }
-  Before before
+  BeforeAll before
 
   after() {
     cleanTemp
   }
-  After after
+  AfterAll after
 
-  It "interprets"
-    When run alan-interpreter interpret temp.ln
-    The output should eq "each test
+  ARRAYOUTPUT="each test
 =
 =
 ==
@@ -147,5 +146,16 @@ concat test
 16
 join test
 1, 1, 2, 3, 5, 8"
+
+  It "runs js"
+    Pending array-support
+    When run node temp.js
+    The output should eq "$ARRAYOUTPUT"
+  End
+
+  It "runs agc"
+    Pending array-support
+    When run alan-runtime run temp.agc
+    The output should eq "$ARRAYOUTPUT"
   End
 End

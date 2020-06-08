@@ -2,6 +2,7 @@ Include build_tools.sh
 
 Describe "Strings"
   before() {
+    # TODO: sourceToAll
     sourceToTemp "
       from @std/app import start, print, exit
 
@@ -56,16 +57,14 @@ Describe "Strings"
       }
     "
   }
-  Before before
+  BeforeAll before
 
   after() {
     cleanTemp
   }
-  After after
+  AfterAll after
 
-  It "interprets"
-    When run alan-interpreter interpret temp.ln
-    The output should eq "Hello, World!
+  STROUTPUT="Hello, World!
 Hello, World!
 hi hi hi hi hi 
 hi hi hi hi hi 
@@ -81,5 +80,16 @@ Hello
 World!
 Hello, World!
 Good-bye, World!"
+
+  It "runs js"
+    Pending string-support
+    When run node temp.js
+    The output should eq "$STROUTPUT"
+  End
+
+  It "runs agc"
+    Pending string-support
+    When run alan-runtime run temp.agc
+    The output should eq "$STROUTPUT"
   End
 End

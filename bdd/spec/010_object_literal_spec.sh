@@ -2,6 +2,7 @@ Include build_tools.sh
 
 Describe "Object literals"
   before() {
+    # TODO: sourceToAll
     sourceToTemp "
       from @std/app import start, print, exit
 
@@ -56,16 +57,14 @@ Describe "Object literals"
       }
     "
   }
-  Before before
+  BeforeAll before
 
   after() {
     cleanTemp
   }
-  After after
+  AfterAll after
 
-  It "interprets"
-    When run alan-interpreter interpret temp.ln
-    The output should eq "Custom type assignment
+  TYPEOUTPUT="Custom type assignment
 foo!
 true
 foo2
@@ -79,5 +78,16 @@ Map literal assignment
 1
 0
 baz"
+
+  It "runs js"
+    Pending type-support
+    When run node temp.js
+    The output should eq "$TYPEOUTPUT"
+  End
+
+  It "runs agc"
+    Pending type-support
+    When run alan-runtime run temp.agc
+    The output should eq "$TYPEOUTPUT"
   End
 End

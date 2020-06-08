@@ -1,6 +1,5 @@
 .idea
 shellspec/
-interpreter/
 bdd/node_modules/
 bdd/temp.*
 node_modules/

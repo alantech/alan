@@ -2,6 +2,7 @@ Include build_tools.sh
 
 Describe "Type detection"
   before() {
+    # TODO: sourceToAll
     sourceToTemp "
       from @std/app import start, print, exit
 
@@ -19,7 +20,7 @@ Describe "Type detection"
         print(type 'str')
         print(type true)
         print(type true == 'bool')
-        
+
         let a: foo<string, int64>
         let b: foo<int64, bool>
         let c: foo2
@@ -35,16 +36,14 @@ Describe "Type detection"
       }
     "
   }
-  Before before
+  BeforeAll before
 
   after() {
     cleanTemp
   }
-  After after
+  AfterAll after
 
-  It "interprets"
-    When run alan-interpreter interpret temp.ln
-    The output should eq "int64
+  TYPEOUTPUT="int64
 float64
 int64
 string
@@ -56,5 +55,16 @@ string
 foo<int64, float64>
 foo<int64, float64>
 true"
+
+  It "runs js"
+    Pending type-support
+    When run node temp.js
+    The output should eq "$TYPEOUTPUT"
+  End
+
+  It "runs agc"
+    Pending type-support
+    When run alan-runtime run temp.agc
+    The output should eq "$TYPEOUTPUT"
   End
 End

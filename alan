@@ -55,10 +55,6 @@ case $1 in
     fi
     ;;
 
-  interpret)
-    alan-interpreter interpret $args
-    ;;
-
   run)
     alan-runtime run $args
     ;;
@@ -69,7 +65,6 @@ case $1 in
     echo "alan transpile-amm path/to/sourcefile.ln  - Loads the specified source file and builds an output alan intermediate representation file"
     echo "alan transpile-js path/to/sourcefile.ln   - Loads the specified source file and builds an output javascript file"
     echo "alan install                              - Install '/dependencies' from '.dependencies.ln'"
-    echo "alan interpret path/to/sourcefile.ln      - Loads and interprets the specified source file"
     echo "alan run path/to/compiled.agc             - Loads and runs the specified build file"
     echo "alan help                                 - Prints this message"
     exit 0
