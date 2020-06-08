@@ -144,7 +144,7 @@ const loadGlobalMem = (globalMemAst: ZeroOrOne): bigint[] => {
       globalMem.push(val)
     } else if (value.or.hasOwnProperty('str')) {
       let str: string
-      try {                                                                                               
+      try {
         str = JSON.parse(value.t) // Will fail on strings with escape chars
       } catch (e) {
         // Hackery to get these strings to work

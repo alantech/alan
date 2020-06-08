@@ -24,8 +24,18 @@ const loadGlobalMem = (globalMemAst, addressMap) => {
       currentOffset -= 8
       break
     case "string":
+      let str
+      try {
+        // Will fail on strings with escape chars
+        str = JSON.parse(globalConst.assignables().getText().trim())
+      } catch (e) {
+        // Hackery to get these strings to work
+        str = JSON.stringify(
+          globalConst.assignables().getText().trim().replace(/^["']/, '').replace(/["']$/, '')
+        )
+      }
+      let len = ceil8(str.length) + 8
       val = globalConst.assignables().getText().trim()
-      let len = ceil8(val.length) + 8
       globalMem[`@${currentOffset}`] = val
       addressMap[globalConst.decname().getText()] = currentOffset
       currentOffset -= len
