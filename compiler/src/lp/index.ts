@@ -35,6 +35,12 @@ export class LP {
     clone.i = this.i
     return clone
   }
+
+  static fromText(data: string): LP {
+    const lp = new LP('fakeFile', false)
+    lp.data = data
+    return lp
+  }
 }
 
 export interface LPmeta {
@@ -98,6 +104,57 @@ export class Token implements LPish {
       )
     }
     return lpError(`Token mismatch, ${this.t} not found`, lp)
+  }
+}
+
+export class Not implements LPish {
+  t: string
+  filename: string
+  line: number
+  char: number
+
+  constructor(t: string, filename: string, line: number, char: number) {
+    this.t = t
+    this.filename = filename
+    this.line = line
+    this.char = char
+  }
+
+  static build(t: string): Not {
+    return new Not(t, '', -1, -1)
+  }
+
+  toString(): string {
+    return this.t
+  }
+
+  check(lp: LP): boolean {
+    let matches = true
+    const t = this.t
+    const len = t.length
+    const data = lp.data
+    const j = lp.i
+    for (let i = 0; i < len; i++) {
+      if (t[i] !== data[i + j]) {
+        matches = false
+        break
+      }
+    }
+    return !matches
+  }
+
+  apply(lp: LP): Not | Error {
+    if (this.check(lp)) {
+      const newT = lp.data[lp.i]
+      lp.advance(this.t.length)
+      return new Not(
+        newT,
+        lp.filename,
+        lp.line,
+        lp.char,
+      )
+    }
+    return lpError(`Not mismatch, ${this.t} found`, lp)
   }
 }
 
@@ -211,11 +268,11 @@ export class OneOrMore implements LPish {
     return this.oneOrMore[0].check(lp)
   }
 
-  apply(lp: LP): OneOrMore {
+  apply(lp: LP): OneOrMore | Error {
     const filename = lp.filename
     const line = lp.line
     const char = lp.char
-    if (!this.check(lp)) throw lpError(`Token mismatch, expected '${this.oneOrMore[0].t}'`, lp)
+    if (!this.check(lp)) return lpError(`Token mismatch, expected '${this.oneOrMore[0].t}'`, lp)
     let t = ''
     let oneOrMore = []
     while (this.oneOrMore[0].check(lp)) {
@@ -357,7 +414,7 @@ export class NamedAnd implements LPish {
   }
 
   static build(and: Named): NamedAnd {
-    return new NamedAnd('', and, '', -1, -1)
+    return new NamedAnd(Object.keys(and).join(' '), and, '', -1, -1)
   }
 
   toString(): string {
@@ -387,7 +444,9 @@ export class NamedAnd implements LPish {
     // This can fail, allow the underlying error to bubble up
     for (let i = 0; i < andNames.length; i++) {
       const a = this.and[andNames[i]].apply(lp)
-      if (a instanceof Error) return a;
+      if (a instanceof Error) {
+        return a
+      }
       t += a.toString()
       and[andNames[i]] = a
     }
@@ -411,7 +470,7 @@ export class NamedOr implements LPish {
   }
 
   static build(or: Named): NamedOr {
-    return new NamedOr('', or, '', -1, -1)
+    return new NamedOr(Object.keys(or).join(' '), or, '', -1, -1)
   }
 
   toString(): string {
@@ -445,7 +504,7 @@ export class NamedOr implements LPish {
       const ofake = this.or[orNames[i]].apply(lpClone)
       if (ofake instanceof Error) continue;
       // We have a match!
-      const o = this.or[i].apply(lp)
+      const o = this.or[orNames[i]].apply(lp)
       t = o.toString()
       or[orNames[i]] = o
       break
@@ -480,7 +539,7 @@ export class CharSet implements LPish {
   }
 
   static build(lowerChar: string, upperChar: string): Token {
-    return new CharSet('', lowerChar, upperChar, '', -1, -1)
+    return new CharSet(`[${lowerChar}-${upperChar}]`, lowerChar, upperChar, '', -1, -1)
   }
 
   toString(): string {

@@ -3,6 +3,7 @@ const Ast = require('../amm/Ast')
 // This project depends on BigNum and associated support in Node's Buffer, so must be >= Node 10.20
 // and does not work in the browser. It would be possible to implement a browser-compatible version
 // but there is no need for it and it would make it harder to work with.
+const ceil8 = n => Math.ceil(n / 8) * 8
 
 const loadGlobalMem = (globalMemAst, addressMap) => {
   const globalMem = {}
@@ -11,20 +12,20 @@ const loadGlobalMem = (globalMemAst, addressMap) => {
     let val
     switch (globalConst.fulltypename().getText().trim()) {
     case "int64":
-      val = BigInt(globalConst.assignables().getText())
+      val = globalConst.assignables().getText().trim() + 'i64'
       globalMem[`@${currentOffset}`] = val
       addressMap[globalConst.decname().getText()] = currentOffset
       currentOffset -= 8
       break
     case "float64":
-      val = parseFloat(globalConst.assignables().getText())
+      val = globalConst.assignables().getText().trim() + 'f64'
       globalMem[`@${currentOffset}`] = val
       addressMap[globalConst.decname().getText()] = currentOffset
       currentOffset -= 8
       break
     case "string":
       val = globalConst.assignables().getText().trim()
-      let len = val.length + 8
+      let len = ceil8(val.length) + 8
       globalMem[`@${currentOffset}`] = val
       addressMap[globalConst.decname().getText()] = currentOffset
       currentOffset -= len

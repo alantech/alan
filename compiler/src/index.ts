@@ -5,6 +5,7 @@ import * as fs from 'fs'
 import commander = require('commander')
 
 import ammtoaga = require('./ammtoaga')
+import * as agatoagc from './agatoagc'
 import ammtoagc = require('./ammtoagc')
 import ammtojs = require('./ammtojs')
 import lntoaga = require('./lntoaga')
@@ -25,6 +26,9 @@ const convert = {
     aga: ammtoaga,
     agc: ammtoagc,
     js: ammtojs,
+  },
+  aga: {
+    agc: agatoagc.agaToAgc,
   }
 }
 
