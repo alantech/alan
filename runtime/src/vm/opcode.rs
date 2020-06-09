@@ -1533,8 +1533,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("setbool", |args, hand_mem, _| {
-    let data = [args[0] as u8];
-    hand_mem.write(args[2], 1, &data);
+    let data = args[0] as u8;
+    hand_mem.write(args[2], 1, &data.to_le_bytes());
     None
   });
   cpu!("emit", |args, hand_mem, _| {
