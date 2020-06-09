@@ -1406,7 +1406,24 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     hand_mem.write(args[2], 0, &out);
     None
   });
-  // TODO: `split` after Arrays work in the runtime
+  cpu!("split", |args, hand_mem, _| {
+    let a = hand_mem.read(args[0], 0);
+    let b = hand_mem.read(args[1], 0);
+    let a_size = LittleEndian::read_u64(&a[0..8]) as usize;
+    let b_size = LittleEndian::read_u64(&b[0..8]) as usize;
+    let a_str = str::from_utf8(&a[8..a_size + 8]).unwrap();
+    let b_str = str::from_utf8(&b[8..b_size + 8]).unwrap();
+    let outs: Vec<Vec<u8>> = a_str.split(b_str).map(|out_str| {
+      let mut out = out_str.len().to_le_bytes().to_vec();
+      out.append(&mut out_str.as_bytes().to_vec());
+      return out;
+    }).collect();
+    hand_mem.new_arr(args[2]);
+    for out in outs {
+      hand_mem.push_arr(args[2], out, 0);
+    }
+    None
+  });
   cpu!("repstr", |args, hand_mem, _| {
     let a_pascal_string = hand_mem.read(args[0], 0);
     let a_size = LittleEndian::read_u64(&a_pascal_string[0..8]) as usize;
@@ -1460,8 +1477,56 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
 
-  // Array opcodes TODO after arrays are implemented
-
+  // Array opcodes
+  cpu!("register", |args, hand_mem, _| {
+    // args[0] is the register address
+    // args[1], and optionally args[2], point to an array in memory
+    if args.len() == 3 {
+      hand_mem.set_reg(args[0], args[1], Some(args[2]));
+    } else {
+      hand_mem.set_reg(args[0], args[1], None);
+    }
+    None
+  });
+  cpu!("copyfrom", |args, hand_mem, _| {
+    // args = [reg_addr, outer_addr, inner_addr]
+    // copy data from outer_addr to inner_addr of the array in reg_addr
+    hand_mem.copy_from_reg(args[0], args[1], args[2]);
+    None
+  });
+  cpu!("copyto", |args, hand_mem, _| {
+    // args = [reg_addr, outer_addr, inner_addr]
+    // copy data from inner_addr of the array in reg_addr to outer_addr
+    hand_mem.copy_to_reg(args[0], args[1], args[2]);
+    None
+  });
+  cpu!("lenarr", |args, hand_mem, _| {
+    let len = hand_mem.len_arr(args[0]) as i64;
+    hand_mem.write(args[2], 8, &len.to_le_bytes());
+    None
+  });
+  cpu!("indarr", |args, hand_mem, _| {
+    let val = hand_mem.read_either(args[1]);
+    let idx = hand_mem.ind_arr(args[0], val);
+    hand_mem.write(args[2], 8, &idx.to_le_bytes());
+    None
+  });
+  cpu!("pusharr", |args, hand_mem, _| {
+    let val_size = args[2] as u8;
+    let val = hand_mem.read(args[1], val_size);
+    let val_vec = val.to_vec();
+    hand_mem.push_arr(args[0], val_vec, val_size);
+    None
+  });
+  cpu!("poparr", |args, hand_mem, _| {
+    let last = hand_mem.pop_arr(args[0]);
+    hand_mem.write(args[1], last.len() as u8, last.as_slice());
+    None
+  });
+  cpu!("newarr", |args, hand_mem, _| {
+    hand_mem.new_arr(args[0]);
+    None
+  });
   // Map opcodes TODO after maps are implemented
 
   // Ternary opcodes
