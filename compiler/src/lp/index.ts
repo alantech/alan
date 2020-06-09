@@ -81,6 +81,10 @@ export class NulLP implements LPish {
   apply(): LPish | Error {
     return new Error('nullish')
   }
+
+  toString(): string {
+    return this.t
+  }
 }
 
 export class Token implements LPish {
@@ -235,17 +239,13 @@ export class ZeroOrOne implements LPish {
     return [this.zeroOrOne]
   }
 
-  apply(lp: LP): ZeroOrOne {
-    const filename = lp.filename
-    const line = lp.line
-    const char = lp.char
+  apply(lp: LP): LPish {
     if (this.zeroOrOne.check(lp)) {
       const zeroOrOne = this.zeroOrOne.apply(lp)
-      if (zeroOrOne instanceof Error) return new ZeroOrOne('', this.zeroOrOne, filename, line, char)
-      const t = zeroOrOne.toString()
-      return new ZeroOrOne(t, zeroOrOne, filename, line, char)
+      if (zeroOrOne instanceof Error) return new NulLP()
+      return zeroOrOne
     }
-    return new ZeroOrOne('', this.zeroOrOne, filename, line, char)
+    return new NulLP()
   }
 }
 

@@ -131,8 +131,7 @@ const int64ToUint64 = (n: bigint): bigint => {
 
 const loadGlobalMem = (globalMemAst: LPish): bigint[] => {
   const globalMem = []
-  const memory = globalMemAst.get()
-  const memoryLines = memory.get('memoryLines')
+  const memoryLines = globalMemAst.get('memoryLines')
   for (const globalConst of memoryLines.getAll()) {
     const memoryLine = globalConst.get('memoryLine')
     const value = memoryLine.get('value')
@@ -174,7 +173,7 @@ const loadGlobalMem = (globalMemAst: LPish): bigint[] => {
 }
 
 const loadEventDecs = (eventAst: LPish, eventLookup: Object): bigint[] => {
-  const eventLines = eventAst.get().get('eventLines')
+  const eventLines = eventAst.get('eventLines')
   let customEventIdOffset = 0n
   const eventMem = []
   for (const evt of eventLines.getAll()) {
@@ -204,7 +203,7 @@ const loadStatements = (statements: LPish, eventLookup: Object): bigint[] => {
     const statement = statementAst.get('statement')
     const line = BigInt(statement.get('line').get(1).t)
     const dependsOn = statement.get('dependsOn')
-    const deps = dependsOn.get().get('deps').getAll().map(d => BigInt(d.get('line').get(1).t))
+    const deps = dependsOn.get('deps').getAll().map(d => BigInt(d.get('line').get(1).t))
     const fn = fill8(statement.get('variable').t)
     const args = statement.get('args').getAll().map(a => {
       const argOpt = a.get('arg')
@@ -224,7 +223,7 @@ const loadStatements = (statements: LPish, eventLookup: Object): bigint[] => {
     })
     const resultAddress = statement.get('result').t === '' ?
       0n :
-      BigInt(statement.get('result').get().get('memoryAddress').get(1).t)
+      BigInt(statement.get('result').get('memoryAddress').get(1).t)
     vec.push(lineno, line, BigInt(deps.length), ...deps, fn, ...args, resultAddress)
   }
   return vec
