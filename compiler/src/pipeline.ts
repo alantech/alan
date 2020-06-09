@@ -49,9 +49,8 @@ const buildPipeline = (converters: convert[]): ConverterMap => {
       if (input === output) return
       // Short-circuit if a direct conversion is possible
       if (byBoth.has(input + output)) {
-        paths[input] = {
-          [output]: [input, output]
-        }
+        if (!paths[input]) paths[input] = {}
+        paths[input][output] = [input, output]
         return
       }
       // Otherwise, scan through the graph using Djikstra's Algorithm
