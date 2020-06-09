@@ -51,11 +51,41 @@ export interface LPmeta {
 
 export interface LPish {
   t: string
+  get(id?: string | number): LPish
+  getAll(): LPish[]
   check(lp: LP): boolean
   apply(lp: LP): LPish | Error
 }
 
 export const lpError = (message: string, obj: LPmeta) => new Error(`${message} in file ${obj.filename} line ${obj.line}:${obj.char}`)
+
+export class NulLP implements LPish {
+  t: string
+
+  constructor() {
+    this.t = ''
+  }
+
+  get(): NulLP {
+    return this
+  }
+
+  getAll(): NulLP[] {
+    return [this]
+  }
+
+  check(): boolean {
+    return false
+  }
+
+  apply(): LPish | Error {
+    return new Error('nullish')
+  }
+
+  toString(): string {
+    return this.t
+  }
+}
 
 export class Token implements LPish {
   t: string
@@ -76,6 +106,14 @@ export class Token implements LPish {
 
   toString(): string {
     return this.t
+  }
+
+  get(): LPish {
+    return this
+  }
+
+  getAll(): LPish[] {
+    return [this]
   }
 
   check(lp: LP): boolean {
@@ -143,6 +181,14 @@ export class Not implements LPish {
     return !matches
   }
 
+  get(): Not {
+    return this
+  }
+
+  getAll(): Not[] {
+    return [this]
+  }
+
   apply(lp: LP): Not | Error {
     if (this.check(lp)) {
       const newT = lp.data[lp.i]
@@ -185,17 +231,21 @@ export class ZeroOrOne implements LPish {
     return true
   }
 
-  apply(lp: LP): ZeroOrOne {
-    const filename = lp.filename
-    const line = lp.line
-    const char = lp.char
+  get(): LPish {
+    return this.zeroOrOne
+  }
+
+  getAll(): LPish[] {
+    return [this.zeroOrOne]
+  }
+
+  apply(lp: LP): LPish {
     if (this.zeroOrOne.check(lp)) {
       const zeroOrOne = this.zeroOrOne.apply(lp)
-      if (zeroOrOne instanceof Error) return new ZeroOrOne('', this.zeroOrOne, filename, line, char)
-      const t = zeroOrOne.toString()
-      return new ZeroOrOne(t, zeroOrOne, filename, line, char)
+      if (zeroOrOne instanceof Error) return new NulLP()
+      return zeroOrOne
     }
-    return new ZeroOrOne('', this.zeroOrOne, filename, line, char)
+    return new NulLP()
   }
 }
 
@@ -224,6 +274,15 @@ export class ZeroOrMore implements LPish {
 
   check(): boolean {
     return true
+  }
+
+  get(i: number): LPish {
+    if (this.zeroOrMore[i]) return this.zeroOrMore[i]
+    return new NulLP()
+  }
+
+  getAll(): LPish[] {
+    return this.zeroOrMore
   }
 
   apply(lp: LP): ZeroOrMore {
@@ -266,6 +325,15 @@ export class OneOrMore implements LPish {
 
   check(lp: LP): boolean {
     return this.oneOrMore[0].check(lp)
+  }
+
+  get(i: number): LPish {
+    if (this.oneOrMore[i]) return this.oneOrMore[i]
+    return new NulLP()
+  }
+
+  getAll(): LPish[] {
+    return this.oneOrMore
   }
 
   apply(lp: LP): OneOrMore | Error {
@@ -319,6 +387,15 @@ export class And implements LPish {
     return works
   }
 
+  get(i: number): LPish {
+    if (this.and[i]) return this.and[i]
+    return new NulLP()
+  }
+
+  getAll(): LPish[] {
+    return this.and
+  }
+
   apply(lp: LP): And | Error {
     const filename = lp.filename
     const line = lp.line
@@ -345,7 +422,7 @@ export class Or implements LPish {
 
   constructor(t: string, or: LPish[], filename: string, line: number, char: number) {
     this.t = t
-    this.or = or 
+    this.or = or
     this.filename = filename
     this.line = line
     this.char = char
@@ -369,6 +446,15 @@ export class Or implements LPish {
       }
     }
     return works
+  }
+
+  get(): LPish {
+    if (this.or[0]) return this.or[0]
+    return new NulLP()
+  }
+
+  getAll(): LPish[] {
+    return this.or
   }
 
   apply(lp: LP): Or | Error {
@@ -434,6 +520,15 @@ export class NamedAnd implements LPish {
     return works
   }
 
+  get(name: string): LPish {
+    if (this.and[name]) return this.and[name]
+    return new NulLP()
+  }
+
+  getAll(): LPish[] {
+    return Object.values(this.and)
+  }
+
   apply(lp: LP): NamedAnd | Error {
     const filename = lp.filename
     const line = lp.line
@@ -490,6 +585,15 @@ export class NamedOr implements LPish {
     return works
   }
 
+  get(name: string): LPish {
+    if (this.or[name]) return this.or[name]
+    return new NulLP()
+  }
+
+  getAll(): LPish[] {
+    return Object.values(this.or)
+  }
+
   apply(lp: LP): NamedOr | Error {
     const filename = lp.filename
     const line = lp.line
@@ -538,7 +642,7 @@ export class CharSet implements LPish {
     this.char = char
   }
 
-  static build(lowerChar: string, upperChar: string): Token {
+  static build(lowerChar: string, upperChar: string): CharSet {
     return new CharSet(`[${lowerChar}-${upperChar}]`, lowerChar, upperChar, '', -1, -1)
   }
 
@@ -549,6 +653,14 @@ export class CharSet implements LPish {
   check(lp: LP): boolean {
     let lpCharCode = lp.data.charCodeAt(lp.i)
     return this.lowerCharCode <= lpCharCode && this.upperCharCode >= lpCharCode
+  }
+
+  get(): CharSet {
+    return this
+  }
+
+  getAll(): CharSet[] {
+    return [this]
   }
 
   apply(lp: LP): CharSet | Error {
