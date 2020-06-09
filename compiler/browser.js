@@ -1,25 +1,22 @@
-const ammtojs = require('./dist/ammtojs').ammTextToJs
-const lntoamm = require('./dist/lntoamm').lnTextToAmm
-const lntojs = require('./dist/lntojs').lnTextToJs
+const { default: buildPipeline, } = require('./dist/pipeline')
+const ammtojs = require('./dist/ammtojs')
+const lntoamm = require('./dist/lntoamm')
+const ammtoaga = require('./dist/ammtoaga')
 
 // We won't support AGC for now because of the complexities of moving off the Buffer API
-const convert = {
-  ln: {
-    amm: lntoamm,
-    js: (text) => { // Hackery for browserify for now, will clean this up later after some thought
-      return lntojs(text).replace(/alan-js-runtime/g, 'alan-runtime')
-    },
-  },
-  amm: {
-    js: (text) => { // Similar hackery
-      return ammtojs(text).repalce(/alan-js-runtime/g, 'alan-runtime')
-    },
-  }
-}
+const convert = buildPipeline([
+  ['ln', 'amm', lntoamm],
+  ['amm', 'aga', ammtoaga],
+  ['amm', 'js', ammtojs],
+])
 
 module.exports = (inFormat, outFormat, text) => {
   if (convert[inFormat] && convert[inFormat][outFormat]) {
-    return convert[inFormat][outFormat](text)
+    const out = convert[inFormat][outFormat].fromString(text)
+    if (outFormat === 'js') { // Hackery for browserify for now, will clean this up later
+      return out.replace(/alan-js-runtime/g, 'alan-runtime')
+    }
+    return out
   } else {
     throw new Error(`${inFormat} to ${outFormat} is not supported`)
   }

@@ -4,33 +4,20 @@ import * as fs from 'fs'
 
 import commander = require('commander')
 
-import ammtoaga = require('./ammtoaga')
+import buildPipeline from './pipeline'
+import * as ammtoaga from './ammtoaga'
 import * as agatoagc from './agatoagc'
-import * as ammtoagc from './ammtoagc'
-import ammtojs = require('./ammtojs')
-import lntoaga = require('./lntoaga')
-import lntoagc = require('./lntoagc')
-import lntoamm = require('./lntoamm')
-import lntojs = require('./lntojs')
+import * as ammtojs from './ammtojs'
+import * as lntoamm from './lntoamm'
 
 const getFormat = (filename: string) => filename.replace(/^.+\.([A-Za-z0-9]{2,3})$/g, "$1")
 
-const convert = {
-  ln: {
-    aga: lntoaga,
-    agc: lntoagc,
-    amm: lntoamm,
-    js: lntojs,
-  },
-  amm: {
-    aga: ammtoaga,
-    agc: ammtoagc.ammToAgc,
-    js: ammtojs,
-  },
-  aga: {
-    agc: agatoagc.agaToAgc,
-  }
-}
+const convert = buildPipeline([
+  ['ln', 'amm', lntoamm],
+  ['amm', 'aga', ammtoaga],
+  ['amm', 'js', ammtojs],
+  ['aga', 'agc', agatoagc],
+])
 
 let inputfile: string, outputfile: string
 commander
@@ -45,7 +32,7 @@ commander
   .parse(process.argv)
 
 if (convert[getFormat(inputfile)] && convert[getFormat(inputfile)][getFormat(outputfile)]) {
-  const output = convert[getFormat(inputfile)][getFormat(outputfile)](inputfile)
+  const output = convert[getFormat(inputfile)][getFormat(outputfile)].fromFile(inputfile)
   fs.writeFileSync(outputfile, output, { encoding: 'utf8', })
   console.log('Done!')
 } else {

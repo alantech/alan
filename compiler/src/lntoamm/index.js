@@ -232,5 +232,7 @@ const ammFromModuleAsts = (moduleAsts) => {
   return outStr
 }
 
-module.exports = (filename) => ammFromModuleAsts(moduleAstsFromFile(filename))
-module.exports.lnTextToAmm = (str) => ammFromModuleAsts(moduleAstsFromString(str))
+module.exports = {
+  fromFile: (filename) => ammFromModuleAsts(moduleAstsFromFile(filename)),
+  fromString: (str) => ammFromModuleAsts(moduleAstsFromString(str)),
+}

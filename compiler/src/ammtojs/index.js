@@ -37,7 +37,6 @@ const functionbodyToJsText = (fnbody, indent) => {
 const assignableToJsText = (assignable, indent) => {
   let outText = ""
   if (assignable.functions()) {
-    const fn = assignable.functions()
     outText += '() => {\n' // All assignable functions/closures take no arguments
     outText += functionbodyToJsText(assignable.functions().functionbody(), indent + "  ")
     outText += indent + '  }' // End this closure
@@ -74,5 +73,7 @@ const ammToJsText = (amm) => {
   return outFile
 }
 
-module.exports = (filename) => ammToJsText(Ast.fromFile(filename))
-module.exports.ammTextToJs = (str) => ammToJsText(Ast.fromString(str))
+module.exports = {
+  fromFile: (filename) => ammToJsText(Ast.fromFile(filename)),
+  fromString: (str) => ammToJsText(Ast.fromString(str)),
+}
