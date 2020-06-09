@@ -1420,7 +1420,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }).collect();
     hand_mem.new_arr(args[2]);
     for out in outs {
-      hand_mem.push_arr(args[2], out);
+      hand_mem.push_arr(args[2], out, 0);
     }
     None
   });
@@ -1502,7 +1502,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   cpu!("lenarr", |args, hand_mem, _| {
     let len = hand_mem.len_arr(args[0]) as i64;
-    hand_mem.write(args[1], 8, &len.to_le_bytes());
+    hand_mem.write(args[2], 8, &len.to_le_bytes());
     None
   });
   cpu!("indarr", |args, hand_mem, _| {
@@ -1512,9 +1512,10 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("pusharr", |args, hand_mem, _| {
-    let val = hand_mem.read(args[1], args[2] as u8);
+    let val_size = args[2] as u8;
+    let val = hand_mem.read(args[1], val_size);
     let val_vec = val.to_vec();
-    hand_mem.push_arr(args[0], val_vec);
+    hand_mem.push_arr(args[0], val_vec, val_size);
     None
   });
   cpu!("poparr", |args, hand_mem, _| {

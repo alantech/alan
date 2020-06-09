@@ -146,10 +146,10 @@ impl HandlerMemory {
     self.write(addr, 0, &[]);
   }
 
-  pub fn push_arr(self: &mut HandlerMemory, addr: i64, val: Vec<u8>) {
+  pub fn push_arr(self: &mut HandlerMemory, addr: i64, val: Vec<u8>, val_size: u8) {
     let arr = self.get_mut_arr(addr);
     let idx = arr.fractal_mem.len();
-    arr.write(idx as i64, val.len() as u8, val.as_slice());
+    arr.write(idx as i64, val_size, val.as_slice());
   }
 
   /// removes the last value of the array in the address and returns it
