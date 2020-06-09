@@ -417,5 +417,7 @@ const ammToAga = (amm) => {
   return outStr
 }
 
-module.exports = (filename) => ammToAga(Ast.fromFile(filename))
-module.exports.ammTextToAga = (str) => ammToAga(Ast.fromString(str))
+module.exports = {
+  fromFile: (filename) => ammToAga(Ast.fromFile(filename)),
+  fromString: (str) => ammToAga(Ast.fromString(str)),
+}

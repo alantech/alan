@@ -178,7 +178,7 @@ const astToAgc = (ast: NamedAnd): Buffer => {
   return outBuf
 }
 
-export const agaToAgc = (filename: string): Buffer => {
+export const fromFile = (filename: string): Buffer => {
   const lp = new LP(filename)
   const ast = aga.apply(lp)
   if (ast instanceof Error) {
@@ -188,7 +188,7 @@ export const agaToAgc = (filename: string): Buffer => {
   return astToAgc(ast)
 }
 
-export const agaTextToAgc = (str: string): Buffer => {
+export const fromString = (str: string): Buffer => {
   const lp = LP.fromText(str)
   const ast = aga.apply(lp)
   if (ast instanceof Error) {

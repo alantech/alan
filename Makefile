@@ -33,6 +33,7 @@ node_modules: build
 .PHONY: clean
 clean:
 	cd runtime && cargo clean
+	cd compiler && yarn clean
 	rm -rf shellspec
 	rm -rf node_modules
 	rm -rf compiler/node_modules
@@ -42,6 +43,7 @@ clean:
 	rm -f package.json
 	rm -f yarn.lock
 	rm -f bdd/package-lock.json
+	rm -f bdd/temp.*
 
 .PHONY: install
 install: runtime/target/release/alan-runtime node_modules
