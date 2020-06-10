@@ -536,7 +536,7 @@ class Microstatement {
       // If there's an assignable value here, add it to the list of microstatements first, then
       // rewrite the final const assignment as the emit statement.
       Microstatement.fromAssignablesAst(emitsAst.assignables(), scope, microstatements)
-      const eventBox = scope.deepGet(emitsAst.varn())
+      const eventBox = scope.deepGet(emitsAst.varn()) // TODO: Port to fromVarAst when Box is removed
       if (eventBox.eventval == null) {
         console.error(emitsAst.varn().getText() + " is not an event!")
         console.error(
@@ -579,7 +579,7 @@ class Microstatement {
       ))
     } else {
       // Otherwise, create an emit statement with no value
-      const eventBox = scope.deepGet(emitsAst.varn());
+      const eventBox = scope.deepGet(emitsAst.varn()) // TODO: Port to fromVarAst
       if (eventBox.eventval == null) {
         console.error(emitsAst.varn().getText() + " is not an event!")
         console.error(
@@ -669,6 +669,7 @@ class Microstatement {
       Microstatement.fromAssignablesAst(callsAst.assignables(), scope, microstatements)
       firstArg = microstatements[microstatements.length - 1]
     }
+    // TODO: Port to fromVarAst, though this one is very tricky
     for (let i = 0; i < callsAst.varn().length; i++) {
       // First, resolve the function. TODO: Need to add support for closure functions defined in
       // the same function, which would not be in an outer scope passed in.
@@ -772,32 +773,8 @@ class Microstatement {
   }
 
   static fromAssignmentsAst(assignmentsAst, scope, microstatements) {
-    const letName = assignmentsAst.varn().getText()
-    let letType = null
-    let actualLetName
-    for (let i = microstatements.length - 1; i >= 0; i--) {
-      const microstatement = microstatements[i]
-      if (microstatement.alias === letName) {
-        actualLetName = microstatement.outputName
-        continue
-      }
-      if (microstatement.outputName === actualLetName) {
-        if (microstatement.statementType === StatementType.LETDEC) {
-          letType = microstatement.outputType
-          break
-        } else {
-          console.error("Attempting to reassign a non-let variable.")
-          console.error(
-            letName +
-            " on line " +
-            assignmentsAst.line +
-            ":" +
-            assignmentsAst.start.column
-          )
-          process.exit(100)
-        }
-      }
-    }
+    const priorStatement = Microstatement.fromVarAst(assignmentsAst.varn(), scope, microstatements)
+    const actualLetName = priorStatement.outputName
     // TODO: Clean up the const/let declarations and assignments. That this is possible with the
     // parser is bad here, but necessary for let declarations because of the weird re-use of stuff.
     if (assignmentsAst.assignables() == null) {
