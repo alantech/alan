@@ -139,7 +139,16 @@ class Microstatement {
   }
 
   static fromVarAst(varAst, scope, microstatements) {
+    // Short-circuit if this exact var was already loaded
     let original = Microstatement.fromVarName(varAst.getText(), microstatements)
+    // Otherwise, we're digging in piece by piece to find the relevant microstatement.
+    const segments = varAst.varsegment()
+    let name = ''
+    for (const segment of segments) {
+      if (segment.VARNAME()) {
+        name += segment.VARNAME().getText()
+      }
+
     if (original == null) {
       original = scope.deepGet(varAst.getText())
     }
@@ -480,7 +489,7 @@ class Microstatement {
     // converted as normal, but with the current length of the microstatements array tracked so they
     // can be pruned back off of the list to be reattached to a closure microstatement type.
     const constName = "_" + uuid().replace(/-/g, "_")
-    if (blocklikesAst.varn() != null) {
+    if (blocklikesAst.varn() != null) { // TODO: Port to fromVarAst
       const fnToClose = scope.deepGet(blocklikesAst.varn())
       if (fnToClose == null || fnToClose.functionval == null) {
         console.error(blocklikesAst.varn().getText() + " is not a function")
@@ -833,6 +842,7 @@ class Microstatement {
     let letTypeHint = null
     if (letdeclarationAst.VARNAME() != null) {
       letAlias = letdeclarationAst.VARNAME().getText()
+      // This is a type, part of other cleanup, shouldn't be ported to fromVarAst
       letTypeHint = letdeclarationAst.assignments().varn().getText()
       if (letdeclarationAst.assignments().typegenerics() != null) {
         letTypeHint += letdeclarationAst.assignments().typegenerics().getText()
@@ -929,6 +939,7 @@ class Microstatement {
     let constTypeHint = null
     if (constdeclarationAst.VARNAME() != null) {
       constAlias = constdeclarationAst.VARNAME().getText()
+      // This is referring to a type, part of other cleanup, not fromVarAst
       constTypeHint = constdeclarationAst.assignments().varn().getText()
       if (constdeclarationAst.assignments().typegenerics() != null) {
         constTypeHint += constdeclarationAst.assignments().typegenerics().getText()
