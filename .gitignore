@@ -14,3 +14,7 @@ gradle
 /out.*
 /.dependencies.ln
 /dependencies
+compiler/cypress/fixtures/
+compiler/cypress/plugins/
+compiler/cypress/support/
+compiler/cypress/videos/
