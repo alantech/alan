@@ -8,6 +8,10 @@ build: build-compiler runtime/target/release/alan-runtime build-js-runtime
 runtime-unit:
 	cd runtime && cargo test
 
+.PHONY: compiler-browser-check
+compiler-browser-check: build-compiler
+	cd compiler && yarn test
+
 .PHONY: build-compiler
 build-compiler:
 	cd compiler && yarn

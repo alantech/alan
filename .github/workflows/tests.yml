@@ -27,6 +27,27 @@ jobs:
     - name: Run unit tests
       run: make runtime-unit
 
+  compiler-browser-check:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [12.x]
+        # node-version: [12.x, 14.x]
+
+    steps:
+    - uses: actions/checkout@v2
+
+    # Set up Node.js
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node-version }}
+
+    # Run the BDD tests
+    - name: Run Compiler Browser Validation
+      run: make compiler-browser-check
+
   bdd:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
@@ -40,11 +61,6 @@ jobs:
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
-
-    # Add the ssh-key to the keyring
-    - uses: webfactory/ssh-agent@v0.2.0
-      with:
-        ssh-private-key: ${{ secrets.ssh_key }}
 
     # Rust is automatically set up and included by default according to: https://github.com/actions/starter-workflows/blob/master/ci/rust.yml
 
