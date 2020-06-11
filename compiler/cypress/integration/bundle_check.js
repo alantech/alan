@@ -4,7 +4,7 @@ describe('Alan Compiler Browser Bundle', () => {
   })
 
   after(() => {
-    cy.exec('yarn run stop-test-server')
+    cy.exec('yarn run stop-test-server', { failOnNonZeroExit: false, })
   })
 
   it('has a "require" global', () => {
