@@ -119,15 +119,14 @@ impl HandlerMemory {
 
   /// copy data from outer address to inner address in array or registerish
   pub fn copy_to(self: &mut HandlerMemory, arr_addr: i64, outer_addr:i64, inner_addr: i64) {
-    let data = self.read_and_copy_either(outer_addr);
-    self.write_to_arr(arr_addr, inner_addr, data);
+    let (data, size) = self.read_and_copy_either(outer_addr);
+    self.write_to_arr(arr_addr, inner_addr, data, size);
   }
 
   /// copy data from inner address in array to outer address. the array address can point to a
   /// registerish
   pub fn copy_from(self: &mut HandlerMemory, arr_addr:i64, outer_addr:i64, inner_addr: i64) {
-    let data = self.read_and_copy_from_arr(arr_addr, inner_addr);
-    let size = data.len() as u8;
+    let (data, size) = self.read_and_copy_from_arr(arr_addr, inner_addr);
     self.write(outer_addr, size, data.as_slice());
   }
 
@@ -175,41 +174,45 @@ impl HandlerMemory {
   }
 
   /// write data from outer address to inner address in array or registerish
-  pub fn write_to_arr(self: &mut HandlerMemory, arr_addr:i64, inner_addr: i64, data: Vec<u8>) {
-    let arr = self.fractal_mem.get_mut(&arr_addr);
-    let size = data.len() as u8;
-    if arr.is_none() {
-      let reg = self.get_mut_reg(arr_addr);
-      reg.write(inner_addr, size, &data);
+  pub fn write_to_arr(self: &mut HandlerMemory, arr_addr:i64, inner_addr: i64, data: Vec<u8>, size: u8) {
+    let arr_opt = self.fractal_mem.get_mut(&arr_addr);
+    let arr = if arr_opt.is_none() {
+      self.get_mut_reg(arr_addr)
     } else {
-      let fractal = arr.unwrap();
-      fractal.write(inner_addr, size, &data);
-    }
+      arr_opt.unwrap()
+    };
+    arr.write(inner_addr, size, &data);
+
   }
-  /// read data from inner address in array to outer address. the array address can point to a registerish
-  pub fn read_and_copy_from_arr(self: &HandlerMemory, arr_addr:i64, inner_addr: i64) -> Vec<u8>{
-    let arr = self.fractal_mem.get(&arr_addr);
-    return if arr.is_none() {
-      let reg = self.get_reg(arr_addr);
-      reg.read_and_copy_either(inner_addr)
+  /// read data from inner address in array to outer address and return a copy of it and its size
+  /// the array address can point to a registerish
+  pub fn read_and_copy_from_arr(self: &HandlerMemory, arr_addr:i64, inner_addr: i64) -> (Vec<u8>, u8) {
+    let arr_opt = self.fractal_mem.get(&arr_addr);
+    let arr = if arr_opt.is_none() {
+      self.get_reg(arr_addr)
     } else {
-      let fractal = arr.unwrap();
-      fractal.read_and_copy_either(inner_addr)
-    }
+      arr_opt.unwrap()
+    };
+    return arr.read_and_copy_either(inner_addr);
   }
 
-  /// read address of string or fixed length data type and return a reference
-  pub fn read_either(self: &HandlerMemory, addr: i64) -> &[u8] {
+  /// read address of string or fixed length data type and
+  /// return a reference to the data and its size
+  pub fn read_either(self: &HandlerMemory, addr: i64) -> (&[u8], u8) {
     // test if the data read is itself a string/array
     let var = self.read(addr, 0);
-    return if var.len() > 0 { var } else {
-      self.read(addr, 8)
-    }
+    return if var.len() > 0 {
+      (var, 0)
+    } else {
+      (self.read(addr, 8), 8)
+    };
   }
 
-  /// read address of string or fixed length data type and return a copy
-  pub fn read_and_copy_either(self: &HandlerMemory, addr: i64) -> Vec<u8> {
-    return self.read_either(addr).to_vec();
+  /// read address of string or fixed length data type and return
+  /// a copy of the data and its size
+  pub fn read_and_copy_either(self: &HandlerMemory, addr: i64) -> (Vec<u8>, u8) {
+    let (data, size) = self.read_either(addr);
+    return (data.to_vec(), size);
   }
 
   pub fn read(self: &HandlerMemory, addr: i64, size: u8) -> &[u8] {
@@ -277,7 +280,7 @@ impl HandlerMemory {
         self.mem[a + 6] = payload[6];
         self.mem[a + 7] = payload[7];
       },
-      _ => panic!("Unexpected write of strange byte size!"),
+      _ => panic!("Unexpected write of strange byte size: {}!", size),
     }
   }
 }
