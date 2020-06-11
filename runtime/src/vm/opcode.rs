@@ -1508,7 +1508,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("indarr", |args, hand_mem, _| {
-    let val = hand_mem.read_either(args[1]);
+    let (val, _) = hand_mem.read_either(args[1]);
     let idx = hand_mem.ind_arr(args[0], val);
     hand_mem.write(args[2], 8, &idx.to_le_bytes());
     None
