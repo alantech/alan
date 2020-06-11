@@ -224,6 +224,7 @@ module.exports = {
   indstr:  (a, b) => a.indexOf(b),
   lenstr:  a => a.length,
   trim:    a => a.trim(),
+  copyfrom:(arr, ind) => arr[ind],
 
   // Array opcodes TODO after arrays are figured out
   
