@@ -184,6 +184,7 @@ impl HandlerMemory {
     arr.write(inner_addr, size, &data);
 
   }
+
   /// read data from inner address in array to outer address and return a copy of it and its size
   /// the array address can point to a registerish
   pub fn read_and_copy_from_arr(self: &HandlerMemory, arr_addr:i64, inner_addr: i64) -> (Vec<u8>, u8) {
@@ -204,6 +205,7 @@ impl HandlerMemory {
     return if var.len() > 0 {
       (var, 0)
     } else {
+      // Nope, it's fixed data. We can safely read 8 bytes for all of the fixed types
       (self.read(addr, 8), 8)
     };
   }
