@@ -195,7 +195,7 @@ class Microstatement {
           // Insert a `copyto` opcode. Eventually determine if it should be `copyto` or `register`
           // based on the inner type of the Array.
           const opcodeScope = require('./opcodes').exportScope // Unfortunate circular dep issue
-          opcodeScope.get('copyto').functionval[0].microstatementInlining(
+          opcodeScope.get('copyfrom').functionval[0].microstatementInlining(
             [original.outputName, lookup.outputName],
             scope,
             microstatements,
@@ -206,7 +206,6 @@ class Microstatement {
           original = microstatements[microstatements.length - 1]
           // Now we do something odd, but correct here; we need to replace the `outputType` from
           // `any` to the type that was actually copied so function resolution continues to work
-          console.log(arrayRecord.outputType)
           original.outputType = Object.values(arrayRecord.outputType.properties)[0]
         }
       }
