@@ -245,22 +245,24 @@ class UserFunction {
     const condStatement = Ast.statementAstFromString(`
       const ${condName}: bool = ${cond.withoperators().getText()}
     `.trim() + '\n')
-    const condBlock = cond.blocklikes(0).functionbody() ?
-      `fn ${cond.blocklikes(0).getText()}` :
+    const condBlock = (cond.blocklikes(0).functionbody() ?
+      UserFunction.fromFunctionbodyAst(cond.blocklikes(0).functionbody(), scope) :
       cond.blocklikes(0).varn() ?
-        scope.deepGet(cond.blocklikes(0).varn()).functionval[0].maybeTransform().toFnStr() :
-        cond.blocklikes(0).getText()
+        scope.deepGet(cond.blocklikes(0).varn()).functionval[0] :
+        UserFunction.fromFunctionsAst(cond.blocklikes(0).functions(), scope)
+    ).maybeTransform().toFnStr()
     const condCall = Ast.statementAstFromString(`
       cond(${condName}, ${condBlock})
     `.trim() + '\n') // TODO: If the blocklike is a reference, grab it and inline it
     newStatements.push(condStatement, condCall)
     if (!!cond.ELSE()) {
       if (!!cond.blocklikes(1)) {
-        const elseBlock = cond.blocklikes(1).functionbody() ?
-          `fn ${cond.blocklikes(1).getText()}` :
+        const elseBlock = (cond.blocklikes(1).functionbody() ?
+          UserFunction.fromFunctionbodyAst(cond.blocklikes(1).functionbody(), scope) :
           cond.blocklikes(1).varn() ?
-            scope.deepGet(cond.blocklikes(1).varn()).functionval[0].maybeTransform().toFnStr() :
-            cond.blocklikes(1).getText()
+            scope.deepGet(cond.blocklikes(1).varn()).functionval[0] :
+            UserFunction.fromFunctionsAst(cond.blocklikes(1).functions(), scope)
+        ).maybeTransform().toFnStr()
         const elseStatement = Ast.statementAstFromString(`
           cond(!${condName}, ${elseBlock})
         `.trim() + '\n')
@@ -341,7 +343,7 @@ class UserFunction {
       let skip = false
       for (let j = 0; j < argList.length; j++) {
         if (argList[j].typename === argumentTypeList[j].typename) continue
-        if ( 
+        if (
           argList[j].iface != null &&
           argList[j].iface.typeApplies(argumentTypeList[j], scope)
         ) continue
