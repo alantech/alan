@@ -102,20 +102,44 @@ impl HandlerMemory {
     return arr;
   }
 
-  /// copy data from outer address to inner address in registerish
-  pub fn copy_to_reg(self: &mut HandlerMemory, reg_addr: i64, outer_addr:i64, inner_addr: i64) {
+  /// copy data from outer address to inner address in array or registerish
+  pub fn copy_to(self: &mut HandlerMemory, arr_addr: i64, outer_addr:i64, inner_addr: i64) {
     let data = self.read_either(outer_addr);
     let size = data.len() as u8;
-    let reg = self.get_reg(reg_addr);
-    reg.write(inner_addr, size, data.as_slice());
+    let arr = self.fractal_mem.get_mut(&arr_addr);
+    if arr.is_none() {
+      let reg = self.get_reg(arr_addr);
+      reg.write(inner_addr, size, data.as_slice());
+    } else {
+      let fractal = arr.unwrap();
+      fractal.write(inner_addr, size, data.as_slice());
+    }
   }
 
-  /// copy data from inner address in registerish to outer address
-  pub fn copy_from_reg(self: &mut HandlerMemory, reg_addr:i64, outer_addr:i64, inner_addr: i64) {
-    let reg = self.get_reg(reg_addr);
-    let data = reg.read_either(inner_addr);
-    let size = data.len() as u8;
-    self.write(outer_addr, size, data.as_slice());
+  /// copy data from inner address in array to outer address. the array address can point to a
+  /// registerish
+  pub fn copy_from(self: &mut HandlerMemory, arr_addr:i64, outer_addr:i64, inner_addr: i64) {
+    let arr = self.fractal_mem.get_mut(&arr_addr);
+    if arr.is_none() {
+      let reg = self.get_reg(arr_addr);
+      let data = reg.read_either(inner_addr);
+      let size = data.len() as u8;
+      self.write(outer_addr, size, data.as_slice());
+    } else {
+      // test if the data we're reading is itself an array
+      let fractal = arr.unwrap();
+      let mut size: u8 = 0;
+      let testArr = fractal.fractal_mem.get_mut(&inner_addr);
+      let data = if testArr.is_none() {
+        // Nope, it's fixed data. We can safely read 8 bytes for all of the fixed types
+        size = 8;
+        fractal.read(inner_addr, 8).to_vec()
+      } else {
+        // It is, let's read the whole chunk
+        fractal.read(inner_addr, 0).to_vec()
+      };
+      self.write(outer_addr, size, data.as_slice());
+    }
   }
 
   pub fn len_arr(self: &HandlerMemory, addr: i64) -> usize {

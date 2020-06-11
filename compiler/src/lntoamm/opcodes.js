@@ -274,6 +274,7 @@ addopcodes({
   values: [{ map: t('Map<any, any>'), }, t('Array<any>')],
   stdoutp: [{ out: t('string'), }, t('void')],
   exitop: [{ code: t('int8'), }, t('void')],
+  copyfrom: [{ arr: t('Array<any>'), addr: t('int64') }, t('any')],
 })
 
 module.exports = opcodeModule
