@@ -68,6 +68,55 @@ It's true!"
     End
   End
 
+  Describe "Nested"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+
+        on start {
+          if true {
+            print(1)
+            if 1 == 2 {
+              print('What?')
+            } else {
+              print(2)
+              if 2 == 1 {
+                print('Uhh...')
+              } else if 2 == 2 {
+                print(3)
+              } else {
+                print('Nope')
+              }
+            }
+          } else {
+            print('Hmm')
+          }
+          emit exit 0
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "1
+2
+3"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
+      The output should eq "1
+2
+3"
+    End
+  End
+
   Describe "Advanced"
     before() {
       # TODO: sourceToAll
