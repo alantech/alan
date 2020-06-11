@@ -1479,25 +1479,25 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
 
   // Array opcodes
   cpu!("register", |args, hand_mem, _| {
-    // args[0] is the register address
-    // args[1], and optionally args[2], point to an array in memory
+    // args[2] is the register address
+    // args[0], and optionally args[1], point to an array in memory
     if args.len() == 3 {
-      hand_mem.set_reg(args[0], args[1], Some(args[2]));
+      hand_mem.set_reg(args[2], args[0], Some(args[1]));
     } else {
-      hand_mem.set_reg(args[0], args[1], None);
+      hand_mem.set_reg(args[2], args[0], None);
     }
     None
   });
   cpu!("copyfrom", |args, hand_mem, _| {
-    // args = [reg_addr, outer_addr, inner_addr]
+    // args = [outer_addr, inner_addr, reg_addr]
     // copy data from outer_addr to inner_addr of the array in reg_addr
-    hand_mem.copy_from_reg(args[0], args[1], args[2]);
+    hand_mem.copy_from_reg(args[2], args[0], args[1]);
     None
   });
   cpu!("copyto", |args, hand_mem, _| {
-    // args = [reg_addr, outer_addr, inner_addr]
+    // args = [reg_addr, inner_addr, outer_addr]
     // copy data from inner_addr of the array in reg_addr to outer_addr
-    hand_mem.copy_to_reg(args[0], args[1], args[2]);
+    hand_mem.copy_to_reg(args[0], args[2], args[1]);
     None
   });
   cpu!("lenarr", |args, hand_mem, _| {

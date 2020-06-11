@@ -141,16 +141,75 @@ class Microstatement {
   static fromVarAst(varAst, scope, microstatements) {
     // Short-circuit if this exact var was already loaded
     let original = Microstatement.fromVarName(varAst.getText(), microstatements)
-    // Otherwise, we're digging in piece by piece to find the relevant microstatement.
-    const segments = varAst.varsegment()
-    let name = ''
-    for (const segment of segments) {
-      if (segment.VARNAME()) {
-        name += segment.VARNAME().getText()
+    if (!original) {
+      // Otherwise, we're digging in piece by piece to find the relevant microstatement.
+      const segments = varAst.varsegment()
+      let name = ''
+      for (const segment of segments) {
+        // A 'normal' segment. Append it to the name and attempt to get the underlying sub-name
+        if (segment.VARNAME()) {
+          name += segment.VARNAME().getText()
+          original = Microstatement.fromVarName(name, microstatements)
+        }
+        // A separator, just append it and do nothing else
+        if (segment.METHODSEP()) {
+          name += segment.METHODSEP().getText()
+        }
+        // An array access. This requires resolving the contents of the array access variable and
+        // then using that value to find the correct index to read from. For now, that will be
+        // emitting a `copyto` opcode call, but in the future it should decide between `copyto` and
+        // `register` based on the kind of value stored. Also for now it is an error if the resolved
+        // type is anything but `int64` for the array access path. Maps use the same syntax with the
+        // type being the Map's Key type.
+        if (segment.arrayaccess()) {
+          if (original == null || !(original instanceof Microstatement)) {
+            // This is all moot if we didn't resolve a variable to dig into
+            console.error(`${name} cannot be found`)
+            console.error(
+              varAst.getText() +
+              " on line " +
+              varAst.start.line +
+              ":" +
+              varAst.start.column
+            )
+            process.exit(-204)
+          }
+          // We're still ID'ing it with the raw text to make the short-circuit work
+          name += segment.arrayaccess().getText()
+          const assignables = segment.arrayaccess().assignables()
+          Microstatement.fromAssignablesAst(assignables, scope, microstatements)
+          const lookup = microstatements[microstatements.length - 1]
+          // TODO: Map support, which requires figuring out if the outer memory object is an array
+          // or a map.
+          if (lookup.outputType.typename !== 'int64') {
+            console.error(`${segment.getText()} is cannot be used in an array lookup as it is not an int64`)
+            console.error(
+              varAst.getText() +
+              " on line " +
+              varAst.start.line +
+              ":" +
+              varAst.start.column
+            )
+            process.exit(-205)
+          }
+          // Insert a `copyto` opcode. Eventually determine if it should be `copyto` or `register`
+          // based on the inner type of the Array.
+          const opcodeScope = require('./opcodes').exportScope // Unfortunate circular dep issue
+          opcodeScope.get('copyto').functionval[0].microstatementInlining(
+            [original.outputName, lookup.outputName],
+            scope,
+            microstatements,
+          )
+          // We'll need a reference to this for later
+          const arrayRecord = original
+          // Set the original to this newly-generated microstatement
+          original = microstatements[microstatements.length - 1]
+          // Now we do something odd, but correct here; we need to replace the `outputType` from
+          // `any` to the type that was actually copied so function resolution continues to work
+          console.log(arrayRecord.outputType)
+          original.outputType = Object.values(arrayRecord.outputType.properties)[0]
+        }
       }
-
-    if (original == null) {
-      original = scope.deepGet(varAst.getText())
     }
     if (original == null || !(original instanceof Microstatement)) {
       console.error(varAst.getText() + " cannot be found")
@@ -281,17 +340,32 @@ class Microstatement {
     // constants. That is not a valid assumption and should be revisited.
     if (basicAssignablesAst.objectliterals() != null) {
       const constName = "_" + uuid().replace(/-/g, "_")
-      const typeBox = scope.deepGet(basicAssignablesAst.objectliterals().othertype().getText())
-      if (typeBox == null) {
-        console.error(basicAssignablesAst.objectliterals().othertype().getText() + " is not defined")
-        console.error(
-          basicAssignablesAst.getText() +
-          " on line " +
-          basicAssignablesAst.start.line +
-          ":" +
-          basicAssignablesAst.start.column
-        )
-        process.exit(-105)
+      let typeBox = scope.deepGet(basicAssignablesAst.objectliterals().othertype().getText())
+      if (typeBox === null) {
+        // Try to define it if it's a generic type
+        if (basicAssignablesAst.objectliterals().othertype().typegenerics()) {
+          const outerTypeBox = scope.deepGet(
+            basicAssignablesAst.objectliterals().othertype().typename().getText()
+          )
+          if (outerTypeBox === null) {
+            console.error(`${basicAssignablesAst.objectliterals().othertype().getText()}  is not defined`)
+            console.error(
+              basicAssignablesAst.getText() +
+              " on line " +
+              basicAssignablesAst.start.line +
+              ":" +
+              basicAssignablesAst.start.column
+            )
+            process.exit(-105)
+          }
+          outerTypeBox.typeval.solidify(
+            basicAssignablesAst.objectliterals().othertype().typegenerics().fulltypename().map(t =>
+              t.getText()
+            ),
+            scope
+          )
+          typeBox = scope.deepGet(basicAssignablesAst.objectliterals().othertype().getText())
+        }
       }
       if (typeBox.typeval == null) {
         console.error(basicAssignablesAst.objectliterals().othertype().getText() + " is not a type")
@@ -782,8 +856,33 @@ class Microstatement {
   }
 
   static fromAssignmentsAst(assignmentsAst, scope, microstatements) {
-    const priorStatement = Microstatement.fromVarAst(assignmentsAst.varn(), scope, microstatements)
-    const actualLetName = priorStatement.outputName
+    // TODO: Figure out a way to remove this custom var logic
+    const letName = assignmentsAst.varn().getText()
+    let letType = null
+    let actualLetName
+    for (let i = microstatements.length - 1; i >= 0; i--) {
+      const microstatement = microstatements[i]
+      if (microstatement.alias === letName) {
+        actualLetName = microstatement.outputName
+        continue
+      }
+      if (microstatement.outputName === actualLetName) {
+        if (microstatement.statementType === StatementType.LETDEC) {
+          letType = microstatement.outputType
+          break
+        } else {
+          console.error("Attempting to reassign a non-let variable.")
+          console.error(
+            letName +
+            " on line " +
+            assignmentsAst.line +
+            ":" +
+            assignmentsAst.start.column
+          )
+          process.exit(100)
+        }
+      }
+    }
     // TODO: Clean up the const/let declarations and assignments. That this is possible with the
     // parser is bad here, but necessary for let declarations because of the weird re-use of stuff.
     if (assignmentsAst.assignables() == null) {
