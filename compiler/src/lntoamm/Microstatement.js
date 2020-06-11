@@ -157,10 +157,10 @@ class Microstatement {
         }
         // An array access. This requires resolving the contents of the array access variable and
         // then using that value to find the correct index to read from. For now, that will be
-        // emitting a `copyto` opcode call, but in the future it should decide between `copyto` and
-        // `register` based on the kind of value stored. Also for now it is an error if the resolved
-        // type is anything but `int64` for the array access path. Maps use the same syntax with the
-        // type being the Map's Key type.
+        // emitting a `copyfrom` opcode call, but in the future it should decide between `copyfrom`
+        // and `register` based on the kind of value stored. Also for now it is an error if the
+        // resolved type is anything but `int64` for the array access path. Maps use the same syntax
+        // with the type being the Map's Key type.
         if (segment.arrayaccess()) {
           if (original == null || !(original instanceof Microstatement)) {
             // This is all moot if we didn't resolve a variable to dig into
