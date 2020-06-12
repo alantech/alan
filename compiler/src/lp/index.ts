@@ -53,6 +53,7 @@ export interface LPish {
   t: string
   get(id?: string | number): LPish
   getAll(): LPish[]
+  has(id?: string | number): boolean
   check(lp: LP): boolean
   apply(lp: LP): LPish | Error
 }
@@ -72,6 +73,10 @@ export class NulLP implements LPish {
 
   getAll(): NulLP[] {
     return [this]
+  }
+
+  has(): boolean {
+    return false
   }
 
   check(): boolean {
@@ -114,6 +119,10 @@ export class Token implements LPish {
 
   getAll(): LPish[] {
     return [this]
+  }
+
+  has(): boolean {
+    return this.line > -1
   }
 
   check(lp: LP): boolean {
@@ -189,6 +198,10 @@ export class Not implements LPish {
     return [this]
   }
 
+  has(): boolean {
+    return this.line > -1
+  }
+
   apply(lp: LP): Not | Error {
     if (this.check(lp)) {
       const newT = lp.data[lp.i]
@@ -239,6 +252,10 @@ export class ZeroOrOne implements LPish {
     return [this.zeroOrOne]
   }
 
+  has(): boolean {
+    return this.line > -1
+  }
+
   apply(lp: LP): LPish {
     if (this.zeroOrOne.check(lp)) {
       const zeroOrOne = this.zeroOrOne.apply(lp)
@@ -283,6 +300,16 @@ export class ZeroOrMore implements LPish {
 
   getAll(): LPish[] {
     return this.zeroOrMore
+  }
+
+  has(id?: number): boolean {
+    if (typeof id === 'number') {
+      if (this.zeroOrMore[id]) {
+        return this.zeroOrMore[id].has()
+      }
+      return false
+    }
+    return this.line > -1
   }
 
   apply(lp: LP): ZeroOrMore {
@@ -334,6 +361,16 @@ export class OneOrMore implements LPish {
 
   getAll(): LPish[] {
     return this.oneOrMore
+  }
+
+  has(id?: number): boolean {
+    if (typeof id === 'number') {
+      if (this.oneOrMore[id]) {
+        return this.oneOrMore[id].has()
+      }
+      return false
+    }
+    return this.line > -1
   }
 
   apply(lp: LP): OneOrMore | Error {
@@ -396,6 +433,16 @@ export class And implements LPish {
     return this.and
   }
 
+  has(id?: number): boolean {
+    if (typeof id === 'number') {
+      if (this.and[id]) {
+        return this.and[id].has()
+      }
+      return false
+    }
+    return this.line > -1
+  }
+
   apply(lp: LP): And | Error {
     const filename = lp.filename
     const line = lp.line
@@ -455,6 +502,16 @@ export class Or implements LPish {
 
   getAll(): LPish[] {
     return this.or
+  }
+
+  has(id?: number): boolean {
+    if (typeof id === 'number') {
+      if (this.or[id]) {
+        return this.or[id].has()
+      }
+      return false
+    }
+    return this.line > -1
   }
 
   apply(lp: LP): Or | Error {
@@ -529,6 +586,16 @@ export class NamedAnd implements LPish {
     return Object.values(this.and)
   }
 
+  has(id?: string): boolean {
+    if (typeof id === 'string') {
+      if (this.and[id]) {
+        return this.and[id].has()
+      }
+      return false
+    }
+    return this.line > -1
+  }
+
   apply(lp: LP): NamedAnd | Error {
     const filename = lp.filename
     const line = lp.line
@@ -592,6 +659,16 @@ export class NamedOr implements LPish {
 
   getAll(): LPish[] {
     return Object.values(this.or)
+  }
+
+  has(id?: string): boolean {
+    if (typeof id === 'string') {
+      if (this.or[id]) {
+        return this.or[id].has()
+      }
+      return false
+    }
+    return this.line > -1
   }
 
   apply(lp: LP): NamedOr | Error {
@@ -661,6 +738,10 @@ export class CharSet implements LPish {
 
   getAll(): CharSet[] {
     return [this]
+  }
+
+  has(): boolean {
+    return this.line > -1
   }
 
   apply(lp: LP): CharSet | Error {

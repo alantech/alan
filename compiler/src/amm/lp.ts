@@ -17,7 +17,8 @@ const space = Token.build(' ')
 const blank = OneOrMore.build(space)
 const optblank = ZeroOrOne.build(blank)
 const newline = Token.build('\n')
-const whitespace = ZeroOrMore.build(Or.build([space, newline]))
+const whitespace = OneOrMore.build(Or.build([space, newline]))
+const optwhitespace = ZeroOrOne.build(whitespace)
 const colon = Token.build(':')
 const under = Token.build('_')
 const negate = Token.build('-')
@@ -30,12 +31,11 @@ const closeCurly = Token.build('}')
 const openCaret = Token.build('<')
 const closeCaret = Token.build('>')
 const comma = Token.build(',')
+const optcomma = ZeroOrOne.build(comma)
 const base10 = CharSet.build('0', '9')
 const natural = OneOrMore.build(base10)
 const integer = And.build([ZeroOrOne.build(negate), natural])
 const real = And.build([integer, ZeroOrOne.build(And.build([dot, natural]))])
-const i64 = And.build([integer, Token.build('i64')])
-const f64 = And.build([real, Token.build('f64')])
 const lower = CharSet.build('a', 'z')
 const upper = CharSet.build('A', 'Z')
 const variable = And.build([
@@ -56,7 +56,7 @@ const quote = Token.build('"')
 const escapeQuote = Token.build('\\"')
 const notQuote = Not.build('"')
 const str = And.build([quote, ZeroOrMore.build(Or.build([escapeQuote, notQuote])), quote])
-const value = NamedOr.build({ str, bool, i64, f64 })
+const value = NamedOr.build({ str, bool, integer, real })
 const decname = variable
 const typename = variable
 const typegenerics = NamedAnd.build({
@@ -73,7 +73,7 @@ const fulltypename = Or.build([
   NamedAnd.build({
     typename,
     optblank,
-    typegenerics,
+    opttypegenerics: ZeroOrOne.build(typegenerics),
   }),
   voidn
 ]);
@@ -83,8 +83,8 @@ const fulltypename = Or.build([
 const emits = NamedAnd.build({ emit, blank, variable, value: ZeroOrOne.build(NamedAnd.build({
   blank, variable
 }))})
-const events = NamedAnd.build({ event, blank, variable, optblank, colon, typename })
-const calllist = ZeroOrMore.build(NamedAnd.build({ variable, comma, optblank }))
+const events = NamedAnd.build({ event, blank, variable, a: optblank, colon, b: optblank, typename })
+const calllist = ZeroOrMore.build(NamedAnd.build({ variable, optcomma, optblank }))
 const calls = NamedAnd.build({
   variable,
   a: optblank,
@@ -104,11 +104,11 @@ const constdeclaration = NamedAnd.build({
   constn,
   a: blank,
   decname,
-  b: blank,
+  b: optblank,
   colon,
   c: blank,
   fulltypename,
-  d: blank,
+  d: optblank,
   eq,
   e: blank,
   assignables,
@@ -117,7 +117,7 @@ const letdeclaration = NamedAnd.build({
   letn,
   a: blank,
   decname,
-  b: blank,
+  b: optblank,
   colon,
   c: blank,
   fulltypename,
@@ -128,19 +128,25 @@ const letdeclaration = NamedAnd.build({
 })
 const declarations = NamedOr.build({ constdeclaration, letdeclaration })
 const assignments = NamedAnd.build({ decname, a: blank, eq, b: blank, assignables, })
-const statements = OneOrMore.build(NamedOr.build({ declarations, assignments, calls, emits, }))
+const statements = OneOrMore.build(NamedOr.build({
+  declarations,
+  assignments,
+  calls,
+  emits,
+  whitespace,
+}))
 const functionbody = NamedAnd.build({
   openCurly,
   a: whitespace,
   statements,
-  b: whitespace,
+  b: optwhitespace,
   closeCurly,
 })
 const functions = NamedAnd.build({
   fn,
   blank,
   openParen,
-  arg: ZeroOrOne.build(NamedAnd.build({ variable, colon, fulltypename, })),
+  arg: ZeroOrOne.build(NamedAnd.build({ variable, colon, optblank, fulltypename, })),
   closeParen,
   a: optblank,
   colon,
@@ -152,9 +158,9 @@ const functions = NamedAnd.build({
 assignables.or.functions = functions
 const handler = NamedAnd.build({ on, a: blank, variable, b: blank, functions, })
 const amm = NamedAnd.build({
-  a: blank,
+  a: optblank,
   globalMem: ZeroOrMore.build(Or.build([ constdeclaration, whitespace ])),
   eventDec: ZeroOrMore.build(Or.build([ events, whitespace ])),
-  handlers: ZeroOrMore.build(Or.build([ handler, whitespace ])),
+  handlers: OneOrMore.build(Or.build([ handler, whitespace ])),
 })
 export default amm

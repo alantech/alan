@@ -1,78 +1,103 @@
-import * as Ast from '../amm/Ast'
 import { asyncopcodes, } from 'alan-js-runtime'
 
-const callToJsText = (call) => {
-  const args = call.calllist() ? call.calllist().VARNAME().map(v => v.getText()).join(', ') : ""
-  const opcode = call.VARNAME().getText()
+import {
+  LP,
+  LPish,
+  NamedAnd,
+} from '../lp'
+
+import amm from '../amm/lp'
+
+const callToJsText = (call: LPish) => {
+  const args = call.has('calllist') ?
+    call.get('calllist').getAll().map(r => r.get('variable').t).join(', ') : ""
+  const opcode = call.get('variable').t
   return asyncopcodes.includes(opcode) ? `await r.${opcode}(${args})` : `r.${opcode}(${args})`
 }
 
-const functionbodyToJsText = (fnbody, indent) => {
+const functionbodyToJsText = (fnbody: LPish, indent: string) => {
   let outText = ""
-  for (const statement of fnbody.statements()) {
+  for (const statement of fnbody.get('statements').getAll()) {
     outText += indent + "  " // For legibility of the output
-    if (statement.declarations()) {
-      if (statement.declarations().constdeclaration()) {
-        const dec = statement.declarations().constdeclaration()
-        outText += `const ${dec.decname().getText()} = ${assignableToJsText(dec.assignables(), indent)}\n`
-      } else if (statement.declarations().letdeclaration()) {
-        const dec = statement.declarations().letdeclaration()
-        outText += `let ${dec.decname().getText()} = ${assignableToJsText(dec.assignables(), indent)}\n`
+    if (statement.has('declarations')) {
+      if (statement.get('declarations').has('constdeclaration')) {
+        const dec = statement.get('declarations').get('constdeclaration')
+        outText += `const ${dec.get('decname').t} = ${assignableToJsText(dec.get('assignables'), indent)}\n`
+      } else if (statement.get('declarations').has('letdeclaration')) {
+        const dec = statement.get('declarations').get('letdeclaration')
+        outText += `let ${dec.get('decname').t} = ${assignableToJsText(dec.get('assignables'), indent)}\n`
       }
-    } else if (statement.assignments()) {
-      const assign = statement.assignments()
-      outText += `${assign.decname().getText()} = ${assignableToJsText(assign.assignables(), indent)}\n`
-    } else if (statement.calls()) {
-      outText += `${callToJsText(statement.calls())}\n`
-    } else if (statement.emits()) {
-      const emit = statement.emits()
-      const name = emit.VARNAME(0).getText()
-      const arg = emit.VARNAME(1) ? emit.VARNAME(1).getText() : 'undefined'
+    } else if (statement.has('assignments')) {
+      const assign = statement.get('assignments')
+      outText += `${assign.get('decname').t} = ${assignableToJsText(assign.get('assignables'), indent)}\n`
+    } else if (statement.has('calls')) {
+      outText += `${callToJsText(statement.get('calls'))}\n`
+    } else if (statement.has('emits')) {
+      const emit = statement.get('emits')
+      const name = emit.get('variable').t
+      const arg = emit.has('value') ? emit.get('value').get('variable').t : 'undefined'
       outText += `r.emit('${name}', ${arg})\n`
     }
   }
   return outText
 }
 
-const assignableToJsText = (assignable, indent) => {
+const assignableToJsText = (assignable: LPish, indent: string) => {
   let outText = ""
-  if (assignable.functions()) {
+  if (assignable.has('functions')) {
     outText += '() => {\n' // All assignable functions/closures take no arguments
-    outText += functionbodyToJsText(assignable.functions().functionbody(), indent + "  ")
+    outText += functionbodyToJsText(assignable.get('functions').get('functionbody'), indent + "  ")
     outText += indent + '  }' // End this closure
-  } else if (assignable.calls()) {
-    outText += callToJsText(assignable.calls())
-  } else if (assignable.VARNAME()) {
-    outText += assignable.VARNAME().getText()
-  } else if (assignable.constants()) {
-    outText += assignable.constants().getText()
-  } else if (assignable.objectliterals()) {
-    // TODO: Actually do this right once we figure out what we even want to do with object literals
-    throw new Error('Object literals not yet implemented!')
+  } else if (assignable.has('calls')) {
+    outText += callToJsText(assignable.get('calls'))
+  } else if (assignable.has('variable')) {
+    outText += assignable.get('variable').t
+  } else if (assignable.has('value')) {
+    outText += assignable.get('value').t
   }
   return outText
 }
 
-const ammToJsText = (amm) => {
+const ammToJsText = (amm: LPish) => {
   let outFile = "const r = require('alan-js-runtime')\n"
   // Where we're going we don't need types, so skipping that entire section
   // First convert all of the global constants to javascript
-  for (const globalConst of amm.constdeclaration()) {
+  for (const globalConst of amm.get('globalMem').getAll()) {
+    const rec = globalConst.get()
+    if (!(rec instanceof NamedAnd)) continue
     outFile +=
-      `const ${globalConst.decname().getText()} = ${assignableToJsText(globalConst.assignables(), '')}\n`
+      `const ${rec.get('decname').t} = ${assignableToJsText(rec.get('assignables'), '')}\n`
   }
   // We can also skip the event declarations because they are lazily bound by EventEmitter
   // Now we convert the handlers to Javascript. This is the vast majority of the work
-  for (const handler of amm.handlers()) {
-    const eventVarName = handler.functions().VARNAME() ? handler.functions().VARNAME().getText() : ""
-    outFile += `r.on('${handler.VARNAME().getText()}', async (${eventVarName}) => {\n`
-    outFile += functionbodyToJsText(handler.functions().functionbody(), '')
+  for (const handler of amm.get('handlers').getAll()) {
+    const rec = handler.get()
+    if (!(rec instanceof NamedAnd)) continue
+    const eventVarName = rec.get('functions').has('arg') ?
+      rec.get('functions').get('arg').get('variable').t : ""
+    outFile += `r.on('${rec.get('variable').t}', async (${eventVarName}) => {\n`
+    outFile += functionbodyToJsText(rec.get('functions').get('functionbody'), '')
     outFile += '})\n' // End this handler
   }
   outFile += "r.emit('_start', undefined)\n" // Let's get it started in here
   return outFile
 }
 
-
-export const fromFile = (filename) => ammToJsText(Ast.fromFile(filename))
-export const fromString = (str) => ammToJsText(Ast.fromString(str))
+export const fromFile = (filename: string) => {
+  const lp = new LP(filename)
+  const ast = amm.apply(lp)
+  if (ast instanceof Error) {
+    console.error(ast)
+    process.exit(1)
+  }
+  return ammToJsText(ast)
+}
+export const fromString = (str: string) => {
+  const lp = LP.fromText(str)
+  const ast = amm.apply(lp)
+  if (ast instanceof Error) {
+    console.error(ast)
+    process.exit(1)
+  }
+  return ammToJsText(ast)
+}
