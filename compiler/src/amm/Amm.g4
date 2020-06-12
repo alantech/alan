@@ -2,23 +2,15 @@ grammar Amm;
 
 // Parser rules
 
-module : (blank* (types | blank+)* (constdeclaration | blank+)* (events | blank+)* (handlers | blank+)+) | EOF;
+module : (blank* (constdeclaration | blank+)* (events | blank+)* (handlers | blank+)+) | EOF;
 
 blank : (WS | NEWLINE);
-
-types : TYPE blank+ typename blank* typegenerics? blank+ (typebody | EQUALS blank* othertype (blank* OR blank* othertype)*);
-
-othertype : typename blank* typegenerics?;
 
 typename : VARNAME;
 
 typegenerics : OPENGENERIC blank* fulltypename blank* (SEP blank* fulltypename blank*)* CLOSEGENERIC;
 
 fulltypename : typename blank* typegenerics? | VOID;
-
-typebody: OPENBODY blank* (WS* typeline)+ blank? CLOSEBODY;
-
-typeline: VARNAME TYPESEP typename NEWLINE*;
 
 functions : FN blank+ OPENARGS (VARNAME TYPESEP fulltypename)? CLOSEARGS blank* TYPESEP blank* VOID blank* functionbody;
 
@@ -36,19 +28,7 @@ letdeclaration : LET blank* decname blank* TYPESEP blank* fulltypename blank* EQ
 
 assignments : decname blank* EQUALS blank* assignables;
 
-assignables : functions | calls | constants | objectliterals | VARNAME;
-
-objectliterals : NEW WS* othertype WS* (arrayliteral | typeliteral | mapliteral);
-
-arrayliteral : OPENARRAY blank* assignablelist blank* CLOSEARRAY;
-
-typeliteral : OPENBODY blank* (assignments blank+)+ CLOSEBODY;
-
-mapliteral : OPENBODY blank* (mapline blank+)* CLOSEBODY;
-
-mapline : assignables WS* TYPESEP WS* assignables;
-
-assignablelist : blank* assignables (SEP blank* assignables)* blank*;
+assignables : functions | calls | constants | VARNAME;
 
 calllist : blank* VARNAME (SEP blank* VARNAME)* blank*;
 
@@ -66,8 +46,6 @@ handlers : ON blank+ VARNAME blank+ functions;
 
 // First, keywords
 
-TYPE : 'type';
-
 FN : 'fn';
 
 EVENT : 'event';
@@ -81,8 +59,6 @@ LET : 'let';
 EMIT : 'emit';
 
 BOOLCONSTANT : ('true' | 'false');
-
-NEW : 'new';
 
 // Next, sigils in the language
 
@@ -100,15 +76,7 @@ OPENGENERIC : '<';
 
 CLOSEGENERIC : '>';
 
-OPENARRAY : '[';
-
-CLOSEARRAY : ']';
-
-METHODSEP : '.';
-
 EQUALS : '=';
-
-OR : '|';
 
 VOID : 'void';
 

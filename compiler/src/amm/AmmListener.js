@@ -29,24 +29,6 @@ AmmListener.prototype.exitBlank = function(ctx) {
 };
 
 
-// Enter a parse tree produced by AmmParser#types.
-AmmListener.prototype.enterTypes = function(ctx) {
-};
-
-// Exit a parse tree produced by AmmParser#types.
-AmmListener.prototype.exitTypes = function(ctx) {
-};
-
-
-// Enter a parse tree produced by AmmParser#othertype.
-AmmListener.prototype.enterOthertype = function(ctx) {
-};
-
-// Exit a parse tree produced by AmmParser#othertype.
-AmmListener.prototype.exitOthertype = function(ctx) {
-};
-
-
 // Enter a parse tree produced by AmmParser#typename.
 AmmListener.prototype.enterTypename = function(ctx) {
 };
@@ -71,24 +53,6 @@ AmmListener.prototype.enterFulltypename = function(ctx) {
 
 // Exit a parse tree produced by AmmParser#fulltypename.
 AmmListener.prototype.exitFulltypename = function(ctx) {
-};
-
-
-// Enter a parse tree produced by AmmParser#typebody.
-AmmListener.prototype.enterTypebody = function(ctx) {
-};
-
-// Exit a parse tree produced by AmmParser#typebody.
-AmmListener.prototype.exitTypebody = function(ctx) {
-};
-
-
-// Enter a parse tree produced by AmmParser#typeline.
-AmmListener.prototype.enterTypeline = function(ctx) {
-};
-
-// Exit a parse tree produced by AmmParser#typeline.
-AmmListener.prototype.exitTypeline = function(ctx) {
 };
 
 
@@ -170,60 +134,6 @@ AmmListener.prototype.enterAssignables = function(ctx) {
 
 // Exit a parse tree produced by AmmParser#assignables.
 AmmListener.prototype.exitAssignables = function(ctx) {
-};
-
-
-// Enter a parse tree produced by AmmParser#objectliterals.
-AmmListener.prototype.enterObjectliterals = function(ctx) {
-};
-
-// Exit a parse tree produced by AmmParser#objectliterals.
-AmmListener.prototype.exitObjectliterals = function(ctx) {
-};
-
-
-// Enter a parse tree produced by AmmParser#arrayliteral.
-AmmListener.prototype.enterArrayliteral = function(ctx) {
-};
-
-// Exit a parse tree produced by AmmParser#arrayliteral.
-AmmListener.prototype.exitArrayliteral = function(ctx) {
-};
-
-
-// Enter a parse tree produced by AmmParser#typeliteral.
-AmmListener.prototype.enterTypeliteral = function(ctx) {
-};
-
-// Exit a parse tree produced by AmmParser#typeliteral.
-AmmListener.prototype.exitTypeliteral = function(ctx) {
-};
-
-
-// Enter a parse tree produced by AmmParser#mapliteral.
-AmmListener.prototype.enterMapliteral = function(ctx) {
-};
-
-// Exit a parse tree produced by AmmParser#mapliteral.
-AmmListener.prototype.exitMapliteral = function(ctx) {
-};
-
-
-// Enter a parse tree produced by AmmParser#mapline.
-AmmListener.prototype.enterMapline = function(ctx) {
-};
-
-// Exit a parse tree produced by AmmParser#mapline.
-AmmListener.prototype.exitMapline = function(ctx) {
-};
-
-
-// Enter a parse tree produced by AmmParser#assignablelist.
-AmmListener.prototype.enterAssignablelist = function(ctx) {
-};
-
-// Exit a parse tree produced by AmmParser#assignablelist.
-AmmListener.prototype.exitAssignablelist = function(ctx) {
 };
 
 
