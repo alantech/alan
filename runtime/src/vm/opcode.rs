@@ -1489,7 +1489,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("copyfrom", |args, hand_mem, _| {
-    // args = [arr_addr, arr_idx, outer_addr]
+    // args = [arr_addr, arr_idx_addr, outer_addr]
     // copy data from outer_addr to inner_addr of the array in reg_addr
     // The array index instead of inner address is provided to keep interaction with the js-runtime
     // sane.
@@ -1500,6 +1500,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("copyto", |args, hand_mem, _| {
     // args = [arr_addr, outer_addr, inner_addr]
     // copy data from inner_addr of the array in reg_addr to outer_addr
+    // TODO: the inner_addr is likely wrong, refactor once we have something to test with
     let inner = LittleEndian::read_i64(hand_mem.read(args[1], 8));
     hand_mem.copy_to(args[0], args[2], inner);
     None
