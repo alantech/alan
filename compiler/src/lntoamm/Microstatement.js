@@ -338,7 +338,6 @@ class Microstatement {
     // stage they're just passed through as-is. TODO: This is assuming everything inside of them are
     // constants. That is not a valid assumption and should be revisited.
     if (basicAssignablesAst.objectliterals() != null) {
-      const constName = "_" + uuid().replace(/-/g, "_")
       let typeBox = scope.deepGet(basicAssignablesAst.objectliterals().othertype().getText())
       if (typeBox === null) {
         // Try to define it if it's a generic type
@@ -377,13 +376,69 @@ class Microstatement {
         )
         process.exit(-106)
       }
+      // For now only, support array literals, work on map and user-defined type literals later
+      if (!basicAssignablesAst.objectliterals().arrayliteral()) {
+        console.error(`${basicAssignablesAst.objectliterals().othertype().getText()} not yet supported`)
+        console.error(
+          basicAssignablesAst.getText() +
+          " on line " +
+          basicAssignablesAst.start.line +
+          ":" +
+          basicAssignablesAst.start.column
+        )
+        process.exit(-107)
+      }
+      // Array literals first need all of the microstatements of the array contents defined, then
+      // a `newarr` opcode call is inserted for the object literal itself, then `pusharr` opcode
+      // calls are emitted to insert the relevant data into the array, and finally the array itself
+      // is REREFed for the outer microstatement generation call.
+      const arrayLiteralContents = []
+      const assignablelist = basicAssignablesAst.objectliterals().arrayliteral().assignablelist()
+      for (let i = 0; i < assignablelist.assignables().length; i++) {
+        Microstatement.fromAssignablesAst(assignablelist.assignables(i), scope, microstatements)
+        arrayLiteralContents.push(microstatements[microstatements.length - 1])
+      }
+      // Create a new variable to hold the size of the array literal
+      const lenName = "_" + uuid().replace(/-/g, "_")
       microstatements.push(new Microstatement(
         StatementType.CONSTDEC,
         scope,
         true,
-        constName,
-        typeBox.typeval,
-        [basicAssignablesAst.objectliterals().getText()],
+        lenName,
+        Box.builtinTypes['int64'],
+        [`${arrayLiteralContents.length}`],
+        [],
+      ))
+      const opcodeScope = require('./opcodes').exportScope // Unfortunate circular dep issue
+      // Add the opcode to create a new array with the specified size
+      opcodeScope.get('newarr').functionval[0].microstatementInlining(
+        [lenName],
+        scope,
+        microstatements,
+      )
+      // Get the array microstatement and extract the name and insert the correct type
+      const array = microstatements[microstatements.length - 1]
+      array.outputType = typeBox.typeval
+      const arrayName = array.outputName
+      // Push the values into the array
+      for (let i = 0; i < arrayLiteralContents.length; i++) {
+        opcodeScope.get('pusharr').functionval[0].microstatementInlining(
+          [arrayName, arrayLiteralContents[i].outputName],
+          scope,
+          microstatements,
+        )
+        // Update the push output argument type to be the original input type so the type is not
+        // erased
+        microstatements[microstatements.length - 1].outputType = arrayLiteralContents[i].outputType
+      }
+      // REREF the array
+      microstatements.push(new Microstatement(
+        StatementType.REREF,
+        scope,
+        true,
+        arrayName,
+        array.outputType,
+        [],
         [],
       ))
       return
@@ -536,7 +591,7 @@ class Microstatement {
       if (s.statementOrAssignableAst instanceof LnParser.StatementsContext) {
         Microstatement.fromStatementsAst(s.statementOrAssignableAst, scope, microstatements)
       } else {
-        Microstatemnt.fromAssignablesAst(s.statementOrAssignableAst, scope, microstatements)
+        Microstatement.fromAssignablesAst(s.statementOrAssignableAst, scope, microstatements)
       }
     }
     let newlen = microstatements.length;

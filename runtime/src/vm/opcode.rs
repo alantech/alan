@@ -1491,7 +1491,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("copyfrom", |args, hand_mem, _| {
     // args = [arr_addr, inner_addr, outer_addr]
     // copy data from outer_addr to inner_addr of the array in reg_addr
-    let inner = LittleEndian::read_i64(hand_mem.read(args[1], 8));
+    let inner = LittleEndian::read_i64(hand_mem.read(args[1], 8)) * 8;
     hand_mem.copy_from(args[0], args[2], inner);
     None
   });
@@ -1526,7 +1526,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("newarr", |args, hand_mem, _| {
-    hand_mem.new_arr(args[0]);
+    hand_mem.new_arr(args[2]);
     None
   });
   // Map opcodes TODO after maps are implemented

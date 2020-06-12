@@ -38,6 +38,45 @@ Describe "Arrays"
       The output should eq "$ACCESSOROUTPUT"
     End
   End
+
+  Describe "literal syntax"
+  before() {
+    sourceToAll "
+      from @std/app import start, print, exit
+
+      on start {
+        print('Testing...')
+        const test = new Array<int64> [ 1, 2, 3 ]
+        print(test[0])
+        print(test[1])
+        print(test[2])
+        emit exit 0
+      }
+    "
+  }
+  BeforeAll before
+
+  after() {
+    cleanTemp
+  }
+  AfterAll after
+
+  LITERALOUTPUT="Testing...
+1
+2
+3"
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "$LITERALOUTPUT"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
+      The output should eq "$LITERALOUTPUT"
+    End
+  End
+
   Describe "everything else ;)"
     before() {
       # TODO: sourceToAll
