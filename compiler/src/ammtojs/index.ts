@@ -1,10 +1,10 @@
-const Ast = require('../amm/Ast')
-const AsyncOpcodes = require('alan-js-runtime').asyncopcodes
+import * as Ast from '../amm/Ast'
+import { asyncopcodes, } from 'alan-js-runtime'
 
 const callToJsText = (call) => {
   const args = call.calllist() ? call.calllist().VARNAME().map(v => v.getText()).join(', ') : ""
   const opcode = call.VARNAME().getText()
-  return AsyncOpcodes.includes(opcode) ? `await r.${opcode}(${args})` : `r.${opcode}(${args})`
+  return asyncopcodes.includes(opcode) ? `await r.${opcode}(${args})` : `r.${opcode}(${args})`
 }
 
 const functionbodyToJsText = (fnbody, indent) => {
@@ -73,7 +73,6 @@ const ammToJsText = (amm) => {
   return outFile
 }
 
-module.exports = {
-  fromFile: (filename) => ammToJsText(Ast.fromFile(filename)),
-  fromString: (str) => ammToJsText(Ast.fromString(str)),
-}
+
+export const fromFile = (filename) => ammToJsText(Ast.fromFile(filename))
+export const fromString = (str) => ammToJsText(Ast.fromString(str))
