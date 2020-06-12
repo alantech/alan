@@ -159,8 +159,17 @@ impl HandlerMemory {
   }
 
   pub fn push_arr(self: &mut HandlerMemory, addr: i64, val: Vec<u8>, val_size: u8) {
+    // This implementation uses the `mem` vector as a way to keep track of the total length of the
+    // array, as well. It's simple but wastes space when the inserted value is variable-length
+    // (such as other strings or other arrays), however it greatly simplifies addressing and
+    // lookup, particularly for `Array<any>`, which is also what user-defined types are transformed
+    // into. In the future we could have an address translation layer and pack the data as tightly
+    // as we can, assuming that doesn't impose a large performance penalty, while this simple
+    // solution only adds an extra key's worth of space usage, but does have memory copy issues due
+    // to the constant resizing.
     let arr = self.get_mut_arr(addr);
-    let idx = arr.fractal_mem.len();
+    let idx = arr.mem.len();
+    arr.mem.resize(idx + 8, 0);
     arr.write(idx as i64, val_size, val.as_slice());
   }
 
@@ -199,7 +208,11 @@ impl HandlerMemory {
 
   /// read address of string or fixed length data type and
   /// return a reference to the data and its size
+  /// WARNING fails on reads to global memory, make sure it is not possible to pass this globals
   pub fn read_either(self: &HandlerMemory, addr: i64) -> (&[u8], u8) {
+    if addr < 0 {
+      panic!("Reads of undefined size do not work on global memory");
+    }
     // test if the data read is itself a string/array
     let var = self.read(addr, 0);
     return if var.len() > 0 {

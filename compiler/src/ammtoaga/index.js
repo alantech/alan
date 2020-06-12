@@ -184,7 +184,7 @@ const loadStatements = (statements, localMem, globalMem) => {
     let s = ''
     if (statement.declarations()) {
       const dec = statement.declarations().constdeclaration() || statement.declarations().letdeclaration()
-      const resultAddress = localMem[dec.decname().getText().trim()]
+      let resultAddress = localMem[dec.decname().getText().trim()]
       localMemToLine[dec.decname().getText().trim()] = line
       const assignables = dec.assignables()
       if (assignables.functions()) {
@@ -193,6 +193,29 @@ const loadStatements = (statements, localMem, globalMem) => {
       } else if (assignables.calls()) {
         const call = assignables.calls()
         const fn = call.VARNAME().getText().trim()
+        // TODO: Absolute hackery that must be removed soon
+        if (fn === 'pusharr') {
+          switch (dec.fulltypename().getText().trim()) {
+          case 'int8':
+          case 'bool':
+            resultAddress = 1
+            break
+          case 'int16':
+            resultAddress = 2
+            break
+          case 'int32':
+          case 'float32':
+            resultAddress = 4
+            break
+          case 'int64':
+          case 'float64':
+            resultAddress = 8
+            break
+          default:
+            resultAddress = 0
+            break
+          }
+        }
         const vars = (call.calllist() ? call.calllist().VARNAME() : []).map(v => v.getText().trim())
         const args = vars.map(v => localMem.hasOwnProperty(v) ?
           localMem[v] :

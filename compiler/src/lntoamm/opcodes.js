@@ -269,6 +269,7 @@ addopcodes({
   every: [{ arr: t('Array<any>'), cb: t('function'), }, t('bool')],
   some: [{ arr: t('Array<any>'), cb: t('function'), }, t('bool')],
   join: [{ arr: t('Array<string>'), sep: t('string'), }, t('string')],
+  newarr: [{ size: t('int64'), }, t('Array<any>')],
   keyVal: [{ map: t('Map<any, any>'), }, t('Array<KeyVal<any, any>>')],
   keys: [{ map: t('Map<any, any>'), }, t('Array<any>')],
   values: [{ map: t('Map<any, any>'), }, t('Array<any>')],
