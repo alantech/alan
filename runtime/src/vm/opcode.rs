@@ -1494,7 +1494,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     // The array index instead of inner address is provided to keep interaction with the js-runtime
     // sane.
     let inner_addr = LittleEndian::read_i64(hand_mem.read(args[1], 8)) * 8;
-    hand_mem.copy_from(args[0], args[2], inner);
+    hand_mem.copy_from(args[0], args[2], inner_addr);
     None
   });
   cpu!("copyto", |args, hand_mem, _| {
