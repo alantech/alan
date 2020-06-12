@@ -678,19 +678,23 @@ export class NamedOr implements LPish {
     let t = ''
     let or = {}
     const orNames = Object.keys(this.or)
+    const errors = []
     // Return the first match (if there are multiple matches, it is the first one)
     for (let i = 0; i < orNames.length; i++) {
       // We need to test which one will work without mutating the original one
       const lpClone = lp.clone()
       const ofake = this.or[orNames[i]].apply(lpClone)
-      if (ofake instanceof Error) continue;
+      if (ofake instanceof Error) {
+        errors.push(ofake)
+        continue
+      }
       // We have a match!
       const o = this.or[orNames[i]].apply(lp)
       t = o.toString()
       or[orNames[i]] = o
       break
     }
-    if (Object.keys(or).length === 0) return lpError('No matching tokens found', lp)
+    if (Object.keys(or).length === 0) return lpError(`No matching tokens found: ${errors.map(e => e.message).join(', ')}`, lp)
     return new NamedOr(t, or, filename, line, char)
   }
 }
