@@ -14,6 +14,11 @@ class Statement {
       this.statementOrAssignableAst.conditionals() !== null
   }
 
+  isReturnStatement() {
+    return this.statementOrAssignableAst instanceof LnParser.AssignablesContext ||
+      this.statementOrAssignableAst.exits() !== null
+  }
+
   static isCallPure(callAst, scope) {
     // TODO: Add purity checking for chained method-style calls
     const functionBox = scope.deepGet(callAst.varn(0))
