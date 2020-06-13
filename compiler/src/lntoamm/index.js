@@ -169,24 +169,17 @@ const ammFromModuleAsts = (moduleAsts) => {
   let constantDedupeLookup = {} // String to Microstatement object
   let constants = new Set() // Microstatment objects
   for (let evt of Event.allEvents) {
+    if (!evt.handlers.length) continue;
     // Define the handler preamble
-    let handlerDec = "on " + evt.name + " fn ("
-    let argList = []
-    let microstatements = []
-    for (const arg of Object.keys(handler.getArguments())) {
-      argList.push(arg + ": " + handler.getArguments()[arg].typename)
-      microstatements.push(new Microstatement(
-        StatementType.ARG,
-        handler.closureScope,
-        true,
-        arg,
-        handler.getArguments()[arg],
-        [],
-        [],
-      ))
+    let handlerDec = "on " + evt.name + " fn (";
+    let argList = [];
+    let microstatements = [];
+    for (const arg of Object.keys(evt.handlers[0].getArguments())) {
+      argList.push(arg + ": " + evt.handlers[0].getArguments()[arg].typename);
+      microstatements.push(new Microstatement(StatementType.ARG, evt.handlers[0].closureScope, true, arg, evt.handlers[0].getArguments()[arg], [], []));
     }
-    handlerDec += argList.join(", ")
-    handlerDec += "): " + handler.getReturnType().typename + " {"
+    handlerDec += argList.join(", ");
+    handlerDec += "): " + evt.handlers[0].getReturnType().typename + " {";
     for (let handler of evt.handlers) {
       if (handler instanceof UserFunction) {
 
