@@ -226,7 +226,7 @@ module.exports = {
   trim:    a => a.trim(),
   copyfrom:(arr, ind) => arr[ind],
 
-  // Array opcodes
+  // Array opcodes TODO more to come
   newarr:  size => new Array(), // Ignored because JS push doesn't behave as desired
   pusharr: (arr, val) => arr.push(val),
   lenarr: arr => arr.length,

@@ -10,8 +10,8 @@ export event install: void
 
 // The `add` function takes a string that describes a .git repository and install it in /dependencies
 export fn add(remote: string) {
-  // TODO implement once we have arrays and proper error handling
-  const parts = remote.split('/')
+  // TODO implement proper error handling
+  const parts = remote.split(':')
   const repo = parts[length(parts)-1]
   const repoParts = repo.split('.git')
   const repoName = repoParts[0]
@@ -27,7 +27,5 @@ on start {
   // that are already installed so calls by the user to install them again (assuming the version is identical)
   // are skipped, calls to upgrade or install new dependencies are performed, and then the remaining list
   // of dependencies at the end are removed.
-  exec('rm -rf dependencies')
-  exec('mkdir dependencies')
   emit install
 }

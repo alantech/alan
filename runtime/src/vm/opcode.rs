@@ -3,6 +3,7 @@ use std::convert::TryInto;
 use std::future::Future;
 use std::pin::Pin;
 use std::process::Command;
+use std::io::{self, Write};
 use std::str;
 use std::time::Duration;
 
@@ -1549,8 +1550,16 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   unpred_cpu!("execop", |args, hand_mem, _| {
     let pascal_string = hand_mem.read(args[0], 0);
     let size = LittleEndian::read_u64(&pascal_string[0..8]) as usize;
-    let cmd = str::from_utf8(&pascal_string[8..size + 8]).unwrap();
-    let output = Command::new(cmd).output();
+    let full_cmd = str::from_utf8(&pascal_string[8..size + 8]).unwrap();
+    let split_cmd: Vec<&str> = full_cmd.split(" ").collect();
+    let output = Command::new(split_cmd[0]).args(&split_cmd[1..]).output();
+    let result = match output {
+      Err(e) => println!("Executing \"{}\" failed with: {}", full_cmd, e),
+      Ok(out) => {
+        io::stdout().write_all(&out.stdout).unwrap();
+        io::stderr().write_all(&out.stderr).unwrap();
+      },
+    };
     None
   });
 

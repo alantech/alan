@@ -341,7 +341,7 @@ const loadStatements = (statements, localMem, globalMem) => {
     } else if (statement.emits()) {
       const emit = statement.emits()
       const evtName = emit.VARNAME(0).getText().trim()
-      const payloadVar = emit.VARNAME(1) === null ? undefined : emit.VARNAME(1).getText().trim();
+      const payloadVar = emit.VARNAME(1) === null ? undefined : emit.VARNAME(1).getText().trim()
       const payload = !payloadVar ?
         0 :
         localMem.hasOwnProperty(payloadVar) ?
