@@ -36,7 +36,7 @@ const hoistConst = (microstatements, constantDedupeLookup, constants) => {
             }
           }
         }
-        microstatements.splice(i, 1);
+        microstatements.splice(i, 1)
       }
     } else if (m.statementType === StatementType.CLOSURE) {
       hoistConst(m.closureStatements, constantDedupeLookup, constants)
@@ -169,20 +169,26 @@ const ammFromModuleAsts = (moduleAsts) => {
   let constantDedupeLookup = {} // String to Microstatement object
   let constants = new Set() // Microstatment objects
   for (let evt of Event.allEvents) {
-    if (!evt.handlers.length) continue;
-    // Define the handler preamble
-    let handlerDec = "on " + evt.name + " fn (";
-    let argList = [];
-    let microstatements = [];
-    for (const arg of Object.keys(evt.handlers[0].getArguments())) {
-      argList.push(arg + ": " + evt.handlers[0].getArguments()[arg].typename);
-      microstatements.push(new Microstatement(StatementType.ARG, evt.handlers[0].closureScope, true, arg, evt.handlers[0].getArguments()[arg], [], []));
-    }
-    handlerDec += argList.join(", ");
-    handlerDec += "): " + evt.handlers[0].getReturnType().typename + " {";
     for (let handler of evt.handlers) {
       if (handler instanceof UserFunction) {
-
+        // Define the handler preamble
+        let handlerDec = "on " + evt.name + " fn ("
+        let argList = []
+        let microstatements = []
+        for (const arg of Object.keys(handler.getArguments())) {
+          argList.push(arg + ": " + handler.getArguments()[arg].typename)
+          microstatements.push(new Microstatement(
+            StatementType.ARG,
+            handler.closureScope,
+            true,
+            arg,
+            handler.getArguments()[arg],
+            [],
+            [],
+          ))
+        }
+        handlerDec += argList.join(", ")
+        handlerDec += "): " + handler.getReturnType().typename + " {"
         // Extract the handler statements and compile into microstatements
         const statements = handler.maybeTransform().statements;
         for (const s of statements) {
@@ -190,10 +196,10 @@ const ammFromModuleAsts = (moduleAsts) => {
         }
         // Pull the constants out of the microstatements into the constants set.
         hoistConst(microstatements, constantDedupeLookup, constants)
+        // Register the handler and remaining statements
+        handlers.hasOwnProperty(handlerDec) ? handlers[handlerDec].push(microstatements) : handlers[handlerDec] = [microstatements]
       }
     }
-    // Register all the handler statements together one
-    handlers[handlerDec] = microstatements
   }
   let outStr = ""
   // Print the event types
@@ -210,15 +216,16 @@ const ammFromModuleAsts = (moduleAsts) => {
     outStr += evt.toString() + "\n"
   }
   // Print the user-defined event handlers
-  for (const handlerDec of Object.keys(handlers)) {
-    outStr += handlerDec + "\n"
-    const microstatements = handlers[handlerDec]
-    for (const m of microstatements) {
-      const mString = m.toString()
-      if (mString === "") continue
-      outStr += "  " + mString + "\n"
+  for (const [handlerDec, handlersList] of Object.entries(handlers)) {
+    for (const microstatements of handlersList) {
+      outStr += handlerDec + "\n"
+      for (const m of microstatements) {
+        const mString = m.toString()
+        if (mString === "") continue
+        outStr += "  " + mString + "\n"
+      }
+      outStr += "}\n"
     }
-    outStr += "}\n"
   }
   return outStr
 }
