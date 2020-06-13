@@ -1,7 +1,7 @@
 Include build_tools.sh
 
 Describe "Arrays"
-  Describe "accessor syntax"
+  Describe "accessor syntax and length"
   before() {
     sourceToAll "
       from @std/app import start, print, exit
@@ -9,6 +9,7 @@ Describe "Arrays"
       on start {
         print('Testing...')
         const test = '1,2,3'.split(',')
+        print(test.length())
         print(test[0])
         print(test[1])
         print(test[2])
@@ -24,6 +25,7 @@ Describe "Arrays"
   AfterAll after
 
   ACCESSOROUTPUT="Testing...
+3
 1
 2
 3"

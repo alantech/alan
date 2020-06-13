@@ -134,7 +134,9 @@ impl HandlerMemory {
     let arr = self.get_arr(addr);
     // string as array of u8
     if arr.mem.len() > 0 {
-      return arr.mem.len();
+      // denormalizing for Array<any> implementation defined in push_arr
+      // since the length of mem is used to track the length of fractal_mem
+      return arr.mem.len() / 8;
     }
     // array of types
     return arr.fractal_mem.len();

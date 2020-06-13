@@ -24,9 +24,6 @@ export fn add(remote: string) {
 // Emit the `install` event on app `start`
 on start {
   emit install
-}
-
-on install {
   // TODO: optimize to parse the existing dependencies tree, if any, to build up a list of dependencies
   // that are already installed so calls by the user to install them again (assuming the version is identical)
   // are skipped, calls to upgrade or install new dependencies are performed, and then the remaining list
