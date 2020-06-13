@@ -16,7 +16,7 @@ module.exports = {
     // Load the rootScope first, all the others depend on it
     let rootModule
     stdAsts.forEach((moduleAst) => {
-      if (moduleAst.name == 'root.ln') {
+      if (moduleAst.name === 'root.ln') {
         rootModule = Module.populateModule('<root>', moduleAst.ast, opcodeScope)
         Module.getAllModules()['<root>'] = rootModule
       }
@@ -65,7 +65,7 @@ module.exports = {
     }
     // Now load the remainig modules based on the root scope
     orderedAsts.forEach((moduleAst) => {
-      if (moduleAst.name != 'root.ln') {
+      if (moduleAst.name !== 'root.ln') {
         moduleAst.name = '@std/' + moduleAst.name.replace(/.ln$/, '')
         const stdModule = Module.populateModule(
           moduleAst.name,

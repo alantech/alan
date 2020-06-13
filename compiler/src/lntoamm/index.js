@@ -1,9 +1,7 @@
 const fs = require('fs')
-const path = require('path')
 
 const { v4: uuid, } = require('uuid')
 
-const opcodes = require('./opcodes')
 const Ast = require('./Ast')
 const Std = require('./Std')
 const Module = require('./Module')
@@ -171,26 +169,27 @@ const ammFromModuleAsts = (moduleAsts) => {
   let constantDedupeLookup = {} // String to Microstatement object
   let constants = new Set() // Microstatment objects
   for (let evt of Event.allEvents) {
+    // Define the handler preamble
+    let handlerDec = "on " + evt.name + " fn ("
+    let argList = []
+    let microstatements = []
+    for (const arg of Object.keys(handler.getArguments())) {
+      argList.push(arg + ": " + handler.getArguments()[arg].typename)
+      microstatements.push(new Microstatement(
+        StatementType.ARG,
+        handler.closureScope,
+        true,
+        arg,
+        handler.getArguments()[arg],
+        [],
+        [],
+      ))
+    }
+    handlerDec += argList.join(", ")
+    handlerDec += "): " + handler.getReturnType().typename + " {"
     for (let handler of evt.handlers) {
       if (handler instanceof UserFunction) {
-        // Define the handler preamble
-        let handlerDec = "on " + evt.name + " fn ("
-        let argList = []
-        let microstatements = []
-        for (const arg of Object.keys(handler.getArguments())) {
-          argList.push(arg + ": " + handler.getArguments()[arg].typename)
-          microstatements.push(new Microstatement(
-            StatementType.ARG,
-            handler.closureScope,
-            true,
-            arg,
-            handler.getArguments()[arg],
-            [],
-            [],
-          ))
-        }
-        handlerDec += argList.join(", ")
-        handlerDec += "): " + handler.getReturnType().typename + " {"
+
         // Extract the handler statements and compile into microstatements
         const statements = handler.maybeTransform().statements;
         for (const s of statements) {
@@ -198,10 +197,10 @@ const ammFromModuleAsts = (moduleAsts) => {
         }
         // Pull the constants out of the microstatements into the constants set.
         hoistConst(microstatements, constantDedupeLookup, constants)
-        // Register the handler and remaining statements
-        handlers[handlerDec] = microstatements
       }
     }
+    // Register all the handler statements together one
+    handlers[handlerDec] = microstatements
   }
   let outStr = ""
   // Print the event types
@@ -215,7 +214,6 @@ const ammFromModuleAsts = (moduleAsts) => {
   // Print the user-defined event declarations
   for (const evt of Event.allEvents) {
     if (evt.builtIn) continue // Skip built-in events
-    if (evt.handlers.length == 0) continue // Skip events that are never handled
     outStr += evt.toString() + "\n"
   }
   // Print the user-defined event handlers

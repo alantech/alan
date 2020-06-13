@@ -315,7 +315,7 @@ class Module {
         console.error("Could not find specified event: " + handlerAst.eventref().getText())
         process.exit(-20)
       }
-      if (eventBox.type != Box.builtinTypes["Event"]) {
+      if (eventBox.type !== Box.builtinTypes["Event"]) {
         console.error(eventBox)
         console.error(handlerAst.eventref().getText() + " is not an event")
         process.exit(-21)
@@ -363,7 +363,7 @@ class Module {
         process.exit(-24)
       }
       if (Object.keys(fn.getArguments()).length > 1 ||
-        (evt.type == Box.builtinTypes["void"] && Object.keys(fn.getArguments()).length != 0)
+        (evt.type === Box.builtinTypes["void"] && Object.keys(fn.getArguments()).length !== 0)
       ) {
         console.error("Function provided for " + handlerAst.eventref().getText() + " has invalid argument signature")
         process.exit(-25)
