@@ -6,22 +6,22 @@ const Scope = require('../dist/lntoamm/Scope')
 const opcodeScope = require('../dist/lntoamm/opcodes').exportScope
 
 module.exports = {
-  loadStdModules: (stdImports) => {
+  loadStdModules: (modules) => {
     const stdAsts = Object.keys(stdlibs).map(n => ({
       name: n,
       ast: Ast.fromString(stdlibs[n]),
-    })).filter(ast => stdImports.has(ast.name))
+    }))
     // Load the rootScope first, all the others depend on it
     let rootModule
     stdAsts.forEach((moduleAst) => {
-      if (moduleAst.name === 'root.ln') {
+      if (moduleAst.name == 'root.ln') {
         rootModule = Module.populateModule('<root>', moduleAst.ast, opcodeScope)
         Module.getAllModules()['<root>'] = rootModule
       }
     })
     // Now load the remainig modules based on the root scope
     stdAsts.forEach((moduleAst) => {
-      if (moduleAst.name !== 'root.ln') {
+      if (moduleAst.name != 'root.ln') {
         moduleAst.name = '@std/' + moduleAst.name.replace(/.ln$/, '')
         const stdModule = Module.populateModule(
           moduleAst.name,
