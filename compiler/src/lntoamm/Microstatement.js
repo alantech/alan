@@ -55,7 +55,7 @@ class Microstatement {
   }
 
   toString() {
-    let outString = "";
+    let outString = ""
     switch (this.statementType) {
       case StatementType.CONSTDEC:
         outString = "const " + this.outputName + ": " + this.outputType.typename
@@ -1005,17 +1005,21 @@ class Microstatement {
       // We don't know the type ahead of time and will have to rely on inference in this case
     }
     if (letdeclarationAst.assignments().assignables() == null) {
-      // This is the situation where a variable is declared but no value is yet assigned. This can
-      // be (and the interpreter currently behaves) as if this was a `type | void` situation, but
-      // perhaps that should be required to be explicit?
+      // This is the situation where a variable is declared but no value is yet assigned.
+      // An automatic replacement with a "default" value (false, 0, "") is performed, similar to
+      // C. TODO: Need to figure out the proper solution for Arrays.
+      const type = scope.deepGet(letTypeHint).typeval || scope.deepGet.void.typeval
+      let val = "0"
+      if (type.typename === "bool") val = "false"
+      if (type.typename === "string") val = '""'
       const blankLet = new Microstatement(
         StatementType.LETDEC,
         scope,
         true,
         letName,
-        scope.deepGet("void").typeval,
-        ["void"],
-        null
+        scope.deepGet(letTypeHint).typeval || scope.deepGet("void").typeval,
+        [val],
+        [],
       )
       // This is a terminating condition for the microstatements, though
       microstatements.push(blankLet)
