@@ -329,7 +329,7 @@ class Module {
           console.error("Could not find specified function: " + fnName)
           process.exit(-22)
         }
-        if (fnBox.type != Box.builtinTypes["function"]) {
+        if (fnBox.type !== Box.builtinTypes["function"]) {
           console.error(fnName + " is not a function")
           process.exit(-23)
         }

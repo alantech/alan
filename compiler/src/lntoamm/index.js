@@ -97,11 +97,18 @@ const moduleAstsFromString = (str) => {
 
 const ammFromModuleAsts = (moduleAsts) => {
   // Load the standard library
-  Std.loadStdModules(Module.getAllModules())
+  let stdFiles = new Set()
+  for (const [modulePath, module] of Object.entries(moduleAsts)) {
+    for (const importt of Ast.resolveImports(modulePath, module)) {
+      if (importt.substring(0, 5) === "@std/") {
+        stdFiles.add(importt.substring(5, importt.length) + '.ln')
+      }
+    }
+  }
+  Std.loadStdModules(stdFiles)
   const rootScope = Module.getAllModules()['<root>'].exportScope
   // Load all modules
-  const modules = Module.modulesFromAsts(moduleAsts, rootScope)
-
+  Module.modulesFromAsts(moduleAsts, rootScope)
   // This implicitly populates the `allEvents` static property on the `Event` type, which we can
   // use to serialize out the definitions, skipping the built-in events. In the process we're need
   // to check a hashset for duplicate event names and rename as necessary. We also need to get the
