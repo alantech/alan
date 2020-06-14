@@ -33,8 +33,8 @@ module.exports = {
         i = i % stdAsts.length
         continue
       }
+      // Immediately add any node with no imports and remove from this list
       if (!stdAst.ast.imports()) {
-        // Immediately add any node with no imports and remove from this list
         orderedAsts.push(stdAst)
         stdAsts.splice(i, 1)
         i = i % stdAsts.length
@@ -50,7 +50,7 @@ module.exports = {
             importAst.fromImport().dependency().getText().trim()
           ).replace('@std/', '').replace(/$/, '.ln')
         if (!orderedAsts.some((ast) => ast.name === depName)) {
-          // add other std imports if not present
+          // add std modules this std module imports if not present
           if (!stdAsts.some((ast) => ast.name === depName)) {
             stdAsts.splice(i, 0, allStdAsts.filter(a => a.name === depName)[0])
           }
