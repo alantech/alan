@@ -385,7 +385,6 @@ class UserFunction {
             statementAsts.push(s.statementOrAssignableAst)
           }
         } else if (s.statementOrAssignableAst instanceof LnParser.LetdeclarationContext) {
-          console.log('hi')
           const l = s.statementOrAssignableAst
           // TODO: More cleanup of const/let/assignment here, too
           let name = ""

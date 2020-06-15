@@ -271,7 +271,6 @@ const loadStatements = (statements, localMem, globalMem) => {
           break
         default:
           throw new Error(`Unsupported variable type ${dec.fulltypename().getText()}`)
-          break
         }
         s += `@${resultAddress} = ${fn}(${val}, @0) #${line}`
       } else if (assignables.objectliterals()) {
