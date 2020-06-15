@@ -266,8 +266,7 @@ const loadStatements = (statements, localMem, globalMem) => {
           val = assignables.getText() === 'true' ? '1i8' : '0i8' // Bools are bytes in the runtime
           break
         case 'string':
-          // TODO: Do something less tricky in the future
-          fn = 'seti64'
+          fn = 'setestr'
           val = '0i64'
           break
         default:

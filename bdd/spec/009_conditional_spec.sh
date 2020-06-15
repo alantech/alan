@@ -119,8 +119,7 @@ It's true!"
 
   Describe "Early Return"
     before() {
-      # TODO: sourceToAll
-      sourceToTemp "
+      sourceToAll "
         from @std/app import start, print, exit
 
         fn nearOrFar(distance: float64): string {
@@ -150,15 +149,11 @@ It's true!"
 Far!"
 
     It "runs js"
-      # TODO: Get AGA and AGC building correctly so I can remove these lines
-      tempToAmm
-      tempToJs
       When run node temp.js
       The output should eq "$RETOUTPUT"
     End
 
     It "runs agc"
-      Pending let-var-reassignment-problem
       When run alan-runtime run temp.agc
       The output should eq "$RETOUTPUT"
     End

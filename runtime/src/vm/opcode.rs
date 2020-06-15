@@ -1616,6 +1616,12 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     hand_mem.write(args[2], 1, &data.to_le_bytes());
     None
   });
+  cpu!("setestr", |args, hand_mem, _| {
+    let empty_str = 0i64.to_le_bytes().to_vec();
+    hand_mem.write(args[2], 0, &empty_str);
+    None
+  });
+
   cpu!("emit", |args, hand_mem, _| {
     let event = EventEmit {
       id: args[0],

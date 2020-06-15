@@ -349,12 +349,12 @@ class UserFunction {
       const retStatement = replacementStatements.pop()
       if (retStatement.exits().assignables()) {
         const newAssign = Ast.statementAstFromString(`
-          ${retVal} = ${retStatement.exits().assignables().getText()}
+          ${retVal} = assign(${retStatement.exits().assignables().getText()})
         `.trim() + '\n')
         replacementStatements.push(newAssign)
       }
       replacementStatements.push(Ast.statementAstFromString(`
-        ${retNotSet} = false
+        ${retNotSet} = assign(false)
       `.trim() + '\n'))
     }
     return replacementStatements
@@ -362,7 +362,7 @@ class UserFunction {
 
   maybeTransform() {
     if (this.statements.some(s => s.isConditionalStatement())) {
-      // First pass, convert conditionals to `cond` fn calls
+      // First pass, convert conditionals to `cond` fn calls and wrap assignment statements
       let statementAsts = []
       let hasConditionalReturn = false // Flag for potential second pass
       for (let i = 0; i < this.statements.length; i++) {
@@ -373,6 +373,41 @@ class UserFunction {
           const newStatements = res[0]
           if (res[1]) hasConditionalReturn = true
           statementAsts.push(...newStatements)
+        } else if (s.statementOrAssignableAst instanceof LnParser.AssignmentsContext) {
+          // TODO: Clean up the const/let/assignment grammar mistakes.
+          const a = s.statementOrAssignableAst
+          if (a.assignables()) {
+            const wrappedAst = Ast.statementAstFromString(`
+              ${a.varn().getText()} = assign(${a.assignables().getText()})
+            `.trim() + '\n')
+            statementAsts.push(wrappedAst)
+          } else {
+            statementAsts.push(s.statementOrAssignableAst)
+          }
+        } else if (s.statementOrAssignableAst instanceof LnParser.LetdeclarationContext) {
+          console.log('hi')
+          const l = s.statementOrAssignableAst
+          // TODO: More cleanup of const/let/assignment here, too
+          let name = ""
+          let type = undefined
+          if (l.VARNAME()) {
+            name = l.VARNAME().getText()
+            type = l.assignments().varn().getText()
+            if (l.assignments().typegenerics()) {
+              type += l.assignments().typegenerics().getText()
+            }
+          } else {
+            name = l.assignments().varn().getText()
+          }
+          if (l.assignments().assignables()) {
+            const v = l.assignments().assignables().getText()
+            const wrappedAst = Ast.statementAstFromString(`
+              let ${name}${type ? `: ${type}` : ''} = assign(${v})
+            `.trim() + '\n')
+            statementAsts.push(wrappedAst)
+          } else {
+            statementAsts.push(s.statementOrAssignableAst)
+          }
         } else {
           statementAsts.push(s.statementOrAssignableAst)
         }
@@ -388,7 +423,7 @@ class UserFunction {
           let ${retVal}: ${this.returnType.typename}
         `.trim() + '\n')
         const retNotSetStatement = Ast.statementAstFromString(`
-          let ${retNotSet}: bool = true
+          let ${retNotSet}: bool = assign(true)
         `.trim() + '\n')
         let replacementStatements = [retValStatement, retNotSetStatement]
         replacementStatements.push(...UserFunction.earlyReturnRewrite(

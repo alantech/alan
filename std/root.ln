@@ -275,6 +275,18 @@ export pair // opcode with signature `fn pair(trueval: any, falseval: any): Arra
 export fn cond(c: bool, options: Array<any>): any = condarr(c, options)
 export fn cond(c: bool, optional: function): void = condfn(c, optional)
 
+// "assign" function useful for hoisting assignments, TODO: replace with special opcodes
+export fn assign(a: int8) = a.negate().negate()
+export fn assign(a: int16) = a.negate().negate()
+export fn assign(a: int32) = a.negate().negate()
+export fn assign(a: int64) = a.negate().negate()
+export fn assign(a: float32) = a.negate().negate()
+export fn assign(a: float64) = a.negate().negate()
+export fn assign(a: bool) = a.and(true)
+export fn assign(a: string) = a.concat('')
+// TODO: Get array assignment working
+//export fn assign(a: Array<any>) = a.concat(new Array<any> [])
+
 // Operator declarations
 export infix commutative associative + 2 add
 export infix associative + 2 concat
