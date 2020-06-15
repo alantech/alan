@@ -1,9 +1,7 @@
 const fs = require('fs')
-const path = require('path')
 
 const { v4: uuid, } = require('uuid')
 
-const opcodes = require('./opcodes')
 const Ast = require('./Ast')
 const Std = require('./Std')
 const Module = require('./Module')
@@ -38,7 +36,7 @@ const hoistConst = (microstatements, constantDedupeLookup, constants) => {
             }
           }
         }
-        microstatements.splice(i, 1);
+        microstatements.splice(i, 1)
       }
     } else if (m.statementType === StatementType.CLOSURE) {
       hoistConst(m.closureStatements, constantDedupeLookup, constants)
@@ -99,11 +97,18 @@ const moduleAstsFromString = (str) => {
 
 const ammFromModuleAsts = (moduleAsts) => {
   // Load the standard library
-  Std.loadStdModules(Module.getAllModules())
+  let stdFiles = new Set()
+  for (const [modulePath, module] of Object.entries(moduleAsts)) {
+    for (const importt of Ast.resolveImports(modulePath, module)) {
+      if (importt.substring(0, 5) === "@std/") {
+        stdFiles.add(importt.substring(5, importt.length) + '.ln')
+      }
+    }
+  }
+  Std.loadStdModules(stdFiles)
   const rootScope = Module.getAllModules()['<root>'].exportScope
   // Load all modules
-  const modules = Module.modulesFromAsts(moduleAsts, rootScope)
-
+  Module.modulesFromAsts(moduleAsts, rootScope)
   // This implicitly populates the `allEvents` static property on the `Event` type, which we can
   // use to serialize out the definitions, skipping the built-in events. In the process we're need
   // to check a hashset for duplicate event names and rename as necessary. We also need to get the
@@ -199,7 +204,7 @@ const ammFromModuleAsts = (moduleAsts) => {
         // Pull the constants out of the microstatements into the constants set.
         hoistConst(microstatements, constantDedupeLookup, constants)
         // Register the handler and remaining statements
-        handlers[handlerDec] = microstatements
+        handlers.hasOwnProperty(handlerDec) ? handlers[handlerDec].push(microstatements) : handlers[handlerDec] = [microstatements]
       }
     }
   }
@@ -215,19 +220,19 @@ const ammFromModuleAsts = (moduleAsts) => {
   // Print the user-defined event declarations
   for (const evt of Event.allEvents) {
     if (evt.builtIn) continue // Skip built-in events
-    if (evt.handlers.length == 0) continue // Skip events that are never handled
     outStr += evt.toString() + "\n"
   }
   // Print the user-defined event handlers
-  for (const handlerDec of Object.keys(handlers)) {
-    outStr += handlerDec + "\n"
-    const microstatements = handlers[handlerDec]
-    for (const m of microstatements) {
-      const mString = m.toString()
-      if (mString === "") continue
-      outStr += "  " + mString + "\n"
+  for (const [handlerDec, handlersList] of Object.entries(handlers)) {
+    for (const microstatements of handlersList) {
+      outStr += handlerDec + "\n"
+      for (const m of microstatements) {
+        const mString = m.toString()
+        if (mString === "") continue
+        outStr += "  " + mString + "\n"
+      }
+      outStr += "}\n"
     }
-    outStr += "}\n"
   }
   return outStr
 }

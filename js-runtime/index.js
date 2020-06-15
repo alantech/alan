@@ -225,11 +225,12 @@ module.exports = {
   lenstr:  a => a.length,
   trim:    a => a.trim(),
   copyfrom:(arr, ind) => arr[ind],
+
+  // Array opcodes TODO more to come
   newarr:  size => new Array(), // Ignored because JS push doesn't behave as desired
   pusharr: (arr, val) => arr.push(val),
+  lenarr: arr => arr.length,
 
-  // Array opcodes TODO after arrays are figured out
-  
   // Map opcodes TODO after maps are figured out
 
   // Ternary functions

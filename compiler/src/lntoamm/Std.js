@@ -7,16 +7,17 @@ const Scope = require('./Scope')
 const opcodeScope = require('./opcodes').exportScope
 
 module.exports = {
-  loadStdModules: (modules) => {
+  loadStdModules: (stdImports) => {
     const stdDir = path.join(__dirname, '../../std')
-    const stdAsts = fs.readdirSync(stdDir).filter(n => /.ln$/.test(n)).map(n => ({
+    const allStdAsts = fs.readdirSync(stdDir).filter(n => /.ln$/.test(n)).map(n => ({
       name: n,
       ast: Ast.fromFile(path.join(__dirname, '../../std', n)),
     }))
+    const stdAsts = allStdAsts.filter(ast => stdImports.has(ast.name) || ast.name === 'root.ln')
     // Load the rootScope first, all the others depend on it
     let rootModule
     stdAsts.forEach((moduleAst) => {
-      if (moduleAst.name == 'root.ln') {
+      if (moduleAst.name === 'root.ln') {
         rootModule = Module.populateModule('<root>', moduleAst.ast, opcodeScope)
         Module.getAllModules()['<root>'] = rootModule
       }
@@ -49,6 +50,10 @@ module.exports = {
             importAst.fromImport().dependency().getText().trim()
           ).replace('@std/', '').replace(/$/, '.ln')
         if (!orderedAsts.some((ast) => ast.name === depName)) {
+          // add std modules this std module imports if not present
+          if (!stdAsts.some((ast) => ast.name === depName)) {
+            stdAsts.splice(i, 0, allStdAsts.filter(a => a.name === depName)[0])
+          }
           safeToAdd = false
           break
         }
@@ -65,7 +70,7 @@ module.exports = {
     }
     // Now load the remainig modules based on the root scope
     orderedAsts.forEach((moduleAst) => {
-      if (moduleAst.name != 'root.ln') {
+      if (moduleAst.name !== 'root.ln') {
         moduleAst.name = '@std/' + moduleAst.name.replace(/.ln$/, '')
         const stdModule = Module.populateModule(
           moduleAst.name,

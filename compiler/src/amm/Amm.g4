@@ -58,7 +58,7 @@ emits : EMIT blank* VARNAME (blank* VARNAME)?;
 
 constants : (NUMBERCONSTANT | STRINGCONSTANT | BOOLCONSTANT);
 
-events : EVENT blank VARNAME blank* TYPESEP typename;
+events : EVENT blank VARNAME blank* TYPESEP (typename | VOID);
 
 handlers : ON blank+ VARNAME blank+ functions;
 

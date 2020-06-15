@@ -58,8 +58,7 @@ const loadEventDecs = (eventAst) => {
   const eventMem = {}
   for (const evt of eventAst) {
     const evtName = evt.VARNAME().getText().trim()
-    const evtType = evt.typename().getText().trim()
-    const evtSize = evtType === "void" ? 0 : (evtType === "string" ? -1 : 8)
+    const evtSize = evt.VOID() !== null ? 0 : (evt.typename().getText().trim() === "string" ? -1 : 8)
     eventMem[evtName] = evtSize
   }
   return eventMem
@@ -342,7 +341,7 @@ const loadStatements = (statements, localMem, globalMem) => {
     } else if (statement.emits()) {
       const emit = statement.emits()
       const evtName = emit.VARNAME(0).getText().trim()
-      const payloadVar = emit.VARNAME(1).getText().trim()
+      const payloadVar = emit.VARNAME(1) === null ? undefined : emit.VARNAME(1).getText().trim()
       const payload = !payloadVar ?
         0 :
         localMem.hasOwnProperty(payloadVar) ?
