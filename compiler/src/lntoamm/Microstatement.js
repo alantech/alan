@@ -576,6 +576,10 @@ class Microstatement {
         .dispatchFn(op.potentialFunctions, realArgTypes, scope)
         .microstatementInlining(realArgNames, scope, microstatements)
       const last = microstatements[microstatements.length - 1]
+      // TODO: Temporary hack until 3-arg 0-return opcode support added
+      if (last.fns[0].getName() === 'pusharr') {
+        last.outputType = realArgTypes[1]
+      }
       withOperatorsList[maxOperatorLoc] = new Box(last)
       withOperatorsList.splice(maxOperatorLoc + 1, 1)
       if (!op.isPrefix) {
@@ -906,6 +910,10 @@ class Microstatement {
         .dispatchFn(fnBox.functionval, realArgTypes, scope)
         .microstatementInlining(realArgNames, scope, microstatements)
       firstArg = microstatements[microstatements.length - 1]
+      // TODO: Temporary hack until 3-arg 0-return opcode support added
+      if (firstArg.fns.length > 0 && firstArg.fns[0].getName() === 'pusharr') {
+        firstArg.outputType = realArgTypes[1]
+      }
     }
   }
 
@@ -1000,6 +1008,32 @@ class Microstatement {
       if (letdeclarationAst.assignments().typegenerics() != null) {
         letTypeHint += letdeclarationAst.assignments().typegenerics().getText()
       }
+      const typeBox = scope.deepGet(letTypeHint)
+      if (typeBox === null) {
+        // Try to define it if it's a generic type
+        if (letdeclarationAst.assignments().typegenerics()) {
+          const outerTypeBox = scope.deepGet(
+            letdeclarationAst.assignments().varn().getText()
+          )
+          if (outerTypeBox === null) {
+            console.error(`${letdeclarationAst.assignments().varn().getText()}  is not defined`)
+            console.error(
+              letdeclarationAst.getText() +
+              " on line " +
+              letdeclarationAst.start.line +
+              ":" +
+              letdeclarationAst.start.column
+            )
+            process.exit(-105)
+          }
+          outerTypeBox.typeval.solidify(
+            letdeclarationAst.assignments().typegenerics().fulltypename().map(t =>
+              t.getText()
+            ),
+            scope
+          )
+        }
+      }
     } else {
       letAlias = letdeclarationAst.assignments().varn().getText()
       // We don't know the type ahead of time and will have to rely on inference in this case
@@ -1007,22 +1041,47 @@ class Microstatement {
     if (letdeclarationAst.assignments().assignables() == null) {
       // This is the situation where a variable is declared but no value is yet assigned.
       // An automatic replacement with a "default" value (false, 0, "") is performed, similar to
-      // C. TODO: Need to figure out the proper solution for Arrays.
-      const type = scope.deepGet(letTypeHint).typeval || scope.deepGet.void.typeval
-      let val = "0"
-      if (type.typename === "bool") val = "false"
-      if (type.typename === "string") val = '""'
-      const blankLet = new Microstatement(
-        StatementType.LETDEC,
-        scope,
-        true,
-        letName,
-        scope.deepGet(letTypeHint).typeval || scope.deepGet("void").typeval,
-        [val],
-        [],
-      )
-      // This is a terminating condition for the microstatements, though
-      microstatements.push(blankLet)
+      // C.
+      const type = (
+        scope.deepGet(letTypeHint) && scope.deepGet(letTypeHint).typeval
+      ) || Box.builtinTypes.void
+      if (type.originalType && type.originalType.typename === 'Array') {
+        const opcodeScope = require('./opcodes').exportScope // Unfortunate circular dep issue
+        const constName = "_" + uuid().replace(/-/g, "_")
+        microstatements.push(new Microstatement(
+          StatementType.CONSTDEC,
+          scope,
+          true,
+          constName,
+          Box.builtinTypes.int64,
+          ["0"],
+          [],
+        ))
+        opcodeScope.get('newarr').functionval[0].microstatementInlining(
+          [constName],
+          scope,
+          microstatements,
+        )
+        const blankArr = microstatements[microstatements.length - 1]
+        blankArr.statementType = StatementType.LETDEC,
+        blankArr.outputName = letName
+        blankArr.outputType = type
+      } else {
+        let val = "0"
+        if (type.typename === "bool") val = "false"
+        if (type.typename === "string") val = '""'
+        const blankLet = new Microstatement(
+          StatementType.LETDEC,
+          scope,
+          true,
+          letName,
+          type,
+          [val],
+          [],
+        )
+        // This is a terminating condition for the microstatements, though
+        microstatements.push(blankLet)
+      }
       microstatements.push(new Microstatement(
         StatementType.REREF,
         scope,
@@ -1101,6 +1160,32 @@ class Microstatement {
       if (constdeclarationAst.assignments().typegenerics() != null) {
         constTypeHint += constdeclarationAst.assignments().typegenerics().getText()
       }
+      const typeBox = scope.deepGet(constTypeHint)
+      if (typeBox === null) {
+        // Try to define it if it's a generic type
+        if (constdeclarationAst.assignments().typegenerics()) {
+          const outerTypeBox = scope.deepGet(
+            constdeclarationAst.assignments().varn().getText()
+          )
+          if (outerTypeBox === null) {
+            console.error(`${constdeclarationAst.assignments().varn().getText()}  is not defined`)
+            console.error(
+              constdeclarationAst.getText() +
+              " on line " +
+              constdeclarationAst.start.line +
+              ":" +
+              constdeclarationAst.start.column
+            )
+            process.exit(-105)
+          }
+          outerTypeBox.typeval.solidify(
+            constdeclarationAst.assignments().typegenerics().fulltypename().map(t =>
+              t.getText()
+            ),
+            scope
+          )
+        }
+      }
     } else {
       constAlias = constdeclarationAst.assignments().varn().getText()
       // We don't know the type ahead of time and will have to refer on inference in this case
@@ -1115,7 +1200,7 @@ class Microstatement {
         constName,
         Box.builtinTypes.void,
         ["void"],
-        null
+        [],
       )
       // This is a terminating condition for the microstatements, though
       microstatements.push(weirdConst)
