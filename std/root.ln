@@ -275,6 +275,17 @@ export pair // opcode with signature `fn pair(trueval: any, falseval: any): Arra
 export fn cond(c: bool, options: Array<any>): any = condarr(c, options)
 export fn cond(c: bool, optional: function): void = condfn(c, optional)
 
+// "assign" function useful for hoisting assignments
+export fn assign(a: int8) = copyi8(a)
+export fn assign(a: int16) = copyi16(a)
+export fn assign(a: int32) = copyi32(a)
+export fn assign(a: int64) = copyi64(a)
+export fn assign(a: float32) = copyf32(a)
+export fn assign(a: float64) = copyf64(a)
+export fn assign(a: bool) = copybool(a)
+export fn assign(a: string) = copystr(a)
+export fn assign(a: Array<any>) = copyarr(a)
+
 // Operator declarations
 export infix commutative associative + 2 add
 export infix associative + 2 concat

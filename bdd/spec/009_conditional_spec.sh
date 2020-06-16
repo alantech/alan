@@ -117,10 +117,9 @@ It's true!"
     End
   End
 
-  Describe "Advanced"
+  Describe "Early Return"
     before() {
-      # TODO: sourceToAll
-      sourceToTemp "
+      sourceToAll "
         from @std/app import start, print, exit
 
         fn nearOrFar(distance: float64): string {
@@ -135,6 +134,38 @@ It's true!"
           print(nearOrFar(3.14))
           print(nearOrFar(6.28))
 
+          emit exit 0
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    RETOUTPUT="Near!
+Far!"
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "$RETOUTPUT"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
+      The output should eq "$RETOUTPUT"
+    End
+  End
+
+  Describe "Ternary"
+    before() {
+      # TODO: sourceToAll
+      sourceToTemp "
+        from @std/app import start, print, exit
+
+        on start {
           const options = pair(2, 4)
           print(options[0])
           print(options[1])
@@ -167,9 +198,7 @@ It's true!"
     }
     AfterAll after
 
-    ADVOUTPUT="Near!
-Far!
-2
+    ADVOUTPUT="2
 4
 3
 5
@@ -180,13 +209,13 @@ Far!
 5"
 
     It "runs js"
-      Pending advanced-conditional-support
+      Pending ternary-array-support
       When run node temp.js
       The output should eq "$ADVOUTPUT"
     End
 
     It "runs agc"
-      Pending advanced-conditional-support
+      Pending ternary-array-support
       When run alan-runtime run temp.agc
       The output should eq "$ADVOUTPUT"
     End

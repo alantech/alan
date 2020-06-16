@@ -1616,6 +1616,60 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     hand_mem.write(args[2], 1, &data.to_le_bytes());
     None
   });
+  cpu!("setestr", |args, hand_mem, _| {
+    let empty_str = 0i64.to_le_bytes().to_vec();
+    hand_mem.write(args[2], 0, &empty_str);
+    None
+  });
+
+  // copy opcodes used for let variable reassignments
+  cpu!("copyi8", |args, hand_mem, _| {
+    let val = hand_mem.read(args[0], 1).to_vec();
+    hand_mem.write(args[2], 1, &val);
+    None
+  });
+  cpu!("copyi16", |args, hand_mem, _| {
+    let val = hand_mem.read(args[0], 2).to_vec();
+    hand_mem.write(args[2], 2, &val);
+    None
+  });
+  cpu!("copyi32", |args, hand_mem, _| {
+    let val = hand_mem.read(args[0], 4).to_vec();
+    hand_mem.write(args[2], 4, &val);
+    None
+  });
+  cpu!("copyi64", |args, hand_mem, _| {
+    let val = hand_mem.read(args[0], 8).to_vec();
+    hand_mem.write(args[2], 8, &val);
+    None
+  });
+  cpu!("copyf32", |args, hand_mem, _| {
+    let val = hand_mem.read(args[0], 4).to_vec();
+    hand_mem.write(args[2], 4, &val);
+    None
+  });
+  cpu!("copyf64", |args, hand_mem, _| {
+    let val = hand_mem.read(args[0], 8).to_vec();
+    hand_mem.write(args[2], 8, &val);
+    None
+  });
+  cpu!("copybool", |args, hand_mem, _| {
+    let val = hand_mem.read(args[0], 1).to_vec();
+    hand_mem.write(args[2], 1, &val);
+    None
+  });
+  cpu!("copystr", |args, hand_mem, _| {
+    let pascal_string = hand_mem.read(args[0], 0);
+    let out = pascal_string.to_vec();
+    hand_mem.write(args[2], 0, &out);
+    None
+  });
+  cpu!("copyarr", |args, hand_mem, _| {
+    // args = [in_addr, unused, out_addr]
+    hand_mem.copy_arr(args[0], args[2]);
+    None
+  });
+
   cpu!("emit", |args, hand_mem, _| {
     let event = EventEmit {
       id: args[0],

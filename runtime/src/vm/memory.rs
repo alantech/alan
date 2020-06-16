@@ -130,6 +130,12 @@ impl HandlerMemory {
     self.write(outer_addr, size, data.as_slice());
   }
 
+  pub fn copy_arr(self: &mut HandlerMemory, in_addr: i64, out_addr: i64) {
+    let arr = self.get_mut_arr(in_addr);
+    let new_arr = arr.clone();
+    self.fractal_mem.insert(out_addr, new_arr);
+  }
+
   pub fn len_arr(self: &HandlerMemory, addr: i64) -> usize {
     let arr = self.get_arr(addr);
     // string as array of u8

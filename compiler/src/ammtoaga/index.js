@@ -263,14 +263,14 @@ const loadStatements = (statements, localMem, globalMem) => {
           break
         case 'bool':
           fn = 'setbool'
-          val = assignables.getText() + 'i8' // Bools are just bytes in the runtime
+          val = assignables.getText() === 'true' ? '1i8' : '0i8' // Bools are bytes in the runtime
           break
         case 'string':
-          throw new Error('TODO: Decide if this is the responsibility of first or second stage')
+          fn = 'setestr'
+          val = '0i64'
           break
         default:
           throw new Error(`Unsupported variable type ${dec.fulltypename().getText()}`)
-          break
         }
         s += `@${resultAddress} = ${fn}(${val}, @0) #${line}`
       } else if (assignables.objectliterals()) {

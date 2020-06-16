@@ -237,11 +237,22 @@ module.exports = {
   // TODO: pair and condarr after arrays are figured out
   condfn:  (cond, fn) => cond ? fn() : undefined,
 
+  // Copy opcodes (for let reassignment)
+  copyi8:   a => a,
+  copyi16:  a => a,
+  copyi32:  a => a,
+  copyi64:  a => a,
+  copyf32:  a => a,
+  copyf64:  a => a,
+  copybool: a => a,
+  copystr:  a => a,
+  // Actually the recommended deep clone mechanism: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/assign#Deep_Clone
+  copyarr:  a => JSON.parse(JSON.stringify(a)),
+
   // IO opcodes
   asyncopcodes: ['waitop', 'execop'],
   waitop: a => new Promise(resolve => setTimeout(resolve, a)),
   execop: a => exec(a),
-
 
   // "Special" opcodes
   stdoutp: out => process.stdout.write(out),

@@ -276,6 +276,15 @@ addopcodes({
   stdoutp: [{ out: t('string'), }, t('void')],
   exitop: [{ code: t('int8'), }, t('void')],
   copyfrom: [{ arr: t('Array<any>'), addr: t('int64') }, t('any')],
+  copyi8: [{ a: t('int8'), }, t('int8')],
+  copyi16: [{ a: t('int16'), }, t('int16')],
+  copyi32: [{ a: t('int32'), }, t('int32')],
+  copyi64: [{ a: t('int64'), }, t('int64')],
+  copyf32: [{ a: t('float32'), }, t('float32')],
+  copyf64: [{ a: t('float64'), }, t('float64')],
+  copybool: [{ a: t('bool'), }, t('bool')],
+  copystr: [{ a: t('string'), }, t('string')],
+  copyarr: [{ a: t('Array<any>'), }, t('Array<any>')],
 })
 
 module.exports = opcodeModule

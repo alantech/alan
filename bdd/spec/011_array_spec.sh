@@ -42,28 +42,28 @@ Describe "Arrays"
   End
 
   Describe "literal syntax"
-  before() {
-    sourceToAll "
-      from @std/app import start, print, exit
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
 
-      on start {
-        print('Testing...')
-        const test = new Array<int64> [ 1, 2, 3 ]
-        print(test[0])
-        print(test[1])
-        print(test[2])
-        emit exit 0
-      }
-    "
-  }
-  BeforeAll before
+        on start {
+          print('Testing...')
+          const test = new Array<int64> [ 1, 2, 3 ]
+          print(test[0])
+          print(test[1])
+          print(test[2])
+          emit exit 0
+        }
+      "
+    }
+    BeforeAll before
 
-  after() {
-    cleanTemp
-  }
-  AfterAll after
+    after() {
+      cleanTemp
+    }
+    AfterAll after
 
-  LITERALOUTPUT="Testing...
+    LITERALOUTPUT="Testing...
 1
 2
 3"
@@ -76,6 +76,47 @@ Describe "Arrays"
     It "runs agc"
       When run alan-runtime run temp.agc
       The output should eq "$LITERALOUTPUT"
+    End
+  End
+
+  Describe "push to lazy-let-defined Array"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+
+        on start {
+          print('Testing...')
+          let test: Array<int64>
+          test.push(1)
+          test.push(2)
+          test.push(3)
+          print(test[0])
+          print(test[1])
+          print(test[2])
+          emit exit 0
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    PUSHOUTPUT="Testing...
+1
+2
+3"
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "$PUSHOUTPUT"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
+      The output should eq "$PUSHOUTPUT"
     End
   End
 
