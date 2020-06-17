@@ -63,7 +63,7 @@ const typegenerics = NamedAnd.build({
   generics: OneOrMore.build(NamedAnd.build({
     a: optblank,
     fulltypename: new NulLP(), // Circular dependency trick
-    comma,
+    optcomma,
     b: optblank,
   })),
   closeCaret,
