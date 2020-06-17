@@ -4,9 +4,9 @@ import {
   LP,
   LPNode,
   NamedAnd,
-} from '../lp'
+} from './lp'
 
-import amm from '../amm'
+import amm from './amm'
 
 const callToJsText = (call: LPNode) => {
   const args = call.has('calllist') ?

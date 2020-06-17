@@ -10,7 +10,7 @@ import {
   Token,
   ZeroOrMore,
   ZeroOrOne,
-} from '../lp'
+} from './lp'
 
 // Defining AMM Tokens
 const space = Token.build(' ')
