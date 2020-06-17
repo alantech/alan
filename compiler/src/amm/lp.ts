@@ -18,7 +18,6 @@ const blank = OneOrMore.build(space)
 const optblank = ZeroOrOne.build(blank)
 const newline = Token.build('\n')
 const whitespace = OneOrMore.build(Or.build([space, newline]))
-const optwhitespace = ZeroOrOne.build(whitespace)
 const colon = Token.build(':')
 const under = Token.build('_')
 const negate = Token.build('-')
@@ -72,8 +71,7 @@ const typegenerics = NamedAnd.build({
 const fulltypename = Or.build([
   NamedAnd.build({
     typename,
-    optblank,
-    opttypegenerics: ZeroOrOne.build(typegenerics),
+    opttypegenerics: ZeroOrOne.build(And.build([optblank, typegenerics])),
   }),
   voidn
 ]);
@@ -106,9 +104,9 @@ const constdeclaration = NamedAnd.build({
   decname,
   b: optblank,
   colon,
-  c: blank,
+  c: optblank,
   fulltypename,
-  d: optblank,
+  d: blank,
   eq,
   e: blank,
   assignables,
@@ -119,7 +117,7 @@ const letdeclaration = NamedAnd.build({
   decname,
   b: optblank,
   colon,
-  c: blank,
+  c: optblank,
   fulltypename,
   d: blank,
   eq,
@@ -137,16 +135,14 @@ const statements = OneOrMore.build(NamedOr.build({
 }))
 const functionbody = NamedAnd.build({
   openCurly,
-  a: whitespace,
   statements,
-  b: optwhitespace,
   closeCurly,
 })
 const functions = NamedAnd.build({
   fn,
   blank,
   openParen,
-  arg: ZeroOrOne.build(NamedAnd.build({ variable, colon, optblank, fulltypename, })),
+  arg: ZeroOrOne.build(NamedAnd.build({ variable, a: optblank, colon, b: optblank, fulltypename, })),
   closeParen,
   a: optblank,
   colon,

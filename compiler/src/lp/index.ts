@@ -1,5 +1,11 @@
 import * as fs from 'fs' // This syntax is so dumb
 
+export interface LPSnap {
+  line: number
+  char: number
+  i: number
+}
+
 export class LP {
   filename: string
   data: string
@@ -10,8 +16,8 @@ export class LP {
   constructor(filename: string, loadData: boolean = true) {
     this.filename = filename
     this.data = loadData ? fs.readFileSync(filename, 'utf8') : ''
-    this.line = 0
-    this.char = 0
+    this.line = 1
+    this.char = 1
     this.i = 0
   }
 
@@ -20,7 +26,7 @@ export class LP {
       this.i += 1
       if (this.data[this.i] === '\n') {
         this.line += 1
-        this.char = 0
+        this.char = 1
       } else {
         this.char += 1
       }
@@ -41,6 +47,20 @@ export class LP {
     lp.data = data
     return lp
   }
+
+  snapshot(): LPSnap {
+    return {
+      line: this.line,
+      char: this.char,
+      i: this.i
+    }
+  }
+
+  restore(snap: LPSnap) {
+    this.line = snap.line
+    this.char = snap.char
+    this.i = snap.i
+  }
 }
 
 export interface LPmeta {
@@ -54,7 +74,6 @@ export interface LPish {
   get(id?: string | number): LPish
   getAll(): LPish[]
   has(id?: string | number): boolean
-  check(lp: LP): boolean
   apply(lp: LP): LPish | Error
 }
 
@@ -76,10 +95,6 @@ export class NulLP implements LPish {
   }
 
   has(): boolean {
-    return false
-  }
-
-  check(): boolean {
     return false
   }
 
@@ -240,10 +255,6 @@ export class ZeroOrOne implements LPish {
     return this.t
   }
 
-  check(): boolean {
-    return true
-  }
-
   get(): LPish {
     return this.zeroOrOne
   }
@@ -257,12 +268,13 @@ export class ZeroOrOne implements LPish {
   }
 
   apply(lp: LP): LPish {
-    if (this.zeroOrOne.check(lp)) {
-      const zeroOrOne = this.zeroOrOne.apply(lp)
-      if (zeroOrOne instanceof Error) return new NulLP()
-      return zeroOrOne
+    const s = lp.snapshot()
+    const zeroOrOne = this.zeroOrOne.apply(lp)
+    if (zeroOrOne instanceof Error) {
+      lp.restore(s)
+      return new NulLP()
     }
-    return new NulLP()
+    return zeroOrOne
   }
 }
 
@@ -289,10 +301,6 @@ export class ZeroOrMore implements LPish {
     return this.t
   }
 
-  check(): boolean {
-    return true
-  }
-
   get(i: number): LPish {
     if (this.zeroOrMore[i]) return this.zeroOrMore[i]
     return new NulLP()
@@ -312,18 +320,26 @@ export class ZeroOrMore implements LPish {
     return this.line > -1
   }
 
-  apply(lp: LP): ZeroOrMore {
+  apply(lp: LP): LPish | Error {
     const filename = lp.filename
     const line = lp.line
     const char = lp.char
     let t = ''
     let zeroOrMore = []
-    while (this.zeroOrMore[0].check(lp)) {
+    do {
+      const s = lp.snapshot()
       const z = this.zeroOrMore[0].apply(lp)
-      t += z.toString()
+      if (z instanceof Error) {
+        lp.restore(s)
+        return new ZeroOrMore(t, zeroOrMore, filename, line, char)
+      }
+      const t2 = z.toString()
+      if (t2.length === 0) {
+        return lpError('ZeroOrMore made no forward progress, will infinite loop', lp)
+      }
+      t += t2
       zeroOrMore.push(z)
-    }
-    return new ZeroOrMore(t, zeroOrMore, filename, line, char)
+    } while(true)
   }
 }
 
@@ -350,10 +366,6 @@ export class OneOrMore implements LPish {
     return this.t
   }
 
-  check(lp: LP): boolean {
-    return this.oneOrMore[0].check(lp)
-  }
-
   get(i: number): LPish {
     if (this.oneOrMore[i]) return this.oneOrMore[i]
     return new NulLP()
@@ -373,19 +385,29 @@ export class OneOrMore implements LPish {
     return this.line > -1
   }
 
-  apply(lp: LP): OneOrMore | Error {
+  apply(lp: LP): LPish | Error {
     const filename = lp.filename
     const line = lp.line
     const char = lp.char
-    if (!this.check(lp)) return lpError(`Token mismatch, expected '${this.oneOrMore[0].t}'`, lp)
     let t = ''
     let oneOrMore = []
-    while (this.oneOrMore[0].check(lp)) {
+    do {
+      const s = lp.snapshot()
       const o = this.oneOrMore[0].apply(lp)
-      t += o.toString()
+      if (o instanceof Error) {
+        lp.restore(s)
+        if (oneOrMore.length === 0) {
+          return lpError('No match for OneOrMore', lp)
+        }
+        return new OneOrMore(t, oneOrMore, filename, line, char)
+      }
+      const t2 = o.toString()
+      if (t2.length === 0) {
+        return lpError('OneOrMore made no forward progress, will infinite loop', lp)
+      }
+      t += t2
       oneOrMore.push(o)
-    }
-    return new OneOrMore(t, oneOrMore, filename, line, char)
+    } while(true)
   }
 }
 
@@ -410,18 +432,6 @@ export class And implements LPish {
 
   toString(): string {
     return this.t
-  }
-
-  check(lp: LP): boolean {
-    const lpClone = lp.clone()
-    let works = true
-    for (let i = 0; i < this.and.length; i++) {
-      if (this.and[i].apply(lpClone) instanceof Error) {
-        works = false
-        break
-      }
-    }
-    return works
   }
 
   get(i: number): LPish {
@@ -449,10 +459,14 @@ export class And implements LPish {
     const char = lp.char
     let t = ''
     let and = []
+    const s = lp.snapshot()
     // This can fail, allow the underlying error to bubble up
     for (let i = 0; i < this.and.length; i++) {
       const a = this.and[i].apply(lp)
-      if (a instanceof Error) return a;
+      if (a instanceof Error) {
+        lp.restore(s)
+        return a
+      }
       t += a.toString()
       and.push(a)
     }
@@ -483,18 +497,6 @@ export class Or implements LPish {
     return this.t
   }
 
-  check(lp: LP): boolean {
-    let works = false
-    for (let i = 0; i < this.or.length; i++) {
-      const lpClone = lp.clone()
-      if (!(this.or[i].apply(lpClone) instanceof Error)) {
-        works = true
-        break
-      }
-    }
-    return works
-  }
-
   get(): LPish {
     if (this.or[0]) return this.or[0]
     return new NulLP()
@@ -522,12 +524,13 @@ export class Or implements LPish {
     let or = []
     // Return the first match (if there are multiple matches, it is the first one)
     for (let i = 0; i < this.or.length; i++) {
-      // We need to test which one will work without mutating the original one
-      const lpClone = lp.clone()
-      const ofake = this.or[i].apply(lpClone)
-      if (ofake instanceof Error) continue;
-      // We have a match!
+      const s = lp.snapshot()
       const o = this.or[i].apply(lp)
+      if (o instanceof Error) {
+        lp.restore(s)
+        continue
+      }
+      // We have a match!
       t = o.toString()
       or.push(o)
       break
@@ -564,19 +567,6 @@ export class NamedAnd implements LPish {
     return this.t
   }
 
-  check(lp: LP): boolean {
-    const lpClone = lp.clone()
-    let works = true
-    const andNames = Object.keys(this.and)
-    for (let i = 0; i < andNames.length; i++) {
-      if (this.and[andNames[i]].apply(lpClone) instanceof Error) {
-        works = false
-        break
-      }
-    }
-    return works
-  }
-
   get(name: string): LPish {
     if (this.and[name]) return this.and[name]
     return new NulLP()
@@ -603,10 +593,12 @@ export class NamedAnd implements LPish {
     let t = ''
     let and = {}
     const andNames = Object.keys(this.and)
+    const s = lp.snapshot()
     // This can fail, allow the underlying error to bubble up
     for (let i = 0; i < andNames.length; i++) {
       const a = this.and[andNames[i]].apply(lp)
       if (a instanceof Error) {
+        lp.restore(s)
         return a
       }
       t += a.toString()
@@ -639,19 +631,6 @@ export class NamedOr implements LPish {
     return this.t
   }
 
-  check(lp: LP): boolean {
-    let works = false
-    const orNames = Object.keys(this.or)
-    for (let i = 0; i < orNames.length; i++) {
-      const lpClone = lp.clone()
-      if (!(this.or[orNames[i]].apply(lpClone) instanceof Error)) {
-        works = true
-        break
-      }
-    }
-    return works
-  }
-
   get(name: string): LPish {
     if (this.or[name]) return this.or[name]
     return new NulLP()
@@ -678,23 +657,20 @@ export class NamedOr implements LPish {
     let t = ''
     let or = {}
     const orNames = Object.keys(this.or)
-    const errors = []
     // Return the first match (if there are multiple matches, it is the first one)
     for (let i = 0; i < orNames.length; i++) {
-      // We need to test which one will work without mutating the original one
-      const lpClone = lp.clone()
-      const ofake = this.or[orNames[i]].apply(lpClone)
-      if (ofake instanceof Error) {
-        errors.push(ofake)
+      const s = lp.snapshot()
+      const o = this.or[orNames[i]].apply(lp)
+      if (o instanceof Error) {
+        lp.restore(s)
         continue
       }
       // We have a match!
-      const o = this.or[orNames[i]].apply(lp)
       t = o.toString()
       or[orNames[i]] = o
       break
     }
-    if (Object.keys(or).length === 0) return lpError(`No matching tokens found: ${errors.map(e => e.message).join(', ')}`, lp)
+    if (Object.keys(or).length === 0) return lpError('No matching or tokens found', lp)
     return new NamedOr(t, or, filename, line, char)
   }
 }
