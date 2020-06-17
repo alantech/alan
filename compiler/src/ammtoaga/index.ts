@@ -5,7 +5,7 @@ import {
   NulLP,
 } from '../lp'
 
-import amm from '../amm/lp'
+import amm from '../amm'
 
 // This project depends on BigNum and associated support in Node's Buffer, so must be >= Node 10.20
 // and does not work in the browser. It would be possible to implement a browser-compatible version

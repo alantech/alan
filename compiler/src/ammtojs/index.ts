@@ -6,7 +6,7 @@ import {
   NamedAnd,
 } from '../lp'
 
-import amm from '../amm/lp'
+import amm from '../amm'
 
 const callToJsText = (call: LPish) => {
   const args = call.has('calllist') ?
