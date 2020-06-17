@@ -82,7 +82,7 @@ const getFunctionbodyMem = (functionbody: LPish) => {
   const addressMap = {}
   for (const statement of functionbody.get('statements').getAll()) {
     if (statement.has('declarations')) {
-      if (statement.get('declarations').get('constdeclaration')) {
+      if (statement.get('declarations').has('constdeclaration')) {
         if (statement.get('declarations').get('constdeclaration').get('assignables').has('functions')) {
           // Because closures re-use their parent memory space, their own memory needs to be included
           const closureMem = getFunctionbodyMem(
@@ -169,19 +169,17 @@ const extractClosures = (handlers: LPish[], handlerMem: object, eventDecs: objec
   let closures = {}
   let recs = handlers.filter(h => h.get() instanceof NamedAnd)
   for (let i = 0; i < recs.length; i++) {
-    const rec = handlers[i].get()
+    const rec = recs[i].get()
     const closureMem = handlerMem[i]
     for (const statement of rec.get('functions').get('functionbody').get('statements').getAll()) {
-      const rec2 = statement.get()
-      if (!(rec2 instanceof NamedAnd)) continue
       if (
-        rec2.has('declarations') &&
-        rec2.get('declarations').has('constdeclaration') &&
-        rec2.get('declarations').get('constdeclaration').get('assignables').has('functions')
+        statement.has('declarations') &&
+        statement.get('declarations').has('constdeclaration') &&
+        statement.get('declarations').get('constdeclaration').get('assignables').has('functions')
       ) {
         // It's a closure, first try to extract any inner closures it may have
         const innerClosures = closuresFromDeclaration(
-          rec2.get('declarations'),
+          statement.get('declarations'),
           closureMem,
           eventDecs,
         )
@@ -246,11 +244,9 @@ const loadStatements = (statements: LPish[], localMem: object, globalMem: object
             break
           }
         }
-        console.log(call.has('calllist') && call.get('calllist').getAll())
         const vars = (call.has('calllist') ? call.get('calllist').getAll() : []).map(
           v => v.get('variable').t.trim()
         )
-        console.log(vars)
         const args = vars.map(v => localMem.hasOwnProperty(v) ?
           localMem[v] :
           globalMem.hasOwnProperty(v) ?
@@ -269,8 +265,8 @@ const loadStatements = (statements: LPish[], localMem: object, globalMem: object
         }
       } else if (assignables.has('constants')) {
         // Only required for `let` statements
-        let fn
-        let val
+        let fn: string
+        let val: string
         switch (dec.get('fulltypename').t.trim()) {
         case 'int64':
           fn = 'seti64'
@@ -324,7 +320,7 @@ const loadStatements = (statements: LPish[], localMem: object, globalMem: object
         const call = assignables.get('calls')
         const fn = call.get('variable').t.trim()
         const vars = (call.has('calllist') ? call.get('calllist').getAll() : []).map(
-          v => v.get().get('variable').t.trim()
+          v => v.get('variable').t.trim()
         )
         const args = vars.map(v => localMem.hasOwnProperty(v) ?
           localMem[v] :
