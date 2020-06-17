@@ -1,11 +1,13 @@
 import * as fs from 'fs' // This syntax is so dumb
 
+// A snapshot of the metadata surrounding an LP record
 export interface LPSnap {
   line: number
   char: number
   i: number
 }
 
+// An LP record and methods, used for keeping track of advancements through the text to parse
 export class LP {
   filename: string
   data: string
@@ -63,12 +65,15 @@ export class LP {
   }
 }
 
+// Any kind of type that provides enough data to attach metadata to error messages
 export interface LPmeta {
   filename: string
   line: number
   char: number
 }
 
+// Any kind of type that can operate on LP records to build the AST. The name is terrible and needs
+// to be replaced.
 export interface LPish {
   t: string
   get(id?: string | number): LPish
@@ -79,6 +84,7 @@ export interface LPish {
 
 export const lpError = (message: string, obj: LPmeta) => new Error(`${message} in file ${obj.filename} line ${obj.line}:${obj.char}`)
 
+// A special AST node that indicates that you successfully matched nothing, useful for optional ASTs
 export class NulLP implements LPish {
   t: string
 
@@ -107,6 +113,7 @@ export class NulLP implements LPish {
   }
 }
 
+// One of the 'leaf' AST nodes. It declares a fixed set of characters in a row to match
 export class Token implements LPish {
   t: string
   filename: string
@@ -169,6 +176,7 @@ export class Token implements LPish {
   }
 }
 
+// Another 'leaf' AST node. It matches any characters that DO NOT match the string provided
 export class Not implements LPish {
   t: string
   filename: string
@@ -232,6 +240,7 @@ export class Not implements LPish {
   }
 }
 
+// An AST node that optionally matches the AST node below it
 export class ZeroOrOne implements LPish {
   t: string
   zeroOrOne: LPish
@@ -278,6 +287,7 @@ export class ZeroOrOne implements LPish {
   }
 }
 
+// An AST node that optionally matches the AST node below it as many times as possible
 export class ZeroOrMore implements LPish {
   t: string
   zeroOrMore: LPish[]
@@ -343,6 +353,7 @@ export class ZeroOrMore implements LPish {
   }
 }
 
+// An AST node that matches the node below it multiple times and fails if it finds no match
 export class OneOrMore implements LPish {
   t: string
   oneOrMore: LPish[]
@@ -411,6 +422,7 @@ export class OneOrMore implements LPish {
   }
 }
 
+// An AST node that matches a sequence of child nodes in a row or fails
 export class And implements LPish {
   t: string
   and: LPish[]
@@ -474,6 +486,7 @@ export class And implements LPish {
   }
 }
 
+// An AST node that matches any of its child nodes or fails. Only returns the first match.
 export class Or implements LPish {
   t: string
   or: LPish[]
@@ -544,6 +557,8 @@ interface Named {
   [key: string]: LPish
 }
 
+// An AST node that matches all of the child nodes or fails. Also provides easier access to the
+// matched child nodes.
 export class NamedAnd implements LPish {
   t: string
   and: Named
@@ -608,6 +623,8 @@ export class NamedAnd implements LPish {
   }
 }
 
+// An AST node that matches one of the child nodes or fails. The first match is returned. Also
+// provides easier access to the child node by name.
 export class NamedOr implements LPish {
   t: string
   or: Named
@@ -675,6 +692,8 @@ export class NamedOr implements LPish {
   }
 }
 
+// A 'leaf' AST node that matches a character within the specified range of characters. Useful for
+// building regex-like matchers.
 export class CharSet implements LPish {
   t: string
   lowerCharCode: number
@@ -741,6 +760,8 @@ export class CharSet implements LPish {
   }
 }
 
+// A composite AST 'node' that matches the child node between the minimum and maximum repetitions or
+// fails.
 export const RangeSet = (toRepeat: LPish, min: number, max: number): LPish | Error => {
   let sets = []
   for (let i = min; i <= max; i++) {
