@@ -81,7 +81,7 @@ const fulltypename = Or.build([
 const emits = NamedAnd.build({ emit, blank, variable, value: ZeroOrOne.build(NamedAnd.build({
   blank, variable
 }))})
-const events = NamedAnd.build({ event, blank, variable, a: optblank, colon, b: optblank, typename })
+const events = NamedAnd.build({ event, blank, variable, a: optblank, colon, b: optblank, fulltypename })
 const calllist = ZeroOrMore.build(NamedAnd.build({ variable, optcomma, optblank }))
 const calls = NamedAnd.build({
   variable,
