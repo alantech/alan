@@ -26,7 +26,7 @@ Describe "Basic Math"
         The status should eq "3"
       End
     End
-    
+
     Describe "subtraction"
       before() {
         sourceToAll "
@@ -51,7 +51,7 @@ Describe "Basic Math"
         The status should eq "1"
       End
     End
-    
+
     Describe "multiplication"
       before() {
         sourceToAll "
@@ -76,7 +76,7 @@ Describe "Basic Math"
         The status should eq "2"
       End
     End
-    
+
     Describe "division"
       before() {
         sourceToAll "
@@ -101,7 +101,7 @@ Describe "Basic Math"
         The status should eq "3"
       End
     End
-    
+
     Describe "modulus"
       before() {
         sourceToAll "
@@ -126,7 +126,7 @@ Describe "Basic Math"
         The status should eq "2"
       End
     End
-    
+
     Describe "exponentiation"
       before() {
         sourceToAll "
@@ -181,7 +181,7 @@ Describe "Basic Math"
         The output should eq "3"
       End
     End
-    
+
     Describe "subtraction"
       before() {
         sourceToAll "
@@ -209,7 +209,7 @@ Describe "Basic Math"
         The output should eq "1"
       End
     End
-    
+
     Describe "multiplication"
       before() {
         sourceToAll "
@@ -237,7 +237,7 @@ Describe "Basic Math"
         The output should eq "2"
       End
     End
-    
+
     Describe "division"
       before() {
         sourceToAll "
@@ -265,7 +265,7 @@ Describe "Basic Math"
         The output should eq "3"
       End
     End
-    
+
     Describe "modulus"
       before() {
         sourceToAll "
@@ -293,7 +293,7 @@ Describe "Basic Math"
         The output should eq "2"
       End
     End
-    
+
     Describe "exponentiation"
       before() {
         sourceToAll "
@@ -351,7 +351,7 @@ Describe "Basic Math"
         The output should eq "3"
       End
     End
-    
+
     Describe "subtraction"
       before() {
         sourceToAll "
@@ -379,7 +379,7 @@ Describe "Basic Math"
         The output should eq "1"
       End
     End
-    
+
     Describe "multiplication"
       before() {
         sourceToAll "
@@ -407,7 +407,7 @@ Describe "Basic Math"
         The output should eq "2"
       End
     End
-    
+
     Describe "division"
       before() {
         sourceToAll "
@@ -435,7 +435,7 @@ Describe "Basic Math"
         The output should eq "3"
       End
     End
-    
+
     Describe "modulus"
       before() {
         sourceToAll "
@@ -463,7 +463,7 @@ Describe "Basic Math"
         The output should eq "2"
       End
     End
-    
+
     Describe "exponentiation"
       before() {
         sourceToAll "
@@ -521,7 +521,7 @@ Describe "Basic Math"
         The output should eq "3"
       End
     End
-    
+
     Describe "subtraction"
       before() {
         sourceToAll "
@@ -549,7 +549,7 @@ Describe "Basic Math"
         The output should eq "1"
       End
     End
-    
+
     Describe "multiplication"
       before() {
         sourceToAll "
@@ -577,7 +577,7 @@ Describe "Basic Math"
         The output should eq "2"
       End
     End
-    
+
     Describe "division"
       before() {
         sourceToAll "
@@ -605,7 +605,7 @@ Describe "Basic Math"
         The output should eq "3"
       End
     End
-    
+
     Describe "modulus"
       before() {
         sourceToAll "
@@ -633,7 +633,7 @@ Describe "Basic Math"
         The output should eq "2"
       End
     End
-    
+
     Describe "exponentiation"
       before() {
         sourceToAll "
@@ -691,7 +691,7 @@ Describe "Basic Math"
         The output should eq "3"
       End
     End
-    
+
     Describe "subtraction"
       before() {
         sourceToAll "
@@ -719,7 +719,7 @@ Describe "Basic Math"
         The output should eq "1"
       End
     End
-    
+
     Describe "multiplication"
       before() {
         sourceToAll "
@@ -747,7 +747,7 @@ Describe "Basic Math"
         The output should eq "2"
       End
     End
-    
+
     Describe "division"
       before() {
         sourceToAll "
@@ -775,7 +775,7 @@ Describe "Basic Math"
         The output should eq "3"
       End
     End
-    
+
     Describe "sqrt"
       before() {
         sourceToAll "
@@ -803,7 +803,7 @@ Describe "Basic Math"
         The output should eq "6"
       End
     End
-    
+
     Describe "exponentiation"
       before() {
         sourceToAll "
@@ -861,7 +861,7 @@ Describe "Basic Math"
         The output should eq "3"
       End
     End
-    
+
     Describe "subtraction"
       before() {
         sourceToAll "
@@ -889,7 +889,7 @@ Describe "Basic Math"
         The output should eq "1"
       End
     End
-    
+
     Describe "multiplication"
       before() {
         sourceToAll "
@@ -917,7 +917,7 @@ Describe "Basic Math"
         The output should eq "2"
       End
     End
-    
+
     Describe "division"
       before() {
         sourceToAll "
@@ -945,7 +945,7 @@ Describe "Basic Math"
         The output should eq "3"
       End
     End
-    
+
     Describe "sqrt"
       before() {
         sourceToAll "
@@ -973,7 +973,7 @@ Describe "Basic Math"
         The output should eq "6"
       End
     End
-    
+
     Describe "exponentiation"
       before() {
         sourceToAll "

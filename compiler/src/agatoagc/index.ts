@@ -1,6 +1,6 @@
 import {
   LP,
-  LPish,
+  LPNode,
   NamedAnd,
   NulLP,
 } from '../lp'
@@ -22,21 +22,21 @@ const int64ToUint64 = (n: bigint): bigint => {
   return buf.readBigUInt64LE(0)
 }
 
-const loadGlobalMem = (globalMemAst: LPish): bigint[] => {
+const loadGlobalMem = (globalMemAst: LPNode): bigint[] => {
   const globalMem = []
   const memoryLines = globalMemAst.get('memoryLines')
   for (const globalConst of memoryLines.getAll()) {
     const memoryLine = globalConst.get('memoryLine')
     const value = memoryLine.get('value')
-    if (!(value.get('i64') instanceof NulLP)) {
+    if (value.has('i64')) {
       const val = BigInt(value.t.replace(/i64$/, ''))
       globalMem.push(val)
-    } else if (!(value.get('f64') instanceof NulLP)) {
+    } else if (value.has('f64')) {
       const buf = Buffer.alloc(8)
       buf.writeDoubleLE(parseFloat(value.t.replace(/f64$/, '')))
       const val = buf.readBigUInt64LE(0)
       globalMem.push(val)
-    } else if (!(value.get('str') instanceof NulLP)) {
+    } else if (value.has('str')) {
       let str: string
       try {
         str = JSON.parse(value.t) // Will fail on strings with escape chars
@@ -53,7 +53,7 @@ const loadGlobalMem = (globalMemAst: LPish): bigint[] => {
       for (let i = 0; i < Number(len) / 8; i++) {
         globalMem.push(buf.readBigUInt64LE(i * 8))
       }
-    } else if (!(value.get('bool') instanceof NulLP)) {
+    } else if (value.has('bool')) {
       const val = value.t === "true" ? 1n : 0n
       globalMem.push(val)
     } else {
@@ -65,7 +65,7 @@ const loadGlobalMem = (globalMemAst: LPish): bigint[] => {
   return globalMem
 }
 
-const loadEventDecs = (eventAst: LPish, eventLookup: Object): bigint[] => {
+const loadEventDecs = (eventAst: LPNode, eventLookup: Object): bigint[] => {
   const eventLines = eventAst.get('eventLines')
   let customEventIdOffset = 0n
   const eventMem = []
@@ -90,7 +90,7 @@ const fill8 = (name: string) => {
   return buf.readBigUInt64LE(0)
 }
 
-const loadStatements = (statements: LPish, eventLookup: Object): bigint[] => {
+const loadStatements = (statements: LPNode, eventLookup: Object): bigint[] => {
   let vec = []
   for (const statementAst of statements.getAll()) {
     const statement = statementAst.get('statement')
@@ -101,13 +101,13 @@ const loadStatements = (statements: LPish, eventLookup: Object): bigint[] => {
     const args = statement.get('args').getAll().map(a => {
       const argOpt = a.get('arg')
       let out: bigint
-      if (!(argOpt.get('variable') instanceof NulLP)) {
+      if (argOpt.has('variable')) {
         out = eventLookup[argOpt.get('variable').t].eventId
-      } else if (!(argOpt.get('memoryAddress') instanceof NulLP)) {
+      } else if (argOpt.has('memoryAddress')) {
         out = int64ToUint64(BigInt((argOpt.get('memoryAddress').get(1).t)))
-      } else if (!(argOpt.get('i64') instanceof NulLP)) {
+      } else if (argOpt.has('i64')) {
         out = BigInt(argOpt.t.replace(/i64$/, ''))
-      } else if (!(argOpt.get('f64') instanceof NulLP)) {
+      } else if (argOpt.has('f64')) {
         const buf = Buffer.alloc(8)
         buf.writeDoubleLE(parseFloat(argOpt.t.replace(/f64$/, '')))
         out = buf.readBigUInt64LE(0)
@@ -122,7 +122,7 @@ const loadStatements = (statements: LPish, eventLookup: Object): bigint[] => {
   return vec
 }
 
-const loadHandlers = (handlersAst: LPish, eventLookup: Object): bigint[] => {
+const loadHandlers = (handlersAst: LPNode, eventLookup: Object): bigint[] => {
   const handlers = handlersAst.getAll()
   const vec = []
   for (let i = 0; i < handlers.length; i++) {
@@ -143,8 +143,8 @@ const loadHandlers = (handlersAst: LPish, eventLookup: Object): bigint[] => {
 const astToAgc = (ast: NamedAnd): Buffer => {
   // Declare the AGC header
   const vec: bigint[] = [agcHeader]
-  const globalMemoryAst = ast.get('globalMemory')
-  if (!(globalMemoryAst instanceof NulLP)) {
+  if (ast.has('globalMemory')) {
+    const globalMemoryAst = ast.get('globalMemory')
     // Get the global memory
     const globalMem = loadGlobalMem(globalMemoryAst)
     // Compute the global memory size and declare that and add all of the global memory
