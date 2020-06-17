@@ -9,7 +9,7 @@ import {
   Token,
   ZeroOrMore,
   ZeroOrOne,
-} from '../lp'
+} from './lp'
 
 // Defining AGA Tokens
 const space = Token.build(' ')
