@@ -72,20 +72,19 @@ export interface LPmeta {
   char: number
 }
 
-// Any kind of type that can operate on LP records to build the AST. The name is terrible and needs
-// to be replaced.
-export interface LPish {
+// Any kind of type that can operate on LP records to build the AST.
+export interface LPNode {
   t: string
-  get(id?: string | number): LPish
-  getAll(): LPish[]
+  get(id?: string | number): LPNode
+  getAll(): LPNode[]
   has(id?: string | number): boolean
-  apply(lp: LP): LPish | Error
+  apply(lp: LP): LPNode | Error
 }
 
 export const lpError = (message: string, obj: LPmeta) => new Error(`${message} in file ${obj.filename} line ${obj.line}:${obj.char}`)
 
 // A special AST node that indicates that you successfully matched nothing, useful for optional ASTs
-export class NulLP implements LPish {
+export class NulLP implements LPNode {
   t: string
 
   constructor() {
@@ -104,7 +103,7 @@ export class NulLP implements LPish {
     return false
   }
 
-  apply(): LPish | Error {
+  apply(): LPNode | Error {
     return new Error('nullish')
   }
 
@@ -114,7 +113,7 @@ export class NulLP implements LPish {
 }
 
 // One of the 'leaf' AST nodes. It declares a fixed set of characters in a row to match
-export class Token implements LPish {
+export class Token implements LPNode {
   t: string
   filename: string
   line: number
@@ -135,11 +134,11 @@ export class Token implements LPish {
     return this.t
   }
 
-  get(): LPish {
+  get(): LPNode {
     return this
   }
 
-  getAll(): LPish[] {
+  getAll(): LPNode[] {
     return [this]
   }
 
@@ -177,7 +176,7 @@ export class Token implements LPish {
 }
 
 // Another 'leaf' AST node. It matches any characters that DO NOT match the string provided
-export class Not implements LPish {
+export class Not implements LPNode {
   t: string
   filename: string
   line: number
@@ -241,14 +240,14 @@ export class Not implements LPish {
 }
 
 // An AST node that optionally matches the AST node below it
-export class ZeroOrOne implements LPish {
+export class ZeroOrOne implements LPNode {
   t: string
-  zeroOrOne: LPish
+  zeroOrOne: LPNode
   filename: string
   line: number
   char: number
 
-  constructor(t: string, zeroOrOne: LPish, filename: string, line: number, char: number) {
+  constructor(t: string, zeroOrOne: LPNode, filename: string, line: number, char: number) {
     this.t = t
     this.zeroOrOne = zeroOrOne
     this.filename = filename
@@ -256,7 +255,7 @@ export class ZeroOrOne implements LPish {
     this.char = char
   }
 
-  static build(zeroOrOne: LPish): ZeroOrOne {
+  static build(zeroOrOne: LPNode): ZeroOrOne {
     return new ZeroOrOne('', zeroOrOne, '', -1, -1)
   }
 
@@ -264,11 +263,11 @@ export class ZeroOrOne implements LPish {
     return this.t
   }
 
-  get(): LPish {
+  get(): LPNode {
     return this.zeroOrOne
   }
 
-  getAll(): LPish[] {
+  getAll(): LPNode[] {
     return [this.zeroOrOne]
   }
 
@@ -276,7 +275,7 @@ export class ZeroOrOne implements LPish {
     return this.line > -1
   }
 
-  apply(lp: LP): LPish {
+  apply(lp: LP): LPNode {
     const s = lp.snapshot()
     const zeroOrOne = this.zeroOrOne.apply(lp)
     if (zeroOrOne instanceof Error) {
@@ -288,14 +287,14 @@ export class ZeroOrOne implements LPish {
 }
 
 // An AST node that optionally matches the AST node below it as many times as possible
-export class ZeroOrMore implements LPish {
+export class ZeroOrMore implements LPNode {
   t: string
-  zeroOrMore: LPish[]
+  zeroOrMore: LPNode[]
   filename: string
   line: number
   char: number
 
-  constructor(t: string, zeroOrMore: LPish[], filename: string, line: number, char: number) {
+  constructor(t: string, zeroOrMore: LPNode[], filename: string, line: number, char: number) {
     this.t = t
     this.zeroOrMore = zeroOrMore
     this.filename = filename
@@ -303,7 +302,7 @@ export class ZeroOrMore implements LPish {
     this.char = char
   }
 
-  static build(zeroOrMore: LPish): ZeroOrMore {
+  static build(zeroOrMore: LPNode): ZeroOrMore {
     return new ZeroOrMore('', [zeroOrMore], '', -1, -1)
   }
 
@@ -311,12 +310,12 @@ export class ZeroOrMore implements LPish {
     return this.t
   }
 
-  get(i: number): LPish {
+  get(i: number): LPNode {
     if (this.zeroOrMore[i]) return this.zeroOrMore[i]
     return new NulLP()
   }
 
-  getAll(): LPish[] {
+  getAll(): LPNode[] {
     return this.zeroOrMore
   }
 
@@ -330,7 +329,7 @@ export class ZeroOrMore implements LPish {
     return this.line > -1
   }
 
-  apply(lp: LP): LPish | Error {
+  apply(lp: LP): LPNode | Error {
     const filename = lp.filename
     const line = lp.line
     const char = lp.char
@@ -354,14 +353,14 @@ export class ZeroOrMore implements LPish {
 }
 
 // An AST node that matches the node below it multiple times and fails if it finds no match
-export class OneOrMore implements LPish {
+export class OneOrMore implements LPNode {
   t: string
-  oneOrMore: LPish[]
+  oneOrMore: LPNode[]
   filename: string
   line: number
   char: number
 
-  constructor(t: string, oneOrMore: LPish[], filename: string, line: number, char: number) {
+  constructor(t: string, oneOrMore: LPNode[], filename: string, line: number, char: number) {
     this.t = t
     this.oneOrMore = oneOrMore
     this.filename = filename
@@ -369,7 +368,7 @@ export class OneOrMore implements LPish {
     this.char = char
   }
 
-  static build(oneOrMore: LPish): OneOrMore {
+  static build(oneOrMore: LPNode): OneOrMore {
     return new OneOrMore('', [oneOrMore], '', -1, -1)
   }
 
@@ -377,12 +376,12 @@ export class OneOrMore implements LPish {
     return this.t
   }
 
-  get(i: number): LPish {
+  get(i: number): LPNode {
     if (this.oneOrMore[i]) return this.oneOrMore[i]
     return new NulLP()
   }
 
-  getAll(): LPish[] {
+  getAll(): LPNode[] {
     return this.oneOrMore
   }
 
@@ -396,7 +395,7 @@ export class OneOrMore implements LPish {
     return this.line > -1
   }
 
-  apply(lp: LP): LPish | Error {
+  apply(lp: LP): LPNode | Error {
     const filename = lp.filename
     const line = lp.line
     const char = lp.char
@@ -423,14 +422,14 @@ export class OneOrMore implements LPish {
 }
 
 // An AST node that matches a sequence of child nodes in a row or fails
-export class And implements LPish {
+export class And implements LPNode {
   t: string
-  and: LPish[]
+  and: LPNode[]
   filename: string
   line: number
   char: number
 
-  constructor(t: string, and: LPish[], filename: string, line: number, char: number) {
+  constructor(t: string, and: LPNode[], filename: string, line: number, char: number) {
     this.t = t
     this.and = and
     this.filename = filename
@@ -438,7 +437,7 @@ export class And implements LPish {
     this.char = char
   }
 
-  static build(and: LPish[]): And {
+  static build(and: LPNode[]): And {
     return new And('', and, '', -1, -1)
   }
 
@@ -446,12 +445,12 @@ export class And implements LPish {
     return this.t
   }
 
-  get(i: number): LPish {
+  get(i: number): LPNode {
     if (this.and[i]) return this.and[i]
     return new NulLP()
   }
 
-  getAll(): LPish[] {
+  getAll(): LPNode[] {
     return this.and
   }
 
@@ -487,14 +486,14 @@ export class And implements LPish {
 }
 
 // An AST node that matches any of its child nodes or fails. Only returns the first match.
-export class Or implements LPish {
+export class Or implements LPNode {
   t: string
-  or: LPish[]
+  or: LPNode[]
   filename: string
   line: number
   char: number
 
-  constructor(t: string, or: LPish[], filename: string, line: number, char: number) {
+  constructor(t: string, or: LPNode[], filename: string, line: number, char: number) {
     this.t = t
     this.or = or
     this.filename = filename
@@ -502,7 +501,7 @@ export class Or implements LPish {
     this.char = char
   }
 
-  static build(or: LPish[]): Or {
+  static build(or: LPNode[]): Or {
     return new Or('', or, '', -1, -1)
   }
 
@@ -510,12 +509,12 @@ export class Or implements LPish {
     return this.t
   }
 
-  get(): LPish {
+  get(): LPNode {
     if (this.or[0]) return this.or[0]
     return new NulLP()
   }
 
-  getAll(): LPish[] {
+  getAll(): LPNode[] {
     return this.or
   }
 
@@ -554,12 +553,12 @@ export class Or implements LPish {
 }
 
 interface Named {
-  [key: string]: LPish
+  [key: string]: LPNode
 }
 
 // An AST node that matches all of the child nodes or fails. Also provides easier access to the
 // matched child nodes.
-export class NamedAnd implements LPish {
+export class NamedAnd implements LPNode {
   t: string
   and: Named
   filename: string
@@ -582,12 +581,12 @@ export class NamedAnd implements LPish {
     return this.t
   }
 
-  get(name: string): LPish {
+  get(name: string): LPNode {
     if (this.and[name]) return this.and[name]
     return new NulLP()
   }
 
-  getAll(): LPish[] {
+  getAll(): LPNode[] {
     return Object.values(this.and)
   }
 
@@ -625,7 +624,7 @@ export class NamedAnd implements LPish {
 
 // An AST node that matches one of the child nodes or fails. The first match is returned. Also
 // provides easier access to the child node by name.
-export class NamedOr implements LPish {
+export class NamedOr implements LPNode {
   t: string
   or: Named
   filename: string
@@ -648,12 +647,12 @@ export class NamedOr implements LPish {
     return this.t
   }
 
-  get(name: string): LPish {
+  get(name: string): LPNode {
     if (this.or[name]) return this.or[name]
     return new NulLP()
   }
 
-  getAll(): LPish[] {
+  getAll(): LPNode[] {
     return Object.values(this.or)
   }
 
@@ -694,7 +693,7 @@ export class NamedOr implements LPish {
 
 // A 'leaf' AST node that matches a character within the specified range of characters. Useful for
 // building regex-like matchers.
-export class CharSet implements LPish {
+export class CharSet implements LPNode {
   t: string
   lowerCharCode: number
   upperCharCode: number
@@ -762,7 +761,7 @@ export class CharSet implements LPish {
 
 // A composite AST 'node' that matches the child node between the minimum and maximum repetitions or
 // fails.
-export const RangeSet = (toRepeat: LPish, min: number, max: number): LPish | Error => {
+export const RangeSet = (toRepeat: LPNode, min: number, max: number): LPNode | Error => {
   let sets = []
   for (let i = min; i <= max; i++) {
     if (i === 0) {

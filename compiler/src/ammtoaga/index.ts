@@ -1,6 +1,6 @@
 import {
   LP,
-  LPish,
+  LPNode,
   NamedAnd,
   NulLP,
 } from '../lp'
@@ -12,7 +12,7 @@ import amm from '../amm'
 // but there is no need for it and it would make it harder to work with.
 const ceil8 = (n: number) => Math.ceil(n / 8) * 8
 
-const loadGlobalMem = (globalMemAst: LPish[], addressMap: object) => {
+const loadGlobalMem = (globalMemAst: LPNode[], addressMap: object) => {
   const globalMem = {}
   let currentOffset = -1
   for (const globalConst of globalMemAst) {
@@ -63,7 +63,7 @@ const loadGlobalMem = (globalMemAst: LPish[], addressMap: object) => {
   return globalMem
 }
 
-const loadEventDecs = (eventAst: LPish[]) => {
+const loadEventDecs = (eventAst: LPNode[]) => {
   const eventMem = {}
   for (const evt of eventAst) {
     const rec = evt.get()
@@ -77,7 +77,7 @@ const loadEventDecs = (eventAst: LPish[]) => {
   return eventMem
 }
 
-const getFunctionbodyMem = (functionbody: LPish) => {
+const getFunctionbodyMem = (functionbody: LPNode) => {
   let memSize = 0
   const addressMap = {}
   for (const statement of functionbody.get('statements').getAll()) {
@@ -117,7 +117,7 @@ const getFunctionbodyMem = (functionbody: LPish) => {
   }
 }
 
-const getHandlersMem = (handlers: LPish[]) => handlers
+const getHandlersMem = (handlers: LPNode[]) => handlers
   .map(h => h.get())
   .filter(h => h instanceof NamedAnd)
   .map(handler => {
@@ -131,7 +131,7 @@ const getHandlersMem = (handlers: LPish[]) => handlers
     return handlerMem
   })
 
-const closuresFromDeclaration = (declaration: LPish, closureMem: object, eventDecs: object) => {
+const closuresFromDeclaration = (declaration: LPNode, closureMem: object, eventDecs: object) => {
   const name = declaration.get('constdeclaration').get('decname').t.trim()
   const allStatements = declaration
     .get('constdeclaration')
@@ -165,7 +165,7 @@ const closuresFromDeclaration = (declaration: LPish, closureMem: object, eventDe
   }
 }
 
-const extractClosures = (handlers: LPish[], handlerMem: object, eventDecs: object) => {
+const extractClosures = (handlers: LPNode[], handlerMem: object, eventDecs: object) => {
   let closures = {}
   let recs = handlers.filter(h => h.get() instanceof NamedAnd)
   for (let i = 0; i < recs.length; i++) {
@@ -193,7 +193,7 @@ const extractClosures = (handlers: LPish[], handlerMem: object, eventDecs: objec
   return Object.values(closures)
 }
 
-const loadStatements = (statements: LPish[], localMem: object, globalMem: object) => {
+const loadStatements = (statements: LPNode[], localMem: object, globalMem: object) => {
   let vec = []
   let line = 0
   let localMemToLine = {}
@@ -393,7 +393,7 @@ const loadStatements = (statements: LPish[], localMem: object, globalMem: object
   return vec
 }
 
-const loadHandlers = (handlers: LPish[], handlerMem: object, globalMem: object) => {
+const loadHandlers = (handlers: LPNode[], handlerMem: object, globalMem: object) => {
   const vec = []
   const recs = handlers.filter(h => h.get() instanceof NamedAnd)
   for (let i = 0; i < recs.length; i++) {
@@ -432,7 +432,7 @@ const loadClosures = (closures: any[], globalMem: object) => {
   return vec
 }
 
-const ammToAga = (amm: LPish) => {
+const ammToAga = (amm: LPNode) => {
   // Declare the AGA header
   let outStr = 'Alan Graphcode Assembler v0.0.1\n\n'
   // Get the global memory and the memory address map (var name to address ID)

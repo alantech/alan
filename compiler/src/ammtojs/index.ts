@@ -2,20 +2,20 @@ import { asyncopcodes, } from 'alan-js-runtime'
 
 import {
   LP,
-  LPish,
+  LPNode,
   NamedAnd,
 } from '../lp'
 
 import amm from '../amm'
 
-const callToJsText = (call: LPish) => {
+const callToJsText = (call: LPNode) => {
   const args = call.has('calllist') ?
     call.get('calllist').getAll().map(r => r.get('variable').t).join(', ') : ""
   const opcode = call.get('variable').t
   return asyncopcodes.includes(opcode) ? `await r.${opcode}(${args})` : `r.${opcode}(${args})`
 }
 
-const functionbodyToJsText = (fnbody: LPish, indent: string) => {
+const functionbodyToJsText = (fnbody: LPNode, indent: string) => {
   let outText = ""
   for (const statement of fnbody.get('statements').getAll()) {
     outText += indent + "  " // For legibility of the output
@@ -42,7 +42,7 @@ const functionbodyToJsText = (fnbody: LPish, indent: string) => {
   return outText
 }
 
-const assignableToJsText = (assignable: LPish, indent: string) => {
+const assignableToJsText = (assignable: LPNode, indent: string) => {
   let outText = ""
   if (assignable.has('functions')) {
     outText += '() => {\n' // All assignable functions/closures take no arguments
@@ -58,7 +58,7 @@ const assignableToJsText = (assignable: LPish, indent: string) => {
   return outText
 }
 
-const ammToJsText = (amm: LPish) => {
+const ammToJsText = (amm: LPNode) => {
   let outFile = "const r = require('alan-js-runtime')\n"
   // Where we're going we don't need types, so skipping that entire section
   // First convert all of the global constants to javascript

@@ -1,6 +1,6 @@
 import {
   LP,
-  LPish,
+  LPNode,
   NamedAnd,
   NulLP,
 } from '../lp'
@@ -22,7 +22,7 @@ const int64ToUint64 = (n: bigint): bigint => {
   return buf.readBigUInt64LE(0)
 }
 
-const loadGlobalMem = (globalMemAst: LPish): bigint[] => {
+const loadGlobalMem = (globalMemAst: LPNode): bigint[] => {
   const globalMem = []
   const memoryLines = globalMemAst.get('memoryLines')
   for (const globalConst of memoryLines.getAll()) {
@@ -65,7 +65,7 @@ const loadGlobalMem = (globalMemAst: LPish): bigint[] => {
   return globalMem
 }
 
-const loadEventDecs = (eventAst: LPish, eventLookup: Object): bigint[] => {
+const loadEventDecs = (eventAst: LPNode, eventLookup: Object): bigint[] => {
   const eventLines = eventAst.get('eventLines')
   let customEventIdOffset = 0n
   const eventMem = []
@@ -90,7 +90,7 @@ const fill8 = (name: string) => {
   return buf.readBigUInt64LE(0)
 }
 
-const loadStatements = (statements: LPish, eventLookup: Object): bigint[] => {
+const loadStatements = (statements: LPNode, eventLookup: Object): bigint[] => {
   let vec = []
   for (const statementAst of statements.getAll()) {
     const statement = statementAst.get('statement')
@@ -122,7 +122,7 @@ const loadStatements = (statements: LPish, eventLookup: Object): bigint[] => {
   return vec
 }
 
-const loadHandlers = (handlersAst: LPish, eventLookup: Object): bigint[] => {
+const loadHandlers = (handlersAst: LPNode, eventLookup: Object): bigint[] => {
   const handlers = handlersAst.getAll()
   const vec = []
   for (let i = 0; i < handlers.length; i++) {
