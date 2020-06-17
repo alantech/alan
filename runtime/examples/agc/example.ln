@@ -1,6 +1,0 @@
-from @std/app import start, exit
-
-on start {
-  emit stdout "Hello, Dear World!\n"
-  emit exit 2 + 1
-}

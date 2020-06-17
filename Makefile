@@ -48,6 +48,11 @@ clean:
 	rm -f yarn.lock
 	rm -f bdd/package-lock.json
 	rm -f bdd/temp.*
+	rm -rf compiler/cypress/fixtures
+	rm -rf compiler/cypress/plugins
+	rm -rf compiler/cypress/screenshots
+	rm -rf compiler/cypress/support
+	rm -rf compiler/cypress/videos
 
 .PHONY: install
 install: runtime/target/release/alan-runtime node_modules
