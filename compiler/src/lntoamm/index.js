@@ -74,6 +74,10 @@ const moduleAstsFromFile = (filename) => {
 }
 
 const moduleAstsFromString = (str) => {
+  // If loading from a string, it's in the browser and some internal state needs cleaning. Some of
+  // this doesn't appear to affect things, but better to compile from a known state
+  Event.allEvents = [Event.allEvents[0]] // Keep the `start` event
+  Event.allEvents[0].handlers = [] // Reset the registered handlers on the `start` event
   let moduleAsts = {}
   const fakeRoot = '/fake/root/test.ln'
   let module = null
