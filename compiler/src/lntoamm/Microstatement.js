@@ -3,6 +3,7 @@ const { v4: uuid, } = require('uuid')
 const { LnParser, } = require('../ln')
 const StatementType = require('./StatementType')
 const Box = require('./Box')
+const Type = require('./Type')
 const UserFunction = require('./UserFunction')
 
 class Microstatement {
@@ -14,7 +15,7 @@ class Microstatement {
       this.pure = args[2]
       this.outputName = args[3]
       this.alias = ""
-      this.outputType = Box.builtinTypes.void
+      this.outputType = Type.builtinTypes.void
       this.inputNames = []
       this.fns = []
       this.closureStatements = args[4]
@@ -328,7 +329,7 @@ class Microstatement {
         scope,
         true,
         constName,
-        Box.builtinTypes["string"],
+        Type.builtinTypes["string"],
         [last.outputType.typename],
         [],
       ))
@@ -405,7 +406,7 @@ class Microstatement {
         scope,
         true,
         lenName,
-        Box.builtinTypes['int64'],
+        Type.builtinTypes['int64'],
         [`${arrayLiteralContents.length}`],
         [],
       ))
@@ -608,7 +609,7 @@ class Microstatement {
       scope,
       true, // TODO: Figure out if this is true or not
       constName,
-      Box.builtinTypes['function'],
+      Type.builtinTypes['function'],
       innerMicrostatements
     ))
   }
@@ -732,7 +733,7 @@ class Microstatement {
         )
         process.exit(-102)
       }
-      if (eventBox.eventval.type != Box.builtinTypes.void) {
+      if (eventBox.eventval.type != Type.builtinTypes.void) {
         console.error(emitsAst.varn().getText() + " must have a value emitted to it!")
         console.error(
           emitsAst.getText() +
@@ -748,7 +749,7 @@ class Microstatement {
         scope,
         true,
         eventBox.eventval.name,
-        Box.builtinTypes.void,
+        Type.builtinTypes.void,
         [],
         [],
       ))
@@ -1044,7 +1045,7 @@ class Microstatement {
       // C.
       const type = (
         scope.deepGet(letTypeHint) && scope.deepGet(letTypeHint).typeval
-      ) || Box.builtinTypes.void
+      ) || Type.builtinTypes.void
       if (type.originalType && type.originalType.typename === 'Array') {
         const opcodeScope = require('./opcodes').exportScope // Unfortunate circular dep issue
         const constName = "_" + uuid().replace(/-/g, "_")
@@ -1053,7 +1054,7 @@ class Microstatement {
           scope,
           true,
           constName,
-          Box.builtinTypes.int64,
+          Type.builtinTypes.int64,
           ["0"],
           [],
         ))
@@ -1088,7 +1089,7 @@ class Microstatement {
         true,
         letName,
         letAlias,
-        Box.builtinTypes.void,
+        Type.builtinTypes.void,
         [],
         [],
       ))
@@ -1198,7 +1199,7 @@ class Microstatement {
         scope,
         true,
         constName,
-        Box.builtinTypes.void,
+        Type.builtinTypes.void,
         ["void"],
         [],
       )
@@ -1210,7 +1211,7 @@ class Microstatement {
         true,
         constName,
         constAlias,
-        Box.builtinTypes.void,
+        Type.builtinTypes.void,
         [],
         [],
       ))

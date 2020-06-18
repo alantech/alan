@@ -219,4 +219,49 @@ class Type {
   }
 }
 
+Type.builtinTypes = {
+  void: new Type("void", true),
+  int8: new Type("int8", true),
+  int16: new Type("int16", true),
+  int32: new Type("int32", true),
+  int64: new Type("int64", true),
+  float32: new Type("float32", true),
+  float64: new Type("float64", true),
+  bool: new Type("bool", true),
+  string: new Type("string", true),
+  Error: new Type("Error", true, {
+    message: new Type("string", true, true),
+    code: new Type("int64", true, true),
+  }),
+  "Array": new Type("Array", true, {
+    records: new Type("V", true, true),
+  }, {
+    V: 0,
+  }),
+  Map: new Type("Map", true, {
+    key: new Type("K", true, true),
+    value: new Type("V", true, true),
+  }, {
+    K: 0,
+    V: 1,
+  }),
+  KeyVal: new Type("KeyVal", true, {
+    key: new Type("K", true, true),
+    value: new Type("V", true, true),
+  }, {
+    K: 0,
+    V: 1,
+  }),
+  "function": new Type("function", true),
+  operator: new Type("operator", true),
+  Event: new Type("Event", true, {
+    type: new Type("E", true, true),
+  }, {
+    E: 0,
+  }),
+  type: new Type("type", true),
+  scope: new Type("scope", true),
+  microstatement: new Type("microstatement", true),
+}
+
 module.exports = Type

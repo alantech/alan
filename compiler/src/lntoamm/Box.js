@@ -19,70 +19,70 @@ class Box {
     const Float64 = require('./Float64')
     const Event = require('./Event')
     if (args.length === 0) {
-      this.type = Box.builtinTypes.void
+      this.type = Type.builtinTypes.void
       this.readonly = true
     } else if (args.length === 1) {
       if (typeof args[0] === "boolean") {
-        this.type = Box.builtinTypes.void
+        this.type = Type.builtinTypes.void
         this.readonly = args[0]
       } else if (args[0] instanceof Type) {
-        this.type = Box.builtinTypes.type
+        this.type = Type.builtinTypes.type
         this.typeval = args[0]
         this.readonly = true // Type declarations are always read-only
       } else if (args[0] instanceof Scope) {
-        this.type = Box.builtinTypes.scope
+        this.type = Type.builtinTypes.scope
         this.scopeval = args[0]
         this.readonly = true // Boxed scopes are always read-only
       } else if (args[0] instanceof Microstatement) {
-        this.type = Box.builtinTypes.microstatement
+        this.type = Type.builtinTypes.microstatement
         this.microstatementval = args[0]
         this.readonly = true
       } else if (args[0] instanceof Array) {
         // This is only operator declarations right now
-        this.type = Box.builtinTypes.operator
+        this.type = Type.builtinTypes.operator
         this.operatorval = args[0]
         this.readonly = true
       }
     } else if (args.length === 2) {
       if (args[0] instanceof Int8) {
-        this.type = Box.builtinTypes.int8
+        this.type = Type.builtinTypes.int8
         this.int8val = args[0]
         this.readonly = args[1]
       } else if (args[0] instanceof Int16) {
-        this.type = Box.builtinTypes.int16
+        this.type = Type.builtinTypes.int16
         this.int16val = args[0]
         this.readonly = args[1]
       } else if (args[0] instanceof Int32) {
-        this.type = Box.builtinTypes.int32
+        this.type = Type.builtinTypes.int32
         this.int32val = args[0]
         this.readonly = args[1]
       } else if (args[0] instanceof Int64) {
-        this.type = Box.builtinTypes.int64
+        this.type = Type.builtinTypes.int64
         this.int64val = args[0]
         this.readonly = args[1]
       } else if (args[0] instanceof Float32) {
-        this.type = Box.builtinTypes.float32
+        this.type = Type.builtinTypes.float32
         this.float32val = args[0]
         this.readonly = args[1]
       } else if (args[0] instanceof Float64) {
-        this.type = Box.builtinTypes.float64
+        this.type = Type.builtinTypes.float64
         this.float64val = args[0]
         this.readonly = args[1]
       } else if (typeof args[0] === "boolean") {
-        this.type = Box.builtinTypes.bool
+        this.type = Type.builtinTypes.bool
         this.boolval = args[0]
         this.readonly = args[1]
       } else if (typeof args[0] === "string") {
-        this.type = Box.builtinTypes.string
+        this.type = Type.builtinTypes.string
         this.stringval = args[0]
         this.readonly = args[1]
       } else if (args[0] instanceof Array) {
         // This is only function declarations right now
-        this.type = Box.builtinTypes["function"]
+        this.type = Type.builtinTypes["function"]
         this.functionval = args[0]
         this.readonly = args[1]
       } else if (args[0] instanceof Event) {
-        this.type = Box.builtinTypes.Event
+        this.type = Type.builtinTypes.Event
         this.eventval = args[0]
         this.readonly = args[1]
       }
@@ -101,7 +101,7 @@ class Box {
         this.readonly = args[2]
       } else if (args[0] instanceof Object) {
         // It's an event or user-defined type
-        if (args[1].originalType == Box.builtinTypes.Event) {
+        if (args[1].originalType == Type.builtinTypes.Event) {
           let eventval = new Event(args[0].name.stringval, args[1].properties.type, false)
           this.eventval = eventval
           this.readonly = args[2]
@@ -398,51 +398,6 @@ class Box {
     return null
   }
 
-}
-
-Box.builtinTypes = {
-  void: new Type("void", true),
-  int8: new Type("int8", true),
-  int16: new Type("int16", true),
-  int32: new Type("int32", true),
-  int64: new Type("int64", true),
-  float32: new Type("float32", true),
-  float64: new Type("float64", true),
-  bool: new Type("bool", true),
-  string: new Type("string", true),
-  Error: new Type("Error", true, {
-    message: new Type("string", true, true),
-    code: new Type("int64", true, true),
-  }),
-  "Array": new Type("Array", true, {
-    records: new Type("V", true, true),
-  }, {
-    V: 0,
-  }),
-  Map: new Type("Map", true, {
-    key: new Type("K", true, true),
-    value: new Type("V", true, true),
-  }, {
-    K: 0,
-    V: 1,
-  }),
-  KeyVal: new Type("KeyVal", true, {
-    key: new Type("K", true, true),
-    value: new Type("V", true, true),
-  }, {
-    K: 0,
-    V: 1,
-  }),
-  "function": new Type("function", true),
-  operator: new Type("operator", true),
-  Event: new Type("Event", true, {
-    type: new Type("E", true, true),
-  }, {
-    E: 0,
-  }),
-  type: new Type("type", true),
-  scope: new Type("scope", true),
-  microstatement: new Type("microstatement", true),
 }
 
 module.exports = Box

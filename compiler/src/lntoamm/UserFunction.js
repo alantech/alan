@@ -1,9 +1,9 @@
 const { v4: uuid, } = require('uuid')
 
 const Ast = require('./Ast')
-const Box = require('./Box')
 const Statement = require('./Statement')
 const StatementType = require('./StatementType')
+const Type = require('./Type')
 const { LnParser, } = require('../ln')
 
 // This only implements the parts required for the compiler
@@ -51,7 +51,7 @@ class UserFunction {
 
   static fromFunctionbodyAst(functionbodyAst, closureScope) {
     let args = {}
-    const returnType = Box.builtinTypes.void
+    const returnType = Type.builtinTypes.void
     let pure = true // Assume purity and then downgrade if needed
     let statements = []
     const statementsAst = functionbodyAst.statements()
@@ -80,7 +80,7 @@ class UserFunction {
                 console.error("Could not find type " + argsAst.argtype(i).getText() + " for argument " + argName)
                 process.exit(-39)
               }
-              if (getArgType.type !== Box.builtinTypes["type"]) {
+              if (getArgType.type !== Type.builtinTypes["type"]) {
                 console.error("Function argument is not a valid type: " + argsAst.argtype(i).getText())
                 process.exit(-50);
               }
@@ -105,7 +105,7 @@ class UserFunction {
                     console.error("Could not find type " + othertype.getText() + " for argument " + argName)
                     process.exit(-59)
                   }
-                  if (othertypeBox.type != Box.builtinTypes["type"]) {
+                  if (othertypeBox.type != Type.builtinTypes["type"]) {
                     console.error("Function argument is not a valid type: " + othertype.getText())
                     process.exit(-60)
                   }
@@ -125,7 +125,7 @@ class UserFunction {
             getArgType = new Box(union)
           }
         }
-        if (getArgType.type != Box.builtinTypes["type"]) {
+        if (getArgType.type != Type.builtinTypes["type"]) {
           console.error("Function argument is not a valid type: " + argsAst.argtype(i).getText())
           process.exit(-13)
         }
@@ -136,14 +136,14 @@ class UserFunction {
     if (functionAst.argtype() !== null) {
       if (functionAst.argtype().othertype().length === 1) {
         let getReturnType = closureScope.deepGet(functionAst.argtype().getText())
-        if (getReturnType == null || getReturnType.type != Box.builtinTypes["type"]) {
+        if (getReturnType == null || getReturnType.type != Type.builtinTypes["type"]) {
           if (functionAst.argtype().othertype(0).typegenerics() != null) {
             getReturnType = closureScope.deepGet(functionAst.argtype().othertype(0).typename().getText())
             if (getReturnType == null) {
               console.error("Could not find type " + functionAst.argtype().getText() + " for function " + functionAst.VARNAME().getText())
               process.exit(-59)
             }
-            if (getReturnType.type !== Box.builtinTypes["type"]) {
+            if (getReturnType.type !== Type.builtinTypes["type"]) {
               console.error("Function return is not a valid type: " + functionAst.argtype().getText())
               process.exit(-60)
             }
@@ -170,7 +170,7 @@ class UserFunction {
                 console.error("Could not find return type " + othertype.getText() + " for function " + functionAst.VARNAME().getText())
                 process.exit(-59)
               }
-              if (othertypeBox.type !== Box.builtinTypes["type"]) {
+              if (othertypeBox.type !== Type.builtinTypes["type"]) {
                 console.error("Function argument is not a valid type: " + othertype.getText())
                 process.exit(-60)
               }
@@ -190,7 +190,7 @@ class UserFunction {
       }
     } else {
       // TODO: Infer the return type by finding the return value and tracing backwards
-      returnType = Box.builtinTypes["void"]
+      returnType = Type.builtinTypes["void"]
     }
     let pure = true
     let statements = []
