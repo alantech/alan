@@ -2,7 +2,7 @@
 
 A runtime in Rust to run AGC or Alan Graphcode, alan's bytecode format.
 
-This runtime is licensed AGPL 3.0 but the [alan standard library](https://github.com/alantech/std) and the [Javascript runtime shim](https://github.com/alantech/js-runtime) are licensed Apache 2.0 so you can freely distribute your compiled code.
+This runtime is licensed AGPL 3.0 but the [alan standard library](https://github.com/alantech/alan/tree/master/std) and the [Javascript runtime shim](https://github.com/alantech/alan/tree/master/js-runtime) are licensed Apache 2.0 so you can freely distribute your compiled code.
 
 ## Install
 
@@ -16,11 +16,11 @@ cargo build
 cargo run -- run  <sourcefile>
 ```
 
-The source file has to be `.agc` format. The examples folder includes an example file and a brief walkthrough of the format.
+The source file has to be `.agc` format.
 To run an optimized build:
 
 ```
-cargo build && cargo build --release
+cargo build --release
 ./target/release/alan-runtime run <sourcefile>
 ```
 
