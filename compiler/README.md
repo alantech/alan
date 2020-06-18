@@ -4,17 +4,17 @@ A compiler for alan to Javascript and Alan Graphcode, the [runtime](https://gith
 
 Caveats: There should be a strict mode that make sure int64s are using [BigInt](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt) despite the performance loss, but the vast majority of the time falling back to regular numbers should work.
 
-This compiler is licensed AGPL 3.0 but the [alan standard library](https://github.com/alantech/std) and the [Javascript runtime shim](https://github.com/alantech/js-runtime) are licensed Apache 2.0 so you can freely distribute your compiled code.
+This compiler is licensed AGPL 3.0 but the [alan standard library](https://github.com/alantech/alan/tree/master/std) and the [Javascript runtime shim](https://github.com/alantech/alan/tree/master/js-runtime) are licensed Apache 2.0 so you can freely distribute your compiled code.
 
 ## Install
 
-```
+```sh
 npm install -g alan-compiler
 ```
 
 ## Usage
 
-```
+```sh
 alan-compiler <sourcefile> <outputfile>
 ```
 
@@ -24,10 +24,12 @@ The supported source formats are:
 
 * `.ln` - The a*l*a*n* source file extension, with automatic traversal and loading of specified imports relative to this file.
 * `.amm` - The *a*lan *m*inus *m*inus (`alan--`) intermediate representation. A strict subset of `alan` in a single file used for final conversion to the output formats.
+* `.aga` - The *a*lan *g*raph *a*ssembler format. An intermediate representation very close to the `.agc` format (below) that the runtime operates on. It also indicates the dependency graph of operations in the format that can be used by the runtime. Useful for debugging runtime behavior issues or if you are targeting the runtime with a different language.
 
 The supported output formats are:
 
 * `.amm` - The *a*lan *m*inus *m*inus (`alan--`) intermediate representation, useful only for debugging compiler issues or if you are writing your own second stage compiler for another runtime environment.
+* `.aga` - The *a*lan *g*raph *a*ssembler format. An intermediate representation very close to the `.agc` format (below) that the runtime operates on. It also indicates the dependency graph of operations in the format that can be used by the runtime. Useful for debugging runtime behavior issues or if you are targeting the runtime with a different language.
 * `.agc` - The *a*lan *g*raph*c*ode bytecode format. The bytecode format of the alan [runtime](https://github.com/alantech/runtime) that also maintains a dependency graph of operations to allow quick, dynamic restructuring of the code safely depending on the data being processed and the state and capabilities of the machine it is running on.
 * `.js` - The most common [ECMAScript](https://ecma-international.org/ecma-262/10.0/index.html) file extension, representing a [CommonJS](http://www.commonjs.org/) module (aka a [Node](https://nodejs.org/en/) module).
 
@@ -39,7 +41,7 @@ This project also uses [Browserify](http://browserify.org/) to create a version 
 
 To get this bundled browser version, simply run:
 
-```
+```sh
 yarn bundle
 ```
 
@@ -55,7 +57,7 @@ then in your own Javascript source included later, you can acquire and use the c
 const alanCompiler = require('alan-compiler') // Browserify creates a toplevel `require` function that you can use to get the modules
 const helloWorld = alanCompiler('ln', 'js', `
   import @std/app
-  
+
   on app.start {
     app.print("Hello, World!")
     emit app.exit 0
@@ -76,13 +78,13 @@ The `alan-compiler` uses [ANTLR](https://www.antlr.org/) to define the `alan` an
 
 To edit the language grammar itself, you need to have `antlr4` installed:
 
-```
+```sh
 sudo apt install antlr4
 ```
 
 and then regenerate the Javascript lexer and parser by running, for example:
 
-```
+```sh
 cd src/ln
 antlr4 -Dlanguage=JavaScript Ln.g4
 ```
