@@ -4,7 +4,7 @@ The alan standard library defined in alan.
 
 ## Usage
 
-This project is not structured like a normal alan library because it is not meant to be installed like external libraries. It is meant to be consumed by the alan [compiler](https://github.com/alantech/compiler) to target the appropriate opcodes in the alan runtimes.
+This project is not structured like a normal alan library because it is not meant to be installed like external libraries. It is meant to be consumed by the alan [compiler](https://github.com/alantech/alan/tree/master/compiler) to target the appropriate opcodes in the alan runtimes.
 
 ## How it works
 
