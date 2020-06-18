@@ -13,19 +13,19 @@ const opcodeScope = new Scope()
 const opcodeModule = new Module(opcodeScope)
 
 // Base types
-const addBuiltIn = (name) => { opcodeScope.put(name, new Box(Box.builtinTypes[name])) }
+const addBuiltIn = (name) => { opcodeScope.put(name, new Box(Type.builtinTypes[name])) }
 ([
   'void', 'int8', 'int16', 'int32', 'int64', 'float32', 'float64', 'bool', 'string', 'function',
   'operator', 'Error', 'Array', 'Map', 'KeyVal',
 ].map(addBuiltIn))
-Box.builtinTypes['Array'].solidify(['string'], opcodeScope)
-Box.builtinTypes['Map'].solidify(['string', 'string'], opcodeScope)
+Type.builtinTypes['Array'].solidify(['string'], opcodeScope)
+Type.builtinTypes['Map'].solidify(['string', 'string'], opcodeScope)
 opcodeScope.put('any', new Box(new Type('any', true, new Interface('any'))))
-Box.builtinTypes['Array'].solidify(['any'], opcodeScope)
-Box.builtinTypes['Map'].solidify(['any', 'any'], opcodeScope)
-Box.builtinTypes['KeyVal'].solidify(['any', 'any'], opcodeScope)
-Box.builtinTypes['Array'].solidify(['KeyVal<any, any>'], opcodeScope)
-opcodeScope.put("start", new Box(new Event("_start", Box.builtinTypes.void, true), true))
+Type.builtinTypes['Array'].solidify(['any'], opcodeScope)
+Type.builtinTypes['Map'].solidify(['any', 'any'], opcodeScope)
+Type.builtinTypes['KeyVal'].solidify(['any', 'any'], opcodeScope)
+Type.builtinTypes['Array'].solidify(['KeyVal<any, any>'], opcodeScope)
+opcodeScope.put("start", new Box(new Event("_start", Type.builtinTypes.void, true), true))
 const t = (str) => opcodeScope.get(str).typeval
 
 // opcode declarations
@@ -37,7 +37,7 @@ const addopcodes = (opcodes) => {
     const opcodeObj = {
       getName: () => opcodeName,
       getArguments: () => args,
-      getReturnType: () => returnType || Box.builtinTypes.void,
+      getReturnType: () => returnType || Type.builtinTypes.void,
       isNary: () => false,
       isPure: () => true,
       microstatementInlining: (realArgNames, scope, microstatements) => {

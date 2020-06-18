@@ -1,4 +1,3 @@
-const Type = require('./Type')
 const FunctionType = require('./FunctionType')
 
 class Interface {
@@ -17,8 +16,9 @@ class Interface {
   }
 
   typeApplies(typeToCheck, scope) {
+    // Circulary dependency nonsense
+    const Type = require('./Type')
     // Solve circular dependency issue
-    const Box = require('./Box')
     for (const requiredProperty of Object.keys(this.requiredProperties)) {
       if (!typeToCheck.properties.hasOwnProperty(requiredProperty)) return false
     }
@@ -28,7 +28,7 @@ class Interface {
       const potentialFunctionsBox = scope.deepGet(functionType.functionname)
       if (
         potentialFunctionsBox == null ||
-        potentialFunctionsBox.type != Box.builtinTypes["function"]
+        potentialFunctionsBox.type != Type.builtinTypes["function"]
       ) {
         console.error(functionType.functionname + " is not the name of a function")
         process.exit(-48)
@@ -67,7 +67,9 @@ class Interface {
   }
 
   static fromAst(interfaceAst, scope) {
+    // Circulary dependency nonsense
     const Box = require('./Box')
+    const Type = require('./Type')
     // Construct the basic interface, the wrapper type, and insert it into the scope
     // This is all necessary so the interface can self-reference when constructing the function and
     // operator types.

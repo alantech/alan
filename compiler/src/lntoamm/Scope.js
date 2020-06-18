@@ -1,4 +1,5 @@
 const Box = require('./Box')
+const Type = require('./Type')
 const { LnParser, } = require('../ln')
 
 class Scope {
@@ -29,7 +30,7 @@ class Scope {
         } else if (boxedVar === null) {
           return null
         } else {
-          if (boxedVar.type === Box.builtinTypes['scope']) {
+          if (boxedVar.type === Type.builtinTypes['scope']) {
             boxedVar = boxedVar.scopeval.get(fullVar[i])
           } else if (boxedVar.typevalval !== null) {
             boxedVar = boxedVar.typevalval[fullVar[i]]
@@ -50,7 +51,7 @@ class Scope {
           if (varSegment.METHODSEP() != null) continue // Skip these, they're just periods
           if (varSegment.VARNAME() != null) {
             // This path is like the original deepGet
-            if (boxedVar.type === Box.builtinTypes["scope"]) {
+            if (boxedVar.type === Type.builtinTypes["scope"]) {
               boxedVar = boxedVar.scopeval.get(varSegment.getText())
             } else if (boxedVar.typevalval !== null) { // User-defined type instance
               boxedVar = boxedVar.typevalval[varSegment.getText()]
@@ -66,9 +67,9 @@ class Scope {
               null,
               true
             )
-            if (boxedVar.type.originalType !== null && boxedVar.type.originalType === Box.builtinTypes["Array"]) {
+            if (boxedVar.type.originalType !== null && boxedVar.type.originalType === Type.builtinTypes["Array"]) {
               boxedVar = boxedVar.arrayval.get(arrayAccessBox.int64val)
-            } else if (boxedVar.type.originalType != null && boxedVar.type.originalType == Box.builtinTypes["Map"]) {
+            } else if (boxedVar.type.originalType != null && boxedVar.type.originalType == Type.builtinTypes["Map"]) {
               boxedVar = boxedVar.mapval.get(arrayAccessBox)
               if (boxedVar == null) {
                 boxedVar = opcodeScope.get("_")
@@ -80,7 +81,7 @@ class Scope {
                 process.exit(-38)
               }
               const arrayAccessStr = arrayAccessBox.stringval;
-              if (boxedVar.type == Box.builtinTypes["scope"]) {
+              if (boxedVar.type == Type.builtinTypes["scope"]) {
                 boxedVar = boxedVar.scopeval.get(arrayAccessStr)
               } else if (boxedVar.typevalval !== null) { // User-defined type instance
                 boxedVar = boxedVar.typevalval[arrayAccessStr]
@@ -128,7 +129,7 @@ class Scope {
       if (boxedVar === null) {
         boxedVar = this.deepGet(fullVar[i])
       } else {
-        if (boxedVar.type === Box.builtinTypes["scope"]) {
+        if (boxedVar.type === Type.builtinTypes["scope"]) {
           boxedVar = boxedVar.scopeval.get(fullVar[i])
         } else if (boxedVar.typevalval !== null) { // User-defined type instance
           boxedVar = boxedVar.typevalval[fullVar[i]]
@@ -138,7 +139,7 @@ class Scope {
         }
       }
     }
-    if (boxedVar.type === Box.builtinTypes["scope"]) {
+    if (boxedVar.type === Type.builtinTypes["scope"]) {
       boxedVar.scopeval.put(fullVar[fullVar.length - 1], val)
     } else if (boxedVar.typevalval != null) {
       boxedVar.typevalval[fullVar[fullVar.length - 1]] = val

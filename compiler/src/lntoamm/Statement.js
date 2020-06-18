@@ -1,4 +1,4 @@
-const Box = require('./Box')
+const Type = require('./Type')
 const { LnParser, } = require('../ln')
 
 // Only implements the pieces necessary for the first stage compiler
@@ -28,7 +28,7 @@ class Statement {
       // if prior statements defined it, for now, just assume it exists and is not pure
       return false
     }
-    if (functionBox.type !== Box.builtinTypes["function"]) {
+    if (functionBox.type !== Type.builtinTypes["function"]) {
       console.error(callAst.varn(0).getText() + " is not a function")
       process.exit(-17)
     }
