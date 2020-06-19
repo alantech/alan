@@ -1509,14 +1509,15 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("lenarr", |args, hand_mem, _| {
-    let len = hand_mem.len_arr(args[0]) as i64;
+    let arr = hand_mem.get_reg(args[0]);
+    let len = arr.len_as_arr() as i64;
     hand_mem.write(args[2], 8, &len.to_le_bytes());
     None
   });
   cpu!("indarrf", |args, hand_mem, _| {
     let val = LittleEndian::read_i64(hand_mem.read(args[1], 8));
     let mem = hand_mem.get_reg(args[0]);
-    let len = hand_mem.len_arr(args[0]) as i64;
+    let len = mem.len_as_arr() as i64;
     let mut idx = -1i64;
     for i in 0..len {
       let check = LittleEndian::read_i64(mem.read(i*8, 8));
@@ -1531,7 +1532,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("indarrv", |args, hand_mem, _| {
     let val = hand_mem.read(args[1], 0);
     let mem = hand_mem.get_reg(args[0]);
-    let len = hand_mem.len_arr(args[0]) as i64;
+    let len = mem.len_as_arr() as i64;
     let mut idx = -1i64;
     for i in 0..len {
       let check = mem.read(i*8, 0);
@@ -1558,8 +1559,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let sep_pascal_string = hand_mem.read(args[1], 0);
     let sep_size = LittleEndian::read_u64(&sep_pascal_string[0..8]) as usize;
     let sep_str = str::from_utf8(&sep_pascal_string[8..sep_size + 8]).unwrap();
-    let len = hand_mem.len_arr(args[0]) as i64;
     let mem = hand_mem.get_reg(args[0]);
+    let len = mem.len_as_arr() as i64;
     let mut strs: Vec<String> = Vec::new();
     for i in 0..len {
       let v_pascal_string = mem.read(i*8, 0);
