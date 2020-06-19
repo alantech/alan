@@ -42,7 +42,7 @@ Describe "Strings"
           print(res[0])
 
           const res2 = 'Hello, World!' / ', '
-          print(res[1])
+          print(res2[1])
 
           emit exit 0
         }
