@@ -87,12 +87,17 @@ impl HandlerMemory {
     self.registers_ish.insert(reg_addr, arr_addrs);
   }
 
-  /// returns the HandlerMemory the registerish references
-  pub fn get_reg(self: &HandlerMemory, addr: i64) -> &HandlerMemory {
+  /// The address provided can be a directly nested fractal or a registerish address that points to
+  /// a fractal. Either returns a reference to a HandlerMemory
+  pub fn get_fractal(self: &HandlerMemory, addr: i64) -> &HandlerMemory {
     let reg_opt = self.registers_ish.get(&addr);
     if reg_opt.is_none() {
+      let arr_opt = self.fractal_mem.get(&addr);
+      if arr_opt.is_some() {
+        return arr_opt.unwrap();
+      }
       panic!("Register at address {} does not exist.", addr);
-    };
+    }
     let reg = reg_opt.unwrap().to_vec();
     let mut arr = self.get_arr(reg[0]);
     for (i, addr) in reg.iter().enumerate() {
@@ -102,12 +107,17 @@ impl HandlerMemory {
     return arr;
   }
 
-  /// returns the mutable HandlerMemory the registerish references
-  pub fn get_mut_reg(self: &mut HandlerMemory, addr: i64) -> &mut HandlerMemory {
+  /// The address provided can be a directly nested fractal or a registerish address that points to
+  /// a fractal. Either returns a reference to a HandlerMemory
+  pub fn get_mut_fractal(self: &mut HandlerMemory, addr: i64) -> &mut HandlerMemory {
     let reg_opt = self.registers_ish.get(&addr);
     if reg_opt.is_none() {
+      let arr_opt = self.fractal_mem.get_mut(&addr);
+      if arr_opt.is_some() {
+        return arr_opt.unwrap();
+      }
       panic!("Register at address {} does not exist.", addr);
-    };
+    }
     let reg = reg_opt.unwrap().to_vec();
     let mut arr = self.get_mut_arr(reg[0]);
     for (i, addr) in reg.iter().enumerate() {
@@ -120,13 +130,15 @@ impl HandlerMemory {
   /// copy data from outer address to inner address in array or registerish
   pub fn copy_to(self: &mut HandlerMemory, arr_addr: i64, outer_addr:i64, inner_addr: i64) {
     let (data, size) = self.read_and_copy_either(outer_addr);
-    self.write_to_arr(arr_addr, inner_addr, data, size);
+    let arr = self.get_mut_fractal(arr_addr);
+    arr.write(inner_addr, size, data.as_slice());
   }
 
   /// copy data from inner address in array to outer address. the array address can point to a
   /// registerish
   pub fn copy_from(self: &mut HandlerMemory, arr_addr:i64, outer_addr:i64, inner_addr: i64) {
-    let (data, size) = self.read_and_copy_from_arr(arr_addr, inner_addr);
+    let arr = self.get_fractal(arr_addr);
+    let (data, size) = arr.read_and_copy_either(inner_addr);
     self.write(outer_addr, size, data.as_slice());
   }
 
@@ -136,26 +148,14 @@ impl HandlerMemory {
     self.fractal_mem.insert(out_addr, new_arr);
   }
 
-  pub fn len_arr(self: &HandlerMemory, addr: i64) -> usize {
-    let arr = self.get_arr(addr);
-    // string as array of u8
-    if arr.mem.len() > 0 {
+  pub fn len_as_arr(self: &HandlerMemory) -> usize {
+    if self.mem.len() > 0 {
       // denormalizing for Array<any> implementation defined in push_arr
       // since the length of mem is used to track the length of fractal_mem
-      return arr.mem.len() / 8;
+      return self.mem.len() / 8;
     }
     // array of types
-    return arr.fractal_mem.len();
-  }
-
-  pub fn ind_arr(self: &HandlerMemory, addr: i64, val: &[u8]) -> i64 {
-    let arr = self.get_arr(addr);
-    for (key, el) in arr.fractal_mem.iter() {
-      if el.mem.len() == val.len() && el.mem.iter().eq(val.iter()) {
-        return key.clone();
-      }
-    }
-    return -1;
+    return self.fractal_mem.len();
   }
 
   pub fn new_arr(self: &mut HandlerMemory, addr: i64) {
@@ -188,30 +188,6 @@ impl HandlerMemory {
     let last_adrr = idx as i64;
     let last = arr.fractal_mem.remove(&last_adrr).unwrap();
     return last.mem;
-  }
-
-  /// write data from outer address to inner address in array or registerish
-  pub fn write_to_arr(self: &mut HandlerMemory, arr_addr:i64, inner_addr: i64, data: Vec<u8>, size: u8) {
-    let arr_opt = self.fractal_mem.get_mut(&arr_addr);
-    let arr = if arr_opt.is_none() {
-      self.get_mut_reg(arr_addr)
-    } else {
-      arr_opt.unwrap()
-    };
-    arr.write(inner_addr, size, &data);
-
-  }
-
-  /// read data from inner address in array to outer address and return a copy of it and its size
-  /// the array address can point to a registerish
-  pub fn read_and_copy_from_arr(self: &HandlerMemory, arr_addr:i64, inner_addr: i64) -> (Vec<u8>, u8) {
-    let arr_opt = self.fractal_mem.get(&arr_addr);
-    let arr = if arr_opt.is_none() {
-      self.get_reg(arr_addr)
-    } else {
-      arr_opt.unwrap()
-    };
-    return arr.read_and_copy_either(inner_addr);
   }
 
   /// read address of string or fixed length data type and
