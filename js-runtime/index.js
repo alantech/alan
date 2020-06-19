@@ -220,7 +220,7 @@ module.exports = {
   split:   (a, b) => a.split(b),
   repstr:  (a, b) => new Array(b).fill(a).join(''),
   // TODO: templ, after maps are figured out
-  matches: (a, b) => a.includes(b),
+  matches: (a, b) => RegExp(b).test(a),
   indstr:  (a, b) => a.indexOf(b),
   lenstr:  a => a.length,
   trim:    a => a.trim(),
@@ -230,6 +230,9 @@ module.exports = {
   newarr:  size => new Array(), // Ignored because JS push doesn't behave as desired
   pusharr: (arr, val) => arr.push(val),
   lenarr: arr => arr.length,
+  indarrf:(arr, val) => arr.indexOf(val),
+  indarrv:(arr, val) => arr.indexOf(val),
+  join:   (arr, sep) => arr.join(sep),
 
   // Map opcodes TODO after maps are figured out
 

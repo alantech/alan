@@ -10,6 +10,7 @@ use std::time::Duration;
 use byteorder::{ByteOrder, LittleEndian};
 use once_cell::sync::Lazy;
 use tokio::time::delay_for;
+use regex::Regex;
 
 use crate::vm::event::{EventEmit, HandlerFragment};
 use crate::vm::memory::HandlerMemory;
@@ -1443,7 +1444,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let b_pascal_string = hand_mem.read(args[1], 0);
     let b_size = LittleEndian::read_u64(&b_pascal_string[0..8]) as usize;
     let b_str = str::from_utf8(&b_pascal_string[8..b_size + 8]).unwrap();
-    let out = if a_str.contains(b_str) { 1u8 } else { 0u8 };
+    let b_regex = Regex::new(b_str).unwrap();
+    let out = if b_regex.is_match(a_str) { 1u8 } else { 0u8 };
     hand_mem.write(args[2], 1, &out.to_le_bytes());
     None
   });
@@ -1511,10 +1513,64 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     hand_mem.write(args[2], 8, &len.to_le_bytes());
     None
   });
-  cpu!("indarr", |args, hand_mem, _| {
-    let (val, _) = hand_mem.read_either(args[1]);
-    let idx = hand_mem.ind_arr(args[0], val);
+  cpu!("indarrf", |args, hand_mem, _| {
+    let val = LittleEndian::read_i64(hand_mem.read(args[1], 8));
+    let mem = hand_mem.get_arr(args[0]);
+    let len = hand_mem.len_arr(args[0]) as i64;
+    let mut idx = -1i64;
+    for i in 0..len {
+      let check = LittleEndian::read_i64(mem.read(i*8, 8));
+      if val == check {
+        idx = i;
+        break
+      }
+    }
     hand_mem.write(args[2], 8, &idx.to_le_bytes());
+    None
+  });
+  cpu!("indarrv", |args, hand_mem, _| {
+    let val = hand_mem.read(args[1], 0);
+    let mem = hand_mem.get_arr(args[0]);
+    let len = hand_mem.len_arr(args[0]) as i64;
+    let mut idx = -1i64;
+    for i in 0..len {
+      let check = mem.read(i*8, 0);
+      // TODO: equality comparisons for nested arrays, for now, assume it's string-like
+      if val.len() != check.len() {
+        continue
+      }
+      let mut matches = true;
+      for j in 0..val.len() {
+        if val[j] != check[j] {
+          matches = false;
+          break
+        }
+      }
+      if matches {
+        idx = i;
+        break
+      }
+    }
+    hand_mem.write(args[2], 8, &idx.to_le_bytes());
+    None
+  });
+  cpu!("join", |args, hand_mem, _| {
+    let sep_pascal_string = hand_mem.read(args[1], 0);
+    let sep_size = LittleEndian::read_u64(&sep_pascal_string[0..8]) as usize;
+    let sep_str = str::from_utf8(&sep_pascal_string[8..sep_size + 8]).unwrap();
+    let len = hand_mem.len_arr(args[0]) as i64;
+    let mem = hand_mem.get_arr(args[0]);
+    let mut strs: Vec<String> = Vec::new();
+    for i in 0..len {
+      let v_pascal_string = mem.read(i*8, 0);
+      let v_size = LittleEndian::read_u64(&v_pascal_string[0..8]) as usize;
+      let v_str = str::from_utf8(&v_pascal_string[8..v_size + 8]).unwrap().to_string();
+      strs.push(v_str);
+    }
+    let out_str = strs.join(sep_str);
+    let mut out = out_str.len().to_le_bytes().to_vec();
+    out.append(&mut out_str.as_bytes().to_vec());
+    hand_mem.write(args[2], 0, &out);
     None
   });
   cpu!("pusharr", |args, hand_mem, _| {
