@@ -64,7 +64,7 @@ impl HandlerMemory {
     return hand_mem;
   }
 
-  pub fn get_mut_arr(self: &mut HandlerMemory, addr: i64) -> &mut HandlerMemory {
+  fn get_mut_arr(self: &mut HandlerMemory, addr: i64) -> &mut HandlerMemory {
     let arr_opt = self.fractal_mem.get_mut(&addr);
     if arr_opt.is_none() {
       panic!("Array at address {} does not exist.", addr);
@@ -72,7 +72,7 @@ impl HandlerMemory {
     return arr_opt.unwrap();
   }
 
-  pub fn get_arr(self: &HandlerMemory, addr: i64) -> &HandlerMemory {
+  fn get_arr(self: &HandlerMemory, addr: i64) -> &HandlerMemory {
     let arr_opt = self.fractal_mem.get(&addr);
     if arr_opt.is_none() {
       panic!("Array at address {} does not exist.", addr);
