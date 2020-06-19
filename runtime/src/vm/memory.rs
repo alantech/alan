@@ -90,14 +90,14 @@ impl HandlerMemory {
   /// The address provided can be a directly nested fractal or a registerish address that points to
   /// a fractal. Either returns a reference to a HandlerMemory
   pub fn get_fractal(self: &HandlerMemory, addr: i64) -> &HandlerMemory {
-    let arr_opt = self.fractal_mem.get(&addr);
-    if arr_opt.is_some() {
-      return arr_opt.unwrap();
-    }
     let reg_opt = self.registers_ish.get(&addr);
     if reg_opt.is_none() {
+      let arr_opt = self.fractal_mem.get(&addr);
+      if arr_opt.is_some() {
+        return arr_opt.unwrap();
+      }
       panic!("Register at address {} does not exist.", addr);
-    };
+    }
     let reg = reg_opt.unwrap().to_vec();
     let mut arr = self.get_arr(reg[0]);
     for (i, addr) in reg.iter().enumerate() {
@@ -112,11 +112,11 @@ impl HandlerMemory {
   pub fn get_mut_fractal(self: &mut HandlerMemory, addr: i64) -> &mut HandlerMemory {
     let reg_opt = self.registers_ish.get(&addr);
     if reg_opt.is_none() {
-      panic!("Register at address {} does not exist.", addr);
       let arr_opt = self.fractal_mem.get_mut(&addr);
       if arr_opt.is_some() {
         return arr_opt.unwrap();
       }
+      panic!("Register at address {} does not exist.", addr);
     }
     let reg = reg_opt.unwrap().to_vec();
     let mut arr = self.get_mut_arr(reg[0]);
