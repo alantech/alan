@@ -88,7 +88,7 @@ impl HandlerMemory {
   }
 
   /// returns the HandlerMemory the registerish references
-  pub fn get_reg(self: &HandlerMemory, addr: i64) -> &HandlerMemory {
+  pub fn get_fractal(self: &HandlerMemory, addr: i64) -> &HandlerMemory {
     let arr_opt = self.fractal_mem.get(&addr);
     if arr_opt.is_some() {
       return arr_opt.unwrap();
@@ -107,7 +107,7 @@ impl HandlerMemory {
   }
 
   /// returns the mutable HandlerMemory the registerish references
-  pub fn get_mut_reg(self: &mut HandlerMemory, addr: i64) -> &mut HandlerMemory {
+  pub fn get_mut_fractal(self: &mut HandlerMemory, addr: i64) -> &mut HandlerMemory {
     let reg_opt = self.registers_ish.get(&addr);
     if reg_opt.is_none() {
       panic!("Register at address {} does not exist.", addr);
@@ -128,14 +128,14 @@ impl HandlerMemory {
   /// copy data from outer address to inner address in array or registerish
   pub fn copy_to(self: &mut HandlerMemory, arr_addr: i64, outer_addr:i64, inner_addr: i64) {
     let (data, size) = self.read_and_copy_either(outer_addr);
-    let arr = self.get_mut_reg(arr_addr);
+    let arr = self.get_mut_fractal(arr_addr);
     arr.write(inner_addr, size, data.as_slice());
   }
 
   /// copy data from inner address in array to outer address. the array address can point to a
   /// registerish
   pub fn copy_from(self: &mut HandlerMemory, arr_addr:i64, outer_addr:i64, inner_addr: i64) {
-    let arr = self.get_reg(arr_addr);
+    let arr = self.get_fractal(arr_addr);
     let (data, size) = arr.read_and_copy_either(inner_addr);
     self.write(outer_addr, size, data.as_slice());
   }
