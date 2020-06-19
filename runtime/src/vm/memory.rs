@@ -156,13 +156,6 @@ impl HandlerMemory {
     return self.fractal_mem.len();
   }
 
-  pub fn len(self: &HandlerMemory) -> usize {
-    if self.mem.len() > 0 {
-      return self.mem.len();
-    }
-    return self.fractal_mem.len() * 8;
-  }
-
   pub fn new_arr(self: &mut HandlerMemory, addr: i64) {
     let curr = self.read(addr, 0);
     if curr.len() > 0 {
