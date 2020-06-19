@@ -129,14 +129,14 @@ impl HandlerMemory {
   pub fn copy_to(self: &mut HandlerMemory, arr_addr: i64, outer_addr:i64, inner_addr: i64) {
     let (data, size) = self.read_and_copy_either(outer_addr);
     let arr = self.get_mut_reg(arr_addr);
-    arr.write(inner_addr, size, &data);
+    arr.write(inner_addr, size, data.as_slice());
   }
 
   /// copy data from inner address in array to outer address. the array address can point to a
   /// registerish
   pub fn copy_from(self: &mut HandlerMemory, arr_addr:i64, outer_addr:i64, inner_addr: i64) {
     let arr = self.get_reg(arr_addr);
-    let (data, size) = self.read_and_copy_either(inner_addr);
+    let (data, size) = arr.read_and_copy_either(inner_addr);
     self.write(outer_addr, size, data.as_slice());
   }
 
