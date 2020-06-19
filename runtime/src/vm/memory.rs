@@ -87,7 +87,8 @@ impl HandlerMemory {
     self.registers_ish.insert(reg_addr, arr_addrs);
   }
 
-  /// returns the HandlerMemory the registerish references
+  /// The address provided can be a directly nested fractal or a registerish address that points to
+  /// a fractal. Either returns a reference to a HandlerMemory
   pub fn get_fractal(self: &HandlerMemory, addr: i64) -> &HandlerMemory {
     let arr_opt = self.fractal_mem.get(&addr);
     if arr_opt.is_some() {
@@ -106,7 +107,8 @@ impl HandlerMemory {
     return arr;
   }
 
-  /// returns the mutable HandlerMemory the registerish references
+  /// The address provided can be a directly nested fractal or a registerish address that points to
+  /// a fractal. Either returns a reference to a HandlerMemory
   pub fn get_mut_fractal(self: &mut HandlerMemory, addr: i64) -> &mut HandlerMemory {
     let reg_opt = self.registers_ish.get(&addr);
     if reg_opt.is_none() {
