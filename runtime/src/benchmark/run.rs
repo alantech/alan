@@ -1,3 +1,7 @@
+use byteorder::{ByteOrder, LittleEndian};
+use rand::thread_rng;
+use rand::Rng;
+
 use crate::vm::memory::HandlerMemory;
 
 /// This benchmark is meant to determine which form of array parallelization should be used in the
@@ -44,6 +48,62 @@ use crate::vm::memory::HandlerMemory;
 /// data into the HandlerMemory will not count in the runtime, but the final saving of the
 /// resulting data *will*. This is to simulate the total wall clock time of an actual `map` opcode
 /// runtime.
+
+/// These functions are not quite like opcodes, there should be a sequence of them with a
+/// constraint of two input arguments per opcode, but for the benchmark, we'll have a truly
+/// arbitrary number of arguments to make the benchmark code simpler.
+fn square(args: &Vec<i64>, hand_mem: &mut HandlerMemory) {
+  let a = LittleEndian::read_i64(hand_mem.read(args[0], 8));
+  let out = a * a;
+  hand_mem.write(args[1], 8, &out.to_le_bytes());
+}
+
+fn mx_plus_b(args: &Vec<i64>, hand_mem: &mut HandlerMemory) {
+  let x = LittleEndian::read_i64(hand_mem.read(args[0], 8));
+  let m = LittleEndian::read_i64(hand_mem.read(args[1], 8));
+  let b = LittleEndian::read_i64(hand_mem.read(args[2], 8));
+  let intermediate = m * x;
+  hand_mem.write(args[3], 8, &intermediate.to_le_bytes());
+  let out = intermediate + b;
+  hand_mem.write(args[4], 8, &out.to_le_bytes());
+}
+
+fn e_field(args: &Vec<i64>, hand_mem: &mut HandlerMemory) {
+  let i = LittleEndian::read_i64(hand_mem.read(args[0], 8));
+  let arr = hand_mem.get_fractal(args[1]);
+  let len = arr.len_as_arr() as i64;
+  let mut out = 0.0f64;
+  // This vector is to avoid issues with borrowing `hand_mem` twice at the same time even though it
+  // would be safe
+  let mut charges: Vec<i64> = Vec::new();
+  for n in 0..len {
+    let charge = LittleEndian::read_i64(arr.read(n * 8, 8));
+    charges.push(charge);
+  }
+  for n in 0..len {
+    // All of the intermediate values are stored into the HandlerMemory to mimic how this function
+    // would be translated from alan to the runtime execution
+    let distance = i - n;
+    hand_mem.write(args[2], 8, &distance.to_le_bytes());
+    let sqdistance = distance * distance;
+    hand_mem.write(args[3], 8, &sqdistance.to_le_bytes());
+    let invsqdistance = 1f64 / (sqdistance as f64);
+    hand_mem.write(args[4], 8, &invsqdistance.to_le_bytes());
+    let scaled = invsqdistance * (charges[n as usize] as f64);
+    hand_mem.write(args[5], 8, &scaled.to_le_bytes());
+    out = out + scaled;
+  }
+  hand_mem.write(args[6], 8, &out.to_le_bytes());
+}
+
+fn gen_rand_array(size: i64) -> Vec<i64> {
+  let mut rng = thread_rng();
+  let mut out: Vec<i64> = Vec::new();
+  for _ in 0..size {
+    out.push((100000.0f64 * rng.gen::<f64>()) as i64);
+  }
+  return out;
+}
 
 pub fn benchmark() {
   println!("Benchmark!");
