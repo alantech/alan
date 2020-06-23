@@ -1,8 +1,12 @@
+use std::collections::HashMap;
+use std::time::Instant;
+
 use byteorder::{ByteOrder, LittleEndian};
-use rand::thread_rng;
 use rand::Rng;
+use rand::thread_rng;
 
 use crate::vm::memory::HandlerMemory;
+use crate::vm::program::{PROGRAM, Program};
 
 /// This benchmark is meant to determine which form of array parallelization should be used in the
 /// project. Two approaches exist but there are unknown restrictions within the Rust runtime that
@@ -105,6 +109,52 @@ fn gen_rand_array(size: i64) -> Vec<i64> {
   return out;
 }
 
+/// The three sequential tests, with the array sizes passed in and the return is the time in ns it
+/// took to run
+fn lin_square(size: i64) -> u128 {
+  let mut mem = HandlerMemory::new(None, 16);
+  let data = gen_rand_array(size);
+  let mut output: Vec<i64> = Vec::new();
+  let start = Instant::now();
+  let args = vec![0, 8];
+  for input in data {
+    mem.write(0, 8, &input.to_le_bytes());
+    square(&args, &mut mem);
+    output.push(LittleEndian::read_i64(mem.read(8, 8)));
+  }
+  let end = Instant::now();
+  return end.saturating_duration_since(start).as_nanos();
+}
+
+fn lin_mx_plus_b(size: i64) -> u128 {
+  let mut mem = HandlerMemory::new(None, 40);
+  mem.write(8, 8, &2i64.to_le_bytes());
+  mem.write(16, 8, &3i64.to_le_bytes());
+  let data = gen_rand_array(size);
+  let mut output: Vec<i64> = Vec::new();
+  let start = Instant::now();
+  let args = vec![0, 8, 16, 24, 32];
+  for input in data {
+    mem.write(0, 8, &input.to_le_bytes());
+    mx_plus_b(&args, &mut mem);
+    output.push(LittleEndian::read_i64(mem.read(32, 8)));
+  }
+  let end = Instant::now();
+  return end.saturating_duration_since(start).as_nanos();
+}
+
 pub fn benchmark() {
+  // Initialize the global PROGRAM value
+  PROGRAM.set(Program {
+    event_handlers: HashMap::new(),
+    event_pls: HashMap::new(),
+    gmem: Vec::new(),
+  });
   println!("Benchmark!");
+  println!("Quick test sequential squares 100-element array: {}ns", lin_square(100));
+  println!("Quick test sequential squares 10,000-element array: {}ns", lin_square(10000));
+  println!("Quick test sequential squares 1,000,000-element array: {}ns", lin_square(1000000));
+  println!("Quick test sequential mx+b 100-element array: {}ns", lin_mx_plus_b(100));
+  println!("Quick test sequential mx+b 10,000-element array: {}ns", lin_mx_plus_b(10000));
+  println!("Quick test sequential mx+b 1,000,000-element array: {}ns", lin_mx_plus_b(1000000));
 }
