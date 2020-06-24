@@ -4,6 +4,8 @@ use std::time::{Duration, Instant};
 use byteorder::{ByteOrder, LittleEndian};
 use rand::Rng;
 use rand::thread_rng;
+use rayon::{ThreadPool, ThreadPoolBuilder};
+use rayon::prelude::*; // Ugh, the Rayon documentation makes it difficult to not do this...
 
 use crate::vm::memory::HandlerMemory;
 use crate::vm::program::{PROGRAM, Program};
@@ -143,6 +145,132 @@ fn lin_mx_plus_b(size: i64) -> Duration {
   return end.saturating_duration_since(start);
 }
 
+fn lin_e_field(size: i64) -> Duration {
+  let mut mem = HandlerMemory::new(None, 56);
+  let data = gen_rand_array(size);
+  mem.new_arr(8);
+  for input in data {
+    mem.push_arr(8, input.to_le_bytes().to_vec(), 8);
+  }
+  let mut output: Vec<i64> = Vec::new();
+  let start = Instant::now();
+  let args = vec![0, 8, 16, 24, 32, 40, 48];
+  for i in 0..size {
+    mem.write(0, 8, &i.to_le_bytes());
+    e_field(&args, &mut mem);
+    output.push(LittleEndian::read_i64(mem.read(48, 8)));
+  }
+  let end = Instant::now();
+  return end.saturating_duration_since(start);
+}
+
+fn coarse_square(size: i64) -> Duration {
+  let mut full_output: Vec<i64> = Vec::new();
+  let cpu_threads = (num_cpus::get() - 1) as i64;
+  let mut data_chunks: Vec<Vec<i64>> = Vec::new();
+  for i in 0..cpu_threads {
+    let mut inner_size = size / cpu_threads;
+    if size % cpu_threads > 0 && i == cpu_threads - 1 {
+      inner_size = inner_size + (size % cpu_threads);
+    }
+    data_chunks.push(gen_rand_array(inner_size));
+  }
+  let start = Instant::now();
+  let result_chunks: Vec<Vec<i64>> = data_chunks.par_iter().map(|chunk| {
+    let mut output: Vec<i64> = Vec::new();
+    let mut mem = HandlerMemory::new(None, 16);
+    let args = vec![0, 8];
+    for input in chunk {
+      mem.write(0, 8, &input.to_le_bytes());
+      square(&args, &mut mem);
+      output.push(LittleEndian::read_i64(mem.read(8, 8)));
+    }
+    return output;
+  }).collect();
+  for chunk in result_chunks {
+    for i in 0..chunk.len() {
+      full_output.push(chunk[i]);
+    }
+  }
+  let end = Instant::now();
+  return end.saturating_duration_since(start);
+}
+
+fn coarse_mx_plus_b(size: i64) -> Duration {
+  let mut full_output: Vec<i64> = Vec::new();
+  let cpu_threads = (num_cpus::get() - 1) as i64;
+  let mut data_chunks: Vec<Vec<i64>> = Vec::new();
+  for i in 0..cpu_threads {
+    let mut inner_size = size / cpu_threads;
+    if size % cpu_threads > 0 && i == cpu_threads - 1 {
+      inner_size = inner_size + (size % cpu_threads);
+    }
+    data_chunks.push(gen_rand_array(inner_size));
+  }
+  let mut full_mem = HandlerMemory::new(None, 40);
+  full_mem.write(8, 8, &2i64.to_le_bytes());
+  full_mem.write(16, 8, &3i64.to_le_bytes());
+  let start = Instant::now();
+  let result_chunks: Vec<Vec<i64>> = data_chunks.par_iter().map(|chunk| {
+    let mut mem = full_mem.clone();
+    let mut output: Vec<i64> = Vec::new();
+    let args = vec![0, 8, 16, 24, 32];
+    for input in chunk {
+      mem.write(0, 8, &input.to_le_bytes());
+      mx_plus_b(&args, &mut mem);
+      output.push(LittleEndian::read_i64(mem.read(32, 8)));
+    }
+    return output;
+  }).collect();
+  for chunk in result_chunks {
+    for i in 0..chunk.len() {
+      full_output.push(chunk[i]);
+    }
+  }
+  let end = Instant::now();
+  return end.saturating_duration_since(start);
+}
+
+fn coarse_e_field(size: i64) -> Duration {
+  let mut full_output: Vec<i64> = Vec::new();
+  let cpu_threads = (num_cpus::get() - 1) as i64;
+  let mut data_chunks: Vec<Vec<i64>> = Vec::new();
+  for i in 0..cpu_threads {
+    let mut inner_size = size / cpu_threads;
+    if size % cpu_threads > 0 && i == cpu_threads - 1 {
+      inner_size = inner_size + (size % cpu_threads);
+    }
+    data_chunks.push(gen_rand_array(inner_size));
+  }
+  let mut mems: Vec<HandlerMemory> = Vec::new();
+  for chunk in data_chunks {
+    let mut mem = HandlerMemory::new(None, 56);
+    mem.new_arr(8);
+    for input in chunk {
+      mem.push_arr(8, input.to_le_bytes().to_vec(), 8);
+    }
+    mems.push(mem);
+  }
+  let start = Instant::now();
+  let result_chunks: Vec<Vec<i64>> = mems.par_iter_mut().map(|mut mem| {
+    let mut output: Vec<i64> = Vec::new();
+    let args = vec![0, 8, 16, 24, 32, 40, 48];
+    for i in 0..size {
+      mem.write(0, 8, &i.to_le_bytes());
+      e_field(&args, &mut mem);
+      output.push(LittleEndian::read_i64(mem.read(48, 8)));
+    }
+    return output;
+  }).collect();
+  for chunk in result_chunks {
+    for i in 0..chunk.len() {
+      full_output.push(chunk[i]);
+    }
+  }
+  let end = Instant::now();
+  return end.saturating_duration_since(start);
+}
+
 pub fn benchmark() {
   // Initialize the global PROGRAM value
   PROGRAM.set(Program {
@@ -150,6 +278,10 @@ pub fn benchmark() {
     event_pls: HashMap::new(),
     gmem: Vec::new(),
   });
+  // Initialize the global Rayon threadpool
+  let cpu_threads = num_cpus::get() - 1;
+  rayon::ThreadPoolBuilder::new().num_threads(cpu_threads).build_global().unwrap();
+  // Start benchmarking!
   println!("Benchmark!");
   println!("Quick test sequential squares 100-element array: {:?}", lin_square(100));
   println!("Quick test sequential squares 10,000-element array: {:?}", lin_square(10000));
@@ -157,4 +289,16 @@ pub fn benchmark() {
   println!("Quick test sequential mx+b 100-element array: {:?}", lin_mx_plus_b(100));
   println!("Quick test sequential mx+b 10,000-element array: {:?}", lin_mx_plus_b(10000));
   println!("Quick test sequential mx+b 1,000,000-element array: {:?}", lin_mx_plus_b(1000000));
+  println!("Quick test sequential e-field 100-element array: {:?}", lin_e_field(100));
+  println!("Quick test sequential e-field 10,000-element array: {:?}", lin_e_field(10000));
+  // println!("Quick test sequential e-field 1,000,000-element array: {:?}", lin_e_field(1000000));
+  println!("Quick test coarse parallel squares 100-element array: {:?}", coarse_square(100));
+  println!("Quick test coarse parallel squares 10,000-element array: {:?}", coarse_square(10000));
+  println!("Quick test coarse parallel squares 1,000,000-element array: {:?}", coarse_square(1000000));
+  println!("Quick test coarse parallel mx+b 100-element array: {:?}", coarse_mx_plus_b(100));
+  println!("Quick test coarse parallel mx+b 10,000-element array: {:?}", coarse_mx_plus_b(10000));
+  println!("Quick test coarse parallel mx+b 1,000,000-element array: {:?}", coarse_mx_plus_b(1000000));
+  println!("Quick test coarse parallel e-field 100-element array: {:?}", coarse_e_field(100));
+  println!("Quick test coarse parallel e-field 10,000-element array: {:?}", coarse_e_field(10000));
+  // println!("Quick test coarse parallel e-field 1,000,000-element array: {:?}", coarse_e_field(1000000));
 }
