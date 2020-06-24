@@ -448,12 +448,29 @@ class Microstatement {
         // accessing undefined data is impossible. If a value might not be needed, they should use
         // the `Option` type and provide a `None` value there.
         const assignmentAsts = basicAssignablesAst.objectliterals().typeliteral().assignments()
+        // First check that the assignments are well-formed and actually have an assignables field
+        for (const assignmentAst of assignmentAsts) {
+          if (!assignmentAst.assignables()) {
+            console.error(`${basicAssignablesAst.objectliterals().othertype().getText().trim()} object literal improperly defined`)
+            console.error(`${assignmentAst.varn().getText()} not set`)
+            console.error(
+              basicAssignablesAst.getText() +
+              " on line " +
+              basicAssignablesAst.start.line +
+              ":" +
+              basicAssignablesAst.start.column
+            )
+            process.exit(-109)
+          }
+        }
         const fields = Object.keys(typeBox.typeval.properties)
         let missingFields = []
         let foundFields = []
         let extraFields = []
+        let astLookup = {}
         for (const assignmentAst of assignmentAsts) {
           const name = assignmentAst.varn().getText()
+          astLookup[name] = assignmentAst
           if (!fields.includes(name)) {
             extraFields.push(name)
           }
@@ -484,6 +501,60 @@ class Microstatement {
           )
           process.exit(-108)
         }
+        // The assignment looks good, now we'll mimic the array literal logic mostly
+        const arrayLiteralContents = []
+        for (let i = 0; i < fields.length; i++) {
+          Microstatement.fromAssignablesAst(
+            astLookup[fields[i]].assignables(),
+            scope,
+            microstatements
+          )
+          arrayLiteralContents.push(microstatements[microstatements.length - 1])
+        }
+        // Create a new variable to hold the size of the array literal
+        const lenName = "_" + uuid().replace(/-/g, "_")
+        microstatements.push(new Microstatement(
+          StatementType.CONSTDEC,
+          scope,
+          true,
+          lenName,
+          Type.builtinTypes['int64'],
+          [`${fields.length}`],
+          [],
+        ))
+        const opcodeScope = require('./opcodes').exportScope // Unfortunate circular dep issue
+        // Add the opcode to create a new array with the specified size
+        opcodeScope.get('newarr').functionval[0].microstatementInlining(
+          [lenName],
+          scope,
+          microstatements,
+        )
+        // Get the array microstatement and extract the name and insert the correct type
+        const array = microstatements[microstatements.length - 1]
+        array.outputType = typeBox.typeval
+        const arrayName = array.outputName
+        // Push the values into the array
+        for (let i = 0; i < arrayLiteralContents.length; i++) {
+          opcodeScope.get('pusharr').functionval[0].microstatementInlining(
+            [arrayName, arrayLiteralContents[i].outputName],
+            scope,
+            microstatements,
+          )
+          // Update the push output argument type to be the original input type so the type is not
+          // erased
+          microstatements[microstatements.length - 1].outputType = arrayLiteralContents[i].outputType
+        }
+        // REREF the array
+        microstatements.push(new Microstatement(
+          StatementType.REREF,
+          scope,
+          true,
+          arrayName,
+          array.outputType,
+          [],
+          [],
+        ))
+        return
       }
       // If object literal parsing has made it this far, it's a Map literal that is not yet supported
       console.error(`${basicAssignablesAst.objectliterals().othertype().getText().trim()} not yet supported`)
