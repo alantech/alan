@@ -23,7 +23,7 @@ class Module {
   static getAllModules() {
     return modules
   }
-  
+
   static populateModule(
     path, // string
     ast, // ModuleContext
@@ -115,7 +115,7 @@ class Module {
     for (const typeAst of types) {
       const newType = Type.fromAst(typeAst, module.moduleScope);
       module.moduleScope.put(newType.typename, new Box(
-        newType.alias === null ? newType : newType.alias
+        newType.alias ? newType.alias : newType
       ))
     }
     // Next, interfaces

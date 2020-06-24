@@ -11,7 +11,7 @@ Describe "Events"
     }
     BeforeAll before
 
-    after() { 
+    after() {
       cleanTemp
     }
     AfterAll after
@@ -37,7 +37,7 @@ Describe "Events"
     }
     BeforeAll before
 
-    after() { 
+    after() {
       cleanTemp
     }
     AfterAll after
