@@ -252,7 +252,7 @@ fn coarse_e_field(size: i64) -> Duration {
     mems.push(mem);
   }
   let start = Instant::now();
-  let result_chunks: Vec<Vec<i64>> = mems.par_iter_mut().map(|mut mem| {
+  let mut result_chunks: Vec<Vec<i64>> = mems.par_iter_mut().map(|mut mem| {
     let mut output: Vec<i64> = Vec::new();
     let args = vec![0, 8, 16, 24, 32, 40, 48];
     for i in 0..size {
@@ -262,10 +262,8 @@ fn coarse_e_field(size: i64) -> Duration {
     }
     return output;
   }).collect();
-  for chunk in result_chunks {
-    for i in 0..chunk.len() {
-      full_output.push(chunk[i]);
-    }
+  for mut chunk in result_chunks {
+    full_output.append(&mut chunk);
   }
   let end = Instant::now();
   return end.saturating_duration_since(start);
