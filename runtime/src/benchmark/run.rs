@@ -156,7 +156,8 @@ fn lin_e_field(size: i64) -> Duration {
   let start = Instant::now();
   let args = vec![0, 8, 16, 24, 32, 40, 48];
   for i in 0..size {
-    mem.write(0, 8, &i.to_le_bytes());
+    let addr = i * 8;
+    mem.write(0, 8, &addr.to_le_bytes());
     e_field(&args, &mut mem);
     output.push(LittleEndian::read_i64(mem.read(48, 8)));
   }
@@ -234,37 +235,92 @@ fn coarse_mx_plus_b(size: i64) -> Duration {
 fn coarse_e_field(size: i64) -> Duration {
   let mut full_output: Vec<i64> = Vec::new();
   let cpu_threads = (num_cpus::get() - 1) as i64;
-  let mut data_chunks: Vec<Vec<i64>> = Vec::new();
+  let data = gen_rand_array(size);
+  let mut real_mem = HandlerMemory::new(None, 56);
+  real_mem.new_arr(8);
+  for input in &data {
+    real_mem.push_arr(8, input.to_le_bytes().to_vec(), 8);
+  }
+  let start = Instant::now();
+  let mut mems: Vec<HandlerMemory> = Vec::new();
+  let mut inner_sizes: Vec<usize> = Vec::new();
   for i in 0..cpu_threads {
+    let mut mem = real_mem.clone();
+    mems.push(mem);
     let mut inner_size = size / cpu_threads;
     if size % cpu_threads > 0 && i == cpu_threads - 1 {
       inner_size = inner_size + (size % cpu_threads);
     }
-    data_chunks.push(gen_rand_array(inner_size));
+    inner_sizes.push(inner_size as usize);
   }
-  let mut mems: Vec<HandlerMemory> = Vec::new();
-  for chunk in data_chunks {
-    let mut mem = HandlerMemory::new(None, 56);
-    mem.new_arr(8);
-    for input in chunk {
-      mem.push_arr(8, input.to_le_bytes().to_vec(), 8);
-    }
-    mems.push(mem);
-  }
-  let start = Instant::now();
-  let mut result_chunks: Vec<Vec<i64>> = mems.par_iter_mut().map(|mut mem| {
-    let mut output: Vec<i64> = Vec::new();
+  let mut result_chunks: Vec<Vec<i64>> = mems.par_iter_mut().enumerate().map(|(i, mut mem)| {
+    let inner_size = inner_sizes[i];
+    let mut output = Vec::with_capacity(inner_size);
+    let offset = i * (size / cpu_threads) as usize;
     let args = vec![0, 8, 16, 24, 32, 40, 48];
-    for i in 0..size {
-      mem.write(0, 8, &i.to_le_bytes());
+    for j in offset..(offset+inner_size) {
+      let addr = j * 8;
+      mem.write(0, 8, &addr.to_le_bytes());
       e_field(&args, &mut mem);
       output.push(LittleEndian::read_i64(mem.read(48, 8)));
     }
-    return output;
+    return output.to_vec();
   }).collect();
   for mut chunk in result_chunks {
     full_output.append(&mut chunk);
   }
+  let end = Instant::now();
+  return end.saturating_duration_since(start);
+}
+
+fn fine_square(size: i64) -> Duration {
+  let mut mem = HandlerMemory::new(None, 16);
+  let data = gen_rand_array(size);
+  let start = Instant::now();
+  let output: Vec<i64> = data.par_iter().map(|value| {
+    let mut mem = HandlerMemory::new(None, 16);
+    let args = vec![0, 8];
+    mem.write(0, 8, &value.to_le_bytes());
+    square(&args, &mut mem);
+    return LittleEndian::read_i64(mem.read(8, 8));
+  }).collect();
+  let end = Instant::now();
+  return end.saturating_duration_since(start);
+}
+
+fn fine_mx_plus_b(size: i64) -> Duration {
+  let mut real_mem = HandlerMemory::new(None, 40);
+  real_mem.write(8, 8, &2i64.to_le_bytes());
+  real_mem.write(16, 8, &3i64.to_le_bytes());
+  let data = gen_rand_array(size);
+  let start = Instant::now();
+  let output: Vec<i64> = data.par_iter().map(|value| {
+    let mut mem = real_mem.clone();
+    let args = vec![0, 8, 16, 24, 32];
+    mem.write(0, 8, &value.to_le_bytes());
+    mx_plus_b(&args, &mut mem);
+    return LittleEndian::read_i64(mem.read(32, 8));
+  }).collect();
+  let end = Instant::now();
+  return end.saturating_duration_since(start);
+}
+
+fn fine_e_field(size: i64) -> Duration {
+  let mut real_mem = HandlerMemory::new(None, 56);
+  let data = gen_rand_array(size);
+  real_mem.new_arr(8);
+  for input in data {
+    real_mem.push_arr(8, input.to_le_bytes().to_vec(), 8);
+  }
+  let start = Instant::now();
+  let output: Vec<i64> = (0..size).into_par_iter().map(|i| {
+    let mut mem = real_mem.clone();
+    let args = vec![0, 8, 16, 24, 32, 40, 48];
+    let addr = i * 8;
+    mem.write(0, 8, &addr.to_le_bytes());
+    e_field(&args, &mut mem);
+    return LittleEndian::read_i64(mem.read(48, 8));
+  }).collect();
   let end = Instant::now();
   return end.saturating_duration_since(start);
 }
@@ -299,4 +355,13 @@ pub fn benchmark() {
   println!("Quick test coarse parallel e-field 100-element array: {:?}", coarse_e_field(100));
   println!("Quick test coarse parallel e-field 10,000-element array: {:?}", coarse_e_field(10000));
   // println!("Quick test coarse parallel e-field 1,000,000-element array: {:?}", coarse_e_field(1000000));
+  println!("Quick test fine parallel squares 100-element array: {:?}", fine_square(100));
+  println!("Quick test fine parallel squares 10,000-element array: {:?}", fine_square(10000));
+  println!("Quick test fine parallel squares 1,000,000-element array: {:?}", fine_square(1000000));
+  println!("Quick test fine parallel mx+b 100-element array: {:?}", fine_mx_plus_b(100));
+  println!("Quick test fine parallel mx+b 10,000-element array: {:?}", fine_mx_plus_b(10000));
+  println!("Quick test fine parallel mx+b 1,000,000-element array: {:?}", fine_mx_plus_b(1000000));
+  println!("Quick test fine parallel e-field 100-element array: {:?}", fine_e_field(100));
+  println!("Quick test fine parallel e-field 10,000-element array: {:?}", fine_e_field(10000));
+  // println!("Quick test fine parallel e-field 1,000,000-element array: {:?}", fine_e_field(1000000));
 }
