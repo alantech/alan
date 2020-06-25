@@ -147,10 +147,58 @@ class Microstatement {
       const segments = varAst.varsegment()
       let name = ''
       for (const segment of segments) {
-        // A 'normal' segment. Append it to the name and attempt to get the underlying sub-name
+        // A 'normal' segment. Either append it to the name and attempt to get the underlying
+        // sub-name or rewrite it into an array access if it's a user-defined type field name
         if (segment.VARNAME()) {
+          // Decide if this is an access on a user-defined type that should be rewritten as an array
+          // access instead
           name += segment.VARNAME().getText()
-          original = Microstatement.fromVarName(name, microstatements)
+          if (!original || !original.outputType || original.outputType.builtIn) {
+            original = Microstatement.fromVarName(name, microstatements)
+          } else {
+            // Next, figure out which field number this is
+            const fieldName = segment.VARNAME().getText()
+            const fields = Object.keys(original.outputType.properties)
+            const fieldNum = fields.indexOf(fieldName)
+            if (fieldNum < 0) {
+              // Invalid object access
+              console.error(`${name} does not have a field named ${fieldName}`)
+              console.error(
+                varAst.getText() +
+                " on line " +
+                varAst.start.line +
+                ":" +
+                varAst.start.column
+              )
+              process.exit(-205)
+            }
+            // Create a new variable to hold the address within the array literal
+            const addrName = "_" + uuid().replace(/-/g, "_")
+            microstatements.push(new Microstatement(
+              StatementType.CONSTDEC,
+              scope,
+              true,
+              addrName,
+              Type.builtinTypes['int64'],
+              [`${fieldNum}`],
+              [],
+            ))
+            // Insert a `copyto` opcode. Eventually determine if it should be `copyto` or `register`
+            // based on the inner type of the Array.
+            const opcodeScope = require('./opcodes').exportScope // Unfortunate circular dep issue
+            opcodeScope.get('copyfrom').functionval[0].microstatementInlining(
+              [original.outputName, addrName],
+              scope,
+              microstatements,
+            )
+            // We'll need a reference to this for later
+            const typeRecord = original
+            // Set the original to this newly-generated microstatement
+            original = microstatements[microstatements.length - 1]
+            // Now we do something odd, but correct here; we need to replace the `outputType` from
+            // `any` to the type that was actually copied so function resolution continues to work
+            original.outputType = typeRecord.outputType.properties[fieldName]
+          }
         }
         // A separator, just append it and do nothing else
         if (segment.METHODSEP()) {
@@ -322,7 +370,7 @@ class Microstatement {
         microstatements
       )
       // The last microstatement is the one we want to get the type data from.
-      const last = microstatements[microstatements.size() - 1]
+      const last = microstatements[microstatements.length - 1]
       const constName = "_" + uuid().replace(/-/g, "_")
       microstatements.push(new Microstatement(
         StatementType.CONSTDEC,
@@ -330,7 +378,7 @@ class Microstatement {
         true,
         constName,
         Type.builtinTypes["string"],
-        [last.outputType.typename],
+        [`"${last.outputType.typename}"`],
         [],
       ))
       return
@@ -339,12 +387,12 @@ class Microstatement {
     // stage they're just passed through as-is. TODO: This is assuming everything inside of them are
     // constants. That is not a valid assumption and should be revisited.
     if (basicAssignablesAst.objectliterals() != null) {
-      let typeBox = scope.deepGet(basicAssignablesAst.objectliterals().othertype().getText())
+      let typeBox = scope.deepGet(basicAssignablesAst.objectliterals().othertype().getText().trim())
       if (typeBox === null) {
         // Try to define it if it's a generic type
         if (basicAssignablesAst.objectliterals().othertype().typegenerics()) {
           const outerTypeBox = scope.deepGet(
-            basicAssignablesAst.objectliterals().othertype().typename().getText()
+            basicAssignablesAst.objectliterals().othertype().typename().getText().trim()
           )
           if (outerTypeBox === null) {
             console.error(`${basicAssignablesAst.objectliterals().othertype().getText()}  is not defined`)
@@ -363,11 +411,13 @@ class Microstatement {
             ),
             scope
           )
-          typeBox = scope.deepGet(basicAssignablesAst.objectliterals().othertype().getText())
+          typeBox = scope.deepGet(basicAssignablesAst.objectliterals().othertype().getText().trim())
         }
       }
       if (typeBox.typeval == null) {
-        console.error(basicAssignablesAst.objectliterals().othertype().getText() + " is not a type")
+        console.error(
+          basicAssignablesAst.objectliterals().othertype().getText().trim() + " is not a type"
+        )
         console.error(
           basicAssignablesAst.getText() +
           " on line " +
@@ -377,72 +427,192 @@ class Microstatement {
         )
         process.exit(-106)
       }
-      // For now only, support array literals, work on map and user-defined type literals later
-      if (!basicAssignablesAst.objectliterals().arrayliteral()) {
-        console.error(`${basicAssignablesAst.objectliterals().othertype().getText()} not yet supported`)
-        console.error(
-          basicAssignablesAst.getText() +
-          " on line " +
-          basicAssignablesAst.start.line +
-          ":" +
-          basicAssignablesAst.start.column
-        )
-        process.exit(-107)
-      }
-      // Array literals first need all of the microstatements of the array contents defined, then
-      // a `newarr` opcode call is inserted for the object literal itself, then `pusharr` opcode
-      // calls are emitted to insert the relevant data into the array, and finally the array itself
-      // is REREFed for the outer microstatement generation call.
-      const arrayLiteralContents = []
-      const assignablelist = basicAssignablesAst.objectliterals().arrayliteral().assignablelist()
-      for (let i = 0; i < assignablelist.assignables().length; i++) {
-        Microstatement.fromAssignablesAst(assignablelist.assignables(i), scope, microstatements)
-        arrayLiteralContents.push(microstatements[microstatements.length - 1])
-      }
-      // Create a new variable to hold the size of the array literal
-      const lenName = "_" + uuid().replace(/-/g, "_")
-      microstatements.push(new Microstatement(
-        StatementType.CONSTDEC,
-        scope,
-        true,
-        lenName,
-        Type.builtinTypes['int64'],
-        [`${arrayLiteralContents.length}`],
-        [],
-      ))
-      const opcodeScope = require('./opcodes').exportScope // Unfortunate circular dep issue
-      // Add the opcode to create a new array with the specified size
-      opcodeScope.get('newarr').functionval[0].microstatementInlining(
-        [lenName],
-        scope,
-        microstatements,
-      )
-      // Get the array microstatement and extract the name and insert the correct type
-      const array = microstatements[microstatements.length - 1]
-      array.outputType = typeBox.typeval
-      const arrayName = array.outputName
-      // Push the values into the array
-      for (let i = 0; i < arrayLiteralContents.length; i++) {
-        opcodeScope.get('pusharr').functionval[0].microstatementInlining(
-          [arrayName, arrayLiteralContents[i].outputName],
+      if (basicAssignablesAst.objectliterals().arrayliteral()) {
+        // Array literals first need all of the microstatements of the array contents defined, then
+        // a `newarr` opcode call is inserted for the object literal itself, then `pusharr` opcode
+        // calls are emitted to insert the relevant data into the array, and finally the array itself
+        // is REREFed for the outer microstatement generation call.
+        const arrayLiteralContents = []
+        const assignablelist = basicAssignablesAst.objectliterals().arrayliteral().assignablelist()
+        for (let i = 0; i < assignablelist.assignables().length; i++) {
+          Microstatement.fromAssignablesAst(assignablelist.assignables(i), scope, microstatements)
+          arrayLiteralContents.push(microstatements[microstatements.length - 1])
+        }
+        // Create a new variable to hold the size of the array literal
+        const lenName = "_" + uuid().replace(/-/g, "_")
+        microstatements.push(new Microstatement(
+          StatementType.CONSTDEC,
+          scope,
+          true,
+          lenName,
+          Type.builtinTypes['int64'],
+          [`${arrayLiteralContents.length}`],
+          [],
+        ))
+        const opcodeScope = require('./opcodes').exportScope // Unfortunate circular dep issue
+        // Add the opcode to create a new array with the specified size
+        opcodeScope.get('newarr').functionval[0].microstatementInlining(
+          [lenName],
           scope,
           microstatements,
         )
-        // Update the push output argument type to be the original input type so the type is not
-        // erased
-        microstatements[microstatements.length - 1].outputType = arrayLiteralContents[i].outputType
+        // Get the array microstatement and extract the name and insert the correct type
+        const array = microstatements[microstatements.length - 1]
+        array.outputType = typeBox.typeval
+        const arrayName = array.outputName
+        // Push the values into the array
+        for (let i = 0; i < arrayLiteralContents.length; i++) {
+          opcodeScope.get('pusharr').functionval[0].microstatementInlining(
+            [arrayName, arrayLiteralContents[i].outputName],
+            scope,
+            microstatements,
+          )
+          // Update the push output argument type to be the original input type so the type is not
+          // erased
+          microstatements[microstatements.length - 1].outputType = arrayLiteralContents[i].outputType
+        }
+        // REREF the array
+        microstatements.push(new Microstatement(
+          StatementType.REREF,
+          scope,
+          true,
+          arrayName,
+          array.outputType,
+          [],
+          [],
+        ))
+        return
       }
-      // REREF the array
-      microstatements.push(new Microstatement(
-        StatementType.REREF,
-        scope,
-        true,
-        arrayName,
-        array.outputType,
-        [],
-        [],
-      ))
-      return
+      if (basicAssignablesAst.objectliterals().typeliteral()) {
+        // User types are represented in AMM and lower as `Array<any>`. This reduces the number of
+        // concepts that have to be maintained in the execution layer (and is really what C structs
+        // are, anyways). The order of the properties on the specified type directly map to the
+        // order that they are inserted into the Array, not the order they're defined in the object
+        // literal notation, so reads and updates later on can occur predictably by mapping the name
+        // of the property to its array index.
+        //
+        // If the type literal is missing any fields, that's a hard compile error to make sure
+        // accessing undefined data is impossible. If a value might not be needed, they should use
+        // the `Option` type and provide a `None` value there.
+        const assignmentAsts = basicAssignablesAst.objectliterals().typeliteral().assignments()
+        // First check that the assignments are well-formed and actually have an assignables field
+        for (const assignmentAst of assignmentAsts) {
+          if (!assignmentAst.assignables()) {
+            console.error(`${basicAssignablesAst.objectliterals().othertype().getText().trim()} object literal improperly defined`)
+            console.error(`${assignmentAst.varn().getText()} not set`)
+            console.error(
+              basicAssignablesAst.getText() +
+              " on line " +
+              basicAssignablesAst.start.line +
+              ":" +
+              basicAssignablesAst.start.column
+            )
+            process.exit(-109)
+          }
+        }
+        const fields = Object.keys(typeBox.typeval.properties)
+        let missingFields = []
+        let foundFields = []
+        let extraFields = []
+        let astLookup = {}
+        for (const assignmentAst of assignmentAsts) {
+          const name = assignmentAst.varn().getText()
+          astLookup[name] = assignmentAst
+          if (!fields.includes(name)) {
+            extraFields.push(name)
+          }
+          if (foundFields.includes(name)) {
+            extraFields.push(name)
+          }
+          foundFields.push(name)
+        }
+        for (const field of fields) {
+          if (!foundFields.includes(field)) {
+            missingFields.push(field)
+          }
+        }
+        if (missingFields.length > 0 || extraFields.length > 0) {
+          console.error(`${basicAssignablesAst.objectliterals().othertype().getText().trim()} object literal improperly defined`)
+          if (missingFields.length > 0) {
+            console.error(`Missing fields: ${missingFields.join(', ')}`)
+          }
+          if (extraFields.length > 0) {
+            console.error(`Extra fields: ${extraFields.join(', ')}`)
+          }
+          console.error(
+            basicAssignablesAst.getText() +
+            " on line " +
+            basicAssignablesAst.start.line +
+            ":" +
+            basicAssignablesAst.start.column
+          )
+          process.exit(-108)
+        }
+        // The assignment looks good, now we'll mimic the array literal logic mostly
+        const arrayLiteralContents = []
+        for (let i = 0; i < fields.length; i++) {
+          Microstatement.fromAssignablesAst(
+            astLookup[fields[i]].assignables(),
+            scope,
+            microstatements
+          )
+          arrayLiteralContents.push(microstatements[microstatements.length - 1])
+        }
+        // Create a new variable to hold the size of the array literal
+        const lenName = "_" + uuid().replace(/-/g, "_")
+        microstatements.push(new Microstatement(
+          StatementType.CONSTDEC,
+          scope,
+          true,
+          lenName,
+          Type.builtinTypes['int64'],
+          [`${fields.length}`],
+          [],
+        ))
+        const opcodeScope = require('./opcodes').exportScope // Unfortunate circular dep issue
+        // Add the opcode to create a new array with the specified size
+        opcodeScope.get('newarr').functionval[0].microstatementInlining(
+          [lenName],
+          scope,
+          microstatements,
+        )
+        // Get the array microstatement and extract the name and insert the correct type
+        const array = microstatements[microstatements.length - 1]
+        array.outputType = typeBox.typeval
+        const arrayName = array.outputName
+        // Push the values into the array
+        for (let i = 0; i < arrayLiteralContents.length; i++) {
+          opcodeScope.get('pusharr').functionval[0].microstatementInlining(
+            [arrayName, arrayLiteralContents[i].outputName],
+            scope,
+            microstatements,
+          )
+          // Update the push output argument type to be the original input type so the type is not
+          // erased
+          microstatements[microstatements.length - 1].outputType = arrayLiteralContents[i].outputType
+        }
+        // REREF the array
+        microstatements.push(new Microstatement(
+          StatementType.REREF,
+          scope,
+          true,
+          arrayName,
+          array.outputType,
+          [],
+          [],
+        ))
+        return
+      }
+      // If object literal parsing has made it this far, it's a Map literal that is not yet supported
+      console.error(`${basicAssignablesAst.objectliterals().othertype().getText().trim()} not yet supported`)
+      console.error(
+        basicAssignablesAst.getText() +
+        " on line " +
+        basicAssignablesAst.start.line +
+        ":" +
+        basicAssignablesAst.start.column
+      )
+      process.exit(-107)
     }
   }
 
@@ -539,7 +709,7 @@ class Microstatement {
             // difficult, but for now, just skip over these.
             if (op == null) continue
           }
-          
+
           if (op.precedence > maxPrecedence) {
             maxPrecedence = op.precedence
             maxOperatorLoc = i
@@ -1046,7 +1216,7 @@ class Microstatement {
       const type = (
         scope.deepGet(letTypeHint) && scope.deepGet(letTypeHint).typeval
       ) || Type.builtinTypes.void
-      if (type.originalType && type.originalType.typename === 'Array') {
+      if (type.originalType) {
         const opcodeScope = require('./opcodes').exportScope // Unfortunate circular dep issue
         const constName = "_" + uuid().replace(/-/g, "_")
         microstatements.push(new Microstatement(
@@ -1089,7 +1259,7 @@ class Microstatement {
         true,
         letName,
         letAlias,
-        Type.builtinTypes.void,
+        type,
         [],
         [],
       ))
@@ -1314,7 +1484,7 @@ class Microstatement {
         microstatements
       )
     }
-    
+
     return microstatements
   }
 
