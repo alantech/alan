@@ -2,7 +2,6 @@ import {
   LP,
   LPNode,
   NamedAnd,
-  NulLP,
 } from './lp'
 
 import aga from './aga'
@@ -114,10 +113,13 @@ const loadStatements = (statements: LPNode, eventLookup: Object): bigint[] => {
       }
       return out
     })
-    const resultAddress = statement.get('result').t === '' ?
-      0n :
-      BigInt(statement.get('result').get('memoryAddress').get(1).t)
-    vec.push(lineno, line, BigInt(deps.length), ...deps, fn, ...args, resultAddress)
+    if (args.length < 3) {
+      const resultAddress = statement.get('result').t === '' ?
+        0n :
+        BigInt(statement.get('result').get('memoryAddress').get(1).t)
+      args.push(resultAddress)
+    }
+    vec.push(lineno, line, BigInt(deps.length), ...deps, fn, ...args)
   }
   return vec
 }

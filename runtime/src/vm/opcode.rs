@@ -1575,7 +1575,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("pusharr", |args, hand_mem, _| {
-    let val_size = args[2] as u8;
+    let val_size = LittleEndian::read_i64(hand_mem.read(args[2], 8)) as u8;
     let val = hand_mem.read(args[1], val_size);
     let val_vec = val.to_vec();
     hand_mem.push_arr(args[0], val_vec, val_size);

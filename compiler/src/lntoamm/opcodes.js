@@ -34,26 +34,49 @@ const addopcodes = (opcodes) => {
   opcodeNames.forEach((opcodeName) => {
     const opcodeDef = opcodes[opcodeName]
     const [args, returnType] = opcodeDef
-    const opcodeObj = {
-      getName: () => opcodeName,
-      getArguments: () => args,
-      getReturnType: () => returnType || Type.builtinTypes.void,
-      isNary: () => false,
-      isPure: () => true,
-      microstatementInlining: (realArgNames, scope, microstatements) => {
-        microstatements.push(new Microstatement(
-          StatementType.CONSTDEC,
-          scope,
-          true,
-          "_" + uuid().replace(/-/g, "_"),
-          opcodeObj.getReturnType(),
-          realArgNames,
-          [opcodeObj],
-        ))
-      },
+    if (!returnType) { // This is a three-arg, 0-return opcode
+      const opcodeObj = {
+        getName: () => opcodeName,
+        getArguments: () => args,
+        getReturnType: () => Type.builtinTypes.void,
+        isNary: () => false,
+        isPure: () => true,
+        microstatementInlining: (realArgNames, scope, microstatements) => {
+          microstatements.push(new Microstatement(
+            StatementType.CALL,
+            scope,
+            true,
+            null,
+            opcodeObj.getReturnType(),
+            realArgNames,
+            [opcodeObj],
+          ))
+        },
+      }
+      // Add each opcode
+      opcodeScope.put(opcodeName, new Box([opcodeObj], true))
+    } else {
+      const opcodeObj = {
+        getName: () => opcodeName,
+        getArguments: () => args,
+        getReturnType: () => returnType,
+        isNary: () => false,
+        isPure: () => true,
+        microstatementInlining: (realArgNames, scope, microstatements) => {
+          microstatements.push(new Microstatement(
+            StatementType.CONSTDEC,
+            scope,
+            true,
+            "_" + uuid().replace(/-/g, "_"),
+            opcodeObj.getReturnType(),
+            realArgNames,
+            [opcodeObj],
+          ))
+        },
+      }
+      // Add each opcode
+      opcodeScope.put(opcodeName, new Box([opcodeObj], true))
     }
-    // Add each opcode
-    opcodeScope.put(opcodeName, new Box([opcodeObj], true))
   })
 }
 
@@ -260,7 +283,7 @@ addopcodes({
   pair: [{ trueval: t('any'), falseval: t('any'), }, t('Array<any>')],
   condarr: [{ cond: t('bool'), options: t('Array<any>'), }, t('any')],
   condfn: [{ cond: t('bool'), optional: t('function'), }, t('any')],
-  pusharr: [{ arr: t('Array<any>'), val: t('any')}, t('void')],
+  pusharr: [{ arr: t('Array<any>'), val: t('any'), size: t('int64')}],
   poparr: [{ arr: t('Array<any>')}, t('any')],
   each: [{ arr: t('Array<any>'), cb: t('function'), }, t('void')],
   map: [{ arr: t('Array<any>'), cb: t('function'), }, t('Array<any>')],
