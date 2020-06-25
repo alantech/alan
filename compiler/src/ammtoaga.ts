@@ -221,29 +221,6 @@ const loadStatements = (statements: LPNode[], localMem: object, globalMem: objec
       } else if (assignables.has('calls')) {
         const call = assignables.get('calls')
         const fn = call.get('variable').t.trim()
-        // TODO: Absolute hackery that must be removed soon
-        if (fn === 'pusharr') {
-          switch (dec.get('fulltypename').t.trim()) {
-          case 'int8':
-          case 'bool':
-            resultAddress = 1
-            break
-          case 'int16':
-            resultAddress = 2
-            break
-          case 'int32':
-          case 'float32':
-            resultAddress = 4
-            break
-          case 'int64':
-          case 'float64':
-            resultAddress = 8
-            break
-          default:
-            resultAddress = 0
-            break
-          }
-        }
         const vars = (call.has('calllist') ? call.get('calllist').getAll() : []).map(
           v => v.get('variable').t.trim()
         )
@@ -348,7 +325,9 @@ const loadStatements = (statements: LPNode[], localMem: object, globalMem: objec
     } else if (statement.has('calls')) {
       const call = statement.get('calls')
       const fn = call.get('variable').t.trim()
-      const vars = (call.has('calllist') ? call.get('calllist').getAll() : []).map(v => v.t.trim())
+      const vars = (call.has('calllist') ? call.get('calllist').getAll() : []).map(
+        v => v.get('variable').t.trim()
+      )
       const args = vars.map(v => localMem.hasOwnProperty(v) ?
         localMem[v] :
         globalMem.hasOwnProperty(v) ?

@@ -462,14 +462,27 @@ class Microstatement {
         const arrayName = array.outputName
         // Push the values into the array
         for (let i = 0; i < arrayLiteralContents.length; i++) {
+          // Create a new variable to hold the size of the array value
+          const size = arrayLiteralContents[i].outputType.builtIn &&
+            arrayLiteralContents[i].outputType.typename !== "string" ?
+            "8" :
+            "0"
+          const sizeName = "_" + uuid().replace(/-/g, "_")
+          microstatements.push(new Microstatement(
+            StatementType.CONSTDEC,
+            scope,
+            true,
+            sizeName,
+            Type.builtinTypes['int64'],
+            [size],
+            [],
+          ))
+          // Push the value into the array
           opcodeScope.get('pusharr').functionval[0].microstatementInlining(
-            [arrayName, arrayLiteralContents[i].outputName],
+            [arrayName, arrayLiteralContents[i].outputName, sizeName],
             scope,
             microstatements,
           )
-          // Update the push output argument type to be the original input type so the type is not
-          // erased
-          microstatements[microstatements.length - 1].outputType = arrayLiteralContents[i].outputType
         }
         // REREF the array
         microstatements.push(new Microstatement(
@@ -582,14 +595,27 @@ class Microstatement {
         const arrayName = array.outputName
         // Push the values into the array
         for (let i = 0; i < arrayLiteralContents.length; i++) {
+          // Create a new variable to hold the size of the array value
+          const size = arrayLiteralContents[i].outputType.builtIn &&
+            arrayLiteralContents[i].outputType.typename !== "string" ?
+            "8" :
+            "0"
+          const sizeName = "_" + uuid().replace(/-/g, "_")
+          microstatements.push(new Microstatement(
+            StatementType.CONSTDEC,
+            scope,
+            true,
+            sizeName,
+            Type.builtinTypes['int64'],
+            [size],
+            [],
+          ))
+          // Push the value into the array
           opcodeScope.get('pusharr').functionval[0].microstatementInlining(
-            [arrayName, arrayLiteralContents[i].outputName],
+            [arrayName, arrayLiteralContents[i].outputName, sizeName],
             scope,
             microstatements,
           )
-          // Update the push output argument type to be the original input type so the type is not
-          // erased
-          microstatements[microstatements.length - 1].outputType = arrayLiteralContents[i].outputType
         }
         // REREF the array
         microstatements.push(new Microstatement(
@@ -747,10 +773,6 @@ class Microstatement {
         .dispatchFn(op.potentialFunctions, realArgTypes, scope)
         .microstatementInlining(realArgNames, scope, microstatements)
       const last = microstatements[microstatements.length - 1]
-      // TODO: Temporary hack until 3-arg 0-return opcode support added
-      if (last.fns[0].getName() === 'pusharr') {
-        last.outputType = realArgTypes[1]
-      }
       withOperatorsList[maxOperatorLoc] = new Box(last)
       withOperatorsList.splice(maxOperatorLoc + 1, 1)
       if (!op.isPrefix) {
@@ -1080,11 +1102,6 @@ class Microstatement {
       UserFunction
         .dispatchFn(fnBox.functionval, realArgTypes, scope)
         .microstatementInlining(realArgNames, scope, microstatements)
-      firstArg = microstatements[microstatements.length - 1]
-      // TODO: Temporary hack until 3-arg 0-return opcode support added
-      if (firstArg.fns.length > 0 && firstArg.fns[0].getName() === 'pusharr') {
-        firstArg.outputType = realArgTypes[1]
-      }
     }
   }
 

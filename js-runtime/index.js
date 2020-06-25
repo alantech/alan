@@ -228,7 +228,7 @@ module.exports = {
 
   // Array opcodes TODO more to come
   newarr:  size => new Array(), // Ignored because JS push doesn't behave as desired
-  pusharr: (arr, val) => arr.push(val),
+  pusharr: (arr, val, size) => arr.push(val),
   lenarr: arr => arr.length,
   indarrf:(arr, val) => arr.indexOf(val),
   indarrv:(arr, val) => arr.indexOf(val),
