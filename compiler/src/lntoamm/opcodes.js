@@ -59,7 +59,7 @@ const addopcodes = (opcodes) => {
       const opcodeObj = {
         getName: () => opcodeName,
         getArguments: () => args,
-        getReturnType: () => returnType || Type.builtinTypes.void,
+        getReturnType: () => returnType,
         isNary: () => false,
         isPure: () => true,
         microstatementInlining: (realArgNames, scope, microstatements) => {

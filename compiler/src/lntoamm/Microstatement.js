@@ -1102,6 +1102,8 @@ class Microstatement {
       UserFunction
         .dispatchFn(fnBox.functionval, realArgTypes, scope)
         .microstatementInlining(realArgNames, scope, microstatements)
+      // Set the output as the firstArg for the next chained call
+      firstArg = microstatements[microstatements.length - 1]
     }
   }
 
