@@ -415,7 +415,6 @@ class Microstatement {
         }
       }
       if (typeBox.typeval == null) {
-        console.log(scope)
         console.error(
           basicAssignablesAst.objectliterals().othertype().getText().trim() + " is not a type"
         )
@@ -1217,7 +1216,7 @@ class Microstatement {
       const type = (
         scope.deepGet(letTypeHint) && scope.deepGet(letTypeHint).typeval
       ) || Type.builtinTypes.void
-      if (type.originalType && type.originalType.typename === 'Array') {
+      if (type.originalType) {
         const opcodeScope = require('./opcodes').exportScope // Unfortunate circular dep issue
         const constName = "_" + uuid().replace(/-/g, "_")
         microstatements.push(new Microstatement(
@@ -1260,7 +1259,7 @@ class Microstatement {
         true,
         letName,
         letAlias,
-        Type.builtinTypes.void,
+        type,
         [],
         [],
       ))

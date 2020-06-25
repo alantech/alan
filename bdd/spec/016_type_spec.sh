@@ -45,8 +45,7 @@ true"
 
   Describe "user types and generics"
     before() {
-      # TODO: sourceToAll
-      sourceToTemp "
+      sourceToAll "
         from @std/app import start, print, exit
 
         type foo<A, B> {
@@ -87,13 +86,11 @@ foo<int64, float64>
 true"
 
     It "runs js"
-      Pending type-support
       When run node temp.js
       The output should eq "$GENTYPEOUTPUT"
     End
 
     It "runs agc"
-      Pending type-support
       When run alan-runtime run temp.agc
       The output should eq "$GENTYPEOUTPUT"
     End

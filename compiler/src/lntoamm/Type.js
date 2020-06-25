@@ -103,7 +103,6 @@ class Type {
       const lines = typeAst.typebody().typeline()
       for (const lineAst of lines) {
         const propertyName = lineAst.VARNAME().getText()
-        let propertyType = null
         const typeName = lineAst.varn().getText()
         const property = scope.deepGet(lineAst.varn())
         if (property == null || !property.type.typename === "type") {
@@ -130,10 +129,10 @@ class Type {
         process.exit(-39)
       }
 
-      const othertype = otherTypebox.typeval
-      if (othertype.generics.length > 0 && typeAst.othertype(0).typegenerics() != null) {
+      let othertype = otherTypebox.typeval
+      if (Object.keys(othertype.generics).length > 0 && typeAst.othertype(0).typegenerics() != null) {
         let solidTypes = []
-        for (fulltypenameAst of typeAst.othertype(0).typegenerics().fulltypename()) {
+        for (const fulltypenameAst of typeAst.othertype(0).typegenerics().fulltypename()) {
           solidTypes.push(fulltypenameAst.getText())
         }
         othertype = othertype.solidify(solidTypes, scope)

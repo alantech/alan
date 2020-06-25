@@ -451,6 +451,7 @@ class UserFunction {
     // Resolve circular dependency issue
     const Microstatement = require('./Microstatement')
     const internalNames = Object.keys(fn.args)
+    const originalStatementLength = microstatements.length
     for (let i = 0; i < internalNames.length; i++) {
       const realArgName = realArgNames[i]
       // Instead of copying the relevant data, define a reference to where the data is located with
@@ -469,6 +470,14 @@ class UserFunction {
     }
     for (const s of fn.statements) {
       Microstatement.fromStatement(s, microstatements)
+    }
+    // Delete `REREF`s except a `return` statement's `REREF` to make sure it doesn't interfere with
+    // the outer scope (if it has the same variable name defined, for instance)
+    for (let i = originalStatementLength; i < microstatements.length - 1; i++) {
+      if (microstatements[i].statementType == StatementType.REREF) {
+        microstatements.splice(i, 1)
+        i--
+      }
     }
   }
 
