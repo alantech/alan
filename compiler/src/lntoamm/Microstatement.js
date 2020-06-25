@@ -147,10 +147,58 @@ class Microstatement {
       const segments = varAst.varsegment()
       let name = ''
       for (const segment of segments) {
-        // A 'normal' segment. Append it to the name and attempt to get the underlying sub-name
+        // A 'normal' segment. Either append it to the name and attempt to get the underlying
+        // sub-name or rewrite it into an array access if it's a user-defined type field name
         if (segment.VARNAME()) {
+          // Decide if this is an access on a user-defined type that should be rewritten as an array
+          // access instead
           name += segment.VARNAME().getText()
-          original = Microstatement.fromVarName(name, microstatements)
+          if (!original || !original.outputType || original.outputType.builtIn) {
+            original = Microstatement.fromVarName(name, microstatements)
+          } else {
+            // Next, figure out which field number this is
+            const fieldName = segment.VARNAME().getText()
+            const fields = Object.keys(original.outputType.properties)
+            const fieldNum = fields.indexOf(fieldName)
+            if (fieldNum < 0) {
+              // Invalid object access
+              console.error(`${name} does not have a field named ${fieldName}`)
+              console.error(
+                varAst.getText() +
+                " on line " +
+                varAst.start.line +
+                ":" +
+                varAst.start.column
+              )
+              process.exit(-205)
+            }
+            // Create a new variable to hold the address within the array literal
+            const addrName = "_" + uuid().replace(/-/g, "_")
+            microstatements.push(new Microstatement(
+              StatementType.CONSTDEC,
+              scope,
+              true,
+              addrName,
+              Type.builtinTypes['int64'],
+              [`${fieldNum}`],
+              [],
+            ))
+            // Insert a `copyto` opcode. Eventually determine if it should be `copyto` or `register`
+            // based on the inner type of the Array.
+            const opcodeScope = require('./opcodes').exportScope // Unfortunate circular dep issue
+            opcodeScope.get('copyfrom').functionval[0].microstatementInlining(
+              [original.outputName, addrName],
+              scope,
+              microstatements,
+            )
+            // We'll need a reference to this for later
+            const typeRecord = original
+            // Set the original to this newly-generated microstatement
+            original = microstatements[microstatements.length - 1]
+            // Now we do something odd, but correct here; we need to replace the `outputType` from
+            // `any` to the type that was actually copied so function resolution continues to work
+            original.outputType = typeRecord.outputType.properties[fieldName]
+          }
         }
         // A separator, just append it and do nothing else
         if (segment.METHODSEP()) {

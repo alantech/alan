@@ -37,6 +37,87 @@ new Foo {
           } on line 10:22"
     End
   End
+
+  Describe "array literals and access"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+
+        on start {
+          const test3 = new Array<int64> [ 1, 2, 4, 8, 16, 32, 64 ]
+          print(test3[0])
+          print(test3[1])
+          print(test3[2])
+
+          emit exit 0
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    ARRTYPEOUTPUT="1
+2
+4"
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "$ARRTYPEOUTPUT"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
+      The output should eq "$ARRTYPEOUTPUT"
+    End
+  End
+
+  Describe "object literals and access"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+
+        type MyType {
+          foo: string
+          bar: bool
+        }
+
+        on start {
+          const test = new MyType {
+            foo = 'foo!'
+            bar = true
+          }
+          print(test.foo)
+          print(test.bar)
+
+          emit exit 0
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    OBJTYPEOUTPUT="foo!
+true"
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "$OBJTYPEOUTPUT"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
+      The output should eq "$OBJTYPEOUTPUT"
+    End
+  End
+
   Describe "everything else"
     before() {
       # TODO: sourceToAll
