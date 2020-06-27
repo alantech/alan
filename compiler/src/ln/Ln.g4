@@ -30,9 +30,9 @@ fulltypename : varn blank* typegenerics?;
 
 typebody: OPENBODY blank* (WS* typeline)+ blank? CLOSEBODY;
 
-typeline: VARNAME TYPESEP varn NEWLINE*;
+typeline: VARNAME (WS | NEWLINE)? TYPESEP (WS | NEWLINE)? varn NEWLINE*;
 
-functions : FN blank+ ((VARNAME blank*)? OPENARGS arglist? CLOSEARGS blank* (TYPESEP argtype blank*)?)? fullfunctionbody;
+functions : FN blank+ ((VARNAME blank*)? OPENARGS arglist? CLOSEARGS blank* ((WS | NEWLINE)? TYPESEP (WS | NEWLINE)? argtype blank*)?)? fullfunctionbody;
 
 fullfunctionbody : functionbody | (EQUALS blank* assignables);
 
@@ -42,9 +42,9 @@ statements : (declarations | assignments | calls | exits | emits | conditionals)
 
 declarations : (constdeclaration | letdeclaration);
 
-constdeclaration : CONST blank* (VARNAME blank* TYPESEP)? blank* assignments;
+constdeclaration : CONST blank* (VARNAME blank* TYPESEP (WS | NEWLINE)?)? blank* assignments;
 
-letdeclaration : LET blank* (VARNAME blank* TYPESEP)? blank* assignments;
+letdeclaration : LET blank* (VARNAME blank* TYPESEP (WS | NEWLINE)?)? blank* assignments;
 
 assignments : varn blank* ((typegenerics? blank* EQUALS blank* assignables) | typegenerics?);
 
@@ -86,13 +86,15 @@ blocklikes : functions | functionbody | varn;
 
 constants : (NUMBERCONSTANT | STRINGCONSTANT | BOOLCONSTANT);
 
-operators : WS* (GENERALOPERATORS | TYPESEP | OPENGENERIC | OR | (CLOSEGENERIC+ ((EQUALS+ GENERALOPERATORS*) | (GENERALOPERATORS+))?) | GLOBAL | DIRSEP);
+operators : (GENERALOPERATORS | TYPESEP | OPENGENERIC | OR | (CLOSEGENERIC+ ((EQUALS+ GENERALOPERATORS*) | (GENERALOPERATORS+))?) | GLOBAL | DIRSEP);
 
-operatormapping : (PREFIX | infix) operators WS* NUMBERCONSTANT WS+ varn;
+operatormapping : (PREFIX | INFIX) WS ((fntoop WS opprecedence) | (opprecedence WS fntoop));
 
-infix : INFIX WS* COMMUTATIVE? WS* ASSOCIATIVE?;
+fntoop : varn WS AS WS operators;
 
-events : EVENT blank VARNAME blank* TYPESEP varn;
+opprecedence : PRECEDENCE WS NUMBERCONSTANT;
+
+events : EVENT blank VARNAME blank* TYPESEP (WS | NEWLINE)? varn;
 
 handlers : ON blank+ eventref blank+ (functions | varn | functionbody);
 
@@ -104,9 +106,9 @@ interfaceline : functiontypeline | operatortypeline | propertytypeline;
 
 functiontypeline : (VARNAME | FN) WS* functiontype;
 
-functiontype : OPENARGS blank* varn blank* (SEP blank* varn blank*)* CLOSEARGS TYPESEP blank* varn;
+functiontype : OPENARGS blank* varn blank* (SEP blank* varn blank*)* CLOSEARGS (WS | NEWLINE)? TYPESEP blank* varn;
 
-operatortypeline : ((COMMUTATIVE blank+)? (ASSOCIATIVE blank+)? leftarg blank*)? operators blank* rightarg blank* TYPESEP blank* varn;
+operatortypeline : (leftarg blank*)? operators blank* rightarg blank* TYPESEP blank* varn;
 
 leftarg : varn;
 
@@ -116,7 +118,7 @@ propertytypeline : VARNAME WS* TYPESEP WS* varn;
 
 argtype : othertype (blank* OR blank* othertype)*;
 
-arglist : VARNAME TYPESEP argtype (SEP VARNAME TYPESEP argtype)*;
+arglist : VARNAME (WS | NEWLINE)? TYPESEP (WS | NEWLINE)? argtype (SEP VARNAME (WS | NEWLINE)? TYPESEP (WS | NEWLINE)? argtype)*;
 
 exports : EXPORT (WS | NEWLINE)+ (varn | types | constdeclaration | functions | operatormapping | events | interfaces);
 
@@ -166,9 +168,7 @@ PREFIX : 'prefix';
 
 INFIX : 'infix';
 
-COMMUTATIVE : 'commutative';
-
-ASSOCIATIVE : 'associative';
+PRECEDENCE : 'precedence';
 
 IF : 'if';
 
@@ -212,9 +212,9 @@ DIRSEP : '/';
 
 OR : '|';
 
-GENERALOPERATORS : [+\-/*^.~`!@#$%&|:;<?=][+\-/*^.~`!@#$%&|:;<>?=]*;
+TYPESEP : ':';
 
-TYPESEP : (WS | NEWLINE)? ':' (WS | NEWLINE)?;
+GENERALOPERATORS : [+\-/*^.~`!@#$%&|:;<?=][+\-/*^.~`!@#$%&|:;<>?=]*;
 
 // Next ignored bits of various kinds
 

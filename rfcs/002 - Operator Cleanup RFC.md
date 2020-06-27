@@ -16,7 +16,7 @@ YYYY-MM-DD
 
 ### Implementation
 
-- [ ] Implemented: [One or more PRs](https://github.com/alantech/alan/some-pr-link-here) YYYY-MM-DD
+- [x] Implemented: [One or more PRs](https://github.com/alantech/alan/some-pr-link-here) 2020-06-27
 - [ ] Revoked/Superceded by: [RFC ###](./000 - RFC Template.md) YYYY-MM-DD
 
 ## Author
@@ -107,7 +107,7 @@ With this proposal `infix` and `prefix` remain the root keywords that indicate a
 
 ## Affected Components
 
-This affects just the compiler. The LN grammar file must be updated and regenerated, and the lntoamm compiler stage must be updated to use that new grammar, but that's it.
+This affects just the compiler. The LN grammar file must be updated and regenerated, and the lntoamm compiler stage must be updated to use that new grammar, and the std/root.ln file needs updating, but that's it.
 
 ## Expected Timeline
 

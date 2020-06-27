@@ -1,10 +1,8 @@
 class Operator {
-  constructor(name, precedence, isPrefix, isCommutative, isAssociative, potentialFunctions) {
+  constructor(name, precedence, isPrefix, potentialFunctions) {
     this.name = name
     this.precedence = precedence
     this.isPrefix = isPrefix
-    this.isCommutative = isCommutative
-    this.isAssociative = isAssociative
     this.potentialFunctions = potentialFunctions
   }
 
@@ -25,7 +23,7 @@ class Operator {
       let skip = false
       for (let j = 0; j < argList.length; j++) {
         if (argList[j].typename === argumentTypeList[j].typename) continue
-        if( 
+        if(
           argList[j].iface != null &&
           argList[j].iface.typeApplies(argumentTypeList[j], scope)
         ) continue

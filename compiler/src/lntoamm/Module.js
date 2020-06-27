@@ -160,16 +160,10 @@ class Module {
     // Next, operators
     const operatorMapping = ast.operatormapping()
     for (const operatorAst of operatorMapping) {
-      const isPrefix = operatorAst.infix() == null
-      let isCommutative = false
-      let isAssociative = false
-      if (!isPrefix) {
-        isCommutative = operatorAst.infix().COMMUTATIVE() != null
-        isAssociative = operatorAst.infix().ASSOCIATIVE() != null
-      }
-      const name = operatorAst.operators().getText().trim()
-      const precedence = parseInt(operatorAst.NUMBERCONSTANT().getText(), 10)
-      const fns = module.moduleScope.deepGet(operatorAst.varn())
+      const isPrefix = operatorAst.INFIX() === null
+      const name = operatorAst.fntoop().operators().getText().trim()
+      const precedence = parseInt(operatorAst.opprecedence().NUMBERCONSTANT().getText(), 10)
+      const fns = module.moduleScope.deepGet(operatorAst.fntoop().varn())
       if (fns == null) {
         console.error("Operator " + name + " declared for unknown function " + operatorAst.varn().getText())
         process.exit(-31)
@@ -178,8 +172,6 @@ class Module {
         name,
         precedence,
         isPrefix,
-        isCommutative,
-        isAssociative,
         fns.functionval,
       )
       const opsBox = module.moduleScope.deepGet(name)
@@ -242,18 +234,12 @@ class Module {
         }
       } else if (exportAst.operatormapping() != null) {
         const operatorAst = exportAst.operatormapping()
-        const isPrefix = operatorAst.infix() == null
-        let isCommutative = false
-        let isAssociative = false
-        if (!isPrefix) {
-          isCommutative = operatorAst.infix().COMMUTATIVE() != null
-          isAssociative = operatorAst.infix().ASSOCIATIVE() != null
-        }
-        const name = operatorAst.operators().getText().trim();
-        const precedence = parseInt(operatorAst.NUMBERCONSTANT().getText(), 10)
-        let fns = module.exportScope.deepGet(operatorAst.varn())
+        const isPrefix = operatorAst.INFIX() == null
+        const name = operatorAst.fntoop().operators().getText().trim()
+        const precedence = parseInt(operatorAst.opprecedence().NUMBERCONSTANT().getText(), 10)
+        let fns = module.exportScope.deepGet(operatorAst.fntoop().varn())
         if (fns == null) {
-          fns = module.moduleScope.deepGet(operatorAst.varn())
+          fns = module.moduleScope.deepGet(operatorAst.fntoop().varn())
           if (fns != null) {
             console.error(
               "Exported operator " +
@@ -271,8 +257,6 @@ class Module {
           name,
           precedence,
           isPrefix,
-          isCommutative,
-          isAssociative,
           fns.functionval,
         )
         let modOpsBox = module.moduleScope.deepGet(name)

@@ -14,7 +14,7 @@ Describe "Bitwise"
       sourceToAll "
         from @std/app import start, print, exit
 
-        prefix ~ 10 toInt8
+        prefix toInt8 as ~ precedence 10
 
         on start {
           print(~1 & ~2)
@@ -51,7 +51,7 @@ Describe "Bitwise"
       sourceToAll "
         from @std/app import start, print, exit
 
-        prefix ~ 10 toInt16
+        prefix toInt16 as ~ precedence 10
 
         on start {
           print(~1 & ~2)
@@ -88,7 +88,7 @@ Describe "Bitwise"
       sourceToAll "
         from @std/app import start, print, exit
 
-        prefix ~ 10 toInt32
+        prefix toInt32 as ~ precedence 10
 
         on start {
           print(~1 & ~2)
