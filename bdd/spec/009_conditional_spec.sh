@@ -1,6 +1,6 @@
 Include build_tools.sh
 
-Describe "Condiionals"
+Describe "Conditionals"
   Describe "Basic"
     before() {
       sourceToAll "
@@ -161,8 +161,7 @@ Far!"
 
   Describe "Ternary"
     before() {
-      # TODO: sourceToAll
-      sourceToTemp "
+      sourceToAll "
         from @std/app import start, print, exit
 
         on start {
