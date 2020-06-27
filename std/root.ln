@@ -285,8 +285,8 @@ export keys // opcode with signature `fn keys(map: Map<any, any>): Array<any>`
 export values // opcode with signature `fn values(map: Map<any, any>): Array<any>`
 
 // Ternary functions
-export pair // opcode with signature `fn pair(trueval: any, falseval: any): Array<any>`
-export fn cond(c: bool, options: Array<any>): any = condarr(c, options)
+export fn pair(trueval: any, falseval: any) = new Array<any> [ trueval, falseval ]
+export fn cond(c: bool, options: Array<any>) = options[c.toInt64()]
 export fn cond(c: bool, optional: function): void = condfn(c, optional)
 
 // "assign" function useful for hoisting assignments
@@ -332,5 +332,6 @@ export infix index as @ precedence 1
 export prefix length as # precedence 4
 export prefix trim as ` precedence 4
 export infix pair as : precedence 5
+export infix push as : precedence 6
 export infix cond as ? precedence 0
 
