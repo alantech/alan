@@ -16,7 +16,7 @@ YYYY-MM-DD
 
 ### Implementation
 
-- [x] Implemented: [One or more PRs](https://github.com/alantech/alan/some-pr-link-here) 2020-06-27
+- [x] Implemented: [PR](https://github.com/alantech/alan/pull/90) 2020-06-27
 - [ ] Revoked/Superceded by: [RFC ###](./000 - RFC Template.md) YYYY-MM-DD
 
 ## Author
