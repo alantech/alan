@@ -23,8 +23,7 @@ class Operator {
       let skip = false
       for (let j = 0; j < argList.length; j++) {
         if (argList[j].typename === argumentTypeList[j].typename) continue
-        if(
-          argList[j].iface != null &&
+        if (argList[j].iface &&
           argList[j].iface.typeApplies(argumentTypeList[j], scope)
         ) continue
         if (argList[j].generics.length > 0 && argumentTypeList[j].originalType == argList[j]) {
