@@ -459,6 +459,13 @@ class Microstatement {
         // Get the array microstatement and extract the name and insert the correct type
         const array = microstatements[microstatements.length - 1]
         array.outputType = typeBox.typeval
+        // Try to use the "real" type if knowable
+        if (arrayLiteralContents.length > 0) {
+          array.outputType = Type.builtinTypes['Array'].solidify(
+            [arrayLiteralContents[0].outputType.typename],
+            scope,
+          )
+        }
         const arrayName = array.outputName
         // Push the values into the array
         for (let i = 0; i < arrayLiteralContents.length; i++) {
@@ -592,6 +599,13 @@ class Microstatement {
         // Get the array microstatement and extract the name and insert the correct type
         const array = microstatements[microstatements.length - 1]
         array.outputType = typeBox.typeval
+        // Try to use the "real" type if knowable
+        if (arrayLiteralContents.length > 0) {
+          array.outputType = Type.builtinTypes['Array'].solidify(
+            [arrayLiteralContents[0].outputType.typename],
+            scope,
+          )
+        }
         const arrayName = array.outputName
         // Push the values into the array
         for (let i = 0; i < arrayLiteralContents.length; i++) {

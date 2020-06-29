@@ -63,12 +63,57 @@ const addopcodes = (opcodes) => {
         isNary: () => false,
         isPure: () => true,
         microstatementInlining: (realArgNames, scope, microstatements) => {
+          const inputs = realArgNames.map(n => Microstatement.fromVarName(n, microstatements))
+          const inputTypes = inputs.map(i => i.outputType)
           microstatements.push(new Microstatement(
             StatementType.CONSTDEC,
             scope,
             true,
             "_" + uuid().replace(/-/g, "_"),
-            opcodeObj.getReturnType(),
+            ((inputTypes, scope) => {
+              if (!!returnType.iface) {
+                // Path 1: the opcode returns an interface based on the interface type of an input
+                let replacementType
+                Object.values(args).forEach((a, i) => {
+                  if (!!a.iface && a.iface.interfacename === returnType.iface.interfacename) {
+                    replacementType = inputTypes[i]
+                  }
+                  if (Object.values(a.properties).some(
+                    p => !!p.iface && p.iface.interfacename === returnType.iface.interfacename
+                  )) {
+                    Object.values(a.properties).forEach((p, j) => {
+                      if (!!p.iface && p.iface.interfacename === returnType.iface.interfacename) {
+                        replacementType = Object.values(inputTypes[i].properties)[j]
+                      }
+                    })
+                  }
+                })
+                return replacementType
+              } else if (
+                returnType.originalType &&
+                Object.values(returnType.properties).some(p => !!p.iface)
+              ) {
+                // Path 2: the opcode returns solidified generic type with an interface generic that
+                // mathces the interface type of an input
+                const returnIfaces = Object.values(returnType.properties)
+                  .filter(p => !!p.iface).map(p => p.iface)
+                const ifaceMap = {}
+                Object.values(args).forEach((a, i) => {
+                  if (!!a.iface) {
+                    ifaceMap[a.interfacename] = inputTypes[i]
+                  }
+                })
+                const baseType = returnType.originalType
+                if (Object.keys(ifaceMap).length >= Object.keys(baseType.generics).length) {
+                  const solidTypes = returnIfaces.map(i => ifaceMap[i.interfacename])
+                  const newReturnType = baseType.solidify(solidTypes, scope)
+                  return newReturnType
+                } else {
+                  return returnType
+                }
+              }
+              return returnType
+            })(inputTypes, scope),
             realArgNames,
             [opcodeObj],
           ))

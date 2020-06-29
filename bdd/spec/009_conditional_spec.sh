@@ -208,13 +208,11 @@ Far!"
 5"
 
     It "runs js"
-      Pending ternary-array-support
       When run node temp.js
       The output should eq "$ADVOUTPUT"
     End
 
     It "runs agc"
-      Pending ternary-array-support
       When run alan-runtime run temp.agc
       The output should eq "$ADVOUTPUT"
     End

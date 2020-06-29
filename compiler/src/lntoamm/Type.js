@@ -75,7 +75,7 @@ class Type {
     // TODO: Handle interfaces union types appropriately
     if (this.iface != null) return "// Interfaces TBD"
     if (this.unionTypes != null) return "// Union types TBD"
-    let outString = "type " + typename
+    let outString = "type " + this.typename
     if (this.alias != null) {
       outString += " = " + this.alias.typename
       return outString
