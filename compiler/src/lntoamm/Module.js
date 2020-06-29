@@ -1,6 +1,6 @@
 const Ast = require('./Ast')
 const Box = require('./Box')
-const Event = require('./Event')
+const Event = require('./Event').default
 const Interface = require('./Interface')
 const Operator = require('./Operator')
 const Scope = require('./Scope')

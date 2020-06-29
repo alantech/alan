@@ -2,12 +2,12 @@ const { v4: uuid, } = require('uuid')
 
 const Box = require('./Box') // TODO: Eliminate Box
 const Module = require('./Module')
-const Event = require('./Event')
+const Event = require('./Event').default
 const Interface = require('./Interface')
 const Scope = require('./Scope')
 const Type = require('./Type')
 const Microstatement = require('./Microstatement')
-const StatementType = require('./StatementType')
+const StatementType = require('./StatementType').default
 
 const opcodeScope = new Scope()
 const opcodeModule = new Module(opcodeScope)

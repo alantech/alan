@@ -1,5 +1,7 @@
 class Float32 {
-  constructor(val) {
+  val: string
+
+  constructor(val: string) {
     this.val = val
   }
   toString() {
@@ -7,4 +9,4 @@ class Float32 {
   }
 }
 
-module.exports = Float32 
+export default Float32

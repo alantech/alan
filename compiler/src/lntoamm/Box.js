@@ -1,23 +1,17 @@
 const Type = require('./Type')
-const Int8 = require('./Int8')
-const Int16 = require('./Int16')
-const Int32 = require('./Int32')
-const Int64 = require('./Int64')
-const Float32 = require('./Float32')
-const Float64 = require('./Float64')
+const Int8 = require('./Int8').default
+const Int16 = require('./Int16').default
+const Int32 = require('./Int32').default
+const Int64 = require('./Int64').default
+const Float32 = require('./Float32').default
+const Float64 = require('./Float64').default
 
 class Box {
   constructor(...args) {
     // Work around circular deps in another way
     const Scope = require('./Scope')
     const Microstatement = require('./Microstatement')
-    const Int8 = require('./Int8')
-    const Int16 = require('./Int16')
-    const Int32 = require('./Int32')
-    const Int64 = require('./Int64')
-    const Float32 = require('./Float32')
-    const Float64 = require('./Float64')
-    const Event = require('./Event')
+    const Event = require('./Event').default
     if (args.length === 0) {
       this.type = Type.builtinTypes.void
       this.readonly = true

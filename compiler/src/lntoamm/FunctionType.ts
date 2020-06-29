@@ -1,5 +1,9 @@
 class FunctionType {
-  constructor(...args) {
+  functionname: string | null
+  args: Array<any> // TODO: convert `Type` to TS
+  returnType: any
+
+  constructor(...args: Array<any>) {
     if (args.length === 1) {
       this.functionname = null
       this.args = []
@@ -22,4 +26,4 @@ class FunctionType {
   }
 }
 
-module.exports = FunctionType
+export default FunctionType

@@ -1,4 +1,4 @@
-const FunctionType = require('./FunctionType')
+const FunctionType = require('./FunctionType').default
 
 class Interface {
   constructor(...args) {

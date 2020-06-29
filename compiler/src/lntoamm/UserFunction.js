@@ -2,7 +2,7 @@ const { v4: uuid, } = require('uuid')
 
 const Ast = require('./Ast')
 const Statement = require('./Statement')
-const StatementType = require('./StatementType')
+const StatementType = require('./StatementType').default
 const Type = require('./Type')
 const { LnParser, } = require('../ln')
 

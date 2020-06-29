@@ -5,10 +5,10 @@ const { v4: uuid, } = require('uuid')
 const Ast = require('./Ast')
 const Std = require('./Std')
 const Module = require('./Module')
-const Event = require('./Event')
+const Event = require('./Event').default
 const UserFunction = require('./UserFunction')
 const Microstatement = require('./Microstatement')
-const StatementType = require('./StatementType')
+const StatementType = require('./StatementType').default
 
 const hoistConst = (microstatements, constantDedupeLookup, constants) => {
   let i = 0

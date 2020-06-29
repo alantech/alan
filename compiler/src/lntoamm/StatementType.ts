@@ -1,4 +1,4 @@
-module.exports = {
+export default {
   CONSTDEC: 'CONSTDEC',
   LETDEC: 'LETDEC',
   ASSIGNMENT: 'ASSIGNMENT',
