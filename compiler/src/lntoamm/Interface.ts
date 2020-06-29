@@ -1,21 +1,25 @@
-const FunctionType = require('./FunctionType').default
+import FunctionType from './FunctionType'
+import Scope from './Scope'
 
 class Interface {
-  constructor(...args) {
-    if (args.length === 1) {
-      this.interfacename = args[0]
-      this.functionTypes = []
-      this.operatorTypes = []
-      this.requiredProperties = {}
-    } else if (args.length === 4) {
-      this.interfacename = args[0]
-      this.functionTypes = args[1]
-      this.operatorTypes = args[2]
-      this.requiredProperties = args[3]
-    }
+  interfacename: string
+  functionTypes: Array<FunctionType>
+  operatorTypes: Array<any> // OperatorTypes not yet implemented
+  requiredProperties: object
+
+  constructor(
+    interfacename: string,
+    functionTypes: Array<FunctionType> = [],
+    operatorTypes: Array<any> = [],
+    requiredProperties: object = {}
+  ) {
+    this.interfacename = interfacename
+    this.functionTypes = functionTypes
+    this.operatorTypes = operatorTypes
+    this.requiredProperties = requiredProperties
   }
 
-  typeApplies(typeToCheck, scope) {
+  typeApplies(typeToCheck: any, scope: Scope) { // TODO: Type to TS
     // Circulary dependency nonsense
     const Type = require('./Type')
     // Solve circular dependency issue
@@ -59,14 +63,14 @@ class Interface {
       if (!functionFound) return false
     }
 
-    for (const operatorType of this.operatorTypes) {
+    /* for (const operatorType of this.operatorTypes) {
       // TODO: Implement me!
-    }
+    } */
 
     return true
   }
 
-  static fromAst(interfaceAst, scope) {
+  static fromAst(interfaceAst: any, scope: Scope) { // TODO: replace ANTLR
     // Circulary dependency nonsense
     const Box = require('./Box')
     const Type = require('./Type')
@@ -129,4 +133,4 @@ class Interface {
   }
 }
 
-module.exports = Interface
+export default Interface

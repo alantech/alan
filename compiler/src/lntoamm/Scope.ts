@@ -1,14 +1,17 @@
-const Box = require('./Box')
-const Type = require('./Type')
-const { LnParser, } = require('../ln')
+import Box = require('./Box')
+import Type = require('./Type')
+import { LnParser, } from '../ln'
 
 class Scope {
-  constructor(par) {
+  vals: object
+  par: Scope | null
+
+  constructor(par?: Scope) {
     this.vals = {}
     this.par = par ? par : null
   }
 
-  get(name) {
+  get(name: string) {
     if (this.vals.hasOwnProperty(name)) {
       return this.vals[name]
     }
@@ -18,12 +21,12 @@ class Scope {
     return null
   }
 
-  deepGet(fullName) {
+  deepGet(fullName: string | any) { // TODO: Migrate away from ANTLR for better typing
     // For circular dependency reasons
     const opcodeScope = require('./opcodes').exportScope
     if (typeof fullName === "string") {
       const fullVar = fullName.trim().split(".")
-      let boxedVar
+      let boxedVar: any
       for (let i = 0; i < fullVar.length; i++) {
         if (i === 0) {
           boxedVar = this.get(fullVar[i])
@@ -41,7 +44,7 @@ class Scope {
       }
       return boxedVar
     } else if (fullName instanceof LnParser.VarnContext) {
-      const varAst = fullName
+      const varAst: any = fullName
       let boxedVar = null
       for (const varSegment of varAst.varsegment()) {
         if (boxedVar === null) {
@@ -96,7 +99,7 @@ class Scope {
     }
   }
 
-  has(name) {
+  has(name: string) {
     if (this.vals.hasOwnProperty(name)) {
       return true
     }
@@ -106,11 +109,11 @@ class Scope {
     return false
   }
 
-  put(name, val) {
+  put(name: string, val: any) { // TODO: Convert `Box` to TS (or kill Box and keep this as any)
     this.vals[name.trim()] = val
   }
 
-  deepPut(fullName, val) {
+  deepPut(fullName: string, val: any) {
     const fullVar = fullName.split(".")
     let almostFullVar = fullVar[0];
     for (let i = 1; i < fullVar.length - 1; i++) {
@@ -150,8 +153,8 @@ class Scope {
       // We're reassigning a variable with the same time
       // TODO: When we add ADTs, need to make the type check more advanced
       // Also TODO: Make the following algorithm less dumb and slow.
-      let boxedScope = this
-      while (!boxedScope.vals.containsValue(boxedVar)) {
+      let boxedScope: Scope = this
+      while (!Object.values(boxedScope.vals).includes(boxedVar)) {
         // We've already proven that we can find this value in the scope hierarchy, so this *will*
         // halt. :)
         boxedScope = boxedScope.par
@@ -165,4 +168,4 @@ class Scope {
   }
 }
 
-module.exports = Scope
+export default Scope

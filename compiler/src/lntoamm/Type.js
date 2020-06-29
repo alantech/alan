@@ -1,7 +1,7 @@
 class Type {
   constructor(...args) {
     // Circular dependency 'fix'
-    const Interface = require('./Interface')
+    const Interface = require('./Interface').default
     // Simulate multiple dispatch by duck typing the args
     if (args.length === 1) {
       this.typename = args[0]

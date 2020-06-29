@@ -9,7 +9,7 @@ const Float64 = require('./Float64').default
 class Box {
   constructor(...args) {
     // Work around circular deps in another way
-    const Scope = require('./Scope')
+    const Scope = require('./Scope').default
     const Microstatement = require('./Microstatement')
     const Event = require('./Event').default
     if (args.length === 0) {

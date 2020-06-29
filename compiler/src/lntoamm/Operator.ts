@@ -1,12 +1,19 @@
+import Scope from './Scope'
+
 class Operator {
-  constructor(name, precedence, isPrefix, potentialFunctions) {
+  name: string
+  precedence: number
+  isPrefix: boolean
+  potentialFunctions: Array<any> // TODO: Function/UserFunction in TS
+
+  constructor(name: string, precedence: number, isPrefix: boolean, potentialFunctions: Array<any>) {
     this.name = name
     this.precedence = precedence
     this.isPrefix = isPrefix
     this.potentialFunctions = potentialFunctions
   }
 
-  applicableFunction(left, right, scope) {
+  applicableFunction(left: any, right: any, scope: Scope) { // TODO: `Type` in TS
     let argumentTypeList = []
     if (!this.isPrefix) {
       if (left == null) return null
@@ -17,7 +24,7 @@ class Operator {
     for (let i = 0; i < fns.length; i++) {
       const isNary = fns[i].isNary()
       const args = fns[i].getArguments()
-      const argList = Object.values(args)
+      const argList: Array<any> = Object.values(args) // TODO: Function/UserFunction in TS
       if (!isNary && argList.length != argumentTypeList.length) continue
       if (isNary && argList.length > argumentTypeList.length) continue
       let skip = false
@@ -56,4 +63,4 @@ class Operator {
   }
 }
 
-module.exports = Operator
+export default Operator
