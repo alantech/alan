@@ -301,36 +301,36 @@ export fn assign(a: string) = copystr(a)
 export fn assign(a: Array<any>) = copyarr(a)
 
 // Operator declarations
-export infix commutative associative + 2 add
-export infix associative + 2 concat
-export infix - 2 sub
-export prefix - 1 negate
-export infix commutative associative * 3 mul
-export infix * 3 repeat
-export infix / 3 div
-export infix / 3 split
-export infix % 3 mod
-export infix % 3 template
-export infix ** 4 pow
-export infix commutative associative & 3 and
-export infix commutative associative && 3 and
-export infix commutative associative | 2 or
-export infix commutative associative || 2 or
-export infix commutative associative ^ 2 xor
-export prefix ! 4 not
-export infix commutative associative !& 3 nand
-export infix commutative associative !| 2 nor
-export infix commutative associative !^ 2 xnor
-export infix commutative associative == 1 eq
-export infix commutative associative != 1 neq
-export infix < 1 lt
-export infix <= 1 lte
-export infix > 1 gt
-export infix >= 1 gte
-export infix ~ 1 matches
-export infix @ 1 index
-export prefix # 4 length
-export prefix ` 4 trim
-export infix : 5 pair
-export infix ? 0 cond
+export infix add as + precedence 2
+export infix concat as + precedence 2
+export infix sub as - precedence 2
+export prefix negate as - precedence 1
+export infix mul as * precedence 3
+export infix repeat as * precedence 3
+export infix div as / precedence 3
+export infix split as / precedence 3
+export infix mod as % precedence 3
+export infix template as % precedence 3
+export infix pow as ** precedence 4
+export infix and as & precedence 3
+export infix and as && precedence 3
+export infix or as | precedence 2
+export infix or as || precedence 2
+export infix xor as ^ precedence 2
+export prefix not as ! precedence 4
+export infix nand as !& precedence 3
+export infix nor as !| precedence 2
+export infix xnor as !^ precedence 2
+export infix eq as == precedence 1
+export infix neq as != precedence 1
+export infix lt as < precedence 1
+export infix lte as <= precedence 1
+export infix gt as > precedence 1
+export infix gte as >= precedence 1
+export infix matches as ~ precedence 1
+export infix index as @ precedence 1
+export prefix length as # precedence 4
+export prefix trim as ` precedence 4
+export infix pair as : precedence 5
+export infix cond as ? precedence 0
 

@@ -1,4 +1,4 @@
-// Generated from Ln.g4 by ANTLR 4.7.2
+// Generated from Ln.g4 by ANTLR 4.8
 // jshint ignore: start
 var antlr4 = require('antlr4/index');
 
@@ -407,12 +407,21 @@ LnListener.prototype.exitOperatormapping = function(ctx) {
 };
 
 
-// Enter a parse tree produced by LnParser#infix.
-LnListener.prototype.enterInfix = function(ctx) {
+// Enter a parse tree produced by LnParser#fntoop.
+LnListener.prototype.enterFntoop = function(ctx) {
 };
 
-// Exit a parse tree produced by LnParser#infix.
-LnListener.prototype.exitInfix = function(ctx) {
+// Exit a parse tree produced by LnParser#fntoop.
+LnListener.prototype.exitFntoop = function(ctx) {
+};
+
+
+// Enter a parse tree produced by LnParser#opprecedence.
+LnListener.prototype.enterOpprecedence = function(ctx) {
+};
+
+// Exit a parse tree produced by LnParser#opprecedence.
+LnListener.prototype.exitOpprecedence = function(ctx) {
 };
 
 

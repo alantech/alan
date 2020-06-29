@@ -19,7 +19,7 @@ Describe "Functions and Custom Operators"
 
       fn double(a: int64) = a * 2
 
-      prefix ## 10 double
+      prefix double as ## precedence 10
 
       /**
        * It should be possible to write 'doublesum' as:
@@ -30,7 +30,7 @@ Describe "Functions and Custom Operators"
        */
       fn doublesum(x: int64, y: int64) = x.double() + y.double() // TODO: Fix naming confusion
 
-      infix #+# 11 doublesum
+      infix doublesum as #+# precedence 11
 
       on start fn (): void {
         foo()
