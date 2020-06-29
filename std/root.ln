@@ -261,14 +261,38 @@ export fn index(arr: Array<any>, val: float32) = indarrf(arr, val)
 export fn index(arr: Array<any>, val: float64) = indarrf(arr, val)
 export fn index(arr: Array<any>, val: bool) = indarrf(arr, val)
 export fn length(arr: Array<any>) = lenarr(arr)
-export fn push(arr: Array<any>, val: any) = pusharr(arr, val, 0)
-export fn push(arr: Array<any>, val: int8) = pusharr(arr, val, 8)
-export fn push(arr: Array<any>, val: int16) = pusharr(arr, val, 8)
-export fn push(arr: Array<any>, val: int32) = pusharr(arr, val, 8)
-export fn push(arr: Array<any>, val: int64) = pusharr(arr, val, 8)
-export fn push(arr: Array<any>, val: float32) = pusharr(arr, val, 8)
-export fn push(arr: Array<any>, val: float64) = pusharr(arr, val, 8)
-export fn push(arr: Array<any>, val: bool) = pusharr(arr, val, 8)
+export fn push(arr: Array<any>, val: any) {
+  pusharr(arr, val, 0)
+  return arr
+}
+export fn push(arr: Array<any>, val: int8) {
+  pusharr(arr, val, 8)
+  return arr
+}
+export fn push(arr: Array<any>, val: int16) {
+  pusharr(arr, val, 8)
+  return arr
+}
+export fn push(arr: Array<any>, val: int32) {
+  pusharr(arr, val, 8)
+  return arr
+}
+export fn push(arr: Array<any>, val: int64) {
+  pusharr(arr, val, 8)
+  return arr
+}
+export fn push(arr: Array<any>, val: float32) {
+  pusharr(arr, val, 8)
+  return arr
+}
+export fn push(arr: Array<any>, val: float64) {
+  pusharr(arr, val, 8)
+  return arr
+}
+export fn push(arr: Array<any>, val: bool) {
+  pusharr(arr, val, 8)
+  return arr
+}
 export fn pop(arr: Array<any>): any = poparr(arr, val)
 export each // opcode with signature `fn each(arr: Array<any>, cb: function): void`
 export map // opcode with signature `fn map(arr: Array<any>, cb: function): Array<any>`
@@ -285,8 +309,8 @@ export keys // opcode with signature `fn keys(map: Map<any, any>): Array<any>`
 export values // opcode with signature `fn values(map: Map<any, any>): Array<any>`
 
 // Ternary functions
-export pair // opcode with signature `fn pair(trueval: any, falseval: any): Array<any>`
-export fn cond(c: bool, options: Array<any>): any = condarr(c, options)
+export fn pair(trueval: any, falseval: any) = new Array<any> [ trueval, falseval ]
+export fn cond(c: bool, options: Array<any>) = options[1 - c.toInt64()]
 export fn cond(c: bool, optional: function): void = condfn(c, optional)
 
 // "assign" function useful for hoisting assignments
@@ -332,5 +356,6 @@ export infix index as @ precedence 1
 export prefix length as # precedence 4
 export prefix trim as ` precedence 4
 export infix pair as : precedence 5
+export infix push as : precedence 6
 export infix cond as ? precedence 0
 

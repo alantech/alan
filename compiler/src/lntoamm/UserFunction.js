@@ -207,7 +207,7 @@ class UserFunction {
       let statement = Statement.create(assignablesAst, closureScope)
       if (!statement.pure) pure = false
       statements.push(statement)
-      // TODO: Infer the return type for anything other than calls of other functions
+      // TODO: Infer the return type for anything other than calls or object literals
       if (assignablesAst.basicassignables() && assignablesAst.basicassignables().calls()) {
         const fnCall = closureScope.deepGet(assignablesAst.basicassignables().calls().varn(0))
         if (fnCall && fnCall.functionval) {
@@ -216,6 +216,13 @@ class UserFunction {
           // similar to how the Microstatements piece works
           returnType = fnCall.functionval[0].getReturnType()
         }
+      } else if (
+        assignablesAst.basicassignables() &&
+        assignablesAst.basicassignables().objectliterals()
+      ) {
+        returnType = closureScope.deepGet(
+          assignablesAst.basicassignables().objectliterals().othertype().getText().trim()
+        ).typeval
       }
     }
     return new UserFunction(name, args, returnType, closureScope, statements, pure)
@@ -452,6 +459,8 @@ class UserFunction {
     const Microstatement = require('./Microstatement')
     const internalNames = Object.keys(fn.args)
     const originalStatementLength = microstatements.length
+    const inputs = realArgNames.map(n => Microstatement.fromVarName(n, microstatements))
+    const inputTypes = inputs.map(i => i.outputType)
     for (let i = 0; i < internalNames.length; i++) {
       const realArgName = realArgNames[i]
       // Instead of copying the relevant data, define a reference to where the data is located with
@@ -463,7 +472,7 @@ class UserFunction {
         true,
         realArgName,
         internalNames[i],
-        fn.args[internalNames[i]],
+        inputTypes[i],
         [],
         [],
       ))
@@ -478,6 +487,51 @@ class UserFunction {
         microstatements.splice(i, 1)
         i--
       }
+    }
+    // If the output return type is an interface or is a realized generic with an inner interface
+    // type, figure out what its actual type is. This is assuming that any input type of the same
+    // interface's real type is the same as the output type, which is a valid assumption as long as
+    // all inputs of that particular interface are the same type. TODO: If this is not true, it must
+    // be a compile-time error earlier on.
+    if (!!this.returnType.iface || Object.values(this.returnType.properties).some(p => !!p.iface)) {
+      const oldReturnType = this.returnType
+      let newReturnType = oldReturnType
+      if (!!oldReturnType.iface) {
+        Object.values(this.args).forEach((a, i) => {
+          if (!!a.iface && a.iface.interfacename === oldReturnType.iface.interfacename) {
+            newReturnType = inputTypes[i]
+          } else if (Object.values(a.properties).some(
+            p => !!p.iface && p.iface.interfacename === oldReturnType.iface.interfacename
+          )) {
+            newReturnType = Object.values(inputTypes[i].properties).find(
+              p => !!p.iface && p.iface.interfacename === oldReturnType.iface.interfacename
+            )
+          }
+        })
+      } else {
+        const ifaceMap = {}
+        Object.values(this.args).forEach((a, i) => {
+          if (!!a.iface) {
+            ifaceMap[a.iface.interfacename] = inputTypes[i]
+          } else if (Object.values(a.properties).some(
+            p => !!p.iface && p.iface.interfacename === oldReturnType.iface.interfacename
+          )) {
+            Object.values(inputTypes[i].properties).forEach((p, j) => {
+              if (!!p.iface) {
+                ifaceMap[p.iface.interfacename] = Object.values(inputTypes[i])[j]
+              }
+            })
+          }
+        })
+        const oldproptypes = Object.values(oldReturnType.properties)
+        const newproptypes = oldproptypes.map(
+          p => !!p.iface ? ifaceMap[p.iface.interfacename].typename : p.typename
+        )
+        const baseType = oldReturnType.originalType
+        newReturnType = baseType.solidify(newproptypes, scope)
+      }
+      const last = microstatements[microstatements.length - 1]
+      last.outputType = newReturnType
     }
   }
 

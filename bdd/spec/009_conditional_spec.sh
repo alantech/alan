@@ -1,6 +1,6 @@
 Include build_tools.sh
 
-Describe "Condiionals"
+Describe "Conditionals"
   Describe "Basic"
     before() {
       sourceToAll "
@@ -161,8 +161,7 @@ Far!"
 
   Describe "Ternary"
     before() {
-      # TODO: sourceToAll
-      sourceToTemp "
+      sourceToAll "
         from @std/app import start, print, exit
 
         on start {
@@ -209,13 +208,11 @@ Far!"
 5"
 
     It "runs js"
-      Pending ternary-array-support
       When run node temp.js
       The output should eq "$ADVOUTPUT"
     End
 
     It "runs agc"
-      Pending ternary-array-support
       When run alan-runtime run temp.agc
       The output should eq "$ADVOUTPUT"
     End

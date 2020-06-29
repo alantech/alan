@@ -171,6 +171,39 @@ Hello, World!"
     End
   End
 
+  Describe "ternary abuse"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+
+        on start {
+          const test = '1':'1':'2':'3':'5':'8'
+          print(test.join(', '))
+
+          emit exit 0
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    TERNARRAYOUTPUT="1, 1, 2, 3, 5, 8"
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "$TERNARRAYOUTPUT"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
+      The output should eq "$TERNARRAYOUTPUT"
+    End
+  End
+
   Describe "everything else ;)"
     before() {
       # TODO: sourceToAll
