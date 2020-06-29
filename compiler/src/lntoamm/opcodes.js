@@ -325,8 +325,6 @@ addopcodes({
   lenarr: [{ arr: t('Array<any>'), }, t('int64')],
   lenmap: [{ map: t('Map<any, any>'), }, t('int64')],
   trim: [{ s: t('string'), }, t('string')],
-  pair: [{ trueval: t('any'), falseval: t('any'), }, t('Array<any>')],
-  condarr: [{ cond: t('bool'), options: t('Array<any>'), }, t('any')],
   condfn: [{ cond: t('bool'), optional: t('function'), }, t('any')],
   pusharr: [{ arr: t('Array<any>'), val: t('any'), size: t('int64')}],
   poparr: [{ arr: t('Array<any>')}, t('any')],
