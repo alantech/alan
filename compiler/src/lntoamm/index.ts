@@ -3,8 +3,8 @@ import * as fs from 'fs'
 import { v4 as uuid, } from 'uuid'
 
 import * as Ast from './Ast'
-import Std = require('./Std')
-import Module = require('./Module')
+import * as Std from './Std'
+import Module from './Module'
 import Event from './Event'
 import UserFunction = require('./UserFunction')
 import Microstatement = require('./Microstatement')

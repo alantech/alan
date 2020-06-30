@@ -22,8 +22,6 @@ class Scope {
   }
 
   deepGet(fullName: string | any) { // TODO: Migrate away from ANTLR for better typing
-    // For circular dependency reasons
-    const opcodeScope = require('./opcodes').exportScope
     if (typeof fullName === "string") {
       const fullVar = fullName.trim().split(".")
       let boxedVar: any
@@ -44,6 +42,8 @@ class Scope {
       }
       return boxedVar
     } else if (fullName instanceof LnParser.VarnContext) {
+      // Circular dependency fix: TODO figure out how to eliminate this
+      const opcodes = require('./opcodes').default
       const varAst: any = fullName
       let boxedVar = null
       for (const varSegment of varAst.varsegment()) {
@@ -75,7 +75,7 @@ class Scope {
             } else if (boxedVar.type.originalType != null && boxedVar.type.originalType == Type.builtinTypes["Map"]) {
               boxedVar = boxedVar.mapval.get(arrayAccessBox)
               if (boxedVar == null) {
-                boxedVar = opcodeScope.get("_")
+                boxedVar = opcodes.exportScope.get("_")
               }
             } else {
               if (arrayAccessBox.stringval == null) {

@@ -202,7 +202,7 @@ class Type {
     return type
   }
 
-  solidify(genericReplacements: Array<Type>, scope: Scope) {
+  solidify(genericReplacements: Array<string>, scope: Scope) {
     const Box = require('./Box') // To solve circular dependency issues
     let replacementTypes = []
     for (const typename of genericReplacements) {

@@ -1,16 +1,20 @@
-const Ast = require('./Ast')
-const Box = require('./Box')
-const Event = require('./Event').default
-const Interface = require('./Interface').default
-const Operator = require('./Operator').default
-const Scope = require('./Scope').default
-const UserFunction = require('./UserFunction')
-const Type = require('./Type').default
+import * as Ast from './Ast'
+import Box = require('./Box')
+import Event from './Event'
+import Interface from './Interface'
+import Operator from './Operator'
+import Scope from './Scope'
+import Type from './Type'
+import UserFunction = require('./UserFunction')
+import FunctionType from './FunctionType'
 
 const modules = {}
 
 class Module {
-  constructor(rootScope) {
+  moduleScope: Scope
+  exportScope: Scope
+
+  constructor(rootScope: Scope) {
     // Thoughts on how to handle this right now:
     // 1. The outermost module scope is read-only always.
     // 2. Therefore anything in the export scope can simply be duplicated in both scopes
@@ -25,9 +29,9 @@ class Module {
   }
 
   static populateModule(
-    path, // string
-    ast, // ModuleContext
-    rootScope // Scope
+    path: string,
+    ast: any, // ModuleContext
+    rootScope: Scope,
   ) {
     let module = new Module(rootScope)
     // First, populate all of the imports
@@ -39,7 +43,7 @@ class Module {
       // If it's a "standard" import, figure out what name to call it (if the user overrode it)
       // and then attach the entire module with that name to the local scope.
       if (!!standardImport) {
-        let importName
+        let importName: string
         if (standardImport.AS() != null) {
           importName = standardImport.VARNAME().getText()
         } else if (standardImport.dependency().localdependency() != null) {
@@ -62,7 +66,7 @@ class Module {
         const importedModule = modules[Ast.resolveDependency(path, fromImport.dependency())]
         const vars = fromImport.varlist().renameablevar()
         for (const moduleVar of vars) {
-          let importName
+          let importName: string
           const exportName = moduleVar.varop(0).getText()
           if (moduleVar.AS() != null) {
             importName = moduleVar.varop(1).getText()
@@ -100,7 +104,7 @@ class Module {
               .filter(fn => {
                 // TODO: Make this better and move it to the Interface file in the future
                 return iface.functionTypes.some(
-                  ft => ft.functionname === fn.functionval[0].getName()
+                  (ft: FunctionType) => ft.functionname === fn.functionval[0].getName()
                 )
               })
               .forEach(fn => {
@@ -128,7 +132,7 @@ class Module {
     const constdeclarations = ast.constdeclaration()
     for (const constAst of constdeclarations) {
       const newConst = Box.fromConstAst(constAst, module.moduleScope)
-      let constName
+      let constName: string
       if (constAst.VARNAME() != null) {
         constName = constAst.VARNAME().getText()
       } else {
@@ -203,7 +207,7 @@ class Module {
         module.exportScope.put(interfaceBox.typeval.typename, interfaceBox)
       } else if (exportAst.constdeclaration() != null) {
         const newConst = Box.fromConstAst(exportAst.constdeclaration(), module.moduleScope)
-        let constName
+        let constName: string
         if (exportAst.constdeclaration().VARNAME() != null) {
           constName = exportAst.constdeclaration().VARNAME().getText()
         } else {
@@ -290,10 +294,11 @@ class Module {
     for (const handlerAst of handlers) {
       let eventBox = null
       if (handlerAst.eventref().varn() != null) {
-        const eventName = handlerAst.eventref().varn().getText()
         eventBox = module.moduleScope.deepGet(handlerAst.eventref().varn())
       } else if (handlerAst.eventref().calls() != null) {
-        eventBox = AFunction.callFromAst(handlerAst.eventref().calls(), module.moduleScope)
+        console.error("Not yet implemented!")
+        process.exit(-19)
+        // eventBox = AFunction.callFromAst(handlerAst.eventref().calls(), module.moduleScope)
       }
       if (eventBox == null) {
         console.error("Could not find specified event: " + handlerAst.eventref().getText())
@@ -358,8 +363,8 @@ class Module {
   }
 
   static modulesFromAsts(
-    astMap, // string to ModuleContext
-    rootScope // Scope
+    astMap: object, // string to ModuleContext
+    rootScope: Scope,
   ) {
     let modulePaths = Object.keys(astMap)
     while (modulePaths.length > 0) {
@@ -384,4 +389,4 @@ class Module {
   }
 }
 
-module.exports = Module
+export default Module

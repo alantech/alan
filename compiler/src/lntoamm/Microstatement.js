@@ -185,7 +185,7 @@ class Microstatement {
             ))
             // Insert a `copyto` opcode. Eventually determine if it should be `copyto` or `register`
             // based on the inner type of the Array.
-            const opcodeScope = require('./opcodes').exportScope // Unfortunate circular dep issue
+            const opcodeScope = require('./opcodes').default.exportScope // Unfortunate circular dep
             opcodeScope.get('copyfrom').functionval[0].microstatementInlining(
               [original.outputName, addrName],
               scope,
@@ -243,7 +243,7 @@ class Microstatement {
           }
           // Insert a `copyto` opcode. Eventually determine if it should be `copyto` or `register`
           // based on the inner type of the Array.
-          const opcodeScope = require('./opcodes').exportScope // Unfortunate circular dep issue
+          const opcodeScope = require('./opcodes').default.exportScope // Unfortunate circular dep
           opcodeScope.get('copyfrom').functionval[0].microstatementInlining(
             [original.outputName, lookup.outputName],
             scope,
@@ -449,7 +449,7 @@ class Microstatement {
           [`${arrayLiteralContents.length}`],
           [],
         ))
-        const opcodeScope = require('./opcodes').exportScope // Unfortunate circular dep issue
+        const opcodeScope = require('./opcodes').default.exportScope // Unfortunate circular dep
         // Add the opcode to create a new array with the specified size
         opcodeScope.get('newarr').functionval[0].microstatementInlining(
           [lenName],
@@ -589,7 +589,7 @@ class Microstatement {
           [`${fields.length}`],
           [],
         ))
-        const opcodeScope = require('./opcodes').exportScope // Unfortunate circular dep issue
+        const opcodeScope = require('./opcodes').default.exportScope // Unfortunate circular dep
         // Add the opcode to create a new array with the specified size
         opcodeScope.get('newarr').functionval[0].microstatementInlining(
           [lenName],
@@ -1243,7 +1243,7 @@ class Microstatement {
         scope.deepGet(letTypeHint) && scope.deepGet(letTypeHint).typeval
       ) || Type.builtinTypes.void
       if (type.originalType) {
-        const opcodeScope = require('./opcodes').exportScope // Unfortunate circular dep issue
+        const opcodeScope = require('./opcodes').default.exportScope // Unfortunate circular dep
         const constName = "_" + uuid().replace(/-/g, "_")
         microstatements.push(new Microstatement(
           StatementType.CONSTDEC,

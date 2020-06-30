@@ -2,8 +2,10 @@ import * as fs from 'fs'
 import * as path from 'path'
 
 import * as Ast from './Ast'
-import Module = require('./Module')
-import { exportScope as opcodeScope, } from './opcodes'
+import Module from './Module'
+import opcodes from './opcodes'
+
+const opcodeScope = opcodes.exportScope
 
 export const loadStdModules = (stdImports: Set<any>) => {
   const stdDir = path.join(__dirname, '../../std')

@@ -1,19 +1,19 @@
-const { v4: uuid, } = require('uuid')
+import { v4 as uuid, } from 'uuid'
 
-const Box = require('./Box') // TODO: Eliminate Box
-const Module = require('./Module')
-const Event = require('./Event').default
-const Interface = require('./Interface').default
-const Scope = require('./Scope').default
-const Type = require('./Type').default
-const Microstatement = require('./Microstatement')
-const StatementType = require('./StatementType').default
+import Box = require('./Box') // TODO: Eliminate Box
+import Module from './Module'
+import Event from './Event'
+import Interface from './Interface'
+import Scope from './Scope'
+import Type from './Type'
+import Microstatement = require('./Microstatement')
+import StatementType from './StatementType'
 
 const opcodeScope = new Scope()
 const opcodeModule = new Module(opcodeScope)
 
 // Base types
-const addBuiltIn = (name) => { opcodeScope.put(name, new Box(Type.builtinTypes[name])) }
+const addBuiltIn = (name: string) => { opcodeScope.put(name, new Box(Type.builtinTypes[name])) }
 ([
   'void', 'int8', 'int16', 'int32', 'int64', 'float32', 'float64', 'bool', 'string', 'function',
   'operator', 'Error', 'Array', 'Map', 'KeyVal',
@@ -26,10 +26,10 @@ Type.builtinTypes['Map'].solidify(['any', 'any'], opcodeScope)
 Type.builtinTypes['KeyVal'].solidify(['any', 'any'], opcodeScope)
 Type.builtinTypes['Array'].solidify(['KeyVal<any, any>'], opcodeScope)
 opcodeScope.put("start", new Box(new Event("_start", Type.builtinTypes.void, true), true))
-const t = (str) => opcodeScope.get(str).typeval
+const t = (str: string) => opcodeScope.get(str).typeval
 
 // opcode declarations
-const addopcodes = (opcodes) => {
+const addopcodes = (opcodes: object) => {
   const opcodeNames = Object.keys(opcodes)
   opcodeNames.forEach((opcodeName) => {
     const opcodeDef = opcodes[opcodeName]
@@ -41,7 +41,11 @@ const addopcodes = (opcodes) => {
         getReturnType: () => Type.builtinTypes.void,
         isNary: () => false,
         isPure: () => true,
-        microstatementInlining: (realArgNames, scope, microstatements) => {
+        microstatementInlining: (
+          realArgNames: Array<string>,
+          scope: Scope,
+          microstatements: any // TODO: Convert `Microstatement` to TS
+        ) => {
           microstatements.push(new Microstatement(
             StatementType.CALL,
             scope,
@@ -62,7 +66,11 @@ const addopcodes = (opcodes) => {
         getReturnType: () => returnType,
         isNary: () => false,
         isPure: () => true,
-        microstatementInlining: (realArgNames, scope, microstatements) => {
+        microstatementInlining: (
+          realArgNames: Array<string>,
+          scope: Scope,
+          microstatements: any // TODO: Convertion `Microstatement` to TS
+        ) => {
           const inputs = realArgNames.map(n => Microstatement.fromVarName(n, microstatements))
           const inputTypes = inputs.map(i => i.outputType)
           microstatements.push(new Microstatement(
@@ -73,8 +81,8 @@ const addopcodes = (opcodes) => {
             ((inputTypes, scope) => {
               if (!!returnType.iface) {
                 // Path 1: the opcode returns an interface based on the interface type of an input
-                let replacementType
-                Object.values(args).forEach((a, i) => {
+                let replacementType: Type
+                Object.values(args).forEach((a: Type, i: number) => {
                   if (!!a.iface && a.iface.interfacename === returnType.iface.interfacename) {
                     replacementType = inputTypes[i]
                   }
@@ -83,7 +91,7 @@ const addopcodes = (opcodes) => {
                   )) {
                     Object.values(a.properties).forEach((p, j) => {
                       if (!!p.iface && p.iface.interfacename === returnType.iface.interfacename) {
-                        replacementType = Object.values(inputTypes[i].properties)[j]
+                        replacementType = Object.values(inputTypes[i].properties)[j] as Type
                       }
                     })
                   }
@@ -91,16 +99,16 @@ const addopcodes = (opcodes) => {
                 return replacementType
               } else if (
                 returnType.originalType &&
-                Object.values(returnType.properties).some(p => !!p.iface)
+                Object.values(returnType.properties).some((p: Type) => !!p.iface)
               ) {
                 // Path 2: the opcode returns solidified generic type with an interface generic that
                 // mathces the interface type of an input
                 const returnIfaces = Object.values(returnType.properties)
-                  .filter(p => !!p.iface).map(p => p.iface)
+                  .filter((p: Type) => !!p.iface).map((p: Type) => p.iface)
                 const ifaceMap = {}
-                Object.values(args).forEach((a, i) => {
+                Object.values(args).forEach((a: Type, i: number) => {
                   if (!!a.iface) {
-                    ifaceMap[a.interfacename] = inputTypes[i]
+                    ifaceMap[a.iface.interfacename] = inputTypes[i]
                   }
                 })
                 const baseType = returnType.originalType
@@ -354,4 +362,4 @@ addopcodes({
   copyarr: [{ a: t('Array<any>'), }, t('Array<any>')],
 })
 
-module.exports = opcodeModule
+export default opcodeModule
