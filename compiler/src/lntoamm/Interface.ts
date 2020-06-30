@@ -1,5 +1,6 @@
 import FunctionType from './FunctionType'
 import Scope from './Scope'
+import Type from './Type'
 
 class Interface {
   interfacename: string
@@ -20,8 +21,6 @@ class Interface {
   }
 
   typeApplies(typeToCheck: any, scope: Scope) { // TODO: Type to TS
-    // Circulary dependency nonsense
-    const Type = require('./Type')
     // Solve circular dependency issue
     for (const requiredProperty of Object.keys(this.requiredProperties)) {
       if (!typeToCheck.properties.hasOwnProperty(requiredProperty)) return false
@@ -73,7 +72,6 @@ class Interface {
   static fromAst(interfaceAst: any, scope: Scope) { // TODO: replace ANTLR
     // Circulary dependency nonsense
     const Box = require('./Box')
-    const Type = require('./Type')
     // Construct the basic interface, the wrapper type, and insert it into the scope
     // This is all necessary so the interface can self-reference when constructing the function and
     // operator types.

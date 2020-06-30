@@ -5,7 +5,7 @@ const Interface = require('./Interface').default
 const Operator = require('./Operator').default
 const Scope = require('./Scope').default
 const UserFunction = require('./UserFunction')
-const Type = require('./Type')
+const Type = require('./Type').default
 
 const modules = {}
 

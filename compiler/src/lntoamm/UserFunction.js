@@ -3,7 +3,7 @@ const { v4: uuid, } = require('uuid')
 const Ast = require('./Ast')
 const Statement = require('./Statement').default
 const StatementType = require('./StatementType').default
-const Type = require('./Type')
+const Type = require('./Type').default
 const { LnParser, } = require('../ln')
 
 // This only implements the parts required for the compiler

@@ -1,4 +1,4 @@
-const Type = require('./Type')
+const Type = require('./Type').default
 const Int8 = require('./Int8').default
 const Int16 = require('./Int16').default
 const Int32 = require('./Int32').default

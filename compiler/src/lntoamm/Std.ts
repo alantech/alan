@@ -1,7 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 
-import Ast = require('./Ast')
+import * as Ast from './Ast'
 import Module = require('./Module')
 import { exportScope as opcodeScope, } from './opcodes'
 

@@ -1,6 +1,6 @@
-import Type = require('./Type')
-import { LnParser, } from '../ln'
 import Scope from './Scope'
+import Type from './Type'
+import { LnParser, } from '../ln'
 
 // Only implements the pieces necessary for the first stage compiler
 class Statement {

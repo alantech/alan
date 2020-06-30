@@ -1,5 +1,5 @@
 import Box = require('./Box')
-import Type = require('./Type')
+import Type from './Type'
 import { LnParser, } from '../ln'
 
 class Scope {

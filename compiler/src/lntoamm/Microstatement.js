@@ -3,7 +3,7 @@ const { v4: uuid, } = require('uuid')
 const { LnParser, } = require('../ln')
 const StatementType = require('./StatementType').default
 const Box = require('./Box')
-const Type = require('./Type')
+const Type = require('./Type').default
 const UserFunction = require('./UserFunction')
 
 class Microstatement {

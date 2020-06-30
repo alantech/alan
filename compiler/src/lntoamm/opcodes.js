@@ -5,7 +5,7 @@ const Module = require('./Module')
 const Event = require('./Event').default
 const Interface = require('./Interface').default
 const Scope = require('./Scope').default
-const Type = require('./Type')
+const Type = require('./Type').default
 const Microstatement = require('./Microstatement')
 const StatementType = require('./StatementType').default
 

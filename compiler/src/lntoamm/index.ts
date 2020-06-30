@@ -2,7 +2,7 @@ import * as fs from 'fs'
 
 import { v4 as uuid, } from 'uuid'
 
-import Ast = require('./Ast')
+import * as Ast from './Ast'
 import Std = require('./Std')
 import Module = require('./Module')
 import Event from './Event'
