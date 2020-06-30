@@ -1,6 +1,6 @@
 const stdlibs = require('./stdlibs.json')
 
-const Ast = require('../dist/lntoamm/Ast').default
+const Ast = require('../dist/lntoamm/Ast')
 const Module = require('../dist/lntoamm/Module').default
 const Scope = require('../dist/lntoamm/Scope').default
 const opcodeScope = require('../dist/lntoamm/opcodes').default.exportScope
