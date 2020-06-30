@@ -1,13 +1,14 @@
-import Type from './Type'
-import Int8 from './Int8'
+import Event from './Event'
+import Float32 from './Float32'
+import Float64 from './Float64'
 import Int16 from './Int16'
 import Int32 from './Int32'
 import Int64 from './Int64'
-import Float32 from './Float32'
-import Float64 from './Float64'
-import Scope from './Scope'
-import Event from './Event'
+import Int8 from './Int8'
 import Operator from './Operator'
+import Scope from './Scope'
+import Type from './Type'
+import UserFunction from './UserFunction'
 
 class Box {
   type: Type
@@ -24,7 +25,7 @@ class Box {
   float64val: Float64 | undefined
   boolval: boolean | undefined
   stringval: string | undefined
-  functionval: Array<any> | undefined // TODO: Port UserFunction to TS
+  functionval: Array<UserFunction> | undefined
   eventval: Event | undefined
   arrayval: Array<any> | undefined
   mapval: Map<any, any> | undefined
@@ -297,8 +298,6 @@ class Box {
     expectedType: Type,
     readonly: boolean
   ) {
-    // Circular dependency issue, TODO: fix
-    const UserFunction = require('./UserFunction')
     if (basicAssignable.functions() != null) {
       const assignedFunction = UserFunction.fromAst(basicAssignable.functions(), scope)
       return new Box([assignedFunction], readonly)

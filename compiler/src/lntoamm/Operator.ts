@@ -1,10 +1,12 @@
 import Scope from './Scope'
+import Type from './Type'
+import UserFunction from './UserFunction'
 
 class Operator {
   name: string
   precedence: number
   isPrefix: boolean
-  potentialFunctions: Array<any> // TODO: Function/UserFunction in TS
+  potentialFunctions: Array<UserFunction>
 
   constructor(name: string, precedence: number, isPrefix: boolean, potentialFunctions: Array<any>) {
     this.name = name
@@ -13,7 +15,7 @@ class Operator {
     this.potentialFunctions = potentialFunctions
   }
 
-  applicableFunction(left: any, right: any, scope: Scope) { // TODO: `Type` in TS
+  applicableFunction(left: Type, right: Type, scope: Scope) {
     let argumentTypeList = []
     if (!this.isPrefix) {
       if (left == null) return null
@@ -24,7 +26,7 @@ class Operator {
     for (let i = 0; i < fns.length; i++) {
       const isNary = fns[i].isNary()
       const args = fns[i].getArguments()
-      const argList: Array<any> = Object.values(args) // TODO: Function/UserFunction in TS
+      const argList: Array<Type> = Object.values(args)
       if (!isNary && argList.length != argumentTypeList.length) continue
       if (isNary && argList.length > argumentTypeList.length) continue
       let skip = false

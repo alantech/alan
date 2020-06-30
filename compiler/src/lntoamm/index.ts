@@ -6,7 +6,7 @@ import * as Ast from './Ast'
 import * as Std from './Std'
 import Module from './Module'
 import Event from './Event'
-import UserFunction = require('./UserFunction')
+import UserFunction from './UserFunction'
 import Microstatement = require('./Microstatement')
 import StatementType from './StatementType'
 
@@ -196,7 +196,7 @@ const ammFromModuleAsts = (moduleAsts: any) => { // TODO: Migrate from ANTLR
           argList.push(arg + ": " + handler.getArguments()[arg].typename)
           microstatements.push(new Microstatement(
             StatementType.ARG,
-            handler.closureScope,
+            handler.scope,
             true,
             arg,
             handler.getArguments()[arg],

@@ -1,18 +1,37 @@
-const { v4: uuid, } = require('uuid')
+import { v4 as uuid, } from 'uuid'
 
-const Ast = require('./Ast')
-const Statement = require('./Statement').default
-const StatementType = require('./StatementType').default
-const Type = require('./Type').default
-const { LnParser, } = require('../ln')
+import * as Ast from './Ast'
+import Statement from './Statement'
+import StatementType from './StatementType'
+import Type from './Type'
+import { LnParser, } from '../ln'
+import Scope from './Scope'
+import Box from './Box'
 
-// This only implements the parts required for the compiler
+type Args = {
+  [K: string]: Type
+}
+
 class UserFunction {
-  constructor(name, args, returnType, closureScope, statements, pure) {
+  name: string
+  args: Args
+  returnType: Type
+  scope: Scope
+  statements: Array<Statement>
+  pure: boolean
+
+  constructor(
+    name: string,
+    args: Args,
+    returnType: Type,
+    scope: Scope,
+    statements: Array<Statement>,
+    pure: boolean
+  ) {
     this.name = name
     this.args = args
     this.returnType = returnType
-    this.closureScope = closureScope
+    this.scope = scope
     for (let i = 0; i < statements.length - 1; i++) {
       if (statements[i].isReturnStatement()) {
         // There are unreachable statements after this line, abort
@@ -31,39 +50,39 @@ class UserFunction {
     this.pure = pure
   }
 
-  static fromAst(functionishAst, closureScope) {
+  static fromAst(functionishAst: any, scope: Scope) { // TODO: Eliminate ANTLR
     if (functionishAst instanceof LnParser.BlocklikesContext) {
       if (functionishAst.functions() != null) {
-        return UserFunction.fromFunctionsAst(functionishAst.functions(), closureScope)
+        return UserFunction.fromFunctionsAst(functionishAst.functions(), scope)
       }
       if (functionishAst.functionbody() != null) {
-        return UserFunction.fromFunctionbodyAst(functionishAst.functionbody(), closureScope)
+        return UserFunction.fromFunctionbodyAst(functionishAst.functionbody(), scope)
       }
     }
     if (functionishAst instanceof LnParser.FunctionsContext) {
-      return UserFunction.fromFunctionsAst(functionishAst, closureScope)
+      return UserFunction.fromFunctionsAst(functionishAst, scope)
     }
     if (functionishAst instanceof LnParser.FunctionbodyContext) {
-      return UserFunction.fromFunctionbodyAst(functionishAst, closureScope)
+      return UserFunction.fromFunctionbodyAst(functionishAst, scope)
     }
     return null
   }
 
-  static fromFunctionbodyAst(functionbodyAst, closureScope) {
+  static fromFunctionbodyAst(functionbodyAst: any, scope: Scope) { // TODO: Eliminate ANTLR
     let args = {}
     const returnType = Type.builtinTypes.void
     let pure = true // Assume purity and then downgrade if needed
     let statements = []
     const statementsAst = functionbodyAst.statements()
     for (const statementAst of statementsAst) {
-      const statement = Statement.create(statementAst, closureScope)
+      const statement = Statement.create(statementAst, scope)
       if (!statement.pure) pure = false
       statements.push(statement)
     }
-    return new UserFunction(null, args, returnType, closureScope, statements, pure)
+    return new UserFunction(null, args, returnType, scope, statements, pure)
   }
 
-  static fromFunctionsAst(functionAst, closureScope) {
+  static fromFunctionsAst(functionAst: any, scope: Scope) { // TODO: Eliminate ANTLR
     const name = functionAst.VARNAME() == null ? null : functionAst.VARNAME().getText()
     let args = {}
     const argsAst = functionAst.arglist()
@@ -71,11 +90,11 @@ class UserFunction {
       const arglen = argsAst.VARNAME().length
       for (let i = 0; i < arglen; i++) {
         const argName = argsAst.VARNAME(i).getText()
-        let getArgType = closureScope.deepGet(argsAst.argtype(i).getText())
+        let getArgType = scope.deepGet(argsAst.argtype(i).getText())
         if (getArgType === null) {
           if (argsAst.argtype(i).othertype().length === 1) {
             if (argsAst.argtype(i).othertype(0).typegenerics() !== null) {
-              getArgType = closureScope.deepGet(argsAst.argtype(i).othertype(0).typename().getText())
+              getArgType = scope.deepGet(argsAst.argtype(i).othertype(0).typename().getText())
               if (getArgType == null) {
                 console.error("Could not find type " + argsAst.argtype(i).getText() + " for argument " + argName)
                 process.exit(-39)
@@ -88,7 +107,7 @@ class UserFunction {
               for (const fulltypename of argsAst.argtype(i).othertype(0).typegenerics().fulltypename()) {
                 genericTypes.push(fulltypename.getText())
               }
-              getArgType = new Box(getArgType.typeval.solidify(genericTypes, closureScope))
+              getArgType = new Box(getArgType.typeval.solidify(genericTypes, scope))
             } else {
               console.error("Could not find type " + argsAst.argtype(i).getText() + " for argument " + argName)
               process.exit(-51)
@@ -97,10 +116,10 @@ class UserFunction {
             const othertypes = argsAst.argtype(i).othertype()
             let unionTypes = []
             for (const othertype of othertypes) {
-              let othertypeBox = closureScope.deepGet(othertype.getText())
+              let othertypeBox = scope.deepGet(othertype.getText())
               if (othertypeBox == null) {
                 if (othertype.typegenerics() != null) {
-                  othertypeBox = closureScope.deepGet(othertype.typename().getText())
+                  othertypeBox = scope.deepGet(othertype.typename().getText())
                   if (othertypeBox == null) {
                     console.error("Could not find type " + othertype.getText() + " for argument " + argName)
                     process.exit(-59)
@@ -113,7 +132,7 @@ class UserFunction {
                   for (const fulltypename of othertype.typegenerics().fulltypename()) {
                     genericTypes.push(fulltypename.getText())
                   }
-                  othertypeBox = new Box(othertypeBox.typeval.solidify(genericTypes, closureScope))
+                  othertypeBox = new Box(othertypeBox.typeval.solidify(genericTypes, scope))
                 } else {
                   console.error("Could not find type " + othertype.getText() + " for argument " + argName)
                   process.exit(-51)
@@ -135,10 +154,10 @@ class UserFunction {
     let returnType = null
     if (functionAst.argtype() !== null) {
       if (functionAst.argtype().othertype().length === 1) {
-        let getReturnType = closureScope.deepGet(functionAst.argtype().getText())
+        let getReturnType = scope.deepGet(functionAst.argtype().getText())
         if (getReturnType == null || getReturnType.type != Type.builtinTypes["type"]) {
           if (functionAst.argtype().othertype(0).typegenerics() != null) {
-            getReturnType = closureScope.deepGet(functionAst.argtype().othertype(0).typename().getText())
+            getReturnType = scope.deepGet(functionAst.argtype().othertype(0).typename().getText())
             if (getReturnType == null) {
               console.error("Could not find type " + functionAst.argtype().getText() + " for function " + functionAst.VARNAME().getText())
               process.exit(-59)
@@ -151,7 +170,7 @@ class UserFunction {
             for (const fulltypename of functionAst.argType().othertype(0).typegenerics().fulltypename()) {
               genericTypes.push(fulltypename.getText())
             }
-            getReturnType = new Box(getReturnType.typeval.solidify(genericTypes, closureScope))
+            getReturnType = new Box(getReturnType.typeval.solidify(genericTypes, scope))
           } else {
             console.error("Could not find type " + functionAst.argtype().getText() + " for function " + functionAst.VARNAME().getText())
             process.exit(-61)
@@ -162,10 +181,10 @@ class UserFunction {
         const othertypes = functionAst.argtype().othertype()
         let unionTypes = []
         for (const othertype of othertypes) {
-          let othertypeBox = closureScope.deepGet(othertype.getText())
+          let othertypeBox = scope.deepGet(othertype.getText())
           if (othertypeBox === null) {
             if (othertype.typegenerics() !== null) {
-              othertypeBox = closureScope.deepGet(othertype.typename().getText())
+              othertypeBox = scope.deepGet(othertype.typename().getText())
               if (othertypeBox === null) {
                 console.error("Could not find return type " + othertype.getText() + " for function " + functionAst.VARNAME().getText())
                 process.exit(-59)
@@ -178,7 +197,7 @@ class UserFunction {
               for (const fulltypename of othertype.typegenerics().fulltypename()) {
                 genericTypes.push(fulltypename.getText())
               }
-              othertypeBox = new Box(othertypeBox.typeval.solidify(genericTypes, closureScope))
+              othertypeBox = new Box(othertypeBox.typeval.solidify(genericTypes, scope))
             } else {
               console.error("Could not find return type " + othertype.getText() + " for function " + functionAst.VARNAME().getText())
               process.exit(-51)
@@ -198,18 +217,18 @@ class UserFunction {
     if (functionbody !== null) {
       const statementsAst = functionbody.statements()
       for (const statementAst of statementsAst) {
-        let statement = Statement.create(statementAst, closureScope)
+        let statement = Statement.create(statementAst, scope)
         if (!statement.pure) pure = false
         statements.push(statement)
       }
     } else {
       const assignablesAst = functionAst.fullfunctionbody().assignables()
-      let statement = Statement.create(assignablesAst, closureScope)
+      let statement = Statement.create(assignablesAst, scope)
       if (!statement.pure) pure = false
       statements.push(statement)
       // TODO: Infer the return type for anything other than calls or object literals
       if (assignablesAst.basicassignables() && assignablesAst.basicassignables().calls()) {
-        const fnCall = closureScope.deepGet(assignablesAst.basicassignables().calls().varn(0))
+        const fnCall = scope.deepGet(assignablesAst.basicassignables().calls().varn(0))
         if (fnCall && fnCall.functionval) {
           // TODO: For now, also take the first matching function name, in the future
           // figure out the argument types provided recursively to select appropriately
@@ -220,12 +239,12 @@ class UserFunction {
         assignablesAst.basicassignables() &&
         assignablesAst.basicassignables().objectliterals()
       ) {
-        returnType = closureScope.deepGet(
+        returnType = scope.deepGet(
           assignablesAst.basicassignables().objectliterals().othertype().getText().trim()
         ).typeval
       }
     }
-    return new UserFunction(name, args, returnType, closureScope, statements, pure)
+    return new UserFunction(name, args, returnType, scope, statements, pure)
   }
 
   getName() {
@@ -250,7 +269,7 @@ class UserFunction {
       this.statements[0].statementOrAssignableAst instanceof LnParser.AssignablesContext
     ) {
       return `
-        fn ${this.name || ''} (${Object.keys(this.args).map(argName => `${argName}: ${this.args[argName].typename}`).join(', ')}): ${this.returnType.typename} = ${this.statements[0].statementOrAssignableAst.getText()}
+        fn ${this.name || ''} (${Object.keys(this.args).map(argName => `${argName}: ${this.args[argName].typename}`).join(', ')}): ${this.returnType.typename} = ${(this.statements[0].statementOrAssignableAst as any).getText()}
       `.trim()
     }
     return `
@@ -260,8 +279,8 @@ class UserFunction {
     `.trim()
   }
 
-  static conditionalToCond(cond, scope) {
-    let newStatements = []
+  static conditionalToCond(cond: any, scope: Scope) { // TODO: Eliminate ANTLR
+    let newStatements: Array<any> = []
     let hasConditionalReturn = false // Flag for potential second pass
     const condName = "_" + uuid().replace(/-/g, "_")
     const condStatement = Ast.statementAstFromString(`
@@ -299,7 +318,7 @@ class UserFunction {
         newStatements.push(elseStatement)
       } else {
         const res = UserFunction.conditionalToCond(cond.conditionals(), scope)
-        const innerCondStatements = res[0]
+        const innerCondStatements = res[0] as Array<any>
         if (res[1]) hasConditionalReturn = true
         const elseStatement = Ast.statementAstFromString(`
           cond(!${condName}, fn {
@@ -312,7 +331,12 @@ class UserFunction {
     return [newStatements, hasConditionalReturn]
   }
 
-  static earlyReturnRewrite(retVal, retNotSet, statements, scope) {
+  static earlyReturnRewrite(
+    retVal: string,
+    retNotSet: string,
+    statements: Array<any>, // TODO: Eliminate ANTLR
+    scope: Scope
+  ) {
     let replacementStatements = []
     while (statements.length > 0) {
       const s = statements.shift()
@@ -376,8 +400,8 @@ class UserFunction {
         const s = this.statements[i]
         if (s.isConditionalStatement()) {
           const cond = s.statementOrAssignableAst.conditionals()
-          const res  = UserFunction.conditionalToCond(cond, this.closureScope)
-          const newStatements = res[0]
+          const res  = UserFunction.conditionalToCond(cond, this.scope)
+          const newStatements = res[0] as Array<any>
           if (res[1]) hasConditionalReturn = true
           statementAsts.push(...newStatements)
         } else if (s.statementOrAssignableAst instanceof LnParser.AssignmentsContext) {
@@ -433,7 +457,7 @@ class UserFunction {
         `.trim() + '\n')
         let replacementStatements = [retValStatement, retNotSetStatement]
         replacementStatements.push(...UserFunction.earlyReturnRewrite(
-          retVal, retNotSet, statementAsts, this.closureScope
+          retVal, retNotSet, statementAsts, this.scope
         ))
         replacementStatements.push(Ast.statementAstFromString(`
           return ${retVal}
@@ -446,13 +470,17 @@ class UserFunction {
           ${statementAsts.map(s => s.getText()).join('\n')}
         }
       `.trim()
-      const fn = UserFunction.fromAst(Ast.functionAstFromString(fnStr), this.closureScope)
+      const fn = UserFunction.fromAst(Ast.functionAstFromString(fnStr), this.scope)
       return fn
     }
     return this
   }
 
-  microstatementInlining(realArgNames, scope, microstatements) {
+  microstatementInlining(
+    realArgNames: Array<string>,
+    scope: Scope,
+    microstatements: Array<any>, // TODO: `Microstatement` to TS
+  ) {
     // Perform a transform, if necessary, before generating the microstatements
     const fn = this.maybeTransform()
     // Resolve circular dependency issue
@@ -504,8 +532,8 @@ class UserFunction {
             p => !!p.iface && p.iface.interfacename === oldReturnType.iface.interfacename
           )) {
             newReturnType = Object.values(inputTypes[i].properties).find(
-              p => !!p.iface && p.iface.interfacename === oldReturnType.iface.interfacename
-            )
+              (p: Type) => !!p.iface && p.iface.interfacename === oldReturnType.iface.interfacename
+            ) as Type
           }
         })
       } else {
@@ -516,7 +544,7 @@ class UserFunction {
           } else if (Object.values(a.properties).some(
             p => !!p.iface && p.iface.interfacename === oldReturnType.iface.interfacename
           )) {
-            Object.values(inputTypes[i].properties).forEach((p, j) => {
+            Object.values(inputTypes[i].properties).forEach((p: Type, j: number) => {
               if (!!p.iface) {
                 ifaceMap[p.iface.interfacename] = Object.values(inputTypes[i])[j]
               }
@@ -535,7 +563,11 @@ class UserFunction {
     }
   }
 
-  static dispatchFn(fns, argumentTypeList, scope) {
+  static dispatchFn(
+    fns: Array<UserFunction>,
+    argumentTypeList: Array<Type>,
+    scope: Scope
+  ) {
     let fn = null;
     for (let i = 0; i < fns.length; i++) {
       const isNary = fns[i].isNary()
@@ -603,4 +635,4 @@ class UserFunction {
   }
 }
 
-module.exports = UserFunction
+export default UserFunction

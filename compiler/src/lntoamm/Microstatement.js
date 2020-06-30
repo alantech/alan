@@ -4,7 +4,7 @@ const { LnParser, } = require('../ln')
 const StatementType = require('./StatementType').default
 const Box = require('./Box').default
 const Type = require('./Type').default
-const UserFunction = require('./UserFunction')
+const UserFunction = require('./UserFunction').default
 
 class Microstatement {
   constructor(...args) {

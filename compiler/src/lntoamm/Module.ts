@@ -5,7 +5,7 @@ import Interface from './Interface'
 import Operator from './Operator'
 import Scope from './Scope'
 import Type from './Type'
-import UserFunction = require('./UserFunction')
+import UserFunction from './UserFunction'
 import FunctionType from './FunctionType'
 
 const modules = {}
