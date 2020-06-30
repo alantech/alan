@@ -1,9 +1,14 @@
-const Type = require('./Type')
-const { LnParser, } = require('../ln')
+import Type = require('./Type')
+import { LnParser, } from '../ln'
+import Scope from './Scope'
 
 // Only implements the pieces necessary for the first stage compiler
 class Statement {
-  constructor(statementOrAssignableAst, scope, pure) {
+  statementOrAssignableAst: any // TODO: Migrate off ANTLR for better typing here
+  scope: Scope
+  pure: boolean
+
+  constructor(statementOrAssignableAst: any, scope: Scope, pure: boolean) {
     this.statementOrAssignableAst = statementOrAssignableAst,
     this.scope = scope
     this.pure = pure
@@ -19,7 +24,7 @@ class Statement {
       this.statementOrAssignableAst.exits() !== null
   }
 
-  static isCallPure(callAst, scope) {
+  static isCallPure(callAst: any, scope: Scope) { // TODO: Migrate off ANTLR
     // TODO: Add purity checking for chained method-style calls
     const functionBox = scope.deepGet(callAst.varn(0))
     if (functionBox == null) {
@@ -46,7 +51,7 @@ class Statement {
     return true
   }
 
-  static isWithOperatorsPure(withOperatorsAst, scope) {
+  static isWithOperatorsPure(withOperatorsAst: any, scope: Scope) { // TODO: Migrate off ANTLR
     for (const operatorOrAssignable of withOperatorsAst.operatororassignable()) {
       if (operatorOrAssignable.operators() != null) {
         const operator = operatorOrAssignable.operators()
@@ -69,7 +74,7 @@ class Statement {
     return true
   }
 
-  static isBasicAssignablePure(basicAssignable, scope) {
+  static isBasicAssignablePure(basicAssignable: any, scope: Scope) { // TODO: Migrate off ANTLR
     if (basicAssignable.functions() != null) {
       // Defining a function in itself is a pure situation
       return true
@@ -93,7 +98,7 @@ class Statement {
     return false
   }
 
-  static isAssignablePure(assignableAst, scope) {
+  static isAssignablePure(assignableAst: any, scope: Scope) { // TODO: Migrate off ANTLR
     if (assignableAst.basicassignables() != null) {
       return Statement.isBasicAssignablePure(assignableAst.basicassignables(), scope)
     }
@@ -105,7 +110,7 @@ class Statement {
     process.exit(-14)
   }
 
-  static create(statementOrAssignableAst, scope) {
+  static create(statementOrAssignableAst: any, scope: Scope) { // TODO: Migrate off ANTLR
     if (statementOrAssignableAst instanceof LnParser.AssignablesContext) {
       const pure = Statement.isAssignablePure(statementOrAssignableAst, scope)
       return new Statement(statementOrAssignableAst, scope, pure)
@@ -161,8 +166,8 @@ class Statement {
   }
 
   toString() {
-    return statementOrAssignableAst.getText()
+    return this.statementOrAssignableAst.getText()
   }
 }
 
-module.exports = Statement
+export default Statement
