@@ -109,7 +109,7 @@ class Scope {
     return false
   }
 
-  put(name: string, val: any) { // TODO: Convert `Box` to TS (or kill Box and keep this as any)
+  put(name: string, val: Box) {
     this.vals[name.trim()] = val
   }
 

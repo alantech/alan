@@ -5,8 +5,6 @@ import * as Ast from './Ast'
 import Module from './Module'
 import opcodes from './opcodes'
 
-const opcodeScope = opcodes.exportScope
-
 export const loadStdModules = (stdImports: Set<any>) => {
   const stdDir = path.join(__dirname, '../../std')
   const allStdAsts = fs.readdirSync(stdDir).filter(n => /.ln$/.test(n)).map(n => ({
@@ -15,10 +13,10 @@ export const loadStdModules = (stdImports: Set<any>) => {
   }))
   const stdAsts = allStdAsts.filter(ast => stdImports.has(ast.name) || ast.name === 'root.ln')
   // Load the rootScope first, all the others depend on it
-  let rootModule: any // TODO: convert `Module` to TS
+  let rootModule: Module
   stdAsts.forEach((moduleAst) => {
     if (moduleAst.name === 'root.ln') {
-      rootModule = Module.populateModule('<root>', moduleAst.ast, opcodeScope)
+      rootModule = Module.populateModule('<root>', moduleAst.ast, opcodes.exportScope)
       Module.getAllModules()['<root>'] = rootModule
     }
   })

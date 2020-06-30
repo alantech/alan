@@ -4,17 +4,18 @@ import { v4 as uuid, } from 'uuid'
 
 import * as Ast from './Ast'
 import * as Std from './Std'
-import Module from './Module'
 import Event from './Event'
-import UserFunction from './UserFunction'
-import Microstatement = require('./Microstatement')
+import Microstatement from './Microstatement'
+import Module from './Module'
 import StatementType from './StatementType'
+import Type from './Type'
+import UserFunction from './UserFunction'
 
 const hoistConst = (
-  microstatements: any, // TODO: Convert `Microstatement` to TS
+  microstatements: Array<Microstatement>,
   constantDedupeLookup: object,
-  constants: Set<any>, // TODO: Convert `Microstatement` to TS
-  eventTypes: Set<any>, // Convert `Type` to TS
+  constants: Set<Microstatement>,
+  eventTypes: Set<Type>,
 ) => {
   let i = 0
   while (i < microstatements.length) {
@@ -124,7 +125,7 @@ const ammFromModuleAsts = (moduleAsts: any) => { // TODO: Migrate from ANTLR
   // list of user-defined types that we need to emit.
   let eventNames = new Set()
   let eventTypeNames = new Set()
-  let eventTypes = new Set()
+  let eventTypes: Set<Type> = new Set()
   for (const evt of Event.allEvents) {
     // Skip built-in events
     if (evt.builtIn) continue
@@ -184,7 +185,7 @@ const ammFromModuleAsts = (moduleAsts: any) => { // TODO: Migrate from ANTLR
   // Extract the handler definitions and constant data
   let handlers = {} // String to array of Microstatement objects
   let constantDedupeLookup = {} // String to Microstatement object
-  let constants = new Set() // Microstatment objects
+  let constants: Set<Microstatement> = new Set() // Microstatment objects
   for (let evt of Event.allEvents) {
     for (let handler of evt.handlers) {
       if (handler instanceof UserFunction) {

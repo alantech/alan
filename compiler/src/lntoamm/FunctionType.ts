@@ -1,7 +1,9 @@
+import Type from './Type'
+
 class FunctionType {
   functionname: string | null
-  args: Array<any> // TODO: convert `Type` to TS
-  returnType: any
+  args: Array<Type>
+  returnType: Type 
 
   constructor(...args: Array<any>) {
     if (args.length === 1) {

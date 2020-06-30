@@ -1,13 +1,13 @@
 import { v4 as uuid, } from 'uuid'
 
 import Box from './Box' // TODO: Eliminate Box
-import Module from './Module'
 import Event from './Event'
 import Interface from './Interface'
+import Microstatement from './Microstatement'
+import Module from './Module'
 import Scope from './Scope'
-import Type from './Type'
-import Microstatement = require('./Microstatement')
 import StatementType from './StatementType'
+import Type from './Type'
 
 const opcodeScope = new Scope()
 const opcodeModule = new Module(opcodeScope)
@@ -44,7 +44,7 @@ const addopcodes = (opcodes: object) => {
         microstatementInlining: (
           realArgNames: Array<string>,
           scope: Scope,
-          microstatements: any // TODO: Convert `Microstatement` to TS
+          microstatements: Array<Microstatement>,
         ) => {
           microstatements.push(new Microstatement(
             StatementType.CALL,
@@ -69,7 +69,7 @@ const addopcodes = (opcodes: object) => {
         microstatementInlining: (
           realArgNames: Array<string>,
           scope: Scope,
-          microstatements: any // TODO: Convertion `Microstatement` to TS
+          microstatements: Array<Microstatement>,
         ) => {
           const inputs = realArgNames.map(n => Microstatement.fromVarName(n, microstatements))
           const inputTypes = inputs.map(i => i.outputType)

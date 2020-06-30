@@ -1,12 +1,13 @@
 import { v4 as uuid, } from 'uuid'
 
 import * as Ast from './Ast'
+import Box from './Box'
+import Microstatement from './Microstatement'
+import Scope from './Scope'
 import Statement from './Statement'
 import StatementType from './StatementType'
 import Type from './Type'
 import { LnParser, } from '../ln'
-import Scope from './Scope'
-import Box from './Box'
 
 type Args = {
   [K: string]: Type
@@ -479,12 +480,11 @@ class UserFunction {
   microstatementInlining(
     realArgNames: Array<string>,
     scope: Scope,
-    microstatements: Array<any>, // TODO: `Microstatement` to TS
+    microstatements: Array<Microstatement>,
   ) {
     // Perform a transform, if necessary, before generating the microstatements
     const fn = this.maybeTransform()
     // Resolve circular dependency issue
-    const Microstatement = require('./Microstatement')
     const internalNames = Object.keys(fn.args)
     const originalStatementLength = microstatements.length
     const inputs = realArgNames.map(n => Microstatement.fromVarName(n, microstatements))

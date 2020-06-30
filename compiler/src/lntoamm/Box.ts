@@ -5,6 +5,7 @@ import Int16 from './Int16'
 import Int32 from './Int32'
 import Int64 from './Int64'
 import Int8 from './Int8'
+import Microstatement from './Microstatement'
 import Operator from './Operator'
 import Scope from './Scope'
 import Type from './Type'
@@ -15,7 +16,7 @@ class Box {
   readonly: boolean
   typeval: Type | undefined
   scopeval: Scope | undefined
-  microstatementval: any | undefined // TODO: Port Microstatement to TS
+  microstatementval: Microstatement | undefined
   operatorval: Array<Operator> | undefined
   int8val: Int8 | undefined
   int16val: Int16 | undefined
@@ -32,8 +33,6 @@ class Box {
   typevalval: object | undefined
 
   constructor(...args: Array<any>) {
-    // Work around circular deps in another way
-    const Microstatement = require('./Microstatement')
     if (args.length === 0) {
       this.type = Type.builtinTypes.void
       this.readonly = true

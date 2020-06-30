@@ -1,8 +1,12 @@
+import Scope from './Scope'
+import Type from './Type'
+import UserFunction from './UserFunction'
+
 class Event {
   name: string
-  type: any // TODO: Switch to `Type` once it's TS
+  type: Type
   builtIn: boolean
-  handlers: Array<any>
+  handlers: Array<UserFunction>
   static allEvents: Array<Event> = []
 
   constructor(name: string, type: any, builtIn: boolean) {
@@ -17,7 +21,7 @@ class Event {
     return `event ${this.name}: ${this.type.typename}`
   }
 
-  static fromAst(eventAst: any, scope: any) { // TODO: Better typing here
+  static fromAst(eventAst: any, scope: Scope) { // TODO: Eliminate ANTLR
     const name = eventAst.VARNAME().getText()
     const boxedVal = scope.deepGet(eventAst.varn())
     if (boxedVal === null) {

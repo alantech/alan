@@ -1,13 +1,26 @@
-const { v4: uuid, } = require('uuid')
+import { v4 as uuid, } from 'uuid'
 
-const { LnParser, } = require('../ln')
-const StatementType = require('./StatementType').default
-const Box = require('./Box').default
-const Type = require('./Type').default
-const UserFunction = require('./UserFunction').default
+import Box from './Box'
+import Scope from './Scope'
+import Statement from './Statement'
+import StatementType from './StatementType'
+import Type from './Type'
+import UserFunction from './UserFunction'
+import { LnParser, } from '../ln'
 
 class Microstatement {
-  constructor(...args) {
+  statementType: StatementType
+  scope: Scope
+  pure: boolean
+  outputName: string
+  alias: string
+  outputType: Type
+  inputNames: Array<string>
+  fns: Array<UserFunction>
+  closureStatements: Array<Microstatement>
+
+  // TODO: Replace fake multiple dispatch with default arg values
+  constructor(...args: Array<any>) {
     if (args.length === 5) {
       // "Normal" microstatement
       this.statementType = args[0]
@@ -113,7 +126,7 @@ class Microstatement {
     return outString
   }
 
-  static fromVarName(varName, microstatements) {
+  static fromVarName(varName: string, microstatements: Array<Microstatement>) {
     let original = null
     for (let i = microstatements.length - 1; i > -1; i--) {
       const microstatement = microstatements[i]
@@ -139,7 +152,8 @@ class Microstatement {
     return original
   }
 
-  static fromVarAst(varAst, scope, microstatements) {
+  // TODO: Eliminate ANTLR
+  static fromVarAst(varAst: any, scope: Scope, microstatements: Array<Microstatement>) {
     // Short-circuit if this exact var was already loaded
     let original = Microstatement.fromVarName(varAst.getText(), microstatements)
     if (!original) {
@@ -185,8 +199,8 @@ class Microstatement {
             ))
             // Insert a `copyto` opcode. Eventually determine if it should be `copyto` or `register`
             // based on the inner type of the Array.
-            const opcodeScope = require('./opcodes').default.exportScope // Unfortunate circular dep
-            opcodeScope.get('copyfrom').functionval[0].microstatementInlining(
+            const opcodes = require('./opcodes').default
+            opcodes.exportScope.get('copyfrom').functionval[0].microstatementInlining(
               [original.outputName, addrName],
               scope,
               microstatements,
@@ -243,8 +257,8 @@ class Microstatement {
           }
           // Insert a `copyto` opcode. Eventually determine if it should be `copyto` or `register`
           // based on the inner type of the Array.
-          const opcodeScope = require('./opcodes').default.exportScope // Unfortunate circular dep
-          opcodeScope.get('copyfrom').functionval[0].microstatementInlining(
+          const opcodes = require('./opcodes').default
+          opcodes.exportScope.get('copyfrom').functionval[0].microstatementInlining(
             [original.outputName, lookup.outputName],
             scope,
             microstatements,
@@ -284,7 +298,8 @@ class Microstatement {
     ))
   }
 
-  static fromConstantsAst(constantsAst, scope, microstatements) {
+  // TODO: Eliminate ANTLR
+  static fromConstantsAst(constantsAst: any, scope: Scope, microstatements: Array<Microstatement>) {
     const constName = "_" + uuid().replace(/-/g, "_")
     const constBox = Box.fromConstantsAst(
       constantsAst,
@@ -292,7 +307,7 @@ class Microstatement {
       null,
       true
     )
-    let constVal
+    let constVal: string
     try {
       JSON.parse(constantsAst.getText()) // Will fail on strings with escape chars
       constVal = constantsAst.getText()
@@ -311,7 +326,11 @@ class Microstatement {
     ))
   }
 
-  static fromBasicAssignablesAst(basicAssignablesAst, returnTypeHint, scope, microstatements) {
+  static fromBasicAssignablesAst(
+    basicAssignablesAst: any, // TODO: Eliminate ANTLR
+    scope: Scope,
+    microstatements: Array<Microstatement>,
+  ) {
     // Functions will be inlined in a second pass over the microstatements whereever it is called.
     // For now we still create the function object and the microstatement to assign it
     if (basicAssignablesAst.functions() != null) {
@@ -349,7 +368,6 @@ class Microstatement {
     if (basicAssignablesAst.groups() != null) {
       Microstatement.fromWithOperatorsAst(
         basicAssignablesAst.groups().withoperators(),
-        null,
         scope,
         microstatements
       )
@@ -365,7 +383,6 @@ class Microstatement {
       // First evaluate the type's basicassignables.
       Microstatement.fromBasicAssignablesAst(
         basicAssignablesAst.typeofn().basicassignables(),
-        null,
         scope,
         microstatements
       )
@@ -406,8 +423,8 @@ class Microstatement {
             process.exit(-105)
           }
           outerTypeBox.typeval.solidify(
-            basicAssignablesAst.objectliterals().othertype().typegenerics().fulltypename().map(t =>
-              t.getText()
+            basicAssignablesAst.objectliterals().othertype().typegenerics().fulltypename().map(
+              (t: any) => t.getText() // TODO: Eliminate ANTLR
             ),
             scope
           )
@@ -449,9 +466,9 @@ class Microstatement {
           [`${arrayLiteralContents.length}`],
           [],
         ))
-        const opcodeScope = require('./opcodes').default.exportScope // Unfortunate circular dep
         // Add the opcode to create a new array with the specified size
-        opcodeScope.get('newarr').functionval[0].microstatementInlining(
+        const opcodes = require('./opcodes').default
+        opcodes.exportScope.get('newarr').functionval[0].microstatementInlining(
           [lenName],
           scope,
           microstatements,
@@ -485,7 +502,8 @@ class Microstatement {
             [],
           ))
           // Push the value into the array
-          opcodeScope.get('pusharr').functionval[0].microstatementInlining(
+          const opcodes = require('./opcodes').default
+          opcodes.exportScope.get('pusharr').functionval[0].microstatementInlining(
             [arrayName, arrayLiteralContents[i].outputName, sizeName],
             scope,
             microstatements,
@@ -589,9 +607,9 @@ class Microstatement {
           [`${fields.length}`],
           [],
         ))
-        const opcodeScope = require('./opcodes').default.exportScope // Unfortunate circular dep
         // Add the opcode to create a new array with the specified size
-        opcodeScope.get('newarr').functionval[0].microstatementInlining(
+        const opcodes = require('./opcodes').default
+        opcodes.exportScope.get('newarr').functionval[0].microstatementInlining(
           [lenName],
           scope,
           microstatements,
@@ -618,7 +636,8 @@ class Microstatement {
             [],
           ))
           // Push the value into the array
-          opcodeScope.get('pusharr').functionval[0].microstatementInlining(
+          const opcodes = require('./opcodes').default
+          opcodes.exportScope.get('pusharr').functionval[0].microstatementInlining(
             [arrayName, arrayLiteralContents[i].outputName, sizeName],
             scope,
             microstatements,
@@ -649,7 +668,11 @@ class Microstatement {
     }
   }
 
-  static fromWithOperatorsAst(withOperatorsAst, returnTypeHint, scope, microstatements) {
+  static fromWithOperatorsAst(
+    withOperatorsAst: any, // TODO: Eliminate ANTLR
+    scope: Scope,
+    microstatements: Array<Microstatement>,
+  ) {
     // Short circuit on the trivial case
     if (
       withOperatorsAst.operatororassignable().length === 1 &&
@@ -657,7 +680,6 @@ class Microstatement {
     ) {
       Microstatement.fromBasicAssignablesAst(
         withOperatorsAst.operatororassignable(1).basicassignables(),
-        returnTypeHint,
         scope,
         microstatements,
       )
@@ -676,9 +698,8 @@ class Microstatement {
       if (operatorOrAssignable.basicassignables() != null) {
         Microstatement.fromBasicAssignablesAst(
           operatorOrAssignable.basicassignables(),
-          null,
           scope,
-          microstatements
+          microstatements,
         )
         const last = microstatements[microstatements.length - 1]
         withOperatorsList.push(new Box(last)) // Wrapped in a box to make this work
@@ -788,7 +809,11 @@ class Microstatement {
     }
   }
 
-  static closureFromUserFunction(userFunction, scope, microstatements) {
+  static closureFromUserFunction(
+    userFunction: UserFunction,
+    scope: Scope, 
+    microstatements: Array<Microstatement>,
+  ) {
     // TODO: Add support for closures with arguments
     let len = microstatements.length;
     for (const s of userFunction.statements) {
@@ -813,7 +838,11 @@ class Microstatement {
     ))
   }
 
-  static closureFromBlocklikesAst(blocklikesAst, scope, microstatements) {
+  static closureFromBlocklikesAst(
+    blocklikesAst: any, // TODO: Eliminate ANTLR
+    scope: Scope,
+    microstatements: Array<Microstatement>,
+  ) {
     // There are roughly two paths for closure generation of the blocklike. If it's a var reference
     // to another function, use the scope to grab the function definition directly, run the inlining
     // logic on it, then attach them to a new microstatement declaring the closure. If it's closure
@@ -872,7 +901,11 @@ class Microstatement {
     }
   }
 
-  static fromEmitsAst(emitsAst, scope, microstatements) {
+  static fromEmitsAst(
+    emitsAst: any, // TODO: Eliminate ANTLR
+    scope: Scope,
+    microstatements: Array<Microstatement>,
+  ) {
     if (emitsAst.assignables() != null) {
       // If there's an assignable value here, add it to the list of microstatements first, then
       // rewrite the final const assignment as the emit statement.
@@ -955,7 +988,11 @@ class Microstatement {
     }
   }
 
-  static fromExitsAst(exitsAst, scope, microstatements) {
+  static fromExitsAst(
+    exitsAst: any, // TODO: Eliminate ANTLR
+    scope: Scope,
+    microstatements: Array<Microstatement>,
+  ) {
     // `alan--` doesn't have the concept of a `return` statement, the functions are all inlined
     // and the last assigned value for the function *is* the return statement
     if (exitsAst.assignables() != null) {
@@ -967,6 +1004,7 @@ class Microstatement {
       )
     } else {
       // Otherwise, create a microstatement with no value
+      const constName = "_" + uuid().replace(/-/g, "_")
       microstatements.push(new Microstatement(
         StatementType.CONSTDEC,
         scope,
@@ -979,7 +1017,11 @@ class Microstatement {
     }
   }
 
-  static fromCallsAst(callsAst, scope, microstatements) {
+  static fromCallsAst(
+    callsAst: any, // TODO: Eliminate ANTLR
+    scope: Scope,
+    microstatements: Array<Microstatement>,
+  ) {
     // Function call syntax also supports method chaining syntax, and you can chain off of any
     // assignable value (where they're wrapped in parens for clarity, with a special exception for
     // constants that would be unambiguous). This means there are three classes of function calls:
@@ -1076,7 +1118,7 @@ class Microstatement {
       // TODO: What if they decided to shove this closure into an object but then use it directly?
       if (fnBox === null || !fnBox.functionval) {
         const fnName = callsAst.varn(i).getText()
-        let actualFnName
+        let actualFnName: string
         for (let i = microstatements.length - 1; i >= 0; i--) {
           if (microstatements[i].alias === fnName) {
             actualFnName = microstatements[i].outputName
@@ -1114,11 +1156,14 @@ class Microstatement {
     }
   }
 
-  static fromAssignmentsAst(assignmentsAst, scope, microstatements) {
+  static fromAssignmentsAst(
+    assignmentsAst: any, // TODO: Eliminate ANTLR
+    scope: Scope,
+    microstatements: Array<Microstatement>,
+  ) {
     // TODO: Figure out a way to remove this custom var logic
     const letName = assignmentsAst.varn().getText()
-    let letType = null
-    let actualLetName
+    let actualLetName: string
     for (let i = microstatements.length - 1; i >= 0; i--) {
       const microstatement = microstatements[i]
       if (microstatement.alias === letName) {
@@ -1127,7 +1172,6 @@ class Microstatement {
       }
       if (microstatement.outputName === actualLetName) {
         if (microstatement.statementType === StatementType.LETDEC) {
-          letType = microstatement.outputType
           break
         } else {
           console.error("Attempting to reassign a non-let variable.")
@@ -1165,7 +1209,6 @@ class Microstatement {
       // Update the microstatements list with the operator serialization
       Microstatement.fromWithOperatorsAst(
         assignmentsAst.assignables().withoperators(),
-        letType.typename,
         scope,
         microstatements
       )
@@ -1178,7 +1221,6 @@ class Microstatement {
     if (assignmentsAst.assignables().basicassignables() != null) {
       Microstatement.fromBasicAssignablesAst(
         assignmentsAst.assignables().basicassignables(),
-        letType.typename,
         scope,
         microstatements
       )
@@ -1191,12 +1233,16 @@ class Microstatement {
     }
   }
 
-  static fromLetdeclarationAst(letdeclarationAst, scope, microstatements) {
+  static fromLetdeclarationAst(
+    letdeclarationAst: any, // TODO: Eliminate ANTLR
+    scope: Scope,
+    microstatements: Array<Microstatement>,
+  ) {
     // TODO: Once we figure out how to handle re-assignment to let variables as new variable names
     // with all references to that variable afterwards rewritten, these can just be brought in as
     // constants, too.
     const letName = "_" + uuid().replace(/-/g, "_")
-    let letAlias
+    let letAlias: string
     let letTypeHint = null
     if (letdeclarationAst.VARNAME() != null) {
       letAlias = letdeclarationAst.VARNAME().getText()
@@ -1224,8 +1270,8 @@ class Microstatement {
             process.exit(-105)
           }
           outerTypeBox.typeval.solidify(
-            letdeclarationAst.assignments().typegenerics().fulltypename().map(t =>
-              t.getText()
+            letdeclarationAst.assignments().typegenerics().fulltypename().map(
+              (t: any) =>t.getText() // TODO: Eliminate ANTLR
             ),
             scope
           )
@@ -1243,7 +1289,6 @@ class Microstatement {
         scope.deepGet(letTypeHint) && scope.deepGet(letTypeHint).typeval
       ) || Type.builtinTypes.void
       if (type.originalType) {
-        const opcodeScope = require('./opcodes').default.exportScope // Unfortunate circular dep
         const constName = "_" + uuid().replace(/-/g, "_")
         microstatements.push(new Microstatement(
           StatementType.CONSTDEC,
@@ -1254,7 +1299,8 @@ class Microstatement {
           ["0"],
           [],
         ))
-        opcodeScope.get('newarr').functionval[0].microstatementInlining(
+        const opcodes = require('./opcodes').default
+        opcodes.exportScope.get('newarr').functionval[0].microstatementInlining(
           [constName],
           scope,
           microstatements,
@@ -1301,9 +1347,8 @@ class Microstatement {
       // Update the microstatements list with the operator serialization
       Microstatement.fromWithOperatorsAst(
         letdeclarationAst.assignments().assignables().withoperators(),
-        letTypeHint,
         scope,
-        microstatements
+        microstatements,
       )
       // By definition the last microstatement is the const assignment we care about, so we can just
       // mutate its object to rename the output variable name to the name we need instead.
@@ -1323,9 +1368,8 @@ class Microstatement {
     if (letdeclarationAst.assignments().assignables().basicassignables() != null) {
       Microstatement.fromBasicAssignablesAst(
         letdeclarationAst.assignments().assignables().basicassignables(),
-        letTypeHint,
         scope,
-        microstatements
+        microstatements,
       )
       // The same rule as above, the last microstatement is already a const assignment for the value
       // that we care about, so just rename its variable to the one that will be expected by other
@@ -1345,10 +1389,14 @@ class Microstatement {
     }
   }
 
-  static fromConstdeclarationAst(constdeclarationAst, scope, microstatements) {
+  static fromConstdeclarationAst(
+    constdeclarationAst: any, // TODO: Eliminate ANTLR
+    scope: Scope,
+    microstatements: Array<Microstatement>,
+  ) {
     // TODO: Weirdness in the ANTLR grammar around declarations needs to be cleaned up at some point
     const constName = "_" + uuid().replace(/-/g, "_")
-    let constAlias
+    let constAlias: string
     let constTypeHint = null
     if (constdeclarationAst.VARNAME() != null) {
       constAlias = constdeclarationAst.VARNAME().getText()
@@ -1376,8 +1424,8 @@ class Microstatement {
             process.exit(-105)
           }
           outerTypeBox.typeval.solidify(
-            constdeclarationAst.assignments().typegenerics().fulltypename().map(t =>
-              t.getText()
+            constdeclarationAst.assignments().typegenerics().fulltypename().map(
+              (t: any) => t.getText() // TODO: Eliminate ANTLR
             ),
             scope
           )
@@ -1423,9 +1471,8 @@ class Microstatement {
       // Update the microstatements list with the operator serialization
       Microstatement.fromWithOperatorsAst(
         constdeclarationAst.assignments().assignables().withoperators(),
-        constTypeHint,
         scope,
-        microstatements
+        microstatements,
       )
       // By definition the last microstatement is the const assignment we care about, so we can just
       // mutate its object to rename the output variable name to the name we need instead.
@@ -1444,9 +1491,8 @@ class Microstatement {
     if (constdeclarationAst.assignments().assignables().basicassignables() != null) {
       Microstatement.fromBasicAssignablesAst(
         constdeclarationAst.assignments().assignables().basicassignables(),
-        constTypeHint,
         scope,
-        microstatements
+        microstatements,
       )
       // The same rule as above, the last microstatement is already a const assignment for the value
       // that we care about, so just rename its variable to the one that will be expected by other
@@ -1466,7 +1512,11 @@ class Microstatement {
   }
 
   // DFS recursive algo to get the microstatements in a valid ordering
-  static fromStatementsAst(statementAst, scope, microstatements) {
+  static fromStatementsAst(
+    statementAst: any, // TODO: Eliminate ANTLR
+    scope: Scope,
+    microstatements: Array<Microstatement>,
+  ) {
     if (statementAst.declarations() != null) {
       if (statementAst.declarations().constdeclaration() != null) {
         Microstatement.fromConstdeclarationAst(
@@ -1514,25 +1564,27 @@ class Microstatement {
     return microstatements
   }
 
-  static fromAssignablesAst(assignablesAst, scope, microstatements) {
+  static fromAssignablesAst(
+    assignablesAst: any, // TODO: Eliminate ANTLR
+    scope: Scope,
+    microstatements: Array<Microstatement>,
+  ) {
     if (assignablesAst.basicassignables() != null) {
       Microstatement.fromBasicAssignablesAst(
         assignablesAst.basicassignables(),
-        null,
         scope,
-        microstatements
+        microstatements,
       )
     } else {
       Microstatement.fromWithOperatorsAst(
         assignablesAst.withoperators(),
-        null,
         scope,
-        microstatements
+        microstatements,
       )
     }
   }
 
-  static fromStatement(statement, microstatements) {
+  static fromStatement(statement: Statement, microstatements: Array<Microstatement>) {
     if (statement.statementOrAssignableAst instanceof LnParser.StatementsContext) {
       Microstatement.fromStatementsAst(
         statement.statementOrAssignableAst,
@@ -1550,4 +1602,4 @@ class Microstatement {
   }
 }
 
-module.exports = Microstatement
+export default Microstatement
