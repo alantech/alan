@@ -1,8 +1,29 @@
+import Box from './Box'
+import Interface from './Interface'
+import Scope from './Scope'
+
+type Properties = {
+  [K: string]: Type
+}
+
+type Generics = {
+  [K: string]: number
+}
+
 class Type {
-  constructor(...args) {
-    // Circular dependency 'fix'
-    const Interface = require('./Interface')
+  typename: string
+  builtIn: boolean
+  isGenericStandin: boolean
+  properties: Properties
+  generics: Generics
+  originalType: Type | null
+  unionTypes: Array<Type> | null
+  iface: Interface | null
+  alias: Type | null
+
+  constructor(...args: Array<any>) {
     // Simulate multiple dispatch by duck typing the args
+    // TODO: Switch this to arguments with default values
     if (args.length === 1) {
       this.typename = args[0]
       this.builtIn = false
@@ -12,6 +33,7 @@ class Type {
       this.originalType = null
       this.unionTypes = null
       this.iface = null
+      this.alias = null
     } else if (args.length === 2) {
       this.typename = args[0]
       this.builtIn = args[1]
@@ -21,6 +43,7 @@ class Type {
       this.originalType = null
       this.unionTypes = null
       this.iface = null
+      this.alias = null
     } else if (args.length === 3) {
       if (typeof args[2] === "boolean") {
         this.typename = args[0]
@@ -31,6 +54,7 @@ class Type {
         this.originalType = null
         this.unionTypes = null
         this.iface = null
+        this.alias = null
       } else if (args[2] instanceof Interface) {
         this.typename = args[0]
         this.builtIn = args[1]
@@ -40,6 +64,7 @@ class Type {
         this.originalType = null
         this.unionTypes = null
         this.iface = args[2]
+        this.alias = null
       } else if (args[2] instanceof Array) {
         this.typename = args[0]
         this.builtIn = args[1]
@@ -49,6 +74,7 @@ class Type {
         this.originalType = null
         this.unionTypes = args[2]
         this.iface = null
+        this.alias = null
       } else if (args[2] instanceof Object) {
         this.typename = args[0]
         this.builtIn = args[1]
@@ -58,6 +84,7 @@ class Type {
         this.originalType = null
         this.unionTypes = null
         this.iface = null
+        this.alias = null
       }
     } else if (args.length === 4) {
       this.typename = args[0]
@@ -68,6 +95,7 @@ class Type {
       this.originalType = null
       this.unionTypes = null
       this.iface = null
+      this.alias = null
     }
   }
 
@@ -91,7 +119,7 @@ class Type {
     return outString
   }
 
-  static fromAst(typeAst, scope) {
+  static fromAst(typeAst: any, scope: Scope) { // TODO: Migrate away from ANTLR
     let type = new Type(typeAst.typename().getText())
     if (typeAst.typegenerics() != null) {
       const generics = typeAst.typegenerics().fulltypename()
@@ -105,7 +133,7 @@ class Type {
         const propertyName = lineAst.VARNAME().getText()
         const typeName = lineAst.varn().getText()
         const property = scope.deepGet(lineAst.varn())
-        if (property == null || !property.type.typename === "type") {
+        if (property == null || property.type.typename !== "type") {
           if (type.generics.hasOwnProperty(typeName)) {
             type.properties[propertyName] = new Type(typeName, true, true)
           } else {
@@ -163,7 +191,7 @@ class Type {
         let othertypeVal = othertypeBox.typeval
         if (othertypeVal.generics.length > 0 && othertype.typegenerics() != null) {
           let solidTypes = []
-          for (fulltypenameAst of othertype.typegenerics().fulltypename()) {
+          for (const fulltypenameAst of othertype.typegenerics().fulltypename()) {
             solidTypes.push(fulltypenameAst.getText())
           }
           othertypeVal = othertypeVal.solidify(solidTypes, scope)
@@ -175,8 +203,7 @@ class Type {
     return type
   }
 
-  solidify(genericReplacements, scope) {
-    const Box = require('./Box') // To solve circular dependency issues
+  solidify(genericReplacements: Array<string>, scope: Scope) {
     let replacementTypes = []
     for (const typename of genericReplacements) {
       const typebox = scope.deepGet(typename)
@@ -208,7 +235,7 @@ class Type {
   }
 
   // This is only necessary for the numeric types. TODO: Can we eliminate it?
-  castable(otherType) {
+  castable(otherType: Type) {
     const intTypes = ["int8", "int16", "int32", "int64"]
     const floatTypes = ["float32", "float64"]
     if (intTypes.includes(this.typename) && intTypes.includes(otherType.typename)) return true
@@ -216,51 +243,52 @@ class Type {
     if (floatTypes.includes(this.typename) && intTypes.includes(otherType.typename)) return true
     return false
   }
+
+  static builtinTypes = {
+    void: new Type("void", true),
+    int8: new Type("int8", true),
+    int16: new Type("int16", true),
+    int32: new Type("int32", true),
+    int64: new Type("int64", true),
+    float32: new Type("float32", true),
+    float64: new Type("float64", true),
+    bool: new Type("bool", true),
+    string: new Type("string", true),
+    Error: new Type("Error", true, {
+      message: new Type("string", true, true),
+      code: new Type("int64", true, true),
+    }),
+    "Array": new Type("Array", true, {
+      records: new Type("V", true, true),
+    }, {
+      V: 0,
+    }),
+    Map: new Type("Map", true, {
+      key: new Type("K", true, true),
+      value: new Type("V", true, true),
+    }, {
+      K: 0,
+      V: 1,
+    }),
+    KeyVal: new Type("KeyVal", true, {
+      key: new Type("K", true, true),
+      value: new Type("V", true, true),
+    }, {
+      K: 0,
+      V: 1,
+    }),
+    "function": new Type("function", true),
+    operator: new Type("operator", true),
+    Event: new Type("Event", true, {
+      type: new Type("E", true, true),
+    }, {
+      E: 0,
+    }),
+    type: new Type("type", true),
+    scope: new Type("scope", true),
+    microstatement: new Type("microstatement", true),
+  }
 }
 
-Type.builtinTypes = {
-  void: new Type("void", true),
-  int8: new Type("int8", true),
-  int16: new Type("int16", true),
-  int32: new Type("int32", true),
-  int64: new Type("int64", true),
-  float32: new Type("float32", true),
-  float64: new Type("float64", true),
-  bool: new Type("bool", true),
-  string: new Type("string", true),
-  Error: new Type("Error", true, {
-    message: new Type("string", true, true),
-    code: new Type("int64", true, true),
-  }),
-  "Array": new Type("Array", true, {
-    records: new Type("V", true, true),
-  }, {
-    V: 0,
-  }),
-  Map: new Type("Map", true, {
-    key: new Type("K", true, true),
-    value: new Type("V", true, true),
-  }, {
-    K: 0,
-    V: 1,
-  }),
-  KeyVal: new Type("KeyVal", true, {
-    key: new Type("K", true, true),
-    value: new Type("V", true, true),
-  }, {
-    K: 0,
-    V: 1,
-  }),
-  "function": new Type("function", true),
-  operator: new Type("operator", true),
-  Event: new Type("Event", true, {
-    type: new Type("E", true, true),
-  }, {
-    E: 0,
-  }),
-  type: new Type("type", true),
-  scope: new Type("scope", true),
-  microstatement: new Type("microstatement", true),
-}
+export default Type
 
-module.exports = Type

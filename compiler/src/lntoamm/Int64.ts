@@ -1,5 +1,7 @@
 class Int64 {
-  constructor(val) {
+  val: string
+
+  constructor(val: string) {
     this.val = val
   }
   toString() {
@@ -7,4 +9,4 @@ class Int64 {
   }
 }
 
-module.exports = Int64
+export default Int64

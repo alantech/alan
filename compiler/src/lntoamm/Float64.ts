@@ -1,5 +1,7 @@
 class Float64 {
-  constructor(val) {
+  val: string
+
+  constructor(val: string) {
     this.val = val
   }
   toString() {
@@ -7,4 +9,4 @@ class Float64 {
   }
 }
 
-module.exports = Float64
+export default Float64

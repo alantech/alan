@@ -1,23 +1,27 @@
-const FunctionType = require('./FunctionType')
+import Box from './Box'
+import FunctionType from './FunctionType'
+import Scope from './Scope'
+import Type from './Type'
 
 class Interface {
-  constructor(...args) {
-    if (args.length === 1) {
-      this.interfacename = args[0]
-      this.functionTypes = []
-      this.operatorTypes = []
-      this.requiredProperties = {}
-    } else if (args.length === 4) {
-      this.interfacename = args[0]
-      this.functionTypes = args[1]
-      this.operatorTypes = args[2]
-      this.requiredProperties = args[3]
-    }
+  interfacename: string
+  functionTypes: Array<FunctionType>
+  operatorTypes: Array<any> // OperatorTypes not yet implemented
+  requiredProperties: object
+
+  constructor(
+    interfacename: string,
+    functionTypes: Array<FunctionType> = [],
+    operatorTypes: Array<any> = [],
+    requiredProperties: object = {}
+  ) {
+    this.interfacename = interfacename
+    this.functionTypes = functionTypes
+    this.operatorTypes = operatorTypes
+    this.requiredProperties = requiredProperties
   }
 
-  typeApplies(typeToCheck, scope) {
-    // Circulary dependency nonsense
-    const Type = require('./Type')
+  typeApplies(typeToCheck: any, scope: Scope) { // TODO: Type to TS
     // Solve circular dependency issue
     for (const requiredProperty of Object.keys(this.requiredProperties)) {
       if (!typeToCheck.properties.hasOwnProperty(requiredProperty)) return false
@@ -59,17 +63,14 @@ class Interface {
       if (!functionFound) return false
     }
 
-    for (const operatorType of this.operatorTypes) {
+    /* for (const operatorType of this.operatorTypes) {
       // TODO: Implement me!
-    }
+    } */
 
     return true
   }
 
-  static fromAst(interfaceAst, scope) {
-    // Circulary dependency nonsense
-    const Box = require('./Box')
-    const Type = require('./Type')
+  static fromAst(interfaceAst: any, scope: Scope) { // TODO: replace ANTLR
     // Construct the basic interface, the wrapper type, and insert it into the scope
     // This is all necessary so the interface can self-reference when constructing the function and
     // operator types.
@@ -129,4 +130,4 @@ class Interface {
   }
 }
 
-module.exports = Interface
+export default Interface

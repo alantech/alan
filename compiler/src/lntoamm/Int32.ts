@@ -1,5 +1,7 @@
 class Int32 {
-  constructor(val) {
+  val: string
+
+  constructor(val: string) {
     this.val = val
   }
   toString() {
@@ -7,4 +9,4 @@ class Int32 {
   }
 }
 
-module.exports = Int32
+export default Int32

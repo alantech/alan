@@ -1,5 +1,7 @@
 class Int8 {
-  constructor(val) {
+  val: string
+
+  constructor(val: string) {
     this.val = val
   }
   toString() {
@@ -7,4 +9,4 @@ class Int8 {
   }
 }
 
-module.exports = Int8
+export default Int8

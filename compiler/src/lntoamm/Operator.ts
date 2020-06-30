@@ -1,12 +1,21 @@
+import Scope from './Scope'
+import Type from './Type'
+import UserFunction from './UserFunction'
+
 class Operator {
-  constructor(name, precedence, isPrefix, potentialFunctions) {
+  name: string
+  precedence: number
+  isPrefix: boolean
+  potentialFunctions: Array<UserFunction>
+
+  constructor(name: string, precedence: number, isPrefix: boolean, potentialFunctions: Array<any>) {
     this.name = name
     this.precedence = precedence
     this.isPrefix = isPrefix
     this.potentialFunctions = potentialFunctions
   }
 
-  applicableFunction(left, right, scope) {
+  applicableFunction(left: Type, right: Type, scope: Scope) {
     let argumentTypeList = []
     if (!this.isPrefix) {
       if (left == null) return null
@@ -17,7 +26,7 @@ class Operator {
     for (let i = 0; i < fns.length; i++) {
       const isNary = fns[i].isNary()
       const args = fns[i].getArguments()
-      const argList = Object.values(args)
+      const argList: Array<Type> = Object.values(args)
       if (!isNary && argList.length != argumentTypeList.length) continue
       if (isNary && argList.length > argumentTypeList.length) continue
       let skip = false
@@ -56,4 +65,4 @@ class Operator {
   }
 }
 
-module.exports = Operator
+export default Operator

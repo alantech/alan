@@ -1,23 +1,38 @@
-const Type = require('./Type')
-const Int8 = require('./Int8')
-const Int16 = require('./Int16')
-const Int32 = require('./Int32')
-const Int64 = require('./Int64')
-const Float32 = require('./Float32')
-const Float64 = require('./Float64')
+import Event from './Event'
+import Float32 from './Float32'
+import Float64 from './Float64'
+import Int16 from './Int16'
+import Int32 from './Int32'
+import Int64 from './Int64'
+import Int8 from './Int8'
+import Microstatement from './Microstatement'
+import Operator from './Operator'
+import Scope from './Scope'
+import Type from './Type'
+import UserFunction from './UserFunction'
 
 class Box {
-  constructor(...args) {
-    // Work around circular deps in another way
-    const Scope = require('./Scope')
-    const Microstatement = require('./Microstatement')
-    const Int8 = require('./Int8')
-    const Int16 = require('./Int16')
-    const Int32 = require('./Int32')
-    const Int64 = require('./Int64')
-    const Float32 = require('./Float32')
-    const Float64 = require('./Float64')
-    const Event = require('./Event')
+  type: Type
+  readonly: boolean
+  typeval: Type | undefined
+  scopeval: Scope | undefined
+  microstatementval: Microstatement | undefined
+  operatorval: Array<Operator> | undefined
+  int8val: Int8 | undefined
+  int16val: Int16 | undefined
+  int32val: Int32 | undefined
+  int64val: Int64 | undefined
+  float32val: Float32 | undefined
+  float64val: Float64 | undefined
+  boolval: boolean | undefined
+  stringval: string | undefined
+  functionval: Array<UserFunction> | undefined
+  eventval: Event | undefined
+  arrayval: Array<any> | undefined
+  mapval: Map<any, any> | undefined
+  typevalval: object | undefined
+
+  constructor(...args: Array<any>) {
     if (args.length === 0) {
       this.type = Type.builtinTypes.void
       this.readonly = true
@@ -113,8 +128,14 @@ class Box {
       }
     }
   }
-  
-  static fromConstantsAst(constantsAst, scope, expectedType, readonly) {
+ 
+  // TODO: There are so many Java-isms in this method, check if it's even being used
+  static fromConstantsAst(
+    constantsAst: any, // TODO: Port from ANTLR to improve AST typing
+    _scope: Scope, // TODO: Remove this arg from calling functions
+    expectedType: Type,
+    readonly: boolean
+  ) {
     if (constantsAst.BOOLCONSTANT() != null) {
       if (constantsAst.BOOLCONSTANT().getText() === "true") {
         return new Box(true, readonly);
@@ -142,15 +163,15 @@ class Box {
     if (constantsAst.NUMBERCONSTANT() != null) {
       // TODO: Add support for hex, octal, scientific, etc
       const numberConst = constantsAst.NUMBERCONSTANT().getText();
-      const typename = expectedType != null ? expectedType.typename : null
-      if (typename != null && typename.equals("void")) typename = null;
+      let typename = expectedType != null ? expectedType.typename : null
+      if (typename != null && typename === "void") typename = null
       if (numberConst.indexOf('.') > -1) { // It's a float
         // TODO: How to handle other float constants like NaN, Infinity, -0, etc
         if (typename == null) {
           return new Box(new Float64(numberConst), readonly)
-        } else if (typename.equals("float32")) {
+        } else if (typename === "float32") {
           return new Box(new Float32(numberConst), readonly)
-        } else if (typename.equals("float64")) {
+        } else if (typename === "float64") {
           return new Box(new Float64(numberConst), readonly)
         } else {
           // Bad assignment
@@ -161,17 +182,17 @@ class Box {
         // TODO: Should we error on overflowing constants in integer mode?
         if (typename == null) {
           return new Box(new Int64(numberConst), readonly)
-        } else if (typename.equals("int8")) {
+        } else if (typename === "int8") {
           return new Box(new Int8(numberConst), readonly)
-        } else if (typename.equals("int16")) {
+        } else if (typename === "int16") {
           return new Box(new Int16(numberConst), readonly)
-        } else if (typename.equals("int32")) {
+        } else if (typename === "int32") {
           return new Box(new Int32(numberConst), readonly)
-        } else if (typename.equals("int64")) {
+        } else if (typename === "int64") {
           return new Box(new Int64(numberConst), readonly)
-        } else if (typename.equals("float32")) { // We'll allow floats to get integer constants
+        } else if (typename === "float32") { // We'll allow floats to get integer constants
           return new Box(new Float32(numberConst), readonly)
-        } else if (typename.equals("float64")) {
+        } else if (typename === "float64") {
           return new Box(new Float64(numberConst), readonly)
         } else {
           // Bad assignment
@@ -185,12 +206,12 @@ class Box {
     return null
   }
 
-  static fromConstAst(constAst, scope) {
+  static fromConstAst(constAst: any, scope: Scope) { // TODO: Eliminate ANTLR
     const assignment = constAst.assignments()
     return Box.fromAssignmentAst(assignment, scope, true)
   }
 
-  static fromAssignmentAst(assignmentAst, scope, readonly) {
+  static fromAssignmentAst(assignmentAst: any, scope: Scope, readonly: boolean) {
     // TODO: This code is becoming very overloaded with different meanings in different contexts
     // Should probably split this up into multiple functions instead of trying to have this function
     // guess which context it's running in.
@@ -199,7 +220,7 @@ class Box {
     const typename = assignmentAst.varn().getText();
     let typeBox = scope.deepGet(assignmentAst.varn());
 
-    let type;
+    let type: Type
 
     if (typeBox == null) {
       const nameSegments = typename.split(".");
@@ -228,7 +249,7 @@ class Box {
 
     if (type.generics.length > 0 && assignmentAst.typegenerics() != null) {
       let solidTypes = []
-      for (fulltypenameAst of assignmentAst.typegenerics().fulltypename()) {
+      for (const fulltypenameAst of assignmentAst.typegenerics().fulltypename()) {
         solidTypes.push(fulltypenameAst.getText())
       }
       type = type.solidify(solidTypes, scope)
@@ -237,7 +258,12 @@ class Box {
     return Box.fromAssignableAst(assignmentAst.assignables(), scope, type, readonly)
   }
 
-  static fromAssignableAst(assignableAst, scope, expectedType, readonly) {
+  static fromAssignableAst(
+    assignableAst: any, // TODO: Eliminate ANTLR
+    scope: Scope,
+    expectedType: Type,
+    readonly: boolean
+  ) {
     if (assignableAst == null) {
       return new Box(null, expectedType)
     }
@@ -265,7 +291,12 @@ class Box {
     return null
   }
 
-  static fromBasicAssignableAst(basicAssignable, scope, expectedType, readonly) {
+  static fromBasicAssignableAst(
+    basicAssignable: any, // TODO: Eliminate ANTLR
+    scope: Scope,
+    expectedType: Type,
+    readonly: boolean
+  ) {
     if (basicAssignable.functions() != null) {
       const assignedFunction = UserFunction.fromAst(basicAssignable.functions(), scope)
       return new Box([assignedFunction], readonly)
@@ -318,7 +349,12 @@ class Box {
     process.exit(-8)
   }
 
-  static fromObjectLiteralsAst(objectliteralsAst, scope, expectedType, readonly) {
+  static fromObjectLiteralsAst(
+    objectliteralsAst: any, // TODO: Eliminate ANTLR
+    scope: Scope,
+    _expectedType: Type, // TODO: Eliminate this arg from calling code
+    readonly: boolean
+  ) {
     const typename = objectliteralsAst.othertype().getText()
     const typeBox = scope.deepGet(typename)
     let type = null
@@ -364,12 +400,12 @@ class Box {
             + property + " property.")
           process.exit(-46)
         }
-        typevalval.put(assignmentsAst.varn().getText(), Box.fromAssignableAst(
+        typevalval[assignmentsAst.varn().getText()] = Box.fromAssignableAst(
           assignmentsAst.assignables(),
           scope,
           assignmentType,
           readonly
-        ))
+        )
       }
       return new Box(typevalval, type, readonly)
     }
@@ -389,7 +425,7 @@ class Box {
             type.properties["value"], // Special for Maps
             readonly
           )
-          mapval.put(keyBox, valBox)
+          mapval[keyBox] = valBox
         }
       }
       return new Box(mapval, type, readonly)
@@ -397,7 +433,6 @@ class Box {
     // Should never reach here
     return null
   }
-
 }
 
-module.exports = Box
+export default Box

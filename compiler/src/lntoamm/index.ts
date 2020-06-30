@@ -1,16 +1,22 @@
-const fs = require('fs')
+import * as fs from 'fs'
 
-const { v4: uuid, } = require('uuid')
+import { v4 as uuid, } from 'uuid'
 
-const Ast = require('./Ast')
-const Std = require('./Std')
-const Module = require('./Module')
-const Event = require('./Event')
-const UserFunction = require('./UserFunction')
-const Microstatement = require('./Microstatement')
-const StatementType = require('./StatementType')
+import * as Ast from './Ast'
+import * as Std from './Std'
+import Event from './Event'
+import Microstatement from './Microstatement'
+import Module from './Module'
+import StatementType from './StatementType'
+import Type from './Type'
+import UserFunction from './UserFunction'
 
-const hoistConst = (microstatements, constantDedupeLookup, constants) => {
+const hoistConst = (
+  microstatements: Array<Microstatement>,
+  constantDedupeLookup: object,
+  constants: Set<Microstatement>,
+  eventTypes: Set<Type>,
+) => {
   let i = 0
   while (i < microstatements.length) {
     const m = microstatements[i]
@@ -39,7 +45,7 @@ const hoistConst = (microstatements, constantDedupeLookup, constants) => {
         microstatements.splice(i, 1)
       }
     } else if (m.statementType === StatementType.CLOSURE) {
-      hoistConst(m.closureStatements, constantDedupeLookup, constants)
+      hoistConst(m.closureStatements, constantDedupeLookup, constants, eventTypes)
       i++
     } else {
       i++
@@ -47,7 +53,7 @@ const hoistConst = (microstatements, constantDedupeLookup, constants) => {
   }
 }
 
-const moduleAstsFromFile = (filename) => {
+const moduleAstsFromFile = (filename: string) => {
   let moduleAsts = {}
   let paths = []
   const rootPath = fs.realpathSync(filename)
@@ -73,7 +79,7 @@ const moduleAstsFromFile = (filename) => {
   return moduleAsts
 }
 
-const moduleAstsFromString = (str) => {
+const moduleAstsFromString = (str: string) => {
   // If loading from a string, it's in the browser and some internal state needs cleaning. Some of
   // this doesn't appear to affect things, but better to compile from a known state
   Event.allEvents = [Event.allEvents[0]] // Keep the `start` event
@@ -99,7 +105,7 @@ const moduleAstsFromString = (str) => {
   return moduleAsts
 }
 
-const ammFromModuleAsts = (moduleAsts) => {
+const ammFromModuleAsts = (moduleAsts: any) => { // TODO: Migrate from ANTLR
   // Load the standard library
   let stdFiles = new Set()
   for (const [modulePath, module] of Object.entries(moduleAsts)) {
@@ -119,7 +125,7 @@ const ammFromModuleAsts = (moduleAsts) => {
   // list of user-defined types that we need to emit.
   let eventNames = new Set()
   let eventTypeNames = new Set()
-  let eventTypes = new Set()
+  let eventTypes: Set<Type> = new Set()
   for (const evt of Event.allEvents) {
     // Skip built-in events
     if (evt.builtIn) continue
@@ -161,24 +167,25 @@ const ammFromModuleAsts = (moduleAsts) => {
     } // TODO: DRY this all up
     // Determine if any of the properties of the type should be added to the list
     for (const propType of Object.values(type.properties)) {
+      // TODO: Convert `Type` to TS
       // Skip built-in types, too
-      if (propType.builtIn) continue
+      if ((propType as any).builtIn) continue
       // Check if there's a collision
-      if (eventTypeNames.has(propType.typename)) {
+      if (eventTypeNames.has((propType as any).typename)) {
         // A type may be seen multiple times, make sure this is an actual collision
         if (eventTypes.has(propType)) continue // This event was already processed, so we're done
         // Modify the type name by attaching a UUIDv4 to it
-        propType.typename = propType.typename + "_" + uuid().replace(/-/g, "_")
+        (propType as any).typename = (propType as any).typename + "_" + uuid().replace(/-/g, "_")
       }
       // Add the type to the list
-      eventTypeNames.add(propType.typename)
+      eventTypeNames.add((propType as any).typename)
       eventTypes.add(propType)
     }
   }
   // Extract the handler definitions and constant data
   let handlers = {} // String to array of Microstatement objects
   let constantDedupeLookup = {} // String to Microstatement object
-  let constants = new Set() // Microstatment objects
+  let constants: Set<Microstatement> = new Set() // Microstatment objects
   for (let evt of Event.allEvents) {
     for (let handler of evt.handlers) {
       if (handler instanceof UserFunction) {
@@ -190,7 +197,7 @@ const ammFromModuleAsts = (moduleAsts) => {
           argList.push(arg + ": " + handler.getArguments()[arg].typename)
           microstatements.push(new Microstatement(
             StatementType.ARG,
-            handler.closureScope,
+            handler.scope,
             true,
             arg,
             handler.getArguments()[arg],
@@ -206,7 +213,7 @@ const ammFromModuleAsts = (moduleAsts) => {
           Microstatement.fromStatement(s, microstatements)
         }
         // Pull the constants out of the microstatements into the constants set.
-        hoistConst(microstatements, constantDedupeLookup, constants)
+        hoistConst(microstatements, constantDedupeLookup, constants, eventTypes)
         // Register the handler and remaining statements
         handlers.hasOwnProperty(handlerDec) ? handlers[handlerDec].push(microstatements) : handlers[handlerDec] = [microstatements]
       }
@@ -228,7 +235,7 @@ const ammFromModuleAsts = (moduleAsts) => {
   }
   // Print the user-defined event handlers
   for (const [handlerDec, handlersList] of Object.entries(handlers)) {
-    for (const microstatements of handlersList) {
+    for (const microstatements of (handlersList as Array<any>)) {
       outStr += handlerDec + "\n"
       for (const m of microstatements) {
         const mString = m.toString()
@@ -241,7 +248,6 @@ const ammFromModuleAsts = (moduleAsts) => {
   return outStr
 }
 
-module.exports = {
-  fromFile: (filename) => ammFromModuleAsts(moduleAstsFromFile(filename)),
-  fromString: (str) => ammFromModuleAsts(moduleAstsFromString(str)),
-}
+export const fromFile = (filename: string) => ammFromModuleAsts(moduleAstsFromFile(filename))
+export const fromString = (str: string) => ammFromModuleAsts(moduleAstsFromString(str))
+

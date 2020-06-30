@@ -27,6 +27,7 @@
   "license": "AGPL-3.0",
   "dependencies": {
     "@types/node": "^14.0.5",
+    "@types/uuid": "^8.0.0",
     "alan-js-runtime": "file:../js-runtime",
     "antlr4": "^4.8.0",
     "commander": "^5.1.0",
