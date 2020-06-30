@@ -1,3 +1,4 @@
+import Box from './Box'
 import FunctionType from './FunctionType'
 import Scope from './Scope'
 import Type from './Type'
@@ -70,8 +71,6 @@ class Interface {
   }
 
   static fromAst(interfaceAst: any, scope: Scope) { // TODO: replace ANTLR
-    // Circulary dependency nonsense
-    const Box = require('./Box')
     // Construct the basic interface, the wrapper type, and insert it into the scope
     // This is all necessary so the interface can self-reference when constructing the function and
     // operator types.

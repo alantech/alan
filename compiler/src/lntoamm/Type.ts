@@ -1,3 +1,4 @@
+import Box from './Box'
 import Interface from './Interface'
 import Scope from './Scope'
 
@@ -203,7 +204,6 @@ class Type {
   }
 
   solidify(genericReplacements: Array<string>, scope: Scope) {
-    const Box = require('./Box') // To solve circular dependency issues
     let replacementTypes = []
     for (const typename of genericReplacements) {
       const typebox = scope.deepGet(typename)

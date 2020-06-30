@@ -1,5 +1,5 @@
 import * as Ast from './Ast'
-import Box = require('./Box')
+import Box from './Box'
 import Event from './Event'
 import Interface from './Interface'
 import Operator from './Operator'

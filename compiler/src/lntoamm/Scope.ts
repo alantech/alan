@@ -1,4 +1,4 @@
-import Box = require('./Box')
+import Box from './Box'
 import Type from './Type'
 import { LnParser, } from '../ln'
 

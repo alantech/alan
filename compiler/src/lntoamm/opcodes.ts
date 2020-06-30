@@ -1,6 +1,6 @@
 import { v4 as uuid, } from 'uuid'
 
-import Box = require('./Box') // TODO: Eliminate Box
+import Box from './Box' // TODO: Eliminate Box
 import Module from './Module'
 import Event from './Event'
 import Interface from './Interface'
