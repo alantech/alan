@@ -143,8 +143,9 @@ impl HandlerMemory {
   /// registerish
   pub fn copy_from(self: &mut HandlerMemory, arr_addr:i64, outer_addr:i64, inner_addr: i64) {
     let arr = self.get_fractal(arr_addr);
-    let (data, size) = arr.read_and_copy_either(inner_addr);
-    self.write(outer_addr, size, data.as_slice());
+    let (data, size) = self.read_either(inner_addr);
+    let data_copy = data.to_vec();
+    self.write(outer_addr, size, data_copy.as_slice());
   }
 
   pub fn copy_arr(self: &mut HandlerMemory, in_addr: i64, out_addr: i64) {
@@ -210,13 +211,6 @@ impl HandlerMemory {
       // Nope, it's fixed data. We can safely read 8 bytes for all of the fixed types
       (self.read(addr, 8), 8)
     };
-  }
-
-  /// read address of string or fixed length data type and return
-  /// a copy of the data and its size
-  pub fn read_and_copy_either(self: &HandlerMemory, addr: i64) -> (Vec<u8>, u8) {
-    let (data, size) = self.read_either(addr);
-    return (data.to_vec(), size);
   }
 
   pub fn read(self: &HandlerMemory, addr: i64, size: u8) -> &[u8] {

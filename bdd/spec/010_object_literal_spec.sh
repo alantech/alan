@@ -172,45 +172,13 @@ false"
     End
   End
 
-  Describe "everything else"
+  Describe "map support"
     before() {
       # TODO: sourceToAll
       sourceToTemp "
         from @std/app import start, print, exit
 
-        type MyType {
-          foo: string
-          bar: bool
-        }
-
         on start {
-          print('Custom type assignment')
-          const test = new MyType {
-            foo = 'foo!'
-            bar = true
-          }
-          print(test.foo)
-          print(test.bar)
-
-          let test2 = new MyType {
-            foo = 'foo2'
-            bar = true
-          }
-          test2.bar = false
-          print(test2.foo)
-          print(test2.bar)
-
-          print('Array literal assignment')
-          const test3 = new Array<int64> [ 1, 2, 4, 8, 16, 32, 64 ]
-          print(test3[0])
-          print(test3[1])
-          print(test3[2])
-
-          let test4 = new Array<int64> [ 0, 1, 2, 3 ]
-          test4[0] = 1
-          print(test4[0])
-
-          print('Map literal assignment')
           const test5 = new Map<bool, int64> {
             true: 1
             false: 0
@@ -236,18 +204,7 @@ false"
     }
     AfterAll after
 
-    TYPEOUTPUT="Custom type assignment
-foo!
-true
-foo2
-false
-Array literal assignment
-1
-2
-4
-1
-Map literal assignment
-1
+    TYPEOUTPUT="1
 0
 baz"
 
