@@ -1468,7 +1468,7 @@ class Microstatement {
       // Insert a `copytof` or `copytov` opcode.
       const opcodes = require('./opcodes').default
       opcodes.exportScope.get(copytoop).functionval[0].microstatementInlining(
-        [original.outputName, assign.outputName, lookup.outputName],
+        [original.outputName, lookup.outputName, assign.outputName],
         scope,
         microstatements,
       )
@@ -1502,7 +1502,7 @@ class Microstatement {
       // Insert a `copytof` or `copytov` opcode.
       const opcodes = require('./opcodes').default
       opcodes.exportScope.get(copytoop).functionval[0].microstatementInlining(
-        [original.outputName, assign.outputName, addrName],
+        [original.outputName, addrName, assign.outputName],
         scope,
         microstatements,
       )

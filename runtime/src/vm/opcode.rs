@@ -1499,17 +1499,17 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("copytof", |args, hand_mem, _| {
-    // args = [arr_addr, outer_addr, inner_addr]
-    // copy data from outer addr to inner_addr in arr_addr
-    let inner = LittleEndian::read_i64(hand_mem.read(args[1], 8));
-    hand_mem.copy_to(args[0], args[2], inner, 8);
+    // args = [arr_addr, inner_addr, outer_addr]
+    // copy data from outer_addr to inner_addr in arr_addr
+    let inner = LittleEndian::read_i64(hand_mem.read(args[2], 8));
+    hand_mem.copy_to(args[0], args[1], inner, 8);
     None
   });
   cpu!("copytov", |args, hand_mem, _| {
-    // args = [arr_addr, outer_addr, inner_addr]
-    // copy data from outer addr to inner_addr in arr_addr
-    let inner = LittleEndian::read_i64(hand_mem.read(args[1], 8));
-    hand_mem.copy_to(args[0], args[2], inner, 0);
+    // args = [arr_addr, inner_addr, outer_addr]
+    // copy data from outer_addr to inner_addr in arr_addr
+    let inner = LittleEndian::read_i64(hand_mem.read(args[2], 8));
+    hand_mem.copy_to(args[0], args[1], inner, 0);
     None
   });
   cpu!("lenarr", |args, hand_mem, _| {
