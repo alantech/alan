@@ -225,6 +225,9 @@ module.exports = {
   lenstr:  a => a.length,
   trim:    a => a.trim(),
   copyfrom:(arr, ind) => arr[ind],
+  copytof:  (arr, ind, val) => { arr[ind] = val }, // These do the same thing in JS
+  copytov:  (arr, ind, val) => { arr[ind] = val },
+  register:(arr, ind) => arr[ind], // Only on references to inner arrays
 
   // Array opcodes TODO more to come
   newarr:  size => new Array(), // Ignored because JS push doesn't behave as desired

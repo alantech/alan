@@ -197,8 +197,7 @@ class Microstatement {
               [`${fieldNum}`],
               [],
             ))
-            // Insert a `copyto` opcode. Eventually determine if it should be `copyto` or `register`
-            // based on the inner type of the Array.
+            // Insert a `copyfrom` opcode.
             const opcodes = require('./opcodes').default
             opcodes.exportScope.get('copyfrom').functionval[0].microstatementInlining(
               [original.outputName, addrName],
@@ -220,10 +219,9 @@ class Microstatement {
         }
         // An array access. This requires resolving the contents of the array access variable and
         // then using that value to find the correct index to read from. For now, that will be
-        // emitting a `copyfrom` opcode call, but in the future it should decide between `copyfrom`
-        // and `register` based on the kind of value stored. Also for now it is an error if the
-        // resolved type is anything but `int64` for the array access path. Maps use the same syntax
-        // with the type being the Map's Key type.
+        // emitting a `copyfrom` opcode call. Also for now it is an error if the resolved type is
+        // anything but `int64` for the array access path. Maps use the same syntax with the type
+        // being the Map's Key type.
         if (segment.arrayaccess()) {
           if (original == null || !(original instanceof Microstatement)) {
             // This is all moot if we didn't resolve a variable to dig into
@@ -245,7 +243,7 @@ class Microstatement {
           // TODO: Map support, which requires figuring out if the outer memory object is an array
           // or a map.
           if (lookup.outputType.typename !== 'int64') {
-            console.error(`${segment.getText()} is cannot be used in an array lookup as it is not an int64`)
+            console.error(`${segment.getText()} cannot be used in an array lookup as it is not an int64`)
             console.error(
               varAst.getText() +
               " on line " +
@@ -255,8 +253,7 @@ class Microstatement {
             )
             process.exit(-205)
           }
-          // Insert a `copyto` opcode. Eventually determine if it should be `copyto` or `register`
-          // based on the inner type of the Array.
+          // Insert a `copyfrom` opcode.
           const opcodes = require('./opcodes').default
           opcodes.exportScope.get('copyfrom').functionval[0].microstatementInlining(
             [original.outputName, lookup.outputName],
@@ -1161,9 +1158,122 @@ class Microstatement {
     scope: Scope,
     microstatements: Array<Microstatement>,
   ) {
-    // TODO: Figure out a way to remove this custom var logic
-    const letName = assignmentsAst.varn().getText()
+    // For reassigning to a variable, we need to determine that the root variable is a
+    // `let`-defined mutable variable and then tease out if any array or property accesses are done,
+    // and if so we need to `register` a mutable reference to the array memory space and then update
+    // the value with a `copyfrom` call from the assignables result address to the relevant inner
+    // address of the last access argument. The format of a `varn` can only be the following:
+    // `{moduleScope}.varName[arrayAccess].userProperty` where the array accesses and userProperties
+    // can come in any order after the preamble. *Fortunately,* for this scenario, any situation
+    // where `moduleScope` is included is invalid since only constants can be exported out of a
+    // module, not mutable values, so we only need to read the *first* segment to immediately
+    // determine if it is relevant or not -- if it comes back as a `Scope` object we abort with an
+    // error. If not, then we find the relevant `Microstatement` and determine if it is a `const`
+    // or a `let` declaration and abort if it is a `const`. After that, if there are no segments
+    // beyond the first one, we simply take the `assignable` microstatement output and turn it into
+    // an `ASSIGNMENT` StatementType, otherwise we need to go through a more complicated procedure
+    // to `register` the `n-1` remaining inner array segments to new variables as references and
+    // finally `copyfrom` the `assignable` into the location the last segment indicates.
+    const segments = assignmentsAst.varn().varsegment()
+    if (segments.length === 1) { // Could be a simple let variable
+      const letName = segments[0].getText()
+      let actualLetName: string
+      for (let i = microstatements.length - 1; i >= 0; i--) {
+        const microstatement = microstatements[i]
+        if (microstatement.alias === letName) {
+          actualLetName = microstatement.outputName
+          continue
+        }
+        if (microstatement.outputName === actualLetName) {
+          if (microstatement.statementType === StatementType.LETDEC) {
+            break
+          } else {
+            console.error("Attempting to reassign a non-let variable.")
+            console.error(
+              letName +
+              " on line " +
+              assignmentsAst.line +
+              ":" +
+              assignmentsAst.start.column
+            )
+            process.exit(100)
+          }
+        }
+      }
+      // TODO: Clean up the const/let declarations and assignments. That this is possible with the
+      // parser is bad here, but necessary for let declarations because of the weird re-use of
+      // stuff.
+      if (assignmentsAst.assignables() == null) {
+        console.error("Let variable re-assignment without a value specified.")
+        console.error(
+          letName +
+          " on line " +
+          assignmentsAst.start.line +
+          ":" +
+          assignmentsAst.start.column
+        )
+        process.exit(101)
+      }
+      // An assignable may either be a basic constant or could be broken down into other
+      // microstatements. The classification with assignables is: if it's a `withoperators` type it
+      // *always* becomes multiple microstatements and it should return the variable name it
+      // generated to store the data. If it's a `basicassignables` type it could be either a
+      // "true constant" or generate multiple microstatements. The types that fall under the
+      // "true constant" category are: functions, var, and constants.
+      if (assignmentsAst.assignables().withoperators() != null) {
+        // Update the microstatements list with the operator serialization
+        Microstatement.fromWithOperatorsAst(
+          assignmentsAst.assignables().withoperators(),
+          scope,
+          microstatements
+        )
+        // By definition the last microstatement is the const assignment we care about, so we can
+        // just mutate its object to rename the output variable name to the name we need instead.
+        microstatements[microstatements.length - 1].outputName = actualLetName
+        microstatements[microstatements.length - 1].statementType = StatementType.ASSIGNMENT
+        return
+      }
+      if (assignmentsAst.assignables().basicassignables() != null) {
+        Microstatement.fromBasicAssignablesAst(
+          assignmentsAst.assignables().basicassignables(),
+          scope,
+          microstatements
+        )
+        // The same rule as above, the last microstatement is already a const assignment for the
+        // value that we care about, so just rename its variable to the one that will be expected by
+        // other code.
+        microstatements[microstatements.length - 1].outputName = actualLetName
+        microstatements[microstatements.length - 1].statementType = StatementType.ASSIGNMENT
+        return
+      }
+      // This should not be reachable
+      console.error('Unknown malformed input in re-assignment')
+      console.error(
+        letName +
+        " on line " +
+        assignmentsAst.start.line +
+        ":" +
+        assignmentsAst.start.column
+      )
+      process.exit(102)
+    }
+    // The more complicated path. First, rule out that the first segment is not a `scope`.
+    const testBox = scope.deepGet(segments[0].getText())
+    if (!!testBox && !!testBox.scopeval) {
+      console.error('Atempting to reassign to variable from another module')
+      console.error(
+        assignmentsAst.varn().getText() +
+        " on line " +
+        assignmentsAst.start.line +
+        ":" +
+        assignmentsAst.start.column
+      )
+      process.exit(103)
+    }
+    // Now, find the original variable and confirm that it actually is a let declaration
+    const letName = segments[0].getText()
     let actualLetName: string
+    let original: Microstatement
     for (let i = microstatements.length - 1; i >= 0; i--) {
       const microstatement = microstatements[i]
       if (microstatement.alias === letName) {
@@ -1172,20 +1282,131 @@ class Microstatement {
       }
       if (microstatement.outputName === actualLetName) {
         if (microstatement.statementType === StatementType.LETDEC) {
+          original = microstatement
+          break
+        } else if (microstatement.statementType === StatementType.REREF) {
+          original = Microstatement.fromVarName(microstatement.outputName, microstatements)
           break
         } else {
           console.error("Attempting to reassign a non-let variable.")
           console.error(
             letName +
             " on line " +
-            assignmentsAst.line +
+            assignmentsAst.start.line +
             ":" +
             assignmentsAst.start.column
           )
-          process.exit(100)
+          process.exit(104)
         }
       }
     }
+    if (!original) {
+      console.error('Attempting to reassign to an undeclared variable')
+      console.error(
+        letName +
+        " on line " +
+        assignmentsAst.line +
+        ":" +
+        assignmentsAst.start.column
+      )
+      process.exit(105)
+    }
+    let nestedLetType = original.outputType
+    for (let i = 1; i < segments.length - 1; i++) {
+      const segment = segments[i]
+      // A separator, just do nothing else this loop
+      if (segment.METHODSEP()) continue
+      // An array access. This requires resolving the contents of the array access variable and then
+      // using that value to find the correct index to read from. In this particular loop, we know
+      // this is not the final array access or property access, so we need to `register` the inner
+      // value that is assumed to be an array-like blob to work with.
+      if (segment.arrayaccess()) {
+        if (original == null || !(original instanceof Microstatement)) {
+          // This is all moot if we didn't resolve a variable to dig into
+          console.error(`${letName} cannot be found`)
+          console.error(
+            assignmentsAst.varn().getText() +
+            " on line " +
+            assignmentsAst.varn().start.line +
+            ":" +
+            assignmentsAst.varn().start.column
+          )
+          process.exit(-204)
+        }
+        const assignables = segment.arrayaccess().assignables()
+        Microstatement.fromAssignablesAst(assignables, scope, microstatements)
+        const lookup = microstatements[microstatements.length - 1]
+        // TODO: Map support, which requires figuring out if the outer memory object is an array
+        // or a map.
+        if (lookup.outputType.typename !== 'int64') {
+          console.error(`${segment.getText()} is cannot be used in an array lookup as it is not an int64`)
+          console.error(
+            assignmentsAst.varn().getText() +
+            " on line " +
+            assignmentsAst.varn().start.line +
+            ":" +
+            assignmentsAst.varn().start.column
+          )
+          process.exit(-205)
+        }
+        // Insert a `register` opcode.
+        const opcodes = require('./opcodes').default
+        opcodes.exportScope.get('register').functionval[0].microstatementInlining(
+          [original.outputName, lookup.outputName],
+          scope,
+          microstatements,
+        )
+        // Now, we need to update the type we're working with. The nice thing about this is that as
+        // we are accessing an `Array`, the type is inside. We just need to dig into the existing
+        // type and rip out its inner type definition.
+        nestedLetType = Object.values(nestedLetType.properties)[0]
+        // Now update the `original` record to the new `register` result
+        original = microstatements[microstatements.length - 1]
+      }
+      // If it's a varname here, then we're accessing an inner property type. We need to figure out
+      // which index it is in the underlying array structure and then `register` that piece (since
+      // this is an intermediate access and not the final access point)
+      if (segment.VARNAME()) {
+        const fieldName = segment.VARNAME().getText()
+        const fields = Object.keys(nestedLetType.properties)
+        const fieldNum = fields.indexOf(fieldName)
+        if (fieldNum < 0) {
+          // Invalid object access
+          console.error(`${letName} does not have a field named ${fieldName}`)
+          console.error(
+            assignmentsAst.varn().getText() +
+            " on line " +
+            assignmentsAst.varn().start.line +
+            ":" +
+            assignmentsAst.varn().start.column
+          )
+          process.exit(-205)
+        }
+        // Create a new variable to hold the address within the array literal
+        const addrName = "_" + uuid().replace(/-/g, "_")
+        microstatements.push(new Microstatement(
+          StatementType.CONSTDEC,
+          scope,
+          true,
+          addrName,
+          Type.builtinTypes['int64'],
+          [`${fieldNum}`],
+          [],
+        ))
+        // Insert a `register` opcode.
+        const opcodes = require('./opcodes').default
+        opcodes.exportScope.get('register').functionval[0].microstatementInlining(
+          [original.outputName, addrName],
+          scope,
+          microstatements,
+        )
+        // Now, we need to update the type we're working with.
+        nestedLetType = Object.values(nestedLetType.properties)[fieldNum]
+        // Now update the `original` record to the new `register` result
+        original = microstatements[microstatements.length - 1]
+      }
+    }
+    // Now for the final segment. First we compute the value to assign in either case
     // TODO: Clean up the const/let declarations and assignments. That this is possible with the
     // parser is bad here, but necessary for let declarations because of the weird re-use of stuff.
     if (assignmentsAst.assignables() == null) {
@@ -1212,24 +1433,89 @@ class Microstatement {
         scope,
         microstatements
       )
-      // By definition the last microstatement is the const assignment we care about, so we can just
-      // mutate its object to rename the output variable name to the name we need instead.
-      microstatements[microstatements.length - 1].outputName = actualLetName
-      microstatements[microstatements.length - 1].statementType = StatementType.ASSIGNMENT
-      return
-    }
-    if (assignmentsAst.assignables().basicassignables() != null) {
+    } else if (assignmentsAst.assignables().basicassignables() != null) {
       Microstatement.fromBasicAssignablesAst(
         assignmentsAst.assignables().basicassignables(),
         scope,
         microstatements
       )
-      // The same rule as above, the last microstatement is already a const assignment for the value
-      // that we care about, so just rename its variable to the one that will be expected by other
-      // code.
-      microstatements[microstatements.length - 1].outputName = actualLetName
-      microstatements[microstatements.length - 1].statementType = StatementType.ASSIGNMENT
-      return
+    }
+    // Grab a reference to the final assignment variable.
+    const assign = microstatements[microstatements.length - 1]
+    // Next, determine which kind of final segment this is and perform the appropriate action to
+    // insert into with a `copytof` or `copytov` opcode.
+    const copytoop = [
+      'int8', 'int16', 'int32', 'int64', 'float32', 'float64', 'bool'
+    ].includes(assign.outputType.typename) ? 'copytof' : 'copytov'
+    const finalSegment = segments[segments.length - 1]
+    if (finalSegment.arrayaccess()) {
+      const assignables = finalSegment.arrayaccess().assignables()
+      Microstatement.fromAssignablesAst(assignables, scope, microstatements)
+      const lookup = microstatements[microstatements.length - 1]
+      // TODO: Map support, which requires figuring out if the outer memory object is an array
+      // or a map.
+      if (lookup.outputType.typename !== 'int64') {
+        console.error(`${finalSegment.getText()} cannot be used in an array lookup as it is not an int64`)
+        console.error(
+          letName +
+          " on line " +
+          assignmentsAst.start.line +
+          ":" +
+          assignmentsAst.start.column
+        )
+        process.exit(-205)
+      }
+      // Insert a `copytof` or `copytov` opcode.
+      const opcodes = require('./opcodes').default
+      opcodes.exportScope.get(copytoop).functionval[0].microstatementInlining(
+        [original.outputName, lookup.outputName, assign.outputName],
+        scope,
+        microstatements,
+      )
+    } else if (finalSegment.VARNAME()) {
+      const fieldName = finalSegment.VARNAME().getText()
+      const fields = Object.keys(nestedLetType.properties)
+      const fieldNum = fields.indexOf(fieldName)
+      if (fieldNum < 0) {
+        // Invalid object access
+        console.error(`${name} does not have a field named ${fieldName}`)
+        console.error(
+          letName +
+          " on line " +
+          assignmentsAst.start.line +
+          ":" +
+          assignmentsAst.start.column
+        )
+        process.exit(-205)
+      }
+      // Create a new variable to hold the address within the array literal
+      const addrName = "_" + uuid().replace(/-/g, "_")
+      microstatements.push(new Microstatement(
+        StatementType.CONSTDEC,
+        scope,
+        true,
+        addrName,
+        Type.builtinTypes['int64'],
+        [`${fieldNum}`],
+        [],
+      ))
+      // Insert a `copytof` or `copytov` opcode.
+      const opcodes = require('./opcodes').default
+      opcodes.exportScope.get(copytoop).functionval[0].microstatementInlining(
+        [original.outputName, addrName, assign.outputName],
+        scope,
+        microstatements,
+      )
+    } else {
+      console.error(`${finalSegment.getText()} cannot be the final piece in a reassignment statement`)
+      console.error(
+        letName +
+        " on line " +
+        assignmentsAst.start.line +
+        ":" +
+        assignmentsAst.start.column
+      )
+      process.exit(-205)
     }
   }
 
@@ -1352,14 +1638,20 @@ class Microstatement {
       )
       // By definition the last microstatement is the const assignment we care about, so we can just
       // mutate its object to rename the output variable name to the name we need instead.
-      microstatements[microstatements.length - 1].statementType = StatementType.LETDEC
+      // EXCEPT with Arrays and User Types. The last is a REREF, so follow it back to the original
+      // and mutate that, instead
+      let val = microstatements[microstatements.length - 1]
+      if (val.statementType === StatementType.REREF) {
+        val = Microstatement.fromVarName(val.alias, microstatements)
+      }
+      val.statementType = StatementType.LETDEC
       microstatements.push(new Microstatement(
         StatementType.REREF,
         scope,
         true,
-        microstatements[microstatements.length - 1].outputName,
+        val.outputName,
         letAlias,
-        microstatements[microstatements.length - 1].outputType,
+        val.outputType,
         [],
         [],
       ))
@@ -1371,17 +1663,22 @@ class Microstatement {
         scope,
         microstatements,
       )
-      // The same rule as above, the last microstatement is already a const assignment for the value
-      // that we care about, so just rename its variable to the one that will be expected by other
-      // code.
-      microstatements[microstatements.length - 1].statementType = StatementType.LETDEC
+      // By definition the last microstatement is the const assignment we care about, so we can just
+      // mutate its object to rename the output variable name to the name we need instead.
+      // EXCEPT with Arrays and User Types. The last is a REREF, so follow it back to the original
+      // and mutate that, instead
+      let val = microstatements[microstatements.length - 1]
+      if (val.statementType === StatementType.REREF) {
+        val = Microstatement.fromVarName(val.alias, microstatements)
+      }
+      val.statementType = StatementType.LETDEC
       microstatements.push(new Microstatement(
         StatementType.REREF,
         scope,
         true,
-        microstatements[microstatements.length - 1].outputName,
+        val.outputName,
         letAlias,
-        microstatements[microstatements.length - 1].outputType,
+        val.outputType,
         [],
         [],
       ))

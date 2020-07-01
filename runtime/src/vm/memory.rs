@@ -81,9 +81,8 @@ impl HandlerMemory {
   }
 
   /// set registerish and return its address
-  pub fn set_reg(self: &mut HandlerMemory, reg_addr: i64, arr_addr1: i64, arr_addr2: Option<i64>) {
-    let mut arr_addrs = vec![arr_addr1];
-    if arr_addr2.is_some() { arr_addrs.push(arr_addr2.unwrap()) };
+  pub fn set_reg(self: &mut HandlerMemory, reg_addr: i64, arr_addr1: i64, arr_addr2: i64) {
+    let mut arr_addrs = vec![arr_addr1, arr_addr2];
     self.registers_ish.insert(reg_addr, arr_addrs);
   }
 
@@ -128,18 +127,25 @@ impl HandlerMemory {
   }
 
   /// copy data from outer address to inner address in array or registerish
-  pub fn copy_to(self: &mut HandlerMemory, arr_addr: i64, outer_addr:i64, inner_addr: i64) {
-    let (data, size) = self.read_and_copy_either(outer_addr);
+  pub fn copy_to(
+    self: &mut HandlerMemory,
+    arr_addr: i64,
+    outer_addr:i64,
+    inner_addr: i64,
+    size: u8
+  ) {
+    let data_copy = self.read(outer_addr, size).to_vec();
     let arr = self.get_mut_fractal(arr_addr);
-    arr.write(inner_addr, size, data.as_slice());
+    arr.write(inner_addr, size, &data_copy);
   }
 
   /// copy data from inner address in array to outer address. the array address can point to a
   /// registerish
   pub fn copy_from(self: &mut HandlerMemory, arr_addr:i64, outer_addr:i64, inner_addr: i64) {
     let arr = self.get_fractal(arr_addr);
-    let (data, size) = arr.read_and_copy_either(inner_addr);
-    self.write(outer_addr, size, data.as_slice());
+    let (data, size) = arr.read_either(inner_addr);
+    let data_copy = data.to_vec();
+    self.write(outer_addr, size, &data_copy);
   }
 
   pub fn copy_arr(self: &mut HandlerMemory, in_addr: i64, out_addr: i64) {
@@ -205,13 +211,6 @@ impl HandlerMemory {
       // Nope, it's fixed data. We can safely read 8 bytes for all of the fixed types
       (self.read(addr, 8), 8)
     };
-  }
-
-  /// read address of string or fixed length data type and return
-  /// a copy of the data and its size
-  pub fn read_and_copy_either(self: &HandlerMemory, addr: i64) -> (Vec<u8>, u8) {
-    let (data, size) = self.read_either(addr);
-    return (data.to_vec(), size);
   }
 
   pub fn read(self: &HandlerMemory, addr: i64, size: u8) -> &[u8] {
