@@ -134,18 +134,18 @@ impl HandlerMemory {
     inner_addr: i64,
     size: u8
   ) {
-    let data = self.read(outer_addr, size).to_vec();
+    let data_copy = self.read(outer_addr, size).to_vec();
     let arr = self.get_mut_fractal(arr_addr);
-    arr.write(inner_addr, size, &data);
+    arr.write(inner_addr, size, &data_copy);
   }
 
   /// copy data from inner address in array to outer address. the array address can point to a
   /// registerish
   pub fn copy_from(self: &mut HandlerMemory, arr_addr:i64, outer_addr:i64, inner_addr: i64) {
     let arr = self.get_fractal(arr_addr);
-    let (data, size) = self.read_either(inner_addr);
+    let (data, size) = arr.read_either(inner_addr);
     let data_copy = data.to_vec();
-    self.write(outer_addr, size, data_copy.as_slice());
+    self.write(outer_addr, size, &data_copy);
   }
 
   pub fn copy_arr(self: &mut HandlerMemory, in_addr: i64, out_addr: i64) {
