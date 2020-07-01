@@ -81,9 +81,8 @@ impl HandlerMemory {
   }
 
   /// set registerish and return its address
-  pub fn set_reg(self: &mut HandlerMemory, reg_addr: i64, arr_addr1: i64, arr_addr2: Option<i64>) {
-    let mut arr_addrs = vec![arr_addr1];
-    if arr_addr2.is_some() { arr_addrs.push(arr_addr2.unwrap()) };
+  pub fn set_reg(self: &mut HandlerMemory, reg_addr: i64, arr_addr1: i64, arr_addr2: i64) {
+    let mut arr_addrs = vec![arr_addr1, arr_addr2];
     self.registers_ish.insert(reg_addr, arr_addrs);
   }
 
@@ -128,10 +127,16 @@ impl HandlerMemory {
   }
 
   /// copy data from outer address to inner address in array or registerish
-  pub fn copy_to(self: &mut HandlerMemory, arr_addr: i64, outer_addr:i64, inner_addr: i64) {
-    let (data, size) = self.read_and_copy_either(outer_addr);
+  pub fn copy_to(
+    self: &mut HandlerMemory,
+    arr_addr: i64,
+    outer_addr:i64,
+    inner_addr: i64,
+    size: u8
+  ) {
+    let data = self.read(outer_addr, size).to_vec();
     let arr = self.get_mut_fractal(arr_addr);
-    arr.write(inner_addr, size, data.as_slice());
+    arr.write(inner_addr, size, &data);
   }
 
   /// copy data from inner address in array to outer address. the array address can point to a

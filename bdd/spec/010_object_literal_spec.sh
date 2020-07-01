@@ -118,6 +118,60 @@ true"
     End
   End
 
+  Describe "object and array reassignment"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+
+        type Foo {
+          bar: bool
+        }
+
+        on start {
+          let test = new Array<int64> [ 1, 2, 3 ]
+          print(test[0])
+          test[0] = 0
+          print(test[0])
+
+          let test2 = new Array<Foo> [
+            new Foo {
+              bar = true
+            },
+            new Foo {
+              bar = false
+            }
+          ]
+          print(test2[0].bar)
+          test2[0].bar = false
+          print(test2[0].bar)
+
+          emit exit 0
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    REASSIGNTYPEOUTPUT="1
+0
+true
+false"
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "$REASSIGNTYPEOUTPUT"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
+      The output should eq "$REASSIGNTYPEOUTPUT"
+    End
+  End
+
   Describe "everything else"
     before() {
       # TODO: sourceToAll

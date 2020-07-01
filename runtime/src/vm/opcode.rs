@@ -1483,12 +1483,10 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   // Array opcodes
   cpu!("register", |args, hand_mem, _| {
     // args[2] is the register address
-    // args[0], and optionally args[1], point to an array in memory
-    if args.len() == 3 {
-      hand_mem.set_reg(args[2], args[0], Some(args[1]));
-    } else {
-      hand_mem.set_reg(args[2], args[0], None);
-    }
+    // args[0] point to an array in memory
+    // args[1] is the address within the array to register
+    let inner_addr = LittleEndian::read_i64(hand_mem.read(args[1], 8)) * 8;
+    hand_mem.set_reg(args[2], args[0], inner_addr);
     None
   });
   cpu!("copyfrom", |args, hand_mem, _| {
@@ -1500,12 +1498,20 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     hand_mem.copy_from(args[0], args[2], inner_addr);
     None
   });
-  cpu!("copyto", |args, hand_mem, _| {
+  cpu!("copytof", |args, hand_mem, _| {
     // args = [arr_addr, outer_addr, inner_addr]
-    // copy data from inner_addr of the array in reg_addr to outer_addr
+    // copy data from outer addr to inner_addr in arr_addr
     // TODO: the inner_addr is likely wrong, refactor once we have something to test with
     let inner = LittleEndian::read_i64(hand_mem.read(args[1], 8));
-    hand_mem.copy_to(args[0], args[2], inner);
+    hand_mem.copy_to(args[0], args[2], inner, 8);
+    None
+  });
+  cpu!("copytov", |args, hand_mem, _| {
+    // args = [arr_addr, outer_addr, inner_addr]
+    // copy data from outer addr to inner_addr in arr_addr
+    // TODO: the inner_addr is likely wrong, refactor once we have something to test with
+    let inner = LittleEndian::read_i64(hand_mem.read(args[1], 8));
+    hand_mem.copy_to(args[0], args[2], inner, 0);
     None
   });
   cpu!("lenarr", |args, hand_mem, _| {
