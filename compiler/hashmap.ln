@@ -1,0 +1,65 @@
+from @std/app import start, print, exit
+
+type KeyVal<K, V> {
+  key: K
+  val: V
+}
+
+interface Hashable {
+  toHash(Hashable): int64
+  eq(Hashable, Hashable): bool
+}
+
+type HashMap<Hashable, V> {
+  keyVal: Array<KeyVal<Hashable, V>>
+  lookup: Array<Array<int64>>
+}
+
+fn keyVal(hm: HashMap<Hashable, V>) = hm.keyVal
+fn keys(hm: HashMap<Hashable, V>) = hm.keyVal.map(fn (kv: KeyVal<Hashable, V>) = kv.key)
+fn vals(hm: HashMap<Hashable, V>) = hm.keyVal.map(fn (kv: KeyVal<Hashable, V>) = kv.val)
+fn length(hm: HashMap<Hashable, V>) = hm.keyVal.length()
+
+fn get(hm: HashMap<Hashable, V>, key: Hashable) {
+  const hash = key.toHash() % hm.lookup.length()
+  const list = hm.lookup[hash]
+  const index = list.find(fn (i: int64) = hm.keyVal[i].key.eq(key))
+  if index.isSome() {
+    const i = index.get(0)
+    return Some(hm.keyVal[i].val)
+  } else {
+    return None
+  }
+}
+
+fn set(hm: HashMap<Hashable, V>, key: Hashable, val: V) {
+  const kv = new KeyVal<Hashable, V> {
+    key = key
+    val = val
+  }
+  const index = hm.keyVal.length()
+  hm.keyVal.push(kv)
+  const hash = key.toHash() % hm.lookup.length()
+  const list = hm.lookup[hash]
+  if list.length() == 8 {
+    // Rebucket everything
+    const lookupLen = hm.lookup.length() * 2
+    hm.lookup = new Array<Array<int64> [ new Array<int64> [], ] * lookupLen
+    hm.keyVal.each(fn (kv: KeyVal<Hashable, V>, i: int64) {
+      const hash = kv.key.toHash() % lookupLen
+      const list = hm.lookup[hash]
+      list.push(i)
+    })
+  } else {
+    const list = hm.lookup[hash]
+    list.push(index)
+  }
+  return hm
+}
+
+fn new() { // Will this work? How could we make something like this work?
+  return new HashMap<Hashable, V> {
+    keyVal = new Array<KeyVal<Hashable, V>> []
+    lookup = new Array<Array<int64>> [ new Array<int64> [] ] * 128 // 1KB of space
+  }
+}
