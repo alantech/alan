@@ -3,7 +3,7 @@ import Type from './Type'
 class FunctionType {
   functionname: string | null
   args: Array<Type>
-  returnType: Type 
+  returnType: Type
 
   constructor(...args: Array<any>) {
     if (args.length === 1) {
