@@ -298,12 +298,22 @@ class Microstatement {
   // TODO: Eliminate ANTLR
   static fromConstantsAst(constantsAst: any, scope: Scope, microstatements: Array<Microstatement>) {
     const constName = "_" + uuid().replace(/-/g, "_")
-    const constBox = Box.fromConstantsAst(
-      constantsAst,
-      scope,
-      null,
-      true
-    )
+    let constType: string = 'void'
+    if (constantsAst.BOOLCONSTANT() != null) {
+      constType = 'bool'
+    }
+    if (constantsAst.STRINGCONSTANT() != null) {
+      constType = 'string'
+    }
+    if (constantsAst.NUMBERCONSTANT() != null) {
+      // TODO: Add support for hex, octal, scientific, etc
+      const numberConst = constantsAst.NUMBERCONSTANT().getText();
+      if (numberConst.indexOf('.') > -1) { // It's a float
+        constType = 'float64'
+      } else { // It's an integer
+        constType = 'int64'
+      }
+    }
     let constVal: string
     try {
       JSON.parse(constantsAst.getText()) // Will fail on strings with escape chars
@@ -311,12 +321,12 @@ class Microstatement {
     } catch (e) {
       // It may be a zero-padded number
       if (
-        ['int8', 'int16', 'int32', 'int64'].includes(constBox.type.typename) &&
+        ['int8', 'int16', 'int32', 'int64'].includes(constType) &&
         constantsAst.getText()[0] === '0'
       ) {
         constVal = parseInt(constantsAst.getText(), 10).toString()
       } else if (
-        ['float32', 'float64'].includes(constBox.type.typename) &&
+        ['float32', 'float64'].includes(constType) &&
         constantsAst.getText()[0] === '0'
       ) {
         constVal = parseFloat(constantsAst.getText()).toString()
@@ -331,7 +341,7 @@ class Microstatement {
       scope,
       true,
       constName,
-      constBox.type,
+      scope.deepGet(constType).typeval,
       [constVal],
       [],
     ))

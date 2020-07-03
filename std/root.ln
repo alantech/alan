@@ -6,9 +6,6 @@
 
 // TODO: See about making an export block scope so we don't have to write `export` so much
 
-// Special _ variable
-export const _: void
-
 // Default Interfaces
 export interface any {}
 export interface Stringifiable {
