@@ -1,15 +1,75 @@
 import Event from './Event'
-import Float32 from './Float32'
-import Float64 from './Float64'
-import Int16 from './Int16'
-import Int32 from './Int32'
-import Int64 from './Int64'
-import Int8 from './Int8'
 import Microstatement from './Microstatement'
 import Operator from './Operator'
 import Scope from './Scope'
 import Type from './Type'
 import UserFunction from './UserFunction'
+
+class Int8 {
+  val: string
+
+  constructor(val: string) {
+    this.val = val
+  }
+  toString() {
+    return this.val
+  }
+}
+
+class Int16 {
+  val: string
+
+  constructor(val: string) {
+    this.val = val
+  }
+  toString() {
+    return this.val
+  }
+}
+
+class Int32 {
+  val: string
+
+  constructor(val: string) {
+    this.val = val
+  }
+  toString() {
+    return this.val
+  }
+}
+
+class Int64 {
+  val: string
+
+  constructor(val: string) {
+    this.val = val
+  }
+  toString() {
+    return this.val
+  }
+}
+
+class Float32 {
+  val: string
+
+  constructor(val: string) {
+    this.val = val
+  }
+  toString() {
+    return this.val
+  }
+}
+
+class Float64 {
+  val: string
+
+  constructor(val: string) {
+    this.val = val
+  }
+  toString() {
+    return this.val
+  }
+}
 
 class Box {
   type: Type
