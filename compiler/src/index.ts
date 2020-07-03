@@ -10,7 +10,17 @@ import * as agatoagc from './agatoagc'
 import * as ammtojs from './ammtojs'
 import * as lntoamm from './lntoamm'
 
+const start = Date.now()
+
 const getFormat = (filename: string) => filename.replace(/^.+\.([A-Za-z0-9]{2,3})$/g, "$1")
+
+const formatTime = (ms: number) => {
+  if (ms < 1000) return `${ms}ms`
+  if (ms < 60000) return `${ms / 1000.0}s`
+  const minutes = Math.floor(ms / 60000)
+  const remaining = ms - (minutes * 60000)
+  return `${minutes}min ${remaining / 1000.0}s`
+}
 
 const convert = buildPipeline([
   ['ln', 'amm', lntoamm],
@@ -34,7 +44,8 @@ commander
 if (convert[getFormat(inputfile)] && convert[getFormat(inputfile)][getFormat(outputfile)]) {
   const output = convert[getFormat(inputfile)][getFormat(outputfile)].fromFile(inputfile)
   fs.writeFileSync(outputfile, output, { encoding: 'utf8', })
-  console.log('Done!')
+  const end = Date.now()
+  console.log(`Done in ${formatTime(end - start)}`)
 } else {
   console.error(`${getFormat(inputfile)} to ${getFormat(outputfile)} not implemented!`)
   process.exit(1)
