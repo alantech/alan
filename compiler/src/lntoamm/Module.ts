@@ -4,6 +4,7 @@ import Event from './Event'
 import FunctionType from './FunctionType'
 import Interface from './Interface'
 import Operator from './Operator'
+import OperatorType from './OperatorType'
 import Scope from './Scope'
 import Type from './Type'
 import UserFunction from './UserFunction'
@@ -87,12 +88,9 @@ class Module {
             const fnsToCheck = Object.keys(importedModule.exportScope.vals)
               .map(n => importedModule.exportScope.vals[n])
               .filter(v => !!v.functionval)
-            /**
-             * Add opsToCheck after the code to declare operators in interfaces is added
-            const opsToCheck = Object.keys(importedModule.exportScope)
-              .map(n => importedModule.exportScope[n])
+            const opsToCheck = Object.keys(importedModule.exportScope.vals)
+              .map(n => importedModule.exportScope.vals[n])
               .filter(v => !!v.operatorval)
-             */
 
             typesToCheck
               .filter(t => iface.typeApplies(t.typeval, importedModule.exportScope))
@@ -109,6 +107,16 @@ class Module {
               })
               .forEach(fn => {
                 module.moduleScope.put(fn.functionval[0].getName(), fn)
+              })
+
+            opsToCheck
+              .filter(op => {
+                return iface.operatorTypes.some(
+                  (ot: OperatorType) => ot.operatorname === op.operatorval[0].name
+                )
+              })
+              .forEach(op => {
+                module.moduleScope.put(op.operatorval[0].name, op)
               })
           }
         }

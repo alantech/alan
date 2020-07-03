@@ -309,8 +309,22 @@ class Microstatement {
       JSON.parse(constantsAst.getText()) // Will fail on strings with escape chars
       constVal = constantsAst.getText()
     } catch (e) {
-      // Hackery to get these strings to work
-      constVal = JSON.stringify(constantsAst.getText().replace(/^["']/, '').replace(/["']$/, ''))
+      // It may be a zero-padded number
+      if (
+        ['int8', 'int16', 'int32', 'int64'].includes(constBox.type.typename) &&
+        constantsAst.getText()[0] === '0'
+      ) {
+        constVal = parseInt(constantsAst.getText(), 10).toString()
+      } else if (
+        ['float32', 'float64'].includes(constBox.type.typename) &&
+        constantsAst.getText()[0] === '0'
+      ) {
+        constVal = parseFloat(constantsAst.getText()).toString()
+      } else {
+        // Hackery to get these strings to work
+        constVal = JSON.stringify(constantsAst.getText()
+          .replace(/^["']/, '').replace(/["']$/, ''))
+      }
     }
     microstatements.push(new Microstatement(
       StatementType.CONSTDEC,

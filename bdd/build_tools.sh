@@ -1,3 +1,7 @@
+sourceToFile() {
+  echo "$2" > $1
+}
+
 sourceToTemp() {
   echo "$1" > temp.ln
 }
@@ -7,7 +11,7 @@ tempToAmm() {
 }
 
 sourceToAmm() {
-  sourceToTemp "$1" 
+  sourceToTemp "$1"
   tempToAmm
 }
 
@@ -34,6 +38,10 @@ sourceToAll() {
   tempToAmm
   tempToAgc
   tempToJs
+}
+
+cleanFile() {
+  rm -f "$1"
 }
 
 cleanTemp() {
