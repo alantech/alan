@@ -21,82 +21,25 @@ class Scope {
     return null
   }
 
-  deepGet(fullName: string | any) { // TODO: Migrate away from ANTLR for better typing
-    if (typeof fullName === "string") {
-      const fullVar = fullName.trim().split(".")
-      let boxedVar: any
-      for (let i = 0; i < fullVar.length; i++) {
-        if (i === 0) {
-          boxedVar = this.get(fullVar[i])
-        } else if (boxedVar === null) {
+  deepGet(fullName: string) {
+    const fullVar = fullName.trim().split(".")
+    let boxedVar: any
+    for (let i = 0; i < fullVar.length; i++) {
+      if (i === 0) {
+        boxedVar = this.get(fullVar[i])
+      } else if (boxedVar === null) {
+        return null
+      } else {
+        if (boxedVar.type === Type.builtinTypes['scope']) {
+          boxedVar = boxedVar.scopeval.get(fullVar[i])
+        } else if (boxedVar.typevalval !== null) {
+          boxedVar = boxedVar.typevalval[fullVar[i]]
+        } else {
           return null
-        } else {
-          if (boxedVar.type === Type.builtinTypes['scope']) {
-            boxedVar = boxedVar.scopeval.get(fullVar[i])
-          } else if (boxedVar.typevalval !== null) {
-            boxedVar = boxedVar.typevalval[fullVar[i]]
-          } else {
-            return null
-          }
         }
       }
-      return boxedVar
-    } else if (fullName instanceof LnParser.VarnContext) {
-      // Circular dependency fix: TODO figure out how to eliminate this
-      const opcodes = require('./opcodes').default
-      const varAst: any = fullName
-      let boxedVar = null
-      for (const varSegment of varAst.varsegment()) {
-        if (boxedVar === null) {
-          // The first lookup is to grab the root of the specified variable
-          boxedVar = this.get(varSegment.getText())
-        } else {
-          if (varSegment.METHODSEP() != null) continue // Skip these, they're just periods
-          if (varSegment.VARNAME() != null) {
-            // This path is like the original deepGet
-            if (boxedVar.type === Type.builtinTypes["scope"]) {
-              boxedVar = boxedVar.scopeval.get(varSegment.getText())
-            } else if (boxedVar.typevalval !== null) { // User-defined type instance
-              boxedVar = boxedVar.typevalval[varSegment.getText()]
-            } else { // This should be a terminal value so an extra "." makes no sense
-              return null
-            }
-          }
-          if (varSegment.arrayaccess() != null) {
-            // First resolve the value of the array accessor
-            const arrayAccessBox = Box.fromAssignableAst(
-              varSegment.arrayaccess().assignables(),
-              this,
-              null,
-              true
-            )
-            if (boxedVar.type.originalType !== null && boxedVar.type.originalType === Type.builtinTypes["Array"]) {
-              boxedVar = boxedVar.arrayval.get(arrayAccessBox.int64val)
-            } else if (boxedVar.type.originalType != null && boxedVar.type.originalType == Type.builtinTypes["Map"]) {
-              boxedVar = boxedVar.mapval.get(arrayAccessBox)
-              if (boxedVar == null) {
-                boxedVar = opcodes.exportScope.get("_")
-              }
-            } else {
-              if (arrayAccessBox.stringval == null) {
-                // This should be prevented at "compile time" in the future
-                console.error("Expected string type when accessing a type by array accessor")
-                process.exit(-38)
-              }
-              const arrayAccessStr = arrayAccessBox.stringval;
-              if (boxedVar.type == Type.builtinTypes["scope"]) {
-                boxedVar = boxedVar.scopeval.get(arrayAccessStr)
-              } else if (boxedVar.typevalval !== null) { // User-defined type instance
-                boxedVar = boxedVar.typevalval[arrayAccessStr]
-              } else { // This should be a terminal value so an extra "." makes no sense
-                return null
-              }
-            }
-          }
-        }
-      }
-      return boxedVar
     }
+    return boxedVar
   }
 
   has(name: string) {

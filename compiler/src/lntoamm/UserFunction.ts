@@ -229,7 +229,7 @@ class UserFunction {
       statements.push(statement)
       // TODO: Infer the return type for anything other than calls or object literals
       if (assignablesAst.basicassignables() && assignablesAst.basicassignables().calls()) {
-        const fnCall = scope.deepGet(assignablesAst.basicassignables().calls().varn(0))
+        const fnCall = scope.deepGet(assignablesAst.basicassignables().calls().varn(0).getText())
         if (fnCall && fnCall.functionval) {
           // TODO: For now, also take the first matching function name, in the future
           // figure out the argument types provided recursively to select appropriately
@@ -311,7 +311,7 @@ class UserFunction {
     const condBlockFn = (cond.blocklikes(0).functionbody() ?
       UserFunction.fromFunctionbodyAst(cond.blocklikes(0).functionbody(), scope) :
       cond.blocklikes(0).varn() ?
-        scope.deepGet(cond.blocklikes(0).varn()).functionval[0] :
+        scope.deepGet(cond.blocklikes(0).varn().getText()).functionval[0] :
         UserFunction.fromFunctionsAst(cond.blocklikes(0).functions(), scope)
     ).maybeTransform()
     if (condBlockFn.statements[condBlockFn.statements.length - 1].isReturnStatement()) {
@@ -327,7 +327,7 @@ class UserFunction {
         const elseBlockFn = (cond.blocklikes(1).functionbody() ?
           UserFunction.fromFunctionbodyAst(cond.blocklikes(1).functionbody(), scope) :
           cond.blocklikes(1).varn() ?
-            scope.deepGet(cond.blocklikes(1).varn()).functionval[0] :
+            scope.deepGet(cond.blocklikes(1).varn().getText()).functionval[0] :
             UserFunction.fromFunctionsAst(cond.blocklikes(1).functions(), scope)
         ).maybeTransform()
         if (elseBlockFn.statements[elseBlockFn.statements.length - 1].isReturnStatement()) {

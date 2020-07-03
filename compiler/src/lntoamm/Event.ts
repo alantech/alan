@@ -23,7 +23,7 @@ class Event {
 
   static fromAst(eventAst: any, scope: Scope) { // TODO: Eliminate ANTLR
     const name = eventAst.VARNAME().getText()
-    const boxedVal = scope.deepGet(eventAst.varn())
+    const boxedVal = scope.deepGet(eventAst.varn().getText())
     if (boxedVal === null) {
       console.error("Could not find specified type: " + eventAst.varn().getText())
       process.exit(-8)
