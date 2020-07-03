@@ -923,7 +923,7 @@ class Microstatement {
     // can be pruned back off of the list to be reattached to a closure microstatement type.
     const constName = "_" + uuid().replace(/-/g, "_")
     if (blocklikesAst.varn() != null) { // TODO: Port to fromVarAst
-      const fnToClose = scope.deepGet(blocklikesAst.varn())
+      const fnToClose = scope.deepGet(blocklikesAst.varn().getText())
       if (fnToClose == null || fnToClose.functionval == null) {
         console.error(blocklikesAst.varn().getText() + " is not a function")
         process.exit(-111)
@@ -982,7 +982,7 @@ class Microstatement {
       // If there's an assignable value here, add it to the list of microstatements first, then
       // rewrite the final const assignment as the emit statement.
       Microstatement.fromAssignablesAst(emitsAst.assignables(), scope, microstatements)
-      const eventBox = scope.deepGet(emitsAst.varn()) // TODO: Port to fromVarAst when Box is removed
+      const eventBox = scope.deepGet(emitsAst.varn().getText()) // TODO: Port to fromVarAst when Box is removed
       if (eventBox.eventval == null) {
         console.error(emitsAst.varn().getText() + " is not an event!")
         console.error(
@@ -1025,7 +1025,7 @@ class Microstatement {
       ))
     } else {
       // Otherwise, create an emit statement with no value
-      const eventBox = scope.deepGet(emitsAst.varn()) // TODO: Port to fromVarAst
+      const eventBox = scope.deepGet(emitsAst.varn().getText()) // TODO: Port to fromVarAst
       if (eventBox.eventval == null) {
         console.error(emitsAst.varn().getText() + " is not an event!")
         console.error(

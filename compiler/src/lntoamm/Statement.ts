@@ -26,7 +26,7 @@ class Statement {
 
   static isCallPure(callAst: any, scope: Scope) { // TODO: Migrate off ANTLR
     // TODO: Add purity checking for chained method-style calls
-    const functionBox = scope.deepGet(callAst.varn(0))
+    const functionBox = scope.deepGet(callAst.varn(0).getText())
     if (functionBox == null) {
       // TODO: This function may be defined in the execution scope, we won't know until runtime
       // right now, but it should be determinable at "compile time". Need to fix this to check

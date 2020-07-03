@@ -132,7 +132,7 @@ class Type {
       for (const lineAst of lines) {
         const propertyName = lineAst.VARNAME().getText()
         const typeName = lineAst.varn().getText()
-        const property = scope.deepGet(lineAst.varn())
+        const property = scope.deepGet(lineAst.varn().getText())
         if (property == null || property.type.typename !== "type") {
           if (type.generics.hasOwnProperty(typeName)) {
             type.properties[propertyName] = new Type(typeName, true, true)

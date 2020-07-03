@@ -175,7 +175,7 @@ class Module {
       const isPrefix = operatorAst.INFIX() === null
       const name = operatorAst.fntoop().operators().getText().trim()
       const precedence = parseInt(operatorAst.opprecedence().NUMBERCONSTANT().getText(), 10)
-      const fns = module.moduleScope.deepGet(operatorAst.fntoop().varn())
+      const fns = module.moduleScope.deepGet(operatorAst.fntoop().varn().getText())
       if (fns == null) {
         console.error("Operator " + name + " declared for unknown function " + operatorAst.varn().getText())
         process.exit(-31)
@@ -200,7 +200,7 @@ class Module {
     const exports = ast.exports()
     for (const exportAst of exports) {
       if (exportAst.varn() != null) {
-        const exportVar = module.moduleScope.deepGet(exportAst.varn())
+        const exportVar = module.moduleScope.deepGet(exportAst.varn().getText())
         const splitName = exportAst.varn().getText().split(".")
         module.moduleScope.put(splitName[splitName.length - 1], exportVar)
         module.exportScope.put(splitName[splitName.length - 1], exportVar)
@@ -249,9 +249,9 @@ class Module {
         const isPrefix = operatorAst.INFIX() == null
         const name = operatorAst.fntoop().operators().getText().trim()
         const precedence = parseInt(operatorAst.opprecedence().NUMBERCONSTANT().getText(), 10)
-        let fns = module.exportScope.deepGet(operatorAst.fntoop().varn())
+        let fns = module.exportScope.deepGet(operatorAst.fntoop().varn().getText())
         if (fns == null) {
-          fns = module.moduleScope.deepGet(operatorAst.fntoop().varn())
+          fns = module.moduleScope.deepGet(operatorAst.fntoop().varn().getText())
           if (fns != null) {
             console.error(
               "Exported operator " +
@@ -302,7 +302,7 @@ class Module {
     for (const handlerAst of handlers) {
       let eventBox = null
       if (handlerAst.eventref().varn() != null) {
-        eventBox = module.moduleScope.deepGet(handlerAst.eventref().varn())
+        eventBox = module.moduleScope.deepGet(handlerAst.eventref().varn().getText())
       } else if (handlerAst.eventref().calls() != null) {
         console.error("Not yet implemented!")
         process.exit(-19)
@@ -321,7 +321,7 @@ class Module {
       let fn = null
       if (handlerAst.varn() != null) {
         const fnName = handlerAst.varn().getText()
-        const fnBox = module.moduleScope.deepGet(handlerAst.varn())
+        const fnBox = module.moduleScope.deepGet(handlerAst.varn().getText())
         if (fnBox == null) {
           console.error("Could not find specified function: " + fnName)
           process.exit(-22)

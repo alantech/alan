@@ -215,10 +215,10 @@ class Box {
     // TODO: This code is becoming very overloaded with different meanings in different contexts
     // Should probably split this up into multiple functions instead of trying to have this function
     // guess which context it's running in.
-    
+
     // TODO: Review if any of the extra logic after deepGet is needed anymore
-    const typename = assignmentAst.varn().getText();
-    let typeBox = scope.deepGet(assignmentAst.varn());
+    const typename = assignmentAst.varn().getText()
+    let typeBox = scope.deepGet(assignmentAst.varn().getText())
 
     let type: Type
 
@@ -303,11 +303,11 @@ class Box {
     }
     if (!!basicAssignable.calls()) {
       // TODO: Support generating global constants from function calls at some point
-      // return Function.callFromAst(basicAssignable.calls(), scope);
+      // return Function.callFromAst(basicAssignable.calls(), scope)
       return new Box() // Void it for now
     }
     if (!!basicAssignable.varn()) {
-      return scope.deepGet(basicAssignable.varn());
+      return scope.deepGet(basicAssignable.varn().getText())
     }
     if (!!basicAssignable.groups()) {
       // TODO: Suppor this later
