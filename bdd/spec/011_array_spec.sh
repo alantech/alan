@@ -52,6 +52,10 @@ Describe "Arrays"
           print(test[0])
           print(test[1])
           print(test[2])
+          const test2 = [ 4, 5, 6 ]
+          print(test2[0])
+          print(test2[1])
+          print(test2[2])
           emit exit 0
         }
       "
@@ -66,7 +70,10 @@ Describe "Arrays"
     LITERALOUTPUT="Testing...
 1
 2
-3"
+3
+4
+5
+6"
 
     It "runs js"
       When run node temp.js

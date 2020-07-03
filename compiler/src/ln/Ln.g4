@@ -60,13 +60,13 @@ groups : OPENARGS WS* withoperators WS* CLOSEARGS;
 
 typeofn : TYPE WS* basicassignables;
 
-objectliterals : NEW WS* othertype WS* (arrayliteral | typeliteral | mapliteral);
+objectliterals : arrayliteral | typeliteral | mapliteral;
 
-arrayliteral : OPENARRAY blank* assignablelist blank* CLOSEARRAY;
+arrayliteral : (NEW WS* othertype WS*)? OPENARRAY blank* assignablelist blank* CLOSEARRAY;
 
-typeliteral : OPENBODY blank* (assignments blank+)+ CLOSEBODY;
+typeliteral : NEW WS* othertype WS* OPENBODY blank* (assignments blank+)+ CLOSEBODY;
 
-mapliteral : OPENBODY blank* (mapline blank+)* CLOSEBODY;
+mapliteral : NEW WS* othertype WS* OPENBODY blank* (mapline blank+)* CLOSEBODY;
 
 mapline : assignables WS* TYPESEP WS* assignables;
 

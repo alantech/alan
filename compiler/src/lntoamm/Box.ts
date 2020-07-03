@@ -297,19 +297,19 @@ class Box {
     expectedType: Type,
     readonly: boolean
   ) {
-    if (basicAssignable.functions() != null) {
+    if (!!basicAssignable.functions()) {
       const assignedFunction = UserFunction.fromAst(basicAssignable.functions(), scope)
       return new Box([assignedFunction], readonly)
     }
-    if (basicAssignable.calls() != null) {
+    if (!!basicAssignable.calls()) {
       // TODO: Support generating global constants from function calls at some point
       // return Function.callFromAst(basicAssignable.calls(), scope);
       return new Box() // Void it for now
     }
-    if (basicAssignable.varn() != null) {
+    if (!!basicAssignable.varn()) {
       return scope.deepGet(basicAssignable.varn());
     }
-    if (basicAssignable.groups() != null) {
+    if (!!basicAssignable.groups()) {
       // TODO: Suppor this later
       /* return Box.fromWithOperatorsAst(
         basicAssignable.groups().withoperators(),
@@ -319,7 +319,7 @@ class Box {
       ) */
       return new Box() // void it for now
     }
-    if (basicAssignable.typeofn() != null) {
+    if (!!basicAssignable.typeofn()) {
       // Potentially add a bunch of guards around this
       return new Box(Box.fromBasicAssignableAst(
         basicAssignable.typeofn().basicassignables(),
@@ -328,15 +328,11 @@ class Box {
         readonly
       ).type.typename, readonly)
     }
-    if (basicAssignable.objectliterals() != null) {
-      return Box.fromObjectLiteralsAst(
-        basicAssignable.objectliterals(),
-        scope,
-        null,
-        readonly
-      )
+    if (!!basicAssignable.objectliterals()) {
+      console.error('De-implemented object literal construction in Box, should not be reached')
+      process.exit(-1)
     }
-    if (basicAssignable.constants() != null) {
+    if (!!basicAssignable.constants()) {
       return Box.fromConstantsAst(
         basicAssignable.constants(),
         scope,
@@ -347,91 +343,6 @@ class Box {
     // Shouldn't be possible
     console.error("Something went wrong parsing the syntax")
     process.exit(-8)
-  }
-
-  static fromObjectLiteralsAst(
-    objectliteralsAst: any, // TODO: Eliminate ANTLR
-    scope: Scope,
-    _expectedType: Type, // TODO: Eliminate this arg from calling code
-    readonly: boolean
-  ) {
-    const typename = objectliteralsAst.othertype().getText()
-    const typeBox = scope.deepGet(typename)
-    let type = null
-    if (objectliteralsAst.othertype().typegenerics() != null && typeBox == null) {
-      const originalTypeBox = scope.deepGet(objectliteralsAst.othertype().typename().getText())
-      if (originalTypeBox == null) {
-        console.error(objectliteralsAst.othertype().typename().getText() + " is referenced but not defined. Unexpected runtime error!")
-        process.exit(-46)
-      }
-      let solidTypes = []
-      for (const fulltypenameAst of objectliteralsAst.othertype().typegenerics().fulltypename()) {
-        solidTypes.push(fulltypenameAst.getText())
-      }
-      type = originalTypeBox.typeval.solidify(solidTypes, scope)
-    } else {
-      type = typeBox.typeval
-    }
-    if (type == null) {
-      console.error(objectliteralsAst.othertype().getText() + " is not a valid type")
-      process.exit(-45)
-    }
-    if (objectliteralsAst.arrayliteral() != null) {
-      let arrayval = []
-      for (const assignableAst of objectliteralsAst.arrayliteral().assignablelist().assignables()) {
-        arrayval.push(Box.fromAssignableAst(
-          assignableAst,
-          scope,
-          type.properties["records"], // Special for Arrays (and Trees and Sets later)
-          readonly
-        ))
-      }
-      return new Box(arrayval, type, readonly)
-    }
-    if (objectliteralsAst.typeliteral() != null) {
-      let typevalval = {}
-      for (const assignmentsAst of objectliteralsAst.typeliteral().assignments()) {
-        const property = assignmentsAst.varn().getText()
-        const assignmentType = type.properties[property]
-        if (assignmentsAst.assignables() == null) {
-          // TODO: this can only happen if parts of the `assignments` syntax not valid here are used
-          // This should be eliminated in the future, but for now just crash
-          console.error("Invalid literal assignment for " + type.typename + " on the "
-            + property + " property.")
-          process.exit(-46)
-        }
-        typevalval[assignmentsAst.varn().getText()] = Box.fromAssignableAst(
-          assignmentsAst.assignables(),
-          scope,
-          assignmentType,
-          readonly
-        )
-      }
-      return new Box(typevalval, type, readonly)
-    }
-    if (objectliteralsAst.mapliteral() != null) {
-      let mapval = {}
-      if (objectliteralsAst.mapliteral().mapline() != null) {
-        for (const mapline of objectliteralsAst.mapliteral().mapline()) {
-          const keyBox = Box.fromAssignableAst(
-            mapline.assignables(0),
-            scope,
-            type.properties["key"], // Special for Maps
-            readonly
-          )
-          const valBox = Box.fromAssignableAst(
-            mapline.assignables(1),
-            scope,
-            type.properties["value"], // Special for Maps
-            readonly
-          )
-          mapval[keyBox] = valBox
-        }
-      }
-      return new Box(mapval, type, readonly)
-    }
-    // Should never reach here
-    return null
   }
 }
 
