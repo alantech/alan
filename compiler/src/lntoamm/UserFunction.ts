@@ -240,9 +240,30 @@ class UserFunction {
         assignablesAst.basicassignables() &&
         assignablesAst.basicassignables().objectliterals()
       ) {
-        returnType = scope.deepGet(
-          assignablesAst.basicassignables().objectliterals().othertype().getText().trim()
-        ).typeval
+        if (assignablesAst.basicassignables().objectliterals().typeliteral()) {
+          returnType = scope.deepGet(
+            assignablesAst.basicassignables().objectliterals().typeliteral().othertype().getText().trim()
+          ).typeval
+        } else if (assignablesAst.basicassignables().objectliterals().mapliteral()) {
+          returnType = scope.deepGet(
+            assignablesAst.basicassignables().objectliterals().mapliteral().othertype().getText().trim()
+          ).typeval
+        } else {
+          if (assignablesAst.basicassignables().objectliterals().arrayliteral().othertype()) {
+            returnType = scope.deepGet(
+              assignablesAst.basicassignables().objectliterals().arrayliteral().othertype().getText().trim()
+            ).typeval
+          } else {
+            // We're going to use the Microstatement logic here
+            const microstatements = []
+            Microstatement.fromAssignablesAst(
+              assignablesAst.basicassignables().objectliterals().arrayliteral().assignableslist(0),
+              scope,
+              microstatements,
+            )
+            returnType = microstatements[microstatements.length - 1].outputType
+          }
+        }
       }
     }
     return new UserFunction(name, args, returnType, scope, statements, pure)

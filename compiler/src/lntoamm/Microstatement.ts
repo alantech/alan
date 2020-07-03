@@ -414,47 +414,7 @@ class Microstatement {
     // The conversion of object literals is devolved to alangraphcode when types are erased, at this
     // stage they're just passed through as-is. TODO: This is assuming everything inside of them are
     // constants. That is not a valid assumption and should be revisited.
-    if (basicAssignablesAst.objectliterals() != null) {
-      let typeBox = scope.deepGet(basicAssignablesAst.objectliterals().othertype().getText().trim())
-      if (typeBox === null) {
-        // Try to define it if it's a generic type
-        if (basicAssignablesAst.objectliterals().othertype().typegenerics()) {
-          const outerTypeBox = scope.deepGet(
-            basicAssignablesAst.objectliterals().othertype().typename().getText().trim()
-          )
-          if (outerTypeBox === null) {
-            console.error(`${basicAssignablesAst.objectliterals().othertype().getText()}  is not defined`)
-            console.error(
-              basicAssignablesAst.getText() +
-              " on line " +
-              basicAssignablesAst.start.line +
-              ":" +
-              basicAssignablesAst.start.column
-            )
-            process.exit(-105)
-          }
-          outerTypeBox.typeval.solidify(
-            basicAssignablesAst.objectliterals().othertype().typegenerics().fulltypename().map(
-              (t: any) => t.getText() // TODO: Eliminate ANTLR
-            ),
-            scope
-          )
-          typeBox = scope.deepGet(basicAssignablesAst.objectliterals().othertype().getText().trim())
-        }
-      }
-      if (typeBox.typeval == null) {
-        console.error(
-          basicAssignablesAst.objectliterals().othertype().getText().trim() + " is not a type"
-        )
-        console.error(
-          basicAssignablesAst.getText() +
-          " on line " +
-          basicAssignablesAst.start.line +
-          ":" +
-          basicAssignablesAst.start.column
-        )
-        process.exit(-106)
-      }
+    if (!!basicAssignablesAst.objectliterals()) {
       if (basicAssignablesAst.objectliterals().arrayliteral()) {
         // Array literals first need all of the microstatements of the array contents defined, then
         // a `newarr` opcode call is inserted for the object literal itself, then `pusharr` opcode
@@ -465,6 +425,65 @@ class Microstatement {
         for (let i = 0; i < assignablelist.assignables().length; i++) {
           Microstatement.fromAssignablesAst(assignablelist.assignables(i), scope, microstatements)
           arrayLiteralContents.push(microstatements[microstatements.length - 1])
+        }
+        let typeBox = null
+        if (basicAssignablesAst.objectliterals().arrayliteral().othertype()) {
+          typeBox = scope.deepGet(
+            basicAssignablesAst.objectliterals().arrayliteral().othertype().getText().trim()
+          )
+          if (typeBox === null) {
+            // Try to define it if it's a generic type
+            if (basicAssignablesAst.objectliterals().arrayliteral().othertype().typegenerics()) {
+              const outerTypeBox = scope.deepGet(
+                basicAssignablesAst.objectliterals().arrayliteral().othertype().typename().getText().trim()
+              )
+              if (outerTypeBox === null) {
+                console.error(`${basicAssignablesAst.objectliterals().arrayliteral().othertype().getText()}  is not defined`)
+                console.error(
+                  basicAssignablesAst.getText() +
+                  " on line " +
+                  basicAssignablesAst.start.line +
+                  ":" +
+                  basicAssignablesAst.start.column
+                )
+                process.exit(-105)
+              }
+              outerTypeBox.typeval.solidify(
+                basicAssignablesAst.objectliterals().arrayliteral().othertype().typegenerics().fulltypename().map(
+                  (t: any) => t.getText() // TODO: Eliminate ANTLR
+                ),
+                scope
+              )
+              typeBox = scope.deepGet(basicAssignablesAst.objectliterals().arrayliteral().othertype().getText().trim())
+            }
+          }
+          if (typeBox.typeval == null) {
+            console.error(
+              basicAssignablesAst.objectliterals().arrayliteral().othertype().getText().trim() + " is not a type"
+            )
+            console.error(
+              basicAssignablesAst.getText() +
+              " on line " +
+              basicAssignablesAst.start.line +
+              ":" +
+              basicAssignablesAst.start.column
+            )
+            process.exit(-106)
+          }
+        } else if (arrayLiteralContents.length > 0) {
+          const innerType = arrayLiteralContents[0].outputType.typename
+          Type.builtinTypes['Array'].solidify([innerType], scope)
+          typeBox = scope.deepGet(`Array<${innerType}>`)
+        } else {
+          console.error('Ambiguous array type, please specify the type for an empty array with the syntax `new Array<MyType> []')
+          console.error(
+            basicAssignablesAst.getText() +
+            " on line " +
+            basicAssignablesAst.start.line +
+            ":" +
+            basicAssignablesAst.start.column
+          )
+          process.exit(-106)
         }
         // Create a new variable to hold the size of the array literal
         const lenName = "_" + uuid().replace(/-/g, "_")
@@ -543,11 +562,53 @@ class Microstatement {
         // If the type literal is missing any fields, that's a hard compile error to make sure
         // accessing undefined data is impossible. If a value might not be needed, they should use
         // the `Option` type and provide a `None` value there.
+        let typeBox = scope.deepGet(
+          basicAssignablesAst.objectliterals().typeliteral().othertype().getText().trim()
+        )
+        if (typeBox === null) {
+          // Try to define it if it's a generic type
+          if (basicAssignablesAst.objectliterals().typeliteral().othertype().typegenerics()) {
+            const outerTypeBox = scope.deepGet(
+              basicAssignablesAst.objectliterals().typeliteral().othertype().typename().getText().trim()
+            )
+            if (outerTypeBox === null) {
+              console.error(`${basicAssignablesAst.objectliterals().typeliteral().othertype().getText()}  is not defined`)
+              console.error(
+                basicAssignablesAst.getText() +
+                " on line " +
+                basicAssignablesAst.start.line +
+                ":" +
+                basicAssignablesAst.start.column
+              )
+              process.exit(-105)
+            }
+            outerTypeBox.typeval.solidify(
+              basicAssignablesAst.objectliterals().typeliteral().othertype().typegenerics().fulltypename().map(
+                (t: any) => t.getText() // TODO: Eliminate ANTLR
+              ),
+              scope
+            )
+            typeBox = scope.deepGet(basicAssignablesAst.objectliterals().typeliteral().othertype().getText().trim())
+          }
+        }
+        if (typeBox.typeval == null) {
+          console.error(
+            basicAssignablesAst.objectliterals().typeliteral().othertype().getText().trim() + " is not a type"
+          )
+          console.error(
+            basicAssignablesAst.getText() +
+            " on line " +
+            basicAssignablesAst.start.line +
+            ":" +
+            basicAssignablesAst.start.column
+          )
+          process.exit(-106)
+        }
         const assignmentAsts = basicAssignablesAst.objectliterals().typeliteral().assignments()
         // First check that the assignments are well-formed and actually have an assignables field
         for (const assignmentAst of assignmentAsts) {
           if (!assignmentAst.assignables()) {
-            console.error(`${basicAssignablesAst.objectliterals().othertype().getText().trim()} object literal improperly defined`)
+            console.error(`${basicAssignablesAst.objectliterals().typeliteral().othertype().getText().trim()} object literal improperly defined`)
             console.error(`${assignmentAst.varn().getText()} not set`)
             console.error(
               basicAssignablesAst.getText() +
@@ -581,7 +642,7 @@ class Microstatement {
           }
         }
         if (missingFields.length > 0 || extraFields.length > 0) {
-          console.error(`${basicAssignablesAst.objectliterals().othertype().getText().trim()} object literal improperly defined`)
+          console.error(`${basicAssignablesAst.objectliterals().typeliteral().othertype().getText().trim()} object literal improperly defined`)
           if (missingFields.length > 0) {
             console.error(`Missing fields: ${missingFields.join(', ')}`)
           }
@@ -667,7 +728,7 @@ class Microstatement {
         return
       }
       // If object literal parsing has made it this far, it's a Map literal that is not yet supported
-      console.error(`${basicAssignablesAst.objectliterals().othertype().getText().trim()} not yet supported`)
+      console.error(`${basicAssignablesAst.objectliterals().mapliteral().othertype().getText().trim()} not yet supported`)
       console.error(
         basicAssignablesAst.getText() +
         " on line " +
