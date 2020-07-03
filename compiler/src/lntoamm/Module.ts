@@ -137,16 +137,12 @@ class Module {
       // Automatically inserts the interface into the module scope, we're done.
     }
     // Next, constants
+    // TODO: Need to restore this functionality once compile-time-eval is implemented
     const constdeclarations = ast.constdeclaration()
-    for (const constAst of constdeclarations) {
-      const newConst = Box.fromConstAst(constAst, module.moduleScope)
-      let constName: string
-      if (constAst.VARNAME() != null) {
-        constName = constAst.VARNAME().getText()
-      } else {
-        constName = constAst.assignments().varn().getText()
-      }
-      module.moduleScope.put(constName, newConst)
+    if (constdeclarations.length > 0) {
+      console.error('Module-scope constants not yet implemented')
+      console.error(constdeclarations().getText())
+      process.exit(2)
     }
     // Next, events
     const events = ast.events()
@@ -214,15 +210,8 @@ class Module {
         // Automatically inserts the interface into the module scope
         module.exportScope.put(interfaceBox.typeval.typename, interfaceBox)
       } else if (exportAst.constdeclaration() != null) {
-        const newConst = Box.fromConstAst(exportAst.constdeclaration(), module.moduleScope)
-        let constName: string
-        if (exportAst.constdeclaration().VARNAME() != null) {
-          constName = exportAst.constdeclaration().VARNAME().getText()
-        } else {
-          constName = exportAst.constdeclaration().assignments().varn().getText()
-        }
-        module.moduleScope.put(constName, newConst)
-        module.exportScope.put(constName, newConst)
+        console.error('Module-scope constants not yet implemented')
+        process.exit(2)
       } else if (exportAst.functions() != null) {
         const newFunc = UserFunction.fromAst(exportAst.functions(), module.moduleScope)
         if (newFunc.getName() == null) {
