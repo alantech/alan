@@ -47,9 +47,9 @@ type FnPtr = fn(
 /// https://stackoverflow.com/questions/59035366/how-do-i-store-a-variable-of-type-impl-trait-in-a-struct
 pub struct ByteOpcode {
   /// Opcode value as an i64 number
-  pub(crate) id: i64,
+  pub(crate) _id: i64,
   /// Human readable name for id
-  pub(crate) name: String,
+  pub(crate) _name: String,
   /// Boolean that is true if this opcode has predictable execution
   pub(crate) pred_exec: bool,
   /// void function pointer that describes the side-effect of cpu bound opcode
@@ -75,8 +75,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     ($name:expr, $async_func:expr) => {
       let id = opcode_id($name);
       let opcode = ByteOpcode {
-        id,
-        name: $name.to_string(),
+        _id: id,
+        _name: $name.to_string(),
         pred_exec: false,
         func: None,
         async_func: Some($async_func),
@@ -89,8 +89,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     ($name:expr, $func:expr) => {
       let id = opcode_id($name);
       let opcode = ByteOpcode {
-        id,
-        name: $name.to_string(),
+        _id: id,
+        _name: $name.to_string(),
         pred_exec: true,
         func: Some($func),
         async_func: None,
@@ -103,8 +103,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     ($name:expr, $func:expr) => {
       let id = opcode_id($name);
       let opcode = ByteOpcode {
-        id,
-        name: $name.to_string(),
+        _id: id,
+        _name: $name.to_string(),
         pred_exec: false,
         func: Some($func),
         async_func: None,
@@ -1100,11 +1100,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   cpu!("eqstr", |args, hand_mem, _| {
     let a_pascal_string = hand_mem.read(args[0], 0);
-    let a_size = LittleEndian::read_u64(&a_pascal_string[0..8]) as usize;
-    let a_str = str::from_utf8(&a_pascal_string[8..a_size + 8]).unwrap();
     let b_pascal_string = hand_mem.read(args[1], 0);
-    let b_size = LittleEndian::read_u64(&b_pascal_string[0..8]) as usize;
-    let b_str = str::from_utf8(&b_pascal_string[8..b_size + 8]).unwrap();
     let out = if a_pascal_string == b_pascal_string { 1u8 } else { 0u8 };
     hand_mem.write(args[2], 1, &out.to_le_bytes());
     None
@@ -1161,11 +1157,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   cpu!("neqstr", |args, hand_mem, _| {
     let a_pascal_string = hand_mem.read(args[0], 0);
-    let a_size = LittleEndian::read_u64(&a_pascal_string[0..8]) as usize;
-    let a_str = str::from_utf8(&a_pascal_string[8..a_size + 8]).unwrap();
     let b_pascal_string = hand_mem.read(args[1], 0);
-    let b_size = LittleEndian::read_u64(&b_pascal_string[0..8]) as usize;
-    let b_str = str::from_utf8(&b_pascal_string[8..b_size + 8]).unwrap();
     let out = if a_pascal_string != b_pascal_string { 1u8 } else { 0u8 };
     hand_mem.write(args[2], 1, &out.to_le_bytes());
     None
@@ -1227,7 +1219,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let b_pascal_string = hand_mem.read(args[1], 0);
     let b_size = LittleEndian::read_u64(&b_pascal_string[0..8]) as usize;
     let b_str = str::from_utf8(&b_pascal_string[8..b_size + 8]).unwrap();
-    let out = if a_pascal_string < b_pascal_string { 1u8 } else { 0u8 };
+    let out = if a_str < b_str { 1u8 } else { 0u8 };
     hand_mem.write(args[2], 1, &out.to_le_bytes());
     None
   });
@@ -1281,7 +1273,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let b_pascal_string = hand_mem.read(args[1], 0);
     let b_size = LittleEndian::read_u64(&b_pascal_string[0..8]) as usize;
     let b_str = str::from_utf8(&b_pascal_string[8..b_size + 8]).unwrap();
-    let out = if a_pascal_string <= b_pascal_string { 1u8 } else { 0u8 };
+    let out = if a_str <= b_str { 1u8 } else { 0u8 };
     hand_mem.write(args[2], 1, &out.to_le_bytes());
     None
   });
@@ -1335,7 +1327,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let b_pascal_string = hand_mem.read(args[1], 0);
     let b_size = LittleEndian::read_u64(&b_pascal_string[0..8]) as usize;
     let b_str = str::from_utf8(&b_pascal_string[8..b_size + 8]).unwrap();
-    let out = if a_pascal_string > b_pascal_string { 1u8 } else { 0u8 };
+    let out = if a_str > b_str { 1u8 } else { 0u8 };
     hand_mem.write(args[2], 1, &out.to_le_bytes());
     None
   });
@@ -1389,7 +1381,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let b_pascal_string = hand_mem.read(args[1], 0);
     let b_size = LittleEndian::read_u64(&b_pascal_string[0..8]) as usize;
     let b_str = str::from_utf8(&b_pascal_string[8..b_size + 8]).unwrap();
-    let out = if a_pascal_string >= b_pascal_string { 1u8 } else { 0u8 };
+    let out = if a_str >= b_str { 1u8 } else { 0u8 };
     hand_mem.write(args[2], 1, &out.to_le_bytes());
     None
   });
@@ -1614,7 +1606,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let full_cmd = str::from_utf8(&pascal_string[8..size + 8]).unwrap();
     let split_cmd: Vec<&str> = full_cmd.split(" ").collect();
     let output = Command::new(split_cmd[0]).args(&split_cmd[1..]).output();
-    let result = match output {
+    match output {
       Err(e) => println!("Executing \"{}\" failed with: {}", full_cmd, e),
       Ok(out) => {
         io::stdout().write_all(&out.stdout).unwrap();
