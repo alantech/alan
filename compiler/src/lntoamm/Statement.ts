@@ -40,7 +40,7 @@ class Statement {
     // TODO: Add all of the logic to determine which function to use in here, too. For now,
     // let's just assume they all have the same purity state, which is a terrible assumption, but
     // easier.
-    if (!functionBox.functionval[0].isPure()) return false
+    if (!functionBox.val[0].isPure()) return false
     const assignableListAst = callAst.fncall(0).assignablelist()
     if (assignableListAst == null) { // No arguments to this function call
       return true
@@ -56,13 +56,13 @@ class Statement {
       if (operatorOrAssignable.operators() != null) {
         const operator = operatorOrAssignable.operators()
         const op = scope.deepGet(operator.getText())
-        if (op == null || op.operatorval == null) {
+        if (!op || op.type !== Type.builtinTypes.operator) {
           console.error("Operator " + operator.getText() + " is not defined")
           process.exit(-33)
         }
         // TODO: Similar to the above, need to figure out logic to determine which particular function
         // will be the one called. For now, just assume the first one and fix this later.
-        if (!op.operatorval[0].potentialFunctions[0].isPure()) return false
+        if (!op.val[0].potentialFunctions[0].isPure()) return false
       }
       if (operatorOrAssignable.basicassignables() != null) {
         if (!Statement.isBasicAssignablePure(operatorOrAssignable.basicassignables(), scope)) {

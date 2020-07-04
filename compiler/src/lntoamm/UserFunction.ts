@@ -108,7 +108,10 @@ class UserFunction {
               for (const fulltypename of argsAst.argtype(i).othertype(0).typegenerics().fulltypename()) {
                 genericTypes.push(fulltypename.getText())
               }
-              getArgType = new Box(getArgType.typeval.solidify(genericTypes, scope))
+              getArgType = new Box(
+                getArgType.val.solidify(genericTypes, scope),
+                Type.builtinTypes.type
+              )
             } else {
               console.error("Could not find type " + argsAst.argtype(i).getText() + " for argument " + argName)
               process.exit(-51)
@@ -133,23 +136,26 @@ class UserFunction {
                   for (const fulltypename of othertype.typegenerics().fulltypename()) {
                     genericTypes.push(fulltypename.getText())
                   }
-                  othertypeBox = new Box(othertypeBox.typeval.solidify(genericTypes, scope))
+                  othertypeBox = new Box(
+                    othertypeBox.val.solidify(genericTypes, scope),
+                    Type.builtinTypes.type
+                  )
                 } else {
                   console.error("Could not find type " + othertype.getText() + " for argument " + argName)
                   process.exit(-51)
                 }
               }
-              unionTypes.push(othertypeBox.typeval)
+              unionTypes.push(othertypeBox.val)
             }
             const union = new Type(argsAst.argtype(i).getText(), false, unionTypes)
-            getArgType = new Box(union)
+            getArgType = new Box(union, Type.builtinTypes.type)
           }
         }
         if (getArgType.type != Type.builtinTypes["type"]) {
           console.error("Function argument is not a valid type: " + argsAst.argtype(i).getText())
           process.exit(-13)
         }
-        args[argName] = getArgType.typeval
+        args[argName] = getArgType.val
       }
     }
     let returnType = null
@@ -171,13 +177,16 @@ class UserFunction {
             for (const fulltypename of functionAst.argType().othertype(0).typegenerics().fulltypename()) {
               genericTypes.push(fulltypename.getText())
             }
-            getReturnType = new Box(getReturnType.typeval.solidify(genericTypes, scope))
+            getReturnType = new Box(
+              getReturnType.val.solidify(genericTypes, scope),
+              Type.builtinTypes.type
+            )
           } else {
             console.error("Could not find type " + functionAst.argtype().getText() + " for function " + functionAst.VARNAME().getText())
             process.exit(-61)
           }
         }
-        returnType = getReturnType.typeval
+        returnType = getReturnType.val
       } else {
         const othertypes = functionAst.argtype().othertype()
         let unionTypes = []
@@ -198,13 +207,16 @@ class UserFunction {
               for (const fulltypename of othertype.typegenerics().fulltypename()) {
                 genericTypes.push(fulltypename.getText())
               }
-              othertypeBox = new Box(othertypeBox.typeval.solidify(genericTypes, scope))
+              othertypeBox = new Box(
+                othertypeBox.val.solidify(genericTypes, scope),
+                Type.builtinTypes.type
+              )
             } else {
               console.error("Could not find return type " + othertype.getText() + " for function " + functionAst.VARNAME().getText())
               process.exit(-51)
             }
           }
-          unionTypes.push(othertypeBox.typeval)
+          unionTypes.push(othertypeBox.val)
         }
         returnType = new Type(functionAst.argtype().getText(), false, unionTypes)
       }
@@ -230,11 +242,11 @@ class UserFunction {
       // TODO: Infer the return type for anything other than calls or object literals
       if (assignablesAst.basicassignables() && assignablesAst.basicassignables().calls()) {
         const fnCall = scope.deepGet(assignablesAst.basicassignables().calls().varn(0).getText())
-        if (fnCall && fnCall.functionval) {
+        if (fnCall && fnCall.type === Type.builtinTypes['function']) {
           // TODO: For now, also take the first matching function name, in the future
           // figure out the argument types provided recursively to select appropriately
           // similar to how the Microstatements piece works
-          returnType = fnCall.functionval[0].getReturnType()
+          returnType = fnCall.val[0].getReturnType()
         }
       } else if (
         assignablesAst.basicassignables() &&
@@ -243,16 +255,16 @@ class UserFunction {
         if (assignablesAst.basicassignables().objectliterals().typeliteral()) {
           returnType = scope.deepGet(
             assignablesAst.basicassignables().objectliterals().typeliteral().othertype().getText().trim()
-          ).typeval
+          ).val
         } else if (assignablesAst.basicassignables().objectliterals().mapliteral()) {
           returnType = scope.deepGet(
             assignablesAst.basicassignables().objectliterals().mapliteral().othertype().getText().trim()
-          ).typeval
+          ).val
         } else {
           if (assignablesAst.basicassignables().objectliterals().arrayliteral().othertype()) {
             returnType = scope.deepGet(
               assignablesAst.basicassignables().objectliterals().arrayliteral().othertype().getText().trim()
-            ).typeval
+            ).val
           } else {
             // We're going to use the Microstatement logic here
             const microstatements = []
@@ -311,7 +323,7 @@ class UserFunction {
     const condBlockFn = (cond.blocklikes(0).functionbody() ?
       UserFunction.fromFunctionbodyAst(cond.blocklikes(0).functionbody(), scope) :
       cond.blocklikes(0).varn() ?
-        scope.deepGet(cond.blocklikes(0).varn().getText()).functionval[0] :
+        scope.deepGet(cond.blocklikes(0).varn().getText()).val[0] :
         UserFunction.fromFunctionsAst(cond.blocklikes(0).functions(), scope)
     ).maybeTransform()
     if (condBlockFn.statements[condBlockFn.statements.length - 1].isReturnStatement()) {
@@ -327,7 +339,7 @@ class UserFunction {
         const elseBlockFn = (cond.blocklikes(1).functionbody() ?
           UserFunction.fromFunctionbodyAst(cond.blocklikes(1).functionbody(), scope) :
           cond.blocklikes(1).varn() ?
-            scope.deepGet(cond.blocklikes(1).varn().getText()).functionval[0] :
+            scope.deepGet(cond.blocklikes(1).varn().getText()).val[0] :
             UserFunction.fromFunctionsAst(cond.blocklikes(1).functions(), scope)
         ).maybeTransform()
         if (elseBlockFn.statements[elseBlockFn.statements.length - 1].isReturnStatement()) {

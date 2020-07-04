@@ -31,7 +31,7 @@ class Event {
       console.error(eventAst.varn().getText() + " is not a type")
       process.exit(-9)
     }
-    const type = boxedVal.typeval
+    const type = boxedVal.val
     return new Event(name, type, false)
   }
 }
