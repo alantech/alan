@@ -1,5 +1,4 @@
 use futures::future::join_all;
-use rayon::{ThreadPool, ThreadPoolBuilder};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::task;
 
@@ -18,17 +17,13 @@ pub struct Instruction {
 pub struct InstructionScheduler {
   event_tx: UnboundedSender<EventEmit>,
   frag_tx: UnboundedSender<(HandlerFragment, HandlerMemory)>,
-  cpu_pool: ThreadPool,
 }
 
 impl InstructionScheduler {
   pub fn new(event_tx: UnboundedSender<EventEmit>, frag_tx: UnboundedSender<(HandlerFragment, HandlerMemory)>) -> InstructionScheduler {
-    let cpu_threads = num_cpus::get() - 1;
-    let cpu_pool = ThreadPoolBuilder::new().num_threads(cpu_threads).build().unwrap();
     return InstructionScheduler {
       event_tx,
       frag_tx,
-      cpu_pool,
     }
   }
 
@@ -61,7 +56,7 @@ impl InstructionScheduler {
       });
     } else {
       // cpu-bound fragment of predictable or unpredictable execution
-      self.cpu_pool.scope(|s| {
+      rayon::scope(|s| {
         let event_tx = &self.event_tx;
         let frag_tx = &self.frag_tx;
         s.spawn(move |_| {

@@ -86,6 +86,7 @@ pub fn exec(fp: &str) {
     .unwrap();
   // Start the root task backed by a single thread
   rt.block_on(async {
+	rayon::ThreadPoolBuilder::new().num_threads(num_cpus::get() - 1).build_global().unwrap();
     let bytes = File::open(fp).unwrap().bytes().count();
     let mut bytecode = vec![0;bytes/8];
     let mut f = File::open(fp).unwrap();
