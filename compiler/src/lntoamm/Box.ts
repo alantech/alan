@@ -3,24 +3,20 @@ import Microstatement from './Microstatement'
 import Operator from './Operator'
 import Scope from './Scope'
 import Type from './Type'
-import UserFunction from './UserFunction'
+import Fn from './Function'
 
-type Boxish = Type | Scope | Microstatement | Array<Operator> | boolean | string |
-  Array<UserFunction> | Event | Array<any> | Map<any, any> | object | undefined
+type Boxish = Type | Scope | Microstatement | Array<Operator> | Array<Fn> | Event
 
 class Box {
   val: Boxish
   type: Type
-  readonly: boolean
 
   constructor(
-    val: Boxish = undefined,
-    type: Type = Type.builtinTypes.void,
-    readonly: boolean = true
+    val: Boxish,
+    type: Type,
   ) {
     this.val = val
     this.type = type
-    this.readonly = readonly
   }
 }
 
