@@ -199,7 +199,7 @@ class Microstatement {
             ))
             // Insert a `copyfrom` opcode.
             const opcodes = require('./opcodes').default
-            opcodes.exportScope.get('copyfrom').functionval[0].microstatementInlining(
+            opcodes.exportScope.get('copyfrom').val[0].microstatementInlining(
               [original.outputName, addrName],
               scope,
               microstatements,
@@ -255,7 +255,7 @@ class Microstatement {
           }
           // Insert a `copyfrom` opcode.
           const opcodes = require('./opcodes').default
-          opcodes.exportScope.get('copyfrom').functionval[0].microstatementInlining(
+          opcodes.exportScope.get('copyfrom').val[0].microstatementInlining(
             [original.outputName, lookup.outputName],
             scope,
             microstatements,
@@ -307,7 +307,7 @@ class Microstatement {
     }
     if (constantsAst.NUMBERCONSTANT() != null) {
       // TODO: Add support for hex, octal, scientific, etc
-      const numberConst = constantsAst.NUMBERCONSTANT().getText();
+      const numberConst = constantsAst.NUMBERCONSTANT().getText()
       if (numberConst.indexOf('.') > -1) { // It's a float
         constType = 'float64'
       } else { // It's an integer
@@ -341,7 +341,7 @@ class Microstatement {
       scope,
       true,
       constName,
-      scope.deepGet(constType).typeval,
+      scope.deepGet(constType).val,
       [constVal],
       [],
     ))
@@ -458,7 +458,7 @@ class Microstatement {
                 )
                 process.exit(-105)
               }
-              outerTypeBox.typeval.solidify(
+              outerTypeBox.val.solidify(
                 basicAssignablesAst.objectliterals().arrayliteral().othertype().typegenerics().fulltypename().map(
                   (t: any) => t.getText() // TODO: Eliminate ANTLR
                 ),
@@ -467,7 +467,7 @@ class Microstatement {
               typeBox = scope.deepGet(basicAssignablesAst.objectliterals().arrayliteral().othertype().getText().trim())
             }
           }
-          if (typeBox.typeval == null) {
+          if (typeBox.type !== Type.builtinTypes.type) {
             console.error(
               basicAssignablesAst.objectliterals().arrayliteral().othertype().getText().trim() + " is not a type"
             )
@@ -508,14 +508,14 @@ class Microstatement {
         ))
         // Add the opcode to create a new array with the specified size
         const opcodes = require('./opcodes').default
-        opcodes.exportScope.get('newarr').functionval[0].microstatementInlining(
+        opcodes.exportScope.get('newarr').val[0].microstatementInlining(
           [lenName],
           scope,
           microstatements,
         )
         // Get the array microstatement and extract the name and insert the correct type
         const array = microstatements[microstatements.length - 1]
-        array.outputType = typeBox.typeval
+        array.outputType = typeBox.val
         // Try to use the "real" type if knowable
         if (arrayLiteralContents.length > 0) {
           array.outputType = Type.builtinTypes['Array'].solidify(
@@ -543,7 +543,7 @@ class Microstatement {
           ))
           // Push the value into the array
           const opcodes = require('./opcodes').default
-          opcodes.exportScope.get('pusharr').functionval[0].microstatementInlining(
+          opcodes.exportScope.get('pusharr').val[0].microstatementInlining(
             [arrayName, arrayLiteralContents[i].outputName, sizeName],
             scope,
             microstatements,
@@ -592,7 +592,7 @@ class Microstatement {
               )
               process.exit(-105)
             }
-            outerTypeBox.typeval.solidify(
+            outerTypeBox.val.solidify(
               basicAssignablesAst.objectliterals().typeliteral().othertype().typegenerics().fulltypename().map(
                 (t: any) => t.getText() // TODO: Eliminate ANTLR
               ),
@@ -601,7 +601,7 @@ class Microstatement {
             typeBox = scope.deepGet(basicAssignablesAst.objectliterals().typeliteral().othertype().getText().trim())
           }
         }
-        if (typeBox.typeval == null) {
+        if (typeBox.type !== Type.builtinTypes.type) {
           console.error(
             basicAssignablesAst.objectliterals().typeliteral().othertype().getText().trim() + " is not a type"
           )
@@ -630,7 +630,7 @@ class Microstatement {
             process.exit(-109)
           }
         }
-        const fields = Object.keys(typeBox.typeval.properties)
+        const fields = Object.keys(typeBox.val.properties)
         let missingFields = []
         let foundFields = []
         let extraFields = []
@@ -691,14 +691,14 @@ class Microstatement {
         ))
         // Add the opcode to create a new array with the specified size
         const opcodes = require('./opcodes').default
-        opcodes.exportScope.get('newarr').functionval[0].microstatementInlining(
+        opcodes.exportScope.get('newarr').val[0].microstatementInlining(
           [lenName],
           scope,
           microstatements,
         )
         // Get the array microstatement and extract the name and insert the correct type
         const array = microstatements[microstatements.length - 1]
-        array.outputType = typeBox.typeval
+        array.outputType = typeBox.val
         const arrayName = array.outputName
         // Push the values into the array
         for (let i = 0; i < arrayLiteralContents.length; i++) {
@@ -719,7 +719,7 @@ class Microstatement {
           ))
           // Push the value into the array
           const opcodes = require('./opcodes').default
-          opcodes.exportScope.get('pusharr').functionval[0].microstatementInlining(
+          opcodes.exportScope.get('pusharr').val[0].microstatementInlining(
             [arrayName, arrayLiteralContents[i].outputName, sizeName],
             scope,
             microstatements,
@@ -771,7 +771,7 @@ class Microstatement {
       if (operatorOrAssignable.operators() != null) {
         const operator = operatorOrAssignable.operators()
         const op = scope.deepGet(operator.getText())
-        if (op == null || op.operatorval == null) {
+        if (op == null || op.type !== Type.builtinTypes.operator) {
           console.error("Operator " + operator.getText() + " is not defined")
           process.exit(-34)
         }
@@ -784,7 +784,7 @@ class Microstatement {
           microstatements,
         )
         const last = microstatements[microstatements.length - 1]
-        withOperatorsList.push(new Box(last)) // Wrapped in a box to make this work
+        withOperatorsList.push(new Box(last, Type.builtinTypes.microstatement))
       }
     }
     // Now to combine these operators and values in the correct order. A compiled language could
@@ -799,8 +799,8 @@ class Microstatement {
       let maxOperatorLoc = -1
       let maxOperatorListLoc = -1
       for (let i = 0; i < withOperatorsList.length; i++) {
-        if (withOperatorsList[i].operatorval != null) {
-          const ops = withOperatorsList[i].operatorval;
+        if (withOperatorsList[i].type === Type.builtinTypes.operator) {
+          const ops = withOperatorsList[i].val
           let op = null
           let operatorListLoc = -1
           let operatorPrecedence = -127
@@ -819,17 +819,17 @@ class Microstatement {
             if (i != withOperatorsList.length - 1) right = withOperatorsList[i + 1]
             // Skip over any operator that is followed by another operator as it must be a prefix
             // operator (or a syntax error, but we'll catch that later)
-            if (right === null || !!right.microstatementval) {
+            if (right === null || right.type === Type.builtinTypes.microstatement) {
               for (let j = 0; j < ops.length; j++) {
                 if (
                   ops[j].precedence > operatorPrecedence &&
                   ops[j].applicableFunction(
                     left === null ? // Left is special, if two operators are in a row, this one
                       null :        // needs to be a prefix operator for this to work at all
-                      !!left.microstatementval ?
-                        left.microstatementval.outputType :
+                      left.type === Type.builtinTypes.microstatement ?
+                        left.val.outputType :
                         null,
-                    right === null ? null : right.microstatementval.outputType,
+                    right === null ? null : right.val.outputType,
                     scope
                   ) != null
                 ) {
@@ -859,31 +859,31 @@ class Microstatement {
         let withOperatorsTranslation = []
         for (let i = 0; i < withOperatorsList.length; i++) {
           const node = withOperatorsList[i]
-          if (node.operatorval != null) {
-            withOperatorsTranslation.push(node.operatorval[0].name)
+          if (node.type === Type.builtinTypes.operator) {
+            withOperatorsTranslation.push(node.val[0].name)
           } else {
-            withOperatorsTranslation.push("<" + node.microstatementval.outputType.typename + ">")
+            withOperatorsTranslation.push("<" + node.val.outputType.typename + ">")
           }
         }
         console.error(withOperatorsTranslation.join(" "))
         process.exit(-34)
       }
-      const op = withOperatorsList[maxOperatorLoc].operatorval[maxOperatorListLoc]
+      const op = withOperatorsList[maxOperatorLoc].val[maxOperatorListLoc]
       let realArgNames = []
       let realArgTypes = []
       if (!op.isPrefix) {
-        const left = withOperatorsList[maxOperatorLoc - 1].microstatementval
+        const left = withOperatorsList[maxOperatorLoc - 1].val
         realArgNames.push(left.outputName)
         realArgTypes.push(left.outputType)
       }
-      const right = withOperatorsList[maxOperatorLoc + 1].microstatementval
+      const right = withOperatorsList[maxOperatorLoc + 1].val
       realArgNames.push(right.outputName)
       realArgTypes.push(right.outputType)
       UserFunction
         .dispatchFn(op.potentialFunctions, realArgTypes, scope)
         .microstatementInlining(realArgNames, scope, microstatements)
       const last = microstatements[microstatements.length - 1]
-      withOperatorsList[maxOperatorLoc] = new Box(last)
+      withOperatorsList[maxOperatorLoc] = new Box(last, Type.builtinTypes.microstatement)
       withOperatorsList.splice(maxOperatorLoc + 1, 1)
       if (!op.isPrefix) {
         withOperatorsList.splice(maxOperatorLoc - 1, 1)
@@ -893,11 +893,11 @@ class Microstatement {
 
   static closureFromUserFunction(
     userFunction: UserFunction,
-    scope: Scope, 
+    scope: Scope,
     microstatements: Array<Microstatement>,
   ) {
     // TODO: Add support for closures with arguments
-    let len = microstatements.length;
+    let len = microstatements.length
     for (const s of userFunction.statements) {
       if (s.statementOrAssignableAst instanceof LnParser.StatementsContext) {
         Microstatement.fromStatementsAst(s.statementOrAssignableAst, scope, microstatements)
@@ -905,7 +905,7 @@ class Microstatement {
         Microstatement.fromAssignablesAst(s.statementOrAssignableAst, scope, microstatements)
       }
     }
-    let newlen = microstatements.length;
+    let newlen = microstatements.length
     // There might be off-by-one bugs in the conversion here
     const innerMicrostatements = microstatements.slice(len, newlen)
     microstatements.splice(len, newlen - len)
@@ -934,13 +934,13 @@ class Microstatement {
     const constName = "_" + uuid().replace(/-/g, "_")
     if (blocklikesAst.varn() != null) { // TODO: Port to fromVarAst
       const fnToClose = scope.deepGet(blocklikesAst.varn().getText())
-      if (fnToClose == null || fnToClose.functionval == null) {
+      if (fnToClose == null || fnToClose.type !== Type.builtinTypes['function']) {
         console.error(blocklikesAst.varn().getText() + " is not a function")
         process.exit(-111)
       }
       // TODO: Revisit this on resolving the appropriate function if multiple match, right now just
       // take the first one.
-      const closureFn = fnToClose.functionval[0]
+      const closureFn = fnToClose.val[0]
       let innerMicrostatements = []
       closureFn.microstatementInlining([], scope, innerMicrostatements)
       microstatements.push(new Microstatement(
@@ -951,7 +951,7 @@ class Microstatement {
         innerMicrostatements
       ))
     } else {
-      let len = microstatements.length;
+      let len = microstatements.length
       if (blocklikesAst.functionbody() != null) {
         for (const s of blocklikesAst.functionbody().statements()) {
           Microstatement.fromStatementsAst(s, scope, microstatements)
@@ -969,7 +969,7 @@ class Microstatement {
           )
         }
       }
-      let newlen = microstatements.length;
+      let newlen = microstatements.length
       // There might be off-by-one bugs in the conversion here
       const innerMicrostatements = microstatements.slice(len, newlen)
       microstatements.splice(len, newlen - len)
@@ -993,7 +993,7 @@ class Microstatement {
       // rewrite the final const assignment as the emit statement.
       Microstatement.fromAssignablesAst(emitsAst.assignables(), scope, microstatements)
       const eventBox = scope.deepGet(emitsAst.varn().getText()) // TODO: Port to fromVarAst when Box is removed
-      if (eventBox.eventval == null) {
+      if (eventBox.type !== Type.builtinTypes.Event) {
         console.error(emitsAst.varn().getText() + " is not an event!")
         console.error(
           emitsAst.getText() +
@@ -1006,14 +1006,14 @@ class Microstatement {
       }
       const last = microstatements[microstatements.length - 1]
       if (
-        last.outputType != eventBox.eventval.type &&
-        !eventBox.eventval.type.castable(last.outputType)
+        last.outputType != eventBox.val.type &&
+        !eventBox.val.type.castable(last.outputType)
       ) {
         console.error(
           "Attempting to assign a value of type " +
           last.outputType.typename +
           " to an event of type " +
-          eventBox.eventval.type.typename
+          eventBox.val.type.typename
         )
         console.error(
           emitsAst.getText() +
@@ -1028,15 +1028,15 @@ class Microstatement {
         StatementType.EMIT,
         scope,
         true,
-        eventBox.eventval.name,
-        eventBox.eventval.type,
+        eventBox.val.name,
+        eventBox.val.type,
         [last.outputName],
         [],
       ))
     } else {
       // Otherwise, create an emit statement with no value
       const eventBox = scope.deepGet(emitsAst.varn().getText()) // TODO: Port to fromVarAst
-      if (eventBox.eventval == null) {
+      if (eventBox.type !== Type.builtinTypes.Event) {
         console.error(emitsAst.varn().getText() + " is not an event!")
         console.error(
           emitsAst.getText() +
@@ -1047,7 +1047,7 @@ class Microstatement {
         )
         process.exit(-102)
       }
-      if (eventBox.eventval.type != Type.builtinTypes.void) {
+      if (eventBox.val.type != Type.builtinTypes.void) {
         console.error(emitsAst.varn().getText() + " must have a value emitted to it!")
         console.error(
           emitsAst.getText() +
@@ -1062,7 +1062,7 @@ class Microstatement {
         StatementType.EMIT,
         scope,
         true,
-        eventBox.eventval.name,
+        eventBox.val.name,
         Type.builtinTypes.void,
         [],
         [],
@@ -1092,7 +1092,7 @@ class Microstatement {
         scope,
         true,
         constName,
-        scope.deepGet("void").typeval,
+        scope.deepGet("void").val,
         ["void"],
         null
       ))
@@ -1198,7 +1198,7 @@ class Microstatement {
       }
       // Do a scan of the microstatements for an inner defined closure that is being called.
       // TODO: What if they decided to shove this closure into an object but then use it directly?
-      if (fnBox === null || !fnBox.functionval) {
+      if (fnBox === null || fnBox.type !== Type.builtinTypes['function']) {
         const fnName = callsAst.varn(i).getText()
         let actualFnName: string
         for (let i = microstatements.length - 1; i >= 0; i--) {
@@ -1216,7 +1216,7 @@ class Microstatement {
           }
         }
       }
-      if (fnBox === null || !fnBox.functionval) {
+      if (fnBox === null || fnBox.type !== Type.builtinTypes['function']) {
         console.error(callsAst.varn(i).getText() + " is not a function!")
         console.error(
           callsAst.getText() +
@@ -1231,7 +1231,7 @@ class Microstatement {
       // return statement turned into a const assignment as the last statement, while built-in
       // functions are kept as function calls with the correct renaming.
       UserFunction
-        .dispatchFn(fnBox.functionval, realArgTypes, scope)
+        .dispatchFn(fnBox.val, realArgTypes, scope)
         .microstatementInlining(realArgNames, scope, microstatements)
       // Set the output as the firstArg for the next chained call
       firstArg = microstatements[microstatements.length - 1]
@@ -1344,7 +1344,7 @@ class Microstatement {
     }
     // The more complicated path. First, rule out that the first segment is not a `scope`.
     const testBox = scope.deepGet(segments[0].getText())
-    if (!!testBox && !!testBox.scopeval) {
+    if (!!testBox && testBox.type === Type.builtinTypes.scope) {
       console.error('Atempting to reassign to variable from another module')
       console.error(
         assignmentsAst.varn().getText() +
@@ -1436,7 +1436,7 @@ class Microstatement {
         }
         // Insert a `register` opcode.
         const opcodes = require('./opcodes').default
-        opcodes.exportScope.get('register').functionval[0].microstatementInlining(
+        opcodes.exportScope.get('register').val[0].microstatementInlining(
           [original.outputName, lookup.outputName],
           scope,
           microstatements,
@@ -1480,7 +1480,7 @@ class Microstatement {
         ))
         // Insert a `register` opcode.
         const opcodes = require('./opcodes').default
-        opcodes.exportScope.get('register').functionval[0].microstatementInlining(
+        opcodes.exportScope.get('register').val[0].microstatementInlining(
           [original.outputName, addrName],
           scope,
           microstatements,
@@ -1552,7 +1552,7 @@ class Microstatement {
       }
       // Insert a `copytof` or `copytov` opcode.
       const opcodes = require('./opcodes').default
-      opcodes.exportScope.get(copytoop).functionval[0].microstatementInlining(
+      opcodes.exportScope.get(copytoop).val[0].microstatementInlining(
         [original.outputName, lookup.outputName, assign.outputName],
         scope,
         microstatements,
@@ -1586,7 +1586,7 @@ class Microstatement {
       ))
       // Insert a `copytof` or `copytov` opcode.
       const opcodes = require('./opcodes').default
-      opcodes.exportScope.get(copytoop).functionval[0].microstatementInlining(
+      opcodes.exportScope.get(copytoop).val[0].microstatementInlining(
         [original.outputName, addrName, assign.outputName],
         scope,
         microstatements,
@@ -1640,7 +1640,7 @@ class Microstatement {
             )
             process.exit(-105)
           }
-          outerTypeBox.typeval.solidify(
+          outerTypeBox.val.solidify(
             letdeclarationAst.assignments().typegenerics().fulltypename().map(
               (t: any) =>t.getText() // TODO: Eliminate ANTLR
             ),
@@ -1657,7 +1657,9 @@ class Microstatement {
       // An automatic replacement with a "default" value (false, 0, "") is performed, similar to
       // C.
       const type = (
-        scope.deepGet(letTypeHint) && scope.deepGet(letTypeHint).typeval
+        scope.deepGet(letTypeHint) &&
+        scope.deepGet(letTypeHint).type === Type.builtinTypes.type &&
+        scope.deepGet(letTypeHint).val
       ) || Type.builtinTypes.void
       if (type.originalType) {
         const constName = "_" + uuid().replace(/-/g, "_")
@@ -1671,7 +1673,7 @@ class Microstatement {
           [],
         ))
         const opcodes = require('./opcodes').default
-        opcodes.exportScope.get('newarr').functionval[0].microstatementInlining(
+        opcodes.exportScope.get('newarr').val[0].microstatementInlining(
           [constName],
           scope,
           microstatements,
@@ -1805,7 +1807,7 @@ class Microstatement {
             )
             process.exit(-105)
           }
-          outerTypeBox.typeval.solidify(
+          outerTypeBox.val.solidify(
             constdeclarationAst.assignments().typegenerics().fulltypename().map(
               (t: any) => t.getText() // TODO: Eliminate ANTLR
             ),

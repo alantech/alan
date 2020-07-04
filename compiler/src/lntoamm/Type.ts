@@ -141,23 +141,23 @@ class Type {
             process.exit(-4)
           }
         } else {
-          type.properties[propertyName] = property.typeval
+          type.properties[propertyName] = property.val
         }
       }
     }
     if (typeAst.othertype() != null && typeAst.othertype().length == 1) {
       const otherTypebox = scope.deepGet(typeAst.othertype(0).typename().getText())
 
-      if (otherTypebox == null) {
+      if (!otherTypebox) {
         console.error("Type " + typeAst.othertype(0).getText() + " not defined")
         process.exit(-38)
       }
-      if (otherTypebox.typeval == null) {
+      if (otherTypebox.type !== Type.builtinTypes.type) {
         console.error(typeAst.othertype(0).getText() + " is not a valid type")
         process.exit(-39)
       }
 
-      let othertype = otherTypebox.typeval
+      let othertype = otherTypebox.val
       if (Object.keys(othertype.generics).length > 0 && typeAst.othertype(0).typegenerics() != null) {
         let solidTypes = []
         for (const fulltypenameAst of typeAst.othertype(0).typegenerics().fulltypename()) {
@@ -183,12 +183,12 @@ class Type {
           console.error("Type " + othertype.getText() + " not defined")
           process.exit(-48)
         }
-        if (othertypeBox.typeval == null) {
+        if (othertypeBox.type !== Type.builtinTypes.type) {
           console.error(othertype.getText() + " is not a valid type")
           process.exit(-49)
         }
 
-        let othertypeVal = othertypeBox.typeval
+        let othertypeVal = othertypeBox.val
         if (othertypeVal.generics.length > 0 && othertype.typegenerics() != null) {
           let solidTypes = []
           for (const fulltypenameAst of othertype.typegenerics().fulltypename()) {
@@ -211,7 +211,7 @@ class Type {
         console.error(typename + " type not found")
         process.exit(-35)
       }
-      replacementTypes.push(typebox.typeval)
+      replacementTypes.push(typebox.val)
     }
     const solidifiedName = this.typename + "<" + genericReplacements.join(", ") + ">"
     let solidified = new Type(solidifiedName, this.builtIn)
@@ -230,7 +230,7 @@ class Type {
         solidified.properties[propKey] = propValue
       }
     }
-    scope.put(solidifiedName, new Box(solidified))
+    scope.put(solidifiedName, new Box(solidified, Type.builtinTypes.type))
     return solidified
   }
 

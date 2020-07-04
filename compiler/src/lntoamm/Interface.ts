@@ -35,7 +35,7 @@ class Interface {
         console.error(functionType.functionname + " is not the name of a function")
         process.exit(-48)
       }
-      const potentialFunctions = potentialFunctionsBox.functionval
+      const potentialFunctions = potentialFunctionsBox.val
       let functionFound = false
       for (const potentialFunction of potentialFunctions) {
         const argTypes = potentialFunction.getArguments()
@@ -64,9 +64,10 @@ class Interface {
       const potentialOperatorsBox = scope.deepGet(operatorType.operatorname)
       if (!potentialOperatorsBox || potentialOperatorsBox.type !== Type.builtinTypes.operator) {
         console.error(`${operatorType.operatorname} is not an operator`)
+        console.error(potentialOperatorsBox)
         process.exit(-52)
       }
-      const potentialOperators = potentialOperatorsBox.operatorval
+      const potentialOperators = potentialOperatorsBox.val
       let operatorFound = false
       for (const potentialOperator of potentialOperators) {
         for (const potentialFunction of potentialOperator.potentialFunctions) {
@@ -103,7 +104,7 @@ class Interface {
     const interfacename = interfaceAst.VARNAME().getText()
     let iface = new Interface(interfacename)
     const ifaceType = new Type(interfacename, false, iface)
-    const ifaceTypeBox = new Box(ifaceType)
+    const ifaceTypeBox = new Box(ifaceType, Type.builtinTypes.type)
     scope.put(interfacename, ifaceTypeBox)
 
     // Now, insert the actual declarations of the interface, if there are any (if there are none,
@@ -119,19 +120,19 @@ class Interface {
           }
           const typenames = functiontypeline.functiontype().varn();
           const returnTypeBox = scope.deepGet(typenames[typenames.length - 1].getText())
-          if (!returnTypeBox || !returnTypeBox.typeval) {
+          if (!returnTypeBox || returnTypeBox.type !== Type.builtinTypes.type) {
             console.error(typenames.get(typenames.size() - 1).getText() + " is not a type")
             process.exit(-48)
           }
-          const returnType = returnTypeBox.typeval
+          const returnType = returnTypeBox.val
           let args = []
           for (let i = 0; i < typenames.length - 1; i++) {
             const argumentBox = scope.deepGet(typenames[i].getText())
-            if (!argumentBox || !argumentBox.typeval) {
+            if (!argumentBox || argumentBox.type !== Type.builtinTypes.type) {
               console.error(typenames.get(i).getText() + " is not a type")
               process.exit(-49)
             }
-            args.push(argumentBox.typeval)
+            args.push(argumentBox.val)
           }
           const functionType = new FunctionType(functionname, args, returnType)
           iface.functionTypes.push(functionType)
@@ -147,30 +148,30 @@ class Interface {
           const returnTypename = interfaceline.operatortypeline().varn().getText()
           const args = argTypenames.map(n => {
             const box = scope.deepGet(n)
-            if (!box || !box.typeval) {
+            if (!box || box.type !== Type.builtinTypes.type) {
               console.error(`${n} is not a type`)
               process.exit(-50)
             }
-            return box.typeval
+            return box.val
           })
           const returnBox = scope.deepGet(returnTypename)
-          if (!returnBox || !returnBox.typeval) {
+          if (!returnBox || returnBox.type !== Type.builtinTypes.type) {
             console.error(`${returnTypename} is not a type`)
             process.exit(-51)
           }
-          const returnType = returnBox.typeval
+          const returnType = returnBox.val
           const operatorType = new OperatorType(operatorname, isPrefix, args, returnType)
           iface.operatorTypes.push(operatorType)
         }
         if (!!interfaceline.propertytypeline()) {
           const propertyTypeBox = scope.deepGet(interfaceline.propertytypeline().varn().getText())
-          if (!propertyTypeBox || !propertyTypeBox.typeval) {
+          if (!propertyTypeBox || propertyTypeBox.type !== Type.builtinTypes.type) {
             console.error(interfaceline.propertytypeline().varn().getText() + " is not a type")
             process.exit(-52)
           }
           iface.requiredProperties[
             interfaceline.propertytypeline().VARNAME().getText()
-          ] = propertyTypeBox.typeval
+          ] = propertyTypeBox.val
         }
       }
     }
