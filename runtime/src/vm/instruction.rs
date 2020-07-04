@@ -30,7 +30,11 @@ impl InstructionScheduler {
   fn process_next_frag(frag_tx: &UnboundedSender<(HandlerFragment, HandlerMemory)>, frag: HandlerFragment, hand_mem: HandlerMemory) {
     let next_frag = frag.get_next_fragment();
     if next_frag.is_some() {
-      frag_tx.send((next_frag.unwrap(), hand_mem));
+      let frag_sent = frag_tx.send((next_frag.unwrap(), hand_mem));
+      if frag_sent.is_err() {
+        eprintln!("Event transmission error");
+        std::process::exit(3);
+      }
     } else {
       // This method is being called from a tokio task or a thread within the rayon thread pool
       // https://abramov.io/rust-dropping-things-in-another-thread
@@ -64,7 +68,11 @@ impl InstructionScheduler {
             let func = i.opcode.func.unwrap();
             let event = func(&i.args, &mut hand_mem, &mut frag);
             if event.is_some() {
-              event_tx.send(event.unwrap());
+              let event_sent = event_tx.send(event.unwrap());
+              if event_sent.is_err() {
+                eprintln!("Event transmission error");
+                std::process::exit(2);
+              }
             }
           });
           InstructionScheduler::process_next_frag(frag_tx, frag, hand_mem);

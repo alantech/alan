@@ -38,7 +38,11 @@ impl VM {
   }
 
   pub fn add(self: &mut VM, event: EventEmit) {
-    self.event_tx.send(event);
+    let event_sent = self.event_tx.send(event);
+    if event_sent.is_err() {
+      eprintln!("Event transmission error");
+      std::process::exit(1);
+    }
   }
 
   async fn sched_fragment(self: &mut VM, frag_tup: (HandlerFragment, HandlerMemory)) {
@@ -92,7 +96,11 @@ pub fn exec(fp: &str) {
     let mut f = File::open(fp).unwrap();
     f.read_i64_into::<LittleEndian>(&mut bytecode).unwrap();
     let program = Program::load(bytecode);
-    PROGRAM.set(program);
+    let set_global = PROGRAM.set(program);
+    if set_global.is_err() {
+      eprintln!("Failed to load runtime");
+      std::process::exit(1);
+    }
     let mut vm = VM::new(Program::global());
     let start = EventEmit { id: i64::from(BuiltInEvents::START), payload: None };
     vm.add(start);

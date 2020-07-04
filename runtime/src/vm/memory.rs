@@ -82,7 +82,7 @@ impl HandlerMemory {
 
   /// set registerish and return its address
   pub fn set_reg(self: &mut HandlerMemory, reg_addr: i64, arr_addr1: i64, arr_addr2: i64) {
-    let mut arr_addrs = vec![arr_addr1, arr_addr2];
+    let arr_addrs = vec![arr_addr1, arr_addr2];
     self.registers_ish.insert(reg_addr, arr_addrs);
   }
 

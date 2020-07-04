@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 byteorder = "1.3.4"
-clap = "2.33.0"
+clap = "2.33.1"
 futures = "0.3.5"
 num_cpus = "1.0"
 once_cell = "1.3.1"
