@@ -46,6 +46,10 @@ type FnPtr = fn(
 /// https://stackoverflow.com/questions/27831944/how-do-i-store-a-closure-in-a-struct-in-rust
 /// https://stackoverflow.com/questions/59035366/how-do-i-store-a-variable-of-type-impl-trait-in-a-struct
 pub struct ByteOpcode {
+  /// Opcode value as an i64 number
+  pub(crate) _id: i64,
+  /// Human readable name for id
+  pub(crate) _name: String,
   /// Boolean that is true if this opcode has predictable execution
   pub(crate) pred_exec: bool,
   /// void function pointer that describes the side-effect of cpu bound opcode
@@ -71,6 +75,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     ($name:expr, $async_func:expr) => {
       let id = opcode_id($name);
       let opcode = ByteOpcode {
+        _id: id,
+        _name: $name.to_string(),
         pred_exec: false,
         func: None,
         async_func: Some($async_func),
@@ -83,6 +89,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     ($name:expr, $func:expr) => {
       let id = opcode_id($name);
       let opcode = ByteOpcode {
+        _id: id,
+        _name: $name.to_string(),
         pred_exec: true,
         func: Some($func),
         async_func: None,
@@ -95,6 +103,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     ($name:expr, $func:expr) => {
       let id = opcode_id($name);
       let opcode = ByteOpcode {
+        _id: id,
+        _name: $name.to_string(),
         pred_exec: false,
         func: Some($func),
         async_func: None,

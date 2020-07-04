@@ -98,7 +98,7 @@ pub fn exec(fp: &str) {
     let program = Program::load(bytecode);
     let set_global = PROGRAM.set(program);
     if set_global.is_err() {
-      eprintln!("Failed to load runtime");
+      eprintln!("Failed to load bytecode");
       std::process::exit(1);
     }
     let mut vm = VM::new(Program::global());
