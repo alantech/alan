@@ -1,12 +1,9 @@
 import * as Ast from './Ast'
 import Box from './Box'
 import Event from './Event'
-import FunctionType from './FunctionType'
-import Interface from './Interface'
 import Operator from './Operator'
-import OperatorType from './OperatorType'
 import Scope from './Scope'
-import Type from './Type'
+import { FunctionType, Interface, OperatorType, Type, } from './Type'
 import UserFunction from './UserFunction'
 
 const modules = {}

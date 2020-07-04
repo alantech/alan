@@ -2,12 +2,11 @@ import { v4 as uuid, } from 'uuid'
 
 import Box from './Box' // TODO: Eliminate Box
 import Event from './Event'
-import Interface from './Interface'
 import Microstatement from './Microstatement'
 import Module from './Module'
 import Scope from './Scope'
 import StatementType from './StatementType'
-import Type from './Type'
+import { Interface, Type, } from './Type'
 
 const opcodeScope = new Scope()
 const opcodeModule = new Module(opcodeScope)

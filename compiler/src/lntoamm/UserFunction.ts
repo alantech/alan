@@ -8,12 +8,9 @@ import Statement from './Statement'
 import StatementType from './StatementType'
 import Type from './Type'
 import { LnParser, } from '../ln'
+import  { Args, Fn, } from './Function'
 
-type Args = {
-  [K: string]: Type
-}
-
-class UserFunction {
+class UserFunction implements Fn {
   name: string
   args: Args
   returnType: Type
