@@ -1,14 +1,13 @@
 import { v4 as uuid, } from 'uuid'
 
 import * as Ast from './Ast'
-import Box from './Box'
 import Microstatement from './Microstatement'
 import Scope from './Scope'
 import Statement from './Statement'
 import StatementType from './StatementType'
 import Type from './Type'
+import { Args, Fn, } from './Function'
 import { LnParser, } from '../ln'
-import  { Args, Fn, } from './Function'
 
 class UserFunction implements Fn {
   name: string
@@ -89,15 +88,16 @@ class UserFunction implements Fn {
       for (let i = 0; i < arglen; i++) {
         const argName = argsAst.VARNAME(i).getText()
         let getArgType = scope.deepGet(argsAst.argtype(i).getText())
-        if (getArgType === null) {
+        if (!getArgType) {
           if (argsAst.argtype(i).othertype().length === 1) {
             if (argsAst.argtype(i).othertype(0).typegenerics() !== null) {
-              getArgType = scope.deepGet(argsAst.argtype(i).othertype(0).typename().getText())
-              if (getArgType == null) {
+              getArgType =
+                scope.deepGet(argsAst.argtype(i).othertype(0).typename().getText()) as Type
+              if (!getArgType) {
                 console.error("Could not find type " + argsAst.argtype(i).getText() + " for argument " + argName)
                 process.exit(-39)
               }
-              if (getArgType.type !== Type.builtinTypes["type"]) {
+              if (!(getArgType instanceof Type)) {
                 console.error("Function argument is not a valid type: " + argsAst.argtype(i).getText())
                 process.exit(-50);
               }
@@ -105,10 +105,7 @@ class UserFunction implements Fn {
               for (const fulltypename of argsAst.argtype(i).othertype(0).typegenerics().fulltypename()) {
                 genericTypes.push(fulltypename.getText())
               }
-              getArgType = new Box(
-                getArgType.val.solidify(genericTypes, scope),
-                Type.builtinTypes.type
-              )
+              getArgType = getArgType.solidify(genericTypes, scope)
             } else {
               console.error("Could not find type " + argsAst.argtype(i).getText() + " for argument " + argName)
               process.exit(-51)
@@ -125,7 +122,7 @@ class UserFunction implements Fn {
                     console.error("Could not find type " + othertype.getText() + " for argument " + argName)
                     process.exit(-59)
                   }
-                  if (othertypeBox.type != Type.builtinTypes["type"]) {
+                  if (!(othertypeBox instanceof Type)) {
                     console.error("Function argument is not a valid type: " + othertype.getText())
                     process.exit(-60)
                   }
@@ -133,40 +130,36 @@ class UserFunction implements Fn {
                   for (const fulltypename of othertype.typegenerics().fulltypename()) {
                     genericTypes.push(fulltypename.getText())
                   }
-                  othertypeBox = new Box(
-                    othertypeBox.val.solidify(genericTypes, scope),
-                    Type.builtinTypes.type
-                  )
+                  othertypeBox = othertypeBox.solidify(genericTypes, scope)
                 } else {
                   console.error("Could not find type " + othertype.getText() + " for argument " + argName)
                   process.exit(-51)
                 }
               }
-              unionTypes.push(othertypeBox.val)
+              unionTypes.push(othertypeBox)
             }
-            const union = new Type(argsAst.argtype(i).getText(), false, unionTypes)
-            getArgType = new Box(union, Type.builtinTypes.type)
+            getArgType = new Type(argsAst.argtype(i).getText(), false, unionTypes)
           }
         }
-        if (getArgType.type != Type.builtinTypes["type"]) {
+        if (!(getArgType instanceof Type)) {
           console.error("Function argument is not a valid type: " + argsAst.argtype(i).getText())
           process.exit(-13)
         }
-        args[argName] = getArgType.val
+        args[argName] = getArgType
       }
     }
     let returnType = null
     if (functionAst.argtype() !== null) {
       if (functionAst.argtype().othertype().length === 1) {
         let getReturnType = scope.deepGet(functionAst.argtype().getText())
-        if (getReturnType == null || getReturnType.type != Type.builtinTypes["type"]) {
+        if (getReturnType == null || !(getReturnType instanceof Type)) {
           if (functionAst.argtype().othertype(0).typegenerics() != null) {
             getReturnType = scope.deepGet(functionAst.argtype().othertype(0).typename().getText())
             if (getReturnType == null) {
               console.error("Could not find type " + functionAst.argtype().getText() + " for function " + functionAst.VARNAME().getText())
               process.exit(-59)
             }
-            if (getReturnType.type !== Type.builtinTypes["type"]) {
+            if (!(getReturnType instanceof Type)) {
               console.error("Function return is not a valid type: " + functionAst.argtype().getText())
               process.exit(-60)
             }
@@ -174,16 +167,13 @@ class UserFunction implements Fn {
             for (const fulltypename of functionAst.argType().othertype(0).typegenerics().fulltypename()) {
               genericTypes.push(fulltypename.getText())
             }
-            getReturnType = new Box(
-              getReturnType.val.solidify(genericTypes, scope),
-              Type.builtinTypes.type
-            )
+            getReturnType = getReturnType.solidify(genericTypes, scope)
           } else {
             console.error("Could not find type " + functionAst.argtype().getText() + " for function " + functionAst.VARNAME().getText())
             process.exit(-61)
           }
         }
-        returnType = getReturnType.val
+        returnType = getReturnType
       } else {
         const othertypes = functionAst.argtype().othertype()
         let unionTypes = []
@@ -196,7 +186,7 @@ class UserFunction implements Fn {
                 console.error("Could not find return type " + othertype.getText() + " for function " + functionAst.VARNAME().getText())
                 process.exit(-59)
               }
-              if (othertypeBox.type !== Type.builtinTypes["type"]) {
+              if (!(othertypeBox instanceof Type)) {
                 console.error("Function argument is not a valid type: " + othertype.getText())
                 process.exit(-60)
               }
@@ -204,16 +194,13 @@ class UserFunction implements Fn {
               for (const fulltypename of othertype.typegenerics().fulltypename()) {
                 genericTypes.push(fulltypename.getText())
               }
-              othertypeBox = new Box(
-                othertypeBox.val.solidify(genericTypes, scope),
-                Type.builtinTypes.type
-              )
+              othertypeBox = othertypeBox.solidify(genericTypes, scope)
             } else {
               console.error("Could not find return type " + othertype.getText() + " for function " + functionAst.VARNAME().getText())
               process.exit(-51)
             }
           }
-          unionTypes.push(othertypeBox.val)
+          unionTypes.push(othertypeBox)
         }
         returnType = new Type(functionAst.argtype().getText(), false, unionTypes)
       }
@@ -238,12 +225,17 @@ class UserFunction implements Fn {
       statements.push(statement)
       // TODO: Infer the return type for anything other than calls or object literals
       if (assignablesAst.basicassignables() && assignablesAst.basicassignables().calls()) {
-        const fnCall = scope.deepGet(assignablesAst.basicassignables().calls().varn(0).getText())
-        if (fnCall && fnCall.type === Type.builtinTypes['function']) {
+        const fnCall =
+          scope.deepGet(assignablesAst.basicassignables().calls().varn(0).getText()) as Array<Fn>
+        if (
+          fnCall &&
+          fnCall instanceof Array &&
+          fnCall[0].microstatementInlining instanceof Function
+        ) {
           // TODO: For now, also take the first matching function name, in the future
           // figure out the argument types provided recursively to select appropriately
           // similar to how the Microstatements piece works
-          returnType = fnCall.val[0].getReturnType()
+          returnType = (fnCall[0] as Fn).getReturnType()
         }
       } else if (
         assignablesAst.basicassignables() &&
@@ -252,16 +244,16 @@ class UserFunction implements Fn {
         if (assignablesAst.basicassignables().objectliterals().typeliteral()) {
           returnType = scope.deepGet(
             assignablesAst.basicassignables().objectliterals().typeliteral().othertype().getText().trim()
-          ).val
+          )
         } else if (assignablesAst.basicassignables().objectliterals().mapliteral()) {
           returnType = scope.deepGet(
             assignablesAst.basicassignables().objectliterals().mapliteral().othertype().getText().trim()
-          ).val
+          )
         } else {
           if (assignablesAst.basicassignables().objectliterals().arrayliteral().othertype()) {
             returnType = scope.deepGet(
               assignablesAst.basicassignables().objectliterals().arrayliteral().othertype().getText().trim()
-            ).val
+            )
           } else {
             // We're going to use the Microstatement logic here
             const microstatements = []
@@ -320,7 +312,7 @@ class UserFunction implements Fn {
     const condBlockFn = (cond.blocklikes(0).functionbody() ?
       UserFunction.fromFunctionbodyAst(cond.blocklikes(0).functionbody(), scope) :
       cond.blocklikes(0).varn() ?
-        scope.deepGet(cond.blocklikes(0).varn().getText()).val[0] :
+        scope.deepGet(cond.blocklikes(0).varn().getText())[0] :
         UserFunction.fromFunctionsAst(cond.blocklikes(0).functions(), scope)
     ).maybeTransform()
     if (condBlockFn.statements[condBlockFn.statements.length - 1].isReturnStatement()) {
@@ -336,7 +328,7 @@ class UserFunction implements Fn {
         const elseBlockFn = (cond.blocklikes(1).functionbody() ?
           UserFunction.fromFunctionbodyAst(cond.blocklikes(1).functionbody(), scope) :
           cond.blocklikes(1).varn() ?
-            scope.deepGet(cond.blocklikes(1).varn().getText()).val[0] :
+            scope.deepGet(cond.blocklikes(1).varn().getText())[0] :
             UserFunction.fromFunctionsAst(cond.blocklikes(1).functions(), scope)
         ).maybeTransform()
         if (elseBlockFn.statements[elseBlockFn.statements.length - 1].isReturnStatement()) {
@@ -594,16 +586,16 @@ class UserFunction implements Fn {
   }
 
   static dispatchFn(
-    fns: Array<UserFunction>,
+    fns: Array<Fn>,
     argumentTypeList: Array<Type>,
     scope: Scope
   ) {
-    let fn = null;
+    let fn = null
     for (let i = 0; i < fns.length; i++) {
       const isNary = fns[i].isNary()
       const args = fns[i].getArguments()
       const argList = Object.values(args)
-      if (!isNary && argList.length != argumentTypeList.length) continue
+      if (!isNary && argList.length !== argumentTypeList.length) continue
       if (isNary && argList.length > argumentTypeList.length) continue
       let skip = false
       for (let j = 0; j < argList.length; j++) {

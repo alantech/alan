@@ -1,10 +1,10 @@
 import * as Ast from './Ast'
-import Box from './Box'
 import Event from './Event'
 import Operator from './Operator'
 import Scope from './Scope'
-import { FunctionType, Interface, OperatorType, Type, } from './Type'
 import UserFunction from './UserFunction'
+import { Fn, } from './Function'
+import { FunctionType, Interface, OperatorType, Type, } from './Type'
 
 const modules = {}
 
@@ -56,10 +56,7 @@ class Module {
           process.exit(-3)
         }
         const importedModule = modules[Ast.resolveDependency(path, standardImport.dependency())]
-        module.moduleScope.put(
-          importName,
-          new Box(importedModule.exportScope, Type.builtinTypes.scope)
-        )
+        module.moduleScope.put(importName, importedModule.exportScope)
       }
       // If it's a "from" import, we're picking off pieces of the exported scope and inserting them
       // also potentially renaming them if requested by the user
@@ -80,43 +77,43 @@ class Module {
           // the interface, pull them in. Similarly any types that match the entire interface. This
           // allows concise importing of a related suite of tools without having to explicitly call
           // out each one.
-          if (thing.type === Type.builtinTypes.type && thing.val.iface) {
-            const iface = thing.val.iface
+          if (thing instanceof Type && thing.iface) {
+            const iface = thing.iface
             const typesToCheck = Object.keys(importedModule.exportScope.vals)
               .map(n => importedModule.exportScope.vals[n])
-              .filter(v => v.type === Type.builtinTypes.type)
+              .filter(v => v instanceof Type)
             const fnsToCheck = Object.keys(importedModule.exportScope.vals)
               .map(n => importedModule.exportScope.vals[n])
-              .filter(v => v.type === Type.builtinTypes['function'])
+              .filter(v => v instanceof Array && v[0].microstatementInlining instanceof Function)
             const opsToCheck = Object.keys(importedModule.exportScope.vals)
               .map(n => importedModule.exportScope.vals[n])
-              .filter(v => v.type === Type.builtinTypes.operator)
+              .filter(v => v instanceof Array && v[0] instanceof Operator)
 
             typesToCheck
-              .filter(t => iface.typeApplies(t.val, importedModule.exportScope))
+              .filter(t => iface.typeApplies(t, importedModule.exportScope))
               .forEach(t => {
-                module.moduleScope.put(t.val.typename, t)
+                module.moduleScope.put(t.typename, t)
               })
 
             fnsToCheck
               .filter(fn => {
                 // TODO: Make this better and move it to the Interface file in the future
                 return iface.functionTypes.some(
-                  (ft: FunctionType) => ft.functionname === fn.val[0].getName()
+                  (ft: FunctionType) => ft.functionname === fn[0].getName()
                 )
               })
               .forEach(fn => {
-                module.moduleScope.put(fn.val[0].getName(), fn)
+                module.moduleScope.put(fn[0].getName(), fn)
               })
 
             opsToCheck
               .filter(op => {
                 return iface.operatorTypes.some(
-                  (ot: OperatorType) => ot.operatorname === op.val[0].name
+                  (ot: OperatorType) => ot.operatorname === op[0].name
                 )
               })
               .forEach(op => {
-                module.moduleScope.put(op.val[0].name, op)
+                module.moduleScope.put(op[0].name, op)
               })
           }
         }
@@ -126,10 +123,7 @@ class Module {
     const types = ast.types()
     for (const typeAst of types) {
       const newType = Type.fromAst(typeAst, module.moduleScope);
-      module.moduleScope.put(newType.typename, new Box(
-        newType.alias ? newType.alias : newType,
-        Type.builtinTypes.type
-      ))
+      module.moduleScope.put(newType.typename, newType.alias ? newType.alias : newType)
     }
     // Next, interfaces
     const interfaces = ast.interfaces()
@@ -149,7 +143,7 @@ class Module {
     const events = ast.events()
     for (const eventAst of events) {
       const newEvent = Event.fromAst(eventAst, module.moduleScope)
-      module.moduleScope.put(newEvent.name, new Box(newEvent, Type.builtinTypes.Event))
+      module.moduleScope.put(newEvent.name, newEvent)
     }
     // Next, functions
     const functions = ast.functions()
@@ -161,9 +155,9 @@ class Module {
       }
       let fns = module.moduleScope.get(newFunc.getName())
       if (fns == null) {
-        module.moduleScope.put(newFunc.getName(), new Box([newFunc], Type.builtinTypes['function']))
+        module.moduleScope.put(newFunc.getName(), [newFunc])
       } else {
-        fns.val.push(newFunc)
+        fns.push(newFunc)
       }
     }
     // Next, operators
@@ -172,7 +166,7 @@ class Module {
       const isPrefix = operatorAst.INFIX() === null
       const name = operatorAst.fntoop().operators().getText().trim()
       const precedence = parseInt(operatorAst.opprecedence().NUMBERCONSTANT().getText(), 10)
-      const fns = module.moduleScope.deepGet(operatorAst.fntoop().varn().getText())
+      const fns = module.moduleScope.deepGet(operatorAst.fntoop().varn().getText()) as Array<Fn>
       if (fns == null) {
         console.error("Operator " + name + " declared for unknown function " + operatorAst.varn().getText())
         process.exit(-31)
@@ -181,16 +175,16 @@ class Module {
         name,
         precedence,
         isPrefix,
-        fns.val,
+        fns,
       )
-      const opsBox = module.moduleScope.deepGet(name)
+      const opsBox = module.moduleScope.deepGet(name) as Array<Operator>
       if (!opsBox) {
-        module.moduleScope.put(name, new Box([op], Type.builtinTypes.operator))
+        module.moduleScope.put(name, [op])
       } else {
         // To make sure we don't accidentally mutate other scopes, we're cloning this operator list
-        let ops = [...opsBox.val]
+        let ops = [...opsBox]
         ops.push(op)
-        module.moduleScope.put(name, new Box(ops, Type.builtinTypes.operator))
+        module.moduleScope.put(name, ops)
       }
     }
     // Next, exports, which can be most of the above
@@ -203,13 +197,13 @@ class Module {
         module.exportScope.put(splitName[splitName.length - 1], exportVar)
       } else if (exportAst.types() != null) {
         const newType = Type.fromAst(exportAst.types(), module.moduleScope)
-        const typeBox = new Box(!newType.alias ? newType : newType.alias, Type.builtinTypes.type)
+        const typeBox = !newType.alias ? newType : newType.alias
         module.moduleScope.put(newType.typename, typeBox)
         module.exportScope.put(newType.typename, typeBox)
       } else if (exportAst.interfaces() != null) {
         const interfaceBox = Interface.fromAst(exportAst.interfaces(), module.moduleScope)
         // Automatically inserts the interface into the module scope
-        module.exportScope.put((interfaceBox.val as Type).typename, interfaceBox)
+        module.exportScope.put(interfaceBox.typename, interfaceBox)
       } else if (exportAst.constdeclaration() != null) {
         console.error('Module-scope constants not yet implemented')
         process.exit(2)
@@ -222,32 +216,32 @@ class Module {
         // Exported scope must be checked first because it will fall through to the not-exported
         // scope by default. Should probably create a `getShallow` for this case, but reordering
         // the two if blocks below is enough to fix things here.
-        let expFns = module.exportScope.get(newFunc.getName())
-        if (expFns == null) {
+        let expFns = module.exportScope.get(newFunc.getName()) as Array<Fn>
+        if (!expFns) {
           module.exportScope.put(
             newFunc.getName(),
-            new Box([newFunc], Type.builtinTypes['function'])
+            [newFunc],
           )
         } else {
-          expFns.val.push(newFunc)
+          expFns.push(newFunc)
         }
-        let modFns = module.moduleScope.get(newFunc.getName())
-        if (modFns == null) {
+        let modFns = module.moduleScope.get(newFunc.getName()) as Array<Fn>
+        if (!modFns) {
           module.moduleScope.put(
             newFunc.getName(),
-            new Box([newFunc], Type.builtinTypes['function'])
+            [newFunc],
           )
         } else {
-          modFns.val.push(newFunc)
+          modFns.push(newFunc)
         }
       } else if (exportAst.operatormapping() != null) {
         const operatorAst = exportAst.operatormapping()
         const isPrefix = operatorAst.INFIX() == null
         const name = operatorAst.fntoop().operators().getText().trim()
         const precedence = parseInt(operatorAst.opprecedence().NUMBERCONSTANT().getText(), 10)
-        let fns = module.exportScope.deepGet(operatorAst.fntoop().varn().getText())
+        let fns = module.exportScope.deepGet(operatorAst.fntoop().varn().getText()) as Array<Fn>
         if (!fns) {
-          fns = module.moduleScope.deepGet(operatorAst.fntoop().varn().getText())
+          fns = module.moduleScope.deepGet(operatorAst.fntoop().varn().getText()) as Array<Fn>
           if (!!fns) {
             console.error(
               "Exported operator " +
@@ -265,28 +259,28 @@ class Module {
           name,
           precedence,
           isPrefix,
-          fns.val,
+          fns,
         )
-        let modOpsBox = module.moduleScope.deepGet(name)
+        let modOpsBox = module.moduleScope.deepGet(name) as Array<Operator>
         if (!modOpsBox) {
-          module.moduleScope.put(name, new Box([op], Type.builtinTypes.operator))
+          module.moduleScope.put(name, [op])
         } else {
-          let ops = [...modOpsBox.val]
+          let ops = [...modOpsBox]
           ops.push(op)
-          module.moduleScope.put(name, new Box(ops, Type.builtinTypes.operator))
+          module.moduleScope.put(name, ops)
         }
-        let expOpsBox = module.exportScope.deepGet(name)
+        let expOpsBox = module.exportScope.deepGet(name) as Array<Operator>
         if (!expOpsBox) {
-          module.exportScope.put(name, new Box([op], Type.builtinTypes.operator))
+          module.exportScope.put(name, [op])
         } else {
-          let ops = [...expOpsBox.val]
+          let ops = [...expOpsBox]
           ops.push(op)
-          module.exportScope.put(name, new Box(ops, Type.builtinTypes.operator))
+          module.exportScope.put(name, ops)
         }
       } else if (exportAst.events() != null) {
         const newEvent = Event.fromAst(exportAst.events(), module.moduleScope)
-        module.moduleScope.put(newEvent.name, new Box(newEvent, Type.builtinTypes.Event))
-        module.exportScope.put(newEvent.name, new Box(newEvent, Type.builtinTypes.Event))
+        module.moduleScope.put(newEvent.name, newEvent)
+        module.exportScope.put(newEvent.name, newEvent)
       } else {
         // What?
         console.error("What should be an impossible export state has been reached.")
@@ -296,39 +290,36 @@ class Module {
     // Finally, event handlers, so they can depend on events that are exported from the same module
     const handlers = ast.handlers()
     for (const handlerAst of handlers) {
-      let eventBox = null
+      let evt = null
       if (handlerAst.eventref().varn() != null) {
-        eventBox = module.moduleScope.deepGet(handlerAst.eventref().varn().getText())
+        evt = module.moduleScope.deepGet(handlerAst.eventref().varn().getText()) as Event
       } else if (handlerAst.eventref().calls() != null) {
         console.error("Not yet implemented!")
         process.exit(-19)
-        // eventBox = AFunction.callFromAst(handlerAst.eventref().calls(), module.moduleScope)
+        // evt = AFunction.callFromAst(handlerAst.eventref().calls(), module.moduleScope)
       }
-      if (eventBox == null) {
+      if (!evt) {
         console.error("Could not find specified event: " + handlerAst.eventref().getText())
         process.exit(-20)
       }
-      if (eventBox.type !== Type.builtinTypes["Event"]) {
-        console.error(eventBox)
+      if (!(evt instanceof Event)) {
         console.error(handlerAst.eventref().getText() + " is not an event")
         process.exit(-21)
       }
-      const evt = eventBox.val
       let fn = null
       if (handlerAst.varn() != null) {
         const fnName = handlerAst.varn().getText()
-        const fnBox = module.moduleScope.deepGet(handlerAst.varn().getText())
-        if (fnBox == null) {
+        const fns = module.moduleScope.deepGet(handlerAst.varn().getText()) as Array<Fn>
+        if (!fns) {
           console.error("Could not find specified function: " + fnName)
           process.exit(-22)
         }
-        if (fnBox.type !== Type.builtinTypes["function"]) {
+        if (!(fns instanceof Array && fns[0].microstatementInlining instanceof Function)) {
           console.error(fnName + " is not a function")
           process.exit(-23)
         }
-        const fns = fnBox.val
         for (let i = 0; i < fns.length; i++) {
-          if (evt.type.typename === "void" && fns[i].getArguments().values().size() === 0) {
+          if (evt.type.typename === "void" && Object.values(fns[i].getArguments()).length === 0) {
             fn = fns[i]
             break
           }

@@ -1,6 +1,5 @@
 import { v4 as uuid, } from 'uuid'
 
-import Box from './Box' // TODO: Eliminate Box
 import Event from './Event'
 import Microstatement from './Microstatement'
 import Module from './Module'
@@ -13,7 +12,7 @@ const opcodeModule = new Module(opcodeScope)
 
 // Base types
 const addBuiltIn = (name: string) => {
-  opcodeScope.put(name, new Box(Type.builtinTypes[name], Type.builtinTypes.type))
+  opcodeScope.put(name, Type.builtinTypes[name])
 }
 ([
   'void', 'int8', 'int16', 'int32', 'int64', 'float32', 'float64', 'bool', 'string', 'function',
@@ -21,16 +20,13 @@ const addBuiltIn = (name: string) => {
 ].map(addBuiltIn))
 Type.builtinTypes['Array'].solidify(['string'], opcodeScope)
 Type.builtinTypes['Map'].solidify(['string', 'string'], opcodeScope)
-opcodeScope.put('any', new Box(new Type('any', true, new Interface('any')), Type.builtinTypes.type))
+opcodeScope.put('any', new Type('any', true, new Interface('any')))
 Type.builtinTypes['Array'].solidify(['any'], opcodeScope)
 Type.builtinTypes['Map'].solidify(['any', 'any'], opcodeScope)
 Type.builtinTypes['KeyVal'].solidify(['any', 'any'], opcodeScope)
 Type.builtinTypes['Array'].solidify(['KeyVal<any, any>'], opcodeScope)
-opcodeScope.put("start", new Box(
-  new Event("_start", Type.builtinTypes.void, true),
-  Type.builtinTypes.Event)
-)
-const t = (str: string) => opcodeScope.get(str).val
+opcodeScope.put("start", new Event("_start", Type.builtinTypes.void, true))
+const t = (str: string) => opcodeScope.get(str)
 
 // opcode declarations
 const addopcodes = (opcodes: object) => {
@@ -62,7 +58,7 @@ const addopcodes = (opcodes: object) => {
         },
       }
       // Add each opcode
-      opcodeScope.put(opcodeName, new Box([opcodeObj], Type.builtinTypes['function']))
+      opcodeScope.put(opcodeName, [opcodeObj])
     } else {
       const opcodeObj = {
         getName: () => opcodeName,
@@ -132,7 +128,7 @@ const addopcodes = (opcodes: object) => {
         },
       }
       // Add each opcode
-      opcodeScope.put(opcodeName, new Box([opcodeObj], Type.builtinTypes['function']))
+      opcodeScope.put(opcodeName, [opcodeObj])
     }
   })
 }
