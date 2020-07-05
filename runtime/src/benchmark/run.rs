@@ -4,7 +4,6 @@ use std::time::{Duration, Instant};
 use byteorder::{ByteOrder, LittleEndian};
 use rand::Rng;
 use rand::thread_rng;
-use rayon::{ThreadPool, ThreadPoolBuilder};
 use rayon::prelude::*; // Ugh, the Rayon documentation makes it difficult to not do this...
 
 use crate::vm::memory::HandlerMemory;
