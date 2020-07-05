@@ -20,7 +20,7 @@ const addBuiltIn = (name: string) => {
 ].map(addBuiltIn))
 Type.builtinTypes['Array'].solidify(['string'], opcodeScope)
 Type.builtinTypes['Map'].solidify(['string', 'string'], opcodeScope)
-opcodeScope.put('any', new Type('any', true, new Interface('any')))
+opcodeScope.put('any', new Type('any', true, false, {}, {}, null, null, new Interface('any')))
 Type.builtinTypes['Array'].solidify(['any'], opcodeScope)
 Type.builtinTypes['Map'].solidify(['any', 'any'], opcodeScope)
 Type.builtinTypes['KeyVal'].solidify(['any', 'any'], opcodeScope)
