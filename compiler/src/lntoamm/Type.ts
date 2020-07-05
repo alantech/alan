@@ -15,26 +15,10 @@ export class FunctionType {
   args: Array<Type>
   returnType: Type
 
-  constructor(...args: Array<any>) {
-    if (args.length === 1) {
-      this.functionname = null
-      this.args = []
-      this.returnType = args[0]
-    } else if (args.length === 2) {
-      if (typeof args[0] === "string") {
-        this.functionname = args[0]
-        this.args = []
-        this.returnType = args[1]
-      } else if (args[0] instanceof Array) {
-        this.functionname = null
-        this.args = args[0]
-        this.returnType = args[1]
-      }
-    } else if (args.length === 3) {
-      this.functionname = args[0]
-      this.args = args[1]
-      this.returnType = args[2]
-    }
+  constructor(functionname: string | null = null, args: Array<Type> = [], returnType: Type) {
+    this.functionname = functionname
+    this.args = args
+    this.returnType = returnType
   }
 }
 
@@ -167,7 +151,7 @@ export class Interface {
     // operator types.
     const interfacename = interfaceAst.VARNAME().getText()
     let iface = new Interface(interfacename)
-    const ifaceType = new Type(interfacename, false, iface)
+    const ifaceType = new Type(interfacename, false, false, {}, {}, null, null, iface)
     scope.put(interfacename, ifaceType)
 
     // Now, insert the actual declarations of the interface, if there are any (if there are none,
@@ -252,82 +236,26 @@ export class Type {
   iface: Interface | null
   alias: Type | null
 
-  constructor(...args: Array<any>) {
-    // Simulate multiple dispatch by duck typing the args
-    // TODO: Switch this to arguments with default values
-    if (args.length === 1) {
-      this.typename = args[0]
-      this.builtIn = false
-      this.isGenericStandin = false
-      this.properties = {}
-      this.generics = {}
-      this.originalType = null
-      this.unionTypes = null
-      this.iface = null
-      this.alias = null
-    } else if (args.length === 2) {
-      this.typename = args[0]
-      this.builtIn = args[1]
-      this.isGenericStandin = false
-      this.properties = {}
-      this.generics = {}
-      this.originalType = null
-      this.unionTypes = null
-      this.iface = null
-      this.alias = null
-    } else if (args.length === 3) {
-      if (typeof args[2] === "boolean") {
-        this.typename = args[0]
-        this.builtIn = args[1]
-        this.isGenericStandin = args[2]
-        this.properties = {}
-        this.generics = {}
-        this.originalType = null
-        this.unionTypes = null
-        this.iface = null
-        this.alias = null
-      } else if (args[2] instanceof Interface) {
-        this.typename = args[0]
-        this.builtIn = args[1]
-        this.isGenericStandin = false
-        this.properties = {}
-        this.generics = {}
-        this.originalType = null
-        this.unionTypes = null
-        this.iface = args[2]
-        this.alias = null
-      } else if (args[2] instanceof Array) {
-        this.typename = args[0]
-        this.builtIn = args[1]
-        this.isGenericStandin = false
-        this.properties = {}
-        this.generics = {}
-        this.originalType = null
-        this.unionTypes = args[2]
-        this.iface = null
-        this.alias = null
-      } else if (args[2] instanceof Object) {
-        this.typename = args[0]
-        this.builtIn = args[1]
-        this.isGenericStandin = false
-        this.properties = args[2]
-        this.generics = {}
-        this.originalType = null
-        this.unionTypes = null
-        this.iface = null
-        this.alias = null
-      }
-    } else if (args.length === 4) {
-      this.typename = args[0]
-      this.builtIn = args[1]
-      this.isGenericStandin = false
-      this.properties = args[2]
-      this.generics = args[3]
-      this.originalType = null
-      this.unionTypes = null
-      this.iface = null
-      this.alias = null
-    }
+  constructor(
+    typename: string,
+    builtIn: boolean = false,
+    isGenericStandin: boolean = false,
+    properties: Properties = {},
+    generics: Generics = {},
+    originalType: Type | null = null,
+    unionTypes: Array<Type> | null = null,
+    iface: Interface | null = null,
+    alias: Type | null = null,
+  ) {
+    this.typename = typename
+    this.builtIn = builtIn
+    this.isGenericStandin = isGenericStandin
+    this.properties = properties
+    this.generics = generics
+    this.originalType = originalType
+    this.unionTypes = unionTypes
+    this.iface = iface
+    this.alias = alias
   }
 
   toString() {
@@ -485,23 +413,23 @@ export class Type {
     float64: new Type("float64", true),
     bool: new Type("bool", true),
     string: new Type("string", true),
-    Error: new Type("Error", true, {
+    Error: new Type("Error", true, false, {
       message: new Type("string", true, true),
       code: new Type("int64", true, true),
     }),
-    "Array": new Type("Array", true, {
+    "Array": new Type("Array", true, false, {
       records: new Type("V", true, true),
     }, {
       V: 0,
     }),
-    Map: new Type("Map", true, {
+    Map: new Type("Map", true, false, {
       key: new Type("K", true, true),
       value: new Type("V", true, true),
     }, {
       K: 0,
       V: 1,
     }),
-    KeyVal: new Type("KeyVal", true, {
+    KeyVal: new Type("KeyVal", true, false, {
       key: new Type("K", true, true),
       value: new Type("V", true, true),
     }, {
@@ -510,7 +438,7 @@ export class Type {
     }),
     "function": new Type("function", true),
     operator: new Type("operator", true),
-    Event: new Type("Event", true, {
+    Event: new Type("Event", true, false, {
       type: new Type("E", true, true),
     }, {
       E: 0,

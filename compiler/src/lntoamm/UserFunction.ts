@@ -138,7 +138,15 @@ class UserFunction implements Fn {
               }
               unionTypes.push(othertypeBox)
             }
-            getArgType = new Type(argsAst.argtype(i).getText(), false, unionTypes)
+            getArgType = new Type(
+              argsAst.argtype(i).getText(),
+              false,
+              false,
+              {},
+              {},
+              null,
+              unionTypes
+            )
           }
         }
         if (!(getArgType instanceof Type)) {
@@ -202,7 +210,15 @@ class UserFunction implements Fn {
           }
           unionTypes.push(othertypeBox)
         }
-        returnType = new Type(functionAst.argtype().getText(), false, unionTypes)
+        returnType = new Type(
+          functionAst.argtype().getText(),
+          false,
+          false,
+          {},
+          {},
+          null,
+          unionTypes
+        )
       }
     } else {
       // TODO: Infer the return type by finding the return value and tracing backwards
@@ -521,10 +537,10 @@ class UserFunction implements Fn {
         scope,
         true,
         realArgName,
-        internalNames[i],
         inputTypes[i],
         [],
         [],
+        internalNames[i],
       ))
     }
     for (const s of fn.statements) {

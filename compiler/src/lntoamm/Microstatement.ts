@@ -18,56 +18,29 @@ class Microstatement {
   alias: string
   outputType: Type
   inputNames: Array<string>
-  fns: Array<UserFunction>
+  fns: Array<Fn>
   closureStatements: Array<Microstatement>
 
-  // TODO: Replace fake multiple dispatch with default arg values
-  constructor(...args: Array<any>) {
-    if (args.length === 5) {
-      // "Normal" microstatement
-      this.statementType = args[0]
-      this.scope = args[1]
-      this.pure = args[2]
-      this.outputName = args[3]
-      this.alias = ""
-      this.outputType = Type.builtinTypes.void
-      this.inputNames = []
-      this.fns = []
-      this.closureStatements = args[4]
-    } else if (args.length === 8) {
-      // Aliasing microstatement (must be REREF)
-      this.statementType = args[0]
-      this.scope = args[1]
-      this.pure = args[2]
-      this.outputName = args[3]
-      this.alias = args[4]
-      this.outputType = args[5]
-      this.inputNames = args[6]
-      this.fns = args[7]
-      this.closureStatements = []
-    } else if (args.length === 7) {
-      // Void-returning closure
-      this.statementType = args[0]
-      this.scope = args[1]
-      this.pure = args[2]
-      this.outputName = args[3]
-      this.alias = ""
-      this.outputType = args[4]
-      this.inputNames = args[5]
-      this.fns = args[6]
-      this.closureStatements = []
-    } else if (args.length === 6) {
-      // Non-void returning closure
-      this.statementType = args[0]
-      this.scope = args[1]
-      this.pure = args[2]
-      this.outputName = args[3]
-      this.alias = ""
-      this.outputType = args[4]
-      this.inputNames = []
-      this.fns = []
-      this.closureStatements = args[5]
-    }
+  constructor(
+    statementType: StatementType,
+    scope: Scope,
+    pure: boolean,
+    outputName: string,
+    outputType: Type = Type.builtinTypes.void,
+    inputNames: Array<string> = [],
+    fns: Array<Fn> = [],
+    alias: string = '',
+    closureStatements: Array<Microstatement> = [],
+  ) {
+    this.statementType = statementType
+    this.scope = scope
+    this.pure = pure
+    this.outputName = outputName
+    this.outputType = outputType
+    this.inputNames = inputNames
+    this.fns = fns
+    this.alias = alias
+    this.closureStatements = closureStatements
   }
 
   toString() {
@@ -343,7 +316,7 @@ class Microstatement {
       scope,
       true,
       constName,
-      scope.deepGet(constType),
+      scope.deepGet(constType) as Type,
       [constVal],
       [],
     ))
@@ -918,6 +891,9 @@ class Microstatement {
       true, // TODO: Figure out if this is true or not
       constName,
       Type.builtinTypes['function'],
+      [],
+      [],
+      '',
       innerMicrostatements
     ))
   }
@@ -953,6 +929,10 @@ class Microstatement {
         scope,
         true, // Guaranteed true in this case, it's not really a closure
         constName,
+        Type.builtinTypes.void,
+        [],
+        [],
+        '',
         innerMicrostatements
       ))
     } else {
@@ -983,6 +963,10 @@ class Microstatement {
         scope,
         true, // Guaranteed true in this case, it's not really a closure
         constName,
+        Type.builtinTypes.void,
+        [],
+        [],
+        '',
         innerMicrostatements
       ))
     }
@@ -1097,7 +1081,7 @@ class Microstatement {
         scope,
         true,
         constName,
-        scope.deepGet("void"),
+        Type.builtinTypes.void,
         ["void"],
         null
       ))
@@ -1713,10 +1697,10 @@ class Microstatement {
         scope,
         true,
         letName,
-        letAlias,
         type,
         [],
         [],
+        letAlias,
       ))
       return
     }
@@ -1747,10 +1731,10 @@ class Microstatement {
         scope,
         true,
         val.outputName,
-        letAlias,
         val.outputType,
         [],
         [],
+        letAlias,
       ))
       return
     }
@@ -1774,10 +1758,10 @@ class Microstatement {
         scope,
         true,
         val.outputName,
-        letAlias,
         val.outputType,
         [],
         [],
+        letAlias,
       ))
       return
     }
@@ -1848,10 +1832,10 @@ class Microstatement {
         scope,
         true,
         constName,
-        constAlias,
         Type.builtinTypes.void,
         [],
         [],
+        constAlias,
       ))
       return
     }
@@ -1875,10 +1859,10 @@ class Microstatement {
         scope,
         true,
         microstatements[microstatements.length - 1].outputName,
-        constAlias,
         microstatements[microstatements.length - 1].outputType,
         [],
         [],
+        constAlias,
       ))
       return
     }
@@ -1896,10 +1880,10 @@ class Microstatement {
         scope,
         true,
         microstatements[microstatements.length - 1].outputName,
-        constAlias,
         microstatements[microstatements.length - 1].outputType,
         [],
         [],
+        constAlias,
       ))
       return
     }
