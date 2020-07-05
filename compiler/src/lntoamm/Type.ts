@@ -1,5 +1,6 @@
-import Box from './Box'
 import Scope from './Scope'
+import { Fn, } from './Function'
+import Operator from './Operator'
 
 type Properties = {
   [K: string]: Type
@@ -82,25 +83,31 @@ export class Interface {
 
     for (const functionType of this.functionTypes) {
       if (!functionType.functionname) continue // Anonymous functions checked at callsite
-      const potentialFunctionsBox = scope.deepGet(functionType.functionname)
-      if (!potentialFunctionsBox || potentialFunctionsBox.type !== Type.builtinTypes["function"]) {
+      const potentialFunctions = scope.deepGet(functionType.functionname) as Array<Fn>
+      if (
+        !potentialFunctions ||
+        !(
+          potentialFunctions instanceof Array &&
+          potentialFunctions[0].microstatementInlining instanceof Function
+        )
+      ) {
         console.error(functionType.functionname + " is not the name of a function")
         process.exit(-48)
       }
-      const potentialFunctions = potentialFunctionsBox.val
       let functionFound = false
       for (const potentialFunction of potentialFunctions) {
         const argTypes = potentialFunction.getArguments()
         let argsMatch = true
-        for (let i = 0; i < argTypes.length; i++) {
+        let typeNames = Object.keys(argTypes)
+        for (let i = 0; i < typeNames.length; i++) {
           const functionTypeArgType = functionType.args[i]
-          if (argTypes[i] === functionTypeArgType) continue
-          if (argTypes[i].originalType === functionTypeArgType) continue
-          if (argTypes[i] === typeToCheck) continue
+          if (argTypes[typeNames[i]] === functionTypeArgType) continue
+          if (argTypes[typeNames[i]].originalType === functionTypeArgType) continue
+          if (argTypes[typeNames[i]] === typeToCheck) continue
           if (
-            !!argTypes[i].iface &&
+            !!argTypes[typeNames[i]].iface &&
             !!functionTypeArgType.iface &&
-            argTypes[i].iface === functionTypeArgType.iface
+            argTypes[typeNames[i]].iface === functionTypeArgType.iface
           ) continue
           argsMatch = false
           break
@@ -113,27 +120,32 @@ export class Interface {
     }
 
     for (const operatorType of this.operatorTypes) {
-      const potentialOperatorsBox = scope.deepGet(operatorType.operatorname)
-      if (!potentialOperatorsBox || potentialOperatorsBox.type !== Type.builtinTypes.operator) {
+      const potentialOperators = scope.deepGet(operatorType.operatorname) as Array<Operator>
+      if (
+        !potentialOperators ||
+        !(
+          potentialOperators instanceof Array &&
+          potentialOperators[0] instanceof Operator
+        )
+      ) {
         console.error(`${operatorType.operatorname} is not an operator`)
-        console.error(potentialOperatorsBox)
         process.exit(-52)
       }
-      const potentialOperators = potentialOperatorsBox.val
       let operatorFound = false
       for (const potentialOperator of potentialOperators) {
         for (const potentialFunction of potentialOperator.potentialFunctions) {
           const argTypes = potentialFunction.getArguments()
           let argsMatch = true
-          for (let i = 0; i < argTypes.length; i++) {
+          let typeNames = Object.keys(argTypes)
+          for (let i = 0; i < typeNames.length; i++) {
             const operatorTypeArgType = operatorType.args[i]
-            if (argTypes[i] === operatorTypeArgType) continue
-            if (argTypes[i].originalType === operatorTypeArgType) continue
-            if (argTypes[i] === typeToCheck) continue
+            if (argTypes[typeNames[i]] === operatorTypeArgType) continue
+            if (argTypes[typeNames[i]].originalType === operatorTypeArgType) continue
+            if (argTypes[typeNames[i]] === typeToCheck) continue
             if (
-              !!argTypes[i].iface &&
+              !!argTypes[typeNames[i]].iface &&
               !!operatorTypeArgType.iface &&
-              argTypes[i].iface === operatorTypeArgType.iface
+              argTypes[typeNames[i]].iface === operatorTypeArgType.iface
             ) continue
             argsMatch = false
             break
@@ -156,8 +168,7 @@ export class Interface {
     const interfacename = interfaceAst.VARNAME().getText()
     let iface = new Interface(interfacename)
     const ifaceType = new Type(interfacename, false, iface)
-    const ifaceTypeBox = new Box(ifaceType, Type.builtinTypes.type)
-    scope.put(interfacename, ifaceTypeBox)
+    scope.put(interfacename, ifaceType)
 
     // Now, insert the actual declarations of the interface, if there are any (if there are none,
     // it will provide only as much as a type generic -- you can set it to a variable and return it
@@ -171,20 +182,19 @@ export class Interface {
             functionname = functiontypeline.VARNAME().getText()
           }
           const typenames = functiontypeline.functiontype().varn();
-          const returnTypeBox = scope.deepGet(typenames[typenames.length - 1].getText())
-          if (!returnTypeBox || returnTypeBox.type !== Type.builtinTypes.type) {
+          const returnType = scope.deepGet(typenames[typenames.length - 1].getText()) as Type
+          if (!returnType || !(returnType instanceof Type)) {
             console.error(typenames.get(typenames.size() - 1).getText() + " is not a type")
             process.exit(-48)
           }
-          const returnType = returnTypeBox.val
           let args = []
           for (let i = 0; i < typenames.length - 1; i++) {
-            const argumentBox = scope.deepGet(typenames[i].getText())
-            if (!argumentBox || argumentBox.type !== Type.builtinTypes.type) {
+            const argument = scope.deepGet(typenames[i].getText()) as Type
+            if (!argument || !(argument instanceof Type)) {
               console.error(typenames.get(i).getText() + " is not a type")
               process.exit(-49)
             }
-            args.push(argumentBox.val)
+            args.push(argument)
           }
           const functionType = new FunctionType(functionname, args, returnType)
           iface.functionTypes.push(functionType)
@@ -200,34 +210,34 @@ export class Interface {
           const returnTypename = interfaceline.operatortypeline().varn().getText()
           const args = argTypenames.map(n => {
             const box = scope.deepGet(n)
-            if (!box || box.type !== Type.builtinTypes.type) {
+            if (!box || !(box instanceof Type)) {
               console.error(`${n} is not a type`)
               process.exit(-50)
             }
-            return box.val
+            return box
           })
-          const returnBox = scope.deepGet(returnTypename)
-          if (!returnBox || returnBox.type !== Type.builtinTypes.type) {
+          const returnType = scope.deepGet(returnTypename) as Type
+          if (!returnType || !(returnType instanceof Type)) {
             console.error(`${returnTypename} is not a type`)
             process.exit(-51)
           }
-          const returnType = returnBox.val
           const operatorType = new OperatorType(operatorname, isPrefix, args, returnType)
           iface.operatorTypes.push(operatorType)
         }
         if (!!interfaceline.propertytypeline()) {
-          const propertyTypeBox = scope.deepGet(interfaceline.propertytypeline().varn().getText())
-          if (!propertyTypeBox || propertyTypeBox.type !== Type.builtinTypes.type) {
+          const propertyType =
+            scope.deepGet(interfaceline.propertytypeline().varn().getText()) as Type
+          if (!propertyType || !(propertyType instanceof Type)) {
             console.error(interfaceline.propertytypeline().varn().getText() + " is not a type")
             process.exit(-52)
           }
           iface.requiredProperties[
             interfaceline.propertytypeline().VARNAME().getText()
-          ] = propertyTypeBox.val
+          ] = propertyType
         }
       }
     }
-    return ifaceTypeBox
+    return ifaceType
   }
 }
 
@@ -353,8 +363,8 @@ export class Type {
       for (const lineAst of lines) {
         const propertyName = lineAst.VARNAME().getText()
         const typeName = lineAst.varn().getText()
-        const property = scope.deepGet(lineAst.varn().getText())
-        if (property == null || property.type.typename !== "type") {
+        const property = scope.deepGet(lineAst.varn().getText()) as Type
+        if (!property || !(property instanceof Type)) {
           if (type.generics.hasOwnProperty(typeName)) {
             type.properties[propertyName] = new Type(typeName, true, true)
           } else {
@@ -362,24 +372,24 @@ export class Type {
             process.exit(-4)
           }
         } else {
-          type.properties[propertyName] = property.val
+          type.properties[propertyName] = property
         }
       }
     }
     if (typeAst.othertype() != null && typeAst.othertype().length == 1) {
-      const otherTypebox = scope.deepGet(typeAst.othertype(0).typename().getText())
+      const otherTypebox = scope.deepGet(typeAst.othertype(0).typename().getText()) as Type
 
       if (!otherTypebox) {
         console.error("Type " + typeAst.othertype(0).getText() + " not defined")
         process.exit(-38)
       }
-      if (otherTypebox.type !== Type.builtinTypes.type) {
+      if (!(otherTypebox instanceof Type)) {
         console.error(typeAst.othertype(0).getText() + " is not a valid type")
         process.exit(-39)
       }
 
-      let othertype = otherTypebox.val
-      if (Object.keys(othertype.generics).length > 0 && typeAst.othertype(0).typegenerics() != null) {
+      let othertype = otherTypebox
+      if (Object.keys(othertype.generics).length > 0 && !!typeAst.othertype(0).typegenerics()) {
         let solidTypes = []
         for (const fulltypenameAst of typeAst.othertype(0).typegenerics().fulltypename()) {
           solidTypes.push(fulltypenameAst.getText())
@@ -398,18 +408,18 @@ export class Type {
       const othertypes = typeAst.othertype()
       let unionTypes = []
       for (const othertype of othertypes) {
-        const othertypeBox = scope.deepGet(othertype.typename().getText())
+        const othertypeBox = scope.deepGet(othertype.typename().getText()) as Type
 
-        if (othertypeBox == null) {
+        if (!othertypeBox) {
           console.error("Type " + othertype.getText() + " not defined")
           process.exit(-48)
         }
-        if (othertypeBox.type !== Type.builtinTypes.type) {
+        if (!(othertypeBox instanceof Type)) {
           console.error(othertype.getText() + " is not a valid type")
           process.exit(-49)
         }
 
-        let othertypeVal = othertypeBox.val
+        let othertypeVal = othertypeBox
         if (othertypeVal.generics.length > 0 && othertype.typegenerics() != null) {
           let solidTypes = []
           for (const fulltypenameAst of othertype.typegenerics().fulltypename()) {
@@ -427,12 +437,12 @@ export class Type {
   solidify(genericReplacements: Array<string>, scope: Scope) {
     let replacementTypes = []
     for (const typename of genericReplacements) {
-      const typebox = scope.deepGet(typename)
-      if (typebox == null || typebox.type.typename !== "type") {
+      const typebox = scope.deepGet(typename) as Type
+      if (!typebox || !(typebox instanceof Type)) {
         console.error(typename + " type not found")
         process.exit(-35)
       }
-      replacementTypes.push(typebox.val)
+      replacementTypes.push(typebox)
     }
     const solidifiedName = this.typename + "<" + genericReplacements.join(", ") + ">"
     let solidified = new Type(solidifiedName, this.builtIn)
@@ -451,7 +461,7 @@ export class Type {
         solidified.properties[propKey] = propValue
       }
     }
-    scope.put(solidifiedName, new Box(solidified, Type.builtinTypes.type))
+    scope.put(solidifiedName, solidified)
     return solidified
   }
 

@@ -1,5 +1,6 @@
+import Operator from './Operator'
 import Scope from './Scope'
-import Type from './Type'
+import { Fn, } from './Function'
 import { LnParser, } from '../ln'
 
 // Only implements the pieces necessary for the first stage compiler
@@ -26,21 +27,21 @@ class Statement {
 
   static isCallPure(callAst: any, scope: Scope) { // TODO: Migrate off ANTLR
     // TODO: Add purity checking for chained method-style calls
-    const functionBox = scope.deepGet(callAst.varn(0).getText())
-    if (functionBox == null) {
+    const fn = scope.deepGet(callAst.varn(0).getText()) as Array<Fn>
+    if (!fn) {
       // TODO: This function may be defined in the execution scope, we won't know until runtime
       // right now, but it should be determinable at "compile time". Need to fix this to check
       // if prior statements defined it, for now, just assume it exists and is not pure
       return false
     }
-    if (functionBox.type !== Type.builtinTypes["function"]) {
+    if (!(fn instanceof Array && fn[0].microstatementInlining instanceof Function)) {
       console.error(callAst.varn(0).getText() + " is not a function")
       process.exit(-17)
     }
     // TODO: Add all of the logic to determine which function to use in here, too. For now,
     // let's just assume they all have the same purity state, which is a terrible assumption, but
     // easier.
-    if (!functionBox.val[0].isPure()) return false
+    if (!fn[0].isPure()) return false
     const assignableListAst = callAst.fncall(0).assignablelist()
     if (assignableListAst == null) { // No arguments to this function call
       return true
@@ -55,14 +56,14 @@ class Statement {
     for (const operatorOrAssignable of withOperatorsAst.operatororassignable()) {
       if (operatorOrAssignable.operators() != null) {
         const operator = operatorOrAssignable.operators()
-        const op = scope.deepGet(operator.getText())
-        if (!op || op.type !== Type.builtinTypes.operator) {
+        const op = scope.deepGet(operator.getText()) as Array<Operator>
+        if (!op || !(op instanceof Array && op[0] instanceof Operator)) {
           console.error("Operator " + operator.getText() + " is not defined")
           process.exit(-33)
         }
         // TODO: Similar to the above, need to figure out logic to determine which particular function
         // will be the one called. For now, just assume the first one and fix this later.
-        if (!op.val[0].potentialFunctions[0].isPure()) return false
+        if (!op[0].potentialFunctions[0].isPure()) return false
       }
       if (operatorOrAssignable.basicassignables() != null) {
         if (!Statement.isBasicAssignablePure(operatorOrAssignable.basicassignables(), scope)) {
@@ -70,7 +71,7 @@ class Statement {
         }
       }
     }
-    
+
     return true
   }
 
