@@ -36,23 +36,7 @@ node_modules: build
 
 .PHONY: clean
 clean:
-	cd runtime && cargo clean
-	cd compiler && yarn clean
-	rm -rf shellspec
-	rm -rf node_modules
-	rm -rf compiler/node_modules
-	rm -rf js-runtime/node_modules
-	rm -rf bdd/node_modules
-	rm -rf compiler/std
-	rm -f package.json
-	rm -f yarn.lock
-	rm -f bdd/package-lock.json
-	rm -f bdd/temp.*
-	rm -rf compiler/cypress/fixtures
-	rm -rf compiler/cypress/plugins
-	rm -rf compiler/cypress/screenshots
-	rm -rf compiler/cypress/support
-	rm -rf compiler/cypress/videos
+	git clean -ffdx
 
 .PHONY: install
 install: runtime/target/release/alan-runtime node_modules
