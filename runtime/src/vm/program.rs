@@ -39,10 +39,11 @@ enum GraphOpcode {
 impl From<i64> for GraphOpcode {
   fn from(v: i64) -> Self {
     let handler_num: i64 = i64::from_le_bytes([b'h', b'a', b'n', b'd', b'l', b'e', b'r', b':']);
+    let closure_num: i64 = i64::from_le_bytes([b'c', b'l', b'o', b's', b'u', b'r', b'e', b':']);
     let line_num: i64 = i64::from_le_bytes([b'l', b'i', b'n', b'e', b'n', b'o', b':', b' ']);
     let custom_num: i64 = i64::from_le_bytes([b'e', b'v', b'e', b'n', b't', b'd', b'd', b':']);
     // TODO: Figure out why `match` failed here
-    if v == handler_num {
+    if v == handler_num || v == closure_num {
       return GraphOpcode::HANDLER;
     } else if v == line_num {
       return GraphOpcode::LINENO;

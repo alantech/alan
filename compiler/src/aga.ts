@@ -54,7 +54,7 @@ const memoryAddress = And.build([at, integer])
 const memoryLine = NamedAnd.build({ memoryAddress, colon, whitespace, value })
 const customEvents = Token.build('customEvents')
 const eventLine = NamedAnd.build({ variable, colon, whitespace, integer })
-const handlerFor = Token.build('handler for')
+const handlerFor = Or.build([Token.build('handler for'), Token.build('closure for')])
 const withSize = Token.build('with size')
 const handlerLine = NamedAnd.build({
   handlerFor,
