@@ -399,7 +399,7 @@ const loadClosures = (closures: any[], globalMem: object) => {
     const eventName = closure.name
     const memSize = closure.closureMem.memSize
     const localMem = closure.closureMem.addressMap
-    let c = `handler for ${eventName} with size ${memSize}\n`
+    let c = `closure for ${eventName} with size ${memSize}\n`
     const statements = loadStatements(
       closure.statements,
       localMem,
