@@ -88,15 +88,17 @@ fn e_field(args: &Vec<i64>, hand_mem: &mut HandlerMemory) {
   for n in 0..len {
     // All of the intermediate values are stored into the HandlerMemory to mimic how this function
     // would be translated from alan to the runtime execution
-    let distance = i - n;
-    hand_mem.write(args[2], 8, &distance.to_le_bytes());
-    let sqdistance = distance * distance;
-    hand_mem.write(args[3], 8, &sqdistance.to_le_bytes());
-    let invsqdistance = 1f64 / (sqdistance as f64);
-    hand_mem.write(args[4], 8, &invsqdistance.to_le_bytes());
-    let scaled = invsqdistance * (charges[n as usize] as f64);
-    hand_mem.write(args[5], 8, &scaled.to_le_bytes());
-    out = out + scaled;
+    let distance = (i - n) as f64;
+    if distance != 0.0 {
+      hand_mem.write(args[2], 8, &distance.to_le_bytes());
+      let sqdistance = distance * distance;
+      hand_mem.write(args[3], 8, &sqdistance.to_le_bytes());
+      let invsqdistance = 1f64 / sqdistance;
+      hand_mem.write(args[4], 8, &invsqdistance.to_le_bytes());
+      let scaled = invsqdistance * (charges[n as usize] as f64);
+      hand_mem.write(args[5], 8, &scaled.to_le_bytes());
+      out = out + scaled;
+    }
   }
   hand_mem.write(args[6], 8, &out.to_le_bytes());
 }
@@ -155,7 +157,7 @@ fn lin_e_field(size: i64) -> Duration {
   let start = Instant::now();
   let args = vec![0, 8, 16, 24, 32, 40, 48];
   for i in 0..size {
-    let addr = i * 8;
+    let addr = i;
     mem.write(0, 8, &addr.to_le_bytes());
     e_field(&args, &mut mem);
     output.push(LittleEndian::read_i64(mem.read(48, 8)));
@@ -258,7 +260,7 @@ fn coarse_e_field(size: i64) -> Duration {
     let offset = i * (size / cpu_threads) as usize;
     let args = vec![0, 8, 16, 24, 32, 40, 48];
     for j in offset..(offset+inner_size) {
-      let addr = j * 8;
+      let addr = j;
       mem.write(0, 8, &addr.to_le_bytes());
       e_field(&args, &mut mem);
       output.push(LittleEndian::read_i64(mem.read(48, 8)));
@@ -315,7 +317,7 @@ fn fine_e_field(size: i64) -> Duration {
   let output: Vec<i64> = (0..size).into_par_iter().map(|i| {
     let mut mem = real_mem.clone();
     let args = vec![0, 8, 16, 24, 32, 40, 48];
-    let addr = i * 8;
+    let addr = i;
     mem.write(0, 8, &addr.to_le_bytes());
     e_field(&args, &mut mem);
     return LittleEndian::read_i64(mem.read(48, 8));
