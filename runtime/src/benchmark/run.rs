@@ -58,49 +58,50 @@ use crate::vm::program::{PROGRAM, Program};
 /// constraint of two input arguments per opcode, but for the benchmark, we'll have a truly
 /// arbitrary number of arguments to make the benchmark code simpler.
 fn square(args: &Vec<i64>, hand_mem: &mut HandlerMemory) {
-  let a = LittleEndian::read_i64(hand_mem.read(args[0], 8));
+  let a = hand_mem.read_fixed(args[0]);
   let out = a * a;
-  hand_mem.write(args[1], 8, &out.to_le_bytes());
+  hand_mem.write_fixed(args[1], out);
 }
 
 fn mx_plus_b(args: &Vec<i64>, hand_mem: &mut HandlerMemory) {
-  let x = LittleEndian::read_i64(hand_mem.read(args[0], 8));
-  let m = LittleEndian::read_i64(hand_mem.read(args[1], 8));
-  let b = LittleEndian::read_i64(hand_mem.read(args[2], 8));
+  let x = hand_mem.read_fixed(args[0]);
+  let m = hand_mem.read_fixed(args[1]);
+  let b = hand_mem.read_fixed(args[2]);
   let intermediate = m * x;
-  hand_mem.write(args[3], 8, &intermediate.to_le_bytes());
+  hand_mem.write_fixed(args[3], intermediate);
   let out = intermediate + b;
-  hand_mem.write(args[4], 8, &out.to_le_bytes());
+  hand_mem.write_fixed(args[4], out);
 }
 
 fn e_field(args: &Vec<i64>, hand_mem: &mut HandlerMemory) {
-  let i = LittleEndian::read_i64(hand_mem.read(args[0], 8));
-  let arr = hand_mem.get_fractal(args[1]);
+  let i = hand_mem.read_fixed(args[0]);
+  let arr = hand_mem.get_fractal(args[1]).clone();
   let len = arr.len_as_arr() as i64;
   let mut out = 0.0f64;
   // This vector is to avoid issues with borrowing `hand_mem` twice at the same time even though it
   // would be safe
-  let mut charges: Vec<i64> = Vec::new();
+  /*let mut charges: Vec<i64> = Vec::new();
   for n in 0..len {
-    let charge = LittleEndian::read_i64(arr.read(n * 8, 8));
+    let charge = arr.read_fixed(n * 8);
     charges.push(charge);
-  }
+  }*/
   for n in 0..len {
     // All of the intermediate values are stored into the HandlerMemory to mimic how this function
     // would be translated from alan to the runtime execution
     let distance = (i - n) as f64;
     if distance != 0.0 {
-      hand_mem.write(args[2], 8, &distance.to_le_bytes());
+      //hand_mem.write_fixed(args[2], i64::from_ne_bytes(distance.to_ne_bytes()));
       let sqdistance = distance * distance;
-      hand_mem.write(args[3], 8, &sqdistance.to_le_bytes());
+      //hand_mem.write_fixed(args[3], i64::from_ne_bytes(sqdistance.to_ne_bytes()));
       let invsqdistance = 1f64 / sqdistance;
-      hand_mem.write(args[4], 8, &invsqdistance.to_le_bytes());
-      let scaled = invsqdistance * (charges[n as usize] as f64);
-      hand_mem.write(args[5], 8, &scaled.to_le_bytes());
+      //hand_mem.write_fixed(args[4], i64::from_ne_bytes(invsqdistance.to_ne_bytes()));
+      //let scaled = invsqdistance * (charges[n as usize] as f64);
+      let scaled = invsqdistance * arr.read_fixed(n * 8) as f64;
+      //hand_mem.write_fixed(args[5], i64::from_ne_bytes(scaled.to_ne_bytes()));
       out = out + scaled;
     }
   }
-  hand_mem.write(args[6], 8, &out.to_le_bytes());
+  hand_mem.write_fixed(args[6], i64::from_ne_bytes(out.to_ne_bytes()));
 }
 
 fn gen_rand_array(size: i64) -> Vec<i64> {
@@ -121,9 +122,9 @@ fn lin_square(size: i64) -> Duration {
   let start = Instant::now();
   let args = vec![0, 8];
   for input in data {
-    mem.write(0, 8, &input.to_le_bytes());
+    mem.write_fixed(0, input);
     square(&args, &mut mem);
-    output.push(LittleEndian::read_i64(mem.read(8, 8)));
+    output.push(mem.read_fixed(8));
   }
   let end = Instant::now();
   return end.saturating_duration_since(start);
@@ -131,16 +132,16 @@ fn lin_square(size: i64) -> Duration {
 
 fn lin_mx_plus_b(size: i64) -> Duration {
   let mut mem = HandlerMemory::new(None, 40);
-  mem.write(8, 8, &2i64.to_le_bytes());
-  mem.write(16, 8, &3i64.to_le_bytes());
+  mem.write_fixed(8, 2);
+  mem.write_fixed(16, 3);
   let data = gen_rand_array(size);
   let mut output: Vec<i64> = Vec::new();
   let start = Instant::now();
   let args = vec![0, 8, 16, 24, 32];
   for input in data {
-    mem.write(0, 8, &input.to_le_bytes());
+    mem.write_fixed(0, input);
     mx_plus_b(&args, &mut mem);
-    output.push(LittleEndian::read_i64(mem.read(32, 8)));
+    output.push(mem.read_fixed(32));
   }
   let end = Instant::now();
   return end.saturating_duration_since(start);
@@ -151,21 +152,20 @@ fn lin_e_field(size: i64) -> Duration {
   let data = gen_rand_array(size);
   mem.new_arr(8);
   for input in data {
-    mem.push_arr(8, input.to_le_bytes().to_vec(), 8);
+    mem.push_arr(8, input);
   }
   let mut output: Vec<i64> = Vec::new();
   let start = Instant::now();
   let args = vec![0, 8, 16, 24, 32, 40, 48];
   for i in 0..size {
-    let addr = i;
-    mem.write(0, 8, &addr.to_le_bytes());
+    mem.write_fixed(0, i);
     e_field(&args, &mut mem);
-    output.push(LittleEndian::read_i64(mem.read(48, 8)));
+    output.push(mem.read_fixed(48));
   }
   let end = Instant::now();
   return end.saturating_duration_since(start);
 }
-
+/*
 fn coarse_square(size: i64) -> Duration {
   let mut full_output: Vec<i64> = Vec::new();
   let cpu_threads = (num_cpus::get() - 1) as i64;
@@ -325,7 +325,7 @@ fn fine_e_field(size: i64) -> Duration {
   let end = Instant::now();
   return end.saturating_duration_since(start);
 }
-
+*/
 pub fn benchmark() {
   // Initialize the global PROGRAM value
   PROGRAM.set(Program {
@@ -347,6 +347,7 @@ pub fn benchmark() {
   println!("Quick test sequential e-field 100-element array: {:?}", lin_e_field(100));
   println!("Quick test sequential e-field 10,000-element array: {:?}", lin_e_field(10000));
   // println!("Quick test sequential e-field 1,000,000-element array: {:?}", lin_e_field(1000000));
+  /*
   println!("Quick test coarse parallel squares 100-element array: {:?}", coarse_square(100));
   println!("Quick test coarse parallel squares 10,000-element array: {:?}", coarse_square(10000));
   println!("Quick test coarse parallel squares 1,000,000-element array: {:?}", coarse_square(1000000));
@@ -365,4 +366,5 @@ pub fn benchmark() {
   println!("Quick test fine parallel e-field 100-element array: {:?}", fine_e_field(100));
   println!("Quick test fine parallel e-field 10,000-element array: {:?}", fine_e_field(10000));
   // println!("Quick test fine parallel e-field 1,000,000-element array: {:?}", fine_e_field(1000000));
+  */
 }

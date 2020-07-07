@@ -115,41 +115,37 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
 
   // Type conversion opcodes
   cpu!("i8f64", |args, hand_mem, _| {
-    let a = i8::from_le_bytes(hand_mem.read(args[0], 1).try_into().unwrap());
-    let out = a as f64;
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    let out = hand_mem.read_fixed(args[0]) as f64;
+    hand_mem.write_fixed(args[2], i64::from_le_bytes(out.to_le_bytes()));
     None
   });
   cpu!("i16f64", |args, hand_mem, _| {
-    let a = LittleEndian::read_i16(hand_mem.read(args[0], 2));
-    let out = a as f64;
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    let out = hand_mem.read_fixed(args[0]) as f64;
+    hand_mem.write_fixed(args[2], i64::from_le_bytes(out.to_le_bytes()));
     None
   });
   cpu!("i32f64", |args, hand_mem, _| {
-    let a = LittleEndian::read_i32(hand_mem.read(args[0], 4));
-    let out = a as f64;
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    let out = hand_mem.read_fixed(args[0]) as f64;
+    hand_mem.write_fixed(args[2], i64::from_le_bytes(out.to_le_bytes()));
     None
   });
   cpu!("i64f64", |args, hand_mem, _| {
-    let a = LittleEndian::read_i64(hand_mem.read(args[0], 8));
-    let out = a as f64;
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    let out = hand_mem.read_fixed(args[0]) as f64;
+    hand_mem.write_fixed(args[2], i64::from_le_bytes(out.to_le_bytes()));
     None
   });
   cpu!("f32f64", |args, hand_mem, _| {
-    let a = LittleEndian::read_f32(hand_mem.read(args[0], 4));
-    let out = a as f64;
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    let out = f32::from_le_bytes((hand_mem.read_fixed(args[0]) as i32).to_le_bytes());
+    hand_mem.write_fixed(args[2], i32::from_le_bytes(out.to_le_bytes()) as i64);
     None
   });
+  /*
   cpu!("strf64", |args, hand_mem, _| {
-    let pascal_string = hand_mem.read(args[0], 0);
-    let size = LittleEndian::read_u64(&pascal_string[0..8]) as usize;
-    let out_str = str::from_utf8(&pascal_string[8..size + 8]).unwrap();
+    let pascal_string = hand_mem.read_arr(args[0]);
+    let size = pascal_string[0] as usize;
+    let out_str = str::from_utf8(&pascal_string[1..(size / 8) + 1]).unwrap();
     let out: f64 = out_str.parse().unwrap();
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    hand_mem.write_fixed(args[2], &out.to_le_bytes());
     None
   });
   cpu!("boolf64", |args, hand_mem, _| {
@@ -1730,6 +1726,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     };
     Some(event)
   });
+  */
   o
 });
 

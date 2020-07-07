@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use byteorder::{ByteOrder, LittleEndian};
+
 use crate::vm::program::Program;
 
 /// Memory representation of a handler call
@@ -8,7 +10,7 @@ pub struct HandlerMemory {
   /// Global memory reference
   gmem: &'static Vec<u8>,
   /// Memory of the handler for fixed size data types
-  mem: Vec<u8>,
+  mem: Vec<i64>,
   /// Fractal memory storage for variable-length data types to an instance of the same struct
   fractal_mem: HashMap<i64, HandlerMemory>,
   /// Pointers to nested fractal HandlerMemory. Each is represented as a vector of up to 3 sequential addresses.
@@ -39,7 +41,7 @@ impl HandlerMemory {
       fractal_mem.insert(0, payload.clone());
     } else {
       // payload is a fixed length data type which could be in global memory
-      mem = curr_hand_mem.read(curr_addr, pls as u8).to_vec();
+      mem.push(curr_hand_mem.read_fixed(curr_addr));
     };
     return Some(HandlerMemory {
       mem,
@@ -53,19 +55,19 @@ impl HandlerMemory {
     let mut hand_mem = if payload_mem.is_none() {
       HandlerMemory {
         gmem: &Program::global().gmem,
-        mem: vec![],
+        mem: vec![0; (mem_req / 8) as usize],
         fractal_mem: HashMap::new(),
         registers_ish: HashMap::new(),
       }
     } else {
       payload_mem.unwrap()
     };
-    hand_mem.mem.resize(mem_req as usize, 0);
+    // hand_mem.mem.resize((mem_req / 8) as usize, 0);
     return hand_mem;
   }
 
   fn get_mut_arr(self: &mut HandlerMemory, addr: i64) -> &mut HandlerMemory {
-    let arr_opt = self.fractal_mem.get_mut(&addr);
+    let arr_opt = self.fractal_mem.get_mut(&(addr / 8));
     if arr_opt.is_none() {
       panic!("Array at address {} does not exist.", addr);
     };
@@ -73,7 +75,7 @@ impl HandlerMemory {
   }
 
   fn get_arr(self: &HandlerMemory, addr: i64) -> &HandlerMemory {
-    let arr_opt = self.fractal_mem.get(&addr);
+    let arr_opt = self.fractal_mem.get(&(addr / 8));
     if arr_opt.is_none() {
       panic!("Array at address {} does not exist.", addr);
     };
@@ -82,16 +84,16 @@ impl HandlerMemory {
 
   /// set registerish and return its address
   pub fn set_reg(self: &mut HandlerMemory, reg_addr: i64, arr_addr1: i64, arr_addr2: i64) {
-    let arr_addrs = vec![arr_addr1, arr_addr2];
-    self.registers_ish.insert(reg_addr, arr_addrs);
+    let arr_addrs = vec![arr_addr1 / 8, arr_addr2 / 8];
+    self.registers_ish.insert(reg_addr / 8, arr_addrs);
   }
 
   /// The address provided can be a directly nested fractal or a registerish address that points to
   /// a fractal. Either returns a reference to a HandlerMemory
   pub fn get_fractal(self: &HandlerMemory, addr: i64) -> &HandlerMemory {
-    let reg_opt = self.registers_ish.get(&addr);
+    let reg_opt = self.registers_ish.get(&(addr / 8));
     if reg_opt.is_none() {
-      let arr_opt = self.fractal_mem.get(&addr);
+      let arr_opt = self.fractal_mem.get(&(addr / 8));
       if arr_opt.is_some() {
         return arr_opt.unwrap();
       }
@@ -101,7 +103,7 @@ impl HandlerMemory {
     let mut arr = self.get_arr(reg[0]);
     for (i, addr) in reg.iter().enumerate() {
       if i == 0 { continue };
-      arr = arr.get_arr(*addr);
+      arr = arr.get_arr(addr / 8);
     }
     return arr;
   }
@@ -109,9 +111,9 @@ impl HandlerMemory {
   /// The address provided can be a directly nested fractal or a registerish address that points to
   /// a fractal. Either returns a reference to a HandlerMemory
   pub fn get_mut_fractal(self: &mut HandlerMemory, addr: i64) -> &mut HandlerMemory {
-    let reg_opt = self.registers_ish.get(&addr);
+    let reg_opt = self.registers_ish.get(&(addr / 8));
     if reg_opt.is_none() {
-      let arr_opt = self.fractal_mem.get_mut(&addr);
+      let arr_opt = self.fractal_mem.get_mut(&(addr / 8));
       if arr_opt.is_some() {
         return arr_opt.unwrap();
       }
@@ -127,52 +129,56 @@ impl HandlerMemory {
   }
 
   /// copy data from outer address to inner address in array or registerish
-  pub fn copy_to(
-    self: &mut HandlerMemory,
-    arr_addr: i64,
-    outer_addr:i64,
-    inner_addr: i64,
-    size: u8
-  ) {
-    let data_copy = self.read(outer_addr, size).to_vec();
-    let arr = self.get_mut_fractal(arr_addr);
-    arr.write(inner_addr, size, &data_copy);
+  pub fn copy_to_fixed(self: &mut HandlerMemory, arr_addr: i64, outer_addr: i64, inner_addr: i64) {
+    let data = self.read_fixed(outer_addr / 8);
+    let arr = self.get_mut_fractal(arr_addr / 8);
+    arr.write_fixed(inner_addr / 8, data);
+  }
+
+  pub fn copy_to_arr(self: &mut HandlerMemory, arr_addr: i64, outer_addr: i64, inner_addr: i64) {
+    let data_copy = self.read_arr(outer_addr / 8).to_vec();
+    let arr = self.get_mut_fractal(arr_addr / 8);
+    arr.write_arr(inner_addr / 8, data_copy.as_slice());
   }
 
   /// copy data from inner address in array to outer address. the array address can point to a
   /// registerish
   pub fn copy_from(self: &mut HandlerMemory, arr_addr:i64, outer_addr:i64, inner_addr: i64) {
-    let arr = self.get_fractal(arr_addr);
-    let (data, size) = arr.read_either(inner_addr);
+    let arr = self.get_fractal(arr_addr / 8);
+    let (data, size) = arr.read_either(inner_addr / 8);
     let data_copy = data.to_vec();
-    self.write(outer_addr, size, &data_copy);
+    if data_copy.len() > 1 {
+      self.write_arr(outer_addr / 8, &data_copy);
+    } else {
+      self.write_fixed(outer_addr / 8, data_copy[0]);
+    }
   }
 
   pub fn copy_arr(self: &mut HandlerMemory, in_addr: i64, out_addr: i64) {
     let arr = self.get_mut_arr(in_addr);
     let new_arr = arr.clone();
-    self.fractal_mem.insert(out_addr, new_arr);
+    self.fractal_mem.insert(out_addr / 8, new_arr);
   }
 
   pub fn len_as_arr(self: &HandlerMemory) -> usize {
     if self.mem.len() > 0 {
       // denormalizing for Array<any> implementation defined in push_arr
       // since the length of mem is used to track the length of fractal_mem
-      return self.mem.len() / 8;
+      return self.mem.len();
     }
     // array of types
     return self.fractal_mem.len();
   }
 
   pub fn new_arr(self: &mut HandlerMemory, addr: i64) {
-    let curr = self.read(addr, 0);
+    let curr = self.read_arr(addr / 8);
     if curr.len() > 0 {
       panic!("Tried to create an array at address {}, but one already exists.", addr);
     }
-    self.write(addr, 0, &[]);
+    self.write_arr(addr / 8, &[]);
   }
 
-  pub fn push_arr(self: &mut HandlerMemory, addr: i64, val: Vec<u8>, val_size: u8) {
+  pub fn push_arr(self: &mut HandlerMemory, addr: i64, val: i64) {
     // This implementation uses the `mem` vector as a way to keep track of the total length of the
     // array, as well. It's simple but wastes space when the inserted value is variable-length
     // (such as other strings or other arrays), however it greatly simplifies addressing and
@@ -183,102 +189,83 @@ impl HandlerMemory {
     // to the constant resizing.
     let arr = self.get_mut_arr(addr);
     let idx = arr.mem.len();
-    arr.mem.resize(idx + 8, 0);
-    arr.write(idx as i64, val_size, val.as_slice());
+    arr.mem.resize(idx + 1, 0);
+    arr.write_fixed(idx as i64, val);
   }
 
   /// removes the last value of the array in the address and returns it
-  pub fn pop_arr(self: &mut HandlerMemory, addr: i64) -> Vec<u8> {
+  pub fn pop_arr(self: &mut HandlerMemory, addr: i64) -> Vec<i64> {
     let arr = self.get_mut_arr(addr);
     let idx = arr.fractal_mem.len() - 1;
-    let last_adrr = idx as i64;
-    let last = arr.fractal_mem.remove(&last_adrr).unwrap();
+    let last_addr = idx as i64;
+    let last = arr.fractal_mem.remove(&last_addr).unwrap();
     return last.mem;
   }
 
   /// read address of string or fixed length data type and
   /// return a reference to the data and its size
   /// WARNING fails on reads to global memory, make sure it is not possible to pass this globals
-  pub fn read_either(self: &HandlerMemory, addr: i64) -> (&[u8], u8) {
+  pub fn read_either(self: &HandlerMemory, addr: i64) -> (Vec<i64>, u8) {
     if addr < 0 {
       panic!("Reads of undefined size do not work on global memory");
     }
     // test if the data read is itself a string/array
-    let var = self.read(addr, 0);
+    let var = self.read_arr(addr);
     return if var.len() > 0 {
-      (var, 0)
+      (var.to_vec(), 0)
     } else {
       // Nope, it's fixed data. We can safely read 8 bytes for all of the fixed types
-      (self.read(addr, 8), 8)
+      (vec![self.read_fixed(addr)], 8)
     };
   }
 
-  pub fn read(self: &HandlerMemory, addr: i64, size: u8) -> &[u8] {
+  pub fn read_fixed(self: &HandlerMemory, addr: i64) -> i64 {
     if addr < 0 {
       let a = (0 - addr - 1) as usize;
-      let result = match size {
-        0 => &self.gmem[a..],
-        1 => &self.gmem[a..a + 1],
-        2 => &self.gmem[a..a + 2],
-        4 => &self.gmem[a..a + 4],
-        8 => &self.gmem[a..a + 8],
-        _ => panic!("Impossible size selection on global memory!"),
-      };
+      let result = LittleEndian::read_i64(&self.gmem[a..a + 8]);
       return result;
     }
-    let a = addr as usize;
-    let result = match size {
-      0 => {
-        let arr = self.fractal_mem.get(&addr);
-        let res = if arr.is_none() { &[] } else { arr.unwrap().mem.as_slice() };
-        return res;
-      },
-      1 => &self.mem[a..a + 1],
-      2 => &self.mem[a..a + 2],
-      4 => &self.mem[a..a + 4],
-      8 => &self.mem[a..a + 8],
-      _ => panic!("Impossible size selection on local memory!"),
-    };
+    let a = (addr / 8) as usize;
+    let result = self.mem[a];
     return result;
   }
 
-  pub fn write(self: &mut HandlerMemory, addr: i64, size: u8, payload: &[u8]) {
+  pub fn read_arr(self: &HandlerMemory, addr: i64) -> Vec<i64> {
+    if addr < 0 {
+      let a = (0 - addr - 1) as usize;
+      let result = &self.gmem[a..];
+      let mut out: Vec<i64> = Vec::new();
+      for i in 0..(result.len() / 8) {
+        let num = LittleEndian::read_i64(&result[8*i..8*i+8]);
+        out.push(num);
+      }
+      return out;
+    }
+    let a = (addr / 8) as usize;
+    let arr = self.fractal_mem.get(&addr);
+    let res = if arr.is_none() { Vec::new() } else { arr.unwrap().mem.as_slice().to_vec() };
+    return res;
+  }
+
+  pub fn write_fixed(self: &mut HandlerMemory, addr: i64, payload: i64) {
     if addr < 0 {
       panic!("You can't write to global memory!");
     }
-    let a = addr as usize;
-    match size {
-      0 => {
-        let arr = HandlerMemory {
-          mem: payload.to_vec(),
-          gmem: self.gmem,
-          fractal_mem: HashMap::new(),
-          registers_ish: HashMap::new()
-        };
-        self.fractal_mem.insert(addr, arr);
-      },
-      1 => self.mem[a] = payload[0],
-      2 => {
-        self.mem[a] = payload[0];
-        self.mem[a + 1] = payload[1];
-      },
-      4 => {
-        self.mem[a] = payload[0];
-        self.mem[a + 1] = payload[1];
-        self.mem[a + 2] = payload[2];
-        self.mem[a + 3] = payload[3];
-      },
-      8 => {
-        self.mem[a] = payload[0];
-        self.mem[a + 1] = payload[1];
-        self.mem[a + 2] = payload[2];
-        self.mem[a + 3] = payload[3];
-        self.mem[a + 4] = payload[4];
-        self.mem[a + 5] = payload[5];
-        self.mem[a + 6] = payload[6];
-        self.mem[a + 7] = payload[7];
-      },
-      _ => panic!("Unexpected write of strange byte size: {}!", size),
+    let a = (addr / 8) as usize;
+    self.mem[a] = payload;
+  }
+
+  pub fn write_arr(self: &mut HandlerMemory, addr: i64, payload: &[i64]) {
+    if addr < 0 {
+      panic!("You can't write to global memory!");
     }
+    let a = (addr / 8) as usize;
+    let arr = HandlerMemory {
+      mem: payload.to_vec(),
+      gmem: self.gmem,
+      fractal_mem: HashMap::new(),
+      registers_ish: HashMap::new()
+    };
+    self.fractal_mem.insert(addr, arr);
   }
 }
