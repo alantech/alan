@@ -1585,9 +1585,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         }
         return out;
       }).collect();
-      hand_mem.new_arr(args[2]);
+      hand_mem.new_fractal(args[2]);
       for out in outs {
-        hand_mem.push_arr_arr(args[2], out);
+        hand_mem.push_fractal_fractal_mem(args[2], out);
       }
     }
     None
@@ -1720,19 +1720,19 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     // args = [arr_addr, inner_addr, outer_addr]
     // copy data from outer_addr to inner_addr in arr_addr
     let inner = hand_mem.read_fixed(args[2]);
-    hand_mem.copy_to_arr(args[0], args[1], inner);
+    hand_mem.copy_to_fractal_mem(args[0], args[1], inner);
     None
   });
   cpu!("lenarr", |args, hand_mem, _| {
     let arr = hand_mem.get_fractal(args[0]);
-    let len = arr.len_as_arr() as i64;
+    let len = arr.len() as i64;
     hand_mem.write_fixed(args[2], len);
     None
   });
   cpu!("indarrf", |args, hand_mem, _| {
     let val = hand_mem.read_fixed(args[1]);
     let mem = hand_mem.get_fractal(args[0]);
-    let len = mem.len_as_arr() as i64;
+    let len = mem.len() as i64;
     let mut idx = -1i64;
     for i in 0..len {
       let check = mem.read_fixed(i);
@@ -1747,7 +1747,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("indarrv", |args, hand_mem, _| {
     let val = hand_mem.read_fractal_mem(args[1]);
     let mem = hand_mem.get_fractal(args[0]);
-    let len = mem.len_as_arr() as i64;
+    let len = mem.len() as i64;
     let mut idx = -1i64;
     for i in 0..len {
       let check = mem.read_fractal_mem(i);
@@ -1777,7 +1777,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let sep_pascal_string_u8 = slice::from_raw_parts(sep_pascal_string[1..].as_ptr().cast::<u8>(), sep_str_len*8);
       let sep_str = str::from_utf8(&sep_pascal_string_u8[0..sep_str_len]).unwrap();
       let mem = hand_mem.get_fractal(args[0]);
-      let len = mem.len_as_arr() as i64;
+      let len = mem.len() as i64;
       let mut strs: Vec<String> = Vec::new();
       for i in 0..len {
         let v_pascal_string = mem.read_fractal_mem(i);
@@ -1814,15 +1814,15 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let val_size = hand_mem.read_fixed(args[2]);
     if val_size == 0 {
       let val = hand_mem.read_fractal(args[1]);
-      hand_mem.push_arr_fractal(args[0], val);
+      hand_mem.push_fractal_fractal(args[0], val);
     } else {
       let val = hand_mem.read_fixed(args[1]);
-      hand_mem.push_arr(args[0], val);
+      hand_mem.push_fractal_fixed(args[0], val);
     }
     None
   });
   cpu!("poparr", |args, hand_mem, _| {
-    let last = hand_mem.pop_arr(args[0]);
+    let last = hand_mem.pop_fractal(args[0]);
     if last.is_ok() {
       hand_mem.write_fixed(args[1], last.ok().unwrap());
     } else {
@@ -1831,7 +1831,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("newarr", |args, hand_mem, _| {
-    hand_mem.new_arr(args[2]);
+    hand_mem.new_fractal(args[2]);
     None
   });
   // Map opcodes TODO after maps are implemented
@@ -1973,7 +1973,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   cpu!("copyarr", |args, hand_mem, _| {
     // args = [in_addr, unused, out_addr]
-    hand_mem.copy_arr(args[0], args[2]);
+    hand_mem.copy_fractal(args[0], args[2]);
     None
   });
 

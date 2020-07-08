@@ -134,7 +134,7 @@ impl HandlerMemory {
     arr.write_fixed(inner_addr, data);
   }
 
-  pub fn copy_to_arr(self: &mut HandlerMemory, arr_addr: i64, outer_addr: i64, inner_addr: i64) {
+  pub fn copy_to_fractal_mem(self: &mut HandlerMemory, arr_addr: i64, outer_addr: i64, inner_addr: i64) {
     let data_copy = self.read_fractal_mem(outer_addr).to_vec();
     let arr = self.get_mut_fractal(arr_addr);
     arr.write_fractal_mem(inner_addr, data_copy.as_slice());
@@ -152,24 +152,24 @@ impl HandlerMemory {
     }
   }
 
-  pub fn copy_arr(self: &mut HandlerMemory, in_addr: i64, out_addr: i64) {
+  pub fn copy_fractal(self: &mut HandlerMemory, in_addr: i64, out_addr: i64) {
     let arr = &mut self.fractal_mem[self.either_mem[in_addr as usize] as usize];
     let new_arr = arr.clone();
     self.fractal_mem[self.either_mem[out_addr as usize] as usize] = new_arr;
   }
 
-  pub fn len_as_arr(self: &HandlerMemory) -> usize {
+  pub fn len(self: &HandlerMemory) -> usize {
     return self.mem.len();
   }
 
-  pub fn new_arr(self: &mut HandlerMemory, addr: i64) {
+  pub fn new_fractal(self: &mut HandlerMemory, addr: i64) {
     if self.either_mem[addr as usize] > 0 {
       panic!("Tried to create an array at address {}, but one already exists.", addr);
     }
     self.write_fractal_mem(addr, &[]);
   }
 
-  pub fn push_arr(self: &mut HandlerMemory, addr: i64, val: i64) {
+  pub fn push_fractal_fixed(self: &mut HandlerMemory, addr: i64, val: i64) {
     // This implementation uses the `mem` vector as a way to keep track of the total length of the
     // array, as well. It's simple but wastes space when the inserted value is variable-length
     // (such as other strings or other arrays), however it greatly simplifies addressing and
@@ -185,7 +185,7 @@ impl HandlerMemory {
     arr.write_fixed(idx as i64, val);
   }
 
-  pub fn push_arr_arr(self: &mut HandlerMemory, addr: i64, val: Vec<i64>) {
+  pub fn push_fractal_fractal_mem(self: &mut HandlerMemory, addr: i64, val: Vec<i64>) {
     let arr = &mut self.fractal_mem[self.either_mem[addr as usize] as usize];
     let idx = arr.mem.len() as i64;
     arr.mem.push(0);
@@ -193,7 +193,7 @@ impl HandlerMemory {
     arr.write_fractal_mem(idx, &val);
   }
 
-  pub fn push_arr_fractal(self: &mut HandlerMemory, addr: i64, val: HandlerMemory) {
+  pub fn push_fractal_fractal(self: &mut HandlerMemory, addr: i64, val: HandlerMemory) {
     let arr = &mut self.fractal_mem[self.either_mem[addr as usize] as usize];
     let idx = arr.mem.len() as i64;
     arr.mem.push(0);
@@ -202,7 +202,7 @@ impl HandlerMemory {
   }
 
   /// removes the last value of the array in the address and returns it
-  pub fn pop_arr(self: &mut HandlerMemory, addr: i64) -> Result<i64, HandlerMemory> {
+  pub fn pop_fractal(self: &mut HandlerMemory, addr: i64) -> Result<i64, HandlerMemory> {
     let arr = &mut self.fractal_mem[self.either_mem[addr as usize] as usize];
     let decision = arr.either_mem.pop().unwrap();
     if decision < 0 {
