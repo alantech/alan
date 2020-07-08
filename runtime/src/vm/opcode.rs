@@ -116,636 +116,747 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   // Type conversion opcodes
   cpu!("i8f64", |args, hand_mem, _| {
     let out = hand_mem.read_fixed(args[0]) as f64;
-    hand_mem.write_fixed(args[2], i64::from_le_bytes(out.to_le_bytes()));
+    hand_mem.write_fixed(args[2], i64::from_ne_bytes(out.to_ne_bytes()));
     None
   });
   cpu!("i16f64", |args, hand_mem, _| {
     let out = hand_mem.read_fixed(args[0]) as f64;
-    hand_mem.write_fixed(args[2], i64::from_le_bytes(out.to_le_bytes()));
+    hand_mem.write_fixed(args[2], i64::from_ne_bytes(out.to_ne_bytes()));
     None
   });
   cpu!("i32f64", |args, hand_mem, _| {
     let out = hand_mem.read_fixed(args[0]) as f64;
-    hand_mem.write_fixed(args[2], i64::from_le_bytes(out.to_le_bytes()));
+    hand_mem.write_fixed(args[2], i64::from_ne_bytes(out.to_ne_bytes()));
     None
   });
   cpu!("i64f64", |args, hand_mem, _| {
     let out = hand_mem.read_fixed(args[0]) as f64;
-    hand_mem.write_fixed(args[2], i64::from_le_bytes(out.to_le_bytes()));
+    hand_mem.write_fixed(args[2], i64::from_ne_bytes(out.to_ne_bytes()));
     None
   });
   cpu!("f32f64", |args, hand_mem, _| {
-    let out = f32::from_le_bytes((hand_mem.read_fixed(args[0]) as i32).to_le_bytes());
-    hand_mem.write_fixed(args[2], i32::from_le_bytes(out.to_le_bytes()) as i64);
+    let out = f32::from_ne_bytes((hand_mem.read_fixed(args[0]) as i32).to_ne_bytes());
+    hand_mem.write_fixed(args[2], i32::from_ne_bytes(out.to_ne_bytes()) as i64);
     None
   });
-  /*
   cpu!("strf64", |args, hand_mem, _| {
-    let pascal_string = hand_mem.read_arr(args[0]);
-    let size = pascal_string[0] as usize;
-    let out_str = str::from_utf8(&pascal_string[1..(size / 8) + 1]).unwrap();
-    let out: f64 = out_str.parse().unwrap();
-    hand_mem.write_fixed(args[2], &out.to_le_bytes());
+    unsafe {
+      let pascal_string = hand_mem.read_arr(args[0]);
+      let size = pascal_string[0] as usize;
+      let out_str = str::from_utf8(pascal_string[1..(size / 8) + 1].align_to::<u8>().1).unwrap();
+      let out: f64 = out_str.parse().unwrap();
+      hand_mem.write_fixed(args[2], i64::from_ne_bytes(out.to_ne_bytes()));
+    }
     None
   });
   cpu!("boolf64", |args, hand_mem, _| {
-    let a = hand_mem.read(args[0], 1)[0];
-    let out = a as f64; // This works because bools are 0 or 1 internally
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    let out = hand_mem.read_fixed(args[0]) as f64;
+    hand_mem.write_fixed(args[2], i64::from_ne_bytes(out.to_ne_bytes()));
     None
   });
 
   cpu!("i8f32", |args, hand_mem, _| {
-    let a = i8::from_le_bytes(hand_mem.read(args[0], 1).try_into().unwrap());
-    let out = a as f32;
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let num = hand_mem.read_fixed(args[0]) as f32;
+    let out = i32::from_ne_bytes(num.to_ne_bytes()) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("i16f32", |args, hand_mem, _| {
-    let a = LittleEndian::read_i16(hand_mem.read(args[0], 2));
-    let out = a as f32;
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let num = hand_mem.read_fixed(args[0]) as f32;
+    let out = i32::from_ne_bytes(num.to_ne_bytes()) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("i32f32", |args, hand_mem, _| {
-    let a = LittleEndian::read_i32(hand_mem.read(args[0], 4));
-    let out = a as f32;
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let num = hand_mem.read_fixed(args[0]) as f32;
+    let out = i32::from_ne_bytes(num.to_ne_bytes()) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("i64f32", |args, hand_mem, _| {
-    let a = LittleEndian::read_i64(hand_mem.read(args[0], 8));
-    let out = a as f32;
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let num = hand_mem.read_fixed(args[0]) as f32;
+    let out = i32::from_ne_bytes(num.to_ne_bytes()) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("f64f32", |args, hand_mem, _| {
-    let a = LittleEndian::read_f64(hand_mem.read(args[0], 8));
-    let out = a as f32;
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let num = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes()) as f32;
+    let out = i32::from_ne_bytes(num.to_ne_bytes()) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("strf32", |args, hand_mem, _| {
-    let pascal_string = hand_mem.read(args[0], 0);
-    let size = LittleEndian::read_u64(&pascal_string[0..8]) as usize;
-    let out_str = str::from_utf8(&pascal_string[8..size + 8]).unwrap();
-    let out: f32 = out_str.parse().unwrap();
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    unsafe {
+      let pascal_string = hand_mem.read_arr(args[0]);
+      let size = pascal_string[0] as usize;
+      let out_str = str::from_utf8(pascal_string[1..(size / 8) + 1].align_to::<u8>().1).unwrap();
+      let num: f32 = out_str.parse().unwrap();
+      let out = i32::from_ne_bytes(num.to_ne_bytes()) as i64;
+      hand_mem.write_fixed(args[2], out);
+    }
     None
   });
   cpu!("boolf32", |args, hand_mem, _| {
-    let a = hand_mem.read(args[0], 1)[0];
-    let out = a as f32; // This works because bools are 0 or 1 internally
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let num = hand_mem.read_fixed(args[0]) as f32;
+    let out = i32::from_ne_bytes(num.to_ne_bytes()) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
 
   cpu!("i8i64", |args, hand_mem, _| {
-    let a = i8::from_le_bytes(hand_mem.read(args[0], 1).try_into().unwrap());
-    let out = a as i64;
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    let out = hand_mem.read_fixed(args[0]);
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("i16i64", |args, hand_mem, _| {
-    let a = LittleEndian::read_i16(hand_mem.read(args[0], 2));
-    let out = a as i64;
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    let out = hand_mem.read_fixed(args[0]);
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("i32i64", |args, hand_mem, _| {
-    let a = LittleEndian::read_i32(hand_mem.read(args[0], 4));
-    let out = a as i64;
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    let out = hand_mem.read_fixed(args[0]);
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("f64i64", |args, hand_mem, _| {
-    let a = LittleEndian::read_f64(hand_mem.read(args[0], 8));
-    let out = a as i64;
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    let out = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes()) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("f32i64", |args, hand_mem, _| {
-    let a = LittleEndian::read_f32(hand_mem.read(args[0], 4));
-    let out = a as i64;
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    let out = f32::from_ne_bytes((hand_mem.read_fixed(args[0]) as i32).to_ne_bytes()) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("stri64", |args, hand_mem, _| {
-    let pascal_string = hand_mem.read(args[0], 0);
-    let size = LittleEndian::read_u64(&pascal_string[0..8]) as usize;
-    let out_str = str::from_utf8(&pascal_string[8..size + 8]).unwrap();
-    let out: i64 = out_str.parse().unwrap();
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    unsafe {
+      let pascal_string = hand_mem.read_arr(args[0]);
+      let size = pascal_string[0] as usize;
+      let out_str = str::from_utf8(pascal_string[1..(size / 8) + 1].align_to::<u8>().1).unwrap();
+      let out: i64 = out_str.parse().unwrap();
+      hand_mem.write_fixed(args[2], out);
+    }
     None
   });
   cpu!("booli64", |args, hand_mem, _| {
-    let a = hand_mem.read(args[0], 1)[0];
-    let out = a as i64; // This works because bools are 0 or 1 internally
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    let out = hand_mem.read_fixed(args[0]);
+    hand_mem.write_fixed(args[2], out);
     None
   });
 
   cpu!("i8i32", |args, hand_mem, _| {
-    let a = i8::from_le_bytes(hand_mem.read(args[0], 1).try_into().unwrap());
-    let out = a as i32;
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let out = hand_mem.read_fixed(args[0]);
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("i16i32", |args, hand_mem, _| {
-    let a = LittleEndian::read_i16(hand_mem.read(args[0], 2));
-    let out = a as i32;
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let out = hand_mem.read_fixed(args[0]);
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("i64i32", |args, hand_mem, _| {
-    let a = LittleEndian::read_i64(hand_mem.read(args[0], 8));
-    let out = a as i32;
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let out = (hand_mem.read_fixed(args[0]) as i32) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("f64i32", |args, hand_mem, _| {
-    let a = LittleEndian::read_f64(hand_mem.read(args[0], 8));
-    let out = a as i32;
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let out = (f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes()) as i32) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("f32i32", |args, hand_mem, _| {
-    let a = LittleEndian::read_f32(hand_mem.read(args[0], 4));
-    let out = a as i32;
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let out = (f32::from_ne_bytes((hand_mem.read_fixed(args[0]) as i32).to_ne_bytes()) as i32) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("stri32", |args, hand_mem, _| {
-    let pascal_string = hand_mem.read(args[0], 0);
-    let size = LittleEndian::read_u64(&pascal_string[0..8]) as usize;
-    let out_str = str::from_utf8(&pascal_string[8..size + 8]).unwrap();
-    let out: i32 = out_str.parse().unwrap();
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    unsafe {
+      let pascal_string = hand_mem.read_arr(args[0]);
+      let size = pascal_string[0] as usize;
+      let out_str = str::from_utf8(pascal_string[1..(size / 8) + 1].align_to::<u8>().1).unwrap();
+      let num: i32 = out_str.parse().unwrap();
+      let out = num as i64;
+      hand_mem.write_fixed(args[2], out);
+    }
     None
   });
   cpu!("booli32", |args, hand_mem, _| {
-    let a = hand_mem.read(args[0], 1)[0];
-    let out = a as i32; // This works because bools are 0 or 1 internally
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let out = hand_mem.read_fixed(args[0]);
+    hand_mem.write_fixed(args[2], out);
     None
   });
 
   cpu!("i8i16", |args, hand_mem, _| {
-    let a = i8::from_le_bytes(hand_mem.read(args[0], 1).try_into().unwrap());
-    let out = a as i16;
-    hand_mem.write(args[2], 2, &out.to_le_bytes());
+    let out = hand_mem.read_fixed(args[0]);
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("i32i16", |args, hand_mem, _| {
-    let a = LittleEndian::read_i32(hand_mem.read(args[0], 4));
-    let out = a as i16;
-    hand_mem.write(args[2], 2, &out.to_le_bytes());
+    let out = (hand_mem.read_fixed(args[0]) as i16) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("i64i16", |args, hand_mem, _| {
-    let a = LittleEndian::read_i64(hand_mem.read(args[0], 8));
-    let out = a as i16;
-    hand_mem.write(args[2], 2, &out.to_le_bytes());
+    let out = (hand_mem.read_fixed(args[0]) as i16) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("f64i16", |args, hand_mem, _| {
-    let a = LittleEndian::read_f64(hand_mem.read(args[0], 8));
-    let out = a as i16;
-    hand_mem.write(args[2], 2, &out.to_le_bytes());
+    let out = (f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes()) as i16) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("f32i16", |args, hand_mem, _| {
-    let a = LittleEndian::read_f32(hand_mem.read(args[0], 4));
-    let out = a as i16;
-    hand_mem.write(args[2], 2, &out.to_le_bytes());
+    let out = (f32::from_ne_bytes((hand_mem.read_fixed(args[0]) as i32).to_ne_bytes()) as i16) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("stri16", |args, hand_mem, _| {
-    let pascal_string = hand_mem.read(args[0], 0);
-    let size = LittleEndian::read_u64(&pascal_string[0..8]) as usize;
-    let out_str = str::from_utf8(&pascal_string[8..size + 8]).unwrap();
-    let out: i16 = out_str.parse().unwrap();
-    hand_mem.write(args[2], 2, &out.to_le_bytes());
+    unsafe {
+      let pascal_string = hand_mem.read_arr(args[0]);
+      let size = pascal_string[0] as usize;
+      let out_str = str::from_utf8(pascal_string[1..(size / 8) + 1].align_to::<u8>().1).unwrap();
+      let num: i16 = out_str.parse().unwrap();
+      let out = num as i64;
+      hand_mem.write_fixed(args[2], out);
+    }
     None
   });
   cpu!("booli16", |args, hand_mem, _| {
-    let a = hand_mem.read(args[0], 1)[0];
-    let out = a as i16; // This works because bools are 0 or 1 internally
-    hand_mem.write(args[2], 2, &out.to_le_bytes());
+    let out = hand_mem.read_fixed(args[0]);
+    hand_mem.write_fixed(args[2], out);
     None
   });
 
   cpu!("i16i8", |args, hand_mem, _| {
-    let a = LittleEndian::read_i16(hand_mem.read(args[0], 2));
-    let out = a as i8;
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let out = (hand_mem.read_fixed(args[0]) as i8) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("i32i8", |args, hand_mem, _| {
-    let a = LittleEndian::read_i32(hand_mem.read(args[0], 4));
-    let out = a as i8;
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let out = (hand_mem.read_fixed(args[0]) as i8) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("i64i8", |args, hand_mem, _| {
-    let a = LittleEndian::read_i64(hand_mem.read(args[0], 8));
-    let out = a as i8;
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let out = (hand_mem.read_fixed(args[0]) as i8) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("f64i8", |args, hand_mem, _| {
-    let a = LittleEndian::read_f64(hand_mem.read(args[0], 8));
-    let out = a as i8;
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let out = (f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes()) as i8) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("f32i8", |args, hand_mem, _| {
-    let a = LittleEndian::read_f32(hand_mem.read(args[0], 4));
-    let out = a as i8;
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let out = (f32::from_ne_bytes((hand_mem.read_fixed(args[0]) as i32).to_ne_bytes()) as i8) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("stri8", |args, hand_mem, _| {
-    let pascal_string = hand_mem.read(args[0], 0);
-    let size = LittleEndian::read_u64(&pascal_string[0..8]) as usize;
-    let out_str = str::from_utf8(&pascal_string[8..size + 8]).unwrap();
-    let out: i8 = out_str.parse().unwrap();
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    unsafe {
+      let pascal_string = hand_mem.read_arr(args[0]);
+      let size = pascal_string[0] as usize;
+      let out_str = str::from_utf8(pascal_string[1..(size / 8) + 1].align_to::<u8>().1).unwrap();
+      let num: i8 = out_str.parse().unwrap();
+      let out = num as i64;
+      hand_mem.write_fixed(args[2], out);
+    }
     None
   });
   cpu!("booli8", |args, hand_mem, _| {
-    let a = hand_mem.read(args[0], 1)[0];
-    let out = a as i8; // This works because bools are 0 or 1 internally
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let out = (hand_mem.read_fixed(args[0]) as i8) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
 
   cpu!("i8bool", |args, hand_mem, _| {
-    let a = i8::from_le_bytes(hand_mem.read(args[0], 1).try_into().unwrap());
-    let out = if a != 0 { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i8;
+    let out = if a != 0 { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("i16bool", |args, hand_mem, _| {
-    let a = LittleEndian::read_i16(hand_mem.read(args[0], 2));
-    let out = if a != 0 { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i16;
+    let out = if a != 0 { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("i32bool", |args, hand_mem, _| {
-    let a = LittleEndian::read_i32(hand_mem.read(args[0], 4));
-    let out = if a != 0 { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i32;
+    let out = if a != 0 { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("i64bool", |args, hand_mem, _| {
-    let a = LittleEndian::read_i64(hand_mem.read(args[0], 8));
-    let out = if a != 0 { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]);
+    let out = if a != 0 { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("f64bool", |args, hand_mem, _| {
-    let a = LittleEndian::read_f64(hand_mem.read(args[0], 8));
-    let out = if a != 0.0 { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes());
+    let out = if a != 0.0 { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("f32bool", |args, hand_mem, _| {
-    let a = LittleEndian::read_f32(hand_mem.read(args[0], 4));
-    let out = if a != 0.0 { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = f32::from_ne_bytes((hand_mem.read_fixed(args[0]) as i32).to_ne_bytes());
+    let out = if a != 0.0 { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("strbool", |args, hand_mem, _| {
-    let pascal_string = hand_mem.read(args[0], 0);
-    let size = LittleEndian::read_u64(&pascal_string[0..8]) as usize;
-    let a_str = str::from_utf8(&pascal_string[8..size + 8]).unwrap();
-    let out = if a_str == "true" { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    unsafe {
+      let pascal_string = hand_mem.read_arr(args[0]);
+      let size = pascal_string[0] as usize;
+      let out_str = str::from_utf8(pascal_string[1..(size / 8) + 1].align_to::<u8>().1).unwrap();
+      let out = if out_str == "true" { 1i64 } else { 0i64 };
+      hand_mem.write_fixed(args[2], out);
+    }
     None
   });
 
   cpu!("i8str", |args, hand_mem, _| {
-    let a = i8::from_le_bytes(hand_mem.read(args[0], 1).try_into().unwrap());
+    let a = hand_mem.read_fixed(args[0]) as i8;
     let a_str = a.to_string();
-    let mut out = (a_str.len() as u64).to_le_bytes().to_vec();
-    out.append(&mut a_str.as_bytes().to_vec());
-    hand_mem.write(args[2], 0, &out);
+    let mut out = vec![a_str.len() as i64];
+    let mut a_str_bytes = a_str.as_bytes().to_vec();
+    loop {
+      if a_str_bytes.len() % 8 != 0 {
+        a_str_bytes.push(0);
+      } else {
+        break
+      }
+    }
+    let mut i = 0;
+    loop {
+      if i < a_str_bytes.len() {
+        let str_slice = &a_str_bytes[i..i+8];
+        out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
+        i = i + 8;
+      } else {
+        break
+      }
+    }
+    hand_mem.write_arr(args[2], &out);
     None
   });
   cpu!("i16str", |args, hand_mem, _| {
-    let a = LittleEndian::read_i16(hand_mem.read(args[0], 2));
+    let a = hand_mem.read_fixed(args[0]) as i16;
     let a_str = a.to_string();
-    let mut out = (a_str.len() as u64).to_le_bytes().to_vec();
-    out.append(&mut a_str.as_bytes().to_vec());
-    hand_mem.write(args[2], 0, &out);
+    let mut out = vec![a_str.len() as i64];
+    let mut a_str_bytes = a_str.as_bytes().to_vec();
+    loop {
+      if a_str_bytes.len() % 8 != 0 {
+        a_str_bytes.push(0);
+      } else {
+        break
+      }
+    }
+    let mut i = 0;
+    loop {
+      if i < a_str_bytes.len() {
+        let str_slice = &a_str_bytes[i..i+8];
+        out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
+        i = i + 8;
+      } else {
+        break
+      }
+    }
+    hand_mem.write_arr(args[2], &out);
     None
   });
   cpu!("i32str", |args, hand_mem, _| {
-    let a = LittleEndian::read_i32(hand_mem.read(args[0], 4));
+    let a = hand_mem.read_fixed(args[0]) as i32;
     let a_str = a.to_string();
-    let mut out = (a_str.len() as u64).to_le_bytes().to_vec();
-    out.append(&mut a_str.as_bytes().to_vec());
-    hand_mem.write(args[2], 0, &out);
+    let mut out = vec![a_str.len() as i64];
+    let mut a_str_bytes = a_str.as_bytes().to_vec();
+    loop {
+      if a_str_bytes.len() % 8 != 0 {
+        a_str_bytes.push(0);
+      } else {
+        break
+      }
+    }
+    let mut i = 0;
+    loop {
+      if i < a_str_bytes.len() {
+        let str_slice = &a_str_bytes[i..i+8];
+        out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
+        i = i + 8;
+      } else {
+        break
+      }
+    }
+    hand_mem.write_arr(args[2], &out);
     None
   });
   cpu!("i64str", |args, hand_mem, _| {
-    let a = LittleEndian::read_i64(hand_mem.read(args[0], 8));
+    let a = hand_mem.read_fixed(args[0]);
     let a_str = a.to_string();
-    let mut out = (a_str.len() as u64).to_le_bytes().to_vec();
-    out.append(&mut a_str.as_bytes().to_vec());
-    hand_mem.write(args[2], 0, &out);
+    let mut out = vec![a_str.len() as i64];
+    let mut a_str_bytes = a_str.as_bytes().to_vec();
+    loop {
+      if a_str_bytes.len() % 8 != 0 {
+        a_str_bytes.push(0);
+      } else {
+        break
+      }
+    }
+    let mut i = 0;
+    loop {
+      if i < a_str_bytes.len() {
+        let str_slice = &a_str_bytes[i..i+8];
+        out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
+        i = i + 8;
+      } else {
+        break
+      }
+    }
+    hand_mem.write_arr(args[2], &out);
     None
   });
   cpu!("f64str", |args, hand_mem, _| {
-    let a = LittleEndian::read_f64(hand_mem.read(args[0], 8));
+    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes());
     let a_str = a.to_string();
-    let mut out = (a_str.len() as u64).to_le_bytes().to_vec();
-    out.append(&mut a_str.as_bytes().to_vec());
-    hand_mem.write(args[2], 0, &out);
+    let mut out = vec![a_str.len() as i64];
+    let mut a_str_bytes = a_str.as_bytes().to_vec();
+    loop {
+      if a_str_bytes.len() % 8 != 0 {
+        a_str_bytes.push(0);
+      } else {
+        break
+      }
+    }
+    let mut i = 0;
+    loop {
+      if i < a_str_bytes.len() {
+        let str_slice = &a_str_bytes[i..i+8];
+        out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
+        i = i + 8;
+      } else {
+        break
+      }
+    }
+    hand_mem.write_arr(args[2], &out);
     None
   });
   cpu!("f32str", |args, hand_mem, _| {
-    let a = LittleEndian::read_f32(hand_mem.read(args[0], 4));
+    let a = f32::from_ne_bytes((hand_mem.read_fixed(args[0]) as i32).to_ne_bytes());
     let a_str = a.to_string();
-    let mut out = (a_str.len() as u64).to_le_bytes().to_vec();
-    out.append(&mut a_str.as_bytes().to_vec());
-    hand_mem.write(args[2], 0, &out);
+    let mut out = vec![a_str.len() as i64];
+    let mut a_str_bytes = a_str.as_bytes().to_vec();
+    loop {
+      if a_str_bytes.len() % 8 != 0 {
+        a_str_bytes.push(0);
+      } else {
+        break
+      }
+    }
+    let mut i = 0;
+    loop {
+      if i < a_str_bytes.len() {
+        let str_slice = &a_str_bytes[i..i+8];
+        out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
+        i = i + 8;
+      } else {
+        break
+      }
+    }
+    hand_mem.write_arr(args[2], &out);
     None
   });
   cpu!("boolstr", |args, hand_mem, _| {
-    let a = hand_mem.read(args[0], 1)[0];
+    let a = hand_mem.read_fixed(args[0]);
     let a_str = if a == 1 { "true" } else { "false" };
-    let mut out = (a_str.len() as u64).to_le_bytes().to_vec();
-    out.append(&mut a_str.as_bytes().to_vec());
-    hand_mem.write(args[2], 0, &out);
+    let mut out = vec![a_str.len() as i64];
+    let mut a_str_bytes = a_str.as_bytes().to_vec();
+    loop {
+      if a_str_bytes.len() % 8 != 0 {
+        a_str_bytes.push(0);
+      } else {
+        break
+      }
+    }
+    let mut i = 0;
+    loop {
+      if i < a_str_bytes.len() {
+        let str_slice = &a_str_bytes[i..i+8];
+        out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
+        i = i + 8;
+      } else {
+        break
+      }
+    }
+    hand_mem.write_arr(args[2], &out);
     None
   });
 
   // Arithmetic opcodes
   cpu!("addi8", |args, hand_mem, _| {
-    let a = i8::from_le_bytes(hand_mem.read(args[0], 1).try_into().unwrap());
-    let b = i8::from_le_bytes(hand_mem.read(args[1], 1).try_into().unwrap());
-    let out = a + b;
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i8;
+    let b = hand_mem.read_fixed(args[1]) as i8;
+    let out = (a + b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("addi16", |args, hand_mem, _| {
-    let a = LittleEndian::read_i16(hand_mem.read(args[0], 2));
-    let b = LittleEndian::read_i16(hand_mem.read(args[1], 2));
-    let out = a + b;
-    hand_mem.write(args[2], 2, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i16;
+    let b = hand_mem.read_fixed(args[1]) as i16;
+    let out = (a + b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("addi32", |args, hand_mem, _| {
-    let a = LittleEndian::read_i32(hand_mem.read(args[0], 4));
-    let b = LittleEndian::read_i32(hand_mem.read(args[1], 4));
-    let out = a + b;
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i32;
+    let b = hand_mem.read_fixed(args[1]) as i32;
+    let out = (a + b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("addi64", |args, hand_mem, _| {
-    let a = LittleEndian::read_i64(hand_mem.read(args[0], 8));
-    let b = LittleEndian::read_i64(hand_mem.read(args[1], 8));
+    let a = hand_mem.read_fixed(args[0]);
+    let b = hand_mem.read_fixed(args[1]);
     let out = a + b;
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("addf32", |args, hand_mem, _| {
-    let a = LittleEndian::read_f32(hand_mem.read(args[0], 4));
-    let b = LittleEndian::read_f32(hand_mem.read(args[1], 4));
-    let out = a + b;
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let a = f32::from_ne_bytes((hand_mem.read_fixed(args[0]) as i32).to_ne_bytes());
+    let b = f32::from_ne_bytes((hand_mem.read_fixed(args[1]) as i32).to_ne_bytes());
+    let out = i32::from_ne_bytes((a + b).to_ne_bytes()) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("addf64", |args, hand_mem, _| {
-    let a = LittleEndian::read_f64(hand_mem.read(args[0], 8));
-    let b = LittleEndian::read_f64(hand_mem.read(args[1], 8));
-    let out = a + b;
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes());
+    let b = f64::from_ne_bytes(hand_mem.read_fixed(args[1]).to_ne_bytes());
+    let out = i64::from_ne_bytes((a + b).to_ne_bytes());
+    hand_mem.write_fixed(args[2], out);
     None
   });
 
   cpu!("subi8", |args, hand_mem, _| {
-    let a = i8::from_le_bytes(hand_mem.read(args[0], 1).try_into().unwrap());
-    let b = i8::from_le_bytes(hand_mem.read(args[1], 1).try_into().unwrap());
-    let out = a - b;
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i8;
+    let b = hand_mem.read_fixed(args[1]) as i8;
+    let out = (a - b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("subi16", |args, hand_mem, _| {
-    let a = LittleEndian::read_i16(hand_mem.read(args[0], 2));
-    let b = LittleEndian::read_i16(hand_mem.read(args[1], 2));
-    let out = a - b;
-    hand_mem.write(args[2], 2, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i16;
+    let b = hand_mem.read_fixed(args[1]) as i16;
+    let out = (a - b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("subi32", |args, hand_mem, _| {
-    let a = LittleEndian::read_i32(hand_mem.read(args[0], 4));
-    let b = LittleEndian::read_i32(hand_mem.read(args[1], 4));
-    let out = a - b;
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i32;
+    let b = hand_mem.read_fixed(args[1]) as i32;
+    let out = (a - b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("subi64", |args, hand_mem, _| {
-    let a = LittleEndian::read_i64(hand_mem.read(args[0], 8));
-    let b = LittleEndian::read_i64(hand_mem.read(args[1], 8));
+    let a = hand_mem.read_fixed(args[0]);
+    let b = hand_mem.read_fixed(args[1]);
     let out = a - b;
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("subf32", |args, hand_mem, _| {
-    let a = LittleEndian::read_f32(hand_mem.read(args[0], 4));
-    let b = LittleEndian::read_f32(hand_mem.read(args[1], 4));
-    let out = a - b;
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let a = f32::from_ne_bytes((hand_mem.read_fixed(args[0]) as i32).to_ne_bytes());
+    let b = f32::from_ne_bytes((hand_mem.read_fixed(args[1]) as i32).to_ne_bytes());
+    let out = i32::from_ne_bytes((a - b).to_ne_bytes()) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("subf64", |args, hand_mem, _| {
-    let a = LittleEndian::read_f64(hand_mem.read(args[0], 8));
-    let b = LittleEndian::read_f64(hand_mem.read(args[1], 8));
-    let out = a - b;
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes());
+    let b = f64::from_ne_bytes(hand_mem.read_fixed(args[1]).to_ne_bytes());
+    let out = i64::from_ne_bytes((a - b).to_ne_bytes());
+    hand_mem.write_fixed(args[2], out);
     None
   });
 
   cpu!("negi8", |args, hand_mem, _| {
-    let a = i8::from_le_bytes(hand_mem.read(args[0], 1).try_into().unwrap());
-    let out = 0 - a;
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i8;
+    let out = (0 - a) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("negi16", |args, hand_mem, _| {
-    let a = LittleEndian::read_i16(hand_mem.read(args[0], 2));
-    let out = 0 - a;
-    hand_mem.write(args[2], 2, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i16;
+    let out = (0 - a) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("negi32", |args, hand_mem, _| {
-    let a = LittleEndian::read_i32(hand_mem.read(args[0], 4));
-    let out = 0 - a;
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i32;
+    let out = (0 - a) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("negi64", |args, hand_mem, _| {
-    let a = LittleEndian::read_i64(hand_mem.read(args[0], 8));
+    let a = hand_mem.read_fixed(args[0]);
     let out = 0 - a;
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("negf32", |args, hand_mem, _| {
-    let a = LittleEndian::read_f32(hand_mem.read(args[0], 4));
-    let out = 0.0 - a;
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let a = f32::from_ne_bytes((hand_mem.read_fixed(args[0]) as i32).to_ne_bytes());
+    let out = i32::from_ne_bytes((0.0 - a).to_ne_bytes()) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("negf64", |args, hand_mem, _| {
-    let a = LittleEndian::read_f64(hand_mem.read(args[0], 8));
-    let out = 0.0 - a;
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes());
+    let out = i64::from_ne_bytes((0.0 - a).to_ne_bytes());
+    hand_mem.write_fixed(args[2], out);
     None
   });
 
   cpu!("muli8", |args, hand_mem, _| {
-    let a = i8::from_le_bytes(hand_mem.read(args[0], 1).try_into().unwrap());
-    let b = i8::from_le_bytes(hand_mem.read(args[1], 1).try_into().unwrap());
-    let out = a * b;
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i8;
+    let b = hand_mem.read_fixed(args[1]) as i8;
+    let out = (a * b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("muli16", |args, hand_mem, _| {
-    let a = LittleEndian::read_i16(hand_mem.read(args[0], 2));
-    let b = LittleEndian::read_i16(hand_mem.read(args[1], 2));
-    let out = a * b;
-    hand_mem.write(args[2], 2, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i16;
+    let b = hand_mem.read_fixed(args[1]) as i16;
+    let out = (a * b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("muli32", |args, hand_mem, _| {
-    let a = LittleEndian::read_i32(hand_mem.read(args[0], 4));
-    let b = LittleEndian::read_i32(hand_mem.read(args[1], 4));
-    let out = a * b;
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i32;
+    let b = hand_mem.read_fixed(args[1]) as i32;
+    let out = (a * b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("muli64", |args, hand_mem, _| {
-    let a = LittleEndian::read_i64(hand_mem.read(args[0], 8));
-    let b = LittleEndian::read_i64(hand_mem.read(args[1], 8));
+    let a = hand_mem.read_fixed(args[0]);
+    let b = hand_mem.read_fixed(args[1]);
     let out = a * b;
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("mulf32", |args, hand_mem, _| {
-    let a = LittleEndian::read_f32(hand_mem.read(args[0], 4));
-    let b = LittleEndian::read_f32(hand_mem.read(args[1], 4));
-    let out = a * b;
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let a = f32::from_ne_bytes((hand_mem.read_fixed(args[0]) as i32).to_ne_bytes());
+    let b = f32::from_ne_bytes((hand_mem.read_fixed(args[1]) as i32).to_ne_bytes());
+    let out = i32::from_ne_bytes((a * b).to_ne_bytes()) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("mulf64", |args, hand_mem, _| {
-    let a = LittleEndian::read_f64(hand_mem.read(args[0], 8));
-    let b = LittleEndian::read_f64(hand_mem.read(args[1], 8));
-    let out = a * b;
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes());
+    let b = f64::from_ne_bytes(hand_mem.read_fixed(args[1]).to_ne_bytes());
+    let out = i64::from_ne_bytes((a * b).to_ne_bytes());
+    hand_mem.write_fixed(args[2], out);
     None
   });
 
   cpu!("divi8", |args, hand_mem, _| {
-    let a = i8::from_le_bytes(hand_mem.read(args[0], 1).try_into().unwrap());
-    let b = i8::from_le_bytes(hand_mem.read(args[1], 1).try_into().unwrap());
-    let out = a / b;
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i8;
+    let b = hand_mem.read_fixed(args[1]) as i8;
+    let out = (a / b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("divi16", |args, hand_mem, _| {
-    let a = LittleEndian::read_i16(hand_mem.read(args[0], 2));
-    let b = LittleEndian::read_i16(hand_mem.read(args[1], 2));
-    let out = a / b;
-    hand_mem.write(args[2], 2, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i16;
+    let b = hand_mem.read_fixed(args[1]) as i16;
+    let out = (a / b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("divi32", |args, hand_mem, _| {
-    let a = LittleEndian::read_i32(hand_mem.read(args[0], 4));
-    let b = LittleEndian::read_i32(hand_mem.read(args[1], 4));
-    let out = a / b;
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i32;
+    let b = hand_mem.read_fixed(args[1]) as i32;
+    let out = (a / b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("divi64", |args, hand_mem, _| {
-    let a = LittleEndian::read_i64(hand_mem.read(args[0], 8));
-    let b = LittleEndian::read_i64(hand_mem.read(args[1], 8));
+    let a = hand_mem.read_fixed(args[0]);
+    let b = hand_mem.read_fixed(args[1]);
     let out = a / b;
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("divf32", |args, hand_mem, _| {
-    let a = LittleEndian::read_f32(hand_mem.read(args[0], 4));
-    let b = LittleEndian::read_f32(hand_mem.read(args[1], 4));
-    let out = a / b;
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let a = f32::from_ne_bytes((hand_mem.read_fixed(args[0]) as i32).to_ne_bytes());
+    let b = f32::from_ne_bytes((hand_mem.read_fixed(args[1]) as i32).to_ne_bytes());
+    let out = i32::from_ne_bytes((a / b).to_ne_bytes()) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("divf64", |args, hand_mem, _| {
-    let a = LittleEndian::read_f64(hand_mem.read(args[0], 8));
-    let b = LittleEndian::read_f64(hand_mem.read(args[1], 8));
-    let out = a / b;
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes());
+    let b = f64::from_ne_bytes(hand_mem.read_fixed(args[1]).to_ne_bytes());
+    let out = i64::from_ne_bytes((a / b).to_ne_bytes());
+    hand_mem.write_fixed(args[2], out);
     None
   });
 
   cpu!("modi8", |args, hand_mem, _| {
-    let a = i8::from_le_bytes(hand_mem.read(args[0], 1).try_into().unwrap());
-    let b = i8::from_le_bytes(hand_mem.read(args[1], 1).try_into().unwrap());
-    let out = a % b;
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i8;
+    let b = hand_mem.read_fixed(args[1]) as i8;
+    let out = (a % b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("modi16", |args, hand_mem, _| {
-    let a = LittleEndian::read_i16(hand_mem.read(args[0], 2));
-    let b = LittleEndian::read_i16(hand_mem.read(args[1], 2));
-    let out = a % b;
-    hand_mem.write(args[2], 2, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i16;
+    let b = hand_mem.read_fixed(args[1]) as i16;
+    let out = (a % b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("modi32", |args, hand_mem, _| {
-    let a = LittleEndian::read_i32(hand_mem.read(args[0], 4));
-    let b = LittleEndian::read_i32(hand_mem.read(args[1], 4));
-    let out = a % b;
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i32;
+    let b = hand_mem.read_fixed(args[1]) as i32;
+    let out = (a % b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("modi64", |args, hand_mem, _| {
-    let a = LittleEndian::read_i64(hand_mem.read(args[0], 8));
-    let b = LittleEndian::read_i64(hand_mem.read(args[1], 8));
+    let a = hand_mem.read_fixed(args[0]);
+    let b = hand_mem.read_fixed(args[1]);
     let out = a % b;
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    hand_mem.write_fixed(args[2], out);
     None
   });
 
   cpu!("powi8", |args, hand_mem, _| {
-    let a = i8::from_le_bytes(hand_mem.read(args[0], 1).try_into().unwrap());
-    let b = i8::from_le_bytes(hand_mem.read(args[1], 1).try_into().unwrap());
-    let out = if b < 0 { 0i8 } else { i8::pow(a, b as u32) };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i8;
+    let b = hand_mem.read_fixed(args[1]) as i8;
+    let out = if b < 0 { 0i64 } else { i8::pow(a, b as u32) as i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("powi16", |args, hand_mem, _| {
-    let a = LittleEndian::read_i16(hand_mem.read(args[0], 2));
-    let b = LittleEndian::read_i16(hand_mem.read(args[1], 2));
-    let out = if b < 0 { 0i16 } else { i16::pow(a, b as u32) };
-    hand_mem.write(args[2], 2, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i16;
+    let b = hand_mem.read_fixed(args[1]) as i16;
+    let out = if b < 0 { 0i64 } else { i16::pow(a, b as u32) as i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("powi32", |args, hand_mem, _| {
-    let a = LittleEndian::read_i32(hand_mem.read(args[0], 4));
-    let b = LittleEndian::read_i32(hand_mem.read(args[1], 4));
-    let out = if b < 0 { 0i32 } else { i32::pow(a, b as u32) };
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i32;
+    let b = hand_mem.read_fixed(args[1]) as i32;
+    let out = if b < 0 { 0i64 } else { i32::pow(a, b as u32) as i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("powi64", |args, hand_mem, _| {
     // The inputs may be from local memory or global
-    let a = LittleEndian::read_i64(hand_mem.read(args[0], 8));
-    let b = LittleEndian::read_i64(hand_mem.read(args[1], 8));
+    let a = hand_mem.read_fixed(args[0]);
+    let b = hand_mem.read_fixed(args[1]);
     // Rust's pow implementation is i64 to the u32 power, which is close to what we want to do. If
     // the exponent is gigantic if would overflow the integer, so this is likely not desired, and if
     // the exponent is negative, is will be between 0 to 1 and basically always be zero for integer
@@ -760,711 +871,797 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let bu32 = b as u32;
       i64::pow(a, bu32)
     };
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("powf32", |args, hand_mem, _| {
-    let a = LittleEndian::read_f32(hand_mem.read(args[0], 4));
-    let b = LittleEndian::read_f32(hand_mem.read(args[1], 4));
-    let out = f32::powf(a, b);
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let a = f32::from_ne_bytes((hand_mem.read_fixed(args[0]) as i32).to_ne_bytes());
+    let b = f32::from_ne_bytes((hand_mem.read_fixed(args[1]) as i32).to_ne_bytes());
+    let out = i32::from_ne_bytes(f32::powf(a, b).to_ne_bytes()) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("powf64", |args, hand_mem, _| {
-    let a = LittleEndian::read_f64(hand_mem.read(args[0], 8));
-    let b = LittleEndian::read_f64(hand_mem.read(args[1], 8));
-    let out = f64::powf(a, b);
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes());
+    let b = f64::from_ne_bytes(hand_mem.read_fixed(args[1]).to_ne_bytes());
+    let out = i64::from_ne_bytes(f64::powf(a, b).to_ne_bytes());
+    hand_mem.write_fixed(args[2], out);
     None
   });
 
   cpu!("sqrtf32", |args, hand_mem, _| {
-    let a = LittleEndian::read_f32(hand_mem.read(args[0], 4));
-    let out = f32::sqrt(a);
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let a = f32::from_ne_bytes((hand_mem.read_fixed(args[0]) as i32).to_ne_bytes());
+    let out = i32::from_ne_bytes(f32::sqrt(a).to_ne_bytes()) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("sqrtf64", |args, hand_mem, _| {
-    let a = LittleEndian::read_f64(hand_mem.read(args[0], 8));
-    let out = f64::sqrt(a);
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes());
+    let out = i64::from_ne_bytes(f64::sqrt(a).to_ne_bytes());
+    hand_mem.write_fixed(args[2], out);
     None
   });
 
   // Boolean and bitwise opcodes
   cpu!("andi8", |args, hand_mem, _| {
-    let a = i8::from_le_bytes(hand_mem.read(args[0], 1).try_into().unwrap());
-    let b = i8::from_le_bytes(hand_mem.read(args[1], 1).try_into().unwrap());
-    let out = a & b;
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i8;
+    let b = hand_mem.read_fixed(args[1]) as i8;
+    let out = (a & b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("andi16", |args, hand_mem, _| {
-    let a = LittleEndian::read_i16(hand_mem.read(args[0], 2));
-    let b = LittleEndian::read_i16(hand_mem.read(args[1], 2));
-    let out = a & b;
-    hand_mem.write(args[2], 2, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i16;
+    let b = hand_mem.read_fixed(args[1]) as i16;
+    let out = (a & b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("andi32", |args, hand_mem, _| {
-    let a = LittleEndian::read_i32(hand_mem.read(args[0], 4));
-    let b = LittleEndian::read_i32(hand_mem.read(args[1], 4));
-    let out = a & b;
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i32;
+    let b = hand_mem.read_fixed(args[1]) as i32;
+    let out = (a & b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("andi64", |args, hand_mem, _| {
-    let a = LittleEndian::read_i64(hand_mem.read(args[0], 8));
-    let b = LittleEndian::read_i64(hand_mem.read(args[1], 8));
+    let a = hand_mem.read_fixed(args[0]);
+    let b = hand_mem.read_fixed(args[1]);
     let out = a & b;
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("andbool", |args, hand_mem, _| {
-    let a = hand_mem.read(args[0], 1)[0];
-    let b = hand_mem.read(args[1], 1)[0];
-    let a_bool = if a == 1u8 { true } else { false };
-    let b_bool = if b == 1u8 { true } else { false };
-    let out = if a_bool & b_bool { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]);
+    let b = hand_mem.read_fixed(args[1]);
+    let a_bool = if a == 1 { true } else { false };
+    let b_bool = if b == 1 { true } else { false };
+    let out = if a_bool & b_bool { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
 
   cpu!("ori8", |args, hand_mem, _| {
-    let a = i8::from_le_bytes(hand_mem.read(args[0], 1).try_into().unwrap());
-    let b = i8::from_le_bytes(hand_mem.read(args[1], 1).try_into().unwrap());
-    let out = a | b;
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i8;
+    let b = hand_mem.read_fixed(args[1]) as i8;
+    let out = (a | b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("ori16", |args, hand_mem, _| {
-    let a = LittleEndian::read_i16(hand_mem.read(args[0], 2));
-    let b = LittleEndian::read_i16(hand_mem.read(args[1], 2));
-    let out = a | b;
-    hand_mem.write(args[2], 2, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i16;
+    let b = hand_mem.read_fixed(args[1]) as i16;
+    let out = (a | b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("ori32", |args, hand_mem, _| {
-    let a = LittleEndian::read_i32(hand_mem.read(args[0], 4));
-    let b = LittleEndian::read_i32(hand_mem.read(args[1], 4));
-    let out = a | b;
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i32;
+    let b = hand_mem.read_fixed(args[1]) as i32;
+    let out = (a | b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("ori64", |args, hand_mem, _| {
-    let a = LittleEndian::read_i64(hand_mem.read(args[0], 8));
-    let b = LittleEndian::read_i64(hand_mem.read(args[1], 8));
+    let a = hand_mem.read_fixed(args[0]);
+    let b = hand_mem.read_fixed(args[1]);
     let out = a | b;
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("orbool", |args, hand_mem, _| {
-    let a = hand_mem.read(args[0], 1)[0];
-    let b = hand_mem.read(args[1], 1)[0];
-    let a_bool = if a == 1u8 { true } else { false };
-    let b_bool = if b == 1u8 { true } else { false };
-    let out = if a_bool | b_bool { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]);
+    let b = hand_mem.read_fixed(args[1]);
+    let a_bool = if a == 1 { true } else { false };
+    let b_bool = if b == 1 { true } else { false };
+    let out = if a_bool | b_bool { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
 
   cpu!("xori8", |args, hand_mem, _| {
-    let a = i8::from_le_bytes(hand_mem.read(args[0], 1).try_into().unwrap());
-    let b = i8::from_le_bytes(hand_mem.read(args[1], 1).try_into().unwrap());
-    let out = a ^ b;
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i8;
+    let b = hand_mem.read_fixed(args[1]) as i8;
+    let out = (a ^ b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("xori16", |args, hand_mem, _| {
-    let a = LittleEndian::read_i16(hand_mem.read(args[0], 2));
-    let b = LittleEndian::read_i16(hand_mem.read(args[1], 2));
-    let out = a ^ b;
-    hand_mem.write(args[2], 2, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i16;
+    let b = hand_mem.read_fixed(args[1]) as i16;
+    let out = (a ^ b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("xori32", |args, hand_mem, _| {
-    let a = LittleEndian::read_i32(hand_mem.read(args[0], 4));
-    let b = LittleEndian::read_i32(hand_mem.read(args[1], 4));
-    let out = a ^ b;
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i32;
+    let b = hand_mem.read_fixed(args[1]) as i32;
+    let out = (a ^ b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("xori64", |args, hand_mem, _| {
-    let a = LittleEndian::read_i64(hand_mem.read(args[0], 8));
-    let b = LittleEndian::read_i64(hand_mem.read(args[1], 8));
+    let a = hand_mem.read_fixed(args[0]);
+    let b = hand_mem.read_fixed(args[1]);
     let out = a ^ b;
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("xorbool", |args, hand_mem, _| {
-    let a = hand_mem.read(args[0], 1)[0];
-    let b = hand_mem.read(args[1], 1)[0];
-    let a_bool = if a == 1u8 { true } else { false };
-    let b_bool = if b == 1u8 { true } else { false };
-    let out = if a_bool ^ b_bool { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]);
+    let b = hand_mem.read_fixed(args[1]);
+    let a_bool = if a == 1 { true } else { false };
+    let b_bool = if b == 1 { true } else { false };
+    let out = if a_bool ^ b_bool { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
 
   cpu!("noti8", |args, hand_mem, _| {
-    let a = i8::from_le_bytes(hand_mem.read(args[0], 1).try_into().unwrap());
-    let out = !a;
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i8;
+    let out = !a as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("noti16", |args, hand_mem, _| {
-    let a = LittleEndian::read_i16(hand_mem.read(args[0], 2));
-    let out = !a;
-    hand_mem.write(args[2], 2, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i16;
+    let out = !a as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("noti32", |args, hand_mem, _| {
-    let a = LittleEndian::read_i32(hand_mem.read(args[0], 4));
-    let out = !a;
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i32;
+    let out = !a as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("noti64", |args, hand_mem, _| {
-    let a = LittleEndian::read_i64(hand_mem.read(args[0], 8));
+    let a = hand_mem.read_fixed(args[0]);
     let out = !a;
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("notbool", |args, hand_mem, _| {
-    let a = hand_mem.read(args[0], 1)[0];
-    let out = if a == 0u8 { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]);
+    let a_bool = if a == 1 { true } else { false };
+    let out = if !a_bool { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
 
   cpu!("nandi8", |args, hand_mem, _| {
-    let a = i8::from_le_bytes(hand_mem.read(args[0], 1).try_into().unwrap());
-    let b = i8::from_le_bytes(hand_mem.read(args[1], 1).try_into().unwrap());
-    let out = !(a & b);
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i8;
+    let b = hand_mem.read_fixed(args[1]) as i8;
+    let out = !(a & b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("nandi16", |args, hand_mem, _| {
-    let a = LittleEndian::read_i16(hand_mem.read(args[0], 2));
-    let b = LittleEndian::read_i16(hand_mem.read(args[1], 2));
-    let out = !(a & b);
-    hand_mem.write(args[2], 2, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i16;
+    let b = hand_mem.read_fixed(args[1]) as i16;
+    let out = !(a & b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("nandi32", |args, hand_mem, _| {
-    let a = LittleEndian::read_i32(hand_mem.read(args[0], 4));
-    let b = LittleEndian::read_i32(hand_mem.read(args[1], 4));
-    let out = !(a & b);
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i32;
+    let b = hand_mem.read_fixed(args[1]) as i32;
+    let out = !(a & b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("nandi64", |args, hand_mem, _| {
-    let a = LittleEndian::read_i64(hand_mem.read(args[0], 8));
-    let b = LittleEndian::read_i64(hand_mem.read(args[1], 8));
+    let a = hand_mem.read_fixed(args[0]);
+    let b = hand_mem.read_fixed(args[1]);
     let out = !(a & b);
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("nandboo", |args, hand_mem, _| {
-    let a = hand_mem.read(args[0], 1)[0];
-    let b = hand_mem.read(args[1], 1)[0];
-    let a_bool = if a == 1u8 { true } else { false };
-    let b_bool = if b == 1u8 { true } else { false };
-    let out = if !(a_bool & b_bool) { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]);
+    let b = hand_mem.read_fixed(args[1]);
+    let a_bool = if a == 1 { true } else { false };
+    let b_bool = if b == 1 { true } else { false };
+    let out = if !(a_bool & b_bool) { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
 
   cpu!("nori8", |args, hand_mem, _| {
-    let a = i8::from_le_bytes(hand_mem.read(args[0], 1).try_into().unwrap());
-    let b = i8::from_le_bytes(hand_mem.read(args[1], 1).try_into().unwrap());
-    let out = !(a | b);
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i8;
+    let b = hand_mem.read_fixed(args[1]) as i8;
+    let out = !(a | b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("nori16", |args, hand_mem, _| {
-    let a = LittleEndian::read_i16(hand_mem.read(args[0], 2));
-    let b = LittleEndian::read_i16(hand_mem.read(args[1], 2));
-    let out = !(a | b);
-    hand_mem.write(args[2], 2, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i16;
+    let b = hand_mem.read_fixed(args[1]) as i16;
+    let out = !(a | b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("nori32", |args, hand_mem, _| {
-    let a = LittleEndian::read_i32(hand_mem.read(args[0], 4));
-    let b = LittleEndian::read_i32(hand_mem.read(args[1], 4));
-    let out = !(a | b);
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i32;
+    let b = hand_mem.read_fixed(args[1]) as i32;
+    let out = !(a | b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("nori64", |args, hand_mem, _| {
-    let a = LittleEndian::read_i64(hand_mem.read(args[0], 8));
-    let b = LittleEndian::read_i64(hand_mem.read(args[1], 8));
+    let a = hand_mem.read_fixed(args[0]);
+    let b = hand_mem.read_fixed(args[1]);
     let out = !(a | b);
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("norbool", |args, hand_mem, _| {
-    let a = hand_mem.read(args[0], 1)[0];
-    let b = hand_mem.read(args[1], 1)[0];
-    let a_bool = if a == 1u8 { true } else { false };
-    let b_bool = if b == 1u8 { true } else { false };
-    let out = if !(a_bool | b_bool) { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]);
+    let b = hand_mem.read_fixed(args[1]);
+    let a_bool = if a == 1 { true } else { false };
+    let b_bool = if b == 1 { true } else { false };
+    let out = if !(a_bool | b_bool) { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
 
   cpu!("xnori8", |args, hand_mem, _| {
-    let a = i8::from_le_bytes(hand_mem.read(args[0], 1).try_into().unwrap());
-    let b = i8::from_le_bytes(hand_mem.read(args[1], 1).try_into().unwrap());
-    let out = !(a ^ b);
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i8;
+    let b = hand_mem.read_fixed(args[1]) as i8;
+    let out = !(a ^ b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("xnori16", |args, hand_mem, _| {
-    let a = LittleEndian::read_i16(hand_mem.read(args[0], 2));
-    let b = LittleEndian::read_i16(hand_mem.read(args[1], 2));
-    let out = !(a ^ b);
-    hand_mem.write(args[2], 2, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i16;
+    let b = hand_mem.read_fixed(args[1]) as i16;
+    let out = !(a ^ b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("xnori32", |args, hand_mem, _| {
-    let a = LittleEndian::read_i32(hand_mem.read(args[0], 4));
-    let b = LittleEndian::read_i32(hand_mem.read(args[1], 4));
-    let out = !(a ^ b);
-    hand_mem.write(args[2], 4, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i32;
+    let b = hand_mem.read_fixed(args[1]) as i32;
+    let out = !(a ^ b) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("xnori64", |args, hand_mem, _| {
-    let a = LittleEndian::read_i64(hand_mem.read(args[0], 8));
-    let b = LittleEndian::read_i64(hand_mem.read(args[1], 8));
+    let a = hand_mem.read_fixed(args[0]);
+    let b = hand_mem.read_fixed(args[1]);
     let out = !(a ^ b);
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("xnorboo", |args, hand_mem, _| {
-    let a = hand_mem.read(args[0], 1)[0];
-    let b = hand_mem.read(args[1], 1)[0];
-    let a_bool = if a == 1u8 { true } else { false };
-    let b_bool = if b == 1u8 { true } else { false };
-    let out = if !(a_bool ^ b_bool) { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]);
+    let b = hand_mem.read_fixed(args[1]);
+    let a_bool = if a == 1 { true } else { false };
+    let b_bool = if b == 1 { true } else { false };
+    let out = if !(a_bool ^ b_bool) { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
 
   // Equality and order opcodes
   cpu!("eqi8", |args, hand_mem, _| {
-    let a = i8::from_le_bytes(hand_mem.read(args[0], 1).try_into().unwrap());
-    let b = i8::from_le_bytes(hand_mem.read(args[1], 1).try_into().unwrap());
-    let out = if a == b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i8;
+    let b = hand_mem.read_fixed(args[1]) as i8;
+    let out = if a == b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("eqi16", |args, hand_mem, _| {
-    let a = LittleEndian::read_i16(hand_mem.read(args[0], 2));
-    let b = LittleEndian::read_i16(hand_mem.read(args[1], 2));
-    let out = if a == b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i16;
+    let b = hand_mem.read_fixed(args[1]) as i16;
+    let out = if a == b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("eqi32", |args, hand_mem, _| {
-    let a = LittleEndian::read_i32(hand_mem.read(args[0], 4));
-    let b = LittleEndian::read_i32(hand_mem.read(args[1], 4));
-    let out = if a == b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i32;
+    let b = hand_mem.read_fixed(args[1]) as i32;
+    let out = if a == b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("eqi64", |args, hand_mem, _| {
-    let a = LittleEndian::read_i64(hand_mem.read(args[0], 8));
-    let b = LittleEndian::read_i64(hand_mem.read(args[1], 8));
-    let out = if a == b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]);
+    let b = hand_mem.read_fixed(args[1]);
+    let out = if a == b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("eqf32", |args, hand_mem, _| {
-    let a = LittleEndian::read_f32(hand_mem.read(args[0], 4));
-    let b = LittleEndian::read_f32(hand_mem.read(args[1], 4));
-    let out = if a == b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = f32::from_ne_bytes((hand_mem.read_fixed(args[0]) as i32).to_ne_bytes());
+    let b = f32::from_ne_bytes((hand_mem.read_fixed(args[1]) as i32).to_ne_bytes());
+    let out = if a == b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("eqf64", |args, hand_mem, _| {
-    let a = LittleEndian::read_f64(hand_mem.read(args[0], 8));
-    let b = LittleEndian::read_f64(hand_mem.read(args[1], 8));
-    let out = if a == b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes());
+    let b = f64::from_ne_bytes(hand_mem.read_fixed(args[1]).to_ne_bytes());
+    let out = if a == b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("eqstr", |args, hand_mem, _| {
-    let a_pascal_string = hand_mem.read(args[0], 0);
-    let b_pascal_string = hand_mem.read(args[1], 0);
-    let out = if a_pascal_string == b_pascal_string { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a_pascal_string = hand_mem.read_arr(args[0]);
+    let b_pascal_string = hand_mem.read_arr(args[1]);
+    let out = if a_pascal_string == b_pascal_string { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("eqbool", |args, hand_mem, _| {
-    let a = hand_mem.read(args[0], 1)[0];
-    let b = hand_mem.read(args[1], 1)[0];
-    let out = if a == b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i8;
+    let b = hand_mem.read_fixed(args[1]) as i8;
+    let out = if a == b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
 
   cpu!("neqi8", |args, hand_mem, _| {
-    let a = i8::from_le_bytes(hand_mem.read(args[0], 1).try_into().unwrap());
-    let b = i8::from_le_bytes(hand_mem.read(args[1], 1).try_into().unwrap());
-    let out = if a != b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i8;
+    let b = hand_mem.read_fixed(args[1]) as i8;
+    let out = if a != b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("neqi16", |args, hand_mem, _| {
-    let a = LittleEndian::read_i16(hand_mem.read(args[0], 2));
-    let b = LittleEndian::read_i16(hand_mem.read(args[1], 2));
-    let out = if a != b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i16;
+    let b = hand_mem.read_fixed(args[1]) as i16;
+    let out = if a != b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("neqi32", |args, hand_mem, _| {
-    let a = LittleEndian::read_i32(hand_mem.read(args[0], 4));
-    let b = LittleEndian::read_i32(hand_mem.read(args[1], 4));
-    let out = if a != b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i32;
+    let b = hand_mem.read_fixed(args[1]) as i32;
+    let out = if a != b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("neqi64", |args, hand_mem, _| {
-    let a = LittleEndian::read_i64(hand_mem.read(args[0], 8));
-    let b = LittleEndian::read_i64(hand_mem.read(args[1], 8));
-    let out = if a != b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]);
+    let b = hand_mem.read_fixed(args[1]);
+    let out = if a != b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("neqf32", |args, hand_mem, _| {
-    let a = LittleEndian::read_f32(hand_mem.read(args[0], 4));
-    let b = LittleEndian::read_f32(hand_mem.read(args[1], 4));
-    let out = if a != b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = f32::from_ne_bytes((hand_mem.read_fixed(args[0]) as i32).to_ne_bytes());
+    let b = f32::from_ne_bytes((hand_mem.read_fixed(args[1]) as i32).to_ne_bytes());
+    let out = if a != b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("neqf64", |args, hand_mem, _| {
-    let a = LittleEndian::read_f64(hand_mem.read(args[0], 8));
-    let b = LittleEndian::read_f64(hand_mem.read(args[1], 8));
-    let out = if a != b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes());
+    let b = f64::from_ne_bytes(hand_mem.read_fixed(args[1]).to_ne_bytes());
+    let out = if a != b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("neqstr", |args, hand_mem, _| {
-    let a_pascal_string = hand_mem.read(args[0], 0);
-    let b_pascal_string = hand_mem.read(args[1], 0);
-    let out = if a_pascal_string != b_pascal_string { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a_pascal_string = hand_mem.read_arr(args[0]);
+    let b_pascal_string = hand_mem.read_arr(args[1]);
+    let out = if a_pascal_string != b_pascal_string { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("neqbool", |args, hand_mem, _| {
-    let a = hand_mem.read(args[0], 1)[0];
-    let b = hand_mem.read(args[1], 1)[0];
-    let out = if a != b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i8;
+    let b = hand_mem.read_fixed(args[1]) as i8;
+    let out = if a != b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
 
   cpu!("lti8", |args, hand_mem, _| {
-    let a = i8::from_le_bytes(hand_mem.read(args[0], 1).try_into().unwrap());
-    let b = i8::from_le_bytes(hand_mem.read(args[1], 1).try_into().unwrap());
-    let out = if a < b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i8;
+    let b = hand_mem.read_fixed(args[1]) as i8;
+    let out = if a < b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("lti16", |args, hand_mem, _| {
-    let a = LittleEndian::read_i16(hand_mem.read(args[0], 2));
-    let b = LittleEndian::read_i16(hand_mem.read(args[1], 2));
-    let out = if a < b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i16;
+    let b = hand_mem.read_fixed(args[1]) as i16;
+    let out = if a < b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("lti32", |args, hand_mem, _| {
-    let a = LittleEndian::read_i32(hand_mem.read(args[0], 4));
-    let b = LittleEndian::read_i32(hand_mem.read(args[1], 4));
-    let out = if a < b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i32;
+    let b = hand_mem.read_fixed(args[1]) as i32;
+    let out = if a < b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("lti64", |args, hand_mem, _| {
-    let a = LittleEndian::read_i64(hand_mem.read(args[0], 8));
-    let b = LittleEndian::read_i64(hand_mem.read(args[1], 8));
-    let out = if a < b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]);
+    let b = hand_mem.read_fixed(args[1]);
+    let out = if a < b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("ltf32", |args, hand_mem, _| {
-    let a = LittleEndian::read_f32(hand_mem.read(args[0], 4));
-    let b = LittleEndian::read_f32(hand_mem.read(args[1], 4));
-    let out = if a < b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = f32::from_ne_bytes((hand_mem.read_fixed(args[0]) as i32).to_ne_bytes());
+    let b = f32::from_ne_bytes((hand_mem.read_fixed(args[1]) as i32).to_ne_bytes());
+    let out = if a < b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("ltf64", |args, hand_mem, _| {
-    let a = LittleEndian::read_f64(hand_mem.read(args[0], 8));
-    let b = LittleEndian::read_f64(hand_mem.read(args[1], 8));
-    let out = if a < b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes());
+    let b = f64::from_ne_bytes(hand_mem.read_fixed(args[1]).to_ne_bytes());
+    let out = if a < b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("ltstr", |args, hand_mem, _| {
-    let a_pascal_string = hand_mem.read(args[0], 0);
-    let a_size = LittleEndian::read_u64(&a_pascal_string[0..8]) as usize;
-    let a_str = str::from_utf8(&a_pascal_string[8..a_size + 8]).unwrap();
-    let b_pascal_string = hand_mem.read(args[1], 0);
-    let b_size = LittleEndian::read_u64(&b_pascal_string[0..8]) as usize;
-    let b_str = str::from_utf8(&b_pascal_string[8..b_size + 8]).unwrap();
-    let out = if a_str < b_str { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    unsafe {
+      let a_pascal_string = hand_mem.read_arr(args[0]);
+      let a_size = a_pascal_string[0] as usize;
+      let a_str = str::from_utf8(a_pascal_string[1..(a_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let b_pascal_string = hand_mem.read_arr(args[1]);
+      let b_size = b_pascal_string[0] as usize;
+      let b_str = str::from_utf8(b_pascal_string[1..(b_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let out = if a_str < b_str { 1i64 } else { 0i64 };
+      hand_mem.write_fixed(args[2], out);
+    }
     None
   });
 
   cpu!("ltei8", |args, hand_mem, _| {
-    let a = i8::from_le_bytes(hand_mem.read(args[0], 1).try_into().unwrap());
-    let b = i8::from_le_bytes(hand_mem.read(args[1], 1).try_into().unwrap());
-    let out = if a <= b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i8;
+    let b = hand_mem.read_fixed(args[1]) as i8;
+    let out = if a <= b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("ltei16", |args, hand_mem, _| {
-    let a = LittleEndian::read_i16(hand_mem.read(args[0], 2));
-    let b = LittleEndian::read_i16(hand_mem.read(args[1], 2));
-    let out = if a <= b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i16;
+    let b = hand_mem.read_fixed(args[1]) as i16;
+    let out = if a <= b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("ltei32", |args, hand_mem, _| {
-    let a = LittleEndian::read_i32(hand_mem.read(args[0], 4));
-    let b = LittleEndian::read_i32(hand_mem.read(args[1], 4));
-    let out = if a <= b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i32;
+    let b = hand_mem.read_fixed(args[1]) as i32;
+    let out = if a <= b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("ltei64", |args, hand_mem, _| {
-    let a = LittleEndian::read_i64(hand_mem.read(args[0], 8));
-    let b = LittleEndian::read_i64(hand_mem.read(args[1], 8));
-    let out = if a <= b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]);
+    let b = hand_mem.read_fixed(args[1]);
+    let out = if a <= b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("ltef32", |args, hand_mem, _| {
-    let a = LittleEndian::read_f32(hand_mem.read(args[0], 4));
-    let b = LittleEndian::read_f32(hand_mem.read(args[1], 4));
-    let out = if a <= b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = f32::from_ne_bytes((hand_mem.read_fixed(args[0]) as i32).to_ne_bytes());
+    let b = f32::from_ne_bytes((hand_mem.read_fixed(args[1]) as i32).to_ne_bytes());
+    let out = if a <= b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("ltef64", |args, hand_mem, _| {
-    let a = LittleEndian::read_f64(hand_mem.read(args[0], 8));
-    let b = LittleEndian::read_f64(hand_mem.read(args[1], 8));
-    let out = if a <= b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes());
+    let b = f64::from_ne_bytes(hand_mem.read_fixed(args[1]).to_ne_bytes());
+    let out = if a <= b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("ltestr", |args, hand_mem, _| {
-    let a_pascal_string = hand_mem.read(args[0], 0);
-    let a_size = LittleEndian::read_u64(&a_pascal_string[0..8]) as usize;
-    let a_str = str::from_utf8(&a_pascal_string[8..a_size + 8]).unwrap();
-    let b_pascal_string = hand_mem.read(args[1], 0);
-    let b_size = LittleEndian::read_u64(&b_pascal_string[0..8]) as usize;
-    let b_str = str::from_utf8(&b_pascal_string[8..b_size + 8]).unwrap();
-    let out = if a_str <= b_str { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    unsafe {
+      let a_pascal_string = hand_mem.read_arr(args[0]);
+      let a_size = a_pascal_string[0] as usize;
+      let a_str = str::from_utf8(a_pascal_string[1..(a_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let b_pascal_string = hand_mem.read_arr(args[1]);
+      let b_size = b_pascal_string[0] as usize;
+      let b_str = str::from_utf8(b_pascal_string[1..(b_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let out = if a_str <= b_str { 1i64 } else { 0i64 };
+      hand_mem.write_fixed(args[2], out);
+    }
     None
   });
 
   cpu!("gti8", |args, hand_mem, _| {
-    let a = i8::from_le_bytes(hand_mem.read(args[0], 1).try_into().unwrap());
-    let b = i8::from_le_bytes(hand_mem.read(args[1], 1).try_into().unwrap());
-    let out = if a > b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i8;
+    let b = hand_mem.read_fixed(args[1]) as i8;
+    let out = if a > b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("gti16", |args, hand_mem, _| {
-    let a = LittleEndian::read_i16(hand_mem.read(args[0], 2));
-    let b = LittleEndian::read_i16(hand_mem.read(args[1], 2));
-    let out = if a > b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i16;
+    let b = hand_mem.read_fixed(args[1]) as i16;
+    let out = if a > b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("gti32", |args, hand_mem, _| {
-    let a = LittleEndian::read_i32(hand_mem.read(args[0], 4));
-    let b = LittleEndian::read_i32(hand_mem.read(args[1], 4));
-    let out = if a > b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i32;
+    let b = hand_mem.read_fixed(args[1]) as i32;
+    let out = if a > b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("gti64", |args, hand_mem, _| {
-    let a = LittleEndian::read_i64(hand_mem.read(args[0], 8));
-    let b = LittleEndian::read_i64(hand_mem.read(args[1], 8));
-    let out = if a > b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]);
+    let b = hand_mem.read_fixed(args[1]);
+    let out = if a > b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("gtf32", |args, hand_mem, _| {
-    let a = LittleEndian::read_f32(hand_mem.read(args[0], 4));
-    let b = LittleEndian::read_f32(hand_mem.read(args[1], 4));
-    let out = if a > b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = f32::from_ne_bytes((hand_mem.read_fixed(args[0]) as i32).to_ne_bytes());
+    let b = f32::from_ne_bytes((hand_mem.read_fixed(args[1]) as i32).to_ne_bytes());
+    let out = if a > b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("gtf64", |args, hand_mem, _| {
-    let a = LittleEndian::read_f64(hand_mem.read(args[0], 8));
-    let b = LittleEndian::read_f64(hand_mem.read(args[1], 8));
-    let out = if a > b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes());
+    let b = f64::from_ne_bytes(hand_mem.read_fixed(args[1]).to_ne_bytes());
+    let out = if a > b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("gtstr", |args, hand_mem, _| {
-    let a_pascal_string = hand_mem.read(args[0], 0);
-    let a_size = LittleEndian::read_u64(&a_pascal_string[0..8]) as usize;
-    let a_str = str::from_utf8(&a_pascal_string[8..a_size + 8]).unwrap();
-    let b_pascal_string = hand_mem.read(args[1], 0);
-    let b_size = LittleEndian::read_u64(&b_pascal_string[0..8]) as usize;
-    let b_str = str::from_utf8(&b_pascal_string[8..b_size + 8]).unwrap();
-    let out = if a_str > b_str { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    unsafe {
+      let a_pascal_string = hand_mem.read_arr(args[0]);
+      let a_size = a_pascal_string[0] as usize;
+      let a_str = str::from_utf8(a_pascal_string[1..(a_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let b_pascal_string = hand_mem.read_arr(args[1]);
+      let b_size = b_pascal_string[0] as usize;
+      let b_str = str::from_utf8(b_pascal_string[1..(b_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let out = if a_str > b_str { 1i64 } else { 0i64 };
+      hand_mem.write_fixed(args[2], out);
+    }
     None
   });
 
   cpu!("gtei8", |args, hand_mem, _| {
-    let a = i8::from_le_bytes(hand_mem.read(args[0], 1).try_into().unwrap());
-    let b = i8::from_le_bytes(hand_mem.read(args[1], 1).try_into().unwrap());
-    let out = if a >= b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i8;
+    let b = hand_mem.read_fixed(args[1]) as i8;
+    let out = if a >= b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("gtei16", |args, hand_mem, _| {
-    let a = LittleEndian::read_i16(hand_mem.read(args[0], 2));
-    let b = LittleEndian::read_i16(hand_mem.read(args[1], 2));
-    let out = if a >= b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i16;
+    let b = hand_mem.read_fixed(args[1]) as i16;
+    let out = if a >= b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("gtei32", |args, hand_mem, _| {
-    let a = LittleEndian::read_i32(hand_mem.read(args[0], 4));
-    let b = LittleEndian::read_i32(hand_mem.read(args[1], 4));
-    let out = if a >= b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]) as i32;
+    let b = hand_mem.read_fixed(args[1]) as i32;
+    let out = if a >= b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("gtei64", |args, hand_mem, _| {
-    let a = LittleEndian::read_i64(hand_mem.read(args[0], 8));
-    let b = LittleEndian::read_i64(hand_mem.read(args[1], 8));
-    let out = if a >= b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = hand_mem.read_fixed(args[0]);
+    let b = hand_mem.read_fixed(args[1]);
+    let out = if a >= b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("gtef32", |args, hand_mem, _| {
-    let a = LittleEndian::read_f32(hand_mem.read(args[0], 4));
-    let b = LittleEndian::read_f32(hand_mem.read(args[1], 4));
-    let out = if a >= b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = f32::from_ne_bytes((hand_mem.read_fixed(args[0]) as i32).to_ne_bytes());
+    let b = f32::from_ne_bytes((hand_mem.read_fixed(args[1]) as i32).to_ne_bytes());
+    let out = if a >= b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("gtef64", |args, hand_mem, _| {
-    let a = LittleEndian::read_f64(hand_mem.read(args[0], 8));
-    let b = LittleEndian::read_f64(hand_mem.read(args[1], 8));
-    let out = if a >= b { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes());
+    let b = f64::from_ne_bytes(hand_mem.read_fixed(args[1]).to_ne_bytes());
+    let out = if a >= b { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("gtestr", |args, hand_mem, _| {
-    let a_pascal_string = hand_mem.read(args[0], 0);
-    let a_size = LittleEndian::read_u64(&a_pascal_string[0..8]) as usize;
-    let a_str = str::from_utf8(&a_pascal_string[8..a_size + 8]).unwrap();
-    let b_pascal_string = hand_mem.read(args[1], 0);
-    let b_size = LittleEndian::read_u64(&b_pascal_string[0..8]) as usize;
-    let b_str = str::from_utf8(&b_pascal_string[8..b_size + 8]).unwrap();
-    let out = if a_str >= b_str { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    unsafe {
+      let a_pascal_string = hand_mem.read_arr(args[0]);
+      let a_size = a_pascal_string[0] as usize;
+      let a_str = str::from_utf8(a_pascal_string[1..(a_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let b_pascal_string = hand_mem.read_arr(args[1]);
+      let b_size = b_pascal_string[0] as usize;
+      let b_str = str::from_utf8(b_pascal_string[1..(b_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let out = if a_str >= b_str { 1i64 } else { 0i64 };
+      hand_mem.write_fixed(args[2], out);
+    }
     None
   });
 
   // String opcodes
   cpu!("catstr", |args, hand_mem, _| {
-    let a = hand_mem.read(args[0], 0);
-    let b = hand_mem.read(args[1], 0);
-    let a_size = LittleEndian::read_u64(&a[0..8]) as usize;
-    let b_size = LittleEndian::read_u64(&b[0..8]) as usize;
-    let a_str = str::from_utf8(&a[8..a_size + 8]).unwrap();
-    let b_str = str::from_utf8(&b[8..b_size + 8]).unwrap();
-    let out_str = format!("{}{}", a_str, b_str);
-    let mut out = out_str.len().to_le_bytes().to_vec();
-    out.append(&mut out_str.as_bytes().to_vec());
-    hand_mem.write(args[2], 0, &out);
+    unsafe {
+      let a_pascal_string = hand_mem.read_arr(args[0]);
+      let a_size = a_pascal_string[0] as usize;
+      let a_str = str::from_utf8(a_pascal_string[1..(a_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let b_pascal_string = hand_mem.read_arr(args[1]);
+      let b_size = b_pascal_string[0] as usize;
+      let b_str = str::from_utf8(b_pascal_string[1..(b_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let out_str = format!("{}{}", a_str, b_str);
+      let mut out = vec![out_str.len() as i64];
+      let mut out_str_bytes = out_str.as_bytes().to_vec();
+      loop {
+        if out_str_bytes.len() % 8 != 0 {
+          out_str_bytes.push(0);
+        } else {
+          break
+        }
+      }
+      let mut i = 0;
+      loop {
+        if i < out_str_bytes.len() {
+          let str_slice = &out_str_bytes[i..i+8];
+          out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
+          i = i + 8;
+        } else {
+          break
+        }
+      }
+      hand_mem.write_arr(args[2], &out);
+    }
     None
   });
   cpu!("split", |args, hand_mem, _| {
-    let a = hand_mem.read(args[0], 0);
-    let b = hand_mem.read(args[1], 0);
-    let a_size = LittleEndian::read_u64(&a[0..8]) as usize;
-    let b_size = LittleEndian::read_u64(&b[0..8]) as usize;
-    let a_str = str::from_utf8(&a[8..a_size + 8]).unwrap();
-    let b_str = str::from_utf8(&b[8..b_size + 8]).unwrap();
-    let outs: Vec<Vec<u8>> = a_str.split(b_str).map(|out_str| {
-      let mut out = out_str.len().to_le_bytes().to_vec();
-      out.append(&mut out_str.as_bytes().to_vec());
-      return out;
-    }).collect();
-    hand_mem.new_arr(args[2]);
-    for out in outs {
-      hand_mem.push_arr(args[2], out, 0);
+    unsafe {
+      let a_pascal_string = hand_mem.read_arr(args[0]);
+      let a_size = a_pascal_string[0] as usize;
+      let a_str = str::from_utf8(a_pascal_string[1..(a_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let b_pascal_string = hand_mem.read_arr(args[1]);
+      let b_size = b_pascal_string[0] as usize;
+      let b_str = str::from_utf8(b_pascal_string[1..(b_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let outs: Vec<Vec<i64>> = a_str.split(b_str).map(|out_str| {
+        let mut out = vec![out_str.len() as i64];
+        let mut out_str_bytes = out_str.as_bytes().to_vec();
+        loop {
+          if out_str_bytes.len() % 8 != 0 {
+            out_str_bytes.push(0);
+          } else {
+            break
+          }
+        }
+        let mut i = 0;
+        loop {
+          if i < out_str_bytes.len() {
+            let str_slice = &out_str_bytes[i..i+8];
+            out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
+            i = i + 8;
+          } else {
+            break
+          }
+        }
+        return out;
+      }).collect();
+      hand_mem.new_arr(args[2]);
+      for out in outs {
+        hand_mem.push_arr_arr(args[2], out);
+      }
     }
     None
   });
   cpu!("repstr", |args, hand_mem, _| {
-    let a_pascal_string = hand_mem.read(args[0], 0);
-    let a_size = LittleEndian::read_u64(&a_pascal_string[0..8]) as usize;
-    let a_str = str::from_utf8(&a_pascal_string[8..a_size + 8]).unwrap();
-    let n = LittleEndian::read_i64(hand_mem.read(args[1], 8));
-    let out_str = a_str.repeat(n as usize);
-    let mut out = out_str.len().to_le_bytes().to_vec();
-    out.append(&mut out_str.as_bytes().to_vec());
-    hand_mem.write(args[2], 0, &out);
+    unsafe {
+      let a_pascal_string = hand_mem.read_arr(args[0]);
+      let a_size = a_pascal_string[0] as usize;
+      let a_str = str::from_utf8(a_pascal_string[1..(a_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let n = hand_mem.read_fixed(args[1]);
+      let out_str = a_str.repeat(n as usize);
+      let mut out = vec![out_str.len() as i64];
+      let mut out_str_bytes = out_str.as_bytes().to_vec();
+      loop {
+        if out_str_bytes.len() % 8 != 0 {
+          out_str_bytes.push(0);
+        } else {
+          break
+        }
+      }
+      let mut i = 0;
+      loop {
+        if i < out_str_bytes.len() {
+          let str_slice = &out_str_bytes[i..i+8];
+          out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
+          i = i + 8;
+        } else {
+          break
+        }
+      }
+      hand_mem.write_arr(args[2], &out);
+    }
     None
   });
   cpu!("matches", |args, hand_mem, _| {
-    let a_pascal_string = hand_mem.read(args[0], 0);
-    let a_size = LittleEndian::read_u64(&a_pascal_string[0..8]) as usize;
-    let a_str = str::from_utf8(&a_pascal_string[8..a_size + 8]).unwrap();
-    let b_pascal_string = hand_mem.read(args[1], 0);
-    let b_size = LittleEndian::read_u64(&b_pascal_string[0..8]) as usize;
-    let b_str = str::from_utf8(&b_pascal_string[8..b_size + 8]).unwrap();
-    let b_regex = Regex::new(b_str).unwrap();
-    let out = if b_regex.is_match(a_str) { 1u8 } else { 0u8 };
-    hand_mem.write(args[2], 1, &out.to_le_bytes());
+    unsafe {
+      let a_pascal_string = hand_mem.read_arr(args[0]);
+      let a_size = a_pascal_string[0] as usize;
+      let a_str = str::from_utf8(a_pascal_string[1..(a_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let b_pascal_string = hand_mem.read_arr(args[1]);
+      let b_size = b_pascal_string[0] as usize;
+      let b_str = str::from_utf8(b_pascal_string[1..(b_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let b_regex = Regex::new(b_str).unwrap();
+      let out = if b_regex.is_match(a_str) { 1i64 } else { 0i64 };
+      hand_mem.write_fixed(args[2], out);
+    }
     None
   });
   cpu!("indstr", |args, hand_mem, _| {
-    let a_pascal_string = hand_mem.read(args[0], 0);
-    let a_size = LittleEndian::read_u64(&a_pascal_string[0..8]) as usize;
-    let a_str = str::from_utf8(&a_pascal_string[8..a_size + 8]).unwrap();
-    let b_pascal_string = hand_mem.read(args[1], 0);
-    let b_size = LittleEndian::read_u64(&b_pascal_string[0..8]) as usize;
-    let b_str = str::from_utf8(&b_pascal_string[8..b_size + 8]).unwrap();
-    let out_option = a_str.find(b_str);
-    let out = if out_option.is_none()  { -1i64 } else { out_option.unwrap() as i64 };
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    unsafe {
+      let a_pascal_string = hand_mem.read_arr(args[0]);
+      let a_size = a_pascal_string[0] as usize;
+      let a_str = str::from_utf8(a_pascal_string[1..(a_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let b_pascal_string = hand_mem.read_arr(args[1]);
+      let b_size = b_pascal_string[0] as usize;
+      let b_str = str::from_utf8(b_pascal_string[1..(b_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let out_option = a_str.find(b_str);
+      let out = if out_option.is_none()  { -1i64 } else { out_option.unwrap() as i64 };
+      hand_mem.write_fixed(args[2], out);
+    }
     None
   });
   cpu!("lenstr", |args, hand_mem, _| {
-    let a_pascal_string = hand_mem.read(args[0], 0);
-    let a_size = LittleEndian::read_u64(&a_pascal_string[0..8]) as usize;
-    let a_str = str::from_utf8(&a_pascal_string[8..a_size + 8]).unwrap();
-    let out = a_str.len() as i64;
-    hand_mem.write(args[2], 8, &out.to_le_bytes());
+    let pascal_string = hand_mem.read_arr(args[0]);
+    let out = pascal_string[0];
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("trim", |args, hand_mem, _| {
-    let a_pascal_string = hand_mem.read(args[0], 0);
-    let a_size = LittleEndian::read_u64(&a_pascal_string[0..8]) as usize;
-    let a_str = str::from_utf8(&a_pascal_string[8..a_size + 8]).unwrap();
-    let out_str = a_str.trim();
-    let mut out = out_str.len().to_le_bytes().to_vec();
-    out.append(&mut out_str.as_bytes().to_vec());
-    hand_mem.write(args[2], 0, &out);
+    unsafe {
+      let pascal_string = hand_mem.read_arr(args[0]);
+      let size = pascal_string[0] as usize;
+      let out_str = str::from_utf8(pascal_string[1..(size / 8) + 1].align_to::<u8>().1).unwrap().trim();
+      let mut out = vec![out_str.len() as i64];
+      let mut out_str_bytes = out_str.as_bytes().to_vec();
+      loop {
+        if out_str_bytes.len() % 8 != 0 {
+          out_str_bytes.push(0);
+        } else {
+          break
+        }
+      }
+      let mut i = 0;
+      loop {
+        if i < out_str_bytes.len() {
+          let str_slice = &out_str_bytes[i..i+8];
+          out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
+          i = i + 8;
+        } else {
+          break
+        }
+      }
+      hand_mem.write_arr(args[2], &out);
+    }
     None
   });
 
@@ -1473,7 +1670,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     // args[2] is the register address
     // args[0] point to an array in memory
     // args[1] is the address within the array to register
-    let inner_addr = LittleEndian::read_i64(hand_mem.read(args[1], 8)) * 8;
+    let inner_addr = hand_mem.read_fixed(args[1]);
     hand_mem.set_reg(args[2], args[0], inner_addr);
     None
   });
@@ -1482,52 +1679,52 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     // copy data from outer_addr to inner_addr of the array in reg_addr
     // The array index instead of inner address is provided to keep interaction with the js-runtime
     // sane.
-    let inner_addr = LittleEndian::read_i64(hand_mem.read(args[1], 8)) * 8;
+    let inner_addr = hand_mem.read_fixed(args[1]);
     hand_mem.copy_from(args[0], args[2], inner_addr);
     None
   });
   cpu!("copytof", |args, hand_mem, _| {
     // args = [arr_addr, inner_addr, outer_addr]
     // copy data from outer_addr to inner_addr in arr_addr
-    let inner = LittleEndian::read_i64(hand_mem.read(args[2], 8));
-    hand_mem.copy_to(args[0], args[1], inner, 8);
+    let inner = hand_mem.read_fixed(args[2]);
+    hand_mem.copy_to_fixed(args[0], args[1], inner);
     None
   });
   cpu!("copytov", |args, hand_mem, _| {
     // args = [arr_addr, inner_addr, outer_addr]
     // copy data from outer_addr to inner_addr in arr_addr
-    let inner = LittleEndian::read_i64(hand_mem.read(args[2], 8));
-    hand_mem.copy_to(args[0], args[1], inner, 0);
+    let inner = hand_mem.read_fixed(args[2]);
+    hand_mem.copy_to_arr(args[0], args[1], inner);
     None
   });
   cpu!("lenarr", |args, hand_mem, _| {
     let arr = hand_mem.get_fractal(args[0]);
     let len = arr.len_as_arr() as i64;
-    hand_mem.write(args[2], 8, &len.to_le_bytes());
+    hand_mem.write_fixed(args[2], len);
     None
   });
   cpu!("indarrf", |args, hand_mem, _| {
-    let val = LittleEndian::read_i64(hand_mem.read(args[1], 8));
+    let val = hand_mem.read_fixed(args[1]);
     let mem = hand_mem.get_fractal(args[0]);
     let len = mem.len_as_arr() as i64;
     let mut idx = -1i64;
     for i in 0..len {
-      let check = LittleEndian::read_i64(mem.read(i*8, 8));
+      let check = mem.read_fixed(i);
       if val == check {
         idx = i;
         break
       }
     }
-    hand_mem.write(args[2], 8, &idx.to_le_bytes());
+    hand_mem.write_fixed(args[2], idx);
     None
   });
   cpu!("indarrv", |args, hand_mem, _| {
-    let val = hand_mem.read(args[1], 0);
+    let val = hand_mem.read_arr(args[1]);
     let mem = hand_mem.get_fractal(args[0]);
     let len = mem.len_as_arr() as i64;
     let mut idx = -1i64;
     for i in 0..len {
-      let check = mem.read(i*8, 0);
+      let check = mem.read_arr(i);
       // TODO: equality comparisons for nested arrays, for now, assume it's string-like
       if val.len() != check.len() {
         continue
@@ -1544,38 +1741,65 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         break
       }
     }
-    hand_mem.write(args[2], 8, &idx.to_le_bytes());
+    hand_mem.write_fixed(args[2], idx);
     None
   });
   cpu!("join", |args, hand_mem, _| {
-    let sep_pascal_string = hand_mem.read(args[1], 0);
-    let sep_size = LittleEndian::read_u64(&sep_pascal_string[0..8]) as usize;
-    let sep_str = str::from_utf8(&sep_pascal_string[8..sep_size + 8]).unwrap();
-    let mem = hand_mem.get_fractal(args[0]);
-    let len = mem.len_as_arr() as i64;
-    let mut strs: Vec<String> = Vec::new();
-    for i in 0..len {
-      let v_pascal_string = mem.read(i*8, 0);
-      let v_size = LittleEndian::read_u64(&v_pascal_string[0..8]) as usize;
-      let v_str = str::from_utf8(&v_pascal_string[8..v_size + 8]).unwrap().to_string();
-      strs.push(v_str);
+    unsafe {
+      let sep_pascal_string = hand_mem.read_arr(args[1]);
+      let sep_size = sep_pascal_string[0] as usize;
+      let sep_str = str::from_utf8(sep_pascal_string[1..(sep_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let mem = hand_mem.get_fractal(args[0]);
+      let len = mem.len_as_arr() as i64;
+      let mut strs: Vec<String> = Vec::new();
+      for i in 0..len {
+        let v_pascal_string = mem.read_arr(i);
+        let v_size = v_pascal_string[0] as usize;
+        let v_str = str::from_utf8(v_pascal_string[1..(v_size / 8) + 1].align_to::<u8>().1).unwrap();
+        strs.push(v_str.to_string());
+      }
+      let out_str = strs.join(sep_str);
+      let mut out = vec![out_str.len() as i64];
+      let mut out_str_bytes = out_str.as_bytes().to_vec();
+      loop {
+        if out_str_bytes.len() % 8 != 0 {
+          out_str_bytes.push(0);
+        } else {
+          break
+        }
+      }
+      let mut i = 0;
+      loop {
+        if i < out_str_bytes.len() {
+          let str_slice = &out_str_bytes[i..i+8];
+          out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
+          i = i + 8;
+        } else {
+          break
+        }
+      }
+      hand_mem.write_arr(args[2], &out);
     }
-    let out_str = strs.join(sep_str);
-    let mut out = out_str.len().to_le_bytes().to_vec();
-    out.append(&mut out_str.as_bytes().to_vec());
-    hand_mem.write(args[2], 0, &out);
     None
   });
   cpu!("pusharr", |args, hand_mem, _| {
-    let val_size = LittleEndian::read_i64(hand_mem.read(args[2], 8)) as u8;
-    let val = hand_mem.read(args[1], val_size);
-    let val_vec = val.to_vec();
-    hand_mem.push_arr(args[0], val_vec, val_size);
+    let val_size = hand_mem.read_fixed(args[2]);
+    if val_size == 0 {
+      let val = hand_mem.read_fractal(args[1]);
+      hand_mem.push_arr_fractal(args[0], val);
+    } else {
+      let val = hand_mem.read_fixed(args[1]);
+      hand_mem.push_arr(args[0], val);
+    }
     None
   });
   cpu!("poparr", |args, hand_mem, _| {
     let last = hand_mem.pop_arr(args[0]);
-    hand_mem.write(args[1], last.len() as u8, last.as_slice());
+    if last.is_ok() {
+      hand_mem.write_fixed(args[1], last.ok().unwrap());
+    } else {
+      hand_mem.write_fractal(args[1], last.err().unwrap());
+    }
     None
   });
   cpu!("newarr", |args, hand_mem, _| {
@@ -1585,9 +1809,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   // Map opcodes TODO after maps are implemented
 
   // Ternary opcodes
-  // TODO: pair and condarr after arrays are implemented
   unpred_cpu!("condfn", |args, hand_mem, frag| {
-    let cond = LittleEndian::read_i64(hand_mem.read(args[0], 8));
+    let cond = hand_mem.read_fixed(args[0]);
     let event_id = args[1];
     if cond == 1 {
       frag.insert_subhandler(event_id);
@@ -1597,120 +1820,122 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
 
   // Std opcodes
   unpred_cpu!("execop", |args, hand_mem, _| {
-    let pascal_string = hand_mem.read(args[0], 0);
-    let size = LittleEndian::read_u64(&pascal_string[0..8]) as usize;
-    let full_cmd = str::from_utf8(&pascal_string[8..size + 8]).unwrap();
-    let split_cmd: Vec<&str> = full_cmd.split(" ").collect();
-    let output = Command::new(split_cmd[0]).args(&split_cmd[1..]).output();
-    match output {
-      Err(e) => println!("Executing \"{}\" failed with: {}", full_cmd, e),
-      Ok(out) => {
-        io::stdout().write_all(&out.stdout).unwrap();
-        io::stderr().write_all(&out.stderr).unwrap();
-      },
-    };
+    unsafe {
+      let pascal_string = hand_mem.read_arr(args[0]);
+      let size = pascal_string[0] as usize;
+      let full_cmd = str::from_utf8(pascal_string[1..(size / 8) + 1].align_to::<u8>().1).unwrap();
+      let split_cmd: Vec<&str> = full_cmd.split(" ").collect();
+      let output = Command::new(split_cmd[0]).args(&split_cmd[1..]).output();
+      match output {
+        Err(e) => println!("Executing \"{}\" failed with: {}", full_cmd, e),
+        Ok(out) => {
+          io::stdout().write_all(&out.stdout).unwrap();
+          io::stderr().write_all(&out.stderr).unwrap();
+        },
+      };
+    }
     None
   });
 
   // "Special" opcodes
   io!("waitop", |args, hand_mem, _| {
-    let payload = hand_mem.read(args[0], 8);
-    let ms = LittleEndian::read_i64(&payload[0..8]) as u64;
+    let ms = hand_mem.read_fixed(args[0]) as u64;
     return Box::pin(delay_for(Duration::from_millis(ms)));
   });
   cpu!("exitop", |args, hand_mem, _| {
-    std::process::exit(LittleEndian::read_i32(hand_mem.read(args[0], 4)));
+    std::process::exit(hand_mem.read_fixed(args[0]) as i32);
   });
   cpu!("stdoutp", |args, hand_mem, _| {
-    let pascal_string = hand_mem.read(args[0], 0);
-    let size = LittleEndian::read_u64(&pascal_string[0..8]) as usize;
-    let out_str = str::from_utf8(&pascal_string[8..size + 8]).unwrap();
-    print!("{}", out_str);
+    unsafe {
+      let pascal_string = hand_mem.read_arr(args[0]);
+      let size = pascal_string[0] as usize;
+      let out_str = str::from_utf8(pascal_string[1..(size / 8) + 1].align_to::<u8>().1).unwrap();
+      print!("{}", out_str);
+    }
     None
   });
   // set opcodes use args[0] directly, since the relevant value directly
   // fits in i64, and write it to args[2]
   cpu!("seti64", |args, hand_mem, _| {
     let data = args[0];
-    hand_mem.write(args[2], 8, &data.to_le_bytes());
+    hand_mem.write_fixed(args[2], data);
     None
   });
   cpu!("seti32", |args, hand_mem, _| {
-    let data = args[0] as i32;
-    hand_mem.write(args[2], 4, &data.to_le_bytes());
+    let data = (args[0] as i32) as i64;
+    hand_mem.write_fixed(args[2], data);
     None
   });
   cpu!("seti16", |args, hand_mem, _| {
-    let data = args[0] as i16;
-    hand_mem.write(args[2], 2, &data.to_le_bytes());
+    let data = (args[0] as i16) as i64;
+    hand_mem.write_fixed(args[2], data);
     None
   });
   cpu!("seti8", |args, hand_mem, _| {
-    let data = args[0] as i8;
-    hand_mem.write(args[2], 1, &data.to_le_bytes());
+    let data = (args[0] as i8) as i64;
+    hand_mem.write_fixed(args[2], data);
     None
   });
   cpu!("setf64", |args, hand_mem, _| {
-    let data = args[0] as f64;
-    hand_mem.write(args[2], 8, &data.to_le_bytes());
+    let data = i64::from_ne_bytes((args[0] as f64).to_ne_bytes());
+    hand_mem.write_fixed(args[2], data);
     None
   });
   cpu!("setf32", |args, hand_mem, _| {
-    let data = args[0] as f32;
-    hand_mem.write(args[2], 4, &data.to_le_bytes());
+    let data = i32::from_ne_bytes((args[0] as f32).to_ne_bytes()) as i64;
+    hand_mem.write_fixed(args[2], data);
     None
   });
   cpu!("setbool", |args, hand_mem, _| {
-    let data = args[0] as u8;
-    hand_mem.write(args[2], 1, &data.to_le_bytes());
+    let data = if args[0] == 0 { 0i64 } else { 1i64 };
+    hand_mem.write_fixed(args[2], data);
     None
   });
   cpu!("setestr", |args, hand_mem, _| {
-    let empty_str = 0i64.to_le_bytes().to_vec();
-    hand_mem.write(args[2], 0, &empty_str);
+    let empty_str = vec![0];
+    hand_mem.write_arr(args[2], &empty_str);
     None
   });
 
   // copy opcodes used for let variable reassignments
   cpu!("copyi8", |args, hand_mem, _| {
-    let val = hand_mem.read(args[0], 1).to_vec();
-    hand_mem.write(args[2], 1, &val);
+    let val = hand_mem.read_fixed(args[0]);
+    hand_mem.write_fixed(args[2], val);
     None
   });
   cpu!("copyi16", |args, hand_mem, _| {
-    let val = hand_mem.read(args[0], 2).to_vec();
-    hand_mem.write(args[2], 2, &val);
+    let val = hand_mem.read_fixed(args[0]);
+    hand_mem.write_fixed(args[2], val);
     None
   });
   cpu!("copyi32", |args, hand_mem, _| {
-    let val = hand_mem.read(args[0], 4).to_vec();
-    hand_mem.write(args[2], 4, &val);
+    let val = hand_mem.read_fixed(args[0]);
+    hand_mem.write_fixed(args[2], val);
     None
   });
   cpu!("copyi64", |args, hand_mem, _| {
-    let val = hand_mem.read(args[0], 8).to_vec();
-    hand_mem.write(args[2], 8, &val);
+    let val = hand_mem.read_fixed(args[0]);
+    hand_mem.write_fixed(args[2], val);
     None
   });
   cpu!("copyf32", |args, hand_mem, _| {
-    let val = hand_mem.read(args[0], 4).to_vec();
-    hand_mem.write(args[2], 4, &val);
+    let val = hand_mem.read_fixed(args[0]);
+    hand_mem.write_fixed(args[2], val);
     None
   });
   cpu!("copyf64", |args, hand_mem, _| {
-    let val = hand_mem.read(args[0], 8).to_vec();
-    hand_mem.write(args[2], 8, &val);
+    let val = hand_mem.read_fixed(args[0]);
+    hand_mem.write_fixed(args[2], val);
     None
   });
   cpu!("copybool", |args, hand_mem, _| {
-    let val = hand_mem.read(args[0], 1).to_vec();
-    hand_mem.write(args[2], 1, &val);
+    let val = hand_mem.read_fixed(args[0]);
+    hand_mem.write_fixed(args[2], val);
     None
   });
   cpu!("copystr", |args, hand_mem, _| {
-    let pascal_string = hand_mem.read(args[0], 0);
-    let out = pascal_string.to_vec();
-    hand_mem.write(args[2], 0, &out);
+    let pascal_string = hand_mem.read_arr(args[0]);
+    hand_mem.write_arr(args[2], &pascal_string);
     None
   });
   cpu!("copyarr", |args, hand_mem, _| {
@@ -1726,7 +1951,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     };
     Some(event)
   });
-  */
   o
 });
 

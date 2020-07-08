@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
-use byteorder::{ByteOrder, LittleEndian};
 use rand::Rng;
 use rand::thread_rng;
 use rayon::prelude::*; // Ugh, the Rayon documentation makes it difficult to not do this...
@@ -74,30 +73,32 @@ fn mx_plus_b(args: &Vec<i64>, hand_mem: &mut HandlerMemory) {
 }
 
 fn e_field(args: &Vec<i64>, hand_mem: &mut HandlerMemory) {
-  let i = hand_mem.read_fixed(args[0]);
-  let arr = hand_mem.get_fractal(args[1]).clone();
+  let arr = hand_mem.get_fractal(args[1]);
   let len = arr.len_as_arr() as i64;
   let mut out = 0.0f64;
   // This vector is to avoid issues with borrowing `hand_mem` twice at the same time even though it
   // would be safe
-  /*let mut charges: Vec<i64> = Vec::new();
-  for n in 0..len {
-    let charge = arr.read_fixed(n * 8);
-    charges.push(charge);
-  }*/
+  let i = hand_mem.read_fixed(args[0]);
+  let d = args[2];
+  let s = args[3];
+  let v = args[4];
+  let c = args[5];
   for n in 0..len {
     // All of the intermediate values are stored into the HandlerMemory to mimic how this function
     // would be translated from alan to the runtime execution
+    //hand_mem.copy_from(args[1], args[6], n);
+    //let scalar = hand_mem.read_fixed(args[6]) as f64;
+    let scalar = hand_mem.get_fractal(args[1]).read_fixed(n) as f64;
+    //let scalar = arr.read_fixed(n) as f64;
     let distance = (i - n) as f64;
     if distance != 0.0 {
-      //hand_mem.write_fixed(args[2], i64::from_ne_bytes(distance.to_ne_bytes()));
+      hand_mem.write_fixed(d, i64::from_ne_bytes(distance.to_ne_bytes()));
       let sqdistance = distance * distance;
-      //hand_mem.write_fixed(args[3], i64::from_ne_bytes(sqdistance.to_ne_bytes()));
+      hand_mem.write_fixed(s, i64::from_ne_bytes(sqdistance.to_ne_bytes()));
       let invsqdistance = 1f64 / sqdistance;
-      //hand_mem.write_fixed(args[4], i64::from_ne_bytes(invsqdistance.to_ne_bytes()));
-      //let scaled = invsqdistance * (charges[n as usize] as f64);
-      let scaled = invsqdistance * arr.read_fixed(n * 8) as f64;
-      //hand_mem.write_fixed(args[5], i64::from_ne_bytes(scaled.to_ne_bytes()));
+      hand_mem.write_fixed(v, i64::from_ne_bytes(invsqdistance.to_ne_bytes()));
+      let scaled = invsqdistance * scalar;
+      hand_mem.write_fixed(c, i64::from_ne_bytes(scaled.to_ne_bytes()));
       out = out + scaled;
     }
   }
@@ -116,56 +117,56 @@ fn gen_rand_array(size: i64) -> Vec<i64> {
 /// The three sequential tests, with the array sizes passed in and the return is the time in ns it
 /// took to run
 fn lin_square(size: i64) -> Duration {
-  let mut mem = HandlerMemory::new(None, 16);
+  let mut mem = HandlerMemory::new(None, 2);
   let data = gen_rand_array(size);
-  let mut output: Vec<i64> = Vec::new();
+  let mut output: Vec<i64> = Vec::with_capacity(size as usize);
   let start = Instant::now();
-  let args = vec![0, 8];
+  let args = vec![0, 1];
   for input in data {
     mem.write_fixed(0, input);
     square(&args, &mut mem);
-    output.push(mem.read_fixed(8));
+    output.push(mem.read_fixed(1));
   }
   let end = Instant::now();
   return end.saturating_duration_since(start);
 }
 
 fn lin_mx_plus_b(size: i64) -> Duration {
-  let mut mem = HandlerMemory::new(None, 40);
-  mem.write_fixed(8, 2);
-  mem.write_fixed(16, 3);
+  let mut mem = HandlerMemory::new(None, 5);
+  mem.write_fixed(1, 2);
+  mem.write_fixed(2, 3);
   let data = gen_rand_array(size);
-  let mut output: Vec<i64> = Vec::new();
+  let mut output: Vec<i64> = Vec::with_capacity(size as usize);
   let start = Instant::now();
-  let args = vec![0, 8, 16, 24, 32];
+  let args = vec![0, 1, 2, 3, 4];
   for input in data {
     mem.write_fixed(0, input);
     mx_plus_b(&args, &mut mem);
-    output.push(mem.read_fixed(32));
+    output.push(mem.read_fixed(4));
   }
   let end = Instant::now();
   return end.saturating_duration_since(start);
 }
 
 fn lin_e_field(size: i64) -> Duration {
-  let mut mem = HandlerMemory::new(None, 56);
+  let mut mem = HandlerMemory::new(None, 7);
   let data = gen_rand_array(size);
-  mem.new_arr(8);
+  mem.new_arr(1);
   for input in data {
-    mem.push_arr(8, input);
+    mem.push_arr(1, input);
   }
-  let mut output: Vec<i64> = Vec::new();
+  let mut output: Vec<i64> = Vec::with_capacity(size as usize);
   let start = Instant::now();
-  let args = vec![0, 8, 16, 24, 32, 40, 48];
+  let args = vec![0, 1, 2, 3, 4, 5, 6];
   for i in 0..size {
     mem.write_fixed(0, i);
     e_field(&args, &mut mem);
-    output.push(mem.read_fixed(48));
+    output.push(mem.read_fixed(6));
   }
   let end = Instant::now();
   return end.saturating_duration_since(start);
 }
-/*
+
 fn coarse_square(size: i64) -> Duration {
   let mut full_output: Vec<i64> = Vec::new();
   let cpu_threads = (num_cpus::get() - 1) as i64;
@@ -180,12 +181,12 @@ fn coarse_square(size: i64) -> Duration {
   let start = Instant::now();
   let result_chunks: Vec<Vec<i64>> = data_chunks.par_iter().map(|chunk| {
     let mut output: Vec<i64> = Vec::new();
-    let mut mem = HandlerMemory::new(None, 16);
-    let args = vec![0, 8];
+    let mut mem = HandlerMemory::new(None, 2);
+    let args = vec![0, 1];
     for input in chunk {
-      mem.write(0, 8, &input.to_le_bytes());
+      mem.write_fixed(0, *input);
       square(&args, &mut mem);
-      output.push(LittleEndian::read_i64(mem.read(8, 8)));
+      output.push(mem.read_fixed(1));
     }
     return output;
   }).collect();
@@ -209,18 +210,18 @@ fn coarse_mx_plus_b(size: i64) -> Duration {
     }
     data_chunks.push(gen_rand_array(inner_size));
   }
-  let mut full_mem = HandlerMemory::new(None, 40);
-  full_mem.write(8, 8, &2i64.to_le_bytes());
-  full_mem.write(16, 8, &3i64.to_le_bytes());
+  let mut full_mem = HandlerMemory::new(None, 5);
+  full_mem.write_fixed(1, 2);
+  full_mem.write_fixed(2, 3);
   let start = Instant::now();
   let result_chunks: Vec<Vec<i64>> = data_chunks.par_iter().map(|chunk| {
     let mut mem = full_mem.clone();
     let mut output: Vec<i64> = Vec::new();
-    let args = vec![0, 8, 16, 24, 32];
+    let args = vec![0, 1, 2, 3, 4];
     for input in chunk {
-      mem.write(0, 8, &input.to_le_bytes());
+      mem.write_fixed(0, *input);
       mx_plus_b(&args, &mut mem);
-      output.push(LittleEndian::read_i64(mem.read(32, 8)));
+      output.push(mem.read_fixed(4));
     }
     return output;
   }).collect();
@@ -237,16 +238,16 @@ fn coarse_e_field(size: i64) -> Duration {
   let mut full_output: Vec<i64> = Vec::new();
   let cpu_threads = (num_cpus::get() - 1) as i64;
   let data = gen_rand_array(size);
-  let mut real_mem = HandlerMemory::new(None, 56);
-  real_mem.new_arr(8);
+  let mut real_mem = HandlerMemory::new(None, 7);
+  real_mem.new_arr(1);
   for input in &data {
-    real_mem.push_arr(8, input.to_le_bytes().to_vec(), 8);
+    real_mem.push_arr(1, *input);
   }
   let start = Instant::now();
   let mut mems: Vec<HandlerMemory> = Vec::new();
   let mut inner_sizes: Vec<usize> = Vec::new();
   for i in 0..cpu_threads {
-    let mut mem = real_mem.clone();
+    let mem = real_mem.clone();
     mems.push(mem);
     let mut inner_size = size / cpu_threads;
     if size % cpu_threads > 0 && i == cpu_threads - 1 {
@@ -254,16 +255,16 @@ fn coarse_e_field(size: i64) -> Duration {
     }
     inner_sizes.push(inner_size as usize);
   }
-  let mut result_chunks: Vec<Vec<i64>> = mems.par_iter_mut().enumerate().map(|(i, mut mem)| {
+  let result_chunks: Vec<Vec<i64>> = mems.par_iter_mut().enumerate().map(|(i, mut mem)| {
     let inner_size = inner_sizes[i];
     let mut output = Vec::with_capacity(inner_size);
     let offset = i * (size / cpu_threads) as usize;
-    let args = vec![0, 8, 16, 24, 32, 40, 48];
+    let args = vec![0, 1, 2, 3, 4, 5, 6];
     for j in offset..(offset+inner_size) {
       let addr = j;
-      mem.write(0, 8, &addr.to_le_bytes());
+      mem.write_fixed(0, addr as i64);
       e_field(&args, &mut mem);
-      output.push(LittleEndian::read_i64(mem.read(48, 8)));
+      output.push(mem.read_fixed(6));
     }
     return output.to_vec();
   }).collect();
@@ -275,64 +276,67 @@ fn coarse_e_field(size: i64) -> Duration {
 }
 
 fn fine_square(size: i64) -> Duration {
-  let mut mem = HandlerMemory::new(None, 16);
   let data = gen_rand_array(size);
   let start = Instant::now();
-  let output: Vec<i64> = data.par_iter().map(|value| {
-    let mut mem = HandlerMemory::new(None, 16);
-    let args = vec![0, 8];
-    mem.write(0, 8, &value.to_le_bytes());
+  let _output: Vec<i64> = data.par_iter().map(|value| {
+    let mut mem = HandlerMemory::new(None, 2);
+    let args = vec![0, 1];
+    mem.write_fixed(0, *value);
     square(&args, &mut mem);
-    return LittleEndian::read_i64(mem.read(8, 8));
+    return mem.read_fixed(1);
   }).collect();
   let end = Instant::now();
   return end.saturating_duration_since(start);
 }
 
 fn fine_mx_plus_b(size: i64) -> Duration {
-  let mut real_mem = HandlerMemory::new(None, 40);
-  real_mem.write(8, 8, &2i64.to_le_bytes());
-  real_mem.write(16, 8, &3i64.to_le_bytes());
+  let mut real_mem = HandlerMemory::new(None, 5);
+  real_mem.write_fixed(1, 2);
+  real_mem.write_fixed(2, 3);
   let data = gen_rand_array(size);
   let start = Instant::now();
-  let output: Vec<i64> = data.par_iter().map(|value| {
+  let _output: Vec<i64> = data.par_iter().map(|value| {
     let mut mem = real_mem.clone();
-    let args = vec![0, 8, 16, 24, 32];
-    mem.write(0, 8, &value.to_le_bytes());
+    let args = vec![0, 1, 2, 3, 4];
+    mem.write_fixed(0, *value);
     mx_plus_b(&args, &mut mem);
-    return LittleEndian::read_i64(mem.read(32, 8));
+    return mem.read_fixed(4);
   }).collect();
   let end = Instant::now();
   return end.saturating_duration_since(start);
 }
 
 fn fine_e_field(size: i64) -> Duration {
-  let mut real_mem = HandlerMemory::new(None, 56);
+  let mut real_mem = HandlerMemory::new(None, 7);
   let data = gen_rand_array(size);
-  real_mem.new_arr(8);
+  real_mem.new_arr(1);
   for input in data {
-    real_mem.push_arr(8, input.to_le_bytes().to_vec(), 8);
+    real_mem.push_arr(1, input);
   }
   let start = Instant::now();
-  let output: Vec<i64> = (0..size).into_par_iter().map(|i| {
+  let _output: Vec<i64> = (0..size).into_par_iter().map(|i| {
     let mut mem = real_mem.clone();
-    let args = vec![0, 8, 16, 24, 32, 40, 48];
+    let args = vec![0, 1, 2, 3, 4, 5, 6];
     let addr = i;
-    mem.write(0, 8, &addr.to_le_bytes());
+    mem.write_fixed(0, addr);
     e_field(&args, &mut mem);
-    return LittleEndian::read_i64(mem.read(48, 8));
+    return mem.read_fixed(6);
   }).collect();
   let end = Instant::now();
   return end.saturating_duration_since(start);
 }
-*/
+
 pub fn benchmark() {
   // Initialize the global PROGRAM value
-  PROGRAM.set(Program {
+  let init = PROGRAM.set(Program {
     event_handlers: HashMap::new(),
     event_pls: HashMap::new(),
     gmem: Vec::new(),
   });
+  if init.is_err() {
+    eprintln!("Failed to load bytecode");
+    std::process::exit(1);
+  }
   // Initialize the global Rayon threadpool
   let cpu_threads = num_cpus::get() - 1;
   rayon::ThreadPoolBuilder::new().num_threads(cpu_threads).build_global().unwrap();
@@ -347,7 +351,6 @@ pub fn benchmark() {
   println!("Quick test sequential e-field 100-element array: {:?}", lin_e_field(100));
   println!("Quick test sequential e-field 10,000-element array: {:?}", lin_e_field(10000));
   // println!("Quick test sequential e-field 1,000,000-element array: {:?}", lin_e_field(1000000));
-  /*
   println!("Quick test coarse parallel squares 100-element array: {:?}", coarse_square(100));
   println!("Quick test coarse parallel squares 10,000-element array: {:?}", coarse_square(10000));
   println!("Quick test coarse parallel squares 1,000,000-element array: {:?}", coarse_square(1000000));
@@ -366,5 +369,4 @@ pub fn benchmark() {
   println!("Quick test fine parallel e-field 100-element array: {:?}", fine_e_field(100));
   println!("Quick test fine parallel e-field 10,000-element array: {:?}", fine_e_field(10000));
   // println!("Quick test fine parallel e-field 1,000,000-element array: {:?}", fine_e_field(1000000));
-  */
 }

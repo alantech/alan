@@ -28,7 +28,7 @@ fn main() {
     let fp = &format!("{:}/{:}", env::current_dir().ok().unwrap().to_str().unwrap(), agc_file);
     exec(&fp);
   }
-  if let Some(matches) = matches.subcommand_matches("benchmark") {
+  if let Some(_matches) = matches.subcommand_matches("benchmark") {
     benchmark();
   }
 }

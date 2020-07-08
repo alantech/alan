@@ -68,6 +68,7 @@ const benchmark = () => {
   console.log(`mx+b 1,000,000-element array: ${formatTime(linMxPlusB(1000000))}`)
   console.log(`e-field 100-element array: ${formatTime(linEField(100))}`)
   console.log(`e-field 10,000-element array: ${formatTime(linEField(10000))}`)
+  console.log(`e-field 1,000,000-element array: ${formatTime(linEField(1000000))}`)
 }
 
 benchmark()
