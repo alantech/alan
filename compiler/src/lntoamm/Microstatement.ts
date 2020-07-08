@@ -20,6 +20,7 @@ class Microstatement {
   inputNames: Array<string>
   fns: Array<Fn>
   closureStatements: Array<Microstatement>
+  inputTypes: Array<Type>
 
   constructor(
     statementType: StatementType,
@@ -31,6 +32,7 @@ class Microstatement {
     fns: Array<Fn> = [],
     alias: string = '',
     closureStatements: Array<Microstatement> = [],
+    inputTypes: Array<Type> = [],
   ) {
     this.statementType = statementType
     this.scope = scope
@@ -41,6 +43,7 @@ class Microstatement {
     this.fns = fns
     this.alias = alias
     this.closureStatements = closureStatements
+    this.inputTypes = inputTypes
   }
 
   toString() {
@@ -84,7 +87,15 @@ class Microstatement {
         }
         break
       case StatementType.CLOSURE:
-        outString = "const " + this.outputName + ": function = fn (): void {\n"
+        outString = "const " + this.outputName + ": function = fn ("
+        let args = []
+        for (const [idx, inp] of this.inputNames.entries()) {
+          if (inp !== "" && this.inputTypes[idx].typename != "") {
+            args.push(inp + ": " + this.inputTypes[idx].typename)
+          }
+        }
+        outString += args.join(",")
+        outString += "): void {\n"
         for (const m of this.closureStatements) {
           const s = m.toString()
           if (s !== "") {
@@ -871,7 +882,6 @@ class Microstatement {
     scope: Scope,
     microstatements: Array<Microstatement>,
   ) {
-    // TODO: Add support for closures with arguments
     let len = microstatements.length
     for (const s of userFunction.statements) {
       if (s.statementOrAssignableAst instanceof LnParser.StatementsContext) {
@@ -891,10 +901,11 @@ class Microstatement {
       true, // TODO: Figure out if this is true or not
       constName,
       Type.builtinTypes['function'],
-      [],
+      Object.keys(userFunction.args),
       [],
       '',
-      innerMicrostatements
+      innerMicrostatements,
+      Object.values(userFunction.args),
     ))
   }
 
