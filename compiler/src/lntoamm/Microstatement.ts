@@ -906,7 +906,7 @@ class Microstatement {
         Microstatement.fromAssignablesAst(s.statementOrAssignableAst, scope, microstatements)
       }
     }
-    microstatements.splice(idx, Object.keys(userFunction.args).length)
+    microstatements.splice(idx, args.length)
     let newlen = microstatements.length
     // There might be off-by-one bugs in the conversion here
     const innerMicrostatements = microstatements.slice(len, newlen)
