@@ -1587,7 +1587,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       }).collect();
       hand_mem.new_fractal(args[2]);
       for out in outs {
-        hand_mem.push_fractal_fractal_mem(args[2], out);
+        hand_mem.push_nested_fractal_mem(args[2], out);
       }
     }
     None
@@ -1814,7 +1814,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let val_size = hand_mem.read_fixed(args[2]);
     if val_size == 0 {
       let val = hand_mem.read_fractal(args[1]);
-      hand_mem.push_fractal_fractal(args[0], val);
+      hand_mem.push_nested_fractal(args[0], val);
     } else {
       let val = hand_mem.read_fixed(args[1]);
       hand_mem.push_fractal_fixed(args[0], val);

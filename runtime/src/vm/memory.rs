@@ -185,7 +185,7 @@ impl HandlerMemory {
     arr.write_fixed(idx as i64, val);
   }
 
-  pub fn push_fractal_fractal_mem(self: &mut HandlerMemory, addr: i64, val: Vec<i64>) {
+  pub fn push_nested_fractal_mem(self: &mut HandlerMemory, addr: i64, val: Vec<i64>) {
     let arr = &mut self.fractal_mem[self.either_mem[addr as usize] as usize];
     let idx = arr.mem.len() as i64;
     arr.mem.push(0);
@@ -193,7 +193,7 @@ impl HandlerMemory {
     arr.write_fractal_mem(idx, &val);
   }
 
-  pub fn push_fractal_fractal(self: &mut HandlerMemory, addr: i64, val: HandlerMemory) {
+  pub fn push_nested_fractal(self: &mut HandlerMemory, addr: i64, val: HandlerMemory) {
     let arr = &mut self.fractal_mem[self.either_mem[addr as usize] as usize];
     let idx = arr.mem.len() as i64;
     arr.mem.push(0);
