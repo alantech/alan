@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::future::Future;
+use std::io::{self, Write};
 use std::pin::Pin;
 use std::process::Command;
-use std::io::{self, Write};
+use std::slice;
 use std::str;
 use std::time::Duration;
 
@@ -142,8 +143,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("strf64", |args, hand_mem, _| {
     unsafe {
       let pascal_string = hand_mem.read_arr(args[0]);
-      let size = pascal_string[0] as usize;
-      let out_str = str::from_utf8(pascal_string[1..(size / 8) + 1].align_to::<u8>().1).unwrap();
+      let str_len = pascal_string[0] as usize;
+      let pascal_string_u8 = slice::from_raw_parts(pascal_string[1..].as_ptr().cast::<u8>(), str_len*8);
+      let out_str = str::from_utf8(&pascal_string_u8[0..str_len]).unwrap();
       let out: f64 = out_str.parse().unwrap();
       hand_mem.write_fixed(args[2], i64::from_ne_bytes(out.to_ne_bytes()));
     }
@@ -188,8 +190,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("strf32", |args, hand_mem, _| {
     unsafe {
       let pascal_string = hand_mem.read_arr(args[0]);
-      let size = pascal_string[0] as usize;
-      let out_str = str::from_utf8(pascal_string[1..(size / 8) + 1].align_to::<u8>().1).unwrap();
+      let str_len = pascal_string[0] as usize;
+      let pascal_string_u8 = slice::from_raw_parts(pascal_string[1..].as_ptr().cast::<u8>(), str_len*8);
+      let out_str = str::from_utf8(&pascal_string_u8[0..str_len]).unwrap();
       let num: f32 = out_str.parse().unwrap();
       let out = i32::from_ne_bytes(num.to_ne_bytes()) as i64;
       hand_mem.write_fixed(args[2], out);
@@ -231,8 +234,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("stri64", |args, hand_mem, _| {
     unsafe {
       let pascal_string = hand_mem.read_arr(args[0]);
-      let size = pascal_string[0] as usize;
-      let out_str = str::from_utf8(pascal_string[1..(size / 8) + 1].align_to::<u8>().1).unwrap();
+      let str_len = pascal_string[0] as usize;
+      let pascal_string_u8 = slice::from_raw_parts(pascal_string[1..].as_ptr().cast::<u8>(), str_len*8);
+      let out_str = str::from_utf8(&pascal_string_u8[0..str_len]).unwrap();
       let out: i64 = out_str.parse().unwrap();
       hand_mem.write_fixed(args[2], out);
     }
@@ -272,8 +276,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("stri32", |args, hand_mem, _| {
     unsafe {
       let pascal_string = hand_mem.read_arr(args[0]);
-      let size = pascal_string[0] as usize;
-      let out_str = str::from_utf8(pascal_string[1..(size / 8) + 1].align_to::<u8>().1).unwrap();
+      let str_len = pascal_string[0] as usize;
+      let pascal_string_u8 = slice::from_raw_parts(pascal_string[1..].as_ptr().cast::<u8>(), str_len*8);
+      let out_str = str::from_utf8(&pascal_string_u8[0..str_len]).unwrap();
       let num: i32 = out_str.parse().unwrap();
       let out = num as i64;
       hand_mem.write_fixed(args[2], out);
@@ -314,8 +319,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("stri16", |args, hand_mem, _| {
     unsafe {
       let pascal_string = hand_mem.read_arr(args[0]);
-      let size = pascal_string[0] as usize;
-      let out_str = str::from_utf8(pascal_string[1..(size / 8) + 1].align_to::<u8>().1).unwrap();
+      let str_len = pascal_string[0] as usize;
+      let pascal_string_u8 = slice::from_raw_parts(pascal_string[1..].as_ptr().cast::<u8>(), str_len*8);
+      let out_str = str::from_utf8(&pascal_string_u8[0..str_len]).unwrap();
       let num: i16 = out_str.parse().unwrap();
       let out = num as i64;
       hand_mem.write_fixed(args[2], out);
@@ -356,8 +362,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("stri8", |args, hand_mem, _| {
     unsafe {
       let pascal_string = hand_mem.read_arr(args[0]);
-      let size = pascal_string[0] as usize;
-      let out_str = str::from_utf8(pascal_string[1..(size / 8) + 1].align_to::<u8>().1).unwrap();
+      let str_len = pascal_string[0] as usize;
+      let pascal_string_u8 = slice::from_raw_parts(pascal_string[1..].as_ptr().cast::<u8>(), str_len*8);
+      let out_str = str::from_utf8(&pascal_string_u8[0..str_len]).unwrap();
       let num: i8 = out_str.parse().unwrap();
       let out = num as i64;
       hand_mem.write_fixed(args[2], out);
@@ -409,8 +416,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("strbool", |args, hand_mem, _| {
     unsafe {
       let pascal_string = hand_mem.read_arr(args[0]);
-      let size = pascal_string[0] as usize;
-      let out_str = str::from_utf8(pascal_string[1..(size / 8) + 1].align_to::<u8>().1).unwrap();
+      let str_len = pascal_string[0] as usize;
+      let pascal_string_u8 = slice::from_raw_parts(pascal_string[1..].as_ptr().cast::<u8>(), str_len*8);
+      let out_str = str::from_utf8(&pascal_string_u8[0..str_len]).unwrap();
       let out = if out_str == "true" { 1i64 } else { 0i64 };
       hand_mem.write_fixed(args[2], out);
     }
@@ -1323,11 +1331,13 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("ltstr", |args, hand_mem, _| {
     unsafe {
       let a_pascal_string = hand_mem.read_arr(args[0]);
-      let a_size = a_pascal_string[0] as usize;
-      let a_str = str::from_utf8(a_pascal_string[1..(a_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let a_str_len = a_pascal_string[0] as usize;
+      let a_pascal_string_u8 = slice::from_raw_parts(a_pascal_string[1..].as_ptr().cast::<u8>(), a_str_len*8);
+      let a_str = str::from_utf8(&a_pascal_string_u8[0..a_str_len]).unwrap();
       let b_pascal_string = hand_mem.read_arr(args[1]);
-      let b_size = b_pascal_string[0] as usize;
-      let b_str = str::from_utf8(b_pascal_string[1..(b_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let b_str_len = b_pascal_string[0] as usize;
+      let b_pascal_string_u8 = slice::from_raw_parts(b_pascal_string[1..].as_ptr().cast::<u8>(), b_str_len*8);
+      let b_str = str::from_utf8(&b_pascal_string_u8[0..b_str_len]).unwrap();
       let out = if a_str < b_str { 1i64 } else { 0i64 };
       hand_mem.write_fixed(args[2], out);
     }
@@ -1379,11 +1389,13 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("ltestr", |args, hand_mem, _| {
     unsafe {
       let a_pascal_string = hand_mem.read_arr(args[0]);
-      let a_size = a_pascal_string[0] as usize;
-      let a_str = str::from_utf8(a_pascal_string[1..(a_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let a_str_len = a_pascal_string[0] as usize;
+      let a_pascal_string_u8 = slice::from_raw_parts(a_pascal_string[1..].as_ptr().cast::<u8>(), a_str_len*8);
+      let a_str = str::from_utf8(&a_pascal_string_u8[0..a_str_len]).unwrap();
       let b_pascal_string = hand_mem.read_arr(args[1]);
-      let b_size = b_pascal_string[0] as usize;
-      let b_str = str::from_utf8(b_pascal_string[1..(b_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let b_str_len = b_pascal_string[0] as usize;
+      let b_pascal_string_u8 = slice::from_raw_parts(b_pascal_string[1..].as_ptr().cast::<u8>(), b_str_len*8);
+      let b_str = str::from_utf8(&b_pascal_string_u8[0..b_str_len]).unwrap();
       let out = if a_str <= b_str { 1i64 } else { 0i64 };
       hand_mem.write_fixed(args[2], out);
     }
@@ -1435,11 +1447,13 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("gtstr", |args, hand_mem, _| {
     unsafe {
       let a_pascal_string = hand_mem.read_arr(args[0]);
-      let a_size = a_pascal_string[0] as usize;
-      let a_str = str::from_utf8(a_pascal_string[1..(a_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let a_str_len = a_pascal_string[0] as usize;
+      let a_pascal_string_u8 = slice::from_raw_parts(a_pascal_string[1..].as_ptr().cast::<u8>(), a_str_len*8);
+      let a_str = str::from_utf8(&a_pascal_string_u8[0..a_str_len]).unwrap();
       let b_pascal_string = hand_mem.read_arr(args[1]);
-      let b_size = b_pascal_string[0] as usize;
-      let b_str = str::from_utf8(b_pascal_string[1..(b_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let b_str_len = b_pascal_string[0] as usize;
+      let b_pascal_string_u8 = slice::from_raw_parts(b_pascal_string[1..].as_ptr().cast::<u8>(), b_str_len*8);
+      let b_str = str::from_utf8(&b_pascal_string_u8[0..b_str_len]).unwrap();
       let out = if a_str > b_str { 1i64 } else { 0i64 };
       hand_mem.write_fixed(args[2], out);
     }
@@ -1491,11 +1505,13 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("gtestr", |args, hand_mem, _| {
     unsafe {
       let a_pascal_string = hand_mem.read_arr(args[0]);
-      let a_size = a_pascal_string[0] as usize;
-      let a_str = str::from_utf8(a_pascal_string[1..(a_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let a_str_len = a_pascal_string[0] as usize;
+      let a_pascal_string_u8 = slice::from_raw_parts(a_pascal_string[1..].as_ptr().cast::<u8>(), a_str_len*8);
+      let a_str = str::from_utf8(&a_pascal_string_u8[0..a_str_len]).unwrap();
       let b_pascal_string = hand_mem.read_arr(args[1]);
-      let b_size = b_pascal_string[0] as usize;
-      let b_str = str::from_utf8(b_pascal_string[1..(b_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let b_str_len = b_pascal_string[0] as usize;
+      let b_pascal_string_u8 = slice::from_raw_parts(b_pascal_string[1..].as_ptr().cast::<u8>(), b_str_len*8);
+      let b_str = str::from_utf8(&b_pascal_string_u8[0..b_str_len]).unwrap();
       let out = if a_str >= b_str { 1i64 } else { 0i64 };
       hand_mem.write_fixed(args[2], out);
     }
@@ -1506,11 +1522,13 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("catstr", |args, hand_mem, _| {
     unsafe {
       let a_pascal_string = hand_mem.read_arr(args[0]);
-      let a_size = a_pascal_string[0] as usize;
-      let a_str = str::from_utf8(a_pascal_string[1..(a_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let a_str_len = a_pascal_string[0] as usize;
+      let a_pascal_string_u8 = slice::from_raw_parts(a_pascal_string[1..].as_ptr().cast::<u8>(), a_str_len*8);
+      let a_str = str::from_utf8(&a_pascal_string_u8[0..a_str_len]).unwrap();
       let b_pascal_string = hand_mem.read_arr(args[1]);
-      let b_size = b_pascal_string[0] as usize;
-      let b_str = str::from_utf8(b_pascal_string[1..(b_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let b_str_len = b_pascal_string[0] as usize;
+      let b_pascal_string_u8 = slice::from_raw_parts(b_pascal_string[1..].as_ptr().cast::<u8>(), b_str_len*8);
+      let b_str = str::from_utf8(&b_pascal_string_u8[0..b_str_len]).unwrap();
       let out_str = format!("{}{}", a_str, b_str);
       let mut out = vec![out_str.len() as i64];
       let mut out_str_bytes = out_str.as_bytes().to_vec();
@@ -1538,11 +1556,13 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("split", |args, hand_mem, _| {
     unsafe {
       let a_pascal_string = hand_mem.read_arr(args[0]);
-      let a_size = a_pascal_string[0] as usize;
-      let a_str = str::from_utf8(a_pascal_string[1..(a_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let a_str_len = a_pascal_string[0] as usize;
+      let a_pascal_string_u8 = slice::from_raw_parts(a_pascal_string[1..].as_ptr().cast::<u8>(), a_str_len*8);
+      let a_str = str::from_utf8(&a_pascal_string_u8[0..a_str_len]).unwrap();
       let b_pascal_string = hand_mem.read_arr(args[1]);
-      let b_size = b_pascal_string[0] as usize;
-      let b_str = str::from_utf8(b_pascal_string[1..(b_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let b_str_len = b_pascal_string[0] as usize;
+      let b_pascal_string_u8 = slice::from_raw_parts(b_pascal_string[1..].as_ptr().cast::<u8>(), b_str_len*8);
+      let b_str = str::from_utf8(&b_pascal_string_u8[0..b_str_len]).unwrap();
       let outs: Vec<Vec<i64>> = a_str.split(b_str).map(|out_str| {
         let mut out = vec![out_str.len() as i64];
         let mut out_str_bytes = out_str.as_bytes().to_vec();
@@ -1575,8 +1595,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("repstr", |args, hand_mem, _| {
     unsafe {
       let a_pascal_string = hand_mem.read_arr(args[0]);
-      let a_size = a_pascal_string[0] as usize;
-      let a_str = str::from_utf8(a_pascal_string[1..(a_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let a_str_len = a_pascal_string[0] as usize;
+      let a_pascal_string_u8 = slice::from_raw_parts(a_pascal_string[1..].as_ptr().cast::<u8>(), a_str_len*8);
+      let a_str = str::from_utf8(&a_pascal_string_u8[0..a_str_len]).unwrap();
       let n = hand_mem.read_fixed(args[1]);
       let out_str = a_str.repeat(n as usize);
       let mut out = vec![out_str.len() as i64];
@@ -1605,11 +1626,13 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("matches", |args, hand_mem, _| {
     unsafe {
       let a_pascal_string = hand_mem.read_arr(args[0]);
-      let a_size = a_pascal_string[0] as usize;
-      let a_str = str::from_utf8(a_pascal_string[1..(a_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let a_str_len = a_pascal_string[0] as usize;
+      let a_pascal_string_u8 = slice::from_raw_parts(a_pascal_string[1..].as_ptr().cast::<u8>(), a_str_len*8);
+      let a_str = str::from_utf8(&a_pascal_string_u8[0..a_str_len]).unwrap();
       let b_pascal_string = hand_mem.read_arr(args[1]);
-      let b_size = b_pascal_string[0] as usize;
-      let b_str = str::from_utf8(b_pascal_string[1..(b_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let b_str_len = b_pascal_string[0] as usize;
+      let b_pascal_string_u8 = slice::from_raw_parts(b_pascal_string[1..].as_ptr().cast::<u8>(), b_str_len*8);
+      let b_str = str::from_utf8(&b_pascal_string_u8[0..b_str_len]).unwrap();
       let b_regex = Regex::new(b_str).unwrap();
       let out = if b_regex.is_match(a_str) { 1i64 } else { 0i64 };
       hand_mem.write_fixed(args[2], out);
@@ -1619,11 +1642,13 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("indstr", |args, hand_mem, _| {
     unsafe {
       let a_pascal_string = hand_mem.read_arr(args[0]);
-      let a_size = a_pascal_string[0] as usize;
-      let a_str = str::from_utf8(a_pascal_string[1..(a_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let a_str_len = a_pascal_string[0] as usize;
+      let a_pascal_string_u8 = slice::from_raw_parts(a_pascal_string[1..].as_ptr().cast::<u8>(), a_str_len*8);
+      let a_str = str::from_utf8(&a_pascal_string_u8[0..a_str_len]).unwrap();
       let b_pascal_string = hand_mem.read_arr(args[1]);
-      let b_size = b_pascal_string[0] as usize;
-      let b_str = str::from_utf8(b_pascal_string[1..(b_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let b_str_len = b_pascal_string[0] as usize;
+      let b_pascal_string_u8 = slice::from_raw_parts(b_pascal_string[1..].as_ptr().cast::<u8>(), b_str_len*8);
+      let b_str = str::from_utf8(&b_pascal_string_u8[0..b_str_len]).unwrap();
       let out_option = a_str.find(b_str);
       let out = if out_option.is_none()  { -1i64 } else { out_option.unwrap() as i64 };
       hand_mem.write_fixed(args[2], out);
@@ -1639,8 +1664,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("trim", |args, hand_mem, _| {
     unsafe {
       let pascal_string = hand_mem.read_arr(args[0]);
-      let size = pascal_string[0] as usize;
-      let out_str = str::from_utf8(pascal_string[1..(size / 8) + 1].align_to::<u8>().1).unwrap().trim();
+      let str_len = pascal_string[0] as usize;
+      let pascal_string_u8 = slice::from_raw_parts(pascal_string[1..].as_ptr().cast::<u8>(), str_len*8);
+      let out_str = str::from_utf8(&pascal_string_u8[0..str_len]).unwrap().trim();
       let mut out = vec![out_str.len() as i64];
       let mut out_str_bytes = out_str.as_bytes().to_vec();
       loop {
@@ -1747,15 +1773,17 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("join", |args, hand_mem, _| {
     unsafe {
       let sep_pascal_string = hand_mem.read_arr(args[1]);
-      let sep_size = sep_pascal_string[0] as usize;
-      let sep_str = str::from_utf8(sep_pascal_string[1..(sep_size / 8) + 1].align_to::<u8>().1).unwrap();
+      let sep_str_len = sep_pascal_string[0] as usize;
+      let sep_pascal_string_u8 = slice::from_raw_parts(sep_pascal_string[1..].as_ptr().cast::<u8>(), sep_str_len*8);
+      let sep_str = str::from_utf8(&sep_pascal_string_u8[0..sep_str_len]).unwrap();
       let mem = hand_mem.get_fractal(args[0]);
       let len = mem.len_as_arr() as i64;
       let mut strs: Vec<String> = Vec::new();
       for i in 0..len {
         let v_pascal_string = mem.read_arr(i);
-        let v_size = v_pascal_string[0] as usize;
-        let v_str = str::from_utf8(v_pascal_string[1..(v_size / 8) + 1].align_to::<u8>().1).unwrap();
+        let v_str_len = v_pascal_string[0] as usize;
+        let v_pascal_string_u8 = slice::from_raw_parts(v_pascal_string[1..].as_ptr().cast::<u8>(), v_str_len*8);
+        let v_str = str::from_utf8(&v_pascal_string_u8[0..v_str_len]).unwrap();
         strs.push(v_str.to_string());
       }
       let out_str = strs.join(sep_str);
@@ -1822,8 +1850,12 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   unpred_cpu!("execop", |args, hand_mem, _| {
     unsafe {
       let pascal_string = hand_mem.read_arr(args[0]);
-      let size = pascal_string[0] as usize;
-      let full_cmd = str::from_utf8(pascal_string[1..(size / 8) + 1].align_to::<u8>().1).unwrap();
+      let str_len = pascal_string[0] as usize;
+      let full_cmd = str::from_utf8(
+        &std::mem::transmute::<&[i64], &[u8]>(
+          &pascal_string[1..]
+        )[0..str_len]
+      ).unwrap();
       let split_cmd: Vec<&str> = full_cmd.split(" ").collect();
       let output = Command::new(split_cmd[0]).args(&split_cmd[1..]).output();
       match output {
@@ -1848,8 +1880,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("stdoutp", |args, hand_mem, _| {
     unsafe {
       let pascal_string = hand_mem.read_arr(args[0]);
-      let size = pascal_string[0] as usize;
-      let out_str = str::from_utf8(pascal_string[1..(size / 8) + 1].align_to::<u8>().1).unwrap();
+      let str_len = pascal_string[0] as usize;
+      let pascal_string_u8 = slice::from_raw_parts(pascal_string[1..].as_ptr().cast::<u8>(), str_len*8);
+      let out_str = str::from_utf8(&pascal_string_u8[0..str_len]).unwrap();
       print!("{}", out_str);
     }
     None
