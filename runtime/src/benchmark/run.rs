@@ -341,7 +341,7 @@ pub fn benchmark() {
   let cpu_threads = num_cpus::get() - 1;
   rayon::ThreadPoolBuilder::new().num_threads(cpu_threads).build_global().unwrap();
   // Start benchmarking!
-  println!("Benchmark!");
+  println!("Benchmark! Parallel tests using {} threads", cpu_threads);
   println!("Quick test sequential squares 100-element array: {:?}", lin_square(100));
   println!("Quick test sequential squares 10,000-element array: {:?}", lin_square(10000));
   println!("Quick test sequential squares 1,000,000-element array: {:?}", lin_square(1000000));
