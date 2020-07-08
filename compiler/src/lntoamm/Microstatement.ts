@@ -7,7 +7,7 @@ import Statement from './Statement'
 import StatementType from './StatementType'
 import Type from './Type'
 import UserFunction from './UserFunction'
-import { Fn, } from './Function'
+import { Args, Fn, } from './Function'
 import { LnParser, } from '../ln'
 
 class Microstatement {
@@ -20,7 +20,7 @@ class Microstatement {
   inputNames: Array<string>
   fns: Array<Fn>
   closureStatements: Array<Microstatement>
-  inputTypes: Array<Type>
+  closureArgs: Args
 
   constructor(
     statementType: StatementType,
@@ -32,7 +32,7 @@ class Microstatement {
     fns: Array<Fn> = [],
     alias: string = '',
     closureStatements: Array<Microstatement> = [],
-    inputTypes: Array<Type> = [],
+    closureArgs: Args = {},
   ) {
     this.statementType = statementType
     this.scope = scope
@@ -43,7 +43,7 @@ class Microstatement {
     this.fns = fns
     this.alias = alias
     this.closureStatements = closureStatements
-    this.inputTypes = inputTypes
+    this.closureArgs = closureArgs
   }
 
   toString() {
@@ -89,9 +89,9 @@ class Microstatement {
       case StatementType.CLOSURE:
         outString = "const " + this.outputName + ": function = fn ("
         let args = []
-        for (const [idx, inp] of this.inputNames.entries()) {
-          if (inp !== "" && this.inputTypes[idx].typename != "") {
-            args.push(inp + ": " + this.inputTypes[idx].typename)
+        for (const [name, type] of Object.entries(this.closureArgs)) {
+          if (name !== "" && type.typename != "") {
+            args.push(name + ": " + type.typename)
           }
         }
         outString += args.join(",")
@@ -901,11 +901,11 @@ class Microstatement {
       true, // TODO: Figure out if this is true or not
       constName,
       Type.builtinTypes['function'],
-      Object.keys(userFunction.args),
+      [],
       [],
       '',
       innerMicrostatements,
-      Object.values(userFunction.args),
+      userFunction.args,
     ))
   }
 
