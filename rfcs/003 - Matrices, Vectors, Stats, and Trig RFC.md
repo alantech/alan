@@ -45,41 +45,31 @@ could be represented more concisely as:
 const fibonacci = 1:1:2:3:5:8:13
 ```
 
-and the two could be combined for "Matrix-like" Array-of-Arrays:
+which could be used for compact arrays-of-arrays:
 
 ```ln
-const matrix = new Array<Array<int64>> [
-  1 : 2 : 3,
-  4 : 5 : 6,
-  7 : 8 : 9,
-]
+const matrix = new Array<Array<int64> [ 1 : 2 : 3,
+                                        4 : 5 : 6,
+                                        7 : 8 : 9 ]
 ```
 
-which is much easier to type than the equivalent:
+but this syntax is unfamiliar to the average developer (though it does demonstrate the power of the operator system). We realized that the `new Array<int64>` piece is not required information for arrays, as they are the only thing allowed to use square brackets, and the compiler can use the type data of the first value to determine the type information of the array. Therefore we have edited the grammar reflect this and updated the compiler, making this now possible:
 
 ```ln
-const matrix = new Array<Array<int64>> [
-  new Array<int64> [ 1, 2, 3 ],
-  new Array<int64> [ 4, 5, 6 ],
-  new Array<int64> [ 7, 8, 9 ],
-]
+const fibonacci = [ 1, 1, 2, 3, 5, 8, 13 ]
 ```
 
-and has the added benefit of visually looking similar to column separators.
-
-It would be possible to reuse this operator syntax pattern joining elements into arrays also for joining arrays into arrays of arrays. Using the `|` operator and new functions we can further reduce the size to:
+and this makes arrays of arrays:
 
 ```ln
-const matrix = | 1 : 2 : 3
-               | 4 : 5 : 6
-               | 7 : 8 : 9
+const matrix = [ [ 1, 2, 3 ],
+                 [ 4, 5, 6 ],
+                 [ 7, 8, 9 ] ]
 ```
 
-but this may be too much syntactic sugar.
+This did meet our purpose, but there are still a large number of matrix-related operators that we can't avoid, and we don't like the idea of that behavior being in the root scope, as the root scope is considered the set of functions and operators that should be "obvious" to the developer (that they would be expected to memorize along with the grammar) and this did not feel like such a thing. It is undeniable, however, the advantage it brings to clearly and concisely defining matrices when that is what you want to do.
 
-This did meet our purpose, but the vast majority of people would not understand that `value : value : value` is going to produce an array of 3 elements, and we don't like the idea of that behavior being in the root scope, as the root scope is considered the set of functions and operators that should be "obvious" to the developer (that they would be expected to memorize along with the grammar) and this did not feel like such a thing. It is undeniable, however, the advantage it brings to clearly and concisely defining matrices when that is what you want to do.
-
-So, we want to isolate this behavior as an opt-in behavior. Placing it inside of a `@std/matrix` standard library with a `Matrix` interface that pulls in the `:` operator overloading and a `matrix` type defined as `type matrix<T> = Array<Array<T>>` and a `type vector<T> = Array<T>` alias would work, but at that point, it felt like we should also include some operator overloading for matrix addition, scalar multiplying, matrix and vector multiplying, and matrix and matrix multiplying, transposing, and etc.
+So, we want to isolate this behavior as an opt-in behavior. Placing it inside of a `@std/matrix` standard library with a `Matrix` interface that pulls in a `matrix` type defined as `type matrix<T> = Array<Array<T>>` and a `type vector<T> = Array<T>` alias, some operator overloading for matrix addition, scalar multiplying, matrix and vector multiplying, and matrix and matrix multiplying, transposing, and etc.
 
 And from there similar `@std/stats` for statistical methods and operators, and `@std/trig` for trigonometric methods would be similarly justifiable.
 
