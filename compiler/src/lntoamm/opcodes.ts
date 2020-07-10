@@ -96,6 +96,7 @@ const addopcodes = (opcodes: object) => {
                     })
                   }
                 })
+                if (!replacementType) return returnType
                 return replacementType
               } else if (
                 returnType.originalType &&
@@ -115,6 +116,12 @@ const addopcodes = (opcodes: object) => {
                 if (Object.keys(ifaceMap).length >= Object.keys(baseType.generics).length) {
                   const solidTypes = returnIfaces.map(i => ifaceMap[i.interfacename])
                   const newReturnType = baseType.solidify(solidTypes, scope)
+                  if (!newReturnType) {
+                    console.log('newReturnType')
+                    console.log(opcodeName)
+                    console.log(args)
+                    console.log(realArgNames)
+                  }
                   return newReturnType
                 } else {
                   return returnType

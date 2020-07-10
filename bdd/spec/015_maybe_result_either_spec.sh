@@ -54,6 +54,60 @@ Correctly received nothing!"
     End
   End
 
+  Describe "Result"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+
+        // TODO: Return type inference from conditional functions
+        fn reciprocal(val: float64): Result<float64> {
+          if val == 0.0 {
+            return err('Divide by zero error!')
+          } else {
+            return ok(1.0 / val)
+          }
+        }
+
+        on start {
+          const oneFifth = reciprocal(5.0)
+          if oneFifth.isOk() {
+            print(oneFifth.get(0))
+          } else {
+            print('what?')
+          }
+          
+          const oneZeroth = reciprocal(0.0)
+          if oneZeroth.isErr() {
+            const error = oneZeroth.getErr(noerr())
+            print(error.msg)
+          } else {
+            print('uhhh')
+          }
+          emit exit 0
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    RESULTOUTPUT="0.2
+Correctly received nothing!"
+    
+    It "runs js"
+      When run node temp.js
+      The output should eq "$MAYBEOUTPUT"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
+      The output should eq "$MAYBEOUTPUT"
+    End
+  End
+
   Describe "Unions (to be deleted)"
     before() {
       sourceToTemp "

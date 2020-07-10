@@ -328,6 +328,10 @@ export type Error { // TODO: Give this type special behavior to report stack inf
   msg: string
 }
 
+export fn noerr() = new Error {
+  msg = "No Error"
+}
+
 export type Maybe<T> {
   val: Array<T>
 }
@@ -375,7 +379,7 @@ export fn isErr(result: Result<any>) = isSome(result.err)
 
 export fn get(result: Result<any>, default: any) = get(result.val, default)
 
-export fn getErr(result: Result<any>, default: Error) = get(result.err, default)
+export fn getErr(result: Result<any>, default: Error): Error = get(result.err, default)
 
 export type Either<T, U> {
   main: Maybe<T>

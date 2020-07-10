@@ -146,7 +146,7 @@ impl HandlerMemory {
     let arr = self.get_fractal(arr_addr);
     let (data, size) = arr.read_either(inner_addr);
     if size == 0 {
-      self.write_fractal_mem(outer_addr, &data);
+      self.write_fractal(outer_addr, arr.clone());
     } else {
       self.write_fixed(outer_addr, data[0]);
     }
@@ -155,7 +155,16 @@ impl HandlerMemory {
   pub fn copy_fractal(self: &mut HandlerMemory, in_addr: i64, out_addr: i64) {
     let arr = &mut self.fractal_mem[self.either_mem[in_addr as usize] as usize];
     let new_arr = arr.clone();
-    self.fractal_mem[self.either_mem[out_addr as usize] as usize] = new_arr;
+    let fractal_addr = self.either_mem[out_addr as usize];
+    if fractal_addr > -1 {
+      self.fractal_mem[self.either_mem[out_addr as usize] as usize] = new_arr;
+    } else {
+      // TODO: This shouldn't be happening, but this minor change is a lot easier than figuring out
+      // why the let statement has the wrong type right now.
+      let new_addr = self.fractal_mem.len() as i64;
+      self.fractal_mem.push(new_arr);
+      self.either_mem[out_addr as usize] = new_addr;
+    }
   }
 
   pub fn len(self: &HandlerMemory) -> usize {

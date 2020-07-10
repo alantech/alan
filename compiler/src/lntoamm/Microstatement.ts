@@ -1260,6 +1260,47 @@ class Microstatement {
     // to `register` the `n-1` remaining inner array segments to new variables as references and
     // finally `copyfrom` the `assignable` into the location the last segment indicates.
     const segments = assignmentsAst.varn().varsegment()
+    // Now, find the original variable and confirm that it actually is a let declaration
+    const letName = segments[0].getText()
+    let actualLetName: string
+    let original: Microstatement
+    for (let i = microstatements.length - 1; i >= 0; i--) {
+      const microstatement = microstatements[i]
+      if (microstatement.alias === letName) {
+        actualLetName = microstatement.outputName
+        continue
+      }
+      if (microstatement.outputName === actualLetName) {
+        if (microstatement.statementType === StatementType.LETDEC) {
+          original = microstatement
+          break
+        } else if (microstatement.statementType === StatementType.REREF) {
+          original = Microstatement.fromVarName(microstatement.outputName, microstatements)
+          break
+        } else {
+          console.error("Attempting to reassign a non-let variable.")
+          console.error(
+            letName +
+            " on line " +
+            assignmentsAst.start.line +
+            ":" +
+            assignmentsAst.start.column
+          )
+          process.exit(104)
+        }
+      }
+    }
+    if (!original) {
+      console.error('Attempting to reassign to an undeclared variable')
+      console.error(
+        letName +
+        " on line " +
+        assignmentsAst.line +
+        ":" +
+        assignmentsAst.start.column
+      )
+      process.exit(105)
+    }
     if (segments.length === 1) { // Could be a simple let variable
       const letName = segments[0].getText()
       let actualLetName: string
@@ -1316,6 +1357,7 @@ class Microstatement {
         // just mutate its object to rename the output variable name to the name we need instead.
         microstatements[microstatements.length - 1].outputName = actualLetName
         microstatements[microstatements.length - 1].statementType = StatementType.ASSIGNMENT
+        original.outputType = microstatements[microstatements.length - 1].outputType
         return
       }
       if (assignmentsAst.assignables().basicassignables() != null) {
@@ -1329,6 +1371,7 @@ class Microstatement {
         // other code.
         microstatements[microstatements.length - 1].outputName = actualLetName
         microstatements[microstatements.length - 1].statementType = StatementType.ASSIGNMENT
+        original.outputType = microstatements[microstatements.length - 1].outputType
         return
       }
       // This should not be reachable
@@ -1354,47 +1397,6 @@ class Microstatement {
         assignmentsAst.start.column
       )
       process.exit(103)
-    }
-    // Now, find the original variable and confirm that it actually is a let declaration
-    const letName = segments[0].getText()
-    let actualLetName: string
-    let original: Microstatement
-    for (let i = microstatements.length - 1; i >= 0; i--) {
-      const microstatement = microstatements[i]
-      if (microstatement.alias === letName) {
-        actualLetName = microstatement.outputName
-        continue
-      }
-      if (microstatement.outputName === actualLetName) {
-        if (microstatement.statementType === StatementType.LETDEC) {
-          original = microstatement
-          break
-        } else if (microstatement.statementType === StatementType.REREF) {
-          original = Microstatement.fromVarName(microstatement.outputName, microstatements)
-          break
-        } else {
-          console.error("Attempting to reassign a non-let variable.")
-          console.error(
-            letName +
-            " on line " +
-            assignmentsAst.start.line +
-            ":" +
-            assignmentsAst.start.column
-          )
-          process.exit(104)
-        }
-      }
-    }
-    if (!original) {
-      console.error('Attempting to reassign to an undeclared variable')
-      console.error(
-        letName +
-        " on line " +
-        assignmentsAst.line +
-        ":" +
-        assignmentsAst.start.column
-      )
-      process.exit(105)
     }
     let nestedLetType = original.outputType
     for (let i = 1; i < segments.length - 1; i++) {

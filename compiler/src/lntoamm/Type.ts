@@ -322,7 +322,9 @@ export class Type {
               } else {
                 // Maybe it's a type we need to solidify right now, otherwise error out, but
                 // let solidify handle that for us
-                property.solidify(generics.map(g => g.getText()), scope)
+                type.properties[propertyName] = property.solidify(
+                  generics.map(g => g.getText()), scope
+                )
               }
             } else {
               console.error(lineAst.fulltypename().getText() + " is not a type")

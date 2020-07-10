@@ -669,41 +669,33 @@ class UserFunction implements Fn {
           argList[j].originalType != null &&
           argumentTypeList[j].originalType == argList[j].originalType
         ) {
-          for (const propKey in argList[j].properties) {
-            const propVal = argList[j].properties[propKey]
-            if (
-              propVal ==
-              argumentTypeList[j].properties[propKey]
-            ) continue
-            if (
-              propVal.iface != null &&
-              propVal.iface.typeApplies(
-                argumentTypeList[j].properties[propKey],
-                scope
-              )
-            ) continue
-            // Nest it on more layer deep, but TODO: figure out a better way to handle this
-            if (propVal.originalType == argumentTypeList[j].properties[propKey].originalType) {
-              let innerSkip = false
-              for (const innerPropKey in argList[j].properties[propKey].properties) {
-                const innerPropVal = argList[j].properties[propKey].properties[innerPropKey]
-                if (
-                  innerPropVal ==
-                  argumentTypeList[j].properties[propKey].properties[innerPropKey]
-                ) continue
-                if (
-                  innerPropVal.iface != null &&
-                  innerPropVal.iface.typeApplies(
-                    argumentTypeList[j].properties[propKey].properties[innerPropKey],
-                    scope
-                  )
-                ) continue
-                innerSkip = true
-              }
-              if (!innerSkip) continue
+          const argListAst = Ast.fulltypenameAstFromString(argList[j].typename)
+          const argumentTypeListAst = Ast.fulltypenameAstFromString(argumentTypeList[j].typename)
+          const len = argListAst.typegenerics() ?
+            argListAst.typegenerics().fulltypename().length : 0
+          let innerSkip = false
+          for (let i = 0; i < len; i++) {
+            const argListTypeProp = argListAst.typegenerics().fulltypename(i).getText()
+            const argumentTypeListTypeProp = 
+              argumentTypeListAst.typegenerics().fulltypename(i).getText()
+            if (argListTypeProp === argumentTypeListTypeProp) continue
+            const argListProp = scope.deepGet(argListTypeProp) as Type
+            const argumentTypeListProp = scope.deepGet(argumentTypeListTypeProp) as Type
+            if (!argListProp || !(argListProp instanceof Type)) {
+              innerSkip = true
+              break
             }
-            skip = true
+            if (!argumentTypeListProp || !(argumentTypeListProp instanceof Type)) {
+              innerSkip = true
+              break
+            }
+            if (
+              argListProp.iface != null &&
+              argListProp.iface.typeApplies(argumentTypeListProp, scope)
+            ) continue
+            innerSkip = true
           }
+          if (innerSkip) skip = true
           continue
         }
         if (argList[j].unionTypes != null) {
