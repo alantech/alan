@@ -362,7 +362,7 @@ addopcodes({
   copyf64: [{ a: t('float64'), }, t('float64')],
   copybool: [{ a: t('bool'), }, t('bool')],
   copystr: [{ a: t('string'), }, t('string')],
-  copyarr: [{ a: t('Array<any>'), }, t('Array<any>')],
+  copyarr: [{ a: t('any'), }, t('any')],
 })
 
 export default opcodeModule

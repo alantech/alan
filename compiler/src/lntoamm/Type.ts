@@ -1,6 +1,7 @@
 import Scope from './Scope'
 import { Fn, } from './Function'
 import Operator from './Operator'
+import { fulltypenameAstFromString, } from './Ast'
 
 type Properties = {
   [K: string]: Type
@@ -290,14 +291,45 @@ export class Type {
       const lines = typeAst.typebody().typeline()
       for (const lineAst of lines) {
         const propertyName = lineAst.VARNAME().getText()
-        const typeName = lineAst.varn().getText()
-        const property = scope.deepGet(lineAst.varn().getText()) as Type
+        const typeName = lineAst.fulltypename().getText().trim()
+        const property = scope.deepGet(typeName) as Type
         if (!property || !(property instanceof Type)) {
           if (type.generics.hasOwnProperty(typeName)) {
             type.properties[propertyName] = new Type(typeName, true, true)
           } else {
-            console.error(lineAst.varn().getText() + " is not a type")
-            process.exit(-4)
+            // Potentially a type that depends on the type generics of this type
+            const innerGenerics = lineAst.fulltypename().typegenerics()
+            if (!!innerGenerics) {
+              const baseTypeName = lineAst.fulltypename().varn().getText()
+              const property = scope.deepGet(baseTypeName) as Type
+              if (!property || !(property instanceof Type)) {
+                console.error(lineAst.fulltypename().getText() + " is not a type")
+                console.log(1)
+                console.log(type.generics)
+                process.exit(-4)
+              }
+              const generics = innerGenerics.fulltypename()
+              let isValidInnerGeneric = false
+              for (const generic of generics) {
+                const innerTypeName = generic.getText()
+                if (type.generics.hasOwnProperty(innerTypeName)) {
+                  // This is going to be resolved when the outer type is solidified
+                  isValidInnerGeneric = true
+                }
+              }
+              if (isValidInnerGeneric) {
+                type.properties[propertyName] = new Type(typeName, true, true)
+              } else {
+                // Maybe it's a type we need to solidify right now, otherwise error out, but
+                // let solidify handle that for us
+                property.solidify(generics.map(g => g.getText()), scope)
+              }
+            } else {
+              console.error(lineAst.fulltypename().getText() + " is not a type")
+              console.log(2)
+              console.log(type.generics)
+              process.exit(-4)
+            }
           }
         } else {
           type.properties[propertyName] = property
@@ -379,12 +411,41 @@ export class Type {
       const propValue = this.properties[propKey]
       if (propValue.isGenericStandin) {
         const genericLoc = this.generics[propValue.typename]
-        if (genericLoc == null) {
-          console.error("Generic property not described but not found. Should be impossible")
-          process.exit(-36)
+        if (typeof genericLoc !== "number") {
+          // Might be an inner generic
+          const genericTypeAst = fulltypenameAstFromString(propValue.typename)
+          if (!genericTypeAst.typegenerics()) {
+            const replacementType = replacementTypes[genericLoc]
+            solidified.properties[propKey] = replacementType
+          } else {
+            const baseTypeName = genericTypeAst.varn().getText()
+            const baseType = scope.deepGet(baseTypeName) as Type
+            if (!baseType || !(baseType instanceof Type)) {
+              console.error("Generic property not described but not found.")
+              process.exit(-36)
+            }
+            const genericTypeNames = genericTypeAst.typegenerics().fulltypename()
+            let innerReplacementTypes = []
+            for (const genericTypeName of genericTypeNames) {
+              const genericType = scope.deepGet(genericTypeName.getText()) as Type
+              if (genericType && genericType instanceof Type) {
+                innerReplacementTypes.push(genericType.typename)
+              } else {
+                const innerGenericLoc = this.generics[genericTypeName.getText()]
+                if (typeof innerGenericLoc !== "number") {
+                  console.error("Generic property not described but not found.")
+                  process.exit(-36)
+                }
+                innerReplacementTypes.push(replacementTypes[innerGenericLoc].typename)
+              }
+            }
+            const newInnerType = baseType.solidify(innerReplacementTypes, scope) as Type
+            solidified.properties[propKey] = newInnerType
+          }
+        } else {
+          const replacementType = replacementTypes[genericLoc]
+          solidified.properties[propKey] = replacementType
         }
-        const replacementType = replacementTypes[genericLoc]
-        solidified.properties[propKey] = replacementType
       } else {
         solidified.properties[propKey] = propValue
       }

@@ -108,7 +108,9 @@ class Microstatement {
       // TODO: var resolution is complex. Need to revisit this.
       if (microstatement.outputName === varName) {
         original = microstatement
-        break
+        if (microstatement.statementType !== StatementType.REREF) {
+          break
+        }
       }
       if (microstatement.alias === varName) {
         original = microstatement
@@ -407,7 +409,8 @@ class Microstatement {
         // is REREFed for the outer microstatement generation call.
         const arrayLiteralContents = []
         const assignablelist = basicAssignablesAst.objectliterals().arrayliteral().assignablelist()
-        for (let i = 0; i < assignablelist.assignables().length; i++) {
+        const assignableLen = assignablelist ? assignablelist.assignables().length : 0
+        for (let i = 0; i < assignableLen; i++) {
           Microstatement.fromAssignablesAst(assignablelist.assignables(i), scope, microstatements)
           arrayLiteralContents.push(microstatements[microstatements.length - 1])
         }
@@ -502,8 +505,9 @@ class Microstatement {
         // Push the values into the array
         for (let i = 0; i < arrayLiteralContents.length; i++) {
           // Create a new variable to hold the size of the array value
-          const size = arrayLiteralContents[i].outputType.builtIn &&
-            arrayLiteralContents[i].outputType.typename !== "string" ?
+          const size = ['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'bool'].includes(
+            arrayLiteralContents[i].outputType.typename
+          ) ?
             "8" :
             "0"
           const sizeName = "_" + uuid().replace(/-/g, "_")
@@ -678,8 +682,9 @@ class Microstatement {
         // Push the values into the array
         for (let i = 0; i < arrayLiteralContents.length; i++) {
           // Create a new variable to hold the size of the array value
-          const size = arrayLiteralContents[i].outputType.builtIn &&
-            arrayLiteralContents[i].outputType.typename !== "string" ?
+          const size = ['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'bool'].includes(
+            arrayLiteralContents[i].outputType.typename
+          ) ?
             "8" :
             "0"
           const sizeName = "_" + uuid().replace(/-/g, "_")

@@ -172,7 +172,7 @@ class UserFunction implements Fn {
               process.exit(-60)
             }
             let genericTypes = []
-            for (const fulltypename of functionAst.argType().othertype(0).typegenerics().fulltypename()) {
+            for (const fulltypename of functionAst.argtype().othertype(0).typegenerics().fulltypename()) {
               genericTypes.push(fulltypename.getText())
             }
             getReturnType = getReturnType.solidify(genericTypes, scope)
@@ -261,15 +261,57 @@ class UserFunction implements Fn {
           returnType = scope.deepGet(
             assignablesAst.basicassignables().objectliterals().typeliteral().othertype().getText().trim()
           )
+          if (!returnType) {
+            const fulltypeAst = Ast.fulltypenameAstFromString(
+              assignablesAst.basicassignables().objectliterals().typeliteral().othertype().getText()
+            )
+            const baseType = scope.deepGet(fulltypeAst.varn().getText()) as Type
+            if (!baseType) {
+              console.error(`Return type ${baseType} not defined`)
+              process.exit(111)
+            }
+            returnType = baseType.solidify(
+              fulltypeAst.typegenerics().fulltypename().map(f => f.getText()),
+              scope
+            )
+          }
         } else if (assignablesAst.basicassignables().objectliterals().mapliteral()) {
           returnType = scope.deepGet(
             assignablesAst.basicassignables().objectliterals().mapliteral().othertype().getText().trim()
           )
+          if (!returnType) {
+            const fulltypeAst = Ast.fulltypenameAstFromString(
+              assignablesAst.basicassignables().objectliterals().mapliteral().othertype().getText()
+            )
+            const baseType = scope.deepGet(fulltypeAst.varn().getText()) as Type
+            if (!baseType) {
+              console.error(`Return type ${baseType} not defined`)
+              process.exit(111)
+            }
+            returnType = baseType.solidify(
+              fulltypeAst.typegenerics().fulltypename().map(f => f.getText()),
+              scope
+            )
+          }
         } else {
           if (assignablesAst.basicassignables().objectliterals().arrayliteral().othertype()) {
             returnType = scope.deepGet(
               assignablesAst.basicassignables().objectliterals().arrayliteral().othertype().getText().trim()
             )
+            if (!returnType) {
+              const fulltypeAst = Ast.fulltypenameAstFromString(
+                assignablesAst.basicassignables().objectliterals().mapliteral().othertype().getText()
+              )
+              const baseType = scope.deepGet(fulltypeAst.varn().getText()) as Type
+              if (!baseType) {
+                console.error(`Return type ${baseType} not defined`)
+                process.exit(111)
+              }
+              returnType = baseType.solidify(
+                fulltypeAst.typegenerics().fulltypename().map(f => f.getText()),
+                scope
+              )
+            }
           } else {
             // We're going to use the Microstatement logic here
             const microstatements = []
@@ -505,7 +547,7 @@ class UserFunction implements Fn {
       }
 
       const fnStr = `
-        fn ${this.name || ''} (${Object.keys(this.args).map(argName => `${argName}: ${this.args[argName].typename}`)}): ${this.returnType.typename} {
+        fn ${this.name || ''} (${Object.keys(this.args).map(argName => `${argName}: ${this.args[argName].typename}`).join(', ')}): ${this.returnType.typename} {
           ${statementAsts.map(s => s.getText()).join('\n')}
         }
       `.trim()
@@ -551,7 +593,7 @@ class UserFunction implements Fn {
     for (let i = originalStatementLength; i < microstatements.length - 1; i++) {
       if (microstatements[i].statementType == StatementType.REREF) {
         microstatements.splice(i, 1)
-        i--
+        i-- 
       }
     }
     // If the output return type is an interface or is a realized generic with an inner interface
@@ -640,6 +682,26 @@ class UserFunction implements Fn {
                 scope
               )
             ) continue
+            // Nest it on more layer deep, but TODO: figure out a better way to handle this
+            if (propVal.originalType == argumentTypeList[j].properties[propKey].originalType) {
+              let innerSkip = false
+              for (const innerPropKey in argList[j].properties[propKey].properties) {
+                const innerPropVal = argList[j].properties[propKey].properties[innerPropKey]
+                if (
+                  innerPropVal ==
+                  argumentTypeList[j].properties[propKey].properties[innerPropKey]
+                ) continue
+                if (
+                  innerPropVal.iface != null &&
+                  innerPropVal.iface.typeApplies(
+                    argumentTypeList[j].properties[propKey].properties[innerPropKey],
+                    scope
+                  )
+                ) continue
+                innerSkip = true
+              }
+              if (!innerSkip) continue
+            }
             skip = true
           }
           continue
@@ -662,6 +724,11 @@ class UserFunction implements Fn {
     }
     if (fn == null) {
       console.error("Unable to find matching function for name and argument type set")
+      console.log(fns)
+      const argList = Object.values(fns[0].getArguments())
+      console.log(argList[0])
+      console.log(argumentTypeList[0])
+      console.log(argList[0].iface)
       let argTypes = []
       for (let i = 0; i < argumentTypeList.length; i++) {
         argTypes.push("<" + argumentTypeList[i].typename + ">")

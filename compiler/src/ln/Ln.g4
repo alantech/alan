@@ -30,7 +30,7 @@ fulltypename : varn blank* typegenerics?;
 
 typebody: OPENBODY blank* (WS* typeline)+ blank? CLOSEBODY;
 
-typeline: VARNAME (WS | NEWLINE)? TYPESEP (WS | NEWLINE)? varn NEWLINE*;
+typeline: VARNAME (WS | NEWLINE)? TYPESEP (WS | NEWLINE)? fulltypename NEWLINE*;
 
 functions : FN blank+ ((VARNAME blank*)? OPENARGS arglist? CLOSEARGS blank* ((WS | NEWLINE)? TYPESEP (WS | NEWLINE)? argtype blank*)?)? fullfunctionbody;
 
@@ -62,7 +62,7 @@ typeofn : TYPE WS* basicassignables;
 
 objectliterals : arrayliteral | typeliteral | mapliteral;
 
-arrayliteral : (NEW WS* othertype WS*)? OPENARRAY blank* assignablelist blank* CLOSEARRAY;
+arrayliteral : (NEW WS* othertype WS*)? OPENARRAY blank* assignablelist? blank* CLOSEARRAY;
 
 typeliteral : NEW WS* othertype WS* OPENBODY blank* (assignments blank+)+ CLOSEBODY;
 
@@ -70,7 +70,7 @@ mapliteral : NEW WS* othertype WS* OPENBODY blank* (mapline blank+)* CLOSEBODY;
 
 mapline : assignables WS* TYPESEP WS* assignables;
 
-assignablelist : blank* assignables (SEP blank* assignables)* blank*;
+assignablelist : blank* assignables (SEP blank* assignables)* SEP? blank*;
 
 fncall : OPENARGS assignablelist? CLOSEARGS;
 
