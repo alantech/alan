@@ -387,6 +387,16 @@ export type Either<T, U> {
   alt: Maybe<U>
 }
 
+export fn main(m: any) = new Either<any, void> {
+  main = some(m)
+  alt = none()
+}
+
+export fn alt(a: any) = new Either<void, any> {
+  main = none()
+  alt = some(a)
+}
+
 export fn isMain(either: Either<any, anythingElse>) = isSome(either.main)
 
 export fn isAlt(either: Either<any, anythingElse>) = isSome(either.alt)
