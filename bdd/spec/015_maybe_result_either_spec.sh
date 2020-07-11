@@ -6,8 +6,7 @@ Describe "Maybe, Result, and Either"
       sourceToAll "
         from @std/app import start, print, exit
 
-        // TODO: Return type inference from conditional functions
-        fn fiver(val: float64): Maybe<int64> {
+        fn fiver(val: float64) {
           if val.toInt64() == 5 {
             return some(5)
           } else {
@@ -22,7 +21,7 @@ Describe "Maybe, Result, and Either"
           } else {
             print('what?')
           }
-          
+
           const maybeNot5 = fiver(4.4)
           if maybeNot5.isNone() {
             print('Correctly received nothing!')
@@ -42,7 +41,7 @@ Describe "Maybe, Result, and Either"
 
     MAYBEOUTPUT="5
 Correctly received nothing!"
-    
+
     It "runs js"
       When run node temp.js
       The output should eq "$MAYBEOUTPUT"
@@ -59,8 +58,7 @@ Correctly received nothing!"
       sourceToAll "
         from @std/app import start, print, exit
 
-        // TODO: Return type inference from conditional functions
-        fn reciprocal(val: float64): Result<float64> {
+        fn reciprocal(val: float64) {
           if val == 0.0 {
             return err('Divide by zero error!')
           } else {
@@ -71,11 +69,11 @@ Correctly received nothing!"
         on start {
           const oneFifth = reciprocal(5.0)
           if oneFifth.isOk() {
-            print(oneFifth.get(0))
+            print(oneFifth.get(0.0))
           } else {
             print('what?')
           }
-          
+
           const oneZeroth = reciprocal(0.0)
           if oneZeroth.isErr() {
             const error = oneZeroth.getErr(noerr())
@@ -95,16 +93,16 @@ Correctly received nothing!"
     AfterAll after
 
     RESULTOUTPUT="0.2
-Correctly received nothing!"
-    
+Divide by zero error!"
+
     It "runs js"
       When run node temp.js
-      The output should eq "$MAYBEOUTPUT"
+      The output should eq "$RESULTOUTPUT"
     End
 
     It "runs agc"
       When run alan-runtime run temp.agc
-      The output should eq "$MAYBEOUTPUT"
+      The output should eq "$RESULTOUTPUT"
     End
   End
 

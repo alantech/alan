@@ -34,7 +34,7 @@ Missing fields: bar, baz
 Extra fields: bay
 new Foo {
             bay = 1.23
-          } on line 10:22"
+          } on line 2:22"
     End
   End
 
