@@ -423,6 +423,7 @@ export infix or as | precedence 2
 export infix or as || precedence 2
 export infix xor as ^ precedence 2
 export prefix not as ! precedence 4
+export prefix toBool as !! precedence 4
 export infix nand as !& precedence 3
 export infix nor as !| precedence 2
 export infix xnor as !^ precedence 2
