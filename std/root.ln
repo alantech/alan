@@ -439,4 +439,9 @@ export prefix trim as ` precedence 4
 export infix pair as : precedence 5
 export infix push as : precedence 6
 export infix cond as ? precedence 0
-
+export infix get as | precedence 2
+export infix get as || precedence 2
+export prefix isSome as !! precedence 4
+export prefix isNone as ! precedence 4
+export prefix isOk as !! precedence 4
+export prefix isErr as ! precedence 4

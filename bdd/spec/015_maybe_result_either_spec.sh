@@ -28,6 +28,18 @@ Describe "Maybe, Result, and Either"
           } else {
             print('uhhh')
           }
+
+          if !!maybe5 {
+            print(maybe5 || 0)
+          } else {
+            print('what?')
+          }
+
+          if !maybeNot5 {
+            print('Correctly received nothing!')
+          } else {
+            print('uhhh')
+          }
           emit exit 0
         }
       "
@@ -40,6 +52,8 @@ Describe "Maybe, Result, and Either"
     AfterAll after
 
     MAYBEOUTPUT="5
+Correctly received nothing!
+5
 Correctly received nothing!"
 
     It "runs js"
@@ -81,6 +95,18 @@ Correctly received nothing!"
           } else {
             print('uhhh')
           }
+
+          if !!oneFifth {
+            print(oneFifth | 0.0)
+          } else {
+            print('what?')
+          }
+
+          if !oneZeroth {
+            print(oneZeroth | 1.2345)
+          } else {
+            print('uhhh')
+          }
           emit exit 0
         }
       "
@@ -93,7 +119,9 @@ Correctly received nothing!"
     AfterAll after
 
     RESULTOUTPUT="0.2
-Divide by zero error!"
+Divide by zero error!
+0.2
+1.2345"
 
     It "runs js"
       When run node temp.js
