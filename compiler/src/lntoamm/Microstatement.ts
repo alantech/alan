@@ -1,5 +1,6 @@
 import { v4 as uuid, } from 'uuid'
 
+import * as Ast from './Ast'
 import Event from './Event'
 import Operator from './Operator'
 import Scope from './Scope'
@@ -1351,9 +1352,57 @@ class Microstatement {
         )
         // By definition the last microstatement is the const assignment we care about, so we can
         // just mutate its object to rename the output variable name to the name we need instead.
-        microstatements[microstatements.length - 1].outputName = actualLetName
-        microstatements[microstatements.length - 1].statementType = StatementType.ASSIGNMENT
-        original.outputType = microstatements[microstatements.length - 1].outputType
+        const last = microstatements[microstatements.length - 1]
+        last.outputName = actualLetName
+        last.statementType = StatementType.ASSIGNMENT
+        // Attempt to "merge" the output types, useful for multiple branches assigning into the same
+        // variable but only part of the type information is known in each branch (like in `Result`
+        // or `Either` with the result value only in one branch or one type in each of the branches
+        // for `Either`).
+        if (original.outputType.typename !== last.outputType.typename) {
+          if (!!original.outputType.iface) {
+            // Just overwrite if it's an interface type
+            original.outputType = last.outputType
+          } else if (
+            !!original.outputType.originalType &&
+            !!last.outputType.originalType &&
+            original.outputType.originalType.typename === last.outputType.originalType.typename
+          ) {
+            // The tricky path, let's try to merge the two types together
+            const baseType = original.outputType.originalType
+            const originalTypeAst = Ast.fulltypenameAstFromString(original.outputType.typename)
+            const lastTypeAst = Ast.fulltypenameAstFromString(last.outputType.typename)
+            const originalTypeGenerics = originalTypeAst.typegenerics()
+            const lastTypeGenerics = lastTypeAst.typegenerics()
+            const originalSubtypes = originalTypeGenerics ? originalTypeGenerics.fulltypename().map(
+              t => t.getText()
+            ) : []
+            const lastSubtypes = lastTypeGenerics ? lastTypeGenerics.fulltypename().map(
+              t => t.getText()
+            ) : []
+            const newSubtypes = []
+            for (let i = 0; i < originalSubtypes.length; i++) {
+              if (originalSubtypes[i] === lastSubtypes[i]) {
+                newSubtypes.push(originalSubtypes[i])
+              } else {
+                const originalSubtype = scope.deepGet(originalSubtypes[i]) as Type
+                if (!!originalSubtype.iface) {
+                  newSubtypes.push(lastSubtypes[i])
+                } else if (!!originalSubtype.originalType) {
+                  // TODO: Support nesting
+                  newSubtypes.push(originalSubtypes[i])
+                } else {
+                  newSubtypes.push(originalSubtypes[i])
+                }
+              }
+            }
+            const newType = baseType.solidify(newSubtypes, scope)
+            original.outputType = newType
+          } else {
+            // Hmm... what to do here?
+            original.outputType = last.outputType
+          }
+        }
         return
       }
       if (assignmentsAst.assignables().basicassignables() != null) {
@@ -1365,9 +1414,59 @@ class Microstatement {
         // The same rule as above, the last microstatement is already a const assignment for the
         // value that we care about, so just rename its variable to the one that will be expected by
         // other code.
-        microstatements[microstatements.length - 1].outputName = actualLetName
-        microstatements[microstatements.length - 1].statementType = StatementType.ASSIGNMENT
-        original.outputType = microstatements[microstatements.length - 1].outputType
+        const last = microstatements[microstatements.length - 1]
+        last.outputName = actualLetName
+        last.statementType = StatementType.ASSIGNMENT
+        // Attempt to "merge" the output types, useful for multiple branches assigning into the same
+        // variable but only part of the type information is known in each branch (like in `Result`
+        // or `Either` with the result value only in one branch or one type in each of the branches
+        // for `Either`).
+        if (original.outputType.typename !== last.outputType.typename) {
+          if (!!original.outputType.iface) {
+            // Just overwrite if it's an interface type
+            original.outputType = last.outputType
+          } else if (
+            !!original.outputType.originalType &&
+            !!last.outputType.originalType &&
+            original.outputType.originalType.typename === last.outputType.originalType.typename
+          ) {
+            // The tricky path, let's try to merge the two types together
+            const baseType = original.outputType.originalType
+            const originalTypeAst = Ast.fulltypenameAstFromString(original.outputType.typename)
+            const lastTypeAst = Ast.fulltypenameAstFromString(last.outputType.typename)
+            const originalTypeGenerics = originalTypeAst.typegenerics()
+            const lastTypeGenerics = lastTypeAst.typegenerics()
+            const originalSubtypes = originalTypeGenerics ? originalTypeGenerics.fulltypename().map(
+              (t: any) => t.getText()
+            ) : []
+            const lastSubtypes = lastTypeGenerics ? lastTypeGenerics.fulltypename().map(
+              (t: any) => t.getText()
+            ) : []
+            const newSubtypes = []
+            for (let i = 0; i < originalSubtypes.length; i++) {
+              if (originalSubtypes[i] === lastSubtypes[i]) {
+                newSubtypes.push(originalSubtypes[i])
+              } else {
+                const originalSubtype = scope.deepGet(originalSubtypes[i]) as Type
+                if (!!originalSubtype.iface) {
+                  newSubtypes.push(lastSubtypes[i])
+                } else if (!!originalSubtype.originalType) {
+                  // TODO: Support nesting
+                  newSubtypes.push(originalSubtypes[i])
+                } else {
+                  newSubtypes.push(originalSubtypes[i])
+                }
+              }
+            }
+            const newType = baseType.solidify(newSubtypes, scope)
+            original.outputType = newType
+          } else {
+            // Hmm... what to do here?
+            original.outputType = last.outputType
+          }
+        } else {
+          original.outputType = last.outputType
+        }
         return
       }
       // This should not be reachable

@@ -643,7 +643,14 @@ class UserFunction implements Fn {
     const returnSubtypes = returnTypeGenerics ? returnTypeGenerics.fulltypename().map(
       t => scope.deepGet(t.getText())
     ) : []
-    if (returnSubtypes.some(t => !!t.iface)) {
+    if (this.returnType.iface) {
+      const originalArgTypes = Object.values(this.args)
+      for (let i = 0; i < inputTypes.length; i++) {
+        if (this.returnType === originalArgTypes[i]) {
+          microstatements[microstatements.length - 1].outputType = inputTypes[i]
+        }
+      }
+    } else if (returnSubtypes.some(t => !!t.iface)) {
       const oldReturnType = this.returnType
       const originalArgTypes = Object.values(this.args)
       for (let i = 0; i < inputTypes.length; i++) {

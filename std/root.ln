@@ -367,7 +367,7 @@ export fn ok(val: any) = new Result<any> {
   err = none()
 }
 
-export fn err(msg: string) = new Result<void> {
+export fn err(msg: string) = new Result<any> {
   val = none()
   err = some(new Error {
     msg = msg
