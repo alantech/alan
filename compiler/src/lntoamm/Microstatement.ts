@@ -884,8 +884,8 @@ class Microstatement {
   ) {
     // inject arguments as const declarations into microstatements arrays with the variable names
     // and remove them later so we can parse the closure and keep the logic contained to this method
-    let idx = microstatements.length
-    let args = Object.entries(userFunction.args)
+    const idx = microstatements.length
+    const args = Object.entries(userFunction.args)
     for (const [name, type] of args) {
       if (name !== "" && type.typename != "") {
         microstatements.push(new Microstatement(
@@ -897,7 +897,7 @@ class Microstatement {
         ))
       }
     }
-    let len = microstatements.length - args.length
+    const len = microstatements.length - args.length
     for (const s of userFunction.statements) {
       if (s.statementOrAssignableAst instanceof LnParser.StatementsContext) {
         Microstatement.fromStatementsAst(s.statementOrAssignableAst, scope, microstatements)
@@ -906,7 +906,7 @@ class Microstatement {
       }
     }
     microstatements.splice(idx, args.length)
-    let newlen = microstatements.length
+    const newlen = microstatements.length
     // There might be off-by-one bugs in the conversion here
     const innerMicrostatements = microstatements.slice(len, newlen)
     microstatements.splice(len, newlen - len)
