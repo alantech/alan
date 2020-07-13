@@ -877,7 +877,6 @@ class Microstatement {
     }
   }
 
-  // TODO: Add support for inlined closures with arguments
   static closureFromUserFunction(
     userFunction: UserFunction,
     scope: Scope,
