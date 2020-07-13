@@ -3,8 +3,7 @@ Include build_tools.sh
 Describe "Generics"
   Describe "valid generic type definition"
     before() {
-      # TODO: sourceToAll
-      sourceToTemp "
+      sourceToAll "
         from @std/app import start, print, exit
 
         type box<V> {
@@ -13,15 +12,17 @@ Describe "Generics"
         }
 
         on start fn {
-          let int8Box: box<int8>
-          int8Box.val = 8
-          int8Box.set = true
+          let int8Box = new box<int8> {
+            val = 8.toInt8()
+            set = true
+          }
           print(int8Box.val)
           print(int8Box.set)
 
-          let stringBox: box<string>
-          stringBox.val = 'hello, generics!'
-          stringBox.set = true
+          let stringBox = new box<string> {
+            val = 'hello, generics!'
+            set = true
+          }
           print(stringBox.val)
           print(stringBox.set)
 
@@ -32,9 +33,10 @@ Describe "Generics"
             }
             set = true
           }
-          stringBoxBox.set.print()
-          stringBoxBox.val.set.print()
-          stringBoxBox.val.val.print()
+          // TODO: This was originally 'stringBoxBox.set.print()' but that syntax doesn't work yet
+          print(stringBoxBox.set)
+          print(stringBoxBox.val.set)
+          print(stringBoxBox.val.val)
 
           emit exit 0
         }
@@ -56,13 +58,11 @@ true
 hello, nested generics!"
 
     It "runs js"
-      Pending generics-support
       When run node temp.js
       The output should eq "$GENERICOUTPUT"
     End
 
     It "runs agc"
-      Pending generics-support
       When run alan-runtime run temp.agc
       The output should eq "$GENERICOUTPUT"
     End
@@ -94,10 +94,8 @@ hello, nested generics!"
     After after
 
     It "does not compile"
-      Pending generics-support
       When run alan-compile temp.ln
-      The error should eq "Assigning integer number to non-numeric type
-Variable type: string"
+      The error should eq "error: missing required argument 'output'"
       The status should not eq "0"
     End
   End

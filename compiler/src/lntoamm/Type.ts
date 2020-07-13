@@ -402,6 +402,7 @@ export class Type {
       const typebox = scope.deepGet(typename) as Type
       if (!typebox || !(typebox instanceof Type)) {
         console.error(typename + " type not found")
+        console.log(new Error().stack)
         process.exit(-35)
       }
       replacementTypes.push(typebox)

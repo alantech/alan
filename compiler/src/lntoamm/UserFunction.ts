@@ -494,9 +494,7 @@ class UserFunction implements Fn {
           // Potentially rewrite the type for the object literal to match the interface type used by
           // a specific call
           const str = s.statementOrAssignableAst.getText()
-          // TODO: This doesn't support doubly-nested generics in object literals, replace with a
-          // (large) AST-based replacer in the future
-          const corrected = str.replace(/new ([^<]+)<([^>]+)>/g, (m, p1, p2, offset, str) => {
+          const corrected = str.replace(/new ([^<]+)<([^{]+)> *{/g, (m, p1, p2, offset, str) => {
             const baseTypeStr = p1
             const innerTypeStrs = p2.split(',').map(t => t.trim())
             const newTypeStrs = innerTypeStrs.map(t => {
@@ -513,7 +511,7 @@ class UserFunction implements Fn {
               process.exit(111)
             }
             originalType.solidify(newTypeStrs, this.scope)
-            return `new ${baseTypeStr}<${newTypeStrs.join(', ')}>`
+            return `new ${baseTypeStr}<${newTypeStrs.join(', ')}> {`
           })
           if (s.statementOrAssignableAst instanceof LnParser.AssignablesContext) {
             const correctedAst = Ast.statementAstFromString(`return ${corrected}\n`)
