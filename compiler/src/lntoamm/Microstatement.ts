@@ -7,7 +7,7 @@ import Statement from './Statement'
 import StatementType from './StatementType'
 import Type from './Type'
 import UserFunction from './UserFunction'
-import { Fn, } from './Function'
+import { Args, Fn, } from './Function'
 import { LnParser, } from '../ln'
 
 class Microstatement {
@@ -20,6 +20,7 @@ class Microstatement {
   inputNames: Array<string>
   fns: Array<Fn>
   closureStatements: Array<Microstatement>
+  closureArgs: Args
 
   constructor(
     statementType: StatementType,
@@ -31,6 +32,7 @@ class Microstatement {
     fns: Array<Fn> = [],
     alias: string = '',
     closureStatements: Array<Microstatement> = [],
+    closureArgs: Args = {},
   ) {
     this.statementType = statementType
     this.scope = scope
@@ -41,6 +43,7 @@ class Microstatement {
     this.fns = fns
     this.alias = alias
     this.closureStatements = closureStatements
+    this.closureArgs = closureArgs
   }
 
   toString() {
@@ -84,7 +87,15 @@ class Microstatement {
         }
         break
       case StatementType.CLOSURE:
-        outString = "const " + this.outputName + ": function = fn (): void {\n"
+        outString = "const " + this.outputName + ": function = fn ("
+        let args = []
+        for (const [name, type] of Object.entries(this.closureArgs)) {
+          if (name !== "" && type.typename != "") {
+            args.push(name + ": " + type.typename)
+          }
+        }
+        outString += args.join(",")
+        outString += "): void {\n"
         for (const m of this.closureStatements) {
           const s = m.toString()
           if (s !== "") {
@@ -871,8 +882,22 @@ class Microstatement {
     scope: Scope,
     microstatements: Array<Microstatement>,
   ) {
-    // TODO: Add support for closures with arguments
-    let len = microstatements.length
+    // inject arguments as const declarations into microstatements arrays with the variable names
+    // and remove them later so we can parse the closure and keep the logic contained to this method
+    const idx = microstatements.length
+    const args = Object.entries(userFunction.args)
+    for (const [name, type] of args) {
+      if (name !== "" && type.typename != "") {
+        microstatements.push(new Microstatement(
+          StatementType.CONSTDEC,
+          scope,
+          true,
+          name,
+          type,
+        ))
+      }
+    }
+    const len = microstatements.length - args.length
     for (const s of userFunction.statements) {
       if (s.statementOrAssignableAst instanceof LnParser.StatementsContext) {
         Microstatement.fromStatementsAst(s.statementOrAssignableAst, scope, microstatements)
@@ -880,7 +905,8 @@ class Microstatement {
         Microstatement.fromAssignablesAst(s.statementOrAssignableAst, scope, microstatements)
       }
     }
-    let newlen = microstatements.length
+    microstatements.splice(idx, args.length)
+    const newlen = microstatements.length
     // There might be off-by-one bugs in the conversion here
     const innerMicrostatements = microstatements.slice(len, newlen)
     microstatements.splice(len, newlen - len)
@@ -894,7 +920,8 @@ class Microstatement {
       [],
       [],
       '',
-      innerMicrostatements
+      innerMicrostatements,
+      userFunction.args,
     ))
   }
 
