@@ -11,6 +11,8 @@ import UserFunction from './UserFunction'
 import { Fn, } from './Function'
 import { LnParser, } from '../ln'
 
+const FIXED_TYPES = [ 'int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'bool', 'void' ]
+
 class Microstatement {
   statementType: StatementType
   scope: Scope
@@ -506,9 +508,7 @@ class Microstatement {
         // Push the values into the array
         for (let i = 0; i < arrayLiteralContents.length; i++) {
           // Create a new variable to hold the size of the array value
-          const size = [
-            'int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'bool', 'void'
-          ].includes(arrayLiteralContents[i].outputType.typename) ? "8" : "0"
+          const size = FIXED_TYPES.includes(arrayLiteralContents[i].outputType.typename) ? "8" : "0"
           const sizeName = "_" + uuid().replace(/-/g, "_")
           microstatements.push(new Microstatement(
             StatementType.CONSTDEC,
@@ -681,9 +681,7 @@ class Microstatement {
         // Push the values into the array
         for (let i = 0; i < arrayLiteralContents.length; i++) {
           // Create a new variable to hold the size of the array value
-          const size = [
-            'int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'bool', 'void'
-          ].includes(arrayLiteralContents[i].outputType.typename) ? "8" : "0"
+          const size = FIXED_TYPES.includes(arrayLiteralContents[i].outputType.typename) ? "8" : "0"
           const sizeName = "_" + uuid().replace(/-/g, "_")
           microstatements.push(new Microstatement(
             StatementType.CONSTDEC,

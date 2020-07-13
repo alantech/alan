@@ -181,7 +181,7 @@ impl HandlerMemory {
     //println!("copy fractal from @{} to @{}: {}", in_addr, out_addr, new_arr);
     let fractal_addr = self.either_mem[out_addr as usize];
     if fractal_addr > -1 {
-      self.fractal_mem[self.either_mem[out_addr as usize] as usize] = new_arr;
+      self.fractal_mem[fractal_addr as usize] = new_arr;
     } else {
       // TODO: This shouldn't be happening, but this minor change is a lot easier than figuring out
       // why the let statement has the wrong type right now.
