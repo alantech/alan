@@ -1,5 +1,6 @@
 import { v4 as uuid, } from 'uuid'
 
+import * as Ast from './Ast'
 import Event from './Event'
 import Operator from './Operator'
 import Scope from './Scope'
@@ -9,6 +10,8 @@ import Type from './Type'
 import UserFunction from './UserFunction'
 import { Args, Fn, } from './Function'
 import { LnParser, } from '../ln'
+
+const FIXED_TYPES = [ 'int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'bool', 'void' ]
 
 class Microstatement {
   statementType: StatementType
@@ -119,7 +122,9 @@ class Microstatement {
       // TODO: var resolution is complex. Need to revisit this.
       if (microstatement.outputName === varName) {
         original = microstatement
-        break
+        if (microstatement.statementType !== StatementType.REREF) {
+          break
+        }
       }
       if (microstatement.alias === varName) {
         original = microstatement
@@ -418,7 +423,8 @@ class Microstatement {
         // is REREFed for the outer microstatement generation call.
         const arrayLiteralContents = []
         const assignablelist = basicAssignablesAst.objectliterals().arrayliteral().assignablelist()
-        for (let i = 0; i < assignablelist.assignables().length; i++) {
+        const assignableLen = assignablelist ? assignablelist.assignables().length : 0
+        for (let i = 0; i < assignableLen; i++) {
           Microstatement.fromAssignablesAst(assignablelist.assignables(i), scope, microstatements)
           arrayLiteralContents.push(microstatements[microstatements.length - 1])
         }
@@ -513,10 +519,7 @@ class Microstatement {
         // Push the values into the array
         for (let i = 0; i < arrayLiteralContents.length; i++) {
           // Create a new variable to hold the size of the array value
-          const size = arrayLiteralContents[i].outputType.builtIn &&
-            arrayLiteralContents[i].outputType.typename !== "string" ?
-            "8" :
-            "0"
+          const size = FIXED_TYPES.includes(arrayLiteralContents[i].outputType.typename) ? "8" : "0"
           const sizeName = "_" + uuid().replace(/-/g, "_")
           microstatements.push(new Microstatement(
             StatementType.CONSTDEC,
@@ -560,7 +563,7 @@ class Microstatement {
         // the `Option` type and provide a `None` value there.
         let typeBox = scope.deepGet(
           basicAssignablesAst.objectliterals().typeliteral().othertype().getText().trim()
-        )
+        ) as Type
         if (typeBox === null) {
           // Try to define it if it's a generic type
           if (basicAssignablesAst.objectliterals().typeliteral().othertype().typegenerics()) {
@@ -584,7 +587,7 @@ class Microstatement {
               ),
               scope
             )
-            typeBox = scope.deepGet(basicAssignablesAst.objectliterals().typeliteral().othertype().getText().trim())
+            typeBox = scope.deepGet(basicAssignablesAst.objectliterals().typeliteral().othertype().getText().trim()) as Type
           }
         }
         if (!(typeBox instanceof Type)) {
@@ -689,10 +692,7 @@ class Microstatement {
         // Push the values into the array
         for (let i = 0; i < arrayLiteralContents.length; i++) {
           // Create a new variable to hold the size of the array value
-          const size = arrayLiteralContents[i].outputType.builtIn &&
-            arrayLiteralContents[i].outputType.typename !== "string" ?
-            "8" :
-            "0"
+          const size = FIXED_TYPES.includes(arrayLiteralContents[i].outputType.typename) ? "8" : "0"
           const sizeName = "_" + uuid().replace(/-/g, "_")
           microstatements.push(new Microstatement(
             StatementType.CONSTDEC,
@@ -1282,6 +1282,47 @@ class Microstatement {
     // to `register` the `n-1` remaining inner array segments to new variables as references and
     // finally `copyfrom` the `assignable` into the location the last segment indicates.
     const segments = assignmentsAst.varn().varsegment()
+    // Now, find the original variable and confirm that it actually is a let declaration
+    const letName = segments[0].getText()
+    let actualLetName: string
+    let original: Microstatement
+    for (let i = microstatements.length - 1; i >= 0; i--) {
+      const microstatement = microstatements[i]
+      if (microstatement.alias === letName) {
+        actualLetName = microstatement.outputName
+        continue
+      }
+      if (microstatement.outputName === actualLetName) {
+        if (microstatement.statementType === StatementType.LETDEC) {
+          original = microstatement
+          break
+        } else if (microstatement.statementType === StatementType.REREF) {
+          original = Microstatement.fromVarName(microstatement.outputName, microstatements)
+          break
+        } else {
+          console.error("Attempting to reassign a non-let variable.")
+          console.error(
+            letName +
+            " on line " +
+            assignmentsAst.start.line +
+            ":" +
+            assignmentsAst.start.column
+          )
+          process.exit(104)
+        }
+      }
+    }
+    if (!original) {
+      console.error('Attempting to reassign to an undeclared variable')
+      console.error(
+        letName +
+        " on line " +
+        assignmentsAst.line +
+        ":" +
+        assignmentsAst.start.column
+      )
+      process.exit(105)
+    }
     if (segments.length === 1) { // Could be a simple let variable
       const letName = segments[0].getText()
       let actualLetName: string
@@ -1336,8 +1377,57 @@ class Microstatement {
         )
         // By definition the last microstatement is the const assignment we care about, so we can
         // just mutate its object to rename the output variable name to the name we need instead.
-        microstatements[microstatements.length - 1].outputName = actualLetName
-        microstatements[microstatements.length - 1].statementType = StatementType.ASSIGNMENT
+        const last = microstatements[microstatements.length - 1]
+        last.outputName = actualLetName
+        last.statementType = StatementType.ASSIGNMENT
+        // Attempt to "merge" the output types, useful for multiple branches assigning into the same
+        // variable but only part of the type information is known in each branch (like in `Result`
+        // or `Either` with the result value only in one branch or one type in each of the branches
+        // for `Either`).
+        if (original.outputType.typename !== last.outputType.typename) {
+          if (!!original.outputType.iface) {
+            // Just overwrite if it's an interface type
+            original.outputType = last.outputType
+          } else if (
+            !!original.outputType.originalType &&
+            !!last.outputType.originalType &&
+            original.outputType.originalType.typename === last.outputType.originalType.typename
+          ) {
+            // The tricky path, let's try to merge the two types together
+            const baseType = original.outputType.originalType
+            const originalTypeAst = Ast.fulltypenameAstFromString(original.outputType.typename)
+            const lastTypeAst = Ast.fulltypenameAstFromString(last.outputType.typename)
+            const originalTypeGenerics = originalTypeAst.typegenerics()
+            const lastTypeGenerics = lastTypeAst.typegenerics()
+            const originalSubtypes = originalTypeGenerics ? originalTypeGenerics.fulltypename().map(
+              t => t.getText()
+            ) : []
+            const lastSubtypes = lastTypeGenerics ? lastTypeGenerics.fulltypename().map(
+              t => t.getText()
+            ) : []
+            const newSubtypes = []
+            for (let i = 0; i < originalSubtypes.length; i++) {
+              if (originalSubtypes[i] === lastSubtypes[i]) {
+                newSubtypes.push(originalSubtypes[i])
+              } else {
+                const originalSubtype = scope.deepGet(originalSubtypes[i]) as Type
+                if (!!originalSubtype.iface) {
+                  newSubtypes.push(lastSubtypes[i])
+                } else if (!!originalSubtype.originalType) {
+                  // TODO: Support nesting
+                  newSubtypes.push(originalSubtypes[i])
+                } else {
+                  newSubtypes.push(originalSubtypes[i])
+                }
+              }
+            }
+            const newType = baseType.solidify(newSubtypes, scope)
+            original.outputType = newType
+          } else {
+            // Hmm... what to do here?
+            original.outputType = last.outputType
+          }
+        }
         return
       }
       if (assignmentsAst.assignables().basicassignables() != null) {
@@ -1349,8 +1439,60 @@ class Microstatement {
         // The same rule as above, the last microstatement is already a const assignment for the
         // value that we care about, so just rename its variable to the one that will be expected by
         // other code.
-        microstatements[microstatements.length - 1].outputName = actualLetName
-        microstatements[microstatements.length - 1].statementType = StatementType.ASSIGNMENT
+        const last = microstatements[microstatements.length - 1]
+        last.outputName = actualLetName
+        last.statementType = StatementType.ASSIGNMENT
+        // Attempt to "merge" the output types, useful for multiple branches assigning into the same
+        // variable but only part of the type information is known in each branch (like in `Result`
+        // or `Either` with the result value only in one branch or one type in each of the branches
+        // for `Either`).
+        // TODO: DRY up the two code blocks with near-identical type inference code.
+        if (original.outputType.typename !== last.outputType.typename) {
+          if (!!original.outputType.iface) {
+            // Just overwrite if it's an interface type
+            original.outputType = last.outputType
+          } else if (
+            !!original.outputType.originalType &&
+            !!last.outputType.originalType &&
+            original.outputType.originalType.typename === last.outputType.originalType.typename
+          ) {
+            // The tricky path, let's try to merge the two types together
+            const baseType = original.outputType.originalType
+            const originalTypeAst = Ast.fulltypenameAstFromString(original.outputType.typename)
+            const lastTypeAst = Ast.fulltypenameAstFromString(last.outputType.typename)
+            const originalTypeGenerics = originalTypeAst.typegenerics()
+            const lastTypeGenerics = lastTypeAst.typegenerics()
+            const originalSubtypes = originalTypeGenerics ? originalTypeGenerics.fulltypename().map(
+              (t: any) => t.getText()
+            ) : []
+            const lastSubtypes = lastTypeGenerics ? lastTypeGenerics.fulltypename().map(
+              (t: any) => t.getText()
+            ) : []
+            const newSubtypes = []
+            for (let i = 0; i < originalSubtypes.length; i++) {
+              if (originalSubtypes[i] === lastSubtypes[i]) {
+                newSubtypes.push(originalSubtypes[i])
+              } else {
+                const originalSubtype = scope.deepGet(originalSubtypes[i]) as Type
+                if (!!originalSubtype.iface) {
+                  newSubtypes.push(lastSubtypes[i])
+                } else if (!!originalSubtype.originalType) {
+                  // TODO: Support nesting
+                  newSubtypes.push(originalSubtypes[i])
+                } else {
+                  newSubtypes.push(originalSubtypes[i])
+                }
+              }
+            }
+            const newType = baseType.solidify(newSubtypes, scope)
+            original.outputType = newType
+          } else {
+            // Hmm... what to do here?
+            original.outputType = last.outputType
+          }
+        } else {
+          original.outputType = last.outputType
+        }
         return
       }
       // This should not be reachable
@@ -1376,47 +1518,6 @@ class Microstatement {
         assignmentsAst.start.column
       )
       process.exit(103)
-    }
-    // Now, find the original variable and confirm that it actually is a let declaration
-    const letName = segments[0].getText()
-    let actualLetName: string
-    let original: Microstatement
-    for (let i = microstatements.length - 1; i >= 0; i--) {
-      const microstatement = microstatements[i]
-      if (microstatement.alias === letName) {
-        actualLetName = microstatement.outputName
-        continue
-      }
-      if (microstatement.outputName === actualLetName) {
-        if (microstatement.statementType === StatementType.LETDEC) {
-          original = microstatement
-          break
-        } else if (microstatement.statementType === StatementType.REREF) {
-          original = Microstatement.fromVarName(microstatement.outputName, microstatements)
-          break
-        } else {
-          console.error("Attempting to reassign a non-let variable.")
-          console.error(
-            letName +
-            " on line " +
-            assignmentsAst.start.line +
-            ":" +
-            assignmentsAst.start.column
-          )
-          process.exit(104)
-        }
-      }
-    }
-    if (!original) {
-      console.error('Attempting to reassign to an undeclared variable')
-      console.error(
-        letName +
-        " on line " +
-        assignmentsAst.line +
-        ":" +
-        assignmentsAst.start.column
-      )
-      process.exit(105)
     }
     let nestedLetType = original.outputType
     for (let i = 1; i < segments.length - 1; i++) {

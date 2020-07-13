@@ -96,6 +96,7 @@ const addopcodes = (opcodes: object) => {
                     })
                   }
                 })
+                if (!replacementType) return returnType
                 return replacementType
               } else if (
                 returnType.originalType &&
@@ -358,11 +359,12 @@ addopcodes({
   copyi16: [{ a: t('int16'), }, t('int16')],
   copyi32: [{ a: t('int32'), }, t('int32')],
   copyi64: [{ a: t('int64'), }, t('int64')],
+  copyvoid: [{ a: t('void'), }, t('void')],
   copyf32: [{ a: t('float32'), }, t('float32')],
   copyf64: [{ a: t('float64'), }, t('float64')],
   copybool: [{ a: t('bool'), }, t('bool')],
   copystr: [{ a: t('string'), }, t('string')],
-  copyarr: [{ a: t('Array<any>'), }, t('Array<any>')],
+  copyarr: [{ a: t('any'), }, t('any')],
 })
 
 export default opcodeModule

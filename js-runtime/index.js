@@ -248,6 +248,7 @@ module.exports = {
   copyi16:  a => a,
   copyi32:  a => a,
   copyi64:  a => a,
+  copyvoid: a => a,
   copyf32:  a => a,
   copyf64:  a => a,
   copybool: a => a,

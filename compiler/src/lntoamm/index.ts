@@ -14,6 +14,7 @@ import UserFunction from './UserFunction'
 const hoistConst = (
   microstatements: Array<Microstatement>,
   constantDedupeLookup: object,
+  constantDuplicateLookup: object,
   constants: Set<Microstatement>,
   eventTypes: Set<Type>,
 ) => {
@@ -33,8 +34,9 @@ const hoistConst = (
         microstatements.splice(i, 1)
         constantDedupeLookup[m.inputNames[0]] = m
       } else {
+        constantDuplicateLookup[m.outputName] = original.outputName
         // Rewrite with the replaced name
-        for(let j = i + 1; j < microstatements.length; j++) {
+        for (let j = i + 1; j < microstatements.length; j++) {
           const n = microstatements[j]
           for (let k = 0; k < n.inputNames.length; k++) {
             if (n.inputNames[k] === m.outputName) {
@@ -45,10 +47,37 @@ const hoistConst = (
         microstatements.splice(i, 1)
       }
     } else if (m.statementType === StatementType.CLOSURE) {
-      hoistConst(m.closureStatements, constantDedupeLookup, constants, eventTypes)
+      hoistConst(
+        m.closureStatements,
+        constantDedupeLookup,
+        constantDuplicateLookup,
+        constants,
+        eventTypes
+      )
       i++
     } else {
       i++
+    }
+  }
+}
+
+const finalDedupe = (
+  microstatements: Array<Microstatement>,
+  constantDuplicateLookup: object,
+) => {
+  for (let i = 0; i < microstatements.length; i++) {
+    const m = microstatements[i]
+    if (m.statementType !== StatementType.LETDEC && m.statementType !== StatementType.CLOSURE) {
+      for (let j = 0; j < m.inputNames.length; j++) {
+        if (!!constantDuplicateLookup[m.inputNames[j]]) {
+          m.inputNames[j] = constantDuplicateLookup[m.inputNames[j]]
+        }
+      }
+    } else if (m.statementType === StatementType.CLOSURE) {
+      finalDedupe(
+        m.closureStatements,
+        constantDuplicateLookup,
+      )
     }
   }
 }
@@ -126,6 +155,9 @@ const ammFromModuleAsts = (moduleAsts: any) => { // TODO: Migrate from ANTLR
   let eventNames = new Set()
   let eventTypeNames = new Set()
   let eventTypes: Set<Type> = new Set()
+  let constantDedupeLookup = {} // String to Microstatement object
+  let constantDuplicateLookup = {} // String to String object
+  let constants: Set<Microstatement> = new Set() // Microstatment objects
   for (const evt of Event.allEvents) {
     // Skip built-in events
     if (evt.builtIn) continue
@@ -184,8 +216,6 @@ const ammFromModuleAsts = (moduleAsts: any) => { // TODO: Migrate from ANTLR
   }
   // Extract the handler definitions and constant data
   let handlers = {} // String to array of Microstatement objects
-  let constantDedupeLookup = {} // String to Microstatement object
-  let constants: Set<Microstatement> = new Set() // Microstatment objects
   for (let evt of Event.allEvents) {
     for (let handler of evt.handlers) {
       if (handler instanceof UserFunction) {
@@ -208,17 +238,31 @@ const ammFromModuleAsts = (moduleAsts: any) => { // TODO: Migrate from ANTLR
         handlerDec += argList.join(", ")
         handlerDec += "): " + handler.getReturnType().typename + " {"
         // Extract the handler statements and compile into microstatements
-        const statements = handler.maybeTransform().statements;
+        const statements = handler.maybeTransform(Object.values(handler.getArguments())).statements;
         for (const s of statements) {
           Microstatement.fromStatement(s, microstatements)
         }
         // Pull the constants out of the microstatements into the constants set.
-        hoistConst(microstatements, constantDedupeLookup, constants, eventTypes)
+        hoistConst(
+          microstatements,
+          constantDedupeLookup,
+          constantDuplicateLookup,
+          constants,
+          eventTypes
+        )
         // Register the handler and remaining statements
         handlers.hasOwnProperty(handlerDec) ? handlers[handlerDec].push(microstatements) : handlers[handlerDec] = [microstatements]
       }
     }
   }
+  // Second pass to fully-deduplicate constants
+  for (let handler of Object.keys(handlers)) {
+    const functions = handlers[handler]
+    for (let microstatements of functions) {
+      finalDedupe(microstatements, constantDuplicateLookup)
+    }
+  }
+
   let outStr = ""
   // Print the event types
   for (const eventType of eventTypes) {

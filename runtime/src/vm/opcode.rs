@@ -1951,6 +1951,11 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     hand_mem.write_fixed(args[2], val);
     None
   });
+  cpu!("copyvoid", |args, hand_mem, _| {
+    let val = hand_mem.read_fixed(args[0]);
+    hand_mem.write_fixed(args[2], val);
+    None
+  });
   cpu!("copyf32", |args, hand_mem, _| {
     let val = hand_mem.read_fixed(args[0]);
     hand_mem.write_fixed(args[2], val);
@@ -1973,6 +1978,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   cpu!("copyarr", |args, hand_mem, _| {
     // args = [in_addr, unused, out_addr]
+    //println!("copy array from @{} to @{}", args[0], args[2]);
     hand_mem.copy_fractal(args[0], args[2]);
     None
   });

@@ -8,6 +8,7 @@
 
 // Default Interfaces
 export interface any {}
+export interface anythingElse {} // Same as `any`, but doesn't match with it
 export interface Stringifiable {
   toString(Stringifiable): string
 }
@@ -311,6 +312,9 @@ export fn cond(c: bool, options: Array<any>) = options[1 - c.toInt64()]
 export fn cond(c: bool, optional: function): void = condfn(c, optional)
 
 // "assign" function useful for hoisting assignments
+export fn assign(a: any) = copyarr(a)
+export fn assign(a: Array<any>) = copyarr(a)
+export fn assign(a: void) = copyvoid(a) // TODO: Eliminate this, covering up a weird error
 export fn assign(a: int8) = copyi8(a)
 export fn assign(a: int16) = copyi16(a)
 export fn assign(a: int32) = copyi32(a)
@@ -319,7 +323,87 @@ export fn assign(a: float32) = copyf32(a)
 export fn assign(a: float64) = copyf64(a)
 export fn assign(a: bool) = copybool(a)
 export fn assign(a: string) = copystr(a)
-export fn assign(a: Array<any>) = copyarr(a)
+
+// Error, Maybe, Result, and Either types and functions
+export type Error { // TODO: Give this type special behavior to report stack info?
+  msg: string
+}
+
+export fn noerr() = new Error {
+  msg = "No Error"
+}
+
+export type Maybe<T> {
+  val: Array<T>
+}
+
+export fn some(val: any) = new Maybe<any> {
+  val = [ val, ]
+}
+
+export fn none() = new Maybe<void> {
+  val = new Array<void> []
+}
+
+export fn isSome(maybe: Maybe<any>) = length(maybe.val).gt(0)
+
+export fn isNone(maybe: Maybe<any>) = length(maybe.val).eq(0)
+
+export fn getOr(maybe: Maybe<any>, default: any): any {
+  if maybe.isSome() {
+    return maybe.val[0]
+  } else {
+    return default
+  }
+}
+
+export type Result<T> {
+  val: Maybe<T>
+  err: Maybe<Error>
+}
+
+export fn ok(val: any) = new Result<any> {
+  val = some(val)
+  err = none()
+}
+
+export fn err(msg: string) = new Result<any> {
+  val = none()
+  err = some(new Error {
+    msg = msg
+  })
+}
+
+export fn isOk(result: Result<any>) = isSome(result.val)
+
+export fn isErr(result: Result<any>) = isSome(result.err)
+
+export fn getOr(result: Result<any>, default: any) = getOr(result.val, default)
+
+export fn getErr(result: Result<any>, default: Error): Error = getOr(result.err, default)
+
+export type Either<T, U> {
+  main: Maybe<T>
+  alt: Maybe<U>
+}
+
+export fn main(m: any) = new Either<any, void> {
+  main = some(m)
+  alt = none()
+}
+
+export fn alt(a: any) = new Either<void, any> {
+  main = none()
+  alt = some(a)
+}
+
+export fn isMain(either: Either<any, anythingElse>) = isSome(either.main)
+
+export fn isAlt(either: Either<any, anythingElse>) = isSome(either.alt)
+
+export fn getMain(either: Either<any, anythingElse>, default: any) = getOr(either.main, default)
+
+export fn getAlt(either: Either<any, anythingElse>, default: anythingElse) = getOr(either.alt, default)
 
 // Operator declarations
 export infix add as + precedence 2
@@ -355,4 +439,5 @@ export prefix trim as ` precedence 4
 export infix pair as : precedence 5
 export infix push as : precedence 6
 export infix cond as ? precedence 0
-
+export infix getOr as | precedence 2
+export infix getOr as || precedence 2

@@ -172,7 +172,7 @@ class UserFunction implements Fn {
               process.exit(-60)
             }
             let genericTypes = []
-            for (const fulltypename of functionAst.argType().othertype(0).typegenerics().fulltypename()) {
+            for (const fulltypename of functionAst.argtype().othertype(0).typegenerics().fulltypename()) {
               genericTypes.push(fulltypename.getText())
             }
             getReturnType = getReturnType.solidify(genericTypes, scope)
@@ -261,15 +261,57 @@ class UserFunction implements Fn {
           returnType = scope.deepGet(
             assignablesAst.basicassignables().objectliterals().typeliteral().othertype().getText().trim()
           )
+          if (!returnType) {
+            const fulltypeAst = Ast.fulltypenameAstFromString(
+              assignablesAst.basicassignables().objectliterals().typeliteral().othertype().getText()
+            )
+            const baseType = scope.deepGet(fulltypeAst.varn().getText()) as Type
+            if (!baseType) {
+              console.error(`Return type ${baseType} not defined`)
+              process.exit(111)
+            }
+            returnType = baseType.solidify(
+              fulltypeAst.typegenerics().fulltypename().map(f => f.getText()),
+              scope
+            )
+          }
         } else if (assignablesAst.basicassignables().objectliterals().mapliteral()) {
           returnType = scope.deepGet(
             assignablesAst.basicassignables().objectliterals().mapliteral().othertype().getText().trim()
           )
+          if (!returnType) {
+            const fulltypeAst = Ast.fulltypenameAstFromString(
+              assignablesAst.basicassignables().objectliterals().mapliteral().othertype().getText()
+            )
+            const baseType = scope.deepGet(fulltypeAst.varn().getText()) as Type
+            if (!baseType) {
+              console.error(`Return type ${baseType} not defined`)
+              process.exit(111)
+            }
+            returnType = baseType.solidify(
+              fulltypeAst.typegenerics().fulltypename().map(f => f.getText()),
+              scope
+            )
+          }
         } else {
           if (assignablesAst.basicassignables().objectliterals().arrayliteral().othertype()) {
             returnType = scope.deepGet(
               assignablesAst.basicassignables().objectliterals().arrayliteral().othertype().getText().trim()
             )
+            if (!returnType) {
+              const fulltypeAst = Ast.fulltypenameAstFromString(
+                assignablesAst.basicassignables().objectliterals().mapliteral().othertype().getText()
+              )
+              const baseType = scope.deepGet(fulltypeAst.varn().getText()) as Type
+              if (!baseType) {
+                console.error(`Return type ${baseType} not defined`)
+                process.exit(111)
+              }
+              returnType = baseType.solidify(
+                fulltypeAst.typegenerics().fulltypename().map(f => f.getText()),
+                scope
+              )
+            }
           } else {
             // We're going to use the Microstatement logic here
             const microstatements = []
@@ -330,7 +372,7 @@ class UserFunction implements Fn {
       cond.blocklikes(0).varn() ?
         scope.deepGet(cond.blocklikes(0).varn().getText())[0] :
         UserFunction.fromFunctionsAst(cond.blocklikes(0).functions(), scope)
-    ).maybeTransform()
+    ).maybeTransform([])
     if (condBlockFn.statements[condBlockFn.statements.length - 1].isReturnStatement()) {
       hasConditionalReturn = true
     }
@@ -346,7 +388,7 @@ class UserFunction implements Fn {
           cond.blocklikes(1).varn() ?
             scope.deepGet(cond.blocklikes(1).varn().getText())[0] :
             UserFunction.fromFunctionsAst(cond.blocklikes(1).functions(), scope)
-        ).maybeTransform()
+        ).maybeTransform([])
         if (elseBlockFn.statements[elseBlockFn.statements.length - 1].isReturnStatement()) {
           hasConditionalReturn = true
         }
@@ -430,11 +472,16 @@ class UserFunction implements Fn {
     return replacementStatements
   }
 
-  maybeTransform() {
-    if (this.statements.some(s => s.isConditionalStatement())) {
+  maybeTransform(actualArgTypes: Type[]) {
+    if (
+      this.statements.some(s => s.isConditionalStatement()) ||
+      this.statements.some(s => s.hasObjectLiteral())
+    ) {
       // First pass, convert conditionals to `cond` fn calls and wrap assignment statements
       let statementAsts = []
       let hasConditionalReturn = false // Flag for potential second pass
+      const originalArgTypeNames = Object.values(this.args).map(t => t.typename)
+      const actualArgTypeNames = actualArgTypes.map(t => t.typename)
       for (let i = 0; i < this.statements.length; i++) {
         const s = this.statements[i]
         if (s.isConditionalStatement()) {
@@ -443,6 +490,38 @@ class UserFunction implements Fn {
           const newStatements = res[0] as Array<any>
           if (res[1]) hasConditionalReturn = true
           statementAsts.push(...newStatements)
+        } else if (s.hasObjectLiteral()) {
+          // Potentially rewrite the type for the object literal to match the interface type used by
+          // a specific call
+          const str = s.statementOrAssignableAst.getText()
+          // TODO: This doesn't support doubly-nested generics in object literals, replace with a
+          // (large) AST-based replacer in the future
+          const corrected = str.replace(/new ([^<]+)<([^>]+)>/g, (m, p1, p2, offset, str) => {
+            const baseTypeStr = p1
+            const innerTypeStrs = p2.split(',').map(t => t.trim())
+            const newTypeStrs = innerTypeStrs.map(t => {
+              if (originalArgTypeNames.includes(t)) {
+                const i = originalArgTypeNames.indexOf(t)
+                return actualArgTypeNames[i]
+              }
+              return t
+            })
+            // Make sure this thing really exists
+            const originalType = this.scope.deepGet(baseTypeStr) as Type
+            if (!originalType || !(originalType instanceof Type)) {
+              console.error('This should be impossible')
+              process.exit(111)
+            }
+            originalType.solidify(newTypeStrs, this.scope)
+            return `new ${baseTypeStr}<${newTypeStrs.join(', ')}>`
+          })
+          if (s.statementOrAssignableAst instanceof LnParser.AssignablesContext) {
+            const correctedAst = Ast.statementAstFromString(`return ${corrected}\n`)
+            statementAsts.push(correctedAst)
+          } else {
+            const correctedAst = Ast.statementAstFromString(corrected)
+            statementAsts.push(correctedAst)
+          }
         } else if (s.statementOrAssignableAst instanceof LnParser.AssignmentsContext) {
           // TODO: Clean up the const/let/assignment grammar mistakes.
           const a = s.statementOrAssignableAst
@@ -505,7 +584,7 @@ class UserFunction implements Fn {
       }
 
       const fnStr = `
-        fn ${this.name || ''} (${Object.keys(this.args).map(argName => `${argName}: ${this.args[argName].typename}`)}): ${this.returnType.typename} {
+        fn ${this.name || ''} (${Object.keys(this.args).map(argName => `${argName}: ${this.args[argName].typename}`).join(', ')}): ${this.returnType.typename} {
           ${statementAsts.map(s => s.getText()).join('\n')}
         }
       `.trim()
@@ -521,9 +600,8 @@ class UserFunction implements Fn {
     microstatements: Array<Microstatement>,
   ) {
     // Perform a transform, if necessary, before generating the microstatements
-    const fn = this.maybeTransform()
     // Resolve circular dependency issue
-    const internalNames = Object.keys(fn.args)
+    const internalNames = Object.keys(this.args)
     const originalStatementLength = microstatements.length
     const inputs = realArgNames.map(n => Microstatement.fromVarName(n, microstatements))
     const inputTypes = inputs.map(i => i.outputType)
@@ -543,6 +621,7 @@ class UserFunction implements Fn {
         internalNames[i],
       ))
     }
+    const fn = this.maybeTransform(inputTypes)
     for (const s of fn.statements) {
       Microstatement.fromStatement(s, microstatements)
     }
@@ -559,46 +638,59 @@ class UserFunction implements Fn {
     // interface's real type is the same as the output type, which is a valid assumption as long as
     // all inputs of that particular interface are the same type. TODO: If this is not true, it must
     // be a compile-time error earlier on.
-    if (!!this.returnType.iface || Object.values(this.returnType.properties).some(p => !!p.iface)) {
-      const oldReturnType = this.returnType
-      let newReturnType = oldReturnType
-      if (!!oldReturnType.iface) {
-        Object.values(this.args).forEach((a, i) => {
-          if (!!a.iface && a.iface.interfacename === oldReturnType.iface.interfacename) {
-            newReturnType = inputTypes[i]
-          } else if (Object.values(a.properties).some(
-            p => !!p.iface && p.iface.interfacename === oldReturnType.iface.interfacename
-          )) {
-            newReturnType = Object.values(inputTypes[i].properties).find(
-              (p: Type) => !!p.iface && p.iface.interfacename === oldReturnType.iface.interfacename
-            ) as Type
-          }
-        })
-      } else {
-        const ifaceMap = {}
-        Object.values(this.args).forEach((a, i) => {
-          if (!!a.iface) {
-            ifaceMap[a.iface.interfacename] = inputTypes[i]
-          } else if (Object.values(a.properties).some(
-            p => !!p.iface && p.iface.interfacename === oldReturnType.iface.interfacename
-          )) {
-            Object.values(inputTypes[i].properties).forEach((p: Type, j: number) => {
-              if (!!p.iface) {
-                ifaceMap[p.iface.interfacename] = Object.values(inputTypes[i])[j]
-              }
-            })
-          }
-        })
-        const oldproptypes = Object.values(oldReturnType.properties)
-        const newproptypes = oldproptypes.map(
-          p => !!p.iface ? ifaceMap[p.iface.interfacename].typename : p.typename
-        )
-        const baseType = oldReturnType.originalType
-        newReturnType = baseType.solidify(newproptypes, scope)
+    const returnTypeAst = Ast.fulltypenameAstFromString(this.returnType.typename)
+    const returnTypeGenerics = returnTypeAst.typegenerics()
+    const returnSubtypes = returnTypeGenerics ? returnTypeGenerics.fulltypename().map(
+      t => scope.deepGet(t.getText())
+    ) : []
+    if (this.returnType.iface) {
+      const originalArgTypes = Object.values(this.args)
+      for (let i = 0; i < inputTypes.length; i++) {
+        if (this.returnType === originalArgTypes[i]) {
+          microstatements[microstatements.length - 1].outputType = inputTypes[i]
+        }
       }
+    } else if (returnSubtypes.some(t => !!t.iface)) {
+      const oldReturnType = this.returnType
+      const originalArgTypes = Object.values(this.args)
+      for (let i = 0; i < inputTypes.length; i++) {
+        for (let j = 0; j < returnSubtypes.length; j++) {
+          if (returnSubtypes[j] === originalArgTypes[i]) {
+            returnSubtypes[j] = inputTypes[i]
+          }
+        }
+      }
+      let newReturnType = oldReturnType.originalType.solidify(
+        returnSubtypes.map(t => t.typename),
+        scope
+      )
       const last = microstatements[microstatements.length - 1]
       last.outputType = newReturnType
+    } else {
+      const last = microstatements[microstatements.length - 1]
+      const lastTypeAst = Ast.fulltypenameAstFromString(last.outputType.typename)
+      const lastTypeGenerics = lastTypeAst.typegenerics()
+      const lastSubtypes = lastTypeGenerics ? lastTypeGenerics.fulltypename().map(
+        t => scope.deepGet(t.getText())
+      ) : []
+      if (lastSubtypes.some(t => !!t.iface)) {
+        const oldLastType = last.outputType
+        const originalArgTypes = Object.values(this.args)
+        for (let i = 0; i < inputTypes.length; i++) {
+          for (let j = 0; j < lastSubtypes.length; j++) {
+            if (lastSubtypes[j] === originalArgTypes[i]) {
+              lastSubtypes[j] = inputTypes[i]
+            }
+          }
+        }
+        let newLastType = oldLastType.originalType.solidify(
+          lastSubtypes.map(t => t.typename),
+          scope
+        )
+        last.outputType = newLastType
+      }
     }
+    const last = microstatements[microstatements.length - 1]
   }
 
   static dispatchFn(
@@ -627,21 +719,33 @@ class UserFunction implements Fn {
           argList[j].originalType != null &&
           argumentTypeList[j].originalType == argList[j].originalType
         ) {
-          for (const propKey in argList[j].properties) {
-            const propVal = argList[j].properties[propKey]
+          const argListAst = Ast.fulltypenameAstFromString(argList[j].typename)
+          const argumentTypeListAst = Ast.fulltypenameAstFromString(argumentTypeList[j].typename)
+          const len = argListAst.typegenerics() ?
+            argListAst.typegenerics().fulltypename().length : 0
+          let innerSkip = false
+          for (let i = 0; i < len; i++) {
+            const argListTypeProp = argListAst.typegenerics().fulltypename(i).getText()
+            const argumentTypeListTypeProp =
+              argumentTypeListAst.typegenerics().fulltypename(i).getText()
+            if (argListTypeProp === argumentTypeListTypeProp) continue
+            const argListProp = scope.deepGet(argListTypeProp) as Type
+            const argumentTypeListProp = scope.deepGet(argumentTypeListTypeProp) as Type
+            if (!argListProp || !(argListProp instanceof Type)) {
+              innerSkip = true
+              break
+            }
+            if (!argumentTypeListProp || !(argumentTypeListProp instanceof Type)) {
+              innerSkip = true
+              break
+            }
             if (
-              propVal ==
-              argumentTypeList[j].properties[propKey]
+              argListProp.iface != null &&
+              argListProp.iface.typeApplies(argumentTypeListProp, scope)
             ) continue
-            if (
-              propVal.iface != null &&
-              propVal.iface.typeApplies(
-                argumentTypeList[j].properties[propKey],
-                scope
-              )
-            ) continue
-            skip = true
+            innerSkip = true
           }
+          if (innerSkip) skip = true
           continue
         }
         if (argList[j].unionTypes != null) {
@@ -662,6 +766,7 @@ class UserFunction implements Fn {
     }
     if (fn == null) {
       console.error("Unable to find matching function for name and argument type set")
+      const argList = Object.values(fns[0].getArguments())
       let argTypes = []
       for (let i = 0; i < argumentTypeList.length; i++) {
         argTypes.push("<" + argumentTypeList[i].typename + ">")

@@ -1,5 +1,8 @@
 use std::collections::HashMap;
 use std::convert::TryInto;
+use std::fmt;
+
+use regex::Regex;
 
 use crate::vm::program::Program;
 
@@ -21,6 +24,23 @@ pub struct HandlerMemory {
   /// These are not quite registers since they are not used by opcodes directly and they
   /// don't store the data itself, but an address to the data.
   registers_ish: HashMap<i64, Vec<i64>>,
+}
+
+impl fmt::Display for HandlerMemory {
+  fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    let mut out_str = "".to_string();
+    for i in 0..self.mem.len() {
+      if self.either_mem[i] < 0 {
+        out_str = out_str + &i.to_string() + ": " + &self.mem[i].to_string() + "\n"
+      } else {
+        let nested_str = format!("{}", &self.fractal_mem[i]);
+        let re = Regex::new("\n").unwrap();
+        let indented_str = re.replace_all(&nested_str, "\n  ");
+        out_str = out_str + &i.to_string() + ": " + &indented_str.to_string() + "\n"
+      }
+    }
+    formatter.write_str(&out_str)
+  }
 }
 
 impl HandlerMemory {
@@ -146,8 +166,11 @@ impl HandlerMemory {
     let arr = self.get_fractal(arr_addr);
     let (data, size) = arr.read_either(inner_addr);
     if size == 0 {
-      self.write_fractal_mem(outer_addr, &data);
+      let inner_arr = arr.read_fractal(inner_addr);
+      //println!("copy from fractal: @{}[{}] to {} val: {}", arr_addr, inner_addr, outer_addr, inner_arr.clone());
+      self.write_fractal(outer_addr, inner_arr.clone());
     } else {
+      //println!("copy from fixed: @{}[{}] to {} val {}", arr_addr, inner_addr, outer_addr, data[0]);
       self.write_fixed(outer_addr, data[0]);
     }
   }
@@ -155,7 +178,17 @@ impl HandlerMemory {
   pub fn copy_fractal(self: &mut HandlerMemory, in_addr: i64, out_addr: i64) {
     let arr = &mut self.fractal_mem[self.either_mem[in_addr as usize] as usize];
     let new_arr = arr.clone();
-    self.fractal_mem[self.either_mem[out_addr as usize] as usize] = new_arr;
+    //println!("copy fractal from @{} to @{}: {}", in_addr, out_addr, new_arr);
+    let fractal_addr = self.either_mem[out_addr as usize];
+    if fractal_addr > -1 {
+      self.fractal_mem[fractal_addr as usize] = new_arr;
+    } else {
+      // TODO: This shouldn't be happening, the compiler shouldn't be emitting `copyarr` for `void`
+      // types. Once fixed the branching here can be removed.
+      let new_addr = self.fractal_mem.len() as i64;
+      self.fractal_mem.push(new_arr);
+      self.either_mem[out_addr as usize] = new_addr;
+    }
   }
 
   pub fn len(self: &HandlerMemory) -> usize {
@@ -166,6 +199,7 @@ impl HandlerMemory {
     if self.either_mem[addr as usize] > 0 {
       panic!("Tried to create an array at address {}, but one already exists.", addr);
     }
+    //println!("create fractal: @{}", addr);
     self.write_fractal_mem(addr, &[]);
   }
 
@@ -183,6 +217,7 @@ impl HandlerMemory {
     arr.mem.push(0);
     arr.either_mem.push(-1);
     arr.write_fixed(idx as i64, val);
+    //println!("push fixed: @{}[{}]: {}", addr, idx, val);
   }
 
   pub fn push_nested_fractal_mem(self: &mut HandlerMemory, addr: i64, val: Vec<i64>) {
@@ -191,11 +226,13 @@ impl HandlerMemory {
     arr.mem.push(0);
     arr.either_mem.push(idx);
     arr.write_fractal_mem(idx, &val);
+    //println!("push nested mem: @{}[{}]: {}", addr, idx, val[0]);
   }
 
   pub fn push_nested_fractal(self: &mut HandlerMemory, addr: i64, val: HandlerMemory) {
     let arr = &mut self.fractal_mem[self.either_mem[addr as usize] as usize];
     let idx = arr.mem.len() as i64;
+    //println!("push nested: @{}[{}]: {}", addr, idx, &val);
     arr.mem.push(0);
     arr.either_mem.push(idx);
     arr.fractal_mem.push(val);

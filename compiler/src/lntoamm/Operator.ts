@@ -1,3 +1,4 @@
+import * as Ast from './Ast'
 import Scope from './Scope'
 import Type from './Type'
 import UserFunction from './UserFunction'
@@ -42,18 +43,33 @@ class Operator {
           argList[j].originalType != null &&
           argumentTypeList[j].originalType == argList[j].originalType
         ) {
-          for (const propKey of Object.keys(argList[j].properties)) {
-            const propVal = argList[j].properties[propKey]
-            if (propVal == argumentTypeList[j].properties[propKey]) continue
+          const argListAst = Ast.fulltypenameAstFromString(argList[j].typename)
+          const argumentTypeListAst = Ast.fulltypenameAstFromString(argumentTypeList[j].typename)
+          const len = argListAst.typegenerics() ?
+            argListAst.typegenerics().fulltypename().length : 0
+          let innerSkip = false
+          for (let i = 0; i < len; i++) {
+            const argListTypeProp = argListAst.typegenerics().fulltypename(i).getText()
+            const argumentTypeListTypeProp =
+              argumentTypeListAst.typegenerics().fulltypename(i).getText()
+            if (argListTypeProp === argumentTypeListTypeProp) continue
+            const argListProp = scope.deepGet(argListTypeProp) as Type
+            const argumentTypeListProp = scope.deepGet(argumentTypeListTypeProp) as Type
+            if (!argListProp || !(argListProp instanceof Type)) {
+              innerSkip = true
+              break
+            }
+            if (!argumentTypeListProp || !(argumentTypeListProp instanceof Type)) {
+              innerSkip = true
+              break
+            }
             if (
-              propVal.iface != null &&
-              propVal.iface.typeApplies(
-                argumentTypeList[j].properties[propKey],
-                scope
-              )
+              argListProp.iface != null &&
+              argListProp.iface.typeApplies(argumentTypeListProp, scope)
             ) continue
-            skip = true
+            innerSkip = true
           }
+          if (innerSkip) skip = true
           continue
         }
         skip = true

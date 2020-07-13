@@ -25,6 +25,51 @@ class Statement {
       this.statementOrAssignableAst.exits() !== null
   }
 
+  static basicAssignableHasObjectLiteral(basicAssignableAst: any) { // TODO: Remove ANTLR
+    if (basicAssignableAst.objectliterals()) return true
+    return false
+  }
+
+  static assignablesHasObjectLiteral(assignablesAst: any) { // TODO: Remove ANTLR
+    const a = assignablesAst
+    if (a.basicassignables()) return Statement.basicAssignableHasObjectLiteral(
+      a.basicassignables()
+    )
+    return a.withoperators().operatororassignable()
+      .filter(oa => !!oa.basicassignables())
+      .some(oa => Statement.basicAssignableHasObjectLiteral(oa.basicassignables()))
+  }
+
+  static assignmentsHasObjectLiteral(assignmentsAst: any) { // TODO: Remove ANTLR
+    return Statement.assignablesHasObjectLiteral(assignmentsAst.assignables())
+  }
+
+  hasObjectLiteral() {
+    if (this.statementOrAssignableAst instanceof LnParser.StatementsContext) {
+      const s = this.statementOrAssignableAst
+      if (s.declarations()) {
+        const d = s.declarations().constdeclaration() || s.declarations().letdeclaration()
+        if (d.assignments().assignables()) {
+          return Statement.assignmentsHasObjectLiteral(d.assignments())
+        }
+      }
+      if (s.assignments()) return Statement.assignmentsHasObjectLiteral(s.assignments())
+      if (s.calls() && s.calls().assignables() > 0) s.calls().assignables().some(
+        a => Statement.assignablesHasObjectLiteral(a)
+      )
+      if (s.exits() && s.exits().assignables()) return Statement.assignablesHasObjectLiteral(
+        s.exits().assignables()
+      )
+      if (s.emits() && s.emits().assignables()) return Statement.assignablesHasObjectLiteral(
+        s.emits().assignables()
+      )
+      // TODO: Cover conditionals
+      return false
+    } else {
+      return Statement.assignablesHasObjectLiteral(this.statementOrAssignableAst)
+    }
+  }
+
   static isCallPure(callAst: any, scope: Scope) { // TODO: Migrate off ANTLR
     // TODO: Add purity checking for chained method-style calls
     const fn = scope.deepGet(callAst.varn(0).getText()) as Array<Fn>
