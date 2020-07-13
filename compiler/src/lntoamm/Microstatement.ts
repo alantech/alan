@@ -1419,6 +1419,7 @@ class Microstatement {
         // variable but only part of the type information is known in each branch (like in `Result`
         // or `Either` with the result value only in one branch or one type in each of the branches
         // for `Either`).
+        // TODO: DRY up the two code blocks with near-identical type inference code.
         if (original.outputType.typename !== last.outputType.typename) {
           if (!!original.outputType.iface) {
             // Just overwrite if it's an interface type

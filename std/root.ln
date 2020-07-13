@@ -349,7 +349,7 @@ export fn isSome(maybe: Maybe<any>) = length(maybe.val).gt(0)
 
 export fn isNone(maybe: Maybe<any>) = length(maybe.val).eq(0)
 
-export fn get(maybe: Maybe<any>, default: any): any {
+export fn getOr(maybe: Maybe<any>, default: any): any {
   if maybe.isSome() {
     return maybe.val[0]
   } else {
@@ -378,9 +378,9 @@ export fn isOk(result: Result<any>) = isSome(result.val)
 
 export fn isErr(result: Result<any>) = isSome(result.err)
 
-export fn get(result: Result<any>, default: any) = get(result.val, default)
+export fn getOr(result: Result<any>, default: any) = getOr(result.val, default)
 
-export fn getErr(result: Result<any>, default: Error): Error = get(result.err, default)
+export fn getErr(result: Result<any>, default: Error): Error = getOr(result.err, default)
 
 export type Either<T, U> {
   main: Maybe<T>
@@ -401,9 +401,9 @@ export fn isMain(either: Either<any, anythingElse>) = isSome(either.main)
 
 export fn isAlt(either: Either<any, anythingElse>) = isSome(either.alt)
 
-export fn getMain(either: Either<any, anythingElse>, default: any) = get(either.main, default)
+export fn getMain(either: Either<any, anythingElse>, default: any) = getOr(either.main, default)
 
-export fn getAlt(either: Either<any, anythingElse>, default: anythingElse) = get(either.alt, default)
+export fn getAlt(either: Either<any, anythingElse>, default: anythingElse) = getOr(either.alt, default)
 
 // Operator declarations
 export infix add as + precedence 2
@@ -423,7 +423,6 @@ export infix or as | precedence 2
 export infix or as || precedence 2
 export infix xor as ^ precedence 2
 export prefix not as ! precedence 4
-export prefix toBool as !! precedence 4
 export infix nand as !& precedence 3
 export infix nor as !| precedence 2
 export infix xnor as !^ precedence 2
@@ -440,9 +439,5 @@ export prefix trim as ` precedence 4
 export infix pair as : precedence 5
 export infix push as : precedence 6
 export infix cond as ? precedence 0
-export infix get as | precedence 2
-export infix get as || precedence 2
-export prefix isSome as !! precedence 4
-export prefix isNone as ! precedence 4
-export prefix isOk as !! precedence 4
-export prefix isErr as ! precedence 4
+export infix getOr as | precedence 2
+export infix getOr as || precedence 2

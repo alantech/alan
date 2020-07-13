@@ -17,7 +17,7 @@ Describe "Maybe, Result, and Either"
         on start {
           const maybe5 = fiver(5.5)
           if maybe5.isSome() {
-            print(maybe5.get(0))
+            print(maybe5.getOr(0))
           } else {
             print('what?')
           }
@@ -29,13 +29,13 @@ Describe "Maybe, Result, and Either"
             print('uhhh')
           }
 
-          if !!maybe5 {
+          if maybe5.isSome() {
             print(maybe5 || 0)
           } else {
             print('what?')
           }
 
-          if !maybeNot5 {
+          if maybeNot5.isNone() {
             print('Correctly received nothing!')
           } else {
             print('uhhh')
@@ -83,7 +83,7 @@ Correctly received nothing!"
         on start {
           const oneFifth = reciprocal(5.0)
           if oneFifth.isOk() {
-            print(oneFifth.get(0.0))
+            print(oneFifth.getOr(0.0))
           } else {
             print('what?')
           }
@@ -96,13 +96,13 @@ Correctly received nothing!"
             print('uhhh')
           }
 
-          if !!oneFifth {
+          if oneFifth.isOk() {
             print(oneFifth | 0.0)
           } else {
             print('what?')
           }
 
-          if !oneZeroth {
+          if oneZeroth.isErr() {
             print(oneZeroth | 1.2345)
           } else {
             print('uhhh')

@@ -183,8 +183,8 @@ impl HandlerMemory {
     if fractal_addr > -1 {
       self.fractal_mem[fractal_addr as usize] = new_arr;
     } else {
-      // TODO: This shouldn't be happening, but this minor change is a lot easier than figuring out
-      // why the let statement has the wrong type right now.
+      // TODO: This shouldn't be happening, the compiler shouldn't be emitting `copyarr` for `void`
+      // types. Once fixed the branching here can be removed.
       let new_addr = self.fractal_mem.len() as i64;
       self.fractal_mem.push(new_arr);
       self.either_mem[out_addr as usize] = new_addr;
