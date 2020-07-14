@@ -33,7 +33,7 @@ impl fmt::Display for HandlerMemory {
       if self.either_mem[i] < 0 {
         out_str = out_str + &i.to_string() + ": " + &self.mem[i].to_string() + "\n"
       } else {
-        let nested_str = format!("{}", &self.fractal_mem[i]);
+        let nested_str = format!("{}", &self.fractal_mem[self.either_mem[i] as usize]);
         let re = Regex::new("\n").unwrap();
         let indented_str = re.replace_all(&nested_str, "\n  ");
         out_str = out_str + &i.to_string() + ": " + &indented_str.to_string() + "\n"
@@ -231,8 +231,8 @@ impl HandlerMemory {
 
   pub fn push_nested_fractal(self: &mut HandlerMemory, addr: i64, val: HandlerMemory) {
     let arr = &mut self.fractal_mem[self.either_mem[addr as usize] as usize];
-    let idx = arr.mem.len() as i64;
-    //println!("push nested: @{}[{}]: {}", addr, idx, &val);
+    let idx = arr.fractal_mem.len() as i64;
+    //println!("push nested: @{}[{}]: {}", addr, arr.mem.len(), val);
     arr.mem.push(0);
     arr.either_mem.push(idx);
     arr.fractal_mem.push(val);
