@@ -407,7 +407,7 @@ class Microstatement {
         true,
         constName,
         Type.builtinTypes["string"],
-        [`"${last.outputType.typename}"`],
+        [`"${!!last.outputType.alias ? last.outputType.alias.typename : last.outputType.typename}"`],
         [],
       ))
       return

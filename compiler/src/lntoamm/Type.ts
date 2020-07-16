@@ -152,7 +152,7 @@ export class Interface {
     // operator types.
     const interfacename = interfaceAst.VARNAME().getText()
     let iface = new Interface(interfacename)
-    const ifaceType = new Type(interfacename, false, false, {}, {}, null, null, iface)
+    const ifaceType = new Type(interfacename, false, false, {}, {}, null, iface)
     scope.put(interfacename, ifaceType)
 
     // Now, insert the actual declarations of the interface, if there are any (if there are none,
@@ -221,6 +221,15 @@ export class Interface {
           ] = propertyType
         }
       }
+    } else if (!!interfaceAst.varn()) {
+      // It's an alias, so grab it and give it the new name
+      const otherInterface = scope.deepGet(interfaceAst.varn().getText()) as Type
+      if (!(otherInterface instanceof Type) || !otherInterface.iface) {
+        console.error(`${interfaceAst.varn().getText()} is not an interface`)
+        process.exit(123)
+      }
+      // Replace the interface with the other one
+      ifaceType.iface = otherInterface.iface
     }
     return ifaceType
   }
@@ -233,7 +242,6 @@ export class Type {
   properties: Properties
   generics: Generics
   originalType: Type | null
-  unionTypes: Array<Type> | null
   iface: Interface | null
   alias: Type | null
 
@@ -244,7 +252,6 @@ export class Type {
     properties: Properties = {},
     generics: Generics = {},
     originalType: Type | null = null,
-    unionTypes: Array<Type> | null = null,
     iface: Interface | null = null,
     alias: Type | null = null,
   ) {
@@ -254,15 +261,12 @@ export class Type {
     this.properties = properties
     this.generics = generics
     this.originalType = originalType
-    this.unionTypes = unionTypes
     this.iface = iface
     this.alias = alias
   }
 
   toString() {
-    // TODO: Handle interfaces union types appropriately
     if (this.iface != null) return "// Interfaces TBD"
-    if (this.unionTypes != null) return "// Union types TBD"
     let outString = "type " + this.typename
     if (this.alias != null) {
       outString += " = " + this.alias.typename
@@ -304,8 +308,6 @@ export class Type {
               const property = scope.deepGet(baseTypeName) as Type
               if (!property || !(property instanceof Type)) {
                 console.error(lineAst.fulltypename().getText() + " is not a type")
-                console.log(1)
-                console.log(type.generics)
                 process.exit(-4)
               }
               const generics = innerGenerics.fulltypename()
@@ -323,13 +325,11 @@ export class Type {
                 // Maybe it's a type we need to solidify right now, otherwise error out, but
                 // let solidify handle that for us
                 type.properties[propertyName] = property.solidify(
-                  generics.map(g => g.getText()), scope
+                  generics.map((g: any) => g.getText()), scope
                 )
               }
             } else {
               console.error(lineAst.fulltypename().getText() + " is not a type")
-              console.log(2)
-              console.log(type.generics)
               process.exit(-4)
             }
           }
@@ -338,22 +338,22 @@ export class Type {
         }
       }
     }
-    if (typeAst.othertype() != null && typeAst.othertype().length == 1) {
-      const otherTypebox = scope.deepGet(typeAst.othertype(0).typename().getText()) as Type
+    if (typeAst.othertype() != null) {
+      const otherTypebox = scope.deepGet(typeAst.othertype().typename().getText()) as Type
 
       if (!otherTypebox) {
-        console.error("Type " + typeAst.othertype(0).getText() + " not defined")
+        console.error("Type " + typeAst.othertype().getText() + " not defined")
         process.exit(-38)
       }
       if (!(otherTypebox instanceof Type)) {
-        console.error(typeAst.othertype(0).getText() + " is not a valid type")
+        console.error(typeAst.othertype().getText() + " is not a valid type")
         process.exit(-39)
       }
 
       let othertype = otherTypebox
-      if (Object.keys(othertype.generics).length > 0 && !!typeAst.othertype(0).typegenerics()) {
+      if (Object.keys(othertype.generics).length > 0 && !!typeAst.othertype().typegenerics()) {
         let solidTypes = []
-        for (const fulltypenameAst of typeAst.othertype(0).typegenerics().fulltypename()) {
+        for (const fulltypenameAst of typeAst.othertype().typegenerics().fulltypename()) {
           solidTypes.push(fulltypenameAst.getText())
         }
         othertype = othertype.solidify(solidTypes, scope)
@@ -366,32 +366,6 @@ export class Type {
       // orignal type. I can see the argument either way on this, but the simplicity of this
       // approach is why I will go with this for now.
       type.alias = othertype
-    } else if (typeAst.othertype() != null) { // It's a union type
-      const othertypes = typeAst.othertype()
-      let unionTypes = []
-      for (const othertype of othertypes) {
-        const othertypeBox = scope.deepGet(othertype.typename().getText()) as Type
-
-        if (!othertypeBox) {
-          console.error("Type " + othertype.getText() + " not defined")
-          process.exit(-48)
-        }
-        if (!(othertypeBox instanceof Type)) {
-          console.error(othertype.getText() + " is not a valid type")
-          process.exit(-49)
-        }
-
-        let othertypeVal = othertypeBox
-        if (othertypeVal.generics.length > 0 && othertype.typegenerics() != null) {
-          let solidTypes = []
-          for (const fulltypenameAst of othertype.typegenerics().fulltypename()) {
-            solidTypes.push(fulltypenameAst.getText())
-          }
-          othertypeVal = othertypeVal.solidify(solidTypes, scope)
-        }
-        unionTypes.push(othertypeVal)
-      }
-      type.unionTypes = unionTypes
     }
     return type
   }
@@ -402,7 +376,6 @@ export class Type {
       const typebox = scope.deepGet(typename) as Type
       if (!typebox || !(typebox instanceof Type)) {
         console.error(typename + " type not found")
-        console.log(new Error().stack)
         process.exit(-35)
       }
       replacementTypes.push(typebox)

@@ -110,43 +110,6 @@ class UserFunction implements Fn {
               console.error("Could not find type " + argsAst.argtype(i).getText() + " for argument " + argName)
               process.exit(-51)
             }
-          } else { // It's an inline-declared union type
-            const othertypes = argsAst.argtype(i).othertype()
-            let unionTypes = []
-            for (const othertype of othertypes) {
-              let othertypeBox = scope.deepGet(othertype.getText())
-              if (othertypeBox == null) {
-                if (othertype.typegenerics() != null) {
-                  othertypeBox = scope.deepGet(othertype.typename().getText())
-                  if (othertypeBox == null) {
-                    console.error("Could not find type " + othertype.getText() + " for argument " + argName)
-                    process.exit(-59)
-                  }
-                  if (!(othertypeBox instanceof Type)) {
-                    console.error("Function argument is not a valid type: " + othertype.getText())
-                    process.exit(-60)
-                  }
-                  let genericTypes = []
-                  for (const fulltypename of othertype.typegenerics().fulltypename()) {
-                    genericTypes.push(fulltypename.getText())
-                  }
-                  othertypeBox = othertypeBox.solidify(genericTypes, scope)
-                } else {
-                  console.error("Could not find type " + othertype.getText() + " for argument " + argName)
-                  process.exit(-51)
-                }
-              }
-              unionTypes.push(othertypeBox)
-            }
-            getArgType = new Type(
-              argsAst.argtype(i).getText(),
-              false,
-              false,
-              {},
-              {},
-              null,
-              unionTypes
-            )
           }
         }
         if (!(getArgType instanceof Type)) {
@@ -182,43 +145,6 @@ class UserFunction implements Fn {
           }
         }
         returnType = getReturnType
-      } else {
-        const othertypes = functionAst.argtype().othertype()
-        let unionTypes = []
-        for (const othertype of othertypes) {
-          let othertypeBox = scope.deepGet(othertype.getText())
-          if (othertypeBox === null) {
-            if (othertype.typegenerics() !== null) {
-              othertypeBox = scope.deepGet(othertype.typename().getText())
-              if (othertypeBox === null) {
-                console.error("Could not find return type " + othertype.getText() + " for function " + functionAst.VARNAME().getText())
-                process.exit(-59)
-              }
-              if (!(othertypeBox instanceof Type)) {
-                console.error("Function argument is not a valid type: " + othertype.getText())
-                process.exit(-60)
-              }
-              let genericTypes = []
-              for (const fulltypename of othertype.typegenerics().fulltypename()) {
-                genericTypes.push(fulltypename.getText())
-              }
-              othertypeBox = othertypeBox.solidify(genericTypes, scope)
-            } else {
-              console.error("Could not find return type " + othertype.getText() + " for function " + functionAst.VARNAME().getText())
-              process.exit(-51)
-            }
-          }
-          unionTypes.push(othertypeBox)
-        }
-        returnType = new Type(
-          functionAst.argtype().getText(),
-          false,
-          false,
-          {},
-          {},
-          null,
-          unionTypes
-        )
       }
     } else {
       // TODO: Infer the return type by finding the return value and tracing backwards
@@ -271,7 +197,7 @@ class UserFunction implements Fn {
               process.exit(111)
             }
             returnType = baseType.solidify(
-              fulltypeAst.typegenerics().fulltypename().map(f => f.getText()),
+              fulltypeAst.typegenerics().fulltypename().map((f: any) => f.getText()),
               scope
             )
           }
@@ -289,7 +215,7 @@ class UserFunction implements Fn {
               process.exit(111)
             }
             returnType = baseType.solidify(
-              fulltypeAst.typegenerics().fulltypename().map(f => f.getText()),
+              fulltypeAst.typegenerics().fulltypename().map((f: any) => f.getText()),
               scope
             )
           }
@@ -308,7 +234,7 @@ class UserFunction implements Fn {
                 process.exit(111)
               }
               returnType = baseType.solidify(
-                fulltypeAst.typegenerics().fulltypename().map(f => f.getText()),
+                fulltypeAst.typegenerics().fulltypename().map((f: any) => f.getText()),
                 scope
               )
             }
@@ -336,9 +262,6 @@ class UserFunction implements Fn {
   }
   getReturnType() {
     return this.returnType
-  }
-  isNary() {
-    return false // TODO: support `...rest` in the future
   }
   isPure() {
     return this.pure
@@ -494,7 +417,13 @@ class UserFunction implements Fn {
           // Potentially rewrite the type for the object literal to match the interface type used by
           // a specific call
           const str = s.statementOrAssignableAst.getText()
-          const corrected = str.replace(/new ([^<]+)<([^{]+)> *{/g, (m, p1, p2, offset, str) => {
+          const corrected = str.replace(/new ([^<]+)<([^{]+)> *{/g, (
+            _: any,
+            p1: string,
+            p2: string,
+            __: any,
+            ___: string
+          ) => {
             const baseTypeStr = p1
             const innerTypeStrs = p2.split(',').map(t => t.trim())
             const newTypeStrs = innerTypeStrs.map(t => {
@@ -639,7 +568,7 @@ class UserFunction implements Fn {
     const returnTypeAst = Ast.fulltypenameAstFromString(this.returnType.typename)
     const returnTypeGenerics = returnTypeAst.typegenerics()
     const returnSubtypes = returnTypeGenerics ? returnTypeGenerics.fulltypename().map(
-      t => scope.deepGet(t.getText())
+      (t: any) => scope.deepGet(t.getText())
     ) : []
     if (this.returnType.iface) {
       const originalArgTypes = Object.values(this.args)
@@ -648,7 +577,7 @@ class UserFunction implements Fn {
           microstatements[microstatements.length - 1].outputType = inputTypes[i]
         }
       }
-    } else if (returnSubtypes.some(t => !!t.iface)) {
+    } else if (returnSubtypes.some((t: Type) => !!t.iface)) {
       const oldReturnType = this.returnType
       const originalArgTypes = Object.values(this.args)
       for (let i = 0; i < inputTypes.length; i++) {
@@ -659,7 +588,7 @@ class UserFunction implements Fn {
         }
       }
       let newReturnType = oldReturnType.originalType.solidify(
-        returnSubtypes.map(t => t.typename),
+        returnSubtypes.map((t: Type) => t.typename),
         scope
       )
       const last = microstatements[microstatements.length - 1]
@@ -669,9 +598,9 @@ class UserFunction implements Fn {
       const lastTypeAst = Ast.fulltypenameAstFromString(last.outputType.typename)
       const lastTypeGenerics = lastTypeAst.typegenerics()
       const lastSubtypes = lastTypeGenerics ? lastTypeGenerics.fulltypename().map(
-        t => scope.deepGet(t.getText())
+        (t: any) => scope.deepGet(t.getText())
       ) : []
-      if (lastSubtypes.some(t => !!t.iface)) {
+      if (lastSubtypes.some((t: Type) => !!t.iface)) {
         const oldLastType = last.outputType
         const originalArgTypes = Object.values(this.args)
         for (let i = 0; i < inputTypes.length; i++) {
@@ -682,13 +611,12 @@ class UserFunction implements Fn {
           }
         }
         let newLastType = oldLastType.originalType.solidify(
-          lastSubtypes.map(t => t.typename),
+          lastSubtypes.map((t: Type) => t.typename),
           scope
         )
         last.outputType = newLastType
       }
     }
-    const last = microstatements[microstatements.length - 1]
   }
 
   static dispatchFn(
@@ -698,11 +626,9 @@ class UserFunction implements Fn {
   ) {
     let fn = null
     for (let i = 0; i < fns.length; i++) {
-      const isNary = fns[i].isNary()
       const args = fns[i].getArguments()
       const argList = Object.values(args)
-      if (!isNary && argList.length !== argumentTypeList.length) continue
-      if (isNary && argList.length > argumentTypeList.length) continue
+      if (argList.length !== argumentTypeList.length) continue
       let skip = false
       for (let j = 0; j < argList.length; j++) {
         if (argList[j].typename === argumentTypeList[j].typename) continue
@@ -746,17 +672,6 @@ class UserFunction implements Fn {
           if (innerSkip) skip = true
           continue
         }
-        if (argList[j].unionTypes != null) {
-          let unionSkip = true
-          for (const unionType of argList[j].unionTypes) {
-            // TODO: support other union types
-            if (unionType.typename === argumentTypeList[j].typename) {
-              unionSkip = false
-              break
-            }
-          }
-          if (!unionSkip) continue
-        }
         skip = true
       }
       if (skip) continue
@@ -764,7 +679,6 @@ class UserFunction implements Fn {
     }
     if (fn == null) {
       console.error("Unable to find matching function for name and argument type set")
-      const argList = Object.values(fns[0].getArguments())
       let argTypes = []
       for (let i = 0; i < argumentTypeList.length; i++) {
         argTypes.push("<" + argumentTypeList[i].typename + ">")

@@ -182,21 +182,6 @@ const ammFromModuleAsts = (moduleAsts: any) => { // TODO: Migrate from ANTLR
     // Add the type to the list
     eventTypeNames.add(type.typename)
     eventTypes.add(type)
-    // Determine if the event type is a union type, if so do the same checks for each subtype
-    for (const unionType of type.unionTypes) {
-      // Skip built-in types, too
-      if (unionType.builtIn) continue
-      // Check if there's a collision
-      if (eventTypeNames.has(unionType.typename)) {
-        // A type may be seen multiple times, make sure this is an actual collision
-        if (eventTypes.has(unionType)) continue // This event was already processed, so we're done
-        // Modify the type name by attaching a UUIDv4 to it
-        unionType.typename = unionType.typename + "_" + uuid().replace(/-/g, "_")
-      }
-      // Add the type to the list
-      eventTypeNames.add(unionType.typename)
-      eventTypes.add(unionType)
-    } // TODO: DRY this all up
     // Determine if any of the properties of the type should be added to the list
     for (const propType of Object.values(type.properties)) {
       // TODO: Convert `Type` to TS
