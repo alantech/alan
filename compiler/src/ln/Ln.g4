@@ -100,7 +100,7 @@ handlers : ON blank+ eventref blank+ (functions | varn | functionbody);
 
 eventref : varn | calls;
 
-interfaces : INTERFACE WS* VARNAME WS* (OPENBODY blank* (interfaceline blank+)* CLOSEBODY) | (EQUALS blank* varn);
+interfaces : INTERFACE WS* VARNAME WS* ((OPENBODY blank* (interfaceline blank+)* CLOSEBODY) | (EQUALS blank* varn));
 
 interfaceline : functiontypeline | operatortypeline | propertytypeline;
 

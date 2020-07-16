@@ -190,7 +190,7 @@ var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
     "\u0002\u0002\u0002V\u0371\u0003\u0002\u0002\u0002X\u0373\u0003\u0002",
     "\u0002\u0002Z\u037f\u0003\u0002\u0002\u0002\\\u0385\u0003\u0002\u0002",
     "\u0002^\u0389\u0003\u0002\u0002\u0002`\u0398\u0003\u0002\u0002\u0002",
-    "b\u03ab\u0003\u0002\u0002\u0002d\u03d6\u0003\u0002\u0002\u0002f\u03db",
+    "b\u03ab\u0003\u0002\u0002\u0002d\u03ad\u0003\u0002\u0002\u0002f\u03db",
     "\u0003\u0002\u0002\u0002h\u03dd\u0003\u0002\u0002\u0002j\u03e6\u0003",
     "\u0002\u0002\u0002l\u041b\u0003\u0002\u0002\u0002n\u0434\u0003\u0002",
     "\u0002\u0002p\u0436\u0003\u0002\u0002\u0002r\u0438\u0003\u0002\u0002",
@@ -682,7 +682,7 @@ var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
     "\u0002\u03b4\u03b8\u0007/\u0002\u0002\u03b5\u03b7\u0007*\u0002\u0002",
     "\u03b6\u03b5\u0003\u0002\u0002\u0002\u03b7\u03ba\u0003\u0002\u0002\u0002",
     "\u03b8\u03b6\u0003\u0002\u0002\u0002\u03b8\u03b9\u0003\u0002\u0002\u0002",
-    "\u03b9\u03bb\u0003\u0002\u0002\u0002\u03ba\u03b8\u0003\u0002\u0002\u0002",
+    "\u03b9\u03d6\u0003\u0002\u0002\u0002\u03ba\u03b8\u0003\u0002\u0002\u0002",
     "\u03bb\u03bf\u0007\u0018\u0002\u0002\u03bc\u03be\u0005\u0004\u0003\u0002",
     "\u03bd\u03bc\u0003\u0002\u0002\u0002\u03be\u03c1\u0003\u0002\u0002\u0002",
     "\u03bf\u03bd\u0003\u0002\u0002\u0002\u03bf\u03c0\u0003\u0002\u0002\u0002",
@@ -698,7 +698,7 @@ var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
     "\u03cf\u0003\u0002\u0002\u0002\u03d1\u03d4\u0003\u0002\u0002\u0002\u03d2",
     "\u03d0\u0003\u0002\u0002\u0002\u03d2\u03d3\u0003\u0002\u0002\u0002\u03d3",
     "\u03d5\u0003\u0002\u0002\u0002\u03d4\u03d2\u0003\u0002\u0002\u0002\u03d5",
-    "\u03d7\u0005\u0080A\u0002\u03d6\u03ad\u0003\u0002\u0002\u0002\u03d6",
+    "\u03d7\u0005\u0080A\u0002\u03d6\u03bb\u0003\u0002\u0002\u0002\u03d6",
     "\u03ce\u0003\u0002\u0002\u0002\u03d7e\u0003\u0002\u0002\u0002\u03d8",
     "\u03dc\u0005h5\u0002\u03d9\u03dc\u0005l7\u0002\u03da\u03dc\u0005r:\u0002",
     "\u03db\u03d8\u0003\u0002\u0002\u0002\u03db\u03d9\u0003\u0002\u0002\u0002",
@@ -1182,7 +1182,6 @@ LnParser.prototype.module = function() {
         case LnParser.PREFIX:
         case LnParser.INFIX:
         case LnParser.INTERFACE:
-        case LnParser.EQUALS:
         case LnParser.NEWLINE:
         case LnParser.WS:
             this.enterOuterAlt(localctx, 1);
@@ -1242,7 +1241,6 @@ LnParser.prototype.module = function() {
                     this.handlers();
                     break;
                 case LnParser.INTERFACE:
-                case LnParser.EQUALS:
                     this.state = 150;
                     this.interfaces();
                     break;
@@ -1275,7 +1273,7 @@ LnParser.prototype.module = function() {
                 this.state = 159; 
                 this._errHandler.sync(this);
                 _la = this._input.LA(1);
-            } while((((_la) & ~0x1f) == 0 && ((1 << _la) & ((1 << LnParser.TYPE) | (1 << LnParser.FN) | (1 << LnParser.EVENT) | (1 << LnParser.ON) | (1 << LnParser.EXPORT) | (1 << LnParser.CONST) | (1 << LnParser.PREFIX) | (1 << LnParser.INFIX) | (1 << LnParser.INTERFACE) | (1 << LnParser.EQUALS))) !== 0) || _la===LnParser.NEWLINE || _la===LnParser.WS);
+            } while((((_la) & ~0x1f) == 0 && ((1 << _la) & ((1 << LnParser.TYPE) | (1 << LnParser.FN) | (1 << LnParser.EVENT) | (1 << LnParser.ON) | (1 << LnParser.EXPORT) | (1 << LnParser.CONST) | (1 << LnParser.PREFIX) | (1 << LnParser.INFIX) | (1 << LnParser.INTERFACE))) !== 0) || _la===LnParser.NEWLINE || _la===LnParser.WS);
             break;
         case LnParser.EOF:
             this.enterOuterAlt(localctx, 2);
@@ -6321,6 +6319,7 @@ LnParser.prototype.operators = function() {
 
     var localctx = new OperatorsContext(this, this._ctx, this.state);
     this.enterRule(localctx, 84, LnParser.RULE_operators);
+    var _la = 0; // Token type
     try {
         this.enterOuterAlt(localctx, 1);
         this.state = 879;
@@ -6365,20 +6364,14 @@ LnParser.prototype.operators = function() {
             if(la_===1) {
                 this.state = 860; 
                 this._errHandler.sync(this);
-                var _alt = 1;
+                _la = this._input.LA(1);
                 do {
-                	switch (_alt) {
-                	case 1:
-                		this.state = 859;
-                		this.match(LnParser.EQUALS);
-                		break;
-                	default:
-                		throw new antlr4.error.NoViableAltException(this);
-                	}
-                	this.state = 862; 
-                	this._errHandler.sync(this);
-                	_alt = this._interp.adaptivePredict(this._input,124, this._ctx);
-                } while ( _alt!=2 && _alt!=antlr4.atn.ATN.INVALID_ALT_NUMBER );
+                    this.state = 859;
+                    this.match(LnParser.EQUALS);
+                    this.state = 862; 
+                    this._errHandler.sync(this);
+                    _la = this._input.LA(1);
+                } while(_la===LnParser.EQUALS);
                 this.state = 867;
                 this._errHandler.sync(this);
                 var _alt = this._interp.adaptivePredict(this._input,125,this._ctx)
@@ -7067,14 +7060,6 @@ InterfacesContext.prototype.VARNAME = function() {
     return this.getToken(LnParser.VARNAME, 0);
 };
 
-InterfacesContext.prototype.OPENBODY = function() {
-    return this.getToken(LnParser.OPENBODY, 0);
-};
-
-InterfacesContext.prototype.CLOSEBODY = function() {
-    return this.getToken(LnParser.CLOSEBODY, 0);
-};
-
 InterfacesContext.prototype.WS = function(i) {
 	if(i===undefined) {
 		i = null;
@@ -7086,6 +7071,22 @@ InterfacesContext.prototype.WS = function(i) {
     }
 };
 
+
+InterfacesContext.prototype.OPENBODY = function() {
+    return this.getToken(LnParser.OPENBODY, 0);
+};
+
+InterfacesContext.prototype.CLOSEBODY = function() {
+    return this.getToken(LnParser.CLOSEBODY, 0);
+};
+
+InterfacesContext.prototype.EQUALS = function() {
+    return this.getToken(LnParser.EQUALS, 0);
+};
+
+InterfacesContext.prototype.varn = function() {
+    return this.getTypedRuleContext(VarnContext,0);
+};
 
 InterfacesContext.prototype.blank = function(i) {
     if(i===undefined) {
@@ -7107,14 +7108,6 @@ InterfacesContext.prototype.interfaceline = function(i) {
     } else {
         return this.getTypedRuleContext(InterfacelineContext,i);
     }
-};
-
-InterfacesContext.prototype.EQUALS = function() {
-    return this.getToken(LnParser.EQUALS, 0);
-};
-
-InterfacesContext.prototype.varn = function() {
-    return this.getTypedRuleContext(VarnContext,0);
 };
 
 InterfacesContext.prototype.enterRule = function(listener) {
@@ -7140,36 +7133,35 @@ LnParser.prototype.interfaces = function() {
     this.enterRule(localctx, 98, LnParser.RULE_interfaces);
     var _la = 0; // Token type
     try {
+        this.enterOuterAlt(localctx, 1);
+        this.state = 939;
+        this.match(LnParser.INTERFACE);
+        this.state = 943;
+        this._errHandler.sync(this);
+        _la = this._input.LA(1);
+        while(_la===LnParser.WS) {
+            this.state = 940;
+            this.match(LnParser.WS);
+            this.state = 945;
+            this._errHandler.sync(this);
+            _la = this._input.LA(1);
+        }
+        this.state = 946;
+        this.match(LnParser.VARNAME);
+        this.state = 950;
+        this._errHandler.sync(this);
+        _la = this._input.LA(1);
+        while(_la===LnParser.WS) {
+            this.state = 947;
+            this.match(LnParser.WS);
+            this.state = 952;
+            this._errHandler.sync(this);
+            _la = this._input.LA(1);
+        }
         this.state = 980;
         this._errHandler.sync(this);
         switch(this._input.LA(1)) {
-        case LnParser.INTERFACE:
-            this.enterOuterAlt(localctx, 1);
-            this.state = 939;
-            this.match(LnParser.INTERFACE);
-            this.state = 943;
-            this._errHandler.sync(this);
-            _la = this._input.LA(1);
-            while(_la===LnParser.WS) {
-                this.state = 940;
-                this.match(LnParser.WS);
-                this.state = 945;
-                this._errHandler.sync(this);
-                _la = this._input.LA(1);
-            }
-            this.state = 946;
-            this.match(LnParser.VARNAME);
-            this.state = 950;
-            this._errHandler.sync(this);
-            _la = this._input.LA(1);
-            while(_la===LnParser.WS) {
-                this.state = 947;
-                this.match(LnParser.WS);
-                this.state = 952;
-                this._errHandler.sync(this);
-                _la = this._input.LA(1);
-            }
-
+        case LnParser.OPENBODY:
             this.state = 953;
             this.match(LnParser.OPENBODY);
             this.state = 957;
@@ -7206,7 +7198,6 @@ LnParser.prototype.interfaces = function() {
             this.match(LnParser.CLOSEBODY);
             break;
         case LnParser.EQUALS:
-            this.enterOuterAlt(localctx, 2);
             this.state = 972;
             this.match(LnParser.EQUALS);
             this.state = 976;
@@ -8461,7 +8452,6 @@ LnParser.prototype.exports = function() {
             this.events();
             break;
         case LnParser.INTERFACE:
-        case LnParser.EQUALS:
             this.state = 1150;
             this.interfaces();
             break;
