@@ -142,14 +142,14 @@ Divide by zero error!
         on start {
           const strOrNum = main('string')
           if strOrNum.isMain() {
-            print(strOrNum.getMain(''))
+            print(strOrNum.getMainOr(''))
           } else {
             print('what?')
           }
 
           const strOrNum2 = alt(2)
           if strOrNum2.isAlt() {
-            print(strOrNum2.getAlt(0))
+            print(strOrNum2.getAltOr(0))
           } else {
             print('uhhh')
           }
