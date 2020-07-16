@@ -251,43 +251,43 @@ export trim // opcode with signature `fn trim(s: string): string`
 export fn concat(a: Array<any>, b: Array<any>) = catarr(a, b)
 export fn repeat(arr: Array<any>, n: int64) = reparr(arr, n)
 export fn index(arr: Array<any>, val: any) = indarrv(arr, val)
-export fn index(arr: Array<any>, val: int8) = indarrf(arr, val)
-export fn index(arr: Array<any>, val: int16) = indarrf(arr, val)
-export fn index(arr: Array<any>, val: int32) = indarrf(arr, val)
-export fn index(arr: Array<any>, val: int64) = indarrf(arr, val)
-export fn index(arr: Array<any>, val: float32) = indarrf(arr, val)
-export fn index(arr: Array<any>, val: float64) = indarrf(arr, val)
-export fn index(arr: Array<any>, val: bool) = indarrf(arr, val)
+export fn index(arr: Array<int8>, val: int8) = indarrf(arr, val)
+export fn index(arr: Array<int16>, val: int16) = indarrf(arr, val)
+export fn index(arr: Array<int32>, val: int32) = indarrf(arr, val)
+export fn index(arr: Array<int64>, val: int64) = indarrf(arr, val)
+export fn index(arr: Array<float32>, val: float32) = indarrf(arr, val)
+export fn index(arr: Array<float64>, val: float64) = indarrf(arr, val)
+export fn index(arr: Array<bool>, val: bool) = indarrf(arr, val)
 export fn length(arr: Array<any>) = lenarr(arr)
 export fn push(arr: Array<any>, val: any) {
   pusharr(arr, val, 0)
   return arr
 }
-export fn push(arr: Array<any>, val: int8) {
+export fn push(arr: Array<int8>, val: int8) {
   pusharr(arr, val, 8)
   return arr
 }
-export fn push(arr: Array<any>, val: int16) {
+export fn push(arr: Array<int16>, val: int16) {
   pusharr(arr, val, 8)
   return arr
 }
-export fn push(arr: Array<any>, val: int32) {
+export fn push(arr: Array<int32>, val: int32) {
   pusharr(arr, val, 8)
   return arr
 }
-export fn push(arr: Array<any>, val: int64) {
+export fn push(arr: Array<int64>, val: int64) {
   pusharr(arr, val, 8)
   return arr
 }
-export fn push(arr: Array<any>, val: float32) {
+export fn push(arr: Array<float32>, val: float32) {
   pusharr(arr, val, 8)
   return arr
 }
-export fn push(arr: Array<any>, val: float64) {
+export fn push(arr: Array<float64>, val: float64) {
   pusharr(arr, val, 8)
   return arr
 }
-export fn push(arr: Array<any>, val: bool) {
+export fn push(arr: Array<bool>, val: bool) {
   pusharr(arr, val, 8)
   return arr
 }
@@ -401,9 +401,9 @@ export fn isMain(either: Either<any, anythingElse>) = isSome(either.main)
 
 export fn isAlt(either: Either<any, anythingElse>) = isSome(either.alt)
 
-export fn getMain(either: Either<any, anythingElse>, default: any) = getOr(either.main, default)
+export fn getMainOr(either: Either<any, anythingElse>, default: any) = getOr(either.main, default)
 
-export fn getAlt(either: Either<any, anythingElse>, default: anythingElse) = getOr(either.alt, default)
+export fn getAltOr(either: Either<any, anythingElse>, default: anythingElse) = getOr(either.alt, default)
 
 // Operator declarations
 export infix add as + precedence 2
