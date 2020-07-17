@@ -363,6 +363,7 @@ addopcodes({
   copybool: [{ a: t('bool'), }, t('bool')],
   copystr: [{ a: t('string'), }, t('string')],
   copyarr: [{ a: t('any'), }, t('any')],
+  copyany: [{ }, t('any')],
 })
 
 export default opcodeModule

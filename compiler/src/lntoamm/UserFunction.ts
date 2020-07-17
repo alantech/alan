@@ -495,7 +495,7 @@ class UserFunction implements Fn {
         const retVal = "retVal" + retNamePostfix
         const retNotSet = "retNotSet" + retNamePostfix
         const retValStatement = Ast.statementAstFromString(`
-          let ${retVal}: ${this.returnType.typename}
+          let ${retVal}: ${this.returnType.typename} = assign()
         `.trim() + '\n')
         const retNotSetStatement = Ast.statementAstFromString(`
           let ${retNotSet}: bool = assign(true)

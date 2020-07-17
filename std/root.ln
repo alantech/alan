@@ -315,6 +315,7 @@ export fn cond(c: bool, optional: function): void = condfn(c, optional)
 export fn assign(a: any) = copyarr(a)
 export fn assign(a: Array<any>) = copyarr(a)
 export fn assign(a: void) = copyvoid(a) // TODO: Eliminate this, covering up a weird error
+export fn assign() = copyany() // TODO: Used for conditionals, eliminate with more clever compiler
 export fn assign(a: int8) = copyi8(a)
 export fn assign(a: int16) = copyi16(a)
 export fn assign(a: int32) = copyi32(a)
