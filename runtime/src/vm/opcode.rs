@@ -1982,6 +1982,10 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     hand_mem.copy_fractal(args[0], args[2]);
     None
   });
+  cpu!("zeroed", |args, hand_mem, _| {
+    hand_mem.write_fixed(args[2], 0);
+    None
+  });
 
   cpu!("emit", |args, hand_mem, _| {
     let event = EventEmit {

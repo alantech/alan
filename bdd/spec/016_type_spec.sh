@@ -56,10 +56,22 @@ true"
         type foo2 = foo<int64, float64>
 
         on start fn {
-          let a: foo<string, int64>
-          let b: foo<int64, bool>
-          let c: foo2
-          let d: foo<int64, float64>
+          let a = new foo<string, int64> {
+            bar = 'bar'
+            baz = 0
+          }
+          let b = new foo<int64, bool> {
+            bar = 0
+            baz = true
+          }
+          let c = new foo2 {
+            bar = 0
+            baz = 1.23
+          }
+          let d = new foo<int64, float64> {
+            bar = 1
+            baz = 3.14
+          }
           print(type a)
           print(type b)
           print(type type a)

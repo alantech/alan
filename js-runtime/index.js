@@ -255,6 +255,7 @@ module.exports = {
   copystr:  a => a,
   // Actually the recommended deep clone mechanism: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/assign#Deep_Clone
   copyarr:  a => JSON.parse(JSON.stringify(a)),
+  zeroed:  () => null,
 
   // IO opcodes
   asyncopcodes: ['waitop', 'execop'],

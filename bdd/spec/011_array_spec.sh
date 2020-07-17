@@ -93,7 +93,7 @@ Describe "Arrays"
 
         on start {
           print('Testing...')
-          let test: Array<int64>
+          let test = new Array<int64> []
           test.push(1)
           test.push(2)
           test.push(3)

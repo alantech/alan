@@ -1735,7 +1735,6 @@ class Microstatement {
     // TODO: Once we figure out how to handle re-assignment to let variables as new variable names
     // with all references to that variable afterwards rewritten, these can just be brought in as
     // constants, too.
-    const letName = "_" + uuid().replace(/-/g, "_")
     let letAlias: string
     let letTypeHint = null
     if (letdeclarationAst.VARNAME() != null) {
@@ -1775,62 +1774,12 @@ class Microstatement {
       letAlias = letdeclarationAst.assignments().varn().getText()
       // We don't know the type ahead of time and will have to rely on inference in this case
     }
-    if (letdeclarationAst.assignments().assignables() == null) {
+    if (!letdeclarationAst.assignments().assignables()) {
       // This is the situation where a variable is declared but no value is yet assigned.
-      // An automatic replacement with a "default" value (false, 0, "") is performed, similar to
-      // C.
-      const type = ((
-        scope.deepGet(letTypeHint) instanceof Type &&
-        scope.deepGet(letTypeHint)
-      ) || Type.builtinTypes.void) as Type
-      if (type.originalType) {
-        const constName = "_" + uuid().replace(/-/g, "_")
-        microstatements.push(new Microstatement(
-          StatementType.CONSTDEC,
-          scope,
-          true,
-          constName,
-          Type.builtinTypes.int64,
-          ["0"],
-          [],
-        ))
-        const opcodes = require('./opcodes').default
-        opcodes.exportScope.get('newarr')[0].microstatementInlining(
-          [constName],
-          scope,
-          microstatements,
-        )
-        const blankArr = microstatements[microstatements.length - 1]
-        blankArr.statementType = StatementType.LETDEC,
-        blankArr.outputName = letName
-        blankArr.outputType = type
-      } else {
-        let val = "0"
-        if (type.typename === "bool") val = "false"
-        if (type.typename === "string") val = '""'
-        const blankLet = new Microstatement(
-          StatementType.LETDEC,
-          scope,
-          true,
-          letName,
-          type,
-          [val],
-          [],
-        )
-        // This is a terminating condition for the microstatements, though
-        microstatements.push(blankLet)
-      }
-      microstatements.push(new Microstatement(
-        StatementType.REREF,
-        scope,
-        true,
-        letName,
-        type,
-        [],
-        [],
-        letAlias,
-      ))
-      return
+      // We have decided to not permit this at all and consider it an error case. TODO: Block this
+      // at the parser level
+      console.error('Let declaration must have an initial value')
+      process.exit(112)
     }
     // An assignable may either be a basic constant or could be broken down into other microstatements
     // The classification with assignables is: if it's a `withoperators` type it *always* becomes
