@@ -18,7 +18,7 @@ localdependency : (CURDIR (VARNAME | DIRSEP)+) | (PARDIR (VARNAME | DIRSEP)+);
 
 globaldependency : GLOBAL (VARNAME | DIRSEP)+;
 
-types : TYPE blank+ typename blank* typegenerics? blank+ (typebody | EQUALS blank* othertype (blank* OR blank* othertype)*);
+types : TYPE blank+ typename blank* typegenerics? blank+ (typebody | EQUALS blank* othertype);
 
 othertype : typename blank* typegenerics?;
 
@@ -100,7 +100,7 @@ handlers : ON blank+ eventref blank+ (functions | varn | functionbody);
 
 eventref : varn | calls;
 
-interfaces : INTERFACE WS* VARNAME WS* OPENBODY blank* (interfaceline blank+)* CLOSEBODY;
+interfaces : INTERFACE WS* VARNAME WS* ((OPENBODY blank* (interfaceline blank+)* CLOSEBODY) | (EQUALS blank* varn));
 
 interfaceline : functiontypeline | operatortypeline | propertytypeline;
 

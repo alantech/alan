@@ -25,11 +25,9 @@ class Operator {
     argumentTypeList.push(right)
     const fns = this.potentialFunctions
     for (let i = 0; i < fns.length; i++) {
-      const isNary = fns[i].isNary()
       const args = fns[i].getArguments()
       const argList: Array<Type> = Object.values(args)
-      if (!isNary && argList.length != argumentTypeList.length) continue
-      if (isNary && argList.length > argumentTypeList.length) continue
+      if (argList.length != argumentTypeList.length) continue
       let skip = false
       for (let j = 0; j < argList.length; j++) {
         if (argList[j].typename === argumentTypeList[j].typename) continue

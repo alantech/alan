@@ -8,7 +8,7 @@
 
 // Default Interfaces
 export interface any {}
-export interface anythingElse {} // Same as `any`, but doesn't match with it
+export interface anythingElse = any // Same as `any` but doesn't match with it
 export interface Stringifiable {
   toString(Stringifiable): string
 }

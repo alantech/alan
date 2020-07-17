@@ -10,7 +10,6 @@ export interface Fn {
   getName(): string
   getArguments(): Args
   getReturnType(): Type
-  isNary(): boolean
   isPure(): boolean
   microstatementInlining(
     realArgNames: Array<string>,
