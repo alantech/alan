@@ -35,8 +35,11 @@
   },
   "devDependencies": {
     "browserify": "^16.5.1",
-    "cypress": "^4.8.0",
+    "cypress": "^4.10.0",
     "http-server": "^0.12.3",
     "typescript": "^3.9.3"
+  },
+  "resolutions": {
+    "lodash": "^4.17.19"
   }
 }
