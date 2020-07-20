@@ -281,9 +281,7 @@ Describe "Interfaces"
           print(DateTime): void
         }
       "
-      # TODO: For reasons that make NO sense to me, this file can't be indented like all the rest,
-      # it fails to parse correctly for reasons that elude me. This needs to be debugged but is out
-      # of scope for this change
+
       sourceToAll "
         from @std/app import start, print, exit
         from ./datetime import datetime
