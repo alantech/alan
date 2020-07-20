@@ -284,14 +284,15 @@ Describe "Interfaces"
       # TODO: For reasons that make NO sense to me, this file can't be indented like all the rest,
       # it fails to parse correctly for reasons that elude me. This needs to be debugged but is out
       # of scope for this change
-      sourceToAll "from @std/app import start, print, exit
-from ./datetime import datetime
+      sourceToAll "
+        from @std/app import start, print, exit
+        from ./datetime import datetime
 
-on start {
-  const dt = #2020-07-02@12:07:30-08:00
-  dt.print()
-  emit exit 0
-}
+        on start {
+          const dt = #2020-07-02@12:07:30-08:00
+          dt.print()
+          emit exit 0
+        }
       "
     }
     BeforeAll before

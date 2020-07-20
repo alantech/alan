@@ -8,9 +8,9 @@ blank : (WS | NEWLINE);
 
 imports : (standardImport | fromImport);
 
-standardImport : IMPORT WS dependency (WS AS WS VARNAME)? NEWLINE+;
+standardImport : IMPORT WS dependency (WS AS WS VARNAME)? NEWLINE blank*;
 
-fromImport: FROM WS dependency WS IMPORT WS varlist NEWLINE+;
+fromImport: FROM WS dependency WS IMPORT WS varlist NEWLINE blank*;
 
 dependency : localdependency | globaldependency;
 
