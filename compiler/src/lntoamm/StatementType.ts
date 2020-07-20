@@ -7,6 +7,7 @@ enum StatementType {
   REREF = 'REREF',
   CLOSURE =  'CLOSURE',
   ARG = 'ARG',
+  ENTERFN = 'ENTERFN',
 }
 
 export default StatementType

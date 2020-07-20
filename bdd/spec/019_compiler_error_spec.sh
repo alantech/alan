@@ -61,4 +61,42 @@ true == 1
 return 'blah' on line 5:10"
     End
   End
+
+  Describe "Recursive Function calls"
+    before() {
+      sourceToTemp "
+        from @std/app import start, print, exit
+
+        fn fibonacci(n: int64) {
+          if n < 2 {
+            return 1
+          } else {
+            return fibonacci(n - 1) + fibonacci(n - 2)
+          }
+        }
+
+        on start {
+          print(fibonacci(0))
+          print(fibonacci(1))
+          print(fibonacci(2))
+          print(fibonacci(3))
+          print(fibonacci(4))
+          emit exit 0
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    It "doesn't work"
+      When run alan-compile temp.ln temp.amm
+      The status should not eq "0"
+      # TODO: What file, line, and character?
+      The error should eq "Recursive callstack detected: fibonacci -> fibonacci. Aborting."
+    End
+  End
 End
