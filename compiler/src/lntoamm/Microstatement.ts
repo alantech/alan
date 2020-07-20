@@ -1400,10 +1400,10 @@ class Microstatement {
             const originalTypeGenerics = originalTypeAst.typegenerics()
             const lastTypeGenerics = lastTypeAst.typegenerics()
             const originalSubtypes = originalTypeGenerics ? originalTypeGenerics.fulltypename().map(
-              t => t.getText()
+              (t: any) => t.getText()
             ) : []
             const lastSubtypes = lastTypeGenerics ? lastTypeGenerics.fulltypename().map(
-              t => t.getText()
+              (t: any) => t.getText()
             ) : []
             const newSubtypes = []
             for (let i = 0; i < originalSubtypes.length; i++) {

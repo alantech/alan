@@ -526,10 +526,36 @@ class UserFunction implements Fn {
     scope: Scope,
     microstatements: Array<Microstatement>,
   ) {
+    // Get the current statement length for usage in multiple cleanup routines
+    const originalStatementLength = microstatements.length
+    // First, check if there are any ENTERFN microstatements indicating a nested inlining, then
+    // check that list for self-containment, which would cause an infinite loop in compilation and
+    // abort with a useful error message.
+    const enterfns = microstatements.filter(m => m.statementType === StatementType.ENTERFN)
+    const isRecursive = enterfns.some(m => m.fns[0] === this)
+    if (isRecursive) {
+      let path = enterfns
+        .slice(enterfns.findIndex(m => m.fns[0] === this))
+        .map(m => m.fns[0].getName())
+      path.push(this.getName())
+      let pathstr = path.join(' -> ')
+      console.error(`Recursive callstack detected: ${pathstr}. Aborting.`)
+      process.exit(222)
+    } else {
+      // Otherwise, add a marker for this 
+      microstatements.push(new Microstatement(
+        StatementType.ENTERFN,
+        scope,
+        true,
+        '',
+        Type.builtinTypes.void,
+        [],
+        [this],
+      ))
+    }
     // Perform a transform, if necessary, before generating the microstatements
     // Resolve circular dependency issue
     const internalNames = Object.keys(this.args)
-    const originalStatementLength = microstatements.length
     const inputs = realArgNames.map(n => Microstatement.fromVarName(n, microstatements))
     const inputTypes = inputs.map(i => i.outputType)
     for (let i = 0; i < internalNames.length; i++) {
@@ -615,6 +641,16 @@ class UserFunction implements Fn {
           scope
         )
         last.outputType = newLastType
+      }
+    }
+    // Now that we're done with this, we need to pop out all of the ENTERFN microstatements created
+    // after this one so we don't mark non-recursive calls to a function multiple times as recursive
+    // TODO: This is not the most efficient way to do things, come up with a better metadata
+    // mechanism to pass around.
+    for (let i = originalStatementLength; i < microstatements.length; i++) {
+      if (microstatements[i].statementType === StatementType.ENTERFN) {
+        microstatements.splice(i, 1)
+        i--
       }
     }
   }
