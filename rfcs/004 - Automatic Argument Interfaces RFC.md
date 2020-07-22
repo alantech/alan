@@ -165,7 +165,7 @@ The primary alternative considered is not doing this at all. Type inference plac
 
 More than the other forms of type inference already in the language, this one is heavily implicit instead of explicit, as well, which produces a "magic" to the syntax that can be harder for newbies to expand beyond without exposure to hard static typing, whereas comparing the equality of two `int64`s returning a `bool` is more "obvious."
 
-However, this was ultimately rejected because of the idea of tooling, inspired by the [tooling of Go](https://golang.org/cmd/go/) that could facilitate "translation" between the camps along the static-to-dynamic spectrum. This will allow `alan` to address a larger swath of the developer community with varying opinions, needs, and group sizes.
+However, this was ultimately rejected because of the idea of tooling, inspired by the [tooling of Go](https://golang.org/cmd/go/), that could facilitate "translation" between the camps along the static-to-dynamic spectrum. This will allow `alan` to address a larger swath of the developer community with varying opinions, needs, and group sizes.
 
 Argument type inference without the `auto`, `auto0`, `auto1`, etc syntax was also considered as significantly simpler, but the lack of flexibility with the inferred argument types and inability to reproduce certain statically-typed function behaviors in the inferred system felt wrong. However, the implementation of inferred types may go through that version as a step along the way to producing the full argument type inference system described in this RFC.
 
