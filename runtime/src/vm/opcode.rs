@@ -1987,6 +1987,84 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
 
+  // Trig opcodes
+  cpu!("lnf64", |args, hand_mem, _| {
+    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes());
+    let out = i64::from_ne_bytes(a.ln().to_ne_bytes());
+    hand_mem.write_fixed(args[2], out);
+    None
+  });
+
+  cpu!("logf64", |args, hand_mem, _| {
+    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes());
+    let out = i64::from_ne_bytes(a.log10().to_ne_bytes());
+    hand_mem.write_fixed(args[2], out);
+    None
+  });
+
+  cpu!("sinf64", |args, hand_mem, _| {
+    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes());
+    let out = i64::from_ne_bytes(a.sin().to_ne_bytes());
+    hand_mem.write_fixed(args[2], out);
+    None
+  });
+
+  cpu!("cosf64", |args, hand_mem, _| {
+    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes());
+    let out = i64::from_ne_bytes(a.cos().to_ne_bytes());
+    hand_mem.write_fixed(args[2], out);
+    None
+  });
+
+  cpu!("tanf64", |args, hand_mem, _| {
+    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes());
+    let out = i64::from_ne_bytes(a.tan().to_ne_bytes());
+    hand_mem.write_fixed(args[2], out);
+    None
+  });
+
+  cpu!("asinf64", |args, hand_mem, _| {
+    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes());
+    let out = i64::from_ne_bytes(a.asin().to_ne_bytes());
+    hand_mem.write_fixed(args[2], out);
+    None
+  });
+
+  cpu!("acosf64", |args, hand_mem, _| {
+    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes());
+    let out = i64::from_ne_bytes(a.acos().to_ne_bytes());
+    hand_mem.write_fixed(args[2], out);
+    None
+  });
+
+  cpu!("atanf64", |args, hand_mem, _| {
+    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes());
+    let out = i64::from_ne_bytes(a.atan().to_ne_bytes());
+    hand_mem.write_fixed(args[2], out);
+    None
+  });
+
+  cpu!("sinhf64", |args, hand_mem, _| {
+    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes());
+    let out = i64::from_ne_bytes(a.sinh().to_ne_bytes());
+    hand_mem.write_fixed(args[2], out);
+    None
+  });
+
+  cpu!("coshf64", |args, hand_mem, _| {
+    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes());
+    let out = i64::from_ne_bytes(a.cosh().to_ne_bytes());
+    hand_mem.write_fixed(args[2], out);
+    None
+  });
+
+  cpu!("tanhf64", |args, hand_mem, _| {
+    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes());
+    let out = i64::from_ne_bytes(a.tanh().to_ne_bytes());
+    hand_mem.write_fixed(args[2], out);
+    None
+  });
+
   cpu!("emit", |args, hand_mem, _| {
     let event = EventEmit {
       id: args[0],

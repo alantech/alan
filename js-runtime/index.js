@@ -257,6 +257,19 @@ module.exports = {
   copyarr:  a => JSON.parse(JSON.stringify(a)),
   zeroed:  () => null,
 
+  // Trig opcodes
+  lnf64:    a => Math.log(a),
+  logf64:   a => Math.log(a) / Math.log(10),
+  sinf64:   a => Math.sin(a),
+  cosf64:   a => Math.cos(a),
+  tanf64:   a => Math.tan(a),
+  asinf64:  a => Math.asin(a),
+  acosf64:  a => Math.acos(a),
+  atanf64:  a => Math.atan(a),
+  sinhf64:  a => Math.sinh(a),
+  coshf64:  a => Math.cosh(a),
+  tanhf64:  a => Math.tanh(a),
+
   // IO opcodes
   asyncopcodes: ['waitop', 'execop'],
   waitop: a => new Promise(resolve => setTimeout(resolve, a)),
