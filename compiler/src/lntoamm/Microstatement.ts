@@ -3,6 +3,7 @@ import { v4 as uuid, } from 'uuid'
 import * as Ast from './Ast'
 import Event from './Event'
 import Operator from './Operator'
+import Constant from './Constant'
 import Scope from './Scope'
 import Statement from './Statement'
 import StatementType from './StatementType'
@@ -115,7 +116,7 @@ class Microstatement {
     return outString
   }
 
-  static fromVarName(varName: string, microstatements: Array<Microstatement>) {
+  static fromVarName(varName: string, scope: Scope, microstatements: Array<Microstatement>) {
     let original = null
     for (let i = microstatements.length - 1; i > -1; i--) {
       const microstatement = microstatements[i]
@@ -140,13 +141,37 @@ class Microstatement {
         break
       }
     }
+    // Check if this is a module constant that should be un-hoisted
+    if (
+      original === null &&
+      !!scope.deepGet(varName) &&
+      scope.deepGet(varName) instanceof Constant
+    ) {
+      const globalConst = scope.deepGet(varName) as Constant
+      Microstatement.fromAssignablesAst(
+        globalConst.assignablesAst,
+        globalConst.scope, // Eval this in its original scope in case it was an exported const
+        microstatements    // that was dependent on unexported internal functions or constants
+      )
+      const last = microstatements[microstatements.length - 1]
+      microstatements.push(new Microstatement(
+        StatementType.REREF,
+        scope,
+        true,
+        last.outputName,
+        last.outputType,
+        [],
+        [],
+        globalConst.name,
+      ))
+    }
     return original
   }
 
   // TODO: Eliminate ANTLR
   static fromVarAst(varAst: any, scope: Scope, microstatements: Array<Microstatement>) {
     // Short-circuit if this exact var was already loaded
-    let original = Microstatement.fromVarName(varAst.getText(), microstatements)
+    let original = Microstatement.fromVarName(varAst.getText(), scope, microstatements)
     if (!original) {
       // Otherwise, we're digging in piece by piece to find the relevant microstatement.
       const segments = varAst.varsegment()
@@ -159,7 +184,7 @@ class Microstatement {
           // access instead
           name += segment.VARNAME().getText()
           if (!original || !original.outputType || original.outputType.builtIn) {
-            original = Microstatement.fromVarName(name, microstatements)
+            original = Microstatement.fromVarName(name, scope, microstatements)
           } else {
             // Next, figure out which field number this is
             const fieldName = segment.VARNAME().getText()
@@ -1166,7 +1191,7 @@ class Microstatement {
           scopePath += varSegs[j] + "."
         }
         scopePath = scopePath.substring(0, scopePath.length - 1)
-        firstArg = Microstatement.fromVarName(scopePath, microstatements)
+        firstArg = Microstatement.fromVarName(scopePath, scope, microstatements)
         if (firstArg == null) { // It wasn't this, either, just return the same error
           console.error("Undefined function called: " + callsAst.varn(0).getText())
           process.exit(-140)
@@ -1297,7 +1322,7 @@ class Microstatement {
           original = microstatement
           break
         } else if (microstatement.statementType === StatementType.REREF) {
-          original = Microstatement.fromVarName(microstatement.outputName, microstatements)
+          original = Microstatement.fromVarName(microstatement.outputName, scope, microstatements)
           break
         } else {
           console.error("Attempting to reassign a non-let variable.")
@@ -1800,7 +1825,7 @@ class Microstatement {
       // and mutate that, instead
       let val = microstatements[microstatements.length - 1]
       if (val.statementType === StatementType.REREF) {
-        val = Microstatement.fromVarName(val.alias, microstatements)
+        val = Microstatement.fromVarName(val.alias, scope, microstatements)
       }
       val.statementType = StatementType.LETDEC
       microstatements.push(new Microstatement(
@@ -1827,7 +1852,7 @@ class Microstatement {
       // and mutate that, instead
       let val = microstatements[microstatements.length - 1]
       if (val.statementType === StatementType.REREF) {
-        val = Microstatement.fromVarName(val.alias, microstatements)
+        val = Microstatement.fromVarName(val.alias, scope, microstatements)
       }
       val.statementType = StatementType.LETDEC
       microstatements.push(new Microstatement(

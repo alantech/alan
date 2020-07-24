@@ -36,8 +36,8 @@ class Statement {
       a.basicassignables()
     )
     return a.withoperators().operatororassignable()
-      .filter(oa => !!oa.basicassignables())
-      .some(oa => Statement.basicAssignableHasObjectLiteral(oa.basicassignables()))
+      .filter((oa: any) => !!oa.basicassignables())
+      .some((oa: any) => Statement.basicAssignableHasObjectLiteral(oa.basicassignables()))
   }
 
   static assignmentsHasObjectLiteral(assignmentsAst: any) { // TODO: Remove ANTLR
@@ -55,7 +55,7 @@ class Statement {
       }
       if (s.assignments()) return Statement.assignmentsHasObjectLiteral(s.assignments())
       if (s.calls() && s.calls().assignables() > 0) s.calls().assignables().some(
-        a => Statement.assignablesHasObjectLiteral(a)
+        (a: any) => Statement.assignablesHasObjectLiteral(a)
       )
       if (s.exits() && s.exits().assignables()) return Statement.assignablesHasObjectLiteral(
         s.exits().assignables()

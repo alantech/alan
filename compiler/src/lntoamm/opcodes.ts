@@ -69,7 +69,7 @@ const addopcodes = (opcodes: object) => {
           scope: Scope,
           microstatements: Array<Microstatement>,
         ) => {
-          const inputs = realArgNames.map(n => Microstatement.fromVarName(n, microstatements))
+          const inputs = realArgNames.map(n => Microstatement.fromVarName(n, scope, microstatements))
           const inputTypes = inputs.map(i => i.outputType)
           microstatements.push(new Microstatement(
             StatementType.CONSTDEC,
