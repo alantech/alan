@@ -556,7 +556,7 @@ class UserFunction implements Fn {
     // Perform a transform, if necessary, before generating the microstatements
     // Resolve circular dependency issue
     const internalNames = Object.keys(this.args)
-    const inputs = realArgNames.map(n => Microstatement.fromVarName(n, microstatements))
+    const inputs = realArgNames.map(n => Microstatement.fromVarName(n, scope, microstatements))
     const inputTypes = inputs.map(i => i.outputType)
     for (let i = 0; i < internalNames.length; i++) {
       const realArgName = realArgNames[i]

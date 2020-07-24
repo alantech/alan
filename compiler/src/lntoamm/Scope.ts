@@ -1,10 +1,11 @@
-import Type from './Type'
+import Constant from './Constant'
 import Event from './Event'
+import Fn from './Function'
 import Microstatement from './Microstatement'
 import Operator from './Operator'
-import Fn from './Function'
+import Type from './Type'
 
-type Boxish = Type | Scope | Microstatement | Array<Operator> | Array<Fn> | Event | undefined
+type Boxish = Type | Scope | Microstatement | Array<Operator> | Array<Fn> | Event | Constant | undefined
 
 type BoxSet = {
   [K: string]: Boxish

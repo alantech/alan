@@ -1,4 +1,5 @@
 import * as Ast from './Ast'
+import Constant from './Constant'
 import Event from './Event'
 import Operator from './Operator'
 import Scope from './Scope'
@@ -132,12 +133,9 @@ class Module {
       // Automatically inserts the interface into the module scope, we're done.
     }
     // Next, constants
-    // TODO: Need to restore this functionality once compile-time-eval is implemented
     const constdeclarations = ast.constdeclaration()
-    if (constdeclarations.length > 0) {
-      console.error('Module-scope constants not yet implemented')
-      console.error(constdeclarations().getText())
-      process.exit(2)
+    for (const constdeclaration of constdeclarations) {
+      Constant.fromAst(constdeclaration, module.moduleScope)
     }
     // Next, events
     const events = ast.events()
@@ -205,8 +203,8 @@ class Module {
         // Automatically inserts the interface into the module scope
         module.exportScope.put(interfaceBox.typename, interfaceBox)
       } else if (exportAst.constdeclaration() != null) {
-        console.error('Module-scope constants not yet implemented')
-        process.exit(2)
+        const constVal = Constant.fromAst(exportAst.constdeclaration(), module.moduleScope)
+        module.exportScope.put(constVal.name, constVal)
       } else if (exportAst.functions() != null) {
         const newFunc = UserFunction.fromAst(exportAst.functions(), module.moduleScope)
         if (newFunc.getName() == null) {
