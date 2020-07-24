@@ -184,9 +184,8 @@ const ammFromModuleAsts = (moduleAsts: any) => { // TODO: Migrate from ANTLR
     eventTypes.add(type)
     // Determine if any of the properties of the type should be added to the list
     for (const propType of Object.values(type.properties)) {
-      // TODO: Convert `Type` to TS
       // Skip built-in types, too
-      if ((propType as any).builtIn) continue
+      if ((propType as Type).builtIn) continue
       // Check if there's a collision
       if (eventTypeNames.has((propType as any).typename)) {
         // A type may be seen multiple times, make sure this is an actual collision
