@@ -41,6 +41,7 @@ const variable = And.build([
   OneOrMore.build(Or.build([under, lower, upper])),
   ZeroOrMore.build(Or.build([under, lower, upper, natural])),
 ])
+const exit = Token.build('return')
 const t = Token.build('true')
 const f = Token.build('false')
 const bool = Or.build([t, f])
@@ -82,6 +83,7 @@ const emits = NamedAnd.build({ emit, blank, variable, value: ZeroOrOne.build(Nam
   blank, variable
 }))})
 const events = NamedAnd.build({ event, blank, variable, a: optblank, colon, b: optblank, fulltypename })
+const exits = NamedAnd.build({ exit, blank, variable, a: optblank })
 const calllist = ZeroOrMore.build(NamedAnd.build({ variable, optcomma, optblank }))
 const calls = NamedAnd.build({
   variable,
@@ -131,6 +133,7 @@ const statements = OneOrMore.build(NamedOr.build({
   assignments,
   calls,
   emits,
+  exits,
   whitespace,
 }))
 const functionbody = NamedAnd.build({

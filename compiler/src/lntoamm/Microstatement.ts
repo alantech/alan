@@ -968,80 +968,6 @@ class Microstatement {
     ))
   }
 
-  static closureFromBlocklikesAst(
-    blocklikesAst: any, // TODO: Eliminate ANTLR
-    scope: Scope,
-    microstatements: Array<Microstatement>,
-  ) {
-    // There are roughly two paths for closure generation of the blocklike. If it's a var reference
-    // to another function, use the scope to grab the function definition directly, run the inlining
-    // logic on it, then attach them to a new microstatement declaring the closure. If it's closure
-    // that could (probably usually will) reference the outer scope, the inner statements should be
-    // converted as normal, but with the current length of the microstatements array tracked so they
-    // can be pruned back off of the list to be reattached to a closure microstatement type.
-    const constName = "_" + uuid().replace(/-/g, "_")
-    if (!!blocklikesAst.varn()) { // TODO: Port to fromVarAst
-      const fnToClose = scope.deepGet(blocklikesAst.varn().getText()) as Array<Fn>
-      if (
-        fnToClose == null ||
-        !(fnToClose instanceof Array && fnToClose[0].microstatementInlining instanceof Function)
-      ) {
-        console.error(blocklikesAst.varn().getText() + " is not a function")
-        process.exit(-111)
-      }
-      // TODO: Revisit this on resolving the appropriate function if multiple match, right now just
-      // take the first one.
-      const closureFn = fnToClose[0] as Fn
-      let innerMicrostatements = []
-      closureFn.microstatementInlining([], scope, innerMicrostatements)
-      microstatements.push(new Microstatement(
-        StatementType.CLOSURE,
-        scope,
-        true, // Guaranteed true in this case, it's not really a closure
-        constName,
-        Type.builtinTypes.void,
-        [],
-        [],
-        '',
-        innerMicrostatements
-      ))
-    } else {
-      let len = microstatements.length
-      if (blocklikesAst.functionbody() != null) {
-        for (const s of blocklikesAst.functionbody().statements()) {
-          Microstatement.fromStatementsAst(s, scope, microstatements)
-        }
-      } else {
-        if (blocklikesAst.functions().fullfunctionbody().functionbody() != null) {
-          for (const s of blocklikesAst.functions().fullfunctionbody().functionbody().statements()) {
-            Microstatement.fromStatementsAst(s, scope, microstatements)
-          }
-        } else {
-          Microstatement.fromAssignablesAst(
-            blocklikesAst.functions().fullfunctionbody().assignables(),
-            scope,
-            microstatements
-          )
-        }
-      }
-      let newlen = microstatements.length
-      // There might be off-by-one bugs in the conversion here
-      const innerMicrostatements = microstatements.slice(len, newlen)
-      microstatements.splice(len, newlen - len)
-      microstatements.push(new Microstatement(
-        StatementType.CLOSURE,
-        scope,
-        true, // Guaranteed true in this case, it's not really a closure
-        constName,
-        Type.builtinTypes.void,
-        [],
-        [],
-        '',
-        innerMicrostatements
-      ))
-    }
-  }
-
   static fromEmitsAst(
     emitsAst: any, // TODO: Eliminate ANTLR
     scope: Scope,
@@ -1273,7 +1199,7 @@ class Microstatement {
             microstatements[i].closureStatements &&
             microstatements[i].closureStatements.length > 0
           ) {
-            microstatements.push(...microstatements[i].closureStatements)
+            microstatements.push(...microstatements[i].closureStatements.filter(s => s.statementType !== StatementType.EXIT))
             return
           }
         }
