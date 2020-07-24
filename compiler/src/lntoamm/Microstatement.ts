@@ -25,6 +25,7 @@ class Microstatement {
   fns: Array<Fn>
   closureStatements: Array<Microstatement>
   closureArgs: Args
+  closureOutputType: Type
 
   constructor(
     statementType: StatementType,
@@ -37,6 +38,7 @@ class Microstatement {
     alias: string = '',
     closureStatements: Array<Microstatement> = [],
     closureArgs: Args = {},
+    closureOutputType: Type = Type.builtinTypes.void,
   ) {
     this.statementType = statementType
     this.scope = scope
@@ -48,6 +50,7 @@ class Microstatement {
     this.alias = alias
     this.closureStatements = closureStatements
     this.closureArgs = closureArgs
+    this.closureOutputType = closureOutputType
   }
 
   toString() {
@@ -90,6 +93,9 @@ class Microstatement {
           outString += this.inputNames[0] // Doesn't appear the list is ever used here
         }
         break
+      case StatementType.EXIT:
+        outString = "return " + this.outputName
+        break
       case StatementType.CLOSURE:
         outString = "const " + this.outputName + ": function = fn ("
         let args = []
@@ -99,7 +105,7 @@ class Microstatement {
           }
         }
         outString += args.join(",")
-        outString += "): void {\n"
+        outString += "): " + this.closureOutputType.typename + " {\n"
         for (const m of this.closureStatements) {
           const s = m.toString()
           if (s !== "") {
@@ -936,6 +942,17 @@ class Microstatement {
     const innerMicrostatements = microstatements.slice(len, newlen)
     microstatements.splice(len, newlen - len)
     const constName = "_" + uuid().replace(/-/g, "_")
+    // if closure is not void return the last inner statement
+    if (userFunction.returnType !== Type.builtinTypes.void) {
+      const last = innerMicrostatements[innerMicrostatements.length - 1]
+      innerMicrostatements.push(new Microstatement(
+        StatementType.EXIT,
+        scope,
+        true,
+        last.outputName,
+        last.outputType
+      ))
+    }
     microstatements.push(new Microstatement(
       StatementType.CLOSURE,
       scope,
@@ -947,81 +964,8 @@ class Microstatement {
       '',
       innerMicrostatements,
       userFunction.args,
+      userFunction.returnType,
     ))
-  }
-
-  static closureFromBlocklikesAst(
-    blocklikesAst: any, // TODO: Eliminate ANTLR
-    scope: Scope,
-    microstatements: Array<Microstatement>,
-  ) {
-    // There are roughly two paths for closure generation of the blocklike. If it's a var reference
-    // to another function, use the scope to grab the function definition directly, run the inlining
-    // logic on it, then attach them to a new microstatement declaring the closure. If it's closure
-    // that could (probably usually will) reference the outer scope, the inner statements should be
-    // converted as normal, but with the current length of the microstatements array tracked so they
-    // can be pruned back off of the list to be reattached to a closure microstatement type.
-    const constName = "_" + uuid().replace(/-/g, "_")
-    if (!!blocklikesAst.varn()) { // TODO: Port to fromVarAst
-      const fnToClose = scope.deepGet(blocklikesAst.varn().getText()) as Array<Fn>
-      if (
-        fnToClose == null ||
-        !(fnToClose instanceof Array && fnToClose[0].microstatementInlining instanceof Function)
-      ) {
-        console.error(blocklikesAst.varn().getText() + " is not a function")
-        process.exit(-111)
-      }
-      // TODO: Revisit this on resolving the appropriate function if multiple match, right now just
-      // take the first one.
-      const closureFn = fnToClose[0] as Fn
-      let innerMicrostatements = []
-      closureFn.microstatementInlining([], scope, innerMicrostatements)
-      microstatements.push(new Microstatement(
-        StatementType.CLOSURE,
-        scope,
-        true, // Guaranteed true in this case, it's not really a closure
-        constName,
-        Type.builtinTypes.void,
-        [],
-        [],
-        '',
-        innerMicrostatements
-      ))
-    } else {
-      let len = microstatements.length
-      if (blocklikesAst.functionbody() != null) {
-        for (const s of blocklikesAst.functionbody().statements()) {
-          Microstatement.fromStatementsAst(s, scope, microstatements)
-        }
-      } else {
-        if (blocklikesAst.functions().fullfunctionbody().functionbody() != null) {
-          for (const s of blocklikesAst.functions().fullfunctionbody().functionbody().statements()) {
-            Microstatement.fromStatementsAst(s, scope, microstatements)
-          }
-        } else {
-          Microstatement.fromAssignablesAst(
-            blocklikesAst.functions().fullfunctionbody().assignables(),
-            scope,
-            microstatements
-          )
-        }
-      }
-      let newlen = microstatements.length
-      // There might be off-by-one bugs in the conversion here
-      const innerMicrostatements = microstatements.slice(len, newlen)
-      microstatements.splice(len, newlen - len)
-      microstatements.push(new Microstatement(
-        StatementType.CLOSURE,
-        scope,
-        true, // Guaranteed true in this case, it's not really a closure
-        constName,
-        Type.builtinTypes.void,
-        [],
-        [],
-        '',
-        innerMicrostatements
-      ))
-    }
   }
 
   static fromEmitsAst(
@@ -1116,7 +1060,7 @@ class Microstatement {
     scope: Scope,
     microstatements: Array<Microstatement>,
   ) {
-    // `alan--` doesn't have the concept of a `return` statement, the functions are all inlined
+    // `alan--` handlers don't have the concept of a `return` statement, the functions are all inlined
     // and the last assigned value for the function *is* the return statement
     if (exitsAst.assignables() != null) {
       // If there's an assignable value here, add it to the list of microstatements
@@ -1255,7 +1199,7 @@ class Microstatement {
             microstatements[i].closureStatements &&
             microstatements[i].closureStatements.length > 0
           ) {
-            microstatements.push(...microstatements[i].closureStatements)
+            microstatements.push(...microstatements[i].closureStatements.filter(s => s.statementType !== StatementType.EXIT))
             return
           }
         }
