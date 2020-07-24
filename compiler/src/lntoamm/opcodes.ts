@@ -100,23 +100,37 @@ const addopcodes = (opcodes: object) => {
                 returnType.originalType &&
                 Object.values(returnType.properties).some((p: Type) => !!p.iface)
               ) {
-                // Path 2: the opcode returns solidified generic type with an interface generic that
-                // mathces the interface type of an input
-                const returnIfaces = Object.values(returnType.properties)
-                  .filter((p: Type) => !!p.iface).map((p: Type) => p.iface)
-                const ifaceMap = {}
-                Object.values(args).forEach((a: Type, i: number) => {
-                  if (!!a.iface) {
-                    ifaceMap[a.iface.interfacename] = inputTypes[i]
-                  }
-                })
-                const baseType = returnType.originalType
-                if (Object.keys(ifaceMap).length >= Object.keys(baseType.generics).length) {
-                  const solidTypes = returnIfaces.map(i => ifaceMap[i.interfacename])
-                  const newReturnType = baseType.solidify(solidTypes, scope)
+                // TODO: Remove this hackery after function types are more than just 'function'
+                if (opcodeName === "map") {
+                  // The ideal `map` opcode type declaration is something like:
+                  // `map(Array<any>, fn (any): anythingElse): Array<anythingElse>` and then the
+                  // interface matching logic figures out what the return type of the opcode is
+                  // based on the return type of the function given to it.
+                  // For now, we just do that "by hand."
+                  const innerTypename = inputs[1].fns[0] ?
+                    inputs[1].fns[0].getReturnType().typename :
+                    inputs[1].closureOutputType.typename
+                  const newReturnType = Type.builtinTypes['Array'].solidify([innerTypename], scope)
                   return newReturnType
-                } else {
-                  return returnType
+                } else  {
+                  // Path 2: the opcode returns solidified generic type with an interface generic
+                  // that mathces the interface type of an input
+                  const returnIfaces = Object.values(returnType.properties)
+                    .filter((p: Type) => !!p.iface).map((p: Type) => p.iface)
+                  const ifaceMap = {}
+                  Object.values(args).forEach((a: Type, i: number) => {
+                    if (!!a.iface) {
+                      ifaceMap[a.iface.interfacename] = inputTypes[i]
+                    }
+                  })
+                  const baseType = returnType.originalType
+                  if (Object.keys(ifaceMap).length >= Object.keys(baseType.generics).length) {
+                    const solidTypes = returnIfaces.map(i => ifaceMap[i.interfacename])
+                    const newReturnType = baseType.solidify(solidTypes, scope)
+                    return newReturnType
+                  } else {
+                    return returnType
+                  }
                 }
               }
               return returnType
