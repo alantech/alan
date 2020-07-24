@@ -8,6 +8,7 @@ enum StatementType {
   CLOSURE =  'CLOSURE',
   ARG = 'ARG',
   ENTERFN = 'ENTERFN',
+  EXIT = 'EXIT',
 }
 
 export default StatementType

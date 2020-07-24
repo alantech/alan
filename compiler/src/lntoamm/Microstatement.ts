@@ -25,6 +25,7 @@ class Microstatement {
   fns: Array<Fn>
   closureStatements: Array<Microstatement>
   closureArgs: Args
+  closureOutputType: Type
 
   constructor(
     statementType: StatementType,
@@ -37,6 +38,7 @@ class Microstatement {
     alias: string = '',
     closureStatements: Array<Microstatement> = [],
     closureArgs: Args = {},
+    closureOutputType: Type = Type.builtinTypes.void,
   ) {
     this.statementType = statementType
     this.scope = scope
@@ -48,6 +50,7 @@ class Microstatement {
     this.alias = alias
     this.closureStatements = closureStatements
     this.closureArgs = closureArgs
+    this.closureOutputType = closureOutputType
   }
 
   toString() {
@@ -90,6 +93,9 @@ class Microstatement {
           outString += this.inputNames[0] // Doesn't appear the list is ever used here
         }
         break
+      case StatementType.EXIT:
+        outString = "return " + this.outputName
+        break
       case StatementType.CLOSURE:
         outString = "const " + this.outputName + ": function = fn ("
         let args = []
@@ -99,7 +105,7 @@ class Microstatement {
           }
         }
         outString += args.join(",")
-        outString += "): void {\n"
+        outString += "): " + this.closureOutputType.typename + " {\n"
         for (const m of this.closureStatements) {
           const s = m.toString()
           if (s !== "") {
@@ -936,6 +942,17 @@ class Microstatement {
     const innerMicrostatements = microstatements.slice(len, newlen)
     microstatements.splice(len, newlen - len)
     const constName = "_" + uuid().replace(/-/g, "_")
+    // if closure is not void return the last inner statement
+    if (userFunction.returnType !== Type.builtinTypes.void) {
+      const last = innerMicrostatements[innerMicrostatements.length - 1]
+      innerMicrostatements.push(new Microstatement(
+        StatementType.EXIT,
+        scope,
+        true,
+        last.outputName,
+        last.outputType
+      ))
+    }
     microstatements.push(new Microstatement(
       StatementType.CLOSURE,
       scope,
@@ -947,6 +964,7 @@ class Microstatement {
       '',
       innerMicrostatements,
       userFunction.args,
+      userFunction.returnType,
     ))
   }
 
@@ -1116,7 +1134,7 @@ class Microstatement {
     scope: Scope,
     microstatements: Array<Microstatement>,
   ) {
-    // `alan--` doesn't have the concept of a `return` statement, the functions are all inlined
+    // `alan--` handlers don't have the concept of a `return` statement, the functions are all inlined
     // and the last assigned value for the function *is* the return statement
     if (exitsAst.assignables() != null) {
       // If there's an assignable value here, add it to the list of microstatements
