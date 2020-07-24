@@ -198,7 +198,7 @@ const extractClosures = (handlers: LPNode[], handlerMem: object, eventDecs: obje
   return Object.values(closures)
 }
 
-const loadStatements = (statements: LPNode[], localMem: object, globalMem: object, isClosure: boolean) => {
+const loadStatements = (statements: LPNode[], localMem: object, globalMem: object) => {
   let vec = []
   let line = 0
   let localMemToLine = {}
@@ -218,7 +218,9 @@ const loadStatements = (statements: LPNode[], localMem: object, globalMem: objec
       const dec = statement.get('declarations').has('constdeclaration') ?
         statement.get('declarations').get('constdeclaration') :
         statement.get('declarations').get('letdeclaration')
-      let resultAddress = isClosure && idx === statements.length - 1 ?
+      // if this is 2nd to last statement and last statement exits this is a closure
+      const isClosureExit = idx === statements.length - 2 && statements[idx + 1].has('exits');
+      let resultAddress = isClosureExit ?
         CLOSURE_ARG_MEM_START : localMem[dec.get('decname').t.trim()];
       localMemToLine[dec.get('decname').t.trim()] = line
       const assignables = dec.get('assignables')
@@ -235,7 +237,7 @@ const loadStatements = (statements: LPNode[], localMem: object, globalMem: objec
         const args = vars.map(v => {
           if (localMem.hasOwnProperty(v)) return localMem[v]
           else if (globalMem.hasOwnProperty(v)) return globalMem[v]
-          else if (isClosure) {
+          else if (isClosureExit) {
             numArgs = numArgs + 1n
             return CLOSURE_ARG_MEM_START + numArgs
           } else return v
@@ -395,7 +397,6 @@ const loadHandlers = (handlers: LPNode[], handlerMem: object, globalMem: object)
       handler.get('functions').get('functionbody').get('statements').getAll(),
       localMem,
       globalMem,
-      false,
     )
     statements.forEach(s => h += `  ${s}\n`)
     vec.push(h)
@@ -415,7 +416,6 @@ const loadClosures = (closures: any[], globalMem: object) => {
       closure.statements,
       localMem,
       globalMem,
-      true,
     )
     statements.forEach(s => c += `  ${s}\n`)
     vec.push(c)
