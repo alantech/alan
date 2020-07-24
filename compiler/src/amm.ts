@@ -150,7 +150,7 @@ const functions = NamedAnd.build({
   a: optblank,
   colon,
   b: optblank,
-  voidn,
+  fulltypename,
   c: optblank,
   functionbody,
 })
