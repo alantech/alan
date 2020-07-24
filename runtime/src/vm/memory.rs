@@ -1,18 +1,19 @@
 use std::collections::HashMap;
+use std::convert::TryInto;
 use std::fmt;
 
 use regex::Regex;
 
 use crate::vm::program::Program;
 
-// Number.MIN_SAFE_INTEGER  in JS
-pub const CLOSURE_ARG_MEM_START: i64 = -9007199254740991;
+// -2^63
+pub const CLOSURE_ARG_MEM_START: i64 = -9223372036854775808;
 
 /// Memory representation of a handler call
 #[derive(Clone)]
 pub struct HandlerMemory {
   /// Global memory reference
-  gmem: &'static Vec<i64>,
+  gmem: &'static Vec<u8>,
   /// Memory of the handler for fixed size data types
   mem: Vec<i64>,
   /// Memory space used for closure arguments
@@ -279,10 +280,9 @@ impl HandlerMemory {
     if addr < 0 {
       let a = (0 - addr - 1) as usize;
       // global memory
-      if a <= self.gmem.len() * 8 {
-        unsafe {
-          return self.gmem.as_ptr().add(a).read();
-        }
+      if a <= self.gmem.len() {
+        let result = i64::from_ne_bytes((&self.gmem[a..a+8]).try_into().unwrap());
+        return result;
       }
       // closure arguments memory
       let a = (addr - CLOSURE_ARG_MEM_START) as usize;
@@ -300,8 +300,14 @@ impl HandlerMemory {
     if addr < 0 {
       let a = (0 - addr - 1) as usize;
       // global memory
-      if a <= self.gmem.len() * 8 {
-        return self.gmem[a..].to_vec();
+      if a <= self.gmem.len() {
+        let result = &self.gmem[a..];
+        let mut out: Vec<i64> = Vec::new();
+        for i in 0..(result.len() / 8) {
+          let num = i64::from_ne_bytes((&result[8*i..8*i+8]).try_into().unwrap());
+          out.push(num);
+        }
+        return out;
       }
       // closure arguments memory
       let a = (addr - CLOSURE_ARG_MEM_START) as usize;
@@ -318,19 +324,25 @@ impl HandlerMemory {
     if addr < 0 {
       let a = (0 - addr - 1) as usize;
       // string from global or closure arguments memory
-      let out = if a <= self.gmem.len() * 8  {
-        self.gmem[a..].to_vec()
+      let out = if a <= self.gmem.len()  {
+        let result = &self.gmem[a..];
+        let mut out: Vec<i64> = Vec::new();
+        for i in 0..(result.len() / 8) {
+          let num = i64::from_ne_bytes((&result[8*i..8*i+8]).try_into().unwrap());
+          out.push(num);
+        }
+        out
       } else {
         let a = (addr - CLOSURE_ARG_MEM_START) as usize;
         self.closure_args[a..].to_vec()
       };
-      let size = out.len();
+      let len = out.len();
       return HandlerMemory {
         gmem: &self.gmem,
         mem: out,
         closure_args: Vec::new(),
         fractal_mem: Vec::new(),
-        either_mem: vec![-1; size],
+        either_mem: vec![-1; len],
         registers_ish: HashMap::new(),
       }
     }
@@ -343,7 +355,7 @@ impl HandlerMemory {
     if addr < 0  {
       let a = (0 - addr - 1) as usize;
       // global memory
-      if a <= self.gmem.len() * 8 {
+      if a <= self.gmem.len() {
         panic!("Cannot write to global memory");
       }
       // closure arguments memory

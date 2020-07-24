@@ -175,7 +175,7 @@ const astToAgc = (ast: NamedAnd): Buffer => {
   // All done, convert the BigInt array to a big buffer to write to a file
   const outBuf = Buffer.alloc(vec.length * 8)
   vec.forEach((n, i) => {
-    outBuf.writeBigUInt64LE(n < 0 ? int64ToUint64(n) : n, i * 8)
+    outBuf.writeBigUInt64LE(n, i * 8)
   })
   return outBuf
 }

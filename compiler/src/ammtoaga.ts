@@ -11,6 +11,7 @@ import amm from './amm'
 // and does not work in the browser. It would be possible to implement a browser-compatible version
 // but there is no need for it and it would make it harder to work with.
 const ceil8 = (n: number) => Math.ceil(n / 8) * 8
+const CLOSURE_ARG_MEM_START = BigInt(Math.pow(-2,63))
 
 const loadGlobalMem = (globalMemAst: LPNode[], addressMap: object) => {
   const globalMem = {}
@@ -218,7 +219,7 @@ const loadStatements = (statements: LPNode[], localMem: object, globalMem: objec
         statement.get('declarations').get('constdeclaration') :
         statement.get('declarations').get('letdeclaration')
       let resultAddress = isClosure && idx === statements.length - 1 ?
-        Number.MIN_SAFE_INTEGER : localMem[dec.get('decname').t.trim()];
+        CLOSURE_ARG_MEM_START : localMem[dec.get('decname').t.trim()];
       localMemToLine[dec.get('decname').t.trim()] = line
       const assignables = dec.get('assignables')
       if (assignables.has('functions')) {
@@ -230,13 +231,13 @@ const loadStatements = (statements: LPNode[], localMem: object, globalMem: objec
         const vars = (call.has('calllist') ? call.get('calllist').getAll() : []).map(
           v => v.get('variable').t.trim()
         )
-        let numArgs = 0;
+        let numArgs = 0n
         const args = vars.map(v => {
           if (localMem.hasOwnProperty(v)) return localMem[v]
           else if (globalMem.hasOwnProperty(v)) return globalMem[v]
           else if (isClosure) {
-            numArgs += 1
-            return Number.MIN_SAFE_INTEGER + numArgs
+            numArgs = numArgs + 1n
+            return CLOSURE_ARG_MEM_START + numArgs
           } else return v
         }).map(a => typeof a === 'string' ? a : `@${a}`)
         while (args.length < 2) args.push('@0')
