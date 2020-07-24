@@ -4,6 +4,7 @@ import {
   LP,
   LPNode,
   NamedAnd,
+  NulLP,
 } from './lp'
 
 import amm from './amm'
@@ -73,8 +74,12 @@ const ammToJsText = (amm: LPNode) => {
   for (const handler of amm.get('handlers').getAll()) {
     const rec = handler.get()
     if (!(rec instanceof NamedAnd)) continue
-    const eventVarName = rec.get('functions').has('arg') ?
-      rec.get('functions').get('arg').get('variable').t : ""
+    let arg = rec.get('functions').get('args').get(0).get(0).get('arg')
+    if (arg instanceof NulLP) {
+      arg = rec.get('functions').get('args').get(1).get('arg')
+    }
+    const eventVarName = !(arg instanceof NulLP) ?
+      arg.get('variable').t : ""
     outFile += `r.on('${rec.get('variable').t}', async (${eventVarName}) => {\n`
     outFile += functionbodyToJsText(rec.get('functions').get('functionbody'), '')
     outFile += '})\n' // End this handler
