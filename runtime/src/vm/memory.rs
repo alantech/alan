@@ -8,6 +8,7 @@ use crate::vm::program::Program;
 
 // -2^63
 pub const CLOSURE_ARG_MEM_START: i64 = -9223372036854775808;
+pub const CLOSURE_ARG_MEM_SIZE: usize = 4;
 
 /// Memory representation of a handler call
 #[derive(Clone)]
@@ -82,7 +83,7 @@ impl HandlerMemory {
       mem,
       fractal_mem,
       either_mem,
-      closure_args: vec![],
+      closure_args: vec![0; CLOSURE_ARG_MEM_SIZE],
       gmem: curr_hand_mem.gmem,
       registers_ish: HashMap::new(),
     });
@@ -95,7 +96,7 @@ impl HandlerMemory {
         gmem: &Program::global().gmem,
         mem: vec![0; mem_size],
         fractal_mem: vec![],
-        closure_args: vec![0; mem_size],
+        closure_args: vec![0; CLOSURE_ARG_MEM_SIZE],
         either_mem: vec![-1; mem_size],
         registers_ish: HashMap::new(),
       }
@@ -103,14 +104,14 @@ impl HandlerMemory {
       payload_mem.unwrap()
     };
     hand_mem.mem.resize(mem_size, 0);
-    hand_mem.closure_args.resize(mem_size, 0);
+    hand_mem.closure_args.resize(CLOSURE_ARG_MEM_SIZE, 0);
     hand_mem.either_mem.resize(mem_size, -1);
     hand_mem.fractal_mem.resize(mem_size, HandlerMemory {
       gmem: &hand_mem.gmem,
       mem: Vec::new(),
       fractal_mem: Vec::new(),
       either_mem: Vec::new(),
-      closure_args: Vec::new(),
+      closure_args: vec![0; CLOSURE_ARG_MEM_SIZE],
       registers_ish: HashMap::new(),
     });
     return hand_mem;
@@ -278,9 +279,9 @@ impl HandlerMemory {
 
   pub fn read_fixed(self: &HandlerMemory, addr: i64) -> i64 {
     if addr < 0 {
-      let a = (0 - addr - 1) as usize;
       // global memory
-      if a <= self.gmem.len() {
+      if self.is_neg_addr_gmem(addr) {
+        let a = (0 - addr - 1) as usize;
         let result = i64::from_ne_bytes((&self.gmem[a..a+8]).try_into().unwrap());
         return result;
       }
@@ -298,9 +299,9 @@ impl HandlerMemory {
   // returns a copy
   pub fn read_fractal_mem(self: &HandlerMemory, addr: i64) -> Vec<i64> {
     if addr < 0 {
-      let a = (0 - addr - 1) as usize;
       // global memory
-      if a <= self.gmem.len() {
+      if self.is_neg_addr_gmem(addr) {
+        let a = (0 - addr - 1) as usize;
         let result = &self.gmem[a..];
         let mut out: Vec<i64> = Vec::new();
         for i in 0..(result.len() / 8) {
@@ -319,12 +320,17 @@ impl HandlerMemory {
     return res.to_vec();
   }
 
+  fn is_neg_addr_gmem(self: &HandlerMemory, addr: i64) -> bool {
+    // avoids overflow on subtract
+    return addr != CLOSURE_ARG_MEM_START && (0 - addr - 1) as usize <= self.gmem.len();
+  }
+
   // returns a copy while get_fractal returns a reference
   pub fn read_fractal(self: &HandlerMemory, addr: i64) -> HandlerMemory {
     if addr < 0 {
-      let a = (0 - addr - 1) as usize;
       // string from global or closure arguments memory
-      let out = if a <= self.gmem.len()  {
+      let out = if self.is_neg_addr_gmem(addr) {
+        let a = (0 - addr - 1) as usize;
         let result = &self.gmem[a..];
         let mut out: Vec<i64> = Vec::new();
         for i in 0..(result.len() / 8) {
@@ -340,7 +346,7 @@ impl HandlerMemory {
       return HandlerMemory {
         gmem: &self.gmem,
         mem: out,
-        closure_args: Vec::new(),
+        closure_args: vec![0; CLOSURE_ARG_MEM_SIZE],
         fractal_mem: Vec::new(),
         either_mem: vec![-1; len],
         registers_ish: HashMap::new(),
@@ -353,9 +359,7 @@ impl HandlerMemory {
 
   pub fn write_fixed(self: &mut HandlerMemory, addr: i64, payload: i64) {
     if addr < 0  {
-      let a = (0 - addr - 1) as usize;
-      // global memory
-      if a <= self.gmem.len() {
+      if self.is_neg_addr_gmem(addr) {
         panic!("Cannot write to global memory");
       }
       // closure arguments memory
@@ -378,7 +382,7 @@ impl HandlerMemory {
     let arr = HandlerMemory {
       gmem: self.gmem,
       mem: payload.to_vec(),
-      closure_args: vec![],
+      closure_args: vec![0; CLOSURE_ARG_MEM_SIZE],
       fractal_mem: vec![],
       either_mem: vec![-1; payload.len()],
       registers_ish: HashMap::new()

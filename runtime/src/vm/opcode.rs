@@ -1842,13 +1842,13 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let output: Vec<i64> = (0..len).into_par_iter().map_with(instructions, |ins, idx| {
       let mut mem = arr.clone();
       // array element is $1 argument of the closure memory space
-      let arr_el = mem.read_fixed(idx * 8);
+      let arr_el = mem.read_fixed(idx);
       mem.write_fixed(CLOSURE_ARG_MEM_START + 1, arr_el);
       ins.iter().for_each( |i| {
         // TODO implement for async_functions. can tokio be called within rayon?
         let func = i.opcode.func.unwrap();
-        // TODO handler emit event, but what if multiple are emitted?
-        let event = func(&i.args, &mut mem, &mut frag.clone());
+        // TODO maybe emit event, but what if multiple are emitted?
+        let _event = func(&i.args, &mut mem, &mut frag.clone());
       });
       // return address is $0 argument of the closure memory space
       return mem.read_fixed(CLOSURE_ARG_MEM_START);
