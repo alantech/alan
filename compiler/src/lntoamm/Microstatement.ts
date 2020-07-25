@@ -943,8 +943,8 @@ class Microstatement {
     microstatements.splice(len, newlen - len)
     const constName = "_" + uuid().replace(/-/g, "_")
     // if closure is not void return the last inner statement
-    if (userFunction.returnType !== Type.builtinTypes.void) {
-      const last = innerMicrostatements[innerMicrostatements.length - 1]
+    const last = innerMicrostatements[innerMicrostatements.length - 1]
+    if (userFunction.returnType !== Type.builtinTypes.void || last.statementType !== StatementType.EMIT) {
       innerMicrostatements.push(new Microstatement(
         StatementType.EXIT,
         scope,
@@ -964,7 +964,7 @@ class Microstatement {
       '',
       innerMicrostatements,
       userFunction.args,
-      userFunction.returnType,
+      last.outputType,
     ))
   }
 
