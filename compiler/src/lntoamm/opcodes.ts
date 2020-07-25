@@ -378,6 +378,17 @@ addopcodes({
   copystr: [{ a: t('string'), }, t('string')],
   copyarr: [{ a: t('any'), }, t('any')],
   zeroed: [{ }, t('any')],
+  lnf64: [{ a: t('float64'), }, t('float64')],
+  logf64: [{ a: t('float64'), }, t('float64')],
+  sinf64: [{ a: t('float64'), }, t('float64')],
+  cosf64: [{ a: t('float64'), }, t('float64')],
+  tanf64: [{ a: t('float64'), }, t('float64')],
+  asinf64: [{ a: t('float64'), }, t('float64')],
+  acosf64: [{ a: t('float64'), }, t('float64')],
+  atanf64: [{ a: t('float64'), }, t('float64')],
+  sinhf64: [{ a: t('float64'), }, t('float64')],
+  coshf64: [{ a: t('float64'), }, t('float64')],
+  tanhf64: [{ a: t('float64'), }, t('float64')],
 })
 
 export default opcodeModule

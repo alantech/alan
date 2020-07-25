@@ -19,7 +19,7 @@
 - [ ] Implemented:
   - [Compact Array Literal Syntax](https://github.com/alantech/alan/pull/103) 2020-07-03
   - [@std/matrix](tbd) YYYY-MM-DD
-  - [@std/trig](tbd) YYYY-MM-DD
+  - [@std/trig](tbd) 2020-07-24
   - [@std/stats](tbd) YYYY-MM-DD
 - [ ] Revoked/Superceded by: [RFC ###](./000 - RFC Template.md) YYYY-MM-DD
 
