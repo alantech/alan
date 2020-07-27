@@ -31,9 +31,19 @@ class Module {
     path: string,
     ast: any, // ModuleContext
     rootScope: Scope,
+    isStd: boolean = false,
   ) {
-    let module = new Module(rootScope)
-    // First, populate all of the imports
+    // First, take the export scope of the root scope and put references to it in this module. If
+    // it is a built-in std module, it inherits from the root scope, otherwise it attaches all
+    // exported references. This way std modules get access to the opcode scope via inheritance and
+    // 'normal' modules do not.
+    let module = new Module(isStd ? rootScope : undefined)
+    if (!isStd) {
+      for (const rootModuleName of Object.keys(rootScope.vals)) {
+        module.moduleScope.put(rootModuleName, rootScope.vals[rootModuleName])
+      }
+    }
+    // Now, populate all of the imports
     const imports = ast.imports()
     for (const importAst of imports) {
       // Figure out which kind of import format we're dealing with

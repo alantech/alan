@@ -99,4 +99,30 @@ return 'blah' on line 5:10"
       The error should eq "Recursive callstack detected: fibonacci -> fibonacci. Aborting."
     End
   End
+
+  Describe "Direct opcode calls"
+    before() {
+      sourceToTemp "
+        from @std/app import start, print, exit
+
+        on start {
+          print(i64str(5)) // Illegal direct opcode usage
+          emit exit 0
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    It "doesn't work"
+      When run alan-compile temp.ln temp.amm
+      The status should not eq "0"
+      # TODO: What file, line, and character?
+      The error should eq "Undefined function called: i64str"
+    End
+  End
 End
