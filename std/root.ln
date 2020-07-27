@@ -6,6 +6,10 @@
 
 // TODO: See about making an export block scope so we don't have to write `export` so much
 
+// Type aliasing of int64 and float64 to just int and float, as these are the default types
+export type int = int64
+export type float = float64
+
 // Default Interfaces
 export interface any {}
 export interface anythingElse = any // Same as `any` but doesn't match with it
