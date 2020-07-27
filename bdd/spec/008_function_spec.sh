@@ -17,7 +17,8 @@ Describe "Functions and Custom Operators"
         print(pre + bar(body, 1, 2))
       }
 
-      fn double(a: int64) = a * 2
+      // 'int' is an alias for 'int64'
+      fn double(a: int) = a * 2
 
       prefix double as ## precedence 10
 
