@@ -340,9 +340,9 @@ export class Type {
     }
     if (typeAst.othertype() != null) {
       const otherTypebox = scope.deepGet(typeAst.othertype().typename().getText()) as Type
-
       if (!otherTypebox) {
         console.error("Type " + typeAst.othertype().getText() + " not defined")
+
         process.exit(-38)
       }
       if (!(otherTypebox instanceof Type)) {

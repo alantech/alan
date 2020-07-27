@@ -6,6 +6,23 @@
 
 // TODO: See about making an export block scope so we don't have to write `export` so much
 
+// Export all of the built-in types
+export void
+export int8
+export int16
+export int32
+export int64
+export float32
+export float64
+export bool
+export string
+export function // TODO: Make the function type more explicit than this
+export Array
+export Error
+export Maybe
+export Result
+export Either
+
 // Type aliasing of int64 and float64 to just int and float, as these are the default types
 export type int = int64
 export type float = float64

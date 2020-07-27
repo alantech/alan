@@ -16,7 +16,7 @@ export const loadStdModules = (stdImports: Set<any>) => {
   let rootModule: Module
   stdAsts.forEach((moduleAst) => {
     if (moduleAst.name === 'root.ln') {
-      rootModule = Module.populateModule('<root>', moduleAst.ast, opcodes.exportScope)
+      rootModule = Module.populateModule('<root>', moduleAst.ast, opcodes.exportScope, true)
       Module.getAllModules()['<root>'] = rootModule
     }
   })
@@ -73,7 +73,8 @@ export const loadStdModules = (stdImports: Set<any>) => {
       const stdModule = Module.populateModule(
         moduleAst.name,
         moduleAst.ast,
-        rootModule.exportScope
+        rootModule.exportScope,
+        true
       )
       Module.getAllModules()[moduleAst.name] = stdModule
     }
