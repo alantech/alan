@@ -1862,8 +1862,15 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let output: Vec<HandlerMemory> = (0..len).into_par_iter().map_with(instructions, |ins, idx| {
         let mut mem = arr.clone();
         // array element is $1 argument of the closure memory space
-        let arr_el = mem.read_fractal(idx);
-        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
+        if !mem.has_nested_fractals() {
+          // this could be a string or fixed data type
+          let (arr_el, _) = mem.read_either(idx);
+          mem.write_fractal_mem(CLOSURE_ARG_MEM_START + 1, arr_el.as_slice());
+        } else {
+          // more nested arrays
+          let arr_el = mem.read_fractal(idx);
+          mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
+        }
         ins.iter().for_each( |i| {
           // TODO implement for async_functions. can tokio be called within rayon?
           let func = i.opcode.func.unwrap();
@@ -1871,7 +1878,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
           let _event = func(&i.args, &mut mem, &mut frag.clone());
         });
         // return address is $0 argument of the closure memory space
-        return mem.read_fractal(CLOSURE_ARG_MEM_START);
+        let res = mem.read_fractal(CLOSURE_ARG_MEM_START);
+        return res;
       }).collect();
       hand_mem.new_fractal(args[2]);
       for f in output {

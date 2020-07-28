@@ -277,8 +277,8 @@ impl HandlerMemory {
   /// read address of string or fixed length data type and
   /// return a reference to the data and its size
   /// TODO implement for closure argument memory
-  fn read_either(self: &HandlerMemory, addr: i64) -> (Vec<i64>, u8) {
-    if addr < 0 {
+  pub fn read_either(self: &HandlerMemory, addr: i64) -> (Vec<i64>, u8) {
+    if addr < 0 && self.is_neg_addr_gmem(addr) {
       panic!("Reads of undefined size do not work on global memory");
     }
     // test if the data read is itself a string/array
@@ -326,7 +326,9 @@ impl HandlerMemory {
       }
       // closure arguments memory
       let a = (addr - CLOSURE_ARG_MEM_START) as usize;
-      return self.closure_args[a..].to_vec();
+      let arr = &self.fractal_closure_args[self.either_closure_mem[a] as usize];
+      let res = arr.mem.as_slice();
+      return res.to_vec();
     }
     let a = addr as usize;
     let arr = &self.fractal_mem[self.either_mem[a] as usize];
