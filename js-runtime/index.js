@@ -270,6 +270,45 @@ module.exports = {
   coshf64:  a => Math.cosh(a),
   tanhf64:  a => Math.tanh(a),
 
+  // Error, Maybe, Result, Either opcodes
+  error:    a => a,
+  noerr:    () => '',
+  errorstr: a => a.toString(),
+  someM:     a => ({
+    isSome: true,
+    val: a,
+  }),
+  noneM:     () => ({
+    isSome: false,
+  }),
+  isSome:   a => a.isSome,
+  isNone:   a => !a.isSome,
+  getOrM:   (a, b) => a.isSome ? a.val : b,
+  okR:      a => ({
+    isOk: true,
+    val: a,
+  }),
+  err:      a => ({
+    isOk: false,
+    error: a,
+  }),
+  isOk:     a => a.isOk,
+  isErr:    a => !a.isOk,
+  getOrR:   (a, b) => a.isOk ? a.val : b,
+  getErr:   (a, b) => a.isOk ? b : a.error,
+  mainE:     a => ({
+    isMain: true,
+    main: a,
+  }),
+  altE:      a => ({
+    isMain: false,
+    alt: a,
+  }),
+  isMain:   a => a.isMain,
+  isAlt:    a => !a.isMain,
+  mainOr:   (a, b) => a.isMain ? a.main : b,
+  altOr:    (a, b) => a.isMain ? b : a.alt,
+
   // IO opcodes
   asyncopcodes: ['waitop', 'execop'],
   waitop: a => new Promise(resolve => setTimeout(resolve, a)),

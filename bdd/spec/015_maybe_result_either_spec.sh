@@ -91,7 +91,7 @@ Correctly received nothing!"
           const oneZeroth = reciprocal(0.0)
           if oneZeroth.isErr() {
             const error = oneZeroth.getErr(noerr())
-            print(error.msg)
+            print(error)
           } else {
             print('uhhh')
           }

@@ -347,85 +347,57 @@ export fn assign(a: bool) = copybool(a)
 export fn assign(a: string) = copystr(a)
 
 // Error, Maybe, Result, and Either types and functions
-export type Error { // TODO: Give this type special behavior to report stack info?
-  msg: string
-}
+export error // opcode with signature `fn error(string): Error`
+export noerr // opcode with signature `fn noerr(): Error`
+export fn toString(err: Error) = errorstr(err)
 
-export fn noerr() = new Error {
-  msg = "No Error"
-}
+export fn some(val: any) = someM(val, 0)
+export fn some(val: int8) = someM(val, 8)
+export fn some(val: int16) = someM(val, 8)
+export fn some(val: int32) = someM(val, 8)
+export fn some(val: int64) = someM(val, 8)
+export fn some(val: float32) = someM(val, 8)
+export fn some(val: float64) = someM(val, 8)
+export fn some(val: bool) = someM(val, 8)
+export fn none() = noneM()
+export isSome // opcode with signature `fn isSome(Maybe<any>): bool`
+export isNone // opcode with signature `fn isNone(Maybe<any>): bool`
+export fn getOr(maybe: Maybe<any>, default: any) = getOrM(maybe, default)
 
-export type Maybe<T> {
-  val: Array<T>
-}
+export fn ok(val: any) = okR(val, 0)
+export fn ok(val: int8) = okR(val, 8)
+export fn ok(val: int16) = okR(val, 8)
+export fn ok(val: int32) = okR(val, 8)
+export fn ok(val: int64) = okR(val, 8)
+export fn ok(val: float32) = okR(val, 8)
+export fn ok(val: float64) = okR(val, 8)
+export fn ok(val: bool) = okR(val, 8)
+export err // opcode with signature `fn err(string): Result<any>`
+export isOk // opcode with signature `fn isOk(Result<any>): bool`
+export isErr // opcode with signature `fn isErr(Result<any>: bool`
+export fn getOr(result: Result<any>, default: any) = getOrR(result, default)
+export getErr // opcode with signature `fn getErr(Result<any>, Error): Error`
 
-export fn some(val: any) = new Maybe<any> {
-  val = [ val, ]
-}
-
-export fn none() = new Maybe<void> {
-  val = new Array<void> []
-}
-
-export fn isSome(maybe: Maybe<any>) = length(maybe.val).gt(0)
-
-export fn isNone(maybe: Maybe<any>) = length(maybe.val).eq(0)
-
-export fn getOr(maybe: Maybe<any>, default: any): any {
-  if maybe.isSome() {
-    return maybe.val[0]
-  } else {
-    return default
-  }
-}
-
-export type Result<T> {
-  val: Maybe<T>
-  err: Maybe<Error>
-}
-
-export fn ok(val: any) = new Result<any> {
-  val = some(val)
-  err = none()
-}
-
-export fn err(msg: string) = new Result<any> {
-  val = none()
-  err = some(new Error {
-    msg = msg
-  })
-}
-
-export fn isOk(result: Result<any>) = isSome(result.val)
-
-export fn isErr(result: Result<any>) = isSome(result.err)
-
-export fn getOr(result: Result<any>, default: any) = getOr(result.val, default)
-
-export fn getErr(result: Result<any>, default: Error): Error = getOr(result.err, default)
-
-export type Either<T, U> {
-  main: Maybe<T>
-  alt: Maybe<U>
-}
-
-export fn main(m: any) = new Either<any, void> {
-  main = some(m)
-  alt = none()
-}
-
-export fn alt(a: any) = new Either<void, any> {
-  main = none()
-  alt = some(a)
-}
-
-export fn isMain(either: Either<any, anythingElse>) = isSome(either.main)
-
-export fn isAlt(either: Either<any, anythingElse>) = isSome(either.alt)
-
-export fn getMainOr(either: Either<any, anythingElse>, default: any) = getOr(either.main, default)
-
-export fn getAltOr(either: Either<any, anythingElse>, default: anythingElse) = getOr(either.alt, default)
+export fn main(val: any) = mainE(val, 0)
+export fn main(val: int8) = mainE(val, 8)
+export fn main(val: int16) = mainE(val, 8)
+export fn main(val: int32) = mainE(val, 8)
+export fn main(val: int64) = mainE(val, 8)
+export fn main(val: float32) = mainE(val, 8)
+export fn main(val: float64) = mainE(val, 8)
+export fn main(val: bool) = mainE(val, 8)
+export fn alt(val: any) = altE(val, 0)
+export fn alt(val: int8) = altE(val, 8)
+export fn alt(val: int16) = altE(val, 8)
+export fn alt(val: int32) = altE(val, 8)
+export fn alt(val: int64) = altE(val, 8)
+export fn alt(val: float32) = altE(val, 8)
+export fn alt(val: float64) = altE(val, 8)
+export fn alt(val: bool) = altE(val, 8)
+export isMain // opcode with signature `fn isMain(Either<any, anythingElse>): bool`
+export isAlt // opcode with signature `fn isAlt(Either<any, anythingElse): bool`
+export fn getMainOr(either: Either<any, anythingElse>, default: any) = mainOr(either, default)
+export fn getAltOr(either: Either<any, anythingElse>, default: anythingElse) = altOr(either, default)
 
 // Operator declarations
 export infix add as + precedence 2

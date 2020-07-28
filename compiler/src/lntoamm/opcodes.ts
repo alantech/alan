@@ -16,15 +16,19 @@ const addBuiltIn = (name: string) => {
 }
 ([
   'void', 'int8', 'int16', 'int32', 'int64', 'float32', 'float64', 'bool', 'string', 'function',
-  'operator', 'Error', 'Array', 'Map', 'KeyVal',
+  'operator', 'Error', 'Maybe', 'Result', 'Either', 'Array', 'Map', 'KeyVal',
 ].map(addBuiltIn))
 Type.builtinTypes['Array'].solidify(['string'], opcodeScope)
 Type.builtinTypes['Map'].solidify(['string', 'string'], opcodeScope)
 opcodeScope.put('any', new Type('any', true, false, {}, {}, null, new Interface('any')))
+opcodeScope.put('anythingElse', new Type('anythingElse', true, false, {}, {}, null, new Interface('anythingElse')))
 Type.builtinTypes['Array'].solidify(['any'], opcodeScope)
 Type.builtinTypes['Map'].solidify(['any', 'any'], opcodeScope)
 Type.builtinTypes['KeyVal'].solidify(['any', 'any'], opcodeScope)
 Type.builtinTypes['Array'].solidify(['KeyVal<any, any>'], opcodeScope)
+Type.builtinTypes['Maybe'].solidify(['any'], opcodeScope)
+Type.builtinTypes['Result'].solidify(['any'], opcodeScope)
+Type.builtinTypes['Either'].solidify(['any', 'anythingElse'], opcodeScope)
 opcodeScope.put("start", new Event("_start", Type.builtinTypes.void, true))
 const t = (str: string) => opcodeScope.get(str)
 
@@ -120,7 +124,7 @@ const addopcodes = (opcodes: object) => {
                   const ifaceMap = {}
                   Object.values(args).forEach((a: Type, i: number) => {
                     if (!!a.iface) {
-                      ifaceMap[a.iface.interfacename] = inputTypes[i]
+                      ifaceMap[a.iface.interfacename] = inputTypes[i].typename
                     }
                   })
                   const baseType = returnType.originalType
@@ -389,6 +393,26 @@ addopcodes({
   sinhf64: [{ a: t('float64'), }, t('float64')],
   coshf64: [{ a: t('float64'), }, t('float64')],
   tanhf64: [{ a: t('float64'), }, t('float64')],
+  error: [{ a: t('string'), }, t('Error')],
+  noerr: [{ }, t('Error')],
+  errorstr: [{ a: t('Error'), }, t('string')],
+  someM:  [{ a: t('any'), size: t('int64'), }, t('Maybe<any>')],
+  noneM:  [{ }, t('Maybe<any>')],
+  isSome: [{ a: t('Maybe<any>'), }, t('bool')],
+  isNone: [{ a: t('Maybe<any>'), }, t('bool')],
+  getOrM: [{ a: t('Maybe<any>'), b: t('any'), }, t('any')],
+  okR: [{ a: t('any'), size: t('int64'), }, t('Result<any>')],
+  err: [{ a: t('string'), }, t('Result<any>')],
+  isOk: [{ a: t('Result<any>'), }, t('bool')],
+  isErr: [{ a: t('Result<any>'), }, t('bool')],
+  getOrR: [{ a: t('Result<any>'), b: t('any'), }, t('any')],
+  getErr: [{ a: t('Result<any>'), b: t('Error'), }, t('Error')],
+  mainE: [{ a: t('any'), size: t('int64'), }, t('Either<any, anythingElse>')],
+  altE: [{ a: t('anythingElse'), size: t('int64'), }, t('Either<any, anythingElse>')],
+  isMain: [{ a: t('Either<any, anythingElse>'), }, t('bool')],
+  isAlt: [{ a: t('Either<any, anythingElse>'), }, t('bool')],
+  mainOr: [{ a: t('Either<any, anythingElse>'), b: t('any'), }, t('any')],
+  altOr: [{ a: t('Either<any, anythingElse>'), b: t('anythingElse'), }, t('anythingElse')],
 })
 
 export default opcodeModule
