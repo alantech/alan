@@ -19,13 +19,15 @@ pub struct HandlerMemory {
   mem: Vec<i64>,
   /// Memory space used for closure arguments
   closure_args: Vec<i64>,
+  fractal_closure_args: Vec<HandlerMemory>,
   /// Fractal memory storage for variable-length data types to an instance of the same struct
   fractal_mem: Vec<HandlerMemory>,
-  /// Helper for fractal_mem to lookup the actual location of the relevant data, since
+  /// Helper for fractal_mem or fractal_closure_args to lookup the actual location of the relevant data, since
   /// instantiating HandlerMemory instances for each memory usage need is expensive. -1 means the
   /// data is in mem, otherwise it's mapping to the index in fractal_mem that houses the relevant
   /// data.
   either_mem: Vec<i64>,
+  either_closure_mem: Vec<i64>,
   /// Pointers to nested fractal HandlerMemory. Each is represented as a vector of up to 3 sequential addresses.
   /// These are not quite registers since they are not used by opcodes directly and they
   /// don't store the data itself, but an address to the data.
@@ -84,6 +86,8 @@ impl HandlerMemory {
       fractal_mem,
       either_mem,
       closure_args: vec![0; CLOSURE_ARG_MEM_SIZE],
+      fractal_closure_args: Vec::new(),
+      either_closure_mem: vec![-1; CLOSURE_ARG_MEM_SIZE],
       gmem: curr_hand_mem.gmem,
       registers_ish: HashMap::new(),
     });
@@ -97,6 +101,8 @@ impl HandlerMemory {
         mem: vec![0; mem_size],
         fractal_mem: vec![],
         closure_args: vec![0; CLOSURE_ARG_MEM_SIZE],
+        either_closure_mem: vec![-1; CLOSURE_ARG_MEM_SIZE],
+        fractal_closure_args: Vec::new(),
         either_mem: vec![-1; mem_size],
         registers_ish: HashMap::new(),
       }
@@ -105,6 +111,7 @@ impl HandlerMemory {
     };
     hand_mem.mem.resize(mem_size, 0);
     hand_mem.closure_args.resize(CLOSURE_ARG_MEM_SIZE, 0);
+    hand_mem.either_closure_mem.resize(CLOSURE_ARG_MEM_SIZE, -1);
     hand_mem.either_mem.resize(mem_size, -1);
     hand_mem.fractal_mem.resize(mem_size, HandlerMemory {
       gmem: &hand_mem.gmem,
@@ -112,6 +119,8 @@ impl HandlerMemory {
       fractal_mem: Vec::new(),
       either_mem: Vec::new(),
       closure_args: vec![0; CLOSURE_ARG_MEM_SIZE],
+      either_closure_mem: vec![-1; CLOSURE_ARG_MEM_SIZE],
+      fractal_closure_args: Vec::new(),
       registers_ish: HashMap::new(),
     });
     return hand_mem;
@@ -203,6 +212,11 @@ impl HandlerMemory {
 
   pub fn len(self: &HandlerMemory) -> usize {
     return self.mem.len();
+  }
+
+  pub fn has_nested_fractals(self: &HandlerMemory) -> bool {
+    let mem_sum: i64 = self.mem.iter().sum();
+    return mem_sum == 0;
   }
 
   pub fn new_fractal(self: &mut HandlerMemory, addr: i64) {
@@ -328,8 +342,8 @@ impl HandlerMemory {
   // returns a copy while get_fractal returns a reference
   pub fn read_fractal(self: &HandlerMemory, addr: i64) -> HandlerMemory {
     if addr < 0 {
-      // string from global or closure arguments memory
-      let out = if self.is_neg_addr_gmem(addr) {
+      // string from global memory
+      if self.is_neg_addr_gmem(addr) {
         let a = (0 - addr - 1) as usize;
         let result = &self.gmem[a..];
         let mut out: Vec<i64> = Vec::new();
@@ -337,19 +351,36 @@ impl HandlerMemory {
           let num = i64::from_ne_bytes((&result[8*i..8*i+8]).try_into().unwrap());
           out.push(num);
         }
-        out
+        let len = out.len();
+        return HandlerMemory {
+          gmem: &self.gmem,
+          mem: out,
+          closure_args: vec![0; CLOSURE_ARG_MEM_SIZE],
+          either_closure_mem: vec![-1; CLOSURE_ARG_MEM_SIZE],
+          fractal_closure_args: Vec::new(),
+          fractal_mem: Vec::new(),
+          either_mem: vec![-1; len],
+          registers_ish: HashMap::new(),
+        }
       } else {
+        // string from closure arguments memory
         let a = (addr - CLOSURE_ARG_MEM_START) as usize;
-        self.closure_args[a..].to_vec()
-      };
-      let len = out.len();
-      return HandlerMemory {
-        gmem: &self.gmem,
-        mem: out,
-        closure_args: vec![0; CLOSURE_ARG_MEM_SIZE],
-        fractal_mem: Vec::new(),
-        either_mem: vec![-1; len],
-        registers_ish: HashMap::new(),
+        if self.either_closure_mem[a] > -1 {
+          return self.fractal_closure_args[self.either_closure_mem[a] as usize].clone();
+        } else {
+          let out = self.closure_args[a..].to_vec();
+          let len = out.len();
+          return HandlerMemory {
+            gmem: &self.gmem,
+            mem: Vec::new(),
+            closure_args: out,
+            either_closure_mem: vec![-1; len],
+            fractal_closure_args: Vec::new(),
+            fractal_mem: Vec::new(),
+            either_mem: Vec::new(),
+            registers_ish: HashMap::new(),
+          }
+        }
       }
     }
     let a = addr as usize;
@@ -378,11 +409,14 @@ impl HandlerMemory {
     }
   }
 
+  // new fractal from mem
   pub fn write_fractal_mem(self: &mut HandlerMemory, addr: i64, payload: &[i64]) {
     let arr = HandlerMemory {
       gmem: self.gmem,
       mem: payload.to_vec(),
       closure_args: vec![0; CLOSURE_ARG_MEM_SIZE],
+      either_closure_mem: vec![-1; CLOSURE_ARG_MEM_SIZE],
+      fractal_closure_args: Vec::new(),
       fractal_mem: vec![],
       either_mem: vec![-1; payload.len()],
       registers_ish: HashMap::new()
@@ -391,8 +425,15 @@ impl HandlerMemory {
   }
 
   pub fn write_fractal(self: &mut HandlerMemory, addr: i64, payload: HandlerMemory) {
-    let idx = self.fractal_mem.len() as i64;
-    self.either_mem[addr as usize] = idx;
-    self.fractal_mem.push(payload);
+    if addr < 0 && !self.is_neg_addr_gmem(addr) {
+      let a = (addr - CLOSURE_ARG_MEM_START) as usize;
+      let idx = self.fractal_closure_args.len() as i64;
+      self.either_closure_mem[a] = idx;
+      self.fractal_closure_args.push(payload);
+    } else {
+      let idx = self.fractal_mem.len() as i64;
+      self.either_mem[addr as usize] = idx;
+      self.fractal_mem.push(payload);
+    }
   }
 }
