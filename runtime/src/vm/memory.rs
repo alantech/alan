@@ -276,7 +276,6 @@ impl HandlerMemory {
 
   /// read address of string or fixed length data type and
   /// return a reference to the data and its size
-  /// TODO implement for closure argument memory
   pub fn read_either(self: &HandlerMemory, addr: i64) -> (Vec<i64>, u8) {
     if addr < 0 && self.is_neg_addr_gmem(addr) {
       panic!("Reads of undefined size do not work on global memory");
