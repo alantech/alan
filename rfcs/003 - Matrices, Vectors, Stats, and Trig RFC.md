@@ -21,7 +21,7 @@
   - [@std/matrix](tbd) YYYY-MM-DD
   - [@std/trig](https://github.com/alantech/alan/pull/137) 2020-07-24
   - [@std/stats](tbd) YYYY-MM-DD
-- [ ] Revoked/Superceded by: [RFC ###](./000 - RFC Template.md) YYYY-MM-DD
+- [x] Revoked/Superceded by: [RFC 005](./005 - Matrices Revisited RFC.md) YYYY-MM-DD
 
 ## Author(s)
 
