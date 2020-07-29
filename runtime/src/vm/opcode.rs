@@ -2110,6 +2110,217 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
 
+  // Error, Maybe, Result, Either opcodes
+  cpu!("error", |args, hand_mem, _| {
+    let pascal_string = hand_mem.read_fractal_mem(args[0]);
+    hand_mem.write_fractal_mem(args[2], &pascal_string);
+    None
+  });
+  cpu!("noerr", |args, hand_mem, _| {
+    let empty_string = vec![0i64];
+    hand_mem.write_fractal_mem(args[2], &empty_string);
+    None
+  });
+  cpu!("errorstr", |args, hand_mem, _| {
+    let pascal_string = hand_mem.read_fractal_mem(args[0]);
+    hand_mem.write_fractal_mem(args[2], &pascal_string);
+    None
+  });
+  cpu!("someM", |args, hand_mem, _| {
+    hand_mem.new_fractal(args[2]);
+    hand_mem.push_fractal_fixed(args[2], 1i64);
+    let val_size = hand_mem.read_fixed(args[1]);
+    if val_size == 0 {
+      let val = hand_mem.read_fractal(args[0]);
+      hand_mem.push_nested_fractal(args[2], val);
+    } else {
+      let val = hand_mem.read_fixed(args[0]);
+      hand_mem.push_fractal_fixed(args[2], val);
+    }
+    None
+  });
+  cpu!("noneM", |args, hand_mem, _| {
+    hand_mem.new_fractal(args[2]);
+    hand_mem.push_fractal_fixed(args[2], 0i64);
+    None
+  });
+  cpu!("isSome", |args, hand_mem, _| {
+    hand_mem.copy_from(args[0], args[2], 0);
+    None
+  });
+  cpu!("isNone", |args, hand_mem, _| {
+    let arr = hand_mem.get_fractal(args[0]);
+    let val = arr.read_fixed(0);
+    hand_mem.write_fixed(args[2], if val == 0i64 { 1i64 } else { 0i64 });
+    None
+  });
+  cpu!("getOrM", |args, hand_mem, _| {
+    let arr = hand_mem.get_fractal(args[0]);
+    let val = arr.read_fixed(0);
+    if val == 1i64 {
+      hand_mem.copy_from(args[0], args[2], 1);
+    } else {
+      if args[1] < 0 {
+        let val = hand_mem.read_fixed(args[1]);
+        hand_mem.write_fixed(args[2], val);
+      } else {
+        let (data, size) = hand_mem.read_either(args[1]);
+        if size == 0 {
+          hand_mem.write_fractal_mem(args[2], &data);
+        } else {
+          hand_mem.write_fixed(args[2], data[0]);
+        }
+      }
+    }
+    None
+  });
+  cpu!("okR", |args, hand_mem, _| {
+    hand_mem.new_fractal(args[2]);
+    hand_mem.push_fractal_fixed(args[2], 1i64);
+    let val_size = hand_mem.read_fixed(args[1]);
+    if val_size == 0 {
+      let val = hand_mem.read_fractal(args[0]);
+      hand_mem.push_nested_fractal(args[2], val);
+    } else {
+      let val = hand_mem.read_fixed(args[0]);
+      hand_mem.push_fractal_fixed(args[2], val);
+    }
+    None
+  });
+  cpu!("err", |args, hand_mem, _| {
+    hand_mem.new_fractal(args[2]);
+    hand_mem.push_fractal_fixed(args[2], 0i64);
+    let val = hand_mem.read_fractal(args[0]);
+    hand_mem.push_nested_fractal(args[2], val);
+    None
+  });
+  cpu!("isOk", |args, hand_mem, _| {
+    hand_mem.copy_from(args[0], args[2], 0);
+    None
+  });
+  cpu!("isErr", |args, hand_mem, _| {
+    let arr = hand_mem.get_fractal(args[0]);
+    let val = arr.read_fixed(0);
+    hand_mem.write_fixed(args[2], if val == 0i64 { 1i64 } else { 0i64 });
+    None
+  });
+  cpu!("getOrR", |args, hand_mem, _| {
+    let arr = hand_mem.get_fractal(args[0]);
+    let val = arr.read_fixed(0);
+    if val == 1i64 {
+      hand_mem.copy_from(args[0], args[2], 1);
+    } else {
+      if args[1] < 0 {
+        let val = hand_mem.read_fixed(args[1]);
+        hand_mem.write_fixed(args[2], val);
+      } else {
+        let (data, size) = hand_mem.read_either(args[1]);
+        if size == 0 {
+          hand_mem.write_fractal_mem(args[2], &data);
+        } else {
+          hand_mem.write_fixed(args[2], data[0]);
+        }
+      }
+    }
+    None
+  });
+  cpu!("getErr", |args, hand_mem, _| {
+    let arr = hand_mem.get_fractal(args[0]);
+    let val = arr.read_fixed(0);
+    if val == 0i64 {
+      hand_mem.copy_from(args[0], args[2], 1);
+    } else {
+      if args[1] < 0 {
+        let val = hand_mem.read_fixed(args[1]);
+        hand_mem.write_fixed(args[2], val);
+      } else {
+        let (data, size) = hand_mem.read_either(args[1]);
+        if size == 0 {
+          hand_mem.write_fractal_mem(args[2], &data);
+        } else {
+          hand_mem.write_fixed(args[2], data[0]);
+        }
+      }
+    }
+    None
+  });
+  cpu!("mainE", |args, hand_mem, _| {
+    hand_mem.new_fractal(args[2]);
+    hand_mem.push_fractal_fixed(args[2], 1i64);
+    let val_size = hand_mem.read_fixed(args[1]);
+    if val_size == 0 {
+      let val = hand_mem.read_fractal(args[0]);
+      hand_mem.push_nested_fractal(args[2], val);
+    } else {
+      let val = hand_mem.read_fixed(args[0]);
+      hand_mem.push_fractal_fixed(args[2], val);
+    }
+    None
+  });
+  cpu!("altE", |args, hand_mem, _| {
+    hand_mem.new_fractal(args[2]);
+    hand_mem.push_fractal_fixed(args[2], 0i64);
+    let val_size = hand_mem.read_fixed(args[1]);
+    if val_size == 0 {
+      let val = hand_mem.read_fractal(args[0]);
+      hand_mem.push_nested_fractal(args[2], val);
+    } else {
+      let val = hand_mem.read_fixed(args[0]);
+      hand_mem.push_fractal_fixed(args[2], val);
+    }
+    None
+  });
+  cpu!("isMain", |args, hand_mem, _| {
+    hand_mem.copy_from(args[0], args[2], 0);
+    None
+  });
+  cpu!("isAlt", |args, hand_mem, _| {
+    let arr = hand_mem.get_fractal(args[0]);
+    let val = arr.read_fixed(0);
+    hand_mem.write_fixed(args[2], if val == 0i64 { 1i64 } else { 0i64 });
+    None
+  });
+  cpu!("mainOr", |args, hand_mem, _| {
+    let arr = hand_mem.get_fractal(args[0]);
+    let val = arr.read_fixed(0);
+    if val == 1i64 {
+      hand_mem.copy_from(args[0], args[2], 1);
+    } else {
+      if args[1] < 0 {
+        let val = hand_mem.read_fixed(args[1]);
+        hand_mem.write_fixed(args[2], val);
+      } else {
+        let (data, size) = hand_mem.read_either(args[1]);
+        if size == 0 {
+          hand_mem.write_fractal_mem(args[2], &data);
+        } else {
+          hand_mem.write_fixed(args[2], data[0]);
+        }
+      }
+    }
+    None
+  });
+  cpu!("altOr", |args, hand_mem, _| {
+    let arr = hand_mem.get_fractal(args[0]);
+    let val = arr.read_fixed(0);
+    if val == 0i64 {
+      hand_mem.copy_from(args[0], args[2], 1);
+    } else {
+      if args[1] < 0 {
+        let val = hand_mem.read_fixed(args[1]);
+        hand_mem.write_fixed(args[2], val);
+      } else {
+        let (data, size) = hand_mem.read_either(args[1]);
+        if size == 0 {
+          hand_mem.write_fractal_mem(args[2], &data);
+        } else {
+          hand_mem.write_fixed(args[2], data[0]);
+        }
+      }
+    }
+    None
+  });
+
   cpu!("emit", |args, hand_mem, _| {
     let event = EventEmit {
       id: args[0],

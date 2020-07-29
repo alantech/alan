@@ -450,9 +450,28 @@ export class Type {
     float64: new Type("float64", true),
     bool: new Type("bool", true),
     string: new Type("string", true),
-    Error: new Type("Error", true, false, {
-      message: new Type("string", true, true),
-      code: new Type("int64", true, true),
+    "Error": new Type("Error", true, false, {
+      msg: new Type("string", true, true),
+    }),
+    "Maybe": new Type("Maybe", true, false, {
+      value: new Type("T", true, true),
+    }, {
+      T: 0,
+    }),
+    "Result": new Type("Result", true, false, {
+      value: new Type("T", true, true),
+      error: new Type("Error", true, false, {
+        msg: new Type("string", true, true),
+      }),
+    }, {
+      T: 0,
+    }),
+    "Either": new Type("Either", true, false, {
+      main: new Type("T", true, true),
+      alt: new Type("U", true, true),
+    }, {
+      T: 0,
+      U: 1,
     }),
     "Array": new Type("Array", true, false, {
       records: new Type("V", true, true),
