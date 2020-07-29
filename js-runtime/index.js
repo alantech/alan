@@ -236,6 +236,7 @@ module.exports = {
   indarrf:(arr, val) => arr.indexOf(val),
   indarrv:(arr, val) => arr.indexOf(val),
   join:   (arr, sep) => arr.join(sep),
+  map:    (arr, fn) => arr.map(fn),
 
   // Map opcodes TODO after maps are figured out
 

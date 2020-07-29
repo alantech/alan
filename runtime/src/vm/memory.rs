@@ -27,11 +27,13 @@ pub struct HandlerMemory {
   /// data is in mem, otherwise it's mapping to the index in fractal_mem that houses the relevant
   /// data.
   either_mem: Vec<i64>,
-  either_closure_mem: Vec<i64>,
+  pub either_closure_mem: Vec<i64>,
   /// Pointers to nested fractal HandlerMemory. Each is represented as a vector of up to 3 sequential addresses.
   /// These are not quite registers since they are not used by opcodes directly and they
   /// don't store the data itself, but an address to the data.
   registers_ish: HashMap<i64, Vec<i64>>,
+  /// Temporary hack
+  pub is_fixed: bool,
 }
 
 impl fmt::Display for HandlerMemory {
@@ -90,6 +92,7 @@ impl HandlerMemory {
       either_closure_mem: vec![-1; CLOSURE_ARG_MEM_SIZE],
       gmem: curr_hand_mem.gmem,
       registers_ish: HashMap::new(),
+      is_fixed: false,
     });
   }
 
@@ -105,6 +108,7 @@ impl HandlerMemory {
         fractal_closure_args: Vec::new(),
         either_mem: vec![-1; mem_size],
         registers_ish: HashMap::new(),
+        is_fixed: false,
       }
     } else {
       payload_mem.unwrap()
@@ -122,6 +126,7 @@ impl HandlerMemory {
       either_closure_mem: vec![-1; CLOSURE_ARG_MEM_SIZE],
       fractal_closure_args: Vec::new(),
       registers_ish: HashMap::new(),
+      is_fixed: false,
     });
     return hand_mem;
   }
@@ -280,6 +285,15 @@ impl HandlerMemory {
     if addr < 0 && self.is_neg_addr_gmem(addr) {
       panic!("Reads of undefined size do not work on global memory");
     }
+    /*if !self.is_neg_addr_gmem(addr) {
+      return if self.either_closure_mem[(addr - CLOSURE_ARG_MEM_START) as usize] > -1 {
+        let var = self.read_fractal_mem(addr);
+        (var, 0)
+      } else {
+        // Nope, it's fixed data. We can safely read 8 bytes for all of the fixed types
+        (vec![self.read_fixed(addr)], 8)
+      };
+    }*/
     // test if the data read is itself a string/array
     return if self.either_mem[addr as usize] > -1 {
       let var = self.read_fractal_mem(addr);
@@ -362,6 +376,7 @@ impl HandlerMemory {
           fractal_mem: Vec::new(),
           either_mem: vec![-1; len],
           registers_ish: HashMap::new(),
+          is_fixed: false,
         }
       } else {
         // string from closure arguments memory
@@ -380,6 +395,7 @@ impl HandlerMemory {
             fractal_mem: Vec::new(),
             either_mem: Vec::new(),
             registers_ish: HashMap::new(),
+            is_fixed: false,
           }
         }
       }
@@ -420,7 +436,8 @@ impl HandlerMemory {
       fractal_closure_args: Vec::new(),
       fractal_mem: vec![],
       either_mem: vec![-1; payload.len()],
-      registers_ish: HashMap::new()
+      registers_ish: HashMap::new(),
+      is_fixed: false,
     };
     self.write_fractal(addr, arr);
   }

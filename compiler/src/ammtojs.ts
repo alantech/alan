@@ -38,6 +38,8 @@ const functionbodyToJsText = (fnbody: LPNode, indent: string) => {
       const name = emit.get('variable').t
       const arg = emit.has('value') ? emit.get('value').get('variable').t : 'undefined'
       outText += `r.emit('${name}', ${arg})\n`
+    } else if (statement.has('exits')) {
+      outText += `${statement.get('exits').t.trim()}\n`
     }
   }
   return outText
@@ -46,7 +48,15 @@ const functionbodyToJsText = (fnbody: LPNode, indent: string) => {
 const assignableToJsText = (assignable: LPNode, indent: string) => {
   let outText = ""
   if (assignable.has('functions')) {
-    outText += '() => {\n' // All assignable functions/closures take no arguments
+    const args = assignable.get('functions').get('args')
+    const argnames = []
+    for (const arg of args.get(0).getAll()) {
+      argnames.push(arg.get('arg').get('variable').t)
+    }
+    if (args.get(1)) {
+      argnames.push(args.get(1).get('arg').get('variable').t)
+    }
+    outText += `(${argnames.join(', ')}) => {\n`
     outText += functionbodyToJsText(assignable.get('functions').get('functionbody'), indent + "  ")
     outText += indent + '  }' // End this closure
   } else if (assignable.has('calls')) {
