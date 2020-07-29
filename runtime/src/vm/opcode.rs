@@ -9,12 +9,13 @@ use std::str;
 use std::time::Duration;
 
 use byteorder::{ByteOrder, LittleEndian};
+use rayon::prelude::*;
 use once_cell::sync::Lazy;
 use tokio::time::delay_for;
 use regex::Regex;
 
 use crate::vm::event::{EventEmit, HandlerFragment};
-use crate::vm::memory::HandlerMemory;
+use crate::vm::memory::{CLOSURE_ARG_MEM_START, HandlerMemory};
 
 // type aliases
 /// Futures implement an Unpin marker that guarantees to the compiler that the future will not move while it is running
@@ -1834,7 +1835,51 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     hand_mem.new_fractal(args[2]);
     None
   });
-  // Map opcodes TODO after maps are implemented
+  unpred_cpu!("map", |args, hand_mem, frag| {
+    let arr = hand_mem.get_fractal(args[0]);
+    let len = arr.len() as i64;
+    let instructions = frag.get_closure_instructions(args[1]);
+    // array of potentially many levels of nested fractals
+    let output: Vec<HandlerMemory> = (0..len).into_par_iter().map_with(instructions, |ins, idx| {
+      let mut mem = arr.clone();
+      // array element is $1 argument of the closure memory space
+      if !mem.has_nested_fractals() {
+        // this could be a string or fixed data type
+        let val = mem.read_fixed(idx);
+        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
+      } else {
+        // more nested arrays
+        let arr_el = mem.read_fractal(idx);
+        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
+      }
+      ins.iter().for_each(|i| {
+        // TODO implement for async_functions. can tokio be called within rayon?
+        let func = i.opcode.func.unwrap();
+        // TODO maybe emit event, but what if multiple are emitted?
+        let _event = func(&i.args, &mut mem, &mut frag.clone());
+      });
+      // return address is $0 argument of the closure memory space
+      if mem.either_closure_mem[0] > -1 {
+        let res = mem.read_fractal(CLOSURE_ARG_MEM_START);
+        return res;
+      } else {
+        let val = mem.read_fixed(CLOSURE_ARG_MEM_START);
+        let mut res = HandlerMemory::new(None, 1);
+        res.write_fixed(0, val);
+        res.is_fixed = true;
+        return res;
+      }
+    }).collect();
+    hand_mem.new_fractal(args[2]);
+    for f in output {
+      if f.is_fixed {
+        hand_mem.push_fractal_fixed(args[2], f.read_fixed(0));
+      } else {
+        hand_mem.push_nested_fractal(args[2], f);
+      }
+    }
+    None
+  });
 
   // Ternary opcodes
   unpred_cpu!("condfn", |args, hand_mem, frag| {

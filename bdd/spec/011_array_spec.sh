@@ -211,6 +211,41 @@ Hello, World!"
     End
   End
 
+  Describe "map function"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+
+        on start {
+          const count = [1, 2, 3, 4, 5] // Ah, ah, ahh!
+          const byTwos = count.map(fn (n: int64): int64 = n * 2)
+          count.map(fn (n: int64) = toString(n)).join(', ').print()
+          byTwos.map(fn (n: int64) = toString(n)).join(', ').print()
+          emit exit 0
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    MAPOUTPUT="1, 2, 3, 4, 5
+2, 4, 6, 8, 10"
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "$MAPOUTPUT"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
+      The output should eq "$MAPOUTPUT"
+    End
+  End
+
   Describe "everything else ;)"
     before() {
       # TODO: sourceToAll

@@ -103,6 +103,16 @@ impl EventHandler {
   pub fn get_fragment(self: &EventHandler, idx: usize) -> &Vec<Instruction> {
     return self.fragments.get(idx).unwrap();
   }
+
+  pub fn get_all_instructions(self: &EventHandler) -> Vec<&Instruction> {
+    let mut result = vec![];
+    for frag in &self.fragments {
+      for ins in frag {
+        result.push(ins);
+      }
+    }
+    return result;
+  }
 }
 
 /// Identifies an exact fragment of an event handler
@@ -116,8 +126,6 @@ struct HandlerFragmentID {
 /// Identifies the fragment of an event handler
 #[derive(Clone)]
 pub struct HandlerFragment {
-  /// reference to the static program definition
-  pgm: &'static Program,
   /// handler stack for other handlers sequentially running within itself.
   /// Required IDs to identify the event handler placed into a Vec
   handlers: Vec<HandlerFragmentID>,
@@ -134,9 +142,8 @@ impl HandlerFragmentID {
 }
 
 impl HandlerFragment {
-  pub fn new(pgm: &'static Program, event_id: i64, handler_idx: usize) -> HandlerFragment {
+  pub fn new(event_id: i64, handler_idx: usize) -> HandlerFragment {
     return HandlerFragment {
-      pgm,
       handlers: vec!(HandlerFragmentID {
         event_id,
         handler_idx,
@@ -145,16 +152,24 @@ impl HandlerFragment {
     }
   }
 
+  pub fn get_closure_instructions(self: &HandlerFragment, event_id: i64) -> Vec<&Instruction> {
+    let handlers = Program::global().event_handlers.get(&event_id).unwrap();
+    assert_eq!(handlers.len(), 1);
+    let handler: &EventHandler = handlers.get(0).unwrap();
+    assert_eq!(Program::global().event_pls.get(&event_id).unwrap(), &0);
+    return handler.get_all_instructions();
+  }
+
   pub fn get_instruction_fragment(self: &mut HandlerFragment) -> &'static Vec<Instruction> {
     let hand_id = self.handlers.get_mut(0).unwrap();
-    let handlers = self.pgm.event_handlers.get(&hand_id.event_id).unwrap();
+    let handlers = Program::global().event_handlers.get(&hand_id.event_id).unwrap();
     let handler: &EventHandler = handlers.get(hand_id.handler_idx).unwrap();
     return handler.get_fragment(hand_id.fragment_idx.unwrap());
   }
 
   pub fn get_next_fragment(mut self) -> Option<HandlerFragment> {
     let hand_id = self.handlers.get_mut(0).unwrap();
-    let handlers = self.pgm.event_handlers.get(&hand_id.event_id).unwrap();
+    let handlers = Program::global().event_handlers.get(&hand_id.event_id).unwrap();
     let handler: &EventHandler = handlers.get(hand_id.handler_idx).unwrap();
     let last_frag_idx = handler.last_frag_idx();
     return if hand_id.fragment_idx.is_some() && last_frag_idx <= hand_id.fragment_idx.unwrap() {
@@ -172,7 +187,7 @@ impl HandlerFragment {
 
   pub fn insert_subhandler(self: &mut HandlerFragment, event_id: i64) {
     let hand_id = self.handlers.get_mut(0).unwrap();
-    let handlers = self.pgm.event_handlers.get(&hand_id.event_id).unwrap();
+    let handlers = Program::global().event_handlers.get(&hand_id.event_id).unwrap();
     let handler: &EventHandler = handlers.get(hand_id.handler_idx).unwrap();
     let last_frag_idx = handler.last_frag_idx();
     if hand_id.fragment_idx.is_some() && last_frag_idx <= hand_id.fragment_idx.unwrap() {

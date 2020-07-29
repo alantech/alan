@@ -12,8 +12,6 @@ use crate::vm::memory::HandlerMemory;
 use crate::vm::program::{PROGRAM, Program};
 
 pub struct VM {
-  /// Bytecode program to run
-  pgm: &'static Program,
   /// chan for the events queue
   event_tx: UnboundedSender<EventEmit>,
   event_rx: UnboundedReceiver<EventEmit>,
@@ -25,12 +23,11 @@ pub struct VM {
 }
 
 impl VM {
-  pub fn new(pgm: &'static Program) -> VM {
+  pub fn new() -> VM {
     let (event_tx, event_rx) = unbounded_channel();
     let (frag_tx, frag_rx) = unbounded_channel();
     return VM {
       ins_sched: InstructionScheduler::new(event_tx.clone(), frag_tx),
-      pgm,
       event_tx,
       event_rx,
       frag_rx,
@@ -52,11 +49,11 @@ impl VM {
 
   async fn sched_event(self: &mut VM, event: EventEmit) {
     // schedule 1st fragment of each handler of this event
-    let handlers = self.pgm.event_handlers.get(&event.id).unwrap();
+    let handlers = Program::global().event_handlers.get(&event.id).unwrap();
     let mut futures = vec![];
     for (i, hand) in handlers.iter().enumerate() {
       // first fragment of this handler
-      let frag = HandlerFragment::new(self.pgm, event.id, i);
+      let frag = HandlerFragment::new(event.id, i);
       // memory frag representing the memory for each handler call
       let hand_mem = HandlerMemory::new(event.payload.clone(), hand.mem_req);
       futures.push(self.ins_sched.sched_frag(frag, hand_mem));
@@ -101,7 +98,7 @@ pub fn exec(fp: &str) {
       eprintln!("Failed to load bytecode");
       std::process::exit(1);
     }
-    let mut vm = VM::new(Program::global());
+    let mut vm = VM::new();
     let start = EventEmit { id: i64::from(BuiltInEvents::START), payload: None };
     vm.add(start);
     vm.run().await;

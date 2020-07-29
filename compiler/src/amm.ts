@@ -141,11 +141,15 @@ const functionbody = NamedAnd.build({
   statements,
   closeCurly,
 })
+const arg = NamedAnd.build({ variable, a: optblank, colon, b: optblank, fulltypename, })
 const functions = NamedAnd.build({
   fn,
   blank,
   openParen,
-  arg: ZeroOrOne.build(NamedAnd.build({ variable, a: optblank, colon, b: optblank, fulltypename, })),
+  args: And.build([
+    ZeroOrMore.build(NamedAnd.build({ arg, a: optblank, comma, b: optblank })),
+    ZeroOrOne.build(NamedAnd.build({ arg, optblank, }))
+  ]),
   closeParen,
   a: optblank,
   colon,
