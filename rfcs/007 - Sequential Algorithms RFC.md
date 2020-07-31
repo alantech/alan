@@ -63,7 +63,20 @@ fn recurse(seq: Seq, recursiveFn: function, arg: any): anythingElse
 fn generator(seq: Seq, generatorFn: function, initialState: any): ArrayLike<anythingElse>
 ```
 
+### next
+
 `next` is the simplest to explain: Each time you call it, it returns the current `counter` value wrapped in a Result and then increments it. If you call past the limit, it returns an Error Result.
+
+Example:
+
+```ln
+const s = seq(2)
+print(s.next()) // '0'
+print(s.next()) // '1'
+print(s.next()) // 'error: sequence out-of-bounds'
+```
+
+### each
 
 `each` is almost as simple: It simply runs the provided function the however many times is in the `limit` of the `seq` instance. the `func` function must be the following signature:
 
@@ -74,6 +87,14 @@ fn func(i: int64): void
 
 a pure side-effect function that may or may not take the current iteration counter.
 
+Example:
+
+```ln
+seq(10).each(print) // prints 0 to 9 on new lines
+```
+
+### while
+
 `while` runs the `bodyFn` *up to* the `limit` number of times, but can abort early if `condFn` returns `false`. The signatures of these two functions must match:
 
 ```ln
@@ -81,11 +102,38 @@ fn condFn(): bool
 fn bodyFn(): void
 ```
 
+Example:
+
+```ln
+let keepGoing = true
+let sum = 1
+seq(100).while(fn = keepGoing, fn {
+  sum = sum + sum
+  if sum > 10 {
+    keepGoing = false
+  }
+})
+```
+
+### doWhile
+
 `doWhile` always runs at least once (unless the `seq` has reached its `limit` or it was constructed with an initial `limit` of `0`) and uses the return value of the function to determine if it should continue or not, so its `bodyFn` has the following signature:
 
 ```ln
 fn bodyFn(): bool
 ```
+
+Example:
+
+```ln
+let sum = 1
+seq(100).doWhile(fn {
+  sum = sum + sum
+  return sum < 10
+})
+```
+
+### recurse
 
 `recurse` allows recursive functions to be defined in `alan`. This is impossible in `alan`'s grammar, so what is done is special trickery to make it possible. The `recursiveFn` has the following function signature:
 
@@ -101,6 +149,29 @@ const recursiveResult = self.recurse(someNewArg)
 
 `Self` is another opaque type that the runtime can use to keep track of the function to be called recursively and how deep the recursion has gone so far. The `recursiveFn` *must* wrap its value in a `Result` type because `alan` may interject and bubble up an error of the recursion limit is reached.
 
+Example:
+
+```ln
+fn fibonacciRecursive(self: Self, i: int64): Result<int64> {
+  if i < 2 {
+    return some(1)
+  } else {
+    const prev = self.recurse(i - 1)
+    const prevPrev = self.recurse(i - 2)
+    if prev.isErr() {
+      return prev
+    }
+    if prevPrev.isErr() {
+      return prevPrev
+    }
+    return some((prev || 1) + (prevPrev || 1))
+  }
+}
+print(seq(100).recurse(fibonacciRecursive, 8))
+```
+
+### generator
+
 The "final" function in `@std/seq` is `generator`, which allows one to define a generator function for returning a lazily-generated array of values. It returns an `ArrayLike` type instead of an `Array` type so that laziness is respected, and it has all of the functions for treating it like an `Array` to also tag along (hence why `generator` itself isn't really the "final" function), plus it's own form of `next` that executes the `generatorFn` and returns its wrapped value, or an error if past the limit.
 
 The function signature of `generatorFn` looks like:
@@ -110,6 +181,22 @@ fn generatorFn(state: any): anythingElse
 ```
 
 The `state` is a mutable argument passed in that the generator can use to keep track of any internal state it wants, with the first call given the `initialState` value.
+
+Example:
+
+```ln
+const fibonacciSequence = seq(10).generator(fn (state: Array<int64>): int64 {
+  const newVal = state[0] + state[1] || 1
+  state.shift()
+  state.push(newVal)
+  if newVal == 0 {
+    return 1
+  } else {
+    return newVal
+  }
+}, [0, 0])
+fibonacciSequence.each(print) // prints 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, one on each line
+```
 
 ### Alternatives Considered
 
@@ -224,13 +311,13 @@ and so on.
 
 Turning it into syntax can make it look *much* more natural to those coming from other imperative languages, with only the `limit <number>` syntax being the addition needed for the runtime to be able to calculate an upper bound on the runtime and have a guarantee that a value will eventually be returned. But this approach has been rejected for the following reasons:
 
-1. It is a *lot* of syntactic sugar, and introduces a lot of new reserved words to support it, which complicates the compiler and the mental overhead of writing in the language needing to memorize this stuff for any source file you're looking at.
-2. Any code written with this syntax is *guaranteed* to be sequential on a single CPU, and due to the nondeterminism on the number of runs, more difficult to properly schedule work around. Having built-in syntax for it will encourage its use and keep this syntax normalized amongst developers, when it really should be seen as a tool of last resort in an increasingly multicore computing world.
+1. Any code written with this syntax is *guaranteed* to be sequential on a single CPU, and due to the nondeterminism on the number of runs, more difficult to properly schedule work around. Having built-in syntax for it will encourage its use and keep this syntax normalized amongst developers, when it really should be seen as a tool of last resort in an increasingly multicore computing world.
+2. It is a *lot* of syntactic sugar, and introduces a lot of new reserved words to support it, which complicates the compiler and the mental overhead of writing in the language needing to memorize this stuff for any source file you're looking at.
 3. It is hoped that the community decides to prefer default linting rules that produces lint warnings (or errors?) on usage of `@std/seq` at all -- ideally anything that needs this functionality is wrapping it up in a nice-to-use library, like a [fast inverse square root](https://en.wikipedia.org/wiki/Fast_inverse_square_root) estimator using it, and "regular" code can ignore it. It is far less likely that such a linting rule would be agreed upon in the community if these were built-in keywords and statements in the language (though [this has happened in the past](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/with), but let's not try to tempt fate here?) 
 
 ## Affected Components
 
-The proposed syntax should require no changes to the compiler excepting the definition of new opcodes to support it. The standard library code would be written to use these new opcodes, and the runtimes would need to implement the opcodes.
+The proposed syntax should require no changes to the compiler excepting the definition of new opcodes to support it. The standard library code would be written to use these new opcodes, and the runtimes would need to implement the opcodes. The `ArrayLike` type that the `generator` function would output needs to have duplicate functions for all of the built-in functions that `Array` has so it can be used in similar circumstances (though without the parallelism possible).
 
 ## Expected Timeline
 
