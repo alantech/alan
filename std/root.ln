@@ -262,7 +262,7 @@ export fn wait(n: int64) = waitop(n)
 export fn concat(a: string, b: string) = catstr(a, b)
 export split // opcode with signature `fn split(str: string, spl: string): Array<string>`
 export fn repeat(s: string, n: int64) = repstr(s, n)
-export fn template(str: string, map: Map<string, string>) = templ(str, map)
+// export fn template(str: string, map: Map<string, string>) = templ(str, map)
 export matches // opcode with signature `fn matches(s: string, t: string): bool`
 export fn index(s: string, t: string) = indstr(s, t)
 export fn length(s: string) = lenstr(s)
@@ -321,11 +321,75 @@ export find // opcode with signature `fn find(arr: Array<any>, cb: function): an
 export every // opcode with signature `fn every(arr: Array<any>, cb: function): bool`
 export some // opcode with signature `fn some(arr: Array<any>, cb: function): bool`
 export join // opcode with signature `fn join(arr: Array<string>, sep: string): string`
+export fn set(arr: Array<any>, idx: int64, val: any) {
+  if (idx < 0) | (idx > arr.length()) {
+    return err('array out-of-bounds access')
+  } else {
+    copytov(arr, idx, val)
+    return some(arr)
+  }
+}
+export fn set(arr: Array<int8>, idx: int64, val: int8) {
+  if (idx < 0) | (idx > arr.length()) {
+    return err('array out-of-bounds access')
+  } else {
+    copytof(arr, idx, val)
+    return some(arr)
+  }
+}
+export fn set(arr: Array<int16>, idx: int64, val: int16) {
+  if (idx < 0) | (idx > arr.length()) {
+    return err('array out-of-bounds access')
+  } else {
+    copytof(arr, idx, val)
+    return some(arr)
+  }
+}
+export fn set(arr: Array<int32>, idx: int64, val: int32) {
+  if (idx < 0) | (idx > arr.length()) {
+    return err('array out-of-bounds access')
+  } else {
+    copytof(arr, idx, val)
+    return some(arr)
+  }
+}
+export fn set(arr: Array<int64>, idx: int64, val: int64) {
+  if (idx < 0) | (idx > arr.length()) {
+    return err('array out-of-bounds access')
+  } else {
+    copytof(arr, idx, val)
+    return some(arr)
+  }
+}
+export fn set(arr: Array<float32>, idx: int64, val: float32) {
+  if (idx < 0) | (idx > arr.length()) {
+    return err('array out-of-bounds access')
+  } else {
+    copytof(arr, idx, val)
+    return some(arr)
+  }
+}
+export fn set(arr: Array<float64>, idx: int64, val: float64) {
+  if (idx < 0) | (idx > arr.length()) {
+    return err('array out-of-bounds access')
+  } else {
+    copytof(arr, idx, val)
+    return some(arr)
+  }
+}
+export fn set(arr: Array<bool>, idx: int64, val: bool) {
+  if (idx < 0) | (idx > arr.length()) {
+    return err('array out-of-bounds access')
+  } else {
+    copytof(arr, idx, val)
+    return some(arr)
+  }
+}
 
 // Map functions
-export keyVal // opcode with signature `fn keyVal(map: Map<any, any>): Array<KeyVal<any, any>>`
-export keys // opcode with signature `fn keys(map: Map<any, any>): Array<any>`
-export values // opcode with signature `fn values(map: Map<any, any>): Array<any>`
+// export keyVal // opcode with signature `fn keyVal(map: Map<any, any>): Array<KeyVal<any, any>>`
+// export keys // opcode with signature `fn keys(map: Map<any, any>): Array<any>`
+// export values // opcode with signature `fn values(map: Map<any, any>): Array<any>`
 
 // Ternary functions
 export fn pair(trueval: any, falseval: any) = new Array<any> [ trueval, falseval ]
@@ -416,7 +480,7 @@ export infix repeat as * precedence 3
 export infix div as / precedence 3
 export infix split as / precedence 3
 export infix mod as % precedence 3
-export infix template as % precedence 3
+// export infix template as % precedence 3
 export infix pow as ** precedence 4
 export infix and as & precedence 3
 export infix and as && precedence 3
