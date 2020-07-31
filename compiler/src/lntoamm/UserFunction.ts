@@ -576,7 +576,7 @@ class UserFunction implements Fn {
     }
     const fn = this.maybeTransform(inputTypes)
     for (const s of fn.statements) {
-      Microstatement.fromStatement(s, microstatements)
+      Microstatement.fromStatement(s, microstatements, scope)
     }
     // Delete `REREF`s except a `return` statement's `REREF` to make sure it doesn't interfere with
     // the outer scope (if it has the same variable name defined, for instance)

@@ -296,7 +296,21 @@ module.exports = {
   isOk:     a => a.isOk,
   isErr:    a => !a.isOk,
   getOrR:   (a, b) => a.isOk ? a.val : b,
+  getR:     (a) => {
+    if (a.isOk) {
+      return a.val
+    } else {
+      throw new Error('runtime error: illegal access')
+    }
+  },
   getErr:   (a, b) => a.isOk ? b : a.error,
+  resfrom:  (arr, ind) => ind >= 0 && ind < arr.length ? {
+    isOk: true,
+    val: arr[ind],
+  } : {
+    isOk: false,
+    error: 'out-of-bounds access',
+  },
   mainE:     a => ({
     isMain: true,
     main: a,

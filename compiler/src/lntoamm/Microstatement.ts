@@ -277,7 +277,7 @@ class Microstatement {
           }
           // Insert a `copyfrom` opcode.
           const opcodes = require('./opcodes').default
-          opcodes.exportScope.get('copyfrom')[0].microstatementInlining(
+          opcodes.exportScope.get('resfrom')[0].microstatementInlining(
             [original.outputName, lookup.outputName],
             scope,
             microstatements,
@@ -288,7 +288,10 @@ class Microstatement {
           original = microstatements[microstatements.length - 1]
           // Now we do something odd, but correct here; we need to replace the `outputType` from
           // `any` to the type that was actually copied so function resolution continues to work
-          original.outputType = Object.values(arrayRecord.outputType.properties)[0]
+          original.outputType = Type.builtinTypes.Result.solidify(
+            [Object.values(arrayRecord.outputType.properties)[0].typename],
+            scope,
+          )
         }
       }
     }
@@ -1224,7 +1227,7 @@ class Microstatement {
       UserFunction
         .dispatchFn(fnBox, realArgTypes, scope)
         .microstatementInlining(realArgNames, scope, microstatements)
-      // Set the output as the firstArg for the next chained call
+      // Set the output as the firstArg for the next chained call, if any
       firstArg = microstatements[microstatements.length - 1]
     }
   }
@@ -2008,18 +2011,32 @@ class Microstatement {
     }
   }
 
-  static fromStatement(statement: Statement, microstatements: Array<Microstatement>) {
-    if (statement.statementOrAssignableAst instanceof LnParser.StatementsContext) {
-      Microstatement.fromStatementsAst(
+  static fromStatement(
+    statement: Statement,
+    microstatements: Array<Microstatement>,
+    secondaryScope: Scope | null = null,
+  ) {
+    let actualStatement = statement
+    if (secondaryScope !== null) {
+      const newScope = new Scope(statement.scope)
+      newScope.secondaryPar = secondaryScope
+      actualStatement = new Statement(
         statement.statementOrAssignableAst,
-        statement.scope,
+        newScope,
+        statement.pure,
+      )
+    }
+    if (actualStatement.statementOrAssignableAst instanceof LnParser.StatementsContext) {
+      Microstatement.fromStatementsAst(
+        actualStatement.statementOrAssignableAst,
+        actualStatement.scope,
         microstatements
       )
     } else {
       // Otherwise it's a one-liner function
       Microstatement.fromAssignablesAst(
-        statement.statementOrAssignableAst,
-        statement.scope,
+        actualStatement.statementOrAssignableAst,
+        actualStatement.scope,
         microstatements
       )
     }

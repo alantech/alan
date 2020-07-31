@@ -14,10 +14,12 @@ type BoxSet = {
 class Scope {
   vals: BoxSet
   par: Scope | null
+  secondaryPar: Scope | null
 
   constructor(par?: Scope) {
     this.vals = {}
     this.par = par ? par : null
+    this.secondaryPar = null
   }
 
   get(name: string) {
@@ -25,7 +27,12 @@ class Scope {
       return this.vals[name]
     }
     if (!!this.par) {
-      return this.par.get(name)
+      const val = this.par.get(name)
+      if (!val && !!this.secondaryPar) {
+        return this.secondaryPar.get(name)
+      } else {
+        return val
+      }
     }
     return null
   }
