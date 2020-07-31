@@ -1496,52 +1496,11 @@ class Microstatement {
       const segment = segments[i]
       // A separator, just do nothing else this loop
       if (segment.METHODSEP()) continue
-      // An array access. This requires resolving the contents of the array access variable and then
-      // using that value to find the correct index to read from. In this particular loop, we know
-      // this is not the final array access or property access, so we need to `register` the inner
-      // value that is assumed to be an array-like blob to work with.
+      // An array access. Until the grammar definition is reworked, this will parse correctly, but
+      // it is banned in alan (due to being unable to catch and report assignment errors to arrays)
       if (segment.arrayaccess()) {
-        if (original == null || !(original instanceof Microstatement)) {
-          // This is all moot if we didn't resolve a variable to dig into
-          console.error(`${letName} cannot be found`)
-          console.error(
-            assignmentsAst.varn().getText() +
-            " on line " +
-            assignmentsAst.varn().start.line +
-            ":" +
-            assignmentsAst.varn().start.column
-          )
-          process.exit(-204)
-        }
-        const assignables = segment.arrayaccess().assignables()
-        Microstatement.fromAssignablesAst(assignables, scope, microstatements)
-        const lookup = microstatements[microstatements.length - 1]
-        // TODO: Map support, which requires figuring out if the outer memory object is an array
-        // or a map.
-        if (lookup.outputType.typename !== 'int64') {
-          console.error(`${segment.getText()} is cannot be used in an array lookup as it is not an int64`)
-          console.error(
-            assignmentsAst.varn().getText() +
-            " on line " +
-            assignmentsAst.varn().start.line +
-            ":" +
-            assignmentsAst.varn().start.column
-          )
-          process.exit(-205)
-        }
-        // Insert a `register` opcode.
-        const opcodes = require('./opcodes').default
-        opcodes.exportScope.get('register')[0].microstatementInlining(
-          [original.outputName, lookup.outputName],
-          scope,
-          microstatements,
-        )
-        // Now, we need to update the type we're working with. The nice thing about this is that as
-        // we are accessing an `Array`, the type is inside. We just need to dig into the existing
-        // type and rip out its inner type definition.
-        nestedLetType = Object.values(nestedLetType.properties)[0]
-        // Now update the `original` record to the new `register` result
-        original = microstatements[microstatements.length - 1]
+        console.error(`${segments.join('')} cannot be written to. Please use 'set' to mutate arrays and hash tables`)
+        process.exit(-204)
       }
       // If it's a varname here, then we're accessing an inner property type. We need to figure out
       // which index it is in the underlying array structure and then `register` that piece (since

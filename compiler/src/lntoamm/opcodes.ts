@@ -16,16 +16,12 @@ const addBuiltIn = (name: string) => {
 }
 ([
   'void', 'int8', 'int16', 'int32', 'int64', 'float32', 'float64', 'bool', 'string', 'function',
-  'operator', 'Error', 'Maybe', 'Result', 'Either', 'Array', 'Map', 'KeyVal',
+  'operator', 'Error', 'Maybe', 'Result', 'Either', 'Array',
 ].map(addBuiltIn))
 Type.builtinTypes['Array'].solidify(['string'], opcodeScope)
-Type.builtinTypes['Map'].solidify(['string', 'string'], opcodeScope)
 opcodeScope.put('any', new Type('any', true, false, {}, {}, null, new Interface('any')))
 opcodeScope.put('anythingElse', new Type('anythingElse', true, false, {}, {}, null, new Interface('anythingElse')))
 Type.builtinTypes['Array'].solidify(['any'], opcodeScope)
-Type.builtinTypes['Map'].solidify(['any', 'any'], opcodeScope)
-Type.builtinTypes['KeyVal'].solidify(['any', 'any'], opcodeScope)
-Type.builtinTypes['Array'].solidify(['KeyVal<any, any>'], opcodeScope)
 Type.builtinTypes['Maybe'].solidify(['any'], opcodeScope)
 Type.builtinTypes['Result'].solidify(['any'], opcodeScope)
 Type.builtinTypes['Either'].solidify(['any', 'anythingElse'], opcodeScope)

@@ -277,7 +277,7 @@ module.exports = {
   errorstr: a => a.toString(),
   someM:     a => ({
     isSome: true,
-    val: a,
+    val: JSON.parse(JSON.stringify(a)),
   }),
   noneM:     () => ({
     isSome: false,
@@ -287,7 +287,7 @@ module.exports = {
   getOrM:   (a, b) => a.isSome ? a.val : b,
   okR:      a => ({
     isOk: true,
-    val: a,
+    val: JSON.parse(JSON.stringify(a)),
   }),
   err:      a => ({
     isOk: false,
@@ -313,11 +313,11 @@ module.exports = {
   },
   mainE:     a => ({
     isMain: true,
-    main: a,
+    main: JSON.parse(JSON.stringify(a)),
   }),
   altE:      a => ({
     isMain: false,
-    alt: a,
+    alt: JSON.parse(JSON.stringify(a)),
   }),
   isMain:   a => a.isMain,
   isAlt:    a => !a.isMain,

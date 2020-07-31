@@ -130,7 +130,7 @@ true"
         on start {
           let test = new Array<int64> [ 1, 2, 3 ]
           print(test[0])
-          test[0] = 0
+          test.set(0, 0)
           print(test[0])
 
           let test2 = new Array<Foo> [
@@ -141,11 +141,12 @@ true"
               bar = false
             }
           ]
-          const test3 = test2[0] || new Foo {
+          let test3 = test2[0] || new Foo {
             bar = false
           }
           print(test3.bar)
-          test2[0].bar = false
+          test3.bar = false
+          test2.set(0, test3) // TODO: is the a better way to do nested updates?
           const test4 = test2[0] || new Foo {
             bar = true
           }
