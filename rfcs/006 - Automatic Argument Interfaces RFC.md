@@ -1,4 +1,4 @@
-# 004 - Automatic Argument Interfaces RFC
+# 006 - Automatic Argument Interfaces RFC
 
 ## Current Status
 
@@ -8,7 +8,7 @@
 
 ### Accepted
 
-YYYY-MM-DD
+2020-07-31
 
 #### Approvers
 
