@@ -88,6 +88,15 @@ export class Interface {
           const functionTypeArgType = functionType.args[i]
           if (argTypes[typeNames[i]] === functionTypeArgType) continue
           if (argTypes[typeNames[i]].originalType === functionTypeArgType) continue
+          if (
+            argTypes[typeNames[i]].originalType === functionTypeArgType.originalType &&
+            Object.values(functionTypeArgType.properties).every((prop, j) => {
+              const comparable = Object.values(argTypes[typeNames[i]].properties)[j]
+              if (prop === comparable) return true
+              if (prop.iface && prop.iface.typeApplies(comparable, scope)) return true
+              return false
+            })
+          ) continue
           if (argTypes[typeNames[i]] === typeToCheck) continue
           if (
             !!argTypes[typeNames[i]].iface &&

@@ -141,9 +141,15 @@ true"
               bar = false
             }
           ]
-          print(test2[0].bar)
+          const test3 = test2[0] || new Foo {
+            bar = false
+          }
+          print(test3.bar)
           test2[0].bar = false
-          print(test2[0].bar)
+          const test4 = test2[0] || new Foo {
+            bar = true
+          }
+          print(test4.bar)
 
           emit exit 0
         }

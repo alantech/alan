@@ -2224,6 +2224,16 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }
     None
   });
+  cpu!("getR", |args, hand_mem, _| {
+    let arr = hand_mem.get_fractal(args[0]);
+    let val = arr.read_fixed(0);
+    if val == 1i64 {
+      hand_mem.copy_from(args[0], args[2], 1);
+    } else {
+      panic!("runtime error: illegal access");
+    }
+    None
+  });
   cpu!("getErr", |args, hand_mem, _| {
     let arr = hand_mem.get_fractal(args[0]);
     let val = arr.read_fixed(0);
@@ -2241,6 +2251,50 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
           hand_mem.write_fixed(args[2], data[0]);
         }
       }
+    }
+    None
+  });
+  cpu!("resfrom", |args, hand_mem, _| {
+    // args = [arr_addr, arr_idx_addr, outer_addr]
+    // a guarded copy of data from an array to a result object
+    hand_mem.new_fractal(args[2]);
+    let inner_addr = hand_mem.read_fixed(args[1]);
+    let arr = hand_mem.get_fractal(args[0]);
+    if inner_addr >= 0 && arr.len() as i64 > inner_addr {
+      // Valid Result
+      let (data, size) = arr.read_either(inner_addr);
+      if size == 0 {
+        let inner_arr = arr.read_fractal(inner_addr);
+        hand_mem.push_fractal_fixed(args[2], 1i64);
+        hand_mem.push_nested_fractal(args[2], inner_arr);
+      } else {
+        hand_mem.push_fractal_fixed(args[2], 1i64);
+        hand_mem.push_fractal_fixed(args[2], data[0]);
+      }
+    } else {
+      // Make an Error Result
+      hand_mem.push_fractal_fixed(args[2], 0i64);
+      let error_string = "out-of-bounds access";
+      let mut out = vec![error_string.len() as i64];
+      let mut out_str_bytes = error_string.as_bytes().to_vec();
+      loop {
+        if out_str_bytes.len() % 8 != 0 {
+          out_str_bytes.push(0);
+        } else {
+          break
+        }
+      }
+      let mut i = 0;
+      loop {
+        if i < out_str_bytes.len() {
+          let str_slice = &out_str_bytes[i..i+8];
+          out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
+          i = i + 8;
+        } else {
+          break
+        }
+      }
+      hand_mem.push_nested_fractal_mem(args[2], out);
     }
     None
   });

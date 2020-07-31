@@ -329,7 +329,7 @@ export values // opcode with signature `fn values(map: Map<any, any>): Array<any
 
 // Ternary functions
 export fn pair(trueval: any, falseval: any) = new Array<any> [ trueval, falseval ]
-export fn cond(c: bool, options: Array<any>) = options[1 - c.toInt64()]
+export fn cond(c: bool, options: Array<any>) = getR(options[1 - c.toInt64()])
 export fn cond(c: bool, optional: function): void = condfn(c, optional)
 
 // "assign" function useful for hoisting assignments
@@ -377,6 +377,13 @@ export isOk // opcode with signature `fn isOk(Result<any>): bool`
 export isErr // opcode with signature `fn isErr(Result<any>: bool`
 export fn getOr(result: Result<any>, default: any) = getOrR(result, default)
 export getErr // opcode with signature `fn getErr(Result<any>, Error): Error`
+export fn toString(n: Result<Stringifiable>): string {
+  if n.isOk() {
+    return n.getR().toString()
+  } else {
+    return n.getErr(noerr()).toString()
+  }
+}
 
 export fn main(val: any) = mainE(val, 0)
 export fn main(val: int8) = mainE(val, 8)
