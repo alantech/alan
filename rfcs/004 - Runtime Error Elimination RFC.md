@@ -19,7 +19,7 @@
 - [ ] Implemented:
   - [Native Error, Maybe, Result, and Either Implementation](https://github.com/alantech/alan/pull/148) 2020-07-28
   - [Result-wrapped Array read accessors](https://github.com/alantech/alan/pull/150) 2020-07-30
-  - [Result-wrapped Array set function](tbd) YYYY-MM-DD
+  - [Result-wrapped Array set function](https://github.com/alantech/alan/pull/152) 2020-07-31
   - [Result-wrapped Math opcodes](tbd) YYYY-MM-DD
   - [Saturating Math opcodes](tbd) YYYY-MM-DD
 - [ ] Revoked/Superceded by: [RFC ###](./000 - RFC Template.md) YYYY-MM-DD
