@@ -16,7 +16,7 @@ const addBuiltIn = (name: string) => {
 }
 ([
   'void', 'int8', 'int16', 'int32', 'int64', 'float32', 'float64', 'bool', 'string', 'function',
-  'operator', 'Error', 'Maybe', 'Result', 'Either', 'Array',
+  'operator', 'Error', 'Maybe', 'Result', 'Either', 'Array', 'ExecRes',
 ].map(addBuiltIn))
 Type.builtinTypes['Array'].solidify(['string'], opcodeScope)
 opcodeScope.put('any', new Type('any', true, false, {}, {}, null, new Interface('any')))
@@ -330,7 +330,7 @@ addopcodes({
   gtef32: [{ a: t('float32'), b: t('float32'), }, t('bool')],
   gtef64: [{ a: t('float64'), b: t('float64'), }, t('bool')],
   gtestr: [{ a: t('string'), b: t('string'), }, t('bool')],
-  execop: [{ a: t('string')}, t('void')],
+  execop: [{ a: t('string')}, t('ExecRes')],
   waitop: [{ a: t('int64')}, t('void')],
   catstr: [{ a: t('string'), b: t('string'), }, t('string')],
   catarr: [{ a: t('Array<any>'), b: t('string')}, t('Array<any>')],

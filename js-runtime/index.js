@@ -327,7 +327,15 @@ module.exports = {
   // IO opcodes
   asyncopcodes: ['waitop', 'execop'],
   waitop: a => new Promise(resolve => setTimeout(resolve, a)),
-  execop: a => exec(a),
+  execop: async (cmd) => {
+    try {
+      const res = await exec(cmd)
+      const { stdout, stderr } = res
+      return [ 0, stdout, stderr ]
+    } catch (e) {
+      return [ e.signal, e.stdout, e.stderr ]
+    }
+  },
 
   // "Special" opcodes
   stdoutp: out => process.stdout.write(out),

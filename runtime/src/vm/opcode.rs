@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::future::Future;
-use std::io::{self, Write};
 use std::pin::Pin;
 use std::process::Command;
 use std::slice;
@@ -1881,7 +1880,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
 
-  // Ternary opcodes
+  // Conditional opcode
   unpred_cpu!("condfn", |args, hand_mem, frag| {
     let cond = hand_mem.read_fixed(args[0]);
     let event_id = args[1];
@@ -1896,18 +1895,82 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     unsafe {
       let pascal_string = hand_mem.read_fractal_mem(args[0]);
       let str_len = pascal_string[0] as usize;
-      let full_cmd = str::from_utf8(
-        &std::mem::transmute::<&[i64], &[u8]>(
-          &pascal_string[1..]
-        )[0..str_len]
-      ).unwrap();
+      let pascal_string_u8 = slice::from_raw_parts(pascal_string[1..].as_ptr().cast::<u8>(), str_len*8);
+      let full_cmd = str::from_utf8(&pascal_string_u8[0..str_len]).unwrap();
       let split_cmd: Vec<&str> = full_cmd.split(" ").collect();
       let output = Command::new(split_cmd[0]).args(&split_cmd[1..]).output();
+      hand_mem.new_fractal(args[2]);
       match output {
-        Err(e) => println!("Executing \"{}\" failed with: {}", full_cmd, e),
-        Ok(out) => {
-          io::stdout().write_all(&out.stdout).unwrap();
-          io::stderr().write_all(&out.stderr).unwrap();
+        Err(e) => {
+          hand_mem.push_fractal_fixed(args[2], 127);
+          hand_mem.push_nested_fractal_mem(args[2], vec![0i64]);
+          let error_string = e.to_string();
+          let mut out = vec![error_string.len() as i64];
+          let mut out_str_bytes = error_string.as_bytes().to_vec();
+          loop {
+            if out_str_bytes.len() % 8 != 0 {
+              out_str_bytes.push(0);
+            } else {
+              break
+            }
+          }
+          let mut i = 0;
+          loop {
+            if i < out_str_bytes.len() {
+              let str_slice = &out_str_bytes[i..i+8];
+              out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
+              i = i + 8;
+            } else {
+              break
+            }
+          }
+          hand_mem.push_nested_fractal_mem(args[2], out)
+        },
+        Ok(output_res) => {
+          let status_code = output_res.status.code().unwrap_or(127) as i64;
+          hand_mem.push_fractal_fixed(args[2], status_code);
+          let stdout_str = String::from_utf8(output_res.stdout).unwrap_or("".to_string());
+          let mut out = vec![stdout_str.len() as i64];
+          let mut out_str_bytes = stdout_str.as_bytes().to_vec();
+          loop {
+            if out_str_bytes.len() % 8 != 0 {
+              out_str_bytes.push(0);
+            } else {
+              break
+            }
+          }
+          let mut i = 0;
+          loop {
+            if i < out_str_bytes.len() {
+              let str_slice = &out_str_bytes[i..i+8];
+              out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
+              i = i + 8;
+            } else {
+              break
+            }
+          }
+          hand_mem.push_nested_fractal_mem(args[2], out);
+          let stderr_str = String::from_utf8(output_res.stderr).unwrap_or("".to_string());
+          let mut err = vec![stderr_str.len() as i64];
+          let mut err_str_bytes = stderr_str.as_bytes().to_vec();
+          loop {
+            if err_str_bytes.len() % 8 != 0 {
+              err_str_bytes.push(0);
+            } else {
+              break
+            }
+          }
+          let mut j = 0;
+          loop {
+            if j < err_str_bytes.len() {
+              let str_slice = &err_str_bytes[j..j+8];
+              err.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
+              j = j + 8;
+            } else {
+              break
+            }
+          }
+          hand_mem.push_nested_fractal_mem(args[2], err)
         },
       };
     }

@@ -501,6 +501,11 @@ export class Type {
       K: 0,
       V: 1,
     }),
+    ExecRes: new Type("ExecRes", false, false, {
+      exitCode: new Type("int64", true),
+      stdout: new Type("string", true),
+      stderr: new Type("string", true),
+    }),
     "function": new Type("function", true),
     operator: new Type("operator", true),
     Event: new Type("Event", true, false, {

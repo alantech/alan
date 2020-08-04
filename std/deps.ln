@@ -1,4 +1,4 @@
-from @std/app import start, print
+from @std/app import start, print, exit
 from @std/cmd import exec
 
 /**
@@ -11,14 +11,21 @@ export event install: void
 // The `add` function takes a string that describes a .git repository and install it in /dependencies
 export fn add(remote: string) {
   // TODO implement proper error handling
-  const parts = remote.split(':')
-  const repo = parts[length(parts)-1]
-  const repoParts = repo.split('.git')
-  const repoName = repoParts[0]
-  const dest = '/dependencies/' + repoName
-  exec('rm -rf .' + dest)
-  exec('git clone ' + remote + ' .' + dest)
-  exec('rm -rf .' + dest + '/.git')
+  const parts = remote.split('/')
+  const repo = parts[length(parts) - 1] || ''
+  const group = parts[parts.length() - 2] || ''
+  const dest = '/dependencies/' + group + '/' + repo
+  const rm = exec('rm -rf .' + dest)
+  const git = exec('git clone ' + remote + ' .' + dest)
+  print(git.stderr) 
+  const rm2 = exec('rm -rf .' + dest + '/.git')
+}
+
+// The `commit` function takes no arguments. Currently just causes the application to quit, but
+// eventually would be the point where the dependencies defined by the calls to `add` could be
+// compared against the currently-installed dependencies, and a faster install would be possible
+export fn commit() {
+  emit exit 0
 }
 
 // Emit the `install` event on app `start`
