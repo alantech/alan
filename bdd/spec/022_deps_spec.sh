@@ -10,6 +10,9 @@ Describe "@std/deps"
         commit()
       }
     "
+    # The following is to avoid unexpected output from SSH during the tests
+    git clone git+ssh://git@github.com/alantech/hellodep 2>/dev/null 1>/dev/null
+    rm -r hellodep
   }
   BeforeAll before
 
