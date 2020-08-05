@@ -246,6 +246,39 @@ Hello, World!"
     End
   End
 
+  Describe "repeat and mapl"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+
+        on start {
+          const arr = [1, 2, 3] * 3
+          const out = arr.mapl(fn (x: int64): string = x.toString()).join(', ')
+          print(out)
+          emit exit 0
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    MAPLOUTPUT="1, 2, 3, 1, 2, 3, 1, 2, 3"
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "$MAPLOUTPUT"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
+      The output should eq "$MAPLOUTPUT"
+    End
+  End
+
   Describe "everything else ;)"
     before() {
       # TODO: sourceToAll
@@ -279,10 +312,6 @@ Hello, World!"
 
           print('some test')
           test.some(isOdd).print()
-
-          print('repeat test')
-          (new Array<int64> [0]).repeat(3).each(print)
-          each(test * 3, print)
 
           print('concat test')
           test.concat(test2).each(print)
@@ -326,28 +355,6 @@ every test
 false
 some test
 true
-repeat test
-0
-0
-0
-1
-1
-2
-3
-5
-8
-1
-1
-2
-3
-5
-8
-1
-1
-2
-3
-5
-8
 concat test
 1
 1
