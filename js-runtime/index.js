@@ -237,6 +237,8 @@ module.exports = {
   indarrv:(arr, val) => arr.indexOf(val),
   join:   (arr, sep) => arr.join(sep),
   map:    (arr, fn) => arr.map(fn),
+  mapl:   (arr, fn) => arr.map(fn), // For impure functions, but makes no difference in JS
+  reparr: (arr, n) => Array.from(new Array(n * arr.length)).map((_, i) => arr[i % arr.length]),
 
   // Map opcodes TODO after maps are figured out
 

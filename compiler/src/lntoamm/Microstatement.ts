@@ -23,6 +23,7 @@ class Microstatement {
   outputType: Type
   inputNames: Array<string>
   fns: Array<Fn>
+  closurePure: boolean
   closureStatements: Array<Microstatement>
   closureArgs: Args
   closureOutputType: Type
@@ -36,6 +37,7 @@ class Microstatement {
     inputNames: Array<string> = [],
     fns: Array<Fn> = [],
     alias: string = '',
+    closurePure: boolean = true,
     closureStatements: Array<Microstatement> = [],
     closureArgs: Args = {},
     closureOutputType: Type = Type.builtinTypes.void,
@@ -48,6 +50,7 @@ class Microstatement {
     this.inputNames = inputNames
     this.fns = fns
     this.alias = alias
+    this.closurePure = closurePure
     this.closureStatements = closureStatements
     this.closureArgs = closureArgs
     this.closureOutputType = closureOutputType
@@ -965,6 +968,7 @@ class Microstatement {
       [],
       [],
       '',
+      userFunction.pure,
       innerMicrostatements,
       userFunction.args,
       userFunction.returnType,

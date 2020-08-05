@@ -101,7 +101,7 @@ const addopcodes = (opcodes: object) => {
                 Object.values(returnType.properties).some((p: Type) => !!p.iface)
               ) {
                 // TODO: Remove this hackery after function types are more than just 'function'
-                if (opcodeName === "map") {
+                if (['map', 'mapl'].includes(opcodeName)) {
                   // The ideal `map` opcode type declaration is something like:
                   // `map(Array<any>, fn (any): anythingElse): Array<anythingElse>` and then the
                   // interface matching logic figures out what the return type of the opcode is
@@ -351,6 +351,7 @@ addopcodes({
   poparr: [{ arr: t('Array<any>')}, t('any')],
   each: [{ arr: t('Array<any>'), cb: t('function'), }, t('void')],
   map: [{ arr: t('Array<any>'), cb: t('function'), }, t('Array<any>')],
+  mapl: [{ arr: t('Array<any>'), cb: t('function'), }, t('Array<any>')],
   reduce: [{ arr: t('Array<any>'), cb: t('function'), }, t('any')],
   filter: [{ arr: t('Array<any>'), cb: t('function'), }, t('Array<any>')],
   find: [{ arr: t('Array<any>'), cb: t('function'), }, t('any')],

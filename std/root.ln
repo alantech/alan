@@ -314,7 +314,8 @@ export fn push(arr: Array<bool>, val: bool) {
 }
 export fn pop(arr: Array<any>): any = poparr(arr, val)
 export each // opcode with signature `fn each(arr: Array<any>, cb: function): void`
-export map // opcode with signature `fn map(arr: Array<any>, cb: function): Array<any>`
+export map // parallel opcode with signature `fn map(arr: Array<any>, cb: function): Array<any>`
+export mapl // serial opcode with signature `fn mapl(arr: Array<any>, cb: function): Array<any>`
 export reduce // opcode with signature `fn reduce(arr: Array<any>, cb: function): any`
 export filter // opcode with signature `fn filter(arr: Array<any>, cb: function): Array<any>`
 export find // opcode with signature `fn find(arr: Array<any>, cb: function): any`
