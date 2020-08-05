@@ -471,6 +471,16 @@ export isAlt // opcode with signature `fn isAlt(Either<any, anythingElse): bool`
 export fn getMainOr(either: Either<any, anythingElse>, default: any) = mainOr(either, default)
 export fn getAltOr(either: Either<any, anythingElse>, default: anythingElse) = altOr(either, default)
 
+// toHash functions for all data types
+export fn toHash(val: any) = hashv(val)
+export fn toHash(val: int8) = hashf(val)
+export fn toHash(val: int16) = hashf(val)
+export fn toHash(val: int32) = hashf(val)
+export fn toHash(val: int64) = hashf(val)
+export fn toHash(val: float32) = hashf(val)
+export fn toHash(val: float64) = hashf(val)
+export fn toHash(val: bool) = hashf(val)
+
 // Operator declarations
 export infix add as + precedence 2
 export infix concat as + precedence 2

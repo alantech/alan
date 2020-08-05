@@ -1,8 +1,64 @@
 const EventEmitter = require('events')
 const util = require('util')
+
+const xxh = require('xxhashjs')
+
 const exec = util.promisify ? util.promisify(require('child_process').exec) : () => {} // browsers
 
 const e = new EventEmitter()
+
+// Hashing opcodes (hashv is recursive, needs to be defined outside of the export object)
+const hashcore = (hasher, a) => {
+  // TODO: We have to turn these values into ArrayBuffers of the right type. There's currently an
+  // issue if a floating point number that is also an integer is provided -- the duck typing here
+  // will treat it as an i64 instead of an f64 so the hash will be different between the JS and
+  // Rust implementations. There are a few ways to solve this, but they all have tradeoffs. Will
+  // revisit this in the future.
+  let buffer = new ArrayBuffer(8)
+  if (typeof a === 'number') {
+    if (a === parseInt(a)) {
+      const view = new BigInt64Array(buffer)
+      view.set([BigInt(a)], 0)
+    } else {
+      const view = new Float64Array(buffer)
+      view.set([a], 0)
+    }
+  } else if (typeof a === 'string') {
+    // If it's a string, we treat it like an array of 64-bit integers with a prefixed 64-bit length
+    // to match the behavior of the Rust runtime
+    const len = a.length
+    const len8 = Math.ceil(len / 8) * 8
+    buffer = new ArrayBuffer(8 + len8)
+    const lenview = new BigInt64Array(buffer)
+    lenview.set([BigInt(len)], 0)
+    const strview = new Int8Array(buffer)
+    // The following only works in the ASCII subset for now, since JS chose to use utf16 instead of
+    // utf8. TODO: Find a pure Javascript library that converts utf16 codepoints to utf8, or write
+    // one. :/
+    strview.set(a.split('').map(s => s.charCodeAt(0)), 8)
+  } else {
+    // Booleans are treated as if they are 64-bit integers
+    const val = a ? 1n : 0n
+    const view = new BigInt64Array(buffer)
+    view.set([val], 0)
+  }
+  const int8view = new Int8Array(buffer)
+  return hasher.update(buffer)
+}
+const hashf = a => hashcore(xxh.h64().init(0xfa57), a).digest()
+const hashv = arr => {
+  // The Rust runtime considers strings a variable type, but they are more like a fixed type for JS
+  if (typeof arr === 'string') return hashf(arr)
+  const hasher = xxh.h64().init(0xfa57)
+  for (const elem of arr) {
+    if (elem instanceof Array) {
+      hasher.update(hashv(elem))
+    } else {
+      hashcore(hasher, elem)
+    }
+  }
+  return hasher.digest()
+}
 
 module.exports = {
   // Type conversion opcodes (mostly no-ops in JS, unless we implement a strict mode)
@@ -307,54 +363,58 @@ module.exports = {
   error:    a => a,
   noerr:   () => '',
   errorstr: a => a.toString(),
-  someM:    a => ({
-    isSome: true,
-    val: JSON.parse(JSON.stringify(a)),
-  }),
-  noneM:   () => ({
-    isSome: false,
-  }),
-  isSome:   a => a.isSome,
-  isNone:   a => !a.isSome,
-  getOrM:  (a, b) => a.isSome ? a.val : b,
-  okR:      a => ({
-    isOk: true,
-    val: JSON.parse(JSON.stringify(a)),
-  }),
-  err:      a => ({
-    isOk: false,
-    error: a,
-  }),
-  isOk:     a => a.isOk,
-  isErr:    a => !a.isOk,
-  getOrR:  (a, b) => a.isOk ? a.val : b,
+  someM:    a => [
+    true,
+    JSON.parse(JSON.stringify(a)),
+  ],
+  noneM:   () => [
+    false,
+  ],
+  isSome:   a => a[0],
+  isNone:   a => !a[0],
+  getOrM:  (a, b) => a[0] ? a[1] : b,
+  okR:      a => [
+    true,
+    JSON.parse(JSON.stringify(a)),
+  ],
+  err:      a => [
+    false,
+    a,
+  ],
+  isOk:     a => a[0],
+  isErr:    a => !a[0],
+  getOrR:  (a, b) => a[0] ? a[1] : b,
   getR:    (a) => {
-    if (a.isOk) {
-      return a.val
+    if (a[0]) {
+      return a[1]
     } else {
       throw new Error('runtime error: illegal access')
     }
   },
-  getErr:  (a, b) => a.isOk ? b : a.error,
-  resfrom: (arr, ind) => ind >= 0 && ind < arr.length ? {
-    isOk: true,
-    val: arr[ind],
-  } : {
-    isOk: false,
-    error: 'out-of-bounds access',
-  },
-  mainE:    a => ({
-    isMain: true,
-    main: JSON.parse(JSON.stringify(a)),
-  }),
-  altE:     a => ({
-    isMain: false,
-    alt: JSON.parse(JSON.stringify(a)),
-  }),
-  isMain:   a => a.isMain,
-  isAlt:    a => !a.isMain,
-  mainOr:  (a, b) => a.isMain ? a.main : b,
-  altOr:   (a, b) => a.isMain ? b : a.alt,
+  getErr:  (a, b) => a[0] ? b : a[1],
+  resfrom: (arr, ind) => ind >= 0 && ind < arr.length ? [
+    true,
+    arr[ind],
+  ] : [
+    false,
+    'out-of-bounds access',
+  ],
+  mainE:    a => [
+    true,
+    JSON.parse(JSON.stringify(a)),
+  ],
+  altE:     a => [
+    false,
+    JSON.parse(JSON.stringify(a)),
+  ],
+  isMain:   a => a[0],
+  isAlt:    a => !a[0],
+  mainOr:  (a, b) => a[0] ? a[1] : b,
+  altOr:   (a, b) => a[0] ? b : a[1],
+
+  // Hashing opcodes (hashv is recursive, needs to be defined elsewhere)
+  hashf,
+  hashv,
 
   // IO opcodes
   asyncopcodes: ['waitop', 'execop'],

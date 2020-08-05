@@ -487,20 +487,6 @@ export class Type {
     }, {
       V: 0,
     }),
-    Map: new Type("Map", true, false, {
-      key: new Type("K", true, true),
-      value: new Type("V", true, true),
-    }, {
-      K: 0,
-      V: 1,
-    }),
-    KeyVal: new Type("KeyVal", true, false, {
-      key: new Type("K", true, true),
-      value: new Type("V", true, true),
-    }, {
-      K: 0,
-      V: 1,
-    }),
     ExecRes: new Type("ExecRes", false, false, {
       exitCode: new Type("int64", true),
       stdout: new Type("string", true),

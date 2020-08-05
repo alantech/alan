@@ -13,5 +13,8 @@
     "transpiler"
   ],
   "author": "David Ellis <isv.damocles@gmail.com>",
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "dependencies": {
+    "xxhashjs": "^0.2.2"
+  }
 }
