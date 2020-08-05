@@ -212,7 +212,7 @@ const loadStatements = (
   let localMemToLine = {}
   statements = statements.filter(s => !s.has('whitespace'))
   for (let idx = 0; idx < statements.length; idx++) {
-    const statement = statements[idx];
+    const statement = statements[idx]
     if (
       statement.has('declarations') &&
       statement.get('declarations').has('constdeclaration') &&
@@ -235,9 +235,9 @@ const loadStatements = (
         args.push(fn.get('args').getAll()[1].get())
       }
       const hasClosureArgs = isClosure && args.length > 0
-      const isClosureExit = idx === statements.length - 2 && statements[idx + 1].has('exits');
+      const isClosureExit = idx === statements.length - 2 && statements[idx + 1].has('exits')
       let resultAddress = isClosureExit ?
-        CLOSURE_ARG_MEM_START : localMem[dec.get('decname').t.trim()];
+        CLOSURE_ARG_MEM_START : localMem[dec.get('decname').t.trim()]
       localMemToLine[dec.get('decname').t.trim()] = line
       const assignables = dec.get('assignables')
       if (assignables.has('functions')) {
