@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::future::Future;
+use std::hash::Hasher;
 use std::pin::Pin;
 use std::process::Command;
 use std::slice;
@@ -8,10 +9,11 @@ use std::str;
 use std::time::Duration;
 
 use byteorder::{ByteOrder, LittleEndian};
-use rayon::prelude::*;
 use once_cell::sync::Lazy;
-use tokio::time::delay_for;
+use rayon::prelude::*;
 use regex::Regex;
+use tokio::time::delay_for;
+use twox_hash::XxHash64;
 
 use crate::vm::event::{EventEmit, HandlerFragment};
 use crate::vm::instruction::InstructionScheduler;
@@ -2736,6 +2738,46 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }
     None
   });
+
+  cpu!("hashf", |args, hand_mem, _, _| {
+    let val = hand_mem.read_fixed(args[0]);
+    let mut hasher = XxHash64::with_seed(0xfa57);
+    hasher.write_i64(val);
+    let out = i64::from_ne_bytes(hasher.finish().to_ne_bytes());
+    hand_mem.write_fixed(args[2], out);
+    None
+  });
+
+  cpu!("hashv", |args, hand_mem, _, _| {
+    let mut hasher = XxHash64::with_seed(0xfa57);
+    let addr = args[0];
+    if addr < 0 { // It's a string!
+      let pascal_string = hand_mem.read_fractal_mem(args[0]);
+      let strlen = pascal_string[0] as f64;
+      let intlen = 1 + (strlen / 8.0).ceil() as usize;
+      for i in 0..intlen {
+        hasher.write_i64(pascal_string[i]);
+      }
+    } else {
+      let mut stack: Vec<&HandlerMemory> = vec![hand_mem.get_fractal(args[0])];
+      while stack.len() > 0 {
+        let arr = stack.pop().unwrap();
+        let arrlen = arr.len() as i64;
+        for i in 0..arrlen {
+          let (data, size) = arr.read_either(i);
+          if size == 0 {
+            stack.push(arr.get_fractal(i));
+          } else {
+            hasher.write_i64(data[0]);
+          }
+        }
+      }
+    }
+    let out = i64::from_ne_bytes(hasher.finish().to_ne_bytes());
+    hand_mem.write_fixed(args[2], out);
+    None
+  });
+
 
   cpu!("emit", |args, hand_mem, _, _| {
     let event = EventEmit {

@@ -42,22 +42,29 @@ const hashcore = (hasher, a) => {
     const view = new BigInt64Array(buffer)
     view.set([val], 0)
   }
-  const int8view = new Int8Array(buffer)
-  return hasher.update(buffer)
+  for (let i = 0; i < buffer.byteLength; i += 8) {
+    const piece = buffer.slice(i, i + 8)
+    hasher.update(piece)
+  }
+  return hasher
 }
-const hashf = a => hashcore(xxh.h64().init(0xfa57), a).digest()
+const hashf = a => BigInt.asIntN(64, hashcore(xxh.h64().init(0xfa57), a).digest())
 const hashv = arr => {
   // The Rust runtime considers strings a variable type, but they are more like a fixed type for JS
   if (typeof arr === 'string') return hashf(arr)
   const hasher = xxh.h64().init(0xfa57)
-  for (const elem of arr) {
-    if (elem instanceof Array) {
-      hasher.update(hashv(elem))
-    } else {
-      hashcore(hasher, elem)
+  let stack = [arr]
+  while (stack.length > 0) {
+    let arr = stack.pop()
+    for (const elem of arr) {
+      if (elem instanceof Array) {
+        stack.push(elem)
+      } else {
+        hashcore(hasher, elem)
+      }
     }
   }
-  return hasher.digest()
+  return BigInt.asIntN(64, hasher.digest())
 }
 
 module.exports = {

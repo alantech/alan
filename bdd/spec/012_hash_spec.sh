@@ -10,7 +10,7 @@ Describe "Hashing"
           print(toHash(1))
           print(toHash(3.14159))
           print(toHash(true))
-          print(toHash("false"))
+          print(toHash('false'))
           print(toHash([1, 2, 5, 3]))
           emit exit 0
         }
@@ -23,11 +23,11 @@ Describe "Hashing"
     }
     AfterAll after
 
-    TOHASHOUTPUT="17387801217679383125
-13430376945052204100
-17387801217679383125
-13794785401140127025
-16925558834156610552"
+    TOHASHOUTPUT="-1058942856030168491
+-5016367128657347516
+-1058942856030168491
+6288867289231076425
+-1521185239552941064"
 
     It "runs js"
       When run node temp.js
@@ -35,7 +35,6 @@ Describe "Hashing"
     End
 
     It "runs agc"
-      Pending to-hash-support
       When run alan-runtime run temp.agc
       The output should eq "$TOHASHOUTPUT"
     End
