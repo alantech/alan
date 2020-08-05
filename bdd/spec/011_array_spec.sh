@@ -308,7 +308,7 @@ Hello, World!"
 1"
 
     agc() {
-      export LC_ALL=C
+      export LC_ALL=en_US.UTF-8
       alan-runtime run temp.agc | sort
     }
 
