@@ -307,13 +307,17 @@ Hello, World!"
 ========
 1"
 
+    agc() {
+      alan-runtime run temp.agc | sort
+    }
+
     It "runs js"
       When run node temp.js
       The output should eq "$EACHFINDOUTPUT"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run agc
       The output should eq "$EACHFINDOUTPUT"
     End
   End
