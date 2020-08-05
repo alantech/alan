@@ -308,7 +308,7 @@ Hello, World!"
 1"
 
     agc() {
-      alan-runtime run temp.agc | sort
+      LC_ALL=C alan-runtime run temp.agc | sort
     }
 
     It "runs js"
