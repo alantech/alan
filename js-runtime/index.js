@@ -6,69 +6,69 @@ const e = new EventEmitter()
 
 module.exports = {
   // Type conversion opcodes (mostly no-ops in JS, unless we implement a strict mode)
-  i8f64:   a => a,
-  i16f64:  a => a,
-  i32f64:  a => a,
-  i64f64:  a => a,
-  f32f64:  a => a,
-  strf64:  a => parseFloat(a),
-  boolf64: a => a ? 1.0 : 0.0,
+  i8f64:    a => a,
+  i16f64:   a => a,
+  i32f64:   a => a,
+  i64f64:   a => a,
+  f32f64:   a => a,
+  strf64:   a => parseFloat(a),
+  boolf64:  a => a ? 1.0 : 0.0,
 
-  i8f32:   a => a,
-  i16f32:  a => a,
-  i32f32:  a => a,
-  i64f32:  a => a,
-  f64f32:  a => a,
-  strf32:  a => parseFloat(a),
-  boolf32: a => a ? 1.0 : 0.0,
+  i8f32:    a => a,
+  i16f32:   a => a,
+  i32f32:   a => a,
+  i64f32:   a => a,
+  f64f32:   a => a,
+  strf32:   a => parseFloat(a),
+  boolf32:  a => a ? 1.0 : 0.0,
 
-  i8i64:   a => a,
-  i16i64:  a => a,
-  i32i64:  a => a,
-  f32i64:  a => Math.floor(a),
-  f64i64:  a => Math.floor(a),
-  stri64:  a => parseInt(a), // intentionally allowing other bases here
-  booli64: a => a ? 1 : 0,
+  i8i64:    a => a,
+  i16i64:   a => a,
+  i32i64:   a => a,
+  f32i64:   a => Math.floor(a),
+  f64i64:   a => Math.floor(a),
+  stri64:   a => parseInt(a), // intentionally allowing other bases here
+  booli64:  a => a ? 1 : 0,
 
-  i8i32:   a => a,
-  i16i32:  a => a,
-  i64i32:  a => a,
-  f32i32:  a => Math.floor(a),
-  f64i32:  a => Math.floor(a),
-  stri32:  a => parseInt(a),
-  booli64: a => a ? 1 : 0,
+  i8i32:    a => a,
+  i16i32:   a => a,
+  i64i32:   a => a,
+  f32i32:   a => Math.floor(a),
+  f64i32:   a => Math.floor(a),
+  stri32:   a => parseInt(a),
+  booli64:  a => a ? 1 : 0,
 
-  i8i16:   a => a,
-  i32i16:  a => a,
-  i64i16:  a => a,
-  f32i16:  a => Math.floor(a),
-  f64i16:  a => Math.floor(a),
-  stri16:  a => parseInt(a),
-  booli16: a => a ? 1 : 0,
+  i8i16:    a => a,
+  i32i16:   a => a,
+  i64i16:   a => a,
+  f32i16:   a => Math.floor(a),
+  f64i16:   a => Math.floor(a),
+  stri16:   a => parseInt(a),
+  booli16:  a => a ? 1 : 0,
 
-  i16i8:   a => a,
-  i32i8:   a => a,
-  i64i8:   a => a,
-  f32i8:   a => Math.floor(a),
-  f64i8:   a => Math.floor(a),
-  stri8:   a => parseInt(a),
-  booli8:  a => a ? 1 : 0,
+  i16i8:    a => a,
+  i32i8:    a => a,
+  i64i8:    a => a,
+  f32i8:    a => Math.floor(a),
+  f64i8:    a => Math.floor(a),
+  stri8:    a => parseInt(a),
+  booli8:   a => a ? 1 : 0,
 
-  i8bool:  a => a !== 0,
-  i16bool: a => a !== 0,
-  i32bool: a => a !== 0,
-  i64bool: a => a !== 0,
-  f32bool: a => a !== 0.0,
-  f64bool: a => a !== 0.0,
-  strbool: a => a === "true",
+  i8bool:   a => a !== 0,
+  i16bool:  a => a !== 0,
+  i32bool:  a => a !== 0,
+  i64bool:  a => a !== 0,
+  f32bool:  a => a !== 0.0,
+  f64bool:  a => a !== 0.0,
+  strbool:  a => a === "true",
 
-  i8str:   a => a.toString(),
-  i16str:  a => a.toString(),
-  i32str:  a => a.toString(),
-  i64str:  a => a.toString(),
-  f32str:  a => a.toString(),
-  f64str:  a => a.toString(),
-  boolstr: a => a.toString(),
+  i8str:    a => a.toString(),
+  i16str:   a => a.toString(),
+  i32str:   a => a.toString(),
+  i64str:   a => a.toString(),
+  f32str:   a => a.toString(),
+  f64str:   a => a.toString(),
+  boolstr:  a => a.toString(),
 
   // Arithmetic opcodes
   addi8:   (a, b) => a + b,
@@ -85,12 +85,12 @@ module.exports = {
   subf32:  (a, b) => a - b,
   subf64:  (a, b) => a - b,
 
-  negi8:   a => 0 - a,
-  negi16:  a => 0 - a,
-  negi32:  a => 0 - a,
-  negi64:  a => 0 - a,
-  negf32:  a => 0.0 - a,
-  negf64:  a => 0.0 - a,
+  negi8:    a => 0 - a,
+  negi16:   a => 0 - a,
+  negi32:   a => 0 - a,
+  negi64:   a => 0 - a,
+  negf32:   a => 0.0 - a,
+  negf64:   a => 0.0 - a,
 
   muli8:   (a, b) => a * b,
   muli16:  (a, b) => a * b,
@@ -118,8 +118,8 @@ module.exports = {
   powf32:  (a, b) => a ** b,
   powf64:  (a, b) => a ** b,
 
-  sqrtf32: a => Math.sqrt(a),
-  sqrtf64: a => Math.sqrt(a),
+  sqrtf32:  a => Math.sqrt(a),
+  sqrtf64:  a => Math.sqrt(a),
 
   // Boolean and bitwise opcodes
   andi8:   (a, b) => a & b,
@@ -140,11 +140,11 @@ module.exports = {
   xori64:  (a, b) => a ^ b,
   xorbool: (a, b) => !!(a ^ b),
 
-  noti8:   a => ~a,
-  noti16:  a => ~a,
-  noti32:  a => ~a,
-  noti64:  a => ~a,
-  notbool: a => !a,
+  noti8:    a => ~a,
+  noti16:   a => ~a,
+  noti32:   a => ~a,
+  noti64:   a => ~a,
+  notbool:  a => !a,
 
   nandi8:  (a, b) => ~(a & b),
   nandi16: (a, b) => ~(a & b),
@@ -222,23 +222,53 @@ module.exports = {
   // TODO: templ, after maps are figured out
   matches: (a, b) => RegExp(b).test(a),
   indstr:  (a, b) => a.indexOf(b),
-  lenstr:  a => a.length,
-  trim:    a => a.trim(),
+  lenstr:   a => a.length,
+  trim:     a => a.trim(),
   copyfrom:(arr, ind) => arr[ind],
-  copytof:  (arr, ind, val) => { arr[ind] = val }, // These do the same thing in JS
-  copytov:  (arr, ind, val) => { arr[ind] = val },
+  copytof: (arr, ind, val) => { arr[ind] = val }, // These do the same thing in JS
+  copytov: (arr, ind, val) => { arr[ind] = val },
   register:(arr, ind) => arr[ind], // Only on references to inner arrays
 
   // Array opcodes TODO more to come
-  newarr:  size => new Array(), // Ignored because JS push doesn't behave as desired
+  newarr:   size => new Array(), // Ignored because JS push doesn't behave as desired
   pusharr: (arr, val, size) => arr.push(val),
-  lenarr: arr => arr.length,
-  indarrf:(arr, val) => arr.indexOf(val),
-  indarrv:(arr, val) => arr.indexOf(val),
-  join:   (arr, sep) => arr.join(sep),
-  map:    (arr, fn) => arr.map(fn),
-  mapl:   (arr, fn) => arr.map(fn), // For impure functions, but makes no difference in JS
-  reparr: (arr, n) => Array.from(new Array(n * arr.length)).map((_, i) => arr[i % arr.length]),
+  lenarr:   arr => arr.length,
+  indarrf: (arr, val) => arr.indexOf(val),
+  indarrv: (arr, val) => arr.indexOf(val),
+  join:    (arr, sep) => arr.join(sep),
+  map:     (arr, fn) => arr.map(fn),
+  mapl:    (arr, fn) => arr.map(fn), // For impure functions, but makes no difference in JS
+  reparr:  (arr, n) => Array.from(new Array(n * arr.length)).map((_, i) => arr[i % arr.length]),
+  each:    (arr, fn) => arr.forEach(fn),
+  eachl:   (arr, fn) => arr.forEach(fn),
+  find:    (arr, fn) => {
+    const val = arr.find(fn)
+    if (val === undefined) {
+      return {
+        isOk: false,
+        error: 'no element matches',
+      }
+    } else {
+      return {
+        isOk: true,
+        val,
+      }
+    }
+  },
+  findl:   (arr, fn) => {
+    const val = arr.find(fn)
+    if (val === undefined) {
+      return {
+        isOk: false,
+        error: 'no element matches',
+      }
+    } else {
+      return {
+        isOk: true,
+        val,
+      }
+    }
+  },
 
   // Map opcodes TODO after maps are figured out
 
@@ -275,18 +305,18 @@ module.exports = {
 
   // Error, Maybe, Result, Either opcodes
   error:    a => a,
-  noerr:    () => '',
+  noerr:   () => '',
   errorstr: a => a.toString(),
-  someM:     a => ({
+  someM:    a => ({
     isSome: true,
     val: JSON.parse(JSON.stringify(a)),
   }),
-  noneM:     () => ({
+  noneM:   () => ({
     isSome: false,
   }),
   isSome:   a => a.isSome,
   isNone:   a => !a.isSome,
-  getOrM:   (a, b) => a.isSome ? a.val : b,
+  getOrM:  (a, b) => a.isSome ? a.val : b,
   okR:      a => ({
     isOk: true,
     val: JSON.parse(JSON.stringify(a)),
@@ -297,39 +327,39 @@ module.exports = {
   }),
   isOk:     a => a.isOk,
   isErr:    a => !a.isOk,
-  getOrR:   (a, b) => a.isOk ? a.val : b,
-  getR:     (a) => {
+  getOrR:  (a, b) => a.isOk ? a.val : b,
+  getR:    (a) => {
     if (a.isOk) {
       return a.val
     } else {
       throw new Error('runtime error: illegal access')
     }
   },
-  getErr:   (a, b) => a.isOk ? b : a.error,
-  resfrom:  (arr, ind) => ind >= 0 && ind < arr.length ? {
+  getErr:  (a, b) => a.isOk ? b : a.error,
+  resfrom: (arr, ind) => ind >= 0 && ind < arr.length ? {
     isOk: true,
     val: arr[ind],
   } : {
     isOk: false,
     error: 'out-of-bounds access',
   },
-  mainE:     a => ({
+  mainE:    a => ({
     isMain: true,
     main: JSON.parse(JSON.stringify(a)),
   }),
-  altE:      a => ({
+  altE:     a => ({
     isMain: false,
     alt: JSON.parse(JSON.stringify(a)),
   }),
   isMain:   a => a.isMain,
   isAlt:    a => !a.isMain,
-  mainOr:   (a, b) => a.isMain ? a.main : b,
-  altOr:    (a, b) => a.isMain ? b : a.alt,
+  mainOr:  (a, b) => a.isMain ? a.main : b,
+  altOr:   (a, b) => a.isMain ? b : a.alt,
 
   // IO opcodes
   asyncopcodes: ['waitop', 'execop'],
-  waitop: a => new Promise(resolve => setTimeout(resolve, a)),
-  execop: async (cmd) => {
+  waitop:   a => new Promise(resolve => setTimeout(resolve, a)),
+  execop:   async (cmd) => {
     try {
       const res = await exec(cmd)
       const { stdout, stderr } = res
@@ -340,11 +370,11 @@ module.exports = {
   },
 
   // "Special" opcodes
-  stdoutp: out => process.stdout.write(out),
-  exitop:  code => process.exit(code),
+  stdoutp:   out => process.stdout.write(out),
+  exitop:    code => process.exit(code),
 
   // Event bookkeeping
-  emit:    (name, payload) => e.emit(name, payload),
-  on:      (name, cb) => e.on(name, cb),
-  emitter: e,
+  emit:     (name, payload) => e.emit(name, payload),
+  on:       (name, cb) => e.on(name, cb),
+  emitter:   e,
 }

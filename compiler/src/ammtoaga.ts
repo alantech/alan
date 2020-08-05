@@ -138,6 +138,7 @@ const getHandlersMem = (handlers: LPNode[]) => handlers
 
 const closuresFromDeclaration = (declaration: LPNode, closureMem: object, eventDecs: object) => {
   const name = declaration.get('constdeclaration').get('decname').t.trim()
+  const fn = declaration.get('constdeclaration').get('assignables').get('functions')
   const allStatements = declaration
     .get('constdeclaration')
     .get('assignables')
@@ -163,6 +164,7 @@ const closuresFromDeclaration = (declaration: LPNode, closureMem: object, eventD
   return {
     [name]: {
       name,
+      fn,
       statements,
       closureMem,
     },
@@ -198,13 +200,19 @@ const extractClosures = (handlers: LPNode[], handlerMem: object, eventDecs: obje
   return Object.values(closures)
 }
 
-const loadStatements = (statements: LPNode[], localMem: object, globalMem: object) => {
+const loadStatements = (
+  statements: LPNode[],
+  localMem: object,
+  globalMem: object,
+  fn: LPNode,
+  isClosure: boolean
+) => {
   let vec = []
   let line = 0
   let localMemToLine = {}
   statements = statements.filter(s => !s.has('whitespace'))
   for (let idx = 0; idx < statements.length; idx++) {
-    const statement = statements[idx];
+    const statement = statements[idx]
     if (
       statement.has('declarations') &&
       statement.get('declarations').has('constdeclaration') &&
@@ -219,9 +227,17 @@ const loadStatements = (statements: LPNode[], localMem: object, globalMem: objec
         statement.get('declarations').get('constdeclaration') :
         statement.get('declarations').get('letdeclaration')
       // if this is 2nd to last statement and last statement exits this is a closure
-      const isClosureExit = idx === statements.length - 2 && statements[idx + 1].has('exits');
+      const args = []
+      fn.get('args').getAll()[0].getAll().forEach((argdef) => {
+        args.push(argdef)
+      })
+      if (fn.get('args').getAll()[1].has()) {
+        args.push(fn.get('args').getAll()[1].get())
+      }
+      const hasClosureArgs = isClosure && args.length > 0
+      const isClosureExit = idx === statements.length - 2 && statements[idx + 1].has('exits')
       let resultAddress = isClosureExit ?
-        CLOSURE_ARG_MEM_START : localMem[dec.get('decname').t.trim()];
+        CLOSURE_ARG_MEM_START : localMem[dec.get('decname').t.trim()]
       localMemToLine[dec.get('decname').t.trim()] = line
       const assignables = dec.get('assignables')
       if (assignables.has('functions')) {
@@ -237,7 +253,7 @@ const loadStatements = (statements: LPNode[], localMem: object, globalMem: objec
         const args = vars.map(v => {
           if (localMem.hasOwnProperty(v)) return localMem[v]
           else if (globalMem.hasOwnProperty(v)) return globalMem[v]
-          else if (isClosureExit) {
+          else if (hasClosureArgs) {
             numArgs = numArgs + 1n
             return CLOSURE_ARG_MEM_START + numArgs
           } else return v
@@ -397,6 +413,8 @@ const loadHandlers = (handlers: LPNode[], handlerMem: object, globalMem: object)
       handler.get('functions').get('functionbody').get('statements').getAll(),
       localMem,
       globalMem,
+      handler.get('functions'),
+      false,
     )
     statements.forEach(s => h += `  ${s}\n`)
     vec.push(h)
@@ -416,6 +434,8 @@ const loadClosures = (closures: any[], globalMem: object) => {
       closure.statements,
       localMem,
       globalMem,
+      closure.fn,
+      true,
     )
     statements.forEach(s => c += `  ${s}\n`)
     vec.push(c)

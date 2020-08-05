@@ -279,6 +279,50 @@ Hello, World!"
     End
   End
 
+  Describe "each and find"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+
+        on start {
+          const test = [ 1, 1, 2, 3, 5, 8 ]
+          test.each(fn (val: int64) = print('=' * val))
+          test.find(fn (val: int64): int64 = val % 2 == 1).getOr(0).print()
+          emit exit 0
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    EACHFINDOUTPUT="=
+=
+==
+===
+=====
+========
+1"
+
+    agc() {
+      export LC_ALL=en_US.UTF-8
+      alan-runtime run temp.agc | sort
+    }
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "$EACHFINDOUTPUT"
+    End
+
+    It "runs agc"
+      When run agc
+      The output should eq "$EACHFINDOUTPUT"
+    End
+  End
+
   Describe "everything else ;)"
     before() {
       # TODO: sourceToAll
@@ -290,14 +334,6 @@ Hello, World!"
         }
 
         on start {
-          print('each test')
-          const test = new Array<int64> [ 1, 1, 2, 3, 5, 8 ]
-          test.each(fn (val: int64) = print('=' * val))
-
-          print('map test')
-          const test2 = test.map(fn (val: int64) = val * 2)
-          test2.each(print)
-
           print('reduce test')
           test.reduce(add).print()
 
@@ -328,21 +364,7 @@ Hello, World!"
     }
     AfterAll after
 
-    ADVARRAYOUTPUT="each test
-=
-=
-==
-===
-=====
-========
-map test
-2
-2
-4
-6
-10
-16
-reduce test
+    ADVARRAYOUTPUT="reduce test
 20
 filter test
 1

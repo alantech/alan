@@ -15,7 +15,7 @@ pub struct Instruction {
 }
 
 pub struct InstructionScheduler {
-  event_tx: UnboundedSender<EventEmit>,
+  pub event_tx: UnboundedSender<EventEmit>,
   frag_tx: UnboundedSender<(HandlerFragment, HandlerMemory)>,
 }
 
@@ -50,7 +50,7 @@ impl InstructionScheduler {
       let frag_tx = self.frag_tx.clone();
       let futures: Vec<EmptyFuture> = instructions.iter().map(|ins| {
         let async_func = ins.opcode.async_func.unwrap();
-        return async_func(&ins.args, &mut hand_mem, &mut frag);
+        return async_func(&ins.args, &mut hand_mem, &mut frag, self);
       }).collect();
       task::spawn(async move {
         // Poll futures concurrently, but not in parallel, using a single thread.
@@ -66,7 +66,7 @@ impl InstructionScheduler {
         s.spawn(move |_| {
           instructions.iter().for_each( |i| {
             let func = i.opcode.func.unwrap();
-            let event = func(&i.args, &mut hand_mem, &mut frag);
+            let event = func(&i.args, &mut hand_mem, &mut frag, self);
             if event.is_some() {
               let event_sent = event_tx.send(event.unwrap());
               if event_sent.is_err() {
