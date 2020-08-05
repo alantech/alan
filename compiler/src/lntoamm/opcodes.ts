@@ -101,7 +101,7 @@ const addopcodes = (opcodes: object) => {
                 Object.values(returnType.properties).some((p: Type) => !!p.iface)
               ) {
                 // TODO: Remove this hackery after function types are more than just 'function'
-                if (['map', 'mapl'].includes(opcodeName)) {
+                if (['map', 'mapl', 'each', 'eachl', 'find', 'findl'].includes(opcodeName)) {
                   // The ideal `map` opcode type declaration is something like:
                   // `map(Array<any>, fn (any): anythingElse): Array<anythingElse>` and then the
                   // interface matching logic figures out what the return type of the opcode is
@@ -110,7 +110,10 @@ const addopcodes = (opcodes: object) => {
                   const innerTypename = inputs[1].fns[0] ?
                     inputs[1].fns[0].getReturnType().typename :
                     inputs[1].closureOutputType.typename
-                  const newReturnType = Type.builtinTypes['Array'].solidify([innerTypename], scope)
+                  const baseType = returnType.originalType
+                  const newReturnType = baseType ?
+                    baseType.solidify([innerTypename], scope) :
+                    returnType
                   return newReturnType
                 } else  {
                   // Path 2: the opcode returns solidified generic type with an interface generic
@@ -350,11 +353,12 @@ addopcodes({
   pusharr: [{ arr: t('Array<any>'), val: t('any'), size: t('int64')}],
   poparr: [{ arr: t('Array<any>')}, t('any')],
   each: [{ arr: t('Array<any>'), cb: t('function'), }, t('void')],
+  eachl: [{ arr: t('Array<any>'), cb: t('function'), }, t('void')],
   map: [{ arr: t('Array<any>'), cb: t('function'), }, t('Array<any>')],
   mapl: [{ arr: t('Array<any>'), cb: t('function'), }, t('Array<any>')],
   reduce: [{ arr: t('Array<any>'), cb: t('function'), }, t('any')],
   filter: [{ arr: t('Array<any>'), cb: t('function'), }, t('Array<any>')],
-  find: [{ arr: t('Array<any>'), cb: t('function'), }, t('any')],
+  find: [{ arr: t('Array<any>'), cb: t('function'), }, t('Result<any>')],
   every: [{ arr: t('Array<any>'), cb: t('function'), }, t('bool')],
   some: [{ arr: t('Array<any>'), cb: t('function'), }, t('bool')],
   join: [{ arr: t('Array<string>'), sep: t('string'), }, t('string')],

@@ -1949,6 +1949,194 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }
     None
   });
+  unpred_cpu!("each", |args, hand_mem, frag| {
+    let arr = hand_mem.get_fractal(args[0]);
+    let len = arr.len() as i64;
+    let instructions = frag.get_closure_instructions(args[1]);
+    // array of potentially many levels of nested fractals
+    (0..len).into_par_iter().for_each_with(instructions, |ins, idx| {
+      let mut mem = arr.clone();
+      // array element is $1 argument of the closure memory space
+      if !mem.has_nested_fractals() {
+        // this could be a string or fixed data type
+        let val = mem.read_fixed(idx);
+        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
+      } else {
+        // more nested arrays
+        let arr_el = mem.read_fractal(idx);
+        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
+      }
+      ins.iter().for_each(|i| {
+        // TODO implement for async_functions. can tokio be called within rayon?
+        let func = i.opcode.func.unwrap();
+        // TODO maybe emit event, but what if multiple are emitted?
+        let _event = func(&i.args, &mut mem, &mut frag.clone());
+      });
+    });
+    None
+  });
+  unpred_cpu!("eachl", |args, hand_mem, frag| {
+    let arr = hand_mem.get_fractal(args[0]);
+    let len = arr.len() as i64;
+    let ins = frag.get_closure_instructions(args[1]);
+    // array of potentially many levels of nested fractals
+    (0..len).for_each(|idx| {
+      let mut mem = arr.clone();
+      // array element is $1 argument of the closure memory space
+      if !mem.has_nested_fractals() {
+        // this could be a string or fixed data type
+        let val = mem.read_fixed(idx);
+        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
+      } else {
+        // more nested arrays
+        let arr_el = mem.read_fractal(idx);
+        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
+      }
+      ins.iter().for_each(|i| {
+        // TODO implement for async_functions. can tokio be called within rayon?
+        let func = i.opcode.func.unwrap();
+        // TODO maybe emit event, but what if multiple are emitted?
+        let _event = func(&i.args, &mut mem, &mut frag.clone());
+      });
+    });
+    None
+  });
+  unpred_cpu!("find", |args, hand_mem, frag| {
+    let arr = hand_mem.get_fractal(args[0]);
+    let len = arr.len() as i64;
+    let instructions = frag.get_closure_instructions(args[1]);
+    // array of potentially many levels of nested fractals
+    let arr_addr = (0..len).into_par_iter().find_any(|idx| {
+      let ins = instructions.clone();
+      let mut mem = arr.clone();
+      // array element is $1 argument of the closure memory space
+      if !mem.has_nested_fractals() {
+        // this could be a string or fixed data type
+        let val = mem.read_fixed(*idx);
+        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
+      } else {
+        // more nested arrays
+        let arr_el = mem.read_fractal(*idx);
+        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
+      }
+      ins.iter().for_each(|i| {
+        // TODO implement for async_functions. can tokio be called within rayon?
+        let func = i.opcode.func.unwrap();
+        // TODO maybe emit event, but what if multiple are emitted?
+        let _event = func(&i.args, &mut mem, &mut frag.clone());
+      });
+      // Guaranteed to be a boolean
+      let val = mem.read_fixed(CLOSURE_ARG_MEM_START);
+      return val == 1i64;
+    });
+    hand_mem.new_fractal(args[2]);
+    if arr_addr.is_none() {
+      hand_mem.push_fractal_fixed(args[2], 0i64);
+      let error_string = "no element matches".to_string();
+      let mut out = vec![error_string.len() as i64];
+      let mut out_str_bytes = error_string.as_bytes().to_vec();
+      loop {
+        if out_str_bytes.len() % 8 != 0 {
+          out_str_bytes.push(0);
+        } else {
+          break
+        }
+      }
+      let mut i = 0;
+      loop {
+        if i < out_str_bytes.len() {
+          let str_slice = &out_str_bytes[i..i+8];
+          out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
+          i = i + 8;
+        } else {
+          break
+        }
+      }
+      hand_mem.push_nested_fractal_mem(args[2], out);
+    } else {
+      let addr = arr_addr.unwrap();
+      hand_mem.push_fractal_fixed(args[2], 1i64);
+      let arr = hand_mem.get_fractal(args[0]); // This is dumb, but whatever Rust
+      if !arr.has_nested_fractals() {
+        // this could be a string or fixed data type
+        let val = arr.read_fixed(addr);
+        hand_mem.push_fractal_fixed(args[2], val);
+      } else {
+        // more nested arrays
+        let arr_el = arr.read_fractal(addr);
+        hand_mem.push_nested_fractal(args[2], arr_el);
+      }
+    }
+    None
+  });
+  unpred_cpu!("findl", |args, hand_mem, frag| {
+    let arr = hand_mem.get_fractal(args[0]);
+    let len = arr.len() as i64;
+    let instructions = frag.get_closure_instructions(args[1]);
+    // array of potentially many levels of nested fractals
+    let arr_addr = (0..len).into_par_iter().find_first(|idx| {
+      let ins = instructions.clone();
+      let mut mem = arr.clone();
+      // array element is $1 argument of the closure memory space
+      if !mem.has_nested_fractals() {
+        // this could be a string or fixed data type
+        let val = mem.read_fixed(*idx);
+        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
+      } else {
+        // more nested arrays
+        let arr_el = mem.read_fractal(*idx);
+        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
+      }
+      ins.iter().for_each(|i| {
+        // TODO implement for async_functions. can tokio be called within rayon?
+        let func = i.opcode.func.unwrap();
+        // TODO maybe emit event, but what if multiple are emitted?
+        let _event = func(&i.args, &mut mem, &mut frag.clone());
+      });
+      // Guaranteed to be a boolean
+      let val = mem.read_fixed(CLOSURE_ARG_MEM_START);
+      return val == 1i64;
+    });
+    hand_mem.new_fractal(args[2]);
+    if arr_addr.is_none() {
+      hand_mem.push_fractal_fixed(args[2], 0i64);
+      let error_string = "no element matches".to_string();
+      let mut out = vec![error_string.len() as i64];
+      let mut out_str_bytes = error_string.as_bytes().to_vec();
+      loop {
+        if out_str_bytes.len() % 8 != 0 {
+          out_str_bytes.push(0);
+        } else {
+          break
+        }
+      }
+      let mut i = 0;
+      loop {
+        if i < out_str_bytes.len() {
+          let str_slice = &out_str_bytes[i..i+8];
+          out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
+          i = i + 8;
+        } else {
+          break
+        }
+      }
+      hand_mem.push_nested_fractal_mem(args[2], out);
+    } else {
+      let addr = arr_addr.unwrap();
+      hand_mem.push_fractal_fixed(args[2], 1i64);
+      let arr = hand_mem.get_fractal(args[0]); // This is dumb, but whatever Rust
+      if !arr.has_nested_fractals() {
+        // this could be a string or fixed data type
+        let val = arr.read_fixed(addr);
+        hand_mem.push_fractal_fixed(args[2], val);
+      } else {
+        // more nested arrays
+        let arr_el = arr.read_fractal(addr);
+        hand_mem.push_nested_fractal(args[2], arr_el);
+      }
+    }
+    None
+  });
 
   // Conditional opcode
   unpred_cpu!("condfn", |args, hand_mem, frag| {
@@ -1994,7 +2182,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
               break
             }
           }
-          hand_mem.push_nested_fractal_mem(args[2], out)
+          hand_mem.push_nested_fractal_mem(args[2], out);
         },
         Ok(output_res) => {
           let status_code = output_res.status.code().unwrap_or(127) as i64;
@@ -2040,7 +2228,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
               break
             }
           }
-          hand_mem.push_nested_fractal_mem(args[2], err)
+          hand_mem.push_nested_fractal_mem(args[2], err);
         },
       };
     }
