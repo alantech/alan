@@ -204,7 +204,8 @@ const loadStatements = (
   statements: LPNode[],
   localMem: object,
   globalMem: object,
-  fn: LPNode
+  fn: LPNode,
+  isClosure: boolean
 ) => {
   let vec = []
   let line = 0
@@ -233,7 +234,7 @@ const loadStatements = (
       if (fn.get('args').getAll()[1].has()) {
         args.push(fn.get('args').getAll()[1].get())
       }
-      const hasClosureArgs = args.length > 0
+      const hasClosureArgs = isClosure && args.length > 0
       const isClosureExit = idx === statements.length - 2 && statements[idx + 1].has('exits');
       let resultAddress = isClosureExit ?
         CLOSURE_ARG_MEM_START : localMem[dec.get('decname').t.trim()];
@@ -413,6 +414,7 @@ const loadHandlers = (handlers: LPNode[], handlerMem: object, globalMem: object)
       localMem,
       globalMem,
       handler.get('functions'),
+      false,
     )
     statements.forEach(s => h += `  ${s}\n`)
     vec.push(h)
@@ -433,6 +435,7 @@ const loadClosures = (closures: any[], globalMem: object) => {
       localMem,
       globalMem,
       closure.fn,
+      true,
     )
     statements.forEach(s => c += `  ${s}\n`)
     vec.push(c)
