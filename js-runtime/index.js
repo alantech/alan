@@ -307,29 +307,29 @@ module.exports = {
   find:    (arr, fn) => {
     const val = arr.find(fn)
     if (val === undefined) {
-      return {
-        isOk: false,
-        error: 'no element matches',
-      }
+      return [
+        false,
+        'no element matches',
+      ]
     } else {
-      return {
-        isOk: true,
+      return [
+        true,
         val,
-      }
+      ]
     }
   },
   findl:   (arr, fn) => {
     const val = arr.find(fn)
     if (val === undefined) {
-      return {
-        isOk: false,
-        error: 'no element matches',
-      }
+      return [
+        false,
+        'no element matches',
+      ]
     } else {
-      return {
-        isOk: true,
+      return [
+        true,
         val,
-      }
+      ]
     }
   },
 
