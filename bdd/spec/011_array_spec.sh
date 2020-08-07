@@ -127,7 +127,7 @@ Describe "Arrays"
     End
   End
 
-  Describe "length, index, and join"
+  Describe "length, index, has and join"
     before() {
       sourceToAll "
         from @std/app import start, print, exit
@@ -135,6 +135,9 @@ Describe "Arrays"
         on start {
           const test = new Array<int64> [ 1, 1, 2, 3, 5, 8 ]
           const test2 = new Array<string> [ 'Hello', 'World!' ]
+          print('has test')
+          print test.has(3)
+          print test.has(4)
 
           print('length test')
           test.length().print()
@@ -158,7 +161,10 @@ Describe "Arrays"
     }
     AfterAll after
 
-    LIJARRAYOUTPUT="length test
+    LIJARRAYOUTPUT="has test
+true
+false
+length test
 6
 6
 index test
