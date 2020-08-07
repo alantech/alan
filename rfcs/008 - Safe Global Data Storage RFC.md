@@ -35,7 +35,7 @@ If Alan was at 1.0.0 or beyond, this would be a minor version update as all exis
 
 ## Proposal
 
-As global state storage and retrieval is intended to allow cross-cutting mutable changes, any use of this is inherently *dangerous* and can cause unexpected bugs if mutations that violate the expected range of values for *any one consumer*. Don't use this without a good reason.
+As global state storage and retrieval is intended to allow cross-cutting mutable changes, any use of this is inherently *dangerous* and can cause unexpected bugs in logic if mutations that violate the expected range of values for *any one consumer*. Don't use this without a good reason.
 
 But to make accidental mutations less likely, it is proposed that global state is stored in a two stage process, first a namespace key and then within that namespace a value key for the actual field. If you are intentionally digging into, say, the `"@std/http"`'s namespace to adjust the `"maximumConcurrentRequests"` allowed (assuming such a use came about), the impact is more obvious and less likely to collide with, say, a PostgreSQL client's maximum concurrent requests global.
 
