@@ -136,8 +136,8 @@ Describe "Arrays"
           const test = new Array<int64> [ 1, 1, 2, 3, 5, 8 ]
           const test2 = new Array<string> [ 'Hello', 'World!' ]
           print('has test')
-          print test.has(3)
-          print test.has(4)
+          print(test.has(3))
+          print(test.has(4))
 
           print('length test')
           test.length().print()
