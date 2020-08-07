@@ -294,10 +294,14 @@ export class Type {
 
   static fromAst(typeAst: any, scope: Scope) { // TODO: Migrate away from ANTLR
     let type = new Type(typeAst.typename().getText())
+    const genScope = new Scope()
+    const typeScope = new Scope(scope)
+    typeScope.secondaryPar = genScope
     if (typeAst.typegenerics() != null) {
       const generics = typeAst.typegenerics().fulltypename()
       for (let i = 0; i < generics.length; i++) {
         type.generics[generics[i].getText()] = i
+        genScope.put(generics[i].getText(), new Type(generics[i].getText(), true, true))
       }
     }
     if (typeAst.typebody() != null) {
@@ -305,43 +309,48 @@ export class Type {
       for (const lineAst of lines) {
         const propertyName = lineAst.VARNAME().getText()
         const typeName = lineAst.fulltypename().getText().trim()
-        const property = scope.deepGet(typeName) as Type
+        const property = typeScope.deepGet(typeName) as Type
         if (!property || !(property instanceof Type)) {
-          if (type.generics.hasOwnProperty(typeName)) {
-            type.properties[propertyName] = new Type(typeName, true, true)
-          } else {
-            // Potentially a type that depends on the type generics of this type
-            const innerGenerics = lineAst.fulltypename().typegenerics()
-            if (!!innerGenerics) {
-              const baseTypeName = lineAst.fulltypename().varn().getText()
-              const property = scope.deepGet(baseTypeName) as Type
-              if (!property || !(property instanceof Type)) {
-                console.error(lineAst.fulltypename().getText() + " is not a type")
-                process.exit(-4)
-              }
-              const generics = innerGenerics.fulltypename()
-              let isValidInnerGeneric = false
-              for (const generic of generics) {
-                const innerTypeName = generic.getText()
-                if (type.generics.hasOwnProperty(innerTypeName)) {
-                  // This is going to be resolved when the outer type is solidified
-                  isValidInnerGeneric = true
-                }
-              }
-              if (isValidInnerGeneric) {
-                type.properties[propertyName] = new Type(typeName, true, true)
-              } else {
-                // Maybe it's a type we need to solidify right now, otherwise error out, but
-                // let solidify handle that for us
-                type.properties[propertyName] = property.solidify(
-                  generics.map((g: any) => g.getText()), scope
-                )
-              }
-            } else {
-              console.error(lineAst.fulltypename().getText() + " is not a type")
-              process.exit(-4)
+          // Potentially a type that depends on the type generics of this type
+          const baseTypeName = lineAst.fulltypename().varn().getText()
+          const innerGenerics = lineAst.fulltypename().typegenerics().fulltypename()
+          const genericsList = []
+          const genericsQueue = []
+          for (const generic of innerGenerics) {
+            genericsList.push(generic)
+          }
+          while (genericsList.length > 0) {
+            const generic = genericsList.shift()
+            genericsQueue.push(generic)
+            if (generic.typegenerics()) {
+              genericsList.push(...generic.typegenerics().fulltypename())
             }
           }
+          while (genericsQueue.length > 0) {
+            const generic = genericsQueue.pop()
+            const innerType = typeScope.deepGet(generic.getText()) as Type
+            if (!innerType) {
+              const innerBaseTypeName = generic.varn().getText()
+              const innerBaseType = typeScope.deepGet(innerBaseTypeName) as Type
+              if (!innerBaseType) {
+                console.error('wut')
+                process.exit(-1)
+              }
+              innerBaseType.solidify(
+                generic.typegenerics().fulltypename().map((t: any) => t.getText()),
+                typeScope,
+              )
+            }
+          }
+          const baseType = scope.deepGet(baseTypeName) as Type
+          if (!baseType || !(baseType instanceof Type)) {
+            console.error(lineAst.fulltypename().getText() + " is not a type")
+            process.exit(-4)
+          }
+          type.properties[propertyName] = baseType.solidify(
+            innerGenerics.map((t: any) => t.getText()),
+            typeScope,
+          )
         } else {
           type.properties[propertyName] = property
         }
@@ -384,10 +393,25 @@ export class Type {
     for (const typename of genericReplacements) {
       const typebox = scope.deepGet(typename) as Type
       if (!typebox || !(typebox instanceof Type)) {
-        console.error(typename + " type not found")
-        process.exit(-35)
+        const fulltypename = fulltypenameAstFromString(typename)
+        if (fulltypename.typegenerics()) {
+          const basename = fulltypename.varn().getText()
+          const generics = fulltypename.typegenerics().fulltypename().map((t: any) => t.getText())
+          const baseType = scope.deepGet(basename) as Type
+          if (!baseType || !(baseType instanceof Type)) {
+            console.error(basename + " type not found")
+            process.exit(-34)
+          } else {
+            const newtype = baseType.solidify(generics, scope)
+            replacementTypes.push(newtype)
+          }
+        } else { 
+          console.error(typename + " type not found")
+          process.exit(-35)
+        }
+      } else {
+        replacementTypes.push(typebox)
       }
-      replacementTypes.push(typebox)
     }
     const solidifiedName = this.typename + "<" + genericReplacements.join(", ") + ">"
     let solidified = new Type(solidifiedName, this.builtIn)

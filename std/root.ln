@@ -387,11 +387,6 @@ export fn set(arr: Array<bool>, idx: int64, val: bool) {
   }
 }
 
-// Map functions
-// export keyVal // opcode with signature `fn keyVal(map: Map<any, any>): Array<KeyVal<any, any>>`
-// export keys // opcode with signature `fn keys(map: Map<any, any>): Array<any>`
-// export values // opcode with signature `fn values(map: Map<any, any>): Array<any>`
-
 // Ternary functions
 export fn pair(trueval: any, falseval: any) = new Array<any> [ trueval, falseval ]
 export fn cond(c: bool, options: Array<any>) = getR(options[1 - c.toInt64()])
@@ -480,6 +475,72 @@ export fn toHash(val: int64) = hashf(val)
 export fn toHash(val: float32) = hashf(val)
 export fn toHash(val: float64) = hashf(val)
 export fn toHash(val: bool) = hashf(val)
+
+// HashMap implementation
+export type KeyVal<K, V> {
+  key: K
+  val: V
+}
+
+export interface Hashable {
+  toHash(Hashable): int64
+  eq(Hashable, Hashable): bool
+}
+
+export type HashMap<K, V> {
+  keyVal: Array<KeyVal<K, V>>
+  lookup: Array<Array<int64>>
+}
+
+export fn keyVal(hm: HashMap<Hashable, any>) = hm.keyVal
+export fn keys(hm: HashMap<Hashable, any>) = map(hm.keyVal, fn (kv: KeyVal<Hashable, any>): Hashable = kv.key)
+export fn vals(hm: HashMap<Hashable, any>) = map(hm.keyVal, fn (kv: KeyVal<Hashable, any>): any = kv.val)
+export fn length(hm: HashMap<Hashable, any>) = length(hm.keyVal)
+
+export fn get(hm: HashMap<Hashable, any>, key: Hashable) {
+  const hash = key.toHash() % length(hm.lookup)
+  const list = getR(hm.lookup[hash])
+  const index = list.find(fn (i: int64) = getR(hm.keyVal[i]).key.eq(key))
+  if index.isSome() {
+    const i = index.get(0)
+    return Some(getR(hm.keyVal[i]).val)
+  } else {
+    return None
+  }
+}
+
+export fn set(hm: HashMap<Hashable, any>, key: Hashable, val: any) {
+  const kv = new KeyVal<Hashable, any> {
+    key = key
+    val = val
+  }
+  const index = length(hm.keyVal)
+  hm.keyVal.push(kv)
+  const hash = key.toHash() % length(hm.lookup)
+  const list = getR(hm.lookup[hash])
+  if list.length() == 8 {
+    // Rebucket everything
+    const lookupLen = length(hm.lookup) * 2
+    hm.lookup = new Array<Array<int64>> [ new Array<int64> [], ] * lookupLen
+    each(hm.keyVal, fn (kv: KeyVal<Hashable, any>, i: int64) {
+      const hash = kv.key.toHash() % lookupLen
+      const list = getR(hm.lookup[hash])
+      list.push(i)
+    })
+  } else {
+    const list = getR(hm.lookup[hash])
+    list.push(index)
+  }
+  return hm
+}
+
+export fn newHashMap(firstKey: Hashable, firstVal: any) { // TODO: Rust-like fn::<typeA, typeB> syntax?
+  let hm = new HashMap<Hashable, any> {
+    keyVal = new Array<KeyVal<Hashable, any>> []
+    lookup = new Array<Array<int64>> [ new Array<int64> [] ] * 128 // 1KB of space
+  }
+  return hm.set(firstKey, firstVal)
+}
 
 // Operator declarations
 export infix add as + precedence 2

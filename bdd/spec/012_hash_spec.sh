@@ -40,6 +40,53 @@ Describe "Hashing"
     End
   End
 
+  Describe "HashMap (no syntactic sugar)"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+
+        on start {
+          const test = newHashMap('foo', 1)
+          test.set('bar', 2)
+          test.set('baz', 99)
+          print(test.keyVal().map(fn (n: KeyVal<string, int64>): string {
+            return 'key: ' + n.key + '\nval: ' + n.value.toString()
+          }).join('\n'))
+          print(test.keys().join(', '))
+          print(test.values().map(fn (n: int64): string = n.toString()).join(', '))
+          print(test.length())
+          emit exit 0
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    HASHMAPOUTPUT="key: bar
+val: 2
+key: foo
+val: 1
+key: baz
+val: 99
+bar, foo, baz
+2, 1, 99
+3"
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "$HASHMAPOUTPUT"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
+      The output should eq "$HASHMAPOUTPUT"
+    End
+  End
+
   Describe "HashMap"
     before() {
       # TODO: sourceToAll

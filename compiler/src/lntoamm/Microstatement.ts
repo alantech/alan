@@ -1228,6 +1228,7 @@ class Microstatement {
       // Generate the relevant microstatements for this function. UserFunctions get inlined with the
       // return statement turned into a const assignment as the last statement, while built-in
       // functions are kept as function calls with the correct renaming.
+      microstatements.map(m => m.toString()).filter(m => m !== '').forEach(m => console.log(m))
       UserFunction
         .dispatchFn(fnBox, realArgTypes, scope)
         .microstatementInlining(realArgNames, scope, microstatements)

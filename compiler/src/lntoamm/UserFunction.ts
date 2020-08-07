@@ -677,7 +677,7 @@ class UserFunction implements Fn {
         }
         if (
           argList[j].originalType != null &&
-          argumentTypeList[j].originalType == argList[j].originalType
+          argumentTypeList[j].originalType === argList[j].originalType
         ) {
           const argListAst = Ast.fulltypenameAstFromString(argList[j].typename)
           const argumentTypeListAst = Ast.fulltypenameAstFromString(argumentTypeList[j].typename)
@@ -715,6 +715,9 @@ class UserFunction implements Fn {
     }
     if (fn == null) {
       console.error("Unable to find matching function for name and argument type set")
+      console.log(fns.map(fn => fn.getName()))
+      console.log(fns.map(fn => fn.getArguments()))
+      console.log(argumentTypeList)
       let argTypes = []
       for (let i = 0; i < argumentTypeList.length; i++) {
         argTypes.push("<" + argumentTypeList[i].typename + ">")
