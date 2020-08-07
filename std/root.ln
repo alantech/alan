@@ -279,14 +279,14 @@ export fn index(arr: Array<int64>, val: int64) = indarrf(arr, val)
 export fn index(arr: Array<float32>, val: float32) = indarrf(arr, val)
 export fn index(arr: Array<float64>, val: float64) = indarrf(arr, val)
 export fn index(arr: Array<bool>, val: bool) = indarrf(arr, val)
-export fn has(arr: Array<any>, val: any) = indarrv(arr, val) > -1
-export fn has(arr: Array<int8>, val: int8) = indarrf(arr, val) > -1
-export fn has(arr: Array<int16>, val: int16) = indarrf(arr, val) > -1
-export fn has(arr: Array<int32>, val: int32) = indarrf(arr, val) > -1
-export fn has(arr: Array<int64>, val: int64) = indarrf(arr, val) > -1
-export fn has(arr: Array<float32>, val: float32) = indarrf(arr, val) > -1
-export fn has(arr: Array<float64>, val: float64) = indarrf(arr, val) > -1
-export fn has(arr: Array<bool>, val: bool) = indarrf(arr, val) > -1
+export fn has(arr: Array<any>, val: any) = indarrv(arr, val).gt(-1)
+export fn has(arr: Array<int8>, val: int8) = indarrf(arr, val).gt(-1)
+export fn has(arr: Array<int16>, val: int16) = indarrf(arr, val).gt(-1)
+export fn has(arr: Array<int32>, val: int32) = indarrf(arr, val).gt(-1)
+export fn has(arr: Array<int64>, val: int64) = indarrf(arr, val).gt(-1)
+export fn has(arr: Array<float32>, val: float32) = indarrf(arr, val).gt(-1)
+export fn has(arr: Array<float64>, val: float64) = indarrf(arr, val).gt(-1)
+export fn has(arr: Array<bool>, val: bool) = indarrf(arr, val).gt(-1)
 export fn length(arr: Array<any>) = lenarr(arr)
 export fn push(arr: Array<any>, val: any) {
   pusharr(arr, val, 0)
