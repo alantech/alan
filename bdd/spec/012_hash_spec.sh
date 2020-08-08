@@ -42,7 +42,7 @@ Describe "Hashing"
 
   Describe "HashMap (no syntactic sugar)"
     before() {
-      sourceToAll "
+      sourceToTemp "
         from @std/app import start, print, exit
 
         on start {
@@ -50,10 +50,10 @@ Describe "Hashing"
           test.set('bar', 2)
           test.set('baz', 99)
           print(test.keyVal().map(fn (n: KeyVal<string, int64>): string {
-            return 'key: ' + n.key + '\nval: ' + n.value.toString()
+            return 'key: ' + n.key + '\nval: ' + toString(n.val)
           }).join('\n'))
           print(test.keys().join(', '))
-          print(test.values().map(fn (n: int64): string = n.toString()).join(', '))
+          print(test.vals().map(fn (n: int64): string = n.toString()).join(', '))
           print(test.length())
           emit exit 0
         }
@@ -77,11 +77,13 @@ bar, foo, baz
 3"
 
     It "runs js"
+      Pending deeply-nested-generics-support
       When run node temp.js
       The output should eq "$HASHMAPOUTPUT"
     End
 
     It "runs agc"
+      Pending deeply-nested-generics-support
       When run alan-runtime run temp.agc
       The output should eq "$HASHMAPOUTPUT"
     End

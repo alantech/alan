@@ -114,6 +114,7 @@ const addopcodes = (opcodes: object) => {
                   const newReturnType = baseType ?
                     baseType.solidify([innerTypename], scope) :
                     returnType
+                  console.log({ newReturnType, })
                   return newReturnType
                 } else  {
                   // Path 2: the opcode returns solidified generic type with an interface generic

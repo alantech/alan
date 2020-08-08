@@ -492,8 +492,8 @@ export type HashMap<K, V> {
   lookup: Array<Array<int64>>
 }
 
-export fn keyVal(hm: HashMap<Hashable, any>): Array<KeyVal<Hashable, any>> = hm.keyVal
-export fn keys(hm: HashMap<Hashable, any>): Array<Hashable> = map(hm.keyVal, fn (kv: KeyVal<Hashable, any>): Hashable = kv.key)
+export fn keyVal(hm: HashMap<Hashable, any>) = hm.keyVal
+export fn keys(hm: HashMap<Hashable, any>) = map(hm.keyVal, fn (kv: KeyVal<Hashable, any>) = kv.key)
 export fn vals(hm: HashMap<Hashable, any>): Array<any> = map(hm.keyVal, fn (kv: KeyVal<Hashable, any>): any = kv.val)
 export fn length(hm: HashMap<Hashable, any>): int64 = length(hm.keyVal)
 

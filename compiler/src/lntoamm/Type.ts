@@ -500,6 +500,10 @@ export class Type {
   typeApplies(otherType: Type, scope: Scope, interfaceMap: Map<Type, Type> = new Map()) {
     if (this.typename === otherType.typename) return true
     if (!!this.iface) {
+      console.log({
+        typename: this.typename,
+        iface: this.iface,
+      })
       const applies = this.iface.typeApplies(otherType, scope)
       if (applies) {
         interfaceMap.set(this, otherType)
@@ -511,9 +515,48 @@ export class Type {
       !otherType.originalType ||
       this.originalType.typename !== otherType.originalType.typename
     ) return false
-    const propTypes = Object.values(this.properties)
-    const otherPropTypes = Object.values(otherType.properties)
-    return propTypes.every((t, i) => t.typeApplies(otherPropTypes[i], scope, interfaceMap))
+    const typeAst = fulltypenameAstFromString(this.typename)
+    const otherTypeAst = fulltypenameAstFromString(otherType.typename)
+    const generics = typeAst.typegenerics().fulltypename().map((g: any) => scope.deepGet(g.getText()) as Type)
+    const otherGenerics = otherTypeAst.typegenerics().fulltypename().map((g: any) => scope.deepGet(g.getText()) as Type)
+    return generics.every((t, i) => t.typeApplies(otherGenerics[i], scope, interfaceMap))
+  }
+
+  // There has to be a more elegant way to tackle this
+  static fromStringWithMap(typestr: string, interfaceMap: Map<Type, Type>, scope: Scope) {
+    const typeAst = fulltypenameAstFromString(typestr)
+    const baseName = typeAst.varn().getText()
+    const baseType = scope.deepGet(baseName) as Type
+    if (typeAst.typegenerics()) {
+      const genericNames = typeAst.typegenerics().fulltypename().map((t: any) => t.getText())
+      console.log({
+        baseName,
+        genericNames,
+      })
+      const generics = genericNames.map((t: string) => {
+        const interfaceMapping = [
+          ...interfaceMap.entries()
+        ].find(e => e[0].typename === t.trim())
+        if (interfaceMapping) return interfaceMapping[1]
+        const innerType = Type.fromStringWithMap(t, interfaceMap, scope)
+        return innerType
+      })
+      console.log({
+        generics,
+      })
+      return baseType.solidify(
+        generics.map((g: Type) => interfaceMap.get(g) || g).map((t: Type) => t.typename),
+        scope
+      )
+    } else {
+      return interfaceMap.get(baseType) || baseType
+    }
+    /*self.typename = 
+      baseName +
+      '<' +
+      generics.map((g: Type) => interfaceMap.get(g) || g).map((t: Type) => t.typename).join(', ') + 
+      '>'
+    return self*/
   }
 
   realize(interfaceMap: Map<Type, Type>, scope: Scope) {
@@ -526,41 +569,18 @@ export class Type {
       this.typename,
       this.builtIn,
       this.isGenericStandin,
-      this.properties,
-      this.generics,
+      { ...this.properties, },
+      { ...this.generics, },
       this.originalType,
       this.iface,
       this.alias,
     )
-    const typeAst = fulltypenameAstFromString(self.typename)
-    const baseName = typeAst.varn().getText()
-    /*console.log({
-      original: this,
-      typename: this.typename,
-      interfaceMap,
-      oldProperties: self.properties,
-      newPropTypes,
+    const newProps = Object.values(self.properties).map(t => t.realize(interfaceMap, scope))
+    Object.keys(self.properties).forEach((k, i) => {
+      self.properties[k] = newProps[i]
     })
-    Object.keys(self.properties).forEach((key, i) => {
-      self.properties[key] = newPropTypes[i]
-    })*/
-    const generics = typeAst.typegenerics().fulltypename().map(
-      (t: any) => 
-        scope.deepGet(t.getText()) ||
-        Object.values(self.properties).find(p => p.typename === t.getText())
-    )
-    console.log(generics)
-    console.log({
-      self,
-      generics,
-      interfaceMap,
-    })
-    self.typename = 
-      baseName +
-      '<' +
-      generics.map((g: Type) => interfaceMap.get(g) || g).map((t: Type) => t.typename).join(', ') + 
-      '>'
-    return self
+    const newType = Type.fromStringWithMap(self.typename, interfaceMap, scope)
+    return newType
   }
 
 

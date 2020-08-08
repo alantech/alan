@@ -219,6 +219,8 @@ class UserFunction implements Fn {
               scope
             )
           }
+        } else if (functionAst.argtype()) {
+          returnType = scope.deepGet(functionAst.argType().getText().trim())
         } else {
           if (assignablesAst.basicassignables().objectliterals().arrayliteral().othertype()) {
             returnType = scope.deepGet(
@@ -415,22 +417,26 @@ class UserFunction implements Fn {
           // Potentially rewrite the type for the object literal to match the interface type used by
           // a specific call
           const str = s.statementOrAssignableAst.getText()
-          const corrected = str.replace(/new ([^{]+){/g, (
+          const corrected = str.replace(/new ([^<]+)<([^>]+)> *{/g, (
             _: any,
-            typestr: string,
+            basetypestr: string,
+            genericstr: string,
           ) => {
             console.log({
-              typestr,
+              basetypestr,
+              genericstr
             })
-            let originalType = this.scope.deepGet(typestr.trim()) as Type
+            const originaltypestr = `${basetypestr.trim()}<${genericstr.trim()}>`
+            let originalType = this.scope.deepGet(originaltypestr) as Type
             if (!originalType || !(originalType instanceof Type)) {
               // It may be the first time this particular type has shown up, let's build it
-              const typeAst = Ast.fulltypenameAstFromString(typestr.trim())
+              const typeAst = Ast.fulltypenameAstFromString(originaltypestr)
               const baseTypeName = typeAst.varn().getText()
+              console.log(typeAst.typegenerics())
               const generics = typeAst.typegenerics().fulltypename().map((g: any) => g.getText())
               const baseType = this.scope.deepGet(baseTypeName) as Type
               if (!baseType || !(baseType instanceof Type)) { // Now we panic
-                console.log(typestr)
+                console.log(originaltypestr)
                 console.error('This should be impossible')
                 process.exit(111)
               }
@@ -559,7 +565,7 @@ class UserFunction implements Fn {
     const originalTypes = Object.values(this.getArguments())
     const interfaceMap: Map<Type, Type> = new Map()
     originalTypes.forEach((t, i) => t.typeApplies(inputTypes[i], scope, interfaceMap))
-    console.log({ interfaceMap, originalTypes, })
+    console.log({ interfaceMap, originalTypes, inputTypes })
     for (let i = 0; i < internalNames.length; i++) {
       const realArgName = realArgNames[i]
       // Instead of copying the relevant data, define a reference to where the data is located with
@@ -593,9 +599,9 @@ class UserFunction implements Fn {
     // interface's real type is the same as the output type, which is a valid assumption as long as
     // all inputs of that particular interface are the same type. TODO: If this is not true, it must
     // be a compile-time error earlier on.
-    const last = microstatements[microstatements.length - 1]
-    const newReturnType = last.outputType.realize(interfaceMap, scope) ||
-      (this.returnType.typename !== 'void' && this.returnType.realize(interfaceMap, scope)) ||
+    /*const last = microstatements[microstatements.length - 1]
+    const newReturnType = (this.returnType.typename !== 'void' && this.returnType.realize(interfaceMap, scope)) ||
+      last.outputType.realize(interfaceMap, scope) ||
       last.outputType
     console.log({
       lastType: last.outputType,
@@ -603,8 +609,8 @@ class UserFunction implements Fn {
       interfaceMap,
       newReturnType,
     })
-    last.outputType = newReturnType
-    /*const returnTypeAst = Ast.fulltypenameAstFromString(this.returnType.typename)
+    last.outputType = newReturnType*/
+    const returnTypeAst = Ast.fulltypenameAstFromString(this.returnType.typename)
     const returnTypeGenerics = returnTypeAst.typegenerics()
     const returnSubtypes = returnTypeGenerics ? returnTypeGenerics.fulltypename().map(
       (t: any) => scope.deepGet(t.getText())
@@ -657,7 +663,7 @@ class UserFunction implements Fn {
         )
         last.outputType = newLastType
       }
-    }*/
+    }
     // Now that we're done with this, we need to pop out all of the ENTERFN microstatements created
     // after this one so we don't mark non-recursive calls to a function multiple times as recursive
     // TODO: This is not the most efficient way to do things, come up with a better metadata
