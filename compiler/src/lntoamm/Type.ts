@@ -385,10 +385,12 @@ export class Type {
       // approach is why I will go with this for now.
       type.alias = othertype
     }
+    scope.put(type.typename, type)
     return type
   }
 
   solidify(genericReplacements: Array<string>, scope: Scope) {
+    let genericTypes = Object.keys(this.generics).map(t => new Type(t, true, true))
     let replacementTypes = []
     for (const typename of genericReplacements) {
       const typebox = scope.deepGet(typename) as Type
@@ -413,12 +415,21 @@ export class Type {
         replacementTypes.push(typebox)
       }
     }
+    const genericMap = new Map()
+    genericTypes.forEach((g, i) => genericMap.set(g, replacementTypes[i]))
+    console.log({ typename: this.typename, genericReplacements, genericMap, })
     const solidifiedName = this.typename + "<" + genericReplacements.join(", ") + ">"
     let solidified = new Type(solidifiedName, this.builtIn)
     solidified.originalType = this
     for (const propKey of Object.keys(this.properties)) {
       const propValue = this.properties[propKey]
-      if (propValue.isGenericStandin) {
+      const newPropValue = propValue.realize(genericMap, scope)
+      console.log({
+        propValue,
+        newPropValue,
+      })
+      solidified.properties[propKey] = newPropValue
+      /*if (propValue.isGenericStandin) {
         const genericLoc = this.generics[propValue.typename]
         if (typeof genericLoc !== "number") {
           // Might be an inner generic
@@ -457,11 +468,101 @@ export class Type {
         }
       } else {
         solidified.properties[propKey] = propValue
-      }
+      }*/
     }
+    console.log({ solidified, properties: solidified.properties, })
     scope.put(solidifiedName, solidified)
     return solidified
   }
+
+  hasNestedGeneric() {
+    const propTypes = Object.values(this.properties)
+    const typeList = []
+    while (propTypes.length > 0) {
+      const propType = propTypes.shift()
+      typeList.push(propType)
+      propTypes.push(...Object.values(propType.properties))
+    }
+    return typeList.some(t => t.isGenericStandin)
+  }
+
+  hasNestedInterface() {
+    const propTypes = Object.values(this.properties)
+    const typeList = []
+    while (propTypes.length > 0) {
+      const propType = propTypes.shift()
+      typeList.push(propType)
+      propTypes.push(...Object.values(propType.properties))
+    }
+    return typeList.some(t => !!t.iface)
+  }
+
+  typeApplies(otherType: Type, scope: Scope, interfaceMap: Map<Type, Type> = new Map()) {
+    if (this.typename === otherType.typename) return true
+    if (!!this.iface) {
+      const applies = this.iface.typeApplies(otherType, scope)
+      if (applies) {
+        interfaceMap.set(this, otherType)
+      }
+      return applies
+    }
+    if (
+      !this.originalType ||
+      !otherType.originalType ||
+      this.originalType.typename !== otherType.originalType.typename
+    ) return false
+    const propTypes = Object.values(this.properties)
+    const otherPropTypes = Object.values(otherType.properties)
+    return propTypes.every((t, i) => t.typeApplies(otherPropTypes[i], scope, interfaceMap))
+  }
+
+  realize(interfaceMap: Map<Type, Type>, scope: Scope) {
+    if (!!this.isGenericStandin) return [
+      ...interfaceMap.entries()
+    ].find(e => e[0].typename === this.typename)[1]
+    if (!this.iface && !this.originalType) return this
+    if (!!this.iface) return interfaceMap.get(this)
+    const self = new Type(
+      this.typename,
+      this.builtIn,
+      this.isGenericStandin,
+      this.properties,
+      this.generics,
+      this.originalType,
+      this.iface,
+      this.alias,
+    )
+    const typeAst = fulltypenameAstFromString(self.typename)
+    const baseName = typeAst.varn().getText()
+    /*console.log({
+      original: this,
+      typename: this.typename,
+      interfaceMap,
+      oldProperties: self.properties,
+      newPropTypes,
+    })
+    Object.keys(self.properties).forEach((key, i) => {
+      self.properties[key] = newPropTypes[i]
+    })*/
+    const generics = typeAst.typegenerics().fulltypename().map(
+      (t: any) => 
+        scope.deepGet(t.getText()) ||
+        Object.values(self.properties).find(p => p.typename === t.getText())
+    )
+    console.log(generics)
+    console.log({
+      self,
+      generics,
+      interfaceMap,
+    })
+    self.typename = 
+      baseName +
+      '<' +
+      generics.map((g: Type) => interfaceMap.get(g) || g).map((t: Type) => t.typename).join(', ') + 
+      '>'
+    return self
+  }
+
 
   // This is only necessary for the numeric types. TODO: Can we eliminate it?
   castable(otherType: Type) {

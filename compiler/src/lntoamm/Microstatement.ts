@@ -60,6 +60,7 @@ class Microstatement {
     let outString = ""
     switch (this.statementType) {
       case StatementType.CONSTDEC:
+        if (!this.outputType) console.log(this)
         outString = "const " + this.outputName + ": " + this.outputType.typename
         if (this.fns.length > 0) {
           outString += " = " + this.fns[0].getName() + "(" + this.inputNames.join(", ") + ")"

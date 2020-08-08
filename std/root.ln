@@ -492,12 +492,12 @@ export type HashMap<K, V> {
   lookup: Array<Array<int64>>
 }
 
-export fn keyVal(hm: HashMap<Hashable, any>) = hm.keyVal
-export fn keys(hm: HashMap<Hashable, any>) = map(hm.keyVal, fn (kv: KeyVal<Hashable, any>): Hashable = kv.key)
-export fn vals(hm: HashMap<Hashable, any>) = map(hm.keyVal, fn (kv: KeyVal<Hashable, any>): any = kv.val)
-export fn length(hm: HashMap<Hashable, any>) = length(hm.keyVal)
+export fn keyVal(hm: HashMap<Hashable, any>): Array<KeyVal<Hashable, any>> = hm.keyVal
+export fn keys(hm: HashMap<Hashable, any>): Array<Hashable> = map(hm.keyVal, fn (kv: KeyVal<Hashable, any>): Hashable = kv.key)
+export fn vals(hm: HashMap<Hashable, any>): Array<any> = map(hm.keyVal, fn (kv: KeyVal<Hashable, any>): any = kv.val)
+export fn length(hm: HashMap<Hashable, any>): int64 = length(hm.keyVal)
 
-export fn get(hm: HashMap<Hashable, any>, key: Hashable) {
+export fn get(hm: HashMap<Hashable, any>, key: Hashable): any {
   const hash = key.toHash() % length(hm.lookup)
   const list = getR(hm.lookup[hash])
   const index = list.find(fn (i: int64) = getR(hm.keyVal[i]).key.eq(key))
@@ -509,13 +509,13 @@ export fn get(hm: HashMap<Hashable, any>, key: Hashable) {
   }
 }
 
-export fn set(hm: HashMap<Hashable, any>, key: Hashable, val: any) {
+export fn set(hm: HashMap<Hashable, any>, key: Hashable, val: any): HashMap<Hashable, any> {
   const kv = new KeyVal<Hashable, any> {
     key = key
     val = val
   }
   const index = length(hm.keyVal)
-  hm.keyVal.push(kv)
+  push(hm.keyVal, kv)
   const hash = key.toHash() % length(hm.lookup)
   const list = getR(hm.lookup[hash])
   if list.length() == 8 {
@@ -523,7 +523,7 @@ export fn set(hm: HashMap<Hashable, any>, key: Hashable, val: any) {
     const lookupLen = length(hm.lookup) * 2
     hm.lookup = new Array<Array<int64>> [ new Array<int64> [], ] * lookupLen
     each(hm.keyVal, fn (kv: KeyVal<Hashable, any>, i: int64) {
-      const hash = kv.key.toHash() % lookupLen
+      const hash = toHash(kv.key) % lookupLen
       const list = getR(hm.lookup[hash])
       list.push(i)
     })
@@ -534,7 +534,7 @@ export fn set(hm: HashMap<Hashable, any>, key: Hashable, val: any) {
   return hm
 }
 
-export fn newHashMap(firstKey: Hashable, firstVal: any) { // TODO: Rust-like fn::<typeA, typeB> syntax?
+export fn newHashMap(firstKey: Hashable, firstVal: any): HashMap<Hashable, any> { // TODO: Rust-like fn::<typeA, typeB> syntax?
   let hm = new HashMap<Hashable, any> {
     keyVal = new Array<KeyVal<Hashable, any>> []
     lookup = new Array<Array<int64>> [ new Array<int64> [] ] * 128 // 1KB of space

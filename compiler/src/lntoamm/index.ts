@@ -222,7 +222,7 @@ const ammFromModuleAsts = (moduleAsts: any) => { // TODO: Migrate from ANTLR
         handlerDec += argList.join(", ")
         handlerDec += "): " + handler.getReturnType().typename + " {"
         // Extract the handler statements and compile into microstatements
-        const statements = handler.maybeTransform(Object.values(handler.getArguments())).statements;
+        const statements = handler.maybeTransform(new Map()).statements;
         for (const s of statements) {
           Microstatement.fromStatement(s, microstatements)
         }
