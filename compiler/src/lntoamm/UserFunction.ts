@@ -460,12 +460,6 @@ class UserFunction implements Fn {
           const replacementType = originalType.realize(interfaceMap, this.scope)
           return `: ${replacementType.typename}${openstr}`
         })
-        /*console.log({
-          interfaceMap,
-          str,
-          corrected,
-          secondCorrection,
-        })*/
         if (s.statementOrAssignableAst instanceof LnParser.AssignablesContext) {
           const correctedAst = Ast.statementAstFromString(`return ${secondCorrection}\n`)
           s.statementOrAssignableAst = correctedAst
@@ -626,61 +620,64 @@ class UserFunction implements Fn {
     // interface's real type is the same as the output type, which is a valid assumption as long as
     // all inputs of that particular interface are the same type. TODO: If this is not true, it must
     // be a compile-time error earlier on.
-    /*const last = microstatements[microstatements.length - 1]
-    const newReturnType = (this.returnType.typename !== 'void' && this.returnType.realize(interfaceMap, scope)) ||
+    const last = microstatements[microstatements.length - 1]
+    /*const newReturnType = (this.returnType.typename !== 'void' && this.returnType.realize(interfaceMap, scope)) ||
       last.outputType.realize(interfaceMap, scope) ||
       last.outputType
     last.outputType = newReturnType*/
-    const returnTypeAst = Ast.fulltypenameAstFromString(this.returnType.typename)
-    const returnTypeGenerics = returnTypeAst.typegenerics()
-    const returnSubtypes = returnTypeGenerics ? returnTypeGenerics.fulltypename().map(
-      (t: any) => scope.deepGet(t.getText())
-    ) : []
-    if (this.returnType.iface) {
-      const originalArgTypes = Object.values(this.args)
-      for (let i = 0; i < inputTypes.length; i++) {
-        if (this.returnType === originalArgTypes[i]) {
-          microstatements[microstatements.length - 1].outputType = inputTypes[i]
-        }
-      }
-    } else if (returnSubtypes.some((t: Type) => !!t.iface)) {
-      const oldReturnType = this.returnType
-      const originalArgTypes = Object.values(this.args)
-      for (let i = 0; i < inputTypes.length; i++) {
-        for (let j = 0; j < returnSubtypes.length; j++) {
-          if (returnSubtypes[j] === originalArgTypes[i]) {
-            returnSubtypes[j] = inputTypes[i]
-          }
-        }
-      }
-      let newReturnType = oldReturnType.originalType.solidify(
-        returnSubtypes.map((t: Type) => t.typename),
-        scope
-      )
-      const last = microstatements[microstatements.length - 1]
-      last.outputType = newReturnType
-    } else {
-      const last = microstatements[microstatements.length - 1]
-      const lastTypeAst = Ast.fulltypenameAstFromString(last.outputType.typename)
-      const lastTypeGenerics = lastTypeAst.typegenerics()
-      const lastSubtypes = lastTypeGenerics ? lastTypeGenerics.fulltypename().map(
+    if (!this.returnType.typeApplies(last.outputType, scope, new Map()))  {
+      const returnTypeAst = Ast.fulltypenameAstFromString(this.returnType.typename)
+      const returnTypeGenerics = returnTypeAst.typegenerics()
+      const returnSubtypes = returnTypeGenerics ? returnTypeGenerics.fulltypename().map(
         (t: any) => scope.deepGet(t.getText())
       ) : []
-      if (lastSubtypes.some((t: Type) => !!t.iface)) {
-        const oldLastType = last.outputType
+      if (this.returnType.iface) {
         const originalArgTypes = Object.values(this.args)
         for (let i = 0; i < inputTypes.length; i++) {
-          for (let j = 0; j < lastSubtypes.length; j++) {
-            if (lastSubtypes[j] === originalArgTypes[i]) {
-              lastSubtypes[j] = inputTypes[i]
+          if (this.returnType === originalArgTypes[i]) {
+            microstatements[microstatements.length - 1].outputType = inputTypes[i]
+          }
+        }
+      } else if (returnSubtypes.some((t: Type) => !!t.iface)) {
+        const oldReturnType = this.returnType
+        const originalArgTypes = Object.values(this.args)
+        for (let i = 0; i < inputTypes.length; i++) {
+          for (let j = 0; j < returnSubtypes.length; j++) {
+            if (returnSubtypes[j] === originalArgTypes[i]) {
+              returnSubtypes[j] = inputTypes[i]
             }
           }
         }
-        let newLastType = oldLastType.originalType.solidify(
-          lastSubtypes.map((t: Type) => t.typename),
+        let newReturnType = oldReturnType.originalType.solidify(
+          returnSubtypes.map((t: Type) => t.typename),
           scope
         )
-        last.outputType = newLastType
+        last.outputType = newReturnType
+      } else {
+        const lastTypeAst = Ast.fulltypenameAstFromString(last.outputType.typename)
+        const lastTypeGenerics = lastTypeAst.typegenerics()
+        const lastSubtypes = lastTypeGenerics ? lastTypeGenerics.fulltypename().map(
+          (t: any) => scope.deepGet(t.getText()) || (scope.deepGet(t.varn().getText()) as Type).solidify(
+            t.typegenerics().fulltypename().map((t: any) => t.getText()),
+            scope
+          )
+        ) : []
+        if (lastSubtypes.some((t: Type) => !!t.iface)) {
+          const oldLastType = last.outputType
+          const originalArgTypes = Object.values(this.args)
+          for (let i = 0; i < inputTypes.length; i++) {
+            for (let j = 0; j < lastSubtypes.length; j++) {
+              if (lastSubtypes[j] === originalArgTypes[i]) {
+                lastSubtypes[j] = inputTypes[i]
+              }
+            }
+          }
+          let newLastType = oldLastType.originalType.solidify(
+            lastSubtypes.map((t: Type) => t.typename),
+            scope
+          )
+          last.outputType = newLastType
+        }
       }
     }
     // Now that we're done with this, we need to pop out all of the ENTERFN microstatements created
@@ -715,9 +712,6 @@ class UserFunction implements Fn {
     }
     if (fn == null) {
       console.error("Unable to find matching function for name and argument type set")
-      console.log(fns.map(fn => fn.getName()))
-      console.log(fns.map(fn => fn.getArguments()))
-      console.log(argumentTypeList)
       let argTypes = []
       for (let i = 0; i < argumentTypeList.length; i++) {
         argTypes.push("<" + argumentTypeList[i].typename + ">")

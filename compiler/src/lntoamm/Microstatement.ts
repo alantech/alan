@@ -60,7 +60,6 @@ class Microstatement {
     let outString = ""
     switch (this.statementType) {
       case StatementType.CONSTDEC:
-        if (!this.outputType) console.log(this)
         outString = "const " + this.outputName + ": " + this.outputType.typename
         if (this.fns.length > 0) {
           outString += " = " + this.fns[0].getName() + "(" + this.inputNames.join(", ") + ")"
@@ -920,6 +919,10 @@ class Microstatement {
     scope: Scope,
     microstatements: Array<Microstatement>,
   ) {
+    // TODO: Potentially revisit this entire approach -- closures with interface types should be
+    // re-evaluated at each callsite to get the correct opcodes selected based on the matched types
+    // and the related functions. Those functions may be implemented wildly differently between the
+    // compatible types such that the microstatements would not be a simple type replacement away
     // inject arguments as const declarations into microstatements arrays with the variable names
     // and remove them later so we can parse the closure and keep the logic contained to this method
     const idx = microstatements.length
@@ -950,6 +953,8 @@ class Microstatement {
     microstatements.splice(len, newlen - len)
     const constName = "_" + uuid().replace(/-/g, "_")
     // if closure is not void return the last inner statement
+    // TODO: Revisit this, if the closure doesn't have a type defined, sometimes it can only be
+    // determined in the calling context and shouldn't be assumed to be `void`
     if (userFunction.returnType !== Type.builtinTypes.void) {
       const last = innerMicrostatements[innerMicrostatements.length - 1]
       innerMicrostatements.push(new Microstatement(
@@ -1229,7 +1234,6 @@ class Microstatement {
       // Generate the relevant microstatements for this function. UserFunctions get inlined with the
       // return statement turned into a const assignment as the last statement, while built-in
       // functions are kept as function calls with the correct renaming.
-      // microstatements.map(m => m.toString()).filter(m => m !== '').forEach(m => console.log(m))
       UserFunction
         .dispatchFn(fnBox, realArgTypes, scope)
         .microstatementInlining(realArgNames, scope, microstatements)

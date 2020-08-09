@@ -29,9 +29,15 @@ Describe "Hashing"
 6288867289231076425
 -1521185239552941064"
 
+    JSHASHOUTPUT="-1058942856030168400
+-5016367128657348000
+-1058942856030168400
+6288867289231076000
+-1521185239552941000" # TODO: Rounding should disappear once we can use BigInt consistently in JS
+
     It "runs js"
       When run node temp.js
-      The output should eq "$TOHASHOUTPUT"
+      The output should eq "$JSHASHOUTPUT"
     End
 
     It "runs agc"
@@ -42,6 +48,7 @@ Describe "Hashing"
 
   Describe "HashMap (no syntactic sugar)"
     before() {
+      # TODO: sourceToAll
       sourceToTemp "
         from @std/app import start, print, exit
 
@@ -50,14 +57,16 @@ Describe "Hashing"
           test.set('bar', 2)
           test.set('baz', 99)
           print(test.keyVal().map(fn (n: KeyVal<string, int64>): string {
-            return 'key: ' + n.key + '\nval: ' + toString(n.val)
-          }).join('\n'))
+            return 'key: ' + n.key + \"\\nval: \" + toString(n.val)
+          }).join(\"\\n\"))
           print(test.keys().join(', '))
           print(test.vals().map(fn (n: int64): string = n.toString()).join(', '))
           print(test.length())
           emit exit 0
         }
       "
+      tempToAmm
+      tempToJs
     }
     BeforeAll before
 
@@ -66,24 +75,23 @@ Describe "Hashing"
     }
     AfterAll after
 
-    HASHMAPOUTPUT="key: bar
-val: 2
-key: foo
+    HASHMAPOUTPUT="key: foo
 val: 1
+key: bar
+val: 2
 key: baz
 val: 99
-bar, foo, baz
-2, 1, 99
+foo, bar, baz
+1, 2, 99
 3"
 
     It "runs js"
-      Pending deeply-nested-generics-support
       When run node temp.js
       The output should eq "$HASHMAPOUTPUT"
     End
 
     It "runs agc"
-      Pending deeply-nested-generics-support
+      Pending ammtoaga-fix
       When run alan-runtime run temp.agc
       The output should eq "$HASHMAPOUTPUT"
     End

@@ -71,6 +71,8 @@ const addopcodes = (opcodes: object) => {
         ) => {
           const inputs = realArgNames.map(n => Microstatement.fromVarName(n, scope, microstatements))
           const inputTypes = inputs.map(i => i.outputType)
+          const interfaceMap: Map<Type, Type> = new Map()
+          Object.values(args).forEach((t: Type, i) => t.typeApplies(inputTypes[i], scope, interfaceMap))
           microstatements.push(new Microstatement(
             StatementType.CONSTDEC,
             scope,
@@ -107,14 +109,21 @@ const addopcodes = (opcodes: object) => {
                   // interface matching logic figures out what the return type of the opcode is
                   // based on the return type of the function given to it.
                   // For now, we just do that "by hand."
-                  const innerTypename = inputs[1].fns[0] ?
-                    inputs[1].fns[0].getReturnType().typename :
-                    inputs[1].closureOutputType.typename
+                  const innerType = inputs[1].fns[0] ?
+                    inputs[1].fns[0].getReturnType() :
+                    inputs[1].closureOutputType
+                  const innerArgType = (inputs[1].fns[0] ?
+                    Object.values(inputs[1].fns[0].getArguments())[0] :
+                    Object.values(inputs[1].closureArgs)[0]) as Type
+                  const arrayInnerType = scope.deepGet(
+                    inputTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
+                  ) as Type
+                  innerArgType.typeApplies(arrayInnerType, scope, interfaceMap)
+                  const newInnerType = innerType.realize(interfaceMap, scope)
                   const baseType = returnType.originalType
                   const newReturnType = baseType ?
-                    baseType.solidify([innerTypename], scope) :
+                    baseType.solidify([newInnerType.typename], scope) :
                     returnType
-                  console.log({ newReturnType, })
                   return newReturnType
                 } else  {
                   // Path 2: the opcode returns solidified generic type with an interface generic

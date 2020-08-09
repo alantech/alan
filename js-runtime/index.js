@@ -48,7 +48,7 @@ const hashcore = (hasher, a) => {
   }
   return hasher
 }
-const hashf = a => BigInt.asIntN(64, hashcore(xxh.h64().init(0xfa57), a).digest())
+const hashf = a => Number(BigInt.asIntN(64, hashcore(xxh.h64().init(0xfa57), a).digest()))
 const hashv = arr => {
   // The Rust runtime considers strings a variable type, but they are more like a fixed type for JS
   if (typeof arr === 'string') return hashf(arr)
@@ -64,7 +64,7 @@ const hashv = arr => {
       }
     }
   }
-  return BigInt.asIntN(64, hasher.digest())
+  return Number(BigInt.asIntN(64, hasher.digest())) // TODO: Move all i64 to BigInt?
 }
 
 module.exports = {

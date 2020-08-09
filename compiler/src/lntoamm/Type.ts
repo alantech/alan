@@ -424,71 +424,9 @@ export class Type {
       const propValue = this.properties[propKey]
       const newPropValue = propValue.realize(genericMap, scope)
       solidified.properties[propKey] = newPropValue
-      /*if (propValue.isGenericStandin) {
-        const genericLoc = this.generics[propValue.typename]
-        if (typeof genericLoc !== "number") {
-          // Might be an inner generic
-          const genericTypeAst = fulltypenameAstFromString(propValue.typename)
-          if (!genericTypeAst.typegenerics()) {
-            const replacementType = replacementTypes[genericLoc]
-            solidified.properties[propKey] = replacementType
-          } else {
-            const baseTypeName = genericTypeAst.varn().getText()
-            const baseType = scope.deepGet(baseTypeName) as Type
-            if (!baseType || !(baseType instanceof Type)) {
-              console.error("Generic property not described but not found.")
-              process.exit(-36)
-            }
-            const genericTypeNames = genericTypeAst.typegenerics().fulltypename()
-            let innerReplacementTypes = []
-            for (const genericTypeName of genericTypeNames) {
-              const genericType = scope.deepGet(genericTypeName.getText()) as Type
-              if (genericType && genericType instanceof Type) {
-                innerReplacementTypes.push(genericType.typename)
-              } else {
-                const innerGenericLoc = this.generics[genericTypeName.getText()]
-                if (typeof innerGenericLoc !== "number") {
-                  console.error("Generic property not described but not found.")
-                  process.exit(-36)
-                }
-                innerReplacementTypes.push(replacementTypes[innerGenericLoc].typename)
-              }
-            }
-            const newInnerType = baseType.solidify(innerReplacementTypes, scope) as Type
-            solidified.properties[propKey] = newInnerType
-          }
-        } else {
-          const replacementType = replacementTypes[genericLoc]
-          solidified.properties[propKey] = replacementType
-        }
-      } else {
-        solidified.properties[propKey] = propValue
-      }*/
     }
     scope.put(solidifiedName, solidified)
     return solidified
-  }
-
-  hasNestedGeneric() {
-    const propTypes = Object.values(this.properties)
-    const typeList = []
-    while (propTypes.length > 0) {
-      const propType = propTypes.shift()
-      typeList.push(propType)
-      propTypes.push(...Object.values(propType.properties))
-    }
-    return typeList.some(t => t.isGenericStandin)
-  }
-
-  hasNestedInterface() {
-    const propTypes = Object.values(this.properties)
-    const typeList = []
-    while (propTypes.length > 0) {
-      const propType = propTypes.shift()
-      typeList.push(propType)
-      propTypes.push(...Object.values(propType.properties))
-    }
-    return typeList.some(t => !!t.iface)
   }
 
   typeApplies(otherType: Type, scope: Scope, interfaceMap: Map<Type, Type> = new Map()) {
@@ -509,14 +447,11 @@ export class Type {
     const otherTypeAst = fulltypenameAstFromString(otherType.typename)
     const generics = typeAst.typegenerics().fulltypename().map((g: any) => scope.deepGet(g.getText()) as Type)
     const otherGenerics = otherTypeAst.typegenerics().fulltypename().map((g: any) => scope.deepGet(g.getText()) as Type)
-    return generics.every((t, i) => t.typeApplies(otherGenerics[i], scope, interfaceMap))
+    return generics.every((t: Type, i: Number) => t.typeApplies(otherGenerics[i], scope, interfaceMap))
   }
 
   // There has to be a more elegant way to tackle this
   static fromStringWithMap(typestr: string, interfaceMap: Map<Type, Type>, scope: Scope) {
-    /*console.log({
-      interfaceMap,
-    })*/
     const typeAst = fulltypenameAstFromString(typestr)
     const baseName = typeAst.varn().getText()
     const baseType = scope.deepGet(baseName) as Type
@@ -537,12 +472,6 @@ export class Type {
     } else {
       return interfaceMap.get(baseType) || baseType
     }
-    /*self.typename =
-      baseName +
-      '<' +
-      generics.map((g: Type) => interfaceMap.get(g) || g).map((t: Type) => t.typename).join(', ') + 
-      '>'
-    return self*/
   }
 
   realize(interfaceMap: Map<Type, Type>, scope: Scope) {
@@ -550,7 +479,7 @@ export class Type {
       ...interfaceMap.entries()
     ].find(e => e[0].typename === this.typename)[1]
     if (!this.iface && !this.originalType) return this
-    if (!!this.iface) return interfaceMap.get(this)
+    if (!!this.iface) return interfaceMap.get(this) || this
     const self = new Type(
       this.typename,
       this.builtIn,
@@ -566,10 +495,6 @@ export class Type {
       self.properties[k] = newProps[i]
     })
     const newType = Type.fromStringWithMap(self.typename, interfaceMap, scope)
-    /*console.log({
-      oldType: this,
-      newType,
-    })*/
     return newType
   }
 
