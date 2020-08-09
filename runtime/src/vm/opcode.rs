@@ -1975,14 +1975,17 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     (0..len).into_par_iter().for_each_with(instructions, |ins, idx| {
       let mut mem = arr.clone();
       // array element is $1 argument of the closure memory space
+      // current index is $2 argument
       if !mem.has_nested_fractals() {
         // this could be a string or fixed data type
         let val = mem.read_fixed(idx);
         mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
+        mem.write_fixed(CLOSURE_ARG_MEM_START + 2, idx);
       } else {
         // more nested arrays
         let arr_el = mem.read_fractal(idx);
         mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
+        mem.write_fixed(CLOSURE_ARG_MEM_START + 2, idx);
       }
       ins.iter().for_each(|i| {
         // TODO implement for async_functions. can tokio be called within rayon?
