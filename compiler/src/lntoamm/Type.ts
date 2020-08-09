@@ -407,7 +407,7 @@ export class Type {
             const newtype = baseType.solidify(generics, scope)
             replacementTypes.push(newtype)
           }
-        } else { 
+        } else {
           console.error(typename + " type not found")
           process.exit(-35)
         }
@@ -417,17 +417,12 @@ export class Type {
     }
     const genericMap = new Map()
     genericTypes.forEach((g, i) => genericMap.set(g, replacementTypes[i]))
-    console.log({ typename: this.typename, genericReplacements, genericMap, })
     const solidifiedName = this.typename + "<" + genericReplacements.join(", ") + ">"
     let solidified = new Type(solidifiedName, this.builtIn)
     solidified.originalType = this
     for (const propKey of Object.keys(this.properties)) {
       const propValue = this.properties[propKey]
       const newPropValue = propValue.realize(genericMap, scope)
-      console.log({
-        propValue,
-        newPropValue,
-      })
       solidified.properties[propKey] = newPropValue
       /*if (propValue.isGenericStandin) {
         const genericLoc = this.generics[propValue.typename]
@@ -470,7 +465,6 @@ export class Type {
         solidified.properties[propKey] = propValue
       }*/
     }
-    console.log({ solidified, properties: solidified.properties, })
     scope.put(solidifiedName, solidified)
     return solidified
   }
@@ -500,10 +494,6 @@ export class Type {
   typeApplies(otherType: Type, scope: Scope, interfaceMap: Map<Type, Type> = new Map()) {
     if (this.typename === otherType.typename) return true
     if (!!this.iface) {
-      console.log({
-        typename: this.typename,
-        iface: this.iface,
-      })
       const applies = this.iface.typeApplies(otherType, scope)
       if (applies) {
         interfaceMap.set(this, otherType)
@@ -524,15 +514,14 @@ export class Type {
 
   // There has to be a more elegant way to tackle this
   static fromStringWithMap(typestr: string, interfaceMap: Map<Type, Type>, scope: Scope) {
+    /*console.log({
+      interfaceMap,
+    })*/
     const typeAst = fulltypenameAstFromString(typestr)
     const baseName = typeAst.varn().getText()
     const baseType = scope.deepGet(baseName) as Type
     if (typeAst.typegenerics()) {
       const genericNames = typeAst.typegenerics().fulltypename().map((t: any) => t.getText())
-      console.log({
-        baseName,
-        genericNames,
-      })
       const generics = genericNames.map((t: string) => {
         const interfaceMapping = [
           ...interfaceMap.entries()
@@ -541,9 +530,6 @@ export class Type {
         const innerType = Type.fromStringWithMap(t, interfaceMap, scope)
         return innerType
       })
-      console.log({
-        generics,
-      })
       return baseType.solidify(
         generics.map((g: Type) => interfaceMap.get(g) || g).map((t: Type) => t.typename),
         scope
@@ -551,7 +537,7 @@ export class Type {
     } else {
       return interfaceMap.get(baseType) || baseType
     }
-    /*self.typename = 
+    /*self.typename =
       baseName +
       '<' +
       generics.map((g: Type) => interfaceMap.get(g) || g).map((t: Type) => t.typename).join(', ') + 
@@ -580,6 +566,10 @@ export class Type {
       self.properties[k] = newProps[i]
     })
     const newType = Type.fromStringWithMap(self.typename, interfaceMap, scope)
+    /*console.log({
+      oldType: this,
+      newType,
+    })*/
     return newType
   }
 

@@ -297,7 +297,7 @@ class UserFunction implements Fn {
       cond.blocklikes(0).varn() ?
         scope.deepGet(cond.blocklikes(0).varn().getText())[0] :
         UserFunction.fromFunctionsAst(cond.blocklikes(0).functions(), scope)
-    ).maybeTransform([])
+    ).maybeTransform(new Map())
     if (condBlockFn.statements[condBlockFn.statements.length - 1].isReturnStatement()) {
       hasConditionalReturn = true
     }
@@ -313,7 +313,7 @@ class UserFunction implements Fn {
           cond.blocklikes(1).varn() ?
             scope.deepGet(cond.blocklikes(1).varn().getText())[0] :
             UserFunction.fromFunctionsAst(cond.blocklikes(1).functions(), scope)
-        ).maybeTransform([])
+        ).maybeTransform(new Map())
         if (elseBlockFn.statements[elseBlockFn.statements.length - 1].isReturnStatement()) {
           hasConditionalReturn = true
         }
@@ -406,53 +406,81 @@ class UserFunction implements Fn {
       let statementAsts = []
       let hasConditionalReturn = false // Flag for potential second pass
       for (let i = 0; i < this.statements.length; i++) {
-        const s = this.statements[i]
+        let s = new Statement(
+          this.statements[i].statementOrAssignableAst,
+          this.statements[i].scope,
+          this.statements[i].pure,
+        )
+        // Potentially rewrite the type for the object literal to match the interface type used by
+        // a specific call
+        const str = s.statementOrAssignableAst.getText()
+        const corrected = str.replace(/new ([^<]+)<([^{\[]+)> *([{\[])/g, (
+          _: any,
+          basetypestr: string,
+          genericstr: string,
+          openstr: string,
+        ) => {
+          const originaltypestr = `${basetypestr.trim()}<${genericstr.trim()}>`
+          let originalType = this.scope.deepGet(originaltypestr) as Type
+          if (!originalType || !(originalType instanceof Type)) {
+            // It may be the first time this particular type has shown up, let's build it
+            const typeAst = Ast.fulltypenameAstFromString(originaltypestr)
+            const baseTypeName = typeAst.varn().getText()
+            const generics = typeAst.typegenerics().fulltypename().map((g: any) => g.getText())
+            const baseType = this.scope.deepGet(baseTypeName) as Type
+            if (!baseType || !(baseType instanceof Type)) { // Now we panic
+              console.error('This should be impossible')
+              process.exit(111)
+            }
+            originalType = baseType.solidify(generics, this.scope)
+          }
+          const replacementType = originalType.realize(interfaceMap, this.scope)
+          return `new ${replacementType.typename} ${openstr}`
+        })
+        const secondCorrection = corrected.replace(/: ([^<]+)<([^{\)]+)>( *[,{\)])/g, (
+          _: any,
+          basetypestr: string,
+          genericstr: string,
+          openstr: string,
+        ) => {
+          const originaltypestr = `${basetypestr.trim()}<${genericstr.trim()}>`
+          let originalType = this.scope.deepGet(originaltypestr) as Type
+          if (!originalType || !(originalType instanceof Type)) {
+            // It may be the first time this particular type has shown up, let's build it
+            const typeAst = Ast.fulltypenameAstFromString(originaltypestr)
+            const baseTypeName = typeAst.varn().getText()
+            const generics = typeAst.typegenerics().fulltypename().map((g: any) => g.getText())
+            const baseType = this.scope.deepGet(baseTypeName) as Type
+            if (!baseType || !(baseType instanceof Type)) { // Now we panic
+              console.error('This should be impossible')
+              process.exit(111)
+            }
+            originalType = baseType.solidify(generics, this.scope)
+          }
+          const replacementType = originalType.realize(interfaceMap, this.scope)
+          return `: ${replacementType.typename}${openstr}`
+        })
+        /*console.log({
+          interfaceMap,
+          str,
+          corrected,
+          secondCorrection,
+        })*/
+        if (s.statementOrAssignableAst instanceof LnParser.AssignablesContext) {
+          const correctedAst = Ast.statementAstFromString(`return ${secondCorrection}\n`)
+          s.statementOrAssignableAst = correctedAst
+          // statementAsts.push(correctedAst)
+        } else {
+          const correctedAst = Ast.statementAstFromString(secondCorrection)
+          s.statementOrAssignableAst = correctedAst
+          // statementAsts.push(correctedAst)
+        }
         if (s.isConditionalStatement()) {
           const cond = s.statementOrAssignableAst.conditionals()
           const res  = UserFunction.conditionalToCond(cond, this.scope)
           const newStatements = res[0] as Array<any>
           if (res[1]) hasConditionalReturn = true
           statementAsts.push(...newStatements)
-        } else if (s.hasObjectLiteral()) {
-          // Potentially rewrite the type for the object literal to match the interface type used by
-          // a specific call
-          const str = s.statementOrAssignableAst.getText()
-          const corrected = str.replace(/new ([^<]+)<([^>]+)> *{/g, (
-            _: any,
-            basetypestr: string,
-            genericstr: string,
-          ) => {
-            console.log({
-              basetypestr,
-              genericstr
-            })
-            const originaltypestr = `${basetypestr.trim()}<${genericstr.trim()}>`
-            let originalType = this.scope.deepGet(originaltypestr) as Type
-            if (!originalType || !(originalType instanceof Type)) {
-              // It may be the first time this particular type has shown up, let's build it
-              const typeAst = Ast.fulltypenameAstFromString(originaltypestr)
-              const baseTypeName = typeAst.varn().getText()
-              console.log(typeAst.typegenerics())
-              const generics = typeAst.typegenerics().fulltypename().map((g: any) => g.getText())
-              const baseType = this.scope.deepGet(baseTypeName) as Type
-              if (!baseType || !(baseType instanceof Type)) { // Now we panic
-                console.log(originaltypestr)
-                console.error('This should be impossible')
-                process.exit(111)
-              }
-              originalType = baseType.solidify(generics, this.scope)
-            }
-            const replacementType = originalType.realize(interfaceMap, this.scope)
-            console.log(replacementType)
-            return `new ${replacementType.typename} {`
-          })
-          if (s.statementOrAssignableAst instanceof LnParser.AssignablesContext) {
-            const correctedAst = Ast.statementAstFromString(`return ${corrected}\n`)
-            statementAsts.push(correctedAst)
-          } else {
-            const correctedAst = Ast.statementAstFromString(corrected)
-            statementAsts.push(correctedAst)
-          }
         } else if (s.statementOrAssignableAst instanceof LnParser.AssignmentsContext) {
           // TODO: Clean up the const/let/assignment grammar mistakes.
           const a = s.statementOrAssignableAst
@@ -546,7 +574,7 @@ class UserFunction implements Fn {
       console.error(`Recursive callstack detected: ${pathstr}. Aborting.`)
       process.exit(222)
     } else {
-      // Otherwise, add a marker for this 
+      // Otherwise, add a marker for this
       microstatements.push(new Microstatement(
         StatementType.ENTERFN,
         scope,
@@ -565,7 +593,6 @@ class UserFunction implements Fn {
     const originalTypes = Object.values(this.getArguments())
     const interfaceMap: Map<Type, Type> = new Map()
     originalTypes.forEach((t, i) => t.typeApplies(inputTypes[i], scope, interfaceMap))
-    console.log({ interfaceMap, originalTypes, inputTypes })
     for (let i = 0; i < internalNames.length; i++) {
       const realArgName = realArgNames[i]
       // Instead of copying the relevant data, define a reference to where the data is located with
@@ -603,12 +630,6 @@ class UserFunction implements Fn {
     const newReturnType = (this.returnType.typename !== 'void' && this.returnType.realize(interfaceMap, scope)) ||
       last.outputType.realize(interfaceMap, scope) ||
       last.outputType
-    console.log({
-      lastType: last.outputType,
-      returnType: this.returnType,
-      interfaceMap,
-      newReturnType,
-    })
     last.outputType = newReturnType*/
     const returnTypeAst = Ast.fulltypenameAstFromString(this.returnType.typename)
     const returnTypeGenerics = returnTypeAst.typegenerics()
@@ -642,11 +663,9 @@ class UserFunction implements Fn {
       const last = microstatements[microstatements.length - 1]
       const lastTypeAst = Ast.fulltypenameAstFromString(last.outputType.typename)
       const lastTypeGenerics = lastTypeAst.typegenerics()
-      console.log(lastTypeGenerics ? lastTypeGenerics.getText() : '')
       const lastSubtypes = lastTypeGenerics ? lastTypeGenerics.fulltypename().map(
         (t: any) => scope.deepGet(t.getText())
       ) : []
-      console.log(lastSubtypes)
       if (lastSubtypes.some((t: Type) => !!t.iface)) {
         const oldLastType = last.outputType
         const originalArgTypes = Object.values(this.args)
