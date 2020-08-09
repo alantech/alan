@@ -48,8 +48,7 @@ Describe "Hashing"
 
   Describe "HashMap (no syntactic sugar)"
     before() {
-      # TODO: sourceToAll
-      sourceToTemp "
+      sourceToAll "
         from @std/app import start, print, exit
 
         on start {
@@ -66,8 +65,6 @@ Describe "Hashing"
           emit exit 0
         }
       "
-      tempToAmm
-      tempToJs
     }
     BeforeAll before
 
@@ -93,7 +90,7 @@ foo, bar, baz
     End
 
     It "runs agc"
-      Pending ammtoaga-fix
+      Pending runtime-fix
       When run alan-runtime run temp.agc
       The output should eq "$HASHMAPOUTPUT"
     End

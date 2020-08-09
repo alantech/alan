@@ -221,21 +221,22 @@ const loadStatements = (
       // It's a closure, skip it
       continue
     }
+    let fnArgs = []
+    fn.get('args').getAll()[0].getAll().forEach((argdef) => {
+      fnArgs.push(argdef.get('arg').get('variable').t)
+    })
+    if (fn.get('args').getAll()[1].has()) {
+      fnArgs.push(...fn.get('args').getAll()[1].getAll().map(t => t.get('variable').t))
+      fnArgs = fnArgs.filter(t => t !== '')
+    }
+    const hasClosureArgs = isClosure && fnArgs.length > 0
+    const isClosureExit = idx === statements.length - 2 && statements[idx + 1].has('exits')
     let s = ''
     if (statement.has('declarations')) {
       const dec = statement.get('declarations').has('constdeclaration') ?
         statement.get('declarations').get('constdeclaration') :
         statement.get('declarations').get('letdeclaration')
       // if this is 2nd to last statement and last statement exits this is a closure
-      const args = []
-      fn.get('args').getAll()[0].getAll().forEach((argdef) => {
-        args.push(argdef)
-      })
-      if (fn.get('args').getAll()[1].has()) {
-        args.push(fn.get('args').getAll()[1].get())
-      }
-      const hasClosureArgs = isClosure && args.length > 0
-      const isClosureExit = idx === statements.length - 2 && statements[idx + 1].has('exits')
       let resultAddress = isClosureExit ?
         CLOSURE_ARG_MEM_START : localMem[dec.get('decname').t.trim()]
       localMemToLine[dec.get('decname').t.trim()] = line
@@ -245,17 +246,15 @@ const loadStatements = (
         process.exit(2)
       } else if (assignables.has('calls')) {
         const call = assignables.get('calls')
-        const fn = call.get('variable').t.trim()
+        const fnName = call.get('variable').t.trim()
         const vars = (call.has('calllist') ? call.get('calllist').getAll() : []).map(
           v => v.get('variable').t.trim()
         )
-        let numArgs = 0n
         const args = vars.map(v => {
           if (localMem.hasOwnProperty(v)) return localMem[v]
           else if (globalMem.hasOwnProperty(v)) return globalMem[v]
           else if (hasClosureArgs) {
-            numArgs = numArgs + 1n
-            return CLOSURE_ARG_MEM_START + numArgs
+            return CLOSURE_ARG_MEM_START + 1n + BigInt(fnArgs.indexOf(v))
           } else return v
         }).map(a => typeof a === 'string' ? a : `@${a}`)
         while (args.length < 2) args.push('@0')
@@ -264,7 +263,7 @@ const loadStatements = (
           .map(v => localMemToLine[localMem[v]])
           .filter(v => v !== undefined) // Filter out the handler arg from the dep list
           .map(v => `#${v}`)
-        s += `@${resultAddress} = ${fn}(${args.join(', ')}) #${line}`
+        s += `@${resultAddress} = ${fnName}(${args.join(', ')}) #${line}`
         if (deps.length > 0) {
           s += ` <- [${deps.join(', ')}]`
         }
@@ -323,23 +322,25 @@ const loadStatements = (
         process.exit(2)
       } else if (assignables.has('calls')) {
         const call = assignables.get('calls')
-        const fn = call.get('variable').t.trim()
+        const fnName = call.get('variable').t.trim()
         const vars = (call.has('calllist') ? call.get('calllist').getAll() : []).map(
           v => v.get('variable').t.trim()
         )
-        const args = vars.map(v => localMem.hasOwnProperty(v) ?
-          localMem[v] :
-          globalMem.hasOwnProperty(v) ?
-            globalMem[v] :
-            v
-        ).map(a => typeof a === 'string' ? a : `@${a}`)
+        const hasClosureArgs = isClosure && vars.length > 0
+        const args = vars.map(v => {
+          if (localMem.hasOwnProperty(v)) return localMem[v]
+          else if (globalMem.hasOwnProperty(v)) return globalMem[v]
+          else if (hasClosureArgs) {
+            return CLOSURE_ARG_MEM_START + 1n + BigInt(fnArgs.indexOf(v))
+          } else return v
+        }).map(a => typeof a === 'string' ? a : `@${a}`)
         while (args.length < 2) args.push('@0')
         const deps = vars
           .filter(v => localMem.hasOwnProperty(v))
           .map(v => localMemToLine[localMem[v]])
           .filter(v => v !== undefined) // Filter out the handler arg from the dep list
           .map(v => `#${v}`)
-        s += `@${resultAddress} = ${fn}(${args.join(', ')}) #${line}`
+        s += `@${resultAddress} = ${fnName}(${args.join(', ')}) #${line}`
         if (deps.length > 0) {
           s += ` <- [${deps.join(', ')}]`
         }
@@ -352,23 +353,25 @@ const loadStatements = (
       }
     } else if (statement.has('calls')) {
       const call = statement.get('calls')
-      const fn = call.get('variable').t.trim()
+      const fnName = call.get('variable').t.trim()
       const vars = (call.has('calllist') ? call.get('calllist').getAll() : []).map(
         v => v.get('variable').t.trim()
       )
-      const args = vars.map(v => localMem.hasOwnProperty(v) ?
-        localMem[v] :
-        globalMem.hasOwnProperty(v) ?
-          globalMem[v] :
-          v
-      ).map(a => typeof a === 'string' ? a : `@${a}`)
+      const hasClosureArgs = isClosure && vars.length > 0
+      const args = vars.map(v => {
+        if (localMem.hasOwnProperty(v)) return localMem[v]
+        else if (globalMem.hasOwnProperty(v)) return globalMem[v]
+        else if (hasClosureArgs) {
+          return CLOSURE_ARG_MEM_START + 1n + BigInt(fnArgs.indexOf(v))
+        } else return v
+      }).map(a => typeof a === 'string' ? a : `@${a}`)
       while (args.length < 2) args.push('0')
       const deps = vars
         .filter(v => localMem.hasOwnProperty(v))
         .map(v => localMemToLine[localMem[v]])
         .filter(v => v !== undefined) // Filter out the handler arg from the dep list
         .map(v => `#${v}`)
-      s += `${fn}(${args.join(', ')}) #${line}`
+      s += `${fnName}(${args.join(', ')}) #${line}`
       if (deps.length > 0) {
         s += ` <- [${deps.join(', ')}]`
       }
