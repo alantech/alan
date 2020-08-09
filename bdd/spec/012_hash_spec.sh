@@ -62,6 +62,7 @@ Describe "Hashing"
           print(test.keys().join(', '))
           print(test.vals().map(fn (n: int64): string = n.toString()).join(', '))
           print(test.length())
+          print(test.get('foo'))
           emit exit 0
         }
       "
@@ -83,7 +84,8 @@ key: baz
 val: 99
 foo, bar, baz
 1, 2, 99
-3"
+3
+1"
 
     It "runs js"
       When run node temp.js

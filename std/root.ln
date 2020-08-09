@@ -500,12 +500,16 @@ export fn length(hm: HashMap<Hashable, any>): int64 = length(hm.keyVal)
 export fn get(hm: HashMap<Hashable, any>, key: Hashable): any {
   const hash = key.toHash() % length(hm.lookup)
   const list = getR(hm.lookup[hash])
-  const index = list.find(fn (i: int64) = getR(hm.keyVal[i]).key.eq(key))
-  if index.isSome() {
-    const i = index.get(0)
-    return Some(getR(hm.keyVal[i]).val)
+  const index = list.find(fn (i: int64): Array<int64> {
+    const kv = getR(hm.keyVal[i])
+    return eq(kv.key, key)
+  })
+  if index.isOk() {
+    const i = index.getOr(0)
+    const kv = getR(hm.keyVal[i])
+    return ok(kv.val)
   } else {
-    return None
+    return err('key not found')
   }
 }
 

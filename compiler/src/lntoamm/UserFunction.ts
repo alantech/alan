@@ -437,7 +437,7 @@ class UserFunction implements Fn {
           const replacementType = originalType.realize(interfaceMap, this.scope)
           return `new ${replacementType.typename} ${openstr}`
         })
-        const secondCorrection = corrected.replace(/: ([^<]+)<([^{\)]+)>( *[,{\)])/g, (
+        const secondCorrection = corrected.replace(/: ([^:<]+)<([^{\)]+)>( *[,{\)])/g, (
           _: any,
           basetypestr: string,
           genericstr: string,
