@@ -295,6 +295,7 @@ module.exports = {
   // Array opcodes TODO more to come
   newarr:   size => new Array(), // Ignored because JS push doesn't behave as desired
   pusharr: (arr, val, size) => arr.push(val),
+  poparr:   arr => arr.length > 0 ? [ true, arr.pop(), ] : [ false, 'cannot pop empty array', ],
   lenarr:   arr => arr.length,
   indarrf: (arr, val) => arr.indexOf(val),
   indarrv: (arr, val) => arr.indexOf(val),

@@ -320,7 +320,7 @@ export fn push(arr: Array<bool>, val: bool) {
   pusharr(arr, val, 8)
   return arr
 }
-export fn pop(arr: Array<any>): any = poparr(arr, val)
+export fn pop(arr: Array<any>) = poparr(arr)
 export each // opcode with signature `fn each(arr: Array<any>, cb: function): void`
 export map // parallel opcode with signature `fn map(arr: Array<any>, cb: function): Array<any>`
 export mapl // serial opcode with signature `fn mapl(arr: Array<any>, cb: function): Array<any>`

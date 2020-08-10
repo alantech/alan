@@ -130,16 +130,8 @@ const addopcodes = (opcodes: object) => {
                   // that mathces the interface type of an input
                   const returnIfaces = Object.values(returnType.properties)
                     .filter((p: Type) => !!p.iface).map((p: Type) => p.iface)
-                  const ifaceMap = {}
-                  Object.values(args).forEach((a: Type, i: number) => {
-                    if (!!a.iface) {
-                      ifaceMap[a.iface.interfacename] = inputTypes[i].typename
-                    }
-                  })
-                  const baseType = returnType.originalType
-                  if (Object.keys(ifaceMap).length >= Object.keys(baseType.generics).length) {
-                    const solidTypes = returnIfaces.map(i => ifaceMap[i.interfacename])
-                    const newReturnType = baseType.solidify(solidTypes, scope)
+                  if (returnIfaces.length > 0) {
+                    const newReturnType = returnType.realize(interfaceMap, scope)
                     return newReturnType
                   } else {
                     return returnType
@@ -360,7 +352,7 @@ addopcodes({
   trim: [{ s: t('string'), }, t('string')],
   condfn: [{ cond: t('bool'), optional: t('function'), }, t('any')],
   pusharr: [{ arr: t('Array<any>'), val: t('any'), size: t('int64')}],
-  poparr: [{ arr: t('Array<any>')}, t('any')],
+  poparr: [{ arr: t('Array<any>')}, t('Result<any>')],
   each: [{ arr: t('Array<any>'), cb: t('function'), }, t('void')],
   eachl: [{ arr: t('Array<any>'), cb: t('function'), }, t('void')],
   map: [{ arr: t('Array<any>'), cb: t('function'), }, t('Array<any>')],

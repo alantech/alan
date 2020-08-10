@@ -86,7 +86,7 @@ Describe "Arrays"
     End
   End
 
-  Describe "push to lazy-let-defined Array"
+  Describe "push to lazy-let-defined Array and pop from it"
     before() {
       sourceToAll "
         from @std/app import start, print, exit
@@ -100,6 +100,10 @@ Describe "Arrays"
           print(test[0])
           print(test[1])
           print(test[2])
+          print(test.pop())
+          print(test.pop())
+          print(test.pop())
+          print(test.pop()) // Should print error message
           emit exit 0
         }
       "
@@ -114,7 +118,11 @@ Describe "Arrays"
     PUSHOUTPUT="Testing...
 1
 2
-3"
+3
+3
+2
+1
+cannot pop empty array"
 
     It "runs js"
       When run node temp.js
