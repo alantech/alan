@@ -1,6 +1,6 @@
 # alan-compiler
 
-A compiler for alan to Javascript and Alan Graphcode, the [runtime](https://github.com/alantech/runtime)'s bytecode format.
+A compiler for alan to Javascript and Alan Graphcode, the [runtime](https://github.com/alantech/alan/tree/master/runtime)'s bytecode format.
 
 Caveats: There should be a strict mode that make sure int64s are using [BigInt](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt) despite the performance loss, but the vast majority of the time falling back to regular numbers should work.
 
