@@ -71,6 +71,8 @@ const addopcodes = (opcodes: object) => {
         ) => {
           const inputs = realArgNames.map(n => Microstatement.fromVarName(n, scope, microstatements))
           const inputTypes = inputs.map(i => i.outputType)
+          const interfaceMap: Map<Type, Type> = new Map()
+          Object.values(args).forEach((t: Type, i) => t.typeApplies(inputTypes[i], scope, interfaceMap))
           microstatements.push(new Microstatement(
             StatementType.CONSTDEC,
             scope,
@@ -107,12 +109,20 @@ const addopcodes = (opcodes: object) => {
                   // interface matching logic figures out what the return type of the opcode is
                   // based on the return type of the function given to it.
                   // For now, we just do that "by hand."
-                  const innerTypename = inputs[1].fns[0] ?
-                    inputs[1].fns[0].getReturnType().typename :
-                    inputs[1].closureOutputType.typename
+                  const innerType = inputs[1].fns[0] ?
+                    inputs[1].fns[0].getReturnType() :
+                    inputs[1].closureOutputType
+                  const innerArgType = (inputs[1].fns[0] ?
+                    Object.values(inputs[1].fns[0].getArguments())[0] :
+                    Object.values(inputs[1].closureArgs)[0]) as Type
+                  const arrayInnerType = scope.deepGet(
+                    inputTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
+                  ) as Type
+                  innerArgType.typeApplies(arrayInnerType, scope, interfaceMap)
+                  const newInnerType = innerType.realize(interfaceMap, scope)
                   const baseType = returnType.originalType
                   const newReturnType = baseType ?
-                    baseType.solidify([innerTypename], scope) :
+                    baseType.solidify([newInnerType.typename], scope) :
                     returnType
                   return newReturnType
                 } else  {
@@ -340,14 +350,13 @@ addopcodes({
   split: [{ str: t('string'), spl: t('string'), }, t('Array<string>')],
   repstr: [{ s: t('string'), n: t('int64'), }, t('string')],
   reparr: [{ arr: t('Array<any>'), n: t('int64'), }, t('Array<any>')],
-  templ: [{ str: t('string'), map: t('Map<string, string>'), }, t('string')],
+  // templ: [{ str: t('string'), map: t('Map<string, string>'), }, t('string')],
   matches: [{ s: t('string'), t: t('string'), }, t('bool')],
   indstr: [{ s: t('string'), t: t('string'), }, t('int64')],
   indarrf: [{ arr: t('Array<any>'), val: t('any'), }, t('int64')],
   indarrv: [{ arr: t('Array<any>'), val: t('any'), }, t('int64')],
   lenstr: [{ s: t('string'), }, t('int64')],
   lenarr: [{ arr: t('Array<any>'), }, t('int64')],
-  lenmap: [{ map: t('Map<any, any>'), }, t('int64')],
   trim: [{ s: t('string'), }, t('string')],
   condfn: [{ cond: t('bool'), optional: t('function'), }, t('any')],
   pusharr: [{ arr: t('Array<any>'), val: t('any'), size: t('int64')}],
@@ -363,9 +372,6 @@ addopcodes({
   some: [{ arr: t('Array<any>'), cb: t('function'), }, t('bool')],
   join: [{ arr: t('Array<string>'), sep: t('string'), }, t('string')],
   newarr: [{ size: t('int64'), }, t('Array<any>')],
-  keyVal: [{ map: t('Map<any, any>'), }, t('Array<KeyVal<any, any>>')],
-  keys: [{ map: t('Map<any, any>'), }, t('Array<any>')],
-  values: [{ map: t('Map<any, any>'), }, t('Array<any>')],
   stdoutp: [{ out: t('string'), }, t('void')],
   exitop: [{ code: t('int8'), }, t('void')],
   copyfrom: [{ arr: t('Array<any>'), addr: t('int64') }, t('any')],
@@ -416,6 +422,8 @@ addopcodes({
   isAlt: [{ a: t('Either<any, anythingElse>'), }, t('bool')],
   mainOr: [{ a: t('Either<any, anythingElse>'), b: t('any'), }, t('any')],
   altOr: [{ a: t('Either<any, anythingElse>'), b: t('anythingElse'), }, t('anythingElse')],
+  hashf: [{ a: t('any'), }, t('int64')],
+  hashv: [{ a: t('any'), }, t('int64')],
 })
 
 export default opcodeModule
