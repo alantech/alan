@@ -254,7 +254,7 @@ const loadStatements = (
           if (localMem.hasOwnProperty(v)) return localMem[v]
           else if (globalMem.hasOwnProperty(v)) return globalMem[v]
           else if (hasClosureArgs) {
-            return CLOSURE_ARG_MEM_START + 1n + BigInt(fnArgs.indexOf(v))
+            return CLOSURE_ARG_MEM_START + BigInt(1) + BigInt(fnArgs.indexOf(v))
           } else return v
         }).map(a => typeof a === 'string' ? a : `@${a}`)
         while (args.length < 2) args.push('@0')
@@ -331,7 +331,7 @@ const loadStatements = (
           if (localMem.hasOwnProperty(v)) return localMem[v]
           else if (globalMem.hasOwnProperty(v)) return globalMem[v]
           else if (hasClosureArgs) {
-            return CLOSURE_ARG_MEM_START + 1n + BigInt(fnArgs.indexOf(v))
+            return CLOSURE_ARG_MEM_START + BigInt(1) + BigInt(fnArgs.indexOf(v))
           } else return v
         }).map(a => typeof a === 'string' ? a : `@${a}`)
         while (args.length < 2) args.push('@0')
@@ -362,7 +362,7 @@ const loadStatements = (
         if (localMem.hasOwnProperty(v)) return localMem[v]
         else if (globalMem.hasOwnProperty(v)) return globalMem[v]
         else if (hasClosureArgs) {
-          return CLOSURE_ARG_MEM_START + 1n + BigInt(fnArgs.indexOf(v))
+          return CLOSURE_ARG_MEM_START + BigInt(1) + BigInt(fnArgs.indexOf(v))
         } else return v
       }).map(a => typeof a === 'string' ? a : `@${a}`)
       while (args.length < 2) args.push('0')
