@@ -10,9 +10,6 @@ Describe "@std/deps"
         commit()
       }
     "
-    # The following is to avoid unexpected output from SSH during the tests
-    git clone git+ssh://git@github.com/alantech/hellodep 2>/dev/null 1>/dev/null
-    rm -r hellodep
   }
   BeforeAll before
 
@@ -42,8 +39,16 @@ Describe "@std/deps"
     test -f "./dependencies/alantech/hellodep/index.ln"
   }
 
+  run_js() {
+    node temp.js | head -1
+  }
+
+  run_agc() {
+    alan-runtime run temp.agc | head -1
+  }
+
   It "runs js"
-    When run node temp.js
+    When run run_js
     The output should eq "Cloning into './dependencies/alantech/hellodep'..."
     Assert has_dependencies
     Assert has_alantech
@@ -52,7 +57,7 @@ Describe "@std/deps"
   End
 
   It "runs agc"
-    When run alan-runtime run temp.agc
+    When run run_agc
     The output should eq "Cloning into './dependencies/alantech/hellodep'..."
     Assert has_dependencies
     Assert has_alantech
