@@ -292,8 +292,8 @@ Hello, World!"
 
         on start {
           const test = [ 1, 1, 2, 3, 5, 8 ]
-          test.each(fn (val: int64) = print('=' * val))
           test.find(fn (val: int64): int64 = val % 2 == 1).getOr(0).print()
+          test.each(fn (val: int64) = print('=' * val))
           emit exit 0
         }
       "
@@ -305,16 +305,16 @@ Hello, World!"
     }
     AfterAll after
 
-    EACHFINDOUTPUT="=
+    EACHFINDOUTPUT="1
+=
 =
 ==
 ===
 =====
-========
-1"
+========"
 
     agc() {
-      export LC_ALL=en_US.UTF-8
+      export LC_ALL=C
       alan-runtime run temp.agc | sort
     }
 

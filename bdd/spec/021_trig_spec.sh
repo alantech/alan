@@ -23,9 +23,9 @@ Describe "@std/trig"
         print(trig.cot(tau / 6.0))
 
         'Inverse Trig functions'.print()
-        print(trig.arcsine(0.5))
-        print(trig.arccosine(0.5))
-        print(trig.arctangent(0.5))
+        print(trig.arcsine(0.0))
+        print(trig.arccosine(1.0))
+        print(trig.arctangent(0.0))
         print(trig.arcsecant(tau / 6.0))
         print(trig.arccosecant(tau / 6.0))
         print(trig.arccotangent(tau / 6.0))
@@ -44,10 +44,10 @@ Describe "@std/trig"
         print(trig.chord(pi / 3.0))
 
         'Historic Inverse Trig functions'.print()
-        print(trig.aver(0.5))
+        print(trig.aver(0.0))
         print(trig.avcs(0.5))
-        print(trig.acvs(0.5))
-        print(trig.acvc(0.5))
+        print(trig.acvs(1.0))
+        print(trig.acvc(1.0))
         print(trig.ahav(0.5))
         print(trig.ahvc(0.5))
         print(trig.ahcv(0.5))
@@ -100,9 +100,9 @@ Basic Trig functions
 1.1547005383792517
 0.577350269189626
 Inverse Trig functions
-0.5235987755982989
-1.0471975511965979
-0.4636476090008061
+0
+0
+0
 0.3013736097452911
 1.2694227170496055
 0.7623475341648746
@@ -119,10 +119,10 @@ Historic Trig functions (useful for navigation and as a teaching aid: https://en
 0.15470053837925168
 0.9999999999999999
 Historic Inverse Trig functions
-1.0471975511965979
+0
 2.0943951023931957
-0.5235987755982989
--0.5235987755982989
+0
+0
 1.5707963267948966
 1.5707963267948966
 0
@@ -160,9 +160,9 @@ Basic Trig functions
 1.1547005383792517
 0.577350269189626
 Inverse Trig functions
-0.5235987755982989
-1.0471975511965979
-0.4636476090008061
+0
+0
+0
 0.3013736097452911
 1.2694227170496055
 0.7623475341648746
@@ -179,10 +179,10 @@ Historic Trig functions (useful for navigation and as a teaching aid: https://en
 0.15470053837925168
 0.9999999999999999
 Historic Inverse Trig functions
-1.0471975511965979
+0
 2.0943951023931957
-0.5235987755982989
--0.5235987755982989
+0
+0
 1.5707963267948966
 1.5707963267948966
 0
