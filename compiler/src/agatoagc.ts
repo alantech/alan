@@ -53,7 +53,7 @@ const loadGlobalMem = (globalMemAst: LPNode): bigint[] => {
         globalMem.push(buf.readBigUInt64LE(i * 8))
       }
     } else if (value.has('bool')) {
-      const val = value.t === "true" ? 1n : 0n
+      const val = value.t === "true" ? BigInt(1) : BigInt(0)
       globalMem.push(val)
     } else {
       console.error('Strange AST parsing error, this should be unreachable')
@@ -66,7 +66,7 @@ const loadGlobalMem = (globalMemAst: LPNode): bigint[] => {
 
 const loadEventDecs = (eventAst: LPNode, eventLookup: Object): bigint[] => {
   const eventLines = eventAst.get('eventLines')
-  let customEventIdOffset = 0n
+  let customEventIdOffset = BigInt(0)
   const eventMem = []
   for (const evt of eventLines.getAll()) {
     const eventLine = evt.get('eventLine')
@@ -115,7 +115,7 @@ const loadStatements = (statements: LPNode, eventLookup: Object): bigint[] => {
     })
     if (args.length < 3) {
       const resultAddress = statement.get('result').t === '' ?
-        0n :
+        BigInt(0) :
         BigInt(statement.get('result').get('memoryAddress').get(1).t)
       args.push(resultAddress)
     }
