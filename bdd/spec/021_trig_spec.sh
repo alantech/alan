@@ -44,7 +44,7 @@ Describe "@std/trig"
         print(trig.chord(pi / 3.0))
 
         'Historic Inverse Trig functions'.print()
-        print(trig.aver(0.5))
+        print(trig.aver(0.0))
         print(trig.avcs(0.5))
         print(trig.acvs(1.0))
         print(trig.acvc(1.0))
@@ -119,7 +119,7 @@ Historic Trig functions (useful for navigation and as a teaching aid: https://en
 0.15470053837925168
 0.9999999999999999
 Historic Inverse Trig functions
-1.0471975511965979
+0
 2.0943951023931957
 0
 0
@@ -179,7 +179,7 @@ Historic Trig functions (useful for navigation and as a teaching aid: https://en
 0.15470053837925168
 0.9999999999999999
 Historic Inverse Trig functions
-1.0471975511965979
+0
 2.0943951023931957
 0
 0
