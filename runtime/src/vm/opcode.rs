@@ -1845,15 +1845,15 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let instructions = frag.get_closure_instructions(args[1]);
     // array of potentially many levels of nested fractals
     let output: Vec<HandlerMemory> = (0..len).into_par_iter().map_with(instructions, |ins, idx| {
-      let mut mem = arr.clone();
+      let mut mem = hand_mem.clone();
       // array element is $1 argument of the closure memory space
-      if !mem.has_nested_fractals() {
+      if !arr.has_nested_fractals() {
         // this could be a string or fixed data type
-        let val = mem.read_fixed(idx);
+        let val = arr.read_fixed(idx);
         mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
       } else {
         // more nested arrays
-        let arr_el = mem.read_fractal(idx);
+        let arr_el = arr.read_fractal(idx);
         mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
       }
       ins.iter().for_each(|i| {
@@ -1897,15 +1897,15 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let ins = frag.get_closure_instructions(args[1]);
     // array of potentially many levels of nested fractals
     let output: Vec<HandlerMemory> = (0..len).map(|idx| {
-      let mut mem = arr.clone();
+      let mut mem = hand_mem.clone();
       // array element is $1 argument of the closure memory space
-      if !mem.has_nested_fractals() {
+      if !arr.has_nested_fractals() {
         // this could be a string or fixed data type
-        let val = mem.read_fixed(idx);
+        let val = arr.read_fixed(idx);
         mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
       } else {
         // more nested arrays
-        let arr_el = mem.read_fractal(idx);
+        let arr_el = arr.read_fractal(idx);
         mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
       }
       ins.iter().for_each(|i| {
@@ -1973,17 +1973,17 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let instructions = frag.get_closure_instructions(args[1]);
     // array of potentially many levels of nested fractals
     (0..len).into_par_iter().for_each_with(instructions, |ins, idx| {
-      let mut mem = arr.clone();
+      let mut mem = hand_mem.clone();
       // array element is $1 argument of the closure memory space
       // current index is $2 argument
-      if !mem.has_nested_fractals() {
+      if !arr.has_nested_fractals() {
         // this could be a string or fixed data type
-        let val = mem.read_fixed(idx);
+        let val = arr.read_fixed(idx);
         mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
         mem.write_fixed(CLOSURE_ARG_MEM_START + 2, idx);
       } else {
         // more nested arrays
-        let arr_el = mem.read_fractal(idx);
+        let arr_el = arr.read_fractal(idx);
         mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
         mem.write_fixed(CLOSURE_ARG_MEM_START + 2, idx);
       }
@@ -2009,15 +2009,15 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let ins = frag.get_closure_instructions(args[1]);
     // array of potentially many levels of nested fractals
     (0..len).for_each(|idx| {
-      let mut mem = arr.clone();
+      let mut mem = hand_mem.clone();
       // array element is $1 argument of the closure memory space
-      if !mem.has_nested_fractals() {
+      if !arr.has_nested_fractals() {
         // this could be a string or fixed data type
-        let val = mem.read_fixed(idx);
+        let val = arr.read_fixed(idx);
         mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
       } else {
         // more nested arrays
-        let arr_el = mem.read_fractal(idx);
+        let arr_el = arr.read_fractal(idx);
         mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
       }
       ins.iter().for_each(|i| {
@@ -2042,15 +2042,15 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     // array of potentially many levels of nested fractals
     let arr_addr = (0..len).into_par_iter().find_any(|idx| {
       let ins = instructions.clone();
-      let mut mem = arr.clone();
+      let mut mem = hand_mem.clone();
       // array element is $1 argument of the closure memory space
-      if !mem.has_nested_fractals() {
+      if !arr.has_nested_fractals() {
         // this could be a string or fixed data type
-        let val = mem.read_fixed(*idx);
+        let val = arr.read_fixed(*idx);
         mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
       } else {
         // more nested arrays
-        let arr_el = mem.read_fractal(*idx);
+        let arr_el = arr.read_fractal(*idx);
         mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
       }
       ins.iter().for_each(|i| {
@@ -2116,15 +2116,15 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     // array of potentially many levels of nested fractals
     let arr_addr = (0..len).into_par_iter().find_first(|idx| {
       let ins = instructions.clone();
-      let mut mem = arr.clone();
+      let mut mem = hand_mem.clone();
       // array element is $1 argument of the closure memory space
-      if !mem.has_nested_fractals() {
+      if !arr.has_nested_fractals() {
         // this could be a string or fixed data type
-        let val = mem.read_fixed(*idx);
+        let val = arr.read_fixed(*idx);
         mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
       } else {
         // more nested arrays
-        let arr_el = mem.read_fractal(*idx);
+        let arr_el = arr.read_fractal(*idx);
         mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
       }
       ins.iter().for_each(|i| {

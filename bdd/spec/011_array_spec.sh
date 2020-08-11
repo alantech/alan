@@ -314,6 +314,7 @@ Hello, World!"
 ========"
 
     agc() {
+      export LC_ALL=C
       alan-runtime run temp.agc | sort
     }
 
