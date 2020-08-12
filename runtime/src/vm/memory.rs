@@ -268,14 +268,23 @@ impl HandlerMemory {
   }
 
   /// removes the last value of the array in the address and returns it
-  pub fn pop_fractal(self: &mut HandlerMemory, addr: i64) -> Result<i64, HandlerMemory> {
+  pub fn pop_fractal(self: &mut HandlerMemory, addr: i64) -> Result<HandlerMemory, String> {
+    // There's probably a more elegant way of doing this, but...
     let arr = &mut self.fractal_mem[self.either_mem[addr as usize] as usize];
-    let decision = arr.either_mem.pop().unwrap();
-    if decision < 0 {
-      return Ok(arr.mem.pop().unwrap());
+    if arr.mem.len() == 0 {
+      return Err("cannot pop empty array".to_string());
     } else {
-      arr.mem.pop();
-      return Err(arr.fractal_mem.pop().unwrap());
+      let decision = arr.either_mem.pop().unwrap();
+      if decision < 0 {
+        let mut frac = HandlerMemory::new(None, 1);
+        frac.write_fixed(0, arr.mem.pop().unwrap());
+        // This is a really shitty side-channel signal that it's fixed data
+        frac.either_closure_mem[0] = 1;
+        return Ok(frac);
+      } else {
+        arr.mem.pop();
+        return Ok(arr.fractal_mem.pop().unwrap());
+      }
     }
   }
 

@@ -1828,10 +1828,38 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   cpu!("poparr", |args, hand_mem, _, _| {
     let last = hand_mem.pop_fractal(args[0]);
+    hand_mem.new_fractal(args[2]);
     if last.is_ok() {
-      hand_mem.write_fixed(args[1], last.ok().unwrap());
+      hand_mem.push_fractal_fixed(args[2], 1i64);
+      let val = last.ok().unwrap();
+      if val.either_closure_mem[0] == 1 { // Hacky signal that it's fixed data
+        hand_mem.push_fractal_fixed(args[2], val.read_fixed(0));
+      } else {
+        hand_mem.push_nested_fractal(args[2], val);
+      }
     } else {
-      hand_mem.write_fractal(args[1], last.err().unwrap());
+      hand_mem.push_fractal_fixed(args[2], 0i64);
+      let error_string = last.err().unwrap();
+      let mut out = vec![error_string.len() as i64];
+      let mut out_str_bytes = error_string.as_bytes().to_vec();
+      loop {
+        if out_str_bytes.len() % 8 != 0 {
+          out_str_bytes.push(0);
+        } else {
+          break
+        }
+      }
+      let mut i = 0;
+      loop {
+        if i < out_str_bytes.len() {
+          let str_slice = &out_str_bytes[i..i+8];
+          out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
+          i = i + 8;
+        } else {
+          break
+        }
+      }
+      hand_mem.push_nested_fractal_mem(args[2], out);
     }
     None
   });
