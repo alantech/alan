@@ -16,15 +16,17 @@ const addBuiltIn = (name: string) => {
 }
 ([
   'void', 'int8', 'int16', 'int32', 'int64', 'float32', 'float64', 'bool', 'string', 'function',
-  'operator', 'Error', 'Maybe', 'Result', 'Either', 'Array', 'ExecRes',
+  'operator', 'Error', 'Maybe', 'Result', 'Either', 'Array', 'ExecRes', 'InitialReduce'
 ].map(addBuiltIn))
 Type.builtinTypes['Array'].solidify(['string'], opcodeScope)
 opcodeScope.put('any', new Type('any', true, false, {}, {}, null, new Interface('any')))
 opcodeScope.put('anythingElse', new Type('anythingElse', true, false, {}, {}, null, new Interface('anythingElse')))
 Type.builtinTypes['Array'].solidify(['any'], opcodeScope)
-Type.builtinTypes['Maybe'].solidify(['any'], opcodeScope)
-Type.builtinTypes['Result'].solidify(['any'], opcodeScope)
-Type.builtinTypes['Either'].solidify(['any', 'anythingElse'], opcodeScope)
+Type.builtinTypes['Array'].solidify(['anythingElse'], opcodeScope)
+Type.builtinTypes.Maybe.solidify(['any'], opcodeScope)
+Type.builtinTypes.Result.solidify(['any'], opcodeScope)
+Type.builtinTypes.Either.solidify(['any', 'anythingElse'], opcodeScope)
+Type.builtinTypes.InitialReduce.solidify(['any', 'anythingElse'], opcodeScope)
 opcodeScope.put("start", new Event("_start", Type.builtinTypes.void, true))
 const t = (str: string) => opcodeScope.get(str)
 
@@ -338,7 +340,7 @@ addopcodes({
   execop: [{ a: t('string')}, t('ExecRes')],
   waitop: [{ a: t('int64')}, t('void')],
   catstr: [{ a: t('string'), b: t('string'), }, t('string')],
-  catarr: [{ a: t('Array<any>'), b: t('string')}, t('Array<any>')],
+  catarr: [{ a: t('Array<any>'), b: t('Array<any>')}, t('Array<any>')],
   split: [{ str: t('string'), spl: t('string'), }, t('Array<string>')],
   repstr: [{ s: t('string'), n: t('int64'), }, t('string')],
   reparr: [{ arr: t('Array<any>'), n: t('int64'), }, t('Array<any>')],
@@ -357,11 +359,17 @@ addopcodes({
   eachl: [{ arr: t('Array<any>'), cb: t('function'), }, t('void')],
   map: [{ arr: t('Array<any>'), cb: t('function'), }, t('Array<any>')],
   mapl: [{ arr: t('Array<any>'), cb: t('function'), }, t('Array<any>')],
-  reduce: [{ arr: t('Array<any>'), cb: t('function'), }, t('any')],
+  reducel: [{ arr: t('Array<any>'), cb: t('function'), }, t('any')],
+  reducep: [{ arr: t('Array<any>'), cb: t('function'), }, t('any')],
+  foldl: [{ arr: t('InitialReduce<any, anythingElse>'), cb: t('function'), }, t('anythingElse')],
+  foldp: [{ arr: t('InitialReduce<any, anythingElse>'), cb: t('function'), }, t('Array<anythingElse>')],
   filter: [{ arr: t('Array<any>'), cb: t('function'), }, t('Array<any>')],
+  filterl: [{ arr: t('Array<any>'), cb: t('function'), }, t('Array<any>')],
   find: [{ arr: t('Array<any>'), cb: t('function'), }, t('Result<any>')],
   every: [{ arr: t('Array<any>'), cb: t('function'), }, t('bool')],
+  everyl: [{ arr: t('Array<any>'), cb: t('function'), }, t('bool')],
   some: [{ arr: t('Array<any>'), cb: t('function'), }, t('bool')],
+  somel: [{ arr: t('Array<any>'), cb: t('function'), }, t('bool')],
   join: [{ arr: t('Array<string>'), sep: t('string'), }, t('string')],
   newarr: [{ size: t('int64'), }, t('Array<any>')],
   stdoutp: [{ out: t('string'), }, t('void')],

@@ -321,14 +321,38 @@ export fn push(arr: Array<bool>, val: bool) {
   return arr
 }
 export fn pop(arr: Array<any>) = poparr(arr)
-export each // opcode with signature `fn each(arr: Array<any>, cb: function): void`
+export each // parallel opcode with signature `fn each(arr: Array<any>, cb: function): void`
+export fn eachLin(arr: Array<any>, cb: function): void = eachl(arr, cb)
 export map // parallel opcode with signature `fn map(arr: Array<any>, cb: function): Array<any>`
-export mapl // serial opcode with signature `fn mapl(arr: Array<any>, cb: function): Array<any>`
-export reduce // opcode with signature `fn reduce(arr: Array<any>, cb: function): any`
+export fn mapLin(arr: Array<any>, cb: function): Array<anythingElse> = mapl(arr, cb)
+export fn reduce(arr: Array<any>, cb: function): any = reducel(arr, cb)
+export fn reducePar(arr: Array<any>, cb: function): any = reducep(arr, cb)
+type InitialReduce<T, U> {
+  arr: Array<T>
+  initial: U
+}
+export fn reduce(arr: Array<any>, cb: function, initial: anythingElse): anythingElse {
+  const args = new InitialReduce<any, anythingElse> {
+    arr = arr
+    initial = initial
+  }
+  return foldl(args, cb)
+}
+export fn reducePar(arr: Array<any>, transformer: function, merger: function, initial: anythingElse): anythingElse {
+  const args = new InitialReduce<any, anythingElse> {
+    arr = arr
+    initial = initial
+  }
+  const intermediate = foldp(args, transformer)
+  return reducep(intermediate, merger)
+}
 export filter // opcode with signature `fn filter(arr: Array<any>, cb: function): Array<any>`
-export find // opcode with signature `fn find(arr: Array<any>, cb: function): any`
-export every // opcode with signature `fn every(arr: Array<any>, cb: function): bool`
-export some // opcode with signature `fn some(arr: Array<any>, cb: function): bool`
+export find // opcode with signature `fn find(arr: Array<any>, cb: function): Result<any>`
+export fn findLin(arr: Array<any>, cb: function): Result<any> = findl(arr, cb)
+export every // parallel opcode with signature `fn every(arr: Array<any>, cb: function): bool`
+export fn everyLin(arr: Array<any>, cb: function): bool = everyl(arr, cb)
+export some // parallel opcode with signature `fn some(arr: Array<any>, cb: function): bool`
+export fn someLin(arr: Array<any>, cb: function): bool = somel(arr, cb)
 export join // opcode with signature `fn join(arr: Array<string>, sep: string): string`
 export fn set(arr: Array<any>, idx: int64, val: any) {
   if (idx < 0) | (idx > arr.length()) {
