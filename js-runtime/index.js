@@ -333,6 +333,8 @@ module.exports = {
       ]
     }
   },
+  every:   (arr, fn) => arr.every(fn),
+  some:    (arr, fn) => arr.some(fn),
 
   // Map opcodes TODO after maps are figured out
 
