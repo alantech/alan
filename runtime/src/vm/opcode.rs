@@ -2211,6 +2211,184 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }
     None
   });
+  unpred_cpu!("some", |args, hand_mem, frag, ins_sched| {
+    let arr = hand_mem.get_fractal(args[0]);
+    let len = arr.len() as i64;
+    let instructions = frag.get_closure_instructions(args[1]);
+    // array of potentially many levels of nested fractals
+    let output: Vec<i64> = (0..len).into_par_iter().map_with(instructions, |ins, idx| {
+      let mut mem = hand_mem.clone();
+      // array element is $1 argument of the closure memory space
+      if !arr.has_nested_fractals() {
+        // this could be a string or fixed data type
+        let val = arr.read_fixed(idx);
+        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
+      } else {
+        // more nested arrays
+        let arr_el = arr.read_fractal(idx);
+        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
+      }
+      ins.iter().for_each(|i| {
+        // TODO implement for async_functions. can tokio be called within rayon?
+        let func = i.opcode.func.unwrap();
+        // TODO maybe emit event, but what if multiple are emitted?
+        let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
+        if event.is_some() {
+          let event_sent = ins_sched.event_tx.send(event.unwrap());
+          if event_sent.is_err() {
+            eprintln!("Event transmission error");
+            std::process::exit(2);
+          }
+        }
+      });
+      // return address is $0 argument of the closure memory space
+      let val = mem.read_fixed(CLOSURE_ARG_MEM_START);
+      if val == 1 {
+        return Some(1);
+      } else {
+        return None;
+      }
+    }).while_some().collect();
+    if output.len() > 0 {
+      hand_mem.write_fixed(args[2], 1i64);
+    } else {
+      hand_mem.write_fixed(args[2], 0i64);
+    }
+    None
+  });
+  unpred_cpu!("somel", |args, hand_mem, frag, ins_sched| {
+    let arr = hand_mem.get_fractal(args[0]);
+    let len = arr.len() as i64;
+    let ins = frag.get_closure_instructions(args[1]);
+    // array of potentially many levels of nested fractals
+    let output: Vec<Option<i64>> = (0..len).map(|idx| {
+      let mut mem = hand_mem.clone();
+      // array element is $1 argument of the closure memory space
+      if !arr.has_nested_fractals() {
+        // this could be a string or fixed data type
+        let val = arr.read_fixed(idx);
+        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
+      } else {
+        // more nested arrays
+        let arr_el = arr.read_fractal(idx);
+        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
+      }
+      ins.iter().for_each(|i| {
+        // TODO implement for async_functions. can tokio be called within rayon?
+        let func = i.opcode.func.unwrap();
+        let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
+        if event.is_some() {
+          let event_sent = ins_sched.event_tx.send(event.unwrap());
+          if event_sent.is_err() {
+            eprintln!("Event transmission error");
+            std::process::exit(2);
+          }
+        }
+      });
+      // return address is $0 argument of the closure memory space
+      let val = mem.read_fixed(CLOSURE_ARG_MEM_START);
+      if val == 1 {
+        return Some(1);
+      } else {
+        return None;
+      }
+    }).filter(|x| x.is_some()).collect();
+    if output.len() > 0 {
+      hand_mem.write_fixed(args[2], 1i64);
+    } else {
+      hand_mem.write_fixed(args[2], 0i64);
+    }
+    None
+  });
+  unpred_cpu!("every", |args, hand_mem, frag, ins_sched| {
+    let arr = hand_mem.get_fractal(args[0]);
+    let len = arr.len() as i64;
+    let instructions = frag.get_closure_instructions(args[1]);
+    // array of potentially many levels of nested fractals
+    let output: Vec<i64> = (0..len).into_par_iter().map_with(instructions, |ins, idx| {
+      let mut mem = hand_mem.clone();
+      // array element is $1 argument of the closure memory space
+      if !arr.has_nested_fractals() {
+        // this could be a string or fixed data type
+        let val = arr.read_fixed(idx);
+        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
+      } else {
+        // more nested arrays
+        let arr_el = arr.read_fractal(idx);
+        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
+      }
+      ins.iter().for_each(|i| {
+        // TODO implement for async_functions. can tokio be called within rayon?
+        let func = i.opcode.func.unwrap();
+        // TODO maybe emit event, but what if multiple are emitted?
+        let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
+        if event.is_some() {
+          let event_sent = ins_sched.event_tx.send(event.unwrap());
+          if event_sent.is_err() {
+            eprintln!("Event transmission error");
+            std::process::exit(2);
+          }
+        }
+      });
+      // return address is $0 argument of the closure memory space
+      let val = mem.read_fixed(CLOSURE_ARG_MEM_START);
+      if val == 1 {
+        return Some(1);
+      } else {
+        return None;
+      }
+    }).while_some().collect();
+    if output.len() as i64 == len {
+      hand_mem.write_fixed(args[2], 1i64);
+    } else {
+      hand_mem.write_fixed(args[2], 0i64);
+    }
+    None
+  });
+  unpred_cpu!("everyl", |args, hand_mem, frag, ins_sched| {
+    let arr = hand_mem.get_fractal(args[0]);
+    let len = arr.len() as i64;
+    let ins = frag.get_closure_instructions(args[1]);
+    // array of potentially many levels of nested fractals
+    let output: Vec<Option<i64>> = (0..len).map(|idx| {
+      let mut mem = hand_mem.clone();
+      // array element is $1 argument of the closure memory space
+      if !arr.has_nested_fractals() {
+        // this could be a string or fixed data type
+        let val = arr.read_fixed(idx);
+        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
+      } else {
+        // more nested arrays
+        let arr_el = arr.read_fractal(idx);
+        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
+      }
+      ins.iter().for_each(|i| {
+        // TODO implement for async_functions. can tokio be called within rayon?
+        let func = i.opcode.func.unwrap();
+        let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
+        if event.is_some() {
+          let event_sent = ins_sched.event_tx.send(event.unwrap());
+          if event_sent.is_err() {
+            eprintln!("Event transmission error");
+            std::process::exit(2);
+          }
+        }
+      });
+      // return address is $0 argument of the closure memory space
+      let val = mem.read_fixed(CLOSURE_ARG_MEM_START);
+      if val == 1 {
+        return Some(1);
+      } else {
+        return None;
+      }
+    }).filter(|x| x.is_some()).collect();
+    if output.len() as i64 == len {
+      hand_mem.write_fixed(args[2], 1i64);
+    } else {
+      hand_mem.write_fixed(args[2], 0i64);
+    }
+    None
+  });
 
   // Conditional opcode
   unpred_cpu!("condfn", |args, hand_mem, frag, _| {

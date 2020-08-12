@@ -337,6 +337,42 @@ Hello, World!"
     End
   End
 
+  Describe "every and some"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+
+        on start {
+          const test = [ 1, 1, 2, 3, 5, 8 ]
+          // TODO: Get non-inline closure functions working
+          test.every(fn (val: int64): bool = val % 2 == 1).print()
+          test.some(fn (val: int64): bool = val % 2 == 1).print()
+
+          emit exit 0
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    EVERYSOMEOUTPUT="false
+true"
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "$EVERYSOMEOUTPUT"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
+      The output should eq "$EVERYSOMEOUTPUT"
+    End
+  End
+
   Describe "everything else ;)"
     before() {
       # TODO: sourceToAll
@@ -348,20 +384,12 @@ Hello, World!"
         }
 
         on start {
+          const test = [ 1, 1, 2, 3, 5, 8 ]
           print('reduce test')
           test.reduce(add).print()
 
           print('filter test')
           test.filter(isOdd).each(print)
-
-          print('find test')
-          test.find(isOdd).print()
-
-          print('every test')
-          test.every(isOdd).print()
-
-          print('some test')
-          test.some(isOdd).print()
 
           print('concat test')
           test.concat(test2).each(print)
@@ -385,12 +413,6 @@ filter test
 1
 3
 5
-find test
-1
-every test
-false
-some test
-true
 concat test
 1
 1
