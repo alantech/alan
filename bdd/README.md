@@ -22,3 +22,7 @@ After that, we a history of sembdd files through checksums and it will use the f
 2. If they are different, then it runs both versions. If they both succeed, the minor version is bumped. If the old one fails and the new one succeeds, the major version is bumped.
 
 With a centralized package management flow this can be enforced because you can't get into the registry without running these tests, we could potentially run them ourselves instead of letting them run locally (where a weirdly devious developer could try to fake it), and we can compare our record of expected versions in the publish branch versus what's in their repository and freeze things if it doesn't match the expected value (or have tarballs with bad signatures).
+
+## License
+
+Apache 2.0
