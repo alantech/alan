@@ -1,4 +1,4 @@
-# The Alan Programming Language![CI](https://github.com/alantech/alan/workflows/CI/badge.svg)
+# The Alan Programming Language [![CI](https://github.com/alantech/alan/workflows/CI/badge.svg)](https://github.com/alantech/alan/actions?query=workflow%3ACI)
 
 <div align="center">
   <img src="https://alan-lang.org/alan-logo.png" alt="drawing" width="180"/>
