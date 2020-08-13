@@ -260,14 +260,14 @@ Hello, World!"
     End
   End
 
-  Describe "repeat and mapl"
+  Describe "repeat and mapLin"
     before() {
       sourceToAll "
         from @std/app import start, print, exit
 
         on start {
           const arr = [1, 2, 3] * 3
-          const out = arr.mapl(fn (x: int64): string = x.toString()).join(', ')
+          const out = arr.mapLin(fn (x: int64): string = x.toString()).join(', ')
           print(out)
           emit exit 0
         }
@@ -373,27 +373,37 @@ true"
     End
   End
 
-  Describe "everything else ;)"
+  Describe "reduce, filter, and concat"
     before() {
-      # TODO: sourceToAll
-      sourceToTemp "
+      sourceToAll "
         from @std/app import start, print, exit
-
-        fn isOdd(val: int64): bool {
-          return val % 2 == 1
-        }
 
         on start {
           const test = [ 1, 1, 2, 3, 5, 8 ]
+          const test2 = [ 4, 5, 6 ]
           print('reduce test')
-          test.reduce(add).print()
+          test.reduce(fn (a: int, b: int): int = a + b).print()
 
           print('filter test')
-          test.filter(isOdd).each(print)
+          test.filter(fn (val: int64): bool {
+            return val % 2 == 1
+          }).map(fn (val: int64): string {
+            return toString(val)
+          }).join(', ').print()
 
           print('concat test')
-          test.concat(test2).each(print)
-          (test + test2).each(print)
+          test.concat(test2).map(fn (val: int64): string {
+            return toString(val)
+          }).join(', ').print()
+          (test + test2).map(fn (val: int64): string {
+            return toString(val)
+          }).join(', ').print()
+
+          print('reduce as filter and concat test')
+          // TODO: Lots of improvements needed for closures passed directly to opcodes. This one-liner is ridiculous
+          test.reduce(fn (acc: string, i: int): string = (acc == '' && i % 2 == 1) ? i.toString() : (i % 2 == 1 ? (acc + ', ' + i.toString()) : acc), '').print()
+          // TODO: Even more ridiculous when you want to allow parallelism
+          test.reducePar(fn (acc: string, i: int): string = (acc == '' && i % 2 == 1) ? i.toString() : (i % 2 == 1 ? (acc + ', ' + i.toString()) : acc), fn (acc: string, cur: string): string = (acc != '' && cur != '') ? (acc + ', ' + cur) : (acc != '' ? acc : cur), '').print()
 
           emit exit 0
         }
@@ -409,44 +419,20 @@ true"
     ADVARRAYOUTPUT="reduce test
 20
 filter test
-1
-1
-3
-5
+1, 1, 3, 5
 concat test
-1
-1
-2
-3
-5
-8
-2
-2
-4
-6
-10
-16
-1
-1
-2
-3
-5
-8
-2
-2
-4
-6
-10
-16"
+1, 1, 2, 3, 5, 8, 4, 5, 6
+1, 1, 2, 3, 5, 8, 4, 5, 6
+reduce as filter and concat test
+1, 1, 3, 5
+1, 1, 3, 5"
 
     It "runs js"
-      Pending array-support
       When run node temp.js
       The output should eq "$ADVARRAYOUTPUT"
     End
 
     It "runs agc"
-      Pending array-support
       When run alan-runtime run temp.agc
       The output should eq "$ADVARRAYOUTPUT"
     End

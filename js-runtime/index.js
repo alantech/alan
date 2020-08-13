@@ -334,7 +334,16 @@ module.exports = {
     }
   },
   every:   (arr, fn) => arr.every(fn),
+  everyl:  (arr, fn) => arr.every(fn),
   some:    (arr, fn) => arr.some(fn),
+  somel:   (arr, fn) => arr.some(fn),
+  filter:  (arr, fn) => arr.filter(fn),
+  filterl: (arr, fn) => arr.filter(fn),
+  reducel: (arr, fn) => arr.reduce(fn),
+  reducep: (arr, fn) => arr.reduce(fn),
+  foldl:   (obj, fn) => obj[0].reduce(fn, obj[1]),
+  foldp:   (obj, fn) => [obj[0].reduce(fn, obj[1])],
+  catarr:  (a, b) => [...a, ...b],
 
   // Map opcodes TODO after maps are figured out
 

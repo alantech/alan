@@ -552,6 +552,17 @@ export class Type {
       stdout: new Type("string", true),
       stderr: new Type("string", true),
     }),
+    InitialReduce: new Type("InitialReduce", false, false, {
+      arr: new Type("Array<T>", true, false, {
+        records: new Type("T", true, true),
+      }, {
+        T: 0,
+      }),
+      initial: new Type("U", true, true),
+    }, {
+      T: 0,
+      U: 1,
+    }),
     "function": new Type("function", true),
     operator: new Type("operator", true),
     Event: new Type("Event", true, false, {
