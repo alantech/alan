@@ -1,16 +1,16 @@
 # The Alan Programming Language![CI](https://github.com/alantech/alan/workflows/CI/badge.svg)
 
-<center>
+<div align="center">
   <img src="https://alan-lang.org/alan-logo.png" alt="drawing" width="180"/>
-</center>
+</div>
 
 The `alan` compiler and runtime can parallelize your code without concurrent or asynchronous programming (threads, promises, channels, etc) by only allowing iteration and recursion that is guaranteed to halt (e.g. no `while (true) {}` loops)
 
 This repository houses all the components for the Alan programming language.
 
-<center>
+<div align="center">
   <h2><a href="https://docs.alan-lang.org">Documentation</a> | <a href="https://alan-lang.org">Homepage</a></h2>
-</center>
+</div>
 
 ## Install
 
