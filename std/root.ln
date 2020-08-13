@@ -325,8 +325,37 @@ export each // parallel opcode with signature `fn each(arr: Array<any>, cb: func
 export fn eachLin(arr: Array<any>, cb: function): void = eachl(arr, cb)
 export map // parallel opcode with signature `fn map(arr: Array<any>, cb: function): Array<any>`
 export fn mapLin(arr: Array<any>, cb: function): Array<anythingElse> = mapl(arr, cb)
+// Unlike the other array functions, reduce is sequential by default and parallelism must be opted
+// in. This is due to the fact that parallelism requires the reducer function to be commutative or
+// associative, otherwise it will return different values on each run, and the compiler has no way
+// to guarantee that your reducer function is commutative or associative.
+//
+// There are four reduce functions instead of two as expected, because a reducer that reduces into
+// the same datatype requires less work than one that reduces into a new datatype. To reduce into a
+// new datatype you need an initial value in that new datatype that the reducer can provide to the
+// first reduction call to "get the ball rolling." And there are extra constraints if you want the
+// reducer to run in parallel: that initial value will be used multiple times for each of the
+// parallel threads of computation, so that initial value has to be idempotent for it to work. Then
+// you're left with multiple reduced results that cannot be combined with each other with the main
+// reducer, so you need to provide a second reducer function that takes the resulting datatype and
+// can combine them with each other successfully, and that one *also* needs to be a commutative or
+// associative function.
+//
+// The complexities involved in writing a parallel reducer are why we decided to make the sequential
+// version the default, as the extra overhead is not something most developers are used to, whether
+// they hail from the functional programming world or the imperative world.
+//
+// On that note, you'll notice that the opcodes are named after `reduce` and `fold`. This is the
+// naming scheme that functional language programmers would be used to, but Java and Javascript
+// combined them both as `reduce`, so we have maintained that convention as we expect fewer people
+// needing to adapt to that change, it being a change they're likely already familiar with, and
+// noting that an extra argument that makes it equivalent to `fold` is easier than trying to find
+// the 3 or 4 arg variant under a different name.
 export fn reduce(arr: Array<any>, cb: function): any = reducel(arr, cb)
 export fn reducePar(arr: Array<any>, cb: function): any = reducep(arr, cb)
+// This type is used to reduce the number of arguments passed to the opcodes, which can only take 2
+// arguments if they return a value, or 3 arguments if they are a side-effect-only opcode, and is an
+// implementation detail of the 3 and 4 arg reduce functions.
 type InitialReduce<T, U> {
   arr: Array<T>
   initial: U
