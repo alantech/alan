@@ -57,8 +57,7 @@ const loadGlobalMem = (globalMemAst: LPNode[], addressMap: object) => {
       currentOffset -= 8
       break
     default:
-      console.error(rec.get('fulltypename').t + " not yet implemented")
-      process.exit(1)
+      throw new Error(rec.get('fulltypename').t + ' not yet implemented')
     }
   }
   return globalMem
@@ -242,8 +241,7 @@ const loadStatements = (
       localMemToLine[dec.get('decname').t.trim()] = line
       const assignables = dec.get('assignables')
       if (assignables.has('functions')) {
-        console.error("This shouldn't be possible!")
-        process.exit(2)
+        throw new Error("This shouldn't be possible!")
       } else if (assignables.has('calls')) {
         const call = assignables.get('calls')
         const fnName = call.get('variable').t.trim()
@@ -309,8 +307,7 @@ const loadStatements = (
         }
         s += `@${resultAddress} = ${fn}(${val}, @0) #${line}`
       } else if (assignables.has('variable')) {
-        console.error("This should have been squashed")
-        process.exit(5)
+        throw new Error('This should have been squashed')
       }
     } else if (statement.has('assignments')) {
       const asgn = statement.get('assignments')
@@ -318,8 +315,7 @@ const loadStatements = (
       localMemToLine[resultAddress] = line
       const assignables = asgn.get('assignables')
       if (assignables.has('functions')) {
-        console.error("This shouldn't be possible!")
-        process.exit(2)
+        throw new Error("This shouldn't be possible!")
       } else if (assignables.has('calls')) {
         const call = assignables.get('calls')
         const fnName = call.get('variable').t.trim()
@@ -345,11 +341,9 @@ const loadStatements = (
           s += ` <- [${deps.join(', ')}]`
         }
       } else if (assignables.has('constants')) {
-        console.error("This should have been hoisted")
-        process.exit(3)
+        throw new Error('This should have been hoisted')
       } else if (assignables.has('variable')) {
-        console.error("This should have been squashed")
-        process.exit(5)
+        throw new Error('This should have been squashed')
       }
     } else if (statement.has('calls')) {
       const call = statement.get('calls')
@@ -483,8 +477,7 @@ export const fromFile = (filename: string) => {
   const lp = new LP(filename)
   const ast = amm.apply(lp)
   if (ast instanceof Error) {
-    console.error(ast)
-    process.exit(1)
+    throw ast
   }
   return ammToAga(ast)
 }
@@ -492,8 +485,7 @@ export const fromString = (str: string) => {
   const lp = LP.fromText(str)
   const ast = amm.apply(lp)
   if (ast instanceof Error) {
-    console.error(ast)
-    process.exit(1)
+    throw ast
   }
   return ammToAga(ast)
 }

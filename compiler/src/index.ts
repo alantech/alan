@@ -42,12 +42,17 @@ commander
   .parse(process.argv)
 
 if (convert[getFormat(inputfile)] && convert[getFormat(inputfile)][getFormat(outputfile)]) {
-  const output = convert[getFormat(inputfile)][getFormat(outputfile)].fromFile(inputfile)
-  fs.writeFileSync(outputfile, output, { encoding: 'utf8', })
-  const end = Date.now()
-  console.log(`Done in ${formatTime(end - start)}`)
+  try {
+    const output = convert[getFormat(inputfile)][getFormat(outputfile)].fromFile(inputfile)
+    fs.writeFileSync(outputfile, output, { encoding: 'utf8', })
+    const end = Date.now()
+    console.log(`Done in ${formatTime(end - start)}`)
+  } catch (e) {
+    console.error(e.message)
+    process.exit(1)
+  }
 } else {
   console.error(`${getFormat(inputfile)} to ${getFormat(outputfile)} not implemented!`)
-  process.exit(1)
+  process.exit(2)
 }
 

@@ -56,11 +56,10 @@ export const resolveDependency = (modulePath: string, dependency: any) => { // T
     }
     if (importPath === null) {
       // Should I do anything else here?
-      console.error(
+      throw new Error(
         "The dependency " +
         dependency.localdependency().getText().toString() +
         " could not be found.")
-      process.exit(-2)
     }
   }
   // If the dependency is a global dependency, there's a more complicated resolution to find it.
@@ -170,11 +169,10 @@ export const resolveDependency = (modulePath: string, dependency: any) => { // T
       }
       if (importPath == null) {
         // Should I do anything else here?
-        console.error(
+        throw new Error(
           "The dependency " +
           dependency.globaldependency().getText().toString() +
           " could not be found.")
-        process.exit(-2)
       }
     }
   }
@@ -197,8 +195,7 @@ export const resolveImports = (modulePath: string, ast: any) => { // TODO: No AN
     }
     if (dependency == null) {
       // Should I do anything else here?
-      console.error("Things are horribly broken!")
-      process.exit(-2)
+      throw new Error("Things are horribly broken!")
     }
     const importPath = resolveDependency(modulePath, dependency)
     resolvedImports.push(importPath)

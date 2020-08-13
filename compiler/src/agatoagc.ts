@@ -56,9 +56,7 @@ const loadGlobalMem = (globalMemAst: LPNode): bigint[] => {
       const val = value.t === "true" ? BigInt(1) : BigInt(0)
       globalMem.push(val)
     } else {
-      console.error('Strange AST parsing error, this should be unreachable')
-      console.error(value)
-      process.exit(1)
+      throw new Error(`Strange AST parsing error, this should be unreachable: ${value}`)
     }
   }
   return globalMem
@@ -184,8 +182,7 @@ export const fromFile = (filename: string): Buffer => {
   const lp = new LP(filename)
   const ast = aga.apply(lp)
   if (ast instanceof Error) {
-    console.error(ast)
-    process.exit(1)
+    throw ast
   }
   return astToAgc(ast)
 }
@@ -194,8 +191,7 @@ export const fromString = (str: string): Buffer => {
   const lp = LP.fromText(str)
   const ast = aga.apply(lp)
   if (ast instanceof Error) {
-    console.error(ast)
-    process.exit(1)
+    throw ast
   }
   return astToAgc(ast)
 }

@@ -63,8 +63,7 @@ class Module {
           importName = nameParts[nameParts.length - 1]
         } else {
           // What?
-          console.error("This path should be impossible")
-          process.exit(-3)
+          throw new Error("This path should be impossible")
         }
         const importedModule = modules[Ast.resolveDependency(path, standardImport.dependency())]
         module.moduleScope.put(importName, importedModule.exportScope)
@@ -158,8 +157,7 @@ class Module {
     for (const functionAst of functions) {
       const newFunc = UserFunction.fromAst(functionAst, module.moduleScope)
       if (newFunc.getName() == null) {
-        console.error("Module-level functions must have a name")
-        process.exit(-19)
+        throw new Error("Module-level functions must have a name")
       }
       let fns = module.moduleScope.get(newFunc.getName())
       if (fns == null) {
@@ -176,8 +174,7 @@ class Module {
       const precedence = parseInt(operatorAst.opprecedence().NUMBERCONSTANT().getText(), 10)
       const fns = module.moduleScope.deepGet(operatorAst.fntoop().varn().getText()) as Array<Fn>
       if (fns == null) {
-        console.error("Operator " + name + " declared for unknown function " + operatorAst.varn().getText())
-        process.exit(-31)
+        throw new Error("Operator " + name + " declared for unknown function " + operatorAst.varn().getText())
       }
       const op = new Operator(
         name,
@@ -218,8 +215,7 @@ class Module {
       } else if (exportAst.functions() != null) {
         const newFunc = UserFunction.fromAst(exportAst.functions(), module.moduleScope)
         if (newFunc.getName() == null) {
-          console.error("Module-level functions must have a name")
-          process.exit(-19)
+          throw new Error("Module-level functions must have a name")
         }
         // Exported scope must be checked first because it will fall through to the not-exported
         // scope by default. Should probably create a `getShallow` for this case, but reordering
@@ -251,17 +247,15 @@ class Module {
         if (!fns) {
           fns = module.moduleScope.deepGet(operatorAst.fntoop().varn().getText()) as Array<Fn>
           if (!!fns) {
-            console.error(
+            throw new Error(
               "Exported operator " +
               name +
               " wrapping unexported function " +
               operatorAst.varn().getText() +
               " which is not allowed, please export the function, as well."
             )
-            process.exit(-32)
           }
-          console.error("Operator " + name + " declared for unknown function " + operatorAst.varn().getText())
-          process.exit(-33)
+          throw new Error("Operator " + name + " declared for unknown function " + operatorAst.varn().getText())
         }
         const op = new Operator(
           name,
@@ -291,8 +285,7 @@ class Module {
         module.exportScope.put(newEvent.name, newEvent)
       } else {
         // What?
-        console.error("What should be an impossible export state has been reached.")
-        process.exit(-8)
+        throw new Error("What should be an impossible export state has been reached.")
       }
     }
     // Finally, event handlers, so they can depend on events that are exported from the same module
@@ -302,29 +295,24 @@ class Module {
       if (handlerAst.eventref().varn() != null) {
         evt = module.moduleScope.deepGet(handlerAst.eventref().varn().getText()) as Event
       } else if (handlerAst.eventref().calls() != null) {
-        console.error("Not yet implemented!")
-        process.exit(-19)
+        throw new Error("Not yet implemented!")
         // evt = AFunction.callFromAst(handlerAst.eventref().calls(), module.moduleScope)
       }
       if (!evt) {
-        console.error("Could not find specified event: " + handlerAst.eventref().getText())
-        process.exit(-20)
+        throw new Error("Could not find specified event: " + handlerAst.eventref().getText())
       }
       if (!(evt instanceof Event)) {
-        console.error(handlerAst.eventref().getText() + " is not an event")
-        process.exit(-21)
+        throw new Error(handlerAst.eventref().getText() + " is not an event")
       }
       let fn = null
       if (handlerAst.varn() != null) {
         const fnName = handlerAst.varn().getText()
         const fns = module.moduleScope.deepGet(handlerAst.varn().getText()) as Array<Fn>
         if (!fns) {
-          console.error("Could not find specified function: " + fnName)
-          process.exit(-22)
+          throw new Error("Could not find specified function: " + fnName)
         }
         if (!(fns instanceof Array && fns[0].microstatementInlining instanceof Function)) {
-          console.error(fnName + " is not a function")
-          process.exit(-23)
+          throw new Error(fnName + " is not a function")
         }
         for (let i = 0; i < fns.length; i++) {
           if (evt.type.typename === "void" && Object.values(fns[i].getArguments()).length === 0) {
@@ -339,8 +327,7 @@ class Module {
           }
         }
         if (fn == null) {
-          console.error("Could not find function named " + fnName + " with matching function signature")
-          process.exit(-35)
+          throw new Error("Could not find function named " + fnName + " with matching function signature")
         }
       }
       if (handlerAst.functions() != null) {
@@ -351,14 +338,12 @@ class Module {
       }
       if (fn == null) {
         // Shouldn't be possible
-        console.error("Impossible state reached processing event handler")
-        process.exit(-24)
+        throw new Error("Impossible state reached processing event handler")
       }
       if (Object.keys(fn.getArguments()).length > 1 ||
         (evt.type === Type.builtinTypes["void"] && Object.keys(fn.getArguments()).length !== 0)
       ) {
-        console.error("Function provided for " + handlerAst.eventref().getText() + " has invalid argument signature")
-        process.exit(-25)
+        throw new Error("Function provided for " + handlerAst.eventref().getText() + " has invalid argument signature")
       }
       evt.handlers.push(fn)
     }

@@ -201,15 +201,8 @@ class Microstatement {
             const fieldNum = fields.indexOf(fieldName)
             if (fieldNum < 0) {
               // Invalid object access
-              console.error(`${name} does not have a field named ${fieldName}`)
-              console.error(
-                varAst.getText() +
-                " on line " +
-                varAst.start.line +
-                ":" +
-                varAst.start.column
-              )
-              process.exit(-205)
+              throw new Error(`${name} does not have a field named ${fieldName}
+${varAst.getText()} on line ${varAst.start.line}:${varAst.start.column}`)
             }
             // Create a new variable to hold the address within the array literal
             const addrName = "_" + uuid().replace(/-/g, "_")
@@ -250,15 +243,8 @@ class Microstatement {
         if (segment.arrayaccess()) {
           if (original == null || !(original instanceof Microstatement)) {
             // This is all moot if we didn't resolve a variable to dig into
-            console.error(`${name} cannot be found`)
-            console.error(
-              varAst.getText() +
-              " on line " +
-              varAst.start.line +
-              ":" +
-              varAst.start.column
-            )
-            process.exit(-204)
+            throw new Error(`${name} cannot be found
+${varAst.getText()} on line ${varAst.start.line}:${varAst.start.column}`)
           }
           // We're still ID'ing it with the raw text to make the short-circuit work
           name += segment.arrayaccess().getText()
@@ -268,15 +254,8 @@ class Microstatement {
           // TODO: Map support, which requires figuring out if the outer memory object is an array
           // or a map.
           if (lookup.outputType.typename !== 'int64') {
-            console.error(`${segment.getText()} cannot be used in an array lookup as it is not an int64`)
-            console.error(
-              varAst.getText() +
-              " on line " +
-              varAst.start.line +
-              ":" +
-              varAst.start.column
-            )
-            process.exit(-205)
+            throw new Error(`${segment.getText()} cannot be used in an array lookup as it is not an int64
+${varAst.getText()} on line ${varAst.start.line}:${varAst.start.column}`)
           }
           // Insert a `copyfrom` opcode.
           const opcodes = require('./opcodes').default
@@ -299,15 +278,8 @@ class Microstatement {
       }
     }
     if (original == null || !(original instanceof Microstatement)) {
-      console.error(varAst.getText() + " cannot be found")
-      console.error(
-        varAst.getText() +
-        " on line " +
-        varAst.start.line +
-        ":" +
-        varAst.start.column
-      )
-      process.exit(-104)
+      throw new Error(`${varAst.getText()} cannot be found
+${varAst.getText()} on line ${varAst.start.line}:${varAst.start.column}`)
     }
     // When a variable is reassigned (or was referenced in a function call or operator statement,
     // instead of duplicating its data, add a microstatement to rereference that data (all of the
@@ -477,15 +449,8 @@ class Microstatement {
                 basicAssignablesAst.objectliterals().arrayliteral().othertype().typename().getText().trim()
               ) as Type
               if (!outerTypeBox) {
-                console.error(`${basicAssignablesAst.objectliterals().arrayliteral().othertype().getText()}  is not defined`)
-                console.error(
-                  basicAssignablesAst.getText() +
-                  " on line " +
-                  basicAssignablesAst.start.line +
-                  ":" +
-                  basicAssignablesAst.start.column
-                )
-                process.exit(-105)
+                throw new Error(`${basicAssignablesAst.objectliterals().arrayliteral().othertype().getText()}  is not defined
+${basicAssignablesAst.getText()} on line ${basicAssignablesAst.start.line}:${basicAssignablesAst.start.column}`)
               }
               outerTypeBox.solidify(
                 basicAssignablesAst.objectliterals().arrayliteral().othertype().typegenerics().fulltypename().map(
@@ -497,32 +462,16 @@ class Microstatement {
             }
           }
           if (!(typeBox instanceof Type)) {
-            console.error(
-              basicAssignablesAst.objectliterals().arrayliteral().othertype().getText().trim() + " is not a type"
-            )
-            console.error(
-              basicAssignablesAst.getText() +
-              " on line " +
-              basicAssignablesAst.start.line +
-              ":" +
-              basicAssignablesAst.start.column
-            )
-            process.exit(-106)
+            throw new Error(`${basicAssignablesAst.objectliterals().arrayliteral().othertype().getText().trim()} is not a type
+${basicAssignablesAst.getText()} on line ${basicAssignablesAst.start.line}:${basicAssignablesAst.start.column}`)
           }
         } else if (arrayLiteralContents.length > 0) {
           const innerType = arrayLiteralContents[0].outputType.typename
           Type.builtinTypes['Array'].solidify([innerType], scope)
           typeBox = scope.deepGet(`Array<${innerType}>`) as Type
         } else {
-          console.error('Ambiguous array type, please specify the type for an empty array with the syntax `new Array<MyType> []')
-          console.error(
-            basicAssignablesAst.getText() +
-            " on line " +
-            basicAssignablesAst.start.line +
-            ":" +
-            basicAssignablesAst.start.column
-          )
-          process.exit(-106)
+          throw new Error(`Ambiguous array type, please specify the type for an empty array with the syntax \`new Array<MyType> []\`
+${basicAssignablesAst.getText()} on line ${basicAssignablesAst.start.line}:${basicAssignablesAst.start.column}`)
         }
         // Create a new variable to hold the size of the array literal
         const lenName = "_" + uuid().replace(/-/g, "_")
@@ -608,15 +557,8 @@ class Microstatement {
               basicAssignablesAst.objectliterals().typeliteral().othertype().typename().getText().trim()
             )
             if (outerTypeBox === null) {
-              console.error(`${basicAssignablesAst.objectliterals().typeliteral().othertype().getText()}  is not defined`)
-              console.error(
-                basicAssignablesAst.getText() +
-                " on line " +
-                basicAssignablesAst.start.line +
-                ":" +
-                basicAssignablesAst.start.column
-              )
-              process.exit(-105)
+              throw new Error(`${basicAssignablesAst.objectliterals().typeliteral().othertype().getText()}  is not defined
+${basicAssignablesAst.getText()} on line ${basicAssignablesAst.start.line}:${basicAssignablesAst.start.column}`)
             }
             (outerTypeBox as Type).solidify(
               basicAssignablesAst.objectliterals().typeliteral().othertype().typegenerics().fulltypename().map(
@@ -628,32 +570,16 @@ class Microstatement {
           }
         }
         if (!(typeBox instanceof Type)) {
-          console.error(
-            basicAssignablesAst.objectliterals().typeliteral().othertype().getText().trim() + " is not a type"
-          )
-          console.error(
-            basicAssignablesAst.getText() +
-            " on line " +
-            basicAssignablesAst.start.line +
-            ":" +
-            basicAssignablesAst.start.column
-          )
-          process.exit(-106)
+          throw new Error(`${basicAssignablesAst.objectliterals().typeliteral().othertype().getText().trim()} is not a type
+${basicAssignablesAst.getText()} on line ${basicAssignablesAst.start.line}:${basicAssignablesAst.start.column}`)
         }
         const assignmentAsts = basicAssignablesAst.objectliterals().typeliteral().assignments()
         // First check that the assignments are well-formed and actually have an assignables field
         for (const assignmentAst of assignmentAsts) {
           if (!assignmentAst.assignables()) {
-            console.error(`${basicAssignablesAst.objectliterals().typeliteral().othertype().getText().trim()} object literal improperly defined`)
-            console.error(`${assignmentAst.varn().getText()} not set`)
-            console.error(
-              basicAssignablesAst.getText() +
-              " on line " +
-              basicAssignablesAst.start.line +
-              ":" +
-              basicAssignablesAst.start.column
-            )
-            process.exit(-109)
+            throw new Error(`${basicAssignablesAst.objectliterals().typeliteral().othertype().getText().trim()} object literal improperly defined
+${assignmentAst.varn().getText()} not set
+${basicAssignablesAst.getText()} on line ${basicAssignablesAst.start.line}:${basicAssignablesAst.start.column}`)
           }
         }
         const fields = Object.keys(typeBox.properties)
@@ -678,21 +604,20 @@ class Microstatement {
           }
         }
         if (missingFields.length > 0 || extraFields.length > 0) {
-          console.error(`${basicAssignablesAst.objectliterals().typeliteral().othertype().getText().trim()} object literal improperly defined`)
+          let errMsg = `${basicAssignablesAst.objectliterals().typeliteral().othertype().getText().trim()} object literal improperly defined`
           if (missingFields.length > 0) {
-            console.error(`Missing fields: ${missingFields.join(', ')}`)
+            errMsg += '\n' + `Missing fields: ${missingFields.join(', ')}`
           }
           if (extraFields.length > 0) {
-            console.error(`Extra fields: ${extraFields.join(', ')}`)
+            errMsg += '\n' + `Extra fields: ${extraFields.join(', ')}`
           }
-          console.error(
+          errMsg += '\n' +
             basicAssignablesAst.getText() +
             " on line " +
             basicAssignablesAst.start.line +
             ":" +
             basicAssignablesAst.start.column
-          )
-          process.exit(-108)
+          throw new Error(errMsg)
         }
         // The assignment looks good, now we'll mimic the array literal logic mostly
         const arrayLiteralContents = []
@@ -761,15 +686,8 @@ class Microstatement {
         return
       }
       // If object literal parsing has made it this far, it's a Map literal that is not yet supported
-      console.error(`${basicAssignablesAst.objectliterals().mapliteral().othertype().getText().trim()} not yet supported`)
-      console.error(
-        basicAssignablesAst.getText() +
-        " on line " +
-        basicAssignablesAst.start.line +
-        ":" +
-        basicAssignablesAst.start.column
-      )
-      process.exit(-107)
+      throw new Error(`${basicAssignablesAst.objectliterals().mapliteral().othertype().getText().trim()} not yet supported
+${basicAssignablesAst.getText()} on line ${basicAssignablesAst.start.line}:${basicAssignablesAst.start.column}`)
     }
   }
 
@@ -795,8 +713,7 @@ class Microstatement {
         const operator = operatorOrAssignable.operators()
         const op = scope.deepGet(operator.getText())
         if (op == null || !(op instanceof Array && op[0] instanceof Operator)) {
-          console.error("Operator " + operator.getText() + " is not defined")
-          process.exit(-34)
+          throw new Error("Operator " + operator.getText() + " is not defined")
         }
         withOperatorsList.push(op)
       }
@@ -877,8 +794,8 @@ class Microstatement {
         }
       }
       if (maxPrecedence == -1 || maxOperatorLoc == -1) {
-        console.error("Cannot resolve operators with remaining statement")
-        console.error(withOperatorsAst.getText())
+        let errMsg = `Cannot resolve operators with remaining statement
+${withOperatorsAst.getText()}`
         let withOperatorsTranslation = []
         for (let i = 0; i < withOperatorsList.length; i++) {
           const node = withOperatorsList[i]
@@ -888,8 +805,8 @@ class Microstatement {
             withOperatorsTranslation.push("<" + node.outputType.typename + ">")
           }
         }
-        console.error(withOperatorsTranslation.join(" "))
-        process.exit(-34)
+        errMsg += '\n' + withOperatorsTranslation.join(' ')
+        throw new Error(errMsg)
       }
       const op = withOperatorsList[maxOperatorLoc][maxOperatorListLoc]
       let realArgNames = []
@@ -992,35 +909,16 @@ class Microstatement {
       Microstatement.fromAssignablesAst(emitsAst.assignables(), scope, microstatements)
       const eventBox = scope.deepGet(emitsAst.varn().getText()) // TODO: Port to fromVarAst when Box is removed
       if (!(eventBox instanceof Event)) {
-        console.error(emitsAst.varn().getText() + " is not an event!")
-        console.error(
-          emitsAst.getText() +
-          " on line " +
-          emitsAst.start.line +
-          ":" +
-          emitsAst.start.column
-        )
-        process.exit(-101)
+        throw new Error(`${emitsAst.varn().getText()} is not an event!
+${emitsAst.getText()} on line ${emitsAst.start.line}:${emitsAst.start.column}`)
       }
       const last = microstatements[microstatements.length - 1]
       if (
         last.outputType != eventBox.type &&
         !eventBox.type.castable(last.outputType)
       ) {
-        console.error(
-          "Attempting to assign a value of type " +
-          last.outputType.typename +
-          " to an event of type " +
-          eventBox.type.typename
-        )
-        console.error(
-          emitsAst.getText() +
-          " on line " +
-          emitsAst.start.line +
-          ":" +
-          emitsAst.start.column
-        )
-        process.exit(-103)
+        throw new Error(`Attempting to assign a value of type ${last.outputType.typename} to an event of type ${eventBox.type.typename}
+${emitsAst.getText()} on line ${emitsAst.start.line}:${emitsAst.start.column}`)
       }
       microstatements.push(new Microstatement(
         StatementType.EMIT,
@@ -1035,26 +933,12 @@ class Microstatement {
       // Otherwise, create an emit statement with no value
       const eventBox = scope.deepGet(emitsAst.varn().getText()) as Event // TODO: Port to fromVarAst
       if (!(eventBox instanceof Event)) {
-        console.error(emitsAst.varn().getText() + " is not an event!")
-        console.error(
-          emitsAst.getText() +
-          " on line " +
-          emitsAst.start.line +
-          ":" +
-          emitsAst.start.column
-        )
-        process.exit(-102)
+        throw new Error(`${emitsAst.varn().getText()} is not an event!
+${emitsAst.getText()} on line ${emitsAst.start.line}:${emitsAst.start.column}`)
       }
       if (eventBox.type != Type.builtinTypes.void) {
-        console.error(emitsAst.varn().getText() + " must have a value emitted to it!")
-        console.error(
-          emitsAst.getText() +
-          " on line " +
-          emitsAst.start.line +
-          ":" +
-          emitsAst.start.column
-        )
-        process.exit(-103)
+        throw new Error(`${emitsAst.varn().getText()} must have a value emitted to it!
+${emitsAst.getText()} on line ${emitsAst.start.line}:${emitsAst.start.column}`)
       }
       microstatements.push(new Microstatement(
         StatementType.EMIT,
@@ -1150,8 +1034,7 @@ class Microstatement {
         scopePath = scopePath.substring(0, scopePath.length - 1)
         firstArg = Microstatement.fromVarName(scopePath, scope, microstatements)
         if (firstArg == null) { // It wasn't this, either, just return the same error
-          console.error("Undefined function called: " + callsAst.varn(0).getText())
-          process.exit(-140)
+          throw new Error("Undefined function called: " + callsAst.varn(0).getText())
         }
         fnBox = scope.deepGet(methodName) as Array<Fn>
       }
@@ -1221,15 +1104,8 @@ class Microstatement {
         !fnBox ||
         !(fnBox instanceof Array && fnBox[0].microstatementInlining instanceof Function)
       ) {
-        console.error(callsAst.varn(i).getText() + " is not a function!")
-        console.error(
-          callsAst.getText() +
-          " on line " +
-          callsAst.start.line +
-          ":" +
-          callsAst.start.column
-        )
-        process.exit(-106)
+        throw new Error(`${callsAst.varn(i).getText()} is not a function!
+${callsAst.getText()} on line ${callsAst.start.line}:${callsAst.start.column}`)
       }
       // Generate the relevant microstatements for this function. UserFunctions get inlined with the
       // return statement turned into a const assignment as the last statement, while built-in
@@ -1282,28 +1158,14 @@ class Microstatement {
           original = Microstatement.fromVarName(microstatement.outputName, scope, microstatements)
           break
         } else {
-          console.error("Attempting to reassign a non-let variable.")
-          console.error(
-            letName +
-            " on line " +
-            assignmentsAst.start.line +
-            ":" +
-            assignmentsAst.start.column
-          )
-          process.exit(104)
+          throw new Error(`Attempting to reassign a non-let variable.
+${letName} on line ${assignmentsAst.start.line}:${assignmentsAst.start.column}`)
         }
       }
     }
     if (!original) {
-      console.error('Attempting to reassign to an undeclared variable')
-      console.error(
-        letName +
-        " on line " +
-        assignmentsAst.line +
-        ":" +
-        assignmentsAst.start.column
-      )
-      process.exit(105)
+      throw new Error(`Attempting to reassign to an undeclared variable
+${letName} on line ${assignmentsAst.line}:${assignmentsAst.start.column}`)
     }
     if (segments.length === 1) { // Could be a simple let variable
       const letName = segments[0].getText()
@@ -1318,15 +1180,8 @@ class Microstatement {
           if (microstatement.statementType === StatementType.LETDEC) {
             break
           } else {
-            console.error("Attempting to reassign a non-let variable.")
-            console.error(
-              letName +
-              " on line " +
-              assignmentsAst.line +
-              ":" +
-              assignmentsAst.start.column
-            )
-            process.exit(100)
+            throw new Error(`Attempting to reassign a non-let variable.
+${letName} on line ${assignmentsAst.line}:${assignmentsAst.start.column}`)
           }
         }
       }
@@ -1334,15 +1189,8 @@ class Microstatement {
       // parser is bad here, but necessary for let declarations because of the weird re-use of
       // stuff.
       if (assignmentsAst.assignables() == null) {
-        console.error("Let variable re-assignment without a value specified.")
-        console.error(
-          letName +
-          " on line " +
-          assignmentsAst.start.line +
-          ":" +
-          assignmentsAst.start.column
-        )
-        process.exit(101)
+        throw new Error(`Let variable re-assignment without a value specified.
+${letName} on line ${assignmentsAst.start.line}:${assignmentsAst.start.column}`)
       }
       // An assignable may either be a basic constant or could be broken down into other
       // microstatements. The classification with assignables is: if it's a `withoperators` type it
@@ -1478,28 +1326,14 @@ class Microstatement {
         return
       }
       // This should not be reachable
-      console.error('Unknown malformed input in re-assignment')
-      console.error(
-        letName +
-        " on line " +
-        assignmentsAst.start.line +
-        ":" +
-        assignmentsAst.start.column
-      )
-      process.exit(102)
+      throw new Error(`Unknown malformed input in re-assignment
+${letName} on line ${assignmentsAst.start.line}:${assignmentsAst.start.column}`)
     }
     // The more complicated path. First, rule out that the first segment is not a `scope`.
     const testBox = scope.deepGet(segments[0].getText())
     if (!!testBox && testBox instanceof Scope) {
-      console.error('Atempting to reassign to variable from another module')
-      console.error(
-        assignmentsAst.varn().getText() +
-        " on line " +
-        assignmentsAst.start.line +
-        ":" +
-        assignmentsAst.start.column
-      )
-      process.exit(103)
+      throw new Error(`Atempting to reassign to variable from another module
+${assignmentsAst.varn().getText()} on line ${assignmentsAst.start.line}:${assignmentsAst.start.column}`)
     }
     let nestedLetType = original.outputType
     for (let i = 1; i < segments.length - 1; i++) {
@@ -1509,8 +1343,7 @@ class Microstatement {
       // An array access. Until the grammar definition is reworked, this will parse correctly, but
       // it is banned in alan (due to being unable to catch and report assignment errors to arrays)
       if (segment.arrayaccess()) {
-        console.error(`${segments.join('')} cannot be written to. Please use 'set' to mutate arrays and hash tables`)
-        process.exit(-204)
+        throw new Error(`${segments.join('')} cannot be written to. Please use 'set' to mutate arrays and hash tables`)
       }
       // If it's a varname here, then we're accessing an inner property type. We need to figure out
       // which index it is in the underlying array structure and then `register` that piece (since
@@ -1521,15 +1354,8 @@ class Microstatement {
         const fieldNum = fields.indexOf(fieldName)
         if (fieldNum < 0) {
           // Invalid object access
-          console.error(`${letName} does not have a field named ${fieldName}`)
-          console.error(
-            assignmentsAst.varn().getText() +
-            " on line " +
-            assignmentsAst.varn().start.line +
-            ":" +
-            assignmentsAst.varn().start.column
-          )
-          process.exit(-205)
+          throw new Error(`${letName} does not have a field named ${fieldName}
+${assignmentsAst.varn().getText()} on line ${assignmentsAst.varn().start.line}:${assignmentsAst.varn().start.column}`)
         }
         // Create a new variable to hold the address within the array literal
         const addrName = "_" + uuid().replace(/-/g, "_")
@@ -1559,15 +1385,8 @@ class Microstatement {
     // TODO: Clean up the const/let declarations and assignments. That this is possible with the
     // parser is bad here, but necessary for let declarations because of the weird re-use of stuff.
     if (assignmentsAst.assignables() == null) {
-      console.error("Let variable re-assignment without a value specified.")
-      console.error(
-        letName +
-        " on line " +
-        assignmentsAst.start.line +
-        ":" +
-        assignmentsAst.start.column
-      )
-      process.exit(101)
+      throw new Error(`Let variable re-assignment without a value specified.
+${letName} on line ${assignmentsAst.start.line}:${assignmentsAst.start.column}`)
     }
     // An assignable may either be a basic constant or could be broken down into other microstatements
     // The classification with assignables is: if it's a `withoperators` type it *always* becomes
@@ -1604,15 +1423,8 @@ class Microstatement {
       // TODO: Map support, which requires figuring out if the outer memory object is an array
       // or a map.
       if (lookup.outputType.typename !== 'int64') {
-        console.error(`${finalSegment.getText()} cannot be used in an array lookup as it is not an int64`)
-        console.error(
-          letName +
-          " on line " +
-          assignmentsAst.start.line +
-          ":" +
-          assignmentsAst.start.column
-        )
-        process.exit(-205)
+        throw new Error(`${finalSegment.getText()} cannot be used in an array lookup as it is not an int64
+${letName} on line ${assignmentsAst.start.line}:${assignmentsAst.start.column}`)
       }
       // Insert a `copytof` or `copytov` opcode.
       const opcodes = require('./opcodes').default
@@ -1627,15 +1439,8 @@ class Microstatement {
       const fieldNum = fields.indexOf(fieldName)
       if (fieldNum < 0) {
         // Invalid object access
-        console.error(`${name} does not have a field named ${fieldName}`)
-        console.error(
-          letName +
-          " on line " +
-          assignmentsAst.start.line +
-          ":" +
-          assignmentsAst.start.column
-        )
-        process.exit(-205)
+        throw new Error(`${name} does not have a field named ${fieldName}
+${letName} on line ${assignmentsAst.start.line}:${assignmentsAst.start.column}`)
       }
       // Create a new variable to hold the address within the array literal
       const addrName = "_" + uuid().replace(/-/g, "_")
@@ -1656,15 +1461,8 @@ class Microstatement {
         microstatements,
       )
     } else {
-      console.error(`${finalSegment.getText()} cannot be the final piece in a reassignment statement`)
-      console.error(
-        letName +
-        " on line " +
-        assignmentsAst.start.line +
-        ":" +
-        assignmentsAst.start.column
-      )
-      process.exit(-205)
+      throw new Error(`${finalSegment.getText()} cannot be the final piece in a reassignment statement
+${letName} on line ${assignmentsAst.start.line}:${assignmentsAst.start.column}`)
     }
   }
 
@@ -1693,15 +1491,8 @@ class Microstatement {
             letdeclarationAst.assignments().varn().getText()
           ) as Type
           if (outerTypeBox === null) {
-            console.error(`${letdeclarationAst.assignments().varn().getText()}  is not defined`)
-            console.error(
-              letdeclarationAst.getText() +
-              " on line " +
-              letdeclarationAst.start.line +
-              ":" +
-              letdeclarationAst.start.column
-            )
-            process.exit(-105)
+            throw new Error(`${letdeclarationAst.assignments().varn().getText()}  is not defined
+${letdeclarationAst.getText()} on line ${letdeclarationAst.start.line}:${letdeclarationAst.start.column}`)
           }
           outerTypeBox.solidify(
             letdeclarationAst.assignments().typegenerics().fulltypename().map(
@@ -1719,8 +1510,7 @@ class Microstatement {
       // This is the situation where a variable is declared but no value is yet assigned.
       // We have decided to not permit this at all and consider it an error case. TODO: Block this
       // at the parser level
-      console.error('Let declaration must have an initial value')
-      process.exit(112)
+      throw new Error('Let declaration must have an initial value')
     }
     // An assignable may either be a basic constant or could be broken down into other microstatements
     // The classification with assignables is: if it's a `withoperators` type it *always* becomes
@@ -1809,15 +1599,8 @@ class Microstatement {
             constdeclarationAst.assignments().varn().getText()
           ) as Type
           if (outerTypeBox === null) {
-            console.error(`${constdeclarationAst.assignments().varn().getText()}  is not defined`)
-            console.error(
-              constdeclarationAst.getText() +
-              " on line " +
-              constdeclarationAst.start.line +
-              ":" +
-              constdeclarationAst.start.column
-            )
-            process.exit(-105)
+            throw new Error(`${constdeclarationAst.assignments().varn().getText()}  is not defined
+${constdeclarationAst.getText()} on line ${constdeclarationAst.start.line}:${constdeclarationAst.start.column}`)
           }
           outerTypeBox.solidify(
             constdeclarationAst.assignments().typegenerics().fulltypename().map(
