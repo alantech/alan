@@ -16,12 +16,12 @@ pub struct HandlerMemory {
   /// Global memory reference
   gmem: &'static Vec<u8>,
   /// Memory of the handler for fixed size data types
-  mem: Vec<i64>,
+  pub mem: Vec<i64>,
   /// Memory space used for closure arguments
   closure_args: Vec<i64>,
   fractal_closure_args: Vec<HandlerMemory>,
   /// Fractal memory storage for variable-length data types to an instance of the same struct
-  fractal_mem: Vec<HandlerMemory>,
+  pub fractal_mem: Vec<HandlerMemory>,
   /// Helper for fractal_mem or fractal_closure_args to lookup the actual location of the relevant data, since
   /// instantiating HandlerMemory instances for each memory usage need is expensive. -1 means the
   /// data is in mem, otherwise it's mapping to the index in fractal_mem that houses the relevant
