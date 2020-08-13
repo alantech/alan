@@ -40,7 +40,7 @@ cargo install alan-runtime
 
 ### Source Installation
 
-However, you may also install Alan directly from the source of this project. Simply run:
+However, you may also install Alan directly from the source of this project. This is useful for developing or contributing to Alan. Simply run:
 
 ```
 make clean
