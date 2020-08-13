@@ -80,8 +80,7 @@ class Statement {
       return false
     }
     if (!(fn instanceof Array && fn[0].microstatementInlining instanceof Function)) {
-      console.error(callAst.varn(0).getText() + " is not a function")
-      process.exit(-17)
+      throw new Error(callAst.varn(0).getText() + " is not a function")
     }
     // TODO: Add all of the logic to determine which function to use in here, too. For now,
     // let's just assume they all have the same purity state, which is a terrible assumption, but
@@ -103,8 +102,7 @@ class Statement {
         const operator = operatorOrAssignable.operators()
         const op = scope.deepGet(operator.getText()) as Array<Operator>
         if (!op || !(op instanceof Array && op[0] instanceof Operator)) {
-          console.error("Operator " + operator.getText() + " is not defined")
-          process.exit(-33)
+          throw new Error("Operator " + operator.getText() + " is not defined")
         }
         // TODO: Similar to the above, need to figure out logic to determine which particular function
         // will be the one called. For now, just assume the first one and fix this later.
@@ -152,8 +150,7 @@ class Statement {
       return Statement.isWithOperatorsPure(assignableAst.withoperators(), scope)
     }
     // This should never be reached
-    console.error("Impossible assignment situation")
-    process.exit(-14)
+    throw new Error("Impossible assignment situation")
   }
 
   static create(statementOrAssignableAst: any, scope: Scope) { // TODO: Migrate off ANTLR
@@ -181,8 +178,7 @@ class Statement {
             }
           }
         } else {
-          console.error("Bad assignment somehow reached")
-          process.exit(-18)
+          throw new Error("Bad assignment somehow reached")
         }
       }
       if (statementAst.assignments() != null) {
@@ -206,8 +202,7 @@ class Statement {
       return new Statement(statementAst, scope, pure)
     } else {
       // What?
-      console.error("This should not be possible")
-      process.exit(-19)
+      throw new Error("This should not be possible")
     }
   }
 

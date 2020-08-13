@@ -102,8 +102,7 @@ export const fromFile = (filename: string) => {
   const lp = new LP(filename)
   const ast = amm.apply(lp)
   if (ast instanceof Error) {
-    console.error(ast)
-    process.exit(1)
+    throw ast
   }
   return ammToJsText(ast)
 }
@@ -111,8 +110,7 @@ export const fromString = (str: string) => {
   const lp = LP.fromText(str)
   const ast = amm.apply(lp)
   if (ast instanceof Error) {
-    console.error(ast)
-    process.exit(1)
+    throw ast
   }
   return ammToJsText(ast)
 }

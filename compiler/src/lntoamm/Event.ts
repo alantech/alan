@@ -25,11 +25,9 @@ class Event {
     const name = eventAst.VARNAME().getText()
     const type = scope.deepGet(eventAst.varn().getText()) as Type
     if (!type) {
-      console.error("Could not find specified type: " + eventAst.varn().getText())
-      process.exit(-8)
+      throw new Error("Could not find specified type: " + eventAst.varn().getText())
     } else if (!(type instanceof Type)) {
-      console.error(eventAst.varn().getText() + " is not a type")
-      process.exit(-9)
+      throw new Error(eventAst.varn().getText() + " is not a type")
     }
     return new Event(name, type, false)
   }

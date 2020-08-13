@@ -76,8 +76,7 @@ export class Interface {
           potentialFunctions[0].microstatementInlining instanceof Function
         )
       ) {
-        console.error(functionType.functionname + " is not the name of a function")
-        process.exit(-48)
+        throw new Error(functionType.functionname + " is not the name of a function")
       }
       let functionFound = false
       for (const potentialFunction of potentialFunctions) {
@@ -122,8 +121,7 @@ export class Interface {
           potentialOperators[0] instanceof Operator
         )
       ) {
-        console.error(`${operatorType.operatorname} is not an operator`)
-        process.exit(-52)
+        throw new Error(`${operatorType.operatorname} is not an operator`)
       }
       let operatorFound = false
       for (const potentialOperator of potentialOperators) {
@@ -178,15 +176,13 @@ export class Interface {
           const typenames = functiontypeline.functiontype().varn();
           const returnType = scope.deepGet(typenames[typenames.length - 1].getText()) as Type
           if (!returnType || !(returnType instanceof Type)) {
-            console.error(typenames.get(typenames.size() - 1).getText() + " is not a type")
-            process.exit(-48)
+            throw new Error(typenames.get(typenames.size() - 1).getText() + " is not a type")
           }
           let args = []
           for (let i = 0; i < typenames.length - 1; i++) {
             const argument = scope.deepGet(typenames[i].getText()) as Type
             if (!argument || !(argument instanceof Type)) {
-              console.error(typenames.get(i).getText() + " is not a type")
-              process.exit(-49)
+              throw new Error(typenames.get(i).getText() + " is not a type")
             }
             args.push(argument)
           }
@@ -205,15 +201,13 @@ export class Interface {
           const args = argTypenames.map(n => {
             const box = scope.deepGet(n)
             if (!box || !(box instanceof Type)) {
-              console.error(`${n} is not a type`)
-              process.exit(-50)
+              throw new Error(`${n} is not a type`)
             }
             return box
           })
           const returnType = scope.deepGet(returnTypename) as Type
           if (!returnType || !(returnType instanceof Type)) {
-            console.error(`${returnTypename} is not a type`)
-            process.exit(-51)
+            throw new Error(`${returnTypename} is not a type`)
           }
           const operatorType = new OperatorType(operatorname, isPrefix, args, returnType)
           iface.operatorTypes.push(operatorType)
@@ -222,8 +216,7 @@ export class Interface {
           const propertyType =
             scope.deepGet(interfaceline.propertytypeline().varn().getText()) as Type
           if (!propertyType || !(propertyType instanceof Type)) {
-            console.error(interfaceline.propertytypeline().varn().getText() + " is not a type")
-            process.exit(-52)
+            throw new Error(interfaceline.propertytypeline().varn().getText() + " is not a type")
           }
           iface.requiredProperties[
             interfaceline.propertytypeline().VARNAME().getText()
@@ -234,8 +227,7 @@ export class Interface {
       // It's an alias, so grab it and give it the new name
       const otherInterface = scope.deepGet(interfaceAst.varn().getText()) as Type
       if (!(otherInterface instanceof Type) || !otherInterface.iface) {
-        console.error(`${interfaceAst.varn().getText()} is not an interface`)
-        process.exit(123)
+        throw new Error(`${interfaceAst.varn().getText()} is not an interface`)
       }
       // Replace the interface with the other one
       ifaceType.iface = otherInterface.iface
@@ -333,8 +325,7 @@ export class Type {
               const innerBaseTypeName = generic.varn().getText()
               const innerBaseType = typeScope.deepGet(innerBaseTypeName) as Type
               if (!innerBaseType) {
-                console.error('wut')
-                process.exit(-1)
+                throw new Error('wut')
               }
               innerBaseType.solidify(
                 generic.typegenerics().fulltypename().map((t: any) => t.getText()),
@@ -344,8 +335,7 @@ export class Type {
           }
           const baseType = scope.deepGet(baseTypeName) as Type
           if (!baseType || !(baseType instanceof Type)) {
-            console.error(lineAst.fulltypename().getText() + " is not a type")
-            process.exit(-4)
+            throw new Error(lineAst.fulltypename().getText() + " is not a type")
           }
           type.properties[propertyName] = baseType.solidify(
             innerGenerics.map((t: any) => t.getText()),
@@ -359,13 +349,10 @@ export class Type {
     if (typeAst.othertype() != null) {
       const otherTypebox = scope.deepGet(typeAst.othertype().typename().getText()) as Type
       if (!otherTypebox) {
-        console.error("Type " + typeAst.othertype().getText() + " not defined")
-
-        process.exit(-38)
+        throw new Error("Type " + typeAst.othertype().getText() + " not defined")
       }
       if (!(otherTypebox instanceof Type)) {
-        console.error(typeAst.othertype().getText() + " is not a valid type")
-        process.exit(-39)
+        throw new Error(typeAst.othertype().getText() + " is not a valid type")
       }
 
       let othertype = otherTypebox
@@ -401,15 +388,13 @@ export class Type {
           const generics = fulltypename.typegenerics().fulltypename().map((t: any) => t.getText())
           const baseType = scope.deepGet(basename) as Type
           if (!baseType || !(baseType instanceof Type)) {
-            console.error(basename + " type not found")
-            process.exit(-34)
+            throw new Error(basename + " type not found")
           } else {
             const newtype = baseType.solidify(generics, scope)
             replacementTypes.push(newtype)
           }
         } else {
-          console.error(typename + " type not found")
-          process.exit(-35)
+          throw new Error(typename + " type not found")
         }
       } else {
         replacementTypes.push(typebox)
