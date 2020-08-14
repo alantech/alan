@@ -38,7 +38,7 @@ const hashcore = (hasher, a) => {
     strview.set(a.split('').map(s => s.charCodeAt(0)), 8)
   } else {
     // Booleans are treated as if they are 64-bit integers
-    const val = a ? 1n : 0n
+    const val = a ? BigInt(1) : BigInt(0)
     const view = new BigInt64Array(buffer)
     view.set([val], 0)
   }
