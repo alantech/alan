@@ -2216,7 +2216,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let len = arr.len() as i64;
     let instructions = frag.get_closure_instructions(args[1]);
     // array of potentially many levels of nested fractals
-    let output: Vec<i64> = (0..len).into_par_iter().map_with(instructions, |ins, idx| {
+    let output: bool = (0..len).into_par_iter().any(|idx| {
+      let ins = instructions.clone();
       let mut mem = hand_mem.clone();
       // array element is $1 argument of the closure memory space
       if !arr.has_nested_fractals() {
@@ -2243,13 +2244,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       });
       // return address is $0 argument of the closure memory space
       let val = mem.read_fixed(CLOSURE_ARG_MEM_START);
-      if val == 1 {
-        return Some(1);
-      } else {
-        return None;
-      }
-    }).while_some().collect();
-    if output.len() > 0 {
+      return val == 1
+    });
+    if output {
       hand_mem.write_fixed(args[2], 1i64);
     } else {
       hand_mem.write_fixed(args[2], 0i64);
