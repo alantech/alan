@@ -8,6 +8,11 @@ use crate::vm::program::Program;
 // -2^63
 pub const CLOSURE_ARG_MEM_START: i64 = -9223372036854775808;
 pub const CLOSURE_ARG_MEM_SIZE: usize = 4;
+// Flags for the registers_ish vector. The normal address flag indicates that the data is stored
+// normally in either the memory or fractal memory structures. The fixed pointer address flag
+// indicates that the value in the memory structure is actually a pointer to an i64 value. The
+// handlermemory pointer address flag indicates that the value in the memory structure is actually
+// a pointer to a HandlerMemory object.
 const NORMAL_ADDR: i8 = 0;
 const FX_PTR_ADDR: i8 = 1;
 const HM_PTR_ADDR: i8 = 2;
