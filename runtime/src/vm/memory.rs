@@ -146,10 +146,14 @@ impl HandlerMemory {
       return arr;
     }
     let reg = reg_opt.unwrap().to_vec();
-    let mut arr = &self.fractal_mem[self.either_mem[addr as usize] as usize];
-    for (i, addr) in reg.iter().enumerate() {
-      if i == 0 { continue };
-      arr = &arr.fractal_mem[arr.either_mem[*addr as usize] as usize];
+    let mut arr = self;
+    for addr in reg.iter() {
+      let next_reg = self.registers_ish.get(&addr);
+      if next_reg.is_none() {
+        arr = &arr.fractal_mem[arr.either_mem[*addr as usize] as usize];
+      } else {
+        arr = arr.get_fractal(*addr);
+      }
     }
     return arr;
   }
@@ -294,15 +298,6 @@ impl HandlerMemory {
     if addr < 0 && self.is_neg_addr_gmem(addr) {
       panic!("Reads of undefined size do not work on global memory");
     }
-    /*if !self.is_neg_addr_gmem(addr) {
-      return if self.either_closure_mem[(addr - CLOSURE_ARG_MEM_START) as usize] > -1 {
-        let var = self.read_fractal_mem(addr);
-        (var, 0)
-      } else {
-        // Nope, it's fixed data. We can safely read 8 bytes for all of the fixed types
-        (vec![self.read_fixed(addr)], 8)
-      };
-    }*/
     // test if the data read is itself a string/array
     return if self.either_mem[addr as usize] > -1 {
       let var = self.read_fractal_mem(addr);
@@ -327,8 +322,24 @@ impl HandlerMemory {
         return self.closure_args.as_ptr().add(a).read();
       }
     }
-    unsafe {
-      return self.mem.as_ptr().add(addr as usize).read();
+    let reg_opt = self.registers_ish.get(&addr);
+    if reg_opt.is_none() {
+      unsafe {
+        return self.mem.as_ptr().add(addr as usize).read();
+      }
+    } else {
+      let reg = reg_opt.unwrap().to_vec();
+      let mut arr = self;
+      for i in 0..(reg.len() - 1) {
+        let addr = reg[i];
+        let next_reg = self.registers_ish.get(&addr);
+        if next_reg.is_none() {
+          arr = &arr.fractal_mem[arr.either_mem[addr as usize] as usize];
+        } else {
+          arr = arr.get_fractal(addr);
+        }
+      }
+      return arr.read_fixed(reg[reg.len() - 1]);
     }
   }
 
@@ -352,10 +363,16 @@ impl HandlerMemory {
       let res = arr.mem.as_slice();
       return res.to_vec();
     }
-    let a = addr as usize;
-    let arr = &self.fractal_mem[self.either_mem[a] as usize];
-    let res = arr.mem.as_slice();
-    return res.to_vec();
+    let reg_opt = self.registers_ish.get(&addr);
+    if reg_opt.is_none() {
+      let a = addr as usize;
+      let arr = &self.fractal_mem[self.either_mem[a] as usize];
+      let res = arr.mem.as_slice();
+      return res.to_vec();
+    } else {
+      let frac_mem = self.get_fractal(addr).mem.clone();
+      return frac_mem;
+    }
   }
 
   fn is_neg_addr_gmem(self: &HandlerMemory, addr: i64) -> bool {
@@ -409,9 +426,15 @@ impl HandlerMemory {
         }
       }
     }
-    let a = addr as usize;
-    let arr = self.fractal_mem[self.either_mem[a] as usize].clone();
-    return arr;
+    let reg_opt = self.registers_ish.get(&addr);
+    if reg_opt.is_none() {
+      let a = addr as usize;
+      let arr = self.fractal_mem[self.either_mem[a] as usize].clone();
+      return arr;
+    } else {
+      let frac = self.get_fractal(addr);
+      return frac.clone();
+    }
   }
 
   pub fn write_fixed(self: &mut HandlerMemory, addr: i64, payload: i64) {
