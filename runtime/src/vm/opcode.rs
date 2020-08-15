@@ -1832,7 +1832,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     if last.is_ok() {
       hand_mem.push_fractal_fixed(args[2], 1i64);
       let val = last.ok().unwrap();
-      if val.either_closure_mem[0] == 1 { // Hacky signal that it's fixed data
+      if val.is_fixed {
         hand_mem.push_fractal_fixed(args[2], val.read_fixed(0));
       } else {
         hand_mem.push_nested_fractal(args[2], val);
@@ -1874,6 +1874,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     // array of potentially many levels of nested fractals
     let output: Vec<HandlerMemory> = (0..len).into_par_iter().map_with(instructions, |ins, idx| {
       let mut mem = hand_mem.clone();
+      mem.make_closure();
       // array element is $1 argument of the closure memory space
       if !arr.has_nested_fractals() {
         // this could be a string or fixed data type
@@ -1898,7 +1899,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         }
       });
       // return address is $0 argument of the closure memory space
-      if mem.either_closure_mem[0] > -1 {
+      let (_, size) = mem.read_either(CLOSURE_ARG_MEM_START);
+      if size == 0 {
         let res = mem.read_fractal(CLOSURE_ARG_MEM_START);
         return res;
       } else {
@@ -1926,6 +1928,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     // array of potentially many levels of nested fractals
     let output: Vec<HandlerMemory> = (0..len).map(|idx| {
       let mut mem = hand_mem.clone();
+      mem.make_closure();
       // array element is $1 argument of the closure memory space
       if !arr.has_nested_fractals() {
         // this could be a string or fixed data type
@@ -1949,7 +1952,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         }
       });
       // return address is $0 argument of the closure memory space
-      if mem.either_closure_mem[0] > -1 {
+      let (_, size) = mem.read_either(CLOSURE_ARG_MEM_START);
+      if size == 0 {
         let res = mem.read_fractal(CLOSURE_ARG_MEM_START);
         return res;
       } else {
@@ -2002,6 +2006,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     // array of potentially many levels of nested fractals
     (0..len).into_par_iter().for_each_with(instructions, |ins, idx| {
       let mut mem = hand_mem.clone();
+      mem.make_closure();
       // array element is $1 argument of the closure memory space
       // current index is $2 argument
       if !arr.has_nested_fractals() {
@@ -2038,6 +2043,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     // array of potentially many levels of nested fractals
     (0..len).for_each(|idx| {
       let mut mem = hand_mem.clone();
+      mem.make_closure();
       // array element is $1 argument of the closure memory space
       if !arr.has_nested_fractals() {
         // this could be a string or fixed data type
@@ -2071,6 +2077,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let arr_addr = (0..len).into_par_iter().find_any(|idx| {
       let ins = instructions.clone();
       let mut mem = hand_mem.clone();
+      mem.make_closure();
       // array element is $1 argument of the closure memory space
       if !arr.has_nested_fractals() {
         // this could be a string or fixed data type
@@ -2145,6 +2152,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let arr_addr = (0..len).into_par_iter().find_first(|idx| {
       let ins = instructions.clone();
       let mut mem = hand_mem.clone();
+      mem.make_closure();
       // array element is $1 argument of the closure memory space
       if !arr.has_nested_fractals() {
         // this could be a string or fixed data type
@@ -2219,6 +2227,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let output: bool = (0..len).into_par_iter().any(|idx| {
       let ins = instructions.clone();
       let mut mem = hand_mem.clone();
+      mem.make_closure();
       // array element is $1 argument of the closure memory space
       if !arr.has_nested_fractals() {
         // this could be a string or fixed data type
@@ -2260,6 +2269,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     // array of potentially many levels of nested fractals
     let output: Vec<Option<i64>> = (0..len).map(|idx| {
       let mut mem = hand_mem.clone();
+      mem.make_closure();
       // array element is $1 argument of the closure memory space
       if !arr.has_nested_fractals() {
         // this could be a string or fixed data type
@@ -2305,6 +2315,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let output: bool = (0..len).into_par_iter().all(|idx| {
       let ins = instructions.clone();
       let mut mem = hand_mem.clone();
+      mem.make_closure();
       // array element is $1 argument of the closure memory space
       if !arr.has_nested_fractals() {
         // this could be a string or fixed data type
@@ -2346,6 +2357,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     // array of potentially many levels of nested fractals
     let output: Vec<Option<i64>> = (0..len).map(|idx| {
       let mut mem = hand_mem.clone();
+      mem.make_closure();
       // array element is $1 argument of the closure memory space
       if !arr.has_nested_fractals() {
         // this could be a string or fixed data type
@@ -2413,6 +2425,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let res = arr.fractal_mem.clone().into_par_iter().reduce_with(|a, b| {
         let ins = instructions.clone();
         let mut mem = hand_mem.clone();
+        mem.make_closure();
         mem.write_fractal(CLOSURE_ARG_MEM_START + 1, a);
         mem.write_fractal(CLOSURE_ARG_MEM_START + 2, b);
         ins.iter().for_each(|i| {
@@ -2434,6 +2447,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let res = arr.mem.clone().into_par_iter().reduce_with(|a, b| {
         let ins = instructions.clone();
         let mut mem = hand_mem.clone();
+        mem.make_closure();
         mem.write_fixed(CLOSURE_ARG_MEM_START + 1, a);
         mem.write_fixed(CLOSURE_ARG_MEM_START + 2, b);
         ins.iter().for_each(|i| {
@@ -2463,6 +2477,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let res: HandlerMemory = cdr.into_iter().fold(car, |a, b| {
         let ins = instructions.clone();
         let mut mem = hand_mem.clone();
+        mem.make_closure();
         mem.write_fractal(CLOSURE_ARG_MEM_START + 1, a);
         mem.write_fractal(CLOSURE_ARG_MEM_START + 2, b.clone());
         ins.iter().for_each(|i| {
@@ -2486,6 +2501,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let res: i64 = cdr.into_iter().fold(car, |a, b| {
         let ins = instructions.clone();
         let mut mem = hand_mem.clone();
+        mem.make_closure();
         mem.write_fixed(CLOSURE_ARG_MEM_START + 1, a);
         mem.write_fixed(CLOSURE_ARG_MEM_START + 2, *b);
         ins.iter().for_each(|i| {
@@ -2516,6 +2532,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         let res: Vec<HandlerMemory> = arr.fractal_mem.clone().into_par_iter().fold(|| init.clone(), |a, b| {
           let ins = instructions.clone();
           let mut mem = hand_mem.clone();
+          mem.make_closure();
           mem.write_fractal(CLOSURE_ARG_MEM_START + 1, a);
           mem.write_fractal(CLOSURE_ARG_MEM_START + 2, b);
           ins.iter().for_each(|i| {
@@ -2541,6 +2558,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         let res: Vec<HandlerMemory> = arr.mem.clone().into_par_iter().fold(|| init.clone(), |a, b| {
           let ins = instructions.clone();
           let mut mem = hand_mem.clone();
+          mem.make_closure();
           mem.write_fractal(CLOSURE_ARG_MEM_START + 1, a);
           mem.write_fixed(CLOSURE_ARG_MEM_START + 2, b);
           ins.iter().for_each(|i| {
@@ -2569,6 +2587,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         let res: Vec<i64> = arr.fractal_mem.clone().into_par_iter().fold(|| initial, |a, b| {
           let ins = instructions.clone();
           let mut mem = hand_mem.clone();
+          mem.make_closure();
           mem.write_fixed(CLOSURE_ARG_MEM_START + 1, a);
           mem.write_fractal(CLOSURE_ARG_MEM_START + 2, b);
           ins.iter().for_each(|i| {
@@ -2591,6 +2610,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         let res: Vec<i64> = arr.mem.clone().into_par_iter().fold(|| initial, |a, b| {
           let ins = instructions.clone();
           let mut mem = hand_mem.clone();
+          mem.make_closure();
           mem.write_fixed(CLOSURE_ARG_MEM_START + 1, a);
           mem.write_fixed(CLOSURE_ARG_MEM_START + 2, b);
           ins.iter().for_each(|i| {
@@ -2624,6 +2644,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         let res: HandlerMemory = arrf.into_iter().fold(initial, |a, b| {
           let ins = instructions.clone();
           let mut mem = hand_mem.clone();
+          mem.make_closure();
           mem.write_fractal(CLOSURE_ARG_MEM_START + 1, a.clone());
           mem.write_fractal(CLOSURE_ARG_MEM_START + 2, b.clone());
           ins.iter().for_each(|i| {
@@ -2646,6 +2667,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         let res: HandlerMemory = arrm.into_iter().fold(initial, |a, b| {
           let ins = instructions.clone();
           let mut mem = hand_mem.clone();
+          mem.make_closure();
           mem.write_fractal(CLOSURE_ARG_MEM_START + 1, a.clone());
           mem.write_fixed(CLOSURE_ARG_MEM_START + 2, b);
           ins.iter().for_each(|i| {
@@ -2671,6 +2693,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         let res: i64 = arrf.into_iter().fold(initial, |a, b| {
           let ins = instructions.clone();
           let mut mem = hand_mem.clone();
+          mem.make_closure();
           mem.write_fixed(CLOSURE_ARG_MEM_START + 1, a);
           mem.write_fractal(CLOSURE_ARG_MEM_START + 2, b.clone());
           ins.iter().for_each(|i| {
@@ -2693,6 +2716,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         let res: i64 = arrm.into_iter().fold(initial, |a, b| {
           let ins = instructions.clone();
           let mut mem = hand_mem.clone();
+          mem.make_closure();
           mem.write_fixed(CLOSURE_ARG_MEM_START + 1, a);
           mem.write_fixed(CLOSURE_ARG_MEM_START + 2, b);
           ins.iter().for_each(|i| {
@@ -2722,6 +2746,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let res: Vec<HandlerMemory> = arr.fractal_mem.clone().into_par_iter().filter(|a| {
         let ins = instructions.clone();
         let mut mem = hand_mem.clone();
+        mem.make_closure();
         mem.write_fractal(CLOSURE_ARG_MEM_START + 1, a.clone());
         ins.iter().for_each(|i| {
           // TODO implement for async_functions. can tokio be called within rayon?
@@ -2745,6 +2770,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let res: Vec<i64> = arr.mem.clone().into_par_iter().filter(|a| {
         let ins = instructions.clone();
         let mut mem = hand_mem.clone();
+        mem.make_closure();
         mem.write_fixed(CLOSURE_ARG_MEM_START + 1, *a);
         ins.iter().for_each(|i| {
           // TODO implement for async_functions. can tokio be called within rayon?
@@ -2775,6 +2801,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let res: Vec<HandlerMemory> = arr.fractal_mem.clone().into_iter().filter(|a| {
         let ins = instructions.clone();
         let mut mem = hand_mem.clone();
+        mem.make_closure();
         mem.write_fractal(CLOSURE_ARG_MEM_START + 1, a.clone());
         ins.iter().for_each(|i| {
           // TODO implement for async_functions. can tokio be called within rayon?
@@ -2798,6 +2825,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let res: Vec<i64> = arr.mem.clone().into_iter().filter(|a| {
         let ins = instructions.clone();
         let mut mem = hand_mem.clone();
+        mem.make_closure();
         mem.write_fixed(CLOSURE_ARG_MEM_START + 1, *a);
         ins.iter().for_each(|i| {
           // TODO implement for async_functions. can tokio be called within rayon?
@@ -3027,7 +3055,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   cpu!("copyarr", |args, hand_mem, _, _| {
     // args = [in_addr, unused, out_addr]
-    //println!("copy array from @{} to @{}", args[0], args[2]);
     hand_mem.copy_fractal(args[0], args[2]);
     None
   });
@@ -3214,16 +3241,11 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     if val == 1i64 {
       hand_mem.copy_from(args[0], args[2], 1);
     } else {
-      if args[1] < 0 {
-        let val = hand_mem.read_fixed(args[1]);
-        hand_mem.write_fixed(args[2], val);
+      let (data, size) = hand_mem.read_either(args[1]);
+      if size == 0 {
+        hand_mem.write_fractal_mem(args[2], &data);
       } else {
-        let (data, size) = hand_mem.read_either(args[1]);
-        if size == 0 {
-          hand_mem.write_fractal_mem(args[2], &data);
-        } else {
-          hand_mem.write_fixed(args[2], data[0]);
-        }
+        hand_mem.write_fixed(args[2], data[0]);
       }
     }
     None
@@ -3244,16 +3266,11 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     if val == 0i64 {
       hand_mem.copy_from(args[0], args[2], 1);
     } else {
-      if args[1] < 0 {
-        let val = hand_mem.read_fixed(args[1]);
-        hand_mem.write_fixed(args[2], val);
+      let (data, size) = hand_mem.read_either(args[1]);
+      if size == 0 {
+        hand_mem.write_fractal_mem(args[2], &data);
       } else {
-        let (data, size) = hand_mem.read_either(args[1]);
-        if size == 0 {
-          hand_mem.write_fractal_mem(args[2], &data);
-        } else {
-          hand_mem.write_fixed(args[2], data[0]);
-        }
+        hand_mem.write_fixed(args[2], data[0]);
       }
     }
     None
@@ -3261,45 +3278,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("resfrom", |args, hand_mem, _, _| {
     // args = [arr_addr, arr_idx_addr, outer_addr]
     // a guarded copy of data from an array to a result object
-    hand_mem.new_fractal(args[2]);
-    let inner_addr = hand_mem.read_fixed(args[1]);
-    let arr = hand_mem.get_fractal(args[0]);
-    if inner_addr >= 0 && arr.len() as i64 > inner_addr {
-      // Valid Result
-      let (data, size) = arr.read_either(inner_addr);
-      if size == 0 {
-        let inner_arr = arr.read_fractal(inner_addr);
-        hand_mem.push_fractal_fixed(args[2], 1i64);
-        hand_mem.push_nested_fractal(args[2], inner_arr);
-      } else {
-        hand_mem.push_fractal_fixed(args[2], 1i64);
-        hand_mem.push_fractal_fixed(args[2], data[0]);
-      }
-    } else {
-      // Make an Error Result
-      hand_mem.push_fractal_fixed(args[2], 0i64);
-      let error_string = "out-of-bounds access";
-      let mut out = vec![error_string.len() as i64];
-      let mut out_str_bytes = error_string.as_bytes().to_vec();
-      loop {
-        if out_str_bytes.len() % 8 != 0 {
-          out_str_bytes.push(0);
-        } else {
-          break
-        }
-      }
-      let mut i = 0;
-      loop {
-        if i < out_str_bytes.len() {
-          let str_slice = &out_str_bytes[i..i+8];
-          out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
-          i = i + 8;
-        } else {
-          break
-        }
-      }
-      hand_mem.push_nested_fractal_mem(args[2], out);
-    }
+    hand_mem.res_from(args[0], args[1], args[2]);
     None
   });
   cpu!("mainE", |args, hand_mem, _, _| {
