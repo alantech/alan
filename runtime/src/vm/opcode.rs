@@ -1717,8 +1717,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("copytof", |args, hand_mem, _, _| {
     // args = [arr_addr, inner_addr, outer_addr]
     // copy data from outer_addr to inner_addr in arr_addr
-    let inner = hand_mem.read_fixed(args[2]);
-    hand_mem.copy_to_fixed(args[0], args[1], inner);
+    let inner = hand_mem.read_fixed(args[1]);
+    hand_mem.copy_to_fixed(args[0], args[2], inner);
     None
   });
   cpu!("copytov", |args, hand_mem, _, _| {
