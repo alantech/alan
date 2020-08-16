@@ -29,7 +29,7 @@ pub struct HandlerMemory {
   /// Helper for fractal_mem to lookup the actual location of the relevant data, since instantiating
   /// HandlerMemory instances for each memory usage need is expensive. -1 means the data is in mem,
   /// otherwise it's mapping to the index in fractal_mem that houses the relevant data.
-  either_mem: Vec<i64>,
+  pub either_mem: Vec<i64>,
   /// Flag indicating the memory stored is actually a pointer
   registers_ish: Vec<i8>,
   /// Temporary hack
@@ -151,28 +151,50 @@ impl HandlerMemory {
         let real_reg = (reg_addr - CLOSURE_ARG_MEM_START) as usize;
         let reg_type;
         let arr = self.get_fractal(arr_addr1);
-        if arr.either_mem[arr_addr2 as usize] == -1 {
-          ptr = arr.mem.as_ptr().add(arr_addr2 as usize) as i64;
-          reg_type = FX_PTR_ADDR;
+        if arr.registers_ish[arr_addr2 as usize] > 0 {
+          // It's a pointer, too return that
+          let arr2 = arr.clone();
+          let closure = &mut self.closure_args[0];
+          closure.registers_ish[real_reg] = arr2.registers_ish[arr_addr2 as usize];
+          closure.mem[real_reg] = arr2.mem[arr_addr2 as usize];
         } else {
-          ptr = arr.fractal_mem.as_ptr().add(arr.either_mem[arr_addr2 as usize] as usize) as i64;
-          reg_type = HM_PTR_ADDR;
+          if arr.either_mem[arr_addr2 as usize] == -1 {
+            ptr = arr.mem.as_ptr().add(arr_addr2 as usize) as i64;
+            reg_type = FX_PTR_ADDR;
+          } else {
+            ptr = arr.fractal_mem.as_ptr().add(arr.either_mem[arr_addr2 as usize] as usize) as i64;
+            reg_type = HM_PTR_ADDR;
+          }
+          let closure = &mut self.closure_args[0];
+          closure.registers_ish[real_reg] = reg_type;
+          closure.mem[real_reg] = ptr;
         }
-        let closure = &mut self.closure_args[0];
-        closure.registers_ish[real_reg] = reg_type;
-        closure.mem[real_reg] = ptr;
       } else { 
         let arr = self.get_fractal(arr_addr1);
-        if arr.either_mem[arr_addr2 as usize] == -1 {
-          ptr = arr.mem.as_ptr().add(arr_addr2 as usize) as i64;
-          self.registers_ish[reg] = FX_PTR_ADDR;
+        if arr.registers_ish[arr_addr2 as usize] > 0 {
+          // Just return the pointer
+          let arr2 = arr.clone();
+          self.registers_ish[reg] = arr2.registers_ish[arr_addr2 as usize];
+          self.mem[reg] = arr2.mem[arr_addr2 as usize];
         } else {
-          ptr = arr.fractal_mem.as_ptr().add(arr.either_mem[arr_addr2 as usize] as usize) as i64;
-          self.registers_ish[reg] = HM_PTR_ADDR;
+          // Make a pointer to this data
+          if arr.either_mem[arr_addr2 as usize] == -1 {
+            ptr = arr.mem.as_ptr().add(arr_addr2 as usize) as i64;
+            self.registers_ish[reg] = FX_PTR_ADDR;
+          } else {
+            ptr = arr.fractal_mem.as_ptr().add(arr.either_mem[arr_addr2 as usize] as usize) as i64;
+            self.registers_ish[reg] = HM_PTR_ADDR;
+          }
+          self.mem[reg] = ptr;
         }
-        self.mem[reg] = ptr;
       }
     }
+  }
+
+  pub fn store_reg(self: &mut HandlerMemory, reg_addr: i64, other_addr: i64) {
+    let ptr: *const HandlerMemory = self.get_fractal(other_addr);
+    self.registers_ish[reg_addr as usize] = HM_PTR_ADDR;
+    self.mem[reg_addr as usize] = ptr as i64;
   }
 
   /// optionally create a registerish within a nested Result-like HandlerMemory, or leave an error
@@ -320,8 +342,7 @@ impl HandlerMemory {
   }
 
   pub fn has_nested_fractals(self: &HandlerMemory) -> bool {
-    let mem_sum: i64 = self.mem.iter().sum();
-    return mem_sum == 0;
+    return self.mem.len() > 0 && self.fractal_mem.len() > 0
   }
 
   pub fn new_fractal(self: &mut HandlerMemory, addr: i64) {
@@ -510,15 +531,8 @@ impl HandlerMemory {
         return closure.read_fractal(addr - CLOSURE_ARG_MEM_START);
       }
     }
-    let reg = self.registers_ish[addr as usize];
-    if reg == NORMAL_ADDR {
-      let a = addr as usize;
-      let arr = self.fractal_mem[self.either_mem[a] as usize].clone();
-      return arr;
-    } else {
-      let frac = self.get_fractal(addr);
-      return frac.clone();
-    }
+    let frac = self.get_fractal(addr);
+    return frac.clone();
   }
 
   pub fn write_fixed(self: &mut HandlerMemory, addr: i64, payload: i64) {

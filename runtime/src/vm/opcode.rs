@@ -1724,8 +1724,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("copytov", |args, hand_mem, _, _| {
     // args = [arr_addr, inner_addr, outer_addr]
     // copy data from outer_addr to inner_addr in arr_addr
-    let inner = hand_mem.read_fixed(args[2]);
-    hand_mem.copy_to_fractal_mem(args[0], args[1], inner);
+    let inner = hand_mem.read_fixed(args[1]);
+    hand_mem.copy_to_fractal_mem(args[0], args[2], inner);
     None
   });
   cpu!("lenarr", |args, hand_mem, _, _| {
@@ -2525,9 +2525,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   unpred_cpu!("foldp", |args, hand_mem, frag, ins_sched| {
     let obj = hand_mem.get_fractal(args[0]);
     let arr = obj.get_fractal(0);
-    let init = obj.get_fractal(1);
     let instructions = frag.get_closure_instructions(args[1]);
-    if init.has_nested_fractals() {
+    if obj.either_mem[1] > -1 {
+      let init = obj.get_fractal(1);
       if arr.has_nested_fractals() {
         let res: Vec<HandlerMemory> = arr.fractal_mem.clone().into_par_iter().fold(|| init.clone(), |a, b| {
           let ins = instructions.clone();
@@ -2582,8 +2582,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         }
       }
     } else {
+      let initial = obj.read_fixed(1);
       if arr.has_nested_fractals() {
-        let initial = obj.read_fixed(1);
         let res: Vec<i64> = arr.fractal_mem.clone().into_par_iter().fold(|| initial, |a, b| {
           let ins = instructions.clone();
           let mut mem = hand_mem.clone();
@@ -2606,7 +2606,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         }).collect();
         hand_mem.write_fractal_mem(args[2], &res);
       } else {
-        let initial = obj.read_fixed(1);
         let res: Vec<i64> = arr.mem.clone().into_par_iter().fold(|| initial, |a, b| {
           let ins = instructions.clone();
           let mut mem = hand_mem.clone();
@@ -2635,10 +2634,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   unpred_cpu!("foldl", |args, hand_mem, frag, ins_sched| {
     let obj = hand_mem.get_fractal(args[0]);
     let arr = obj.get_fractal(0);
-    let init = obj.get_fractal(1);
     let instructions = frag.get_closure_instructions(args[1]);
-    if init.has_nested_fractals() {
-      let initial = init.clone();
+    if obj.either_mem[1] > -1 {
+      let initial = obj.get_fractal(1).clone();
       if arr.has_nested_fractals() {
         let arrf = arr.fractal_mem.clone();
         let res: HandlerMemory = arrf.into_iter().fold(initial, |a, b| {
@@ -3189,7 +3187,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let arr = hand_mem.get_fractal(args[0]);
     let val = arr.read_fixed(0);
     if val == 1i64 {
-      hand_mem.copy_from(args[0], args[2], 1);
+      hand_mem.set_reg(args[2], args[0], 1);
     } else {
       if args[1] < 0 {
         let val = hand_mem.read_fixed(args[1]);
@@ -3197,7 +3195,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       } else {
         let (data, size) = hand_mem.read_either(args[1]);
         if size == 0 {
-          hand_mem.write_fractal_mem(args[2], &data);
+          hand_mem.store_reg(args[2], args[1]);
         } else {
           hand_mem.write_fixed(args[2], data[0]);
         }
@@ -3239,11 +3237,11 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let arr = hand_mem.get_fractal(args[0]);
     let val = arr.read_fixed(0);
     if val == 1i64 {
-      hand_mem.copy_from(args[0], args[2], 1);
+      hand_mem.set_reg(args[2], args[0], 1);
     } else {
       let (data, size) = hand_mem.read_either(args[1]);
       if size == 0 {
-        hand_mem.write_fractal_mem(args[2], &data);
+        hand_mem.store_reg(args[2], args[1]);
       } else {
         hand_mem.write_fixed(args[2], data[0]);
       }
@@ -3254,7 +3252,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let arr = hand_mem.get_fractal(args[0]);
     let val = arr.read_fixed(0);
     if val == 1i64 {
-      hand_mem.copy_from(args[0], args[2], 1);
+      hand_mem.set_reg(args[2], args[0], 1);
     } else {
       panic!("runtime error: illegal access");
     }
@@ -3264,11 +3262,11 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let arr = hand_mem.get_fractal(args[0]);
     let val = arr.read_fixed(0);
     if val == 0i64 {
-      hand_mem.copy_from(args[0], args[2], 1);
+      hand_mem.set_reg(args[2], args[0], 1);
     } else {
       let (data, size) = hand_mem.read_either(args[1]);
       if size == 0 {
-        hand_mem.write_fractal_mem(args[2], &data);
+        hand_mem.store_reg(args[2], args[1]);
       } else {
         hand_mem.write_fixed(args[2], data[0]);
       }
@@ -3321,18 +3319,13 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let arr = hand_mem.get_fractal(args[0]);
     let val = arr.read_fixed(0);
     if val == 1i64 {
-      hand_mem.copy_from(args[0], args[2], 1);
+      hand_mem.set_reg(args[2], args[0], 1);
     } else {
-      if args[1] < 0 {
-        let val = hand_mem.read_fixed(args[1]);
-        hand_mem.write_fixed(args[2], val);
+      let (data, size) = hand_mem.read_either(args[1]);
+      if size == 0 {
+        hand_mem.store_reg(args[2], args[1]);
       } else {
-        let (data, size) = hand_mem.read_either(args[1]);
-        if size == 0 {
-          hand_mem.write_fractal_mem(args[2], &data);
-        } else {
-          hand_mem.write_fixed(args[2], data[0]);
-        }
+        hand_mem.write_fixed(args[2], data[0]);
       }
     }
     None
@@ -3341,18 +3334,13 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let arr = hand_mem.get_fractal(args[0]);
     let val = arr.read_fixed(0);
     if val == 0i64 {
-      hand_mem.copy_from(args[0], args[2], 1);
+      hand_mem.set_reg(args[2], args[0], 1);
     } else {
-      if args[1] < 0 {
-        let val = hand_mem.read_fixed(args[1]);
-        hand_mem.write_fixed(args[2], val);
+      let (data, size) = hand_mem.read_either(args[1]);
+      if size == 0 {
+        hand_mem.store_reg(args[2], args[1]);
       } else {
-        let (data, size) = hand_mem.read_either(args[1]);
-        if size == 0 {
-          hand_mem.write_fractal_mem(args[2], &data);
-        } else {
-          hand_mem.write_fixed(args[2], data[0]);
-        }
+        hand_mem.write_fixed(args[2], data[0]);
       }
     }
     None

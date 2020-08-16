@@ -90,7 +90,6 @@ foo, bar, baz
     End
 
     It "runs agc"
-      Pending runtime-fix
       When run alan-runtime run temp.agc
       The output should eq "$HASHMAPOUTPUT"
     End
