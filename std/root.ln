@@ -457,19 +457,19 @@ export fn pair(trueval: any, falseval: any) = new Array<any> [ trueval, falseval
 export fn cond(c: bool, options: Array<any>) = getR(options[1 - c.toInt64()])
 export fn cond(c: bool, optional: function): void = condfn(c, optional)
 
-// "assign" function useful for hoisting assignments
-export fn assign(a: any) = copyarr(a)
-export fn assign(a: Array<any>) = copyarr(a)
-export fn assign(a: void) = copyvoid(a) // TODO: Eliminate this, covering up a weird error
-export fn assign() = zeroed() // TODO: Used for conditionals, eliminate with more clever compiler
-export fn assign(a: int8) = copyi8(a)
-export fn assign(a: int16) = copyi16(a)
-export fn assign(a: int32) = copyi32(a)
-export fn assign(a: int64) = copyi64(a)
-export fn assign(a: float32) = copyf32(a)
-export fn assign(a: float64) = copyf64(a)
-export fn assign(a: bool) = copybool(a)
-export fn assign(a: string) = copystr(a)
+// "clone" function useful for hoisting assignments and making duplicates
+export fn clone(a: any) = copyarr(a)
+export fn clone(a: Array<any>) = copyarr(a)
+export fn clone(a: void) = copyvoid(a) // TODO: Eliminate this, covering up a weird error
+export fn clone() = zeroed() // TODO: Used for conditionals, eliminate with more clever compiler
+export fn clone(a: int8) = copyi8(a)
+export fn clone(a: int16) = copyi16(a)
+export fn clone(a: int32) = copyi32(a)
+export fn clone(a: int64) = copyi64(a)
+export fn clone(a: float32) = copyf32(a)
+export fn clone(a: float64) = copyf64(a)
+export fn clone(a: bool) = copybool(a)
+export fn clone(a: string) = copystr(a)
 
 // Error, Maybe, Result, and Either types and functions
 export error // opcode with signature `fn error(string): Error`

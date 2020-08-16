@@ -287,7 +287,7 @@ module.exports = {
   indstr:  (a, b) => a.indexOf(b),
   lenstr:   a => a.length,
   trim:     a => a.trim(),
-  copyfrom:(arr, ind) => arr[ind],
+  copyfrom:(arr, ind) => JSON.parse(JSON.stringify(arr[ind])),
   copytof: (arr, ind, val) => { arr[ind] = val }, // These do the same thing in JS
   copytov: (arr, ind, val) => { arr[ind] = val },
   register:(arr, ind) => arr[ind], // Only on references to inner arrays
@@ -352,15 +352,15 @@ module.exports = {
   condfn:  (cond, fn) => cond ? fn() : undefined,
 
   // Copy opcodes (for let reassignment)
-  copyi8:   a => a,
-  copyi16:  a => a,
-  copyi32:  a => a,
-  copyi64:  a => a,
-  copyvoid: a => a,
-  copyf32:  a => a,
-  copyf64:  a => a,
-  copybool: a => a,
-  copystr:  a => a,
+  copyi8:   a => JSON.parse(JSON.stringify(a)),
+  copyi16:  a => JSON.parse(JSON.stringify(a)),
+  copyi32:  a => JSON.parse(JSON.stringify(a)),
+  copyi64:  a => JSON.parse(JSON.stringify(a)),
+  copyvoid: a => JSON.parse(JSON.stringify(a)),
+  copyf32:  a => JSON.parse(JSON.stringify(a)),
+  copyf64:  a => JSON.parse(JSON.stringify(a)),
+  copybool: a => JSON.parse(JSON.stringify(a)),
+  copystr:  a => JSON.parse(JSON.stringify(a)),
   // Actually the recommended deep clone mechanism: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/assign#Deep_Clone
   copyarr:  a => JSON.parse(JSON.stringify(a)),
   zeroed:  () => null,
@@ -384,7 +384,7 @@ module.exports = {
   errorstr: a => a.toString(),
   someM:    a => [
     true,
-    JSON.parse(JSON.stringify(a)),
+    a,
   ],
   noneM:   () => [
     false,
@@ -394,7 +394,7 @@ module.exports = {
   getOrM:  (a, b) => a[0] ? a[1] : b,
   okR:      a => [
     true,
-    JSON.parse(JSON.stringify(a)),
+    a,
   ],
   err:      a => [
     false,
@@ -420,11 +420,11 @@ module.exports = {
   ],
   mainE:    a => [
     true,
-    JSON.parse(JSON.stringify(a)),
+    a,
   ],
   altE:     a => [
     false,
-    JSON.parse(JSON.stringify(a)),
+    a,
   ],
   isMain:   a => a[0],
   isAlt:    a => !a[0],

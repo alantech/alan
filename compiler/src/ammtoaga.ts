@@ -265,7 +265,7 @@ const loadStatements = (
         if (deps.length > 0) {
           s += ` <- [${deps.join(', ')}]`
         }
-      } else if (assignables.has('constants')) {
+      } else if (assignables.has('value')) {
         // Only required for `let` statements
         let fn: string
         let val: string
@@ -340,8 +340,27 @@ const loadStatements = (
         if (deps.length > 0) {
           s += ` <- [${deps.join(', ')}]`
         }
-      } else if (assignables.has('constants')) {
-        throw new Error('This should have been hoisted')
+      } else if (assignables.has('value')) {
+        // Only required for `let` statements
+        let fn: string
+        let val: string
+        // TODO: Relying on little-endian trimming integers correctly and doesn't support float32
+        // correctly. Need to find the correct type data from the original variable.
+        const valStr = assignables.t
+        if (valStr[0] === '"' || valStr[0] === "'") { // It's a string, which doesn't work here...
+          fn = 'setestr'
+          val = '0i64'
+        } else if (valStr[0] === 't' || valStr[0] === 'f') { // It's a bool
+          fn = 'setbool'
+          val = assignables.t === 'true' ? '1i8' : '0i8' // Bools are bytes in the runtime
+        } else if (valStr.indexOf('.') > -1) { // It's a floating point number, assume 64-bit
+          fn = 'setf64'
+          val = valStr + 'f64'
+        } else { // It's an integer. i64 will "work" for now
+          fn = 'seti64'
+          val = valStr + 'i64'
+        }
+        s += `@${resultAddress} = ${fn}(${val}, @0) #${line}`
       } else if (assignables.has('variable')) {
         throw new Error('This should have been squashed')
       }

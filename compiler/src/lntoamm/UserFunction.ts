@@ -369,12 +369,12 @@ ${statements[i].statementOrAssignableAst.getText().trim()} on line ${statements[
       const retStatement = replacementStatements.pop()
       if (retStatement.exits().assignables()) {
         const newAssign = Ast.statementAstFromString(`
-          ${retVal} = assign(${retStatement.exits().assignables().getText()})
+          ${retVal} = clone(${retStatement.exits().assignables().getText()})
         `.trim() + '\n')
         replacementStatements.push(newAssign)
       }
       replacementStatements.push(Ast.statementAstFromString(`
-        ${retNotSet} = assign(false)
+        ${retNotSet} = clone(false)
       `.trim() + '\n'))
     }
     return replacementStatements
@@ -461,7 +461,7 @@ ${statements[i].statementOrAssignableAst.getText().trim()} on line ${statements[
           const a = s.statementOrAssignableAst
           if (a.assignables()) {
             const wrappedAst = Ast.statementAstFromString(`
-              ${a.varn().getText()} = assign(${a.assignables().getText()})
+              ${a.varn().getText()} = clone(${a.assignables().getText()})
             `.trim() + '\n')
             statementAsts.push(wrappedAst)
           } else {
@@ -484,7 +484,7 @@ ${statements[i].statementOrAssignableAst.getText().trim()} on line ${statements[
           if (l.assignments().assignables()) {
             const v = l.assignments().assignables().getText()
             const wrappedAst = Ast.statementAstFromString(`
-              let ${name}${type ? `: ${type}` : ''} = assign(${v})
+              let ${name}${type ? `: ${type}` : ''} = clone(${v})
             `.trim() + '\n')
             statementAsts.push(wrappedAst)
           } else {
@@ -502,10 +502,10 @@ ${statements[i].statementOrAssignableAst.getText().trim()} on line ${statements[
         const retVal = "retVal" + retNamePostfix
         const retNotSet = "retNotSet" + retNamePostfix
         const retValStatement = Ast.statementAstFromString(`
-          let ${retVal}: ${this.returnType.typename} = assign()
+          let ${retVal}: ${this.returnType.typename} = clone()
         `.trim() + '\n')
         const retNotSetStatement = Ast.statementAstFromString(`
-          let ${retNotSet}: bool = assign(true)
+          let ${retNotSet}: bool = clone(true)
         `.trim() + '\n')
         let replacementStatements = [retValStatement, retNotSetStatement]
         replacementStatements.push(...UserFunction.earlyReturnRewrite(
