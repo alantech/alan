@@ -338,6 +338,8 @@ addopcodes({
   gtef32: [{ a: t('float32'), b: t('float32'), }, t('bool')],
   gtef64: [{ a: t('float64'), b: t('float64'), }, t('bool')],
   gtestr: [{ a: t('string'), b: t('string'), }, t('bool')],
+  httpget: [{ a: t('string')}, t('Result<any>')],
+  httppost: [{ a: t('string'), b: t('string')}, t('Result<any>')],
   execop: [{ a: t('string')}, t('ExecRes')],
   waitop: [{ a: t('int64')}, t('void')],
   catstr: [{ a: t('string'), b: t('string'), }, t('string')],

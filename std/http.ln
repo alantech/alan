@@ -2,14 +2,5 @@
  * @std/http - Built-in client (and eventually server) for http
  */
 
-from @std/cmd import exec
-
-export fn get(url: string) {
-  const blob = exec('curl ' + url)
-  if blob.exitCode != 0 {
-    const errorMessage = length(blob.stderr) > 0 ? blob.stderr : 'Unknown request failure'
-    return err(errorMessage)
-  } else {
-    return ok(blob.stdout)
-  }
-}
+export fn get(url: string) = httpget(url)
+export fn post(url: string, payload: string) = httppost(url, payload)

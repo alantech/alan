@@ -6,12 +6,14 @@ use std::pin::Pin;
 use std::process::Command;
 use std::slice;
 use std::str;
+use std::sync::Arc;
 use std::time::Duration;
 
 use byteorder::{ByteOrder, LittleEndian};
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
 use regex::Regex;
+use tokio::sync::RwLock;
 use tokio::time::delay_for;
 use twox_hash::XxHash64;
 
@@ -29,10 +31,8 @@ use crate::vm::memory::{CLOSURE_ARG_MEM_START, HandlerMemory};
 pub type EmptyFuture = Pin<Box<dyn Future<Output = ()> + Send>>;
 /// Function pointer for io bound opcodes
 type AsyncFnPtr = fn(
-  &Vec<i64>,
-  &mut HandlerMemory,
-  &mut HandlerFragment,
-  &InstructionScheduler
+  Vec<i64>,
+  Arc<RwLock<HandlerMemory>>,
 ) -> EmptyFuture;
 /// Function pointer for cpu bound opcodes
 type FnPtr = fn(
@@ -3063,9 +3063,64 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
 
   // "Special" opcodes
-  io!("waitop", |args, hand_mem, _, _| {
-    let ms = hand_mem.read_fixed(args[0]) as u64;
-    return Box::pin(delay_for(Duration::from_millis(ms)));
+  io!("waitop", |args, mem| {
+    let fut = async move {
+      let hand_mem = mem.read().await;
+      let ms = hand_mem.read_fixed(args[0]) as u64;
+      drop(hand_mem); // drop read lock
+      delay_for(Duration::from_millis(ms)).await;
+    };
+    return Box::pin(fut);
+  });
+  io!("httpget", |args, mem| {
+    let fut = async move {
+      unsafe {
+        let hand_mem = mem.read().await;
+        let pascal_string = hand_mem.read_fractal_mem(args[0]);
+        drop(hand_mem); // drop read lock
+        let str_len = pascal_string[0] as usize;
+        let pascal_string_u8 = slice::from_raw_parts(pascal_string[1..].as_ptr().cast::<u8>(), str_len*8);
+        let url = str::from_utf8(&pascal_string_u8[0..str_len]).unwrap();
+        let http_res = reqwest::get(url).await;
+        let mut is_ok = true;
+        let result_str = if http_res.is_err() {
+          format!("{}", http_res.err().unwrap())
+        } else {
+          let body = http_res.ok().unwrap().text().await;
+          if body.is_err() {
+            format!("{}", body.err().unwrap())
+          } else {
+            is_ok = false;
+            body.unwrap()
+          }
+        };
+        let mut out = vec![result_str.len() as i64];
+        let mut out_str_bytes = result_str.as_bytes().to_vec();
+        loop {
+          if out_str_bytes.len() % 8 != 0 {
+            out_str_bytes.push(0);
+          } else {
+            break
+          }
+        }
+        let mut i = 0;
+        loop {
+          if i < out_str_bytes.len() {
+            let str_slice = &out_str_bytes[i..i+8];
+            out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
+            i = i + 8;
+          } else {
+            break
+          }
+        }
+        let result = if is_ok { 0i64 } else { 1i64 };
+        let mut hand_mem = mem.write().await;
+        hand_mem.push_fractal_fixed(args[2], result);
+        hand_mem.push_nested_fractal_mem(args[2], out);
+        drop(hand_mem); // drop write lock
+      }
+    };
+    return Box::pin(fut);
   });
   cpu!("exitop", |args, hand_mem, _, _| {
     std::process::exit(hand_mem.read_fixed(args[0]) as i32);
