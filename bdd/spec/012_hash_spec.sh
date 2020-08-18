@@ -95,6 +95,53 @@ foo, bar, baz
     End
   End
 
+  Describe "KeyVal to HashMap"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+
+        fn kv(k: any, v: anythingElse) = new KeyVal<any, anythingElse> {
+          key = k
+          val = v
+        }
+
+        on start {
+          const kva = [ kv(1, 'foo'), kv(2, 'bar'), kv(3, 'baz') ]
+          const hm = kva.asHashMap()
+          print(hm.keyVal().map(fn (n: KeyVal<int64, string>): string {
+            return 'key: ' + toString(n.key) + \"\\nval: \" + n.val
+          }).join(\"\\n\"))
+          print(hm.get(1))
+          emit exit 0
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    KVTOHMOUTPUT="key: 1
+val: foo
+key: 2
+val: bar
+key: 3
+val: baz
+foo"
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "$KVTOHMOUTPUT"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
+      The output should eq "$KVTOHMOUTPUT"
+    End
+  End
+
   Describe "HashMap"
     before() {
       # TODO: sourceToAll

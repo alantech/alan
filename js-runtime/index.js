@@ -155,6 +155,13 @@ module.exports = {
   negf32:   a => 0.0 - a,
   negf64:   a => 0.0 - a,
 
+  absi8:    a => Math.abs(a),
+  absi16:   a => Math.abs(a),
+  absi32:   a => Math.abs(a),
+  absi64:   a => Math.abs(a),
+  absf32:   a => Math.abs(a),
+  absf64:   a => Math.abs(a),
+
   muli8:   (a, b) => a * b,
   muli16:  (a, b) => a * b,
   muli32:  (a, b) => a * b,

@@ -346,9 +346,10 @@ impl HandlerMemory {
   }
 
   pub fn new_fractal(self: &mut HandlerMemory, addr: i64) {
-    if self.either_mem[addr as usize] > 0 {
+    // TODO: See if this can be brought back safely with mutating array closure functions
+    /*if self.either_mem[addr as usize] > 0 {
       panic!("Tried to create an array at address {}, but one already exists.", addr);
-    }
+    }*/
     //println!("create fractal: @{}", addr);
     self.write_fractal_mem(addr, &[]);
   }
