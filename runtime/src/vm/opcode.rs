@@ -730,6 +730,43 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
 
+  cpu!("absi8", |args, hand_mem, _, _| {
+    let a = hand_mem.read_fixed(args[0]) as i8;
+    let out = a.abs() as i64;
+    hand_mem.write_fixed(args[2], out);
+    None
+  });
+  cpu!("absi16", |args, hand_mem, _, _| {
+    let a = hand_mem.read_fixed(args[0]) as i16;
+    let out = a.abs() as i64;
+    hand_mem.write_fixed(args[2], out);
+    None
+  });
+  cpu!("absi32", |args, hand_mem, _, _| {
+    let a = hand_mem.read_fixed(args[0]) as i32;
+    let out = a.abs() as i64;
+    hand_mem.write_fixed(args[2], out);
+    None
+  });
+  cpu!("absi64", |args, hand_mem, _, _| {
+    let a = hand_mem.read_fixed(args[0]);
+    let out = a.abs();
+    hand_mem.write_fixed(args[2], out);
+    None
+  });
+  cpu!("absf32", |args, hand_mem, _, _| {
+    let a = f32::from_ne_bytes((hand_mem.read_fixed(args[0]) as i32).to_ne_bytes());
+    let out = i32::from_ne_bytes(a.abs().to_ne_bytes()) as i64;
+    hand_mem.write_fixed(args[2], out);
+    None
+  });
+  cpu!("absf64", |args, hand_mem, _, _| {
+    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes());
+    let out = i64::from_ne_bytes(a.abs().to_ne_bytes());
+    hand_mem.write_fixed(args[2], out);
+    None
+  });
+
   cpu!("muli8", |args, hand_mem, _, _| {
     let a = hand_mem.read_fixed(args[0]) as i8;
     let b = hand_mem.read_fixed(args[1]) as i8;
@@ -2036,28 +2073,28 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     });
     None
   });
-  unpred_cpu!("eachl", |args, hand_mem, frag, ins_sched| {
-    let arr = hand_mem.get_fractal(args[0]);
+  unpred_cpu!("eachl", |args, mut hand_mem, frag, ins_sched| {
+    hand_mem.make_closure();
+    let arr = hand_mem.get_fractal(args[0]).clone();
     let len = arr.len() as i64;
     let ins = frag.get_closure_instructions(args[1]);
     // array of potentially many levels of nested fractals
     (0..len).for_each(|idx| {
-      let mut mem = hand_mem.clone();
-      mem.make_closure();
       // array element is $1 argument of the closure memory space
       if !arr.has_nested_fractals() {
         // this could be a string or fixed data type
         let val = arr.read_fixed(idx);
-        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
+        hand_mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
       } else {
         // more nested arrays
         let arr_el = arr.read_fractal(idx);
-        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
+        hand_mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
       }
+      hand_mem.write_fixed(CLOSURE_ARG_MEM_START + 2, idx);
       ins.iter().for_each(|i| {
         // TODO implement for async_functions. can tokio be called within rayon?
         let func = i.opcode.func.unwrap();
-        let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
+        let event = func(&i.args, &mut hand_mem, &mut frag.clone(), ins_sched);
         if event.is_some() {
           let event_sent = ins_sched.event_tx.send(event.unwrap());
           if event_sent.is_err() {

@@ -129,6 +129,13 @@ export fn negate(n: int64) = negi64(n)
 export fn negate(n: float32) = negf32(n)
 export fn negate(n: float64) = negf64(n)
 
+export fn abs(n: int8) = absi8(n)
+export fn abs(n: int16) = absi16(n)
+export fn abs(n: int32) = absi32(n)
+export fn abs(n: int64) = absi64(n)
+export fn abs(n: float32) = absf32(n)
+export fn abs(n: float64) = absf64(n)
+
 export fn mul(a: int8, b: int8) = muli8(a, b)
 export fn mul(a: int16, b: int16) = muli16(a, b)
 export fn mul(a: int32, b: int32) = muli32(a, b)
@@ -563,7 +570,7 @@ export fn vals(hm: HashMap<Hashable, any>): Array<any> = map(hm.keyVal, fn (kv: 
 export fn length(hm: HashMap<Hashable, any>): int64 = length(hm.keyVal)
 
 export fn get(hm: HashMap<Hashable, any>, key: Hashable): any {
-  const hash = key.toHash() % length(hm.lookup)
+  const hash = key.toHash().abs() % length(hm.lookup)
   const list = getR(hm.lookup[hash])
   const index = list.find(fn (i: int64): Array<int64> {
     const kv = getR(hm.keyVal[i])
@@ -585,19 +592,18 @@ export fn set(hm: HashMap<Hashable, any>, key: Hashable, val: any): HashMap<Hash
   }
   const index = length(hm.keyVal)
   push(hm.keyVal, kv)
-  const hash = key.toHash() % length(hm.lookup)
+  const hash = key.toHash().abs() % length(hm.lookup)
   const list = getR(hm.lookup[hash])
   if list.length() == 8 {
     // Rebucket everything
     const lookupLen = length(hm.lookup) * 2
     hm.lookup = new Array<Array<int64>> [ new Array<int64> [], ] * lookupLen
-    each(hm.keyVal, fn (kv: KeyVal<Hashable, any>, i: int64) {
-      const hash = toHash(kv.key) % lookupLen
+    eachl(hm.keyVal, fn (kv: KeyVal<Hashable, any>, i: int64) {
+      const hash = toHash(kv.key).abs() % lookupLen
       const list = getR(hm.lookup[hash])
       list.push(i)
     })
   } else {
-    const list = getR(hm.lookup[hash])
     list.push(index)
   }
   return hm
@@ -609,6 +615,19 @@ export fn newHashMap(firstKey: Hashable, firstVal: any): HashMap<Hashable, any> 
     lookup = new Array<Array<int64>> [ new Array<int64> [] ] * 128 // 1KB of space
   }
   return hm.set(firstKey, firstVal)
+}
+
+export fn toHashMap(kva: Array<KeyVal<Hashable, any>>) {
+  let hm = new HashMap<Hashable, any> {
+    keyVal = kva
+    lookup = new Array<Array<int64>> [ new Array<int64> [] ] * 128
+  }
+  kva.eachl(fn (kv: KeyVal<Hashable, any>, i: int64) {
+    const hash = toHash(kv.key).abs() % length(hm.lookup)
+    const list = getR(hm.lookup[hash])
+    list.push(i)
+  })
+  return hm
 }
 
 // Operator declarations

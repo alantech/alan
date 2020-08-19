@@ -428,11 +428,17 @@ export class Type {
       !otherType.originalType ||
       this.originalType.typename !== otherType.originalType.typename
     ) return false
-    const typeAst = fulltypenameAstFromString(this.typename)
-    const otherTypeAst = fulltypenameAstFromString(otherType.typename)
-    const generics = typeAst.typegenerics().fulltypename().map((g: any) => scope.deepGet(g.getText()) as Type)
-    const otherGenerics = otherTypeAst.typegenerics().fulltypename().map((g: any) => scope.deepGet(g.getText()) as Type)
-    return generics.every((t: Type, i: Number) => t.typeApplies(otherGenerics[i], scope, interfaceMap))
+    const typeAst = fulltypenameAstFromString(this.typename) as any
+    const otherTypeAst = fulltypenameAstFromString(otherType.typename) as any
+    const generics = typeAst.typegenerics().fulltypename().map((g: any) => (
+      scope.deepGet(g.getText()) ||
+      Type.fromStringWithMap(g.getText(), interfaceMap, scope)) as Type
+    )
+    const otherGenerics = otherTypeAst.typegenerics().fulltypename().map((g: any) => (
+      scope.deepGet(g.getText()) ||
+      Type.fromStringWithMap(g.getText(), interfaceMap, scope)) as Type
+    )
+    return generics.every((t: Type, i: any) => t.typeApplies(otherGenerics[i], scope, interfaceMap))
   }
 
   // There has to be a more elegant way to tackle this
