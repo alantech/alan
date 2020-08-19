@@ -291,7 +291,10 @@ module.exports = {
   repstr:  (a, b) => new Array(b).fill(a).join(''),
   // TODO: templ, after maps are figured out
   matches: (a, b) => RegExp(b).test(a),
-  indstr:  (a, b) => a.indexOf(b),
+  indstr:  (a, b) => {
+    const ind = a.indexOf(b)
+    return ind > -1 ? [ true, ind, ] : [ false, 'substring not found', ]
+  },
   lenstr:   a => a.length,
   trim:     a => a.trim(),
   copyfrom:(arr, ind) => JSON.parse(JSON.stringify(arr[ind])),
@@ -304,8 +307,14 @@ module.exports = {
   pusharr: (arr, val, size) => arr.push(val),
   poparr:   arr => arr.length > 0 ? [ true, arr.pop(), ] : [ false, 'cannot pop empty array', ],
   lenarr:   arr => arr.length,
-  indarrf: (arr, val) => arr.indexOf(val),
-  indarrv: (arr, val) => arr.indexOf(val),
+  indarrf: (arr, val) => {
+    const ind = arr.indexOf(val)
+    return ind > -1 ? [ true, ind, ] : [ false, 'element not found', ]
+  },
+  indarrv: (arr, val) => {
+    const ind = arr.indexOf(val)
+    return ind > -1 ? [ true, ind, ] : [ false, 'element not found', ]
+  },
   join:    (arr, sep) => arr.join(sep),
   map:     (arr, fn) => arr.map(fn),
   mapl:    (arr, fn) => arr.map(fn), // For impure functions, but makes no difference in JS

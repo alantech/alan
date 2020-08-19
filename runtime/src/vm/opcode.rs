@@ -1692,8 +1692,35 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let b_pascal_string_u8 = slice::from_raw_parts(b_pascal_string[1..].as_ptr().cast::<u8>(), b_str_len*8);
       let b_str = str::from_utf8(&b_pascal_string_u8[0..b_str_len]).unwrap();
       let out_option = a_str.find(b_str);
-      let out = if out_option.is_none()  { -1i64 } else { out_option.unwrap() as i64 };
-      hand_mem.write_fixed(args[2], out);
+      hand_mem.new_fractal(args[2]);
+      if out_option.is_none() {
+        hand_mem.push_fractal_fixed(args[2], 0i64);
+        let error_string = "substring not found".to_string();
+        let mut out = vec![error_string.len() as i64];
+        let mut out_str_bytes = error_string.as_bytes().to_vec();
+        loop {
+          if out_str_bytes.len() % 8 != 0 {
+            out_str_bytes.push(0);
+          } else {
+            break
+          }
+        }
+        let mut i = 0;
+        loop {
+          if i < out_str_bytes.len() {
+            let str_slice = &out_str_bytes[i..i+8];
+            out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
+            i = i + 8;
+          } else {
+            break
+          }
+        }
+        hand_mem.push_nested_fractal_mem(args[2], out);
+      } else {
+        hand_mem.push_fractal_fixed(args[2], 1i64);
+        let out = out_option.unwrap() as i64;
+        hand_mem.push_fractal_fixed(args[2], out);
+      }
     }
     None
   });
@@ -1783,7 +1810,34 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         break
       }
     }
-    hand_mem.write_fixed(args[2], idx);
+    hand_mem.new_fractal(args[2]);
+    if idx == -1i64 {
+      hand_mem.push_fractal_fixed(args[2], 0i64);
+      let error_string = "element not found".to_string();
+      let mut out = vec![error_string.len() as i64];
+      let mut out_str_bytes = error_string.as_bytes().to_vec();
+      loop {
+        if out_str_bytes.len() % 8 != 0 {
+          out_str_bytes.push(0);
+        } else {
+          break
+        }
+      }
+      let mut i = 0;
+      loop {
+        if i < out_str_bytes.len() {
+          let str_slice = &out_str_bytes[i..i+8];
+          out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
+          i = i + 8;
+        } else {
+          break
+        }
+      }
+      hand_mem.push_nested_fractal_mem(args[2], out);
+    } else {
+      hand_mem.push_fractal_fixed(args[2], 1i64);
+      hand_mem.push_fractal_fixed(args[2], idx);
+    }
     None
   });
   cpu!("indarrv", |args, hand_mem, _, _| {
@@ -1809,7 +1863,34 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         break
       }
     }
-    hand_mem.write_fixed(args[2], idx);
+    hand_mem.new_fractal(args[2]);
+    if idx == -1i64 {
+      hand_mem.push_fractal_fixed(args[2], 0i64);
+      let error_string = "element not found".to_string();
+      let mut out = vec![error_string.len() as i64];
+      let mut out_str_bytes = error_string.as_bytes().to_vec();
+      loop {
+        if out_str_bytes.len() % 8 != 0 {
+          out_str_bytes.push(0);
+        } else {
+          break
+        }
+      }
+      let mut i = 0;
+      loop {
+        if i < out_str_bytes.len() {
+          let str_slice = &out_str_bytes[i..i+8];
+          out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
+          i = i + 8;
+        } else {
+          break
+        }
+      }
+      hand_mem.push_nested_fractal_mem(args[2], out);
+    } else {
+      hand_mem.push_fractal_fixed(args[2], 1i64);
+      hand_mem.push_fractal_fixed(args[2], idx);
+    }
     None
   });
   cpu!("join", |args, hand_mem, _, _| {
