@@ -1,8 +1,12 @@
 SHELL = /bin/bash
 
 .PHONY: build
-build: build-compiler runtime/target/release/alan-runtime build-js-runtime
+build: env-check build-compiler runtime/target/release/alan-runtime build-js-runtime
 	echo Done
+
+.PHONY: env-check
+env-check:
+	./.envcheck.sh
 
 .PHONY: runtime-unit
 runtime-unit:
