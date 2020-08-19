@@ -107,7 +107,7 @@ foo, bar, baz
 
         on start {
           const kva = [ kv(1, 'foo'), kv(2, 'bar'), kv(3, 'baz') ]
-          const hm = kva.asHashMap()
+          const hm = kva.toHashMap()
           print(hm.keyVal().map(fn (n: KeyVal<int64, string>): string {
             return 'key: ' + toString(n.key) + \"\\nval: \" + n.val
           }).join(\"\\n\"))
