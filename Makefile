@@ -35,6 +35,7 @@ shellspec:
 	git clone --depth 1 git@github.com:shellspec/shellspec
 
 node_modules: build
+	npm init -y
 	yarn add ./compiler
 	yarn add ./js-runtime
 
@@ -44,13 +45,10 @@ clean:
 
 .PHONY: install
 install: runtime/target/release/alan-runtime node_modules
-	cp ./alan /usr/local/bin/alan
 	cp ./runtime/target/release/alan-runtime /usr/local/bin/alan-runtime
 	npm install -g ./compiler
 
 .PHONY: uninstall
 uninstall:
-	rm -rf /usr/local/bin/build
-	rm /usr/local/bin/alan
 	rm /usr/local/bin/alan-runtime
 	npm uninstall -g alan-compile
