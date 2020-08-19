@@ -25,6 +25,7 @@ Type.builtinTypes['Array'].solidify(['any'], opcodeScope)
 Type.builtinTypes['Array'].solidify(['anythingElse'], opcodeScope)
 Type.builtinTypes.Maybe.solidify(['any'], opcodeScope)
 Type.builtinTypes.Result.solidify(['any'], opcodeScope)
+Type.builtinTypes.Result.solidify(['int64'], opcodeScope)
 Type.builtinTypes.Either.solidify(['any', 'anythingElse'], opcodeScope)
 Type.builtinTypes.InitialReduce.solidify(['any', 'anythingElse'], opcodeScope)
 opcodeScope.put("start", new Event("_start", Type.builtinTypes.void, true))
@@ -346,9 +347,9 @@ addopcodes({
   reparr: [{ arr: t('Array<any>'), n: t('int64'), }, t('Array<any>')],
   // templ: [{ str: t('string'), map: t('Map<string, string>'), }, t('string')],
   matches: [{ s: t('string'), t: t('string'), }, t('bool')],
-  indstr: [{ s: t('string'), t: t('string'), }, t('int64')],
-  indarrf: [{ arr: t('Array<any>'), val: t('any'), }, t('int64')],
-  indarrv: [{ arr: t('Array<any>'), val: t('any'), }, t('int64')],
+  indstr: [{ s: t('string'), t: t('string'), }, t('Result<int64>')],
+  indarrf: [{ arr: t('Array<any>'), val: t('any'), }, t('Result<int64>')],
+  indarrv: [{ arr: t('Array<any>'), val: t('any'), }, t('Result<int64>')],
   lenstr: [{ s: t('string'), }, t('int64')],
   lenarr: [{ arr: t('Array<any>'), }, t('int64')],
   trim: [{ s: t('string'), }, t('string')],
