@@ -83,6 +83,7 @@ pub fn exec(fp: &str) {
   let mut rt = runtime::Builder::new()
     .basic_scheduler()
     .enable_time()
+    .enable_io()
     .build()
     .unwrap();
   // Start the root task backed by a single thread

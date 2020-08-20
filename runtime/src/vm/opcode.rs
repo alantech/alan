@@ -3081,20 +3081,20 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         let str_len = pascal_string[0] as usize;
         let pascal_string_u8 = slice::from_raw_parts(pascal_string[1..].as_ptr().cast::<u8>(), str_len*8);
         let url = str::from_utf8(&pascal_string_u8[0..str_len]).unwrap();
-        // let http_res = reqwest::get(url).await;
+        let http_res = reqwest::get(url).await;
         let mut is_ok = true;
-        let result_str = "heyo";
-        // let result_str = if http_res.is_err() {
-        //   format!("{}", http_res.err().unwrap())
-        // } else {
-        //   let body = http_res.ok().unwrap().text().await;
-        //   if body.is_err() {
-        //     format!("{}", body.err().unwrap())
-        //   } else {
-        //     is_ok = false;
-        //     body.unwrap()
-        //   }
-        // };
+        let result_str = if http_res.is_err() {
+          is_ok = false;
+          format!("{}", http_res.err().unwrap())
+        } else {
+          let body = http_res.ok().unwrap().text().await;
+          if body.is_err() {
+            is_ok = false;
+            format!("{}", body.err().unwrap())
+          } else {
+            body.unwrap()
+          }
+        };
         let mut out = vec![result_str.len() as i64];
         let mut out_str_bytes = result_str.as_bytes().to_vec();
         loop {
@@ -3116,8 +3116,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         }
         let result = if is_ok { 1i64 } else { 0i64 };
         let mut hand_mem = mem.write().await;
-        //hand_mem.push_fractal_fixed(args[2], result);
-        //hand_mem.push_nested_fractal_mem(args[2], out);
+        hand_mem.new_fractal(args[2]);
+        hand_mem.push_fractal_fixed(args[2], result);
+        hand_mem.push_nested_fractal_mem(args[2], out);
         drop(hand_mem); // drop write lock
       }
     };
@@ -3140,13 +3141,14 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         let http_res = client.post(url).body(payload).send().await;
         let mut is_ok = true;
         let result_str = if http_res.is_err() {
+          is_ok = false;
           format!("{}", http_res.err().unwrap())
         } else {
           let body = http_res.ok().unwrap().text().await;
           if body.is_err() {
+            is_ok = false;
             format!("{}", body.err().unwrap())
           } else {
-            is_ok = false;
             body.unwrap()
           }
         };
@@ -3171,6 +3173,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         }
         let result = if is_ok { 0i64 } else { 1i64 };
         let mut hand_mem = mem.write().await;
+        hand_mem.new_fractal(args[2]);
         hand_mem.push_fractal_fixed(args[2], result);
         hand_mem.push_nested_fractal_mem(args[2], out);
         drop(hand_mem); // drop write lock
