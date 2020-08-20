@@ -2,5 +2,103 @@
  * @std/http - Built-in client (and eventually server) for http
  */
 
+/**
+ * HTTP Client
+ */
+
 export fn get(url: string) = httpget(url)
 export fn post(url: string, payload: string) = httppost(url, payload)
+
+/**
+ * HTTP Server
+ */
+
+// The InternalRequest type for inbound http requests
+type InternalRequest {
+  url: string
+  headers: Array<KeyVal<string, string>>
+  body: string
+  connId: int64
+}
+
+// The InternalResponse type for inbount http requests
+type InternalResponse {
+  status: int64
+  headers: Array<KeyVal<string, string>>
+  body: string
+  connId: int64
+}
+
+// The exposed Request type
+export type Request {
+  url: string
+  headers: HashMap<string, string>
+  body: string
+}
+
+// The exposed Response type
+export type Response {
+  status: int64
+  headers: HashMap<string, string>
+  body: string
+  connId: int64
+}
+
+// The roll-up Connection type with both
+export type Connection {
+  req: Request
+  res: Response
+}
+
+// The connection event
+export event connection: Connection
+
+// The special connection event with a signature like `event __conn: InternalConnection`
+// This wrapper function takes the internal connection object, converts it to the user-friendly
+// connection object, and then emits it on a new event for user code to pick up
+on __conn fn (conn: InternalRequest) {
+  emit connection new Connection {
+    req = new Request {
+      url = conn.url
+      headers = toHashMap(conn.headers)
+      body = conn.body
+    }
+    res = new Response {
+      status = 200 // If not set by the user, assume they meant it to be good
+      headers = newHashMap('Content-Length', '0') // If not set by the user, assume no data
+      body = '' // If not set by the user, assume no data
+      connId = conn.connId
+    }
+  }
+}
+
+// The listen function tells the http server to start up and listen on the given port
+// For now only one http server per application, a macro system is necessary to improve this
+export fn listen(port: int64) = httplsn(port)
+
+// The body function sets the body for a Response, sets the Content-Length header, and retuns the
+// Response for chaining needs
+export fn body(res: Response, body: string) {
+  res.body = body
+  const len = body.length()
+  set(res.headers, 'Content-Length', len.toString())
+  return res
+}
+
+// The status function sets the status of the response
+export fn status(res: Response, status: int64) {
+  res.status = status
+  return res
+}
+
+// The send function converts the response object into an internal response object and passed that
+// back to the HTTP server. A Result type with either an 'ok' string or an error is returned
+export fn send(res: Response): Result<string> {
+  const ires = new InternalResponse {
+    status = res.status
+    headers = res.headers.keyVal
+    body = res.body
+    connId = res.connId
+  }
+  return httpsend(ires)
+}
