@@ -36,7 +36,7 @@ type AsyncFnPtr = fn(
 ) -> EmptyFuture;
 /// Function pointer for cpu bound opcodes
 type FnPtr = fn(
-  &Vec<i64>,
+  &[i64],
   &mut HandlerMemory,
   &mut HandlerFragment,
   &InstructionScheduler
