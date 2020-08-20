@@ -3062,7 +3062,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
 
-  // "Special" opcodes
+  // IO opcodes
   io!("waitop", |args, mem| {
     let fut = async move {
       let hand_mem = mem.read().await;
@@ -3181,6 +3181,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     };
     return Box::pin(fut);
   });
+
+  // "Special" opcodes
   cpu!("exitop", |args, hand_mem, _, _| {
     std::process::exit(hand_mem.read_fixed(args[0]) as i32);
   });
