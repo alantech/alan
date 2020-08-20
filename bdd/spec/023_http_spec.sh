@@ -30,4 +30,34 @@ Describe "@std/http"
       The output should eq "export const comeGetMe = \"You got me!\""
     End
   End
+
+  Describe "basic post"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+        from @std/http import post
+
+        on start {
+          print(post('https://reqbin.com/echo/post/json', '{\"test\":\"test\"}'))
+          emit exit 0
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "{\"success\":\"true\"}"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
+      The output should eq "{\"success\":\"true\"}"
+    End
+  End
 End

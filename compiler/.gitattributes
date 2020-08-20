@@ -12,3 +12,4 @@ ln/LnLexer.tokens binary
 ln/LnListener.js binary
 ln/LnParser.js binary
 ln/Ln.tokens binary
+yarn.lock binary

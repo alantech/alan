@@ -1,3 +1,4 @@
+require('isomorphic-fetch')
 const EventEmitter = require('events')
 const util = require('util')
 
@@ -452,7 +453,25 @@ module.exports = {
   hashv,
 
   // IO opcodes
-  asyncopcodes: ['waitop', 'execop'],
+  asyncopcodes: ['waitop', 'execop', 'httpget', 'httppost'],
+  httpget:  async url => {
+    try {
+      const response = await fetch(url)
+      const result = await response.text()
+      return [ true, result ]
+    } catch (e) {
+      return [ false, e.toString() ]
+    }
+  },
+  httppost:  async (url, body) => {
+    try {
+      const response = await fetch(url, { method: 'POST', body })
+      const result = await response.text()
+      return [ true, result ]
+    } catch (e) {
+      return [ false, e.toString() ]
+    }
+  },
   waitop:   a => new Promise(resolve => setTimeout(resolve, a)),
   execop:   async (cmd) => {
     try {

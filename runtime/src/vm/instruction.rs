@@ -1,5 +1,7 @@
+use std::sync::Arc;
+
 use futures::future::join_all;
-use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::{RwLock, mpsc::UnboundedSender};
 use tokio::task;
 
 use crate::vm::event::{EventEmit, HandlerFragment};
@@ -48,14 +50,18 @@ impl InstructionScheduler {
     if !instructions[0].opcode.pred_exec && instructions[0].opcode.async_func.is_some() {
       // Is there really no way to avoid cloning the reference of the chan txs for tokio tasks? :'(
       let frag_tx = self.frag_tx.clone();
+      let mem = Arc::new(RwLock::new(hand_mem));
       let futures: Vec<EmptyFuture> = instructions.iter().map(|ins| {
         let async_func = ins.opcode.async_func.unwrap();
-        return async_func(&ins.args, &mut hand_mem, &mut frag, self);
+        return async_func(ins.args.clone(), mem.clone());
       }).collect();
       task::spawn(async move {
-        // Poll futures concurrently, but not in parallel, using a single thread.
-        // This is akin to Promise.all in JavaScript Promises.
         join_all(futures).await;
+        let deref_res = Arc::try_unwrap(mem);
+        if deref_res.is_err() {
+          panic!("Arc for handler memory passed to io opcodes has more than one strong reference.");
+        };
+        let hand_mem = deref_res.ok().unwrap().into_inner();
         InstructionScheduler::process_next_frag(&frag_tx, frag, hand_mem);
       });
     } else {
