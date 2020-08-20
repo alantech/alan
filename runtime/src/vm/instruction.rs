@@ -72,7 +72,7 @@ impl InstructionScheduler {
         s.spawn(move |_| {
           instructions.iter().for_each( |i| {
             let func = i.opcode.func.unwrap();
-            let event = func(&i.args, &mut hand_mem, &mut frag, self);
+            let event = func(i.args.as_slice(), &mut hand_mem, &mut frag, self);
             if event.is_some() {
               let event_sent = event_tx.send(event.unwrap());
               if event_sent.is_err() {
