@@ -3171,7 +3171,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
             break
           }
         }
-        let result = if is_ok { 0i64 } else { 1i64 };
+        let result = if is_ok { 1i64 } else { 0i64 };
         let mut hand_mem = mem.write().await;
         hand_mem.new_fractal(args[2]);
         hand_mem.push_fractal_fixed(args[2], result);
