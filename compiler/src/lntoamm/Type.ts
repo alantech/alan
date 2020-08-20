@@ -554,6 +554,29 @@ export class Type {
       T: 0,
       U: 1,
     }),
+    // HTTP server opcode-related builtin Types, also defined in std/http.ln
+    InternalRequest: new Type("InternalRequest", true, false, {
+      url: new Type("string", true),
+      headers: new Type("Array<KeyVal<string, string>>", true, false, {
+        records: new Type('KeyVal<string, string>>', true, false, {
+          key: new Type("string", true),
+          val: new Type("string", true),
+        }),
+      }),
+      body: new Type('string', true),
+      connId: new Type('int64', true),
+    }),
+    InternalResponse: new Type("InternalRequest", true, false, {
+      status: new Type("int64", true),
+      headers: new Type("Array<KeyVal<string, string>>", true, false, {
+        records: new Type('KeyVal<string, string>>', true, false, {
+          key: new Type("string", true),
+          val: new Type("string", true),
+        }),
+      }),
+      body: new Type('string', true),
+      connId: new Type('int64', true),
+    }),
     "function": new Type("function", true),
     operator: new Type("operator", true),
     Event: new Type("Event", true, false, {
