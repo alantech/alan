@@ -40,6 +40,26 @@ commander
   })
   .description(`Compile the specified source file to the specified output file
 
+The input and output formats are determined automatically by the file extensions specified
+
+> alan-compile myRootSourceFile.ln myApplication.agc
+
+The AGC format is used by the alan-runtime as its native binary format
+
+> alan-compile mySourceFile.ln myWebApplication.js
+
+The compiler can also transpile to JS for use in Node.js or the browser
+
+It is also possible to get the compiler's intermediate representations, AMM and AGA:
+
+> alan-compile mySourceFile.ln firstIntermediateLayer.amm
+> alan-compile firstIntermediateLayer.amm secondIntermediateLayer.aga
+
+And to resume from these intermediate representations
+
+> alan-compile firstIntermediateLayer.amm myWebApplication.js
+> alan-compile secondIntermediateLayer.aga myApplication.agc
+
 Supports the following input formats:
 - ln (Alan source code)
 - amm (Alan-- intermediate representation)
@@ -50,8 +70,7 @@ Supports the following output formats
 - js (Transpilation to Javascript)
 - aga (Alan Graphcode Assembler representation)
 - agc (Compilation to Alan Graphcode format used by the alan-runtime)
-
-The input and output formats are determined automatically by the file extensions specified`)
+`)
   .parse(process.argv)
 
 if (convert[getFormat(inputfile)] && convert[getFormat(inputfile)][getFormat(outputfile)]) {
