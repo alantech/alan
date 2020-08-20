@@ -31,14 +31,27 @@ const convert = buildPipeline([
 
 let inputfile: string, outputfile: string
 commander
-  .name('alan-compiler')
+  .name('alan-compile')
   .version('0.1.0') // TODO: Try to revive getting this from package.json; it's just weird in TS
   .arguments('<input> <output>')
   .action((input: string, output:string ) => {
     inputfile = input
     outputfile = output
   })
-  .description('Compile the specified source file to the specified output file')
+  .description(`Compile the specified source file to the specified output file
+
+Supports the following input formats:
+- ln (Alan source code)
+- amm (Alan-- intermediate representation)
+- aga (Alan Graphcode Assembler representation)
+
+Supports the following output formats
+- amm (Alan-- intermediate representation)
+- js (Transpilation to Javascript)
+- aga (Alan Graphcode Assembler representation)
+- agc (Compilation to Alan Graphcode format used by the alan-runtime)
+
+The input and output formats are determined automatically by the file extensions specified`)
   .parse(process.argv)
 
 if (convert[getFormat(inputfile)] && convert[getFormat(inputfile)][getFormat(outputfile)]) {
