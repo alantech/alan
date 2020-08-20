@@ -57,7 +57,7 @@ impl InstructionScheduler {
       }).collect();
       task::spawn(async move {
         join_all(futures).await;
-        let deref_res = std::sync::Arc::try_unwrap(mem);
+        let deref_res = Arc::try_unwrap(mem);
         if deref_res.is_err() {
           panic!("Arc for handler memory passed to io opcodes has more than one strong reference.");
         };
