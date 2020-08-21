@@ -1439,8 +1439,13 @@ ${letName} on line ${assignmentsAst.start.line}:${assignmentsAst.start.column}`)
       const fieldNum = fields.indexOf(fieldName)
       if (fieldNum < 0) {
         // Invalid object access
-        throw new Error(`${name} does not have a field named ${fieldName}
+        throw new Error(`${letName} does not have a field named ${fieldName}
 ${letName} on line ${assignmentsAst.start.line}:${assignmentsAst.start.column}`)
+      }
+      // Check if the new variable is allowed to be assigned to this object
+      const originalType = nestedLetType.properties[fieldName]
+      if (!originalType.typeApplies(assign.outputType, scope)) {
+        throw new Error(`${letName}.${fieldName} is of type ${originalType.typename} but assigned a value of type ${assign.outputType.typename}`)
       }
       // Create a new variable to hold the address within the array literal
       const addrName = "_" + uuid().replace(/-/g, "_")
