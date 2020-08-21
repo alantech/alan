@@ -566,7 +566,7 @@ export class Type {
       body: new Type('string', true),
       connId: new Type('int64', true),
     }),
-    InternalResponse: new Type("InternalRequest", true, false, {
+    InternalResponse: new Type("InternalResponse", true, false, {
       status: new Type("int64", true),
       headers: new Type("Array<KeyVal<string, string>>", true, false, {
         records: new Type('KeyVal<string, string>>', true, false, {

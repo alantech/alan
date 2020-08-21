@@ -1,5 +1,6 @@
 require('isomorphic-fetch')
 const EventEmitter = require('events')
+const http = require('http')
 const util = require('util')
 
 const xxh = require('xxhashjs')
@@ -67,6 +68,9 @@ const hashv = arr => {
   }
   return Number(BigInt.asIntN(64, hasher.digest())) // TODO: Move all i64 to BigInt?
 }
+
+// Not very OOP, but since the HTTP server is a singleton right now, store open connections here
+const httpConns = {}
 
 module.exports = {
   // Type conversion opcodes (mostly no-ops in JS, unless we implement a strict mode)
@@ -453,7 +457,7 @@ module.exports = {
   hashv,
 
   // IO opcodes
-  asyncopcodes: ['waitop', 'execop', 'httpget', 'httppost'],
+  asyncopcodes: ['waitop', 'execop', 'httpget', 'httppost', 'httplsn', 'httpsend'],
   httpget:  async url => {
     try {
       const response = await fetch(url)
@@ -463,7 +467,7 @@ module.exports = {
       return [ false, e.toString() ]
     }
   },
-  httppost:  async (url, body) => {
+  httppost: async (url, body) => {
     try {
       const response = await fetch(url, { method: 'POST', body })
       const result = await response.text()
@@ -471,6 +475,46 @@ module.exports = {
     } catch (e) {
       return [ false, e.toString() ]
     }
+  },
+  httplsn:  port => {
+    const server = http.createServer((req, res) => {
+      const connId = hashf(Math.random().toString())
+      httpConns[connId] = {
+        req,
+        res,
+      }
+      let body = ''
+      req.on('data', d => {
+        body += d
+      })
+      req.on('end', () => {
+        e.emit('__conn', [
+          req.url,
+          Object.entries(req.headers),
+          body,
+          connId,
+        ])
+      })
+    })
+    return new Promise(resolve => {
+      server.on('error', e => resolve([ false, e.code, ]))
+      server.listen({
+        port,
+      }, () => resolve([ true, 'ok', ]))
+    })
+  },
+  httpsend: ires => {
+    const [ status, headers, body, connId, ] = ires
+    const conn = httpConns[connId]
+    return new Promise(resolve => {
+      conn.res.on('close', () => resolve([ false, 'client hangup', ]))
+      conn.res
+        .writeHead(status, headers.reduce((acc, kv) => {
+          acc[kv[0]] = kv[1]
+          return acc
+        }, {}))
+        .end(body, () => resolve([ true, 'ok', ]))
+    })
   },
   waitop:   a => new Promise(resolve => setTimeout(resolve, a)),
   execop:   async (cmd) => {
@@ -484,11 +528,11 @@ module.exports = {
   },
 
   // "Special" opcodes
-  stdoutp:   out => process.stdout.write(out),
-  exitop:    code => process.exit(code),
+  stdoutp:  out => process.stdout.write(out),
+  exitop:   code => process.exit(code),
 
   // Event bookkeeping
-  emit:     (name, payload) => e.emit(name, payload),
-  on:       (name, cb) => e.on(name, cb),
-  emitter:   e,
+  emit:    (name, payload) => e.emit(name, payload),
+  on:      (name, cb) => e.on(name, cb),
+  emitter:  e,
 }
