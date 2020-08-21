@@ -249,9 +249,9 @@ const ammFromModuleAsts = (moduleAsts: any) => { // TODO: Migrate from ANTLR
 
   let outStr = ""
   // Print the event types
-  for (const eventType of eventTypes) {
+  /* for (const eventType of eventTypes) {
     outStr += eventType.toString() + "\n"
-  }
+  } */ // TODO: It doesn't appear to be required in the rest of the stack
   // Print the constants
   for (const constant of constants) {
     outStr += constant.toString() + "\n"
