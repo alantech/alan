@@ -79,6 +79,10 @@ impl Program {
     let start = i64::from(BuiltInEvents::START);
     self.event_pls.insert(start, 0);
     self.event_handlers.insert(start, Vec::new());
+    // HTTPCONN
+    let httpconn = i64::from(BuiltInEvents::HTTPCONN);
+    self.event_pls.insert(httpconn, 0);
+    self.event_handlers.insert(httpconn, Vec::new());
   }
 
   // Parses and safely initializes the alan graph code program as static, global data

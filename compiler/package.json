@@ -5,7 +5,7 @@
   "scripts": {
     "test": "yarn run prepare && yarn run bundle && cypress run",
     "build": "tsc",
-    "prepare": "tsc &&  cp -r ../std std",
+    "prepare": "tsc && mkdir -p std && cp -r ../std/* ./std/",
     "bundle": "./browser/genstdlibs.js > ./browser/stdlibs.json && browserify -r alan-js-runtime -r ./browser/runtime.js:alan-runtime -r ./dist/index.js:alan-compiler > bundle.js",
     "clean": "rm -f bundle.js && rm -rf dist",
     "test-server": "nohup http-server >/dev/null 2>/dev/null </dev/null &",

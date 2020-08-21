@@ -60,4 +60,48 @@ Describe "@std/http"
       The output should eq "{\"success\":\"true\"}"
     End
   End
+
+  Describe "Hello World webserver"
+    before() {
+      sourceToAll "
+        from @std/app import start, exit
+        from @std/http import connection, listen, body, send, Connection
+
+        on connection fn (conn: Connection) {
+          const res = conn.res
+          set(res.headers, 'Content-Type', 'text/plain')
+          const sendStatus = res.body('Hello, World!').send()
+        }
+
+        on start {
+          const serverStatus = listen(8080)
+          if serverStatus.isErr() {
+            emit exit 1
+          }
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    It "runs js"
+      node temp.js &
+      sleep 1
+      When run curl -s localhost:8080
+      The output should eq "Hello, World!"
+      killall node
+    End
+
+    It "runs agc"
+      Pending rust-webserver
+      alan-runtime run temp.agc &
+      sleep 1
+      When run curl -s localhost:8080
+      The output should eq "Hello, World!"
+    End
+  End
 End

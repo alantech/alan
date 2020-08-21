@@ -16,6 +16,7 @@ dependencies = [
  "byteorder",
  "clap",
  "futures",
+ "hyper",
  "num_cpus",
  "once_cell",
  "rand",

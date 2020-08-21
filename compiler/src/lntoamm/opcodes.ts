@@ -16,7 +16,7 @@ const addBuiltIn = (name: string) => {
 }
 ([
   'void', 'int8', 'int16', 'int32', 'int64', 'float32', 'float64', 'bool', 'string', 'function',
-  'operator', 'Error', 'Maybe', 'Result', 'Either', 'Array', 'ExecRes', 'InitialReduce'
+  'operator', 'Error', 'Maybe', 'Result', 'Either', 'Array', 'ExecRes', 'InitialReduce', 'InternalResponse'
 ].map(addBuiltIn))
 Type.builtinTypes['Array'].solidify(['string'], opcodeScope)
 opcodeScope.put('any', new Type('any', true, false, {}, {}, null, new Interface('any')))
@@ -30,6 +30,7 @@ Type.builtinTypes.Result.solidify(['string'], opcodeScope)
 Type.builtinTypes.Either.solidify(['any', 'anythingElse'], opcodeScope)
 Type.builtinTypes.InitialReduce.solidify(['any', 'anythingElse'], opcodeScope)
 opcodeScope.put("start", new Event("_start", Type.builtinTypes.void, true))
+opcodeScope.put("__conn", new Event("__conn", Type.builtinTypes.InternalRequest, true))
 const t = (str: string) => opcodeScope.get(str)
 
 // opcode declarations
@@ -341,6 +342,8 @@ addopcodes({
   gtestr: [{ a: t('string'), b: t('string'), }, t('bool')],
   httpget: [{ a: t('string')}, t('Result<string>')],
   httppost: [{ a: t('string'), b: t('string')}, t('Result<string>')],
+  httplsn: [{ a: t('int64'), }, t('Result<string>')],
+  httpsend: [{ a: t('InternalResponse'), }, t('Result<string>')],
   execop: [{ a: t('string')}, t('ExecRes')],
   waitop: [{ a: t('int64')}, t('void')],
   catstr: [{ a: t('string'), b: t('string'), }, t('string')],
