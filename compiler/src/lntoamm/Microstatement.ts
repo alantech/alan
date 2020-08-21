@@ -1460,12 +1460,6 @@ ${letName} on line ${assignmentsAst.start.line}:${assignmentsAst.start.column}`)
       ))
       // Insert a `copytof` or `copytov` opcode.
       const opcodes = require('./opcodes').default
-      console.log({
-        fieldName,
-        origType: nestedLetType.properties[fieldName],
-        original,
-        assign,
-      })
       opcodes.exportScope.get(copytoop)[0].microstatementInlining(
         [original.outputName, addrName, assign.outputName],
         scope,
