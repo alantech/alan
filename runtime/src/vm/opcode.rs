@@ -3205,12 +3205,54 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let bind = Server::try_bind(&addr);
       let mut hand_mem = mem.write().await;
       hand_mem.new_fractal(args[2]);
+      let mut is_ok = true;
       if bind.is_err() {
         hand_mem.push_fractal_fixed(args[2], 0i64);
-        // TODO: Error message
+        let result_str = format!("{}", bind.err().unwrap()); // Can't DRY this because of this line
+        let mut out = vec![result_str.len() as i64];
+        let mut out_str_bytes = result_str.as_bytes().to_vec();
+        loop {
+          if out_str_bytes.len() % 8 != 0 {
+            out_str_bytes.push(0);
+          } else {
+            break
+          }
+        }
+        let mut i = 0;
+        loop {
+          if i < out_str_bytes.len() {
+            let str_slice = &out_str_bytes[i..i+8];
+            out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
+            i = i + 8;
+          } else {
+            break
+          }
+        }
+        hand_mem.push_nested_fractal_mem(args[2], out);
+        return
       } else {
         hand_mem.push_fractal_fixed(args[1], 1i64);
-        // TODO: Ok message
+        let result_str = "ok".to_string();
+        let mut out = vec![result_str.len() as i64];
+        let mut out_str_bytes = result_str.as_bytes().to_vec();
+        loop {
+          if out_str_bytes.len() % 8 != 0 {
+            out_str_bytes.push(0);
+          } else {
+            break
+          }
+        }
+        let mut i = 0;
+        loop {
+          if i < out_str_bytes.len() {
+            let str_slice = &out_str_bytes[i..i+8];
+            out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
+            i = i + 8;
+          } else {
+            break
+          }
+        }
+        hand_mem.push_nested_fractal_mem(args[2], out);
       }
 
       let server = bind.unwrap().serve(make_svc);
