@@ -506,6 +506,8 @@ module.exports = {
   httpsend: ires => {
     const [ status, headers, body, connId, ] = ires
     const conn = httpConns[connId]
+    if (!conn) return [ false, 'connection not found', ]
+    delete httpConns[connId]
     return new Promise(resolve => {
       conn.res.on('close', () => resolve([ false, 'client hangup', ]))
       conn.res

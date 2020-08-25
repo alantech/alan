@@ -1,7 +1,8 @@
 use std::collections::HashMap;
-use std::convert::TryInto;
+use std::convert::{Infallible, TryInto};
 use std::future::Future;
 use std::hash::Hasher;
+use std::net::SocketAddr;
 use std::pin::Pin;
 use std::process::Command;
 use std::slice;
@@ -10,6 +11,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use byteorder::{ByteOrder, LittleEndian};
+use hyper::service::{make_service_fn, service_fn};
+use hyper::{Body, Request, Response, Server};
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
 use regex::Regex;
@@ -3178,6 +3181,43 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         hand_mem.push_nested_fractal_mem(args[2], out);
         drop(hand_mem); // drop write lock
       }
+    };
+    return Box::pin(fut);
+  });
+
+  async fn http_listener(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
+    // TODO: Generate payload to emit to `__conn` event, add logic to support getting
+    // the actual response from an opcode call later on, probably by awaiting on a future
+    // stored in a hashmap that the other opcode can resolve
+    Ok(Response::new("Hello, World!".into()))
+  }
+
+  io!("httplsn", |args, mem| {
+    let fut = async move {
+      let hand_mem = mem.read().await;
+      let port_num = hand_mem.read_fixed(args[0]) as u16;
+      drop(hand_mem);
+      let addr = SocketAddr::from(([127, 0, 0, 1], port_num));
+      let make_svc = make_service_fn(|_conn| async {
+        Ok::<_, Infallible>(service_fn(http_listener))
+      });
+
+      let server = Server::bind(&addr).serve(make_svc);
+      let mut hand_mem = mem.write().await;
+      hand_mem.new_fractal(args[2]);
+      if let Err(_e) = server.await {
+        hand_mem.push_fractal_fixed(args[2], 0i64);
+        // TODO: Error message
+      } else {
+        hand_mem.push_fractal_fixed(args[1], 1i64);
+        // TODO: Ok message
+      }
+    };
+    return Box::pin(fut);
+  });
+  io!("httpsend", |args, mem| {
+    let fut = async move {
+      // TODO
     };
     return Box::pin(fut);
   });
