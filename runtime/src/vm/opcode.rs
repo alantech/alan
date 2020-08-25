@@ -3202,16 +3202,21 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         Ok::<_, Infallible>(service_fn(http_listener))
       });
 
-      let server = Server::bind(&addr).serve(make_svc);
+      let bind = Server::try_bind(&addr);
       let mut hand_mem = mem.write().await;
       hand_mem.new_fractal(args[2]);
-      if let Err(_e) = server.await {
+      if bind.is_err() {
         hand_mem.push_fractal_fixed(args[2], 0i64);
         // TODO: Error message
       } else {
         hand_mem.push_fractal_fixed(args[1], 1i64);
         // TODO: Ok message
       }
+
+      let server = bind.unwrap().serve(make_svc);
+      tokio::spawn(async move {
+        server.await
+      });
     };
     return Box::pin(fut);
   });
