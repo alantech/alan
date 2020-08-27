@@ -1,11 +1,10 @@
 use std::collections::HashMap;
-use std::convert::{Infallible, TryInto};
+use std::convert::Infallible;
 use std::future::Future;
 use std::hash::Hasher;
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::process::Command;
-use std::slice;
 use std::str;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -159,14 +158,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("strf64", |args, hand_mem, _, _| {
-    unsafe {
-      let pascal_string = hand_mem.read_fractal_mem(args[0]);
-      let str_len = pascal_string[0] as usize;
-      let pascal_string_u8 = slice::from_raw_parts(pascal_string[1..].as_ptr().cast::<u8>(), str_len*8);
-      let out_str = str::from_utf8(&pascal_string_u8[0..str_len]).unwrap();
-      let out: f64 = out_str.parse().unwrap();
-      hand_mem.write_fixed(args[2], i64::from_ne_bytes(out.to_ne_bytes()));
-    }
+    let s = hand_mem.read_fractal(args[0]).hm_to_string();
+    let out: f64 = s.parse().unwrap();
+    hand_mem.write_fixed(args[2], i64::from_ne_bytes(out.to_ne_bytes()));
     None
   });
   cpu!("boolf64", |args, hand_mem, _, _| {
@@ -206,15 +200,10 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("strf32", |args, hand_mem, _, _| {
-    unsafe {
-      let pascal_string = hand_mem.read_fractal_mem(args[0]);
-      let str_len = pascal_string[0] as usize;
-      let pascal_string_u8 = slice::from_raw_parts(pascal_string[1..].as_ptr().cast::<u8>(), str_len*8);
-      let out_str = str::from_utf8(&pascal_string_u8[0..str_len]).unwrap();
-      let num: f32 = out_str.parse().unwrap();
-      let out = i32::from_ne_bytes(num.to_ne_bytes()) as i64;
-      hand_mem.write_fixed(args[2], out);
-    }
+    let s = hand_mem.read_fractal(args[0]).hm_to_string();
+    let num: f32 = s.parse().unwrap();
+    let out = i32::from_ne_bytes(num.to_ne_bytes()) as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("boolf32", |args, hand_mem, _, _| {
@@ -250,14 +239,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("stri64", |args, hand_mem, _, _| {
-    unsafe {
-      let pascal_string = hand_mem.read_fractal_mem(args[0]);
-      let str_len = pascal_string[0] as usize;
-      let pascal_string_u8 = slice::from_raw_parts(pascal_string[1..].as_ptr().cast::<u8>(), str_len*8);
-      let out_str = str::from_utf8(&pascal_string_u8[0..str_len]).unwrap();
-      let out: i64 = out_str.parse().unwrap();
-      hand_mem.write_fixed(args[2], out);
-    }
+    let s = hand_mem.read_fractal(args[0]).hm_to_string();
+    let out: i64 = s.parse().unwrap();
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("booli64", |args, hand_mem, _, _| {
@@ -292,15 +276,10 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("stri32", |args, hand_mem, _, _| {
-    unsafe {
-      let pascal_string = hand_mem.read_fractal_mem(args[0]);
-      let str_len = pascal_string[0] as usize;
-      let pascal_string_u8 = slice::from_raw_parts(pascal_string[1..].as_ptr().cast::<u8>(), str_len*8);
-      let out_str = str::from_utf8(&pascal_string_u8[0..str_len]).unwrap();
-      let num: i32 = out_str.parse().unwrap();
-      let out = num as i64;
-      hand_mem.write_fixed(args[2], out);
-    }
+    let s = hand_mem.read_fractal(args[0]).hm_to_string();
+    let num: i32 = s.parse().unwrap();
+    let out = num as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("booli32", |args, hand_mem, _, _| {
@@ -335,15 +314,10 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("stri16", |args, hand_mem, _, _| {
-    unsafe {
-      let pascal_string = hand_mem.read_fractal_mem(args[0]);
-      let str_len = pascal_string[0] as usize;
-      let pascal_string_u8 = slice::from_raw_parts(pascal_string[1..].as_ptr().cast::<u8>(), str_len*8);
-      let out_str = str::from_utf8(&pascal_string_u8[0..str_len]).unwrap();
-      let num: i16 = out_str.parse().unwrap();
-      let out = num as i64;
-      hand_mem.write_fixed(args[2], out);
-    }
+    let s = hand_mem.read_fractal(args[0]).hm_to_string();
+    let num: i16 = s.parse().unwrap();
+    let out = num as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("booli16", |args, hand_mem, _, _| {
@@ -378,15 +352,10 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("stri8", |args, hand_mem, _, _| {
-    unsafe {
-      let pascal_string = hand_mem.read_fractal_mem(args[0]);
-      let str_len = pascal_string[0] as usize;
-      let pascal_string_u8 = slice::from_raw_parts(pascal_string[1..].as_ptr().cast::<u8>(), str_len*8);
-      let out_str = str::from_utf8(&pascal_string_u8[0..str_len]).unwrap();
-      let num: i8 = out_str.parse().unwrap();
-      let out = num as i64;
-      hand_mem.write_fixed(args[2], out);
-    }
+    let s = hand_mem.read_fractal(args[0]).hm_to_string();
+    let num: i8 = s.parse().unwrap();
+    let out = num as i64;
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("booli8", |args, hand_mem, _, _| {
@@ -432,190 +401,52 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("strbool", |args, hand_mem, _, _| {
-    unsafe {
-      let pascal_string = hand_mem.read_fractal_mem(args[0]);
-      let str_len = pascal_string[0] as usize;
-      let pascal_string_u8 = slice::from_raw_parts(pascal_string[1..].as_ptr().cast::<u8>(), str_len*8);
-      let out_str = str::from_utf8(&pascal_string_u8[0..str_len]).unwrap();
-      let out = if out_str == "true" { 1i64 } else { 0i64 };
-      hand_mem.write_fixed(args[2], out);
-    }
+    let s = hand_mem.read_fractal(args[0]).hm_to_string();
+    let out = if s == "true" { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
 
   cpu!("i8str", |args, hand_mem, _, _| {
     let a = hand_mem.read_fixed(args[0]) as i8;
     let a_str = a.to_string();
-    let mut out = vec![a_str.len() as i64];
-    let mut a_str_bytes = a_str.as_bytes().to_vec();
-    loop {
-      if a_str_bytes.len() % 8 != 0 {
-        a_str_bytes.push(0);
-      } else {
-        break
-      }
-    }
-    let mut i = 0;
-    loop {
-      if i < a_str_bytes.len() {
-        let str_slice = &a_str_bytes[i..i+8];
-        out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
-        i = i + 8;
-      } else {
-        break
-      }
-    }
-    hand_mem.write_fractal_mem(args[2], &out);
+    hand_mem.write_fractal(args[2], HandlerMemory::str_to_hm(&a_str));
     None
   });
   cpu!("i16str", |args, hand_mem, _, _| {
     let a = hand_mem.read_fixed(args[0]) as i16;
     let a_str = a.to_string();
-    let mut out = vec![a_str.len() as i64];
-    let mut a_str_bytes = a_str.as_bytes().to_vec();
-    loop {
-      if a_str_bytes.len() % 8 != 0 {
-        a_str_bytes.push(0);
-      } else {
-        break
-      }
-    }
-    let mut i = 0;
-    loop {
-      if i < a_str_bytes.len() {
-        let str_slice = &a_str_bytes[i..i+8];
-        out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
-        i = i + 8;
-      } else {
-        break
-      }
-    }
-    hand_mem.write_fractal_mem(args[2], &out);
+    hand_mem.write_fractal(args[2], HandlerMemory::str_to_hm(&a_str));
     None
   });
   cpu!("i32str", |args, hand_mem, _, _| {
     let a = hand_mem.read_fixed(args[0]) as i32;
     let a_str = a.to_string();
-    let mut out = vec![a_str.len() as i64];
-    let mut a_str_bytes = a_str.as_bytes().to_vec();
-    loop {
-      if a_str_bytes.len() % 8 != 0 {
-        a_str_bytes.push(0);
-      } else {
-        break
-      }
-    }
-    let mut i = 0;
-    loop {
-      if i < a_str_bytes.len() {
-        let str_slice = &a_str_bytes[i..i+8];
-        out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
-        i = i + 8;
-      } else {
-        break
-      }
-    }
-    hand_mem.write_fractal_mem(args[2], &out);
+    hand_mem.write_fractal(args[2], HandlerMemory::str_to_hm(&a_str));
     None
   });
   cpu!("i64str", |args, hand_mem, _, _| {
     let a = hand_mem.read_fixed(args[0]);
     let a_str = a.to_string();
-    let mut out = vec![a_str.len() as i64];
-    let mut a_str_bytes = a_str.as_bytes().to_vec();
-    loop {
-      if a_str_bytes.len() % 8 != 0 {
-        a_str_bytes.push(0);
-      } else {
-        break
-      }
-    }
-    let mut i = 0;
-    loop {
-      if i < a_str_bytes.len() {
-        let str_slice = &a_str_bytes[i..i+8];
-        out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
-        i = i + 8;
-      } else {
-        break
-      }
-    }
-    hand_mem.write_fractal_mem(args[2], &out);
+    hand_mem.write_fractal(args[2], HandlerMemory::str_to_hm(&a_str));
     None
   });
   cpu!("f64str", |args, hand_mem, _, _| {
     let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes());
     let a_str = a.to_string();
-    let mut out = vec![a_str.len() as i64];
-    let mut a_str_bytes = a_str.as_bytes().to_vec();
-    loop {
-      if a_str_bytes.len() % 8 != 0 {
-        a_str_bytes.push(0);
-      } else {
-        break
-      }
-    }
-    let mut i = 0;
-    loop {
-      if i < a_str_bytes.len() {
-        let str_slice = &a_str_bytes[i..i+8];
-        out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
-        i = i + 8;
-      } else {
-        break
-      }
-    }
-    hand_mem.write_fractal_mem(args[2], &out);
+    hand_mem.write_fractal(args[2], HandlerMemory::str_to_hm(&a_str));
     None
   });
   cpu!("f32str", |args, hand_mem, _, _| {
     let a = f32::from_ne_bytes((hand_mem.read_fixed(args[0]) as i32).to_ne_bytes());
     let a_str = a.to_string();
-    let mut out = vec![a_str.len() as i64];
-    let mut a_str_bytes = a_str.as_bytes().to_vec();
-    loop {
-      if a_str_bytes.len() % 8 != 0 {
-        a_str_bytes.push(0);
-      } else {
-        break
-      }
-    }
-    let mut i = 0;
-    loop {
-      if i < a_str_bytes.len() {
-        let str_slice = &a_str_bytes[i..i+8];
-        out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
-        i = i + 8;
-      } else {
-        break
-      }
-    }
-    hand_mem.write_fractal_mem(args[2], &out);
+    hand_mem.write_fractal(args[2], HandlerMemory::str_to_hm(&a_str));
     None
   });
   cpu!("boolstr", |args, hand_mem, _, _| {
     let a = hand_mem.read_fixed(args[0]);
     let a_str = if a == 1 { "true" } else { "false" };
-    let mut out = vec![a_str.len() as i64];
-    let mut a_str_bytes = a_str.as_bytes().to_vec();
-    loop {
-      if a_str_bytes.len() % 8 != 0 {
-        a_str_bytes.push(0);
-      } else {
-        break
-      }
-    }
-    let mut i = 0;
-    loop {
-      if i < a_str_bytes.len() {
-        let str_slice = &a_str_bytes[i..i+8];
-        out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
-        i = i + 8;
-      } else {
-        break
-      }
-    }
-    hand_mem.write_fractal_mem(args[2], &out);
+    hand_mem.write_fractal(args[2], HandlerMemory::str_to_hm(&a_str));
     None
   });
 
@@ -1384,18 +1215,10 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("ltstr", |args, hand_mem, _, _| {
-    unsafe {
-      let a_pascal_string = hand_mem.read_fractal_mem(args[0]);
-      let a_str_len = a_pascal_string[0] as usize;
-      let a_pascal_string_u8 = slice::from_raw_parts(a_pascal_string[1..].as_ptr().cast::<u8>(), a_str_len*8);
-      let a_str = str::from_utf8(&a_pascal_string_u8[0..a_str_len]).unwrap();
-      let b_pascal_string = hand_mem.read_fractal_mem(args[1]);
-      let b_str_len = b_pascal_string[0] as usize;
-      let b_pascal_string_u8 = slice::from_raw_parts(b_pascal_string[1..].as_ptr().cast::<u8>(), b_str_len*8);
-      let b_str = str::from_utf8(&b_pascal_string_u8[0..b_str_len]).unwrap();
-      let out = if a_str < b_str { 1i64 } else { 0i64 };
-      hand_mem.write_fixed(args[2], out);
-    }
+    let a_str = hand_mem.read_fractal(args[0]).hm_to_string();
+    let b_str = hand_mem.read_fractal(args[1]).hm_to_string();
+    let out = if a_str < b_str { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
 
@@ -1442,18 +1265,10 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("ltestr", |args, hand_mem, _, _| {
-    unsafe {
-      let a_pascal_string = hand_mem.read_fractal_mem(args[0]);
-      let a_str_len = a_pascal_string[0] as usize;
-      let a_pascal_string_u8 = slice::from_raw_parts(a_pascal_string[1..].as_ptr().cast::<u8>(), a_str_len*8);
-      let a_str = str::from_utf8(&a_pascal_string_u8[0..a_str_len]).unwrap();
-      let b_pascal_string = hand_mem.read_fractal_mem(args[1]);
-      let b_str_len = b_pascal_string[0] as usize;
-      let b_pascal_string_u8 = slice::from_raw_parts(b_pascal_string[1..].as_ptr().cast::<u8>(), b_str_len*8);
-      let b_str = str::from_utf8(&b_pascal_string_u8[0..b_str_len]).unwrap();
-      let out = if a_str <= b_str { 1i64 } else { 0i64 };
-      hand_mem.write_fixed(args[2], out);
-    }
+    let a_str = hand_mem.read_fractal(args[0]).hm_to_string();
+    let b_str = hand_mem.read_fractal(args[1]).hm_to_string();
+    let out = if a_str <= b_str { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
 
@@ -1500,18 +1315,10 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("gtstr", |args, hand_mem, _, _| {
-    unsafe {
-      let a_pascal_string = hand_mem.read_fractal_mem(args[0]);
-      let a_str_len = a_pascal_string[0] as usize;
-      let a_pascal_string_u8 = slice::from_raw_parts(a_pascal_string[1..].as_ptr().cast::<u8>(), a_str_len*8);
-      let a_str = str::from_utf8(&a_pascal_string_u8[0..a_str_len]).unwrap();
-      let b_pascal_string = hand_mem.read_fractal_mem(args[1]);
-      let b_str_len = b_pascal_string[0] as usize;
-      let b_pascal_string_u8 = slice::from_raw_parts(b_pascal_string[1..].as_ptr().cast::<u8>(), b_str_len*8);
-      let b_str = str::from_utf8(&b_pascal_string_u8[0..b_str_len]).unwrap();
-      let out = if a_str > b_str { 1i64 } else { 0i64 };
-      hand_mem.write_fixed(args[2], out);
-    }
+    let a_str = hand_mem.read_fractal(args[0]).hm_to_string();
+    let b_str = hand_mem.read_fractal(args[1]).hm_to_string();
+    let out = if a_str > b_str { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
 
@@ -1558,182 +1365,58 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("gtestr", |args, hand_mem, _, _| {
-    unsafe {
-      let a_pascal_string = hand_mem.read_fractal_mem(args[0]);
-      let a_str_len = a_pascal_string[0] as usize;
-      let a_pascal_string_u8 = slice::from_raw_parts(a_pascal_string[1..].as_ptr().cast::<u8>(), a_str_len*8);
-      let a_str = str::from_utf8(&a_pascal_string_u8[0..a_str_len]).unwrap();
-      let b_pascal_string = hand_mem.read_fractal_mem(args[1]);
-      let b_str_len = b_pascal_string[0] as usize;
-      let b_pascal_string_u8 = slice::from_raw_parts(b_pascal_string[1..].as_ptr().cast::<u8>(), b_str_len*8);
-      let b_str = str::from_utf8(&b_pascal_string_u8[0..b_str_len]).unwrap();
-      let out = if a_str >= b_str { 1i64 } else { 0i64 };
-      hand_mem.write_fixed(args[2], out);
-    }
+    let a_str = hand_mem.read_fractal(args[0]).hm_to_string();
+    let b_str = hand_mem.read_fractal(args[1]).hm_to_string();
+    let out = if a_str >= b_str { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
 
   // String opcodes
   cpu!("catstr", |args, hand_mem, _, _| {
-    unsafe {
-      let a_pascal_string = hand_mem.read_fractal_mem(args[0]);
-      let a_str_len = a_pascal_string[0] as usize;
-      let a_pascal_string_u8 = slice::from_raw_parts(a_pascal_string[1..].as_ptr().cast::<u8>(), a_str_len*8);
-      let a_str = str::from_utf8(&a_pascal_string_u8[0..a_str_len]).unwrap();
-      let b_pascal_string = hand_mem.read_fractal_mem(args[1]);
-      let b_str_len = b_pascal_string[0] as usize;
-      let b_pascal_string_u8 = slice::from_raw_parts(b_pascal_string[1..].as_ptr().cast::<u8>(), b_str_len*8);
-      let b_str = str::from_utf8(&b_pascal_string_u8[0..b_str_len]).unwrap();
-      let out_str = format!("{}{}", a_str, b_str);
-      let mut out = vec![out_str.len() as i64];
-      let mut out_str_bytes = out_str.as_bytes().to_vec();
-      loop {
-        if out_str_bytes.len() % 8 != 0 {
-          out_str_bytes.push(0);
-        } else {
-          break
-        }
-      }
-      let mut i = 0;
-      loop {
-        if i < out_str_bytes.len() {
-          let str_slice = &out_str_bytes[i..i+8];
-          out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
-          i = i + 8;
-        } else {
-          break
-        }
-      }
-      hand_mem.write_fractal_mem(args[2], &out);
-    }
+    let a_str = hand_mem.read_fractal(args[0]).hm_to_string();
+    let b_str = hand_mem.read_fractal(args[1]).hm_to_string();
+    let out_str = format!("{}{}", a_str, b_str);
+    hand_mem.write_fractal(args[2], HandlerMemory::str_to_hm(&out_str));
     None
   });
   cpu!("split", |args, hand_mem, _, _| {
-    unsafe {
-      let a_pascal_string = hand_mem.read_fractal_mem(args[0]);
-      let a_str_len = a_pascal_string[0] as usize;
-      let a_pascal_string_u8 = slice::from_raw_parts(a_pascal_string[1..].as_ptr().cast::<u8>(), a_str_len*8);
-      let a_str = str::from_utf8(&a_pascal_string_u8[0..a_str_len]).unwrap();
-      let b_pascal_string = hand_mem.read_fractal_mem(args[1]);
-      let b_str_len = b_pascal_string[0] as usize;
-      let b_pascal_string_u8 = slice::from_raw_parts(b_pascal_string[1..].as_ptr().cast::<u8>(), b_str_len*8);
-      let b_str = str::from_utf8(&b_pascal_string_u8[0..b_str_len]).unwrap();
-      let outs: Vec<Vec<i64>> = a_str.split(b_str).map(|out_str| {
-        let mut out = vec![out_str.len() as i64];
-        let mut out_str_bytes = out_str.as_bytes().to_vec();
-        loop {
-          if out_str_bytes.len() % 8 != 0 {
-            out_str_bytes.push(0);
-          } else {
-            break
-          }
-        }
-        let mut i = 0;
-        loop {
-          if i < out_str_bytes.len() {
-            let str_slice = &out_str_bytes[i..i+8];
-            out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
-            i = i + 8;
-          } else {
-            break
-          }
-        }
-        return out;
-      }).collect();
-      hand_mem.new_fractal(args[2]);
-      for out in outs {
-        hand_mem.push_nested_fractal_mem(args[2], out);
-      }
+    let a_str = hand_mem.read_fractal(args[0]).hm_to_string();
+    let b_str = hand_mem.read_fractal(args[1]).hm_to_string();
+    let out_hms = a_str.split(&b_str).map(|out_str| HandlerMemory::str_to_hm(&out_str));
+    hand_mem.new_fractal(args[2]);
+    for out in out_hms {
+      hand_mem.push_nested_fractal(args[2], out);
     }
     None
   });
   cpu!("repstr", |args, hand_mem, _, _| {
-    unsafe {
-      let a_pascal_string = hand_mem.read_fractal_mem(args[0]);
-      let a_str_len = a_pascal_string[0] as usize;
-      let a_pascal_string_u8 = slice::from_raw_parts(a_pascal_string[1..].as_ptr().cast::<u8>(), a_str_len*8);
-      let a_str = str::from_utf8(&a_pascal_string_u8[0..a_str_len]).unwrap();
-      let n = hand_mem.read_fixed(args[1]);
-      let out_str = a_str.repeat(n as usize);
-      let mut out = vec![out_str.len() as i64];
-      let mut out_str_bytes = out_str.as_bytes().to_vec();
-      loop {
-        if out_str_bytes.len() % 8 != 0 {
-          out_str_bytes.push(0);
-        } else {
-          break
-        }
-      }
-      let mut i = 0;
-      loop {
-        if i < out_str_bytes.len() {
-          let str_slice = &out_str_bytes[i..i+8];
-          out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
-          i = i + 8;
-        } else {
-          break
-        }
-      }
-      hand_mem.write_fractal_mem(args[2], &out);
-    }
+    let a_str = hand_mem.read_fractal(args[0]).hm_to_string();
+    let n = hand_mem.read_fixed(args[1]);
+    let out_str = a_str.repeat(n as usize);
+    hand_mem.write_fractal(args[2], HandlerMemory::str_to_hm(&out_str));
     None
   });
   cpu!("matches", |args, hand_mem, _, _| {
-    unsafe {
-      let a_pascal_string = hand_mem.read_fractal_mem(args[0]);
-      let a_str_len = a_pascal_string[0] as usize;
-      let a_pascal_string_u8 = slice::from_raw_parts(a_pascal_string[1..].as_ptr().cast::<u8>(), a_str_len*8);
-      let a_str = str::from_utf8(&a_pascal_string_u8[0..a_str_len]).unwrap();
-      let b_pascal_string = hand_mem.read_fractal_mem(args[1]);
-      let b_str_len = b_pascal_string[0] as usize;
-      let b_pascal_string_u8 = slice::from_raw_parts(b_pascal_string[1..].as_ptr().cast::<u8>(), b_str_len*8);
-      let b_str = str::from_utf8(&b_pascal_string_u8[0..b_str_len]).unwrap();
-      let b_regex = Regex::new(b_str).unwrap();
-      let out = if b_regex.is_match(a_str) { 1i64 } else { 0i64 };
-      hand_mem.write_fixed(args[2], out);
-    }
+    let a_str = hand_mem.read_fractal(args[0]).hm_to_string();
+    let b_str = hand_mem.read_fractal(args[1]).hm_to_string();
+    let b_regex = Regex::new(&b_str).unwrap();
+    let out = if b_regex.is_match(&a_str) { 1i64 } else { 0i64 };
+    hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("indstr", |args, hand_mem, _, _| {
-    unsafe {
-      let a_pascal_string = hand_mem.read_fractal_mem(args[0]);
-      let a_str_len = a_pascal_string[0] as usize;
-      let a_pascal_string_u8 = slice::from_raw_parts(a_pascal_string[1..].as_ptr().cast::<u8>(), a_str_len*8);
-      let a_str = str::from_utf8(&a_pascal_string_u8[0..a_str_len]).unwrap();
-      let b_pascal_string = hand_mem.read_fractal_mem(args[1]);
-      let b_str_len = b_pascal_string[0] as usize;
-      let b_pascal_string_u8 = slice::from_raw_parts(b_pascal_string[1..].as_ptr().cast::<u8>(), b_str_len*8);
-      let b_str = str::from_utf8(&b_pascal_string_u8[0..b_str_len]).unwrap();
-      let out_option = a_str.find(b_str);
-      hand_mem.new_fractal(args[2]);
-      if out_option.is_none() {
-        hand_mem.push_fractal_fixed(args[2], 0i64);
-        let error_string = "substring not found".to_string();
-        let mut out = vec![error_string.len() as i64];
-        let mut out_str_bytes = error_string.as_bytes().to_vec();
-        loop {
-          if out_str_bytes.len() % 8 != 0 {
-            out_str_bytes.push(0);
-          } else {
-            break
-          }
-        }
-        let mut i = 0;
-        loop {
-          if i < out_str_bytes.len() {
-            let str_slice = &out_str_bytes[i..i+8];
-            out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
-            i = i + 8;
-          } else {
-            break
-          }
-        }
-        hand_mem.push_nested_fractal_mem(args[2], out);
-      } else {
-        hand_mem.push_fractal_fixed(args[2], 1i64);
-        let out = out_option.unwrap() as i64;
-        hand_mem.push_fractal_fixed(args[2], out);
-      }
+    let a_str = hand_mem.read_fractal(args[0]).hm_to_string();
+    let b_str = hand_mem.read_fractal(args[1]).hm_to_string();
+    let out_option = a_str.find(&b_str);
+    hand_mem.new_fractal(args[2]);
+    if out_option.is_none() {
+      hand_mem.push_fractal_fixed(args[2], 0i64);
+      hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm("substring not found"));
+    } else {
+      hand_mem.push_fractal_fixed(args[2], 0i64);
+      let out = out_option.unwrap() as i64;
+      hand_mem.push_fractal_fixed(args[2], out);
     }
     None
   });
@@ -1744,32 +1427,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("trim", |args, hand_mem, _, _| {
-    unsafe {
-      let pascal_string = hand_mem.read_fractal_mem(args[0]);
-      let str_len = pascal_string[0] as usize;
-      let pascal_string_u8 = slice::from_raw_parts(pascal_string[1..].as_ptr().cast::<u8>(), str_len*8);
-      let out_str = str::from_utf8(&pascal_string_u8[0..str_len]).unwrap().trim();
-      let mut out = vec![out_str.len() as i64];
-      let mut out_str_bytes = out_str.as_bytes().to_vec();
-      loop {
-        if out_str_bytes.len() % 8 != 0 {
-          out_str_bytes.push(0);
-        } else {
-          break
-        }
-      }
-      let mut i = 0;
-      loop {
-        if i < out_str_bytes.len() {
-          let str_slice = &out_str_bytes[i..i+8];
-          out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
-          i = i + 8;
-        } else {
-          break
-        }
-      }
-      hand_mem.write_fractal_mem(args[2], &out);
-    }
+    let in_str = hand_mem.read_fractal(args[0]).hm_to_string();
+    let out_str = in_str.trim();
+    hand_mem.write_fractal(args[2], HandlerMemory::str_to_hm(&out_str));
     None
   });
 
@@ -1826,27 +1486,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     hand_mem.new_fractal(args[2]);
     if idx == -1i64 {
       hand_mem.push_fractal_fixed(args[2], 0i64);
-      let error_string = "element not found".to_string();
-      let mut out = vec![error_string.len() as i64];
-      let mut out_str_bytes = error_string.as_bytes().to_vec();
-      loop {
-        if out_str_bytes.len() % 8 != 0 {
-          out_str_bytes.push(0);
-        } else {
-          break
-        }
-      }
-      let mut i = 0;
-      loop {
-        if i < out_str_bytes.len() {
-          let str_slice = &out_str_bytes[i..i+8];
-          out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
-          i = i + 8;
-        } else {
-          break
-        }
-      }
-      hand_mem.push_nested_fractal_mem(args[2], out);
+      hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm("element not found"));
     } else {
       hand_mem.push_fractal_fixed(args[2], 1i64);
       hand_mem.push_fractal_fixed(args[2], idx);
@@ -1879,27 +1519,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     hand_mem.new_fractal(args[2]);
     if idx == -1i64 {
       hand_mem.push_fractal_fixed(args[2], 0i64);
-      let error_string = "element not found".to_string();
-      let mut out = vec![error_string.len() as i64];
-      let mut out_str_bytes = error_string.as_bytes().to_vec();
-      loop {
-        if out_str_bytes.len() % 8 != 0 {
-          out_str_bytes.push(0);
-        } else {
-          break
-        }
-      }
-      let mut i = 0;
-      loop {
-        if i < out_str_bytes.len() {
-          let str_slice = &out_str_bytes[i..i+8];
-          out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
-          i = i + 8;
-        } else {
-          break
-        }
-      }
-      hand_mem.push_nested_fractal_mem(args[2], out);
+      hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm("element not found"));
     } else {
       hand_mem.push_fractal_fixed(args[2], 1i64);
       hand_mem.push_fractal_fixed(args[2], idx);
@@ -1907,43 +1527,16 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("join", |args, hand_mem, _, _| {
-    unsafe {
-      let sep_pascal_string = hand_mem.read_fractal_mem(args[1]);
-      let sep_str_len = sep_pascal_string[0] as usize;
-      let sep_pascal_string_u8 = slice::from_raw_parts(sep_pascal_string[1..].as_ptr().cast::<u8>(), sep_str_len*8);
-      let sep_str = str::from_utf8(&sep_pascal_string_u8[0..sep_str_len]).unwrap();
-      let mem = hand_mem.get_fractal(args[0]);
-      let len = mem.len() as i64;
-      let mut strs: Vec<String> = Vec::new();
-      for i in 0..len {
-        let v_pascal_string = mem.read_fractal_mem(i);
-        let v_str_len = v_pascal_string[0] as usize;
-        let v_pascal_string_u8 = slice::from_raw_parts(v_pascal_string[1..].as_ptr().cast::<u8>(), v_str_len*8);
-        let v_str = str::from_utf8(&v_pascal_string_u8[0..v_str_len]).unwrap();
-        strs.push(v_str.to_string());
-      }
-      let out_str = strs.join(sep_str);
-      let mut out = vec![out_str.len() as i64];
-      let mut out_str_bytes = out_str.as_bytes().to_vec();
-      loop {
-        if out_str_bytes.len() % 8 != 0 {
-          out_str_bytes.push(0);
-        } else {
-          break
-        }
-      }
-      let mut i = 0;
-      loop {
-        if i < out_str_bytes.len() {
-          let str_slice = &out_str_bytes[i..i+8];
-          out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
-          i = i + 8;
-        } else {
-          break
-        }
-      }
-      hand_mem.write_fractal_mem(args[2], &out);
+    let sep_str = hand_mem.read_fractal(args[1]).hm_to_string();
+    let mem = hand_mem.get_fractal(args[0]);
+    let len = mem.len() as i64;
+    let mut strs: Vec<String> = Vec::new();
+    for i in 0..len {
+      let v_str = mem.read_fractal(i).hm_to_string();
+      strs.push(v_str);
     }
+    let out_str = strs.join(&sep_str);
+    hand_mem.write_fractal(args[2], HandlerMemory::str_to_hm(&out_str));
     None
   });
   cpu!("pusharr", |args, hand_mem, _, _| {
@@ -1971,26 +1564,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     } else {
       hand_mem.push_fractal_fixed(args[2], 0i64);
       let error_string = last.err().unwrap();
-      let mut out = vec![error_string.len() as i64];
-      let mut out_str_bytes = error_string.as_bytes().to_vec();
-      loop {
-        if out_str_bytes.len() % 8 != 0 {
-          out_str_bytes.push(0);
-        } else {
-          break
-        }
-      }
-      let mut i = 0;
-      loop {
-        if i < out_str_bytes.len() {
-          let str_slice = &out_str_bytes[i..i+8];
-          out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
-          i = i + 8;
-        } else {
-          break
-        }
-      }
-      hand_mem.push_nested_fractal_mem(args[2], out);
+      hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm(&error_string));
     }
     None
   });
@@ -2238,27 +1812,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     hand_mem.new_fractal(args[2]);
     if arr_addr.is_none() {
       hand_mem.push_fractal_fixed(args[2], 0i64);
-      let error_string = "no element matches".to_string();
-      let mut out = vec![error_string.len() as i64];
-      let mut out_str_bytes = error_string.as_bytes().to_vec();
-      loop {
-        if out_str_bytes.len() % 8 != 0 {
-          out_str_bytes.push(0);
-        } else {
-          break
-        }
-      }
-      let mut i = 0;
-      loop {
-        if i < out_str_bytes.len() {
-          let str_slice = &out_str_bytes[i..i+8];
-          out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
-          i = i + 8;
-        } else {
-          break
-        }
-      }
-      hand_mem.push_nested_fractal_mem(args[2], out);
+      hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm("no element matches"));
     } else {
       let addr = arr_addr.unwrap();
       hand_mem.push_fractal_fixed(args[2], 1i64);
@@ -2313,27 +1867,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     hand_mem.new_fractal(args[2]);
     if arr_addr.is_none() {
       hand_mem.push_fractal_fixed(args[2], 0i64);
-      let error_string = "no element matches".to_string();
-      let mut out = vec![error_string.len() as i64];
-      let mut out_str_bytes = error_string.as_bytes().to_vec();
-      loop {
-        if out_str_bytes.len() % 8 != 0 {
-          out_str_bytes.push(0);
-        } else {
-          break
-        }
-      }
-      let mut i = 0;
-      loop {
-        if i < out_str_bytes.len() {
-          let str_slice = &out_str_bytes[i..i+8];
-          out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
-          i = i + 8;
-        } else {
-          break
-        }
-      }
-      hand_mem.push_nested_fractal_mem(args[2], out);
+      hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm("no element matches"));
     } else {
       let addr = arr_addr.unwrap();
       hand_mem.push_fractal_fixed(args[2], 1i64);
@@ -2990,88 +2524,26 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
 
   // Std opcodes
   unpred_cpu!("execop", |args, hand_mem, _, _| {
-    unsafe {
-      let pascal_string = hand_mem.read_fractal_mem(args[0]);
-      let str_len = pascal_string[0] as usize;
-      let pascal_string_u8 = slice::from_raw_parts(pascal_string[1..].as_ptr().cast::<u8>(), str_len*8);
-      let full_cmd = str::from_utf8(&pascal_string_u8[0..str_len]).unwrap();
-      let split_cmd: Vec<&str> = full_cmd.split(" ").collect();
-      let output = Command::new(split_cmd[0]).args(&split_cmd[1..]).output();
-      hand_mem.new_fractal(args[2]);
-      match output {
-        Err(e) => {
-          hand_mem.push_fractal_fixed(args[2], 127);
-          hand_mem.push_nested_fractal_mem(args[2], vec![0i64]);
-          let error_string = e.to_string();
-          let mut out = vec![error_string.len() as i64];
-          let mut out_str_bytes = error_string.as_bytes().to_vec();
-          loop {
-            if out_str_bytes.len() % 8 != 0 {
-              out_str_bytes.push(0);
-            } else {
-              break
-            }
-          }
-          let mut i = 0;
-          loop {
-            if i < out_str_bytes.len() {
-              let str_slice = &out_str_bytes[i..i+8];
-              out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
-              i = i + 8;
-            } else {
-              break
-            }
-          }
-          hand_mem.push_nested_fractal_mem(args[2], out);
-        },
-        Ok(output_res) => {
-          let status_code = output_res.status.code().unwrap_or(127) as i64;
-          hand_mem.push_fractal_fixed(args[2], status_code);
-          let stdout_str = String::from_utf8(output_res.stdout).unwrap_or("".to_string());
-          let mut out = vec![stdout_str.len() as i64];
-          let mut out_str_bytes = stdout_str.as_bytes().to_vec();
-          loop {
-            if out_str_bytes.len() % 8 != 0 {
-              out_str_bytes.push(0);
-            } else {
-              break
-            }
-          }
-          let mut i = 0;
-          loop {
-            if i < out_str_bytes.len() {
-              let str_slice = &out_str_bytes[i..i+8];
-              out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
-              i = i + 8;
-            } else {
-              break
-            }
-          }
-          hand_mem.push_nested_fractal_mem(args[2], out);
-          let stderr_str = String::from_utf8(output_res.stderr).unwrap_or("".to_string());
-          let mut err = vec![stderr_str.len() as i64];
-          let mut err_str_bytes = stderr_str.as_bytes().to_vec();
-          loop {
-            if err_str_bytes.len() % 8 != 0 {
-              err_str_bytes.push(0);
-            } else {
-              break
-            }
-          }
-          let mut j = 0;
-          loop {
-            if j < err_str_bytes.len() {
-              let str_slice = &err_str_bytes[j..j+8];
-              err.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
-              j = j + 8;
-            } else {
-              break
-            }
-          }
-          hand_mem.push_nested_fractal_mem(args[2], err);
-        },
-      };
-    }
+    let full_cmd = hand_mem.read_fractal(args[0]).hm_to_string();
+    let split_cmd: Vec<&str> = full_cmd.split(" ").collect();
+    let output = Command::new(split_cmd[0]).args(&split_cmd[1..]).output();
+    hand_mem.new_fractal(args[2]);
+    match output {
+      Err(e) => {
+        hand_mem.push_fractal_fixed(args[2], 127);
+        hand_mem.push_nested_fractal_mem(args[2], vec![0i64]);
+        let error_string = e.to_string();
+        hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm(&error_string));
+      },
+      Ok(output_res) => {
+        let status_code = output_res.status.code().unwrap_or(127) as i64;
+        hand_mem.push_fractal_fixed(args[2], status_code);
+        let stdout_str = String::from_utf8(output_res.stdout).unwrap_or("".to_string());
+        hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm(&stdout_str));
+        let stderr_str = String::from_utf8(output_res.stderr).unwrap_or("".to_string());
+        hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm(&stderr_str));
+      },
+    };
     None
   });
 
@@ -3087,110 +2559,59 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   io!("httpget", |args, mem| {
     let fut = async move {
-      unsafe {
-        let hand_mem = mem.read().await;
-        let pascal_string = hand_mem.read_fractal_mem(args[0]);
-        drop(hand_mem); // drop read lock
-        let str_len = pascal_string[0] as usize;
-        let pascal_string_u8 = slice::from_raw_parts(pascal_string[1..].as_ptr().cast::<u8>(), str_len*8);
-        let url = str::from_utf8(&pascal_string_u8[0..str_len]).unwrap();
-        let http_res = reqwest::get(url).await;
-        let mut is_ok = true;
-        let result_str = if http_res.is_err() {
+      let hand_mem = mem.read().await;
+      let url = hand_mem.read_fractal(args[0]).hm_to_string();
+      drop(hand_mem); // drop read lock
+      let http_res = reqwest::get(&url).await;
+      let mut is_ok = true;
+      let result_str = if http_res.is_err() {
+        is_ok = false;
+        format!("{}", http_res.err().unwrap())
+      } else {
+        let body = http_res.ok().unwrap().text().await;
+        if body.is_err() {
           is_ok = false;
-          format!("{}", http_res.err().unwrap())
+          format!("{}", body.err().unwrap())
         } else {
-          let body = http_res.ok().unwrap().text().await;
-          if body.is_err() {
-            is_ok = false;
-            format!("{}", body.err().unwrap())
-          } else {
-            body.unwrap()
-          }
-        };
-        let mut out = vec![result_str.len() as i64];
-        let mut out_str_bytes = result_str.as_bytes().to_vec();
-        loop {
-          if out_str_bytes.len() % 8 != 0 {
-            out_str_bytes.push(0);
-          } else {
-            break
-          }
+          body.unwrap()
         }
-        let mut i = 0;
-        loop {
-          if i < out_str_bytes.len() {
-            let str_slice = &out_str_bytes[i..i+8];
-            out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
-            i = i + 8;
-          } else {
-            break
-          }
-        }
-        let result = if is_ok { 1i64 } else { 0i64 };
-        let mut hand_mem = mem.write().await;
-        hand_mem.new_fractal(args[2]);
-        hand_mem.push_fractal_fixed(args[2], result);
-        hand_mem.push_nested_fractal_mem(args[2], out);
-        drop(hand_mem); // drop write lock
-      }
+      };
+      let result = if is_ok { 1i64 } else { 0i64 };
+      let mut hand_mem = mem.write().await;
+      hand_mem.new_fractal(args[2]);
+      hand_mem.push_fractal_fixed(args[2], result);
+      hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm(&result_str));
+      drop(hand_mem); // drop write lock
     };
     return Box::pin(fut);
   });
   io!("httppost", |args, mem| {
     let fut = async move {
-      unsafe {
-        let hand_mem = mem.read().await;
-        let a_pascal_string = hand_mem.read_fractal_mem(args[0]);
-        let b_pascal_string = hand_mem.read_fractal_mem(args[1]);
-        drop(hand_mem); // drop read lock
-        let a_str_len = a_pascal_string[0] as usize;
-        let a_pascal_string_u8 = slice::from_raw_parts(a_pascal_string[1..].as_ptr().cast::<u8>(), a_str_len*8);
-        let url = str::from_utf8(&a_pascal_string_u8[0..a_str_len]).unwrap();
-        let b_str_len = b_pascal_string[0] as usize;
-        let b_pascal_string_u8 = slice::from_raw_parts(b_pascal_string[1..].as_ptr().cast::<u8>(), b_str_len*8);
-        let payload = str::from_utf8(&b_pascal_string_u8[0..b_str_len]).unwrap();
-        let client = reqwest::Client::new();
-        let http_res = client.post(url).body(payload).send().await;
-        let mut is_ok = true;
-        let result_str = if http_res.is_err() {
+      let hand_mem = mem.read().await;
+      let url = hand_mem.read_fractal(args[0]).hm_to_string();
+      let payload = hand_mem.read_fractal(args[1]).hm_to_string();
+      drop(hand_mem); // drop read lock
+      let client = reqwest::Client::new();
+      let http_res = client.post(&url).body(payload.clone()).send().await;
+      let mut is_ok = true;
+      let result_str = if http_res.is_err() {
+        is_ok = false;
+        format!("{}", http_res.err().unwrap())
+      } else {
+        let body = http_res.ok().unwrap().text().await;
+        if body.is_err() {
           is_ok = false;
-          format!("{}", http_res.err().unwrap())
+          format!("{}", body.err().unwrap())
         } else {
-          let body = http_res.ok().unwrap().text().await;
-          if body.is_err() {
-            is_ok = false;
-            format!("{}", body.err().unwrap())
-          } else {
-            body.unwrap()
-          }
-        };
-        let mut out = vec![result_str.len() as i64];
-        let mut out_str_bytes = result_str.as_bytes().to_vec();
-        loop {
-          if out_str_bytes.len() % 8 != 0 {
-            out_str_bytes.push(0);
-          } else {
-            break
-          }
+          body.unwrap()
         }
-        let mut i = 0;
-        loop {
-          if i < out_str_bytes.len() {
-            let str_slice = &out_str_bytes[i..i+8];
-            out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
-            i = i + 8;
-          } else {
-            break
-          }
-        }
-        let result = if is_ok { 1i64 } else { 0i64 };
-        let mut hand_mem = mem.write().await;
-        hand_mem.new_fractal(args[2]);
-        hand_mem.push_fractal_fixed(args[2], result);
-        hand_mem.push_nested_fractal_mem(args[2], out);
-        drop(hand_mem); // drop write lock
-      }
+      };
+      let result = if is_ok { 1i64 } else { 0i64 };
+      let mut hand_mem = mem.write().await;
+      hand_mem.new_fractal(args[2]);
+      hand_mem.push_fractal_fixed(args[2], result);
+      hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm(&result_str));
+      drop(hand_mem); // drop write lock
     };
     return Box::pin(fut);
   });
@@ -3261,51 +2682,12 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem.new_fractal(args[2]);
       if bind.is_err() {
         hand_mem.push_fractal_fixed(args[2], 0i64);
-        let result_str = format!("{}", bind.err().unwrap()); // Can't DRY this because of this line
-        let mut out = vec![result_str.len() as i64];
-        let mut out_str_bytes = result_str.as_bytes().to_vec();
-        loop {
-          if out_str_bytes.len() % 8 != 0 {
-            out_str_bytes.push(0);
-          } else {
-            break
-          }
-        }
-        let mut i = 0;
-        loop {
-          if i < out_str_bytes.len() {
-            let str_slice = &out_str_bytes[i..i+8];
-            out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
-            i = i + 8;
-          } else {
-            break
-          }
-        }
-        hand_mem.push_nested_fractal_mem(args[2], out);
+        let result_str = format!("{}", bind.err().unwrap());
+        hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm(&result_str));
         return
       } else {
-        hand_mem.push_fractal_fixed(args[1], 1i64);
-        let result_str = "ok".to_string();
-        let mut out = vec![result_str.len() as i64];
-        let mut out_str_bytes = result_str.as_bytes().to_vec();
-        loop {
-          if out_str_bytes.len() % 8 != 0 {
-            out_str_bytes.push(0);
-          } else {
-            break
-          }
-        }
-        let mut i = 0;
-        loop {
-          if i < out_str_bytes.len() {
-            let str_slice = &out_str_bytes[i..i+8];
-            out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
-            i = i + 8;
-          } else {
-            break
-          }
-        }
-        hand_mem.push_nested_fractal_mem(args[2], out);
+        hand_mem.push_fractal_fixed(args[2], 1i64);
+        hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm("ok"));
       }
       let server = bind.unwrap().serve(make_svc);
       tokio::spawn(async move {
@@ -3327,27 +2709,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       // return success
       hand_mem.new_fractal(args[2]);
       hand_mem.push_fractal_fixed(args[2], 0i64);
-      let result_str = "ok".to_string();
-      let mut out = vec![result_str.len() as i64];
-      let mut out_str_bytes = result_str.as_bytes().to_vec();
-      loop {
-        if out_str_bytes.len() % 8 != 0 {
-          out_str_bytes.push(0);
-        } else {
-          break
-        }
-      }
-      let mut i = 0;
-      loop {
-        if i < out_str_bytes.len() {
-          let str_slice = &out_str_bytes[i..i+8];
-          out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
-          i = i + 8;
-        } else {
-          break
-        }
-      }
-      hand_mem.push_nested_fractal_mem(args[2], out);
+      hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm("ok"));
     };
     return Box::pin(fut);
   });
@@ -3357,13 +2719,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     std::process::exit(hand_mem.read_fixed(args[0]) as i32);
   });
   cpu!("stdoutp", |args, hand_mem, _, _| {
-    unsafe {
-      let pascal_string = hand_mem.read_fractal_mem(args[0]);
-      let str_len = pascal_string[0] as usize;
-      let pascal_string_u8 = slice::from_raw_parts(pascal_string[1..].as_ptr().cast::<u8>(), str_len*8);
-      let out_str = str::from_utf8(&pascal_string_u8[0..str_len]).unwrap();
-      print!("{}", out_str);
-    }
+    let out_str = hand_mem.read_fractal(args[0]).hm_to_string();
+    print!("{}", out_str);
     None
   });
   // set opcodes use args[0] directly, since the relevant value directly
