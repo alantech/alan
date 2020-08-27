@@ -9,6 +9,9 @@ use std::slice;
 use std::str;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use std::thread;
+use futures::future::poll_fn;
+use futures::task::{Context, Poll};
 
 use byteorder::{ByteOrder, LittleEndian};
 use hyper::service::{make_service_fn, service_fn};
@@ -26,6 +29,10 @@ use crate::vm::event::{BuiltInEvents, EventEmit, HandlerFragment};
 use crate::vm::instruction::InstructionScheduler;
 use crate::vm::memory::{CLOSURE_ARG_MEM_START, HandlerMemory};
 use crate::vm::run::{EVENT_TX};
+
+static HTTP_RESPONSES: Lazy<Arc<Mutex<HashMap<i64, HandlerMemory>>>> = Lazy::new(|| {
+  Arc::new(Mutex::new(HashMap::<i64, HandlerMemory>::new()))
+});
 
 // type aliases
 /// Futures implement an Unpin marker that guarantees to the compiler that the future will not move while it is running
@@ -3188,8 +3195,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     return Box::pin(fut);
   });
 
-  let http_responses = Arc::new(Mutex::new(HashMap::<i64, u64>::new()));
-
   async fn http_listener(req: Request<Body>) -> Result<Response<Body>, Infallible> {
     // TODO: Generate payload to emit to `__conn` event, add logic to support getting
     // the actual response from an opcode call later on, probably by awaiting on a future
@@ -3256,9 +3261,21 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       eprintln!("Event transmission error");
       std::process::exit(3);
     }
-    /*let conns = Arc::clone(&conns);
-    let mut connsHM = conns.lock().unwrap();
-    connsHm.set(rand, req);*/
+    let responses = Arc::clone(&HTTP_RESPONSES);
+    let response_hm = poll_fn(|cx: &mut Context<'_>| -> Poll<HandlerMemory> {
+      let mut responses_hm = responses.lock().unwrap();
+      let hm = responses_hm.get(&conn_id);
+      if hm.is_some() {
+        Poll::Ready(hm.unwrap().clone())
+      } else {
+        let waker = cx.waker().clone();
+        thread::spawn(|| {
+          thread::sleep(Duration::from_millis(10));
+          waker.wake();
+        });
+        Poll::Pending
+      }
+    }).await;
     Ok(Response::new("Hello, World!".into()))
   }
 
@@ -3332,7 +3349,40 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   io!("httpsend", |args, mem| {
     let fut = async move {
-      // TODO
+      let mut hand_mem = mem.write().await;
+      let response = hand_mem.read_fractal(args[0]);
+      let conn_id = response.clone().read_fixed(3);
+      let responses = Arc::clone(&HTTP_RESPONSES);
+      let mut responses_hm = responses.lock().unwrap();
+      responses_hm.insert(conn_id, response);
+      //drop(hand_mem);
+      drop(responses_hm);
+      // TODO: Add a second synchronization tool to return a valid Result status, for now, just
+      // return success
+      //let mut hand_mem = mem.write().await;
+      hand_mem.new_fractal(args[2]);
+      hand_mem.push_fractal_fixed(args[2], 0i64);
+      let result_str = "ok".to_string();
+      let mut out = vec![result_str.len() as i64];
+      let mut out_str_bytes = result_str.as_bytes().to_vec();
+      loop {
+        if out_str_bytes.len() % 8 != 0 {
+          out_str_bytes.push(0);
+        } else {
+          break
+        }
+      }
+      let mut i = 0;
+      loop {
+        if i < out_str_bytes.len() {
+          let str_slice = &out_str_bytes[i..i+8];
+          out.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
+          i = i + 8;
+        } else {
+          break
+        }
+      }
+      hand_mem.push_nested_fractal_mem(args[2], out);
     };
     return Box::pin(fut);
   });
