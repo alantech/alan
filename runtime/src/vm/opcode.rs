@@ -7,22 +7,25 @@ use std::pin::Pin;
 use std::process::Command;
 use std::slice;
 use std::str;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use byteorder::{ByteOrder, LittleEndian};
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Response, Server};
 use once_cell::sync::Lazy;
+use rand::RngCore;
+use rand::rngs::OsRng;
 use rayon::prelude::*;
 use regex::Regex;
 use tokio::sync::RwLock;
 use tokio::time::delay_for;
 use twox_hash::XxHash64;
 
-use crate::vm::event::{EventEmit, HandlerFragment};
+use crate::vm::event::{BuiltInEvents, EventEmit, HandlerFragment};
 use crate::vm::instruction::InstructionScheduler;
 use crate::vm::memory::{CLOSURE_ARG_MEM_START, HandlerMemory};
+use crate::vm::run::{EVENT_TX};
 
 // type aliases
 /// Futures implement an Unpin marker that guarantees to the compiler that the future will not move while it is running
@@ -3185,10 +3188,77 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     return Box::pin(fut);
   });
 
-  async fn http_listener(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
+  let http_responses = Arc::new(Mutex::new(HashMap::<i64, u64>::new()));
+
+  async fn http_listener(req: Request<Body>) -> Result<Response<Body>, Infallible> {
     // TODO: Generate payload to emit to `__conn` event, add logic to support getting
     // the actual response from an opcode call later on, probably by awaiting on a future
     // stored in a hashmap that the other opcode can resolve
+    // Create a new event handler memory to add to the event queue
+    let mut event = HandlerMemory::new(None, 1);
+    let url_str = req.uri().to_string();
+    let mut url = vec![url_str.len() as i64];
+    let mut url_bytes = url_str.as_bytes().to_vec();
+    loop {
+      if url_bytes.len() % 8 != 0 {
+        url_bytes.push(0);
+      } else {
+        break
+      }
+    }
+    let mut i = 0;
+    loop {
+      if i < url_bytes.len() {
+        let str_slice = &url_bytes[i..i+8];
+        url.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
+        i = i + 8;
+      } else {
+        break
+      }
+    }
+    let body_req = hyper::body::to_bytes(req.into_body()).await;
+    // If we error out while getting the body, just close this listener out immediately
+    if body_req.is_err() {
+      return Ok(Response::new("Conection terminated".into()));
+    }
+    let body_str = str::from_utf8(&body_req.unwrap()).unwrap().to_string();
+    let mut body = vec![body_str.len() as i64];
+    let mut body_bytes = body_str.as_bytes().to_vec();
+    loop {
+      if body_bytes.len() % 8 != 0 {
+        body_bytes.push(0);
+      } else {
+        break
+      }
+    }
+    let mut i = 0;
+    loop {
+      if i < body_bytes.len() {
+        let str_slice = &body_bytes[i..i+8];
+        body.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
+        i = i + 8;
+      } else {
+        break
+      }
+    }
+    let conn_id = OsRng.next_u64() as i64;
+    event.new_fractal(0);
+    event.push_nested_fractal_mem(0, url);
+    event.push_nested_fractal_mem(0, [].to_vec()); // TODO: Add headers
+    event.push_nested_fractal_mem(0, body);
+    event.push_fractal_fixed(0, conn_id);
+    let event_emit = EventEmit {
+      id: i64::from(BuiltInEvents::HTTPCONN),
+      payload: Some(event),
+    };
+    let event_tx = EVENT_TX.get().unwrap();
+    if event_tx.send(event_emit).is_err() {
+      eprintln!("Event transmission error");
+      std::process::exit(3);
+    }
+    /*let conns = Arc::clone(&conns);
+    let mut connsHM = conns.lock().unwrap();
+    connsHm.set(rand, req);*/
     Ok(Response::new("Hello, World!".into()))
   }
 
@@ -3205,7 +3275,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let bind = Server::try_bind(&addr);
       let mut hand_mem = mem.write().await;
       hand_mem.new_fractal(args[2]);
-      let mut is_ok = true;
       if bind.is_err() {
         hand_mem.push_fractal_fixed(args[2], 0i64);
         let result_str = format!("{}", bind.err().unwrap()); // Can't DRY this because of this line
@@ -3254,7 +3323,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         }
         hand_mem.push_nested_fractal_mem(args[2], out);
       }
-
       let server = bind.unwrap().serve(make_svc);
       tokio::spawn(async move {
         server.await

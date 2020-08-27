@@ -94,7 +94,7 @@ impl Program {
     let mut program = Program {
       event_handlers: HashMap::new(),
       event_pls: HashMap::new(),
-      gmem: Vec::new()
+      gmem: Vec::new(),
     };
     program.load_builtin();
     // parse agc version
