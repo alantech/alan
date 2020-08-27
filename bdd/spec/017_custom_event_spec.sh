@@ -51,4 +51,51 @@ Describe "Custom events"
       The output should eq "$OUTPUT"
     End
   End
+
+  Describe "event with user-defined type"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+
+        type Thing {
+          foo: int64
+          bar: string
+        }
+
+        event thing: Thing
+
+        on thing fn (t: Thing) {
+          print(t.foo)
+          print(t.bar)
+          emit exit 0
+        }
+
+        on start {
+          emit thing new Thing {
+            foo = 1
+            bar = 'baz'
+          }
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    THINGOUTPUT="1
+baz"
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "$THINGOUTPUT"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
+      The output should eq "$THINGOUTPUT"
+    End
+  End
 End
