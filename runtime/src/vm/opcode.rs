@@ -1414,7 +1414,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem.push_fractal_fixed(args[2], 0i64);
       hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm("substring not found"));
     } else {
-      hand_mem.push_fractal_fixed(args[2], 0i64);
+      hand_mem.push_fractal_fixed(args[2], 1i64);
       let out = out_option.unwrap() as i64;
       hand_mem.push_fractal_fixed(args[2], out);
     }
