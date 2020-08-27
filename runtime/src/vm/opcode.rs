@@ -15,7 +15,7 @@ use futures::task::{Context, Poll};
 
 use byteorder::{ByteOrder, LittleEndian};
 use hyper::service::{make_service_fn, service_fn};
-use hyper::{Body, Request, Response, Server};
+use hyper::{Body, Request, Response, Server, StatusCode};
 use once_cell::sync::Lazy;
 use rand::RngCore;
 use rand::rngs::OsRng;
@@ -3263,7 +3263,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }
     let responses = Arc::clone(&HTTP_RESPONSES);
     let response_hm = poll_fn(|cx: &mut Context<'_>| -> Poll<HandlerMemory> {
-      let mut responses_hm = responses.lock().unwrap();
+      let responses_hm = responses.lock().unwrap();
       let hm = responses_hm.get(&conn_id);
       if hm.is_some() {
         Poll::Ready(hm.unwrap().clone())
@@ -3276,7 +3276,16 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         Poll::Pending
       }
     }).await;
-    Ok(Response::new("Hello, World!".into()))
+    let status = response_hm.read_fixed(0) as u16;
+    let headers = response_hm.read_fractal(1);
+    let body = response_hm.read_fractal_mem(2);
+    let body_len = body[0] as usize;
+    unsafe {
+      let body_u8 = slice::from_raw_parts(body[1..].as_ptr().cast::<u8>(), body_len*8);
+      let body_str = str::from_utf8(&body_u8[0..body_len]).unwrap();
+      println!("body_str: {}", body_str);
+      Ok(Response::builder().status(StatusCode::from_u16(status).unwrap()).body(body_str.to_string().into()).unwrap())
+    }
   }
 
   io!("httplsn", |args, mem| {
@@ -3355,11 +3364,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let responses = Arc::clone(&HTTP_RESPONSES);
       let mut responses_hm = responses.lock().unwrap();
       responses_hm.insert(conn_id, response);
-      //drop(hand_mem);
       drop(responses_hm);
       // TODO: Add a second synchronization tool to return a valid Result status, for now, just
       // return success
-      //let mut hand_mem = mem.write().await;
       hand_mem.new_fractal(args[2]);
       hand_mem.push_fractal_fixed(args[2], 0i64);
       let result_str = "ok".to_string();
