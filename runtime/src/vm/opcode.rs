@@ -3202,55 +3202,19 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     // Create a new event handler memory to add to the event queue
     let mut event = HandlerMemory::new(None, 1);
     let url_str = req.uri().to_string();
-    let mut url = vec![url_str.len() as i64];
-    let mut url_bytes = url_str.as_bytes().to_vec();
-    loop {
-      if url_bytes.len() % 8 != 0 {
-        url_bytes.push(0);
-      } else {
-        break
-      }
-    }
-    let mut i = 0;
-    loop {
-      if i < url_bytes.len() {
-        let str_slice = &url_bytes[i..i+8];
-        url.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
-        i = i + 8;
-      } else {
-        break
-      }
-    }
+    let url = HandlerMemory::str_to_hm(&url_str);
     let body_req = hyper::body::to_bytes(req.into_body()).await;
     // If we error out while getting the body, just close this listener out immediately
     if body_req.is_err() {
       return Ok(Response::new("Conection terminated".into()));
     }
     let body_str = str::from_utf8(&body_req.unwrap()).unwrap().to_string();
-    let mut body = vec![body_str.len() as i64];
-    let mut body_bytes = body_str.as_bytes().to_vec();
-    loop {
-      if body_bytes.len() % 8 != 0 {
-        body_bytes.push(0);
-      } else {
-        break
-      }
-    }
-    let mut i = 0;
-    loop {
-      if i < body_bytes.len() {
-        let str_slice = &body_bytes[i..i+8];
-        body.push(i64::from_ne_bytes(str_slice.try_into().unwrap()));
-        i = i + 8;
-      } else {
-        break
-      }
-    }
+    let body = HandlerMemory::str_to_hm(&body_str);
     let conn_id = OsRng.next_u64() as i64;
     event.new_fractal(0);
-    event.push_nested_fractal_mem(0, url);
+    event.push_nested_fractal(0, url);
     event.push_nested_fractal_mem(0, [].to_vec()); // TODO: Add headers
-    event.push_nested_fractal_mem(0, body);
+    event.push_nested_fractal(0, body);
     event.push_fractal_fixed(0, conn_id);
     let event_emit = EventEmit {
       id: i64::from(BuiltInEvents::HTTPCONN),
@@ -3278,14 +3242,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }).await;
     let status = response_hm.read_fixed(0) as u16;
     let headers = response_hm.read_fractal(1);
-    let body = response_hm.read_fractal_mem(2);
-    let body_len = body[0] as usize;
-    unsafe {
-      let body_u8 = slice::from_raw_parts(body[1..].as_ptr().cast::<u8>(), body_len*8);
-      let body_str = str::from_utf8(&body_u8[0..body_len]).unwrap();
-      println!("body_str: {}", body_str);
-      Ok(Response::builder().status(StatusCode::from_u16(status).unwrap()).body(body_str.to_string().into()).unwrap())
-    }
+    let body = response_hm.read_fractal(2).hm_to_string();
+    Ok(Response::builder().status(StatusCode::from_u16(status).unwrap()).body(body.into()).unwrap())
   }
 
   io!("httplsn", |args, mem| {
