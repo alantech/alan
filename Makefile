@@ -29,7 +29,7 @@ build-js-runtime:
 
 .PHONY: bdd
 bdd: shellspec node_modules
-	./bdd/bdd.sh $(testfile)
+	bash -c "./bdd/bdd.sh $(testfile)"
 
 shellspec:
 	git clone --depth 1 https://github.com/shellspec/shellspec
