@@ -32,7 +32,7 @@ bdd: shellspec node_modules
 	./bdd/bdd.sh $(testfile)
 
 shellspec:
-	git clone --depth 1 git@github.com:shellspec/shellspec
+	git clone --depth 1 https://github.com/shellspec/shellspec
 
 node_modules: build
 	npm init -y
