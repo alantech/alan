@@ -15,6 +15,7 @@ use futures::task::{Context, Poll};
 use byteorder::{ByteOrder, LittleEndian};
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Response, Server, StatusCode};
+use hyper::header::{HeaderName, HeaderValue};
 use once_cell::sync::Lazy;
 use rand::RngCore;
 use rand::rngs::OsRng;
@@ -2617,13 +2618,25 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
 
   async fn http_listener(req: Request<Body>) -> Result<Response<Body>, Infallible> {
-    // TODO: Generate payload to emit to `__conn` event, add logic to support getting
-    // the actual response from an opcode call later on, probably by awaiting on a future
-    // stored in a hashmap that the other opcode can resolve
     // Create a new event handler memory to add to the event queue
     let mut event = HandlerMemory::new(None, 1);
+    // Grab the URL
     let url_str = req.uri().to_string();
     let url = HandlerMemory::str_to_hm(&url_str);
+    // Grab the headers
+    let headers = req.headers();
+    let mut headers_hm = HandlerMemory::new(None, headers.len() as i64);
+    let mut i = 0;
+    for (key, val) in headers.iter() {
+      let key_str = key.as_str();
+      let val_str = val.to_str().unwrap();
+      let mut header_hm = HandlerMemory::new(None, 2);
+      header_hm.write_fractal(0, HandlerMemory::str_to_hm(key_str));
+      header_hm.write_fractal(1, HandlerMemory::str_to_hm(val_str));
+      headers_hm.write_fractal(i, header_hm);
+      i = i + 1;
+    }
+    // Grab the body, if any
     let body_req = hyper::body::to_bytes(req.into_body()).await;
     // If we error out while getting the body, just close this listener out immediately
     if body_req.is_err() {
@@ -2631,10 +2644,12 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }
     let body_str = str::from_utf8(&body_req.unwrap()).unwrap().to_string();
     let body = HandlerMemory::str_to_hm(&body_str);
+    // Generate a connection ID
     let conn_id = OsRng.next_u64() as i64;
+    // Populate the event and emit it
     event.new_fractal(0);
     event.push_nested_fractal(0, url);
-    event.push_nested_fractal_mem(0, [].to_vec()); // TODO: Add headers
+    event.push_nested_fractal(0, headers_hm);
     event.push_nested_fractal(0, body);
     event.push_fractal_fixed(0, conn_id);
     let event_emit = EventEmit {
@@ -2646,6 +2661,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       eprintln!("Event transmission error");
       std::process::exit(3);
     }
+    // Get the HTTP responses lock and periodically poll it for responses from the user code
+    // TODO: Swap from a timing-based poll to getting the waker to the user code so it can be
+    // woken only once and reduce pressure on this lock.
     let responses = Arc::clone(&HTTP_RESPONSES);
     let response_hm = poll_fn(|cx: &mut Context<'_>| -> Poll<HandlerMemory> {
       let responses_hm = responses.lock().unwrap();
@@ -2653,6 +2671,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       if hm.is_some() {
         Poll::Ready(hm.unwrap().clone())
       } else {
+        drop(hm);
+        drop(responses_hm);
         let waker = cx.waker().clone();
         thread::spawn(|| {
           thread::sleep(Duration::from_millis(10));
@@ -2661,10 +2681,22 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         Poll::Pending
       }
     }).await;
+    // Get the status from the user response and begin building the response object
     let status = response_hm.read_fixed(0) as u16;
-    let headers = response_hm.read_fractal(1);
+    let mut res = Response::builder().status(StatusCode::from_u16(status).unwrap());
+    // Get the headers and populate the response object
+    let headers = res.headers_mut().unwrap();
+    let header_hms = response_hm.read_fractal(1).fractal_mem;
+    for header_hm in header_hms {
+      let key = header_hm.read_fractal(0).hm_to_string();
+      let val = header_hm.read_fractal(1).hm_to_string();
+      let name = HeaderName::from_bytes(key.as_bytes()).unwrap();
+      let value = HeaderValue::from_str(&val).unwrap();
+      headers.insert(name, value);
+    }
+    // Get the body, populate the response object, and fire it out
     let body = response_hm.read_fractal(2).hm_to_string();
-    Ok(Response::builder().status(StatusCode::from_u16(status).unwrap()).body(body.into()).unwrap())
+    Ok(res.body(body.into()).unwrap())
   }
 
   io!("httplsn", |args, mem| {
