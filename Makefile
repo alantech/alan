@@ -6,7 +6,7 @@ build: env-check build-compiler runtime/target/release/alan-runtime build-js-run
 
 .PHONY: env-check
 env-check:
-	./.envcheck.sh
+	bash -c "./.envcheck.sh"
 
 .PHONY: runtime-unit
 runtime-unit:
