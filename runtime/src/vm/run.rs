@@ -3,6 +3,7 @@ use std::io::Read;
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use futures::future::join_all;
+use once_cell::sync::OnceCell;
 use tokio::runtime;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
@@ -10,6 +11,8 @@ use crate::vm::event::{BuiltInEvents, EventEmit, HandlerFragment};
 use crate::vm::instruction::InstructionScheduler;
 use crate::vm::memory::HandlerMemory;
 use crate::vm::program::{PROGRAM, Program};
+
+pub static EVENT_TX: OnceCell<UnboundedSender<EventEmit>> = OnceCell::new();
 
 pub struct VM {
   /// chan for the events queue
@@ -26,6 +29,9 @@ impl VM {
   pub fn new() -> VM {
     let (event_tx, event_rx) = unbounded_channel();
     let (frag_tx, frag_rx) = unbounded_channel();
+    // Hackery relying on VM being a singleton :( TODO: Refactor such that event_tx is accessible
+    // outside of the opcodes and instruction scheduler for http and future IO sources
+    EVENT_TX.set(event_tx.clone()).unwrap();
     return VM {
       ins_sched: InstructionScheduler::new(event_tx.clone(), frag_tx),
       event_tx,

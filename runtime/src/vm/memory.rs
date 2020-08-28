@@ -1,5 +1,7 @@
 use std::convert::TryInto;
 use std::fmt;
+use std::slice;
+use std::str;
 
 use regex::Regex;
 
@@ -577,6 +579,47 @@ impl HandlerMemory {
       self.either_mem[addr as usize] = idx;
       self.fractal_mem.push(payload);
       self.registers_ish.push(0);
+    }
+  }
+
+  pub fn str_to_hm(s: &str) -> HandlerMemory {
+    let mut s_mem = vec![s.len() as i64];
+    let mut s_bytes = s.as_bytes().to_vec();
+    loop {
+      if s_bytes.len() % 8 != 0 {
+        s_bytes.push(0);
+      } else {
+        break
+      }
+    }
+    let mut i = 0;
+    loop {
+      if i < s_bytes.len() {
+        let s_slice = &s_bytes[i..i+8];
+        s_mem.push(i64::from_ne_bytes(s_slice.try_into().unwrap()));
+        i = i + 8;
+      } else {
+        break
+      }
+    }
+    let mem_size = s_mem.len();
+    HandlerMemory {
+      gmem: &Program::global().gmem,
+      mem: s_mem,
+      fractal_mem: vec![],
+      either_mem: vec![-1; mem_size],
+      registers_ish: vec![0; mem_size],
+      is_fixed: false,
+      closure_args: Vec::new(),
+    }
+  }
+
+  pub fn hm_to_string(self: &HandlerMemory) -> String {
+    let s_len = self.mem[0] as usize;
+    unsafe {
+      let s_u8 = slice::from_raw_parts(self.mem[1..].as_ptr().cast::<u8>(), s_len*8);
+      let s = str::from_utf8(&s_u8[0..s_len]).unwrap();
+      s.to_string()
     }
   }
 }

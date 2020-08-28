@@ -97,11 +97,11 @@ Describe "@std/http"
     End
 
     It "runs agc"
-      Pending rust-webserver
       alan-runtime run temp.agc &
       sleep 1
       When run curl -s localhost:8080
       The output should eq "Hello, World!"
+      killall alan-runtime
     End
   End
 End
