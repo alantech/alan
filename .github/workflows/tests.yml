@@ -70,10 +70,11 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
 
+    # I don't think we need this anymore?
     # Add the ssh-key to the keyring
-    - uses: webfactory/ssh-agent@v0.2.0
-      with:
-        ssh-private-key: ${{ secrets.ssh_key }}
+    # - uses: webfactory/ssh-agent@v0.2.0
+    #   with:
+    #     ssh-private-key: ${{ secrets.ssh_key }}
     
     # Run the BDD tests
     - name: Run BDD tests
@@ -115,10 +116,11 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
 
+    # I don't think we need this anymore?
     # Add the ssh-key to the keyring
-    - uses: webfactory/ssh-agent@v0.2.0
-      with:
-        ssh-private-key: ${{ secrets.ssh_key }}
+    # - uses: webfactory/ssh-agent@v0.2.0
+    #   with:
+    #     ssh-private-key: ${{ secrets.ssh_key }}
     
     # Run the BDD tests
     - name: Run BDD tests
@@ -146,10 +148,11 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
 
+    # If we do need this, we'll need to find a windows-compatible alternative
     # Add the ssh-key to the keyring
-    - uses: webfactory/ssh-agent@v0.2.0
-      with:
-        ssh-private-key: ${{ secrets.ssh_key }}
+    # - uses: webfactory/ssh-agent@v0.2.0
+    #   with:
+    #     ssh-private-key: ${{ secrets.ssh_key }}
     
     # Run the BDD tests
     - name: Run BDD tests
