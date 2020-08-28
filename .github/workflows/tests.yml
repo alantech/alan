@@ -123,3 +123,34 @@ jobs:
     # Run the BDD tests
     - name: Run BDD tests
       run: make bdd
+
+  bdd-windows:
+    # The type of runner that the job will run on
+    runs-on: windows-latest
+
+    strategy:
+      matrix:
+        node-version: [12.x]
+        # node-version: [12.x, 14.x]
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+    - uses: actions/checkout@v2
+
+    # Rust is automatically set up and included by default according to: https://github.com/actions/starter-workflows/blob/master/ci/rust.yml
+
+    # Set up Node.js
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node-version }}
+
+    # Add the ssh-key to the keyring
+    - uses: webfactory/ssh-agent@v0.2.0
+      with:
+        ssh-private-key: ${{ secrets.ssh_key }}
+    
+    # Run the BDD tests
+    - name: Run BDD tests
+      run: bash -c "make bdd"
