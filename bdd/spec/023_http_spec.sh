@@ -93,6 +93,7 @@ Describe "@std/http"
       sleep 1
       When run curl -s localhost:8080 && kill %1 1>/dev/null 2>/dev/null
       The output should eq "Hello, World!"
+      The error should include ""
     End
 
     It "runs agc"
@@ -100,6 +101,7 @@ Describe "@std/http"
       sleep 1
       When run curl -s localhost:8080 && kill %1 1>/dev/null 2>/dev/null
       The output should eq "Hello, World!"
+      The error should include ""
     End
   End
 End
