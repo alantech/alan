@@ -95,6 +95,11 @@ pub fn exec(fp: &str) {
   // Start the root task backed by a single thread
   rt.block_on(async {
     rayon::ThreadPoolBuilder::new().num_threads(num_cpus::get() - 1).build_global().unwrap();
+    let fptr = File::open(fp);
+    if fptr.is_err() {
+      eprintln!("File not found: {}", fp);
+      std::process::exit(2);
+    }
     let bytes = File::open(fp).unwrap().bytes().count();
     let mut bytecode = vec![0;bytes/8];
     let mut f = File::open(fp).unwrap();
