@@ -130,7 +130,7 @@ export const resolveDependency = (modulePath: string, dependency: any) => { // T
         importPath = dirPath
         break
       }
-      if (pathRoot === "/") {
+      if (pathRoot === "/" || /[A-Z]:\\/.test(pathRoot)) {
         pathRoot = null
       } else {
         pathRoot = path.dirname(pathRoot)
@@ -160,7 +160,7 @@ export const resolveDependency = (modulePath: string, dependency: any) => { // T
             importPath = dirPath
             break
           }
-          if (pathRoot === "/") {
+          if (pathRoot === "/" || /[A-Z]:\\/.test(pathRoot)) {
             pathRoot = null
           } else {
             pathRoot = path.dirname(pathRoot)
