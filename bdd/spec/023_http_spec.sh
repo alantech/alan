@@ -89,12 +89,15 @@ Describe "@std/http"
     AfterAll after
 
     afterEach() {
-      kill %1
+      kill $PID
+      wait $PID 2>/dev/null
+      return 0
     }
     After afterEach
 
     It "runs js"
       node temp.js 1>/dev/null 2>/dev/null &
+      PID=$!
       sleep 1
       When run curl -s localhost:8080
       The output should eq "Hello, World!"
@@ -102,6 +105,7 @@ Describe "@std/http"
 
     It "runs agc"
       alan-runtime run temp.agc 1>/dev/null 2>/dev/null &
+      PID=$!
       sleep 1
       When run curl -s localhost:8080
       The output should eq "Hello, World!"
