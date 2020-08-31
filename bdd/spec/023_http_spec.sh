@@ -89,8 +89,8 @@ Describe "@std/http"
     AfterAll after
 
     afterEach() {
-      killall node
-      killall alan-runtime
+      killall node || echo ok
+      killall alan-runtime || echo ok
     }
     After afterEach
 
