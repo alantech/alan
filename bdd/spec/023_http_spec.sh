@@ -93,8 +93,7 @@ Describe "@std/http"
       sleep 1
       When run curl -s localhost:8080
       The output should eq "Hello, World!"
-      The stderr should include "" # shellspec has become more strict in a recent update
-      killall node
+      killall node 1>/dev/null 2>/dev/null
     End
 
     It "runs agc"
@@ -102,8 +101,7 @@ Describe "@std/http"
       sleep 1
       When run curl -s localhost:8080
       The output should eq "Hello, World!"
-      The stderr should include "" # shellspec has become more strict in a recent update
-      killall alan-runtime
+      killall alan-runtime 1>/dev/null 2>/dev/null
     End
   End
 End
