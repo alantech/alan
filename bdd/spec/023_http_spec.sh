@@ -88,12 +88,17 @@ Describe "@std/http"
     }
     AfterAll after
 
+    afterEach() {
+      killall node
+      killall alan-runtime
+    }
+    After afterEach
+
     It "runs js"
       node temp.js &
       sleep 1
       When run curl -s localhost:8080
       The output should eq "Hello, World!"
-      killall node 1>/dev/null 2>/dev/null
     End
 
     It "runs agc"
@@ -101,7 +106,6 @@ Describe "@std/http"
       sleep 1
       When run curl -s localhost:8080
       The output should eq "Hello, World!"
-      killall alan-runtime 1>/dev/null 2>/dev/null
     End
   End
 End
