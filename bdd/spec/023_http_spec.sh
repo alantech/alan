@@ -89,14 +89,14 @@ Describe "@std/http"
     AfterAll after
 
     It "runs js"
-      node temp.js &
+      node temp.js 1>/dev/null 2>/dev/null &
       sleep 1
       When run curl -s localhost:8080 && kill %1 1>/dev/null 2>/dev/null
       The output should eq "Hello, World!"
     End
 
     It "runs agc"
-      alan-runtime run temp.agc &
+      alan-runtime run temp.agc 1>/dev/null 2>/dev/null &
       sleep 1
       When run curl -s localhost:8080 && kill %1 1>/dev/null 2>/dev/null
       The output should eq "Hello, World!"
