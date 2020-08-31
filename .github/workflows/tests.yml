@@ -70,12 +70,6 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
 
-    # I don't think we need this anymore?
-    # Add the ssh-key to the keyring
-    # - uses: webfactory/ssh-agent@v0.2.0
-    #   with:
-    #     ssh-private-key: ${{ secrets.ssh_key }}
-    
     # Run the BDD tests
     - name: Run BDD tests
       run: make bdd
@@ -116,15 +110,23 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
 
-    # I don't think we need this anymore?
-    # Add the ssh-key to the keyring
-    # - uses: webfactory/ssh-agent@v0.2.0
-    #   with:
-    #     ssh-private-key: ${{ secrets.ssh_key }}
-    
     # Run the BDD tests
     - name: Run BDD tests
       run: make bdd
+
+  runtime-unit-windows:
+    # The type of runner that the job will run on
+    runs-on: windows-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+    - uses: actions/checkout@v2
+
+    # Rust is automatically set up and included by default according to: https://github.com/actions/starter-workflows/blob/master/ci/rust.yml
+    # Run unit tests
+    - name: Run unit tests
+      run: make runtime-unit
 
   bdd-windows:
     # The type of runner that the job will run on
@@ -148,12 +150,6 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
 
-    # If we do need this, we'll need to find a windows-compatible alternative
-    # Add the ssh-key to the keyring
-    # - uses: webfactory/ssh-agent@v0.2.0
-    #   with:
-    #     ssh-private-key: ${{ secrets.ssh_key }}
-    
     # Run the BDD tests
     - name: Run BDD tests
       run: bash -c "make bdd"
