@@ -91,14 +91,14 @@ Describe "@std/http"
     It "runs js"
       node temp.js &
       sleep 1
-      When run curl -s localhost:8080 && killall node 1>/dev/null 2>/dev/null
+      When run curl -s localhost:8080 && kill %1 1>/dev/null 2>/dev/null
       The output should eq "Hello, World!"
     End
 
     It "runs agc"
       alan-runtime run temp.agc &
       sleep 1
-      When run curl -s localhost:8080 && killall alan-runtime 1>/dev/null 2>/dev/null
+      When run curl -s localhost:8080 && kill %1 1>/dev/null 2>/dev/null
       The output should eq "Hello, World!"
     End
   End
