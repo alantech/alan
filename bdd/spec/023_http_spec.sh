@@ -93,6 +93,7 @@ Describe "@std/http"
       sleep 1
       When run curl -s localhost:8080
       The output should eq "Hello, World!"
+      The stderr should include "" # shellspec has become more strict in a recent update
       killall node
     End
 
@@ -101,6 +102,7 @@ Describe "@std/http"
       sleep 1
       When run curl -s localhost:8080
       The output should eq "Hello, World!"
+      The stderr should include "" # shellspec has become more strict in a recent update
       killall alan-runtime
     End
   End
