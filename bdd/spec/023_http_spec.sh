@@ -88,23 +88,40 @@ Describe "@std/http"
     }
     AfterAll after
 
-    afterEach() {
-      kill %1
-    }
-    After afterEach
+    Describe "js"
+      startNode() {
+        node temp.js &
+        sleep 1
+      }
+      Before startNode
 
-    It "runs js"
-      node temp.js 1>/dev/null 2>/dev/null &
-      sleep 1
-      When run curl -s localhost:8080
-      The output should eq "Hello, World!"
+      afterEach() {
+        kill %1
+      }
+      After afterEach
+
+      It "runs"
+        When run curl -s localhost:8080
+        The output should eq "Hello, World!"
+      End
     End
 
-    It "runs agc"
-      alan-runtime run temp.agc 1>/dev/null 2>/dev/null &
-      sleep 1
-      When run curl -s localhost:8080
-      The output should eq "Hello, World!"
+    Describe "agc"
+      startAgc() {
+        alan-runtime run temp.agc &
+        sleep 1
+      }
+      Before startAgc
+
+      afterEach() {
+        kill %1
+      }
+      After afterEach
+
+      It "runs"
+        When run curl -s localhost:8080
+        The output should eq "Hello, World!"
+      End
     End
   End
 End
