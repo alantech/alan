@@ -6,7 +6,7 @@ Describe "@std/deps"
       from @std/deps import install, add, commit
 
       on install {
-        add('git+ssh://git@github.com/alantech/hellodep')
+        add('https://github.com/alantech/hellodep')
         commit()
       }
     "

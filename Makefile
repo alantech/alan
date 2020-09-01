@@ -6,7 +6,7 @@ build: env-check build-compiler runtime/target/release/alan-runtime build-js-run
 
 .PHONY: env-check
 env-check:
-	./.envcheck.sh
+	bash -c "./.envcheck.sh"
 
 .PHONY: runtime-unit
 runtime-unit:
@@ -29,10 +29,10 @@ build-js-runtime:
 
 .PHONY: bdd
 bdd: shellspec node_modules
-	./bdd/bdd.sh $(testfile)
+	bash -c "./bdd/bdd.sh $(testfile)"
 
 shellspec:
-	git clone --depth 1 git@github.com:shellspec/shellspec
+	git clone --depth 1 https://github.com/shellspec/shellspec
 
 node_modules: build
 	npm init -y
