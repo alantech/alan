@@ -699,10 +699,10 @@ ${basicAssignablesAst.getText()} on line ${basicAssignablesAst.start.line}:${bas
     // Short circuit on the trivial case
     if (
       withOperatorsAst.operatororassignable().length === 1 &&
-      !!withOperatorsAst.operatororassignable(1).basicassignables()
+      !!withOperatorsAst.operatororassignable(0).basicassignables()
     ) {
       Microstatement.fromBasicAssignablesAst(
-        withOperatorsAst.operatororassignable(1).basicassignables(),
+        withOperatorsAst.operatororassignable(0).basicassignables(),
         scope,
         microstatements,
       )

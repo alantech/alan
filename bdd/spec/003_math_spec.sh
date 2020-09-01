@@ -1002,4 +1002,35 @@ Describe "Basic Math"
       End
     End
   End
+
+  Describe "grouping"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+        on start {
+          print(2 / (3))
+          print(3 / (1 + 2))
+          emit exit 0
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "0
+1"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
+      The output should eq "0
+1"
+    End
+  End
 End
