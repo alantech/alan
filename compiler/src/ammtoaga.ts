@@ -465,10 +465,12 @@ const ammToAga = (amm: LPNode) => {
   // Get the global memory and the memory address map (var name to address ID)
   const addressMap = {}
   const globalMem = loadGlobalMem(amm.get('globalMem').getAll(), addressMap)
-  // Output the global memory
-  outStr += 'globalMem\n'
-  Object.keys(globalMem).forEach(addr => outStr += `  ${addr}: ${globalMem[addr]}\n`)
-  outStr += '\n'
+  if (Object.keys(globalMem).length > 0) {
+    // Output the global memory
+    outStr += 'globalMem\n'
+    Object.keys(globalMem).forEach(addr => outStr += `  ${addr}: ${globalMem[addr]}\n`)
+    outStr += '\n'
+  }
   // Load the events, get the event id offset (for reuse with closures) and the event declarations
   let eventDecs = loadEventDecs(amm.get('eventDec').getAll())
   // Determine the amount of memory to allocate per handler and map declarations to addresses
