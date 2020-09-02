@@ -72,6 +72,9 @@ const hashv = arr => {
 // Not very OOP, but since the HTTP server is a singleton right now, store open connections here
 const httpConns = {}
 
+// The shared mutable state for the datastore library
+const ds = {}
+
 module.exports = {
   // Type conversion opcodes (mostly no-ops in JS, unless we implement a strict mode)
   i8f64:    a => a,
@@ -455,6 +458,39 @@ module.exports = {
   // Hashing opcodes (hashv is recursive, needs to be defined elsewhere)
   hashf,
   hashv,
+
+  // In Node.js these opcodes don't have to be IO opcodes, but in the Rust runtime they do, because
+  // of the multithreaded nature of the Rust runtime. Not sure if they should be "fake" async here
+  // or not.
+  dssetf:  (ns, key, val) => {
+    ds[`${ns}:${key}`] = val
+  },
+  dssetv:  (ns, key, val) => {
+    ds[`${ns}:${key}`] = val
+  },
+  dshas:   (ns, key) => ds.hasOwnProperty(`${ns}:${key}`),
+  dsdel:   (ns, key) => {
+    const fullKey = `${ns}:${key}`
+    const toDelete = ds.hasOwnProperty(fullKey)
+    if (toDelete) delete ds[fullKey]
+    return toDelete
+  },
+  dsgetf:  (ns, key) => {
+    const fullKey = `${ns}:${key}`
+    if (ds.hasOwnProperty(fullKey)) {
+      return [ true, ds[`${ns}:${key}`], ]
+    } else {
+      return [ false, 'namespace-key pair not found', ]
+    }
+  },
+  dsgetv:  (ns, key) => {
+    const fullKey = `${ns}:${key}`
+    if (ds.hasOwnProperty(fullKey)) {
+      return [ true, ds[`${ns}:${key}`], ]
+    } else {
+      return [ false, 'namespace-key pair not found', ]
+    }
+  },
 
   // IO opcodes
   asyncopcodes: ['waitop', 'execop', 'httpget', 'httppost', 'httplsn', 'httpsend'],

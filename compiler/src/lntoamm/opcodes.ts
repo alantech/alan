@@ -351,7 +351,6 @@ addopcodes({
   split: [{ str: t('string'), spl: t('string'), }, t('Array<string>')],
   repstr: [{ s: t('string'), n: t('int64'), }, t('string')],
   reparr: [{ arr: t('Array<any>'), n: t('int64'), }, t('Array<any>')],
-  // templ: [{ str: t('string'), map: t('Map<string, string>'), }, t('string')],
   matches: [{ s: t('string'), t: t('string'), }, t('bool')],
   indstr: [{ s: t('string'), t: t('string'), }, t('Result<int64>')],
   indarrf: [{ arr: t('Array<any>'), val: t('any'), }, t('Result<int64>')],
@@ -431,6 +430,12 @@ addopcodes({
   altOr: [{ a: t('Either<any, anythingElse>'), b: t('anythingElse'), }, t('anythingElse')],
   hashf: [{ a: t('any'), }, t('int64')],
   hashv: [{ a: t('any'), }, t('int64')],
+  dssetf: [{ ns: t('string'), key: t('string'), val: t('any'), }],
+  dssetv: [{ ns: t('string'), key: t('string'), val: t('any'), }],
+  dshas: [{ ns: t('string'), key: t('string'), }, t('bool')],
+  dsdel: [{ ns: t('string'), key: t('string'), }, t('bool')],
+  dsgetf: [{ ns: t('string'), key: t('string'), }, t('Result<any>')],
+  dsgetv: [{ ns: t('string'), key: t('string'), }, t('Result<any>')],
 })
 
 export default opcodeModule
