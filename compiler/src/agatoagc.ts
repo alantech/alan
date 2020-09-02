@@ -150,6 +150,8 @@ const astToAgc = (ast: NamedAnd): Buffer => {
     // Compute the global memory size and declare that and add all of the global memory
     const memSize = BigInt(globalMem.length * 8)
     vec.push(memSize, ...globalMem)
+  } else {
+    vec.push(BigInt(0))
   }
   // Declare the event lookup table (event string to id) with the singular special event `"start"`
   const eventLookup = {

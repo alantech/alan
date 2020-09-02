@@ -53,4 +53,33 @@ Describe "Events"
       The status should eq "1"
     End
   End
+
+  Describe "no global memory exit code"
+    before() {
+      sourceToAll "
+        import @std/app
+
+        on app.start {
+          let x: int64 = 0
+          emit app.exit x
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    It "runs js"
+      When run node temp.js
+      The status should eq "0"
+    End
+
+    It "runs agc"
+      When run alan-runtime run temp.agc
+      The status should eq "0"
+    End
+  End
 End
