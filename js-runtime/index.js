@@ -459,9 +459,9 @@ module.exports = {
   hashf,
   hashv,
 
-  // In Node.js these opcodes don't have to be IO opcodes, but in the Rust runtime they do, because
-  // of the multithreaded nature of the Rust runtime. Not sure if they should be "fake" async here
-  // or not.
+  // In Node.js the datastore opcodes don't have to be IO opcodes, but in the Rust runtime they do,
+  // because of the multithreaded nature of the Rust runtime. Not sure if they should be "fake"
+  // async here or not.
   dssetf:  (ns, key, val) => {
     ds[`${ns}:${key}`] = val
   },
