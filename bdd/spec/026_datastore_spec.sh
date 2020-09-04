@@ -58,7 +58,6 @@ false
   End
 
   It "runs agc"
-    Pending rust-implementation
     When run alan-runtime run temp.agc
     The output should eq "$DSOUTPUT"
   End

@@ -13,6 +13,7 @@ use futures::future::poll_fn;
 use futures::task::{Context, Poll};
 
 use byteorder::{ByteOrder, LittleEndian};
+use dashmap::DashMap;
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Response, Server, StatusCode};
 use hyper::header::{HeaderName, HeaderValue};
@@ -32,6 +33,10 @@ use crate::vm::run::{EVENT_TX};
 
 static HTTP_RESPONSES: Lazy<Arc<Mutex<HashMap<i64, HandlerMemory>>>> = Lazy::new(|| {
   Arc::new(Mutex::new(HashMap::<i64, HandlerMemory>::new()))
+});
+
+static DS: Lazy<Arc<DashMap<String, HandlerMemory>>> = Lazy::new(|| {
+  Arc::new(DashMap::<String, HandlerMemory>::new())
 });
 
 // type aliases
@@ -2745,6 +2750,111 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     };
     return Box::pin(fut);
   });
+  io!("dssetf", |args, mem| {
+    let fut = async move {
+      let hand_mem = mem.read().await;
+      let val = hand_mem.read_fixed(args[2]);
+      let mut hm = HandlerMemory::new(None, 1); 
+      hm.write_fixed(0, val);
+      let ns = hand_mem.read_fractal(args[0]).hm_to_string();
+      let key = hand_mem.read_fractal(args[1]).hm_to_string();
+      let nskey = format!("{}:{}", ns, key);
+      drop(hand_mem);
+      let ds = Arc::clone(&DS);
+      ds.insert(nskey, hm);
+    };
+    return Box::pin(fut);
+  });
+  io!("dssetv", |args, mem| {
+    let fut = async move {
+      let hand_mem = mem.read().await;
+      let hm = hand_mem.read_fractal(args[2]);
+      let ns = hand_mem.read_fractal(args[0]).hm_to_string();
+      let key = hand_mem.read_fractal(args[1]).hm_to_string();
+      let nskey = format!("{}:{}", ns, key);
+      drop(hand_mem);
+      let ds = Arc::clone(&DS);
+      ds.insert(nskey, hm);
+    };
+    return Box::pin(fut);
+  });
+  io!("dshas", |args, mem| {
+    let fut = async move {
+      let hand_mem = mem.read().await;
+      let ns = hand_mem.read_fractal(args[0]).hm_to_string();
+      let key = hand_mem.read_fractal(args[1]).hm_to_string();
+      let nskey = format!("{}:{}", ns, key);
+      drop(hand_mem);
+      let ds = Arc::clone(&DS);
+      let has = ds.contains_key(&nskey);
+      let mut hand_mem = mem.write().await;
+      hand_mem.write_fixed(args[2], if has { 1i64 } else { 0i64 });
+      drop(hand_mem);
+    };
+    return Box::pin(fut);
+  });
+  io!("dsdel", |args, mem| {
+    let fut = async move {
+      let hand_mem = mem.read().await;
+      let ns = hand_mem.read_fractal(args[0]).hm_to_string();
+      let key = hand_mem.read_fractal(args[1]).hm_to_string();
+      let nskey = format!("{}:{}", ns, key);
+      drop(hand_mem);
+      let ds = Arc::clone(&DS);
+      let removed = ds.remove(&nskey).is_some();
+      let mut hand_mem = mem.write().await;
+      hand_mem.write_fixed(args[2], if removed { 1i64 } else { 0i64 });
+      drop(hand_mem);
+    };
+    return Box::pin(fut);
+  });
+  io!("dsgetf", |args, mem| {
+    let fut = async move {
+      let hand_mem = mem.read().await;
+      let ns = hand_mem.read_fractal(args[0]).hm_to_string();
+      let key = hand_mem.read_fractal(args[1]).hm_to_string();
+      let nskey = format!("{}:{}", ns, key);
+      drop(hand_mem);
+      let ds = Arc::clone(&DS);
+      let maybe_hm = ds.get(&nskey);
+      let mut hand_mem = mem.write().await;
+      hand_mem.new_fractal(args[2]);
+      if maybe_hm.is_some() {
+        hand_mem.push_fractal_fixed(args[2], 1i64);
+        hand_mem.push_fractal_fixed(args[2], maybe_hm.unwrap().read_fixed(0));
+      } else {
+        hand_mem.push_fractal_fixed(args[2], 0i64);
+        let err_msg = "namespace-key pair not found";
+        hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm(&err_msg));
+      }
+      drop(hand_mem);
+    };
+    return Box::pin(fut);
+  });
+  io!("dsgetv", |args, mem| {
+    let fut = async move {
+      let hand_mem = mem.read().await;
+      let ns = hand_mem.read_fractal(args[0]).hm_to_string();
+      let key = hand_mem.read_fractal(args[1]).hm_to_string();
+      let nskey = format!("{}:{}", ns, key);
+      drop(hand_mem);
+      let ds = Arc::clone(&DS);
+      let maybe_hm = ds.get(&nskey);
+      let mut hand_mem = mem.write().await;
+      hand_mem.new_fractal(args[2]);
+      if maybe_hm.is_some() {
+        hand_mem.push_fractal_fixed(args[2], 1i64);
+        let hm = maybe_hm.unwrap();
+        hand_mem.push_nested_fractal(args[2], hm.clone());
+      } else {
+        hand_mem.push_fractal_fixed(args[2], 0i64);
+        let err_msg = "namespace-key pair not found";
+        hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm(&err_msg));
+      }
+      drop(hand_mem);
+    };
+    return Box::pin(fut);
+  });
 
   // "Special" opcodes
   cpu!("exitop", |args, hand_mem, _, _| {
@@ -3038,6 +3148,16 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       } else {
         hand_mem.write_fixed(args[2], data[0]);
       }
+    }
+    None
+  });
+  cpu!("getOrRS", |args, hand_mem, _, _| {
+    let arr = hand_mem.get_fractal(args[0]);
+    let val = arr.read_fixed(0);
+    if val == 1i64 {
+      hand_mem.set_reg(args[2], args[0], 1);
+    } else {
+      hand_mem.write_fractal(args[2], hand_mem.read_fractal(args[1]));
     }
     None
   });

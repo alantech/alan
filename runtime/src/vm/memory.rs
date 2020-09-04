@@ -546,6 +546,12 @@ impl HandlerMemory {
       // closure arguments memory
       let closure = &mut self.closure_args[0];
       return closure.write_fixed(addr - CLOSURE_ARG_MEM_START, payload);
+    } else if self.registers_ish[addr as usize] > 0 {
+      // It's a pointer to fixed memory
+      unsafe {
+        let ptr = usize::from_ne_bytes(self.mem[addr as usize].to_ne_bytes()) as *mut i64;
+        *ptr = payload;
+      }
     } else {
       // We can see a difference between the normal and unsafe forms of reading these integers in
       // benchmarking

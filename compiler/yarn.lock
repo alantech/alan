@@ -110,10 +110,10 @@ ajv@^6.5.5:
     json-schema-traverse "^0.4.1"
     uri-js "^4.2.2"
 
-alan-js-runtime@0.0.2:
-  version "0.0.2"
-  resolved "https://registry.yarnpkg.com/alan-js-runtime/-/alan-js-runtime-0.0.2.tgz#3854ea292a636191246fcc39fa19f1b673c2a69b"
-  integrity sha512-80Nl6gDzswpPJbpS32bTOXJ3IJmi0I4yqnRaikQaCFFpDNTd+NspI1MiZf7iWFKpVj0/uKNu8KELC3VsrrfCpA==
+alan-js-runtime@0.0.3:
+  version "0.0.3"
+  resolved "https://registry.yarnpkg.com/alan-js-runtime/-/alan-js-runtime-0.0.3.tgz#107c3b657f9b6008baf77af8848bce4b28d853ff"
+  integrity sha512-bx61JRL1H41tN8tLAouAbdgWK0jjtvDMKcyFlGnL+KbAciBPWrI4vj2o8TpnGm8yAopV9wpgyxbmvgCU5QSDYQ==
   dependencies:
     isomorphic-fetch "^2.2.1"
     xxhashjs "^0.2.2"
