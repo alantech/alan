@@ -16,8 +16,9 @@
 
 ### Implementation
 
-- [ ] Implemented:
+- [x] Implemented:
   - [@std/datastore (js-runtime only for now)](https://github.com/alantech/alan/pull/256) 2020-09-02
+  - [Add datastore support to the rust runtime](https://github.com/alantech/alan/pull/259) 2020-09-03
 - [ ] Revoked/Superceded by: [RFC ###](./000 - RFC Template.md) YYYY-MM-DD
 
 ## Author(s)
