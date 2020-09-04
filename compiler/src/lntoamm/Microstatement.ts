@@ -1185,13 +1185,6 @@ ${letName} on line ${assignmentsAst.line}:${assignmentsAst.start.column}`)
           }
         }
       }
-      // TODO: Clean up the const/let declarations and assignments. That this is possible with the
-      // parser is bad here, but necessary for let declarations because of the weird re-use of
-      // stuff.
-      if (assignmentsAst.assignables() == null) {
-        throw new Error(`Let variable re-assignment without a value specified.
-${letName} on line ${assignmentsAst.start.line}:${assignmentsAst.start.column}`)
-      }
       // An assignable may either be a basic constant or could be broken down into other
       // microstatements. The classification with assignables is: if it's a `withoperators` type it
       // *always* becomes multiple microstatements and it should return the variable name it
@@ -1381,13 +1374,6 @@ ${assignmentsAst.varn().getText()} on line ${assignmentsAst.varn().start.line}:$
         original = microstatements[microstatements.length - 1]
       }
     }
-    // Now for the final segment. First we compute the value to assign in either case
-    // TODO: Clean up the const/let declarations and assignments. That this is possible with the
-    // parser is bad here, but necessary for let declarations because of the weird re-use of stuff.
-    if (assignmentsAst.assignables() == null) {
-      throw new Error(`Let variable re-assignment without a value specified.
-${letName} on line ${assignmentsAst.start.line}:${assignmentsAst.start.column}`)
-    }
     // An assignable may either be a basic constant or could be broken down into other microstatements
     // The classification with assignables is: if it's a `withoperators` type it *always* becomes
     // multiple microstatements and it should return the variable name it generated to store the data.
@@ -1476,46 +1462,26 @@ ${letName} on line ${assignmentsAst.start.line}:${assignmentsAst.start.column}`)
     scope: Scope,
     microstatements: Array<Microstatement>,
   ) {
-    // TODO: Once we figure out how to handle re-assignment to let variables as new variable names
-    // with all references to that variable afterwards rewritten, these can just be brought in as
-    // constants, too.
-    let letAlias: string
-    let letTypeHint = null
-    if (letdeclarationAst.VARNAME() != null) {
-      letAlias = letdeclarationAst.VARNAME().getText()
-      // This is a type, part of other cleanup, shouldn't be ported to fromVarAst
-      letTypeHint = letdeclarationAst.assignments().varn().getText()
-      if (letdeclarationAst.assignments().typegenerics() != null) {
-        letTypeHint += letdeclarationAst.assignments().typegenerics().getText()
-      }
-      const typeBox = scope.deepGet(letTypeHint)
-      if (typeBox === null) {
-        // Try to define it if it's a generic type
-        if (letdeclarationAst.assignments().typegenerics()) {
-          const outerTypeBox = scope.deepGet(
-            letdeclarationAst.assignments().varn().getText()
-          ) as Type
-          if (outerTypeBox === null) {
-            throw new Error(`${letdeclarationAst.assignments().varn().getText()}  is not defined
+    const letAlias = letdeclarationAst.VARNAME().getText()
+    const letTypeHint = letdeclarationAst.othertype() ? letdeclarationAst.othertype().getText() : ''
+    const typeBox = scope.deepGet(letTypeHint)
+    if (typeBox === null && letTypeHint !== '') {
+      // Try to define it if it's a generic type
+      if (letdeclarationAst.othertype().typegenerics()) {
+        const outerTypeBox = scope.deepGet(
+          letdeclarationAst.othertype().typename().getText()
+        ) as Type
+        if (outerTypeBox === null) {
+          throw new Error(`${letdeclarationAst.othertype().typename().getText()}  is not defined
 ${letdeclarationAst.getText()} on line ${letdeclarationAst.start.line}:${letdeclarationAst.start.column}`)
-          }
-          outerTypeBox.solidify(
-            letdeclarationAst.assignments().typegenerics().fulltypename().map(
-              (t: any) =>t.getText() // TODO: Eliminate ANTLR
-            ),
-            scope
-          )
         }
+        outerTypeBox.solidify(
+          letdeclarationAst.othertype().typegenerics().fulltypename().map(
+            (t: any) =>t.getText() // TODO: Eliminate ANTLR
+          ),
+          scope
+        )
       }
-    } else {
-      letAlias = letdeclarationAst.assignments().varn().getText()
-      // We don't know the type ahead of time and will have to rely on inference in this case
-    }
-    if (!letdeclarationAst.assignments().assignables()) {
-      // This is the situation where a variable is declared but no value is yet assigned.
-      // We have decided to not permit this at all and consider it an error case. TODO: Block this
-      // at the parser level
-      throw new Error('Let declaration must have an initial value')
     }
     // An assignable may either be a basic constant or could be broken down into other microstatements
     // The classification with assignables is: if it's a `withoperators` type it *always* becomes
@@ -1523,10 +1489,10 @@ ${letdeclarationAst.getText()} on line ${letdeclarationAst.start.line}:${letdecl
     // If it's a `basicassignables` type it could be either a "true constant" or generate multiple
     // microstatements. The types that fall under the "true constant" category are: functions,
     // var, and constants.
-    if (letdeclarationAst.assignments().assignables().withoperators() != null) {
+    if (letdeclarationAst.assignables().withoperators() != null) {
       // Update the microstatements list with the operator serialization
       Microstatement.fromWithOperatorsAst(
-        letdeclarationAst.assignments().assignables().withoperators(),
+        letdeclarationAst.assignables().withoperators(),
         scope,
         microstatements,
       )
@@ -1551,9 +1517,9 @@ ${letdeclarationAst.getText()} on line ${letdeclarationAst.start.line}:${letdecl
       ))
       return
     }
-    if (letdeclarationAst.assignments().assignables().basicassignables() != null) {
+    if (letdeclarationAst.assignables().basicassignables() != null) {
       Microstatement.fromBasicAssignablesAst(
-        letdeclarationAst.assignments().assignables().basicassignables(),
+        letdeclarationAst.assignables().basicassignables(),
         scope,
         microstatements,
       )
@@ -1585,65 +1551,29 @@ ${letdeclarationAst.getText()} on line ${letdeclarationAst.start.line}:${letdecl
     scope: Scope,
     microstatements: Array<Microstatement>,
   ) {
-    // TODO: Weirdness in the ANTLR grammar around declarations needs to be cleaned up at some point
     const constName = "_" + uuid().replace(/-/g, "_")
-    let constAlias: string
-    let constTypeHint = null
-    if (constdeclarationAst.VARNAME() != null) {
-      constAlias = constdeclarationAst.VARNAME().getText()
-      // This is referring to a type, part of other cleanup, not fromVarAst
-      constTypeHint = constdeclarationAst.assignments().varn().getText()
-      if (constdeclarationAst.assignments().typegenerics() != null) {
-        constTypeHint += constdeclarationAst.assignments().typegenerics().getText()
-      }
-      const typeBox = scope.deepGet(constTypeHint)
-      if (typeBox === null) {
-        // Try to define it if it's a generic type
-        if (constdeclarationAst.assignments().typegenerics()) {
-          const outerTypeBox = scope.deepGet(
-            constdeclarationAst.assignments().varn().getText()
-          ) as Type
-          if (outerTypeBox === null) {
-            throw new Error(`${constdeclarationAst.assignments().varn().getText()}  is not defined
+    const constAlias = constdeclarationAst.VARNAME().getText()
+    const constTypeHint = constdeclarationAst.othertype() ?
+      constdeclarationAst.othertype().getText() :
+      ''
+    const typeBox = scope.deepGet(constTypeHint)
+    if (typeBox === null && constTypeHint !== '') {
+      // Try to define it if it's a generic type
+      if (constdeclarationAst.othertype().typegenerics()) {
+        const outerTypeBox = scope.deepGet(
+          constdeclarationAst.othertype().typename().getText()
+        ) as Type
+        if (outerTypeBox === null) {
+          throw new Error(`${constdeclarationAst.othertype().typename().getText()}  is not defined
 ${constdeclarationAst.getText()} on line ${constdeclarationAst.start.line}:${constdeclarationAst.start.column}`)
-          }
-          outerTypeBox.solidify(
-            constdeclarationAst.assignments().typegenerics().fulltypename().map(
-              (t: any) => t.getText() // TODO: Eliminate ANTLR
-            ),
-            scope
-          )
         }
+        outerTypeBox.solidify(
+          constdeclarationAst.othertype().typegenerics().fulltypename().map(
+            (t: any) => t.getText() // TODO: Eliminate ANTLR
+          ),
+          scope
+        )
       }
-    } else {
-      constAlias = constdeclarationAst.assignments().varn().getText()
-      // We don't know the type ahead of time and will have to refer on inference in this case
-    }
-    if (constdeclarationAst.assignments().assignables() == null) {
-      // This is a weird edge case where a constant with no assignment was declared. Should this
-      // even be legal?
-      const weirdConst = new Microstatement(
-        StatementType.CONSTDEC,
-        scope,
-        true,
-        constName,
-        Type.builtinTypes.void,
-        ["void"],
-        [],
-      )
-      // This is a terminating condition for the microstatements, though
-      microstatements.push(weirdConst)
-      microstatements.push(new Microstatement(
-        StatementType.REREF,
-        scope,
-        true,
-        constName,
-        Type.builtinTypes.void,
-        [],
-        [],
-        constAlias,
-      ))
-      return
     }
     // An assignable may either be a basic constant or could be broken down into other microstatements
     // The classification with assignables is: if it's a `withoperators` type it *always* becomes
@@ -1651,10 +1581,10 @@ ${constdeclarationAst.getText()} on line ${constdeclarationAst.start.line}:${con
     // If it's a `basicassignables` type it could be either a "true constant" or generate multiple
     // microstatements. The types that fall under the "true constant" category are: functions,
     // var, and constants.
-    if (constdeclarationAst.assignments().assignables().withoperators() != null) {
+    if (constdeclarationAst.assignables().withoperators() != null) {
       // Update the microstatements list with the operator serialization
       Microstatement.fromWithOperatorsAst(
-        constdeclarationAst.assignments().assignables().withoperators(),
+        constdeclarationAst.assignables().withoperators(),
         scope,
         microstatements,
       )
@@ -1672,9 +1602,9 @@ ${constdeclarationAst.getText()} on line ${constdeclarationAst.start.line}:${con
       ))
       return
     }
-    if (constdeclarationAst.assignments().assignables().basicassignables() != null) {
+    if (constdeclarationAst.assignables().basicassignables() != null) {
       Microstatement.fromBasicAssignablesAst(
-        constdeclarationAst.assignments().assignables().basicassignables(),
+        constdeclarationAst.assignables().basicassignables(),
         scope,
         microstatements,
       )

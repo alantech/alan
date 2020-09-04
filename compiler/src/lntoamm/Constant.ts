@@ -12,12 +12,10 @@ class Constant {
   }
 
   static fromAst(constdeclaration: any, scope: Scope) {
-    const name = constdeclaration.VARNAME() ?
-      constdeclaration.VARNAME().getText() :
-      constdeclaration.assignments().varn().getText()
+    const name = constdeclaration.VARNAME().getText()
     const outConst = new Constant(
       name,
-      constdeclaration.assignments().assignables(),
+      constdeclaration.assignables(),
       scope,
     )
     scope.put(name, outConst)

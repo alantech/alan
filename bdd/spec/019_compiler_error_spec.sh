@@ -125,4 +125,31 @@ return 'blah' on line 5:10"
       The error should eq "Undefined function called: i64str"
     End
   End
+
+  Describe "Totally broken statements"
+    before() {
+      sourceToTemp "
+        import @std/app
+
+        on app.start {
+          app.oops
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    It "doesn't work"
+      When run alan-compile temp.ln temp.amm
+      The status should not eq "0"
+      # TODO: Eliminate ANTLR
+      The error should eq "line 6:8 extraneous input '}' expecting {'=', NEWLINE, WS}
+line 8:0 extraneous input '<EOF>' expecting {'const', 'let', 'return', 'emit', BOOLCONSTANT, 'if', '}', '(', '[', '.', NEWLINE, WS, STRINGCONSTANT, NUMBERCONSTANT, VARNAME}
+Cannot read property 'basicassignables' of null"
+    End
+  End
 End
