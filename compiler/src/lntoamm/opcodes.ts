@@ -419,6 +419,7 @@ addopcodes({
   isOk: [{ a: t('Result<any>'), }, t('bool')],
   isErr: [{ a: t('Result<any>'), }, t('bool')],
   getOrR: [{ a: t('Result<any>'), b: t('any'), }, t('any')],
+  getOrRS: [{ a: t('Result<any>'), b: t('string'), }, t('string')],
   getR: [{ a: t('Result<any>'), }, t('any')],
   getErr: [{ a: t('Result<any>'), b: t('Error'), }, t('Error')],
   resfrom: [{ arr: t('Array<any>'), addr: t('int64') }, t('Result<any>')],

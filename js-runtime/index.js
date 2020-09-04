@@ -427,6 +427,7 @@ module.exports = {
   isOk:     a => a[0],
   isErr:    a => !a[0],
   getOrR:  (a, b) => a[0] ? a[1] : b,
+  getOrRS: (a, b) => a[0] ? a[1] : b,
   getR:    (a) => {
     if (a[0]) {
       return a[1]

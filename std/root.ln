@@ -508,6 +508,7 @@ export err // opcode with signature `fn err(string): Result<any>`
 export isOk // opcode with signature `fn isOk(Result<any>): bool`
 export isErr // opcode with signature `fn isErr(Result<any>: bool`
 export fn getOr(result: Result<any>, default: any) = getOrR(result, default)
+export fn getOr(result: Result<any>, default: string) = getOrRS(result, default)
 export getErr // opcode with signature `fn getErr(Result<any>, Error): Error`
 export fn toString(n: Result<Stringifiable>): string {
   if n.isOk() {
