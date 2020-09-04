@@ -49,9 +49,7 @@ class Statement {
       const s = this.statementOrAssignableAst
       if (s.declarations()) {
         const d = s.declarations().constdeclaration() || s.declarations().letdeclaration()
-        if (d.assignments().assignables()) {
-          return Statement.assignmentsHasObjectLiteral(d.assignments())
-        }
+        return Statement.assignablesHasObjectLiteral(d.assignables())
       }
       if (s.assignments()) return Statement.assignmentsHasObjectLiteral(s.assignments())
       if (s.calls() && s.calls().assignables() > 0) s.calls().assignables().some(
@@ -163,19 +161,17 @@ class Statement {
       if (statementAst.declarations() != null) {
         if (statementAst.declarations().constdeclaration() != null) {
           pure = Statement.isAssignablePure(
-            statementAst.declarations().constdeclaration().assignments().assignables(),
+            statementAst.declarations().constdeclaration().assignables(),
             scope
           )
         } else if (statementAst.declarations().letdeclaration() != null) {
-          if (statementAst.declarations().letdeclaration().assignments() != null) {
-            if (statementAst.declarations().letdeclaration().assignments().assignables() == null) {
-              pure = true
-            } else {
-              pure = Statement.isAssignablePure(
-                statementAst.declarations().letdeclaration().assignments().assignables(),
-                scope
-              )
-            }
+          if (statementAst.declarations().letdeclaration().assignables() == null) {
+            pure = true
+          } else {
+            pure = Statement.isAssignablePure(
+              statementAst.declarations().letdeclaration().assignables(),
+              scope
+            )
           }
         } else {
           throw new Error("Bad assignment somehow reached")

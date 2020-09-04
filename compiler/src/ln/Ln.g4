@@ -42,11 +42,11 @@ statements : (declarations | assignments | calls | exits | emits | conditionals)
 
 declarations : (constdeclaration | letdeclaration);
 
-constdeclaration : CONST blank* (VARNAME blank* TYPESEP (WS | NEWLINE)?)? blank* assignments;
+constdeclaration : CONST blank* VARNAME blank* (TYPESEP blank? othertype)? blank* EQUALS blank* assignables;
 
-letdeclaration : LET blank* (VARNAME blank* TYPESEP (WS | NEWLINE)?)? blank* assignments;
+letdeclaration : LET blank* VARNAME blank* (TYPESEP blank? othertype)? blank* EQUALS blank* assignables;
 
-assignments : varn blank* ((typegenerics? blank* EQUALS blank* assignables) | typegenerics?);
+assignments : varn blank* EQUALS blank* assignables;
 
 assignables : basicassignables | withoperators;
 
