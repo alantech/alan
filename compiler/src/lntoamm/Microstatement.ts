@@ -872,7 +872,7 @@ ${withOperatorsAst.getText()}`
     // if closure is not void return the last inner statement
     // TODO: Revisit this, if the closure doesn't have a type defined, sometimes it can only be
     // determined in the calling context and shouldn't be assumed to be `void`
-    if (userFunction.returnType !== Type.builtinTypes.void) {
+    if (innerMicrostatements.length > 0 && userFunction.returnType !== Type.builtinTypes.void) {
       const last = innerMicrostatements[innerMicrostatements.length - 1]
       innerMicrostatements.push(new Microstatement(
         StatementType.EXIT,

@@ -492,9 +492,51 @@ module.exports = {
       return [ false, 'namespace-key pair not found', ]
     }
   },
+  newseq:  (limit) => [0, limit],
+  seqnext: (seq) => {
+    if (seq[0] < seq[1]) {
+      const out = [true, seq[0]]
+      seq[0]++
+      return out
+    } else {
+      return [false, 'error: sequence out-of-bounds']
+    }
+  },
+  seqeach: async (seq, func) => {
+    while (seq[0] < seq[1]) {
+      await func(seq[0])
+      seq[0]++
+    }
+  },
+  seqwhile:async (seq, condFn, bodyFn) => {
+    while (seq[0] < seq[1] && await condFn()) {
+      await bodyFn()
+      seq[0]++
+    }
+  },
+  seqdo:   async (seq, bodyFn) => {
+    let ok = true
+    do {
+      ok = await bodyFn()
+      seq[0]++
+    } while (seq[0] < seq[1] && ok)
+  },
+  selfrec: async (self, arg) => {
+    const [seq, recurseFn] = self
+    if (seq[0] < seq[1]) {
+      seq[0]++
+      return recurseFn(self, arg)
+    } else {
+      return [false, 'error: sequence out-of-bounds']
+    }
+  },
+  seqrec: (seq, recurseFn) => [seq, recurseFn],
 
   // IO opcodes
-  asyncopcodes: ['waitop', 'execop', 'httpget', 'httppost', 'httplsn', 'httpsend'],
+  asyncopcodes: [
+    'waitop', 'execop', 'httpget', 'httppost', 'httplsn', 'httpsend', 'seqeach', 'seqwhile',
+    'seqdo', 'selfrec',
+  ],
   httpget:  async url => {
     try {
       const response = await fetch(url)
