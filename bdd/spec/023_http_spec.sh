@@ -96,7 +96,6 @@ Describe "@std/http"
     After afterEach
 
     It "runs js"
-      cat temp.js > what.js
       node temp.js 1>/dev/null 2>/dev/null &
       PID=$!
       sleep 1
