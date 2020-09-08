@@ -635,7 +635,7 @@ module.exports = {
       return [ false, e.toString() ]
     }
   },
-  httplsn:  port => {
+  httplsn:  async (port) => {
     const server = http.createServer((req, res) => {
       const connId = hashf(Math.random().toString())
       httpConns[connId] = {
@@ -655,7 +655,7 @@ module.exports = {
         ])
       })
     })
-    return new Promise(resolve => {
+    return await new Promise(resolve => {
       server.on('error', e => resolve([ false, e.code, ]))
       server.listen({
         port,
