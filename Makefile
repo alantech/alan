@@ -39,6 +39,7 @@ node_modules: build
 	yarn add ./compiler
 	yarn add ./js-runtime
 	cp -r ./js-runtime/* ./node_modules/alan-compile/node_modules/alan-js-runtime
+	cp -r ./js-runtime/* ./compiler/node_modules/alan-js-runtime
 
 .PHONY: clean
 clean:
