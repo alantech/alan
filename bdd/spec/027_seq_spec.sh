@@ -156,7 +156,8 @@ error: sequence out-of-bounds"
 
   Describe "recurse"
     before() {
-      sourceToAll "
+      # TODO: Restore sourceToAll once ammtoaga bug is fixed
+      sourceToTemp "
         from @std/app import start, print, exit
         from @std/seq import seq, Self, recurse
 
@@ -179,6 +180,8 @@ error: sequence out-of-bounds"
           emit exit 0
         }
       "
+      tempToAmm
+      tempToJs
     }
     BeforeAll before
 
