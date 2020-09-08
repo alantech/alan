@@ -56,7 +56,7 @@ const assignableToJsText = (assignable: LPNode, indent: string) => {
     if (args.get(1)) {
       argnames.push(args.get(1).get('arg').get('variable').t)
     }
-    outText += `(${argnames.join(', ')}) => {\n`
+    outText += `async (${argnames.join(', ')}) => {\n`
     outText += functionbodyToJsText(assignable.get('functions').get('functionbody'), indent + "  ")
     outText += indent + '  }' // End this closure
   } else if (assignable.has('calls')) {

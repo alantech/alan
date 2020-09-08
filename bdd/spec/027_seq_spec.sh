@@ -187,10 +187,9 @@ error: sequence out-of-bounds"
     }
     AfterAll after
 
-    RECURSEOUTPUT="10"
+    RECURSEOUTPUT="34"
 
     It "runs js"
-      Pending compiler-closure-fixes
       When run node temp.js
       The output should eq "$RECURSEOUTPUT"
     End

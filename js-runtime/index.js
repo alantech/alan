@@ -373,7 +373,7 @@ module.exports = {
 
   // Ternary functions
   // TODO: pair and condarr after arrays are figured out
-  condfn:  (cond, fn) => cond ? fn() : undefined,
+  condfn:  async (cond, fn) => cond ? await fn() : undefined,
 
   // Copy opcodes (for let reassignment)
   copyi8:   a => JSON.parse(JSON.stringify(a)),
@@ -535,7 +535,7 @@ module.exports = {
   // IO opcodes
   asyncopcodes: [
     'waitop', 'execop', 'httpget', 'httppost', 'httplsn', 'httpsend', 'seqeach', 'seqwhile',
-    'seqdo', 'selfrec',
+    'seqdo', 'selfrec', 'condfn',
   ],
   httpget:  async url => {
     try {

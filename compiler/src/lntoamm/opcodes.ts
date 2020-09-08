@@ -137,9 +137,9 @@ const addopcodes = (opcodes: object) => {
                   return newReturnType
                 } else if (['selfrec'].includes(opcodeName)) {
                   // TODO: This is absolute crap. How to fix?
-                  return Microstatement.fromVarName(
+                  return inputs[0].inputNames[1] ? Microstatement.fromVarName(
                     inputs[0].inputNames[1], scope, microstatements
-                  ).closureOutputType
+                  ).closureOutputType : returnType
                 } else {
                   // Path 2: the opcode returns solidified generic type with an interface generic
                   // that mathces the interface type of an input

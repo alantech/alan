@@ -358,7 +358,11 @@ ${statements[i].statementOrAssignableAst.getText().trim()} on line ${statements[
               `.trim() + '\n')
               replacementStatements.push(remainingBlock)
             }
+          } else {
+            replacementStatements.push(s)
           }
+        } else {
+          replacementStatements.push(s)
         }
       } else {
         replacementStatements.push(s)
