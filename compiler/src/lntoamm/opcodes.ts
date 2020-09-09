@@ -16,15 +16,20 @@ const addBuiltIn = (name: string) => {
 }
 ([
   'void', 'int8', 'int16', 'int32', 'int64', 'float32', 'float64', 'bool', 'string', 'function',
-  'operator', 'Error', 'Maybe', 'Result', 'Either', 'Array', 'ExecRes', 'InitialReduce', 'InternalResponse'
+  'operator', 'Error', 'Maybe', 'Result', 'Either', 'Array', 'ExecRes', 'InitialReduce',
+  'InternalResponse', 'Seq', 'Self',
 ].map(addBuiltIn))
 Type.builtinTypes['Array'].solidify(['string'], opcodeScope)
 opcodeScope.put('any', new Type('any', true, false, {}, {}, null, new Interface('any')))
-opcodeScope.put('anythingElse', new Type('anythingElse', true, false, {}, {}, null, new Interface('anythingElse')))
+opcodeScope.put(
+  'anythingElse',
+  new Type('anythingElse', true, false, {}, {}, null, new Interface('anythingElse')),
+)
 Type.builtinTypes['Array'].solidify(['any'], opcodeScope)
 Type.builtinTypes['Array'].solidify(['anythingElse'], opcodeScope)
 Type.builtinTypes.Maybe.solidify(['any'], opcodeScope)
 Type.builtinTypes.Result.solidify(['any'], opcodeScope)
+Type.builtinTypes.Result.solidify(['anythingElse'], opcodeScope)
 Type.builtinTypes.Result.solidify(['int64'], opcodeScope)
 Type.builtinTypes.Result.solidify(['string'], opcodeScope)
 Type.builtinTypes.Either.solidify(['any', 'anythingElse'], opcodeScope)
@@ -130,7 +135,12 @@ const addopcodes = (opcodes: object) => {
                     baseType.solidify([newInnerType.typename], scope) :
                     returnType
                   return newReturnType
-                } else  {
+                } else if (['selfrec'].includes(opcodeName)) {
+                  // TODO: This is absolute crap. How to fix?
+                  return inputs[0].inputNames[1] ? Microstatement.fromVarName(
+                    inputs[0].inputNames[1], scope, microstatements
+                  ).closureOutputType : returnType
+                } else {
                   // Path 2: the opcode returns solidified generic type with an interface generic
                   // that mathces the interface type of an input
                   const returnIfaces = Object.values(returnType.properties)
@@ -437,6 +447,13 @@ addopcodes({
   dsdel: [{ ns: t('string'), key: t('string'), }, t('bool')],
   dsgetf: [{ ns: t('string'), key: t('string'), }, t('Result<any>')],
   dsgetv: [{ ns: t('string'), key: t('string'), }, t('Result<any>')],
+  newseq: [{ limit: t('int64'), }, t('Seq')],
+  seqnext: [{ seq: t('Seq'), }, t('Result<int64>')],
+  seqeach: [{ seq: t('Seq'), func: t('function'), }, t('void')],
+  seqwhile: [{ seq: t('Seq'), condFn: t('function'), bodyFn: t('function'), }],
+  seqdo: [{ seq: t('Seq'), bodyFn: t('function'), }, t('void')],
+  selfrec: [{ self: t('Self'), arg: t('any'), }, t('Result<anythingElse>')],
+  seqrec: [{ seq: t('Seq'), recurseFn: t('function'), }, t('Self')],
 })
 
 export default opcodeModule

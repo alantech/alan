@@ -842,8 +842,9 @@ ${withOperatorsAst.getText()}`
     // compatible types such that the microstatements would not be a simple type replacement away
     // inject arguments as const declarations into microstatements arrays with the variable names
     // and remove them later so we can parse the closure and keep the logic contained to this method
+    const fn = userFunction.maybeTransform(new Map()) // TODO: Interface mangling is probably needed
     const idx = microstatements.length
-    const args = Object.entries(userFunction.args)
+    const args = Object.entries(fn.args)
     for (const [name, type] of args) {
       if (name !== "" && type.typename != "") {
         microstatements.push(new Microstatement(
@@ -856,7 +857,7 @@ ${withOperatorsAst.getText()}`
       }
     }
     const len = microstatements.length - args.length
-    for (const s of userFunction.statements) {
+    for (const s of fn.statements) {
       if (s.statementOrAssignableAst instanceof LnParser.StatementsContext) {
         Microstatement.fromStatementsAst(s.statementOrAssignableAst, scope, microstatements)
       } else {
@@ -872,7 +873,7 @@ ${withOperatorsAst.getText()}`
     // if closure is not void return the last inner statement
     // TODO: Revisit this, if the closure doesn't have a type defined, sometimes it can only be
     // determined in the calling context and shouldn't be assumed to be `void`
-    if (userFunction.returnType !== Type.builtinTypes.void) {
+    if (innerMicrostatements.length > 0 && fn.returnType !== Type.builtinTypes.void) {
       const last = innerMicrostatements[innerMicrostatements.length - 1]
       innerMicrostatements.push(new Microstatement(
         StatementType.EXIT,
@@ -891,10 +892,10 @@ ${withOperatorsAst.getText()}`
       [],
       [],
       '',
-      userFunction.pure,
+      fn.pure,
       innerMicrostatements,
-      userFunction.args,
-      userFunction.returnType,
+      fn.args,
+      fn.returnType,
     ))
   }
 

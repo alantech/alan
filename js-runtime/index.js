@@ -324,13 +324,23 @@ module.exports = {
     return ind > -1 ? [ true, ind, ] : [ false, 'element not found', ]
   },
   join:    (arr, sep) => arr.join(sep),
-  map:     (arr, fn) => arr.map(fn),
-  mapl:    (arr, fn) => arr.map(fn), // For impure functions, but makes no difference in JS
+  map:     async (arr, fn) => await Promise.all(arr.map(fn)),
+  mapl:    async (arr, fn) => await Promise.all(arr.map(fn)),
   reparr:  (arr, n) => Array.from(new Array(n * arr.length)).map((_, i) => arr[i % arr.length]),
-  each:    (arr, fn) => arr.forEach(fn),
-  eachl:   (arr, fn) => arr.forEach(fn),
-  find:    (arr, fn) => {
-    const val = arr.find(fn)
+  each:    async (arr, fn) => {
+    await Promise.all(arr.map(fn)) // Thrown away but awaited to maintain consistent execution
+  },
+  eachl:   async (arr, fn) => {
+    await Promise.all(arr.map(fn)) // Thrown away but awaited to maintain consistent execution
+  },
+  find:    async (arr, fn) => {
+    let val = undefined
+    const len = arr.length
+    for (let i = 0; i < len && val === undefined; i++) {
+      if (await fn(arr[i])) {
+        val = arr[i]
+      }
+    }
     if (val === undefined) {
       return [
         false,
@@ -343,8 +353,14 @@ module.exports = {
       ]
     }
   },
-  findl:   (arr, fn) => {
-    const val = arr.find(fn)
+  findl:   async (arr, fn) => {
+    let val = undefined
+    const len = arr.length
+    for (let i = 0; i < len && val === undefined; i++) {
+      if (await fn(arr[i])) {
+        val = arr[i]
+      }
+    }
     if (val === undefined) {
       return [
         false,
@@ -357,23 +373,91 @@ module.exports = {
       ]
     }
   },
-  every:   (arr, fn) => arr.every(fn),
-  everyl:  (arr, fn) => arr.every(fn),
-  some:    (arr, fn) => arr.some(fn),
-  somel:   (arr, fn) => arr.some(fn),
-  filter:  (arr, fn) => arr.filter(fn),
-  filterl: (arr, fn) => arr.filter(fn),
-  reducel: (arr, fn) => arr.reduce(fn),
-  reducep: (arr, fn) => arr.reduce(fn),
-  foldl:   (obj, fn) => obj[0].reduce(fn, obj[1]),
-  foldp:   (obj, fn) => [obj[0].reduce(fn, obj[1])],
+  every:   async (arr, fn) => {
+    const len = arr.length
+    for (let i = 0; i < len; i++) {
+      if (!await fn(arr[i])) return false
+    }
+    return true
+  },
+  everyl:  async (arr, fn) => {
+    const len = arr.length
+    for (let i = 0; i < len; i++) {
+      if (!await fn(arr[i])) return false
+    }
+    return true
+  },
+  some:    async (arr, fn) => {
+    const len = arr.length
+    for (let i = 0; i < len; i++) {
+      if (await fn(arr[i])) return true
+    }
+    return false
+  },
+  somel:    async (arr, fn) => {
+    const len = arr.length
+    for (let i = 0; i < len; i++) {
+      if (await fn(arr[i])) return true
+    }
+    return false
+  },
+  filter:  async (arr, fn) => {
+    let out = []
+    let len = arr.length
+    for (let i = 0; i < len; i++) {
+      if (await fn(arr[i])) out.push(arr[i])
+    }
+    return out
+  },
+  filterl: async (arr, fn) => {
+    let out = []
+    let len = arr.length
+    for (let i = 0; i < len; i++) {
+      if (await fn(arr[i])) out.push(arr[i])
+    }
+    return out
+  },
+  reducel: async (arr, fn) => {
+    let cumu = arr[0]
+    let len = arr.length
+    for (let i = 1; i < len; i++) {
+      cumu = await fn(cumu, arr[i])
+    }
+    return cumu
+  },
+  reducep: async (arr, fn) => {
+    let cumu = arr[0]
+    let len = arr.length
+    for (let i = 1; i < len; i++) {
+      cumu = await fn(cumu, arr[i])
+    }
+    return cumu
+  },
+  foldl:   async (obj, fn) => {
+    const [arr, init] = obj
+    let cumu = init
+    let len = arr.length
+    for (let i = 0; i < len; i++) {
+      cumu = await fn(cumu, arr[i])
+    }
+    return cumu
+  },
+  foldp:   async (obj, fn) => {
+    const [arr, init] = obj
+    let cumu = init
+    let len = arr.length
+    for (let i = 0; i < len; i++) {
+      cumu = await fn(cumu, arr[i])
+    }
+    return [cumu] // This path is expected to return an array of folded values per thread
+  },
   catarr:  (a, b) => [...a, ...b],
 
   // Map opcodes TODO after maps are figured out
 
   // Ternary functions
   // TODO: pair and condarr after arrays are figured out
-  condfn:  (cond, fn) => cond ? fn() : undefined,
+  condfn:  async (cond, fn) => cond ? await fn() : undefined,
 
   // Copy opcodes (for let reassignment)
   copyi8:   a => JSON.parse(JSON.stringify(a)),
@@ -492,9 +576,47 @@ module.exports = {
       return [ false, 'namespace-key pair not found', ]
     }
   },
+  newseq:  (limit) => [0, limit],
+  seqnext: (seq) => {
+    if (seq[0] < seq[1]) {
+      const out = [true, seq[0]]
+      seq[0]++
+      return out
+    } else {
+      return [false, 'error: sequence out-of-bounds']
+    }
+  },
+  seqeach: async (seq, func) => {
+    while (seq[0] < seq[1]) {
+      await func(seq[0])
+      seq[0]++
+    }
+  },
+  seqwhile:async (seq, condFn, bodyFn) => {
+    while (seq[0] < seq[1] && await condFn()) {
+      await bodyFn()
+      seq[0]++
+    }
+  },
+  seqdo:   async (seq, bodyFn) => {
+    let ok = true
+    do {
+      ok = await bodyFn()
+      seq[0]++
+    } while (seq[0] < seq[1] && ok)
+  },
+  selfrec: async (self, arg) => {
+    const [seq, recurseFn] = self
+    if (seq[0] < seq[1]) {
+      seq[0]++
+      return recurseFn(self, arg)
+    } else {
+      return [false, 'error: sequence out-of-bounds']
+    }
+  },
+  seqrec: (seq, recurseFn) => [seq, recurseFn],
 
   // IO opcodes
-  asyncopcodes: ['waitop', 'execop', 'httpget', 'httppost', 'httplsn', 'httpsend'],
   httpget:  async url => {
     try {
       const response = await fetch(url)
@@ -513,7 +635,7 @@ module.exports = {
       return [ false, e.toString() ]
     }
   },
-  httplsn:  port => {
+  httplsn:  async (port) => {
     const server = http.createServer((req, res) => {
       const connId = hashf(Math.random().toString())
       httpConns[connId] = {
@@ -533,7 +655,7 @@ module.exports = {
         ])
       })
     })
-    return new Promise(resolve => {
+    return await new Promise(resolve => {
       server.on('error', e => resolve([ false, e.code, ]))
       server.listen({
         port,
@@ -555,7 +677,7 @@ module.exports = {
         .end(body, () => resolve([ true, 'ok', ]))
     })
   },
-  waitop:   a => new Promise(resolve => setTimeout(resolve, a)),
+  waitop:   async (a) => await new Promise(resolve => setTimeout(resolve, a)),
   execop:   async (cmd) => {
     try {
       const res = await exec(cmd)
@@ -575,3 +697,5 @@ module.exports = {
   on:      (name, cb) => e.on(name, cb),
   emitter:  e,
 }
+
+module.exports.asyncopcodes = Object.keys(module.exports).filter(k => module.exports[k].constructor.name === 'AsyncFunction')

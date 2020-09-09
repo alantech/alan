@@ -577,6 +577,17 @@ export class Type {
       body: new Type('string', true),
       connId: new Type('int64', true),
     }),
+    Seq: new Type("Seq", true, false, {
+      counter: new Type("int64", true, true),
+      limit: new Type("int64", true, true),
+    }),
+    Self: new Type("Self", true, false, {
+      seq: new Type("Seq", true, false, {
+        counter: new Type("int64", true, true),
+        limit: new Type("int64", true, true),
+      }),
+      recurseFn: new Type("function", true),
+    }),
     "function": new Type("function", true),
     operator: new Type("operator", true),
     Event: new Type("Event", true, false, {
