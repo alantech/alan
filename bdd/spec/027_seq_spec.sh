@@ -33,7 +33,6 @@ error: sequence out-of-bounds"
     End
 
     It "runs agc"
-      Pending runtime-support
       When run alan-runtime run temp.agc
       The output should eq "$NEXTOUTPUT"
     End
@@ -69,7 +68,6 @@ error: sequence out-of-bounds"
     End
 
     It "runs agc"
-      Pending runtime-support
       When run alan-runtime run temp.agc
       The output should eq "$EACHOUTPUT"
     End
@@ -108,7 +106,6 @@ error: sequence out-of-bounds"
     End
 
     It "runs agc"
-      Pending runtime-support
       When run alan-runtime run temp.agc
       The output should eq "$WHILEOUTPUT"
     End
@@ -148,7 +145,6 @@ error: sequence out-of-bounds"
     End
 
     It "runs agc"
-      Pending runtime-support
       When run alan-runtime run temp.agc
       The output should eq "$DOWHILEOUTPUT"
     End
