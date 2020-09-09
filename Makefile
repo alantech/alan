@@ -1,7 +1,7 @@
 SHELL = /bin/bash
 
 .PHONY: build
-build: env-check build-compiler runtime/target/release/alan-runtime build-js-runtime
+build: env-check build-compiler runtime/target/release/alan build-js-runtime
 	echo Done
 
 .PHONY: env-check
@@ -20,7 +20,11 @@ compiler-browser-check: build-compiler
 build-compiler:
 	cd compiler && yarn
 
-runtime/target/release/alan-runtime: runtime
+compiler/alan-compile: build-compiler
+	yarn add nexe
+	cd compile && ../node_modules/.bin/nexe -r std -o alan-compile
+
+runtime/target/release/alan: compiler/alan-compile
 	cd runtime && cargo build --release
 
 .PHONY: build-js-runtime
@@ -46,11 +50,9 @@ clean:
 	git clean -ffdx
 
 .PHONY: install
-install: runtime/target/release/alan-runtime node_modules
-	cp ./runtime/target/release/alan-runtime /usr/local/bin/alan-runtime
-	npm install -g ./compiler
+install: runtime/target/release/alan
+	cp ./runtime/target/release/alan /usr/local/bin/alan
 
 .PHONY: uninstall
 uninstall:
-	rm /usr/local/bin/alan-runtime
-	npm uninstall -g alan-compile
+	rm /usr/local/bin/alan
