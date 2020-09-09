@@ -9,7 +9,7 @@ env-check:
 	bash -c "./.envcheck.sh"
 
 .PHONY: runtime-unit
-runtime-unit:
+runtime-unit: compiler/alan-compile
 	cd runtime && cargo test
 
 .PHONY: compiler-browser-check
@@ -22,7 +22,7 @@ build-compiler:
 
 compiler/alan-compile: build-compiler
 	yarn add nexe
-	cd compile && ../node_modules/.bin/nexe -r std -o alan-compile
+	cd compiler && ../node_modules/.bin/nexe -r std -o alan-compile
 
 runtime/target/release/alan: compiler/alan-compile
 	cd runtime && cargo build --release
