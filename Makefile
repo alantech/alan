@@ -22,7 +22,7 @@ build-compiler:
 
 compiler/alan-compile: build-compiler
 	yarn add nexe
-	cd compiler && ../node_modules/.bin/nexe -r std -o alan-compile
+	cd compiler && ../node_modules/.bin/nexe --build -r std -o alan-compile
 
 runtime/target/release/alan: compiler/alan-compile
 	cd runtime && cargo build --release
