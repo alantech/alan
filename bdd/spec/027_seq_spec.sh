@@ -33,7 +33,7 @@ error: sequence out-of-bounds"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "$NEXTOUTPUT"
     End
   End
@@ -68,7 +68,7 @@ error: sequence out-of-bounds"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "$EACHOUTPUT"
     End
   End
@@ -106,7 +106,7 @@ error: sequence out-of-bounds"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "$WHILEOUTPUT"
     End
   End
@@ -145,7 +145,7 @@ error: sequence out-of-bounds"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "$DOWHILEOUTPUT"
     End
   End
@@ -195,7 +195,7 @@ error: sequence out-of-bounds"
 
     It "runs agc"
       Pending runtime-support
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "$RECURSEOUTPUT"
     End
   End

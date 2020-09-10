@@ -22,7 +22,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The status should eq "3"
       End
     End
@@ -47,7 +47,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The status should eq "1"
       End
     End
@@ -72,7 +72,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The status should eq "2"
       End
     End
@@ -97,7 +97,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The status should eq "3"
       End
     End
@@ -122,7 +122,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The status should eq "2"
       End
     End
@@ -147,7 +147,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The status should eq "36"
       End
     End
@@ -177,7 +177,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The output should eq "3"
       End
     End
@@ -205,7 +205,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The output should eq "1"
       End
     End
@@ -233,7 +233,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The output should eq "2"
       End
     End
@@ -261,7 +261,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The output should eq "3"
       End
     End
@@ -289,7 +289,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The output should eq "2"
       End
     End
@@ -317,7 +317,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The output should eq "36"
       End
     End
@@ -347,7 +347,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The output should eq "3"
       End
     End
@@ -375,7 +375,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The output should eq "1"
       End
     End
@@ -403,7 +403,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The output should eq "2"
       End
     End
@@ -431,7 +431,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The output should eq "3"
       End
     End
@@ -459,7 +459,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The output should eq "2"
       End
     End
@@ -487,7 +487,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The output should eq "36"
       End
     End
@@ -517,7 +517,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The output should eq "3"
       End
     End
@@ -545,7 +545,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The output should eq "1"
       End
     End
@@ -573,7 +573,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The output should eq "2"
       End
     End
@@ -601,7 +601,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The output should eq "3"
       End
     End
@@ -629,7 +629,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The output should eq "2"
       End
     End
@@ -657,7 +657,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The output should eq "36"
       End
     End
@@ -687,7 +687,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The output should eq "3"
       End
     End
@@ -715,7 +715,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The output should eq "1"
       End
     End
@@ -743,7 +743,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The output should eq "2"
       End
     End
@@ -771,7 +771,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The output should eq "3"
       End
     End
@@ -799,7 +799,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The output should eq "6"
       End
     End
@@ -827,7 +827,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The output should eq "36"
       End
     End
@@ -857,7 +857,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The output should eq "3"
       End
     End
@@ -885,7 +885,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The output should eq "1"
       End
     End
@@ -913,7 +913,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The output should eq "2"
       End
     End
@@ -941,7 +941,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The output should eq "3"
       End
     End
@@ -969,7 +969,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The output should eq "6"
       End
     End
@@ -997,7 +997,7 @@ Describe "Basic Math"
       End
 
       It "runs agc"
-        When run alan-runtime run temp.agc
+        When run alan run temp.agc
         The output should eq "36"
       End
     End
@@ -1028,7 +1028,7 @@ Describe "Basic Math"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "0
 1"
     End

@@ -35,7 +35,7 @@ Describe "Interfaces"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "'Hello, World'
 '5'"
     End
@@ -307,7 +307,7 @@ Describe "Interfaces"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "2020-7-2@12:7:30-8:0"
     End
   End

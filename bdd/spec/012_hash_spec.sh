@@ -41,7 +41,7 @@ Describe "Hashing"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "$TOHASHOUTPUT"
     End
   End
@@ -90,7 +90,7 @@ foo, bar, baz
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "$HASHMAPOUTPUT"
     End
   End
@@ -137,7 +137,7 @@ foo"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "$KVTOHMOUTPUT"
     End
   End
@@ -210,7 +210,7 @@ length test
 
     It "runs agc"
       Pending map-support
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "$MAPOUTPUT"
     End
   End

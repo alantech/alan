@@ -26,7 +26,7 @@ Describe "@std/http"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "export const comeGetMe = \"You got me!\""
     End
   End
@@ -56,7 +56,7 @@ Describe "@std/http"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "{\"success\":\"true\"}"
     End
   End
@@ -104,7 +104,7 @@ Describe "@std/http"
     End
 
     It "runs agc"
-      alan-runtime run temp.agc 1>/dev/null 2>/dev/null &
+      alan run temp.agc 1>/dev/null 2>/dev/null &
       PID=$!
       sleep 1
       When run curl -s localhost:8080

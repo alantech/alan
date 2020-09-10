@@ -44,7 +44,7 @@ Describe "@std/deps"
   }
 
   run_agc() {
-    alan-runtime run temp.agc | head -1
+    alan run temp.agc | head -1
   }
 
   It "runs js"

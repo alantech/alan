@@ -76,7 +76,7 @@ World!"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "$STROUTPUT"
     End
   End
@@ -118,7 +118,7 @@ Good-bye, World!"
 
     It "runs agc"
       Pending template-support
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "$TMPLOUTPUT"
     End
   End

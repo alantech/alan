@@ -36,7 +36,7 @@ Describe "Arrays"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "$ACCESSOROUTPUT"
     End
   End
@@ -81,7 +81,7 @@ Describe "Arrays"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "$LITERALOUTPUT"
     End
   End
@@ -130,7 +130,7 @@ cannot pop empty array"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "$PUSHOUTPUT"
     End
   End
@@ -187,7 +187,7 @@ Hello, World!"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "$LIJARRAYOUTPUT"
     End
   End
@@ -220,7 +220,7 @@ Hello, World!"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "$TERNARRAYOUTPUT"
     End
   End
@@ -255,7 +255,7 @@ Hello, World!"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "$MAPOUTPUT"
     End
   End
@@ -288,7 +288,7 @@ Hello, World!"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "$MAPLOUTPUT"
     End
   End
@@ -323,7 +323,7 @@ Hello, World!"
 
     agc() {
       export LC_ALL=C
-      alan-runtime run temp.agc | sort
+      alan run temp.agc | sort
     }
 
     It "runs js"
@@ -368,7 +368,7 @@ true"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "$EVERYSOMEOUTPUT"
     End
   End
@@ -433,7 +433,7 @@ reduce as filter and concat test
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "$ADVARRAYOUTPUT"
     End
   End

@@ -24,7 +24,7 @@ Describe "Printing"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "Hello, World\n"
     End
   End
@@ -52,7 +52,7 @@ Describe "Printing"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "Hello, World"
     End
   End
