@@ -102,7 +102,9 @@ jobs:
       run: make
 
     - name: Generate Alan tar.gz
-      run: cd ./avm/target/release && tar -czf /tmp/alan-macos.tar.gz alan
+      run: |
+        brew install gnu-tar
+        cd ./avm/target/release && gtar -czf /tmp/alan-macos.tar.gz alan
 
     - name: Upload Alan tar.gz
       uses: actions/upload-release-asset@v1
