@@ -34,7 +34,7 @@ fn main() {
   if let Some(matches) = matches.subcommand_matches("run") {
     let agc_file = matches.value_of("FILE").unwrap();
     let fp = &format!("{:}/{:}", env::current_dir().ok().unwrap().to_str().unwrap(), agc_file);
-    exec(&fp);
+    exec(&fp, false);
   } else if let Some(matches) = matches.subcommand_matches("compile") {
     let source_file = matches.value_of("INPUT").unwrap();
     let dest_file = matches.value_of("OUTPUT").unwrap();
@@ -47,10 +47,8 @@ fn main() {
     if status_code == 0 {
       let mut path = env::current_dir().unwrap();
       path.push(dest_file);
-      let path2 = path.clone();
       let fp = path.into_os_string().into_string().unwrap();
-      exec(&fp);
-      std::fs::remove_file(path2.as_path()).unwrap();
+      exec(&fp, true);
     } else {
       std::process::exit(status_code);
     }
