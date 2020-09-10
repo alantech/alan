@@ -20,7 +20,7 @@ Describe "Comparators"
     AfterAll after
 
     It "doesn't work"
-      When run alan-compile temp.ln temp.amm
+      When run alan compile temp.ln temp.amm
       The status should not eq "0"
       The error should eq "Cannot resolve operators with remaining statement
 true == 1

@@ -21,7 +21,7 @@ Describe "Compiler Errors"
     AfterAll after
 
     It "doesn't work"
-      When run alan-compile temp.ln temp.amm
+      When run alan compile temp.ln temp.amm
       The status should not eq "0"
       # TODO: What file, line and character?
       The error should eq "Cannot resolve operators with remaining statement
@@ -54,7 +54,7 @@ true == 1
     AfterAll after
 
     It "doesn't work"
-      When run alan-compile temp.ln temp.amm
+      When run alan compile temp.ln temp.amm
       The status should not eq "0"
       # TODO: What file?
       The error should eq "Unreachable code in function 'unreachable' after:
@@ -93,7 +93,7 @@ return 'blah' on line 5:10"
     AfterAll after
 
     It "doesn't work"
-      When run alan-compile temp.ln temp.amm
+      When run alan compile temp.ln temp.amm
       The status should not eq "0"
       # TODO: What file, line, and character?
       The error should eq "Recursive callstack detected: fibonacci -> fibonacci. Aborting."
@@ -119,7 +119,7 @@ return 'blah' on line 5:10"
     AfterAll after
 
     It "doesn't work"
-      When run alan-compile temp.ln temp.amm
+      When run alan compile temp.ln temp.amm
       The status should not eq "0"
       # TODO: What file, line, and character?
       The error should eq "Undefined function called: i64str"
@@ -144,7 +144,7 @@ return 'blah' on line 5:10"
     AfterAll after
 
     It "doesn't work"
-      When run alan-compile temp.ln temp.amm
+      When run alan compile temp.ln temp.amm
       The status should not eq "0"
       # TODO: Eliminate ANTLR
       The error should eq "line 6:8 extraneous input '}' expecting {'=', NEWLINE, WS}

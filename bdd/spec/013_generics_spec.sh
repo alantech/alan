@@ -94,7 +94,7 @@ hello, nested generics!"
     After after
 
     It "does not compile"
-      When run alan-compile temp.ln
+      When run alan compile temp.ln
       The error should eq "error: missing required argument 'output'"
       The status should not eq "0"
     End
