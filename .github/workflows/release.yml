@@ -73,10 +73,7 @@ jobs:
       run: make
 
     - name: Generate Alan zip
-      run: |
-        rm -r -fo node_modules
-        rm -r -fo h3
-        Compress-Archive -Path "$(Join-Path (Get-Location).Path '\\avm\\target\\release\\alan.exe')" -DestinationPath "$(Join-Path (Get-Location).Path 'alan-windows.zip')"
+      run: Compress-Archive -Path "$(Join-Path (Get-Location).Path '\\avm\\target\\release\\alan.exe')" -DestinationPath "$(Join-Path (Get-Location).Path 'alan-windows.zip')"
 
     - name: Upload Alan zip
       uses: actions/upload-release-asset@v1
