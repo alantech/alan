@@ -28,6 +28,7 @@ fn main() {
       .about("Runs benchmark code")
       .version(crate_version!()))
       //.author(crate_authors!(", ")))
+    .arg_from_usage("[SOURCE] 'Specifies a source ln file to compile and run'")
     .get_matches();
 
   if let Some(matches) = matches.subcommand_matches("run") {
@@ -37,8 +38,21 @@ fn main() {
   } else if let Some(matches) = matches.subcommand_matches("compile") {
     let source_file = matches.value_of("INPUT").unwrap();
     let dest_file = matches.value_of("OUTPUT").unwrap();
-    compile(&source_file, &dest_file);
+    std::process::exit(compile(&source_file, &dest_file, false));
   } else if let Some(_matches) = matches.subcommand_matches("benchmark") {
     benchmark();
+  } else if let Some(source_file) = matches.value_of("SOURCE") {
+    let dest_file = "temp.agc";
+    let status_code = compile(&source_file, &dest_file, true);
+    if status_code == 0 {
+      let mut path = env::current_dir().unwrap();
+      path.push(dest_file);
+      let path2 = path.clone();
+      let fp = path.into_os_string().into_string().unwrap();
+      exec(&fp);
+      std::fs::remove_file(path2.as_path()).unwrap();
+    } else {
+      std::process::exit(status_code);
+    }
   }
 }

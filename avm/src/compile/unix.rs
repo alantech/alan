@@ -6,7 +6,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::process::Command;
 use std::str;
 
-pub fn compile(source_file: &str, dest_file: &str) {
+pub fn compile(source_file: &str, dest_file: &str, silent: bool) -> i32 {
   let compiler = include_bytes!("../../../compiler/alan-compile");
   let mut dir = env::temp_dir();
   dir.push("alan-compile");
@@ -30,11 +30,11 @@ pub fn compile(source_file: &str, dest_file: &str) {
     dest_path.into_os_string().into_string().unwrap(),
   )).output().unwrap();
   std::fs::remove_file(dir3.as_path()).unwrap();
-  if output.stdout.len() > 0 {
+  if output.stdout.len() > 0 && !silent {
     print!("{}", str::from_utf8(&output.stdout).unwrap());
   }
   if output.stderr.len() > 0 {
     eprint!("{}", str::from_utf8(&output.stderr).unwrap());
   }
-  std::process::exit(output.status.code().unwrap());
+  return output.status.code().unwrap();
 }
