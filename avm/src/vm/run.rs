@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::io::Read;
+use std::path::Path;
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use futures::future::join_all;
@@ -85,7 +86,7 @@ impl VM {
   }
 }
 
-pub fn exec(fp: &str) {
+pub fn exec(fp: &str, delete_after_load: bool) {
   let mut rt = runtime::Builder::new()
     .basic_scheduler()
     .enable_time()
@@ -104,6 +105,9 @@ pub fn exec(fp: &str) {
     let mut bytecode = vec![0;bytes/8];
     let mut f = File::open(fp).unwrap();
     f.read_i64_into::<LittleEndian>(&mut bytecode).unwrap();
+    if delete_after_load {
+      std::fs::remove_file(Path::new(fp)).unwrap();
+    }
     let program = Program::load(bytecode);
     let set_global = PROGRAM.set(program);
     if set_global.is_err() {

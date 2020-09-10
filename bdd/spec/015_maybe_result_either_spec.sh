@@ -62,7 +62,7 @@ Correctly received nothing!"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "$MAYBEOUTPUT"
     End
   End
@@ -129,7 +129,7 @@ Divide by zero error!
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "$RESULTOUTPUT"
     End
   End
@@ -173,7 +173,7 @@ Divide by zero error!
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "$EITHEROUTPUT"
     End
   End

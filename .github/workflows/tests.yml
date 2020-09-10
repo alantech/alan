@@ -13,7 +13,7 @@ on:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
 
-  runtime-unit:
+  avm-unit:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
@@ -25,7 +25,7 @@ jobs:
     # Rust is automatically set up and included by default according to: https://github.com/actions/starter-workflows/blob/master/ci/rust.yml
     # Run unit tests
     - name: Run unit tests
-      run: make runtime-unit
+      run: make avm-unit
 
   compiler-browser-check:
     runs-on: ubuntu-latest
@@ -74,7 +74,7 @@ jobs:
     - name: Run BDD tests
       run: make bdd
 
-  runtime-unit-macos:
+  avm-unit-macos:
     # The type of runner that the job will run on
     runs-on: macos-latest
 
@@ -86,7 +86,7 @@ jobs:
     # Rust is automatically set up and included by default according to: https://github.com/actions/starter-workflows/blob/master/ci/rust.yml
     # Run unit tests
     - name: Run unit tests
-      run: make runtime-unit
+      run: make avm-unit
 
   bdd-macos:
     # The type of runner that the job will run on
@@ -114,7 +114,7 @@ jobs:
     - name: Run BDD tests
       run: make bdd
 
-  runtime-unit-windows:
+  avm-unit-windows:
     # The type of runner that the job will run on
     runs-on: windows-latest
 
@@ -126,7 +126,7 @@ jobs:
     # Rust is automatically set up and included by default according to: https://github.com/actions/starter-workflows/blob/master/ci/rust.yml
     # Run unit tests
     - name: Run unit tests
-      run: make runtime-unit
+      run: make avm-unit
 
   bdd-windows:
     # The type of runner that the job will run on

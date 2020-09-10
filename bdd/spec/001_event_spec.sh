@@ -22,7 +22,7 @@ Describe "Events"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The status should eq "0"
     End
   End
@@ -49,7 +49,7 @@ Describe "Events"
 
     It "runs agc"
       # Works because little endian "automatically" coerces to the right value if you can just trim
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The status should eq "1"
     End
   End
@@ -78,7 +78,7 @@ Describe "Events"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The status should eq "0"
     End
   End

@@ -11,6 +11,7 @@
     "test-server": "nohup http-server >/dev/null 2>/dev/null </dev/null &",
     "stop-test-server": "killall http-server"
   },
+  "main": "./dist/index.js",
   "bin": {
     "alan-compile": "./dist/index.js"
   },
@@ -28,7 +29,7 @@
   "dependencies": {
     "@types/node": "^14.0.5",
     "@types/uuid": "^8.0.0",
-    "alan-js-runtime": "0.0.4",
+    "alan-js-runtime": "../js-runtime",
     "antlr4": "^4.8.0",
     "commander": "^5.1.0",
     "uuid": "^8.0.0"

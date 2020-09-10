@@ -60,7 +60,7 @@ It's true!"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "Math is sane...
 Math is still sane, for now...
 bar!
@@ -110,7 +110,7 @@ It's true!"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "1
 2
 3"
@@ -154,7 +154,7 @@ Far!"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "$RETOUTPUT"
     End
   End
@@ -213,7 +213,7 @@ Far!"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "$ADVOUTPUT"
     End
   End

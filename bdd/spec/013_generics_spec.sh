@@ -63,7 +63,7 @@ hello, nested generics!"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "$GENERICOUTPUT"
     End
   End
@@ -79,7 +79,10 @@ hello, nested generics!"
         }
 
         on start fn {
-          let stringBox: box<string>
+          let stringBox = new box<string> {
+            set = true
+            val = 'str'
+          }
           stringBox.val = 8
 
           emit exit 0
@@ -94,8 +97,8 @@ hello, nested generics!"
     After after
 
     It "does not compile"
-      When run alan-compile temp.ln
-      The error should eq "error: missing required argument 'output'"
+      When run alan compile temp.ln temp.agc
+      The error should eq "stringBox.val is of type string but assigned a value of type int64"
       The status should not eq "0"
     End
   End

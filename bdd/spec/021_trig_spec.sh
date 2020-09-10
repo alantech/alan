@@ -147,7 +147,7 @@ Inverse Hyperbolic Trig functions
   End
 
   It "runs agc"
-    When run alan-runtime run temp.agc
+    When run alan run temp.agc
     The output should eq "Logarithms and e^x
 15.154262241479259
 1

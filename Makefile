@@ -1,27 +1,28 @@
 SHELL = /bin/bash
 
 .PHONY: build
-build: env-check build-compiler runtime/target/release/alan-runtime build-js-runtime
+build: env-check avm/target/release/alan build-js-runtime
 	echo Done
 
 .PHONY: env-check
 env-check:
 	bash -c "./.envcheck.sh"
 
-.PHONY: runtime-unit
-runtime-unit:
-	cd runtime && cargo test
+.PHONY: avm-unit
+avm-unit: compiler/alan-compile
+	cd avm && cargo test
 
 .PHONY: compiler-browser-check
-compiler-browser-check: build-compiler
-	cd compiler && yarn test
+compiler-browser-check:
+	cd compiler && yarn && yarn test
 
-.PHONY: build-compiler
-build-compiler:
+./compiler/alan-compile:
 	cd compiler && yarn
+	yarn add nexe
+	cd compiler && ../node_modules/.bin/nexe -t x64-10.20.1 -r std -o alan-compile || ../node_modules/.bin/nexe -t x64-12.18.2 -r std -o alan-compile
 
-runtime/target/release/alan-runtime: runtime
-	cd runtime && cargo build --release
+./avm/target/release/alan: compiler/alan-compile
+	cd avm && cargo build --release
 
 .PHONY: build-js-runtime
 build-js-runtime:
@@ -36,21 +37,16 @@ shellspec:
 
 node_modules: build
 	npm init -y
-	yarn add ./compiler
 	yarn add ./js-runtime
-	cp -r ./js-runtime/* ./node_modules/alan-compile/node_modules/alan-js-runtime
-	cp -r ./js-runtime/* ./compiler/node_modules/alan-js-runtime
 
 .PHONY: clean
 clean:
 	git clean -ffdx
 
 .PHONY: install
-install: runtime/target/release/alan-runtime node_modules
-	cp ./runtime/target/release/alan-runtime /usr/local/bin/alan-runtime
-	npm install -g ./compiler
+install: avm/target/release/alan
+	cp ./avm/target/release/alan /usr/local/bin/alan
 
 .PHONY: uninstall
 uninstall:
-	rm /usr/local/bin/alan-runtime
-	npm uninstall -g alan-compile
+	rm /usr/local/bin/alan

@@ -27,7 +27,7 @@ Describe "Object literals"
     AfterAll after
 
     It "doesn't work"
-      When run alan-compile temp.ln temp.amm
+      When run alan compile temp.ln temp.amm
       The status should not eq "0"
       The error should eq "Foo object literal improperly defined
 Missing fields: bar, baz
@@ -70,7 +70,7 @@ new Foo {
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "$ARRTYPEOUTPUT"
     End
   End
@@ -113,7 +113,7 @@ true"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "$OBJTYPEOUTPUT"
     End
   End
@@ -174,7 +174,7 @@ false"
     End
 
     It "runs agc"
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "$REASSIGNTYPEOUTPUT"
     End
   End
@@ -223,7 +223,7 @@ baz"
 
     It "runs agc"
       Pending type-support
-      When run alan-runtime run temp.agc
+      When run alan run temp.agc
       The output should eq "$TYPEOUTPUT"
     End
   End

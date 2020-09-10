@@ -104,7 +104,7 @@ true"
   End
 
   It "runs agc"
-    When run alan-runtime run temp.agc
+    When run alan run temp.agc
     The output should eq "$OUTPUT"
   End
 End
