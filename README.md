@@ -50,11 +50,19 @@ To compile to Alan GraphCode:
 alan compile <source>.ln <whateveryouwant>.agc
 ```
 
-Then it can be run with:
+Then it can be run by the AVM:
 
 ```
 alan run <whateveryouwant>.agc
 ```
+
+You can also compile-and-run a source file with a simple:
+
+```
+alan <source>.ln
+```
+
+though you will have to pay the compile time costs each time you run.
 
 To compile to Javascript:
 
