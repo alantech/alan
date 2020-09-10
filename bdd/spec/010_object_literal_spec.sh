@@ -27,7 +27,7 @@ Describe "Object literals"
     AfterAll after
 
     It "doesn't work"
-      When run alan-compile temp.ln temp.amm
+      When run alan compile temp.ln temp.amm
       The status should not eq "0"
       The error should eq "Foo object literal improperly defined
 Missing fields: bar, baz
