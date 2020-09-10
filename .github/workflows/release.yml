@@ -1,0 +1,118 @@
+on:
+  push:
+    # Sequence of patterns matched against refs/tags
+    tags:
+      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+
+name: Create Release
+
+jobs:
+  create_release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+          body: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+  ubuntu:
+    needs: create_release
+    runs-on: ubuntu-latest
+
+    steps:
+    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+    - uses: actions/checkout@v2
+
+    - name: Use Node.js 12.x
+      uses: actions/setup-node@v1
+      with:
+        node-version: 12.x
+
+    - name: Build alan app
+      run: make
+
+    - name: Generate Alan tar.gz
+      run: tar -czf /tmp/alan-ubuntu.tar.gz ./avm/target/release/alan
+
+    - name: Upload Alan tar.gz
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create_release.outputs.upload_url }}
+        asset_path: /tmp/alan-ubuntu.tar.gz
+        asset_name: alan-ubuntu.tar.gz
+        asset_content_type: application/gzip
+
+  windows:
+    needs: create_release
+    runs-on: windows-latest
+
+    steps:
+    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+    - uses: actions/checkout@v2
+
+    - name: Use Node.js 12.x
+      uses: actions/setup-node@v1
+      with:
+        node-version: 12.x
+
+    - name: Build alan app
+      run: make
+
+    - name: Generate Alan zip
+      run: |
+        rm -r -fo node_modules
+        rm -r -fo h3
+        Compress-Archive -Path "$(Join-Path (Get-Location).Path '\\avm\\target\\release\\alan.exe'" -DestinationPath "$(Join-Path (Get-Location).Path 'alan-windows.zip')"
+
+    - name: Upload Alan zip
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create_release.outputs.upload_url }}
+        asset_path: ./alan-windows.zip
+        asset_name: alan-windows.zip
+        asset_content_type: application/zip
+
+  macos:
+    needs: create_release
+    runs-on: macos-latest
+
+    steps:
+    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+    - uses: actions/checkout@v2
+
+    - name: Use Node.js 12.x
+      uses: actions/setup-node@v1
+      with:
+        node-version: 12.x
+
+    - name: Build alan app
+      run: make
+
+    - name: Generate Alan tar.gz
+      run: tar -czf /tmp/alan-macos.tar.gz ./avm/target/release/alan
+
+    - name: Upload Alan tar.gz
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create_release.outputs.upload_url }}
+        asset_path: /tmp/alan-macos.tar.gz
+        asset_name: alan-macos.tar.gz
+        asset_content_type: application/gzip
