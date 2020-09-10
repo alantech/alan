@@ -19,7 +19,7 @@ compiler-browser-check:
 ./compiler/alan-compile:
 	cd compiler && yarn
 	yarn add nexe
-	cd compiler && ../node_modules/.bin/nexe -t x64-10.20.1 -r std -o alan-compile
+	cd compiler && ../node_modules/.bin/nexe -t x64-10.20.1 -r std -o alan-compile || ./node_modules/.bin/nexe -b -t x64-10.20.1 -r std -o alan-compile
 
 ./runtime/target/release/alan: compiler/alan-compile
 	cd runtime && cargo build --release
