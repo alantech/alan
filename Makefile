@@ -13,7 +13,7 @@ runtime-unit: compiler/alan-compile
 	cd runtime && cargo test
 
 .PHONY: compiler-browser-check
-compiler-browser-check: build-compiler
+compiler-browser-check:
 	cd compiler && yarn && yarn test
 
 ./compiler/alan-compile:
