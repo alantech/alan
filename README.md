@@ -9,7 +9,7 @@ The `alan` compiler and runtime can parallelize your code without concurrent or 
 This repository houses all the components for the Alan programming language.
 
 <div align="center">
-  <h2><a href="https://docs.alan-lang.org">Documentation</a> | <a href="https://discord.gg/XatB9we">Discord Chat</a></h2>
+  <h2><a href="https://docs.alan-lang.org">Documentation</a> | <a href="https://alan-lang.org">Homepage</a> | <a href="https://github.com/alantech/alan/releases">Download</a></h2>
 </div>
 
 ## Install
@@ -129,6 +129,10 @@ To run a single test group use the line number corresponding to a `Describe`:
 ```
 make bdd testfile=bdd/spec/001_event_spec.sh:30
 ```
+
+## Contact
+
+Please reach out on [Discord](https://discord.gg/XatB9we) or email us at hello at alantechnologies dot com.
 
 ## License
 
