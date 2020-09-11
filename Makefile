@@ -50,3 +50,7 @@ install: avm/target/release/alan
 .PHONY: uninstall
 uninstall:
 	rm /usr/local/bin/alan
+
+.PHONY: version
+version:
+	./.version.sh $(version)
