@@ -18,41 +18,57 @@ This repository houses all the components for the Alan programming language.
 
 It is recommended to install Alan via the [published artifacts](https://github.com/alantech/alan/releases). Simply download the zip or tar.gz file for your operating system, and extract the `alan` executable to somewhere in your `$PATH`, make sure it's marked executable (if not on Windows), and you're ready to roll.
 
-If your operating system or machine architecture are not supported (only Windows, Mac, and Ubuntu on x86-64 have pregenerated binaries), you'll need to do a source installation, instead.
-
-If you use the `alan` command's transpiling feature to generate Javascript, that code depends on the `alan-js-runtime` shim to work. You can either add it to the `package.json` of the project that will house the output code, or add it globally:
-
-To install `alan-js-runtime`, run:
+For Linux:
 
 ```bash
-npm i -g alan-js-runtime
+wget https://github.com/alantech/alan/releases/download/v0.1.7/alan-ubuntu.tar.gz
+tar -xzf alan-ubuntu.tar.gz
+sudo mv alan /usr/local/bin/alan
+```
+
+For MacOS:
+
+```bash
+curl -OL https://github.com/alantech/alan/releases/download/v0.1.7/alan-macos.tar.gz
+tar -xzf alan-ubuntu.tar.gz
+# sudo mkdir -p /usr/local/bin if the folder does not exist
+sudo mv alan /usr/local/bin/alan
+```
+
+For Windows:
+
+```ps1
+Invoke-WebRequest -OutFile alan-windows.zip -Uri https://github.com/alantech/alan/releases/download/v0.1.7/alan-windows.zip
+Expand-Archive -Path alan-windows.zip -DestinationPath C:\windows
 ```
 
 ### Source Installation
 
-As `alan` is not self-hosting, other languages runtimes are necessary to build it. For the compiler and JS runtime shim Node.js is required, with a minimum version of 10.20.1. For the AVM Rust is required, with a minimum version of 1.41.1.
+If you wish to contribute to Alan, or if your operating system and/or CPU architecture do not match the above, you'll need a development environment to build Alan locally:
 
-Then, simply clone the repo, enter it, and run:
+* git (any recent version should work)
+* Node.js >=10.20.1, <14.0.0
+* Rust >=1.41.1
+* A complete C toolchain (gcc, clang, msvc)
+* Python >=2.7, <3.0 (and named `python2` in your PATH)
 
+Once those are installed, simply:
+
+```bash
+git clone https://github.com/alantech/alan
+cd alan
+make
+sudo make install
 ```
-make && [sudo] make install
-```
-
-(adding the `sudo` or excluding it depending on whether you need root permissions to add to `/usr/local/bin` or not).
-
-If you are doing this because your platform is not supported, it will have to build Node.js + V8 from scratch in the process, and will take a long time.
 
 ## Usage
 
-To compile to Alan GraphCode:
+### Recommended Usage
+
+To compile to Alan GraphCode and then run it with the AVM:
 
 ```
 alan compile <source>.ln <whateveryouwant>.agc
-```
-
-Then it can be run by the AVM:
-
-```
 alan run <whateveryouwant>.agc
 ```
 
@@ -62,21 +78,24 @@ You can also compile-and-run a source file with a simple:
 alan <source>.ln
 ```
 
-though you will have to pay the compile time costs each time you run.
 
-To compile to Javascript:
+### Advanced Usage
+
+#### Transpile Alan to Javascript and run it with Node.js
 
 ```
 alan compile <source>.ln <whateveryouwant>.js
-```
-
-Which can be run with:
-
-```
 node <whateveryouwant>.js
 ```
 
-But make sure you have `alan-js-runtime` installed for this to work (either globally or in a local `node_modules` directory).
+Make sure you have `alan-js-runtime` installed for this to work (either globally or in a local `node_modules` directory). You can either add it to the `package.json` of the project that will house the output code, or add it globally:
+
+
+```bash
+npm i -g alan-js-runtime
+```
+
+#### Transpile Alan to its intermediate representations:
 
 To compile to Alan's first intermediate representation, `alan--`:
 
@@ -110,6 +129,10 @@ To run a single test group use the line number corresponding to a `Describe`:
 ```
 make bdd testfile=bdd/spec/001_event_spec.sh:30
 ```
+
+## Contact
+
+Please reach out on [Discord](https://discord.gg/XatB9we) or email us at hello at alantechnologies dot com.
 
 ## License
 
