@@ -1,4 +1,4 @@
-require('isomorphic-fetch')
+require('cross-fetch/polyfill')
 const EventEmitter = require('events')
 const http = require('http')
 const util = require('util')
