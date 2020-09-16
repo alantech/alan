@@ -326,7 +326,7 @@ module.exports = {
   join:    (arr, sep) => arr.join(sep),
   map:     async (arr, fn) => await Promise.all(arr.map(fn)),
   mapl:    async (arr, fn) => await Promise.all(arr.map(fn)),
-  reparr:  (arr, n) => Array.from(new Array(n * arr.length)).map((_, i) => arr[i % arr.length]),
+  reparr:  (arr, n) => Array.from(new Array(n * arr.length)).map((_, i) => JSON.parse(JSON.stringify(arr[i % arr.length]))),
   each:    async (arr, fn) => {
     await Promise.all(arr.map(fn)) // Thrown away but awaited to maintain consistent execution
   },
