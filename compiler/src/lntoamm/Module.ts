@@ -159,7 +159,7 @@ class Module {
       if (newFunc.getName() == null) {
         throw new Error("Module-level functions must have a name")
       }
-      let fns = module.moduleScope.shallowGet(newFunc.getName()) as Array<Fn>
+      let fns = module.moduleScope.get(newFunc.getName()) as Array<Fn>
       if (fns == null) {
         module.moduleScope.put(newFunc.getName(), [newFunc])
       } else {
@@ -218,8 +218,7 @@ class Module {
           throw new Error("Module-level functions must have a name")
         }
         // Exported scope must be checked first because it will fall through to the not-exported
-        // scope by default. Should probably create a `getShallow` for this case, but reordering
-        // the two if blocks below is enough to fix things here.
+        // scope by default.
         let expFns = module.exportScope.shallowGet(newFunc.getName()) as Array<Fn>
         if (!expFns) {
           module.exportScope.put(
@@ -229,7 +228,7 @@ class Module {
         } else {
           expFns.push(newFunc)
         }
-        let modFns = module.moduleScope.shallowGet(newFunc.getName()) as Array<Fn>
+        let modFns = module.moduleScope.get(newFunc.getName()) as Array<Fn>
         if (!modFns) {
           module.moduleScope.put(
             newFunc.getName(),
