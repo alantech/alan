@@ -152,4 +152,47 @@ line 8:0 extraneous input '<EOF>' expecting {'const', 'let', 'return', 'emit', B
 Cannot read property 'basicassignables' of null"
     End
   End
+
+  Describe "Importing unexported values"
+    before() {
+      sourceToFile piece.ln "
+        type Piece {
+          owner: bool
+        }
+      "
+      sourceToTemp "
+        from @std/app import start, print, exit
+        from ./piece import Piece
+
+        on start {
+          const piece = new Piece {
+            owner = false
+          }
+          print('Hello World')
+          if piece.owner == true {
+            print('OK')
+          } else {
+            print('False')
+          }
+          emit exit 0
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanFile piece.ln
+      cleanTemp
+    }
+    AfterAll after
+
+    It "doesn't work"
+      When run alan compile temp.ln temp.amm
+      The status should not eq "0"
+      The error should eq "Piece is not a type
+new Piece {
+            owner = false
+          } on line 2:24"
+    End
+  End
 End
