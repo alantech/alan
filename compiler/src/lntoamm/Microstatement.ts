@@ -119,6 +119,7 @@ class Microstatement {
         break
       case StatementType.REREF:
       case StatementType.ARG:
+      case StatementType.CLOSUREDEF:
         // Intentionally never output anything, this is metadata for the transpiler algo only
         break
     }
@@ -356,7 +357,8 @@ ${varAst.getText()} on line ${varAst.start.line}:${varAst.start.column}`)
     // For now we still create the function object and the microstatement to assign it
     if (basicAssignablesAst.functions() != null) {
       const fnToAssign = UserFunction.fromAst(basicAssignablesAst.functions(), scope)
-      Microstatement.closureFromUserFunction(fnToAssign, scope, microstatements)
+      Microstatement.closureDef([fnToAssign], scope, microstatements)
+      // Microstatement.closureFromUserFunction(fnToAssign, scope, microstatements)
       return
     }
     // Here is where we inline the functions that were defined elsewhere or just above here! Or if
@@ -380,10 +382,14 @@ ${varAst.getText()} on line ${varAst.start.line}:${varAst.start.column}`)
       )
       if (!original) {
         const maybeFn = scope.deepGet(basicAssignablesAst.varn().getText())
-        if (maybeFn && maybeFn instanceof Array && maybeFn[0] instanceof UserFunction) {
-          // TODO: Add multiple dispatch here
-          // Also TODO: Support passing opcodes directly, too, for the rare cases they're directly exposed
-          Microstatement.closureFromUserFunction(maybeFn[0], scope, microstatements)
+        if (
+          maybeFn &&
+          maybeFn instanceof Array &&
+          !(maybeFn[0] instanceof Operator)
+          && typeof maybeFn[0].getName === 'function'
+        ) {
+          Microstatement.closureDef(maybeFn as Array<Fn>, scope, microstatements)
+          // Microstatement.closureFromUserFunction(maybeFn[0], scope, microstatements)
           return
         }
       }
@@ -845,18 +851,29 @@ ${withOperatorsAst.getText()}`
     }
   }
 
+  static closureDef(
+    fns: Array<Fn>,
+    scope: Scope,
+    microstatements: Array<Microstatement>,
+  ) {
+    microstatements.push(new Microstatement(
+      StatementType.CLOSUREDEF,
+      scope,
+      true, // TODO: What should this be?
+      fns[0].getName(),
+      Type.builtinTypes['function'],
+      [],
+      fns,
+    ))
+  }
+
   static closureFromUserFunction(
     userFunction: UserFunction,
     scope: Scope,
     microstatements: Array<Microstatement>,
+    interfaceMap: Map<Type, Type>,
   ) {
-    // TODO: Potentially revisit this entire approach -- closures with interface types should be
-    // re-evaluated at each callsite to get the correct opcodes selected based on the matched types
-    // and the related functions. Those functions may be implemented wildly differently between the
-    // compatible types such that the microstatements would not be a simple type replacement away
-    // inject arguments as const declarations into microstatements arrays with the variable names
-    // and remove them later so we can parse the closure and keep the logic contained to this method
-    const fn = userFunction.maybeTransform(new Map()) // TODO: Interface mangling is probably needed
+    const fn = userFunction.maybeTransform(interfaceMap)
     const idx = microstatements.length
     const args = Object.entries(fn.args)
     for (const [name, type] of args) {
@@ -1107,10 +1124,10 @@ ${emitsAst.getText()} on line ${emitsAst.start.line}:${emitsAst.start.column}`)
           }
           if (
             microstatements[i].outputName === actualFnName &&
-            microstatements[i].closureStatements &&
-            microstatements[i].closureStatements.length > 0
-          ) {
-            microstatements.push(...microstatements[i].closureStatements.filter(s => s.statementType !== StatementType.EXIT))
+            microstatements[i].statementType === StatementType.CLOSUREDEF) {
+            const fn = UserFunction.dispatchFn(microstatements[i].fns, realArgTypes, scope)
+            fn.microstatementInlining(realArgNames, scope, microstatements)
+            // microstatements.push(...microstatements[i].closureStatements.filter(s => s.statementType !== StatementType.EXIT))
             return
           }
         }
