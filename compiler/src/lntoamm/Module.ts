@@ -81,7 +81,7 @@ class Module {
           } else {
             importName = moduleVar.varop(0).getText()
           }
-          const thing = importedModule.exportScope.get(exportName)
+          const thing = importedModule.exportScope.shallowGet(exportName)
           module.moduleScope.put(importName, thing)
           // Special behavior for interfaces. If there are any functions or operators that match
           // the interface, pull them in. Similarly any types that match the entire interface. This
@@ -159,7 +159,7 @@ class Module {
       if (newFunc.getName() == null) {
         throw new Error("Module-level functions must have a name")
       }
-      let fns = module.moduleScope.get(newFunc.getName())
+      let fns = module.moduleScope.get(newFunc.getName()) as Array<Fn>
       if (fns == null) {
         module.moduleScope.put(newFunc.getName(), [newFunc])
       } else {
@@ -218,9 +218,8 @@ class Module {
           throw new Error("Module-level functions must have a name")
         }
         // Exported scope must be checked first because it will fall through to the not-exported
-        // scope by default. Should probably create a `getShallow` for this case, but reordering
-        // the two if blocks below is enough to fix things here.
-        let expFns = module.exportScope.get(newFunc.getName()) as Array<Fn>
+        // scope by default.
+        let expFns = module.exportScope.shallowGet(newFunc.getName()) as Array<Fn>
         if (!expFns) {
           module.exportScope.put(
             newFunc.getName(),

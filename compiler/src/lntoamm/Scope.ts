@@ -37,6 +37,13 @@ class Scope {
     return null
   }
 
+  shallowGet(name: string) {
+    if (this.vals.hasOwnProperty(name)) {
+      return this.vals[name]
+    }
+    return null
+  }
+
   deepGet(fullName: string) {
     const fullVar = fullName.trim().split(".")
     let boxedVar: Boxish
