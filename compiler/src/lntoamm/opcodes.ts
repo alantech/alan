@@ -107,8 +107,24 @@ const addopcodes = (opcodes: object) => {
                       const arrayInnerType = scope.deepGet(
                         inputTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
                       ) as Type
-                      fn = UserFunction.dispatchFn(inputs[i].fns, [arrayInnerType], scope)
-                      if (!fn) fn = UserFunction.dispatchFn(inputs[i].fns, [], scope)
+                      try {
+                        fn = UserFunction.dispatchFn(inputs[i].fns, [arrayInnerType], scope)
+                        (Object.values(fn.getArguments())[0] as Type)
+                          .typeApplies(arrayInnerType, scope, interfaceMap)
+                      } catch {
+                        try {
+                          fn = UserFunction.dispatchFn(inputs[i].fns, [], scope)
+                        } catch {
+                          fn = UserFunction.dispatchFn(
+                            inputs[i].fns,
+                            [arrayInnerType, Type.builtinTypes.int64],
+                            scope,
+                          )
+                          const closureArgs = Object.values(fn.getArguments()) as Type[]
+                          closureArgs[0].typeApplies(arrayInnerType, scope, interfaceMap)
+                          closureArgs[1].typeApplies(Type.builtinTypes.int64, scope, interfaceMap)
+                        }
+                      }
                     } else if (['reducel', 'reducep'].includes(opcodeName)) {
                       const arrayInnerType = scope.deepGet(
                         inputTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
@@ -118,32 +134,43 @@ const addopcodes = (opcodes: object) => {
                         [arrayInnerType, arrayInnerType],
                         scope
                       )
+                      const closureArgs = Object.values(fn.getArguments()) as Type[]
+                      closureArgs[0].typeApplies(arrayInnerType, scope, interfaceMap)
+                      closureArgs[1].typeApplies(arrayInnerType, scope, interfaceMap)
                     } else if (['foldl'].includes(opcodeName)) {
                       const reducerTypes = Object.values(inputTypes[0].properties) as Type[]
+                      const inType = scope.deepGet(
+                        reducerTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
+                      ) as Type
                       const fnArgTypes = [
                         reducerTypes[1],
-                        scope.deepGet(
-                          reducerTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
-                        ) as Type,
+                        inType,
                       ]
                       fn = UserFunction.dispatchFn(
                         inputs[i].fns,
                         fnArgTypes,
                         scope,
                       )
+                      const closureArgs = Object.values(fn.getArguments()) as Type[]
+                      closureArgs[0].typeApplies(reducerTypes[1], scope, interfaceMap)
+                      closureArgs[1].typeApplies(inType, scope, interfaceMap)
                     } else if (['foldp'].includes(opcodeName)) {
                       const reducerTypes = Object.values(inputTypes[0].properties) as Type[]
+                      const inType = scope.deepGet(
+                        reducerTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
+                      ) as Type
                       const fnArgTypes = [
                         reducerTypes[1],
-                        scope.deepGet(
-                          reducerTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
-                        ) as Type,
+                        inType,
                       ]
                       fn = UserFunction.dispatchFn(
                         inputs[i].fns,
                         fnArgTypes,
                         scope,
                       )
+                      const closureArgs = Object.values(fn.getArguments()) as Type[]
+                      closureArgs[0].typeApplies(reducerTypes[1], scope, interfaceMap)
+                      closureArgs[1].typeApplies(inType, scope, interfaceMap)
                     } else if (['selfrec'].includes(opcodeName)) {
                       // TODO
                       fn = inputs[i].fns[0]
@@ -187,8 +214,27 @@ const addopcodes = (opcodes: object) => {
                   const arrayInnerType = scope.deepGet(
                     inputTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
                   ) as Type
-                  let fn = UserFunction.dispatchFn(inputs[1].fns, [arrayInnerType], scope)
-                  if (!fn) fn = UserFunction.dispatchFn(inputs[1].fns, [], scope)
+                  let fn: any
+                  try {
+                    fn = UserFunction.dispatchFn(inputs[1].fns, [arrayInnerType], scope)
+                  } catch {
+                    try {
+                      fn = UserFunction.dispatchFn(inputs[1].fns, [], scope)
+                    } catch {
+                      fn = UserFunction.dispatchFn(
+                        inputs[1].fns,
+                        [arrayInnerType, Type.builtinTypes.int64],
+                        scope,
+                      )
+                    }
+                  }
+                  const closureArgs = Object.values(fn.getArguments()) as Type[]
+                  if (closureArgs[0]) {
+                    closureArgs[0].typeApplies(arrayInnerType, scope, interfaceMap)
+                  }
+                  if (closureArgs[1]) {
+                    closureArgs[1].typeApplies(Type.builtinTypes.int64, scope, interfaceMap)
+                  }
                   const idx = microstatements.indexOf(inputs[1])
                   const m = microstatements.slice(0, idx)
                   Microstatement.closureFromUserFunction(fn, scope, m, interfaceMap)
@@ -215,6 +261,9 @@ const addopcodes = (opcodes: object) => {
                     [arrayInnerType, arrayInnerType],
                     scope
                   )
+                  const closureArgs = Object.values(fn.getArguments()) as Type[]
+                  closureArgs[0].typeApplies(arrayInnerType, scope, interfaceMap)
+                  closureArgs[1].typeApplies(arrayInnerType, scope, interfaceMap)
                   const idx = microstatements.indexOf(inputs[1])
                   const m = microstatements.slice(0, idx)
                   Microstatement.closureFromUserFunction(fn, scope, m, interfaceMap)
@@ -224,36 +273,45 @@ const addopcodes = (opcodes: object) => {
                   return arrayInnerType
                 } else if (['foldl'].includes(opcodeName)) {
                   const reducerTypes = Object.values(inputTypes[0].properties) as Type[]
+                  const inType = scope.deepGet(
+                    reducerTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
+                  ) as Type
                   const fnArgTypes = [
                     reducerTypes[1],
-                    scope.deepGet(
-                      reducerTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
-                    ) as Type,
+                    inType,
                   ]
                   let fn = UserFunction.dispatchFn(
                     inputs[1].fns,
                     fnArgTypes,
                     scope,
                   )
+                  const closureArgs = Object.values(fn.getArguments()) as Type[]
+                  closureArgs[0].typeApplies(reducerTypes[1], scope, interfaceMap)
+                  closureArgs[1].typeApplies(inType, scope, interfaceMap)
                   const idx = microstatements.indexOf(inputs[1])
                   const m = microstatements.slice(0, idx)
                   Microstatement.closureFromUserFunction(fn, scope, m, interfaceMap)
                   const closure = m[m.length - 1]
                   microstatements.splice(idx, 0, closure)
                   realArgNames[1] = closure.outputName
+                  return closure.closureOutputType
                 } else if (['foldp'].includes(opcodeName)) {
                   const reducerTypes = Object.values(inputTypes[0].properties) as Type[]
+                  const inType = scope.deepGet(
+                    reducerTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
+                  ) as Type
                   const fnArgTypes = [
                     reducerTypes[1],
-                    scope.deepGet(
-                      reducerTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
-                    ) as Type,
+                    inType,
                   ]
                   const fn = UserFunction.dispatchFn(
                     inputs[1].fns,
                     fnArgTypes,
                     scope,
                   )
+                  const closureArgs = Object.values(fn.getArguments()) as Type[]
+                  closureArgs[0].typeApplies(reducerTypes[1], scope, interfaceMap)
+                  closureArgs[1].typeApplies(inType, scope, interfaceMap)
                   const idx = microstatements.indexOf(inputs[1])
                   const m = microstatements.slice(0, idx)
                   Microstatement.closureFromUserFunction(fn, scope, m, interfaceMap)
@@ -297,8 +355,26 @@ const addopcodes = (opcodes: object) => {
                       const arrayInnerType = scope.deepGet(
                         inputTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
                       ) as Type
-                      fn = UserFunction.dispatchFn(inputs[1].fns, [arrayInnerType], scope)
-                      if (!fn) fn = UserFunction.dispatchFn(inputs[1].fns, [], scope)
+                      try {
+                        fn = UserFunction.dispatchFn(inputs[i].fns, [arrayInnerType], scope)
+                      } catch {
+                        try {
+                          fn = UserFunction.dispatchFn(inputs[i].fns, [], scope)
+                        } catch {
+                          fn = UserFunction.dispatchFn(
+                            inputs[i].fns,
+                            [arrayInnerType, Type.builtinTypes.int64],
+                            scope,
+                          )
+                        }
+                      }
+                      const closureArgs = Object.values(fn.getArguments()) as Type[]
+                      if (closureArgs[0]) {
+                        closureArgs[0].typeApplies(arrayInnerType, scope, interfaceMap)
+                      }
+                      if (closureArgs[1]) {
+                        closureArgs[1].typeApplies(Type.builtinTypes.int64, scope, interfaceMap)
+                      }
                     } else if (['reducel', 'reducep'].includes(opcodeName)) {
                       const arrayInnerType = scope.deepGet(
                         inputTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
@@ -308,12 +384,26 @@ const addopcodes = (opcodes: object) => {
                         [arrayInnerType, arrayInnerType],
                         scope
                       )
+                      const closureArgs = Object.values(fn.getArguments()) as Type[]
+                      closureArgs[0].typeApplies(arrayInnerType, scope, interfaceMap)
+                      closureArgs[1].typeApplies(arrayInnerType, scope, interfaceMap)
                     } else if (['foldl'].includes(opcodeName)) {
-                      fn = UserFunction.dispatchFn(
+                      const reducerTypes = Object.values(inputTypes[0].properties) as Type[]
+                      const inType = scope.deepGet(
+                        reducerTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
+                      ) as Type
+                      const fnArgTypes = [
+                        reducerTypes[1],
+                        inType,
+                      ]
+                      let fn = UserFunction.dispatchFn(
                         inputs[1].fns,
-                        [null, null], // Wrong!
-                        scope
+                        fnArgTypes,
+                        scope,
                       )
+                      const closureArgs = Object.values(fn.getArguments()) as Type[]
+                      closureArgs[0].typeApplies(reducerTypes[1], scope, interfaceMap)
+                      closureArgs[1].typeApplies(inType, scope, interfaceMap)
                     } else if (['selfrec'].includes(opcodeName)) {
                       // TODO
                       fn = inputs[i].fns[0]
