@@ -30,7 +30,7 @@ For MacOS:
 
 ```bash
 curl -OL https://github.com/alantech/alan/releases/download/v0.1.7/alan-macos.tar.gz
-tar -xzf alan-ubuntu.tar.gz
+tar -xzf alan-macos.tar.gz
 # sudo mkdir -p /usr/local/bin if the folder does not exist
 sudo mv alan /usr/local/bin/alan
 ```
