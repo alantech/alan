@@ -856,11 +856,12 @@ ${withOperatorsAst.getText()}`
     scope: Scope,
     microstatements: Array<Microstatement>,
   ) {
+    const closuredefName = "_" + uuid().replace(/-/g, "_")
     microstatements.push(new Microstatement(
       StatementType.CLOSUREDEF,
       scope,
       true, // TODO: What should this be?
-      fns[0].getName(),
+      closuredefName,
       Type.builtinTypes['function'],
       [],
       fns,

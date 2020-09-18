@@ -97,7 +97,59 @@ const addopcodes = (opcodes: object) => {
                   if (inputs[i].statementType === StatementType.CLOSUREDEF) {
                     const idx = microstatements.indexOf(inputs[i])
                     const m = microstatements.slice(0, idx)
-                    const fn = UserFunction.dispatchFn(inputs[i].fns, [], scope)
+                    let fn: any
+                    // TODO: Remove this hackery after function types are more than just 'function'
+                    if ([
+                      'map', 'mapl', 'each', 'eachl', 'find', 'findl', 'every', 'everyl', 'some',
+                      'somel', 'filter', 'filterl',
+                    ].includes(opcodeName)) {
+                      // TODO: Try to re-unify these blocks from above
+                      const arrayInnerType = scope.deepGet(
+                        inputTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
+                      ) as Type
+                      fn = UserFunction.dispatchFn(inputs[i].fns, [arrayInnerType], scope)
+                      if (!fn) fn = UserFunction.dispatchFn(inputs[i].fns, [], scope)
+                    } else if (['reducel', 'reducep'].includes(opcodeName)) {
+                      const arrayInnerType = scope.deepGet(
+                        inputTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
+                      ) as Type
+                      fn = UserFunction.dispatchFn(
+                        inputs[i].fns,
+                        [arrayInnerType, arrayInnerType],
+                        scope
+                      )
+                    } else if (['foldl'].includes(opcodeName)) {
+                      const reducerTypes = Object.values(inputTypes[0].properties) as Type[]
+                      const fnArgTypes = [
+                        reducerTypes[1],
+                        scope.deepGet(
+                          reducerTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
+                        ) as Type,
+                      ]
+                      fn = UserFunction.dispatchFn(
+                        inputs[i].fns,
+                        fnArgTypes,
+                        scope,
+                      )
+                    } else if (['foldp'].includes(opcodeName)) {
+                      const reducerTypes = Object.values(inputTypes[0].properties) as Type[]
+                      const fnArgTypes = [
+                        reducerTypes[1],
+                        scope.deepGet(
+                          reducerTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
+                        ) as Type,
+                      ]
+                      fn = UserFunction.dispatchFn(
+                        inputs[i].fns,
+                        fnArgTypes,
+                        scope,
+                      )
+                    } else if (['selfrec'].includes(opcodeName)) {
+                      // TODO
+                      fn = inputs[i].fns[0]
+                    } else {
+                      fn = UserFunction.dispatchFn(inputs[i].fns, [], scope)
+                    }
                     Microstatement.closureFromUserFunction(fn, scope, m, interfaceMap)
                     const closure = m[m.length - 1]
                     microstatements.splice(idx, 0, closure)
@@ -123,7 +175,10 @@ const addopcodes = (opcodes: object) => {
                 Object.values(returnType.properties).some((p: Type) => !!p.iface)
               ) {
                 // TODO: Remove this hackery after function types are more than just 'function'
-                if (['map', 'mapl', 'each', 'eachl', 'find', 'findl'].includes(opcodeName)) {
+                if ([
+                  'map', 'mapl', 'each', 'eachl', 'find', 'findl', 'every', 'everyl', 'some',
+                  'somel', 'filter', 'filterl',
+                ].includes(opcodeName)) {
                   // The ideal `map` opcode type declaration is something like:
                   // `map(Array<any>, fn (any): anythingElse): Array<anythingElse>` and then the
                   // interface matching logic figures out what the return type of the opcode is
@@ -140,13 +195,75 @@ const addopcodes = (opcodes: object) => {
                   const closure = m[m.length - 1]
                   microstatements.splice(idx, 0, closure)
                   realArgNames[1] = closure.outputName
-                  const innerType = closure.closureOutputType
-                  const newInnerType = innerType.realize(interfaceMap, scope) // Necessary?
-                  const baseType = returnType.originalType
-                  const newReturnType = baseType ?
-                    baseType.solidify([newInnerType.typename], scope) :
-                    returnType
-                  return newReturnType
+                  if (['filter', 'filterl'].includes(opcodeName)) {
+                    return inputs[0].outputType
+                  } else {
+                    const innerType = closure.closureOutputType
+                    const newInnerType = innerType.realize(interfaceMap, scope) // Necessary?
+                    const baseType = returnType.originalType
+                    const newReturnType = baseType ?
+                      baseType.solidify([newInnerType.typename], scope) :
+                      returnType
+                    return newReturnType
+                  }
+                } else if (['reducel', 'reducep'].includes(opcodeName)) {
+                  const arrayInnerType = scope.deepGet(
+                    inputTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
+                  ) as Type
+                  let fn = UserFunction.dispatchFn(
+                    inputs[1].fns,
+                    [arrayInnerType, arrayInnerType],
+                    scope
+                  )
+                  const idx = microstatements.indexOf(inputs[1])
+                  const m = microstatements.slice(0, idx)
+                  Microstatement.closureFromUserFunction(fn, scope, m, interfaceMap)
+                  const closure = m[m.length - 1]
+                  microstatements.splice(idx, 0, closure)
+                  realArgNames[1] = closure.outputName
+                  return arrayInnerType
+                } else if (['foldl'].includes(opcodeName)) {
+                  const reducerTypes = Object.values(inputTypes[0].properties) as Type[]
+                  const fnArgTypes = [
+                    reducerTypes[1],
+                    scope.deepGet(
+                      reducerTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
+                    ) as Type,
+                  ]
+                  let fn = UserFunction.dispatchFn(
+                    inputs[1].fns,
+                    fnArgTypes,
+                    scope,
+                  )
+                  const idx = microstatements.indexOf(inputs[1])
+                  const m = microstatements.slice(0, idx)
+                  Microstatement.closureFromUserFunction(fn, scope, m, interfaceMap)
+                  const closure = m[m.length - 1]
+                  microstatements.splice(idx, 0, closure)
+                  realArgNames[1] = closure.outputName
+                } else if (['foldp'].includes(opcodeName)) {
+                  const reducerTypes = Object.values(inputTypes[0].properties) as Type[]
+                  const fnArgTypes = [
+                    reducerTypes[1],
+                    scope.deepGet(
+                      reducerTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
+                    ) as Type,
+                  ]
+                  const fn = UserFunction.dispatchFn(
+                    inputs[1].fns,
+                    fnArgTypes,
+                    scope,
+                  )
+                  const idx = microstatements.indexOf(inputs[1])
+                  const m = microstatements.slice(0, idx)
+                  Microstatement.closureFromUserFunction(fn, scope, m, interfaceMap)
+                  const closure = m[m.length - 1]
+                  microstatements.splice(idx, 0, closure)
+                  realArgNames[1] = closure.outputName
+                  return Type.builtinTypes['Array'].solidify(
+                    [closure.closureOutputType.typename],
+                    scope,
+                  )
                 } else if (['selfrec'].includes(opcodeName)) {
                   // TODO: This is absolute crap. How to fix?
                   return inputs[0].inputNames[1] ? Microstatement.fromVarName(
@@ -171,13 +288,32 @@ const addopcodes = (opcodes: object) => {
                     const idx = microstatements.indexOf(inputs[i])
                     const m = microstatements.slice(0, idx)
                     let fn: any
-                    if (['map', 'mapl', 'each', 'eachl', 'find', 'findl'].includes(opcodeName)) {
+                    // TODO: Remove this hackery after function types are more than just 'function'
+                    if ([
+                      'map', 'mapl', 'each', 'eachl', 'find', 'findl', 'every', 'everyl', 'some',
+                      'somel', 'filter', 'filterl',
+                    ].includes(opcodeName)) {
                       // TODO: Try to re-unify these blocks from above
                       const arrayInnerType = scope.deepGet(
                         inputTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
                       ) as Type
                       fn = UserFunction.dispatchFn(inputs[1].fns, [arrayInnerType], scope)
                       if (!fn) fn = UserFunction.dispatchFn(inputs[1].fns, [], scope)
+                    } else if (['reducel', 'reducep'].includes(opcodeName)) {
+                      const arrayInnerType = scope.deepGet(
+                        inputTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
+                      ) as Type
+                      fn = UserFunction.dispatchFn(
+                        inputs[1].fns,
+                        [arrayInnerType, arrayInnerType],
+                        scope
+                      )
+                    } else if (['foldl'].includes(opcodeName)) {
+                      fn = UserFunction.dispatchFn(
+                        inputs[1].fns,
+                        [null, null], // Wrong!
+                        scope
+                      )
                     } else if (['selfrec'].includes(opcodeName)) {
                       // TODO
                       fn = inputs[i].fns[0]
