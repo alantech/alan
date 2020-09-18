@@ -401,9 +401,9 @@ true"
 
           print('reduce as filter and concat test')
           // TODO: Lots of improvements needed for closures passed directly to opcodes. This one-liner is ridiculous
-          test.reduce(fn (acc: string, i: int): string = (acc == '' && i % 2 == 1) ? i.toString() : (i % 2 == 1 ? (acc + ', ' + i.toString()) : acc), '').print()
+          test.reduce(fn (acc: string, i: int): string = ((acc == '') && (i % 2 == 1)) ? i.toString() : (i % 2 == 1 ? (acc + ', ' + i.toString()) : acc), '').print()
           // TODO: Even more ridiculous when you want to allow parallelism
-          test.reducePar(fn (acc: string, i: int): string = (acc == '' && i % 2 == 1) ? i.toString() : (i % 2 == 1 ? (acc + ', ' + i.toString()) : acc), fn (acc: string, cur: string): string = (acc != '' && cur != '') ? (acc + ', ' + cur) : (acc != '' ? acc : cur), '').print()
+          test.reducePar(fn (acc: string, i: int): string = ((acc == '') && (i % 2 == 1)) ? i.toString() : (i % 2 == 1 ? (acc + ', ' + i.toString()) : acc), fn (acc: string, cur: string): string = ((acc != '') && (cur != '')) ? (acc + ', ' + cur) : (acc != '' ? acc : cur), '').print()
 
           emit exit 0
         }
