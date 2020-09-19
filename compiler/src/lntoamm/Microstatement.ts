@@ -857,6 +857,8 @@ ${withOperatorsAst.getText()}`
     microstatements: Array<Microstatement>,
   ) {
     const closuredefName = "_" + uuid().replace(/-/g, "_")
+    // Keep any rerefs around as closure references
+    const rerefs = microstatements.filter(m => m.statementType === StatementType.REREF)
     microstatements.push(new Microstatement(
       StatementType.CLOSUREDEF,
       scope,
@@ -865,6 +867,9 @@ ${withOperatorsAst.getText()}`
       Type.builtinTypes['function'],
       [],
       fns,
+      '',
+      true,
+      rerefs,
     ))
   }
 
@@ -1126,9 +1131,11 @@ ${emitsAst.getText()} on line ${emitsAst.start.line}:${emitsAst.start.column}`)
           if (
             microstatements[i].outputName === actualFnName &&
             microstatements[i].statementType === StatementType.CLOSUREDEF) {
-            const fn = UserFunction.dispatchFn(microstatements[i].fns, realArgTypes, scope)
-            fn.microstatementInlining(realArgNames, scope, microstatements)
-            // microstatements.push(...microstatements[i].closureStatements.filter(s => s.statementType !== StatementType.EXIT))
+            // TODO: Proper multiple dispatch here, too
+            const m = [...microstatements, ...microstatements[i].closureStatements]
+            Microstatement.closureFromUserFunction(microstatements[i].fns[0] as UserFunction, scope, m, new Map())
+            const closure = m.pop()
+            microstatements.push(...closure.closureStatements.filter(s => s.statementType !== StatementType.EXIT))
             return
           }
         }
@@ -1190,6 +1197,9 @@ ${callsAst.getText()} on line ${callsAst.start.line}:${callsAst.start.column}`)
         } else if (microstatement.statementType === StatementType.REREF) {
           original = Microstatement.fromVarName(microstatement.outputName, scope, microstatements)
           break
+        } else if (microstatement.statementType === StatementType.ASSIGNMENT) {
+          // We could treat this as evidence that it's cool, but let's just skip it.
+          continue
         } else {
           throw new Error(`Attempting to reassign a non-let variable.
 ${letName} on line ${assignmentsAst.start.line}:${assignmentsAst.start.column}`)
@@ -1212,6 +1222,12 @@ ${letName} on line ${assignmentsAst.line}:${assignmentsAst.start.column}`)
         if (microstatement.outputName === actualLetName) {
           if (microstatement.statementType === StatementType.LETDEC) {
             break
+          } else if (microstatement.statementType === StatementType.REREF) {
+            original = Microstatement.fromVarName(microstatement.outputName, scope, microstatements)
+            break
+          } else if (microstatement.statementType === StatementType.ASSIGNMENT) {
+            // Could treat this as evidence that it's okay, but let's be sure about that
+            continue
           } else {
             throw new Error(`Attempting to reassign a non-let variable.
 ${letName} on line ${assignmentsAst.line}:${assignmentsAst.start.column}`)
