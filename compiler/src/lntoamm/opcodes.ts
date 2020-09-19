@@ -56,6 +56,23 @@ const addopcodes = (opcodes: object) => {
           scope: Scope,
           microstatements: Array<Microstatement>,
         ) => {
+          if (['seqwhile'].includes(opcodeName)) {
+            const inputs = realArgNames.map(n => Microstatement.fromVarName(n, scope, microstatements))
+            const condfn = UserFunction.dispatchFn(inputs[1].fns, [], scope)
+            const condidx = microstatements.indexOf(inputs[1])
+            const condm = microstatements.slice(0, condidx)
+            Microstatement.closureFromUserFunction(condfn, scope, condm, new Map())
+            const condclosure = condm[condm.length - 1]
+            microstatements.splice(condidx, 0, condclosure)
+            realArgNames[1] = condclosure.outputName
+            const bodyfn = UserFunction.dispatchFn(inputs[2].fns, [], scope)
+            const bodyidx = microstatements.indexOf(inputs[2])
+            const bodym = microstatements.slice(0, bodyidx)
+            Microstatement.closureFromUserFunction(bodyfn, scope, bodym, new Map())
+            const bodyclosure = bodym[bodym.length - 1]
+            microstatements.splice(bodyidx, 0, bodyclosure)
+            realArgNames[2] = bodyclosure.outputName
+          }
           microstatements.push(new Microstatement(
             StatementType.CALL,
             scope,
@@ -101,16 +118,19 @@ const addopcodes = (opcodes: object) => {
                     // TODO: Remove this hackery after function types are more than just 'function'
                     if ([
                       'map', 'mapl', 'each', 'eachl', 'find', 'findl', 'every', 'everyl', 'some',
-                      'somel', 'filter', 'filterl',
+                      'somel', 'filter', 'filterl', 'seqeach',
                     ].includes(opcodeName)) {
                       // TODO: Try to re-unify these blocks from above
                       const arrayInnerType = scope.deepGet(
                         inputTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
                       ) as Type
+                      const innerType = inputTypes[0].originalType ?
+                        arrayInnerType :
+                        Type.builtinTypes.int64 // Hackery for seqeach
                       try {
-                        fn = UserFunction.dispatchFn(inputs[i].fns, [arrayInnerType], scope)
+                        fn = UserFunction.dispatchFn(inputs[i].fns, [innerType], scope)
                         (Object.values(fn.getArguments())[0] as Type)
-                          .typeApplies(arrayInnerType, scope, interfaceMap)
+                          .typeApplies(innerType, scope, interfaceMap)
                       } catch {
                         try {
                           fn = UserFunction.dispatchFn(inputs[i].fns, [], scope)
@@ -171,9 +191,13 @@ const addopcodes = (opcodes: object) => {
                       const closureArgs = Object.values(fn.getArguments()) as Type[]
                       closureArgs[0].typeApplies(reducerTypes[1], scope, interfaceMap)
                       closureArgs[1].typeApplies(inType, scope, interfaceMap)
+                    } else if (['seqrec'].includes(opcodeName)) {
+                      // TODO: Is this even reachable?
+                      // TODO: How would multiple dispatch even work here?
+                      fn = inputs[1].fns[0]
                     } else if (['selfrec'].includes(opcodeName)) {
-                      // TODO
-                      fn = inputs[i].fns[0]
+                      // TODO: Is this even reachable?
+                      fn = inputs[0].fns[0]
                     } else {
                       fn = UserFunction.dispatchFn(inputs[i].fns, [], scope)
                     }
@@ -204,7 +228,7 @@ const addopcodes = (opcodes: object) => {
                 // TODO: Remove this hackery after function types are more than just 'function'
                 if ([
                   'map', 'mapl', 'each', 'eachl', 'find', 'findl', 'every', 'everyl', 'some',
-                  'somel', 'filter', 'filterl',
+                  'somel', 'filter', 'filterl', 'seqeach',
                 ].includes(opcodeName)) {
                   // The ideal `map` opcode type declaration is something like:
                   // `map(Array<any>, fn (any): anythingElse): Array<anythingElse>` and then the
@@ -214,9 +238,12 @@ const addopcodes = (opcodes: object) => {
                   const arrayInnerType = scope.deepGet(
                     inputTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
                   ) as Type
+                  const innerType = inputTypes[0].originalType ?
+                    arrayInnerType :
+                    Type.builtinTypes.int64 // Hackery for seqeach
                   let fn: any
                   try {
-                    fn = UserFunction.dispatchFn(inputs[1].fns, [arrayInnerType], scope)
+                    fn = UserFunction.dispatchFn(inputs[1].fns, [innerType], scope)
                   } catch {
                     try {
                       fn = UserFunction.dispatchFn(inputs[1].fns, [], scope)
@@ -230,7 +257,7 @@ const addopcodes = (opcodes: object) => {
                   }
                   const closureArgs = Object.values(fn.getArguments()) as Type[]
                   if (closureArgs[0]) {
-                    closureArgs[0].typeApplies(arrayInnerType, scope, interfaceMap)
+                    closureArgs[0].typeApplies(innerType, scope, interfaceMap)
                   }
                   if (closureArgs[1]) {
                     closureArgs[1].typeApplies(Type.builtinTypes.int64, scope, interfaceMap)
@@ -322,6 +349,17 @@ const addopcodes = (opcodes: object) => {
                     [closure.closureOutputType.typename],
                     scope,
                   )
+                } else if (['seqrec'].includes(opcodeName)) {
+                  // TODO: How would multiple dispatch even work here?
+                  const fn = inputs[1].inputNames[1].fns[0]
+                  const idx = microstatements.indexOf(inputs[1])
+                  const m = microstatements.slice(0, idx)
+                  Microstatement.closureFromUserFunction(fn, scope, m, interfaceMap)
+                  const closure = m[m.length - 1]
+                  microstatements.splice(idx, 0, closure)
+                  realArgNames[1] = closure.outputName
+                  // TODO: How do interface types work here?
+                  return closure.closureOutputType.typename
                 } else if (['selfrec'].includes(opcodeName)) {
                   // TODO: This is absolute crap. How to fix?
                   return inputs[0].inputNames[1] ? Microstatement.fromVarName(
@@ -349,14 +387,17 @@ const addopcodes = (opcodes: object) => {
                     // TODO: Remove this hackery after function types are more than just 'function'
                     if ([
                       'map', 'mapl', 'each', 'eachl', 'find', 'findl', 'every', 'everyl', 'some',
-                      'somel', 'filter', 'filterl',
+                      'somel', 'filter', 'filterl', 'seqeach',
                     ].includes(opcodeName)) {
                       // TODO: Try to re-unify these blocks from above
                       const arrayInnerType = scope.deepGet(
                         inputTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
                       ) as Type
+                      const innerType = inputTypes[0].originalType ?
+                        arrayInnerType :
+                        Type.builtinTypes.int64 // Hackery for seqeach
                       try {
-                        fn = UserFunction.dispatchFn(inputs[i].fns, [arrayInnerType], scope)
+                        fn = UserFunction.dispatchFn(inputs[i].fns, [innerType], scope)
                       } catch {
                         try {
                           fn = UserFunction.dispatchFn(inputs[i].fns, [], scope)
@@ -370,7 +411,7 @@ const addopcodes = (opcodes: object) => {
                       }
                       const closureArgs = Object.values(fn.getArguments()) as Type[]
                       if (closureArgs[0]) {
-                        closureArgs[0].typeApplies(arrayInnerType, scope, interfaceMap)
+                        closureArgs[0].typeApplies(innerType, scope, interfaceMap)
                       }
                       if (closureArgs[1]) {
                         closureArgs[1].typeApplies(Type.builtinTypes.int64, scope, interfaceMap)
@@ -404,9 +445,12 @@ const addopcodes = (opcodes: object) => {
                       const closureArgs = Object.values(fn.getArguments()) as Type[]
                       closureArgs[0].typeApplies(reducerTypes[1], scope, interfaceMap)
                       closureArgs[1].typeApplies(inType, scope, interfaceMap)
+                    } else if (['seqrec'].includes(opcodeName)) {
+                      // TODO: How would multiple dispatch even work here?
+                      fn = inputs[1].fns[0]
                     } else if (['selfrec'].includes(opcodeName)) {
-                      // TODO
-                      fn = inputs[i].fns[0]
+                      // TODO: Is this even reachable?
+                      fn = inputs[0].inputNames[1].fns[0]
                     } else {
                       fn = UserFunction.dispatchFn(inputs[i].fns, [], scope)
                     }
