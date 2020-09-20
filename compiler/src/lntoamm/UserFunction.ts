@@ -536,7 +536,7 @@ ${statements[i].statementOrAssignableAst.getText().trim()} on line ${statements[
       // Otherwise, add a marker for this
       microstatements.push(new Microstatement(
         StatementType.ENTERFN,
-        scope,
+        this.scope,
         true,
         '',
         Type.builtinTypes.void,
@@ -547,11 +547,11 @@ ${statements[i].statementOrAssignableAst.getText().trim()} on line ${statements[
     // Perform a transform, if necessary, before generating the microstatements
     // Resolve circular dependency issue
     const internalNames = Object.keys(this.args)
-    const inputs = realArgNames.map(n => Microstatement.fromVarName(n, scope, microstatements))
+    const inputs = realArgNames.map(n => Microstatement.fromVarName(n, this.scope, microstatements))
     const inputTypes = inputs.map(i => i.outputType)
     const originalTypes = Object.values(this.getArguments())
     const interfaceMap: Map<Type, Type> = new Map()
-    originalTypes.forEach((t, i) => t.typeApplies(inputTypes[i], scope, interfaceMap))
+    originalTypes.forEach((t, i) => t.typeApplies(inputTypes[i], this.scope, interfaceMap))
     for (let i = 0; i < internalNames.length; i++) {
       const realArgName = realArgNames[i]
       // Instead of copying the relevant data, define a reference to where the data is located with
@@ -559,7 +559,7 @@ ${statements[i].statementOrAssignableAst.getText().trim()} on line ${statements[
       // can be rewritten to use the new variable name.
       microstatements.push(new Microstatement(
         StatementType.REREF,
-        scope,
+        this.scope,
         true,
         realArgName,
         inputTypes[i],
@@ -570,7 +570,7 @@ ${statements[i].statementOrAssignableAst.getText().trim()} on line ${statements[
     }
     const fn = this.maybeTransform(interfaceMap)
     for (const s of fn.statements) {
-      Microstatement.fromStatement(s, microstatements, scope)
+      Microstatement.fromStatement(s, microstatements, this.scope)
     }
     // Delete `REREF`s except a `return` statement's `REREF` to make sure it doesn't interfere with
     // the outer scope (if it has the same variable name defined, for instance)
@@ -586,11 +586,11 @@ ${statements[i].statementOrAssignableAst.getText().trim()} on line ${statements[
     // all inputs of that particular interface are the same type. TODO: If this is not true, it must
     // be a compile-time error earlier on.
     const last = microstatements[microstatements.length - 1]
-    if (!this.returnType.typeApplies(last.outputType, scope, new Map()))  {
+    if (!this.returnType.typeApplies(last.outputType, this.scope, new Map()))  {
       const returnTypeAst = Ast.fulltypenameAstFromString(this.returnType.typename)
       const returnTypeGenerics = returnTypeAst.typegenerics()
       const returnSubtypes = returnTypeGenerics ? returnTypeGenerics.fulltypename().map(
-        (t: any) => scope.deepGet(t.getText())
+        (t: any) => this.scope.deepGet(t.getText())
       ) : []
       if (this.returnType.iface) {
         const originalArgTypes = Object.values(this.args)
@@ -611,16 +611,16 @@ ${statements[i].statementOrAssignableAst.getText().trim()} on line ${statements[
         }
         let newReturnType = oldReturnType.originalType.solidify(
           returnSubtypes.map((t: Type) => t.typename),
-          scope
+          this.scope
         )
         last.outputType = newReturnType
       } else {
         const lastTypeAst = Ast.fulltypenameAstFromString(last.outputType.typename)
         const lastTypeGenerics = lastTypeAst.typegenerics()
         const lastSubtypes = lastTypeGenerics ? lastTypeGenerics.fulltypename().map(
-          (t: any) => scope.deepGet(t.getText()) || (scope.deepGet(t.varn().getText()) as Type).solidify(
+          (t: any) => this.scope.deepGet(t.getText()) || (this.scope.deepGet(t.varn().getText()) as Type).solidify(
             t.typegenerics().fulltypename().map((t: any) => t.getText()),
-            scope
+            this.scope
           )
         ) : []
         if (lastSubtypes.some((t: Type) => !!t.iface)) {
@@ -635,7 +635,7 @@ ${statements[i].statementOrAssignableAst.getText().trim()} on line ${statements[
           }
           let newLastType = oldLastType.originalType.solidify(
             lastSubtypes.map((t: Type) => t.typename),
-            scope
+            this.scope
           )
           last.outputType = newLastType
         }

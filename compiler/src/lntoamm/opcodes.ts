@@ -61,14 +61,14 @@ const addopcodes = (opcodes: object) => {
             const condfn = UserFunction.dispatchFn(inputs[1].fns, [], scope)
             const condidx = microstatements.indexOf(inputs[1])
             const condm = microstatements.slice(0, condidx)
-            Microstatement.closureFromUserFunction(condfn, scope, condm, new Map())
+            Microstatement.closureFromUserFunction(condfn, condfn.scope || scope, condm, new Map())
             const condclosure = condm[condm.length - 1]
             microstatements.splice(condidx, 0, condclosure)
             realArgNames[1] = condclosure.outputName
             const bodyfn = UserFunction.dispatchFn(inputs[2].fns, [], scope)
             const bodyidx = microstatements.indexOf(inputs[2])
             const bodym = microstatements.slice(0, bodyidx)
-            Microstatement.closureFromUserFunction(bodyfn, scope, bodym, new Map())
+            Microstatement.closureFromUserFunction(bodyfn, bodyfn.scope || scope, bodym, new Map())
             const bodyclosure = bodym[bodym.length - 1]
             microstatements.splice(bodyidx, 0, bodyclosure)
             realArgNames[2] = bodyclosure.outputName
@@ -201,7 +201,7 @@ const addopcodes = (opcodes: object) => {
                     } else {
                       fn = UserFunction.dispatchFn(inputs[i].fns, [], scope)
                     }
-                    Microstatement.closureFromUserFunction(fn, scope, m, interfaceMap)
+                    Microstatement.closureFromUserFunction(fn, fn.scope || scope, m, interfaceMap)
                     const closure = m[m.length - 1]
                     microstatements.splice(idx, 0, closure)
                     realArgNames[i] = closure.outputName
@@ -264,7 +264,7 @@ const addopcodes = (opcodes: object) => {
                   }
                   const idx = microstatements.indexOf(inputs[1])
                   const m = microstatements.slice(0, idx)
-                  Microstatement.closureFromUserFunction(fn, scope, m, interfaceMap)
+                  Microstatement.closureFromUserFunction(fn, fn.scope || scope, m, interfaceMap)
                   const closure = m[m.length - 1]
                   microstatements.splice(idx, 0, closure)
                   realArgNames[1] = closure.outputName
@@ -293,7 +293,7 @@ const addopcodes = (opcodes: object) => {
                   closureArgs[1].typeApplies(arrayInnerType, scope, interfaceMap)
                   const idx = microstatements.indexOf(inputs[1])
                   const m = microstatements.slice(0, idx)
-                  Microstatement.closureFromUserFunction(fn, scope, m, interfaceMap)
+                  Microstatement.closureFromUserFunction(fn, fn.scope || scope, m, interfaceMap)
                   const closure = m[m.length - 1]
                   microstatements.splice(idx, 0, closure)
                   realArgNames[1] = closure.outputName
@@ -317,7 +317,7 @@ const addopcodes = (opcodes: object) => {
                   closureArgs[1].typeApplies(inType, scope, interfaceMap)
                   const idx = microstatements.indexOf(inputs[1])
                   const m = microstatements.slice(0, idx)
-                  Microstatement.closureFromUserFunction(fn, scope, m, interfaceMap)
+                  Microstatement.closureFromUserFunction(fn, fn.scope || scope, m, interfaceMap)
                   const closure = m[m.length - 1]
                   microstatements.splice(idx, 0, closure)
                   realArgNames[1] = closure.outputName
@@ -341,7 +341,7 @@ const addopcodes = (opcodes: object) => {
                   closureArgs[1].typeApplies(inType, scope, interfaceMap)
                   const idx = microstatements.indexOf(inputs[1])
                   const m = microstatements.slice(0, idx)
-                  Microstatement.closureFromUserFunction(fn, scope, m, interfaceMap)
+                  Microstatement.closureFromUserFunction(fn, fn.scope || scope, m, interfaceMap)
                   const closure = m[m.length - 1]
                   microstatements.splice(idx, 0, closure)
                   realArgNames[1] = closure.outputName
@@ -354,7 +354,7 @@ const addopcodes = (opcodes: object) => {
                   const fn = inputs[1].inputNames[1].fns[0]
                   const idx = microstatements.indexOf(inputs[1])
                   const m = microstatements.slice(0, idx)
-                  Microstatement.closureFromUserFunction(fn, scope, m, interfaceMap)
+                  Microstatement.closureFromUserFunction(fn, fn.scope || scope, m, interfaceMap)
                   const closure = m[m.length - 1]
                   microstatements.splice(idx, 0, closure)
                   realArgNames[1] = closure.outputName
@@ -454,7 +454,7 @@ const addopcodes = (opcodes: object) => {
                     } else {
                       fn = UserFunction.dispatchFn(inputs[i].fns, [], scope)
                     }
-                    Microstatement.closureFromUserFunction(fn, scope, m, interfaceMap)
+                    Microstatement.closureFromUserFunction(fn, fn.scope || scope, m, interfaceMap)
                     const closure = m[m.length - 1]
                     microstatements.splice(idx, 0, closure)
                     realArgNames[i] = closure.outputName

@@ -55,7 +55,7 @@ Describe "Closure Functions"
 
         on start {
           const numbers = [1, 2, 3, 4, 5]
-          numbers.map(double).map(fn (x: int64): string = x.toString()).join(', ').print()
+          numbers.map(double).map(toString).join(', ').print()
           emit exit 0
         }
       "

@@ -1133,7 +1133,12 @@ ${emitsAst.getText()} on line ${emitsAst.start.line}:${emitsAst.start.column}`)
             microstatements[i].statementType === StatementType.CLOSUREDEF) {
             // TODO: Proper multiple dispatch here, too
             const m = [...microstatements, ...microstatements[i].closureStatements]
-            Microstatement.closureFromUserFunction(microstatements[i].fns[0] as UserFunction, scope, m, new Map())
+            Microstatement.closureFromUserFunction(
+              microstatements[i].fns[0] as UserFunction,
+              (microstatements[i].fns[0] as any).scope || scope,
+              m,
+              new Map()
+            )
             const closure = m.pop()
             microstatements.push(...closure.closureStatements.filter(s => s.statementType !== StatementType.EXIT))
             return
