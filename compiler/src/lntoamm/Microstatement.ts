@@ -358,7 +358,6 @@ ${varAst.getText()} on line ${varAst.start.line}:${varAst.start.column}`)
     if (basicAssignablesAst.functions() != null) {
       const fnToAssign = UserFunction.fromAst(basicAssignablesAst.functions(), scope)
       Microstatement.closureDef([fnToAssign], scope, microstatements)
-      // Microstatement.closureFromUserFunction(fnToAssign, scope, microstatements)
       return
     }
     // Here is where we inline the functions that were defined elsewhere or just above here! Or if
@@ -389,7 +388,6 @@ ${varAst.getText()} on line ${varAst.start.line}:${varAst.start.column}`)
           && typeof maybeFn[0].getName === 'function'
         ) {
           Microstatement.closureDef(maybeFn as Array<Fn>, scope, microstatements)
-          // Microstatement.closureFromUserFunction(maybeFn[0], scope, microstatements)
           return
         }
       }
@@ -1131,14 +1129,16 @@ ${emitsAst.getText()} on line ${emitsAst.start.line}:${emitsAst.start.column}`)
           if (
             microstatements[i].outputName === actualFnName &&
             microstatements[i].statementType === StatementType.CLOSUREDEF) {
-            // TODO: Proper multiple dispatch here, too
             const m = [...microstatements, ...microstatements[i].closureStatements]
-            Microstatement.closureFromUserFunction(
-              microstatements[i].fns[0] as UserFunction,
-              (microstatements[i].fns[0] as any).scope || scope,
-              m,
-              new Map()
+            // Remove the leading argument as that's the closure reference and shouldn't be included
+            realArgNames.shift()
+            realArgTypes.shift()
+            const fn = UserFunction.dispatchFn(microstatements[i].fns, realArgTypes, scope)
+            const interfaceMap = new Map()
+            Object.values(fn.getArguments()).forEach(
+              (t: Type, i) => t.typeApplies(realArgTypes[i], scope, interfaceMap)
             )
+            Microstatement.closureFromUserFunction(fn, fn.scope || scope, m, interfaceMap)
             const closure = m.pop()
             microstatements.push(...closure.closureStatements.filter(s => s.statementType !== StatementType.EXIT))
             return
