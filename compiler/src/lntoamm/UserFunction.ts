@@ -586,10 +586,6 @@ ${statements[i].statementOrAssignableAst.getText().trim()} on line ${statements[
     // all inputs of that particular interface are the same type. TODO: If this is not true, it must
     // be a compile-time error earlier on.
     const last = microstatements[microstatements.length - 1]
-    /*const newReturnType = (this.returnType.typename !== 'void' && this.returnType.realize(interfaceMap, scope)) ||
-      last.outputType.realize(interfaceMap, scope) ||
-      last.outputType
-    last.outputType = newReturnType*/
     if (!this.returnType.typeApplies(last.outputType, scope, new Map()))  {
       const returnTypeAst = Ast.fulltypenameAstFromString(this.returnType.typename)
       const returnTypeGenerics = returnTypeAst.typegenerics()

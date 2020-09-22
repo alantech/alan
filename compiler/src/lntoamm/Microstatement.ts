@@ -119,6 +119,7 @@ class Microstatement {
         break
       case StatementType.REREF:
       case StatementType.ARG:
+      case StatementType.CLOSUREDEF:
         // Intentionally never output anything, this is metadata for the transpiler algo only
         break
     }
@@ -356,7 +357,7 @@ ${varAst.getText()} on line ${varAst.start.line}:${varAst.start.column}`)
     // For now we still create the function object and the microstatement to assign it
     if (basicAssignablesAst.functions() != null) {
       const fnToAssign = UserFunction.fromAst(basicAssignablesAst.functions(), scope)
-      Microstatement.closureFromUserFunction(fnToAssign, scope, microstatements)
+      Microstatement.closureDef([fnToAssign], scope, microstatements)
       return
     }
     // Here is where we inline the functions that were defined elsewhere or just above here! Or if
@@ -380,10 +381,13 @@ ${varAst.getText()} on line ${varAst.start.line}:${varAst.start.column}`)
       )
       if (!original) {
         const maybeFn = scope.deepGet(basicAssignablesAst.varn().getText())
-        if (maybeFn && maybeFn instanceof Array && maybeFn[0] instanceof UserFunction) {
-          // TODO: Add multiple dispatch here
-          // Also TODO: Support passing opcodes directly, too, for the rare cases they're directly exposed
-          Microstatement.closureFromUserFunction(maybeFn[0], scope, microstatements)
+        if (
+          maybeFn &&
+          maybeFn instanceof Array &&
+          !(maybeFn[0] instanceof Operator)
+          && typeof maybeFn[0].getName === 'function'
+        ) {
+          Microstatement.closureDef(maybeFn as Array<Fn>, scope, microstatements)
           return
         }
       }
@@ -845,18 +849,35 @@ ${withOperatorsAst.getText()}`
     }
   }
 
+  static closureDef(
+    fns: Array<Fn>,
+    scope: Scope,
+    microstatements: Array<Microstatement>,
+  ) {
+    const closuredefName = "_" + uuid().replace(/-/g, "_")
+    // Keep any rerefs around as closure references
+    const rerefs = microstatements.filter(m => m.statementType === StatementType.REREF)
+    microstatements.push(new Microstatement(
+      StatementType.CLOSUREDEF,
+      scope,
+      true, // TODO: What should this be?
+      closuredefName,
+      Type.builtinTypes['function'],
+      [],
+      fns,
+      '',
+      true,
+      rerefs,
+    ))
+  }
+
   static closureFromUserFunction(
     userFunction: UserFunction,
     scope: Scope,
     microstatements: Array<Microstatement>,
+    interfaceMap: Map<Type, Type>,
   ) {
-    // TODO: Potentially revisit this entire approach -- closures with interface types should be
-    // re-evaluated at each callsite to get the correct opcodes selected based on the matched types
-    // and the related functions. Those functions may be implemented wildly differently between the
-    // compatible types such that the microstatements would not be a simple type replacement away
-    // inject arguments as const declarations into microstatements arrays with the variable names
-    // and remove them later so we can parse the closure and keep the logic contained to this method
-    const fn = userFunction.maybeTransform(new Map()) // TODO: Interface mangling is probably needed
+    const fn = userFunction.maybeTransform(interfaceMap)
     const idx = microstatements.length
     const args = Object.entries(fn.args)
     for (const [name, type] of args) {
@@ -1107,10 +1128,19 @@ ${emitsAst.getText()} on line ${emitsAst.start.line}:${emitsAst.start.column}`)
           }
           if (
             microstatements[i].outputName === actualFnName &&
-            microstatements[i].closureStatements &&
-            microstatements[i].closureStatements.length > 0
-          ) {
-            microstatements.push(...microstatements[i].closureStatements.filter(s => s.statementType !== StatementType.EXIT))
+            microstatements[i].statementType === StatementType.CLOSUREDEF) {
+            const m = [...microstatements, ...microstatements[i].closureStatements]
+            // Remove the leading argument as that's the closure reference and shouldn't be included
+            realArgNames.shift()
+            realArgTypes.shift()
+            const fn = UserFunction.dispatchFn(microstatements[i].fns, realArgTypes, scope)
+            const interfaceMap = new Map()
+            Object.values(fn.getArguments()).forEach(
+              (t: Type, i) => t.typeApplies(realArgTypes[i], scope, interfaceMap)
+            )
+            Microstatement.closureFromUserFunction(fn, fn.scope || scope, m, interfaceMap)
+            const closure = m.pop()
+            microstatements.push(...closure.closureStatements.filter(s => s.statementType !== StatementType.EXIT))
             return
           }
         }
@@ -1172,6 +1202,9 @@ ${callsAst.getText()} on line ${callsAst.start.line}:${callsAst.start.column}`)
         } else if (microstatement.statementType === StatementType.REREF) {
           original = Microstatement.fromVarName(microstatement.outputName, scope, microstatements)
           break
+        } else if (microstatement.statementType === StatementType.ASSIGNMENT) {
+          // We could treat this as evidence that it's cool, but let's just skip it.
+          continue
         } else {
           throw new Error(`Attempting to reassign a non-let variable.
 ${letName} on line ${assignmentsAst.start.line}:${assignmentsAst.start.column}`)
@@ -1194,6 +1227,12 @@ ${letName} on line ${assignmentsAst.line}:${assignmentsAst.start.column}`)
         if (microstatement.outputName === actualLetName) {
           if (microstatement.statementType === StatementType.LETDEC) {
             break
+          } else if (microstatement.statementType === StatementType.REREF) {
+            original = Microstatement.fromVarName(microstatement.outputName, scope, microstatements)
+            break
+          } else if (microstatement.statementType === StatementType.ASSIGNMENT) {
+            // Could treat this as evidence that it's okay, but let's be sure about that
+            continue
           } else {
             throw new Error(`Attempting to reassign a non-let variable.
 ${letName} on line ${assignmentsAst.line}:${assignmentsAst.start.column}`)
