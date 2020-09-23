@@ -40,7 +40,7 @@ Our goal is use Alan to build backends in production that require concurrent or 
 
 Yes, we would like to create a community of contributors to work on the Alan runtime and compiler with us, or to build a healthy ecosystem of third party libraries for the language.
 
-### How (do you plan to) do distribute workload on different machines?
+### How (do you plan to) distribute workloads on different machines?
 
 So the short-term answer to this question is simply fronting Alan processes with a load balancer. But we do intend to make that story better over time. First priority is working on getting @std/datastore to coordinate shared, mutable state within a cluster. This is the [RFC](https://github.com/alantech/alan/blob/main/rfcs/008%20-%20Safe%20Global%20Data%20Storage%20RFC.md) to get it working across cores in a single machine.
 
@@ -48,11 +48,15 @@ Once that's done, we can add TLS support and then pull in a load balancing layer
 
 In the long-term, there's nothing semantically restricting the language from actually performing a single logical compute distributed across multiple machines (a map on a logical array larger than local memory) making out-of-memory bugs a thing of the past if coupled with an autoscaling backend, but there's going to be a *lot* of code to write and architecture to design to detect when that's necessary and switch to it.
 
-### How (do you plan to) do automatic GPGPU delegation?
+### How (do you plan to) do automatic GPGPU delegation or other heterogeneous computing cores?
 
 Alan already encourages writing code that can be parallelized through arrays and events, so it is possible to implement automatic GPGPU delegation in the future. That said, the state of GPGPU is such a disaster, OpenCL/CUDA/OpenGL/DirectX<=11/DirectX12/Vulkan/Metal, all with strengths and weaknesses and platform issues and no way to avoid one or more of them since GPU drivers don't allow direct access to hardware and have compilers baked into them these days...
 
 Still thinking about the best approach to take on the GPGPU front: do it "right" up-front but support the main backends relatively early, or prove it out with a single universal backend that might literally fudge numbers on you depending on your hardware. Also, not a priority until we've got the language really working, so post-v0.2, at least. If you have experience in this realm and want to contribute, please reach out!
+
+### Is there any interoperability?
+
+We are still scoping out [FFI support](https://github.com/alantech/alan/pull/60/files) for bindings that plays nice with the auto parallelization that happens in the VM. Alan (transpiles to Javascript)[https://docs.alan-lang.org/transpile_js.html] which still offers IO concurrency but without the parallelization.
 
 ### The "source installation" necessary to contribute to Alan requires Python, Node.js and Rust. Why are there so many dependencies?
 
