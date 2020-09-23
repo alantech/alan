@@ -62,4 +62,4 @@ We are still scoping out [FFI support](https://github.com/alantech/alan/pull/60/
 
 We went with tools we were familiar with or believed would accelerate our ability to prove to ourselves that this could work, and that is reflected in the language implementation as it exists today, but we have always intended to rewrite the Alan compiler in Alan. Then only the runtime(s) would be in different languages.
 
-Currently, the compiler is written in Typescript, the main runtime in Rust and the secondary runtime in Javascript. Python is required due to a limitation of a dependency to [nexe](https://github.com/nexe/nexe) and not something we are using within the project. The upcoming nexe 4.0 release will hopefully resolve this. That said our dependency on nexe is intended to be a temporary.
+Currently, the compiler is written in Typescript, the main runtime in Rust and the secondary runtime in Javascript. Python is required due to a limitation of a dependency to [nexe](https://github.com/nexe/nexe) and not something we are using within the project. The upcoming nexe 4.0 release will hopefully resolve this. That said our dependency on nexe is intended to be temporary.
