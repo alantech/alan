@@ -54,6 +54,8 @@ Alan already encourages writing code that can be parallelized through arrays and
 
 Still thinking about the best approach to take on the GPGPU front: do it "right" up-front but support the main backends relatively early, or prove it out with a single universal backend that might literally fudge numbers on you depending on your hardware. Also, not a priority until we've got the language really working, so post-v0.2, at least. If you have experience in this realm and want to contribute, please reach out!
 
-### The "source installation" still requires Python 2?
+### The "source installation" necessary to contribute to Alan requires Python, Node.js and Rust. Why are there so many dependencies?
 
-Yes, it's a limitation of a dependency to [nexe](https://github.com/nexe/nexe) and not something we are using within the project. The upcoming nexe 4.0 release will hopefully resolve this. That said our dependency on nexe is intended to be a temporary and would go away once we self-host or bootstrap an Alan compiler.
+We went with tools we were familiar with or believed would accelerate our ability to prove to ourselves that this could work, and that is reflected in the language implementation as it exists today, but we have always intended to rewrite the Alan compiler in Alan. Then only the runtime(s) would be in different languages.
+
+Currently, the compiler is written in Typescript, the main runtime in Rust and the secondary runtime in Javascript. Python is required due to a limitation of a dependency to [nexe](https://github.com/nexe/nexe) and not something we are using within the project. The upcoming nexe 4.0 release will hopefully resolve this. That said our dependency on nexe is intended to be a temporary.
