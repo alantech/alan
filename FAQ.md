@@ -1,6 +1,6 @@
 ## Frequently Asked Questions
 
-### [Could you combine an ELI5 (explain it like I'm five) and a sales pitch to try and convince me?](https://www.reddit.com/r/softwarearchitecture/comments/isw3so/a_programming_language_to_make_concurrent/g5cg3aq/)
+### Could you combine an ELI5 (explain it like I'm five) and a sales pitch to try and convince me?
 
 Computers have increasingly more CPUs/cores, as opposed to more powerful ones. Multithreaded code is hard to reason about and error prone, but it is also necessary today to take advantage of all the computing resources in a machine. The goal of Alan is to be similar to multithreaded Go or Java in performance, but similar to Python brevity and simplicity.
 
