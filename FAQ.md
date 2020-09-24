@@ -56,7 +56,7 @@ Still thinking about the best approach to take on the GPGPU front: do it "right"
 
 ### Is there any interoperability?
 
-We are still scoping out [FFI support](https://github.com/alantech/alan/pull/60/files) for bindings that plays nice with the auto parallelization that happens in the VM. Alan (transpiles to Javascript)[https://docs.alan-lang.org/transpile_js.html] which still offers IO concurrency but without the parallelization.
+We are still scoping out [FFI support](https://github.com/alantech/alan/pull/60/files) for bindings that plays nice with the auto parallelization that happens in the VM. Alan [transpiles to Javascript](https://docs.alan-lang.org/transpile_js.html) which still offers IO concurrency but without the parallelization.
 
 ### The "source installation" necessary to contribute to Alan requires Python, Node.js and Rust. Why are there so many dependencies?
 
