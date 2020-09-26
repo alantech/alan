@@ -25,7 +25,7 @@ YYYY-MM-DD
 
 ## Summary
 
-The ability to define an reason about data that has a tree-like structure is necessary to handle a host of different problems, from parsers and serializers, to manipulation of an HTML DOM or JSON object.
+The ability to define and reason about data that has a tree-like structure is necessary to handle a host of different problems, from parsers and serializers, to manipulation of an HTML DOM or JSON object.
 
 This is an integral piece of any language. Most choose to allow recursive data types and then deal with the complexities around infinitely-defined types (one way or the other). For Alan, we instead define a new Tree type to handle this and provide a collection of tools to work with it.
 
