@@ -85,12 +85,12 @@ This is the iffiest idea because it's done through an abuse of the operator synt
 
 ```ln
 const myTree = newTree("foo")
-  .addChildTree(newTree("bar")
-    .addChildLeaf("baz"))
-  .addChildLeaf("bay")
+  .addChild(newTree("bar")
+    .addChild("baz"))
+  .addChild("bay")
 ```
 
-With the only downside being keeping track of the parens and being explicit on when a node is a leaf node versus a subtree. (Not strictly necessary, but there would be a lot of extra `newTree` calls.)
+With the only downside being keeping track of the parens.
 
 ### Alternatives Considered
 
