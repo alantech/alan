@@ -692,7 +692,12 @@ export fn getNodeById(t: Tree<any>, i: int64): Node<any> {
 export fn getChildren(n: Node<any>): Array<Node<any>> {
   if length(n.tree.vals) > n.id {
     const childIds = getOr(n.tree.children[n.id], new Array<int64> [])
-    return childIds.map(fn (id: int64): Node<any> = getNodeById(n.tree, id))
+    return childIds.map(fn (id: int64): Node<any> {
+      return new Node<any> {
+        id = id
+        tree = n.tree
+      }
+    })
   } else {
     return new Array<Node<any>> [ ]
   }
@@ -705,6 +710,7 @@ export fn addChild(n: Node<any>, val: any): Node<any> {
   push(n.tree.vals, val)
   push(n.tree.parents, n.id)
   push(n.tree.children, new Array<int64> [ ])
+  push(getOr(n.tree.children[n.id], new Array<int64> []), childId)
   return n
 }
 
@@ -738,6 +744,7 @@ export fn addChild(n: Node<any>, val: Node<any>): Node<any> {
     push(n.tree.vals, nodeVal)
     push(n.tree.parents, parentId)
     push(n.tree.children, new Array<int64> [ ])
+    push(getOr(n.tree.children[n.id], new Array<int64> []), replacementId)
     // Get the children array, exit on failure
     const childrenRes = val.tree.children[nodeId]
     if childrenRes.isErr() {
