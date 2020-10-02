@@ -45,7 +45,24 @@ impl fmt::Display for HandlerMemory {
     let mut out_str = "".to_string();
     for i in 0..self.mem.len() {
       if self.either_mem[i] < 0 {
-        out_str = out_str + &i.to_string() + ": " + &self.mem[i].to_string() + "\n"
+        if self.registers_ish[i] == 0 {
+          out_str = out_str + &i.to_string() + ": " + &self.mem[i].to_string() + "\n"
+        } else if self.registers_ish[i] == FX_PTR_ADDR {
+          unsafe {
+            let ptr = usize::from_ne_bytes(self.mem[i].to_ne_bytes()) as *const i64;
+            let val = *ptr;
+            out_str = out_str + &i.to_string() + ": *" + &val.to_string() + "\n"
+          }
+        } else {
+          unsafe {
+            let ptr = usize::from_ne_bytes(self.mem[i].to_ne_bytes()) as *const HandlerMemory;
+            let hm = ptr.as_ref().unwrap();
+            let nested_str = format!("{}", &hm);
+            let re = Regex::new("\n").unwrap();
+            let indented_str = re.replace_all(&nested_str, "\n  ");
+            out_str = out_str + &i.to_string() + ": **" + &indented_str.to_string() + "\n"
+          }
+        }
       } else {
         let nested_str = format!("{}", &self.fractal_mem[self.either_mem[i] as usize]);
         let re = Regex::new("\n").unwrap();
@@ -77,9 +94,9 @@ impl HandlerMemory {
     let mut registers_ish: Vec<i8> = vec![];
     if pls < 0 {
       // payload is a variable-length data type
-      let payload: HandlerMemory = curr_hand_mem.fractal_mem[
-        curr_hand_mem.either_mem[curr_addr as usize] as usize
-      ].clone();
+      let mut mem_copy = curr_hand_mem.clone();
+      mem_copy.copy_fractal(curr_addr, curr_addr);
+      let payload = mem_copy.read_fractal(curr_addr);
       fractal_mem.push(payload);
       mem.push(0);
       either_mem.push(0);
@@ -177,15 +194,18 @@ impl HandlerMemory {
           // Just return the pointer
           let arr2 = arr.clone();
           self.registers_ish[reg] = arr2.registers_ish[arr_addr2 as usize];
+          self.either_mem[reg] = -1;
           self.mem[reg] = arr2.mem[arr_addr2 as usize];
         } else {
           // Make a pointer to this data
           if arr.either_mem[arr_addr2 as usize] == -1 {
             ptr = arr.mem.as_ptr().add(arr_addr2 as usize) as i64;
             self.registers_ish[reg] = FX_PTR_ADDR;
+            self.either_mem[reg] = -1;
           } else {
             ptr = arr.fractal_mem.as_ptr().add(arr.either_mem[arr_addr2 as usize] as usize) as i64;
             self.registers_ish[reg] = HM_PTR_ADDR;
+            self.either_mem[reg] = -1;
           }
           self.mem[reg] = ptr;
         }
@@ -197,6 +217,14 @@ impl HandlerMemory {
     let ptr: *const HandlerMemory = self.get_fractal(other_addr);
     self.registers_ish[reg_addr as usize] = HM_PTR_ADDR;
     self.mem[reg_addr as usize] = ptr as i64;
+  }
+
+  pub fn push_reg(self: &mut HandlerMemory, push_addr: i64, other_addr: i64) {
+    let ptr: *const HandlerMemory = self.get_fractal(other_addr);
+    let push_mem = self.get_mut_fractal(push_addr);
+    push_mem.mem.push(ptr as i64);
+    push_mem.registers_ish.push(HM_PTR_ADDR);
+    push_mem.either_mem.push(-1);
   }
 
   /// optionally create a registerish within a nested Result-like HandlerMemory, or leave an error
@@ -212,12 +240,17 @@ impl HandlerMemory {
       unsafe {
         let ptr;
         let ptr_type;
-        if arr.either_mem[inner_addr as usize] == -1 {
-          ptr = arr.mem.as_ptr().add(inner_addr as usize) as i64;
-          ptr_type = FX_PTR_ADDR;
+        if arr.registers_ish[inner_addr as usize] == 0 {
+          if arr.either_mem[inner_addr as usize] == -1 {
+            ptr = arr.mem.as_ptr().add(inner_addr as usize) as i64;
+            ptr_type = FX_PTR_ADDR;
+          } else {
+            ptr = arr.fractal_mem.as_ptr().add(arr.either_mem[inner_addr as usize] as usize) as i64;
+            ptr_type = HM_PTR_ADDR;
+          }
         } else {
-          ptr = arr.fractal_mem.as_ptr().add(arr.either_mem[inner_addr as usize] as usize) as i64;
-          ptr_type = HM_PTR_ADDR;
+          ptr = arr.mem[inner_addr as usize];
+          ptr_type = arr.registers_ish[inner_addr as usize];
         }
         self.push_fractal_fixed(outer_addr, 0i64);
         let res_arr = self.get_mut_fractal(outer_addr);
@@ -262,6 +295,9 @@ impl HandlerMemory {
     } else {
       let reg = self.registers_ish[addr as usize];
       if reg == NORMAL_ADDR {
+        if self.either_mem[addr as usize] < 0 {
+          panic!("Trying to get a fractal from fixed memory");
+        }
         let arr = &self.fractal_mem[self.either_mem[addr as usize] as usize];
         return arr;
       } else if reg == HM_PTR_ADDR {
@@ -280,6 +316,7 @@ impl HandlerMemory {
   /// a fractal. Either returns a reference to a HandlerMemory
   pub fn get_mut_fractal(self: &mut HandlerMemory, addr: i64) -> &mut HandlerMemory {
     let reg = self.registers_ish[addr as usize];
+    // eprintln!("addr {} reg {}", addr, reg);
     if reg == NORMAL_ADDR {
       let arr = &mut self.fractal_mem[self.either_mem[addr as usize] as usize];
       return arr;
@@ -290,6 +327,8 @@ impl HandlerMemory {
         return hm;
       }
     } else {
+      let val = self.read_fixed(addr);
+      // eprintln!("val {}", val);
       panic!("Trying to get a fractal from a fixed pointer");
     }
   }
@@ -323,19 +362,41 @@ impl HandlerMemory {
   }
 
   pub fn copy_fractal(self: &mut HandlerMemory, in_addr: i64, out_addr: i64) {
-    let arr = &mut self.fractal_mem[self.either_mem[in_addr as usize] as usize];
-    let new_arr = arr.clone();
-    //println!("copy fractal from @{} to @{}: {}", in_addr, out_addr, new_arr);
-    let fractal_addr = self.either_mem[out_addr as usize];
-    if fractal_addr > -1 {
-      self.fractal_mem[fractal_addr as usize] = new_arr;
+    let mut arr = self.read_fractal(in_addr);
+    let l = arr.mem.len() as i64;
+    for i in 0..l {
+      if arr.registers_ish[i as usize] == FX_PTR_ADDR {
+        let val = arr.read_fixed(i);
+        arr.write_fixed(i, val);
+        arr.registers_ish[i as usize] = 0;
+      } else if arr.registers_ish[i as usize] == HM_PTR_ADDR {
+        arr.copy_fractal(i, i);
+        arr.registers_ish[i as usize] = 0;
+      }
+    }
+    if out_addr < 0 {
+      // It's a closure arg
+      let fractal_addr = self.closure_args[0].either_mem[(out_addr - CLOSURE_ARG_MEM_START) as usize];
+      if fractal_addr > -1 {
+        self.closure_args[0].fractal_mem[fractal_addr as usize] = arr;
+      } else {
+        let new_addr = self.closure_args[0].fractal_mem.len() as i64;
+        self.closure_args[0].fractal_mem.push(arr);
+        self.closure_args[0].either_mem[(out_addr - CLOSURE_ARG_MEM_START) as usize] = new_addr;
+        self.closure_args[0].registers_ish.push(0);
+      }
     } else {
-      // TODO: This shouldn't be happening, the compiler shouldn't be emitting `copyarr` for `void`
-      // types. Once fixed the branching here can be removed.
-      let new_addr = self.fractal_mem.len() as i64;
-      self.fractal_mem.push(new_arr);
-      self.either_mem[out_addr as usize] = new_addr;
-      self.registers_ish.push(0);
+      let fractal_addr = self.either_mem[out_addr as usize];
+      if fractal_addr > -1 {
+        self.fractal_mem[fractal_addr as usize] = arr;
+      } else {
+        // TODO: This shouldn't be happening, the compiler shouldn't be emitting `copyarr` for `void`
+        // types. Once fixed the branching here can be removed.
+        let new_addr = self.fractal_mem.len() as i64;
+        self.fractal_mem.push(arr);
+        self.either_mem[out_addr as usize] = new_addr;
+        self.registers_ish.push(0);
+      }
     }
   }
 
@@ -344,7 +405,8 @@ impl HandlerMemory {
   }
 
   pub fn has_nested_fractals(self: &HandlerMemory) -> bool {
-    return self.mem.len() > 0 && self.fractal_mem.len() > 0
+    return self.mem.len() > 0 && (self.fractal_mem.len() > 0 || self.registers_ish.contains(&1) ||
+      self.registers_ish.contains(&2))
   }
 
   pub fn new_fractal(self: &mut HandlerMemory, addr: i64) {
