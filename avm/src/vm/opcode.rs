@@ -1445,8 +1445,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     // args[0] point to an array in memory
     // args[1] is the address within the array to register
     let inner_addr = hand_mem.read_fixed(args[1]);
-    /*eprintln!("register args @{}[{}] -> @{}", args[0], inner_addr, args[2]);
-    eprintln!("mem {}", hand_mem.clone());*/
     hand_mem.set_reg(args[2], args[0], inner_addr);
     None
   });
@@ -1551,7 +1549,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let val_size = hand_mem.read_fixed(args[2]);
     if val_size == 0 {
       if args[1] > 0 {
-        hand_mem.push_reg(args[0], args[1]); 
+        hand_mem.push_reg(args[0], args[1]);
       } else {
         let val = hand_mem.read_fractal(args[1]);
         hand_mem.push_nested_fractal(args[0], val);
@@ -1586,9 +1584,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   unpred_cpu!("map", |args, hand_mem, frag, ins_sched| {
     let arr = hand_mem.get_fractal(args[0]);
-    /*eprintln!("map args {} {} {}", args[0], args[1], args[2]);
-    eprintln!("mem arr {}", arr.clone());
-    eprintln!("hand_mem: {}", hand_mem.clone());*/
     let len = arr.len() as i64;
     let instructions = frag.get_closure_instructions(args[1]);
     // array of potentially many levels of nested fractals
@@ -3333,8 +3328,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("resfrom", |args, hand_mem, _, _| {
     // args = [arr_addr, arr_idx_addr, outer_addr]
     // a guarded copy of data from an array to a result object
-    /*eprintln!("resfrom {} {} {}", args[0], args[1], args[2]);
-    eprintln!("mem {}", hand_mem.clone());*/
     hand_mem.res_from(args[0], args[1], args[2]);
     None
   });

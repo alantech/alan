@@ -316,7 +316,6 @@ impl HandlerMemory {
   /// a fractal. Either returns a reference to a HandlerMemory
   pub fn get_mut_fractal(self: &mut HandlerMemory, addr: i64) -> &mut HandlerMemory {
     let reg = self.registers_ish[addr as usize];
-    // eprintln!("addr {} reg {}", addr, reg);
     if reg == NORMAL_ADDR {
       let arr = &mut self.fractal_mem[self.either_mem[addr as usize] as usize];
       return arr;
@@ -327,8 +326,6 @@ impl HandlerMemory {
         return hm;
       }
     } else {
-      let val = self.read_fixed(addr);
-      // eprintln!("val {}", val);
       panic!("Trying to get a fractal from a fixed pointer");
     }
   }
