@@ -16,7 +16,10 @@
 
 ### Implementation
 
-- [ ] Implemented: [One or more PRs](https://github.com/alantech/alan/some-pr-link-here) YYYY-MM-DD
+- [ ] Implemented
+  - [x] [Tree data structure (js-runtime only for now)](https://github.com/alantech/alan/pull/292) 2020-10-06
+  - [ ] Tree data structure on AVM YYYY-MM-DD
+  - [ ] Advanced Tree methods YYYY-MM-DD
 - [ ] Revoked/Superceded by: [RFC ###](./000 - RFC Template.md) YYYY-MM-DD
 
 ## Author

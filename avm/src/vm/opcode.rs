@@ -1548,8 +1548,12 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("pusharr", |args, hand_mem, _, _| {
     let val_size = hand_mem.read_fixed(args[2]);
     if val_size == 0 {
-      let val = hand_mem.read_fractal(args[1]);
-      hand_mem.push_nested_fractal(args[0], val);
+      if args[1] > 0 {
+        hand_mem.push_reg(args[0], args[1]);
+      } else {
+        let val = hand_mem.read_fractal(args[1]);
+        hand_mem.push_nested_fractal(args[0], val);
+      }
     } else {
       let val = hand_mem.read_fixed(args[1]);
       hand_mem.push_fractal_fixed(args[0], val);
@@ -2736,6 +2740,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   io!("httpsend", |args, mem| {
     let fut = async move {
       let mut hand_mem = mem.write().await;
+      hand_mem.copy_fractal(args[0], args[0]); // Make sure there's no pointers involved
       let response = hand_mem.read_fractal(args[0]);
       let conn_id = response.clone().read_fixed(3);
       let responses = Arc::clone(&HTTP_RESPONSES);
