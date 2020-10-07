@@ -632,12 +632,19 @@ export fn toHashMap(kva: Array<KeyVal<Hashable, any>>) {
 }
 
 // Tree implementation
+
+// The Tree type houses all of the values attached to a tree in an array and two secondary arrays to
+// hold the metadata on which value is the parent and which are children, if any. The parent value
+// is `-1` if it has no parent and a positive integer otherwise.
 export type Tree<T> {
   vals: Array<T>
   parents: Array<int64>
   children: Array<Array<int64>>
 }
 
+// The Node type simply holds the index to look into the tree for a particular value-parent-children
+// triplet, where that index is referred to as a node ID. This allows node-based code to be written
+// while not actually having a recursive data structure that a traditional Node type would define.
 export type Node<T> {
   id: int64
   tree: Tree<T>
@@ -645,7 +652,7 @@ export type Node<T> {
 
 export fn newTree(rootVal: any): Tree<any> = new Tree<any> {
   vals = new Array<any> [ rootVal ]
-  parents = new Array<int64> [ -1 ]
+  parents = new Array<int64> [ -1 ] // The root node has no parent, so its parent ID is -1.
   children = new Array<Array<int64>> [ new Array<int64> [ ] ]
 }
 
