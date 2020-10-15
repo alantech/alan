@@ -2493,7 +2493,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }
     None
   });
-
+  */
   // Conditional opcode
   unpred_cpu!("condfn", |args, hand_mem, frag, _| {
     let cond = hand_mem.read_fixed(args[0]);
@@ -2503,7 +2503,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }
     None
   });
-
+  /*
   // Std opcodes
   unpred_cpu!("execop", |args, hand_mem, _, _| {
     let full_cmd = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
@@ -2528,7 +2528,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     };
     None
   });
-
+  */
   // IO opcodes
   io!("waitop", |args, mem| {
     let fut = async move {
@@ -2539,6 +2539,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     };
     return Box::pin(fut);
   });
+  /*
   io!("httpget", |args, mem| {
     let fut = async move {
       let hand_mem = mem.read().await;
