@@ -2963,6 +2963,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     seq.write_fixed(0i64, current);
     None
   });
+  */
 
   // "Special" opcodes
   cpu!("exitop", |args, hand_mem, _, _| {
@@ -3011,8 +3012,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("setestr", |args, hand_mem, _, _| {
-    let empty_str = vec![0];
-    hand_mem.write_fractal_mem(args[2], &empty_str);
+    let empty_str = vec![(0, 0)];
+    hand_mem.write_fractal(args[2], &empty_str);
     None
   });
 
@@ -3058,8 +3059,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("copystr", |args, hand_mem, _, _| {
-    let pascal_string = hand_mem.read_fractal(args[0]);
-    hand_mem.write_fractal_mem(args[2], &pascal_string);
+    let pascal_string = hand_mem.read_fractal(args[0]).clone();
+    hand_mem.write_fractal(args[2], &pascal_string);
     None
   });
   cpu!("copyarr", |args, hand_mem, _, _| {
@@ -3149,7 +3150,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     hand_mem.write_fixed(args[2], out);
     None
   });
-
+  /*
   // Error, Maybe, Result, Either opcodes
   cpu!("error", |args, hand_mem, _, _| {
     let pascal_string = hand_mem.read_fractal(args[0]);
@@ -3418,7 +3419,7 @@ impl From<i64> for &ByteOpcode {
   fn from(v: i64) -> Self {
     let opc = OPCODES.get(&v);
     if opc.is_none() {
-        panic!(format!("Illegal byte opcode {}", v));
+        panic!(format!("Illegal byte opcode {} ({})", v, str::from_utf8(&v.to_ne_bytes()).unwrap()));
     }
     return &opc.unwrap();
   }

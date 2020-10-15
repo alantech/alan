@@ -13,8 +13,6 @@ pub const CLOSURE_ARG_MEM_END: i64 = CLOSURE_ARG_MEM_START + 3;
 // handlermemory pointer address flag indicates that the value in the memory structure is actually
 // a pointer to a HandlerMemory object.
 const NORMAL_ADDR: i8 = 0;
-const FX_PTR_ADDR: i8 = 1;
-const HM_PTR_ADDR: i8 = 2;
 const GMEM_ADDR: i8 = 1;
 const ARGS_ADDR: i8 = 2;
 
@@ -30,16 +28,16 @@ fn addr_type(addr: i64) -> i8 {
 
 /// Memory representation of a handler call
 #[derive(Clone)]
+#[derive(Debug)]
 pub struct HandlerMemory {
   /// The set of memory blocks. Each block consists of a tuple of two values. If the first value is
   /// zero then the second value is the actual data, if it is non-zero then the two values together
   /// represent a virtual pointer to another memory block and value (if the second value is zero,
   /// it represents a pointer to a nested array of data, otherwise a pointer to an explicit value)
   mems: Vec<Vec<(usize, i64)>>,
-  /// The address spaces for the handler memory. The first address space is the global memory
-  /// address space, the second is the "normal" memory space, and the third is the args memory
-  /// space
-  addr: (Vec<(usize, usize)>, Vec<(usize, usize)>, Vec<(usize, usize)>),
+  /// The address spaces for the handler memory. The first  is the "normal" memory space, and the
+  /// second is the args memory space.
+  addr: (Vec<(usize, usize)>, Vec<(usize, usize)>),
   /// Specifies which memory block to push "normal" values into
   mem_addr: usize,
   /// Specifies which memory block to push "args" into
@@ -51,9 +49,9 @@ impl HandlerMemory {
     if payload_mem.is_none() {
       let mut hm = HandlerMemory {
         mems: [Program::global().gmem.clone(), Vec::new()].to_vec(),
-        addr: (Vec::new(), Vec::new(), Vec::new()),
-        mem_addr: 2,
-        args_addr: 2,
+        addr: (Vec::new(), Vec::new()),
+        mem_addr: 1,
+        args_addr: 1,
       };
       hm.mems[1].reserve(mem_req as usize);
       hm
@@ -76,23 +74,23 @@ impl HandlerMemory {
     } else if pls < 0 {
       // payload is a variable-length data type
       let mut hm = HandlerMemory::new(None, 1);
-      hm.write_fixed(0, curr_hand_mem.read_fixed(curr_addr));
+      hm.write_fractal(0, curr_hand_mem.read_fractal(curr_addr));
       Some(hm)
     } else {
       // payload is a fixed length data type which could be in global memory
       let mut hm = HandlerMemory::new(None, 1);
-      hm.write_fractal(0, curr_hand_mem.read_fractal(curr_addr));
+      hm.write_fixed(0, curr_hand_mem.read_fixed(curr_addr));
       Some(hm)
     }
   }
 
   fn addr_to_idxs(self: &HandlerMemory, addr: i64) -> (usize, usize) {
     return if addr >= 0 {
-     self.addr.1[addr as usize]
+     self.addr.0[addr as usize]
     } else if addr <= CLOSURE_ARG_MEM_END {
-      self.addr.2[(CLOSURE_ARG_MEM_START - addr) as usize]
+      self.addr.1[(CLOSURE_ARG_MEM_START - addr) as usize]
     } else {
-      self.addr.0[(-1 * addr - 1) as usize]
+      (0, ((-1 * addr - 1) / 8) as usize)
     }
   }
 
@@ -113,7 +111,7 @@ impl HandlerMemory {
 
   pub fn read_either(self: &HandlerMemory, addr: i64) -> (Vec<(usize, i64)>, bool) {
     let (a, b) = self.addr_to_idxs(addr);
-    return if b > 0 {
+    return if b < std::usize::MAX {
       (vec![self.mems[a][b].clone()], false)
     } else {
       (self.mems[a].clone(), true)
@@ -121,7 +119,7 @@ impl HandlerMemory {
   }
 
   pub fn read_either_idxs(self: &HandlerMemory, a: usize, b: usize) -> (Vec<(usize, i64)>, bool) {
-    return if b > 0 {
+    return if b < std::usize::MAX {
       (vec![self.mems[a][b].clone()], false)
     } else {
       (self.mems[a].clone(), true)
@@ -132,16 +130,16 @@ impl HandlerMemory {
   fn set_addr(self: &mut HandlerMemory, addr: i64, a: usize, b: usize) {
     if addr_type(addr) == NORMAL_ADDR {
       let addru = addr as usize;
-      if self.addr.1.len() <= addru {
-        self.addr.1.resize(addru, (0, 0));
+      if self.addr.0.len() <= addru {
+        self.addr.0.resize(addru + 1, (std::usize::MAX, 0));
       }
-      self.addr.1[addru] = (a, b);
+      self.addr.0[addru] = (a, b);
     } else {
       let addru = (CLOSURE_ARG_MEM_START - addr) as usize;
-      if self.addr.2.len() <= addru {
-        self.addr.2.resize(addru, (0, 0));
+      if self.addr.1.len() <= addru {
+        self.addr.1.resize(addru + 1, (std::usize::MAX, 0));
       }
-      self.addr.2[addru] = (a, b);
+      self.addr.1[addru] = (a, b);
     }
   }
 
@@ -152,25 +150,25 @@ impl HandlerMemory {
       self.args_addr
     };
     let b = self.mems[a].len();
-    self.mems[a].push((0, val));
+    self.mems[a].push((std::usize::MAX, val));
     self.set_addr(addr, a, b);
   }
 
   pub fn write_fractal(self: &mut HandlerMemory, addr: i64, val: &Vec<(usize, i64)>) {
     let a = self.mems.len();
     self.mems.push(val.clone());
-    self.set_addr(addr, a, 0);
+    self.set_addr(addr, a, std::usize::MAX);
   }
 
   pub fn push_fixed(self: &mut HandlerMemory, addr: i64, val: i64) {
     let mem = self.read_mut_fractal(addr);
-    mem.push((0, val));
+    mem.push((std::usize::MAX, val));
   }
 
   pub fn push_fractal(self: &mut HandlerMemory, addr: i64, val: &Vec<(usize, i64)>) {
     let a = self.mems.len();
     let mem = self.read_mut_fractal(addr);
-    mem.push((a, 0));
+    mem.push((a, std::usize::MAX as i64));
     self.mems.push(val.clone());
   }
 
@@ -197,7 +195,7 @@ impl HandlerMemory {
   pub fn register_in(self: &mut HandlerMemory, addr: i64, fractal_addr: i64, offset_addr: i64) {
     let mem = self.read_fractal(fractal_addr);
     let (a, b) = mem[offset_addr as usize];
-    if a > 0 {
+    if a < std::usize::MAX {
       self.set_addr(addr, a, b.try_into().unwrap());
     } else {
       let (a, _) = self.addr_to_idxs(fractal_addr);
@@ -209,7 +207,7 @@ impl HandlerMemory {
     let (a, b) = self.addr_to_idxs(orig_addr);
     let (c, d) = self.mems[a][b];
     let mem = self.read_mut_fractal(fractal_addr);
-    if c > 0 {
+    if c < std::usize::MAX {
       mem[offset_addr as usize] = (c, d);
     } else {
       mem[offset_addr as usize] = (a, b.try_into().unwrap());
@@ -219,15 +217,15 @@ impl HandlerMemory {
   pub fn transfer(orig: &HandlerMemory, orig_addr: i64, dest: &mut HandlerMemory, dest_addr: i64) {
     let (a_orig, b_orig) = orig.addr_to_idxs(orig_addr);
     let (a, b) = orig.mems[a_orig][b_orig];
-    if a == 0 {
+    if a == std::usize::MAX {
       // It's direct fixed data, just copy it over
       dest.write_fixed(dest_addr, b);
-    } else if a > 0 && b > 0 {
+    } else if a < std::usize::MAX && (b as usize) < std::usize::MAX {
       // All pointers are made shallow, so we know this is a pointer to a fixed value and just
       // grab it and de-reference it.
       let (_, b_nest) = orig.mems[a][b as usize];
       dest.write_fixed(dest_addr, b_nest);
-    } else if a > 0 && b == 0 {
+    } else if a < std::usize::MAX && b as usize == std::usize::MAX {
       // It's a nested array of data. This may itself contain references to other nested arrays of
       // data and is relatively complex to transfer over. First create some lookup vectors and
       // populate them with the nested fractal, adding more and more as each fractal is checked
@@ -241,7 +239,7 @@ impl HandlerMemory {
         drop(arr);
         for i in 0..l {
           let other_arr_idx = orig_arr_copies[check_idx][i].0.clone();
-          if other_arr_idx > 0 {
+          if other_arr_idx < std::usize::MAX {
             if !orig_arr_addrs.contains(&other_arr_idx) {
               orig_arr_addrs.push(other_arr_idx);
               orig_arr_copies.push(orig.mems[other_arr_idx].clone());
@@ -257,7 +255,7 @@ impl HandlerMemory {
         let arr = &mut orig_arr_copies[i];
         for j in 0..arr.len() {
           let (a, b) = arr[j];
-          if a > 0 {
+          if a < std::usize::MAX {
             for k in 0..orig_arr_addrs.len() {
               if orig_arr_addrs[k] == a {
                 arr[j] = (dest_offset + k, b);
@@ -268,7 +266,7 @@ impl HandlerMemory {
       }
       dest.mems.append(&mut orig_arr_copies);
       // Finally, set the destination address to point at the original, main nested array
-      dest.set_addr(dest_addr, dest_offset, 0);
+      dest.set_addr(dest_addr, dest_offset, std::usize::MAX);
     }
   }
 
@@ -279,14 +277,14 @@ impl HandlerMemory {
     // despite the fact that it should work just fine...
     let (a_orig, b_orig) = self.addr_to_idxs(orig_addr);
     let (a, b) = self.mems[a_orig][b_orig];
-    if a == 0 {
+    if a == std::usize::MAX {
       self.write_fixed(dest_addr, b);
-    } else if a > 0 && b > 0 {
+    } else if a < std::usize::MAX && (b as usize) < std::usize::MAX {
       // All pointers are made shallow, so we know this is a pointer to a fixed value and just
       // grab it and de-reference it.
       let (_, b_nest) = self.mems[a][b as usize];
       self.write_fixed(dest_addr, b_nest);
-    } else if a > 0 && b == 0 {
+    } else if a < std::usize::MAX && b as usize == std::usize::MAX {
       // It's a nested array of data. This may itself contain references to other nested arrays of
       // data and is relatively complex to transfer over. First create some lookup vectors and
       // populate them with the nested fractal, adding more and more as each fractal is checked
@@ -300,7 +298,7 @@ impl HandlerMemory {
         drop(arr);
         for i in 0..l {
           let other_arr_idx = orig_arr_copies[check_idx][i].0.clone();
-          if other_arr_idx > 0 {
+          if other_arr_idx < std::usize::MAX {
             if !orig_arr_addrs.contains(&other_arr_idx) {
               orig_arr_addrs.push(other_arr_idx);
               orig_arr_copies.push(self.mems[other_arr_idx].clone());
@@ -316,7 +314,7 @@ impl HandlerMemory {
         let arr = &mut orig_arr_copies[i];
         for j in 0..arr.len() {
           let (a, b) = arr[j];
-          if a > 0 {
+          if a < std::usize::MAX {
             for k in 0..orig_arr_addrs.len() {
               if orig_arr_addrs[k] == a {
                 arr[j] = (dest_offset + k, b);
@@ -327,12 +325,12 @@ impl HandlerMemory {
       }
       self.mems.append(&mut orig_arr_copies);
       // Finally, set the destination address to point at the original, main nested array
-      self.set_addr(dest_addr, dest_offset, 0);
+      self.set_addr(dest_addr, dest_offset, std::usize::MAX);
     }
   }
 
   pub fn str_to_fractal(s: &str) -> Vec<(usize, i64)> {
-    let mut s_mem = vec![(0, s.len() as i64)];
+    let mut s_mem = vec![(std::usize::MAX, s.len() as i64)];
     let mut s_bytes = s.as_bytes().to_vec();
     loop {
       if s_bytes.len() % 8 != 0 {
@@ -345,7 +343,7 @@ impl HandlerMemory {
     loop {
       if i < s_bytes.len() {
         let s_slice = &s_bytes[i..i+8];
-        s_mem.push((0, i64::from_ne_bytes(s_slice.try_into().unwrap())));
+        s_mem.push((std::usize::MAX, i64::from_ne_bytes(s_slice.try_into().unwrap())));
         i = i + 8;
       } else {
         break

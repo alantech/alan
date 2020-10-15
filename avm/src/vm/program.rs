@@ -108,10 +108,7 @@ impl Program {
       panic!("Global memory is not divisible by 8");
     }
     for _ in 0..gms/8 {
-      program.gmem.push((0, parser.next_64_bits()));
-      /*for byte in &parser.next_64_bits().to_le_bytes() {
-        program.gmem.push(byte.clone());
-      }*/
+      program.gmem.push((std::usize::MAX, parser.next_64_bits()));
     }
     // instantiate null handler
     let mut cur_handler = EventHandler::new(0, 0);
