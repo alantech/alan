@@ -99,9 +99,14 @@ impl HandlerMemory {
     self.mems[a][b].1
   }
 
-  pub fn read_fractal(self: &HandlerMemory, addr: i64) -> &Vec<(usize, i64)> {
-    let (a, _) = self.addr_to_idxs(addr);
-    &self.mems[a]
+  pub fn read_fractal(self: &HandlerMemory, addr: i64) -> &[(usize, i64)] {
+    let (a, b) = self.addr_to_idxs(addr);
+    if addr_type(addr) == GMEM_ADDR {
+      // Special behavior to read strings out of global memory
+      &self.mems[a][b..]
+    } else {
+      &self.mems[a][..]
+    }
   }
 
   pub fn read_mut_fractal(self: &mut HandlerMemory, addr: i64) -> &mut Vec<(usize, i64)> {
@@ -154,9 +159,9 @@ impl HandlerMemory {
     self.set_addr(addr, a, b);
   }
 
-  pub fn write_fractal(self: &mut HandlerMemory, addr: i64, val: &Vec<(usize, i64)>) {
+  pub fn write_fractal(self: &mut HandlerMemory, addr: i64, val: &[(usize, i64)]) {
     let a = self.mems.len();
-    self.mems.push(val.clone());
+    self.mems.push(val.to_vec().clone());
     self.set_addr(addr, a, std::usize::MAX);
   }
 
@@ -232,7 +237,7 @@ impl HandlerMemory {
       // until no new ones are added
       let mut check_idx = 0;
       let mut orig_arr_addrs: Vec<usize> = vec![a];
-      let mut orig_arr_copies: Vec<Vec<(usize, i64)>> = vec![orig.read_fractal(orig_addr).clone()];
+      let mut orig_arr_copies: Vec<Vec<(usize, i64)>> = vec![orig.read_fractal(orig_addr).to_vec().clone()];
       while check_idx < orig_arr_addrs.len() {
         let arr = &orig_arr_copies[check_idx];
         let l = arr.len();
@@ -291,7 +296,7 @@ impl HandlerMemory {
       // until no new ones are added
       let mut check_idx = 0;
       let mut orig_arr_addrs: Vec<usize> = vec![a];
-      let mut orig_arr_copies: Vec<Vec<(usize, i64)>> = vec![self.read_fractal(orig_addr).clone()];
+      let mut orig_arr_copies: Vec<Vec<(usize, i64)>> = vec![self.read_fractal(orig_addr).to_vec().clone()];
       while check_idx < orig_arr_addrs.len() {
         let arr = &orig_arr_copies[check_idx];
         let l = arr.len();
@@ -352,7 +357,7 @@ impl HandlerMemory {
     s_mem
   }
 
-  pub fn fractal_to_string(f: &Vec<(usize, i64)>) -> String {
+  pub fn fractal_to_string(f: &[(usize, i64)]) -> String {
     let s_len = f[0].1 as usize;
     let mut s_bytes: Vec<u8> = Vec::new();
     for i in 1..f.len() {

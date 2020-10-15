@@ -3060,8 +3060,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("copystr", |args, hand_mem, _, _| {
-    let pascal_string = hand_mem.read_fractal(args[0]).clone();
-    hand_mem.write_fractal(args[2], &pascal_string);
+    let pascal_string = hand_mem.read_fractal(args[0]).to_vec().clone();
+    hand_mem.write_fractal(args[2], &pascal_string[..]);
     None
   });
   cpu!("copyarr", |args, hand_mem, _, _| {
@@ -3385,7 +3385,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         hasher.write_i64(pascal_string[i].1);
       }
     } else {
-      let mut stack: Vec<Vec<(usize, i64)>> = vec![hand_mem.read_fractal(args[0]).clone()];
+      let mut stack: Vec<Vec<(usize, i64)>> = vec![hand_mem.read_fractal(args[0]).to_vec().clone()];
       while stack.len() > 0 {
         let arr = stack.pop().unwrap();
         let arrlen = arr.len();
