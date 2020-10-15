@@ -1,9 +1,5 @@
 use std::convert::TryInto;
-use std::fmt;
-use std::slice;
 use std::str;
-
-use regex::Regex;
 
 use crate::vm::program::Program;
 
@@ -124,7 +120,7 @@ impl HandlerMemory {
     }
   }
 
-  pub fn read_either(self: &HandlerMemory, a: usize, b: usize) -> (Vec<(usize, i64)>, bool) {
+  pub fn read_either_idxs(self: &HandlerMemory, a: usize, b: usize) -> (Vec<(usize, i64)>, bool) {
     return if b > 0 {
       (vec![self.mems[a][b].clone()], false)
     } else {
@@ -276,7 +272,7 @@ impl HandlerMemory {
     }
   }
 
-  pub fn clone(self: &mut HandlerMemory, orig_addr: i64, dest_addr: i64) {
+  pub fn dupe(self: &mut HandlerMemory, orig_addr: i64, dest_addr: i64) {
     // This *should be possible with something like this:
     // HandlerMemory::transfer(self, orig_addr, self, dest_addr);
     // But Rust's borrow checker doesn't like it, so we basically have to replicate the code here
