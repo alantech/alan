@@ -73,8 +73,8 @@ fn mx_plus_b(args: &Vec<i64>, hand_mem: &mut HandlerMemory) {
 }
 
 fn e_field(args: &Vec<i64>, hand_mem: &mut HandlerMemory) {
-  let arr = hand_mem.get_fractal(args[1]);
-  let len = arr.len() as i64;
+  let arr = hand_mem.read_fractal(args[1]);
+  let len = arr.len();
   let mut out = 0.0f64;
   // This vector is to avoid issues with borrowing `hand_mem` twice at the same time even though it
   // would be safe
@@ -88,9 +88,9 @@ fn e_field(args: &Vec<i64>, hand_mem: &mut HandlerMemory) {
     // would be translated from alan to the runtime execution
     //hand_mem.copy_from(args[1], args[6], n);
     //let scalar = hand_mem.read_fixed(args[6]) as f64;
-    let scalar = hand_mem.get_fractal(args[1]).read_fixed(n) as f64;
+    let scalar = hand_mem.read_fractal(args[1])[n].1 as f64;
     //let scalar = arr.read_fixed(n) as f64;
-    let distance = (i - n) as f64;
+    let distance = (i - n as i64) as f64;
     if distance != 0.0 {
       hand_mem.write_fixed(d, i64::from_ne_bytes(distance.to_ne_bytes()));
       let sqdistance = distance * distance;
@@ -151,9 +151,9 @@ fn lin_mx_plus_b(size: i64) -> Duration {
 fn lin_e_field(size: i64) -> Duration {
   let mut mem = HandlerMemory::new(None, 7);
   let data = gen_rand_array(size);
-  mem.new_fractal(1);
+  mem.write_fractal(1, &Vec::new());
   for input in data {
-    mem.push_fractal_fixed(1, input);
+    mem.push_fixed(1, input);
   }
   let mut output: Vec<i64> = Vec::with_capacity(size as usize);
   let start = Instant::now();
@@ -239,9 +239,9 @@ fn coarse_e_field(size: i64) -> Duration {
   let cpu_threads = (num_cpus::get() - 1) as i64;
   let data = gen_rand_array(size);
   let mut real_mem = HandlerMemory::new(None, 7);
-  real_mem.new_fractal(1);
+  real_mem.write_fractal(1, &Vec::new());
   for input in &data {
-    real_mem.push_fractal_fixed(1, *input);
+    real_mem.push_fixed(1, *input);
   }
   let start = Instant::now();
   let mut mems: Vec<HandlerMemory> = Vec::new();
@@ -309,9 +309,9 @@ fn fine_mx_plus_b(size: i64) -> Duration {
 fn fine_e_field(size: i64) -> Duration {
   let mut real_mem = HandlerMemory::new(None, 7);
   let data = gen_rand_array(size);
-  real_mem.new_fractal(1);
+  real_mem.write_fractal(1, &Vec::new());
   for input in data {
-    real_mem.push_fractal_fixed(1, input);
+    real_mem.push_fixed(1, input);
   }
   let start = Instant::now();
   let _output: Vec<i64> = (0..size).into_par_iter().map(|i| {

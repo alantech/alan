@@ -1499,6 +1499,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }
     None
   });
+  /*
   cpu!("indarrv", |args, hand_mem, _, _| {
     let val = hand_mem.read_fractal(args[1]);
     let mem = hand_mem.read_fractal(args[0]);
@@ -3296,6 +3297,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     hand_mem.res_from(args[0], args[1], args[2]);
     None
   });
+  */
   cpu!("mainE", |args, hand_mem, _, _| {
     hand_mem.write_fractal(args[2], &Vec::new());
     hand_mem.push_fixed(args[2], 1i64);
@@ -3381,7 +3383,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         hasher.write_i64(pascal_string[i].1);
       }
     } else {
-      let mut stack: Vec<&Vec<(usize, i64)>> = vec![hand_mem.read_fractal(args[0])];
+      let mut stack: Vec<Vec<(usize, i64)>> = vec![hand_mem.read_fractal(args[0]).clone()];
       while stack.len() > 0 {
         let arr = stack.pop().unwrap();
         let arrlen = arr.len();
@@ -3389,7 +3391,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
           let (a, b) = arr[i];
           let (data, is_fractal) = hand_mem.read_either_idxs(a, b as usize);
           if is_fractal {
-            stack.push(&data);
+            stack.push(data.clone());
           } else {
             hasher.write_i64(data[0].1);
           }
