@@ -1107,8 +1107,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("eqstr", |args, hand_mem, _, _| {
-    let a_pascal_string = hand_mem.read_fractal_mem(args[0]);
-    let b_pascal_string = hand_mem.read_fractal_mem(args[1]);
+    let a_pascal_string = hand_mem.read_fractal(args[0]);
+    let b_pascal_string = hand_mem.read_fractal(args[1]);
     let out = if a_pascal_string == b_pascal_string { 1i64 } else { 0i64 };
     hand_mem.write_fixed(args[2], out);
     None
@@ -1164,8 +1164,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("neqstr", |args, hand_mem, _, _| {
-    let a_pascal_string = hand_mem.read_fractal_mem(args[0]);
-    let b_pascal_string = hand_mem.read_fractal_mem(args[1]);
+    let a_pascal_string = hand_mem.read_fractal(args[0]);
+    let b_pascal_string = hand_mem.read_fractal(args[1]);
     let out = if a_pascal_string != b_pascal_string { 1i64 } else { 0i64 };
     hand_mem.write_fixed(args[2], out);
     None
@@ -1392,7 +1392,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let out_hms = a_str.split(&b_str).map(|out_str| HandlerMemory::str_to_fractal(&out_str));
     hand_mem.write_fractal(args[2], &Vec::new());
     for out in out_hms {
-      hand_mem.push_register(args[2], out);
+      hand_mem.write_fractal(args[2], &out);
     }
     None
   });
@@ -1418,7 +1418,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     hand_mem.write_fractal(args[2], &Vec::new());
     if out_option.is_none() {
       hand_mem.push_fixed(args[2], 0i64);
-      hand_mem.push_register(args[2], &HandlerMemory::str_to_fractal("substring not found"));
+      hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal("substring not found"));
     } else {
       hand_mem.push_fixed(args[2], 1i64);
       let out = out_option.unwrap() as i64;
@@ -1427,9 +1427,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("lenstr", |args, hand_mem, _, _| {
-    let pascal_string = hand_mem.read_fractal_mem(args[0]);
+    let pascal_string = hand_mem.read_fractal(args[0]);
     let out = pascal_string[0];
-    hand_mem.write_fixed(args[2], out);
+    hand_mem.write_fixed(args[2], out.1);
     None
   });
   cpu!("trim", |args, hand_mem, _, _| {
@@ -1461,14 +1461,14 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     // args = [arr_addr, inner_addr, outer_addr]
     // copy data from outer_addr to inner_addr in arr_addr
     let inner = hand_mem.read_fixed(args[1]);
-    hand_mem.copy_to_fixed(args[0], args[2], inner);
+    hand_mem.register_in(args[0], inner, args[2]);
     None
   });
   cpu!("copytov", |args, hand_mem, _, _| {
     // args = [arr_addr, inner_addr, outer_addr]
     // copy data from outer_addr to inner_addr in arr_addr
     let inner = hand_mem.read_fixed(args[1]);
-    hand_mem.copy_to_fractal_mem(args[0], args[2], inner);
+    hand_mem.register_in(args[0], inner, args[2]);
     None
   });
   cpu!("lenarr", |args, hand_mem, _, _| {
@@ -1480,19 +1480,19 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("indarrf", |args, hand_mem, _, _| {
     let val = hand_mem.read_fixed(args[1]);
     let mem = hand_mem.read_fractal(args[0]);
-    let len = mem.len() as i64;
+    let len = mem.len();
     let mut idx = -1i64;
     for i in 0..len {
-      let check = mem.read_fixed(i);
+      let check = mem[i].1;
       if val == check {
-        idx = i;
+        idx = i as i64;
         break
       }
     }
     hand_mem.write_fractal(args[2], &Vec::new());
     if idx == -1i64 {
       hand_mem.push_fixed(args[2], 0i64);
-      hand_mem.push_register(args[2], &HandlerMemory::str_to_fractal("element not found"));
+      hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal("element not found"));
     } else {
       hand_mem.push_fixed(args[2], 1i64);
       hand_mem.push_fixed(args[2], idx);
@@ -1500,12 +1500,12 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("indarrv", |args, hand_mem, _, _| {
-    let val = hand_mem.read_fractal_mem(args[1]);
+    let val = hand_mem.read_fractal(args[1]);
     let mem = hand_mem.read_fractal(args[0]);
     let len = mem.len() as i64;
     let mut idx = -1i64;
     for i in 0..len {
-      let check = mem.read_fractal_mem(i);
+      let check = mem.read_fractal(i);
       // TODO: equality comparisons for nested arrays, for now, assume it's string-like
       if val.len() != check.len() {
         continue
@@ -1525,7 +1525,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     hand_mem.write_fractal(args[2], &Vec::new());
     if idx == -1i64 {
       hand_mem.push_fixed(args[2], 0i64);
-      hand_mem.push_register(args[2], &HandlerMemory::str_to_fractal("element not found"));
+      hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal("element not found"));
     } else {
       hand_mem.push_fixed(args[2], 1i64);
       hand_mem.push_fixed(args[2], idx);
@@ -1533,7 +1533,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("join", |args, hand_mem, _, _| {
-    let sep_str = hand_mem.read_fractal(args[1]).fractal_to_string();
+    let sep_str = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
     let mem = hand_mem.read_fractal(args[0]);
     let len = mem.len() as i64;
     let mut strs: Vec<String> = Vec::new();
@@ -1568,12 +1568,12 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       if val.is_fixed {
         hand_mem.push_fixed(args[2], val.read_fixed(0));
       } else {
-        hand_mem.push_register(args[2], val);
+        hand_mem.write_fractal(args[2], &val);
       }
     } else {
       hand_mem.push_fixed(args[2], 0i64);
       let error_string = last.err().unwrap();
-      hand_mem.push_register(args[2], &HandlerMemory::str_to_fractal(&error_string));
+      hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&error_string));
     }
     None
   });
@@ -1591,7 +1591,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       // array element is $1 argument of the closure memory space
       if !arr.has_nested_fractals() {
         // this could be a string or fixed data type
-        let val = arr[idx].1;
+        let val = arr[idx as usize].1;
         mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
       } else {
         // more nested arrays
@@ -1644,7 +1644,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       // array element is $1 argument of the closure memory space
       if !arr.has_nested_fractals() {
         // this could be a string or fixed data type
-        let val = arr[idx].1;
+        let val = arr[idx as usize].1;
         mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
       } else {
         // more nested arrays
@@ -1722,7 +1722,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       // current index is $2 argument
       if !arr.has_nested_fractals() {
         // this could be a string or fixed data type
-        let val = arr[idx].1;
+        let val = arr[idx as usize].1;
         mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
         mem.write_fixed(CLOSURE_ARG_MEM_START + 2, idx);
       } else {
@@ -1756,7 +1756,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       // array element is $1 argument of the closure memory space
       if !arr.has_nested_fractals() {
         // this could be a string or fixed data type
-        let val = arr[idx].1;
+        let val = arr[idx as usize].1;
         hand_mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
       } else {
         // more nested arrays
@@ -1790,7 +1790,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       // array element is $1 argument of the closure memory space
       if !arr.has_nested_fractals() {
         // this could be a string or fixed data type
-        let val = arr[*idx].1;
+        let val = arr[*idx as usize].1;
         mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
       } else {
         // more nested arrays
@@ -1816,14 +1816,14 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     hand_mem.write_fractal(args[2], &Vec::new());
     if arr_addr.is_none() {
       hand_mem.push_fixed(args[2], 0i64);
-      hand_mem.push_register(args[2], &HandlerMemory::str_to_fractal("no element matches"));
+      hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal("no element matches"));
     } else {
       let addr = arr_addr.unwrap();
       hand_mem.push_fixed(args[2], 1i64);
       let arr = hand_mem.read_fractal(args[0]); // This is dumb, but whatever Rust
       if !arr.has_nested_fractals() {
         // this could be a string or fixed data type
-        let val = arr[addr].1;
+        let val = arr[addr as usize].1;
         hand_mem.push_fixed(args[2], val);
       } else {
         // more nested arrays
@@ -1843,7 +1843,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       // array element is $1 argument of the closure memory space
       if !arr.has_nested_fractals() {
         // this could be a string or fixed data type
-        let val = arr[*idx].1;
+        let val = arr[*idx as usize].1;
         mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
       } else {
         // more nested arrays
@@ -1869,14 +1869,14 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     hand_mem.write_fractal(args[2], &Vec::new());
     if arr_addr.is_none() {
       hand_mem.push_fixed(args[2], 0i64);
-      hand_mem.push_register(args[2], &HandlerMemory::str_to_fractal("no element matches"));
+      hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal("no element matches"));
     } else {
       let addr = arr_addr.unwrap();
       hand_mem.push_fixed(args[2], 1i64);
       let arr = hand_mem.read_fractal(args[0]); // This is dumb, but whatever Rust
       if !arr.has_nested_fractals() {
         // this could be a string or fixed data type
-        let val = arr[addr].1;
+        let val = arr[addr as usize].1;
         hand_mem.push_fixed(args[2], val);
       } else {
         // more nested arrays
@@ -1896,7 +1896,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       // array element is $1 argument of the closure memory space
       if !arr.has_nested_fractals() {
         // this could be a string or fixed data type
-        let val = arr[idx].1;
+        let val = arr[idx as usize].1;
         mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
       } else {
         // more nested arrays
@@ -1937,7 +1937,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       // array element is $1 argument of the closure memory space
       if !arr.has_nested_fractals() {
         // this could be a string or fixed data type
-        let val = arr[idx].1;
+        let val = arr[idx as usize].1;
         mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
       } else {
         // more nested arrays
@@ -1982,7 +1982,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       // array element is $1 argument of the closure memory space
       if !arr.has_nested_fractals() {
         // this could be a string or fixed data type
-        let val = arr[idx].1;
+        let val = arr[idx as usize].1;
         mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
       } else {
         // more nested arrays
@@ -2023,7 +2023,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       // array element is $1 argument of the closure memory space
       if !arr.has_nested_fractals() {
         // this could be a string or fixed data type
-        let val = arr[idx].1;
+        let val = arr[idx as usize].1;
         mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
       } else {
         // more nested arrays
@@ -2065,10 +2065,10 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let arr2len = arr2.len() as i64;
     if arr1.has_nested_fractals() {
       for i in 0..arr1len {
-        hand_mem.push_register(args[2], arr1.read_fractal(i).clone());
+        hand_mem.write_fractal(args[2], &arr1.read_fractal(i));
       }
       for i in 0..arr2len {
-        hand_mem.push_register(args[2], arr2.read_fractal(i).clone());
+        hand_mem.write_fractal(args[2], &arr2.read_fractal(i));
       }
     } else {
       for i in 0..arr1len {
@@ -2209,7 +2209,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         hand_mem.write_fractal(args[2], &Vec::new());
         let reslen = res.len();
         for i in 0..reslen {
-          hand_mem.push_register(args[2], res[i].clone());
+          hand_mem.write_fractal(args[2], &res[i]);
         }
       } else {
         let res: Vec<HandlerMemory> = arr.mem.clone().into_par_iter().fold(|| init.clone(), |a, b| {
@@ -2234,11 +2234,11 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         hand_mem.write_fractal(args[2], &Vec::new());
         let reslen = res.len();
         for i in 0..reslen {
-          hand_mem.push_register(args[2], res[i].clone());
+          hand_mem.write_fractal(args[2], &res[i]);
         }
       }
     } else {
-      let initial = obj.read_fixed(1);
+      let initial = obj[1].1;
       if arr.has_nested_fractals() {
         let res: Vec<i64> = arr.fractal_mem.clone().into_par_iter().fold(|| initial, |a, b| {
           let ins = instructions.clone();
@@ -2337,7 +2337,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         hand_mem.write_fractal(args[2], res);
       }
     } else {
-      let initial = obj.read_fixed(1);
+      let initial = obj[1].1;
       if arr.has_nested_fractals() {
         let arrf = arr.fractal_mem.clone();
         let res: i64 = arrf.into_iter().fold(initial, |a, b| {
@@ -2411,7 +2411,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       }).collect();
       let reslen = res.len();
       for i in 0..reslen {
-        hand_mem.push_register(args[2], res[i].clone());
+        hand_mem.write_fractal(args[2], &res[i]);
       }
     } else {
       let res: Vec<i64> = arr.mem.clone().into_par_iter().filter(|a| {
@@ -2464,7 +2464,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       }).collect();
       let reslen = res.len();
       for i in 0..reslen {
-        hand_mem.push_register(args[2], res[i].clone());
+        hand_mem.write_fractal(args[2], &res[i]);
       }
     } else {
       let res: Vec<i64> = arr.mem.clone().into_iter().filter(|a| {
@@ -2512,17 +2512,17 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     match output {
       Err(e) => {
         hand_mem.push_fixed(args[2], 127);
-        hand_mem.push_register(args[2], vec![0i64]);
+        hand_mem.write_fractal(args[2], &vec![(0, 0)]);
         let error_string = e.to_string();
-        hand_mem.push_register(args[2], &HandlerMemory::str_to_fractal(&error_string));
+        hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&error_string));
       },
       Ok(output_res) => {
         let status_code = output_res.status.code().unwrap_or(127) as i64;
         hand_mem.push_fixed(args[2], status_code);
         let stdout_str = String::from_utf8(output_res.stdout).unwrap_or("".to_string());
-        hand_mem.push_register(args[2], &HandlerMemory::str_to_fractal(&stdout_str));
+        hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&stdout_str));
         let stderr_str = String::from_utf8(output_res.stderr).unwrap_or("".to_string());
-        hand_mem.push_register(args[2], &HandlerMemory::str_to_fractal(&stderr_str));
+        hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&stderr_str));
       },
     };
     None
@@ -2561,7 +2561,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let mut hand_mem = mem.write().await;
       hand_mem.write_fractal(args[2], &Vec::new());
       hand_mem.push_fixed(args[2], result);
-      hand_mem.push_register(args[2], &HandlerMemory::str_to_fractal(&result_str));
+      hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&result_str));
       drop(hand_mem); // drop write lock
     };
     return Box::pin(fut);
@@ -2591,7 +2591,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let mut hand_mem = mem.write().await;
       hand_mem.write_fractal(args[2], &Vec::new());
       hand_mem.push_fixed(args[2], result);
-      hand_mem.push_register(args[2], &HandlerMemory::str_to_fractal(&result_str));
+      hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&result_str));
       drop(hand_mem); // drop write lock
     };
     return Box::pin(fut);
@@ -2628,9 +2628,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let conn_id = OsRng.next_u64() as i64;
     // Populate the event and emit it
     event.write_fractal(0, &Vec::new());
-    event.push_register(0, url);
-    event.push_register(0, headers_hm);
-    event.push_register(0, body);
+    event.write_fractal(0, &url);
+    event.write_fractal(0, &headers_hm);
+    event.write_fractal(0, &body);
     event.push_fixed(0, conn_id);
     let event_emit = EventEmit {
       id: i64::from(BuiltInEvents::HTTPCONN),
@@ -2695,11 +2695,11 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       if bind.is_err() {
         hand_mem.push_fixed(args[2], 0i64);
         let result_str = format!("{}", bind.err().unwrap());
-        hand_mem.push_register(args[2], &HandlerMemory::str_to_fractal(&result_str));
+        hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&result_str));
         return
       } else {
         hand_mem.push_fixed(args[2], 1i64);
-        hand_mem.push_register(args[2], &HandlerMemory::str_to_fractal("ok"));
+        hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal("ok"));
       }
       let server = bind.unwrap().serve(make_svc);
       tokio::spawn(async move {
@@ -2711,7 +2711,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   io!("httpsend", |args, mem| {
     let fut = async move {
       let mut hand_mem = mem.write().await;
-      hand_mem.copy_fractal(args[0], args[0]); // Make sure there's no pointers involved
+      hand_mem.dupe(args[0], args[0]); // Make sure there's no pointers involved
       let response = hand_mem.read_fractal(args[0]);
       let conn_id = response.clone().read_fixed(3);
       let responses = Arc::clone(&HTTP_RESPONSES);
@@ -2722,7 +2722,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       // return success
       hand_mem.write_fractal(args[2], &Vec::new());
       hand_mem.push_fixed(args[2], 0i64);
-      hand_mem.push_register(args[2], &HandlerMemory::str_to_fractal("ok"));
+      hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal("ok"));
     };
     return Box::pin(fut);
   });
@@ -2801,7 +2801,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       } else {
         hand_mem.push_fixed(args[2], 0i64);
         let err_msg = "namespace-key pair not found";
-        hand_mem.push_register(args[2], &HandlerMemory::str_to_fractal(&err_msg));
+        hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&err_msg));
       }
       drop(hand_mem);
     };
@@ -2821,11 +2821,11 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       if maybe_hm.is_some() {
         hand_mem.push_fixed(args[2], 1i64);
         let hm = maybe_hm.unwrap();
-        hand_mem.push_register(args[2], hm.clone());
+        hand_mem.write_fractal(args[2], &hm);
       } else {
         hand_mem.push_fixed(args[2], 0i64);
         let err_msg = "namespace-key pair not found";
-        hand_mem.push_register(args[2], &HandlerMemory::str_to_fractal(&err_msg));
+        hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&err_msg));
       }
       drop(hand_mem);
     };
@@ -2849,7 +2849,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     } else {
       hand_mem.push_fixed(args[2], 0i64);
       let err_msg = "error: sequence out-of-bounds";
-      hand_mem.push_register(args[2], &HandlerMemory::str_to_fractal(&err_msg));
+      hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&err_msg));
     }
     None
   });
@@ -3057,13 +3057,13 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("copystr", |args, hand_mem, _, _| {
-    let pascal_string = hand_mem.read_fractal_mem(args[0]);
+    let pascal_string = hand_mem.read_fractal(args[0]);
     hand_mem.write_fractal_mem(args[2], &pascal_string);
     None
   });
   cpu!("copyarr", |args, hand_mem, _, _| {
     // args = [in_addr, unused, out_addr]
-    hand_mem.copy_fractal(args[0], args[2]);
+    hand_mem.dupe(args[0], args[2]);
     None
   });
   cpu!("zeroed", |args, hand_mem, _, _| {
@@ -3151,7 +3151,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
 
   // Error, Maybe, Result, Either opcodes
   cpu!("error", |args, hand_mem, _, _| {
-    let pascal_string = hand_mem.read_fractal_mem(args[0]);
+    let pascal_string = hand_mem.read_fractal(args[0]);
     hand_mem.write_fractal_mem(args[2], &pascal_string);
     None
   });
@@ -3161,7 +3161,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("errorstr", |args, hand_mem, _, _| {
-    let pascal_string = hand_mem.read_fractal_mem(args[0]);
+    let pascal_string = hand_mem.read_fractal(args[0]);
     hand_mem.write_fractal_mem(args[2], &pascal_string);
     None
   });
