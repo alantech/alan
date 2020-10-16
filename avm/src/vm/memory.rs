@@ -124,9 +124,14 @@ impl HandlerMemory {
   }
 
   pub fn read_either_idxs(self: &HandlerMemory, a: usize, b: usize) -> (Vec<(usize, i64)>, bool) {
-    return if b < std::usize::MAX {
+    return if a == std::usize::MAX {
+      // The indexes are the actual data
+      (vec![(a, b as i64)], false)
+    } else if b < std::usize::MAX {
+      // The indexes point to fixed data
       (vec![self.mems[a][b].clone()], false)
     } else {
+      // The indexes point at nested data
       (self.mems[a].clone(), true)
     }
   }
