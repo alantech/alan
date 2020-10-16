@@ -1546,22 +1546,20 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&out_str));
     None
   });
+  */
   cpu!("pusharr", |args, hand_mem, _, _| {
     let val_size = hand_mem.read_fixed(args[2]);
     if val_size == 0 {
-      if args[1] > 0 {
-        hand_mem.push_reg(args[0], args[1]);
-      } else {
-        hand_mem.push_register(args[0], args[1]);
-      }
+      hand_mem.push_register(args[0], args[1]);
     } else {
       let val = hand_mem.read_fixed(args[1]);
       hand_mem.push_fixed(args[0], val);
     }
     None
   });
+  /*
   cpu!("poparr", |args, hand_mem, _, _| {
-    let last = hand_mem.pop_fractal(args[0]);
+    let last = hand_mem.pop(args[0]);
     hand_mem.write_fractal(args[2], &Vec::new());
     if last.is_ok() {
       hand_mem.push_fixed(args[2], 1i64);
@@ -1578,10 +1576,12 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }
     None
   });
+  */
   cpu!("newarr", |args, hand_mem, _, _| {
     hand_mem.write_fractal(args[2], &Vec::new());
     None
   });
+  /*
   unpred_cpu!("map", |args, hand_mem, frag, ins_sched| {
     let arr = hand_mem.read_fractal(args[0]);
     let len = arr.len() as i64;
@@ -3151,21 +3151,18 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     hand_mem.write_fixed(args[2], out);
     None
   });
-  /*
   // Error, Maybe, Result, Either opcodes
   cpu!("error", |args, hand_mem, _, _| {
-    let pascal_string = hand_mem.read_fractal(args[0]);
-    hand_mem.write_fractal_mem(args[2], &pascal_string);
+    hand_mem.register(args[2], args[0]);
     None
   });
   cpu!("noerr", |args, hand_mem, _, _| {
-    let empty_string = vec![0i64];
-    hand_mem.write_fractal_mem(args[2], &empty_string);
+    let empty_string = vec![(0, 0)];
+    hand_mem.write_fractal(args[2], &empty_string);
     None
   });
   cpu!("errorstr", |args, hand_mem, _, _| {
-    let pascal_string = hand_mem.read_fractal(args[0]);
-    hand_mem.write_fractal_mem(args[2], &pascal_string);
+    hand_mem.register(args[2], args[0]);
     None
   });
   cpu!("someM", |args, hand_mem, _, _| {
@@ -3234,7 +3231,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("isOk", |args, hand_mem, _, _| {
-    hand_mem.register_out(args[0], 0, args[2]);
+    hand_mem.register_in(args[2], args[0], 0);
     None
   });
   cpu!("isErr", |args, hand_mem, _, _| {
@@ -3260,12 +3257,13 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   cpu!("getOrRS", |args, hand_mem, _, _| {
     let arr = hand_mem.read_fractal(args[0]);
-    let val = arr[0].1;
+    /*let val = arr[0].1;
     if val == 1i64 {
       hand_mem.register_in(args[2], args[0], 1);
     } else {
       hand_mem.write_fractal(args[2], hand_mem.read_fractal(args[1]));
-    }
+    }*/
+    hand_mem.register_in(args[2], args[0], 1);
     None
   });
   cpu!("getR", |args, hand_mem, _, _| {
@@ -3296,10 +3294,24 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("resfrom", |args, hand_mem, _, _| {
     // args = [arr_addr, arr_idx_addr, outer_addr]
     // a guarded copy of data from an array to a result object
-    hand_mem.res_from(args[0], args[1], args[2]);
+    hand_mem.write_fractal(args[2], &Vec::new());
+    let inner_addr = hand_mem.read_fixed(args[1]) as usize;
+    let arr = hand_mem.read_fractal(args[0]);
+    if arr.len() > inner_addr {
+      hand_mem.push_fixed(args[2], 1);
+      let (a, _) = hand_mem.addr_to_idxs(args[0]);
+      let (val, is_fractal) = hand_mem.read_either_idxs(a, inner_addr);
+      if is_fractal {
+        hand_mem.push_fractal(args[2], &val);
+      } else {
+        hand_mem.push_fixed(args[2], val[0].1);
+      }
+    } else {
+      hand_mem.push_fixed(args[2], 0);
+      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("out-of-bounds access"));
+    }
     None
   });
-  */
   cpu!("mainE", |args, hand_mem, _, _| {
     hand_mem.write_fractal(args[2], &Vec::new());
     hand_mem.push_fixed(args[2], 1i64);

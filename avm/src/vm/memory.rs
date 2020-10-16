@@ -84,7 +84,7 @@ impl HandlerMemory {
     }
   }
 
-  fn addr_to_idxs(self: &HandlerMemory, addr: i64) -> (usize, usize) {
+  pub fn addr_to_idxs(self: &HandlerMemory, addr: i64) -> (usize, usize) {
     return if addr >= 0 {
      self.addr.0[addr as usize]
     } else if addr <= CLOSURE_ARG_MEM_END {
@@ -183,7 +183,7 @@ impl HandlerMemory {
     mem.push((a, b.try_into().unwrap()));
   }
 
-  pub fn pop_fractal(self: &mut HandlerMemory, addr: i64) -> Result<(usize, i64), String> {
+  pub fn pop(self: &mut HandlerMemory, addr: i64) -> Result<(usize, i64), String> {
     let mem = self.read_mut_fractal(addr);
     if mem.len() > 0 {
       return Ok(mem.pop().unwrap());
