@@ -206,7 +206,7 @@ impl HandlerMemory {
     let mem = self.read_fractal(fractal_addr);
     let (a, b) = mem[offset_addr as usize];
     if a < std::usize::MAX {
-      self.set_addr(addr, a, b.try_into().unwrap());
+      self.set_addr(addr, a, b as usize);
     } else {
       let (a, _) = self.addr_to_idxs(fractal_addr);
       self.set_addr(addr, a, offset_addr as usize);
