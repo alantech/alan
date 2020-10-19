@@ -1445,7 +1445,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     // args[0] point to an array in memory
     // args[1] is the address within the array to register
     let inner_addr = hand_mem.read_fixed(args[1]);
-    hand_mem.register_in(args[2], args[0], inner_addr);
+    hand_mem.register_out(args[0], inner_addr, args[2]);
     None
   });
   cpu!("copyfrom", |args, hand_mem, _, _| {
@@ -1461,14 +1461,14 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     // args = [arr_addr, inner_addr, outer_addr]
     // copy data from outer_addr to inner_addr in arr_addr
     let inner = hand_mem.read_fixed(args[1]);
-    hand_mem.register_in(args[0], inner, args[2]);
+    hand_mem.register_in(args[2], args[0], inner);
     None
   });
   cpu!("copytov", |args, hand_mem, _, _| {
     // args = [arr_addr, inner_addr, outer_addr]
     // copy data from outer_addr to inner_addr in arr_addr
     let inner = hand_mem.read_fixed(args[1]);
-    hand_mem.register_in(args[0], inner, args[2]);
+    hand_mem.register_in(args[2], args[0], inner);
     None
   });
   cpu!("lenarr", |args, hand_mem, _, _| {
@@ -3208,7 +3208,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let arr = hand_mem.read_fractal(args[0]);
     let val = arr[0].1;
     if val == 1i64 {
-      hand_mem.register_in(args[2], args[0], 1);
+      hand_mem.register_out(args[0], 1, args[2]);
     } else {
       if args[1] < 0 {
         let val = hand_mem.read_fixed(args[1]);
@@ -3243,7 +3243,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("isOk", |args, hand_mem, _, _| {
-    hand_mem.register_in(args[2], args[0], 0);
+    hand_mem.register_out(args[0], 0, args[2]);
     None
   });
   cpu!("isErr", |args, hand_mem, _, _| {
@@ -3256,7 +3256,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let arr = hand_mem.read_fractal(args[0]);
     let val = arr[0].1;
     if val == 1i64 {
-      hand_mem.register_in(args[2], args[0], 1);
+      hand_mem.register_out(args[0], 1, args[2]);
     } else {
       let (data, is_fractal) = hand_mem.read_either(args[1]);
       if is_fractal {
@@ -3269,20 +3269,14 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   cpu!("getOrRS", |args, hand_mem, _, _| {
     let arr = hand_mem.read_fractal(args[0]);
-    /*let val = arr[0].1;
-    if val == 1i64 {
-      hand_mem.register_in(args[2], args[0], 1);
-    } else {
-      hand_mem.write_fractal(args[2], hand_mem.read_fractal(args[1]));
-    }*/
-    hand_mem.register_in(args[2], args[0], 1);
+    hand_mem.register_out(args[0], 1, args[2]);
     None
   });
   cpu!("getR", |args, hand_mem, _, _| {
     let arr = hand_mem.read_fractal(args[0]);
     let val = arr[0].1;
     if val == 1i64 {
-      hand_mem.register_in(args[2], args[0], 1);
+      hand_mem.register_out(args[0], 1, args[2]);
     } else {
       panic!("runtime error: illegal access");
     }
@@ -3292,7 +3286,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let arr = hand_mem.read_fractal(args[0]);
     let val = arr[0].1;
     if val == 0i64 {
-      hand_mem.register_in(args[2], args[0], 1);
+      hand_mem.register_out(args[0], 1, args[2]);
     } else {
       let (data, is_fractal) = hand_mem.read_either(args[1]);
       if is_fractal {
@@ -3357,7 +3351,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let arr = hand_mem.read_fractal(args[0]);
     let val = arr[0].1;
     if val == 1i64 {
-      hand_mem.register_in(args[2], args[0], 1);
+      hand_mem.register_out(args[0], 1, args[2]);
     } else {
       let (data, is_fractal) = hand_mem.read_either(args[1]);
       if is_fractal {
@@ -3372,7 +3366,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let arr = hand_mem.read_fractal(args[0]);
     let val = arr[0].1;
     if val == 0i64 {
-      hand_mem.register_in(args[2], args[0], 1);
+      hand_mem.register_out(args[0], 1, args[2]);
     } else {
       let (data, is_fractal) = hand_mem.read_either(args[1]);
       if is_fractal {

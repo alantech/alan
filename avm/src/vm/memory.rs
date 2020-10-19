@@ -220,21 +220,21 @@ impl HandlerMemory {
     self.set_addr(addr, a, b);
   }
 
-  pub fn register_in(self: &mut HandlerMemory, addr: i64, fractal_addr: i64, offset_addr: i64) {
-    let mem = self.read_fractal(fractal_addr);
-    let (a, b) = mem[offset_addr as usize];
-    if a < std::usize::MAX {
-      self.set_addr(addr, a, b as usize);
-    } else {
-      let (a, _) = self.addr_to_idxs(fractal_addr);
-      self.set_addr(addr, a, offset_addr as usize);
-    }
+  pub fn register_in(self: &mut HandlerMemory, orig_addr: i64, fractal_addr: i64, offset_addr: i64) {
+    let (a, b) = self.addr_to_idxs(orig_addr);
+    let mem = self.read_mut_fractal(fractal_addr);
+    mem[offset_addr as usize] = (a, b as i64);
   }
 
-  pub fn register_out(self: &mut HandlerMemory, fractal_addr: i64, offset_addr: i64, orig_addr: i64) {
+  pub fn register_out(self: &mut HandlerMemory, fractal_addr: i64, offset_addr: i64, out_addr: i64) {
+    let (arr_a, _) = self.addr_to_idxs(fractal_addr);
     let mem = self.read_mut_fractal(fractal_addr);
     let (a, b) = mem[offset_addr as usize];
-    self.set_addr(orig_addr, a, b as usize);
+    if a < std::usize::MAX {
+      self.set_addr(out_addr, a, b as usize);
+    } else {
+      self.set_addr(out_addr, arr_a, offset_addr as usize);
+    }
   }
 
   pub fn transfer(orig: &HandlerMemory, orig_addr: i64, dest: &mut HandlerMemory, dest_addr: i64) {
