@@ -96,7 +96,11 @@ impl HandlerMemory {
 
   pub fn read_fixed(self: &HandlerMemory, addr: i64) -> i64 {
     let (a, b) = self.addr_to_idxs(addr);
-    self.mems[a][b].1
+    return if a == std::usize::MAX {
+      b as i64
+    } else {
+      self.mems[a][b].1
+    }
   }
 
   pub fn read_fractal(self: &HandlerMemory, addr: i64) -> &[(usize, i64)] {
@@ -228,14 +232,9 @@ impl HandlerMemory {
   }
 
   pub fn register_out(self: &mut HandlerMemory, fractal_addr: i64, offset_addr: i64, orig_addr: i64) {
-    let (a, b) = self.addr_to_idxs(orig_addr);
-    let (c, d) = self.mems[a][b];
     let mem = self.read_mut_fractal(fractal_addr);
-    if c < std::usize::MAX {
-      mem[offset_addr as usize] = (c, d);
-    } else {
-      mem[offset_addr as usize] = (a, b.try_into().unwrap());
-    }
+    let (a, b) = mem[offset_addr as usize];
+    self.set_addr(orig_addr, a, b as usize);
   }
 
   pub fn transfer(orig: &HandlerMemory, orig_addr: i64, dest: &mut HandlerMemory, dest_addr: i64) {
@@ -299,14 +298,13 @@ impl HandlerMemory {
     // HandlerMemory::transfer(self, orig_addr, self, dest_addr);
     // But Rust's borrow checker doesn't like it, so we basically have to replicate the code here
     // despite the fact that it should work just fine...
-    let (a_orig, b_orig) = self.addr_to_idxs(orig_addr);
-    let (a, b) = self.mems[a_orig][b_orig];
+    let (a, b) = self.addr_to_idxs(orig_addr);
     if a == std::usize::MAX {
-      self.write_fixed(dest_addr, b);
+      self.write_fixed(dest_addr, b as i64);
     } else if a < std::usize::MAX && (b as usize) < std::usize::MAX {
       // All pointers are made shallow, so we know this is a pointer to a fixed value and just
       // grab it and de-reference it.
-      let (_, b_nest) = self.mems[a][b as usize];
+      let (_, b_nest) = self.mems[a][b];
       self.write_fixed(dest_addr, b_nest);
     } else if a < std::usize::MAX && b as usize == std::usize::MAX {
       // It's a nested array of data. This may itself contain references to other nested arrays of
