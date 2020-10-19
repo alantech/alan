@@ -88,7 +88,7 @@ impl HandlerMemory {
     return if addr >= 0 {
      self.addr.0[addr as usize]
     } else if addr <= CLOSURE_ARG_MEM_END {
-      self.addr.1[(CLOSURE_ARG_MEM_START - addr) as usize]
+      self.addr.1[(addr - CLOSURE_ARG_MEM_START) as usize]
     } else {
       (0, ((-1 * addr - 1) / 8) as usize)
     }
@@ -140,6 +140,14 @@ impl HandlerMemory {
     }
   }
 
+  pub fn has_nested_fractals(mem: &[(usize, i64)]) -> bool {
+    for i in 0..mem.len() {
+      if mem[i].0 < std::usize::MAX {
+        return true
+      }
+    }
+    return false
+  }
 
   fn set_addr(self: &mut HandlerMemory, addr: i64, a: usize, b: usize) {
     if addr_type(addr) == NORMAL_ADDR {
@@ -149,7 +157,7 @@ impl HandlerMemory {
       }
       self.addr.0[addru] = (a, b);
     } else {
-      let addru = (CLOSURE_ARG_MEM_START - addr) as usize;
+      let addru = (addr - CLOSURE_ARG_MEM_START) as usize;
       if self.addr.1.len() <= addru {
         self.addr.1.resize(addru + 1, (std::usize::MAX, 0));
       }

@@ -1644,27 +1644,30 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }
     None
   });
-  unpred_cpu!("mapl", |args, hand_mem, frag, ins_sched| {
+  */
+  unpred_cpu!("mapl", |args, mut hand_mem, frag, ins_sched| {
     let arr = hand_mem.read_fractal(args[0]);
-    let len = arr.len() as i64;
+    let len = arr.len();
     let ins = frag.get_closure_instructions(args[1]);
+    drop(arr); // ugh rust, why?
     // array of potentially many levels of nested fractals
-    let output: Vec<HandlerMemory> = (0..len).map(|idx| {
-      let mut mem = hand_mem.clone();
+    let output: Vec<(usize, usize)> = (0..len).map(|idx| {
       // array element is $1 argument of the closure memory space
-      if !arr.has_nested_fractals() {
+      let arr = hand_mem.read_fractal(args[0]);
+      if !HandlerMemory::has_nested_fractals(arr) {
         // this could be a string or fixed data type
-        let val = arr[idx as usize].1;
-        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
+        let val = arr[idx].1;
+        hand_mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
       } else {
         // more nested arrays
-        let arr_el = arr.read_fractal(idx);
-        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
+        let (a, b) = arr[idx];
+        let (arr_el, _) = hand_mem.read_either_idxs(a, b as usize);
+        hand_mem.write_fractal(CLOSURE_ARG_MEM_START + 1, &arr_el);
       }
       ins.iter().for_each(|i| {
         // TODO implement for async_functions. can tokio be called within rayon?
         let func = i.opcode.func.unwrap();
-        let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
+        let event = func(&i.args, &mut hand_mem, &mut frag.clone(), ins_sched);
         if event.is_some() {
           let event_sent = ins_sched.event_tx.send(event.unwrap());
           if event_sent.is_err() {
@@ -1674,29 +1677,15 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         }
       });
       // return address is $0 argument of the closure memory space
-      let (_, is_fractal) = mem.read_either(CLOSURE_ARG_MEM_START);
-      if is_fractal {
-        let res = mem.read_fractal(CLOSURE_ARG_MEM_START);
-        return res;
-      } else {
-        let val = mem.read_fixed(CLOSURE_ARG_MEM_START);
-        let mut res = HandlerMemory::new(None, 1);
-        res.write_fixed(0, val);
-        res.is_fixed = true;
-        return res;
-      }
+      return hand_mem.addr_to_idxs(CLOSURE_ARG_MEM_START);
     }).collect();
     hand_mem.write_fractal(args[2], &Vec::new());
     for f in output {
-      if f.is_fixed {
-        hand_mem.push_fixed(args[2], f.read_fixed(0));
-      } else {
-        hand_mem.push_register(args[2], f);
-      }
+      let (a, b) = f;
+      hand_mem.push_idxs(args[2], a, b);
     }
     None
   });
-  */
   cpu!("reparr", |args, hand_mem, _, _| {
     hand_mem.write_fractal(args[2], &Vec::new());
     let n = hand_mem.read_fixed(args[1]);
