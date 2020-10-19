@@ -184,8 +184,17 @@ impl HandlerMemory {
 
   pub fn push_register(self: &mut HandlerMemory, addr: i64, other_addr: i64) {
     let (a, b) = self.addr_to_idxs(other_addr);
-    let mem = self.read_mut_fractal(addr);
-    mem.push((a, b as i64));
+    // Special path for strings in global memory
+    if a == 0 {
+      let strmem = self.mems[0][b..].to_vec().clone();
+      let new_a = self.mems.len();
+      self.mems.push(strmem);
+      let mem = self.read_mut_fractal(addr);
+      mem.push((new_a, std::usize::MAX as i64));
+    } else {
+      let mem = self.read_mut_fractal(addr);
+      mem.push((a, b as i64));
+    }
   }
 
   pub fn push_idxs(self: &mut HandlerMemory, addr: i64, a: usize, b: usize) {
