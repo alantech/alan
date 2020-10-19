@@ -185,7 +185,12 @@ impl HandlerMemory {
   pub fn push_register(self: &mut HandlerMemory, addr: i64, other_addr: i64) {
     let (a, b) = self.addr_to_idxs(other_addr);
     let mem = self.read_mut_fractal(addr);
-    mem.push((a, b.try_into().unwrap()));
+    mem.push((a, b as i64));
+  }
+
+  pub fn push_idxs(self: &mut HandlerMemory, addr: i64, a: usize, b: usize) {
+    let mem = self.read_mut_fractal(addr);
+    mem.push((a, b as i64));
   }
 
   pub fn pop(self: &mut HandlerMemory, addr: i64) -> Result<(usize, i64), String> {
