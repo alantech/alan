@@ -1846,24 +1846,17 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }
     None
   });
+  */
   unpred_cpu!("some", |args, hand_mem, frag, ins_sched| {
     let arr = hand_mem.read_fractal(args[0]);
-    let len = arr.len() as i64;
+    let len = arr.len();
     let instructions = frag.get_closure_instructions(args[1]);
     // array of potentially many levels of nested fractals
     let output: bool = (0..len).into_par_iter().any(|idx| {
       let ins = instructions.clone();
       let mut mem = hand_mem.clone();
       // array element is $1 argument of the closure memory space
-      if !arr.has_nested_fractals() {
-        // this could be a string or fixed data type
-        let val = arr[idx as usize].1;
-        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
-      } else {
-        // more nested arrays
-        let arr_el = arr.read_fractal(idx);
-        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
-      }
+      mem.set_addr(CLOSURE_ARG_MEM_START + 1, arr[idx].0, arr[idx].1 as usize);
       ins.iter().for_each(|i| {
         // TODO implement for async_functions. can tokio be called within rayon?
         let func = i.opcode.func.unwrap();
@@ -1888,7 +1881,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }
     None
   });
-  */
   unpred_cpu!("somel", |args, mut hand_mem, frag, ins_sched| {
     let arr = hand_mem.read_fractal(args[0]);
     let len = arr.len();
@@ -1935,25 +1927,16 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }
     None
   });
-  /*
   unpred_cpu!("every", |args, hand_mem, frag, ins_sched| {
     let arr = hand_mem.read_fractal(args[0]);
-    let len = arr.len() as i64;
+    let len = arr.len();
     let instructions = frag.get_closure_instructions(args[1]);
     // array of potentially many levels of nested fractals
     let output: bool = (0..len).into_par_iter().all(|idx| {
       let ins = instructions.clone();
       let mut mem = hand_mem.clone();
       // array element is $1 argument of the closure memory space
-      if !arr.has_nested_fractals() {
-        // this could be a string or fixed data type
-        let val = arr[idx as usize].1;
-        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
-      } else {
-        // more nested arrays
-        let arr_el = arr.read_fractal(idx);
-        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
-      }
+      mem.set_addr(CLOSURE_ARG_MEM_START + 1, arr[idx].0, arr[idx].1 as usize);
       ins.iter().for_each(|i| {
         // TODO implement for async_functions. can tokio be called within rayon?
         let func = i.opcode.func.unwrap();
@@ -1978,7 +1961,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }
     None
   });
-  */
   unpred_cpu!("everyl", |args, mut hand_mem, frag, ins_sched| {
     let arr = hand_mem.read_fractal(args[0]);
     let len = arr.len();
