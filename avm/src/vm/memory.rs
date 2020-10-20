@@ -149,7 +149,7 @@ impl HandlerMemory {
     return false
   }
 
-  fn set_addr(self: &mut HandlerMemory, addr: i64, a: usize, b: usize) {
+  pub fn set_addr(self: &mut HandlerMemory, addr: i64, a: usize, b: usize) {
     if addr_type(addr) == NORMAL_ADDR {
       let addru = addr as usize;
       if self.addr.0.len() <= addru {
@@ -246,11 +246,10 @@ impl HandlerMemory {
   }
 
   pub fn transfer(orig: &HandlerMemory, orig_addr: i64, dest: &mut HandlerMemory, dest_addr: i64) {
-    let (a_orig, b_orig) = orig.addr_to_idxs(orig_addr);
-    let (a, b) = orig.mems[a_orig][b_orig];
+    let (a, b) = orig.addr_to_idxs(orig_addr);
     if a == std::usize::MAX {
       // It's direct fixed data, just copy it over
-      dest.write_fixed(dest_addr, b);
+      dest.write_fixed(dest_addr, b as i64);
     } else if a < std::usize::MAX && (b as usize) < std::usize::MAX {
       // All pointers are made shallow, so we know this is a pointer to a fixed value and just
       // grab it and de-reference it.

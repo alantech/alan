@@ -1590,24 +1590,16 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     hand_mem.write_fractal(args[2], &Vec::new());
     None
   });
-  /*
   unpred_cpu!("map", |args, hand_mem, frag, ins_sched| {
     let arr = hand_mem.read_fractal(args[0]);
-    let len = arr.len() as i64;
+    let len = arr.len();
     let instructions = frag.get_closure_instructions(args[1]);
     // array of potentially many levels of nested fractals
     let output: Vec<HandlerMemory> = (0..len).into_par_iter().map_with(instructions, |ins, idx| {
       let mut mem = hand_mem.clone();
       // array element is $1 argument of the closure memory space
-      if !arr.has_nested_fractals() {
-        // this could be a string or fixed data type
-        let val = arr[idx as usize].1;
-        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
-      } else {
-        // more nested arrays
-        let arr_el = arr.read_fractal(idx);
-        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
-      }
+      mem.set_addr(CLOSURE_ARG_MEM_START + 1, arr[idx].0, arr[idx].1 as usize);
+      mem.write_fixed(CLOSURE_ARG_MEM_START + 2, idx as i64);
       ins.iter().for_each(|i| {
         // TODO implement for async_functions. can tokio be called within rayon?
         let func = i.opcode.func.unwrap();
@@ -1621,30 +1613,16 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
           }
         }
       });
-      // return address is $0 argument of the closure memory space
-      let (_, is_fractal) = mem.read_either(CLOSURE_ARG_MEM_START);
-      if is_fractal {
-        let res = mem.read_fractal(CLOSURE_ARG_MEM_START);
-        return res;
-      } else {
-        let val = mem.read_fixed(CLOSURE_ARG_MEM_START);
-        let mut res = HandlerMemory::new(None, 1);
-        res.write_fixed(0, val);
-        res.is_fixed = true;
-        return res;
-      }
+      mem
     }).collect();
     hand_mem.write_fractal(args[2], &Vec::new());
-    for f in output {
-      if f.is_fixed {
-        hand_mem.push_fixed(args[2], f.read_fixed(0));
-      } else {
-        hand_mem.push_register(args[2], f);
-      }
+    for mem in output {
+      HandlerMemory::transfer(&mem, CLOSURE_ARG_MEM_START, hand_mem, CLOSURE_ARG_MEM_START);
+      let (a, b) = hand_mem.addr_to_idxs(CLOSURE_ARG_MEM_START);
+      hand_mem.push_idxs(args[2], a, b);
     }
     None
   });
-  */
   unpred_cpu!("mapl", |args, mut hand_mem, frag, ins_sched| {
     let arr = hand_mem.read_fractal(args[0]);
     let len = arr.len();
@@ -2448,60 +2426,36 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }
     None
   });
-  unpred_cpu!("filterl", |args, hand_mem, frag, ins_sched| {
+  */
+  unpred_cpu!("filterl", |args, mut hand_mem, frag, ins_sched| {
     hand_mem.write_fractal(args[2], &Vec::new());
-    let arr = hand_mem.read_fractal(args[0]);
+    let arr = hand_mem.read_fractal(args[0]).to_vec();
     let instructions = frag.get_closure_instructions(args[1]);
-    if arr.has_nested_fractals() {
-      let res: Vec<HandlerMemory> = arr.fractal_mem.clone().into_iter().filter(|a| {
-        let ins = instructions.clone();
-        let mut mem = hand_mem.clone();
-        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, a.clone());
-        ins.iter().for_each(|i| {
-          // TODO implement for async_functions. can tokio be called within rayon?
-          let func = i.opcode.func.unwrap();
-          let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-          if event.is_some() {
-            let event_sent = ins_sched.event_tx.send(event.unwrap());
-            if event_sent.is_err() {
-              eprintln!("Event transmission error");
-              std::process::exit(2);
-            }
+    let res: Vec<(usize, i64)> = arr.into_iter().filter(|m| {
+      let ins = instructions.clone();
+      let (a, b) = m;
+      hand_mem.set_addr(CLOSURE_ARG_MEM_START + 1, *a, *b as usize);
+      ins.iter().for_each(|i| {
+        // TODO implement for async_functions. can tokio be called within rayon?
+        let func = i.opcode.func.unwrap();
+        let event = func(&i.args, &mut hand_mem, &mut frag.clone(), ins_sched);
+        if event.is_some() {
+          let event_sent = ins_sched.event_tx.send(event.unwrap());
+          if event_sent.is_err() {
+            eprintln!("Event transmission error");
+            std::process::exit(2);
           }
-        });
-        mem.read_fixed(CLOSURE_ARG_MEM_START) == 1i64
-      }).collect();
-      let reslen = res.len();
-      for i in 0..reslen {
-        hand_mem.write_fractal(args[2], &res[i]);
-      }
-    } else {
-      let res: Vec<i64> = arr.mem.clone().into_iter().filter(|a| {
-        let ins = instructions.clone();
-        let mut mem = hand_mem.clone();
-        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, *a);
-        ins.iter().for_each(|i| {
-          // TODO implement for async_functions. can tokio be called within rayon?
-          let func = i.opcode.func.unwrap();
-          let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-          if event.is_some() {
-            let event_sent = ins_sched.event_tx.send(event.unwrap());
-            if event_sent.is_err() {
-              eprintln!("Event transmission error");
-              std::process::exit(2);
-            }
-          }
-        });
-        mem.read_fixed(CLOSURE_ARG_MEM_START) == 1i64
-      }).collect();
-      let reslen = res.len();
-      for i in 0..reslen {
-        hand_mem.push_fixed(args[2], res[i]);
-      }
+        }
+      });
+      hand_mem.read_fixed(CLOSURE_ARG_MEM_START) == 1i64
+    }).collect();
+    let reslen = res.len();
+    for i in 0..reslen {
+      let (a, b) = res[i];
+      hand_mem.push_idxs(args[2], a, b as usize);
     }
     None
   });
-  */
   // Conditional opcode
   unpred_cpu!("condfn", |args, hand_mem, frag, _| {
     let cond = hand_mem.read_fixed(args[0]);
