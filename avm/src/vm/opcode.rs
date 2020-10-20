@@ -2846,32 +2846,31 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     hand_mem.push_fixed(args[2], hand_mem.read_fixed(args[0]));
     None
   });
-  /*
   cpu!("seqnext", |args, hand_mem, _, _| {
     hand_mem.write_fractal(args[2], &Vec::new());
     let seq = hand_mem.read_mut_fractal(args[0]);
-    let current = seq.read_fixed(0i64);
-    let limit = seq.read_fixed(1i64);
+    let current = seq[0].1;
+    let limit = seq[1].1;
     if current < limit {
-      seq.write_fixed(0i64, current + 1);
+      seq[0].1 = current + 1 ;
       hand_mem.push_fixed(args[2], 1i64);
       hand_mem.push_fixed(args[2], current);
     } else {
       hand_mem.push_fixed(args[2], 0i64);
       let err_msg = "error: sequence out-of-bounds";
-      hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&err_msg));
+      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal(&err_msg));
     }
     None
   });
   unpred_cpu!("seqeach", |args, mut hand_mem, frag, ins_sched| {
     let seq = hand_mem.read_mut_fractal(args[0]);
-    let current = seq.read_fixed(0i64);
-    let limit = seq.read_fixed(1i64);
+    let current = seq[0].1;
+    let limit = seq[1].1;
     let ins = frag.get_closure_instructions(args[1]);
     if current >= limit {
       return None
     }
-    seq.write_fixed(0i64, limit);
+    seq[0].1 = limit;
     // array of potentially many levels of nested fractals
     (current..limit).for_each(|idx| {
       // array element is $1 argument of the closure memory space
@@ -2893,8 +2892,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   unpred_cpu!("seqwhile", |args, mut hand_mem, frag, ins_sched| {
     let seq = hand_mem.read_mut_fractal(args[0]);
-    let mut current = seq.read_fixed(0i64);
-    let limit = seq.read_fixed(1i64);
+    let mut current = seq[0].1;
+    let limit = seq[1].1;
     drop(seq);
     let cond_ins = frag.get_closure_instructions(args[1]);
     let body_ins = frag.get_closure_instructions(args[2]);
@@ -2941,13 +2940,13 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       });
     }
     let seq = hand_mem.read_mut_fractal(args[0]);
-    seq.write_fixed(0i64, current);
+    seq[0].1 = current;
     None
   });
   unpred_cpu!("seqdo", |args, mut hand_mem, frag, ins_sched| {
     let seq = hand_mem.read_mut_fractal(args[0]);
-    let mut current = seq.read_fixed(0i64);
-    let limit = seq.read_fixed(1i64);
+    let mut current = seq[0].1;
+    let limit = seq[1].1;
     drop(seq);
     let body_ins = frag.get_closure_instructions(args[1]);
     loop {
@@ -2969,10 +2968,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       }
     }
     let seq = hand_mem.read_mut_fractal(args[0]);
-    seq.write_fixed(0i64, current);
+    seq[0].1 = current;
     None
   });
-  */
 
   // "Special" opcodes
   cpu!("exitop", |args, hand_mem, _, _| {
