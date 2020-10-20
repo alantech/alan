@@ -71,15 +71,9 @@ impl HandlerMemory {
     return if pls == 0 {
       // no payload, void event
       None
-    } else if pls < 0 {
-      // payload is a variable-length data type
-      let mut hm = HandlerMemory::new(None, 1);
-      hm.write_fractal(0, curr_hand_mem.read_fractal(curr_addr));
-      Some(hm)
     } else {
-      // payload is a fixed length data type which could be in global memory
       let mut hm = HandlerMemory::new(None, 1);
-      hm.write_fixed(0, curr_hand_mem.read_fixed(curr_addr));
+      HandlerMemory::transfer(curr_hand_mem, curr_addr, &mut hm, 0);
       Some(hm)
     }
   }
