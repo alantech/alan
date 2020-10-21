@@ -29,21 +29,32 @@ fn addr_type(addr: i64) -> i8 {
 #[derive(Clone)]
 #[derive(Debug)]
 pub struct HandlerMemory {
-  /// The set of memory blocks. Each block consists of a tuple of two values. If the first value is
-  /// zero then the second value is the actual data, if it is non-zero then the two values together
-  /// represent a virtual pointer to another memory block and value (if the second value is zero,
-  /// it represents a pointer to a nested array of data, otherwise a pointer to an explicit value)
+  /// The set of memory blocks. The first (zeroth) block hosts global memory and all blocks
+  /// afterwards host memory created by the handler. Each block consists of tuples of two values,
+  /// representing either a virtual pointer or raw data, with three classes of values:
+  /// 1. `(usize::MAX, any value)` - The first value indicates that the second value is actual raw
+  ///    data
+  /// 2. `(< usize::MAX, usize::MAX)` - The first value indicates that this is a virtual pointer to
+  ///    nested memory. The second value indicates that the pointer is to an entire block of
+  ///    memory, not an explicit value.
+  /// 3. `(< usize::MAX, < usize::MAX)` - The first value indicates that this is a virtual pointer
+  ///    to nested memory. The second value indicates that the pointer is to an explicit value
+  ///    within that block of memory.
+  /// Virtual pointers are simply the indexes into the `mems` field.
   mems: Vec<Vec<(usize, i64)>>,
-  /// The address spaces for the handler memory. The first  is the "normal" memory space, and the
-  /// second is the args memory space.
+  /// The address spaces for the handler memory that the handler can mutate. The first is the
+  /// "normal" memory space, and the second is the args memory space. Global addresses are fixed
+  /// for the application and do not need a mutable vector to parse.
   addr: (Vec<(usize, usize)>, Vec<(usize, usize)>),
-  /// Specifies which memory block to push "normal" values into
+  /// Specifies which memory block to push "normal" values into.
   mem_addr: usize,
-  /// Specifies which memory block to push "args" into
+  /// Specifies which memory block to push "args" into.
   args_addr: usize,
 }
 
 impl HandlerMemory {
+  /// Constructs a new HandlerMemory. If given another HandlerMemory it simply adjusts it to the
+  /// expected memory needs, otherwise constructs a new one with said memory requirements.
   pub fn new(payload_mem: Option<HandlerMemory>, mem_req: i64) -> HandlerMemory {
     if payload_mem.is_none() {
       let mut hm = HandlerMemory {
@@ -61,6 +72,8 @@ impl HandlerMemory {
     }
   }
 
+  /// Grabs the relevant data for the event and constructs a new HandlerMemory with that value in
+  /// address 0, or returns no HandlerMemory if it is a void event.
   pub fn alloc_payload(
     event_id: i64,
     curr_addr: i64,
@@ -77,6 +90,7 @@ impl HandlerMemory {
     }
   }
 
+  /// Takes a given address and looks up the `mems` indexes relevant to it.
   pub fn addr_to_idxs(self: &HandlerMemory, addr: i64) -> (usize, usize) {
     return if addr >= 0 {
      self.addr.0[addr as usize]
@@ -87,6 +101,7 @@ impl HandlerMemory {
     }
   }
 
+  /// Reads fixed data from a given address.
   pub fn read_fixed(self: &HandlerMemory, addr: i64) -> i64 {
     let (a, b) = self.addr_to_idxs(addr);
     return if a == std::usize::MAX {
@@ -96,6 +111,7 @@ impl HandlerMemory {
     }
   }
 
+  /// Reads an array of data from the given address.
   pub fn read_fractal(self: &HandlerMemory, addr: i64) -> &[(usize, i64)] {
     let (a, b) = self.addr_to_idxs(addr);
     if addr_type(addr) == GMEM_ADDR {
@@ -106,11 +122,15 @@ impl HandlerMemory {
     }
   }
 
+  /// Provides a mutable array of data from the given address.
   pub fn read_mut_fractal(self: &mut HandlerMemory, addr: i64) -> &mut Vec<(usize, i64)> {
     let (a, _) = self.addr_to_idxs(addr);
     &mut self.mems[a]
   }
 
+  /// For a given address, determines if the data is a single value or an array of values, and
+  /// returns that value either as a vector or the singular value wrapped in a vector, and a
+  /// boolean indicating if it was a fractal value or not.
   pub fn read_either(self: &HandlerMemory, addr: i64) -> (Vec<(usize, i64)>, bool) {
     let (a, b) = self.addr_to_idxs(addr);
     return if b < std::usize::MAX {
@@ -120,6 +140,9 @@ impl HandlerMemory {
     }
   }
 
+  /// For a given set of `mems` indexes, determines if the data is a single value or an array of
+  /// values, and returns that value either as a vector or the singular value wrapped in a vector,
+  /// and a boolean indicating if it was a fractal value or not.
   pub fn read_either_idxs(self: &HandlerMemory, a: usize, b: usize) -> (Vec<(usize, i64)>, bool) {
     return if a == std::usize::MAX {
       // The indexes are the actual data
@@ -133,6 +156,7 @@ impl HandlerMemory {
     }
   }
 
+  /// Determines if the given array of data itself contains pointers to arrays of data.
   pub fn has_nested_fractals(mem: &[(usize, i64)]) -> bool {
     for i in 0..mem.len() {
       if mem[i].0 < std::usize::MAX {
@@ -142,6 +166,8 @@ impl HandlerMemory {
     return false
   }
 
+  /// Simply sets a given address to an explicit set of `mems` indexes. Simplifies pointer creation
+  /// to deeply-nested data.
   pub fn set_addr(self: &mut HandlerMemory, addr: i64, a: usize, b: usize) {
     if addr_type(addr) == NORMAL_ADDR {
       let addru = addr as usize;
@@ -158,6 +184,8 @@ impl HandlerMemory {
     }
   }
 
+  /// Stores a fixed value in a given address. Determines where to place it based on the kind of
+  /// address in question.
   pub fn write_fixed(self: &mut HandlerMemory, addr: i64, val: i64) {
     let a = if addr_type(addr) == NORMAL_ADDR {
       self.mem_addr
@@ -169,17 +197,20 @@ impl HandlerMemory {
     self.set_addr(addr, a, b);
   }
 
+  /// Stores a nested fractal of data in a given address.
   pub fn write_fractal(self: &mut HandlerMemory, addr: i64, val: &[(usize, i64)]) {
     let a = self.mems.len();
     self.mems.push(val.to_vec().clone());
     self.set_addr(addr, a, std::usize::MAX);
   }
 
+  /// Pushes a fixed value into a fractal at a given address.
   pub fn push_fixed(self: &mut HandlerMemory, addr: i64, val: i64) {
     let mem = self.read_mut_fractal(addr);
     mem.push((std::usize::MAX, val));
   }
 
+  /// Pushes a nested fractal value into a fractal at a given address.
   pub fn push_fractal(self: &mut HandlerMemory, addr: i64, val: &Vec<(usize, i64)>) {
     let a = self.mems.len();
     let mem = self.read_mut_fractal(addr);
@@ -187,6 +218,7 @@ impl HandlerMemory {
     self.mems.push(val.clone());
   }
 
+  /// Pushes a pointer to an address into a fractal at a given address.
   pub fn push_register(self: &mut HandlerMemory, addr: i64, other_addr: i64) {
     let (a, b) = self.addr_to_idxs(other_addr);
     // Special path for strings in global memory
@@ -202,11 +234,14 @@ impl HandlerMemory {
     }
   }
 
+  /// Pushes raw `mems` indexes into a fractal at a given address. Allows pointers between fractal
+  /// data when no explicit address exists between them.
   pub fn push_idxs(self: &mut HandlerMemory, addr: i64, a: usize, b: usize) {
     let mem = self.read_mut_fractal(addr);
     mem.push((a, b as i64));
   }
 
+  /// Pops a value off of the fractal. May be fixed data or a virtual pointer.
   pub fn pop(self: &mut HandlerMemory, addr: i64) -> Result<(usize, i64), String> {
     let mem = self.read_mut_fractal(addr);
     if mem.len() > 0 {
@@ -216,17 +251,22 @@ impl HandlerMemory {
     }
   }
 
+  /// Creates an alias for data at one address in another address.
   pub fn register(self: &mut HandlerMemory, addr: i64, orig_addr: i64) {
     let (a, b) = self.addr_to_idxs(orig_addr);
     self.set_addr(addr, a, b);
   }
 
+  /// Creates a pointer to a value stored in a fractal at the given address and offset and places
+  /// it in the address space.
   pub fn register_in(self: &mut HandlerMemory, orig_addr: i64, fractal_addr: i64, offset_addr: i64) {
     let (a, b) = self.addr_to_idxs(orig_addr);
     let mem = self.read_mut_fractal(fractal_addr);
     mem[offset_addr as usize] = (a, b as i64);
   }
 
+  /// Creates a pointer to a value in the address space inside of a fractal at the given address
+  /// and offset. The inverse of `register_in`.
   pub fn register_out(self: &mut HandlerMemory, fractal_addr: i64, offset_addr: i64, out_addr: i64) {
     let (arr_a, _) = self.addr_to_idxs(fractal_addr);
     let mem = self.read_mut_fractal(fractal_addr);
@@ -238,6 +278,8 @@ impl HandlerMemory {
     }
   }
 
+  /// Migrates data from one HandlerMemory at a given address to another HandlerMemory at another
+  /// address. Used by many things.
   pub fn transfer(orig: &HandlerMemory, orig_addr: i64, dest: &mut HandlerMemory, dest_addr: i64) {
     let (a, b) = orig.addr_to_idxs(orig_addr);
     if addr_type(orig_addr) == GMEM_ADDR {
@@ -325,6 +367,8 @@ impl HandlerMemory {
     }
   }
 
+  /// Creates a duplicate of data at one address in the HandlerMemory in a new address. Makes the
+  /// `clone` function in Alan possible.
   pub fn dupe(self: &mut HandlerMemory, orig_addr: i64, dest_addr: i64) {
     // This *should be possible with something like this:
     // HandlerMemory::transfer(self, orig_addr, self, dest_addr);
@@ -383,6 +427,10 @@ impl HandlerMemory {
     }
   }
 
+  /// Takes a UTF-8 string and converts it to fractal memory that can be stored inside of a
+  /// HandlerMemory. Alan stores strings as Pascal strings with a 64-bit length prefix. There is no
+  /// computer on the planet that has 64-bits worth of RAM, so this should work for quite a while
+  /// into the future. :)
   pub fn str_to_fractal(s: &str) -> Vec<(usize, i64)> {
     let mut s_mem = vec![(std::usize::MAX, s.len() as i64)];
     let mut s_bytes = s.as_bytes().to_vec();
@@ -406,11 +454,14 @@ impl HandlerMemory {
     s_mem
   }
 
+  /// Takes a fractal memory and treats it like a UTF-8 encoded Pascal string, and the converts it
+  /// to something Rust can work with. This function *may* crash if the underlying data is not a
+  /// UTF-8 encoded Pascal string.
   pub fn fractal_to_string(f: &[(usize, i64)]) -> String {
     let s_len = f[0].1 as usize;
     let mut s_bytes: Vec<u8> = Vec::new();
     for i in 1..f.len() {
-      let mut b = f[i].1.clone().to_ne_bytes().to_vec();
+      let mut b = f[i].1.to_ne_bytes().to_vec();
       s_bytes.append(&mut b);
     }
     let s = str::from_utf8(&s_bytes[0..s_len]).unwrap();
