@@ -241,6 +241,38 @@ impl HandlerMemory {
 
   pub fn transfer(orig: &HandlerMemory, orig_addr: i64, dest: &mut HandlerMemory, dest_addr: i64) {
     let (a, b) = orig.addr_to_idxs(orig_addr);
+    if addr_type(orig_addr) == GMEM_ADDR {
+      // Special behavior for global memory transfers since it may be a single value or a string
+      let mem_slice = &orig.mems[a][b..];
+      // To make this distinction we're gonna do some tests on the memory and see if it evals as a
+      // string or not. There is some ridiculously small possibility that this is going to make a
+      // false positive though so TODO: either make global memory unambiguous or update all uses of
+      // this function to provide a type hint.
+      let len = mem_slice[0].1 as usize;
+      if len == 0 { // Assume zero is not a string
+        dest.write_fixed(dest_addr, mem_slice[0].1);
+        return;
+      }
+      let mut s_bytes: Vec<u8> = Vec::new();
+      for i in 1..mem_slice.len() {
+        let mut b = mem_slice[i].1.clone().to_ne_bytes().to_vec();
+        s_bytes.append(&mut b);
+      }
+      if len > s_bytes.len() {
+        // Absolutely not correct
+        dest.write_fixed(dest_addr, mem_slice[0].1);
+        return;
+      }
+      let try_str = str::from_utf8(&s_bytes[0..len]);
+      if try_str.is_err() {
+        // Also not a string
+        dest.write_fixed(dest_addr, mem_slice[0].1);
+      } else {
+        // Well, waddaya know!
+        dest.write_fractal(dest_addr, &HandlerMemory::str_to_fractal(try_str.unwrap()));
+        return;
+      }
+    }
     if a == std::usize::MAX {
       // It's direct fixed data, just copy it over
       dest.write_fixed(dest_addr, b as i64);
