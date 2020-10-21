@@ -1792,25 +1792,16 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }
     None
   });
-  /*
   unpred_cpu!("findl", |args, hand_mem, frag, ins_sched| {
     let arr = hand_mem.read_fractal(args[0]);
-    let len = arr.len() as i64;
+    let len = arr.len();
     let instructions = frag.get_closure_instructions(args[1]);
     // array of potentially many levels of nested fractals
     let arr_addr = (0..len).into_par_iter().find_first(|idx| {
       let ins = instructions.clone();
       let mut mem = hand_mem.clone();
       // array element is $1 argument of the closure memory space
-      if !arr.has_nested_fractals() {
-        // this could be a string or fixed data type
-        let val = arr[*idx as usize].1;
-        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
-      } else {
-        // more nested arrays
-        let arr_el = arr.read_fractal(*idx);
-        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
-      }
+      mem.set_addr(CLOSURE_ARG_MEM_START + 1, arr[*idx].0, arr[*idx].1 as usize);
       ins.iter().for_each(|i| {
         // TODO implement for async_functions. can tokio be called within rayon?
         let func = i.opcode.func.unwrap();
@@ -1830,23 +1821,15 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     hand_mem.write_fractal(args[2], &Vec::new());
     if arr_addr.is_none() {
       hand_mem.push_fixed(args[2], 0i64);
-      hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal("no element matches"));
+      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("no element matches"));
     } else {
       let addr = arr_addr.unwrap();
       hand_mem.push_fixed(args[2], 1i64);
       let arr = hand_mem.read_fractal(args[0]); // This is dumb, but whatever Rust
-      if !arr.has_nested_fractals() {
-        // this could be a string or fixed data type
-        let val = arr[addr as usize].1;
-        hand_mem.push_fixed(args[2], val);
-      } else {
-        // more nested arrays
-        hand_mem.push_register(args[2], addr);
-      }
+      hand_mem.push_idxs(args[2], arr[addr as usize].0, arr[addr as usize].1 as usize);
     }
     None
   });
-  */
   unpred_cpu!("some", |args, hand_mem, frag, ins_sched| {
     let arr = hand_mem.read_fractal(args[0]);
     let len = arr.len();
@@ -2023,367 +2006,178 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }
     None
   });
-  /*
-  unpred_cpu!("reducep", |args, hand_mem, frag, ins_sched| {
-    let arr = hand_mem.read_fractal(args[0]);
-    let instructions = frag.get_closure_instructions(args[1]);
-    if arr.has_nested_fractals() {
-      let res = arr.fractal_mem.clone().into_par_iter().reduce_with(|a, b| {
-        let ins = instructions.clone();
-        let mut mem = hand_mem.clone();
-        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, a);
-        mem.write_fractal(CLOSURE_ARG_MEM_START + 2, b);
-        ins.iter().for_each(|i| {
-          // TODO implement for async_functions. can tokio be called within rayon?
-          let func = i.opcode.func.unwrap();
-          let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-          if event.is_some() {
-            let event_sent = ins_sched.event_tx.send(event.unwrap());
-            if event_sent.is_err() {
-              eprintln!("Event transmission error");
-              std::process::exit(2);
-            }
-          }
-        });
-        mem.read_fractal(CLOSURE_ARG_MEM_START)
-      }).unwrap();
-      hand_mem.write_fractal(args[2], res);
-    } else {
-      let res = arr.mem.clone().into_par_iter().reduce_with(|a, b| {
-        let ins = instructions.clone();
-        let mut mem = hand_mem.clone();
-        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, a);
-        mem.write_fixed(CLOSURE_ARG_MEM_START + 2, b);
-        ins.iter().for_each(|i| {
-          // TODO implement for async_functions. can tokio be called within rayon?
-          let func = i.opcode.func.unwrap();
-          let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-          if event.is_some() {
-            let event_sent = ins_sched.event_tx.send(event.unwrap());
-            if event_sent.is_err() {
-              eprintln!("Event transmission error");
-              std::process::exit(2);
-            }
-          }
-        });
-        mem.read_fixed(CLOSURE_ARG_MEM_START)
-      }).unwrap();
-      hand_mem.write_fixed(args[2], res);
+  unpred_cpu!("reducep", |args, mut hand_mem, frag, ins_sched| {
+    let arr = hand_mem.read_fractal(args[0]).to_vec();
+    let mut vals: Vec<HandlerMemory> = vec![];
+    for i in 0..arr.len() {
+      let mut hm = HandlerMemory::new(None, 1);
+      hand_mem.set_addr(CLOSURE_ARG_MEM_START, arr[i].0, arr[i].1 as usize);
+      HandlerMemory::transfer(hand_mem, CLOSURE_ARG_MEM_START, &mut hm, 0);
+      vals.push(hm);
     }
-    None
-  });
-  unpred_cpu!("reducel", |args, hand_mem, frag, ins_sched| {
-    let arr = hand_mem.read_fractal(args[0]);
     let instructions = frag.get_closure_instructions(args[1]);
-    if arr.has_nested_fractals() {
-      let car = arr.fractal_mem[0].clone();
-      let cdr = &arr.fractal_mem[1..];
-      let res: HandlerMemory = cdr.into_iter().fold(car, |a, b| {
-        let ins = instructions.clone();
-        let mut mem = hand_mem.clone();
-        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, a);
-        mem.write_fractal(CLOSURE_ARG_MEM_START + 2, b.clone());
-        ins.iter().for_each(|i| {
-          // TODO implement for async_functions. can tokio be called within rayon?
-          let func = i.opcode.func.unwrap();
-          let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-          if event.is_some() {
-            let event_sent = ins_sched.event_tx.send(event.unwrap());
-            if event_sent.is_err() {
-              eprintln!("Event transmission error");
-              std::process::exit(2);
-            }
+    let res = vals.into_par_iter().reduce_with(|a, b| {
+      let ins = instructions.clone();
+      let mut mem = hand_mem.clone();
+      HandlerMemory::transfer(&a, 0, &mut mem, CLOSURE_ARG_MEM_START + 1);
+      HandlerMemory::transfer(&b, 0, &mut mem, CLOSURE_ARG_MEM_START + 2);
+      ins.iter().for_each(|i| {
+        // TODO implement for async_functions. can tokio be called within rayon?
+        let func = i.opcode.func.unwrap();
+        let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
+        if event.is_some() {
+          let event_sent = ins_sched.event_tx.send(event.unwrap());
+          if event_sent.is_err() {
+            eprintln!("Event transmission error");
+            std::process::exit(2);
           }
-        });
-        mem.read_fractal(CLOSURE_ARG_MEM_START)
-      });
-      hand_mem.write_fractal(args[2], res);
-    } else {
-      let car = arr.mem[0];
-      let cdr = &arr.mem[1..];
-      let res: i64 = cdr.into_iter().fold(car, |a, b| {
-        let ins = instructions.clone();
-        let mut mem = hand_mem.clone();
-        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, a);
-        mem.write_fixed(CLOSURE_ARG_MEM_START + 2, *b);
-        ins.iter().for_each(|i| {
-          // TODO implement for async_functions. can tokio be called within rayon?
-          let func = i.opcode.func.unwrap();
-          let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-          if event.is_some() {
-            let event_sent = ins_sched.event_tx.send(event.unwrap());
-            if event_sent.is_err() {
-              eprintln!("Event transmission error");
-              std::process::exit(2);
-            }
-          }
-        });
-        mem.read_fixed(CLOSURE_ARG_MEM_START)
-      });
-      hand_mem.write_fixed(args[2], res);
-    }
-    None
-  });
-  unpred_cpu!("foldp", |args, hand_mem, frag, ins_sched| {
-    let obj = hand_mem.read_fractal(args[0]);
-    let arr = obj.read_fractal(0);
-    let instructions = frag.get_closure_instructions(args[1]);
-    if obj.either_mem[1] > -1 {
-      let init = obj.read_fractal(1);
-      if arr.has_nested_fractals() {
-        let res: Vec<HandlerMemory> = arr.fractal_mem.clone().into_par_iter().fold(|| init.clone(), |a, b| {
-          let ins = instructions.clone();
-          let mut mem = hand_mem.clone();
-          mem.write_fractal(CLOSURE_ARG_MEM_START + 1, a);
-          mem.write_fractal(CLOSURE_ARG_MEM_START + 2, b);
-          ins.iter().for_each(|i| {
-            // TODO implement for async_functions. can tokio be called within rayon?
-            let func = i.opcode.func.unwrap();
-            let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-            if event.is_some() {
-              let event_sent = ins_sched.event_tx.send(event.unwrap());
-              if event_sent.is_err() {
-                eprintln!("Event transmission error");
-                std::process::exit(2);
-              }
-            }
-          });
-          mem.read_fractal(CLOSURE_ARG_MEM_START)
-        }).collect();
-        hand_mem.write_fractal(args[2], &Vec::new());
-        let reslen = res.len();
-        for i in 0..reslen {
-          hand_mem.write_fractal(args[2], &res[i]);
         }
-      } else {
-        let res: Vec<HandlerMemory> = arr.mem.clone().into_par_iter().fold(|| init.clone(), |a, b| {
-          let ins = instructions.clone();
-          let mut mem = hand_mem.clone();
-          mem.write_fractal(CLOSURE_ARG_MEM_START + 1, a);
-          mem.write_fixed(CLOSURE_ARG_MEM_START + 2, b);
-          ins.iter().for_each(|i| {
-            // TODO implement for async_functions. can tokio be called within rayon?
-            let func = i.opcode.func.unwrap();
-            let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-            if event.is_some() {
-              let event_sent = ins_sched.event_tx.send(event.unwrap());
-              if event_sent.is_err() {
-                eprintln!("Event transmission error");
-                std::process::exit(2);
-              }
-            }
-          });
-          mem.read_fractal(CLOSURE_ARG_MEM_START)
-        }).collect();
-        hand_mem.write_fractal(args[2], &Vec::new());
-        let reslen = res.len();
-        for i in 0..reslen {
-          hand_mem.write_fractal(args[2], &res[i]);
+      });
+      let mut hm = HandlerMemory::new(None, 1);
+      HandlerMemory::transfer(&mem, CLOSURE_ARG_MEM_START, &mut hm, 0);
+      hm
+    }).unwrap();
+    HandlerMemory::transfer(&res, 0, &mut hand_mem, args[2]);
+    None
+  });
+  unpred_cpu!("reducel", |args, mut hand_mem, frag, ins_sched| {
+    let arr = hand_mem.read_fractal(args[0]).to_vec();
+    let instructions = frag.get_closure_instructions(args[1]);
+    let car = arr[0].clone();
+    let cdr = &arr[1..];
+    let res: (usize, i64) = cdr.into_iter().fold(car, |a, b| {
+      let ins = instructions.clone();
+      hand_mem.set_addr(CLOSURE_ARG_MEM_START + 1, a.0, a.1 as usize);
+      hand_mem.set_addr(CLOSURE_ARG_MEM_START + 2, b.0, b.1 as usize);
+      ins.iter().for_each(|i| {
+        // TODO implement for async_functions. can tokio be called within rayon?
+        let func = i.opcode.func.unwrap();
+        let event = func(&i.args, &mut hand_mem, &mut frag.clone(), ins_sched);
+        if event.is_some() {
+          let event_sent = ins_sched.event_tx.send(event.unwrap());
+          if event_sent.is_err() {
+            eprintln!("Event transmission error");
+            std::process::exit(2);
+          }
         }
-      }
-    } else {
-      let initial = obj[1].1;
-      if arr.has_nested_fractals() {
-        let res: Vec<i64> = arr.fractal_mem.clone().into_par_iter().fold(|| initial, |a, b| {
-          let ins = instructions.clone();
-          let mut mem = hand_mem.clone();
-          mem.write_fixed(CLOSURE_ARG_MEM_START + 1, a);
-          mem.write_fractal(CLOSURE_ARG_MEM_START + 2, b);
-          ins.iter().for_each(|i| {
-            // TODO implement for async_functions. can tokio be called within rayon?
-            let func = i.opcode.func.unwrap();
-            let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-            if event.is_some() {
-              let event_sent = ins_sched.event_tx.send(event.unwrap());
-              if event_sent.is_err() {
-                eprintln!("Event transmission error");
-                std::process::exit(2);
-              }
-            }
-          });
-          mem.read_fixed(CLOSURE_ARG_MEM_START)
-        }).collect();
-        hand_mem.write_fractal_mem(args[2], &res);
-      } else {
-        let res: Vec<i64> = arr.mem.clone().into_par_iter().fold(|| initial, |a, b| {
-          let ins = instructions.clone();
-          let mut mem = hand_mem.clone();
-          mem.write_fixed(CLOSURE_ARG_MEM_START + 1, a);
-          mem.write_fixed(CLOSURE_ARG_MEM_START + 2, b);
-          ins.iter().for_each(|i| {
-            // TODO implement for async_functions. can tokio be called within rayon?
-            let func = i.opcode.func.unwrap();
-            let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-            if event.is_some() {
-              let event_sent = ins_sched.event_tx.send(event.unwrap());
-              if event_sent.is_err() {
-                eprintln!("Event transmission error");
-                std::process::exit(2);
-              }
-            }
-          });
-          mem.read_fixed(CLOSURE_ARG_MEM_START)
-        }).collect();
-        hand_mem.write_fractal_mem(args[2], &res);
-      }
+      });
+      let (a, b) = hand_mem.addr_to_idxs(CLOSURE_ARG_MEM_START);
+      (a, b as i64)
+    });
+    hand_mem.set_addr(args[2], res.0, res.1 as usize);
+    None
+  });
+  unpred_cpu!("foldp", |args, mut hand_mem, frag, ins_sched| {
+    let obj = hand_mem.read_fractal(args[0]);
+    let (a, b) = obj[0];
+    let (c, d) = obj[1];
+    let (arr, _) = hand_mem.read_either_idxs(a, b as usize);
+    let arrv = arr.to_vec();
+    let mut vals: Vec<HandlerMemory> = vec![];
+    for i in 0..arrv.len() {
+      let mut hm = HandlerMemory::new(None, 1);
+      hand_mem.set_addr(CLOSURE_ARG_MEM_START, arrv[i].0, arrv[i].1 as usize);
+      HandlerMemory::transfer(hand_mem, CLOSURE_ARG_MEM_START, &mut hm, 0);
+      vals.push(hm);
+    }
+    let instructions = frag.get_closure_instructions(args[1]);
+    hand_mem.set_addr(CLOSURE_ARG_MEM_START, c, d as usize);
+    let mut init = HandlerMemory::new(None, 1);
+    HandlerMemory::transfer(hand_mem, CLOSURE_ARG_MEM_START, &mut init, 0);
+    let res: Vec<HandlerMemory> = vals.into_par_iter().fold(|| init.clone(), |a, b| {
+      let ins = instructions.clone();
+      let mut mem = hand_mem.clone();
+      HandlerMemory::transfer(&a, 0, &mut mem, CLOSURE_ARG_MEM_START + 1);
+      HandlerMemory::transfer(&b, 0, &mut mem, CLOSURE_ARG_MEM_START + 2);
+      ins.iter().for_each(|i| {
+        // TODO implement for async_functions. can tokio be called within rayon?
+        let func = i.opcode.func.unwrap();
+        let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
+        if event.is_some() {
+          let event_sent = ins_sched.event_tx.send(event.unwrap());
+          if event_sent.is_err() {
+            eprintln!("Event transmission error");
+            std::process::exit(2);
+          }
+        }
+      });
+      let mut hm = HandlerMemory::new(None, 1);
+      HandlerMemory::transfer(&mem, CLOSURE_ARG_MEM_START, &mut hm, 0);
+      hm
+    }).collect();
+    hand_mem.write_fractal(args[2], &Vec::new());
+    let reslen = res.len();
+    for i in 0..reslen {
+      HandlerMemory::transfer(&res[i], 0, &mut hand_mem, CLOSURE_ARG_MEM_START);
+      let (a, b) = hand_mem.addr_to_idxs(CLOSURE_ARG_MEM_START);
+      hand_mem.push_idxs(args[2], a, b);
     }
     None
   });
-  unpred_cpu!("foldl", |args, hand_mem, frag, ins_sched| {
+  unpred_cpu!("foldl", |args, mut hand_mem, frag, ins_sched| {
     let obj = hand_mem.read_fractal(args[0]);
-    let arr = obj.read_fractal(0);
-    let instructions = frag.get_closure_instructions(args[1]);
-    if obj.either_mem[1] > -1 {
-      let initial = obj.read_fractal(1).clone();
-      if arr.has_nested_fractals() {
-        let arrf = arr.fractal_mem.clone();
-        let res: HandlerMemory = arrf.into_iter().fold(initial, |a, b| {
-          let ins = instructions.clone();
-          let mut mem = hand_mem.clone();
-          mem.write_fractal(CLOSURE_ARG_MEM_START + 1, a.clone());
-          mem.write_fractal(CLOSURE_ARG_MEM_START + 2, b.clone());
-          ins.iter().for_each(|i| {
-            // TODO implement for async_functions. can tokio be called within rayon?
-            let func = i.opcode.func.unwrap();
-            let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-            if event.is_some() {
-              let event_sent = ins_sched.event_tx.send(event.unwrap());
-              if event_sent.is_err() {
-                eprintln!("Event transmission error");
-                std::process::exit(2);
-              }
-            }
-          });
-          mem.read_fractal(CLOSURE_ARG_MEM_START)
-        });
-        hand_mem.write_fractal(args[2], res);
-      } else {
-        let arrm = arr.mem.clone();
-        let res: HandlerMemory = arrm.into_iter().fold(initial, |a, b| {
-          let ins = instructions.clone();
-          let mut mem = hand_mem.clone();
-          mem.write_fractal(CLOSURE_ARG_MEM_START + 1, a.clone());
-          mem.write_fixed(CLOSURE_ARG_MEM_START + 2, b);
-          ins.iter().for_each(|i| {
-            // TODO implement for async_functions. can tokio be called within rayon?
-            let func = i.opcode.func.unwrap();
-            let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-            if event.is_some() {
-              let event_sent = ins_sched.event_tx.send(event.unwrap());
-              if event_sent.is_err() {
-                eprintln!("Event transmission error");
-                std::process::exit(2);
-              }
-            }
-          });
-          mem.read_fractal(CLOSURE_ARG_MEM_START)
-        });
-        hand_mem.write_fractal(args[2], res);
-      }
-    } else {
-      let initial = obj[1].1;
-      if arr.has_nested_fractals() {
-        let arrf = arr.fractal_mem.clone();
-        let res: i64 = arrf.into_iter().fold(initial, |a, b| {
-          let ins = instructions.clone();
-          let mut mem = hand_mem.clone();
-          mem.write_fixed(CLOSURE_ARG_MEM_START + 1, a);
-          mem.write_fractal(CLOSURE_ARG_MEM_START + 2, b.clone());
-          ins.iter().for_each(|i| {
-            // TODO implement for async_functions. can tokio be called within rayon?
-            let func = i.opcode.func.unwrap();
-            let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-            if event.is_some() {
-              let event_sent = ins_sched.event_tx.send(event.unwrap());
-              if event_sent.is_err() {
-                eprintln!("Event transmission error");
-                std::process::exit(2);
-              }
-            }
-          });
-          mem.read_fixed(CLOSURE_ARG_MEM_START)
-        });
-        hand_mem.write_fixed(CLOSURE_ARG_MEM_START, res);
-      } else {
-        let arrm = arr.mem.clone();
-        let res: i64 = arrm.into_iter().fold(initial, |a, b| {
-          let ins = instructions.clone();
-          let mut mem = hand_mem.clone();
-          mem.write_fixed(CLOSURE_ARG_MEM_START + 1, a);
-          mem.write_fixed(CLOSURE_ARG_MEM_START + 2, b);
-          ins.iter().for_each(|i| {
-            // TODO implement for async_functions. can tokio be called within rayon?
-            let func = i.opcode.func.unwrap();
-            let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-            if event.is_some() {
-              let event_sent = ins_sched.event_tx.send(event.unwrap());
-              if event_sent.is_err() {
-                eprintln!("Event transmission error");
-                std::process::exit(2);
-              }
-            }
-          });
-          mem.read_fixed(CLOSURE_ARG_MEM_START)
-        });
-        hand_mem.write_fixed(args[2], res);
-      }
+    let (a, b) = obj[0];
+    let (c, d) = obj[1];
+    let (arr, _) = hand_mem.read_either_idxs(a, b as usize);
+    let arrv = arr.to_vec();
+    let vals: Vec<HandlerMemory> = vec![];
+    for i in 0..arr.len() {
+      let mut hm = HandlerMemory::new(None, 1);
+      hand_mem.set_addr(CLOSURE_ARG_MEM_START, arrv[i].0, arrv[i].1 as usize);
+      HandlerMemory::transfer(hand_mem, CLOSURE_ARG_MEM_START, &mut hm, 0);
     }
+    let instructions = frag.get_closure_instructions(args[1]);
+    let res: (usize, i64) = arrv.into_iter().fold((c, d), |a, b| {
+      let ins = instructions.clone();
+      hand_mem.set_addr(CLOSURE_ARG_MEM_START + 1, a.0, a.1 as usize);
+      hand_mem.set_addr(CLOSURE_ARG_MEM_START + 2, b.0, b.1 as usize);
+      ins.iter().for_each(|i| {
+        // TODO implement for async_functions. can tokio be called within rayon?
+        let func = i.opcode.func.unwrap();
+        let event = func(&i.args, &mut hand_mem, &mut frag.clone(), ins_sched);
+        if event.is_some() {
+          let event_sent = ins_sched.event_tx.send(event.unwrap());
+          if event_sent.is_err() {
+            eprintln!("Event transmission error");
+            std::process::exit(2);
+          }
+        }
+      });
+      let (a, b) = hand_mem.addr_to_idxs(CLOSURE_ARG_MEM_START);
+      (a, b as i64)
+    });
+    hand_mem.register(args[2], CLOSURE_ARG_MEM_START);
     None
   });
   unpred_cpu!("filter", |args, hand_mem, frag, ins_sched| {
     hand_mem.write_fractal(args[2], &Vec::new());
-    let arr = hand_mem.read_fractal(args[0]);
+    let arr = hand_mem.read_fractal(args[0]).to_vec();
     let instructions = frag.get_closure_instructions(args[1]);
-    if arr.has_nested_fractals() {
-      let res: Vec<HandlerMemory> = arr.fractal_mem.clone().into_par_iter().filter(|a| {
-        let ins = instructions.clone();
-        let mut mem = hand_mem.clone();
-        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, a.clone());
-        ins.iter().for_each(|i| {
-          // TODO implement for async_functions. can tokio be called within rayon?
-          let func = i.opcode.func.unwrap();
-          let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-          if event.is_some() {
-            let event_sent = ins_sched.event_tx.send(event.unwrap());
-            if event_sent.is_err() {
-              eprintln!("Event transmission error");
-              std::process::exit(2);
-            }
+    let res: Vec<(usize, i64)> = arr.into_par_iter().filter(|a| {
+      let ins = instructions.clone();
+      let mut mem = hand_mem.clone();
+      mem.set_addr(CLOSURE_ARG_MEM_START + 1, a.0, a.1 as usize);
+      ins.iter().for_each(|i| {
+        // TODO implement for async_functions. can tokio be called within rayon?
+        let func = i.opcode.func.unwrap();
+        let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
+        if event.is_some() {
+          let event_sent = ins_sched.event_tx.send(event.unwrap());
+          if event_sent.is_err() {
+            eprintln!("Event transmission error");
+            std::process::exit(2);
           }
-        });
-        mem.read_fixed(CLOSURE_ARG_MEM_START) == 1i64
-      }).collect();
-      let reslen = res.len();
-      for i in 0..reslen {
-        hand_mem.write_fractal(args[2], &res[i]);
-      }
-    } else {
-      let res: Vec<i64> = arr.mem.clone().into_par_iter().filter(|a| {
-        let ins = instructions.clone();
-        let mut mem = hand_mem.clone();
-        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, *a);
-        ins.iter().for_each(|i| {
-          // TODO implement for async_functions. can tokio be called within rayon?
-          let func = i.opcode.func.unwrap();
-          let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-          if event.is_some() {
-            let event_sent = ins_sched.event_tx.send(event.unwrap());
-            if event_sent.is_err() {
-              eprintln!("Event transmission error");
-              std::process::exit(2);
-            }
-          }
-        });
-        mem.read_fixed(CLOSURE_ARG_MEM_START) == 1i64
-      }).collect();
-      let reslen = res.len();
-      for i in 0..reslen {
-        hand_mem.push_fixed(args[2], res[i]);
-      }
+        }
+      });
+      mem.read_fixed(CLOSURE_ARG_MEM_START) == 1i64
+    }).collect();
+    let reslen = res.len();
+    for i in 0..reslen {
+      let (a, b) = res[i];
+      hand_mem.push_idxs(args[2], a, b as usize);
     }
     None
   });
-  */
   unpred_cpu!("filterl", |args, mut hand_mem, frag, ins_sched| {
     hand_mem.write_fractal(args[2], &Vec::new());
     let arr = hand_mem.read_fractal(args[0]).to_vec();
