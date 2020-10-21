@@ -2250,7 +2250,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     };
     return Box::pin(fut);
   });
-  /*
   io!("httpget", |args, mem| {
     let fut = async move {
       let hand_mem = mem.read().await;
@@ -2274,7 +2273,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let mut hand_mem = mem.write().await;
       hand_mem.write_fractal(args[2], &Vec::new());
       hand_mem.push_fixed(args[2], result);
-      hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&result_str));
+      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal(&result_str));
       drop(hand_mem); // drop write lock
     };
     return Box::pin(fut);
@@ -2304,12 +2303,13 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let mut hand_mem = mem.write().await;
       hand_mem.write_fractal(args[2], &Vec::new());
       hand_mem.push_fixed(args[2], result);
-      hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&result_str));
+      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal(&result_str));
       drop(hand_mem); // drop write lock
     };
     return Box::pin(fut);
   });
 
+  /*
   async fn http_listener(req: Request<Body>) -> Result<Response<Body>, Infallible> {
     // Create a new event handler memory to add to the event queue
     let mut event = HandlerMemory::new(None, 1);
