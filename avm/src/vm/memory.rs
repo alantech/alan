@@ -5,7 +5,6 @@ use crate::vm::program::Program;
 
 // -2^63
 pub const CLOSURE_ARG_MEM_START: i64 = -9223372036854775808;
-pub const CLOSURE_ARG_MEM_SIZE: usize = 4;
 pub const CLOSURE_ARG_MEM_END: i64 = CLOSURE_ARG_MEM_START + 3;
 // Flags for the registers_ish vector. The normal address flag indicates that the data is stored
 // normally in either the memory or fractal memory structures. The fixed pointer address flag

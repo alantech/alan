@@ -1824,9 +1824,10 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("no element matches"));
     } else {
       let addr = arr_addr.unwrap();
-      hand_mem.push_fixed(args[2], 1i64);
       let arr = hand_mem.read_fractal(args[0]); // This is dumb, but whatever Rust
-      hand_mem.push_idxs(args[2], arr[addr as usize].0, arr[addr as usize].1 as usize);
+      let (a, b) = arr[addr as usize];
+      hand_mem.push_fixed(args[2], 1i64);
+      hand_mem.push_idxs(args[2], a, b as usize);
     }
     None
   });
@@ -2120,12 +2121,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let (c, d) = obj[1];
     let (arr, _) = hand_mem.read_either_idxs(a, b as usize);
     let arrv = arr.to_vec();
-    let vals: Vec<HandlerMemory> = vec![];
-    for i in 0..arr.len() {
-      let mut hm = HandlerMemory::new(None, 1);
-      hand_mem.set_addr(CLOSURE_ARG_MEM_START, arrv[i].0, arrv[i].1 as usize);
-      HandlerMemory::transfer(hand_mem, CLOSURE_ARG_MEM_START, &mut hm, 0);
-    }
     let instructions = frag.get_closure_instructions(args[1]);
     let res: (usize, i64) = arrv.into_iter().fold((c, d), |a, b| {
       let ins = instructions.clone();
@@ -2146,7 +2141,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let (a, b) = hand_mem.addr_to_idxs(CLOSURE_ARG_MEM_START);
       (a, b as i64)
     });
-    hand_mem.register(args[2], CLOSURE_ARG_MEM_START);
+    hand_mem.set_addr(args[2], res.0, res.1 as usize);
+    //hand_mem.register(args[2], CLOSURE_ARG_MEM_START);
     None
   });
   unpred_cpu!("filter", |args, hand_mem, frag, ins_sched| {
