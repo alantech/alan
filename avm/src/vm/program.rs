@@ -63,7 +63,7 @@ pub struct Program {
   /// or -1 if it's a variable length type or 0 if the event is void
   pub(crate) event_pls: HashMap<i64, i64>,
   /// Memory of the program for global variables and string literals
-  pub(crate) gmem: Vec<u8>,
+  pub(crate) gmem: Vec<(usize, i64)>,
 }
 
 pub static PROGRAM: OnceCell<Program> = OnceCell::new();
@@ -108,9 +108,7 @@ impl Program {
       panic!("Global memory is not divisible by 8");
     }
     for _ in 0..gms/8 {
-      for byte in &parser.next_64_bits().to_le_bytes() {
-        program.gmem.push(byte.clone());
-      }
+      program.gmem.push((std::usize::MAX, parser.next_64_bits()));
     }
     // instantiate null handler
     let mut cur_handler = EventHandler::new(0, 0);

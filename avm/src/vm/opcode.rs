@@ -164,7 +164,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("strf64", |args, hand_mem, _, _| {
-    let s = hand_mem.read_fractal(args[0]).hm_to_string();
+    let s = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
     let out: f64 = s.parse().unwrap();
     hand_mem.write_fixed(args[2], i64::from_ne_bytes(out.to_ne_bytes()));
     None
@@ -206,7 +206,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("strf32", |args, hand_mem, _, _| {
-    let s = hand_mem.read_fractal(args[0]).hm_to_string();
+    let s = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
     let num: f32 = s.parse().unwrap();
     let out = i32::from_ne_bytes(num.to_ne_bytes()) as i64;
     hand_mem.write_fixed(args[2], out);
@@ -245,7 +245,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("stri64", |args, hand_mem, _, _| {
-    let s = hand_mem.read_fractal(args[0]).hm_to_string();
+    let s = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
     let out: i64 = s.parse().unwrap();
     hand_mem.write_fixed(args[2], out);
     None
@@ -282,7 +282,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("stri32", |args, hand_mem, _, _| {
-    let s = hand_mem.read_fractal(args[0]).hm_to_string();
+    let s = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
     let num: i32 = s.parse().unwrap();
     let out = num as i64;
     hand_mem.write_fixed(args[2], out);
@@ -320,7 +320,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("stri16", |args, hand_mem, _, _| {
-    let s = hand_mem.read_fractal(args[0]).hm_to_string();
+    let s = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
     let num: i16 = s.parse().unwrap();
     let out = num as i64;
     hand_mem.write_fixed(args[2], out);
@@ -358,7 +358,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("stri8", |args, hand_mem, _, _| {
-    let s = hand_mem.read_fractal(args[0]).hm_to_string();
+    let s = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
     let num: i8 = s.parse().unwrap();
     let out = num as i64;
     hand_mem.write_fixed(args[2], out);
@@ -407,7 +407,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("strbool", |args, hand_mem, _, _| {
-    let s = hand_mem.read_fractal(args[0]).hm_to_string();
+    let s = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
     let out = if s == "true" { 1i64 } else { 0i64 };
     hand_mem.write_fixed(args[2], out);
     None
@@ -416,43 +416,43 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("i8str", |args, hand_mem, _, _| {
     let a = hand_mem.read_fixed(args[0]) as i8;
     let a_str = a.to_string();
-    hand_mem.write_fractal(args[2], HandlerMemory::str_to_hm(&a_str));
+    hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&a_str));
     None
   });
   cpu!("i16str", |args, hand_mem, _, _| {
     let a = hand_mem.read_fixed(args[0]) as i16;
     let a_str = a.to_string();
-    hand_mem.write_fractal(args[2], HandlerMemory::str_to_hm(&a_str));
+    hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&a_str));
     None
   });
   cpu!("i32str", |args, hand_mem, _, _| {
     let a = hand_mem.read_fixed(args[0]) as i32;
     let a_str = a.to_string();
-    hand_mem.write_fractal(args[2], HandlerMemory::str_to_hm(&a_str));
+    hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&a_str));
     None
   });
   cpu!("i64str", |args, hand_mem, _, _| {
     let a = hand_mem.read_fixed(args[0]);
     let a_str = a.to_string();
-    hand_mem.write_fractal(args[2], HandlerMemory::str_to_hm(&a_str));
+    hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&a_str));
     None
   });
   cpu!("f64str", |args, hand_mem, _, _| {
     let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0]).to_ne_bytes());
     let a_str = a.to_string();
-    hand_mem.write_fractal(args[2], HandlerMemory::str_to_hm(&a_str));
+    hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&a_str));
     None
   });
   cpu!("f32str", |args, hand_mem, _, _| {
     let a = f32::from_ne_bytes((hand_mem.read_fixed(args[0]) as i32).to_ne_bytes());
     let a_str = a.to_string();
-    hand_mem.write_fractal(args[2], HandlerMemory::str_to_hm(&a_str));
+    hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&a_str));
     None
   });
   cpu!("boolstr", |args, hand_mem, _, _| {
     let a = hand_mem.read_fixed(args[0]);
     let a_str = if a == 1 { "true" } else { "false" };
-    hand_mem.write_fractal(args[2], HandlerMemory::str_to_hm(&a_str));
+    hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&a_str));
     None
   });
 
@@ -1107,8 +1107,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("eqstr", |args, hand_mem, _, _| {
-    let a_pascal_string = hand_mem.read_fractal_mem(args[0]);
-    let b_pascal_string = hand_mem.read_fractal_mem(args[1]);
+    let a_pascal_string = hand_mem.read_fractal(args[0]);
+    let b_pascal_string = hand_mem.read_fractal(args[1]);
     let out = if a_pascal_string == b_pascal_string { 1i64 } else { 0i64 };
     hand_mem.write_fixed(args[2], out);
     None
@@ -1164,8 +1164,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("neqstr", |args, hand_mem, _, _| {
-    let a_pascal_string = hand_mem.read_fractal_mem(args[0]);
-    let b_pascal_string = hand_mem.read_fractal_mem(args[1]);
+    let a_pascal_string = hand_mem.read_fractal(args[0]);
+    let b_pascal_string = hand_mem.read_fractal(args[1]);
     let out = if a_pascal_string != b_pascal_string { 1i64 } else { 0i64 };
     hand_mem.write_fixed(args[2], out);
     None
@@ -1221,8 +1221,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("ltstr", |args, hand_mem, _, _| {
-    let a_str = hand_mem.read_fractal(args[0]).hm_to_string();
-    let b_str = hand_mem.read_fractal(args[1]).hm_to_string();
+    let a_str = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
+    let b_str = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
     let out = if a_str < b_str { 1i64 } else { 0i64 };
     hand_mem.write_fixed(args[2], out);
     None
@@ -1271,8 +1271,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("ltestr", |args, hand_mem, _, _| {
-    let a_str = hand_mem.read_fractal(args[0]).hm_to_string();
-    let b_str = hand_mem.read_fractal(args[1]).hm_to_string();
+    let a_str = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
+    let b_str = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
     let out = if a_str <= b_str { 1i64 } else { 0i64 };
     hand_mem.write_fixed(args[2], out);
     None
@@ -1321,8 +1321,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("gtstr", |args, hand_mem, _, _| {
-    let a_str = hand_mem.read_fractal(args[0]).hm_to_string();
-    let b_str = hand_mem.read_fractal(args[1]).hm_to_string();
+    let a_str = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
+    let b_str = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
     let out = if a_str > b_str { 1i64 } else { 0i64 };
     hand_mem.write_fixed(args[2], out);
     None
@@ -1371,8 +1371,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("gtestr", |args, hand_mem, _, _| {
-    let a_str = hand_mem.read_fractal(args[0]).hm_to_string();
-    let b_str = hand_mem.read_fractal(args[1]).hm_to_string();
+    let a_str = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
+    let b_str = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
     let out = if a_str >= b_str { 1i64 } else { 0i64 };
     hand_mem.write_fixed(args[2], out);
     None
@@ -1380,62 +1380,62 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
 
   // String opcodes
   cpu!("catstr", |args, hand_mem, _, _| {
-    let a_str = hand_mem.read_fractal(args[0]).hm_to_string();
-    let b_str = hand_mem.read_fractal(args[1]).hm_to_string();
+    let a_str = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
+    let b_str = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
     let out_str = format!("{}{}", a_str, b_str);
-    hand_mem.write_fractal(args[2], HandlerMemory::str_to_hm(&out_str));
+    hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&out_str));
     None
   });
   cpu!("split", |args, hand_mem, _, _| {
-    let a_str = hand_mem.read_fractal(args[0]).hm_to_string();
-    let b_str = hand_mem.read_fractal(args[1]).hm_to_string();
-    let out_hms = a_str.split(&b_str).map(|out_str| HandlerMemory::str_to_hm(&out_str));
-    hand_mem.new_fractal(args[2]);
+    let a_str = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
+    let b_str = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
+    let out_hms = a_str.split(&b_str).map(|out_str| HandlerMemory::str_to_fractal(&out_str));
+    hand_mem.write_fractal(args[2], &Vec::new());
     for out in out_hms {
-      hand_mem.push_nested_fractal(args[2], out);
+      hand_mem.push_fractal(args[2], &out);
     }
     None
   });
   cpu!("repstr", |args, hand_mem, _, _| {
-    let a_str = hand_mem.read_fractal(args[0]).hm_to_string();
+    let a_str = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
     let n = hand_mem.read_fixed(args[1]);
     let out_str = a_str.repeat(n as usize);
-    hand_mem.write_fractal(args[2], HandlerMemory::str_to_hm(&out_str));
+    hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&out_str));
     None
   });
   cpu!("matches", |args, hand_mem, _, _| {
-    let a_str = hand_mem.read_fractal(args[0]).hm_to_string();
-    let b_str = hand_mem.read_fractal(args[1]).hm_to_string();
+    let a_str = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
+    let b_str = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
     let b_regex = Regex::new(&b_str).unwrap();
     let out = if b_regex.is_match(&a_str) { 1i64 } else { 0i64 };
     hand_mem.write_fixed(args[2], out);
     None
   });
   cpu!("indstr", |args, hand_mem, _, _| {
-    let a_str = hand_mem.read_fractal(args[0]).hm_to_string();
-    let b_str = hand_mem.read_fractal(args[1]).hm_to_string();
+    let a_str = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
+    let b_str = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
     let out_option = a_str.find(&b_str);
-    hand_mem.new_fractal(args[2]);
+    hand_mem.write_fractal(args[2], &Vec::new());
     if out_option.is_none() {
-      hand_mem.push_fractal_fixed(args[2], 0i64);
-      hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm("substring not found"));
+      hand_mem.push_fixed(args[2], 0i64);
+      hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal("substring not found"));
     } else {
-      hand_mem.push_fractal_fixed(args[2], 1i64);
+      hand_mem.push_fixed(args[2], 1i64);
       let out = out_option.unwrap() as i64;
-      hand_mem.push_fractal_fixed(args[2], out);
+      hand_mem.push_fixed(args[2], out);
     }
     None
   });
   cpu!("lenstr", |args, hand_mem, _, _| {
-    let pascal_string = hand_mem.read_fractal_mem(args[0]);
+    let pascal_string = hand_mem.read_fractal(args[0]);
     let out = pascal_string[0];
-    hand_mem.write_fixed(args[2], out);
+    hand_mem.write_fixed(args[2], out.1);
     None
   });
   cpu!("trim", |args, hand_mem, _, _| {
-    let in_str = hand_mem.read_fractal(args[0]).hm_to_string();
+    let in_str = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
     let out_str = in_str.trim();
-    hand_mem.write_fractal(args[2], HandlerMemory::str_to_hm(&out_str));
+    hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&out_str));
     None
   });
 
@@ -1445,7 +1445,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     // args[0] point to an array in memory
     // args[1] is the address within the array to register
     let inner_addr = hand_mem.read_fixed(args[1]);
-    hand_mem.set_reg(args[2], args[0], inner_addr);
+    hand_mem.register_out(args[0], inner_addr, args[2]);
     None
   });
   cpu!("copyfrom", |args, hand_mem, _, _| {
@@ -1454,152 +1454,152 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     // The array index instead of inner address is provided to keep interaction with the js-runtime
     // sane.
     let inner_addr = hand_mem.read_fixed(args[1]);
-    hand_mem.copy_from(args[0], args[2], inner_addr);
+    hand_mem.register_out(args[0], inner_addr, args[2]);
     None
   });
   cpu!("copytof", |args, hand_mem, _, _| {
     // args = [arr_addr, inner_addr, outer_addr]
     // copy data from outer_addr to inner_addr in arr_addr
     let inner = hand_mem.read_fixed(args[1]);
-    hand_mem.copy_to_fixed(args[0], args[2], inner);
+    hand_mem.register_in(args[2], args[0], inner);
     None
   });
   cpu!("copytov", |args, hand_mem, _, _| {
     // args = [arr_addr, inner_addr, outer_addr]
     // copy data from outer_addr to inner_addr in arr_addr
     let inner = hand_mem.read_fixed(args[1]);
-    hand_mem.copy_to_fractal_mem(args[0], args[2], inner);
+    hand_mem.register_in(args[2], args[0], inner);
     None
   });
   cpu!("lenarr", |args, hand_mem, _, _| {
-    let arr = hand_mem.get_fractal(args[0]);
+    let arr = hand_mem.read_fractal(args[0]);
     let len = arr.len() as i64;
     hand_mem.write_fixed(args[2], len);
     None
   });
   cpu!("indarrf", |args, hand_mem, _, _| {
     let val = hand_mem.read_fixed(args[1]);
-    let mem = hand_mem.get_fractal(args[0]);
-    let len = mem.len() as i64;
+    let mem = hand_mem.read_fractal(args[0]);
+    let len = mem.len();
     let mut idx = -1i64;
     for i in 0..len {
-      let check = mem.read_fixed(i);
+      let check = mem[i].1;
       if val == check {
-        idx = i;
+        idx = i as i64;
         break
       }
     }
-    hand_mem.new_fractal(args[2]);
+    hand_mem.write_fractal(args[2], &Vec::new());
     if idx == -1i64 {
-      hand_mem.push_fractal_fixed(args[2], 0i64);
-      hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm("element not found"));
+      hand_mem.push_fixed(args[2], 0i64);
+      hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal("element not found"));
     } else {
-      hand_mem.push_fractal_fixed(args[2], 1i64);
-      hand_mem.push_fractal_fixed(args[2], idx);
+      hand_mem.push_fixed(args[2], 1i64);
+      hand_mem.push_fixed(args[2], idx);
     }
     None
   });
   cpu!("indarrv", |args, hand_mem, _, _| {
-    let val = hand_mem.read_fractal_mem(args[1]);
-    let mem = hand_mem.get_fractal(args[0]);
-    let len = mem.len() as i64;
+    let val = hand_mem.read_fractal(args[1]);
+    let mem = hand_mem.read_fractal(args[0]);
+    let len = mem.len();
     let mut idx = -1i64;
     for i in 0..len {
-      let check = mem.read_fractal_mem(i);
-      // TODO: equality comparisons for nested arrays, for now, assume it's string-like
-      if val.len() != check.len() {
-        continue
-      }
-      let mut matches = true;
-      for j in 0..val.len() {
-        if val[j] != check[j] {
-          matches = false;
+      let (a, b) = mem[i];
+      let (check, is_fractal) = hand_mem.read_either_idxs(a, b as usize);
+      if is_fractal {
+        // TODO: equality comparisons for nested arrays, for now, assume it's string-like
+        if val.len() != check.len() {
+          continue
+        }
+        let mut matches = true;
+        for j in 0..val.len() {
+          if val[j] != check[j] {
+            matches = false;
+            break
+          }
+        }
+        if matches {
+          idx = i as i64;
           break
         }
-      }
-      if matches {
-        idx = i;
-        break
+      } else {
+        continue
       }
     }
-    hand_mem.new_fractal(args[2]);
+    hand_mem.write_fractal(args[2], &Vec::new());
     if idx == -1i64 {
-      hand_mem.push_fractal_fixed(args[2], 0i64);
-      hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm("element not found"));
+      hand_mem.push_fixed(args[2], 0i64);
+      hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal("element not found"));
     } else {
-      hand_mem.push_fractal_fixed(args[2], 1i64);
-      hand_mem.push_fractal_fixed(args[2], idx);
+      hand_mem.push_fixed(args[2], 1i64);
+      hand_mem.push_fixed(args[2], idx);
     }
     None
   });
   cpu!("join", |args, hand_mem, _, _| {
-    let sep_str = hand_mem.read_fractal(args[1]).hm_to_string();
-    let mem = hand_mem.get_fractal(args[0]);
-    let len = mem.len() as i64;
+    let sep_str = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
+    let mem = hand_mem.read_fractal(args[0]);
+    let len = mem.len();
     let mut strs: Vec<String> = Vec::new();
     for i in 0..len {
-      let v_str = mem.read_fractal(i).hm_to_string();
-      strs.push(v_str);
+      let (a, b) = mem[i];
+      let (data, is_fractal) = hand_mem.read_either_idxs(a, b as usize);
+      if is_fractal {
+        let v_str = HandlerMemory::fractal_to_string(&data);
+        strs.push(v_str);
+      } else {
+        // TODO: Skip for now
+      }
     }
     let out_str = strs.join(&sep_str);
-    hand_mem.write_fractal(args[2], HandlerMemory::str_to_hm(&out_str));
+    hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&out_str));
     None
   });
   cpu!("pusharr", |args, hand_mem, _, _| {
     let val_size = hand_mem.read_fixed(args[2]);
     if val_size == 0 {
-      if args[1] > 0 {
-        hand_mem.push_reg(args[0], args[1]);
-      } else {
-        let val = hand_mem.read_fractal(args[1]);
-        hand_mem.push_nested_fractal(args[0], val);
-      }
+      hand_mem.push_register(args[0], args[1]);
     } else {
       let val = hand_mem.read_fixed(args[1]);
-      hand_mem.push_fractal_fixed(args[0], val);
+      hand_mem.push_fixed(args[0], val);
     }
     None
   });
   cpu!("poparr", |args, hand_mem, _, _| {
-    let last = hand_mem.pop_fractal(args[0]);
-    hand_mem.new_fractal(args[2]);
+    let last = hand_mem.pop(args[0]);
+    hand_mem.write_fractal(args[2], &Vec::new());
     if last.is_ok() {
-      hand_mem.push_fractal_fixed(args[2], 1i64);
-      let val = last.ok().unwrap();
-      if val.is_fixed {
-        hand_mem.push_fractal_fixed(args[2], val.read_fixed(0));
+      hand_mem.push_fixed(args[2], 1i64);
+      let record = last.ok().unwrap();
+      let (a, b) = record;
+      let (val, is_fractal) = hand_mem.read_either_idxs(a, b as usize);
+      if is_fractal {
+        hand_mem.push_fractal(args[2], &val);
       } else {
-        hand_mem.push_nested_fractal(args[2], val);
+        hand_mem.push_fixed(args[2], val[0].1);
       }
     } else {
-      hand_mem.push_fractal_fixed(args[2], 0i64);
+      hand_mem.push_fixed(args[2], 0i64);
       let error_string = last.err().unwrap();
-      hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm(&error_string));
+      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal(&error_string));
     }
     None
   });
   cpu!("newarr", |args, hand_mem, _, _| {
-    hand_mem.new_fractal(args[2]);
+    hand_mem.write_fractal(args[2], &Vec::new());
     None
   });
   unpred_cpu!("map", |args, hand_mem, frag, ins_sched| {
-    let arr = hand_mem.get_fractal(args[0]);
-    let len = arr.len() as i64;
+    let arr = hand_mem.read_fractal(args[0]);
+    let len = arr.len();
     let instructions = frag.get_closure_instructions(args[1]);
     // array of potentially many levels of nested fractals
     let output: Vec<HandlerMemory> = (0..len).into_par_iter().map_with(instructions, |ins, idx| {
       let mut mem = hand_mem.clone();
-      mem.make_closure();
       // array element is $1 argument of the closure memory space
-      if !arr.has_nested_fractals() {
-        // this could be a string or fixed data type
-        let val = arr.read_fixed(idx);
-        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
-      } else {
-        // more nested arrays
-        let arr_el = arr.read_fractal(idx);
-        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
-      }
+      mem.set_addr(CLOSURE_ARG_MEM_START + 1, arr[idx].0, arr[idx].1 as usize);
+      mem.write_fixed(CLOSURE_ARG_MEM_START + 2, idx as i64);
       ins.iter().for_each(|i| {
         // TODO implement for async_functions. can tokio be called within rayon?
         let func = i.opcode.func.unwrap();
@@ -1613,51 +1613,40 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
           }
         }
       });
-      // return address is $0 argument of the closure memory space
-      let (_, size) = mem.read_either(CLOSURE_ARG_MEM_START);
-      if size == 0 {
-        let res = mem.read_fractal(CLOSURE_ARG_MEM_START);
-        return res;
-      } else {
-        let val = mem.read_fixed(CLOSURE_ARG_MEM_START);
-        let mut res = HandlerMemory::new(None, 1);
-        res.write_fixed(0, val);
-        res.is_fixed = true;
-        return res;
-      }
+      mem
     }).collect();
-    hand_mem.new_fractal(args[2]);
-    for f in output {
-      if f.is_fixed {
-        hand_mem.push_fractal_fixed(args[2], f.read_fixed(0));
-      } else {
-        hand_mem.push_nested_fractal(args[2], f);
-      }
+    hand_mem.write_fractal(args[2], &Vec::new());
+    for mem in output {
+      HandlerMemory::transfer(&mem, CLOSURE_ARG_MEM_START, hand_mem, CLOSURE_ARG_MEM_START);
+      let (a, b) = hand_mem.addr_to_idxs(CLOSURE_ARG_MEM_START);
+      hand_mem.push_idxs(args[2], a, b);
     }
     None
   });
-  unpred_cpu!("mapl", |args, hand_mem, frag, ins_sched| {
-    let arr = hand_mem.get_fractal(args[0]);
-    let len = arr.len() as i64;
+  unpred_cpu!("mapl", |args, mut hand_mem, frag, ins_sched| {
+    let arr = hand_mem.read_fractal(args[0]);
+    let len = arr.len();
     let ins = frag.get_closure_instructions(args[1]);
+    drop(arr); // ugh rust, why?
     // array of potentially many levels of nested fractals
-    let output: Vec<HandlerMemory> = (0..len).map(|idx| {
-      let mut mem = hand_mem.clone();
-      mem.make_closure();
+    let output: Vec<(usize, usize)> = (0..len).map(|idx| {
       // array element is $1 argument of the closure memory space
-      if !arr.has_nested_fractals() {
+      let arr = hand_mem.read_fractal(args[0]);
+      if !HandlerMemory::has_nested_fractals(arr) {
         // this could be a string or fixed data type
-        let val = arr.read_fixed(idx);
-        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
+        let val = arr[idx].1;
+        hand_mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
       } else {
         // more nested arrays
-        let arr_el = arr.read_fractal(idx);
-        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
+        let (a, b) = arr[idx];
+        let (arr_el, _) = hand_mem.read_either_idxs(a, b as usize);
+        hand_mem.write_fractal(CLOSURE_ARG_MEM_START + 1, &arr_el);
       }
+      hand_mem.write_fixed(CLOSURE_ARG_MEM_START + 2, idx as i64);
       ins.iter().for_each(|i| {
         // TODO implement for async_functions. can tokio be called within rayon?
         let func = i.opcode.func.unwrap();
-        let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
+        let event = func(&i.args, &mut hand_mem, &mut frag.clone(), ins_sched);
         if event.is_some() {
           let event_sent = ins_sched.event_tx.send(event.unwrap());
           if event_sent.is_err() {
@@ -1667,74 +1656,52 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         }
       });
       // return address is $0 argument of the closure memory space
-      let (_, size) = mem.read_either(CLOSURE_ARG_MEM_START);
-      if size == 0 {
-        let res = mem.read_fractal(CLOSURE_ARG_MEM_START);
-        return res;
-      } else {
-        let val = mem.read_fixed(CLOSURE_ARG_MEM_START);
-        let mut res = HandlerMemory::new(None, 1);
-        res.write_fixed(0, val);
-        res.is_fixed = true;
-        return res;
-      }
+      return hand_mem.addr_to_idxs(CLOSURE_ARG_MEM_START);
     }).collect();
-    hand_mem.new_fractal(args[2]);
+    hand_mem.write_fractal(args[2], &Vec::new());
     for f in output {
-      if f.is_fixed {
-        hand_mem.push_fractal_fixed(args[2], f.read_fixed(0));
-      } else {
-        hand_mem.push_nested_fractal(args[2], f);
-      }
+      let (a, b) = f;
+      hand_mem.push_idxs(args[2], a, b);
     }
     None
   });
   cpu!("reparr", |args, hand_mem, _, _| {
-    hand_mem.new_fractal(args[2]);
+    hand_mem.write_fractal(args[2], &Vec::new());
     let n = hand_mem.read_fixed(args[1]);
-    let arr = hand_mem.get_fractal(args[0]);
-    let l = arr.len() as i64;
+    let arr = hand_mem.read_fractal(args[0]);
+    let l = arr.len();
     let mut is_fixed = true;
-    let mut output: Vec<Vec<i64>> = vec![];
+    let mut output: Vec<Vec<(usize, i64)>> = vec![];
     for i in 0..n {
       for j in 0..l {
-        let (val, size) = arr.read_either(j);
+        let (a, b) = arr[j];
+        let (val, is_fractal) = hand_mem.read_either_idxs(a, b as usize);
         output.push(val);
-        if i == 0 && size == 0 {
+        if i == 0 && is_fractal {
           is_fixed = false;
         }
       }
     }
     for val in output {
       if is_fixed {
-        hand_mem.push_fractal_fixed(args[2], val[0]);
+        hand_mem.push_fixed(args[2], val[0].1);
       } else {
-        hand_mem.push_nested_fractal_mem(args[2], val);
+        hand_mem.push_fractal(args[2], &val);
       }
     }
     None
   });
   unpred_cpu!("each", |args, hand_mem, frag, ins_sched| {
-    let arr = hand_mem.get_fractal(args[0]);
-    let len = arr.len() as i64;
+    let arr = hand_mem.read_fractal(args[0]);
+    let len = arr.len();
     let instructions = frag.get_closure_instructions(args[1]);
     // array of potentially many levels of nested fractals
     (0..len).into_par_iter().for_each_with(instructions, |ins, idx| {
       let mut mem = hand_mem.clone();
-      mem.make_closure();
       // array element is $1 argument of the closure memory space
       // current index is $2 argument
-      if !arr.has_nested_fractals() {
-        // this could be a string or fixed data type
-        let val = arr.read_fixed(idx);
-        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
-        mem.write_fixed(CLOSURE_ARG_MEM_START + 2, idx);
-      } else {
-        // more nested arrays
-        let arr_el = arr.read_fractal(idx);
-        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
-        mem.write_fixed(CLOSURE_ARG_MEM_START + 2, idx);
-      }
+      mem.set_addr(CLOSURE_ARG_MEM_START + 1, arr[idx].0, arr[idx].1 as usize);
+      mem.write_fixed(CLOSURE_ARG_MEM_START + 2, idx as i64);
       ins.iter().for_each(|i| {
         // TODO implement for async_functions. can tokio be called within rayon?
         let func = i.opcode.func.unwrap();
@@ -1752,23 +1719,25 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   unpred_cpu!("eachl", |args, mut hand_mem, frag, ins_sched| {
-    hand_mem.make_closure();
-    let arr = hand_mem.get_fractal(args[0]).clone();
-    let len = arr.len() as i64;
+    let arr = hand_mem.read_fractal(args[0]);
+    let len = arr.len();
     let ins = frag.get_closure_instructions(args[1]);
+    drop(arr); // ugh rust, why?
     // array of potentially many levels of nested fractals
     (0..len).for_each(|idx| {
       // array element is $1 argument of the closure memory space
-      if !arr.has_nested_fractals() {
+      let arr = hand_mem.read_fractal(args[0]);
+      if !HandlerMemory::has_nested_fractals(arr) {
         // this could be a string or fixed data type
-        let val = arr.read_fixed(idx);
+        let val = arr[idx].1;
         hand_mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
       } else {
         // more nested arrays
-        let arr_el = arr.read_fractal(idx);
-        hand_mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
+        let (a, b) = arr[idx];
+        let(arr_el, _) = hand_mem.read_either_idxs(a, b as usize);
+        hand_mem.write_fractal(CLOSURE_ARG_MEM_START + 1, &arr_el);
       }
-      hand_mem.write_fixed(CLOSURE_ARG_MEM_START + 2, idx);
+      hand_mem.write_fixed(CLOSURE_ARG_MEM_START + 2, idx as i64);
       ins.iter().for_each(|i| {
         // TODO implement for async_functions. can tokio be called within rayon?
         let func = i.opcode.func.unwrap();
@@ -1785,24 +1754,15 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   unpred_cpu!("find", |args, hand_mem, frag, ins_sched| {
-    let arr = hand_mem.get_fractal(args[0]);
-    let len = arr.len() as i64;
+    let arr = hand_mem.read_fractal(args[0]);
+    let len = arr.len();
     let instructions = frag.get_closure_instructions(args[1]);
     // array of potentially many levels of nested fractals
     let arr_addr = (0..len).into_par_iter().find_any(|idx| {
       let ins = instructions.clone();
       let mut mem = hand_mem.clone();
-      mem.make_closure();
       // array element is $1 argument of the closure memory space
-      if !arr.has_nested_fractals() {
-        // this could be a string or fixed data type
-        let val = arr.read_fixed(*idx);
-        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
-      } else {
-        // more nested arrays
-        let arr_el = arr.read_fractal(*idx);
-        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
-      }
+      mem.set_addr(CLOSURE_ARG_MEM_START + 1, arr[*idx].0, arr[*idx].1 as usize);
       ins.iter().for_each(|i| {
         // TODO implement for async_functions. can tokio be called within rayon?
         let func = i.opcode.func.unwrap();
@@ -1819,45 +1779,29 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let val = mem.read_fixed(CLOSURE_ARG_MEM_START);
       return val == 1i64;
     });
-    hand_mem.new_fractal(args[2]);
+    hand_mem.write_fractal(args[2], &Vec::new());
     if arr_addr.is_none() {
-      hand_mem.push_fractal_fixed(args[2], 0i64);
-      hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm("no element matches"));
+      hand_mem.push_fixed(args[2], 0i64);
+      hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal("no element matches"));
     } else {
       let addr = arr_addr.unwrap();
-      hand_mem.push_fractal_fixed(args[2], 1i64);
-      let arr = hand_mem.get_fractal(args[0]); // This is dumb, but whatever Rust
-      if !arr.has_nested_fractals() {
-        // this could be a string or fixed data type
-        let val = arr.read_fixed(addr);
-        hand_mem.push_fractal_fixed(args[2], val);
-      } else {
-        // more nested arrays
-        let arr_el = arr.read_fractal(addr);
-        hand_mem.push_nested_fractal(args[2], arr_el);
-      }
+      hand_mem.push_fixed(args[2], 1i64);
+      let arr = hand_mem.read_fractal(args[0]); // This is dumb, but whatever Rust
+      let (a, b) = arr[addr];
+      hand_mem.push_idxs(args[2], a, b as usize);
     }
     None
   });
   unpred_cpu!("findl", |args, hand_mem, frag, ins_sched| {
-    let arr = hand_mem.get_fractal(args[0]);
-    let len = arr.len() as i64;
+    let arr = hand_mem.read_fractal(args[0]);
+    let len = arr.len();
     let instructions = frag.get_closure_instructions(args[1]);
     // array of potentially many levels of nested fractals
     let arr_addr = (0..len).into_par_iter().find_first(|idx| {
       let ins = instructions.clone();
       let mut mem = hand_mem.clone();
-      mem.make_closure();
       // array element is $1 argument of the closure memory space
-      if !arr.has_nested_fractals() {
-        // this could be a string or fixed data type
-        let val = arr.read_fixed(*idx);
-        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
-      } else {
-        // more nested arrays
-        let arr_el = arr.read_fractal(*idx);
-        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
-      }
+      mem.set_addr(CLOSURE_ARG_MEM_START + 1, arr[*idx].0, arr[*idx].1 as usize);
       ins.iter().for_each(|i| {
         // TODO implement for async_functions. can tokio be called within rayon?
         let func = i.opcode.func.unwrap();
@@ -1874,45 +1818,29 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let val = mem.read_fixed(CLOSURE_ARG_MEM_START);
       return val == 1i64;
     });
-    hand_mem.new_fractal(args[2]);
+    hand_mem.write_fractal(args[2], &Vec::new());
     if arr_addr.is_none() {
-      hand_mem.push_fractal_fixed(args[2], 0i64);
-      hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm("no element matches"));
+      hand_mem.push_fixed(args[2], 0i64);
+      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("no element matches"));
     } else {
       let addr = arr_addr.unwrap();
-      hand_mem.push_fractal_fixed(args[2], 1i64);
-      let arr = hand_mem.get_fractal(args[0]); // This is dumb, but whatever Rust
-      if !arr.has_nested_fractals() {
-        // this could be a string or fixed data type
-        let val = arr.read_fixed(addr);
-        hand_mem.push_fractal_fixed(args[2], val);
-      } else {
-        // more nested arrays
-        let arr_el = arr.read_fractal(addr);
-        hand_mem.push_nested_fractal(args[2], arr_el);
-      }
+      let arr = hand_mem.read_fractal(args[0]); // This is dumb, but whatever Rust
+      let (a, b) = arr[addr as usize];
+      hand_mem.push_fixed(args[2], 1i64);
+      hand_mem.push_idxs(args[2], a, b as usize);
     }
     None
   });
   unpred_cpu!("some", |args, hand_mem, frag, ins_sched| {
-    let arr = hand_mem.get_fractal(args[0]);
-    let len = arr.len() as i64;
+    let arr = hand_mem.read_fractal(args[0]);
+    let len = arr.len();
     let instructions = frag.get_closure_instructions(args[1]);
     // array of potentially many levels of nested fractals
     let output: bool = (0..len).into_par_iter().any(|idx| {
       let ins = instructions.clone();
       let mut mem = hand_mem.clone();
-      mem.make_closure();
       // array element is $1 argument of the closure memory space
-      if !arr.has_nested_fractals() {
-        // this could be a string or fixed data type
-        let val = arr.read_fixed(idx);
-        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
-      } else {
-        // more nested arrays
-        let arr_el = arr.read_fractal(idx);
-        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
-      }
+      mem.set_addr(CLOSURE_ARG_MEM_START + 1, arr[idx].0, arr[idx].1 as usize);
       ins.iter().for_each(|i| {
         // TODO implement for async_functions. can tokio be called within rayon?
         let func = i.opcode.func.unwrap();
@@ -1937,28 +1865,29 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }
     None
   });
-  unpred_cpu!("somel", |args, hand_mem, frag, ins_sched| {
-    let arr = hand_mem.get_fractal(args[0]);
-    let len = arr.len() as i64;
+  unpred_cpu!("somel", |args, mut hand_mem, frag, ins_sched| {
+    let arr = hand_mem.read_fractal(args[0]);
+    let len = arr.len();
     let ins = frag.get_closure_instructions(args[1]);
+    drop(arr); // ugh rust, why?
     // array of potentially many levels of nested fractals
     let output: Vec<Option<i64>> = (0..len).map(|idx| {
-      let mut mem = hand_mem.clone();
-      mem.make_closure();
       // array element is $1 argument of the closure memory space
-      if !arr.has_nested_fractals() {
+      let arr = hand_mem.read_fractal(args[0]);
+      if !HandlerMemory::has_nested_fractals(arr) {
         // this could be a string or fixed data type
-        let val = arr.read_fixed(idx);
-        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
+        let val = arr[idx].1;
+        hand_mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
       } else {
         // more nested arrays
-        let arr_el = arr.read_fractal(idx);
-        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
+        let (a, b) = arr[idx];
+        let (arr_el, _) = hand_mem.read_either_idxs(a, b as usize);
+        hand_mem.write_fractal(CLOSURE_ARG_MEM_START + 1, &arr_el);
       }
       ins.iter().for_each(|i| {
         // TODO implement for async_functions. can tokio be called within rayon?
         let func = i.opcode.func.unwrap();
-        let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
+        let event = func(&i.args, &mut hand_mem, &mut frag.clone(), ins_sched);
         if event.is_some() {
           let event_sent = ins_sched.event_tx.send(event.unwrap());
           if event_sent.is_err() {
@@ -1968,7 +1897,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         }
       });
       // return address is $0 argument of the closure memory space
-      let val = mem.read_fixed(CLOSURE_ARG_MEM_START);
+      let val = hand_mem.read_fixed(CLOSURE_ARG_MEM_START);
       if val == 1 {
         return Some(1);
       } else {
@@ -1983,24 +1912,15 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   unpred_cpu!("every", |args, hand_mem, frag, ins_sched| {
-    let arr = hand_mem.get_fractal(args[0]);
-    let len = arr.len() as i64;
+    let arr = hand_mem.read_fractal(args[0]);
+    let len = arr.len();
     let instructions = frag.get_closure_instructions(args[1]);
     // array of potentially many levels of nested fractals
     let output: bool = (0..len).into_par_iter().all(|idx| {
       let ins = instructions.clone();
       let mut mem = hand_mem.clone();
-      mem.make_closure();
       // array element is $1 argument of the closure memory space
-      if !arr.has_nested_fractals() {
-        // this could be a string or fixed data type
-        let val = arr.read_fixed(idx);
-        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
-      } else {
-        // more nested arrays
-        let arr_el = arr.read_fractal(idx);
-        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
-      }
+      mem.set_addr(CLOSURE_ARG_MEM_START + 1, arr[idx].0, arr[idx].1 as usize);
       ins.iter().for_each(|i| {
         // TODO implement for async_functions. can tokio be called within rayon?
         let func = i.opcode.func.unwrap();
@@ -2025,24 +1945,83 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }
     None
   });
-  unpred_cpu!("everyl", |args, hand_mem, frag, ins_sched| {
-    let arr = hand_mem.get_fractal(args[0]);
-    let len = arr.len() as i64;
+  unpred_cpu!("everyl", |args, mut hand_mem, frag, ins_sched| {
+    let arr = hand_mem.read_fractal(args[0]);
+    let len = arr.len();
     let ins = frag.get_closure_instructions(args[1]);
+    drop(arr); // ugh rust, why?
     // array of potentially many levels of nested fractals
     let output: Vec<Option<i64>> = (0..len).map(|idx| {
-      let mut mem = hand_mem.clone();
-      mem.make_closure();
       // array element is $1 argument of the closure memory space
-      if !arr.has_nested_fractals() {
+      let arr = hand_mem.read_fractal(args[0]);
+      if !HandlerMemory::has_nested_fractals(arr) {
         // this could be a string or fixed data type
-        let val = arr.read_fixed(idx);
-        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
+        let val = arr[idx].1;
+        hand_mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
       } else {
         // more nested arrays
-        let arr_el = arr.read_fractal(idx);
-        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, arr_el);
+        let (a, b) = arr[idx];
+        let (arr_el, _) = hand_mem.read_either_idxs(a, b as usize);
+        hand_mem.write_fractal(CLOSURE_ARG_MEM_START + 1, &arr_el);
       }
+      ins.iter().for_each(|i| {
+        // TODO implement for async_functions. can tokio be called within rayon?
+        let func = i.opcode.func.unwrap();
+        let event = func(&i.args, &mut hand_mem, &mut frag.clone(), ins_sched);
+        if event.is_some() {
+          let event_sent = ins_sched.event_tx.send(event.unwrap());
+          if event_sent.is_err() {
+            eprintln!("Event transmission error");
+            std::process::exit(2);
+          }
+        }
+      });
+      // return address is $0 argument of the closure memory space
+      let val = hand_mem.read_fixed(CLOSURE_ARG_MEM_START);
+      if val == 1 {
+        return Some(1);
+      } else {
+        return None;
+      }
+    }).filter(|x| x.is_some()).collect();
+    if output.len() == len {
+      hand_mem.write_fixed(args[2], 1i64);
+    } else {
+      hand_mem.write_fixed(args[2], 0i64);
+    }
+    None
+  });
+  cpu!("catarr", |args, hand_mem, _, _| {
+    hand_mem.write_fractal(args[2], &Vec::new());
+    let arr1 = hand_mem.read_fractal(args[0]).to_vec();
+    let arr2 = hand_mem.read_fractal(args[1]).to_vec();
+    let arr1len = arr1.len();
+    let arr2len = arr2.len();
+    for i in 0..arr1len {
+      let (a, b) = arr1[i];
+      hand_mem.push_idxs(args[2], a, b as usize);
+    }
+    for i in 0..arr2len {
+      let (a, b) = arr2[i];
+      hand_mem.push_idxs(args[2], a, b as usize);
+    }
+    None
+  });
+  unpred_cpu!("reducep", |args, mut hand_mem, frag, ins_sched| {
+    let arr = hand_mem.read_fractal(args[0]).to_vec();
+    let mut vals: Vec<HandlerMemory> = vec![];
+    for i in 0..arr.len() {
+      let mut hm = HandlerMemory::new(None, 1);
+      hand_mem.set_addr(CLOSURE_ARG_MEM_START, arr[i].0, arr[i].1 as usize);
+      HandlerMemory::transfer(hand_mem, CLOSURE_ARG_MEM_START, &mut hm, 0);
+      vals.push(hm);
+    }
+    let instructions = frag.get_closure_instructions(args[1]);
+    let res = vals.into_par_iter().reduce_with(|a, b| {
+      let ins = instructions.clone();
+      let mut mem = hand_mem.clone();
+      HandlerMemory::transfer(&a, 0, &mut mem, CLOSURE_ARG_MEM_START + 1);
+      HandlerMemory::transfer(&b, 0, &mut mem, CLOSURE_ARG_MEM_START + 2);
       ins.iter().for_each(|i| {
         // TODO implement for async_functions. can tokio be called within rayon?
         let func = i.opcode.func.unwrap();
@@ -2055,473 +2034,175 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
           }
         }
       });
-      // return address is $0 argument of the closure memory space
-      let val = mem.read_fixed(CLOSURE_ARG_MEM_START);
-      if val == 1 {
-        return Some(1);
-      } else {
-        return None;
-      }
-    }).filter(|x| x.is_some()).collect();
-    if output.len() as i64 == len {
-      hand_mem.write_fixed(args[2], 1i64);
-    } else {
-      hand_mem.write_fixed(args[2], 0i64);
-    }
+      let mut hm = HandlerMemory::new(None, 1);
+      HandlerMemory::transfer(&mem, CLOSURE_ARG_MEM_START, &mut hm, 0);
+      hm
+    }).unwrap();
+    HandlerMemory::transfer(&res, 0, &mut hand_mem, args[2]);
     None
   });
-  cpu!("catarr", |args, hand_mem, _, _| {
-    hand_mem.new_fractal(args[2]);
-    let arr1 = hand_mem.get_fractal(args[0]).clone();
-    let arr2 = hand_mem.get_fractal(args[1]).clone();
-    let arr1len = arr1.len() as i64;
-    let arr2len = arr2.len() as i64;
-    if arr1.has_nested_fractals() {
-      for i in 0..arr1len {
-        hand_mem.push_nested_fractal(args[2], arr1.get_fractal(i).clone());
-      }
-      for i in 0..arr2len {
-        hand_mem.push_nested_fractal(args[2], arr2.get_fractal(i).clone());
-      }
-    } else {
-      for i in 0..arr1len {
-        hand_mem.push_fractal_fixed(args[2], arr1.read_fixed(i));
-      }
-      for i in 0..arr2len {
-        hand_mem.push_fractal_fixed(args[2], arr2.read_fixed(i));
-      }
-    }
-    None
-  });
-  unpred_cpu!("reducep", |args, hand_mem, frag, ins_sched| {
-    let arr = hand_mem.get_fractal(args[0]);
+  unpred_cpu!("reducel", |args, mut hand_mem, frag, ins_sched| {
+    let arr = hand_mem.read_fractal(args[0]).to_vec();
     let instructions = frag.get_closure_instructions(args[1]);
-    if arr.has_nested_fractals() {
-      let res = arr.fractal_mem.clone().into_par_iter().reduce_with(|a, b| {
-        let ins = instructions.clone();
-        let mut mem = hand_mem.clone();
-        mem.make_closure();
-        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, a);
-        mem.write_fractal(CLOSURE_ARG_MEM_START + 2, b);
-        ins.iter().for_each(|i| {
-          // TODO implement for async_functions. can tokio be called within rayon?
-          let func = i.opcode.func.unwrap();
-          let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-          if event.is_some() {
-            let event_sent = ins_sched.event_tx.send(event.unwrap());
-            if event_sent.is_err() {
-              eprintln!("Event transmission error");
-              std::process::exit(2);
-            }
+    let car = arr[0].clone();
+    let cdr = &arr[1..];
+    let res: (usize, i64) = cdr.into_iter().fold(car, |a, b| {
+      let ins = instructions.clone();
+      hand_mem.set_addr(CLOSURE_ARG_MEM_START + 1, a.0, a.1 as usize);
+      hand_mem.set_addr(CLOSURE_ARG_MEM_START + 2, b.0, b.1 as usize);
+      ins.iter().for_each(|i| {
+        // TODO implement for async_functions. can tokio be called within rayon?
+        let func = i.opcode.func.unwrap();
+        let event = func(&i.args, &mut hand_mem, &mut frag.clone(), ins_sched);
+        if event.is_some() {
+          let event_sent = ins_sched.event_tx.send(event.unwrap());
+          if event_sent.is_err() {
+            eprintln!("Event transmission error");
+            std::process::exit(2);
           }
-        });
-        mem.read_fractal(CLOSURE_ARG_MEM_START)
-      }).unwrap();
-      hand_mem.write_fractal(args[2], res);
-    } else {
-      let res = arr.mem.clone().into_par_iter().reduce_with(|a, b| {
-        let ins = instructions.clone();
-        let mut mem = hand_mem.clone();
-        mem.make_closure();
-        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, a);
-        mem.write_fixed(CLOSURE_ARG_MEM_START + 2, b);
-        ins.iter().for_each(|i| {
-          // TODO implement for async_functions. can tokio be called within rayon?
-          let func = i.opcode.func.unwrap();
-          let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-          if event.is_some() {
-            let event_sent = ins_sched.event_tx.send(event.unwrap());
-            if event_sent.is_err() {
-              eprintln!("Event transmission error");
-              std::process::exit(2);
-            }
-          }
-        });
-        mem.read_fixed(CLOSURE_ARG_MEM_START)
-      }).unwrap();
-      hand_mem.write_fixed(args[2], res);
-    }
-    None
-  });
-  unpred_cpu!("reducel", |args, hand_mem, frag, ins_sched| {
-    let arr = hand_mem.get_fractal(args[0]);
-    let instructions = frag.get_closure_instructions(args[1]);
-    if arr.has_nested_fractals() {
-      let car = arr.fractal_mem[0].clone();
-      let cdr = &arr.fractal_mem[1..];
-      let res: HandlerMemory = cdr.into_iter().fold(car, |a, b| {
-        let ins = instructions.clone();
-        let mut mem = hand_mem.clone();
-        mem.make_closure();
-        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, a);
-        mem.write_fractal(CLOSURE_ARG_MEM_START + 2, b.clone());
-        ins.iter().for_each(|i| {
-          // TODO implement for async_functions. can tokio be called within rayon?
-          let func = i.opcode.func.unwrap();
-          let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-          if event.is_some() {
-            let event_sent = ins_sched.event_tx.send(event.unwrap());
-            if event_sent.is_err() {
-              eprintln!("Event transmission error");
-              std::process::exit(2);
-            }
-          }
-        });
-        mem.read_fractal(CLOSURE_ARG_MEM_START)
-      });
-      hand_mem.write_fractal(args[2], res);
-    } else {
-      let car = arr.mem[0];
-      let cdr = &arr.mem[1..];
-      let res: i64 = cdr.into_iter().fold(car, |a, b| {
-        let ins = instructions.clone();
-        let mut mem = hand_mem.clone();
-        mem.make_closure();
-        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, a);
-        mem.write_fixed(CLOSURE_ARG_MEM_START + 2, *b);
-        ins.iter().for_each(|i| {
-          // TODO implement for async_functions. can tokio be called within rayon?
-          let func = i.opcode.func.unwrap();
-          let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-          if event.is_some() {
-            let event_sent = ins_sched.event_tx.send(event.unwrap());
-            if event_sent.is_err() {
-              eprintln!("Event transmission error");
-              std::process::exit(2);
-            }
-          }
-        });
-        mem.read_fixed(CLOSURE_ARG_MEM_START)
-      });
-      hand_mem.write_fixed(args[2], res);
-    }
-    None
-  });
-  unpred_cpu!("foldp", |args, hand_mem, frag, ins_sched| {
-    let obj = hand_mem.get_fractal(args[0]);
-    let arr = obj.get_fractal(0);
-    let instructions = frag.get_closure_instructions(args[1]);
-    if obj.either_mem[1] > -1 {
-      let init = obj.get_fractal(1);
-      if arr.has_nested_fractals() {
-        let res: Vec<HandlerMemory> = arr.fractal_mem.clone().into_par_iter().fold(|| init.clone(), |a, b| {
-          let ins = instructions.clone();
-          let mut mem = hand_mem.clone();
-          mem.make_closure();
-          mem.write_fractal(CLOSURE_ARG_MEM_START + 1, a);
-          mem.write_fractal(CLOSURE_ARG_MEM_START + 2, b);
-          ins.iter().for_each(|i| {
-            // TODO implement for async_functions. can tokio be called within rayon?
-            let func = i.opcode.func.unwrap();
-            let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-            if event.is_some() {
-              let event_sent = ins_sched.event_tx.send(event.unwrap());
-              if event_sent.is_err() {
-                eprintln!("Event transmission error");
-                std::process::exit(2);
-              }
-            }
-          });
-          mem.read_fractal(CLOSURE_ARG_MEM_START)
-        }).collect();
-        hand_mem.new_fractal(args[2]);
-        let reslen = res.len();
-        for i in 0..reslen {
-          hand_mem.push_nested_fractal(args[2], res[i].clone());
         }
-      } else {
-        let res: Vec<HandlerMemory> = arr.mem.clone().into_par_iter().fold(|| init.clone(), |a, b| {
-          let ins = instructions.clone();
-          let mut mem = hand_mem.clone();
-          mem.make_closure();
-          mem.write_fractal(CLOSURE_ARG_MEM_START + 1, a);
-          mem.write_fixed(CLOSURE_ARG_MEM_START + 2, b);
-          ins.iter().for_each(|i| {
-            // TODO implement for async_functions. can tokio be called within rayon?
-            let func = i.opcode.func.unwrap();
-            let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-            if event.is_some() {
-              let event_sent = ins_sched.event_tx.send(event.unwrap());
-              if event_sent.is_err() {
-                eprintln!("Event transmission error");
-                std::process::exit(2);
-              }
-            }
-          });
-          mem.read_fractal(CLOSURE_ARG_MEM_START)
-        }).collect();
-        hand_mem.new_fractal(args[2]);
-        let reslen = res.len();
-        for i in 0..reslen {
-          hand_mem.push_nested_fractal(args[2], res[i].clone());
+      });
+      let (a, b) = hand_mem.addr_to_idxs(CLOSURE_ARG_MEM_START);
+      (a, b as i64)
+    });
+    hand_mem.set_addr(args[2], res.0, res.1 as usize);
+    None
+  });
+  unpred_cpu!("foldp", |args, mut hand_mem, frag, ins_sched| {
+    let obj = hand_mem.read_fractal(args[0]);
+    let (a, b) = obj[0];
+    let (c, d) = obj[1];
+    let (arr, _) = hand_mem.read_either_idxs(a, b as usize);
+    let arrv = arr.to_vec();
+    let mut vals: Vec<HandlerMemory> = vec![];
+    for i in 0..arrv.len() {
+      let mut hm = HandlerMemory::new(None, 1);
+      hand_mem.set_addr(CLOSURE_ARG_MEM_START, arrv[i].0, arrv[i].1 as usize);
+      HandlerMemory::transfer(hand_mem, CLOSURE_ARG_MEM_START, &mut hm, 0);
+      vals.push(hm);
+    }
+    let instructions = frag.get_closure_instructions(args[1]);
+    hand_mem.set_addr(CLOSURE_ARG_MEM_START, c, d as usize);
+    let mut init = HandlerMemory::new(None, 1);
+    HandlerMemory::transfer(hand_mem, CLOSURE_ARG_MEM_START, &mut init, 0);
+    let res: Vec<HandlerMemory> = vals.into_par_iter().fold(|| init.clone(), |a, b| {
+      let ins = instructions.clone();
+      let mut mem = hand_mem.clone();
+      HandlerMemory::transfer(&a, 0, &mut mem, CLOSURE_ARG_MEM_START + 1);
+      HandlerMemory::transfer(&b, 0, &mut mem, CLOSURE_ARG_MEM_START + 2);
+      ins.iter().for_each(|i| {
+        // TODO implement for async_functions. can tokio be called within rayon?
+        let func = i.opcode.func.unwrap();
+        let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
+        if event.is_some() {
+          let event_sent = ins_sched.event_tx.send(event.unwrap());
+          if event_sent.is_err() {
+            eprintln!("Event transmission error");
+            std::process::exit(2);
+          }
         }
-      }
-    } else {
-      let initial = obj.read_fixed(1);
-      if arr.has_nested_fractals() {
-        let res: Vec<i64> = arr.fractal_mem.clone().into_par_iter().fold(|| initial, |a, b| {
-          let ins = instructions.clone();
-          let mut mem = hand_mem.clone();
-          mem.make_closure();
-          mem.write_fixed(CLOSURE_ARG_MEM_START + 1, a);
-          mem.write_fractal(CLOSURE_ARG_MEM_START + 2, b);
-          ins.iter().for_each(|i| {
-            // TODO implement for async_functions. can tokio be called within rayon?
-            let func = i.opcode.func.unwrap();
-            let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-            if event.is_some() {
-              let event_sent = ins_sched.event_tx.send(event.unwrap());
-              if event_sent.is_err() {
-                eprintln!("Event transmission error");
-                std::process::exit(2);
-              }
-            }
-          });
-          mem.read_fixed(CLOSURE_ARG_MEM_START)
-        }).collect();
-        hand_mem.write_fractal_mem(args[2], &res);
-      } else {
-        let res: Vec<i64> = arr.mem.clone().into_par_iter().fold(|| initial, |a, b| {
-          let ins = instructions.clone();
-          let mut mem = hand_mem.clone();
-          mem.make_closure();
-          mem.write_fixed(CLOSURE_ARG_MEM_START + 1, a);
-          mem.write_fixed(CLOSURE_ARG_MEM_START + 2, b);
-          ins.iter().for_each(|i| {
-            // TODO implement for async_functions. can tokio be called within rayon?
-            let func = i.opcode.func.unwrap();
-            let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-            if event.is_some() {
-              let event_sent = ins_sched.event_tx.send(event.unwrap());
-              if event_sent.is_err() {
-                eprintln!("Event transmission error");
-                std::process::exit(2);
-              }
-            }
-          });
-          mem.read_fixed(CLOSURE_ARG_MEM_START)
-        }).collect();
-        hand_mem.write_fractal_mem(args[2], &res);
-      }
+      });
+      let mut hm = HandlerMemory::new(None, 1);
+      HandlerMemory::transfer(&mem, CLOSURE_ARG_MEM_START, &mut hm, 0);
+      hm
+    }).collect();
+    hand_mem.write_fractal(args[2], &Vec::new());
+    let reslen = res.len();
+    for i in 0..reslen {
+      HandlerMemory::transfer(&res[i], 0, &mut hand_mem, CLOSURE_ARG_MEM_START);
+      let (a, b) = hand_mem.addr_to_idxs(CLOSURE_ARG_MEM_START);
+      hand_mem.push_idxs(args[2], a, b);
     }
     None
   });
-  unpred_cpu!("foldl", |args, hand_mem, frag, ins_sched| {
-    let obj = hand_mem.get_fractal(args[0]);
-    let arr = obj.get_fractal(0);
+  unpred_cpu!("foldl", |args, mut hand_mem, frag, ins_sched| {
+    let obj = hand_mem.read_fractal(args[0]);
+    let (a, b) = obj[0];
+    let (c, d) = obj[1];
+    let (arr, _) = hand_mem.read_either_idxs(a, b as usize);
+    let arrv = arr.to_vec();
     let instructions = frag.get_closure_instructions(args[1]);
-    if obj.either_mem[1] > -1 {
-      let initial = obj.get_fractal(1).clone();
-      if arr.has_nested_fractals() {
-        let arrf = arr.fractal_mem.clone();
-        let res: HandlerMemory = arrf.into_iter().fold(initial, |a, b| {
-          let ins = instructions.clone();
-          let mut mem = hand_mem.clone();
-          mem.make_closure();
-          mem.write_fractal(CLOSURE_ARG_MEM_START + 1, a.clone());
-          mem.write_fractal(CLOSURE_ARG_MEM_START + 2, b.clone());
-          ins.iter().for_each(|i| {
-            // TODO implement for async_functions. can tokio be called within rayon?
-            let func = i.opcode.func.unwrap();
-            let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-            if event.is_some() {
-              let event_sent = ins_sched.event_tx.send(event.unwrap());
-              if event_sent.is_err() {
-                eprintln!("Event transmission error");
-                std::process::exit(2);
-              }
-            }
-          });
-          mem.read_fractal(CLOSURE_ARG_MEM_START)
-        });
-        hand_mem.write_fractal(args[2], res);
-      } else {
-        let arrm = arr.mem.clone();
-        let res: HandlerMemory = arrm.into_iter().fold(initial, |a, b| {
-          let ins = instructions.clone();
-          let mut mem = hand_mem.clone();
-          mem.make_closure();
-          mem.write_fractal(CLOSURE_ARG_MEM_START + 1, a.clone());
-          mem.write_fixed(CLOSURE_ARG_MEM_START + 2, b);
-          ins.iter().for_each(|i| {
-            // TODO implement for async_functions. can tokio be called within rayon?
-            let func = i.opcode.func.unwrap();
-            let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-            if event.is_some() {
-              let event_sent = ins_sched.event_tx.send(event.unwrap());
-              if event_sent.is_err() {
-                eprintln!("Event transmission error");
-                std::process::exit(2);
-              }
-            }
-          });
-          mem.read_fractal(CLOSURE_ARG_MEM_START)
-        });
-        hand_mem.write_fractal(args[2], res);
-      }
-    } else {
-      let initial = obj.read_fixed(1);
-      if arr.has_nested_fractals() {
-        let arrf = arr.fractal_mem.clone();
-        let res: i64 = arrf.into_iter().fold(initial, |a, b| {
-          let ins = instructions.clone();
-          let mut mem = hand_mem.clone();
-          mem.make_closure();
-          mem.write_fixed(CLOSURE_ARG_MEM_START + 1, a);
-          mem.write_fractal(CLOSURE_ARG_MEM_START + 2, b.clone());
-          ins.iter().for_each(|i| {
-            // TODO implement for async_functions. can tokio be called within rayon?
-            let func = i.opcode.func.unwrap();
-            let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-            if event.is_some() {
-              let event_sent = ins_sched.event_tx.send(event.unwrap());
-              if event_sent.is_err() {
-                eprintln!("Event transmission error");
-                std::process::exit(2);
-              }
-            }
-          });
-          mem.read_fixed(CLOSURE_ARG_MEM_START)
-        });
-        hand_mem.write_fixed(CLOSURE_ARG_MEM_START, res);
-      } else {
-        let arrm = arr.mem.clone();
-        let res: i64 = arrm.into_iter().fold(initial, |a, b| {
-          let ins = instructions.clone();
-          let mut mem = hand_mem.clone();
-          mem.make_closure();
-          mem.write_fixed(CLOSURE_ARG_MEM_START + 1, a);
-          mem.write_fixed(CLOSURE_ARG_MEM_START + 2, b);
-          ins.iter().for_each(|i| {
-            // TODO implement for async_functions. can tokio be called within rayon?
-            let func = i.opcode.func.unwrap();
-            let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-            if event.is_some() {
-              let event_sent = ins_sched.event_tx.send(event.unwrap());
-              if event_sent.is_err() {
-                eprintln!("Event transmission error");
-                std::process::exit(2);
-              }
-            }
-          });
-          mem.read_fixed(CLOSURE_ARG_MEM_START)
-        });
-        hand_mem.write_fixed(args[2], res);
-      }
-    }
+    let res: (usize, i64) = arrv.into_iter().fold((c, d), |a, b| {
+      let ins = instructions.clone();
+      hand_mem.set_addr(CLOSURE_ARG_MEM_START + 1, a.0, a.1 as usize);
+      hand_mem.set_addr(CLOSURE_ARG_MEM_START + 2, b.0, b.1 as usize);
+      ins.iter().for_each(|i| {
+        // TODO implement for async_functions. can tokio be called within rayon?
+        let func = i.opcode.func.unwrap();
+        let event = func(&i.args, &mut hand_mem, &mut frag.clone(), ins_sched);
+        if event.is_some() {
+          let event_sent = ins_sched.event_tx.send(event.unwrap());
+          if event_sent.is_err() {
+            eprintln!("Event transmission error");
+            std::process::exit(2);
+          }
+        }
+      });
+      let (a, b) = hand_mem.addr_to_idxs(CLOSURE_ARG_MEM_START);
+      (a, b as i64)
+    });
+    hand_mem.set_addr(args[2], res.0, res.1 as usize);
+    //hand_mem.register(args[2], CLOSURE_ARG_MEM_START);
     None
   });
   unpred_cpu!("filter", |args, hand_mem, frag, ins_sched| {
-    hand_mem.new_fractal(args[2]);
-    let arr = hand_mem.get_fractal(args[0]);
+    hand_mem.write_fractal(args[2], &Vec::new());
+    let arr = hand_mem.read_fractal(args[0]).to_vec();
     let instructions = frag.get_closure_instructions(args[1]);
-    if arr.has_nested_fractals() {
-      let res: Vec<HandlerMemory> = arr.fractal_mem.clone().into_par_iter().filter(|a| {
-        let ins = instructions.clone();
-        let mut mem = hand_mem.clone();
-        mem.make_closure();
-        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, a.clone());
-        ins.iter().for_each(|i| {
-          // TODO implement for async_functions. can tokio be called within rayon?
-          let func = i.opcode.func.unwrap();
-          let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-          if event.is_some() {
-            let event_sent = ins_sched.event_tx.send(event.unwrap());
-            if event_sent.is_err() {
-              eprintln!("Event transmission error");
-              std::process::exit(2);
-            }
+    let res: Vec<(usize, i64)> = arr.into_par_iter().filter(|a| {
+      let ins = instructions.clone();
+      let mut mem = hand_mem.clone();
+      mem.set_addr(CLOSURE_ARG_MEM_START + 1, a.0, a.1 as usize);
+      ins.iter().for_each(|i| {
+        // TODO implement for async_functions. can tokio be called within rayon?
+        let func = i.opcode.func.unwrap();
+        let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
+        if event.is_some() {
+          let event_sent = ins_sched.event_tx.send(event.unwrap());
+          if event_sent.is_err() {
+            eprintln!("Event transmission error");
+            std::process::exit(2);
           }
-        });
-        mem.read_fixed(CLOSURE_ARG_MEM_START) == 1i64
-      }).collect();
-      let reslen = res.len();
-      for i in 0..reslen {
-        hand_mem.push_nested_fractal(args[2], res[i].clone());
-      }
-    } else {
-      let res: Vec<i64> = arr.mem.clone().into_par_iter().filter(|a| {
-        let ins = instructions.clone();
-        let mut mem = hand_mem.clone();
-        mem.make_closure();
-        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, *a);
-        ins.iter().for_each(|i| {
-          // TODO implement for async_functions. can tokio be called within rayon?
-          let func = i.opcode.func.unwrap();
-          let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-          if event.is_some() {
-            let event_sent = ins_sched.event_tx.send(event.unwrap());
-            if event_sent.is_err() {
-              eprintln!("Event transmission error");
-              std::process::exit(2);
-            }
-          }
-        });
-        mem.read_fixed(CLOSURE_ARG_MEM_START) == 1i64
-      }).collect();
-      let reslen = res.len();
-      for i in 0..reslen {
-        hand_mem.push_fractal_fixed(args[2], res[i]);
-      }
+        }
+      });
+      mem.read_fixed(CLOSURE_ARG_MEM_START) == 1i64
+    }).collect();
+    let reslen = res.len();
+    for i in 0..reslen {
+      let (a, b) = res[i];
+      hand_mem.push_idxs(args[2], a, b as usize);
     }
     None
   });
-  unpred_cpu!("filterl", |args, hand_mem, frag, ins_sched| {
-    hand_mem.new_fractal(args[2]);
-    let arr = hand_mem.get_fractal(args[0]);
+  unpred_cpu!("filterl", |args, mut hand_mem, frag, ins_sched| {
+    hand_mem.write_fractal(args[2], &Vec::new());
+    let arr = hand_mem.read_fractal(args[0]).to_vec();
     let instructions = frag.get_closure_instructions(args[1]);
-    if arr.has_nested_fractals() {
-      let res: Vec<HandlerMemory> = arr.fractal_mem.clone().into_iter().filter(|a| {
-        let ins = instructions.clone();
-        let mut mem = hand_mem.clone();
-        mem.make_closure();
-        mem.write_fractal(CLOSURE_ARG_MEM_START + 1, a.clone());
-        ins.iter().for_each(|i| {
-          // TODO implement for async_functions. can tokio be called within rayon?
-          let func = i.opcode.func.unwrap();
-          let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-          if event.is_some() {
-            let event_sent = ins_sched.event_tx.send(event.unwrap());
-            if event_sent.is_err() {
-              eprintln!("Event transmission error");
-              std::process::exit(2);
-            }
+    let res: Vec<(usize, i64)> = arr.into_iter().filter(|m| {
+      let ins = instructions.clone();
+      let (a, b) = m;
+      hand_mem.set_addr(CLOSURE_ARG_MEM_START + 1, *a, *b as usize);
+      ins.iter().for_each(|i| {
+        // TODO implement for async_functions. can tokio be called within rayon?
+        let func = i.opcode.func.unwrap();
+        let event = func(&i.args, &mut hand_mem, &mut frag.clone(), ins_sched);
+        if event.is_some() {
+          let event_sent = ins_sched.event_tx.send(event.unwrap());
+          if event_sent.is_err() {
+            eprintln!("Event transmission error");
+            std::process::exit(2);
           }
-        });
-        mem.read_fixed(CLOSURE_ARG_MEM_START) == 1i64
-      }).collect();
-      let reslen = res.len();
-      for i in 0..reslen {
-        hand_mem.push_nested_fractal(args[2], res[i].clone());
-      }
-    } else {
-      let res: Vec<i64> = arr.mem.clone().into_iter().filter(|a| {
-        let ins = instructions.clone();
-        let mut mem = hand_mem.clone();
-        mem.make_closure();
-        mem.write_fixed(CLOSURE_ARG_MEM_START + 1, *a);
-        ins.iter().for_each(|i| {
-          // TODO implement for async_functions. can tokio be called within rayon?
-          let func = i.opcode.func.unwrap();
-          let event = func(&i.args, &mut mem, &mut frag.clone(), ins_sched);
-          if event.is_some() {
-            let event_sent = ins_sched.event_tx.send(event.unwrap());
-            if event_sent.is_err() {
-              eprintln!("Event transmission error");
-              std::process::exit(2);
-            }
-          }
-        });
-        mem.read_fixed(CLOSURE_ARG_MEM_START) == 1i64
-      }).collect();
-      let reslen = res.len();
-      for i in 0..reslen {
-        hand_mem.push_fractal_fixed(args[2], res[i]);
-      }
+        }
+      });
+      hand_mem.read_fixed(CLOSURE_ARG_MEM_START) == 1i64
+    }).collect();
+    let reslen = res.len();
+    for i in 0..reslen {
+      let (a, b) = res[i];
+      hand_mem.push_idxs(args[2], a, b as usize);
     }
     None
   });
-
   // Conditional opcode
   unpred_cpu!("condfn", |args, hand_mem, frag, _| {
     let cond = hand_mem.read_fixed(args[0]);
@@ -2531,32 +2212,30 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }
     None
   });
-
   // Std opcodes
   unpred_cpu!("execop", |args, hand_mem, _, _| {
-    let full_cmd = hand_mem.read_fractal(args[0]).hm_to_string();
+    let full_cmd = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
     let split_cmd: Vec<&str> = full_cmd.split(" ").collect();
     let output = Command::new(split_cmd[0]).args(&split_cmd[1..]).output();
-    hand_mem.new_fractal(args[2]);
+    hand_mem.write_fractal(args[2], &Vec::new());
     match output {
       Err(e) => {
-        hand_mem.push_fractal_fixed(args[2], 127);
-        hand_mem.push_nested_fractal_mem(args[2], vec![0i64]);
+        hand_mem.push_fixed(args[2], 127);
+        hand_mem.write_fractal(args[2], &vec![(0, 0)]);
         let error_string = e.to_string();
-        hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm(&error_string));
+        hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&error_string));
       },
       Ok(output_res) => {
         let status_code = output_res.status.code().unwrap_or(127) as i64;
-        hand_mem.push_fractal_fixed(args[2], status_code);
+        hand_mem.push_fixed(args[2], status_code);
         let stdout_str = String::from_utf8(output_res.stdout).unwrap_or("".to_string());
-        hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm(&stdout_str));
+        hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&stdout_str));
         let stderr_str = String::from_utf8(output_res.stderr).unwrap_or("".to_string());
-        hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm(&stderr_str));
+        hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&stderr_str));
       },
     };
     None
   });
-
   // IO opcodes
   io!("waitop", |args, mem| {
     let fut = async move {
@@ -2570,7 +2249,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   io!("httpget", |args, mem| {
     let fut = async move {
       let hand_mem = mem.read().await;
-      let url = hand_mem.read_fractal(args[0]).hm_to_string();
+      let url = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
       drop(hand_mem); // drop read lock
       let http_res = reqwest::get(&url).await;
       let mut is_ok = true;
@@ -2588,9 +2267,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       };
       let result = if is_ok { 1i64 } else { 0i64 };
       let mut hand_mem = mem.write().await;
-      hand_mem.new_fractal(args[2]);
-      hand_mem.push_fractal_fixed(args[2], result);
-      hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm(&result_str));
+      hand_mem.write_fractal(args[2], &Vec::new());
+      hand_mem.push_fixed(args[2], result);
+      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal(&result_str));
       drop(hand_mem); // drop write lock
     };
     return Box::pin(fut);
@@ -2598,8 +2277,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   io!("httppost", |args, mem| {
     let fut = async move {
       let hand_mem = mem.read().await;
-      let url = hand_mem.read_fractal(args[0]).hm_to_string();
-      let payload = hand_mem.read_fractal(args[1]).hm_to_string();
+      let url = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
+      let payload = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
       drop(hand_mem); // drop read lock
       let client = reqwest::Client::new();
       let http_res = client.post(&url).body(payload.clone()).send().await;
@@ -2618,9 +2297,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       };
       let result = if is_ok { 1i64 } else { 0i64 };
       let mut hand_mem = mem.write().await;
-      hand_mem.new_fractal(args[2]);
-      hand_mem.push_fractal_fixed(args[2], result);
-      hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm(&result_str));
+      hand_mem.write_fractal(args[2], &Vec::new());
+      hand_mem.push_fixed(args[2], result);
+      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal(&result_str));
       drop(hand_mem); // drop write lock
     };
     return Box::pin(fut);
@@ -2631,7 +2310,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let mut event = HandlerMemory::new(None, 1);
     // Grab the URL
     let url_str = req.uri().to_string();
-    let url = HandlerMemory::str_to_hm(&url_str);
+    let url = HandlerMemory::str_to_fractal(&url_str);
     // Grab the headers
     let headers = req.headers();
     let mut headers_hm = HandlerMemory::new(None, headers.len() as i64);
@@ -2639,10 +2318,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     for (key, val) in headers.iter() {
       let key_str = key.as_str();
       let val_str = val.to_str().unwrap();
-      let mut header_hm = HandlerMemory::new(None, 2);
-      header_hm.write_fractal(0, HandlerMemory::str_to_hm(key_str));
-      header_hm.write_fractal(1, HandlerMemory::str_to_hm(val_str));
-      headers_hm.write_fractal(i, header_hm);
+      headers_hm.write_fractal(i, &Vec::new());
+      headers_hm.push_fractal(i, &HandlerMemory::str_to_fractal(key_str));
+      headers_hm.push_fractal(i, &HandlerMemory::str_to_fractal(val_str));
       i = i + 1;
     }
     // Grab the body, if any
@@ -2652,15 +2330,17 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       return Ok(Response::new("Conection terminated".into()));
     }
     let body_str = str::from_utf8(&body_req.unwrap()).unwrap().to_string();
-    let body = HandlerMemory::str_to_hm(&body_str);
+    let body = HandlerMemory::str_to_fractal(&body_str);
     // Generate a connection ID
     let conn_id = OsRng.next_u64() as i64;
     // Populate the event and emit it
-    event.new_fractal(0);
-    event.push_nested_fractal(0, url);
-    event.push_nested_fractal(0, headers_hm);
-    event.push_nested_fractal(0, body);
-    event.push_fractal_fixed(0, conn_id);
+    event.write_fractal(0, &Vec::new());
+    event.push_fractal(0, &url);
+    HandlerMemory::transfer(&headers_hm, 0, &mut event, CLOSURE_ARG_MEM_START);
+    let (a, b) = event.addr_to_idxs(CLOSURE_ARG_MEM_START);
+    event.push_idxs(0, a, b);
+    event.push_fractal(0, &body);
+    event.push_fixed(0, conn_id);
     let event_emit = EventEmit {
       id: i64::from(BuiltInEvents::HTTPCONN),
       payload: Some(event),
@@ -2695,16 +2375,19 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let mut res = Response::builder().status(StatusCode::from_u16(status).unwrap());
     // Get the headers and populate the response object
     let headers = res.headers_mut().unwrap();
-    let header_hms = response_hm.read_fractal(1).fractal_mem;
+    let header_hms = response_hm.read_fractal(1);
     for header_hm in header_hms {
-      let key = header_hm.read_fractal(0).hm_to_string();
-      let val = header_hm.read_fractal(1).hm_to_string();
+      let (h, _) = response_hm.read_either_idxs(header_hm.0, header_hm.1 as usize);
+      let (key_hm, _) = response_hm.read_either_idxs(h[0].0, h[0].1 as usize);
+      let key = HandlerMemory::fractal_to_string(&key_hm);
+      let (val_hm, _) = response_hm.read_either_idxs(h[1].0, h[1].1 as usize);
+      let val = HandlerMemory::fractal_to_string(&val_hm);
       let name = HeaderName::from_bytes(key.as_bytes()).unwrap();
       let value = HeaderValue::from_str(&val).unwrap();
       headers.insert(name, value);
     }
     // Get the body, populate the response object, and fire it out
-    let body = response_hm.read_fractal(2).hm_to_string();
+    let body = HandlerMemory::fractal_to_string(response_hm.read_fractal(2));
     Ok(res.body(body.into()).unwrap())
   }
 
@@ -2720,15 +2403,15 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
 
       let bind = Server::try_bind(&addr);
       let mut hand_mem = mem.write().await;
-      hand_mem.new_fractal(args[2]);
+      hand_mem.write_fractal(args[2], &Vec::new());
       if bind.is_err() {
-        hand_mem.push_fractal_fixed(args[2], 0i64);
+        hand_mem.push_fixed(args[2], 0i64);
         let result_str = format!("{}", bind.err().unwrap());
-        hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm(&result_str));
+        hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal(&result_str));
         return
       } else {
-        hand_mem.push_fractal_fixed(args[2], 1i64);
-        hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm("ok"));
+        hand_mem.push_fixed(args[2], 1i64);
+        hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("ok"));
       }
       let server = bind.unwrap().serve(make_svc);
       tokio::spawn(async move {
@@ -2740,18 +2423,24 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   io!("httpsend", |args, mem| {
     let fut = async move {
       let mut hand_mem = mem.write().await;
-      hand_mem.copy_fractal(args[0], args[0]); // Make sure there's no pointers involved
+      hand_mem.dupe(args[0], args[0]); // Make sure there's no pointers involved
       let response = hand_mem.read_fractal(args[0]);
-      let conn_id = response.clone().read_fixed(3);
+      let conn_id = response[3].1;
       let responses = Arc::clone(&HTTP_RESPONSES);
       let mut responses_hm = responses.lock().unwrap();
-      responses_hm.insert(conn_id, response);
+      let mut hm = HandlerMemory::new(None, 1);
+      HandlerMemory::transfer(&hand_mem, args[0], &mut hm, CLOSURE_ARG_MEM_START);
+      let res_out = hm.read_fractal(CLOSURE_ARG_MEM_START).to_vec();
+      for i in 0..res_out.len() {
+        hm.set_addr(i as i64, res_out[i].0, res_out[i].1 as usize);
+      }
+      responses_hm.insert(conn_id, hm);
       drop(responses_hm);
       // TODO: Add a second synchronization tool to return a valid Result status, for now, just
       // return success
-      hand_mem.new_fractal(args[2]);
-      hand_mem.push_fractal_fixed(args[2], 0i64);
-      hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm("ok"));
+      hand_mem.write_fractal(args[2], &Vec::new());
+      hand_mem.push_fixed(args[2], 0i64);
+      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("ok"));
     };
     return Box::pin(fut);
   });
@@ -2761,8 +2450,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let val = hand_mem.read_fixed(args[2]);
       let mut hm = HandlerMemory::new(None, 1); 
       hm.write_fixed(0, val);
-      let ns = hand_mem.read_fractal(args[0]).hm_to_string();
-      let key = hand_mem.read_fractal(args[1]).hm_to_string();
+      let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
+      let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
       let nskey = format!("{}:{}", ns, key);
       drop(hand_mem);
       let ds = Arc::clone(&DS);
@@ -2773,9 +2462,10 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   io!("dssetv", |args, mem| {
     let fut = async move {
       let hand_mem = mem.read().await;
-      let hm = hand_mem.read_fractal(args[2]);
-      let ns = hand_mem.read_fractal(args[0]).hm_to_string();
-      let key = hand_mem.read_fractal(args[1]).hm_to_string();
+      let mut hm = HandlerMemory::new(None, 1);
+      HandlerMemory::transfer(&hand_mem, args[2], &mut hm, 0);
+      let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
+      let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
       let nskey = format!("{}:{}", ns, key);
       drop(hand_mem);
       let ds = Arc::clone(&DS);
@@ -2786,8 +2476,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   io!("dshas", |args, mem| {
     let fut = async move {
       let hand_mem = mem.read().await;
-      let ns = hand_mem.read_fractal(args[0]).hm_to_string();
-      let key = hand_mem.read_fractal(args[1]).hm_to_string();
+      let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
+      let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
       let nskey = format!("{}:{}", ns, key);
       drop(hand_mem);
       let ds = Arc::clone(&DS);
@@ -2801,8 +2491,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   io!("dsdel", |args, mem| {
     let fut = async move {
       let hand_mem = mem.read().await;
-      let ns = hand_mem.read_fractal(args[0]).hm_to_string();
-      let key = hand_mem.read_fractal(args[1]).hm_to_string();
+      let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
+      let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
       let nskey = format!("{}:{}", ns, key);
       drop(hand_mem);
       let ds = Arc::clone(&DS);
@@ -2816,21 +2506,21 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   io!("dsgetf", |args, mem| {
     let fut = async move {
       let hand_mem = mem.read().await;
-      let ns = hand_mem.read_fractal(args[0]).hm_to_string();
-      let key = hand_mem.read_fractal(args[1]).hm_to_string();
+      let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
+      let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
       let nskey = format!("{}:{}", ns, key);
       drop(hand_mem);
       let ds = Arc::clone(&DS);
       let maybe_hm = ds.get(&nskey);
       let mut hand_mem = mem.write().await;
-      hand_mem.new_fractal(args[2]);
+      hand_mem.write_fractal(args[2], &Vec::new());
       if maybe_hm.is_some() {
-        hand_mem.push_fractal_fixed(args[2], 1i64);
-        hand_mem.push_fractal_fixed(args[2], maybe_hm.unwrap().read_fixed(0));
+        hand_mem.push_fixed(args[2], 1i64);
+        hand_mem.push_fixed(args[2], maybe_hm.unwrap().read_fixed(0));
       } else {
-        hand_mem.push_fractal_fixed(args[2], 0i64);
+        hand_mem.push_fixed(args[2], 0i64);
         let err_msg = "namespace-key pair not found";
-        hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm(&err_msg));
+        hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal(&err_msg));
       }
       drop(hand_mem);
     };
@@ -2839,59 +2529,60 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   io!("dsgetv", |args, mem| {
     let fut = async move {
       let hand_mem = mem.read().await;
-      let ns = hand_mem.read_fractal(args[0]).hm_to_string();
-      let key = hand_mem.read_fractal(args[1]).hm_to_string();
+      let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
+      let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
       let nskey = format!("{}:{}", ns, key);
       drop(hand_mem);
       let ds = Arc::clone(&DS);
       let maybe_hm = ds.get(&nskey);
       let mut hand_mem = mem.write().await;
-      hand_mem.new_fractal(args[2]);
+      hand_mem.write_fractal(args[2], &Vec::new());
       if maybe_hm.is_some() {
-        hand_mem.push_fractal_fixed(args[2], 1i64);
+        hand_mem.push_fixed(args[2], 1i64);
         let hm = maybe_hm.unwrap();
-        hand_mem.push_nested_fractal(args[2], hm.clone());
+        HandlerMemory::transfer(&hm, 0, &mut hand_mem, CLOSURE_ARG_MEM_START);
+        let (a, b) = hand_mem.addr_to_idxs(CLOSURE_ARG_MEM_START);
+        hand_mem.push_idxs(args[2], a, b);
       } else {
-        hand_mem.push_fractal_fixed(args[2], 0i64);
+        hand_mem.push_fixed(args[2], 0i64);
         let err_msg = "namespace-key pair not found";
-        hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm(&err_msg));
+        hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal(&err_msg));
       }
       drop(hand_mem);
     };
     return Box::pin(fut);
   });
   cpu!("newseq", |args, hand_mem, _, _| {
-    hand_mem.new_fractal(args[2]);
-    hand_mem.push_fractal_fixed(args[2], 0i64);
-    hand_mem.push_fractal_fixed(args[2], hand_mem.read_fixed(args[0]));
+    hand_mem.write_fractal(args[2], &Vec::new());
+    hand_mem.push_fixed(args[2], 0i64);
+    hand_mem.push_fixed(args[2], hand_mem.read_fixed(args[0]));
     None
   });
   cpu!("seqnext", |args, hand_mem, _, _| {
-    hand_mem.new_fractal(args[2]);
-    let seq = hand_mem.get_mut_fractal(args[0]);
-    let current = seq.read_fixed(0i64);
-    let limit = seq.read_fixed(1i64);
+    hand_mem.write_fractal(args[2], &Vec::new());
+    let seq = hand_mem.read_mut_fractal(args[0]);
+    let current = seq[0].1;
+    let limit = seq[1].1;
     if current < limit {
-      seq.write_fixed(0i64, current + 1);
-      hand_mem.push_fractal_fixed(args[2], 1i64);
-      hand_mem.push_fractal_fixed(args[2], current);
+      seq[0].1 = current + 1 ;
+      hand_mem.push_fixed(args[2], 1i64);
+      hand_mem.push_fixed(args[2], current);
     } else {
-      hand_mem.push_fractal_fixed(args[2], 0i64);
+      hand_mem.push_fixed(args[2], 0i64);
       let err_msg = "error: sequence out-of-bounds";
-      hand_mem.push_nested_fractal(args[2], HandlerMemory::str_to_hm(&err_msg));
+      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal(&err_msg));
     }
     None
   });
   unpred_cpu!("seqeach", |args, mut hand_mem, frag, ins_sched| {
-    hand_mem.make_closure();
-    let seq = hand_mem.get_mut_fractal(args[0]);
-    let current = seq.read_fixed(0i64);
-    let limit = seq.read_fixed(1i64);
+    let seq = hand_mem.read_mut_fractal(args[0]);
+    let current = seq[0].1;
+    let limit = seq[1].1;
     let ins = frag.get_closure_instructions(args[1]);
     if current >= limit {
       return None
     }
-    seq.write_fixed(0i64, limit);
+    seq[0].1 = limit;
     // array of potentially many levels of nested fractals
     (current..limit).for_each(|idx| {
       // array element is $1 argument of the closure memory space
@@ -2912,10 +2603,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   unpred_cpu!("seqwhile", |args, mut hand_mem, frag, ins_sched| {
-    hand_mem.make_closure();
-    let seq = hand_mem.get_mut_fractal(args[0]);
-    let mut current = seq.read_fixed(0i64);
-    let limit = seq.read_fixed(1i64);
+    let seq = hand_mem.read_mut_fractal(args[0]);
+    let mut current = seq[0].1;
+    let limit = seq[1].1;
     drop(seq);
     let cond_ins = frag.get_closure_instructions(args[1]);
     let body_ins = frag.get_closure_instructions(args[2]);
@@ -2961,15 +2651,14 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         }
       });
     }
-    let seq = hand_mem.get_mut_fractal(args[0]);
-    seq.write_fixed(0i64, current);
+    let seq = hand_mem.read_mut_fractal(args[0]);
+    seq[0].1 = current;
     None
   });
   unpred_cpu!("seqdo", |args, mut hand_mem, frag, ins_sched| {
-    hand_mem.make_closure();
-    let seq = hand_mem.get_mut_fractal(args[0]);
-    let mut current = seq.read_fixed(0i64);
-    let limit = seq.read_fixed(1i64);
+    let seq = hand_mem.read_mut_fractal(args[0]);
+    let mut current = seq[0].1;
+    let limit = seq[1].1;
     drop(seq);
     let body_ins = frag.get_closure_instructions(args[1]);
     loop {
@@ -2990,8 +2679,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         break;
       }
     }
-    let seq = hand_mem.get_mut_fractal(args[0]);
-    seq.write_fixed(0i64, current);
+    let seq = hand_mem.read_mut_fractal(args[0]);
+    seq[0].1 = current;
     None
   });
 
@@ -3000,7 +2689,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     std::process::exit(hand_mem.read_fixed(args[0]) as i32);
   });
   cpu!("stdoutp", |args, hand_mem, _, _| {
-    let out_str = hand_mem.read_fractal(args[0]).hm_to_string();
+    let out_str = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
     print!("{}", out_str);
     None
   });
@@ -3042,8 +2731,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("setestr", |args, hand_mem, _, _| {
-    let empty_str = vec![0];
-    hand_mem.write_fractal_mem(args[2], &empty_str);
+    let empty_str = vec![(0, 0)];
+    hand_mem.write_fractal(args[2], &empty_str);
     None
   });
 
@@ -3089,13 +2778,13 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("copystr", |args, hand_mem, _, _| {
-    let pascal_string = hand_mem.read_fractal_mem(args[0]);
-    hand_mem.write_fractal_mem(args[2], &pascal_string);
+    let pascal_string = hand_mem.read_fractal(args[0]).to_vec().clone();
+    hand_mem.write_fractal(args[2], &pascal_string[..]);
     None
   });
   cpu!("copyarr", |args, hand_mem, _, _| {
     // args = [in_addr, unused, out_addr]
-    hand_mem.copy_fractal(args[0], args[2]);
+    hand_mem.dupe(args[0], args[2]);
     None
   });
   cpu!("zeroed", |args, hand_mem, _, _| {
@@ -3180,147 +2869,142 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     hand_mem.write_fixed(args[2], out);
     None
   });
-
   // Error, Maybe, Result, Either opcodes
   cpu!("error", |args, hand_mem, _, _| {
-    let pascal_string = hand_mem.read_fractal_mem(args[0]);
-    hand_mem.write_fractal_mem(args[2], &pascal_string);
+    hand_mem.register(args[2], args[0]);
     None
   });
   cpu!("noerr", |args, hand_mem, _, _| {
-    let empty_string = vec![0i64];
-    hand_mem.write_fractal_mem(args[2], &empty_string);
+    let empty_string = vec![(0, 0)];
+    hand_mem.write_fractal(args[2], &empty_string);
     None
   });
   cpu!("errorstr", |args, hand_mem, _, _| {
-    let pascal_string = hand_mem.read_fractal_mem(args[0]);
-    hand_mem.write_fractal_mem(args[2], &pascal_string);
+    hand_mem.register(args[2], args[0]);
     None
   });
   cpu!("someM", |args, hand_mem, _, _| {
-    hand_mem.new_fractal(args[2]);
-    hand_mem.push_fractal_fixed(args[2], 1i64);
+    hand_mem.write_fractal(args[2], &Vec::new());
+    hand_mem.push_fixed(args[2], 1i64);
     let val_size = hand_mem.read_fixed(args[1]);
     if val_size == 0 {
-      let val = hand_mem.read_fractal(args[0]);
-      hand_mem.push_nested_fractal(args[2], val);
+      hand_mem.push_register(args[2], args[0]);
     } else {
       let val = hand_mem.read_fixed(args[0]);
-      hand_mem.push_fractal_fixed(args[2], val);
+      hand_mem.push_fixed(args[2], val);
     }
     None
   });
   cpu!("noneM", |args, hand_mem, _, _| {
-    hand_mem.new_fractal(args[2]);
-    hand_mem.push_fractal_fixed(args[2], 0i64);
+    hand_mem.write_fractal(args[2], &Vec::new());
+    hand_mem.push_fixed(args[2], 0i64);
     None
   });
   cpu!("isSome", |args, hand_mem, _, _| {
-    hand_mem.copy_from(args[0], args[2], 0);
+    hand_mem.register_out(args[0], 0, args[2]);
     None
   });
   cpu!("isNone", |args, hand_mem, _, _| {
-    let arr = hand_mem.get_fractal(args[0]);
-    let val = arr.read_fixed(0);
+    let arr = hand_mem.read_fractal(args[0]);
+    let val = arr[0].1;
     hand_mem.write_fixed(args[2], if val == 0i64 { 1i64 } else { 0i64 });
     None
   });
   cpu!("getOrM", |args, hand_mem, _, _| {
-    let arr = hand_mem.get_fractal(args[0]);
-    let val = arr.read_fixed(0);
+    let arr = hand_mem.read_fractal(args[0]);
+    let val = arr[0].1;
     if val == 1i64 {
-      hand_mem.set_reg(args[2], args[0], 1);
+      hand_mem.register_out(args[0], 1, args[2]);
     } else {
       if args[1] < 0 {
         let val = hand_mem.read_fixed(args[1]);
         hand_mem.write_fixed(args[2], val);
       } else {
-        let (data, size) = hand_mem.read_either(args[1]);
-        if size == 0 {
-          hand_mem.store_reg(args[2], args[1]);
+        let (data, is_fractal) = hand_mem.read_either(args[1]);
+        if is_fractal {
+          hand_mem.register(args[2], args[1]);
         } else {
-          hand_mem.write_fixed(args[2], data[0]);
+          hand_mem.write_fixed(args[2], data[0].1);
         }
       }
     }
     None
   });
   cpu!("okR", |args, hand_mem, _, _| {
-    hand_mem.new_fractal(args[2]);
-    hand_mem.push_fractal_fixed(args[2], 1i64);
+    hand_mem.write_fractal(args[2], &Vec::new());
+    hand_mem.push_fixed(args[2], 1i64);
     let val_size = hand_mem.read_fixed(args[1]);
     if val_size == 0 {
-      let val = hand_mem.read_fractal(args[0]);
-      hand_mem.push_nested_fractal(args[2], val);
+      hand_mem.push_register(args[2], args[0]);
     } else {
       let val = hand_mem.read_fixed(args[0]);
-      hand_mem.push_fractal_fixed(args[2], val);
+      hand_mem.push_fixed(args[2], val);
     }
     None
   });
   cpu!("err", |args, hand_mem, _, _| {
-    hand_mem.new_fractal(args[2]);
-    hand_mem.push_fractal_fixed(args[2], 0i64);
-    let val = hand_mem.read_fractal(args[0]);
-    hand_mem.push_nested_fractal(args[2], val);
+    hand_mem.write_fractal(args[2], &Vec::new());
+    hand_mem.push_fixed(args[2], 0i64);
+    hand_mem.push_register(args[2], args[0]);
     None
   });
   cpu!("isOk", |args, hand_mem, _, _| {
-    hand_mem.copy_from(args[0], args[2], 0);
+    hand_mem.register_out(args[0], 0, args[2]);
     None
   });
   cpu!("isErr", |args, hand_mem, _, _| {
-    let arr = hand_mem.get_fractal(args[0]);
-    let val = arr.read_fixed(0);
+    let arr = hand_mem.read_fractal(args[0]);
+    let val = arr[0].1;
     hand_mem.write_fixed(args[2], if val == 0i64 { 1i64 } else { 0i64 });
     None
   });
   cpu!("getOrR", |args, hand_mem, _, _| {
-    let arr = hand_mem.get_fractal(args[0]);
-    let val = arr.read_fixed(0);
+    let arr = hand_mem.read_fractal(args[0]);
+    let val = arr[0].1;
     if val == 1i64 {
-      hand_mem.set_reg(args[2], args[0], 1);
+      hand_mem.register_out(args[0], 1, args[2]);
     } else {
-      let (data, size) = hand_mem.read_either(args[1]);
-      if size == 0 {
-        hand_mem.store_reg(args[2], args[1]);
+      let (data, is_fractal) = hand_mem.read_either(args[1]);
+      if is_fractal {
+        hand_mem.register(args[2], args[1]);
       } else {
-        hand_mem.write_fixed(args[2], data[0]);
+        hand_mem.write_fixed(args[2], data[0].1);
       }
     }
     None
   });
   cpu!("getOrRS", |args, hand_mem, _, _| {
-    let arr = hand_mem.get_fractal(args[0]);
-    let val = arr.read_fixed(0);
+    let arr = hand_mem.read_fractal(args[0]);
+    let val = arr[0].1;
     if val == 1i64 {
-      hand_mem.set_reg(args[2], args[0], 1);
+      hand_mem.register_out(args[0], 1, args[2]);
     } else {
-      hand_mem.write_fractal(args[2], hand_mem.read_fractal(args[1]));
+      let f = HandlerMemory::str_to_fractal(&HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1])));
+      hand_mem.write_fractal(args[2], &f);
     }
     None
   });
   cpu!("getR", |args, hand_mem, _, _| {
-    let arr = hand_mem.get_fractal(args[0]);
-    let val = arr.read_fixed(0);
+    let arr = hand_mem.read_fractal(args[0]);
+    let val = arr[0].1;
     if val == 1i64 {
-      hand_mem.set_reg(args[2], args[0], 1);
+      hand_mem.register_out(args[0], 1, args[2]);
     } else {
       panic!("runtime error: illegal access");
     }
     None
   });
   cpu!("getErr", |args, hand_mem, _, _| {
-    let arr = hand_mem.get_fractal(args[0]);
-    let val = arr.read_fixed(0);
+    let arr = hand_mem.read_fractal(args[0]);
+    let val = arr[0].1;
     if val == 0i64 {
-      hand_mem.set_reg(args[2], args[0], 1);
+      hand_mem.register_out(args[0], 1, args[2]);
     } else {
-      let (data, size) = hand_mem.read_either(args[1]);
-      if size == 0 {
-        hand_mem.store_reg(args[2], args[1]);
+      let (data, is_fractal) = hand_mem.read_either(args[1]);
+      if is_fractal {
+        hand_mem.register(args[2], args[1]);
       } else {
-        hand_mem.write_fixed(args[2], data[0]);
+        hand_mem.write_fixed(args[2], data[0].1);
       }
     }
     None
@@ -3328,71 +3012,79 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("resfrom", |args, hand_mem, _, _| {
     // args = [arr_addr, arr_idx_addr, outer_addr]
     // a guarded copy of data from an array to a result object
-    hand_mem.res_from(args[0], args[1], args[2]);
+    hand_mem.write_fractal(args[2], &Vec::new());
+    let inner_addr = hand_mem.read_fixed(args[1]) as usize;
+    let arr = hand_mem.read_fractal(args[0]);
+    if arr.len() > inner_addr {
+      let (a, b) = arr[inner_addr];
+      hand_mem.push_fixed(args[2], 1);
+      hand_mem.push_idxs(args[2], a, b as usize);
+    } else {
+      hand_mem.push_fixed(args[2], 0);
+      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("out-of-bounds access"));
+    }
     None
   });
   cpu!("mainE", |args, hand_mem, _, _| {
-    hand_mem.new_fractal(args[2]);
-    hand_mem.push_fractal_fixed(args[2], 1i64);
+    hand_mem.write_fractal(args[2], &Vec::new());
+    hand_mem.push_fixed(args[2], 1i64);
     let val_size = hand_mem.read_fixed(args[1]);
     if val_size == 0 {
-      let val = hand_mem.read_fractal(args[0]);
-      hand_mem.push_nested_fractal(args[2], val);
+      hand_mem.push_register(args[2], args[0]);
     } else {
       let val = hand_mem.read_fixed(args[0]);
-      hand_mem.push_fractal_fixed(args[2], val);
+      hand_mem.push_fixed(args[2], val);
     }
     None
   });
   cpu!("altE", |args, hand_mem, _, _| {
-    hand_mem.new_fractal(args[2]);
-    hand_mem.push_fractal_fixed(args[2], 0i64);
+    hand_mem.write_fractal(args[2], &Vec::new());
+    hand_mem.push_fixed(args[2], 0i64);
     let val_size = hand_mem.read_fixed(args[1]);
     if val_size == 0 {
-      let val = hand_mem.read_fractal(args[0]);
-      hand_mem.push_nested_fractal(args[2], val);
+      hand_mem.push_register(args[2], args[0]);
     } else {
       let val = hand_mem.read_fixed(args[0]);
-      hand_mem.push_fractal_fixed(args[2], val);
+      hand_mem.push_fixed(args[2], val);
     }
     None
   });
   cpu!("isMain", |args, hand_mem, _, _| {
-    hand_mem.copy_from(args[0], args[2], 0);
+    hand_mem.register_out(args[0], 0, args[2]);
     None
   });
   cpu!("isAlt", |args, hand_mem, _, _| {
-    let arr = hand_mem.get_fractal(args[0]);
-    let val = arr.read_fixed(0);
+    let arr = hand_mem.read_fractal(args[0]);
+    let val = arr[0].1;
     hand_mem.write_fixed(args[2], if val == 0i64 { 1i64 } else { 0i64 });
     None
   });
   cpu!("mainOr", |args, hand_mem, _, _| {
-    let arr = hand_mem.get_fractal(args[0]);
-    let val = arr.read_fixed(0);
+    let arr = hand_mem.read_fractal(args[0]);
+    let val = arr[0].1;
     if val == 1i64 {
-      hand_mem.set_reg(args[2], args[0], 1);
+      hand_mem.register_out(args[0], 1, args[2]);
     } else {
-      let (data, size) = hand_mem.read_either(args[1]);
-      if size == 0 {
-        hand_mem.store_reg(args[2], args[1]);
+      let (data, is_fractal) = hand_mem.read_either(args[1]);
+      if is_fractal {
+        hand_mem.register(args[2], args[1]);
       } else {
-        hand_mem.write_fixed(args[2], data[0]);
+        hand_mem.write_fixed(args[2], data[0].1);
       }
     }
     None
   });
   cpu!("altOr", |args, hand_mem, _, _| {
-    let arr = hand_mem.get_fractal(args[0]);
-    let val = arr.read_fixed(0);
+    let arr = hand_mem.read_fractal(args[0]);
+    let val = arr[0].1;
     if val == 0i64 {
-      hand_mem.set_reg(args[2], args[0], 1);
+      hand_mem.register_out(args[0], 1, args[2]);
     } else {
-      let (data, size) = hand_mem.read_either(args[1]);
-      if size == 0 {
-        hand_mem.store_reg(args[2], args[1]);
+      let (data, is_fractal) = hand_mem.read_either(args[1]);
+      if is_fractal {
+        hand_mem.register(args[2], args[1]);
       } else {
-        hand_mem.write_fixed(args[2], data[0]);
+        hand_mem.write_fixed(args[2], data[0].1);
       }
     }
     None
@@ -3411,23 +3103,24 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let mut hasher = XxHash64::with_seed(0xfa57);
     let addr = args[0];
     if addr < 0 { // It's a string!
-      let pascal_string = hand_mem.read_fractal_mem(args[0]);
-      let strlen = pascal_string[0] as f64;
+      let pascal_string = hand_mem.read_fractal(args[0]);
+      let strlen = pascal_string[0].1 as f64;
       let intlen = 1 + (strlen / 8.0).ceil() as usize;
       for i in 0..intlen {
-        hasher.write_i64(pascal_string[i]);
+        hasher.write_i64(pascal_string[i].1);
       }
     } else {
-      let mut stack: Vec<&HandlerMemory> = vec![hand_mem.get_fractal(args[0])];
+      let mut stack: Vec<Vec<(usize, i64)>> = vec![hand_mem.read_fractal(args[0]).to_vec().clone()];
       while stack.len() > 0 {
         let arr = stack.pop().unwrap();
-        let arrlen = arr.len() as i64;
+        let arrlen = arr.len();
         for i in 0..arrlen {
-          let (data, size) = arr.read_either(i);
-          if size == 0 {
-            stack.push(arr.get_fractal(i));
+          let (a, b) = arr[i];
+          let (data, is_fractal) = hand_mem.read_either_idxs(a, b as usize);
+          if is_fractal {
+            stack.push(data.clone());
           } else {
-            hasher.write_i64(data[0]);
+            hasher.write_i64(data[0].1);
           }
         }
       }
@@ -3452,7 +3145,7 @@ impl From<i64> for &ByteOpcode {
   fn from(v: i64) -> Self {
     let opc = OPCODES.get(&v);
     if opc.is_none() {
-        panic!(format!("Illegal byte opcode {}", v));
+        panic!(format!("Illegal byte opcode {} ({})", v, str::from_utf8(&v.to_ne_bytes()).unwrap()));
     }
     return &opc.unwrap();
   }
