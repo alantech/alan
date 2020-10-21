@@ -2309,7 +2309,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     return Box::pin(fut);
   });
 
-  /*
   async fn http_listener(req: Request<Body>) -> Result<Response<Body>, Infallible> {
     // Create a new event handler memory to add to the event queue
     let mut event = HandlerMemory::new(None, 1);
@@ -2323,10 +2322,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     for (key, val) in headers.iter() {
       let key_str = key.as_str();
       let val_str = val.to_str().unwrap();
-      let mut header_hm = HandlerMemory::new(None, 2);
-      header_hm.write_fractal(0, &HandlerMemory::str_to_fractal(key_str));
-      header_hm.write_fractal(1, &HandlerMemory::str_to_fractal(val_str));
-      headers_hm.write_fractal(i, header_hm);
+      headers_hm.write_fractal(i, &Vec::new());
+      headers_hm.push_fractal(i, &HandlerMemory::str_to_fractal(key_str));
+      headers_hm.push_fractal(i, &HandlerMemory::str_to_fractal(val_str));
       i = i + 1;
     }
     // Grab the body, if any
@@ -2341,9 +2339,11 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let conn_id = OsRng.next_u64() as i64;
     // Populate the event and emit it
     event.write_fractal(0, &Vec::new());
-    event.write_fractal(0, &url);
-    event.write_fractal(0, &headers_hm);
-    event.write_fractal(0, &body);
+    event.push_fractal(0, &url);
+    HandlerMemory::transfer(&headers_hm, 0, &mut event, CLOSURE_ARG_MEM_START);
+    let (a, b) = event.addr_to_idxs(CLOSURE_ARG_MEM_START);
+    event.push_idxs(0, a, b);
+    event.push_fractal(0, &body);
     event.push_fixed(0, conn_id);
     let event_emit = EventEmit {
       id: i64::from(BuiltInEvents::HTTPCONN),
@@ -2379,10 +2379,13 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let mut res = Response::builder().status(StatusCode::from_u16(status).unwrap());
     // Get the headers and populate the response object
     let headers = res.headers_mut().unwrap();
-    let header_hms = response_hm.read_fractal(1).fractal_mem;
+    let header_hms = response_hm.read_fractal(1);
     for header_hm in header_hms {
-      let key = HandlerMemory::fractal_to_string(header_hm.read_fractal(0));
-      let val = HandlerMemory::fractal_to_string(header_hm.read_fractal(1));
+      let (h, _) = response_hm.read_either_idxs(header_hm.0, header_hm.1 as usize);
+      let (key_hm, _) = response_hm.read_either_idxs(h[0].0, h[0].1 as usize);
+      let key = HandlerMemory::fractal_to_string(&key_hm);
+      let (val_hm, _) = response_hm.read_either_idxs(h[1].0, h[1].1 as usize);
+      let val = HandlerMemory::fractal_to_string(&val_hm);
       let name = HeaderName::from_bytes(key.as_bytes()).unwrap();
       let value = HeaderValue::from_str(&val).unwrap();
       headers.insert(name, value);
@@ -2408,11 +2411,11 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       if bind.is_err() {
         hand_mem.push_fixed(args[2], 0i64);
         let result_str = format!("{}", bind.err().unwrap());
-        hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&result_str));
+        hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal(&result_str));
         return
       } else {
         hand_mem.push_fixed(args[2], 1i64);
-        hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal("ok"));
+        hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("ok"));
       }
       let server = bind.unwrap().serve(make_svc);
       tokio::spawn(async move {
@@ -2426,19 +2429,26 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let mut hand_mem = mem.write().await;
       hand_mem.dupe(args[0], args[0]); // Make sure there's no pointers involved
       let response = hand_mem.read_fractal(args[0]);
-      let conn_id = response.clone().read_fixed(3);
+      let conn_id = response[3].1;
       let responses = Arc::clone(&HTTP_RESPONSES);
       let mut responses_hm = responses.lock().unwrap();
-      responses_hm.insert(conn_id, response);
+      let mut hm = HandlerMemory::new(None, 1);
+      HandlerMemory::transfer(&hand_mem, args[0], &mut hm, CLOSURE_ARG_MEM_START);
+      let res_out = hm.read_fractal(CLOSURE_ARG_MEM_START).to_vec();
+      for i in 0..res_out.len() {
+        hm.set_addr(i as i64, res_out[i].0, res_out[i].1 as usize);
+      }
+      responses_hm.insert(conn_id, hm);
       drop(responses_hm);
       // TODO: Add a second synchronization tool to return a valid Result status, for now, just
       // return success
       hand_mem.write_fractal(args[2], &Vec::new());
       hand_mem.push_fixed(args[2], 0i64);
-      hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal("ok"));
+      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("ok"));
     };
     return Box::pin(fut);
   });
+  /*
   io!("dssetf", |args, mem| {
     let fut = async move {
       let hand_mem = mem.read().await;
