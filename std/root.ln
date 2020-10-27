@@ -699,7 +699,10 @@ export fn getNodeById(t: Tree<any>, i: int64): Node<any> {
 export fn getChildren(n: Node<any>): Array<Node<any>> {
   if length(n.tree.vals) > n.id {
     const childIds = getOr(n.tree.children[n.id], new Array<int64> [])
-    return childIds.map(fn (id: int64): Node<any> {
+    return childIds.filter(fn (id: int64): bool {
+      const parentId = n.tree.parents[id] || -1
+      return parentId == n.id
+    }).map(fn (id: int64): Node<any> {
       return new Node<any> {
         id = id
         tree = n.tree
@@ -728,7 +731,7 @@ export fn addChild(n: Node<any>, val: Node<any>): Node<any> {
   const tree = n.tree
   let parentStack = new Array<int64> [ n.id ]
   let nodeStack = new Array<int64> [ val.id ]
-  seqdo(newseq(pow(2, 62)), fn () {
+  seqdo(newseq(pow(2, 62)), fn (): bool {
     // Get the parentId, exit if none left
     const parentRes = parentStack.pop()
     if parentRes.isErr() {
