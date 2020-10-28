@@ -1596,7 +1596,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let instructions = frag.get_closure_instructions(args[1]);
     // array of potentially many levels of nested fractals
     let output: Vec<HandlerMemory> = (0..len).into_par_iter().map_with(instructions, |ins, idx| {
-      let mut mem = hand_mem.clone();
+      let mut mem = hand_mem.fork();
       // array element is $1 argument of the closure memory space
       mem.set_addr(CLOSURE_ARG_MEM_START + 1, arr[idx].0, arr[idx].1 as usize);
       mem.write_fixed(CLOSURE_ARG_MEM_START + 2, idx as i64);
@@ -1617,7 +1617,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }).collect();
     hand_mem.write_fractal(args[2], &Vec::new());
     for mem in output {
-      HandlerMemory::transfer(&mem, CLOSURE_ARG_MEM_START, hand_mem, CLOSURE_ARG_MEM_START);
+      hand_mem.join(mem);
       let (a, b) = hand_mem.addr_to_idxs(CLOSURE_ARG_MEM_START);
       hand_mem.push_idxs(args[2], a, b);
     }
