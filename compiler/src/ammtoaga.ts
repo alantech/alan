@@ -249,11 +249,15 @@ const loadStatements = (
           v => v.get('variable').t.trim()
         )
         const args = vars.map(v => {
-          if (localMem.hasOwnProperty(v)) return localMem[v]
-          else if (globalMem.hasOwnProperty(v)) return globalMem[v]
-          else if (hasClosureArgs) {
+          if (localMem.hasOwnProperty(v)) {
+            return localMem[v]
+          } else if (globalMem.hasOwnProperty(v)) {
+            return globalMem[v]
+          } else if (hasClosureArgs) {
             return CLOSURE_ARG_MEM_START + BigInt(1) + BigInt(fnArgs.indexOf(v))
-          } else return v
+          } else {
+            return v
+          }
         }).map(a => typeof a === 'string' ? a : `@${a}`)
         while (args.length < 2) args.push('@0')
         const deps = vars
@@ -409,6 +413,19 @@ const loadStatements = (
       if (deps.length > 0) {
         s += ` <- [${deps.join(', ')}]`
       }
+    } else if (statement.has('exits')) {
+      const exit = statement.get('exits')
+      const exitVar = exit.get('variable').t.trim()
+      const vars = [exitVar]
+      const args = vars.map(v => {
+        if (localMem.hasOwnProperty(v)) return localMem[v]
+        else if (globalMem.hasOwnProperty(v)) return globalMem[v]
+        else if (hasClosureArgs) {
+          return CLOSURE_ARG_MEM_START + BigInt(1) + BigInt(fnArgs.indexOf(v))
+        } else return v
+      }).map(a => typeof a === 'string' ? a : `@${a}`)
+      while (args.length < 2) args.push('@0')
+      s += `@${CLOSURE_ARG_MEM_START} = copyarr(${args.join(', ')}) #${line}`
     }
     vec.push(s)
     line += 1
