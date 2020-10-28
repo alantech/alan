@@ -229,15 +229,12 @@ const loadStatements = (
       fnArgs = fnArgs.filter(t => t !== '')
     }
     const hasClosureArgs = isClosure && fnArgs.length > 0
-    const isClosureExit = idx === statements.length - 2 && statements[idx + 1].has('exits')
     let s = ''
     if (statement.has('declarations')) {
       const dec = statement.get('declarations').has('constdeclaration') ?
         statement.get('declarations').get('constdeclaration') :
         statement.get('declarations').get('letdeclaration')
-      // if this is 2nd to last statement and last statement exits this is a closure
-      let resultAddress = isClosureExit ?
-        CLOSURE_ARG_MEM_START : localMem[dec.get('decname').t.trim()]
+      let resultAddress = localMem[dec.get('decname').t.trim()]
       localMemToLine[dec.get('decname').t.trim()] = line
       const assignables = dec.get('assignables')
       if (assignables.has('functions')) {
@@ -425,7 +422,8 @@ const loadStatements = (
         } else return v
       }).map(a => typeof a === 'string' ? a : `@${a}`)
       while (args.length < 2) args.push('@0')
-      s += `@${CLOSURE_ARG_MEM_START} = copyarr(${args.join(', ')}) #${line}`
+      s += `@${CLOSURE_ARG_MEM_START} = error(${args.join(', ')}) #${line}`
+      // TODO: Better name and/or alias for this opcode?
     }
     vec.push(s)
     line += 1
