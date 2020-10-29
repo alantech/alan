@@ -437,4 +437,46 @@ reduce as filter and concat test
       The output should eq "$ADVARRAYOUTPUT"
     End
   End
+
+  Describe "user-defined types in array methods work"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+
+        type Foo {
+          foo: string
+          bar: bool
+        }
+
+        on start {
+          const five = [1, 2, 3, 4, 5]
+          five.map(fn (n: int64): Foo {
+            return new Foo {
+              foo = n.toString()
+              bar = n % 2 == 0
+            }
+          }).filter(fn (f: Foo): bool = f.bar).map(fn (f: Foo): string = f.foo).join(', ').print()
+          emit exit 0
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    USERTYPEOUTPUT="2, 4"
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "$USERTYPEOUTPUT"
+    End
+
+    It "runs agc"
+      When run alan run temp.agc
+      The output should eq "$USERTYPEOUTPUT"
+    End
+  End
 End
