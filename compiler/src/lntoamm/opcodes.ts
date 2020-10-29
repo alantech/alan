@@ -725,6 +725,7 @@ addopcodes({
   coshf64: [{ a: t('float64'), }, t('float64')],
   tanhf64: [{ a: t('float64'), }, t('float64')],
   error: [{ a: t('string'), }, t('Error')],
+  ref: [{ a: t('any'), }, t('any')],
   noerr: [{ }, t('Error')],
   errorstr: [{ a: t('Error'), }, t('string')],
   someM:  [{ a: t('any'), size: t('int64'), }, t('Maybe<any>')],

@@ -373,7 +373,7 @@ ${statements[i].statementOrAssignableAst.getText().trim()} on line ${statements[
       const retStatement = replacementStatements.pop()
       if (retStatement.exits().assignables()) {
         const newAssign = Ast.statementAstFromString(`
-          ${retVal} = clone(${retStatement.exits().assignables().getText()})
+          ${retVal} = ref(${retStatement.exits().assignables().getText()})
         `.trim() + '\n')
         replacementStatements.push(newAssign)
       }
@@ -463,7 +463,7 @@ ${statements[i].statementOrAssignableAst.getText().trim()} on line ${statements[
         } else if (s.statementOrAssignableAst instanceof LnParser.AssignmentsContext) {
           const a = s.statementOrAssignableAst
           const wrappedAst = Ast.statementAstFromString(`
-            ${a.varn().getText()} = clone(${a.assignables().getText()})
+            ${a.varn().getText()} = ref(${a.assignables().getText()})
           `.trim() + '\n')
           statementAsts.push(wrappedAst)
         } else if (s.statementOrAssignableAst instanceof LnParser.LetdeclarationContext) {
@@ -472,7 +472,7 @@ ${statements[i].statementOrAssignableAst.getText().trim()} on line ${statements[
           const type = l.othertype() ? l.othertype().getText() : undefined
           const v = l.assignables().getText()
           const wrappedAst = Ast.statementAstFromString(`
-            let ${name}${type ? `: ${type}` : ''} = clone(${v})
+            let ${name}${type ? `: ${type}` : ''} = ref(${v})
           `.trim() + '\n')
           statementAsts.push(wrappedAst)
         } else {

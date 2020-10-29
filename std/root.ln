@@ -700,8 +700,8 @@ export fn getChildren(n: Node<any>): Array<Node<any>> {
   if length(n.tree.vals) > n.id {
     const childIds = getOr(n.tree.children[n.id], new Array<int64> [])
     return childIds.filter(fn (id: int64): bool {
-      const parentId = n.tree.parents[id] || -1
-      return parentId == n.id
+      const parentId = getOr(n.tree.parents[id], -1)
+      return parentId.eq(n.id)
     }).map(fn (id: int64): Node<any> {
       return new Node<any> {
         id = id
