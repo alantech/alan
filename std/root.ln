@@ -480,6 +480,7 @@ export fn clone(a: string) = copystr(a)
 
 // Error, Maybe, Result, and Either types and functions
 export error // opcode with signature `fn error(string): Error`
+export ref // identical to error, but with the signature `fn ref(any): any`
 export noerr // opcode with signature `fn noerr(): Error`
 export fn toString(err: Error) = errorstr(err)
 
