@@ -1573,12 +1573,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem.push_fixed(args[2], 1i64);
       let record = last.ok().unwrap();
       let (a, b) = record;
-      let (val, is_fractal) = hand_mem.read_either_idxs(a, b as usize);
-      if is_fractal {
-        hand_mem.push_fractal(args[2], &val);
-      } else {
-        hand_mem.push_fixed(args[2], val[0].1);
-      }
+      hand_mem.push_idxs(args[2], a, b as usize);
     } else {
       hand_mem.push_fixed(args[2], 0i64);
       let error_string = last.err().unwrap();
@@ -1596,7 +1591,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let instructions = frag.get_closure_instructions(args[1]);
     // array of potentially many levels of nested fractals
     let output: Vec<HandlerMemory> = (0..len).into_par_iter().map_with(instructions, |ins, idx| {
-      let mut mem = hand_mem.clone();
+      let mut mem = hand_mem.fork();
       // array element is $1 argument of the closure memory space
       mem.set_addr(CLOSURE_ARG_MEM_START + 1, arr[idx].0, arr[idx].1 as usize);
       mem.write_fixed(CLOSURE_ARG_MEM_START + 2, idx as i64);
@@ -1617,7 +1612,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }).collect();
     hand_mem.write_fractal(args[2], &Vec::new());
     for mem in output {
-      HandlerMemory::transfer(&mem, CLOSURE_ARG_MEM_START, hand_mem, CLOSURE_ARG_MEM_START);
+      hand_mem.join(mem);
       let (a, b) = hand_mem.addr_to_idxs(CLOSURE_ARG_MEM_START);
       hand_mem.push_idxs(args[2], a, b);
     }
@@ -1992,11 +1987,11 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("catarr", |args, hand_mem, _, _| {
-    hand_mem.write_fractal(args[2], &Vec::new());
     let arr1 = hand_mem.read_fractal(args[0]).to_vec();
     let arr2 = hand_mem.read_fractal(args[1]).to_vec();
     let arr1len = arr1.len();
     let arr2len = arr2.len();
+    hand_mem.write_fractal(args[2], &Vec::new());
     for i in 0..arr1len {
       let (a, b) = arr1[i];
       hand_mem.push_idxs(args[2], a, b as usize);
@@ -2008,6 +2003,10 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   unpred_cpu!("reducep", |args, mut hand_mem, frag, ins_sched| {
+    // TODO: Figure out how to rewrite this to not need copies of the data. As it currently is
+    // implemented there is no way to attach an outer-scope value that is unchanged and keep it as
+    // a reference instead of a copy, and the cloned memory isn't merged back into the original
+    // hand_mem directly so fork and join aren't a drop-in replacement for this opcode.
     let arr = hand_mem.read_fractal(args[0]).to_vec();
     let mut vals: Vec<HandlerMemory> = vec![];
     for i in 0..arr.len() {
@@ -2069,6 +2068,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   unpred_cpu!("foldp", |args, mut hand_mem, frag, ins_sched| {
+    // TODO: Same issue here, the intermediate form of arrays of HandlerMemory objects makes this
+    // not a drop-in replacement with fork and join.
     let obj = hand_mem.read_fractal(args[0]);
     let (a, b) = obj[0];
     let (c, d) = obj[1];
@@ -2142,7 +2143,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       (a, b as i64)
     });
     hand_mem.set_addr(args[2], res.0, res.1 as usize);
-    //hand_mem.register(args[2], CLOSURE_ARG_MEM_START);
     None
   });
   unpred_cpu!("filter", |args, hand_mem, frag, ins_sched| {
@@ -2871,6 +2871,11 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   // Error, Maybe, Result, Either opcodes
   cpu!("error", |args, hand_mem, _, _| {
+    hand_mem.register(args[2], args[0]);
+    None
+  });
+  cpu!("ref", |args, hand_mem, _, _| {
+    // Just an alias for 'error' but without the type mangling in the compiler
     hand_mem.register(args[2], args[0]);
     None
   });

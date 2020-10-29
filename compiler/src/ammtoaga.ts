@@ -422,8 +422,7 @@ const loadStatements = (
         } else return v
       }).map(a => typeof a === 'string' ? a : `@${a}`)
       while (args.length < 2) args.push('@0')
-      s += `@${CLOSURE_ARG_MEM_START} = error(${args.join(', ')}) #${line}`
-      // TODO: Better name and/or alias for this opcode?
+      s += `@${CLOSURE_ARG_MEM_START} = ref(${args.join(', ')}) #${line}`
     }
     vec.push(s)
     line += 1
