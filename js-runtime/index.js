@@ -690,6 +690,7 @@ module.exports = {
 
   // "Special" opcodes
   stdoutp:  out => process.stdout.write(out),
+  stderrp:  err => process.stderr.write(err),
   exitop:   code => process.exit(code),
 
   // Event bookkeeping
