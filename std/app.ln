@@ -22,3 +22,13 @@ export event exit: int8
 // `@std/app` has access to a special `exitop` opcode to trigger the exit behavior
 on exit fn (status: int8) = exitop(status)
 
+// The `stderr` event
+export event stderr: string
+
+// `@std/app` has access to a special `stderrp` opcode to trigger stderr writing
+on stderr fn (err: string) = stderrp(err)
+
+// The `eprint` function converts its input to a string, appends a newline, and sends it to `stderr`
+export fn eprint(err: Stringifiable) {
+  emit stderr err.toString() + "\n"
+}

@@ -10,6 +10,10 @@ This project is not structured like a normal alan library because it is not mean
 
 These `.ln` files are not quite the same as others. The compiler loads these files with a partially populated private module scope consisting of all of the built-in events and opcode functions which the standard library can build upon and/or expose, usually with a more user-friendly name. The `root.ln` is particularly special as it defines the root scope that all other modules inherit from, including the other `std` files in here, so anything exported from `root.ln` can be assumed to exist in all scopes.
 
+## Development
+
+In order to have any change from this repo available locally remember to execute `make clean` before building.
+
 ## License
 
 Apache 2.0
