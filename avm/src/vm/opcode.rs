@@ -2693,6 +2693,11 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     print!("{}", out_str);
     None
   });
+  cpu!("stderrp", |args, hand_mem, _, _| {
+    let err_str = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
+    eprint!("{}", err_str);
+    None
+  });
   // set opcodes use args[0] directly, since the relevant value directly
   // fits in i64, and write it to args[2]
   cpu!("seti64", |args, hand_mem, _, _| {
