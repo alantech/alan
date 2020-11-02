@@ -697,6 +697,7 @@ addopcodes({
   join: [{ arr: t('Array<string>'), sep: t('string'), }, t('string')],
   newarr: [{ size: t('int64'), }, t('Array<any>')],
   stdoutp: [{ out: t('string'), }, t('void')],
+  stderrp: [{ err: t('string'), }, t('void')],
   exitop: [{ code: t('int8'), }, t('void')],
   copyfrom: [{ arr: t('Array<any>'), addr: t('int64') }, t('any')],
   copytof: [{ arr: t('Array<any>'), addr: t('int64'), val: t('any') }],
