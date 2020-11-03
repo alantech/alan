@@ -1671,17 +1671,17 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   io!("eachl", |args, mem| {
     Box::pin(async move {
       let mut hand_mem = mem.write().await;
-      let mut hm = hand_mem.clone();
-      let arr = hand_mem.read_fractal(args[0]);
+      let arr = hand_mem.read_fractal(args[0]).to_vec();
       let len = arr.len();
       let subhandler = HandlerFragment::new(args[1], 0);
       for i in 0..len {
+        let mut hm = hand_mem.clone();
         hm.set_addr(CLOSURE_ARG_MEM_START + 1, arr[i].0, arr[i].1 as usize);
         hm.write_fixed(CLOSURE_ARG_MEM_START + 2, i as i64);
         hm = subhandler.clone().run(hm).await;
+        // The sequential version of `each` is allowed to have side-effects
+        hm.replace(&mut hand_mem);
       }
-      // The sequential version of `each` is allowed to have side-effects
-      hm.replace(&mut hand_mem);
     })
   });
   io!("find", |args, mem| {
@@ -1713,209 +1713,117 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("no element matches"));
     })
   });
-  /*unpred_cpu!("findl", |args, hand_mem, frag| {
-    let arr = hand_mem.read_fractal(args[0]);
-    let len = arr.len();
-    let instructions = frag.get_closure_instructions(args[1]);
-    // array of potentially many levels of nested fractals
-    let arr_addr = (0..len).into_iter().find_first(|idx| {
-      let ins = instructions.clone();
-      let mut mem = hand_mem.clone();
-      // array element is $1 argument of the closure memory space
-      mem.set_addr(CLOSURE_ARG_MEM_START + 1, arr[*idx].0, arr[*idx].1 as usize);
-      ins.iter().for_each(|i| {
-        // TODO implement for async_functions. can tokio be called within rayon?
-        let func = i.opcode.func.unwrap();
-        let event = func(&i.args, &mut mem, &mut frag.clone());
-        if event.is_some() {
-          let event_tx = EVENT_TX.get().unwrap();
-          let event_sent = event_tx.send(event.unwrap());
-          if event_sent.is_err() {
-            eprintln!("Event transmission error");
-            std::process::exit(2);
-          }
+  io!("findl", |args, mem| {
+    Box::pin(async move {
+      let mut hand_mem = mem.write().await;
+      let arr = hand_mem.read_fractal(args[0]);
+      let len = arr.len();
+      let subhandler = HandlerFragment::new(args[1], 0);
+      for i in 0..len {
+        let mut hm = hand_mem.fork();
+        hm.set_addr(CLOSURE_ARG_MEM_START + 1, arr[i].0, arr[i].1 as usize);
+        hm = subhandler.clone().run(hm).await;
+        let val = hm.read_fixed(CLOSURE_ARG_MEM_START);
+        if val == 1 {
+          let (a, b) = arr[i];
+          hand_mem.write_fractal(args[2], &Vec::new());
+          hand_mem.push_fixed(args[2], 1);
+          hand_mem.push_idxs(args[2], a, b as usize);
+          return;
         }
-      });
-      // Guaranteed to be a boolean
-      let val = mem.read_fixed(CLOSURE_ARG_MEM_START);
-      return val == 1i64;
-    });
-    hand_mem.write_fractal(args[2], &Vec::new());
-    if arr_addr.is_none() {
-      hand_mem.push_fixed(args[2], 0i64);
+      }
+      hand_mem.write_fractal(args[2], &Vec::new());
+      hand_mem.push_fixed(args[2], 0);
       hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("no element matches"));
-    } else {
-      let addr = arr_addr.unwrap();
-      let arr = hand_mem.read_fractal(args[0]); // This is dumb, but whatever Rust
-      let (a, b) = arr[addr as usize];
-      hand_mem.push_fixed(args[2], 1i64);
-      hand_mem.push_idxs(args[2], a, b as usize);
-    }
-    None
-  });*/
-  unpred_cpu!("some", |args, hand_mem, frag| {
-    let arr = hand_mem.read_fractal(args[0]);
-    let len = arr.len();
-    let instructions = frag.get_closure_instructions(args[1]);
-    // array of potentially many levels of nested fractals
-    let output: bool = (0..len).into_iter().any(|idx| {
-      let ins = instructions.clone();
-      let mut mem = hand_mem.clone();
-      // array element is $1 argument of the closure memory space
-      mem.set_addr(CLOSURE_ARG_MEM_START + 1, arr[idx].0, arr[idx].1 as usize);
-      ins.iter().for_each(|i| {
-        // TODO implement for async_functions. can tokio be called within rayon?
-        let func = i.opcode.func.unwrap();
-        // TODO maybe emit event, but what if multiple are emitted?
-        let event = func(&i.args, &mut mem, &mut frag.clone());
-        if event.is_some() {
-          let event_tx = EVENT_TX.get().unwrap();
-          let event_sent = event_tx.send(event.unwrap());
-          if event_sent.is_err() {
-            eprintln!("Event transmission error");
-            std::process::exit(2);
-          }
-        }
-      });
-      // return address is $0 argument of the closure memory space
-      let val = mem.read_fixed(CLOSURE_ARG_MEM_START);
-      return val == 1
-    });
-    if output {
-      hand_mem.write_fixed(args[2], 1i64);
-    } else {
-      hand_mem.write_fixed(args[2], 0i64);
-    }
-    None
+    })
   });
-  unpred_cpu!("somel", |args, mut hand_mem, frag| {
-    let arr = hand_mem.read_fractal(args[0]);
-    let len = arr.len();
-    let ins = frag.get_closure_instructions(args[1]);
-    drop(arr); // ugh rust, why?
-    // array of potentially many levels of nested fractals
-    let output: Vec<Option<i64>> = (0..len).map(|idx| {
-      // array element is $1 argument of the closure memory space
+  io!("some", |args, mem| {
+    Box::pin(async move {
+      let mut hand_mem = mem.write().await;
       let arr = hand_mem.read_fractal(args[0]);
-      if !HandlerMemory::has_nested_fractals(arr) {
-        // this could be a string or fixed data type
-        let val = arr[idx].1;
-        hand_mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
-      } else {
-        // more nested arrays
-        let (a, b) = arr[idx];
-        let (arr_el, _) = hand_mem.read_either_idxs(a, b as usize);
-        hand_mem.write_fractal(CLOSURE_ARG_MEM_START + 1, &arr_el);
+      let len = arr.len();
+      let subhandler = HandlerFragment::new(args[1], 0);
+      let mut somers = Vec::new();
+      for i in 0..len {
+        let mut hm = hand_mem.fork();
+        hm.set_addr(CLOSURE_ARG_MEM_START + 1, arr[i].0, arr[i].1 as usize);
+        somers.push(subhandler.clone().run(hm));
       }
-      ins.iter().for_each(|i| {
-        // TODO implement for async_functions. can tokio be called within rayon?
-        let func = i.opcode.func.unwrap();
-        let event = func(&i.args, &mut hand_mem, &mut frag.clone());
-        if event.is_some() {
-          let event_tx = EVENT_TX.get().unwrap();
-          let event_sent = event_tx.send(event.unwrap());
-          if event_sent.is_err() {
-            eprintln!("Event transmission error");
-            std::process::exit(2);
-          }
+      let hms = join_all(somers).await;
+      for hm in hms {
+        let val = hm.read_fixed(CLOSURE_ARG_MEM_START);
+        if val == 1 {
+          hand_mem.write_fixed(args[2], 1);
+          return;
         }
-      });
-      // return address is $0 argument of the closure memory space
-      let val = hand_mem.read_fixed(CLOSURE_ARG_MEM_START);
-      if val == 1 {
-        return Some(1);
-      } else {
-        return None;
       }
-    }).filter(|x| x.is_some()).collect();
-    if output.len() > 0 {
-      hand_mem.write_fixed(args[2], 1i64);
-    } else {
-      hand_mem.write_fixed(args[2], 0i64);
-    }
-    None
+      hand_mem.write_fixed(args[2], 0);
+    })
   });
-  unpred_cpu!("every", |args, hand_mem, frag| {
-    let arr = hand_mem.read_fractal(args[0]);
-    let len = arr.len();
-    let instructions = frag.get_closure_instructions(args[1]);
-    // array of potentially many levels of nested fractals
-    let output: bool = (0..len).into_iter().all(|idx| {
-      let ins = instructions.clone();
-      let mut mem = hand_mem.clone();
-      // array element is $1 argument of the closure memory space
-      mem.set_addr(CLOSURE_ARG_MEM_START + 1, arr[idx].0, arr[idx].1 as usize);
-      ins.iter().for_each(|i| {
-        // TODO implement for async_functions. can tokio be called within rayon?
-        let func = i.opcode.func.unwrap();
-        // TODO maybe emit event, but what if multiple are emitted?
-        let event = func(&i.args, &mut mem, &mut frag.clone());
-        if event.is_some() {
-          let event_tx = EVENT_TX.get().unwrap();
-          let event_sent = event_tx.send(event.unwrap());
-          if event_sent.is_err() {
-            eprintln!("Event transmission error");
-            std::process::exit(2);
-          }
+  io!("somel", |args, mem| {
+    Box::pin(async move {
+      let mut hand_mem = mem.write().await;
+      let arr = hand_mem.read_fractal(args[0]).to_vec();
+      let len = arr.len();
+      let subhandler = HandlerFragment::new(args[1], 0);
+      for i in 0..len {
+        let mut hm = hand_mem.fork();
+        hm.set_addr(CLOSURE_ARG_MEM_START + 1, arr[i].0, arr[i].1 as usize);
+        hm = subhandler.clone().run(hm).await;
+        // somel is sequential and allowed to have side-effects
+        hm.replace(&mut hand_mem);
+        let val = hand_mem.read_fixed(CLOSURE_ARG_MEM_START);
+        if val == 1 {
+          hand_mem.write_fixed(args[2], 1);
+          return;
         }
-      });
-      // return address is $0 argument of the closure memory space
-      let val = mem.read_fixed(CLOSURE_ARG_MEM_START);
-      return val == 1;
-    });
-    if output {
-      hand_mem.write_fixed(args[2], 1i64);
-    } else {
-      hand_mem.write_fixed(args[2], 0i64);
-    }
-    None
+      }
+      hand_mem.write_fixed(args[2], 0);
+    })
   });
-  unpred_cpu!("everyl", |args, mut hand_mem, frag| {
-    let arr = hand_mem.read_fractal(args[0]);
-    let len = arr.len();
-    let ins = frag.get_closure_instructions(args[1]);
-    drop(arr); // ugh rust, why?
-    // array of potentially many levels of nested fractals
-    let output: Vec<Option<i64>> = (0..len).map(|idx| {
-      // array element is $1 argument of the closure memory space
+  io!("every", |args, mem| {
+    Box::pin(async move {
+      let mut hand_mem = mem.write().await;
       let arr = hand_mem.read_fractal(args[0]);
-      if !HandlerMemory::has_nested_fractals(arr) {
-        // this could be a string or fixed data type
-        let val = arr[idx].1;
-        hand_mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
-      } else {
-        // more nested arrays
-        let (a, b) = arr[idx];
-        let (arr_el, _) = hand_mem.read_either_idxs(a, b as usize);
-        hand_mem.write_fractal(CLOSURE_ARG_MEM_START + 1, &arr_el);
+      let len = arr.len();
+      let subhandler = HandlerFragment::new(args[1], 0);
+      let mut somers = Vec::new();
+      for i in 0..len {
+        let mut hm = hand_mem.fork();
+        hm.set_addr(CLOSURE_ARG_MEM_START + 1, arr[i].0, arr[i].1 as usize);
+        somers.push(subhandler.clone().run(hm));
       }
-      ins.iter().for_each(|i| {
-        // TODO implement for async_functions. can tokio be called within rayon?
-        let func = i.opcode.func.unwrap();
-        let event = func(&i.args, &mut hand_mem, &mut frag.clone());
-        if event.is_some() {
-          let event_tx = EVENT_TX.get().unwrap();
-          let event_sent = event_tx.send(event.unwrap());
-          if event_sent.is_err() {
-            eprintln!("Event transmission error");
-            std::process::exit(2);
-          }
+      let hms = join_all(somers).await;
+      for hm in hms {
+        let val = hm.read_fixed(CLOSURE_ARG_MEM_START);
+        if val == 0 {
+          hand_mem.write_fixed(args[2], 0);
+          return;
         }
-      });
-      // return address is $0 argument of the closure memory space
-      let val = hand_mem.read_fixed(CLOSURE_ARG_MEM_START);
-      if val == 1 {
-        return Some(1);
-      } else {
-        return None;
       }
-    }).filter(|x| x.is_some()).collect();
-    if output.len() == len {
-      hand_mem.write_fixed(args[2], 1i64);
-    } else {
-      hand_mem.write_fixed(args[2], 0i64);
-    }
-    None
+      hand_mem.write_fixed(args[2], 1);
+    })
+  });
+  io!("everyl", |args, mem| {
+    Box::pin(async move {
+      let mut hand_mem = mem.write().await;
+      let arr = hand_mem.read_fractal(args[0]).to_vec();
+      let len = arr.len();
+      let subhandler = HandlerFragment::new(args[1], 0);
+      for i in 0..len {
+        let mut hm = hand_mem.fork();
+        hm.set_addr(CLOSURE_ARG_MEM_START + 1, arr[i].0, arr[i].1 as usize);
+        hm = subhandler.clone().run(hm).await;
+        // somel is sequential and allowed to have side-effects
+        hm.replace(&mut hand_mem);
+        let val = hand_mem.read_fixed(CLOSURE_ARG_MEM_START);
+        if val == 0 {
+          hand_mem.write_fixed(args[2], 0);
+          return;
+        }
+      }
+      hand_mem.write_fixed(args[2], 1);
+    })
   });
   cpu!("catarr", |args, hand_mem, _| {
     let arr1 = hand_mem.read_fractal(args[0]).to_vec();
