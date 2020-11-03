@@ -1950,8 +1950,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         let mut reducers = Vec::new();
         while vals.len() > 1 {
           let mut hm = hand_mem.clone();
-          let a = vals.pop().unwrap();
-          let b = vals.pop().unwrap();
+          let a = vals.remove(0);
+          let b = vals.remove(0);
           HandlerMemory::transfer(&a, 0, &mut hm, CLOSURE_ARG_MEM_START + 1);
           HandlerMemory::transfer(&b, 0, &mut hm, CLOSURE_ARG_MEM_START + 2);
           reducers.push(subhandler.clone().run(hm));
