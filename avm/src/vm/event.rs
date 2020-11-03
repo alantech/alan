@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use futures::future::join_all;
+//use futures::future::join_all;
 use tokio::sync::RwLock;
 use tokio::task;
 
@@ -198,31 +198,6 @@ impl HandlerFragment {
       hand_id.incr_frag_idx();
       Some(self)
     }
-  }
-
-  pub fn insert_subhandler(self: &mut HandlerFragment, event_id: i64) {
-    let hand_id = self.handlers.get_mut(0).unwrap();
-    let handlers = Program::global().event_handlers.get(&hand_id.event_id).unwrap();
-    let handler: &EventHandler = handlers.get(hand_id.handler_idx).unwrap();
-    let last_frag_idx = handler.last_frag_idx();
-    if hand_id.fragment_idx.is_some() && last_frag_idx <= hand_id.fragment_idx.unwrap() {
-      // Pop the current handler off in this case, as adding a new subhandler was that handler's
-      // last action
-      self.handlers.remove(0);
-    } else {
-      // First the current handler needs to be incremented so when we come back to it, we don't
-      // accidentally run the same code again
-      hand_id.incr_frag_idx();
-    }
-    // Next insert the new handler where we want it to start (at zero)
-    self.handlers.insert(0, HandlerFragmentID {
-      event_id,
-      handler_idx: 0,
-      // Finally, because of how `get_next_fragment` works, it will assume the first fragment
-      // in the new subhandler has already been run, which is not true, so we start it out at None
-      // and from there increment it to 0.
-      fragment_idx: None,
-    });
   }
 
   pub async fn run(mut self: HandlerFragment, mut hand_mem: HandlerMemory) -> HandlerMemory {

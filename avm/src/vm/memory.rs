@@ -165,16 +165,6 @@ impl HandlerMemory {
     }
   }
 
-  /// Determines if the given array of data itself contains pointers to arrays of data.
-  pub fn has_nested_fractals(mem: &[(usize, i64)]) -> bool {
-    for i in 0..mem.len() {
-      if mem[i].0 < std::usize::MAX {
-        return true
-      }
-    }
-    return false
-  }
-
   /// Simply sets a given address to an explicit set of `mems` indexes. Simplifies pointer creation
   /// to deeply-nested data.
   pub fn set_addr(self: &mut HandlerMemory, addr: i64, a: usize, b: usize) {

@@ -2050,13 +2050,17 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   // Conditional opcode
-  unpred_cpu!("condfn", |args, hand_mem, frag| {
-    let cond = hand_mem.read_fixed(args[0]);
-    let event_id = args[1];
-    if cond == 1 {
-      frag.insert_subhandler(event_id);
-    }
-    None
+  io!("condfn", |args, mem| {
+    Box::pin(async move {
+      let mut hand_mem = mem.write().await;
+      let cond = hand_mem.read_fixed(args[0]);
+      let subhandler = HandlerFragment::new(args[1], 0);
+      if cond == 1 {
+        let mut hm = hand_mem.clone();
+        hm = subhandler.run(hm).await;
+        hm.replace(&mut hand_mem);
+      }
+    })
   });
   // Std opcodes
   unpred_cpu!("execop", |args, hand_mem, _| {
