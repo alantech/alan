@@ -1,6 +1,14 @@
+use std::sync::Arc;
+
+use futures::future::join_all;
+use tokio::sync::RwLock;
+use tokio::task;
+
 use crate::vm::instruction::Instruction;
 use crate::vm::memory::HandlerMemory;
+use crate::vm::opcode::EmptyFuture;
 use crate::vm::program::Program;
+use crate::vm::run::{EVENT_TX};
 
 #[derive(PartialEq, Eq, Hash)]
 /// Special events in alan found in standard library modules, @std.
@@ -72,6 +80,8 @@ impl EventHandler {
         self.fragments.push(frag);
       }
     } else {
+      // TODO: Restore this logic. For now just turn it into a new fragment by itself
+      /*
       // non-predictable io opcode is a "movable capstone" in execution
       let cur_max_dep = ins.dep_ids.iter().max().unwrap_or(&-1);
       // merge this capstone with an existing one if possible
@@ -91,6 +101,8 @@ impl EventHandler {
       // this is the first capstone or it cannot be merged
       // mark it as a new capstone
       self.movable_capstones.push(self.fragments.len());
+      self.fragments.push(vec![ins]);
+      */
       self.fragments.push(vec![ins]);
     }
   }
@@ -211,6 +223,63 @@ impl HandlerFragment {
       // and from there increment it to 0.
       fragment_idx: None,
     });
+  }
+
+  pub async fn run(mut self: HandlerFragment, mut hand_mem: HandlerMemory) -> HandlerMemory {
+    task::spawn(async move {
+      let mut instructions = self.get_instruction_fragment();
+      loop {
+        // io-bound fragment
+        if !instructions[0].opcode.pred_exec && instructions[0].opcode.async_func.is_some() {
+          // Is there really no way to avoid cloning the reference of the chan txs for tokio tasks? :'(
+          let mem = Arc::new(RwLock::new(hand_mem));
+          let futures: Vec<EmptyFuture> = instructions.iter().map(|ins| {
+            let async_func = ins.opcode.async_func.unwrap();
+            return async_func(ins.args.clone(), mem.clone());
+          }).collect();
+          hand_mem = task::spawn(async move {
+            //join_all(futures).await;
+            // Temporarily disable io parallelism until io opcode dependencies are declared
+            // correctly by the compiler
+            for future in futures {
+              future.await;
+            }
+            let deref_res = Arc::try_unwrap(mem);
+            if deref_res.is_err() {
+              panic!("Arc for handler memory passed to io opcodes has more than one strong reference.");
+            };
+            deref_res.ok().unwrap().into_inner()
+          }).await.unwrap();
+        } else {
+          // cpu-bound fragment of predictable or unpredictable execution
+          let self_and_hand_mem = task::block_in_place(move || {
+            instructions.iter().for_each( |i| {
+              let func = i.opcode.func.unwrap();
+              let event = func(i.args.as_slice(), &mut hand_mem, &mut self);
+              if event.is_some() {
+                let event_tx = EVENT_TX.get().unwrap();
+                let event_sent = event_tx.send(event.unwrap());
+                if event_sent.is_err() {
+                  eprintln!("Event transmission error");
+                  std::process::exit(2);
+                }
+              }
+            });
+            (self, hand_mem)
+          });
+          self = self_and_hand_mem.0;
+          hand_mem = self_and_hand_mem.1;
+        }
+        let next_frag = self.get_next_fragment();
+        if next_frag.is_some() {
+          self = next_frag.unwrap();
+          instructions = self.get_instruction_fragment();
+        } else {
+          break;
+        }
+      }
+      hand_mem
+    }).await.unwrap()
   }
 }
 

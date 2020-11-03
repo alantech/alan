@@ -6,7 +6,7 @@ homepage = "https://alan-lang.org"
 documentation = "https://docs.alan-lang.org"
 repository = "https://github.com/alantech/alan"
 version = "0.1.12"
-authors = ["Luis de Pombo <lfdepombo@gmail.com>", "David Ellis <isv.damocles@gmail.com>"]
+authors = ["Luis de Pombo <luis@alantechnologies.com>", "David Ellis <david@alantechnologies.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -20,8 +20,7 @@ hyper = "0.13"
 num_cpus = "1.0"
 once_cell = "1.3.1"
 rand = "0.7.3"
-rayon = "1.3"
 regex = "1"
 reqwest = "0.10"
-tokio = { version = "0.2", features = ["rt-core", "macros", "sync", "time"] }
+tokio = { version = "0.2", features = ["rt-threaded", "blocking", "macros", "sync", "time"] }
 twox-hash = "1.5.0"

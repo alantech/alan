@@ -12,7 +12,7 @@
     "runtime",
     "transpiler"
   ],
-  "author": "David Ellis <isv.damocles@gmail.com>",
+  "author": "David Ellis <david@alantechnologies.com>",
   "license": "Apache-2.0",
   "dependencies": {
     "cross-fetch": "^3.0.6",

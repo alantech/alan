@@ -3,11 +3,9 @@ use std::path::Path;
 
 use clap::{App, SubCommand, crate_name, crate_version};
 
-use crate::benchmark::run::benchmark;
 use crate::compile::compile::compile;
 use crate::vm::run::exec;
 
-mod benchmark;
 mod compile;
 mod vm;
 
@@ -38,9 +36,6 @@ fn main() {
       .about("Compiles the given source file (.ln, .amm, .aga) to a new output file (.amm, .aga, .agc, .js)")
       .arg_from_usage("<INPUT> 'Specifies the input file to load'")
       .arg_from_usage("<OUTPUT> 'Specifies the output file to generate'"))
-    .subcommand(SubCommand::with_name("benchmark")
-      .about("Runs benchmark code")
-      .version(crate_version!()))
     .subcommand(SubCommand::with_name("install")
       .about("Install '/dependencies' from '.dependencies.ln'")
       .version(crate_version!()))
@@ -55,8 +50,6 @@ fn main() {
     let source_file = matches.value_of("INPUT").unwrap();
     let dest_file = matches.value_of("OUTPUT").unwrap();
     std::process::exit(compile(&source_file, &dest_file, false));
-  } else if let Some(_matches) = matches.subcommand_matches("benchmark") {
-    benchmark();
   } else if let Some(_matches) = matches.subcommand_matches("install") {
     let source_file = ".dependencies.ln";
     if Path::new(source_file).exists() {
