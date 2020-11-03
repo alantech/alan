@@ -1662,47 +1662,27 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       for i in 0..len {
         let mut hm = hand_mem.fork();
         hm.set_addr(CLOSURE_ARG_MEM_START + 1, arr[i].0, arr[i].1 as usize);
-        hm.write_fixed(CLOSURE_ARG_MEM_START +2, i as i64);
+        hm.write_fixed(CLOSURE_ARG_MEM_START + 2, i as i64);
         runners.push(subhandler.clone().run(hm));
       }
       join_all(runners).await;
     })
   });
-  unpred_cpu!("eachl", |args, mut hand_mem, frag| {
-    let arr = hand_mem.read_fractal(args[0]);
-    let len = arr.len();
-    let ins = frag.get_closure_instructions(args[1]);
-    drop(arr); // ugh rust, why?
-    // array of potentially many levels of nested fractals
-    (0..len).for_each(|idx| {
-      // array element is $1 argument of the closure memory space
+  io!("eachl", |args, mem| {
+    Box::pin(async move {
+      let mut hand_mem = mem.write().await;
+      let mut hm = hand_mem.clone();
       let arr = hand_mem.read_fractal(args[0]);
-      if !HandlerMemory::has_nested_fractals(arr) {
-        // this could be a string or fixed data type
-        let val = arr[idx].1;
-        hand_mem.write_fixed(CLOSURE_ARG_MEM_START + 1, val);
-      } else {
-        // more nested arrays
-        let (a, b) = arr[idx];
-        let(arr_el, _) = hand_mem.read_either_idxs(a, b as usize);
-        hand_mem.write_fractal(CLOSURE_ARG_MEM_START + 1, &arr_el);
+      let len = arr.len();
+      let subhandler = HandlerFragment::new(args[1], 0);
+      for i in 0..len {
+        hm.set_addr(CLOSURE_ARG_MEM_START + 1, arr[i].0, arr[i].1 as usize);
+        hm.write_fixed(CLOSURE_ARG_MEM_START + 2, i as i64);
+        hm = subhandler.clone().run(hm).await;
       }
-      hand_mem.write_fixed(CLOSURE_ARG_MEM_START + 2, idx as i64);
-      ins.iter().for_each(|i| {
-        // TODO implement for async_functions. can tokio be called within rayon?
-        let func = i.opcode.func.unwrap();
-        let event = func(&i.args, &mut hand_mem, &mut frag.clone());
-        if event.is_some() {
-          let event_tx = EVENT_TX.get().unwrap();
-          let event_sent = event_tx.send(event.unwrap());
-          if event_sent.is_err() {
-            eprintln!("Event transmission error");
-            std::process::exit(2);
-          }
-        }
-      });
-    });
-    None
+      // The sequential version of `each` is allowed to have side-effects
+      hm.replace(&mut hand_mem);
+    })
   });
   io!("find", |args, mem| {
     Box::pin(async move {
