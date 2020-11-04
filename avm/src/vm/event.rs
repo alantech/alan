@@ -119,15 +119,6 @@ impl EventHandler {
     return self.fragments.get(idx).unwrap();
   }
 
-  pub fn get_all_instructions(self: &EventHandler) -> Vec<&Instruction> {
-    let mut result = vec![];
-    for frag in &self.fragments {
-      for ins in frag {
-        result.push(ins);
-      }
-    }
-    return result;
-  }
 }
 
 /// Identifies an exact fragment of an event handler
@@ -165,14 +156,6 @@ impl HandlerFragment {
         fragment_idx: Some(0),
       }),
     }
-  }
-
-  pub fn get_closure_instructions(self: &HandlerFragment, event_id: i64) -> Vec<&Instruction> {
-    let handlers = Program::global().event_handlers.get(&event_id).unwrap();
-    assert_eq!(handlers.len(), 1);
-    let handler: &EventHandler = handlers.get(0).unwrap();
-    assert_eq!(Program::global().event_pls.get(&event_id).unwrap(), &0);
-    return handler.get_all_instructions();
   }
 
   pub fn get_instruction_fragment(self: &mut HandlerFragment) -> &'static Vec<Instruction> {
