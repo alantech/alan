@@ -1875,33 +1875,34 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       HandlerMemory::transfer(&vals[0], 0, &mut hand_mem, args[2]);
     })
   });
-  unpred_cpu!("reducel", |args, mut hand_mem, frag| {
-    let arr = hand_mem.read_fractal(args[0]).to_vec();
-    let instructions = frag.get_closure_instructions(args[1]);
-    let car = arr[0].clone();
-    let cdr = &arr[1..];
-    let res: (usize, i64) = cdr.into_iter().fold(car, |a, b| {
-      let ins = instructions.clone();
-      hand_mem.set_addr(CLOSURE_ARG_MEM_START + 1, a.0, a.1 as usize);
-      hand_mem.set_addr(CLOSURE_ARG_MEM_START + 2, b.0, b.1 as usize);
-      ins.iter().for_each(|i| {
-        // TODO implement for async_functions. can tokio be called within rayon?
-        let func = i.opcode.func.unwrap();
-        let event = func(&i.args, &mut hand_mem, &mut frag.clone());
-        if event.is_some() {
-          let event_tx = EVENT_TX.get().unwrap();
-          let event_sent = event_tx.send(event.unwrap());
-          if event_sent.is_err() {
-            eprintln!("Event transmission error");
-            std::process::exit(2);
-          }
-        }
-      });
-      let (a, b) = hand_mem.addr_to_idxs(CLOSURE_ARG_MEM_START);
-      (a, b as i64)
-    });
-    hand_mem.set_addr(args[2], res.0, res.1 as usize);
-    None
+  io!("reducel", |args, mem| {
+    Box::pin(async move {
+      let mut hand_mem = mem.write().await;
+      let arr = hand_mem.read_fractal(args[0]).to_vec();
+      if arr.len() == 0 {
+        return;
+      }
+      let mut vals: Vec<HandlerMemory> = vec![];
+      for i in 0..arr.len() {
+        let mut hm = HandlerMemory::new(None, 1);
+        hand_mem.set_addr(CLOSURE_ARG_MEM_START, arr[i].0, arr[i].1 as usize);
+        HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut hm, 0);
+        vals.push(hm);
+      }
+      let subhandler = HandlerFragment::new(args[1], 0);
+      let mut cumulative = vals.remove(0);
+      let mut hm = hand_mem.clone();
+      for i in 0..vals.len() {
+        let current = &vals[i];
+        HandlerMemory::transfer(&cumulative, 0, &mut hm, CLOSURE_ARG_MEM_START + 1);
+        HandlerMemory::transfer(&current, 0, &mut hm, CLOSURE_ARG_MEM_START + 2);
+        hm = subhandler.clone().run(hm).await;
+        HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START, &mut cumulative, 0);
+      }
+      // The sequential version of `reduce` is allowed to have side-effects
+      hm.replace(&mut hand_mem);
+      HandlerMemory::transfer(&cumulative, 0, &mut hand_mem, args[2]);
+    })
   });
   io!("foldp", |args, mem| {
     Box::pin(async move {
@@ -1959,35 +1960,37 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       }
     })
   });
-  unpred_cpu!("foldl", |args, mut hand_mem, frag| {
-    let obj = hand_mem.read_fractal(args[0]);
-    let (a, b) = obj[0];
-    let (c, d) = obj[1];
-    let (arr, _) = hand_mem.read_either_idxs(a, b as usize);
-    let arrv = arr.to_vec();
-    let instructions = frag.get_closure_instructions(args[1]);
-    let res: (usize, i64) = arrv.into_iter().fold((c, d), |a, b| {
-      let ins = instructions.clone();
-      hand_mem.set_addr(CLOSURE_ARG_MEM_START + 1, a.0, a.1 as usize);
-      hand_mem.set_addr(CLOSURE_ARG_MEM_START + 2, b.0, b.1 as usize);
-      ins.iter().for_each(|i| {
-        // TODO implement for async_functions. can tokio be called within rayon?
-        let func = i.opcode.func.unwrap();
-        let event = func(&i.args, &mut hand_mem, &mut frag.clone());
-        if event.is_some() {
-          let event_tx = EVENT_TX.get().unwrap();
-          let event_sent = event_tx.send(event.unwrap());
-          if event_sent.is_err() {
-            eprintln!("Event transmission error");
-            std::process::exit(2);
-          }
-        }
-      });
+  io!("foldl", |args, mem| {
+    Box::pin(async move {
+      let mut hand_mem = mem.write().await;
+      let obj = hand_mem.read_fractal(args[0]);
+      let (a, b) = obj[0];
+      let (c, d) = obj[1];
+      let (arr, _) = hand_mem.read_either_idxs(a, b as usize);
+      let arrv = arr.to_vec();
+      let mut vals: Vec<HandlerMemory> = vec![];
+      for i in 0..arrv.len() {
+        let mut hm = HandlerMemory::new(None, 1);
+        hand_mem.set_addr(CLOSURE_ARG_MEM_START, arrv[i].0, arrv[i].1 as usize);
+        HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut hm, 0);
+        vals.push(hm);
+      }
+      let subhandler = HandlerFragment::new(args[1], 0);
+      hand_mem.set_addr(CLOSURE_ARG_MEM_START, c, d as usize);
+      let mut cumulative = HandlerMemory::new(None, 1);
+      HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut cumulative, 0);
+      let mut hm = hand_mem.clone();
+      for i in 0..vals.len() {
+        let current = &vals[i];
+        HandlerMemory::transfer(&cumulative, 0, &mut hm, CLOSURE_ARG_MEM_START + 1);
+        HandlerMemory::transfer(current, 0, &mut hm, CLOSURE_ARG_MEM_START + 2);
+        hm = subhandler.clone().run(hm).await;
+        HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START, &mut cumulative, 0);
+      }
+      hm.replace(&mut hand_mem);
       let (a, b) = hand_mem.addr_to_idxs(CLOSURE_ARG_MEM_START);
-      (a, b as i64)
-    });
-    hand_mem.set_addr(args[2], res.0, res.1 as usize);
-    None
+      hand_mem.set_addr(args[2], a, b as usize);
+    })
   });
   unpred_cpu!("filter", |args, hand_mem, frag| {
     hand_mem.write_fractal(args[2], &Vec::new());
