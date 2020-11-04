@@ -183,6 +183,16 @@ impl HandlerFragment {
     }
   }
 
+  /// Runs the specified handler in Tokio tasks. Tokio tasks are allocated to a threadpool bound by
+  /// the number of CPU cores on the machine it is executing on. Actual IO work gets scheduled into
+  /// an IO threadpool (unbounded, according to Tokio) while CPU work uses the special
+  /// `block_in_place` function to indicate to Tokio to not push new Tokio tasks to this particular
+  /// thread at this time. Event-level parallelism and Array-level parallelism are unified into
+  /// this same threadpool as tasks which should minimize contentions at the OS level on work and
+  /// help throughput (in theory). This could be a problem for super-IO-bound applications with a
+  /// very high volume of small IO requests, but as most IO operations are several orders of
+  /// magnitude slower than CPU operations, this is considered to be a very small minority of
+  /// workloads and is ignored for now.
   pub async fn run(mut self: HandlerFragment, mut hand_mem: HandlerMemory) -> HandlerMemory {
     task::spawn(async move {
       let mut instructions = self.get_instruction_fragment();
