@@ -2661,12 +2661,15 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   // Error, Maybe, Result, Either opcodes
   cpu!("error", |args, hand_mem| {
-    hand_mem.register(args[2], args[0]);
+    hand_mem.register(args[2], args[0], true);
     None
   });
-  cpu!("ref", |args, hand_mem| {
-    // Just an alias for 'error' but without the type mangling in the compiler
-    hand_mem.register(args[2], args[0]);
+  cpu!("refv", |args, hand_mem| {
+    hand_mem.register(args[2], args[0], true);
+    None
+  });
+  cpu!("reff", |args, hand_mem| {
+    hand_mem.register(args[2], args[0], false);
     None
   });
   cpu!("noerr", |args, hand_mem| {
@@ -2675,7 +2678,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("errorstr", |args, hand_mem| {
-    hand_mem.register(args[2], args[0]);
+    hand_mem.register(args[2], args[0], true);
     None
   });
   cpu!("someM", |args, hand_mem| {
@@ -2717,7 +2720,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       } else {
         let (data, is_fractal) = hand_mem.read_either(args[1]);
         if is_fractal {
-          hand_mem.register(args[2], args[1]);
+          hand_mem.register(args[2], args[1], true);
         } else {
           hand_mem.write_fixed(args[2], data[0].1);
         }
@@ -2761,7 +2764,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     } else {
       let (data, is_fractal) = hand_mem.read_either(args[1]);
       if is_fractal {
-        hand_mem.register(args[2], args[1]);
+        hand_mem.register(args[2], args[1], true);
       } else {
         hand_mem.write_fixed(args[2], data[0].1);
       }
@@ -2797,7 +2800,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     } else {
       let (data, is_fractal) = hand_mem.read_either(args[1]);
       if is_fractal {
-        hand_mem.register(args[2], args[1]);
+        hand_mem.register(args[2], args[1], true);
       } else {
         hand_mem.write_fixed(args[2], data[0].1);
       }
@@ -2862,7 +2865,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     } else {
       let (data, is_fractal) = hand_mem.read_either(args[1]);
       if is_fractal {
-        hand_mem.register(args[2], args[1]);
+        hand_mem.register(args[2], args[1], true);
       } else {
         hand_mem.write_fixed(args[2], data[0].1);
       }
@@ -2877,7 +2880,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     } else {
       let (data, is_fractal) = hand_mem.read_either(args[1]);
       if is_fractal {
-        hand_mem.register(args[2], args[1]);
+        hand_mem.register(args[2], args[1], true);
       } else {
         hand_mem.write_fixed(args[2], data[0].1);
       }

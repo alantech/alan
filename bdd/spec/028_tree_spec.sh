@@ -34,7 +34,6 @@ bar, baz"
     End
 
     It "runs agc"
-      Pending figuring-out-bug-in-either-compiler-or-avm
       When run alan run temp.agc
       The output should eq "$BASICOUTPUT"
     End

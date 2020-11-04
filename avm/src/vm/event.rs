@@ -202,6 +202,7 @@ impl HandlerFragment {
           // Is there really no way to avoid cloning the reference of the chan txs for tokio tasks? :'(
           let mem = Arc::new(RwLock::new(hand_mem));
           let futures: Vec<EmptyFuture> = instructions.iter().map(|ins| {
+            //eprintln!("{} {} {} {}", ins.opcode._name, ins.args[0], ins.args[1], ins.args[2]);
             let async_func = ins.opcode.async_func.unwrap();
             return async_func(ins.args.clone(), mem.clone());
           }).collect();
@@ -222,6 +223,7 @@ impl HandlerFragment {
           // cpu-bound fragment of predictable or unpredictable execution
           let self_and_hand_mem = task::block_in_place(move || {
             instructions.iter().for_each( |i| {
+              //eprintln!("{} {} {} {}", i.opcode._name, i.args[0], i.args[1], i.args[2]);
               let func = i.opcode.func.unwrap();
               let event = func(i.args.as_slice(), &mut hand_mem);
               if event.is_some() {

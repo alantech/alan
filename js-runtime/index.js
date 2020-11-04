@@ -488,7 +488,8 @@ module.exports = {
 
   // Error, Maybe, Result, Either opcodes
   error:    a => a,
-  ref:      a => a, // Just an alias for error but without the type mangling in the compiler
+  reff:      a => a, // Just an alias for error but without the type mangling in the compiler
+  refv:      a => a, // Just an alias for error but without the type mangling in the compiler
   noerr:   () => '',
   errorstr: a => a.toString(),
   someM:    a => [

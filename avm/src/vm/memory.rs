@@ -251,38 +251,15 @@ impl HandlerMemory {
   }
 
   /// Creates an alias for data at one address in another address.
-  pub fn register(self: &mut HandlerMemory, addr: i64, orig_addr: i64) {
+  pub fn register(self: &mut HandlerMemory, addr: i64, orig_addr: i64, is_variable: bool) {
     let (a, b) = self.addr_to_idxs(orig_addr);
     if addr_type(orig_addr) == GMEM_ADDR {
-      // Special behavior to read strings out of global memory
-      let mem_slice = self.mems[a][b..].to_vec();
-      // To make this distinction we're gonna do some tests on the memory and see if it evals as a
-      // string or not. There is some ridiculously small possibility that this is going to make a
-      // false positive though so TODO: either make global memory unambiguous or update all uses of
-      // this function to provide a type hint.
-      let len = mem_slice[0].1 as usize;
-      if len == 0 { // Assume zero is not a string
-        self.write_fixed(addr, mem_slice[0].1);
-        return;
-      }
-      let mut s_bytes: Vec<u8> = Vec::new();
-      for i in 1..mem_slice.len() {
-        let mut b = mem_slice[i].1.clone().to_ne_bytes().to_vec();
-        s_bytes.append(&mut b);
-      }
-      if len > s_bytes.len() {
-        // Absolutely not correct
-        self.write_fixed(addr, mem_slice[0].1);
-        return;
-      }
-      let try_str = str::from_utf8(&s_bytes[0..len]);
-      if try_str.is_err() {
-        // Also not a string
-        self.write_fixed(addr, mem_slice[0].1);
+      if is_variable {
+        // Special behavior to read strings out of global memory
+        let string = HandlerMemory::fractal_to_string(&self.mems[a][b..]);
+        self.write_fractal(addr, &HandlerMemory::str_to_fractal(&string));
       } else {
-        // Well, waddaya know!
-        self.write_fractal(addr, &HandlerMemory::str_to_fractal(try_str.unwrap()));
-        return;
+        self.set_addr(addr, a, b);
       }
     } else {
       self.set_addr(addr, a, b);
