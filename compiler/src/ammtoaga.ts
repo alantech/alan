@@ -413,6 +413,10 @@ const loadStatements = (
     } else if (statement.has('exits')) {
       const exit = statement.get('exits')
       const exitVar = exit.get('variable').t.trim()
+      let exitVarType = localMem.hasOwnProperty(exitVar) ? 'variable' : (
+        globalMem.hasOwnProperty(exitVar) && typeof globalMem[exitVar] !== 'string' ?
+        'fixed' : 'variable'
+      )
       const vars = [exitVar]
       const args = vars.map(v => {
         if (localMem.hasOwnProperty(v)) return localMem[v]
@@ -422,7 +426,8 @@ const loadStatements = (
         } else return v
       }).map(a => typeof a === 'string' ? a : `@${a}`)
       while (args.length < 2) args.push('@0')
-      s += `@${CLOSURE_ARG_MEM_START} = ref(${args.join(', ')}) #${line}`
+      const ref = exitVarType === 'variable' ? 'refv' : 'reff'
+      s += `@${CLOSURE_ARG_MEM_START} = ${ref}(${args.join(', ')}) #${line}`
     }
     vec.push(s)
     line += 1

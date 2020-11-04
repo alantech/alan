@@ -480,7 +480,15 @@ export fn clone(a: string) = copystr(a)
 
 // Error, Maybe, Result, and Either types and functions
 export error // opcode with signature `fn error(string): Error`
-export ref // identical to error, but with the signature `fn ref(any): any`
+export fn ref(a: any) = refv(a)
+export fn ref(a: void) = reff(a)
+export fn ref(a: int8) = reff(a)
+export fn ref(a: int16) = reff(a)
+export fn ref(a: int32) = reff(a)
+export fn ref(a: int64) = reff(a)
+export fn ref(a: float32) = reff(a)
+export fn ref(a: float64) = reff(a)
+export fn ref(a: bool) = reff(a)
 export noerr // opcode with signature `fn noerr(): Error`
 export fn toString(err: Error) = errorstr(err)
 
