@@ -72,6 +72,15 @@ impl HandlerMemory {
     }
   }
 
+  /// Because of constraints in Tokio's RWLock, this method moves the contents of `self` into the
+  /// `target`. The `self` is destroyed in the process
+  pub fn replace(self: HandlerMemory, target: &mut HandlerMemory) {
+    target.mems = self.mems;
+    target.addr = self.addr;
+    target.mem_addr = self.mem_addr;
+    target.args_addr = self.args_addr;
+  }
+
   /// Grabs the relevant data for the event and constructs a new HandlerMemory with that value in
   /// address 0, or returns no HandlerMemory if it is a void event.
   pub fn alloc_payload(
@@ -154,16 +163,6 @@ impl HandlerMemory {
       // The indexes point at nested data
       (self.mems[a].clone(), true)
     }
-  }
-
-  /// Determines if the given array of data itself contains pointers to arrays of data.
-  pub fn has_nested_fractals(mem: &[(usize, i64)]) -> bool {
-    for i in 0..mem.len() {
-      if mem[i].0 < std::usize::MAX {
-        return true
-      }
-    }
-    return false
   }
 
   /// Simply sets a given address to an explicit set of `mems` indexes. Simplifies pointer creation

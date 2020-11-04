@@ -24,7 +24,7 @@
     "compiler",
     "transpiler"
   ],
-  "author": "David Ellis <isv.damocles@gmail.com>",
+  "author": "David Ellis <david@alantechnologies.com>",
   "license": "AGPL-3.0",
   "dependencies": {
     "@types/node": "^14.0.5",
