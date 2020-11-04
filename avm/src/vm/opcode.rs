@@ -1992,65 +1992,50 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem.set_addr(args[2], a, b as usize);
     })
   });
-  unpred_cpu!("filter", |args, hand_mem, frag| {
-    hand_mem.write_fractal(args[2], &Vec::new());
-    let arr = hand_mem.read_fractal(args[0]).to_vec();
-    let instructions = frag.get_closure_instructions(args[1]);
-    let res: Vec<(usize, i64)> = arr.into_iter().filter(|a| {
-      let ins = instructions.clone();
-      let mut mem = hand_mem.clone();
-      mem.set_addr(CLOSURE_ARG_MEM_START + 1, a.0, a.1 as usize);
-      ins.iter().for_each(|i| {
-        // TODO implement for async_functions. can tokio be called within rayon?
-        let func = i.opcode.func.unwrap();
-        let event = func(&i.args, &mut mem, &mut frag.clone());
-        if event.is_some() {
-          let event_tx = EVENT_TX.get().unwrap();
-          let event_sent = event_tx.send(event.unwrap());
-          if event_sent.is_err() {
-            eprintln!("Event transmission error");
-            std::process::exit(2);
-          }
+  io!("filter", |args, mem| {
+    Box::pin(async move {
+      let mut hand_mem = mem.write().await;
+      let arr = hand_mem.read_fractal(args[0]).to_vec();
+      let len = arr.len();
+      let subhandler = HandlerFragment::new(args[1], 0);
+      let mut filters = Vec::new();
+      for i in 0..len {
+        let mut hm = hand_mem.fork();
+        hm.set_addr(CLOSURE_ARG_MEM_START + 1, arr[i].0, arr[i].1 as usize);
+        filters.push(subhandler.clone().run(hm));
+      }
+      let hms = join_all(filters).await;
+      hand_mem.write_fractal(args[2], &Vec::new());
+      for i in 0..len {
+        let hm = &hms[i];
+        let val = hm.read_fixed(CLOSURE_ARG_MEM_START);
+        if val == 1 {
+          let (a, b) = arr[i];
+          hand_mem.push_idxs(args[2], a, b as usize);
         }
-      });
-      mem.read_fixed(CLOSURE_ARG_MEM_START) == 1i64
-    }).collect();
-    let reslen = res.len();
-    for i in 0..reslen {
-      let (a, b) = res[i];
-      hand_mem.push_idxs(args[2], a, b as usize);
-    }
-    None
+      }
+    })
   });
-  unpred_cpu!("filterl", |args, mut hand_mem, frag| {
-    hand_mem.write_fractal(args[2], &Vec::new());
-    let arr = hand_mem.read_fractal(args[0]).to_vec();
-    let instructions = frag.get_closure_instructions(args[1]);
-    let res: Vec<(usize, i64)> = arr.into_iter().filter(|m| {
-      let ins = instructions.clone();
-      let (a, b) = m;
-      hand_mem.set_addr(CLOSURE_ARG_MEM_START + 1, *a, *b as usize);
-      ins.iter().for_each(|i| {
-        // TODO implement for async_functions. can tokio be called within rayon?
-        let func = i.opcode.func.unwrap();
-        let event = func(&i.args, &mut hand_mem, &mut frag.clone());
-        if event.is_some() {
-          let event_tx = EVENT_TX.get().unwrap();
-          let event_sent = event_tx.send(event.unwrap());
-          if event_sent.is_err() {
-            eprintln!("Event transmission error");
-            std::process::exit(2);
-          }
+  io!("filterl", |args, mem| {
+    Box::pin(async move {
+      let mut hand_mem = mem.write().await;
+      let arr = hand_mem.read_fractal(args[0]).to_vec();
+      let len = arr.len();
+      let subhandler = HandlerFragment::new(args[1], 0);
+      let mut hm = hand_mem.clone();
+      hm.write_fractal(args[2], &Vec::new());
+      for i in 0..len {
+        hm.set_addr(CLOSURE_ARG_MEM_START + 1, arr[i].0, arr[i].1 as usize);
+        hm = subhandler.clone().run(hm).await;
+        let val = hm.read_fixed(CLOSURE_ARG_MEM_START);
+        if val == 1 {
+          let (a, b) = arr[i];
+          hm.push_idxs(args[2], a, b as usize);
         }
-      });
-      hand_mem.read_fixed(CLOSURE_ARG_MEM_START) == 1i64
-    }).collect();
-    let reslen = res.len();
-    for i in 0..reslen {
-      let (a, b) = res[i];
-      hand_mem.push_idxs(args[2], a, b as usize);
-    }
-    None
+      }
+      // Sequential version of filter allowed to have side effects
+      hm.replace(&mut hand_mem);
+    })
   });
   // Conditional opcode
   io!("condfn", |args, mem| {
