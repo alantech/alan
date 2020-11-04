@@ -213,7 +213,7 @@ impl HandlerFragment {
           let self_and_hand_mem = task::block_in_place(move || {
             instructions.iter().for_each( |i| {
               let func = i.opcode.func.unwrap();
-              let event = func(i.args.as_slice(), &mut hand_mem, &mut self);
+              let event = func(i.args.as_slice(), &mut hand_mem);
               if event.is_some() {
                 let event_tx = EVENT_TX.get().unwrap();
                 let event_sent = event_tx.send(event.unwrap());
