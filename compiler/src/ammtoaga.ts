@@ -135,9 +135,21 @@ const getHandlersMem = (handlers: LPNode[]) => handlers
     return handlerMem
   })
 
-const closuresFromDeclaration = (declaration: LPNode, closureMem: object, eventDecs: object) => {
+const closuresFromDeclaration = (declaration: LPNode, closureMem: object, eventDecs: object, addressMap: object, argRerefOffset: number) => {
   const name = declaration.get('constdeclaration').get('decname').t.trim()
   const fn = declaration.get('constdeclaration').get('assignables').get('functions')
+  let fnArgs = []
+  fn.get('args').getAll()[0].getAll().forEach((argdef) => {
+    fnArgs.push(argdef.get('arg').get('variable').t)
+  })
+  if (fn.get('args').getAll()[1].has()) {
+    fnArgs.push(...fn.get('args').getAll()[1].getAll().map(t => t.get('variable').t))
+    fnArgs = fnArgs.filter(t => t !== '')
+  }
+  fnArgs.forEach(arg => {
+    addressMap[arg] = CLOSURE_ARG_MEM_START + BigInt(argRerefOffset)
+    argRerefOffset++
+  })
   const allStatements = declaration
     .get('constdeclaration')
     .get('assignables')
@@ -153,7 +165,7 @@ const closuresFromDeclaration = (declaration: LPNode, closureMem: object, eventD
     statement.get('declarations').has('constdeclaration') &&
     statement.get('declarations').get('constdeclaration').get('assignables').has('functions')
   ).map(
-    s => closuresFromDeclaration(s.get('declarations'), closureMem, eventDecs)
+    s => closuresFromDeclaration(s.get('declarations'), closureMem, eventDecs, addressMap, argRerefOffset)
   ).reduce((obj, rec) => ({
     ...obj,
     ...rec,
@@ -171,7 +183,7 @@ const closuresFromDeclaration = (declaration: LPNode, closureMem: object, eventD
   }
 }
 
-const extractClosures = (handlers: LPNode[], handlerMem: object, eventDecs: object) => {
+const extractClosures = (handlers: LPNode[], handlerMem: object, eventDecs: object, addressMap: object) => {
   let closures = {}
   let recs = handlers.filter(h => h.get() instanceof NamedAnd)
   for (let i = 0; i < recs.length; i++) {
@@ -188,6 +200,8 @@ const extractClosures = (handlers: LPNode[], handlerMem: object, eventDecs: obje
           statement.get('declarations'),
           closureMem,
           eventDecs,
+          addressMap,
+          5,
         )
         closures = {
           ...closures,
@@ -210,6 +224,23 @@ const loadStatements = (
   let line = 0
   let localMemToLine = {}
   statements = statements.filter(s => !s.has('whitespace'))
+  let fnArgs = []
+  fn.get('args').getAll()[0].getAll().forEach((argdef) => {
+    fnArgs.push(argdef.get('arg').get('variable').t)
+  })
+  if (fn.get('args').getAll()[1].has()) {
+    fnArgs.push(...fn.get('args').getAll()[1].getAll().map(t => t.get('variable').t))
+    fnArgs = fnArgs.filter(t => t !== '')
+  }
+  fnArgs.forEach((arg, i) => {
+    if (globalMem.hasOwnProperty(arg)) {
+      let resultAddress = globalMem[arg]
+      let val = CLOSURE_ARG_MEM_START + BigInt(1) + BigInt(i)
+      let s = `@${resultAddress} = refv(@${val}, @0) #${line}`
+      vec.push(s)
+      line += 1
+    }
+  })
   for (let idx = 0; idx < statements.length; idx++) {
     const statement = statements[idx]
     if (
@@ -219,14 +250,6 @@ const loadStatements = (
     ) {
       // It's a closure, skip it
       continue
-    }
-    let fnArgs = []
-    fn.get('args').getAll()[0].getAll().forEach((argdef) => {
-      fnArgs.push(argdef.get('arg').get('variable').t)
-    })
-    if (fn.get('args').getAll()[1].has()) {
-      fnArgs.push(...fn.get('args').getAll()[1].getAll().map(t => t.get('variable').t))
-      fnArgs = fnArgs.filter(t => t !== '')
     }
     const hasClosureArgs = isClosure && fnArgs.length > 0
     let s = ''
@@ -494,7 +517,9 @@ const ammToAga = (amm: LPNode) => {
   let eventDecs = loadEventDecs(amm.get('eventDec').getAll())
   // Determine the amount of memory to allocate per handler and map declarations to addresses
   const handlerMem = getHandlersMem(amm.get('handlers').getAll())
-  const closures = extractClosures(amm.get('handlers').getAll(), handlerMem, eventDecs)
+  const closures = extractClosures(amm.get('handlers').getAll(), handlerMem, eventDecs, addressMap)
+  // Make sure closures are accessible as addresses for statements to use
+  closures.forEach((c: any) => addressMap[c.name] = c.name)
   // Then output the custom events, which may include closures, if needed
   if (Object.keys(eventDecs).length > 0) {
     outStr += 'customEvents\n'

@@ -2468,7 +2468,37 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       seq[0].1 = current;
     })
   });
-
+  io!("selfrec", |args, mem| {
+    Box::pin(async move {
+      let mut hand_mem = mem.write().await;
+      let mut hm = hand_mem.fork();
+      let (a, b) = hm.addr_to_idxs(args[0]);
+      hm.set_addr(CLOSURE_ARG_MEM_START + 1, a, b);
+      let (a, b) = hm.addr_to_idxs(args[1]);
+      hm.set_addr(CLOSURE_ARG_MEM_START + 2, a, b);
+      let slf = hm.read_fractal(args[0]);
+      let (mut seq, _) = hm.read_either_idxs(slf[0].0, slf[0].1 as usize);
+      let recurse_fn = HandlerFragment::new(slf[1].1, 0);
+      if seq[0].1 < seq[1].1 {
+        seq[0].1 = seq[0].1 + 1;
+        hm = recurse_fn.run(hm).await;
+        let (a, b) = hm.addr_to_idxs(CLOSURE_ARG_MEM_START);
+        hand_mem.join(hm);
+        hand_mem.set_addr(args[2], a, b);
+      } else {
+        hand_mem.write_fractal(args[2], &Vec::new());
+        hand_mem.push_fixed(args[2], 0);
+        hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("error: sequence out-of-bounds"));
+      }
+    })
+  });
+  cpu!("seqrec", |args, hand_mem| {
+    hand_mem.write_fractal(args[2], &Vec::new());
+    let (a, b) = hand_mem.addr_to_idxs(args[0]);
+    hand_mem.push_idxs(args[2], a, b);
+    hand_mem.push_fixed(args[2], args[1]);
+    None
+  });
   // "Special" opcodes
   cpu!("exitop", |args, hand_mem| {
     std::process::exit(hand_mem.read_fixed(args[0]) as i32);
