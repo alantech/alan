@@ -11,11 +11,11 @@
 [![Website](https://img.shields.io/badge/website-alan--lang.org-blue)](https://alan-lang.org)
 -->
 
-**⛓ Implicitly parallel across events, arrays and IO** - *Alan recognizes and exploits opportunities for parallelization without parallel programming (threads, channels, futures, locks, etc.)*
+**⛓ Implicitly parallel across events, arrays, and IO** - *Alan recognizes and exploits opportunities for parallelization without parallel programming (threads, channels, futures, locks, etc.)*
 
 **✅ Almost no runtime errors** - *Null references, deadlocks, livelocks, undefined variables, divide-by-zero, integer under/overflow, array out-of-bounds access, etc, are not possible in Alan.*
 
-**🔒 Granular third party permissions** - *Alan's module resolution mechanism allows you to prevent third party dependencies from having access to standard libraries that they should not have access to.*
+**🔒 Granular third party permissions** - *Alan's module resolution mechanism allows you to prevent third-party dependencies from having access to standard libraries that they should not have access to.*
 
 
 ---------------------------------
@@ -129,4 +129,4 @@ The Alan Programming Language is made up of multiple sub-projects housed within 
 
 The Apache 2.0 license is freely combinable with the GPL 3 series of licenses as well as with proprietary software, so the standard library and Javascript runtime library are freely combinable with your own software projects without any requirement to open source it.
 
-The AGPL 3.0 license requires that any changes to the code are published and publicly accessible. This is to make sure that any advancements to the compiler and AVM are available to all. The licensing of these tools does not affect the licensing of the code they compile or run. Similarly the [GCC compiler collection](https://gcc.gnu.org) is GPL 3.0 licensed, but code compiled by it is not GPL 3.0 licensed.
+The AGPL 3.0 license requires that any changes to the code are published and publicly accessible. This is to make sure that any advancements to the compiler and AVM are available to all. The licensing of these tools does not affect the licensing of the code they compile or run. Similarly, the [GCC compiler collection](https://gcc.gnu.org) is GPL 3.0 licensed, but code compiled by it is not GPL 3.0 licensed.
