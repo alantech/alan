@@ -2046,17 +2046,17 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       match output {
         Err(e) => {
           hand_mem.push_fixed(args[2], 127);
-          hand_mem.write_fractal(args[2], &vec![(0, 0)]);
+          hand_mem.push_fractal(args[2], &vec![(0, 0)]);
           let error_string = e.to_string();
-          hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&error_string));
+          hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal(&error_string));
         },
         Ok(output_res) => {
           let status_code = output_res.status.code().unwrap_or(127) as i64;
           hand_mem.push_fixed(args[2], status_code);
           let stdout_str = String::from_utf8(output_res.stdout).unwrap_or("".to_string());
-          hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&stdout_str));
+          hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal(&stdout_str));
           let stderr_str = String::from_utf8(output_res.stderr).unwrap_or("".to_string());
-          hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal(&stderr_str));
+          hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal(&stderr_str));
         },
       };
     })
