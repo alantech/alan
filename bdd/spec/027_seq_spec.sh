@@ -152,15 +152,14 @@ error: sequence out-of-bounds"
 
   Describe "recurse"
     before() {
-      # TODO: Restore sourceToAll once ammtoaga bug is fixed
-      sourceToTemp "
+      sourceToAll "
         from @std/app import start, print, exit
         from @std/seq import seq, Self, recurse
 
         on start {
           print(seq(100).recurse(fn fibonacci(self: Self, i: int64): Result<int64> {
             if i < 2 {
-              return some(1)
+              return ok(1)
             } else {
               const prev = self.recurse(i - 1)
               const prevPrev = self.recurse(i - 2)
@@ -170,14 +169,12 @@ error: sequence out-of-bounds"
               if prevPrev.isErr() {
                 return prevPrev
               }
-              return some((prev || 1) + (prevPrev || 1))
+              return ok((prev || 1) + (prevPrev || 1))
             }
           }, 8))
           emit exit 0
         }
       "
-      tempToAmm
-      tempToJs
     }
     BeforeAll before
 
@@ -194,7 +191,6 @@ error: sequence out-of-bounds"
     End
 
     It "runs agc"
-      Pending runtime-support
       When run alan run temp.agc
       The output should eq "$RECURSEOUTPUT"
     End

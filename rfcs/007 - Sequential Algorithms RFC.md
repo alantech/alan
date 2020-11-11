@@ -16,8 +16,9 @@
 
 ### Implementation
 
-- [ ] Implemented
+- [x] Implemented
   - [x] [Implement most of @std/seq](https://github.com/alantech/alan/pull/266) 2020-09-09
+  - [x] [Implement @std/seq's recurse functionality in the AVM](https://github.com/alantech/alan/pull/306) 2020-11-10
 - [ ] Revoked/Superceded by: [RFC ###](./000 - RFC Template.md) YYYY-MM-DD
 
 ## Author(s)
