@@ -135,7 +135,14 @@ const getHandlersMem = (handlers: LPNode[]) => handlers
     return handlerMem
   })
 
-const closuresFromDeclaration = (declaration: LPNode, closureMem: object, eventDecs: object, addressMap: object, argRerefOffset: number) => {
+const closuresFromDeclaration = (
+  declaration: LPNode,
+  closureMem: object,
+  eventDecs: object,
+  addressMap: object,
+  argRerefOffset: number,
+  scope: string[],
+) => {
   const name = declaration.get('constdeclaration').get('decname').t.trim()
   const fn = declaration.get('constdeclaration').get('assignables').get('functions')
   let fnArgs = []
@@ -147,7 +154,7 @@ const closuresFromDeclaration = (declaration: LPNode, closureMem: object, eventD
     fnArgs = fnArgs.filter(t => t !== '')
   }
   fnArgs.forEach(arg => {
-    addressMap[arg] = CLOSURE_ARG_MEM_START + BigInt(argRerefOffset)
+    addressMap[arg + name] = CLOSURE_ARG_MEM_START + BigInt(argRerefOffset)
     argRerefOffset++
   })
   const allStatements = declaration
@@ -165,7 +172,14 @@ const closuresFromDeclaration = (declaration: LPNode, closureMem: object, eventD
     statement.get('declarations').has('constdeclaration') &&
     statement.get('declarations').get('constdeclaration').get('assignables').has('functions')
   ).map(
-    s => closuresFromDeclaration(s.get('declarations'), closureMem, eventDecs, addressMap, argRerefOffset)
+    s => closuresFromDeclaration(
+      s.get('declarations'),
+      closureMem,
+      eventDecs,
+      addressMap,
+      argRerefOffset,
+      [ ...scope, name, ],
+    )
   ).reduce((obj, rec) => ({
     ...obj,
     ...rec,
@@ -178,6 +192,7 @@ const closuresFromDeclaration = (declaration: LPNode, closureMem: object, eventD
       fn,
       statements,
       closureMem,
+      scope,
     },
     ...otherClosures,
   }
@@ -202,6 +217,7 @@ const extractClosures = (handlers: LPNode[], handlerMem: object, eventDecs: obje
           eventDecs,
           addressMap,
           5,
+          [],
         )
         closures = {
           ...closures,
@@ -218,7 +234,9 @@ const loadStatements = (
   localMem: object,
   globalMem: object,
   fn: LPNode,
-  isClosure: boolean
+  fnName: string,
+  isClosure: boolean,
+  closureScope: string[],
 ) => {
   let vec = []
   let line = 0
@@ -233,8 +251,8 @@ const loadStatements = (
     fnArgs = fnArgs.filter(t => t !== '')
   }
   fnArgs.forEach((arg, i) => {
-    if (globalMem.hasOwnProperty(arg)) {
-      let resultAddress = globalMem[arg]
+    if (globalMem.hasOwnProperty(arg + fnName)) {
+      let resultAddress = globalMem[arg + fnName]
       let val = CLOSURE_ARG_MEM_START + BigInt(1) + BigInt(i)
       let s = `@${resultAddress} = refv(@${val}, @0) #${line}`
       vec.push(s)
@@ -273,6 +291,11 @@ const loadStatements = (
             return localMem[v]
           } else if (globalMem.hasOwnProperty(v)) {
             return globalMem[v]
+          } else if (Object.keys(globalMem).some(k => closureScope.map(s => v + s).includes(k))) {
+            return globalMem[
+              // I actually need scoped variable assignment in a conditional right now, amazing!
+              Object.keys(globalMem).find(k => closureScope.map(s => v + s).includes(k))
+            ]
           } else if (hasClosureArgs) {
             return CLOSURE_ARG_MEM_START + BigInt(1) + BigInt(fnArgs.indexOf(v))
           } else {
@@ -348,9 +371,16 @@ const loadStatements = (
         )
         const hasClosureArgs = isClosure && vars.length > 0
         const args = vars.map(v => {
-          if (localMem.hasOwnProperty(v)) return localMem[v]
-          else if (globalMem.hasOwnProperty(v)) return globalMem[v]
-          else if (hasClosureArgs) {
+          if (localMem.hasOwnProperty(v)) {
+            return localMem[v]
+          } else if (globalMem.hasOwnProperty(v)) {
+            return globalMem[v]
+          } else if (Object.keys(globalMem).some(k => closureScope.map(s => v + s).includes(k))) {
+            return globalMem[
+              // I actually need scoped variable assignment in a conditional right now, amazing!
+              Object.keys(globalMem).find(k => closureScope.map(s => v + s).includes(k))
+            ]
+          } else if (hasClosureArgs) {
             return CLOSURE_ARG_MEM_START + BigInt(1) + BigInt(fnArgs.indexOf(v))
           } else return v
         }).map(a => typeof a === 'string' ? a : `@${a}`)
@@ -396,9 +426,16 @@ const loadStatements = (
       )
       const hasClosureArgs = isClosure && vars.length > 0
       const args = vars.map(v => {
-        if (localMem.hasOwnProperty(v)) return localMem[v]
-        else if (globalMem.hasOwnProperty(v)) return globalMem[v]
-        else if (hasClosureArgs) {
+        if (localMem.hasOwnProperty(v)) {
+          return localMem[v]
+        } else if (globalMem.hasOwnProperty(v)) {
+          return globalMem[v]
+        } else if (Object.keys(globalMem).some(k => closureScope.map(s => v + s).includes(k))) {
+          return globalMem[
+            // I actually need scoped variable assignment in a conditional right now, amazing!
+            Object.keys(globalMem).find(k => closureScope.map(s => v + s).includes(k))
+          ]
+        } else if (hasClosureArgs) {
           return CLOSURE_ARG_MEM_START + BigInt(1) + BigInt(fnArgs.indexOf(v))
         } else return v
       }).map(a => typeof a === 'string' ? a : `@${a}`)
@@ -442,9 +479,16 @@ const loadStatements = (
       )
       const vars = [exitVar]
       const args = vars.map(v => {
-        if (localMem.hasOwnProperty(v)) return localMem[v]
-        else if (globalMem.hasOwnProperty(v)) return globalMem[v]
-        else if (hasClosureArgs) {
+        if (localMem.hasOwnProperty(v)) {
+          return localMem[v]
+        } else if (globalMem.hasOwnProperty(v)) {
+          return globalMem[v]
+        } else if (Object.keys(globalMem).some(k => closureScope.map(s => v + s).includes(k))) {
+          return globalMem[
+            // I actually need scoped variable assignment in a conditional right now, amazing!
+            Object.keys(globalMem).find(k => closureScope.map(s => v + s).includes(k))
+          ]
+        } else if (hasClosureArgs) {
           return CLOSURE_ARG_MEM_START + BigInt(1) + BigInt(fnArgs.indexOf(v))
         } else return v
       }).map(a => typeof a === 'string' ? a : `@${a}`)
@@ -472,7 +516,9 @@ const loadHandlers = (handlers: LPNode[], handlerMem: object, globalMem: object)
       localMem,
       globalMem,
       handler.get('functions'),
+      eventName,
       false,
+      [],
     )
     statements.forEach(s => h += `  ${s}\n`)
     vec.push(h)
@@ -493,7 +539,9 @@ const loadClosures = (closures: any[], globalMem: object) => {
       localMem,
       globalMem,
       closure.fn,
+      eventName,
       true,
+      closure.scope,
     )
     statements.forEach(s => c += `  ${s}\n`)
     vec.push(c)
