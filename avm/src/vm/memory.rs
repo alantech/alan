@@ -5,6 +5,10 @@ use crate::vm::program::Program;
 
 // -2^63
 pub const CLOSURE_ARG_MEM_START: i64 = -9223372036854775808;
+// The closure arg memory end has been extended to handle disambiguating nested closure arguments
+// being used deep in the scope hierarchy. The quickest solution was to just increase that memory
+// space to a large constant range, but the proper solution is to make this no longer a constant
+// and determine the range based on the side of the global memory.
 pub const CLOSURE_ARG_MEM_END: i64 = CLOSURE_ARG_MEM_START + 9001; // TODO: IT'S OVER 9000!
 // Flags for the registers_ish vector. The normal address flag indicates that the data is stored
 // normally in either the memory or fractal memory structures. The fixed pointer address flag

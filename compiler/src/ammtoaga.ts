@@ -140,6 +140,8 @@ const closuresFromDeclaration = (
   closureMem: object,
   eventDecs: object,
   addressMap: object,
+  // For each scope branch, determine a unique argument rereference so nested scopes can access
+  // parent scope arguments
   argRerefOffset: number,
   scope: string[],
 ) => {
@@ -178,7 +180,7 @@ const closuresFromDeclaration = (
       eventDecs,
       addressMap,
       argRerefOffset,
-      [ ...scope, name, ],
+      [ name, ...scope, ], // Newest scope gets highest priority
     )
   ).reduce((obj, rec) => ({
     ...obj,
