@@ -25,12 +25,12 @@ Describe "@std/cmd"
 
     It "runs js"
       When run node temp.js
-      The first word of first line of output should eq "$EXECOUTPUT"
+      The output should start with "$EXECOUTPUT"
     End
 
     It "runs agc"
       When run alan run temp.agc
-      The first word of first line of output should eq "$EXECOUTPUT"
+      The output should start with "$EXECOUTPUT"
     End
   End
 End
