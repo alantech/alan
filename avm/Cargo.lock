@@ -20,7 +20,7 @@ dependencies = [
 
 [[package]]
 name = "alan"
-version = "0.1.14"
+version = "0.1.15"
 dependencies = [
  "byteorder",
  "clap",
