@@ -1,6 +1,6 @@
 {
   "name": "alan-compile",
-  "version": "0.1.15",
+  "version": "0.1.16",
   "description": "Compile Alan code (ln) to amm, js, aga, and agc",
   "scripts": {
     "test": "yarn run prepare && yarn run bundle && cypress run",
