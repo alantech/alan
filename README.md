@@ -73,6 +73,8 @@ alan <source>.ln
 
 You can also [transpile Alan to Javascript](https://docs.alan-lang.org/transpile_js.html) or one of it's [intermediate representations](https://docs.alan-lang.org/compiler_internals.html).
 
+Note: To better understand if we are building something people want to use we currently [log an event](https://github.com/alantech/alan/blob/main/avm/src/vm/telemetry.rs) when running an Alan command. Feel free to turn this off by setting the `ALAN_TELEMETRY_OFF` environment variable, but if you do please let us know how you are using Alan and how often!
+
 <br/>
 <h2 align="center">Contributing</h2>
 <br/>
