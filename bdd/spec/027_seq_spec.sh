@@ -195,4 +195,55 @@ error: sequence out-of-bounds"
       The output should eq "$RECURSEOUTPUT"
     End
   End
+
+  Describe "recurse no-op one-liner regression test"
+    # Reported issue -- the root cause was due to how the compiler handled one-liner functions
+    # differently from multi-line functions. This test is to make sure the fix for this doesn't
+    # regress
+    before() {
+      sourceToAll "
+        import @std/app
+        from @std/seq import seq, Self, recurse
+
+        fn doNothing(x: int) : int = x
+
+        fn doNothingRec(x: int) : int = seq(x).recurse(fn (self: Self, x: int) : Result<int> {
+            return ok(x)
+        }, x) || 0
+
+        on app.start {
+            const x = 5
+            app.print(doNothing(x)) // 5
+            app.print(doNothingRec(x)) // 5
+
+            const xs = [1, 2, 3]
+            app.print(xs.map(doNothing).map(toString).join(' ')) // 1 2 3
+            app.print(xs.map(doNothingRec).map(toString).join(' ')) // 1 2 3
+
+            emit app.exit 0
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    ONELINEROUTPUT="5
+5
+1 2 3
+1 2 3"
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "$ONELINEROUTPUT"
+    End
+
+    It "runs agc"
+      When run alan run temp.agc
+      The output should eq "$ONELINEROUTPUT"
+    End
+  End
 End

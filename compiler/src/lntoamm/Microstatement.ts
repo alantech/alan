@@ -893,11 +893,7 @@ ${withOperatorsAst.getText()}`
     }
     const len = microstatements.length - args.length
     for (const s of fn.statements) {
-      if (s.statementOrAssignableAst instanceof LnParser.StatementsContext) {
-        Microstatement.fromStatementsAst(s.statementOrAssignableAst, scope, microstatements)
-      } else {
-        Microstatement.fromAssignablesAst(s.statementOrAssignableAst, scope, microstatements)
-      }
+      Microstatement.fromStatementsAst(s.statementAst, scope, microstatements)
     }
     microstatements.splice(idx, args.length)
     const newlen = microstatements.length
@@ -1762,25 +1758,16 @@ ${constdeclarationAst.getText()} on line ${constdeclarationAst.start.line}:${con
       const newScope = new Scope(statement.scope)
       newScope.secondaryPar = secondaryScope
       actualStatement = new Statement(
-        statement.statementOrAssignableAst,
+        statement.statementAst,
         newScope,
         statement.pure,
       )
     }
-    if (actualStatement.statementOrAssignableAst instanceof LnParser.StatementsContext) {
-      Microstatement.fromStatementsAst(
-        actualStatement.statementOrAssignableAst,
-        actualStatement.scope,
-        microstatements
-      )
-    } else {
-      // Otherwise it's a one-liner function
-      Microstatement.fromAssignablesAst(
-        actualStatement.statementOrAssignableAst,
-        actualStatement.scope,
-        microstatements
-      )
-    }
+    Microstatement.fromStatementsAst(
+      actualStatement.statementAst,
+      actualStatement.scope,
+      microstatements
+    )
   }
 }
 

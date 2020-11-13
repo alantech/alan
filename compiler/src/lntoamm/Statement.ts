@@ -5,24 +5,22 @@ import { LnParser, } from '../ln'
 
 // Only implements the pieces necessary for the first stage compiler
 class Statement {
-  statementOrAssignableAst: any // TODO: Migrate off ANTLR for better typing here
+  statementAst: any // TODO: Migrate off ANTLR for better typing here
   scope: Scope
   pure: boolean
 
-  constructor(statementOrAssignableAst: any, scope: Scope, pure: boolean) {
-    this.statementOrAssignableAst = statementOrAssignableAst,
+  constructor(statementAst: any, scope: Scope, pure: boolean) {
+    this.statementAst = statementAst,
     this.scope = scope
     this.pure = pure
   }
 
   isConditionalStatement() {
-    return this.statementOrAssignableAst instanceof LnParser.StatementsContext &&
-      this.statementOrAssignableAst.conditionals() !== null
+    return this.statementAst.conditionals() !== null
   }
 
   isReturnStatement() {
-    return this.statementOrAssignableAst instanceof LnParser.AssignablesContext ||
-      this.statementOrAssignableAst.exits() !== null
+    return this.statementAst.exits() !== null
   }
 
   static basicAssignableHasObjectLiteral(basicAssignableAst: any) { // TODO: Remove ANTLR
@@ -45,27 +43,23 @@ class Statement {
   }
 
   hasObjectLiteral() {
-    if (this.statementOrAssignableAst instanceof LnParser.StatementsContext) {
-      const s = this.statementOrAssignableAst
-      if (s.declarations()) {
-        const d = s.declarations().constdeclaration() || s.declarations().letdeclaration()
-        return Statement.assignablesHasObjectLiteral(d.assignables())
-      }
-      if (s.assignments()) return Statement.assignmentsHasObjectLiteral(s.assignments())
-      if (s.calls() && s.calls().assignables() > 0) s.calls().assignables().some(
-        (a: any) => Statement.assignablesHasObjectLiteral(a)
-      )
-      if (s.exits() && s.exits().assignables()) return Statement.assignablesHasObjectLiteral(
-        s.exits().assignables()
-      )
-      if (s.emits() && s.emits().assignables()) return Statement.assignablesHasObjectLiteral(
-        s.emits().assignables()
-      )
-      // TODO: Cover conditionals
-      return false
-    } else {
-      return Statement.assignablesHasObjectLiteral(this.statementOrAssignableAst)
+    const s = this.statementAst
+    if (s.declarations()) {
+      const d = s.declarations().constdeclaration() || s.declarations().letdeclaration()
+      return Statement.assignablesHasObjectLiteral(d.assignables())
     }
+    if (s.assignments()) return Statement.assignmentsHasObjectLiteral(s.assignments())
+    if (s.calls() && s.calls().assignables() > 0) s.calls().assignables().some(
+      (a: any) => Statement.assignablesHasObjectLiteral(a)
+    )
+    if (s.exits() && s.exits().assignables()) return Statement.assignablesHasObjectLiteral(
+      s.exits().assignables()
+    )
+    if (s.emits() && s.emits().assignables()) return Statement.assignablesHasObjectLiteral(
+      s.emits().assignables()
+    )
+    // TODO: Cover conditionals
+    return false
   }
 
   static isCallPure(callAst: any, scope: Scope) { // TODO: Migrate off ANTLR
@@ -151,59 +145,50 @@ class Statement {
     throw new Error("Impossible assignment situation")
   }
 
-  static create(statementOrAssignableAst: any, scope: Scope) { // TODO: Migrate off ANTLR
-    if (statementOrAssignableAst instanceof LnParser.AssignablesContext) {
-      const pure = Statement.isAssignablePure(statementOrAssignableAst, scope)
-      return new Statement(statementOrAssignableAst, scope, pure)
-    } else if (statementOrAssignableAst instanceof LnParser.StatementsContext) {
-      const statementAst = statementOrAssignableAst
-      let pure = true
-      if (statementAst.declarations() != null) {
-        if (statementAst.declarations().constdeclaration() != null) {
+  static create(statementAst: any, scope: Scope) { // TODO: Migrate off ANTLR
+    let pure = true
+    if (statementAst.declarations() != null) {
+      if (statementAst.declarations().constdeclaration() != null) {
+        pure = Statement.isAssignablePure(
+          statementAst.declarations().constdeclaration().assignables(),
+          scope
+        )
+      } else if (statementAst.declarations().letdeclaration() != null) {
+        if (statementAst.declarations().letdeclaration().assignables() == null) {
+          pure = true
+        } else {
           pure = Statement.isAssignablePure(
-            statementAst.declarations().constdeclaration().assignables(),
+            statementAst.declarations().letdeclaration().assignables(),
             scope
           )
-        } else if (statementAst.declarations().letdeclaration() != null) {
-          if (statementAst.declarations().letdeclaration().assignables() == null) {
-            pure = true
-          } else {
-            pure = Statement.isAssignablePure(
-              statementAst.declarations().letdeclaration().assignables(),
-              scope
-            )
-          }
-        } else {
-          throw new Error("Bad assignment somehow reached")
         }
+      } else {
+        throw new Error("Bad assignment somehow reached")
       }
-      if (statementAst.assignments() != null) {
-        if (statementAst.assignments().assignables() != null) {
-          pure = Statement.isAssignablePure(statementAst.assignments().assignables(), scope)
-        }
-      }
-      if (statementAst.calls() != null) {
-        pure = Statement.isCallPure(statementAst.calls(), scope)
-      }
-      if (statementAst.exits() != null) {
-        if (statementAst.exits().assignables() != null) {
-          pure = Statement.isAssignablePure(statementAst.exits().assignables(), scope)
-        }
-      }
-      if (statementAst.emits() != null) {
-        if (statementAst.emits().assignables() != null) {
-          pure = Statement.isAssignablePure(statementAst.emits().assignables(), scope)
-        }
-      }
-      return new Statement(statementAst, scope, pure)
-    } else {
-      // What?
-      throw new Error("This should not be possible")
     }
+    if (statementAst.assignments() != null) {
+      if (statementAst.assignments().assignables() != null) {
+        pure = Statement.isAssignablePure(statementAst.assignments().assignables(), scope)
+      }
+    }
+    if (statementAst.calls() != null) {
+      pure = Statement.isCallPure(statementAst.calls(), scope)
+    }
+    if (statementAst.exits() != null) {
+      if (statementAst.exits().assignables() != null) {
+        pure = Statement.isAssignablePure(statementAst.exits().assignables(), scope)
+      }
+    }
+    if (statementAst.emits() != null) {
+      if (statementAst.emits().assignables() != null) {
+        pure = Statement.isAssignablePure(statementAst.emits().assignables(), scope)
+      }
+    }
+    return new Statement(statementAst, scope, pure)
   }
 
   toString() {
-    return this.statementOrAssignableAst.getText()
+    return this.statementAst.getText()
   }
 }
 
