@@ -33,7 +33,7 @@ class UserFunction implements Fn {
       if (statements[i].isReturnStatement()) {
         // There are unreachable statements after this line, abort
         throw new Error(`Unreachable code in function '${name}' after:
-${statements[i].statementOrAssignableAst.getText().trim()} on line ${statements[i].statementOrAssignableAst.start.line}:${statements[i].statementOrAssignableAst.start.column}`)
+${statements[i].statementAst.getText().trim()} on line ${statements[i].statementAst.start.line}:${statements[i].statementAst.start.column}`)
       }
     }
     this.statements = statements
@@ -148,7 +148,8 @@ ${statements[i].statementOrAssignableAst.getText().trim()} on line ${statements[
       }
     } else {
       const assignablesAst = functionAst.fullfunctionbody().assignables()
-      let statement = Statement.create(assignablesAst, scope)
+      const statementAst = Ast.statementAstFromString(`return ${assignablesAst.getText()}\n`)
+      const statement = Statement.create(statementAst, scope)
       if (!statement.pure) pure = false
       statements.push(statement)
       // TODO: Infer the return type for anything other than calls or object literals
@@ -253,17 +254,9 @@ ${statements[i].statementOrAssignableAst.getText().trim()} on line ${statements[
   }
 
   toFnStr() {
-    if (
-      this.statements.length === 1 &&
-      this.statements[0].statementOrAssignableAst instanceof LnParser.AssignablesContext
-    ) {
-      return `
-        fn ${this.name || ''} (${Object.keys(this.args).map(argName => `${argName}: ${this.args[argName].typename}`).join(', ')}): ${this.returnType.typename} = ${(this.statements[0].statementOrAssignableAst as any).getText()}
-      `.trim()
-    }
     return `
       fn ${this.name || ''} (${Object.keys(this.args).map(argName => `${argName}: ${this.args[argName].typename}`).join(', ')}): ${this.returnType.typename} {
-        ${this.statements.map(s => s.statementOrAssignableAst.getText()).join('\n')}
+        ${this.statements.map(s => s.statementAst.getText()).join('\n')}
       }
     `.trim()
   }
@@ -336,7 +329,7 @@ ${statements[i].statementOrAssignableAst.getText().trim()} on line ${statements[
           const block = args.assignables(1).basicassignables().functions()
           const blockFn = UserFunction.fromAst(block, scope)
           if (blockFn.statements[blockFn.statements.length - 1].isReturnStatement()) {
-            const innerStatements = blockFn.statements.map(s => s.statementOrAssignableAst)
+            const innerStatements = blockFn.statements.map(s => s.statementAst)
             const newBlockStatements = UserFunction.earlyReturnRewrite(
               retVal, retNotSet, innerStatements, scope
             )
@@ -394,13 +387,13 @@ ${statements[i].statementOrAssignableAst.getText().trim()} on line ${statements[
       let hasConditionalReturn = false // Flag for potential second pass
       for (let i = 0; i < this.statements.length; i++) {
         let s = new Statement(
-          this.statements[i].statementOrAssignableAst,
+          this.statements[i].statementAst,
           this.statements[i].scope,
           this.statements[i].pure,
         )
         // Potentially rewrite the type for the object literal to match the interface type used by
         // a specific call
-        const str = s.statementOrAssignableAst.getText()
+        const str = s.statementAst.getText()
         const corrected = str.replace(/new ([^<]+)<([^{\[]+)> *([{\[])/g, (
           _: any,
           basetypestr: string,
@@ -445,29 +438,23 @@ ${statements[i].statementOrAssignableAst.getText().trim()} on line ${statements[
           const replacementType = originalType.realize(interfaceMap, this.scope)
           return `: ${replacementType.typename}${openstr}`
         })
-        if (s.statementOrAssignableAst instanceof LnParser.AssignablesContext) {
-          const correctedAst = Ast.statementAstFromString(`return ${secondCorrection}\n`)
-          s.statementOrAssignableAst = correctedAst
-          // statementAsts.push(correctedAst)
-        } else {
-          const correctedAst = Ast.statementAstFromString(secondCorrection)
-          s.statementOrAssignableAst = correctedAst
-          // statementAsts.push(correctedAst)
-        }
+        const correctedAst = Ast.statementAstFromString(secondCorrection)
+        s.statementAst = correctedAst
+        // statementAsts.push(correctedAst)
         if (s.isConditionalStatement()) {
-          const cond = s.statementOrAssignableAst.conditionals()
+          const cond = s.statementAst.conditionals()
           const res  = UserFunction.conditionalToCond(cond, this.scope)
           const newStatements = res[0] as Array<any>
           if (res[1]) hasConditionalReturn = true
           statementAsts.push(...newStatements)
-        } else if (s.statementOrAssignableAst instanceof LnParser.AssignmentsContext) {
-          const a = s.statementOrAssignableAst
+        } else if (s.statementAst instanceof LnParser.AssignmentsContext) {
+          const a = s.statementAst
           const wrappedAst = Ast.statementAstFromString(`
             ${a.varn().getText()} = ref(${a.assignables().getText()})
           `.trim() + '\n')
           statementAsts.push(wrappedAst)
-        } else if (s.statementOrAssignableAst instanceof LnParser.LetdeclarationContext) {
-          const l = s.statementOrAssignableAst
+        } else if (s.statementAst instanceof LnParser.LetdeclarationContext) {
+          const l = s.statementAst
           const name = l.VARNAME().getText()
           const type = l.othertype() ? l.othertype().getText() : undefined
           const v = l.assignables().getText()
@@ -476,7 +463,7 @@ ${statements[i].statementOrAssignableAst.getText().trim()} on line ${statements[
           `.trim() + '\n')
           statementAsts.push(wrappedAst)
         } else {
-          statementAsts.push(s.statementOrAssignableAst)
+          statementAsts.push(s.statementAst)
         }
       }
       // Second pass, there was a conditional return, mutate everything *again* so the return is
