@@ -8,7 +8,7 @@ const NO_TELEMETRY: Option<&'static str> = option_env!("ALAN_TELEMETRY_OFF");
 const OS: &str = std::env::consts::OS;
 
 pub async fn log() {
-  let no_telemetry = json!(NO_TELEMETRY.unwrap_or("false")).as_bool().unwrap_or(false);
+  let no_telemetry = NO_TELEMETRY.unwrap_or("false") == "true";
   if no_telemetry { return; }
   let body = json!({
     "api_key": AMPLITUDE_API_KEY,
