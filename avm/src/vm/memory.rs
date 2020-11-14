@@ -141,6 +141,11 @@ impl HandlerMemory {
     &mut self.mems[a]
   }
 
+  /// Provides a mutable array of data from the given indexes
+  pub fn read_mut_fractal_idxs(self: &mut HandlerMemory, a: usize, _b: usize) -> &mut Vec<(usize, i64)> {
+    &mut self.mems[a]
+  }
+
   /// For a given address, determines if the data is a single value or an array of values, and
   /// returns that value either as a vector or the singular value wrapped in a vector, and a
   /// boolean indicating if it was a fractal value or not.

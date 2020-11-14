@@ -2472,13 +2472,15 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     Box::pin(async move {
       let mut hand_mem = mem.write().await;
       let mut hm = hand_mem.fork();
+      // MUST read these first in case the arguments are themselves closure args being overwritten
+      // for the recursive function.
       let (a, b) = hm.addr_to_idxs(args[0]);
+      let (c, d) = hm.addr_to_idxs(args[1]);
       hm.set_addr(CLOSURE_ARG_MEM_START + 1, a, b);
-      let (a, b) = hm.addr_to_idxs(args[1]);
-      hm.set_addr(CLOSURE_ARG_MEM_START + 2, a, b);
+      hm.set_addr(CLOSURE_ARG_MEM_START + 2, c, d);
       let slf = hm.read_fractal(args[0]);
-      let (mut seq, _) = hm.read_either_idxs(slf[0].0, slf[0].1 as usize);
       let recurse_fn = HandlerFragment::new(slf[1].1, 0);
+      let mut seq = hm.read_mut_fractal_idxs(slf[0].0, 0);
       if seq[0].1 < seq[1].1 {
         seq[0].1 = seq[0].1 + 1;
         hm = recurse_fn.run(hm).await;

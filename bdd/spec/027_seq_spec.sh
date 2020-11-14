@@ -246,4 +246,52 @@ error: sequence out-of-bounds"
       The output should eq "$ONELINEROUTPUT"
     End
   End
+
+  Describe "recurse decrement regression test and variable aliasing regression test"
+    # Reported issue -- the root cause was two simultaneous bugs in the AVM and the ammtoaga stage
+    # of the compiler. The AVM was not decrementing the seq counter correctly when inside of a
+    # parallel opcode environment because it was being reset accidentally when merging the memory
+    # changes. It was also accidentally obliterating one of its arguments but this was masked by a
+    # bug in variable scope aliasing logic in the ammtoaga layer of the compiler (hence why the bug
+    # was not seen in the JS path). This test case guards against both issues.
+    before() {
+      sourceToAll "
+        import @std/app
+        from @std/seq import seq, Self, recurse
+
+        fn triangularRec(x: int) : int = seq(x + 1).recurse(fn (self: Self, x: int) : Result<int> {
+          if x == 0 {
+            return ok(x)
+          } else {
+            return ok(x + (self.recurse(x - 1) || 0))
+          }
+        }, x) || 0
+
+        on app.start {
+          const xs = [1, 2, 3]
+          app.print(xs.map(triangularRec).map(toString).join(' ')) // 1 3 6
+
+          emit app.exit 0
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    DECREMENTOUTPUT="1 3 6"
+
+    It "runs js"
+      When run node temp.js
+      The output should eq "$DECREMENTOUTPUT"
+    End
+
+    It "runs agc"
+      When run alan run temp.agc
+      The output should eq "$DECREMENTOUTPUT"
+    End
+  End
 End
