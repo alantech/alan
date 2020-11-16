@@ -9,7 +9,7 @@ use crate::vm::run::exec;
 mod compile;
 mod vm;
 
-fn run(source_file: &str) {
+fn compile_and_run(source_file: &str) {
   let dest_file = "temp.agc";
   let status_code = compile(&source_file, &dest_file, true);
   if status_code == 0 {
@@ -53,12 +53,12 @@ fn main() {
   } else if let Some(_matches) = matches.subcommand_matches("install") {
     let source_file = ".dependencies.ln";
     if Path::new(source_file).exists() {
-      run(source_file);
+      compile_and_run(source_file);
     } else {
       println!("{} does not exist. Dependencies can only be installed for {}", source_file, source_file);
       std::process::exit(1);
     }
   } else if let Some(source_file) = matches.value_of("SOURCE") {
-    run(source_file);
+    compile_and_run(source_file);
   }
 }

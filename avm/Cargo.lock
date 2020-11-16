@@ -32,6 +32,7 @@ dependencies = [
  "rand",
  "regex",
  "reqwest",
+ "serde_json",
  "tokio",
  "twox-hash",
 ]
@@ -823,6 +824,7 @@ dependencies = [
  "percent-encoding",
  "pin-project-lite",
  "serde",
+ "serde_json",
  "serde_urlencoded",
  "tokio",
  "tokio-tls",

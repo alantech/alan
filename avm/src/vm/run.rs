@@ -11,6 +11,7 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 use crate::vm::event::{BuiltInEvents, EventEmit, HandlerFragment};
 use crate::vm::memory::HandlerMemory;
 use crate::vm::program::{PROGRAM, Program};
+use crate::vm::telemetry;
 
 pub static EVENT_TX: OnceCell<UnboundedSender<EventEmit>> = OnceCell::new();
 
@@ -99,6 +100,7 @@ pub fn exec(fp: &str, delete_after_load: bool) {
     let mut vm = VM::new();
     let start = EventEmit { id: i64::from(BuiltInEvents::START), payload: None };
     vm.add(start);
+    telemetry::log().await;
     vm.run().await;
   })
 }
