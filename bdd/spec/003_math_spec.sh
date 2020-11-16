@@ -151,6 +151,62 @@ Describe "Basic Math"
         The status should eq "36"
       End
     End
+
+    Describe "minimum"
+      before() {
+        sourceToAll "
+          from @std/app import start, print, exit
+          on start {
+            min(3.toInt8(), 5.toInt8()).print()
+            emit exit 0
+          }
+        "
+      }
+      BeforeAll before
+
+      after() {
+        cleanTemp
+      }
+      AfterAll after
+
+      It "runs js"
+        When run node temp.js
+        The output should eq "3"
+      End
+
+      It "runs agc"
+        When run alan run temp.agc
+        The output should eq "3"
+      End
+    End
+
+    Describe "maximum"
+      before() {
+        sourceToAll "
+          from @std/app import start, print, exit
+          on start {
+            max(3.toInt8(), 5.toInt8()).print()
+            emit exit 0
+          }
+        "
+      }
+      BeforeAll before
+
+      after() {
+        cleanTemp
+      }
+      AfterAll after
+
+      It "runs js"
+        When run node temp.js
+        The output should eq "5"
+      End
+
+      It "runs agc"
+        When run alan run temp.agc
+        The output should eq "5"
+      End
+    End
   End
 
   Describe "int16 (not default)"
@@ -319,6 +375,62 @@ Describe "Basic Math"
       It "runs agc"
         When run alan run temp.agc
         The output should eq "36"
+      End
+    End
+
+    Describe "minimum"
+      before() {
+        sourceToAll "
+          from @std/app import start, print, exit
+          on start {
+            min(3.toInt16(), 5.toInt16()).print()
+            emit exit 0
+          }
+        "
+      }
+      BeforeAll before
+
+      after() {
+        cleanTemp
+      }
+      AfterAll after
+
+      It "runs js"
+        When run node temp.js
+        The output should eq "3"
+      End
+
+      It "runs agc"
+        When run alan run temp.agc
+        The output should eq "3"
+      End
+    End
+
+    Describe "maximum"
+      before() {
+        sourceToAll "
+          from @std/app import start, print, exit
+          on start {
+            max(3.toInt16(), 5.toInt16()).print()
+            emit exit 0
+          }
+        "
+      }
+      BeforeAll before
+
+      after() {
+        cleanTemp
+      }
+      AfterAll after
+
+      It "runs js"
+        When run node temp.js
+        The output should eq "5"
+      End
+
+      It "runs agc"
+        When run alan run temp.agc
+        The output should eq "5"
       End
     End
   End
@@ -491,6 +603,62 @@ Describe "Basic Math"
         The output should eq "36"
       End
     End
+
+    Describe "minimum"
+      before() {
+        sourceToAll "
+          from @std/app import start, print, exit
+          on start {
+            min(3.toInt32(), 5.toInt32()).print()
+            emit exit 0
+          }
+        "
+      }
+      BeforeAll before
+
+      after() {
+        cleanTemp
+      }
+      AfterAll after
+
+      It "runs js"
+        When run node temp.js
+        The output should eq "3"
+      End
+
+      It "runs agc"
+        When run alan run temp.agc
+        The output should eq "3"
+      End
+    End
+
+    Describe "maximum"
+      before() {
+        sourceToAll "
+          from @std/app import start, print, exit
+          on start {
+            max(3.toInt32(), 5.toInt32()).print()
+            emit exit 0
+          }
+        "
+      }
+      BeforeAll before
+
+      after() {
+        cleanTemp
+      }
+      AfterAll after
+
+      It "runs js"
+        When run node temp.js
+        The output should eq "5"
+      End
+
+      It "runs agc"
+        When run alan run temp.agc
+        The output should eq "5"
+      End
+    End
   End
 
   Describe "int64 (default)"
@@ -659,6 +827,62 @@ Describe "Basic Math"
       It "runs agc"
         When run alan run temp.agc
         The output should eq "36"
+      End
+    End
+
+    Describe "minimum"
+      before() {
+        sourceToAll "
+          from @std/app import start, print, exit
+          on start {
+            min(3.toInt64(), 5.toInt64()).print()
+            emit exit 0
+          }
+        "
+      }
+      BeforeAll before
+
+      after() {
+        cleanTemp
+      }
+      AfterAll after
+
+      It "runs js"
+        When run node temp.js
+        The output should eq "3"
+      End
+
+      It "runs agc"
+        When run alan run temp.agc
+        The output should eq "3"
+      End
+    End
+
+    Describe "maximum"
+      before() {
+        sourceToAll "
+          from @std/app import start, print, exit
+          on start {
+            max(3.toInt64(), 5.toInt64()).print()
+            emit exit 0
+          }
+        "
+      }
+      BeforeAll before
+
+      after() {
+        cleanTemp
+      }
+      AfterAll after
+
+      It "runs js"
+        When run node temp.js
+        The output should eq "5"
+      End
+
+      It "runs agc"
+        When run alan run temp.agc
+        The output should eq "5"
       End
     End
   End
@@ -831,6 +1055,62 @@ Describe "Basic Math"
         The output should eq "36"
       End
     End
+
+    Describe "minimum"
+      before() {
+        sourceToAll "
+          from @std/app import start, print, exit
+          on start {
+            min(3.toFloat32(), 5.toFloat32()).print()
+            emit exit 0
+          }
+        "
+      }
+      BeforeAll before
+
+      after() {
+        cleanTemp
+      }
+      AfterAll after
+
+      It "runs js"
+        When run node temp.js
+        The output should eq "3"
+      End
+
+      It "runs agc"
+        When run alan run temp.agc
+        The output should eq "3"
+      End
+    End
+
+    Describe "maximum"
+      before() {
+        sourceToAll "
+          from @std/app import start, print, exit
+          on start {
+            max(3.toFloat32(), 5.toFloat32()).print()
+            emit exit 0
+          }
+        "
+      }
+      BeforeAll before
+
+      after() {
+        cleanTemp
+      }
+      AfterAll after
+
+      It "runs js"
+        When run node temp.js
+        The output should eq "5"
+      End
+
+      It "runs agc"
+        When run alan run temp.agc
+        The output should eq "5"
+      End
+    End
   End
 
   Describe "float64 (default)"
@@ -1001,6 +1281,62 @@ Describe "Basic Math"
         The output should eq "36"
       End
     End
+
+    Describe "minimum"
+      before() {
+        sourceToAll "
+          from @std/app import start, print, exit
+          on start {
+            min(3.toFloat64(), 5.toFloat64()).print()
+            emit exit 0
+          }
+        "
+      }
+      BeforeAll before
+
+      after() {
+        cleanTemp
+      }
+      AfterAll after
+
+      It "runs js"
+        When run node temp.js
+        The output should eq "3"
+      End
+
+      It "runs agc"
+        When run alan run temp.agc
+        The output should eq "3"
+      End
+    End
+
+    Describe "maximum"
+      before() {
+        sourceToAll "
+          from @std/app import start, print, exit
+          on start {
+            max(3.toFloat64(), 5.toFloat64()).print()
+            emit exit 0
+          }
+        "
+      }
+      BeforeAll before
+
+      after() {
+        cleanTemp
+      }
+      AfterAll after
+
+      It "runs js"
+        When run node temp.js
+        The output should eq "5"
+      End
+
+      It "runs agc"
+        When run alan run temp.agc
+        The output should eq "5"
+      End
+    End
   End
 
   Describe "grouping"
@@ -1031,6 +1367,64 @@ Describe "Basic Math"
       When run alan run temp.agc
       The output should eq "0
 1"
+    End
+  End
+
+  Describe "string"
+    Describe "minimum"
+      before() {
+        sourceToAll "
+          from @std/app import start, print, exit
+          on start {
+            min(3.toString(), 5.toString()).print()
+            emit exit 0
+          }
+        "
+      }
+      BeforeAll before
+
+      after() {
+        cleanTemp
+      }
+      AfterAll after
+
+      It "runs js"
+        When run node temp.js
+        The output should eq "3"
+      End
+
+      It "runs agc"
+        When run alan run temp.agc
+        The output should eq "3"
+      End
+    End
+
+    Describe "maximum"
+      before() {
+        sourceToAll "
+          from @std/app import start, print, exit
+          on start {
+            max(3.toString(), 5.toString()).print()
+            emit exit 0
+          }
+        "
+      }
+      BeforeAll before
+
+      after() {
+        cleanTemp
+      }
+      AfterAll after
+
+      It "runs js"
+        When run node temp.js
+        The output should eq "5"
+      End
+
+      It "runs agc"
+        When run alan run temp.agc
+        The output should eq "5"
+      End
     End
   End
 End

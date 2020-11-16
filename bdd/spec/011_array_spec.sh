@@ -383,6 +383,8 @@ true"
           const test2 = [ 4, 5, 6 ]
           print('reduce test')
           test.reduce(fn (a: int, b: int): int = a + b).print()
+          test.reduce(min).print()
+          test.reduce(max).print()
 
           print('filter test')
           test.filter(fn (val: int64): bool {
@@ -418,6 +420,8 @@ true"
 
     ADVARRAYOUTPUT="reduce test
 20
+1
+8
 filter test
 1, 1, 3, 5
 concat test
