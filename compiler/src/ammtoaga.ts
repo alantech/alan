@@ -231,6 +231,40 @@ const extractClosures = (handlers: LPNode[], handlerMem: object, eventDecs: obje
   return Object.values(closures)
 }
 
+class Statement {
+  fn: string
+  inArgs: [string, string] | [string, string, string]
+  outArg: string | null
+  line: number
+  deps: number[]
+
+  constructor(
+    fn: string,
+    inArgs: [string, string] | [string, string, string],
+    outArg: string | null,
+    line: number,
+    deps: number[],
+  ) {
+    this.fn = fn
+    this.inArgs = inArgs
+    this.outArg = outArg
+    this.line = line
+    this.deps = deps
+  }
+
+  toString() {
+    let s = ''
+    if (this.outArg !== null) {
+      s += `${this.outArg} = `
+    }
+    s += `${this.fn}(${this.inArgs.join(', ')}) #${this.line}`
+    if (this.deps.length > 0) {
+      s += ` <- ${this.deps.map(d => `#${d}`).join(', ')}`
+    }
+    return s
+  }
+}
+
 const loadStatements = (
   statements: LPNode[],
   localMem: object,
@@ -256,7 +290,7 @@ const loadStatements = (
     if (globalMem.hasOwnProperty(arg + fnName)) {
       let resultAddress = globalMem[arg + fnName]
       let val = CLOSURE_ARG_MEM_START + BigInt(1) + BigInt(i)
-      let s = `@${resultAddress} = refv(@${val}, @0) #${line}`
+      let s = new Statement('refv', [`@${val}`, '@0'], `@${resultAddress}`, line, [])
       vec.push(s)
       line += 1
     }
@@ -272,7 +306,7 @@ const loadStatements = (
       continue
     }
     const hasClosureArgs = isClosure && fnArgs.length > 0
-    let s = ''
+    let s: Statement
     if (statement.has('declarations')) {
       const dec = statement.get('declarations').has('constdeclaration') ?
         statement.get('declarations').get('constdeclaration') :
@@ -304,15 +338,7 @@ const loadStatements = (
           }
         }).map(a => typeof a === 'string' ? a : `@${a}`)
         while (args.length < 2) args.push('@0')
-        const deps = vars
-          .filter(v => localMem.hasOwnProperty(v))
-          .map(v => localMemToLine[localMem[v]])
-          .filter(v => v !== undefined) // Filter out the handler arg from the dep list
-          .map(v => `#${v}`)
-        s += `@${resultAddress} = ${fnName}(${args.join(', ')}) #${line}`
-        if (deps.length > 0) {
-          s += ` <- [${deps.join(', ')}]`
-        }
+        s = new Statement(fnName, args as [string, string], `@${resultAddress}`, line, [])
       } else if (assignables.has('value')) {
         // Only required for `let` statements
         let fn: string
@@ -353,7 +379,7 @@ const loadStatements = (
         default:
           throw new Error(`Unsupported variable type ${dec.get('fulltypename').t}`)
         }
-        s += `@${resultAddress} = ${fn}(${val}, @0) #${line}`
+        s = new Statement(fn, [val, '@0'], `@${resultAddress}`, line, [])
       } else if (assignables.has('variable')) {
         throw new Error('This should have been squashed')
       }
@@ -385,15 +411,7 @@ const loadStatements = (
           } else return v
         }).map(a => typeof a === 'string' ? a : `@${a}`)
         while (args.length < 2) args.push('@0')
-        const deps = vars
-          .filter(v => localMem.hasOwnProperty(v))
-          .map(v => localMemToLine[localMem[v]])
-          .filter(v => v !== undefined) // Filter out the handler arg from the dep list
-          .map(v => `#${v}`)
-        s += `@${resultAddress} = ${fnName}(${args.join(', ')}) #${line}`
-        if (deps.length > 0) {
-          s += ` <- [${deps.join(', ')}]`
-        }
+        s = new Statement(fnName, args as [string, string], `@${resultAddress}`, line, [])
       } else if (assignables.has('value')) {
         // Only required for `let` statements
         let fn: string
@@ -414,7 +432,7 @@ const loadStatements = (
           fn = 'seti64'
           val = valStr + 'i64'
         }
-        s += `@${resultAddress} = ${fn}(${val}, @0) #${line}`
+        s = new Statement(fn, [val, '@0'], `@${resultAddress}`, line, [])
       } else if (assignables.has('variable')) {
         throw new Error('This should have been squashed')
       }
@@ -438,16 +456,8 @@ const loadStatements = (
           return CLOSURE_ARG_MEM_START + BigInt(1) + BigInt(fnArgs.indexOf(v))
         } else return v
       }).map(a => typeof a === 'string' ? a : `@${a}`)
-      while (args.length < 2) args.push('0')
-      const deps = vars
-        .filter(v => localMem.hasOwnProperty(v))
-        .map(v => localMemToLine[localMem[v]])
-        .filter(v => v !== undefined) // Filter out the handler arg from the dep list
-        .map(v => `#${v}`)
-      s += `${fnName}(${args.join(', ')}) #${line}`
-      if (deps.length > 0) {
-        s += ` <- [${deps.join(', ')}]`
-      }
+      while (args.length < 3) args.push('@0')
+      s = new Statement(fnName, args as [string, string, string], null, line, [])
     } else if (statement.has('emits')) {
       const emit = statement.get('emits')
       const evtName = emit.get('variable').t.trim()
@@ -459,16 +469,13 @@ const loadStatements = (
           globalMem.hasOwnProperty(payloadVar) ?
             globalMem[payloadVar] :
             payloadVar
-      const deps = (
-        !payloadVar ? [] :
-          localMem.hasOwnProperty(payloadVar) ?
-            [localMemToLine[payloadVar]].filter(v => v !== undefined) :
-            []
-      ).map(v => `#${v}`)
-      s += `emit(${evtName}, ${typeof payload === 'string' ? payload : `@${payload}`}) #${line}`
-      if (deps.length > 0) {
-        s += ` <- [${deps.join(', ')}]`
-      }
+      s = new Statement(
+        'emit',
+        [evtName, typeof payload === 'string' ? payload : `@${payload}`],
+        null,
+        line,
+        [],
+      )
     } else if (statement.has('exits')) {
       const exit = statement.get('exits')
       const exitVar = exit.get('variable').t.trim()
@@ -492,12 +499,40 @@ const loadStatements = (
       }).map(a => typeof a === 'string' ? a : `@${a}`)
       while (args.length < 2) args.push('@0')
       const ref = exitVarType === 'variable' ? 'refv' : 'reff'
-      s += `@${CLOSURE_ARG_MEM_START} = ${ref}(${args.join(', ')}) #${line}`
+      s = new Statement(ref, args as [string, string], `@${CLOSURE_ARG_MEM_START}`, line, [])
     }
     vec.push(s)
     line += 1
   }
   return vec
+}
+
+class Block {
+  type: string
+  name: string
+  memSize: number
+  statements: Statement[]
+  deps: string[]
+
+  constructor(
+    type: string,
+    name: string,
+    memSize: number,
+    statements: Statement[],
+    deps: string[]
+  ) {
+    this.type = type
+    this.name = name
+    this.memSize = memSize
+    this.statements = statements
+    this.deps = deps
+  }
+
+  toString() {
+    let b = `${this.type} for ${this.name} with size ${this.memSize}\n`
+    this.statements.forEach(s => b += `  ${s.toString()}\n`)
+    return b
+  }
 }
 
 const loadHandlers = (handlers: LPNode[], handlerMem: object, globalMem: object) => {
@@ -508,8 +543,7 @@ const loadHandlers = (handlers: LPNode[], handlerMem: object, globalMem: object)
     const eventName = handler.get('variable').t.trim()
     const memSize = handlerMem[i].memSize
     const localMem = handlerMem[i].addressMap
-    let h = `handler for ${eventName} with size ${memSize}\n`
-    const statements = loadStatements(
+    const h = new Block('handler', eventName, memSize, loadStatements(
       handler.get('functions').get('functionbody').get('statements').getAll(),
       localMem,
       globalMem,
@@ -517,8 +551,7 @@ const loadHandlers = (handlers: LPNode[], handlerMem: object, globalMem: object)
       eventName,
       false,
       [],
-    )
-    statements.forEach(s => h += `  ${s}\n`)
+    ), [])
     vec.push(h)
   }
   return vec
@@ -531,8 +564,7 @@ const loadClosures = (closures: any[], globalMem: object) => {
     const eventName = closure.name
     const memSize = closure.closureMem.memSize
     const localMem = closure.closureMem.addressMap
-    let c = `closure for ${eventName} with size ${memSize}\n`
-    const statements = loadStatements(
+    const c = new Block('closure', eventName, memSize, loadStatements(
       closure.statements,
       localMem,
       globalMem,
@@ -540,11 +572,67 @@ const loadClosures = (closures: any[], globalMem: object) => {
       eventName,
       true,
       closure.scope,
-    )
-    statements.forEach(s => c += `  ${s}\n`)
+    ), [])
     vec.push(c)
   }
   return vec
+}
+
+// Perform basic dependency stitching within a single block, but also attach unknown dependencies
+// to the block object for later "stitching"
+const innerBlockDeps = (block: Block) => {
+  const depMap = {}
+  let lastEmit = null
+  const statements = block.statements
+  for (const s of statements) {
+    for (const a of s.inArgs) {
+      if (depMap.hasOwnProperty(a)) {
+        s.deps.push(depMap[a])
+      } else if (/^@/.test(a)) {
+        block.deps.push(a)
+      }
+    }
+    if (s.fn === 'emit') {
+      if (lastEmit !== null) {
+        s.deps.push(lastEmit)
+      }
+      lastEmit = s.line
+    }
+    if (s.outArg !== null) {
+      depMap[s.outArg] = s.line
+    }
+  }
+  return block
+}
+
+// Use the unknown dependencies attached to the block scope and attach them in the outer level
+// TODO: Handle dependencies many nested levels deep, perhaps with an iterative approach?
+const closureDeps = (blocks: Block[]) => {
+  const blockMap = {}
+  for (const b of blocks) {
+    blockMap[b.name] = b
+  }
+  const blockNames = Object.keys(blockMap)
+  for (const b of blocks) {
+    let argMap = {}
+    for (const s of b.statements) {
+      if (s.outArg !== null) {
+        argMap[s.outArg] = s.line
+      }
+      for (const a of s.inArgs) {
+        if (blockNames.includes(a)) {
+          const blockDeps = blockMap[a].deps
+          for (const bd of blockDeps) {
+            if (argMap.hasOwnProperty(bd)) {
+              s.deps.push(argMap[bd])
+            }
+          }
+        }
+      }
+      s.deps = [...new Set(s.deps)] // Dedupe the final dependencies list
+    }
+  }
+  return blocks
 }
 
 const ammToAga = (amm: LPNode) => {
@@ -572,15 +660,12 @@ const ammToAga = (amm: LPNode) => {
     Object.keys(eventDecs).forEach(evt => outStr += `  ${evt}: ${eventDecs[evt]}\n`)
     outStr += '\n'
   }
-  // Load the handlers
+  // Load the handlers and load the closures (as handlers) if present
   const handlerVec = loadHandlers(amm.get('handlers').getAll(), handlerMem, addressMap)
-  outStr += handlerVec.join('\n')
-  // And load the closures (as handlers) if present
   const closureVec = loadClosures(closures, addressMap)
-  if (closureVec.length > 0) {
-    outStr += '\n'
-    outStr += closureVec.join('\n')
-  }
+  const blockVec = closureDeps([...handlerVec, ...closureVec].map(b => innerBlockDeps(b)))
+    .map(b => b.toString())
+  outStr += blockVec.join('\n')
   return outStr
 }
 
