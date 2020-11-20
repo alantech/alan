@@ -27,6 +27,11 @@ PHYS_DIR=`pwd -P`
 
 PATH="${PHYS_DIR}:${PHYS_DIR}/../shellspec:${PHYS_DIR}/../node_modules/.bin:${PHYS_DIR}/../avm/target/release:${PATH}"
 export PATH
+
+# turn off telemetry
+ALAN_TELEMETRY_OFF="true"
+export ALAN_TELEMETRY_OFF
+
 if [ "$1" ]
   then
     # Run a single test file if provided
