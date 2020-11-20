@@ -72,6 +72,8 @@ jobs:
 
     # Run the BDD tests
     - name: Run BDD tests
+      env:
+        ALAN_TELEMETRY_OFF: true
       run: make bdd
 
   avm-unit-macos:
@@ -112,6 +114,8 @@ jobs:
 
     # Run the BDD tests
     - name: Run BDD tests
+      env:
+        ALAN_TELEMETRY_OFF: true
       run: make bdd
 
   avm-unit-windows:
@@ -152,4 +156,6 @@ jobs:
 
     # Run the BDD tests
     - name: Run BDD tests
+      env:
+        ALAN_TELEMETRY_OFF: true
       run: bash -c "make bdd"
