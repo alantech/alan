@@ -165,6 +165,21 @@ export fn pow(a: float64, b: float64) = powf64(a, b)
 export fn sqrt(n: float32) = sqrtf32(n)
 export fn sqrt(n: float64) = sqrtf64(n)
 
+export interface Orderable {
+  lt(Orderable, Orderable): bool
+  lte(Orderable, Orderable): bool
+  gt(Orderable, Orderable): bool
+  gte(Orderable, Orderable): bool
+}
+
+export fn min(x: Orderable, y: Orderable): Orderable {
+  return cond(lte(x, y), [x, y])
+}
+export fn max(x: Orderable, y: Orderable): Orderable {
+  return cond(gte(x, y), [x, y])
+}
+
+/*
 export fn min(x: int8, y: int8): int8 {
   return cond(lte(x, y), [x, y])
 }
@@ -208,6 +223,7 @@ export fn max(x: float64, y: float64): float64 {
 export fn max(x: string, y: string): string {
   return cond(gte(x, y), [x, y])
 }
+*/
 
 // Boolean and bitwise functions
 export fn and(a: int8, b: int8) = andi8(a, b)
