@@ -17,7 +17,7 @@ pub async fn log() {
         "user_id": "oneforallandallforone",
         "event_type": "avm_run",
         "app_version": ALAN_VERSION.unwrap(),
-        "os_name": OS,
+        "os_name": OS
       }
     ]
   });
