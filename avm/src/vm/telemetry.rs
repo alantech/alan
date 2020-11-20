@@ -15,7 +15,7 @@ pub async fn log() {
     "events": [
       {
         "user_id": "oneforallandallforone",
-        "event_type": "avm_run",
+        "event_type": "avm-run",
         "app_version": ALAN_VERSION.unwrap(),
         "os_name": OS,
       }
