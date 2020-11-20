@@ -259,7 +259,7 @@ class Statement {
     }
     s += `${this.fn}(${this.inArgs.join(', ')}) #${this.line}`
     if (this.deps.length > 0) {
-      s += ` <- ${this.deps.map(d => `#${d}`).join(', ')}`
+      s += ` <- [${this.deps.map(d => `#${d}`).join(', ')}]`
     }
     return s
   }
