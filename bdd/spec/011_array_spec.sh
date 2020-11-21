@@ -383,8 +383,8 @@ true"
           const test2 = [ 4, 5, 6 ]
           print('reduce test')
           test.reduce(fn (a: int, b: int): int = a + b).print()
-          test.reduce(fn (a: int, b: int): int = min(a, b)).print()
-          test.reduce(fn (a: int, b: int): int = max(a, b)).print()
+          test.reduce(min).print()
+          test.reduce(max).print()
 
           print('filter test')
           test.filter(fn (val: int64): bool {
