@@ -489,13 +489,16 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
         statementAsts = replacementStatements
       }
 
+      // TODO: Should these be attached to the scope or should callers provide a merged scope?
       const newArgs = {}
       for (const argName in this.args) {
         const a = this.args[argName]
         newArgs[argName] = interfaceMap.has(a) ? interfaceMap.get(a) : a
+        this.scope.put(newArgs[argName].typename, newArgs[argName])
       }
       const newRet = interfaceMap.has(this.returnType) ?
         interfaceMap.get(this.returnType) : this.returnType
+      this.scope.put(newRet.typename, newRet)
 
       const fnStr = `
         fn ${this.name || ''} (${Object.keys(newArgs).map(argName => `${argName}: ${newArgs[argName].typename}`).join(', ')}): ${newRet.typename} {
@@ -511,12 +514,14 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
         const a = this.args[argName]
         newArgs[argName] = interfaceMap.has(a) ? interfaceMap.get(a) : a
         if (newArgs[argName] !== this.args[argName]) {
+          this.scope.put(newArgs[argName].typename, newArgs[argName])
           hasNewType = true
         }
       }
       const newRet = interfaceMap.has(this.returnType) ?
         interfaceMap.get(this.returnType) : this.returnType
       if (newRet !== this.returnType) {
+        this.scope.put(newRet.typename, newRet)
         hasNewType = true
       }
       if (hasNewType) {
