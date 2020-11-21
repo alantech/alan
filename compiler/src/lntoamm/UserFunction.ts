@@ -489,15 +489,49 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
         statementAsts = replacementStatements
       }
 
+      const newArgs = {}
+      for (const argName in this.args) {
+        const a = this.args[argName]
+        newArgs[argName] = interfaceMap.has(a) ? interfaceMap.get(a) : a
+      }
+      const newRet = interfaceMap.has(this.returnType) ?
+        interfaceMap.get(this.returnType) : this.returnType
+
       const fnStr = `
-        fn ${this.name || ''} (${Object.keys(this.args).map(argName => `${argName}: ${this.args[argName].typename}`).join(', ')}): ${this.returnType.typename} {
+        fn ${this.name || ''} (${Object.keys(newArgs).map(argName => `${argName}: ${newArgs[argName].typename}`).join(', ')}): ${newRet.typename} {
           ${statementAsts.map(s => s.getText()).join('\n')}
         }
       `.trim()
       const fn = UserFunction.fromAst(Ast.functionAstFromString(fnStr), this.scope)
       return fn
+    } else {
+      let hasNewType = false
+      const newArgs = {}
+      for (const argName in this.args) {
+        const a = this.args[argName]
+        newArgs[argName] = interfaceMap.has(a) ? interfaceMap.get(a) : a
+        if (newArgs[argName] !== this.args[argName]) {
+          hasNewType = true
+        }
+      }
+      const newRet = interfaceMap.has(this.returnType) ?
+        interfaceMap.get(this.returnType) : this.returnType
+      if (newRet !== this.returnType) {
+        hasNewType = true
+      }
+      if (hasNewType) {
+        const statementAsts = this.statements.map(s => s.statementAst)
+        const fnStr = `
+          fn ${this.name || ''} (${Object.keys(newArgs).map(argName => `${argName}: ${newArgs[argName].typename}`).join(', ')}): ${newRet.typename} {
+            ${statementAsts.map(s => s.getText()).join('\n')}
+          }
+        `.trim()
+        const fn = UserFunction.fromAst(Ast.functionAstFromString(fnStr), this.scope)
+        return fn
+      } else {
+        return this
+      }
     }
-    return this
   }
 
   microstatementInlining(
