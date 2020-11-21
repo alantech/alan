@@ -33,6 +33,12 @@ export interface anythingElse = any // Same as `any` but doesn't match with it
 export interface Stringifiable {
   toString(Stringifiable): string
 }
+export interface Orderable {
+  lt(Orderable, Orderable): bool
+  lte(Orderable, Orderable): bool
+  gt(Orderable, Orderable): bool
+  gte(Orderable, Orderable): bool
+}
 
 // Type conversion functions
 export fn toFloat64(n: int8) = i8f64(n)
@@ -165,47 +171,10 @@ export fn pow(a: float64, b: float64) = powf64(a, b)
 export fn sqrt(n: float32) = sqrtf32(n)
 export fn sqrt(n: float64) = sqrtf64(n)
 
-export fn min(x: int8, y: int8): int8 {
+export fn min(x: Orderable, y: Orderable): Orderable {
   return cond(lte(x, y), [x, y])
 }
-export fn min(x: int16, y: int16): int16 {
-  return cond(lte(x, y), [x, y])
-}
-export fn min(x: int32, y: int32): int32 {
-  return cond(lte(x, y), [x, y])
-}
-export fn min(x: int64, y: int64): int64 {
-  return cond(lte(x, y), [x, y])
-}
-export fn min(x: float32, y: float32): float32 {
-  return cond(lte(x, y), [x, y])
-}
-export fn min(x: float64, y: float64): float64 {
-  return cond(lte(x, y), [x, y])
-}
-export fn min(x: string, y: string): string {
-  return cond(lte(x, y), [x, y])
-}
-
-export fn max(x: int8, y: int8): int8 {
-  return cond(gte(x, y), [x, y])
-}
-export fn max(x: int16, y: int16): int16 {
-  return cond(gte(x, y), [x, y])
-}
-export fn max(x: int32, y: int32): int32 {
-  return cond(gte(x, y), [x, y])
-}
-export fn max(x: int64, y: int64): int64 {
-  return cond(gte(x, y), [x, y])
-}
-export fn max(x: float32, y: float32): float32 {
-  return cond(gte(x, y), [x, y])
-}
-export fn max(x: float64, y: float64): float64 {
-  return cond(gte(x, y), [x, y])
-}
-export fn max(x: string, y: string): string {
+export fn max(x: Orderable, y: Orderable): Orderable {
   return cond(gte(x, y), [x, y])
 }
 
