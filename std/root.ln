@@ -39,6 +39,12 @@ export interface Orderable {
   gt(Orderable, Orderable): bool,
   gte(Orderable, Orderable): bool,
 }
+export interface canFloat64 {
+  toFloat64(canFloat64): float64
+}
+export interface canInt64 {
+  toInt64(canInt64): int64
+}
 
 // Type conversion functions
 export fn toFloat64(n: int8) = i8f64(n);
@@ -112,6 +118,10 @@ export fn toString(n: float32) = f32str(n);
 export fn toString(n: float64) = f64str(n);
 export fn toString(n: string) = n;
 export fn toString(n: bool) = boolstr(n);
+
+// Type alias conversion functions
+export fn toFloat(n: canFloat64): float = toFloat64(n)
+export fn toInt(n: canInt64): int = toInt64(n) 
 
 // Arithmetic functions
 export fn add(a: int8, b: int8) = addi8(a, b);
