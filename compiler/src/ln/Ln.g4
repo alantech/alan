@@ -50,15 +50,13 @@ assignments : varn blank* EQUALS blank* assignables;
 
 assignables : basicassignables | withoperators;
 
-basicassignables: functions | calls | varn | constants | groups | typeofn | objectliterals;
+basicassignables: functions | calls | varn | constants | groups | objectliterals;
 
 operatororassignable : operators | basicassignables;
 
 withoperators : (operatororassignable WS*)+;
 
 groups : OPENARGS WS* withoperators WS* CLOSEARGS;
-
-typeofn : TYPE WS* basicassignables;
 
 objectliterals : arrayliteral | typeliteral | mapliteral;
 
@@ -74,7 +72,13 @@ assignablelist : blank* assignables (SEP blank* assignables)* SEP? blank*;
 
 fncall : OPENARGS assignablelist? CLOSEARGS;
 
-calls: (varn WS* fncall (METHODSEP varn WS* fncall)*) | ((constants | OPENARGS assignables CLOSEARGS) (METHODSEP varn WS* fncall)+);
+callbase : varn WS* fncall;
+
+iife : functions WS* fncall;
+
+baseassignables : functions | constants | groups | objectliterals;
+
+calls : (((callbase | iife) (blank* METHODSEP callbase)*) | (baseassignables (blank* METHODSEP callbase)+)) (blank* METHODSEP varn)?;
 
 exits : RETURN (blank* assignables)?;
 
@@ -130,7 +134,7 @@ varop : VARNAME | operators;
 
 varn : varsegment+;
 
-varsegment : VARNAME | METHODSEP | arrayaccess;
+varsegment : VARNAME | (blank* METHODSEP) | arrayaccess;
 
 arrayaccess : OPENARRAY WS* assignables WS* CLOSEARRAY;
 

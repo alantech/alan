@@ -147,9 +147,7 @@ return 'blah' on line 5:10"
       When run alan compile test_$$/temp.ln test_$$/temp.amm
       The status should not eq "0"
       # TODO: Eliminate ANTLR
-      The error should eq "line 6:8 extraneous input '}' expecting {'=', NEWLINE, WS}
-line 8:0 extraneous input '<EOF>' expecting {'const', 'let', 'return', 'emit', BOOLCONSTANT, 'if', '}', '(', '[', '.', NEWLINE, WS, STRINGCONSTANT, NUMBERCONSTANT, VARNAME}
-Cannot read property 'basicassignables' of null"
+      The error should eq "line 6:8 no viable alternative at input 'app.oops\n        }'"
     End
   End
 

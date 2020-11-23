@@ -1,48 +1,6 @@
 Include build_tools.sh
 
 Describe "Type detection"
-  Describe "basic types and arrays"
-    before() {
-      sourceToAll "
-        from @std/app import start, print, exit
-
-        on start fn {
-          print(type 3)
-          print(type 3.14)
-          print(type (1 + 2))
-          print(type 'str')
-          print(type true)
-          print(type true == 'bool')
-
-          emit exit 0
-        }
-      "
-    }
-    BeforeAll before
-
-    after() {
-      cleanTemp
-    }
-    AfterAll after
-
-    TYPEOUTPUT="int64
-float64
-int64
-string
-bool
-true"
-
-    It "runs js"
-      When run test_js
-      The output should eq "$TYPEOUTPUT"
-    End
-
-    It "runs agc"
-      When run test_agc
-      The output should eq "$TYPEOUTPUT"
-    End
-  End
-
   Describe "user types and generics"
     before() {
       sourceToAll "
@@ -72,12 +30,10 @@ true"
             bar = 1
             baz = 3.14
           }
-          print(type a)
-          print(type b)
-          print(type type a)
-          print(type c)
-          print(type d)
-          print(type c == type d)
+          print(a.bar)
+          print(b.bar)
+          print(c.bar)
+          print(d.bar)
 
           emit exit 0
         }
@@ -90,12 +46,10 @@ true"
     }
     AfterAll after
 
-    GENTYPEOUTPUT="foo<string, int64>
-foo<int64, bool>
-string
-foo<int64, float64>
-foo<int64, float64>
-true"
+    GENTYPEOUTPUT="bar
+0
+0
+1"
 
     It "runs js"
       When run test_js

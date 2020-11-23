@@ -154,8 +154,9 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
       statements.push(statement)
       // TODO: Infer the return type for anything other than calls or object literals
       if (assignablesAst.basicassignables() && assignablesAst.basicassignables().calls()) {
+        // TODO: Support calls that are on things that return functions but aren't function names
         const fnCall =
-          scope.deepGet(assignablesAst.basicassignables().calls().varn(0).getText()) as Array<Fn>
+          scope.deepGet(assignablesAst.basicassignables().calls().callbase(0).varn(0).getText()) as Array<Fn>
         if (
           fnCall &&
           fnCall instanceof Array &&
@@ -322,9 +323,10 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
     let replacementStatements = []
     while (statements.length > 0) {
       const s = statements.shift()
-      if (s.calls() && s.calls().varn(0).getText().trim() === 'cond') {
+      // TODO: Support calls on things that return functions but aren't function names
+      if (s.calls() && s.calls().callbase(0).varn(0).getText().trim() === 'cond') {
         // Potentially need to rewrite
-        const args = s.calls().fncall(0).assignablelist()
+        const args = s.calls().callbase(0).fncall().assignablelist()
         if (args && args.assignables().length == 2) {
           const block = args.assignables(1).basicassignables().functions()
           const blockFn = UserFunction.fromAst(block, scope)

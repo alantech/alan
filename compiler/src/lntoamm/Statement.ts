@@ -49,8 +49,8 @@ class Statement {
       return Statement.assignablesHasObjectLiteral(d.assignables())
     }
     if (s.assignments()) return Statement.assignmentsHasObjectLiteral(s.assignments())
-    if (s.calls() && s.calls().assignables() > 0) s.calls().assignables().some(
-      (a: any) => Statement.assignablesHasObjectLiteral(a)
+    if (s.calls() && s.calls().baseassignables()) return Statement.basicAssignableHasObjectLiteral(
+      s.calls().baseassignables()
     )
     if (s.exits() && s.exits().assignables()) return Statement.assignablesHasObjectLiteral(
       s.exits().assignables()
@@ -64,7 +64,7 @@ class Statement {
 
   static isCallPure(callAst: any, scope: Scope) { // TODO: Migrate off ANTLR
     // TODO: Add purity checking for chained method-style calls
-    const fn = scope.deepGet(callAst.varn(0).getText()) as Array<Fn>
+    const fn = scope.deepGet(callAst.callbase(0).varn(0).getText()) as Array<Fn>
     if (!fn) {
       // TODO: This function may be defined in the execution scope, we won't know until runtime
       // right now, but it should be determinable at "compile time". Need to fix this to check
@@ -72,13 +72,13 @@ class Statement {
       return false
     }
     if (!(fn instanceof Array && fn[0].microstatementInlining instanceof Function)) {
-      throw new Error(callAst.varn(0).getText() + " is not a function")
+      throw new Error(callAst.callbase(0).varn(0).getText() + " is not a function")
     }
     // TODO: Add all of the logic to determine which function to use in here, too. For now,
     // let's just assume they all have the same purity state, which is a terrible assumption, but
     // easier.
     if (!fn[0].isPure()) return false
-    const assignableListAst = callAst.fncall(0).assignablelist()
+    const assignableListAst = callAst.callbase(0).fncall(0).assignablelist()
     if (assignableListAst == null) { // No arguments to this function call
       return true
     }
@@ -146,6 +146,9 @@ class Statement {
   }
 
   static create(statementAst: any, scope: Scope) { // TODO: Migrate off ANTLR
+    if (!!statementAst.exception) {
+      throw statementAst.exception
+    }
     let pure = true
     if (statementAst.declarations() != null) {
       if (statementAst.declarations().constdeclaration() != null) {

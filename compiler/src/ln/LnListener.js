@@ -263,15 +263,6 @@ LnListener.prototype.exitGroups = function(ctx) {
 };
 
 
-// Enter a parse tree produced by LnParser#typeofn.
-LnListener.prototype.enterTypeofn = function(ctx) {
-};
-
-// Exit a parse tree produced by LnParser#typeofn.
-LnListener.prototype.exitTypeofn = function(ctx) {
-};
-
-
 // Enter a parse tree produced by LnParser#objectliterals.
 LnListener.prototype.enterObjectliterals = function(ctx) {
 };
@@ -332,6 +323,33 @@ LnListener.prototype.enterFncall = function(ctx) {
 
 // Exit a parse tree produced by LnParser#fncall.
 LnListener.prototype.exitFncall = function(ctx) {
+};
+
+
+// Enter a parse tree produced by LnParser#callbase.
+LnListener.prototype.enterCallbase = function(ctx) {
+};
+
+// Exit a parse tree produced by LnParser#callbase.
+LnListener.prototype.exitCallbase = function(ctx) {
+};
+
+
+// Enter a parse tree produced by LnParser#iife.
+LnListener.prototype.enterIife = function(ctx) {
+};
+
+// Exit a parse tree produced by LnParser#iife.
+LnListener.prototype.exitIife = function(ctx) {
+};
+
+
+// Enter a parse tree produced by LnParser#baseassignables.
+LnListener.prototype.enterBaseassignables = function(ctx) {
+};
+
+// Exit a parse tree produced by LnParser#baseassignables.
+LnListener.prototype.exitBaseassignables = function(ctx) {
 };
 
 
