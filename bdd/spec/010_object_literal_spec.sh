@@ -7,15 +7,15 @@ Describe "Object literals"
         from @std/app import start, print, exit
 
         type Foo {
-          bar: string
-          baz: bool
+          bar: string,
+          baz: bool,
         }
 
         on start {
           const foo = new Foo {
-            bay = 1.23
-          }
-          emit exit 0
+            bay: 1.23,
+          };
+          emit exit 0;
         }
       "
     }
@@ -33,8 +33,8 @@ Describe "Object literals"
 Missing fields: bar, baz
 Extra fields: bay
 new Foo {
-            bay = 1.23
-          } on line 2:22"
+            bay: 1.23,
+          } on line 3:22"
     End
   End
 
@@ -44,12 +44,12 @@ new Foo {
         from @std/app import start, print, exit
 
         on start {
-          const test3 = new Array<int64> [ 1, 2, 4, 8, 16, 32, 64 ]
-          print(test3[0])
-          print(test3[1])
-          print(test3[2])
+          const test3 = new Array<int64> [ 1, 2, 4, 8, 16, 32, 64 ];
+          print(test3[0]);
+          print(test3[1]);
+          print(test3[2]);
 
-          emit exit 0
+          emit exit 0;
         }
       "
     }
@@ -81,19 +81,19 @@ new Foo {
         from @std/app import start, print, exit
 
         type MyType {
-          foo: string
-          bar: bool
+          foo: string,
+          bar: bool,
         }
 
         on start {
           const test = new MyType {
-            foo = 'foo!'
-            bar = true
-          }
-          print(test.foo)
-          print(test.bar)
+            foo: 'foo!',
+            bar: true,
+          };
+          print(test.foo);
+          print(test.bar);
 
-          emit exit 0
+          emit exit 0;
         }
       "
     }
@@ -128,31 +128,31 @@ true"
         }
 
         on start {
-          let test = new Array<int64> [ 1, 2, 3 ]
-          print(test[0])
-          test.set(0, 0)
-          print(test[0])
+          let test = new Array<int64> [ 1, 2, 3 ];
+          print(test[0]);
+          test.set(0, 0);
+          print(test[0]);
 
           let test2 = new Array<Foo> [
             new Foo {
-              bar = true
+              bar: true
             },
             new Foo {
-              bar = false
+              bar: false
             }
-          ]
+          ];
           let test3 = test2[0] || new Foo {
-            bar = false
-          }
-          print(test3.bar)
-          test3.bar = false
-          test2.set(0, test3) // TODO: is the a better way to do nested updates?
+            bar: false
+          };
+          print(test3.bar);
+          test3.bar = false;
+          test2.set(0, test3); // TODO: is the a better way to do nested updates?
           const test4 = test2[0] || new Foo {
-            bar = true
-          }
-          print(test4.bar)
+            bar: true
+          };
+          print(test4.bar);
 
-          emit exit 0
+          emit exit 0;
         }
       "
     }

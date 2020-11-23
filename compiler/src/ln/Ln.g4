@@ -2,7 +2,7 @@ grammar Ln;
 
 // Parser rules
 
-module : (blank* imports* (types | constdeclaration | functions | operatormapping | events | handlers | interfaces | exports | blank+)+) | EOF;
+module : (blank* imports* (types | (constdeclaration EOS) | functions | operatormapping | events | handlers | interfaces | exports | blank+)+) | EOF;
 
 blank : (WS | NEWLINE);
 
@@ -18,119 +18,117 @@ localdependency : (CURDIR (VARNAME | DIRSEP)+) | (PARDIR (VARNAME | DIRSEP)+);
 
 globaldependency : GLOBAL (VARNAME | DIRSEP)+;
 
-types : TYPE blank+ typename blank* typegenerics? blank+ (typebody | EQUALS blank* othertype);
+types : TYPE blank+ typename (blank* typegenerics)? blank+ (typebody | EQUALS blank* fulltypename);
 
-othertype : typename blank* typegenerics?;
-
-typename : varn;
+typename : VARNAME (METHODSEP VARNAME)?;
 
 typegenerics : OPENGENERIC blank* fulltypename blank* (SEP blank* fulltypename blank*)* CLOSEGENERIC;
 
-fulltypename : varn blank* typegenerics?;
+fulltypename : typename (blank* typegenerics)?;
 
-typebody: OPENBODY blank* (WS* typeline)+ blank? CLOSEBODY;
+typebody: OPENBODY blank* typelist blank* CLOSEBODY;
 
-typeline: VARNAME (WS | NEWLINE)? TYPESEP (WS | NEWLINE)? fulltypename NEWLINE*;
+typeline : VARNAME blank* TYPESEP blank* fulltypename;
 
-functions : FN blank+ ((VARNAME blank*)? OPENARGS arglist? CLOSEARGS blank* ((WS | NEWLINE)? TYPESEP (WS | NEWLINE)? argtype blank*)?)? fullfunctionbody;
+typelist : typeline blank* (SEP blank* typeline blank*)* SEP?;
+
+arglist : VARNAME blank* TYPESEP blank* fulltypename (SEP VARNAME blank* TYPESEP blank* fulltypename)*;
+
+functions : FN blank+ ((VARNAME blank*)? OPENARGS arglist? CLOSEARGS blank* (blank? TYPESEP blank? fulltypename blank*)?)? fullfunctionbody EOS?;
 
 fullfunctionbody : functionbody | (EQUALS blank* assignables);
 
-functionbody : OPENBODY blank* statements+ blank* CLOSEBODY;
+functionbody : OPENBODY statements+ blank* CLOSEBODY;
 
-statements : (declarations | assignments | calls | exits | emits | conditionals) blank+;
+statements : blank* (declarations | exits | emits | conditionals | assignments | (assignables EOS));
 
-declarations : (constdeclaration | letdeclaration);
+declarations : (constdeclaration | letdeclaration) EOS;
 
-constdeclaration : CONST blank* VARNAME blank* (TYPESEP blank? othertype)? blank* EQUALS blank* assignables;
+constdeclaration : CONST blank* VARNAME blank* (TYPESEP blank? fulltypename)? blank* EQUALS blank* assignables;
 
-letdeclaration : LET blank* VARNAME blank* (TYPESEP blank? othertype)? blank* EQUALS blank* assignables;
+letdeclaration : LET blank* VARNAME blank* (TYPESEP blank? fulltypename)? blank* EQUALS blank* assignables;
 
-assignments : varn blank* EQUALS blank* assignables;
+assignments : varn blank* EQUALS blank* assignables EOS;
 
-assignables : basicassignables | withoperators;
+baseassignable : METHODSEP | VARNAME | constants | functions | fncall | objectliterals;
 
-basicassignables: functions | calls | varn | constants | groups | typeofn | objectliterals;
+withoperators : (baseassignable blank*)+ | operators;
 
-operatororassignable : operators | basicassignables;
+assignables : withoperators (blank* withoperators)*;
 
-withoperators : (operatororassignable WS*)+;
+objectliterals : arrayliteral | typeliteral;
 
-groups : OPENARGS WS* withoperators WS* CLOSEARGS;
+assignablelist : assignables blank* (SEP blank* assignables blank*)* SEP?;
 
-typeofn : TYPE WS* basicassignables;
+typeassignlist: VARNAME blank* TYPESEP blank* assignables blank* (SEP blank* VARNAME blank* TYPESEP blank* assignables blank*)* SEP?;
 
-objectliterals : arrayliteral | typeliteral | mapliteral;
+literaldec : NEW WS* fulltypename WS*;
 
-arrayliteral : (NEW WS* othertype WS*)? OPENARRAY blank* assignablelist? blank* CLOSEARRAY;
+arraybase : OPENARRAY blank* assignablelist? blank* CLOSEARRAY;
 
-typeliteral : NEW WS* othertype WS* OPENBODY blank* (assignments blank+)+ CLOSEBODY;
+arrayliteral : arraybase | (literaldec arraybase);
 
-mapliteral : NEW WS* othertype WS* OPENBODY blank* (mapline blank+)* CLOSEBODY;
+typebase: OPENBODY blank* typeassignlist blank* CLOSEBODY;
 
-mapline : assignables WS* TYPESEP WS* assignables;
+typeliteral : literaldec typebase;
 
-assignablelist : blank* assignables (SEP blank* assignables)* SEP? blank*;
+fncall : OPENARGS blank* assignablelist? blank* CLOSEARGS;
 
-fncall : OPENARGS assignablelist? CLOSEARGS;
+exits : RETURN (blank* assignables blank*)? EOS;
 
-calls: (varn WS* fncall (METHODSEP varn WS* fncall)*) | ((constants | OPENARGS assignables CLOSEARGS) (METHODSEP varn WS* fncall)+);
+emits : EMIT blank* eventref (blank* assignables blank*)? EOS;
 
-exits : RETURN (blank* assignables)?;
+conditionals : IF blank* assignables blank* blocklikes (blank* ELSE blank* (conditionals | blocklikes))?;
 
-emits : EMIT blank* varn (blank* assignables)?;
-
-conditionals : IF blank* withoperators blank* blocklikes (blank* ELSE blank* (conditionals | blocklikes))?;
-
-blocklikes : functions | functionbody | varn;
+blocklikes : functions | functionbody | eventref;
 
 constants : (NUMBERCONSTANT | STRINGCONSTANT | BOOLCONSTANT);
 
-operators : (GENERALOPERATORS | TYPESEP | OPENGENERIC | OR | (CLOSEGENERIC+ ((EQUALS+ GENERALOPERATORS*) | (GENERALOPERATORS+))?) | GLOBAL | DIRSEP);
+operators : (GENERALOPERATORS | TYPESEP | OPENGENERIC | (CLOSEGENERIC+ ((EQUALS+ GENERALOPERATORS*) | (GENERALOPERATORS+))?) | GLOBAL | DIRSEP);
 
 operatormapping : (PREFIX | INFIX) WS ((fntoop WS opprecedence) | (opprecedence WS fntoop));
 
-fntoop : varn WS AS WS operators;
+fntoop : eventref WS AS WS operators;
 
 opprecedence : PRECEDENCE WS NUMBERCONSTANT;
 
-events : EVENT blank VARNAME blank* TYPESEP (WS | NEWLINE)? varn;
+events : EVENT blank* VARNAME blank* TYPESEP blank* fulltypename;
 
-handlers : ON blank+ eventref blank+ (functions | varn | functionbody);
+eventref : typename;
 
-eventref : varn | calls;
+handlers : ON blank+ eventref blank+ (functions | typename | functionbody);
 
-interfaces : INTERFACE WS* VARNAME WS* ((OPENBODY blank* (interfaceline blank+)* CLOSEBODY) | (EQUALS blank* varn));
+interfaces : INTERFACE WS* VARNAME WS* (interfacebody | (EQUALS blank* VARNAME));
+
+interfacebody : OPENBODY interfacelist? blank* CLOSEBODY;
+
+interfacelist : blank* interfaceline blank* (SEP blank* interfaceline blank*)* SEP?;
 
 interfaceline : functiontypeline | operatortypeline | propertytypeline;
 
 functiontypeline : (VARNAME | FN) WS* functiontype;
 
-functiontype : OPENARGS blank* varn blank* (SEP blank* varn blank*)* CLOSEARGS (WS | NEWLINE)? TYPESEP blank* varn;
+functiontype : OPENARGS blank* fulltypename blank* (SEP blank* fulltypename blank*)* CLOSEARGS blank? TYPESEP blank* fulltypename;
 
-operatortypeline : (leftarg blank*)? operators blank* rightarg blank* TYPESEP blank* varn;
+operatortypeline : (leftarg blank*)? operators blank* rightarg blank* TYPESEP blank* fulltypename;
 
-leftarg : varn;
+leftarg : fulltypename;
 
-rightarg : varn;
+rightarg : fulltypename;
 
-propertytypeline : VARNAME WS* TYPESEP WS* varn;
+propertytypeline : VARNAME WS* TYPESEP WS* fulltypename;
 
-argtype : othertype (blank* OR blank* othertype)*;
-
-arglist : VARNAME (WS | NEWLINE)? TYPESEP (WS | NEWLINE)? argtype (SEP VARNAME (WS | NEWLINE)? TYPESEP (WS | NEWLINE)? argtype)*;
-
-exports : EXPORT (WS | NEWLINE)+ (varn | types | constdeclaration | functions | operatormapping | events | interfaces);
+exports : EXPORT (WS | NEWLINE)+ (eventref | types | (constdeclaration EOS) | functions | operatormapping | events | interfaces);
 
 varlist : renameablevar (SEP renameablevar)*;
 
-renameablevar : varop (WS AS WS varop)?;
+renameablevar : varop (WS+ AS WS+ varop)?;
 
 varop : VARNAME | operators;
 
 varn : varsegment+;
 
-varsegment : VARNAME | METHODSEP | arrayaccess;
+varsegment : VARNAME | (blank* METHODSEP) | arrayaccess;
 
 arrayaccess : OPENARRAY WS* assignables WS* CLOSEARRAY;
 
@@ -210,9 +208,9 @@ PARDIR : '../';
 
 DIRSEP : '/';
 
-OR : '|';
-
 TYPESEP : ':';
+
+EOS : ';';
 
 // Next ignored bits of various kinds
 
@@ -230,7 +228,7 @@ STRINGCONSTANT : ('"' ~["]* '"') | ('\'' ~[']* '\'');
 
 NUMBERCONSTANT : ('0x' [0-9a-fA-F]+) | ([-]? [0-9]+ ([.][0-9]+)?);
 
-GENERALOPERATORS : [+\-/*^.~`!@#$%&|:;<?=][+\-/*^.~`!@#$%&|:;<>?=]*;
+GENERALOPERATORS : [+\-/*^.~`!@#$%&|:<?=][+\-/*^.~`!@#$%&|:<>?=]*;
 
 VARNAME : [a-zA-Z_]+ ([a-zA-Z0-9_])*;
 

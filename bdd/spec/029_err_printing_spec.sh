@@ -6,8 +6,8 @@ Describe "Error printing"
       sourceToAll "
         from @std/app import start, eprint, exit
         on start {
-          eprint('This is an error')
-          emit exit 0
+          eprint('This is an error');
+          emit exit 0;
         }
       "
     }
@@ -34,8 +34,8 @@ Describe "Error printing"
       sourceToAll "
         from @std/app import start, stderr, exit
         on start {
-          emit stderr 'This is an error'
-          emit exit 0
+          emit stderr 'This is an error';
+          emit exit 0;
         }
       "
     }

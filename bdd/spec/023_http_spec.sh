@@ -8,8 +8,8 @@ Describe "@std/http"
         from @std/http import get
 
         on start {
-          print(get('https://raw.githubusercontent.com/alantech/hellodep/aea1ce817a423d00107577a430a046993e4e6cad/index.ln'))
-          emit exit 0
+          print(get('https://raw.githubusercontent.com/alantech/hellodep/aea1ce817a423d00107577a430a046993e4e6cad/index.ln'));
+          emit exit 0;
         }
       "
     }
@@ -38,8 +38,8 @@ Describe "@std/http"
         from @std/http import post
 
         on start {
-          print(post('https://reqbin.com/echo/post/json', '{\"test\":\"test\"}'))
-          emit exit 0
+          print(post('https://reqbin.com/echo/post/json', '{\"test\":\"test\"}'));
+          emit exit 0;
         }
       "
     }
@@ -68,15 +68,15 @@ Describe "@std/http"
         from @std/http import connection, listen, body, send, Connection
 
         on connection fn (conn: Connection) {
-          const res = conn.res
-          set(res.headers, 'Content-Type', 'text/plain')
-          const sendStatus = res.body('Hello, World!').send()
+          const res = conn.res;
+          set(res.headers, 'Content-Type', 'text/plain');
+          const sendStatus = res.body('Hello, World!').send();
         }
 
         on start {
-          const serverStatus = listen(8080)
+          const serverStatus = listen(8080);
           if serverStatus.isErr() {
-            emit exit 1
+            emit exit 1;
           }
         }
       "

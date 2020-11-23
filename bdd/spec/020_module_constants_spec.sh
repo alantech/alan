@@ -6,11 +6,11 @@ Describe "Module-level Constants"
       sourceToAll "
         import @std/app
 
-        const helloWorld = 'Hello, World!'
+        const helloWorld = 'Hello, World!';
 
         on app.start {
-          app.print(helloWorld)
-          emit app.exit 0
+          app.print(helloWorld);
+          emit app.exit 0;
         }
       "
     }
@@ -37,16 +37,16 @@ Describe "Module-level Constants"
       sourceToAll "
         from @std/app import start, print, exit
 
-        const three = add(1, 2)
+        const three = add(1, 2);
 
         fn fiver() = 5
 
-        const five = fiver()
+        const five = fiver();
 
         on start {
-          print(three)
-          print(five)
-          emit exit 0
+          print(three);
+          print(five);
+          emit exit 0;
         }
       "
     }

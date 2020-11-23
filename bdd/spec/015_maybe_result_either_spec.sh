@@ -8,39 +8,39 @@ Describe "Maybe, Result, and Either"
 
         fn fiver(val: float64) {
           if val.toInt64() == 5 {
-            return some(5)
+            return some(5);
           } else {
-            return none()
+            return none();
           }
         }
 
         on start {
-          const maybe5 = fiver(5.5)
+          const maybe5 = fiver(5.5);
           if maybe5.isSome() {
-            print(maybe5.getOr(0))
+            print(maybe5.getOr(0));
           } else {
-            print('what?')
+            print('what?');
           }
 
-          const maybeNot5 = fiver(4.4)
+          const maybeNot5 = fiver(4.4);
           if maybeNot5.isNone() {
-            print('Correctly received nothing!')
+            print('Correctly received nothing!');
           } else {
-            print('uhhh')
+            print('uhhh');
           }
 
           if maybe5.isSome() {
-            print(maybe5 || 0)
+            print(maybe5 || 0);
           } else {
-            print('what?')
+            print('what?');
           }
 
           if maybeNot5.isNone() {
-            print('Correctly received nothing!')
+            print('Correctly received nothing!');
           } else {
-            print('uhhh')
+            print('uhhh');
           }
-          emit exit 0
+          emit exit 0;
         }
       "
     }
@@ -74,40 +74,40 @@ Correctly received nothing!"
 
         fn reciprocal(val: float64) {
           if val == 0.0 {
-            return err('Divide by zero error!')
+            return err('Divide by zero error!');
           } else {
-            return ok(1.0 / val)
+            return ok(1.0 / val);
           }
         }
 
         on start {
-          const oneFifth = reciprocal(5.0)
+          const oneFifth = reciprocal(5.0);
           if oneFifth.isOk() {
-            print(oneFifth.getOr(0.0))
+            print(oneFifth.getOr(0.0));
           } else {
-            print('what?')
+            print('what?');
           }
 
-          const oneZeroth = reciprocal(0.0)
+          const oneZeroth = reciprocal(0.0);
           if oneZeroth.isErr() {
-            const error = oneZeroth.getErr(noerr())
-            print(error)
+            const error = oneZeroth.getErr(noerr());
+            print(error);
           } else {
-            print('uhhh')
+            print('uhhh');
           }
 
           if oneFifth.isOk() {
-            print(oneFifth | 0.0)
+            print(oneFifth | 0.0);
           } else {
-            print('what?')
+            print('what?');
           }
 
           if oneZeroth.isErr() {
-            print(oneZeroth | 1.2345)
+            print(oneZeroth | 1.2345);
           } else {
-            print('uhhh')
+            print('uhhh');
           }
-          emit exit 0
+          emit exit 0;
         }
       "
     }
@@ -140,20 +140,20 @@ Divide by zero error!
         from @std/app import start, print, exit
 
         on start {
-          const strOrNum = main('string')
+          const strOrNum = main('string');
           if strOrNum.isMain() {
-            print(strOrNum.getMainOr(''))
+            print(strOrNum.getMainOr(''));
           } else {
-            print('what?')
+            print('what?');
           }
 
-          const strOrNum2 = alt(2)
+          const strOrNum2 = alt(2);
           if strOrNum2.isAlt() {
-            print(strOrNum2.getAltOr(0))
+            print(strOrNum2.getAltOr(0));
           } else {
-            print('uhhh')
+            print('uhhh');
           }
-          emit exit 0
+          emit exit 0;
         }
       "
     }

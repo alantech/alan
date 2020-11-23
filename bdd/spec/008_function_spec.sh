@@ -6,15 +6,15 @@ Describe "Functions and Custom Operators"
       from @std/app import start, print, exit
 
       fn foo() {
-        print('foo')
+        print('foo');
       }
 
       fn bar(str: string, a: int64, b: int64): string {
-        return str * a + b.toString()
+        return str * a + b.toString();
       }
 
       fn baz(pre: string, body: string): void {
-        print(pre + bar(body, 1, 2))
+        print(pre + bar(body, 1, 2));
       }
 
       // 'int' is an alias for 'int64'
@@ -34,14 +34,14 @@ Describe "Functions and Custom Operators"
       infix doublesum as #+# precedence 11
 
       on start fn (): void {
-        foo()
-        'to bar'.bar(2, 3).print()
-        '>> '.baz('text here')
-        4.double().print()
-        print(##3)
-        4.doublesum(1).print()
-        print(2 #+# 3)
-        emit exit 0
+        foo();
+        'to bar'.bar(2, 3).print();
+        '>> '.baz('text here');
+        4.double().print();
+        print(##3);
+        4.doublesum(1).print();
+        print(2 #+# 3);
+        emit exit 0;
       }
     "
   }

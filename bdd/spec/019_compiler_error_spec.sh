@@ -8,8 +8,8 @@ Describe "Compiler Errors"
         from @std/app import start, print, exit
 
         on start {
-          print(true == 1)
-          emit exit 0
+          print(true == 1);
+          emit exit 0;
         }
       "
     }
@@ -36,13 +36,13 @@ true == 1
         from @std/app import start, print, exit
 
         fn unreachable() {
-          return 'blah'
-          print('unreachable!')
+          return 'blah';
+          print('unreachable!');
         }
 
         on start {
-          unreachable()
-          emit exit 0
+          unreachable();
+          emit exit 0;
         }
       "
     }
@@ -58,7 +58,7 @@ true == 1
       The status should not eq "0"
       # TODO: What file?
       The error should eq "Unreachable code in function 'unreachable' after:
-return 'blah' on line 5:10"
+return 'blah'; on line 4:26"
     End
   End
 
@@ -69,19 +69,19 @@ return 'blah' on line 5:10"
 
         fn fibonacci(n: int64) {
           if n < 2 {
-            return 1
+            return 1;
           } else {
-            return fibonacci(n - 1) + fibonacci(n - 2)
+            return fibonacci(n - 1) + fibonacci(n - 2);
           }
         }
 
         on start {
-          print(fibonacci(0))
-          print(fibonacci(1))
-          print(fibonacci(2))
-          print(fibonacci(3))
-          print(fibonacci(4))
-          emit exit 0
+          print(fibonacci(0));
+          print(fibonacci(1));
+          print(fibonacci(2));
+          print(fibonacci(3));
+          print(fibonacci(4));
+          emit exit 0;
         }
       "
     }
@@ -106,8 +106,8 @@ return 'blah' on line 5:10"
         from @std/app import start, print, exit
 
         on start {
-          print(i64str(5)) // Illegal direct opcode usage
-          emit exit 0
+          print(i64str(5)); // Illegal direct opcode usage
+          emit exit 0;
         }
       "
     }
@@ -122,7 +122,8 @@ return 'blah' on line 5:10"
       When run alan compile test_$$/temp.ln test_$$/temp.amm
       The status should not eq "0"
       # TODO: What file, line, and character?
-      The error should eq "Undefined function called: i64str"
+      The error should eq "i64str is not a function but used as one.
+i64str on line 5:16"
     End
   End
 
@@ -147,9 +148,7 @@ return 'blah' on line 5:10"
       When run alan compile test_$$/temp.ln test_$$/temp.amm
       The status should not eq "0"
       # TODO: Eliminate ANTLR
-      The error should eq "line 6:8 extraneous input '}' expecting {'=', NEWLINE, WS}
-line 8:0 extraneous input '<EOF>' expecting {'const', 'let', 'return', 'emit', BOOLCONSTANT, 'if', '}', '(', '[', '.', NEWLINE, WS, STRINGCONSTANT, NUMBERCONSTANT, VARNAME}
-Cannot read property 'basicassignables' of null"
+      The error should eq "line 6:8 no viable alternative at input 'app.oops\n        }'"
     End
   End
 
@@ -166,15 +165,15 @@ Cannot read property 'basicassignables' of null"
 
         on start {
           const piece = new Piece {
-            owner = false
-          }
-          print('Hello World')
+            owner: false
+          };
+          print('Hello World');
           if piece.owner == true {
-            print('OK')
+            print('OK');
           } else {
-            print('False')
+            print('False');
           }
-          emit exit 0
+          emit exit 0;
         }
       "
     }
@@ -191,8 +190,8 @@ Cannot read property 'basicassignables' of null"
       The status should not eq "0"
       The error should eq "Piece is not a type
 new Piece {
-            owner = false
-          } on line 2:24"
+            owner: false
+          } on line 3:24"
     End
   End
 End

@@ -7,12 +7,12 @@ Describe "Hashing"
         from @std/app import start, print, exit
 
         on start {
-          print(toHash(1))
-          print(toHash(3.14159))
-          print(toHash(true))
-          print(toHash('false'))
-          print(toHash([1, 2, 5, 3]))
-          emit exit 0
+          print(toHash(1));
+          print(toHash(3.14159));
+          print(toHash(true));
+          print(toHash('false'));
+          print(toHash([1, 2, 5, 3]));
+          emit exit 0;
         }
       "
     }
@@ -52,17 +52,17 @@ Describe "Hashing"
         from @std/app import start, print, exit
 
         on start {
-          const test = newHashMap('foo', 1)
-          test.set('bar', 2)
-          test.set('baz', 99)
+          const test = newHashMap('foo', 1);
+          test.set('bar', 2);
+          test.set('baz', 99);
           print(test.keyVal().map(fn (n: KeyVal<string, int64>): string {
-            return 'key: ' + n.key + \"\\nval: \" + toString(n.val)
-          }).join(\"\\n\"))
-          print(test.keys().join(', '))
-          print(test.vals().map(fn (n: int64): string = n.toString()).join(', '))
-          print(test.length())
-          print(test.get('foo'))
-          emit exit 0
+            return 'key: ' + n.key + \"\\nval: \" + toString(n.val);
+          }).join(\"\\n\"));
+          print(test.keys().join(', '));
+          print(test.vals().map(fn (n: int64): string = n.toString()).join(', '));
+          print(test.length());
+          print(test.get('foo'));
+          emit exit 0;
         }
       "
     }
@@ -101,18 +101,18 @@ foo, bar, baz
         from @std/app import start, print, exit
 
         fn kv(k: any, v: anythingElse) = new KeyVal<any, anythingElse> {
-          key = k
-          val = v
+          key: k,
+          val: v
         }
 
         on start {
-          const kva = [ kv(1, 'foo'), kv(2, 'bar'), kv(3, 'baz') ]
-          const hm = kva.toHashMap()
+          const kva = [ kv(1, 'foo'), kv(2, 'bar'), kv(3, 'baz') ];
+          const hm = kva.toHashMap();
           print(hm.keyVal().map(fn (n: KeyVal<int64, string>): string {
-            return 'key: ' + toString(n.key) + \"\\nval: \" + n.val
-          }).join(\"\\n\"))
-          print(hm.get(1))
-          emit exit 0
+            return 'key: ' + toString(n.key) + \"\\nval: \" + n.val;
+          }).join(\"\\n\"));
+          print(hm.get(1));
+          emit exit 0;
         }
       "
     }

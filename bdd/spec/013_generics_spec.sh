@@ -7,38 +7,38 @@ Describe "Generics"
         from @std/app import start, print, exit
 
         type box<V> {
-          set: bool
+          set: bool,
           val: V
         }
 
         on start fn {
           let int8Box = new box<int8> {
-            val = 8.toInt8()
-            set = true
-          }
-          print(int8Box.val)
-          print(int8Box.set)
+            val: 8.toInt8(),
+            set: true
+          };
+          print(int8Box.val);
+          print(int8Box.set);
 
           let stringBox = new box<string> {
-            val = 'hello, generics!'
-            set = true
-          }
-          print(stringBox.val)
-          print(stringBox.set)
+            val: 'hello, generics!',
+            set: true
+          };
+          print(stringBox.val);
+          print(stringBox.set);
 
           const stringBoxBox = new box<box<string>> {
-            val = new box<string> {
-              val = 'hello, nested generics!'
-              set = true
-            }
-            set = true
-          }
+            val: new box<string> {
+              val: 'hello, nested generics!',
+              set: true
+            },
+            set: true
+          };
           // TODO: This was originally 'stringBoxBox.set.print()' but that syntax doesn't work yet
-          print(stringBoxBox.set)
-          print(stringBoxBox.val.set)
-          print(stringBoxBox.val.val)
+          print(stringBoxBox.set);
+          print(stringBoxBox.val.set);
+          print(stringBoxBox.val.val);
 
-          emit exit 0
+          emit exit 0;
         }
       "
     }
@@ -74,18 +74,18 @@ hello, nested generics!"
         from @std/app import start, print, exit
 
         type box<V> {
-          set: bool
+          set: bool,
           val: V
         }
 
         on start fn {
           let stringBox = new box<string> {
-            set = true
-            val = 'str'
-          }
-          stringBox.val = 8
+            set: true,
+            val: 'str'
+          };
+          stringBox.val = 8;
 
-          emit exit 0
+          emit exit 0;
         }
       "
     }
