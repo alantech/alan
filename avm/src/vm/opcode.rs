@@ -1565,6 +1565,22 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }
     None
   });
+  cpu!("delindx", |args, hand_mem| {
+    let idx = hand_mem.read_fixed(args[1]) as usize;
+    let el = hand_mem.delete(args[0], idx);
+    hand_mem.write_fractal(args[2], &Vec::new());
+    if el.is_ok() {
+      hand_mem.push_fixed(args[2], 1i64);
+      let record = el.ok().unwrap();
+      let (a, b) = record;
+      hand_mem.push_idxs(args[2], a, b as usize);
+    } else {
+      hand_mem.push_fixed(args[2], 0i64);
+      let error_string = el.err().unwrap();
+      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal(&error_string));
+    }
+    None
+  });
   cpu!("newarr", |args, hand_mem| {
     hand_mem.write_fractal(args[2], &Vec::new());
     None

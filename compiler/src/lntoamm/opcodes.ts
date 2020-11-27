@@ -679,6 +679,7 @@ addopcodes({
   condfn: [{ cond: t('bool'), optional: t('function'), }, t('any')],
   pusharr: [{ arr: t('Array<any>'), val: t('any'), size: t('int64')}],
   poparr: [{ arr: t('Array<any>')}, t('Result<any>')],
+  delindx: [{ arr: t('Array<any>'), idx: t('int64')}, t('Result<any>')],
   each: [{ arr: t('Array<any>'), cb: t('function'), }, t('void')],
   eachl: [{ arr: t('Array<any>'), cb: t('function'), }, t('void')],
   map: [{ arr: t('Array<any>'), cb: t('function'), }, t('Array<any>')],
