@@ -764,7 +764,7 @@ export fn getChildren(n: Node<any>): Array<Node<any>> {
   }
 }
 
-// returns pruned Tree
+// Returns the pruned Tree
 export fn prune(n: Node<any>): Tree<any> {
   // adjust parent's children
   const parentRes = n.tree.parents[n.id]
@@ -778,7 +778,7 @@ export fn prune(n: Node<any>): Tree<any> {
   }
   // This is, unfortunately for now, a sequential algorithm. Hope to figure out a parallel version
   let nodeStack = new Array<int64> [ n.id ]
-  let nodesDeleted = 0
+  let rmdIds = new Array<int64> [ ]
   seqdo(newseq(pow(2, 62)), fn (): bool {
     // Get the nodeId, exit if none left
     const nodeRes = nodeStack.pop()
@@ -792,12 +792,30 @@ export fn prune(n: Node<any>): Tree<any> {
       const childrenIds = childrenRes.getR()
       nodeStack = nodeStack.concat(childrenIds)
     }
-    const delIdx = nodeId - nodesDeleted
+    const delIdx = nodeId - length(rmdIds)
     delete(n.tree.vals, delIdx)
     delete(n.tree.parents, delIdx)
     delete(n.tree.children, delIdx)
-    nodesDeleted = nodesDeleted + 1
+    push(rmdIds, nodeId)
     return true
+  })
+
+  // adjust indices for remaining elements
+  const iters = length(n.tree.parents)
+  seqeach(newseq(iters), fn (i: int64) {
+    const parentId = getOr(n.tree.parents[i], -1)
+    const parentDelta = rmdIds.filter(fn (rmId: int64): bool = parentId > rmId).length()
+    if parentDelta > 0 {
+      set(n.tree.parents, i, parentId - parentDelta)
+    }
+    const children = getOr(n.tree.children[i], new Array<int64> [])
+    set(n.tree.children, i, children.map(fn (cId: int64): int64 {
+      const delta = rmdIds.filter(fn (rmdId: int64): bool = cId > rmdId).length()
+      if delta > 0 {
+        return cId - delta
+      }
+      return cId
+    }))
   })
   return n.tree
 }
