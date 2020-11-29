@@ -28,7 +28,7 @@
 
 ## Summary
 
-The majority of the conclusions in [RFC 009](./009 - Tree RFC.md) are still valid, but the originally API proposed for Tree construction allowed nodes from different trees to be merged without properly reconciling the original trees into a single one. Additionally, the `addChild` API also does not return the newly created node which makes Tree creation harder to follow.
+The majority of the conclusions in [RFC 009](./009 - Tree RFC.md) are still valid, but the originally API proposed for Tree construction allowed nodes from different trees to be merged without properly reconciling the original trees into a single one. Additionally, the `addChild` API does not return the newly created node which makes the originally proposed Tree creation harder to follow.
 
 ## Expected SemBDD Impact
 
