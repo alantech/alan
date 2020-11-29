@@ -809,13 +809,14 @@ export fn prune(n: Node<any>): Tree<any> {
       set(n.tree.parents, i, parentId - parentDelta)
     }
     const children = getOr(n.tree.children[i], new Array<int64> [])
-    set(n.tree.children, i, children.map(fn (cId: int64): int64 {
+    const newChildren = children.map(fn (cId: int64): int64 {
       const delta = rmdIds.filter(fn (rmdId: int64): bool = cId > rmdId).length()
       if delta > 0 {
         return cId - delta
       }
       return cId
-    }))
+    })
+    set(n.tree.children, i, newChildren)
   })
   return n.tree
 }
