@@ -764,39 +764,6 @@ export fn getChildren(n: Node<any>): Array<Node<any>> {
   }
 }
 
-export fn getChildren(t: Tree<any>): Array<Node<any>> = t.getRootNode().getChildren()
-
-// returns the new child node added
-export fn addChild(n: Node<any>, val: any): Node<any> {
-  const childId = length(n.tree.vals)
-  push(n.tree.vals, val)
-  push(n.tree.parents, n.id)
-  push(n.tree.children, new Array<int64> [ ])
-  push(getOr(n.tree.children[n.id], new Array<int64> []), childId)
-  return new Node<any> {
-    id = childId
-    tree = n.tree
-  }
-}
-
-export fn addChild(t: Tree<any>, val: any): Node<any> = t.getRootNode().addChild(val)
-
-export fn addChild(t: Tree<any>, val: Node<any>): Node<any> = t.getRootNode().addChild(val)
-
-export fn addChild(n: Node<any>, val: Tree<any>): Node<any> = n.addChild(val.getRootNode())
-
-export fn getOr(n: Node<any>, default: any): any = getOr(n.tree.vals[n.id], default)
-
-export fn toNodeArray(t: Tree<any>): Array<Node<any>> = map(t.vals, fn (val: any, i: int64): Node<any> = t.getNodeById(i))
-
-export fn map(t: Tree<any>, mapper: function): Tree<anythingElse> {
-  return new Tree<anythingElse> {
-    vals = t.toNodeArray().map(mapper)
-    parents = clone(t.parents)
-    children = clone(t.children)
-  }
-}
-
 // Returns the pruned Tree
 export fn prune(n: Node<any>): Tree<any> {
   // adjust parent's children
@@ -852,6 +819,39 @@ export fn prune(n: Node<any>): Tree<any> {
     set(n.tree.children, i, newChildren)
   })
   return n.tree
+}
+
+export fn getChildren(t: Tree<any>): Array<Node<any>> = t.getRootNode().getChildren()
+
+// returns the new child node added
+export fn addChild(n: Node<any>, val: any): Node<any> {
+  const childId = length(n.tree.vals)
+  push(n.tree.vals, val)
+  push(n.tree.parents, n.id)
+  push(n.tree.children, new Array<int64> [ ])
+  push(getOr(n.tree.children[n.id], new Array<int64> []), childId)
+  return new Node<any> {
+    id = childId
+    tree = n.tree
+  }
+}
+
+export fn addChild(t: Tree<any>, val: any): Node<any> = t.getRootNode().addChild(val)
+
+export fn addChild(t: Tree<any>, val: Node<any>): Node<any> = t.getRootNode().addChild(val)
+
+export fn addChild(n: Node<any>, val: Tree<any>): Node<any> = n.addChild(val.getRootNode())
+
+export fn getOr(n: Node<any>, default: any): any = getOr(n.tree.vals[n.id], default)
+
+export fn toNodeArray(t: Tree<any>): Array<Node<any>> = map(t.vals, fn (val: any, i: int64): Node<any> = t.getNodeById(i))
+
+export fn map(t: Tree<any>, mapper: function): Tree<anythingElse> {
+  return new Tree<anythingElse> {
+    vals = t.toNodeArray().map(mapper)
+    parents = clone(t.parents)
+    children = clone(t.children)
+  }
 }
 
 export fn some(t: Tree<any>, mapper: function): bool = t.toNodeArray().some(mapper)
