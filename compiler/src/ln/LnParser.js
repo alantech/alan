@@ -4,6 +4,7 @@ var antlr4 = require('antlr4/index');
 var LnListener = require('./LnListener').LnListener;
 var grammarFileName = "Ln.g4";
 
+
 var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
     "\u0003/\u04b8\u0004\u0002\t\u0002\u0004\u0003\t\u0003\u0004\u0004\t",
     "\u0004\u0004\u0005\t\u0005\u0004\u0006\t\u0006\u0004\u0007\t\u0007\u0004",
@@ -167,8 +168,8 @@ var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
     "\nC\fC\u000eC\u04b4\u000bC\u0003C\u0003C\u0003C\u0002\u0002D\u0002\u0004",
     "\u0006\b\n\f\u000e\u0010\u0012\u0014\u0016\u0018\u001a\u001c\u001e ",
     "\"$&(*,.02468:<>@BDFHJLNPRTVXZ\\^`bdfhjlnprtvxz|~\u0080\u0082\u0084",
-    "\u0002\u0007\u0003\u0002)*\u0004\u0002%%//\u0004\u0002\u000f\u000f-",
-    ".\u0003\u0002\u0010\u0011\u0004\u0002\u0006\u0006//\u0002\u0543\u0002",
+    "\u0002\u0007\u0003\u0002()\u0004\u0002%%//\u0004\u0002\u000f\u000f,",
+    "-\u0003\u0002\u0010\u0011\u0004\u0002\u0006\u0006//\u0002\u0543\u0002",
     "\u00a4\u0003\u0002\u0002\u0002\u0004\u00a6\u0003\u0002\u0002\u0002\u0006",
     "\u00aa\u0003\u0002\u0002\u0002\b\u00ac\u0003\u0002\u0002\u0002\n\u00bc",
     "\u0003\u0002\u0002\u0002\f\u00cc\u0003\u0002\u0002\u0002\u000e\u00da",
@@ -225,19 +226,19 @@ var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
     "\u0003\u0002\u0002\u0002\u00a8\u00ab\u0005\b\u0005\u0002\u00a9\u00ab",
     "\u0005\n\u0006\u0002\u00aa\u00a8\u0003\u0002\u0002\u0002\u00aa\u00a9",
     "\u0003\u0002\u0002\u0002\u00ab\u0007\u0003\u0002\u0002\u0002\u00ac\u00ad",
-    "\u0007\u0003\u0002\u0002\u00ad\u00ae\u0007*\u0002\u0002\u00ae\u00b3",
-    "\u0005\f\u0007\u0002\u00af\u00b0\u0007*\u0002\u0002\u00b0\u00b1\u0007",
-    "\u000e\u0002\u0002\u00b1\u00b2\u0007*\u0002\u0002\u00b2\u00b4\u0007",
+    "\u0007\u0003\u0002\u0002\u00ad\u00ae\u0007)\u0002\u0002\u00ae\u00b3",
+    "\u0005\f\u0007\u0002\u00af\u00b0\u0007)\u0002\u0002\u00b0\u00b1\u0007",
+    "\u000e\u0002\u0002\u00b1\u00b2\u0007)\u0002\u0002\u00b2\u00b4\u0007",
     "/\u0002\u0002\u00b3\u00af\u0003\u0002\u0002\u0002\u00b3\u00b4\u0003",
     "\u0002\u0002\u0002\u00b4\u00b5\u0003\u0002\u0002\u0002\u00b5\u00b9\u0007",
-    ")\u0002\u0002\u00b6\u00b8\u0005\u0004\u0003\u0002\u00b7\u00b6\u0003",
+    "(\u0002\u0002\u00b6\u00b8\u0005\u0004\u0003\u0002\u00b7\u00b6\u0003",
     "\u0002\u0002\u0002\u00b8\u00bb\u0003\u0002\u0002\u0002\u00b9\u00b7\u0003",
     "\u0002\u0002\u0002\u00b9\u00ba\u0003\u0002\u0002\u0002\u00ba\t\u0003",
     "\u0002\u0002\u0002\u00bb\u00b9\u0003\u0002\u0002\u0002\u00bc\u00bd\u0007",
-    "\u0004\u0002\u0002\u00bd\u00be\u0007*\u0002\u0002\u00be\u00bf\u0005",
-    "\f\u0007\u0002\u00bf\u00c0\u0007*\u0002\u0002\u00c0\u00c1\u0007\u0003",
-    "\u0002\u0002\u00c1\u00c2\u0007*\u0002\u0002\u00c2\u00c3\u0005z>\u0002",
-    "\u00c3\u00c7\u0007)\u0002\u0002\u00c4\u00c6\u0005\u0004\u0003\u0002",
+    "\u0004\u0002\u0002\u00bd\u00be\u0007)\u0002\u0002\u00be\u00bf\u0005",
+    "\f\u0007\u0002\u00bf\u00c0\u0007)\u0002\u0002\u00c0\u00c1\u0007\u0003",
+    "\u0002\u0002\u00c1\u00c2\u0007)\u0002\u0002\u00c2\u00c3\u0005z>\u0002",
+    "\u00c3\u00c7\u0007(\u0002\u0002\u00c4\u00c6\u0005\u0004\u0003\u0002",
     "\u00c5\u00c4\u0003\u0002\u0002\u0002\u00c6\u00c9\u0003\u0002\u0002\u0002",
     "\u00c7\u00c5\u0003\u0002\u0002\u0002\u00c7\u00c8\u0003\u0002\u0002\u0002",
     "\u00c8\u000b\u0003\u0002\u0002\u0002\u00c9\u00c7\u0003\u0002\u0002\u0002",
@@ -311,7 +312,7 @@ var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
     "\u0003\u0002\u013d\u013c\u0003\u0002\u0002\u0002\u013e\u0141\u0003\u0002",
     "\u0002\u0002\u013f\u013d\u0003\u0002\u0002\u0002\u013f\u0140\u0003\u0002",
     "\u0002\u0002\u0140\u0149\u0003\u0002\u0002\u0002\u0141\u013f\u0003\u0002",
-    "\u0002\u0002\u0142\u0144\u0007*\u0002\u0002\u0143\u0142\u0003\u0002",
+    "\u0002\u0002\u0142\u0144\u0007)\u0002\u0002\u0143\u0142\u0003\u0002",
     "\u0002\u0002\u0144\u0147\u0003\u0002\u0002\u0002\u0145\u0143\u0003\u0002",
     "\u0002\u0002\u0145\u0146\u0003\u0002\u0002\u0002\u0146\u0148\u0003\u0002",
     "\u0002\u0002\u0147\u0145\u0003\u0002\u0002\u0002\u0148\u014a\u0005\u001e",
@@ -326,7 +327,7 @@ var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
     "\u0002\u0002\u0156\u0158\u0007\'\u0002\u0002\u0157\u0159\t\u0002\u0002",
     "\u0002\u0158\u0157\u0003\u0002\u0002\u0002\u0158\u0159\u0003\u0002\u0002",
     "\u0002\u0159\u015a\u0003\u0002\u0002\u0002\u015a\u015e\u0005\u001a\u000e",
-    "\u0002\u015b\u015d\u0007)\u0002\u0002\u015c\u015b\u0003\u0002\u0002",
+    "\u0002\u015b\u015d\u0007(\u0002\u0002\u015c\u015b\u0003\u0002\u0002",
     "\u0002\u015d\u0160\u0003\u0002\u0002\u0002\u015e\u015c\u0003\u0002\u0002",
     "\u0002\u015e\u015f\u0003\u0002\u0002\u0002\u015f\u001f\u0003\u0002\u0002",
     "\u0002\u0160\u015e\u0003\u0002\u0002\u0002\u0161\u0163\u0007\u0006\u0002",
@@ -449,23 +450,23 @@ var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
     "\u0003\u0002\u0002\u0002\u02233\u0003\u0002\u0002\u0002\u0224\u0227",
     "\u0005V,\u0002\u0225\u0227\u00052\u001a\u0002\u0226\u0224\u0003\u0002",
     "\u0002\u0002\u0226\u0225\u0003\u0002\u0002\u0002\u02275\u0003\u0002",
-    "\u0002\u0002\u0228\u022c\u00054\u001b\u0002\u0229\u022b\u0007*\u0002",
+    "\u0002\u0002\u0228\u022c\u00054\u001b\u0002\u0229\u022b\u0007)\u0002",
     "\u0002\u022a\u0229\u0003\u0002\u0002\u0002\u022b\u022e\u0003\u0002\u0002",
     "\u0002\u022c\u022a\u0003\u0002\u0002\u0002\u022c\u022d\u0003\u0002\u0002",
     "\u0002\u022d\u0230\u0003\u0002\u0002\u0002\u022e\u022c\u0003\u0002\u0002",
     "\u0002\u022f\u0228\u0003\u0002\u0002\u0002\u0230\u0231\u0003\u0002\u0002",
     "\u0002\u0231\u022f\u0003\u0002\u0002\u0002\u0231\u0232\u0003\u0002\u0002",
     "\u0002\u02327\u0003\u0002\u0002\u0002\u0233\u0237\u0007\u001a\u0002",
-    "\u0002\u0234\u0236\u0007*\u0002\u0002\u0235\u0234\u0003\u0002\u0002",
+    "\u0002\u0234\u0236\u0007)\u0002\u0002\u0235\u0234\u0003\u0002\u0002",
     "\u0002\u0236\u0239\u0003\u0002\u0002\u0002\u0237\u0235\u0003\u0002\u0002",
     "\u0002\u0237\u0238\u0003\u0002\u0002\u0002\u0238\u023a\u0003\u0002\u0002",
     "\u0002\u0239\u0237\u0003\u0002\u0002\u0002\u023a\u023e\u00056\u001c",
-    "\u0002\u023b\u023d\u0007*\u0002\u0002\u023c\u023b\u0003\u0002\u0002",
+    "\u0002\u023b\u023d\u0007)\u0002\u0002\u023c\u023b\u0003\u0002\u0002",
     "\u0002\u023d\u0240\u0003\u0002\u0002\u0002\u023e\u023c\u0003\u0002\u0002",
     "\u0002\u023e\u023f\u0003\u0002\u0002\u0002\u023f\u0241\u0003\u0002\u0002",
     "\u0002\u0240\u023e\u0003\u0002\u0002\u0002\u0241\u0242\u0007\u001b\u0002",
     "\u0002\u02429\u0003\u0002\u0002\u0002\u0243\u0247\u0007\u0005\u0002",
-    "\u0002\u0244\u0246\u0007*\u0002\u0002\u0245\u0244\u0003\u0002\u0002",
+    "\u0002\u0244\u0246\u0007)\u0002\u0002\u0245\u0244\u0003\u0002\u0002",
     "\u0002\u0246\u0249\u0003\u0002\u0002\u0002\u0247\u0245\u0003\u0002\u0002",
     "\u0002\u0247\u0248\u0003\u0002\u0002\u0002\u0248\u024a\u0003\u0002\u0002",
     "\u0002\u0249\u0247\u0003\u0002\u0002\u0002\u024a\u024b\u00052\u001a",
@@ -473,11 +474,11 @@ var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
     "\u0250\u0005@!\u0002\u024e\u0250\u0005B\"\u0002\u024f\u024c\u0003\u0002",
     "\u0002\u0002\u024f\u024d\u0003\u0002\u0002\u0002\u024f\u024e\u0003\u0002",
     "\u0002\u0002\u0250=\u0003\u0002\u0002\u0002\u0251\u0255\u0007\u0015",
-    "\u0002\u0002\u0252\u0254\u0007*\u0002\u0002\u0253\u0252\u0003\u0002",
+    "\u0002\u0002\u0252\u0254\u0007)\u0002\u0002\u0253\u0252\u0003\u0002",
     "\u0002\u0002\u0254\u0257\u0003\u0002\u0002\u0002\u0255\u0253\u0003\u0002",
     "\u0002\u0002\u0255\u0256\u0003\u0002\u0002\u0002\u0256\u0258\u0003\u0002",
     "\u0002\u0002\u0257\u0255\u0003\u0002\u0002\u0002\u0258\u025c\u0005\u0014",
-    "\u000b\u0002\u0259\u025b\u0007*\u0002\u0002\u025a\u0259\u0003\u0002",
+    "\u000b\u0002\u0259\u025b\u0007)\u0002\u0002\u025a\u0259\u0003\u0002",
     "\u0002\u0002\u025b\u025e\u0003\u0002\u0002\u0002\u025c\u025a\u0003\u0002",
     "\u0002\u0002\u025c\u025d\u0003\u0002\u0002\u0002\u025d\u0260\u0003\u0002",
     "\u0002\u0002\u025e\u025c\u0003\u0002\u0002\u0002\u025f\u0251\u0003\u0002",
@@ -493,11 +494,11 @@ var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
     "\u0002\u026e\u026f\u0003\u0002\u0002\u0002\u026f\u0271\u0003\u0002\u0002",
     "\u0002\u0270\u026e\u0003\u0002\u0002\u0002\u0271\u0272\u0007\u001f\u0002",
     "\u0002\u0272?\u0003\u0002\u0002\u0002\u0273\u0277\u0007\u0015\u0002",
-    "\u0002\u0274\u0276\u0007*\u0002\u0002\u0275\u0274\u0003\u0002\u0002",
+    "\u0002\u0274\u0276\u0007)\u0002\u0002\u0275\u0274\u0003\u0002\u0002",
     "\u0002\u0276\u0279\u0003\u0002\u0002\u0002\u0277\u0275\u0003\u0002\u0002",
     "\u0002\u0277\u0278\u0003\u0002\u0002\u0002\u0278\u027a\u0003\u0002\u0002",
     "\u0002\u0279\u0277\u0003\u0002\u0002\u0002\u027a\u027e\u0005\u0014\u000b",
-    "\u0002\u027b\u027d\u0007*\u0002\u0002\u027c\u027b\u0003\u0002\u0002",
+    "\u0002\u027b\u027d\u0007)\u0002\u0002\u027c\u027b\u0003\u0002\u0002",
     "\u0002\u027d\u0280\u0003\u0002\u0002\u0002\u027e\u027c\u0003\u0002\u0002",
     "\u0002\u027e\u027f\u0003\u0002\u0002\u0002\u027f\u0281\u0003\u0002\u0002",
     "\u0002\u0280\u027e\u0003\u0002\u0002\u0002\u0281\u0285\u0007\u0018\u0002",
@@ -512,11 +513,11 @@ var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
     "\u0002\u0290\u028e\u0003\u0002\u0002\u0002\u0290\u0291\u0003\u0002\u0002",
     "\u0002\u0291\u0292\u0003\u0002\u0002\u0002\u0292\u0293\u0007\u0019\u0002",
     "\u0002\u0293A\u0003\u0002\u0002\u0002\u0294\u0298\u0007\u0015\u0002",
-    "\u0002\u0295\u0297\u0007*\u0002\u0002\u0296\u0295\u0003\u0002\u0002",
+    "\u0002\u0295\u0297\u0007)\u0002\u0002\u0296\u0295\u0003\u0002\u0002",
     "\u0002\u0297\u029a\u0003\u0002\u0002\u0002\u0298\u0296\u0003\u0002\u0002",
     "\u0002\u0298\u0299\u0003\u0002\u0002\u0002\u0299\u029b\u0003\u0002\u0002",
     "\u0002\u029a\u0298\u0003\u0002\u0002\u0002\u029b\u029f\u0005\u0014\u000b",
-    "\u0002\u029c\u029e\u0007*\u0002\u0002\u029d\u029c\u0003\u0002\u0002",
+    "\u0002\u029c\u029e\u0007)\u0002\u0002\u029d\u029c\u0003\u0002\u0002",
     "\u0002\u029e\u02a1\u0003\u0002\u0002\u0002\u029f\u029d\u0003\u0002\u0002",
     "\u0002\u029f\u02a0\u0003\u0002\u0002\u0002\u02a0\u02a2\u0003\u0002\u0002",
     "\u0002\u02a1\u029f\u0003\u0002\u0002\u0002\u02a2\u02a6\u0007\u0018\u0002",
@@ -531,11 +532,11 @@ var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
     "\u02b1\u02af\u0003\u0002\u0002\u0002\u02b1\u02b2\u0003\u0002\u0002\u0002",
     "\u02b2\u02b4\u0003\u0002\u0002\u0002\u02b3\u02b1\u0003\u0002\u0002\u0002",
     "\u02b4\u02b5\u0007\u0019\u0002\u0002\u02b5C\u0003\u0002\u0002\u0002",
-    "\u02b6\u02ba\u00050\u0019\u0002\u02b7\u02b9\u0007*\u0002\u0002\u02b8",
+    "\u02b6\u02ba\u00050\u0019\u0002\u02b7\u02b9\u0007)\u0002\u0002\u02b8",
     "\u02b7\u0003\u0002\u0002\u0002\u02b9\u02bc\u0003\u0002\u0002\u0002\u02ba",
     "\u02b8\u0003\u0002\u0002\u0002\u02ba\u02bb\u0003\u0002\u0002\u0002\u02bb",
     "\u02bd\u0003\u0002\u0002\u0002\u02bc\u02ba\u0003\u0002\u0002\u0002\u02bd",
-    "\u02c1\u0007\'\u0002\u0002\u02be\u02c0\u0007*\u0002\u0002\u02bf\u02be",
+    "\u02c1\u0007\'\u0002\u0002\u02be\u02c0\u0007)\u0002\u0002\u02bf\u02be",
     "\u0003\u0002\u0002\u0002\u02c0\u02c3\u0003\u0002\u0002\u0002\u02c1\u02bf",
     "\u0003\u0002\u0002\u0002\u02c1\u02c2\u0003\u0002\u0002\u0002\u02c2\u02c4",
     "\u0003\u0002\u0002\u0002\u02c3\u02c1\u0003\u0002\u0002\u0002\u02c4\u02c5",
@@ -560,12 +561,12 @@ var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
     "\u001a\u0002\u0002\u02e4\u02e6\u0005F$\u0002\u02e5\u02e4\u0003\u0002",
     "\u0002\u0002\u02e5\u02e6\u0003\u0002\u0002\u0002\u02e6\u02e7\u0003\u0002",
     "\u0002\u0002\u02e7\u02e8\u0007\u001b\u0002\u0002\u02e8I\u0003\u0002",
-    "\u0002\u0002\u02e9\u02ed\u0005\u0080A\u0002\u02ea\u02ec\u0007*\u0002",
+    "\u0002\u0002\u02e9\u02ed\u0005\u0080A\u0002\u02ea\u02ec\u0007)\u0002",
     "\u0002\u02eb\u02ea\u0003\u0002\u0002\u0002\u02ec\u02ef\u0003\u0002\u0002",
     "\u0002\u02ed\u02eb\u0003\u0002\u0002\u0002\u02ed\u02ee\u0003\u0002\u0002",
     "\u0002\u02ee\u02f0\u0003\u0002\u0002\u0002\u02ef\u02ed\u0003\u0002\u0002",
     "\u0002\u02f0\u02fd\u0005H%\u0002\u02f1\u02f2\u0007 \u0002\u0002\u02f2",
-    "\u02f6\u0005\u0080A\u0002\u02f3\u02f5\u0007*\u0002\u0002\u02f4\u02f3",
+    "\u02f6\u0005\u0080A\u0002\u02f3\u02f5\u0007)\u0002\u0002\u02f4\u02f3",
     "\u0003\u0002\u0002\u0002\u02f5\u02f8\u0003\u0002\u0002\u0002\u02f6\u02f4",
     "\u0003\u0002\u0002\u0002\u02f6\u02f7\u0003\u0002\u0002\u0002\u02f7\u02f9",
     "\u0003\u0002\u0002\u0002\u02f8\u02f6\u0003\u0002\u0002\u0002\u02f9\u02fa",
@@ -577,7 +578,7 @@ var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
     "\u0002\u0303\u0304\u0007\u001b\u0002\u0002\u0304\u0306\u0003\u0002\u0002",
     "\u0002\u0305\u0300\u0003\u0002\u0002\u0002\u0305\u0301\u0003\u0002\u0002",
     "\u0002\u0306\u0311\u0003\u0002\u0002\u0002\u0307\u0308\u0007 \u0002",
-    "\u0002\u0308\u030c\u0005\u0080A\u0002\u0309\u030b\u0007*\u0002\u0002",
+    "\u0002\u0308\u030c\u0005\u0080A\u0002\u0309\u030b\u0007)\u0002\u0002",
     "\u030a\u0309\u0003\u0002\u0002\u0002\u030b\u030e\u0003\u0002\u0002\u0002",
     "\u030c\u030a\u0003\u0002\u0002\u0002\u030c\u030d\u0003\u0002\u0002\u0002",
     "\u030d\u030f\u0003\u0002\u0002\u0002\u030e\u030c\u0003\u0002\u0002\u0002",
@@ -626,7 +627,7 @@ var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
     "\u0354\u0003\u0002\u0002\u0002\u0357\u0355\u0003\u0002\u0002\u0002\u0357",
     "\u0356\u0003\u0002\u0002\u0002\u0358S\u0003\u0002\u0002\u0002\u0359",
     "\u035a\t\u0004\u0002\u0002\u035aU\u0003\u0002\u0002\u0002\u035b\u0379",
-    "\u0007(\u0002\u0002\u035c\u0379\u0007\'\u0002\u0002\u035d\u0379\u0007",
+    "\u0007.\u0002\u0002\u035c\u0379\u0007\'\u0002\u0002\u035d\u0379\u0007",
     "\u001c\u0002\u0002\u035e\u0379\u0007&\u0002\u0002\u035f\u0361\u0007",
     "\u001d\u0002\u0002\u0360\u035f\u0003\u0002\u0002\u0002\u0361\u0362\u0003",
     "\u0002\u0002\u0002\u0362\u0360\u0003\u0002\u0002\u0002\u0362\u0363\u0003",
@@ -634,10 +635,10 @@ var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
     "!\u0002\u0002\u0365\u0364\u0003\u0002\u0002\u0002\u0366\u0367\u0003",
     "\u0002\u0002\u0002\u0367\u0365\u0003\u0002\u0002\u0002\u0367\u0368\u0003",
     "\u0002\u0002\u0002\u0368\u036c\u0003\u0002\u0002\u0002\u0369\u036b\u0007",
-    "(\u0002\u0002\u036a\u0369\u0003\u0002\u0002\u0002\u036b\u036e\u0003",
+    ".\u0002\u0002\u036a\u0369\u0003\u0002\u0002\u0002\u036b\u036e\u0003",
     "\u0002\u0002\u0002\u036c\u036a\u0003\u0002\u0002\u0002\u036c\u036d\u0003",
     "\u0002\u0002\u0002\u036d\u0375\u0003\u0002\u0002\u0002\u036e\u036c\u0003",
-    "\u0002\u0002\u0002\u036f\u0371\u0007(\u0002\u0002\u0370\u036f\u0003",
+    "\u0002\u0002\u0002\u036f\u0371\u0007.\u0002\u0002\u0370\u036f\u0003",
     "\u0002\u0002\u0002\u0371\u0372\u0003\u0002\u0002\u0002\u0372\u0370\u0003",
     "\u0002\u0002\u0002\u0372\u0373\u0003\u0002\u0002\u0002\u0373\u0375\u0003",
     "\u0002\u0002\u0002\u0374\u0365\u0003\u0002\u0002\u0002\u0374\u0370\u0003",
@@ -648,16 +649,16 @@ var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
     "\u0002\u0002\u0002\u0378\u0360\u0003\u0002\u0002\u0002\u0378\u0376\u0003",
     "\u0002\u0002\u0002\u0378\u0377\u0003\u0002\u0002\u0002\u0379W\u0003",
     "\u0002\u0002\u0002\u037a\u037b\t\u0005\u0002\u0002\u037b\u0384\u0007",
-    "*\u0002\u0002\u037c\u037d\u0005Z.\u0002\u037d\u037e\u0007*\u0002\u0002",
+    ")\u0002\u0002\u037c\u037d\u0005Z.\u0002\u037d\u037e\u0007)\u0002\u0002",
     "\u037e\u037f\u0005\\/\u0002\u037f\u0385\u0003\u0002\u0002\u0002\u0380",
-    "\u0381\u0005\\/\u0002\u0381\u0382\u0007*\u0002\u0002\u0382\u0383\u0005",
+    "\u0381\u0005\\/\u0002\u0381\u0382\u0007)\u0002\u0002\u0382\u0383\u0005",
     "Z.\u0002\u0383\u0385\u0003\u0002\u0002\u0002\u0384\u037c\u0003\u0002",
     "\u0002\u0002\u0384\u0380\u0003\u0002\u0002\u0002\u0385Y\u0003\u0002",
-    "\u0002\u0002\u0386\u0387\u0005\u0080A\u0002\u0387\u0388\u0007*\u0002",
-    "\u0002\u0388\u0389\u0007\u000e\u0002\u0002\u0389\u038a\u0007*\u0002",
+    "\u0002\u0002\u0386\u0387\u0005\u0080A\u0002\u0387\u0388\u0007)\u0002",
+    "\u0002\u0388\u0389\u0007\u000e\u0002\u0002\u0389\u038a\u0007)\u0002",
     "\u0002\u038a\u038b\u0005V,\u0002\u038b[\u0003\u0002\u0002\u0002\u038c",
-    "\u038d\u0007\u0012\u0002\u0002\u038d\u038e\u0007*\u0002\u0002\u038e",
-    "\u038f\u0007.\u0002\u0002\u038f]\u0003\u0002\u0002\u0002\u0390\u0391",
+    "\u038d\u0007\u0012\u0002\u0002\u038d\u038e\u0007)\u0002\u0002\u038e",
+    "\u038f\u0007-\u0002\u0002\u038f]\u0003\u0002\u0002\u0002\u0390\u0391",
     "\u0007\u0007\u0002\u0002\u0391\u0392\u0005\u0004\u0003\u0002\u0392\u0396",
     "\u0007/\u0002\u0002\u0393\u0395\u0005\u0004\u0003\u0002\u0394\u0393",
     "\u0003\u0002\u0002\u0002\u0395\u0398\u0003\u0002\u0002\u0002\u0396\u0394",
@@ -679,11 +680,11 @@ var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
     "\u0002\u03afa\u0003\u0002\u0002\u0002\u03b0\u03b3\u0005\u0080A\u0002",
     "\u03b1\u03b3\u0005J&\u0002\u03b2\u03b0\u0003\u0002\u0002\u0002\u03b2",
     "\u03b1\u0003\u0002\u0002\u0002\u03b3c\u0003\u0002\u0002\u0002\u03b4",
-    "\u03b8\u0007\u0016\u0002\u0002\u03b5\u03b7\u0007*\u0002\u0002\u03b6",
+    "\u03b8\u0007\u0016\u0002\u0002\u03b5\u03b7\u0007)\u0002\u0002\u03b6",
     "\u03b5\u0003\u0002\u0002\u0002\u03b7\u03ba\u0003\u0002\u0002\u0002\u03b8",
     "\u03b6\u0003\u0002\u0002\u0002\u03b8\u03b9\u0003\u0002\u0002\u0002\u03b9",
     "\u03bb\u0003\u0002\u0002\u0002\u03ba\u03b8\u0003\u0002\u0002\u0002\u03bb",
-    "\u03bf\u0007/\u0002\u0002\u03bc\u03be\u0007*\u0002\u0002\u03bd\u03bc",
+    "\u03bf\u0007/\u0002\u0002\u03bc\u03be\u0007)\u0002\u0002\u03bd\u03bc",
     "\u0003\u0002\u0002\u0002\u03be\u03c1\u0003\u0002\u0002\u0002\u03bf\u03bd",
     "\u0003\u0002\u0002\u0002\u03bf\u03c0\u0003\u0002\u0002\u0002\u03c0\u03dd",
     "\u0003\u0002\u0002\u0002\u03c1\u03bf\u0003\u0002\u0002\u0002\u03c2\u03c6",
@@ -707,7 +708,7 @@ var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
     "h5\u0002\u03e0\u03e3\u0005l7\u0002\u03e1\u03e3\u0005r:\u0002\u03e2\u03df",
     "\u0003\u0002\u0002\u0002\u03e2\u03e0\u0003\u0002\u0002\u0002\u03e2\u03e1",
     "\u0003\u0002\u0002\u0002\u03e3g\u0003\u0002\u0002\u0002\u03e4\u03e8",
-    "\t\u0006\u0002\u0002\u03e5\u03e7\u0007*\u0002\u0002\u03e6\u03e5\u0003",
+    "\t\u0006\u0002\u0002\u03e5\u03e7\u0007)\u0002\u0002\u03e6\u03e5\u0003",
     "\u0002\u0002\u0002\u03e7\u03ea\u0003\u0002\u0002\u0002\u03e8\u03e6\u0003",
     "\u0002\u0002\u0002\u03e8\u03e9\u0003\u0002\u0002\u0002\u03e9\u03eb\u0003",
     "\u0002\u0002\u0002\u03ea\u03e8\u0003\u0002\u0002\u0002\u03eb\u03ec\u0005",
@@ -758,11 +759,11 @@ var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
     "\u0002\u0002\u0002\u0439\u043a\u0005\u0080A\u0002\u043am\u0003\u0002",
     "\u0002\u0002\u043b\u043c\u0005\u0080A\u0002\u043co\u0003\u0002\u0002",
     "\u0002\u043d\u043e\u0005\u0080A\u0002\u043eq\u0003\u0002\u0002\u0002",
-    "\u043f\u0443\u0007/\u0002\u0002\u0440\u0442\u0007*\u0002\u0002\u0441",
+    "\u043f\u0443\u0007/\u0002\u0002\u0440\u0442\u0007)\u0002\u0002\u0441",
     "\u0440\u0003\u0002\u0002\u0002\u0442\u0445\u0003\u0002\u0002\u0002\u0443",
     "\u0441\u0003\u0002\u0002\u0002\u0443\u0444\u0003\u0002\u0002\u0002\u0444",
     "\u0446\u0003\u0002\u0002\u0002\u0445\u0443\u0003\u0002\u0002\u0002\u0446",
-    "\u044a\u0007\'\u0002\u0002\u0447\u0449\u0007*\u0002\u0002\u0448\u0447",
+    "\u044a\u0007\'\u0002\u0002\u0447\u0449\u0007)\u0002\u0002\u0448\u0447",
     "\u0003\u0002\u0002\u0002\u0449\u044c\u0003\u0002\u0002\u0002\u044a\u0448",
     "\u0003\u0002\u0002\u0002\u044a\u044b\u0003\u0002\u0002\u0002\u044b\u044d",
     "\u0003\u0002\u0002\u0002\u044c\u044a\u0003\u0002\u0002\u0002\u044d\u044e",
@@ -807,8 +808,8 @@ var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
     "|?\u0002\u048d\u048b\u0003\u0002\u0002\u0002\u048e\u0491\u0003\u0002",
     "\u0002\u0002\u048f\u048d\u0003\u0002\u0002\u0002\u048f\u0490\u0003\u0002",
     "\u0002\u0002\u0490{\u0003\u0002\u0002\u0002\u0491\u048f\u0003\u0002",
-    "\u0002\u0002\u0492\u0497\u0005~@\u0002\u0493\u0494\u0007*\u0002\u0002",
-    "\u0494\u0495\u0007\u000e\u0002\u0002\u0495\u0496\u0007*\u0002\u0002",
+    "\u0002\u0002\u0492\u0497\u0005~@\u0002\u0493\u0494\u0007)\u0002\u0002",
+    "\u0494\u0495\u0007\u000e\u0002\u0002\u0495\u0496\u0007)\u0002\u0002",
     "\u0496\u0498\u0005~@\u0002\u0497\u0493\u0003\u0002\u0002\u0002\u0497",
     "\u0498\u0003\u0002\u0002\u0002\u0498}\u0003\u0002\u0002\u0002\u0499",
     "\u049c\u0007/\u0002\u0002\u049a\u049c\u0005V,\u0002\u049b\u0499\u0003",
@@ -820,11 +821,11 @@ var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
     " \u0002\u0002\u04a4\u04a6\u0005\u0084C\u0002\u04a5\u04a2\u0003\u0002",
     "\u0002\u0002\u04a5\u04a3\u0003\u0002\u0002\u0002\u04a5\u04a4\u0003\u0002",
     "\u0002\u0002\u04a6\u0083\u0003\u0002\u0002\u0002\u04a7\u04ab\u0007\u001e",
-    "\u0002\u0002\u04a8\u04aa\u0007*\u0002\u0002\u04a9\u04a8\u0003\u0002",
+    "\u0002\u0002\u04a8\u04aa\u0007)\u0002\u0002\u04a9\u04a8\u0003\u0002",
     "\u0002\u0002\u04aa\u04ad\u0003\u0002\u0002\u0002\u04ab\u04a9\u0003\u0002",
     "\u0002\u0002\u04ab\u04ac\u0003\u0002\u0002\u0002\u04ac\u04ae\u0003\u0002",
     "\u0002\u0002\u04ad\u04ab\u0003\u0002\u0002\u0002\u04ae\u04b2\u00050",
-    "\u0019\u0002\u04af\u04b1\u0007*\u0002\u0002\u04b0\u04af\u0003\u0002",
+    "\u0019\u0002\u04af\u04b1\u0007)\u0002\u0002\u04b0\u04af\u0003\u0002",
     "\u0002\u0002\u04b1\u04b4\u0003\u0002\u0002\u0002\u04b2\u04b0\u0003\u0002",
     "\u0002\u0002\u04b2\u04b3\u0003\u0002\u0002\u0002\u04b3\u04b5\u0003\u0002",
     "\u0002\u0002\u04b4\u04b2\u0003\u0002\u0002\u0002\u04b5\u04b6\u0007\u001f",
@@ -866,8 +867,8 @@ var symbolicNames = [ null, "IMPORT", "FROM", "TYPE", "FN", "EVENT", "ON",
                       "OPENARGS", "CLOSEARGS", "OPENGENERIC", "CLOSEGENERIC", 
                       "OPENARRAY", "CLOSEARRAY", "METHODSEP", "EQUALS", 
                       "GLOBAL", "CURDIR", "PARDIR", "DIRSEP", "OR", "TYPESEP", 
-                      "GENERALOPERATORS", "NEWLINE", "WS", "SINGLELINECOMMENT", 
-                      "MULTILINECOMMENT", "STRINGCONSTANT", "NUMBERCONSTANT", 
+                      "NEWLINE", "WS", "SINGLELINECOMMENT", "MULTILINECOMMENT", 
+                      "STRINGCONSTANT", "NUMBERCONSTANT", "GENERALOPERATORS", 
                       "VARNAME" ];
 
 var ruleNames =  [ "module", "blank", "imports", "standardImport", "fromImport", 
@@ -943,13 +944,13 @@ LnParser.PARDIR = 34;
 LnParser.DIRSEP = 35;
 LnParser.OR = 36;
 LnParser.TYPESEP = 37;
-LnParser.GENERALOPERATORS = 38;
-LnParser.NEWLINE = 39;
-LnParser.WS = 40;
-LnParser.SINGLELINECOMMENT = 41;
-LnParser.MULTILINECOMMENT = 42;
-LnParser.STRINGCONSTANT = 43;
-LnParser.NUMBERCONSTANT = 44;
+LnParser.NEWLINE = 38;
+LnParser.WS = 39;
+LnParser.SINGLELINECOMMENT = 40;
+LnParser.MULTILINECOMMENT = 41;
+LnParser.STRINGCONSTANT = 42;
+LnParser.NUMBERCONSTANT = 43;
+LnParser.GENERALOPERATORS = 44;
 LnParser.VARNAME = 45;
 
 LnParser.RULE_module = 0;
@@ -1018,6 +1019,7 @@ LnParser.RULE_varop = 62;
 LnParser.RULE_varn = 63;
 LnParser.RULE_varsegment = 64;
 LnParser.RULE_arrayaccess = 65;
+
 
 function ModuleContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -1301,6 +1303,7 @@ LnParser.prototype.module = function() {
     return localctx;
 };
 
+
 function BlankContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -1371,6 +1374,7 @@ LnParser.prototype.blank = function() {
     }
     return localctx;
 };
+
 
 function ImportsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -1446,6 +1450,7 @@ LnParser.prototype.imports = function() {
     }
     return localctx;
 };
+
 
 function StandardImportContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -1579,6 +1584,7 @@ LnParser.prototype.standardImport = function() {
     return localctx;
 };
 
+
 function FromImportContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -1704,6 +1710,7 @@ LnParser.prototype.fromImport = function() {
     return localctx;
 };
 
+
 function DependencyContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -1780,6 +1787,7 @@ LnParser.prototype.dependency = function() {
     }
     return localctx;
 };
+
 
 function LocaldependencyContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -1916,6 +1924,7 @@ LnParser.prototype.localdependency = function() {
     return localctx;
 };
 
+
 function GlobaldependencyContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -2016,6 +2025,7 @@ LnParser.prototype.globaldependency = function() {
     }
     return localctx;
 };
+
 
 function TypesContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -2177,6 +2187,7 @@ LnParser.prototype.types = function() {
     return localctx;
 };
 
+
 function OthertypeContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -2273,6 +2284,7 @@ LnParser.prototype.othertype = function() {
     return localctx;
 };
 
+
 function TypenameContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -2331,6 +2343,7 @@ LnParser.prototype.typename = function() {
     }
     return localctx;
 };
+
 
 function TypegenericsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -2486,6 +2499,7 @@ LnParser.prototype.typegenerics = function() {
     return localctx;
 };
 
+
 function FulltypenameContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -2581,6 +2595,7 @@ LnParser.prototype.fulltypename = function() {
     }
     return localctx;
 };
+
 
 function TypebodyContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -2729,6 +2744,7 @@ LnParser.prototype.typebody = function() {
     return localctx;
 };
 
+
 function TypelineContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -2867,6 +2883,7 @@ LnParser.prototype.typeline = function() {
     }
     return localctx;
 };
+
 
 function FunctionsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -3102,6 +3119,7 @@ LnParser.prototype.functions = function() {
     return localctx;
 };
 
+
 function FullfunctionbodyContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -3206,6 +3224,7 @@ LnParser.prototype.fullfunctionbody = function() {
     return localctx;
 };
 
+
 function FunctionbodyContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -3297,7 +3316,7 @@ LnParser.prototype.functionbody = function() {
             this.state = 418; 
             this._errHandler.sync(this);
             _la = this._input.LA(1);
-        } while((((_la) & ~0x1f) == 0 && ((1 << _la) & ((1 << LnParser.CONST) | (1 << LnParser.LET) | (1 << LnParser.RETURN) | (1 << LnParser.EMIT) | (1 << LnParser.BOOLCONSTANT) | (1 << LnParser.IF) | (1 << LnParser.OPENARGS) | (1 << LnParser.OPENARRAY) | (1 << LnParser.METHODSEP))) !== 0) || ((((_la - 43)) & ~0x1f) == 0 && ((1 << (_la - 43)) & ((1 << (LnParser.STRINGCONSTANT - 43)) | (1 << (LnParser.NUMBERCONSTANT - 43)) | (1 << (LnParser.VARNAME - 43)))) !== 0));
+        } while((((_la) & ~0x1f) == 0 && ((1 << _la) & ((1 << LnParser.CONST) | (1 << LnParser.LET) | (1 << LnParser.RETURN) | (1 << LnParser.EMIT) | (1 << LnParser.BOOLCONSTANT) | (1 << LnParser.IF) | (1 << LnParser.OPENARGS) | (1 << LnParser.OPENARRAY) | (1 << LnParser.METHODSEP))) !== 0) || ((((_la - 42)) & ~0x1f) == 0 && ((1 << (_la - 42)) & ((1 << (LnParser.STRINGCONSTANT - 42)) | (1 << (LnParser.NUMBERCONSTANT - 42)) | (1 << (LnParser.VARNAME - 42)))) !== 0));
         this.state = 423;
         this._errHandler.sync(this);
         _la = this._input.LA(1);
@@ -3323,6 +3342,7 @@ LnParser.prototype.functionbody = function() {
     }
     return localctx;
 };
+
 
 function StatementsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -3463,6 +3483,7 @@ LnParser.prototype.statements = function() {
     return localctx;
 };
 
+
 function DeclarationsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -3537,6 +3558,7 @@ LnParser.prototype.declarations = function() {
     }
     return localctx;
 };
+
 
 function ConstdeclarationContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -3696,6 +3718,7 @@ LnParser.prototype.constdeclaration = function() {
     return localctx;
 };
 
+
 function LetdeclarationContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -3854,6 +3877,7 @@ LnParser.prototype.letdeclaration = function() {
     return localctx;
 };
 
+
 function AssignmentsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -3957,6 +3981,7 @@ LnParser.prototype.assignments = function() {
     return localctx;
 };
 
+
 function AssignablesContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -4033,6 +4058,7 @@ LnParser.prototype.assignables = function() {
     }
     return localctx;
 };
+
 
 function BasicassignablesContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -4161,6 +4187,7 @@ LnParser.prototype.basicassignables = function() {
     return localctx;
 };
 
+
 function OperatororassignableContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -4251,6 +4278,7 @@ LnParser.prototype.operatororassignable = function() {
     }
     return localctx;
 };
+
 
 function WithoperatorsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -4357,6 +4385,7 @@ LnParser.prototype.withoperators = function() {
     return localctx;
 };
 
+
 function GroupsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -4461,6 +4490,7 @@ LnParser.prototype.groups = function() {
     return localctx;
 };
 
+
 function TypeofnContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -4549,6 +4579,7 @@ LnParser.prototype.typeofn = function() {
     return localctx;
 };
 
+
 function ObjectliteralsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -4635,6 +4666,7 @@ LnParser.prototype.objectliterals = function() {
     }
     return localctx;
 };
+
 
 function ArrayliteralContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -4798,6 +4830,7 @@ LnParser.prototype.arrayliteral = function() {
     return localctx;
 };
 
+
 function TypeliteralContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -4960,6 +4993,7 @@ LnParser.prototype.typeliteral = function() {
     return localctx;
 };
 
+
 function MapliteralContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -5089,7 +5123,7 @@ LnParser.prototype.mapliteral = function() {
         this.state = 687;
         this._errHandler.sync(this);
         _la = this._input.LA(1);
-        while((((_la) & ~0x1f) == 0 && ((1 << _la) & ((1 << LnParser.TYPE) | (1 << LnParser.FN) | (1 << LnParser.BOOLCONSTANT) | (1 << LnParser.NEW) | (1 << LnParser.OPENARGS) | (1 << LnParser.OPENGENERIC) | (1 << LnParser.CLOSEGENERIC) | (1 << LnParser.OPENARRAY) | (1 << LnParser.METHODSEP))) !== 0) || ((((_la - 32)) & ~0x1f) == 0 && ((1 << (_la - 32)) & ((1 << (LnParser.GLOBAL - 32)) | (1 << (LnParser.DIRSEP - 32)) | (1 << (LnParser.OR - 32)) | (1 << (LnParser.TYPESEP - 32)) | (1 << (LnParser.GENERALOPERATORS - 32)) | (1 << (LnParser.STRINGCONSTANT - 32)) | (1 << (LnParser.NUMBERCONSTANT - 32)) | (1 << (LnParser.VARNAME - 32)))) !== 0)) {
+        while((((_la) & ~0x1f) == 0 && ((1 << _la) & ((1 << LnParser.TYPE) | (1 << LnParser.FN) | (1 << LnParser.BOOLCONSTANT) | (1 << LnParser.NEW) | (1 << LnParser.OPENARGS) | (1 << LnParser.OPENGENERIC) | (1 << LnParser.CLOSEGENERIC) | (1 << LnParser.OPENARRAY) | (1 << LnParser.METHODSEP))) !== 0) || ((((_la - 32)) & ~0x1f) == 0 && ((1 << (_la - 32)) & ((1 << (LnParser.GLOBAL - 32)) | (1 << (LnParser.DIRSEP - 32)) | (1 << (LnParser.OR - 32)) | (1 << (LnParser.TYPESEP - 32)) | (1 << (LnParser.STRINGCONSTANT - 32)) | (1 << (LnParser.NUMBERCONSTANT - 32)) | (1 << (LnParser.GENERALOPERATORS - 32)) | (1 << (LnParser.VARNAME - 32)))) !== 0)) {
             this.state = 679;
             this.mapline();
             this.state = 681; 
@@ -5121,6 +5155,7 @@ LnParser.prototype.mapliteral = function() {
     }
     return localctx;
 };
+
 
 function MaplineContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -5228,6 +5263,7 @@ LnParser.prototype.mapline = function() {
     }
     return localctx;
 };
+
 
 function AssignablelistContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -5375,6 +5411,7 @@ LnParser.prototype.assignablelist = function() {
     return localctx;
 };
 
+
 function FncallContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -5432,7 +5469,7 @@ LnParser.prototype.fncall = function() {
         this.state = 739;
         this._errHandler.sync(this);
         _la = this._input.LA(1);
-        if((((_la) & ~0x1f) == 0 && ((1 << _la) & ((1 << LnParser.TYPE) | (1 << LnParser.FN) | (1 << LnParser.BOOLCONSTANT) | (1 << LnParser.NEW) | (1 << LnParser.OPENARGS) | (1 << LnParser.OPENGENERIC) | (1 << LnParser.CLOSEGENERIC) | (1 << LnParser.OPENARRAY) | (1 << LnParser.METHODSEP))) !== 0) || ((((_la - 32)) & ~0x1f) == 0 && ((1 << (_la - 32)) & ((1 << (LnParser.GLOBAL - 32)) | (1 << (LnParser.DIRSEP - 32)) | (1 << (LnParser.OR - 32)) | (1 << (LnParser.TYPESEP - 32)) | (1 << (LnParser.GENERALOPERATORS - 32)) | (1 << (LnParser.NEWLINE - 32)) | (1 << (LnParser.WS - 32)) | (1 << (LnParser.STRINGCONSTANT - 32)) | (1 << (LnParser.NUMBERCONSTANT - 32)) | (1 << (LnParser.VARNAME - 32)))) !== 0)) {
+        if((((_la) & ~0x1f) == 0 && ((1 << _la) & ((1 << LnParser.TYPE) | (1 << LnParser.FN) | (1 << LnParser.BOOLCONSTANT) | (1 << LnParser.NEW) | (1 << LnParser.OPENARGS) | (1 << LnParser.OPENGENERIC) | (1 << LnParser.CLOSEGENERIC) | (1 << LnParser.OPENARRAY) | (1 << LnParser.METHODSEP))) !== 0) || ((((_la - 32)) & ~0x1f) == 0 && ((1 << (_la - 32)) & ((1 << (LnParser.GLOBAL - 32)) | (1 << (LnParser.DIRSEP - 32)) | (1 << (LnParser.OR - 32)) | (1 << (LnParser.TYPESEP - 32)) | (1 << (LnParser.NEWLINE - 32)) | (1 << (LnParser.WS - 32)) | (1 << (LnParser.STRINGCONSTANT - 32)) | (1 << (LnParser.NUMBERCONSTANT - 32)) | (1 << (LnParser.GENERALOPERATORS - 32)) | (1 << (LnParser.VARNAME - 32)))) !== 0)) {
             this.state = 738;
             this.assignablelist();
         }
@@ -5452,6 +5489,7 @@ LnParser.prototype.fncall = function() {
     }
     return localctx;
 };
+
 
 function CallsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -5676,6 +5714,7 @@ LnParser.prototype.calls = function() {
     return localctx;
 };
 
+
 function ExitsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -5768,6 +5807,7 @@ LnParser.prototype.exits = function() {
     }
     return localctx;
 };
+
 
 function EmitsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -5877,6 +5917,7 @@ LnParser.prototype.emits = function() {
     }
     return localctx;
 };
+
 
 function ConditionalsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -6042,6 +6083,7 @@ LnParser.prototype.conditionals = function() {
     return localctx;
 };
 
+
 function BlocklikesContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -6129,6 +6171,7 @@ LnParser.prototype.blocklikes = function() {
     return localctx;
 };
 
+
 function ConstantsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -6203,6 +6246,7 @@ LnParser.prototype.constants = function() {
     }
     return localctx;
 };
+
 
 function OperatorsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -6409,6 +6453,7 @@ LnParser.prototype.operators = function() {
     return localctx;
 };
 
+
 function OperatormappingContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -6526,6 +6571,7 @@ LnParser.prototype.operatormapping = function() {
     return localctx;
 };
 
+
 function FntoopContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -6613,6 +6659,7 @@ LnParser.prototype.fntoop = function() {
     return localctx;
 };
 
+
 function OpprecedenceContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -6683,6 +6730,7 @@ LnParser.prototype.opprecedence = function() {
     }
     return localctx;
 };
+
 
 function EventsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -6807,6 +6855,7 @@ LnParser.prototype.events = function() {
     }
     return localctx;
 };
+
 
 function HandlersContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -6937,6 +6986,7 @@ LnParser.prototype.handlers = function() {
     return localctx;
 };
 
+
 function EventrefContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -7013,6 +7063,7 @@ LnParser.prototype.eventref = function() {
     }
     return localctx;
 };
+
 
 function InterfacesContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -7208,6 +7259,7 @@ LnParser.prototype.interfaces = function() {
     return localctx;
 };
 
+
 function InterfacelineContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -7294,6 +7346,7 @@ LnParser.prototype.interfaceline = function() {
     }
     return localctx;
 };
+
 
 function FunctiontypelineContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -7393,6 +7446,7 @@ LnParser.prototype.functiontypeline = function() {
     }
     return localctx;
 };
+
 
 function FunctiontypeContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -7589,6 +7643,7 @@ LnParser.prototype.functiontype = function() {
     return localctx;
 };
 
+
 function OperatortypelineContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -7730,6 +7785,7 @@ LnParser.prototype.operatortypeline = function() {
     return localctx;
 };
 
+
 function LeftargContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -7789,6 +7845,7 @@ LnParser.prototype.leftarg = function() {
     return localctx;
 };
 
+
 function RightargContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -7847,6 +7904,7 @@ LnParser.prototype.rightarg = function() {
     }
     return localctx;
 };
+
 
 function PropertytypelineContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -7951,6 +8009,7 @@ LnParser.prototype.propertytypeline = function() {
     }
     return localctx;
 };
+
 
 function ArgtypeContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -8076,6 +8135,7 @@ LnParser.prototype.argtype = function() {
     }
     return localctx;
 };
+
 
 function ArglistContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -8284,6 +8344,7 @@ LnParser.prototype.arglist = function() {
     return localctx;
 };
 
+
 function ExportsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -8450,6 +8511,7 @@ LnParser.prototype.exports = function() {
     return localctx;
 };
 
+
 function VarlistContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -8540,6 +8602,7 @@ LnParser.prototype.varlist = function() {
     }
     return localctx;
 };
+
 
 function RenameablevarContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -8638,6 +8701,7 @@ LnParser.prototype.renameablevar = function() {
     return localctx;
 };
 
+
 function VaropContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -8720,6 +8784,7 @@ LnParser.prototype.varop = function() {
     return localctx;
 };
 
+
 function VarnContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -8799,6 +8864,7 @@ LnParser.prototype.varn = function() {
     }
     return localctx;
 };
+
 
 function VarsegmentContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -8884,6 +8950,7 @@ LnParser.prototype.varsegment = function() {
     }
     return localctx;
 };
+
 
 function ArrayaccessContext(parser, parent, invokingState) {
 	if(parent===undefined) {

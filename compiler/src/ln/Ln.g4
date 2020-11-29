@@ -214,8 +214,6 @@ OR : '|';
 
 TYPESEP : ':';
 
-GENERALOPERATORS : [+\-/*^.~`!@#$%&|:;<?=][+\-/*^.~`!@#$%&|:;<>?=]*;
-
 // Next ignored bits of various kinds
 
 NEWLINE : ('\r' | '\n' | '\r\n');
@@ -231,6 +229,8 @@ MULTILINECOMMENT : '/*' (('*' ~'/') | ~'*')* '*/' -> skip;
 STRINGCONSTANT : ('"' ~["]* '"') | ('\'' ~[']* '\'');
 
 NUMBERCONSTANT : ('0x' [0-9a-fA-F]+) | ([0-9]+ ([.][0-9]+)?);
+
+GENERALOPERATORS : [+\-/*^.~`!@#$%&|:;<?=][+\-/*^.~`!@#$%&|:;<>?=]*;
 
 VARNAME : [a-zA-Z_]+ ([a-zA-Z0-9_])*;
 
