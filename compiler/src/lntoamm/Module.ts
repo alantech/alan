@@ -195,9 +195,9 @@ class Module {
     // Next, exports, which can be most of the above
     const exports = ast.exports()
     for (const exportAst of exports) {
-      if (exportAst.varn() != null) {
-        const exportVar = module.moduleScope.deepGet(exportAst.varn().getText())
-        const splitName = exportAst.varn().getText().split(".")
+      if (exportAst.eventref() != null) {
+        const exportVar = module.moduleScope.deepGet(exportAst.eventref().getText())
+        const splitName = exportAst.eventref().getText().split(".")
         module.moduleScope.put(splitName[splitName.length - 1], exportVar)
         module.exportScope.put(splitName[splitName.length - 1], exportVar)
       } else if (exportAst.types() != null) {

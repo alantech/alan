@@ -31,8 +31,8 @@ export Self
 // function in question, and the query argument, and is using the first function under the hood.
 export fn recurse(self: Self, arg: any): Result<anythingElse> = selfrec(self, arg)
 export fn recurse(seq: Seq, recurseFn: function, arg: any): Result<anythingElse> {
-  let self = seqrec(seq, recurseFn)
-  return selfrec(self, arg)
+  let self = seqrec(seq, recurseFn);
+  return selfrec(self, arg);
 }
 
 // TODO: Add the generator piece of the seq rfc

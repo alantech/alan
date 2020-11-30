@@ -157,7 +157,7 @@ export class Interface {
     // Construct the basic interface, the wrapper type, and insert it into the scope
     // This is all necessary so the interface can self-reference when constructing the function and
     // operator types.
-    const interfacename = interfaceAst.VARNAME().getText()
+    const interfacename = interfaceAst.VARNAME(0).getText()
     let iface = new Interface(interfacename)
     const ifaceType = new Type(interfacename, false, false, {}, {}, null, iface)
     scope.put(interfacename, ifaceType)
@@ -165,15 +165,15 @@ export class Interface {
     // Now, insert the actual declarations of the interface, if there are any (if there are none,
     // it will provide only as much as a type generic -- you can set it to a variable and return it
     // but nothing else, unlike Go's ridiculous interpretation of a bare interface).
-    if (!!interfaceAst.interfaceline()) {
-      for (const interfaceline of interfaceAst.interfaceline()) {
+    if (!!interfaceAst.interfacebody() && !!interfaceAst.interfacebody().interfacelist()) {
+      for (const interfaceline of interfaceAst.interfacebody().interfacelist().interfaceline()) {
         if (!!interfaceline.functiontypeline()) {
           const functiontypeline = interfaceline.functiontypeline()
           let functionname = null
           if (!!functiontypeline.VARNAME()) {
             functionname = functiontypeline.VARNAME().getText()
           }
-          const typenames = functiontypeline.functiontype().varn();
+          const typenames = functiontypeline.functiontype().fulltypename();
           const returnType = scope.deepGet(typenames[typenames.length - 1].getText()) as Type
           if (!returnType || !(returnType instanceof Type)) {
             throw new Error(typenames.get(typenames.size() - 1).getText() + " is not a type")
@@ -223,9 +223,9 @@ export class Interface {
           ] = propertyType
         }
       }
-    } else if (!!interfaceAst.varn()) {
+    } else if (!!interfaceAst.VARNAME(1)) {
       // It's an alias, so grab it and give it the new name
-      const otherInterface = scope.deepGet(interfaceAst.varn().getText()) as Type
+      const otherInterface = scope.deepGet(interfaceAst.VARNAME(1).getText()) as Type
       if (!(otherInterface instanceof Type) || !otherInterface.iface) {
         throw new Error(`${interfaceAst.varn().getText()} is not an interface`)
       }
@@ -297,14 +297,14 @@ export class Type {
       }
     }
     if (typeAst.typebody() != null) {
-      const lines = typeAst.typebody().typeline()
+      const lines = typeAst.typebody().typelist().typeline()
       for (const lineAst of lines) {
         const propertyName = lineAst.VARNAME().getText()
         const typeName = lineAst.fulltypename().getText().trim()
         const property = typeScope.deepGet(typeName) as Type
         if (!property || !(property instanceof Type)) {
           // Potentially a type that depends on the type generics of this type
-          const baseTypeName = lineAst.fulltypename().varn().getText()
+          const baseTypeName = lineAst.fulltypename().typename().getText()
           const innerGenerics = lineAst.fulltypename().typegenerics().fulltypename()
           const genericsList = []
           const genericsQueue = []
@@ -346,22 +346,22 @@ export class Type {
         }
       }
     }
-    if (typeAst.othertype() != null) {
-      const otherTypebox = scope.deepGet(typeAst.othertype().typename().getText()) as Type
+    if (typeAst.fulltypename() != null) {
+      const otherTypebox = scope.deepGet(typeAst.fulltypename().typename().getText()) as Type
       if (!otherTypebox) {
-        throw new Error("Type " + typeAst.othertype().getText() + " not defined")
+        throw new Error("Type " + typeAst.fulltypename().getText() + " not defined")
       }
       if (!(otherTypebox instanceof Type)) {
-        throw new Error(typeAst.othertype().getText() + " is not a valid type")
+        throw new Error(typeAst.fulltypename().getText() + " is not a valid type")
       }
 
-      let othertype = otherTypebox
-      if (Object.keys(othertype.generics).length > 0 && !!typeAst.othertype().typegenerics()) {
+      let fulltypename = otherTypebox
+      if (Object.keys(fulltypename.generics).length > 0 && !!typeAst.fulltypename().typegenerics()) {
         let solidTypes = []
-        for (const fulltypenameAst of typeAst.othertype().typegenerics().fulltypename()) {
+        for (const fulltypenameAst of typeAst.fulltypename().typegenerics().fulltypename()) {
           solidTypes.push(fulltypenameAst.getText())
         }
-        othertype = othertype.solidify(solidTypes, scope)
+        fulltypename = fulltypename.solidify(solidTypes, scope)
       }
 
       // For simplification of the type aliasing functionality, the other type is attached as
@@ -370,7 +370,7 @@ export class Type {
       // `type varA == type varB` will work if `varA` is assigned to an alias and `varB` to the
       // orignal type. I can see the argument either way on this, but the simplicity of this
       // approach is why I will go with this for now.
-      type.alias = othertype
+      type.alias = fulltypename
     }
     scope.put(type.typename, type)
     return type
@@ -384,7 +384,7 @@ export class Type {
       if (!typebox || !(typebox instanceof Type)) {
         const fulltypename = fulltypenameAstFromString(typename)
         if (fulltypename.typegenerics()) {
-          const basename = fulltypename.varn().getText()
+          const basename = fulltypename.typename().getText()
           const generics = fulltypename.typegenerics().fulltypename().map((t: any) => t.getText())
           const baseType = scope.deepGet(basename) as Type
           if (!baseType || !(baseType instanceof Type)) {
@@ -444,7 +444,7 @@ export class Type {
   // There has to be a more elegant way to tackle this
   static fromStringWithMap(typestr: string, interfaceMap: Map<Type, Type>, scope: Scope) {
     const typeAst = fulltypenameAstFromString(typestr)
-    const baseName = typeAst.varn().getText()
+    const baseName = typeAst.typename().getText()
     const baseType = scope.deepGet(baseName) as Type
     if (typeAst.typegenerics()) {
       const genericNames = typeAst.typegenerics().fulltypename().map((t: any) => t.getText())

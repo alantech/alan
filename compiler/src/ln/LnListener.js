@@ -92,15 +92,6 @@ LnListener.prototype.exitTypes = function(ctx) {
 };
 
 
-// Enter a parse tree produced by LnParser#othertype.
-LnListener.prototype.enterOthertype = function(ctx) {
-};
-
-// Exit a parse tree produced by LnParser#othertype.
-LnListener.prototype.exitOthertype = function(ctx) {
-};
-
-
 // Enter a parse tree produced by LnParser#typename.
 LnListener.prototype.enterTypename = function(ctx) {
 };
@@ -143,6 +134,24 @@ LnListener.prototype.enterTypeline = function(ctx) {
 
 // Exit a parse tree produced by LnParser#typeline.
 LnListener.prototype.exitTypeline = function(ctx) {
+};
+
+
+// Enter a parse tree produced by LnParser#typelist.
+LnListener.prototype.enterTypelist = function(ctx) {
+};
+
+// Exit a parse tree produced by LnParser#typelist.
+LnListener.prototype.exitTypelist = function(ctx) {
+};
+
+
+// Enter a parse tree produced by LnParser#arglist.
+LnListener.prototype.enterArglist = function(ctx) {
+};
+
+// Exit a parse tree produced by LnParser#arglist.
+LnListener.prototype.exitArglist = function(ctx) {
 };
 
 
@@ -218,30 +227,12 @@ LnListener.prototype.exitAssignments = function(ctx) {
 };
 
 
-// Enter a parse tree produced by LnParser#assignables.
-LnListener.prototype.enterAssignables = function(ctx) {
+// Enter a parse tree produced by LnParser#baseassignable.
+LnListener.prototype.enterBaseassignable = function(ctx) {
 };
 
-// Exit a parse tree produced by LnParser#assignables.
-LnListener.prototype.exitAssignables = function(ctx) {
-};
-
-
-// Enter a parse tree produced by LnParser#basicassignables.
-LnListener.prototype.enterBasicassignables = function(ctx) {
-};
-
-// Exit a parse tree produced by LnParser#basicassignables.
-LnListener.prototype.exitBasicassignables = function(ctx) {
-};
-
-
-// Enter a parse tree produced by LnParser#operatororassignable.
-LnListener.prototype.enterOperatororassignable = function(ctx) {
-};
-
-// Exit a parse tree produced by LnParser#operatororassignable.
-LnListener.prototype.exitOperatororassignable = function(ctx) {
+// Exit a parse tree produced by LnParser#baseassignable.
+LnListener.prototype.exitBaseassignable = function(ctx) {
 };
 
 
@@ -254,12 +245,12 @@ LnListener.prototype.exitWithoperators = function(ctx) {
 };
 
 
-// Enter a parse tree produced by LnParser#groups.
-LnListener.prototype.enterGroups = function(ctx) {
+// Enter a parse tree produced by LnParser#assignables.
+LnListener.prototype.enterAssignables = function(ctx) {
 };
 
-// Exit a parse tree produced by LnParser#groups.
-LnListener.prototype.exitGroups = function(ctx) {
+// Exit a parse tree produced by LnParser#assignables.
+LnListener.prototype.exitAssignables = function(ctx) {
 };
 
 
@@ -272,12 +263,57 @@ LnListener.prototype.exitObjectliterals = function(ctx) {
 };
 
 
+// Enter a parse tree produced by LnParser#assignablelist.
+LnListener.prototype.enterAssignablelist = function(ctx) {
+};
+
+// Exit a parse tree produced by LnParser#assignablelist.
+LnListener.prototype.exitAssignablelist = function(ctx) {
+};
+
+
+// Enter a parse tree produced by LnParser#typeassignlist.
+LnListener.prototype.enterTypeassignlist = function(ctx) {
+};
+
+// Exit a parse tree produced by LnParser#typeassignlist.
+LnListener.prototype.exitTypeassignlist = function(ctx) {
+};
+
+
+// Enter a parse tree produced by LnParser#literaldec.
+LnListener.prototype.enterLiteraldec = function(ctx) {
+};
+
+// Exit a parse tree produced by LnParser#literaldec.
+LnListener.prototype.exitLiteraldec = function(ctx) {
+};
+
+
+// Enter a parse tree produced by LnParser#arraybase.
+LnListener.prototype.enterArraybase = function(ctx) {
+};
+
+// Exit a parse tree produced by LnParser#arraybase.
+LnListener.prototype.exitArraybase = function(ctx) {
+};
+
+
 // Enter a parse tree produced by LnParser#arrayliteral.
 LnListener.prototype.enterArrayliteral = function(ctx) {
 };
 
 // Exit a parse tree produced by LnParser#arrayliteral.
 LnListener.prototype.exitArrayliteral = function(ctx) {
+};
+
+
+// Enter a parse tree produced by LnParser#typebase.
+LnListener.prototype.enterTypebase = function(ctx) {
+};
+
+// Exit a parse tree produced by LnParser#typebase.
+LnListener.prototype.exitTypebase = function(ctx) {
 };
 
 
@@ -290,75 +326,12 @@ LnListener.prototype.exitTypeliteral = function(ctx) {
 };
 
 
-// Enter a parse tree produced by LnParser#mapliteral.
-LnListener.prototype.enterMapliteral = function(ctx) {
-};
-
-// Exit a parse tree produced by LnParser#mapliteral.
-LnListener.prototype.exitMapliteral = function(ctx) {
-};
-
-
-// Enter a parse tree produced by LnParser#mapline.
-LnListener.prototype.enterMapline = function(ctx) {
-};
-
-// Exit a parse tree produced by LnParser#mapline.
-LnListener.prototype.exitMapline = function(ctx) {
-};
-
-
-// Enter a parse tree produced by LnParser#assignablelist.
-LnListener.prototype.enterAssignablelist = function(ctx) {
-};
-
-// Exit a parse tree produced by LnParser#assignablelist.
-LnListener.prototype.exitAssignablelist = function(ctx) {
-};
-
-
 // Enter a parse tree produced by LnParser#fncall.
 LnListener.prototype.enterFncall = function(ctx) {
 };
 
 // Exit a parse tree produced by LnParser#fncall.
 LnListener.prototype.exitFncall = function(ctx) {
-};
-
-
-// Enter a parse tree produced by LnParser#callbase.
-LnListener.prototype.enterCallbase = function(ctx) {
-};
-
-// Exit a parse tree produced by LnParser#callbase.
-LnListener.prototype.exitCallbase = function(ctx) {
-};
-
-
-// Enter a parse tree produced by LnParser#iife.
-LnListener.prototype.enterIife = function(ctx) {
-};
-
-// Exit a parse tree produced by LnParser#iife.
-LnListener.prototype.exitIife = function(ctx) {
-};
-
-
-// Enter a parse tree produced by LnParser#baseassignables.
-LnListener.prototype.enterBaseassignables = function(ctx) {
-};
-
-// Exit a parse tree produced by LnParser#baseassignables.
-LnListener.prototype.exitBaseassignables = function(ctx) {
-};
-
-
-// Enter a parse tree produced by LnParser#calls.
-LnListener.prototype.enterCalls = function(ctx) {
-};
-
-// Exit a parse tree produced by LnParser#calls.
-LnListener.prototype.exitCalls = function(ctx) {
 };
 
 
@@ -452,15 +425,6 @@ LnListener.prototype.exitEvents = function(ctx) {
 };
 
 
-// Enter a parse tree produced by LnParser#handlers.
-LnListener.prototype.enterHandlers = function(ctx) {
-};
-
-// Exit a parse tree produced by LnParser#handlers.
-LnListener.prototype.exitHandlers = function(ctx) {
-};
-
-
 // Enter a parse tree produced by LnParser#eventref.
 LnListener.prototype.enterEventref = function(ctx) {
 };
@@ -470,12 +434,39 @@ LnListener.prototype.exitEventref = function(ctx) {
 };
 
 
+// Enter a parse tree produced by LnParser#handlers.
+LnListener.prototype.enterHandlers = function(ctx) {
+};
+
+// Exit a parse tree produced by LnParser#handlers.
+LnListener.prototype.exitHandlers = function(ctx) {
+};
+
+
 // Enter a parse tree produced by LnParser#interfaces.
 LnListener.prototype.enterInterfaces = function(ctx) {
 };
 
 // Exit a parse tree produced by LnParser#interfaces.
 LnListener.prototype.exitInterfaces = function(ctx) {
+};
+
+
+// Enter a parse tree produced by LnParser#interfacebody.
+LnListener.prototype.enterInterfacebody = function(ctx) {
+};
+
+// Exit a parse tree produced by LnParser#interfacebody.
+LnListener.prototype.exitInterfacebody = function(ctx) {
+};
+
+
+// Enter a parse tree produced by LnParser#interfacelist.
+LnListener.prototype.enterInterfacelist = function(ctx) {
+};
+
+// Exit a parse tree produced by LnParser#interfacelist.
+LnListener.prototype.exitInterfacelist = function(ctx) {
 };
 
 
@@ -539,24 +530,6 @@ LnListener.prototype.enterPropertytypeline = function(ctx) {
 
 // Exit a parse tree produced by LnParser#propertytypeline.
 LnListener.prototype.exitPropertytypeline = function(ctx) {
-};
-
-
-// Enter a parse tree produced by LnParser#argtype.
-LnListener.prototype.enterArgtype = function(ctx) {
-};
-
-// Exit a parse tree produced by LnParser#argtype.
-LnListener.prototype.exitArgtype = function(ctx) {
-};
-
-
-// Enter a parse tree produced by LnParser#arglist.
-LnListener.prototype.enterArglist = function(ctx) {
-};
-
-// Exit a parse tree produced by LnParser#arglist.
-LnListener.prototype.exitArglist = function(ctx) {
 };
 
 

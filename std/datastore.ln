@@ -23,26 +23,26 @@ export fn del(ns: string, key: string): bool = dsdel(ns, key)
 
 // The getOr function to get a value or the return the provided default
 export fn getOr(ns: string, key: string, default: any) {
-  return dsgetv(ns, key).getOr(default)
+  return dsgetv(ns, key).getOr(default);
 }
 export fn getOr(ns: string, key: string, default: int8) {
-  return dsgetf(ns, key).getOr(default)
+  return dsgetf(ns, key).getOr(default);
 }
 export fn getOr(ns: string, key: string, default: int16) {
-  return dsgetf(ns, key).getOr(default)
+  return dsgetf(ns, key).getOr(default);
 }
 export fn getOr(ns: string, key: string, default: int32) {
-  return dsgetf(ns, key).getOr(default)
+  return dsgetf(ns, key).getOr(default);
 }
 export fn getOr(ns: string, key: string, default: int64) {
-  return dsgetf(ns, key).getOr(default)
+  return dsgetf(ns, key).getOr(default);
 }
 export fn getOr(ns: string, key: string, default: float32) {
-  return dsgetf(ns, key).getOr(default)
+  return dsgetf(ns, key).getOr(default);
 }
 export fn getOr(ns: string, key: string, default: float64) {
-  return dsgetf(ns, key).getOr(default)
+  return dsgetf(ns, key).getOr(default);
 }
 export fn getOr(ns: string, key: string, default: bool) {
-  return dsgetf(ns, key).getOr(default)
+  return dsgetf(ns, key).getOr(default);
 }

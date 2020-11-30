@@ -31,13 +31,13 @@ export type float = float64
 export interface any {}
 export interface anythingElse = any // Same as `any` but doesn't match with it
 export interface Stringifiable {
-  toString(Stringifiable): string
+  toString(Stringifiable): string,
 }
 export interface Orderable {
-  lt(Orderable, Orderable): bool
-  lte(Orderable, Orderable): bool
-  gt(Orderable, Orderable): bool
-  gte(Orderable, Orderable): bool
+  lt(Orderable, Orderable): bool,
+  lte(Orderable, Orderable): bool,
+  gt(Orderable, Orderable): bool,
+  gte(Orderable, Orderable): bool,
 }
 
 // Type conversion functions
@@ -172,10 +172,10 @@ export fn sqrt(n: float32) = sqrtf32(n)
 export fn sqrt(n: float64) = sqrtf64(n)
 
 export fn min(x: Orderable, y: Orderable): Orderable {
-  return cond(lte(x, y), [x, y])
+  return cond(lte(x, y), [x, y]);
 }
 export fn max(x: Orderable, y: Orderable): Orderable {
-  return cond(gte(x, y), [x, y])
+  return cond(gte(x, y), [x, y]);
 }
 
 // Boolean and bitwise functions
@@ -309,36 +309,36 @@ export fn has(arr: Array<float64>, val: float64) = indarrf(arr, val).isOk()
 export fn has(arr: Array<bool>, val: bool) = indarrf(arr, val).isOk()
 export fn length(arr: Array<any>) = lenarr(arr)
 export fn push(arr: Array<any>, val: any) {
-  pusharr(arr, val, 0)
-  return arr
+  pusharr(arr, val, 0);
+  return arr;
 }
 export fn push(arr: Array<int8>, val: int8) {
-  pusharr(arr, val, 8)
-  return arr
+  pusharr(arr, val, 8);
+  return arr;
 }
 export fn push(arr: Array<int16>, val: int16) {
-  pusharr(arr, val, 8)
-  return arr
+  pusharr(arr, val, 8);
+  return arr;
 }
 export fn push(arr: Array<int32>, val: int32) {
-  pusharr(arr, val, 8)
-  return arr
+  pusharr(arr, val, 8);
+  return arr;
 }
 export fn push(arr: Array<int64>, val: int64) {
-  pusharr(arr, val, 8)
-  return arr
+  pusharr(arr, val, 8);
+  return arr;
 }
 export fn push(arr: Array<float32>, val: float32) {
-  pusharr(arr, val, 8)
-  return arr
+  pusharr(arr, val, 8);
+  return arr;
 }
 export fn push(arr: Array<float64>, val: float64) {
-  pusharr(arr, val, 8)
-  return arr
+  pusharr(arr, val, 8);
+  return arr;
 }
 export fn push(arr: Array<bool>, val: bool) {
-  pusharr(arr, val, 8)
-  return arr
+  pusharr(arr, val, 8);
+  return arr;
 }
 export fn pop(arr: Array<any>) = poparr(arr)
 export each // parallel opcode with signature `fn each(arr: Array<any>, cb: function): void`
@@ -381,23 +381,23 @@ export fn reducePar(arr: Array<any>, cb: function): any = reducep(arr, cb)
  * implementation detail of the 3 and 4 arg reduce functions.
  */
 type InitialReduce<T, U> {
-  arr: Array<T>
-  initial: U
+  arr: Array<T>,
+  initial: U,
 }
 export fn reduce(arr: Array<any>, cb: function, initial: anythingElse): anythingElse {
   const args = new InitialReduce<any, anythingElse> {
-    arr = arr
-    initial = initial
-  }
-  return foldl(args, cb)
+    arr: arr,
+    initial: initial,
+  };
+  return foldl(args, cb);
 }
 export fn reducePar(arr: Array<any>, transformer: function, merger: function, initial: anythingElse): anythingElse {
   const args = new InitialReduce<any, anythingElse> {
-    arr = arr
-    initial = initial
-  }
-  const intermediate = foldp(args, transformer)
-  return reducep(intermediate, merger)
+    arr: arr,
+    initial: initial,
+  };
+  const intermediate = foldp(args, transformer);
+  return reducep(intermediate, merger);
 }
 export filter // opcode with signature `fn filter(arr: Array<any>, cb: function): Array<any>`
 export find // opcode with signature `fn find(arr: Array<any>, cb: function): Result<any>`
@@ -410,66 +410,66 @@ export join // opcode with signature `fn join(arr: Array<string>, sep: string): 
 export fn delete(arr: Array<any>, idx: int64): Result<any> = delindx(arr, idx)
 export fn set(arr: Array<any>, idx: int64, val: any) {
   if (idx < 0) | (idx > arr.length()) {
-    return err('array out-of-bounds access')
+    return err('array out-of-bounds access');
   } else {
-    copytov(arr, idx, val)
-    return some(arr)
+    copytov(arr, idx, val);
+    return some(arr);
   }
 }
 export fn set(arr: Array<int8>, idx: int64, val: int8) {
   if (idx < 0) | (idx > arr.length()) {
-    return err('array out-of-bounds access')
+    return err('array out-of-bounds access');
   } else {
-    copytof(arr, idx, val)
-    return some(arr)
+    copytof(arr, idx, val);
+    return some(arr);
   }
 }
 export fn set(arr: Array<int16>, idx: int64, val: int16) {
   if (idx < 0) | (idx > arr.length()) {
-    return err('array out-of-bounds access')
+    return err('array out-of-bounds access');
   } else {
-    copytof(arr, idx, val)
-    return some(arr)
+    copytof(arr, idx, val);
+    return some(arr);
   }
 }
 export fn set(arr: Array<int32>, idx: int64, val: int32) {
   if (idx < 0) | (idx > arr.length()) {
-    return err('array out-of-bounds access')
+    return err('array out-of-bounds access');
   } else {
-    copytof(arr, idx, val)
-    return some(arr)
+    copytof(arr, idx, val);
+    return some(arr);
   }
 }
 export fn set(arr: Array<int64>, idx: int64, val: int64) {
   if (idx < 0) | (idx > arr.length()) {
-    return err('array out-of-bounds access')
+    return err('array out-of-bounds access');
   } else {
-    copytof(arr, idx, val)
-    return some(arr)
+    copytof(arr, idx, val);
+    return some(arr);
   }
 }
 export fn set(arr: Array<float32>, idx: int64, val: float32) {
   if (idx < 0) | (idx > arr.length()) {
-    return err('array out-of-bounds access')
+    return err('array out-of-bounds access');
   } else {
-    copytof(arr, idx, val)
-    return some(arr)
+    copytof(arr, idx, val);
+    return some(arr);
   }
 }
 export fn set(arr: Array<float64>, idx: int64, val: float64) {
   if (idx < 0) | (idx > arr.length()) {
-    return err('array out-of-bounds access')
+    return err('array out-of-bounds access');
   } else {
-    copytof(arr, idx, val)
-    return some(arr)
+    copytof(arr, idx, val);
+    return some(arr);
   }
 }
 export fn set(arr: Array<bool>, idx: int64, val: bool) {
   if (idx < 0) | (idx > arr.length()) {
-    return err('array out-of-bounds access')
+    return err('array out-of-bounds access');
   } else {
-    copytof(arr, idx, val)
-    return some(arr)
+    copytof(arr, idx, val);
+    return some(arr);
   }
 }
 
@@ -535,9 +535,9 @@ export fn getOr(result: Result<any>, default: string) = getOrRS(result, default)
 export getErr // opcode with signature `fn getErr(Result<any>, Error): Error`
 export fn toString(n: Result<Stringifiable>): string {
   if n.isOk() {
-    return n.getR().toString()
+    return n.getR().toString();
   } else {
-    return n.getErr(noerr()).toString()
+    return n.getErr(noerr()).toString();
   }
 }
 
@@ -574,18 +574,18 @@ export fn toHash(val: bool) = hashf(val)
 
 // HashMap implementation
 export type KeyVal<K, V> {
-  key: K
-  val: V
+  key: K,
+  val: V,
 }
 
 export interface Hashable {
-  toHash(Hashable): int64
-  eq(Hashable, Hashable): bool
+  toHash(Hashable): int64,
+  eq(Hashable, Hashable): bool,
 }
 
 export type HashMap<K, V> {
-  keyVal: Array<KeyVal<K, V>>
-  lookup: Array<Array<int64>>
+  keyVal: Array<KeyVal<K, V>>,
+  lookup: Array<Array<int64>>,
 }
 
 export fn keyVal(hm: HashMap<Hashable, any>) = hm.keyVal
@@ -594,64 +594,64 @@ export fn vals(hm: HashMap<Hashable, any>): Array<any> = map(hm.keyVal, fn (kv: 
 export fn length(hm: HashMap<Hashable, any>): int64 = length(hm.keyVal)
 
 export fn get(hm: HashMap<Hashable, any>, key: Hashable): any {
-  const hash = key.toHash().abs() % length(hm.lookup)
-  const list = getR(hm.lookup[hash])
+  const hash = key.toHash().abs() % length(hm.lookup);
+  const list = getR(hm.lookup[hash]);
   const index = list.find(fn (i: int64): Array<int64> {
-    const kv = getR(hm.keyVal[i])
-    return eq(kv.key, key)
-  })
+    const kv = getR(hm.keyVal[i]);
+    return eq(kv.key, key);
+  });
   if index.isOk() {
-    const i = index.getOr(0)
-    const kv = getR(hm.keyVal[i])
-    return ok(kv.val)
+    const i = index.getOr(0);
+    const kv = getR(hm.keyVal[i]);
+    return ok(kv.val);
   } else {
-    return err('key not found')
+    return err('key not found');
   }
 }
 
 export fn set(hm: HashMap<Hashable, any>, key: Hashable, val: any): HashMap<Hashable, any> {
   const kv = new KeyVal<Hashable, any> {
-    key = key
-    val = val
-  }
-  const index = length(hm.keyVal)
-  push(hm.keyVal, kv)
-  const hash = key.toHash().abs() % length(hm.lookup)
-  const list = getR(hm.lookup[hash])
+    key: key,
+    val: val,
+  };
+  const index = length(hm.keyVal);
+  push(hm.keyVal, kv);
+  const hash = key.toHash().abs() % length(hm.lookup);
+  const list = getR(hm.lookup[hash]);
   if list.length() == 8 {
     // Rebucket everything
-    const lookupLen = length(hm.lookup) * 2
-    hm.lookup = new Array<Array<int64>> [ new Array<int64> [], ] * lookupLen
+    const lookupLen = length(hm.lookup) * 2;
+    hm.lookup = new Array<Array<int64>> [ new Array<int64> [], ] * lookupLen;
     eachl(hm.keyVal, fn (kv: KeyVal<Hashable, any>, i: int64) {
-      const hash = toHash(kv.key).abs() % lookupLen
-      const list = getR(hm.lookup[hash])
-      list.push(i)
-    })
+      const hash = toHash(kv.key).abs() % lookupLen;
+      const list = getR(hm.lookup[hash]);
+      list.push(i);
+    });
   } else {
-    list.push(index)
+    list.push(index);
   }
-  return hm
+  return hm;
 }
 
 export fn newHashMap(firstKey: Hashable, firstVal: any): HashMap<Hashable, any> { // TODO: Rust-like fn::<typeA, typeB> syntax?
   let hm = new HashMap<Hashable, any> {
-    keyVal = new Array<KeyVal<Hashable, any>> []
-    lookup = new Array<Array<int64>> [ new Array<int64> [] ] * 128 // 1KB of space
-  }
-  return hm.set(firstKey, firstVal)
+    keyVal: new Array<KeyVal<Hashable, any>> [],
+    lookup: new Array<Array<int64>> [ new Array<int64> [] ] * 128, // 1KB of space
+  };
+  return hm.set(firstKey, firstVal);
 }
 
 export fn toHashMap(kva: Array<KeyVal<Hashable, any>>) {
   let hm = new HashMap<Hashable, any> {
-    keyVal = kva
-    lookup = new Array<Array<int64>> [ new Array<int64> [] ] * 128
-  }
+    keyVal: kva,
+    lookup: new Array<Array<int64>> [ new Array<int64> [] ] * 128,
+  };
   kva.eachl(fn (kv: KeyVal<Hashable, any>, i: int64) {
-    const hash = toHash(kv.key).abs() % length(hm.lookup)
-    const list = getR(hm.lookup[hash])
-    list.push(i)
-  })
-  return hm
+    const hash = toHash(kv.key).abs() % length(hm.lookup);
+    const list = getR(hm.lookup[hash]);
+    list.push(i);
+  });
+  return hm;
 }
 
 // Tree implementation
@@ -660,41 +660,41 @@ export fn toHashMap(kva: Array<KeyVal<Hashable, any>>) {
 // hold the metadata on which value is the parent and which are children, if any. The parent value
 // is `-1` if it has no parent and a positive integer otherwise.
 export type Tree<T> {
-  vals: Array<T>
-  parents: Array<int64>
-  children: Array<Array<int64>>
+  vals: Array<T>,
+  parents: Array<int64>,
+  children: Array<Array<int64>>,
 }
 
 // The Node type simply holds the index to look into the tree for a particular value-parent-children
 // triplet, where that index is referred to as a node ID. This allows node-based code to be written
 // while not actually having a recursive data structure that a traditional Node type would define.
 export type Node<T> {
-  id: int64
-  tree: Tree<T>
+  id: int64,
+  tree: Tree<T>,
 }
 
 export fn newTree(rootVal: any): Tree<any> = new Tree<any> {
-  vals = new Array<any> [ rootVal ]
-  parents = new Array<int64> [ -1 ] // The root node has no parent, so its parent ID is -1.
-  children = new Array<Array<int64>> [ new Array<int64> [ ] ]
+  vals: new Array<any> [ rootVal ],
+  parents: new Array<int64> [ -1 ], // The root node has no parent, so its parent ID is -1.
+  children: new Array<Array<int64>> [ new Array<int64> [ ] ],
 }
 
 export fn getRootNode(t: Tree<any>): Node<any> {
   if has(t.parents, -1) {
     return new Node<any> {
-      id = index(t.parents, -1).getOr(0)
-      tree = t
-    }
+      id: index(t.parents, -1).getOr(0),
+      tree: t,
+    };
   } else {
     // Return an invalid node, will behave like an error result
     return new Node<any> {
-      id = -1
-      tree = new Tree<any> {
-        vals = new Array<any> []
-        parents = new Array<int64> []
-        children = new Array<Array<int64>> []
-      }
-    }
+      id: -1,
+      tree: new Tree<any> {
+        vals: new Array<any> [],
+        parents: new Array<int64> [],
+        children: new Array<Array<int64>> [],
+      },
+    };
   }
 }
 
@@ -705,19 +705,19 @@ export fn length(t: Tree<any>): int64 = length(t.vals)
 export fn getNodeById(t: Tree<any>, i: int64): Node<any> {
   if length(t.vals) > i {
     return new Node<any> {
-      id = i
-      tree = t
-    }
+      id: i,
+      tree: t,
+    };
   } else {
     // Return an invalid node, will behave like an error result
     return new Node<any> {
-      id = -1
-      tree = new Tree<any> {
-        vals = new Array<any> []
-        parents = new Array<int64> []
-        children = new Array<Array<int64>> []
-      }
-    }
+      id: -1,
+      tree: new Tree<any> {
+        vals: new Array<any> [],
+        parents: new Array<int64> [],
+        children: new Array<Array<int64>> [],
+      },
+    };
   }
 }
 
@@ -743,76 +743,76 @@ export fn getParent(n: Node<any>): Node<any> {
 
 export fn getChildren(n: Node<any>): Array<Node<any>> {
   if length(n.tree.vals) > n.id {
-    const childIds = getOr(n.tree.children[n.id], new Array<int64> [])
+    const childIds = getOr(n.tree.children[n.id], new Array<int64> []);
     return childIds.filter(fn (id: int64): bool {
-      const parentId = getOr(n.tree.parents[id], -1)
-      return parentId.eq(n.id)
+      const parentId = getOr(n.tree.parents[id], -1);
+      return parentId.eq(n.id);
     }).map(fn (id: int64): Node<any> {
       return new Node<any> {
-        id = id
-        tree = n.tree
-      }
-    })
+        id: id,
+        tree: n.tree,
+      };
+    });
   } else {
-    return new Array<Node<any>> [ ]
+    return new Array<Node<any>> [ ];
   }
 }
 
 // Returns the pruned Tree
 export fn prune(n: Node<any>): Tree<any> {
   // adjust parent's children
-  const parentRes = n.tree.parents[n.id]
+  const parentRes = n.tree.parents[n.id];
   if parentRes.isOk() {
-    const parentId = parentRes.getR()
-    const children = getOr(n.tree.children[parentId], new Array<int64> [])
-    const idxRes = index(children, n.id)
+    const parentId = parentRes.getR();
+    const children = getOr(n.tree.children[parentId], new Array<int64> []);
+    const idxRes = index(children, n.id);
     if idxRes.isOk() {
-      delete(children, idxRes.getR())
+      delete(children, idxRes.getR());
     }
   }
   // This is, unfortunately for now, a sequential algorithm. Hope to figure out a parallel version
-  let nodeStack = new Array<int64> [ n.id ]
-  let rmdIds = new Array<int64> [ ]
+  let nodeStack = new Array<int64> [ n.id ];
+  let rmdIds = new Array<int64> [ ];
   seqdo(newseq(pow(2, 62)), fn (): bool {
     // Get the nodeId, exit if none left
-    const nodeRes = nodeStack.pop()
+    const nodeRes = nodeStack.pop();
     if nodeRes.isErr() {
-      return false
+      return false;
     }
-    const nodeId = nodeRes.getR()
+    const nodeId = nodeRes.getR();
     // Push the children onto the stack to process if the node has them
-    const childrenRes = n.tree.children[nodeId]
+    const childrenRes = n.tree.children[nodeId];
     if childrenRes.isOk() {
-      const childrenIds = childrenRes.getR()
-      nodeStack = nodeStack.concat(childrenIds)
+      const childrenIds = childrenRes.getR();
+      nodeStack = nodeStack.concat(childrenIds);
     }
-    const delIdx = nodeId - length(rmdIds)
-    delete(n.tree.vals, delIdx)
-    delete(n.tree.parents, delIdx)
-    delete(n.tree.children, delIdx)
-    push(rmdIds, nodeId)
-    return true
-  })
+    const delIdx = nodeId - length(rmdIds);
+    delete(n.tree.vals, delIdx);
+    delete(n.tree.parents, delIdx);
+    delete(n.tree.children, delIdx);
+    push(rmdIds, nodeId);
+    return true;
+  });
 
   // adjust indices for remaining elements
-  const iters = length(n.tree.parents)
+  const iters = length(n.tree.parents);
   seqeach(newseq(iters), fn (i: int64) {
-    const parentId = getOr(n.tree.parents[i], -1)
-    const parentDelta = rmdIds.filter(fn (rmId: int64): bool = parentId > rmId).length()
+    const parentId = getOr(n.tree.parents[i], -1);
+    const parentDelta = rmdIds.filter(fn (rmId: int64): bool = parentId > rmId).length();
     if parentDelta > 0 {
-      set(n.tree.parents, i, parentId - parentDelta)
+      set(n.tree.parents, i, parentId - parentDelta);
     }
-    const children = getOr(n.tree.children[i], new Array<int64> [])
+    const children = getOr(n.tree.children[i], new Array<int64> []);
     const newChildren = children.map(fn (cId: int64): int64 {
-      const delta = rmdIds.filter(fn (rmdId: int64): bool = cId > rmdId).length()
+      const delta = rmdIds.filter(fn (rmdId: int64): bool = cId > rmdId).length();
       if delta > 0 {
-        return cId - delta
+        return cId - delta;
       }
-      return cId
-    })
-    set(n.tree.children, i, newChildren)
-  })
-  return n.tree
+      return cId;
+    });
+    set(n.tree.children, i, newChildren);
+  });
+  return n.tree;
 }
 
 export fn getChildren(t: Tree<any>): Array<Node<any>> = t.getRootNode().getChildren()
@@ -842,10 +842,10 @@ export fn toNodeArray(t: Tree<any>): Array<Node<any>> = map(t.vals, fn (val: any
 
 export fn map(t: Tree<any>, mapper: function): Tree<anythingElse> {
   return new Tree<anythingElse> {
-    vals = t.toNodeArray().map(mapper)
-    parents = clone(t.parents)
-    children = clone(t.children)
-  }
+    vals: t.toNodeArray().map(mapper),
+    parents: clone(t.parents),
+    children: clone(t.children),
+  };
 }
 
 export fn some(t: Tree<any>, mapper: function): bool = t.toNodeArray().some(mapper)
@@ -858,14 +858,14 @@ export fn find(t: Tree<any>, mapper: function): Node<any> {
   // Return an invalid node, will behave like an error result
   return t.toNodeArray().find(mapper).getOr(
     new Node<any> {
-      id = -1
-      tree = new Tree<any> {
-        vals = new Array<any> []
-        parents = new Array<int64> []
-        children = new Array<Array<int64>> []
-      }
+      id: -1,
+      tree: new Tree<any> {
+        vals: new Array<any> [],
+        parents: new Array<int64> [],
+        children: new Array<Array<int64>> [],
+      },
     }
-  )
+  );
 }
 
 // Operator declarations

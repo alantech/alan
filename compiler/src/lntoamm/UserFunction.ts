@@ -80,54 +80,54 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
       const arglen = argsAst.VARNAME().length
       for (let i = 0; i < arglen; i++) {
         const argName = argsAst.VARNAME(i).getText()
-        let getArgType = scope.deepGet(argsAst.argtype(i).getText())
+        let getArgType = scope.deepGet(argsAst.fulltypename(i).getText())
         if (!getArgType) {
-          if (argsAst.argtype(i).othertype().length === 1) {
-            if (argsAst.argtype(i).othertype(0).typegenerics() !== null) {
+          if (argsAst.fulltypename(i).fulltypename().length === 1) {
+            if (argsAst.fulltypename(i).fulltypename(0).typegenerics() !== null) {
               getArgType =
-                scope.deepGet(argsAst.argtype(i).othertype(0).typename().getText()) as Type
+                scope.deepGet(argsAst.fulltypename(i).fulltypename(0).typename().getText()) as Type
               if (!getArgType) {
-                throw new Error("Could not find type " + argsAst.argtype(i).getText() + " for argument " + argName)
+                throw new Error("Could not find type " + argsAst.fulltypename(i).getText() + " for argument " + argName)
               }
               if (!(getArgType instanceof Type)) {
-                throw new Error("Function argument is not a valid type: " + argsAst.argtype(i).getText())
+                throw new Error("Function argument is not a valid type: " + argsAst.fulltypename(i).getText())
               }
               let genericTypes = []
-              for (const fulltypename of argsAst.argtype(i).othertype(0).typegenerics().fulltypename()) {
+              for (const fulltypename of argsAst.fulltypename(i).fulltypename(0).typegenerics().fulltypename()) {
                 genericTypes.push(fulltypename.getText())
               }
               getArgType = getArgType.solidify(genericTypes, scope)
             } else {
-              throw new Error("Could not find type " + argsAst.argtype(i).getText() + " for argument " + argName)
+              throw new Error("Could not find type " + argsAst.fulltypename(i).getText() + " for argument " + argName)
             }
           }
         }
         if (!(getArgType instanceof Type)) {
-          throw new Error("Function argument is not a valid type: " + argsAst.argtype(i).getText())
+          throw new Error("Function argument is not a valid type: " + argsAst.fulltypename(i).getText())
         }
         args[argName] = getArgType
       }
     }
     let returnType = null
-    if (functionAst.argtype() !== null) {
-      if (functionAst.argtype().othertype().length === 1) {
-        let getReturnType = scope.deepGet(functionAst.argtype().getText())
+    if (functionAst.fulltypename() !== null) {
+      if (functionAst.fulltypename().fulltypename().length === 1) {
+        let getReturnType = scope.deepGet(functionAst.fulltypename().getText())
         if (getReturnType == null || !(getReturnType instanceof Type)) {
-          if (functionAst.argtype().othertype(0).typegenerics() != null) {
-            getReturnType = scope.deepGet(functionAst.argtype().othertype(0).typename().getText())
+          if (functionAst.fulltypename().fulltypename(0).typegenerics() != null) {
+            getReturnType = scope.deepGet(functionAst.fulltypename().fulltypename(0).typename().getText())
             if (getReturnType == null) {
-              throw new Error("Could not find type " + functionAst.argtype().getText() + " for function " + functionAst.VARNAME().getText())
+              throw new Error("Could not find type " + functionAst.fulltypename().getText() + " for function " + functionAst.VARNAME().getText())
             }
             if (!(getReturnType instanceof Type)) {
-              throw new Error("Function return is not a valid type: " + functionAst.argtype().getText())
+              throw new Error("Function return is not a valid type: " + functionAst.fulltypename().getText())
             }
             let genericTypes = []
-            for (const fulltypename of functionAst.argtype().othertype(0).typegenerics().fulltypename()) {
+            for (const fulltypename of functionAst.fulltypename().fulltypename(0).typegenerics().fulltypename()) {
               genericTypes.push(fulltypename.getText())
             }
             getReturnType = getReturnType.solidify(genericTypes, scope)
           } else {
-            throw new Error("Could not find type " + functionAst.argtype().getText() + " for function " + functionAst.VARNAME().getText())
+            throw new Error("Could not find type " + functionAst.fulltypename().getText() + " for function " + functionAst.VARNAME().getText())
           }
         }
         returnType = getReturnType
@@ -148,7 +148,7 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
       }
     } else {
       const assignablesAst = functionAst.fullfunctionbody().assignables()
-      const statementAst = Ast.statementAstFromString(`return ${assignablesAst.getText()}\n`)
+      const statementAst = Ast.statementAstFromString(`return ${assignablesAst.getText()};\n`)
       const statement = Statement.create(statementAst, scope)
       if (!statement.pure) pure = false
       statements.push(statement)
@@ -173,13 +173,13 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
       ) {
         if (assignablesAst.basicassignables().objectliterals().typeliteral()) {
           returnType = scope.deepGet(
-            assignablesAst.basicassignables().objectliterals().typeliteral().othertype().getText().trim()
+            assignablesAst.basicassignables().objectliterals().typeliteral().fulltypename().getText().trim()
           )
           if (!returnType) {
             const fulltypeAst = Ast.fulltypenameAstFromString(
-              assignablesAst.basicassignables().objectliterals().typeliteral().othertype().getText()
+              assignablesAst.basicassignables().objectliterals().typeliteral().fulltypename().getText()
             )
-            const baseType = scope.deepGet(fulltypeAst.varn().getText()) as Type
+            const baseType = scope.deepGet(fulltypeAst.typename().getText()) as Type
             if (!baseType) {
               throw new Error(`Return type ${baseType} not defined`)
             }
@@ -190,13 +190,13 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
           }
         } else if (assignablesAst.basicassignables().objectliterals().mapliteral()) {
           returnType = scope.deepGet(
-            assignablesAst.basicassignables().objectliterals().mapliteral().othertype().getText().trim()
+            assignablesAst.basicassignables().objectliterals().mapliteral().fulltypename().getText().trim()
           )
           if (!returnType) {
             const fulltypeAst = Ast.fulltypenameAstFromString(
-              assignablesAst.basicassignables().objectliterals().mapliteral().othertype().getText()
+              assignablesAst.basicassignables().objectliterals().mapliteral().fulltypename().getText()
             )
-            const baseType = scope.deepGet(fulltypeAst.varn().getText()) as Type
+            const baseType = scope.deepGet(fulltypeAst.typename().getText()) as Type
             if (!baseType) {
               throw new Error(`Return type ${baseType} not defined`)
             }
@@ -205,18 +205,18 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
               scope
             )
           }
-        } else if (functionAst.argtype()) {
+        } else if (functionAst.fulltypename()) {
           returnType = scope.deepGet(functionAst.argType().getText().trim())
         } else {
-          if (assignablesAst.basicassignables().objectliterals().arrayliteral().othertype()) {
+          if (assignablesAst.basicassignables().objectliterals().arrayliteral().fulltypename()) {
             returnType = scope.deepGet(
-              assignablesAst.basicassignables().objectliterals().arrayliteral().othertype().getText().trim()
+              assignablesAst.basicassignables().objectliterals().arrayliteral().fulltypename().getText().trim()
             )
             if (!returnType) {
               const fulltypeAst = Ast.fulltypenameAstFromString(
-                assignablesAst.basicassignables().objectliterals().mapliteral().othertype().getText()
+                assignablesAst.basicassignables().objectliterals().mapliteral().fulltypename().getText()
               )
-              const baseType = scope.deepGet(fulltypeAst.varn().getText()) as Type
+              const baseType = scope.deepGet(fulltypeAst.typename().getText()) as Type
               if (!baseType) {
                 throw new Error(`Return type ${baseType} not defined`)
               }
@@ -407,7 +407,7 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
           if (!originalType || !(originalType instanceof Type)) {
             // It may be the first time this particular type has shown up, let's build it
             const typeAst = Ast.fulltypenameAstFromString(originaltypestr)
-            const baseTypeName = typeAst.varn().getText()
+            const baseTypeName = typeAst.typename().getText()
             const generics = typeAst.typegenerics().fulltypename().map((g: any) => g.getText())
             const baseType = this.scope.deepGet(baseTypeName) as Type
             if (!baseType || !(baseType instanceof Type)) { // Now we panic
@@ -434,7 +434,7 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
           if (!originalType || !(originalType instanceof Type)) {
             // It may be the first time this particular type has shown up, let's build it
             const typeAst = Ast.fulltypenameAstFromString(originaltypestr)
-            const baseTypeName = typeAst.varn().getText()
+            const baseTypeName = typeAst.typename().getText()
             const generics = typeAst.typegenerics().fulltypename().map((g: any) => g.getText())
             const baseType = this.scope.deepGet(baseTypeName) as Type
             if (!baseType || !(baseType instanceof Type)) { // Now we panic
@@ -463,7 +463,7 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
         } else if (s.statementAst instanceof LnParser.LetdeclarationContext) {
           const l = s.statementAst
           const name = l.VARNAME().getText()
-          const type = l.othertype() ? l.othertype().getText() : undefined
+          const type = l.fulltypename() ? l.fulltypename().getText() : undefined
           const v = l.assignables().getText()
           const wrappedAst = Ast.statementAstFromString(`
             let ${name}${type ? `: ${type}` : ''} = ref(${v})

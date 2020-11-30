@@ -419,31 +419,31 @@ ${varAst.getText()} on line ${varAst.start.line}:${varAst.start.column}`)
           arrayLiteralContents.push(microstatements[microstatements.length - 1])
         }
         let typeBox = null
-        if (baseAssignablesAst.objectliterals().arrayliteral().othertype()) {
+        if (baseAssignablesAst.objectliterals().arrayliteral().fulltypename()) {
           typeBox = scope.deepGet(
-            baseAssignablesAst.objectliterals().arrayliteral().othertype().getText().trim()
+            baseAssignablesAst.objectliterals().arrayliteral().fulltypename().getText().trim()
           ) as Type
           if (!typeBox) {
             // Try to define it if it's a generic type
-            if (baseAssignablesAst.objectliterals().arrayliteral().othertype().typegenerics()) {
+            if (baseAssignablesAst.objectliterals().arrayliteral().fulltypename().typegenerics()) {
               const outerTypeBox = scope.deepGet(
-                baseAssignablesAst.objectliterals().arrayliteral().othertype().typename().getText().trim()
+                baseAssignablesAst.objectliterals().arrayliteral().fulltypename().typename().getText().trim()
               ) as Type
               if (!outerTypeBox) {
-                throw new Error(`${baseAssignablesAst.objectliterals().arrayliteral().othertype().getText()}  is not defined
+                throw new Error(`${baseAssignablesAst.objectliterals().arrayliteral().fulltypename().getText()}  is not defined
 ${baseAssignablesAst.getText()} on line ${baseAssignablesAst.start.line}:${baseAssignablesAst.start.column}`)
               }
               outerTypeBox.solidify(
-                baseAssignablesAst.objectliterals().arrayliteral().othertype().typegenerics().fulltypename().map(
+                baseAssignablesAst.objectliterals().arrayliteral().fulltypename().typegenerics().fulltypename().map(
                   (t: any) => t.getText() // TODO: Eliminate ANTLR
                 ),
                 scope
               )
-              typeBox = scope.deepGet(baseAssignablesAst.objectliterals().arrayliteral().othertype().getText().trim())
+              typeBox = scope.deepGet(baseAssignablesAst.objectliterals().arrayliteral().fulltypename().getText().trim())
             }
           }
           if (!(typeBox instanceof Type)) {
-            throw new Error(`${baseAssignablesAst.objectliterals().arrayliteral().othertype().getText().trim()} is not a type
+            throw new Error(`${baseAssignablesAst.objectliterals().arrayliteral().fulltypename().getText().trim()} is not a type
 ${baseAssignablesAst.getText()} on line ${baseAssignablesAst.start.line}:${baseAssignablesAst.start.column}`)
           }
         } else if (arrayLiteralContents.length > 0) {
@@ -529,36 +529,36 @@ ${baseAssignablesAst.getText()} on line ${baseAssignablesAst.start.line}:${baseA
         // accessing undefined data is impossible. If a value might not be needed, they should use
         // the `Option` type and provide a `None` value there.
         let typeBox = scope.deepGet(
-          baseAssignablesAst.objectliterals().typeliteral().othertype().getText().trim()
+          baseAssignablesAst.objectliterals().typeliteral().fulltypename().getText().trim()
         ) as Type
         if (typeBox === null) {
           // Try to define it if it's a generic type
-          if (baseAssignablesAst.objectliterals().typeliteral().othertype().typegenerics()) {
+          if (baseAssignablesAst.objectliterals().typeliteral().fulltypename().typegenerics()) {
             const outerTypeBox = scope.deepGet(
-              baseAssignablesAst.objectliterals().typeliteral().othertype().typename().getText().trim()
+              baseAssignablesAst.objectliterals().typeliteral().fulltypename().typename().getText().trim()
             )
             if (outerTypeBox === null) {
-              throw new Error(`${baseAssignablesAst.objectliterals().typeliteral().othertype().getText()}  is not defined
+              throw new Error(`${baseAssignablesAst.objectliterals().typeliteral().fulltypename().getText()}  is not defined
 ${baseAssignablesAst.getText()} on line ${baseAssignablesAst.start.line}:${baseAssignablesAst.start.column}`)
             }
             (outerTypeBox as Type).solidify(
-              baseAssignablesAst.objectliterals().typeliteral().othertype().typegenerics().fulltypename().map(
+              baseAssignablesAst.objectliterals().typeliteral().fulltypename().typegenerics().fulltypename().map(
                 (t: any) => t.getText() // TODO: Eliminate ANTLR
               ),
               scope
             )
-            typeBox = scope.deepGet(baseAssignablesAst.objectliterals().typeliteral().othertype().getText().trim()) as Type
+            typeBox = scope.deepGet(baseAssignablesAst.objectliterals().typeliteral().fulltypename().getText().trim()) as Type
           }
         }
         if (!(typeBox instanceof Type)) {
-          throw new Error(`${baseAssignablesAst.objectliterals().typeliteral().othertype().getText().trim()} is not a type
+          throw new Error(`${baseAssignablesAst.objectliterals().typeliteral().fulltypename().getText().trim()} is not a type
 ${baseAssignablesAst.getText()} on line ${baseAssignablesAst.start.line}:${baseAssignablesAst.start.column}`)
         }
         const assignmentAsts = baseAssignablesAst.objectliterals().typeliteral().assignments()
         // First check that the assignments are well-formed and actually have an assignables field
         for (const assignmentAst of assignmentAsts) {
           if (!assignmentAst.assignables()) {
-            throw new Error(`${baseAssignablesAst.objectliterals().typeliteral().othertype().getText().trim()} object literal improperly defined
+            throw new Error(`${baseAssignablesAst.objectliterals().typeliteral().fulltypename().getText().trim()} object literal improperly defined
 ${assignmentAst.varn().getText()} not set
 ${baseAssignablesAst.getText()} on line ${baseAssignablesAst.start.line}:${baseAssignablesAst.start.column}`)
           }
@@ -585,7 +585,7 @@ ${baseAssignablesAst.getText()} on line ${baseAssignablesAst.start.line}:${baseA
           }
         }
         if (missingFields.length > 0 || extraFields.length > 0) {
-          let errMsg = `${baseAssignablesAst.objectliterals().typeliteral().othertype().getText().trim()} object literal improperly defined`
+          let errMsg = `${baseAssignablesAst.objectliterals().typeliteral().fulltypename().getText().trim()} object literal improperly defined`
           if (missingFields.length > 0) {
             errMsg += '\n' + `Missing fields: ${missingFields.join(', ')}`
           }
@@ -667,7 +667,7 @@ ${baseAssignablesAst.getText()} on line ${baseAssignablesAst.start.line}:${baseA
         return
       }
       // If object literal parsing has made it this far, it's a Map literal that is not yet supported
-      throw new Error(`${baseAssignablesAst.objectliterals().mapliteral().othertype().getText().trim()} not yet supported
+      throw new Error(`${baseAssignablesAst.objectliterals().mapliteral().fulltypename().getText().trim()} not yet supported
 ${baseAssignablesAst.getText()} on line ${baseAssignablesAst.start.line}:${baseAssignablesAst.start.column}`)
     }
   }
@@ -753,31 +753,31 @@ ${baseAssignablesAst.getText()} on line ${baseAssignablesAst.start.line}:${baseA
           arrayLiteralContents.push(microstatements[microstatements.length - 1])
         }
         let typeBox = null
-        if (basicAssignablesAst.objectliterals().arrayliteral().othertype()) {
+        if (basicAssignablesAst.objectliterals().arrayliteral().fulltypename()) {
           typeBox = scope.deepGet(
-            basicAssignablesAst.objectliterals().arrayliteral().othertype().getText().trim()
+            basicAssignablesAst.objectliterals().arrayliteral().fulltypename().getText().trim()
           ) as Type
           if (!typeBox) {
             // Try to define it if it's a generic type
-            if (basicAssignablesAst.objectliterals().arrayliteral().othertype().typegenerics()) {
+            if (basicAssignablesAst.objectliterals().arrayliteral().fulltypename().typegenerics()) {
               const outerTypeBox = scope.deepGet(
-                basicAssignablesAst.objectliterals().arrayliteral().othertype().typename().getText().trim()
+                basicAssignablesAst.objectliterals().arrayliteral().fulltypename().typename().getText().trim()
               ) as Type
               if (!outerTypeBox) {
-                throw new Error(`${basicAssignablesAst.objectliterals().arrayliteral().othertype().getText()}  is not defined
+                throw new Error(`${basicAssignablesAst.objectliterals().arrayliteral().fulltypename().getText()}  is not defined
 ${basicAssignablesAst.getText()} on line ${basicAssignablesAst.start.line}:${basicAssignablesAst.start.column}`)
               }
               outerTypeBox.solidify(
-                basicAssignablesAst.objectliterals().arrayliteral().othertype().typegenerics().fulltypename().map(
+                basicAssignablesAst.objectliterals().arrayliteral().fulltypename().typegenerics().fulltypename().map(
                   (t: any) => t.getText() // TODO: Eliminate ANTLR
                 ),
                 scope
               )
-              typeBox = scope.deepGet(basicAssignablesAst.objectliterals().arrayliteral().othertype().getText().trim())
+              typeBox = scope.deepGet(basicAssignablesAst.objectliterals().arrayliteral().fulltypename().getText().trim())
             }
           }
           if (!(typeBox instanceof Type)) {
-            throw new Error(`${basicAssignablesAst.objectliterals().arrayliteral().othertype().getText().trim()} is not a type
+            throw new Error(`${basicAssignablesAst.objectliterals().arrayliteral().fulltypename().getText().trim()} is not a type
 ${basicAssignablesAst.getText()} on line ${basicAssignablesAst.start.line}:${basicAssignablesAst.start.column}`)
           }
         } else if (arrayLiteralContents.length > 0) {
@@ -863,36 +863,36 @@ ${basicAssignablesAst.getText()} on line ${basicAssignablesAst.start.line}:${bas
         // accessing undefined data is impossible. If a value might not be needed, they should use
         // the `Option` type and provide a `None` value there.
         let typeBox = scope.deepGet(
-          basicAssignablesAst.objectliterals().typeliteral().othertype().getText().trim()
+          basicAssignablesAst.objectliterals().typeliteral().fulltypename().getText().trim()
         ) as Type
         if (typeBox === null) {
           // Try to define it if it's a generic type
-          if (basicAssignablesAst.objectliterals().typeliteral().othertype().typegenerics()) {
+          if (basicAssignablesAst.objectliterals().typeliteral().fulltypename().typegenerics()) {
             const outerTypeBox = scope.deepGet(
-              basicAssignablesAst.objectliterals().typeliteral().othertype().typename().getText().trim()
+              basicAssignablesAst.objectliterals().typeliteral().fulltypename().typename().getText().trim()
             )
             if (outerTypeBox === null) {
-              throw new Error(`${basicAssignablesAst.objectliterals().typeliteral().othertype().getText()}  is not defined
+              throw new Error(`${basicAssignablesAst.objectliterals().typeliteral().fulltypename().getText()}  is not defined
 ${basicAssignablesAst.getText()} on line ${basicAssignablesAst.start.line}:${basicAssignablesAst.start.column}`)
             }
             (outerTypeBox as Type).solidify(
-              basicAssignablesAst.objectliterals().typeliteral().othertype().typegenerics().fulltypename().map(
+              basicAssignablesAst.objectliterals().typeliteral().fulltypename().typegenerics().fulltypename().map(
                 (t: any) => t.getText() // TODO: Eliminate ANTLR
               ),
               scope
             )
-            typeBox = scope.deepGet(basicAssignablesAst.objectliterals().typeliteral().othertype().getText().trim()) as Type
+            typeBox = scope.deepGet(basicAssignablesAst.objectliterals().typeliteral().fulltypename().getText().trim()) as Type
           }
         }
         if (!(typeBox instanceof Type)) {
-          throw new Error(`${basicAssignablesAst.objectliterals().typeliteral().othertype().getText().trim()} is not a type
+          throw new Error(`${basicAssignablesAst.objectliterals().typeliteral().fulltypename().getText().trim()} is not a type
 ${basicAssignablesAst.getText()} on line ${basicAssignablesAst.start.line}:${basicAssignablesAst.start.column}`)
         }
         const assignmentAsts = basicAssignablesAst.objectliterals().typeliteral().assignments()
         // First check that the assignments are well-formed and actually have an assignables field
         for (const assignmentAst of assignmentAsts) {
           if (!assignmentAst.assignables()) {
-            throw new Error(`${basicAssignablesAst.objectliterals().typeliteral().othertype().getText().trim()} object literal improperly defined
+            throw new Error(`${basicAssignablesAst.objectliterals().typeliteral().fulltypename().getText().trim()} object literal improperly defined
 ${assignmentAst.varn().getText()} not set
 ${basicAssignablesAst.getText()} on line ${basicAssignablesAst.start.line}:${basicAssignablesAst.start.column}`)
           }
@@ -919,7 +919,7 @@ ${basicAssignablesAst.getText()} on line ${basicAssignablesAst.start.line}:${bas
           }
         }
         if (missingFields.length > 0 || extraFields.length > 0) {
-          let errMsg = `${basicAssignablesAst.objectliterals().typeliteral().othertype().getText().trim()} object literal improperly defined`
+          let errMsg = `${basicAssignablesAst.objectliterals().typeliteral().fulltypename().getText().trim()} object literal improperly defined`
           if (missingFields.length > 0) {
             errMsg += '\n' + `Missing fields: ${missingFields.join(', ')}`
           }
@@ -1001,7 +1001,7 @@ ${basicAssignablesAst.getText()} on line ${basicAssignablesAst.start.line}:${bas
         return
       }
       // If object literal parsing has made it this far, it's a Map literal that is not yet supported
-      throw new Error(`${basicAssignablesAst.objectliterals().mapliteral().othertype().getText().trim()} not yet supported
+      throw new Error(`${basicAssignablesAst.objectliterals().mapliteral().fulltypename().getText().trim()} not yet supported
 ${basicAssignablesAst.getText()} on line ${basicAssignablesAst.start.line}:${basicAssignablesAst.start.column}`)
     }
   }
@@ -1819,20 +1819,20 @@ ${letName} on line ${assignmentsAst.start.line}:${assignmentsAst.start.column}`)
     microstatements: Array<Microstatement>,
   ) {
     const letAlias = letdeclarationAst.VARNAME().getText()
-    const letTypeHint = letdeclarationAst.othertype() ? letdeclarationAst.othertype().getText() : ''
+    const letTypeHint = letdeclarationAst.fulltypename() ? letdeclarationAst.fulltypename().getText() : ''
     const typeBox = scope.deepGet(letTypeHint)
     if (typeBox === null && letTypeHint !== '') {
       // Try to define it if it's a generic type
-      if (letdeclarationAst.othertype().typegenerics()) {
+      if (letdeclarationAst.fulltypename().typegenerics()) {
         const outerTypeBox = scope.deepGet(
-          letdeclarationAst.othertype().typename().getText()
+          letdeclarationAst.fulltypename().typename().getText()
         ) as Type
         if (outerTypeBox === null) {
-          throw new Error(`${letdeclarationAst.othertype().typename().getText()}  is not defined
+          throw new Error(`${letdeclarationAst.fulltypename().typename().getText()}  is not defined
 ${letdeclarationAst.getText()} on line ${letdeclarationAst.start.line}:${letdeclarationAst.start.column}`)
         }
         outerTypeBox.solidify(
-          letdeclarationAst.othertype().typegenerics().fulltypename().map(
+          letdeclarationAst.fulltypename().typegenerics().fulltypename().map(
             (t: any) =>t.getText() // TODO: Eliminate ANTLR
           ),
           scope
@@ -1909,22 +1909,22 @@ ${letdeclarationAst.getText()} on line ${letdeclarationAst.start.line}:${letdecl
   ) {
     const constName = "_" + uuid().replace(/-/g, "_")
     const constAlias = constdeclarationAst.VARNAME().getText()
-    const constTypeHint = constdeclarationAst.othertype() ?
-      constdeclarationAst.othertype().getText() :
+    const constTypeHint = constdeclarationAst.fulltypename() ?
+      constdeclarationAst.fulltypename().getText() :
       ''
     const typeBox = scope.deepGet(constTypeHint)
     if (typeBox === null && constTypeHint !== '') {
       // Try to define it if it's a generic type
-      if (constdeclarationAst.othertype().typegenerics()) {
+      if (constdeclarationAst.fulltypename().typegenerics()) {
         const outerTypeBox = scope.deepGet(
-          constdeclarationAst.othertype().typename().getText()
+          constdeclarationAst.fulltypename().typename().getText()
         ) as Type
         if (outerTypeBox === null) {
-          throw new Error(`${constdeclarationAst.othertype().typename().getText()}  is not defined
+          throw new Error(`${constdeclarationAst.fulltypename().typename().getText()}  is not defined
 ${constdeclarationAst.getText()} on line ${constdeclarationAst.start.line}:${constdeclarationAst.start.column}`)
         }
         outerTypeBox.solidify(
-          constdeclarationAst.othertype().typegenerics().fulltypename().map(
+          constdeclarationAst.fulltypename().typegenerics().fulltypename().map(
             (t: any) => t.getText() // TODO: Eliminate ANTLR
           ),
           scope
@@ -2009,9 +2009,9 @@ ${constdeclarationAst.getText()} on line ${constdeclarationAst.start.line}:${con
         microstatements
       )
     }
-    if (statementAst.calls() != null) {
-      Microstatement.fromCallsAst(
-        statementAst.calls(),
+    if (statementAst.assignables() != null) {
+      Microstatement.fromAssignablesAst(
+        statementAst.assignables(),
         scope,
         microstatements
       )
@@ -2034,23 +2034,143 @@ ${constdeclarationAst.getText()} on line ${constdeclarationAst.start.line}:${con
     return microstatements
   }
 
+  static fromBaseAssignableAst(
+    baseAssignableAst: any, // TODO: Eliminate ANTLR
+    scope: Scope,
+    microstatements: Array<Microstatement>,
+  ) {
+    // TODO    
+  }
+
   static fromAssignablesAst(
     assignablesAst: any, // TODO: Eliminate ANTLR
     scope: Scope,
     microstatements: Array<Microstatement>,
   ) {
-    if (assignablesAst.basicassignables() != null) {
-      Microstatement.fromBasicAssignablesAst(
-        assignablesAst.basicassignables(),
-        scope,
-        microstatements,
-      )
-    } else {
-      Microstatement.fromWithOperatorsAst(
-        assignablesAst.withoperators(),
-        scope,
-        microstatements,
-      )
+    const withoperators = assignablesAst.withoperators()
+    let withOperatorsList = []
+    for (const operatorOrAssignable of withoperators) {
+      if (!!operatorOrAssignable.operators()) {
+        const operator = operatorOrAssignable.operators()
+        const op = scope.deepGet(operator.getText())
+        if (op == null || !(op instanceof Array && op[0] instanceof Operator)) {
+          throw new Error("Operator " + operator.getText() + " is not defined")
+        }
+        withOperatorsList.push(op)
+      } else if (
+        !!operatorOrAssignable.baseassignable() &&
+        operatorOrAssignable.baseassignable().length > 0
+      ) {
+        Microstatement.fromBaseAssignableAst(
+          operatorOrAssignable.baseassignable(),
+          scope,
+          microstatements,
+        )
+        const last = microstatements[microstatements.length - 1]
+        withOperatorsList.push(last)
+      }
+    }
+    // Now to combine these operators and values in the correct order. A compiled language could
+    // never do something so inefficient, but I don't care about performance right now, so here's
+    // the algorithm: while the list length is greater than 1, perform the two steps:
+    // 1. Find the operator with the greatest precedence
+    // 2. Apply the underlying function to the values on either side of the operator (or just the
+    //    right side if the operator is a prefix operator), then replace the operator with the
+    //    returned value in the list and delete the impacted values.
+    while (withOperatorsList.length > 1) {
+      let maxPrecedence = -1
+      let maxOperatorLoc = -1
+      let maxOperatorListLoc = -1
+      for (let i = 0; i < withOperatorsList.length; i++) {
+        if (withOperatorsList[i] instanceof Array && withOperatorsList[i][0] instanceof Operator) {
+          const ops = withOperatorsList[i]
+          let op = null
+          let operatorListLoc = -1
+          let operatorPrecedence = -127
+          if (ops.length == 1) {
+            op = ops[0]
+            operatorListLoc = 0
+          } else {
+            // TODO: We need to identify which particular operator applies in this case.
+            // We're just going to short-circuit this process on the first operator that matches
+            // but we need to come up with a "best match" behavior (ie, if one argument is an int8
+            // it may choose the int64-based operator because it was first and it can cast int8 to
+            // int64 and then miss the specialized int8 version of the function).
+            let left = null
+            if (i != 0) left = withOperatorsList[i - 1]
+            let right = null
+            if (i != withOperatorsList.length - 1) right = withOperatorsList[i + 1]
+            // Skip over any operator that is followed by another operator as it must be a prefix
+            // operator (or a syntax error, but we'll catch that later)
+            if (right === null || right instanceof Microstatement) {
+              for (let j = 0; j < ops.length; j++) {
+                if (
+                  ops[j].precedence > operatorPrecedence &&
+                  ops[j].applicableFunction(
+                    !left ? // Left is special, if two operators are in a row, this one
+                      null :        // needs to be a prefix operator for this to work at all
+                      left instanceof Microstatement ?
+                        left.outputType :
+                        null,
+                    right === null ? null : right.outputType,
+                    scope
+                  ) != null
+                ) {
+                  op = ops[j]
+                  operatorListLoc = j
+                  operatorPrecedence = op.precedence
+                }
+              }
+            }
+            // During the process of determining the operator ordering, there may be tests that
+            // will not match because operator precedence will convert the neighboring types into
+            // types that will match. This is complicated and doing this statically will be more
+            // difficult, but for now, just skip over these.
+            if (op == null) continue
+          }
+
+          if (op.precedence > maxPrecedence) {
+            maxPrecedence = op.precedence
+            maxOperatorLoc = i
+            maxOperatorListLoc = operatorListLoc
+          }
+        }
+      }
+      if (maxPrecedence == -1 || maxOperatorLoc == -1) {
+        let errMsg = `Cannot resolve operators with remaining statement
+${withoperators.getText()}`
+        let withOperatorsTranslation = []
+        for (let i = 0; i < withOperatorsList.length; i++) {
+          const node = withOperatorsList[i]
+          if (node instanceof Array && node[0] instanceof Operator) {
+            withOperatorsTranslation.push(node[0].name)
+          } else {
+            withOperatorsTranslation.push("<" + node.outputType.typename + ">")
+          }
+        }
+        errMsg += '\n' + withOperatorsTranslation.join(' ')
+        throw new Error(errMsg)
+      }
+      const op = withOperatorsList[maxOperatorLoc][maxOperatorListLoc]
+      let realArgNames = []
+      let realArgTypes = []
+      if (!op.isPrefix) {
+        const left = withOperatorsList[maxOperatorLoc - 1]
+        realArgNames.push(left.outputName)
+        realArgTypes.push(left.outputType)
+      }
+      const right = withOperatorsList[maxOperatorLoc + 1]
+      realArgNames.push(right.outputName)
+      realArgTypes.push(right.outputType)
+      UserFunction
+        .dispatchFn(op.potentialFunctions, realArgTypes, scope)
+        .microstatementInlining(realArgNames, scope, microstatements)
+      const last = microstatements[microstatements.length - 1]
+      withOperatorsList[maxOperatorLoc] = last
+      withOperatorsList.splice(maxOperatorLoc + 1, 1)
+      if (!op.isPrefix) {
+        withOperatorsList.splice(maxOperatorLoc - 1, 1)
+      }
     }
   }
 

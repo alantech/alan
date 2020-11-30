@@ -13,7 +13,7 @@ on stdout fn (out: string) = stdoutp(out)
 
 // The `print` function converts its input to a string, appends a newline, and sends it to `stdout`
 export fn print(out: Stringifiable) {
-  emit stdout out.toString() + "\n"
+  emit stdout out.toString() + "\n";
 }
 
 // The `exit` event
@@ -30,5 +30,5 @@ on stderr fn (err: string) = stderrp(err)
 
 // The `eprint` function converts its input to a string, appends a newline, and sends it to `stderr`
 export fn eprint(err: Stringifiable) {
-  emit stderr err.toString() + "\n"
+  emit stderr err.toString() + "\n";
 }
