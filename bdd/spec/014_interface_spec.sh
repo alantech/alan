@@ -287,7 +287,7 @@ Describe "Interfaces"
         from ./datetime import datetime
 
         on start {
-          const dt = #2020-07-02@12:07:30-08:00
+          const dt = #2020 - 07 - 02@12:07:30 - 08:00
           dt.print()
           emit exit 0
         }
