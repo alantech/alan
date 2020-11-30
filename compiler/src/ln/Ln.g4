@@ -228,7 +228,7 @@ MULTILINECOMMENT : '/*' (('*' ~'/') | ~'*')* '*/' -> skip;
 
 STRINGCONSTANT : ('"' ~["]* '"') | ('\'' ~[']* '\'');
 
-NUMBERCONSTANT : ('0x' [0-9a-fA-F]+) | ([0-9]+ ([.][0-9]+)?);
+NUMBERCONSTANT : ('0x' [0-9a-fA-F]+) | ([-]? [0-9]+ ([.][0-9]+)?);
 
 GENERALOPERATORS : [+\-/*^.~`!@#$%&|:;<?=][+\-/*^.~`!@#$%&|:;<>?=]*;
 

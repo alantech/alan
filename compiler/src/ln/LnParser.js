@@ -4,7 +4,6 @@ var antlr4 = require('antlr4/index');
 var LnListener = require('./LnListener').LnListener;
 var grammarFileName = "Ln.g4";
 
-
 var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
     "\u0003/\u04b8\u0004\u0002\t\u0002\u0004\u0003\t\u0003\u0004\u0004\t",
     "\u0004\u0004\u0005\t\u0005\u0004\u0006\t\u0006\u0004\u0007\t\u0007\u0004",
@@ -1020,7 +1019,6 @@ LnParser.RULE_varn = 63;
 LnParser.RULE_varsegment = 64;
 LnParser.RULE_arrayaccess = 65;
 
-
 function ModuleContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -1303,7 +1301,6 @@ LnParser.prototype.module = function() {
     return localctx;
 };
 
-
 function BlankContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -1374,7 +1371,6 @@ LnParser.prototype.blank = function() {
     }
     return localctx;
 };
-
 
 function ImportsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -1450,7 +1446,6 @@ LnParser.prototype.imports = function() {
     }
     return localctx;
 };
-
 
 function StandardImportContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -1584,7 +1579,6 @@ LnParser.prototype.standardImport = function() {
     return localctx;
 };
 
-
 function FromImportContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -1710,7 +1704,6 @@ LnParser.prototype.fromImport = function() {
     return localctx;
 };
 
-
 function DependencyContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -1787,7 +1780,6 @@ LnParser.prototype.dependency = function() {
     }
     return localctx;
 };
-
 
 function LocaldependencyContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -1924,7 +1916,6 @@ LnParser.prototype.localdependency = function() {
     return localctx;
 };
 
-
 function GlobaldependencyContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -2025,7 +2016,6 @@ LnParser.prototype.globaldependency = function() {
     }
     return localctx;
 };
-
 
 function TypesContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -2187,7 +2177,6 @@ LnParser.prototype.types = function() {
     return localctx;
 };
 
-
 function OthertypeContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -2284,7 +2273,6 @@ LnParser.prototype.othertype = function() {
     return localctx;
 };
 
-
 function TypenameContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -2343,7 +2331,6 @@ LnParser.prototype.typename = function() {
     }
     return localctx;
 };
-
 
 function TypegenericsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -2499,7 +2486,6 @@ LnParser.prototype.typegenerics = function() {
     return localctx;
 };
 
-
 function FulltypenameContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -2595,7 +2581,6 @@ LnParser.prototype.fulltypename = function() {
     }
     return localctx;
 };
-
 
 function TypebodyContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -2744,7 +2729,6 @@ LnParser.prototype.typebody = function() {
     return localctx;
 };
 
-
 function TypelineContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -2883,7 +2867,6 @@ LnParser.prototype.typeline = function() {
     }
     return localctx;
 };
-
 
 function FunctionsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -3119,7 +3102,6 @@ LnParser.prototype.functions = function() {
     return localctx;
 };
 
-
 function FullfunctionbodyContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -3223,7 +3205,6 @@ LnParser.prototype.fullfunctionbody = function() {
     }
     return localctx;
 };
-
 
 function FunctionbodyContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -3342,7 +3323,6 @@ LnParser.prototype.functionbody = function() {
     }
     return localctx;
 };
-
 
 function StatementsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -3483,7 +3463,6 @@ LnParser.prototype.statements = function() {
     return localctx;
 };
 
-
 function DeclarationsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -3558,7 +3537,6 @@ LnParser.prototype.declarations = function() {
     }
     return localctx;
 };
-
 
 function ConstdeclarationContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -3718,7 +3696,6 @@ LnParser.prototype.constdeclaration = function() {
     return localctx;
 };
 
-
 function LetdeclarationContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -3877,7 +3854,6 @@ LnParser.prototype.letdeclaration = function() {
     return localctx;
 };
 
-
 function AssignmentsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -3981,7 +3957,6 @@ LnParser.prototype.assignments = function() {
     return localctx;
 };
 
-
 function AssignablesContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -4058,7 +4033,6 @@ LnParser.prototype.assignables = function() {
     }
     return localctx;
 };
-
 
 function BasicassignablesContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -4187,7 +4161,6 @@ LnParser.prototype.basicassignables = function() {
     return localctx;
 };
 
-
 function OperatororassignableContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -4278,7 +4251,6 @@ LnParser.prototype.operatororassignable = function() {
     }
     return localctx;
 };
-
 
 function WithoperatorsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -4385,7 +4357,6 @@ LnParser.prototype.withoperators = function() {
     return localctx;
 };
 
-
 function GroupsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -4490,7 +4461,6 @@ LnParser.prototype.groups = function() {
     return localctx;
 };
 
-
 function TypeofnContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -4579,7 +4549,6 @@ LnParser.prototype.typeofn = function() {
     return localctx;
 };
 
-
 function ObjectliteralsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -4666,7 +4635,6 @@ LnParser.prototype.objectliterals = function() {
     }
     return localctx;
 };
-
 
 function ArrayliteralContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -4830,7 +4798,6 @@ LnParser.prototype.arrayliteral = function() {
     return localctx;
 };
 
-
 function TypeliteralContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -4992,7 +4959,6 @@ LnParser.prototype.typeliteral = function() {
     }
     return localctx;
 };
-
 
 function MapliteralContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -5156,7 +5122,6 @@ LnParser.prototype.mapliteral = function() {
     return localctx;
 };
 
-
 function MaplineContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -5263,7 +5228,6 @@ LnParser.prototype.mapline = function() {
     }
     return localctx;
 };
-
 
 function AssignablelistContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -5411,7 +5375,6 @@ LnParser.prototype.assignablelist = function() {
     return localctx;
 };
 
-
 function FncallContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -5489,7 +5452,6 @@ LnParser.prototype.fncall = function() {
     }
     return localctx;
 };
-
 
 function CallsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -5714,7 +5676,6 @@ LnParser.prototype.calls = function() {
     return localctx;
 };
 
-
 function ExitsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -5807,7 +5768,6 @@ LnParser.prototype.exits = function() {
     }
     return localctx;
 };
-
 
 function EmitsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -5917,7 +5877,6 @@ LnParser.prototype.emits = function() {
     }
     return localctx;
 };
-
 
 function ConditionalsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -6083,7 +6042,6 @@ LnParser.prototype.conditionals = function() {
     return localctx;
 };
 
-
 function BlocklikesContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -6171,7 +6129,6 @@ LnParser.prototype.blocklikes = function() {
     return localctx;
 };
 
-
 function ConstantsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -6246,7 +6203,6 @@ LnParser.prototype.constants = function() {
     }
     return localctx;
 };
-
 
 function OperatorsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -6453,7 +6409,6 @@ LnParser.prototype.operators = function() {
     return localctx;
 };
 
-
 function OperatormappingContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -6571,7 +6526,6 @@ LnParser.prototype.operatormapping = function() {
     return localctx;
 };
 
-
 function FntoopContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -6659,7 +6613,6 @@ LnParser.prototype.fntoop = function() {
     return localctx;
 };
 
-
 function OpprecedenceContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -6730,7 +6683,6 @@ LnParser.prototype.opprecedence = function() {
     }
     return localctx;
 };
-
 
 function EventsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -6855,7 +6807,6 @@ LnParser.prototype.events = function() {
     }
     return localctx;
 };
-
 
 function HandlersContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -6986,7 +6937,6 @@ LnParser.prototype.handlers = function() {
     return localctx;
 };
 
-
 function EventrefContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -7063,7 +7013,6 @@ LnParser.prototype.eventref = function() {
     }
     return localctx;
 };
-
 
 function InterfacesContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -7259,7 +7208,6 @@ LnParser.prototype.interfaces = function() {
     return localctx;
 };
 
-
 function InterfacelineContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -7346,7 +7294,6 @@ LnParser.prototype.interfaceline = function() {
     }
     return localctx;
 };
-
 
 function FunctiontypelineContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -7446,7 +7393,6 @@ LnParser.prototype.functiontypeline = function() {
     }
     return localctx;
 };
-
 
 function FunctiontypeContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -7643,7 +7589,6 @@ LnParser.prototype.functiontype = function() {
     return localctx;
 };
 
-
 function OperatortypelineContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -7785,7 +7730,6 @@ LnParser.prototype.operatortypeline = function() {
     return localctx;
 };
 
-
 function LeftargContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -7845,7 +7789,6 @@ LnParser.prototype.leftarg = function() {
     return localctx;
 };
 
-
 function RightargContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -7904,7 +7847,6 @@ LnParser.prototype.rightarg = function() {
     }
     return localctx;
 };
-
 
 function PropertytypelineContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -8009,7 +7951,6 @@ LnParser.prototype.propertytypeline = function() {
     }
     return localctx;
 };
-
 
 function ArgtypeContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -8135,7 +8076,6 @@ LnParser.prototype.argtype = function() {
     }
     return localctx;
 };
-
 
 function ArglistContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -8344,7 +8284,6 @@ LnParser.prototype.arglist = function() {
     return localctx;
 };
 
-
 function ExportsContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -8511,7 +8450,6 @@ LnParser.prototype.exports = function() {
     return localctx;
 };
 
-
 function VarlistContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -8602,7 +8540,6 @@ LnParser.prototype.varlist = function() {
     }
     return localctx;
 };
-
 
 function RenameablevarContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -8701,7 +8638,6 @@ LnParser.prototype.renameablevar = function() {
     return localctx;
 };
 
-
 function VaropContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -8784,7 +8720,6 @@ LnParser.prototype.varop = function() {
     return localctx;
 };
 
-
 function VarnContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
@@ -8864,7 +8799,6 @@ LnParser.prototype.varn = function() {
     }
     return localctx;
 };
-
 
 function VarsegmentContext(parser, parent, invokingState) {
 	if(parent===undefined) {
@@ -8950,7 +8884,6 @@ LnParser.prototype.varsegment = function() {
     }
     return localctx;
 };
-
 
 function ArrayaccessContext(parser, parent, invokingState) {
 	if(parent===undefined) {
