@@ -722,22 +722,22 @@ export fn getNodeById(t: Tree<any>, i: int64): Node<any> {
 }
 
 export fn getParent(n: Node<any>): Node<any> {
-  const parentId = getOr(n.tree.parents[n.id], -1)
+  const parentId = getOr(n.tree.parents[n.id], -1);
   if parentId > -1 {
     return new Node<any> {
-      id = parentId
-      tree = n.tree
-    }
+      id: parentId,
+      tree: n.tree,
+    };
   } else {
     // Return an invalid node, will behave like an error result
     return new Node<any> {
-      id = -1
-      tree = new Tree<any> {
-        vals = new Array<any> []
-        parents = new Array<int64> []
-        children = new Array<Array<int64>> []
-      }
-    }
+      id: -1,
+      tree: new Tree<any> {
+        vals: new Array<any> [],
+        parents: new Array<int64> [],
+        children: new Array<Array<int64>> [],
+      },
+    };
   }
 }
 
