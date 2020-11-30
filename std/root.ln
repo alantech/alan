@@ -407,13 +407,7 @@ export fn everyLin(arr: Array<any>, cb: function): bool = everyl(arr, cb)
 export some // parallel opcode with signature `fn some(arr: Array<any>, cb: function): bool`
 export fn someLin(arr: Array<any>, cb: function): bool = somel(arr, cb)
 export join // opcode with signature `fn join(arr: Array<string>, sep: string): string`
-export fn delete(arr: Array<any>, idx: int64) {
-  if (idx < 0) | (idx > arr.length()) {
-    return err('array out-of-bounds access')
-  } else {
-    return delindx(arr, idx)
-  }
-}
+export fn delete(arr: Array<any>, idx: int64): Result<any> = delindx(arr, idx)
 export fn set(arr: Array<any>, idx: int64, val: any) {
   if (idx < 0) | (idx > arr.length()) {
     return err('array out-of-bounds access')

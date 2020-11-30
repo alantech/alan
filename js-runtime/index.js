@@ -327,7 +327,7 @@ module.exports = {
     try {
       return [ true, arr.splice(idx, 1)[0] ]
     } catch (e) {
-      return [ false, e.toString() ]
+      return [ false, `cannot remove idx ${idx} from array with length ${arr.length}` ]
     }
   },
   join:    (arr, sep) => arr.join(sep),

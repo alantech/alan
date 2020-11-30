@@ -32,7 +32,7 @@ The majority of the conclusions in [RFC 009](./009 - Tree RFC.md) are still vali
 
 ## Expected SemBDD Impact
 
-If Alan was post-1.0.0, this would be a minor update.
+If Alan was post-1.0.0, this would be a major update because it changes existing API visible to the end user.
 
 ## Proposal
 

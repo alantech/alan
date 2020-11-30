@@ -13,6 +13,7 @@ Describe "Tree"
           const bayNode = barNode.addChild('bay')
 
           print(myTree.getRootNode() || 'wrong')
+          print(bayNode.getParent() || 'wrong')
           print(myTree.getChildren().map(fn (c: Node<string>): string = c || 'wrong').join(', '))
 
           emit exit 0
@@ -27,6 +28,7 @@ Describe "Tree"
     AfterAll after
 
     BASICOUTPUT="foo
+bar
 bar, baz"
 
     It "runs js"

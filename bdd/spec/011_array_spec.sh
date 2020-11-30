@@ -350,7 +350,7 @@ Hello, World!"
           print(test.length())
           print(test.delete(1))
           print(test.delete(4))
-          print(test.length())
+          print(test.delete(10))
           emit exit 0
         }
       "
@@ -367,7 +367,7 @@ true
 6
 1
 8
-4"
+cannot remove idx 10 from array with length 4"
 
     It "runs js"
       When run node temp.js
