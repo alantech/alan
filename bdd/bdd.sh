@@ -37,7 +37,12 @@ if [ "$1" ]
     # Run a single test file if provided
     shellspec -s /bin/bash "${ORIG_DIR}/${1}"
   else
-    ls ${ORIG_DIR}/bdd/spec/*_spec.sh | xargs -P `nproc` -I % shellspec -s /bin/bash %
+    if command -v nproc then
+      NPROC=`nproc`
+    else
+      NPROC=`sysctl -n hw.logicalcpu`
+    fi
+    ls ${ORIG_DIR}/bdd/spec/*_spec.sh | xargs -P ${NPROC} -I % shellspec -s /bin/bash %
 fi
 
 exit $?
