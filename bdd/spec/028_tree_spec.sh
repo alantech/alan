@@ -42,6 +42,51 @@ bar, baz"
     End
   End
 
+  Describe "user-defined types in Tree work"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+
+        type Foo {
+          foo: string
+          bar: bool
+        }
+
+        on start {
+          const myTree = newTree(new Foo {
+            foo = 'myFoo'
+            bar = false
+          })
+          const wrongFoo = new Foo {
+            foo = 'wrongFoo'
+            bar = false
+          }
+          const myFoo = myTree.getRootNode() || wrongFoo
+          print(myFoo.foo)
+          emit exit 0
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    BASICOUTPUT="myFoo"
+
+    It "runs js"
+      When run test_js
+      The output should eq "$BASICOUTPUT"
+    End
+
+    It "runs agc"
+      When run test_agc
+      The output should eq "$BASICOUTPUT"
+    End
+  End
+
   Describe "every, find, some, reduce and prune"
     before() {
       sourceToAll "
