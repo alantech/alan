@@ -58,12 +58,12 @@ true
 hello, nested generics!"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$GENERICOUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$GENERICOUTPUT"
     End
   End
@@ -97,7 +97,7 @@ hello, nested generics!"
     After after
 
     It "does not compile"
-      When run alan compile temp.ln temp.agc
+      When run alan compile test_$$/temp.ln test_$$/temp.agc
       The error should eq "stringBox.val is of type string but assigned a value of type int64"
       The status should not eq "0"
     End

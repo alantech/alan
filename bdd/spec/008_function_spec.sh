@@ -61,12 +61,12 @@ to barto bar3
 10"
 
   It "runs js"
-    When run node temp.js
+    When run test_js
     The output should eq "$FUNCTIONRES"
   End
 
   It "runs agc"
-    When run alan run temp.agc
+    When run test_agc
     The output should eq "$FUNCTIONRES"
   End
 End

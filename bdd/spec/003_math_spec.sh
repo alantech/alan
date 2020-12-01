@@ -17,12 +17,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The status should eq "3"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The status should eq "3"
       End
     End
@@ -42,12 +42,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The status should eq "1"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The status should eq "1"
       End
     End
@@ -67,12 +67,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The status should eq "2"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The status should eq "2"
       End
     End
@@ -92,12 +92,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The status should eq "3"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The status should eq "3"
       End
     End
@@ -117,12 +117,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The status should eq "2"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The status should eq "2"
       End
     End
@@ -142,12 +142,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The status should eq "36"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The status should eq "36"
       End
     End
@@ -170,12 +170,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "3"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "3"
       End
     End
@@ -198,12 +198,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "5"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "5"
       End
     End
@@ -228,12 +228,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "3"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "3"
       End
     End
@@ -256,12 +256,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "1"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "1"
       End
     End
@@ -284,12 +284,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "2"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "2"
       End
     End
@@ -312,12 +312,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "3"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "3"
       End
     End
@@ -340,12 +340,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "2"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "2"
       End
     End
@@ -368,12 +368,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "36"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "36"
       End
     End
@@ -396,12 +396,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "3"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "3"
       End
     End
@@ -424,12 +424,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "5"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "5"
       End
     End
@@ -454,12 +454,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "3"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "3"
       End
     End
@@ -482,12 +482,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "1"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "1"
       End
     End
@@ -510,12 +510,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "2"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "2"
       End
     End
@@ -538,12 +538,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "3"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "3"
       End
     End
@@ -566,12 +566,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "2"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "2"
       End
     End
@@ -594,12 +594,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "36"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "36"
       End
     End
@@ -622,12 +622,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "3"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "3"
       End
     End
@@ -650,12 +650,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "5"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "5"
       End
     End
@@ -680,12 +680,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "3"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "3"
       End
     End
@@ -708,12 +708,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "1"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "1"
       End
     End
@@ -736,12 +736,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "2"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "2"
       End
     End
@@ -764,12 +764,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "3"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "3"
       End
     End
@@ -792,12 +792,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "2"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "2"
       End
     End
@@ -820,12 +820,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "36"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "36"
       End
     End
@@ -848,12 +848,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "3"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "3"
       End
     End
@@ -876,12 +876,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "5"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "5"
       End
     End
@@ -906,12 +906,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "3"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "3"
       End
     End
@@ -934,12 +934,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "1"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "1"
       End
     End
@@ -962,12 +962,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "2"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "2"
       End
     End
@@ -990,12 +990,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "3"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "3"
       End
     End
@@ -1018,12 +1018,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "6"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "6"
       End
     End
@@ -1046,12 +1046,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "36"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "36"
       End
     End
@@ -1074,12 +1074,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "3"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "3"
       End
     End
@@ -1102,12 +1102,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "5"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "5"
       End
     End
@@ -1132,12 +1132,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "3"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "3"
       End
     End
@@ -1160,12 +1160,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "1"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "1"
       End
     End
@@ -1188,12 +1188,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "2"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "2"
       End
     End
@@ -1216,12 +1216,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "3"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "3"
       End
     End
@@ -1244,12 +1244,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "6"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "6"
       End
     End
@@ -1272,12 +1272,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "36"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "36"
       End
     End
@@ -1300,12 +1300,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "3"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "3"
       End
     End
@@ -1328,12 +1328,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "5"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "5"
       End
     End
@@ -1358,13 +1358,13 @@ Describe "Basic Math"
     AfterAll after
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "0
 1"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "0
 1"
     End
@@ -1389,12 +1389,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "3"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "3"
       End
     End
@@ -1417,12 +1417,12 @@ Describe "Basic Math"
       AfterAll after
 
       It "runs js"
-        When run node temp.js
+        When run test_js
         The output should eq "5"
       End
 
       It "runs agc"
-        When run alan run temp.agc
+        When run test_agc
         The output should eq "5"
       End
     End

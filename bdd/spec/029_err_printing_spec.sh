@@ -19,12 +19,12 @@ Describe "Error printing"
     AfterAll after
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The stderr should eq "This is an error"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The stderr should eq "This is an error"
     End
   End
@@ -47,12 +47,12 @@ Describe "Error printing"
     AfterAll after
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The stderr should eq "This is an error"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The stderr should eq "This is an error"
     End
   End

@@ -36,12 +36,12 @@ Describe "Hashing"
 -1521185239552941000" # TODO: Rounding should disappear once we can use BigInt consistently in JS
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$JSHASHOUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$TOHASHOUTPUT"
     End
   End
@@ -85,12 +85,12 @@ foo, bar, baz
 1"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$HASHMAPOUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$HASHMAPOUTPUT"
     End
   End
@@ -132,12 +132,12 @@ val: baz
 foo"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$KVTOHMOUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$KVTOHMOUTPUT"
     End
   End
@@ -204,13 +204,13 @@ length test
 
     It "runs js"
       Pending map-support
-      When run node temp.js
+      When run test_js
       The output should eq "$MAPOUTPUT"
     End
 
     It "runs agc"
       Pending map-support
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$MAPOUTPUT"
     End
   End

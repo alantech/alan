@@ -1,13 +1,15 @@
 sourceToFile() {
-  echo "$2" > $1
+  mkdir -p test_$$
+  echo "$2" > test_$$/$1
 }
 
 sourceToTemp() {
-  echo "$1" > temp.ln
+  mkdir -p test_$$
+  echo "$1" > test_$$/temp.ln
 }
 
 tempToAmm() {
-  alan compile temp.ln temp.amm 1>/dev/null
+  alan compile test_$$/temp.ln test_$$/temp.amm 1>/dev/null
 }
 
 sourceToAmm() {
@@ -16,7 +18,7 @@ sourceToAmm() {
 }
 
 tempToAgc() {
-  alan compile temp.amm temp.agc 1>/dev/null
+  alan compile test_$$/temp.amm test_$$/temp.agc 1>/dev/null
 }
 
 sourceToAgc() {
@@ -25,7 +27,7 @@ sourceToAgc() {
 }
 
 tempToJs() {
-  alan compile temp.amm temp.js 1>/dev/null
+  alan compile test_$$/temp.amm test_$$/temp.js 1>/dev/null
 }
 
 sourceToJs() {
@@ -40,14 +42,19 @@ sourceToAll() {
   tempToJs
 }
 
+test_js() {
+  node test_$$/temp.js
+}
+
+test_agc() {
+  alan run test_$$/temp.agc
+}
+
 cleanFile() {
-  rm -f "$1"
+  rm -f "test_$$/$1"
 }
 
 cleanTemp() {
-  rm -f temp.ln
-  rm -f temp.amm
-  rm -f temp.agc
-  rm -f temp.js
+  rm -rf test_$$
 }
 

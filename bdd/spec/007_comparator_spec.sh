@@ -20,7 +20,7 @@ Describe "Comparators"
     AfterAll after
 
     It "doesn't work"
-      When run alan compile temp.ln temp.amm
+      When run alan compile test_$$/temp.ln test_$$/temp.amm
       The status should not eq "0"
       The error should eq "Cannot resolve operators with remaining statement
 true == 1
@@ -87,12 +87,12 @@ true
 false"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$EQUALS"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$EQUALS"
     End
   End
@@ -156,12 +156,12 @@ false
 true"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$NOTEQUALS"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$NOTEQUALS"
     End
   End
@@ -220,12 +220,12 @@ false
 true"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$LESSTHAN"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$LESSTHAN"
     End
   End
@@ -284,12 +284,12 @@ true
 true"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$LESSTHANOREQUAL"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$LESSTHANOREQUAL"
     End
   End
@@ -348,12 +348,12 @@ false
 false"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$GREATERTHAN"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$GREATERTHAN"
     End
   End
@@ -412,12 +412,12 @@ true
 false"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$GREATERTHANOREQUAL"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$GREATERTHANOREQUAL"
     End
   End

@@ -22,12 +22,12 @@ Describe "Module-level Constants"
     AfterAll after
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "Hello, World!"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "Hello, World!"
     End
   End
@@ -58,13 +58,13 @@ Describe "Module-level Constants"
     AfterAll after
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "3
 5"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "3
 5"
     End

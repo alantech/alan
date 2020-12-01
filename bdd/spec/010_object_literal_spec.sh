@@ -27,7 +27,7 @@ Describe "Object literals"
     AfterAll after
 
     It "doesn't work"
-      When run alan compile temp.ln temp.amm
+      When run alan compile test_$$/temp.ln test_$$/temp.amm
       The status should not eq "0"
       The error should eq "Foo object literal improperly defined
 Missing fields: bar, baz
@@ -65,12 +65,12 @@ new Foo {
 4"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$ARRTYPEOUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$ARRTYPEOUTPUT"
     End
   End
@@ -108,12 +108,12 @@ new Foo {
 true"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$OBJTYPEOUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$OBJTYPEOUTPUT"
     End
   End
@@ -169,12 +169,12 @@ true
 false"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$REASSIGNTYPEOUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$REASSIGNTYPEOUTPUT"
     End
   End
@@ -217,13 +217,13 @@ baz"
 
     It "runs js"
       Pending type-support
-      When run node temp.js
+      When run test_js
       The output should eq "$TYPEOUTPUT"
     End
 
     It "runs agc"
       Pending type-support
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$TYPEOUTPUT"
     End
   End

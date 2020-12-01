@@ -57,12 +57,12 @@ Correctly received nothing!
 Correctly received nothing!"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$MAYBEOUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$MAYBEOUTPUT"
     End
   End
@@ -124,12 +124,12 @@ Divide by zero error!
 1.2345"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$RESULTOUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$RESULTOUTPUT"
     End
   End
@@ -168,12 +168,12 @@ Divide by zero error!
 2"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$EITHEROUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$EITHEROUTPUT"
     End
   End

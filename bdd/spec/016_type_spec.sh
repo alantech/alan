@@ -33,12 +33,12 @@ bool
 true"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$TYPEOUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$TYPEOUTPUT"
     End
   End
@@ -98,12 +98,12 @@ foo<int64, float64>
 true"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$GENTYPEOUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$GENTYPEOUTPUT"
     End
   End
