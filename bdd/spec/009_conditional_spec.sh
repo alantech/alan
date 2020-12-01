@@ -29,10 +29,10 @@ Describe "Conditionals"
             print('Math is still sane, for now...')
           }
 
-          const foo: bool = true
+          const foo: bool = true == true
           if foo bar else baz
 
-          const isTrue = true
+          const isTrue = true == true
           cond(isTrue, fn {
             print(\"It's true!\")
           })
