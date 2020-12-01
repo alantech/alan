@@ -71,12 +71,12 @@ Hello
 World!"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$STROUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$STROUTPUT"
     End
   End
@@ -112,13 +112,13 @@ Good-bye, World!"
 
     It "runs js"
       Pending template-support
-      When run node temp.js
+      When run test_js
       The output should eq "$TMPLOUTPUT"
     End
 
     It "runs agc"
       Pending template-support
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$TMPLOUTPUT"
     End
   End

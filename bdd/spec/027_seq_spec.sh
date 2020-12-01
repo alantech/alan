@@ -28,12 +28,12 @@ Describe "@std/seq"
 error: sequence out-of-bounds"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$NEXTOUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$NEXTOUTPUT"
     End
   End
@@ -63,12 +63,12 @@ error: sequence out-of-bounds"
 2"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$EACHOUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$EACHOUTPUT"
     End
   End
@@ -101,12 +101,12 @@ error: sequence out-of-bounds"
     WHILEOUTPUT="10"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$WHILEOUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$WHILEOUTPUT"
     End
   End
@@ -140,12 +140,12 @@ error: sequence out-of-bounds"
     DOWHILEOUTPUT="10"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$DOWHILEOUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$DOWHILEOUTPUT"
     End
   End
@@ -186,12 +186,12 @@ error: sequence out-of-bounds"
     RECURSEOUTPUT="34"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$RECURSEOUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$RECURSEOUTPUT"
     End
   End
@@ -237,12 +237,12 @@ error: sequence out-of-bounds"
 1 2 3"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$ONELINEROUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$ONELINEROUTPUT"
     End
   End
@@ -285,12 +285,12 @@ error: sequence out-of-bounds"
     DECREMENTOUTPUT="1 3 6"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$DECREMENTOUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$DECREMENTOUTPUT"
     End
   End

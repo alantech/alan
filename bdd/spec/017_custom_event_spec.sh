@@ -42,12 +42,12 @@ Describe "Custom events"
     AfterAll after
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$OUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$OUTPUT"
     End
   End
@@ -89,12 +89,12 @@ Describe "Custom events"
 baz"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$THINGOUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$THINGOUTPUT"
     End
   End

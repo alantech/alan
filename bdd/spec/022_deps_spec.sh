@@ -40,11 +40,11 @@ Describe "@std/deps"
   }
 
   run_js() {
-    node temp.js | head -1
+    node test_$$/temp.js | head -1
   }
 
   run_agc() {
-    alan run temp.agc | head -1
+    alan run test_$$/temp.agc | head -1
   }
 
   It "runs js"

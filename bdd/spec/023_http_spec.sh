@@ -21,12 +21,12 @@ Describe "@std/http"
     AfterAll after
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "export const comeGetMe = \"You got me!\""
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "export const comeGetMe = \"You got me!\""
     End
   End
@@ -51,12 +51,12 @@ Describe "@std/http"
     AfterAll after
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "{\"success\":\"true\"}"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "{\"success\":\"true\"}"
     End
   End
@@ -96,7 +96,7 @@ Describe "@std/http"
     After afterEach
 
     It "runs js"
-      node temp.js 1>/dev/null 2>/dev/null &
+      node test_$$/temp.js 1>/dev/null 2>/dev/null &
       PID=$!
       sleep 1
       When run curl -s localhost:8080
@@ -104,7 +104,7 @@ Describe "@std/http"
     End
 
     It "runs agc"
-      alan run temp.agc 1>/dev/null 2>/dev/null &
+      alan run test_$$/temp.agc 1>/dev/null 2>/dev/null &
       PID=$!
       sleep 1
       When run curl -s localhost:8080

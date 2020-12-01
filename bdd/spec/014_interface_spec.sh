@@ -29,13 +29,13 @@ Describe "Interfaces"
     AfterAll after
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "'Hello, World'
 '5'"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "'Hello, World'
 '5'"
     End
@@ -302,12 +302,12 @@ Describe "Interfaces"
     AfterAll after
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "2020-7-2@12:7:30-8:0"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "2020-7-2@12:7:30-8:0"
     End
   End

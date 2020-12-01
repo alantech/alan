@@ -1,14 +1,18 @@
 use std::env;
-use std::fs::File;
+use std::fs::{File, create_dir, remove_dir, remove_file};
 use std::include_bytes;
 use std::io::prelude::*;
 use std::os::unix::fs::PermissionsExt;
-use std::process::Command;
+use std::process::{Command, id};
 use std::str;
 
 pub fn compile(source_file: &str, dest_file: &str, silent: bool) -> i32 {
   let compiler = include_bytes!("../../../compiler/alan-compile");
   let mut dir = env::temp_dir();
+  dir.push(id().to_string());
+  let dir0 = dir.clone();
+  let dir1 = dir.clone();
+  create_dir(dir0.into_os_string()).unwrap();
   dir.push("alan-compile");
   let dir2 = dir.clone(); // Bleh
   let dir3 = dir.clone(); // Bleh
@@ -29,7 +33,8 @@ pub fn compile(source_file: &str, dest_file: &str, silent: bool) -> i32 {
     source_path.into_os_string().into_string().unwrap(),
     dest_path.into_os_string().into_string().unwrap(),
   )).output().unwrap();
-  std::fs::remove_file(dir3.as_path()).unwrap();
+  remove_file(dir3.as_path()).unwrap();
+  remove_dir(dir1.as_path()).unwrap();
   if output.stdout.len() > 0 && !silent {
     print!("{}", str::from_utf8(&output.stdout).unwrap());
   }

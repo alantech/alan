@@ -87,7 +87,7 @@ Describe "@std/trig"
   # differently from Rust at the least significant bit for the floating point numbers
 
   It "runs js"
-    When run node temp.js
+    When run test_js
     The output should eq "Logarithms and e^x
 15.154262241479259
 1
@@ -147,7 +147,7 @@ Inverse Hyperbolic Trig functions
   End
 
   It "runs agc"
-    When run alan run temp.agc
+    When run test_agc
     The output should eq "Logarithms and e^x
 15.154262241479259
 1

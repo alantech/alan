@@ -36,12 +36,12 @@ Describe "Closure Functions"
 1"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$CLOSURERES"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$CLOSURERES"
     End
   End
@@ -70,12 +70,12 @@ Describe "Closure Functions"
     REFOUTPUT="2, 4, 6, 8, 10"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$REFOUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$REFOUTPUT"
     End
   End

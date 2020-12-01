@@ -37,7 +37,7 @@ if [ "$1" ]
     # Run a single test file if provided
     shellspec -s /bin/bash "${ORIG_DIR}/${1}"
   else
-    shellspec -s /bin/bash
+    ls ${ORIG_DIR}/bdd/spec/*_spec.sh | xargs -P `nproc` -I % shellspec -s /bin/bash %
 fi
 
 exit $?

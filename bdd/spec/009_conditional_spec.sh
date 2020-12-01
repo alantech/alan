@@ -52,7 +52,7 @@ Describe "Conditionals"
     AfterAll after
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "Math is sane...
 Math is still sane, for now...
 bar!
@@ -60,7 +60,7 @@ It's true!"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "Math is sane...
 Math is still sane, for now...
 bar!
@@ -103,14 +103,14 @@ It's true!"
     AfterAll after
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "1
 2
 3"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "1
 2
 3"
@@ -149,12 +149,12 @@ It's true!"
 Far!"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$RETOUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$RETOUTPUT"
     End
   End
@@ -208,12 +208,12 @@ Far!"
 5"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$ADVOUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$ADVOUTPUT"
     End
   End

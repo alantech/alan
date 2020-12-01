@@ -31,12 +31,12 @@ Describe "Arrays"
 3"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$ACCESSOROUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$ACCESSOROUTPUT"
     End
   End
@@ -76,12 +76,12 @@ Describe "Arrays"
 6"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$LITERALOUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$LITERALOUTPUT"
     End
   End
@@ -125,12 +125,12 @@ Describe "Arrays"
 cannot pop empty array"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$PUSHOUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$PUSHOUTPUT"
     End
   End
@@ -182,12 +182,12 @@ join test
 Hello, World!"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$LIJARRAYOUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$LIJARRAYOUTPUT"
     End
   End
@@ -215,12 +215,12 @@ Hello, World!"
     TERNARRAYOUTPUT="1, 1, 2, 3, 5, 8"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$TERNARRAYOUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$TERNARRAYOUTPUT"
     End
   End
@@ -250,12 +250,12 @@ Hello, World!"
 2, 4, 6, 8, 10"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$MAPOUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$MAPOUTPUT"
     End
   End
@@ -283,12 +283,12 @@ Hello, World!"
     MAPLOUTPUT="1, 2, 3, 1, 2, 3, 1, 2, 3"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$MAPLOUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$MAPLOUTPUT"
     End
   End
@@ -323,11 +323,11 @@ Hello, World!"
 
     agc() {
       export LC_ALL=C
-      alan run temp.agc | sort
+      alan run test_$$/temp.agc | sort
     }
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$EACHFINDOUTPUT"
     End
 
@@ -370,12 +370,12 @@ true
 cannot remove idx 10 from array with length 4"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$EVERYSOMEOUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$EVERYSOMEOUTPUT"
     End
   End
@@ -439,12 +439,12 @@ reduce as filter and concat test
 1, 1, 3, 5"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$ADVARRAYOUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$ADVARRAYOUTPUT"
     End
   End
@@ -481,12 +481,12 @@ reduce as filter and concat test
     USERTYPEOUTPUT="2, 4"
 
     It "runs js"
-      When run node temp.js
+      When run test_js
       The output should eq "$USERTYPEOUTPUT"
     End
 
     It "runs agc"
-      When run alan run temp.agc
+      When run test_agc
       The output should eq "$USERTYPEOUTPUT"
     End
   End
