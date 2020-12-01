@@ -82,27 +82,31 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
         const argName = argsAst.VARNAME(i).getText()
         let getArgType = scope.deepGet(argsAst.fulltypename(i).getText())
         if (!getArgType) {
-          if (argsAst.fulltypename(i).fulltypename().length === 1) {
-            if (argsAst.fulltypename(i).fulltypename(0).typegenerics() !== null) {
-              getArgType =
-                scope.deepGet(argsAst.fulltypename(i).fulltypename(0).typename().getText()) as Type
-              if (!getArgType) {
-                throw new Error("Could not find type " + argsAst.fulltypename(i).getText() + " for argument " + argName)
-              }
-              if (!(getArgType instanceof Type)) {
-                throw new Error("Function argument is not a valid type: " + argsAst.fulltypename(i).getText())
-              }
-              let genericTypes = []
-              for (const fulltypename of argsAst.fulltypename(i).fulltypename(0).typegenerics().fulltypename()) {
-                genericTypes.push(fulltypename.getText())
-              }
-              getArgType = getArgType.solidify(genericTypes, scope)
-            } else {
+          if (argsAst.fulltypename(i).typegenerics() !== null) {
+            getArgType =
+              scope.deepGet(argsAst.fulltypename(i).typename().getText()) as Type
+            if (!getArgType) {
               throw new Error("Could not find type " + argsAst.fulltypename(i).getText() + " for argument " + argName)
             }
+            if (!(getArgType instanceof Type)) {
+              console.log({
+                getArgType,
+              })
+              throw new Error("Function argument is not a valid type: " + argsAst.fulltypename(i).getText())
+            }
+            let genericTypes = []
+            for (const fulltypename of argsAst.fulltypename(i).typegenerics().fulltypename()) {
+              genericTypes.push(fulltypename.getText())
+            }
+            getArgType = getArgType.solidify(genericTypes, scope)
+          } else {
+            throw new Error("Could not find type " + argsAst.fulltypename(i).getText() + " for argument " + argName)
           }
         }
         if (!(getArgType instanceof Type)) {
+          console.log({
+            getArgType,
+          })
           throw new Error("Function argument is not a valid type: " + argsAst.fulltypename(i).getText())
         }
         args[argName] = getArgType
@@ -110,28 +114,26 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
     }
     let returnType = null
     if (functionAst.fulltypename() !== null) {
-      if (functionAst.fulltypename().fulltypename().length === 1) {
-        let getReturnType = scope.deepGet(functionAst.fulltypename().getText())
-        if (getReturnType == null || !(getReturnType instanceof Type)) {
-          if (functionAst.fulltypename().fulltypename(0).typegenerics() != null) {
-            getReturnType = scope.deepGet(functionAst.fulltypename().fulltypename(0).typename().getText())
-            if (getReturnType == null) {
-              throw new Error("Could not find type " + functionAst.fulltypename().getText() + " for function " + functionAst.VARNAME().getText())
-            }
-            if (!(getReturnType instanceof Type)) {
-              throw new Error("Function return is not a valid type: " + functionAst.fulltypename().getText())
-            }
-            let genericTypes = []
-            for (const fulltypename of functionAst.fulltypename().fulltypename(0).typegenerics().fulltypename()) {
-              genericTypes.push(fulltypename.getText())
-            }
-            getReturnType = getReturnType.solidify(genericTypes, scope)
-          } else {
+      let getReturnType = scope.deepGet(functionAst.fulltypename().getText())
+      if (getReturnType == null || !(getReturnType instanceof Type)) {
+        if (functionAst.fulltypename().typegenerics() != null) {
+          getReturnType = scope.deepGet(functionAst.fulltypename().typename().getText())
+          if (getReturnType == null) {
             throw new Error("Could not find type " + functionAst.fulltypename().getText() + " for function " + functionAst.VARNAME().getText())
           }
+          if (!(getReturnType instanceof Type)) {
+            throw new Error("Function return is not a valid type: " + functionAst.fulltypename().getText())
+          }
+          let genericTypes = []
+          for (const fulltypename of functionAst.fulltypename().typegenerics().fulltypename()) {
+            genericTypes.push(fulltypename.getText())
+          }
+          getReturnType = getReturnType.solidify(genericTypes, scope)
+        } else {
+          throw new Error("Could not find type " + functionAst.fulltypename().getText() + " for function " + functionAst.VARNAME().getText())
         }
-        returnType = getReturnType
       }
+      returnType = getReturnType
     } else {
       // TODO: Infer the return type by finding the return value and tracing backwards
       returnType = Type.builtinTypes["void"]
@@ -152,17 +154,39 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
       const statement = Statement.create(statementAst, scope)
       if (!statement.pure) pure = false
       statements.push(statement)
-      // We're going to use the Microstatement logic here
-      const microstatements = []
-      // TODO: Create fake microstatements for the input arguments
-      Microstatement.fromAssignablesAst(assignablesAst, scope, microstatements)
-      if (microstatements.length === 0) {
-        console.log({
-          assignable: assignablesAst.getText(),
-          fn: functionAst.getText(),
+      if (Object.keys(args).every(arg => args[arg].typename !== 'function')) {
+        // We're going to use the Microstatement logic here
+        const microstatements = []
+        Object.keys(args).forEach(arg => {
+          microstatements.push(new Microstatement(
+            StatementType.REREF,
+            scope,
+            true,
+            arg,
+            args[arg],
+            [],
+            [],
+            arg,
+          ))
         })
+        console.log({
+          args,
+          microstatements,
+        })
+        Microstatement.fromAssignablesAst(assignablesAst, scope, microstatements)
+        if (microstatements.length === 0) {
+          console.log({
+            assignable: assignablesAst.getText(),
+            fn: functionAst.getText(),
+          })
+        }
+        returnType = microstatements[microstatements.length - 1].outputType
+      } else {
+        // TODO: Generalize this hackery for opcodes that take closure functions
+        const opcodeName = assignablesAst.getText().split('(')[0]
+        const opcode = scope.deepGet(opcodeName) as Array<Fn>
+        returnType = opcode ? opcode[0].getReturnType() : Type.builtinTypes['void']
       }
-      returnType = microstatements[microstatements.length - 1].outputType
     }
     return new UserFunction(name, args, returnType, scope, statements, pure)
   }

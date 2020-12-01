@@ -1785,22 +1785,100 @@ ${constdeclarationAst.getText()} on line ${constdeclarationAst.start.line}:${con
       if (!!baseassignable.METHODSEP()) {
         if (i === 0) {
           throw new Error(`Invalid start of assignable statement. Cannot begin with a dot (.)
-${baseAssignableAsts.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
         }
         const prevassignable = baseAssignableAsts[i - 1]
         if (!!prevassignable.METHODSEP()) {
           throw new Error(`Invalid property access. You accidentally typed a dot twice in a row.
-${baseAssignableAsts.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
         } else if (!!prevassignable.functions()) {
           throw new Error(`Invalid property access. Functions do not have properties.
-${baseAssignableAsts.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
         }
         // TODO: Do we even do anything else in this branch?
       } else if (!!baseassignable.VARNAME()) {
         const nextassignable = baseAssignableAsts[i + 1]
         if (!!nextassignable && !!nextassignable.fncall()) {
           // This is a function call path
-          console.log('hi')
+          const fncall = nextassignable.fncall()
+          const argAsts = fncall.assignablelist() ? fncall.assignablelist().assignables() : []
+          const argMicrostatements = argAsts.map(arg => {
+            Microstatement.fromAssignablesAst(arg, scope, microstatements)
+            /*let last = microstatements[microstatements.length - 1]
+            if (last.alias !== "" || last.outputType.iface !== null) {
+              for (const m of microstatements) {
+                if (m.outputName === last.outputName && m.outputType.iface === null) {
+                  last = m
+                  break
+                }
+              }
+            }
+            return last*/
+            return microstatements[microstatements.length - 1]
+          })
+          if (currVal === null) {
+            // This is a basic function call
+            const realArgNames = argMicrostatements.map(arg => arg.outputName)
+            const realArgTypes = argMicrostatements.map(arg => arg.outputType)
+            console.log({
+              realArgNames,
+              realArgTypes,
+              argMicrostatements,
+              microstatements,
+            })
+            // Do a scan of the microstatements for an inner defined closure that might exist.
+            const fn = scope.deepGet(baseassignable.VARNAME().getText()) as Array<Fn>
+            if (
+              !fn ||
+              !(fn instanceof Array && fn[0].microstatementInlining instanceof Function)
+            ) {
+              const fnName = baseassignable.VARNAME().getText()
+              let actualFnName: string
+              let inlinedClosure = false
+              for (let i = microstatements.length - 1; i >= 0; i--) {
+                if (microstatements[i].alias === fnName) {
+                  actualFnName = microstatements[i].outputName
+                  continue
+                }
+                if (
+                  microstatements[i].outputName === actualFnName &&
+                  microstatements[i].statementType === StatementType.CLOSUREDEF) {
+                  const m = [...microstatements, ...microstatements[i].closureStatements]
+                  const fn = UserFunction.dispatchFn(microstatements[i].fns, realArgTypes, scope)
+                  const interfaceMap = new Map()
+                  Object.values(fn.getArguments()).forEach(
+                    (t: Type, i) => t.typeApplies(realArgTypes[i], scope, interfaceMap)
+                  )
+                  Microstatement.closureFromUserFunction(fn, fn.scope || scope, m, interfaceMap)
+                  const closure = m.pop()
+                  microstatements.push(...closure.closureStatements.filter(
+                    s => s.statementType !== StatementType.EXIT)
+                  )
+                  currVal = microstatements[microstatements.length - 1]
+                  inlinedClosure = true
+                  break
+                }
+              }
+              if (!inlinedClosure) {
+                throw new Error(`${baseassignable.VARNAME().getText()} is not a function but used as one.
+${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+              }
+            } else {
+              // Generate the relevant microstatements for this function. UserFunctions get inlined
+              // with the return statement turned into a const assignment as the last statement,
+              // while built-in functions are kept as function calls with the correct renaming.
+              console.log({
+                fnName: fn[0].getName(),
+                realArgTypes,
+              })
+              UserFunction
+                .dispatchFn(fn, realArgTypes, scope)
+                .microstatementInlining(realArgNames, scope, microstatements)
+              currVal = microstatements[microstatements.length - 1]
+            }
+          } else {
+            // TODO
+          }
         } else {
           if (currVal === null) {
             let thing = scope.deepGet(baseassignable.VARNAME().getText())
@@ -1813,14 +1891,14 @@ ${baseAssignableAsts.getText()} on line ${baseassignable.start.line}:${baseassig
             }
             if (!thing) {
               throw new Error(`${baseassignable.VARNAME().getText()} not found.
-  ${baseAssignableAsts.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+  ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
             }
             currVal = thing
           } else if (currVal instanceof Scope) {
             const thing = currVal.deepGet(baseassignable.VARNAME().getText())
             if (!thing) {
               throw new Error(`${baseassignable.VARNAME().getText()} not found in other scope.
-  ${baseAssignableAsts.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+  ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
             }
             currVal = thing
           } else if (currVal instanceof Microstatement) {
@@ -1830,7 +1908,7 @@ ${baseAssignableAsts.getText()} on line ${baseassignable.start.line}:${baseassig
             if (fieldNum < 0) {
               // Invalid object access
               throw new Error(`${fieldName} property not found.
-  ${baseAssignableAsts.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+  ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
             }
             // Create a new variable to hold the address within the array literal
             const addrName = "_" + uuid().replace(/-/g, "_")
@@ -1861,11 +1939,21 @@ ${baseAssignableAsts.getText()} on line ${baseassignable.start.line}:${baseassig
             // What is this?
             throw new Error(`Impossible path found. Bug in compiler, please report!
   Previous value type: ${typeof currVal}
-  ${baseAssignableAsts.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+  ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
           }
         }
       }
     }
+    microstatements.push(new Microstatement(
+      StatementType.REREF,
+      scope,
+      true,
+      currVal.outputName,
+      currVal.outputType,
+      [],
+      [],
+      currVal.alias,
+    ))
   }
 
   static fromAssignablesAst(

@@ -34,7 +34,7 @@ typelist : typeline blank* (SEP blank* typeline blank*)* SEP?;
 
 arglist : VARNAME blank* TYPESEP blank* fulltypename (SEP VARNAME blank* TYPESEP blank* fulltypename)*;
 
-functions : FN blank+ ((VARNAME blank*)? OPENARGS arglist? CLOSEARGS blank* ((WS | NEWLINE)? TYPESEP (WS | NEWLINE)? fulltypename blank*)?)? fullfunctionbody;
+functions : FN blank+ ((VARNAME blank*)? OPENARGS arglist? CLOSEARGS blank* (blank? TYPESEP blank? fulltypename blank*)?)? fullfunctionbody;
 
 fullfunctionbody : functionbody | (EQUALS blank* assignables);
 
