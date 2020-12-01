@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-//use futures::future::join_all;
+use futures::future::join_all;
 use tokio::sync::RwLock;
 use tokio::task;
 
@@ -68,7 +68,7 @@ impl EventHandler {
 
   pub fn add_instruction(self: &mut EventHandler, ins: Instruction) {
     self.ins_count += 1;
-    if ins.opcode.func.is_some() {
+    if ins.opcode.pred_exec {
       let mut frag = self.fragments.pop().unwrap_or(Vec::new());
       if frag.len() > 0 && !frag.get(frag.len() - 1).unwrap().opcode.pred_exec {
         // if last instruction in the last fragment is a (io or cpu) capstone start a new fragment
@@ -80,9 +80,7 @@ impl EventHandler {
         self.fragments.push(frag);
       }
     } else {
-      // TODO: Restore this logic. For now just turn it into a new fragment by itself
-      /*
-      // non-predictable io opcode is a "movable capstone" in execution
+      // io opcode is a "movable capstone" in execution
       let cur_max_dep = ins.dep_ids.iter().max().unwrap_or(&-1);
       // merge this capstone with an existing one if possible
       for frag_idx in &self.movable_capstones {
@@ -101,8 +99,6 @@ impl EventHandler {
       // this is the first capstone or it cannot be merged
       // mark it as a new capstone
       self.movable_capstones.push(self.fragments.len());
-      self.fragments.push(vec![ins]);
-      */
       self.fragments.push(vec![ins]);
     }
   }
@@ -198,8 +194,7 @@ impl HandlerFragment {
       let mut instructions = self.get_instruction_fragment();
       loop {
         // io-bound fragment
-        if !instructions[0].opcode.pred_exec && instructions[0].opcode.async_func.is_some() {
-          // Is there really no way to avoid cloning the reference of the chan txs for tokio tasks? :'(
+        if !instructions[0].opcode.pred_exec {
           let mem = Arc::new(RwLock::new(hand_mem));
           let futures: Vec<EmptyFuture> = instructions.iter().map(|ins| {
             //eprintln!("{} {} {} {}", ins.opcode._name, ins.args[0], ins.args[1], ins.args[2]);
@@ -207,12 +202,7 @@ impl HandlerFragment {
             return async_func(ins.args.clone(), mem.clone());
           }).collect();
           hand_mem = task::spawn(async move {
-            //join_all(futures).await;
-            // Temporarily disable io parallelism until io opcode dependencies are declared
-            // correctly by the compiler
-            for future in futures {
-              future.await;
-            }
+            join_all(futures).await;
             let deref_res = Arc::try_unwrap(mem);
             if deref_res.is_err() {
               panic!("Arc for handler memory passed to io opcodes has more than one strong reference.");
@@ -220,7 +210,7 @@ impl HandlerFragment {
             deref_res.ok().unwrap().into_inner()
           }).await.unwrap();
         } else {
-          // cpu-bound fragment of predictable or unpredictable execution
+          // cpu-bound fragment
           let self_and_hand_mem = task::block_in_place(move || {
             instructions.iter().for_each( |i| {
               //eprintln!("{} {} {} {}", i.opcode._name, i.args[0], i.args[1], i.args[2]);
@@ -287,7 +277,7 @@ mod tests {
   }
 
   // multiple io operations with no dependencies forms a single fragment
-  /*#[test]
+  #[test]
   fn test_frag_grouping_1() {
     let mut hand = EventHandler::new(123, 123);
     hand.add_instruction(get_io_ins(0, vec![]));
@@ -295,7 +285,7 @@ mod tests {
     hand.add_instruction(get_io_ins(2, vec![]));
     hand.add_instruction(get_io_ins(3, vec![]));
     assert_eq!(hand.last_frag_idx(), 0);
-  }*/
+  }
 
   // chained io operations forms a fragment per io operation
   #[test]
@@ -310,7 +300,7 @@ mod tests {
 
   // multiple io operations and one cpu operation in between
   // with no dependencies form 2 fragments
-  /*#[test]
+  #[test]
   fn test_frag_grouping_3() {
     let mut hand = EventHandler::new(123, 123);
     hand.add_instruction(get_io_ins(0, vec![]));
@@ -320,11 +310,11 @@ mod tests {
     assert_eq!(hand.last_frag_idx(), 1);
     assert_eq!(hand.get_fragment(0).len(), 3);
     assert_eq!(hand.get_fragment(1).len(), 1);
-  }*/
+  }
 
   // independent io operations, then independent cpu operation
   // and then io operation dependent on cpu operation forms 3 fragments
-  /*#[test]
+  #[test]
   fn test_frag_grouping_4() {
     let mut hand = EventHandler::new(123, 123);
     hand.add_instruction(get_io_ins(0, vec![]));
@@ -335,11 +325,11 @@ mod tests {
     assert_eq!(hand.get_fragment(0).len(), 2);
     assert_eq!(hand.get_fragment(1).len(), 1);
     assert_eq!(hand.get_fragment(2).len(), 1);
-  }*/
+  }
 
   // independent io operations, then independent cpu operation
   // and then io operation dependent on io operations forms 3 fragments
-  /*#[test]
+  #[test]
   fn test_frag_grouping_5() {
     let mut hand = EventHandler::new(123, 123);
     hand.add_instruction(get_io_ins(0, vec![]));
@@ -350,7 +340,7 @@ mod tests {
     assert_eq!(hand.get_fragment(0).len(), 2);
     assert_eq!(hand.get_fragment(1).len(), 1);
     assert_eq!(hand.get_fragment(2).len(), 1);
-  }*/
+  }
 
   // chained cpu operations form one fragment
   #[test]
@@ -366,7 +356,7 @@ mod tests {
   // independent: io operation, then independent cpu operation
   // and then independent io operation then ind cpu operation then
   // dep io operation on first cpu operation forms 3 fragments
-  /*#[test]
+  #[test]
   fn test_frag_grouping_7() {
     let mut hand = EventHandler::new(123, 123);
     hand.add_instruction(get_io_ins(0, vec![]));
@@ -400,8 +390,7 @@ mod tests {
     assert_eq!(hand.get_fragment(3).len(), 1);
   }
 
-  // condfn is an unmovable capstone for cpu operations that come *after* it
-  // even when no deps
+  // condfn is an movable capstone for cpu operations even when no deps
   #[test]
   fn test_frag_grouping_9() {
     let mut hand = EventHandler::new(123, 123);
@@ -409,11 +398,11 @@ mod tests {
     hand.add_instruction(get_cpu_ins(1, vec![]));
     hand.add_instruction(get_cond_ins(2, vec![]));
     hand.add_instruction(get_cpu_ins(3, vec![]));
-    assert_eq!(hand.movable_capstones.len(), 0);
-    assert_eq!(hand.last_frag_idx(), 1);
+    assert_eq!(hand.movable_capstones.len(), 1);
+    assert_eq!(hand.last_frag_idx(), 2);
   }
 
-  // condfn is an unmovable capstone among io operations even when no deps
+  // condfn and io operations with no deps run in the same fragment
   #[test]
   fn test_frag_grouping_10() {
     let mut hand = EventHandler::new(123, 123);
@@ -421,17 +410,17 @@ mod tests {
     hand.add_instruction(get_cond_ins(1, vec![]));
     hand.add_instruction(get_io_ins(2, vec![]));
     assert_eq!(hand.movable_capstones.len(), 1);
-    assert_eq!(hand.last_frag_idx(), 1);
-  }*/
+    assert_eq!(hand.last_frag_idx(), 0);
+  }
 
-  // multiple condfns each run in their own fragment
+  // multiple condfns run in the same fragment
   #[test]
   fn test_frag_grouping_11() {
     let mut hand = EventHandler::new(123, 123);
     hand.add_instruction(get_cond_ins(0, vec![]));
     hand.add_instruction(get_cond_ins(1, vec![]));
     hand.add_instruction(get_cond_ins(2, vec![]));
-    assert_eq!(hand.movable_capstones.len(), 0);
-    assert_eq!(hand.last_frag_idx(), 2);
+    assert_eq!(hand.movable_capstones.len(), 1);
+    assert_eq!(hand.last_frag_idx(), 0);
   }
 }

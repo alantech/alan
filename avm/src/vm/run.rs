@@ -58,14 +58,8 @@ impl VM {
   // run the vm backed by an event loop
   pub async fn run(self: &mut VM) {
     loop {
-      // Wait on fragments and events queue concurrently, but not in parallel, using a single thread.
-      // Returns when the first branch and executes its handler while cancelling the other.
-      // select! randomly picks a branch to provide some level of fairness within the loop.
-      tokio::select! {
-        event = self.event_rx.recv() => {
-          self.sched_event(event.unwrap()).await;
-        }
-      }
+      let event = self.event_rx.recv().await;
+      self.sched_event(event.unwrap()).await;
     }
   }
 }
