@@ -152,91 +152,17 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
       const statement = Statement.create(statementAst, scope)
       if (!statement.pure) pure = false
       statements.push(statement)
-      // TODO: Infer the return type for anything other than calls or object literals
-      if (assignablesAst.basicassignables() && assignablesAst.basicassignables().calls()) {
-        // TODO: Support calls that are on things that return functions but aren't function names
-        const fnCall =
-          scope.deepGet(assignablesAst.basicassignables().calls().callbase(0).varn(0).getText()) as Array<Fn>
-        if (
-          fnCall &&
-          fnCall instanceof Array &&
-          fnCall[0].microstatementInlining instanceof Function
-        ) {
-          // TODO: For now, also take the first matching function name, in the future
-          // figure out the argument types provided recursively to select appropriately
-          // similar to how the Microstatements piece works
-          returnType = (fnCall[0] as Fn).getReturnType()
-        }
-      } else if (
-        assignablesAst.basicassignables() &&
-        assignablesAst.basicassignables().objectliterals()
-      ) {
-        if (assignablesAst.basicassignables().objectliterals().typeliteral()) {
-          returnType = scope.deepGet(
-            assignablesAst.basicassignables().objectliterals().typeliteral().fulltypename().getText().trim()
-          )
-          if (!returnType) {
-            const fulltypeAst = Ast.fulltypenameAstFromString(
-              assignablesAst.basicassignables().objectliterals().typeliteral().fulltypename().getText()
-            )
-            const baseType = scope.deepGet(fulltypeAst.typename().getText()) as Type
-            if (!baseType) {
-              throw new Error(`Return type ${baseType} not defined`)
-            }
-            returnType = baseType.solidify(
-              fulltypeAst.typegenerics().fulltypename().map((f: any) => f.getText()),
-              scope
-            )
-          }
-        } else if (assignablesAst.basicassignables().objectliterals().mapliteral()) {
-          returnType = scope.deepGet(
-            assignablesAst.basicassignables().objectliterals().mapliteral().fulltypename().getText().trim()
-          )
-          if (!returnType) {
-            const fulltypeAst = Ast.fulltypenameAstFromString(
-              assignablesAst.basicassignables().objectliterals().mapliteral().fulltypename().getText()
-            )
-            const baseType = scope.deepGet(fulltypeAst.typename().getText()) as Type
-            if (!baseType) {
-              throw new Error(`Return type ${baseType} not defined`)
-            }
-            returnType = baseType.solidify(
-              fulltypeAst.typegenerics().fulltypename().map((f: any) => f.getText()),
-              scope
-            )
-          }
-        } else if (functionAst.fulltypename()) {
-          returnType = scope.deepGet(functionAst.argType().getText().trim())
-        } else {
-          if (assignablesAst.basicassignables().objectliterals().arrayliteral().fulltypename()) {
-            returnType = scope.deepGet(
-              assignablesAst.basicassignables().objectliterals().arrayliteral().fulltypename().getText().trim()
-            )
-            if (!returnType) {
-              const fulltypeAst = Ast.fulltypenameAstFromString(
-                assignablesAst.basicassignables().objectliterals().mapliteral().fulltypename().getText()
-              )
-              const baseType = scope.deepGet(fulltypeAst.typename().getText()) as Type
-              if (!baseType) {
-                throw new Error(`Return type ${baseType} not defined`)
-              }
-              returnType = baseType.solidify(
-                fulltypeAst.typegenerics().fulltypename().map((f: any) => f.getText()),
-                scope
-              )
-            }
-          } else {
-            // We're going to use the Microstatement logic here
-            const microstatements = []
-            Microstatement.fromAssignablesAst(
-              assignablesAst.basicassignables().objectliterals().arrayliteral().assignableslist(0),
-              scope,
-              microstatements,
-            )
-            returnType = microstatements[microstatements.length - 1].outputType
-          }
-        }
+      // We're going to use the Microstatement logic here
+      const microstatements = []
+      // TODO: Create fake microstatements for the input arguments
+      Microstatement.fromAssignablesAst(assignablesAst, scope, microstatements)
+      if (microstatements.length === 0) {
+        console.log({
+          assignable: assignablesAst.getText(),
+          fn: functionAst.getText(),
+        })
       }
+      returnType = microstatements[microstatements.length - 1].outputType
     }
     return new UserFunction(name, args, returnType, scope, statements, pure)
   }

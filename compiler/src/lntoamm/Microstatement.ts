@@ -355,7 +355,7 @@ ${varAst.getText()} on line ${varAst.start.line}:${varAst.start.column}`)
   ) {
     // Functions will be inlined in a second pass over the microstatements whereever it is called.
     // For now we still create the function object and the microstatement to assign it
-    if (baseAssignablesAst.functions() != null) {
+    if (!!baseAssignablesAst.functions()) {
       const fnToAssign = UserFunction.fromAst(baseAssignablesAst.functions(), scope)
       Microstatement.closureDef([fnToAssign], scope, microstatements)
       return
@@ -363,7 +363,7 @@ ${varAst.getText()} on line ${varAst.start.line}:${varAst.start.column}`)
     // A `var` assignment is simply a renaming of a variable. We need to find the existing
     // microstatement for that `var` name and "tag it" in the scope as an alias that can be looked
     // up later. For now, we'll include a useless reassignment for simplicity's sake.
-    if (baseAssignablesAst.varn() != null) {
+    if (!!baseAssignablesAst.varn()) {
       let original = Microstatement.fromVarName(
         baseAssignablesAst.varn().getText(),
         scope,
@@ -389,17 +389,16 @@ ${varAst.getText()} on line ${varAst.start.line}:${varAst.start.column}`)
       return
     }
     // `constants` are relatively simple affair.
-    if (baseAssignablesAst.constants() != null) {
+    if (!!baseAssignablesAst.constants()) {
       Microstatement.fromConstantsAst(baseAssignablesAst.constants(), scope, microstatements)
       return
     }
-    // `groups` are just grouped `withOperators`.
-    if (baseAssignablesAst.groups() != null) {
-      Microstatement.fromWithOperatorsAst(
-        baseAssignablesAst.groups().withoperators(),
-        scope,
-        microstatements
-      )
+    // `fncall` are just grouped `assignables`.
+    if (!!baseAssignablesAst.fncall() && !!baseAssignablesAst.fncall().assignablelist()) {
+      const assignables = baseAssignablesAst.fncall().assignablelist().assignables()
+      for (const assignable of assignables) {
+        Microstatement.fromAssignablesAst(assignable, scope, microstatements)
+      }
       return
     }
     // The conversion of object literals is devolved to alangraphcode when types are erased, at this
@@ -672,6 +671,7 @@ ${baseAssignablesAst.getText()} on line ${baseAssignablesAst.start.line}:${baseA
     }
   }
 
+  /*
   static fromBasicAssignablesAst(
     basicAssignablesAst: any, // TODO: Eliminate ANTLR
     scope: Scope,
@@ -1005,146 +1005,7 @@ ${basicAssignablesAst.getText()} on line ${basicAssignablesAst.start.line}:${bas
 ${basicAssignablesAst.getText()} on line ${basicAssignablesAst.start.line}:${basicAssignablesAst.start.column}`)
     }
   }
-
-  static fromWithOperatorsAst(
-    withOperatorsAst: any, // TODO: Eliminate ANTLR
-    scope: Scope,
-    microstatements: Array<Microstatement>,
-  ) {
-    // Short circuit on the trivial case
-    if (
-      withOperatorsAst.operatororassignable().length === 1 &&
-      !!withOperatorsAst.operatororassignable(0).basicassignables()
-    ) {
-      Microstatement.fromBasicAssignablesAst(
-        withOperatorsAst.operatororassignable(0).basicassignables(),
-        scope,
-        microstatements,
-      )
-    }
-    let withOperatorsList = []
-    for (const operatorOrAssignable of withOperatorsAst.operatororassignable()) {
-      if (operatorOrAssignable.operators() != null) {
-        const operator = operatorOrAssignable.operators()
-        const op = scope.deepGet(operator.getText())
-        if (op == null || !(op instanceof Array && op[0] instanceof Operator)) {
-          throw new Error("Operator " + operator.getText() + " is not defined")
-        }
-        withOperatorsList.push(op)
-      }
-      if (operatorOrAssignable.basicassignables() != null) {
-        Microstatement.fromBasicAssignablesAst(
-          operatorOrAssignable.basicassignables(),
-          scope,
-          microstatements,
-        )
-        const last = microstatements[microstatements.length - 1]
-        withOperatorsList.push(last)
-      }
-    }
-    // Now to combine these operators and values in the correct order. A compiled language could
-    // never do something so inefficient, but I don't care about performance right now, so here's
-    // the algorithm: while the list length is greater than 1, perform the two steps:
-    // 1. Find the operator with the greatest precedence
-    // 2. Apply the underlying function to the values on either side of the operator (or just the
-    //    right side if the operator is a prefix operator), then replace the operator with the
-    //    returned value in the list and delete the impacted values.
-    while (withOperatorsList.length > 1) {
-      let maxPrecedence = -1
-      let maxOperatorLoc = -1
-      let maxOperatorListLoc = -1
-      for (let i = 0; i < withOperatorsList.length; i++) {
-        if (withOperatorsList[i] instanceof Array && withOperatorsList[i][0] instanceof Operator) {
-          const ops = withOperatorsList[i]
-          let op = null
-          let operatorListLoc = -1
-          let operatorPrecedence = -127
-          if (ops.length == 1) {
-            op = ops[0]
-            operatorListLoc = 0
-          } else {
-            // TODO: We need to identify which particular operator applies in this case.
-            // We're just going to short-circuit this process on the first operator that matches
-            // but we need to come up with a "best match" behavior (ie, if one argument is an int8
-            // it may choose the int64-based operator because it was first and it can cast int8 to
-            // int64 and then miss the specialized int8 version of the function).
-            let left = null
-            if (i != 0) left = withOperatorsList[i - 1]
-            let right = null
-            if (i != withOperatorsList.length - 1) right = withOperatorsList[i + 1]
-            // Skip over any operator that is followed by another operator as it must be a prefix
-            // operator (or a syntax error, but we'll catch that later)
-            if (right === null || right instanceof Microstatement) {
-              for (let j = 0; j < ops.length; j++) {
-                if (
-                  ops[j].precedence > operatorPrecedence &&
-                  ops[j].applicableFunction(
-                    !left ? // Left is special, if two operators are in a row, this one
-                      null :        // needs to be a prefix operator for this to work at all
-                      left instanceof Microstatement ?
-                        left.outputType :
-                        null,
-                    right === null ? null : right.outputType,
-                    scope
-                  ) != null
-                ) {
-                  op = ops[j]
-                  operatorListLoc = j
-                  operatorPrecedence = op.precedence
-                }
-              }
-            }
-            // During the process of determining the operator ordering, there may be tests that
-            // will not match because operator precedence will convert the neighboring types into
-            // types that will match. This is complicated and doing this statically will be more
-            // difficult, but for now, just skip over these.
-            if (op == null) continue
-          }
-
-          if (op.precedence > maxPrecedence) {
-            maxPrecedence = op.precedence
-            maxOperatorLoc = i
-            maxOperatorListLoc = operatorListLoc
-          }
-        }
-      }
-      if (maxPrecedence == -1 || maxOperatorLoc == -1) {
-        let errMsg = `Cannot resolve operators with remaining statement
-${withOperatorsAst.getText()}`
-        let withOperatorsTranslation = []
-        for (let i = 0; i < withOperatorsList.length; i++) {
-          const node = withOperatorsList[i]
-          if (node instanceof Array && node[0] instanceof Operator) {
-            withOperatorsTranslation.push(node[0].name)
-          } else {
-            withOperatorsTranslation.push("<" + node.outputType.typename + ">")
-          }
-        }
-        errMsg += '\n' + withOperatorsTranslation.join(' ')
-        throw new Error(errMsg)
-      }
-      const op = withOperatorsList[maxOperatorLoc][maxOperatorListLoc]
-      let realArgNames = []
-      let realArgTypes = []
-      if (!op.isPrefix) {
-        const left = withOperatorsList[maxOperatorLoc - 1]
-        realArgNames.push(left.outputName)
-        realArgTypes.push(left.outputType)
-      }
-      const right = withOperatorsList[maxOperatorLoc + 1]
-      realArgNames.push(right.outputName)
-      realArgTypes.push(right.outputType)
-      UserFunction
-        .dispatchFn(op.potentialFunctions, realArgTypes, scope)
-        .microstatementInlining(realArgNames, scope, microstatements)
-      const last = microstatements[microstatements.length - 1]
-      withOperatorsList[maxOperatorLoc] = last
-      withOperatorsList.splice(maxOperatorLoc + 1, 1)
-      if (!op.isPrefix) {
-        withOperatorsList.splice(maxOperatorLoc - 1, 1)
-      }
-    }
-  }
+  */
 
   static closureDef(
     fns: Array<Fn>,
@@ -1310,6 +1171,7 @@ ${emitsAst.getText()} on line ${emitsAst.start.line}:${emitsAst.start.column}`)
     }
   }
 
+  /*
   static fromCallsAst(
     callsAst: any, // TODO: Eliminate ANTLR
     scope: Scope,
@@ -1350,10 +1212,10 @@ ${emitsAst.getText()} on line ${emitsAst.start.line}:${emitsAst.start.column}`)
         firstArg = microstatements[microstatements.length - 1]
       }
     }
-    /*if (callsAst.callbase(0).baseassignables() != null) {
-      Microstatement.fromBaseAssignablesAst(callsAst.callbase(0).baseassignables(0), scope, microstatements)
-      firstArg = microstatements[microstatements.length - 1]
-    }*/
+    //if (callsAst.callbase(0).baseassignables() != null) {
+    //  Microstatement.fromBaseAssignablesAst(callsAst.callbase(0).baseassignables(0), scope, microstatements)
+    //  firstArg = microstatements[microstatements.length - 1]
+    //}
     // TODO: Port to fromVarAst, though this one is very tricky
     for (let i = 0; i < callsAst.callbase().length; i++) {
       // First, resolve the function. TODO: Need to add support for closure functions defined in
@@ -1464,6 +1326,7 @@ ${callsAst.getText()} on line ${callsAst.start.line}:${callsAst.start.column}`)
       firstArg = microstatements[microstatements.length - 1]
     }
   }
+  */
 
   static fromAssignmentsAst(
     assignmentsAst: any, // TODO: Eliminate ANTLR
@@ -1541,142 +1404,65 @@ ${letName} on line ${assignmentsAst.line}:${assignmentsAst.start.column}`)
           }
         }
       }
-      // An assignable may either be a basic constant or could be broken down into other
-      // microstatements. The classification with assignables is: if it's a `withoperators` type it
-      // *always* becomes multiple microstatements and it should return the variable name it
-      // generated to store the data. If it's a `basicassignables` type it could be either a
-      // "true constant" or generate multiple microstatements. The types that fall under the
-      // "true constant" category are: functions, var, and constants.
-      if (assignmentsAst.assignables().withoperators() != null) {
-        // Update the microstatements list with the operator serialization
-        Microstatement.fromWithOperatorsAst(
-          assignmentsAst.assignables().withoperators(),
-          scope,
-          microstatements
-        )
-        // By definition the last microstatement is the const assignment we care about, so we can
-        // just mutate its object to rename the output variable name to the name we need instead.
-        const last = microstatements[microstatements.length - 1]
-        last.outputName = actualLetName
-        last.statementType = StatementType.ASSIGNMENT
-        // Attempt to "merge" the output types, useful for multiple branches assigning into the same
-        // variable but only part of the type information is known in each branch (like in `Result`
-        // or `Either` with the result value only in one branch or one type in each of the branches
-        // for `Either`).
-        if (original.outputType.typename !== last.outputType.typename) {
-          if (!!original.outputType.iface) {
-            // Just overwrite if it's an interface type
-            original.outputType = last.outputType
-          } else if (
-            !!original.outputType.originalType &&
-            !!last.outputType.originalType &&
-            original.outputType.originalType.typename === last.outputType.originalType.typename
-          ) {
-            // The tricky path, let's try to merge the two types together
-            const baseType = original.outputType.originalType
-            const originalTypeAst = Ast.fulltypenameAstFromString(original.outputType.typename)
-            const lastTypeAst = Ast.fulltypenameAstFromString(last.outputType.typename)
-            const originalTypeGenerics = originalTypeAst.typegenerics()
-            const lastTypeGenerics = lastTypeAst.typegenerics()
-            const originalSubtypes = originalTypeGenerics ? originalTypeGenerics.fulltypename().map(
-              (t: any) => t.getText()
-            ) : []
-            const lastSubtypes = lastTypeGenerics ? lastTypeGenerics.fulltypename().map(
-              (t: any) => t.getText()
-            ) : []
-            const newSubtypes = []
-            for (let i = 0; i < originalSubtypes.length; i++) {
-              if (originalSubtypes[i] === lastSubtypes[i]) {
+      Microstatement.fromAssignablesAst(
+        assignmentsAst.assignables(),
+        scope,
+        microstatements
+      )
+      // By definition the last microstatement is the const assignment we care about, so we can
+      // just mutate its object to rename the output variable name to the name we need instead.
+      const last = microstatements[microstatements.length - 1]
+      last.outputName = actualLetName
+      last.statementType = StatementType.ASSIGNMENT
+      // Attempt to "merge" the output types, useful for multiple branches assigning into the same
+      // variable but only part of the type information is known in each branch (like in `Result`
+      // or `Either` with the result value only in one branch or one type in each of the branches
+      // for `Either`).
+      if (original.outputType.typename !== last.outputType.typename) {
+        if (!!original.outputType.iface) {
+          // Just overwrite if it's an interface type
+          original.outputType = last.outputType
+        } else if (
+          !!original.outputType.originalType &&
+          !!last.outputType.originalType &&
+          original.outputType.originalType.typename === last.outputType.originalType.typename
+        ) {
+          // The tricky path, let's try to merge the two types together
+          const baseType = original.outputType.originalType
+          const originalTypeAst = Ast.fulltypenameAstFromString(original.outputType.typename)
+          const lastTypeAst = Ast.fulltypenameAstFromString(last.outputType.typename)
+          const originalTypeGenerics = originalTypeAst.typegenerics()
+          const lastTypeGenerics = lastTypeAst.typegenerics()
+          const originalSubtypes = originalTypeGenerics ? originalTypeGenerics.fulltypename().map(
+            (t: any) => t.getText()
+          ) : []
+          const lastSubtypes = lastTypeGenerics ? lastTypeGenerics.fulltypename().map(
+            (t: any) => t.getText()
+          ) : []
+          const newSubtypes = []
+          for (let i = 0; i < originalSubtypes.length; i++) {
+            if (originalSubtypes[i] === lastSubtypes[i]) {
+              newSubtypes.push(originalSubtypes[i])
+            } else {
+              const originalSubtype = scope.deepGet(originalSubtypes[i]) as Type
+              if (!!originalSubtype.iface) {
+                newSubtypes.push(lastSubtypes[i])
+              } else if (!!originalSubtype.originalType) {
+                // TODO: Support nesting
                 newSubtypes.push(originalSubtypes[i])
               } else {
-                const originalSubtype = scope.deepGet(originalSubtypes[i]) as Type
-                if (!!originalSubtype.iface) {
-                  newSubtypes.push(lastSubtypes[i])
-                } else if (!!originalSubtype.originalType) {
-                  // TODO: Support nesting
-                  newSubtypes.push(originalSubtypes[i])
-                } else {
-                  newSubtypes.push(originalSubtypes[i])
-                }
-              }
-            }
-            const newType = baseType.solidify(newSubtypes, scope)
-            original.outputType = newType
-          } else {
-            // Hmm... what to do here?
-            original.outputType = last.outputType
-          }
-        }
-        return
-      }
-      if (assignmentsAst.assignables().basicassignables() != null) {
-        Microstatement.fromBasicAssignablesAst(
-          assignmentsAst.assignables().basicassignables(),
-          scope,
-          microstatements
-        )
-        // The same rule as above, the last microstatement is already a const assignment for the
-        // value that we care about, so just rename its variable to the one that will be expected by
-        // other code.
-        const last = microstatements[microstatements.length - 1]
-        last.outputName = actualLetName
-        last.statementType = StatementType.ASSIGNMENT
-        // Attempt to "merge" the output types, useful for multiple branches assigning into the same
-        // variable but only part of the type information is known in each branch (like in `Result`
-        // or `Either` with the result value only in one branch or one type in each of the branches
-        // for `Either`).
-        // TODO: DRY up the two code blocks with near-identical type inference code.
-        if (original.outputType.typename !== last.outputType.typename) {
-          if (!!original.outputType.iface) {
-            // Just overwrite if it's an interface type
-            original.outputType = last.outputType
-          } else if (
-            !!original.outputType.originalType &&
-            !!last.outputType.originalType &&
-            original.outputType.originalType.typename === last.outputType.originalType.typename
-          ) {
-            // The tricky path, let's try to merge the two types together
-            const baseType = original.outputType.originalType
-            const originalTypeAst = Ast.fulltypenameAstFromString(original.outputType.typename)
-            const lastTypeAst = Ast.fulltypenameAstFromString(last.outputType.typename)
-            const originalTypeGenerics = originalTypeAst.typegenerics()
-            const lastTypeGenerics = lastTypeAst.typegenerics()
-            const originalSubtypes = originalTypeGenerics ? originalTypeGenerics.fulltypename().map(
-              (t: any) => t.getText()
-            ) : []
-            const lastSubtypes = lastTypeGenerics ? lastTypeGenerics.fulltypename().map(
-              (t: any) => t.getText()
-            ) : []
-            const newSubtypes = []
-            for (let i = 0; i < originalSubtypes.length; i++) {
-              if (originalSubtypes[i] === lastSubtypes[i]) {
                 newSubtypes.push(originalSubtypes[i])
-              } else {
-                const originalSubtype = scope.deepGet(originalSubtypes[i]) as Type
-                if (!!originalSubtype.iface) {
-                  newSubtypes.push(lastSubtypes[i])
-                } else if (!!originalSubtype.originalType) {
-                  // TODO: Support nesting
-                  newSubtypes.push(originalSubtypes[i])
-                } else {
-                  newSubtypes.push(originalSubtypes[i])
-                }
               }
             }
-            const newType = baseType.solidify(newSubtypes, scope)
-            original.outputType = newType
-          } else {
-            // Hmm... what to do here?
-            original.outputType = last.outputType
           }
+          const newType = baseType.solidify(newSubtypes, scope)
+          original.outputType = newType
         } else {
+          // Hmm... what to do here?
           original.outputType = last.outputType
         }
-        return
       }
-      // This should not be reachable
-      throw new Error(`Unknown malformed input in re-assignment
-${letName} on line ${assignmentsAst.start.line}:${assignmentsAst.start.column}`)
+      return
     }
     // The more complicated path. First, rule out that the first segment is not a `scope`.
     const testBox = scope.deepGet(segments[0].getText())
@@ -1730,26 +1516,11 @@ ${assignmentsAst.varn().getText()} on line ${assignmentsAst.varn().start.line}:$
         original = microstatements[microstatements.length - 1]
       }
     }
-    // An assignable may either be a basic constant or could be broken down into other microstatements
-    // The classification with assignables is: if it's a `withoperators` type it *always* becomes
-    // multiple microstatements and it should return the variable name it generated to store the data.
-    // If it's a `basicassignables` type it could be either a "true constant" or generate multiple
-    // microstatements. The types that fall under the "true constant" category are: functions,
-    // var, and constants.
-    if (assignmentsAst.assignables().withoperators() != null) {
-      // Update the microstatements list with the operator serialization
-      Microstatement.fromWithOperatorsAst(
-        assignmentsAst.assignables().withoperators(),
-        scope,
-        microstatements
-      )
-    } else if (assignmentsAst.assignables().basicassignables() != null) {
-      Microstatement.fromBasicAssignablesAst(
-        assignmentsAst.assignables().basicassignables(),
-        scope,
-        microstatements
-      )
-    }
+    Microstatement.fromAssignablesAst(
+      assignmentsAst.assignables(),
+      scope,
+      microstatements
+    )
     // Grab a reference to the final assignment variable.
     const assign = microstatements[microstatements.length - 1]
     // Next, determine which kind of final segment this is and perform the appropriate action to
@@ -1839,67 +1610,30 @@ ${letdeclarationAst.getText()} on line ${letdeclarationAst.start.line}:${letdecl
         )
       }
     }
-    // An assignable may either be a basic constant or could be broken down into other microstatements
-    // The classification with assignables is: if it's a `withoperators` type it *always* becomes
-    // multiple microstatements and it should return the variable name it generated to store the data.
-    // If it's a `basicassignables` type it could be either a "true constant" or generate multiple
-    // microstatements. The types that fall under the "true constant" category are: functions,
-    // var, and constants.
-    if (letdeclarationAst.assignables().withoperators() != null) {
-      // Update the microstatements list with the operator serialization
-      Microstatement.fromWithOperatorsAst(
-        letdeclarationAst.assignables().withoperators(),
-        scope,
-        microstatements,
-      )
-      // By definition the last microstatement is the const assignment we care about, so we can just
-      // mutate its object to rename the output variable name to the name we need instead.
-      // EXCEPT with Arrays and User Types. The last is a REREF, so follow it back to the original
-      // and mutate that, instead
-      let val = microstatements[microstatements.length - 1]
-      if (val.statementType === StatementType.REREF) {
-        val = Microstatement.fromVarName(val.alias, scope, microstatements)
-      }
-      val.statementType = StatementType.LETDEC
-      microstatements.push(new Microstatement(
-        StatementType.REREF,
-        scope,
-        true,
-        val.outputName,
-        val.outputType,
-        [],
-        [],
-        letAlias,
-      ))
-      return
+    Microstatement.fromAssignablesAst(
+      letdeclarationAst.assignables(),
+      scope,
+      microstatements,
+    )
+    // By definition the last microstatement is the const assignment we care about, so we can just
+    // mutate its object to rename the output variable name to the name we need instead.
+    // EXCEPT with Arrays and User Types. The last is a REREF, so follow it back to the original
+    // and mutate that, instead
+    let val = microstatements[microstatements.length - 1]
+    if (val.statementType === StatementType.REREF) {
+      val = Microstatement.fromVarName(val.alias, scope, microstatements)
     }
-    if (letdeclarationAst.assignables().basicassignables() != null) {
-      Microstatement.fromBasicAssignablesAst(
-        letdeclarationAst.assignables().basicassignables(),
-        scope,
-        microstatements,
-      )
-      // By definition the last microstatement is the const assignment we care about, so we can just
-      // mutate its object to rename the output variable name to the name we need instead.
-      // EXCEPT with Arrays and User Types. The last is a REREF, so follow it back to the original
-      // and mutate that, instead
-      let val = microstatements[microstatements.length - 1]
-      if (val.statementType === StatementType.REREF) {
-        val = Microstatement.fromVarName(val.alias, scope, microstatements)
-      }
-      val.statementType = StatementType.LETDEC
-      microstatements.push(new Microstatement(
-        StatementType.REREF,
-        scope,
-        true,
-        val.outputName,
-        val.outputType,
-        [],
-        [],
-        letAlias,
-      ))
-      return
-    }
+    val.statementType = StatementType.LETDEC
+    microstatements.push(new Microstatement(
+      StatementType.REREF,
+      scope,
+      true,
+      val.outputName,
+      val.outputType,
+      [],
+      [],
+      letAlias,
+    ))
   }
 
   static fromConstdeclarationAst(
@@ -1931,54 +1665,23 @@ ${constdeclarationAst.getText()} on line ${constdeclarationAst.start.line}:${con
         )
       }
     }
-    // An assignable may either be a basic constant or could be broken down into other microstatements
-    // The classification with assignables is: if it's a `withoperators` type it *always* becomes
-    // multiple microstatements and it should return the variable name it generated to store the data.
-    // If it's a `basicassignables` type it could be either a "true constant" or generate multiple
-    // microstatements. The types that fall under the "true constant" category are: functions,
-    // var, and constants.
-    if (constdeclarationAst.assignables().withoperators() != null) {
-      // Update the microstatements list with the operator serialization
-      Microstatement.fromWithOperatorsAst(
-        constdeclarationAst.assignables().withoperators(),
-        scope,
-        microstatements,
-      )
-      // By definition the last microstatement is the const assignment we care about, so we can just
-      // mutate its object to rename the output variable name to the name we need instead.
-      microstatements.push(new Microstatement(
-        StatementType.REREF,
-        scope,
-        true,
-        microstatements[microstatements.length - 1].outputName,
-        microstatements[microstatements.length - 1].outputType,
-        [],
-        [],
-        constAlias,
-      ))
-      return
-    }
-    if (constdeclarationAst.assignables().basicassignables() != null) {
-      Microstatement.fromBasicAssignablesAst(
-        constdeclarationAst.assignables().basicassignables(),
-        scope,
-        microstatements,
-      )
-      // The same rule as above, the last microstatement is already a const assignment for the value
-      // that we care about, so just rename its variable to the one that will be expected by other
-      // code.
-      microstatements.push(new Microstatement(
-        StatementType.REREF,
-        scope,
-        true,
-        microstatements[microstatements.length - 1].outputName,
-        microstatements[microstatements.length - 1].outputType,
-        [],
-        [],
-        constAlias,
-      ))
-      return
-    }
+    Microstatement.fromAssignablesAst(
+      constdeclarationAst.assignables(),
+      scope,
+      microstatements,
+    )
+    // By definition the last microstatement is the const assignment we care about, so we can just
+    // mutate its object to rename the output variable name to the name we need instead.
+    microstatements.push(new Microstatement(
+      StatementType.REREF,
+      scope,
+      true,
+      microstatements[microstatements.length - 1].outputName,
+      microstatements[microstatements.length - 1].outputType,
+      [],
+      [],
+      constAlias,
+    ))
   }
 
   // DFS recursive algo to get the microstatements in a valid ordering
@@ -2035,11 +1738,134 @@ ${constdeclarationAst.getText()} on line ${constdeclarationAst.start.line}:${con
   }
 
   static fromBaseAssignableAst(
-    baseAssignableAst: any, // TODO: Eliminate ANTLR
+    baseAssignableAsts: any, // TODO: Eliminate ANTLR
     scope: Scope,
     microstatements: Array<Microstatement>,
   ) {
-    // TODO    
+    // The base assignables array are a lightly annotated set of primitives that can be combined
+    // together to produce an assignable value. Certain combinations of these primitives are invalid
+    // and TODO provide good error messaging when these are encountered. A state machine of valid
+    // transitions is defined below:
+    //
+    // null -> { var, obj, fn, const, group }
+    // var -> { dot, arraccess, call, eos }
+    // obj -> { dot, arraccess, eos }
+    // fn -> { call, eos }
+    // const -> { dot, eos }
+    // group -> { dot, arraccess, eos }
+    // call -> { call, arraccess, dot, eos }
+    // arraccess -> { arraccess, dot, call, eos }
+    //
+    // Where `null` is the initial state and `eos` is end-of-statement terminating state. `var` is
+    // some variable-name-like value (could be a scope, variable, property, or function name). `obj`
+    // is object literal syntax, `fn` is function literal syntax, `const` is a constant literal.
+    // `group)` is re-using the function call syntax to handle operator grouping (eg `2 * (3 + 4)`).
+    // Because of how operators are mixed in with the assignables, the only time this syntax is used
+    // as an operator grouping syntax is if it is the first element in the array. Otherwise it is
+    // being used as a function call for a given function (either defined by a variable, an
+    // inline-defined function, or a returned function from another call or array access) as `call`.
+    // Finally `arraccess` is when an array (and ideally later a HashMap) is accessed. This mode is
+    // also abusing the `obj` syntax, but only when it's an array literal with only one value and no
+    // `new Array<foo>` type definition *and* when there are prior elements in the list. This means
+    // `[0][0]` is unambiguous and would return a Result-wrapped zero value, for instance.
+    //
+    // The exact meaning of `var.var...` chains varies based on the elements of the array both
+    // before and after such a chain. If the start of such a list, and if a `call` is at the end, it
+    // could be something like `scope.variable.property.functionName(args)` where `.property` can
+    // repeat multiple times over. Basically, to properly parse any `.var` requires both the prior
+    // state *and* look-ahead to the next element in the list.
+    //
+    // All of this to re-iterate that for the sake of compile time, some of the complexities of the
+    // grammar have been moved from the ANTLR definition into the compiler itself for performance
+    // reasons, explaining the complicated iterative logic that follows.
+
+    let currVal: any = null
+    for (let i = 0; i < baseAssignableAsts.length; i++) {
+      const baseassignable = baseAssignableAsts[i]
+      if (!!baseassignable.METHODSEP()) {
+        if (i === 0) {
+          throw new Error(`Invalid start of assignable statement. Cannot begin with a dot (.)
+${baseAssignableAsts.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+        }
+        const prevassignable = baseAssignableAsts[i - 1]
+        if (!!prevassignable.METHODSEP()) {
+          throw new Error(`Invalid property access. You accidentally typed a dot twice in a row.
+${baseAssignableAsts.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+        } else if (!!prevassignable.functions()) {
+          throw new Error(`Invalid property access. Functions do not have properties.
+${baseAssignableAsts.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+        }
+        // TODO: Do we even do anything else in this branch?
+      } else if (!!baseassignable.VARNAME()) {
+        const nextassignable = baseAssignableAsts[i + 1]
+        if (!!nextassignable && !!nextassignable.fncall()) {
+          // This is a function call path
+          console.log('hi')
+        } else {
+          if (currVal === null) {
+            let thing = scope.deepGet(baseassignable.VARNAME().getText())
+            if (!thing) {
+              thing = Microstatement.fromVarName(
+                baseassignable.VARNAME().getText(),
+                scope,
+                microstatements,
+              )
+            }
+            if (!thing) {
+              throw new Error(`${baseassignable.VARNAME().getText()} not found.
+  ${baseAssignableAsts.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+            }
+            currVal = thing
+          } else if (currVal instanceof Scope) {
+            const thing = currVal.deepGet(baseassignable.VARNAME().getText())
+            if (!thing) {
+              throw new Error(`${baseassignable.VARNAME().getText()} not found in other scope.
+  ${baseAssignableAsts.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+            }
+            currVal = thing
+          } else if (currVal instanceof Microstatement) {
+            const fieldName = baseassignable.VARNAME().getText()
+            const fields = Object.keys(currVal.outputType.properties)
+            const fieldNum = fields.indexOf(fieldName)
+            if (fieldNum < 0) {
+              // Invalid object access
+              throw new Error(`${fieldName} property not found.
+  ${baseAssignableAsts.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+            }
+            // Create a new variable to hold the address within the array literal
+            const addrName = "_" + uuid().replace(/-/g, "_")
+            microstatements.push(new Microstatement(
+              StatementType.CONSTDEC,
+              scope,
+              true,
+              addrName,
+              Type.builtinTypes['int64'],
+              [`${fieldNum}`],
+              [],
+            ))
+            // Insert a `register` opcode.
+            const opcodes = require('./opcodes').default
+            opcodes.exportScope.get('register')[0].microstatementInlining(
+              [currVal.outputName, addrName],
+              scope,
+              microstatements,
+            )
+            // We'll need a reference to this for later
+            const typeRecord = currVal 
+            // Set the original to this newly-generated microstatement
+            currVal = microstatements[microstatements.length - 1]
+            // Now we do something odd, but correct here; we need to replace the `outputType` from
+            // `any` to the type that was actually copied so function resolution continues to work
+            currVal.outputType = typeRecord.outputType.properties[fieldName]
+          } else {
+            // What is this?
+            throw new Error(`Impossible path found. Bug in compiler, please report!
+  Previous value type: ${typeof currVal}
+  ${baseAssignableAsts.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+          }
+        }
+      }
+    }
   }
 
   static fromAssignablesAst(
