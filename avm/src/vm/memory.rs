@@ -259,6 +259,16 @@ impl HandlerMemory {
     }
   }
 
+  /// Deletes a value off of the fractal at the given idx. May be fixed data or a virtual pointer.
+  pub fn delete(self: &mut HandlerMemory, addr: i64, idx: usize) -> Result<(usize, i64), String> {
+    let mem = self.read_mut_fractal(addr);
+    if mem.len() > 0 && mem.len() > idx {
+      return Ok(mem.remove(idx));
+    } else {
+      return Err(format!("cannot remove idx {} from array with length {}", idx, mem.len()));
+    }
+  }
+
   /// Creates an alias for data at one address in another address.
   pub fn register(self: &mut HandlerMemory, addr: i64, orig_addr: i64, is_variable: bool) {
     let (a, b) = self.addr_to_idxs(orig_addr);

@@ -19,8 +19,8 @@
 - [ ] Implemented
   - [x] [Tree data structure (js-runtime only for now)](https://github.com/alantech/alan/pull/292) 2020-10-06
   - [x] [Get the Tree data structure working on the AVM](https://github.com/alantech/alan/pull/304) 2020-11-04
-  - [ ] Advanced Tree methods YYYY-MM-DD
-- [ ] Revoked/Superceded by: [RFC ###](./000 - RFC Template.md) YYYY-MM-DD
+  - [x] [Advanced Tree methods](https://github.com/alantech/alan/pull/333) 2020-11-30
+- [x] Revoked/Superceded by: [RFC 010](./010 - Tree ergonomics revision.md) 2020-11-30
 
 ## Author
 

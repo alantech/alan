@@ -407,6 +407,7 @@ export fn everyLin(arr: Array<any>, cb: function): bool = everyl(arr, cb)
 export some // parallel opcode with signature `fn some(arr: Array<any>, cb: function): bool`
 export fn someLin(arr: Array<any>, cb: function): bool = somel(arr, cb)
 export join // opcode with signature `fn join(arr: Array<string>, sep: string): string`
+export fn delete(arr: Array<any>, idx: int64): Result<any> = delindx(arr, idx)
 export fn set(arr: Array<any>, idx: int64, val: any) {
   if (idx < 0) | (idx > arr.length()) {
     return err('array out-of-bounds access')
@@ -699,6 +700,8 @@ export fn getRootNode(t: Tree<any>): Node<any> {
 
 export fn getTree(n: Node<any>): Tree<any> = n.tree
 
+export fn length(t: Tree<any>): int64 = length(t.vals)
+
 export fn getNodeById(t: Tree<any>, i: int64): Node<any> {
   if length(t.vals) > i {
     return new Node<any> {
@@ -755,69 +758,83 @@ export fn getChildren(n: Node<any>): Array<Node<any>> {
   }
 }
 
-export fn getChildren(t: Tree<any>): Array<Node<any>> = t.getRootNode().getChildren()
-
-export fn addChild(n: Node<any>, val: any): Node<any> {
-  const childId = length(n.tree.vals)
-  push(n.tree.vals, val)
-  push(n.tree.parents, n.id)
-  push(n.tree.children, new Array<int64> [ ])
-  push(getOr(n.tree.children[n.id], new Array<int64> []), childId)
-  return n
-}
-
-export fn addChild(t: Tree<any>, val: any): Node<any> = t.getRootNode().addChild(val)
-
-export fn addChild(n: Node<any>, val: Node<any>): Node<any> {
-  // This is, unfortunately for now, a sequential algorithm. Hope to figure out a parallel version
-  const tree = n.tree
-  let parentStack = new Array<int64> [ n.id ]
-  let nodeStack = new Array<int64> [ val.id ]
-  seqdo(newseq(pow(2, 62)), fn (): bool {
-    // Get the parentId, exit if none left
-    const parentRes = parentStack.pop()
-    if parentRes.isErr() {
-      return false
-    }
+// Returns the pruned Tree
+export fn prune(n: Node<any>): Tree<any> {
+  // adjust parent's children
+  const parentRes = n.tree.parents[n.id]
+  if parentRes.isOk() {
     const parentId = parentRes.getR()
+    const children = getOr(n.tree.children[parentId], new Array<int64> [])
+    const idxRes = index(children, n.id)
+    if idxRes.isOk() {
+      delete(children, idxRes.getR())
+    }
+  }
+  // This is, unfortunately for now, a sequential algorithm. Hope to figure out a parallel version
+  let nodeStack = new Array<int64> [ n.id ]
+  let rmdIds = new Array<int64> [ ]
+  seqdo(newseq(pow(2, 62)), fn (): bool {
     // Get the nodeId, exit if none left
     const nodeRes = nodeStack.pop()
     if nodeRes.isErr() {
       return false
     }
     const nodeId = nodeRes.getR()
-    // Get the new node value, add as a child to the parent
-    const nodeValRes = val.tree.vals[nodeId]
-    if nodeValRes.isErr() {
-      return false
+    // Push the children onto the stack to process if the node has them
+    const childrenRes = n.tree.children[nodeId]
+    if childrenRes.isOk() {
+      const childrenIds = childrenRes.getR()
+      nodeStack = nodeStack.concat(childrenIds)
     }
-    const nodeVal = nodeValRes.getR()
-    const replacementId = length(n.tree.vals)
-    push(n.tree.vals, nodeVal)
-    push(n.tree.parents, parentId)
-    push(n.tree.children, new Array<int64> [ ])
-    push(getOr(n.tree.children[n.id], new Array<int64> []), replacementId)
-    // Get the children array, exit on failure
-    const childrenRes = val.tree.children[nodeId]
-    if childrenRes.isErr() {
-      return false
-    }
-    const childrenIds = childrenRes.getR()
-    // Push the children onto the stack to process
-    nodeStack = nodeStack.concat(childrenIds)
-    // Push an equal number of new parent IDs onto the parent stack
-    parentStack = parentStack.concat(new Array<int64> [ replacementId ] * childrenIds.length())
-    // Continue iterating
+    const delIdx = nodeId - length(rmdIds)
+    delete(n.tree.vals, delIdx)
+    delete(n.tree.parents, delIdx)
+    delete(n.tree.children, delIdx)
+    push(rmdIds, nodeId)
     return true
   })
-  return n
+
+  // adjust indices for remaining elements
+  const iters = length(n.tree.parents)
+  seqeach(newseq(iters), fn (i: int64) {
+    const parentId = getOr(n.tree.parents[i], -1)
+    const parentDelta = rmdIds.filter(fn (rmId: int64): bool = parentId > rmId).length()
+    if parentDelta > 0 {
+      set(n.tree.parents, i, parentId - parentDelta)
+    }
+    const children = getOr(n.tree.children[i], new Array<int64> [])
+    const newChildren = children.map(fn (cId: int64): int64 {
+      const delta = rmdIds.filter(fn (rmdId: int64): bool = cId > rmdId).length()
+      if delta > 0 {
+        return cId - delta
+      }
+      return cId
+    })
+    set(n.tree.children, i, newChildren)
+  })
+  return n.tree
 }
+
+export fn getChildren(t: Tree<any>): Array<Node<any>> = t.getRootNode().getChildren()
+
+// returns the new child node added
+export fn addChild(n: Node<any>, val: any): Node<any> {
+  const childId = length(n.tree.vals)
+  push(n.tree.vals, val)
+  push(n.tree.parents, n.id)
+  push(n.tree.children, new Array<int64> [ ])
+  push(getOr(n.tree.children[n.id], new Array<int64> []), childId)
+  return new Node<any> {
+    id = childId
+    tree = n.tree
+  }
+}
+
+export fn addChild(t: Tree<any>, val: any): Node<any> = t.getRootNode().addChild(val)
 
 export fn addChild(t: Tree<any>, val: Node<any>): Node<any> = t.getRootNode().addChild(val)
 
 export fn addChild(n: Node<any>, val: Tree<any>): Node<any> = n.addChild(val.getRootNode())
-
-export fn addChild(t: Tree<any>, val: Tree<any>): Node<any> = t.getRootNode().addChild(val.getRootNode())
 
 export fn getOr(n: Node<any>, default: any): any = getOr(n.tree.vals[n.id], default)
 
@@ -829,6 +846,26 @@ export fn map(t: Tree<any>, mapper: function): Tree<anythingElse> {
     parents = clone(t.parents)
     children = clone(t.children)
   }
+}
+
+export fn some(t: Tree<any>, mapper: function): bool = t.toNodeArray().some(mapper)
+
+export fn every(t: Tree<any>, mapper: function): bool = t.toNodeArray().every(mapper)
+
+export fn reduce(t: Tree<any>, cb: function, initial: anythingElse): bool = t.toNodeArray().reduce(cb, initial)
+
+export fn find(t: Tree<any>, mapper: function): Node<any> {
+  // Return an invalid node, will behave like an error result
+  return t.toNodeArray().find(mapper).getOr(
+    new Node<any> {
+      id = -1
+      tree = new Tree<any> {
+        vals = new Array<any> []
+        parents = new Array<int64> []
+        children = new Array<Array<int64>> []
+      }
+    }
+  )
 }
 
 // Operator declarations

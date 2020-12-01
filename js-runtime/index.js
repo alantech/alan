@@ -323,6 +323,14 @@ module.exports = {
     const ind = arr.indexOf(val)
     return ind > -1 ? [ true, ind, ] : [ false, 'element not found', ]
   },
+  delindx: (arr, idx) => {
+    const spliced = arr.splice(idx, 1)
+    if (spliced.length === 1 && idx >= 0) {
+      return [ true, spliced[0] ]
+    } else {
+      return [ false, `cannot remove idx ${idx} from array with length ${arr.length}` ]
+    }
+  },
   join:    (arr, sep) => arr.join(sep),
   map:     async (arr, fn) => await Promise.all(arr.map(fn)),
   mapl:    async (arr, fn) => await Promise.all(arr.map(fn)),

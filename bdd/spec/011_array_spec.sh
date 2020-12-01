@@ -337,7 +337,7 @@ Hello, World!"
     End
   End
 
-  Describe "every and some"
+  Describe "every, some and del"
     before() {
       sourceToAll "
         from @std/app import start, print, exit
@@ -347,7 +347,10 @@ Hello, World!"
           // TODO: Get non-inline closure functions working
           test.every(fn (val: int64): bool = val % 2 == 1).print()
           test.some(fn (val: int64): bool = val % 2 == 1).print()
-
+          print(test.length())
+          print(test.delete(1))
+          print(test.delete(4))
+          print(test.delete(10))
           emit exit 0
         }
       "
@@ -360,7 +363,11 @@ Hello, World!"
     AfterAll after
 
     EVERYSOMEOUTPUT="false
-true"
+true
+6
+1
+8
+cannot remove idx 10 from array with length 4"
 
     It "runs js"
       When run node temp.js
