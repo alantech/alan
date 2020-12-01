@@ -819,15 +819,15 @@ export fn getChildren(t: Tree<any>): Array<Node<any>> = t.getRootNode().getChild
 
 // returns the new child node added
 export fn addChild(n: Node<any>, val: any): Node<any> {
-  const childId = length(n.tree.vals)
-  push(n.tree.vals, val)
-  push(n.tree.parents, n.id)
-  push(n.tree.children, new Array<int64> [ ])
-  push(getOr(n.tree.children[n.id], new Array<int64> []), childId)
+  const childId = length(n.tree.vals);
+  push(n.tree.vals, val);
+  push(n.tree.parents, n.id);
+  push(n.tree.children, new Array<int64> [ ]);
+  push(getOr(n.tree.children[n.id], new Array<int64> []), childId);
   return new Node<any> {
-    id = childId
-    tree = n.tree
-  }
+    id: childId,
+    tree: n.tree,
+  };
 }
 
 export fn addChild(t: Tree<any>, val: any): Node<any> = t.getRootNode().addChild(val)
