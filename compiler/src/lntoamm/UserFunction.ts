@@ -377,7 +377,7 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
     return replacementStatements
   }
 
-  maybeTransform(interfaceMap: Map<Type, Type>) {
+  maybeTransform(interfaceMap: Map<Type, Type>, scope?: Scope) {
     if (
       this.statements.some(s => s.isConditionalStatement()) ||
       this.statements.some(s => s.hasObjectLiteral())
@@ -413,7 +413,12 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
             }
             originalType = baseType.solidify(generics, this.scope)
           }
-          const replacementType = originalType.realize(interfaceMap, this.scope)
+          let newScope = this.scope
+          if (scope !== undefined) {
+            newScope = new Scope(scope)
+            newScope.secondaryPar = this.scope
+          }
+          const replacementType = originalType.realize(interfaceMap, newScope)
           return `new ${replacementType.typename} ${openstr}`
         })
         const secondCorrection = corrected.replace(/: ([^:<]+)<([^{\)]+)>( *[,{\)])/g, (
@@ -594,7 +599,7 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
         internalNames[i],
       ))
     }
-    const fn = this.maybeTransform(interfaceMap)
+    const fn = this.maybeTransform(interfaceMap, scope)
     for (const s of fn.statements) {
       Microstatement.fromStatement(s, microstatements, scope)
     }

@@ -1,5 +1,5 @@
 /**
- * @std/http - Built-in client (and eventually server) for http
+ * @std/http - Built-in client and server for http
  */
 
 /**
