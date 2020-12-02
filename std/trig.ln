@@ -38,7 +38,7 @@ export fn cosecant(x: float32) = toFloat32(cosecant(toFloat64(x)))
 
 export fn cot(x: float64) = 1.0 / tanf64(x)
 export fn cot(x: float32) = toFloat32(cot(toFloat64(x)))
-export fn cotangent(x: float64) = 1.0 / tanaf64(x)
+export fn cotangent(x: float64) = 1.0 / tanf64(x)
 export fn cotangent(x: float32) = toFloat32(cotangent(toFloat64(x)))
 
 export fn asin(x: float64) = asinf64(x)
