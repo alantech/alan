@@ -35,10 +35,10 @@ Describe "Conditionals"
           const isTrue = true == true;
           cond(isTrue, fn {
             print(\"It's true!\");
-          })
+          });
           cond(!isTrue, fn {
             print('This should not have run');
-          })
+          });
 
           emit exit 0;
         }
