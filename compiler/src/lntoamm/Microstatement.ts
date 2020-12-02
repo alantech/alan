@@ -1575,7 +1575,7 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
       }
       if (maxPrecedence == -1 || maxOperatorLoc == -1) {
         let errMsg = `Cannot resolve operators with remaining statement
-${withoperators.getText()}`
+${assignablesAst.getText()}`
         let withOperatorsTranslation = []
         for (let i = 0; i < withOperatorsList.length; i++) {
           const node = withOperatorsList[i]
