@@ -96,7 +96,7 @@ events : EVENT blank* VARNAME blank* TYPESEP blank* fulltypename;
 
 eventref : typename;
 
-handlers : ON blank+ eventref blank+ (functions | eventref | functionbody);
+handlers : ON blank+ eventref blank+ (functions | typename | functionbody);
 
 interfaces : INTERFACE WS* VARNAME WS* (interfacebody | (EQUALS blank* VARNAME));
 

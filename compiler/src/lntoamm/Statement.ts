@@ -24,17 +24,19 @@ class Statement {
   }
 
   static baseAssignableHasObjectLiteral(baseAssignableAst: any) { // TODO: Remove ANTLR
-    if (baseAssignableAst.objectliterals()) return true
-    return false
+    return !!baseAssignableAst.objectliterals()
   }
 
   static assignablesHasObjectLiteral(assignablesAst: any) { // TODO: Remove ANTLR
-    for (const ba of assignablesAst.baseassignables()) {
-      if (Statement.baseAssignableHasObjectLiteral(ba)) return true
-      if (!!ba.fncall() && !!ba.fncall().assignablelist()) {
-        const innerAssignables = ba.fncall().assignablelist().assignables()
-        for (const ia of innerAssignables) {
-          if (Statement.assignablesHasObjectLiteral(ia)) return true
+    for (const wo of assignablesAst.withoperators()) {
+      if (!!wo.operators()) continue
+      for (const ba of wo.baseassignable()) {
+        if (Statement.baseAssignableHasObjectLiteral(ba)) return true
+        if (!!ba.fncall() && !!ba.fncall().assignablelist()) {
+          const innerAssignables = ba.fncall().assignablelist().assignables()
+          for (const ia of innerAssignables) {
+            if (Statement.assignablesHasObjectLiteral(ia)) return true
+          }
         }
       }
     }

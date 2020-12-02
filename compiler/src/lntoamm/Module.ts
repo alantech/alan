@@ -172,7 +172,7 @@ class Module {
       const isPrefix = operatorAst.INFIX() === null
       const name = operatorAst.fntoop().operators().getText().trim()
       const precedence = parseInt(operatorAst.opprecedence().NUMBERCONSTANT().getText(), 10)
-      const fns = module.moduleScope.deepGet(operatorAst.fntoop().varn().getText()) as Array<Fn>
+      const fns = module.moduleScope.deepGet(operatorAst.fntoop().eventref().getText()) as Array<Fn>
       if (fns == null) {
         throw new Error("Operator " + name + " declared for unknown function " + operatorAst.varn().getText())
       }
@@ -242,9 +242,9 @@ class Module {
         const isPrefix = operatorAst.INFIX() == null
         const name = operatorAst.fntoop().operators().getText().trim()
         const precedence = parseInt(operatorAst.opprecedence().NUMBERCONSTANT().getText(), 10)
-        let fns = module.exportScope.deepGet(operatorAst.fntoop().varn().getText()) as Array<Fn>
+        let fns = module.exportScope.deepGet(operatorAst.fntoop().eventref().getText()) as Array<Fn>
         if (!fns) {
-          fns = module.moduleScope.deepGet(operatorAst.fntoop().varn().getText()) as Array<Fn>
+          fns = module.moduleScope.deepGet(operatorAst.fntoop().eventref().getText()) as Array<Fn>
           if (!!fns) {
             throw new Error(
               "Exported operator " +
@@ -291,11 +291,8 @@ class Module {
     const handlers = ast.handlers()
     for (const handlerAst of handlers) {
       let evt = null
-      if (handlerAst.eventref().varn() != null) {
-        evt = module.moduleScope.deepGet(handlerAst.eventref().varn().getText()) as Event
-      } else if (handlerAst.eventref().calls() != null) {
-        throw new Error("Not yet implemented!")
-        // evt = AFunction.callFromAst(handlerAst.eventref().calls(), module.moduleScope)
+      if (handlerAst.eventref() != null) {
+        evt = module.moduleScope.deepGet(handlerAst.eventref().getText()) as Event
       }
       if (!evt) {
         throw new Error("Could not find specified event: " + handlerAst.eventref().getText())
@@ -304,9 +301,9 @@ class Module {
         throw new Error(handlerAst.eventref().getText() + " is not an event")
       }
       let fn = null
-      if (handlerAst.varn() != null) {
-        const fnName = handlerAst.varn().getText()
-        const fns = module.moduleScope.deepGet(handlerAst.varn().getText()) as Array<Fn>
+      if (handlerAst.typename() != null) {
+        const fnName = handlerAst.typename().getText()
+        const fns = module.moduleScope.deepGet(handlerAst.typename().getText()) as Array<Fn>
         if (!fns) {
           throw new Error("Could not find specified function: " + fnName)
         }

@@ -89,9 +89,6 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
               throw new Error("Could not find type " + argsAst.fulltypename(i).getText() + " for argument " + argName)
             }
             if (!(getArgType instanceof Type)) {
-              console.log({
-                getArgType,
-              })
               throw new Error("Function argument is not a valid type: " + argsAst.fulltypename(i).getText())
             }
             let genericTypes = []
@@ -104,9 +101,6 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
           }
         }
         if (!(getArgType instanceof Type)) {
-          console.log({
-            getArgType,
-          })
           throw new Error("Function argument is not a valid type: " + argsAst.fulltypename(i).getText())
         }
         args[argName] = getArgType
@@ -169,17 +163,7 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
             arg,
           ))
         })
-        console.log({
-          args,
-          microstatements,
-        })
         Microstatement.fromAssignablesAst(assignablesAst, scope, microstatements)
-        if (microstatements.length === 0) {
-          console.log({
-            assignable: assignablesAst.getText(),
-            fn: functionAst.getText(),
-          })
-        }
         returnType = microstatements[microstatements.length - 1].outputType
       } else {
         // TODO: Generalize this hackery for opcodes that take closure functions
