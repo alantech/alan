@@ -7,20 +7,20 @@ Describe "Closure Functions"
         from @std/app import start, print, exit
 
         fn closure(): function {
-          let num = 0
+          let num = 0;
           return fn (): int64 {
-            num = num + 1
-            return num
+            num = num + 1;
+            return num;
           }
         }
 
         on start fn (): void {
-          const counter1 = closure()
-          const counter2 = closure()
-          print(counter1())
-          print(counter1())
-          print(counter2())
-          emit exit 0
+          const counter1 = closure();
+          const counter2 = closure();
+          print(counter1());
+          print(counter1());
+          print(counter2());
+          emit exit 0;
         }
       "
     }
@@ -54,9 +54,9 @@ Describe "Closure Functions"
         fn double(x: int64): int64 = x * 2
 
         on start {
-          const numbers = [1, 2, 3, 4, 5]
-          numbers.map(double).map(toString).join(', ').print()
-          emit exit 0
+          const numbers = [1, 2, 3, 4, 5];
+          numbers.map(double).map(toString).join(', ').print();
+          emit exit 0;
         }
       "
     }

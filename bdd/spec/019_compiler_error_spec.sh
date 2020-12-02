@@ -8,8 +8,8 @@ Describe "Compiler Errors"
         from @std/app import start, print, exit
 
         on start {
-          print(true == 1)
-          emit exit 0
+          print(true == 1);
+          emit exit 0;
         }
       "
     }
@@ -36,13 +36,13 @@ true == 1
         from @std/app import start, print, exit
 
         fn unreachable() {
-          return 'blah'
-          print('unreachable!')
+          return 'blah';
+          print('unreachable!');
         }
 
         on start {
-          unreachable()
-          emit exit 0
+          unreachable();
+          emit exit 0;
         }
       "
     }
@@ -58,7 +58,7 @@ true == 1
       The status should not eq "0"
       # TODO: What file?
       The error should eq "Unreachable code in function 'unreachable' after:
-return 'blah' on line 5:10"
+return 'blah'; on line 5:10"
     End
   End
 
@@ -69,19 +69,19 @@ return 'blah' on line 5:10"
 
         fn fibonacci(n: int64) {
           if n < 2 {
-            return 1
+            return 1;
           } else {
-            return fibonacci(n - 1) + fibonacci(n - 2)
+            return fibonacci(n - 1) + fibonacci(n - 2);
           }
         }
 
         on start {
-          print(fibonacci(0))
-          print(fibonacci(1))
-          print(fibonacci(2))
-          print(fibonacci(3))
-          print(fibonacci(4))
-          emit exit 0
+          print(fibonacci(0));
+          print(fibonacci(1));
+          print(fibonacci(2));
+          print(fibonacci(3));
+          print(fibonacci(4));
+          emit exit 0;
         }
       "
     }
@@ -106,8 +106,8 @@ return 'blah' on line 5:10"
         from @std/app import start, print, exit
 
         on start {
-          print(i64str(5)) // Illegal direct opcode usage
-          emit exit 0
+          print(i64str(5)); // Illegal direct opcode usage
+          emit exit 0;
         }
       "
     }
@@ -164,15 +164,15 @@ return 'blah' on line 5:10"
 
         on start {
           const piece = new Piece {
-            owner = false
-          }
-          print('Hello World')
+            owner: false
+          };
+          print('Hello World');
           if piece.owner == true {
-            print('OK')
+            print('OK');
           } else {
-            print('False')
+            print('False');
           }
-          emit exit 0
+          emit exit 0;
         }
       "
     }
@@ -189,7 +189,7 @@ return 'blah' on line 5:10"
       The status should not eq "0"
       The error should eq "Piece is not a type
 new Piece {
-            owner = false
+            owner: false
           } on line 2:24"
     End
   End

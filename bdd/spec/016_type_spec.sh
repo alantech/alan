@@ -7,7 +7,7 @@ Describe "Type detection"
         from @std/app import start, print, exit
 
         type foo<A, B> {
-          bar: A
+          bar: A,
           baz: B
         }
 
@@ -15,27 +15,27 @@ Describe "Type detection"
 
         on start fn {
           let a = new foo<string, int64> {
-            bar = 'bar'
-            baz = 0
-          }
+            bar: 'bar',
+            baz: 0
+          };
           let b = new foo<int64, bool> {
-            bar = 0
-            baz = true
-          }
+            bar: 0,
+            baz: true
+          };
           let c = new foo2 {
-            bar = 0
-            baz = 1.23
-          }
+            bar: 0,
+            baz: 1.23
+          };
           let d = new foo<int64, float64> {
-            bar = 1
-            baz = 3.14
-          }
-          print(a.bar)
-          print(b.bar)
-          print(c.bar)
-          print(d.bar)
+            bar: 1,
+            baz: 3.14
+          };
+          print(a.bar);
+          print(b.bar);
+          print(c.bar);
+          print(d.bar);
 
-          emit exit 0
+          emit exit 0;
         }
       "
     }

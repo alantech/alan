@@ -6,8 +6,8 @@ Describe "@std/deps"
       from @std/deps import install, add, commit
 
       on install {
-        add('https://github.com/alantech/hellodep')
-        commit()
+        add('https://github.com/alantech/hellodep');
+        commit();
       }
     "
   }

@@ -6,8 +6,8 @@ Describe "Printing"
       sourceToAll "
         from @std/app import start, print, exit
         on start {
-          print('Hello, World')
-          emit exit 0
+          print('Hello, World');
+          emit exit 0;
         }
       "
     }
@@ -34,8 +34,8 @@ Describe "Printing"
       sourceToAll "
         from @std/app import start, stdout, exit
         on start {
-          emit stdout 'Hello, World'
-          emit exit 0
+          emit stdout 'Hello, World';
+          emit exit 0;
         }
       "
     }
