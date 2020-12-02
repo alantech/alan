@@ -175,6 +175,9 @@ class Microstatement {
         globalConst.name,
       ))
     }
+    console.log({
+      original,
+    })
     return original
   }
 
@@ -348,6 +351,7 @@ ${varAst.getText()} on line ${varAst.start.line}:${varAst.start.column}`)
     ))
   }
 
+  /*
   static fromBaseAssignablesAst(
     baseAssignablesAst: any, // TODO: Eliminate ANTLR
     scope: Scope,
@@ -668,6 +672,266 @@ ${baseAssignablesAst.getText()} on line ${baseAssignablesAst.start.line}:${baseA
       // If object literal parsing has made it this far, it's a Map literal that is not yet supported
       throw new Error(`${baseAssignablesAst.objectliterals().mapliteral().fulltypename().getText().trim()} not yet supported
 ${baseAssignablesAst.getText()} on line ${baseAssignablesAst.start.line}:${baseAssignablesAst.start.column}`)
+    }
+  }
+  */
+
+  static fromObjectLiteralsAst(
+    objectLiteralsAst: any, // TODO: Eliminate ANTLR
+    scope: Scope,
+    microstatements: Array<Microstatement>,
+  ) {
+    if (objectLiteralsAst.arrayliteral()) {
+      // Array literals first need all of the microstatements of the array contents defined, then
+      // a `newarr` opcode call is inserted for the object literal itself, then `pusharr` opcode
+      // calls are emitted to insert the relevant data into the array, and finally the array itself
+      // is REREFed for the outer microstatement generation call.
+      const arrayLiteralContents = []
+      const assignablelist = objectLiteralsAst.arrayliteral().arraybase().assignablelist()
+      const assignableLen = assignablelist ? assignablelist.assignables().length : 0
+      for (let i = 0; i < assignableLen; i++) {
+        Microstatement.fromAssignablesAst(assignablelist.assignables(i), scope, microstatements)
+        arrayLiteralContents.push(microstatements[microstatements.length - 1])
+      }
+      let typeBox = null
+      if (objectLiteralsAst.arrayliteral().literaldec()) {
+        typeBox = scope.deepGet(
+          objectLiteralsAst.arrayliteral().literaldec().fulltypename().getText().trim()
+        ) as Type
+        if (!typeBox) {
+          // Try to define it if it's a generic type
+          if (objectLiteralsAst.arrayliteral().literaldec().fulltypename().typegenerics()) {
+            const outerTypeBox = scope.deepGet(
+              objectLiteralsAst.arrayliteral().literaldec().fulltypename().typename().getText().trim()
+            ) as Type
+            if (!outerTypeBox) {
+              throw new Error(`${objectLiteralsAst.arrayliteral().literaldec().fulltypename().getText()}  is not defined
+${objectLiteralsAst.getText()} on line ${objectLiteralsAst.start.line}:${objectLiteralsAst.start.column}`)
+            }
+            outerTypeBox.solidify(
+              objectLiteralsAst.arrayliteral().literaldec().fulltypename().typegenerics().fulltypename().map(
+                (t: any) => t.getText() // TODO: Eliminate ANTLR
+              ),
+              scope
+            )
+            typeBox = scope.deepGet(objectLiteralsAst.arrayliteral().literaldec().fulltypename().getText().trim())
+          }
+        }
+        if (!(typeBox instanceof Type)) {
+          throw new Error(`${objectLiteralsAst.arrayliteral().literaldec().fulltypename().getText().trim()} is not a type
+${objectLiteralsAst.getText()} on line ${objectLiteralsAst.start.line}:${objectLiteralsAst.start.column}`)
+        }
+      } else if (arrayLiteralContents.length > 0) {
+        const innerType = arrayLiteralContents[0].outputType.typename
+        Type.builtinTypes['Array'].solidify([innerType], scope)
+        typeBox = scope.deepGet(`Array<${innerType}>`) as Type
+      } else {
+        throw new Error(`Ambiguous array type, please specify the type for an empty array with the syntax \`new Array<MyType> []\`
+${objectLiteralsAst.getText()} on line ${objectLiteralsAst.start.line}:${objectLiteralsAst.start.column}`)
+      }
+      // Create a new variable to hold the size of the array literal
+      const lenName = "_" + uuid().replace(/-/g, "_")
+      microstatements.push(new Microstatement(
+        StatementType.CONSTDEC,
+        scope,
+        true,
+        lenName,
+        Type.builtinTypes['int64'],
+        [`${arrayLiteralContents.length}`],
+        [],
+      ))
+      // Add the opcode to create a new array with the specified size
+      const opcodes = require('./opcodes').default
+      opcodes.exportScope.get('newarr')[0].microstatementInlining(
+        [lenName],
+        scope,
+        microstatements,
+      )
+      // Get the array microstatement and extract the name and insert the correct type
+      const array = microstatements[microstatements.length - 1]
+      array.outputType = typeBox
+      // Try to use the "real" type if knowable
+      if (arrayLiteralContents.length > 0) {
+        array.outputType = Type.builtinTypes['Array'].solidify(
+          [arrayLiteralContents[0].outputType.typename],
+          scope,
+        )
+      }
+      const arrayName = array.outputName
+      // Push the values into the array
+      for (let i = 0; i < arrayLiteralContents.length; i++) {
+        // Create a new variable to hold the size of the array value
+        const size = FIXED_TYPES.includes(arrayLiteralContents[i].outputType.typename) ? "8" : "0"
+        const sizeName = "_" + uuid().replace(/-/g, "_")
+        microstatements.push(new Microstatement(
+          StatementType.CONSTDEC,
+          scope,
+          true,
+          sizeName,
+          Type.builtinTypes['int64'],
+          [size],
+          [],
+        ))
+        // Push the value into the array
+        const opcodes = require('./opcodes').default
+        opcodes.exportScope.get('pusharr')[0].microstatementInlining(
+          [arrayName, arrayLiteralContents[i].outputName, sizeName],
+          scope,
+          microstatements,
+        )
+      }
+      // REREF the array
+      microstatements.push(new Microstatement(
+        StatementType.REREF,
+        scope,
+        true,
+        arrayName,
+        array.outputType,
+        [],
+        [],
+      ))
+    } else if (!!objectLiteralsAst.typeliteral()) {
+      // User types are represented in AMM and lower as `Array<any>`. This reduces the number of
+      // concepts that have to be maintained in the execution layer (and is really what C structs
+      // are, anyways). The order of the properties on the specified type directly map to the
+      // order that they are inserted into the Array, not the order they're defined in the object
+      // literal notation, so reads and updates later on can occur predictably by mapping the name
+      // of the property to its array index.
+      //
+      // If the type literal is missing any fields, that's a hard compile error to make sure
+      // accessing undefined data is impossible. If a value might not be needed, they should use
+      // the `Option` type and provide a `None` value there.
+      let typeBox = scope.deepGet(
+        objectLiteralsAst.typeliteral().literaldec().fulltypename().getText().trim()
+      ) as Type
+      if (typeBox === null) {
+        // Try to define it if it's a generic type
+        if (objectLiteralsAst.typeliteral().literaldec().fulltypename().typegenerics()) {
+          const outerTypeBox = scope.deepGet(
+            objectLiteralsAst.typeliteral().literaldec().fulltypename().typename().getText().trim()
+          )
+          if (outerTypeBox === null) {
+            throw new Error(`${objectLiteralsAst.typeliteral().literaldec().fulltypename().getText()}  is not defined
+${objectLiteralsAst.getText()} on line ${objectLiteralsAst.start.line}:${objectLiteralsAst.start.column}`)
+          }
+          (outerTypeBox as Type).solidify(
+            objectLiteralsAst.typeliteral().literaldec().fulltypename().typegenerics().fulltypename().map(
+              (t: any) => t.getText() // TODO: Eliminate ANTLR
+            ),
+            scope
+          )
+          typeBox = scope.deepGet(objectLiteralsAst.typeliteral().literaldec().fulltypename().getText().trim()) as Type
+        }
+      }
+      if (!(typeBox instanceof Type)) {
+        throw new Error(`${objectLiteralsAst.typeliteral().literaldec().fulltypename().getText().trim()} is not a type
+${objectLiteralsAst.getText()} on line ${objectLiteralsAst.start.line}:${objectLiteralsAst.start.column}`)
+      }
+      const assignlist = objectLiteralsAst.typeliteral().typebase().typeassignlist().assignments()
+      const assignfields = assignlist.VARNAME().map((f: any) => f.getText())
+      const assignvals = assignlist.assignables()
+      const fields = Object.keys(typeBox.properties)
+      let missingFields = []
+      let foundFields = []
+      let extraFields = []
+      let astLookup = {}
+      for (let i = 0; i < assignfields.length; i++) {
+        const assignfield = assignfields[i]
+        const assignval = assignvals[i]
+        astLookup[assignfield] = assignval
+        if (!fields.includes(assignfield)) {
+          extraFields.push(assignfield)
+        }
+        if (foundFields.includes(assignfield)) {
+          extraFields.push(assignfield)
+        }
+        foundFields.push(assignfield)
+      }
+      for (const field of fields) {
+        if (!foundFields.includes(field)) {
+          missingFields.push(field)
+        }
+      }
+      if (missingFields.length > 0 || extraFields.length > 0) {
+        let errMsg = `${objectLiteralsAst.typeliteral().literaldec().fulltypename().getText().trim()} object literal improperly defined`
+        if (missingFields.length > 0) {
+          errMsg += '\n' + `Missing fields: ${missingFields.join(', ')}`
+        }
+        if (extraFields.length > 0) {
+          errMsg += '\n' + `Extra fields: ${extraFields.join(', ')}`
+        }
+        errMsg += '\n' +
+          objectLiteralsAst.getText() +
+          " on line " +
+          objectLiteralsAst.start.line +
+          ":" +
+          objectLiteralsAst.start.column
+        throw new Error(errMsg)
+      }
+      // The assignment looks good, now we'll mimic the array literal logic mostly
+      const arrayLiteralContents = []
+      for (let i = 0; i < fields.length; i++) {
+        Microstatement.fromAssignablesAst(
+          astLookup[fields[i]],
+          scope,
+          microstatements
+        )
+        arrayLiteralContents.push(microstatements[microstatements.length - 1])
+      }
+      // Create a new variable to hold the size of the array literal
+      const lenName = "_" + uuid().replace(/-/g, "_")
+      microstatements.push(new Microstatement(
+        StatementType.CONSTDEC,
+        scope,
+        true,
+        lenName,
+        Type.builtinTypes['int64'],
+        [`${fields.length}`],
+        [],
+      ))
+      // Add the opcode to create a new array with the specified size
+      const opcodes = require('./opcodes').default
+      opcodes.exportScope.get('newarr')[0].microstatementInlining(
+        [lenName],
+        scope,
+        microstatements,
+      )
+      // Get the array microstatement and extract the name and insert the correct type
+      const array = microstatements[microstatements.length - 1]
+      array.outputType = typeBox
+      const arrayName = array.outputName
+      // Push the values into the array
+      for (let i = 0; i < arrayLiteralContents.length; i++) {
+        // Create a new variable to hold the size of the array value
+        const size = FIXED_TYPES.includes(arrayLiteralContents[i].outputType.typename) ? "8" : "0"
+        const sizeName = "_" + uuid().replace(/-/g, "_")
+        microstatements.push(new Microstatement(
+          StatementType.CONSTDEC,
+          scope,
+          true,
+          sizeName,
+          Type.builtinTypes['int64'],
+          [size],
+          [],
+        ))
+        // Push the value into the array
+        const opcodes = require('./opcodes').default
+        opcodes.exportScope.get('pusharr')[0].microstatementInlining(
+          [arrayName, arrayLiteralContents[i].outputName, sizeName],
+          scope,
+          microstatements,
+        )
+      }
+      // REREF the array
+      microstatements.push(new Microstatement(
+        StatementType.REREF,
+        scope,
+        true,
+        arrayName,
+        array.outputType,
+        [],
+        [],
+      ))
     }
   }
 
@@ -1804,28 +2068,12 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
           const argAsts = fncall.assignablelist() ? fncall.assignablelist().assignables() : []
           const argMicrostatements = argAsts.map(arg => {
             Microstatement.fromAssignablesAst(arg, scope, microstatements)
-            /*let last = microstatements[microstatements.length - 1]
-            if (last.alias !== "" || last.outputType.iface !== null) {
-              for (const m of microstatements) {
-                if (m.outputName === last.outputName && m.outputType.iface === null) {
-                  last = m
-                  break
-                }
-              }
-            }
-            return last*/
             return microstatements[microstatements.length - 1]
           })
           if (currVal === null) {
             // This is a basic function call
             const realArgNames = argMicrostatements.map(arg => arg.outputName)
             const realArgTypes = argMicrostatements.map(arg => arg.outputType)
-            console.log({
-              realArgNames,
-              realArgTypes,
-              argMicrostatements,
-              microstatements,
-            })
             // Do a scan of the microstatements for an inner defined closure that might exist.
             const fn = scope.deepGet(baseassignable.VARNAME().getText()) as Array<Fn>
             if (
@@ -1868,26 +2116,56 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
               // with the return statement turned into a const assignment as the last statement,
               // while built-in functions are kept as function calls with the correct renaming.
               console.log({
+                hi: 1,
                 fnName: fn[0].getName(),
+                realArgNames,
                 realArgTypes,
+                argAstStrs: argAsts.map(a => a.getText()),
+                argMicrostatements,
+                microstatements,
               })
               UserFunction
                 .dispatchFn(fn, realArgTypes, scope)
                 .microstatementInlining(realArgNames, scope, microstatements)
               currVal = microstatements[microstatements.length - 1]
             }
-          } else {
+          } else if (currVal instanceof Scope) {
+            // This is calling a function by its parent scope
+            const realArgNames = argMicrostatements.map(arg => arg.outputName)
+            const realArgTypes = argMicrostatements.map(arg => arg.outputType)
+            const fn = currVal.deepGet(baseassignable.VARNAME().getText()) as Array<Fn>
+            if (
+              !fn ||
+              !(fn instanceof Array && fn[0].microstatementInlining instanceof Function)
+            ) {
+              throw new Error(`${baseassignable.VARNAME().getText()} is not a function but used as one.
+${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+            }
+            // Generate the relevant microstatements for this function. UserFunctions get inlined
+            // with the return statement turned into a const assignment as the last statement,
+            // while built-in functions are kept as function calls with the correct renaming.
+            console.log({
+              hi: 2,
+              fnName: fn[0].getName(),
+              realArgNames,
+              realArgTypes,
+            })
+            UserFunction
+              .dispatchFn(fn, realArgTypes, scope)
+              .microstatementInlining(realArgNames, scope, microstatements)
+            currVal = microstatements[microstatements.length - 1]
+          } else { // It's a method-style function call
             // TODO
           }
         } else {
           if (currVal === null) {
-            let thing = scope.deepGet(baseassignable.VARNAME().getText())
+            let thing = Microstatement.fromVarName(
+              baseassignable.VARNAME().getText(),
+              scope,
+              microstatements,
+            )
             if (!thing) {
-              thing = Microstatement.fromVarName(
-                baseassignable.VARNAME().getText(),
-                scope,
-                microstatements,
-              )
+              thing = scope.deepGet(baseassignable.VARNAME().getText())
             }
             if (!thing) {
               throw new Error(`${baseassignable.VARNAME().getText()} not found.
@@ -1938,11 +2216,89 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
           } else {
             // What is this?
             throw new Error(`Impossible path found. Bug in compiler, please report!
-  Previous value type: ${typeof currVal}
-  ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+Previous value type: ${typeof currVal}
+${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
           }
         }
+      } else if (!!baseassignable.constants()) {
+        if (currVal !== null) {
+          throw new Error(`Unexpected constant value detected.
+Previous value type: ${typeof currVal}
+${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+        }
+        Microstatement.fromConstantsAst(baseassignable.constants(), scope, microstatements)
+        currVal = microstatements[microstatements.length - 1]
+      } else if (!!baseassignable.functions()) {
+        if (currVal !== null) {
+          throw new Error(`Unexpected function definition detected.
+Previous value type: ${typeof currVal}
+${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+        }
+        const fn = UserFunction.fromFunctionsAst(baseassignable.functions(), scope)
+        currVal = fn // TODO: Is this the right choice here?
+      } else if (!!baseassignable.objectliterals()) {
+        if (currVal === null) {
+          // Has to be a "normal" object literal in this case
+          Microstatement.fromObjectLiteralsAst(
+            baseassignable.objectliterals(),
+            scope,
+            microstatements
+          )
+          currVal = microstatements[microstatements.length - 1]
+        } else {
+          // Can only be an array accessor syntax
+          const objlit = baseassignable.objectliterals()
+          if (!!objlit.typeliteral() || !!objlit.arrayliteral().literaldec()) {
+            throw new Error(`Unexpected object literal definition detected.
+Previous value type: ${typeof currVal}
+${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+          }
+          const arrbase = objlit.arrayliteral().arraybase()
+          if (!arrbase.assignablelist() || arrbase.assignablelist().assignables().length !== 1) {
+            throw new Error(`Array access must provide only one index value to query the array with
+${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+          }
+          const assignableAst = arrbase.assignablelist().assignables(0)
+          Microstatement.fromAssignablesAst(assignableAst, scope, microstatements)
+          const arrIndex = microstatements[microstatements.length - 1]
+          if (arrIndex.outputType.typename !== 'int64') {
+            throw new Error(`Array access must be done with an int64 value
+${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+          }
+          if (
+            !(currVal instanceof Microstatement) ||
+            currVal.outputType.originalType.typename !== 'Array'
+          ) {
+            throw new Error(`Array access may only be performed on arrays.
+Previous value type: ${currVal.outputType.typename}
+${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+          }
+          // All of those safeguards out of the way, time to extract the desired value
+          // Insert a `resfrom` opcode.
+          const opcodes = require('./opcodes').default
+          opcodes.exportScope.get('resfrom')[0].microstatementInlining(
+            [currVal.outputName, arrIndex.outputName],
+            scope,
+            microstatements,
+          )
+          // We'll need a reference to this for later
+          const arrayRecord = currVal
+          // Update to this newly-generated microstatement
+          currVal = microstatements[microstatements.length - 1]
+          // Now we do something odd, but correct here; we need to replace the `outputType` from
+          // `any` to the type that was actually copied so function resolution continues to work
+          currVal.outputType = Type.builtinTypes.Result.solidify(
+            [Object.values(arrayRecord.outputType.properties)[0].typename],
+            scope,
+          )
+        }
       }
+    }
+    if (!(currVal instanceof Microstatement)) {
+      console.log('what')
+      console.log(currVal)
+      console.log(currVal && currVal[0] && currVal[0].hasOwnProperty('getName') && currVal[0].getName())
+      console.log('endwhat')
     }
     microstatements.push(new Microstatement(
       StatementType.REREF,

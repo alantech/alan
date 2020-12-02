@@ -322,7 +322,7 @@ export class Type {
             const generic = genericsQueue.pop()
             const innerType = typeScope.deepGet(generic.getText()) as Type
             if (!innerType) {
-              const innerBaseTypeName = generic.varn().getText()
+              const innerBaseTypeName = generic.typename().getText()
               const innerBaseType = typeScope.deepGet(innerBaseTypeName) as Type
               if (!innerBaseType) {
                 throw new Error('wut')
