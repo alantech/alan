@@ -596,7 +596,7 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
         const lastTypeAst = Ast.fulltypenameAstFromString(last.outputType.typename)
         const lastTypeGenerics = lastTypeAst.typegenerics()
         const lastSubtypes = lastTypeGenerics ? lastTypeGenerics.fulltypename().map(
-          (t: any) => scope.deepGet(t.getText()) || (scope.deepGet(t.varn().getText()) as Type).solidify(
+          (t: any) => scope.deepGet(t.getText()) || (scope.deepGet(t.typename().getText()) as Type).solidify(
             t.typegenerics().fulltypename().map((t: any) => t.getText()),
             scope
           )
