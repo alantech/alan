@@ -33,8 +33,8 @@ Describe "Object literals"
 Missing fields: bar, baz
 Extra fields: bay
 new Foo {
-            bay: 1.23
-          } on line 2:22"
+            bay: 1.23,
+          } on line 3:22"
     End
   End
 
