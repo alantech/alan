@@ -58,7 +58,7 @@ true == 1
       The status should not eq "0"
       # TODO: What file?
       The error should eq "Unreachable code in function 'unreachable' after:
-return 'blah'; on line 5:10"
+return 'blah'; on line 4:26"
     End
   End
 
@@ -122,7 +122,8 @@ return 'blah'; on line 5:10"
       When run alan compile test_$$/temp.ln test_$$/temp.amm
       The status should not eq "0"
       # TODO: What file, line, and character?
-      The error should eq "Undefined function called: i64str"
+      The error should eq "i64str is not a function but used as one.
+i64str on line 5:16"
     End
   End
 
@@ -190,7 +191,7 @@ return 'blah'; on line 5:10"
       The error should eq "Piece is not a type
 new Piece {
             owner: false
-          } on line 2:24"
+          } on line 3:24"
     End
   End
 End

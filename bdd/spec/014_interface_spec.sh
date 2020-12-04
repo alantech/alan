@@ -213,8 +213,8 @@ Describe "Interfaces"
             time: dt.time,
             timezone: new HourMinute {
               hour: timezone[0].toInt8(),
-              minute: timezone[1].toInt8()
-            };
+              minute: timezone[1].toInt8(),
+            }
           };
         }
 

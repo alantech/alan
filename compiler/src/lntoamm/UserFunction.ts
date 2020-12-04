@@ -425,15 +425,6 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
         const retNamePostfix = "_" + uuid().replace(/-/g, "_")
         const retVal = "retVal" + retNamePostfix
         const retNotSet = "retNotSet" + retNamePostfix
-        if (this.returnType.typename === 'Array<Node<int64>>') {
-          console.log({
-            typename: this.returnType.typename,
-            that: this,
-          })
-        }
-        console.log({
-          typename: this.returnType.typename,
-        })
         const retValStatement = Ast.statementAstFromString(`
           let ${retVal}: ${this.returnType.typename} = clone()
         `.trim() + ';\n')

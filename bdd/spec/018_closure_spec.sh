@@ -11,7 +11,7 @@ Describe "Closure Functions"
           return fn (): int64 {
             num = num + 1;
             return num;
-          }
+          };
         }
 
         on start fn (): void {

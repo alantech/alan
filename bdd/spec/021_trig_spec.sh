@@ -55,7 +55,7 @@ Describe "@std/trig"
         print(trig.aexs(0.5));
         print(trig.aexc(0.5));
         print(trig.acrd(0.5));
-;
+
         'Hyperbolic Trig functions'.print();
         print(trig.sinh(tau / 6.0));
         print(trig.cosh(tau / 6.0));

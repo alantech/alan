@@ -20,12 +20,12 @@ Describe "Printing"
 
     It "runs js"
       When run test_js
-      The output should eq "Hello, World\n"
+      The output should eq "Hello, World"
     End
 
     It "runs agc"
       When run test_agc
-      The output should eq "Hello, World\n"
+      The output should eq "Hello, World"
     End
   End
 
