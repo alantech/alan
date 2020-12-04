@@ -197,7 +197,7 @@ export class Interface {
             argTypenames.push(interfaceline.operatortypeline().leftarg().getText())
           }
           argTypenames.push(interfaceline.operatortypeline().rightarg().getText())
-          const returnTypename = interfaceline.operatortypeline().varn().getText()
+          const returnTypename = interfaceline.operatortypeline().fulltypename().getText()
           const args = argTypenames.map(n => {
             const box = scope.deepGet(n)
             if (!box || !(box instanceof Type)) {
