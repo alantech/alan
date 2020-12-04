@@ -888,18 +888,6 @@ ${letName} on line ${assignmentsAst.line}:${assignmentsAst.start.column}`)
               newSubtypes.push(originalSubtypes[i])
             } else {
               let originalSubtype = scope.deepGet(originalSubtypes[i]) as Type
-              if (!originalSubtype) {
-                console.log(scope)
-                console.log(microstatements.map(m => m.toString()).join('\n'))
-              }
-              console.log({
-                a: assignmentsAst.getText(),
-                original,
-                fnName: original.fns[0].getName(),
-                originalSubtypes,
-                subtypei: originalSubtypes[i],
-                originalSubtype,
-              })
               if (!!originalSubtype.iface) {
                 newSubtypes.push(lastSubtypes[i])
               } else if (!!originalSubtype.originalType) {
@@ -1525,9 +1513,6 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
         const operator = operatorOrAssignable.operators()
         const op = scope.deepGet(operator.getText())
         if (op == null || !(op instanceof Array && op[0] instanceof Operator)) {
-          console.log({
-            a: assignablesAst.getText(),
-          })
           throw new Error("Operator " + operator.getText() + " is not defined")
         }
         withOperatorsList.push(op)

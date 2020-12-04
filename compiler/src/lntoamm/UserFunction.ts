@@ -128,9 +128,6 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
         }
       }
       returnType = getReturnType
-    } else {
-      // TODO: Infer the return type by finding the return value and tracing backwards
-      returnType = Type.builtinTypes["void"]
     }
     let pure = true
     let statements = []
@@ -142,13 +139,14 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
         if (!statement.pure) pure = false
         statements.push(statement)
       }
+      if (returnType === null) returnType = Type.builtinTypes['void']
     } else {
       const assignablesAst = functionAst.fullfunctionbody().assignables()
       const statementAst = Ast.statementAstFromString(`return ${assignablesAst.getText()};\n`)
       const statement = Statement.create(statementAst, scope)
       if (!statement.pure) pure = false
       statements.push(statement)
-      if (Object.keys(args).every(arg => args[arg].typename !== 'function')) {
+      if (!returnType && Object.keys(args).every(arg => args[arg].typename !== 'function')) {
         // We're going to use the Microstatement logic here
         const microstatements = []
         Object.keys(args).forEach(arg => {
@@ -433,6 +431,9 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
             that: this,
           })
         }
+        console.log({
+          typename: this.returnType.typename,
+        })
         const retValStatement = Ast.statementAstFromString(`
           let ${retVal}: ${this.returnType.typename} = clone()
         `.trim() + ';\n')

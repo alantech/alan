@@ -703,7 +703,7 @@ export fn getTree(n: Node<any>): Tree<any> = n.tree
 export fn length(t: Tree<any>): int64 = length(t.vals)
 
 export fn getNodeById(t: Tree<any>, i: int64): Node<any> {
-  if length(t.vals) > i {
+  if length(t.vals).gt(i) {
     return new Node<any> {
       id: i,
       tree: t,
