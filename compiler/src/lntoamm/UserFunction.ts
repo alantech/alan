@@ -203,8 +203,8 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
     `.trim() + ';\n')
     const condBlockFn = (cond.blocklikes(0).functionbody() ?
       UserFunction.fromFunctionbodyAst(cond.blocklikes(0).functionbody(), scope) :
-      cond.blocklikes(0).varn() ?
-        scope.deepGet(cond.blocklikes(0).varn().getText())[0] :
+      cond.blocklikes(0).eventref() ?
+        scope.deepGet(cond.blocklikes(0).eventref().getText())[0] :
         UserFunction.fromFunctionsAst(cond.blocklikes(0).functions(), scope)
     ).maybeTransform(new Map())
     if (condBlockFn.statements[condBlockFn.statements.length - 1].isReturnStatement()) {
@@ -219,8 +219,8 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
       if (!!cond.blocklikes(1)) {
         const elseBlockFn = (cond.blocklikes(1).functionbody() ?
           UserFunction.fromFunctionbodyAst(cond.blocklikes(1).functionbody(), scope) :
-          cond.blocklikes(1).varn() ?
-            scope.deepGet(cond.blocklikes(1).varn().getText())[0] :
+          cond.blocklikes(1).eventref() ?
+            scope.deepGet(cond.blocklikes(1).eventref().getText())[0] :
             UserFunction.fromFunctionsAst(cond.blocklikes(1).functions(), scope)
         ).maybeTransform(new Map())
         if (elseBlockFn.statements[elseBlockFn.statements.length - 1].isReturnStatement()) {
