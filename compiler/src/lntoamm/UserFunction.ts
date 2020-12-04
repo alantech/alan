@@ -163,7 +163,7 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
         })
         Microstatement.fromAssignablesAst(assignablesAst, scope, microstatements)
         returnType = microstatements[microstatements.length - 1].outputType
-      } else {
+      } else if (!returnType) {
         // TODO: Generalize this hackery for opcodes that take closure functions
         const opcodeName = assignablesAst.getText().split('(')[0]
         const opcode = scope.deepGet(opcodeName) as Array<Fn>
