@@ -2,7 +2,7 @@ grammar Ln;
 
 // Parser rules
 
-module : (blank* imports* (types | constdeclaration | functions | operatormapping | events | handlers | interfaces | exports | blank+)+) | EOF;
+module : (blank* imports* (types | (constdeclaration EOS) | functions | operatormapping | events | handlers | interfaces | exports | blank+)+) | EOF;
 
 blank : (WS | NEWLINE);
 
