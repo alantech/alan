@@ -231,7 +231,7 @@ Hello, World!"
         from @std/app import start, print, exit
 
         on start {
-          const count = [1, 2, 3, 4, 5] // Ah, ah, ahh!;
+          const count = [1, 2, 3, 4, 5]; // Ah, ah, ahh!
           const byTwos = count.map(fn (n: int64): int64 = n * 2);
           count.map(fn (n: int64) = toString(n)).join(', ').print();
           byTwos.map(fn (n: int64) = toString(n)).join(', ').print();
