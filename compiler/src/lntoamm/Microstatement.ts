@@ -81,6 +81,8 @@ class Microstatement {
           outString += " = " + this.fns[0].getName() + "(" + this.inputNames.join(", ") + ")"
         } else if (this.inputNames.length > 0) {
           outString += " = " + this.inputNames[0] // Doesn't appear the list is ever used here
+        } else {
+          outString += "NO!"
         }
         break
       case StatementType.CALL:
@@ -854,7 +856,17 @@ ${letName} on line ${assignmentsAst.line}:${assignmentsAst.start.column}`)
       )
       // By definition the last microstatement is the const assignment we care about, so we can
       // just mutate its object to rename the output variable name to the name we need instead.
-      const last = microstatements[microstatements.length - 1]
+      let last = microstatements[microstatements.length - 1]
+      if (last.statementType === StatementType.REREF) {
+        // Find what it's rereferencing and adjust that, instead
+        for (let i = microstatements.length - 2; i >=0; i--) {
+          let m = microstatements[i]
+          if (m.outputName === last.outputName && m.statementType !== StatementType.REREF) {
+            last = m
+            break
+          }
+        }
+      }
       last.outputName = actualLetName
       last.statementType = StatementType.ASSIGNMENT
       // Attempt to "merge" the output types, useful for multiple branches assigning into the same
