@@ -1343,6 +1343,8 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
               .microstatementInlining(realArgNames, scope, microstatements)
             currVal = microstatements[microstatements.length - 1]
           }
+          // Intentionally skip over the `fncall` block on the next iteration
+          i++
         } else {
           if (currVal === null) {
             let thing = Microstatement.fromVarName(
@@ -1481,6 +1483,32 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
             scope,
           )
         }
+      } else if (!!baseassignable.fncall()) {
+        // It's a `fncall` syntax block but it wasn't caught in a function call before, so it's
+        // either a function call on a returned function type, or it's an assignable group
+        if (!currVal) {
+          // It's probably an assignable group
+          if (
+            !baseassignable.fncall().assignablelist() ||
+            baseassignable.fncall().assignablelist().assignables().length !== 1
+          ) {
+            throw new Error(`Expected a group of assignable values, but got a function call signature.
+${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+          }
+          // It *is* an assignable group!
+          Microstatement.fromAssignablesAst(
+            baseassignable.fncall().assignablelist().assignables(0),
+            scope,
+            microstatements,
+          )
+          currVal = microstatements[microstatements.length - 1]
+        } else {
+          // TODO: handle functions/closures being called from access out of other function returns
+          // and the like
+        }
+      } else {
+        throw new Error(`Compiler error! Completely unhandled input.
+${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
       }
     }
     if (!(currVal instanceof Microstatement)) {
