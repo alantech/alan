@@ -201,8 +201,8 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
     let hasConditionalReturn = false // Flag for potential second pass
     const condName = "_" + uuid().replace(/-/g, "_")
     const condStatement = Ast.statementAstFromString(`
-      const ${condName}: bool = ${cond.withoperators().getText()}
-    `.trim() + '\n')
+      const ${condName}: bool = ${cond.assignables().getText()}
+    `.trim() + ';\n')
     const condBlockFn = (cond.blocklikes(0).functionbody() ?
       UserFunction.fromFunctionbodyAst(cond.blocklikes(0).functionbody(), scope) :
       cond.blocklikes(0).varn() ?
@@ -215,7 +215,7 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
     const condBlock = condBlockFn.toFnStr()
     const condCall = Ast.statementAstFromString(`
       cond(${condName}, ${condBlock})
-    `.trim() + '\n') // TODO: If the blocklike is a reference, grab it and inline it
+    `.trim() + ';\n') // TODO: If the blocklike is a reference, grab it and inline it
     newStatements.push(condStatement, condCall)
     if (!!cond.ELSE()) {
       if (!!cond.blocklikes(1)) {
@@ -230,8 +230,8 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
         }
         const elseBlock = elseBlockFn.toFnStr()
         const elseStatement = Ast.statementAstFromString(`
-          cond(!${condName}, ${elseBlock})
-        `.trim() + '\n')
+          cond(not(${condName}), ${elseBlock})
+        `.trim() + ';\n')
         newStatements.push(elseStatement)
       } else {
         const res = UserFunction.conditionalToCond(cond.conditionals(), scope)
@@ -241,7 +241,7 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
           cond(!${condName}, fn {
             ${innerCondStatements.map(s => s.getText()).join('\n')}
           })
-        `.trim() + '\n')
+        `.trim() + ';\n')
         newStatements.push(elseStatement)
       }
     }
@@ -257,35 +257,47 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
     let replacementStatements = []
     while (statements.length > 0) {
       const s = statements.shift()
-      // TODO: Support calls on things that return functions but aren't function names
-      if (s.calls() && s.calls().callbase(0).varn(0).getText().trim() === 'cond') {
+      // TODO: This doesn't work for actual direct-usage of `cond` in some sort of method chaining
+      // if that's even possible. Probably lots of other weirdness to deal with here.
+      if (
+        s.assignables() &&
+        s.assignables().withoperators(0).baseassignable().length >= 2 &&
+        s.assignables().withoperators(0).baseassignable(0).getText().trim() === 'cond' &&
+        s.assignables().withoperators(0).baseassignable(1).fncall()
+      ) {
         // Potentially need to rewrite
-        const args = s.calls().callbase(0).fncall().assignablelist()
+        const args = s.assignables().withoperators(0).baseassignable(1).fncall().assignablelist()
         if (args && args.assignables().length == 2) {
-          const block = args.assignables(1).basicassignables().functions()
-          const blockFn = UserFunction.fromAst(block, scope)
-          if (blockFn.statements[blockFn.statements.length - 1].isReturnStatement()) {
-            const innerStatements = blockFn.statements.map(s => s.statementAst)
-            const newBlockStatements = UserFunction.earlyReturnRewrite(
-              retVal, retNotSet, innerStatements, scope
-            )
-            const cond = args.assignables(0).getText().trim()
-            const newBlock = Ast.statementAstFromString(`
-              cond(${cond}, fn {
-                ${newBlockStatements.map(s => s.getText()).join('\n')}
-              })
-            `.trim() + '\n')
-            replacementStatements.push(newBlock)
-            if (statements.length > 0) {
-              const remainingStatements = UserFunction.earlyReturnRewrite(
-                retVal, retNotSet, statements, scope
+          const block = args.assignables(1).withoperators(0).baseassignable() ?
+            args.assignables(1).withoperators(0).baseassignable(0).functions() :
+            null
+          if (block) {
+            const blockFn = UserFunction.fromAst(block, scope)
+            if (blockFn.statements[blockFn.statements.length - 1].isReturnStatement()) {
+              const innerStatements = blockFn.statements.map(s => s.statementAst)
+              const newBlockStatements = UserFunction.earlyReturnRewrite(
+                retVal, retNotSet, innerStatements, scope
               )
-              const remainingBlock = Ast.statementAstFromString(`
-                cond(${retNotSet}, fn {
-                  ${remainingStatements.map(s => s.getText()).join('\n')}
+              const cond = args.assignables(0).getText().trim()
+              const newBlock = Ast.statementAstFromString(`
+                cond(${cond}, fn {
+                  ${newBlockStatements.map(s => s.getText()).join('\n')}
                 })
-              `.trim() + '\n')
-              replacementStatements.push(remainingBlock)
+              `.trim() + ';\n')
+              replacementStatements.push(newBlock)
+              if (statements.length > 0) {
+                const remainingStatements = UserFunction.earlyReturnRewrite(
+                  retVal, retNotSet, statements, scope
+                )
+                const remainingBlock = Ast.statementAstFromString(`
+                  cond(${retNotSet}, fn {
+                    ${remainingStatements.map(s => s.getText()).join('\n')}
+                  })
+                `.trim() + ';\n')
+                replacementStatements.push(remainingBlock)
+              }
+            } else {
+              replacementStatements.push(s)
             }
           } else {
             replacementStatements.push(s)
@@ -303,12 +315,12 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
       if (retStatement.exits().assignables()) {
         const newAssign = Ast.statementAstFromString(`
           ${retVal} = ref(${retStatement.exits().assignables().getText()})
-        `.trim() + '\n')
+        `.trim() + ';\n')
         replacementStatements.push(newAssign)
       }
       replacementStatements.push(Ast.statementAstFromString(`
         ${retNotSet} = clone(false)
-      `.trim() + '\n'))
+      `.trim() + ';\n'))
     }
     return replacementStatements
   }
@@ -357,7 +369,8 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
           const replacementType = originalType.realize(interfaceMap, newScope)
           return `new ${replacementType.typename} ${openstr}`
         })
-        const secondCorrection = corrected.replace(/: ([^:<]+)<([^{\)]+)>( *[,{\)])/g, (
+        // TODO: Get rid of these regex-based type corrections
+        const secondCorrection = corrected.replace(/: (?!new )([^:<,]+)<([^{\)]+)>( *[,{\)])/g, (
           _: any,
           basetypestr: string,
           genericstr: string,
@@ -392,7 +405,7 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
           const a = s.statementAst
           const wrappedAst = Ast.statementAstFromString(`
             ${a.varn().getText()} = ref(${a.assignables().getText()})
-          `.trim() + '\n')
+          `.trim() + ';\n')
           statementAsts.push(wrappedAst)
         } else if (s.statementAst instanceof LnParser.LetdeclarationContext) {
           const l = s.statementAst
@@ -401,7 +414,7 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
           const v = l.assignables().getText()
           const wrappedAst = Ast.statementAstFromString(`
             let ${name}${type ? `: ${type}` : ''} = ref(${v})
-          `.trim() + '\n')
+          `.trim() + ';\n')
           statementAsts.push(wrappedAst)
         } else {
           statementAsts.push(s.statementAst)
@@ -414,19 +427,25 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
         const retNamePostfix = "_" + uuid().replace(/-/g, "_")
         const retVal = "retVal" + retNamePostfix
         const retNotSet = "retNotSet" + retNamePostfix
+        if (this.returnType.typename === 'Array<Node<int64>>') {
+          console.log({
+            typename: this.returnType.typename,
+            that: this,
+          })
+        }
         const retValStatement = Ast.statementAstFromString(`
           let ${retVal}: ${this.returnType.typename} = clone()
-        `.trim() + '\n')
+        `.trim() + ';\n')
         const retNotSetStatement = Ast.statementAstFromString(`
           let ${retNotSet}: bool = clone(true)
-        `.trim() + '\n')
+        `.trim() + ';\n')
         let replacementStatements = [retValStatement, retNotSetStatement]
         replacementStatements.push(...UserFunction.earlyReturnRewrite(
           retVal, retNotSet, statementAsts, this.scope
         ))
         replacementStatements.push(Ast.statementAstFromString(`
           return ${retVal}
-        `.trim() + '\n'))
+        `.trim() + ';\n'))
         statementAsts = replacementStatements
       }
 

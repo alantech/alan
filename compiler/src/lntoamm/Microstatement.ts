@@ -887,7 +887,19 @@ ${letName} on line ${assignmentsAst.line}:${assignmentsAst.start.column}`)
             if (originalSubtypes[i] === lastSubtypes[i]) {
               newSubtypes.push(originalSubtypes[i])
             } else {
-              const originalSubtype = scope.deepGet(originalSubtypes[i]) as Type
+              let originalSubtype = scope.deepGet(originalSubtypes[i]) as Type
+              if (!originalSubtype) {
+                console.log(scope)
+                console.log(microstatements.map(m => m.toString()).join('\n'))
+              }
+              console.log({
+                a: assignmentsAst.getText(),
+                original,
+                fnName: original.fns[0].getName(),
+                originalSubtypes,
+                subtypei: originalSubtypes[i],
+                originalSubtype,
+              })
               if (!!originalSubtype.iface) {
                 newSubtypes.push(lastSubtypes[i])
               } else if (!!originalSubtype.originalType) {
@@ -1319,7 +1331,29 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
               .microstatementInlining(realArgNames, scope, microstatements)
             currVal = microstatements[microstatements.length - 1]
           } else { // It's a method-style function call
-            // TODO
+            const realArgNames = [
+              currVal.outputName,
+              ...argMicrostatements.map(arg => arg.outputName)
+            ]
+            const realArgTypes = [
+              currVal.outputType,
+              ...argMicrostatements.map(arg => arg.outputType)
+            ]
+            const fn = scope.deepGet(baseassignable.VARNAME().getText()) as Array<Fn>
+            if (
+              !fn ||
+              !(fn instanceof Array && fn[0].microstatementInlining instanceof Function)
+            ) {
+              throw new Error(`${baseassignable.VARNAME().getText()} is not a function but used as one.
+${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+            }
+            // Generate the relevant microstatements for this function. UserFunctions get inlined
+            // with the return statement turned into a const assignment as the last statement,
+            // while built-in functions are kept as function calls with the correct renaming.
+            UserFunction
+              .dispatchFn(fn, realArgTypes, scope)
+              .microstatementInlining(realArgNames, scope, microstatements)
+            currVal = microstatements[microstatements.length - 1]
           }
         } else {
           if (currVal === null) {
@@ -1491,6 +1525,9 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
         const operator = operatorOrAssignable.operators()
         const op = scope.deepGet(operator.getText())
         if (op == null || !(op instanceof Array && op[0] instanceof Operator)) {
+          console.log({
+            a: assignablesAst.getText(),
+          })
           throw new Error("Operator " + operator.getText() + " is not defined")
         }
         withOperatorsList.push(op)

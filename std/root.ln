@@ -742,7 +742,7 @@ export fn getParent(n: Node<any>): Node<any> {
 }
 
 export fn getChildren(n: Node<any>): Array<Node<any>> {
-  if length(n.tree.vals) > n.id {
+  if length(n.tree.vals).gt(n.id) {
     const childIds = getOr(n.tree.children[n.id], new Array<int64> []);
     return childIds.filter(fn (id: int64): bool {
       const parentId = getOr(n.tree.parents[id], -1);
