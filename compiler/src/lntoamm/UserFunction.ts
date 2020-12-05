@@ -195,7 +195,7 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
 
   toFnStr() {
     return `
-      fn ${this.name || ''} (${Object.keys(this.args).map(argName => `${argName}: ${this.args[argName].typename}`).join(', ')}): ${this.returnType.typename} {
+      fn ${this.name || ''} (${Object.keys(this.args).map(argName => `${argName}: ${this.args[argName].typename}`).join(', ')}): ${this.getReturnType().typename} {
         ${this.statements.map(s => s.statementAst.getText()).join('\n')}
       }
     `.trim()
@@ -433,7 +433,7 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
         const retVal = "retVal" + retNamePostfix
         const retNotSet = "retNotSet" + retNamePostfix
         const retValStatement = Ast.statementAstFromString(`
-          let ${retVal}: ${this.returnType.typename} = clone()
+          let ${retVal}: ${this.getReturnType().typename} = clone()
         `.trim() + ';\n')
         const retNotSetStatement = Ast.statementAstFromString(`
           let ${retNotSet}: bool = clone(true)
@@ -455,8 +455,8 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
         newArgs[argName] = interfaceMap.has(a) ? interfaceMap.get(a) : a
         this.scope.put(newArgs[argName].typename, newArgs[argName])
       }
-      const newRet = interfaceMap.has(this.returnType) ?
-        interfaceMap.get(this.returnType) : this.returnType
+      const newRet = interfaceMap.has(this.getReturnType()) ?
+        interfaceMap.get(this.getReturnType()) : this.getReturnType()
       this.scope.put(newRet.typename, newRet)
 
       const fnStr = `
@@ -477,9 +477,9 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
           hasNewType = true
         }
       }
-      const newRet = interfaceMap.has(this.returnType) ?
-        interfaceMap.get(this.returnType) : this.returnType
-      if (newRet !== this.returnType) {
+      const newRet = interfaceMap.has(this.getReturnType()) ?
+        interfaceMap.get(this.getReturnType()) : this.getReturnType()
+      if (newRet !== this.getReturnType()) {
         this.scope.put(newRet.typename, newRet)
         hasNewType = true
       }
@@ -571,21 +571,21 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
     // all inputs of that particular interface are the same type. TODO: If this is not true, it must
     // be a compile-time error earlier on.
     const last = microstatements[microstatements.length - 1]
-    if (!this.returnType.typeApplies(last.outputType, scope, new Map()))  {
-      const returnTypeAst = Ast.fulltypenameAstFromString(this.returnType.typename)
+    if (!this.getReturnType().typeApplies(last.outputType, scope, new Map()))  {
+      const returnTypeAst = Ast.fulltypenameAstFromString(this.getReturnType().typename)
       const returnTypeGenerics = returnTypeAst.typegenerics()
       const returnSubtypes = returnTypeGenerics ? returnTypeGenerics.fulltypename().map(
         (t: any) => scope.deepGet(t.getText())
       ) : []
-      if (this.returnType.iface) {
+      if (this.getReturnType().iface) {
         const originalArgTypes = Object.values(this.args)
         for (let i = 0; i < inputTypes.length; i++) {
-          if (this.returnType === originalArgTypes[i]) {
+          if (this.getReturnType() === originalArgTypes[i]) {
             microstatements[microstatements.length - 1].outputType = inputTypes[i]
           }
         }
       } else if (returnSubtypes.some((t: Type) => !!t.iface)) {
-        const oldReturnType = this.returnType
+        const oldReturnType = this.getReturnType()
         const originalArgTypes = Object.values(this.args)
         for (let i = 0; i < inputTypes.length; i++) {
           for (let j = 0; j < returnSubtypes.length; j++) {
