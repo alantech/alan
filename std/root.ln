@@ -589,8 +589,8 @@ export type HashMap<K, V> {
 }
 
 export fn keyVal(hm: HashMap<Hashable, any>) = hm.keyVal;
-export fn keys(hm: HashMap<Hashable, any>): Array<Hashable> = map(hm.keyVal, fn (kv: KeyVal<Hashable, any>): Hashable = kv.key;);
-export fn vals(hm: HashMap<Hashable, any>): Array<any> = map(hm.keyVal, fn (kv: KeyVal<Hashable, any>): any = kv.val;);
+export fn keys(hm: HashMap<Hashable, any>): Array<Hashable> = map(hm.keyVal, fn (kv: KeyVal<Hashable, any>): Hashable = kv.key);
+export fn vals(hm: HashMap<Hashable, any>): Array<any> = map(hm.keyVal, fn (kv: KeyVal<Hashable, any>): any = kv.val);
 export fn length(hm: HashMap<Hashable, any>): int64 = length(hm.keyVal);
 
 export fn get(hm: HashMap<Hashable, any>, key: Hashable): any {
