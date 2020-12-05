@@ -6,8 +6,8 @@
  * HTTP Client
  */
 
-export fn get(url: string) = httpget(url)
-export fn post(url: string, payload: string) = httppost(url, payload)
+export fn get(url: string) = httpget(url);
+export fn post(url: string, payload: string) = httppost(url, payload);
 
 /**
  * HTTP Server
@@ -75,7 +75,7 @@ on __conn fn (conn: InternalRequest) {
 // The listen function tells the http server to start up and listen on the given port
 // For now only one http server per application, a macro system is necessary to improve this
 // Returns a Result with either an 'ok' string or an error
-export fn listen(port: int64) = httplsn(port)
+export fn listen(port: int64) = httplsn(port);
 
 // The body function sets the body for a Response, sets the Content-Length header, and retuns the
 // Response for chaining needs

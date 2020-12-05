@@ -41,135 +41,135 @@ export interface Orderable {
 }
 
 // Type conversion functions
-export fn toFloat64(n: int8) = i8f64(n)
-export fn toFloat64(n: int16) = i16f64(n)
-export fn toFloat64(n: int32) = i32f64(n)
-export fn toFloat64(n: int64) = i64f64(n)
-export fn toFloat64(n: float32) = f32f64(n)
-export fn toFloat64(n: float64) = n
-export fn toFloat64(n: string) = strf64(n)
-export fn toFloat64(n: bool) = boolf64(n)
+export fn toFloat64(n: int8) = i8f64(n);
+export fn toFloat64(n: int16) = i16f64(n);
+export fn toFloat64(n: int32) = i32f64(n);
+export fn toFloat64(n: int64) = i64f64(n);
+export fn toFloat64(n: float32) = f32f64(n);
+export fn toFloat64(n: float64) = n;
+export fn toFloat64(n: string) = strf64(n);
+export fn toFloat64(n: bool) = boolf64(n);
 
-export fn toFloat32(n: int8) = i8f32(n)
-export fn toFloat32(n: int16) = i16f32(n)
-export fn toFloat32(n: int32) = i32f32(n)
-export fn toFloat32(n: int64) = i64f32(n)
-export fn toFloat32(n: float32) = n
-export fn toFloat32(n: float64) = f64f32(n)
-export fn toFloat32(n: string) = strf32(n)
-export fn toFloat32(n: bool) = boolf32(n)
+export fn toFloat32(n: int8) = i8f32(n);
+export fn toFloat32(n: int16) = i16f32(n);
+export fn toFloat32(n: int32) = i32f32(n);
+export fn toFloat32(n: int64) = i64f32(n);
+export fn toFloat32(n: float32) = n;
+export fn toFloat32(n: float64) = f64f32(n);
+export fn toFloat32(n: string) = strf32(n);
+export fn toFloat32(n: bool) = boolf32(n);
 
-export fn toInt64(n: int8) = i8i64(n)
-export fn toInt64(n: int16) = i16i64(n)
-export fn toInt64(n: int32) = i32i64(n)
-export fn toInt64(n: int64) = n
-export fn toInt64(n: float32) = f32i64(n)
-export fn toInt64(n: float64) = f64i64(n)
-export fn toInt64(n: string) = stri64(n)
-export fn toInt64(n: bool) = booli64(n)
+export fn toInt64(n: int8) = i8i64(n);
+export fn toInt64(n: int16) = i16i64(n);
+export fn toInt64(n: int32) = i32i64(n);
+export fn toInt64(n: int64) = n;
+export fn toInt64(n: float32) = f32i64(n);
+export fn toInt64(n: float64) = f64i64(n);
+export fn toInt64(n: string) = stri64(n);
+export fn toInt64(n: bool) = booli64(n);
 
-export fn toInt32(n: int8) = i8i32(n)
-export fn toInt32(n: int16) = i16i32(n)
-export fn toInt32(n: int32) = n
-export fn toInt32(n: int64) = i64i32(n)
-export fn toInt32(n: float32) = f32i32(n)
-export fn toInt32(n: float64) = f64i32(n)
-export fn toInt32(n: string) = stri32(n)
-export fn toInt32(n: bool) = booli32(n)
+export fn toInt32(n: int8) = i8i32(n);
+export fn toInt32(n: int16) = i16i32(n);
+export fn toInt32(n: int32) = n;
+export fn toInt32(n: int64) = i64i32(n);
+export fn toInt32(n: float32) = f32i32(n);
+export fn toInt32(n: float64) = f64i32(n);
+export fn toInt32(n: string) = stri32(n);
+export fn toInt32(n: bool) = booli32(n);
 
-export fn toInt16(n: int8) = i8i16(n)
-export fn toInt16(n: int16) = n
-export fn toInt16(n: int32) = i32i16(n)
-export fn toInt16(n: int64) = i64i16(n)
-export fn toInt16(n: float32) = f32i16(n)
-export fn toInt16(n: float64) = f64i16(n)
-export fn toInt16(n: string) = stri16(n)
-export fn toInt16(n: bool) = booli16(n)
+export fn toInt16(n: int8) = i8i16(n);
+export fn toInt16(n: int16) = n;
+export fn toInt16(n: int32) = i32i16(n);
+export fn toInt16(n: int64) = i64i16(n);
+export fn toInt16(n: float32) = f32i16(n);
+export fn toInt16(n: float64) = f64i16(n);
+export fn toInt16(n: string) = stri16(n);
+export fn toInt16(n: bool) = booli16(n);
 
-export fn toInt8(n: int8) = n
-export fn toInt8(n: int16) = i16i8(n)
-export fn toInt8(n: int32) = i32i8(n)
-export fn toInt8(n: int64) = i64i8(n)
-export fn toInt8(n: float32) = f32i8(n)
-export fn toInt8(n: float64) = f64i8(n)
-export fn toInt8(n: string) = stri8(n)
-export fn toInt8(n: bool) = booli8(n)
+export fn toInt8(n: int8) = n;
+export fn toInt8(n: int16) = i16i8(n);
+export fn toInt8(n: int32) = i32i8(n);
+export fn toInt8(n: int64) = i64i8(n);
+export fn toInt8(n: float32) = f32i8(n);
+export fn toInt8(n: float64) = f64i8(n);
+export fn toInt8(n: string) = stri8(n);
+export fn toInt8(n: bool) = booli8(n);
 
-export fn toBool(n: int8) = i8bool(n)
-export fn toBool(n: int16) = i16bool(n)
-export fn toBool(n: int32) = i32bool(n)
-export fn toBool(n: int64) = i64bool(n)
-export fn toBool(n: float32) = f32bool(n)
-export fn toBool(n: float64) = f64bool(n)
-export fn toBool(n: string) = strbool(n)
-export fn toBool(n: bool) = n
+export fn toBool(n: int8) = i8bool(n);
+export fn toBool(n: int16) = i16bool(n);
+export fn toBool(n: int32) = i32bool(n);
+export fn toBool(n: int64) = i64bool(n);
+export fn toBool(n: float32) = f32bool(n);
+export fn toBool(n: float64) = f64bool(n);
+export fn toBool(n: string) = strbool(n);
+export fn toBool(n: bool) = n;
 
-export fn toString(n: int8) = i8str(n)
-export fn toString(n: int16) = i16str(n)
-export fn toString(n: int32) = i32str(n)
-export fn toString(n: int64) = i64str(n)
-export fn toString(n: float32) = f32str(n)
-export fn toString(n: float64) = f64str(n)
-export fn toString(n: string) = n
-export fn toString(n: bool) = boolstr(n)
+export fn toString(n: int8) = i8str(n);
+export fn toString(n: int16) = i16str(n);
+export fn toString(n: int32) = i32str(n);
+export fn toString(n: int64) = i64str(n);
+export fn toString(n: float32) = f32str(n);
+export fn toString(n: float64) = f64str(n);
+export fn toString(n: string) = n;
+export fn toString(n: bool) = boolstr(n);
 
 // Arithmetic functions
-export fn add(a: int8, b: int8) = addi8(a, b)
-export fn add(a: int16, b: int16) = addi16(a, b)
-export fn add(a: int32, b: int32) = addi32(a, b)
-export fn add(a: int64, b: int64) = addi64(a, b)
-export fn add(a: float32, b: float32) = addf32(a, b)
-export fn add(a: float64, b: float64) = addf64(a, b)
+export fn add(a: int8, b: int8) = addi8(a, b);
+export fn add(a: int16, b: int16) = addi16(a, b);
+export fn add(a: int32, b: int32) = addi32(a, b);
+export fn add(a: int64, b: int64) = addi64(a, b);
+export fn add(a: float32, b: float32) = addf32(a, b);
+export fn add(a: float64, b: float64) = addf64(a, b);
 
-export fn sub(a: int8, b: int8) = subi8(a, b)
-export fn sub(a: int16, b: int16) = subi16(a, b)
-export fn sub(a: int32, b: int32) = subi32(a, b)
-export fn sub(a: int64, b: int64) = subi64(a, b)
-export fn sub(a: float32, b: float32) = subf32(a, b)
-export fn sub(a: float64, b: float64) = subf64(a, b)
+export fn sub(a: int8, b: int8) = subi8(a, b);
+export fn sub(a: int16, b: int16) = subi16(a, b);
+export fn sub(a: int32, b: int32) = subi32(a, b);
+export fn sub(a: int64, b: int64) = subi64(a, b);
+export fn sub(a: float32, b: float32) = subf32(a, b);
+export fn sub(a: float64, b: float64) = subf64(a, b);
 
-export fn negate(n: int8) = negi8(n)
-export fn negate(n: int16) = negi16(n)
-export fn negate(n: int32) = negi32(n)
-export fn negate(n: int64) = negi64(n)
-export fn negate(n: float32) = negf32(n)
-export fn negate(n: float64) = negf64(n)
+export fn negate(n: int8) = negi8(n);
+export fn negate(n: int16) = negi16(n);
+export fn negate(n: int32) = negi32(n);
+export fn negate(n: int64) = negi64(n);
+export fn negate(n: float32) = negf32(n);
+export fn negate(n: float64) = negf64(n);
 
-export fn abs(n: int8) = absi8(n)
-export fn abs(n: int16) = absi16(n)
-export fn abs(n: int32) = absi32(n)
-export fn abs(n: int64) = absi64(n)
-export fn abs(n: float32) = absf32(n)
-export fn abs(n: float64) = absf64(n)
+export fn abs(n: int8) = absi8(n);
+export fn abs(n: int16) = absi16(n);
+export fn abs(n: int32) = absi32(n);
+export fn abs(n: int64) = absi64(n);
+export fn abs(n: float32) = absf32(n);
+export fn abs(n: float64) = absf64(n);
 
-export fn mul(a: int8, b: int8) = muli8(a, b)
-export fn mul(a: int16, b: int16) = muli16(a, b)
-export fn mul(a: int32, b: int32) = muli32(a, b)
-export fn mul(a: int64, b: int64) = muli64(a, b)
-export fn mul(a: float32, b: float32) = mulf32(a, b)
-export fn mul(a: float64, b: float64) = mulf64(a, b)
+export fn mul(a: int8, b: int8) = muli8(a, b);
+export fn mul(a: int16, b: int16) = muli16(a, b);
+export fn mul(a: int32, b: int32) = muli32(a, b);
+export fn mul(a: int64, b: int64) = muli64(a, b);
+export fn mul(a: float32, b: float32) = mulf32(a, b);
+export fn mul(a: float64, b: float64) = mulf64(a, b);
 
-export fn div(a: int8, b: int8) = divi8(a, b)
-export fn div(a: int16, b: int16) = divi16(a, b)
-export fn div(a: int32, b: int32) = divi32(a, b)
-export fn div(a: int64, b: int64) = divi64(a, b)
-export fn div(a: float32, b: float32) = divf32(a, b)
-export fn div(a: float64, b: float64) = divf64(a, b)
+export fn div(a: int8, b: int8) = divi8(a, b);
+export fn div(a: int16, b: int16) = divi16(a, b);
+export fn div(a: int32, b: int32) = divi32(a, b);
+export fn div(a: int64, b: int64) = divi64(a, b);
+export fn div(a: float32, b: float32) = divf32(a, b);
+export fn div(a: float64, b: float64) = divf64(a, b);
 
-export fn mod(a: int8, b: int8) = modi8(a, b)
-export fn mod(a: int16, b: int16) = modi16(a, b)
-export fn mod(a: int32, b: int32) = modi32(a, b)
-export fn mod(a: int64, b: int64) = modi64(a, b)
+export fn mod(a: int8, b: int8) = modi8(a, b);
+export fn mod(a: int16, b: int16) = modi16(a, b);
+export fn mod(a: int32, b: int32) = modi32(a, b);
+export fn mod(a: int64, b: int64) = modi64(a, b);
 
-export fn pow(a: int8, b: int8) = powi8(a, b)
-export fn pow(a: int16, b: int16) = powi16(a, b)
-export fn pow(a: int32, b: int32) = powi32(a, b)
-export fn pow(a: int64, b: int64) = powi64(a, b)
-export fn pow(a: float32, b: float32) = powf32(a, b)
-export fn pow(a: float64, b: float64) = powf64(a, b)
+export fn pow(a: int8, b: int8) = powi8(a, b);
+export fn pow(a: int16, b: int16) = powi16(a, b);
+export fn pow(a: int32, b: int32) = powi32(a, b);
+export fn pow(a: int64, b: int64) = powi64(a, b);
+export fn pow(a: float32, b: float32) = powf32(a, b);
+export fn pow(a: float64, b: float64) = powf64(a, b);
 
-export fn sqrt(n: float32) = sqrtf32(n)
-export fn sqrt(n: float64) = sqrtf64(n)
+export fn sqrt(n: float32) = sqrtf32(n);
+export fn sqrt(n: float64) = sqrtf64(n);
 
 export fn min(x: Orderable, y: Orderable): Orderable {
   return cond(lte(x, y), [x, y]);
@@ -179,135 +179,135 @@ export fn max(x: Orderable, y: Orderable): Orderable {
 }
 
 // Boolean and bitwise functions
-export fn and(a: int8, b: int8) = andi8(a, b)
-export fn and(a: int16, b: int16) = andi16(a, b)
-export fn and(a: int32, b: int32) = andi32(a, b)
-export fn and(a: int64, b: int64) = andi64(a, b)
-export fn and(a: bool, b: bool) = andbool(a, b)
+export fn and(a: int8, b: int8) = andi8(a, b);
+export fn and(a: int16, b: int16) = andi16(a, b);
+export fn and(a: int32, b: int32) = andi32(a, b);
+export fn and(a: int64, b: int64) = andi64(a, b);
+export fn and(a: bool, b: bool) = andbool(a, b);
 
-export fn or(a: int8, b: int8) = ori8(a, b)
-export fn or(a: int16, b: int16) = ori16(a, b)
-export fn or(a: int32, b: int32) = ori32(a, b)
-export fn or(a: int64, b: int64) = ori64(a, b)
-export fn or(a: bool, b: bool) = orbool(a, b)
+export fn or(a: int8, b: int8) = ori8(a, b);
+export fn or(a: int16, b: int16) = ori16(a, b);
+export fn or(a: int32, b: int32) = ori32(a, b);
+export fn or(a: int64, b: int64) = ori64(a, b);
+export fn or(a: bool, b: bool) = orbool(a, b);
 
-export fn xor(a: int8, b: int8) = xori8(a, b)
-export fn xor(a: int16, b: int16) = xori16(a, b)
-export fn xor(a: int32, b: int32) = xori32(a, b)
-export fn xor(a: int64, b: int64) = xori64(a, b)
-export fn xor(a: bool, b: bool) = xorbool(a, b)
+export fn xor(a: int8, b: int8) = xori8(a, b);
+export fn xor(a: int16, b: int16) = xori16(a, b);
+export fn xor(a: int32, b: int32) = xori32(a, b);
+export fn xor(a: int64, b: int64) = xori64(a, b);
+export fn xor(a: bool, b: bool) = xorbool(a, b);
 
-export fn not(n: int8) = noti8(n)
-export fn not(n: int16) = noti16(n)
-export fn not(n: int32) = noti32(n)
-export fn not(n: int64) = noti64(n)
-export fn not(n: bool) = notbool(n)
+export fn not(n: int8) = noti8(n);
+export fn not(n: int16) = noti16(n);
+export fn not(n: int32) = noti32(n);
+export fn not(n: int64) = noti64(n);
+export fn not(n: bool) = notbool(n);
 
-export fn nand(a: int8, b: int8) = nandi8(a, b)
-export fn nand(a: int16, b: int16) = nandi16(a, b)
-export fn nand(a: int32, b: int32) = nandi32(a, b)
-export fn nand(a: int64, b: int64) = nandi64(a, b)
-export fn nand(a: bool, b: bool) = nandboo(a, b)
+export fn nand(a: int8, b: int8) = nandi8(a, b);
+export fn nand(a: int16, b: int16) = nandi16(a, b);
+export fn nand(a: int32, b: int32) = nandi32(a, b);
+export fn nand(a: int64, b: int64) = nandi64(a, b);
+export fn nand(a: bool, b: bool) = nandboo(a, b);
 
-export fn nor(a: int8, b: int8) = nori8(a, b)
-export fn nor(a: int16, b: int16) = nori16(a, b)
-export fn nor(a: int32, b: int32) = nori32(a, b)
-export fn nor(a: int64, b: int64) = nori64(a, b)
-export fn nor(a: bool, b: bool) = norbool(a, b)
+export fn nor(a: int8, b: int8) = nori8(a, b);
+export fn nor(a: int16, b: int16) = nori16(a, b);
+export fn nor(a: int32, b: int32) = nori32(a, b);
+export fn nor(a: int64, b: int64) = nori64(a, b);
+export fn nor(a: bool, b: bool) = norbool(a, b);
 
-export fn xnor(a: int8, b: int8) = xnori8(a, b)
-export fn xnor(a: int16, b: int16) = xnori16(a, b)
-export fn xnor(a: int32, b: int32) = xnori32(a, b)
-export fn xnor(a: int64, b: int64) = xnori64(a, b)
-export fn xnor(a: bool, b: bool) = xnorboo(a, b)
+export fn xnor(a: int8, b: int8) = xnori8(a, b);
+export fn xnor(a: int16, b: int16) = xnori16(a, b);
+export fn xnor(a: int32, b: int32) = xnori32(a, b);
+export fn xnor(a: int64, b: int64) = xnori64(a, b);
+export fn xnor(a: bool, b: bool) = xnorboo(a, b);
 
 // Equality and order functions
-export fn eq(a: int8, b: int8) = eqi8(a, b)
-export fn eq(a: int16, b: int16) = eqi16(a, b)
-export fn eq(a: int32, b: int32) = eqi32(a, b)
-export fn eq(a: int64, b: int64) = eqi64(a, b)
-export fn eq(a: float32, b: float32) = eqf32(a, b)
-export fn eq(a: float64, b: float64) = eqf64(a, b)
-export fn eq(a: string, b: string) = eqstr(a, b)
-export fn eq(a: bool, b: bool) = eqbool(a, b)
+export fn eq(a: int8, b: int8) = eqi8(a, b);
+export fn eq(a: int16, b: int16) = eqi16(a, b);
+export fn eq(a: int32, b: int32) = eqi32(a, b);
+export fn eq(a: int64, b: int64) = eqi64(a, b);
+export fn eq(a: float32, b: float32) = eqf32(a, b);
+export fn eq(a: float64, b: float64) = eqf64(a, b);
+export fn eq(a: string, b: string) = eqstr(a, b);
+export fn eq(a: bool, b: bool) = eqbool(a, b);
 
-export fn neq(a: int8, b: int8) = neqi8(a, b)
-export fn neq(a: int16, b: int16) = neqi16(a, b)
-export fn neq(a: int32, b: int32) = neqi32(a, b)
-export fn neq(a: int64, b: int64) = neqi64(a, b)
-export fn neq(a: float32, b: float32) = neqf32(a, b)
-export fn neq(a: float64, b: float64) = neqf64(a, b)
-export fn neq(a: string, b: string) = neqstr(a, b)
-export fn neq(a: bool, b: bool) = neqbool(a, b)
+export fn neq(a: int8, b: int8) = neqi8(a, b);
+export fn neq(a: int16, b: int16) = neqi16(a, b);
+export fn neq(a: int32, b: int32) = neqi32(a, b);
+export fn neq(a: int64, b: int64) = neqi64(a, b);
+export fn neq(a: float32, b: float32) = neqf32(a, b);
+export fn neq(a: float64, b: float64) = neqf64(a, b);
+export fn neq(a: string, b: string) = neqstr(a, b);
+export fn neq(a: bool, b: bool) = neqbool(a, b);
 
-export fn lt(a: int8, b: int8) = lti8(a, b)
-export fn lt(a: int16, b: int16) = lti16(a, b)
-export fn lt(a: int32, b: int32) = lti32(a, b)
-export fn lt(a: int64, b: int64) = lti64(a, b)
-export fn lt(a: float32, b: float32) = ltf32(a, b)
-export fn lt(a: float64, b: float64) = ltf64(a, b)
-export fn lt(a: string, b: string) = ltstr(a, b)
+export fn lt(a: int8, b: int8) = lti8(a, b);
+export fn lt(a: int16, b: int16) = lti16(a, b);
+export fn lt(a: int32, b: int32) = lti32(a, b);
+export fn lt(a: int64, b: int64) = lti64(a, b);
+export fn lt(a: float32, b: float32) = ltf32(a, b);
+export fn lt(a: float64, b: float64) = ltf64(a, b);
+export fn lt(a: string, b: string) = ltstr(a, b);
 
-export fn lte(a: int8, b: int8) = ltei8(a, b)
-export fn lte(a: int16, b: int16) = ltei16(a, b)
-export fn lte(a: int32, b: int32) = ltei32(a, b)
-export fn lte(a: int64, b: int64) = ltei64(a, b)
-export fn lte(a: float32, b: float32) = ltef32(a, b)
-export fn lte(a: float64, b: float64) = ltef64(a, b)
-export fn lte(a: string, b: string) = ltestr(a, b)
+export fn lte(a: int8, b: int8) = ltei8(a, b);
+export fn lte(a: int16, b: int16) = ltei16(a, b);
+export fn lte(a: int32, b: int32) = ltei32(a, b);
+export fn lte(a: int64, b: int64) = ltei64(a, b);
+export fn lte(a: float32, b: float32) = ltef32(a, b);
+export fn lte(a: float64, b: float64) = ltef64(a, b);
+export fn lte(a: string, b: string) = ltestr(a, b);
 
-export fn gt(a: int8, b: int8) = gti8(a, b)
-export fn gt(a: int16, b: int16) = gti16(a, b)
-export fn gt(a: int32, b: int32) = gti32(a, b)
-export fn gt(a: int64, b: int64) = gti64(a, b)
-export fn gt(a: float32, b: float32) = gtf32(a, b)
-export fn gt(a: float64, b: float64) = gtf64(a, b)
-export fn gt(a: string, b: string) = gtstr(a, b)
+export fn gt(a: int8, b: int8) = gti8(a, b);
+export fn gt(a: int16, b: int16) = gti16(a, b);
+export fn gt(a: int32, b: int32) = gti32(a, b);
+export fn gt(a: int64, b: int64) = gti64(a, b);
+export fn gt(a: float32, b: float32) = gtf32(a, b);
+export fn gt(a: float64, b: float64) = gtf64(a, b);
+export fn gt(a: string, b: string) = gtstr(a, b);
 
-export fn gte(a: int8, b: int8) = gtei8(a, b)
-export fn gte(a: int16, b: int16) = gtei16(a, b)
-export fn gte(a: int32, b: int32) = gtei32(a, b)
-export fn gte(a: int64, b: int64) = gtei64(a, b)
-export fn gte(a: float32, b: float32) = gtef32(a, b)
-export fn gte(a: float64, b: float64) = gtef64(a, b)
-export fn gte(a: string, b: string) = gtestr(a, b)
+export fn gte(a: int8, b: int8) = gtei8(a, b);
+export fn gte(a: int16, b: int16) = gtei16(a, b);
+export fn gte(a: int32, b: int32) = gtei32(a, b);
+export fn gte(a: int64, b: int64) = gtei64(a, b);
+export fn gte(a: float32, b: float32) = gtef32(a, b);
+export fn gte(a: float64, b: float64) = gtef64(a, b);
+export fn gte(a: string, b: string) = gtestr(a, b);
 
 // Wait functions
-export fn wait(n: int8) = waitop(i8i64(n))
-export fn wait(n: int16) = waitop(i16i64(n))
-export fn wait(n: int32) = waitop(i32i64(n))
-export fn wait(n: int64) = waitop(n)
+export fn wait(n: int8) = waitop(i8i64(n));
+export fn wait(n: int16) = waitop(i16i64(n));
+export fn wait(n: int32) = waitop(i32i64(n));
+export fn wait(n: int64) = waitop(n);
 
 // String functions
-export fn concat(a: string, b: string) = catstr(a, b)
+export fn concat(a: string, b: string) = catstr(a, b);
 export split // opcode with signature `fn split(str: string, spl: string): Array<string>`
-export fn repeat(s: string, n: int64) = repstr(s, n)
+export fn repeat(s: string, n: int64) = repstr(s, n);
 // export fn template(str: string, map: Map<string, string>) = templ(str, map)
 export matches // opcode with signature `fn matches(s: string, t: string): bool`
-export fn index(s: string, t: string) = indstr(s, t)
-export fn length(s: string) = lenstr(s)
+export fn index(s: string, t: string) = indstr(s, t);
+export fn length(s: string) = lenstr(s);
 export trim // opcode with signature `fn trim(s: string): string`
 
 // Array functions
-export fn concat(a: Array<any>, b: Array<any>) = catarr(a, b)
-export fn repeat(arr: Array<any>, n: int64) = reparr(arr, n)
-export fn index(arr: Array<any>, val: any) = indarrv(arr, val)
-export fn index(arr: Array<int8>, val: int8) = indarrf(arr, val)
-export fn index(arr: Array<int16>, val: int16) = indarrf(arr, val)
-export fn index(arr: Array<int32>, val: int32) = indarrf(arr, val)
-export fn index(arr: Array<int64>, val: int64) = indarrf(arr, val)
-export fn index(arr: Array<float32>, val: float32) = indarrf(arr, val)
-export fn index(arr: Array<float64>, val: float64) = indarrf(arr, val)
-export fn index(arr: Array<bool>, val: bool) = indarrf(arr, val)
-export fn has(arr: Array<any>, val: any) = indarrv(arr, val).isOk()
-export fn has(arr: Array<int8>, val: int8) = indarrf(arr, val).isOk()
-export fn has(arr: Array<int16>, val: int16) = indarrf(arr, val).isOk()
-export fn has(arr: Array<int32>, val: int32) = indarrf(arr, val).isOk()
-export fn has(arr: Array<int64>, val: int64) = indarrf(arr, val).isOk()
-export fn has(arr: Array<float32>, val: float32) = indarrf(arr, val).isOk()
-export fn has(arr: Array<float64>, val: float64) = indarrf(arr, val).isOk()
-export fn has(arr: Array<bool>, val: bool) = indarrf(arr, val).isOk()
-export fn length(arr: Array<any>) = lenarr(arr)
+export fn concat(a: Array<any>, b: Array<any>) = catarr(a, b);
+export fn repeat(arr: Array<any>, n: int64) = reparr(arr, n);
+export fn index(arr: Array<any>, val: any) = indarrv(arr, val);
+export fn index(arr: Array<int8>, val: int8) = indarrf(arr, val);
+export fn index(arr: Array<int16>, val: int16) = indarrf(arr, val);
+export fn index(arr: Array<int32>, val: int32) = indarrf(arr, val);
+export fn index(arr: Array<int64>, val: int64) = indarrf(arr, val);
+export fn index(arr: Array<float32>, val: float32) = indarrf(arr, val);
+export fn index(arr: Array<float64>, val: float64) = indarrf(arr, val);
+export fn index(arr: Array<bool>, val: bool) = indarrf(arr, val);
+export fn has(arr: Array<any>, val: any) = indarrv(arr, val).isOk();
+export fn has(arr: Array<int8>, val: int8) = indarrf(arr, val).isOk();
+export fn has(arr: Array<int16>, val: int16) = indarrf(arr, val).isOk();
+export fn has(arr: Array<int32>, val: int32) = indarrf(arr, val).isOk();
+export fn has(arr: Array<int64>, val: int64) = indarrf(arr, val).isOk();
+export fn has(arr: Array<float32>, val: float32) = indarrf(arr, val).isOk();
+export fn has(arr: Array<float64>, val: float64) = indarrf(arr, val).isOk();
+export fn has(arr: Array<bool>, val: bool) = indarrf(arr, val).isOk();
+export fn length(arr: Array<any>) = lenarr(arr);
 export fn push(arr: Array<any>, val: any) {
   pusharr(arr, val, 0);
   return arr;
@@ -340,11 +340,11 @@ export fn push(arr: Array<bool>, val: bool) {
   pusharr(arr, val, 8);
   return arr;
 }
-export fn pop(arr: Array<any>) = poparr(arr)
+export fn pop(arr: Array<any>) = poparr(arr);
 export each // parallel opcode with signature `fn each(arr: Array<any>, cb: function): void`
-export fn eachLin(arr: Array<any>, cb: function): void = eachl(arr, cb)
+export fn eachLin(arr: Array<any>, cb: function): void = eachl(arr, cb);
 export map // parallel opcode with signature `fn map(arr: Array<any>, cb: function): Array<any>`
-export fn mapLin(arr: Array<any>, cb: function): Array<anythingElse> = mapl(arr, cb)
+export fn mapLin(arr: Array<any>, cb: function): Array<anythingElse> = mapl(arr, cb);
 /**
  * Unlike the other array functions, reduce is sequential by default and parallelism must be opted
  * in. This is due to the fact that parallelism requires the reducer function to be commutative or
@@ -373,8 +373,8 @@ export fn mapLin(arr: Array<any>, cb: function): Array<anythingElse> = mapl(arr,
  * noting that an extra argument that makes it equivalent to `fold` is easier than trying to find
  * the 3 or 4 arg variant under a different name.
  */
-export fn reduce(arr: Array<any>, cb: function): any = reducel(arr, cb)
-export fn reducePar(arr: Array<any>, cb: function): any = reducep(arr, cb)
+export fn reduce(arr: Array<any>, cb: function): any = reducel(arr, cb);
+export fn reducePar(arr: Array<any>, cb: function): any = reducep(arr, cb);
 /**
  * This type is used to reduce the number of arguments passed to the opcodes, which can only take 2
  * arguments if they return a value, or 3 arguments if they are a side-effect-only opcode, and is an
@@ -401,13 +401,13 @@ export fn reducePar(arr: Array<any>, transformer: function, merger: function, in
 }
 export filter // opcode with signature `fn filter(arr: Array<any>, cb: function): Array<any>`
 export find // opcode with signature `fn find(arr: Array<any>, cb: function): Result<any>`
-export fn findLin(arr: Array<any>, cb: function): Result<any> = findl(arr, cb)
+export fn findLin(arr: Array<any>, cb: function): Result<any> = findl(arr, cb);
 export every // parallel opcode with signature `fn every(arr: Array<any>, cb: function): bool`
-export fn everyLin(arr: Array<any>, cb: function): bool = everyl(arr, cb)
+export fn everyLin(arr: Array<any>, cb: function): bool = everyl(arr, cb);
 export some // parallel opcode with signature `fn some(arr: Array<any>, cb: function): bool`
-export fn someLin(arr: Array<any>, cb: function): bool = somel(arr, cb)
+export fn someLin(arr: Array<any>, cb: function): bool = somel(arr, cb);
 export join // opcode with signature `fn join(arr: Array<string>, sep: string): string`
-export fn delete(arr: Array<any>, idx: int64): Result<any> = delindx(arr, idx)
+export fn delete(arr: Array<any>, idx: int64): Result<any> = delindx(arr, idx);
 export fn set(arr: Array<any>, idx: int64, val: any) {
   if (idx < 0) | (idx > arr.length()) {
     return err('array out-of-bounds access');
@@ -474,64 +474,64 @@ export fn set(arr: Array<bool>, idx: int64, val: bool) {
 }
 
 // Ternary functions
-export fn pair(trueval: any, falseval: any) = new Array<any> [ trueval, falseval ]
-export fn cond(c: bool, options: Array<any>) = getR(options[1.sub(c.toInt64())])
-export fn cond(c: bool, optional: function): void = condfn(c, optional)
+export fn pair(trueval: any, falseval: any) = new Array<any> [ trueval, falseval ];
+export fn cond(c: bool, options: Array<any>) = getR(options[1.sub(c.toInt64())]);
+export fn cond(c: bool, optional: function): void = condfn(c, optional);
 
 // "clone" function useful for hoisting assignments and making duplicates
-export fn clone(a: any) = copyarr(a)
-export fn clone(a: Array<any>) = copyarr(a)
-export fn clone(a: void) = copyvoid(a) // TODO: Eliminate this, covering up a weird error
-export fn clone() = zeroed() // TODO: Used for conditionals, eliminate with more clever compiler
-export fn clone(a: int8) = copyi8(a)
-export fn clone(a: int16) = copyi16(a)
-export fn clone(a: int32) = copyi32(a)
-export fn clone(a: int64) = copyi64(a)
-export fn clone(a: float32) = copyf32(a)
-export fn clone(a: float64) = copyf64(a)
-export fn clone(a: bool) = copybool(a)
-export fn clone(a: string) = copystr(a)
+export fn clone(a: any) = copyarr(a);
+export fn clone(a: Array<any>) = copyarr(a);
+export fn clone(a: void) = copyvoid(a); // TODO: Eliminate this, covering up a weird error
+export fn clone() = zeroed(); // TODO: Used for conditionals, eliminate with more clever compiler
+export fn clone(a: int8) = copyi8(a);
+export fn clone(a: int16) = copyi16(a);
+export fn clone(a: int32) = copyi32(a);
+export fn clone(a: int64) = copyi64(a);
+export fn clone(a: float32) = copyf32(a);
+export fn clone(a: float64) = copyf64(a);
+export fn clone(a: bool) = copybool(a);
+export fn clone(a: string) = copystr(a);
 
 // Error, Maybe, Result, and Either types and functions
 export error // opcode with signature `fn error(string): Error`
-export fn ref(a: any) = refv(a)
-export fn ref(a: void) = reff(a)
-export fn ref(a: int8) = reff(a)
-export fn ref(a: int16) = reff(a)
-export fn ref(a: int32) = reff(a)
-export fn ref(a: int64) = reff(a)
-export fn ref(a: float32) = reff(a)
-export fn ref(a: float64) = reff(a)
-export fn ref(a: bool) = reff(a)
+export fn ref(a: any) = refv(a);
+export fn ref(a: void) = reff(a);
+export fn ref(a: int8) = reff(a);
+export fn ref(a: int16) = reff(a);
+export fn ref(a: int32) = reff(a);
+export fn ref(a: int64) = reff(a);
+export fn ref(a: float32) = reff(a);
+export fn ref(a: float64) = reff(a);
+export fn ref(a: bool) = reff(a);
 export noerr // opcode with signature `fn noerr(): Error`
-export fn toString(err: Error) = errorstr(err)
+export fn toString(err: Error) = errorstr(err);
 
-export fn some(val: any) = someM(val, 0)
-export fn some(val: int8) = someM(val, 8)
-export fn some(val: int16) = someM(val, 8)
-export fn some(val: int32) = someM(val, 8)
-export fn some(val: int64) = someM(val, 8)
-export fn some(val: float32) = someM(val, 8)
-export fn some(val: float64) = someM(val, 8)
-export fn some(val: bool) = someM(val, 8)
-export fn none() = noneM()
+export fn some(val: any) = someM(val, 0);
+export fn some(val: int8) = someM(val, 8);
+export fn some(val: int16) = someM(val, 8);
+export fn some(val: int32) = someM(val, 8);
+export fn some(val: int64) = someM(val, 8);
+export fn some(val: float32) = someM(val, 8);
+export fn some(val: float64) = someM(val, 8);
+export fn some(val: bool) = someM(val, 8);
+export fn none() = noneM();
 export isSome // opcode with signature `fn isSome(Maybe<any>): bool`
 export isNone // opcode with signature `fn isNone(Maybe<any>): bool`
-export fn getOr(maybe: Maybe<any>, default: any) = getOrM(maybe, default)
+export fn getOr(maybe: Maybe<any>, default: any) = getOrM(maybe, default);
 
-export fn ok(val: any) = okR(val, 0)
-export fn ok(val: int8) = okR(val, 8)
-export fn ok(val: int16) = okR(val, 8)
-export fn ok(val: int32) = okR(val, 8)
-export fn ok(val: int64) = okR(val, 8)
-export fn ok(val: float32) = okR(val, 8)
-export fn ok(val: float64) = okR(val, 8)
-export fn ok(val: bool) = okR(val, 8)
+export fn ok(val: any) = okR(val, 0);
+export fn ok(val: int8) = okR(val, 8);
+export fn ok(val: int16) = okR(val, 8);
+export fn ok(val: int32) = okR(val, 8);
+export fn ok(val: int64) = okR(val, 8);
+export fn ok(val: float32) = okR(val, 8);
+export fn ok(val: float64) = okR(val, 8);
+export fn ok(val: bool) = okR(val, 8);
 export err // opcode with signature `fn err(string): Result<any>`
 export isOk // opcode with signature `fn isOk(Result<any>): bool`
 export isErr // opcode with signature `fn isErr(Result<any>: bool`
-export fn getOr(result: Result<any>, default: any) = getOrR(result, default)
-export fn getOr(result: Result<any>, default: string) = getOrRS(result, default)
+export fn getOr(result: Result<any>, default: any) = getOrR(result, default);
+export fn getOr(result: Result<any>, default: string) = getOrRS(result, default);
 export getErr // opcode with signature `fn getErr(Result<any>, Error): Error`
 export fn toString(n: Result<Stringifiable>): string {
   if n.isOk() {
@@ -541,36 +541,36 @@ export fn toString(n: Result<Stringifiable>): string {
   }
 }
 
-export fn main(val: any) = mainE(val, 0)
-export fn main(val: int8) = mainE(val, 8)
-export fn main(val: int16) = mainE(val, 8)
-export fn main(val: int32) = mainE(val, 8)
-export fn main(val: int64) = mainE(val, 8)
-export fn main(val: float32) = mainE(val, 8)
-export fn main(val: float64) = mainE(val, 8)
-export fn main(val: bool) = mainE(val, 8)
-export fn alt(val: any) = altE(val, 0)
-export fn alt(val: int8) = altE(val, 8)
-export fn alt(val: int16) = altE(val, 8)
-export fn alt(val: int32) = altE(val, 8)
-export fn alt(val: int64) = altE(val, 8)
-export fn alt(val: float32) = altE(val, 8)
-export fn alt(val: float64) = altE(val, 8)
-export fn alt(val: bool) = altE(val, 8)
+export fn main(val: any) = mainE(val, 0);
+export fn main(val: int8) = mainE(val, 8);
+export fn main(val: int16) = mainE(val, 8);
+export fn main(val: int32) = mainE(val, 8);
+export fn main(val: int64) = mainE(val, 8);
+export fn main(val: float32) = mainE(val, 8);
+export fn main(val: float64) = mainE(val, 8);
+export fn main(val: bool) = mainE(val, 8);
+export fn alt(val: any) = altE(val, 0);
+export fn alt(val: int8) = altE(val, 8);
+export fn alt(val: int16) = altE(val, 8);
+export fn alt(val: int32) = altE(val, 8);
+export fn alt(val: int64) = altE(val, 8);
+export fn alt(val: float32) = altE(val, 8);
+export fn alt(val: float64) = altE(val, 8);
+export fn alt(val: bool) = altE(val, 8);
 export isMain // opcode with signature `fn isMain(Either<any, anythingElse>): bool`
 export isAlt // opcode with signature `fn isAlt(Either<any, anythingElse): bool`
-export fn getMainOr(either: Either<any, anythingElse>, default: any) = mainOr(either, default)
-export fn getAltOr(either: Either<any, anythingElse>, default: anythingElse) = altOr(either, default)
+export fn getMainOr(either: Either<any, anythingElse>, default: any) = mainOr(either, default);
+export fn getAltOr(either: Either<any, anythingElse>, default: anythingElse) = altOr(either, default);
 
 // toHash functions for all data types
-export fn toHash(val: any) = hashv(val)
-export fn toHash(val: int8) = hashf(val)
-export fn toHash(val: int16) = hashf(val)
-export fn toHash(val: int32) = hashf(val)
-export fn toHash(val: int64) = hashf(val)
-export fn toHash(val: float32) = hashf(val)
-export fn toHash(val: float64) = hashf(val)
-export fn toHash(val: bool) = hashf(val)
+export fn toHash(val: any) = hashv(val);
+export fn toHash(val: int8) = hashf(val);
+export fn toHash(val: int16) = hashf(val);
+export fn toHash(val: int32) = hashf(val);
+export fn toHash(val: int64) = hashf(val);
+export fn toHash(val: float32) = hashf(val);
+export fn toHash(val: float64) = hashf(val);
+export fn toHash(val: bool) = hashf(val);
 
 // HashMap implementation
 export type KeyVal<K, V> {
@@ -588,10 +588,10 @@ export type HashMap<K, V> {
   lookup: Array<Array<int64>>,
 }
 
-export fn keyVal(hm: HashMap<Hashable, any>) = hm.keyVal
-export fn keys(hm: HashMap<Hashable, any>): Array<Hashable> = map(hm.keyVal, fn (kv: KeyVal<Hashable, any>): Hashable = kv.key)
-export fn vals(hm: HashMap<Hashable, any>): Array<any> = map(hm.keyVal, fn (kv: KeyVal<Hashable, any>): any = kv.val)
-export fn length(hm: HashMap<Hashable, any>): int64 = length(hm.keyVal)
+export fn keyVal(hm: HashMap<Hashable, any>) = hm.keyVal;
+export fn keys(hm: HashMap<Hashable, any>): Array<Hashable> = map(hm.keyVal, fn (kv: KeyVal<Hashable, any>): Hashable = kv.key;);
+export fn vals(hm: HashMap<Hashable, any>): Array<any> = map(hm.keyVal, fn (kv: KeyVal<Hashable, any>): any = kv.val;);
+export fn length(hm: HashMap<Hashable, any>): int64 = length(hm.keyVal);
 
 export fn get(hm: HashMap<Hashable, any>, key: Hashable): any {
   const hash = key.toHash().abs() % length(hm.lookup);
@@ -677,7 +677,7 @@ export fn newTree(rootVal: any): Tree<any> = new Tree<any> {
   vals: new Array<any> [ rootVal ],
   parents: new Array<int64> [ -1 ], // The root node has no parent, so its parent ID is -1.
   children: new Array<Array<int64>> [ new Array<int64> [ ] ],
-}
+};
 
 export fn getRootNode(t: Tree<any>): Node<any> {
   if has(t.parents, -1) {
@@ -698,9 +698,9 @@ export fn getRootNode(t: Tree<any>): Node<any> {
   }
 }
 
-export fn getTree(n: Node<any>): Tree<any> = n.tree
+export fn getTree(n: Node<any>): Tree<any> = n.tree;
 
-export fn length(t: Tree<any>): int64 = length(t.vals)
+export fn length(t: Tree<any>): int64 = length(t.vals);
 
 export fn getNodeById(t: Tree<any>, i: int64): Node<any> {
   if length(t.vals).gt(i) {
@@ -815,7 +815,7 @@ export fn prune(n: Node<any>): Tree<any> {
   return n.tree;
 }
 
-export fn getChildren(t: Tree<any>): Array<Node<any>> = t.getRootNode().getChildren()
+export fn getChildren(t: Tree<any>): Array<Node<any>> = t.getRootNode().getChildren();
 
 // returns the new child node added
 export fn addChild(n: Node<any>, val: any): Node<any> {
@@ -830,15 +830,18 @@ export fn addChild(n: Node<any>, val: any): Node<any> {
   };
 }
 
-export fn addChild(t: Tree<any>, val: any): Node<any> = t.getRootNode().addChild(val)
+export fn addChild(t: Tree<any>, val: any): Node<any> = t.getRootNode().addChild(val);
 
-export fn addChild(t: Tree<any>, val: Node<any>): Node<any> = t.getRootNode().addChild(val)
+export fn addChild(t: Tree<any>, val: Node<any>): Node<any> = t.getRootNode().addChild(val);
 
-export fn addChild(n: Node<any>, val: Tree<any>): Node<any> = n.addChild(val.getRootNode())
+export fn addChild(n: Node<any>, val: Tree<any>): Node<any> = n.addChild(val.getRootNode());
 
-export fn getOr(n: Node<any>, default: any): any = getOr(n.tree.vals[n.id], default)
+export fn getOr(n: Node<any>, default: any): any = getOr(n.tree.vals[n.id], default);
 
-export fn toNodeArray(t: Tree<any>): Array<Node<any>> = map(t.vals, fn (val: any, i: int64): Node<any> = t.getNodeById(i))
+export fn toNodeArray(t: Tree<any>): Array<Node<any>> = map(
+  t.vals,
+  fn (val: any, i: int64): Node<any> = t.getNodeById(i)
+);
 
 export fn map(t: Tree<any>, mapper: function): Tree<anythingElse> {
   return new Tree<anythingElse> {
@@ -848,11 +851,13 @@ export fn map(t: Tree<any>, mapper: function): Tree<anythingElse> {
   };
 }
 
-export fn some(t: Tree<any>, mapper: function): bool = t.toNodeArray().some(mapper)
+export fn some(t: Tree<any>, mapper: function): bool = t.toNodeArray().some(mapper);
 
-export fn every(t: Tree<any>, mapper: function): bool = t.toNodeArray().every(mapper)
+export fn every(t: Tree<any>, mapper: function): bool = t.toNodeArray().every(mapper);
 
-export fn reduce(t: Tree<any>, cb: function, initial: anythingElse): bool = t.toNodeArray().reduce(cb, initial)
+export fn reduce(t: Tree<any>, cb: function, initial: anythingElse): bool = t
+  .toNodeArray()
+  .reduce(cb, initial);
 
 export fn find(t: Tree<any>, mapper: function): Node<any> {
   // Return an invalid node, will behave like an error result

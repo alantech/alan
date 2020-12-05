@@ -34,7 +34,7 @@ typelist : typeline blank* (SEP blank* typeline blank*)* SEP?;
 
 arglist : VARNAME blank* TYPESEP blank* fulltypename (SEP VARNAME blank* TYPESEP blank* fulltypename)*;
 
-functions : FN blank+ ((VARNAME blank*)? OPENARGS arglist? CLOSEARGS blank* (blank? TYPESEP blank? fulltypename blank*)?)? fullfunctionbody;
+functions : FN blank+ ((VARNAME blank*)? OPENARGS arglist? CLOSEARGS blank* (blank? TYPESEP blank? fulltypename blank*)?)? fullfunctionbody EOS?;
 
 fullfunctionbody : functionbody | (EQUALS blank* assignables);
 
@@ -118,7 +118,7 @@ rightarg : fulltypename;
 
 propertytypeline : VARNAME WS* TYPESEP WS* fulltypename;
 
-exports : EXPORT (WS | NEWLINE)+ (eventref | types | constdeclaration | functions | operatormapping | events | interfaces);
+exports : EXPORT (WS | NEWLINE)+ (eventref | types | (constdeclaration EOS) | functions | operatormapping | events | interfaces);
 
 varlist : renameablevar (SEP renameablevar)*;
 

@@ -205,11 +205,11 @@ error: sequence out-of-bounds"
         import @std/app
         from @std/seq import seq, Self, recurse
 
-        fn doNothing(x: int) : int = x
+        fn doNothing(x: int) : int = x;
 
         fn doNothingRec(x: int) : int = seq(x).recurse(fn (self: Self, x: int) : Result<int> {
             return ok(x);
-        }, x) || 0
+        }, x) || 0;
 
         on app.start {
             const x = 5;

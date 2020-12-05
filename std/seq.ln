@@ -6,19 +6,19 @@
 export Seq
 
 // The `seq` constructor function
-export fn seq(limit: int64): Seq = newseq(limit)
+export fn seq(limit: int64): Seq = newseq(limit);
 
 // A basic iterator function, unlikely to be useful outside of these functions
-export fn next(seq: Seq): Result<int64> = seqnext(seq)
+export fn next(seq: Seq): Result<int64> = seqnext(seq);
 
 // An automatic iterator that executes the provided function in sequence until the limit is reached
-export fn each(seq: Seq, func: function): void = seqeach(seq, func)
+export fn each(seq: Seq, func: function): void = seqeach(seq, func);
 
 // A while loop with an initial conditional check
-export fn while(seq: Seq, condFn: function, bodyFn: function): void = seqwhile(seq, condFn, bodyFn)
+export fn while(seq: Seq, condFn: function, bodyFn: function): void = seqwhile(seq, condFn, bodyFn);
 
 // A do-while loop that returns the conditional check
-export fn doWhile(seq: Seq, bodyFn: function): void = seqdo(seq, bodyFn)
+export fn doWhile(seq: Seq, bodyFn: function): void = seqdo(seq, bodyFn);
 
 // Recursive functions in Alan require a "trampoline" outside of the grammar of the language to work
 // so a special "Self" type exists that internally references the Seq type and the relevant function
@@ -29,7 +29,7 @@ export Self
 // reference to the relevant seq and recursive function to be called and is meant to be used within
 // the recursive function. The second sets it all off with a sequence operator, the recursive
 // function in question, and the query argument, and is using the first function under the hood.
-export fn recurse(self: Self, arg: any): Result<anythingElse> = selfrec(self, arg)
+export fn recurse(self: Self, arg: any): Result<anythingElse> = selfrec(self, arg);
 export fn recurse(seq: Seq, recurseFn: function, arg: any): Result<anythingElse> {
   let self = seqrec(seq, recurseFn);
   return selfrec(self, arg);
