@@ -1526,6 +1526,8 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
     if (!(currVal instanceof Microstatement)) {
       if (currVal instanceof UserFunction) {
         Microstatement.closureDef([currVal], currVal.scope || scope, microstatements)
+      } else if (currVal instanceof Array && currVal[0] instanceof UserFunction) {
+        Microstatement.closureDef(currVal, currVal[0].scope || scope, microstatements)
       }
     } else {
       microstatements.push(new Microstatement(
