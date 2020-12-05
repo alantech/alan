@@ -48,22 +48,22 @@ bar, baz"
         from @std/app import start, print, exit
 
         type Foo {
-          foo: string
-          bar: bool
+          foo: string,
+          bar: bool,
         }
 
         on start {
           const myTree = newTree(new Foo {
-            foo = 'myFoo'
-            bar = false
-          })
+            foo: 'myFoo',
+            bar: false,
+          });
           const wrongFoo = new Foo {
-            foo = 'wrongFoo'
-            bar = false
-          }
-          const myFoo = myTree.getRootNode() || wrongFoo
-          print(myFoo.foo)
-          emit exit 0
+            foo: 'wrongFoo',
+            bar: false,
+          };
+          const myFoo = myTree.getRootNode() || wrongFoo;
+          print(myFoo.foo);
+          emit exit 0;
         }
       "
     }
