@@ -346,7 +346,6 @@ Hello, World!"
 
         on start {
           const test = [ 1, 1, 2, 3, 5, 8 ];
-          // TODO: Get non-inline closure functions working
           test.every(isOdd).print();
           test.some(isOdd).print();
           print(test.length());
