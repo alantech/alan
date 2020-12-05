@@ -162,7 +162,14 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
           ))
         })
         Microstatement.fromAssignablesAst(assignablesAst, scope, microstatements)
-        returnType = microstatements[microstatements.length - 1].outputType
+        const last = microstatements[microstatements.length - 1]
+        if (last.statementType !== StatementType.EMIT) {
+          // TODO: Come up with a better solution than this hackery for void function calls as the
+          // only value for a one-liner function
+          returnType = last.outputType
+        } else {
+          returnType = Type.builtinTypes.void
+        }
       } else if (!returnType) {
         // TODO: Generalize this hackery for opcodes that take closure functions
         const opcodeName = assignablesAst.getText().split('(')[0]

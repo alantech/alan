@@ -1529,7 +1529,7 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
       } else if (currVal instanceof Array && currVal[0] instanceof UserFunction) {
         Microstatement.closureDef(currVal, currVal[0].scope || scope, microstatements)
       }
-    } else {
+    } else if (currVal.statementType !== StatementType.EMIT) {
       microstatements.push(new Microstatement(
         StatementType.REREF,
         scope,
