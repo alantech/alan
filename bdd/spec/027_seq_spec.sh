@@ -82,8 +82,7 @@ error: sequence out-of-bounds"
         on start {
           let s = seq(100);
           let sum = 0;
-          // TODO: Get type inference working for one-liner closures
-          s.while(fn (): bool = sum < 10, fn {
+          s.while(fn = sum < 10, fn {
             sum = sum + 1;
           });
           print(sum);
@@ -120,7 +119,7 @@ error: sequence out-of-bounds"
         on start {
           let s = seq(100);
           let sum = 0;
-          // TODO: Get type inference working for one-liner closures
+          // TODO: Get automatic type inference working on anonymous multi-line functions
           s.doWhile(fn (): bool {
             sum = sum + 1;
             return sum < 10;

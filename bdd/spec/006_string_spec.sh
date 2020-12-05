@@ -25,21 +25,11 @@ Describe "Strings"
           trim('   hi   ').print();
           print(\`'   hi   ');
 
-          /**
-           * The following should work but the grammar doesn't yet support array access without a
-           * variable name, so I have to write it in a not-great form :(
-           *
-           * split('Hello, World!', ', ')[0].print()
-           * print(('Hello, World!' / ', ')[1])
-           */
+          split('Hello, World!', ', ')[0].print();
+          print(('Hello, World!' / ', ')[1]);
 
           const res = split('Hello, World!', ', ');
-          /**
-           * You also can't chain off of an array access for some reason.
-           *
-           * res[0].print()
-           */
-          print(res[0]);
+          res[0].print();
 
           const res2 = 'Hello, World!' / ', ';
           print(res2[1]);
@@ -67,6 +57,8 @@ true
 6
 hi
 hi
+Hello
+World!
 Hello
 World!"
 

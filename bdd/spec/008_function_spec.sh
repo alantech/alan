@@ -29,7 +29,7 @@ Describe "Functions and Custom Operators"
        *
        * but the function definitions are all parsed before the first operator mapping is done.
        */
-      fn doublesum(x: int64, y: int64) = x.double() + y.double() // TODO: Fix naming confusion
+      fn doublesum(a: int64, b: int64) = a.double() + b.double()
 
       infix doublesum as #+# precedence 11
 

@@ -33,9 +33,8 @@ Describe "Generics"
             },
             set: true
           };
-          // TODO: This was originally 'stringBoxBox.set.print()' but that syntax doesn't work yet
-          print(stringBoxBox.set);
-          print(stringBoxBox.val.set);
+          stringBoxBox.set.print();
+          stringBoxBox.val.set.print();
           print(stringBoxBox.val.val);
 
           emit exit 0;

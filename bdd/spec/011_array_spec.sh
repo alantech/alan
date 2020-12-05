@@ -342,11 +342,13 @@ Hello, World!"
       sourceToAll "
         from @std/app import start, print, exit
 
+        fn isOdd (val: int64): bool = val % 2 == 1;
+
         on start {
           const test = [ 1, 1, 2, 3, 5, 8 ];
           // TODO: Get non-inline closure functions working
-          test.every(fn (val: int64): bool = val % 2 == 1).print();
-          test.some(fn (val: int64): bool = val % 2 == 1).print();
+          test.every(isOdd).print();
+          test.some(isOdd).print();
           print(test.length());
           print(test.delete(1));
           print(test.delete(4));

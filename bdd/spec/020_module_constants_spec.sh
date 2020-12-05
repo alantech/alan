@@ -39,7 +39,7 @@ Describe "Module-level Constants"
 
         const three = add(1, 2);
 
-        fn fiver() = 5
+        fn fiver() = 5;
 
         const five = fiver();
 
