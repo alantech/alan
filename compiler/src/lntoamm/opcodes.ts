@@ -117,8 +117,8 @@ const addopcodes = (opcodes: object) => {
                     let fn: any
                     // TODO: Remove this hackery after function types are more than just 'function'
                     if ([
-                      'map', 'mapl', 'each', 'eachl', 'find', 'findl', 'every', 'everyl', 'some',
-                      'somel', 'filter', 'filterl', 'seqeach',
+                      'map', 'mapl', 'each', 'eachl', 'every', 'everyl', 'some', 'somel', 'filter',
+                      'filterl', 'seqeach',
                     ].includes(opcodeName)) {
                       // TODO: Try to re-unify these blocks from above
                       const arrayInnerType = scope.deepGet(
@@ -227,8 +227,8 @@ const addopcodes = (opcodes: object) => {
               ) {
                 // TODO: Remove this hackery after function types are more than just 'function'
                 if ([
-                  'map', 'mapl', 'each', 'eachl', 'find', 'findl', 'every', 'everyl', 'some',
-                  'somel', 'filter', 'filterl', 'seqeach',
+                  'map', 'mapl', 'each', 'eachl', 'every', 'everyl', 'some', 'somel', 'filter',
+                  'filterl', 'seqeach',
                 ].includes(opcodeName)) {
                   // The ideal `map` opcode type declaration is something like:
                   // `map(Array<any>, fn (any): anythingElse): Array<anythingElse>` and then the
@@ -279,6 +279,32 @@ const addopcodes = (opcodes: object) => {
                       returnType
                     return newReturnType
                   }
+                } else if (['find', 'findl'].includes(opcodeName)) {
+                  const arrayInnerType = scope.deepGet(
+                    inputTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
+                  ) as Type
+                  const innerType = inputTypes[0].originalType ?
+                    arrayInnerType :
+                    Type.builtinTypes.int64 // Hackery for seqeach
+                  let fn = UserFunction.dispatchFn(
+                    inputs[1].fns,
+                    [arrayInnerType],
+                    scope
+                  )
+                  const closureArgs = Object.values(fn.getArguments()) as Type[]
+                  if (closureArgs[0]) {
+                    closureArgs[0].typeApplies(innerType, scope, interfaceMap)
+                  }
+                  const idx = microstatements.indexOf(inputs[1])
+                  const m = microstatements.slice(0, idx)
+                  Microstatement.closureFromUserFunction(fn, fn.scope || scope, m, interfaceMap)
+                  const closure = m[m.length - 1]
+                  microstatements.splice(idx, 0, closure)
+                  realArgNames[1] = closure.outputName
+                  return Type.builtinTypes.Result.solidify(
+                    [innerType.typename],
+                    scope
+                  )
                 } else if (['reducel', 'reducep'].includes(opcodeName)) {
                   const arrayInnerType = scope.deepGet(
                     inputTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
@@ -386,8 +412,8 @@ const addopcodes = (opcodes: object) => {
                     let fn: any
                     // TODO: Remove this hackery after function types are more than just 'function'
                     if ([
-                      'map', 'mapl', 'each', 'eachl', 'find', 'findl', 'every', 'everyl', 'some',
-                      'somel', 'filter', 'filterl', 'seqeach',
+                      'map', 'mapl', 'each', 'eachl', 'every', 'everyl', 'some', 'somel', 'filter',
+                      'filterl', 'seqeach',
                     ].includes(opcodeName)) {
                       // TODO: Try to re-unify these blocks from above
                       const arrayInnerType = scope.deepGet(
@@ -691,6 +717,7 @@ addopcodes({
   filter: [{ arr: t('Array<any>'), cb: t('function'), }, t('Array<any>')],
   filterl: [{ arr: t('Array<any>'), cb: t('function'), }, t('Array<any>')],
   find: [{ arr: t('Array<any>'), cb: t('function'), }, t('Result<any>')],
+  findl: [{ arr: t('Array<any>'), cb: t('function'), }, t('Result<any>')],
   every: [{ arr: t('Array<any>'), cb: t('function'), }, t('bool')],
   everyl: [{ arr: t('Array<any>'), cb: t('function'), }, t('bool')],
   some: [{ arr: t('Array<any>'), cb: t('function'), }, t('bool')],
