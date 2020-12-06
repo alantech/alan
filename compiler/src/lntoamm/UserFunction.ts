@@ -149,6 +149,13 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
       if (!returnType && Object.keys(args).every(arg => args[arg].typename !== 'function')) {
         // We're going to use the Microstatement logic here
         const microstatements = []
+        // First lets add all microstatements from the provided scope into the list
+        // TODO: If this pattern is ever used more than once, add a new method to the Scope type
+        Object.keys(scope.vals).forEach(val => {
+          if (scope.vals[val] instanceof Microstatement) {
+            microstatements.push(scope.vals[val])
+          }
+        })
         Object.keys(args).forEach(arg => {
           microstatements.push(new Microstatement(
             StatementType.REREF,
