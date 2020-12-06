@@ -21,16 +21,16 @@ Describe "Custom events"
         event loop: int64
 
         on loop fn looper(val: int64) {
-          print(val)
+          print(val);
           if val >= 10 {
-            emit exit 0
+            emit exit 0;
           } else {
-            emit loop val + 1
+            emit loop val + 1;
           }
         }
 
         on start {
-          emit loop 0
+          emit loop 0;
         }
       "
     }
@@ -58,23 +58,23 @@ Describe "Custom events"
         from @std/app import start, print, exit
 
         type Thing {
-          foo: int64
+          foo: int64,
           bar: string
         }
 
         event thing: Thing
 
         on thing fn (t: Thing) {
-          print(t.foo)
-          print(t.bar)
-          emit exit 0
+          print(t.foo);
+          print(t.bar);
+          emit exit 0;
         }
 
         on start {
           emit thing new Thing {
-            foo = 1
-            bar = 'baz'
-          }
+            foo: 1,
+            bar: 'baz'
+          };
         }
       "
     }

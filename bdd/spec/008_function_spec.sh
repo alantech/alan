@@ -6,15 +6,15 @@ Describe "Functions and Custom Operators"
       from @std/app import start, print, exit
 
       fn foo() {
-        print('foo')
+        print('foo');
       }
 
       fn bar(str: string, a: int64, b: int64): string {
-        return str * a + b.toString()
+        return str * a + b.toString();
       }
 
       fn baz(pre: string, body: string): void {
-        print(pre + bar(body, 1, 2))
+        print(pre + bar(body, 1, 2));
       }
 
       // 'int' is an alias for 'int64'
@@ -29,19 +29,19 @@ Describe "Functions and Custom Operators"
        *
        * but the function definitions are all parsed before the first operator mapping is done.
        */
-      fn doublesum(x: int64, y: int64) = x.double() + y.double() // TODO: Fix naming confusion
+      fn doublesum(a: int64, b: int64) = a.double() + b.double()
 
       infix doublesum as #+# precedence 11
 
       on start fn (): void {
-        foo()
-        'to bar'.bar(2, 3).print()
-        '>> '.baz('text here')
-        4.double().print()
-        print(##3)
-        4.doublesum(1).print()
-        print(2 #+# 3)
-        emit exit 0
+        foo();
+        'to bar'.bar(2, 3).print();
+        '>> '.baz('text here');
+        4.double().print();
+        print(##3);
+        4.doublesum(1).print();
+        print(2 #+# 3);
+        emit exit 0;
       }
     "
   }

@@ -7,13 +7,13 @@ Describe "Arrays"
       from @std/app import start, print, exit
 
       on start {
-        print('Testing...')
-        const test = '1,2,3'.split(',')
-        print(test.length())
-        print(test[0])
-        print(test[1])
-        print(test[2])
-        emit exit 0
+        print('Testing...');
+        const test = '1,2,3'.split(',');
+        print(test.length());
+        print(test[0]);
+        print(test[1]);
+        print(test[2]);
+        emit exit 0;
       }
     "
   }
@@ -47,16 +47,16 @@ Describe "Arrays"
         from @std/app import start, print, exit
 
         on start {
-          print('Testing...')
-          const test = new Array<int64> [ 1, 2, 3 ]
-          print(test[0])
-          print(test[1])
-          print(test[2])
-          const test2 = [ 4, 5, 6 ]
-          print(test2[0])
-          print(test2[1])
-          print(test2[2])
-          emit exit 0
+          print('Testing...');
+          const test = new Array<int64> [ 1, 2, 3 ];
+          print(test[0]);
+          print(test[1]);
+          print(test[2]);
+          const test2 = [ 4, 5, 6 ];
+          print(test2[0]);
+          print(test2[1]);
+          print(test2[2]);
+          emit exit 0;
         }
       "
     }
@@ -92,19 +92,19 @@ Describe "Arrays"
         from @std/app import start, print, exit
 
         on start {
-          print('Testing...')
-          let test = new Array<int64> []
-          test.push(1)
-          test.push(2)
-          test.push(3)
-          print(test[0])
-          print(test[1])
-          print(test[2])
-          print(test.pop())
-          print(test.pop())
-          print(test.pop())
-          print(test.pop()) // Should print error message
-          emit exit 0
+          print('Testing...');
+          let test = new Array<int64> [];
+          test.push(1);
+          test.push(2);
+          test.push(3);
+          print(test[0]);
+          print(test[1]);
+          print(test[2]);
+          print(test.pop());
+          print(test.pop());
+          print(test.pop());
+          print(test.pop()); // Should print error message
+          emit exit 0;
         }
       "
     }
@@ -141,24 +141,24 @@ cannot pop empty array"
         from @std/app import start, print, exit
 
         on start {
-          const test = new Array<int64> [ 1, 1, 2, 3, 5, 8 ]
-          const test2 = new Array<string> [ 'Hello', 'World!' ]
-          print('has test')
-          print(test.has(3))
-          print(test.has(4))
+          const test = new Array<int64> [ 1, 1, 2, 3, 5, 8 ];
+          const test2 = new Array<string> [ 'Hello', 'World!' ];
+          print('has test');
+          print(test.has(3));
+          print(test.has(4));
 
-          print('length test')
-          test.length().print()
-          print(#test)
+          print('length test');
+          test.length().print();
+          print(#test);
 
-          print('index test')
-          test.index(5).print()
-          print(test2 @ 'Hello')
+          print('index test');
+          test.index(5).print();
+          print(test2 @ 'Hello');
 
-          print('join test')
-          test2.join(', ').print()
+          print('join test');
+          test2.join(', ').print();
 
-          emit exit 0
+          emit exit 0;
         }
       "
     }
@@ -198,10 +198,10 @@ Hello, World!"
         from @std/app import start, print, exit
 
         on start {
-          const test = '1':'1':'2':'3':'5':'8'
-          print(test.join(', '))
+          const test = '1':'1':'2':'3':'5':'8';
+          print(test.join(', '));
 
-          emit exit 0
+          emit exit 0;
         }
       "
     }
@@ -231,11 +231,11 @@ Hello, World!"
         from @std/app import start, print, exit
 
         on start {
-          const count = [1, 2, 3, 4, 5] // Ah, ah, ahh!
-          const byTwos = count.map(fn (n: int64): int64 = n * 2)
-          count.map(fn (n: int64) = toString(n)).join(', ').print()
-          byTwos.map(fn (n: int64) = toString(n)).join(', ').print()
-          emit exit 0
+          const count = [1, 2, 3, 4, 5]; // Ah, ah, ahh!
+          const byTwos = count.map(fn (n: int64): int64 = n * 2);
+          count.map(fn (n: int64) = toString(n)).join(', ').print();
+          byTwos.map(fn (n: int64) = toString(n)).join(', ').print();
+          emit exit 0;
         }
       "
     }
@@ -266,10 +266,10 @@ Hello, World!"
         from @std/app import start, print, exit
 
         on start {
-          const arr = [1, 2, 3] * 3
-          const out = arr.mapLin(fn (x: int64): string = x.toString()).join(', ')
-          print(out)
-          emit exit 0
+          const arr = [1, 2, 3] * 3;
+          const out = arr.mapLin(fn (x: int64): string = x.toString()).join(', ');
+          print(out);
+          emit exit 0;
         }
       "
     }
@@ -299,10 +299,10 @@ Hello, World!"
         from @std/app import start, print, exit
 
         on start {
-          const test = [ 1, 1, 2, 3, 5, 8 ]
-          test.find(fn (val: int64): int64 = val % 2 == 1).getOr(0).print()
-          test.each(fn (val: int64) = print('=' * val))
-          emit exit 0
+          const test = [ 1, 1, 2, 3, 5, 8 ];
+          test.find(fn (val: int64): int64 = val % 2 == 1).getOr(0).print();
+          test.each(fn (val: int64) = print('=' * val));
+          emit exit 0;
         }
       "
     }
@@ -342,16 +342,17 @@ Hello, World!"
       sourceToAll "
         from @std/app import start, print, exit
 
+        fn isOdd (val: int64): bool = val % 2 == 1;
+
         on start {
-          const test = [ 1, 1, 2, 3, 5, 8 ]
-          // TODO: Get non-inline closure functions working
-          test.every(fn (val: int64): bool = val % 2 == 1).print()
-          test.some(fn (val: int64): bool = val % 2 == 1).print()
-          print(test.length())
-          print(test.delete(1))
-          print(test.delete(4))
-          print(test.delete(10))
-          emit exit 0
+          const test = [ 1, 1, 2, 3, 5, 8 ];
+          test.every(isOdd).print();
+          test.some(isOdd).print();
+          print(test.length());
+          print(test.delete(1));
+          print(test.delete(4));
+          print(test.delete(10));
+          emit exit 0;
         }
       "
     }
@@ -386,35 +387,35 @@ cannot remove idx 10 from array with length 4"
         from @std/app import start, print, exit
 
         on start {
-          const test = [ 1, 1, 2, 3, 5, 8 ]
-          const test2 = [ 4, 5, 6 ]
-          print('reduce test')
-          test.reduce(fn (a: int, b: int): int = a + b).print()
-          test.reduce(min).print()
-          test.reduce(max).print()
+          const test = [ 1, 1, 2, 3, 5, 8 ];
+          const test2 = [ 4, 5, 6 ];
+          print('reduce test');
+          test.reduce(fn (a: int, b: int): int = a + b).print();
+          test.reduce(min).print();
+          test.reduce(max).print();
 
-          print('filter test')
+          print('filter test');
           test.filter(fn (val: int64): bool {
-            return val % 2 == 1
+            return val % 2 == 1;
           }).map(fn (val: int64): string {
-            return toString(val)
-          }).join(', ').print()
+            return toString(val);
+          }).join(', ').print();
 
-          print('concat test')
+          print('concat test');
           test.concat(test2).map(fn (val: int64): string {
-            return toString(val)
-          }).join(', ').print()
+            return toString(val);
+          }).join(', ').print();
           (test + test2).map(fn (val: int64): string {
-            return toString(val)
-          }).join(', ').print()
+            return toString(val);
+          }).join(', ').print();
 
-          print('reduce as filter and concat test')
+          print('reduce as filter and concat test');
           // TODO: Lots of improvements needed for closures passed directly to opcodes. This one-liner is ridiculous
-          test.reduce(fn (acc: string, i: int): string = ((acc == '') && (i % 2 == 1)) ? i.toString() : (i % 2 == 1 ? (acc + ', ' + i.toString()) : acc), '').print()
+          test.reduce(fn (acc: string, i: int): string = ((acc == '') && (i % 2 == 1)) ? i.toString() : (i % 2 == 1 ? (acc + ', ' + i.toString()) : acc), '').print();
           // TODO: Even more ridiculous when you want to allow parallelism
-          test.reducePar(fn (acc: string, i: int): string = ((acc == '') && (i % 2 == 1)) ? i.toString() : (i % 2 == 1 ? (acc + ', ' + i.toString()) : acc), fn (acc: string, cur: string): string = ((acc != '') && (cur != '')) ? (acc + ', ' + cur) : (acc != '' ? acc : cur), '').print()
+          test.reducePar(fn (acc: string, i: int): string = ((acc == '') && (i % 2 == 1)) ? i.toString() : (i % 2 == 1 ? (acc + ', ' + i.toString()) : acc), fn (acc: string, cur: string): string = ((acc != '') && (cur != '')) ? (acc + ', ' + cur) : (acc != '' ? acc : cur), '').print();
 
-          emit exit 0
+          emit exit 0;
         }
       "
     }
@@ -455,19 +456,19 @@ reduce as filter and concat test
         from @std/app import start, print, exit
 
         type Foo {
-          foo: string
+          foo: string,
           bar: bool
         }
 
         on start {
-          const five = [1, 2, 3, 4, 5]
+          const five = [1, 2, 3, 4, 5];
           five.map(fn (n: int64): Foo {
             return new Foo {
-              foo = n.toString()
-              bar = n % 2 == 0
-            }
-          }).filter(fn (f: Foo): bool = f.bar).map(fn (f: Foo): string = f.foo).join(', ').print()
-          emit exit 0
+              foo: n.toString(),
+              bar: n % 2 == 0,
+            };
+          }).filter(fn (f: Foo): bool = f.bar).map(fn (f: Foo): string = f.foo).join(', ').print();
+          emit exit 0;
         }
       "
     }

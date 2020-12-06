@@ -57,7 +57,7 @@ var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
     "G%I&K\'M(O)Q*S+U,W-Y.[/\u0003\u0002\u0010\u0004\u0002\f\f\u000f\u000f",
     "\u0004\u0002\u000b\u000b\"\"\u0003\u000211\u0003\u0002,,\u0003\u0002",
     "$$\u0003\u0002))\u0005\u00022;CHch\u0003\u0002//\u0003\u00022;\u0003",
-    "\u000200\f\u0002##%(,-/1<?AB``bb~~\u0080\u0080\u000b\u0002##%(,-/1<",
+    "\u000200\r\u0002##%(,-/1<<>?AB``bb~~\u0080\u0080\f\u0002##%(,-/1<<>",
     "B``bb~~\u0080\u0080\u0005\u0002C\\aac|\u0006\u00022;C\\aac|\u0002\u0171",
     "\u0002\u0003\u0003\u0002\u0002\u0002\u0002\u0005\u0003\u0002\u0002\u0002",
     "\u0002\u0007\u0003\u0002\u0002\u0002\u0002\t\u0003\u0002\u0002\u0002",
@@ -169,8 +169,8 @@ var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
     "\u00f2\u00071\u0002\u0002\u00f2D\u0003\u0002\u0002\u0002\u00f3\u00f4",
     "\u00070\u0002\u0002\u00f4\u00f5\u00070\u0002\u0002\u00f5\u00f6\u0007",
     "1\u0002\u0002\u00f6F\u0003\u0002\u0002\u0002\u00f7\u00f8\u00071\u0002",
-    "\u0002\u00f8H\u0003\u0002\u0002\u0002\u00f9\u00fa\u0007~\u0002\u0002",
-    "\u00faJ\u0003\u0002\u0002\u0002\u00fb\u00fc\u0007<\u0002\u0002\u00fc",
+    "\u0002\u00f8H\u0003\u0002\u0002\u0002\u00f9\u00fa\u0007<\u0002\u0002",
+    "\u00faJ\u0003\u0002\u0002\u0002\u00fb\u00fc\u0007=\u0002\u0002\u00fc",
     "L\u0003\u0002\u0002\u0002\u00fd\u0101\t\u0002\u0002\u0002\u00fe\u00ff",
     "\u0007\u000f\u0002\u0002\u00ff\u0101\u0007\f\u0002\u0002\u0100\u00fd",
     "\u0003\u0002\u0002\u0002\u0100\u00fe\u0003\u0002\u0002\u0002\u0101N",
@@ -287,8 +287,8 @@ LnLexer.GLOBAL = 32;
 LnLexer.CURDIR = 33;
 LnLexer.PARDIR = 34;
 LnLexer.DIRSEP = 35;
-LnLexer.OR = 36;
-LnLexer.TYPESEP = 37;
+LnLexer.TYPESEP = 36;
+LnLexer.EOS = 37;
 LnLexer.NEWLINE = 38;
 LnLexer.WS = 39;
 LnLexer.SINGLELINECOMMENT = 40;
@@ -310,7 +310,7 @@ LnLexer.prototype.literalNames = [ null, "'import'", "'from'", "'type'",
                                    "'interface'", null, "'{'", "'}'", "'('", 
                                    "')'", "'<'", "'>'", "'['", "']'", "'.'", 
                                    "'='", "'@'", "'./'", "'../'", "'/'", 
-                                   "'|'", "':'" ];
+                                   "':'", "';'" ];
 
 LnLexer.prototype.symbolicNames = [ null, "IMPORT", "FROM", "TYPE", "FN", 
                                     "EVENT", "ON", "EXPORT", "CONST", "LET", 
@@ -321,7 +321,7 @@ LnLexer.prototype.symbolicNames = [ null, "IMPORT", "FROM", "TYPE", "FN",
                                     "OPENGENERIC", "CLOSEGENERIC", "OPENARRAY", 
                                     "CLOSEARRAY", "METHODSEP", "EQUALS", 
                                     "GLOBAL", "CURDIR", "PARDIR", "DIRSEP", 
-                                    "OR", "TYPESEP", "NEWLINE", "WS", "SINGLELINECOMMENT", 
+                                    "TYPESEP", "EOS", "NEWLINE", "WS", "SINGLELINECOMMENT", 
                                     "MULTILINECOMMENT", "STRINGCONSTANT", 
                                     "NUMBERCONSTANT", "GENERALOPERATORS", 
                                     "VARNAME" ];
@@ -334,7 +334,7 @@ LnLexer.prototype.ruleNames = [ "IMPORT", "FROM", "TYPE", "FN", "EVENT",
                                 "OPENARGS", "CLOSEARGS", "OPENGENERIC", 
                                 "CLOSEGENERIC", "OPENARRAY", "CLOSEARRAY", 
                                 "METHODSEP", "EQUALS", "GLOBAL", "CURDIR", 
-                                "PARDIR", "DIRSEP", "OR", "TYPESEP", "NEWLINE", 
+                                "PARDIR", "DIRSEP", "TYPESEP", "EOS", "NEWLINE", 
                                 "WS", "SINGLELINECOMMENT", "MULTILINECOMMENT", 
                                 "STRINGCONSTANT", "NUMBERCONSTANT", "GENERALOPERATORS", 
                                 "VARNAME" ];

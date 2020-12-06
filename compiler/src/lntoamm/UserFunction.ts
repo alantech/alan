@@ -80,61 +80,54 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
       const arglen = argsAst.VARNAME().length
       for (let i = 0; i < arglen; i++) {
         const argName = argsAst.VARNAME(i).getText()
-        let getArgType = scope.deepGet(argsAst.argtype(i).getText())
+        let getArgType = scope.deepGet(argsAst.fulltypename(i).getText())
         if (!getArgType) {
-          if (argsAst.argtype(i).othertype().length === 1) {
-            if (argsAst.argtype(i).othertype(0).typegenerics() !== null) {
-              getArgType =
-                scope.deepGet(argsAst.argtype(i).othertype(0).typename().getText()) as Type
-              if (!getArgType) {
-                throw new Error("Could not find type " + argsAst.argtype(i).getText() + " for argument " + argName)
-              }
-              if (!(getArgType instanceof Type)) {
-                throw new Error("Function argument is not a valid type: " + argsAst.argtype(i).getText())
-              }
-              let genericTypes = []
-              for (const fulltypename of argsAst.argtype(i).othertype(0).typegenerics().fulltypename()) {
-                genericTypes.push(fulltypename.getText())
-              }
-              getArgType = getArgType.solidify(genericTypes, scope)
-            } else {
-              throw new Error("Could not find type " + argsAst.argtype(i).getText() + " for argument " + argName)
+          if (argsAst.fulltypename(i).typegenerics() !== null) {
+            getArgType =
+              scope.deepGet(argsAst.fulltypename(i).typename().getText()) as Type
+            if (!getArgType) {
+              throw new Error("Could not find type " + argsAst.fulltypename(i).getText() + " for argument " + argName)
             }
+            if (!(getArgType instanceof Type)) {
+              throw new Error("Function argument is not a valid type: " + argsAst.fulltypename(i).getText())
+            }
+            let genericTypes = []
+            for (const fulltypename of argsAst.fulltypename(i).typegenerics().fulltypename()) {
+              genericTypes.push(fulltypename.getText())
+            }
+            getArgType = getArgType.solidify(genericTypes, scope)
+          } else {
+            throw new Error("Could not find type " + argsAst.fulltypename(i).getText() + " for argument " + argName)
           }
         }
         if (!(getArgType instanceof Type)) {
-          throw new Error("Function argument is not a valid type: " + argsAst.argtype(i).getText())
+          throw new Error("Function argument is not a valid type: " + argsAst.fulltypename(i).getText())
         }
         args[argName] = getArgType
       }
     }
     let returnType = null
-    if (functionAst.argtype() !== null) {
-      if (functionAst.argtype().othertype().length === 1) {
-        let getReturnType = scope.deepGet(functionAst.argtype().getText())
-        if (getReturnType == null || !(getReturnType instanceof Type)) {
-          if (functionAst.argtype().othertype(0).typegenerics() != null) {
-            getReturnType = scope.deepGet(functionAst.argtype().othertype(0).typename().getText())
-            if (getReturnType == null) {
-              throw new Error("Could not find type " + functionAst.argtype().getText() + " for function " + functionAst.VARNAME().getText())
-            }
-            if (!(getReturnType instanceof Type)) {
-              throw new Error("Function return is not a valid type: " + functionAst.argtype().getText())
-            }
-            let genericTypes = []
-            for (const fulltypename of functionAst.argtype().othertype(0).typegenerics().fulltypename()) {
-              genericTypes.push(fulltypename.getText())
-            }
-            getReturnType = getReturnType.solidify(genericTypes, scope)
-          } else {
-            throw new Error("Could not find type " + functionAst.argtype().getText() + " for function " + functionAst.VARNAME().getText())
+    if (functionAst.fulltypename() !== null) {
+      let getReturnType = scope.deepGet(functionAst.fulltypename().getText())
+      if (getReturnType == null || !(getReturnType instanceof Type)) {
+        if (functionAst.fulltypename().typegenerics() != null) {
+          getReturnType = scope.deepGet(functionAst.fulltypename().typename().getText())
+          if (getReturnType == null) {
+            throw new Error("Could not find type " + functionAst.fulltypename().getText() + " for function " + functionAst.VARNAME().getText())
           }
+          if (!(getReturnType instanceof Type)) {
+            throw new Error("Function return is not a valid type: " + functionAst.fulltypename().getText())
+          }
+          let genericTypes = []
+          for (const fulltypename of functionAst.fulltypename().typegenerics().fulltypename()) {
+            genericTypes.push(fulltypename.getText())
+          }
+          getReturnType = getReturnType.solidify(genericTypes, scope)
+        } else {
+          throw new Error("Could not find type " + functionAst.fulltypename().getText() + " for function " + functionAst.VARNAME().getText())
         }
-        returnType = getReturnType
       }
-    } else {
-      // TODO: Infer the return type by finding the return value and tracing backwards
-      returnType = Type.builtinTypes["void"]
+      returnType = getReturnType
     }
     let pure = true
     let statements = []
@@ -146,95 +139,49 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
         if (!statement.pure) pure = false
         statements.push(statement)
       }
+      if (returnType === null) returnType = Type.builtinTypes['void']
     } else {
       const assignablesAst = functionAst.fullfunctionbody().assignables()
-      const statementAst = Ast.statementAstFromString(`return ${assignablesAst.getText()}\n`)
+      const statementAst = Ast.statementAstFromString(`return ${assignablesAst.getText()};\n`)
       const statement = Statement.create(statementAst, scope)
       if (!statement.pure) pure = false
       statements.push(statement)
-      // TODO: Infer the return type for anything other than calls or object literals
-      if (assignablesAst.basicassignables() && assignablesAst.basicassignables().calls()) {
-        const fnCall =
-          scope.deepGet(assignablesAst.basicassignables().calls().varn(0).getText()) as Array<Fn>
-        if (
-          fnCall &&
-          fnCall instanceof Array &&
-          fnCall[0].microstatementInlining instanceof Function
-        ) {
-          // TODO: For now, also take the first matching function name, in the future
-          // figure out the argument types provided recursively to select appropriately
-          // similar to how the Microstatements piece works
-          returnType = (fnCall[0] as Fn).getReturnType()
-        }
-      } else if (
-        assignablesAst.basicassignables() &&
-        assignablesAst.basicassignables().objectliterals()
-      ) {
-        if (assignablesAst.basicassignables().objectliterals().typeliteral()) {
-          returnType = scope.deepGet(
-            assignablesAst.basicassignables().objectliterals().typeliteral().othertype().getText().trim()
-          )
-          if (!returnType) {
-            const fulltypeAst = Ast.fulltypenameAstFromString(
-              assignablesAst.basicassignables().objectliterals().typeliteral().othertype().getText()
-            )
-            const baseType = scope.deepGet(fulltypeAst.varn().getText()) as Type
-            if (!baseType) {
-              throw new Error(`Return type ${baseType} not defined`)
-            }
-            returnType = baseType.solidify(
-              fulltypeAst.typegenerics().fulltypename().map((f: any) => f.getText()),
-              scope
-            )
+      if (!returnType && Object.keys(args).every(arg => args[arg].typename !== 'function')) {
+        // We're going to use the Microstatement logic here
+        const microstatements = []
+        // First lets add all microstatements from the provided scope into the list
+        // TODO: If this pattern is ever used more than once, add a new method to the Scope type
+        Object.keys(scope.vals).forEach(val => {
+          if (scope.vals[val] instanceof Microstatement) {
+            microstatements.push(scope.vals[val])
           }
-        } else if (assignablesAst.basicassignables().objectliterals().mapliteral()) {
-          returnType = scope.deepGet(
-            assignablesAst.basicassignables().objectliterals().mapliteral().othertype().getText().trim()
-          )
-          if (!returnType) {
-            const fulltypeAst = Ast.fulltypenameAstFromString(
-              assignablesAst.basicassignables().objectliterals().mapliteral().othertype().getText()
-            )
-            const baseType = scope.deepGet(fulltypeAst.varn().getText()) as Type
-            if (!baseType) {
-              throw new Error(`Return type ${baseType} not defined`)
-            }
-            returnType = baseType.solidify(
-              fulltypeAst.typegenerics().fulltypename().map((f: any) => f.getText()),
-              scope
-            )
-          }
-        } else if (functionAst.argtype()) {
-          returnType = scope.deepGet(functionAst.argType().getText().trim())
+        })
+        Object.keys(args).forEach(arg => {
+          microstatements.push(new Microstatement(
+            StatementType.REREF,
+            scope,
+            true,
+            arg,
+            args[arg],
+            [],
+            [],
+            arg,
+          ))
+        })
+        Microstatement.fromAssignablesAst(assignablesAst, scope, microstatements)
+        const last = microstatements[microstatements.length - 1]
+        if (last.statementType !== StatementType.EMIT) {
+          // TODO: Come up with a better solution than this hackery for void function calls as the
+          // only value for a one-liner function
+          returnType = last.outputType
         } else {
-          if (assignablesAst.basicassignables().objectliterals().arrayliteral().othertype()) {
-            returnType = scope.deepGet(
-              assignablesAst.basicassignables().objectliterals().arrayliteral().othertype().getText().trim()
-            )
-            if (!returnType) {
-              const fulltypeAst = Ast.fulltypenameAstFromString(
-                assignablesAst.basicassignables().objectliterals().mapliteral().othertype().getText()
-              )
-              const baseType = scope.deepGet(fulltypeAst.varn().getText()) as Type
-              if (!baseType) {
-                throw new Error(`Return type ${baseType} not defined`)
-              }
-              returnType = baseType.solidify(
-                fulltypeAst.typegenerics().fulltypename().map((f: any) => f.getText()),
-                scope
-              )
-            }
-          } else {
-            // We're going to use the Microstatement logic here
-            const microstatements = []
-            Microstatement.fromAssignablesAst(
-              assignablesAst.basicassignables().objectliterals().arrayliteral().assignableslist(0),
-              scope,
-              microstatements,
-            )
-            returnType = microstatements[microstatements.length - 1].outputType
-          }
+          returnType = Type.builtinTypes.void
         }
+      } else if (!returnType) {
+        // TODO: Generalize this hackery for opcodes that take closure functions
+        const opcodeName = assignablesAst.getText().split('(')[0]
+        const opcode = scope.deepGet(opcodeName) as Array<Fn>
+        returnType = opcode ? opcode[0].getReturnType() : Type.builtinTypes['void']
       }
     }
     return new UserFunction(name, args, returnType, scope, statements, pure)
@@ -255,7 +202,7 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
 
   toFnStr() {
     return `
-      fn ${this.name || ''} (${Object.keys(this.args).map(argName => `${argName}: ${this.args[argName].typename}`).join(', ')}): ${this.returnType.typename} {
+      fn ${this.name || ''} (${Object.keys(this.args).map(argName => `${argName}: ${this.args[argName].typename}`).join(', ')}): ${this.getReturnType().typename} {
         ${this.statements.map(s => s.statementAst.getText()).join('\n')}
       }
     `.trim()
@@ -266,12 +213,12 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
     let hasConditionalReturn = false // Flag for potential second pass
     const condName = "_" + uuid().replace(/-/g, "_")
     const condStatement = Ast.statementAstFromString(`
-      const ${condName}: bool = ${cond.withoperators().getText()}
-    `.trim() + '\n')
+      const ${condName}: bool = ${cond.assignables().getText()}
+    `.trim() + ';\n')
     const condBlockFn = (cond.blocklikes(0).functionbody() ?
       UserFunction.fromFunctionbodyAst(cond.blocklikes(0).functionbody(), scope) :
-      cond.blocklikes(0).varn() ?
-        scope.deepGet(cond.blocklikes(0).varn().getText())[0] :
+      cond.blocklikes(0).eventref() ?
+        scope.deepGet(cond.blocklikes(0).eventref().getText())[0] :
         UserFunction.fromFunctionsAst(cond.blocklikes(0).functions(), scope)
     ).maybeTransform(new Map())
     if (condBlockFn.statements[condBlockFn.statements.length - 1].isReturnStatement()) {
@@ -280,14 +227,14 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
     const condBlock = condBlockFn.toFnStr()
     const condCall = Ast.statementAstFromString(`
       cond(${condName}, ${condBlock})
-    `.trim() + '\n') // TODO: If the blocklike is a reference, grab it and inline it
+    `.trim() + ';\n') // TODO: If the blocklike is a reference, grab it and inline it
     newStatements.push(condStatement, condCall)
     if (!!cond.ELSE()) {
       if (!!cond.blocklikes(1)) {
         const elseBlockFn = (cond.blocklikes(1).functionbody() ?
           UserFunction.fromFunctionbodyAst(cond.blocklikes(1).functionbody(), scope) :
-          cond.blocklikes(1).varn() ?
-            scope.deepGet(cond.blocklikes(1).varn().getText())[0] :
+          cond.blocklikes(1).eventref() ?
+            scope.deepGet(cond.blocklikes(1).eventref().getText())[0] :
             UserFunction.fromFunctionsAst(cond.blocklikes(1).functions(), scope)
         ).maybeTransform(new Map())
         if (elseBlockFn.statements[elseBlockFn.statements.length - 1].isReturnStatement()) {
@@ -295,8 +242,8 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
         }
         const elseBlock = elseBlockFn.toFnStr()
         const elseStatement = Ast.statementAstFromString(`
-          cond(!${condName}, ${elseBlock})
-        `.trim() + '\n')
+          cond(not(${condName}), ${elseBlock})
+        `.trim() + ';\n')
         newStatements.push(elseStatement)
       } else {
         const res = UserFunction.conditionalToCond(cond.conditionals(), scope)
@@ -306,7 +253,7 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
           cond(!${condName}, fn {
             ${innerCondStatements.map(s => s.getText()).join('\n')}
           })
-        `.trim() + '\n')
+        `.trim() + ';\n')
         newStatements.push(elseStatement)
       }
     }
@@ -322,34 +269,47 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
     let replacementStatements = []
     while (statements.length > 0) {
       const s = statements.shift()
-      if (s.calls() && s.calls().varn(0).getText().trim() === 'cond') {
+      // TODO: This doesn't work for actual direct-usage of `cond` in some sort of method chaining
+      // if that's even possible. Probably lots of other weirdness to deal with here.
+      if (
+        s.assignables() &&
+        s.assignables().withoperators(0).baseassignable().length >= 2 &&
+        s.assignables().withoperators(0).baseassignable(0).getText().trim() === 'cond' &&
+        s.assignables().withoperators(0).baseassignable(1).fncall()
+      ) {
         // Potentially need to rewrite
-        const args = s.calls().fncall(0).assignablelist()
+        const args = s.assignables().withoperators(0).baseassignable(1).fncall().assignablelist()
         if (args && args.assignables().length == 2) {
-          const block = args.assignables(1).basicassignables().functions()
-          const blockFn = UserFunction.fromAst(block, scope)
-          if (blockFn.statements[blockFn.statements.length - 1].isReturnStatement()) {
-            const innerStatements = blockFn.statements.map(s => s.statementAst)
-            const newBlockStatements = UserFunction.earlyReturnRewrite(
-              retVal, retNotSet, innerStatements, scope
-            )
-            const cond = args.assignables(0).getText().trim()
-            const newBlock = Ast.statementAstFromString(`
-              cond(${cond}, fn {
-                ${newBlockStatements.map(s => s.getText()).join('\n')}
-              })
-            `.trim() + '\n')
-            replacementStatements.push(newBlock)
-            if (statements.length > 0) {
-              const remainingStatements = UserFunction.earlyReturnRewrite(
-                retVal, retNotSet, statements, scope
+          const block = args.assignables(1).withoperators(0).baseassignable() ?
+            args.assignables(1).withoperators(0).baseassignable(0).functions() :
+            null
+          if (block) {
+            const blockFn = UserFunction.fromAst(block, scope)
+            if (blockFn.statements[blockFn.statements.length - 1].isReturnStatement()) {
+              const innerStatements = blockFn.statements.map(s => s.statementAst)
+              const newBlockStatements = UserFunction.earlyReturnRewrite(
+                retVal, retNotSet, innerStatements, scope
               )
-              const remainingBlock = Ast.statementAstFromString(`
-                cond(${retNotSet}, fn {
-                  ${remainingStatements.map(s => s.getText()).join('\n')}
+              const cond = args.assignables(0).getText().trim()
+              const newBlock = Ast.statementAstFromString(`
+                cond(${cond}, fn {
+                  ${newBlockStatements.map(s => s.getText()).join('\n')}
                 })
-              `.trim() + '\n')
-              replacementStatements.push(remainingBlock)
+              `.trim() + ';\n')
+              replacementStatements.push(newBlock)
+              if (statements.length > 0) {
+                const remainingStatements = UserFunction.earlyReturnRewrite(
+                  retVal, retNotSet, statements, scope
+                )
+                const remainingBlock = Ast.statementAstFromString(`
+                  cond(${retNotSet}, fn {
+                    ${remainingStatements.map(s => s.getText()).join('\n')}
+                  })
+                `.trim() + ';\n')
+                replacementStatements.push(remainingBlock)
+              }
+            } else {
+              replacementStatements.push(s)
             }
           } else {
             replacementStatements.push(s)
@@ -367,12 +327,12 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
       if (retStatement.exits().assignables()) {
         const newAssign = Ast.statementAstFromString(`
           ${retVal} = ref(${retStatement.exits().assignables().getText()})
-        `.trim() + '\n')
+        `.trim() + ';\n')
         replacementStatements.push(newAssign)
       }
       replacementStatements.push(Ast.statementAstFromString(`
         ${retNotSet} = clone(false)
-      `.trim() + '\n'))
+      `.trim() + ';\n'))
     }
     return replacementStatements
   }
@@ -405,7 +365,7 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
           if (!originalType || !(originalType instanceof Type)) {
             // It may be the first time this particular type has shown up, let's build it
             const typeAst = Ast.fulltypenameAstFromString(originaltypestr)
-            const baseTypeName = typeAst.varn().getText()
+            const baseTypeName = typeAst.typename().getText()
             const generics = typeAst.typegenerics().fulltypename().map((g: any) => g.getText())
             const baseType = this.scope.deepGet(baseTypeName) as Type
             if (!baseType || !(baseType instanceof Type)) { // Now we panic
@@ -421,7 +381,8 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
           const replacementType = originalType.realize(interfaceMap, newScope)
           return `new ${replacementType.typename} ${openstr}`
         })
-        const secondCorrection = corrected.replace(/: ([^:<]+)<([^{\)]+)>( *[,{\)])/g, (
+        // TODO: Get rid of these regex-based type corrections
+        const secondCorrection = corrected.replace(/: (?!new )([^:<,]+)<([^{\)]+)>( *[,{\)])/g, (
           _: any,
           basetypestr: string,
           genericstr: string,
@@ -432,7 +393,7 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
           if (!originalType || !(originalType instanceof Type)) {
             // It may be the first time this particular type has shown up, let's build it
             const typeAst = Ast.fulltypenameAstFromString(originaltypestr)
-            const baseTypeName = typeAst.varn().getText()
+            const baseTypeName = typeAst.typename().getText()
             const generics = typeAst.typegenerics().fulltypename().map((g: any) => g.getText())
             const baseType = this.scope.deepGet(baseTypeName) as Type
             if (!baseType || !(baseType instanceof Type)) { // Now we panic
@@ -456,16 +417,16 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
           const a = s.statementAst
           const wrappedAst = Ast.statementAstFromString(`
             ${a.varn().getText()} = ref(${a.assignables().getText()})
-          `.trim() + '\n')
+          `.trim() + ';\n')
           statementAsts.push(wrappedAst)
         } else if (s.statementAst instanceof LnParser.LetdeclarationContext) {
           const l = s.statementAst
           const name = l.VARNAME().getText()
-          const type = l.othertype() ? l.othertype().getText() : undefined
+          const type = l.fulltypename() ? l.fulltypename().getText() : undefined
           const v = l.assignables().getText()
           const wrappedAst = Ast.statementAstFromString(`
             let ${name}${type ? `: ${type}` : ''} = ref(${v})
-          `.trim() + '\n')
+          `.trim() + ';\n')
           statementAsts.push(wrappedAst)
         } else {
           statementAsts.push(s.statementAst)
@@ -479,18 +440,18 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
         const retVal = "retVal" + retNamePostfix
         const retNotSet = "retNotSet" + retNamePostfix
         const retValStatement = Ast.statementAstFromString(`
-          let ${retVal}: ${this.returnType.typename} = clone()
-        `.trim() + '\n')
+          let ${retVal}: ${this.getReturnType().typename} = clone()
+        `.trim() + ';\n')
         const retNotSetStatement = Ast.statementAstFromString(`
           let ${retNotSet}: bool = clone(true)
-        `.trim() + '\n')
+        `.trim() + ';\n')
         let replacementStatements = [retValStatement, retNotSetStatement]
         replacementStatements.push(...UserFunction.earlyReturnRewrite(
           retVal, retNotSet, statementAsts, this.scope
         ))
         replacementStatements.push(Ast.statementAstFromString(`
           return ${retVal}
-        `.trim() + '\n'))
+        `.trim() + ';\n'))
         statementAsts = replacementStatements
       }
 
@@ -501,8 +462,8 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
         newArgs[argName] = interfaceMap.has(a) ? interfaceMap.get(a) : a
         this.scope.put(newArgs[argName].typename, newArgs[argName])
       }
-      const newRet = interfaceMap.has(this.returnType) ?
-        interfaceMap.get(this.returnType) : this.returnType
+      const newRet = interfaceMap.has(this.getReturnType()) ?
+        interfaceMap.get(this.getReturnType()) : this.getReturnType()
       this.scope.put(newRet.typename, newRet)
 
       const fnStr = `
@@ -523,9 +484,9 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
           hasNewType = true
         }
       }
-      const newRet = interfaceMap.has(this.returnType) ?
-        interfaceMap.get(this.returnType) : this.returnType
-      if (newRet !== this.returnType) {
+      const newRet = interfaceMap.has(this.getReturnType()) ?
+        interfaceMap.get(this.getReturnType()) : this.getReturnType()
+      if (newRet !== this.getReturnType()) {
         this.scope.put(newRet.typename, newRet)
         hasNewType = true
       }
@@ -617,21 +578,21 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
     // all inputs of that particular interface are the same type. TODO: If this is not true, it must
     // be a compile-time error earlier on.
     const last = microstatements[microstatements.length - 1]
-    if (!this.returnType.typeApplies(last.outputType, scope, new Map()))  {
-      const returnTypeAst = Ast.fulltypenameAstFromString(this.returnType.typename)
+    if (!this.getReturnType().typeApplies(last.outputType, scope, new Map()))  {
+      const returnTypeAst = Ast.fulltypenameAstFromString(this.getReturnType().typename)
       const returnTypeGenerics = returnTypeAst.typegenerics()
       const returnSubtypes = returnTypeGenerics ? returnTypeGenerics.fulltypename().map(
         (t: any) => scope.deepGet(t.getText())
       ) : []
-      if (this.returnType.iface) {
+      if (this.getReturnType().iface) {
         const originalArgTypes = Object.values(this.args)
         for (let i = 0; i < inputTypes.length; i++) {
-          if (this.returnType === originalArgTypes[i]) {
+          if (this.getReturnType() === originalArgTypes[i]) {
             microstatements[microstatements.length - 1].outputType = inputTypes[i]
           }
         }
       } else if (returnSubtypes.some((t: Type) => !!t.iface)) {
-        const oldReturnType = this.returnType
+        const oldReturnType = this.getReturnType()
         const originalArgTypes = Object.values(this.args)
         for (let i = 0; i < inputTypes.length; i++) {
           for (let j = 0; j < returnSubtypes.length; j++) {
@@ -649,7 +610,7 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
         const lastTypeAst = Ast.fulltypenameAstFromString(last.outputType.typename)
         const lastTypeGenerics = lastTypeAst.typegenerics()
         const lastSubtypes = lastTypeGenerics ? lastTypeGenerics.fulltypename().map(
-          (t: any) => scope.deepGet(t.getText()) || (scope.deepGet(t.varn().getText()) as Type).solidify(
+          (t: any) => scope.deepGet(t.getText()) || (scope.deepGet(t.typename().getText()) as Type).solidify(
             t.typegenerics().fulltypename().map((t: any) => t.getText()),
             scope
           )

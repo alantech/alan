@@ -6,43 +6,43 @@
 export fn namespace(ns: string) = ns
 
 // The set function to store shared data
-export fn set(ns: string, key: string, val: any) = dssetv(ns, key, val)
-export fn set(ns: string, key: string, val: int8) = dssetf(ns, key, val)
-export fn set(ns: string, key: string, val: int16) = dssetf(ns, key, val)
-export fn set(ns: string, key: string, val: int32) = dssetf(ns, key, val)
-export fn set(ns: string, key: string, val: int64) = dssetf(ns, key, val)
-export fn set(ns: string, key: string, val: float32) = dssetf(ns, key, val)
-export fn set(ns: string, key: string, val: float64) = dssetf(ns, key, val)
-export fn set(ns: string, key: string, val: bool) = dssetf(ns, key, val)
+export fn set(ns: string, key: string, val: any) = dssetv(ns, key, val);
+export fn set(ns: string, key: string, val: int8) = dssetf(ns, key, val);
+export fn set(ns: string, key: string, val: int16) = dssetf(ns, key, val);
+export fn set(ns: string, key: string, val: int32) = dssetf(ns, key, val);
+export fn set(ns: string, key: string, val: int64) = dssetf(ns, key, val);
+export fn set(ns: string, key: string, val: float32) = dssetf(ns, key, val);
+export fn set(ns: string, key: string, val: float64) = dssetf(ns, key, val);
+export fn set(ns: string, key: string, val: bool) = dssetf(ns, key, val);
 
 // The has function to test if a shared key exists
-export fn has(ns: string, key: string): bool = dshas(ns, key)
+export fn has(ns: string, key: string): bool = dshas(ns, key);
 
 // The del function to remove a shared key
-export fn del(ns: string, key: string): bool = dsdel(ns, key)
+export fn del(ns: string, key: string): bool = dsdel(ns, key);
 
 // The getOr function to get a value or the return the provided default
 export fn getOr(ns: string, key: string, default: any) {
-  return dsgetv(ns, key).getOr(default)
+  return dsgetv(ns, key).getOr(default);
 }
 export fn getOr(ns: string, key: string, default: int8) {
-  return dsgetf(ns, key).getOr(default)
+  return dsgetf(ns, key).getOr(default);
 }
 export fn getOr(ns: string, key: string, default: int16) {
-  return dsgetf(ns, key).getOr(default)
+  return dsgetf(ns, key).getOr(default);
 }
 export fn getOr(ns: string, key: string, default: int32) {
-  return dsgetf(ns, key).getOr(default)
+  return dsgetf(ns, key).getOr(default);
 }
 export fn getOr(ns: string, key: string, default: int64) {
-  return dsgetf(ns, key).getOr(default)
+  return dsgetf(ns, key).getOr(default);
 }
 export fn getOr(ns: string, key: string, default: float32) {
-  return dsgetf(ns, key).getOr(default)
+  return dsgetf(ns, key).getOr(default);
 }
 export fn getOr(ns: string, key: string, default: float64) {
-  return dsgetf(ns, key).getOr(default)
+  return dsgetf(ns, key).getOr(default);
 }
 export fn getOr(ns: string, key: string, default: bool) {
-  return dsgetf(ns, key).getOr(default)
+  return dsgetf(ns, key).getOr(default);
 }

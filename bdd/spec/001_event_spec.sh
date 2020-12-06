@@ -6,7 +6,7 @@ Describe "Events"
       sourceToAll "
         from @std/app import start, exit
 
-        on start { emit exit 0 }
+        on start { emit exit 0; }
       "
     }
     BeforeAll before
@@ -32,7 +32,7 @@ Describe "Events"
       sourceToAll "
         from @std/app import start, exit
 
-        on start { emit exit 1 }
+        on start { emit exit 1; }
       "
     }
     BeforeAll before
@@ -60,8 +60,8 @@ Describe "Events"
         import @std/app
 
         on app.start {
-          let x: int64 = 0
-          emit app.exit x
+          let x: int64 = 0;
+          emit app.exit x;
         }
       "
     }

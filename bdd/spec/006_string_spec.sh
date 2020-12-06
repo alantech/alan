@@ -7,44 +7,34 @@ Describe "Strings"
         from @std/app import start, print, exit
 
         on start {
-          concat('Hello, ', 'World!').print()
-          print('Hello, ' + 'World!')
+          concat('Hello, ', 'World!').print();
+          print('Hello, ' + 'World!');
 
-          repeat('hi ', 5).print()
-          print('hi ' * 5)
+          repeat('hi ', 5).print();
+          print('hi ' * 5);
 
-          matches('foobar', 'fo.*').print()
-          print('foobar' ~ 'fo.*')
+          matches('foobar', 'fo.*').print();
+          print('foobar' ~ 'fo.*');
 
-          index('foobar', 'ba').print()
-          print('foobar' @ 'ba')
+          index('foobar', 'ba').print();
+          print('foobar' @ 'ba');
 
-          length('foobar').print()
-          print(#'foobar')
+          length('foobar').print();
+          print(#'foobar');
 
-          trim('   hi   ').print()
-          print(\`'   hi   ')
+          trim('   hi   ').print();
+          print(\`'   hi   ');
 
-          /**
-           * The following should work but the grammar doesn't yet support array access without a
-           * variable name, so I have to write it in a not-great form :(
-           *
-           * split('Hello, World!', ', ')[0].print()
-           * print(('Hello, World!' / ', ')[1])
-           */
+          split('Hello, World!', ', ')[0].print();
+          print(('Hello, World!' / ', ')[1]);
 
-          const res = split('Hello, World!', ', ')
-          /**
-           * You also can't chain off of an array access for some reason.
-           *
-           * res[0].print()
-           */
-          print(res[0])
+          const res = split('Hello, World!', ', ');
+          res[0].print();
 
-          const res2 = 'Hello, World!' / ', '
-          print(res2[1])
+          const res2 = 'Hello, World!' / ', ';
+          print(res2[1]);
 
-          emit exit 0
+          emit exit 0;
         }
       "
     }
@@ -67,6 +57,8 @@ true
 6
 hi
 hi
+Hello
+World!
 Hello
 World!"
 

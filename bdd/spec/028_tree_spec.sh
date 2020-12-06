@@ -7,16 +7,16 @@ Describe "Tree"
         from @std/app import start, print, exit
 
         on start {
-          const myTree = newTree('foo')
-          const barNode = myTree.addChild('bar')
-          const bazNode = myTree.addChild('baz')
-          const bayNode = barNode.addChild('bay')
+          const myTree = newTree('foo');
+          const barNode = myTree.addChild('bar');
+          const bazNode = myTree.addChild('baz');
+          const bayNode = barNode.addChild('bay');
 
-          print(myTree.getRootNode() || 'wrong')
-          print(bayNode.getParent() || 'wrong')
-          print(myTree.getChildren().map(fn (c: Node<string>): string = c || 'wrong').join(', '))
+          print(myTree.getRootNode() || 'wrong');
+          print(bayNode.getParent() || 'wrong');
+          print(myTree.getChildren().map(fn (c: Node<string>): string = c || 'wrong').join(', '));
 
-          emit exit 0
+          emit exit 0;
         }
       "
     }
@@ -48,22 +48,22 @@ bar, baz"
         from @std/app import start, print, exit
 
         type Foo {
-          foo: string
-          bar: bool
+          foo: string,
+          bar: bool,
         }
 
         on start {
           const myTree = newTree(new Foo {
-            foo = 'myFoo'
-            bar = false
-          })
+            foo: 'myFoo',
+            bar: false,
+          });
           const wrongFoo = new Foo {
-            foo = 'wrongFoo'
-            bar = false
-          }
-          const myFoo = myTree.getRootNode() || wrongFoo
-          print(myFoo.foo)
-          emit exit 0
+            foo: 'wrongFoo',
+            bar: false,
+          };
+          const myFoo = myTree.getRootNode() || wrongFoo;
+          print(myFoo.foo);
+          emit exit 0;
         }
       "
     }
@@ -93,28 +93,28 @@ bar, baz"
         from @std/app import start, print, exit
 
         on start {
-          const myTree = newTree('foo')
-          const barNode = myTree.addChild('bar')
-          const bazNode = myTree.addChild('baz')
-          const bayNode = barNode.addChild('bay')
+          const myTree = newTree('foo');
+          const barNode = myTree.addChild('bar');
+          const bazNode = myTree.addChild('baz');
+          const bayNode = barNode.addChild('bay');
 
-          print(myTree.every(fn (c: Node<string>): bool = (c || 'wrong').length() == 3))
-          print(myTree.some(fn (c: Node<string>): bool = (c || 'wrong').length() == 1))
-          print(myTree.find(fn (c: Node<string>): bool = (c || 'wrong') == 'bay').getOr('wrong'))
-          print(myTree.find(fn (c: Node<string>): bool = (c || 'wrong') == 'asf').getOr('wrong'))
+          print(myTree.every(fn (c: Node<string>): bool = (c || 'wrong').length() == 3));
+          print(myTree.some(fn (c: Node<string>): bool = (c || 'wrong').length() == 1));
+          print(myTree.find(fn (c: Node<string>): bool = (c || 'wrong') == 'bay').getOr('wrong'));
+          print(myTree.find(fn (c: Node<string>): bool = (c || 'wrong') == 'asf').getOr('wrong'));
 
-          print(myTree.length())
+          print(myTree.length());
           myTree.getChildren().eachLin(fn (c: Node<string>) {
-            const n = c || 'wrong'
+            const n = c || 'wrong';
             if n == 'bar' {
-              c.prune()
+              c.prune();
             }
-          })
-          print(myTree.getChildren().map(fn (c: Node<string>): string = c || 'wrong').join(', '))
-          print(myTree.length())
+          });
+          print(myTree.getChildren().map(fn (c: Node<string>): string = c || 'wrong').join(', '));
+          print(myTree.length());
 
-          myTree.reduce(fn (acc: int, i: Node<string>): int = (i || 'wrong').length() + acc, 0).print()
-          emit exit 0
+          myTree.reduce(fn (acc: int, i: Node<string>): int = (i || 'wrong').length() + acc, 0).print();
+          emit exit 0;
         }
       "
     }

@@ -17,14 +17,14 @@ Describe "Bitwise"
         prefix toInt8 as ~ precedence 10
 
         on start {
-          print(~1 & ~2)
-          print(~1 | ~3)
-          print(~5 ^ ~3)
-          print(! ~0)
-          print(~1 !& ~2)
-          print(~1 !| ~2)
-          print(~5 !^ ~3)
-          emit exit 0
+          print(~1 & ~2);
+          print(~1 | ~3);
+          print(~5 ^ ~3);
+          print(! ~0);
+          print(~1 !& ~2);
+          print(~1 !| ~2);
+          print(~5 !^ ~3);
+          emit exit 0;
         }
       "
     }
@@ -54,14 +54,14 @@ Describe "Bitwise"
         prefix toInt16 as ~ precedence 10
 
         on start {
-          print(~1 & ~2)
-          print(~1 | ~3)
-          print(~5 ^ ~3)
-          print(! ~0)
-          print(~1 !& ~2)
-          print(~1 !| ~2)
-          print(~5 !^ ~3)
-          emit exit 0
+          print(~1 & ~2);
+          print(~1 | ~3);
+          print(~5 ^ ~3);
+          print(! ~0);
+          print(~1 !& ~2);
+          print(~1 !| ~2);
+          print(~5 !^ ~3);
+          emit exit 0;
         }
       "
     }
@@ -91,14 +91,14 @@ Describe "Bitwise"
         prefix toInt32 as ~ precedence 10
 
         on start {
-          print(~1 & ~2)
-          print(~1 | ~3)
-          print(~5 ^ ~3)
-          print(! ~0)
-          print(~1 !& ~2)
-          print(~1 !| ~2)
-          print(~5 !^ ~3)
-          emit exit 0
+          print(~1 & ~2);
+          print(~1 | ~3);
+          print(~5 ^ ~3);
+          print(! ~0);
+          print(~1 !& ~2);
+          print(~1 !| ~2);
+          print(~5 !^ ~3);
+          emit exit 0;
         }
       "
     }
@@ -126,14 +126,14 @@ Describe "Bitwise"
         from @std/app import start, print, exit
 
         on start {
-          print(1 & 2)
-          print(1 | 3)
-          print(5 ^ 3)
-          print(!0)
-          print(1 !& 2)
-          print(1 !| 2)
-          print(5 !^ 3)
-          emit exit 0
+          print(1 & 2);
+          print(1 | 3);
+          print(5 ^ 3);
+          print(!0);
+          print(1 !& 2);
+          print(1 !| 2);
+          print(5 !^ 3);
+          emit exit 0;
         }
       "
     }
