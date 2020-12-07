@@ -540,7 +540,7 @@ export fn toString(n: Result<Stringifiable>): string {
     return n.getErr(noerr()).toString();
   }
 }
-export fn getOrHalt(result: Result<any>): any {
+export fn getOrExit(result: Result<any>): any {
   if result.isErr() {
     stderrp(result.toString());
     exitop(1.toInt8());

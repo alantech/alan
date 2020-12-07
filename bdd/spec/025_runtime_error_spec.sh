@@ -10,18 +10,18 @@ Describe "Runtime Errors"
     End
   End
 
-  Describe "getOrHalt"
+  Describe "getOrExit"
     before() {
       sourceToAll "
         from @std/app import start, print, exit
 
         on start {
           const xs = [0, 1, 2, 5];
-          const x1 = xs[1].getOrHalt();
+          const x1 = xs[1].getOrExit();
           print(x1);
-          const x2 = xs[2].getOrHalt();
+          const x2 = xs[2].getOrExit();
           print(x2);
-          const x5 = xs[5].getOrHalt();
+          const x5 = xs[5].getOrExit();
           print(x5);
 
           emit exit 0;
