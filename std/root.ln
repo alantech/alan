@@ -540,6 +540,14 @@ export fn toString(n: Result<Stringifiable>): string {
     return n.getErr(noerr()).toString();
   }
 }
+export fn getOrExit(result: Result<any>): any {
+  if result.isErr() {
+    stderrp(result.toString());
+    exitop(1.toInt8());
+  } else {
+    return result.getR();
+  }
+}
 
 export fn main(val: any) = mainE(val, 0);
 export fn main(val: int8) = mainE(val, 8);

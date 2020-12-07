@@ -9,4 +9,43 @@ Describe "Runtime Errors"
       The error should include "File not found:"
     End
   End
+
+  Describe "getOrExit"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+
+        on start {
+          const xs = [0, 1, 2, 5];
+          const x1 = xs[1].getOrExit();
+          print(x1);
+          const x2 = xs[2].getOrExit();
+          print(x2);
+          const x5 = xs[5].getOrExit();
+          print(x5);
+
+          emit exit 0;
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    It "halts js on an error"
+      When run test_js
+      The status should eq "1"
+      The output should include ""
+      The error should eq "out-of-bounds access" # TODO: errors need stacktrace-like reporting
+    End 
+
+    It "halts agc on an error"
+      When run test_agc
+      The status should eq "1"
+      The error should eq "out-of-bounds access" # TODO: errors need stacktrace-like reporting
+    End 
+  End
 End
