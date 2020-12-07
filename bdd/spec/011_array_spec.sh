@@ -300,7 +300,7 @@ Hello, World!"
 
         on start {
           const test = [ 1, 1, 2, 3, 5, 8 ];
-          test.find(fn (val: int64): int64 = val % 2 == 1).getOr(0).print();
+          test.find(fn (val: int64): bool = val % 2 == 1).getOr(0).print();
           test.each(fn (val: int64) = print('=' * val));
           emit exit 0;
         }
