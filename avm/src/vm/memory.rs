@@ -45,7 +45,7 @@ pub struct HandlerMemory {
   ///    to nested memory. The second value indicates that the pointer is to an explicit value
   ///    within that block of memory.
   /// Virtual pointers are simply the indexes into the `mems` field.
-  mems: Vec<Vec<(usize, i64)>>,
+  pub mems: Vec<Vec<(usize, i64)>>,
   /// The address spaces for the handler memory that the handler can mutate. The first is the
   /// "normal" memory space, and the second is the args memory space. Global addresses are fixed
   /// for the application and do not need a mutable vector to parse.
@@ -207,9 +207,33 @@ impl HandlerMemory {
 
   /// Stores a nested fractal of data in a given address.
   pub fn write_fractal(self: &mut HandlerMemory, addr: i64, val: &[(usize, i64)]) {
-    let a = self.mems.len();
-    self.mems.push(val.to_vec().clone());
-    self.set_addr(addr, a, std::usize::MAX);
+    if addr >= 0 && self.addr.0.len() > (addr as usize) {
+      let a = self.addr.0[addr as usize].0;
+      let old_fractal = &self.mems[a];
+      for i in 0..old_fractal.len() {
+        if old_fractal[i].0 == self.mems.len() - 1 {
+          drop(old_fractal);
+          self.mems.pop();
+          break;
+        }
+      }
+      self.mems[a] = val.to_vec().clone();
+    } else if addr <= CLOSURE_ARG_MEM_END && self.addr.1.len() > ((addr - CLOSURE_ARG_MEM_START) as usize) {
+      let a = self.addr.1[(addr - CLOSURE_ARG_MEM_START) as usize].0;
+      let old_fractal = &self.mems[a];
+      for i in 0..old_fractal.len() {
+        if old_fractal[i].0 == self.mems.len() - 1 {
+          drop(old_fractal);
+          self.mems.pop();
+          break;
+        }
+      }
+      self.mems[a] = val.to_vec().clone();
+    } else {
+      let a = self.mems.len();
+      self.mems.push(val.to_vec().clone());
+      self.set_addr(addr, a, std::usize::MAX);
+    }
   }
 
   /// Pushes a fixed value into a fractal at a given address.
@@ -477,15 +501,20 @@ impl HandlerMemory {
     let s = hm.mem_addr; // The initial block that will be transferred (plus all following blocks)
     let s2 = self.mems.len(); // The new address of the initial block
     let offset = s2 - s; // Assuming it was made by `fork` this should be positive or zero
-    let (a, b) = hm.addr_to_idxs(CLOSURE_ARG_MEM_START); // The only address that can "escape"
-    hm.mems.drain(..s); // Remove the irrelevant memory blocks
-    self.mems.append(&mut hm.mems); // Append the relevant ones to the original HandlerMemory
-    // Set the return address on the original HandlerMemory to the acquired indexes, potentially
-    // offset if it is a pointer at new data
-    if a < std::usize::MAX && a >= s {
-      self.set_addr(CLOSURE_ARG_MEM_START, a + offset, b);
+    if (hm.addr.1.len() > 0) {
+      let (a, b) = hm.addr_to_idxs(CLOSURE_ARG_MEM_START); // The only address that can "escape"
+      hm.mems.drain(..s); // Remove the irrelevant memory blocks
+      self.mems.append(&mut hm.mems); // Append the relevant ones to the original HandlerMemory
+      // Set the return address on the original HandlerMemory to the acquired indexes, potentially
+      // offset if it is a pointer at new data
+      if a < std::usize::MAX && a >= s {
+        self.set_addr(CLOSURE_ARG_MEM_START, a + offset, b);
+      } else {
+        self.set_addr(CLOSURE_ARG_MEM_START, a, b);
+      }
     } else {
-      self.set_addr(CLOSURE_ARG_MEM_START, a, b);
+      hm.mems.drain(..s); // Remove the irrelevant memory blocks
+      self.mems.append(&mut hm.mems); // Append the relevant ones to the original HandlerMemory
     }
     // Similarly "stitch up" every pointer in the moved data with a pass-through scan and update
     let l = self.mems.len();
@@ -496,6 +525,16 @@ impl HandlerMemory {
         if a < std::usize::MAX && a >= s {
           mem[j] = (a + offset, b);
         }
+      }
+    }
+    // Finally pull any addresses added by the old object into the new with a similar stitching
+    if hm.addr.0.len() > self.addr.0.len() {
+      self.addr.0.resize(hm.addr.0.len(), (0, 0));
+    }
+    for i in 0..hm.addr.0.len() {
+      let (a, b) = hm.addr.0[i];
+      if a >= s {
+        self.addr.0[i] = (a + offset, b);
       }
     }
   }
