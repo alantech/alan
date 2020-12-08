@@ -1724,7 +1724,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         let mut hm = hand_mem.clone();
         hm.set_addr(CLOSURE_ARG_MEM_START + 1, arr[i].0, arr[i].1 as usize);
         hm = subhandler.clone().run(hm).await;
-        // The sequential version of `each` is allowed to have side-effects
+        // The sequential version of `find` is allowed to have side-effects
         hm.replace(&mut hand_mem);
         let val = hand_mem.read_fixed(CLOSURE_ARG_MEM_START);
         if val == 1 {
