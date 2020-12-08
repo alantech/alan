@@ -1717,14 +1717,16 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   io!("findl", |args, mem| {
     Box::pin(async move {
       let mut hand_mem = mem.write().await;
-      let arr = hand_mem.read_fractal(args[0]);
+      let arr = hand_mem.read_fractal(args[0]).to_vec();
       let len = arr.len();
       let subhandler = HandlerFragment::new(args[1], 0);
       for i in 0..len {
-        let mut hm = hand_mem.fork();
+        let mut hm = hand_mem.clone();
         hm.set_addr(CLOSURE_ARG_MEM_START + 1, arr[i].0, arr[i].1 as usize);
         hm = subhandler.clone().run(hm).await;
-        let val = hm.read_fixed(CLOSURE_ARG_MEM_START);
+        // The sequential version of `find` is allowed to have side-effects
+        hm.replace(&mut hand_mem);
+        let val = hand_mem.read_fixed(CLOSURE_ARG_MEM_START);
         if val == 1 {
           let (a, b) = arr[i];
           hand_mem.write_fractal(args[2], &Vec::new());
