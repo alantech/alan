@@ -1,7 +1,4 @@
-use std::sync::Arc;
-
 use futures::future::join_all;
-use tokio::sync::RwLock;
 use tokio::task;
 
 use crate::vm::instruction::Instruction;
@@ -245,7 +242,7 @@ impl HandlerFragment {
     hand_mem
   }
 
-  pub async fn run(mut self: HandlerFragment, mut hand_mem: HandlerMemory) -> HandlerMemory {
+  pub async fn run(self: HandlerFragment, hand_mem: HandlerMemory) -> HandlerMemory {
     task::spawn(async move {
       self.run_local(hand_mem).await
     }).await.unwrap()

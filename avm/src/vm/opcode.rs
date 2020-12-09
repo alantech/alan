@@ -22,7 +22,6 @@ use once_cell::sync::Lazy;
 use rand::RngCore;
 use rand::rngs::OsRng;
 use regex::Regex;
-use tokio::sync::RwLock;
 use tokio::task;
 use tokio::time::delay_for;
 use twox_hash::XxHash64;
@@ -1651,7 +1650,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }
     None
   });
-  io!("each", |args, mut hand_mem| {
+  io!("each", |args, hand_mem| {
     Box::pin(async move {
       let arr = hand_mem.read_fractal(args[0]);
       let len = arr.len();
@@ -2058,7 +2057,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     })
   });
   // IO opcodes
-  io!("waitop", |args, mut hand_mem| {
+  io!("waitop", |args, hand_mem| {
     Box::pin(async move {
       let ms = hand_mem.read_fixed(args[0]) as u64;
       delay_for(Duration::from_millis(ms)).await;
@@ -2251,7 +2250,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem
     })
   });
-  io!("dssetf", |args, mut hand_mem| {
+  io!("dssetf", |args, hand_mem| {
     Box::pin(async move {
       let val = hand_mem.read_fixed(args[2]);
       let mut hm = HandlerMemory::new(None, 1); 
@@ -2264,7 +2263,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem
     })
   });
-  io!("dssetv", |args, mut hand_mem| {
+  io!("dssetv", |args, hand_mem| {
     Box::pin(async move {
       let mut hm = HandlerMemory::new(None, 1);
       HandlerMemory::transfer(&hand_mem, args[2], &mut hm, 0);
@@ -2440,8 +2439,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hm.set_addr(CLOSURE_ARG_MEM_START + 1, a, b);
       hm.set_addr(CLOSURE_ARG_MEM_START + 2, c, d);
       let slf = hm.read_fractal(args[0]);
+      let a2 = slf[0].0;
       let recurse_fn = HandlerFragment::new(slf[1].1, 0);
-      let mut seq = hm.read_mut_fractal_idxs(slf[0].0, 0);
+      let seq = hm.read_mut_fractal_idxs(a2, 0);
       if seq[0].1 < seq[1].1 {
         seq[0].1 = seq[0].1 + 1;
         hm = recurse_fn.run(hm).await;

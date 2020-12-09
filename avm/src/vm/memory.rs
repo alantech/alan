@@ -501,7 +501,7 @@ impl HandlerMemory {
     let s = hm.mem_addr; // The initial block that will be transferred (plus all following blocks)
     let s2 = self.mems.len(); // The new address of the initial block
     let offset = s2 - s; // Assuming it was made by `fork` this should be positive or zero
-    if (hm.addr.1.len() > 0) {
+    if hm.addr.1.len() > 0 {
       let (a, b) = hm.addr_to_idxs(CLOSURE_ARG_MEM_START); // The only address that can "escape"
       hm.mems.drain(..s); // Remove the irrelevant memory blocks
       self.mems.append(&mut hm.mems); // Append the relevant ones to the original HandlerMemory

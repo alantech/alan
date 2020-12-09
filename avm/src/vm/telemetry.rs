@@ -22,5 +22,7 @@ pub async fn log() {
     ]
   });
   let client = reqwest::Client::new();
-  client.post(AMPLITUDE_URL).json(&body).send().await;
+  if client.post(AMPLITUDE_URL).json(&body).send().await.is_ok() {
+    // Do nothing
+  }
 }
