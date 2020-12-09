@@ -45,7 +45,7 @@ pub struct HandlerMemory {
   ///    to nested memory. The second value indicates that the pointer is to an explicit value
   ///    within that block of memory.
   /// Virtual pointers are simply the indexes into the `mems` field.
-  pub mems: Vec<Vec<(usize, i64)>>,
+  mems: Vec<Vec<(usize, i64)>>,
   /// The address spaces for the handler memory that the handler can mutate. The first is the
   /// "normal" memory space, and the second is the args memory space. Global addresses are fixed
   /// for the application and do not need a mutable vector to parse.
