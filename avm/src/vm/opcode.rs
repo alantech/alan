@@ -2023,9 +2023,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let cond = hand_mem.read_fixed(args[0]);
       let subhandler = HandlerFragment::new(args[1], 0);
       if cond == 1 {
-        let mut hm = hand_mem.clone();
-        hm = subhandler.run(hm).await;
-        hm.replace(&mut hand_mem);
+        hand_mem = subhandler.run(hand_mem).await;
       }
       hand_mem
     })
