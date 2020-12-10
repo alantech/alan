@@ -111,4 +111,44 @@ Describe "@std/http"
       The output should eq "Hello, World!"
     End
   End
+
+  Describe "importing http get doesn't break hashmap get"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+        from @std/http import get
+
+        on start {
+          const str = get('https://raw.githubusercontent.com/alantech/hellodep/aea1ce817a423d00107577a430a046993e4e6cad/index.ln').getOr('');
+          const kv = str.split(' = ');
+          const key = kv[0] || 'bad';
+          const val = kv[1] || 'bad';
+          const hm = newHashMap(key, val);
+          hm.get(key).getOr('failed').print();
+          hm.get('something else').getOr('correct').print();
+          emit exit 0;
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    GETGETOUTPUT="\"You got me!\"
+
+correct"
+
+    It "runs js"
+      When run test_js
+      The output should eq "${GETGETOUTPUT}"
+    End
+
+    It "runs agc"
+      When run test_agc
+      The output should eq "${GETGETOUTPUT}"
+    End
+  End
 End

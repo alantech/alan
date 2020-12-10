@@ -669,7 +669,18 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
       for (let i = 0; i < argumentTypeList.length; i++) {
         argTypes.push("<" + argumentTypeList[i].typename + ">")
       }
-      errMsg += '\n' + fns[0].getName() + "(" + argTypes.join(", ") + ")"
+      errMsg += '\n' + fns[0].getName() + "(" + argTypes.join(", ") + ")\n"
+      errMsg += 'Candidate functions considered:\n'
+      for (let i = 0; i < fns.length; i++) {
+        const fn = fns[i]
+        if (fn instanceof UserFunction) {
+          const fnStr = fn.toFnStr().split('{')[0]
+          errMsg += `${fnStr}\n`
+        } else {
+          // TODO: Add this to the opcode definition, too?
+          errMsg += `fn ${fn.getName()}(${Object.entries(fn.getArguments()).map(kv => `${kv[0]}: ${kv[1].typename}`)}): ${fn.getReturnType().typename}\n`
+        }
+      }
       throw new Error(errMsg)
     }
     return fn
