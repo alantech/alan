@@ -192,7 +192,7 @@ impl HandlerFragment {
       // io-bound fragment
       if !instructions[0].opcode.pred_exec {
         if instructions.len() > 1 {
-          let futures: Vec<HMFuture> = instructions.iter().map(|ins| {
+          /*let futures: Vec<HMFuture> = instructions.iter().map(|ins| {
             //eprintln!("{} {} {} {}", ins.opcode._name, ins.args[0], ins.args[1], ins.args[2]);
             let async_func = ins.opcode.async_func.unwrap();
             return async_func(ins.args.clone(), hand_mem.fork());
@@ -200,7 +200,19 @@ impl HandlerFragment {
           let hms = task::spawn(async move {
             join_all(futures).await
           }).await.unwrap();
+          //eprintln!(">>>>>>>>>>>>>>>>>>");
+          //eprintln!("{:?}", &hand_mem);
+          //eprintln!("{:?}", &hms);
           for hm in hms {
+            hand_mem.join(hm);
+          }
+          //eprintln!("{:?}", &hand_mem);
+          //eprintln!("<<<<<<<<<<<<<<<<<");
+          */
+          for i in 0..instructions.len() {
+            let ins = &instructions[i];
+            let async_func = ins.opcode.async_func.unwrap();
+            let hm = async_func(ins.args.clone(), hand_mem.fork()).await;
             hand_mem.join(hm);
           }
         } else {

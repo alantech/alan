@@ -218,9 +218,13 @@ impl HandlerMemory {
             break;
           }
         }
+        self.mems[a] = val.to_vec().clone();
+        self.set_addr(addr, a, std::usize::MAX);
+      } else {
+        let a = self.mems.len();
+        self.mems.push(val.to_vec().clone());
+        self.set_addr(addr, a, std::usize::MAX);
       }
-      self.mems[a] = val.to_vec().clone();
-      self.set_addr(addr, a, std::usize::MAX);
     } else if addr <= CLOSURE_ARG_MEM_END && self.addr.1.len() > ((addr - CLOSURE_ARG_MEM_START) as usize) {
       let (a, b) = self.addr.1[(addr - CLOSURE_ARG_MEM_START) as usize];
       if b == std::usize::MAX {
@@ -232,9 +236,13 @@ impl HandlerMemory {
             break;
           }
         }
+        self.mems[a] = val.to_vec().clone();
+        self.set_addr(addr, a, std::usize::MAX);
+      } else {
+        let a = self.mems.len();
+        self.mems.push(val.to_vec().clone());
+        self.set_addr(addr, a, std::usize::MAX);
       }
-      self.mems[a] = val.to_vec().clone();
-      self.set_addr(addr, a, std::usize::MAX);
     } else {
       let a = self.mems.len();
       self.mems.push(val.to_vec().clone());
@@ -535,17 +543,19 @@ impl HandlerMemory {
     }
     // Finally pull any addresses added by the old object into the new with a similar stitching
     if hm.addr.0.len() > self.addr.0.len() {
-      self.addr.0.resize(hm.addr.0.len(), (std::usize::MAX, 0));
+      self.addr.0.resize(hm.addr.0.len(), (0, 0));
     }
     for i in 0..hm.addr.0.len() {
       let (a, b) = hm.addr.0[i];
       let (c, _d) = self.addr.0[i];
-      if a > c || (a < std::usize::MAX && c == std::usize::MAX) {
-        if a >= s && a != std::usize::MAX {
+      if a != std::usize::MAX && (a >= c || c == std::usize::MAX) {
+        if a + offset >= s && a != std::usize::MAX {
           self.addr.0[i] = (a + offset, b);
         } else {
           self.addr.0[i] = (a, b);
         }
+      } else if a == c {
+        self.addr.0[i] = (a, b);
       }
     }
   }
