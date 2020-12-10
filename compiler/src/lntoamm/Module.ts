@@ -82,7 +82,27 @@ class Module {
             importName = moduleVar.varop(0).getText()
           }
           const thing = importedModule.exportScope.shallowGet(exportName)
-          module.moduleScope.put(importName, thing)
+          if (thing instanceof Array && thing[0].microstatementInlining instanceof Function) {
+            const otherthing = module.moduleScope.deepGet(importName)
+            if (
+              !!otherthing &&
+              otherthing instanceof Array &&
+              (otherthing[0] as Fn).microstatementInlining instanceof Function
+            ) {
+              module.moduleScope.put(importName, [...thing, ...otherthing])
+            } else {
+              module.moduleScope.put(importName, thing)
+            }
+          } else if (thing instanceof Array && thing[0] instanceof Operator) {
+            const otherthing = module.moduleScope.deepGet(importName)
+            if (!!otherthing && otherthing instanceof Array && otherthing instanceof Operator) {
+              module.moduleScope.put(importName, [...thing, ...otherthing])
+            } else {
+              module.moduleScope.put(importName, thing)
+            }
+          } else {
+            module.moduleScope.put(importName, thing)
+          }
           // Special behavior for interfaces. If there are any functions or operators that match
           // the interface, pull them in. Similarly any types that match the entire interface. This
           // allows concise importing of a related suite of tools without having to explicitly call
