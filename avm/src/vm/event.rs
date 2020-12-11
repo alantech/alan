@@ -1,12 +1,9 @@
-use std::sync::Arc;
-
 use futures::future::join_all;
-use tokio::sync::RwLock;
 use tokio::task;
 
 use crate::vm::instruction::Instruction;
 use crate::vm::memory::HandlerMemory;
-use crate::vm::opcode::EmptyFuture;
+use crate::vm::opcode::HMFuture;
 use crate::vm::program::Program;
 use crate::vm::run::{EVENT_TX};
 
@@ -189,56 +186,77 @@ impl HandlerFragment {
   /// very high volume of small IO requests, but as most IO operations are several orders of
   /// magnitude slower than CPU operations, this is considered to be a very small minority of
   /// workloads and is ignored for now.
-  pub async fn run(mut self: HandlerFragment, mut hand_mem: HandlerMemory) -> HandlerMemory {
-    task::spawn(async move {
-      let mut instructions = self.get_instruction_fragment();
-      loop {
-        // io-bound fragment
-        if !instructions[0].opcode.pred_exec {
-          let mem = Arc::new(RwLock::new(hand_mem));
-          let futures: Vec<EmptyFuture> = instructions.iter().map(|ins| {
+  pub async fn run_local(mut self: HandlerFragment, mut hand_mem: HandlerMemory) -> HandlerMemory {
+    let mut instructions = self.get_instruction_fragment();
+    loop {
+      // io-bound fragment
+      if !instructions[0].opcode.pred_exec {
+        if instructions.len() > 1 {
+          // TODO: Revive IO parallelization, again, once AGA dependency graph *actually* works
+          /*let futures: Vec<HMFuture> = instructions.iter().map(|ins| {
             //eprintln!("{} {} {} {}", ins.opcode._name, ins.args[0], ins.args[1], ins.args[2]);
             let async_func = ins.opcode.async_func.unwrap();
-            return async_func(ins.args.clone(), mem.clone());
+            return async_func(ins.args.clone(), hand_mem.fork());
           }).collect();
-          hand_mem = task::spawn(async move {
-            join_all(futures).await;
-            let deref_res = Arc::try_unwrap(mem);
-            if deref_res.is_err() {
-              panic!("Arc for handler memory passed to io opcodes has more than one strong reference.");
-            };
-            deref_res.ok().unwrap().into_inner()
+          let hms = task::spawn(async move {
+            join_all(futures).await
           }).await.unwrap();
+          //eprintln!(">>>>>>>>>>>>>>>>>>");
+          //eprintln!("{:?}", &hand_mem);
+          //eprintln!("{:?}", &hms);
+          for hm in hms {
+            hand_mem.join(hm);
+          }
+          //eprintln!("{:?}", &hand_mem);
+          //eprintln!("<<<<<<<<<<<<<<<<<");
+          */
+          for i in 0..instructions.len() {
+            let ins = &instructions[i];
+            let async_func = ins.opcode.async_func.unwrap();
+            hand_mem = async_func(ins.args.clone(), hand_mem).await;
+          }
         } else {
-          // cpu-bound fragment
-          let self_and_hand_mem = task::block_in_place(move || {
-            instructions.iter().for_each( |i| {
-              //eprintln!("{} {} {} {}", i.opcode._name, i.args[0], i.args[1], i.args[2]);
-              let func = i.opcode.func.unwrap();
-              let event = func(i.args.as_slice(), &mut hand_mem);
-              if event.is_some() {
-                let event_tx = EVENT_TX.get().unwrap();
-                let event_sent = event_tx.send(event.unwrap());
-                if event_sent.is_err() {
-                  eprintln!("Event transmission error");
-                  std::process::exit(2);
-                }
+          let future = instructions[0].opcode.async_func.unwrap()(
+            instructions[0].args.clone(),
+            hand_mem
+          );
+          hand_mem = future.await;
+        }
+      } else {
+        // cpu-bound fragment
+        let self_and_hand_mem = task::block_in_place(move || {
+          instructions.iter().for_each( |i| {
+            //eprintln!("{} {} {} {}", i.opcode._name, i.args[0], i.args[1], i.args[2]);
+            let func = i.opcode.func.unwrap();
+            let event = func(i.args.as_slice(), &mut hand_mem);
+            if event.is_some() {
+              let event_tx = EVENT_TX.get().unwrap();
+              let event_sent = event_tx.send(event.unwrap());
+              if event_sent.is_err() {
+                eprintln!("Event transmission error");
+                std::process::exit(2);
               }
-            });
-            (self, hand_mem)
+            }
           });
-          self = self_and_hand_mem.0;
-          hand_mem = self_and_hand_mem.1;
-        }
-        let next_frag = self.get_next_fragment();
-        if next_frag.is_some() {
-          self = next_frag.unwrap();
-          instructions = self.get_instruction_fragment();
-        } else {
-          break;
-        }
+          (self, hand_mem)
+        });
+        self = self_and_hand_mem.0;
+        hand_mem = self_and_hand_mem.1;
       }
-      hand_mem
+      let next_frag = self.get_next_fragment();
+      if next_frag.is_some() {
+        self = next_frag.unwrap();
+        instructions = self.get_instruction_fragment();
+      } else {
+        break;
+      }
+    }
+    hand_mem
+  }
+
+  pub async fn run(self: HandlerFragment, hand_mem: HandlerMemory) -> HandlerMemory {
+    task::spawn(async move {
+      self.run_local(hand_mem).await
     }).await.unwrap()
   }
 }

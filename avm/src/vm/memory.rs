@@ -477,15 +477,20 @@ impl HandlerMemory {
     let s = hm.mem_addr; // The initial block that will be transferred (plus all following blocks)
     let s2 = self.mems.len(); // The new address of the initial block
     let offset = s2 - s; // Assuming it was made by `fork` this should be positive or zero
-    let (a, b) = hm.addr_to_idxs(CLOSURE_ARG_MEM_START); // The only address that can "escape"
-    hm.mems.drain(..s); // Remove the irrelevant memory blocks
-    self.mems.append(&mut hm.mems); // Append the relevant ones to the original HandlerMemory
-    // Set the return address on the original HandlerMemory to the acquired indexes, potentially
-    // offset if it is a pointer at new data
-    if a < std::usize::MAX && a >= s {
-      self.set_addr(CLOSURE_ARG_MEM_START, a + offset, b);
+    if hm.addr.1.len() > 0 {
+      let (a, b) = hm.addr_to_idxs(CLOSURE_ARG_MEM_START); // The only address that can "escape"
+      hm.mems.drain(..s); // Remove the irrelevant memory blocks
+      self.mems.append(&mut hm.mems); // Append the relevant ones to the original HandlerMemory
+      // Set the return address on the original HandlerMemory to the acquired indexes, potentially
+      // offset if it is a pointer at new data
+      if a < std::usize::MAX && a >= s {
+        self.set_addr(CLOSURE_ARG_MEM_START, a + offset, b);
+      } else {
+        self.set_addr(CLOSURE_ARG_MEM_START, a, b);
+      }
     } else {
-      self.set_addr(CLOSURE_ARG_MEM_START, a, b);
+      hm.mems.drain(..s); // Remove the irrelevant memory blocks
+      self.mems.append(&mut hm.mems); // Append the relevant ones to the original HandlerMemory
     }
     // Similarly "stitch up" every pointer in the moved data with a pass-through scan and update
     let l = self.mems.len();
@@ -498,6 +503,23 @@ impl HandlerMemory {
         }
       }
     }
+    // Finally pull any addresses added by the old object into the new with a similar stitching
+    /*if hm.addr.0.len() > self.addr.0.len() {
+      self.addr.0.resize(hm.addr.0.len(), (0, 0));
+    }
+    for i in 0..hm.addr.0.len() {
+      let (a, b) = hm.addr.0[i];
+      let (c, d) = self.addr.0[i];
+      if a != c || b != d {
+        if a + offset >= s && a != std::usize::MAX {
+          self.addr.0[i] = (a + offset, b);
+        } else {
+          self.addr.0[i] = (a, b);
+        }
+      } else if a == c {
+        self.addr.0[i] = (a, b);
+      }
+    }*/
   }
 
   /// Takes a UTF-8 string and converts it to fractal memory that can be stored inside of a
