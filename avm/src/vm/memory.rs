@@ -207,47 +207,9 @@ impl HandlerMemory {
 
   /// Stores a nested fractal of data in a given address.
   pub fn write_fractal(self: &mut HandlerMemory, addr: i64, val: &[(usize, i64)]) {
-    if addr >= 0 && self.addr.0.len() > (addr as usize) {
-      let (a, b) = self.addr.0[addr as usize];
-      if b == std::usize::MAX {
-        let old_fractal = &self.mems[a];
-        for i in 0..old_fractal.len() {
-          if old_fractal[i].0 == self.mems.len() - 1 {
-            drop(old_fractal);
-            self.mems.pop();
-            break;
-          }
-        }
-        self.mems[a] = val.to_vec().clone();
-        self.set_addr(addr, a, std::usize::MAX);
-      } else {
-        let a = self.mems.len();
-        self.mems.push(val.to_vec().clone());
-        self.set_addr(addr, a, std::usize::MAX);
-      }
-    } else if addr <= CLOSURE_ARG_MEM_END && self.addr.1.len() > ((addr - CLOSURE_ARG_MEM_START) as usize) {
-      let (a, b) = self.addr.1[(addr - CLOSURE_ARG_MEM_START) as usize];
-      if b == std::usize::MAX {
-        let old_fractal = &self.mems[a];
-        for i in 0..old_fractal.len() {
-          if old_fractal[i].0 == self.mems.len() - 1 {
-            drop(old_fractal);
-            self.mems.pop();
-            break;
-          }
-        }
-        self.mems[a] = val.to_vec().clone();
-        self.set_addr(addr, a, std::usize::MAX);
-      } else {
-        let a = self.mems.len();
-        self.mems.push(val.to_vec().clone());
-        self.set_addr(addr, a, std::usize::MAX);
-      }
-    } else {
-      let a = self.mems.len();
-      self.mems.push(val.to_vec().clone());
-      self.set_addr(addr, a, std::usize::MAX);
-    }
+    let a = self.mems.len();
+    self.mems.push(val.to_vec().clone());
+    self.set_addr(addr, a, std::usize::MAX);
   }
 
   /// Pushes a fixed value into a fractal at a given address.
