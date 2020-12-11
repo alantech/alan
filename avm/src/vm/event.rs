@@ -192,6 +192,7 @@ impl HandlerFragment {
       // io-bound fragment
       if !instructions[0].opcode.pred_exec {
         if instructions.len() > 1 {
+          // TODO: Revive IO parallelization, again, once AGA dependency graph *actually* works
           /*let futures: Vec<HMFuture> = instructions.iter().map(|ins| {
             //eprintln!("{} {} {} {}", ins.opcode._name, ins.args[0], ins.args[1], ins.args[2]);
             let async_func = ins.opcode.async_func.unwrap();
@@ -212,8 +213,7 @@ impl HandlerFragment {
           for i in 0..instructions.len() {
             let ins = &instructions[i];
             let async_func = ins.opcode.async_func.unwrap();
-            let hm = async_func(ins.args.clone(), hand_mem.fork()).await;
-            hand_mem.join(hm);
+            hand_mem = async_func(ins.args.clone(), hand_mem).await;
           }
         } else {
           let future = instructions[0].opcode.async_func.unwrap()(

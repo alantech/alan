@@ -547,8 +547,8 @@ impl HandlerMemory {
     }
     for i in 0..hm.addr.0.len() {
       let (a, b) = hm.addr.0[i];
-      let (c, _d) = self.addr.0[i];
-      if a != std::usize::MAX && (a >= c || c == std::usize::MAX) {
+      let (c, d) = self.addr.0[i];
+      if a != c || b != d {
         if a + offset >= s && a != std::usize::MAX {
           self.addr.0[i] = (a + offset, b);
         } else {
