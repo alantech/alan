@@ -542,7 +542,7 @@ impl HandlerMemory {
       }
     }
     // Finally pull any addresses added by the old object into the new with a similar stitching
-    if hm.addr.0.len() > self.addr.0.len() {
+    /*if hm.addr.0.len() > self.addr.0.len() {
       self.addr.0.resize(hm.addr.0.len(), (0, 0));
     }
     for i in 0..hm.addr.0.len() {
@@ -557,7 +557,7 @@ impl HandlerMemory {
       } else if a == c {
         self.addr.0[i] = (a, b);
       }
-    }
+    }*/
   }
 
   /// Takes a UTF-8 string and converts it to fractal memory that can be stored inside of a
