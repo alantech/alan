@@ -73,6 +73,36 @@ World!"
     End
   End
 
+  Describe "equality between global constant and 'live' string works"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+
+        on start {
+          const foo = 'foo';
+          print(foo.trim() == foo);
+          emit exit 0;
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    It "runs js"
+      When run test_js
+      The output should eq "true"
+    End
+
+    It "runs agc"
+      When run test_agc
+      The output should eq "true"
+    End
+  End
+
   Describe "templating"
     before() {
       # TODO: sourceToAll
