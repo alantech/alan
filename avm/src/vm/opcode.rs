@@ -1092,7 +1092,15 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!("eqstr", |args, hand_mem| {
     let a_pascal_string = hand_mem.read_fractal(args[0]);
     let b_pascal_string = hand_mem.read_fractal(args[1]);
-    let out = if a_pascal_string == b_pascal_string { 1i64 } else { 0i64 };
+    let out;
+    if args[0] < 0 || args[1] < 0 {
+      // Special path for global memory stored strings, they aren't represented the same way
+      let a_str = HandlerMemory::fractal_to_string(&a_pascal_string);
+      let b_str = HandlerMemory::fractal_to_string(&b_pascal_string);
+      out = if a_str == b_str { 1i64 } else { 0i64 };
+    } else {
+      out = if a_pascal_string == b_pascal_string { 1i64 } else { 0i64 };
+    }
     hand_mem.write_fixed(args[2], out);
     None
   });
