@@ -23,7 +23,7 @@ use rand::RngCore;
 use rand::rngs::OsRng;
 use regex::Regex;
 use tokio::task;
-use tokio::time::delay_for;
+use tokio::time::sleep;
 use twox_hash::XxHash64;
 
 use crate::vm::event::{BuiltInEvents, EventEmit, HandlerFragment};
@@ -2066,7 +2066,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   io!("waitop", |args, hand_mem| {
     Box::pin(async move {
       let ms = hand_mem.read_fixed(args[0]) as u64;
-      delay_for(Duration::from_millis(ms)).await;
+      sleep(Duration::from_millis(ms)).await;
       hand_mem
     })
   });

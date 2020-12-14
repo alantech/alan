@@ -65,10 +65,10 @@ impl VM {
 }
 
 pub fn exec(fp: &str, delete_after_load: bool) {
-  let mut rt = runtime::Builder::new()
-    .threaded_scheduler()
-    .enable_time()
-    .enable_io()
+  let rt = runtime::Builder::new_multi_thread()
+    .worker_threads(num_cpus::get())
+    .max_threads(num_cpus::get())
+    .enable_all()
     .build()
     .unwrap();
   // Start the root task backed by a single thread
