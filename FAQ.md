@@ -58,8 +58,8 @@ Still thinking about the best approach to take on the GPGPU front: do it "right"
 
 We are still scoping out [FFI support](https://github.com/alantech/alan/pull/60/files) for bindings that plays nice with the auto parallelization that happens in the VM. Alan [transpiles to Javascript](https://docs.alan-lang.org/transpile_js.html) which still offers IO concurrency but without the parallelization.
 
-### The "source installation" necessary to contribute to Alan requires Python, Node.js and Rust. Why are there so many dependencies?
+### The "source installation" necessary to contribute to Alan requires Node.js and Rust. Why are there so many dependencies?
 
 We went with tools we were familiar with or believed would accelerate our ability to prove to ourselves that this could work, and that is reflected in the language implementation as it exists today, but we have always intended to rewrite the Alan compiler in Alan. Then only the runtime(s) would be in different languages.
 
-Currently, the compiler is written in Typescript, the main runtime in Rust and the secondary runtime in Javascript. Python is required due to a limitation of a dependency to [nexe](https://github.com/nexe/nexe) and not something we are using within the project. The upcoming nexe 4.0 release will hopefully resolve this. That said our dependency on nexe is intended to be temporary.
+Currently, the compiler is written in Typescript, the main runtime in Rust and the secondary runtime in Javascript.
