@@ -15,6 +15,9 @@
   "bin": {
     "alan-compile": "./dist/index.js"
   },
+  "pkg": {
+    "assets": "std/*"
+  },
   "browser": {
     "./dist/index.js": "./browser.js",
     "./dist/lntoamm/Std.js": "./browser/Std.js"
