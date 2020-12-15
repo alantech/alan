@@ -10,7 +10,6 @@ import StatementType from './StatementType'
 import Type from './Type'
 import UserFunction from './UserFunction'
 import { Args, Fn, } from './Function'
-import { LnParser, } from '../ln'
 
 const FIXED_TYPES = [ 'int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'bool', 'void' ]
 
@@ -864,6 +863,25 @@ ${letName} on line ${assignmentsAst.line}:${assignmentsAst.start.column}`)
           if (m.outputName === last.outputName && m.statementType !== StatementType.REREF) {
             last = m
             break
+          }
+        }
+      }
+      if (last.statementType === StatementType.LETDEC) {
+        // Insert a ref call for this instead of mutating the original assignment
+        Microstatement.fromAssignablesAst(
+          Ast.assignablesAstFromString(`ref(${last.outputName})`),
+          scope,
+          microstatements
+        )
+        last = microstatements[microstatements.length - 1]
+        if (last.statementType === StatementType.REREF) {
+          // Find what it's rereferencing and adjust that, instead
+          for (let i = microstatements.length - 2; i >=0; i--) {
+            let m = microstatements[i]
+            if (m.outputName === last.outputName && m.statementType !== StatementType.REREF) {
+              last = m
+              break
+            }
           }
         }
       }
