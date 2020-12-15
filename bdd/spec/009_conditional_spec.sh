@@ -217,4 +217,42 @@ Far!"
       The output should eq "$ADVOUTPUT"
     End
   End
+
+  Describe "conditional let assignment compiles and executes"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+
+        on start {
+          let a = 0;
+          let b = 1;
+          let c = 2;
+
+          if true {
+            a = b;
+          } else {
+            a = c;
+          }
+          print(a);
+          emit exit 0;
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    It "runs js"
+      When run test_js
+      The output should eq "1"
+    End
+
+    It "runs agc"
+      When run test_agc
+      The output should eq "1"
+    End
+  End
 End

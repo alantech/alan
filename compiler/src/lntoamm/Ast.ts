@@ -230,3 +230,13 @@ export const fulltypenameAstFromString = (s: string) => {
   return langParser.fulltypename()
 }
 
+export const assignablesAstFromString = (s: string) => {
+  const inputStream = new InputStream(s)
+  const langLexer = new LnLexer(inputStream);
+  const commonTokenStream = new CommonTokenStream(langLexer)
+  const langParser = new LnParser(commonTokenStream)
+
+  return langParser.assignables()
+}
+
+
