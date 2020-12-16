@@ -663,7 +663,6 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
       for (let j = 0; j < argList.length; j++) {
         // Special hackery for now
         if (
-          argList[j] &&
           argList[j].originalType &&
           argList[j].originalType.typename === 'Function' &&
           argumentTypeList[j].typename === 'Function'
