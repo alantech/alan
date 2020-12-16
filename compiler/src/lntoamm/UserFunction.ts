@@ -661,6 +661,13 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
       if (argList.length !== argumentTypeList.length) continue
       let skip = false
       for (let j = 0; j < argList.length; j++) {
+        // Special hackery for now
+        if (
+          argList[j] &&
+          argList[j].originalType &&
+          argList[j].originalType.typename === 'Function' &&
+          argumentTypeList[j].typename === 'Function'
+        ) continue
         if (argList[j].typeApplies(argumentTypeList[j], scope)) continue
         skip = true
       }
