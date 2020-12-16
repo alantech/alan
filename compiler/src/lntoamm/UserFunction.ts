@@ -146,7 +146,7 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
       const statement = Statement.create(statementAst, scope)
       if (!statement.pure) pure = false
       statements.push(statement)
-      if (!returnType && Object.keys(args).every(arg => args[arg].typename !== 'function')) {
+      if (!returnType && Object.keys(args).every(arg => !args[arg].originalType || args[arg].originalType.typename !== 'Function')) {
         // We're going to use the Microstatement logic here
         const microstatements = []
         // First lets add all microstatements from the provided scope into the list
@@ -189,6 +189,10 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
 
   getName() {
     return this.name
+  }
+  getType() {
+    // TODO: Do this for real
+    return Type.builtinTypes.Function
   }
   getArguments() {
     return this.args

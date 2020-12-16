@@ -16,7 +16,16 @@ export float32
 export float64
 export bool
 export string
-export function // TODO: Make the function type more explicit than this
+export Function
+export Arg1
+export Arg2
+export Arg3
+export Arg4
+export Arg5
+export Arg6
+export Arg7
+export Arg8
+export Arg9
 export Array
 export Error
 export Maybe
@@ -341,10 +350,10 @@ export fn push(arr: Array<bool>, val: bool) {
   return arr;
 }
 export fn pop(arr: Array<any>) = poparr(arr);
-export each // parallel opcode with signature `fn each(arr: Array<any>, cb: function): void`
-export fn eachLin(arr: Array<any>, cb: function): void = eachl(arr, cb);
-export map // parallel opcode with signature `fn map(arr: Array<any>, cb: function): Array<any>`
-export fn mapLin(arr: Array<any>, cb: function): Array<anythingElse> = mapl(arr, cb);
+export each // parallel opcode with signature `fn each(arr: Array<any>, cb: fn(any)): void`
+export fn eachLin(arr: Array<any>, cb: Function<Arg1<any>, void>): void = eachl(arr, cb);
+export map // parallel opcode with signature `fn map(arr: Array<any>, cb: fn(any, int64): anythingElse): Array<anythingElse>`
+export fn mapLin(arr: Array<any>, cb: Function<Arg2<any, int64>, anythingElse>): Array<anythingElse> = mapl(arr, cb);
 /**
  * Unlike the other array functions, reduce is sequential by default and parallelism must be opted
  * in. This is due to the fact that parallelism requires the reducer function to be commutative or
@@ -373,8 +382,8 @@ export fn mapLin(arr: Array<any>, cb: function): Array<anythingElse> = mapl(arr,
  * noting that an extra argument that makes it equivalent to `fold` is easier than trying to find
  * the 3 or 4 arg variant under a different name.
  */
-export fn reduce(arr: Array<any>, cb: function): any = reducel(arr, cb);
-export fn reducePar(arr: Array<any>, cb: function): any = reducep(arr, cb);
+export fn reduce(arr: Array<any>, cb: Function<Arg2<any, any>, any>): any = reducel(arr, cb);
+export fn reducePar(arr: Array<any>, cb: Function<Arg2<any, any>, any>): any = reducep(arr, cb);
 /**
  * This type is used to reduce the number of arguments passed to the opcodes, which can only take 2
  * arguments if they return a value, or 3 arguments if they are a side-effect-only opcode, and is an
@@ -384,14 +393,14 @@ type InitialReduce<T, U> {
   arr: Array<T>,
   initial: U,
 }
-export fn reduce(arr: Array<any>, cb: function, initial: anythingElse): anythingElse {
+export fn reduce(arr: Array<any>, cb: Function<Arg2<anythingElse, any>, anythingElse>, initial: anythingElse): anythingElse {
   const args = new InitialReduce<any, anythingElse> {
     arr: arr,
     initial: initial,
   };
   return foldl(args, cb);
 }
-export fn reducePar(arr: Array<any>, transformer: function, merger: function, initial: anythingElse): anythingElse {
+export fn reducePar(arr: Array<any>, transformer: Function<Arg2<anythingElse, any>, anythingElse>, merger: Function<Arg2<anythingElse, anythingElse>, anythingElse>, initial: anythingElse): anythingElse {
   const args = new InitialReduce<any, anythingElse> {
     arr: arr,
     initial: initial,
@@ -399,13 +408,13 @@ export fn reducePar(arr: Array<any>, transformer: function, merger: function, in
   const intermediate = foldp(args, transformer);
   return reducep(intermediate, merger);
 }
-export filter // opcode with signature `fn filter(arr: Array<any>, cb: function): Array<any>`
-export find // opcode with signature `fn find(arr: Array<any>, cb: function): Result<any>`
-export fn findLin(arr: Array<any>, cb: function): Result<any> = findl(arr, cb);
-export every // parallel opcode with signature `fn every(arr: Array<any>, cb: function): bool`
-export fn everyLin(arr: Array<any>, cb: function): bool = everyl(arr, cb);
-export some // parallel opcode with signature `fn some(arr: Array<any>, cb: function): bool`
-export fn someLin(arr: Array<any>, cb: function): bool = somel(arr, cb);
+export filter // opcode with signature `fn filter(arr: Array<any>, cb: fn(any): bool): Array<any>`
+export find // opcode with signature `fn find(arr: Array<any>, cb: fn(any): bool): Result<any>`
+export fn findLin(arr: Array<any>, cb: Function<Arg1<any>, bool>): Result<any> = findl(arr, cb);
+export every // parallel opcode with signature `fn every(arr: Array<any>, cb: fn(any): bool): bool`
+export fn everyLin(arr: Array<any>, cb: Function<Arg1<any>, bool>): bool = everyl(arr, cb);
+export some // parallel opcode with signature `fn some(arr: Array<any>, cb: fn(any): bool): bool`
+export fn someLin(arr: Array<any>, cb: Function<Arg1<any>, bool>): bool = somel(arr, cb);
 export join // opcode with signature `fn join(arr: Array<string>, sep: string): string`
 export fn delete(arr: Array<any>, idx: int64): Result<any> = delindx(arr, idx);
 export fn set(arr: Array<any>, idx: int64, val: any) {
@@ -476,7 +485,7 @@ export fn set(arr: Array<bool>, idx: int64, val: bool) {
 // Ternary functions
 export fn pair(trueval: any, falseval: any) = new Array<any> [ trueval, falseval ];
 export fn cond(c: bool, options: Array<any>) = getR(options[1.sub(c.toInt64())]);
-export fn cond(c: bool, optional: function): void = condfn(c, optional);
+export fn cond(c: bool, optional: Function<void, any>): void = condfn(c, optional);
 
 // "clone" function useful for hoisting assignments and making duplicates
 export fn clone(a: any) = copyarr(a);
@@ -851,7 +860,7 @@ export fn toNodeArray(t: Tree<any>): Array<Node<any>> = map(
   fn (val: any, i: int64): Node<any> = t.getNodeById(i)
 );
 
-export fn map(t: Tree<any>, mapper: function): Tree<anythingElse> {
+export fn map(t: Tree<any>, mapper: Function<Arg2<any, int64>, anythingElse>): Tree<anythingElse> {
   return new Tree<anythingElse> {
     vals: t.toNodeArray().map(mapper),
     parents: clone(t.parents),
@@ -859,15 +868,15 @@ export fn map(t: Tree<any>, mapper: function): Tree<anythingElse> {
   };
 }
 
-export fn some(t: Tree<any>, mapper: function): bool = t.toNodeArray().some(mapper);
+export fn some(t: Tree<any>, mapper: Function<Arg1<any>, bool>): bool = t.toNodeArray().some(mapper);
 
-export fn every(t: Tree<any>, mapper: function): bool = t.toNodeArray().every(mapper);
+export fn every(t: Tree<any>, mapper: Function<Arg1<any>, bool>): bool = t.toNodeArray().every(mapper);
 
-export fn reduce(t: Tree<any>, cb: function, initial: anythingElse): bool = t
+export fn reduce(t: Tree<any>, cb: Function<Arg2<anythingElse, any>, anythingElse>, initial: anythingElse): bool = t
   .toNodeArray()
   .reduce(cb, initial);
 
-export fn find(t: Tree<any>, mapper: function): Node<any> {
+export fn find(t: Tree<any>, mapper: Function<Arg1<any>, bool>): Node<any> {
   // Return an invalid node, will behave like an error result
   return t.toNodeArray().find(mapper).getOr(
     new Node<any> {

@@ -621,7 +621,7 @@ ${objectLiteralsAst.getText()} on line ${objectLiteralsAst.start.line}:${objectL
       scope,
       true, // TODO: What should this be?
       closuredefName,
-      Type.builtinTypes['function'],
+      fns[0].getType(), // TODO: What to do if there are multiple and they have different signatures?
       [],
       fns,
       '',
@@ -678,7 +678,7 @@ ${objectLiteralsAst.getText()} on line ${objectLiteralsAst.start.line}:${objectL
       scope,
       true, // TODO: Figure out if this is true or not
       constName,
-      Type.builtinTypes['function'],
+      fn.getType(),
       [],
       [],
       '',

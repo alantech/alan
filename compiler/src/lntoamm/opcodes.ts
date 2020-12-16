@@ -16,9 +16,10 @@ const addBuiltIn = (name: string) => {
   opcodeScope.put(name, Type.builtinTypes[name])
 }
 ([
-  'void', 'int8', 'int16', 'int32', 'int64', 'float32', 'float64', 'bool', 'string', 'function',
-  'operator', 'Error', 'Maybe', 'Result', 'Either', 'Array', 'ExecRes', 'InitialReduce',
-  'InternalResponse', 'Seq', 'Self',
+  'void', 'int8', 'int16', 'int32', 'int64', 'float32', 'float64', 'bool', 'string', 'Function',
+  'Arg1', 'Arg2', 'Arg3', 'Arg4', 'Arg5', 'Arg6', 'Arg7', 'Arg8', 'Arg9', 'operator', 'Error',
+  'Maybe', 'Result', 'Either', 'Array', 'ExecRes', 'InitialReduce', 'InternalResponse', 'Seq',
+  'Self',
 ].map(addBuiltIn))
 Type.builtinTypes['Array'].solidify(['string'], opcodeScope)
 opcodeScope.put('any', new Type('any', true, false, {}, {}, null, new Interface('any')))
@@ -48,6 +49,7 @@ const addopcodes = (opcodes: object) => {
     if (!returnType) { // This is a three-arg, 0-return opcode
       const opcodeObj = {
         getName: () => opcodeName,
+        getType: () => Type.builtinTypes.Function, // TODO: Do this for real
         getArguments: () => args,
         getReturnType: () => Type.builtinTypes.void,
         isPure: () => true,
@@ -89,6 +91,7 @@ const addopcodes = (opcodes: object) => {
     } else {
       const opcodeObj = {
         getName: () => opcodeName,
+        getType: () => Type.builtinTypes.Function, // TODO: Do this for real
         getArguments: () => args,
         getReturnType: () => returnType,
         isPure: () => true,
@@ -702,26 +705,26 @@ addopcodes({
   lenstr: [{ s: t('string'), }, t('int64')],
   lenarr: [{ arr: t('Array<any>'), }, t('int64')],
   trim: [{ s: t('string'), }, t('string')],
-  condfn: [{ cond: t('bool'), optional: t('function'), }, t('any')],
+  condfn: [{ cond: t('bool'), optional: t('Function<void, any>'), }, t('void')],
   pusharr: [{ arr: t('Array<any>'), val: t('any'), size: t('int64')}],
   poparr: [{ arr: t('Array<any>')}, t('Result<any>')],
   delindx: [{ arr: t('Array<any>'), idx: t('int64')}, t('Result<any>')],
-  each: [{ arr: t('Array<any>'), cb: t('function'), }, t('void')],
-  eachl: [{ arr: t('Array<any>'), cb: t('function'), }, t('void')],
-  map: [{ arr: t('Array<any>'), cb: t('function'), }, t('Array<any>')],
-  mapl: [{ arr: t('Array<any>'), cb: t('function'), }, t('Array<any>')],
-  reducel: [{ arr: t('Array<any>'), cb: t('function'), }, t('any')],
-  reducep: [{ arr: t('Array<any>'), cb: t('function'), }, t('any')],
-  foldl: [{ arr: t('InitialReduce<any, anythingElse>'), cb: t('function'), }, t('anythingElse')],
-  foldp: [{ arr: t('InitialReduce<any, anythingElse>'), cb: t('function'), }, t('Array<anythingElse>')],
-  filter: [{ arr: t('Array<any>'), cb: t('function'), }, t('Array<any>')],
-  filterl: [{ arr: t('Array<any>'), cb: t('function'), }, t('Array<any>')],
-  find: [{ arr: t('Array<any>'), cb: t('function'), }, t('Result<any>')],
-  findl: [{ arr: t('Array<any>'), cb: t('function'), }, t('Result<any>')],
-  every: [{ arr: t('Array<any>'), cb: t('function'), }, t('bool')],
-  everyl: [{ arr: t('Array<any>'), cb: t('function'), }, t('bool')],
-  some: [{ arr: t('Array<any>'), cb: t('function'), }, t('bool')],
-  somel: [{ arr: t('Array<any>'), cb: t('function'), }, t('bool')],
+  each: [{ arr: t('Array<any>'), cb: t('Function<Arg2<any, int64>, void>'), }, t('void')],
+  eachl: [{ arr: t('Array<any>'), cb: t('Function<Arg2<any, int64>, void>'), }, t('void')],
+  map: [{ arr: t('Array<any>'), cb: t('Function<Arg2<any, int64>, anythingElse>'), }, t('Array<anythingElse>')],
+  mapl: [{ arr: t('Array<any>'), cb: t('Function<Arg2<any, int64>, anythingElse>'), }, t('Array<anythingElse>')],
+  reducel: [{ arr: t('Array<any>'), cb: t('Function<Arg2<any, any>, any>'), }, t('any')],
+  reducep: [{ arr: t('Array<any>'), cb: t('Function<Arg2<any, any>, any>'), }, t('any')],
+  foldl: [{ arr: t('InitialReduce<any, anythingElse>'), cb: t('Function<Arg2<anythingElse, any>, anythingElse>'), }, t('anythingElse')],
+  foldp: [{ arr: t('InitialReduce<any, anythingElse>'), cb: t('Function<Arg2<anythingElse, any>, anythingElse>'), }, t('Array<anythingElse>')],
+  filter: [{ arr: t('Array<any>'), cb: t('Function<Arg1<any>, bool>'), }, t('Array<any>')],
+  filterl: [{ arr: t('Array<any>'), cb: t('Function<Arg1<any>, bool>'), }, t('Array<any>')],
+  find: [{ arr: t('Array<any>'), cb: t('Function<Arg1<any>, bool>'), }, t('Result<any>')],
+  findl: [{ arr: t('Array<any>'), cb: t('Function<Arg1<any>, bool>'), }, t('Result<any>')],
+  every: [{ arr: t('Array<any>'), cb: t('Function<Arg1<any>, bool>'), }, t('bool')],
+  everyl: [{ arr: t('Array<any>'), cb: t('Function<Arg1<any>, bool>'), }, t('bool')],
+  some: [{ arr: t('Array<any>'), cb: t('Function<Arg1<any>, bool>'), }, t('bool')],
+  somel: [{ arr: t('Array<any>'), cb: t('Function<Arg1<any>, bool>'), }, t('bool')],
   join: [{ arr: t('Array<string>'), sep: t('string'), }, t('string')],
   newarr: [{ size: t('int64'), }, t('Array<any>')],
   stdoutp: [{ out: t('string'), }, t('void')],
@@ -788,11 +791,11 @@ addopcodes({
   dsgetv: [{ ns: t('string'), key: t('string'), }, t('Result<any>')],
   newseq: [{ limit: t('int64'), }, t('Seq')],
   seqnext: [{ seq: t('Seq'), }, t('Result<int64>')],
-  seqeach: [{ seq: t('Seq'), func: t('function'), }, t('void')],
-  seqwhile: [{ seq: t('Seq'), condFn: t('function'), bodyFn: t('function'), }],
-  seqdo: [{ seq: t('Seq'), bodyFn: t('function'), }, t('void')],
+  seqeach: [{ seq: t('Seq'), func: t('Function<Arg1<int64>, void>'), }, t('void')],
+  seqwhile: [{ seq: t('Seq'), condFn: t('Function<void, bool>'), bodyFn: t('Function<void, void>'), }],
+  seqdo: [{ seq: t('Seq'), bodyFn: t('Function<void, bool>'), }, t('void')],
   selfrec: [{ self: t('Self'), arg: t('any'), }, t('Result<anythingElse>')],
-  seqrec: [{ seq: t('Seq'), recurseFn: t('function'), }, t('Self')],
+  seqrec: [{ seq: t('Seq'), recurseFn: t('Function<Arg2<Self, any>, Result<anythingElse>>'), }, t('Self')],
 })
 
 export default opcodeModule

@@ -8,6 +8,7 @@ export type Args = {
 
 export interface Fn {
   getName(): string
+  getType(): Type
   getArguments(): Args
   getReturnType(): Type
   isPure(): boolean
