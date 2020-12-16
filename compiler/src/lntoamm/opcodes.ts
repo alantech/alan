@@ -59,7 +59,16 @@ const addopcodes = (opcodes: object) => {
     if (!returnType) { // This is a three-arg, 0-return opcode
       const opcodeObj = {
         getName: () => opcodeName,
-        getType: () => Type.builtinTypes.Function, // TODO: Do this for real
+        getType: () => {
+          const argTypes = Object.values(args) as Array<Type>
+          if (argTypes.length === 0) {
+            return Type.builtinTypes.Function.solidify(['void', 'void'], opcodeScope)
+          }
+          return Type.builtinTypes.Function.solidify([
+            `Arg${argTypes.length}<${argTypes.map(a => a.typename).join(', ')}>`,
+            'void',
+          ], opcodeScope)
+        },
         getArguments: () => args,
         getReturnType: () => Type.builtinTypes.void,
         isPure: () => true,
@@ -101,7 +110,16 @@ const addopcodes = (opcodes: object) => {
     } else {
       const opcodeObj = {
         getName: () => opcodeName,
-        getType: () => Type.builtinTypes.Function, // TODO: Do this for real
+        getType: () => {
+          const argTypes = Object.values(args) as Array<Type>
+          if (argTypes.length === 0) {
+            return Type.builtinTypes.Function.solidify(['void', returnType.typename], opcodeScope)
+          }
+          return Type.builtinTypes.Function.solidify([
+            `Arg${argTypes.length}<${argTypes.map(a => a.typename).join(', ')}>`,
+            returnType.typename,
+          ], opcodeScope)
+        },
         getArguments: () => args,
         getReturnType: () => returnType,
         isPure: () => true,
@@ -170,6 +188,13 @@ const addopcodes = (opcodes: object) => {
                       const closureArgs = Object.values(fn.getArguments()) as Type[]
                       closureArgs[0].typeApplies(arrayInnerType, scope, interfaceMap)
                       closureArgs[1].typeApplies(arrayInnerType, scope, interfaceMap)
+                      console.log({
+                        a: 'a',
+                        arrayInnerType,
+                        closureArgs,
+                        interfaceMap,
+                      })
+                      replacementType = arrayInnerType
                     } else if (['foldl'].includes(opcodeName)) {
                       const reducerTypes = Object.values(inputTypes[0].properties) as Type[]
                       const inType = scope.deepGet(
@@ -219,17 +244,19 @@ const addopcodes = (opcodes: object) => {
                     microstatements.splice(idx, 0, closure)
                     realArgNames[i] = closure.outputName
                   }
-                  if (!!a.iface && a.iface.interfacename === returnType.iface.interfacename) {
-                    replacementType = inputTypes[i]
-                  }
-                  if (Object.values(a.properties).some(
-                    p => !!p.iface && p.iface.interfacename === returnType.iface.interfacename
-                  )) {
-                    Object.values(a.properties).forEach((p, j) => {
-                      if (!!p.iface && p.iface.interfacename === returnType.iface.interfacename) {
-                        replacementType = Object.values(inputTypes[i].properties)[j] as Type
-                      }
-                    })
+                  if (!replacementType) {
+                    if (!!a.iface && a.iface.interfacename === returnType.iface.interfacename) {
+                      replacementType = inputTypes[i]
+                    }
+                    if (Object.values(a.properties).some(
+                      p => !!p.iface && p.iface.interfacename === returnType.iface.interfacename
+                    )) {
+                      Object.values(a.properties).forEach((p, j) => {
+                        if (!!p.iface && p.iface.interfacename === returnType.iface.interfacename) {
+                          replacementType = Object.values(inputTypes[i].properties)[j] as Type
+                        }
+                      })
+                    }
                   }
                 })
                 if (!replacementType) return returnType
@@ -267,6 +294,9 @@ const addopcodes = (opcodes: object) => {
                         scope,
                       )
                     }
+                  }
+                  if (scope.interfaceMap) {
+                    fn = fn.maybeTransform(scope.interfaceMap, scope)
                   }
                   const closureArgs = Object.values(fn.getArguments()) as Type[]
                   if (closureArgs[0]) {
@@ -330,6 +360,11 @@ const addopcodes = (opcodes: object) => {
                   const closureArgs = Object.values(fn.getArguments()) as Type[]
                   closureArgs[0].typeApplies(arrayInnerType, scope, interfaceMap)
                   closureArgs[1].typeApplies(arrayInnerType, scope, interfaceMap)
+                  console.log({
+                    b: 'b',
+                    arrayInnerType,
+                    closureArgs,
+                  })
                   const idx = microstatements.indexOf(inputs[1])
                   const m = microstatements.slice(0, idx)
                   Microstatement.closureFromUserFunction(fn, fn.scope || scope, m, interfaceMap)
@@ -467,6 +502,11 @@ const addopcodes = (opcodes: object) => {
                       const closureArgs = Object.values(fn.getArguments()) as Type[]
                       closureArgs[0].typeApplies(arrayInnerType, scope, interfaceMap)
                       closureArgs[1].typeApplies(arrayInnerType, scope, interfaceMap)
+                      console.log({
+                        c: 'c',
+                        arrayInnerType,
+                        closureArgs,
+                      })
                     } else if (['foldl'].includes(opcodeName)) {
                       const reducerTypes = Object.values(inputTypes[0].properties) as Type[]
                       const inType = scope.deepGet(

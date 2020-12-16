@@ -616,6 +616,13 @@ ${objectLiteralsAst.getText()} on line ${objectLiteralsAst.start.line}:${objectL
     const closuredefName = "_" + uuid().replace(/-/g, "_")
     // Keep any rerefs around as closure references
     const rerefs = microstatements.filter(m => m.statementType === StatementType.REREF)
+    console.log({
+      closuredefName,
+      fnName: fns[0].getName(),
+      fnType: fns[0].getType(),
+      fns,
+      scopeInterfaceMap: scope.interfaceMap,
+    })
     microstatements.push(new Microstatement(
       StatementType.CLOSUREDEF,
       scope,
@@ -640,16 +647,24 @@ ${objectLiteralsAst.getText()} on line ${objectLiteralsAst.start.line}:${objectL
     const idx = microstatements.length
     const args = Object.entries(fn.args)
     for (const [name, type] of args) {
-      if (name !== "" && type.typename != "") {
+      if (name !== "" && (type as Type).typename != "") {
         microstatements.push(new Microstatement(
           StatementType.CONSTDEC,
           scope,
           true,
           name,
-          type,
+          type as Type,
         ))
       }
     }
+    console.log({
+      fnName: fn.getName(),
+      origType: fn.getType(),
+      interfaceMap,
+      newType: fn.getType().realize(interfaceMap, scope),
+      args: fn.args,
+      returnType: fn.getReturnType(),
+    })
     const len = microstatements.length - args.length
     for (const s of fn.statements) {
       Microstatement.fromStatementsAst(s.statementAst, scope, microstatements)
@@ -678,7 +693,7 @@ ${objectLiteralsAst.getText()} on line ${objectLiteralsAst.start.line}:${objectL
       scope,
       true, // TODO: Figure out if this is true or not
       constName,
-      fn.getType(),
+      fn.getType().realize(interfaceMap, scope),
       [],
       [],
       '',
@@ -1324,6 +1339,11 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
               // Generate the relevant microstatements for this function. UserFunctions get inlined
               // with the return statement turned into a const assignment as the last statement,
               // while built-in functions are kept as function calls with the correct renaming.
+              console.log(microstatements.map(m => m.toString()).join('\n'))
+              console.log({
+                fn,
+                realArgTypes,
+              })
               UserFunction
                 .dispatchFn(fn, realArgTypes, scope)
                 .microstatementInlining(realArgNames, scope, microstatements)
@@ -1368,6 +1388,13 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
             // Generate the relevant microstatements for this function. UserFunctions get inlined
             // with the return statement turned into a const assignment as the last statement,
             // while built-in functions are kept as function calls with the correct renaming.
+            console.log({
+              c: 'c',
+              currVal,
+              fn,
+              realArgTypes,
+            })
+            console.log(microstatements.map(m => m.toString()).join('\n'))
             UserFunction
               .dispatchFn(fn, realArgTypes, scope)
               .microstatementInlining(realArgNames, scope, microstatements)
@@ -1456,7 +1483,15 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
         // TODO: Is this the right approach?
         microstatements.filter(m => !!m.alias).forEach(m => scope.put(m.alias, m))
         const fn = UserFunction.fromFunctionsAst(baseassignable.functions(), scope)
-        currVal = fn // TODO: Is this the right choice here?
+        if (!!scope.interfaceMap) {
+          // If this function is being constructed inside of a transformed function, it's own types should be transformed
+          console.log({
+            ba: baseassignable.getText(),
+          })
+          currVal = fn.maybeTransform(scope.interfaceMap, scope)
+        } else {
+          currVal = fn
+        }
       } else if (!!baseassignable.objectliterals()) {
         if (currVal === null) {
           // Has to be a "normal" object literal in this case

@@ -457,20 +457,43 @@ export class Type {
         return innerType
       })
       return baseType.solidify(
-        generics.map((g: Type) => interfaceMap.get(g) || g).map((t: Type) => t.typename),
+        generics.map((g: Type) => {
+          let out = g
+          let mapped = interfaceMap.get(out)
+          while (!!mapped && !!mapped.iface) {
+            out = mapped
+            mapped = interfaceMap.get(out)
+          }
+          return out
+        }).map((t: Type) => t.typename),
         scope
       )
     } else {
-      return interfaceMap.get(baseType) || baseType
+      let out = baseType
+      let mapped = interfaceMap.get(out)
+      while (!!mapped && !!mapped.iface) {
+        out = mapped
+        mapped = interfaceMap.get(out)
+      }
+      return out
     }
   }
 
   realize(interfaceMap: Map<Type, Type>, scope: Scope) {
+    if (!!this.iface && interfaceMap.has(this as Type)) return interfaceMap.get(this)
     if (!!this.isGenericStandin) return [
       ...interfaceMap.entries()
     ].find(e => e[0].typename === this.typename)[1]
     if (!this.iface && !this.originalType) return this
-    if (!!this.iface) return interfaceMap.get(this) || this
+    if (!!this.iface) {
+      let out = this as Type
+      let mapped = interfaceMap.get(out)
+      while (!!mapped && !!mapped.iface) {
+        out = mapped
+        mapped = interfaceMap.get(out)
+      }
+      return out
+    }
     const self = new Type(
       this.typename,
       this.builtIn,
@@ -722,7 +745,6 @@ export class Type {
           }),
         }),
       }),
-      //recurseFn: new Type("function", true),
     }),
     operator: new Type("operator", true),
     Event: new Type("Event", true, false, {

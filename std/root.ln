@@ -353,6 +353,11 @@ export fn pop(arr: Array<any>) = poparr(arr);
 export each // parallel opcode with signature `fn each(arr: Array<any>, cb: fn(any)): void`
 export fn eachLin(arr: Array<any>, cb: Function<Arg1<any>, void>): void = eachl(arr, cb);
 export map // parallel opcode with signature `fn map(arr: Array<any>, cb: fn(any, int64): anythingElse): Array<anythingElse>`
+export fn map(arr: Array<any>, cb: Function<Arg1<any>, anythingElse>): Array<anythingElse> {
+  return map(arr, fn (val: any, _i: int64): anythingElse {
+    return cb(val);
+  });
+}
 export fn mapLin(arr: Array<any>, cb: Function<Arg2<any, int64>, anythingElse>): Array<anythingElse> = mapl(arr, cb);
 /**
  * Unlike the other array functions, reduce is sequential by default and parallelism must be opted

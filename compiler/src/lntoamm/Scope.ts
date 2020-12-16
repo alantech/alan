@@ -15,6 +15,7 @@ class Scope {
   vals: BoxSet
   par: Scope | null
   secondaryPar: Scope | null
+  interfaceMap: Map<Type, Type> | null // Temporary hack
 
   constructor(par?: Scope) {
     this.vals = {}

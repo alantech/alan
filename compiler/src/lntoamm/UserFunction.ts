@@ -191,8 +191,14 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
     return this.name
   }
   getType() {
-    // TODO: Do this for real
-    return Type.builtinTypes.Function
+    const argTypes = Object.values(this.args)
+    if (argTypes.length === 0) {
+      return Type.builtinTypes.Function.solidify(['void', this.returnType.typename], this.scope)
+    }
+    return Type.builtinTypes.Function.solidify([
+      `Arg${argTypes.length}<${argTypes.map(a => a.typename).join(', ')}>`,
+      this.returnType.typename,
+    ], this.scope)
   }
   getArguments() {
     return this.args
@@ -342,6 +348,37 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
   }
 
   maybeTransform(interfaceMap: Map<Type, Type>, scope?: Scope) {
+    // First potentially transform the arguments and return types
+    if (
+      this.getType().typename !== this.getType().realize(interfaceMap, scope || this.scope).typename
+    ) {
+      console.log({
+        orig: this.getType().typename,
+        new: this.getType().realize(interfaceMap, scope || this.scope).typename,
+        interfaceMap,
+        scopeInterfaceMap: scope && scope.interfaceMap,
+      })
+      const newArgs = {...this.args}
+      Object.keys(newArgs).forEach(a => {
+        newArgs[a] = newArgs[a].realize(interfaceMap, scope || this.scope)
+      })
+      const fn = new UserFunction(
+        this.name,
+        newArgs,
+        this.returnType.realize(interfaceMap, scope || this.scope),
+        scope || this.scope,
+        [...this.statements],
+        this.pure,
+      )
+      if (fn.scope.interfaceMap) {
+        fn.scope.interfaceMap = new Map([...fn.scope.interfaceMap, ...interfaceMap])
+      }
+      console.log({
+        newArgs,
+      })
+      // Continue the other potential transformations from here
+      return fn.maybeTransform(interfaceMap, scope)
+    }
     if (
       this.statements.some(s => s.isConditionalStatement()) ||
       this.statements.some(s => s.hasObjectLiteral())
@@ -463,11 +500,26 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
       const newArgs = {}
       for (const argName in this.args) {
         const a = this.args[argName]
-        newArgs[argName] = interfaceMap.has(a) ? interfaceMap.get(a) : a
+        newArgs[argName] = interfaceMap.has(a) ? (() => {
+          let out = a
+          let mapped = interfaceMap.get(out)
+          while (!!mapped && !!mapped.iface) {
+            out = mapped
+            mapped = interfaceMap.get(out)
+          }
+          return out
+        })() : a
         this.scope.put(newArgs[argName].typename, newArgs[argName])
       }
-      const newRet = interfaceMap.has(this.getReturnType()) ?
-        interfaceMap.get(this.getReturnType()) : this.getReturnType()
+      const newRet = interfaceMap.has(this.getReturnType()) ? (() => {
+        let out = this.getReturnType()
+        let mapped = interfaceMap.get(out)
+        while (!!mapped && !!mapped.iface) {
+          out = mapped
+          mapped = interfaceMap.get(out)
+        }
+        return out
+      })() : this.getReturnType()
       this.scope.put(newRet.typename, newRet)
 
       const fnStr = `
@@ -482,14 +534,29 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
       const newArgs = {}
       for (const argName in this.args) {
         const a = this.args[argName]
-        newArgs[argName] = interfaceMap.has(a) ? interfaceMap.get(a) : a
+        newArgs[argName] = interfaceMap.has(a) ? (() => {
+          let out = a
+          let mapped = interfaceMap.get(out)
+          while (!!mapped && !!mapped.iface) {
+            out = mapped
+            mapped = interfaceMap.get(out)
+          }
+          return out
+        })() : a
         if (newArgs[argName] !== this.args[argName]) {
           this.scope.put(newArgs[argName].typename, newArgs[argName])
           hasNewType = true
         }
       }
-      const newRet = interfaceMap.has(this.getReturnType()) ?
-        interfaceMap.get(this.getReturnType()) : this.getReturnType()
+      const newRet = interfaceMap.has(this.getReturnType()) ? (() => {
+        let out = this.getReturnType()
+        let mapped = interfaceMap.get(out)
+        while (!!mapped && !!mapped.iface) {
+          out = mapped
+          mapped = interfaceMap.get(out)
+        }
+        return out
+      })() : this.getReturnType()
       if (newRet !== this.getReturnType()) {
         this.scope.put(newRet.typename, newRet)
         hasNewType = true
@@ -565,6 +632,7 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
       ))
     }
     const fn = this.maybeTransform(interfaceMap, scope)
+    scope.interfaceMap = interfaceMap
     for (const s of fn.statements) {
       Microstatement.fromStatement(s, microstatements, scope)
     }
