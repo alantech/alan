@@ -76,15 +76,6 @@ impl HandlerMemory {
     }
   }
 
-  /// Because of constraints in Tokio's RWLock, this method moves the contents of `self` into the
-  /// `target`. The `self` is destroyed in the process
-  pub fn replace(self: HandlerMemory, target: &mut HandlerMemory) {
-    target.mems = self.mems;
-    target.addr = self.addr;
-    target.mem_addr = self.mem_addr;
-    target.args_addr = self.args_addr;
-  }
-
   /// Grabs the relevant data for the event and constructs a new HandlerMemory with that value in
   /// address 0, or returns no HandlerMemory if it is a void event.
   pub fn alloc_payload(

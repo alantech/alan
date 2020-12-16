@@ -2382,15 +2382,12 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         return hand_mem;
       }
       seq[0].1 = limit;
-      let mut hm = hand_mem.clone();
       // array of potentially many levels of nested fractals
       for i in current..limit {
         // array element is $1 argument of the closure memory space
-        hm.write_fixed(CLOSURE_ARG_MEM_START + 1, i);
-        hm = subhandler.clone().run(hm).await;
+        hand_mem.write_fixed(CLOSURE_ARG_MEM_START + 1, i);
+        hand_mem = subhandler.clone().run(hand_mem).await;
       }
-      // side-effects are kinda the point of this opcode
-      hm.replace(&mut hand_mem);
       hand_mem
     })
   });
@@ -2405,15 +2402,12 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       if current >= limit {
         return hand_mem;
       }
-      let mut hm = hand_mem.clone();
-      hm = cond_handler.clone().run(hm).await;
-      while current < limit && hm.read_fixed(CLOSURE_ARG_MEM_START) > 0 {
-        hm = body_handler.clone().run(hm).await;
+      hand_mem = cond_handler.clone().run(hand_mem).await;
+      while current < limit && hand_mem.read_fixed(CLOSURE_ARG_MEM_START) > 0 {
+        hand_mem = body_handler.clone().run(hand_mem).await;
         current = current + 1;
-        hm = cond_handler.clone().run(hm).await;
+        hand_mem = cond_handler.clone().run(hand_mem).await;
       }
-      // side-effects are kinda the point of this opcode
-      hm.replace(&mut hand_mem);
       let seq = hand_mem.read_mut_fractal(args[0]);
       seq[0].1 = current;
       hand_mem
@@ -2426,16 +2420,13 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let limit = seq[1].1;
       drop(seq);
       let subhandler = HandlerFragment::new(args[1], 0);
-      let mut hm = hand_mem.clone();
       loop {
-        hm = subhandler.clone().run(hm).await;
+        hand_mem = subhandler.clone().run(hand_mem).await;
         current = current + 1;
-        if current >= limit || hm.read_fixed(CLOSURE_ARG_MEM_START) == 0 {
+        if current >= limit || hand_mem.read_fixed(CLOSURE_ARG_MEM_START) == 0 {
           break;
         }
       }
-      // side-effects are kinda the point of this opcode
-      hm.replace(&mut hand_mem);
       let seq = hand_mem.read_mut_fractal(args[0]);
       seq[0].1 = current;
       hand_mem
