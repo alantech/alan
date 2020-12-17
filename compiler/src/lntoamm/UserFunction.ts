@@ -16,6 +16,7 @@ class UserFunction implements Fn {
   scope: Scope
   statements: Array<Statement>
   pure: boolean
+  interfaceMap: Map<Type, Type> | null
 
   constructor(
     name: string,
@@ -38,6 +39,7 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
     }
     this.statements = statements
     this.pure = pure
+    this.interfaceMap = null
   }
 
   static fromAst(functionishAst: any, scope: Scope) { // TODO: Eliminate ANTLR
@@ -349,35 +351,35 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
 
   maybeTransform(interfaceMap: Map<Type, Type>, scope?: Scope) {
     // First potentially transform the arguments and return types
+    let theScope
+    if (!!scope) {
+      theScope = new Scope(scope)
+      theScope.secondaryPar = this.scope
+    } else {
+      theScope = this.scope
+    }
     if (
-      this.getType().typename !== this.getType().realize(interfaceMap, scope || this.scope).typename
+      this.getType().typename !== this.getType().realize(interfaceMap, theScope).typename
     ) {
-      console.log({
-        orig: this.getType().typename,
-        new: this.getType().realize(interfaceMap, scope || this.scope).typename,
-        interfaceMap,
-        scopeInterfaceMap: scope && scope.interfaceMap,
-      })
+      let imap = interfaceMap
+      if (this.interfaceMap) {
+        imap = new Map([...this.interfaceMap, ...interfaceMap])
+      }
       const newArgs = {...this.args}
       Object.keys(newArgs).forEach(a => {
-        newArgs[a] = newArgs[a].realize(interfaceMap, scope || this.scope)
+        newArgs[a] = newArgs[a].realize(imap, theScope)
       })
       const fn = new UserFunction(
         this.name,
         newArgs,
-        this.returnType.realize(interfaceMap, scope || this.scope),
-        scope || this.scope,
+        this.returnType.realize(imap, theScope),
+        theScope,
         [...this.statements],
         this.pure,
       )
-      if (fn.scope.interfaceMap) {
-        fn.scope.interfaceMap = new Map([...fn.scope.interfaceMap, ...interfaceMap])
-      }
-      console.log({
-        newArgs,
-      })
+      fn.interfaceMap = imap
       // Continue the other potential transformations from here
-      return fn.maybeTransform(interfaceMap, scope)
+      return fn.maybeTransform(interfaceMap, theScope)
     }
     if (
       this.statements.some(s => s.isConditionalStatement()) ||
@@ -402,24 +404,19 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
           openstr: string,
         ) => {
           const originaltypestr = `${basetypestr.trim()}<${genericstr.trim()}>`
-          let originalType = this.scope.deepGet(originaltypestr) as Type
+          let originalType = theScope.deepGet(originaltypestr) as Type
           if (!originalType || !(originalType instanceof Type)) {
             // It may be the first time this particular type has shown up, let's build it
             const typeAst = Ast.fulltypenameAstFromString(originaltypestr)
             const baseTypeName = typeAst.typename().getText()
             const generics = typeAst.typegenerics().fulltypename().map((g: any) => g.getText())
-            const baseType = this.scope.deepGet(baseTypeName) as Type
+            const baseType = theScope.deepGet(baseTypeName) as Type
             if (!baseType || !(baseType instanceof Type)) { // Now we panic
               throw new Error('This should be impossible')
             }
-            originalType = baseType.solidify(generics, this.scope)
+            originalType = baseType.solidify(generics, theScope)
           }
-          let newScope = this.scope
-          if (scope !== undefined) {
-            newScope = new Scope(scope)
-            newScope.secondaryPar = this.scope
-          }
-          const replacementType = originalType.realize(interfaceMap, newScope)
+          const replacementType = originalType.realize(interfaceMap, theScope)
           return `new ${replacementType.typename} ${openstr}`
         })
         // TODO: Get rid of these regex-based type corrections
@@ -430,19 +427,19 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
           openstr: string,
         ) => {
           const originaltypestr = `${basetypestr.trim()}<${genericstr.trim()}>`
-          let originalType = this.scope.deepGet(originaltypestr) as Type
+          let originalType = theScope.deepGet(originaltypestr) as Type
           if (!originalType || !(originalType instanceof Type)) {
             // It may be the first time this particular type has shown up, let's build it
             const typeAst = Ast.fulltypenameAstFromString(originaltypestr)
             const baseTypeName = typeAst.typename().getText()
             const generics = typeAst.typegenerics().fulltypename().map((g: any) => g.getText())
-            const baseType = this.scope.deepGet(baseTypeName) as Type
+            const baseType = theScope.deepGet(baseTypeName) as Type
             if (!baseType || !(baseType instanceof Type)) { // Now we panic
               throw new Error('This should be impossible')
             }
-            originalType = baseType.solidify(generics, this.scope)
+            originalType = baseType.solidify(generics, theScope)
           }
-          const replacementType = originalType.realize(interfaceMap, this.scope)
+          const replacementType = originalType.realize(interfaceMap, theScope)
           return `: ${replacementType.typename}${openstr}`
         })
         const correctedAst = Ast.statementAstFromString(secondCorrection)
@@ -450,7 +447,7 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
         // statementAsts.push(correctedAst)
         if (s.isConditionalStatement()) {
           const cond = s.statementAst.conditionals()
-          const res  = UserFunction.conditionalToCond(cond, this.scope)
+          const res  = UserFunction.conditionalToCond(cond, theScope)
           const newStatements = res[0] as Array<any>
           if (res[1]) hasConditionalReturn = true
           statementAsts.push(...newStatements)
@@ -488,7 +485,7 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
         `.trim() + ';\n')
         let replacementStatements = [retValStatement, retNotSetStatement]
         replacementStatements.push(...UserFunction.earlyReturnRewrite(
-          retVal, retNotSet, statementAsts, this.scope
+          retVal, retNotSet, statementAsts, theScope
         ))
         replacementStatements.push(Ast.statementAstFromString(`
           return ${retVal}
@@ -509,7 +506,7 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
           }
           return out
         })() : a
-        this.scope.put(newArgs[argName].typename, newArgs[argName])
+        theScope.put(newArgs[argName].typename, newArgs[argName])
       }
       const newRet = interfaceMap.has(this.getReturnType()) ? (() => {
         let out = this.getReturnType()
@@ -520,14 +517,15 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
         }
         return out
       })() : this.getReturnType()
-      this.scope.put(newRet.typename, newRet)
+      theScope.put(newRet.typename, newRet)
 
       const fnStr = `
         fn ${this.name || ''} (${Object.keys(newArgs).map(argName => `${argName}: ${newArgs[argName].typename}`).join(', ')}): ${newRet.typename} {
           ${statementAsts.map(s => s.getText()).join('\n')}
         }
       `.trim()
-      const fn = UserFunction.fromAst(Ast.functionAstFromString(fnStr), this.scope)
+      const fn = UserFunction.fromAst(Ast.functionAstFromString(fnStr), theScope)
+      fn.interfaceMap = interfaceMap
       return fn
     } else {
       let hasNewType = false
@@ -544,7 +542,7 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
           return out
         })() : a
         if (newArgs[argName] !== this.args[argName]) {
-          this.scope.put(newArgs[argName].typename, newArgs[argName])
+          theScope.put(newArgs[argName].typename, newArgs[argName])
           hasNewType = true
         }
       }
@@ -558,7 +556,7 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
         return out
       })() : this.getReturnType()
       if (newRet !== this.getReturnType()) {
-        this.scope.put(newRet.typename, newRet)
+        theScope.put(newRet.typename, newRet)
         hasNewType = true
       }
       if (hasNewType) {
@@ -568,7 +566,8 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
             ${statementAsts.map(s => s.getText()).join('\n')}
           }
         `.trim()
-        const fn = UserFunction.fromAst(Ast.functionAstFromString(fnStr), this.scope)
+        const fn = UserFunction.fromAst(Ast.functionAstFromString(fnStr), theScope)
+        fn.interfaceMap = interfaceMap
         return fn
       } else {
         return this
@@ -632,9 +631,13 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
       ))
     }
     const fn = this.maybeTransform(interfaceMap, scope)
-    scope.interfaceMap = interfaceMap
+    let innerScope = scope
+    if (interfaceMap.size > 0) {
+      innerScope = new Scope(scope)
+      innerScope.put('##interfaceMap', interfaceMap)
+    }
     for (const s of fn.statements) {
-      Microstatement.fromStatement(s, microstatements, scope)
+      Microstatement.fromStatement(s, microstatements, innerScope)
     }
     // Delete `REREF`s except a `return` statement's `REREF` to make sure it doesn't interfere with
     // the outer scope (if it has the same variable name defined, for instance)

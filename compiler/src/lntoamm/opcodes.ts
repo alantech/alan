@@ -188,12 +188,6 @@ const addopcodes = (opcodes: object) => {
                       const closureArgs = Object.values(fn.getArguments()) as Type[]
                       closureArgs[0].typeApplies(arrayInnerType, scope, interfaceMap)
                       closureArgs[1].typeApplies(arrayInnerType, scope, interfaceMap)
-                      console.log({
-                        a: 'a',
-                        arrayInnerType,
-                        closureArgs,
-                        interfaceMap,
-                      })
                       replacementType = arrayInnerType
                     } else if (['foldl'].includes(opcodeName)) {
                       const reducerTypes = Object.values(inputTypes[0].properties) as Type[]
@@ -295,9 +289,6 @@ const addopcodes = (opcodes: object) => {
                       )
                     }
                   }
-                  if (scope.interfaceMap) {
-                    fn = fn.maybeTransform(scope.interfaceMap, scope)
-                  }
                   const closureArgs = Object.values(fn.getArguments()) as Type[]
                   if (closureArgs[0]) {
                     closureArgs[0].typeApplies(innerType, scope, interfaceMap)
@@ -360,11 +351,6 @@ const addopcodes = (opcodes: object) => {
                   const closureArgs = Object.values(fn.getArguments()) as Type[]
                   closureArgs[0].typeApplies(arrayInnerType, scope, interfaceMap)
                   closureArgs[1].typeApplies(arrayInnerType, scope, interfaceMap)
-                  console.log({
-                    b: 'b',
-                    arrayInnerType,
-                    closureArgs,
-                  })
                   const idx = microstatements.indexOf(inputs[1])
                   const m = microstatements.slice(0, idx)
                   Microstatement.closureFromUserFunction(fn, fn.scope || scope, m, interfaceMap)
@@ -502,11 +488,6 @@ const addopcodes = (opcodes: object) => {
                       const closureArgs = Object.values(fn.getArguments()) as Type[]
                       closureArgs[0].typeApplies(arrayInnerType, scope, interfaceMap)
                       closureArgs[1].typeApplies(arrayInnerType, scope, interfaceMap)
-                      console.log({
-                        c: 'c',
-                        arrayInnerType,
-                        closureArgs,
-                      })
                     } else if (['foldl'].includes(opcodeName)) {
                       const reducerTypes = Object.values(inputTypes[0].properties) as Type[]
                       const inType = scope.deepGet(

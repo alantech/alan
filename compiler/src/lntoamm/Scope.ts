@@ -5,7 +5,7 @@ import Microstatement from './Microstatement'
 import Operator from './Operator'
 import Type from './Type'
 
-type Boxish = Type | Scope | Microstatement | Array<Operator> | Array<Fn> | Event | Constant | undefined
+type Boxish = Type | Scope | Microstatement | Array<Operator> | Array<Fn> | Event | Constant | Map<Type, Type> | undefined
 
 type BoxSet = {
   [K: string]: Boxish
@@ -15,7 +15,6 @@ class Scope {
   vals: BoxSet
   par: Scope | null
   secondaryPar: Scope | null
-  interfaceMap: Map<Type, Type> | null // Temporary hack
 
   constructor(par?: Scope) {
     this.vals = {}
@@ -68,8 +67,13 @@ class Scope {
     if (this.vals.hasOwnProperty(name)) {
       return true
     }
+    let maybeHas = false
     if (!!this.par) {
-      return this.par.has(name)
+      maybeHas = this.par.has(name)
+    }
+    if (maybeHas) return true
+    if (!!this.secondaryPar) {
+      return this.secondaryPar.has(name)
     }
     return false
   }

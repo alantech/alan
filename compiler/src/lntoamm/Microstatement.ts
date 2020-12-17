@@ -609,20 +609,24 @@ ${objectLiteralsAst.getText()} on line ${objectLiteralsAst.start.line}:${objectL
   }
 
   static closureDef(
-    fns: Array<Fn>,
+    funcs: Array<Fn>,
     scope: Scope,
     microstatements: Array<Microstatement>,
   ) {
     const closuredefName = "_" + uuid().replace(/-/g, "_")
     // Keep any rerefs around as closure references
     const rerefs = microstatements.filter(m => m.statementType === StatementType.REREF)
-    console.log({
-      closuredefName,
-      fnName: fns[0].getName(),
-      fnType: fns[0].getType(),
-      fns,
-      scopeInterfaceMap: scope.interfaceMap,
-    })
+    let fns = funcs
+    if (scope.has('##interfaceMap')) {
+      const interfaceMap = scope.get('##interfaceMap')
+      fns = fns.map(fn => {
+        if (fn instanceof UserFunction) {
+          return fn.maybeTransform(interfaceMap, scope)
+        } else {
+          return fn // TODO: How to handle this for opcodes?
+        }
+      })
+    }
     microstatements.push(new Microstatement(
       StatementType.CLOSUREDEF,
       scope,
@@ -643,7 +647,14 @@ ${objectLiteralsAst.getText()} on line ${objectLiteralsAst.start.line}:${objectL
     microstatements: Array<Microstatement>,
     interfaceMap: Map<Type, Type>,
   ) {
-    const fn = userFunction.maybeTransform(interfaceMap)
+    let innerScope = scope
+    let imap = interfaceMap
+    if (!!userFunction.interfaceMap) {
+      imap = new Map([...userFunction.interfaceMap, ...interfaceMap])
+      innerScope = new Scope(scope)
+      innerScope.put('##interfaceMap', imap)
+    }
+    const fn = userFunction.maybeTransform(imap)
     const idx = microstatements.length
     const args = Object.entries(fn.args)
     for (const [name, type] of args) {
@@ -657,17 +668,9 @@ ${objectLiteralsAst.getText()} on line ${objectLiteralsAst.start.line}:${objectL
         ))
       }
     }
-    console.log({
-      fnName: fn.getName(),
-      origType: fn.getType(),
-      interfaceMap,
-      newType: fn.getType().realize(interfaceMap, scope),
-      args: fn.args,
-      returnType: fn.getReturnType(),
-    })
     const len = microstatements.length - args.length
     for (const s of fn.statements) {
-      Microstatement.fromStatementsAst(s.statementAst, scope, microstatements)
+      Microstatement.fromStatementsAst(s.statementAst, innerScope, microstatements)
     }
     microstatements.splice(idx, args.length)
     const newlen = microstatements.length
@@ -700,7 +703,7 @@ ${objectLiteralsAst.getText()} on line ${objectLiteralsAst.start.line}:${objectL
       fn.pure,
       innerMicrostatements,
       fn.args,
-      fn.getReturnType(),
+      fn.getReturnType().realize(interfaceMap, scope),
     ))
   }
 
@@ -1317,7 +1320,10 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
                   microstatements[i].statementType === StatementType.CLOSUREDEF) {
                   const m = [...microstatements, ...microstatements[i].closureStatements]
                   const fn = UserFunction.dispatchFn(microstatements[i].fns, realArgTypes, scope)
-                  const interfaceMap = new Map()
+                  let interfaceMap = new Map()
+                  if (fn.interfaceMap) {
+                    interfaceMap = new Map([...fn.interfaceMap])
+                  }
                   Object.values(fn.getArguments()).forEach(
                     (t: Type, i) => t.typeApplies(realArgTypes[i], scope, interfaceMap)
                   )
@@ -1339,11 +1345,6 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
               // Generate the relevant microstatements for this function. UserFunctions get inlined
               // with the return statement turned into a const assignment as the last statement,
               // while built-in functions are kept as function calls with the correct renaming.
-              console.log(microstatements.map(m => m.toString()).join('\n'))
-              console.log({
-                fn,
-                realArgTypes,
-              })
               UserFunction
                 .dispatchFn(fn, realArgTypes, scope)
                 .microstatementInlining(realArgNames, scope, microstatements)
@@ -1388,13 +1389,6 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
             // Generate the relevant microstatements for this function. UserFunctions get inlined
             // with the return statement turned into a const assignment as the last statement,
             // while built-in functions are kept as function calls with the correct renaming.
-            console.log({
-              c: 'c',
-              currVal,
-              fn,
-              realArgTypes,
-            })
-            console.log(microstatements.map(m => m.toString()).join('\n'))
             UserFunction
               .dispatchFn(fn, realArgTypes, scope)
               .microstatementInlining(realArgNames, scope, microstatements)
@@ -1483,12 +1477,8 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
         // TODO: Is this the right approach?
         microstatements.filter(m => !!m.alias).forEach(m => scope.put(m.alias, m))
         const fn = UserFunction.fromFunctionsAst(baseassignable.functions(), scope)
-        if (!!scope.interfaceMap) {
-          // If this function is being constructed inside of a transformed function, it's own types should be transformed
-          console.log({
-            ba: baseassignable.getText(),
-          })
-          currVal = fn.maybeTransform(scope.interfaceMap, scope)
+        if (scope.has('##interfaceMap')) {
+          currVal = fn.maybeTransform(scope.get('##interfaceMap'), scope)
         } else {
           currVal = fn
         }
