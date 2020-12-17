@@ -352,34 +352,27 @@ export fn push(arr: Array<bool>, val: bool) {
 export fn pop(arr: Array<any>) = poparr(arr);
 export each // parallel opcode with signature `fn each(arr: Array<any>, cb: fn(any)): void`
 export fn each(arr: Array<any>, cb: Function<Arg1<any>, void>): void {
-  const eacher = fn (val: any, _i: int64): void {
+  each(arr, fn (val: any, _i: int64): void {
     cb(val);
-  };
-  each(arr, eacher);
+  });
 };
 export fn eachLin(arr: Array<any>, cb: Function<Arg2<any, int64>, void>): void = eachl(arr, cb);
 export fn eachLin(arr: Array<any>, cb: Function<Arg1<any>, void>): void {
-  const eacher = fn (val: any, _i: int64): void {
+  eachl(arr, fn (val: any, _i: int64): void {
     cb(val);
-  };
-  eachl(arr, eacher);
+  });
 };
 export map // parallel opcode with signature `fn map(arr: Array<any>, cb: fn(any, int64): anythingElse): Array<anythingElse>`
 export fn map(arr: Array<any>, cb: Function<Arg1<any>, anythingElse>): Array<anythingElse> {
-  const mapper = fn (val: any, _i: int64): anythingElse {
+  return map( arr, fn (val: any, _i: int64): anythingElse {
     return cb(val);
-  };
-  return map(arr, mapper);
-  /*return map(arr, fn (val: any, _i: int64): anythingElse {
-    return cb(val);
-  });*/
+  });
 }
 export fn mapLin(arr: Array<any>, cb: Function<Arg2<any, int64>, anythingElse>): Array<anythingElse> = mapl(arr, cb);
 export fn mapLin(arr: Array<any>, cb: Function<Arg1<any>, anythingElse>): Array<anythingElse> {
-  const mapper = fn (val: any, _i: int64): anythingElse {
+  return mapl(fn (val: any, _i: int64): anythingElse {
     return cb(val);
-  };
-  return mapl(arr, mapper);
+  });
 };
 /**
  * Unlike the other array functions, reduce is sequential by default and parallelism must be opted
