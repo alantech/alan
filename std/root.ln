@@ -361,7 +361,7 @@ export fn eachLin(arr: Array<any>, cb: Function<Arg2<any, int64>, void>): void =
 export fn eachLin(arr: Array<any>, cb: Function<Arg1<any>, void>): void {
   const eacher = fn (val: any, _i: int64): void {
     cb(val);
-  }
+  };
   eachl(arr, eacher);
 };
 export map // parallel opcode with signature `fn map(arr: Array<any>, cb: fn(any, int64): anythingElse): Array<anythingElse>`
