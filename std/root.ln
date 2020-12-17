@@ -640,7 +640,7 @@ export fn length(hm: HashMap<Hashable, any>): int64 = length(hm.keyVal);
 export fn get(hm: HashMap<Hashable, any>, key: Hashable): any {
   const hash = key.toHash().abs() % length(hm.lookup);
   const list = getR(hm.lookup[hash]);
-  const index = list.find(fn (i: int64): Array<int64> {
+  const index = list.find(fn (i: int64): bool {
     const kv = getR(hm.keyVal[i]);
     return eq(kv.key, key);
   });
