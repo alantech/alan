@@ -133,7 +133,17 @@ class Module {
                 )
               })
               .forEach(fn => {
-                module.moduleScope.put(fn[0].getName(), fn)
+                const fnName = fn[0].getName()
+                const otherfns = module.moduleScope.deepGet(fnName)
+                if (
+                  !!otherfns &&
+                  otherfns instanceof Array &&
+                  (otherfns[0] as Fn).microstatementInlining instanceof Function
+                ) {
+                  module.moduleScope.put(fnName, [...fn, ...otherfns])
+                } else {
+                  module.moduleScope.put(fn[0].getName(), fn)
+                }
               })
 
             opsToCheck
