@@ -1327,12 +1327,7 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
                   Object.values(fn.getArguments()).forEach(
                     (t: Type, i) => t.typeApplies(realArgTypes[i], scope, interfaceMap)
                   )
-                  Microstatement.closureFromUserFunction(fn, fn.scope || scope, m, interfaceMap)
-                  const closure = m.pop()
-                  microstatements.push(...closure.closureStatements.filter(
-                    s => s.statementType !== StatementType.EXIT)
-                  )
-                  currVal = microstatements[microstatements.length - 1]
+                  fn.microstatementInlining(realArgNames, scope, microstatements)
                   inlinedClosure = true
                   break
                 }
