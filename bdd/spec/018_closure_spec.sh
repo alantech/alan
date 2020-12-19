@@ -6,7 +6,7 @@ Describe "Closure Functions"
       sourceToAll "
         from @std/app import start, print, exit
 
-        fn closure(): function {
+        fn closure(): Function<void, int64> {
           let num = 0;
           return fn (): int64 {
             num = num + 1;
@@ -51,7 +51,7 @@ Describe "Closure Functions"
       sourceToAll "
         from @std/app import start, print, exit
 
-        fn double(x: int64): int64 = x * 2
+        fn double(x: int64) = x * 2;
 
         on start {
           const numbers = [1, 2, 3, 4, 5];

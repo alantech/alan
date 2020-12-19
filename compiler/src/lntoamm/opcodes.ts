@@ -72,6 +72,7 @@ const addopcodes = (opcodes: object) => {
         getArguments: () => args,
         getReturnType: () => Type.builtinTypes.void,
         isPure: () => true,
+        maybeTransform: () => opcodeObj,
         microstatementInlining: (
           realArgNames: Array<string>,
           scope: Scope,
@@ -123,6 +124,7 @@ const addopcodes = (opcodes: object) => {
         getArguments: () => args,
         getReturnType: () => returnType,
         isPure: () => true,
+        maybeTransform: () => opcodeObj,
         microstatementInlining: (
           realArgNames: Array<string>,
           scope: Scope,

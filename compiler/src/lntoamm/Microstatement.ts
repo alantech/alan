@@ -632,7 +632,8 @@ ${objectLiteralsAst.getText()} on line ${objectLiteralsAst.start.line}:${objectL
       scope,
       true, // TODO: What should this be?
       closuredefName,
-      fns[0].getType(), // TODO: What to do if there are multiple and they have different signatures?
+      Type.builtinTypes.Function.solidify(['any', 'anythingElse'], scope),
+      //fns[0].getType(), // TODO: What to do if there are multiple and they have different signatures?
       [],
       fns,
       '',
@@ -1371,7 +1372,13 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
             ]
             const realArgTypes = [
               currVal.outputType,
-              ...argMicrostatements.map(arg => arg.outputType)
+              ...argMicrostatements.map(arg => {
+                if (arg.statementType === StatementType.CLOSUREDEF) {
+                  return arg.fns.map(fn => fn.getType())
+                } else {
+                  return arg.outputType
+                }
+              })
             ]
             const fn = scope.deepGet(baseassignable.VARNAME().getText()) as Array<Fn>
             if (
@@ -1384,9 +1391,14 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
             // Generate the relevant microstatements for this function. UserFunctions get inlined
             // with the return statement turned into a const assignment as the last statement,
             // while built-in functions are kept as function calls with the correct renaming.
+            console.log({
+              argMicrostatements,
+            })
+            const theScope = new Scope(scope)
             UserFunction
-              .dispatchFn(fn, realArgTypes, scope)
-              .microstatementInlining(realArgNames, scope, microstatements)
+              .dispatchFn(fn, realArgTypes, theScope)
+              .maybeTransform(scope.get('##interfaceMap') || new Map(), scope)
+              .microstatementInlining(realArgNames, theScope, microstatements)
             currVal = microstatements[microstatements.length - 1]
           }
           // Intentionally skip over the `fncall` block on the next iteration

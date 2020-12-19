@@ -354,7 +354,9 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
     let theScope
     if (!!scope) {
       theScope = new Scope(scope)
-      theScope.secondaryPar = this.scope
+			if (scope !== this.scope) {
+				theScope.secondaryPar = this.scope
+			}
     } else {
       theScope = this.scope
     }
@@ -610,9 +612,31 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
     // Resolve circular dependency issue
     const internalNames = Object.keys(this.args)
     const inputs = realArgNames.map(n => Microstatement.fromVarName(n, scope, microstatements))
-    const inputTypes = inputs.map(i => i.outputType)
+    const inputTypes = inputs.map((input, i) => {
+			if (input.statementType === StatementType.CLOSUREDEF) {
+				const potentialTypes = input.fns.map(fn => fn.getType())
+				const typeToCheck = Object.values(this.getArguments())[i]
+				let inputType
+				const interfaceMap = scope.get('##interfaceMap') || new Map()
+				for (let j = 0; j < potentialTypes.length; j++) {
+					if (typeToCheck.typeApplies(potentialTypes[j], scope, interfaceMap)) {
+						inputType = potentialTypes[j]
+						break
+					}
+				}
+				return inputType
+			} else {
+				return input.outputType
+			}
+		})
     const originalTypes = Object.values(this.getArguments())
-    const interfaceMap: Map<Type, Type> = new Map()
+    let interfaceMap: Map<Type, Type> = new Map()
+		if (scope.has('##interfaceMap')) {
+			interfaceMap = new Map([...scope.get('##interfaceMap') as Map<Type, Type>])
+			console.log({
+				interfaceMap,
+			})
+		}
     originalTypes.forEach((t, i) => t.typeApplies(inputTypes[i], scope, interfaceMap))
     for (let i = 0; i < internalNames.length; i++) {
       const realArgName = realArgNames[i]
@@ -722,23 +746,42 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
 
   static dispatchFn(
     fns: Array<Fn>,
-    argumentTypeList: Array<Type>,
+    argumentTypeList: Array<Type | Array<Type>>,
     scope: Scope
   ) {
+		console.log({
+			fnName: fns[0].getName(),
+			argArrays: fns.map(fn => fn.getArguments()),
+			argumentTypeList,
+		})
+		console.log(new Error().stack)
     let fn = null
+		let interfaceMap: Map<Type, Type> = new Map();
     for (let i = 0; i < fns.length; i++) {
       const args = fns[i].getArguments()
       const argList = Object.values(args)
       if (argList.length !== argumentTypeList.length) continue
       let skip = false
       for (let j = 0; j < argList.length; j++) {
-        // Special hackery for now
-        if (
-          argList[j].originalType &&
-          argList[j].originalType.typename === 'Function' &&
-          argumentTypeList[j].typename === 'Function'
-        ) continue
-        if (argList[j].typeApplies(argumentTypeList[j], scope)) continue
+        // Potential inner iteration of all possible functions that could be used
+        if (argumentTypeList[j] instanceof Array) {
+					let innerTypeList = argumentTypeList[j] as Array<Type>
+					let innerType
+					for (let k = 0; k < innerTypeList.length; k++) {
+						if (argList[j].typeApplies(innerTypeList[k], scope, interfaceMap)) {
+							innerType = innerTypeList[k]
+							break
+						}
+					}
+					if (!innerType) {
+						skip = true
+					} else {
+						// Replace the outer type with this inner type
+						argumentTypeList[j] = innerType
+					}
+				} else if (argList[j].typeApplies(argumentTypeList[j] as Type, scope, interfaceMap)) {
+					continue
+				}
         skip = true
       }
       if (skip) continue
@@ -748,7 +791,7 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
       let errMsg = "Unable to find matching function for name and argument type set"
       let argTypes = []
       for (let i = 0; i < argumentTypeList.length; i++) {
-        argTypes.push("<" + argumentTypeList[i].typename + ">")
+        argTypes.push("<" + (argumentTypeList[i] as Type).typename + ">")
       }
       errMsg += '\n' + fns[0].getName() + "(" + argTypes.join(", ") + ")\n"
       errMsg += 'Candidate functions considered:\n'
@@ -764,6 +807,12 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
       }
       throw new Error(errMsg)
     }
+		if (interfaceMap.size > 0) {
+			scope.put('##interfaceMap', interfaceMap)
+		}
+		console.log({
+			fn,
+		})
     return fn
   }
 }
