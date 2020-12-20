@@ -421,5 +421,39 @@ false"
       The output should eq "$GREATERTHANOREQUAL"
     End
   End
+
+  Describe "Type Coercion Aliases"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+
+        on start {
+          print(toInt(0) == toInt64(0));
+          print(toFloat(0.0) == toFloat(0.0));
+
+          emit exit 0;
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    TYPECOERCIONALIASES="true
+true"
+
+    It "runs js"
+      When run test_js
+      The output should eq "$TYPECOERCIONALIASES"
+    End
+
+    It "runs agc"
+      When run test_agc
+      The output should eq "$TYPECOERCIONALIASES"
+    End
+  End
 End
 
