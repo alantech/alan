@@ -1859,11 +1859,17 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
           HandlerMemory::transfer(&b, 0, &mut hm, CLOSURE_ARG_MEM_START + 2);
           reducers.push(subhandler.clone().run(hm));
         }
+        // Check if one of the records was skipped over this round, and if so, pop it into a
+        // special field
+        let maybe_hm = if vals.len() == 1 { Some(vals.remove(0)) } else { None };
         let hms = join_all(reducers).await;
         for mut hm in hms {
           let (a, b) = hm.addr_to_idxs(CLOSURE_ARG_MEM_START);
           hm.set_addr(0, a, b as usize);
           vals.push(hm);
+        }
+        if maybe_hm.is_some() {
+          vals.push(maybe_hm.unwrap());
         }
       }
       // There can be only one
