@@ -1845,6 +1845,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         let mut hm = HandlerMemory::new(None, 1);
         hand_mem.set_addr(CLOSURE_ARG_MEM_START, arr[i].0, arr[i].1 as usize);
         HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut hm, 0);
+        println!("i> {} <i", HandlerMemory::fractal_to_string(hm.read_fractal(0)));
         vals.push(hm);
       }
       let subhandler = HandlerFragment::new(args[1], 0);
@@ -1863,6 +1864,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         for mut hm in hms {
           let (a, b) = hm.addr_to_idxs(CLOSURE_ARG_MEM_START);
           hm.set_addr(0, a, b as usize);
+          println!("o> {} <o", HandlerMemory::fractal_to_string(hm.read_fractal(0)));
           vals.push(hm);
         }
       }
