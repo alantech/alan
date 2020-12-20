@@ -1919,6 +1919,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let n = num_cpus::get();
       let l = vals.len();
       let s = l / n;
+      println!("n: {}, l: {}, s: {}", n, l, s);
       let mut reducers = Vec::new();
       for i in 0..n {
         let subvals = if i == n - 1 {
@@ -1947,6 +1948,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       for i in 0..n {
         let hm = hms[i].as_ref().unwrap();
         HandlerMemory::transfer(&hm, 0, &mut hand_mem, CLOSURE_ARG_MEM_START);
+        println!("-> {} <-", HandlerMemory::fractal_to_string(hand_mem.read_fractal(CLOSURE_ARG_MEM_START)));
         let (a, b) = hand_mem.addr_to_idxs(CLOSURE_ARG_MEM_START);
         hand_mem.push_idxs(args[2], a, b);
       }
