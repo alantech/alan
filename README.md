@@ -87,7 +87,6 @@ If you wish to contribute to Alan, or if your operating system and/or CPU archit
 * Node.js >=10.20.1, <14.0.0
 * Rust >=1.41.1
 * A complete C toolchain (gcc, clang, msvc)
-* Python >=2.7, <3.0 (and named `python2` in your PATH)
 
 Once those are installed, simply:
 
