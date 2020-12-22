@@ -6,7 +6,7 @@ Describe "Basic Math"
       before() {
         sourceToAll "
           from @std/app import start, exit
-          on start { emit exit add(toInt8(1), toInt8(2)); }
+          on start { emit exit add(toInt8(1), toInt8(2)).getOrExit(); }
         "
       }
       BeforeAll before
@@ -31,7 +31,7 @@ Describe "Basic Math"
       before() {
         sourceToAll "
           from @std/app import start, exit
-          on start { emit exit sub(toInt8(2), toInt8(1)); }
+          on start { emit exit sub(toInt8(2), toInt8(1)).getOrExit(); }
         "
       }
       BeforeAll before
@@ -56,7 +56,7 @@ Describe "Basic Math"
       before() {
         sourceToAll "
           from @std/app import start, exit
-          on start { emit exit mul(toInt8(2), toInt8(1)); }
+          on start { emit exit mul(toInt8(2), toInt8(1)).getOrExit(); }
         "
       }
       BeforeAll before
@@ -81,7 +81,7 @@ Describe "Basic Math"
       before() {
         sourceToAll "
           from @std/app import start, exit
-          on start { emit exit div(toInt8(6), toInt8(2)); }
+          on start { emit exit div(toInt8(6), toInt8(2)).getOrExit(); }
         "
       }
       BeforeAll before
@@ -131,7 +131,7 @@ Describe "Basic Math"
       before() {
         sourceToAll "
           from @std/app import start, exit
-          on start { emit exit pow(toInt8(6), toInt8(2)); }
+          on start { emit exit pow(toInt8(6), toInt8(2)).getOrExit(); }
         "
       }
       BeforeAll before

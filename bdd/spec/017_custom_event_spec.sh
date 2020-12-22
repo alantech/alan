@@ -25,7 +25,7 @@ Describe "Custom events"
           if val >= 10 {
             emit exit 0;
           } else {
-            emit loop val + 1;
+            emit loop val + 1 || 0;
           }
         }
 

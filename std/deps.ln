@@ -12,8 +12,8 @@ export event install: void
 export fn add(remote: string) {
   // TODO implement proper error handling
   const parts = remote.split('/');
-  const repo = parts[length(parts) - 1] || '';
-  const group = parts[parts.length() - 2] || '';
+  const repo = parts[length(parts) - 1 || 0] || '';
+  const group = parts[parts.length() - 2 || 0] || '';
   const dest = '/dependencies/' + group + '/' + repo;
   const rm = exec('rm -rf .' + dest);
   const git = exec('git clone ' + remote + ' .' + dest);

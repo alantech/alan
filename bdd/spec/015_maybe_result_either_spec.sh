@@ -76,7 +76,7 @@ Correctly received nothing!"
           if val == 0.0 {
             return err('Divide by zero error!');
           } else {
-            return ok(1.0 / val);
+            return 1.0 / val;
           }
         }
 

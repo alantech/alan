@@ -123,63 +123,399 @@ export fn toString(n: bool) = boolstr(n);
 export fn toFloat(n: canFloat64): float = toFloat64(n)
 export fn toInt(n: canInt64): int = toInt64(n) 
 
-// Arithmetic functions
-export fn add(a: int8, b: int8) = addi8(a, b);
-export fn add(a: int16, b: int16) = addi16(a, b);
-export fn add(a: int32, b: int32) = addi32(a, b);
-export fn add(a: int64, b: int64) = addi64(a, b);
-export fn add(a: float32, b: float32) = addf32(a, b);
-export fn add(a: float64, b: float64) = addf64(a, b);
+// Error, Maybe, Result, and Either types and functions
+export error // opcode with signature `fn error(string): Error`
+export fn ref(a: any) = refv(a);
+export fn ref(a: void) = reff(a);
+export fn ref(a: int8) = reff(a);
+export fn ref(a: int16) = reff(a);
+export fn ref(a: int32) = reff(a);
+export fn ref(a: int64) = reff(a);
+export fn ref(a: float32) = reff(a);
+export fn ref(a: float64) = reff(a);
+export fn ref(a: bool) = reff(a);
+export noerr // opcode with signature `fn noerr(): Error`
+export fn toString(err: Error) = errorstr(err);
 
-export fn sub(a: int8, b: int8) = subi8(a, b);
-export fn sub(a: int16, b: int16) = subi16(a, b);
-export fn sub(a: int32, b: int32) = subi32(a, b);
-export fn sub(a: int64, b: int64) = subi64(a, b);
-export fn sub(a: float32, b: float32) = subf32(a, b);
-export fn sub(a: float64, b: float64) = subf64(a, b);
+export fn some(val: any) = someM(val, 0);
+export fn some(val: int8) = someM(val, 8);
+export fn some(val: int16) = someM(val, 8);
+export fn some(val: int32) = someM(val, 8);
+export fn some(val: int64) = someM(val, 8);
+export fn some(val: float32) = someM(val, 8);
+export fn some(val: float64) = someM(val, 8);
+export fn some(val: bool) = someM(val, 8);
+export fn none() = noneM();
+export isSome // opcode with signature `fn isSome(Maybe<any>): bool`
+export isNone // opcode with signature `fn isNone(Maybe<any>): bool`
+export fn getOr(maybe: Maybe<any>, default: any) = getOrM(maybe, default);
+
+export fn ok(val: any) = okR(val, 0);
+export fn ok(val: int8) = okR(val, 8);
+export fn ok(val: int16) = okR(val, 8);
+export fn ok(val: int32) = okR(val, 8);
+export fn ok(val: int64) = okR(val, 8);
+export fn ok(val: float32) = okR(val, 8);
+export fn ok(val: float64) = okR(val, 8);
+export fn ok(val: bool) = okR(val, 8);
+export err // opcode with signature `fn err(string): Result<any>`
+export isOk // opcode with signature `fn isOk(Result<any>): bool`
+export isErr // opcode with signature `fn isErr(Result<any>: bool`
+export fn getOr(result: Result<any>, default: any) = getOrR(result, default);
+export fn getOr(result: Result<any>, default: string) = getOrRS(result, default);
+export getErr // opcode with signature `fn getErr(Result<any>, Error): Error`
+export fn toString(n: Result<Stringifiable>): string {
+  if n.isOk() {
+    return n.getR().toString();
+  } else {
+    return n.getErr(noerr()).toString();
+  }
+}
+export fn getOrExit(result: Result<any>): any {
+  if result.isErr() {
+    stderrp(result.toString());
+    exitop(1.toInt8());
+  } else {
+    return result.getR();
+  }
+}
+
+export fn main(val: any) = mainE(val, 0);
+export fn main(val: int8) = mainE(val, 8);
+export fn main(val: int16) = mainE(val, 8);
+export fn main(val: int32) = mainE(val, 8);
+export fn main(val: int64) = mainE(val, 8);
+export fn main(val: float32) = mainE(val, 8);
+export fn main(val: float64) = mainE(val, 8);
+export fn main(val: bool) = mainE(val, 8);
+export fn alt(val: any) = altE(val, 0);
+export fn alt(val: int8) = altE(val, 8);
+export fn alt(val: int16) = altE(val, 8);
+export fn alt(val: int32) = altE(val, 8);
+export fn alt(val: int64) = altE(val, 8);
+export fn alt(val: float32) = altE(val, 8);
+export fn alt(val: float64) = altE(val, 8);
+export fn alt(val: bool) = altE(val, 8);
+export isMain // opcode with signature `fn isMain(Either<any, anythingElse>): bool`
+export isAlt // opcode with signature `fn isAlt(Either<any, anythingElse): bool`
+export fn getMainOr(either: Either<any, anythingElse>, default: any) = mainOr(either, default);
+export fn getAltOr(either: Either<any, anythingElse>, default: anythingElse) = altOr(either, default);
+
+// Arithmetic functions
+export fn add(a: int8, b: int8) = addi8(ok(a), ok(b));
+export fn add(a: Result<int8>, b: int8) = addi8(a, ok(b));
+export fn add(a: int8, b: Result<int8>) = addi8(ok(a), b);
+export fn add(a: Result<int8>, b: Result<int8>) = addi8(a, b);
+export fn add(a: int16, b: int16) = addi16(ok(a), ok(b));
+export fn add(a: Result<int16>, b: int16) = addi16(a, ok(b));
+export fn add(a: int16, b: Result<int16>) = addi16(ok(a), b);
+export fn add(a: Result<int16>, b: Result<int16>) = addi16(a, b);
+export fn add(a: int32, b: int32) = addi32(ok(a), ok(b));
+export fn add(a: Result<int32>, b: int32) = addi32(a, ok(b));
+export fn add(a: int32, b: Result<int32>) = addi32(ok(a), b);
+export fn add(a: Result<int32>, b: Result<int32>) = addi32(a, b);
+export fn add(a: int64, b: int64) = addi64(ok(a), ok(b));
+export fn add(a: Result<int64>, b: int64) = addi64(a, ok(b));
+export fn add(a: int64, b: Result<int64>) = addi64(ok(a), b);
+export fn add(a: Result<int64>, b: Result<int64>) = addi64(a, b);
+export fn add(a: float32, b: float32) = addf32(ok(a), ok(b));
+export fn add(a: Result<float32>, b: float32) = addf32(a, ok(b));
+export fn add(a: float32, b: Result<float32>) = addf32(ok(a), b);
+export fn add(a: Result<float32>, b: Result<float32>) = addf32(a, b);
+export fn add(a: float64, b: float64) = addf64(ok(a), ok(b));
+export fn add(a: Result<float64>, b: float64) = addf64(a, ok(b));
+export fn add(a: float64, b: Result<float64>) = addf64(ok(a), b);
+export fn add(a: Result<float64>, b: Result<float64>) = addf64(a, b);
+
+export fn sub(a: int8, b: int8) = subi8(ok(a), ok(b));
+export fn sub(a: Result<int8>, b: int8) = subi8(a, ok(b));
+export fn sub(a: int8, b: Result<int8>) = subi8(ok(a), b);
+export fn sub(a: Result<int8>, b: Result<int8>) = subi8(a, b);
+export fn sub(a: int16, b: int16) = subi16(ok(a), ok(b));
+export fn sub(a: Result<int16>, b: int16) = subi16(a, ok(b));
+export fn sub(a: int16, b: Result<int16>) = subi16(ok(a), b);
+export fn sub(a: Result<int16>, b: Result<int16>) = subi16(a, b);
+export fn sub(a: int32, b: int32) = subi32(ok(a), ok(b));
+export fn sub(a: Result<int32>, b: int32) = subi32(a, ok(b));
+export fn sub(a: int32, b: Result<int32>) = subi32(ok(a), b);
+export fn sub(a: Result<int32>, b: Result<int32>) = subi32(a, b);
+export fn sub(a: int64, b: int64) = subi64(ok(a), ok(b));
+export fn sub(a: Result<int64>, b: int64) = subi64(a, ok(b));
+export fn sub(a: int64, b: Result<int64>) = subi64(ok(a), b);
+export fn sub(a: Result<int64>, b: Result<int64>) = subi64(a, b);
+export fn sub(a: float32, b: float32) = subf32(ok(a), ok(b));
+export fn sub(a: Result<float32>, b: float32) = subf32(a, ok(b));
+export fn sub(a: float32, b: Result<float32>) = subf32(ok(a), b);
+export fn sub(a: Result<float32>, b: Result<float32>) = subf32(a, b);
+export fn sub(a: float64, b: float64) = subf64(ok(a), ok(b));
+export fn sub(a: Result<float64>, b: float64) = subf64(a, ok(b));
+export fn sub(a: float64, b: Result<float64>) = subf64(ok(a), b);
+export fn sub(a: Result<float64>, b: Result<float64>) = subf64(a, b);
 
 export fn negate(n: int8) = negi8(n);
+export fn negate(n: Result<int8>) {
+  if n.isErr() {
+    return n;
+  }
+  return ok(negi8(n.getR()));
+}
 export fn negate(n: int16) = negi16(n);
+export fn negate(n: Result<int16>) {
+  if n.isErr() {
+    return n;
+  }
+  return ok(negi16(n.getR()));
+}
 export fn negate(n: int32) = negi32(n);
+export fn negate(n: Result<int32>) {
+  if n.isErr() {
+    return n;
+  }
+  return ok(negi32(n.getR()));
+}
 export fn negate(n: int64) = negi64(n);
+export fn negate(n: Result<int64>) {
+  if n.isErr() {
+    return n;
+  }
+  return ok(negi64(n.getR()));
+}
 export fn negate(n: float32) = negf32(n);
+export fn negate(n: Result<float32>) {
+  if n.isErr() {
+    return n;
+  }
+  return ok(negf32(n.getR()));
+}
 export fn negate(n: float64) = negf64(n);
+export fn negate(n: Result<float64>) {
+  if n.isErr() {
+    return n;
+  }
+  return ok(negf64(n.getR()));
+}
 
 export fn abs(n: int8) = absi8(n);
+export fn abs(n: Result<int8>) {
+  if n.isErr() {
+    return n;
+  }
+  return ok(absi8(n.getR()));
+}
 export fn abs(n: int16) = absi16(n);
+export fn abs(n: Result<int16>) {
+  if n.isErr() {
+    return n;
+  }
+  return ok(absi16(n.getR()));
+}
 export fn abs(n: int32) = absi32(n);
+export fn abs(n: Result<int32>) {
+  if n.isErr() {
+    return n;
+  }
+  return ok(absi32(n.getR()));
+}
 export fn abs(n: int64) = absi64(n);
+export fn abs(n: Result<int64>) {
+  if n.isErr() {
+    return n;
+  }
+  return ok(absi64(n.getR()));
+}
 export fn abs(n: float32) = absf32(n);
+export fn abs(n: Result<float32>) {
+  if n.isErr() {
+    return n;
+  }
+  return ok(absf32(n.getR()));
+}
 export fn abs(n: float64) = absf64(n);
+export fn abs(n: Result<float64>) {
+  if n.isErr() {
+    return n;
+  }
+  return ok(absf64(n.getR()));
+}
 
-export fn mul(a: int8, b: int8) = muli8(a, b);
-export fn mul(a: int16, b: int16) = muli16(a, b);
-export fn mul(a: int32, b: int32) = muli32(a, b);
-export fn mul(a: int64, b: int64) = muli64(a, b);
-export fn mul(a: float32, b: float32) = mulf32(a, b);
-export fn mul(a: float64, b: float64) = mulf64(a, b);
+export fn mul(a: int8, b: int8) = muli8(ok(a), ok(b));
+export fn mul(a: Result<int8>, b: int8) = muli8(a, ok(b));
+export fn mul(a: int8, b: Result<int8>) = muli8(ok(a), b);
+export fn mul(a: Result<int8>, b: Result<int8>) = muli8(a, b);
+export fn mul(a: int16, b: int16) = muli16(ok(a), ok(b));
+export fn mul(a: Result<int16>, b: int16) = muli16(a, ok(b));
+export fn mul(a: int16, b: Result<int16>) = muli16(ok(a), b);
+export fn mul(a: Result<int16>, b: Result<int16>) = muli16(a, b);
+export fn mul(a: int32, b: int32) = muli32(ok(a), ok(b));
+export fn mul(a: Result<int32>, b: int32) = muli32(a, ok(b));
+export fn mul(a: int32, b: Result<int32>) = muli32(ok(a), b);
+export fn mul(a: Result<int32>, b: Result<int32>) = muli32(a, b);
+export fn mul(a: int64, b: int64) = muli64(ok(a), ok(b));
+export fn mul(a: Result<int64>, b: int64) = muli64(a, ok(b));
+export fn mul(a: int64, b: Result<int64>) = muli64(ok(a), b);
+export fn mul(a: Result<int64>, b: Result<int64>) = muli64(a, b);
+export fn mul(a: float32, b: float32) = mulf32(ok(a), ok(b));
+export fn mul(a: Result<float32>, b: float32) = mulf32(a, ok(b));
+export fn mul(a: float32, b: Result<float32>) = mulf32(ok(a), b);
+export fn mul(a: Result<float32>, b: Result<float32>) = mulf32(a, b);
+export fn mul(a: float64, b: float64) = mulf64(ok(a), ok(b));
+export fn mul(a: Result<float64>, b: float64) = mulf64(a, ok(b));
+export fn mul(a: float64, b: Result<float64>) = mulf64(ok(a), b);
+export fn mul(a: Result<float64>, b: Result<float64>) = mulf64(a, b);
 
-export fn div(a: int8, b: int8) = divi8(a, b);
-export fn div(a: int16, b: int16) = divi16(a, b);
-export fn div(a: int32, b: int32) = divi32(a, b);
-export fn div(a: int64, b: int64) = divi64(a, b);
-export fn div(a: float32, b: float32) = divf32(a, b);
-export fn div(a: float64, b: float64) = divf64(a, b);
+export fn div(a: int8, b: int8) = divi8(ok(a), ok(b));
+export fn div(a: Result<int8>, b: int8) = divi8(a, ok(b));
+export fn div(a: int8, b: Result<int8>) = divi8(ok(a), b);
+export fn div(a: Result<int8>, b: Result<int8>) = divi8(a, b);
+export fn div(a: int16, b: int16) = divi16(ok(a), ok(b));
+export fn div(a: Result<int16>, b: int16) = divi16(a, ok(b));
+export fn div(a: int16, b: Result<int16>) = divi16(ok(a), b);
+export fn div(a: Result<int16>, b: Result<int16>) = divi16(a, b);
+export fn div(a: int32, b: int32) = divi32(ok(a), ok(b));
+export fn div(a: Result<int32>, b: int32) = divi32(a, ok(b));
+export fn div(a: int32, b: Result<int32>) = divi32(ok(a), b);
+export fn div(a: Result<int32>, b: Result<int32>) = divi32(a, b);
+export fn div(a: int64, b: int64) = divi64(ok(a), ok(b));
+export fn div(a: Result<int64>, b: int64) = divi64(a, ok(b));
+export fn div(a: int64, b: Result<int64>) = divi64(ok(a), b);
+export fn div(a: Result<int64>, b: Result<int64>) = divi64(a, b);
+export fn div(a: float32, b: float32) = divf32(ok(a), ok(b));
+export fn div(a: Result<float32>, b: float32) = divf32(a, ok(b));
+export fn div(a: float32, b: Result<float32>) = divf32(ok(a), b);
+export fn div(a: Result<float32>, b: Result<float32>) = divf32(a, b);
+export fn div(a: float64, b: float64) = divf64(ok(a), ok(b));
+export fn div(a: Result<float64>, b: float64) = divf64(a, ok(b));
+export fn div(a: float64, b: Result<float64>) = divf64(ok(a), b);
+export fn div(a: Result<float64>, b: Result<float64>) = divf64(a, b);
 
 export fn mod(a: int8, b: int8) = modi8(a, b);
+export fn mod(a: Result<int8>, b: int8) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(modi8(a.getR(), b));
+}
+export fn mod(a: int8, b: Result<int8>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(modi8(a, b.getR()));
+}
+export fn mod(a: Result<int8>, b: Result<int8>) {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(modi8(a.getR(), b.getR()));
+}
 export fn mod(a: int16, b: int16) = modi16(a, b);
+export fn mod(a: Result<int16>, b: int16) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(modi16(a.getR(), b));
+}
+export fn mod(a: int16, b: Result<int16>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(modi16(a, b.getR()));
+}
+export fn mod(a: Result<int16>, b: Result<int16>) {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(modi16(a.getR(), b.getR()));
+}
 export fn mod(a: int32, b: int32) = modi32(a, b);
+export fn mod(a: Result<int32>, b: int32) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(modi32(a.getR(), b));
+}
+export fn mod(a: int32, b: Result<int32>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(modi32(a, b.getR()));
+}
+export fn mod(a: Result<int32>, b: Result<int32>) {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(modi32(a.getR(), b.getR()));
+}
 export fn mod(a: int64, b: int64) = modi64(a, b);
+export fn mod(a: Result<int64>, b: int64) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(modi64(a.getR(), b));
+}
+export fn mod(a: int64, b: Result<int64>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(modi64(a, b.getR()));
+}
+export fn mod(a: Result<int64>, b: Result<int64>) {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(modi64(a.getR(), b.getR()));
+}
 
-export fn pow(a: int8, b: int8) = powi8(a, b);
-export fn pow(a: int16, b: int16) = powi16(a, b);
-export fn pow(a: int32, b: int32) = powi32(a, b);
-export fn pow(a: int64, b: int64) = powi64(a, b);
-export fn pow(a: float32, b: float32) = powf32(a, b);
-export fn pow(a: float64, b: float64) = powf64(a, b);
+export fn pow(a: int8, b: int8) = powi8(ok(a), ok(b));
+export fn pow(a: Result<int8>, b: int8) = powi8(a, ok(b));
+export fn pow(a: int8, b: Result<int8>) = powi8(ok(a), b);
+export fn pow(a: Result<int8>, b: Result<int8>) = powi8(a, b);
+export fn pow(a: int16, b: int16) = powi16(ok(a), ok(b));
+export fn pow(a: Result<int16>, b: int16) = powi16(a, ok(b));
+export fn pow(a: int16, b: Result<int16>) = powi16(ok(a), b);
+export fn pow(a: Result<int16>, b: Result<int16>) = powi16(a, b);
+export fn pow(a: int32, b: int32) = powi32(ok(a), ok(b));
+export fn pow(a: Result<int32>, b: int32) = powi32(a, ok(b));
+export fn pow(a: int32, b: Result<int32>) = powi32(ok(a), b);
+export fn pow(a: Result<int32>, b: Result<int32>) = powi32(a, b);
+export fn pow(a: int64, b: int64) = powi64(ok(a), ok(b));
+export fn pow(a: Result<int64>, b: int64) = powi64(a, ok(b));
+export fn pow(a: int64, b: Result<int64>) = powi64(ok(a), b);
+export fn pow(a: Result<int64>, b: Result<int64>) = powi64(a, b);
+export fn pow(a: float32, b: float32) = powf32(ok(a), ok(b));
+export fn pow(a: Result<float32>, b: float32) = powf32(a, ok(b));
+export fn pow(a: float32, b: Result<float32>) = powf32(ok(a), b);
+export fn pow(a: Result<float32>, b: Result<float32>) = powf32(a, b);
+export fn pow(a: float64, b: float64) = powf64(ok(a), ok(b));
+export fn pow(a: Result<float64>, b: float64) = powf64(a, ok(b));
+export fn pow(a: float64, b: Result<float64>) = powf64(ok(a), b);
+export fn pow(a: Result<float64>, b: Result<float64>) = powf64(a, b);
 
 export fn sqrt(n: float32) = sqrtf32(n);
+export fn sqrt(n: Result<float32>) {
+  if n.isErr() {
+    return n;
+  }
+  return sqrtf32(n.getR());
+}
 export fn sqrt(n: float64) = sqrtf64(n);
+export fn sqrt(n: Result<float64>) {
+  if n.isErr() {
+    return n;
+  }
+  return sqrtf64(n.getR());
+}
 
 export fn min(x: Orderable, y: Orderable): Orderable {
   return cond(lte(x, y), [x, y]);
@@ -189,6 +525,7 @@ export fn max(x: Orderable, y: Orderable): Orderable {
 }
 
 // Boolean and bitwise functions
+// TODO: Should Result-wrapped integers be accepted by the bitwise functions?
 export fn and(a: int8, b: int8) = andi8(a, b);
 export fn and(a: int16, b: int16) = andi16(a, b);
 export fn and(a: int32, b: int32) = andi32(a, b);
@@ -232,6 +569,7 @@ export fn xnor(a: int64, b: int64) = xnori64(a, b);
 export fn xnor(a: bool, b: bool) = xnorboo(a, b);
 
 // Equality and order functions
+// TODO: Similarly, should equality/orderability functions accept Result-wrapped values?
 export fn eq(a: int8, b: int8) = eqi8(a, b);
 export fn eq(a: int16, b: int16) = eqi16(a, b);
 export fn eq(a: int32, b: int32) = eqi32(a, b);
@@ -485,7 +823,7 @@ export fn set(arr: Array<bool>, idx: int64, val: bool) {
 
 // Ternary functions
 export fn pair(trueval: any, falseval: any) = new Array<any> [ trueval, falseval ];
-export fn cond(c: bool, options: Array<any>) = getR(options[1.sub(c.toInt64())]);
+export fn cond(c: bool, options: Array<any>) = getR(options[1.sub(c.toInt64()).getR()]);
 export fn cond(c: bool, optional: function): void = condfn(c, optional);
 
 // "clone" function useful for hoisting assignments and making duplicates
@@ -501,84 +839,6 @@ export fn clone(a: float32) = copyf32(a);
 export fn clone(a: float64) = copyf64(a);
 export fn clone(a: bool) = copybool(a);
 export fn clone(a: string) = copystr(a);
-
-// Error, Maybe, Result, and Either types and functions
-export error // opcode with signature `fn error(string): Error`
-export fn ref(a: any) = refv(a);
-export fn ref(a: void) = reff(a);
-export fn ref(a: int8) = reff(a);
-export fn ref(a: int16) = reff(a);
-export fn ref(a: int32) = reff(a);
-export fn ref(a: int64) = reff(a);
-export fn ref(a: float32) = reff(a);
-export fn ref(a: float64) = reff(a);
-export fn ref(a: bool) = reff(a);
-export noerr // opcode with signature `fn noerr(): Error`
-export fn toString(err: Error) = errorstr(err);
-
-export fn some(val: any) = someM(val, 0);
-export fn some(val: int8) = someM(val, 8);
-export fn some(val: int16) = someM(val, 8);
-export fn some(val: int32) = someM(val, 8);
-export fn some(val: int64) = someM(val, 8);
-export fn some(val: float32) = someM(val, 8);
-export fn some(val: float64) = someM(val, 8);
-export fn some(val: bool) = someM(val, 8);
-export fn none() = noneM();
-export isSome // opcode with signature `fn isSome(Maybe<any>): bool`
-export isNone // opcode with signature `fn isNone(Maybe<any>): bool`
-export fn getOr(maybe: Maybe<any>, default: any) = getOrM(maybe, default);
-
-export fn ok(val: any) = okR(val, 0);
-export fn ok(val: int8) = okR(val, 8);
-export fn ok(val: int16) = okR(val, 8);
-export fn ok(val: int32) = okR(val, 8);
-export fn ok(val: int64) = okR(val, 8);
-export fn ok(val: float32) = okR(val, 8);
-export fn ok(val: float64) = okR(val, 8);
-export fn ok(val: bool) = okR(val, 8);
-export err // opcode with signature `fn err(string): Result<any>`
-export isOk // opcode with signature `fn isOk(Result<any>): bool`
-export isErr // opcode with signature `fn isErr(Result<any>: bool`
-export fn getOr(result: Result<any>, default: any) = getOrR(result, default);
-export fn getOr(result: Result<any>, default: string) = getOrRS(result, default);
-export getErr // opcode with signature `fn getErr(Result<any>, Error): Error`
-export fn toString(n: Result<Stringifiable>): string {
-  if n.isOk() {
-    return n.getR().toString();
-  } else {
-    return n.getErr(noerr()).toString();
-  }
-}
-export fn getOrExit(result: Result<any>): any {
-  if result.isErr() {
-    stderrp(result.toString());
-    exitop(1.toInt8());
-  } else {
-    return result.getR();
-  }
-}
-
-export fn main(val: any) = mainE(val, 0);
-export fn main(val: int8) = mainE(val, 8);
-export fn main(val: int16) = mainE(val, 8);
-export fn main(val: int32) = mainE(val, 8);
-export fn main(val: int64) = mainE(val, 8);
-export fn main(val: float32) = mainE(val, 8);
-export fn main(val: float64) = mainE(val, 8);
-export fn main(val: bool) = mainE(val, 8);
-export fn alt(val: any) = altE(val, 0);
-export fn alt(val: int8) = altE(val, 8);
-export fn alt(val: int16) = altE(val, 8);
-export fn alt(val: int32) = altE(val, 8);
-export fn alt(val: int64) = altE(val, 8);
-export fn alt(val: float32) = altE(val, 8);
-export fn alt(val: float64) = altE(val, 8);
-export fn alt(val: bool) = altE(val, 8);
-export isMain // opcode with signature `fn isMain(Either<any, anythingElse>): bool`
-export isAlt // opcode with signature `fn isAlt(Either<any, anythingElse): bool`
-export fn getMainOr(either: Either<any, anythingElse>, default: any) = mainOr(either, default);
-export fn getAltOr(either: Either<any, anythingElse>, default: anythingElse) = altOr(either, default);
 
 // toHash functions for all data types
 export fn toHash(val: any) = hashv(val);
@@ -638,7 +898,7 @@ export fn set(hm: HashMap<Hashable, any>, key: Hashable, val: any): HashMap<Hash
   const list = getR(hm.lookup[hash]);
   if list.length() == 8 {
     // Rebucket everything
-    const lookupLen = length(hm.lookup) * 2;
+    const lookupLen = length(hm.lookup) * 2 || 0;
     hm.lookup = new Array<Array<int64>> [ new Array<int64> [], ] * lookupLen;
     eachl(hm.keyVal, fn (kv: KeyVal<Hashable, any>, i: int64) {
       const hash = toHash(kv.key).abs() % lookupLen;
@@ -801,7 +1061,7 @@ export fn prune(n: Node<any>): Tree<any> {
   // This is, unfortunately for now, a sequential algorithm. Hope to figure out a parallel version
   let nodeStack = new Array<int64> [ n.id ];
   let rmdIds = new Array<int64> [ ];
-  seqdo(newseq(pow(2, 62)), fn (): bool {
+  seqdo(newseq(pow(2, 62).getOr(0)), fn (): bool {
     // Get the nodeId, exit if none left
     const nodeRes = nodeStack.pop();
     if nodeRes.isErr() {
@@ -814,7 +1074,7 @@ export fn prune(n: Node<any>): Tree<any> {
       const childrenIds = childrenRes.getR();
       nodeStack = nodeStack.concat(childrenIds);
     }
-    const delIdx = nodeId - length(rmdIds);
+    const delIdx = nodeId - length(rmdIds) || 0;
     delete(n.tree.vals, delIdx);
     delete(n.tree.parents, delIdx);
     delete(n.tree.children, delIdx);
@@ -828,13 +1088,13 @@ export fn prune(n: Node<any>): Tree<any> {
     const parentId = getOr(n.tree.parents[i], -1);
     const parentDelta = rmdIds.filter(fn (rmId: int64): bool = parentId > rmId).length();
     if parentDelta > 0 {
-      set(n.tree.parents, i, parentId - parentDelta);
+      set(n.tree.parents, i, parentId - parentDelta || 0);
     }
     const children = getOr(n.tree.children[i], new Array<int64> []);
     const newChildren = children.map(fn (cId: int64): int64 {
       const delta = rmdIds.filter(fn (rmdId: int64): bool = cId > rmdId).length();
       if delta > 0 {
-        return cId - delta;
+        return cId - delta || 0;
       }
       return cId;
     });

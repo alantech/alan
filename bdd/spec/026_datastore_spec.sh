@@ -27,7 +27,7 @@ Describe "@std/datastore"
       on waitAndInc fn (ms: int64) {
         wait(ms);
         let i = namespace('foo').getOr('inc', 0);
-        i = i + 1;
+        i = i + 1 || 0;
         print(i);
         namespace('foo').set('inc', i);
         if i == 3 {

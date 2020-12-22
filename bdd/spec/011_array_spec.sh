@@ -232,7 +232,7 @@ Hello, World!"
 
         on start {
           const count = [1, 2, 3, 4, 5]; // Ah, ah, ahh!
-          const byTwos = count.map(fn (n: int64): int64 = n * 2);
+          const byTwos = count.map(fn (n: int64): int64 = n * 2 || 0);
           count.map(fn (n: int64) = toString(n)).join(', ').print();
           byTwos.map(fn (n: int64) = toString(n)).join(', ').print();
           emit exit 0;
@@ -390,7 +390,7 @@ cannot remove idx 10 from array with length 4"
           const test = [ 1, 1, 2, 3, 5, 8 ];
           const test2 = [ 4, 5, 6 ];
           print('reduce test');
-          test.reduce(fn (a: int, b: int): int = a + b).print();
+          test.reduce(fn (a: int, b: int): int = a + b || 0).print();
           test.reduce(min).print();
           test.reduce(max).print();
 

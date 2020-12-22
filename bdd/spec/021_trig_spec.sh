@@ -15,33 +15,33 @@ Describe "@std/trig"
         print(trig.log(e));
 
         'Basic Trig functions'.print();
-        print(trig.sin(tau / 6.0));
-        print(trig.cos(tau / 6.0));
-        print(trig.tan(tau / 6.0));
-        print(trig.sec(tau / 6.0));
-        print(trig.csc(tau / 6.0));
-        print(trig.cot(tau / 6.0));
+        print(trig.sin(tau / 6.0 || 0.0));
+        print(trig.cos(tau / 6.0 || 0.0));
+        print(trig.tan(tau / 6.0 || 0.0));
+        print(trig.sec(tau / 6.0 || 0.0));
+        print(trig.csc(tau / 6.0 || 0.0));
+        print(trig.cot(tau / 6.0 || 0.0));
 
         'Inverse Trig functions'.print();
         print(trig.arcsine(0.0));
         print(trig.arccosine(1.0));
         print(trig.arctangent(0.0));
-        print(trig.arcsecant(tau / 6.0));
-        print(trig.arccosecant(tau / 6.0));
-        print(trig.arccotangent(tau / 6.0));
+        print(trig.arcsecant(tau / 6.0 || 0.0));
+        print(trig.arccosecant(tau / 6.0 || 0.0));
+        print(trig.arccotangent(tau / 6.0 || 0.0));
 
         'Historic Trig functions (useful for navigation and as a teaching aid: https://en.wikipedia.org/wiki/File:Circle-trig6.svg )'.print();
-        print(trig.versine(pi / 3.0));
-        print(trig.vercosine(pi / 3.0));
-        print(trig.coversine(pi / 3.0));
-        print(trig.covercosine(pi / 3.0));
-        print(trig.haversine(pi / 3.0));
-        print(trig.havercosine(pi / 3.0));
-        print(trig.hacoversine(pi / 3.0));
-        print(trig.hacovercosine(pi / 3.0));
-        print(trig.exsecant(pi / 3.0));
-        print(trig.excosecant(pi / 3.0));
-        print(trig.chord(pi / 3.0));
+        print(trig.versine(pi / 3.0 || 0.0));
+        print(trig.vercosine(pi / 3.0 || 0.0));
+        print(trig.coversine(pi / 3.0 || 0.0));
+        print(trig.covercosine(pi / 3.0 || 0.0));
+        print(trig.haversine(pi / 3.0 || 0.0));
+        print(trig.havercosine(pi / 3.0 || 0.0));
+        print(trig.hacoversine(pi / 3.0 || 0.0));
+        print(trig.hacovercosine(pi / 3.0 || 0.0));
+        print(trig.exsecant(pi / 3.0 || 0.0));
+        print(trig.excosecant(pi / 3.0 || 0.0));
+        print(trig.chord(pi / 3.0 || 0.0));
 
         'Historic Inverse Trig functions'.print();
         print(trig.aver(0.0));
@@ -57,20 +57,20 @@ Describe "@std/trig"
         print(trig.acrd(0.5));
 
         'Hyperbolic Trig functions'.print();
-        print(trig.sinh(tau / 6.0));
-        print(trig.cosh(tau / 6.0));
-        print(trig.tanh(tau / 6.0));
-        print(trig.sech(tau / 6.0));
-        print(trig.csch(tau / 6.0));
-        print(trig.coth(tau / 6.0));
+        print(trig.sinh(tau / 6.0 || 0.0));
+        print(trig.cosh(tau / 6.0 || 0.0));
+        print(trig.tanh(tau / 6.0 || 0.0));
+        print(trig.sech(tau / 6.0 || 0.0));
+        print(trig.csch(tau / 6.0 || 0.0));
+        print(trig.coth(tau / 6.0 || 0.0));
 
         'Inverse Hyperbolic Trig functions'.print();
-        print(trig.hyperbolicArcsine(tau / 6.0));
-        print(trig.hyperbolicArccosine(tau / 6.0));
-        print(trig.hyperbolicArctangent(tau / 6.0));
+        print(trig.hyperbolicArcsine(tau / 6.0 || 0.0));
+        print(trig.hyperbolicArccosine(tau / 6.0 || 0.0));
+        print(trig.hyperbolicArctangent(tau / 6.0 || 0.0));
         print(trig.hyperbolicArcsecant(0.5));
-        print(trig.hyperbolicArccosecant(tau / 6.0));
-        print(trig.hyperbolicArccotangent(tau / 6.0));
+        print(trig.hyperbolicArccosecant(tau / 6.0 || 0.0));
+        print(trig.hyperbolicArccotangent(tau / 6.0 || 0.0));
 
         emit exit 0;
       }

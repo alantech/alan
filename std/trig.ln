@@ -1,9 +1,11 @@
+// TODO: Probably change this from always unwrapping Result-wrapped values to passing along
+// result-wrapped errors
 export const e = 2.718281828459045;
 export const pi = 3.141592653589793;
 export const tau = 6.283185307179586;
 
-export fn exp(x: float64) = e ** x;
-export fn exp(x: float32) = toFloat32(e) ** x;
+export fn exp(x: float64) = e ** x || 0.0;
+export fn exp(x: float32) = toFloat32(e) ** x || 0.toFloat32();
 
 export fn ln(x: float64) = lnf64(x);
 export fn ln(x: float32) = toFloat32(lnf64(toFloat64(x)));
@@ -26,19 +28,19 @@ export fn tan(x: float32) = toFloat32(tanf64(toFloat64(x)));
 export fn tangent(x: float64) = tanf64(x);
 export fn tangent(x: float32) = toFloat32(tanf64(toFloat64(x)));
 
-export fn sec(x: float64) = 1.0 / cosf64(x);
+export fn sec(x: float64) = 1.0 / cosf64(x) || 0.0;
 export fn sec(x: float32) = toFloat32(sec(toFloat64(x)));
-export fn secant(x: float64) = 1.0 / cosf64(x);
+export fn secant(x: float64) = 1.0 / cosf64(x) || 0.0;
 export fn secant(x: float32) = toFloat32(secant(toFloat64(x)));
 
-export fn csc(x: float64) = 1.0 / sinf64(x);
+export fn csc(x: float64) = 1.0 / sinf64(x) || 0.0;
 export fn csc(x: float32) = toFloat32(csc(toFloat64(x)));
-export fn cosecant(x: float64) = 1.0 / sinf64(x);
+export fn cosecant(x: float64) = 1.0 / sinf64(x) || 0.0;
 export fn cosecant(x: float32) = toFloat32(cosecant(toFloat64(x)));
 
-export fn cot(x: float64) = 1.0 / tanf64(x);
+export fn cot(x: float64) = 1.0 / tanf64(x) || 0.0;
 export fn cot(x: float32) = toFloat32(cot(toFloat64(x)));
-export fn cotangent(x: float64) = 1.0 / tanf64(x);
+export fn cotangent(x: float64) = 1.0 / tanf64(x) || 0.0;
 export fn cotangent(x: float32) = toFloat32(cotangent(toFloat64(x)));
 
 export fn asin(x: float64) = asinf64(x);
@@ -56,129 +58,129 @@ export fn atan(x: float32) = toFloat32(atanf64(toFloat64(x)));
 export fn arctangent(x: float64) = atanf64(x);
 export fn arctangent(x: float32) = toFloat32(atanf64(toFloat64(x)));
 
-export fn asec(x: float64) = acosf64(1.0 / x);
+export fn asec(x: float64) = acosf64(1.0 / x || 0.0);
 export fn asec(x: float32) = toFloat32(asec(toFloat64(x)));
-export fn arcsecant(x: float64) = acosf64(1.0 / x);
+export fn arcsecant(x: float64) = acosf64(1.0 / x || 0.0);
 export fn arcsecant(x: float32) = toFloat32(arcsecant(toFloat64(x)));
 
-export fn acsc(x: float64) = asinf64(1.0 / x);
+export fn acsc(x: float64) = asinf64(1.0 / x || 0.0);
 export fn acsc(x: float32) = toFloat32(acsc(toFloat64(x)));
-export fn arccosecant(x: float64) = asinf64(1.0 / x);
+export fn arccosecant(x: float64) = asinf64(1.0 / x || 0.0);
 export fn arccosecant(x: float32) = toFloat32(arccosecant(toFloat64(x)));
 
-export fn acot(x: float64) = pi / 2.0 - atanf64(x);
+export fn acot(x: float64) = pi / 2.0 - atanf64(x) || 0.0;
 export fn acot(x: float32) = toFloat32(acot(toFloat64(x)));
-export fn arccotangent(x: float64) = pi / 2.0 - atanf64(x);
+export fn arccotangent(x: float64) = pi / 2.0 - atanf64(x) || 0.0;
 export fn arccotangent(x: float32) = toFloat32(arccotangent(toFloat64(x)));
 
-export fn ver(x: float64) = 1.0 - cosf64(x);
+export fn ver(x: float64) = 1.0 - cosf64(x) || 0.0;
 export fn ver(x: float32) = toFloat32(ver(toFloat64(x)));
-export fn versine(x: float64) = 1.0 - cosf64(x);
+export fn versine(x: float64) = 1.0 - cosf64(x) || 0.0;
 export fn versine(x: float32) = toFloat32(versine(toFloat64(x)));
 
-export fn vcs(x: float64) = 1.0 + cosf64(x);
+export fn vcs(x: float64) = 1.0 + cosf64(x) || 0.0;
 export fn vcs(x: float32) = toFloat32(vcs(toFloat64(x)));
-export fn vercosine(x: float64) = 1.0 + cosf64(x);
+export fn vercosine(x: float64) = 1.0 + cosf64(x) || 0.0;
 export fn vercosine(x: float32) = toFloat32(vercosine(toFloat64(x)));
 
-export fn cvs(x: float64) = 1.0 - sinf64(x);
+export fn cvs(x: float64) = 1.0 - sinf64(x) || 0.0;
 export fn cvs(x: float32) = toFloat32(cvs(toFloat64(x)));
-export fn coversine(x: float64) = 1.0 - sinf64(x);
+export fn coversine(x: float64) = 1.0 - sinf64(x) || 0.0;
 export fn coversine(x: float32) = toFloat32(coversine(toFloat64(x)));
 
-export fn cvc(x: float64) = 1.0 + sinf64(x);
+export fn cvc(x: float64) = 1.0 + sinf64(x) || 0.0;
 export fn cvc(x: float32) = toFloat32(cvc(toFloat64(x)));
-export fn covercosine(x: float64) = 1.0 + sinf64(x);
+export fn covercosine(x: float64) = 1.0 + sinf64(x) || 0.0;
 export fn covercosine(x: float32) = toFloat32(covercosine(toFloat64(x)));
 
-export fn hav(x: float64) = versine(x) / 2.0;
+export fn hav(x: float64) = versine(x) / 2.0 || 0.0;
 export fn hav(x: float32) = toFloat32(hav(toFloat64(x)));
-export fn haversine(x: float64) = versine(x) / 2.0;
+export fn haversine(x: float64) = versine(x) / 2.0 || 0.0;
 export fn haversine(x: float32) = toFloat32(haversine(toFloat64(x)));
 
-export fn hvc(x: float64) = vercosine(x) / 2.0;
+export fn hvc(x: float64) = vercosine(x) / 2.0 || 0.0;
 export fn hvc(x: float32) = toFloat32(hvc(toFloat64(x)));
-export fn havercosine(x: float64) = vercosine(x) / 2.0;
+export fn havercosine(x: float64) = vercosine(x) / 2.0 || 0.0;
 export fn havercosine(x: float32) = toFloat32(havercosine(toFloat64(x)));
 
-export fn hcv(x: float64) = coversine(x) / 2.0;
+export fn hcv(x: float64) = coversine(x) / 2.0 || 0.0;
 export fn hcv(x: float32) = toFloat32(hcv(toFloat64(x)));
-export fn hacoversine(x: float64) = coversine(x) / 2.0;
+export fn hacoversine(x: float64) = coversine(x) / 2.0 || 0.0;
 export fn hacoversine(x: float32) = toFloat32(hacoversine(toFloat64(x)));
 
-export fn hcc(x: float64) = covercosine(x) / 2.0;
+export fn hcc(x: float64) = covercosine(x) / 2.0 || 0.0;
 export fn hcc(x: float32) = toFloat32(hcc(toFloat64(x)));
-export fn hacovercosine(x: float64) = covercosine(x) / 2.0;
+export fn hacovercosine(x: float64) = covercosine(x) / 2.0 || 0.0;
 export fn hacovercosine(x: float32) = toFloat32(hacovercosine(toFloat64(x)));
 
-export fn exs(x: float64) = secant(x) - 1.0;
+export fn exs(x: float64) = secant(x) - 1.0 || 0.0;
 export fn exs(x: float32) = toFloat32(exs(toFloat64(x)));
-export fn exsecant(x: float64) = secant(x) - 1.0;
+export fn exsecant(x: float64) = secant(x) - 1.0 || 0.0;
 export fn exsecant(x: float32) = toFloat32(exsecant(toFloat64(x)));
 
-export fn exc(x: float64) = cosecant(x) - 1.0;
+export fn exc(x: float64) = cosecant(x) - 1.0 || 0.0;
 export fn exc(x: float32) = toFloat32(exc(toFloat64(x)));
-export fn excosecant(x: float64) = cosecant(x) - 1.0;
+export fn excosecant(x: float64) = cosecant(x) - 1.0 || 0.0;
 export fn excosecant(x: float32) = toFloat32(excosecant(toFloat64(x)));
 
-export fn crd(x: float64) = 2.0 * sine(x / 2.0);
+export fn crd(x: float64) = 2.0 * sine(x / 2.0 || 0.0) || 0.0;
 export fn crd(x: float32) = toFloat32(crd(toFloat64(x)));
-export fn chord(x: float64) = 2.0 * sine(x / 2.0);
+export fn chord(x: float64) = 2.0 * sine(x / 2.0 || 0.0) || 0.0;
 export fn chord(x: float32) = toFloat32(chord(toFloat64(x)));
 
-export fn aver(x: float64) = arccosine(1.0 - x);
+export fn aver(x: float64) = arccosine(1.0 - x || 0.0);
 export fn aver(x: float32) = toFloat32(aver(toFloat64(x)));
-export fn arcversine(x: float64) = arccosine(1.0 - x);
+export fn arcversine(x: float64) = arccosine(1.0 - x || 0.0);
 export fn arcversine(x: float32) = toFloat32(arcversine(toFloat64(x)));
 
-export fn avcs(x: float64) = arccosine(x - 1.0);
+export fn avcs(x: float64) = arccosine(x - 1.0 || 0.0);
 export fn avcs(x: float32) = toFloat32(avcs(toFloat64(x)));
-export fn arcvercosine(x: float64) = arccosine(x - 1.0);
+export fn arcvercosine(x: float64) = arccosine(x - 1.0 || 0.0);
 export fn arcvercosine(x: float32) = toFloat32(arcvercosine(toFloat64(x)));
 
-export fn acvs(x: float64) = arcsine(1.0 - x);
+export fn acvs(x: float64) = arcsine(1.0 - x || 0.0);
 export fn acvs(x: float32) = toFloat32(acvs(toFloat64(x)));
-export fn arccoversine(x: float64) = arcsine(1.0 - x);
+export fn arccoversine(x: float64) = arcsine(1.0 - x || 0.0);
 export fn arccoversine(x: float32) = toFloat32(arccoversine(toFloat64(x)));
 
-export fn acvc(x: float64) = arcsine(x - 1.0);
+export fn acvc(x: float64) = arcsine(x - 1.0 || 0.0);
 export fn acvc(x: float32) = toFloat32(acvc(toFloat64(x)));
-export fn arccovercosine(x: float64) = arcsine(x - 1.0);
+export fn arccovercosine(x: float64) = arcsine(x - 1.0 || 0.0);
 export fn arccovercosine(x: float32) = toFloat32(arccovercosine(toFloat64(x)));
 
-export fn ahav(x: float64) = arccosine(1.0 - 2.0 * x);
+export fn ahav(x: float64) = arccosine(1.0 - 2.0 * x || 0.0);
 export fn ahav(x: float32) = toFloat32(ahav(toFloat64(x)));
-export fn archaversine(x: float64) = arccosine(1.0 - 2.0 * x);
+export fn archaversine(x: float64) = arccosine(1.0 - 2.0 * x || 0.0);
 export fn archaversine(x: float32) = toFloat32(archaversine(toFloat64(x)));
 
-export fn ahvc(x: float64) = arccosine(2.0 * x - 1.0);
+export fn ahvc(x: float64) = arccosine(2.0 * x - 1.0 || 0.0);
 export fn ahvc(x: float32) = toFloat32(ahvc(toFloat64(x)));
-export fn archavercosine(x: float64) = arccosine(2.0 * x - 1.0);
+export fn archavercosine(x: float64) = arccosine(2.0 * x - 1.0 || 0.0);
 export fn archavercosine(x: float32) = toFloat32(archavercosine(toFloat64(x)));
 
-export fn ahcv(x: float64) = arcsine(1.0 - 2.0 * x);
+export fn ahcv(x: float64) = arcsine(1.0 - 2.0 * x || 0.0);
 export fn ahcv(x: float32) = toFloat32(ahcv(toFloat64(x)));
-export fn archacoversine(x: float64) = arcsine(1.0 - 2.0 * x);
+export fn archacoversine(x: float64) = arcsine(1.0 - 2.0 * x || 0.0);
 export fn archacoversine(x: float32) = toFloat32(archacoversine(toFloat64(x)));
 
-export fn ahcc(x: float64) = arcsine(2.0 * x - 1.0);
+export fn ahcc(x: float64) = arcsine(2.0 * x - 1.0 || 0.0);
 export fn ahcc(x: float32) = toFloat32(ahcc(toFloat64(x)));
-export fn archacovercosine(x: float64) = arcsine(2.0 * x - 1.0);
+export fn archacovercosine(x: float64) = arcsine(2.0 * x - 1.0 || 0.0);
 export fn archacovercosine(x: float32) = toFloat32(archacovercosine(toFloat64(x)));
 
-export fn aexs(x: float64) = arccosine(1.0 / (x + 1.0));
+export fn aexs(x: float64) = arccosine(1.0 / (x + 1.0) || 0.0);
 export fn aexs(x: float32) = toFloat32(aexs(toFloat64(x)));
-export fn arcexsecant(x: float64) = arccosine(1.0 / (x + 1.0));
+export fn arcexsecant(x: float64) = arccosine(1.0 / (x + 1.0) || 0.0);
 export fn arcexsecant(x: float32) = toFloat32(arcexsecant(toFloat64(x)));
 
-export fn aexc(x: float64) = arcsine(1.0 / (x + 1.0));
+export fn aexc(x: float64) = arcsine(1.0 / (x + 1.0) || 0.0);
 export fn aexc(x: float32) = toFloat32(aexc(toFloat64(x)));
-export fn arcexcosecant(x: float64) = arcsine(1.0 / (x + 1.0));
+export fn arcexcosecant(x: float64) = arcsine(1.0 / (x + 1.0) || 0.0);
 export fn arcexcosecant(x: float32) = toFloat32(arcexcosecant(toFloat64(x)));
 
-export fn acrd(x: float64) = 2.0 * arcsine(x / 2.0);
+export fn acrd(x: float64) = 2.0 * arcsine(x / 2.0 || 0.0) || 0.0;
 export fn acrd(x: float32) = toFloat32(acrd(toFloat64(x)));
-export fn arcchord(x: float64) = 2.0 * arcsine(x / 2.0);
+export fn arcchord(x: float64) = 2.0 * arcsine(x / 2.0 || 0.0) || 0.0;
 export fn arcchord(x: float32) = toFloat32(arcchord(toFloat64(x)));
 
 export fn sinh(x: float64) = sinhf64(x);
@@ -196,47 +198,47 @@ export fn tanh(x: float32) = toFloat32(tanhf64(toFloat64(x)));
 export fn hyperbolicTangent(x: float64) = tanhf64(x);
 export fn hyperbolicTangent(x: float32) = toFloat32(tanhf64(toFloat64(x)));
 
-export fn sech(x: float64) = 1.0 / cosh(x);
+export fn sech(x: float64) = 1.0 / cosh(x) || 0.0;
 export fn sech(x: float32) = toFloat32(sech(toFloat64(x)));
-export fn hyperbolicSecant(x: float64) = 1.0 / cosh(x);
+export fn hyperbolicSecant(x: float64) = 1.0 / cosh(x) || 0.0;
 export fn hyperbolicSecant(x: float32) = toFloat32(hyperbolicSecant(toFloat64(x)));
 
-export fn csch(x: float64) = 1.0 / sinh(x);
+export fn csch(x: float64) = 1.0 / sinh(x) || 0.0;
 export fn csch(x: float32) = toFloat32(cosh(toFloat64(x)));
-export fn hyperbolicCosecant(x: float64) = 1.0 / sinh(x);
+export fn hyperbolicCosecant(x: float64) = 1.0 / sinh(x) || 0.0;
 export fn hyperbolicCosecant(x: float32) = toFloat32(hyperbolicCosecant(toFloat64(x)));
 
-export fn coth(x: float64) = 1.0 / tanh(x);
+export fn coth(x: float64) = 1.0 / tanh(x) || 0.0;
 export fn coth(x: float32) = toFloat32(coth(toFloat64(x)));
-export fn hyperbolicCotangent(x: float64) = 1.0 / tanh(x);
+export fn hyperbolicCotangent(x: float64) = 1.0 / tanh(x) || 0.0;
 export fn hyperbolicCotangent(x: float32) = toFloat32(hyperbolicCotangent(toFloat64(x)));
 
-export fn asinh(x: float64) = ln(x + sqrt(x ** 2.0 + 1.0));
+export fn asinh(x: float64) = ln(x + sqrt(x ** 2.0 + 1.0) || 0.0);
 export fn asinh(x: float32) = toFloat32(asinh(toFloat64(x)));
-export fn hyperbolicArcsine(x: float64) = ln(x + sqrt(x ** 2.0 + 1.0));
+export fn hyperbolicArcsine(x: float64) = ln(x + sqrt(x ** 2.0 + 1.0) || 0.0);
 export fn hyperbolicArcsine(x: float32) = toFloat32(hyperbolicArcsine(toFloat64(x)));
 
-export fn acosh(x: float64) = ln(x + sqrt(x ** 2.0 - 1.0));
+export fn acosh(x: float64) = ln(x + sqrt(x ** 2.0 - 1.0) || 0.0);
 export fn acosh(x: float32) = toFloat32(acosh(toFloat64(x)));
-export fn hyperbolicArccosine(x: float64) = ln(x + sqrt(x ** 2.0 - 1.0));
+export fn hyperbolicArccosine(x: float64) = ln(x + sqrt(x ** 2.0 - 1.0) || 0.0);
 export fn hyperbolicArccosine(x: float32) = toFloat32(hyperbolicArccosine(toFloat64(x)));
 
-export fn atanh(x: float64) = ln((x + 1.0) / (x - 1.0)) / 2.0;
+export fn atanh(x: float64) = ln((x + 1.0) / (x - 1.0) || 0.0) / 2.0 || 0.0;
 export fn atanh(x: float32) = toFloat32(atanh(toFloat64(x)));
-export fn hyperbolicArctangent(x: float64) = ln((x + 1.0) / (x - 1.0)) / 2.0;
+export fn hyperbolicArctangent(x: float64) = ln((x + 1.0) / (x - 1.0) || 0.0) / 2.0 || 0.0;
 export fn hyperbolicArctangent(x: float32) = toFloat32(hyperbolicArctangent(toFloat64(x)));
 
-export fn asech(x: float64) = ln((1.0 + sqrt(1.0 - x ** 2.0)) / x);
+export fn asech(x: float64) = ln((1.0 + sqrt(1.0 - x ** 2.0)) / x || 0.0);
 export fn asech(x: float32) = toFloat32(asech(toFloat64(x)));
-export fn hyperbolicArcsecant(x: float64) = ln((1.0 + sqrt(1.0 - x ** 2.0)) / x);
+export fn hyperbolicArcsecant(x: float64) = ln((1.0 + sqrt(1.0 - x ** 2.0)) / x || 0.0);
 export fn hyperbolicArcsecant(x: float32) = toFloat32(hyperbolicArcsecant(toFloat64(x)));
 
-export fn acsch(x: float64) = ln((1.0 / x) + sqrt(1.0 / x ** 2.0 + 1.0));
+export fn acsch(x: float64) = ln((1.0 / x) + sqrt(1.0 / x ** 2.0 + 1.0) || 0.0);
 export fn acsch(x: float32) = toFloat32(acsch(toFloat64(x)));
-export fn hyperbolicArccosecant(x: float64) = ln((1.0 / x) + sqrt(1.0 / x ** 2.0 + 1.0));
+export fn hyperbolicArccosecant(x: float64) = ln((1.0 / x) + sqrt(1.0 / x ** 2.0 + 1.0) || 0.0);
 export fn hyperbolicArccosecant(x: float32) = toFloat32(hyperbolicArccosecant(toFloat64(x)));
 
-export fn acoth(x: float64) = ln((x + 1.0) / (x - 1.0)) / 2.0;
+export fn acoth(x: float64) = ln((x + 1.0) / (x - 1.0) || 0.0) / 2.0 || 0.0;
 export fn acoth(x: float32) = toFloat32(acoth(toFloat64(x)));
-export fn hyperbolicArccotangent(x: float64) = ln((x + 1.0) / (x - 1.0)) / 2.0;
+export fn hyperbolicArccotangent(x: float64) = ln((x + 1.0) / (x - 1.0) || 0.0) / 2.0 || 0.0;
 export fn hyperbolicArccotangent(x: float32) = toFloat32(hyperbolicArccotangent(toFloat64(x)));
