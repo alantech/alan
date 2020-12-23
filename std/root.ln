@@ -746,6 +746,29 @@ export fn or(a: Result<bool>, b: Result<bool>): Result<bool> {
   }
   return ok(or(a.getR(), b.getR()));
 }
+// This aliasing is for operator definition purposes only
+export fn boolor(a: bool, b: bool) = orbool(a, b);
+export fn boolor(a: Result<bool>, b: bool): Result<bool> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(boolor(a.getR(), b));
+}
+export fn boolor(a: bool, b: Result<bool>): Result<bool> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(boolor(a, b.getR()));
+}
+export fn boolor(a: Result<bool>, b: Result<bool>): Result<bool> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(boolor(a.getR(), b.getR()));
+}
 
 export fn xor(a: int8, b: int8) = xori8(a, b);
 export fn xor(a: Result<int8>, b: int8): Result<int8> {
@@ -2627,7 +2650,7 @@ export infix pow as ** precedence 4
 export infix and as & precedence 3
 export infix and as && precedence 3
 export infix or as | precedence 2
-export infix or as || precedence 2
+export infix boolor as || precedence 2
 export infix xor as ^ precedence 2
 export prefix not as ! precedence 4
 export infix nand as !& precedence 3
@@ -2646,5 +2669,4 @@ export prefix trim as ` precedence 4
 export infix pair as : precedence 5
 export infix push as : precedence 6
 export infix cond as ? precedence 0
-export infix getOr as | precedence 2
 export infix getOr as || precedence 2
