@@ -182,6 +182,7 @@ module.exports = {
       if (a < INT8MIN - b) return [0, 'underflow']
       return [1, a + b]
     }
+    return [1, a + b]
   },
   addi16:  (ra, rb) => {
     if (!ra[0]) return ra
@@ -199,6 +200,7 @@ module.exports = {
       if (a < INT16MIN - b) return [0, 'underflow']
       return [1, a + b]
     }
+    return [1, a + b]
   },
   addi32:  (ra, rb) => {
     if (!ra[0]) return ra
@@ -216,6 +218,7 @@ module.exports = {
       if (a < INT32MIN - b) return [0, 'underflow']
       return [1, a + b]
     }
+    return [1, a + b]
   },
   addi64:  (ra, rb) => {
     if (!ra[0]) return ra
@@ -233,6 +236,7 @@ module.exports = {
       if (a < INT64MIN - b) return [0, 'underflow']
       return [1, a + b]
     }
+    return [1, a + b]
   },
   addf32:  (ra, rb) => {
     if (!ra[0]) return ra
@@ -265,12 +269,13 @@ module.exports = {
     if (a > 0 && b > 0) return [1, a - b]
     if (a > 0 && b < 0) {
       if (a > INT8MAX + b) return [0, 'overflow']
-      return [1, a + b]
+      return [1, a - b]
     }
     if (a < 0 && b > 0) {
       if (a < INT8MIN + b) return [0, 'underflow']
-      return [1, a + b]
+      return [1, a - b]
     }
+    return [1, a - b]
   },
   subi16:  (ra, rb) => {
     if (!ra[0]) return ra
@@ -282,12 +287,13 @@ module.exports = {
     if (a > 0 && b > 0) return [1, a - b]
     if (a > 0 && b < 0) {
       if (a > INT16MAX + b) return [0, 'overflow']
-      return [1, a + b]
+      return [1, a - b]
     }
     if (a < 0 && b > 0) {
       if (a < INT16MIN + b) return [0, 'underflow']
-      return [1, a + b]
+      return [1, a - b]
     }
+    return [1, a - b]
   },
   subi32:  (ra, rb) => {
     if (!ra[0]) return ra
@@ -299,12 +305,13 @@ module.exports = {
     if (a > 0 && b > 0) return [1, a - b]
     if (a > 0 && b < 0) {
       if (a > INT32MAX + b) return [0, 'overflow']
-      return [1, a + b]
+      return [1, a - b]
     }
     if (a < 0 && b > 0) {
       if (a < INT32MIN + b) return [0, 'underflow']
-      return [1, a + b]
+      return [1, a - b]
     }
+    return [1, a - b]
   },
   subi64:  (ra, rb) => {
     if (!ra[0]) return ra
@@ -316,12 +323,13 @@ module.exports = {
     if (a > 0n && b > 0n) return [1, a - b]
     if (a > 0n && b < 0n) {
       if (a > INT32MAX + b) return [0, 'overflow']
-      return [1, a + b]
+      return [1, a - b]
     }
     if (a < 0n && b > 0n) {
       if (a < INT32MIN + b) return [0, 'underflow']
-      return [1, a + b]
+      return [1, a - b]
     }
+    return [1, a - b]
   },
   subf32:  (ra, rb) => {
     if (!ra[0]) return ra

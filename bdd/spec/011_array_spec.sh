@@ -232,9 +232,9 @@ Hello, World!"
 
         on start {
           const count = [1, 2, 3, 4, 5]; // Ah, ah, ahh!
-          const byTwos = count.map(fn (n: int64): int64 = n * 2 || 0);
+          const byTwos = count.map(fn (n: int64): Result<int64> = n * 2);
           count.map(fn (n: int64) = toString(n)).join(', ').print();
-          byTwos.map(fn (n: int64) = toString(n)).join(', ').print();
+          byTwos.map(fn (n: Result<int64>) = toString(n)).join(', ').print();
           emit exit 0;
         }
       "
