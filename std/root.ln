@@ -2230,6 +2230,12 @@ export some // parallel opcode with signature `fn some(arr: Array<any>, cb: func
 export fn someLin(arr: Array<any>, cb: function): bool = somel(arr, cb);
 export join // opcode with signature `fn join(arr: Array<string>, sep: string): string`
 export fn delete(arr: Array<any>, idx: int64): Result<any> = delindx(arr, idx);
+export fn delete(arr: Array<any>, idx: Result<int64>): Result<any> {
+  if idx.isErr() {
+    return idx;
+  }
+  return delindx(arr, idx.getR());
+}
 export fn set(arr: Array<any>, idx: int64, val: any) {
   if (idx < 0) | (idx > arr.length()) {
     return err('array out-of-bounds access');
@@ -2297,7 +2303,7 @@ export fn set(arr: Array<bool>, idx: int64, val: bool) {
 
 // Ternary functions
 export fn pair(trueval: any, falseval: any) = new Array<any> [ trueval, falseval ];
-export fn cond(c: bool, options: Array<any>) = getR(options[1.sub(c.toInt64()).getR()]);
+export fn cond(c: bool, options: Array<any>) = getR(options[1.sub(c.toInt64())]);
 export fn cond(c: bool, optional: function): void = condfn(c, optional);
 
 // "clone" function useful for hoisting assignments and making duplicates
@@ -2529,7 +2535,7 @@ export fn prune(n: Node<any>): Tree<any> {
     const children = getOr(n.tree.children[parentId], new Array<int64> []);
     const idxRes = index(children, n.id);
     if idxRes.isOk() {
-      delete(children, idxRes.getR());
+      delete(children, idxRes);
     }
   }
   // This is, unfortunately for now, a sequential algorithm. Hope to figure out a parallel version
@@ -2548,7 +2554,7 @@ export fn prune(n: Node<any>): Tree<any> {
       const childrenIds = childrenRes.getR();
       nodeStack = nodeStack.concat(childrenIds);
     }
-    const delIdx = nodeId - length(rmdIds) || 0;
+    const delIdx = nodeId - length(rmdIds);
     delete(n.tree.vals, delIdx);
     delete(n.tree.parents, delIdx);
     delete(n.tree.children, delIdx);
