@@ -525,48 +525,707 @@ export fn max(x: Orderable, y: Orderable): Orderable {
 }
 
 // Boolean and bitwise functions
-// TODO: Should Result-wrapped integers be accepted by the bitwise functions?
 export fn and(a: int8, b: int8) = andi8(a, b);
+export fn and(a: Result<int8>, b: int8): Result<int8> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(and(a.getR(), b));
+}
+export fn and(a: int8, b: Result<int8>): Result<int8> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(and(a, b.getR()));
+}
+export fn and(a: Result<int8>, b: Result<int8>): Result<int8> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(and(a.getR(), b.getR()));
+}
 export fn and(a: int16, b: int16) = andi16(a, b);
+export fn and(a: Result<int16>, b: int16): Result<int16> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(and(a.getR(), b));
+}
+export fn and(a: int16, b: Result<int16>): Result<int16> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(and(a, b.getR()));
+}
+export fn and(a: Result<int16>, b: Result<int16>): Result<int16> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(and(a.getR(), b.getR()));
+}
 export fn and(a: int32, b: int32) = andi32(a, b);
+export fn and(a: Result<int32>, b: int32): Result<int32> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(and(a.getR(), b));
+}
+export fn and(a: int32, b: Result<int32>): Result<int32> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(and(a, b.getR()));
+}
+export fn and(a: Result<int32>, b: Result<int32>): Result<int32> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(and(a.getR(), b.getR()));
+}
 export fn and(a: int64, b: int64) = andi64(a, b);
+export fn and(a: Result<int64>, b: int64): Result<int64> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(and(a.getR(), b));
+}
+export fn and(a: int64, b: Result<int64>): Result<int64> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(and(a, b.getR()));
+}
+export fn and(a: Result<int64>, b: Result<int64>): Result<int64> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(and(a.getR(), b.getR()));
+}
 export fn and(a: bool, b: bool) = andbool(a, b);
+export fn and(a: Result<bool>, b: bool): Result<bool> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(and(a.getR(), b));
+}
+export fn and(a: bool, b: Result<bool>): Result<bool> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(and(a, b.getR()));
+}
+export fn and(a: Result<bool>, b: Result<bool>): Result<bool> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(and(a.getR(), b.getR()));
+}
 
 export fn or(a: int8, b: int8) = ori8(a, b);
+export fn or(a: Result<int8>, b: int8): Result<int8> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(or(a.getR(), b));
+}
+export fn or(a: int8, b: Result<int8>): Result<int8> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(or(a, b.getR()));
+}
+export fn or(a: Result<int8>, b: Result<int8>): Result<int8> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(or(a.getR(), b.getR()));
+}
 export fn or(a: int16, b: int16) = ori16(a, b);
+export fn or(a: Result<int16>, b: int16): Result<int16> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(or(a.getR(), b));
+}
+export fn or(a: int16, b: Result<int16>): Result<int16> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(or(a, b.getR()));
+}
+export fn or(a: Result<int16>, b: Result<int16>): Result<int16> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(or(a.getR(), b.getR()));
+}
 export fn or(a: int32, b: int32) = ori32(a, b);
+export fn or(a: Result<int32>, b: int32): Result<int32> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(or(a.getR(), b));
+}
+export fn or(a: int32, b: Result<int32>): Result<int32> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(or(a, b.getR()));
+}
+export fn or(a: Result<int32>, b: Result<int32>): Result<int32> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(or(a.getR(), b.getR()));
+}
 export fn or(a: int64, b: int64) = ori64(a, b);
+export fn or(a: Result<int64>, b: int64): Result<int64> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(or(a.getR(), b));
+}
+export fn or(a: int64, b: Result<int64>): Result<int64> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(or(a, b.getR()));
+}
+export fn or(a: Result<int64>, b: Result<int64>): Result<int64> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(or(a.getR(), b.getR()));
+}
 export fn or(a: bool, b: bool) = orbool(a, b);
+export fn or(a: Result<bool>, b: bool): Result<bool> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(or(a.getR(), b));
+}
+export fn or(a: bool, b: Result<bool>): Result<bool> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(or(a, b.getR()));
+}
+export fn or(a: Result<bool>, b: Result<bool>): Result<bool> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(or(a.getR(), b.getR()));
+}
 
 export fn xor(a: int8, b: int8) = xori8(a, b);
+export fn xor(a: Result<int8>, b: int8): Result<int8> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(xor(a.getR(), b));
+}
+export fn xor(a: int8, b: Result<int8>): Result<int8> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(xor(a, b.getR()));
+}
+export fn xor(a: Result<int8>, b: Result<int8>): Result<int8> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(xor(a.getR(), b.getR()));
+}
 export fn xor(a: int16, b: int16) = xori16(a, b);
+export fn xor(a: Result<int16>, b: int16): Result<int16> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(xor(a.getR(), b));
+}
+export fn xor(a: int16, b: Result<int16>): Result<int16> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(xor(a, b.getR()));
+}
+export fn xor(a: Result<int16>, b: Result<int16>): Result<int16> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(xor(a.getR(), b.getR()));
+}
 export fn xor(a: int32, b: int32) = xori32(a, b);
+export fn xor(a: Result<int32>, b: int32): Result<int32> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(xor(a.getR(), b));
+}
+export fn xor(a: int32, b: Result<int32>): Result<int32> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(xor(a, b.getR()));
+}
+export fn xor(a: Result<int32>, b: Result<int32>): Result<int32> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(xor(a.getR(), b.getR()));
+}
 export fn xor(a: int64, b: int64) = xori64(a, b);
+export fn xor(a: Result<int64>, b: int64): Result<int64> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(xor(a.getR(), b));
+}
+export fn xor(a: int64, b: Result<int64>): Result<int64> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(xor(a, b.getR()));
+}
+export fn xor(a: Result<int64>, b: Result<int64>): Result<int64> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(xor(a.getR(), b.getR()));
+}
 export fn xor(a: bool, b: bool) = xorbool(a, b);
+export fn xor(a: Result<bool>, b: bool): Result<bool> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(xor(a.getR(), b));
+}
+export fn xor(a: bool, b: Result<bool>): Result<bool> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(xor(a, b.getR()));
+}
+export fn xor(a: Result<bool>, b: Result<bool>): Result<bool> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(xor(a.getR(), b.getR()));
+}
 
 export fn not(n: int8) = noti8(n);
+export fn not(n: Result<int8>): Result<int8> {
+  if n.isErr() {
+    return n;
+  }
+  return ok(not(n.getR()));
+}
 export fn not(n: int16) = noti16(n);
+export fn not(n: Result<int16>): Result<int16> {
+  if n.isErr() {
+    return n;
+  }
+  return ok(not(n.getR()));
+}
 export fn not(n: int32) = noti32(n);
+export fn not(n: Result<int32>): Result<int32> {
+  if n.isErr() {
+    return n;
+  }
+  return ok(not(n.getR()));
+}
 export fn not(n: int64) = noti64(n);
+export fn not(n: Result<int64>): Result<int64> {
+  if n.isErr() {
+    return n;
+  }
+  return ok(not(n.getR()));
+}
 export fn not(n: bool) = notbool(n);
+export fn not(n: Result<bool>): Result<bool> {
+  if n.isErr() {
+    return n;
+  }
+  return ok(not(n.getR()));
+}
 
 export fn nand(a: int8, b: int8) = nandi8(a, b);
+export fn nand(a: Result<int8>, b: int8): Result<int8> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(nand(a.getR(), b));
+}
+export fn nand(a: int8, b: Result<int8>): Result<int8> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(nand(a, b.getR()));
+}
+export fn nand(a: Result<int8>, b: Result<int8>): Result<int8> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(nand(a.getR(), b.getR()));
+}
 export fn nand(a: int16, b: int16) = nandi16(a, b);
+export fn nand(a: Result<int16>, b: int16): Result<int16> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(nand(a.getR(), b));
+}
+export fn nand(a: int16, b: Result<int16>): Result<int16> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(nand(a, b.getR()));
+}
+export fn nand(a: Result<int16>, b: Result<int16>): Result<int16> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(nand(a.getR(), b.getR()));
+}
 export fn nand(a: int32, b: int32) = nandi32(a, b);
+export fn nand(a: Result<int32>, b: int32): Result<int32> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(nand(a.getR(), b));
+}
+export fn nand(a: int32, b: Result<int32>): Result<int32> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(nand(a, b.getR()));
+}
+export fn nand(a: Result<int32>, b: Result<int32>): Result<int32> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(nand(a.getR(), b.getR()));
+}
 export fn nand(a: int64, b: int64) = nandi64(a, b);
+export fn nand(a: Result<int64>, b: int64): Result<int64> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(nand(a.getR(), b));
+}
+export fn nand(a: int64, b: Result<int64>): Result<int64> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(nand(a, b.getR()));
+}
+export fn nand(a: Result<int64>, b: Result<int64>): Result<int64> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(nand(a.getR(), b.getR()));
+}
 export fn nand(a: bool, b: bool) = nandboo(a, b);
+export fn nand(a: Result<bool>, b: bool): Result<bool> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(nand(a.getR(), b));
+}
+export fn nand(a: bool, b: Result<bool>): Result<bool> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(nand(a, b.getR()));
+}
+export fn nand(a: Result<bool>, b: Result<bool>): Result<bool> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(nand(a.getR(), b.getR()));
+}
 
 export fn nor(a: int8, b: int8) = nori8(a, b);
+export fn nor(a: Result<int8>, b: int8): Result<int8> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(nor(a.getR(), b));
+}
+export fn nor(a: int8, b: Result<int8>): Result<int8> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(nor(a, b.getR()));
+}
+export fn nor(a: Result<int8>, b: Result<int8>): Result<int8> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(nor(a.getR(), b.getR()));
+}
 export fn nor(a: int16, b: int16) = nori16(a, b);
+export fn nor(a: Result<int16>, b: int16): Result<int16> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(nor(a.getR(), b));
+}
+export fn nor(a: int16, b: Result<int16>): Result<int16> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(nor(a, b.getR()));
+}
+export fn nor(a: Result<int16>, b: Result<int16>): Result<int16> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(nor(a.getR(), b.getR()));
+}
 export fn nor(a: int32, b: int32) = nori32(a, b);
+export fn nor(a: Result<int32>, b: int32): Result<int32> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(nor(a.getR(), b));
+}
+export fn nor(a: int32, b: Result<int32>): Result<int32> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(nor(a, b.getR()));
+}
+export fn nor(a: Result<int32>, b: Result<int32>): Result<int32> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(nor(a.getR(), b.getR()));
+}
 export fn nor(a: int64, b: int64) = nori64(a, b);
+export fn nor(a: Result<int64>, b: int64): Result<int64> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(nor(a.getR(), b));
+}
+export fn nor(a: int64, b: Result<int64>): Result<int64> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(nor(a, b.getR()));
+}
+export fn nor(a: Result<int64>, b: Result<int64>): Result<int64> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(nor(a.getR(), b.getR()));
+}
 export fn nor(a: bool, b: bool) = norbool(a, b);
+export fn nor(a: Result<bool>, b: bool): Result<bool> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(nor(a.getR(), b));
+}
+export fn nor(a: bool, b: Result<bool>): Result<bool> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(nor(a, b.getR()));
+}
+export fn nor(a: Result<bool>, b: Result<bool>): Result<bool> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(nor(a.getR(), b.getR()));
+}
 
 export fn xnor(a: int8, b: int8) = xnori8(a, b);
+export fn xnor(a: Result<int8>, b: int8): Result<int8> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(xnor(a.getR(), b));
+}
+export fn xnor(a: int8, b: Result<int8>): Result<int8> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(xnor(a, b.getR()));
+}
+export fn xnor(a: Result<int8>, b: Result<int8>): Result<int8> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(xnor(a.getR(), b.getR()));
+}
 export fn xnor(a: int16, b: int16) = xnori16(a, b);
+export fn xnor(a: Result<int16>, b: int16): Result<int16> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(xnor(a.getR(), b));
+}
+export fn xnor(a: int16, b: Result<int16>): Result<int16> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(xnor(a, b.getR()));
+}
+export fn xnor(a: Result<int16>, b: Result<int16>): Result<int16> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(xnor(a.getR(), b.getR()));
+}
 export fn xnor(a: int32, b: int32) = xnori32(a, b);
+export fn xnor(a: Result<int32>, b: int32): Result<int32> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(xnor(a.getR(), b));
+}
+export fn xnor(a: int32, b: Result<int32>): Result<int32> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(xnor(a, b.getR()));
+}
+export fn xnor(a: Result<int32>, b: Result<int32>): Result<int32> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(xnor(a.getR(), b.getR()));
+}
 export fn xnor(a: int64, b: int64) = xnori64(a, b);
+export fn xnor(a: Result<int64>, b: int64): Result<int64> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(xnor(a.getR(), b));
+}
+export fn xnor(a: int64, b: Result<int64>): Result<int64> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(xnor(a, b.getR()));
+}
+export fn xnor(a: Result<int64>, b: Result<int64>): Result<int64> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(xnor(a.getR(), b.getR()));
+}
 export fn xnor(a: bool, b: bool) = xnorboo(a, b);
+export fn xnor(a: Result<bool>, b: bool): Result<bool> {
+  if a.isErr() {
+    return a;
+  }
+  return ok(xnor(a.getR(), b));
+}
+export fn xnor(a: bool, b: Result<bool>): Result<bool> {
+  if b.isErr() {
+    return b;
+  }
+  return ok(xnor(a, b.getR()));
+}
+export fn xnor(a: Result<bool>, b: Result<bool>): Result<bool> {
+  if a.isErr() {
+    return a;
+  }
+  if b.isErr() {
+    return b;
+  }
+  return ok(xnor(a.getR(), b.getR()));
+}
 
 // Equality and order functions
 // TODO: Similarly, should equality/orderability functions accept Result-wrapped values?
