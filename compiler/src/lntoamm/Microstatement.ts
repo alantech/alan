@@ -255,17 +255,44 @@ ${varAst.getText()} on line ${varAst.start.line}:${varAst.start.column}`)
           const lookup = microstatements[microstatements.length - 1]
           // TODO: Map support, which requires figuring out if the outer memory object is an array
           // or a map.
-          if (lookup.outputType.typename !== 'int64') {
-            throw new Error(`${segment.getText()} cannot be used in an array lookup as it is not an int64
+          if (lookup.outputType.typename === 'int64') {
+            const opcodes = require('./opcodes').default
+            // Create a new variable to hold the `okR` size value
+            const sizeName = "_" + uuid().replace(/-/g, "_")
+            microstatements.push(new Microstatement(
+              StatementType.CONSTDEC,
+              scope,
+              true,
+              sizeName,
+              Type.builtinTypes['int64'],
+              ['8'],
+              [],
+            ))
+            // Insert an `okR` opcode.
+            opcodes.exportScope.get('okR')[0].microstatementInlining(
+              [lookup.outputName, sizeName],
+              scope,
+              microstatements,
+            )
+            const wrapped = microstatements[microstatements.length - 1]
+            // Insert a `resfrom` opcode.
+            opcodes.exportScope.get('resfrom')[0].microstatementInlining(
+              [original.outputName, wrapped.outputName],
+              scope,
+              microstatements,
+            )
+          } else if (lookup.outputType.typename === 'Result<int64>') {
+            const opcodes = require('./opcodes').default
+            // Insert a `resfrom` opcode.
+            opcodes.exportScope.get('resfrom')[0].microstatementInlining(
+              [original.outputName, lookup.outputName],
+              scope,
+              microstatements,
+            )
+          } else {
+            throw new Error(`${segment.getText()} cannot be used in an array lookup as it is not an int64 or Result<int64>
 ${varAst.getText()} on line ${varAst.start.line}:${varAst.start.column}`)
           }
-          // Insert a `resfrom` opcode.
-          const opcodes = require('./opcodes').default
-          opcodes.exportScope.get('resfrom')[0].microstatementInlining(
-            [original.outputName, lookup.outputName],
-            scope,
-            microstatements,
-          )
           // We'll need a reference to this for later
           const arrayRecord = original
           // Set the original to this newly-generated microstatement
@@ -1482,10 +1509,6 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
           const assignableAst = arrbase.assignablelist().assignables(0)
           Microstatement.fromAssignablesAst(assignableAst, scope, microstatements)
           const arrIndex = microstatements[microstatements.length - 1]
-          if (arrIndex.outputType.typename !== 'int64') {
-            throw new Error(`Array access must be done with an int64 value
-${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
-          }
           if (
             !(currVal instanceof Microstatement) ||
             currVal.outputType.originalType.typename !== 'Array'
@@ -1494,14 +1517,44 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
 Previous value type: ${currVal.outputType.typename}
 ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
           }
-          // All of those safeguards out of the way, time to extract the desired value
-          // Insert a `resfrom` opcode.
-          const opcodes = require('./opcodes').default
-          opcodes.exportScope.get('resfrom')[0].microstatementInlining(
-            [currVal.outputName, arrIndex.outputName],
-            scope,
-            microstatements,
-          )
+          if (arrIndex.outputType.typename === 'int64') {
+            const opcodes = require('./opcodes').default
+            // Create a new variable to hold the `okR` size value
+            const sizeName = "_" + uuid().replace(/-/g, "_")
+            microstatements.push(new Microstatement(
+              StatementType.CONSTDEC,
+              scope,
+              true,
+              sizeName,
+              Type.builtinTypes['int64'],
+              ['8'],
+              [],
+            ))
+            // Insert an `okR` opcode.
+            opcodes.exportScope.get('okR')[0].microstatementInlining(
+              [arrIndex.outputName, sizeName],
+              scope,
+              microstatements,
+            )
+            const wrapped = microstatements[microstatements.length - 1]
+            // Insert a `resfrom` opcode.
+            opcodes.exportScope.get('resfrom')[0].microstatementInlining(
+              [currVal.outputName, wrapped.outputName],
+              scope,
+              microstatements,
+            )
+          } else if (arrIndex.outputType.typename === 'Result<int64>') {
+            const opcodes = require('./opcodes').default
+            // Insert a `resfrom` opcode.
+            opcodes.exportScope.get('resfrom')[0].microstatementInlining(
+              [currVal.outputName, arrIndex.outputName],
+              scope,
+              microstatements,
+            )
+          } else {
+            throw new Error(`Array access must be done with an int64 or Result<int64> value
+${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+          }
           // We'll need a reference to this for later
           const arrayRecord = currVal
           // Update to this newly-generated microstatement

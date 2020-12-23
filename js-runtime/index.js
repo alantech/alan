@@ -819,13 +819,21 @@ module.exports = {
     }
   },
   getErr:  (a, b) => a[0] ? b : a[1],
-  resfrom: (arr, ind) => ind >= 0 && ind < arr.length ? [
-    true,
-    arr[ind],
-  ] : [
-    false,
-    'out-of-bounds access',
-  ],
+  resfrom: (arr, rind) => {
+    if (!rind[0]) return rind
+    const ind = rind[1]
+    if (ind >= 0 && ind < arr.length) {
+      return [
+        true,
+        arr[ind],
+      ]
+    } else {
+      return [
+        false,
+        'out-of-bounds access',
+      ]
+    }
+  },
   mainE:    a => [
     true,
     a,

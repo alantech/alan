@@ -3518,9 +3518,15 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     // args = [arr_addr, arr_idx_addr, outer_addr]
     // a guarded copy of data from an array to a result object
     hand_mem.init_fractal(args[2]);
-    let inner_addr = hand_mem.read_fixed(args[1]) as usize;
-    let fractal = hand_mem.read_fractal(args[0]);
-    if fractal.len() > inner_addr {
+    let fractal = hand_mem.read_fractal(args[1]);
+    let val = fractal.read_fixed(0);
+    if val == 0 {
+      hand_mem.write_fractal(args[2], &fractal);
+      return None
+    }
+    let inner_addr = fractal.read_fixed(1);
+    let arr = hand_mem.read_fractal(args[0]);
+    if arr.len() > inner_addr {
       hand_mem.push_fixed(args[2], 1);
       hand_mem.push_register_out(args[2], &fractal, inner_addr);
     } else {

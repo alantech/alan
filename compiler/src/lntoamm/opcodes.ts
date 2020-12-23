@@ -776,7 +776,7 @@ addopcodes({
   getOrRS: [{ a: t('Result<any>'), b: t('string'), }, t('string')],
   getR: [{ a: t('Result<any>'), }, t('any')],
   getErr: [{ a: t('Result<any>'), b: t('Error'), }, t('Error')],
-  resfrom: [{ arr: t('Array<any>'), addr: t('int64') }, t('Result<any>')],
+  resfrom: [{ arr: t('Array<any>'), addr: t('Result<int64>') }, t('Result<any>')],
   mainE: [{ a: t('any'), size: t('int64'), }, t('Either<any, anythingElse>')],
   altE: [{ a: t('anythingElse'), size: t('int64'), }, t('Either<any, anythingElse>')],
   isMain: [{ a: t('Either<any, anythingElse>'), }, t('bool')],
