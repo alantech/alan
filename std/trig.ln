@@ -1,5 +1,3 @@
-// TODO: Probably change this from always unwrapping Result-wrapped values to passing along
-// result-wrapped errors
 export const e = 2.718281828459045;
 export const pi = 3.141592653589793;
 export const tau = 6.283185307179586;
