@@ -1230,54 +1230,846 @@ export fn xnor(a: Result<bool>, b: Result<bool>): Result<bool> {
 // Equality and order functions
 // TODO: Similarly, should equality/orderability functions accept Result-wrapped values?
 export fn eq(a: int8, b: int8) = eqi8(a, b);
+export fn eq(a: Result<int8>, b: int8): bool {
+  if a.isErr() {
+    return false;
+  }
+  return eq(a.getR(), b);
+}
+export fn eq(a: int8, b: Result<int8>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return eq(a, b.getR());
+}
+export fn eq(a: Result<int8>, b: Result<int8>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return eq(a.getR(), b.getR());
+}
 export fn eq(a: int16, b: int16) = eqi16(a, b);
+export fn eq(a: Result<int16>, b: int16): bool {
+  if a.isErr() {
+    return false;
+  }
+  return eq(a.getR(), b);
+}
+export fn eq(a: int16, b: Result<int16>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return eq(a, b.getR());
+}
+export fn eq(a: Result<int16>, b: Result<int16>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return eq(a.getR(), b.getR());
+}
 export fn eq(a: int32, b: int32) = eqi32(a, b);
+export fn eq(a: Result<int32>, b: int32): bool {
+  if a.isErr() {
+    return false;
+  }
+  return eq(a.getR(), b);
+}
+export fn eq(a: int32, b: Result<int32>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return eq(a, b.getR());
+}
+export fn eq(a: Result<int32>, b: Result<int32>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return eq(a.getR(), b.getR());
+}
 export fn eq(a: int64, b: int64) = eqi64(a, b);
+export fn eq(a: Result<int64>, b: int64): bool {
+  if a.isErr() {
+    return false;
+  }
+  return eq(a.getR(), b);
+}
+export fn eq(a: int64, b: Result<int64>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return eq(a, b.getR());
+}
+export fn eq(a: Result<int64>, b: Result<int64>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return eq(a.getR(), b.getR());
+}
 export fn eq(a: float32, b: float32) = eqf32(a, b);
+export fn eq(a: Result<float32>, b: float32): bool {
+  if a.isErr() {
+    return false;
+  }
+  return eq(a.getR(), b);
+}
+export fn eq(a: float32, b: Result<float32>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return eq(a, b.getR());
+}
+export fn eq(a: Result<float32>, b: Result<float32>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return eq(a.getR(), b.getR());
+}
 export fn eq(a: float64, b: float64) = eqf64(a, b);
+export fn eq(a: Result<float64>, b: float64): bool {
+  if a.isErr() {
+    return false;
+  }
+  return eq(a.getR(), b);
+}
+export fn eq(a: float64, b: Result<float64>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return eq(a, b.getR());
+}
+export fn eq(a: Result<float64>, b: Result<float64>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return eq(a.getR(), b.getR());
+}
 export fn eq(a: string, b: string) = eqstr(a, b);
+export fn eq(a: Result<string>, b: string): bool {
+  if a.isErr() {
+    return false;
+  }
+  return eq(a.getR(), b);
+}
+export fn eq(a: string, b: Result<string>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return eq(a, b.getR());
+}
+export fn eq(a: Result<string>, b: Result<string>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return eq(a.getR(), b.getR());
+}
 export fn eq(a: bool, b: bool) = eqbool(a, b);
+export fn eq(a: Result<bool>, b: bool): bool {
+  if a.isErr() {
+    return false;
+  }
+  return eq(a.getR(), b);
+}
+export fn eq(a: bool, b: Result<bool>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return eq(a, b.getR());
+}
+export fn eq(a: Result<bool>, b: Result<bool>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return eq(a.getR(), b.getR());
+}
 
 export fn neq(a: int8, b: int8) = neqi8(a, b);
+export fn neq(a: Result<int8>, b: int8): bool {
+  if a.isErr() {
+    return false;
+  }
+  return neq(a.getR(), b);
+}
+export fn neq(a: int8, b: Result<int8>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return neq(a, b.getR());
+}
+export fn neq(a: Result<int8>, b: Result<int8>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return neq(a.getR(), b.getR());
+}
 export fn neq(a: int16, b: int16) = neqi16(a, b);
+export fn neq(a: Result<int16>, b: int16): bool {
+  if a.isErr() {
+    return false;
+  }
+  return neq(a.getR(), b);
+}
+export fn neq(a: int16, b: Result<int16>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return neq(a, b.getR());
+}
+export fn neq(a: Result<int16>, b: Result<int16>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return neq(a.getR(), b.getR());
+}
 export fn neq(a: int32, b: int32) = neqi32(a, b);
+export fn neq(a: Result<int32>, b: int32): bool {
+  if a.isErr() {
+    return false;
+  }
+  return neq(a.getR(), b);
+}
+export fn neq(a: int32, b: Result<int32>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return neq(a, b.getR());
+}
+export fn neq(a: Result<int32>, b: Result<int32>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return neq(a.getR(), b.getR());
+}
 export fn neq(a: int64, b: int64) = neqi64(a, b);
+export fn neq(a: Result<int64>, b: int64): bool {
+  if a.isErr() {
+    return false;
+  }
+  return neq(a.getR(), b);
+}
+export fn neq(a: int64, b: Result<int64>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return neq(a, b.getR());
+}
+export fn neq(a: Result<int64>, b: Result<int64>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return neq(a.getR(), b.getR());
+}
 export fn neq(a: float32, b: float32) = neqf32(a, b);
+export fn neq(a: Result<float32>, b: float32): bool {
+  if a.isErr() {
+    return false;
+  }
+  return neq(a.getR(), b);
+}
+export fn neq(a: float32, b: Result<float32>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return neq(a, b.getR());
+}
+export fn neq(a: Result<float32>, b: Result<float32>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return neq(a.getR(), b.getR());
+}
 export fn neq(a: float64, b: float64) = neqf64(a, b);
+export fn neq(a: Result<float64>, b: float64): bool {
+  if a.isErr() {
+    return false;
+  }
+  return neq(a.getR(), b);
+}
+export fn neq(a: float64, b: Result<float64>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return neq(a, b.getR());
+}
+export fn neq(a: Result<float64>, b: Result<float64>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return neq(a.getR(), b.getR());
+}
 export fn neq(a: string, b: string) = neqstr(a, b);
+export fn neq(a: Result<string>, b: string): bool {
+  if a.isErr() {
+    return false;
+  }
+  return neq(a.getR(), b);
+}
+export fn neq(a: string, b: Result<string>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return neq(a, b.getR());
+}
+export fn neq(a: Result<string>, b: Result<string>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return neq(a.getR(), b.getR());
+}
 export fn neq(a: bool, b: bool) = neqbool(a, b);
+export fn neq(a: Result<bool>, b: bool): bool {
+  if a.isErr() {
+    return false;
+  }
+  return neq(a.getR(), b);
+}
+export fn neq(a: bool, b: Result<bool>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return neq(a, b.getR());
+}
+export fn neq(a: Result<bool>, b: Result<bool>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return neq(a.getR(), b.getR());
+}
 
 export fn lt(a: int8, b: int8) = lti8(a, b);
+export fn lt(a: Result<int8>, b: int8): bool {
+  if a.isErr() {
+    return false;
+  }
+  return lt(a.getR(), b);
+}
+export fn lt(a: int8, b: Result<int8>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return lt(a, b.getR());
+}
+export fn lt(a: Result<int8>, b: Result<int8>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return lt(a.getR(), b.getR());
+}
 export fn lt(a: int16, b: int16) = lti16(a, b);
+export fn lt(a: Result<int16>, b: int16): bool {
+  if a.isErr() {
+    return false;
+  }
+  return lt(a.getR(), b);
+}
+export fn lt(a: int16, b: Result<int16>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return lt(a, b.getR());
+}
+export fn lt(a: Result<int16>, b: Result<int16>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return lt(a.getR(), b.getR());
+}
 export fn lt(a: int32, b: int32) = lti32(a, b);
+export fn lt(a: Result<int32>, b: int32): bool {
+  if a.isErr() {
+    return false;
+  }
+  return lt(a.getR(), b);
+}
+export fn lt(a: int32, b: Result<int32>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return lt(a, b.getR());
+}
+export fn lt(a: Result<int32>, b: Result<int32>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return lt(a.getR(), b.getR());
+}
 export fn lt(a: int64, b: int64) = lti64(a, b);
+export fn lt(a: Result<int64>, b: int64): bool {
+  if a.isErr() {
+    return false;
+  }
+  return lt(a.getR(), b);
+}
+export fn lt(a: int64, b: Result<int64>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return lt(a, b.getR());
+}
+export fn lt(a: Result<int64>, b: Result<int64>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return lt(a.getR(), b.getR());
+}
 export fn lt(a: float32, b: float32) = ltf32(a, b);
+export fn lt(a: Result<float32>, b: float32): bool {
+  if a.isErr() {
+    return false;
+  }
+  return lt(a.getR(), b);
+}
+export fn lt(a: float32, b: Result<float32>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return lt(a, b.getR());
+}
+export fn lt(a: Result<float32>, b: Result<float32>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return lt(a.getR(), b.getR());
+}
 export fn lt(a: float64, b: float64) = ltf64(a, b);
+export fn lt(a: Result<float64>, b: float64): bool {
+  if a.isErr() {
+    return false;
+  }
+  return lt(a.getR(), b);
+}
+export fn lt(a: float64, b: Result<float64>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return lt(a, b.getR());
+}
+export fn lt(a: Result<float64>, b: Result<float64>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return lt(a.getR(), b.getR());
+}
 export fn lt(a: string, b: string) = ltstr(a, b);
+export fn lt(a: Result<string>, b: string): bool {
+  if a.isErr() {
+    return false;
+  }
+  return lt(a.getR(), b);
+}
+export fn lt(a: string, b: Result<string>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return lt(a, b.getR());
+}
+export fn lt(a: Result<string>, b: Result<string>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return lt(a.getR(), b.getR());
+}
 
 export fn lte(a: int8, b: int8) = ltei8(a, b);
+export fn lte(a: Result<int8>, b: int8): bool {
+  if a.isErr() {
+    return false;
+  }
+  return lte(a.getR(), b);
+}
+export fn lte(a: int8, b: Result<int8>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return lte(a, b.getR());
+}
+export fn lte(a: Result<int8>, b: Result<int8>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return lte(a.getR(), b.getR());
+}
 export fn lte(a: int16, b: int16) = ltei16(a, b);
+export fn lte(a: Result<int16>, b: int16): bool {
+  if a.isErr() {
+    return false;
+  }
+  return lte(a.getR(), b);
+}
+export fn lte(a: int16, b: Result<int16>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return lte(a, b.getR());
+}
+export fn lte(a: Result<int16>, b: Result<int16>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return lte(a.getR(), b.getR());
+}
 export fn lte(a: int32, b: int32) = ltei32(a, b);
+export fn lte(a: Result<int32>, b: int32): bool {
+  if a.isErr() {
+    return false;
+  }
+  return lte(a.getR(), b);
+}
+export fn lte(a: int32, b: Result<int32>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return lte(a, b.getR());
+}
+export fn lte(a: Result<int32>, b: Result<int32>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return lte(a.getR(), b.getR());
+}
 export fn lte(a: int64, b: int64) = ltei64(a, b);
+export fn lte(a: Result<int64>, b: int64): bool {
+  if a.isErr() {
+    return false;
+  }
+  return lte(a.getR(), b);
+}
+export fn lte(a: int64, b: Result<int64>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return lte(a, b.getR());
+}
+export fn lte(a: Result<int64>, b: Result<int64>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return lte(a.getR(), b.getR());
+}
 export fn lte(a: float32, b: float32) = ltef32(a, b);
+export fn lte(a: Result<float32>, b: float32): bool {
+  if a.isErr() {
+    return false;
+  }
+  return lte(a.getR(), b);
+}
+export fn lte(a: float32, b: Result<float32>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return lte(a, b.getR());
+}
+export fn lte(a: Result<float32>, b: Result<float32>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return lte(a.getR(), b.getR());
+}
 export fn lte(a: float64, b: float64) = ltef64(a, b);
+export fn lte(a: Result<float64>, b: float64): bool {
+  if a.isErr() {
+    return false;
+  }
+  return lte(a.getR(), b);
+}
+export fn lte(a: float64, b: Result<float64>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return lte(a, b.getR());
+}
+export fn lte(a: Result<float64>, b: Result<float64>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return lte(a.getR(), b.getR());
+}
 export fn lte(a: string, b: string) = ltestr(a, b);
+export fn lte(a: Result<string>, b: string): bool {
+  if a.isErr() {
+    return false;
+  }
+  return lte(a.getR(), b);
+}
+export fn lte(a: string, b: Result<string>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return lte(a, b.getR());
+}
+export fn lte(a: Result<string>, b: Result<string>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return lte(a.getR(), b.getR());
+}
 
 export fn gt(a: int8, b: int8) = gti8(a, b);
+export fn gt(a: Result<int8>, b: int8): bool {
+  if a.isErr() {
+    return false;
+  }
+  return gt(a.getR(), b);
+}
+export fn gt(a: int8, b: Result<int8>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return gt(a, b.getR());
+}
+export fn gt(a: Result<int8>, b: Result<int8>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return gt(a.getR(), b.getR());
+}
 export fn gt(a: int16, b: int16) = gti16(a, b);
+export fn gt(a: Result<int16>, b: int16): bool {
+  if a.isErr() {
+    return false;
+  }
+  return gt(a.getR(), b);
+}
+export fn gt(a: int16, b: Result<int16>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return gt(a, b.getR());
+}
+export fn gt(a: Result<int16>, b: Result<int16>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return gt(a.getR(), b.getR());
+}
 export fn gt(a: int32, b: int32) = gti32(a, b);
+export fn gt(a: Result<int32>, b: int32): bool {
+  if a.isErr() {
+    return false;
+  }
+  return gt(a.getR(), b);
+}
+export fn gt(a: int32, b: Result<int32>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return gt(a, b.getR());
+}
+export fn gt(a: Result<int32>, b: Result<int32>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return gt(a.getR(), b.getR());
+}
 export fn gt(a: int64, b: int64) = gti64(a, b);
+export fn gt(a: Result<int64>, b: int64): bool {
+  if a.isErr() {
+    return false;
+  }
+  return gt(a.getR(), b);
+}
+export fn gt(a: int64, b: Result<int64>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return gt(a, b.getR());
+}
+export fn gt(a: Result<int64>, b: Result<int64>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return gt(a.getR(), b.getR());
+}
 export fn gt(a: float32, b: float32) = gtf32(a, b);
+export fn gt(a: Result<float32>, b: float32): bool {
+  if a.isErr() {
+    return false;
+  }
+  return gt(a.getR(), b);
+}
+export fn gt(a: float32, b: Result<float32>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return gt(a, b.getR());
+}
+export fn gt(a: Result<float32>, b: Result<float32>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return gt(a.getR(), b.getR());
+}
 export fn gt(a: float64, b: float64) = gtf64(a, b);
+export fn gt(a: Result<float64>, b: float64): bool {
+  if a.isErr() {
+    return false;
+  }
+  return gt(a.getR(), b);
+}
+export fn gt(a: float64, b: Result<float64>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return gt(a, b.getR());
+}
+export fn gt(a: Result<float64>, b: Result<float64>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return gt(a.getR(), b.getR());
+}
 export fn gt(a: string, b: string) = gtstr(a, b);
+export fn gt(a: Result<string>, b: string): bool {
+  if a.isErr() {
+    return false;
+  }
+  return gt(a.getR(), b);
+}
+export fn gt(a: string, b: Result<string>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return gt(a, b.getR());
+}
+export fn gt(a: Result<string>, b: Result<string>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return gt(a.getR(), b.getR());
+}
 
 export fn gte(a: int8, b: int8) = gtei8(a, b);
+export fn gte(a: Result<int8>, b: int8): bool {
+  if a.isErr() {
+    return false;
+  }
+  return gte(a.getR(), b);
+}
+export fn gte(a: int8, b: Result<int8>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return gte(a, b.getR());
+}
+export fn gte(a: Result<int8>, b: Result<int8>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return gte(a.getR(), b.getR());
+}
 export fn gte(a: int16, b: int16) = gtei16(a, b);
+export fn gte(a: Result<int16>, b: int16): bool {
+  if a.isErr() {
+    return false;
+  }
+  return gte(a.getR(), b);
+}
+export fn gte(a: int16, b: Result<int16>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return gte(a, b.getR());
+}
+export fn gte(a: Result<int16>, b: Result<int16>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return gte(a.getR(), b.getR());
+}
 export fn gte(a: int32, b: int32) = gtei32(a, b);
+export fn gte(a: Result<int32>, b: int32): bool {
+  if a.isErr() {
+    return false;
+  }
+  return gte(a.getR(), b);
+}
+export fn gte(a: int32, b: Result<int32>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return gte(a, b.getR());
+}
+export fn gte(a: Result<int32>, b: Result<int32>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return gte(a.getR(), b.getR());
+}
 export fn gte(a: int64, b: int64) = gtei64(a, b);
+export fn gte(a: Result<int64>, b: int64): bool {
+  if a.isErr() {
+    return false;
+  }
+  return gte(a.getR(), b);
+}
+export fn gte(a: int64, b: Result<int64>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return gte(a, b.getR());
+}
+export fn gte(a: Result<int64>, b: Result<int64>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return gte(a.getR(), b.getR());
+}
 export fn gte(a: float32, b: float32) = gtef32(a, b);
+export fn gte(a: Result<float32>, b: float32): bool {
+  if a.isErr() {
+    return false;
+  }
+  return gte(a.getR(), b);
+}
+export fn gte(a: float32, b: Result<float32>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return gte(a, b.getR());
+}
+export fn gte(a: Result<float32>, b: Result<float32>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return gte(a.getR(), b.getR());
+}
 export fn gte(a: float64, b: float64) = gtef64(a, b);
+export fn gte(a: Result<float64>, b: float64): bool {
+  if a.isErr() {
+    return false;
+  }
+  return gte(a.getR(), b);
+}
+export fn gte(a: float64, b: Result<float64>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return gte(a, b.getR());
+}
+export fn gte(a: Result<float64>, b: Result<float64>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return gte(a.getR(), b.getR());
+}
 export fn gte(a: string, b: string) = gtestr(a, b);
+export fn gte(a: Result<string>, b: string): bool {
+  if a.isErr() {
+    return false;
+  }
+  return gte(a.getR(), b);
+}
+export fn gte(a: string, b: Result<string>): bool {
+  if b.isErr() {
+    return false;
+  }
+  return gte(a, b.getR());
+}
+export fn gte(a: Result<string>, b: Result<string>): bool {
+  if or(a.isErr(), b.isErr()) {
+    return false;
+  }
+  return gte(a.getR(), b.getR());
+}
 
 // Wait functions
 export fn wait(n: int8) = waitop(i8i64(n));
