@@ -171,17 +171,8 @@ module.exports = {
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (a === 0 || b === 0) return [1, a + b]
-    if (a < 0 && b > 0) return [1, a + b]
-    if (a > 0 && b < 0) return [1, a + b]
-    if (a > 0 && b > 0) {
-      if (a > INT8MAX - b) return [0, 'overflow']
-      return [1, a + b]
-    }
-    if (a < 0 && b < 0) {
-      if (a < INT8MIN - b) return [0, 'underflow']
-      return [1, a + b]
-    }
+    if (a > 0 && b > 0 && a > INT8MAX - b) return [0, 'overflow']
+    if (a < 0 && b < 0 && a < INT8MIN - b) return [0, 'underflow']
     return [1, a + b]
   },
   addi16:  (ra, rb) => {
@@ -189,17 +180,8 @@ module.exports = {
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (a === 0 || b === 0) return [1, a + b]
-    if (a < 0 && b > 0) return [1, a + b]
-    if (a > 0 && b < 0) return [1, a + b]
-    if (a > 0 && b > 0) {
-      if (a > INT16MAX - b) return [0, 'overflow']
-      return [1, a + b]
-    }
-    if (a < 0 && b < 0) {
-      if (a < INT16MIN - b) return [0, 'underflow']
-      return [1, a + b]
-    }
+    if (a > 0 && b > 0 && a > INT16MAX - b) return [0, 'overflow']
+    if (a < 0 && b < 0 && a < INT16MIN - b) return [0, 'underflow']
     return [1, a + b]
   },
   addi32:  (ra, rb) => {
@@ -207,17 +189,8 @@ module.exports = {
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (a === 0 || b === 0) return [1, a + b]
-    if (a < 0 && b > 0) return [1, a + b]
-    if (a > 0 && b < 0) return [1, a + b]
-    if (a > 0 && b > 0) {
-      if (a > INT32MAX - b) return [0, 'overflow']
-      return [1, a + b]
-    }
-    if (a < 0 && b < 0) {
-      if (a < INT32MIN - b) return [0, 'underflow']
-      return [1, a + b]
-    }
+    if (a > 0 && b > 0 && a > INT32MAX - b) return [0, 'overflow']
+    if (a < 0 && b < 0 && a < INT32MIN - b) return [0, 'underflow']
     return [1, a + b]
   },
   addi64:  (ra, rb) => {
@@ -225,17 +198,8 @@ module.exports = {
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (a === 0n || b === 0n) return [1, a + b]
-    if (a < 0n && b > 0n) return [1, a + b]
-    if (a > 0n && b < 0n) return [1, a + b]
-    if (a > 0n && b > 0n) {
-      if (a > INT64MAX - b) return [0, 'overflow']
-      return [1, a + b]
-    }
-    if (a < 0n && b < 0n) {
-      if (a < INT64MIN - b) return [0, 'underflow']
-      return [1, a + b]
-    }
+    if (a > 0n && b > 0n && a > INT64MAX - b) return [0, 'overflow']
+    if (a < 0n && b < 0n && a < INT64MIN - b) return [0, 'underflow']
     return [1, a + b]
   },
   addf32:  (ra, rb) => {
@@ -264,17 +228,8 @@ module.exports = {
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (a === 0 || b === 0) return [1, a - b]
-    if (a < 0 && b < 0) return [1, a - b]
-    if (a > 0 && b > 0) return [1, a - b]
-    if (a > 0 && b < 0) {
-      if (a > INT8MAX + b) return [0, 'overflow']
-      return [1, a - b]
-    }
-    if (a < 0 && b > 0) {
-      if (a < INT8MIN + b) return [0, 'underflow']
-      return [1, a - b]
-    }
+    if (a > 0 && b < 0 && a > INT8MAX + b) return [0, 'overflow']
+    if (a < 0 && b > 0 && a < INT8MIN + b) return [0, 'underflow']
     return [1, a - b]
   },
   subi16:  (ra, rb) => {
@@ -282,17 +237,8 @@ module.exports = {
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (a === 0 || b === 0) return [1, a - b]
-    if (a < 0 && b < 0) return [1, a - b]
-    if (a > 0 && b > 0) return [1, a - b]
-    if (a > 0 && b < 0) {
-      if (a > INT16MAX + b) return [0, 'overflow']
-      return [1, a - b]
-    }
-    if (a < 0 && b > 0) {
-      if (a < INT16MIN + b) return [0, 'underflow']
-      return [1, a - b]
-    }
+    if (a > 0 && b < 0 && a > INT16MAX + b) return [0, 'overflow']
+    if (a < 0 && b > 0 && a < INT16MIN + b) return [0, 'underflow']
     return [1, a - b]
   },
   subi32:  (ra, rb) => {
@@ -300,17 +246,8 @@ module.exports = {
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (a === 0 || b === 0) return [1, a - b]
-    if (a < 0 && b < 0) return [1, a - b]
-    if (a > 0 && b > 0) return [1, a - b]
-    if (a > 0 && b < 0) {
-      if (a > INT32MAX + b) return [0, 'overflow']
-      return [1, a - b]
-    }
-    if (a < 0 && b > 0) {
-      if (a < INT32MIN + b) return [0, 'underflow']
-      return [1, a - b]
-    }
+    if (a > 0 && b < 0 && a > INT32MAX + b) return [0, 'overflow']
+    if (a < 0 && b > 0 && a < INT32MIN + b) return [0, 'underflow']
     return [1, a - b]
   },
   subi64:  (ra, rb) => {
@@ -318,17 +255,8 @@ module.exports = {
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (a === 0n || b === 0n) return [1, a - b]
-    if (a < 0n && b < 0n) return [1, a - b]
-    if (a > 0n && b > 0n) return [1, a - b]
-    if (a > 0n && b < 0n) {
-      if (a > INT32MAX + b) return [0, 'overflow']
-      return [1, a - b]
-    }
-    if (a < 0n && b > 0n) {
-      if (a < INT32MIN + b) return [0, 'underflow']
-      return [1, a - b]
-    }
+    if (a > 0n && b < 0n && a > INT32MAX + b) return [0, 'overflow']
+    if (a < 0n && b > 0n && a < INT32MIN + b) return [0, 'underflow']
     return [1, a - b]
   },
   subf32:  (ra, rb) => {
@@ -371,15 +299,8 @@ module.exports = {
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (a === 0 || b === 0) return [1, 0]
-    if (a > 0 && b > 0) {
-      if (a > INT8MAX / b) return [0, 'overflow']
-      return [1, a * b]
-    }
-    if (a < 0 && b < 0) {
-      if (a < INT8MIN / b) return [0, 'underflow']
-      return [1, a * b]
-    }
+    if (a > 0 && b > 0 && a > INT8MAX / b) return [0, 'overflow']
+    if (a < 0 && b < 0 && a < INT8MIN / b) return [0, 'underflow']
     return [1, a * b]
   },
   muli16:  (ra, rb) => {
@@ -387,15 +308,8 @@ module.exports = {
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (a === 0 || b === 0) return [1, 0]
-    if (a > 0 && b > 0) {
-      if (a > INT16MAX / b) return [0, 'overflow']
-      return [1, a * b]
-    }
-    if (a < 0 && b < 0) {
-      if (a < INT16MIN / b) return [0, 'underflow']
-      return [1, a * b]
-    }
+    if (a > 0 && b > 0 && a > INT16MAX / b) return [0, 'overflow']
+    if (a < 0 && b < 0 && a < INT16MIN / b) return [0, 'underflow']
     return [1, a * b]
   },
   muli32:  (ra, rb) => {
@@ -403,15 +317,8 @@ module.exports = {
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (a === 0 || b === 0) return [1, 0]
-    if (a > 0 && b > 0) {
-      if (a > INT32MAX / b) return [0, 'overflow']
-      return [1, a * b]
-    }
-    if (a < 0 && b < 0) {
-      if (a < INT32MIN / b) return [0, 'underflow']
-      return [1, a * b]
-    }
+    if (a > 0 && b > 0 && a > INT32MAX / b) return [0, 'overflow']
+    if (a < 0 && b < 0 && a < INT32MIN / b) return [0, 'underflow']
     return [1, a * b]
   },
   muli64:  (ra, rb) => {
@@ -419,15 +326,8 @@ module.exports = {
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (a === 0n || b === 0n) return [1, 0]
-    if (a > 0n && b > 0n) {
-      if (a > INT64MAX / b) return [0, 'overflow']
-      return [1, a * b]
-    }
-    if (a < 0n && b < 0n) {
-      if (a < INT64MIN / b) return [0, 'underflow']
-      return [1, a * b]
-    }
+    if (a > 0n && b > 0n && a > INT64MAX / b) return [0, 'overflow']
+    if (a < 0n && b < 0n && a < INT64MIN / b) return [0, 'underflow']
     return [1, a * b]
   },
   mulf32:  (ra, rb) => {
@@ -457,15 +357,6 @@ module.exports = {
     const a = ra[1]
     const b = rb[1]
     if (b === 0) return [0, 'divide-by-zero']
-    if (a === 0) return [1, 0]
-    if (a > 0 && b > 0 && b < 1) {
-      if (a > INT8MAX * b) return [0, 'overflow']
-      return [1, Math.floor(a / b)]
-    }
-    if (a < 0 && b < 0 && b > -1) {
-      if (a < INT8MIN * b) return [0, 'underflow']
-      return [1, Math.floor(a / b)]
-    }
     return [1, Math.floor(a / b)]
   },
   divi16:  (ra, rb) => {
@@ -474,15 +365,6 @@ module.exports = {
     const a = ra[1]
     const b = rb[1]
     if (b === 0) return [0, 'divide-by-zero']
-    if (a === 0) return [1, 0]
-    if (a > 0 && b > 0 && b < 1) {
-      if (a > INT16MAX * b) return [0, 'overflow']
-      return [1, Math.floor(a / b)]
-    }
-    if (a < 0 && b < 0 && b > -1) {
-      if (a < INT16MIN * b) return [0, 'underflow']
-      return [1, Math.floor(a / b)]
-    }
     return [1, Math.floor(a / b)]
   },
   divi32:  (ra, rb) => {
@@ -491,15 +373,6 @@ module.exports = {
     const a = ra[1]
     const b = rb[1]
     if (b === 0) return [0, 'divide-by-zero']
-    if (a === 0) return [1, 0]
-    if (a > 0 && b > 0 && b < 1) {
-      if (a > INT32MAX * b) return [0, 'overflow']
-      return [1, Math.floor(a / b)]
-    }
-    if (a < 0 && b < 0 && b > -1) {
-      if (a < INT32MIN * b) return [0, 'underflow']
-      return [1, Math.floor(a / b)]
-    }
     return [1, Math.floor(a / b)]
   },
   divi64:  (ra, rb) => {
@@ -508,15 +381,6 @@ module.exports = {
     const a = ra[1]
     const b = rb[1]
     if (b === 0n) return [0, 'divide-by-zero']
-    if (a === 0n) return [1, 0n]
-    if (a > 0n && b > 0n && b < 1n) {
-      if (a > INT64MAX * b) return [0, 'overflow']
-      return [1, a / b]
-    }
-    if (a < 0n && b < 0n && b > -1n) {
-      if (a < INT64MIN * b) return [0, 'underflow']
-      return [1, a / b]
-    }
     return [1, a / b]
   },
   divf32:  (ra, rb) => {
@@ -552,15 +416,8 @@ module.exports = {
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (b <= 0) return [1, Math.floor(a ** b)] // If 'b' is negative, it would produce a fraction
-    if (a < 0 && b > 1) {
-      if (a < INT8MIN ** (1 / b)) return [0, 'underflow']
-      return [1, Math.floor(a ** b)]
-    }
-    if (a > 0 && b > 1) {
-      if (a > INT8MAX ** (1 / b)) return [0, 'overflow']
-      return [1, Math.floor(a ** b)]
-    }
+    if (a > 0 && b > 1 && a > INT8MAX ** (1 / b)) return [0, 'overflow']
+    if (a < 0 && b > 1 && a < INT8MIN ** (1 / b)) return [0, 'underflow']
     return [1, Math.floor(a ** b)]
   },
   powi16:  (ra, rb) => {
@@ -568,15 +425,8 @@ module.exports = {
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (b <= 0) return [1, Math.floor(a ** b)]
-    if (a < 0 && b > 1) {
-      if (a < INT16MIN ** (1 / b)) return [0, 'underflow']
-      return [1, Math.floor(a ** b)]
-    }
-    if (a > 0 && b > 1) {
-      if (a > INT16MAX ** (1 / b)) return [0, 'overflow']
-      return [1, Math.floor(a ** b)]
-    }
+    if (a > 0 && b > 1 && a > INT16MAX ** (1 / b)) return [0, 'overflow']
+    if (a < 0 && b > 1 && a < INT16MIN ** (1 / b)) return [0, 'underflow']
     return [1, Math.floor(a ** b)]
   },
   powi32:  (ra, rb) => {
@@ -584,15 +434,8 @@ module.exports = {
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (b <= 0) return [1, Math.floor(a ** b)]
-    if (a < 0 && b > 1) {
-      if (a < INT32MIN ** (1 / b)) return [0, 'underflow']
-      return [1, Math.floor(a ** b)]
-    }
-    if (a > 0 && b > 1) {
-      if (a > INT32MAX ** (1 / b)) return [0, 'overflow']
-      return [1, Math.floor(a ** b)]
-    }
+    if (a > 0 && b > 1 && a > INT32MAX ** (1 / b)) return [0, 'overflow']
+    if (a < 0 && b > 1 && a < INT32MIN ** (1 / b)) return [0, 'underflow']
     return [1, Math.floor(a ** b)]
   },
   powi64:  (ra, rb) => {
@@ -600,20 +443,17 @@ module.exports = {
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (b <= 0n) return [1, a ** b]
-    if (a < 0n && b > 1n) {
-      const af = parseFloat(a.toString())
-      const bf = parseFloat(b.toString())
-      const minf = parseFloat(INT64MIN.toString())
-      if (af < minf ** (1 / bf)) return [0, 'underflow']
-      return [1, a ** b]
-    }
     if (a > 0 && b > 1n) {
       const af = parseFloat(a.toString())
       const bf = parseFloat(b.toString())
       const maxf = parseFloat(INT64MAX.toString())
       if (af > maxf ** (1 / bf)) return [0, 'overflow']
-      return [1, a ** b]
+    }
+    if (a < 0n && b > 1n) {
+      const af = parseFloat(a.toString())
+      const bf = parseFloat(b.toString())
+      const minf = parseFloat(INT64MIN.toString())
+      if (af < minf ** (1 / bf)) return [0, 'underflow']
     }
     return [1, a ** b]
   },
