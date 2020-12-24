@@ -142,6 +142,41 @@ foo"
     End
   End
 
+  Describe "Setting same key to hashmap twice works as expected"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+
+        on start {
+          let test = newHashMap('foo', 'bar');
+          test.get('foo').print();
+          test.set('foo', 'baz');
+          print(test.get('foo'));
+          emit exit 0;
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    HMTWICEOUTPUT="bar
+baz"
+
+    It "runs js"
+      When run test_js
+      The output should eq "$HMTWICEOUTPUT"
+    End
+
+    It "runs agc"
+      When run test_agc
+      The output should eq "$HMTWICEOUTPUT"
+    End
+  End
+
   Describe "HashMap"
     before() {
       # TODO: sourceToAll

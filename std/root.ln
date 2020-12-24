@@ -645,6 +645,16 @@ export fn set(hm: HashMap<Hashable, any>, key: Hashable, val: any): HashMap<Hash
       const list = getR(hm.lookup[hash]);
       list.push(i);
     });
+  } else if list.find(fn (idx: int64): bool {
+    const rec = hm.keyVal[idx].getR();
+    return eq(rec.key, key);
+  }).isOk() {
+    list.eachLin(fn (idx: int64, i: int64) {
+      const rec = hm.keyVal[idx].getR();
+      if eq(rec.key, key) {
+        list[i] = index;
+      }
+    });
   } else {
     list.push(index);
   }
