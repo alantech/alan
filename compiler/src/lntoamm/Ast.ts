@@ -3,7 +3,8 @@ import * as path from 'path'
 
 import { InputStream, CommonTokenStream, } from 'antlr4'
 
-import { LnLexer, LnParser } from '../ln'
+import { LP, } from '../lp'
+import { LnLexer, LnParser, lp } from '../ln'
 
 const resolve = (path: string) => {
   try {
@@ -18,6 +19,14 @@ export const fromString = (str: string) => {
   const langLexer = new LnLexer(inputStream)
   const commonTokenStream = new CommonTokenStream(langLexer)
   const langParser = new LnParser(commonTokenStream)
+  // Perform debug parsing using the new parser and log errors (or success)
+  const lpObj = LP.fromText(str)
+  const ast = lp.apply(lpObj)
+  if (ast instanceof Error) {
+    console.error(ast)
+  } else {
+    console.log('LP-based LN parser success!')
+  }
 
   return langParser.module()
 }
