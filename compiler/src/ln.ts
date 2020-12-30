@@ -10,7 +10,7 @@ import {
   Token,
   ZeroOrMore,
   ZeroOrOne,
-} from '../lp'
+} from './lp'
 
 // Defining LN Tokens
 const space = Token.build(' ')
@@ -243,7 +243,7 @@ const typegenerics = NamedAnd.build({
   b: optwhitespace,
   closeCaret,
 })
-const fulltypename = NamedAnd.build({
+export const fulltypename = NamedAnd.build({
   typename,
   optwhitespace,
   opttypegenerics: ZeroOrOne.build(typegenerics),
@@ -312,7 +312,7 @@ const withoperators = NamedOr.build({
   baseassignablelist,
   operators,
 })
-const assignables = OneOrMore.build(NamedAnd.build({
+export const assignables = OneOrMore.build(NamedAnd.build({
   withoperators,
   optwhitespace,
 }))
@@ -410,7 +410,7 @@ const fullfunctionbody = NamedOr.build({
   functionbody,
   assignfunction,
 })
-const functions = NamedAnd.build({
+export const functions = NamedAnd.build({
   fn,
   a: optwhitespace,
   optname: ZeroOrOne.build(variable),
@@ -467,7 +467,7 @@ const statement = NamedOr.build({
   }),
   conditionals,
 })
-const statements = OneOrMore.build(NamedAnd.build({
+export const statements = OneOrMore.build(NamedAnd.build({
   optwhitespace,
   statement,
 }))
@@ -705,7 +705,7 @@ const body = OneOrMore.build(NamedOr.build({
   functions,
   whitespace,
 }))
-const ln = NamedAnd.build({
+export const ln = NamedAnd.build({
   optwhitespace,
   imports,
   body,
@@ -713,4 +713,4 @@ const ln = NamedAnd.build({
 export const stripcomments = (str: string) => str
   .replace(/\/\/[^\r\n]*[\r\n]/mg, '\n')
   .replace(/\/\*(\*[^\/]|[^\*])*\*\//mg, (m) => m.split('\n').map(_ => '').join('\n'))
-export default ln
+

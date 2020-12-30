@@ -1,39 +1,45 @@
 import Operator from './Operator'
 import Scope from './Scope'
 import { Fn, } from './Function'
-import { LnParser, } from '../ln'
+import { LPNode, OneOrMore, ZeroOrMore, } from '../lp'
 
 // Only implements the pieces necessary for the first stage compiler
 class Statement {
-  statementAst: any // TODO: Migrate off ANTLR for better typing here
+  statementAst: LPNode
   scope: Scope
   pure: boolean
 
-  constructor(statementAst: any, scope: Scope, pure: boolean) {
+  constructor(statementAst: LPNode, scope: Scope, pure: boolean) {
     this.statementAst = statementAst,
     this.scope = scope
     this.pure = pure
   }
 
   isConditionalStatement() {
-    return this.statementAst.conditionals() !== null
+    return this.statementAst.has('conditionals')
   }
 
   isReturnStatement() {
-    return this.statementAst.exits() !== null
+    return this.statementAst.has('exits')
   }
 
-  static baseAssignableHasObjectLiteral(baseAssignableAst: any) { // TODO: Remove ANTLR
-    return !!baseAssignableAst.objectliterals()
+  static baseAssignableHasObjectLiteral(baseAssignableAst: LPNode) {
+    return baseAssignableAst.has('objectliterals')
   }
 
-  static assignablesHasObjectLiteral(assignablesAst: any) { // TODO: Remove ANTLR
-    for (const wo of assignablesAst.withoperators()) {
-      if (!!wo.operators()) continue
-      for (const ba of wo.baseassignable()) {
+  static assignablesHasObjectLiteral(assignablesAst: OneOrMore) {
+    for (const w of assignablesAst.oneOrMore) {
+      const wo = w.get('withoperators')
+      if (wo.has('operators')) continue
+      for (const b of (wo.get('baseassignablelist') as OneOrMore).oneOrMore) {
+        const ba = b.get('baseassignable')
         if (Statement.baseAssignableHasObjectLiteral(ba)) return true
-        if (!!ba.fncall() && !!ba.fncall().assignablelist()) {
-          const innerAssignables = ba.fncall().assignablelist().assignables()
+        if (ba.has('fncall') && ba.get('fncall').has('assignablelist')) {
+          const innerAssignables = []
+          innerAssignables.push(ba.get('fncall').get('assignablelist').get('assignables'));
+          (ba.get('fncall').get('assignablelist').get('cdr') as ZeroOrMore).zeroOrMore.map(a => {
+            innerAssignables.push(a.get('assignables'))
+          })
           for (const ia of innerAssignables) {
             if (Statement.assignablesHasObjectLiteral(ia)) return true
           }
@@ -43,106 +49,78 @@ class Statement {
     return false
   }
 
-  static assignmentsHasObjectLiteral(assignmentsAst: any) { // TODO: Remove ANTLR
-    return Statement.assignablesHasObjectLiteral(assignmentsAst.assignables())
+  static assignmentsHasObjectLiteral(assignmentsAst: LPNode) {
+    return Statement.assignablesHasObjectLiteral(assignmentsAst.get('assignables') as OneOrMore)
   }
 
   hasObjectLiteral() {
     const s = this.statementAst
-    if (s.declarations()) {
-      const d = s.declarations().constdeclaration() || s.declarations().letdeclaration()
-      return Statement.assignablesHasObjectLiteral(d.assignables())
+    if (s.has('declarations')) {
+      const d = s.get('declarations').has('constdeclaration') ?
+        s.get('declarations').get('constdeclaration') :
+        s.get('declarations').get('letdeclaration')
+      return Statement.assignablesHasObjectLiteral(d.get('assignables') as OneOrMore)
     }
-    if (s.assignments()) return Statement.assignmentsHasObjectLiteral(s.assignments())
-    if (s.assignables()) return Statement.assignablesHasObjectLiteral(s.assignables())
-    if (s.exits() && s.exits().assignables()) return Statement.assignablesHasObjectLiteral(
-      s.exits().assignables()
+    if (s.has('assignments')) return Statement.assignmentsHasObjectLiteral(s.get('assignments'))
+    if (s.has('assignables')) return Statement.assignablesHasObjectLiteral(
+      s.get('assignables') as OneOrMore
     )
-    if (s.emits() && s.emits().assignables()) return Statement.assignablesHasObjectLiteral(
-      s.emits().assignables()
-    )
+    if (s.has('exits') && s.get('exits').has('assignables')) {
+      return Statement.assignablesHasObjectLiteral(s.get('exits').get('assignables') as OneOrMore)
+    }
+    if (s.has('emits') && s.get('emits').has('assignables')) {
+      return Statement.assignablesHasObjectLiteral(s.get('emits').get('assignables') as OneOrMore)
+    }
     // TODO: Cover conditionals
     return false
   }
 
-  static isCallPure(callAst: any, scope: Scope) { // TODO: Migrate off ANTLR
-    // TODO: Add purity checking for chained method-style calls
-    const fn = scope.deepGet(callAst.callbase(0).varn(0).getText()) as Array<Fn>
-    if (!fn) {
-      // TODO: This function may be defined in the execution scope, we won't know until runtime
-      // right now, but it should be determinable at "compile time". Need to fix this to check
-      // if prior statements defined it, for now, just assume it exists and is not pure
-      return false
-    }
-    if (!(fn instanceof Array && fn[0].microstatementInlining instanceof Function)) {
-      throw new Error(callAst.callbase(0).varn(0).getText() + " is not a function")
-    }
-    // TODO: Add all of the logic to determine which function to use in here, too. For now,
-    // let's just assume they all have the same purity state, which is a terrible assumption, but
-    // easier.
-    if (!fn[0].isPure()) return false
-    const assignableListAst = callAst.callbase(0).fncall(0).assignablelist()
-    if (assignableListAst == null) { // No arguments to this function call
-      return true
-    }
-    for (const assignable of assignableListAst.assignables()) {
-      if (Statement.isAssignablePure(assignable, scope) === false) return false
-    }
-    return true
-  }
-
-  static isAssignablePure(assignableAst: any, scope: Scope) { // TODO: Migrate off ANTLR
+  static isAssignablePure(assignableAst: LPNode, scope: Scope) {
     // TODO: Redo this
     return true
   }
 
-  static create(statementAst: any, scope: Scope) { // TODO: Migrate off ANTLR
-    if (!!statementAst.exception) {
-      throw statementAst.exception
-    }
+  static create(statementAst: LPNode | Error, scope: Scope) {
+    if (statementAst instanceof Error) throw statementAst
     let pure = true
-    if (statementAst.declarations() != null) {
-      if (statementAst.declarations().constdeclaration() != null) {
+    if (statementAst.has('declarations')) {
+      if (statementAst.get('declarations').has('constdeclaration')) {
         pure = Statement.isAssignablePure(
-          statementAst.declarations().constdeclaration().assignables(),
+          statementAst.get('declarations').get('constdeclaration').get('assignables'),
           scope
         )
-      } else if (statementAst.declarations().letdeclaration() != null) {
-        if (statementAst.declarations().letdeclaration().assignables() == null) {
-          pure = true
-        } else {
-          pure = Statement.isAssignablePure(
-            statementAst.declarations().letdeclaration().assignables(),
-            scope
-          )
-        }
+      } else if (statementAst.get('declarations').has('letdeclaration')) {
+        pure = Statement.isAssignablePure(
+          statementAst.get('declarations').get('letdeclaration').get('assignables'),
+          scope
+        )
       } else {
-        throw new Error("Bad assignment somehow reached")
+        throw new Error("Malformed AST. Invalid const/let declaration structure")
       }
     }
-    if (statementAst.assignments() != null) {
-      if (statementAst.assignments().assignables() != null) {
-        pure = Statement.isAssignablePure(statementAst.assignments().assignables(), scope)
+    if (statementAst.has('assignments')) {
+      if (statementAst.get('assignments').has('assignables')) {
+        pure = Statement.isAssignablePure(statementAst.get('assignments').get('assignables'), scope)
       }
     }
-    if (statementAst.assignables() != null) {
-      pure = Statement.isAssignablePure(statementAst.assignables(), scope)
+    if (statementAst.has('assignables')) {
+      pure = Statement.isAssignablePure(statementAst.get('assignables').get('assignables'), scope)
     }
-    if (statementAst.exits() != null) {
-      if (statementAst.exits().assignables() != null) {
-        pure = Statement.isAssignablePure(statementAst.exits().assignables(), scope)
+    if (statementAst.has('exits')) {
+      if (statementAst.get('exits').has('assignables')) {
+        pure = Statement.isAssignablePure(statementAst.get('exits').get('assignables'), scope)
       }
     }
-    if (statementAst.emits() != null) {
-      if (statementAst.emits().assignables() != null) {
-        pure = Statement.isAssignablePure(statementAst.emits().assignables(), scope)
+    if (statementAst.has('emits')) {
+      if (statementAst.get('emits').has('assignables')) {
+        pure = Statement.isAssignablePure(statementAst.get('emits').get('assignables'), scope)
       }
     }
     return new Statement(statementAst, scope, pure)
   }
 
   toString() {
-    return this.statementAst.getText()
+    return this.statementAst.t
   }
 }
 

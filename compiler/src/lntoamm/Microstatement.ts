@@ -10,6 +10,7 @@ import StatementType from './StatementType'
 import Type from './Type'
 import UserFunction from './UserFunction'
 import { Args, Fn, } from './Function'
+import { LPNode, ZeroOrMore, } from '../lp'
 
 const FIXED_TYPES = [ 'int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'bool', 'void' ]
 
@@ -931,14 +932,22 @@ ${letName} on line ${assignmentsAst.line}:${assignmentsAst.start.column}`)
           const baseType = original.outputType.originalType
           const originalTypeAst = Ast.fulltypenameAstFromString(original.outputType.typename)
           const lastTypeAst = Ast.fulltypenameAstFromString(last.outputType.typename)
-          const originalTypeGenerics = originalTypeAst.typegenerics()
-          const lastTypeGenerics = lastTypeAst.typegenerics()
-          const originalSubtypes = originalTypeGenerics ? originalTypeGenerics.fulltypename().map(
-            (t: any) => t.getText()
-          ) : []
-          const lastSubtypes = lastTypeGenerics ? lastTypeGenerics.fulltypename().map(
-            (t: any) => t.getText()
-          ) : []
+          const originalSubtypes = []
+          if (originalTypeAst.has('opttypegenerics')) {
+            const originalTypeGenerics = originalTypeAst.get('opttypegenerics')
+            originalSubtypes.push(originalTypeGenerics.get('fulltypename').t);
+            (originalTypeGenerics.get('cdr') as ZeroOrMore).zeroOrMore.forEach(r => {
+              originalSubtypes.push(r.get('fulltypename').t)
+            })
+          }
+          const lastSubtypes = []
+          if (lastTypeAst.has('opttypegenerics')) {
+            const lastTypeGenerics = lastTypeAst.get('opttypegenerics')
+            lastSubtypes.push(lastTypeGenerics.get('fulltypename').t);
+            (lastTypeGenerics.get('cdr') as ZeroOrMore).zeroOrMore.forEach(r => {
+              lastSubtypes.push(r.get('fulltypename').t)
+            })
+          }
           const newSubtypes = []
           for (let i = 0; i < originalSubtypes.length; i++) {
             if (originalSubtypes[i] === lastSubtypes[i]) {
