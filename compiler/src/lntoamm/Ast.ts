@@ -17,26 +17,20 @@ const resolve = (path: string) => {
 export const fromString = (str: string) => {
   const startTime = Date.now()
   // Perform debug parsing using the new parser and log errors (or success)
-  const lpObj = LP.fromText(stripcomments(str))
+  const trimmed = stripcomments(str)
+  const lpObj = LP.fromText(trimmed)
   const ast = lp.apply(lpObj)
   const lpTime = Date.now()
   if (ast instanceof Error) {
-    console.error(ast)
-    console.error('str')
-    console.error(str)
-    console.error('stripped')
-    console.error(stripcomments(str))
-    console.error()
+    throw ast
+  } else if (ast.t.length !== trimmed.length) {
+    const lpObj2 = lpObj.clone()
+    lpObj2.advance(ast.t.length)
+    const body = ast.get('body')
+    const last = (body as OneOrMore).oneOrMore[(body as OneOrMore).oneOrMore.length - 1]
+    throw new Error(`AST Parse error, cannot continue due to syntax error between line ${last.line}:${last.char} - ${lpObj2.line}:${lpObj2.char}`)
   } else {
     console.log(`LP-based LN parser success! Total time: ${lpTime - startTime}`)
-    if (ast.t.length !== stripcomments(str).length) {
-      console.dir(ast, { depth: 4, colors: true, })
-      const body = ast.get('body')
-      console.dir(body);
-      (body as OneOrMore).oneOrMore.forEach(n => console.dir(n, { depth: 4, colors: true, }))
-      //const last = (body as OneOrMore).oneOrMore[(body as OneOrMore).oneOrMore.length - 1]
-      //console.dir(last)
-    }
   }
   const inputStream = new InputStream(str)
   const langLexer = new LnLexer(inputStream)

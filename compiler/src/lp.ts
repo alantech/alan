@@ -75,6 +75,8 @@ export interface LPmeta {
 // Any kind of type that can operate on LP records to build the AST.
 export interface LPNode {
   t: string
+  line: number
+  char: number
   get(id?: string | number): LPNode
   getAll(): LPNode[]
   has(id?: string | number): boolean
@@ -86,9 +88,13 @@ export const lpError = (message: string, obj: LPmeta) => new Error(`${message} i
 // A special AST node that indicates that you successfully matched nothing, useful for optional ASTs
 export class NulLP implements LPNode {
   t: string
+  line: number
+  char: number
 
   constructor() {
     this.t = ''
+    this.line = -1
+    this.char = -1
   }
 
   get(): NulLP {
