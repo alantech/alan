@@ -120,23 +120,29 @@ const typen = Token.build('type')
 const importn = Token.build('import')
 const fromn = Token.build('from')
 const fn = Token.build('fn')
-const quote = Token.build('"')
-const escapeQuote = Token.build('\\"')
-const notQuote = Not.build('"')
+const quote = Token.build("'")
+const doublequote = Token.build('"')
+const escapeQuote = Token.build("\\'")
+const escapeDoublequote = Token.build('\\"')
+const notQuote = Not.build("'")
+const notDoublequote = Not.build('"')
 const sep = And.build([comma, optblank])
 const optsep = ZeroOrOne.build(sep)
-const str = And.build([quote, ZeroOrMore.build(Or.build([escapeQuote, notQuote])), quote])
+const str = Or.build([
+  And.build([quote, ZeroOrMore.build(Or.build([escapeQuote, notQuote])), quote]),
+  And.build([doublequote, ZeroOrMore.build(Or.build([escapeDoublequote, notDoublequote])), doublequote]),
+])
 
 const arrayaccess = NamedAnd.build({
   openArr,
-  b: ZeroOrOne.build(whitespace),
+  b: optwhitespace,
   assignables: new NulLP(), // Circular dep trick, see line 305
-  c: ZeroOrOne.build(whitespace),
+  c: optwhitespace,
   closeArr,
 })
 const varsegment = NamedOr.build({
   variable,
-  methodsep: And.build([ whitespace, dot, ]),
+  methodsep: And.build([ optwhitespace, dot, optwhitespace ]),
   arrayaccess,
 })
 const varn = OneOrMore.build(varsegment)
@@ -320,12 +326,12 @@ const constdeclaration = NamedAnd.build({
   a: optwhitespace,
   typedec: ZeroOrOne.build(NamedAnd.build({
     colon,
-    optwhitespace,
+    a: optwhitespace,
     fulltypename,
+    b: optwhitespace,
   })),
-  b: optwhitespace,
   eq,
-  c: optwhitespace,
+  b: optwhitespace,
   assignables,
   semicolon,
 })
@@ -476,8 +482,9 @@ const literaldec = NamedAnd.build({
   optblank,
 })
 const assignablelist = ZeroOrOne.build(NamedAnd.build({
+  a: optwhitespace,
   assignables,
-  optwhitespace,
+  b: optwhitespace,
   cdr: ZeroOrMore.build(NamedAnd.build({
     sep,
     a: optwhitespace,
