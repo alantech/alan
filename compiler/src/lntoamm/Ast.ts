@@ -4,7 +4,7 @@ import * as path from 'path'
 import { InputStream, CommonTokenStream, } from 'antlr4'
 
 import { LP, } from '../lp'
-import { LnLexer, LnParser, lp } from '../ln'
+import { LnLexer, LnParser, lp, stripcomments, } from '../ln'
 
 const resolve = (path: string) => {
   try {
@@ -20,10 +20,15 @@ export const fromString = (str: string) => {
   const commonTokenStream = new CommonTokenStream(langLexer)
   const langParser = new LnParser(commonTokenStream)
   // Perform debug parsing using the new parser and log errors (or success)
-  const lpObj = LP.fromText(str)
+  const lpObj = LP.fromText(stripcomments(str))
   const ast = lp.apply(lpObj)
   if (ast instanceof Error) {
     console.error(ast)
+    console.error('str')
+    console.error(str)
+    console.error('stripped')
+    console.error(stripcomments(str))
+    console.error()
   } else {
     console.log('LP-based LN parser success!')
   }

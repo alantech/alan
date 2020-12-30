@@ -213,7 +213,7 @@ const standardImport = NamedAnd.build({
   dependency,
   renamed,
   newline,
-  whitespace,
+  optwhitespace,
 })
 const fromImport = NamedAnd.build({
   fromn,
@@ -224,12 +224,12 @@ const fromImport = NamedAnd.build({
   c: blank,
   varlist,
   newline,
-  whitespace,
+  optwhitespace,
 })
-const imports = NamedOr.build({
+const imports = ZeroOrMore.build(NamedOr.build({
   standardImport,
   fromImport,
-})
+}))
 const typename = variable
 const typegenerics = NamedAnd.build({
   openCaret,
@@ -709,4 +709,7 @@ const ln = NamedAnd.build({
   imports,
   body,
 })
+export const stripcomments = (str: string) => str
+  .replace(/\/\/[^\r\n]*[\r\n]/mg, '\n')
+  .replace(/\/\*(\*[^\/]|[^\*])*\*\//mg, (m) => m.split('\n').map(_ => '').join('\n'))
 export default ln
