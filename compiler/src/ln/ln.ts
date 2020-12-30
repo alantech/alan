@@ -422,8 +422,9 @@ const functions = NamedAnd.build({
   })),
   optreturntype: ZeroOrOne.build(NamedAnd.build({
     colon,
+    a: optwhitespace,
     fulltypename,
-    optwhitespace,
+    b: optwhitespace,
   })),
   fullfunctionbody,
   optsemicolon,
