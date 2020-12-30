@@ -51,7 +51,7 @@ const lower = CharSet.build('a', 'z')
 const upper = CharSet.build('A', 'Z')
 const variable = And.build([
   OneOrMore.build(Or.build([under, lower, upper])),
-  ZeroOrMore.build(Or.build([under, lower, upper, natural])),
+  ZeroOrMore.build(Or.build([under, lower, upper, base10])),
 ])
 const generaloperators = And.build([
   Or.build([
@@ -126,7 +126,7 @@ const escapeQuote = Token.build("\\'")
 const escapeDoublequote = Token.build('\\"')
 const notQuote = Not.build("'")
 const notDoublequote = Not.build('"')
-const sep = And.build([comma, optwhitespace])
+const sep = And.build([optwhitespace, comma, optwhitespace])
 const optsep = ZeroOrOne.build(sep)
 const str = Or.build([
   And.build([quote, ZeroOrMore.build(Or.build([escapeQuote, notQuote])), quote]),
@@ -238,37 +238,35 @@ const imports = ZeroOrMore.build(NamedOr.build({
 const typename = variable
 const typegenerics = NamedAnd.build({
   openCaret,
-  generics: OneOrMore.build(NamedAnd.build({
-    optblank,
-    fulltypename: new NulLP(), // Circular dependency trick, see line 245
-    optsep,
-  })),
+  a: optwhitespace,
+  generics: new NulLP(),
+  b: optwhitespace,
   closeCaret,
 })
 const fulltypename = NamedAnd.build({
   typename,
-  opttypegenerics: ZeroOrOne.build(NamedAnd.build({
-    optblank,
-    typegenerics
-  })),
+  optwhitespace,
+  opttypegenerics: ZeroOrOne.build(typegenerics),
 });
-// Ugly hackery around circular dependency
-((typegenerics.and.generics as OneOrMore).oneOrMore[0] as NamedAnd).and.fulltypename = fulltypename
+typegenerics.and.generics = NamedAnd.build({
+  fulltypename,
+  cdr: ZeroOrMore.build(NamedAnd.build({
+    sep,
+    fulltypename,
+  })),
+})
 const typeline = NamedAnd.build({
   variable,
-  a: optblank,
+  a: optwhitespace,
   colon,
-  b: optblank,
+  b: optwhitespace,
   fulltypename,
 })
 const typelist = NamedAnd.build({
   typeline,
-  optwhitespace,
   cdr: ZeroOrMore.build(NamedAnd.build({
     sep,
-    a: optwhitespace,
     typeline,
-    b: optwhitespace,
   })),
   optsep,
 })
@@ -281,9 +279,9 @@ const typebody = NamedAnd.build({
 })
 const types = NamedAnd.build({
   typen,
-  a: blank,
+  blank,
   fulltypename,
-  b: blank,
+  optwhitespace,
   typedef: NamedOr.build({
     typebody,
     typealias: NamedAnd.build({
@@ -399,9 +397,8 @@ const arglist = ZeroOrOne.build(NamedAnd.build({
 }))
 const functionbody = NamedAnd.build({
   openCurly,
-  a: optwhitespace,
   statements: new NulLP(), // See line 458
-  b: optwhitespace,
+  optwhitespace,
   closeCurly,
 })
 const assignfunction = NamedAnd.build({
@@ -442,19 +439,19 @@ const blocklike = NamedOr.build({
   fnname: variable,
 })
 const condorblock = NamedOr.build({
-  blocklike,
   conditionals: new NulLP(), // Circ dep trick, see line 442
+  blocklike,
 })
 const conditionals = NamedAnd.build({
   ifn,
-  a: whitespace,
+  whitespace,
   assignables,
-  b: whitespace,
+  optwhitespace,
   blocklike,
   elsebranch: ZeroOrOne.build(NamedAnd.build({
-    optwhitespace,
+    a: optwhitespace,
     elsen,
-    whitespace,
+    b: optwhitespace,
     condorblock,
   })),
 })
@@ -482,14 +479,11 @@ const literaldec = NamedAnd.build({
   optblank,
 })
 const assignablelist = ZeroOrOne.build(NamedAnd.build({
-  a: optwhitespace,
+  optwhitespace,
   assignables,
-  b: optwhitespace,
   cdr: ZeroOrMore.build(NamedAnd.build({
     sep,
-    a: optwhitespace,
     assignables,
-    b: optwhitespace,
   })),
   optsep,
 }))
@@ -522,7 +516,6 @@ const typeassignlist = NamedAnd.build({
     colon,
     b: optwhitespace,
     assignables,
-    c: optwhitespace,
   })),
   optsep,
 })
@@ -704,12 +697,12 @@ const handlers = NamedAnd.build({
 const body = OneOrMore.build(NamedOr.build({
   types,
   constdeclaration,
-  functions,
   operatormapping,
   events,
   handlers,
   interfaces,
   exportsn,
+  functions,
   whitespace,
 }))
 const ln = NamedAnd.build({

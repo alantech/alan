@@ -3,7 +3,7 @@ import * as path from 'path'
 
 import { InputStream, CommonTokenStream, } from 'antlr4'
 
-import { LP, } from '../lp'
+import { LP, OneOrMore, } from '../lp'
 import { LnLexer, LnParser, lp, stripcomments, } from '../ln'
 
 const resolve = (path: string) => {
@@ -29,7 +29,14 @@ export const fromString = (str: string) => {
     console.error()
   } else {
     console.log(`LP-based LN parser success! Total time: ${lpTime - startTime}`)
-    console.dir(ast, { depth: 4, colors: true, })
+    if (ast.t.length !== stripcomments(str).length) {
+      console.dir(ast, { depth: 4, colors: true, })
+      const body = ast.get('body')
+      console.dir(body);
+      (body as OneOrMore).oneOrMore.forEach(n => console.dir(n, { depth: 4, colors: true, }))
+      //const last = (body as OneOrMore).oneOrMore[(body as OneOrMore).oneOrMore.length - 1]
+      //console.dir(last)
+    }
   }
   const inputStream = new InputStream(str)
   const langLexer = new LnLexer(inputStream)

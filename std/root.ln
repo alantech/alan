@@ -120,8 +120,8 @@ export fn toString(n: string) = n;
 export fn toString(n: bool) = boolstr(n);
 
 // Type alias conversion functions
-export fn toFloat(n: canFloat64): float = toFloat64(n)
-export fn toInt(n: canInt64): int = toInt64(n) 
+export fn toFloat(n: canFloat64): float = toFloat64(n);
+export fn toInt(n: canInt64): int = toInt64(n);
 
 // Error, Maybe, Result, and Either types and functions
 export error // opcode with signature `fn error(string): Error`
