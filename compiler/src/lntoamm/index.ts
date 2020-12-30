@@ -10,6 +10,7 @@ import Module from './Module'
 import StatementType from './StatementType'
 import Type from './Type'
 import UserFunction from './UserFunction'
+import { LPNode, } from '../lp'
 
 const hoistConst = (
   microstatements: Array<Microstatement>,
@@ -134,7 +135,10 @@ const moduleAstsFromString = (str: string) => {
   return moduleAsts
 }
 
-const ammFromModuleAsts = (moduleAsts: any) => { // TODO: Migrate from ANTLR
+interface ModuleAstLookup {
+  [key: string]: LPNode
+}
+const ammFromModuleAsts = (moduleAsts: ModuleAstLookup) => {
   // Load the standard library
   let stdFiles = new Set()
   for (const [modulePath, module] of Object.entries(moduleAsts)) {
