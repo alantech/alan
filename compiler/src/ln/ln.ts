@@ -126,7 +126,7 @@ const escapeQuote = Token.build("\\'")
 const escapeDoublequote = Token.build('\\"')
 const notQuote = Not.build("'")
 const notDoublequote = Not.build('"')
-const sep = And.build([comma, optblank])
+const sep = And.build([comma, optwhitespace])
 const optsep = ZeroOrOne.build(sep)
 const str = Or.build([
   And.build([quote, ZeroOrMore.build(Or.build([escapeQuote, notQuote])), quote]),
@@ -299,12 +299,12 @@ const constants = NamedOr.build({
   bool,
 })
 const baseassignable = NamedOr.build({
-  dot,
-  variable,
-  constants,
+  objectliterals: new NulLP(), // See line 525
   functions: new NulLP(), // See line 419
   fncall: new NulLP(), // See line 533
-  objectliterals: new NulLP(), // See line 525
+  dot,
+  constants,
+  variable,
 })
 const baseassignablelist = OneOrMore.build(NamedAnd.build({
   baseassignable,
@@ -517,13 +517,12 @@ const typeassignlist = NamedAnd.build({
   c: optwhitespace,
   cdr: ZeroOrMore.build(NamedAnd.build({
     sep,
-    a: optwhitespace,
     variable,
-    b: optwhitespace,
+    a: optwhitespace,
     colon,
-    c: optwhitespace,
+    b: optwhitespace,
     assignables,
-    d: optwhitespace,
+    c: optwhitespace,
   })),
   optsep,
 })

@@ -29,7 +29,7 @@ export const fromString = (str: string) => {
     console.error()
   } else {
     console.log(`LP-based LN parser success! Total time: ${lpTime - startTime}`)
-    console.log(ast)
+    console.dir(ast, { depth: 4, colors: true, })
   }
   const inputStream = new InputStream(str)
   const langLexer = new LnLexer(inputStream)
