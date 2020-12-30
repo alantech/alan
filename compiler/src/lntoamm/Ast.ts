@@ -15,13 +15,11 @@ const resolve = (path: string) => {
 }
 
 export const fromString = (str: string) => {
-  const inputStream = new InputStream(str)
-  const langLexer = new LnLexer(inputStream)
-  const commonTokenStream = new CommonTokenStream(langLexer)
-  const langParser = new LnParser(commonTokenStream)
+  const startTime = Date.now()
   // Perform debug parsing using the new parser and log errors (or success)
   const lpObj = LP.fromText(stripcomments(str))
   const ast = lp.apply(lpObj)
+  const lpTime = Date.now()
   if (ast instanceof Error) {
     console.error(ast)
     console.error('str')
@@ -30,10 +28,18 @@ export const fromString = (str: string) => {
     console.error(stripcomments(str))
     console.error()
   } else {
-    console.log('LP-based LN parser success!')
+    console.log(`LP-based LN parser success! Total time: ${lpTime - startTime}`)
+    console.log(ast)
   }
+  const inputStream = new InputStream(str)
+  const langLexer = new LnLexer(inputStream)
+  const commonTokenStream = new CommonTokenStream(langLexer)
+  const langParser = new LnParser(commonTokenStream)
+  const antlr = langParser.module()
+  const antlrTime = Date.now()
+  console.log(`ANTLR-based LN parse success! Total time: ${antlrTime - lpTime}`)
 
-  return langParser.module()
+  return antlr
 }
 
 export const fromFile = (filename: string) => {

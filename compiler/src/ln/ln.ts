@@ -110,7 +110,6 @@ const exit = Token.build('return')
 const t = Token.build('true')
 const f = Token.build('false')
 const bool = Or.build([t, f])
-const voidn = Token.build('void')
 const emit = Token.build('emit')
 const letn = Token.build('let')
 const constn = Token.build('const')
@@ -240,13 +239,13 @@ const typegenerics = NamedAnd.build({
   })),
   closeCaret,
 })
-const fulltypename = Or.build([
-  NamedAnd.build({
-    typename,
-    opttypegenerics: ZeroOrOne.build(And.build([optblank, typegenerics])),
-  }),
-  voidn
-]);
+const fulltypename = NamedAnd.build({
+  typename,
+  opttypegenerics: ZeroOrOne.build(NamedAnd.build({
+    optblank,
+    typegenerics
+  })),
+});
 // Ugly hackery around circular dependency
 ((typegenerics.and.generics as OneOrMore).oneOrMore[0] as NamedAnd).and.fulltypename = fulltypename
 const typeline = NamedAnd.build({
@@ -371,7 +370,7 @@ const exits = NamedAnd.build({
 const emits = NamedAnd.build({
   emit,
   a: optwhitespace,
-  eventname: typename,
+  eventname: variable,
   b: optwhitespace,
   retval,
   semicolon,
@@ -410,14 +409,16 @@ const fullfunctionbody = NamedOr.build({
 })
 const functions = NamedAnd.build({
   fn,
-  whitespace,
+  a: optwhitespace,
   optname: ZeroOrOne.build(variable),
-  optwhitespace,
+  b: optwhitespace,
   optargs: ZeroOrOne.build(NamedAnd.build({
     openParen,
+    a: optwhitespace,
     arglist,
+    b: optwhitespace,
     closeParen,
-    optwhitespace,
+    c: optwhitespace,
   })),
   optreturntype: ZeroOrOne.build(NamedAnd.build({
     colon,
@@ -431,7 +432,7 @@ baseassignable.or.functions = functions
 const blocklike = NamedOr.build({
   functions,
   functionbody,
-  fnname: typename,
+  fnname: variable,
 })
 const condorblock = NamedOr.build({
   blocklike,
@@ -543,7 +544,7 @@ const fncall = NamedAnd.build({
 })
 baseassignable.or.fncall = fncall
 const fntoop = NamedAnd.build({
-  fnname: typename,
+  fnname: variable,
   a: blank,
   asn,
   b: blank,
@@ -668,13 +669,13 @@ const interfaces = NamedAnd.build({
   interfacedef,
 })
 const exportable = NamedOr.build({
-  ref: typename,
+  events,
   types,
   constdeclaration,
   functions,
   operatormapping,
-  events,
   interfaces,
+  ref: variable,
 })
 const exportsn = NamedAnd.build({
   exportn,
@@ -683,13 +684,13 @@ const exportsn = NamedAnd.build({
 })
 const handler = NamedOr.build({
   functions,
-  typename,
+  fnname: variable,
   functionbody,
 })
 const handlers = NamedAnd.build({
   on,
   a: whitespace,
-  eventname: typename,
+  eventname: variable,
   b: whitespace,
   handler,
 })
