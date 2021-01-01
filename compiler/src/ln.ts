@@ -300,7 +300,7 @@ const baseassignable = NamedOr.build({
   objectliterals: new NulLP(), // See line 525
   functions: new NulLP(), // See line 419
   fncall: new NulLP(), // See line 533
-  dot,
+  methodsep: dot,
   constants,
   variable,
 })
