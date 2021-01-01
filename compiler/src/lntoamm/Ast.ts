@@ -1,7 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 
-import { LP, LPNode, OneOrMore, ZeroOrMore, } from '../lp'
+import { LP, LPNode, } from '../lp'
 import * as ln from '../ln'
 
 const resolve = (path: string) => {
@@ -21,8 +21,8 @@ export const fromString = (str: string) => {
   } else if (ast.t.length !== trimmed.length) {
     const lp2 = lp.clone()
     lp2.advance(ast.t.length)
-    const body = ast.get('body')
-    const last = (body as OneOrMore).oneOrMore[(body as OneOrMore).oneOrMore.length - 1]
+    const body = ast.get('body').getAll()
+    const last = body[body.length - 1]
     throw new Error(`AST Parse error, cannot continue due to syntax error between line ${last.line}:${last.char} - ${lp2.line}:${lp2.char}`)
   }
 
@@ -182,10 +182,8 @@ export const resolveDependency = (modulePath: string, dependency: LPNode) => {
 
 export const resolveImports = (modulePath: string, ast: LPNode) => {
   let resolvedImports = []
-  let imports = ast.get('imports') as ZeroOrMore;
-  for (let i = 0; i < imports.zeroOrMore.length; i++) {
-    const standardImport = imports[i].standardImport()
-    const fromImport = imports[i].fromImport()
+  let imports = ast.get('imports').getAll()
+  for (let i = 0; i < imports.length; i++) {
     let dependency = null
 
     if (imports[i].has('standardImport')) {
