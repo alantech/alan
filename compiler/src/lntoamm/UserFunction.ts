@@ -79,10 +79,10 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
   }
 
   static fromFunctionsAst(functionAst: LPNode, scope: Scope) {
-    const name = functionAst.has('optname') ? functionAst.get('optname').get().t : null
+    const name = functionAst.has('optname') ? functionAst.get('optname').t : null
     let args = {}
-    if (functionAst.has('optargs')) {
-      const argsAst = functionAst.get('optargs').get().get('arglist')
+    if (functionAst.get('optargs').has('arglist')) {
+      const argsAst = functionAst.get('optargs').get('arglist')
       const argsArr = []
       argsArr.push({
         variable: argsAst.get('variable').t,
@@ -110,7 +110,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
               throw new Error("Function argument is not a valid type: " + argsArr[i].fulltypename.t)
             }
             const genericTypes = []
-            const genericAst = argsArr[i].fulltypename.get('opttypegenerics').get().get('generics')
+            const genericAst = argsArr[i].fulltypename.get('opttypegenerics').get('generics')
             genericTypes.push(genericAst.get('fulltypename').t)
             genericAst.get('cdr').getAll().forEach(r => {
               genericTypes.push(r.get('fulltypename').t)
@@ -162,7 +162,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
     let scope = this.scope
     let args = this.args
     if (functionAst.has('optreturntype')) {
-      const fulltypename = functionAst.get('optreturntype').get().get('fulltypename')
+      const fulltypename = functionAst.get('optreturntype').get('fulltypename')
       let getReturnType = scope.deepGet(fulltypename.t)
       if (getReturnType == null || !(getReturnType instanceof Type)) {
         if (fulltypename.has('opttypegenerics')) {
@@ -179,8 +179,8 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
             throw new Error("Function return is not a valid type: " + fulltypename.t)
           }
           let genericTypes = []
-          genericTypes.push(fulltypename.get('opttypegenerics').get().get('fulltypename').t)
-          fulltypename.get('opttypegenerics').get().get('cdr').getAll().forEach(r => {
+          genericTypes.push(fulltypename.get('opttypegenerics').get('fulltypename').t)
+          fulltypename.get('opttypegenerics').get('cdr').getAll().forEach(r => {
             genericTypes.push(r.get('fulltypename').t)
           })
           getReturnType = getReturnType.solidify(genericTypes, scope)
@@ -285,7 +285,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
     `.trim() + ';') // TODO: If the blocklike is a reference, grab it and inline it
     newStatements.push(condStatement, condCall)
     if (cond.has('elsebranch')) {
-      const notcond = cond.get('elsebranch').get()
+      const notcond = cond.get('elsebranch')
       if (notcond.get('condorblock').has('blocklike')) {
         const notblock = notcond.get('condorblock').get('blocklike')
         const elseBlockFn = (notblock.has('functionbody') ?
@@ -468,7 +468,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
             const baseTypeName = typeAst.get('typename').t
             const generics = []
             if (typeAst.has('opttypegenerics')) {
-              const genericsAst = typeAst.get('opttypegenerics').get().get('generics')
+              const genericsAst = typeAst.get('opttypegenerics').get('generics')
               generics.push(genericsAst.get('fulltypename').t)
               genericsAst.get('cdr').getAll().forEach(r => {
                 generics.push(r.get('fulltypename').t)
@@ -503,7 +503,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
             const baseTypeName = typeAst.get('typename').t
             const generics = []
             if (typeAst.has('opttypegenerics')) {
-              const genericsAst = typeAst.get('opttypegenerics').get().get('generics')
+              const genericsAst = typeAst.get('opttypegenerics').get('generics')
               generics.push(genericsAst.get('fulltypename').t)
               genericsAst.get('cdr').getAll().forEach(r => {
                 generics.push(r.get('fulltypename').t)
@@ -539,7 +539,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
         ) {
           const l = s.statementAst.get('declarations').get('letdeclaration')
           const name = l.get('variable').t
-          const type = l.has('typedec') ? l.get('typedec').get().get('fulltypename').t : undefined
+          const type = l.has('typedec') ? l.get('typedec').get('fulltypename').t : undefined
           const v = l.get('assignables').t
           const wrappedAst = Ast.statementAstFromString(`
             let ${name}${type ? `: ${type}` : ''} = ref(${v})
@@ -699,7 +699,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
       const returnTypeAst = Ast.fulltypenameAstFromString(this.getReturnType().typename)
       const returnSubtypes = []
       if (returnTypeAst.has('opttypegenerics')) {
-        const generics = returnTypeAst.get('opttypegenerics').get().get('generics')
+        const generics = returnTypeAst.get('opttypegenerics').get('generics')
         // TODO: Is this necessary?
         //  (t: any) => scope.deepGet(t.getText()) || (scope.deepGet(t.typename().getText()) as Type).solidify(
         //    t.typegenerics().fulltypename().map((t: any) => t.getText()),
@@ -736,7 +736,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
         const lastTypeAst = Ast.fulltypenameAstFromString(last.outputType.typename)
         const lastSubtypes = []
         if (lastTypeAst.has('opttypegenerics')) {
-          const generics = lastTypeAst.get('opttypegenerics').get().get('generics')
+          const generics = lastTypeAst.get('opttypegenerics').get('generics')
           lastSubtypes.push(scope.deepGet(generics.get('fulltypename').t))
           generics.get('cdr').getAll().forEach(r => {
             lastSubtypes.push(scope.deepGet(r.get('fulltypename').t))

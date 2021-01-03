@@ -173,7 +173,7 @@ export class Interface {
       const interfacelist = interfaceAst
         .get('interfacedef')
         .get('interfacebody')
-        .get('interfacelist').get()
+        .get('interfacelist')
       const interfacelines = []
       interfacelines.push(interfacelist.get('interfaceline'))
       interfacelist.get('cdr').getAll().forEach(l => {
@@ -214,7 +214,7 @@ export class Interface {
           const argTypenames = []
           if (!isPrefix) {
             argTypenames.push(
-              interfaceline.get('operatortypeline').get('optleftarg').get().get('leftarg').t
+              interfaceline.get('operatortypeline').get('optleftarg').get('leftarg').t
             )
           }
           argTypenames.push(interfaceline.get('operatortypeline').get('rightarg').t)
@@ -314,7 +314,7 @@ export class Type {
     const typeScope = new Scope(scope)
     typeScope.secondaryPar = genScope
     if (typeAst.get('fulltypename').has('opttypegenerics')) {
-      const genericsAst = typeAst.get('fulltypename').get('opttypegenerics').get().get('generics')
+      const genericsAst = typeAst.get('fulltypename').get('opttypegenerics').get('generics')
       const generics = []
       generics.push(genericsAst.get('fulltypename').t)
       genericsAst.get('cdr').getAll().forEach(r => {
@@ -341,7 +341,7 @@ export class Type {
           const baseTypeName = lineAst.get('fulltypename').get('typename').t
           const genericsList = []
           if (lineAst.get('fulltypename').has('opttypegenerics')) {
-            const innerGenerics = lineAst.get('fulltypename').get('opttypegenerics').get()
+            const innerGenerics = lineAst.get('fulltypename').get('opttypegenerics').get('generics')
             genericsList.push(innerGenerics.get('fulltypename'))
             innerGenerics.get('cdr').getAll().forEach(r => {
               genericsList.push(r.get('fulltypename'))
@@ -353,8 +353,9 @@ export class Type {
             const generic = genericsList.shift()
             genericsQueue.push(generic)
             if (generic.has('opttypegenerics')) {
-              genericsList.push(generic.get('opttypegenerics').get().get('fulltypename'))
-              generic.get('opttypegenerics').get().get('cdr').getAll().forEach(r => {
+              const innerInnerGenerics = generic.get('opttypegenerics').get('generics')
+              genericsList.push(innerInnerGenerics.get('fulltypename'))
+              innerInnerGenerics.get('cdr').getAll().forEach(r => {
                 genericsList.push(r.get('fulltypename'))
               })
             }
@@ -370,8 +371,9 @@ export class Type {
               }
               const innerBaseGenerics = []
               if (generic.has('opttypegenerics')) {
-                innerBaseGenerics.push(generic.get('opttypegenerics').get().get('fulltypename').t)
-                generic.get('opttypegenerics').get().get('cdr').getAll().forEach(r => {
+                const innerInnerGenerics = generic.get('opttypegenerics').get('generics')
+                innerBaseGenerics.push(innerInnerGenerics.get('fulltypename').t)
+                innerInnerGenerics.get('cdr').getAll().forEach(r => {
                   innerBaseGenerics.push(r.get('fulltypename').t)
                 })
               }
@@ -420,7 +422,6 @@ export class Type {
           .get('typealias')
           .get('fulltypename')
           .get('opttypegenerics')
-          .get()
         solidTypes.push(innerTypeGenerics.get('fulltypename').t)
         innerTypeGenerics.get('cdr').getAll().forEach(r => {
           solidTypes.push(r.get('fulltypename').t)
@@ -450,8 +451,8 @@ export class Type {
         if (fulltypename.has('opttypegenerics')) {
           const basename = fulltypename.get('typename').t
           const generics = []
-          generics.push(fulltypename.get('opttypegenerics').get().get('fulltypename').t)
-          fulltypename.get('opttypegenerics').get().get('cdr').getAll().forEach(r => {
+          generics.push(fulltypename.get('opttypegenerics').get('fulltypename').t)
+          fulltypename.get('opttypegenerics').get('cdr').getAll().forEach(r => {
             generics.push(r.get('fulltypename').t)
           })
           const baseType = scope.deepGet(basename) as Type
@@ -496,17 +497,31 @@ export class Type {
       !otherType.originalType ||
       this.originalType.typename !== otherType.originalType.typename
     ) return false
-    const typeAst = fulltypenameAstFromString(this.typename) as any
-    const otherTypeAst = fulltypenameAstFromString(otherType.typename) as any
-    const generics = typeAst.typegenerics().fulltypename().map((g: any) => (
-      scope.deepGet(g.getText()) ||
-      Type.fromStringWithMap(g.getText(), interfaceMap, scope)) as Type
+    const typeAst = fulltypenameAstFromString(this.typename)
+    const otherTypeAst = fulltypenameAstFromString(otherType.typename)
+    let generics = []
+    if (typeAst.has('opttypegenerics')) {
+      const genericsAst = typeAst.get('opttypegenerics').get('generics')
+      generics.push(genericsAst.get('fulltypename').t)
+      genericsAst.get('cdr').getAll().forEach(r => {
+        generics.push(r.get('fulltypename').t)
+      })
+    }
+    generics = generics.map(
+      g => scope.deepGet(g) || Type.fromStringWithMap(g, interfaceMap, scope) as Type
     )
-    const otherGenerics = otherTypeAst.typegenerics().fulltypename().map((g: any) => (
-      scope.deepGet(g.getText()) ||
-      Type.fromStringWithMap(g.getText(), interfaceMap, scope)) as Type
+    let otherGenerics = []
+    if (otherTypeAst.has('opttypegenerics')) {
+      const genericsAst = otherTypeAst.get('opttypegenerics').get('generics')
+      otherGenerics.push(genericsAst.get('fulltypename').t)
+      genericsAst.get('cdr').getAll().forEach(r => {
+        otherGenerics.push(r.get('fulltypename').t)
+      })
+    }
+    otherGenerics = otherGenerics.map(
+      g => scope.deepGet(g) || Type.fromStringWithMap(g, interfaceMap, scope) as Type
     )
-    return generics.every((t: Type, i: any) => t.typeApplies(otherGenerics[i], scope, interfaceMap))
+    return generics.every((t: Type, i) => t.typeApplies(otherGenerics[i], scope, interfaceMap))
   }
 
   // There has to be a more elegant way to tackle this
@@ -516,8 +531,8 @@ export class Type {
     const baseType = scope.deepGet(baseName) as Type
     if (typeAst.has('opttypegenerics')) {
       const genericNames = []
-      genericNames.push(typeAst.get('opttypegenerics').get().get('fulltypename').t)
-      typeAst.get('opttypegenerics').get().get('cdr').getAll().forEach(r => {
+      genericNames.push(typeAst.get('opttypegenerics').get('generics').get('fulltypename').t)
+      typeAst.get('opttypegenerics').get('generics').get('cdr').getAll().forEach(r => {
         genericNames.push(r.get('fulltypename').t)
       })
       const generics = genericNames.map((t: string) => {

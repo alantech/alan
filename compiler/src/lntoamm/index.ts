@@ -140,7 +140,7 @@ interface ModuleAstLookup {
 }
 const ammFromModuleAsts = (moduleAsts: ModuleAstLookup) => {
   // Load the standard library
-  let stdFiles = new Set()
+  let stdFiles: Set<string> = new Set()
   for (const [modulePath, module] of Object.entries(moduleAsts)) {
     for (const importt of Ast.resolveImports(modulePath, module)) {
       if (importt.substring(0, 5) === "@std/") {
@@ -191,14 +191,14 @@ const ammFromModuleAsts = (moduleAsts: ModuleAstLookup) => {
       // Skip built-in types, too
       if ((propType as Type).builtIn) continue
       // Check if there's a collision
-      if (eventTypeNames.has((propType as any).typename)) {
+      if (eventTypeNames.has((propType as Type).typename)) {
         // A type may be seen multiple times, make sure this is an actual collision
         if (eventTypes.has(propType)) continue // This event was already processed, so we're done
         // Modify the type name by attaching a UUIDv4 to it
-        (propType as any).typename = (propType as any).typename + "_" + uuid().replace(/-/g, "_")
+        (propType as Type).typename = (propType as Type).typename + "_" + uuid().replace(/-/g, "_")
       }
       // Add the type to the list
-      eventTypeNames.add((propType as any).typename)
+      eventTypeNames.add((propType as Type).typename)
       eventTypes.add(propType)
     }
   }
@@ -267,7 +267,7 @@ const ammFromModuleAsts = (moduleAsts: ModuleAstLookup) => {
   }
   // Print the user-defined event handlers
   for (const [handlerDec, handlersList] of Object.entries(handlers)) {
-    for (const microstatements of (handlersList as Array<any>)) {
+    for (const microstatements of (handlersList as Array<Array<Microstatement>>)) {
       outStr += handlerDec + "\n"
       for (const m of microstatements) {
         const mString = m.toString()

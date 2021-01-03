@@ -1,7 +1,7 @@
 import Operator from './Operator'
 import Scope from './Scope'
 import { Fn, } from './Function'
-import { LPNode, OneOrMore, ZeroOrMore, } from '../lp'
+import { LPNode, } from '../lp'
 
 // Only implements the pieces necessary for the first stage compiler
 class Statement {
@@ -27,17 +27,17 @@ class Statement {
     return baseAssignableAst.has('objectliterals')
   }
 
-  static assignablesHasObjectLiteral(assignablesAst: OneOrMore) {
-    for (const w of assignablesAst.oneOrMore) {
+  static assignablesHasObjectLiteral(assignablesAst: LPNode) {
+    for (const w of assignablesAst.getAll()) {
       const wo = w.get('withoperators')
       if (wo.has('operators')) continue
-      for (const b of (wo.get('baseassignablelist') as OneOrMore).oneOrMore) {
+      for (const b of wo.get('baseassignablelist').getAll()) {
         const ba = b.get('baseassignable')
         if (Statement.baseAssignableHasObjectLiteral(ba)) return true
         if (ba.has('fncall') && ba.get('fncall').has('assignablelist')) {
           const innerAssignables = []
-          innerAssignables.push(ba.get('fncall').get('assignablelist').get('assignables'));
-          (ba.get('fncall').get('assignablelist').get('cdr') as ZeroOrMore).zeroOrMore.map(a => {
+          innerAssignables.push(ba.get('fncall').get('assignablelist').get('assignables'))
+          ba.get('fncall').get('assignablelist').get('cdr').getAll().map(a => {
             innerAssignables.push(a.get('assignables'))
           })
           for (const ia of innerAssignables) {
@@ -50,7 +50,7 @@ class Statement {
   }
 
   static assignmentsHasObjectLiteral(assignmentsAst: LPNode) {
-    return Statement.assignablesHasObjectLiteral(assignmentsAst.get('assignables') as OneOrMore)
+    return Statement.assignablesHasObjectLiteral(assignmentsAst.get('assignables'))
   }
 
   hasObjectLiteral() {
@@ -59,17 +59,15 @@ class Statement {
       const d = s.get('declarations').has('constdeclaration') ?
         s.get('declarations').get('constdeclaration') :
         s.get('declarations').get('letdeclaration')
-      return Statement.assignablesHasObjectLiteral(d.get('assignables') as OneOrMore)
+      return Statement.assignablesHasObjectLiteral(d.get('assignables'))
     }
     if (s.has('assignments')) return Statement.assignmentsHasObjectLiteral(s.get('assignments'))
-    if (s.has('assignables')) return Statement.assignablesHasObjectLiteral(
-      s.get('assignables') as OneOrMore
-    )
+    if (s.has('assignables')) return Statement.assignablesHasObjectLiteral(s.get('assignables'))
     if (s.has('exits') && s.get('exits').has('assignables')) {
-      return Statement.assignablesHasObjectLiteral(s.get('exits').get('assignables') as OneOrMore)
+      return Statement.assignablesHasObjectLiteral(s.get('exits').get('assignables'))
     }
     if (s.has('emits') && s.get('emits').has('assignables')) {
-      return Statement.assignablesHasObjectLiteral(s.get('emits').get('assignables') as OneOrMore)
+      return Statement.assignablesHasObjectLiteral(s.get('emits').get('assignables'))
     }
     // TODO: Cover conditionals
     return false
@@ -95,6 +93,9 @@ class Statement {
           scope
         )
       } else {
+        console.error({
+          statementAst,
+        })
         throw new Error("Malformed AST. Invalid const/let declaration structure")
       }
     }

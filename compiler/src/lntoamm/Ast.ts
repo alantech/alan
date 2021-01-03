@@ -220,7 +220,7 @@ export const functionAstFromString = (fn: string) => {
 export const statementAstFromString = (s: string) => {
   const trimmed = ln.stripcomments(s)
   const lp = LP.fromText(trimmed)
-  const ast = ln.statements.apply(lp)
+  const ast = ln.statement.apply(lp)
   if (ast instanceof Error) {
     throw ast
   } else if (ast.t.length !== trimmed.length) {

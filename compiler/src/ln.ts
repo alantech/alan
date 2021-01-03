@@ -456,7 +456,7 @@ const conditionals = NamedAnd.build({
   })),
 })
 condorblock.or.conditionals = conditionals
-const statement = NamedOr.build({
+export const statement = NamedOr.build({
   declarations,
   exits,
   emits,
@@ -467,7 +467,7 @@ const statement = NamedOr.build({
   }),
   conditionals,
 })
-export const statements = OneOrMore.build(NamedAnd.build({
+const statements = OneOrMore.build(NamedAnd.build({
   optwhitespace,
   statement,
 }))

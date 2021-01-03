@@ -4,8 +4,14 @@ import * as path from 'path'
 import * as Ast from './Ast'
 import Module from './Module'
 import opcodes from './opcodes'
+import { LPNode, } from '../lp'
 
-export const loadStdModules = (stdImports: Set<any>) => {
+interface AstRec {
+  name: string
+  ast: LPNode
+}
+
+export const loadStdModules = (stdImports: Set<string>) => {
   const stdDir = path.join(__dirname, '../../std')
   const allStdAsts = fs.readdirSync(stdDir).filter(n => /.ln$/.test(n)).map(n => ({
     name: n,
@@ -24,7 +30,7 @@ export const loadStdModules = (stdImports: Set<any>) => {
   const orderedAsts = []
   let i = 0
   while (stdAsts.length > 0) {
-    const stdAst: any = stdAsts[i]
+    const stdAst: AstRec = stdAsts[i]
     // Just remove the root node, already processed
     if (stdAst.name === 'root.ln') {
       stdAsts.splice(i, 1)
@@ -32,20 +38,20 @@ export const loadStdModules = (stdImports: Set<any>) => {
       continue
     }
     // Immediately add any node with no imports and remove from this list
-    if (!stdAst.ast.imports()) {
+    if (stdAst.ast.get('imports').getAll().length === 0) {
       orderedAsts.push(stdAst)
       stdAsts.splice(i, 1)
       i = i % stdAsts.length
       continue
     }
     // For everything else, check if the dependencies are already queued up
-    const importAsts = stdAst.ast.imports()
+    const importAsts = stdAst.ast.get('imports').getAll()
     let safeToAdd = true
     for (const importAst of importAsts) {
       const depName = (
-        importAst.standardImport() ?
-          importAst.standardImport().dependency().getText().trim() :
-          importAst.fromImport().dependency().getText().trim()
+        importAst.has('standardImport') ?
+          importAst.get('standardImport').get('dependency').t.trim() :
+          importAst.get('fromImport').get('dependency').t.trim()
         ).replace('@std/', '').replace(/$/, '.ln')
       if (!orderedAsts.some((ast) => ast.name === depName)) {
         // add std modules this std module imports if not present
