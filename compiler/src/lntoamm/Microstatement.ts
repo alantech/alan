@@ -1150,7 +1150,7 @@ ${constdeclarationAst.t} on line ${constdeclarationAst.line}:${constdeclarationA
           throw new Error(`Invalid start of assignable statement. Cannot begin with a dot (.)
 ${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
         }
-        const prevassignable = baseAssignableAsts[i - 1]
+        const prevassignable = baseAssignableAsts[i - 1].get('baseassignable')
         if (prevassignable.has('methodsep')) {
           throw new Error(`Invalid property access. You accidentally typed a dot twice in a row.
 ${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
@@ -1160,7 +1160,9 @@ ${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
         }
         // TODO: Do we even do anything else in this branch?
       } else if (baseassignable.has('variable')) {
-        const nextassignable = baseAssignableAsts[i + 1]
+        const nextassignable = !!baseAssignableAsts[i + 1] ?
+          baseAssignableAsts[i + 1].get('baseassignable') :
+          undefined
         if (!!nextassignable && nextassignable.has('fncall')) {
           // This is a function call path
           const fncall = nextassignable.get('fncall')
@@ -1371,7 +1373,10 @@ Previous value type: ${typeof currVal}
 ${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
           }
           const arrbase = objlit.get('arrayliteral').get('arraybase')
-          if (!arrbase.get('assignablelist').has() || arrbase.get('assignablelist').get('cdr').has()) {
+          if (
+            !arrbase.get('assignablelist').has() ||
+            arrbase.get('assignablelist').get('cdr').getAll().length > 0
+          ) {
             throw new Error(`Array access must provide only one index value to query the array with
 ${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
           }

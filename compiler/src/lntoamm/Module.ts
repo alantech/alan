@@ -201,7 +201,10 @@ class Module {
     for (const operatorAst of operatorMapping) {
       const isPrefix = operatorAst.get('fix').has('prefix')
       const name = operatorAst.get('opmap').get().get('fntoop').get('operators').t.trim()
-      const precedence = parseInt(operatorAst.get('opmap').get().get('opprecedence').t, 10)
+      const precedence = parseInt(
+        operatorAst.get('opmap').get().get('opprecedence').get('num').t,
+        10
+      )
       const fns = module.moduleScope.deepGet(
         operatorAst.get('opmap').get().get('fntoop').get('fnname').t
       ) as Array<Fn>
@@ -277,7 +280,10 @@ ${exportAst.get('functions').t}
         const operatorAst = exportAst.get('operatormapping')
         const isPrefix = operatorAst.get('fix').has('prefix')
         const name = operatorAst.get('opmap').get().get('fntoop').get('operators').t.trim()
-        const precedence = parseInt(operatorAst.get('opmap').get().get('opprecedence').t, 10)
+        const precedence = parseInt(
+          operatorAst.get('opmap').get().get('opprecedence').get('num').t,
+          10
+        )
         let fns = module.moduleScope.deepGet(
           operatorAst.get('opmap').get().get('fntoop').get('fnname').t
         ) as Array<Fn>
