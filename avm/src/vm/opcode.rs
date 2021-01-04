@@ -1,7 +1,7 @@
 use futures::future::{join_all, poll_fn};
 use futures::task::{Context, Poll};
 use std::collections::HashMap;
-use std::convert::Infallible;
+use std::convert::{Infallible, TryInto};
 use std::future::Future;
 use std::hash::Hasher;
 use std::net::SocketAddr;
@@ -16,7 +16,7 @@ use byteorder::{ByteOrder, LittleEndian};
 use dashmap::DashMap;
 use hyper::header::{HeaderName, HeaderValue};
 use hyper::service::{make_service_fn, service_fn};
-use hyper::{Body, Request, Response, Server, StatusCode};
+use hyper::{Body, Client, Request, Response, Server, StatusCode, Uri};
 use num_cpus;
 use once_cell::sync::Lazy;
 use rand::RngCore;
@@ -2078,19 +2078,19 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   io!("httpget", |args, mut hand_mem| {
     Box::pin(async move {
-      let url = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
-      let http_res = reqwest::get(&url).await;
+      let url: Uri = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0])).try_into().unwrap();
+      let http_res = Client::builder().http2_only(true).build_http::<hyper::Body>().get(url.clone()).await;
       let mut is_ok = true;
       let result_str = if http_res.is_err() {
         is_ok = false;
         format!("{}", http_res.err().unwrap())
       } else {
-        let body = http_res.ok().unwrap().text().await;
+        let body = hyper::body::to_bytes(http_res.ok().unwrap().body_mut()).await;
         if body.is_err() {
           is_ok = false;
           format!("{}", body.err().unwrap())
         } else {
-          body.unwrap()
+          String::from_utf8(body.unwrap().to_vec()).unwrap()
         }
       };
       let result = if is_ok { 1i64 } else { 0i64 };
@@ -2104,19 +2104,19 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     Box::pin(async move {
       let url = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
       let payload = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
-      let client = reqwest::Client::new();
-      let http_res = client.post(&url).body(payload.clone()).send().await;
+      let client = Client::new();
+      let http_res = client.request(Request::post(&url).body(payload.clone().into()).unwrap()).await;
       let mut is_ok = true;
       let result_str = if http_res.is_err() {
         is_ok = false;
         format!("{}", http_res.err().unwrap())
       } else {
-        let body = http_res.ok().unwrap().text().await;
+        let body = hyper::body::to_bytes(http_res.ok().unwrap().body_mut()).await;
         if body.is_err() {
           is_ok = false;
           format!("{}", body.err().unwrap())
         } else {
-          body.unwrap()
+          String::from_utf8(body.unwrap().to_vec()).unwrap()
         }
       };
       let result = if is_ok { 1i64 } else { 0i64 };

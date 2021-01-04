@@ -1,3 +1,8 @@
+use hyper::{
+  Request,
+  client::Client,
+};
+
 use serde_json::json;
 
 const AMPLITUDE_API_KEY: &str = "ae20dafe801eddecf308c6ce643e19d1";
@@ -21,8 +26,8 @@ pub async fn log() {
       }
     ]
   });
-  let client = reqwest::Client::new();
-  if client.post(AMPLITUDE_URL).json(&body).send().await.is_ok() {
+  let client = Client::new();
+  if client.request(Request::post(AMPLITUDE_URL).body(body.to_string().into()).unwrap()).await.is_ok() {
     // Do nothing
   }
 }
