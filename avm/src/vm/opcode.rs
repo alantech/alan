@@ -2116,7 +2116,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
                   Ok(body) => if let Ok(res) = String::from_utf8(body.to_vec()) {
                     (res, true)
                   } else {
-                    (format!("could not parse"), false)
+                    ("could not parse".to_string(), false)
                   },
                 },
               }
