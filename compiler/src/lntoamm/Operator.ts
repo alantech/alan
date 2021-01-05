@@ -3,7 +3,6 @@ import Fn from './Function'
 import Scope from './Scope'
 import Type from './Type'
 import UserFunction from './UserFunction'
-import { ZeroOrMore, } from '../lp'
 
 class Operator {
   name: string
@@ -48,7 +47,7 @@ class Operator {
           const argGenericTypes = []
           if (argListAst.has('opttypegenerics')) {
             argGenericTypes.push(argListAst.get('opttypegenerics').get('fulltypename').t);
-            (argListAst.get('opttypegenerics').get('cdr') as ZeroOrMore).zeroOrMore.map(r => {
+            argListAst.get('opttypegenerics').get('cdr').getAll().map(r => {
               argGenericTypes.push(r.get('fulltypename').t)
             })
           }
@@ -57,7 +56,7 @@ class Operator {
             argumentGenericTypes.push(
               argumentTypeListAst.get('opttypegenerics').get('fulltypename').t
             );
-            (argumentTypeListAst.get('opttypegenerics').get('cdr') as ZeroOrMore).zeroOrMore.map(
+            argumentTypeListAst.get('opttypegenerics').get('cdr').getAll().map(
               r => { argumentGenericTypes.push(r.get('fulltypename').t) }
             )
           }
