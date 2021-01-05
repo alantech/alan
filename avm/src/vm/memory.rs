@@ -221,7 +221,7 @@ impl HandlerMemory {
   pub fn push_register(self: &mut HandlerMemory, addr: i64, other_addr: i64) {
     let (a, b) = self.addr_to_idxs(other_addr);
     // Special path for strings in global memory
-    if addr_type(other_addr) == GMEM_ADDR && a == 0 {
+    if a == 0 {
       let strmem = self.mems[0][b..].to_vec().clone();
       let new_a = self.mems.len();
       self.mems.push(strmem);
