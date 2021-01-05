@@ -374,7 +374,7 @@ const exits = NamedAnd.build({
 const emits = NamedAnd.build({
   emit,
   a: optwhitespace,
-  eventname: variable,
+  eventname: varn,
   b: optwhitespace,
   retval,
   semicolon,
@@ -690,7 +690,7 @@ const handler = NamedOr.build({
 const handlers = NamedAnd.build({
   on,
   a: whitespace,
-  eventname: variable,
+  eventname: varn,
   b: whitespace,
   handler,
 })
