@@ -245,7 +245,7 @@ const imports = ZeroOrMore.build(NamedOr.build({
   standardImport,
   fromImport,
 }))
-const typename = variable
+const typename = varn
 const typegenerics = NamedAnd.build({
   openCaret,
   a: optwhitespace,
