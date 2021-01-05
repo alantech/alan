@@ -95,7 +95,7 @@ impl HandlerMemory {
   }
 
   /// Takes a given address and looks up the `mems` indexes relevant to it.
-  pub fn addr_to_idxs(self: &HandlerMemory, addr: i64) -> (usize, usize) {
+  fn addr_to_idxs(self: &HandlerMemory, addr: i64) -> (usize, usize) {
     return if addr >= 0 {
      self.addr.0[addr as usize]
     } else if addr <= CLOSURE_ARG_MEM_END {
@@ -221,7 +221,7 @@ impl HandlerMemory {
   pub fn push_register(self: &mut HandlerMemory, addr: i64, other_addr: i64) {
     let (a, b) = self.addr_to_idxs(other_addr);
     // Special path for strings in global memory
-    if a == 0 {
+    if addr_type(other_addr) == GMEM_ADDR && a == 0 {
       let strmem = self.mems[0][b..].to_vec().clone();
       let new_a = self.mems.len();
       self.mems.push(strmem);
@@ -263,14 +263,10 @@ impl HandlerMemory {
   /// Creates an alias for data at one address in another address.
   pub fn register(self: &mut HandlerMemory, addr: i64, orig_addr: i64, is_variable: bool) {
     let (a, b) = self.addr_to_idxs(orig_addr);
-    if addr_type(orig_addr) == GMEM_ADDR {
-      if is_variable {
-        // Special behavior to read strings out of global memory
-        let string = HandlerMemory::fractal_to_string(&self.mems[a][b..]);
-        self.write_fractal(addr, &HandlerMemory::str_to_fractal(&string));
-      } else {
-        self.set_addr(addr, a, b);
-      }
+    if addr_type(orig_addr) == GMEM_ADDR && is_variable {
+      // Special behavior to read strings out of global memory
+      let string = HandlerMemory::fractal_to_string(&self.mems[a][b..]);
+      self.write_fractal(addr, &HandlerMemory::str_to_fractal(&string));
     } else {
       self.set_addr(addr, a, b);
     }

@@ -1609,8 +1609,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem.write_fractal(args[2], &Vec::new());
       for hm in hms {
         hand_mem.join(hm);
-        let (a, b) = hand_mem.addr_to_idxs(CLOSURE_ARG_MEM_START);
-        hand_mem.push_idxs(args[2], a, b);
+        hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
       }
       hand_mem
     })
@@ -1627,8 +1626,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         hand_mem.set_addr(CLOSURE_ARG_MEM_START + 1, arrv[i].0, arrv[i].1 as usize);
         hand_mem.write_fixed(CLOSURE_ARG_MEM_START + 2, i as i64);
         hand_mem = subhandler.clone().run(hand_mem).await;
-        let (a, b) = hand_mem.addr_to_idxs(CLOSURE_ARG_MEM_START);
-        hand_mem.push_idxs(args[2], a, b);
+        hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
       }
       hand_mem
     })
@@ -1865,8 +1863,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         let maybe_hm = if vals.len() == 1 { Some(vals.remove(0)) } else { None };
         let hms = join_all(reducers).await;
         for mut hm in hms {
-          let (a, b) = hm.addr_to_idxs(CLOSURE_ARG_MEM_START);
-          hm.set_addr(0, a, b as usize);
+          hm.register(0, CLOSURE_ARG_MEM_START, false);
           vals.push(hm);
         }
         if maybe_hm.is_some() {
@@ -1954,8 +1951,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       for i in 0..n {
         let hm = hms[i].as_ref().unwrap();
         HandlerMemory::transfer(&hm, 0, &mut hand_mem, CLOSURE_ARG_MEM_START);
-        let (a, b) = hand_mem.addr_to_idxs(CLOSURE_ARG_MEM_START);
-        hand_mem.push_idxs(args[2], a, b);
+        hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
       }
       hand_mem
     })
@@ -1985,8 +1981,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         hand_mem = subhandler.clone().run(hand_mem).await;
         HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut cumulative, 0);
       }
-      let (a, b) = hand_mem.addr_to_idxs(CLOSURE_ARG_MEM_START);
-      hand_mem.set_addr(args[2], a, b as usize);
+      hand_mem.register(args[2], CLOSURE_ARG_MEM_START, false);
       hand_mem
     })
   });
@@ -2163,8 +2158,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     event.write_fractal(0, &Vec::new());
     event.push_fractal(0, &url);
     HandlerMemory::transfer(&headers_hm, 0, &mut event, CLOSURE_ARG_MEM_START);
-    let (a, b) = event.addr_to_idxs(CLOSURE_ARG_MEM_START);
-    event.push_idxs(0, a, b);
+    event.push_register(0, CLOSURE_ARG_MEM_START);
     event.push_fractal(0, &body);
     event.push_fixed(0, conn_id);
     let event_emit = EventEmit {
@@ -2344,8 +2338,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         hand_mem.push_fixed(args[2], 1i64);
         let hm = maybe_hm.unwrap();
         HandlerMemory::transfer(&hm, 0, &mut hand_mem, CLOSURE_ARG_MEM_START);
-        let (a, b) = hand_mem.addr_to_idxs(CLOSURE_ARG_MEM_START);
-        hand_mem.push_idxs(args[2], a, b);
+        hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
       } else {
         hand_mem.push_fixed(args[2], 0i64);
         let err_msg = "namespace-key pair not found";
@@ -2441,10 +2434,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let mut hm = hand_mem.fork();
       // MUST read these first in case the arguments are themselves closure args being overwritten
       // for the recursive function.
-      let (a, b) = hm.addr_to_idxs(args[0]);
-      let (c, d) = hm.addr_to_idxs(args[1]);
-      hm.set_addr(CLOSURE_ARG_MEM_START + 1, a, b);
-      hm.set_addr(CLOSURE_ARG_MEM_START + 2, c, d);
+      hm.register(CLOSURE_ARG_MEM_START + 1, args[0], false);
+      hm.register(CLOSURE_ARG_MEM_START + 2, args[1], false);
       let slf = hm.read_fractal(args[0]);
       let a2 = slf[0].0;
       let recurse_fn = HandlerFragment::new(slf[1].1, 0);
@@ -2452,9 +2443,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       if seq[0].1 < seq[1].1 {
         seq[0].1 = seq[0].1 + 1;
         hm = recurse_fn.run(hm).await;
-        let (a, b) = hm.addr_to_idxs(CLOSURE_ARG_MEM_START);
         hand_mem.join(hm);
-        hand_mem.set_addr(args[2], a, b);
+        hand_mem.register(args[2], CLOSURE_ARG_MEM_START, false);
       } else {
         hand_mem.write_fractal(args[2], &Vec::new());
         hand_mem.push_fixed(args[2], 0);
@@ -2465,8 +2455,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   cpu!("seqrec", |args, hand_mem| {
     hand_mem.write_fractal(args[2], &Vec::new());
-    let (a, b) = hand_mem.addr_to_idxs(args[0]);
-    hand_mem.push_idxs(args[2], a, b);
+    hand_mem.push_register(args[2], args[0]);
     hand_mem.push_fixed(args[2], args[1]);
     None
   });
