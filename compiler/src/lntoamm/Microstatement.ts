@@ -1447,7 +1447,7 @@ ${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
           // It's probably an assignable group
           if (
             !baseassignable.get('fncall').get('assignablelist').has() ||
-            baseassignable.get('fncall').get('assignablelist').get('cdr').has()
+            baseassignable.get('fncall').get('assignablelist').get('cdr').getAll().length > 0
           ) {
             throw new Error(`Expected a group of assignable values, but got a function call signature.
 ${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)

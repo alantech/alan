@@ -44,8 +44,8 @@ const natural = OneOrMore.build(base10)
 const integer = And.build([ZeroOrOne.build(negate), natural])
 const real = And.build([integer, ZeroOrOne.build(And.build([dot, natural]))])
 const num = NamedOr.build({
-  integer,
   real,
+  integer,
 })
 const lower = CharSet.build('a', 'z')
 const upper = CharSet.build('A', 'Z')
@@ -300,8 +300,8 @@ const baseassignable = NamedOr.build({
   objectliterals: new NulLP(), // See line 525
   functions: new NulLP(), // See line 419
   fncall: new NulLP(), // See line 533
-  methodsep: dot,
   constants,
+  methodsep: dot,
   variable,
 })
 const baseassignablelist = OneOrMore.build(NamedAnd.build({
