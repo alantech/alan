@@ -65,8 +65,7 @@ impl VM {
 }
 
 pub fn exec(fp: &str, delete_after_load: bool) {
-  let mut rt = runtime::Builder::new()
-    .threaded_scheduler()
+  let rt = runtime::Builder::new_multi_thread()
     .enable_time()
     .enable_io()
     .build()
