@@ -58,7 +58,7 @@ true == 1
       The status should not eq "0"
       # TODO: What file?
       The error should eq "Unreachable code in function 'unreachable' after:
-return 'blah'; on line 4:26"
+return 'blah'; on line 4:12"
     End
   End
 
@@ -123,7 +123,7 @@ return 'blah'; on line 4:26"
       The status should not eq "0"
       # TODO: What file, line, and character?
       The error should eq "i64str is not a function but used as one.
-i64str on line 5:16"
+i64str on line 4:18"
     End
   End
 
@@ -147,8 +147,8 @@ i64str on line 5:16"
     It "doesn't work"
       When run alan compile test_$$/temp.ln test_$$/temp.amm
       The status should not eq "0"
-      # TODO: Eliminate ANTLR
-      The error should eq "line 6:8 no viable alternative at input 'app.oops\n        }'"
+      The error should include "Could not load"
+      The error should include "No match for OneOrMore in file fakeFile line 3:10"
     End
   End
 
@@ -191,7 +191,7 @@ i64str on line 5:16"
       The error should eq "Piece is not a type
 new Piece {
             owner: false
-          } on line 3:24"
+          } on line 2:26"
     End
   End
 End

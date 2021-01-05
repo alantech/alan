@@ -95,7 +95,6 @@ const moduleAstsFromFile = (filename: string) => {
       module = Ast.fromFile(modulePath)
     } catch (e) {
       console.error("Could not load " + modulePath)
-      console.error(e)
       throw e
     }
     moduleAsts[modulePath] = module
@@ -121,7 +120,6 @@ const moduleAstsFromString = (str: string) => {
     module = Ast.fromString(str)
   } catch (e) {
     console.error("Could not load test.ln")
-    console.error(e)
     throw e
   }
   moduleAsts[fakeRoot] = module
