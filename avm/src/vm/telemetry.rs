@@ -1,4 +1,5 @@
 use hyper::{
+  Body,
   Request,
   client::Client,
 };
@@ -26,7 +27,7 @@ pub async fn log() {
       }
     ]
   });
-  let client = Client::new();
+  let client = Client::builder().build::<_, Body>(hyper_tls::HttpsConnector::new());
   if client.request(Request::post(AMPLITUDE_URL).body(body.to_string().into()).unwrap()).await.is_ok() {
     // Do nothing
   }

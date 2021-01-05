@@ -17,6 +17,7 @@ use dashmap::DashMap;
 use hyper::header::{HeaderName, HeaderValue};
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Client, Request, Response, Server, StatusCode, Uri};
+use hyper_tls::HttpsConnector;
 use num_cpus;
 use once_cell::sync::Lazy;
 use rand::RngCore;
@@ -2078,25 +2079,23 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   io!("httpget", |args, mut hand_mem| {
     Box::pin(async move {
-      let url: Uri = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0])).try_into().unwrap();
-      let http_res = Client::builder().http2_only(true).build_http::<hyper::Body>().get(url.clone()).await;
-      let mut is_ok = true;
-      let result_str = if http_res.is_err() {
-        is_ok = false;
-        format!("{}", http_res.err().unwrap())
-      } else {
-        let body = hyper::body::to_bytes(http_res.ok().unwrap().body_mut()).await;
-        if body.is_err() {
-          is_ok = false;
-          format!("{}", body.err().unwrap())
-        } else {
-          String::from_utf8(body.unwrap().to_vec()).unwrap()
-        }
+      let (res, ok) = match TryInto::<Uri>::try_into(HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]))) {
+        Err(ee) => (format!("{}", ee), false),
+        Ok(url) => match Client::builder().build::<_, Body>(HttpsConnector::new()).get(url.clone()).await {
+          Err(ee) => (format!("{}", ee), false),
+          Ok(mut response) => match hyper::body::to_bytes(response.body_mut()).await {
+            Err(ee) => (format!("{}", ee), false),
+            Ok(body) => if let Ok(res) = String::from_utf8(body.to_vec()) {
+              (res, true)
+            } else {
+              (format!("could not parse"), false)
+            },
+          },
+        },
       };
-      let result = if is_ok { 1i64 } else { 0i64 };
       hand_mem.write_fractal(args[2], &Vec::new());
-      hand_mem.push_fixed(args[2], result);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal(&result_str));
+      hand_mem.push_fixed(args[2], if ok { 1i64 } else { 0i64 });
+      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal(&res));
       hand_mem
     })
   });
@@ -2104,7 +2103,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     Box::pin(async move {
       let url = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
       let payload = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
-      let client = Client::new();
+      let client = Client::builder().build::<_, Body>(HttpsConnector::new());
       let http_res = client.request(Request::post(&url).body(payload.clone().into()).unwrap()).await;
       let mut is_ok = true;
       let result_str = if http_res.is_err() {
