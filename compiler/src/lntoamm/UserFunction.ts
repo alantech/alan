@@ -263,12 +263,12 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
   }
 
   static conditionalToCond(cond: LPNode, scope: Scope) {
-    let newStatements: Array<any> = []
+    let newStatements: Array<LPNode> = []
     let hasConditionalReturn = false // Flag for potential second pass
     const condName = "_" + uuid().replace(/-/g, "_")
     const condStatement = Ast.statementAstFromString(`
       const ${condName}: bool = ${cond.get('assignables').t}
-    `.trim() + ';\n')
+    `.trim() + ';')
     const condBlockFn = (cond.get('blocklike').has('functionbody') ?
       UserFunction.fromFunctionbodyAst(cond.get('blocklike').get('functionbody'), scope) :
       cond.get('blocklike').has('fnname') ?
@@ -308,7 +308,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
           notcond.get('condorblock').get('conditionals'),
           scope
         )
-        const innerCondStatements = res[0] as Array<any>
+        const innerCondStatements = res[0] as Array<LPNode>
         if (res[1]) hasConditionalReturn = true
         const elseStatement = Ast.statementAstFromString(`
           cond(!${condName}, fn {
@@ -336,12 +336,14 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
         s.has('assignables') &&
         s
           .get('assignables')
+          .get('assignables')
           .getAll()[0]
           .get('withoperators')
           .get('baseassignablelist')
           .getAll()
           .length >= 2 &&
         s
+          .get('assignables')
           .get('assignables')
           .getAll()[0]
           .get('withoperators')
@@ -351,6 +353,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
           .trim() === 'cond' &&
         s
           .get('assignables')
+          .get('assignables')
           .getAll()[0]
           .get('withoperators')
           .get('baseassignablelist')
@@ -359,29 +362,34 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
           .has('fncall')
       ) {
         // TODO: Really need to rewrite
-        const args = s
+        const argsAst = s
+            .get('assignables')
             .get('assignables')
             .getAll()[0]
             .get('withoperators')
-            .get('baseassiganblelist')
+            .get('baseassignablelist')
             .getAll()[1]
             .get('baseassignable')
             .get('fncall')
             .get('assignablelist')
-        if (args && args.getAll().length == 2) {
-          const block = args
-            .getAll()[1]
-            .get('assignables')
+        const args = []
+        if (argsAst.has('assignables')) {
+          args.push(argsAst.get('assignables'))
+          argsAst.get('cdr').getAll().forEach(r => {
+            args.push(r.get('assignables'))
+          })
+        }
+        if (args.length == 2) {
+          const block = args[1]
+            .getAll()[0]
             .get('withoperators')
             .has('baseassignablelist') ?
-            args
-              .getAll()[1]
-              .get('assignables')
+            args[1]
+              .getAll()[0]
               .get('withoperators')
               .get('baseassignablelist')
               .getAll()[0]
-              .get('baseassignable')
-              .get('functions') :
+              .get('baseassignable') :
             null
           if (block) {
             const blockFn = UserFunction.fromAst(block, scope)
@@ -390,7 +398,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
               const newBlockStatements = UserFunction.earlyReturnRewrite(
                 retVal, retNotSet, innerStatements, scope
               )
-              const cond = args.getAll()[0].get('assignables').t.trim()
+              const cond = args[0].t.trim()
               const newBlock = Ast.statementAstFromString(`
                 cond(${cond}, fn {
                   ${newBlockStatements.map(s => s.t).join('\n')}
@@ -403,7 +411,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
                 )
                 const remainingBlock = Ast.statementAstFromString(`
                   cond(${retNotSet}, fn {
-                    ${remainingStatements.map(s => s.getText()).join('\n')}
+                    ${remainingStatements.map(s => s.t).join('\n')}
                   })
                 `.trim() + ';')
                 replacementStatements.push(remainingBlock)
@@ -422,17 +430,17 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
       }
     }
     // If no inner conditional was found in this branch, check if there's a final return
-    if (replacementStatements[replacementStatements.length - 1].exits()) {
+    if (replacementStatements[replacementStatements.length - 1].has('exits')) {
       const retStatement = replacementStatements.pop()
-      if (retStatement.exits().assignables()) {
+      if (retStatement.get('exits').get('retval').has('assignables')) {
         const newAssign = Ast.statementAstFromString(`
-          ${retVal} = ref(${retStatement.exits().assignables().getText()})
-        `.trim() + ';\n')
+          ${retVal} = ref(${retStatement.get('exits').get('retval').get('assignables').t})
+        `.trim() + ';')
         replacementStatements.push(newAssign)
       }
       replacementStatements.push(Ast.statementAstFromString(`
         ${retNotSet} = clone(false)
-      `.trim() + ';\n'))
+      `.trim() + ';'))
     }
     return replacementStatements
   }
@@ -523,8 +531,8 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
         // statementAsts.push(correctedAst)
         if (s.isConditionalStatement()) {
           const cond = s.statementAst.get('conditionals')
-          const res  = UserFunction.conditionalToCond(cond, this.scope)
-          const newStatements = res[0] as Array<any>
+          const res = UserFunction.conditionalToCond(cond, this.scope)
+          const newStatements = res[0] as Array<LPNode>
           if (res[1]) hasConditionalReturn = true
           statementAsts.push(...newStatements)
         } else if (s.statementAst.has('assignments')) {
@@ -558,17 +566,17 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
         const retNotSet = "retNotSet" + retNamePostfix
         const retValStatement = Ast.statementAstFromString(`
           let ${retVal}: ${this.getReturnType().typename} = clone()
-        `.trim() + ';\n')
+        `.trim() + ';')
         const retNotSetStatement = Ast.statementAstFromString(`
           let ${retNotSet}: bool = clone(true)
-        `.trim() + ';\n')
+        `.trim() + ';')
         let replacementStatements = [retValStatement, retNotSetStatement]
         replacementStatements.push(...UserFunction.earlyReturnRewrite(
           retVal, retNotSet, statementAsts, this.scope
         ))
         replacementStatements.push(Ast.statementAstFromString(`
           return ${retVal}
-        `.trim() + ';\n'))
+        `.trim() + ';'))
         statementAsts = replacementStatements
       }
 
@@ -585,7 +593,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
 
       const fnStr = `
         fn ${this.name || ''} (${Object.keys(newArgs).map(argName => `${argName}: ${newArgs[argName].typename}`).join(', ')}): ${newRet.typename} {
-          ${statementAsts.map(s => s.getText()).join('\n')}
+          ${statementAsts.map(s => s.t).join('\n')}
         }
       `.trim()
       const fn = UserFunction.fromAst(Ast.functionAstFromString(fnStr), this.scope)
@@ -697,17 +705,27 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
     const last = microstatements[microstatements.length - 1]
     if (!this.getReturnType().typeApplies(last.outputType, scope, new Map()))  {
       const returnTypeAst = Ast.fulltypenameAstFromString(this.getReturnType().typename)
-      const returnSubtypes = []
+      let returnSubtypes = []
       if (returnTypeAst.has('opttypegenerics')) {
         const generics = returnTypeAst.get('opttypegenerics').get('generics')
-        // TODO: Is this necessary?
-        //  (t: any) => scope.deepGet(t.getText()) || (scope.deepGet(t.typename().getText()) as Type).solidify(
-        //    t.typegenerics().fulltypename().map((t: any) => t.getText()),
-        //    scope
-        //  )
-        returnSubtypes.push(scope.deepGet(generics.get('fulltypename').t))
+        const returnSubtypeAsts = []
+        returnSubtypeAsts.push(generics.get('fulltypename'))
         generics.get('cdr').getAll().forEach(r => {
-          returnSubtypes.push(scope.deepGet(r.get('fulltypename').t))
+          returnSubtypeAsts.push(r.get('fulltypename'))
+        })
+        returnSubtypes = returnSubtypeAsts.map(r => {
+          let t = scope.deepGet(r.t)
+          if (!t) {
+            const innerGenerics = []
+            if (r.has('opttypegenerics')) {
+              innerGenerics.push(r.get('opttypegenerics').get('generics').get('fulltypename').t)
+              r.get('opttypegenerics').get('generics').get('cdr').getAll().forEach(r2 => {
+                innerGenerics.push(r2.t)
+              })
+            }
+            t = (scope.deepGet(r.get('typename').t) as Type).solidify(innerGenerics, scope)
+          }
+          return t
         })
       }
       if (this.getReturnType().iface) {
