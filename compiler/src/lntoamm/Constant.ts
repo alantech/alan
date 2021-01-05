@@ -1,21 +1,22 @@
 import Scope from './Scope'
+import { LPNode, } from '../lp'
 
 class Constant {
   name: string
-  assignablesAst: any
+  assignablesAst: LPNode
   scope: Scope
 
-  constructor(name: string, assignablesAst: any, scope: Scope) {
+  constructor(name: string, assignablesAst: LPNode, scope: Scope) {
     this.name = name
     this.assignablesAst = assignablesAst
     this.scope = scope
   }
 
-  static fromAst(constdeclaration: any, scope: Scope) {
-    const name = constdeclaration.VARNAME().getText()
+  static fromAst(constdeclaration: LPNode, scope: Scope) {
+    const name = constdeclaration.get('variable').t
     const outConst = new Constant(
       name,
-      constdeclaration.assignables(),
+      constdeclaration.get('assignables'),
       scope,
     )
     scope.put(name, outConst)

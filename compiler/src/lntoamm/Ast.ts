@@ -13,12 +13,11 @@ const resolve = (path: string) => {
 }
 
 export const fromString = (str: string) => {
-  const trimmed = ln.stripcomments(str)
-  const lp = LP.fromText(trimmed)
+  const lp = LP.fromText(str)
   const ast = ln.ln.apply(lp)
   if (ast instanceof Error) {
     throw ast
-  } else if (ast.t.length !== trimmed.length) {
+  } else if (ast.t.length !== str.length) {
     const lp2 = lp.clone()
     lp2.advance(ast.t.length)
     const body = ast.get('body').getAll()
@@ -203,12 +202,11 @@ export const resolveImports = (modulePath: string, ast: LPNode) => {
 }
 
 export const functionAstFromString = (fn: string) => {
-  const trimmed = ln.stripcomments(fn)
-  const lp = LP.fromText(trimmed)
+  const lp = LP.fromText(fn)
   const ast = ln.functions.apply(lp)
   if (ast instanceof Error) {
     throw ast
-  } else if (ast.t.length !== trimmed.length) {
+  } else if (ast.t.length !== fn.length) {
     const lp2 = lp.clone()
     lp2.advance(ast.t.length)
     throw new Error(`AST Parse error, cannot continue due to syntax error ending at line ${lp2.line}:${lp2.char}`)
@@ -218,12 +216,11 @@ export const functionAstFromString = (fn: string) => {
 }
 
 export const statementAstFromString = (s: string) => {
-  const trimmed = ln.stripcomments(s)
-  const lp = LP.fromText(trimmed)
+  const lp = LP.fromText(s)
   const ast = ln.statement.apply(lp)
   if (ast instanceof Error) {
     throw ast
-  } else if (ast.t.length !== trimmed.length) {
+  } else if (ast.t.length !== s.length) {
     const lp2 = lp.clone()
     lp2.advance(ast.t.length)
     throw new Error(`AST Parse error, cannot continue due to syntax error ending at line ${lp2.line}:${lp2.char}`)
@@ -233,12 +230,11 @@ export const statementAstFromString = (s: string) => {
 }
 
 export const fulltypenameAstFromString = (s: string) => {
-  const trimmed = ln.stripcomments(s)
-  const lp = LP.fromText(trimmed)
+  const lp = LP.fromText(s)
   const ast = ln.fulltypename.apply(lp)
   if (ast instanceof Error) {
     throw ast
-  } else if (ast.t.length !== trimmed.length) {
+  } else if (ast.t.length !== s.length) {
     const lp2 = lp.clone()
     lp2.advance(ast.t.length)
     throw new Error(`AST Parse error, cannot continue due to syntax error ending at line ${lp2.line}:${lp2.char}`)
@@ -248,12 +244,11 @@ export const fulltypenameAstFromString = (s: string) => {
 }
 
 export const assignablesAstFromString = (s: string) => {
-  const trimmed = ln.stripcomments(s)
-  const lp = LP.fromText(trimmed)
+  const lp = LP.fromText(s)
   const ast = ln.assignables.apply(lp)
   if (ast instanceof Error) {
     throw ast
-  } else if (ast.t.length !== trimmed.length) {
+  } else if (ast.t.length !== s.length) {
     const lp2 = lp.clone()
     lp2.advance(ast.t.length)
     throw new Error(`AST Parse error, cannot continue due to syntax error ending at line ${lp2.line}:${lp2.char}`)

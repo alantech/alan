@@ -177,7 +177,7 @@ export class Token implements LPNode {
         lp.char,
       )
     }
-    return lpError(`Token mismatch, ${this.t} not found`, lp)
+    return lpError(`Token mismatch, ${this.t} not found, instead ${lp.data[lp.i]}`, lp)
   }
 }
 
@@ -349,7 +349,7 @@ export class ZeroOrMore implements LPNode {
         return new ZeroOrMore(t, zeroOrMore, filename, line, char)
       }
       const t2 = z.toString()
-      if (t2.length === 0) {
+      if (!t2 || t2.length === 0) {
         return lpError('ZeroOrMore made no forward progress, will infinite loop', lp)
       }
       t += t2
@@ -413,7 +413,7 @@ export class OneOrMore implements LPNode {
       if (o instanceof Error) {
         lp.restore(s)
         if (oneOrMore.length === 0) {
-          return lpError('No match for OneOrMore', lp)
+          return lpError(`No match for OneOrMore ${this.oneOrMore.toString()}`, lp)
         }
         return new OneOrMore(t, oneOrMore, filename, line, char)
       }

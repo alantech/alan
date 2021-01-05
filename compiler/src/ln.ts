@@ -17,7 +17,17 @@ const space = Token.build(' ')
 const blank = OneOrMore.build(space)
 const optblank = ZeroOrOne.build(blank)
 const newline = Token.build('\n')
-const whitespace = OneOrMore.build(Or.build([space, newline]))
+const notnewline = Not.build('\n')
+const singlelinecomment = And.build([Token.build('//'), ZeroOrMore.build(notnewline), newline])
+const star = Token.build('*')
+const notstar = Not.build('*')
+const notslash = Not.build('/')
+const multilinecomment = And.build([
+  Token.build('/*'),
+  ZeroOrMore.build(Or.build([notstar, And.build([star, notslash])])),
+  Token.build('*/'),
+])
+const whitespace = OneOrMore.build(Or.build([space, newline, singlelinecomment, multilinecomment]))
 const optwhitespace = ZeroOrOne.build(whitespace)
 const colon = Token.build(':')
 const under = Token.build('_')
@@ -245,7 +255,6 @@ const typegenerics = NamedAnd.build({
 })
 export const fulltypename = NamedAnd.build({
   typename,
-  optwhitespace,
   opttypegenerics: ZeroOrOne.build(typegenerics),
 });
 typegenerics.and.generics = NamedAnd.build({
@@ -292,17 +301,17 @@ const types = NamedAnd.build({
   }),
 })
 const constants = NamedOr.build({
+  bool,
   num,
   str,
-  bool,
 })
 const baseassignable = NamedOr.build({
   objectliterals: new NulLP(), // See line 525
   functions: new NulLP(), // See line 419
   fncall: new NulLP(), // See line 533
   constants,
-  methodsep: dot,
   variable,
+  methodsep: And.build([ optwhitespace, dot, optwhitespace ]),
 })
 const baseassignablelist = OneOrMore.build(NamedAnd.build({
   baseassignable,
@@ -710,7 +719,4 @@ export const ln = NamedAnd.build({
   imports,
   body,
 })
-export const stripcomments = (str: string) => str
-  .replace(/\/\/[^\r\n]*[\r\n]/mg, '\n')
-  .replace(/\/\*(\*[^\/]|[^\*])*\*\//mg, (m) => m.split('\n').map(_ => '').join('\n'))
 

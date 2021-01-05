@@ -242,7 +242,7 @@ export class Interface {
             )
           }
           iface.requiredProperties[
-            interfaceline.propertytypeline().VARNAME().getText()
+            interfaceline.get('propertytypeline').get('variable').t
           ] = propertyType
         }
       }
