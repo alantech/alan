@@ -1,7 +1,7 @@
 use futures::future::{join_all, poll_fn};
 use futures::task::{Context, Poll};
 use std::collections::HashMap;
-use std::convert::Infallible;
+use std::convert::{Infallible, TryInto};
 use std::future::Future;
 use std::hash::Hasher;
 use std::net::SocketAddr;
@@ -16,14 +16,15 @@ use byteorder::{ByteOrder, LittleEndian};
 use dashmap::DashMap;
 use hyper::header::{HeaderName, HeaderValue};
 use hyper::service::{make_service_fn, service_fn};
-use hyper::{Body, Request, Response, Server, StatusCode};
+use hyper::{Body, client::Client, Request, Response, server::Server, StatusCode, Uri};
+use hyper_tls::HttpsConnector;
 use num_cpus;
 use once_cell::sync::Lazy;
 use rand::RngCore;
 use rand::rngs::OsRng;
 use regex::Regex;
 use tokio::task;
-use tokio::time::delay_for;
+use tokio::time::sleep;
 use twox_hash::XxHash64;
 
 use crate::vm::event::{BuiltInEvents, EventEmit, HandlerFragment};
@@ -2072,57 +2073,60 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   io!("waitop", |args, hand_mem| {
     Box::pin(async move {
       let ms = hand_mem.read_fixed(args[0]) as u64;
-      delay_for(Duration::from_millis(ms)).await;
+      sleep(Duration::from_millis(ms)).await;
       hand_mem
     })
   });
   io!("httpget", |args, mut hand_mem| {
     Box::pin(async move {
-      let url = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
-      let http_res = reqwest::get(&url).await;
-      let mut is_ok = true;
-      let result_str = if http_res.is_err() {
-        is_ok = false;
-        format!("{}", http_res.err().unwrap())
-      } else {
-        let body = http_res.ok().unwrap().text().await;
-        if body.is_err() {
-          is_ok = false;
-          format!("{}", body.err().unwrap())
-        } else {
-          body.unwrap()
-        }
+      let (res, ok) = match TryInto::<Uri>::try_into(HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]))) {
+        Err(ee) => (format!("{}", ee), false),
+        Ok(url) => match Client::builder().build::<_, Body>(HttpsConnector::new()).get(url.clone()).await {
+          Err(ee) => (format!("{}", ee), false),
+          Ok(mut response) => match hyper::body::to_bytes(response.body_mut()).await {
+            Err(ee) => (format!("{}", ee), false),
+            Ok(body) => if let Ok(res) = String::from_utf8(body.to_vec()) {
+              (res, true)
+            } else {
+              (format!("could not parse"), false)
+            },
+          },
+        },
       };
-      let result = if is_ok { 1i64 } else { 0i64 };
       hand_mem.write_fractal(args[2], &Vec::new());
-      hand_mem.push_fixed(args[2], result);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal(&result_str));
+      hand_mem.push_fixed(args[2], if ok { 1i64 } else { 0i64 });
+      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal(&res));
       hand_mem
     })
   });
   io!("httppost", |args, mut hand_mem| {
     Box::pin(async move {
-      let url = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
       let payload = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
-      let client = reqwest::Client::new();
-      let http_res = client.post(&url).body(payload.clone()).send().await;
-      let mut is_ok = true;
-      let result_str = if http_res.is_err() {
-        is_ok = false;
-        format!("{}", http_res.err().unwrap())
-      } else {
-        let body = http_res.ok().unwrap().text().await;
-        if body.is_err() {
-          is_ok = false;
-          format!("{}", body.err().unwrap())
-        } else {
-          body.unwrap()
+      let (res, ok) = match TryInto::<Uri>::try_into(HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]))) {
+        Err(ee) => (format!("{}", ee), false),
+        Ok(url) => {
+          match Request::post(&url).body(Body::from(payload.clone())) {
+            Err(ee) => (format!("{}", ee), false),
+            Ok(request) => {
+              let client = Client::builder().build::<_, Body>(HttpsConnector::new());
+              match client.request(request).await {
+                Err(ee) => (format!("{}", ee), false),
+                Ok(mut response) => match hyper::body::to_bytes(response.body_mut()).await {
+                  Err(ee) => (format!("{}", ee), false),
+                  Ok(body) => if let Ok(res) = String::from_utf8(body.to_vec()) {
+                    (res, true)
+                  } else {
+                    ("could not parse".to_string(), false)
+                  },
+                },
+              }
+            }
+          }
         }
       };
-      let result = if is_ok { 1i64 } else { 0i64 };
       hand_mem.write_fractal(args[2], &Vec::new());
-      hand_mem.push_fixed(args[2], result);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal(&result_str));
+      hand_mem.push_fixed(args[2], if ok { 1i64 } else { 0i64 });
+      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal(&res));
       hand_mem
     })
   });
