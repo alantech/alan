@@ -2392,7 +2392,7 @@ export fn set(hm: HashMap<Hashable, any>, key: Hashable, val: any): HashMap<Hash
     list.eachLin(fn (idx: int64, i: int64) {
       const rec = hm.keyVal[idx].getR();
       if eq(rec.key, key) {
-        list[i] = index;
+        list.set(i, index);
       }
     });
   } else {
