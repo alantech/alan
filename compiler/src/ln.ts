@@ -416,6 +416,7 @@ const assignfunction = NamedAnd.build({
   eq,
   optwhitespace,
   assignables,
+  optsemicolon,
 })
 const fullfunctionbody = NamedOr.build({
   functionbody,
@@ -441,7 +442,6 @@ export const functions = NamedAnd.build({
     b: optwhitespace,
   })),
   fullfunctionbody,
-  optsemicolon,
 })
 baseassignable.or.functions = functions
 const blocklike = NamedOr.build({
