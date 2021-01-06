@@ -422,6 +422,7 @@ export class Type {
           .get('typealias')
           .get('fulltypename')
           .get('opttypegenerics')
+          .get('generics')
         solidTypes.push(innerTypeGenerics.get('fulltypename').t)
         innerTypeGenerics.get('cdr').getAll().forEach(r => {
           solidTypes.push(r.get('fulltypename').t)
