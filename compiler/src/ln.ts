@@ -315,15 +315,13 @@ const baseassignable = NamedOr.build({
 })
 const baseassignablelist = OneOrMore.build(NamedAnd.build({
   baseassignable,
-  optwhitespace,
 }))
 const withoperators = NamedOr.build({
   baseassignablelist,
-  operators,
+  operators: And.build([optwhitespace, operators, optwhitespace]),
 })
 export const assignables = OneOrMore.build(NamedAnd.build({
   withoperators,
-  optwhitespace,
 }))
 arrayaccess.and.assignables = assignables
 const constdeclaration = NamedAnd.build({
@@ -445,7 +443,7 @@ baseassignable.or.functions = functions
 const blocklike = NamedOr.build({
   functions,
   functionbody,
-  fnname: variable,
+  fnname: varn,
 })
 const condorblock = NamedOr.build({
   conditionals: new NulLP(), // Circ dep trick, see line 442
@@ -458,9 +456,9 @@ const conditionals = NamedAnd.build({
   optwhitespace,
   blocklike,
   elsebranch: ZeroOrOne.build(NamedAnd.build({
-    a: optwhitespace,
+    whitespace,
     elsen,
-    b: optwhitespace,
+    optwhitespace,
     condorblock,
   })),
 })
@@ -470,11 +468,11 @@ export const statement = NamedOr.build({
   exits,
   emits,
   assignments,
+  conditionals,
   assignables: NamedAnd.build({
     assignables,
     semicolon,
   }),
-  conditionals,
 })
 const statements = OneOrMore.build(NamedAnd.build({
   optwhitespace,

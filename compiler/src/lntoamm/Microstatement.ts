@@ -1497,7 +1497,7 @@ ${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
     let withOperatorsList = []
     for (const operatorOrAssignable of withoperators) {
       if (operatorOrAssignable.get('withoperators').has('operators')) {
-        const operator = operatorOrAssignable.get('withoperators').get('operators')
+        const operator = operatorOrAssignable.get('withoperators').get('operators').get(1)
         const op = scope.deepGet(operator.t)
         if (op == null || !(op instanceof Array && op[0] instanceof Operator)) {
           throw new Error("Operator " + operator.t + " is not defined")
