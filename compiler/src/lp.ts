@@ -558,6 +558,138 @@ export class Or implements LPNode {
   }
 }
 
+export class ExclusiveOr implements LPNode {
+  t: string
+  xor: LPNode[]
+  filename: string
+  line: number
+  char: number
+
+  constructor(t: string, xor: LPNode[], filename: string, line: number, char: number) {
+    this.t = t
+    this.xor = xor
+    this.filename = filename
+    this.line = line
+    this.char = char
+  }
+
+  static build(xor: LPNode[]): ExclusiveOr {
+    return new ExclusiveOr('', xor, '', -1, -1)
+  }
+
+  toString(): string {
+    return this.t
+  }
+
+  get(): LPNode {
+    if (this.xor[0]) return this.xor[0]
+    return new NulLP()
+  }
+
+  getAll(): LPNode[] {
+    return this.xor
+  }
+
+  has(id?: number): boolean {
+    if (typeof id === 'number') {
+      if (this.xor[id]) {
+        return this.xor[id].has()
+      }
+      return false
+    }
+    return this.line > -1
+  }
+
+  apply(lp: LP): ExclusiveOr | Error {
+    const filename = lp.filename
+    const line = lp.line
+    const char = lp.char
+    let t = ''
+    let xor = []
+    // Checks the matches, it only succeeds if there's only one match
+    for (let i = 0; i < this.xor.length; i++) {
+      const s = lp.snapshot()
+      const x = this.xor[i].apply(lp)
+      if (x instanceof Error) {
+        lp.restore(s)
+        continue
+      }
+      // We have a match!
+      t = x.toString()
+      xor.push(i)
+      // We still restore the snapshot for further iterations
+      lp.restore(s)
+    }
+    if (xor.length === 0) return lpError('No matching tokens found', lp)
+    if (xor.length > 1) return lpError('Multiple matching tokens found', lp)
+    // Since we restored the state every time, we need to take the one that matched and re-run it
+    // to make sure the offset is correct
+    return new ExclusiveOr(t, [this.xor[xor[0]].apply(lp) as LPNode], filename, line, char)
+  }
+}
+
+export class LeftSubset implements LPNode {
+  t: string
+  left: LPNode
+  right: LPNode
+  filename: string
+  line: number
+  char: number
+
+  constructor(t: string, left: LPNode, right: LPNode, filename: string, line: number, char: number) {
+    this.t = t
+    this.left = left
+    this.right = right
+    this.filename = filename
+    this.line = line
+    this.char = char
+  }
+
+  static build(left: LPNode, right: LPNode): LeftSubset {
+    return new LeftSubset('', left, right, '', -1, -1)
+  }
+
+  toString(): string {
+    return this.t
+  }
+
+  get(): LPNode {
+    return this.left
+  }
+
+  getAll(): LPNode[] {
+    return [this.left]
+  }
+
+  has(): boolean {
+    return this.line > -1
+  }
+
+  apply(lp: LP): LeftSubset | Error {
+    const filename = lp.filename
+    const line = lp.line
+    const char = lp.char
+    // Check the left set first, immediately return an error if it failed
+    const s = lp.snapshot()
+    const l = this.left.apply(lp)
+    if (l instanceof Error) {
+      lp.restore(s)
+      return l
+    }
+    // Check the right set *against* the value returned by the left set. If they exactly match, also
+    // fail
+    const lp2 = LP.fromText(l.toString())
+    const r = this.right.apply(lp2)
+    if (r instanceof Error || r.toString().length !== l.toString().length) {
+      // The right subset did not match the left, we're good!
+      return new LeftSubset(l.toString(), l, new NulLP(), filename, line, char)
+    }
+    // In this path, we force a failure because the match also exists in the right subset
+    lp.restore(s)
+    return lpError('Right subset matches unexpectedly', lp)
+  }
+}
+
 interface Named {
   [key: string]: LPNode
 }

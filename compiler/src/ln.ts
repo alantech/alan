@@ -1,6 +1,7 @@
 import {
   And,
   CharSet,
+  LeftSubset,
   NamedAnd,
   NamedOr,
   Not,
@@ -57,12 +58,18 @@ const num = NamedOr.build({
   real,
   integer,
 })
+const t = Token.build('true')
+const f = Token.build('false')
+const bool = Or.build([t, f])
 const lower = CharSet.build('a', 'z')
 const upper = CharSet.build('A', 'Z')
-const variable = And.build([
-  OneOrMore.build(Or.build([under, lower, upper])),
-  ZeroOrMore.build(Or.build([under, lower, upper, base10])),
-])
+const variable = LeftSubset.build(
+  And.build([
+    OneOrMore.build(Or.build([under, lower, upper])),
+    ZeroOrMore.build(Or.build([under, lower, upper, base10])),
+  ]),
+  bool,
+)
 const generaloperators = And.build([
   Or.build([
     Token.build('+'),
@@ -117,9 +124,6 @@ const infix = Token.build('infix')
 const prefix = Token.build('prefix')
 const asn = Token.build('as')
 const exit = Token.build('return')
-const t = Token.build('true')
-const f = Token.build('false')
-const bool = Or.build([t, f])
 const emit = Token.build('emit')
 const letn = Token.build('let')
 const constn = Token.build('const')
@@ -309,8 +313,8 @@ const baseassignable = NamedOr.build({
   objectliterals: new NulLP(), // See line 525
   functions: new NulLP(), // See line 419
   fncall: new NulLP(), // See line 533
-  constants,
   variable,
+  constants,
   methodsep: And.build([ optwhitespace, dot, optwhitespace ]),
 })
 const baseassignablelist = OneOrMore.build(NamedAnd.build({
