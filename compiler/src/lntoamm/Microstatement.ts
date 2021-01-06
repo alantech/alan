@@ -391,7 +391,7 @@ ${objectLiteralsAst.t} on line ${objectLiteralsAst.line}:${objectLiteralsAst.cha
       assignlist.get('cdr').getAll().forEach(r => {
         assignArr.push({
           field: r.get('variable'),
-          val: r.get('assiganbles'),
+          val: r.get('assignables'),
         })
       })
       const assignfields = assignArr.map(r => r.field.t)
