@@ -265,7 +265,7 @@ class Microstatement {
 ${objectLiteralsAst.t} on line ${objectLiteralsAst.line}:${objectLiteralsAst.char}`)
             }
             const generics = []
-            const genericsAst = arrayTypeAst.get('opttypegenerics').get().get('generics')
+            const genericsAst = arrayTypeAst.get('opttypegenerics').get('generics')
             generics.push(genericsAst.get('fulltypename').t)
             genericsAst.get('cdr').getAll().forEach(r => {
               generics.push(r.get('fulltypename').t)
@@ -369,7 +369,7 @@ ${objectLiteralsAst.t} on line ${objectLiteralsAst.line}:${objectLiteralsAst.cha
 ${objectLiteralsAst.t} on line ${objectLiteralsAst.line}:${objectLiteralsAst.char}`)
           }
           const generics = []
-          const genericsAst = typeAst.get('opttypegenerics').get().get('generics')
+          const genericsAst = typeAst.get('opttypegenerics').get('generics')
           generics.push(genericsAst.get('fulltypename').t)
           genericsAst.get('cdr').getAll().forEach(r => {
             generics.push(genericsAst.get('fulltypename').t)
