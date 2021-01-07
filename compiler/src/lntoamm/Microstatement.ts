@@ -803,16 +803,16 @@ ${letName} on line ${assignmentsAst.line}:${assignmentsAst.char}`)
           const originalSubtypes = []
           if (originalTypeAst.has('opttypegenerics')) {
             const originalTypeGenerics = originalTypeAst.get('opttypegenerics').get('generics')
-            originalSubtypes.push(originalTypeGenerics.get('fulltypename').t);
-            (originalTypeGenerics.get('cdr') as ZeroOrMore).zeroOrMore.forEach(r => {
+            originalSubtypes.push(originalTypeGenerics.get('fulltypename').t)
+            originalTypeGenerics.get('cdr').getAll().forEach(r => {
               originalSubtypes.push(r.get('fulltypename').t)
             })
           }
           const lastSubtypes = []
           if (lastTypeAst.has('opttypegenerics')) {
             const lastTypeGenerics = lastTypeAst.get('opttypegenerics').get('generics')
-            lastSubtypes.push(lastTypeGenerics.get('fulltypename').t);
-            (lastTypeGenerics.get('cdr') as ZeroOrMore).zeroOrMore.forEach(r => {
+            lastSubtypes.push(lastTypeGenerics.get('fulltypename').t)
+            lastTypeGenerics.get('cdr').getAll().forEach(r => {
               lastSubtypes.push(r.get('fulltypename').t)
             })
           }

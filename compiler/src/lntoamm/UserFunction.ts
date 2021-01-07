@@ -179,8 +179,8 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
             throw new Error("Function return is not a valid type: " + fulltypename.t)
           }
           let genericTypes = []
-          genericTypes.push(fulltypename.get('opttypegenerics').get('fulltypename').t)
-          fulltypename.get('opttypegenerics').get('cdr').getAll().forEach(r => {
+          genericTypes.push(fulltypename.get('opttypegenerics').get('generics').get('fulltypename').t)
+          fulltypename.get('opttypegenerics').get('generics').get('cdr').getAll().forEach(r => {
             genericTypes.push(r.get('fulltypename').t)
           })
           getReturnType = getReturnType.solidify(genericTypes, scope)
