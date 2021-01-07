@@ -1672,7 +1672,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem
     })
   });
-  io!("find", |args, hand_mem| {
+  io!("find", |args, mut hand_mem| {
     Box::pin(async move {
       let fractal = hand_mem.read_fractal(args[0]);
       let len = fractal.len();
