@@ -1504,7 +1504,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         }
         let mut matches = true;
         for j in 0..val.len() {
-          if val.compare_at(j, &check) {
+          if !val.compare_at(j, &check) {
             matches = false;
             break
           }
@@ -2408,7 +2408,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let (mut seq, _) = hm.read_from_fractal(&slf, 0);
       let curr = seq.read_fixed(0);
       if curr < seq.read_fixed(1) {
-        hm.write_fixed_in_fractal(&mut seq, 0, curr);
+        hm.write_fixed_in_fractal(&mut seq, 0, curr + 1);
         hm = recurse_fn.run(hm).await;
         hand_mem.join(hm);
         hand_mem.register(args[2], CLOSURE_ARG_MEM_START, false);

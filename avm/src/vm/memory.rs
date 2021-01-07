@@ -30,7 +30,7 @@ fn addr_type(addr: i64) -> i8 {
 }
 
 /// Memory representation of a fractal memory block within HandlerMemory
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct FractalMemory {
   // address in HandlerMemory if it is not a nested fractal
   hm_addr: Option<i64>,
@@ -62,6 +62,13 @@ impl FractalMemory {
       panic!("Trying to read raw data from memory when it is a pointer")
     }
     return self.block[idx].1;
+  }
+}
+
+impl PartialEq for FractalMemory {
+  fn eq(&self, other: &Self) -> bool {
+    // ignore hm_addr
+    self.block == other.block
   }
 }
 
@@ -217,9 +224,6 @@ impl HandlerMemory {
   /// values, and returns that value either as a vector or the singular value wrapped in a vector,
   /// and a boolean indicating if it is a fractal value or not.
   pub fn read_from_fractal(self: &HandlerMemory, fractal: &FractalMemory, idx: usize) -> (FractalMemory, bool) {
-    if fractal.hm_addr.is_none() {
-      panic!("HandlerMemory read called from a deeply nested Fractal");
-    }
     let (a, b) = fractal.block[idx];
     let b_usize = b as usize;
     return if a == std::usize::MAX {
@@ -242,11 +246,10 @@ impl HandlerMemory {
 
   /// Stores a nested fractal of data in a given address.
   pub fn write_fixed_in_fractal(self: &mut HandlerMemory, fractal: &mut FractalMemory, idx: usize, val: i64) {
-    if fractal.hm_addr.is_none() {
-      panic!("HandlerMemory write called from a deeply nested Fractal");
-    }
     fractal.block[idx].1 = val;
-    self.write_fractal(fractal.hm_addr.unwrap(), fractal);
+    if fractal.hm_addr.is_some() {
+      self.write_fractal(fractal.hm_addr.unwrap(), fractal);
+    }
   }
 
   /// Stores a fixed value in a given address. Determines where to place it based on the kind of
