@@ -238,12 +238,6 @@ impl HandlerMemory {
     }
   }
 
-  /// Sets a pointer to an address from a FractalMemory
-  pub fn register_from_fractal(self: &mut HandlerMemory, addr: i64, fractal: &FractalMemory, idx: usize) {
-    let (a, b) = fractal.block[idx];
-    self.set_addr(addr, a, b as usize);
-  }
-
   /// Stores a nested fractal of data in a given address.
   pub fn write_fixed_in_fractal(self: &mut HandlerMemory, fractal: &mut FractalMemory, idx: usize, val: i64) {
     fractal.block[idx].1 = val;
@@ -293,28 +287,6 @@ impl HandlerMemory {
     self.mems.push(val.block);
   }
 
-  /// Pushes a pointer to an address into a fractal at a given address.
-  pub fn push_register(self: &mut HandlerMemory, addr: i64, other_addr: i64) {
-    let (a, b) = self.addr_to_idxs(other_addr);
-    // Special path for strings in global memory
-    if a == 0 {
-      let strmem = self.mems[0][b..].to_vec().clone();
-      let new_a = self.mems.len();
-      self.mems.push(strmem);
-      let mem = self.read_mut_fractal(addr);
-      mem.push((new_a, std::usize::MAX as i64));
-    } else {
-      let mem = self.read_mut_fractal(addr);
-      mem.push((a, b as i64));
-    }
-  }
-
-  /// Pushes a pointer to an address from a FractalMemory
-  pub fn push_register_from_fractal(self: &mut HandlerMemory, addr: i64, fractal: &FractalMemory, idx: usize) {
-    let mem = self.read_mut_fractal(addr);
-    mem.push(fractal.block[idx]);
-  }
-
   /// Pops a value off of the fractal. May be fixed data or a virtual pointer.
   pub fn pop(self: &mut HandlerMemory, addr: i64) -> Result<FractalMemory, String> {
     let mem = self.read_mut_fractal(addr);
@@ -335,7 +307,9 @@ impl HandlerMemory {
     }
   }
 
-  /// Creates an alias for data at one address in another address.
+  /* REGISTER MANIPULATION METHODS */
+
+  /// Creates a pointer from `orig_addr` to `addr`
   pub fn register(self: &mut HandlerMemory, addr: i64, orig_addr: i64, is_variable: bool) {
     let (a, b) = self.addr_to_idxs(orig_addr);
     if addr_type(orig_addr) == GMEM_ADDR && is_variable {
@@ -347,17 +321,32 @@ impl HandlerMemory {
     }
   }
 
-  /// Creates a pointer to a value stored in a fractal at the given address and offset and places
-  /// it in the address space.
+  /// Pushes a pointer from `orig_addr` address into the fractal at `addr`.
+  pub fn push_register(self: &mut HandlerMemory, addr: i64, orig_addr: i64) {
+    let (a, b) = self.addr_to_idxs(orig_addr);
+    // Special path for strings in global memory
+    if a == 0 {
+      let strmem = self.mems[0][b..].to_vec().clone();
+      let new_a = self.mems.len();
+      self.mems.push(strmem);
+      let mem = self.read_mut_fractal(addr);
+      mem.push((new_a, std::usize::MAX as i64));
+    } else {
+      let mem = self.read_mut_fractal(addr);
+      mem.push((a, b as i64));
+    }
+  }
+
+  /// Creates a pointer from `orig_addr` to index/offset `offset_addr` of fractal in `fractal_addr`
   pub fn register_in(self: &mut HandlerMemory, orig_addr: i64, fractal_addr: i64, offset_addr: i64) {
     let (a, b) = self.addr_to_idxs(orig_addr);
     let mem = self.read_mut_fractal(fractal_addr);
     mem[offset_addr as usize] = (a, b as i64);
   }
 
-  /// Creates a pointer to a value in the address space inside of a fractal at the given address
-  /// and offset. The inverse of `register_in`.
-  pub fn register_out(self: &mut HandlerMemory, fractal_addr: i64, offset_addr: i64, out_addr: i64) {
+  /// Creates a pointer from index/offset `offset_addr` of fractal in `fractal_addr` to `out_addr`
+  /// The inverse of `register_in`
+  pub fn register_out(self: &mut HandlerMemory, fractal_addr: i64, offset_addr: usize, out_addr: i64) {
     let (arr_a, _) = self.addr_to_idxs(fractal_addr);
     let mem = self.read_mut_fractal(fractal_addr);
     let (a, b) = mem[offset_addr as usize];
@@ -367,6 +356,21 @@ impl HandlerMemory {
       self.set_addr(out_addr, arr_a, offset_addr as usize);
     }
   }
+
+  /// Creates a pointer from index/offset `idx` in FractalMemory to `out_addr`
+  /// Used for deeply nested fractals in which case `register_out` can't be used
+  pub fn register_from_fractal(self: &mut HandlerMemory, out_addr: i64, fractal: &FractalMemory, idx: usize) {
+    let (a, b) = fractal.block[idx];
+    self.set_addr(out_addr, a, b as usize);
+  }
+
+  /// Pushes a pointer from index/offset `offset_addr` of FractalMemory to fractal at `out_addr`
+  pub fn push_register_out(self: &mut HandlerMemory, out_addr: i64, fractal: &FractalMemory, offset_addr: usize) {
+    let mem = self.read_mut_fractal(out_addr);
+    mem.push(fractal.block[offset_addr]);
+  }
+
+  /* DATA TRANSFER, FORKING AND DUPLICATION METHODS */
 
   /// Migrates data from one HandlerMemory at a given address to another HandlerMemory at another
   /// address. Used by many things.
