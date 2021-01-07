@@ -713,13 +713,13 @@ ${emitsAst.t} on line ${emitsAst.line}:${emitsAst.char}`)
           continue
         } else {
           throw new Error(`Attempting to reassign a non-let variable.
-${letName} on line ${assignmentsAst.line}:${assignmentsAst.char}`)
+${assignmentsAst.t} on line ${assignmentsAst.line}:${assignmentsAst.char}`)
         }
       }
     }
     if (!original) {
       throw new Error(`Attempting to reassign to an undeclared variable
-${letName} on line ${assignmentsAst.line}:${assignmentsAst.char}`)
+${assignmentsAst.t} on line ${assignmentsAst.line}:${assignmentsAst.char}`)
     }
     if (segments.length === 1) { // Could be a simple let variable
       const letName = segments[0].t

@@ -452,8 +452,8 @@ export class Type {
         if (fulltypename.has('opttypegenerics')) {
           const basename = fulltypename.get('typename').t
           const generics = []
-          generics.push(fulltypename.get('opttypegenerics').get('fulltypename').t)
-          fulltypename.get('opttypegenerics').get('cdr').getAll().forEach(r => {
+          generics.push(fulltypename.get('opttypegenerics').get('generics').get('fulltypename').t)
+          fulltypename.get('opttypegenerics').get('generics').get('cdr').getAll().forEach(r => {
             generics.push(r.get('fulltypename').t)
           })
           const baseType = scope.deepGet(basename) as Type
