@@ -32,14 +32,13 @@ fn addr_type(addr: i64) -> i8 {
 /// Memory representation of a fractal memory block within HandlerMemory
 #[derive(Clone, Debug)]
 pub struct FractalMemory {
-  // address in HandlerMemory if it is not a nested fractal
+  // address in HandlerMemory which is not present for actual data or deeply nested fractals
   hm_addr: Option<i64>,
   // a memory block from HandlerMemory.mems
   block: Vec<(usize, i64)>,
 }
 
 impl FractalMemory {
-  // Called to store actual data as opposed to fixed or nested data
   pub fn new(block: Vec<(usize, i64)>) -> FractalMemory {
     return FractalMemory {
       hm_addr: None,
@@ -47,11 +46,12 @@ impl FractalMemory {
     }
   }
 
+  /// Length of memory block
   pub fn len(self: &FractalMemory) -> usize {
     return self.block.len();
   }
 
-  // Compare the blocks at given index between two FractalMemory
+  /// Compare the blocks at a given index between two FractalMemory
   pub fn compare_at(self: &FractalMemory, idx: usize, other: &FractalMemory) -> bool {
     return self.block[idx] == other.block[idx];
   }
