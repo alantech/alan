@@ -372,7 +372,7 @@ ${objectLiteralsAst.t} on line ${objectLiteralsAst.line}:${objectLiteralsAst.cha
           const genericsAst = typeAst.get('opttypegenerics').get('generics')
           generics.push(genericsAst.get('fulltypename').t)
           genericsAst.get('cdr').getAll().forEach(r => {
-            generics.push(genericsAst.get('fulltypename').t)
+            generics.push(r.get('fulltypename').t)
           })
           outerType.solidify(generics, scope)
           type = scope.deepGet(typeAst.t.trim()) as Type
@@ -803,7 +803,7 @@ ${letName} on line ${assignmentsAst.line}:${assignmentsAst.char}`)
           const lastTypeAst = Ast.fulltypenameAstFromString(last.outputType.typename)
           const originalSubtypes = []
           if (originalTypeAst.has('opttypegenerics')) {
-            const originalTypeGenerics = originalTypeAst.get('opttypegenerics')
+            const originalTypeGenerics = originalTypeAst.get('opttypegenerics').get('generics')
             originalSubtypes.push(originalTypeGenerics.get('fulltypename').t);
             (originalTypeGenerics.get('cdr') as ZeroOrMore).zeroOrMore.forEach(r => {
               originalSubtypes.push(r.get('fulltypename').t)
@@ -811,7 +811,7 @@ ${letName} on line ${assignmentsAst.line}:${assignmentsAst.char}`)
           }
           const lastSubtypes = []
           if (lastTypeAst.has('opttypegenerics')) {
-            const lastTypeGenerics = lastTypeAst.get('opttypegenerics')
+            const lastTypeGenerics = lastTypeAst.get('opttypegenerics').get('generics')
             lastSubtypes.push(lastTypeGenerics.get('fulltypename').t);
             (lastTypeGenerics.get('cdr') as ZeroOrMore).zeroOrMore.forEach(r => {
               lastSubtypes.push(r.get('fulltypename').t)
@@ -958,14 +958,14 @@ ${letName} on line ${assignmentsAst.line}:${assignmentsAst.char}`)
     if (type === null && letTypeHint !== '') {
       // Try to define it if it's a generic type
       const letTypeAst = letdeclarationAst.get('typedec').get('fulltypename')
-      if (letTypeAst.get('opttypegenerics').has()) {
+      if (letTypeAst.has('opttypegenerics')) {
         const outerType = scope.deepGet(letTypeAst.get('typename').t) as Type
         if (outerType === null) {
           throw new Error(`${letTypeAst.get('typename').t}  is not defined
 ${letdeclarationAst.t} on line ${letdeclarationAst.line}:${letdeclarationAst.char}`)
         }
         const generics = []
-        const genericAst = letTypeAst.get('opttypegenerics').get().get('generics')
+        const genericAst = letTypeAst.get('opttypegenerics').get('generics')
         generics.push(genericAst.get('fulltypename').t)
         genericAst.get('cdr').getAll().forEach(r => {
           generics.push(r.get('fulltypename').t)
@@ -1013,14 +1013,14 @@ ${letdeclarationAst.t} on line ${letdeclarationAst.line}:${letdeclarationAst.cha
     if (type === null && constTypeHint !== '') {
       // Try to define it if it's a generic type
       const constTypeAst = constdeclarationAst.get('typedec').get('fulltypename')
-      if (constTypeAst.get('opttypegenerics').has()) {
+      if (constTypeAst.has('opttypegenerics')) {
         const outerType = scope.deepGet(constTypeAst.get('typename').t) as Type
         if (outerType === null) {
           throw new Error(`${constTypeAst.get('typename').t}  is not defined
 ${constdeclarationAst.t} on line ${constdeclarationAst.line}:${constdeclarationAst.char}`)
         }
         const generics = []
-        const genericAst = constTypeAst.get('opttypegenerics').get().get('generics')
+        const genericAst = constTypeAst.get('opttypegenerics').get('generics')
         generics.push(genericAst.get('fulltypename').t)
         genericAst.get('cdr').getAll().forEach(r => {
           generics.push(r.get('fulltypename').t)
