@@ -319,10 +319,7 @@ impl HandlerMemory {
   pub fn pop(self: &mut HandlerMemory, addr: i64) -> Result<FractalMemory, String> {
     let mem = self.read_mut_fractal(addr);
     if mem.len() > 0 {
-      return Ok(FractalMemory{
-        block: vec![mem.pop().unwrap()],
-        hm_addr: Some(addr),
-      });
+      return Ok(FractalMemory::new(vec![mem.pop().unwrap()]));
     } else {
       return Err("cannot pop empty array".to_string());
     }
@@ -332,10 +329,7 @@ impl HandlerMemory {
   pub fn delete(self: &mut HandlerMemory, addr: i64, idx: usize) -> Result<FractalMemory, String> {
     let mem = self.read_mut_fractal(addr);
     if mem.len() > 0 && mem.len() > idx {
-      return Ok(FractalMemory{
-        block: vec![mem.remove(idx)],
-        hm_addr: Some(addr),
-      });
+      return Ok(FractalMemory::new(vec![mem.remove(idx)]));
     } else {
       return Err(format!("cannot remove idx {} from array with length {}", idx, mem.len()));
     }
