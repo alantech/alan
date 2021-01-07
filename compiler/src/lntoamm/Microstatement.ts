@@ -233,21 +233,20 @@ class Microstatement {
       // calls are emitted to insert the relevant data into the array, and finally the array itself
       // is REREFed for the outer microstatement generation call.
       let arrayLiteralContents = []
-      const assignablelist = objectLiteralsAst.get('arrayliteral').has('arraybase') ?
-        objectLiteralsAst.get('arrayliteral').get('arraybase').get('assignablelist') :
-        objectLiteralsAst
-          .get('arrayliteral')
-          .get('fullarrayliteral')
-          .get('arraybase')
-          .get('assignablelist')
-      arrayLiteralContents.push(assignablelist.get('assignables'))
-      assignablelist.get('cdr').getAll().forEach(r => {
-        arrayLiteralContents.push(r.get('assignables'))
-      })
-      arrayLiteralContents = arrayLiteralContents.map(r => {
-        Microstatement.fromAssignablesAst(r, scope, microstatements)
-        return microstatements[microstatements.length - 1]
-      })
+      const arraybase = objectLiteralsAst.get('arrayliteral').has('arraybase') ?
+        objectLiteralsAst.get('arrayliteral').get('arraybase') :
+        objectLiteralsAst.get('arrayliteral').get('fullarrayliteral').get('arraybase')
+      if (arraybase.has('assignablelist')) {
+        const assignablelist = arraybase.get('assignablelist')
+        arrayLiteralContents.push(assignablelist.get('assignables'))
+        assignablelist.get('cdr').getAll().forEach(r => {
+          arrayLiteralContents.push(r.get('assignables'))
+        })
+        arrayLiteralContents = arrayLiteralContents.map(r => {
+          Microstatement.fromAssignablesAst(r, scope, microstatements)
+          return microstatements[microstatements.length - 1]
+        })
+      }
       let type = null
       if (objectLiteralsAst.get('arrayliteral').has('fullarrayliteral')) {
         const arrayTypeAst = objectLiteralsAst
