@@ -1645,7 +1645,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }
     None
   });
-  io!("each", |args, mut hand_mem| {
+  io!("each", |args, hand_mem| {
     Box::pin(async move {
       let fractal = hand_mem.read_fractal(args[0]);
       let subhandler = HandlerFragment::new(args[1], 0);
@@ -1672,7 +1672,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem
     })
   });
-  io!("find", |args, mut hand_mem| {
+  io!("find", |args, hand_mem| {
     Box::pin(async move {
       let fractal = hand_mem.read_fractal(args[0]);
       let len = fractal.len();
@@ -1685,7 +1685,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       }
       let hms = join_all(finders).await;
       for i in 0..len {
-        let mut hm = &hms[i];
+        let hm = &hms[i];
         let val = hm.read_fixed(CLOSURE_ARG_MEM_START);
         if val == 1 {
           hand_mem.init_fractal(args[2]);
@@ -1731,7 +1731,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         hm.register_from_fractal(CLOSURE_ARG_MEM_START + 1, &fractal, i);
         somers.push(subhandler.clone().run(hm));
       }
-      let mut hms = join_all(somers).await;
+      let hms = join_all(somers).await;
       for hm in hms {
         let val = hm.read_fixed(CLOSURE_ARG_MEM_START);
         if val == 1 {
@@ -2141,7 +2141,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     // TODO: Swap from a timing-based poll to getting the waker to the user code so it can be
     // woken only once and reduce pressure on this lock.
     let responses = Arc::clone(&HTTP_RESPONSES);
-    let mut response_hm = poll_fn(|cx: &mut Context<'_>| -> Poll<HandlerMemory> {
+    let response_hm = poll_fn(|cx: &mut Context<'_>| -> Poll<HandlerMemory> {
       let responses_hm = responses.lock().unwrap();
       let hm = responses_hm.get(&conn_id);
       if hm.is_some() {
