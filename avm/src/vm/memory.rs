@@ -43,14 +43,7 @@ impl FractalMemory {
   pub fn new(block: Vec<(usize, i64)>) -> FractalMemory {
     return FractalMemory {
       hm_addr: None,
-      block: block,
-    }
-  }
-
-  fn new_nested(self: &FractalMemory, block: Vec<(usize, i64)>) -> FractalMemory {
-    return FractalMemory {
-      hm_addr: None,
-      block: block,
+      block,
     }
   }
 
@@ -180,6 +173,28 @@ impl HandlerMemory {
     &mut self.mems[a]
   }
 
+  /// For a given address, determines if the data is a single value or an array of values, and
+  /// returns that value either as a vector or the singular value wrapped in a vector, and a
+  /// boolean indicating if it was a fractal value or not.
+  pub fn read_either(self: &HandlerMemory, addr: i64) -> (FractalMemory, bool) {
+    let (a, b) = self.addr_to_idxs(addr);
+    return if b < std::usize::MAX {
+      (
+        FractalMemory {
+          hm_addr: Some(addr),
+          block: vec![self.mems[a][b].clone()],
+        }, false
+      )
+    } else {
+      (
+        FractalMemory {
+          hm_addr: Some(addr),
+          block: self.mems[a].clone(),
+        }, true
+      )
+    }
+  }
+
   /// Simply sets a given address to an explicit set of `mems` indexes. Simplifies pointer creation
   /// to deeply-nested data.
   fn set_addr(self: &mut HandlerMemory, addr: i64, a: usize, b: usize) {
@@ -209,13 +224,13 @@ impl HandlerMemory {
     let b_usize = b as usize;
     return if a == std::usize::MAX {
       // The indexes are the actual data
-      (fractal.new_nested(vec![(a, b)]), false)
+      (FractalMemory::new(vec![(a, b)]), false)
     } else if b_usize < std::usize::MAX {
       // The indexes point to fixed data
-      (fractal.new_nested(vec![self.mems[a][b_usize].clone()]), false)
+      (FractalMemory::new(vec![self.mems[a][b_usize].clone()]), false)
     } else {
       // The indexes point at nested data
-      (fractal.new_nested(self.mems[a].clone()), true)
+      (FractalMemory::new(self.mems[a].clone()), true)
     }
   }
 
@@ -293,10 +308,8 @@ impl HandlerMemory {
 
   /// Pushes a pointer to an address from a FractalMemory
   pub fn push_register_from_fractal(self: &mut HandlerMemory, addr: i64, fractal: &FractalMemory, idx: usize) {
-    let (a, b) = fractal.block[idx];
     let mem = self.read_mut_fractal(addr);
-    // TODO check it exists before pushing
-    mem.push((a, b as i64));
+    mem.push(fractal.block[idx]);
   }
 
   /// Pops a value off of the fractal. May be fixed data or a virtual pointer.

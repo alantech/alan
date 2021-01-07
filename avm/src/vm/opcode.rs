@@ -2675,7 +2675,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         let val = hand_mem.read_fixed(args[1]);
         hand_mem.write_fixed(args[2], val);
       } else {
-        let (data, is_fractal) = hand_mem.read_from_fractal(&fractal, args[1] as usize);
+        let (data, is_fractal) = hand_mem.read_either(args[1]);
         if is_fractal {
           hand_mem.register(args[2], args[1], true);
         } else {
@@ -2719,7 +2719,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     if val == 1i64 {
       hand_mem.register_out(args[0], 1, args[2]);
     } else {
-      let (data, is_fractal) = hand_mem.read_from_fractal(&fractal, args[1] as usize);
+      let (data, is_fractal) = hand_mem.read_either(args[1]);
       if is_fractal {
         hand_mem.register(args[2], args[1], true);
       } else {
@@ -2755,7 +2755,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     if val == 0i64 {
       hand_mem.register_out(args[0], 1, args[2]);
     } else {
-      let (data, is_fractal) = hand_mem.read_from_fractal(&fractal, args[1] as usize);
+      let (data, is_fractal) = hand_mem.read_either(args[1]);
       if is_fractal {
         hand_mem.register(args[2], args[1], true);
       } else {
@@ -2819,7 +2819,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     if val == 1i64 {
       hand_mem.register_out(args[0], 1, args[2]);
     } else {
-      let (data, is_fractal) = hand_mem.read_from_fractal(&fractal, args[1] as usize);
+      let (data, is_fractal) = hand_mem.read_either(args[1]);
       if is_fractal {
         hand_mem.register(args[2], args[1], true);
       } else {
@@ -2834,7 +2834,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     if val == 0i64 {
       hand_mem.register_out(args[0], 1, args[2]);
     } else {
-      let (data, is_fractal) = hand_mem.read_from_fractal(&fractal, args[1] as usize);
+      let (data, is_fractal) = hand_mem.read_either(args[1]);
       if is_fractal {
         hand_mem.register(args[2], args[1], true);
       } else {
