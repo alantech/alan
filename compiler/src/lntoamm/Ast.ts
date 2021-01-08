@@ -29,6 +29,7 @@ export const fromString = (str: string) => {
 }
 
 export const fromFile = (filename: string) => {
+  console.error(`Parsing ${filename}`)
   const ast = fromString(fs.readFileSync(filename, { encoding: 'utf8', }))
   ast.filename = filename
   return ast
