@@ -46,17 +46,17 @@ class Operator {
           const argumentTypeListAst = Ast.fulltypenameAstFromString(argumentTypeList[j].typename)
           const argGenericTypes = []
           if (argListAst.has('opttypegenerics')) {
-            argGenericTypes.push(argListAst.get('opttypegenerics').get('fulltypename').t);
-            argListAst.get('opttypegenerics').get('cdr').getAll().map(r => {
+            argGenericTypes.push(argListAst.get('opttypegenerics').get('generics').get('fulltypename').t);
+            argListAst.get('opttypegenerics').get('generics').get('cdr').getAll().map(r => {
               argGenericTypes.push(r.get('fulltypename').t)
             })
           }
           const argumentGenericTypes = []
           if (argumentTypeListAst.has('opttypegenerics')) {
             argumentGenericTypes.push(
-              argumentTypeListAst.get('opttypegenerics').get('fulltypename').t
+              argumentTypeListAst.get('opttypegenerics').get('generics').get('fulltypename').t
             );
-            argumentTypeListAst.get('opttypegenerics').get('cdr').getAll().map(
+            argumentTypeListAst.get('opttypegenerics').get('generics').get('cdr').getAll().map(
               r => { argumentGenericTypes.push(r.get('fulltypename').t) }
             )
           }
