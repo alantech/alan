@@ -65,6 +65,13 @@ const assignableToJsText = (assignable: LPNode, indent: string) => {
     outText += assignable.get('variable').t
   } else if (assignable.has('value')) {
     outText += assignable.get('value').t
+    try {
+      const t = assignable.get('value').t
+      if (!/"/.test(t) && t !== 'true' && t !== 'false' && !/\./.test(t)) {
+        parseInt(assignable.get('value').t)
+        outText += 'n'
+      }
+    } catch (e) { }
   }
   return outText
 }

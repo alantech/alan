@@ -29,15 +29,9 @@ Describe "Hashing"
 6288867289231076425
 -1521185239552941064"
 
-    JSHASHOUTPUT="-1058942856030168400
--5016367128657348000
--1058942856030168400
-6288867289231076000
--1521185239552941000" # TODO: Rounding should disappear once we can use BigInt consistently in JS
-
     It "runs js"
       When run test_js
-      The output should eq "$JSHASHOUTPUT"
+      The output should eq "$TOHASHOUTPUT"
     End
 
     It "runs agc"

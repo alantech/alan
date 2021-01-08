@@ -2,7 +2,7 @@ grammar Ln;
 
 // Parser rules
 
-module : (blank* imports* (types | (constdeclaration EOS) | functions | operatormapping | events | handlers | interfaces | exports | blank+)+) | EOF;
+module : (blank* imports* (types | constdeclaration | functions | operatormapping | events | handlers | interfaces | exports | blank+)+) | EOF;
 
 blank : (WS | NEWLINE);
 
@@ -40,13 +40,13 @@ fullfunctionbody : functionbody | (EQUALS blank* assignables);
 
 functionbody : OPENBODY statements+ blank* CLOSEBODY;
 
-statements : blank* (declarations | exits | emits | conditionals | assignments | (assignables EOS));
+statements : blank* (declarations | exits | emits | assignments | (assignables EOS) | conditionals);
 
-declarations : (constdeclaration | letdeclaration) EOS;
+declarations : constdeclaration | letdeclaration;
 
-constdeclaration : CONST blank* VARNAME blank* (TYPESEP blank? fulltypename)? blank* EQUALS blank* assignables;
+constdeclaration : CONST blank* VARNAME blank* (TYPESEP blank? fulltypename)? blank* EQUALS blank* assignables EOS;
 
-letdeclaration : LET blank* VARNAME blank* (TYPESEP blank? fulltypename)? blank* EQUALS blank* assignables;
+letdeclaration : LET blank* VARNAME blank* (TYPESEP blank? fulltypename)? blank* EQUALS blank* assignables EOS;
 
 assignments : varn blank* EQUALS blank* assignables EOS;
 
@@ -118,7 +118,7 @@ rightarg : fulltypename;
 
 propertytypeline : VARNAME WS* TYPESEP WS* fulltypename;
 
-exports : EXPORT (WS | NEWLINE)+ (eventref | types | (constdeclaration EOS) | functions | operatormapping | events | interfaces);
+exports : EXPORT blank+ (eventref | types | constdeclaration | functions | operatormapping | events | interfaces);
 
 varlist : renameablevar (SEP renameablevar)*;
 

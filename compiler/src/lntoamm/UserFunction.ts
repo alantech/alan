@@ -12,7 +12,7 @@ import { LnParser, } from '../ln'
 class UserFunction implements Fn {
   name: string
   args: Args
-  returnType: Type
+  returnType: Type | any // For the ANTLR type
   scope: Scope
   statements: Array<Statement>
   pure: boolean
@@ -106,7 +106,37 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
         args[argName] = getArgType
       }
     }
+    let pure = true
+    let statements = []
+    const functionbody = functionAst.fullfunctionbody().functionbody()
+    if (functionbody !== null) {
+      const statementsAst = functionbody.statements()
+      for (const statementAst of statementsAst) {
+        let statement = Statement.create(statementAst, scope)
+        if (!statement.pure) pure = false
+        statements.push(statement)
+      }
+    } else {
+      const assignablesAst = functionAst.fullfunctionbody().assignables()
+      const statementAst = Ast.statementAstFromString(`return ${assignablesAst.getText()};\n`)
+      const statement = Statement.create(statementAst, scope)
+      if (!statement.pure) pure = false
+      statements.push(statement)
+    }
+    return new UserFunction(name, args, functionAst, scope, statements, pure)
+  }
+
+  getName() {
+    return this.name
+  }
+  getArguments() {
+    return this.args
+  }
+  generateReturnType() {
+    const functionAst = this.returnType // Abusing that field to lazily load the return type
     let returnType = null
+    let scope = this.scope
+    let args = this.args
     if (functionAst.fulltypename() !== null) {
       let getReturnType = scope.deepGet(functionAst.fulltypename().getText())
       if (getReturnType == null || !(getReturnType instanceof Type)) {
@@ -129,23 +159,11 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
       }
       returnType = getReturnType
     }
-    let pure = true
-    let statements = []
     const functionbody = functionAst.fullfunctionbody().functionbody()
     if (functionbody !== null) {
-      const statementsAst = functionbody.statements()
-      for (const statementAst of statementsAst) {
-        let statement = Statement.create(statementAst, scope)
-        if (!statement.pure) pure = false
-        statements.push(statement)
-      }
       if (returnType === null) returnType = Type.builtinTypes['void']
     } else {
       const assignablesAst = functionAst.fullfunctionbody().assignables()
-      const statementAst = Ast.statementAstFromString(`return ${assignablesAst.getText()};\n`)
-      const statement = Statement.create(statementAst, scope)
-      if (!statement.pure) pure = false
-      statements.push(statement)
       if (!returnType && Object.keys(args).every(arg => args[arg].typename !== 'function')) {
         // We're going to use the Microstatement logic here
         const microstatements = []
@@ -184,16 +202,12 @@ ${statements[i].statementAst.getText().trim()} on line ${statements[i].statement
         returnType = opcode ? opcode[0].getReturnType() : Type.builtinTypes['void']
       }
     }
-    return new UserFunction(name, args, returnType, scope, statements, pure)
-  }
-
-  getName() {
-    return this.name
-  }
-  getArguments() {
-    return this.args
+    return returnType
   }
   getReturnType() {
+    if (!(this.returnType instanceof Type)) {
+      this.returnType = this.generateReturnType()
+    }
     return this.returnType
   }
   isPure() {

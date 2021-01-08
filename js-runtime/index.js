@@ -9,6 +9,15 @@ const exec = util.promisify ? util.promisify(require('child_process').exec) : ()
 
 const e = new EventEmitter()
 
+const INT8MAX = 2 ** 7 - 1
+const INT8MIN = -(2 ** 7)
+const INT16MAX = 2 ** 15 - 1
+const INT16MIN = -(2 ** 15)
+const INT32MAX = 2 ** 31 - 1
+const INT32MIN = -(2 ** 31)
+const INT64MAX = 2n ** 63n - 1n
+const INT64MIN = -(2n ** 31n)
+
 // Hashing opcodes (hashv is recursive, needs to be defined outside of the export object)
 const hashcore = (hasher, a) => {
   // TODO: We have to turn these values into ArrayBuffers of the right type. There's currently an
@@ -25,6 +34,9 @@ const hashcore = (hasher, a) => {
       const view = new Float64Array(buffer)
       view.set([a], 0)
     }
+  } else if (typeof a === 'bigint') {
+    const view = new BigInt64Array(buffer)
+    view.set([a], 0)
   } else if (typeof a === 'string') {
     // If it's a string, we treat it like an array of 64-bit integers with a prefixed 64-bit length
     // to match the behavior of the Rust runtime
@@ -50,7 +62,7 @@ const hashcore = (hasher, a) => {
   }
   return hasher
 }
-const hashf = a => Number(BigInt.asIntN(64, hashcore(xxh.h64().init(0xfa57), a).digest()))
+const hashf = a => BigInt.asIntN(64, hashcore(xxh.h64().init(0xfa57), a).digest())
 const hashv = arr => {
   // The Rust runtime considers strings a variable type, but they are more like a fixed type for JS
   if (typeof arr === 'string') return hashf(arr)
@@ -66,7 +78,19 @@ const hashv = arr => {
       }
     }
   }
-  return Number(BigInt.asIntN(64, hasher.digest())) // TODO: Move all i64 to BigInt?
+  return BigInt.asIntN(64, hasher.digest())
+}
+
+const copyarr = a => {
+  try {
+    return JSON.parse(JSON.stringify(a))
+  } catch (e) {
+    if (typeof a[0] === 'bigint') {
+      return a.map(v => BigInt(v))
+    } else {
+      return a.map(v => copyarr(v))
+    }
+  }
 }
 
 // Not very OOP, but since the HTTP server is a singleton right now, store open connections here
@@ -80,7 +104,7 @@ module.exports = {
   i8f64:    a => a,
   i16f64:   a => a,
   i32f64:   a => a,
-  i64f64:   a => a,
+  i64f64:   a => parseFloat(a.toString()),
   f32f64:   a => a,
   strf64:   a => parseFloat(a),
   boolf64:  a => a ? 1.0 : 0.0,
@@ -88,30 +112,30 @@ module.exports = {
   i8f32:    a => a,
   i16f32:   a => a,
   i32f32:   a => a,
-  i64f32:   a => a,
+  i64f32:   a => parseFloat(a.toString()),
   f64f32:   a => a,
   strf32:   a => parseFloat(a),
   boolf32:  a => a ? 1.0 : 0.0,
 
-  i8i64:    a => a,
-  i16i64:   a => a,
-  i32i64:   a => a,
-  f32i64:   a => Math.floor(a),
-  f64i64:   a => Math.floor(a),
-  stri64:   a => parseInt(a), // intentionally allowing other bases here
-  booli64:  a => a ? 1 : 0,
+  i8i64:    a => BigInt(a),
+  i16i64:   a => BigInt(a),
+  i32i64:   a => BigInt(a),
+  f32i64:   a => BigInt(Math.floor(a)),
+  f64i64:   a => BigInt(Math.floor(a)),
+  stri64:   a => BigInt(parseInt(a)), // intentionally allowing other bases here
+  booli64:  a => a ? 1n : 0n,
 
   i8i32:    a => a,
   i16i32:   a => a,
-  i64i32:   a => a,
+  i64i32:   a => Number(BigInt.asIntN(32, a)),
   f32i32:   a => Math.floor(a),
   f64i32:   a => Math.floor(a),
   stri32:   a => parseInt(a),
-  booli64:  a => a ? 1 : 0,
+  booli32:  a => a ? 1 : 0,
 
   i8i16:    a => a,
   i32i16:   a => a,
-  i64i16:   a => a,
+  i64i16:   a => Number(BigInt.asIntN(16, a)),
   f32i16:   a => Math.floor(a),
   f64i16:   a => Math.floor(a),
   stri16:   a => parseInt(a),
@@ -119,7 +143,7 @@ module.exports = {
 
   i16i8:    a => a,
   i32i8:    a => a,
-  i64i8:    a => a,
+  i64i8:    a => Number(BigInt.asIntN(8, a)),
   f32i8:    a => Math.floor(a),
   f64i8:    a => Math.floor(a),
   stri8:    a => parseInt(a),
@@ -128,7 +152,7 @@ module.exports = {
   i8bool:   a => a !== 0,
   i16bool:  a => a !== 0,
   i32bool:  a => a !== 0,
-  i64bool:  a => a !== 0,
+  i64bool:  a => a !== 0n,
   f32bool:  a => a !== 0.0,
   f64bool:  a => a !== 0.0,
   strbool:  a => a === "true",
@@ -142,59 +166,317 @@ module.exports = {
   boolstr:  a => a.toString(),
 
   // Arithmetic opcodes
-  addi8:   (a, b) => a + b,
-  addi16:  (a, b) => a + b,
-  addi32:  (a, b) => a + b,
-  addi64:  (a, b) => a + b,
-  addf32:  (a, b) => a + b,
-  addf64:  (a, b) => a + b,
+  addi8:   (ra, rb) => {
+    if (!ra[0]) return ra
+    if (!rb[0]) return rb
+    const a = ra[1]
+    const b = rb[1]
+    if (a > 0 && b > 0 && a > INT8MAX - b) return [0, 'overflow']
+    if (a < 0 && b < 0 && a < INT8MIN - b) return [0, 'underflow']
+    return [1, a + b]
+  },
+  addi16:  (ra, rb) => {
+    if (!ra[0]) return ra
+    if (!rb[0]) return rb
+    const a = ra[1]
+    const b = rb[1]
+    if (a > 0 && b > 0 && a > INT16MAX - b) return [0, 'overflow']
+    if (a < 0 && b < 0 && a < INT16MIN - b) return [0, 'underflow']
+    return [1, a + b]
+  },
+  addi32:  (ra, rb) => {
+    if (!ra[0]) return ra
+    if (!rb[0]) return rb
+    const a = ra[1]
+    const b = rb[1]
+    if (a > 0 && b > 0 && a > INT32MAX - b) return [0, 'overflow']
+    if (a < 0 && b < 0 && a < INT32MIN - b) return [0, 'underflow']
+    return [1, a + b]
+  },
+  addi64:  (ra, rb) => {
+    if (!ra[0]) return ra
+    if (!rb[0]) return rb
+    const a = ra[1]
+    const b = rb[1]
+    if (a > 0n && b > 0n && a > INT64MAX - b) return [0, 'overflow']
+    if (a < 0n && b < 0n && a < INT64MIN - b) return [0, 'underflow']
+    return [1, a + b]
+  },
+  addf32:  (ra, rb) => {
+    if (!ra[0]) return ra
+    if (!rb[0]) return rb
+    const a = ra[1]
+    const b = rb[1]
+    const out = a + b
+    if (out === Number.POSITIVE_INFINITY) return [0, 'overflow']
+    if (out === Number.NEGATIVE_INFINITY) return [0, 'underflow']
+    return [1, out]
+  },
+  addf64:  (ra, rb) => {
+    if (!ra[0]) return ra
+    if (!rb[0]) return rb
+    const a = ra[1]
+    const b = rb[1]
+    const out = a + b
+    if (out === Number.POSITIVE_INFINITY) return [0, 'overflow']
+    if (out === Number.NEGATIVE_INFINITY) return [0, 'underflow']
+    return [1, out]
+  },
 
-  subi8:   (a, b) => a - b,
-  subi16:  (a, b) => a - b,
-  subi32:  (a, b) => a - b,
-  subi64:  (a, b) => a - b,
-  subf32:  (a, b) => a - b,
-  subf64:  (a, b) => a - b,
+  subi8:   (ra, rb) => {
+    if (!ra[0]) return ra
+    if (!rb[0]) return rb
+    const a = ra[1]
+    const b = rb[1]
+    if (a > 0 && b < 0 && a > INT8MAX + b) return [0, 'overflow']
+    if (a < 0 && b > 0 && a < INT8MIN + b) return [0, 'underflow']
+    return [1, a - b]
+  },
+  subi16:  (ra, rb) => {
+    if (!ra[0]) return ra
+    if (!rb[0]) return rb
+    const a = ra[1]
+    const b = rb[1]
+    if (a > 0 && b < 0 && a > INT16MAX + b) return [0, 'overflow']
+    if (a < 0 && b > 0 && a < INT16MIN + b) return [0, 'underflow']
+    return [1, a - b]
+  },
+  subi32:  (ra, rb) => {
+    if (!ra[0]) return ra
+    if (!rb[0]) return rb
+    const a = ra[1]
+    const b = rb[1]
+    if (a > 0 && b < 0 && a > INT32MAX + b) return [0, 'overflow']
+    if (a < 0 && b > 0 && a < INT32MIN + b) return [0, 'underflow']
+    return [1, a - b]
+  },
+  subi64:  (ra, rb) => {
+    if (!ra[0]) return ra
+    if (!rb[0]) return rb
+    const a = ra[1]
+    const b = rb[1]
+    if (a > 0n && b < 0n && a > INT32MAX + b) return [0, 'overflow']
+    if (a < 0n && b > 0n && a < INT32MIN + b) return [0, 'underflow']
+    return [1, a - b]
+  },
+  subf32:  (ra, rb) => {
+    if (!ra[0]) return ra
+    if (!rb[0]) return rb
+    const a = ra[1]
+    const b = rb[1]
+    const out = a - b
+    if (out === Number.POSITIVE_INFINITY) return [0, 'overflow']
+    if (out === Number.NEGATIVE_INFINITY) return [0, 'underflow']
+    return [1, out]
+  },
+  subf64:  (ra, rb) => {
+    if (!ra[0]) return ra
+    if (!rb[0]) return rb
+    const a = ra[1]
+    const b = rb[1]
+    const out = a - b
+    if (out === Number.POSITIVE_INFINITY) return [0, 'overflow']
+    if (out === Number.NEGATIVE_INFINITY) return [0, 'underflow']
+    return [1, out]
+  },
 
   negi8:    a => 0 - a,
   negi16:   a => 0 - a,
   negi32:   a => 0 - a,
-  negi64:   a => 0 - a,
+  negi64:   a => 0n - a,
   negf32:   a => 0.0 - a,
   negf64:   a => 0.0 - a,
 
   absi8:    a => Math.abs(a),
   absi16:   a => Math.abs(a),
   absi32:   a => Math.abs(a),
-  absi64:   a => Math.abs(a),
+  absi64:   a => a > 0n ? a : -a,
   absf32:   a => Math.abs(a),
   absf64:   a => Math.abs(a),
 
-  muli8:   (a, b) => a * b,
-  muli16:  (a, b) => a * b,
-  muli32:  (a, b) => a * b,
-  muli64:  (a, b) => a * b,
-  mulf32:  (a, b) => a * b,
-  mulf64:  (a, b) => a * b,
+  muli8:   (ra, rb) => {
+    if (!ra[0]) return ra
+    if (!rb[0]) return rb
+    const a = ra[1]
+    const b = rb[1]
+    if (a > 0 && b > 0 && a > INT8MAX / b) return [0, 'overflow']
+    if (a < 0 && b < 0 && a < INT8MIN / b) return [0, 'underflow']
+    return [1, a * b]
+  },
+  muli16:  (ra, rb) => {
+    if (!ra[0]) return ra
+    if (!rb[0]) return rb
+    const a = ra[1]
+    const b = rb[1]
+    if (a > 0 && b > 0 && a > INT16MAX / b) return [0, 'overflow']
+    if (a < 0 && b < 0 && a < INT16MIN / b) return [0, 'underflow']
+    return [1, a * b]
+  },
+  muli32:  (ra, rb) => {
+    if (!ra[0]) return ra
+    if (!rb[0]) return rb
+    const a = ra[1]
+    const b = rb[1]
+    if (a > 0 && b > 0 && a > INT32MAX / b) return [0, 'overflow']
+    if (a < 0 && b < 0 && a < INT32MIN / b) return [0, 'underflow']
+    return [1, a * b]
+  },
+  muli64:  (ra, rb) => {
+    if (!ra[0]) return ra
+    if (!rb[0]) return rb
+    const a = ra[1]
+    const b = rb[1]
+    if (a > 0n && b > 0n && a > INT64MAX / b) return [0, 'overflow']
+    if (a < 0n && b < 0n && a < INT64MIN / b) return [0, 'underflow']
+    return [1, a * b]
+  },
+  mulf32:  (ra, rb) => {
+    if (!ra[0]) return ra
+    if (!rb[0]) return rb
+    const a = ra[1]
+    const b = rb[1]
+    const out = a * b
+    if (out === Number.POSITIVE_INFINITY) return [0, 'overflow']
+    if (out === Number.NEGATIVE_INFINITY) return [0, 'underflow']
+    return [1, out]
+  },
+  mulf64:  (ra, rb) => {
+    if (!ra[0]) return ra
+    if (!rb[0]) return rb
+    const a = ra[1]
+    const b = rb[1]
+    const out = a * b
+    if (out === Number.POSITIVE_INFINITY) return [0, 'overflow']
+    if (out === Number.NEGATIVE_INFINITY) return [0, 'underflow']
+    return [1, out]
+  },
 
-  divi8:   (a, b) => Math.floor(a / b),
-  divi16:  (a, b) => Math.floor(a / b),
-  divi32:  (a, b) => Math.floor(a / b),
-  divi64:  (a, b) => Math.floor(a / b),
-  divf32:  (a, b) => a / b,
-  divf64:  (a, b) => a / b,
+  divi8:   (ra, rb) => {
+    if (!ra[0]) return ra
+    if (!rb[0]) return rb
+    const a = ra[1]
+    const b = rb[1]
+    if (b === 0) return [0, 'divide-by-zero']
+    return [1, Math.floor(a / b)]
+  },
+  divi16:  (ra, rb) => {
+    if (!ra[0]) return ra
+    if (!rb[0]) return rb
+    const a = ra[1]
+    const b = rb[1]
+    if (b === 0) return [0, 'divide-by-zero']
+    return [1, Math.floor(a / b)]
+  },
+  divi32:  (ra, rb) => {
+    if (!ra[0]) return ra
+    if (!rb[0]) return rb
+    const a = ra[1]
+    const b = rb[1]
+    if (b === 0) return [0, 'divide-by-zero']
+    return [1, Math.floor(a / b)]
+  },
+  divi64:  (ra, rb) => {
+    if (!ra[0]) return ra
+    if (!rb[0]) return rb
+    const a = ra[1]
+    const b = rb[1]
+    if (b === 0n) return [0, 'divide-by-zero']
+    return [1, a / b]
+  },
+  divf32:  (ra, rb) => {
+    if (!ra[0]) return ra
+    if (!rb[0]) return rb
+    const a = ra[1]
+    const b = rb[1]
+    if (b === 0.0) return [0, 'divide-by-zero']
+    const out = a / b
+    if (out === Number.POSITIVE_INFINITY) return [0, 'overflow']
+    if (out === Number.NEGATIVE_INFINITY) return [0, 'underflow']
+    return [1, out]
+  },
+  divf64:  (ra, rb) => {
+    if (!ra[0]) return ra
+    if (!rb[0]) return rb
+    const a = ra[1]
+    const b = rb[1]
+    if (b === 0.0) return [0, 'divide-by-zero']
+    const out = a / b
+    if (out === Number.POSITIVE_INFINITY) return [0, 'overflow']
+    if (out === Number.NEGATIVE_INFINITY) return [0, 'underflow']
+    return [1, out]
+  },
 
   modi8:   (a, b) => a % b,
   modi16:  (a, b) => a % b,
   modi32:  (a, b) => a % b,
   modi64:  (a, b) => a % b,
 
-  powi8:   (a, b) => Math.floor(a ** b), // If 'b' is negative, it would produce a fraction
-  powi16:  (a, b) => Math.floor(a ** b),
-  powi32:  (a, b) => Math.floor(a ** b),
-  powi64:  (a, b) => Math.floor(a ** b),
-  powf32:  (a, b) => a ** b,
-  powf64:  (a, b) => a ** b,
+  powi8:   (ra, rb) => {
+    if (!ra[0]) return ra
+    if (!rb[0]) return rb
+    const a = ra[1]
+    const b = rb[1]
+    if (a > 0 && b > 1 && a > INT8MAX ** (1 / b)) return [0, 'overflow']
+    if (a < 0 && b > 1 && a < INT8MIN ** (1 / b)) return [0, 'underflow']
+    return [1, Math.floor(a ** b)]
+  },
+  powi16:  (ra, rb) => {
+    if (!ra[0]) return ra
+    if (!rb[0]) return rb
+    const a = ra[1]
+    const b = rb[1]
+    if (a > 0 && b > 1 && a > INT16MAX ** (1 / b)) return [0, 'overflow']
+    if (a < 0 && b > 1 && a < INT16MIN ** (1 / b)) return [0, 'underflow']
+    return [1, Math.floor(a ** b)]
+  },
+  powi32:  (ra, rb) => {
+    if (!ra[0]) return ra
+    if (!rb[0]) return rb
+    const a = ra[1]
+    const b = rb[1]
+    if (a > 0 && b > 1 && a > INT32MAX ** (1 / b)) return [0, 'overflow']
+    if (a < 0 && b > 1 && a < INT32MIN ** (1 / b)) return [0, 'underflow']
+    return [1, Math.floor(a ** b)]
+  },
+  powi64:  (ra, rb) => {
+    if (!ra[0]) return ra
+    if (!rb[0]) return rb
+    const a = ra[1]
+    const b = rb[1]
+    if (a > 0 && b > 1n) {
+      const af = parseFloat(a.toString())
+      const bf = parseFloat(b.toString())
+      const maxf = parseFloat(INT64MAX.toString())
+      if (af > maxf ** (1 / bf)) return [0, 'overflow']
+    }
+    if (a < 0n && b > 1n) {
+      const af = parseFloat(a.toString())
+      const bf = parseFloat(b.toString())
+      const minf = parseFloat(INT64MIN.toString())
+      if (af < minf ** (1 / bf)) return [0, 'underflow']
+    }
+    return [1, a ** b]
+  },
+  powf32:  (ra, rb) => {
+    if (!ra[0]) return ra
+    if (!rb[0]) return rb
+    const a = ra[1]
+    const b = rb[1]
+    const out = a ** b
+    if (out === Number.POSITIVE_INFINITY) return [0, 'overflow']
+    if (out === Number.NEGATIVE_INFINITY) return [0, 'underflow']
+    return [1, out]
+  },
+  powf64:  (ra, rb) => {
+    if (!ra[0]) return ra
+    if (!rb[0]) return rb
+    const a = ra[1]
+    const b = rb[1]
+    const out = a ** b
+    if (out === Number.POSITIVE_INFINITY) return [0, 'overflow']
+    if (out === Number.NEGATIVE_INFINITY) return [0, 'underflow']
+    return [1, out]
+  },
 
   sqrtf32:  a => Math.sqrt(a),
   sqrtf64:  a => Math.sqrt(a),
@@ -296,14 +578,14 @@ module.exports = {
   // String opcodes
   catstr:  (a, b) => a.concat(b),
   split:   (a, b) => a.split(b),
-  repstr:  (a, b) => new Array(b).fill(a).join(''),
+  repstr:  (a, b) => new Array(parseInt(b.toString())).fill(a).join(''),
   // TODO: templ, after maps are figured out
   matches: (a, b) => RegExp(b).test(a),
   indstr:  (a, b) => {
     const ind = a.indexOf(b)
     return ind > -1 ? [ true, ind, ] : [ false, 'substring not found', ]
   },
-  lenstr:   a => a.length,
+  lenstr:   a => BigInt(a.length),
   trim:     a => a.trim(),
   copyfrom:(arr, ind) => JSON.parse(JSON.stringify(arr[ind])),
   copytof: (arr, ind, val) => { arr[ind] = val }, // These do the same thing in JS
@@ -314,7 +596,7 @@ module.exports = {
   newarr:   size => new Array(), // Ignored because JS push doesn't behave as desired
   pusharr: (arr, val, size) => arr.push(val),
   poparr:   arr => arr.length > 0 ? [ true, arr.pop(), ] : [ false, 'cannot pop empty array', ],
-  lenarr:   arr => arr.length,
+  lenarr:   arr => BigInt(arr.length),
   indarrf: (arr, val) => {
     const ind = arr.indexOf(val)
     return ind > -1 ? [ true, ind, ] : [ false, 'element not found', ]
@@ -324,8 +606,8 @@ module.exports = {
     return ind > -1 ? [ true, ind, ] : [ false, 'element not found', ]
   },
   delindx: (arr, idx) => {
-    const spliced = arr.splice(idx, 1)
-    if (spliced.length === 1 && idx >= 0) {
+    const spliced = arr.splice(parseInt(idx.toString()), 1)
+    if (spliced.length === 1 && parseInt(idx.toString()) >= 0) {
       return [ true, spliced[0] ]
     } else {
       return [ false, `cannot remove idx ${idx} from array with length ${arr.length}` ]
@@ -334,7 +616,11 @@ module.exports = {
   join:    (arr, sep) => arr.join(sep),
   map:     async (arr, fn) => await Promise.all(arr.map(fn)),
   mapl:    async (arr, fn) => await Promise.all(arr.map(fn)),
-  reparr:  (arr, n) => Array.from(new Array(n * arr.length)).map((_, i) => JSON.parse(JSON.stringify(arr[i % arr.length]))),
+  reparr:  (arr, n) => Array.from(new Array(parseInt(n.toString()) * arr.length))
+    .map((_, i) => typeof arr[i % arr.length] === 'bigint' ?
+      BigInt(arr[i % arr.length]) :
+      JSON.parse(JSON.stringify(arr[i % arr.length]))
+    ),
   each:    async (arr, fn) => {
     await Promise.all(arr.map(fn)) // Thrown away but awaited to maintain consistent execution
   },
@@ -471,14 +757,17 @@ module.exports = {
   copyi8:   a => JSON.parse(JSON.stringify(a)),
   copyi16:  a => JSON.parse(JSON.stringify(a)),
   copyi32:  a => JSON.parse(JSON.stringify(a)),
-  copyi64:  a => JSON.parse(JSON.stringify(a)),
+  copyi64:  a => BigInt(a),
   copyvoid: a => JSON.parse(JSON.stringify(a)),
   copyf32:  a => JSON.parse(JSON.stringify(a)),
   copyf64:  a => JSON.parse(JSON.stringify(a)),
   copybool: a => JSON.parse(JSON.stringify(a)),
   copystr:  a => JSON.parse(JSON.stringify(a)),
   // Actually the recommended deep clone mechanism: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/assign#Deep_Clone
-  copyarr:  a => JSON.parse(JSON.stringify(a)),
+  // Doesn't work with BigInt :(
+  // copyarr:  a => JSON.parse(JSON.stringify(a)),
+  // Implementation is now recursive with a try-catch wrapper, so not great for perf
+  copyarr,
   zeroed:  () => null,
 
   // Trig opcodes
@@ -530,13 +819,21 @@ module.exports = {
     }
   },
   getErr:  (a, b) => a[0] ? b : a[1],
-  resfrom: (arr, ind) => ind >= 0 && ind < arr.length ? [
-    true,
-    arr[ind],
-  ] : [
-    false,
-    'out-of-bounds access',
-  ],
+  resfrom: (arr, rind) => {
+    if (!rind[0]) return rind
+    const ind = rind[1]
+    if (ind >= 0 && ind < arr.length) {
+      return [
+        true,
+        arr[ind],
+      ]
+    } else {
+      return [
+        false,
+        'out-of-bounds access',
+      ]
+    }
+  },
   mainE:    a => [
     true,
     a,
@@ -647,7 +944,7 @@ module.exports = {
   },
   httplsn:  async (port) => {
     const server = http.createServer((req, res) => {
-      const connId = hashf(Math.random().toString())
+      const connId = Number(hashf(Math.random().toString()))
       httpConns[connId] = {
         req,
         res,
@@ -668,7 +965,7 @@ module.exports = {
     return await new Promise(resolve => {
       server.on('error', e => resolve([ false, e.code, ]))
       server.listen({
-        port,
+        port: parseInt(port.toString()),
       }, () => resolve([ true, 'ok', ]))
     })
   },
@@ -680,14 +977,14 @@ module.exports = {
     return new Promise(resolve => {
       conn.res.on('close', () => resolve([ false, 'client hangup', ]))
       conn.res
-        .writeHead(status, headers.reduce((acc, kv) => {
+        .writeHead(Number(status), headers.reduce((acc, kv) => {
           acc[kv[0]] = kv[1]
           return acc
         }, {}))
         .end(body, () => resolve([ true, 'ok', ]))
     })
   },
-  waitop:   async (a) => await new Promise(resolve => setTimeout(resolve, a)),
+  waitop:   async (a) => await new Promise(resolve => setTimeout(resolve, Number(a))),
   execop:   async (cmd) => {
     try {
       const res = await exec(cmd)
@@ -701,7 +998,7 @@ module.exports = {
   // "Special" opcodes
   stdoutp:  out => process.stdout.write(out),
   stderrp:  err => process.stderr.write(err),
-  exitop:   code => process.exit(code),
+  exitop:   code => process.exit(parseInt(code.toString())),
 
   // Event bookkeeping
   emit:    (name, payload) => e.emit(name, payload),

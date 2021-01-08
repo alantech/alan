@@ -83,7 +83,7 @@ error: sequence out-of-bounds"
           let s = seq(100);
           let sum = 0;
           s.while(fn = sum < 10, fn {
-            sum = sum + 1;
+            sum = sum + 1 || 0;
           });
           print(sum);
           emit exit 0;
@@ -121,7 +121,7 @@ error: sequence out-of-bounds"
           let sum = 0;
           // TODO: Get automatic type inference working on anonymous multi-line functions
           s.doWhile(fn (): bool {
-            sum = sum + 1;
+            sum = sum + 1 || 0;
             return sum < 10;
           });
           print(sum);
@@ -160,15 +160,16 @@ error: sequence out-of-bounds"
             if i < 2 {
               return ok(1);
             } else {
-              const prev = self.recurse(i - 1);
-              const prevPrev = self.recurse(i - 2);
+              const prev = self.recurse(i - 1 || 0);
+              const prevPrev = self.recurse(i - 2 || 0);
               if prev.isErr() {
                 return prev;
               }
               if prevPrev.isErr() {
                 return prevPrev;
               }
-              return ok((prev || 1) + (prevPrev || 1));
+              // TODO: Get type inference inside of recurse working so we don't need to unwrap these
+              return (prev || 0) + (prevPrev || 0);
             }
           }, 8));
           emit exit 0;
@@ -258,11 +259,12 @@ error: sequence out-of-bounds"
         import @std/app
         from @std/seq import seq, Self, recurse
 
-        fn triangularRec(x: int) : int = seq(x + 1).recurse(fn (self: Self, x: int) : Result<int> {
+        fn triangularRec(x: int) : int = seq(x + 1 || 0).recurse(fn (self: Self, x: int) : Result<int> {
           if x == 0 {
             return ok(x);
           } else {
-            return ok(x + (self.recurse(x - 1) || 0));
+            // TODO: Get type inference inside of recurse working so we don't need to unwrap these
+            return x + (self.recurse(x - 1 || 0) || 0);
           }
         }, x) || 0
 

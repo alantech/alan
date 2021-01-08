@@ -113,7 +113,7 @@ bar, baz"
           print(myTree.getChildren().map(fn (c: Node<string>): string = c || 'wrong').join(', '));
           print(myTree.length());
 
-          myTree.reduce(fn (acc: int, i: Node<string>): int = (i || 'wrong').length() + acc, 0).print();
+          myTree.reduce(fn (acc: int, i: Node<string>): int = (i || 'wrong').length() + acc || 0, 0).print();
           emit exit 0;
         }
       "

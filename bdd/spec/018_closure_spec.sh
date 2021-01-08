@@ -9,7 +9,7 @@ Describe "Closure Functions"
         fn closure(): function {
           let num = 0;
           return fn (): int64 {
-            num = num + 1;
+            num = num + 1 || 0;
             return num;
           };
         }
@@ -51,7 +51,7 @@ Describe "Closure Functions"
       sourceToAll "
         from @std/app import start, print, exit
 
-        fn double(x: int64): int64 = x * 2
+        fn double(x: int64): int64 = x * 2 || 0;
 
         on start {
           const numbers = [1, 2, 3, 4, 5];
