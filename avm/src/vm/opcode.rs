@@ -442,31 +442,27 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
 
   // Arithmetic opcodes
   cpu!("addi8", |args, hand_mem| {
-    let rra = hand_mem.read_mut_fractal(args[0]);
-    let ra = rra.clone();
-    drop(rra);
-    let rrb = hand_mem.read_mut_fractal(args[1]);
-    let rb = rrb.clone();
-    drop(rrb);
-    if ra[0].1 == 0 {
+    let ra = hand_mem.read_fractal(args[0]);
+    let rb = hand_mem.read_fractal(args[1]);
+    if ra.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &ra);
       return None
     }
-    if rb[0].1 == 0 {
+    if rb.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &rb);
       return None
     }
-    let a = ra[1].1 as i8;
-    let b = rb[1].1 as i8;
-    hand_mem.write_fractal(args[2], &Vec::new());
+    let a = ra.read_fixed(1) as i8;
+    let b = rb.read_fixed(1) as i8;
+    hand_mem.init_fractal(args[2]);
     if a > 0 && b > 0 && a > std::i8::MAX - b {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("overflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"));
       return None
     }
     if a < 0 && b < 0 && a < std::i8::MIN - b {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("underflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("underflow"));
       return None
     }
     hand_mem.push_fixed(args[2], 1);
@@ -474,31 +470,27 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("addi16", |args, hand_mem| {
-    let rra = hand_mem.read_mut_fractal(args[0]);
-    let ra = rra.clone();
-    drop(rra);
-    let rrb = hand_mem.read_mut_fractal(args[1]);
-    let rb = rrb.clone();
-    drop(rrb);
-    if ra[0].1 == 0 {
+    let ra = hand_mem.read_fractal(args[0]);
+    let rb = hand_mem.read_fractal(args[1]);
+    if ra.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &ra);
       return None
     }
-    if rb[0].1 == 0 {
+    if rb.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &rb);
       return None
     }
-    let a = ra[1].1 as i16;
-    let b = rb[1].1 as i16;
-    hand_mem.write_fractal(args[2], &Vec::new());
+    let a = ra.read_fixed(1) as i16;
+    let b = rb.read_fixed(1) as i16;
+    hand_mem.init_fractal(args[2]);
     if a > 0 && b > 0 && a > std::i16::MAX - b {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("overflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"));
       return None
     }
     if a < 0 && b < 0 && a < std::i16::MIN - b {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("underflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("underflow"));
       return None
     }
     hand_mem.push_fixed(args[2], 1);
@@ -506,31 +498,27 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("addi32", |args, hand_mem| {
-    let rra = hand_mem.read_mut_fractal(args[0]);
-    let ra = rra.clone();
-    drop(rra);
-    let rrb = hand_mem.read_mut_fractal(args[1]);
-    let rb = rrb.clone();
-    drop(rrb);
-    if ra[0].1 == 0 {
+    let ra = hand_mem.read_fractal(args[0]);
+    let rb = hand_mem.read_fractal(args[1]);
+    if ra.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &ra);
       return None
     }
-    if rb[0].1 == 0 {
+    if rb.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &rb);
       return None
     }
-    let a = ra[1].1 as i32;
-    let b = rb[1].1 as i32;
-    hand_mem.write_fractal(args[2], &Vec::new());
+    let a = ra.read_fixed(1) as i32;
+    let b = rb.read_fixed(1) as i32;
+    hand_mem.init_fractal(args[2]);
     if a > 0 && b > 0 && a > std::i32::MAX - b {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("overflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"));
       return None
     }
     if a < 0 && b < 0 && a < std::i32::MIN - b {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("underflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("underflow"));
       return None
     }
     hand_mem.push_fixed(args[2], 1);
@@ -538,31 +526,27 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("addi64", |args, hand_mem| {
-    let rra = hand_mem.read_mut_fractal(args[0]);
-    let ra = rra.clone();
-    drop(rra);
-    let rrb = hand_mem.read_mut_fractal(args[1]);
-    let rb = rrb.clone();
-    drop(rrb);
-    if ra[0].1 == 0 {
+    let ra = hand_mem.read_fractal(args[0]);
+    let rb = hand_mem.read_fractal(args[1]);
+    if ra.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &ra);
       return None
     }
-    if rb[0].1 == 0 {
+    if rb.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &rb);
       return None
     }
-    let a = ra[1].1 as i64;
-    let b = rb[1].1 as i64;
-    hand_mem.write_fractal(args[2], &Vec::new());
+    let a = ra.read_fixed(1) as i64;
+    let b = rb.read_fixed(1) as i64;
+    hand_mem.init_fractal(args[2]);
     if a > 0 && b > 0 && a > std::i64::MAX - b {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("overflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"));
       return None
     }
     if a < 0 && b < 0 && a < std::i64::MIN - b {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("underflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("underflow"));
       return None
     }
     hand_mem.push_fixed(args[2], 1);
@@ -570,32 +554,28 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("addf32", |args, hand_mem| {
-    let rra = hand_mem.read_mut_fractal(args[0]);
-    let ra = rra.clone();
-    drop(rra);
-    let rrb = hand_mem.read_mut_fractal(args[1]);
-    let rb = rrb.clone();
-    drop(rrb);
-    if ra[0].1 == 0 {
+    let ra = hand_mem.read_fractal(args[0]);
+    let rb = hand_mem.read_fractal(args[1]);
+    if ra.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &ra);
       return None
     }
-    if rb[0].1 == 0 {
+    if rb.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &rb);
       return None
     }
-    let a = f32::from_ne_bytes((ra[1].1 as i32).to_ne_bytes());
-    let b = f32::from_ne_bytes((rb[1].1 as i32).to_ne_bytes());
+    let a = f32::from_ne_bytes((ra.read_fixed(1) as i32).to_ne_bytes());
+    let b = f32::from_ne_bytes((rb.read_fixed(1) as i32).to_ne_bytes());
     let out = a + b;
-    hand_mem.write_fractal(args[2], &Vec::new());
+    hand_mem.init_fractal(args[2]);
     if out == std::f32::INFINITY {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("overflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"));
       return None
     }
     if out == std::f32::NEG_INFINITY {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("underflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("underflow"));
       return None
     }
     let num = i32::from_ne_bytes(out.to_ne_bytes()) as i64;
@@ -604,32 +584,28 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("addf64", |args, hand_mem| {
-    let rra = hand_mem.read_mut_fractal(args[0]);
-    let ra = rra.clone();
-    drop(rra);
-    let rrb = hand_mem.read_mut_fractal(args[1]);
-    let rb = rrb.clone();
-    drop(rrb);
-    if ra[0].1 == 0 {
+    let ra = hand_mem.read_fractal(args[0]);
+    let rb = hand_mem.read_fractal(args[1]);
+    if ra.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &ra);
       return None
     }
-    if rb[0].1 == 0 {
+    if rb.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &rb);
       return None
     }
-    let a = f64::from_ne_bytes(ra[1].1.to_ne_bytes());
-    let b = f64::from_ne_bytes(rb[1].1.to_ne_bytes());
+    let a = f64::from_ne_bytes(ra.read_fixed(1).to_ne_bytes());
+    let b = f64::from_ne_bytes(rb.read_fixed(1).to_ne_bytes());
     let out = a + b;
-    hand_mem.write_fractal(args[2], &Vec::new());
+    hand_mem.init_fractal(args[2]);
     if out == std::f64::INFINITY {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("overflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"));
       return None
     }
     if out == std::f64::NEG_INFINITY {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("underflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("underflow"));
       return None
     }
     let num = i64::from_ne_bytes(out.to_ne_bytes());
@@ -639,31 +615,27 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
 
   cpu!("subi8", |args, hand_mem| {
-    let rra = hand_mem.read_mut_fractal(args[0]);
-    let ra = rra.clone();
-    drop(rra);
-    let rrb = hand_mem.read_mut_fractal(args[1]);
-    let rb = rrb.clone();
-    drop(rrb);
-    if ra[0].1 == 0 {
+    let ra = hand_mem.read_fractal(args[0]);
+    let rb = hand_mem.read_fractal(args[1]);
+    if ra.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &ra);
       return None
     }
-    if rb[0].1 == 0 {
+    if rb.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &rb);
       return None
     }
-    let a = ra[1].1 as i8;
-    let b = rb[1].1 as i8;
-    hand_mem.write_fractal(args[2], &Vec::new());
+    let a = ra.read_fixed(1) as i8;
+    let b = rb.read_fixed(1) as i8;
+    hand_mem.init_fractal(args[2]);
     if a > 0 && b < 0 && a > std::i8::MAX + b {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("overflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"));
       return None
     }
     if a < 0 && b > 0 && a < std::i8::MIN + b {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("underflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("underflow"));
       return None
     }
     hand_mem.push_fixed(args[2], 1);
@@ -671,31 +643,27 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("subi16", |args, hand_mem| {
-    let rra = hand_mem.read_mut_fractal(args[0]);
-    let ra = rra.clone();
-    drop(rra);
-    let rrb = hand_mem.read_mut_fractal(args[1]);
-    let rb = rrb.clone();
-    drop(rrb);
-    if ra[0].1 == 0 {
+    let ra = hand_mem.read_fractal(args[0]);
+    let rb = hand_mem.read_fractal(args[1]);
+    if ra.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &ra);
       return None
     }
-    if rb[0].1 == 0 {
+    if rb.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &rb);
       return None
     }
-    let a = ra[1].1 as i16;
-    let b = rb[1].1 as i16;
-    hand_mem.write_fractal(args[2], &Vec::new());
+    let a = ra.read_fixed(1) as i16;
+    let b = rb.read_fixed(1) as i16;
+    hand_mem.init_fractal(args[2]);
     if a > 0 && b < 0 && a > std::i16::MAX + b {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("overflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"));
       return None
     }
     if a < 0 && b > 0 && a < std::i16::MIN + b {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("underflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("underflow"));
       return None
     }
     hand_mem.push_fixed(args[2], 1);
@@ -703,31 +671,27 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("subi32", |args, hand_mem| {
-    let rra = hand_mem.read_mut_fractal(args[0]);
-    let ra = rra.clone();
-    drop(rra);
-    let rrb = hand_mem.read_mut_fractal(args[1]);
-    let rb = rrb.clone();
-    drop(rrb);
-    if ra[0].1 == 0 {
+    let ra = hand_mem.read_fractal(args[0]);
+    let rb = hand_mem.read_fractal(args[1]);
+    if ra.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &ra);
       return None
     }
-    if rb[0].1 == 0 {
+    if rb.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &rb);
       return None
     }
-    let a = ra[1].1 as i32;
-    let b = rb[1].1 as i32;
-    hand_mem.write_fractal(args[2], &Vec::new());
+    let a = ra.read_fixed(1) as i32;
+    let b = rb.read_fixed(1) as i32;
+    hand_mem.init_fractal(args[2]);
     if a > 0 && b < 0 && a > std::i32::MAX + b {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("overflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"));
       return None
     }
     if a < 0 && b > 0 && a < std::i32::MIN + b {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("underflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("underflow"));
       return None
     }
     hand_mem.push_fixed(args[2], 1);
@@ -735,31 +699,27 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("subi64", |args, hand_mem| {
-    let rra = hand_mem.read_mut_fractal(args[0]);
-    let ra = rra.clone();
-    drop(rra);
-    let rrb = hand_mem.read_mut_fractal(args[1]);
-    let rb = rrb.clone();
-    drop(rrb);
-    if ra[0].1 == 0 {
+    let ra = hand_mem.read_fractal(args[0]);
+    let rb = hand_mem.read_fractal(args[1]);
+    if ra.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &ra);
       return None
     }
-    if rb[0].1 == 0 {
+    if rb.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &rb);
       return None
     }
-    let a = ra[1].1 as i64;
-    let b = rb[1].1 as i64;
-    hand_mem.write_fractal(args[2], &Vec::new());
+    let a = ra.read_fixed(1) as i64;
+    let b = rb.read_fixed(1) as i64;
+    hand_mem.init_fractal(args[2]);
     if a > 0 && b < 0 && a > std::i64::MAX + b {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("overflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"));
       return None
     }
     if a < 0 && b > 0 && a < std::i64::MIN + b {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("underflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("underflow"));
       return None
     }
     hand_mem.push_fixed(args[2], 1);
@@ -767,32 +727,28 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("subf32", |args, hand_mem| {
-    let rra = hand_mem.read_mut_fractal(args[0]);
-    let ra = rra.clone();
-    drop(rra);
-    let rrb = hand_mem.read_mut_fractal(args[1]);
-    let rb = rrb.clone();
-    drop(rrb);
-    if ra[0].1 == 0 {
+    let ra = hand_mem.read_fractal(args[0]);
+    let rb = hand_mem.read_fractal(args[1]);
+    if ra.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &ra);
       return None
     }
-    if rb[0].1 == 0 {
+    if rb.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &rb);
       return None
     }
-    let a = f32::from_ne_bytes((ra[1].1 as i32).to_ne_bytes());
-    let b = f32::from_ne_bytes((rb[1].1 as i32).to_ne_bytes());
+    let a = f32::from_ne_bytes((ra.read_fixed(1) as i32).to_ne_bytes());
+    let b = f32::from_ne_bytes((rb.read_fixed(1) as i32).to_ne_bytes());
     let out = a - b;
-    hand_mem.write_fractal(args[2], &Vec::new());
+    hand_mem.init_fractal(args[2]);
     if out == std::f32::INFINITY {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("overflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"));
       return None
     }
     if out == std::f32::NEG_INFINITY {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("underflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("underflow"));
       return None
     }
     let num = i32::from_ne_bytes(out.to_ne_bytes()) as i64;
@@ -801,32 +757,28 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("subf64", |args, hand_mem| {
-    let rra = hand_mem.read_mut_fractal(args[0]);
-    let ra = rra.clone();
-    drop(rra);
-    let rrb = hand_mem.read_mut_fractal(args[1]);
-    let rb = rrb.clone();
-    drop(rrb);
-    if ra[0].1 == 0 {
+    let ra = hand_mem.read_fractal(args[0]);
+    let rb = hand_mem.read_fractal(args[1]);
+    if ra.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &ra);
       return None
     }
-    if rb[0].1 == 0 {
+    if rb.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &rb);
       return None
     }
-    let a = f64::from_ne_bytes(ra[1].1.to_ne_bytes());
-    let b = f64::from_ne_bytes(rb[1].1.to_ne_bytes());
+    let a = f64::from_ne_bytes(ra.read_fixed(1).to_ne_bytes());
+    let b = f64::from_ne_bytes(rb.read_fixed(1).to_ne_bytes());
     let out = a - b;
-    hand_mem.write_fractal(args[2], &Vec::new());
+    hand_mem.init_fractal(args[2]);
     if out == std::f64::INFINITY {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("overflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"));
       return None
     }
     if out == std::f64::NEG_INFINITY {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("underflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("underflow"));
       return None
     }
     let num = i64::from_ne_bytes(out.to_ne_bytes());
@@ -910,31 +862,27 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
 
   cpu!("muli8", |args, hand_mem| {
-    let rra = hand_mem.read_mut_fractal(args[0]);
-    let ra = rra.clone();
-    drop(rra);
-    let rrb = hand_mem.read_mut_fractal(args[1]);
-    let rb = rrb.clone();
-    drop(rrb);
-    if ra[0].1 == 0 {
+    let ra = hand_mem.read_fractal(args[0]);
+    let rb = hand_mem.read_fractal(args[1]);
+    if ra.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &ra);
       return None
     }
-    if rb[0].1 == 0 {
+    if rb.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &rb);
       return None
     }
-    let a = ra[1].1 as i8;
-    let b = rb[1].1 as i8;
-    hand_mem.write_fractal(args[2], &Vec::new());
+    let a = ra.read_fixed(1) as i8;
+    let b = rb.read_fixed(1) as i8;
+    hand_mem.init_fractal(args[2]);
     if a > 0 && b > 0 && (a as f64) > (std::i8::MAX as f64) / (b as f64) {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("overflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"));
       return None
     }
     if a < 0 && b < 0 && (a as f64) < (std::i8::MIN as f64) / (b as f64) {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("underflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("underflow"));
       return None
     }
     hand_mem.push_fixed(args[2], 1);
@@ -942,31 +890,27 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("muli16", |args, hand_mem| {
-    let rra = hand_mem.read_mut_fractal(args[0]);
-    let ra = rra.clone();
-    drop(rra);
-    let rrb = hand_mem.read_mut_fractal(args[1]);
-    let rb = rrb.clone();
-    drop(rrb);
-    if ra[0].1 == 0 {
+    let ra = hand_mem.read_fractal(args[0]);
+    let rb = hand_mem.read_fractal(args[1]);
+    if ra.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &ra);
       return None
     }
-    if rb[0].1 == 0 {
+    if rb.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &rb);
       return None
     }
-    let a = ra[1].1 as i16;
-    let b = rb[1].1 as i16;
-    hand_mem.write_fractal(args[2], &Vec::new());
+    let a = ra.read_fixed(1) as i16;
+    let b = rb.read_fixed(1) as i16;
+    hand_mem.init_fractal(args[2]);
     if a > 0 && b > 0 && (a as f64) > (std::i16::MAX as f64) / (b as f64) {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("overflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"));
       return None
     }
     if a < 0 && b < 0 && (a as f64) < (std::i16::MIN as f64) / (b as f64) {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("underflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("underflow"));
       return None
     }
     hand_mem.push_fixed(args[2], 1);
@@ -974,31 +918,27 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("muli32", |args, hand_mem| {
-    let rra = hand_mem.read_mut_fractal(args[0]);
-    let ra = rra.clone();
-    drop(rra);
-    let rrb = hand_mem.read_mut_fractal(args[1]);
-    let rb = rrb.clone();
-    drop(rrb);
-    if ra[0].1 == 0 {
+    let ra = hand_mem.read_fractal(args[0]);
+    let rb = hand_mem.read_fractal(args[1]);
+    if ra.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &ra);
       return None
     }
-    if rb[0].1 == 0 {
+    if rb.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &rb);
       return None
     }
-    let a = ra[1].1 as i32;
-    let b = rb[1].1 as i32;
-    hand_mem.write_fractal(args[2], &Vec::new());
+    let a = ra.read_fixed(1) as i32;
+    let b = rb.read_fixed(1) as i32;
+    hand_mem.init_fractal(args[2]);
     if a > 0 && b > 0 && (a as f64) > (std::i32::MAX as f64) / (b as f64) {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("overflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"));
       return None
     }
     if a < 0 && b < 0 && (a as f64) < (std::i32::MIN as f64) / (b as f64) {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("underflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("underflow"));
       return None
     }
     hand_mem.push_fixed(args[2], 1);
@@ -1006,31 +946,27 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("muli64", |args, hand_mem| {
-    let rra = hand_mem.read_mut_fractal(args[0]);
-    let ra = rra.clone();
-    drop(rra);
-    let rrb = hand_mem.read_mut_fractal(args[1]);
-    let rb = rrb.clone();
-    drop(rrb);
-    if ra[0].1 == 0 {
+    let ra = hand_mem.read_fractal(args[0]);
+    let rb = hand_mem.read_fractal(args[1]);
+    if ra.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &ra);
       return None
     }
-    if rb[0].1 == 0 {
+    if rb.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &rb);
       return None
     }
-    let a = ra[1].1 as i64;
-    let b = rb[1].1 as i64;
-    hand_mem.write_fractal(args[2], &Vec::new());
+    let a = ra.read_fixed(1) as i64;
+    let b = rb.read_fixed(1) as i64;
+    hand_mem.init_fractal(args[2]);
     if a > 0 && b > 0 && (a as f64) > (std::i64::MAX as f64) / (b as f64) {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("overflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"));
       return None
     }
     if a < 0 && b < 0 && (a as f64) < (std::i64::MIN as f64) / (b as f64) {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("underflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("underflow"));
       return None
     }
     hand_mem.push_fixed(args[2], 1);
@@ -1038,32 +974,28 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("mulf32", |args, hand_mem| {
-    let rra = hand_mem.read_mut_fractal(args[0]);
-    let ra = rra.clone();
-    drop(rra);
-    let rrb = hand_mem.read_mut_fractal(args[1]);
-    let rb = rrb.clone();
-    drop(rrb);
-    if ra[0].1 == 0 {
+    let ra = hand_mem.read_fractal(args[0]);
+    let rb = hand_mem.read_fractal(args[1]);
+    if ra.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &ra);
       return None
     }
-    if rb[0].1 == 0 {
+    if rb.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &rb);
       return None
     }
-    let a = f32::from_ne_bytes((ra[1].1 as i32).to_ne_bytes());
-    let b = f32::from_ne_bytes((rb[1].1 as i32).to_ne_bytes());
+    let a = f32::from_ne_bytes((ra.read_fixed(1) as i32).to_ne_bytes());
+    let b = f32::from_ne_bytes((rb.read_fixed(1) as i32).to_ne_bytes());
     let out = a * b;
-    hand_mem.write_fractal(args[2], &Vec::new());
+    hand_mem.init_fractal(args[2]);
     if out == std::f32::INFINITY {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("overflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"));
       return None
     }
     if out == std::f32::NEG_INFINITY {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("underflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("underflow"));
       return None
     }
     let num = i32::from_ne_bytes(out.to_ne_bytes()) as i64;
@@ -1072,32 +1004,28 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("mulf64", |args, hand_mem| {
-    let rra = hand_mem.read_mut_fractal(args[0]);
-    let ra = rra.clone();
-    drop(rra);
-    let rrb = hand_mem.read_mut_fractal(args[1]);
-    let rb = rrb.clone();
-    drop(rrb);
-    if ra[0].1 == 0 {
+    let ra = hand_mem.read_fractal(args[0]);
+    let rb = hand_mem.read_fractal(args[1]);
+    if ra.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &ra);
       return None
     }
-    if rb[0].1 == 0 {
+    if rb.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &rb);
       return None
     }
-    let a = f64::from_ne_bytes(ra[1].1.to_ne_bytes());
-    let b = f64::from_ne_bytes(rb[1].1.to_ne_bytes());
+    let a = f64::from_ne_bytes(ra.read_fixed(1).to_ne_bytes());
+    let b = f64::from_ne_bytes(rb.read_fixed(1).to_ne_bytes());
     let out = a * b;
-    hand_mem.write_fractal(args[2], &Vec::new());
+    hand_mem.init_fractal(args[2]);
     if out == std::f64::INFINITY {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("overflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"));
       return None
     }
     if out == std::f64::NEG_INFINITY {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("underflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("underflow"));
       return None
     }
     let num = i64::from_ne_bytes(out.to_ne_bytes());
@@ -1107,26 +1035,22 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
 
   cpu!("divi8", |args, hand_mem| {
-    let rra = hand_mem.read_mut_fractal(args[0]);
-    let ra = rra.clone();
-    drop(rra);
-    let rrb = hand_mem.read_mut_fractal(args[1]);
-    let rb = rrb.clone();
-    drop(rrb);
-    if ra[0].1 == 0 {
+    let ra = hand_mem.read_fractal(args[0]);
+    let rb = hand_mem.read_fractal(args[1]);
+    if ra.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &ra);
       return None
     }
-    if rb[0].1 == 0 {
+    if rb.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &rb);
       return None
     }
-    let a = ra[1].1 as i8;
-    let b = rb[1].1 as i8;
-    hand_mem.write_fractal(args[2], &Vec::new());
+    let a = ra.read_fixed(1) as i8;
+    let b = rb.read_fixed(1) as i8;
+    hand_mem.init_fractal(args[2]);
     if b == 0 {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("divide-by-zero"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("divide-by-zero"));
       return None
     }
     hand_mem.push_fixed(args[2], 1);
@@ -1134,26 +1058,22 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("divi16", |args, hand_mem| {
-    let rra = hand_mem.read_mut_fractal(args[0]);
-    let ra = rra.clone();
-    drop(rra);
-    let rrb = hand_mem.read_mut_fractal(args[1]);
-    let rb = rrb.clone();
-    drop(rrb);
-    if ra[0].1 == 0 {
+    let ra = hand_mem.read_fractal(args[0]);
+    let rb = hand_mem.read_fractal(args[1]);
+    if ra.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &ra);
       return None
     }
-    if rb[0].1 == 0 {
+    if rb.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &rb);
       return None
     }
-    let a = ra[1].1 as i16;
-    let b = rb[1].1 as i16;
-    hand_mem.write_fractal(args[2], &Vec::new());
+    let a = ra.read_fixed(1) as i16;
+    let b = rb.read_fixed(1) as i16;
+    hand_mem.init_fractal(args[2]);
     if b == 0 {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("divide-by-zero"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("divide-by-zero"));
       return None
     }
     hand_mem.push_fixed(args[2], 1);
@@ -1161,26 +1081,22 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("divi32", |args, hand_mem| {
-    let rra = hand_mem.read_mut_fractal(args[0]);
-    let ra = rra.clone();
-    drop(rra);
-    let rrb = hand_mem.read_mut_fractal(args[1]);
-    let rb = rrb.clone();
-    drop(rrb);
-    if ra[0].1 == 0 {
+    let ra = hand_mem.read_fractal(args[0]);
+    let rb = hand_mem.read_fractal(args[1]);
+    if ra.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &ra);
       return None
     }
-    if rb[0].1 == 0 {
+    if rb.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &rb);
       return None
     }
-    let a = ra[1].1 as i32;
-    let b = rb[1].1 as i32;
-    hand_mem.write_fractal(args[2], &Vec::new());
+    let a = ra.read_fixed(1) as i32;
+    let b = rb.read_fixed(1) as i32;
+    hand_mem.init_fractal(args[2]);
     if b == 0 {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("divide-by-zero"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("divide-by-zero"));
       return None
     }
     hand_mem.push_fixed(args[2], 1);
@@ -1188,26 +1104,22 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("divi64", |args, hand_mem| {
-    let rra = hand_mem.read_mut_fractal(args[0]);
-    let ra = rra.clone();
-    drop(rra);
-    let rrb = hand_mem.read_mut_fractal(args[1]);
-    let rb = rrb.clone();
-    drop(rrb);
-    if ra[0].1 == 0 {
+    let ra = hand_mem.read_fractal(args[0]);
+    let rb = hand_mem.read_fractal(args[1]);
+    if ra.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &ra);
       return None
     }
-    if rb[0].1 == 0 {
+    if rb.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &rb);
       return None
     }
-    let a = ra[1].1 as i64;
-    let b = rb[1].1 as i64;
-    hand_mem.write_fractal(args[2], &Vec::new());
+    let a = ra.read_fixed(1) as i64;
+    let b = rb.read_fixed(1) as i64;
+    hand_mem.init_fractal(args[2]);
     if b == 0 {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("divide-by-zero"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("divide-by-zero"));
       return None
     }
     hand_mem.push_fixed(args[2], 1);
@@ -1215,37 +1127,33 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("divf32", |args, hand_mem| {
-    let rra = hand_mem.read_mut_fractal(args[0]);
-    let ra = rra.clone();
-    drop(rra);
-    let rrb = hand_mem.read_mut_fractal(args[1]);
-    let rb = rrb.clone();
-    drop(rrb);
-    if ra[0].1 == 0 {
+    let ra = hand_mem.read_fractal(args[0]);
+    let rb = hand_mem.read_fractal(args[1]);
+    if ra.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &ra);
       return None
     }
-    if rb[0].1 == 0 {
+    if rb.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &rb);
       return None
     }
-    let a = f32::from_ne_bytes((ra[1].1 as i32).to_ne_bytes());
-    let b = f32::from_ne_bytes((rb[1].1 as i32).to_ne_bytes());
-    hand_mem.write_fractal(args[2], &Vec::new());
+    let a = f32::from_ne_bytes((ra.read_fixed(1) as i32).to_ne_bytes());
+    let b = f32::from_ne_bytes((rb.read_fixed(1) as i32).to_ne_bytes());
+    hand_mem.init_fractal(args[2]);
     if b == 0.0 {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("divide-by-zero"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("divide-by-zero"));
       return None
     }
     let out = a / b;
     if out == std::f32::INFINITY {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("overflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"));
       return None
     }
     if out == std::f32::NEG_INFINITY {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("underflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("underflow"));
       return None
     }
     let num = i32::from_ne_bytes(out.to_ne_bytes()) as i64;
@@ -1254,37 +1162,33 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("divf64", |args, hand_mem| {
-    let rra = hand_mem.read_mut_fractal(args[0]);
-    let ra = rra.clone();
-    drop(rra);
-    let rrb = hand_mem.read_mut_fractal(args[1]);
-    let rb = rrb.clone();
-    drop(rrb);
-    if ra[0].1 == 0 {
+    let ra = hand_mem.read_fractal(args[0]);
+    let rb = hand_mem.read_fractal(args[1]);
+    if ra.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &ra);
       return None
     }
-    if rb[0].1 == 0 {
+    if rb.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &rb);
       return None
     }
-    let a = f64::from_ne_bytes(ra[1].1.to_ne_bytes());
-    let b = f64::from_ne_bytes(rb[1].1.to_ne_bytes());
-    hand_mem.write_fractal(args[2], &Vec::new());
+    let a = f64::from_ne_bytes(ra.read_fixed(1).to_ne_bytes());
+    let b = f64::from_ne_bytes(rb.read_fixed(1).to_ne_bytes());
+    hand_mem.init_fractal(args[2]);
     if b == 0.0 {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("divide-by-zero"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("divide-by-zero"));
       return None
     }
     let out = a / b;
     if out == std::f64::INFINITY {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("overflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"));
       return None
     }
     if out == std::f64::NEG_INFINITY {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("underflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("underflow"));
       return None
     }
     let num = i64::from_ne_bytes(out.to_ne_bytes());
@@ -1323,31 +1227,27 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
 
   cpu!("powi8", |args, hand_mem| {
-    let rra = hand_mem.read_mut_fractal(args[0]);
-    let ra = rra.clone();
-    drop(rra);
-    let rrb = hand_mem.read_mut_fractal(args[1]);
-    let rb = rrb.clone();
-    drop(rrb);
-    if ra[0].1 == 0 {
+    let ra = hand_mem.read_fractal(args[0]);
+    let rb = hand_mem.read_fractal(args[1]);
+    if ra.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &ra);
       return None
     }
-    if rb[0].1 == 0 {
+    if rb.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &rb);
       return None
     }
-    let a = ra[1].1 as i8;
-    let b = rb[1].1 as i8;
-    hand_mem.write_fractal(args[2], &Vec::new());
+    let a = ra.read_fixed(1) as i8;
+    let b = rb.read_fixed(1) as i8;
+    hand_mem.init_fractal(args[2]);
     if a > 0 && b > 1 && (a as f64) > f64::powf(std::i8::MAX as f64, 1.0 / (b as f64)) {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("overflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"));
       return None
     }
     if a < 0 && b > 1 && (a as f64) < f64::powf(std::i8::MIN as f64, 1.0 / (b as f64)) {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("underflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("underflow"));
       return None
     }
     hand_mem.push_fixed(args[2], 1);
@@ -1356,31 +1256,27 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("powi16", |args, hand_mem| {
-    let rra = hand_mem.read_mut_fractal(args[0]);
-    let ra = rra.clone();
-    drop(rra);
-    let rrb = hand_mem.read_mut_fractal(args[1]);
-    let rb = rrb.clone();
-    drop(rrb);
-    if ra[0].1 == 0 {
+    let ra = hand_mem.read_fractal(args[0]);
+    let rb = hand_mem.read_fractal(args[1]);
+    if ra.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &ra);
       return None
     }
-    if rb[0].1 == 0 {
+    if rb.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &rb);
       return None
     }
-    let a = ra[1].1 as i16;
-    let b = rb[1].1 as i16;
-    hand_mem.write_fractal(args[2], &Vec::new());
+    let a = ra.read_fixed(1) as i16;
+    let b = rb.read_fixed(1) as i16;
+    hand_mem.init_fractal(args[2]);
     if a > 0 && b > 1 && (a as f64) > f64::powf(std::i16::MAX as f64, 1.0 / (b as f64)) {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("overflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"));
       return None
     }
     if a < 0 && b > 1 && (a as f64) < f64::powf(std::i16::MIN as f64, 1.0 / (b as f64)) {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("underflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("underflow"));
       return None
     }
     hand_mem.push_fixed(args[2], 1);
@@ -1389,31 +1285,27 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("powi32", |args, hand_mem| {
-    let rra = hand_mem.read_mut_fractal(args[0]);
-    let ra = rra.clone();
-    drop(rra);
-    let rrb = hand_mem.read_mut_fractal(args[1]);
-    let rb = rrb.clone();
-    drop(rrb);
-    if ra[0].1 == 0 {
+    let ra = hand_mem.read_fractal(args[0]);
+    let rb = hand_mem.read_fractal(args[1]);
+    if ra.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &ra);
       return None
     }
-    if rb[0].1 == 0 {
+    if rb.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &rb);
       return None
     }
-    let a = ra[1].1 as i32;
-    let b = rb[1].1 as i32;
-    hand_mem.write_fractal(args[2], &Vec::new());
+    let a = ra.read_fixed(1) as i32;
+    let b = rb.read_fixed(1) as i32;
+    hand_mem.init_fractal(args[2]);
     if a > 0 && b > 1 && (a as f64) > f64::powf(std::i32::MAX as f64, 1.0 / (b as f64)) {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("overflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"));
       return None
     }
     if a < 0 && b > 1 && (a as f64) < f64::powf(std::i32::MIN as f64, 1.0 / (b as f64)) {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("underflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("underflow"));
       return None
     }
     hand_mem.push_fixed(args[2], 1);
@@ -1422,31 +1314,27 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("powi64", |args, hand_mem| {
-    let rra = hand_mem.read_mut_fractal(args[0]);
-    let ra = rra.clone();
-    drop(rra);
-    let rrb = hand_mem.read_mut_fractal(args[1]);
-    let rb = rrb.clone();
-    drop(rrb);
-    if ra[0].1 == 0 {
+    let ra = hand_mem.read_fractal(args[0]);
+    let rb = hand_mem.read_fractal(args[1]);
+    if ra.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &ra);
       return None
     }
-    if rb[0].1 == 0 {
+    if rb.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &rb);
       return None
     }
-    let a = ra[1].1 as i64;
-    let b = rb[1].1 as i64;
-    hand_mem.write_fractal(args[2], &Vec::new());
+    let a = ra.read_fixed(1) as i64;
+    let b = rb.read_fixed(1) as i64;
+    hand_mem.init_fractal(args[2]);
     if a > 0 && b > 1 && (a as f64) > f64::powf(std::i64::MAX as f64, 1.0 / (b as f64)) {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("overflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"));
       return None
     }
     if a < 0 && b > 1 && (a as f64) < f64::powf(std::i64::MIN as f64, 1.0 / (b as f64)) {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("underflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("underflow"));
       return None
     }
     hand_mem.push_fixed(args[2], 1);
@@ -1455,32 +1343,28 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("powf32", |args, hand_mem| {
-    let rra = hand_mem.read_mut_fractal(args[0]);
-    let ra = rra.clone();
-    drop(rra);
-    let rrb = hand_mem.read_mut_fractal(args[1]);
-    let rb = rrb.clone();
-    drop(rrb);
-    if ra[0].1 == 0 {
+    let ra = hand_mem.read_fractal(args[0]);
+    let rb = hand_mem.read_fractal(args[1]);
+    if ra.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &ra);
       return None
     }
-    if rb[0].1 == 0 {
+    if rb.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &rb);
       return None
     }
-    let a = f32::from_ne_bytes((ra[1].1 as i32).to_ne_bytes());
-    let b = f32::from_ne_bytes((rb[1].1 as i32).to_ne_bytes());
+    let a = f32::from_ne_bytes((ra.read_fixed(1) as i32).to_ne_bytes());
+    let b = f32::from_ne_bytes((rb.read_fixed(1) as i32).to_ne_bytes());
     let out = f32::powf(a, b);
-    hand_mem.write_fractal(args[2], &Vec::new());
+    hand_mem.init_fractal(args[2]);
     if out == std::f32::INFINITY {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("overflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"));
       return None
     }
     if out == std::f32::NEG_INFINITY {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("underflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("underflow"));
       return None
     }
     let num = i32::from_ne_bytes(out.to_ne_bytes()) as i64;
@@ -1489,32 +1373,28 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
   cpu!("powf64", |args, hand_mem| {
-    let rra = hand_mem.read_mut_fractal(args[0]);
-    let ra = rra.clone();
-    drop(rra);
-    let rrb = hand_mem.read_mut_fractal(args[1]);
-    let rb = rrb.clone();
-    drop(rrb);
-    if ra[0].1 == 0 {
+    let ra = hand_mem.read_fractal(args[0]);
+    let rb = hand_mem.read_fractal(args[1]);
+    if ra.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &ra);
       return None
     }
-    if rb[0].1 == 0 {
+    if rb.read_fixed(0) == 0 {
       hand_mem.write_fractal(args[2], &rb);
       return None
     }
-    let a = f64::from_ne_bytes(ra[1].1.to_ne_bytes());
-    let b = f64::from_ne_bytes(rb[1].1.to_ne_bytes());
+    let a = f64::from_ne_bytes(ra.read_fixed(1).to_ne_bytes());
+    let b = f64::from_ne_bytes(rb.read_fixed(1).to_ne_bytes());
     let out = f64::powf(a, b);
-    hand_mem.write_fractal(args[2], &Vec::new());
+    hand_mem.init_fractal(args[2]);
     if out == std::f64::INFINITY {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("overflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"));
       return None
     }
     if out == std::f64::NEG_INFINITY {
       hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], &HandlerMemory::str_to_fractal("underflow"));
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("underflow"));
       return None
     }
     let num = i64::from_ne_bytes(out.to_ne_bytes());
@@ -3524,11 +3404,11 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem.write_fractal(args[2], &fractal);
       return None
     }
-    let inner_addr = fractal.read_fixed(1);
+    let inner_addr = fractal.read_fixed(1) as usize;
     let arr = hand_mem.read_fractal(args[0]);
     if arr.len() > inner_addr {
       hand_mem.push_fixed(args[2], 1);
-      hand_mem.push_register_out(args[2], &fractal, inner_addr);
+      hand_mem.push_register_out(args[2], &arr, inner_addr);
     } else {
       hand_mem.push_fixed(args[2], 0);
       hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("out-of-bounds access"));
