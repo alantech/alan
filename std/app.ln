@@ -32,3 +32,4 @@ on stderr fn (err: string) = stderrp(err);
 export fn eprint(err: Stringifiable) {
   emit stderr err.toString() + "\n";
 }
+
