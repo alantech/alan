@@ -168,6 +168,7 @@ error: sequence out-of-bounds"
               if prevPrev.isErr() {
                 return prevPrev;
               }
+              // TODO: Get type inference inside of recurse working so we don't need to unwrap these
               return (prev || 0) + (prevPrev || 0);
             }
           }, 8));
@@ -262,6 +263,7 @@ error: sequence out-of-bounds"
           if x == 0 {
             return ok(x);
           } else {
+            // TODO: Get type inference inside of recurse working so we don't need to unwrap these
             return x + (self.recurse(x - 1 || 0) || 0);
           }
         }, x) || 0
