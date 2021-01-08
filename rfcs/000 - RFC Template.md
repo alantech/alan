@@ -1,10 +1,10 @@
-# 012 - Easier Either, Option, and Result Destructuring
+# 000 - RFC Template
 
 ## Current Status
 
 ### Proposed
 
-2021-01-08
+YYYY-MM-DD
 
 ### Accepted
 
@@ -21,90 +21,50 @@ YYYY-MM-DD
 
 ## Author(s)
 
-- Colton Donnelly <colton@alantechnologies.com>
+- Author A <a@example.com>
+- Author B <b@example.com>
 
 ## Summary
 
-Currently, error handling in Alan is done through the `Result<T>` type, which is based on Rust's `Result<T, E>` type.
-While Rust has convenient ways of retrieving the value of a `Result`, it's difficult to replicate this behavior due to a lack of pattern matching.
-This RFC seeks to introduce a new language feature that would allow Alan to replicate the convenience of Rust's `Result` destructuring without introducing pattern matching.
+A brief, one to two paragraph summary of the problem and proposed solution goes here. The name of the PR *must* include "RFC" in it to be searchable.
 
 ## Expected SemBDD Impact
 
-If Alan was at least version 1.0.0, then this would be considered a major change that breaks user code when destructuring a `Result<T>`.
+A brief description of the expected impact on the Semantic BDD state of the language.
+
+Would this be considered a patch (no user-facing changes, but internal architectural changes in the compiler, runtime, package manager, etc)?
+
+Would this be considered a minor update (new functionality with zero impact on existing functionality in the ecosystem)?
+
+Would this be considered a major update (breaking the behavior of existing code)?
+
+RFCs that are a major update are more likely to be rejected or modified to become a minor or patch update, if possible. If not possible, major version RFCs are likely to be delayed and batched together with other major version RFC updates.
+
+The BDD tests themselves determine which of these forms the change *actually* takes. Escalation of the impact of the implementation versus the expected impact listed in the RFC can also delay acceptance.
 
 ## Proposal
 
-This proposal seeks to introduce a special case when handling `if` statements in Alan.
-Currently, when handling a `Result<T>`, a user might expect to write something like this in order to retrieve a value.
-```
-let myResult = ok(5);
-if myResult.isOk() {
-	let okVal = myResult.getOr(-1);
-	print("should be 5: " + okVal);
-} else {
-	let errVal = myResult.getErr("expected error, but could not retrieve Error value");
-	print("unreachable, but I know that errVal is NOT 'expected error, but could not retrieve Error value', unless that's what myResult is");
-}
-```
+A more detailed description of the proposed changes, what they will solve, and why it should be done. Diagrams and code examples very welcome!
 
-Note that, in both branches of the above `if` statement, the status (`ok` or `err`) of the `Result` is already known, but the user must then call either `getOr` or `getErr` in order to retrieve the expected value.
-(Note that `getOrDefault` is not yet implemented, but only makes this process marginally easier.)
-Instead, it would be much easier for the user (and potentially even more efficient, although marginally) if the variable could be immediately used as if it were destructured.
-Since `isOk` already guarantees that the `Result` is `ok` (when it returns `true`, otherwise the guarantee is that it's `err`), it would make sense to be able to write the above code like this:
-```
-let myResult = ok(5);
-if myResult.isOk() {
-	print("should be 5: " + myResult); // 1
-} else {
-	print("unreachable, but if myResult is an error, then this would print that error: " + myResult); // 2
-}
-```
+Reviewers should *not* bring up alternatives in this portion unless the template is not being followed by the RFC author (which the RFC author should note in the PR with a detailed reason why). Reviewers should also not let personal distaste for a solution be the driving factor behind criticism of a proposal, there should be some rationale behind a criticism, though you can still voice your distaste since that means there's probably *something* there that perhaps another reviewer could spot (but distate on its own should not block).
 
-In the above code, `myResult` was already destructured into its `ok` value at location 1
-(in other words, at location 1, `myResult` is of type `int64`, not `Result<int64>`).
-This allows the user to quickly and easily perform operations on that inner value without the additional step mentioned above.
-Note that, if myResult were an `err` instead, it would work the exact same way, with the `Error` taking the place of `myResult`.
+Most importantly, be civil on both proposals and reviews. `alan` is meant to be an approachable language for developers and if we want to make it better we need to be approachable to each other. Some parts of the language may have been mistakes, but they certainly weren't intentional and all parts were thought over by prior contributors. New proposals come from people who see something that doesn't sit well with them and they have put forth the energy to write a proposal and we should be thankful that they care and want to make it better.
 
-This should also be extended to `Option<T>` and `Either<T, U>` as well:
-```
-let myOption = some(true);
-if myOption.isSome() {
-	print("here ya go: " + myOption); // 1
-} else {
-	print("I've got nothing for ya"); // 2
-}
-
-let myEither = main("hello, world!"); // 3
-if myEither.isMain() {
-	print("main rock: " + myEither); // 4
-} else {
-	print("alt rock: " + myEither); // 5
-}
-```
-
-In location 1, `myOption` should be of type `bool`.
-Meanwhile, in location 2, it might make sense to undefine the `myOption` var - this is fairly ambiguous and needs more discussion.
-Note that in location 3, `myEither` would technically be assigned the type `Either<string, void>`, but imagine it somehow assigned to a stringable value, say an `int64`.
-In location 4, `myEither` should be of type `string`, and location 5 would be `int64` or such.
-
-The implementation should be relatively simple: when building the `amm` representation of the program, if the compiler detects any `if` statements (and other constructs that should have this feature too - if deemed worthy) with this pattern, then it should reassign the value at the beginning of the block.
-Preferably, this would be done with the `getR` opcode, which would allow for the value to be destructured from the `Result` efficiently.
+Ideally everyone can come to a refined version of the RFC that satisfies all arguments and is better than what anyone person could have come up with, but if an RFC is divisive, the "winning" side should be gracious, and the "losing" side should hopefully accept that the proposal was contentious and that there are multiple programming languages for a reason. 
 
 ### Alternatives Considered
 
-The simplest alternative is to accept the current way of destructuring these types.
-However, this results in a lot of unnecessary overhead that any sane person will hate [(although there are fewer sane people, apparently)](https://github.com/golang/go/issues/32437).
-As such, a solution should be found that is good enough for the 99% use case (this proposal), while still providing an easy solution for every other case (the API).
+After proposing the solution, any and all alternatives should be listed along with reasons why they are rejected. 
 
-Another alternative would be to add ML-style pattern matching, but that might make the language quite distracted in its design and make itself inconsistent.
+Authors should *not* reject alternatives just because they don't "like" them, there should be a more solid reason
+
+Reviewers should *not* complain about a lack of detail in the alternative descriptions especially if that is their own preferred solution -- they should attempt to positively describe the solution and bring their own arguments and proof for it.
 
 ## Affected Components
 
-All code dealing with the destructuring of `Result`, `Option`, and `Either` will be broken.
-Internally, affects the compiler but not the runtime.
+A brief listing of what part(s) of the language ecosystem will be impacted should be written here.
 
 ## Expected Timeline
 
-This could probably be done relatively quickly - I suspect it could be done in 1 or 2 days.
-However, users should be told about this breaking change so that their code will continue to work.
+An RFC proposal should define the set of work that needs to be done, in what order, and with an expected level of effort and turnaround time necessary. *No* multi-stage work proposal should leave the language in a non-functioning state.
+
