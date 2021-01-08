@@ -70,51 +70,29 @@ const variable = LeftSubset.build(
   ]),
   bool,
 )
-const generaloperators = And.build([
-  Or.build([
-    Token.build('+'),
-    Token.build('-'),
-    Token.build('/'),
-    Token.build('*'),
-    Token.build('^'),
-    Token.build('.'),
-    Token.build('~'),
-    Token.build('`'),
-    Token.build('!'),
-    Token.build('@'),
-    Token.build('#'),
-    Token.build('$'),
-    Token.build('%'),
-    Token.build('&'),
-    Token.build('|'),
-    Token.build(':'),
-    Token.build('<'),
-    Token.build('?'),
-    Token.build('='),
-  ]),
-  ZeroOrMore.build(Or.build([
-    Token.build('+'),
-    Token.build('-'),
-    Token.build('/'),
-    Token.build('*'),
-    Token.build('^'),
-    Token.build('.'),
-    Token.build('~'),
-    Token.build('`'),
-    Token.build('!'),
-    Token.build('@'),
-    Token.build('#'),
-    Token.build('$'),
-    Token.build('%'),
-    Token.build('&'),
-    Token.build('|'),
-    Token.build(':'),
-    Token.build('<'),
-    Token.build('>'),
-    Token.build('?'),
-    Token.build('='),
-  ])),
-])
+const operators = OneOrMore.build(Or.build([
+  Token.build('+'),
+  Token.build('-'),
+  Token.build('/'),
+  Token.build('\\'),
+  Token.build('*'),
+  Token.build('^'),
+  Token.build('.'),
+  Token.build('~'),
+  Token.build('`'),
+  Token.build('!'),
+  Token.build('@'),
+  Token.build('#'),
+  Token.build('$'),
+  Token.build('%'),
+  Token.build('&'),
+  Token.build('|'),
+  Token.build(':'),
+  Token.build('<'),
+  Token.build('>'),
+  Token.build('?'),
+  Token.build('='),
+]))
 const interfacen = Token.build('interface')
 const newn = Token.build('new')
 const ifn = Token.build('if')
@@ -160,23 +138,6 @@ const varsegment = NamedOr.build({
   arrayaccess,
 })
 const varn = OneOrMore.build(varsegment)
-const operators = NamedOr.build({
-  generaloperators,
-  dot,
-  at,
-  slash,
-  openCaret,
-  genericsWorkaround: NamedAnd.build({
-    closeCarets: OneOrMore.build(closeCaret),
-    maybeMore: ZeroOrOne.build(NamedOr.build({
-      withEquals: NamedAnd.build({
-        eqs: OneOrMore.build(eq),
-        maybeoperators: ZeroOrOne.build(generaloperators),
-      }),
-      generaloperators,
-    })),
-  }),
-})
 const varop = NamedOr.build({
   variable,
   operators,
@@ -680,12 +641,12 @@ const interfaces = NamedAnd.build({
   interfacedef,
 })
 const exportable = NamedOr.build({
-  events,
-  types,
-  constdeclaration,
   functions,
-  operatormapping,
+  constdeclaration,
+  types,
   interfaces,
+  operatormapping,
+  events,
   ref: variable,
 })
 const exportsn = NamedAnd.build({
@@ -695,8 +656,8 @@ const exportsn = NamedAnd.build({
 })
 const handler = NamedOr.build({
   functions,
-  fnname: variable,
   functionbody,
+  fnname: variable,
 })
 const handlers = NamedAnd.build({
   on,
@@ -706,15 +667,15 @@ const handlers = NamedAnd.build({
   handler,
 })
 const body = OneOrMore.build(NamedOr.build({
+  whitespace,
+  exportsn,
+  handlers,
+  functions,
   types,
   constdeclaration,
   operatormapping,
   events,
-  handlers,
   interfaces,
-  exportsn,
-  functions,
-  whitespace,
 }))
 export const ln = NamedAnd.build({
   optwhitespace,

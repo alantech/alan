@@ -1,6 +1,7 @@
 import {
   LP,
   LPNode,
+  LPError,
   NamedAnd,
 } from './lp'
 
@@ -190,8 +191,8 @@ const astToAgc = (ast: NamedAnd): Buffer => {
 export const fromFile = (filename: string): Buffer => {
   const lp = new LP(filename)
   const ast = aga.apply(lp)
-  if (ast instanceof Error) {
-    throw ast
+  if (ast instanceof LPError) {
+    throw new Error(ast.msg)
   }
   return astToAgc(ast)
 }
@@ -199,8 +200,8 @@ export const fromFile = (filename: string): Buffer => {
 export const fromString = (str: string): Buffer => {
   const lp = LP.fromText(str)
   const ast = aga.apply(lp)
-  if (ast instanceof Error) {
-    throw ast
+  if (ast instanceof LPError) {
+    throw new Error(ast.msg)
   }
   return astToAgc(ast)
 }

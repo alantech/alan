@@ -80,10 +80,17 @@ export interface LPNode {
   get(id?: string | number): LPNode
   getAll(): LPNode[]
   has(id?: string | number): boolean
-  apply(lp: LP): LPNode | Error
+  apply(lp: LP): LPNode | LPError
 }
 
-export const lpError = (message: string, obj: LPmeta) => new Error(`${message} in file ${obj.filename} line ${obj.line}:${obj.char}`)
+export class LPError {
+  msg: string
+  constructor(msg) {
+    this.msg = msg
+  }
+}
+
+export const lpError = (message: string, obj: LPmeta) => new LPError(`${message} in file ${obj.filename} line ${obj.line}:${obj.char}`)
 
 // A special AST node that indicates that you successfully matched nothing, useful for optional ASTs
 export class NulLP implements LPNode {
@@ -109,8 +116,8 @@ export class NulLP implements LPNode {
     return false
   }
 
-  apply(): LPNode | Error {
-    return new Error('nullish')
+  apply(): LPNode | LPError {
+    return new LPError('nullish')
   }
 
   toString(): string {
@@ -167,7 +174,7 @@ export class Token implements LPNode {
     return matches
   }
 
-  apply(lp: LP): Token | Error {
+  apply(lp: LP): Token | LPError {
     if (this.check(lp)) {
       lp.advance(this.t.length)
       return new Token(
@@ -230,7 +237,7 @@ export class Not implements LPNode {
     return this.line > -1
   }
 
-  apply(lp: LP): Not | Error {
+  apply(lp: LP): Not | LPError {
     if (this.check(lp)) {
       const newT = lp.data[lp.i]
       lp.advance(this.t.length)
@@ -284,7 +291,7 @@ export class ZeroOrOne implements LPNode {
   apply(lp: LP): LPNode {
     const s = lp.snapshot()
     const zeroOrOne = this.zeroOrOne.apply(lp)
-    if (zeroOrOne instanceof Error) {
+    if (zeroOrOne instanceof LPError) {
       lp.restore(s)
       return new NulLP()
     }
@@ -335,7 +342,7 @@ export class ZeroOrMore implements LPNode {
     return this.line > -1
   }
 
-  apply(lp: LP): LPNode | Error {
+  apply(lp: LP): LPNode | LPError {
     const filename = lp.filename
     const line = lp.line
     const char = lp.char
@@ -344,7 +351,7 @@ export class ZeroOrMore implements LPNode {
     do {
       const s = lp.snapshot()
       const z = this.zeroOrMore[0].apply(lp)
-      if (z instanceof Error) {
+      if (z instanceof LPError) {
         lp.restore(s)
         return new ZeroOrMore(t, zeroOrMore, filename, line, char)
       }
@@ -401,7 +408,7 @@ export class OneOrMore implements LPNode {
     return this.line > -1
   }
 
-  apply(lp: LP): LPNode | Error {
+  apply(lp: LP): LPNode | LPError {
     const filename = lp.filename
     const line = lp.line
     const char = lp.char
@@ -410,7 +417,7 @@ export class OneOrMore implements LPNode {
     do {
       const s = lp.snapshot()
       const o = this.oneOrMore[0].apply(lp)
-      if (o instanceof Error) {
+      if (o instanceof LPError) {
         lp.restore(s)
         if (oneOrMore.length === 0) {
           return lpError(`No match for OneOrMore ${this.oneOrMore.toString()}`, lp)
@@ -470,7 +477,7 @@ export class And implements LPNode {
     return this.line > -1
   }
 
-  apply(lp: LP): And | Error {
+  apply(lp: LP): And | LPError {
     const filename = lp.filename
     const line = lp.line
     const char = lp.char
@@ -480,7 +487,7 @@ export class And implements LPNode {
     // This can fail, allow the underlying error to bubble up
     for (let i = 0; i < this.and.length; i++) {
       const a = this.and[i].apply(lp)
-      if (a instanceof Error) {
+      if (a instanceof LPError) {
         lp.restore(s)
         return a
       }
@@ -534,7 +541,7 @@ export class Or implements LPNode {
     return this.line > -1
   }
 
-  apply(lp: LP): Or | Error {
+  apply(lp: LP): Or | LPError {
     const filename = lp.filename
     const line = lp.line
     const char = lp.char
@@ -544,7 +551,7 @@ export class Or implements LPNode {
     for (let i = 0; i < this.or.length; i++) {
       const s = lp.snapshot()
       const o = this.or[i].apply(lp)
-      if (o instanceof Error) {
+      if (o instanceof LPError) {
         lp.restore(s)
         continue
       }
@@ -600,7 +607,7 @@ export class ExclusiveOr implements LPNode {
     return this.line > -1
   }
 
-  apply(lp: LP): ExclusiveOr | Error {
+  apply(lp: LP): ExclusiveOr | LPError {
     const filename = lp.filename
     const line = lp.line
     const char = lp.char
@@ -610,7 +617,7 @@ export class ExclusiveOr implements LPNode {
     for (let i = 0; i < this.xor.length; i++) {
       const s = lp.snapshot()
       const x = this.xor[i].apply(lp)
-      if (x instanceof Error) {
+      if (x instanceof LPError) {
         lp.restore(s)
         continue
       }
@@ -665,14 +672,14 @@ export class LeftSubset implements LPNode {
     return this.line > -1
   }
 
-  apply(lp: LP): LeftSubset | Error {
+  apply(lp: LP): LeftSubset | LPError {
     const filename = lp.filename
     const line = lp.line
     const char = lp.char
     // Check the left set first, immediately return an error if it failed
     const s = lp.snapshot()
     const l = this.left.apply(lp)
-    if (l instanceof Error) {
+    if (l instanceof LPError) {
       lp.restore(s)
       return l
     }
@@ -680,7 +687,7 @@ export class LeftSubset implements LPNode {
     // fail
     const lp2 = LP.fromText(l.toString())
     const r = this.right.apply(lp2)
-    if (r instanceof Error || r.toString().length !== l.toString().length) {
+    if (r instanceof LPError || r.toString().length !== l.toString().length) {
       // The right subset did not match the left, we're good!
       return new LeftSubset(l.toString(), l, new NulLP(), filename, line, char)
     }
@@ -738,7 +745,7 @@ export class NamedAnd implements LPNode {
     return this.line > -1
   }
 
-  apply(lp: LP): NamedAnd | Error {
+  apply(lp: LP): NamedAnd | LPError {
     const filename = lp.filename
     const line = lp.line
     const char = lp.char
@@ -749,7 +756,7 @@ export class NamedAnd implements LPNode {
     // This can fail, allow the underlying error to bubble up
     for (let i = 0; i < andNames.length; i++) {
       const a = this.and[andNames[i]].apply(lp)
-      if (a instanceof Error) {
+      if (a instanceof LPError) {
         lp.restore(s)
         return a
       }
@@ -804,7 +811,7 @@ export class NamedOr implements LPNode {
     return this.line > -1
   }
 
-  apply(lp: LP): NamedOr | Error {
+  apply(lp: LP): NamedOr | LPError {
     const filename = lp.filename
     const line = lp.line
     const char = lp.char
@@ -815,7 +822,7 @@ export class NamedOr implements LPNode {
     for (let i = 0; i < orNames.length; i++) {
       const s = lp.snapshot()
       const o = this.or[orNames[i]].apply(lp)
-      if (o instanceof Error) {
+      if (o instanceof LPError) {
         lp.restore(s)
         continue
       }
@@ -880,7 +887,7 @@ export class CharSet implements LPNode {
     return this.line > -1
   }
 
-  apply(lp: LP): CharSet | Error {
+  apply(lp: LP): CharSet | LPError {
     if (this.check(lp)) {
       const outCharSet = new CharSet(
         lp.data[lp.i],
@@ -899,7 +906,7 @@ export class CharSet implements LPNode {
 
 // A composite AST 'node' that matches the child node between the minimum and maximum repetitions or
 // fails.
-export const RangeSet = (toRepeat: LPNode, min: number, max: number): LPNode | Error => {
+export const RangeSet = (toRepeat: LPNode, min: number, max: number): LPNode | LPError => {
   let sets = []
   for (let i = min; i <= max; i++) {
     if (i === 0) {
