@@ -63,11 +63,11 @@ class Statement {
     }
     if (s.has('assignments')) return Statement.assignmentsHasObjectLiteral(s.get('assignments'))
     if (s.has('assignables')) return Statement.assignablesHasObjectLiteral(s.get('assignables'))
-    if (s.has('exits') && s.get('exits').has('assignables')) {
-      return Statement.assignablesHasObjectLiteral(s.get('exits').get('assignables'))
+    if (s.has('exits') && s.get('exits').get('retval').has('assignables')) {
+      return Statement.assignablesHasObjectLiteral(s.get('exits').get('retval').get('assignables'))
     }
-    if (s.has('emits') && s.get('emits').has('assignables')) {
-      return Statement.assignablesHasObjectLiteral(s.get('emits').get('assignables'))
+    if (s.has('emits') && s.get('emits').get('retval').has('assignables')) {
+      return Statement.assignablesHasObjectLiteral(s.get('emits').get('retval').get('assignables'))
     }
     // TODO: Cover conditionals
     return false
@@ -93,9 +93,6 @@ class Statement {
           scope
         )
       } else {
-        console.error({
-          statementAst,
-        })
         throw new Error("Malformed AST. Invalid const/let declaration structure")
       }
     }
