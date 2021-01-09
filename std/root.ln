@@ -120,8 +120,8 @@ export fn toString(n: string) = n;
 export fn toString(n: bool) = boolstr(n);
 
 // Type alias conversion functions
-export fn toFloat(n: canFloat64): float = toFloat64(n)
-export fn toInt(n: canInt64): int = toInt64(n) 
+export fn toFloat(n: canFloat64): float = toFloat64(n);
+export fn toInt(n: canInt64): int = toInt64(n);
 
 // Error, Maybe, Result, and Either types and functions
 export error // opcode with signature `fn error(string): Error`
@@ -2392,7 +2392,7 @@ export fn set(hm: HashMap<Hashable, any>, key: Hashable, val: any): HashMap<Hash
     list.eachLin(fn (idx: int64, i: int64) {
       const rec = hm.keyVal[idx].getR();
       if eq(rec.key, key) {
-        list[i] = index;
+        list.set(i, index);
       }
     });
   } else {

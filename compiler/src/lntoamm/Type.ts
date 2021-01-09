@@ -1,7 +1,8 @@
+import Operator from './Operator'
 import Scope from './Scope'
 import { Fn, } from './Function'
-import Operator from './Operator'
 import { fulltypenameAstFromString, } from './Ast'
+import { LPNode, } from '../lp'
 
 type Properties = {
   [K: string]: Type
@@ -153,11 +154,11 @@ export class Interface {
     return true
   }
 
-  static fromAst(interfaceAst: any, scope: Scope) { // TODO: replace ANTLR
+  static fromAst(interfaceAst: LPNode, scope: Scope) {
     // Construct the basic interface, the wrapper type, and insert it into the scope
     // This is all necessary so the interface can self-reference when constructing the function and
     // operator types.
-    const interfacename = interfaceAst.VARNAME(0).getText()
+    const interfacename = interfaceAst.get('variable').t
     let iface = new Interface(interfacename)
     const ifaceType = new Type(interfacename, false, false, {}, {}, null, iface)
     scope.put(interfacename, ifaceType)
@@ -165,39 +166,59 @@ export class Interface {
     // Now, insert the actual declarations of the interface, if there are any (if there are none,
     // it will provide only as much as a type generic -- you can set it to a variable and return it
     // but nothing else, unlike Go's ridiculous interpretation of a bare interface).
-    if (!!interfaceAst.interfacebody() && !!interfaceAst.interfacebody().interfacelist()) {
-      for (const interfaceline of interfaceAst.interfacebody().interfacelist().interfaceline()) {
-        if (!!interfaceline.functiontypeline()) {
-          const functiontypeline = interfaceline.functiontypeline()
-          let functionname = null
-          if (!!functiontypeline.VARNAME()) {
-            functionname = functiontypeline.VARNAME().getText()
-          }
-          const typenames = functiontypeline.functiontype().fulltypename();
-          const returnType = scope.deepGet(typenames[typenames.length - 1].getText()) as Type
+    if (
+      interfaceAst.get('interfacedef').has('interfacebody') &&
+      interfaceAst.get('interfacedef').get('interfacebody').get('interfacelist').has()
+    ) {
+      const interfacelist = interfaceAst
+        .get('interfacedef')
+        .get('interfacebody')
+        .get('interfacelist')
+      const interfacelines = []
+      interfacelines.push(interfacelist.get('interfaceline'))
+      interfacelist.get('cdr').getAll().forEach(l => {
+        interfacelines.push(l.get('interfaceline'))
+      })
+      for (const interfaceline of interfacelines) {
+        if (interfaceline.has('functiontypeline')) {
+          const functiontypeline = interfaceline.get('functiontypeline')
+          const functionname = functiontypeline.get('variable').t
+          const typenames = []
+          typenames.push(functiontypeline.get('functiontype').get('fulltypename').t)
+          functiontypeline.get('functiontype').get('cdr').getAll().forEach(r => {
+            typenames.push(r.get('fulltypename').t)
+          })
+          const returnType = scope.deepGet(
+            functiontypeline.get('functiontype').get('returntype').t
+          ) as Type
           if (!returnType || !(returnType instanceof Type)) {
-            throw new Error(typenames.get(typenames.size() - 1).getText() + " is not a type")
+            throw new Error(
+              functiontypeline.get('functiontype').get('returntype').t +
+              " is not a type"
+            )
           }
           let args = []
-          for (let i = 0; i < typenames.length - 1; i++) {
-            const argument = scope.deepGet(typenames[i].getText()) as Type
+          for (let i = 0; i < typenames.length; i++) {
+            const argument = scope.deepGet(typenames[i]) as Type
             if (!argument || !(argument instanceof Type)) {
-              throw new Error(typenames.get(i).getText() + " is not a type")
+              throw new Error(typenames[i] + " is not a type")
             }
             args.push(argument)
           }
           const functionType = new FunctionType(functionname, args, returnType)
           iface.functionTypes.push(functionType)
         }
-        if (!!interfaceline.operatortypeline()) {
-          const operatorname = interfaceline.operatortypeline().operators().getText()
-          const isPrefix = !interfaceline.operatortypeline().leftarg()
+        if (interfaceline.has('operatortypeline')) {
+          const operatorname = interfaceline.get('operatortypeline').get('operators').t
+          const isPrefix = !interfaceline.get('operatortypeline').has('optleftarg')
           const argTypenames = []
           if (!isPrefix) {
-            argTypenames.push(interfaceline.operatortypeline().leftarg().getText())
+            argTypenames.push(
+              interfaceline.get('operatortypeline').get('optleftarg').get('leftarg').t
+            )
           }
-          argTypenames.push(interfaceline.operatortypeline().rightarg().getText())
-          const returnTypename = interfaceline.operatortypeline().fulltypename().getText()
+          argTypenames.push(interfaceline.get('operatortypeline').get('rightarg').t)
+          const returnTypename = interfaceline.get('operatortypeline').get('fulltypename').t
           const args = argTypenames.map(n => {
             const box = scope.deepGet(n)
             if (!box || !(box instanceof Type)) {
@@ -212,22 +233,25 @@ export class Interface {
           const operatorType = new OperatorType(operatorname, isPrefix, args, returnType)
           iface.operatorTypes.push(operatorType)
         }
-        if (!!interfaceline.propertytypeline()) {
+        if (interfaceline.has('propertytypeline')) {
           const propertyType =
-            scope.deepGet(interfaceline.propertytypeline().varn().getText()) as Type
+            scope.deepGet(interfaceline.get('propertytypeline').get('variable').t) as Type
           if (!propertyType || !(propertyType instanceof Type)) {
-            throw new Error(interfaceline.propertytypeline().varn().getText() + " is not a type")
+            throw new Error(
+              interfaceline.get('propertytypeline').get('variable').t + " is not a type"
+            )
           }
           iface.requiredProperties[
-            interfaceline.propertytypeline().VARNAME().getText()
+            interfaceline.get('propertytypeline').get('variable').t
           ] = propertyType
         }
       }
-    } else if (!!interfaceAst.VARNAME(1)) {
-      // It's an alias, so grab it and give it the new name
-      const otherInterface = scope.deepGet(interfaceAst.VARNAME(1).getText()) as Type
+    } else if (interfaceAst.get('interfacedef').has('interfacealias')) {
+      const otherInterface = scope.deepGet(
+        interfaceAst.get('interfacedef').get('interfacealias').get('variable').t
+      ) as Type
       if (!(otherInterface instanceof Type) || !otherInterface.iface) {
-        throw new Error(`${interfaceAst.varn().getText()} is not an interface`)
+        throw new Error(`${interfaceAst.get('interfacedef').get('interfacealias').get('variable').t} is not an interface`)
       }
       // Replace the interface with the other one
       ifaceType.iface = otherInterface.iface
@@ -284,61 +308,87 @@ export class Type {
     return outString
   }
 
-  static fromAst(typeAst: any, scope: Scope) { // TODO: Migrate away from ANTLR
-    let type = new Type(typeAst.typename().getText())
+  static fromAst(typeAst: LPNode, scope: Scope) {
+    let type = new Type(typeAst.get('fulltypename').get('typename').t)
     const genScope = new Scope()
     const typeScope = new Scope(scope)
     typeScope.secondaryPar = genScope
-    if (typeAst.typegenerics() != null) {
-      const generics = typeAst.typegenerics().fulltypename()
+    if (typeAst.get('fulltypename').has('opttypegenerics')) {
+      const genericsAst = typeAst.get('fulltypename').get('opttypegenerics').get('generics')
+      const generics = []
+      generics.push(genericsAst.get('fulltypename').t)
+      genericsAst.get('cdr').getAll().forEach(r => {
+        generics.push(r.get('fulltypename').t)
+      })
       for (let i = 0; i < generics.length; i++) {
-        type.generics[generics[i].getText()] = i
-        genScope.put(generics[i].getText(), new Type(generics[i].getText(), true, true))
+        type.generics[generics[i]] = i
+        genScope.put(generics[i], new Type(generics[i], true, true))
       }
     }
-    if (typeAst.typebody() != null) {
-      const lines = typeAst.typebody().typelist().typeline()
+    if (typeAst.get('typedef').has('typebody')) {
+      const typelist = typeAst.get('typedef').get('typebody').get('typelist')
+      const lines = []
+      lines.push(typelist.get('typeline'))
+      typelist.get('cdr').getAll().forEach(r => {
+        lines.push(r.get('typeline'))
+      })
       for (const lineAst of lines) {
-        const propertyName = lineAst.VARNAME().getText()
-        const typeName = lineAst.fulltypename().getText().trim()
+        const propertyName = lineAst.get('variable').t
+        const typeName = lineAst.get('fulltypename').t.trim()
         const property = typeScope.deepGet(typeName) as Type
         if (!property || !(property instanceof Type)) {
           // Potentially a type that depends on the type generics of this type
-          const baseTypeName = lineAst.fulltypename().typename().getText()
-          const innerGenerics = lineAst.fulltypename().typegenerics().fulltypename()
+          const baseTypeName = lineAst.get('fulltypename').get('typename').t
           const genericsList = []
-          const genericsQueue = []
-          for (const generic of innerGenerics) {
-            genericsList.push(generic)
+          if (lineAst.get('fulltypename').has('opttypegenerics')) {
+            const innerGenerics = lineAst.get('fulltypename').get('opttypegenerics').get('generics')
+            genericsList.push(innerGenerics.get('fulltypename'))
+            innerGenerics.get('cdr').getAll().forEach(r => {
+              genericsList.push(r.get('fulltypename'))
+            })
           }
+          const innerGenerics = [...genericsList]
+          const genericsQueue = []
           while (genericsList.length > 0) {
             const generic = genericsList.shift()
             genericsQueue.push(generic)
-            if (generic.typegenerics()) {
-              genericsList.push(...generic.typegenerics().fulltypename())
+            if (generic.has('opttypegenerics')) {
+              const innerInnerGenerics = generic.get('opttypegenerics').get('generics')
+              genericsList.push(innerInnerGenerics.get('fulltypename'))
+              innerInnerGenerics.get('cdr').getAll().forEach(r => {
+                genericsList.push(r.get('fulltypename'))
+              })
             }
           }
           while (genericsQueue.length > 0) {
             const generic = genericsQueue.pop()
-            const innerType = typeScope.deepGet(generic.getText()) as Type
+            const innerType = typeScope.deepGet(generic.t) as Type
             if (!innerType) {
-              const innerBaseTypeName = generic.typename().getText()
+              const innerBaseTypeName = generic.get('typename').t
               const innerBaseType = typeScope.deepGet(innerBaseTypeName) as Type
               if (!innerBaseType) {
-                throw new Error('wut')
+                throw new Error(`Cannot find type ${innerBaseTypeName} while defining ${type}`)
+              }
+              const innerBaseGenerics = []
+              if (generic.has('opttypegenerics')) {
+                const innerInnerGenerics = generic.get('opttypegenerics').get('generics')
+                innerBaseGenerics.push(innerInnerGenerics.get('fulltypename').t)
+                innerInnerGenerics.get('cdr').getAll().forEach(r => {
+                  innerBaseGenerics.push(r.get('fulltypename').t)
+                })
               }
               innerBaseType.solidify(
-                generic.typegenerics().fulltypename().map((t: any) => t.getText()),
+                innerBaseGenerics,
                 typeScope,
               )
             }
           }
           const baseType = scope.deepGet(baseTypeName) as Type
           if (!baseType || !(baseType instanceof Type)) {
-            throw new Error(lineAst.fulltypename().getText() + " is not a type")
+            throw new Error(lineAst.get('fulltypename').t + " is not a type")
           }
           type.properties[propertyName] = baseType.solidify(
-            innerGenerics.map((t: any) => t.getText()),
+            innerGenerics.map(r => r.t),
             typeScope,
           )
         } else {
@@ -346,21 +396,37 @@ export class Type {
         }
       }
     }
-    if (typeAst.fulltypename() != null) {
-      const otherTypebox = scope.deepGet(typeAst.fulltypename().typename().getText()) as Type
-      if (!otherTypebox) {
-        throw new Error("Type " + typeAst.fulltypename().getText() + " not defined")
+    if (typeAst.get('typedef').has('typealias')) {
+      const otherType = scope.deepGet(
+        typeAst.get('typedef').get('typealias').get('fulltypename').get('typename').t
+      ) as Type
+      if (!otherType) {
+        throw new Error(
+          "Type " + typeAst.get('typedef').get('typealias').get('fulltypename').t + " not defined"
+        )
       }
-      if (!(otherTypebox instanceof Type)) {
-        throw new Error(typeAst.fulltypename().getText() + " is not a valid type")
+      if (!(otherType instanceof Type)) {
+        throw new Error(
+          typeAst.get('typedef').get('typealias').get('fulltypename').t + " is not a valid type"
+        )
       }
 
-      let fulltypename = otherTypebox
-      if (Object.keys(fulltypename.generics).length > 0 && !!typeAst.fulltypename().typegenerics()) {
-        let solidTypes = []
-        for (const fulltypenameAst of typeAst.fulltypename().typegenerics().fulltypename()) {
-          solidTypes.push(fulltypenameAst.getText())
-        }
+      let fulltypename = otherType
+      if (
+        Object.keys(fulltypename.generics).length > 0 &&
+        typeAst.get('typedef').get('typealias').get('fulltypename').has('opttypegenerics')
+      ) {
+        const solidTypes = []
+        const innerTypeGenerics = typeAst
+          .get('typedef')
+          .get('typealias')
+          .get('fulltypename')
+          .get('opttypegenerics')
+          .get('generics')
+        solidTypes.push(innerTypeGenerics.get('fulltypename').t)
+        innerTypeGenerics.get('cdr').getAll().forEach(r => {
+          solidTypes.push(r.get('fulltypename').t)
+        })
         fulltypename = fulltypename.solidify(solidTypes, scope)
       }
 
@@ -383,9 +449,13 @@ export class Type {
       const typebox = scope.deepGet(typename) as Type
       if (!typebox || !(typebox instanceof Type)) {
         const fulltypename = fulltypenameAstFromString(typename)
-        if (fulltypename.typegenerics()) {
-          const basename = fulltypename.typename().getText()
-          const generics = fulltypename.typegenerics().fulltypename().map((t: any) => t.getText())
+        if (fulltypename.has('opttypegenerics')) {
+          const basename = fulltypename.get('typename').t
+          const generics = []
+          generics.push(fulltypename.get('opttypegenerics').get('generics').get('fulltypename').t)
+          fulltypename.get('opttypegenerics').get('generics').get('cdr').getAll().forEach(r => {
+            generics.push(r.get('fulltypename').t)
+          })
           const baseType = scope.deepGet(basename) as Type
           if (!baseType || !(baseType instanceof Type)) {
             throw new Error(basename + " type not found")
@@ -428,26 +498,44 @@ export class Type {
       !otherType.originalType ||
       this.originalType.typename !== otherType.originalType.typename
     ) return false
-    const typeAst = fulltypenameAstFromString(this.typename) as any
-    const otherTypeAst = fulltypenameAstFromString(otherType.typename) as any
-    const generics = typeAst.typegenerics().fulltypename().map((g: any) => (
-      scope.deepGet(g.getText()) ||
-      Type.fromStringWithMap(g.getText(), interfaceMap, scope)) as Type
+    const typeAst = fulltypenameAstFromString(this.typename)
+    const otherTypeAst = fulltypenameAstFromString(otherType.typename)
+    let generics = []
+    if (typeAst.has('opttypegenerics')) {
+      const genericsAst = typeAst.get('opttypegenerics').get('generics')
+      generics.push(genericsAst.get('fulltypename').t)
+      genericsAst.get('cdr').getAll().forEach(r => {
+        generics.push(r.get('fulltypename').t)
+      })
+    }
+    generics = generics.map(
+      g => scope.deepGet(g) || Type.fromStringWithMap(g, interfaceMap, scope) as Type
     )
-    const otherGenerics = otherTypeAst.typegenerics().fulltypename().map((g: any) => (
-      scope.deepGet(g.getText()) ||
-      Type.fromStringWithMap(g.getText(), interfaceMap, scope)) as Type
+    let otherGenerics = []
+    if (otherTypeAst.has('opttypegenerics')) {
+      const genericsAst = otherTypeAst.get('opttypegenerics').get('generics')
+      otherGenerics.push(genericsAst.get('fulltypename').t)
+      genericsAst.get('cdr').getAll().forEach(r => {
+        otherGenerics.push(r.get('fulltypename').t)
+      })
+    }
+    otherGenerics = otherGenerics.map(
+      g => scope.deepGet(g) || Type.fromStringWithMap(g, interfaceMap, scope) as Type
     )
-    return generics.every((t: Type, i: any) => t.typeApplies(otherGenerics[i], scope, interfaceMap))
+    return generics.every((t: Type, i) => t.typeApplies(otherGenerics[i], scope, interfaceMap))
   }
 
   // There has to be a more elegant way to tackle this
   static fromStringWithMap(typestr: string, interfaceMap: Map<Type, Type>, scope: Scope) {
     const typeAst = fulltypenameAstFromString(typestr)
-    const baseName = typeAst.typename().getText()
+    const baseName = typeAst.get('typename').t
     const baseType = scope.deepGet(baseName) as Type
-    if (typeAst.typegenerics()) {
-      const genericNames = typeAst.typegenerics().fulltypename().map((t: any) => t.getText())
+    if (typeAst.has('opttypegenerics')) {
+      const genericNames = []
+      genericNames.push(typeAst.get('opttypegenerics').get('generics').get('fulltypename').t)
+      typeAst.get('opttypegenerics').get('generics').get('cdr').getAll().forEach(r => {
+        genericNames.push(r.get('fulltypename').t)
+      })
       const generics = genericNames.map((t: string) => {
         const interfaceMapping = [
           ...interfaceMap.entries()

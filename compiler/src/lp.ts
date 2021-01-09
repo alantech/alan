@@ -75,20 +75,33 @@ export interface LPmeta {
 // Any kind of type that can operate on LP records to build the AST.
 export interface LPNode {
   t: string
+  line: number
+  char: number
   get(id?: string | number): LPNode
   getAll(): LPNode[]
   has(id?: string | number): boolean
-  apply(lp: LP): LPNode | Error
+  apply(lp: LP): LPNode | LPError
 }
 
-export const lpError = (message: string, obj: LPmeta) => new Error(`${message} in file ${obj.filename} line ${obj.line}:${obj.char}`)
+export class LPError {
+  msg: string
+  constructor(msg) {
+    this.msg = msg
+  }
+}
+
+export const lpError = (message: string, obj: LPmeta) => new LPError(`${message} in file ${obj.filename} line ${obj.line}:${obj.char}`)
 
 // A special AST node that indicates that you successfully matched nothing, useful for optional ASTs
 export class NulLP implements LPNode {
   t: string
+  line: number
+  char: number
 
   constructor() {
     this.t = ''
+    this.line = -1
+    this.char = -1
   }
 
   get(): NulLP {
@@ -103,8 +116,8 @@ export class NulLP implements LPNode {
     return false
   }
 
-  apply(): LPNode | Error {
-    return new Error('nullish')
+  apply(): LPNode | LPError {
+    return new LPError('nullish')
   }
 
   toString(): string {
@@ -161,7 +174,7 @@ export class Token implements LPNode {
     return matches
   }
 
-  apply(lp: LP): Token | Error {
+  apply(lp: LP): Token | LPError {
     if (this.check(lp)) {
       lp.advance(this.t.length)
       return new Token(
@@ -171,7 +184,7 @@ export class Token implements LPNode {
         lp.char,
       )
     }
-    return lpError(`Token mismatch, ${this.t} not found`, lp)
+    return lpError(`Token mismatch, ${this.t} not found, instead ${lp.data[lp.i]}`, lp)
   }
 }
 
@@ -224,7 +237,7 @@ export class Not implements LPNode {
     return this.line > -1
   }
 
-  apply(lp: LP): Not | Error {
+  apply(lp: LP): Not | LPError {
     if (this.check(lp)) {
       const newT = lp.data[lp.i]
       lp.advance(this.t.length)
@@ -278,7 +291,7 @@ export class ZeroOrOne implements LPNode {
   apply(lp: LP): LPNode {
     const s = lp.snapshot()
     const zeroOrOne = this.zeroOrOne.apply(lp)
-    if (zeroOrOne instanceof Error) {
+    if (zeroOrOne instanceof LPError) {
       lp.restore(s)
       return new NulLP()
     }
@@ -329,7 +342,7 @@ export class ZeroOrMore implements LPNode {
     return this.line > -1
   }
 
-  apply(lp: LP): LPNode | Error {
+  apply(lp: LP): LPNode | LPError {
     const filename = lp.filename
     const line = lp.line
     const char = lp.char
@@ -338,12 +351,12 @@ export class ZeroOrMore implements LPNode {
     do {
       const s = lp.snapshot()
       const z = this.zeroOrMore[0].apply(lp)
-      if (z instanceof Error) {
+      if (z instanceof LPError) {
         lp.restore(s)
         return new ZeroOrMore(t, zeroOrMore, filename, line, char)
       }
       const t2 = z.toString()
-      if (t2.length === 0) {
+      if (!t2 || t2.length === 0) {
         return lpError('ZeroOrMore made no forward progress, will infinite loop', lp)
       }
       t += t2
@@ -395,7 +408,7 @@ export class OneOrMore implements LPNode {
     return this.line > -1
   }
 
-  apply(lp: LP): LPNode | Error {
+  apply(lp: LP): LPNode | LPError {
     const filename = lp.filename
     const line = lp.line
     const char = lp.char
@@ -404,10 +417,10 @@ export class OneOrMore implements LPNode {
     do {
       const s = lp.snapshot()
       const o = this.oneOrMore[0].apply(lp)
-      if (o instanceof Error) {
+      if (o instanceof LPError) {
         lp.restore(s)
         if (oneOrMore.length === 0) {
-          return lpError('No match for OneOrMore', lp)
+          return lpError(`No match for OneOrMore ${this.oneOrMore.toString()}`, lp)
         }
         return new OneOrMore(t, oneOrMore, filename, line, char)
       }
@@ -464,7 +477,7 @@ export class And implements LPNode {
     return this.line > -1
   }
 
-  apply(lp: LP): And | Error {
+  apply(lp: LP): And | LPError {
     const filename = lp.filename
     const line = lp.line
     const char = lp.char
@@ -474,7 +487,7 @@ export class And implements LPNode {
     // This can fail, allow the underlying error to bubble up
     for (let i = 0; i < this.and.length; i++) {
       const a = this.and[i].apply(lp)
-      if (a instanceof Error) {
+      if (a instanceof LPError) {
         lp.restore(s)
         return a
       }
@@ -528,7 +541,7 @@ export class Or implements LPNode {
     return this.line > -1
   }
 
-  apply(lp: LP): Or | Error {
+  apply(lp: LP): Or | LPError {
     const filename = lp.filename
     const line = lp.line
     const char = lp.char
@@ -538,7 +551,7 @@ export class Or implements LPNode {
     for (let i = 0; i < this.or.length; i++) {
       const s = lp.snapshot()
       const o = this.or[i].apply(lp)
-      if (o instanceof Error) {
+      if (o instanceof LPError) {
         lp.restore(s)
         continue
       }
@@ -549,6 +562,138 @@ export class Or implements LPNode {
     }
     if (or.length === 0) return lpError('No matching tokens found', lp)
     return new Or(t, or, filename, line, char)
+  }
+}
+
+export class ExclusiveOr implements LPNode {
+  t: string
+  xor: LPNode[]
+  filename: string
+  line: number
+  char: number
+
+  constructor(t: string, xor: LPNode[], filename: string, line: number, char: number) {
+    this.t = t
+    this.xor = xor
+    this.filename = filename
+    this.line = line
+    this.char = char
+  }
+
+  static build(xor: LPNode[]): ExclusiveOr {
+    return new ExclusiveOr('', xor, '', -1, -1)
+  }
+
+  toString(): string {
+    return this.t
+  }
+
+  get(): LPNode {
+    if (this.xor[0]) return this.xor[0]
+    return new NulLP()
+  }
+
+  getAll(): LPNode[] {
+    return this.xor
+  }
+
+  has(id?: number): boolean {
+    if (typeof id === 'number') {
+      if (this.xor[id]) {
+        return this.xor[id].has()
+      }
+      return false
+    }
+    return this.line > -1
+  }
+
+  apply(lp: LP): ExclusiveOr | LPError {
+    const filename = lp.filename
+    const line = lp.line
+    const char = lp.char
+    let t = ''
+    let xor = []
+    // Checks the matches, it only succeeds if there's only one match
+    for (let i = 0; i < this.xor.length; i++) {
+      const s = lp.snapshot()
+      const x = this.xor[i].apply(lp)
+      if (x instanceof LPError) {
+        lp.restore(s)
+        continue
+      }
+      // We have a match!
+      t = x.toString()
+      xor.push(i)
+      // We still restore the snapshot for further iterations
+      lp.restore(s)
+    }
+    if (xor.length === 0) return lpError('No matching tokens found', lp)
+    if (xor.length > 1) return lpError('Multiple matching tokens found', lp)
+    // Since we restored the state every time, we need to take the one that matched and re-run it
+    // to make sure the offset is correct
+    return new ExclusiveOr(t, [this.xor[xor[0]].apply(lp) as LPNode], filename, line, char)
+  }
+}
+
+export class LeftSubset implements LPNode {
+  t: string
+  left: LPNode
+  right: LPNode
+  filename: string
+  line: number
+  char: number
+
+  constructor(t: string, left: LPNode, right: LPNode, filename: string, line: number, char: number) {
+    this.t = t
+    this.left = left
+    this.right = right
+    this.filename = filename
+    this.line = line
+    this.char = char
+  }
+
+  static build(left: LPNode, right: LPNode): LeftSubset {
+    return new LeftSubset('', left, right, '', -1, -1)
+  }
+
+  toString(): string {
+    return this.t
+  }
+
+  get(): LPNode {
+    return this.left
+  }
+
+  getAll(): LPNode[] {
+    return [this.left]
+  }
+
+  has(): boolean {
+    return this.line > -1
+  }
+
+  apply(lp: LP): LeftSubset | LPError {
+    const filename = lp.filename
+    const line = lp.line
+    const char = lp.char
+    // Check the left set first, immediately return an error if it failed
+    const s = lp.snapshot()
+    const l = this.left.apply(lp)
+    if (l instanceof LPError) {
+      lp.restore(s)
+      return l
+    }
+    // Check the right set *against* the value returned by the left set. If they exactly match, also
+    // fail
+    const lp2 = LP.fromText(l.toString())
+    const r = this.right.apply(lp2)
+    if (r instanceof LPError || r.toString().length !== l.toString().length) {
+      // The right subset did not match the left, we're good!
+      return new LeftSubset(l.toString(), l, new NulLP(), filename, line, char)
+    }
+    // In this path, we force a failure because the match also exists in the right subset
+    lp.restore(s)
+    return lpError('Right subset matches unexpectedly', lp)
   }
 }
 
@@ -600,7 +745,7 @@ export class NamedAnd implements LPNode {
     return this.line > -1
   }
 
-  apply(lp: LP): NamedAnd | Error {
+  apply(lp: LP): NamedAnd | LPError {
     const filename = lp.filename
     const line = lp.line
     const char = lp.char
@@ -611,7 +756,7 @@ export class NamedAnd implements LPNode {
     // This can fail, allow the underlying error to bubble up
     for (let i = 0; i < andNames.length; i++) {
       const a = this.and[andNames[i]].apply(lp)
-      if (a instanceof Error) {
+      if (a instanceof LPError) {
         lp.restore(s)
         return a
       }
@@ -666,7 +811,7 @@ export class NamedOr implements LPNode {
     return this.line > -1
   }
 
-  apply(lp: LP): NamedOr | Error {
+  apply(lp: LP): NamedOr | LPError {
     const filename = lp.filename
     const line = lp.line
     const char = lp.char
@@ -677,7 +822,7 @@ export class NamedOr implements LPNode {
     for (let i = 0; i < orNames.length; i++) {
       const s = lp.snapshot()
       const o = this.or[orNames[i]].apply(lp)
-      if (o instanceof Error) {
+      if (o instanceof LPError) {
         lp.restore(s)
         continue
       }
@@ -742,7 +887,7 @@ export class CharSet implements LPNode {
     return this.line > -1
   }
 
-  apply(lp: LP): CharSet | Error {
+  apply(lp: LP): CharSet | LPError {
     if (this.check(lp)) {
       const outCharSet = new CharSet(
         lp.data[lp.i],
@@ -761,7 +906,7 @@ export class CharSet implements LPNode {
 
 // A composite AST 'node' that matches the child node between the minimum and maximum repetitions or
 // fails.
-export const RangeSet = (toRepeat: LPNode, min: number, max: number): LPNode | Error => {
+export const RangeSet = (toRepeat: LPNode, min: number, max: number): LPNode | LPError => {
   let sets = []
   for (let i = min; i <= max; i++) {
     if (i === 0) {

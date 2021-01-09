@@ -1,6 +1,7 @@
 import {
   LP,
   LPNode,
+  LPError,
   NamedAnd,
   NulLP,
 } from './lp'
@@ -672,16 +673,16 @@ const ammToAga = (amm: LPNode) => {
 export const fromFile = (filename: string) => {
   const lp = new LP(filename)
   const ast = amm.apply(lp)
-  if (ast instanceof Error) {
-    throw ast
+  if (ast instanceof LPError) {
+    throw new Error(ast.msg)
   }
   return ammToAga(ast)
 }
 export const fromString = (str: string) => {
   const lp = LP.fromText(str)
   const ast = amm.apply(lp)
-  if (ast instanceof Error) {
-    throw ast
+  if (ast instanceof LPError) {
+    throw new Error(ast.msg)
   }
   return ammToAga(ast)
 }

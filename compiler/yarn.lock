@@ -111,7 +111,7 @@ ajv@^6.5.5:
     uri-js "^4.2.2"
 
 alan-js-runtime@../js-runtime:
-  version "0.1.21"
+  version "0.1.23"
   dependencies:
     cross-fetch "^3.0.6"
     xxhashjs "^0.2.2"
@@ -142,11 +142,6 @@ ansi-styles@^3.2.1:
   integrity sha512-VT0ZI6kZRdTh8YyJw3SMbYm/u+NqfsAxEpWO0Pf9sq8/e94WxxOpPKx9FR1FlyCtOVDNOQ+8ntlqFxiRc+r5qA==
   dependencies:
     color-convert "^1.9.0"
-
-antlr4@^4.8.0:
-  version "4.8.0"
-  resolved "https://registry.yarnpkg.com/antlr4/-/antlr4-4.8.0.tgz#f938ec171be7fc2855cd3a533e87647185b32b6a"
-  integrity sha512-en/MxQ4OkPgGJQ3wD/muzj1uDnFSzdFIhc2+c6bHZokWkuBb6RRvFjpWhPxWLbgQvaEzldJZ0GSQpfSAaE3hqg==
 
 any-observable@^0.3.0:
   version "0.3.0"

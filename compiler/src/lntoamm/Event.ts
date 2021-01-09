@@ -1,6 +1,7 @@
 import Scope from './Scope'
 import Type from './Type'
 import UserFunction from './UserFunction'
+import { LPNode, } from '../lp'
 
 class Event {
   name: string
@@ -21,13 +22,13 @@ class Event {
     return `event ${this.name}: ${this.type.typename}`
   }
 
-  static fromAst(eventAst: any, scope: Scope) { // TODO: Eliminate ANTLR
-    const name = eventAst.VARNAME().getText()
-    const type = scope.deepGet(eventAst.fulltypename().getText()) as Type
+  static fromAst(eventAst: LPNode, scope: Scope) {
+    const name = eventAst.get('variable').t
+    const type = scope.deepGet(eventAst.get('fulltypename').t) as Type
     if (!type) {
-      throw new Error("Could not find specified type: " + eventAst.fulltypename().getText())
+      throw new Error("Could not find specified type: " + eventAst.get('fulltypename').t)
     } else if (!(type instanceof Type)) {
-      throw new Error(eventAst.fulltypename().getText() + " is not a type")
+      throw new Error(eventAst.get('fulltypename').t + " is not a type")
     }
     return new Event(name, type, false)
   }

@@ -1,4 +1,5 @@
 import * as Ast from './Ast'
+import Fn from './Function'
 import Scope from './Scope'
 import Type from './Type'
 import UserFunction from './UserFunction'
@@ -7,9 +8,9 @@ class Operator {
   name: string
   precedence: number
   isPrefix: boolean
-  potentialFunctions: Array<UserFunction>
+  potentialFunctions: Array<Fn>
 
-  constructor(name: string, precedence: number, isPrefix: boolean, potentialFunctions: Array<any>) {
+  constructor(name: string, precedence: number, isPrefix: boolean, potentialFunctions: Array<Fn>) {
     this.name = name
     this.precedence = precedence
     this.isPrefix = isPrefix
@@ -43,13 +44,26 @@ class Operator {
         ) {
           const argListAst = Ast.fulltypenameAstFromString(argList[j].typename)
           const argumentTypeListAst = Ast.fulltypenameAstFromString(argumentTypeList[j].typename)
-          const len = argListAst.typegenerics() ?
-            argListAst.typegenerics().fulltypename().length : 0
+          const argGenericTypes = []
+          if (argListAst.has('opttypegenerics')) {
+            argGenericTypes.push(argListAst.get('opttypegenerics').get('generics').get('fulltypename').t);
+            argListAst.get('opttypegenerics').get('generics').get('cdr').getAll().map(r => {
+              argGenericTypes.push(r.get('fulltypename').t)
+            })
+          }
+          const argumentGenericTypes = []
+          if (argumentTypeListAst.has('opttypegenerics')) {
+            argumentGenericTypes.push(
+              argumentTypeListAst.get('opttypegenerics').get('generics').get('fulltypename').t
+            );
+            argumentTypeListAst.get('opttypegenerics').get('generics').get('cdr').getAll().map(
+              r => { argumentGenericTypes.push(r.get('fulltypename').t) }
+            )
+          }
           let innerSkip = false
-          for (let i = 0; i < len; i++) {
-            const argListTypeProp = argListAst.typegenerics().fulltypename(i).getText()
-            const argumentTypeListTypeProp =
-              argumentTypeListAst.typegenerics().fulltypename(i).getText()
+          for (let i = 0; i < argGenericTypes.length; i++) {
+            const argListTypeProp = argGenericTypes[i]
+            const argumentTypeListTypeProp = argumentGenericTypes[i]
             if (argListTypeProp === argumentTypeListTypeProp) continue
             const argListProp = scope.deepGet(argListTypeProp) as Type
             const argumentTypeListProp = scope.deepGet(argumentTypeListTypeProp) as Type

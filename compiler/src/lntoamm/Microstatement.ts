@@ -10,6 +10,7 @@ import StatementType from './StatementType'
 import Type from './Type'
 import UserFunction from './UserFunction'
 import { Args, Fn, } from './Function'
+import { LPNode, ZeroOrMore, } from '../lp'
 
 const FIXED_TYPES = [ 'int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'bool', 'void' ]
 
@@ -179,190 +180,35 @@ class Microstatement {
     return original
   }
 
-  // TODO: Eliminate ANTLR
-  static fromVarAst(varAst: any, scope: Scope, microstatements: Array<Microstatement>) {
-    // Short-circuit if this exact var was already loaded
-    let original = Microstatement.fromVarName(varAst.getText(), scope, microstatements)
-    if (!original) {
-      // Otherwise, we're digging in piece by piece to find the relevant microstatement.
-      const segments = varAst.varsegment()
-      let name = ''
-      for (const segment of segments) {
-        // A 'normal' segment. Either append it to the name and attempt to get the underlying
-        // sub-name or rewrite it into an array access if it's a user-defined type field name
-        if (segment.VARNAME()) {
-          // Decide if this is an access on a user-defined type that should be rewritten as an array
-          // access instead
-          name += segment.VARNAME().getText()
-          if (!original || !original.outputType || original.outputType.builtIn) {
-            original = Microstatement.fromVarName(name, scope, microstatements)
-          } else {
-            // Next, figure out which field number this is
-            const fieldName = segment.VARNAME().getText()
-            const fields = Object.keys(original.outputType.properties)
-            const fieldNum = fields.indexOf(fieldName)
-            if (fieldNum < 0) {
-              // Invalid object access
-              throw new Error(`${name} does not have a field named ${fieldName}
-${varAst.getText()} on line ${varAst.start.line}:${varAst.start.column}`)
-            }
-            // Create a new variable to hold the address within the array literal
-            const addrName = "_" + uuid().replace(/-/g, "_")
-            microstatements.push(new Microstatement(
-              StatementType.CONSTDEC,
-              scope,
-              true,
-              addrName,
-              Type.builtinTypes['int64'],
-              [`${fieldNum}`],
-              [],
-            ))
-            // Insert a `register` opcode.
-            const opcodes = require('./opcodes').default
-            opcodes.exportScope.get('register')[0].microstatementInlining(
-              [original.outputName, addrName],
-              scope,
-              microstatements,
-            )
-            // We'll need a reference to this for later
-            const typeRecord = original
-            // Set the original to this newly-generated microstatement
-            original = microstatements[microstatements.length - 1]
-            // Now we do something odd, but correct here; we need to replace the `outputType` from
-            // `any` to the type that was actually copied so function resolution continues to work
-            original.outputType = typeRecord.outputType.properties[fieldName]
-          }
-        }
-        // A separator, just append it and do nothing else
-        if (segment.METHODSEP()) {
-          name += segment.METHODSEP().getText()
-        }
-        // An array access. This requires resolving the contents of the array access variable and
-        // then using that value to find the correct index to read from. For now, that will be
-        // emitting a `resfrom` opcode call. Also for now it is an error if the resolved type is
-        // anything but `int64` for the array access path. Maps use the same syntax with the type
-        // being the Map's Key type.
-        if (segment.arrayaccess()) {
-          if (original == null || !(original instanceof Microstatement)) {
-            // This is all moot if we didn't resolve a variable to dig into
-            throw new Error(`${name} cannot be found
-${varAst.getText()} on line ${varAst.start.line}:${varAst.start.column}`)
-          }
-          // We're still ID'ing it with the raw text to make the short-circuit work
-          name += segment.arrayaccess().getText()
-          const assignables = segment.arrayaccess().assignables()
-          Microstatement.fromAssignablesAst(assignables, scope, microstatements)
-          const lookup = microstatements[microstatements.length - 1]
-          // TODO: Map support, which requires figuring out if the outer memory object is an array
-          // or a map.
-          if (lookup.outputType.typename === 'int64') {
-            const opcodes = require('./opcodes').default
-            // Create a new variable to hold the `okR` size value
-            const sizeName = "_" + uuid().replace(/-/g, "_")
-            microstatements.push(new Microstatement(
-              StatementType.CONSTDEC,
-              scope,
-              true,
-              sizeName,
-              Type.builtinTypes['int64'],
-              ['8'],
-              [],
-            ))
-            // Insert an `okR` opcode.
-            opcodes.exportScope.get('okR')[0].microstatementInlining(
-              [lookup.outputName, sizeName],
-              scope,
-              microstatements,
-            )
-            const wrapped = microstatements[microstatements.length - 1]
-            // Insert a `resfrom` opcode.
-            opcodes.exportScope.get('resfrom')[0].microstatementInlining(
-              [original.outputName, wrapped.outputName],
-              scope,
-              microstatements,
-            )
-          } else if (lookup.outputType.typename === 'Result<int64>') {
-            const opcodes = require('./opcodes').default
-            // Insert a `resfrom` opcode.
-            opcodes.exportScope.get('resfrom')[0].microstatementInlining(
-              [original.outputName, lookup.outputName],
-              scope,
-              microstatements,
-            )
-          } else {
-            throw new Error(`${segment.getText()} cannot be used in an array lookup as it is not an int64 or Result<int64>
-${varAst.getText()} on line ${varAst.start.line}:${varAst.start.column}`)
-          }
-          // We'll need a reference to this for later
-          const arrayRecord = original
-          // Set the original to this newly-generated microstatement
-          original = microstatements[microstatements.length - 1]
-          // Now we do something odd, but correct here; we need to replace the `outputType` from
-          // `any` to the type that was actually copied so function resolution continues to work
-          original.outputType = Type.builtinTypes.Result.solidify(
-            [Object.values(arrayRecord.outputType.properties)[0].typename],
-            scope,
-          )
-        }
-      }
-    }
-    if (original == null || !(original instanceof Microstatement)) {
-      throw new Error(`${varAst.getText()} cannot be found
-${varAst.getText()} on line ${varAst.start.line}:${varAst.start.column}`)
-    }
-    // When a variable is reassigned (or was referenced in a function call or operator statement,
-    // instead of duplicating its data, add a microstatement to rereference that data (all of the
-    // function and operator calls expect their arguments to be the N statements preceding them).
-    microstatements.push(new Microstatement(
-      StatementType.REREF,
-      scope,
-      true,
-      original.outputName,
-      original.outputType,
-      [],
-      [],
-    ))
-  }
-
-  // TODO: Eliminate ANTLR
-  static fromConstantsAst(constantsAst: any, scope: Scope, microstatements: Array<Microstatement>) {
+  static fromConstantsAst(constantsAst: LPNode, scope: Scope, microstatements: Array<Microstatement>) {
     const constName = "_" + uuid().replace(/-/g, "_")
     let constType: string = 'void'
-    if (constantsAst.BOOLCONSTANT() != null) {
-      constType = 'bool'
-    }
-    if (constantsAst.STRINGCONSTANT() != null) {
-      constType = 'string'
-    }
-    if (constantsAst.NUMBERCONSTANT() != null) {
+    if (constantsAst.has('bool')) constType = 'bool'
+    if (constantsAst.has('str')) constType = 'string'
+    if (constantsAst.has('num')) {
       // TODO: Add support for hex, octal, scientific, etc
-      const numberConst = constantsAst.NUMBERCONSTANT().getText()
-      if (numberConst.indexOf('.') > -1) { // It's a float
-        constType = 'float64'
-      } else { // It's an integer
-        constType = 'int64'
-      }
+      const numberConst = constantsAst.t
+      constType = numberConst.indexOf('.') > -1 ? 'float64' : 'int64'
     }
     let constVal: string
     try {
-      JSON.parse(constantsAst.getText()) // Will fail on strings with escape chars
-      constVal = constantsAst.getText()
+      JSON.parse(constantsAst.t) // Will fail on strings with escape chars
+      constVal = constantsAst.t
     } catch (e) {
       // It may be a zero-padded number
       if (
         ['int8', 'int16', 'int32', 'int64'].includes(constType) &&
-        constantsAst.getText()[0] === '0'
+        constantsAst.t[0] === '0'
       ) {
-        constVal = parseInt(constantsAst.getText(), 10).toString()
+        constVal = parseInt(constantsAst.t, 10).toString()
       } else if (
         ['float32', 'float64'].includes(constType) &&
-        constantsAst.getText()[0] === '0'
+        constantsAst.t[0] === '0'
       ) {
-        constVal = parseFloat(constantsAst.getText()).toString()
+        constVal = parseFloat(constantsAst.t).toString()
       } else {
         // Hackery to get these strings to work
-        constVal = JSON.stringify(constantsAst.getText()
-          .replace(/^["']/, '').replace(/["']$/, ''))
+        constVal = JSON.stringify(constantsAst.t.replace(/^["']/, '').replace(/["']$/, ''))
       }
     }
     microstatements.push(new Microstatement(
@@ -377,57 +223,67 @@ ${varAst.getText()} on line ${varAst.start.line}:${varAst.start.column}`)
   }
 
   static fromObjectLiteralsAst(
-    objectLiteralsAst: any, // TODO: Eliminate ANTLR
+    objectLiteralsAst: LPNode,
     scope: Scope,
     microstatements: Array<Microstatement>,
   ) {
-    if (objectLiteralsAst.arrayliteral()) {
+    if (objectLiteralsAst.has('arrayliteral')) {
       // Array literals first need all of the microstatements of the array contents defined, then
       // a `newarr` opcode call is inserted for the object literal itself, then `pusharr` opcode
       // calls are emitted to insert the relevant data into the array, and finally the array itself
       // is REREFed for the outer microstatement generation call.
-      const arrayLiteralContents = []
-      const assignablelist = objectLiteralsAst.arrayliteral().arraybase().assignablelist()
-      const assignableLen = assignablelist ? assignablelist.assignables().length : 0
-      for (let i = 0; i < assignableLen; i++) {
-        Microstatement.fromAssignablesAst(assignablelist.assignables(i), scope, microstatements)
-        arrayLiteralContents.push(microstatements[microstatements.length - 1])
+      let arrayLiteralContents = []
+      const arraybase = objectLiteralsAst.get('arrayliteral').has('arraybase') ?
+        objectLiteralsAst.get('arrayliteral').get('arraybase') :
+        objectLiteralsAst.get('arrayliteral').get('fullarrayliteral').get('arraybase')
+      if (arraybase.has('assignablelist')) {
+        const assignablelist = arraybase.get('assignablelist')
+        arrayLiteralContents.push(assignablelist.get('assignables'))
+        assignablelist.get('cdr').getAll().forEach(r => {
+          arrayLiteralContents.push(r.get('assignables'))
+        })
+        arrayLiteralContents = arrayLiteralContents.map(r => {
+          Microstatement.fromAssignablesAst(r, scope, microstatements)
+          return microstatements[microstatements.length - 1]
+        })
       }
-      let typeBox = null
-      if (objectLiteralsAst.arrayliteral().literaldec()) {
-        typeBox = scope.deepGet(
-          objectLiteralsAst.arrayliteral().literaldec().fulltypename().getText().trim()
-        ) as Type
-        if (!typeBox) {
+      let type = null
+      if (objectLiteralsAst.get('arrayliteral').has('fullarrayliteral')) {
+        const arrayTypeAst = objectLiteralsAst
+          .get('arrayliteral')
+          .get('fullarrayliteral')
+          .get('literaldec')
+          .get('fulltypename')
+        type = scope.deepGet(arrayTypeAst.t.trim()) as Type
+        if (!type) {
           // Try to define it if it's a generic type
-          if (objectLiteralsAst.arrayliteral().literaldec().fulltypename().typegenerics()) {
-            const outerTypeBox = scope.deepGet(
-              objectLiteralsAst.arrayliteral().literaldec().fulltypename().typename().getText().trim()
-            ) as Type
-            if (!outerTypeBox) {
-              throw new Error(`${objectLiteralsAst.arrayliteral().literaldec().fulltypename().getText()}  is not defined
-${objectLiteralsAst.getText()} on line ${objectLiteralsAst.start.line}:${objectLiteralsAst.start.column}`)
+          if (arrayTypeAst.has('opttypegenerics')) {
+            const outerType = scope.deepGet(arrayTypeAst.get('typename').t.trim()) as Type
+            if (!outerType) {
+              throw new Error(`${arrayTypeAst.t}  is not defined
+${objectLiteralsAst.t} on line ${objectLiteralsAst.line}:${objectLiteralsAst.char}`)
             }
-            outerTypeBox.solidify(
-              objectLiteralsAst.arrayliteral().literaldec().fulltypename().typegenerics().fulltypename().map(
-                (t: any) => t.getText() // TODO: Eliminate ANTLR
-              ),
-              scope
-            )
-            typeBox = scope.deepGet(objectLiteralsAst.arrayliteral().literaldec().fulltypename().getText().trim())
+            const generics = []
+            const genericsAst = arrayTypeAst.get('opttypegenerics').get('generics')
+            generics.push(genericsAst.get('fulltypename').t)
+            genericsAst.get('cdr').getAll().forEach(r => {
+              generics.push(r.get('fulltypename').t)
+            })
+            outerType.solidify(generics, scope)
+            type = scope.deepGet(arrayTypeAst.t.trim())
           }
         }
-        if (!(typeBox instanceof Type)) {
-          throw new Error(`${objectLiteralsAst.arrayliteral().literaldec().fulltypename().getText().trim()} is not a type
-${objectLiteralsAst.getText()} on line ${objectLiteralsAst.start.line}:${objectLiteralsAst.start.column}`)
+        if (!(type instanceof Type)) {
+          throw new Error(`${arrayTypeAst.t.trim()} is not a type
+${objectLiteralsAst.t} on line ${objectLiteralsAst.line}:${objectLiteralsAst.char}`)
         }
       } else if (arrayLiteralContents.length > 0) {
         const innerType = arrayLiteralContents[0].outputType.typename
         Type.builtinTypes['Array'].solidify([innerType], scope)
-        typeBox = scope.deepGet(`Array<${innerType}>`) as Type
+        type = scope.deepGet(`Array<${innerType}>`) as Type
       } else {
         throw new Error(`Ambiguous array type, please specify the type for an empty array with the syntax \`new Array<MyType> []\`
-${objectLiteralsAst.getText()} on line ${objectLiteralsAst.start.line}:${objectLiteralsAst.start.column}`)
+${objectLiteralsAst.t} on line ${objectLiteralsAst.line}:${objectLiteralsAst.char}`)
       }
       // Create a new variable to hold the size of the array literal
       const lenName = "_" + uuid().replace(/-/g, "_")
@@ -449,7 +305,7 @@ ${objectLiteralsAst.getText()} on line ${objectLiteralsAst.start.line}:${objectL
       )
       // Get the array microstatement and extract the name and insert the correct type
       const array = microstatements[microstatements.length - 1]
-      array.outputType = typeBox
+      array.outputType = type
       // Try to use the "real" type if knowable
       if (arrayLiteralContents.length > 0) {
         array.outputType = Type.builtinTypes['Array'].solidify(
@@ -490,7 +346,7 @@ ${objectLiteralsAst.getText()} on line ${objectLiteralsAst.start.line}:${objectL
         [],
         [],
       ))
-    } else if (!!objectLiteralsAst.typeliteral()) {
+    } else if (objectLiteralsAst.has('typeliteral')) {
       // User types are represented in AMM and lower as `Array<any>`. This reduces the number of
       // concepts that have to be maintained in the execution layer (and is really what C structs
       // are, anyways). The order of the properties on the specified type directly map to the
@@ -501,36 +357,45 @@ ${objectLiteralsAst.getText()} on line ${objectLiteralsAst.start.line}:${objectL
       // If the type literal is missing any fields, that's a hard compile error to make sure
       // accessing undefined data is impossible. If a value might not be needed, they should use
       // the `Option` type and provide a `None` value there.
-      let typeBox = scope.deepGet(
-        objectLiteralsAst.typeliteral().literaldec().fulltypename().getText().trim()
-      ) as Type
-      if (typeBox === null) {
+      const typeAst = objectLiteralsAst.get('typeliteral').get('literaldec').get('fulltypename')
+      let type = scope.deepGet(typeAst.t.trim()) as Type
+      if (type === null) {
         // Try to define it if it's a generic type
-        if (objectLiteralsAst.typeliteral().literaldec().fulltypename().typegenerics()) {
-          const outerTypeBox = scope.deepGet(
-            objectLiteralsAst.typeliteral().literaldec().fulltypename().typename().getText().trim()
-          )
-          if (outerTypeBox === null) {
-            throw new Error(`${objectLiteralsAst.typeliteral().literaldec().fulltypename().getText()}  is not defined
-${objectLiteralsAst.getText()} on line ${objectLiteralsAst.start.line}:${objectLiteralsAst.start.column}`)
+        if (typeAst.has('opttypegenerics')) {
+          const outerType = scope.deepGet(typeAst.get('typename').t.trim()) as Type
+          if (outerType === null) {
+            throw new Error(`${typeAst.t} is not defined
+${objectLiteralsAst.t} on line ${objectLiteralsAst.line}:${objectLiteralsAst.char}`)
           }
-          (outerTypeBox as Type).solidify(
-            objectLiteralsAst.typeliteral().literaldec().fulltypename().typegenerics().fulltypename().map(
-              (t: any) => t.getText() // TODO: Eliminate ANTLR
-            ),
-            scope
-          )
-          typeBox = scope.deepGet(objectLiteralsAst.typeliteral().literaldec().fulltypename().getText().trim()) as Type
+          const generics = []
+          const genericsAst = typeAst.get('opttypegenerics').get('generics')
+          generics.push(genericsAst.get('fulltypename').t)
+          genericsAst.get('cdr').getAll().forEach(r => {
+            generics.push(r.get('fulltypename').t)
+          })
+          outerType.solidify(generics, scope)
+          type = scope.deepGet(typeAst.t.trim()) as Type
         }
       }
-      if (!(typeBox instanceof Type)) {
-        throw new Error(`${objectLiteralsAst.typeliteral().literaldec().fulltypename().getText().trim()} is not a type
-${objectLiteralsAst.getText()} on line ${objectLiteralsAst.start.line}:${objectLiteralsAst.start.column}`)
+      if (!(type instanceof Type)) {
+        throw new Error(`${typeAst.t.trim()} is not a type
+${objectLiteralsAst.t} on line ${objectLiteralsAst.line}:${objectLiteralsAst.char}`)
       }
-      const assignlist = objectLiteralsAst.typeliteral().typebase().typeassignlist()
-      const assignfields = assignlist.VARNAME().map((f: any) => f.getText())
-      const assignvals = assignlist.assignables()
-      const fields = Object.keys(typeBox.properties)
+      const assignlist = objectLiteralsAst.get('typeliteral').get('typebase').get('typeassignlist')
+      const assignArr = []
+      assignArr.push({
+        field: assignlist.get('variable'),
+        val: assignlist.get('assignables'),
+      })
+      assignlist.get('cdr').getAll().forEach(r => {
+        assignArr.push({
+          field: r.get('variable'),
+          val: r.get('assignables'),
+        })
+      })
+      const assignfields = assignArr.map(r => r.field.t)
+      const assignvals = assignArr.map(r => r.val)
+      const fields = Object.keys(type.properties)
       let missingFields = []
       let foundFields = []
       let extraFields = []
@@ -553,7 +418,7 @@ ${objectLiteralsAst.getText()} on line ${objectLiteralsAst.start.line}:${objectL
         }
       }
       if (missingFields.length > 0 || extraFields.length > 0) {
-        let errMsg = `${objectLiteralsAst.typeliteral().literaldec().fulltypename().getText().trim()} object literal improperly defined`
+        let errMsg = `${typeAst.t.trim()} object literal improperly defined`
         if (missingFields.length > 0) {
           errMsg += '\n' + `Missing fields: ${missingFields.join(', ')}`
         }
@@ -561,11 +426,11 @@ ${objectLiteralsAst.getText()} on line ${objectLiteralsAst.start.line}:${objectL
           errMsg += '\n' + `Extra fields: ${extraFields.join(', ')}`
         }
         errMsg += '\n' +
-          objectLiteralsAst.getText() +
+          objectLiteralsAst.t +
           " on line " +
-          objectLiteralsAst.start.line +
+          objectLiteralsAst.line +
           ":" +
-          objectLiteralsAst.start.column
+          objectLiteralsAst.char
         throw new Error(errMsg)
       }
       // The assignment looks good, now we'll mimic the array literal logic mostly
@@ -598,7 +463,7 @@ ${objectLiteralsAst.getText()} on line ${objectLiteralsAst.start.line}:${objectL
       )
       // Get the array microstatement and extract the name and insert the correct type
       const array = microstatements[microstatements.length - 1]
-      array.outputType = typeBox
+      array.outputType = type
       const arrayName = array.outputName
       // Push the values into the array
       for (let i = 0; i < arrayLiteralContents.length; i++) {
@@ -717,52 +582,56 @@ ${objectLiteralsAst.getText()} on line ${objectLiteralsAst.start.line}:${objectL
   }
 
   static fromEmitsAst(
-    emitsAst: any, // TODO: Eliminate ANTLR
+    emitsAst: LPNode,
     scope: Scope,
     microstatements: Array<Microstatement>,
   ) {
-    if (emitsAst.assignables() != null) {
+    if (emitsAst.get('retval').has()) {
       // If there's an assignable value here, add it to the list of microstatements first, then
       // rewrite the final const assignment as the emit statement.
-      Microstatement.fromAssignablesAst(emitsAst.assignables(), scope, microstatements)
-      const eventBox = scope.deepGet(emitsAst.eventref().getText()) // TODO: Port to fromVarAst when Box is removed
-      if (!(eventBox instanceof Event)) {
-        throw new Error(`${emitsAst.eventref().getText()} is not an event!
-${emitsAst.getText()} on line ${emitsAst.start.line}:${emitsAst.start.column}`)
+      Microstatement.fromAssignablesAst(
+        emitsAst.get('retval').get('assignables'),
+        scope,
+        microstatements
+      )
+      const event = scope.deepGet(emitsAst.get('eventname').t)
+      if (!(event instanceof Event)) {
+        throw new Error(`${emitsAst.get('eventname').t} is not an event!
+${emitsAst.t} on line ${emitsAst.line}:${emitsAst.char}`)
       }
       const last = microstatements[microstatements.length - 1]
       if (
-        last.outputType != eventBox.type &&
-        !eventBox.type.castable(last.outputType)
+        last.outputType != event.type &&
+        !event.type.castable(last.outputType)
       ) {
-        throw new Error(`Attempting to assign a value of type ${last.outputType.typename} to an event of type ${eventBox.type.typename}
-${emitsAst.getText()} on line ${emitsAst.start.line}:${emitsAst.start.column}`)
+        throw new Error(`Attempting to assign a value of type ${last.outputType.typename} to an event of type ${event.type.typename}
+${emitsAst.t} on line ${emitsAst.line}:${emitsAst.char}`)
       }
       microstatements.push(new Microstatement(
         StatementType.EMIT,
         scope,
         true,
-        eventBox.name,
-        eventBox.type,
+        event.name,
+        event.type,
         [last.outputName],
         [],
       ))
     } else {
       // Otherwise, create an emit statement with no value
-      const eventBox = scope.deepGet(emitsAst.eventref().getText()) as Event // TODO: Port to fromVarAst
-      if (!(eventBox instanceof Event)) {
-        throw new Error(`${emitsAst.eventref().getText()} is not an event!
-${emitsAst.getText()} on line ${emitsAst.start.line}:${emitsAst.start.column}`)
+      const event = scope.deepGet(emitsAst.get('eventname').t) as Event
+      if (!(event instanceof Event)) {
+        throw new Error(`${emitsAst.get('eventname').t} is not an event!
+${emitsAst.t} on line ${emitsAst.line}:${emitsAst.char}`)
       }
-      if (eventBox.type != Type.builtinTypes.void) {
-        throw new Error(`${emitsAst.eventref().getText()} must have a value emitted to it!
-${emitsAst.getText()} on line ${emitsAst.start.line}:${emitsAst.start.column}`)
+      if (event.type != Type.builtinTypes.void) {
+        throw new Error(`${emitsAst.get('eventname').t} must have a ${event.type} value emitted to it!
+${emitsAst.t} on line ${emitsAst.line}:${emitsAst.char}`)
       }
       microstatements.push(new Microstatement(
         StatementType.EMIT,
         scope,
         true,
-        eventBox.name,
+        event.name,
         Type.builtinTypes.void,
         [],
         [],
@@ -771,16 +640,16 @@ ${emitsAst.getText()} on line ${emitsAst.start.line}:${emitsAst.start.column}`)
   }
 
   static fromExitsAst(
-    exitsAst: any, // TODO: Eliminate ANTLR
+    exitsAst: LPNode,
     scope: Scope,
     microstatements: Array<Microstatement>,
   ) {
     // `alan--` handlers don't have the concept of a `return` statement, the functions are all inlined
     // and the last assigned value for the function *is* the return statement
-    if (exitsAst.assignables() != null) {
+    if (exitsAst.get('retval').has()) {
       // If there's an assignable value here, add it to the list of microstatements
       Microstatement.fromAssignablesAst(
-        exitsAst.assignables(),
+        exitsAst.get('retval').get('assignables'),
         scope,
         microstatements
       )
@@ -800,7 +669,7 @@ ${emitsAst.getText()} on line ${emitsAst.start.line}:${emitsAst.start.column}`)
   }
 
   static fromAssignmentsAst(
-    assignmentsAst: any, // TODO: Eliminate ANTLR
+    assignmentsAst: LPNode,
     scope: Scope,
     microstatements: Array<Microstatement>,
   ) {
@@ -820,9 +689,9 @@ ${emitsAst.getText()} on line ${emitsAst.start.line}:${emitsAst.start.column}`)
     // an `ASSIGNMENT` StatementType, otherwise we need to go through a more complicated procedure
     // to `register` the `n-1` remaining inner array segments to new variables as references and
     // finally `register` the `assignable` into the location the last segment indicates.
-    const segments = assignmentsAst.varn().varsegment()
+    const segments = assignmentsAst.get('varn').getAll()
     // Now, find the original variable and confirm that it actually is a let declaration
-    const letName = segments[0].getText()
+    const letName = segments[0].t
     let actualLetName: string
     let original: Microstatement
     for (let i = microstatements.length - 1; i >= 0; i--) {
@@ -843,16 +712,16 @@ ${emitsAst.getText()} on line ${emitsAst.start.line}:${emitsAst.start.column}`)
           continue
         } else {
           throw new Error(`Attempting to reassign a non-let variable.
-${letName} on line ${assignmentsAst.start.line}:${assignmentsAst.start.column}`)
+${assignmentsAst.t} on line ${assignmentsAst.line}:${assignmentsAst.char}`)
         }
       }
     }
     if (!original) {
       throw new Error(`Attempting to reassign to an undeclared variable
-${letName} on line ${assignmentsAst.line}:${assignmentsAst.start.column}`)
+${assignmentsAst.t} on line ${assignmentsAst.line}:${assignmentsAst.char}`)
     }
     if (segments.length === 1) { // Could be a simple let variable
-      const letName = segments[0].getText()
+      const letName = segments[0].t
       let actualLetName: string
       for (let i = microstatements.length - 1; i >= 0; i--) {
         const microstatement = microstatements[i]
@@ -871,12 +740,12 @@ ${letName} on line ${assignmentsAst.line}:${assignmentsAst.start.column}`)
             continue
           } else {
             throw new Error(`Attempting to reassign a non-let variable.
-${letName} on line ${assignmentsAst.line}:${assignmentsAst.start.column}`)
+${letName} on line ${assignmentsAst.line}:${assignmentsAst.char}`)
           }
         }
       }
       Microstatement.fromAssignablesAst(
-        assignmentsAst.assignables(),
+        assignmentsAst.get('assignables'),
         scope,
         microstatements
       )
@@ -931,14 +800,22 @@ ${letName} on line ${assignmentsAst.line}:${assignmentsAst.start.column}`)
           const baseType = original.outputType.originalType
           const originalTypeAst = Ast.fulltypenameAstFromString(original.outputType.typename)
           const lastTypeAst = Ast.fulltypenameAstFromString(last.outputType.typename)
-          const originalTypeGenerics = originalTypeAst.typegenerics()
-          const lastTypeGenerics = lastTypeAst.typegenerics()
-          const originalSubtypes = originalTypeGenerics ? originalTypeGenerics.fulltypename().map(
-            (t: any) => t.getText()
-          ) : []
-          const lastSubtypes = lastTypeGenerics ? lastTypeGenerics.fulltypename().map(
-            (t: any) => t.getText()
-          ) : []
+          const originalSubtypes = []
+          if (originalTypeAst.has('opttypegenerics')) {
+            const originalTypeGenerics = originalTypeAst.get('opttypegenerics').get('generics')
+            originalSubtypes.push(originalTypeGenerics.get('fulltypename').t)
+            originalTypeGenerics.get('cdr').getAll().forEach(r => {
+              originalSubtypes.push(r.get('fulltypename').t)
+            })
+          }
+          const lastSubtypes = []
+          if (lastTypeAst.has('opttypegenerics')) {
+            const lastTypeGenerics = lastTypeAst.get('opttypegenerics').get('generics')
+            lastSubtypes.push(lastTypeGenerics.get('fulltypename').t)
+            lastTypeGenerics.get('cdr').getAll().forEach(r => {
+              lastSubtypes.push(r.get('fulltypename').t)
+            })
+          }
           const newSubtypes = []
           for (let i = 0; i < originalSubtypes.length; i++) {
             if (originalSubtypes[i] === lastSubtypes[i]) {
@@ -965,32 +842,32 @@ ${letName} on line ${assignmentsAst.line}:${assignmentsAst.start.column}`)
       return
     }
     // The more complicated path. First, rule out that the first segment is not a `scope`.
-    const testBox = scope.deepGet(segments[0].getText())
-    if (!!testBox && testBox instanceof Scope) {
+    const test = scope.deepGet(segments[0].t)
+    if (!!test && test instanceof Scope) {
       throw new Error(`Atempting to reassign to variable from another module
-${assignmentsAst.varn().getText()} on line ${assignmentsAst.start.line}:${assignmentsAst.start.column}`)
+${assignmentsAst.get('varn').t} on line ${assignmentsAst.line}:${assignmentsAst.char}`)
     }
     let nestedLetType = original.outputType
     for (let i = 1; i < segments.length - 1; i++) {
       const segment = segments[i]
       // A separator, just do nothing else this loop
-      if (segment.METHODSEP()) continue
+      if (segment.has('methodsep')) continue
       // An array access. Until the grammar definition is reworked, this will parse correctly, but
       // it is banned in alan (due to being unable to catch and report assignment errors to arrays)
-      if (segment.arrayaccess()) {
+      if (segment.has('arrayaccess')) {
         throw new Error(`${segments.join('')} cannot be written to. Please use 'set' to mutate arrays and hash tables`)
       }
       // If it's a varname here, then we're accessing an inner property type. We need to figure out
       // which index it is in the underlying array structure and then `register` that piece (since
       // this is an intermediate access and not the final access point)
-      if (segment.VARNAME()) {
-        const fieldName = segment.VARNAME().getText()
+      if (segment.has('variable')) {
+        const fieldName = segment.get('variable').t
         const fields = Object.keys(nestedLetType.properties)
         const fieldNum = fields.indexOf(fieldName)
         if (fieldNum < 0) {
           // Invalid object access
           throw new Error(`${letName} does not have a field named ${fieldName}
-${assignmentsAst.varn().getText()} on line ${assignmentsAst.varn().start.line}:${assignmentsAst.varn().start.column}`)
+${assignmentsAst.get('varn').t} on line ${assignmentsAst.get('varn').line}:${assignmentsAst.get('varn').char}`)
         }
         // Create a new variable to hold the address within the array literal
         const addrName = "_" + uuid().replace(/-/g, "_")
@@ -1017,7 +894,7 @@ ${assignmentsAst.varn().getText()} on line ${assignmentsAst.varn().start.line}:$
       }
     }
     Microstatement.fromAssignablesAst(
-      assignmentsAst.assignables(),
+      assignmentsAst.get('assignables'),
       scope,
       microstatements
     )
@@ -1029,31 +906,14 @@ ${assignmentsAst.varn().getText()} on line ${assignmentsAst.varn().start.line}:$
       'int8', 'int16', 'int32', 'int64', 'float32', 'float64', 'bool'
     ].includes(assign.outputType.typename) ? 'copytof' : 'copytov'
     const finalSegment = segments[segments.length - 1]
-    if (finalSegment.arrayaccess()) {
-      const assignables = finalSegment.arrayaccess().assignables()
-      Microstatement.fromAssignablesAst(assignables, scope, microstatements)
-      const lookup = microstatements[microstatements.length - 1]
-      // TODO: Map support, which requires figuring out if the outer memory object is an array
-      // or a map.
-      if (lookup.outputType.typename !== 'int64') {
-        throw new Error(`${finalSegment.getText()} cannot be used in an array lookup as it is not an int64
-${letName} on line ${assignmentsAst.start.line}:${assignmentsAst.start.column}`)
-      }
-      // Insert a `copytof` or `copytov` opcode.
-      const opcodes = require('./opcodes').default
-      opcodes.exportScope.get(copytoop)[0].microstatementInlining(
-        [original.outputName, lookup.outputName, assign.outputName],
-        scope,
-        microstatements,
-      )
-    } else if (finalSegment.VARNAME()) {
-      const fieldName = finalSegment.VARNAME().getText()
+    if (finalSegment.has('variable')) {
+      const fieldName = finalSegment.t
       const fields = Object.keys(nestedLetType.properties)
       const fieldNum = fields.indexOf(fieldName)
       if (fieldNum < 0) {
         // Invalid object access
         throw new Error(`${letName} does not have a field named ${fieldName}
-${letName} on line ${assignmentsAst.start.line}:${assignmentsAst.start.column}`)
+${letName} on line ${assignmentsAst.line}:${assignmentsAst.char}`)
       }
       // Check if the new variable is allowed to be assigned to this object
       const originalType = nestedLetType.properties[fieldName]
@@ -1079,39 +939,41 @@ ${letName} on line ${assignmentsAst.start.line}:${assignmentsAst.start.column}`)
         microstatements,
       )
     } else {
-      throw new Error(`${finalSegment.getText()} cannot be the final piece in a reassignment statement
-${letName} on line ${assignmentsAst.start.line}:${assignmentsAst.start.column}`)
+      throw new Error(`${finalSegment.t} cannot be the final piece in a reassignment statement
+${letName} on line ${assignmentsAst.line}:${assignmentsAst.char}`)
     }
   }
 
   static fromLetdeclarationAst(
-    letdeclarationAst: any, // TODO: Eliminate ANTLR
+    letdeclarationAst: LPNode,
     scope: Scope,
     microstatements: Array<Microstatement>,
   ) {
-    const letAlias = letdeclarationAst.VARNAME().getText()
-    const letTypeHint = letdeclarationAst.fulltypename() ? letdeclarationAst.fulltypename().getText() : ''
-    const typeBox = scope.deepGet(letTypeHint)
-    if (typeBox === null && letTypeHint !== '') {
+    const letAlias = letdeclarationAst.get('variable').t
+    const letTypeHint = letdeclarationAst.get('typedec').has() ?
+      letdeclarationAst.get('typedec').get('fulltypename').t :
+      ''
+    const type = scope.deepGet(letTypeHint)
+    if (type === null && letTypeHint !== '') {
       // Try to define it if it's a generic type
-      if (letdeclarationAst.fulltypename().typegenerics()) {
-        const outerTypeBox = scope.deepGet(
-          letdeclarationAst.fulltypename().typename().getText()
-        ) as Type
-        if (outerTypeBox === null) {
-          throw new Error(`${letdeclarationAst.fulltypename().typename().getText()}  is not defined
-${letdeclarationAst.getText()} on line ${letdeclarationAst.start.line}:${letdeclarationAst.start.column}`)
+      const letTypeAst = letdeclarationAst.get('typedec').get('fulltypename')
+      if (letTypeAst.has('opttypegenerics')) {
+        const outerType = scope.deepGet(letTypeAst.get('typename').t) as Type
+        if (outerType === null) {
+          throw new Error(`${letTypeAst.get('typename').t}  is not defined
+${letdeclarationAst.t} on line ${letdeclarationAst.line}:${letdeclarationAst.char}`)
         }
-        outerTypeBox.solidify(
-          letdeclarationAst.fulltypename().typegenerics().fulltypename().map(
-            (t: any) =>t.getText() // TODO: Eliminate ANTLR
-          ),
-          scope
-        )
+        const generics = []
+        const genericAst = letTypeAst.get('opttypegenerics').get('generics')
+        generics.push(genericAst.get('fulltypename').t)
+        genericAst.get('cdr').getAll().forEach(r => {
+          generics.push(r.get('fulltypename').t)
+        })
+        outerType.solidify(generics, scope)
       }
     }
     Microstatement.fromAssignablesAst(
-      letdeclarationAst.assignables(),
+      letdeclarationAst.get('assignables'),
       scope,
       microstatements,
     )
@@ -1137,36 +999,36 @@ ${letdeclarationAst.getText()} on line ${letdeclarationAst.start.line}:${letdecl
   }
 
   static fromConstdeclarationAst(
-    constdeclarationAst: any, // TODO: Eliminate ANTLR
+    constdeclarationAst: LPNode,
     scope: Scope,
     microstatements: Array<Microstatement>,
   ) {
     const constName = "_" + uuid().replace(/-/g, "_")
-    const constAlias = constdeclarationAst.VARNAME().getText()
-    const constTypeHint = constdeclarationAst.fulltypename() ?
-      constdeclarationAst.fulltypename().getText() :
+    const constAlias = constdeclarationAst.get('variable').t
+    const constTypeHint = constdeclarationAst.get('typedec').has() ?
+      constdeclarationAst.get('typedec').get('fulltypename').t :
       ''
-    const typeBox = scope.deepGet(constTypeHint)
-    if (typeBox === null && constTypeHint !== '') {
+    const type = scope.deepGet(constTypeHint)
+    if (type === null && constTypeHint !== '') {
       // Try to define it if it's a generic type
-      if (constdeclarationAst.fulltypename().typegenerics()) {
-        const outerTypeBox = scope.deepGet(
-          constdeclarationAst.fulltypename().typename().getText()
-        ) as Type
-        if (outerTypeBox === null) {
-          throw new Error(`${constdeclarationAst.fulltypename().typename().getText()}  is not defined
-${constdeclarationAst.getText()} on line ${constdeclarationAst.start.line}:${constdeclarationAst.start.column}`)
+      const constTypeAst = constdeclarationAst.get('typedec').get('fulltypename')
+      if (constTypeAst.has('opttypegenerics')) {
+        const outerType = scope.deepGet(constTypeAst.get('typename').t) as Type
+        if (outerType === null) {
+          throw new Error(`${constTypeAst.get('typename').t}  is not defined
+${constdeclarationAst.t} on line ${constdeclarationAst.line}:${constdeclarationAst.char}`)
         }
-        outerTypeBox.solidify(
-          constdeclarationAst.fulltypename().typegenerics().fulltypename().map(
-            (t: any) => t.getText() // TODO: Eliminate ANTLR
-          ),
-          scope
-        )
+        const generics = []
+        const genericAst = constTypeAst.get('opttypegenerics').get('generics')
+        generics.push(genericAst.get('fulltypename').t)
+        genericAst.get('cdr').getAll().forEach(r => {
+          generics.push(r.get('fulltypename').t)
+        })
+        outerType.solidify(generics, scope)
       }
     }
     Microstatement.fromAssignablesAst(
-      constdeclarationAst.assignables(),
+      constdeclarationAst.get('assignables'),
       scope,
       microstatements,
     )
@@ -1186,49 +1048,49 @@ ${constdeclarationAst.getText()} on line ${constdeclarationAst.start.line}:${con
 
   // DFS recursive algo to get the microstatements in a valid ordering
   static fromStatementsAst(
-    statementAst: any, // TODO: Eliminate ANTLR
+    statementAst: LPNode,
     scope: Scope,
     microstatements: Array<Microstatement>,
   ) {
-    if (statementAst.declarations() != null) {
-      if (statementAst.declarations().constdeclaration() != null) {
+    if (statementAst.has('declarations')) {
+      if (statementAst.get('declarations').has('constdeclaration')) {
         Microstatement.fromConstdeclarationAst(
-          statementAst.declarations().constdeclaration(),
+          statementAst.get('declarations').get('constdeclaration'),
           scope,
           microstatements
         )
       } else {
         Microstatement.fromLetdeclarationAst(
-          statementAst.declarations().letdeclaration(),
+          statementAst.get('declarations').get('letdeclaration'),
           scope,
           microstatements
         )
       }
     }
-    if (statementAst.assignments() != null) {
+    if (statementAst.has('assignments')) {
       Microstatement.fromAssignmentsAst(
-        statementAst.assignments(),
+        statementAst.get('assignments'),
         scope,
         microstatements
       )
     }
-    if (statementAst.assignables() != null) {
+    if (statementAst.has('assignables')) {
       Microstatement.fromAssignablesAst(
-        statementAst.assignables(),
+        statementAst.get('assignables').get('assignables'),
         scope,
         microstatements
       )
     }
-    if (statementAst.exits() != null) {
+    if (statementAst.has('exits')) {
       Microstatement.fromExitsAst(
-        statementAst.exits(),
+        statementAst.get('exits'),
         scope,
         microstatements
       )
     }
-    if (statementAst.emits() != null) {
+    if (statementAst.has('emits')) {
       Microstatement.fromEmitsAst(
-        statementAst.emits(),
+        statementAst.get('emits'),
         scope,
         microstatements
       )
@@ -1238,7 +1100,7 @@ ${constdeclarationAst.getText()} on line ${constdeclarationAst.start.line}:${con
   }
 
   static fromBaseAssignableAst(
-    baseAssignableAsts: any, // TODO: Eliminate ANTLR
+    baseAssignableAsts: LPNode[],
     scope: Scope,
     microstatements: Array<Microstatement>,
   ) {
@@ -1276,32 +1138,40 @@ ${constdeclarationAst.getText()} on line ${constdeclarationAst.start.line}:${con
     // state *and* look-ahead to the next element in the list.
     //
     // All of this to re-iterate that for the sake of compile time, some of the complexities of the
-    // grammar have been moved from the ANTLR definition into the compiler itself for performance
+    // grammar have been moved from the LP definition into the compiler itself for performance
     // reasons, explaining the complicated iterative logic that follows.
 
     let currVal: any = null
     for (let i = 0; i < baseAssignableAsts.length; i++) {
-      const baseassignable = baseAssignableAsts[i]
-      if (!!baseassignable.METHODSEP()) {
+      const baseassignable = baseAssignableAsts[i].get('baseassignable')
+      if (baseassignable.has('methodsep')) {
         if (i === 0) {
           throw new Error(`Invalid start of assignable statement. Cannot begin with a dot (.)
-${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
         }
-        const prevassignable = baseAssignableAsts[i - 1]
-        if (!!prevassignable.METHODSEP()) {
+        const prevassignable = baseAssignableAsts[i - 1].get('baseassignable')
+        if (prevassignable.has('methodsep')) {
           throw new Error(`Invalid property access. You accidentally typed a dot twice in a row.
-${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
-        } else if (!!prevassignable.functions()) {
+${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
+        } else if (prevassignable.has('functions')) {
           throw new Error(`Invalid property access. Functions do not have properties.
-${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
         }
         // TODO: Do we even do anything else in this branch?
-      } else if (!!baseassignable.VARNAME()) {
-        const nextassignable = baseAssignableAsts[i + 1]
-        if (!!nextassignable && !!nextassignable.fncall()) {
+      } else if (baseassignable.has('variable')) {
+        const nextassignable = !!baseAssignableAsts[i + 1] ?
+          baseAssignableAsts[i + 1].get('baseassignable') :
+          undefined
+        if (!!nextassignable && nextassignable.has('fncall')) {
           // This is a function call path
-          const fncall = nextassignable.fncall()
-          const argAsts = fncall.assignablelist() ? fncall.assignablelist().assignables() : []
+          const fncall = nextassignable.get('fncall')
+          const argAsts = []
+          if (fncall.get('assignablelist').has()) {
+            argAsts.push(fncall.get('assignablelist').get('assignables'))
+            fncall.get('assignablelist').get('cdr').getAll().forEach(r => {
+              argAsts.push(r.get('assignables'))
+            })
+          }
           const argMicrostatements = argAsts.map(arg => {
             Microstatement.fromAssignablesAst(arg, scope, microstatements)
             return microstatements[microstatements.length - 1]
@@ -1311,12 +1181,12 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
             const realArgNames = argMicrostatements.map(arg => arg.outputName)
             const realArgTypes = argMicrostatements.map(arg => arg.outputType)
             // Do a scan of the microstatements for an inner defined closure that might exist.
-            const fn = scope.deepGet(baseassignable.VARNAME().getText()) as Array<Fn>
+            const fn = scope.deepGet(baseassignable.get('variable').t) as Array<Fn>
             if (
               !fn ||
               !(fn instanceof Array && fn[0].microstatementInlining instanceof Function)
             ) {
-              const fnName = baseassignable.VARNAME().getText()
+              const fnName = baseassignable.get('variable').t
               let actualFnName: string
               let inlinedClosure = false
               for (let i = microstatements.length - 1; i >= 0; i--) {
@@ -1344,8 +1214,8 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
                 }
               }
               if (!inlinedClosure) {
-                throw new Error(`${baseassignable.VARNAME().getText()} is not a function but used as one.
-${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+                throw new Error(`${baseassignable.get('variable').t} is not a function but used as one.
+${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
               }
             } else {
               // Generate the relevant microstatements for this function. UserFunctions get inlined
@@ -1360,13 +1230,13 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
             // This is calling a function by its parent scope
             const realArgNames = argMicrostatements.map(arg => arg.outputName)
             const realArgTypes = argMicrostatements.map(arg => arg.outputType)
-            const fn = currVal.deepGet(baseassignable.VARNAME().getText()) as Array<Fn>
+            const fn = currVal.deepGet(baseassignable.get('variable').t) as Array<Fn>
             if (
               !fn ||
               !(fn instanceof Array && fn[0].microstatementInlining instanceof Function)
             ) {
-              throw new Error(`${baseassignable.VARNAME().getText()} is not a function but used as one.
-${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+              throw new Error(`${baseassignable.get('variable').t} is not a function but used as one.
+${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
             }
             // Generate the relevant microstatements for this function. UserFunctions get inlined
             // with the return statement turned into a const assignment as the last statement,
@@ -1384,13 +1254,13 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
               currVal.outputType,
               ...argMicrostatements.map(arg => arg.outputType)
             ]
-            const fn = scope.deepGet(baseassignable.VARNAME().getText()) as Array<Fn>
+            const fn = scope.deepGet(baseassignable.get('variable').t) as Array<Fn>
             if (
               !fn ||
               !(fn instanceof Array && fn[0].microstatementInlining instanceof Function)
             ) {
-              throw new Error(`${baseassignable.VARNAME().getText()} is not a function but used as one.
-${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+              throw new Error(`${baseassignable.get('variable').t} is not a function but used as one.
+${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
             }
             // Generate the relevant microstatements for this function. UserFunctions get inlined
             // with the return statement turned into a const assignment as the last statement,
@@ -1405,33 +1275,33 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
         } else {
           if (currVal === null) {
             let thing = Microstatement.fromVarName(
-              baseassignable.VARNAME().getText(),
+              baseassignable.get('variable').t,
               scope,
               microstatements,
             )
             if (!thing) {
-              thing = scope.deepGet(baseassignable.VARNAME().getText())
+              thing = scope.deepGet(baseassignable.get('variable').t)
             }
             if (!thing) {
-              throw new Error(`${baseassignable.VARNAME().getText()} not found.
-  ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+              throw new Error(`${baseassignable.get('variable').t} not found.
+  ${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
             }
             currVal = thing
           } else if (currVal instanceof Scope) {
-            const thing = currVal.deepGet(baseassignable.VARNAME().getText())
+            const thing = currVal.deepGet(baseassignable.get('variable').t)
             if (!thing) {
-              throw new Error(`${baseassignable.VARNAME().getText()} not found in other scope.
-  ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+              throw new Error(`${baseassignable.get('variable').t} not found in other scope.
+  ${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
             }
             currVal = thing
           } else if (currVal instanceof Microstatement) {
-            const fieldName = baseassignable.VARNAME().getText()
+            const fieldName = baseassignable.get('variable').t
             const fields = Object.keys(currVal.outputType.properties)
             const fieldNum = fields.indexOf(fieldName)
             if (fieldNum < 0) {
               // Invalid object access
               throw new Error(`${fieldName} property not found.
-  ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+  ${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
             }
             // Create a new variable to hold the address within the array literal
             const addrName = "_" + uuid().replace(/-/g, "_")
@@ -1462,51 +1332,54 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
             // What is this?
             throw new Error(`Impossible path found. Bug in compiler, please report!
 Previous value type: ${typeof currVal}
-${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
           }
         }
-      } else if (!!baseassignable.constants()) {
+      } else if (baseassignable.has('constants')) {
         if (currVal !== null) {
           throw new Error(`Unexpected constant value detected.
 Previous value type: ${typeof currVal}
-${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
         }
-        Microstatement.fromConstantsAst(baseassignable.constants(), scope, microstatements)
+        Microstatement.fromConstantsAst(baseassignable.get('constants'), scope, microstatements)
         currVal = microstatements[microstatements.length - 1]
-      } else if (!!baseassignable.functions()) {
+      } else if (baseassignable.has('functions')) {
         if (currVal !== null) {
           throw new Error(`Unexpected function definition detected.
 Previous value type: ${typeof currVal}
-${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
         }
         // So the closures eval correctly, we add the alias microstatements to the scope
         // TODO: Is this the right approach?
         microstatements.filter(m => !!m.alias).forEach(m => scope.put(m.alias, m))
-        const fn = UserFunction.fromFunctionsAst(baseassignable.functions(), scope)
-        currVal = fn // TODO: Is this the right choice here?
-      } else if (!!baseassignable.objectliterals()) {
+        const fn = UserFunction.fromFunctionsAst(baseassignable.get('functions'), scope)
+        currVal = fn
+      } else if (baseassignable.has('objectliterals')) {
         if (currVal === null) {
           // Has to be a "normal" object literal in this case
           Microstatement.fromObjectLiteralsAst(
-            baseassignable.objectliterals(),
+            baseassignable.get('objectliterals'),
             scope,
             microstatements
           )
           currVal = microstatements[microstatements.length - 1]
         } else {
           // Can only be an array accessor syntax
-          const objlit = baseassignable.objectliterals()
-          if (!!objlit.typeliteral() || !!objlit.arrayliteral().literaldec()) {
+          const objlit = baseassignable.get('objectliterals')
+          if (objlit.has('typeliteral') || objlit.get('arrayliteral').has('fullarrayliteral')) {
             throw new Error(`Unexpected object literal definition detected.
 Previous value type: ${typeof currVal}
-${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
           }
-          const arrbase = objlit.arrayliteral().arraybase()
-          if (!arrbase.assignablelist() || arrbase.assignablelist().assignables().length !== 1) {
+          const arrbase = objlit.get('arrayliteral').get('arraybase')
+          if (
+            !arrbase.get('assignablelist').has() ||
+            arrbase.get('assignablelist').get('cdr').getAll().length > 0
+          ) {
             throw new Error(`Array access must provide only one index value to query the array with
-${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
           }
-          const assignableAst = arrbase.assignablelist().assignables(0)
+          const assignableAst = arrbase.get('assignablelist').get('assignables')
           Microstatement.fromAssignablesAst(assignableAst, scope, microstatements)
           const arrIndex = microstatements[microstatements.length - 1]
           if (
@@ -1515,7 +1388,7 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
           ) {
             throw new Error(`Array access may only be performed on arrays.
 Previous value type: ${currVal.outputType.typename}
-${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
           }
           if (arrIndex.outputType.typename === 'int64') {
             const opcodes = require('./opcodes').default
@@ -1553,7 +1426,7 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
             )
           } else {
             throw new Error(`Array access must be done with an int64 or Result<int64> value
-${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
           }
           // We'll need a reference to this for later
           const arrayRecord = currVal
@@ -1566,21 +1439,21 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
             scope,
           )
         }
-      } else if (!!baseassignable.fncall()) {
+      } else if (baseassignable.has('fncall')) {
         // It's a `fncall` syntax block but it wasn't caught in a function call before, so it's
         // either a function call on a returned function type, or it's an assignable group
         if (!currVal) {
           // It's probably an assignable group
           if (
-            !baseassignable.fncall().assignablelist() ||
-            baseassignable.fncall().assignablelist().assignables().length !== 1
+            !baseassignable.get('fncall').get('assignablelist').has() ||
+            baseassignable.get('fncall').get('assignablelist').get('cdr').getAll().length > 0
           ) {
             throw new Error(`Expected a group of assignable values, but got a function call signature.
-${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
           }
           // It *is* an assignable group!
           Microstatement.fromAssignablesAst(
-            baseassignable.fncall().assignablelist().assignables(0),
+            baseassignable.get('fncall').get('assignablelist').get('assignables'),
             scope,
             microstatements,
           )
@@ -1591,7 +1464,7 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
         }
       } else {
         throw new Error(`Compiler error! Completely unhandled input.
-${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignable.start.column}`)
+${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
       }
     }
     if (!(currVal instanceof Microstatement)) {
@@ -1615,26 +1488,23 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
   }
 
   static fromAssignablesAst(
-    assignablesAst: any, // TODO: Eliminate ANTLR
+    assignablesAst: LPNode,
     scope: Scope,
     microstatements: Array<Microstatement>,
   ) {
-    const withoperators = assignablesAst.withoperators()
+    const withoperators = assignablesAst.getAll()
     let withOperatorsList = []
     for (const operatorOrAssignable of withoperators) {
-      if (!!operatorOrAssignable.operators()) {
-        const operator = operatorOrAssignable.operators()
-        const op = scope.deepGet(operator.getText())
+      if (operatorOrAssignable.get('withoperators').has('operators')) {
+        const operator = operatorOrAssignable.get('withoperators').get('operators').get(1)
+        const op = scope.deepGet(operator.t)
         if (op == null || !(op instanceof Array && op[0] instanceof Operator)) {
-          throw new Error("Operator " + operator.getText() + " is not defined")
+          throw new Error("Operator " + operator.t + " is not defined")
         }
         withOperatorsList.push(op)
-      } else if (
-        !!operatorOrAssignable.baseassignable() &&
-        operatorOrAssignable.baseassignable().length > 0
-      ) {
+      } else if (operatorOrAssignable.get('withoperators').has('baseassignablelist')) {
         Microstatement.fromBaseAssignableAst(
-          operatorOrAssignable.baseassignable(),
+          operatorOrAssignable.get('withoperators').get('baseassignablelist').getAll(),
           scope,
           microstatements,
         )
@@ -1710,7 +1580,7 @@ ${baseassignable.getText()} on line ${baseassignable.start.line}:${baseassignabl
       }
       if (maxPrecedence == -1 || maxOperatorLoc == -1) {
         let errMsg = `Cannot resolve operators with remaining statement
-${assignablesAst.getText()}`
+${assignablesAst.t}`
         let withOperatorsTranslation = []
         for (let i = 0; i < withOperatorsList.length; i++) {
           const node = withOperatorsList[i]

@@ -3,7 +3,7 @@
  */
 
 // Just syntactic sugar to seem less stringly-typed than it is
-export fn namespace(ns: string) = ns
+export fn namespace(ns: string) = ns;
 
 // The set function to store shared data
 export fn set(ns: string, key: string, val: any) = dssetv(ns, key, val);

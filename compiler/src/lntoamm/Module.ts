@@ -6,8 +6,13 @@ import Scope from './Scope'
 import UserFunction from './UserFunction'
 import { Fn, } from './Function'
 import { FunctionType, Interface, OperatorType, Type, } from './Type'
+import { LPNode, } from '../lp'
 
 const modules = {}
+
+interface AstMap {
+  [key: string]: LPNode
+}
 
 class Module {
   moduleScope: Scope
@@ -29,7 +34,7 @@ class Module {
 
   static populateModule(
     path: string,
-    ast: any, // ModuleContext
+    ast: LPNode, // ModuleContext
     rootScope: Scope,
     isStd: boolean = false,
   ) {
@@ -44,42 +49,42 @@ class Module {
       }
     }
     // Now, populate all of the imports
-    const imports = ast.imports()
+    const imports = ast.get('imports').getAll()
     for (const importAst of imports) {
-      // Figure out which kind of import format we're dealing with
-      const standardImport = importAst.standardImport()
-      const fromImport = importAst.fromImport()
       // If it's a "standard" import, figure out what name to call it (if the user overrode it)
       // and then attach the entire module with that name to the local scope.
-      if (!!standardImport) {
+      if (importAst.has('standardImport')) {
+        const standardImport = importAst.get('standardImport')
         let importName: string
-        if (standardImport.AS() != null) {
-          importName = standardImport.VARNAME().getText()
-        } else if (standardImport.dependency().localdependency() != null) {
-          let nameParts = standardImport.dependency().localdependency().getText().split("/")
-          importName = nameParts[nameParts.length - 1]
-        } else if (standardImport.dependency().globaldependency() != null) {
-          let nameParts = standardImport.dependency().globaldependency().getText().split("/")
-          importName = nameParts[nameParts.length - 1]
+        if (standardImport.get('renamed').has()) {
+          importName = standardImport.get('renamed').get('varop').t
         } else {
-          // What?
-          throw new Error("This path should be impossible")
+          let nameParts = standardImport.get('dependency').t.split('/')
+          importName = nameParts[nameParts.length - 1]
         }
-        const importedModule = modules[Ast.resolveDependency(path, standardImport.dependency())]
+        const importedModule = modules[Ast.resolveDependency(
+          path,
+          importAst.get('standardImport').get('dependency')
+        )]
         module.moduleScope.put(importName, importedModule.exportScope)
       }
       // If it's a "from" import, we're picking off pieces of the exported scope and inserting them
       // also potentially renaming them if requested by the user
-      if (!!fromImport) {
-        const importedModule = modules[Ast.resolveDependency(path, fromImport.dependency())]
-        const vars = fromImport.varlist().renameablevar()
+      if (importAst.has('fromImport')) {
+        const importedModule = modules[Ast.resolveDependency(
+          path,
+          importAst.get('fromImport').get('dependency')
+        )]
+        const vars = []
+        vars.push(importAst.get('fromImport').get('varlist').get('renameablevar'))
+        importAst.get('fromImport').get('varlist').get('cdr').getAll().forEach(r => {
+          vars.push(r.get('renameablevar'))
+        })
         for (const moduleVar of vars) {
-          let importName: string
-          const exportName = moduleVar.varop(0).getText()
-          if (moduleVar.AS() != null) {
-            importName = moduleVar.varop(1).getText()
-          } else {
-            importName = moduleVar.varop(0).getText()
+          const exportName = moduleVar.get('varop').t
+          let importName = exportName
+          if (moduleVar.get('renamed').has()) {
+            importName = moduleVar.get('renamed').get('varop').t
           }
           const thing = importedModule.exportScope.shallowGet(exportName)
           if (thing instanceof Array && thing[0].microstatementInlining instanceof Function) {
@@ -149,31 +154,34 @@ class Module {
         }
       }
     }
+    const body = ast.get('body').getAll()
     // Next, types
-    const types = ast.types()
+    const types = body.filter(r => r.has('types')).map(r => r.get('types'))
     for (const typeAst of types) {
       const newType = Type.fromAst(typeAst, module.moduleScope);
       module.moduleScope.put(newType.typename, newType.alias ? newType.alias : newType)
     }
     // Next, interfaces
-    const interfaces = ast.interfaces()
+    const interfaces = body.filter(r => r.has('interfaces')).map(r => r.get('interfaces'))
     for (const interfaceAst of interfaces) {
       Interface.fromAst(interfaceAst, module.moduleScope);
       // Automatically inserts the interface into the module scope, we're done.
     }
     // Next, constants
-    const constdeclarations = ast.constdeclaration()
+    const constdeclarations = body
+      .filter(r => r.has('constdeclaration'))
+      .map(r => r.get('constdeclaration'))
     for (const constdeclaration of constdeclarations) {
       Constant.fromAst(constdeclaration, module.moduleScope)
     }
     // Next, events
-    const events = ast.events()
+    const events = body.filter(r => r.has('events')).map(r => r.get('events'))
     for (const eventAst of events) {
       const newEvent = Event.fromAst(eventAst, module.moduleScope)
       module.moduleScope.put(newEvent.name, newEvent)
     }
     // Next, functions
-    const functions = ast.functions()
+    const functions = body.filter(r => r.has('functions')).map(r => r.get('functions'))
     for (const functionAst of functions) {
       const newFunc = UserFunction.fromAst(functionAst, module.moduleScope)
       if (newFunc.getName() == null) {
@@ -187,14 +195,21 @@ class Module {
       }
     }
     // Next, operators
-    const operatorMapping = ast.operatormapping()
+    const operatorMapping = body
+      .filter(r => r.has('operatormapping'))
+      .map(r => r.get('operatormapping'))
     for (const operatorAst of operatorMapping) {
-      const isPrefix = operatorAst.INFIX() === null
-      const name = operatorAst.fntoop().operators().getText().trim()
-      const precedence = parseInt(operatorAst.opprecedence().NUMBERCONSTANT().getText(), 10)
-      const fns = module.moduleScope.deepGet(operatorAst.fntoop().eventref().getText()) as Array<Fn>
-      if (fns == null) {
-        throw new Error("Operator " + name + " declared for unknown function " + operatorAst.varn().getText())
+      const isPrefix = operatorAst.get('fix').has('prefix')
+      const name = operatorAst.get('opmap').get().get('fntoop').get('operators').t.trim()
+      const precedence = parseInt(
+        operatorAst.get('opmap').get().get('opprecedence').get('num').t,
+        10
+      )
+      const fns = module.moduleScope.deepGet(
+        operatorAst.get('opmap').get().get('fntoop').get('fnname').t
+      ) as Array<Fn>
+      if (!fns) {
+        throw new Error("Operator " + name + " declared for unknown function " + operatorAst.t)
       }
       const op = new Operator(
         name,
@@ -213,29 +228,33 @@ class Module {
       }
     }
     // Next, exports, which can be most of the above
-    const exports = ast.exports()
+    const exports = body
+      .filter(r => r.has('exportsn'))
+      .map(r => r.get('exportsn').get('exportable'))
     for (const exportAst of exports) {
-      if (exportAst.eventref() != null) {
-        const exportVar = module.moduleScope.deepGet(exportAst.eventref().getText())
-        const splitName = exportAst.eventref().getText().split(".")
+      if (exportAst.has('ref')) {
+        const exportVar = module.moduleScope.deepGet(exportAst.get('ref').t)
+        const splitName = exportAst.get('ref').t.split('.')
         module.moduleScope.put(splitName[splitName.length - 1], exportVar)
         module.exportScope.put(splitName[splitName.length - 1], exportVar)
-      } else if (exportAst.types() != null) {
-        const newType = Type.fromAst(exportAst.types(), module.moduleScope)
+      } else if (exportAst.has('types')) {
+        const newType = Type.fromAst(exportAst.get('types'), module.moduleScope)
         const typeBox = !newType.alias ? newType : newType.alias
         module.moduleScope.put(newType.typename, typeBox)
         module.exportScope.put(newType.typename, typeBox)
-      } else if (exportAst.interfaces() != null) {
-        const interfaceBox = Interface.fromAst(exportAst.interfaces(), module.moduleScope)
+      } else if (exportAst.has('interfaces')) {
         // Automatically inserts the interface into the module scope
+        const interfaceBox = Interface.fromAst(exportAst.get('interfaces'), module.moduleScope)
         module.exportScope.put(interfaceBox.typename, interfaceBox)
-      } else if (exportAst.constdeclaration() != null) {
-        const constVal = Constant.fromAst(exportAst.constdeclaration(), module.moduleScope)
+      } else if (exportAst.has('constdeclaration')) {
+        const constVal = Constant.fromAst(exportAst.get('constdeclaration'), module.moduleScope)
         module.exportScope.put(constVal.name, constVal)
-      } else if (exportAst.functions() != null) {
-        const newFunc = UserFunction.fromAst(exportAst.functions(), module.moduleScope)
-        if (newFunc.getName() == null) {
-          throw new Error("Module-level functions must have a name")
+      } else if (exportAst.has('functions')) {
+        const newFunc = UserFunction.fromAst(exportAst.get('functions'), module.moduleScope)
+        if (!newFunc.getName()) {
+          throw new Error(`Module-level functions must have a name:
+${exportAst.get('functions').t}
+`)
         }
         // Exported scope must be checked first because it will fall through to the not-exported
         // scope by default.
@@ -257,24 +276,36 @@ class Module {
         } else {
           modFns.push(newFunc)
         }
-      } else if (exportAst.operatormapping() != null) {
-        const operatorAst = exportAst.operatormapping()
-        const isPrefix = operatorAst.INFIX() == null
-        const name = operatorAst.fntoop().operators().getText().trim()
-        const precedence = parseInt(operatorAst.opprecedence().NUMBERCONSTANT().getText(), 10)
-        let fns = module.exportScope.deepGet(operatorAst.fntoop().eventref().getText()) as Array<Fn>
+      } else if (exportAst.has('operatormapping')) {
+        const operatorAst = exportAst.get('operatormapping')
+        const isPrefix = operatorAst.get('fix').has('prefix')
+        const name = operatorAst.get('opmap').get().get('fntoop').get('operators').t.trim()
+        const precedence = parseInt(
+          operatorAst.get('opmap').get().get('opprecedence').get('num').t,
+          10
+        )
+        let fns = module.moduleScope.deepGet(
+          operatorAst.get('opmap').get().get('fntoop').get('fnname').t
+        ) as Array<Fn>
         if (!fns) {
-          fns = module.moduleScope.deepGet(operatorAst.fntoop().eventref().getText()) as Array<Fn>
+          fns = module.moduleScope.deepGet(
+            operatorAst.get('opmap').get().get('fntoop').get('fnname').t
+          ) as Array<Fn>
           if (!!fns) {
             throw new Error(
               "Exported operator " +
               name +
               " wrapping unexported function " +
-              operatorAst.varn().getText() +
+              operatorAst.get('opmap').get('fntoop').get('fnname').t +
               " which is not allowed, please export the function, as well."
             )
           }
-          throw new Error("Operator " + name + " declared for unknown function " + operatorAst.varn().getText())
+          throw new Error(
+            "Operator " +
+            name +
+            " declared for unknown function " +
+            operatorAst.get('opmap').get('fntoop').get('fnname').t
+          )
         }
         const op = new Operator(
           name,
@@ -298,8 +329,8 @@ class Module {
           ops.push(op)
           module.exportScope.put(name, ops)
         }
-      } else if (exportAst.events() != null) {
-        const newEvent = Event.fromAst(exportAst.events(), module.moduleScope)
+      } else if (exportAst.has('events')) {
+        const newEvent = Event.fromAst(exportAst.get('events'), module.moduleScope)
         module.moduleScope.put(newEvent.name, newEvent)
         module.exportScope.put(newEvent.name, newEvent)
       } else {
@@ -308,25 +339,17 @@ class Module {
       }
     }
     // Finally, event handlers, so they can depend on events that are exported from the same module
-    const handlers = ast.handlers()
+    const handlers = body.filter(r => r.has('handlers')).map(r => r.get('handlers'))
     for (const handlerAst of handlers) {
-      let evt = null
-      if (handlerAst.eventref() != null) {
-        evt = module.moduleScope.deepGet(handlerAst.eventref().getText()) as Event
-      }
-      if (!evt) {
-        throw new Error("Could not find specified event: " + handlerAst.eventref().getText())
-      }
-      if (!(evt instanceof Event)) {
-        throw new Error(handlerAst.eventref().getText() + " is not an event")
-      }
+      const evt = module.moduleScope.deepGet(handlerAst.get('eventname').t)
+      if (!evt) throw new Error("Could not find specified event: " + handlerAst.get('eventname').t)
+      if (!(evt instanceof Event)) throw new Error(handlerAst.get('eventname').t + " is not an event")
+      const handler = handlerAst.get('handler')
       let fn = null
-      if (handlerAst.typename() != null) {
-        const fnName = handlerAst.typename().getText()
-        const fns = module.moduleScope.deepGet(handlerAst.typename().getText()) as Array<Fn>
-        if (!fns) {
-          throw new Error("Could not find specified function: " + fnName)
-        }
+      if (handler.has('fnname')) {
+        const fnName = handler.get('fnname').t
+        const fns = module.moduleScope.deepGet(fnName) as Array<Fn>
+        if (!fns) throw new Error("Could not find specified function: " + fnName)
         if (!(fns instanceof Array && fns[0].microstatementInlining instanceof Function)) {
           throw new Error(fnName + " is not a function")
         }
@@ -343,23 +366,31 @@ class Module {
           }
         }
         if (fn == null) {
-          throw new Error("Could not find function named " + fnName + " with matching function signature")
+          throw new Error(
+            "Could not find function named " +
+            fnName +
+            " with matching function signature"
+          )
         }
       }
-      if (handlerAst.functions() != null) {
-        fn = UserFunction.fromAst(handlerAst.functions(), module.moduleScope)
+      if (handler.has('functions')) {
+        fn = UserFunction.fromAst(handler.get('functions'), module.moduleScope)
       }
-      if (handlerAst.functionbody() != null) {
-        fn = UserFunction.fromAst(handlerAst.functionbody(), module.moduleScope)
+      if (handler.has('functionbody')) {
+        fn = UserFunction.fromAst(handler.get('functionbody'), module.moduleScope)
       }
-      if (fn == null) {
+      if (!fn) {
         // Shouldn't be possible
         throw new Error("Impossible state reached processing event handler")
       }
       if (Object.keys(fn.getArguments()).length > 1 ||
         (evt.type === Type.builtinTypes["void"] && Object.keys(fn.getArguments()).length !== 0)
       ) {
-        throw new Error("Function provided for " + handlerAst.eventref().getText() + " has invalid argument signature")
+        throw new Error(
+          "Function provided for " +
+          handlerAst.get('eventname').t +
+          " has invalid argument signature"
+        )
       }
       evt.handlers.push(fn)
     }
@@ -367,7 +398,7 @@ class Module {
   }
 
   static modulesFromAsts(
-    astMap: object, // string to ModuleContext
+    astMap: AstMap,
     rootScope: Scope,
   ) {
     let modulePaths = Object.keys(astMap)

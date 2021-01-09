@@ -18,7 +18,7 @@ Describe "Functions and Custom Operators"
       }
 
       // 'int' is an alias for 'int64'
-      fn double(a: int) = a * 2
+      fn double(a: int) = a * 2;
 
       prefix double as ## precedence 10
 
@@ -29,7 +29,7 @@ Describe "Functions and Custom Operators"
        *
        * but the function definitions are all parsed before the first operator mapping is done.
        */
-      fn doublesum(a: int64, b: int64) = a.double() + b.double()
+      fn doublesum(a: int64, b: int64) = a.double() + b.double();
 
       infix doublesum as #+# precedence 11
 

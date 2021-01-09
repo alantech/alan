@@ -1,9 +1,8 @@
 import * as fs from 'fs'
 import * as path from 'path'
 
-import { InputStream, CommonTokenStream, } from 'antlr4'
-
-import { LnLexer, LnParser } from '../ln'
+import { LP, LPNode, LPError, } from '../lp'
+import * as ln from '../ln'
 
 const resolve = (path: string) => {
   try {
@@ -14,35 +13,44 @@ const resolve = (path: string) => {
 }
 
 export const fromString = (str: string) => {
-  const inputStream = new InputStream(str)
-  const langLexer = new LnLexer(inputStream)
-  const commonTokenStream = new CommonTokenStream(langLexer)
-  const langParser = new LnParser(commonTokenStream)
+  const lp = LP.fromText(str)
+  const ast = ln.ln.apply(lp)
+  if (ast instanceof LPError) {
+    throw new Error(ast.msg)
+  } else if (ast.t.length !== str.length) {
+    const lp2 = lp.clone()
+    lp2.advance(ast.t.length)
+    const body = ast.get('body').getAll()
+    const last = body[body.length - 1]
+    throw new Error(`AST Parse error, cannot continue due to syntax error between line ${last.line}:${last.char} - ${lp2.line}:${lp2.char}`)
+  }
 
-  return langParser.module()
+  return ast
 }
 
 export const fromFile = (filename: string) => {
-  return fromString(fs.readFileSync(filename, { encoding: 'utf8', }))
+  const ast = fromString(fs.readFileSync(filename, { encoding: 'utf8', }))
+  ast.filename = filename
+  return ast
 }
 
-export const resolveDependency = (modulePath: string, dependency: any) => { // TODO: No ANTLR
+export const resolveDependency = (modulePath: string, dependency: LPNode) => {
   // Special case path for the standard library importing itself
-  if (modulePath.substring(0, 4) === '@std') return dependency.getText().trim()
+  if (modulePath.substring(0, 4) === '@std') return dependency.t.trim()
   // For everything else...
   let importPath = null
   // If the dependency is a local dependency, there's little logic in determining
   // what is being imported. It's either the relative path to a file with the language
   // extension, or the relative path to a directory containing an "index.ln" file
-  if (dependency.localdependency() != null) {
+  if (dependency.has('localdependency')) {
     const dirPath = resolve(path.join(
       path.dirname(modulePath),
-      dependency.localdependency().getText().toString(),
+      dependency.get('localdependency').t,
       "index.ln",
     ))
     const filePath = resolve(path.join(
       path.dirname(modulePath),
-      dependency.localdependency().getText().toString() + ".ln"
+      dependency.get('localdependency').t + ".ln"
     ))
     // It's possible for both to exist. Prefer the directory-based one, but warn the user
     if (typeof dirPath === "string" && typeof filePath === "string") {
@@ -55,11 +63,7 @@ export const resolveDependency = (modulePath: string, dependency: any) => { // T
       importPath = dirPath
     }
     if (importPath === null) {
-      // Should I do anything else here?
-      throw new Error(
-        "The dependency " +
-        dependency.localdependency().getText().toString() +
-        " could not be found.")
+      throw new Error(`The dependency ${dependency.get('localdependency').t} could not be found.`)
     }
   }
   // If the dependency is a global dependency, there's a more complicated resolution to find it.
@@ -101,10 +105,10 @@ export const resolveDependency = (modulePath: string, dependency: any) => { // T
   // files and directories, it is my hope that the standard application organization path is a
   // project with a root `index.ln` file and `modules` and `dependencies` directories, and little
   // else. At least things like `modules/logger`, `modules/config`, etc should belong there.
-  if (dependency.globaldependency() != null) {
+  if (dependency.has('globaldependency')) {
     // Get the two potential dependency types, file and directory-style.
-    const fileModule = dependency.globaldependency().getText().toString().substring(1) + ".ln"
-    const dirModule = dependency.globaldependency().getText().toString().substring(1) + "/index.ln"
+    const fileModule = dependency.get('globaldependency').t.substring(1) + ".ln"
+    const dirModule = dependency.get('globaldependency').t.substring(1) + "/index.ln"
     // Get the initial root to check
     let pathRoot = path.dirname(modulePath)
     // Search the recursively up the directory structure in the `modules` directories for the
@@ -139,9 +143,9 @@ export const resolveDependency = (modulePath: string, dependency: any) => { // T
     if (importPath == null) {
       // If we can't find it defined in a `modules` directory, check if it's an `@std/...`
       // module and abort here so the built-in standard library is used.
-      if (dependency.globaldependency().getText().toString().substring(0, 5) === "@std/") {
+      if (dependency.get('globaldependency').t.substring(0, 5) === "@std/") {
         // Not a valid path (starting with '@') to be used as signal to use built-in library)
-        importPath = dependency.globaldependency().getText().toString()
+        importPath = dependency.get('globaldependency').t
       } else {
         // Go back to the original point and search up the tree for `dependencies` directories
         pathRoot = path.dirname(modulePath)
@@ -168,34 +172,28 @@ export const resolveDependency = (modulePath: string, dependency: any) => { // T
         }
       }
       if (importPath == null) {
-        // Should I do anything else here?
-        throw new Error(
-          "The dependency " +
-          dependency.globaldependency().getText().toString() +
-          " could not be found.")
+        throw new Error(`The dependency ${dependency.get('globaldependency').t} could not be found.`)
       }
     }
   }
   return importPath
 }
 
-export const resolveImports = (modulePath: string, ast: any) => { // TODO: No ANTLR
+export const resolveImports = (modulePath: string, ast: LPNode) => {
   let resolvedImports = []
-  let imports = ast.imports();
+  let imports = ast.get('imports').getAll()
   for (let i = 0; i < imports.length; i++) {
-    const standardImport = imports[i].standardImport()
-    const fromImport = imports[i].fromImport()
     let dependency = null
 
-    if (standardImport != null) {
-      dependency = standardImport.dependency()
+    if (imports[i].has('standardImport')) {
+      dependency = imports[i].get('standardImport').get('dependency')
     }
-    if (fromImport != null) {
-      dependency = fromImport.dependency()
+    if (imports[i].has('fromImport')) {
+      dependency = imports[i].get('fromImport').get('dependency')
     }
-    if (dependency == null) {
+    if (!dependency) {
       // Should I do anything else here?
-      throw new Error("Things are horribly broken!")
+      throw new Error('Malformed AST, import statement without an import definition?')
     }
     const importPath = resolveDependency(modulePath, dependency)
     resolvedImports.push(importPath)
@@ -204,39 +202,58 @@ export const resolveImports = (modulePath: string, ast: any) => { // TODO: No AN
 }
 
 export const functionAstFromString = (fn: string) => {
-  const inputStream = new InputStream(fn)
-  const langLexer = new LnLexer(inputStream);
-  const commonTokenStream = new CommonTokenStream(langLexer)
-  const langParser = new LnParser(commonTokenStream)
+  const lp = LP.fromText(fn)
+  const ast = ln.functions.apply(lp)
+  if (ast instanceof LPError) {
+    throw new Error(ast.msg)
+  } else if (ast.t.length !== fn.length) {
+    const lp2 = lp.clone()
+    lp2.advance(ast.t.length)
+    throw new Error(`AST Parse error, cannot continue due to syntax error ending at line ${lp2.line}:${lp2.char}`)
+  }
 
-  return langParser.functions()
+  return ast
 }
 
 export const statementAstFromString = (s: string) => {
-  const inputStream = new InputStream(s)
-  const langLexer = new LnLexer(inputStream);
-  const commonTokenStream = new CommonTokenStream(langLexer)
-  const langParser = new LnParser(commonTokenStream)
+  const lp = LP.fromText(s)
+  const ast = ln.statement.apply(lp)
+  if (ast instanceof LPError) {
+    throw new Error(ast.msg)
+  } else if (ast.t.length !== s.length) {
+    const lp2 = lp.clone()
+    lp2.advance(ast.t.length)
+    throw new Error(`AST Parse error, cannot continue due to syntax error ending at line ${lp2.line}:${lp2.char}`)
+  }
 
-  return langParser.statements()
+  return ast
 }
 
 export const fulltypenameAstFromString = (s: string) => {
-  const inputStream = new InputStream(s)
-  const langLexer = new LnLexer(inputStream);
-  const commonTokenStream = new CommonTokenStream(langLexer)
-  const langParser = new LnParser(commonTokenStream)
+  const lp = LP.fromText(s)
+  const ast = ln.fulltypename.apply(lp)
+  if (ast instanceof LPError) {
+    throw new Error(ast.msg)
+  } else if (ast.t.length !== s.length) {
+    const lp2 = lp.clone()
+    lp2.advance(ast.t.length)
+    throw new Error(`AST Parse error, cannot continue due to syntax error ending at line ${lp2.line}:${lp2.char}`)
+  }
 
-  return langParser.fulltypename()
+  return ast
 }
 
 export const assignablesAstFromString = (s: string) => {
-  const inputStream = new InputStream(s)
-  const langLexer = new LnLexer(inputStream);
-  const commonTokenStream = new CommonTokenStream(langLexer)
-  const langParser = new LnParser(commonTokenStream)
+  const lp = LP.fromText(s)
+  const ast = ln.assignables.apply(lp)
+  if (ast instanceof LPError) {
+    throw new Error(ast.msg)
+  } else if (ast.t.length !== s.length) {
+    const lp2 = lp.clone()
+    lp2.advance(ast.t.length)
+    throw new Error(`AST Parse error, cannot continue due to syntax error ending at line ${lp2.line}:${lp2.char}`)
+  }
 
-  return langParser.assignables()
+  return ast
 }
-
 
