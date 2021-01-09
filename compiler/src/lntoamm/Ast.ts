@@ -16,15 +16,15 @@ export const fromString = (str: string) => {
   const lp = LP.fromText(str)
   const ast = ln.ln.apply(lp)
   if (ast instanceof LPError) {
+    console.error('=====================')
+    console.error(str)
+    console.error('=====================')
     throw new Error(ast.msg)
   } else if (ast.t.length !== str.length) {
     const lp2 = lp.clone()
     lp2.advance(ast.t.length)
     const body = ast.get('body').getAll()
     const last = body[body.length - 1]
-    console.error('=====================')
-    console.error(str)
-    console.error('=====================')
     throw new Error(`AST Parse error, cannot continue due to syntax error between line ${last.line}:${last.char} - ${lp2.line}:${lp2.char}`)
   }
 
