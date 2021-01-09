@@ -16,9 +16,6 @@ export const fromString = (str: string) => {
   const lp = LP.fromText(str)
   const ast = ln.ln.apply(lp)
   if (ast instanceof LPError) {
-    console.error('=====================')
-    console.error(str)
-    console.error('=====================')
     throw new Error(ast.msg)
   } else if (ast.t.length !== str.length) {
     const lp2 = lp.clone()
@@ -32,7 +29,6 @@ export const fromString = (str: string) => {
 }
 
 export const fromFile = (filename: string) => {
-  console.error(`Parsing ${filename}`)
   const ast = fromString(fs.readFileSync(filename, { encoding: 'utf8', }))
   ast.filename = filename
   return ast
