@@ -192,8 +192,9 @@ const standardImport = NamedAnd.build({
   blank,
   dependency,
   renamed,
+  a: optblank,
   newline,
-  optwhitespace,
+  b: optwhitespace,
 })
 const fromImport = NamedAnd.build({
   fromn,
@@ -203,8 +204,9 @@ const fromImport = NamedAnd.build({
   importn,
   c: blank,
   varlist,
+  d: optblank,
   newline,
-  optwhitespace,
+  e: optwhitespace,
 })
 const imports = ZeroOrMore.build(NamedOr.build({
   standardImport,
