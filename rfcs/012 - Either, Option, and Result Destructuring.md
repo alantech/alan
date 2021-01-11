@@ -12,7 +12,7 @@ YYYY-MM-DD
 
 #### Approvers
 
-- Full Name <email@example.com>
+- David Ellis david@alantechnologies.com
 
 ### Implementation
 
