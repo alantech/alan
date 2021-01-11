@@ -287,6 +287,7 @@ impl HandlerMemory {
   pub fn read_from_fractal(self: &HandlerMemory, fractal: &FractalMemory, idx: usize) -> (FractalMemory, bool) {
     let (a, b) = fractal.block[idx];
     let b_usize = b as usize;
+    let hm = if fractal.in_parent { self.parent.as_ref().unwrap() } else { self };
     return if a == std::usize::MAX {
       // The indexes are the actual data
       (
@@ -301,7 +302,7 @@ impl HandlerMemory {
       (
         FractalMemory {
           hm_addr: None,
-          block: vec![self.mems[a][b_usize].clone()],
+          block: vec![hm.mems[a][b_usize].clone()],
           in_parent: fractal.in_parent,
         }, false
       )
@@ -310,7 +311,7 @@ impl HandlerMemory {
       (
         FractalMemory {
           hm_addr: None,
-          block: self.mems[a].clone(),
+          block: hm.mems[a].clone(),
           in_parent: fractal.in_parent,
         }, true
       )
