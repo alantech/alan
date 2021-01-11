@@ -50,6 +50,7 @@ if myResult.isOk() {
 
 Note that, in both branches of the above `if` statement, the status (`ok` or `err`) of the `Result` is already known, but the user must then call either `getOr` or `getErr` in order to retrieve the expected value.
 (Note that `getOrDefault` is not yet implemented, but only makes this process marginally easier.)
+`getOrExit` was also recently added to the API, which is a good alternative, but the name implies that the function is fallible (albeit the failure case is quite dramatic), despite this use-case being categorically infallible.
 Instead, it would be much easier for the user (and potentially even more efficient, although marginally) if the variable could be immediately used as if it were destructured.
 Since `isOk` already guarantees that the `Result` is `ok` (when it returns `true`, otherwise the guarantee is that it's `err`), it would make sense to be able to write the above code like this:
 ```
@@ -75,7 +76,7 @@ if myOption.isSome() {
 	print("I've got nothing for ya"); // 2
 }
 
-let myEither = main("hello, world!"); // 3
+let myEither = getEither(); // 3
 if myEither.isMain() {
 	print("main rock: " + myEither); // 4
 } else {
@@ -85,11 +86,39 @@ if myEither.isMain() {
 
 In location 1, `myOption` should be of type `bool`.
 Meanwhile, in location 2, it might make sense to undefine the `myOption` var - this is fairly ambiguous and needs more discussion.
-Note that in location 3, `myEither` would technically be assigned the type `Either<string, void>`, but imagine it somehow assigned to a stringable value, say an `int64`.
-In location 4, `myEither` should be of type `string`, and location 5 would be `int64` or such.
+In location 3, `getEither` should be considered a `fn(): Either<string, int64>`.
+In location 4, `myEither` should be of type `string`, and location 5 would be `int64`.
 
 The implementation should be relatively simple: when building the `amm` representation of the program, if the compiler detects any `if` statements (and other constructs that should have this feature too - if deemed worthy) with this pattern, then it should reassign the value at the beginning of the block.
 Preferably, this would be done with the `getR` opcode, which would allow for the value to be destructured from the `Result` efficiently.
+
+Of particular importance is not only when this sugar gets applied, but also when it doesn't.
+Above, it's mentioned that the values are removed within "then" and `else` blocks - these are the only contexts where the values are automatically destructured.
+```
+let myResult = ok(5);
+if myResult.isOk() {
+	print("should be 5: " + myResult); // myResult is `int64`
+} else {
+	print("unreachable, but if myResult is an error, then this would print that error: " + myResult); // myResult is `Error`
+}
+print("either way, the value is " + myResult) // myResult is `Result<int64>`
+
+let myOption = some(true);
+if myOption.isSome() {
+	print("here ya go: " + myOption); // myOption is `bool`
+} else {
+	print("I've got nothing for ya"); // myOption isn't available
+}
+print("either way, the value is " + myOption) // myOption is `Option<bool>`
+
+let myEither = getEither(); // myEither is `Either<string, int64>`
+if myEither.isMain() {
+	print("main rock: " + myEither); // myEither is `string`
+} else {
+	print("alt rock: " + myEither); // myEither is `int64`
+}
+print("either way, the value is " + myEither) // myEither is `Either<string, int64>`
+```
 
 ### Alternatives Considered
 
@@ -97,11 +126,16 @@ The simplest alternative is to accept the current way of destructuring these typ
 However, this results in a lot of unnecessary overhead that any sane person will hate [(although there are fewer sane people, apparently)](https://github.com/golang/go/issues/32437).
 As such, a solution should be found that is good enough for the 99% use case (this proposal), while still providing an easy solution for every other case (the API).
 
+A relatively easy alternative would be to expose a `get` alias to `getOrExit` that would be available in the contexts described by this document, but this has 2 problems:
+1. It fails to address the issue of overhead as mentioned above.
+2. Having functions only available during specific syntactic contexts kinda seems a bit more absurd than the syntactic sugar proposed in this document.
+
 Another alternative would be to add ML-style pattern matching, but that might make the language quite distracted in its design and make itself inconsistent.
+If it does get decided to use introduce pattern matching, then that could be added later on without any risk to backwards-compatibility.
 
 ## Affected Components
 
-All code dealing with the destructuring of `Result`, `Option`, and `Either` will be broken.
+All code dealing with `Result`, `Option`, or `Either` in conditional branches after checking their type (eg `isOk`, `isSome`, etc) will be broken.
 Internally, affects the compiler but not the runtime.
 
 ## Expected Timeline
