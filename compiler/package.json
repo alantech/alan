@@ -7,9 +7,7 @@
     "build": "tsc",
     "prepare": "tsc && mkdir -p std && cp -r ../std/* ./std/ && npm run bundle",
     "bundle": "node ./browser/genstdlibs.js > ./browser/stdlibs.json && browserify -r alan-js-runtime -r ./browser/runtime.js:alan-runtime -r ./dist/index.js:alan-compiler > bundle.js",
-    "clean": "rm -f bundle.js && rm -rf dist",
-    "test-server": "nohup http-server >/dev/null 2>/dev/null </dev/null &",
-    "stop-test-server": "killall http-server"
+    "clean": "rm -f bundle.js && rm -rf dist"
   },
   "main": "./dist/index.js",
   "bin": {
@@ -39,7 +37,6 @@
   "devDependencies": {
     "browserify": "^16.5.1",
     "cypress": "^4.10.0",
-    "http-server": "^0.12.3",
     "typescript": "^3.9.3"
   },
   "resolutions": {
