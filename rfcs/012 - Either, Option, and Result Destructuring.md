@@ -12,7 +12,8 @@ YYYY-MM-DD
 
 #### Approvers
 
-- David Ellis david@alantechnologies.com
+- David Ellis <david@alantechnologies.com>
+- Luis De Pombo <luis@alantechnologies.com>
 
 ### Implementation
 
