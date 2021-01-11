@@ -2300,6 +2300,65 @@ export fn set(arr: Array<bool>, idx: int64, val: bool) {
     return some(arr);
   }
 }
+export fn sort(arr: Array<Orderable>): Array<Orderable> {
+  return arr.reducePar(fn (sortedSegment: Array<Orderable>, val: Orderable): Array<Orderable> {
+    // The input array is ordered, so scan through the first array and append to the output array
+    // as long as the value is larger than the value being checked. Once that is not true, add that
+    // value and then scan through the remainder of the array and append to the output array.
+    const len = sortedSegment.length();
+    let i = 0;
+    let output = new Array<Orderable> [];
+    newseq(len).seqwhile(fn (): bool = sortedSegment[i].getR().lte(val), fn () {
+      output.push(sortedSegment[i].getR());
+      i = add(i, 1).getOr(0);
+    });
+    output.push(val);
+    newseq(len).seqwhile(fn (): bool = i.lt(len), fn () {
+      output.push(sortedSegment[i].getR());
+      i = add(i, 1).getOr(0);
+    });
+    return output;
+  }, fn (
+    outArr: Array<Orderable>,
+    sortedSegment: Array<Orderable>
+  ): Array<Orderable> {
+    // Merge the various sorted segments together. Keep track of offsets on both arrays, comparing
+    // which is larger and pushing the smaller of the two values, incrementing the array that was
+    // pushed from, until all values are pushed, with special logic once one of the two arrays is
+    // consumed
+    let output = new Array<Orderable> [];
+    let i = 0;
+    let j = 0;
+    const alen = outArr.length();
+    const blen = sortedSegment.length();
+    const len = add(alen, blen).getOr(0);
+    newseq(len).seqwhile(fn () = i.lt(alen).and(j.lt(blen)), fn () {
+      let a = outArr[i].getR();
+      let b = sortedSegment[j].getR();
+      if a.lt(b) {
+        output.push(a);
+        i = add(i, 1).getOr(0);
+      } else {
+        output.push(b);
+        j = add(j, 1).getOr(0);
+      }
+    });
+    if i.lt(alen) {
+      newseq(alen).seqwhile(fn () = i.lt(alen), fn () {
+        let a = outArr[i].getR();
+        output.push(a);
+        i = add(i, 1).getOr(0);
+      });
+    } else {
+      newseq(blen).seqwhile(fn () = j.lt(blen), fn () {
+        let b = sortedSegment[j].getR();
+        output.push(b);
+        j = add(j, 1).getOr(0);
+      });
+    }
+    return output;
+  }, new Array<Orderable> []);
+}
 
 // Ternary functions
 export fn pair(trueval: any, falseval: any) = new Array<any> [ trueval, falseval ];
