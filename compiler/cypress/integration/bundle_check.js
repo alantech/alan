@@ -8,7 +8,7 @@ describe('Alan Compiler Browser Bundle', () => {
   })
 
   it('has a "require" global', () => {
-    cy.visit('http://localhost:8080/test')
+    cy.visit('http://localhost:8080/test.html')
     cy.window().then((win) => {
       cy.log(JSON.stringify(Object.keys(win.document)))
     })
@@ -16,7 +16,7 @@ describe('Alan Compiler Browser Bundle', () => {
   })
 
   it('can load the "alanCompiler"', () => {
-    cy.visit('http://localhost:8080/test')
+    cy.visit('http://localhost:8080/test.html')
     cy.window().then((win) => {
       const alanCompiler = win.require('alan-compiler')
       expect(alanCompiler).to.be.a('function')
@@ -34,7 +34,7 @@ describe('Alan Compiler Browser Bundle', () => {
   `
 
   it('can compile an "ln" file to "amm", "aga", and "js" and execute the "js" correctly', () => {
-    cy.visit('http://localhost:8080/test')
+    cy.visit('http://localhost:8080/test.html')
     cy.window().then((win) => {
       const alanCompiler = win.require('alan-compiler')
       const amm = alanCompiler('ln', 'amm', helloWorldLn)
