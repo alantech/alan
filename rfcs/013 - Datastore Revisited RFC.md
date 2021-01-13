@@ -29,9 +29,7 @@ The current implementation of `@std/datastore` is type unsound. The underlying o
 
 ## Expected SemBDD Impact
 
-It's a bit more difficult to judge the SemBDD impact here. It depends both on the particular solution chosen (to be updated once we've debated this point) and whether or not we consider the prior behavior a bug that is being fixed or a (mis-)feature being removed.
-
-That means it's either a patch update, or a major update, depending on that point of view. Though I'm leaning towards classifying it as a major update even though it wasn't intentional; taking a page from the Linux Kernel view on this, the users' code is more important than the cleanliness of the language.
+This is technically a major update, because while the API behavior was a mistake, fixing it will cause a backwards incompatible change. Fortunately we're still pre-1.0 so we don't have to actually major version bump, yet. :)
 
 ## Proposal
 
