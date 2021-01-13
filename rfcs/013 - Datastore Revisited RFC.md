@@ -82,23 +82,27 @@ thread 'main' panicked at 'called `Result::unwrap()` on an `Err` value: JoinErro
 
 a hard crash of the runtime as it tries to access a number as if it was a string. With a stated goal of eliminating as many runtime errors as possible so you can be sure that your backend is going to continue running, having this unsafe casting footgun was absolutely not the intention of the `datastore` library.
 
-There are multiple ways to resolve this such that the actual datastore opcodes are left alone while the compiler guarantees that their usage is safe. I'm not actually sure which one(s) I like best, so I'm listing them all in here and we can debate the pros/cons.
+There are multiple ways to resolve this such that the actual datastore opcodes are left alone while the compiler guarantees that their usage is safe. For the sake of unblocking datastore usage as fast as possible, we're going to go through a two-step process to get it working, if a bit weird, and then using a new language feature to implement it cleanly. This does mean that the API will be changed twice, but since we are so far away from 1.0, this is considered fine for the adventurous who want to use this standard library that isn't documented publicly, yet.
 
-### Minimally-invasive with restored type introspection
+### Part 1: Minimally-invasive with restored type introspection
 
 We recently removed the ability to get the type of a variable as a string with the `type variableName` syntax, but if we restore that, it should be possible to force type safety by combining the type string with either the namespace or the key string, such that trying to get the same key name with a default value of a different type will find that it doesn't exist and return the provided default.
 
-This could provide zero actual API call changes except to the `del` function, which would need to be given an example of the type of data to delete in order to find it. This has the smallest change requirement, though it does require bringing back the string-based type manipulation code.
+This will provide zero actual API call changes except to the `has` and `del` functions, which would need to be given an example of the type of data to delete in order to find it. This has the smallest change requirement, though the API is a bit weird.
 
-### Generic Functions (in addition to the interface functions that currently exist)
+### Part 2: Generic Functions (in addition to the interface functions that currently exist)
 
-The maximum contrast to the prior is this particularly invasive change, where functions gain the ability to have one or more generic types, eg `fn foo<A>(arg1: int64, arg2: string): A {` such that they can be called with some type that is passed in during invocation but is not passed in as a variable, just the type, so `foo<bool>(1, 'bar')` would do something internally with the type.
+Functions gain the ability to have one or more generic types, eg `fn foo<A>(arg1: int64, arg2: string): A {` such that they can be called with some type that is passed in during invocation but is not passed in as a variable, just the type, so `foo<bool>(1, 'bar')` would do something internally with the type.
 
-In this case, the `namespace` function would take not only the name parameter, but the type info for the kind of variable to store in it, like `namespace<Array<int64>>('variousDigitsOfPi')`, then this type would internally be applied to the namespace through some syntax similar to the `type variableName` before so it can be stored in the datastore opcodes, but it would also be used to make sure writes and reads are sound, always providing values of the correct type.
+In this case, the `namespace` function would take not only the name parameter, but the type info for the kind of variable to store in it, like `namespace<Array<int64>>('variousDigitsOfPi')`, then this type would internally be applied to the namespace using a syntax similar to `type variableName` (perhaps as simple as `type GenericName`), so it can be stored in the datastore opcodes. This would remove the need to provide example values or type information to the `has` and `del` functions since it would already exist on the provided namespace.
 
-The biggest issue here is: it adds a new "color" of function, and there will be pressure to add something like an `fn foo<A as Orderable>(...` syntax so the generics defined for the function are also interface constrained so the function knows what to do with it besides pass it around or poke at it in some way or the other.
+It'll make the language much more complex, but the utility should surpass the complexity. This approach could be turned into the foundation for interface functions, such that `fn someFn<A as Orderable>(a: A, b: A): A` could be equivalent to `fn someFn(a: Orderable, b: Orderable): Orderable` with the latter becoming syntactic sugar. This would also allow us to remove duplicated interfaces like `anythingElse` because `fn map<A as Any, B as Any>(arr: Array<A>, mapper: fn(A): B): Array<B>` makes it clear that while `A` and `B` match the same interface, they are not the same actual type.
 
-It'll make the language much more complex, but will the utility gain be worth the complexity? It would make constructor functions much simpler, eg instead of `newHashMap(firstKey, firstVal)` we get `new<HashMap<KeyType, ValType>>()` without requiring the first key-val pair to be defined.
+It would make constructor functions much simpler, eg instead of `newHashMap(firstKey, firstVal)` we could get something like `new<HashMap<KeyType, ValType>>()` without requiring the first key-val pair to be defined.
+
+### Alternatives Considered
+
+Many alternatives were considered and rejected:
 
 ### Compiler-level hackery
 
@@ -114,19 +118,21 @@ This has the downside of requiring explicit boilerplate code for new types that 
 
 This boilerplate could be covered up if/when we add macro functionality to the language, which would also take us further along the path towards Rust.
 
+This was rejected because it adds considerable extra syntax to learn, which will make adoption harder, and for very little gain.
+
 ### Namespace *is* Type
 
 We could hide the namespace field from the end users and just make the namespace field the type. This would also require the `type variableName` syntax to be restored, but wouldn't require the special logic for the `set` and `has` functions that the mechanism maintaining the namespace would.
 
+This was rejected because it increases the chance that there are key collisions between libraries that use datastore, since they could be storing on the same types.
+
 ### Stop avoiding it; change the ds* opcodes
 
-Finally, we could stop avoiding that a mistake was made with the opcode definition and bake in type safety. This would require rethinking it all from scratch so I won't go into too much detail here, but it would likely require similar support as the user-type -> tuple-ish array transformation that the compiler currently does in order to read and write from datastore and would turn it into something as innate as the Array type.
+We could stop avoiding that a mistake was made with the opcode definition and bake in type safety. This would require rethinking it all from scratch so I won't go into too much detail here, but it would likely require similar support as the user-type -> tuple-ish array transformation that the compiler currently does in order to read and write from datastore and would turn it into something as innate as the Array type.
 
 Basically, accepting the "Go Way" here, but then going all-out to do it right. The work there would be effective for also defining an on-disk serialization format, so it might not be absolute madness.
 
-### Alternatives Considered
-
-Move some of the alternatives above into here once we've decided which is the right approach!
+This was ruled out-of-scope for this PR because it requires defining a standardized serialization/deserialization format, presumably interchangeable between AVM and js-runtime, and it would need to be resilient to type mutations between runs (if type `Foo` has a `bar` type but then sprouts a `baz` type in the newly compiled version, that would ideally still load the old serialization, and then if `baz` is dropped in the future, it should also load only the relevant pieces of the type -- but there *also* should be a strict mode where this is a failure.
 
 ## Affected Components
 
@@ -134,4 +140,5 @@ This will only affect the compiler and standard library.
 
 ## Expected Timeline
 
-The exact timeline will depend on which version we choose, but only 1-3 days for most of them.
+The first part of the proposed change should only take 1-2 days. The second part is a multi-week effort reworking large pieces of the parser, function resolution, and type resolution, and shouldn't be tackled until several pieces of technical debt in the first stage of the compiler surrounding functions is cleared out.
+
