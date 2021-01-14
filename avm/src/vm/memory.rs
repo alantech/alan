@@ -662,7 +662,7 @@ impl HandlerMemory {
       self.mems.append(&mut hm.mems); // Append the relevant ones to the original HandlerMemory
       // Set the return address on the original HandlerMemory to the acquired indexes, potentially
       // offset if it is a pointer at new data
-      if a < std::usize::MAX && a >= s && hm.is_idx_defined(a, b) {
+      if a < std::usize::MAX && a >= s {
         self.set_addr(CLOSURE_ARG_MEM_START, a + offset, b);
       } else {
         self.set_addr(CLOSURE_ARG_MEM_START, a, b);
