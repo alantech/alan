@@ -2623,17 +2623,19 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         filters.push(subhandler.clone().run(hm));
       }
       let mut hms = join_all(filters).await;
-      for hm in &mut hms {
+      let mut res = -1;
+      for i in 0..len {
+        let hm = &mut hms[i];
+        let val = hm.read_fixed(CLOSURE_ARG_MEM_START);
         hm.drop_parent();
+        if val == 1 {
+          res = i as i64;
+        }
       }
       let mut hand_mem = Arc::try_unwrap(hand_mem_ref).unwrap();
       hand_mem.init_fractal(args[2]);
-      for i in 0..len {
-        let hm = &hms[i];
-        let val = hm.read_fixed(CLOSURE_ARG_MEM_START);
-        if val == 1 {
-          hand_mem.push_register_out(args[2], &fractal, i);
-        }
+      if res > 0 {
+        hand_mem.push_register_out(args[2], &fractal, res as usize);
       }
       hand_mem
     })
