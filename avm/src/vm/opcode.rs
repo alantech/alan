@@ -2159,6 +2159,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   cpu!("join", |args, hand_mem| {
     let sep_str = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
+    println!("{}", sep_str);
     let fractal = hand_mem.read_fractal(args[0]);
     let mut strs: Vec<String> = Vec::new();
     for i in 0..fractal.len() {
@@ -2236,6 +2237,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let mut hand_mem = Arc::try_unwrap(hand_mem_ref).unwrap();
       hand_mem.init_fractal(args[2]);
       for hm in &mut hms {
+        // println!("Child");
+        // println!("{:?}", hm.read_fractal(CLOSURE_ARG_MEM_START));
+        // println!("parent: {:?}", hand_mem.read_fractal(CLOSURE_ARG_MEM_START));
         hand_mem.join(hm);
         hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
       }
