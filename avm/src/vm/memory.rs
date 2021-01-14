@@ -174,22 +174,17 @@ impl HandlerMemory {
     return if res.is_none() { self.parent.as_ref() } else { res };
   }
 
-  /// Takes a given address and looks up the `mems` indexes relevant to it.
-  fn addr_to_idxs_opt(self: &HandlerMemory, addr: i64) -> Option<(usize, usize)> {
-    return if addr >= 0 {
+  /// Takes a given address and looks up the fractal location and
+  /// `mems` indexes relevant to it. It also returns an Option that is
+  /// none if the address is in self or a ptr to the ancestor
+  fn addr_to_idxs(self: &HandlerMemory, addr: i64, ) -> ((usize, usize), Option<&Arc<HandlerMemory>>) {
+    let idxs = if addr >= 0 {
       *self.addr.0.get(addr as usize).unwrap_or(&None)
     } else if addr <= CLOSURE_ARG_MEM_END {
       *self.addr.1.get((addr - CLOSURE_ARG_MEM_START) as usize).unwrap_or(&None)
     } else {
       Some((0, ((-1 * addr - 1) / 8) as usize))
-    }
-  }
-
-  /// Takes a given address and looks up the fractal location and
-  /// `mems` indexes relevant to it. It also returns an Option that is
-  /// none if the address is in self or a ptr to the ancestor
-  fn addr_to_idxs(self: &HandlerMemory, addr: i64, ) -> ((usize, usize), Option<&Arc<HandlerMemory>>) {
-    let idxs = self.addr_to_idxs_opt(addr);
+    };
     //println!("idxs: {:?}", idxs);
     return if idxs.is_none() {
       // fail if no parent
@@ -655,7 +650,7 @@ impl HandlerMemory {
     let s2 = self.mems.len(); // The new address of the initial block
     let offset = s2 - s; // Assuming it was made by `fork` this should be positive or zero
     if hm.addr.1.len() > 0 {
-      let (a, b) = hm.addr_to_idxs_opt(CLOSURE_ARG_MEM_START).unwrap(); // The only address that can "escape"
+      let ((a, b), _) = hm.addr_to_idxs(CLOSURE_ARG_MEM_START); // The only address that can "escape"
       // println!("a: {}, b: {}, s: {}, in_fork: {}, in_parent: {}", a, b, s, hm.is_idx_defined(a, b), self.is_idx_defined(a, b));
       // println!("{:?}", hm);
       hm.mems.drain(..s); // Remove the irrelevant memory blocks

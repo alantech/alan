@@ -213,22 +213,27 @@ impl HandlerFragment {
           for i in 0..instructions.len() {
             let ins = &instructions[i];
             let async_func = ins.opcode.async_func.unwrap();
+            eprintln!("{} {} {} {}", ins.opcode._name, ins.args[0], ins.args[1], ins.args[2]);
             hand_mem = async_func(ins.args.clone(), hand_mem).await;
+            //eprintln!("{:?}", &hand_mem);
           }
         } else {
+          eprintln!("{} {} {} {}", instructions[0].opcode._name, instructions[0].args[0], instructions[0].args[1], instructions[0].args[2]);
           let future = instructions[0].opcode.async_func.unwrap()(
             instructions[0].args.clone(),
             hand_mem
           );
           hand_mem = future.await;
+          //eprintln!("{:?}", &hand_mem);
         }
       } else {
         // cpu-bound fragment
         let self_and_hand_mem = task::block_in_place(move || {
           instructions.iter().for_each( |i| {
-            //eprintln!("{} {} {} {}", i.opcode._name, i.args[0], i.args[1], i.args[2]);
+            eprintln!("{} {} {} {}", i.opcode._name, i.args[0], i.args[1], i.args[2]);
             let func = i.opcode.func.unwrap();
             let event = func(i.args.as_slice(), &mut hand_mem);
+            //eprintln!("{:?}", &hand_mem);
             if event.is_some() {
               let event_tx = EVENT_TX.get().unwrap();
               let event_sent = event_tx.send(event.unwrap());
