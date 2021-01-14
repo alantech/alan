@@ -8,11 +8,12 @@
 
 ### Accepted
 
-YYYY-MM-DD
+2020-01-14
 
 #### Approvers
 
-- Full Name <email@example.com>
+- Colton Donnelly <colton@alantechnologies.com>
+- Luis De Pombo <luis@alantechnologies.com>
 
 ### Implementation
 
