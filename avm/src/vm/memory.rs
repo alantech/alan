@@ -157,21 +157,34 @@ impl HandlerMemory {
   }
 
   fn is_idx_defined(self: &HandlerMemory, a: usize, b: usize) -> bool {
+    // println!("a: {}, self.mem_addr: {}", a, self.mem_addr);
+    // println!("{:?}", self);
     let is_raw = a == std::usize::MAX;
-    let is_fixed = self.mems.len() > a && self.mems[a].len() > b;
-    let is_fractal = self.mems.len() > a && b == std::usize::MAX;
+    let safe_mem_space = self.mem_addr == 1 || a >= self.mem_addr; // account for init_fractal
+    let is_fixed = safe_mem_space && self.mems.len() > a && self.mems[a].len() > b;
+    let is_fractal = safe_mem_space && self.mems.len() > a && b == std::usize::MAX;
     return is_raw || is_fixed || is_fractal;
   }
 
   // returns None if the idxs belong to self
   fn hm_for_idxs(self: &HandlerMemory, a: usize, b: usize) -> Option<&Arc<HandlerMemory>> {
-    //println!("self mems.len: {}, a,b: {},{}", self.mems.len(), a, b);
+    //println!("self mems.len: {}, self.mem_addr: {}, a,b: {},{}", self.mems.len(),self.mem_addr, a, b);
     if self.is_idx_defined(a,b) {
       return None;
     }
     //println!("parent mems.len: {}, a,b: {},{}", self.parent.as_ref().unwrap().mems.len(), a, b);
     let res = self.parent.as_ref().unwrap().hm_for_idxs(a, b);
     return if res.is_none() { self.parent.as_ref() } else { res };
+  }
+
+  fn addr_to_idxs_opt(self: &HandlerMemory, addr: i64) -> Option<(usize, usize)> {
+    return if addr >= 0 {
+      *self.addr.0.get(addr as usize).unwrap_or(&None)
+    } else if addr <= CLOSURE_ARG_MEM_END {
+      *self.addr.1.get((addr - CLOSURE_ARG_MEM_START) as usize).unwrap_or(&None)
+    } else {
+      Some((0, ((-1 * addr - 1) / 8) as usize))
+    };
   }
 
   /// Takes a given address and looks up the fractal location and
@@ -191,13 +204,15 @@ impl HandlerMemory {
       if self.parent.is_none() {
         panic!("Memory address referenced in parent, but no parent pointer defined");
       }
-      //println!("recurse");
+      // println!("recurse");
       let res = self.parent.as_ref().unwrap().addr_to_idxs(addr);
       let hm = if res.1.is_none() { self.parent.as_ref() } else { res.1 };
       (res.0, hm)
     } else {
       let res = idxs.unwrap();
-      //println!("addr: {}, a: {}, b:{}, self.mems.len: {}", addr, res.0, res.1, self.mems.len());
+      // if addr == -9223372036854775808 {
+      //   println!("addr: {}, a: {}, b:{}, self.mem_addr: {}, self.mems.len: {}", addr, res.0, res.1, self.mem_addr, self.mems.len());
+      // }
       (res, self.hm_for_idxs(res.0, res.1))
     };
   }
@@ -254,6 +269,7 @@ impl HandlerMemory {
   /// boolean indicating if it was a fractal value or not.
   pub fn read_either(self: &HandlerMemory, addr: i64) -> (FractalMemory, bool) {
     let ((a, b), hm_opt) = self.addr_to_idxs(addr);
+    // println!("READ_EITHER from self? {}", hm_opt.is_none());
     let hm = if hm_opt.is_none() { self } else { hm_opt.unwrap() };
     return if b < std::usize::MAX {
       (
@@ -456,6 +472,9 @@ impl HandlerMemory {
   pub fn register_out(self: &mut HandlerMemory, fractal_addr: i64, offset_addr: usize, out_addr: i64) {
     let ((arr_a, _), _) = self.addr_to_idxs(fractal_addr);
     let fractal = self.read_fractal(fractal_addr);
+    //println!("{:?}", fractal);
+    let in_self = self as *const HandlerMemory as usize == fractal.hm_id;
+    //println!("fractal_addr: {}, fractal_idx:{}, out_addr: {}, in_self: {}", fractal_addr, offset_addr, out_addr, in_self);
     let (a, b) = fractal.block[offset_addr];
     if a < std::usize::MAX {
       self.set_addr(out_addr, a, b as usize);
@@ -650,7 +669,7 @@ impl HandlerMemory {
     let s2 = self.mems.len(); // The new address of the initial block
     let offset = s2 - s; // Assuming it was made by `fork` this should be positive or zero
     if hm.addr.1.len() > 0 {
-      let ((a, b), _) = hm.addr_to_idxs(CLOSURE_ARG_MEM_START); // The only address that can "escape"
+      let (a, b) = hm.addr_to_idxs_opt(CLOSURE_ARG_MEM_START).unwrap(); // The only address that can "escape"
       // println!("a: {}, b: {}, s: {}, in_fork: {}, in_parent: {}", a, b, s, hm.is_idx_defined(a, b), self.is_idx_defined(a, b));
       // println!("{:?}", hm);
       hm.mems.drain(..s); // Remove the irrelevant memory blocks
