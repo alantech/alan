@@ -4,3 +4,4 @@ browser/stdlibs.json
 .idea
 std/
 dist/
+out.*

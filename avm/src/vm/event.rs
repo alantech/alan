@@ -213,9 +213,11 @@ impl HandlerFragment {
           for i in 0..instructions.len() {
             let ins = &instructions[i];
             let async_func = ins.opcode.async_func.unwrap();
+            //eprintln!("{} {} {} {}", ins.opcode._name, ins.args[0], ins.args[1], ins.args[2]);
             hand_mem = async_func(ins.args.clone(), hand_mem).await;
           }
         } else {
+          //eprintln!("{} {} {} {}", instructions[0].opcode._name, instructions[0].args[0], instructions[0].args[1], instructions[0].args[2]);
           let future = instructions[0].opcode.async_func.unwrap()(
             instructions[0].args.clone(),
             hand_mem
