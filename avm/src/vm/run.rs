@@ -6,11 +6,11 @@ use byteorder::{LittleEndian, ReadBytesExt};
 use futures::future::join_all;
 use once_cell::sync::OnceCell;
 use tokio::runtime;
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
 use crate::vm::event::{BuiltInEvents, EventEmit, HandlerFragment};
 use crate::vm::memory::HandlerMemory;
-use crate::vm::program::{PROGRAM, Program};
+use crate::vm::program::{Program, PROGRAM};
 use crate::vm::telemetry;
 
 pub static EVENT_TX: OnceCell<UnboundedSender<EventEmit>> = OnceCell::new();
@@ -27,10 +27,7 @@ impl VM {
     // Hackery relying on VM being a singleton :( TODO: Refactor such that event_tx is accessible
     // outside of the opcodes and instruction scheduler for http and future IO sources
     EVENT_TX.set(event_tx.clone()).unwrap();
-    return VM {
-      event_tx,
-      event_rx,
-    };
+    return VM { event_tx, event_rx };
   }
 
   pub fn add(self: &mut VM, event: EventEmit) {
@@ -78,7 +75,7 @@ pub fn exec(fp: &str, delete_after_load: bool) {
       std::process::exit(2);
     }
     let bytes = File::open(fp).unwrap().bytes().count();
-    let mut bytecode = vec![0;bytes/8];
+    let mut bytecode = vec![0; bytes / 8];
     let mut f = File::open(fp).unwrap();
     f.read_i64_into::<LittleEndian>(&mut bytecode).unwrap();
     if delete_after_load {
@@ -91,7 +88,10 @@ pub fn exec(fp: &str, delete_after_load: bool) {
       std::process::exit(1);
     }
     let mut vm = VM::new();
-    let start = EventEmit { id: i64::from(BuiltInEvents::START), payload: None };
+    let start = EventEmit {
+      id: i64::from(BuiltInEvents::START),
+      payload: None,
+    };
     vm.add(start);
     telemetry::log().await;
     vm.run().await;

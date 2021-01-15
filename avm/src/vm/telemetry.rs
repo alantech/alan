@@ -1,8 +1,4 @@
-use hyper::{
-  Body,
-  Request,
-  client::Client,
-};
+use hyper::{client::Client, Body, Request};
 
 use serde_json::json;
 
@@ -15,7 +11,9 @@ const OS: &str = std::env::consts::OS;
 
 pub async fn log() {
   let no_telemetry = NO_TELEMETRY.unwrap_or("false") == "true";
-  if no_telemetry { return; }
+  if no_telemetry {
+    return;
+  }
   let body = json!({
     "api_key": AMPLITUDE_API_KEY,
     "events": [
@@ -28,7 +26,15 @@ pub async fn log() {
     ]
   });
   let client = Client::builder().build::<_, Body>(hyper_tls::HttpsConnector::new());
-  if client.request(Request::post(AMPLITUDE_URL).body(body.to_string().into()).unwrap()).await.is_ok() {
+  if client
+    .request(
+      Request::post(AMPLITUDE_URL)
+        .body(body.to_string().into())
+        .unwrap(),
+    )
+    .await
+    .is_ok()
+  {
     // Do nothing
   }
 }

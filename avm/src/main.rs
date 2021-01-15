@@ -1,7 +1,7 @@
 use std::env;
 use std::path::Path;
 
-use clap::{App, SubCommand, crate_name, crate_version};
+use clap::{crate_name, crate_version, App, SubCommand};
 
 use crate::compile::compile::compile;
 use crate::vm::run::exec;
@@ -44,7 +44,11 @@ fn main() {
 
   if let Some(matches) = matches.subcommand_matches("run") {
     let agc_file = matches.value_of("FILE").unwrap();
-    let fp = &format!("{:}/{:}", env::current_dir().ok().unwrap().to_str().unwrap(), agc_file);
+    let fp = &format!(
+      "{:}/{:}",
+      env::current_dir().ok().unwrap().to_str().unwrap(),
+      agc_file
+    );
     exec(&fp, false);
   } else if let Some(matches) = matches.subcommand_matches("compile") {
     let source_file = matches.value_of("INPUT").unwrap();
@@ -55,7 +59,10 @@ fn main() {
     if Path::new(source_file).exists() {
       compile_and_run(source_file);
     } else {
-      println!("{} does not exist. Dependencies can only be installed for {}", source_file, source_file);
+      println!(
+        "{} does not exist. Dependencies can only be installed for {}",
+        source_file, source_file
+      );
       std::process::exit(1);
     }
   } else if let Some(source_file) = matches.value_of("SOURCE") {

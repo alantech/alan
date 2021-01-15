@@ -54,12 +54,12 @@ pub(crate) enum OpcodeFn {
 }
 
 impl Debug for OpcodeFn {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            OpcodeFn::Cpu(_) => write!(f, "cpu"),
-            OpcodeFn::Io(_) => write!(f, "io"),
-        }
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    match self {
+      OpcodeFn::Cpu(_) => write!(f, "cpu"),
+      OpcodeFn::Io(_) => write!(f, "io"),
     }
+  }
 }
 
 /// To allow concise definition of opcodes we have a struct that stores all the information
@@ -2835,7 +2835,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       Ok(bytes) => bytes,
       // If we error out while getting the body, just close this listener out immediately
       Err(ee) => {
-        return Ok(Response::new(format!("Connection terminated: {}", ee).into()));
+        return Ok(Response::new(
+          format!("Connection terminated: {}", ee).into(),
+        ));
       }
     };
     let body_str = str::from_utf8(&body_req).unwrap().to_string();
@@ -3622,7 +3624,11 @@ impl From<i64> for &ByteOpcode {
   fn from(v: i64) -> Self {
     let opc = OPCODES.get(&v);
     if opc.is_none() {
-      panic!(format!("Illegal byte opcode {} ({})", v, str::from_utf8(&v.to_ne_bytes()).unwrap()));
+      panic!(format!(
+        "Illegal byte opcode {} ({})",
+        v,
+        str::from_utf8(&v.to_ne_bytes()).unwrap()
+      ));
     }
     return &opc.unwrap();
   }
