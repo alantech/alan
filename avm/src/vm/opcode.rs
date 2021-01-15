@@ -2329,7 +2329,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         let hm = &mut hms[i];
         let val = hm.read_fixed(CLOSURE_ARG_MEM_START);
         hm.drop_parent();
-        if val == 1 {
+        if idx.is_none() && val == 1 {
           idx = Some(i);
         }
       }
