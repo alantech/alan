@@ -2226,10 +2226,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       for i in 0..fractal.len() {
         let mut hm = HandlerMemory::fork(Arc::clone(&hand_mem_ref));
         hm.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
-        // let res = hm.read_either(CLOSURE_ARG_MEM_START + 1);
-        // println!("{:?}", res);
         hm.write_fixed(CLOSURE_ARG_MEM_START + 2, i as i64);
-        //println!("{:?}", hm);
         mappers.push(subhandler.clone().run(hm));
       }
       let mut hms = join_all(mappers).await;
@@ -2239,9 +2236,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let mut hand_mem = Arc::try_unwrap(hand_mem_ref).unwrap();
       hand_mem.init_fractal(args[2]);
       for hm in &mut hms {
-        // println!("Child");
-        // println!("{:?}", hm.read_fractal(CLOSURE_ARG_MEM_START));
-        // println!("parent: {:?}", hand_mem.read_fractal(CLOSURE_ARG_MEM_START));
         hand_mem.join(hm);
         hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
       }
