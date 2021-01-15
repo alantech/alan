@@ -231,7 +231,7 @@ impl HandlerMemory {
   /// Reads an array of data from the given address.
   pub fn read_fractal(self: &HandlerMemory, addr: i64) -> FractalMemory {
     let ((a, b), hm_opt) = self.addr_to_idxs(addr);
-    //eprintln!("addr: {}, self?: {}, (a,b): ({},{})", addr, hm_opt.is_none(), a, b);
+    eprintln!("addr: {}, self?: {}, (a,b): ({},{})", addr, hm_opt.is_none(), a, b);
     let hm = if hm_opt.is_none() { self } else { hm_opt.unwrap() };
     return if addr_type(addr) == GMEM_ADDR {
       // Special behavior to read strings out of global memory
@@ -650,6 +650,7 @@ impl HandlerMemory {
  
   /// Returns a new HandlerMemory with a read-only reference to the self HandlerMemory as the parent
   pub fn fork(parent: Arc<HandlerMemory>) -> HandlerMemory {
+    println!("FORK");
     let s = parent.mems.len();
     let mut hm = HandlerMemory::new(None, 1);
     hm.parent = Some(parent);
@@ -665,6 +666,7 @@ impl HandlerMemory {
   /// newly-created data. This mechanism is faster but will keep around unreachable memory for longer.
   /// Whether or not this is the right trade-off will have to be seen by real-world usage.
   pub fn join(self: &mut HandlerMemory, hm: &mut HandlerMemory) {
+    println!("JOIN");
     let s = hm.mem_addr; // The initial block that will be transferred (plus all following blocks)
     let s2 = self.mems.len(); // The new address of the initial block
     let offset = s2 - s; // Assuming it was made by `fork` this should be positive or zero
