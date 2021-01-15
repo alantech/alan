@@ -2233,7 +2233,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       for hm in &mut hms {
         hm.drop_parent();
       }
-      let mut hand_mem = Arc::try_unwrap(hand_mem_ref).unwrap();
+      let mut hand_mem = Arc::try_unwrap(hand_mem_ref).expect("Dangling reference to parent HM in parallel opcode");
       hand_mem.init_fractal(args[2]);
       for hm in &mut hms {
         hand_mem.join(hm);
@@ -2296,7 +2296,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       for hm in &mut hms {
         hm.drop_parent();
       }
-      Arc::try_unwrap(hand_mem_ref).unwrap()
+      Arc::try_unwrap(hand_mem_ref).expect("Dangling reference to parent HM in parallel opcode")
     })
   });
   io!("eachl", |args, mut hand_mem| {
@@ -2333,7 +2333,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
           idx = Some(i);
         }
       }
-      let mut hand_mem = Arc::try_unwrap(hand_mem_ref).unwrap();
+      let mut hand_mem = Arc::try_unwrap(hand_mem_ref).expect("Dangling reference to parent HM in parallel opcode");
       hand_mem.init_fractal(args[2]);
       if idx.is_some() {
         hand_mem.push_fixed(args[2], 1);
@@ -2386,7 +2386,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
           ret_val = 1;
         }
       }
-      let mut hand_mem = Arc::try_unwrap(hand_mem_ref).unwrap();
+      let mut hand_mem = Arc::try_unwrap(hand_mem_ref).expect("Dangling reference to parent HM in parallel opcode");
       hand_mem.write_fixed(args[2], ret_val);
       hand_mem
     })
@@ -2428,7 +2428,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
           ret_val = 0;
         }
       }
-      let mut hand_mem = Arc::try_unwrap(hand_mem_ref).unwrap();
+      let mut hand_mem = Arc::try_unwrap(hand_mem_ref).expect("Dangling reference to parent HM in parallel opcode");
       hand_mem.write_fixed(args[2], ret_val);
       hand_mem
     })
@@ -2627,7 +2627,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
           idxs.push(i);
         }
       }
-      let mut hand_mem = Arc::try_unwrap(hand_mem_ref).unwrap();
+      let mut hand_mem = Arc::try_unwrap(hand_mem_ref).expect("Dangling reference to parent HM in parallel opcode");
       hand_mem.init_fractal(args[2]);
       for i in idxs {
         hand_mem.push_register_out(args[2], &fractal, i);
