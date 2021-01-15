@@ -70,6 +70,19 @@ pub struct ByteOpcode {
   pub(crate) fun: OpcodeFn,
 }
 
+impl ByteOpcode {
+  /// There used to be a `pred_exec` field, but that is now dependent on the
+  /// kind of `OpcodeFn` that is associated with the opcode, so I made this
+  /// inline function to make my life easier when refactoring references :)
+  #[inline(always)]
+  pub(crate) fn pred_exec(&self) -> bool {
+    match self.fun {
+      OpcodeFn::Cpu(_) => true,
+      OpcodeFn::Io(_) => false,
+    }
+  }
+}
+
 pub fn opcode_id(name: &str) -> i64 {
   let mut ascii_name = [0u8; 8];
   // Now insert the new name characters
@@ -2349,27 +2362,27 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   io!(find => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let hand_mem_ref = Arc::new(hand_mem);
+      let hand_mem = Arc::new(hand_mem);
       let fractal = hand_mem.read_fractal(args[0]);
       let len = fractal.len();
       let subhandler = HandlerFragment::new(args[1], 0);
       let mut finders = Vec::with_capacity(fractal.len());
       for i in 0..len {
-        let mut hm = HandlerMemory::fork(Arc::clone(&hand_mem_ref));
+        let mut hm = HandlerMemory::fork(Arc::clone(&hand_mem));
         hm.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
         finders.push(subhandler.clone().run(hm));
       }
-      let hms = join_all(finders).await;
+      let mut hms = join_all(finders).await;
       let mut idx = None;
-      for i in 0..len() {
-        let hm = &hms[i];
+      for i in 0..len {
+        let hm = &mut hms[i];
         let val = hm.read_fixed(CLOSURE_ARG_MEM_START);
         hm.drop_parent();
         if idx.is_none() && val == 1 {
           idx = Some(i);
         }
       }
-      let mut hand_mem = Arc::try_unwrap(hand_mem_ref).expect("Dangling reference to parent HM in parallel opcode");
+      let mut hand_mem = Arc::try_unwrap(hand_mem).expect("Dangling reference to parent HM in parallel opcode");
       hand_mem.init_fractal(args[2]);
       if idx.is_some() {
         hand_mem.push_fixed(args[2], 1);
