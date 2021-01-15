@@ -184,11 +184,9 @@ impl HandlerMemory {
   /// `mems` indexes relevant to it if available
   fn addr_to_idxs_opt(self: &HandlerMemory, addr: i64) -> Option<(usize, usize)> {
     return if addr >= 0 {
-      let el = self.addr.0.get(addr as usize);
-      *el.unwrap_or(&None)
+      *self.addr.0.get(addr as usize).unwrap_or(&None)
     } else if addr <= CLOSURE_ARG_MEM_END {
-      let el = self.addr.1.get((addr - CLOSURE_ARG_MEM_START) as usize);
-      *el.unwrap_or(&None)
+      *self.addr.1.get((addr - CLOSURE_ARG_MEM_START) as usize).unwrap_or(&None)
     } else {
       Some((0, ((-1 * addr - 1) / 8) as usize))
     };
