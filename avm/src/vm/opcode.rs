@@ -2324,23 +2324,24 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         finders.push(subhandler.clone().run(hm));
       }
       let mut hms = join_all(finders).await;
-      for hm in &mut hms {
-        hm.drop_parent();
-      }
-      let mut hand_mem = Arc::try_unwrap(hand_mem_ref).unwrap();
+      let mut idx = None;
       for i in 0..len {
-        let hm = &hms[i];
+        let hm = &mut hms[i];
         let val = hm.read_fixed(CLOSURE_ARG_MEM_START);
+        hm.drop_parent();
         if val == 1 {
-          hand_mem.init_fractal(args[2]);
-          hand_mem.push_fixed(args[2], 1);
-          hand_mem.push_register_out(args[2], &fractal, i);
-          return hand_mem;
+          idx = Some(i);
         }
       }
+      let mut hand_mem = Arc::try_unwrap(hand_mem_ref).unwrap();
       hand_mem.init_fractal(args[2]);
-      hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("no element matches"));
+      if idx.is_some() {
+        hand_mem.push_fixed(args[2], 1);
+        hand_mem.push_register_out(args[2], &fractal, idx.unwrap());
+      } else {
+        hand_mem.push_fixed(args[2], 0);
+        hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("no element matches"));
+      }
       hand_mem
     })
   });

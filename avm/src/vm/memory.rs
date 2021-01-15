@@ -214,10 +214,10 @@ impl HandlerMemory {
   /// Reads fixed data from a given address.
   pub fn read_fixed(self: &HandlerMemory, addr: i64) -> i64 {
     let ((a, b), hm_opt) = self.addr_to_idxs(addr);
-    let hm = if hm_opt.is_none() { self } else { hm_opt.unwrap() };
     return if a == std::usize::MAX {
       b as i64
     } else {
+      let hm = if hm_opt.is_none() { self } else { hm_opt.unwrap() };
       hm.mems[a][b].1
     }
   }
