@@ -198,7 +198,6 @@ impl HandlerMemory {
     } else {
       Some((0, ((-1 * addr - 1) / 8) as usize))
     };
-    //println!("idxs: {:?}", idxs);
     return if idxs.is_none() {
       // fail if no parent
       if self.parent.is_none() {
@@ -231,7 +230,7 @@ impl HandlerMemory {
   /// Reads an array of data from the given address.
   pub fn read_fractal(self: &HandlerMemory, addr: i64) -> FractalMemory {
     let ((a, b), hm_opt) = self.addr_to_idxs(addr);
-    eprintln!("addr: {}, self?: {}, (a,b): ({},{})", addr, hm_opt.is_none(), a, b);
+    // eprintln!("addr: {}, self?: {}, (a,b): ({},{})", addr, hm_opt.is_none(), a, b);
     let hm = if hm_opt.is_none() { self } else { hm_opt.unwrap() };
     return if addr_type(addr) == GMEM_ADDR {
       // Special behavior to read strings out of global memory
@@ -298,13 +297,13 @@ impl HandlerMemory {
     if addr_type(addr) == NORMAL_ADDR {
       let addru = addr as usize;
       if self.addr.0.len() <= addru {
-        self.addr.0.resize(addru + 1, Some((std::usize::MAX, 0)));
+        self.addr.0.resize(addru + 1, None);
       }
       self.addr.0[addru] = Some((a, b));
     } else {
       let addru = (addr - CLOSURE_ARG_MEM_START) as usize;
       if self.addr.1.len() <= addru {
-        self.addr.1.resize(addru + 1, Some((std::usize::MAX, 0)));
+        self.addr.1.resize(addru + 1, None);
       }
       self.addr.1[addru] = Some((a, b));
     }
@@ -349,11 +348,8 @@ impl HandlerMemory {
 
   /// Stores a nested fractal of data in a given address.
   pub fn write_fixed_in_fractal(self: &mut HandlerMemory, fractal: &mut FractalMemory, idx: usize, val: i64) {
-    if !fractal.belongs(self) {
-      panic!("Writing TO a forked/read-only FractalMemory is not allowed");
-    }
     fractal.block[idx].1 = val;
-    if fractal.hm_addr.is_some() {
+    if fractal.belongs(self) && fractal.hm_addr.is_some() {
       self.write_fractal(fractal.hm_addr.unwrap(), fractal);
     }
   }
@@ -650,7 +646,7 @@ impl HandlerMemory {
  
   /// Returns a new HandlerMemory with a read-only reference to the self HandlerMemory as the parent
   pub fn fork(parent: Arc<HandlerMemory>) -> HandlerMemory {
-    println!("FORK");
+    //println!("FORK");
     let s = parent.mems.len();
     let mut hm = HandlerMemory::new(None, 1);
     hm.parent = Some(parent);
@@ -666,7 +662,7 @@ impl HandlerMemory {
   /// newly-created data. This mechanism is faster but will keep around unreachable memory for longer.
   /// Whether or not this is the right trade-off will have to be seen by real-world usage.
   pub fn join(self: &mut HandlerMemory, hm: &mut HandlerMemory) {
-    println!("JOIN");
+    //println!("JOIN");
     let s = hm.mem_addr; // The initial block that will be transferred (plus all following blocks)
     let s2 = self.mems.len(); // The new address of the initial block
     let offset = s2 - s; // Assuming it was made by `fork` this should be positive or zero
