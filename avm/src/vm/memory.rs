@@ -33,24 +33,24 @@ fn addr_type(addr: i64) -> i8 {
 /// Memory representation of a fractal memory block within HandlerMemory
 #[derive(Clone, Debug)]
 pub struct FractalMemory {
-  // address in HandlerMemory which is not present for actual data or deeply nested fractals
+  /// address in HandlerMemory which is not present for actual data or deeply nested fractals
   hm_addr: Option<i64>,
-  // a memory block from HandlerMemory.mems
+  /// a memory block from HandlerMemory.mems
   block: Vec<(usize, i64)>,
+  /// id for HandlerMemory that contains it, casted as usize from raw ptr
   hm_id: usize,
-  pub is_fractal: bool,
 }
 
 impl FractalMemory {
   pub fn new(block: Vec<(usize, i64)>) -> FractalMemory {
     return FractalMemory {
       hm_addr: None,
-      hm_id: 0 as *const HandlerMemory as usize, // null ptr
-      is_fractal: false,
+      hm_id: 0 as *const HandlerMemory as usize, // null ptr, mostly for fractal strings
       block,
     }
   }
 
+  /// Determines this Fractal was read from the provided HandlerMemory
   pub fn belongs(self: &FractalMemory, hm: &HandlerMemory) -> bool {
     return self.hm_id == 0 || self.hm_id == hm as *const HandlerMemory as usize;
   }
@@ -149,6 +149,11 @@ impl HandlerMemory {
     }
   }
 
+  /// Drop the immutable, thread-safe reference to the parent provided by `fork`.
+  /// Consuming forked children is a mutable operation on the parent
+  /// that cannot be performed on an object within an Arc. As a result, 
+  /// all the forked children drop their reference to the parent, we take
+  /// the parent out of the Arc after parallel work is done and then join on its children.
   pub fn drop_parent(self: &mut HandlerMemory) {
     if self.parent.is_some() {
       let arc = self.parent.take();
@@ -156,15 +161,17 @@ impl HandlerMemory {
     }
   }
 
+  /// Returns true if the idxs are valid in self
   fn is_idx_defined(self: &HandlerMemory, a: usize, b: usize) -> bool {
     let is_raw = a == std::usize::MAX;
-    let safe_mem_space = self.mem_addr == 1 || a >= self.mem_addr; // account for init_fractal
+    let safe_mem_space = self.mem_addr == 1 || a >= self.mem_addr;
     let is_fixed = safe_mem_space && self.mems.len() > a && self.mems[a].len() > b;
     let is_fractal = safe_mem_space && self.mems.len() > a && b == std::usize::MAX;
     return is_raw || is_fixed || is_fractal;
   }
 
-  // returns None if the idxs belong to self
+  /// Recursively finds the parent and returns None if the idxs
+  /// belong to self or otherwise a reference to the parent
   fn hm_for_idxs(self: &HandlerMemory, a: usize, b: usize) -> Option<&Arc<HandlerMemory>> {
     if self.is_idx_defined(a,b) {
       return None;
@@ -173,6 +180,8 @@ impl HandlerMemory {
     return if res.is_none() { self.parent.as_ref() } else { res };
   }
 
+  /// Takes a given address and looks up the fractal location and
+  /// `mems` indexes relevant to it if available
   fn addr_to_idxs_opt(self: &HandlerMemory, addr: i64) -> Option<(usize, usize)> {
     return if addr >= 0 {
       *self.addr.0.get(addr as usize).unwrap_or(&None)
@@ -183,9 +192,9 @@ impl HandlerMemory {
     };
   }
 
-  /// Takes a given address and looks up the fractal location and
+  /// Recursively taks a given address and looks up the fractal location and
   /// `mems` indexes relevant to it. It also returns an Option that is
-  /// none if the address is in self or a ptr to the ancestor
+  /// None if the address is in self or a ptr to the ancestor if `self` is forked
   fn addr_to_idxs(self: &HandlerMemory, addr: i64, ) -> ((usize, usize), Option<&Arc<HandlerMemory>>) {
     let idxs = self.addr_to_idxs_opt(addr);
     return if idxs.is_none() {
@@ -224,14 +233,12 @@ impl HandlerMemory {
         hm_addr: Some(addr),
         block: hm.mems[a][b..].to_vec(),
         hm_id: hm as *const HandlerMemory as usize,
-        is_fractal: true,
       }
     } else {
       FractalMemory {
         hm_addr: Some(addr),
         block: hm.mems[a][..].to_vec(),
         hm_id: hm as *const HandlerMemory as usize,
-        is_fractal: true,
       }
     };
   }
@@ -260,7 +267,6 @@ impl HandlerMemory {
           hm_addr: Some(addr),
           block: vec![hm.mems[a][b].clone()],
           hm_id: hm as *const HandlerMemory as usize,
-          is_fractal: false,
         }, false
       )
     } else {
@@ -269,7 +275,6 @@ impl HandlerMemory {
           hm_addr: Some(addr),
           block: hm.mems[a].clone(),
           hm_id: hm as *const HandlerMemory as usize,
-          is_fractal: true,
         }, true
       )
     }
@@ -314,7 +319,6 @@ impl HandlerMemory {
           hm_addr: None,
           block: vec![hm.mems[a][b_usize].clone()],
           hm_id: hm as *const HandlerMemory as usize,
-          is_fractal: false,
         }, false
       )
     } else {
@@ -324,7 +328,6 @@ impl HandlerMemory {
           hm_addr: None,
           block: hm.mems[a].clone(),
           hm_id: hm as *const HandlerMemory as usize,
-          is_fractal: true,
         }, true
       )
     }
@@ -625,7 +628,7 @@ impl HandlerMemory {
     }
   }
  
-  /// Returns a new HandlerMemory with a read-only reference to the self HandlerMemory as the parent
+  /// Returns a new HandlerMemory with a read-only reference to HandlerMemory as parent
   pub fn fork(parent: Arc<HandlerMemory>) -> HandlerMemory {
     let s = parent.mems.len();
     let mut hm = HandlerMemory::new(None, 1);
@@ -722,7 +725,6 @@ impl HandlerMemory {
   /// to something Rust can work with. This function *may* crash if the underlying data is not a
   /// UTF-8 encoded Pascal string.
   pub fn fractal_to_string(f: FractalMemory) -> String {
-    //println!("{:?}", f);
     let s_len = f.block[0].1 as usize;
     let mut s_bytes: Vec<u8> = Vec::new();
     for i in 1..f.block.len() {
