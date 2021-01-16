@@ -84,9 +84,9 @@ impl ByteOpcode {
 }
 
 pub fn opcode_id(name: &str) -> i64 {
-  let mut ascii_name = [0u8; 8];
+  let mut ascii_name = [b' '; 8];
   // Now insert the new name characters
-  for (i, c) in name.chars().enumerate() {
+  for (i, c) in name.chars().take(8).enumerate() {
     std::mem::replace(&mut ascii_name[i], c as u8);
   }
   let id = LittleEndian::read_i64(&ascii_name);
