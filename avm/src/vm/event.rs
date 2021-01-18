@@ -213,8 +213,12 @@ impl HandlerFragment {
           */
           for i in 0..instructions.len() {
             let ins = &instructions[i];
+            if let OpcodeFn::Io(async_func) = ins.opcode.fun {
+                hand_mem = async_func(ins.args.clone(), hand_mem).await;
+            } else {
+                eprintln!("expected another IO instruction, found a CPU instruction");
+            };
             //eprintln!("{} {} {} {}", ins.opcode._name, ins.args[0], ins.args[1], ins.args[2]);
-            hand_mem = async_func(ins.args.clone(), hand_mem).await;
           }
         } else {
           //eprintln!("{} {} {} {}", instructions[0].opcode._name, instructions[0].args[0], instructions[0].args[1], instructions[0].args[2]);
