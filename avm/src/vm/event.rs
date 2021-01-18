@@ -5,7 +5,7 @@ use crate::vm::instruction::Instruction;
 use crate::vm::memory::HandlerMemory;
 use crate::vm::opcode::{HMFuture, OpcodeFn};
 use crate::vm::program::Program;
-use crate::vm::run::{EVENT_TX};
+use crate::vm::run::EVENT_TX;
 
 #[derive(PartialEq, Eq, Hash)]
 /// Special events in alan found in standard library modules, @std.
@@ -82,7 +82,11 @@ impl EventHandler {
       // merge this capstone with an existing one if possible
       for frag_idx in &self.movable_capstones {
         let fragment = self.fragments.get_mut(*frag_idx).unwrap();
-        let prev_max_dep = fragment.iter().map(|i| i.dep_ids.iter().max().unwrap_or(&-1)).max().unwrap();
+        let prev_max_dep = fragment
+          .iter()
+          .map(|i| i.dep_ids.iter().max().unwrap_or(&-1))
+          .max()
+          .unwrap();
         let prev_min_id = &fragment.iter().map(|i| i.id).min().unwrap();
         // merge curr in prev if *everything* that cur needs has ran by prev.
         // since poset is ranked we can check the max dep id of curr is:
@@ -111,7 +115,6 @@ impl EventHandler {
   pub fn get_fragment(self: &EventHandler, idx: usize) -> &Vec<Instruction> {
     return self.fragments.get(idx).unwrap();
   }
-
 }
 
 /// Identifies an exact fragment of an event handler
@@ -143,24 +146,30 @@ impl HandlerFragmentID {
 impl HandlerFragment {
   pub fn new(event_id: i64, handler_idx: usize) -> HandlerFragment {
     return HandlerFragment {
-      handlers: vec!(HandlerFragmentID {
+      handlers: vec![HandlerFragmentID {
         event_id,
         handler_idx,
         fragment_idx: Some(0),
-      }),
-    }
+      }],
+    };
   }
 
   pub fn get_instruction_fragment(self: &mut HandlerFragment) -> &'static Vec<Instruction> {
     let hand_id = self.handlers.get_mut(0).unwrap();
-    let handlers = Program::global().event_handlers.get(&hand_id.event_id).unwrap();
+    let handlers = Program::global()
+      .event_handlers
+      .get(&hand_id.event_id)
+      .unwrap();
     let handler: &EventHandler = handlers.get(hand_id.handler_idx).unwrap();
     return handler.get_fragment(hand_id.fragment_idx.unwrap());
   }
 
   pub fn get_next_fragment(mut self) -> Option<HandlerFragment> {
     let hand_id = self.handlers.get_mut(0).unwrap();
-    let handlers = Program::global().event_handlers.get(&hand_id.event_id).unwrap();
+    let handlers = Program::global()
+      .event_handlers
+      .get(&hand_id.event_id)
+      .unwrap();
     let handler: &EventHandler = handlers.get(hand_id.handler_idx).unwrap();
     let last_frag_idx = handler.last_frag_idx();
     return if hand_id.fragment_idx.is_some() && last_frag_idx <= hand_id.fragment_idx.unwrap() {
@@ -173,7 +182,7 @@ impl HandlerFragment {
     } else {
       hand_id.incr_frag_idx();
       Some(self)
-    }
+    };
   }
 
   /// Runs the specified handler in Tokio tasks. Tokio tasks are allocated to a threadpool bound by
@@ -192,67 +201,64 @@ impl HandlerFragment {
       // io-bound fragment
       match &instructions[0].opcode.fun {
         OpcodeFn::Io(io_func) => {
-        if instructions.len() > 1 {
-          // TODO: Revive IO parallelization, again, once AGA dependency graph *actually* works
-          /*let futures: Vec<HMFuture> = instructions.iter().map(|ins| {
-            //eprintln!("{} {} {} {}", ins.opcode._name, ins.args[0], ins.args[1], ins.args[2]);
-            let async_func = ins.opcode.async_func.unwrap();
-            return async_func(ins.args.clone(), hand_mem.fork());
-          }).collect();
-          let hms = task::spawn(async move {
-            join_all(futures).await
-          }).await.unwrap();
-          //eprintln!(">>>>>>>>>>>>>>>>>>");
-          //eprintln!("{:?}", &hand_mem);
-          //eprintln!("{:?}", &hms);
-          for hm in hms {
-            hand_mem.join(hm);
-          }
-          //eprintln!("{:?}", &hand_mem);
-          //eprintln!("<<<<<<<<<<<<<<<<<");
-          */
-          for i in 0..instructions.len() {
-            let ins = &instructions[i];
-            if let OpcodeFn::Io(async_func) = ins.opcode.fun {
+          if instructions.len() > 1 {
+            // TODO: Revive IO parallelization, again, once AGA dependency graph *actually* works
+            /*let futures: Vec<HMFuture> = instructions.iter().map(|ins| {
+              //eprintln!("{} {} {} {}", ins.opcode._name, ins.args[0], ins.args[1], ins.args[2]);
+              let async_func = ins.opcode.async_func.unwrap();
+              return async_func(ins.args.clone(), hand_mem.fork());
+            }).collect();
+            let hms = task::spawn(async move {
+              join_all(futures).await
+            }).await.unwrap();
+            //eprintln!(">>>>>>>>>>>>>>>>>>");
+            //eprintln!("{:?}", &hand_mem);
+            //eprintln!("{:?}", &hms);
+            for hm in hms {
+              hand_mem.join(hm);
+            }
+            //eprintln!("{:?}", &hand_mem);
+            //eprintln!("<<<<<<<<<<<<<<<<<");
+            */
+            for i in 0..instructions.len() {
+              let ins = &instructions[i];
+              if let OpcodeFn::Io(async_func) = ins.opcode.fun {
                 hand_mem = async_func(ins.args.clone(), hand_mem).await;
-            } else {
+              } else {
                 eprintln!("expected another IO instruction, found a CPU instruction");
-            };
-            //eprintln!("{} {} {} {}", ins.opcode._name, ins.args[0], ins.args[1], ins.args[2]);
+              };
+              //eprintln!("{} {} {} {}", ins.opcode._name, ins.args[0], ins.args[1], ins.args[2]);
+            }
+          } else {
+            //eprintln!("{} {} {} {}", instructions[0].opcode._name, instructions[0].args[0], instructions[0].args[1], instructions[0].args[2]);
+            let future = io_func(instructions[0].args.clone(), hand_mem);
+            hand_mem = future.await;
           }
-        } else {
-          //eprintln!("{} {} {} {}", instructions[0].opcode._name, instructions[0].args[0], instructions[0].args[1], instructions[0].args[2]);
-          let future = io_func(
-            instructions[0].args.clone(),
-            hand_mem
-          );
-          hand_mem = future.await;
         }
-      },
-      OpcodeFn::Cpu(_) => {
-        // cpu-bound fragment
-        let self_and_hand_mem = task::block_in_place(move || {
-          instructions.iter().for_each( |i| {
-            if let OpcodeFn::Cpu(func) = i.opcode.fun {
-              //eprintln!("{} {} {} {}", i.opcode._name, i.args[0], i.args[1], i.args[2]);
-              let event = func(i.args.as_slice(), &mut hand_mem);
-              if event.is_some() {
-                let event_tx = EVENT_TX.get().unwrap();
-                let event_sent = event_tx.send(event.unwrap());
-                if event_sent.is_err() {
-                  eprintln!("Event transmission error");
-                  std::process::exit(2);
+        OpcodeFn::Cpu(_) => {
+          // cpu-bound fragment
+          let self_and_hand_mem = task::block_in_place(move || {
+            instructions.iter().for_each(|i| {
+              if let OpcodeFn::Cpu(func) = i.opcode.fun {
+                //eprintln!("{} {} {} {}", i.opcode._name, i.args[0], i.args[1], i.args[2]);
+                let event = func(i.args.as_slice(), &mut hand_mem);
+                if event.is_some() {
+                  let event_tx = EVENT_TX.get().unwrap();
+                  let event_sent = event_tx.send(event.unwrap());
+                  if event_sent.is_err() {
+                    eprintln!("Event transmission error");
+                    std::process::exit(2);
+                  }
                 }
-              }
-            } else {
+              } else {
                 eprintln!("expected another CPU instruction, found an IO instruction");
-            };
+              };
+            });
+            (self, hand_mem)
           });
-          (self, hand_mem)
-        });
-        self = self_and_hand_mem.0;
-        hand_mem = self_and_hand_mem.1;
-      },
+          self = self_and_hand_mem.0;
+          hand_mem = self_and_hand_mem.1;
+        }
       }
       let next_frag = self.get_next_fragment();
       if next_frag.is_some() {
@@ -266,9 +272,9 @@ impl HandlerFragment {
   }
 
   pub async fn run(self: HandlerFragment, hand_mem: HandlerMemory) -> HandlerMemory {
-    task::spawn(async move {
-      self.run_local(hand_mem).await
-    }).await.unwrap()
+    task::spawn(async move { self.run_local(hand_mem).await })
+      .await
+      .unwrap()
   }
 }
 
@@ -283,7 +289,7 @@ mod tests {
       id,
       opcode: &OPCODES.get(&opcode_id("waitop")).unwrap(),
       args: vec![],
-      dep_ids
+      dep_ids,
     };
   }
 
@@ -292,7 +298,7 @@ mod tests {
       id,
       opcode: &OPCODES.get(&opcode_id("addi64")).unwrap(),
       args: vec![],
-      dep_ids
+      dep_ids,
     };
   }
 
@@ -301,7 +307,7 @@ mod tests {
       id,
       opcode: &OPCODES.get(&opcode_id("condfn")).unwrap(),
       args: vec![],
-      dep_ids
+      dep_ids,
     };
   }
 

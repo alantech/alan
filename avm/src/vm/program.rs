@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::vm::event::{BuiltInEvents, EventHandler};
 use crate::vm::instruction::Instruction;
-use crate::vm::opcode::{ByteOpcode};
+use crate::vm::opcode::ByteOpcode;
 
 use once_cell::sync::OnceCell;
 
@@ -19,7 +19,7 @@ impl BytecodeParser {
   fn next_64_bits(self: &mut BytecodeParser) -> i64 {
     let result = self.bytecode[self.pc];
     self.pc += 1;
-    return result
+    return result;
   }
 }
 
@@ -87,10 +87,7 @@ impl Program {
 
   // Parses and safely initializes the alan graph code program as static, global data
   pub fn load(bytecode: Vec<i64>) -> Program {
-    let mut parser = BytecodeParser {
-      pc: 0,
-      bytecode,
-    };
+    let mut parser = BytecodeParser { pc: 0, bytecode };
     let mut program = Program {
       event_handlers: HashMap::new(),
       event_pls: HashMap::new(),
@@ -104,10 +101,10 @@ impl Program {
     // println!("using alan graph code version {}", repr);
     // parse size of global memory constants and string literals in bytes
     let gms = parser.next_64_bits();
-    if gms > 0  && gms % 8 != 0 {
+    if gms > 0 && gms % 8 != 0 {
       panic!("Global memory is not divisible by 8");
     }
-    for _ in 0..gms/8 {
+    for _ in 0..gms / 8 {
       program.gmem.push((std::usize::MAX, parser.next_64_bits()));
     }
     // instantiate null handler
@@ -124,7 +121,10 @@ impl Program {
         GraphOpcode::HANDLER => {
           // save instructions for previously defined handler
           if cur_handler.len() > 0 {
-            let handlers = program.event_handlers.get_mut(&cur_handler.event_id).unwrap();
+            let handlers = program
+              .event_handlers
+              .get_mut(&cur_handler.event_id)
+              .unwrap();
             handlers.push(cur_handler);
           }
           let id = parser.next_64_bits();
@@ -147,15 +147,22 @@ impl Program {
           args.push(parser.next_64_bits());
           args.push(parser.next_64_bits());
           args.push(parser.next_64_bits());
-          let ins = Instruction { id, opcode, args, dep_ids };
+          let ins = Instruction {
+            id,
+            opcode,
+            args,
+            dep_ids,
+          };
           cur_handler.add_instruction(ins);
         }
       }
     }
     // check in last handler
-    let handlers = program.event_handlers.get_mut(&cur_handler.event_id).unwrap();
+    let handlers = program
+      .event_handlers
+      .get_mut(&cur_handler.event_id)
+      .unwrap();
     handlers.push(cur_handler);
     return program;
   }
 }
-

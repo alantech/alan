@@ -1,9 +1,9 @@
 use std::env;
-use std::fs::{File, create_dir, remove_dir, remove_file};
+use std::fs::{create_dir, remove_dir, remove_file, File};
 use std::include_bytes;
 use std::io::prelude::*;
 use std::os::unix::fs::PermissionsExt;
-use std::process::{Command, id};
+use std::process::{id, Command};
 use std::str;
 
 pub fn compile(source_file: &str, dest_file: &str, silent: bool) -> i32 {
@@ -27,12 +27,16 @@ pub fn compile(source_file: &str, dest_file: &str, silent: bool) -> i32 {
   source_path.push(source_file);
   let mut dest_path = env::current_dir().unwrap();
   dest_path.push(dest_file);
-  let output = Command::new("sh").arg("-c").arg(format!(
-    "{} {} {}",
-    &dir2.into_os_string().into_string().unwrap(),
-    source_path.into_os_string().into_string().unwrap(),
-    dest_path.into_os_string().into_string().unwrap(),
-  )).output().unwrap();
+  let output = Command::new("sh")
+    .arg("-c")
+    .arg(format!(
+      "{} {} {}",
+      &dir2.into_os_string().into_string().unwrap(),
+      source_path.into_os_string().into_string().unwrap(),
+      dest_path.into_os_string().into_string().unwrap(),
+    ))
+    .output()
+    .unwrap();
   remove_file(dir3.as_path()).unwrap();
   remove_dir(dir1.as_path()).unwrap();
   if output.stdout.len() > 0 && !silent {
