@@ -191,7 +191,7 @@ impl HandlerFragment {
     loop {
       // io-bound fragment
       match &instructions[0].opcode.fun {
-        OpcodeFn::Io(async_func) => {
+        OpcodeFn::Io(io_func) => {
         if instructions.len() > 1 {
           // TODO: Revive IO parallelization, again, once AGA dependency graph *actually* works
           /*let futures: Vec<HMFuture> = instructions.iter().map(|ins| {
@@ -222,27 +222,31 @@ impl HandlerFragment {
           }
         } else {
           //eprintln!("{} {} {} {}", instructions[0].opcode._name, instructions[0].args[0], instructions[0].args[1], instructions[0].args[2]);
-          let future = async_func(
+          let future = io_func(
             instructions[0].args.clone(),
             hand_mem
           );
           hand_mem = future.await;
         }
       },
-      OpcodeFn::Cpu(func) => {
+      OpcodeFn::Cpu(_) => {
         // cpu-bound fragment
         let self_and_hand_mem = task::block_in_place(move || {
           instructions.iter().for_each( |i| {
-            //eprintln!("{} {} {} {}", i.opcode._name, i.args[0], i.args[1], i.args[2]);
-            let event = func(i.args.as_slice(), &mut hand_mem);
-            if event.is_some() {
-              let event_tx = EVENT_TX.get().unwrap();
-              let event_sent = event_tx.send(event.unwrap());
-              if event_sent.is_err() {
-                eprintln!("Event transmission error");
-                std::process::exit(2);
+            if let OpcodeFn::Cpu(func) = i.opcode.fun {
+              //eprintln!("{} {} {} {}", i.opcode._name, i.args[0], i.args[1], i.args[2]);
+              let event = func(i.args.as_slice(), &mut hand_mem);
+              if event.is_some() {
+                let event_tx = EVENT_TX.get().unwrap();
+                let event_sent = event_tx.send(event.unwrap());
+                if event_sent.is_err() {
+                  eprintln!("Event transmission error");
+                  std::process::exit(2);
+                }
               }
-            }
+            } else {
+                eprintln!("expected another CPU instruction, found an IO instruction");
+            };
           });
           (self, hand_mem)
         });

@@ -2,6 +2,7 @@ use futures::future::{join_all, poll_fn};
 use futures::task::{Context, Poll};
 use std::collections::HashMap;
 use std::convert::{Infallible, TryInto};
+use std::fmt::Debug;
 use std::future::Future;
 use std::hash::Hasher;
 use std::net::SocketAddr;
@@ -52,6 +53,15 @@ pub(crate) enum OpcodeFn {
   Io(fn(Vec<i64>, HandlerMemory) -> HMFuture),
 }
 
+impl Debug for OpcodeFn {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OpcodeFn::Cpu(_) => write!(f, "cpu"),
+            OpcodeFn::Io(_) => write!(f, "io"),
+        }
+    }
+}
+
 /// To allow concise definition of opcodes we have a struct that stores all the information
 /// about an opcode and how to run it.
 /// To define CPU-bound opcodes we use a function pointer type which describes a function whose identity
@@ -61,6 +71,7 @@ pub(crate) enum OpcodeFn {
 /// For more information see:
 /// https://stackoverflow.com/questions/27831944/how-do-i-store-a-closure-in-a-struct-in-rust
 /// https://stackoverflow.com/questions/59035366/how-do-i-store-a-variable-of-type-impl-trait-in-a-struct
+#[derive(Debug)]
 pub struct ByteOpcode {
   /// Opcode value as an i64 number
   pub(crate) _id: i64,
@@ -3008,7 +3019,10 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
           HandlerMemory::transfer(&hm, 0, &mut hand_mem, CLOSURE_ARG_MEM_START);
           hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
         },
-        None => hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("namespace-key pair not found")),
+        None => {
+          hand_mem.push_fixed(args[2], 0i64);
+          hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("namespace-key pair not found"))
+        },
       }
       hand_mem
     })

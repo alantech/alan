@@ -1,5 +1,6 @@
 use crate::vm::opcode::ByteOpcode;
 
+#[derive(Debug)]
 pub struct Instruction {
   // only unique per fn/handler
   pub(crate) id: i64,
