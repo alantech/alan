@@ -32,8 +32,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [12.x]
-        # node-version: [12.x, 14.x]
+        node-version: [10.20.1, 12.x, 14.x]
 
     steps:
     - uses: actions/checkout@v2
@@ -54,8 +53,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [12.x]
-        # node-version: [12.x, 14.x]
+        node-version: [10.20.1, 12.x, 14.x]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -96,8 +94,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [12.x]
-        # node-version: [12.x, 14.x]
+        node-version: [10.20.1, 12.x, 14.x]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -138,8 +135,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [12.x]
-        # node-version: [12.x, 14.x]
+        node-version: [10.20.1, 12.x, 14.x]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
