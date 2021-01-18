@@ -98,18 +98,18 @@ pub fn opcode_id(name: &str) -> i64 {
   let mut ascii_name = [b' '; 8];
   // Now insert the new name characters
   for (i, c) in name.chars().take(8).enumerate() {
-    std::mem::replace(&mut ascii_name[i], c as u8);
+    ascii_name[i] = c as u8;
   }
   let id = LittleEndian::read_i64(&ascii_name);
   return id;
 }
 
-#[allow(unused)]
 pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   let mut o = HashMap::new();
 
   macro_rules! cpu {
     ($name:ident => fn ($args:ident , $hand_mem:ident) $body:block) => {
+      #[allow(non_snake_case)]
       fn $name($args: &[i64], $hand_mem: &mut HandlerMemory) -> Option<EventEmit> {
         $body
       }
@@ -124,6 +124,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   }
   macro_rules! io {
     ($name:ident => fn ($args:ident , $hand_mem:ident) $body:block) => {
+      #[allow(non_snake_case)]
       fn $name($args: Vec<i64>, $hand_mem: HandlerMemory) -> HMFuture {
         $body
       }
@@ -136,6 +137,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       o.insert(id, opcode);
     };
     ($name:ident => fn (mut $args:ident , $hand_mem:ident) $body:block) => {
+      #[allow(non_snake_case)]
       fn $name(mut $args: Vec<i64>, $hand_mem: HandlerMemory) -> HMFuture {
         $body
       }
@@ -148,6 +150,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       o.insert(id, opcode);
     };
     ($name:ident => fn ($args:ident , mut $hand_mem:ident) $body:block) => {
+      #[allow(non_snake_case)]
       fn $name($args: Vec<i64>, mut $hand_mem: HandlerMemory) -> HMFuture {
         $body
       }
@@ -160,6 +163,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       o.insert(id, opcode);
     };
     ($name:ident => fn (mut $args:ident , mut $hand_mem:ident) $body:block) => {
+      #[allow(non_snake_case)]
       fn $name(mut $args: Vec<i64>, mut $hand_mem: HandlerMemory) -> HMFuture {
         $body
       }
@@ -2274,7 +2278,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     hand_mem.init_fractal(args[2]);
     None
   });
-  io!(map => fn(args, mut hand_mem) {
+  io!(map => fn(args, hand_mem) {
     Box::pin(async move {
       let hand_mem_ref = Arc::new(hand_mem);
       let fractal = hand_mem_ref.read_fractal(args[0]);
@@ -2371,7 +2375,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem
     })
   });
-  io!(find => fn(args, mut hand_mem) {
+  io!(find => fn(args, hand_mem) {
     Box::pin(async move {
       let hand_mem = Arc::new(hand_mem);
       let fractal = hand_mem.read_fractal(args[0]);
@@ -2426,7 +2430,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem
     })
   });
-  io!(some => fn(args, mut hand_mem) {
+  io!(some => fn(args, hand_mem) {
     Box::pin(async move {
       let hand_mem_ref = Arc::new(hand_mem);
       let fractal = hand_mem_ref.read_fractal(args[0]);
@@ -2468,7 +2472,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem
     })
   });
-  io!(every => fn(args, mut hand_mem) {
+  io!(every => fn(args, hand_mem) {
     Box::pin(async move {
       let hand_mem_ref = Arc::new(hand_mem);
       let fractal = hand_mem_ref.read_fractal(args[0]);
@@ -2665,7 +2669,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem
     })
   });
-  io!(filter => fn(args, mut hand_mem) {
+  io!(filter => fn(args, hand_mem) {
     Box::pin(async move {
       let hand_mem_ref = Arc::new(hand_mem);
       let fractal = hand_mem_ref.read_fractal(args[0]);
@@ -3111,7 +3115,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem
     })
   });
-  io!(selfrec => fn(args, mut hand_mem) {
+  io!(selfrec => fn(args, hand_mem) {
     Box::pin(async move {
       let hand_mem_ref = Arc::new(hand_mem);
       let mut hm = HandlerMemory::fork(Arc::clone(&hand_mem_ref));
