@@ -260,15 +260,16 @@ Hello, World!"
     End
   End
 
-  Describe "repeat and mapLin"
+  Describe "repeat, mapLin and eachLin"
     before() {
       sourceToAll "
         from @std/app import start, print, exit
 
         on start {
           const arr = [1, 2, 3] * 3;
-          const out = arr.mapLin(fn (x: int64): string = x.toString()).join(', ');
-          print(out);
+          const out = arr.mapLin(fn (x: int64): string = x.toString());
+          print(out.join(', '));
+          out.eachLin(fn (x: string): void = print(x));
           emit exit 0;
         }
       "
@@ -280,7 +281,16 @@ Hello, World!"
     }
     AfterAll after
 
-    MAPLOUTPUT="1, 2, 3, 1, 2, 3, 1, 2, 3"
+    MAPLOUTPUT="1, 2, 3, 1, 2, 3, 1, 2, 3
+1
+2
+3
+1
+2
+3
+1
+2
+3"
 
     It "runs js"
       When run test_js
