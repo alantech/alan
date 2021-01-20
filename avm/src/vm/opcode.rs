@@ -2370,7 +2370,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       for i in 0..fractal.len() {
         hand_mem.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
         hand_mem.write_fixed(CLOSURE_ARG_MEM_START + 2, i as i64);
-        hand_mem = subhandler.clone().run_local(hand_mem).await;
+        hand_mem = subhandler.clone().run(hand_mem).await;
       }
       hand_mem
     })

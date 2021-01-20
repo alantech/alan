@@ -195,7 +195,7 @@ impl HandlerFragment {
   /// very high volume of small IO requests, but as most IO operations are several orders of
   /// magnitude slower than CPU operations, this is considered to be a very small minority of
   /// workloads and is ignored for now.
-  pub async fn run_local(mut self: HandlerFragment, mut hand_mem: HandlerMemory) -> HandlerMemory {
+  pub async fn run(mut self: HandlerFragment, mut hand_mem: HandlerMemory) -> HandlerMemory {
     let mut instructions = self.get_instruction_fragment();
     loop {
       // io-bound fragment
@@ -271,10 +271,9 @@ impl HandlerFragment {
     hand_mem
   }
 
-  pub async fn run(self: HandlerFragment, hand_mem: HandlerMemory) -> HandlerMemory {
-    task::spawn(async move { self.run_local(hand_mem).await })
-      .await
-      .unwrap()
+  /// Spawns, but does not run, a non-blocking tokio task for the fragment. Used to provide event and array level parallelism
+  pub fn spawn(self: HandlerFragment, hand_mem: HandlerMemory) -> task::JoinHandle<HandlerMemory> {
+    task::spawn(async move { self.run(hand_mem).await })
   }
 }
 
