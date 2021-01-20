@@ -2312,7 +2312,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       for i in 0..fractal.len() {
         hand_mem.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
         hand_mem.write_fixed(CLOSURE_ARG_MEM_START + 2, i as i64);
-        hand_mem = subhandler.clone().run_local(hand_mem).await;
+        hand_mem = subhandler.clone().run(hand_mem).await;
         hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
       }
       hand_mem
@@ -2362,7 +2362,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         hm.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
         hm.write_fixed(CLOSURE_ARG_MEM_START + 2, i as i64);
         let j = i / s;
-        runners[j].push(Box::pin(subhandler.clone().run_local(hm)));
+        runners[j].push(Box::pin(subhandler.clone().run(hm)));
       }
       let mut hms: Vec<HandlerMemory> = Vec::with_capacity(l);
       for runner in runners {
@@ -2429,7 +2429,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let subhandler = HandlerFragment::new(args[1], 0);
       for i in 0..fractal.len() {
         hand_mem.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
-        hand_mem = subhandler.clone().run_local(hand_mem).await;
+        hand_mem = subhandler.clone().run(hand_mem).await;
         let val = hand_mem.read_fixed(CLOSURE_ARG_MEM_START);
         if val == 1 {
           hand_mem.init_fractal(args[2]);
@@ -2475,7 +2475,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let subhandler = HandlerFragment::new(args[1], 0);
       for i in 0..fractal.len() {
         hand_mem.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
-        hand_mem = subhandler.clone().run_local(hand_mem).await;
+        hand_mem = subhandler.clone().run(hand_mem).await;
         let val = hand_mem.read_fixed(CLOSURE_ARG_MEM_START);
         if val == 1 {
           hand_mem.write_fixed(args[2], 1);
@@ -2517,7 +2517,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let subhandler = HandlerFragment::new(args[1], 0);
       for i in 0..fractal.len() {
         hand_mem.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
-        hand_mem = subhandler.clone().run_local(hand_mem).await;
+        hand_mem = subhandler.clone().run(hand_mem).await;
         let val = hand_mem.read_fixed(CLOSURE_ARG_MEM_START);
         if val == 0 {
           hand_mem.write_fixed(args[2], 0);
@@ -2598,7 +2598,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         let current = &vals[i];
         HandlerMemory::transfer(&cumulative, 0, &mut hand_mem, CLOSURE_ARG_MEM_START + 1);
         HandlerMemory::transfer(&current, 0, &mut hand_mem, CLOSURE_ARG_MEM_START + 2);
-        hand_mem = subhandler.clone().run_local(hand_mem).await;
+        hand_mem = subhandler.clone().run(hand_mem).await;
         HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut cumulative, 0);
       }
       HandlerMemory::transfer(&cumulative, 0, &mut hand_mem, args[2]);
@@ -2676,7 +2676,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         let current = &vals[i];
         HandlerMemory::transfer(&cumulative, 0, &mut hand_mem, CLOSURE_ARG_MEM_START + 1);
         HandlerMemory::transfer(current, 0, &mut hand_mem, CLOSURE_ARG_MEM_START + 2);
-        hand_mem = subhandler.clone().run_local(hand_mem).await;
+        hand_mem = subhandler.clone().run(hand_mem).await;
         HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut cumulative, 0);
       }
       hand_mem.register(args[2], CLOSURE_ARG_MEM_START, false);
@@ -2721,7 +2721,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem.init_fractal(args[2]);
       for i in 0..len {
         hand_mem.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
-        hand_mem = subhandler.clone().run_local(hand_mem).await;
+        hand_mem = subhandler.clone().run(hand_mem).await;
         let val = hand_mem.read_fixed(CLOSURE_ARG_MEM_START);
         if val == 1 {
           hand_mem.push_register_out(args[2], &fractal, i);
@@ -2737,7 +2737,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let cond = hand_mem.read_fixed(args[0]);
       let subhandler = HandlerFragment::new(args[1], 0);
       if cond == 1 {
-        hand_mem = subhandler.run_local(hand_mem).await;
+        hand_mem = subhandler.run(hand_mem).await;
       }
       hand_mem
     })
@@ -3085,7 +3085,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       for i in current..limit {
         // array element is $1 argument of the closure memory space
         hand_mem.write_fixed(CLOSURE_ARG_MEM_START + 1, i);
-        hand_mem = subhandler.clone().run_local(hand_mem).await;
+        hand_mem = subhandler.clone().run(hand_mem).await;
       }
       hand_mem
     })
@@ -3101,11 +3101,11 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       if current >= limit {
         return hand_mem;
       }
-      hand_mem = cond_handler.clone().run_local(hand_mem).await;
+      hand_mem = cond_handler.clone().run(hand_mem).await;
       while current < limit && hand_mem.read_fixed(CLOSURE_ARG_MEM_START) > 0 {
-        hand_mem = body_handler.clone().run_local(hand_mem).await;
+        hand_mem = body_handler.clone().run(hand_mem).await;
         current = current + 1;
-        hand_mem = cond_handler.clone().run_local(hand_mem).await;
+        hand_mem = cond_handler.clone().run(hand_mem).await;
       }
       let mut seq = hand_mem.read_fractal(args[0]);
       hand_mem.write_fixed_in_fractal(&mut seq, 0, current);
@@ -3120,7 +3120,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       drop(seq);
       let subhandler = HandlerFragment::new(args[1], 0);
       loop {
-        hand_mem = subhandler.clone().run_local(hand_mem).await;
+        hand_mem = subhandler.clone().run(hand_mem).await;
         current = current + 1;
         if current >= limit || hand_mem.read_fixed(CLOSURE_ARG_MEM_START) == 0 {
           break;
@@ -3146,7 +3146,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let mut hand_mem;
       if curr < seq.read_fixed(1) {
         hm.write_fixed_in_fractal(&mut seq, 0, curr + 1);
-        hm = recurse_fn.run_local(hm).await;
+        hm = recurse_fn.run(hm).await;
         hm.drop_parent();
         hand_mem = Arc::try_unwrap(hand_mem_ref).unwrap();
         hand_mem.join(&mut hm);
