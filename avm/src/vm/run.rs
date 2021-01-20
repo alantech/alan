@@ -3,11 +3,9 @@ use std::io::Read;
 use std::path::Path;
 
 use byteorder::{LittleEndian, ReadBytesExt};
-use futures::future::join_all;
 use once_cell::sync::OnceCell;
 use tokio::runtime;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
-use tokio::task::JoinHandle;
 
 use crate::vm::event::{BuiltInEvents, EventEmit, HandlerFragment};
 use crate::vm::memory::HandlerMemory;
@@ -39,25 +37,23 @@ impl VM {
     }
   }
 
-  async fn sched_event(self: &mut VM, event: EventEmit) {
+  fn sched_event(self: &mut VM, event: EventEmit) {
     // schedule 1st fragment of each handler of this event
     let handlers = Program::global().event_handlers.get(&event.id).unwrap();
-    let mut futures: Vec<JoinHandle<HandlerMemory>> = vec![];
     for (i, hand) in handlers.iter().enumerate() {
       // first fragment of this handler
       let frag = HandlerFragment::new(event.id, i);
       // memory frag representing the memory for each handler call
       let hand_mem = HandlerMemory::new(event.payload.clone(), hand.mem_req);
-      futures.push(frag.spawn(hand_mem));
+      frag.spawn(hand_mem);
     }
-    join_all(futures).await;
   }
 
   // run the vm backed by an event loop
   pub async fn run(self: &mut VM) {
     loop {
       let event = self.event_rx.recv().await;
-      self.sched_event(event.unwrap()).await;
+      self.sched_event(event.unwrap());
     }
   }
 }

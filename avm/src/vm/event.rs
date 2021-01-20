@@ -271,7 +271,8 @@ impl HandlerFragment {
     hand_mem
   }
 
-  /// Spawns, but does not run, a non-blocking tokio task for the fragment. Used to provide event and array level parallelism
+  /// Spawns and runs a non-blocking tokio task for the fragment that can be awaited.
+  /// Used to provide event and array level parallelism
   pub fn spawn(self: HandlerFragment, hand_mem: HandlerMemory) -> task::JoinHandle<HandlerMemory> {
     task::spawn(async move { self.run(hand_mem).await })
   }
