@@ -11,9 +11,9 @@ export event stdout: string
 // `@std/app` has access to a special `stdoutp` opcode to trigger stdout writing
 on stdout fn (out: string) = stdoutp(out);
 
-// The `print` function converts its input to a string, appends a newline, and sends it to `stdout`
+// The `print` function converts its input to a string, appends a newline, and does a blocking write to stdout
 export fn print(out: Stringifiable) {
-  emit stdout out.toString() + "\n";
+  stdoutp(out.toString() + "\n");
 }
 
 // The `exit` event
