@@ -24,6 +24,7 @@ use once_cell::sync::Lazy;
 use rand::rngs::OsRng;
 use rand::RngCore;
 use regex::Regex;
+use tokio::io::{self, AsyncWriteExt};
 use tokio::task;
 use tokio::time::sleep;
 use twox_hash::XxHash64;
@@ -3154,8 +3155,12 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
 
   // "Special" opcodes
-  cpu!(exitop => fn(args, hand_mem) {
-    std::process::exit(hand_mem.read_fixed(args[0]) as i32);
+  io!(exitop => fn(args, hand_mem) {
+    Box::pin(async move {
+      io::stdout().flush().await.unwrap();
+      io::stderr().flush().await.unwrap();
+      std::process::exit(hand_mem.read_fixed(args[0]) as i32);
+    })
   });
   cpu!(stdoutp => fn(args, hand_mem) {
     let out_str = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
