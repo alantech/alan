@@ -271,6 +271,35 @@ impl HandlerFragment {
     hand_mem
   }
 
+  pub fn run_blocking(mut self: HandlerFragment, hand_mem: &mut HandlerMemory) {
+    let mut instructions = self.get_instruction_fragment();
+    loop {
+      instructions.iter().for_each(|i| {
+        if let OpcodeFn::Cpu(func) = i.opcode.fun {
+          //eprintln!("{} {} {} {}", i.opcode._name, i.args[0], i.args[1], i.args[2]);
+          let event = func(i.args.as_slice(), hand_mem);
+          if event.is_some() {
+            let event_tx = EVENT_TX.get().unwrap();
+            let event_sent = event_tx.send(event.unwrap());
+            if event_sent.is_err() {
+              eprintln!("Event transmission error");
+              std::process::exit(2);
+            }
+          }
+        } else {
+          eprintln!("expected another CPU instruction, found an IO instruction {}", i.opcode._name);
+        };
+      });
+      let next_frag = self.get_next_fragment();
+      if next_frag.is_some() {
+        self = next_frag.unwrap();
+        instructions = self.get_instruction_fragment();
+      } else {
+        break;
+      }
+    }
+  }
+
   /// Spawns and runs a non-blocking tokio task for the fragment that can be awaited.
   /// Used to provide event and array level parallelism
   pub fn spawn(self: HandlerFragment, hand_mem: HandlerMemory) -> task::JoinHandle<HandlerMemory> {

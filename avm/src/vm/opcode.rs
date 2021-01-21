@@ -2363,17 +2363,15 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       Arc::try_unwrap(hand_mem_ref).expect("Dangling reference to parent HM in parallel opcode")
     })
   });
-  io!(eachl => fn(args, mut hand_mem) {
-    Box::pin(async move {
-      let fractal = hand_mem.read_fractal(args[0]);
-      let subhandler = HandlerFragment::new(args[1], 0);
-      for i in 0..fractal.len() {
-        hand_mem.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
-        hand_mem.write_fixed(CLOSURE_ARG_MEM_START + 2, i as i64);
-        hand_mem = subhandler.clone().run(hand_mem).await;
-      }
-      hand_mem
-    })
+  cpu!(eachl => fn(args, hand_mem) {
+    let fractal = hand_mem.read_fractal(args[0]);
+    let subhandler = HandlerFragment::new(args[1], 0);
+    for i in 0..fractal.len() {
+      hand_mem.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
+      hand_mem.write_fixed(CLOSURE_ARG_MEM_START + 2, i as i64);
+      subhandler.clone().run_blocking(hand_mem);
+    }
+    None
   });
   io!(find => fn(args, hand_mem) {
     Box::pin(async move {
@@ -2409,26 +2407,24 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem
     })
   });
-  io!(findl => fn(args, mut hand_mem) {
-    Box::pin(async move {
-      let fractal = hand_mem.read_fractal(args[0]);
-      let subhandler = HandlerFragment::new(args[1], 0);
-      for i in 0..fractal.len() {
-        hand_mem.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
-        hand_mem = subhandler.clone().run(hand_mem).await;
-        let val = hand_mem.read_fixed(CLOSURE_ARG_MEM_START);
-        if val == 1 {
-          hand_mem.init_fractal(args[2]);
-          hand_mem.push_fixed(args[2], 1);
-          hand_mem.push_register_out(args[2], &fractal, i);
-          return hand_mem;
-        }
+  cpu!(findl => fn(args, hand_mem) {
+    let fractal = hand_mem.read_fractal(args[0]);
+    let subhandler = HandlerFragment::new(args[1], 0);
+    for i in 0..fractal.len() {
+      hand_mem.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
+      subhandler.clone().run_blocking(hand_mem);
+      let val = hand_mem.read_fixed(CLOSURE_ARG_MEM_START);
+      if val == 1 {
+        hand_mem.init_fractal(args[2]);
+        hand_mem.push_fixed(args[2], 1);
+        hand_mem.push_register_out(args[2], &fractal, i);
+        return None;
       }
-      hand_mem.init_fractal(args[2]);
-      hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("no element matches"));
-      hand_mem
-    })
+    }
+    hand_mem.init_fractal(args[2]);
+    hand_mem.push_fixed(args[2], 0);
+    hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("no element matches"));
+    None
   });
   io!(some => fn(args, hand_mem) {
     Box::pin(async move {
@@ -2718,15 +2714,13 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
 
   // Conditional opcode
-  io!(condfn => fn(args, mut hand_mem) {
-    Box::pin(async move {
-      let cond = hand_mem.read_fixed(args[0]);
-      let subhandler = HandlerFragment::new(args[1], 0);
-      if cond == 1 {
-        hand_mem = subhandler.run(hand_mem).await;
-      }
-      hand_mem
-    })
+  cpu!(condfn => fn(args, hand_mem) {
+    let cond = hand_mem.read_fixed(args[0]);
+    let subhandler = HandlerFragment::new(args[1], 0);
+    if cond == 1 {
+      subhandler.run_blocking(hand_mem);
+    }
+    None
   });
 
   // Std opcodes
