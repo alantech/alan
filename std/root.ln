@@ -2602,7 +2602,7 @@ export fn toSubtree(n: Node<any>): Tree<any> {
       outTree.parents.push(parentId);
       outTree.children.push(new Array<int64> []);
       children = grandchildIds.concat(children);
-      parentIds = [newParentId].concat(parentIds);
+      parentIds = [newParentId].repeat(grandchildIds.length()).concat(parentIds);
       return parentIds.length().gt(0);
     });
   }
