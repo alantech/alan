@@ -15,22 +15,23 @@ use crate::vm::telemetry;
 
 pub static EVENT_TX: OnceCell<UnboundedSender<EventEmit>> = OnceCell::new();
 
-pub struct VM {
+pub struct VM<'events> {
   /// chan for the events queue
-  event_tx: UnboundedSender<EventEmit>,
-  event_rx: UnboundedReceiver<EventEmit>,
+  event_tx: UnboundedSender<EventEmit<'events>>,
+  event_rx: UnboundedReceiver<EventEmit<'events>>,
 }
 
-impl VM {
-  pub fn new() -> VM {
-    let (event_tx, event_rx) = unbounded_channel();
-    // Hackery relying on VM being a singleton :( TODO: Refactor such that event_tx is accessible
-    // outside of the opcodes and instruction scheduler for http and future IO sources
-    EVENT_TX.set(event_tx.clone()).unwrap();
-    return VM { event_tx, event_rx };
+impl VM<'static> {
+  pub fn new() -> VM<'static> {
+    todo!()
+    // let (event_tx, event_rx) = unbounded_channel();
+    // // Hackery relying on VM being a singleton :( TODO: Refactor such that event_tx is accessible
+    // // outside of the opcodes and instruction scheduler for http and future IO sources
+    // EVENT_TX.set(event_tx.clone()).unwrap();
+    // return VM { event_tx, event_rx };
   }
 
-  pub fn add(self: &mut VM, event: EventEmit) {
+  pub fn add(self: &mut VM<'static>, event: EventEmit<'static>) {
     let event_sent = self.event_tx.send(event);
     if event_sent.is_err() {
       eprintln!("Event transmission error");
@@ -38,10 +39,10 @@ impl VM {
     }
   }
 
-  async fn sched_event(self: &mut VM, event: EventEmit) {
+  async fn sched_event<'event: 'static>(self: &VM<'static>, event: EventEmit<'event>) {
     // schedule 1st fragment of each handler of this event
     let handlers = Program::global().event_handlers.get(&event.id).unwrap();
-    let mut futures = vec![];
+    let mut futures = Vec::with_capacity(handlers.len());
     for (i, hand) in handlers.iter().enumerate() {
       // first fragment of this handler
       let frag = HandlerFragment::new(event.id, i);
@@ -53,7 +54,7 @@ impl VM {
   }
 
   // run the vm backed by an event loop
-  pub async fn run(self: &mut VM) {
+  pub async fn run(self: &mut VM<'static>) {
     loop {
       let event = self.event_rx.recv().await;
       self.sched_event(event.unwrap()).await;

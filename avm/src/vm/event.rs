@@ -30,11 +30,11 @@ impl From<BuiltInEvents> for i64 {
 }
 
 /// Describes an event emission received by the event loop from the thread worker
-pub struct EventEmit {
+pub struct EventEmit<'hm> {
   /// event id
   pub(crate) id: i64,
   /// optional handler memory with payload. each handler will get its own to consume
-  pub(crate) payload: Option<HandlerMemory>,
+  pub(crate) payload: Option<HandlerMemory<'hm>>,
 }
 
 /// Describes the handler for an event
@@ -195,7 +195,7 @@ impl HandlerFragment {
   /// very high volume of small IO requests, but as most IO operations are several orders of
   /// magnitude slower than CPU operations, this is considered to be a very small minority of
   /// workloads and is ignored for now.
-  pub async fn run_local(mut self: HandlerFragment, mut hand_mem: HandlerMemory) -> HandlerMemory {
+  pub async fn run_local<'event: 'static>(mut self: HandlerFragment, mut hand_mem: HandlerMemory<'event>) -> HandlerMemory<'event> {
     let mut instructions = self.get_instruction_fragment();
     loop {
       // io-bound fragment
@@ -271,10 +271,11 @@ impl HandlerFragment {
     hand_mem
   }
 
-  pub async fn run(self: HandlerFragment, hand_mem: HandlerMemory) -> HandlerMemory {
-    task::spawn(async move { self.run_local(hand_mem).await })
-      .await
-      .unwrap()
+  pub async fn run<'event: 'static>(self: HandlerFragment, hand_mem: HandlerMemory<'event>) -> HandlerMemory<'event> {
+    self.run_local(hand_mem).await
+    // task::spawn(async move { self.run_local(hand_mem).await })
+    //   .await
+    //   .unwrap()
   }
 }
 

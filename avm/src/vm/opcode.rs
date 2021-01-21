@@ -45,12 +45,12 @@ static DS: Lazy<Arc<DashMap<String, HandlerMemory>>> =
 /// For more information see:
 /// https://stackoverflow.com/questions/58354633/cannot-use-impl-future-to-store-async-function-in-a-vector
 /// https://stackoverflow.com/questions/51485410/unable-to-tokiorun-a-boxed-future-because-the-trait-bound-send-is-not-satisfie
-pub type HMFuture = Pin<Box<dyn Future<Output = HandlerMemory> + Send>>;
+pub type HMFuture<'outside> = Pin<Box<dyn Future<Output = HandlerMemory<'outside>> + Send>>;
 
 /// A function to be run for an opcode.
 pub(crate) enum OpcodeFn {
-  Cpu(fn(&[i64], &mut HandlerMemory) -> Option<EventEmit>),
-  Io(fn(Vec<i64>, HandlerMemory) -> HMFuture),
+  Cpu(for<'outside> fn(&[i64], &mut HandlerMemory<'outside>) -> Option<EventEmit<'outside>>),
+  Io(for<'outside> fn(Vec<i64>, HandlerMemory<'outside>) -> HMFuture<'outside>),
 }
 
 impl Debug for OpcodeFn {
@@ -110,7 +110,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   macro_rules! cpu {
     ($name:ident => fn ($args:ident , $hand_mem:ident) $body:block) => {
       #[allow(non_snake_case)]
-      fn $name($args: &[i64], $hand_mem: &mut HandlerMemory) -> Option<EventEmit> {
+      fn $name<'outside>($args: &[i64], $hand_mem: &mut HandlerMemory<'outside>) -> Option<EventEmit<'outside>> {
         $body
       }
       let id = opcode_id(stringify!($name));
@@ -125,7 +125,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   macro_rules! io {
     ($name:ident => fn ($args:ident , $hand_mem:ident) $body:block) => {
       #[allow(non_snake_case)]
-      fn $name($args: Vec<i64>, $hand_mem: HandlerMemory) -> HMFuture {
+      fn $name<'outside>($args: Vec<i64>, $hand_mem: HandlerMemory<'outside>) -> HMFuture<'outside> {
         $body
       }
       let id = opcode_id(stringify!($name));
@@ -138,7 +138,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     };
     ($name:ident => fn (mut $args:ident , $hand_mem:ident) $body:block) => {
       #[allow(non_snake_case)]
-      fn $name(mut $args: Vec<i64>, $hand_mem: HandlerMemory) -> HMFuture {
+      fn $name<'outside>(mut $args: Vec<i64>, $hand_mem: HandlerMemory<'outside>) -> HMFuture<'outside> {
         $body
       }
       let id = opcode_id(stringify!($name));
@@ -151,7 +151,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     };
     ($name:ident => fn ($args:ident , mut $hand_mem:ident) $body:block) => {
       #[allow(non_snake_case)]
-      fn $name($args: Vec<i64>, mut $hand_mem: HandlerMemory) -> HMFuture {
+      fn $name<'outside>($args: Vec<i64>, mut $hand_mem: HandlerMemory<'outside>) -> HMFuture<'outside> {
         $body
       }
       let id = opcode_id(stringify!($name));
@@ -164,7 +164,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     };
     ($name:ident => fn (mut $args:ident , mut $hand_mem:ident) $body:block) => {
       #[allow(non_snake_case)]
-      fn $name(mut $args: Vec<i64>, mut $hand_mem: HandlerMemory) -> HMFuture {
+      fn $name<'outside>(mut $args: Vec<i64>, mut $hand_mem: HandlerMemory<'outside>) -> HMFuture<'outside> {
         $body
       }
       let id = opcode_id(stringify!($name));
@@ -2280,41 +2280,43 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   io!(map => fn(args, hand_mem) {
     Box::pin(async move {
-      let hand_mem_ref = Arc::new(hand_mem);
-      let fractal = hand_mem_ref.read_fractal(args[0]);
-      let subhandler = HandlerFragment::new(args[1], 0);
-      let mut mappers = Vec::with_capacity(fractal.len());
-      for i in 0..fractal.len() {
-        let mut hm = HandlerMemory::fork(Arc::clone(&hand_mem_ref));
-        hm.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
-        hm.write_fixed(CLOSURE_ARG_MEM_START + 2, i as i64);
-        mappers.push(subhandler.clone().run(hm));
-      }
-      let mut hms = join_all(mappers).await;
-      for hm in &mut hms {
-        hm.drop_parent();
-      }
-      let mut hand_mem = Arc::try_unwrap(hand_mem_ref).expect("Dangling reference to parent HM in parallel opcode");
-      hand_mem.init_fractal(args[2]);
-      for hm in &mut hms {
-        hand_mem.join(hm);
-        hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
-      }
-      hand_mem
+      todo!()
+      // let hand_mem_ref = Arc::new(hand_mem);
+      // let fractal = hand_mem_ref.read_fractal(args[0]);
+      // let subhandler = HandlerFragment::new(args[1], 0);
+      // let mut mappers = Vec::with_capacity(fractal.len());
+      // for i in 0..fractal.len() {
+      //   let mut hm = HandlerMemory::fork(Arc::clone(&hand_mem_ref));
+      //   hm.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
+      //   hm.write_fixed(CLOSURE_ARG_MEM_START + 2, i as i64);
+      //   mappers.push(subhandler.clone().run(hm));
+      // }
+      // let mut hms = join_all(mappers).await;
+      // for hm in &mut hms {
+      //   hm.drop_parent();
+      // }
+      // let mut hand_mem = Arc::try_unwrap(hand_mem_ref).expect("Dangling reference to parent HM in parallel opcode");
+      // hand_mem.init_fractal(args[2]);
+      // for hm in &mut hms {
+      //   hand_mem.join(hm);
+      //   hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
+      // }
+      // hand_mem
     })
   });
   io!(mapl => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let fractal = hand_mem.read_fractal(args[0]);
-      let subhandler = HandlerFragment::new(args[1], 0);
-      hand_mem.init_fractal(args[2]);
-      for i in 0..fractal.len() {
-        hand_mem.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
-        hand_mem.write_fixed(CLOSURE_ARG_MEM_START + 2, i as i64);
-        hand_mem = subhandler.clone().run(hand_mem).await;
-        hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
-      }
-      hand_mem
+      todo!()
+      // let fractal = hand_mem.read_fractal(args[0]);
+      // let subhandler = HandlerFragment::new(args[1], 0);
+      // hand_mem.init_fractal(args[2]);
+      // for i in 0..fractal.len() {
+      //   hand_mem.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
+      //   hand_mem.write_fixed(CLOSURE_ARG_MEM_START + 2, i as i64);
+      //   hand_mem = subhandler.clone().run(hand_mem).await;
+      //   hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
+      // }
+      // hand_mem
     })
   });
   cpu!(reparr => fn(args, hand_mem) {
@@ -2346,172 +2348,180 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   io!(each => fn(args, hand_mem) {
     Box::pin(async move {
-      let hand_mem_ref = Arc::new(hand_mem);
-      let fractal = hand_mem_ref.read_fractal(args[0]);
-      let subhandler = HandlerFragment::new(args[1], 0);
-      let mut runners = Vec::with_capacity(fractal.len());
-      for i in 0..fractal.len() {
-        let mut hm = HandlerMemory::fork(Arc::clone(&hand_mem_ref));
-        hm.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
-        hm.write_fixed(CLOSURE_ARG_MEM_START + 2, i as i64);
-        runners.push(subhandler.clone().run(hm));
-      }
-      let mut hms = join_all(runners).await;
-      for hm in &mut hms {
-        hm.drop_parent();
-      }
-      Arc::try_unwrap(hand_mem_ref).expect("Dangling reference to parent HM in parallel opcode")
+      todo!()
+      // let hand_mem_ref = Arc::new(hand_mem);
+      // let fractal = hand_mem_ref.read_fractal(args[0]);
+      // let subhandler = HandlerFragment::new(args[1], 0);
+      // let mut runners = Vec::with_capacity(fractal.len());
+      // for i in 0..fractal.len() {
+      //   let mut hm = HandlerMemory::fork(Arc::clone(&hand_mem_ref));
+      //   hm.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
+      //   hm.write_fixed(CLOSURE_ARG_MEM_START + 2, i as i64);
+      //   runners.push(subhandler.clone().run(hm));
+      // }
+      // let mut hms = join_all(runners).await;
+      // for hm in &mut hms {
+      //   hm.drop_parent();
+      // }
+      // Arc::try_unwrap(hand_mem_ref).expect("Dangling reference to parent HM in parallel opcode")
     })
   });
   io!(eachl => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let fractal = hand_mem.read_fractal(args[0]);
-      let subhandler = HandlerFragment::new(args[1], 0);
-      for i in 0..fractal.len() {
-        hand_mem.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
-        hand_mem.write_fixed(CLOSURE_ARG_MEM_START + 2, i as i64);
-        hand_mem = subhandler.clone().run_local(hand_mem).await;
-      }
-      hand_mem
+      todo!()
+      // let fractal = hand_mem.read_fractal(args[0]);
+      // let subhandler = HandlerFragment::new(args[1], 0);
+      // for i in 0..fractal.len() {
+      //   hand_mem.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
+      //   hand_mem.write_fixed(CLOSURE_ARG_MEM_START + 2, i as i64);
+      //   hand_mem = subhandler.clone().run_local(hand_mem).await;
+      // }
+      // hand_mem
     })
   });
   io!(find => fn(args, hand_mem) {
     Box::pin(async move {
-      let hand_mem = Arc::new(hand_mem);
-      let fractal = hand_mem.read_fractal(args[0]);
-      let len = fractal.len();
-      let subhandler = HandlerFragment::new(args[1], 0);
-      let mut finders = Vec::with_capacity(fractal.len());
-      for i in 0..len {
-        let mut hm = HandlerMemory::fork(Arc::clone(&hand_mem));
-        hm.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
-        finders.push(subhandler.clone().run(hm));
-      }
-      let mut hms = join_all(finders).await;
-      let mut idx = None;
-      for i in 0..len {
-        let hm = &mut hms[i];
-        let val = hm.read_fixed(CLOSURE_ARG_MEM_START);
-        hm.drop_parent();
-        if idx.is_none() && val == 1 {
-          idx = Some(i);
-        }
-      }
-      let mut hand_mem = Arc::try_unwrap(hand_mem).expect("Dangling reference to parent HM in parallel opcode");
-      hand_mem.init_fractal(args[2]);
-      if idx.is_some() {
-        hand_mem.push_fixed(args[2], 1);
-        hand_mem.push_register_out(args[2], &fractal, idx.unwrap());
-      } else {
-        hand_mem.push_fixed(args[2], 0);
-        hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("no element matches"));
-      }
-      hand_mem
+      todo!()
+      // let hand_mem = Arc::new(hand_mem);
+      // let fractal = hand_mem.read_fractal(args[0]);
+      // let len = fractal.len();
+      // let subhandler = HandlerFragment::new(args[1], 0);
+      // let mut finders = Vec::with_capacity(fractal.len());
+      // for i in 0..len {
+      //   let mut hm = HandlerMemory::fork(Arc::clone(&hand_mem));
+      //   hm.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
+      //   finders.push(subhandler.clone().run(hm));
+      // }
+      // let mut hms = join_all(finders).await;
+      // let mut idx = None;
+      // for i in 0..len {
+      //   let hm = &mut hms[i];
+      //   let val = hm.read_fixed(CLOSURE_ARG_MEM_START);
+      //   hm.drop_parent();
+      //   if idx.is_none() && val == 1 {
+      //     idx = Some(i);
+      //   }
+      // }
+      // let mut hand_mem = Arc::try_unwrap(hand_mem).expect("Dangling reference to parent HM in parallel opcode");
+      // hand_mem.init_fractal(args[2]);
+      // if idx.is_some() {
+      //   hand_mem.push_fixed(args[2], 1);
+      //   hand_mem.push_register_out(args[2], &fractal, idx.unwrap());
+      // } else {
+      //   hand_mem.push_fixed(args[2], 0);
+      //   hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("no element matches"));
+      // }
+      // hand_mem
     })
   });
   io!(findl => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let fractal = hand_mem.read_fractal(args[0]);
-      let subhandler = HandlerFragment::new(args[1], 0);
-      for i in 0..fractal.len() {
-        hand_mem.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
-        hand_mem = subhandler.clone().run(hand_mem).await;
-        let val = hand_mem.read_fixed(CLOSURE_ARG_MEM_START);
-        if val == 1 {
-          hand_mem.init_fractal(args[2]);
-          hand_mem.push_fixed(args[2], 1);
-          hand_mem.push_register_out(args[2], &fractal, i);
-          return hand_mem;
-        }
-      }
-      hand_mem.init_fractal(args[2]);
-      hand_mem.push_fixed(args[2], 0);
-      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("no element matches"));
-      hand_mem
+      todo!()
+      // let fractal = hand_mem.read_fractal(args[0]);
+      // let subhandler = HandlerFragment::new(args[1], 0);
+      // for i in 0..fractal.len() {
+      //   hand_mem.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
+      //   hand_mem = subhandler.clone().run(hand_mem).await;
+      //   let val = hand_mem.read_fixed(CLOSURE_ARG_MEM_START);
+      //   if val == 1 {
+      //     hand_mem.init_fractal(args[2]);
+      //     hand_mem.push_fixed(args[2], 1);
+      //     hand_mem.push_register_out(args[2], &fractal, i);
+      //     return hand_mem;
+      //   }
+      // }
+      // hand_mem.init_fractal(args[2]);
+      // hand_mem.push_fixed(args[2], 0);
+      // hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("no element matches"));
+      // hand_mem
     })
   });
   io!(some => fn(args, hand_mem) {
     Box::pin(async move {
-      let hand_mem_ref = Arc::new(hand_mem);
-      let fractal = hand_mem_ref.read_fractal(args[0]);
-      let subhandler = HandlerFragment::new(args[1], 0);
-      let mut somers = Vec::with_capacity(fractal.len());
-      for i in 0..fractal.len() {
-        let mut hm = HandlerMemory::fork(Arc::clone(&hand_mem_ref));
-        hm.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
-        somers.push(subhandler.clone().run(hm));
-      }
-      let hms = join_all(somers).await;
-      let mut ret_val = 0;
-      for mut hm in hms {
-        let val = hm.read_fixed(CLOSURE_ARG_MEM_START);
-        hm.drop_parent();
-        if val == 1 {
-          ret_val = 1;
-        }
-      }
-      let mut hand_mem = Arc::try_unwrap(hand_mem_ref).expect("Dangling reference to parent HM in parallel opcode");
-      hand_mem.write_fixed(args[2], ret_val);
-      hand_mem
+      todo!()
+      // let hand_mem_ref = Arc::new(hand_mem);
+      // let fractal = hand_mem_ref.read_fractal(args[0]);
+      // let subhandler = HandlerFragment::new(args[1], 0);
+      // let mut somers = Vec::with_capacity(fractal.len());
+      // for i in 0..fractal.len() {
+      //   let mut hm = HandlerMemory::fork(Arc::clone(&hand_mem_ref));
+      //   hm.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
+      //   somers.push(subhandler.clone().run(hm));
+      // }
+      // let hms = join_all(somers).await;
+      // let mut ret_val = 0;
+      // for mut hm in hms {
+      //   let val = hm.read_fixed(CLOSURE_ARG_MEM_START);
+      //   hm.drop_parent();
+      //   if val == 1 {
+      //     ret_val = 1;
+      //   }
+      // }
+      // let mut hand_mem = Arc::try_unwrap(hand_mem_ref).expect("Dangling reference to parent HM in parallel opcode");
+      // hand_mem.write_fixed(args[2], ret_val);
+      // hand_mem
     })
   });
   io!(somel => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let fractal = hand_mem.read_fractal(args[0]);
-      let subhandler = HandlerFragment::new(args[1], 0);
-      for i in 0..fractal.len() {
-        hand_mem.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
-        hand_mem = subhandler.clone().run(hand_mem).await;
-        let val = hand_mem.read_fixed(CLOSURE_ARG_MEM_START);
-        if val == 1 {
-          hand_mem.write_fixed(args[2], 1);
-          return hand_mem;
-        }
-      }
-      hand_mem.write_fixed(args[2], 0);
-      hand_mem
+      todo!()
+      // let fractal = hand_mem.read_fractal(args[0]);
+      // let subhandler = HandlerFragment::new(args[1], 0);
+      // for i in 0..fractal.len() {
+      //   hand_mem.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
+      //   hand_mem = subhandler.clone().run(hand_mem).await;
+      //   let val = hand_mem.read_fixed(CLOSURE_ARG_MEM_START);
+      //   if val == 1 {
+      //     hand_mem.write_fixed(args[2], 1);
+      //     return hand_mem;
+      //   }
+      // }
+      // hand_mem.write_fixed(args[2], 0);
+      // hand_mem
     })
   });
   io!(every => fn(args, hand_mem) {
     Box::pin(async move {
-      let hand_mem_ref = Arc::new(hand_mem);
-      let fractal = hand_mem_ref.read_fractal(args[0]);
-      let subhandler = HandlerFragment::new(args[1], 0);
-      let mut somers = Vec::with_capacity(fractal.len());
-      for i in 0..fractal.len() {
-        let mut hm = HandlerMemory::fork(Arc::clone(&hand_mem_ref));
-        hm.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
-        somers.push(subhandler.clone().run(hm));
-      }
-      let hms = join_all(somers).await;
-      let mut ret_val = 1;
-      for mut hm in hms {
-        let val = hm.read_fixed(CLOSURE_ARG_MEM_START);
-        hm.drop_parent();
-        if val == 0 {
-          ret_val = 0;
-        }
-      }
-      let mut hand_mem = Arc::try_unwrap(hand_mem_ref).expect("Dangling reference to parent HM in parallel opcode");
-      hand_mem.write_fixed(args[2], ret_val);
-      hand_mem
+      todo!()
+      // let hand_mem_ref = Arc::new(hand_mem);
+      // let fractal = hand_mem_ref.read_fractal(args[0]);
+      // let subhandler = HandlerFragment::new(args[1], 0);
+      // let mut somers = Vec::with_capacity(fractal.len());
+      // for i in 0..fractal.len() {
+      //   let mut hm = HandlerMemory::fork(Arc::clone(&hand_mem_ref));
+      //   hm.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
+      //   somers.push(subhandler.clone().run(hm));
+      // }
+      // let hms = join_all(somers).await;
+      // let mut ret_val = 1;
+      // for mut hm in hms {
+      //   let val = hm.read_fixed(CLOSURE_ARG_MEM_START);
+      //   hm.drop_parent();
+      //   if val == 0 {
+      //     ret_val = 0;
+      //   }
+      // }
+      // let mut hand_mem = Arc::try_unwrap(hand_mem_ref).expect("Dangling reference to parent HM in parallel opcode");
+      // hand_mem.write_fixed(args[2], ret_val);
+      // hand_mem
     })
   });
   io!(everyl => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let fractal = hand_mem.read_fractal(args[0]);
-      let subhandler = HandlerFragment::new(args[1], 0);
-      for i in 0..fractal.len() {
-        hand_mem.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
-        hand_mem = subhandler.clone().run(hand_mem).await;
-        let val = hand_mem.read_fixed(CLOSURE_ARG_MEM_START);
-        if val == 0 {
-          hand_mem.write_fixed(args[2], 0);
-          return hand_mem;
-        }
-      }
-      hand_mem.write_fixed(args[2], 1);
-      hand_mem
+      todo!()
+      // let fractal = hand_mem.read_fractal(args[0]);
+      // let subhandler = HandlerFragment::new(args[1], 0);
+      // for i in 0..fractal.len() {
+      //   hand_mem.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
+      //   hand_mem = subhandler.clone().run(hand_mem).await;
+      //   let val = hand_mem.read_fixed(CLOSURE_ARG_MEM_START);
+      //   if val == 0 {
+      //     hand_mem.write_fixed(args[2], 0);
+      //     return hand_mem;
+      //   }
+      // }
+      // hand_mem.write_fixed(args[2], 1);
+      // hand_mem
     })
   });
   cpu!(catarr => fn(args, hand_mem) {
@@ -2528,240 +2538,249 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   io!(reducep => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let fractal = hand_mem.read_fractal(args[0]);
-      let mut vals = Vec::with_capacity(fractal.len());
-      for i in 0..fractal.len() {
-        let mut hm = HandlerMemory::new(None, 1);
-        hand_mem.register_out(args[0], i, CLOSURE_ARG_MEM_START);
-        HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut hm, 0);
-        vals.push(hm);
-      }
-      let subhandler = HandlerFragment::new(args[1], 0);
-      // Log-n parallelism. First n/2 in parallel, then n/4, then n/8, etc
-      while vals.len() > 1 {
-        let mut reducers = Vec::with_capacity((vals.len() / 2) + 1);
-        while vals.len() > 1 {
-          let mut hm = hand_mem.clone();
-          let a = vals.remove(0);
-          let b = vals.remove(0);
-          HandlerMemory::transfer(&a, 0, &mut hm, CLOSURE_ARG_MEM_START + 1);
-          HandlerMemory::transfer(&b, 0, &mut hm, CLOSURE_ARG_MEM_START + 2);
-          reducers.push(subhandler.clone().run(hm));
-        }
-        // Check if one of the records was skipped over this round, and if so, pop it into a
-        // special field
-        let maybe_hm = if vals.len() == 1 { Some(vals.remove(0)) } else { None };
-        let hms = join_all(reducers).await;
-        for mut hm in hms {
-          hm.register(0, CLOSURE_ARG_MEM_START, false);
-          vals.push(hm);
-        }
-        if let Some(hm) = maybe_hm {
-          vals.push(hm);
-        }
-      }
-      // There can be only one
-      HandlerMemory::transfer(&vals[0], 0, &mut hand_mem, args[2]);
-      hand_mem
+      todo!()
+      // let fractal = hand_mem.read_fractal(args[0]);
+      // let mut vals = Vec::with_capacity(fractal.len());
+      // for i in 0..fractal.len() {
+      //   let mut hm = HandlerMemory::new(None, 1);
+      //   hand_mem.register_out(args[0], i, CLOSURE_ARG_MEM_START);
+      //   HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut hm, 0);
+      //   vals.push(hm);
+      // }
+      // let subhandler = HandlerFragment::new(args[1], 0);
+      // // Log-n parallelism. First n/2 in parallel, then n/4, then n/8, etc
+      // while vals.len() > 1 {
+      //   let mut reducers = Vec::with_capacity((vals.len() / 2) + 1);
+      //   while vals.len() > 1 {
+      //     let mut hm = hand_mem.clone();
+      //     let a = vals.remove(0);
+      //     let b = vals.remove(0);
+      //     HandlerMemory::transfer(&a, 0, &mut hm, CLOSURE_ARG_MEM_START + 1);
+      //     HandlerMemory::transfer(&b, 0, &mut hm, CLOSURE_ARG_MEM_START + 2);
+      //     reducers.push(subhandler.clone().run(hm));
+      //   }
+      //   // Check if one of the records was skipped over this round, and if so, pop it into a
+      //   // special field
+      //   let maybe_hm = if vals.len() == 1 { Some(vals.remove(0)) } else { None };
+      //   let hms = join_all(reducers).await;
+      //   for mut hm in hms {
+      //     hm.register(0, CLOSURE_ARG_MEM_START, false);
+      //     vals.push(hm);
+      //   }
+      //   if let Some(hm) = maybe_hm {
+      //     vals.push(hm);
+      //   }
+      // }
+      // // There can be only one
+      // HandlerMemory::transfer(&vals[0], 0, &mut hand_mem, args[2]);
+      // hand_mem
     })
   });
   io!(reducel => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let fractal = hand_mem.read_fractal(args[0]);
-      if fractal.len() == 0 {
-        return hand_mem;
-      }
-      let mut vals = Vec::with_capacity(fractal.len());
-      for i in 0..fractal.len() {
-        let mut hm = HandlerMemory::new(None, 1);
-        hand_mem.register_out(args[0], i, CLOSURE_ARG_MEM_START);
-        HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut hm, 0);
-        vals.push(hm);
-      }
-      let subhandler = HandlerFragment::new(args[1], 0);
-      let mut cumulative = vals.remove(0);
-      for i in 0..vals.len() {
-        let current = &vals[i];
-        HandlerMemory::transfer(&cumulative, 0, &mut hand_mem, CLOSURE_ARG_MEM_START + 1);
-        HandlerMemory::transfer(&current, 0, &mut hand_mem, CLOSURE_ARG_MEM_START + 2);
-        hand_mem = subhandler.clone().run(hand_mem).await;
-        HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut cumulative, 0);
-      }
-      HandlerMemory::transfer(&cumulative, 0, &mut hand_mem, args[2]);
-      hand_mem
+      todo!()
+      // let fractal = hand_mem.read_fractal(args[0]);
+      // if fractal.len() == 0 {
+      //   return hand_mem;
+      // }
+      // let mut vals = Vec::with_capacity(fractal.len());
+      // for i in 0..fractal.len() {
+      //   let mut hm = HandlerMemory::new(None, 1);
+      //   hand_mem.register_out(args[0], i, CLOSURE_ARG_MEM_START);
+      //   HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut hm, 0);
+      //   vals.push(hm);
+      // }
+      // let subhandler = HandlerFragment::new(args[1], 0);
+      // let mut cumulative = vals.remove(0);
+      // for i in 0..vals.len() {
+      //   let current = &vals[i];
+      //   HandlerMemory::transfer(&cumulative, 0, &mut hand_mem, CLOSURE_ARG_MEM_START + 1);
+      //   HandlerMemory::transfer(&current, 0, &mut hand_mem, CLOSURE_ARG_MEM_START + 2);
+      //   hand_mem = subhandler.clone().run(hand_mem).await;
+      //   HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut cumulative, 0);
+      // }
+      // HandlerMemory::transfer(&cumulative, 0, &mut hand_mem, args[2]);
+      // hand_mem
     })
   });
   io!(foldp => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let obj = hand_mem.read_fractal(args[0]);
-      let (arr, _) = hand_mem.read_from_fractal(&obj, 0);
-      let mut vals = Vec::with_capacity(arr.len());
-      for i in 0..arr.len() {
-        let mut hm = HandlerMemory::new(None, 1);
-        hand_mem.register_from_fractal(CLOSURE_ARG_MEM_START, &arr, i);
-        HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut hm, 0);
-        vals.push(hm);
-      }
-      let subhandler = HandlerFragment::new(args[1], 0);
-      hand_mem.register_out(args[0], 1, CLOSURE_ARG_MEM_START);
-      let mut init = HandlerMemory::new(None, 1);
-      HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut init, 0);
-      // We can only go up to 'n' parallel sequential computations here
-      let n = num_cpus::get();
-      let l = vals.len();
-      let s = l / n;
-      let mut reducers = Vec::with_capacity(n);
-      for i in 0..n {
-        let subvals = if i == n - 1 {
-          vals[i * s..].to_vec()
-        } else {
-          vals[i * s..(i + 1) * s].to_vec()
-        };
-        let mem = hand_mem.clone();
-        let init2 = init.clone();
-        let subhandler2 = subhandler.clone();
-        reducers.push(task::spawn(async move {
-          let mut cumulative = init2.clone();
-          for i in 0..subvals.len() {
-            let current = &subvals[i];
-            let mut hm = mem.clone();
-            HandlerMemory::transfer(&cumulative, 0, &mut hm, CLOSURE_ARG_MEM_START + 1);
-            HandlerMemory::transfer(current, 0, &mut hm, CLOSURE_ARG_MEM_START + 2);
-            hm = subhandler2.clone().run(hm).await;
-            HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START, &mut cumulative, 0);
-          }
-          cumulative
-        }));
-      }
-      hand_mem.init_fractal(args[2]);
-      let hms = join_all(reducers).await;
-      for i in 0..n {
-        let hm = hms[i].as_ref().unwrap();
-        HandlerMemory::transfer(&hm, 0, &mut hand_mem, CLOSURE_ARG_MEM_START);
-        hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
-      }
-      hand_mem
+      todo!()
+      // let obj = hand_mem.read_fractal(args[0]);
+      // let (arr, _) = hand_mem.read_from_fractal(&obj, 0);
+      // let mut vals = Vec::with_capacity(arr.len());
+      // for i in 0..arr.len() {
+      //   let mut hm = HandlerMemory::new(None, 1);
+      //   hand_mem.register_from_fractal(CLOSURE_ARG_MEM_START, &arr, i);
+      //   HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut hm, 0);
+      //   vals.push(hm);
+      // }
+      // let subhandler = HandlerFragment::new(args[1], 0);
+      // hand_mem.register_out(args[0], 1, CLOSURE_ARG_MEM_START);
+      // let mut init = HandlerMemory::new(None, 1);
+      // HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut init, 0);
+      // // We can only go up to 'n' parallel sequential computations here
+      // let n = num_cpus::get();
+      // let l = vals.len();
+      // let s = l / n;
+      // let mut reducers = Vec::with_capacity(n);
+      // for i in 0..n {
+      //   let subvals = if i == n - 1 {
+      //     vals[i * s..].to_vec()
+      //   } else {
+      //     vals[i * s..(i + 1) * s].to_vec()
+      //   };
+      //   let mem = hand_mem.clone();
+      //   let init2 = init.clone();
+      //   let subhandler2 = subhandler.clone();
+      //   reducers.push(task::spawn(async move {
+      //     let mut cumulative = init2.clone();
+      //     for i in 0..subvals.len() {
+      //       let current = &subvals[i];
+      //       let mut hm = mem.clone();
+      //       HandlerMemory::transfer(&cumulative, 0, &mut hm, CLOSURE_ARG_MEM_START + 1);
+      //       HandlerMemory::transfer(current, 0, &mut hm, CLOSURE_ARG_MEM_START + 2);
+      //       hm = subhandler2.clone().run(hm).await;
+      //       HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START, &mut cumulative, 0);
+      //     }
+      //     cumulative
+      //   }));
+      // }
+      // hand_mem.init_fractal(args[2]);
+      // let hms = join_all(reducers).await;
+      // for i in 0..n {
+      //   let hm = hms[i].as_ref().unwrap();
+      //   HandlerMemory::transfer(&hm, 0, &mut hand_mem, CLOSURE_ARG_MEM_START);
+      //   hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
+      // }
+      // hand_mem
     })
   });
   io!(foldl => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let obj = hand_mem.read_fractal(args[0]);
-      let (arr, _) = hand_mem.read_from_fractal(&obj, 0);
-      let mut vals = Vec::with_capacity(arr.len());
-      for i in 0..arr.len() {
-        let mut hm = HandlerMemory::new(None, 1);
-        hand_mem.register_from_fractal(CLOSURE_ARG_MEM_START, &arr, i);
-        HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut hm, 0);
-        vals.push(hm);
-      }
-      let subhandler = HandlerFragment::new(args[1], 0);
-      hand_mem.register_out(args[0], 1, CLOSURE_ARG_MEM_START);
-      let mut cumulative = HandlerMemory::new(None, 1);
-      HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut cumulative, 0);
-      for i in 0..vals.len() {
-        let current = &vals[i];
-        HandlerMemory::transfer(&cumulative, 0, &mut hand_mem, CLOSURE_ARG_MEM_START + 1);
-        HandlerMemory::transfer(current, 0, &mut hand_mem, CLOSURE_ARG_MEM_START + 2);
-        hand_mem = subhandler.clone().run(hand_mem).await;
-        HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut cumulative, 0);
-      }
-      hand_mem.register(args[2], CLOSURE_ARG_MEM_START, false);
-      hand_mem
+      todo!()
+      // let obj = hand_mem.read_fractal(args[0]);
+      // let (arr, _) = hand_mem.read_from_fractal(&obj, 0);
+      // let mut vals = Vec::with_capacity(arr.len());
+      // for i in 0..arr.len() {
+      //   let mut hm = HandlerMemory::new(None, 1);
+      //   hand_mem.register_from_fractal(CLOSURE_ARG_MEM_START, &arr, i);
+      //   HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut hm, 0);
+      //   vals.push(hm);
+      // }
+      // let subhandler = HandlerFragment::new(args[1], 0);
+      // hand_mem.register_out(args[0], 1, CLOSURE_ARG_MEM_START);
+      // let mut cumulative = HandlerMemory::new(None, 1);
+      // HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut cumulative, 0);
+      // for i in 0..vals.len() {
+      //   let current = &vals[i];
+      //   HandlerMemory::transfer(&cumulative, 0, &mut hand_mem, CLOSURE_ARG_MEM_START + 1);
+      //   HandlerMemory::transfer(current, 0, &mut hand_mem, CLOSURE_ARG_MEM_START + 2);
+      //   hand_mem = subhandler.clone().run(hand_mem).await;
+      //   HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut cumulative, 0);
+      // }
+      // hand_mem.register(args[2], CLOSURE_ARG_MEM_START, false);
+      // hand_mem
     })
   });
   io!(filter => fn(args, hand_mem) {
     Box::pin(async move {
-      let hand_mem_ref = Arc::new(hand_mem);
-      let fractal = hand_mem_ref.read_fractal(args[0]);
-      let len = fractal.len();
-      let subhandler = HandlerFragment::new(args[1], 0);
-      let mut filters = Vec::with_capacity(len);
-      for i in 0..len {
-        let mut hm = HandlerMemory::fork(Arc::clone(&hand_mem_ref));
-        hm.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
-        filters.push(subhandler.clone().run(hm));
-      }
-      let mut hms = join_all(filters).await;
-      let mut idxs = vec![];
-      for i in 0..len {
-        let hm = &mut hms[i];
-        let val = hm.read_fixed(CLOSURE_ARG_MEM_START);
-        hm.drop_parent();
-        if val == 1 {
-          idxs.push(i);
-        }
-      }
-      let mut hand_mem = Arc::try_unwrap(hand_mem_ref).expect("Dangling reference to parent HM in parallel opcode");
-      hand_mem.init_fractal(args[2]);
-      for i in idxs {
-        hand_mem.push_register_out(args[2], &fractal, i);
-      }
-      hand_mem
+      todo!()
+      // let hand_mem_ref = Arc::new(hand_mem);
+      // let fractal = hand_mem_ref.read_fractal(args[0]);
+      // let len = fractal.len();
+      // let subhandler = HandlerFragment::new(args[1], 0);
+      // let mut filters = Vec::with_capacity(len);
+      // for i in 0..len {
+      //   let mut hm = HandlerMemory::fork(Arc::clone(&hand_mem_ref));
+      //   hm.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
+      //   filters.push(subhandler.clone().run(hm));
+      // }
+      // let mut hms = join_all(filters).await;
+      // let mut idxs = vec![];
+      // for i in 0..len {
+      //   let hm = &mut hms[i];
+      //   let val = hm.read_fixed(CLOSURE_ARG_MEM_START);
+      //   hm.drop_parent();
+      //   if val == 1 {
+      //     idxs.push(i);
+      //   }
+      // }
+      // let mut hand_mem = Arc::try_unwrap(hand_mem_ref).expect("Dangling reference to parent HM in parallel opcode");
+      // hand_mem.init_fractal(args[2]);
+      // for i in idxs {
+      //   hand_mem.push_register_out(args[2], &fractal, i);
+      // }
+      // hand_mem
     })
   });
   io!(filterl => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let fractal = hand_mem.read_fractal(args[0]);
-      let len = fractal.len();
-      let subhandler = HandlerFragment::new(args[1], 0);
-      hand_mem.init_fractal(args[2]);
-      for i in 0..len {
-        hand_mem.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
-        hand_mem = subhandler.clone().run(hand_mem).await;
-        let val = hand_mem.read_fixed(CLOSURE_ARG_MEM_START);
-        if val == 1 {
-          hand_mem.push_register_out(args[2], &fractal, i);
-        }
-      }
-      hand_mem
+      todo!()
+    //   let fractal = hand_mem.read_fractal(args[0]);
+    //   let len = fractal.len();
+    //   let subhandler = HandlerFragment::new(args[1], 0);
+    //   hand_mem.init_fractal(args[2]);
+    //   for i in 0..len {
+    //     hand_mem.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
+    //     hand_mem = subhandler.clone().run(hand_mem).await;
+    //     let val = hand_mem.read_fixed(CLOSURE_ARG_MEM_START);
+    //     if val == 1 {
+    //       hand_mem.push_register_out(args[2], &fractal, i);
+    //     }
+    //   }
+    //   hand_mem
     })
   });
 
   // Conditional opcode
   io!(condfn => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let cond = hand_mem.read_fixed(args[0]);
-      let subhandler = HandlerFragment::new(args[1], 0);
-      if cond == 1 {
-        hand_mem = subhandler.run(hand_mem).await;
-      }
-      hand_mem
+      todo!()
+      // let cond = hand_mem.read_fixed(args[0]);
+      // let subhandler = HandlerFragment::new(args[1], 0);
+      // if cond == 1 {
+      //   hand_mem = subhandler.run(hand_mem).await;
+      // }
+      // hand_mem
     })
   });
 
   // Std opcodes
   io!(execop => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let full_cmd = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
-      let split_cmd: Vec<&str> = full_cmd.split(" ").collect();
-      let output = Command::new(split_cmd[0]).args(&split_cmd[1..]).output();
-      hand_mem.init_fractal(args[2]);
-      match output {
-        Err(e) => {
-          hand_mem.push_fixed(args[2], 127);
-          hand_mem.push_fractal(args[2], FractalMemory::new(vec![(0, 0)]));
-          let error_string = e.to_string();
-          hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(&error_string));
-        },
-        Ok(output_res) => {
-          let status_code = output_res.status.code().unwrap_or(127) as i64;
-          hand_mem.push_fixed(args[2], status_code);
-          let stdout_str = String::from_utf8(output_res.stdout).unwrap_or("".to_string());
-          hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(&stdout_str));
-          let stderr_str = String::from_utf8(output_res.stderr).unwrap_or("".to_string());
-          hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(&stderr_str));
-        },
-      };
-      hand_mem
+      todo!()
+      // let full_cmd = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
+      // let split_cmd: Vec<&str> = full_cmd.split(" ").collect();
+      // let output = Command::new(split_cmd[0]).args(&split_cmd[1..]).output();
+      // hand_mem.init_fractal(args[2]);
+      // match output {
+      //   Err(e) => {
+      //     hand_mem.push_fixed(args[2], 127);
+      //     hand_mem.push_fractal(args[2], FractalMemory::new(vec![(0, 0)]));
+      //     let error_string = e.to_string();
+      //     hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(&error_string));
+      //   },
+      //   Ok(output_res) => {
+      //     let status_code = output_res.status.code().unwrap_or(127) as i64;
+      //     hand_mem.push_fixed(args[2], status_code);
+      //     let stdout_str = String::from_utf8(output_res.stdout).unwrap_or("".to_string());
+      //     hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(&stdout_str));
+      //     let stderr_str = String::from_utf8(output_res.stderr).unwrap_or("".to_string());
+      //     hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(&stderr_str));
+      //   },
+      // };
+      // hand_mem
     })
   });
 
   // IO opcodes
   io!(waitop => fn(args, hand_mem) {
     Box::pin(async move {
-      let ms = hand_mem.read_fixed(args[0]) as u64;
-      sleep(Duration::from_millis(ms)).await;
-      hand_mem
+      todo!()
+      // let ms = hand_mem.read_fixed(args[0]) as u64;
+      // sleep(Duration::from_millis(ms)).await;
+      // hand_mem
     })
   });
 
@@ -2777,14 +2796,15 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   }
   io!(httpget => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let res = __httpget(HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]))).await;
-      hand_mem.init_fractal(args[2]);
-      hand_mem.push_fixed(args[2], if res.is_ok() { 1i64 } else { 0i64 });
-      match res {
-        Ok(res) => hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(&res)),
-        Err(ee) => hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(format!("{}", ee).as_str())),
-      }
-      hand_mem
+      todo!()
+      // let res = __httpget(HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]))).await;
+      // hand_mem.init_fractal(args[2]);
+      // hand_mem.push_fixed(args[2], if res.is_ok() { 1i64 } else { 0i64 });
+      // match res {
+      //   Ok(res) => hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(&res)),
+      //   Err(ee) => hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(format!("{}", ee).as_str())),
+      // }
+      // hand_mem
     })
   });
 
@@ -2799,16 +2819,17 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   }
   io!(httppost => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let uri = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
-      let payload = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
-      let res = __httppost(uri, payload).await;
-      hand_mem.init_fractal(args[2]);
-      hand_mem.push_fixed(args[2], if res.is_ok() { 1i64 } else { 0i64 });
-      match res {
-        Ok(res) => hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(&res)),
-        Err(ee) => hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(format!("{}", ee).as_str())),
-      }
-      hand_mem
+      todo!()
+      // let uri = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
+      // let payload = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
+      // let res = __httppost(uri, payload).await;
+      // hand_mem.init_fractal(args[2]);
+      // hand_mem.push_fixed(args[2], if res.is_ok() { 1i64 } else { 0i64 });
+      // match res {
+      //   Ok(res) => hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(&res)),
+      //   Err(ee) => hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(format!("{}", ee).as_str())),
+      // }
+      // hand_mem
     })
   });
 
@@ -2905,132 +2926,140 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   }
   io!(httplsn => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let port_num = hand_mem.read_fixed(args[0]) as u16;
-      let addr = SocketAddr::from(([127, 0, 0, 1], port_num));
-      let make_svc = make_service_fn(|_conn| async { Ok::<_, Infallible>(service_fn(http_listener)) });
+      todo!()
+      // let port_num = hand_mem.read_fixed(args[0]) as u16;
+      // let addr = SocketAddr::from(([127, 0, 0, 1], port_num));
+      // let make_svc = make_service_fn(|_conn| async { Ok::<_, Infallible>(service_fn(http_listener)) });
 
-      let bind = Server::try_bind(&addr);
-      hand_mem.init_fractal(args[2]);
-      hand_mem.push_fixed(args[2], if bind.is_ok() { 1i64 } else { 0i64 });
-      match bind {
-        Ok(server) => {
-          hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("ok"));
-          let server = server.serve(make_svc);
-          tokio::spawn(async move { server.await });
-        },
-        Err(ee) => hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(format!("{}", ee).as_str())),
-      }
-      return hand_mem;
+      // let bind = Server::try_bind(&addr);
+      // hand_mem.init_fractal(args[2]);
+      // hand_mem.push_fixed(args[2], if bind.is_ok() { 1i64 } else { 0i64 });
+      // match bind {
+      //   Ok(server) => {
+      //     hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("ok"));
+      //     let server = server.serve(make_svc);
+      //     tokio::spawn(async move { server.await });
+      //   },
+      //   Err(ee) => hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(format!("{}", ee).as_str())),
+      // }
+      // return hand_mem;
     })
   });
   io!(httpsend => fn(args, mut hand_mem) {
     Box::pin(async move {
-      hand_mem.dupe(args[0], args[0]); // Make sure there's no pointers involved
-      let fractal = hand_mem.read_fractal(args[0]);
-      let conn_id = fractal.read_fixed(3);
-      let responses = Arc::clone(&HTTP_RESPONSES);
-      let mut responses_hm = responses.lock().unwrap();
-      let mut hm = HandlerMemory::new(None, 1);
-      HandlerMemory::transfer(&hand_mem, args[0], &mut hm, CLOSURE_ARG_MEM_START);
-      let res_out = hm.read_fractal(CLOSURE_ARG_MEM_START);
-      for i in 0..res_out.len() {
-        hm.register_from_fractal(i as i64, &res_out, i);
-      }
-      responses_hm.insert(conn_id, hm);
-      drop(responses_hm);
-      // TODO: Add a second synchronization tool to return a valid Result status, for now, just
-      // return success
-      hand_mem.init_fractal(args[2]);
-      hand_mem.push_fixed(args[2], 0i64);
-      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("ok"));
-      hand_mem
+      todo!()
+      // hand_mem.dupe(args[0], args[0]); // Make sure there's no pointers involved
+      // let fractal = hand_mem.read_fractal(args[0]);
+      // let conn_id = fractal.read_fixed(3);
+      // let responses = Arc::clone(&HTTP_RESPONSES);
+      // let mut responses_hm = responses.lock().unwrap();
+      // let mut hm = HandlerMemory::new(None, 1);
+      // HandlerMemory::transfer(&hand_mem, args[0], &mut hm, CLOSURE_ARG_MEM_START);
+      // let res_out = hm.read_fractal(CLOSURE_ARG_MEM_START);
+      // for i in 0..res_out.len() {
+      //   hm.register_from_fractal(i as i64, &res_out, i);
+      // }
+      // responses_hm.insert(conn_id, hm);
+      // drop(responses_hm);
+      // // TODO: Add a second synchronization tool to return a valid Result status, for now, just
+      // // return success
+      // hand_mem.init_fractal(args[2]);
+      // hand_mem.push_fixed(args[2], 0i64);
+      // hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("ok"));
+      // hand_mem
     })
   });
 
   // Datastore opcodes
   io!(dssetf => fn(args, hand_mem) {
     Box::pin(async move {
-      let val = hand_mem.read_fixed(args[2]);
-      let mut hm = HandlerMemory::new(None, 1);
-      hm.write_fixed(0, val);
-      let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
-      let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
-      let nskey = format!("{}:{}", ns, key);
-      let ds = Arc::clone(&DS);
-      ds.insert(nskey, hm);
-      hand_mem
+      todo!()
+      // let val = hand_mem.read_fixed(args[2]);
+      // let mut hm = HandlerMemory::new(None, 1);
+      // hm.write_fixed(0, val);
+      // let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
+      // let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
+      // let nskey = format!("{}:{}", ns, key);
+      // let ds = Arc::clone(&DS);
+      // ds.insert(nskey, hm);
+      // hand_mem
     })
   });
   io!(dssetv => fn(args, hand_mem) {
     Box::pin(async move {
-      let mut hm = HandlerMemory::new(None, 1);
-      HandlerMemory::transfer(&hand_mem, args[2], &mut hm, 0);
-      let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
-      let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
-      let nskey = format!("{}:{}", ns, key);
-      let ds = Arc::clone(&DS);
-      ds.insert(nskey, hm);
-      hand_mem
+      todo!()
+      // let mut hm = HandlerMemory::new(None, 1);
+      // HandlerMemory::transfer(&hand_mem, args[2], &mut hm, 0);
+      // let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
+      // let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
+      // let nskey = format!("{}:{}", ns, key);
+      // let ds = Arc::clone(&DS);
+      // ds.insert(nskey, hm);
+      // hand_mem
     })
   });
   io!(dshas => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
-      let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
-      let nskey = format!("{}:{}", ns, key);
-      let ds = Arc::clone(&DS);
-      let has = ds.contains_key(&nskey);
-      hand_mem.write_fixed(args[2], if has { 1i64 } else { 0i64 });
-      hand_mem
+      todo!()
+      // let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
+      // let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
+      // let nskey = format!("{}:{}", ns, key);
+      // let ds = Arc::clone(&DS);
+      // let has = ds.contains_key(&nskey);
+      // hand_mem.write_fixed(args[2], if has { 1i64 } else { 0i64 });
+      // hand_mem
     })
   });
   io!(dsdel => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
-      let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
-      let nskey = format!("{}:{}", ns, key);
-      let ds = Arc::clone(&DS);
-      let removed = ds.remove(&nskey).is_some();
-      hand_mem.write_fixed(args[2], if removed { 1i64 } else { 0i64 });
-      hand_mem
+      todo!()
+      // let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
+      // let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
+      // let nskey = format!("{}:{}", ns, key);
+      // let ds = Arc::clone(&DS);
+      // let removed = ds.remove(&nskey).is_some();
+      // hand_mem.write_fixed(args[2], if removed { 1i64 } else { 0i64 });
+      // hand_mem
     })
   });
   io!(dsgetf => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
-      let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
-      let nskey = format!("{}:{}", ns, key);
-      let ds = Arc::clone(&DS);
-      let maybe_hm = ds.get(&nskey);
-      hand_mem.init_fractal(args[2]);
-      hand_mem.push_fixed(args[2], if maybe_hm.is_some() { 1i64 } else { 0i64 });
-      match maybe_hm {
-        Some(hm) => hand_mem.push_fixed(args[2], hm.read_fixed(0)),
-        None => hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("namespace-key pair not found")),
-      }
-      hand_mem
+      todo!()
+      // let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
+      // let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
+      // let nskey = format!("{}:{}", ns, key);
+      // let ds = Arc::clone(&DS);
+      // let maybe_hm = ds.get(&nskey);
+      // hand_mem.init_fractal(args[2]);
+      // hand_mem.push_fixed(args[2], if maybe_hm.is_some() { 1i64 } else { 0i64 });
+      // match maybe_hm {
+      //   Some(hm) => hand_mem.push_fixed(args[2], hm.read_fixed(0)),
+      //   None => hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("namespace-key pair not found")),
+      // }
+      // hand_mem
     })
   });
   io!(dsgetv => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
-      let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
-      let nskey = format!("{}:{}", ns, key);
-      let ds = Arc::clone(&DS);
-      let maybe_hm = ds.get(&nskey);
-      hand_mem.init_fractal(args[2]);
-      match maybe_hm {
-        Some(hm) => {
-          hand_mem.push_fixed(args[2], 1i64);
-          HandlerMemory::transfer(&hm, 0, &mut hand_mem, CLOSURE_ARG_MEM_START);
-          hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
-        },
-        None => {
-          hand_mem.push_fixed(args[2], 0i64);
-          hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("namespace-key pair not found"))
-        },
-      }
-      hand_mem
+      todo!()
+      // let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
+      // let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
+      // let nskey = format!("{}:{}", ns, key);
+      // let ds = Arc::clone(&DS);
+      // let maybe_hm = ds.get(&nskey);
+      // hand_mem.init_fractal(args[2]);
+      // match maybe_hm {
+      //   Some(hm) => {
+      //     hand_mem.push_fixed(args[2], 1i64);
+      //     HandlerMemory::transfer(&hm, 0, &mut hand_mem, CLOSURE_ARG_MEM_START);
+      //     hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
+      //   },
+      //   None => {
+      //     hand_mem.push_fixed(args[2], 0i64);
+      //     hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("namespace-key pair not found"))
+      //   },
+      // }
+      // hand_mem
     })
   });
 
@@ -3059,91 +3088,95 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   io!(seqeach => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let mut seq = hand_mem.read_fractal(args[0]);
-      let current = seq.read_fixed(0);
-      let limit = seq.read_fixed(1);
-      let subhandler = HandlerFragment::new(args[1], 0);
-      if current >= limit {
-        return hand_mem;
-      }
-      hand_mem.write_fixed_in_fractal(&mut seq, 0, limit);
-      // array of potentially many levels of nested fractals
-      for i in current..limit {
-        // array element is $1 argument of the closure memory space
-        hand_mem.write_fixed(CLOSURE_ARG_MEM_START + 1, i);
-        hand_mem = subhandler.clone().run(hand_mem).await;
-      }
-      hand_mem
+      todo!()
+      // let mut seq = hand_mem.read_fractal(args[0]);
+      // let current = seq.read_fixed(0);
+      // let limit = seq.read_fixed(1);
+      // let subhandler = HandlerFragment::new(args[1], 0);
+      // if current >= limit {
+      //   return hand_mem;
+      // }
+      // hand_mem.write_fixed_in_fractal(&mut seq, 0, limit);
+      // // array of potentially many levels of nested fractals
+      // for i in current..limit {
+      //   // array element is $1 argument of the closure memory space
+      //   hand_mem.write_fixed(CLOSURE_ARG_MEM_START + 1, i);
+      //   hand_mem = subhandler.clone().run(hand_mem).await;
+      // }
+      // hand_mem
     })
   });
   io!(seqwhile => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let seq = hand_mem.read_fractal(args[0]);
-      let mut current = seq.read_fixed(0);
-      let limit = seq.read_fixed(1);
-      drop(seq);
-      let cond_handler = HandlerFragment::new(args[1], 0);
-      let body_handler = HandlerFragment::new(args[2], 0);
-      if current >= limit {
-        return hand_mem;
-      }
-      hand_mem = cond_handler.clone().run(hand_mem).await;
-      while current < limit && hand_mem.read_fixed(CLOSURE_ARG_MEM_START) > 0 {
-        hand_mem = body_handler.clone().run(hand_mem).await;
-        current = current + 1;
-        hand_mem = cond_handler.clone().run(hand_mem).await;
-      }
-      let mut seq = hand_mem.read_fractal(args[0]);
-      hand_mem.write_fixed_in_fractal(&mut seq, 0, current);
-      hand_mem
+      todo!()
+      // let seq = hand_mem.read_fractal(args[0]);
+      // let mut current = seq.read_fixed(0);
+      // let limit = seq.read_fixed(1);
+      // drop(seq);
+      // let cond_handler = HandlerFragment::new(args[1], 0);
+      // let body_handler = HandlerFragment::new(args[2], 0);
+      // if current >= limit {
+      //   return hand_mem;
+      // }
+      // hand_mem = cond_handler.clone().run(hand_mem).await;
+      // while current < limit && hand_mem.read_fixed(CLOSURE_ARG_MEM_START) > 0 {
+      //   hand_mem = body_handler.clone().run(hand_mem).await;
+      //   current = current + 1;
+      //   hand_mem = cond_handler.clone().run(hand_mem).await;
+      // }
+      // let mut seq = hand_mem.read_fractal(args[0]);
+      // hand_mem.write_fixed_in_fractal(&mut seq, 0, current);
+      // hand_mem
     })
   });
   io!(seqdo => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let seq = hand_mem.read_fractal(args[0]);
-      let mut current = seq.read_fixed(0);
-      let limit = seq.read_fixed(1);
-      drop(seq);
-      let subhandler = HandlerFragment::new(args[1], 0);
-      loop {
-        hand_mem = subhandler.clone().run(hand_mem).await;
-        current = current + 1;
-        if current >= limit || hand_mem.read_fixed(CLOSURE_ARG_MEM_START) == 0 {
-          break;
-        }
-      }
-      let mut seq = hand_mem.read_fractal(args[0]);
-      hand_mem.write_fixed_in_fractal(&mut seq, 0, current);
-      hand_mem
+      todo!()
+      // let seq = hand_mem.read_fractal(args[0]);
+      // let mut current = seq.read_fixed(0);
+      // let limit = seq.read_fixed(1);
+      // drop(seq);
+      // let subhandler = HandlerFragment::new(args[1], 0);
+      // loop {
+      //   hand_mem = subhandler.clone().run(hand_mem).await;
+      //   current = current + 1;
+      //   if current >= limit || hand_mem.read_fixed(CLOSURE_ARG_MEM_START) == 0 {
+      //     break;
+      //   }
+      // }
+      // let mut seq = hand_mem.read_fractal(args[0]);
+      // hand_mem.write_fixed_in_fractal(&mut seq, 0, current);
+      // hand_mem
     })
   });
   io!(selfrec => fn(args, hand_mem) {
     Box::pin(async move {
-      let hand_mem_ref = Arc::new(hand_mem);
-      let mut hm = HandlerMemory::fork(Arc::clone(&hand_mem_ref));
-      // MUST read these first in case the arguments are themselves closure args being overwritten
-      // for the recursive function.
-      hm.register(CLOSURE_ARG_MEM_START + 1, args[0], false);
-      hm.register(CLOSURE_ARG_MEM_START + 2, args[1], false);
-      let slf = hm.read_fractal(args[0]);
-      let recurse_fn = HandlerFragment::new(slf.read_fixed(1), 0);
-      let (mut seq, _) = hm.read_from_fractal(&slf, 0);
-      let curr = seq.read_fixed(0);
-      let mut hand_mem;
-      if curr < seq.read_fixed(1) {
-        hm.write_fixed_in_fractal(&mut seq, 0, curr + 1);
-        hm = recurse_fn.run(hm).await;
-        hm.drop_parent();
-        hand_mem = Arc::try_unwrap(hand_mem_ref).unwrap();
-        hand_mem.join(&mut hm);
-        hand_mem.register(args[2], CLOSURE_ARG_MEM_START, false);
-      } else {
-        hand_mem = Arc::try_unwrap(hand_mem_ref).unwrap();
-        hand_mem.init_fractal(args[2]);
-        hand_mem.push_fixed(args[2], 0);
-        hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("error: sequence out-of-bounds"));
-      }
-      hand_mem
+      todo!()
+      // let hand_mem_ref = Arc::new(hand_mem);
+      // let mut hm = HandlerMemory::fork(Arc::clone(&hand_mem_ref));
+      // // MUST read these first in case the arguments are themselves closure args being overwritten
+      // // for the recursive function.
+      // hm.register(CLOSURE_ARG_MEM_START + 1, args[0], false);
+      // hm.register(CLOSURE_ARG_MEM_START + 2, args[1], false);
+      // let slf = hm.read_fractal(args[0]);
+      // let recurse_fn = HandlerFragment::new(slf.read_fixed(1), 0);
+      // let (mut seq, _) = hm.read_from_fractal(&slf, 0);
+      // let curr = seq.read_fixed(0);
+      // let mut hand_mem;
+      // if curr < seq.read_fixed(1) {
+      //   hm.write_fixed_in_fractal(&mut seq, 0, curr + 1);
+      //   hm = recurse_fn.run(hm).await;
+      //   hm.drop_parent();
+      //   hand_mem = Arc::try_unwrap(hand_mem_ref).unwrap();
+      //   hand_mem.join(&mut hm);
+      //   hand_mem.register(args[2], CLOSURE_ARG_MEM_START, false);
+      // } else {
+      //   hand_mem = Arc::try_unwrap(hand_mem_ref).unwrap();
+      //   hand_mem.init_fractal(args[2]);
+      //   hand_mem.push_fixed(args[2], 0);
+      //   hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("error: sequence out-of-bounds"));
+      // }
+      // hand_mem
     })
   });
   cpu!(seqrec => fn(args, hand_mem) {
