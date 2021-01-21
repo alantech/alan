@@ -2625,7 +2625,17 @@ export fn addChild(n: Node<any>, val: any): Node<any> {
 }
 
 // Attaches the specified Tree to the specified Node. Can be done with simple maps and concats. This
-// returns the new child node corresponding to the root node of the tree.
+// returns the new child node corresponding to the root node of the tree. When adding a tree, we
+// duplicate that tree and attach it to the specified node on the new tree with the parent-child
+// relationships "re-stitched" on the node's own tree. This means it is even possible to attach a
+// tree to itself without producing loops in the tree structure:
+//    A          A
+//   / \   =>   / \
+//  B   C      B   C
+//                 |
+//                 A'
+//                / \
+//               B'  C'
 export fn addChild(n: Node<any>, val: Tree<any>): Node<any> {
   const childIdOffset = n.tree.vals.length();
   const newParents = n.tree.parents.map(fn (p: int64): int64 {
