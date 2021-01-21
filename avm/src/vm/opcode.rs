@@ -5,6 +5,7 @@ use std::convert::{Infallible, TryInto};
 use std::fmt::Debug;
 use std::future::Future;
 use std::hash::Hasher;
+use std::io::{self, Write};
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::process::Command;
@@ -3155,12 +3156,10 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
 
   // "Special" opcodes
-  io!(exitop => fn(args, hand_mem) {
-    Box::pin(async move {
-      io::stdout().flush().await.unwrap();
-      io::stderr().flush().await.unwrap();
-      std::process::exit(hand_mem.read_fixed(args[0]) as i32);
-    })
+  cpu!(exitop => fn(args, hand_mem) {
+    io::stdout().flush().unwrap();
+    io::stderr().flush().unwrap();
+    std::process::exit(hand_mem.read_fixed(args[0]) as i32);
   });
   cpu!(stdoutp => fn(args, hand_mem) {
     let out_str = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
