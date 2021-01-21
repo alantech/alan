@@ -45,6 +45,7 @@ Describe "Runtime Errors"
     It "halts agc on an error"
       When run test_agc
       The status should eq "1"
+      The output should include ""
       The error should eq "out-of-bounds access" # TODO: errors need stacktrace-like reporting
     End 
   End
