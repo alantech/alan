@@ -2589,21 +2589,23 @@ export fn toSubtree(n: Node<any>): Tree<any> {
   const val = n.tree.vals[n.id].getR();
   let outTree = newTree(val);
   let children = n.tree.children[n.id].getOr(new Array<int64> []);
-  let parentIds = [0].repeat(children.length().sub(1).getOr(0));
-  //seqdo(newseq(pow(2, 64).getOr(0)), fn (): bool {
-  seqdo(newseq(100), fn (): bool {
-    const childId = children.pop();
-    const parentId = parentIds.pop();
-    const childVal = n.tree.vals[childId].getR();
-    const grandchildIds = n.tree.children[childId].getOr(new Array<int64> []);
-    const newParentId = outTree.vals.length();
-    outTree.vals.push(childVal);
-    outTree.parents.push(parentId);
-    outTree.children.push(new Array<int64> []);
-    children = grandchildIds.concat(children);
-    parentIds = [newParentId].concat(parentIds);
-    return parentIds.length().gt(0);
-  });
+  if children.length().gt(0) {
+    let parentIds = [0].repeat(children.length().sub(1).getOr(0));
+    //seqdo(newseq(pow(2, 64).getOr(0)), fn (): bool {
+    seqdo(newseq(100), fn (): bool {
+      const childId = children.pop();
+      const parentId = parentIds.pop();
+      const childVal = n.tree.vals[childId].getR();
+      const grandchildIds = n.tree.children[childId].getOr(new Array<int64> []);
+      const newParentId = outTree.vals.length();
+      outTree.vals.push(childVal);
+      outTree.parents.push(parentId);
+      outTree.children.push(new Array<int64> []);
+      children = grandchildIds.concat(children);
+      parentIds = [newParentId].concat(parentIds);
+      return parentIds.length().gt(0);
+    });
+  }
   return outTree;
 }
 
