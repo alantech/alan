@@ -2614,10 +2614,11 @@ export fn getChildren(t: Tree<any>): Array<Node<any>> = t.getRootNode().getChild
 // Attaches the value as a child of the specified node. Returns the new child node added for easier
 // method chaining
 export fn addChild(n: Node<any>, val: any): Node<any> {
-  const childId = length(n.tree.vals);
-  push(n.tree.vals, val);
-  push(n.tree.parents, n.id);
-  push(n.tree.children, [ childId, ]);
+  const childId = n.tree.vals.length();
+  n.tree.vals.push(val);
+  n.tree.parents.push(n.id);
+  n.tree.children.push(new Array<int64> []);
+  n.tree.children[n.id].getOr(new Array<int64> []).push(childId);
   return new Node<any> {
     id: childId,
     tree: n.tree,
