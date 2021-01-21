@@ -2617,8 +2617,7 @@ export fn addChild(n: Node<any>, val: any): Node<any> {
   const childId = length(n.tree.vals);
   push(n.tree.vals, val);
   push(n.tree.parents, n.id);
-  push(n.tree.children, new Array<int64> [ ]);
-  push(getOr(n.tree.children[n.id], new Array<int64> []), childId);
+  push(n.tree.children, [ childId, ]);
   return new Node<any> {
     id: childId,
     tree: n.tree,
