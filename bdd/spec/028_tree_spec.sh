@@ -153,8 +153,10 @@ baz
         on start {
           const bigNestedTree = newTree('foo')
             .addChild('bar')
+            .getTree()
             .addChild(newTree('baz')
               .addChild('quux')
+              .getTree()
             ).getTree();
 
           const mySubtree = bigNestedTree
