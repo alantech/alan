@@ -2633,11 +2633,11 @@ export fn addChild(n: Node<any>, val: Tree<any>): Node<any> {
     if p == -1 {
       return n.id;
     } else {
-      return p + childIdOffset;
+      return p.add(childIdOffset).getOr(0);
     }
   });
   const newChildren = n.tree.children.map(fn (ca: Array<int64>): Array<int64> {
-    return ca.map(fn (c: int64): int64 = c + childIdOffset);
+    return ca.map(fn (c: int64): int64 = c.add(childIdOffset).getOr(0));
   });
   n.tree.children[n.id].getOr(new Array<int64> []).push(childIdOffset);
   n.tree.vals = n.tree.vals.concat(val.vals);
