@@ -2590,7 +2590,8 @@ export fn toSubtree(n: Node<any>): Tree<any> {
   let outTree = newTree(val);
   let children = n.tree.children[n.id].getOr(new Array<int64> []);
   let parentIds = [0].repeat(children.length().sub(1).getOr(0));
-  seqdo(newseq(pow(2, 64).getOr(0)), fn (): bool {
+  //seqdo(newseq(pow(2, 64).getOr(0)), fn (): bool {
+  seqdo(newseq(100), fn (): bool {
     const childId = children.pop();
     const parentId = parentIds.pop();
     const childVal = n.tree.vals[childId].getR();
