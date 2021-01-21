@@ -28,7 +28,7 @@ export event stderr: string
 // `@std/app` has access to a special `stderrp` opcode to trigger stderr writing
 on stderr fn (err: string) = stderrp(err);
 
-// The `eprint` function converts its input to a string, appends a newline, and sends it to `stderr`
+// The `eprint` function converts its input to a string, appends a newline, and does a blocking write to stderr
 export fn eprint(err: Stringifiable) {
-  emit stderr err.toString() + "\n";
+  stderrp(err.toString() + "\n");
 }
