@@ -84,8 +84,8 @@ Note: To better understand if we are building something people want to use we cu
 If you wish to contribute to Alan, or if your operating system and/or CPU architecture do not match the above, you'll need a development environment to build Alan locally:
 
 * git (any recent version should work)
-* Node.js >=10.20.1, <14.0.0
-* Rust >=1.41.1
+* Node.js >=10.20.1
+* Rust >=1.45.0
 * A complete C toolchain (gcc, clang, msvc)
 
 Once those are installed, simply:
