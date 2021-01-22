@@ -3,6 +3,7 @@ use std::io::Read;
 use std::path::Path;
 
 use byteorder::{LittleEndian, ReadBytesExt};
+use flate2::read::GzDecoder;
 use once_cell::sync::OnceCell;
 use tokio::runtime;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
@@ -71,10 +72,22 @@ pub fn exec(fp: &str, delete_after_load: bool) {
       eprintln!("File not found: {}", fp);
       std::process::exit(2);
     }
-    let bytes = File::open(fp).unwrap().bytes().count();
-    let mut bytecode = vec![0; bytes / 8];
-    let mut f = File::open(fp).unwrap();
-    f.read_i64_into::<LittleEndian>(&mut bytecode).unwrap();
+    // Test if it's gzip compressed
+    let mut bytes = Vec::new();
+    File::open(fp).unwrap().read_to_end(&mut bytes).unwrap();
+    let gz = GzDecoder::new(bytes.as_slice());
+    let mut bytecode;
+    if gz.header().is_some() {
+      let count = gz.bytes().count();
+      bytecode = vec![0; count / 8];
+      let mut gz = GzDecoder::new(bytes.as_slice());
+      gz.read_i64_into::<LittleEndian>(&mut bytecode).unwrap();
+    } else {
+      let bytes = File::open(fp).unwrap().bytes().count();
+      bytecode = vec![0; bytes / 8];
+      let mut f = File::open(fp).unwrap();
+      f.read_i64_into::<LittleEndian>(&mut bytecode).unwrap();
+    }
     if delete_after_load {
       std::fs::remove_file(Path::new(fp)).unwrap();
     }

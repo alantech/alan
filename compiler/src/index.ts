@@ -5,8 +5,9 @@ import * as fs from 'fs'
 import commander = require('commander')
 
 import buildPipeline from './pipeline'
-import * as ammtoaga from './ammtoaga'
 import * as agatoagc from './agatoagc'
+import * as agctoagz from './agctoagz'
+import * as ammtoaga from './ammtoaga'
 import * as ammtojs from './ammtojs'
 import * as lntoamm from './lntoamm'
 
@@ -27,6 +28,7 @@ const convert = buildPipeline([
   ['amm', 'aga', ammtoaga],
   ['amm', 'js', ammtojs],
   ['aga', 'agc', agatoagc],
+  ['agc', 'agz', agctoagz],
 ])
 
 let inputfile: string, outputfile: string
