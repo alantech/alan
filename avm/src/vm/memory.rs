@@ -190,9 +190,9 @@ impl HandlerMemory {
   /// `mems` indexes relevant to it if available
   fn addr_to_idxs_opt(self: &HandlerMemory, addr: i64) -> Option<(usize, usize)> {
     return if addr >= 0 {
-      self.addr.0[addr as usize]
+      *self.addr.0.get(addr as usize).unwrap_or(&None)
     } else if addr <= CLOSURE_ARG_MEM_END {
-      self.addr.1[(addr - CLOSURE_ARG_MEM_START) as usize]
+      *self.addr.1.get((addr - CLOSURE_ARG_MEM_START) as usize).unwrap_or(&None)
     } else {
       Some((0, ((-1 * addr - 1) / 8) as usize))
     };
@@ -609,7 +609,12 @@ impl HandlerMemory {
           }
         }
       }
-      Arc::get_mut(dest).expect("couldn't add array to destination: dangling pointer").mems.append(&mut orig_arr_copies);
+      if cfg!(debug_assertions) {
+        let strong_count = Arc::strong_count(dest);
+        Arc::get_mut(dest).expect(format!("couldn't add array to destination: dangling pointer (strong count: {})", strong_count).as_str()).mems.append(&mut orig_arr_copies);
+      } else {
+        Arc::get_mut(dest).expect(format!("couldn't add array to destination: dangling pointer").as_str()).mems.append(&mut orig_arr_copies);
+      }
       // Finally, set the destination address to point at the original, main nested array
       dest.set_addr(dest_addr, dest_offset, std::usize::MAX);
     }

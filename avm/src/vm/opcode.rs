@@ -2352,12 +2352,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         let mut hm = HandlerMemory::fork(Arc::clone(&hand_mem_ref));
         hm.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
         hm.write_fixed(CLOSURE_ARG_MEM_START + 2, i as i64);
-        runners.push(subhandler.clone().run(hm));
+        runners.push(subhandler.clone().run(hm).then(HandlerMemory::_drop_parent));
       }
-      let hms = join_all(runners).await;
-      for hm in hms {
-        hm.drop_parent();
-      }
+      join_all(runners).await;
       Arc::try_unwrap(hand_mem_ref).expect("Dangling reference to parent HM in parallel opcode")
     })
   });
