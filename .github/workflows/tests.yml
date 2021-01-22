@@ -92,10 +92,6 @@ jobs:
     # The type of runner that the job will run on
     runs-on: macos-latest
 
-    strategy:
-      matrix:
-        node-version: [10.20.1, 12.x, 14.x]
-
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
@@ -104,10 +100,10 @@ jobs:
     # Rust is automatically set up and included by default according to: https://github.com/actions/starter-workflows/blob/master/ci/rust.yml
 
     # Set up Node.js
-    - name: Use Node.js ${{ matrix.node-version }}
+    - name: Use Node.js 14.x
       uses: actions/setup-node@v1
       with:
-        node-version: ${{ matrix.node-version }}
+        node-version: 14.x
 
     # Run the BDD tests
     - name: Run BDD tests
@@ -133,10 +129,6 @@ jobs:
     # The type of runner that the job will run on
     runs-on: windows-latest
 
-    strategy:
-      matrix:
-        node-version: [10.20.1, 12.x, 14.x]
-
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
@@ -145,10 +137,10 @@ jobs:
     # Rust is automatically set up and included by default according to: https://github.com/actions/starter-workflows/blob/master/ci/rust.yml
 
     # Set up Node.js
-    - name: Use Node.js ${{ matrix.node-version }}
+    - name: Use Node.js 14.x
       uses: actions/setup-node@v1
       with:
-        node-version: ${{ matrix.node-version }}
+        node-version: 14.x
 
     # Run the BDD tests
     - name: Run BDD tests
