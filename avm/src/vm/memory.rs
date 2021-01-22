@@ -161,6 +161,10 @@ impl HandlerMemory {
     self
   }
 
+  pub(crate) async fn _drop_parent(self: Arc<HandlerMemory>) -> Arc<HandlerMemory> {
+    self.drop_parent()
+  }
+
   /// Returns true if the idxs are valid in self
   fn is_idx_defined(self: &HandlerMemory, a: usize, b: usize) -> bool {
     let is_raw = a == std::usize::MAX;
@@ -706,7 +710,7 @@ impl HandlerMemory {
       parent.mems.append(&mut hm.mems); // Append the relevant ones to the original HandlerMemory
                                         // Set the return address on the original HandlerMemory to the acquired indexes, potentially
                                         // offset if it is a pointer at new data
-      drop(parent);
+      drop(parent); // drop the `&mut HandlerMemory` since `&Arc<HM>` is neded here:
       if a < std::usize::MAX && a >= s {
         self.set_addr(CLOSURE_ARG_MEM_START, a + offset, b);
       } else {

@@ -1,4 +1,4 @@
-use futures::future::{join_all, poll_fn};
+use futures::future::{join_all, poll_fn, FutureExt};
 use futures::task::{Context, Poll};
 use std::collections::HashMap;
 use std::convert::{Infallible, TryInto};
@@ -2289,10 +2289,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         let mut hm = HandlerMemory::fork(Arc::clone(&hand_mem_ref));
         hm.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
         hm.write_fixed(CLOSURE_ARG_MEM_START + 2, i as i64);
-        mappers.push(subhandler.clone().run(hm));
+        mappers.push(subhandler.clone().run(hm).then(HandlerMemory::_drop_parent));
       }
-      let mut hms = join_all(mappers).await;
-      hms = hms.into_iter().map(HandlerMemory::drop_parent).collect();
+      let hms = join_all(mappers).await;
       let mut hand_mem = Arc::try_unwrap(hand_mem_ref).expect("Dangling reference to parent HM in parallel opcode");
       hand_mem.init_fractal(args[2]);
       for hm in hms {
