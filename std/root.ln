@@ -2351,7 +2351,7 @@ export fn keys(hm: HashMap<Hashable, any>): Array<Hashable> = map(hm.keyVal, fn 
 export fn vals(hm: HashMap<Hashable, any>): Array<any> = map(hm.keyVal, fn (kv: KeyVal<Hashable, any>): any = kv.val);
 export fn length(hm: HashMap<Hashable, any>): int64 = length(hm.keyVal);
 
-export fn get(hm: HashMap<Hashable, any>, key: Hashable): any {
+export fn get(hm: HashMap<Hashable, any>, key: Hashable): Result<any> {
   const hash = key.toHash().abs() % length(hm.lookup);
   const list = getR(hm.lookup[hash]);
   const index = list.find(fn (i: int64): Array<int64> {
@@ -2706,6 +2706,45 @@ export fn find(t: Tree<any>, mapper: function): Node<any> {
       },
     }
   );
+}
+
+// foldup for what!?
+export fn foldup(t: Tree<any>, folder: function): anythingElse {
+  const leaves = t.toNodeArray().filter(fn (n: Node<any>): bool = n.getChildren().length().eq(0));
+  let lookup = leaves.map(fn (l: Node<any>): KeyVal<int64, anythingElse> {
+    return new KeyVal<int64, anythingElse> {
+      key: l.id,
+      val: folder(l, new Array<anythingElse> []),
+    };
+  }).toHashMap();
+  let nodeList = newHashMap(-1, false);
+  leaves.eachLin(fn (l: Node<any>) {
+    const parentId = l.getParent().id;
+    if parentId > -1 {
+      nodeList.set(l.getParent().id, true);
+    }
+  });
+  seqdo(newseq(pow(2, 64).getOr(0)), fn (): bool {
+    const nodes = nodeList
+      .keyVal()
+      .filter(fn (kv: KeyVal<int64, bool>): bool = kv.val)
+      .map(fn (kv: KeyVal<int64, bool>): bool = t.getNodeById(kv.key));
+    const childVals = nodes.map(fn (n: Node<any>): Array<anythingElse> {
+      return n.tree.children[n.id].getOr(new Array<int64> []).map(fn (i: int64): anythingElse {
+        return lookup.get(i).getR();
+      });
+    });
+    const newVals = nodes.map(fn (n: Node<any>, i: int64): anythingElse {
+      return folder(n, childVals[i].getR());
+    });
+    nodeList.keys().each(fn (k: int64) = nodeList.set(k, false));
+    nodes.eachLin(fn (n: Node<any>, i: int64) {
+      nodeList.set(n.id, true);
+      lookup.set(n.id, newVals[i].getR());
+    });
+    return nodeList.keyVal().filter(fn (kv: KeyVal<int64, bool>): bool = kv.val).length().gt(0);
+  });
+  return lookup.get(t.getRootNode().id).getR();
 }
 
 // Operator declarations
