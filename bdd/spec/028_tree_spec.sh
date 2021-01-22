@@ -144,4 +144,52 @@ baz
       The output should eq "$BASICOUTPUT"
     End
   End
+
+  Describe "subtree and deeply nested tree construction"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+
+        on start {
+          const bigNestedTree = newTree('foo')
+            .addChild('bar')
+            .getTree()
+            .addChild(newTree('baz')
+              .addChild('quux')
+              .getTree()
+            ).getTree();
+
+          const mySubtree = bigNestedTree
+            .getRootNode()
+            .getChildren()[1]
+            .getOr(newTree('what').getRootNode())
+            .toSubtree();
+
+          print(bigNestedTree.getRootNode() || 'wrong');
+          print(mySubtree.getRootNode() || 'wrong');
+
+          emit exit 0;
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    SUBTREEOUTPUT="foo
+baz"
+
+    It "runs js"
+      When run test_js
+      The output should eq "$SUBTREEOUTPUT"
+    End
+
+    It "runs agc"
+      When run test_agc
+      The output should eq "$SUBTREEOUTPUT"
+    End
+  End
 End

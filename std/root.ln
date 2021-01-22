@@ -2583,26 +2583,93 @@ export fn prune(n: Node<any>): Tree<any> {
   return n.tree;
 }
 
+// Takes the given node and copies that node and all of its children into a new tree with the
+// current node as the root. Unfortunately a sequential algorithm right now.
+export fn toSubtree(n: Node<any>): Tree<any> {
+  const val = n.tree.vals[n.id].getR();
+  let outTree = newTree(val);
+  let children = n.tree.children[n.id].getOr(new Array<int64> []);
+  if children.length().gt(0) {
+    let parentIds = [0].repeat(children.length());
+    seqdo(newseq(pow(2, 64).getOr(0)), fn (): bool {
+      const childId = children.pop();
+      const parentId = parentIds.pop();
+      const childVal = n.tree.vals[childId].getR();
+      const grandchildIds = n.tree.children[childId].getOr(new Array<int64> []);
+      const newParentId = outTree.vals.length();
+      outTree.vals.push(childVal);
+      outTree.parents.push(parentId);
+      outTree.children.push(new Array<int64> []);
+      children = grandchildIds.concat(children);
+      parentIds = [newParentId].repeat(grandchildIds.length()).concat(parentIds);
+      return parentIds.length().gt(0);
+    });
+  }
+  return outTree;
+}
+
 export fn getChildren(t: Tree<any>): Array<Node<any>> = t.getRootNode().getChildren();
 
-// returns the new child node added
+// Attaches the value as a child of the specified node. Returns the new child node added for easier
+// method chaining
 export fn addChild(n: Node<any>, val: any): Node<any> {
-  const childId = length(n.tree.vals);
-  push(n.tree.vals, val);
-  push(n.tree.parents, n.id);
-  push(n.tree.children, new Array<int64> [ ]);
-  push(getOr(n.tree.children[n.id], new Array<int64> []), childId);
+  const childId = n.tree.vals.length();
+  n.tree.vals.push(val);
+  n.tree.parents.push(n.id);
+  n.tree.children.push(new Array<int64> []);
+  n.tree.children[n.id].getOr(new Array<int64> []).push(childId);
   return new Node<any> {
     id: childId,
     tree: n.tree,
   };
 }
 
+// Attaches the specified Tree to the specified Node. Can be done with simple maps and concats. This
+// returns the new child node corresponding to the root node of the tree. When adding a tree, we
+// duplicate that tree and attach it to the specified node on the new tree with the parent-child
+// relationships "re-stitched" on the node's own tree. This means it is even possible to attach a
+// tree to itself without producing loops in the tree structure:
+//    A          A
+//   / \   =>   / \
+//  B   C      B   C
+//                 |
+//                 A'
+//                / \
+//               B'  C'
+export fn addChild(n: Node<any>, val: Tree<any>): Node<any> {
+  const childIdOffset = n.tree.vals.length();
+  const newParents = n.tree.parents.map(fn (p: int64): int64 {
+    if p == -1 {
+      return n.id;
+    } else {
+      return p.add(childIdOffset).getOr(0);
+    }
+  });
+  const newChildren = n.tree.children.map(fn (ca: Array<int64>): Array<int64> {
+    return ca.map(fn (c: int64): int64 = c.add(childIdOffset).getOr(0));
+  });
+  n.tree.children[n.id].getOr(new Array<int64> []).push(childIdOffset);
+  n.tree.vals = n.tree.vals.concat(val.vals);
+  n.tree.parents = n.tree.parents.concat(newParents);
+  return new Node<any> {
+    id: childIdOffset,
+    tree: n.tree,
+  };
+}
+
+// Attaches the specified Node and its children to the specified Node. This returns the new child
+// node corresponding to the attached node
+export fn addChild(n: Node<any>, val: Node<any>): Node<any> = n.addChild(val.toSubtree());
+
+// Attaches the specified value to the specified Tree, by referencing a Tree directly, attaches to
+// the root node, and returns the new child node
 export fn addChild(t: Tree<any>, val: any): Node<any> = t.getRootNode().addChild(val);
 
-export fn addChild(t: Tree<any>, val: Node<any>): Node<any> = t.getRootNode().addChild(val);
+// Attaches the specified Node and its children to the specified Tree's root node
+export fn addChild(t: Tree<any>, val: Node<any>): Node<any> = t.getRootNode().addChild(val.toSubtree());
 
-export fn addChild(n: Node<any>, val: Tree<any>): Node<any> = n.addChild(val.getRootNode());
+// Attahces one tree to the root node of another tree. Returns the node of the attached tree's root
+export fn addChild(t: Tree<any>, val: Tree<any>): Node<any> = t.getRootNode().addChild(val);
 
 export fn getOr(n: Node<any>, default: any): any = getOr(n.tree.vals[n.id], default);
 

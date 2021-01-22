@@ -598,11 +598,11 @@ module.exports = {
   poparr:   arr => arr.length > 0 ? [ true, arr.pop(), ] : [ false, 'cannot pop empty array', ],
   lenarr:   arr => BigInt(arr.length),
   indarrf: (arr, val) => {
-    const ind = arr.indexOf(val)
+    const ind = BigInt(arr.indexOf(val))
     return ind > -1 ? [ true, ind, ] : [ false, 'element not found', ]
   },
   indarrv: (arr, val) => {
-    const ind = arr.indexOf(val)
+    const ind = BigInt(arr.indexOf(val))
     return ind > -1 ? [ true, ind, ] : [ false, 'element not found', ]
   },
   delindx: (arr, idx) => {
