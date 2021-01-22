@@ -1,0 +1,17 @@
+
+        from @std/app import start, print, exit
+
+        on start {
+          const test = newHashMap('foo', 1);
+          test.set('bar', 2);
+          test.set('baz', 99);
+          print(test.keyVal().map(fn (n: KeyVal<string, int64>): string {
+            return 'key: ' + n.key + "\nval: " + toString(n.val);
+          }).join("\n"));
+          print(test.keys().join(', '));
+          print(test.vals().map(fn (n: int64): string = n.toString()).join(', '));
+          print(test.length());
+          print(test.get('foo'));
+          emit exit 0;
+        }
+      

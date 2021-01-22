@@ -176,8 +176,10 @@ impl HandlerMemory {
     if self.is_idx_defined(a, b) {
       return None;
     }
-    let res = self.parent.as_ref().unwrap().hm_for_idxs(a, b);
-    return res.or(self.parent.clone());
+    match self.parent.as_ref() {
+      Some(parent) => parent.hm_for_idxs(a, b).or(Some(parent.clone())),
+      None => None,
+    }
   }
 
   /// Takes a given address and looks up the fractal location and
@@ -199,7 +201,6 @@ impl HandlerMemory {
     self: &Arc<HandlerMemory>,
     addr: i64,
   ) -> ((usize, usize), Option<Arc<HandlerMemory>>) {
-    let idxs = self.addr_to_idxs_opt(addr);
     return match self.addr_to_idxs_opt(addr) {
       Some(res) => (res, self.hm_for_idxs(res.0, res.1)),
       None => {
@@ -253,7 +254,6 @@ impl HandlerMemory {
     if let Some(hm) = hm_opt {
       // copy necessary data from ancestor
       HandlerMemory::transfer(&hm, addr, self, addr);
-      drop(hm);
     }
     &mut Arc::get_mut(self).expect("couldn't grab mutable memory: dangling pointer").mems[a]
   }
@@ -354,8 +354,9 @@ impl HandlerMemory {
       self.args_addr
     };
     let hm = Arc::get_mut(self).expect("couldn't write to HandlerMemory: dangling pointer");
+    let b = hm.mems[a].len();
     hm.mems[a].push((std::usize::MAX, val));
-    self.set_addr(addr, a, self.mems[a].len());
+    self.set_addr(addr, a, b);
   }
 
   /// Stores a nested fractal of data in a given address.
