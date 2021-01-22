@@ -2585,57 +2585,59 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem
     })
   });
-  io!(foldp => fn(args, mut hand_mem) {
-    Box::pin(async move {
-      let obj = hand_mem.read_fractal(args[0]);
-      let (arr, _) = hand_mem.read_from_fractal(&obj, 0);
-      let mut vals = Vec::with_capacity(arr.len());
-      for i in 0..arr.len() {
-        let mut hm = HandlerMemory::new(None, 1);
-        hand_mem.register_from_fractal(CLOSURE_ARG_MEM_START, &arr, i);
-        HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut hm, 0);
-        vals.push(hm);
-      }
-      let subhandler = HandlerFragment::new(args[1], 0);
-      hand_mem.register_out(args[0], 1, CLOSURE_ARG_MEM_START);
-      let mut init = HandlerMemory::new(None, 1);
-      HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut init, 0);
-      // We can only go up to 'n' parallel sequential computations here
-      let n = num_cpus::get();
-      let l = vals.len();
-      let s = l / n;
-      let mut reducers = Vec::with_capacity(n);
-      for i in 0..n {
-        let subvals = if i == n - 1 {
-          vals[i * s..].to_vec()
-        } else {
-          vals[i * s..(i + 1) * s].to_vec()
-        };
-        let mem = hand_mem.clone();
-        let init2 = init.clone();
-        let subhandler2 = subhandler.clone();
-        reducers.push(task::spawn(async move {
-          let mut cumulative = init2.clone();
-          for i in 0..subvals.len() {
-            let current = &subvals[i];
-            let mut hm = mem.clone();
-            HandlerMemory::transfer(&cumulative, 0, &mut hm, CLOSURE_ARG_MEM_START + 1);
-            HandlerMemory::transfer(current, 0, &mut hm, CLOSURE_ARG_MEM_START + 2);
-            hm = subhandler2.clone().run(hm).await;
-            HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START, &mut cumulative, 0);
-          }
-          cumulative
-        }));
-      }
-      hand_mem.init_fractal(args[2]);
-      let hms = join_all(reducers).await;
-      for i in 0..n {
-        let hm = hms[i].as_ref().unwrap();
-        HandlerMemory::transfer(&hm, 0, &mut hand_mem, CLOSURE_ARG_MEM_START);
-        hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
-      }
-      hand_mem
-    })
+  io!(foldp => fn(_args, mut _hand_mem) {
+    todo!("foldp");
+    // Box::pin(async move {
+      // let obj = hand_mem.read_fractal(args[0]);
+      // let (arr, _) = hand_mem.read_from_fractal(&obj, 0);
+      // let mut vals = Vec::with_capacity(arr.len());
+      // for i in 0..arr.len() {
+      //   let mut hm = HandlerMemory::new(None, 1);
+      //   hand_mem.register_from_fractal(CLOSURE_ARG_MEM_START, &arr, i);
+      //   HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut hm, 0);
+      //   vals.push(hm);
+      // }
+      // let subhandler = HandlerFragment::new(args[1], 0);
+      // hand_mem.register_out(args[0], 1, CLOSURE_ARG_MEM_START);
+      // let mut init = HandlerMemory::new(None, 1);
+      // HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut init, 0);
+      // // We can only go up to 'n' parallel sequential computations here
+      // let n = num_cpus::get();
+      // let l = vals.len();
+      // let s = l / n;
+      // let mut reducers = Vec::with_capacity(n);
+      // for i in 0..n {
+      //   let subvals = if i == n - 1 {
+      //     vals[i * s..].to_vec()
+      //   } else {
+      //     vals[i * s..(i + 1) * s].to_vec()
+      //   };
+      //   eprintln!("subvals: {:?}", subvals);
+      //   let mem = hand_mem.clone();
+      //   let init2 = init.clone();
+      //   let subhandler2 = subhandler.clone();
+      //   reducers.push(task::spawn(async move {
+      //     let mut cumulative = init2.clone();
+      //     for i in 0..subvals.len() {
+      //       let current = &subvals[i];
+      //       let mut hm = mem.clone();
+      //       HandlerMemory::transfer(&cumulative, 0, &mut hm, CLOSURE_ARG_MEM_START + 1);
+      //       HandlerMemory::transfer(current, 0, &mut hm, CLOSURE_ARG_MEM_START + 2);
+      //       hm = subhandler2.clone().run(hm).await;
+      //       HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START, &mut cumulative, 0);
+      //     }
+      //     cumulative
+      //   }));
+      // }
+      // let hms = join_all(reducers).await;
+      // hand_mem.init_fractal(args[2]);
+      // for i in 0..n {
+      //   let hm = hms[i].as_ref().unwrap();
+      //   HandlerMemory::transfer(&hm, 0, &mut hand_mem, CLOSURE_ARG_MEM_START);
+      //   hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
+      // }
+      // hand_mem
+    // })
   });
   io!(foldl => fn(args, mut hand_mem) {
     Box::pin(async move {
