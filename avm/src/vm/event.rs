@@ -1,4 +1,5 @@
 use futures::future::join_all;
+use std::sync::Arc;
 use tokio::task;
 
 use crate::vm::instruction::Instruction;
@@ -34,7 +35,7 @@ pub struct EventEmit {
   /// event id
   pub(crate) id: i64,
   /// optional handler memory with payload. each handler will get its own to consume
-  pub(crate) payload: Option<HandlerMemory>,
+  pub(crate) payload: Option<Arc<HandlerMemory>>,
 }
 
 /// Describes the handler for an event
@@ -195,7 +196,7 @@ impl HandlerFragment {
   /// very high volume of small IO requests, but as most IO operations are several orders of
   /// magnitude slower than CPU operations, this is considered to be a very small minority of
   /// workloads and is ignored for now.
-  pub async fn run(mut self: HandlerFragment, mut hand_mem: HandlerMemory) -> HandlerMemory {
+  pub async fn run(mut self: HandlerFragment, mut hand_mem: Arc<HandlerMemory>) -> Arc<HandlerMemory> {
     let mut instructions = self.get_instruction_fragment();
     loop {
       // io-bound fragment
@@ -273,7 +274,7 @@ impl HandlerFragment {
 
   /// Spawns and runs a non-blocking tokio task for the fragment that can be awaited.
   /// Used to provide event and array level parallelism
-  pub fn spawn(self: HandlerFragment, hand_mem: HandlerMemory) -> task::JoinHandle<HandlerMemory> {
+  pub fn spawn(self: HandlerFragment, hand_mem: Arc<HandlerMemory>) -> task::JoinHandle<Arc<HandlerMemory>> {
     task::spawn(async move { self.run(hand_mem).await })
   }
 }
