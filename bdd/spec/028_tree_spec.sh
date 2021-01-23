@@ -192,4 +192,50 @@ baz"
       The output should eq "$SUBTREEOUTPUT"
     End
   End
+
+  Describe "foldup for tree-centric reduction"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+
+        on start {
+          const bigNestedTree = newTree('foo')
+            .addChild('bar')
+            .getTree()
+            .addChild(newTree('baz')
+              .addChild('quux')
+              .getTree()
+            ).getTree();
+          
+          print(bigNestedTree.foldup(fn (n: Node<string>, children: Array<string>): string {
+            if children.length() == 0 {
+              return n || '';
+            } else {
+              return (n || '') + ' => [ ' + children.join(', ') + ' ]';
+            }
+          }));
+
+          emit exit 0;
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    FOLDUPOUTPUT="foo => [ bar, baz => [ quux ] ]"
+
+    It "runs js"
+      When run test_js
+      The output should eq "$FOLDUPOUTPUT"
+    End
+
+    It "runs agc"
+      When run test_agc
+      The output should eq "$FOLDUPOUTPUT"
+    End
+  End
 End
