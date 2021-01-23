@@ -1,4 +1,5 @@
 use futures::future::{join_all, poll_fn};
+use futures::stream::{FuturesUnordered, StreamExt};
 use futures::task::{Context, Poll};
 use std::collections::HashMap;
 use std::convert::{Infallible, TryInto};
@@ -2350,14 +2351,27 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let hand_mem_ref = Arc::new(hand_mem);
       let fractal = hand_mem_ref.read_fractal(args[0]);
       let subhandler = HandlerFragment::new(args[1], 0);
-      let mut runners = Vec::with_capacity(fractal.len());
-      for i in 0..fractal.len() {
+      let n = num_cpus::get();
+      let l = fractal.len();
+      let s = l / n;
+      let mut runners = Vec::with_capacity(s);
+      for _ in 0..s {
+        runners.push(FuturesUnordered::<HMFuture>::new());
+      }
+      for i in 0..l {
         let mut hm = HandlerMemory::fork(Arc::clone(&hand_mem_ref));
         hm.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
         hm.write_fixed(CLOSURE_ARG_MEM_START + 2, i as i64);
-        runners.push(subhandler.clone().run(hm));
+        let j = i / s;
+        runners[j].push(Box::pin(subhandler.clone().run(hm)));
       }
-      let mut hms = join_all(runners).await;
+      let mut hms: Vec<HandlerMemory> = Vec::with_capacity(l);
+      for runner in runners {
+        let mut chuncked_hms = task::spawn(async move { runner.collect().await })
+          .await
+          .unwrap();
+        hms.append(&mut chuncked_hms);
+      };
       for hm in &mut hms {
         hm.drop_parent();
       }
