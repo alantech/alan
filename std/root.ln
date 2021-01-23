@@ -2758,6 +2758,21 @@ export fn foldup(t: Tree<any>, folder: function): anythingElse {
       }
       lookup.set(n.id, newVals[i].getR());
     });
+    // Scan through the parents and disable any that are missing one or more of its children, this
+    // allows unbalanced trees to process correctly
+    nodeList.keyVal().filter(fn (kv: KeyVal<int64, bool>): bool {
+      const n = t.getNodeById(kv.key);
+      const children = n.getChildren();
+      let missingChildren = false;
+      children.eachLin(fn (c: Node<any>) {
+        if lookup.get(c.id).isErr() {
+          missingChildren = true;
+        }
+      });
+      return missingChildren;
+    }).eachLin(fn (kv: KeyVal<int64, bool>) {
+      nodeList.set(kv.key, false);
+    });
     // Check if there are any nodes in the set to process and exit the loop if no
     return nodeList.keyVal().filter(fn (kv: KeyVal<int64, bool>): bool = kv.val).length().gt(0);
   });
