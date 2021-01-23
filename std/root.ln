@@ -2710,13 +2710,17 @@ export fn find(t: Tree<any>, mapper: function): Node<any> {
 
 // foldup for what!?
 export fn foldup(t: Tree<any>, folder: function): anythingElse {
+  // Get the leaf nodes
   const leaves = t.toNodeArray().filter(fn (n: Node<any>): bool = n.getChildren().length().eq(0));
+  // Create a lookup table from their ids to their output values
   let lookup = leaves.map(fn (l: Node<any>): KeyVal<int64, anythingElse> {
     return new KeyVal<int64, anythingElse> {
       key: l.id,
       val: folder(l, new Array<anythingElse> []),
     };
   }).toHashMap();
+  // Construct a list of nodes to process, based on the parents of the leaf nodes, using a HashMap
+  // as a set
   let nodeList = newHashMap(-1, false);
   leaves.eachLin(fn (l: Node<any>) {
     const parentId = l.getParent().id;
@@ -2724,26 +2728,40 @@ export fn foldup(t: Tree<any>, folder: function): anythingElse {
       nodeList.set(l.getParent().id, true);
     }
   });
+  // Execute the following block over and over again until there are no more nodes to process
   seqdo(newseq(pow(2, 64).getOr(0)), fn (): bool {
+    // Generate a list of ids from the nodeList by filtering out all `false` entries and mapping
+    // the remaining ids into Nodes
     const nodes = nodeList
       .keyVal()
       .filter(fn (kv: KeyVal<int64, bool>): bool = kv.val)
       .map(fn (kv: KeyVal<int64, bool>): bool = t.getNodeById(kv.key));
+    // Generate the array of child output values per node by mapping each node first into the array
+    // of children and then mapping that into the values stored in the lookup hashmap
     const childVals = nodes.map(fn (n: Node<any>): Array<anythingElse> {
       return n.tree.children[n.id].getOr(new Array<int64> []).map(fn (i: int64): anythingElse {
         return lookup.get(i).getR();
       });
     });
+    // Compute the new output values by calling the folding function on the nodes and their paired
+    // child arrays
     const newVals = nodes.map(fn (n: Node<any>, i: int64): anythingElse {
       return folder(n, childVals[i].getR());
     });
+    // Wipe the set by marking all values as false (we don't have HashMap deletes, yet)
     nodeList.keys().each(fn (k: int64) = nodeList.set(k, false));
+    // Then for each node, if it has a parent, add its parent to the set and its value to the lookup
     nodes.eachLin(fn (n: Node<any>, i: int64) {
-      nodeList.set(n.id, true);
+      const parentId = n.getParent().id;
+      if parentId > -1 {
+        nodeList.set(n.getParent().id, true);
+      }
       lookup.set(n.id, newVals[i].getR());
     });
+    // Check if there are any nodes in the set to process and exit the loop if no
     return nodeList.keyVal().filter(fn (kv: KeyVal<int64, bool>): bool = kv.val).length().gt(0);
   });
+  // Lookup the root node's value as that should be the output and return it
   return lookup.get(t.getRootNode().id).getR();
 }
 
