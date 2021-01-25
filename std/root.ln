@@ -2218,7 +2218,7 @@ export fn reducePar(arr: Array<any>, transformer: function, merger: function, in
     arr: arr,
     initial: initial,
   };
-  const intermediate = foldp(args, transformer);
+  const intermediate = new Array<any> [foldl(args, transformer)];
   return reducep(intermediate, merger);
 }
 export filter // opcode with signature `fn filter(arr: Array<any>, cb: function): Array<any>`
