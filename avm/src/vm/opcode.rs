@@ -20,12 +20,10 @@ use hyper::header::{HeaderName, HeaderValue};
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{client::Client, server::Server, Body, Request, Response, StatusCode, Uri};
 use hyper_tls::HttpsConnector;
-use num_cpus;
 use once_cell::sync::Lazy;
 use rand::rngs::OsRng;
 use rand::RngCore;
 use regex::Regex;
-use tokio::task;
 use tokio::time::sleep;
 use twox_hash::XxHash64;
 

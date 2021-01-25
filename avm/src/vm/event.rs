@@ -1,10 +1,9 @@
-use futures::future::join_all;
 use std::sync::Arc;
 use tokio::task;
 
 use crate::vm::instruction::Instruction;
 use crate::vm::memory::HandlerMemory;
-use crate::vm::opcode::{HMFuture, OpcodeFn};
+use crate::vm::opcode::OpcodeFn;
 use crate::vm::program::Program;
 use crate::vm::run::EVENT_TX;
 

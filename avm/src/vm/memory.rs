@@ -1,4 +1,3 @@
-use std::borrow::Borrow;
 use std::convert::TryInto;
 use std::str;
 use std::sync::Arc;
