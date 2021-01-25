@@ -2287,7 +2287,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         let mut hm = HandlerMemory::fork(Arc::clone(&hand_mem_ref));
         hm.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
         hm.write_fixed(CLOSURE_ARG_MEM_START + 2, i as i64);
-        mappers.push(subhandler.clone().run(hm).then(HandlerMemory::_drop_parent));
+        mappers.push(subhandler.clone().run(hm).then(HandlerMemory::drop_parent_async));
       }
       let hms = join_all(mappers).await;
       let mut hand_mem = Arc::try_unwrap(hand_mem_ref).expect("Dangling reference to parent HM in parallel opcode");
@@ -2350,7 +2350,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         let mut hm = HandlerMemory::fork(Arc::clone(&hand_mem_ref));
         hm.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
         hm.write_fixed(CLOSURE_ARG_MEM_START + 2, i as i64);
-        runners.push(subhandler.clone().run(hm).then(HandlerMemory::_drop_parent));
+        runners.push(subhandler.clone().run(hm).then(HandlerMemory::drop_parent_async));
       }
       join_all(runners).await;
       Arc::try_unwrap(hand_mem_ref).expect("Dangling reference to parent HM in parallel opcode")
@@ -2678,7 +2678,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let hms = join_all(filters).await;
       let mut idxs = vec![];
       for (i, hm) in hms.into_iter().enumerate() {
-        // let hm = &mut hms[i];
         let val = hm.read_fixed(CLOSURE_ARG_MEM_START);
         hm.drop_parent(); // this drops `hm`
         if val == 1 {

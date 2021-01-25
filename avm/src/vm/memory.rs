@@ -154,13 +154,11 @@ impl HandlerMemory {
   /// the parent out of the Arc after parallel work is done and then join on its children.
   pub fn drop_parent(mut self: Arc<HandlerMemory>) -> Arc<HandlerMemory> {
     let hm = Arc::get_mut(&mut self).expect("unable to drop parent HM: dangling pointer");
-    if let Some(parent) = hm.parent.take() {
-      drop(parent);
-    }
+    hm.parent.take();
     self
   }
 
-  pub(crate) async fn _drop_parent(self: Arc<HandlerMemory>) -> Arc<HandlerMemory> {
+  pub(crate) async fn drop_parent_async(self: Arc<HandlerMemory>) -> Arc<HandlerMemory> {
     self.drop_parent()
   }
 
@@ -684,11 +682,11 @@ impl HandlerMemory {
   pub fn fork(parent: Arc<HandlerMemory>) -> Arc<HandlerMemory> {
     let s = parent.mems.len();
     let mut hm = HandlerMemory::new(None, 1);
-    let handlermem = Arc::get_mut(&mut hm).expect("somehow a dangling pointer for a brand new HM?");
-    handlermem.parent = Some(parent);
-    handlermem.mems.resize(s + 1, Vec::new());
-    handlermem.mem_addr = s;
-    handlermem.args_addr = s;
+    let handmem = Arc::get_mut(&mut hm).expect("somehow a dangling pointer for a brand new HM?");
+    handmem.parent = Some(parent);
+    handmem.mems.resize(s + 1, Vec::new());
+    handmem.mem_addr = s;
+    handmem.args_addr = s;
     return hm;
   }
 
