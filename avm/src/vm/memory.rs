@@ -337,7 +337,7 @@ impl HandlerMemory {
         // The indexes point to fixed data
         (vec![hm.mems[a][b_usize].clone()], false)
       } else {
-        // b_usize > std::usize::MAX
+        // b_usize == std::usize::MAX
         // The indexes point at nested data
         (hm.mems[a].clone(), true)
       };
