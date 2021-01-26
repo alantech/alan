@@ -356,6 +356,133 @@ export fn toJSON(a: Array<JSONBase>): JSON {
   return json;
 }
 
+export fn newJSONObject(): JSON {
+  return new IsObject {
+    isObject: true,
+  }.toJSON();
+}
+
+export fn newJSONArray(): JSON {
+  return new IsObject {
+    isObject: false,
+  }.toJSON();
+}
+
+export fn addKeyVal(j: JSON, key: string, val: JSONBase): JSON {
+  const kv = new KeyVal<string, JSONBase> {
+    key: key,
+    val: val,
+  };
+  j.addChild(kv.toJSONNode());
+  return j;
+}
+export fn addKeyVal(j: JSON, key: string, val: float64): JSON {
+  const kv = new KeyVal<string, JSONBase> {
+    key: key,
+    val: val.toJSONBase(),
+  };
+  j.addChild(kv.toJSONNode());
+  return j;
+}
+export fn addKeyVal(j: JSON, key: string, val: bool): JSON {
+  const kv = new KeyVal<string, JSONBase> {
+    key: key,
+    val: val.toJSONBase(),
+  };
+  j.addChild(kv.toJSONNode());
+  return j;
+}
+export fn addKeyVal(j: JSON, key: string, val: string): JSON {
+  const kv = new KeyVal<string, JSONBase> {
+    key: key,
+    val: val.toJSONBase(),
+  };
+  j.addChild(kv.toJSONNode());
+  return j;
+}
+export fn addKeyVal(j: JSON, key: string, val: IsObject): JSON {
+  const kv = new KeyVal<string, JSONBase> {
+    key: key,
+    val: val.toJSONBase(),
+  };
+  j.addChild(kv.toJSONNode());
+  return j;
+}
+export fn addKeyVal(j: JSON, key: string, val: void): JSON {
+  const kv = new KeyVal<string, JSONBase> {
+    key: key,
+    val: val.toJSONBase(),
+  };
+  j.addChild(kv.toJSONNode());
+  return j;
+}
+export fn addKeyVal(j: JSON, key: string): JSON {
+  const kv = new KeyVal<string, JSONBase> {
+    key: key,
+    val: toJSONBase(),
+  };
+  j.addChild(kv.toJSONNode());
+  return j;
+}
+export fn addKeyVal(j: JSON, key: string, val: JSON): JSON {
+  const childNode = j.addChild(val);
+  // Now mutate the attached sub-tree's root node to become a KeyVal pair
+  const baseNode = childNode || toJSONNode();
+  if baseNode.isKeyVal() {
+    // Just update the key to match
+    baseNode.getMainOr(new KeyVal<string, JSONBase> {
+      key: key,
+      val: toJSONBase(),
+    }).key = key;
+    return j;
+  }
+  // We need to replace the JSONNode itself
+  const baseVal = baseNode.getAltOr(toJSONBase());
+  const newVal = new KeyVal<string, JSONBase> {
+    key: key,
+    val: baseVal,
+  }.toJSONNode();
+  j.vals.set(childNode.id, newVal);
+  return j;
+}
+
+export fn push(j: JSON, val: JSON): JSON {
+  j.addChild(val);
+  return j;
+}
+export fn push(j: JSON, val: JSONNode): JSON {
+  j.addChild(val);
+  return j;
+}
+export fn push(j: JSON, val: JSONBase): JSON {
+  j.addChild(val.toJSONNode());
+  return j;
+}
+export fn push(j: JSON, val: float64): JSON {
+  j.addChild(val.toJSONNode());
+  return j;
+}
+export fn push(j: JSON, val: bool): JSON {
+  j.addChild(val.toJSONNode());
+  return j;
+}
+export fn push(j: JSON, val: string): JSON {
+  j.addChild(val.toJSONNode());
+  return j;
+}
+export fn push(j: JSON, val: IsObject): JSON {
+  j.addChild(val.toJSONNode());
+  return j;
+}
+export fn push(j: JSON, val: void): JSON {
+  j.addChild(val.toJSONNode());
+  return j;
+}
+export fn push(j: JSON): JSON {
+  j.addChild(toJSONNode());
+  return j;
+}
+
 // TODO: Remove this hardwired version of `toString` once `foldup` compiles correctly
 export fn toString(j: JSON): string {
   // Get the leaf nodes
