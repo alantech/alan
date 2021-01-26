@@ -104,18 +104,19 @@ baz"
       sourceToAll "
         from @std/app import start, print, exit
 
-        event aNumber: int64
+        event aString: string
 
-        on aNumber fn(num: int64) {
-          print('hey I got a number! ' + num.toString());
+        on aString fn(str: string) {
+          print('hey I got a string! ' + str);
         }
 
-        on aNumber fn(num: int64) {
-          print('I also got a number! ' + num.toString());
+        on aString fn(str: string) {
+          print('I also got a string! ' + str);
+          emit exit 0;
         }
 
         on start {
-          emit aNumber 5;
+          emit aString 'hi';
         }
       "
     }
@@ -126,8 +127,8 @@ baz"
     }
     AfterAll after
 
-    THINGOUTPUT="hey I got a number! 5
-I also got a number! 5"
+    THINGOUTPUT="hey I got a string! hi
+I also got a string! hi"
 
     It "runs js"
       When run test_js
@@ -136,7 +137,7 @@ I also got a number! 5"
 
     It "runs agc"
       When run test_agc
-      The output should eq "$THINGOUTPU"
+      The output should eq "$THINGOUTPUT"
     End
   End
 End
