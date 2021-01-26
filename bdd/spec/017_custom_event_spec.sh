@@ -98,4 +98,46 @@ baz"
       The output should eq "$THINGOUTPUT"
     End
   End
+
+  Describe "multiple event handlers for an event"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+
+        event aString: string
+
+        on aString fn(str: string) {
+          print('hey I got a string! ' + str);
+        }
+
+        on aString fn(str: string) {
+          print('I also got a string! ' + str);
+          emit exit 0;
+        }
+
+        on start {
+          emit aString 'hi';
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    THINGOUTPUT="hey I got a string! hi
+I also got a string! hi"
+
+    It "runs js"
+      When run test_js
+      The output should eq "$THINGOUTPUT"
+    End
+
+    It "runs agc"
+      When run test_agc
+      The output should eq "$THINGOUTPUT"
+    End
+  End
 End

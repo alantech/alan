@@ -1,4 +1,4 @@
-use futures::future::{join_all, poll_fn};
+use futures::future::{join_all, poll_fn, FutureExt};
 use futures::task::{Context, Poll};
 use std::collections::HashMap;
 use std::convert::{Infallible, TryInto};
@@ -20,12 +20,10 @@ use hyper::header::{HeaderName, HeaderValue};
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{client::Client, server::Server, Body, Request, Response, StatusCode, Uri};
 use hyper_tls::HttpsConnector;
-use num_cpus;
 use once_cell::sync::Lazy;
 use rand::rngs::OsRng;
 use rand::RngCore;
 use regex::Regex;
-use tokio::task;
 use tokio::time::sleep;
 use twox_hash::XxHash64;
 
@@ -33,11 +31,11 @@ use crate::vm::event::{BuiltInEvents, EventEmit, HandlerFragment};
 use crate::vm::memory::{FractalMemory, HandlerMemory, CLOSURE_ARG_MEM_START};
 use crate::vm::run::EVENT_TX;
 
-static HTTP_RESPONSES: Lazy<Arc<Mutex<HashMap<i64, HandlerMemory>>>> =
-  Lazy::new(|| Arc::new(Mutex::new(HashMap::<i64, HandlerMemory>::new())));
+static HTTP_RESPONSES: Lazy<Arc<Mutex<HashMap<i64, Arc<HandlerMemory>>>>> =
+  Lazy::new(|| Arc::new(Mutex::new(HashMap::<i64, Arc<HandlerMemory>>::new())));
 
-static DS: Lazy<Arc<DashMap<String, HandlerMemory>>> =
-  Lazy::new(|| Arc::new(DashMap::<String, HandlerMemory>::new()));
+static DS: Lazy<Arc<DashMap<String, Arc<HandlerMemory>>>> =
+  Lazy::new(|| Arc::new(DashMap::<String, Arc<HandlerMemory>>::new()));
 
 // type aliases
 /// Futures implement an Unpin marker that guarantees to the compiler that the future will not move while it is running
@@ -46,12 +44,12 @@ static DS: Lazy<Arc<DashMap<String, HandlerMemory>>> =
 /// For more information see:
 /// https://stackoverflow.com/questions/58354633/cannot-use-impl-future-to-store-async-function-in-a-vector
 /// https://stackoverflow.com/questions/51485410/unable-to-tokiorun-a-boxed-future-because-the-trait-bound-send-is-not-satisfie
-pub type HMFuture = Pin<Box<dyn Future<Output = HandlerMemory> + Send>>;
+pub type HMFuture = Pin<Box<dyn Future<Output = Arc<HandlerMemory>> + Send>>;
 
 /// A function to be run for an opcode.
 pub(crate) enum OpcodeFn {
-  Cpu(fn(&[i64], &mut HandlerMemory) -> Option<EventEmit>),
-  Io(fn(Vec<i64>, HandlerMemory) -> HMFuture),
+  Cpu(fn(&[i64], &mut Arc<HandlerMemory>) -> Option<EventEmit>),
+  Io(fn(Vec<i64>, Arc<HandlerMemory>) -> HMFuture),
 }
 
 impl Debug for OpcodeFn {
@@ -111,7 +109,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   macro_rules! cpu {
     ($name:ident => fn ($args:ident , $hand_mem:ident) $body:block) => {
       #[allow(non_snake_case)]
-      fn $name($args: &[i64], $hand_mem: &mut HandlerMemory) -> Option<EventEmit> {
+      fn $name($args: &[i64], $hand_mem: &mut Arc<HandlerMemory>) -> Option<EventEmit> {
         $body
       }
       let id = opcode_id(stringify!($name));
@@ -126,7 +124,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   macro_rules! io {
     ($name:ident => fn ($args:ident , $hand_mem:ident) $body:block) => {
       #[allow(non_snake_case)]
-      fn $name($args: Vec<i64>, $hand_mem: HandlerMemory) -> HMFuture {
+      fn $name($args: Vec<i64>, $hand_mem: Arc<HandlerMemory>) -> HMFuture {
         $body
       }
       let id = opcode_id(stringify!($name));
@@ -139,7 +137,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     };
     ($name:ident => fn (mut $args:ident , $hand_mem:ident) $body:block) => {
       #[allow(non_snake_case)]
-      fn $name(mut $args: Vec<i64>, $hand_mem: HandlerMemory) -> HMFuture {
+      fn $name(mut $args: Vec<i64>, $hand_mem: Arc<HandlerMemory>) -> HMFuture {
         $body
       }
       let id = opcode_id(stringify!($name));
@@ -152,7 +150,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     };
     ($name:ident => fn ($args:ident , mut $hand_mem:ident) $body:block) => {
       #[allow(non_snake_case)]
-      fn $name($args: Vec<i64>, mut $hand_mem: HandlerMemory) -> HMFuture {
+      fn $name($args: Vec<i64>, mut $hand_mem: Arc<HandlerMemory>) -> HMFuture {
         $body
       }
       let id = opcode_id(stringify!($name));
@@ -165,7 +163,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     };
     ($name:ident => fn (mut $args:ident , mut $hand_mem:ident) $body:block) => {
       #[allow(non_snake_case)]
-      fn $name(mut $args: Vec<i64>, mut $hand_mem: HandlerMemory) -> HMFuture {
+      fn $name(mut $args: Vec<i64>, mut $hand_mem: Arc<HandlerMemory>) -> HMFuture {
         $body
       }
       let id = opcode_id(stringify!($name));
@@ -2289,15 +2287,12 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         let mut hm = HandlerMemory::fork(Arc::clone(&hand_mem_ref));
         hm.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
         hm.write_fixed(CLOSURE_ARG_MEM_START + 2, i as i64);
-        mappers.push(subhandler.clone().run(hm));
+        mappers.push(subhandler.clone().run(hm).then(HandlerMemory::drop_parent_async));
       }
-      let mut hms = join_all(mappers).await;
-      for hm in &mut hms {
-        hm.drop_parent();
-      }
+      let hms = join_all(mappers).await;
       let mut hand_mem = Arc::try_unwrap(hand_mem_ref).expect("Dangling reference to parent HM in parallel opcode");
       hand_mem.init_fractal(args[2]);
-      for hm in &mut hms {
+      for hm in hms {
         hand_mem.join(hm);
         hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
       }
@@ -2355,12 +2350,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         let mut hm = HandlerMemory::fork(Arc::clone(&hand_mem_ref));
         hm.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
         hm.write_fixed(CLOSURE_ARG_MEM_START + 2, i as i64);
-        runners.push(subhandler.clone().run(hm));
+        runners.push(subhandler.clone().run(hm).then(HandlerMemory::drop_parent_async));
       }
-      let mut hms = join_all(runners).await;
-      for hm in &mut hms {
-        hm.drop_parent();
-      }
+      join_all(runners).await;
       Arc::try_unwrap(hand_mem_ref).expect("Dangling reference to parent HM in parallel opcode")
     })
   });
@@ -2388,10 +2380,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         hm.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
         finders.push(subhandler.clone().run(hm));
       }
-      let mut hms = join_all(finders).await;
+      let hms = join_all(finders).await;
       let mut idx = None;
-      for i in 0..len {
-        let hm = &mut hms[i];
+      for (i, hm) in hms.into_iter().enumerate() {
         let val = hm.read_fixed(CLOSURE_ARG_MEM_START);
         hm.drop_parent();
         if idx.is_none() && val == 1 {
@@ -2444,7 +2435,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       }
       let hms = join_all(somers).await;
       let mut ret_val = 0;
-      for mut hm in hms {
+      for hm in hms {
         let val = hm.read_fixed(CLOSURE_ARG_MEM_START);
         hm.drop_parent();
         if val == 1 {
@@ -2486,7 +2477,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       }
       let hms = join_all(somers).await;
       let mut ret_val = 1;
-      for mut hm in hms {
+      for hm in hms {
         let val = hm.read_fixed(CLOSURE_ARG_MEM_START);
         hm.drop_parent();
         if val == 0 {
@@ -2592,58 +2583,60 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem
     })
   });
-  io!(foldp => fn(args, mut hand_mem) {
-    Box::pin(async move {
-      let obj = hand_mem.read_fractal(args[0]);
-      let (arr, _) = hand_mem.read_from_fractal(&obj, 0);
-      let mut vals = Vec::with_capacity(arr.len());
-      for i in 0..arr.len() {
-        let mut hm = HandlerMemory::new(None, 1);
-        hand_mem.register_from_fractal(CLOSURE_ARG_MEM_START, &arr, i);
-        HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut hm, 0);
-        vals.push(hm);
-      }
-      let subhandler = HandlerFragment::new(args[1], 0);
-      hand_mem.register_out(args[0], 1, CLOSURE_ARG_MEM_START);
-      let mut init = HandlerMemory::new(None, 1);
-      HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut init, 0);
-      // We can only go up to 'n' parallel sequential computations here
-      let n = num_cpus::get();
-      let l = vals.len();
-      let s = l / n;
-      let mut reducers = Vec::with_capacity(n);
-      for i in 0..n {
-        let subvals = if i == n - 1 {
-          vals[i * s..].to_vec()
-        } else {
-          vals[i * s..(i + 1) * s].to_vec()
-        };
-        let mem = hand_mem.clone();
-        let init2 = init.clone();
-        let subhandler2 = subhandler.clone();
-        reducers.push(task::spawn(async move {
-          let mut cumulative = init2.clone();
-          for i in 0..subvals.len() {
-            let current = &subvals[i];
-            let mut hm = mem.clone();
-            HandlerMemory::transfer(&cumulative, 0, &mut hm, CLOSURE_ARG_MEM_START + 1);
-            HandlerMemory::transfer(current, 0, &mut hm, CLOSURE_ARG_MEM_START + 2);
-            hm = subhandler2.clone().run(hm).await;
-            HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START, &mut cumulative, 0);
-          }
-          cumulative
-        }));
-      }
-      hand_mem.init_fractal(args[2]);
-      let hms = join_all(reducers).await;
-      for i in 0..n {
-        let hm = hms[i].as_ref().unwrap();
-        HandlerMemory::transfer(&hm, 0, &mut hand_mem, CLOSURE_ARG_MEM_START);
-        hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
-      }
-      hand_mem
-    })
-  });
+  // io!(foldp => fn(args, mut hand_mem) {
+  //   todo!("foldp with the new only-`Arc<HandlerMemory>`");
+  //   Box::pin(async move {
+  //     let obj = hand_mem.read_fractal(args[0]);
+  //     let (arr, _) = hand_mem.read_from_fractal(&obj, 0);
+  //     let mut vals = Vec::with_capacity(arr.len());
+  //     for i in 0..arr.len() {
+  //       let mut hm = HandlerMemory::new(None, 1);
+  //       hand_mem.register_from_fractal(CLOSURE_ARG_MEM_START, &arr, i);
+  //       HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut hm, 0);
+  //       vals.push(hm);
+  //     }
+  //     let subhandler = HandlerFragment::new(args[1], 0);
+  //     hand_mem.register_out(args[0], 1, CLOSURE_ARG_MEM_START);
+  //     let mut init = HandlerMemory::new(None, 1);
+  //     HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut init, 0);
+  //     // We can only go up to 'n' parallel sequential computations here
+  //     let n = num_cpus::get();
+  //     let l = vals.len();
+  //     let s = l / n;
+  //     let mut reducers = Vec::with_capacity(n);
+  //     for i in 0..n {
+  //       let subvals = if i == n - 1 {
+  //         vals[i * s..].to_vec()
+  //       } else {
+  //         vals[i * s..(i + 1) * s].to_vec()
+  //       };
+  //       eprintln!("subvals: {:?}", subvals);
+  //       let mem = hand_mem.clone();
+  //       let init2 = init.clone();
+  //       let subhandler2 = subhandler.clone();
+  //       reducers.push(task::spawn(async move {
+  //         let mut cumulative = init2.clone();
+  //         for i in 0..subvals.len() {
+  //           let current = &subvals[i];
+  //           let mut hm = mem.clone();
+  //           HandlerMemory::transfer(&cumulative, 0, &mut hm, CLOSURE_ARG_MEM_START + 1);
+  //           HandlerMemory::transfer(current, 0, &mut hm, CLOSURE_ARG_MEM_START + 2);
+  //           hm = subhandler2.clone().run(hm).await;
+  //           HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START, &mut cumulative, 0);
+  //         }
+  //         cumulative
+  //       }));
+  //     }
+  //     let hms = join_all(reducers).await;
+  //     hand_mem.init_fractal(args[2]);
+  //     for i in 0..n {
+  //       let hm = hms[i].as_ref().unwrap();
+  //       HandlerMemory::transfer(&hm, 0, &mut hand_mem, CLOSURE_ARG_MEM_START);
+  //       hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
+  //     }
+  //     hand_mem
+  //   })
+  // });
   io!(foldl => fn(args, mut hand_mem) {
     Box::pin(async move {
       let obj = hand_mem.read_fractal(args[0]);
@@ -2682,12 +2675,11 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         hm.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
         filters.push(subhandler.clone().run(hm));
       }
-      let mut hms = join_all(filters).await;
+      let hms = join_all(filters).await;
       let mut idxs = vec![];
-      for i in 0..len {
-        let hm = &mut hms[i];
+      for (i, hm) in hms.into_iter().enumerate() {
         let val = hm.read_fixed(CLOSURE_ARG_MEM_START);
-        hm.drop_parent();
+        hm.drop_parent(); // this drops `hm`
         if val == 1 {
           idxs.push(i);
         }
@@ -2865,7 +2857,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     // TODO: Swap from a timing-based poll to getting the waker to the user code so it can be
     // woken only once and reduce pressure on this lock.
     let responses = Arc::clone(&HTTP_RESPONSES);
-    let response_hm = poll_fn(|cx: &mut Context<'_>| -> Poll<HandlerMemory> {
+    let response_hm = poll_fn(|cx: &mut Context<'_>| -> Poll<Arc<HandlerMemory>> {
       let responses_hm = responses.lock().unwrap();
       let hm = responses_hm.get(&conn_id);
       if let Some(hm) = hm {
@@ -3134,9 +3126,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       if curr < seq.read_fixed(1) {
         hm.write_fixed_in_fractal(&mut seq, 0, curr + 1);
         hm = recurse_fn.run(hm).await;
-        hm.drop_parent();
+        hm = hm.drop_parent();
         hand_mem = Arc::try_unwrap(hand_mem_ref).unwrap();
-        hand_mem.join(&mut hm);
+        hand_mem.join(hm);
         hand_mem.register(args[2], CLOSURE_ARG_MEM_START, false);
       } else {
         hand_mem = Arc::try_unwrap(hand_mem_ref).unwrap();

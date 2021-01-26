@@ -82,4 +82,43 @@ Describe "Events"
       The status should eq "0"
     End
   End
+
+  Describe "passing integers from global memory"
+    before() {
+      # TODO: sourceToAll
+      sourceToTemp "
+      from @std/app import start, print, exit
+
+      event aNumber: int64;
+
+      on aNumber fn(num: int64) {
+        print('I got a number! ' + num.toString());
+        emit exit 0;
+      }
+
+      on start {
+        emit aNumber 5;
+      }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+    INTOUTPUT="I got a number! 5"
+
+    It "runs js"
+      Pending integer-event-arg-from-global-memory
+      When run test_js
+      The output should eq "$INTOUTPUT"
+    End
+
+    It "runs agc"
+      Pending integer-event-arg-from-global-memory
+      When run test_agc
+      The output should eq "$INTOUTPUT"
+    End
+  End
 End

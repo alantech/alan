@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
+use std::sync::Arc;
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use flate2::read::GzDecoder;
@@ -44,8 +45,12 @@ impl VM {
     for (i, hand) in handlers.iter().enumerate() {
       // first fragment of this handler
       let frag = HandlerFragment::new(event.id, i);
+      let payload = match event.payload.as_ref() {
+        Some(upstream_mem) => Some(Arc::new(HandlerMemory::clone(upstream_mem))),
+        None => None,
+      };
       // memory frag representing the memory for each handler call
-      let hand_mem = HandlerMemory::new(event.payload.clone(), hand.mem_req);
+      let hand_mem = HandlerMemory::new(payload, hand.mem_req);
       frag.spawn(hand_mem);
     }
   }
