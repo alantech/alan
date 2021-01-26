@@ -4,6 +4,7 @@ use std::path::Path;
 use clap::{crate_name, crate_version, App, SubCommand};
 
 use crate::compile::compile::compile;
+use crate::vm::deploy::{kill, status, new, upgrade};
 use crate::vm::run::exec;
 
 mod compile;
@@ -33,13 +34,25 @@ fn main() {
       // .author(crate_authors!(", "))
       .arg_from_usage("<FILE> 'Specifies the file to load'"))
     .subcommand(SubCommand::with_name("compile")
-      .about("Compiles the given source file (.ln, .amm, .aga) to a new output file (.amm, .aga, .agc, .js)")
+      .about("Compiles the given source file (.ln, .amm, .aga) to a new output file (.amm, .aga, .agz, .agc, .js)")
       .arg_from_usage("<INPUT> 'Specifies the input file to load'")
       .arg_from_usage("<OUTPUT> 'Specifies the output file to generate'"))
     .subcommand(SubCommand::with_name("install")
       .about("Install '/dependencies' from '.dependencies.ln'")
       .version(crate_version!()))
-    .arg_from_usage("[SOURCE] 'Specifies a source ln file to compile and run'")
+    .subcommand(SubCommand::with_name("deploy-new")
+      .about("Compiles a source ln file and deploys an app to the AWS account described in alan-deploy.json")
+      .arg_from_usage("<FILE> 'Specifies the ln file to deploy'"))
+    .subcommand(SubCommand::with_name("deploy-kill")
+      .about("Kills an Alan app with the provided id from the AWS account described in alan-deploy.json")
+      .arg_from_usage("<APP_ID> 'Specifies the alan app to kill'")
+      .arg_from_usage("<FILE> 'Specifies the source ln file to deploy'"))
+    .subcommand(SubCommand::with_name("deploy-status")
+      .about("Displays all the Alan apps from the AWS account described in alan-deploy.json"))
+    .subcommand(SubCommand::with_name("deploy-upgrade")
+      .about("Compiles a source ln file and deploys it to an existing Alan app in the AWS account described in alan-deploy.json")
+      .arg_from_usage("<APP_ID> 'Specifies the alan app to upgrade'")
+      .arg_from_usage("<FILE> 'Specifies a source ln file to deploy'"))
     .get_matches();
 
   if let Some(matches) = matches.subcommand_matches("run") {
@@ -65,6 +78,18 @@ fn main() {
       );
       std::process::exit(1);
     }
+  } else if let Some(_matches) = matches.subcommand_matches("deploy-new") {
+    // let ln_file = matches.value_of("FILE").unwrap();
+    new();
+  } else if let Some(_matches) = matches.subcommand_matches("deploy-kill") {
+    let app_id = matches.value_of("APP_ID").unwrap();
+    kill(app_id);
+  } else if let Some(_matches) = matches.subcommand_matches("deploy-status") {
+    status();
+  } else if let Some(_matches) = matches.subcommand_matches("deploy-upgrade") {
+    let app_id = matches.value_of("APP_ID").unwrap();
+    // let ln_file = matches.value_of("FILE").unwrap();
+    upgrade(app_id);
   } else if let Some(source_file) = matches.value_of("SOURCE") {
     compile_and_run(source_file);
   }
