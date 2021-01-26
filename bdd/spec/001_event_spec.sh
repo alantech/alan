@@ -83,7 +83,7 @@ Describe "Events"
     End
   End
 
-  Describe "converting integers to strings when received as an event"
+  Describe "passing integers from global memory"
     before() {
       # TODO: sourceToAll
       sourceToTemp "
@@ -110,13 +110,13 @@ Describe "Events"
     INTOUTPUT="I got a number! 5"
 
     It "runs js"
-      Pending false-positive-strings-bugfix
+      Pending integer-event-arg-from-global-memory
       When run test_js
       The output should eq "$INTOUTPUT"
     End
 
     It "runs agc"
-      Pending false-positive-strings-bugfix
+      Pending integer-event-arg-from-global-memory
       When run test_agc
       The output should eq "$INTOUTPUT"
     End
