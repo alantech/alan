@@ -195,7 +195,10 @@ impl HandlerFragment {
   /// very high volume of small IO requests, but as most IO operations are several orders of
   /// magnitude slower than CPU operations, this is considered to be a very small minority of
   /// workloads and is ignored for now.
-  pub async fn run(mut self: HandlerFragment, mut hand_mem: Arc<HandlerMemory>) -> Arc<HandlerMemory> {
+  pub async fn run(
+    mut self: HandlerFragment,
+    mut hand_mem: Arc<HandlerMemory>,
+  ) -> Arc<HandlerMemory> {
     let mut instructions = self.get_instruction_fragment();
     loop {
       // io-bound fragment
@@ -273,7 +276,10 @@ impl HandlerFragment {
 
   /// Spawns and runs a non-blocking tokio task for the fragment that can be awaited.
   /// Used to provide event and array level parallelism
-  pub fn spawn(self: HandlerFragment, hand_mem: Arc<HandlerMemory>) -> task::JoinHandle<Arc<HandlerMemory>> {
+  pub fn spawn(
+    self: HandlerFragment,
+    hand_mem: Arc<HandlerMemory>,
+  ) -> task::JoinHandle<Arc<HandlerMemory>> {
     task::spawn(async move { self.run(hand_mem).await })
   }
 }
