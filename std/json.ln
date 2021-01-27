@@ -25,12 +25,24 @@ export fn isObject(a: IsObject) = a.isObject;
 export fn isArray(a: IsObject) = !a.isObject;
 
 /* JSONBase functions */
-export fn toJSONBase(a: float64): JSONBase = main(main(a));
-export fn toJSONBase(a: bool): JSONBase = main(alt(a));
-export fn toJSONBase(a: string): JSONBase = alt(main(a));
-export fn toJSONBase(a: IsObject): JSONBase = alt(alt(main(a)));
-export fn toJSONBase(a: void): JSONBase = alt(alt(alt(void)));
-export fn toJSONBase(): JSONBase = alt(alt(alt(void)));
+export fn toJSONBase(a: float64): JSONBase {
+  return main(main(a));
+}
+export fn toJSONBase(a: bool): JSONBase {
+  return main(alt(a));
+}
+export fn toJSONBase(a: string): JSONBase {
+  return alt(main(a));
+}
+export fn toJSONBase(a: IsObject): JSONBase {
+  return alt(alt(main(a)));
+}
+export fn toJSONBase(a: void): JSONBase {
+  alt(alt(alt(void)));
+}
+export fn toJSONBase(): JSONBase {
+  alt(alt(alt(void)));
+}
 
 export fn getFloat64(a: JSONBase): Result<float64> {
   if a.isMain() {
@@ -146,14 +158,30 @@ export fn toString(a: JSONBase): string {
 }
 
 /* JSONNode function */
-export fn toJSONNode(a: float64): JSONNode = alt(a.toJSONBase());
-export fn toJSONNode(a: bool): JSONNode = alt(a.toJSONBase());
-export fn toJSONNode(a: string): JSONNode = alt(a.toJSONBase());
-export fn toJSONNode(a: IsObject): JSONNode = alt(a.toJSONBase());
-export fn toJSONNode(a: void): JSONNode = alt(a.toJSONBase());
-export fn toJSONNode(): JSONNode = alt(toJSONBase());
-export fn toJSONNode(a: JSONBase): JSONNode = alt(a);
-export fn toJSONNode(a: KeyVal<string, JSONBase>) = main(a);
+export fn toJSONNode(a: float64): JSONNode {
+  return alt(a.toJSONBase());
+}
+export fn toJSONNode(a: bool): JSONNode {
+  return alt(a.toJSONBase());
+}
+export fn toJSONNode(a: string): JSONNode {
+  return alt(a.toJSONBase());
+}
+export fn toJSONNode(a: IsObject): JSONNode {
+  return alt(a.toJSONBase());
+}
+export fn toJSONNode(a: void): JSONNode {
+  return alt(a.toJSONBase());
+}
+export fn toJSONNode(): JSONNode {
+  return alt(toJSONBase());
+}
+export fn toJSONNode(a: JSONBase): JSONNode {
+  return alt(a);
+}
+export fn toJSONNode(a: KeyVal<string, JSONBase>): JSONNode {
+  return main(a);
+}
 
 export fn getFloat64(a: JSONNode): Result<float64> {
   if a.isAlt() {
