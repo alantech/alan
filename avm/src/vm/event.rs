@@ -1,4 +1,7 @@
 use std::sync::Arc;
+use futures::FutureExt;
+use futures::future::Then;
+use futures::future::join_all;
 use tokio::task;
 
 use crate::vm::instruction::Instruction;
@@ -6,6 +9,8 @@ use crate::vm::memory::HandlerMemory;
 use crate::vm::opcode::OpcodeFn;
 use crate::vm::program::Program;
 use crate::vm::run::EVENT_TX;
+
+use super::opcode::HMFuture;
 
 #[derive(PartialEq, Eq, Hash)]
 /// Special events in alan found in standard library modules, @std.
@@ -185,6 +190,42 @@ impl HandlerFragment {
     };
   }
 
+  #[inline(always)]
+  async fn run_cpu(&mut self, mut hand_mem: Arc<HandlerMemory>, instrs: &Vec<Instruction>) -> Arc<HandlerMemory> {
+    instrs.iter().for_each(|i| {
+      if let OpcodeFn::Cpu(func) = i.opcode.fun {
+        if let Some(event) = func(i.args.as_slice(), &mut hand_mem) {
+          let event_tx = EVENT_TX.get().unwrap();
+          if let Err(_) = event_tx.send(event) {
+            eprintln!("Event transmission error");
+            std::process::exit(2);
+          }
+        };
+      } else {
+        eprintln!("expected another CPU instruction");
+        std::process::exit(2);
+      }
+    });
+    hand_mem
+  }
+
+  #[inline(always)]
+  async fn run_io(&mut self, mut hand_mem: Arc<HandlerMemory>, instrs: &Vec<Instruction>) -> Arc<HandlerMemory> {
+    let futures: Vec<_> = instrs.iter().map(|i| {
+      if let OpcodeFn::Io(func) = i.opcode.fun {
+        func(i.args.clone(), HandlerMemory::fork(hand_mem.clone())).then(HandlerMemory::drop_parent_async)
+      } else {
+        eprintln!("expected another IO instruction");
+        std::process::exit(2);
+      }
+    }).collect();
+    let hms = join_all(futures).await;
+    for hm in hms.into_iter() {
+      hand_mem.join(hm);
+    }
+    hand_mem
+  }
+
   /// Runs the specified handler in Tokio tasks. Tokio tasks are allocated to a threadpool bound by
   /// the number of CPU cores on the machine it is executing on. Actual IO work gets scheduled into
   /// an IO threadpool (unbounded, according to Tokio) while CPU work uses the special
@@ -199,78 +240,90 @@ impl HandlerFragment {
     mut self: HandlerFragment,
     mut hand_mem: Arc<HandlerMemory>,
   ) -> Arc<HandlerMemory> {
-    let mut instructions = self.get_instruction_fragment();
     loop {
-      // io-bound fragment
-      match &instructions[0].opcode.fun {
-        OpcodeFn::Io(io_func) => {
-          if instructions.len() > 1 {
-            // TODO: Revive IO parallelization, again, once AGA dependency graph *actually* works
-            /*let futures: Vec<HMFuture> = instructions.iter().map(|ins| {
-              //eprintln!("{} {} {} {}", ins.opcode._name, ins.args[0], ins.args[1], ins.args[2]);
-              let async_func = ins.opcode.async_func.unwrap();
-              return async_func(ins.args.clone(), hand_mem.fork());
-            }).collect();
-            let hms = task::spawn(async move {
-              join_all(futures).await
-            }).await.unwrap();
-            //eprintln!(">>>>>>>>>>>>>>>>>>");
-            //eprintln!("{:?}", &hand_mem);
-            //eprintln!("{:?}", &hms);
-            for hm in hms {
-              hand_mem.join(hm);
-            }
-            //eprintln!("{:?}", &hand_mem);
-            //eprintln!("<<<<<<<<<<<<<<<<<");
-            */
-            for i in 0..instructions.len() {
-              let ins = &instructions[i];
-              if let OpcodeFn::Io(async_func) = ins.opcode.fun {
-                hand_mem = async_func(ins.args.clone(), hand_mem).await;
-              } else {
-                eprintln!("expected another IO instruction, found a CPU instruction");
-              };
-              //eprintln!("{} {} {} {}", ins.opcode._name, ins.args[0], ins.args[1], ins.args[2]);
-            }
-          } else {
-            //eprintln!("{} {} {} {}", instructions[0].opcode._name, instructions[0].args[0], instructions[0].args[1], instructions[0].args[2]);
-            let future = io_func(instructions[0].args.clone(), hand_mem);
-            hand_mem = future.await;
-          }
-        }
-        OpcodeFn::Cpu(_) => {
-          // cpu-bound fragment
-          let self_and_hand_mem = task::block_in_place(move || {
-            instructions.iter().for_each(|i| {
-              if let OpcodeFn::Cpu(func) = i.opcode.fun {
-                //eprintln!("{} {} {} {}", i.opcode._name, i.args[0], i.args[1], i.args[2]);
-                let event = func(i.args.as_slice(), &mut hand_mem);
-                if event.is_some() {
-                  let event_tx = EVENT_TX.get().unwrap();
-                  let event_sent = event_tx.send(event.unwrap());
-                  if event_sent.is_err() {
-                    eprintln!("Event transmission error");
-                    std::process::exit(2);
-                  }
-                }
-              } else {
-                eprintln!("expected another CPU instruction, found an IO instruction");
-              };
-            });
-            (self, hand_mem)
-          });
-          self = self_and_hand_mem.0;
-          hand_mem = self_and_hand_mem.1;
-        }
-      }
-      let next_frag = self.get_next_fragment();
-      if next_frag.is_some() {
-        self = next_frag.unwrap();
-        instructions = self.get_instruction_fragment();
+      let instrs = self.get_instruction_fragment();
+      hand_mem = match instrs[0].opcode.fun {
+        OpcodeFn::Cpu(_) => self.run_cpu(hand_mem, instrs).await,
+        OpcodeFn::Io(_) => self.run_io(hand_mem, instrs).await,
+      };
+      if let Some(frag) = self.get_next_fragment() {
+        self = frag;
       } else {
         break;
       }
     }
+    // let mut instructions = self.get_instruction_fragment();
+    // loop {
+    //   // io-bound fragment
+    //   match &instructions[0].opcode.fun {
+    //     OpcodeFn::Io(io_func) => {
+    //       if instructions.len() > 1 {
+    //         // TODO: Revive IO parallelization, again, once AGA dependency graph *actually* works
+    //         /*let futures: Vec<HMFuture> = instructions.iter().map(|ins| {
+    //           //eprintln!("{} {} {} {}", ins.opcode._name, ins.args[0], ins.args[1], ins.args[2]);
+    //           let async_func = ins.opcode.async_func.unwrap();
+    //           return async_func(ins.args.clone(), hand_mem.fork());
+    //         }).collect();
+    //         let hms = task::spawn(async move {
+    //           join_all(futures).await
+    //         }).await.unwrap();
+    //         //eprintln!(">>>>>>>>>>>>>>>>>>");
+    //         //eprintln!("{:?}", &hand_mem);
+    //         //eprintln!("{:?}", &hms);
+    //         for hm in hms {
+    //           hand_mem.join(hm);
+    //         }
+    //         //eprintln!("{:?}", &hand_mem);
+    //         //eprintln!("<<<<<<<<<<<<<<<<<");
+    //         */
+    //         for i in 0..instructions.len() {
+    //           let ins = &instructions[i];
+    //           if let OpcodeFn::Io(async_func) = ins.opcode.fun {
+    //             hand_mem = async_func(ins.args.clone(), hand_mem).await;
+    //           } else {
+    //             eprintln!("expected another IO instruction, found a CPU instruction");
+    //           };
+    //           //eprintln!("{} {} {} {}", ins.opcode._name, ins.args[0], ins.args[1], ins.args[2]);
+    //         }
+    //       } else {
+    //         //eprintln!("{} {} {} {}", instructions[0].opcode._name, instructions[0].args[0], instructions[0].args[1], instructions[0].args[2]);
+    //         let future = io_func(instructions[0].args.clone(), hand_mem);
+    //         hand_mem = future.await;
+    //       }
+    //     }
+    //     OpcodeFn::Cpu(_) => {
+    //       // cpu-bound fragment
+    //       let self_and_hand_mem = task::block_in_place(move || {
+    //         instructions.iter().for_each(|i| {
+    //           if let OpcodeFn::Cpu(func) = i.opcode.fun {
+    //             //eprintln!("{} {} {} {}", i.opcode._name, i.args[0], i.args[1], i.args[2]);
+    //             let event = func(i.args.as_slice(), &mut hand_mem);
+    //             if event.is_some() {
+    //               let event_tx = EVENT_TX.get().unwrap();
+    //               let event_sent = event_tx.send(event.unwrap());
+    //               if event_sent.is_err() {
+    //                 eprintln!("Event transmission error");
+    //                 std::process::exit(2);
+    //               }
+    //             }
+    //           } else {
+    //             eprintln!("expected another CPU instruction, found an IO instruction");
+    //           };
+    //         });
+    //         (self, hand_mem)
+    //       });
+    //       self = self_and_hand_mem.0;
+    //       hand_mem = self_and_hand_mem.1;
+    //     }
+    //   }
+    //   let next_frag = self.get_next_fragment();
+    //   if next_frag.is_some() {
+    //     self = next_frag.unwrap();
+    //     instructions = self.get_instruction_fragment();
+    //   } else {
+    //     break;
+    //   }
+    // }
     hand_mem
   }
 
