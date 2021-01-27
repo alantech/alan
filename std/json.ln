@@ -569,10 +569,30 @@ export fn toString(j: JSON): string {
 }
 
 export interface json {
-  toJSON(any): json,
+  toJSON(float64): json,
+  toJSON(bool): json,
+  toJSON(string): json,
+  toJSON(void): json,
+  toJSON(HashMap<string, float64>): json,
+  toJSON(HashMap<string, bool>): json,
+  toJSON(HashMap<string, string>): json,
+  toJSON(HashMap<string, void>): json,
+  toJSON(Array<float64>): json,
+  toJSON(Array<bool>): json,
+  toJSON(Array<string>): json,
+  toJSON(Array<void>): json,
   toString(json): string,
   /*newJSONObject(): json,
   newJSONArray(): json,*/
-  addKeyVal(json, string, any): json,
-  push(json, any): json,
+  addKeyVal(json, string, float64): json,
+  addKeyVal(json, string, bool): json,
+  addKeyVal(json, string, void): json,
+  addKeyVal(json, string): json,
+  addKeyVal(json, string, json): json,
+  push(json, json): json,
+  push(json, float64): json,
+  push(json, bool): json,
+  push(json, string): json,
+  push(json, void): json,
+  push(json): json,
 }
