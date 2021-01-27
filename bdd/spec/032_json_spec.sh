@@ -5,7 +5,7 @@ Describe "JSON"
     before() {
       sourceToAll "
         from @std/app import start, print, exit
-        from @std/json import json
+        from @std/json import JSON, toJSON, toString, JSONBase, JSONNode, IsObject
 
         on start {
           1.0.toJSON().print();
