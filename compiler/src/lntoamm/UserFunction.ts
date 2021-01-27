@@ -703,7 +703,12 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
     // all inputs of that particular interface are the same type. TODO: If this is not true, it must
     // be a compile-time error earlier on.
     const last = microstatements[microstatements.length - 1]
+    console.log({
+      last,
+      applies: this.getReturnType().typeApplies(last.outputType, scope, new Map()),
+    })
     if (!this.getReturnType().typeApplies(last.outputType, scope, new Map()))  {
+      console.log('hi')
       const returnTypeAst = Ast.fulltypenameAstFromString(this.getReturnType().typename)
       let returnSubtypes = []
       if (returnTypeAst.has('opttypegenerics')) {
@@ -728,6 +733,10 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
           return t
         })
       }
+      console.log({
+        returnSubtypes,
+        iface: this.getReturnType().iface,
+      })
       if (this.getReturnType().iface) {
         const originalArgTypes = Object.values(this.args)
         for (let i = 0; i < inputTypes.length; i++) {
@@ -735,7 +744,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
             microstatements[microstatements.length - 1].outputType = inputTypes[i]
           }
         }
-      } else if (returnSubtypes.some((t: Type) => !!t.iface)) {
+      } else if (returnSubtypes.some((t: Type) => t.hasInterfaceType())) {
         const oldReturnType = this.getReturnType()
         const originalArgTypes = Object.values(this.args)
         for (let i = 0; i < inputTypes.length; i++) {
@@ -757,6 +766,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
           last.outputType = newReturnType
         }
       } else {
+        console.log('hi again')
         const lastTypeAst = Ast.fulltypenameAstFromString(last.outputType.typename)
         const lastSubtypes = []
         if (lastTypeAst.has('opttypegenerics')) {
@@ -766,7 +776,11 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
             lastSubtypes.push(scope.deepGet(r.get('fulltypename').t))
           })
         }
-        if (lastSubtypes.some((t: Type) => !!t.iface)) {
+        console.log({
+          lastSubtypes,
+          hasInterfaceType: lastSubtypes.some((t: Type) => t.hasInterfaceType()),
+        })
+        if (lastSubtypes.some((t: Type) => t.hasInterfaceType())) {
           const oldLastType = last.outputType
           const originalArgTypes = Object.values(this.args)
           for (let i = 0; i < inputTypes.length; i++) {
@@ -776,12 +790,39 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
               }
             }
           }
-          let newLastType = oldLastType.originalType.solidify(
-            lastSubtypes.map((t: Type) => t.typename),
-            scope
-          )
-          last.outputType = newLastType
+          console.log({
+            lastSubtypes,
+            hasInterfaceType: lastSubtypes.some((t: Type) => t.hasInterfaceType()),
+          })
+          if (lastSubtypes.some((t: Type) => t.hasInterfaceType())) {
+            // Just fall back to the user-provided type for now
+            console.log('hi once more')
+            console.log({
+              last,
+              returnType: this.getReturnType(),
+            })
+            console.log(microstatements.map(m => m.toString()).join('\n'))
+            last.outputType = this.getReturnType()
+          } else {
+            let newLastType = oldLastType.originalType.solidify(
+              lastSubtypes.map((t: Type) => t.typename),
+              scope
+            )
+            last.outputType = newLastType
+          }
         }
+      }
+    }
+    // If `last` is a REREF, we also need to potentially update the type on the original record
+    for (let i = 0; i < microstatements.length; i++) {
+      let m = microstatements[i]
+      if (m.outputName === last.outputName && m.statementType !== StatementType.REREF) {
+        console.log({
+          m,
+          last,
+        })
+        m.outputType = last.outputType
+        break
       }
     }
     // Now that we're done with this, we need to pop out all of the ENTERFN microstatements created

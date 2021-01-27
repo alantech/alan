@@ -514,7 +514,7 @@ export fn push(j: JSON): JSON {
 // TODO: Remove this hardwired version of `toString` once `foldup` compiles correctly
 export fn toString(j: JSON): string {
   // Get the leaf nodes
-  const leaves = t
+  const leaves = j
     .toNodeArray()
     .filter(fn (n: Node<JSONNode>): bool = n.getChildren().length().eq(0));
   // Create a lookup table from their ids to their output values
@@ -593,7 +593,7 @@ export fn toString(j: JSON): string {
     return nodeList.keyVal().filter(fn (kv: KeyVal<int64, bool>): bool = kv.val).length().gt(0);
   });
   // Lookup the root node's value as that should be the output and return it
-  return lookup.get(t.getRootNode().id).getR();
+  return lookup.get(j.getRootNode().id).getR();
 }
 
 export interface json {
