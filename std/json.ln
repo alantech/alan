@@ -567,3 +567,12 @@ export fn toString(j: JSON): string {
   // Lookup the root node's value as that should be the output and return it
   return lookup.get(t.getRootNode().id).getR();
 }
+
+export interface json {
+  toJSON(any): json,
+  toString(json): string,
+  newJSONObject(): json,
+  newJSONArray(): json,
+  addKeyVal(json, string, any): json,
+  push(json, any): json
+}
