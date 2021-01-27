@@ -745,11 +745,17 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
             }
           }
         }
-        let newReturnType = oldReturnType.originalType.solidify(
-          returnSubtypes.map((t: Type) => t.typename),
-          scope
-        )
-        last.outputType = newReturnType
+        // Try to tackle issue with `main` and `alt` when they are in a function without branching
+        if (returnSubtypes.some((t: Type) => !!t.iface)) {
+          last.outputType = this.getReturnType()
+        } else {
+          // We were able to piece together the right type info, let's use it
+          let newReturnType = oldReturnType.originalType.solidify(
+            returnSubtypes.map((t: Type) => t.typename),
+            scope
+          )
+          last.outputType = newReturnType
+        }
       } else {
         const lastTypeAst = Ast.fulltypenameAstFromString(last.outputType.typename)
         const lastSubtypes = []
