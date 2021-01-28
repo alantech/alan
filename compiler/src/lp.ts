@@ -85,8 +85,10 @@ export interface LPNode {
 
 export class LPError {
   msg: string
-  constructor(msg) {
+  parent: LPError | LPError[] | undefined
+  constructor(msg, parent = undefined) {
     this.msg = msg
+    this.parent = parent
   }
 }
 
@@ -269,7 +271,7 @@ export class ZeroOrOne implements LPNode {
   }
 
   static build(zeroOrOne: LPNode): ZeroOrOne {
-    return new ZeroOrOne('', zeroOrOne, '', -1, -1)
+    return new ZeroOrOne(zeroOrOne.t, zeroOrOne, '', -1, -1)
   }
 
   toString(): string {
@@ -316,7 +318,7 @@ export class ZeroOrMore implements LPNode {
   }
 
   static build(zeroOrMore: LPNode): ZeroOrMore {
-    return new ZeroOrMore('', [zeroOrMore], '', -1, -1)
+    return new ZeroOrMore(zeroOrMore.t, [zeroOrMore], '', -1, -1)
   }
 
   toString(): string {
@@ -382,7 +384,7 @@ export class OneOrMore implements LPNode {
   }
 
   static build(oneOrMore: LPNode): OneOrMore {
-    return new OneOrMore('', [oneOrMore], '', -1, -1)
+    return new OneOrMore(oneOrMore.t, [oneOrMore], '', -1, -1)
   }
 
   toString(): string {
@@ -420,7 +422,9 @@ export class OneOrMore implements LPNode {
       if (o instanceof LPError) {
         lp.restore(s)
         if (oneOrMore.length === 0) {
-          return lpError(`No match for OneOrMore ${this.oneOrMore.toString()}`, lp)
+          const err = lpError(`No match for OneOrMore ${this.oneOrMore.toString()}`, lp)
+          err.parent = o
+          return err
         }
         return new OneOrMore(t, oneOrMore, filename, line, char)
       }
@@ -451,7 +455,7 @@ export class And implements LPNode {
   }
 
   static build(and: LPNode[]): And {
-    return new And('', and, '', -1, -1)
+    return new And(`(${and.map(a => a.t).join(' & ')})`, and, '', -1, -1)
   }
 
   toString(): string {
@@ -515,7 +519,7 @@ export class Or implements LPNode {
   }
 
   static build(or: LPNode[]): Or {
-    return new Or('', or, '', -1, -1)
+    return new Or(`(${or.map(o => o.t).join(' | ')})`, or, '', -1, -1)
   }
 
   toString(): string {
@@ -547,11 +551,13 @@ export class Or implements LPNode {
     const char = lp.char
     let t = ''
     let or = []
+    let errs = []
     // Return the first match (if there are multiple matches, it is the first one)
     for (let i = 0; i < this.or.length; i++) {
       const s = lp.snapshot()
       const o = this.or[i].apply(lp)
       if (o instanceof LPError) {
+        errs.push(o)
         lp.restore(s)
         continue
       }
@@ -560,7 +566,11 @@ export class Or implements LPNode {
       or.push(o)
       break
     }
-    if (or.length === 0) return lpError('No matching tokens found', lp)
+    if (or.length === 0) {
+      const err = lpError(`No matching tokens ${this.or.map(o => o.t).join(' | ')} found`, lp)
+      err.parent = errs
+      return err
+    }
     return new Or(t, or, filename, line, char)
   }
 }
@@ -581,7 +591,7 @@ export class ExclusiveOr implements LPNode {
   }
 
   static build(xor: LPNode[]): ExclusiveOr {
-    return new ExclusiveOr('', xor, '', -1, -1)
+    return new ExclusiveOr(`(${xor.map(x => x.t).join(' ^ ')})`, xor, '', -1, -1)
   }
 
   toString(): string {
@@ -613,11 +623,13 @@ export class ExclusiveOr implements LPNode {
     const char = lp.char
     let t = ''
     let xor = []
+    let errs = []
     // Checks the matches, it only succeeds if there's only one match
     for (let i = 0; i < this.xor.length; i++) {
       const s = lp.snapshot()
       const x = this.xor[i].apply(lp)
       if (x instanceof LPError) {
+        errs.push(x)
         lp.restore(s)
         continue
       }
@@ -627,8 +639,16 @@ export class ExclusiveOr implements LPNode {
       // We still restore the snapshot for further iterations
       lp.restore(s)
     }
-    if (xor.length === 0) return lpError('No matching tokens found', lp)
-    if (xor.length > 1) return lpError('Multiple matching tokens found', lp)
+    if (xor.length === 0) {
+      const err = lpError('No matching tokens found', lp)
+      err.parent = errs
+      return err
+    }
+    if (xor.length > 1) {
+      const err = lpError('Multiple matching tokens found', lp)
+      err.parent = errs
+      return err
+    }
     // Since we restored the state every time, we need to take the one that matched and re-run it
     // to make sure the offset is correct
     return new ExclusiveOr(t, [this.xor[xor[0]].apply(lp) as LPNode], filename, line, char)
@@ -653,7 +673,7 @@ export class LeftSubset implements LPNode {
   }
 
   static build(left: LPNode, right: LPNode): LeftSubset {
-    return new LeftSubset('', left, right, '', -1, -1)
+    return new LeftSubset(`(${left.t} - ${right.t})`, left, right, '', -1, -1)
   }
 
   toString(): string {
@@ -693,7 +713,7 @@ export class LeftSubset implements LPNode {
     }
     // In this path, we force a failure because the match also exists in the right subset
     lp.restore(s)
-    return lpError('Right subset matches unexpectedly', lp)
+    return lpError(`Right subset ${this.right.t} matches unexpectedly`, lp)
   }
 }
 
@@ -719,7 +739,7 @@ export class NamedAnd implements LPNode {
   }
 
   static build(and: Named): NamedAnd {
-    return new NamedAnd(Object.keys(and).join(' '), and, '', -1, -1)
+    return new NamedAnd(`(${Object.keys(and).join(' & ')})`, and, '', -1, -1)
   }
 
   toString(): string {
@@ -785,7 +805,7 @@ export class NamedOr implements LPNode {
   }
 
   static build(or: Named): NamedOr {
-    return new NamedOr(Object.keys(or).join(' '), or, '', -1, -1)
+    return new NamedOr(`(${Object.keys(or).join(' | ')})`, or, '', -1, -1)
   }
 
   toString(): string {
@@ -817,12 +837,14 @@ export class NamedOr implements LPNode {
     const char = lp.char
     let t = ''
     let or = {}
+    let errs = []
     const orNames = Object.keys(this.or)
     // Return the first match (if there are multiple matches, it is the first one)
     for (let i = 0; i < orNames.length; i++) {
       const s = lp.snapshot()
       const o = this.or[orNames[i]].apply(lp)
       if (o instanceof LPError) {
+        errs.push(o)
         lp.restore(s)
         continue
       }
@@ -831,7 +853,11 @@ export class NamedOr implements LPNode {
       or[orNames[i]] = o
       break
     }
-    if (Object.keys(or).length === 0) return lpError('No matching or tokens found', lp)
+    if (Object.keys(or).length === 0) {
+      const err = lpError('No matching or tokens found', lp)
+      err.parent = errs
+      return err
+    }
     return new NamedOr(t, or, filename, line, char)
   }
 }

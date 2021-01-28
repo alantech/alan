@@ -275,7 +275,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
         // TODO: If more than one function matches, need to run multiple dispatch logic
         scope.deepGet(cond.get('blocklike').get('fnname').t)[0] :
         UserFunction.fromFunctionsAst(cond.get('blocklike').get('functions'), scope)
-    ).maybeTransform(new Map())
+    ).maybeTransform(new Map(), scope)
     if (condBlockFn.statements[condBlockFn.statements.length - 1].isReturnStatement()) {
       hasConditionalReturn = true
     }
@@ -294,7 +294,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
             // TODO: If more than one function matches, need to run multiple dispatch logic
             scope.deepGet(notblock.get('fnname').t)[0] :
             UserFunction.fromFunctionsAst(notblock.get('functions'), scope)
-        ).maybeTransform(new Map())
+        ).maybeTransform(new Map(), scope)
         if (elseBlockFn.statements[elseBlockFn.statements.length - 1].isReturnStatement()) {
           hasConditionalReturn = true
         }
@@ -446,6 +446,10 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
   }
 
   maybeTransform(interfaceMap: Map<Type, Type>, scope?: Scope) {
+    console.log({
+      m: 'maybeTransform',
+      scope,
+    })
     if (
       this.statements.some(s => s.isConditionalStatement()) ||
       this.statements.some(s => s.hasObjectLiteral())
@@ -468,8 +472,13 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
           genericstr: string,
           openstr: string,
         ) => {
+          let newScope = this.scope
+          if (scope !== undefined) {
+            newScope = new Scope(scope)
+            newScope.secondaryPar = this.scope
+          }
           const originaltypestr = `${basetypestr.trim()}<${genericstr.trim()}>`
-          let originalType = this.scope.deepGet(originaltypestr) as Type
+          let originalType = newScope.deepGet(originaltypestr) as Type
           if (!originalType || !(originalType instanceof Type)) {
             // It may be the first time this particular type has shown up, let's build it
             const typeAst = Ast.fulltypenameAstFromString(originaltypestr)
@@ -482,16 +491,11 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
                 generics.push(r.get('fulltypename').t)
               })
             }
-            const baseType = this.scope.deepGet(baseTypeName) as Type
+            const baseType = newScope.deepGet(baseTypeName) as Type
             if (!baseType || !(baseType instanceof Type)) { // Now we panic
               throw new Error('This should be impossible')
             }
-            originalType = baseType.solidify(generics, this.scope)
-          }
-          let newScope = this.scope
-          if (scope !== undefined) {
-            newScope = new Scope(scope)
-            newScope.secondaryPar = this.scope
+            originalType = baseType.solidify(generics, newScope)
           }
           const replacementType = originalType.realize(interfaceMap, newScope)
           return `new ${replacementType.typename} ${openstr}`
@@ -503,8 +507,13 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
           genericstr: string,
           openstr: string,
         ) => {
+          let newScope = this.scope
+          if (scope !== undefined) {
+            newScope = new Scope(scope)
+            newScope.secondaryPar = this.scope
+          }
           const originaltypestr = `${basetypestr.trim()}<${genericstr.trim()}>`
-          let originalType = this.scope.deepGet(originaltypestr) as Type
+          let originalType = newScope.deepGet(originaltypestr) as Type
           if (!originalType || !(originalType instanceof Type)) {
             // It may be the first time this particular type has shown up, let's build it
             const typeAst = Ast.fulltypenameAstFromString(originaltypestr)
@@ -517,21 +526,26 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
                 generics.push(r.get('fulltypename').t)
               })
             }
-            const baseType = this.scope.deepGet(baseTypeName) as Type
+            const baseType = newScope.deepGet(baseTypeName) as Type
             if (!baseType || !(baseType instanceof Type)) { // Now we panic
               throw new Error('This should be impossible')
             }
-            originalType = baseType.solidify(generics, this.scope)
+            originalType = baseType.solidify(generics, newScope)
           }
-          const replacementType = originalType.realize(interfaceMap, this.scope)
+          const replacementType = originalType.realize(interfaceMap, newScope)
           return `: ${replacementType.typename}${openstr}`
         })
         const correctedAst = Ast.statementAstFromString(secondCorrection)
         s.statementAst = correctedAst
         // statementAsts.push(correctedAst)
+        let newScope = this.scope
+        if (scope !== undefined) {
+          newScope = new Scope(scope)
+          newScope.secondaryPar = this.scope
+        }
         if (s.isConditionalStatement()) {
           const cond = s.statementAst.get('conditionals')
-          const res = UserFunction.conditionalToCond(cond, this.scope)
+          const res = UserFunction.conditionalToCond(cond, newScope)
           const newStatements = res[0] as Array<LPNode>
           if (res[1]) hasConditionalReturn = true
           statementAsts.push(...newStatements)

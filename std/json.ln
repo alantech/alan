@@ -110,7 +110,7 @@ export fn isObjectOrArray(a: JSONBase): bool {
   if a.isAlt() {
     const b = a.getAltOr(main(''));
     if b.isAlt() {
-      const c = b.getAltOr(void);
+      const c = b.getAltOr(alt(void));
       return c.isMain();
     }
   }
@@ -140,7 +140,7 @@ export fn toString(a: JSONBase): string {
     if b.isMain() {
       return '"' + b.getMainOr('').split('"').join('\\"') + '"';
     } else {
-      const c = b.getAltOr(void);
+      const c = b.getAltOr(alt(void));
       if c.isMain() {
         const obj = c.getMainOr(new IsObject {
           isObject: false,
@@ -540,7 +540,7 @@ export fn toString(j: JSON): string {
     const nodes = nodeList
       .keyVal()
       .filter(fn (kv: KeyVal<int64, bool>): bool = kv.val)
-      .map(fn (kv: KeyVal<int64, bool>): bool = t.getNodeById(kv.key));
+      .map(fn (kv: KeyVal<int64, bool>): Node<JSONNode> = j.getNodeById(kv.key));
     // Generate the array of child output values per node by mapping each node first into the array
     // of children and then mapping that into the values stored in the lookup hashmap
     const childVals = nodes.map(fn (n: Node<JSONNode>): Array<string> {
@@ -577,7 +577,7 @@ export fn toString(j: JSON): string {
     // Scan through the parents and disable any that are missing one or more of its children, this
     // allows unbalanced trees to process correctly
     nodeList.keyVal().filter(fn (kv: KeyVal<int64, bool>): bool {
-      const n = t.getNodeById(kv.key);
+      const n = j.getNodeById(kv.key);
       const children = n.getChildren();
       let missingChildren = false;
       children.eachLin(fn (c: Node<JSONNode>) {

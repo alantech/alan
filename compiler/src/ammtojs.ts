@@ -110,6 +110,9 @@ export const fromFile = (filename: string) => {
   const lp = new LP(filename)
   const ast = amm.apply(lp)
   if (ast instanceof LPError) {
+    console.dir({
+      ast,
+    }, { colors: true, depth: 15, })
     throw new Error(ast.msg)
   }
   return ammToJsText(ast)

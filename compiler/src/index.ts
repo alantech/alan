@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 
+// Make sure stack traces are *full*
+Error.stackTraceLimit = Infinity
+
 import * as fs from 'fs'
 
 import commander = require('commander')
@@ -82,7 +85,7 @@ if (convert[getFormat(inputfile)] && convert[getFormat(inputfile)][getFormat(out
     const end = Date.now()
     console.log(`Done in ${formatTime(end - start)}`)
   } catch (e) {
-    console.error(e.message)
+    console.error(e)
     process.exit(1)
   }
 } else {
