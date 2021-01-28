@@ -52,7 +52,7 @@ fn main() {
       .about("Deploys an .agz file to an existing app in the cloud provider described in the deploy config at ~/.alan/deploy.json")
       .arg_from_usage("<APP_ID> 'Specifies the alan app to upgrade'")
       .arg_from_usage("<AGZ_FILE> 'Specifies a source ln file to deploy'"))
-    .arg_from_usage("<SOURCE> 'Specifies a source ln file to compile and run'")
+    .arg_from_usage("[SOURCE] 'Specifies a source ln file to compile and run'")
     .get_matches();
 
   if let Some(matches) = matches.subcommand_matches("run") {
