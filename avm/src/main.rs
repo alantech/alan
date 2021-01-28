@@ -27,7 +27,7 @@ fn main() {
   let matches = App::new(crate_name!())
     .version(crate_version!())
     // .author(crate_authors!(", ")) // Causes a warning, digging in clap's source it's not obvious
-    .about("The Alan Compiler and VM")
+    .about("Compile, run and deploy Alan")
     .subcommand(SubCommand::with_name("run")
       .about("Runs compiled .agc files")
       .version(crate_version!())
@@ -41,17 +41,18 @@ fn main() {
       .about("Install '/dependencies' from '.dependencies.ln'")
       .version(crate_version!()))
     .subcommand(SubCommand::with_name("deploy-new")
-      .about("Deploys an .agz file to a new Alan app in the AWS account described in alan-deploy.json")
+      .about("Deploys an .agz file to a new app in the cloud provider described in the deploy config at ~/.alan/deploy.json")
       .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'"))
     .subcommand(SubCommand::with_name("deploy-kill")
-      .about("Kills an Alan app with the provided id from the cloud provider configuration described in alan-deploy.json")
+      .about("Kills an app with the provided id in the cloud provider described in the deploy config at ~/.alan/deploy.json")
       .arg_from_usage("<APP_ID> 'Specifies the alan app to kill'"))
     .subcommand(SubCommand::with_name("deploy-status")
-      .about("Displays all the Alan apps from the cloud provider configuration described in alan-deploy.json"))
+      .about("Displays all the apps deployed in the cloud provider described in the deploy config at ~/.alan/deploy.json"))
     .subcommand(SubCommand::with_name("deploy-upgrade")
-      .about("Deploys an .agz file to an existing Alan app in the cloud provider configuration described in alan-deploy.json")
+      .about("Deploys an .agz file to an existing app in the cloud provider described in the deploy config at ~/.alan/deploy.json")
       .arg_from_usage("<APP_ID> 'Specifies the alan app to upgrade'")
       .arg_from_usage("<AGZ_FILE> 'Specifies a source ln file to deploy'"))
+    .arg_from_usage("<SOURCE> 'Specifies a source ln file to compile and run'")
     .get_matches();
 
   if let Some(matches) = matches.subcommand_matches("run") {

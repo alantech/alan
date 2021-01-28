@@ -14,17 +14,17 @@ use tokio::runtime::Runtime;
 
 const URL: &str = "https://alan-deploy-prod.herokuapp.com";
 
-#[derive(Deserialize, Debug, Serialize)]
-struct AWSConfig {
-  credentials: AWSCredentials,
-  region: String,
-}
-
 #[allow(non_snake_case)]
 #[derive(Deserialize, Debug, Serialize)]
 struct AWSCredentials {
   accessKeyId: String,
   secretAccessKey: String,
+}
+
+#[derive(Deserialize, Debug, Serialize)]
+struct AWSConfig {
+  credentials: AWSCredentials,
+  region: String,
 }
 
 #[derive(Deserialize, Debug, Serialize)]
@@ -40,14 +40,40 @@ struct App {
 }
 
 const CONFIG_NAME: &str = ".alan/deploy.json";
+const CONFIG_SCHEMA: &str = "Please define one with the following schema: \n{
+  \"aws\": {
+      \"region\": \"string\",
+      \"credentials\": {
+        \"accessKeyId\": \"string\",
+        \"secretAccessKey\": \"string\",
+      }
+  }
+}";
+const HOW_TO_AWS: &str = "
+To create an AWS access key follow this tutorial:\nhttps://aws.amazon.com/premiumsupport/knowledge-center/create-access-key/\n
+Then enable programmatic access for the IAM user, and attach the built-in 'AdministratorAccess' policy to your IAM user.
+";
 
 fn get_config() -> Config {
   let home = std::env::var("HOME").unwrap();
   let file_name = &format!("{}/{}", home, CONFIG_NAME);
   let path = Path::new(file_name);
-  let file = File::open(path).expect(&format!("{} does not exist. Please define one.", file_name));
-  let reader = BufReader::new(file);
-  from_reader(reader).expect(&format!("Invalid deployment configuration at {}", file_name))
+  let file = File::open(path);
+  if file.is_err() {
+    println!("No deploy config at {}", file_name);
+    println!("{}", CONFIG_SCHEMA);
+    println!("{}", HOW_TO_AWS);
+    std::process::exit(1);
+  }
+  let reader = BufReader::new(file.unwrap());
+  let config = from_reader(reader);
+  if config.is_err() {
+    println!("Invalid deployment config. Error: {}", config.unwrap_err());
+    println!("{}", CONFIG_SCHEMA);
+    println!("{}", HOW_TO_AWS);
+    std::process::exit(1);
+  }
+  config.unwrap()
 }
 
 fn post(url: String, body: Value) -> Result<String, Box<dyn Error>> {
@@ -81,10 +107,10 @@ pub fn kill(app_id: &str) {
   });
   let res = post(format!("{}/kill", URL), body);
   if res.is_ok() {
-    println!("Killing Alan app with id {} if it exists...\n", app_id);
+    println!("Killing app with id {} if it exists...\n", app_id);
     status();
   } else {
-    println!("Killing Alan app with id {} failed.", app_id);
+    println!("Killing app with id {} failed.", app_id);
   }
 }
 
@@ -97,7 +123,7 @@ pub fn new(agz_file: &str) {
   let body = json!(body);
   let res = post(format!("{}/new", URL), body);
   if res.is_ok() {
-    println!("Creating new Alan app with id {}...\n", res.unwrap());
+    println!("Creating new app with id {}...\n", res.unwrap());
     status();
   } else {
     println!("Failed to create a new app.");
@@ -113,9 +139,9 @@ pub fn upgrade(app_id: &str, agz_file: &str) {
   });
   let res = post(format!("{}/upgrade", URL), body);
   if res.is_ok() {
-    println!("Upgrading Alan app {}...\n", app_id);
+    println!("Upgrading app {}...\n", app_id);
   } else {
-    println!("Failed to upgrade Alan app {}", app_id);
+    println!("Failed to upgrade app {}", app_id);
   }
 }
 
@@ -127,7 +153,7 @@ pub fn status() {
   let mut apps: Vec<App> = from_str(resp.as_str()).unwrap();
 
   if apps.len() == 0 {
-    println!("No Alan apps deployed using the cloud credentials in {}", CONFIG_NAME);
+    println!("No apps deployed using the cloud credentials in {}", CONFIG_NAME);
     return;
   }
 
@@ -135,7 +161,7 @@ pub fn status() {
   ascii_table.max_width = 100;
 
   let mut column = Column::default();
-  column.header = "Alan App Id".into();
+  column.header = "App Id".into();
   column.align = Align::Left;
   ascii_table.columns.insert(0, column);
 
