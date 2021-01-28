@@ -41,18 +41,17 @@ fn main() {
       .about("Install '/dependencies' from '.dependencies.ln'")
       .version(crate_version!()))
     .subcommand(SubCommand::with_name("deploy-new")
-      .about("Compiles a source ln file and deploys an app to the AWS account described in alan-deploy.json")
-      .arg_from_usage("<FILE> 'Specifies the ln file to deploy'"))
+      .about("Deploys an .agz file to a new Alan app in the AWS account described in alan-deploy.json")
+      .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'"))
     .subcommand(SubCommand::with_name("deploy-kill")
-      .about("Kills an Alan app with the provided id from the AWS account described in alan-deploy.json")
-      .arg_from_usage("<APP_ID> 'Specifies the alan app to kill'")
-      .arg_from_usage("<FILE> 'Specifies the source ln file to deploy'"))
+      .about("Kills an Alan app with the provided id from the cloud provider configuration described in alan-deploy.json")
+      .arg_from_usage("<APP_ID> 'Specifies the alan app to kill'"))
     .subcommand(SubCommand::with_name("deploy-status")
-      .about("Displays all the Alan apps from the AWS account described in alan-deploy.json"))
+      .about("Displays all the Alan apps from the cloud provider configuration described in alan-deploy.json"))
     .subcommand(SubCommand::with_name("deploy-upgrade")
-      .about("Compiles a source ln file and deploys it to an existing Alan app in the AWS account described in alan-deploy.json")
+      .about("Deploys an .agz file to an existing Alan app in the cloud provider configuration described in alan-deploy.json")
       .arg_from_usage("<APP_ID> 'Specifies the alan app to upgrade'")
-      .arg_from_usage("<FILE> 'Specifies a source ln file to deploy'"))
+      .arg_from_usage("<AGZ_FILE> 'Specifies a source ln file to deploy'"))
     .get_matches();
 
   if let Some(matches) = matches.subcommand_matches("run") {
@@ -78,18 +77,18 @@ fn main() {
       );
       std::process::exit(1);
     }
-  } else if let Some(_matches) = matches.subcommand_matches("deploy-new") {
-    // let ln_file = matches.value_of("FILE").unwrap();
-    new();
-  } else if let Some(_matches) = matches.subcommand_matches("deploy-kill") {
+  } else if let Some(matches) = matches.subcommand_matches("deploy-new") {
+    let agz_file = matches.value_of("AGZ_FILE").unwrap();
+    new(agz_file);
+  } else if let Some(matches) = matches.subcommand_matches("deploy-kill") {
     let app_id = matches.value_of("APP_ID").unwrap();
     kill(app_id);
   } else if let Some(_matches) = matches.subcommand_matches("deploy-status") {
     status();
-  } else if let Some(_matches) = matches.subcommand_matches("deploy-upgrade") {
+  } else if let Some(matches) = matches.subcommand_matches("deploy-upgrade") {
     let app_id = matches.value_of("APP_ID").unwrap();
-    // let ln_file = matches.value_of("FILE").unwrap();
-    upgrade(app_id);
+    let agz_file = matches.value_of("AGZ_FILE").unwrap();
+    upgrade(app_id, agz_file);
   } else if let Some(source_file) = matches.value_of("SOURCE") {
     compile_and_run(source_file);
   }
