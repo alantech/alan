@@ -9,7 +9,14 @@
 export type IsObject {
   isObject: bool,
 }
-export type JSONBase = Either<Either<float64, bool>, Either<string, Either<IsObject, void>>>
+// TODO: Fix issues with using `void` as a value in the compiler
+export type Null {
+  isNull: bool,
+}
+export const null = new Null {
+  isNull: true,
+};
+export type JSONBase = Either<Either<float64, bool>, Either<string, Either<IsObject, Null>>>
 export type JSONNode = Either<KeyVal<string, JSONBase>, JSONBase>
 export type JSON = Tree<JSONNode>
 
@@ -37,11 +44,11 @@ export fn toJSONBase(a: string): JSONBase {
 export fn toJSONBase(a: IsObject): JSONBase {
   return alt(alt(main(a)));
 }
-export fn toJSONBase(a: void): JSONBase {
-  alt(alt(alt(void)));
+export fn toJSONBase(a: Null): JSONBase {
+  alt(alt(alt(a)));
 }
 export fn toJSONBase(): JSONBase {
-  alt(alt(alt(void)));
+  alt(alt(alt(null)));
 }
 
 export fn getFloat64(a: JSONBase): Result<float64> {
@@ -64,7 +71,7 @@ export fn getBool(a: JSONBase): Result<bool> {
 }
 export fn getString(a: JSONBase): Result<string> {
   if a.isAlt() {
-    const b = a.getAltOr(alt(alt(void)));
+    const b = a.getAltOr(alt(alt(null)));
     if b.isMain() {
       return ok(b.getMainOr(''));
     }
@@ -73,9 +80,9 @@ export fn getString(a: JSONBase): Result<string> {
 }
 export fn getIsObject(a: JSONBase): Result<IsObject> {
   if a.isAlt() {
-    const b = a.getAltOr(alt(alt(void)));
+    const b = a.getAltOr(alt(alt(null)));
     if b.isAlt() {
-      const c = b.getMainOr(alt(void));
+      const c = b.getMainOr(alt(null));
       if c.isMain() {
         return ok(c.getMainOr(new IsObject {
           isObject: false,
@@ -101,7 +108,7 @@ export fn isBool(a: JSONBase): bool {
 }
 export fn isString(a: JSONBase): bool {
   if a.isAlt() {
-    const b = a.getAltOr(alt(void));
+    const b = a.getAltOr(alt(null));
     return b.isMain();
   }
   return false;
@@ -110,7 +117,7 @@ export fn isObjectOrArray(a: JSONBase): bool {
   if a.isAlt() {
     const b = a.getAltOr(main(''));
     if b.isAlt() {
-      const c = b.getAltOr(alt(void));
+      const c = b.getAltOr(alt(null));
       return c.isMain();
     }
   }
@@ -140,7 +147,7 @@ export fn toString(a: JSONBase): string {
     if b.isMain() {
       return '"' + b.getMainOr('').split('"').join('\\"') + '"';
     } else {
-      const c = b.getAltOr(alt(void));
+      const c = b.getAltOr(alt(null));
       if c.isMain() {
         const obj = c.getMainOr(new IsObject {
           isObject: false,
@@ -170,7 +177,7 @@ export fn toJSONNode(a: string): JSONNode {
 export fn toJSONNode(a: IsObject): JSONNode {
   return alt(a.toJSONBase());
 }
-export fn toJSONNode(a: void): JSONNode {
+export fn toJSONNode(a: Null): JSONNode {
   return alt(a.toJSONBase());
 }
 export fn toJSONNode(): JSONNode {
@@ -274,7 +281,7 @@ export fn toString(a: JSONNode): string {
 export fn toJSON(a: float64): JSON = newTree(a.toJSONNode());
 export fn toJSON(a: bool): JSON = newTree(a.toJSONNode());
 export fn toJSON(a: string): JSON = newTree(a.toJSONNode());
-export fn toJSON(a: void): JSON = newTree(a.toJSONNode());
+export fn toJSON(a: Null): JSON = newTree(a.toJSONNode());
 export fn toJSON(a: IsObject): JSON = newTree(a.toJSONNode());
 export fn toJSON(): JSON = newTree(toJSONNode());
 // TODO: Would an interface help here?
@@ -311,9 +318,9 @@ export fn toJSON(a: HashMap<string, string>): JSON {
   });
   return json;
 }
-export fn toJSON(a: HashMap<string, void>): JSON { // Would anyone even use such a thing?
+export fn toJSON(a: HashMap<string, Null>): JSON { // Would anyone even use such a thing?
   const json = newTree(toObject().toJSONNode());
-  a.keyVal().eachLin(fn (kv: KeyVal<string, void>) {
+  a.keyVal().eachLin(fn (kv: KeyVal<string, Null>) {
     const kv2 = new KeyVal<string, JSONBase> {
       key: kv.key,
       val: kv.val.toJSONBase(),
@@ -362,9 +369,9 @@ export fn toJSON(a: Array<string>): JSON {
   });
   return json;
 }
-export fn toJSON(a: Array<void>): JSON { // Would anyone even use such a thing?
+export fn toJSON(a: Array<Null>): JSON { // Would anyone even use such a thing?
   const json = newTree(toArray().toJSONNode());
-  a.eachLin(fn (v: void) {
+  a.eachLin(fn (v: Null) {
     json.addChild(v.toJSONNode());
   });
   return json;
@@ -436,7 +443,7 @@ export fn addKeyVal(j: JSON, key: string, val: IsObject): JSON {
   j.addChild(kv.toJSONNode());
   return j;
 }
-export fn addKeyVal(j: JSON, key: string, val: void): JSON {
+export fn addKeyVal(j: JSON, key: string, val: Null): JSON {
   const kv = new KeyVal<string, JSONBase> {
     key: key,
     val: val.toJSONBase(),
@@ -502,7 +509,7 @@ export fn push(j: JSON, val: IsObject): JSON {
   j.addChild(val.toJSONNode());
   return j;
 }
-export fn push(j: JSON, val: void): JSON {
+export fn push(j: JSON, val: Null): JSON {
   j.addChild(val.toJSONNode());
   return j;
 }
@@ -600,27 +607,27 @@ export interface json {
   toJSON(float64): json,
   toJSON(bool): json,
   toJSON(string): json,
-  toJSON(void): json,
+  toJSON(Null): json,
   toJSON(HashMap<string, float64>): json,
   toJSON(HashMap<string, bool>): json,
   toJSON(HashMap<string, string>): json,
-  toJSON(HashMap<string, void>): json,
+  toJSON(HashMap<string, Null>): json,
   toJSON(Array<float64>): json,
   toJSON(Array<bool>): json,
   toJSON(Array<string>): json,
-  toJSON(Array<void>): json,
+  toJSON(Array<Null>): json,
   toString(json): string,
   /*newJSONObject(): json,
   newJSONArray(): json,*/
   addKeyVal(json, string, float64): json,
   addKeyVal(json, string, bool): json,
-  addKeyVal(json, string, void): json,
+  addKeyVal(json, string, Null): json,
   addKeyVal(json, string): json,
   addKeyVal(json, string, json): json,
   push(json, json): json,
   push(json, float64): json,
   push(json, bool): json,
   push(json, string): json,
-  push(json, void): json,
+  push(json, Null): json,
   push(json): json,
 }
