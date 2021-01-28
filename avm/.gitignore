@@ -1,6 +1,5 @@
 .idea/*
 *.iml
-alan-deploy.json
 #Added by cargo
 
 /target
