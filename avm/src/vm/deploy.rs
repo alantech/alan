@@ -40,7 +40,7 @@ struct App {
 }
 
 const CONFIG_NAME: &str = ".alan/deploy.json";
-const CONFIG_SCHEMA: &str = "Please define one with the following schema: \n{
+const CONFIG_SCHEMA: &str = "Please define a deploy config with the following schema: \n{
   \"aws\": {
       \"region\": \"string\",
       \"credentials\": {
@@ -50,7 +50,7 @@ const CONFIG_SCHEMA: &str = "Please define one with the following schema: \n{
   }
 }";
 const HOW_TO_AWS: &str = "
-To create an AWS access key follow this tutorial:\n\nhttps://aws.amazon.com/premiumsupport/knowledge-center/create-access-key/\n\n
+To create an AWS access key follow this tutorial:\n\nhttps://aws.amazon.com/premiumsupport/knowledge-center/create-access-key/\n
 Then enable programmatic access for the IAM user, and attach the built-in 'AdministratorAccess' policy to your IAM user.
 ";
 
@@ -59,16 +59,16 @@ fn get_config() -> Config {
   let file_name = &format!("{}/{}", home, CONFIG_NAME);
   let path = Path::new(file_name);
   let file = File::open(path);
-  if file.is_err() {
-    println!("No deploy config at {}", file_name);
+  if let Err(err) = file {
+    println!("Cannot access deploy config at {}. Error: {}", file_name, err);
     println!("{}", CONFIG_SCHEMA);
     println!("{}", HOW_TO_AWS);
     std::process::exit(1);
   }
   let reader = BufReader::new(file.unwrap());
   let config = from_reader(reader);
-  if config.is_err() {
-    println!("Invalid deployment config. Error: {}", config.unwrap_err());
+  if let Err(err) = config {
+    println!("Invalid deploy config. Error: {}", err);
     println!("{}", CONFIG_SCHEMA);
     println!("{}", HOW_TO_AWS);
     std::process::exit(1);
@@ -110,7 +110,7 @@ pub fn kill(app_id: &str) {
     println!("Killing app with id {} if it exists...\n", app_id);
     status();
   } else {
-    println!("Killing app with id {} failed.", app_id);
+    println!("Killing app with id {} failed", app_id);
   }
 }
 
@@ -126,7 +126,7 @@ pub fn new(agz_file: &str) {
     println!("Creating new app with id {}...\n", res.unwrap());
     status();
   } else {
-    println!("Failed to create a new app.");
+    println!("Failed to create a new app");
   }
 }
 
