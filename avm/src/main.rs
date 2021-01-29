@@ -1,7 +1,7 @@
 use std::env;
 use std::path::Path;
 
-use clap::{crate_name, crate_version, App, SubCommand};
+use clap::{crate_name, crate_version, App, AppSettings, SubCommand};
 
 use crate::compile::compile::compile;
 use crate::vm::deploy::{kill, status, new, upgrade};
@@ -10,7 +10,7 @@ use crate::vm::run::exec;
 mod compile;
 mod vm;
 
-fn compile_and_run(source_file: &str) {
+fn compile_and_run(source_file: &str) -> i32 {
   let dest_file = "temp.agc";
   let status_code = compile(&source_file, &dest_file, true);
   if status_code == 0 {
@@ -18,79 +18,110 @@ fn compile_and_run(source_file: &str) {
     path.push(dest_file);
     let fp = path.into_os_string().into_string().unwrap();
     exec(&fp, true);
-  } else {
-    std::process::exit(status_code);
   }
+  return status_code;
 }
 
 fn main() {
-  let matches = App::new(crate_name!())
+  let app = App::new(crate_name!())
     .version(crate_version!())
-    // .author(crate_authors!(", ")) // Causes a warning, digging in clap's source it's not obvious
     .about("Compile, run and deploy Alan")
     .subcommand(SubCommand::with_name("run")
       .about("Runs compiled .agc files")
       .version(crate_version!())
-      // .author(crate_authors!(", "))
-      .arg_from_usage("<FILE> 'Specifies the file to load'"))
+      .arg_from_usage("<FILE> 'Specifies the file to load'")
+    )
     .subcommand(SubCommand::with_name("compile")
       .about("Compiles the given source file (.ln, .amm, .aga) to a new output file (.amm, .aga, .agz, .agc, .js)")
       .arg_from_usage("<INPUT> 'Specifies the input file to load'")
-      .arg_from_usage("<OUTPUT> 'Specifies the output file to generate'"))
+      .arg_from_usage("<OUTPUT> 'Specifies the output file to generate'")
+    )
     .subcommand(SubCommand::with_name("install")
       .about("Install '/dependencies' from '.dependencies.ln'")
-      .version(crate_version!()))
-    .subcommand(SubCommand::with_name("deploy-new")
-      .about("Deploys an .agz file to a new app in the cloud provider described in the deploy config at ~/.alan/deploy.json")
-      .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'"))
-    .subcommand(SubCommand::with_name("deploy-kill")
-      .about("Kills an app with the provided id in the cloud provider described in the deploy config at ~/.alan/deploy.json")
-      .arg_from_usage("<APP_ID> 'Specifies the alan app to kill'"))
-    .subcommand(SubCommand::with_name("deploy-status")
-      .about("Displays all the apps deployed in the cloud provider described in the deploy config at ~/.alan/deploy.json"))
-    .subcommand(SubCommand::with_name("deploy-upgrade")
-      .about("Deploys an .agz file to an existing app in the cloud provider described in the deploy config at ~/.alan/deploy.json")
-      .arg_from_usage("<APP_ID> 'Specifies the alan app to upgrade'")
-      .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'"))
-    .arg_from_usage("[SOURCE] 'Specifies a source ln file to compile and run'")
-    .get_matches();
+      .version(crate_version!())
+    )
+    .subcommand(SubCommand::with_name("deploy")
+      .about("Deploy .agz files to the cloud provider described in the deploy config at ~/.alan/deploy.json")
+      .setting(AppSettings::SubcommandRequiredElseHelp)
+      .subcommand(SubCommand::with_name("new")
+        .about("Deploys an .agz file to a new app in the cloud provider described in the deploy config at ~/.alan/deploy.json")
+        .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'")
+      )
+      .subcommand(SubCommand::with_name("status")
+        .about("Displays all the apps deployed in the cloud provider described in the deploy config at ~/.alan/deploy.json")
+      )
+      .subcommand(SubCommand::with_name("kill")
+        .about("Kills an app with the provided id in the cloud provider described in the deploy config at ~/.alan/deploy.json")
+        .arg_from_usage("<APP_ID> 'Specifies the alan app to kill'")
+      )
+      .subcommand(SubCommand::with_name("upgrade")
+        .about("Deploys an .agz file to an existing app in the cloud provider described in the deploy config at ~/.alan/deploy.json")
+        .arg_from_usage("<APP_ID> 'Specifies the alan app to upgrade'")
+        .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'")
+      )
+    )
+    .arg_from_usage("[SOURCE] 'Specifies a source ln file to compile and run'");
 
-  if let Some(matches) = matches.subcommand_matches("run") {
-    let agc_file = matches.value_of("FILE").unwrap();
-    let fp = &format!(
-      "{:}/{:}",
-      env::current_dir().ok().unwrap().to_str().unwrap(),
-      agc_file
-    );
-    exec(&fp, false);
-  } else if let Some(matches) = matches.subcommand_matches("compile") {
-    let source_file = matches.value_of("INPUT").unwrap();
-    let dest_file = matches.value_of("OUTPUT").unwrap();
-    std::process::exit(compile(&source_file, &dest_file, false));
-  } else if let Some(_matches) = matches.subcommand_matches("install") {
-    let source_file = ".dependencies.ln";
-    if Path::new(source_file).exists() {
-      compile_and_run(source_file);
-    } else {
-      println!(
-        "{} does not exist. Dependencies can only be installed for {}",
-        source_file, source_file
+  let matches = app.clone().get_matches();
+
+  match matches.subcommand() {
+    ("run",  Some(matches)) => {
+      let agc_file = matches.value_of("FILE").unwrap();
+      let fp = &format!(
+        "{:}/{:}",
+        env::current_dir().ok().unwrap().to_str().unwrap(),
+        agc_file
       );
-      std::process::exit(1);
+      exec(&fp, false);
+    },
+    ("compile",  Some(matches)) => {
+      let source_file = matches.value_of("INPUT").unwrap();
+      let dest_file = matches.value_of("OUTPUT").unwrap();
+      std::process::exit(compile(&source_file, &dest_file, false));
+    },
+    ("install",  _) => {
+      let source_file = ".dependencies.ln";
+      if Path::new(source_file).exists() {
+        std::process::exit(compile_and_run(source_file));
+      } else {
+        println!(
+          "{} does not exist. Dependencies can only be installed for {}",
+          source_file, source_file
+        );
+        std::process::exit(1);
+      }
+    },
+    ("deploy", Some(sub_matches)) => {
+      match sub_matches.subcommand() {
+        ("new",  Some(matches)) => {
+          let agz_file = matches.value_of("AGZ_FILE").unwrap();
+          new(agz_file);
+        },
+        ("kill",  Some(matches)) => {
+          let app_id = matches.value_of("APP_ID").unwrap();
+          kill(app_id);
+        },
+        ("upgrade",  Some(matches)) => {
+          let app_id = matches.value_of("APP_ID").unwrap();
+          let agz_file = matches.value_of("AGZ_FILE").unwrap();
+          upgrade(app_id, agz_file);
+        },
+        ("status",  _) => {
+          status();
+        },
+        // rely on AppSettings::SubcommandRequiredElseHelp
+        _ => {}
+      }
+    },
+    _ => {
+      // AppSettings::SubcommandRequiredElseHelp does not cut it here
+      if let Some(source_file) = matches.value_of("SOURCE") {
+        let path = Path::new(source_file);
+        if path.extension().is_some() {
+          std::process::exit(compile_and_run(source_file));
+        }
+      }
+      app.clone().print_help().unwrap();
     }
-  } else if let Some(matches) = matches.subcommand_matches("deploy-new") {
-    let agz_file = matches.value_of("AGZ_FILE").unwrap();
-    new(agz_file);
-  } else if let Some(matches) = matches.subcommand_matches("deploy-kill") {
-    let app_id = matches.value_of("APP_ID").unwrap();
-    kill(app_id);
-  } else if let Some(_matches) = matches.subcommand_matches("deploy-status") {
-    status();
-  } else if let Some(matches) = matches.subcommand_matches("deploy-upgrade") {
-    let app_id = matches.value_of("APP_ID").unwrap();
-    let agz_file = matches.value_of("AGZ_FILE").unwrap();
-    upgrade(app_id, agz_file);
-  } else if let Some(source_file) = matches.value_of("SOURCE") {
-    compile_and_run(source_file);
   }
 }

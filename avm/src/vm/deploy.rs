@@ -180,6 +180,6 @@ pub fn status() {
     data.push(vec![&app.id, &app.status, &app.url]);
   }
 
-  println!("Status of all apps deployed using the cloud credentials in {}\n", CONFIG_NAME);
+  println!("Status of all apps deployed using the cloud credentials in ~/{}\n", CONFIG_NAME);
   ascii_table.print(data);
 }
