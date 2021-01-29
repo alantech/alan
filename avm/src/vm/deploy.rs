@@ -12,7 +12,7 @@ use ascii_table::{AsciiTable, Column, Align};
 use base64;
 use tokio::runtime::Runtime;
 
-const URL: &str = "https://alan-deploy-prod.herokuapp.com";
+const URL: &str = "http://deploy.alantechnologies.com";
 
 #[allow(non_snake_case)]
 #[derive(Deserialize, Debug, Serialize)]
@@ -50,7 +50,7 @@ const CONFIG_SCHEMA: &str = "Please define one with the following schema: \n{
   }
 }";
 const HOW_TO_AWS: &str = "
-To create an AWS access key follow this tutorial:\nhttps://aws.amazon.com/premiumsupport/knowledge-center/create-access-key/\n
+To create an AWS access key follow this tutorial:\n\nhttps://aws.amazon.com/premiumsupport/knowledge-center/create-access-key/\n\n
 Then enable programmatic access for the IAM user, and attach the built-in 'AdministratorAccess' policy to your IAM user.
 ";
 
@@ -105,7 +105,7 @@ pub fn kill(app_id: &str) {
     "deployConfig": get_config(),
     "appId": app_id,
   });
-  let res = post(format!("{}/kill", URL), body);
+  let res = post(format!("{}/v1/kill", URL), body);
   if res.is_ok() {
     println!("Killing app with id {} if it exists...\n", app_id);
     status();
@@ -121,7 +121,7 @@ pub fn new(agz_file: &str) {
     "agzB64": app_str,
   });
   let body = json!(body);
-  let res = post(format!("{}/new", URL), body);
+  let res = post(format!("{}/v1/new", URL), body);
   if res.is_ok() {
     println!("Creating new app with id {}...\n", res.unwrap());
     status();
@@ -137,7 +137,7 @@ pub fn upgrade(app_id: &str, agz_file: &str) {
     "appId": app_id,
     "agzB64": app_str,
   });
-  let res = post(format!("{}/upgrade", URL), body);
+  let res = post(format!("{}/v1/upgrade", URL), body);
   if res.is_ok() {
     println!("Upgrading app {}...\n", app_id);
   } else {
@@ -149,7 +149,7 @@ pub fn status() {
   let body = json!({
     "deployConfig": get_config(),
   });
-  let resp = post(format!("{}/status", URL), body).unwrap();
+  let resp = post(format!("{}/v1/status", URL), body).unwrap();
   let mut apps: Vec<App> = from_str(resp.as_str()).unwrap();
 
   if apps.len() == 0 {
