@@ -12,7 +12,7 @@ use ascii_table::{AsciiTable, Column, Align};
 use base64;
 use tokio::runtime::Runtime;
 
-const URL: &str = "http://deploy.alantechnologies.com";
+const URL: &str = "https://deploy.alantechnologies.com";
 
 #[allow(non_snake_case)]
 #[derive(Deserialize, Debug, Serialize)]
