@@ -2351,10 +2351,10 @@ export fn keys(hm: HashMap<Hashable, any>): Array<Hashable> = map(hm.keyVal, fn 
 export fn vals(hm: HashMap<Hashable, any>): Array<any> = map(hm.keyVal, fn (kv: KeyVal<Hashable, any>): any = kv.val);
 export fn length(hm: HashMap<Hashable, any>): int64 = length(hm.keyVal);
 
-export fn get(hm: HashMap<Hashable, any>, key: Hashable): any {
+export fn get(hm: HashMap<Hashable, any>, key: Hashable): Result<any> {
   const hash = key.toHash().abs() % length(hm.lookup);
   const list = getR(hm.lookup[hash]);
-  const index = list.find(fn (i: int64): Array<int64> {
+  const index = list.find(fn (i: int64): Result<int64> {
     const kv = getR(hm.keyVal[i]);
     return eq(kv.key, key);
   });
