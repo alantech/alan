@@ -105,12 +105,15 @@ pub fn kill(app_id: &str) {
     "deployConfig": get_config(),
     "appId": app_id,
   });
-  let res = post(format!("{}/v1/kill", URL), body);
-  if res.is_ok() {
-    println!("Killing app with id {} if it exists...\n", app_id);
-    status();
-  } else {
-    println!("Killing app with id {} failed", app_id);
+  let resp = post(format!("{}/v1/kill", URL), body);
+  match resp {
+    Ok(_) => {
+      println!("Killing app with id {} if it exists...\n", app_id);
+      status();
+    }
+    Err(err) => {
+      println!("Killing app with id {} failed. Error: {}", app_id, err);
+    }
   }
 }
 
@@ -121,12 +124,15 @@ pub fn new(agz_file: &str) {
     "agzB64": app_str,
   });
   let body = json!(body);
-  let res = post(format!("{}/v1/new", URL), body);
-  if res.is_ok() {
-    println!("Creating new app with id {}...\n", res.unwrap());
-    status();
-  } else {
-    println!("Failed to create a new app");
+  let resp = post(format!("{}/v1/new", URL), body);
+  match resp {
+    Ok(appId) => {
+      println!("Creating new app with id {}...\n", appId);
+      status();
+    }
+    Err(err) => {
+      println!("Failed to create a new app. Error: {}", err);
+    }
   }
 }
 
@@ -137,11 +143,15 @@ pub fn upgrade(app_id: &str, agz_file: &str) {
     "appId": app_id,
     "agzB64": app_str,
   });
-  let res = post(format!("{}/v1/upgrade", URL), body);
-  if res.is_ok() {
-    println!("Upgrading app {}...\n", app_id);
-  } else {
-    println!("Failed to upgrade app {}", app_id);
+  let resp = post(format!("{}/v1/upgrade", URL), body);
+  match resp {
+    Ok(_) => {
+      println!("Upgrading app {}...\n", app_id);
+      status();
+    }
+    Err(err) => {
+      println!("Failed to upgrade app {}. Error: {}", app_id, err);
+    }
   }
 }
 
