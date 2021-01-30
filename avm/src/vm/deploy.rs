@@ -107,13 +107,8 @@ pub fn kill(app_id: &str) {
   });
   let resp = post(format!("{}/v1/kill", URL), body);
   match resp {
-    Ok(_) => {
-      println!("Killing app with id {} if it exists...\n", app_id);
-      status();
-    }
-    Err(err) => {
-      println!("Killing app with id {} failed. Error: {}", app_id, err);
-    }
+    Ok(_) => println!("Killing app with id {} if it exists...\n", app_id);
+    Err(err) => println!("Killing app with id {} failed. Error: {}", app_id, err);
   }
 }
 
@@ -126,13 +121,8 @@ pub fn new(agz_file: &str) {
   let body = json!(body);
   let resp = post(format!("{}/v1/new", URL), body);
   match resp {
-    Ok(appId) => {
-      println!("Creating new app with id {}...\n", appId);
-      status();
-    }
-    Err(err) => {
-      println!("Failed to create a new app. Error: {}", err);
-    }
+    Ok(app_id) => println!("Creating new app with id {}...\n", app_id);
+    Err(err) => println!("Failed to create a new app. Error: {}", err);
   }
 }
 
@@ -145,13 +135,8 @@ pub fn upgrade(app_id: &str, agz_file: &str) {
   });
   let resp = post(format!("{}/v1/upgrade", URL), body);
   match resp {
-    Ok(_) => {
-      println!("Upgrading app {}...\n", app_id);
-      status();
-    }
-    Err(err) => {
-      println!("Failed to upgrade app {}. Error: {}", app_id, err);
-    }
+    Ok(_) => println!("Upgrading app {}...\n", app_id);
+    Err(err) => println!("Failed to upgrade app {}. Error: {}", app_id, err);
   }
 }
 
@@ -159,8 +144,12 @@ pub fn status() {
   let body = json!({
     "deployConfig": get_config(),
   });
-  let resp = post(format!("{}/v1/status", URL), body).unwrap();
-  let mut apps: Vec<App> = from_str(resp.as_str()).unwrap();
+  let resp = post(format!("{}/v1/status", URL), body);
+  if let Err(err) = resp {
+    println!("Displaying status for apps failed with error: {}", err);
+    std::process::exit(1);
+  }
+  let mut apps: Vec<App> = from_str(resp.unwrap().as_str()).unwrap();
 
   if apps.len() == 0 {
     println!("No apps deployed using the cloud credentials in {}", CONFIG_NAME);
