@@ -107,8 +107,8 @@ pub fn kill(app_id: &str) {
   });
   let resp = post(format!("{}/v1/kill", URL), body);
   match resp {
-    Ok(_) => println!("Killing app with id {} if it exists...\n", app_id);
-    Err(err) => println!("Killing app with id {} failed. Error: {}", app_id, err);
+    Ok(_) => println!("Killing app with id {} if it exists...\n", app_id),
+    Err(err) => println!("Killing app with id {} failed. Error: {}", app_id, err)
   }
 }
 
@@ -121,8 +121,8 @@ pub fn new(agz_file: &str) {
   let body = json!(body);
   let resp = post(format!("{}/v1/new", URL), body);
   match resp {
-    Ok(app_id) => println!("Creating new app with id {}...\n", app_id);
-    Err(err) => println!("Failed to create a new app. Error: {}", err);
+    Ok(app_id) => println!("Creating new app with id {}...\n", app_id),
+    Err(err) => println!("Failed to create a new app. Error: {}", err)
   }
 }
 
@@ -135,8 +135,8 @@ pub fn upgrade(app_id: &str, agz_file: &str) {
   });
   let resp = post(format!("{}/v1/upgrade", URL), body);
   match resp {
-    Ok(_) => println!("Upgrading app {}...\n", app_id);
-    Err(err) => println!("Failed to upgrade app {}. Error: {}", app_id, err);
+    Ok(_) => println!("Upgrading app {}...\n", app_id),
+    Err(err) => println!("Failed to upgrade app {}. Error: {}", app_id, err)
   }
 }
 
