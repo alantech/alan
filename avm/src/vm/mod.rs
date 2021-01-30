@@ -1,3 +1,4 @@
+pub mod deploy;
 pub mod event;
 pub mod instruction;
 pub mod memory;
