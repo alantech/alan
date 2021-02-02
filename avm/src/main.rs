@@ -44,7 +44,7 @@ fn main() {
       .about("Deploy .agz files to the cloud provider described in the deploy config at ~/.alan/deploy.json")
       .setting(AppSettings::SubcommandRequiredElseHelp)
       .subcommand(SubCommand::with_name("new")
-        .about("Deploys an .agz file to a new app in one the cloud providers described in the deploy config at ~/.alan/deploy.json")
+        .about("Deploys an .agz file to a new app in one of the cloud providers described in the deploy config at ~/.alan/deploy.json")
         .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'")
         .arg_from_usage("<CLOUD_ALIAS> 'Specifies the cloud provider to deploy to based on its alias'")
       )
