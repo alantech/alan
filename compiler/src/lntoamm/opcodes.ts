@@ -254,12 +254,6 @@ const addopcodes = (opcodes: object) => {
                         .forEach(r => {
                           generics.push(r.get('fulltypename').t)
                         })
-                      console.log({
-                        baseTypeStr,
-                        fulltypenameAst,
-                        opttypegenerics: fulltypenameAst.get('opttypegenerics'),
-                        generics,
-                      })
                       return baseType.solidify(generics, scope)
                     })() : scope.deepGet(arrayInnerTypeStr) as Type
                   /*const arrayInnerType = scope.deepGet(
@@ -456,12 +450,6 @@ const addopcodes = (opcodes: object) => {
                           .forEach(r => {
                             generics.push(r.get('fulltypename').t)
                           })
-                        console.log({
-                          baseTypeStr,
-                          fulltypenameAst,
-                          opttypegenerics: fulltypenameAst.get('opttypegenerics'),
-                          generics,
-                        })
                         return baseType.solidify(generics, scope)
                       })() : scope.deepGet(arrayInnerTypeStr) as Type
                       /*const arrayInnerType = scope.deepGet(

@@ -1198,7 +1198,6 @@ ${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
                   microstatements[i].outputName === actualFnName &&
                   microstatements[i].statementType === StatementType.CLOSUREDEF) {
                   const m = [...microstatements, ...microstatements[i].closureStatements]
-                  console.log('hi')
                   const fn = UserFunction.dispatchFn(microstatements[i].fns, realArgTypes, scope)
                   const interfaceMap = new Map()
                   Object.values(fn.getArguments()).forEach(
@@ -1222,7 +1221,6 @@ ${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
               // Generate the relevant microstatements for this function. UserFunctions get inlined
               // with the return statement turned into a const assignment as the last statement,
               // while built-in functions are kept as function calls with the correct renaming.
-              console.log('hi2')
               UserFunction
                 .dispatchFn(fn, realArgTypes, scope)
                 .microstatementInlining(realArgNames, scope, microstatements)
@@ -1243,7 +1241,6 @@ ${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
             // Generate the relevant microstatements for this function. UserFunctions get inlined
             // with the return statement turned into a const assignment as the last statement,
             // while built-in functions are kept as function calls with the correct renaming.
-            console.log('hi3')
             UserFunction
               .dispatchFn(fn, realArgTypes, scope)
               .microstatementInlining(realArgNames, scope, microstatements)
@@ -1268,11 +1265,6 @@ ${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
             // Generate the relevant microstatements for this function. UserFunctions get inlined
             // with the return statement turned into a const assignment as the last statement,
             // while built-in functions are kept as function calls with the correct renaming.
-            console.log('hi4')
-            console.log(microstatements.map(m => m.toString()).join('\n'))
-            console.log({
-              baseAssignableAsts,
-            })
             UserFunction
               .dispatchFn(fn, realArgTypes, scope)
               .microstatementInlining(realArgNames, scope, microstatements)

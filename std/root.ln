@@ -2355,27 +2355,12 @@ export fn get(hm: HashMap<Hashable, any>, key: Hashable): Result<any> {
   const hash = key.toHash().abs() % length(hm.lookup);
   const list = getR(hm.lookup[hash]);
   const index = list.find(fn (i: int64): Result<int64> {
-    stdoutp("\nfinding... i: ");
-    stdoutp(i.toString());
     const kv = getR(hm.keyVal[i]);
-    stdoutp(" kv.key: ");
-    stdoutp(kv.key.toString());
-    stdoutp(" key: ");
-    stdoutp(key.toString());
-    stdoutp("\n");
     return eq(kv.key, key);
   });
-  stdoutp("\nhash: ");
-  stdoutp(hash.toString());
-  stdoutp("\nlist len: ");
-  stdoutp(list.length().toString());
   if index.isOk() {
     const i = index.getOr(0);
-    stdoutp("\nindex: ");
-    stdoutp(i.toString());
     const kv = getR(hm.keyVal[i]);
-    stdoutp("\nval: ");
-    stdoutp(kv.val);
     return ok(kv.val);
   } else {
     return err('key not found');

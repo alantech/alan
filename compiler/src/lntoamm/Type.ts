@@ -549,13 +549,6 @@ export class Type {
         const innerType = Type.fromStringWithMap(t, interfaceMap, scope)
         return innerType
       })
-      console.log({
-        scope,
-        typestr,
-        baseName,
-        genericNames,
-        generics,
-      })
       return baseType.solidify(
         generics.map((g: Type) => interfaceMap.get(g) || g).map((t: Type) => t.typename),
         scope
