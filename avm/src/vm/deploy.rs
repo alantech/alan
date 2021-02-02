@@ -21,32 +21,38 @@ struct AWSCredentials {
   secretAccessKey: String,
 }
 
+#[allow(non_snake_case)]
 #[derive(Deserialize, Debug, Serialize)]
 struct AWSConfig {
   credentials: AWSCredentials,
   region: String,
+  cloudAlias: String,
 }
 
 #[derive(Deserialize, Debug, Serialize)]
-struct Config {
-  aws: AWSConfig,
+struct DeployConfig {
+  aws: Vec<AWSConfig>,
 }
 
+#[allow(non_snake_case)]
 #[derive(Deserialize, Debug)]
 struct App {
   id: String,
   url: String,
   status: String,
+  cloudProvider: String,
+  cloudAlias: String,
 }
 
 const CONFIG_NAME: &str = ".alan/deploy.json";
 const CONFIG_SCHEMA: &str = "Please define a deploy config with the following schema: \n{
-  \"aws\": {
-      \"region\": \"string\",
-      \"credentials\": {
-        \"accessKeyId\": \"string\",
-        \"secretAccessKey\": \"string\",
-      }
+  \"aws\": [{
+    \"cloudAlias\": \"string\",
+    \"region\": \"string\",
+    \"credentials\": {
+      \"accessKeyId\": \"string\",
+      \"secretAccessKey\": \"string\",
+    }]
   }
 }";
 const HOW_TO_AWS: &str = "
@@ -54,7 +60,7 @@ To create an AWS access key follow this tutorial:\n\nhttps://aws.amazon.com/prem
 Then enable programmatic access for the IAM user, and attach the built-in 'AdministratorAccess' policy to your IAM user.
 ";
 
-fn get_config() -> Config {
+fn get_config() -> DeployConfig {
   let home = std::env::var("HOME").unwrap();
   let file_name = &format!("{}/{}", home, CONFIG_NAME);
   let path = Path::new(file_name);
@@ -112,11 +118,12 @@ pub fn kill(app_id: &str) {
   }
 }
 
-pub fn new(agz_file: &str) {
+pub fn new(agz_file: &str, cloud_alias: &str) {
   let app_str = get_app_str(agz_file);
   let body = json!({
     "deployConfig": get_config(),
     "agzB64": app_str,
+    "cloudAlias": cloud_alias,
   });
   let body = json!(body);
   let resp = post(format!("{}/v1/new", URL), body);
@@ -174,9 +181,19 @@ pub fn status() {
   column.align = Align::Right;
   ascii_table.columns.insert(2, column);
 
+  let mut column = Column::default();
+  column.header = "Cloud Provider".into();
+  column.align = Align::Right;
+  ascii_table.columns.insert(3, column);
+
+  let mut column = Column::default();
+  column.header = "Cloud Alias".into();
+  column.align = Align::Right;
+  ascii_table.columns.insert(4, column);
+
   let mut data: Vec<Vec<&dyn Display>> = vec![];
   for app in &mut apps {
-    data.push(vec![&app.id, &app.status, &app.url]);
+    data.push(vec![&app.id, &app.status, &app.url, &app.cloudProvider, &app.cloudAlias]);
   }
 
   println!("Status of all apps deployed using the cloud credentials in ~/{}\n", CONFIG_NAME);
