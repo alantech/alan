@@ -2899,7 +2899,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   io!(httplsn => fn(args, mut hand_mem) {
     Box::pin(async move {
       let port_num = hand_mem.read_fixed(args[0]) as u16;
-      let addr = SocketAddr::from(([127, 0, 0, 1], port_num));
+      let addr = SocketAddr::from(([0, 0, 0, 0], port_num));
       let make_svc = make_service_fn(|_conn| async { Ok::<_, Infallible>(service_fn(http_listener)) });
 
       let bind = Server::try_bind(&addr);
