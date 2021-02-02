@@ -148,7 +148,7 @@ i64str on line 4:18"
       When run alan compile test_$$/temp.ln test_$$/temp.amm
       The status should not eq "0"
       The error should include "Could not load"
-      The error should include "No match for OneOrMore whitespace exportsn handlers functions types constdeclaration operatormapping events interfaces in file fakeFile line 3:10"
+      The error should include "No match for OneOrMore (whitespace | exportsn | handlers | functions | types | constdeclaration | operatormapping | events | interfaces) in file fakeFile line 3:10"
     End
   End
 
