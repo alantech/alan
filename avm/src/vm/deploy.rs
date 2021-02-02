@@ -128,7 +128,7 @@ pub fn new(agz_file: &str, cloud_alias: &str) {
   let body = json!(body);
   let resp = post(format!("{}/v1/new", URL), body);
   match resp {
-    Ok(app_id) => println!("Creating new app with id {}...\n", app_id),
+    Ok(app_id) => println!("Creating new app with id {} in {}...\n", app_id, cloud_alias),
     Err(err) => println!("Failed to create a new app. Error: {}", err)
   }
 }
@@ -164,7 +164,7 @@ pub fn status() {
   }
 
   let mut ascii_table = AsciiTable::default();
-  ascii_table.max_width = 100;
+  ascii_table.max_width = 120;
 
   let mut column = Column::default();
   column.header = "App Id".into();
@@ -182,7 +182,7 @@ pub fn status() {
   ascii_table.columns.insert(2, column);
 
   let mut column = Column::default();
-  column.header = "Cloud Provider".into();
+  column.header = "Cloud".into();
   column.align = Align::Right;
   ascii_table.columns.insert(3, column);
 
