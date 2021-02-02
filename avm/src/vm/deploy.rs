@@ -2,6 +2,7 @@ use hyper::{client::Client, Body, Request};
 use serde::{Deserialize, Serialize};
 use serde_json::{from_reader, from_str, json, Value};
 
+use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::Display;
 use std::fs::{File, read};
@@ -26,12 +27,7 @@ struct AWSCredentials {
 struct AWSConfig {
   credentials: AWSCredentials,
   region: String,
-  cloudAlias: String,
-}
-
-#[derive(Deserialize, Debug, Serialize)]
-struct DeployConfig {
-  aws: Vec<AWSConfig>,
+  cloudProvider: String,
 }
 
 #[allow(non_snake_case)]
@@ -46,13 +42,13 @@ struct App {
 
 const CONFIG_NAME: &str = ".alan/deploy.json";
 const CONFIG_SCHEMA: &str = "Please define a deploy config with the following schema: \n{
-  \"aws\": [{
-    \"cloudAlias\": \"string\",
+  \"cloudAlias\": {
+    \"cloudProvider\": \"string\",
     \"region\": \"string\",
     \"credentials\": {
       \"accessKeyId\": \"string\",
       \"secretAccessKey\": \"string\",
-    }]
+    }
   }
 }";
 const HOW_TO_AWS: &str = "
@@ -60,7 +56,7 @@ To create an AWS access key follow this tutorial:\n\nhttps://aws.amazon.com/prem
 Then enable programmatic access for the IAM user, and attach the built-in 'AdministratorAccess' policy to your IAM user.
 ";
 
-fn get_config() -> DeployConfig {
+fn get_config() -> HashMap<String, AWSConfig> {
   let home = std::env::var("HOME").unwrap();
   let file_name = &format!("{}/{}", home, CONFIG_NAME);
   let path = Path::new(file_name);
