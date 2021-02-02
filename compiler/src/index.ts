@@ -1,8 +1,5 @@
 #!/usr/bin/env node
 
-// Make sure stack traces are *full*
-Error.stackTraceLimit = Infinity
-
 import * as fs from 'fs'
 
 import commander = require('commander')

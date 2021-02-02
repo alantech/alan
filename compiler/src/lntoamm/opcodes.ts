@@ -256,9 +256,6 @@ const addopcodes = (opcodes: object) => {
                         })
                       return baseType.solidify(generics, scope)
                     })() : scope.deepGet(arrayInnerTypeStr) as Type
-                  /*const arrayInnerType = scope.deepGet(
-                    inputTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
-                  ) as Type*/
                   const innerType = inputTypes[0].originalType ?
                     arrayInnerType :
                     Type.builtinTypes.int64 // Hackery for seqeach
@@ -452,9 +449,6 @@ const addopcodes = (opcodes: object) => {
                           })
                         return baseType.solidify(generics, scope)
                       })() : scope.deepGet(arrayInnerTypeStr) as Type
-                      /*const arrayInnerType = scope.deepGet(
-                        inputTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
-                      ) as Type*/
                       const innerType = inputTypes[0].originalType ?
                         arrayInnerType :
                         Type.builtinTypes.int64 // Hackery for seqeach
