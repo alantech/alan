@@ -524,6 +524,7 @@ export fn toString(j: JSON): string {
   const leaves = j
     .toNodeArray()
     .filter(fn (n: Node<JSONNode>): bool = n.getChildren().length().eq(0));
+  stdoutp(leaves.length().toString());
   // Create a lookup table from their ids to their output values
   let lookup = leaves.map(fn (l: Node<JSONNode>): KeyVal<int64, string> {
     return new KeyVal<int64, string> {
@@ -531,6 +532,7 @@ export fn toString(j: JSON): string {
       val: toString(l || toJSONNode()),
     };
   }).toHashMap();
+  stdoutp('got here');
   // Construct a list of nodes to process, based on the parents of the leaf nodes, using a HashMap
   // as a set
   let nodeList = newHashMap(-1, false);
@@ -540,6 +542,7 @@ export fn toString(j: JSON): string {
       nodeList.set(l.getParent().id, true);
     }
   });
+  stdoutp('now here');
   // Execute the following block over and over again until there are no more nodes to process
   seqdo(newseq(pow(2, 64).getOr(0)), fn (): bool {
     // Generate a list of ids from the nodeList by filtering out all `false` entries and mapping
@@ -548,13 +551,22 @@ export fn toString(j: JSON): string {
       .keyVal()
       .filter(fn (kv: KeyVal<int64, bool>): bool = kv.val)
       .map(fn (kv: KeyVal<int64, bool>): Node<JSONNode> = j.getNodeById(kv.key));
+    stdoutp(nodes.length().toString());
+    stdoutp('hello there');
     // Generate the array of child output values per node by mapping each node first into the array
     // of children and then mapping that into the values stored in the lookup hashmap
     const childVals = nodes.map(fn (n: Node<JSONNode>): Array<string> {
-      return n.tree.children[n.id].getOr(new Array<int64> []).map(fn (i: int64): string {
-        return lookup.get(i).getR();
+      stdoutp('general kenobi');
+      stdoutp(n.id.toString());
+      stdoutp(n.tree.children[n.id].getOr(new Array<int64> []).length().toString());
+      return n.tree.children[n.id].getOr(new Array<int64> []).map(fn (x: int64): string {
+        stdoutp('you are a bold one');
+        stdoutp(x.toString());
+        stdoutp(lookup.get(x).getR());
+        return lookup.get(x).getR();
       });
     });
+    stdoutp(childVals.length().toString());
     // Compute the new output values by calling the folding function on the nodes and their paired
     // child arrays
     const newVals = nodes.map(fn (n: Node<JSONNode>, i: int64): string {
