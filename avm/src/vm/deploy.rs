@@ -49,6 +49,9 @@ const CONFIG_SCHEMA: &str = "Please define a deploy config with the following sc
       \"accessKeyId\": \"string\",
       \"secretAccessKey\": \"string\",
     }
+  },
+  \"cloudAlias\": {
+    ...
   }
 }";
 const HOW_TO_AWS: &str = "
