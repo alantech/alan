@@ -1,6 +1,5 @@
 use std::sync::Arc;
 use futures::FutureExt;
-use futures::future::Then;
 use futures::future::join_all;
 use tokio::task;
 
@@ -9,8 +8,6 @@ use crate::vm::memory::HandlerMemory;
 use crate::vm::opcode::OpcodeFn;
 use crate::vm::program::Program;
 use crate::vm::run::EVENT_TX;
-
-use super::opcode::HMFuture;
 
 #[derive(PartialEq, Eq, Hash)]
 /// Special events in alan found in standard library modules, @std.

@@ -7,6 +7,7 @@ import {
 } from './lp'
 
 import amm from './amm'
+import { exit } from 'process'
 
 // This project depends on BigNum and associated support in Node's Buffer, so must be >= Node 10.20
 // and does not work in the browser. It would be possible to implement a browser-compatible version
@@ -135,6 +136,64 @@ const getHandlersMem = (handlers: LPNode[]) => handlers
     }
     return handlerMem
   })
+
+const unhandled = (val) => {
+  console.log('========== UNHANDLED')
+  console.log(val)
+  console.log()
+  throw new Error()
+}
+
+class HandlerGraph {
+  build(stmts: LPNode[]) {}
+
+  getLastMutationFor(varName: String): HandlerNode { return null }
+}
+
+class HandlerNode {
+  stmt: string
+  upstream: HandlerNode[]
+  downstream: HandlerNode[]
+  closure?: HandlerGraph
+  mutates: string[]
+
+  constructor(stmt: LPNode, graph: HandlerGraph) {
+    if (stmt.has('declarations')) {
+      let dec = stmt.get('declarations')
+      if (dec.has('constdeclaration')) dec = dec.get('constdeclaration')
+      else if (dec.has('letdeclaration')) dec = dec.get('letdeclaration')
+      else unhandled(dec)
+
+      if (dec.get('fulltypename').t.trim() == 'function') {
+        // TODO: recurse into functions
+        unhandled(dec)
+      } else if (dec.has('assignables') && dec.get('assignables').has('calls')) {
+        this.fromCall(dec.get('assignables').get('calls'), graph)
+      } else unhandled(dec)
+    } else unhandled(stmt)
+  }
+
+  fromCall(call: LPNode, graph: HandlerGraph) {
+    let opcodeName = call.get('variable').t.trim()
+    let args = call.get('calllist').getAll()
+    let mutated = []
+    let opMutability = opcodeParamMutabilities[opcodeName]
+    for (let ii = 0; ii < opMutability.length; ii++) {
+      if (opMutability[ii]) mutated.push(args[ii].t.trim())
+    }
+    this.mutates = mutated
+    for (let arg of args) {
+      let upstream = graph.getLastMutationFor(arg.t.trim())
+      if (upstream) {
+        this.upstream.push(upstream)
+        upstream.downstream.push(this)
+      }
+    }
+  }
+}
+
+const opcodeParamMutabilities = [
+]
 
 const closuresFromDeclaration = (
   declaration: LPNode,
@@ -652,6 +711,7 @@ const ammToAga = (amm: LPNode) => {
   let eventDecs = loadEventDecs(amm.get('eventDec').getAll())
   // Determine the amount of memory to allocate per handler and map declarations to addresses
   const handlerMem = getHandlersMem(amm.get('handlers').getAll())
+  // const depGraph = getDepGraph(amm.get('handlers').getAll())
   const closures = extractClosures(amm.get('handlers').getAll(), handlerMem, eventDecs, addressMap)
   // Make sure closures are accessible as addresses for statements to use
   closures.forEach((c: any) => addressMap[c.name] = c.name)
