@@ -525,6 +525,11 @@ export class Type {
     return generics.every((t: Type, i) => t.typeApplies(otherGenerics[i], scope, interfaceMap))
   }
 
+  hasInterfaceType(): boolean {
+    if (!!this.iface) return true
+    return Object.values(this.properties).some((t: Type): boolean => t.hasInterfaceType())
+  }
+
   // There has to be a more elegant way to tackle this
   static fromStringWithMap(typestr: string, interfaceMap: Map<Type, Type>, scope: Scope) {
     const typeAst = fulltypenameAstFromString(typestr)

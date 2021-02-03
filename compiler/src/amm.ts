@@ -31,10 +31,11 @@ const openCaret = Token.build('<')
 const closeCaret = Token.build('>')
 const comma = Token.build(',')
 const optcomma = ZeroOrOne.build(comma)
+const sep = And.build([optblank, comma, optblank])
 const base10 = CharSet.build('0', '9')
 const natural = OneOrMore.build(base10)
 const integer = And.build([ZeroOrOne.build(negate), natural])
-const real = And.build([integer, ZeroOrOne.build(And.build([dot, natural]))])
+const real = And.build([integer, dot, natural])
 const lower = CharSet.build('a', 'z')
 const upper = CharSet.build('A', 'Z')
 const variable = And.build([
@@ -61,23 +62,23 @@ const decname = variable
 const typename = variable
 const typegenerics = NamedAnd.build({
   openCaret,
-  generics: OneOrMore.build(NamedAnd.build({
-    a: optblank,
-    fulltypename: new NulLP(), // Circular dependency trick
-    optcomma,
-    b: optblank,
-  })),
+  a: optblank,
+  generics: new NulLP(), // Circular dependency trick
+  b: optblank,
   closeCaret,
 })
-const fulltypename = Or.build([
-  NamedAnd.build({
-    typename,
-    opttypegenerics: ZeroOrOne.build(And.build([optblank, typegenerics])),
-  }),
-  voidn
-]);
+const fulltypename = NamedAnd.build({
+  typename,
+  opttypegenerics: ZeroOrOne.build(typegenerics),
+})
 // Ugly hackery around circular dependency
-((typegenerics.and.generics as OneOrMore).oneOrMore[0] as NamedAnd).and.fulltypename = fulltypename
+typegenerics.and.generics = NamedAnd.build({
+  fulltypename,
+  cdr: ZeroOrMore.build(NamedAnd.build({
+    sep,
+    fulltypename,
+  })),
+})
 
 const emits = NamedAnd.build({ emit, blank, variable, value: ZeroOrOne.build(NamedAnd.build({
   blank, variable
@@ -108,9 +109,9 @@ const constdeclaration = NamedAnd.build({
   colon,
   c: optblank,
   fulltypename,
-  d: blank,
+  d: optblank,
   eq,
-  e: blank,
+  e: optblank,
   assignables,
 })
 const letdeclaration = NamedAnd.build({
@@ -147,7 +148,7 @@ const functions = NamedAnd.build({
   blank,
   openParen,
   args: And.build([
-    ZeroOrMore.build(NamedAnd.build({ arg, a: optblank, comma, b: optblank })),
+    ZeroOrMore.build(NamedAnd.build({ arg, sep, })),
     ZeroOrOne.build(NamedAnd.build({ arg, optblank, }))
   ]),
   closeParen,

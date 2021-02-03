@@ -1,0 +1,633 @@
+/* @std/json - A library for parsing, representing, and serializing to and from JSON
+ * This representation can handle every JSON type, and if you squint at it, it cannot represent an
+ * invalid value. This is not entirely true without a small liberty being taken. If a JSONNode is an
+ * object, its children *should* be `KeyVal<string, JSONBase>` type, but if they're just `JSONBase`
+ * you could also just use the `toString` representation of the value as its key and the value as
+ * the value. Similarly, you should not ever have children attached to a `JSONBase`, but you can
+ * just ignore those children.
+ */
+export type IsObject {
+  isObject: bool,
+}
+// TODO: Fix issues with using `void` as a value in the compiler
+export type Null {
+  isNull: bool,
+}
+export const null = new Null {
+  isNull: true,
+};
+export type JSONBase = Either<Either<float64, bool>, Either<string, Either<IsObject, Null>>>
+export type JSONNode = Either<KeyVal<string, JSONBase>, JSONBase>
+export type JSON = Tree<JSONNode>
+
+/* IsObject Functions */
+export fn toObject() = new IsObject {
+  isObject: true,
+};
+export fn toArray() = new IsObject {
+  isObject: false,
+};
+
+export fn isObject(a: IsObject) = a.isObject;
+export fn isArray(a: IsObject) = !a.isObject;
+
+/* JSONBase functions */
+export fn toJSONBase(a: float64): JSONBase {
+  return main(main(a));
+}
+export fn toJSONBase(a: bool): JSONBase {
+  return main(alt(a));
+}
+export fn toJSONBase(a: string): JSONBase {
+  return alt(main(a));
+}
+export fn toJSONBase(a: IsObject): JSONBase {
+  return alt(alt(main(a)));
+}
+export fn toJSONBase(a: Null): JSONBase {
+  alt(alt(alt(a)));
+}
+export fn toJSONBase(): JSONBase {
+  alt(alt(alt(null)));
+}
+
+export fn getFloat64(a: JSONBase): Result<float64> {
+  if a.isMain() {
+    const b = a.getMainOr(alt(false)); // TODO: Not require the default value here
+    if b.isMain() {
+      return ok(b.getMainOr(0.0));
+    }
+  }
+  return err("JSON Node is not a number type");
+}
+export fn getBool(a: JSONBase): Result<bool> {
+  if a.isMain() {
+    const b = a.getMainOr(main(0.0));
+    if b.isAlt() {
+      return ok(b.getAltOr(false));
+    }
+  }
+  return err("JSON Node is not a bool type");
+}
+export fn getString(a: JSONBase): Result<string> {
+  if a.isAlt() {
+    const b = a.getAltOr(alt(alt(null)));
+    if b.isMain() {
+      return ok(b.getMainOr(''));
+    }
+  }
+  return err("JSON Node is not a string type");
+}
+export fn getIsObject(a: JSONBase): Result<IsObject> {
+  if a.isAlt() {
+    const b = a.getAltOr(alt(alt(null)));
+    if b.isAlt() {
+      const c = b.getAltOr(alt(null));
+      if c.isMain() {
+        return ok(c.getMainOr(new IsObject {
+          isObject: false,
+        }));
+      }
+    }
+  }
+  return err("JSON Node is not an object or array");
+}
+export fn isFloat64(a: JSONBase): bool {
+  if a.isMain() {
+    const b = a.getMainOr(alt(false));
+    return b.isMain();
+  }
+  return false;
+}
+export fn isBool(a: JSONBase): bool {
+  if a.isMain() {
+    const b = a.getMainOr(main(0.0));
+    return b.isAlt();
+  }
+  return false;
+}
+export fn isString(a: JSONBase): bool {
+  if a.isAlt() {
+    const b = a.getAltOr(alt(null));
+    return b.isMain();
+  }
+  return false;
+}
+export fn isObjectOrArray(a: JSONBase): bool {
+  if a.isAlt() {
+    const b = a.getAltOr(main(''));
+    if b.isAlt() {
+      const c = b.getAltOr(alt(null));
+      return c.isMain();
+    }
+  }
+}
+export fn isNull(a: JSONBase): bool {
+  if a.isAlt() {
+    const b = a.getAltOr(main(''));
+    if b.isAlt() {
+      const c = b.getAltOr(new IsObject {
+        isObject: false,
+      });
+      return c.isAlt();
+    }
+  }
+  return false;
+}
+export fn toString(a: JSONBase): string {
+  if a.isMain() {
+    const b = a.getMainOr(main(0.0));
+    if b.isMain() {
+      return b.getMainOr(0.0).toString();
+    } else {
+      return b.getAltOr(false).toString();
+    }
+  } else {
+    const b = a.getAltOr(main(''));
+    if b.isMain() {
+      return '"' + b.getMainOr('').split('"').join('\\"') + '"';
+    } else {
+      const c = b.getAltOr(alt(null));
+      if c.isMain() {
+        const obj = c.getMainOr(new IsObject {
+          isObject: false,
+        });
+        if obj.isObject {
+          return '{}';
+        } else {
+          return '[]';
+        }
+      } else {
+        return 'null';
+      }
+    }
+  }
+}
+
+/* JSONNode function */
+export fn toJSONNode(a: float64): JSONNode {
+  return alt(a.toJSONBase());
+}
+export fn toJSONNode(a: bool): JSONNode {
+  return alt(a.toJSONBase());
+}
+export fn toJSONNode(a: string): JSONNode {
+  return alt(a.toJSONBase());
+}
+export fn toJSONNode(a: IsObject): JSONNode {
+  return alt(a.toJSONBase());
+}
+export fn toJSONNode(a: Null): JSONNode {
+  return alt(a.toJSONBase());
+}
+export fn toJSONNode(): JSONNode {
+  return alt(toJSONBase());
+}
+export fn toJSONNode(a: JSONBase): JSONNode {
+  return alt(a);
+}
+export fn toJSONNode(a: KeyVal<string, JSONBase>): JSONNode {
+  return main(a);
+}
+
+export fn getFloat64(a: JSONNode): Result<float64> {
+  if a.isAlt() {
+    const b = a.getAltOr(toJSONBase());
+    return b.getFloat64();
+  }
+  return err("JSON Node is not a number type");
+}
+export fn getBool(a: JSONNode): Result<bool> {
+  if a.isAlt() {
+    const b = a.getAltOr(toJSONBase());
+    return b.getBool();
+  }
+  return err("JSON Node is not a bool type");
+}
+export fn getString(a: JSONNode): Result<bool> {
+  if a.isAlt() {
+    const b = a.getAltOr(toJSONBase());
+    return b.getString();
+  }
+  return err("JSON Node is not a string type");
+}
+export fn getIsObject(a: JSONNode): Result<IsObject> {
+  if a.isAlt() {
+    const b = a.getAltOr(toJSONBase());
+    return b.getIsObject();
+  }
+  return err("JSON Node is not an object or array");
+}
+export fn getKeyVal(a: JSONNode): Result<KeyVal<string, JSONBase>> {
+  if a.isMain() {
+    return ok(a.getMainOr(new KeyVal<string, JSONBase> {
+      key: '',
+      val: toJSONBase(),
+    }));
+  }
+  return err("JSON Element is not a KeyVal type");
+}
+export fn isFloat64(a: JSONNode): bool {
+  if a.isAlt() {
+    const b = a.getAltOr(toJSONBase());
+    return b.isFloat64();
+  }
+  return false;
+}
+export fn isBool(a: JSONNode): bool {
+  if a.isAlt() {
+    const b = a.getAltOr(toJSONBase());
+    return b.isBool();
+  }
+  return false;
+}
+export fn isString(a: JSONNode): bool {
+  if a.isAlt() {
+    const b = a.getAltOr(toJSONBase());
+    return b.isString();
+  }
+  return false;
+}
+export fn isObjectOrArray(a: JSONNode): bool {
+  if a.isAlt() {
+    const b = a.getAltOr(toJSONBase());
+    return b.isObjectOrArray();
+  }
+  return false;
+}
+export fn isNull(a: JSONNode): bool {
+  if a.isAlt() {
+    const b = a.getAltOr(toJSONBase(0.0));
+    return b.isNull();
+  }
+  return false;
+}
+export fn isKeyVal(a: JSONNode): bool {
+  return a.isMain();
+}
+export fn toString(a: JSONNode): string {
+  if a.isAlt() {
+    const b = a.getAltOr(toJSONBase());
+    return b.toString();
+  }
+  const b = a.getMainOr(new KeyVal<string, JSONBase> {
+    key: '',
+    val: toJSONBase(),
+  });
+  return '"' + b.key.split('"').join('\\"') + '": ' + b.val.toString();
+}
+
+// JSON Functions
+export fn toJSON(a: float64): JSON = newTree(a.toJSONNode());
+export fn toJSON(a: bool): JSON = newTree(a.toJSONNode());
+export fn toJSON(a: string): JSON = newTree(a.toJSONNode());
+export fn toJSON(a: Null): JSON = newTree(a.toJSONNode());
+export fn toJSON(a: IsObject): JSON = newTree(a.toJSONNode());
+export fn toJSON(): JSON = newTree(toJSONNode());
+// TODO: Would an interface help here?
+export fn toJSON(a: HashMap<string, float64>): JSON {
+  const json = newTree(toObject().toJSONNode());
+  a.keyVal().eachLin(fn (kv: KeyVal<string, float64>) {
+    const kv2 = new KeyVal<string, JSONBase> {
+      key: kv.key,
+      val: kv.val.toJSONBase(),
+    };
+    json.addChild(kv2.toJSONNode());
+  });
+  return json;
+}
+export fn toJSON(a: HashMap<string, bool>): JSON {
+  const json = newTree(toObject().toJSONNode());
+  a.keyVal().eachLin(fn (kv: KeyVal<string, bool>) {
+    const kv2 = new KeyVal<string, JSONBase> {
+      key: kv.key,
+      val: kv.val.toJSONBase(),
+    };
+    json.addChild(kv2.toJSONNode());
+  });
+  return json;
+}
+export fn toJSON(a: HashMap<string, string>): JSON {
+  const json = newTree(toObject().toJSONNode());
+  a.keyVal().eachLin(fn (kv: KeyVal<string, string>) {
+    const kv2 = new KeyVal<string, JSONBase> {
+      key: kv.key,
+      val: kv.val.toJSONBase(),
+    };
+    json.addChild(kv2.toJSONNode());
+  });
+  return json;
+}
+export fn toJSON(a: HashMap<string, Null>): JSON { // Would anyone even use such a thing?
+  const json = newTree(toObject().toJSONNode());
+  a.keyVal().eachLin(fn (kv: KeyVal<string, Null>) {
+    const kv2 = new KeyVal<string, JSONBase> {
+      key: kv.key,
+      val: kv.val.toJSONBase(),
+    };
+    json.addChild(kv2.toJSONNode());
+  });
+  return json;
+}
+export fn toJSON(a: HashMap<string, IsObject>): JSON {
+  const json = newTree(toObject().toJSONNode());
+  a.keyVal().eachLin(fn (kv: KeyVal<string, IsObject>) {
+    const kv2 = new KeyVal<string, JSONBase> {
+      key: kv.key,
+      val: kv.val.toJSONBase(),
+    };
+    json.addChild(kv2.toJSONNode());
+  });
+  return json;
+}
+export fn toJSON(a: HashMap<string, JSONBase>): JSON {
+  const json = newTree(toObject().toJSONNode());
+  a.keyVal().eachLin(fn (kv: KeyVal<string, JSONBase>) {
+    json.addChild(kv.toJSONNode());
+  });
+  return json;
+}
+// TODO: Same story, different function. It feels like an interface type would work here
+export fn toJSON(a: Array<float64>): JSON {
+  const json = newTree(toArray().toJSONNode());
+  a.eachLin(fn (v: float64) {
+    json.addChild(v.toJSONNode());
+  });
+  return json;
+}
+export fn toJSON(a: Array<bool>): JSON {
+  const json = newTree(toArray().toJSONNode());
+  a.eachLin(fn (v: bool) {
+    json.addChild(v.toJSONNode());
+  });
+  return json;
+}
+export fn toJSON(a: Array<string>): JSON {
+  const json = newTree(toArray().toJSONNode());
+  a.eachLin(fn (v: string) {
+    json.addChild(v.toJSONNode());
+  });
+  return json;
+}
+export fn toJSON(a: Array<Null>): JSON { // Would anyone even use such a thing?
+  const json = newTree(toArray().toJSONNode());
+  a.eachLin(fn (v: Null) {
+    json.addChild(v.toJSONNode());
+  });
+  return json;
+}
+export fn toJSON(a: Array<IsObject>): JSON {
+  const json = newTree(toArray().toJSONNode());
+  a.eachLin(fn (v: IsObject) {
+    json.addChild(v.toJSONNode());
+  });
+  return json;
+}
+export fn toJSON(a: Array<JSONBase>): JSON {
+  const json = newTree(toArray().toJSONNode());
+  a.eachLin(fn (v: JSONBase) {
+    json.addChild(v.toJSONNode());
+  });
+  return json;
+}
+
+export fn newJSONObject(): JSON {
+  return new IsObject {
+    isObject: true,
+  }.toJSON();
+}
+
+export fn newJSONArray(): JSON {
+  return new IsObject {
+    isObject: false,
+  }.toJSON();
+}
+
+export fn addKeyVal(j: JSON, key: string, val: JSONBase): JSON {
+  const kv = new KeyVal<string, JSONBase> {
+    key: key,
+    val: val,
+  };
+  j.addChild(kv.toJSONNode());
+  return j;
+}
+export fn addKeyVal(j: JSON, key: string, val: float64): JSON {
+  const kv = new KeyVal<string, JSONBase> {
+    key: key,
+    val: val.toJSONBase(),
+  };
+  j.addChild(kv.toJSONNode());
+  return j;
+}
+export fn addKeyVal(j: JSON, key: string, val: bool): JSON {
+  const kv = new KeyVal<string, JSONBase> {
+    key: key,
+    val: val.toJSONBase(),
+  };
+  j.addChild(kv.toJSONNode());
+  return j;
+}
+export fn addKeyVal(j: JSON, key: string, val: string): JSON {
+  const kv = new KeyVal<string, JSONBase> {
+    key: key,
+    val: val.toJSONBase(),
+  };
+  j.addChild(kv.toJSONNode());
+  return j;
+}
+export fn addKeyVal(j: JSON, key: string, val: IsObject): JSON {
+  const kv = new KeyVal<string, JSONBase> {
+    key: key,
+    val: val.toJSONBase(),
+  };
+  j.addChild(kv.toJSONNode());
+  return j;
+}
+export fn addKeyVal(j: JSON, key: string, val: Null): JSON {
+  const kv = new KeyVal<string, JSONBase> {
+    key: key,
+    val: val.toJSONBase(),
+  };
+  j.addChild(kv.toJSONNode());
+  return j;
+}
+export fn addKeyVal(j: JSON, key: string): JSON {
+  const kv = new KeyVal<string, JSONBase> {
+    key: key,
+    val: toJSONBase(),
+  };
+  j.addChild(kv.toJSONNode());
+  return j;
+}
+export fn addKeyVal(j: JSON, key: string, val: JSON): JSON {
+  const childNode = j.addChild(val);
+  // Now mutate the attached sub-tree's root node to become a KeyVal pair
+  const baseNode = childNode || toJSONNode();
+  if baseNode.isKeyVal() {
+    // Just update the key to match
+    baseNode.getMainOr(new KeyVal<string, JSONBase> {
+      key: key,
+      val: toJSONBase(),
+    }).key = key;
+    return j;
+  }
+  // We need to replace the JSONNode itself
+  const baseVal = baseNode.getAltOr(toJSONBase());
+  const newVal = new KeyVal<string, JSONBase> {
+    key: key,
+    val: baseVal,
+  }.toJSONNode();
+  j.vals.set(childNode.id, newVal);
+  return j;
+}
+
+export fn push(j: JSON, val: JSON): JSON {
+  j.addChild(val);
+  return j;
+}
+export fn push(j: JSON, val: JSONNode): JSON {
+  j.addChild(val);
+  return j;
+}
+export fn push(j: JSON, val: JSONBase): JSON {
+  j.addChild(val.toJSONNode());
+  return j;
+}
+export fn push(j: JSON, val: float64): JSON {
+  j.addChild(val.toJSONNode());
+  return j;
+}
+export fn push(j: JSON, val: bool): JSON {
+  j.addChild(val.toJSONNode());
+  return j;
+}
+export fn push(j: JSON, val: string): JSON {
+  j.addChild(val.toJSONNode());
+  return j;
+}
+export fn push(j: JSON, val: IsObject): JSON {
+  j.addChild(val.toJSONNode());
+  return j;
+}
+export fn push(j: JSON, val: Null): JSON {
+  j.addChild(val.toJSONNode());
+  return j;
+}
+export fn push(j: JSON): JSON {
+  j.addChild(toJSONNode());
+  return j;
+}
+
+// TODO: Remove this hardwired version of `toString` once `foldup` compiles correctly
+export fn toString(j: JSON): string {
+  // Get the leaf nodes
+  const leaves = j
+    .toNodeArray()
+    .filter(fn (n: Node<JSONNode>): bool = n.getChildren().length().eq(0));
+  // Create a lookup table from their ids to their output values
+  let lookup = leaves.map(fn (l: Node<JSONNode>): KeyVal<int64, string> {
+    return new KeyVal<int64, string> {
+      key: l.id,
+      val: toString(l || toJSONNode()),
+    };
+  }).toHashMap();
+  // Construct a list of nodes to process, based on the parents of the leaf nodes, using a HashMap
+  // as a set
+  let nodeList = newHashMap(-1, false);
+  leaves.eachLin(fn (l: Node<JSONNode>) {
+    const parentId = l.getParent().id;
+    if parentId > -1 {
+      nodeList.set(l.getParent().id, true);
+    }
+  });
+  // Execute the following block over and over again until there are no more nodes to process
+  seqdo(newseq(pow(2, 64).getOr(0)), fn (): bool {
+    // Generate a list of ids from the nodeList by filtering out all `false` entries and mapping
+    // the remaining ids into Nodes
+    const nodes = nodeList
+      .keyVal()
+      .filter(fn (kv: KeyVal<int64, bool>): bool = kv.val)
+      .map(fn (kv: KeyVal<int64, bool>): Node<JSONNode> = j.getNodeById(kv.key));
+    // Generate the array of child output values per node by mapping each node first into the array
+    // of children and then mapping that into the values stored in the lookup hashmap
+    const childVals = nodes.map(fn (n: Node<JSONNode>): Array<string> {
+      return n.tree.children[n.id].getOr(new Array<int64> []).map(fn (x: int64): string {
+        return lookup.get(x).getR();
+      });
+    });
+    // Compute the new output values by calling the folding function on the nodes and their paired
+    // child arrays
+    const newVals = nodes.map(fn (n: Node<JSONNode>, i: int64): string {
+      const nodeVal = n || toJSONNode();
+      if nodeVal.isObjectOrArray() {
+        const isObject = nodeVal.getIsObject().getR();
+        if isObject.isObject {
+          return '{' + childVals[i].getR().join(', ') + '}';
+        } else {
+          return '[' + childVals[i].getR().join(', ') + ']';
+        }
+      } else {
+        // This is an invalid path for JSON, we'll just ignore the children, instead, for now
+        return nodeVal.toString();
+      }
+    });
+    // Wipe the set by marking all values as false (we don't have HashMap deletes, yet)
+    nodeList.keys().each(fn (k: int64) = nodeList.set(k, false));
+    // Then for each node, if it has a parent, add its parent to the set and its value to the lookup
+    nodes.eachLin(fn (n: Node<JSONNode>, i: int64) {
+      const parentId = n.getParent().id;
+      if parentId > -1 {
+        nodeList.set(n.getParent().id, true);
+      }
+      lookup.set(n.id, newVals[i].getR());
+    });
+    // Scan through the parents and disable any that are missing one or more of its children, this
+    // allows unbalanced trees to process correctly
+    nodeList.keyVal().filter(fn (kv: KeyVal<int64, bool>): bool {
+      const n = j.getNodeById(kv.key);
+      const children = n.getChildren();
+      let missingChildren = false;
+      children.eachLin(fn (c: Node<JSONNode>) {
+        if lookup.get(c.id).isErr() {
+          missingChildren = true;
+        }
+      });
+      return missingChildren;
+    }).eachLin(fn (kv: KeyVal<int64, bool>) {
+      nodeList.set(kv.key, false);
+    });
+    // Check if there are any nodes in the set to process and exit the loop if no
+    return nodeList.keyVal().filter(fn (kv: KeyVal<int64, bool>): bool = kv.val).length().gt(0);
+  });
+  // Lookup the root node's value as that should be the output and return it
+  return lookup.get(j.getRootNode().id).getR();
+}
+
+export interface json {
+  toJSON(float64): json,
+  toJSON(bool): json,
+  toJSON(string): json,
+  toJSON(Null): json,
+  toJSON(HashMap<string, float64>): json,
+  toJSON(HashMap<string, bool>): json,
+  toJSON(HashMap<string, string>): json,
+  toJSON(HashMap<string, Null>): json,
+  toJSON(Array<float64>): json,
+  toJSON(Array<bool>): json,
+  toJSON(Array<string>): json,
+  toJSON(Array<Null>): json,
+  toString(json): string,
+  /*newJSONObject(): json,
+  newJSONArray(): json,*/
+  addKeyVal(json, string, float64): json,
+  addKeyVal(json, string, bool): json,
+  addKeyVal(json, string, Null): json,
+  addKeyVal(json, string): json,
+  addKeyVal(json, string, json): json,
+  push(json, json): json,
+  push(json, float64): json,
+  push(json, bool): json,
+  push(json, string): json,
+  push(json, Null): json,
+  push(json): json,
+}

@@ -5,8 +5,9 @@ import Microstatement from './Microstatement'
 import Module from './Module'
 import Scope from './Scope'
 import StatementType from './StatementType'
-import { Interface, Type, } from './Type'
 import UserFunction from './UserFunction'
+import { Interface, Type, } from './Type'
+import { fulltypenameAstFromString, } from './Ast'
 
 const opcodeScope = new Scope()
 const opcodeModule = new Module(opcodeScope)
@@ -240,9 +241,21 @@ const addopcodes = (opcodes: object) => {
                   // interface matching logic figures out what the return type of the opcode is
                   // based on the return type of the function given to it.
                   // For now, we just do that "by hand."
-                  const arrayInnerType = scope.deepGet(
-                    inputTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
-                  ) as Type
+                  const arrayInnerTypeStr = inputTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
+                  const arrayInnerType = arrayInnerTypeStr.includes('<') ?
+                    (() => {
+                      const fulltypenameAst = fulltypenameAstFromString(arrayInnerTypeStr)
+                      const baseTypeStr = fulltypenameAst.get('typename').t
+                      const baseType = scope.deepGet(baseTypeStr) as Type
+                      const generics = [
+                        fulltypenameAst.get('opttypegenerics').get('generics').get('fulltypename').t
+                      ]
+                      fulltypenameAst.get('opttypegenerics').get('generics').get('cdr').getAll()
+                        .forEach(r => {
+                          generics.push(r.get('fulltypename').t)
+                        })
+                      return baseType.solidify(generics, scope)
+                    })() : scope.deepGet(arrayInnerTypeStr) as Type
                   const innerType = inputTypes[0].originalType ?
                     arrayInnerType :
                     Type.builtinTypes.int64 // Hackery for seqeach
@@ -421,9 +434,21 @@ const addopcodes = (opcodes: object) => {
                       'filterl', 'seqeach',
                     ].includes(opcodeName)) {
                       // TODO: Try to re-unify these blocks from above
-                      const arrayInnerType = scope.deepGet(
-                        inputTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
-                      ) as Type
+                    const arrayInnerTypeStr = inputTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
+                    const arrayInnerType = arrayInnerTypeStr.includes('<') ?
+                      (() => {
+                        const fulltypenameAst = fulltypenameAstFromString(arrayInnerTypeStr)
+                        const baseTypeStr = fulltypenameAst.get('typename').t
+                        const baseType = scope.deepGet(baseTypeStr) as Type
+                        const generics = [
+                          fulltypenameAst.get('opttypegenerics').get('generics').get('fulltypename').t
+                        ]
+                        fulltypenameAst.get('opttypegenerics').get('generics').get('cdr').getAll()
+                          .forEach(r => {
+                            generics.push(r.get('fulltypename').t)
+                          })
+                        return baseType.solidify(generics, scope)
+                      })() : scope.deepGet(arrayInnerTypeStr) as Type
                       const innerType = inputTypes[0].originalType ?
                         arrayInnerType :
                         Type.builtinTypes.int64 // Hackery for seqeach

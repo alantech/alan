@@ -275,7 +275,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
         // TODO: If more than one function matches, need to run multiple dispatch logic
         scope.deepGet(cond.get('blocklike').get('fnname').t)[0] :
         UserFunction.fromFunctionsAst(cond.get('blocklike').get('functions'), scope)
-    ).maybeTransform(new Map())
+    ).maybeTransform(new Map(), scope)
     if (condBlockFn.statements[condBlockFn.statements.length - 1].isReturnStatement()) {
       hasConditionalReturn = true
     }
@@ -294,7 +294,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
             // TODO: If more than one function matches, need to run multiple dispatch logic
             scope.deepGet(notblock.get('fnname').t)[0] :
             UserFunction.fromFunctionsAst(notblock.get('functions'), scope)
-        ).maybeTransform(new Map())
+        ).maybeTransform(new Map(), scope)
         if (elseBlockFn.statements[elseBlockFn.statements.length - 1].isReturnStatement()) {
           hasConditionalReturn = true
         }
@@ -468,8 +468,13 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
           genericstr: string,
           openstr: string,
         ) => {
+          let newScope = this.scope
+          if (scope !== undefined) {
+            newScope = new Scope(scope)
+            newScope.secondaryPar = this.scope
+          }
           const originaltypestr = `${basetypestr.trim()}<${genericstr.trim()}>`
-          let originalType = this.scope.deepGet(originaltypestr) as Type
+          let originalType = newScope.deepGet(originaltypestr) as Type
           if (!originalType || !(originalType instanceof Type)) {
             // It may be the first time this particular type has shown up, let's build it
             const typeAst = Ast.fulltypenameAstFromString(originaltypestr)
@@ -482,16 +487,11 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
                 generics.push(r.get('fulltypename').t)
               })
             }
-            const baseType = this.scope.deepGet(baseTypeName) as Type
+            const baseType = newScope.deepGet(baseTypeName) as Type
             if (!baseType || !(baseType instanceof Type)) { // Now we panic
               throw new Error('This should be impossible')
             }
-            originalType = baseType.solidify(generics, this.scope)
-          }
-          let newScope = this.scope
-          if (scope !== undefined) {
-            newScope = new Scope(scope)
-            newScope.secondaryPar = this.scope
+            originalType = baseType.solidify(generics, newScope)
           }
           const replacementType = originalType.realize(interfaceMap, newScope)
           return `new ${replacementType.typename} ${openstr}`
@@ -503,8 +503,13 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
           genericstr: string,
           openstr: string,
         ) => {
+          let newScope = this.scope
+          if (scope !== undefined) {
+            newScope = new Scope(scope)
+            newScope.secondaryPar = this.scope
+          }
           const originaltypestr = `${basetypestr.trim()}<${genericstr.trim()}>`
-          let originalType = this.scope.deepGet(originaltypestr) as Type
+          let originalType = newScope.deepGet(originaltypestr) as Type
           if (!originalType || !(originalType instanceof Type)) {
             // It may be the first time this particular type has shown up, let's build it
             const typeAst = Ast.fulltypenameAstFromString(originaltypestr)
@@ -517,21 +522,26 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
                 generics.push(r.get('fulltypename').t)
               })
             }
-            const baseType = this.scope.deepGet(baseTypeName) as Type
+            const baseType = newScope.deepGet(baseTypeName) as Type
             if (!baseType || !(baseType instanceof Type)) { // Now we panic
               throw new Error('This should be impossible')
             }
-            originalType = baseType.solidify(generics, this.scope)
+            originalType = baseType.solidify(generics, newScope)
           }
-          const replacementType = originalType.realize(interfaceMap, this.scope)
+          const replacementType = originalType.realize(interfaceMap, newScope)
           return `: ${replacementType.typename}${openstr}`
         })
         const correctedAst = Ast.statementAstFromString(secondCorrection)
         s.statementAst = correctedAst
         // statementAsts.push(correctedAst)
+        let newScope = this.scope
+        if (scope !== undefined) {
+          newScope = new Scope(scope)
+          newScope.secondaryPar = this.scope
+        }
         if (s.isConditionalStatement()) {
           const cond = s.statementAst.get('conditionals')
-          const res = UserFunction.conditionalToCond(cond, this.scope)
+          const res = UserFunction.conditionalToCond(cond, newScope)
           const newStatements = res[0] as Array<LPNode>
           if (res[1]) hasConditionalReturn = true
           statementAsts.push(...newStatements)
@@ -735,7 +745,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
             microstatements[microstatements.length - 1].outputType = inputTypes[i]
           }
         }
-      } else if (returnSubtypes.some((t: Type) => !!t.iface)) {
+      } else if (returnSubtypes.some((t: Type) => t.hasInterfaceType())) {
         const oldReturnType = this.getReturnType()
         const originalArgTypes = Object.values(this.args)
         for (let i = 0; i < inputTypes.length; i++) {
@@ -745,11 +755,17 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
             }
           }
         }
-        let newReturnType = oldReturnType.originalType.solidify(
-          returnSubtypes.map((t: Type) => t.typename),
-          scope
-        )
-        last.outputType = newReturnType
+        // Try to tackle issue with `main` and `alt` when they are in a function without branching
+        if (returnSubtypes.some((t: Type) => !!t.iface)) {
+          last.outputType = this.getReturnType()
+        } else {
+          // We were able to piece together the right type info, let's use it
+          let newReturnType = oldReturnType.originalType.solidify(
+            returnSubtypes.map((t: Type) => t.typename),
+            scope
+          )
+          last.outputType = newReturnType
+        }
       } else {
         const lastTypeAst = Ast.fulltypenameAstFromString(last.outputType.typename)
         const lastSubtypes = []
@@ -760,7 +776,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
             lastSubtypes.push(scope.deepGet(r.get('fulltypename').t))
           })
         }
-        if (lastSubtypes.some((t: Type) => !!t.iface)) {
+        if (lastSubtypes.some((t: Type) => t.hasInterfaceType())) {
           const oldLastType = last.outputType
           const originalArgTypes = Object.values(this.args)
           for (let i = 0; i < inputTypes.length; i++) {
@@ -770,12 +786,25 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
               }
             }
           }
-          let newLastType = oldLastType.originalType.solidify(
-            lastSubtypes.map((t: Type) => t.typename),
-            scope
-          )
-          last.outputType = newLastType
+          if (lastSubtypes.some((t: Type) => t.hasInterfaceType())) {
+            // Just fall back to the user-provided type for now
+            last.outputType = this.getReturnType()
+          } else {
+            let newLastType = oldLastType.originalType.solidify(
+              lastSubtypes.map((t: Type) => t.typename),
+              scope
+            )
+            last.outputType = newLastType
+          }
         }
+      }
+    }
+    // If `last` is a REREF, we also need to potentially update the type on the original record
+    for (let i = 0; i < microstatements.length; i++) {
+      let m = microstatements[i]
+      if (m.outputName === last.outputName && m.statementType !== StatementType.REREF) {
+        m.outputType = last.outputType
+        break
       }
     }
     // Now that we're done with this, we need to pop out all of the ENTERFN microstatements created

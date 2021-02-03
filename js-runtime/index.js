@@ -16,7 +16,7 @@ const INT16MIN = -(2 ** 15)
 const INT32MAX = 2 ** 31 - 1
 const INT32MIN = -(2 ** 31)
 const INT64MAX = 2n ** 63n - 1n
-const INT64MIN = -(2n ** 31n)
+const INT64MIN = -(2n ** 63n)
 
 // Hashing opcodes (hashv is recursive, needs to be defined outside of the export object)
 const hashcore = (hasher, a) => {
@@ -171,36 +171,36 @@ module.exports = {
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (a > 0 && b > 0 && a > INT8MAX - b) return [0, 'overflow']
-    if (a < 0 && b < 0 && a < INT8MIN - b) return [0, 'underflow']
-    return [1, a + b]
+    if (a > 0 && b > 0 && a > INT8MAX - b) return [false, 'overflow']
+    if (a < 0 && b < 0 && a < INT8MIN - b) return [false, 'underflow']
+    return [true, a + b]
   },
   addi16:  (ra, rb) => {
     if (!ra[0]) return ra
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (a > 0 && b > 0 && a > INT16MAX - b) return [0, 'overflow']
-    if (a < 0 && b < 0 && a < INT16MIN - b) return [0, 'underflow']
-    return [1, a + b]
+    if (a > 0 && b > 0 && a > INT16MAX - b) return [false, 'overflow']
+    if (a < 0 && b < 0 && a < INT16MIN - b) return [false, 'underflow']
+    return [true, a + b]
   },
   addi32:  (ra, rb) => {
     if (!ra[0]) return ra
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (a > 0 && b > 0 && a > INT32MAX - b) return [0, 'overflow']
-    if (a < 0 && b < 0 && a < INT32MIN - b) return [0, 'underflow']
-    return [1, a + b]
+    if (a > 0 && b > 0 && a > INT32MAX - b) return [false, 'overflow']
+    if (a < 0 && b < 0 && a < INT32MIN - b) return [false, 'underflow']
+    return [true, a + b]
   },
   addi64:  (ra, rb) => {
     if (!ra[0]) return ra
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (a > 0n && b > 0n && a > INT64MAX - b) return [0, 'overflow']
-    if (a < 0n && b < 0n && a < INT64MIN - b) return [0, 'underflow']
-    return [1, a + b]
+    if (a > 0n && b > 0n && a > INT64MAX - b) return [false, 'overflow']
+    if (a < 0n && b < 0n && a < INT64MIN - b) return [false, 'underflow']
+    return [true, a + b]
   },
   addf32:  (ra, rb) => {
     if (!ra[0]) return ra
@@ -208,9 +208,9 @@ module.exports = {
     const a = ra[1]
     const b = rb[1]
     const out = a + b
-    if (out === Number.POSITIVE_INFINITY) return [0, 'overflow']
-    if (out === Number.NEGATIVE_INFINITY) return [0, 'underflow']
-    return [1, out]
+    if (out === Number.POSITIVE_INFINITY) return [false, 'overflow']
+    if (out === Number.NEGATIVE_INFINITY) return [false, 'underflow']
+    return [true, out]
   },
   addf64:  (ra, rb) => {
     if (!ra[0]) return ra
@@ -218,9 +218,9 @@ module.exports = {
     const a = ra[1]
     const b = rb[1]
     const out = a + b
-    if (out === Number.POSITIVE_INFINITY) return [0, 'overflow']
-    if (out === Number.NEGATIVE_INFINITY) return [0, 'underflow']
-    return [1, out]
+    if (out === Number.POSITIVE_INFINITY) return [false, 'overflow']
+    if (out === Number.NEGATIVE_INFINITY) return [false, 'underflow']
+    return [true, out]
   },
 
   subi8:   (ra, rb) => {
@@ -228,36 +228,36 @@ module.exports = {
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (a > 0 && b < 0 && a > INT8MAX + b) return [0, 'overflow']
-    if (a < 0 && b > 0 && a < INT8MIN + b) return [0, 'underflow']
-    return [1, a - b]
+    if (a > 0 && b < 0 && a > INT8MAX + b) return [false, 'overflow']
+    if (a < 0 && b > 0 && a < INT8MIN + b) return [false, 'underflow']
+    return [true, a - b]
   },
   subi16:  (ra, rb) => {
     if (!ra[0]) return ra
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (a > 0 && b < 0 && a > INT16MAX + b) return [0, 'overflow']
-    if (a < 0 && b > 0 && a < INT16MIN + b) return [0, 'underflow']
-    return [1, a - b]
+    if (a > 0 && b < 0 && a > INT16MAX + b) return [false, 'overflow']
+    if (a < 0 && b > 0 && a < INT16MIN + b) return [false, 'underflow']
+    return [true, a - b]
   },
   subi32:  (ra, rb) => {
     if (!ra[0]) return ra
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (a > 0 && b < 0 && a > INT32MAX + b) return [0, 'overflow']
-    if (a < 0 && b > 0 && a < INT32MIN + b) return [0, 'underflow']
-    return [1, a - b]
+    if (a > 0 && b < 0 && a > INT32MAX + b) return [false, 'overflow']
+    if (a < 0 && b > 0 && a < INT32MIN + b) return [false, 'underflow']
+    return [true, a - b]
   },
   subi64:  (ra, rb) => {
     if (!ra[0]) return ra
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (a > 0n && b < 0n && a > INT32MAX + b) return [0, 'overflow']
-    if (a < 0n && b > 0n && a < INT32MIN + b) return [0, 'underflow']
-    return [1, a - b]
+    if (a > 0n && b < 0n && a > INT32MAX + b) return [false, 'overflow']
+    if (a < 0n && b > 0n && a < INT32MIN + b) return [false, 'underflow']
+    return [true, a - b]
   },
   subf32:  (ra, rb) => {
     if (!ra[0]) return ra
@@ -265,9 +265,9 @@ module.exports = {
     const a = ra[1]
     const b = rb[1]
     const out = a - b
-    if (out === Number.POSITIVE_INFINITY) return [0, 'overflow']
-    if (out === Number.NEGATIVE_INFINITY) return [0, 'underflow']
-    return [1, out]
+    if (out === Number.POSITIVE_INFINITY) return [false, 'overflow']
+    if (out === Number.NEGATIVE_INFINITY) return [false, 'underflow']
+    return [true, out]
   },
   subf64:  (ra, rb) => {
     if (!ra[0]) return ra
@@ -275,9 +275,9 @@ module.exports = {
     const a = ra[1]
     const b = rb[1]
     const out = a - b
-    if (out === Number.POSITIVE_INFINITY) return [0, 'overflow']
-    if (out === Number.NEGATIVE_INFINITY) return [0, 'underflow']
-    return [1, out]
+    if (out === Number.POSITIVE_INFINITY) return [false, 'overflow']
+    if (out === Number.NEGATIVE_INFINITY) return [false, 'underflow']
+    return [true, out]
   },
 
   negi8:    a => 0 - a,
@@ -299,36 +299,36 @@ module.exports = {
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (a > 0 && b > 0 && a > INT8MAX / b) return [0, 'overflow']
-    if (a < 0 && b < 0 && a < INT8MIN / b) return [0, 'underflow']
-    return [1, a * b]
+    if (a > 0 && b > 0 && a > INT8MAX / b) return [false, 'overflow']
+    if (a < 0 && b < 0 && a < INT8MIN / b) return [false, 'underflow']
+    return [true, a * b]
   },
   muli16:  (ra, rb) => {
     if (!ra[0]) return ra
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (a > 0 && b > 0 && a > INT16MAX / b) return [0, 'overflow']
-    if (a < 0 && b < 0 && a < INT16MIN / b) return [0, 'underflow']
-    return [1, a * b]
+    if (a > 0 && b > 0 && a > INT16MAX / b) return [false, 'overflow']
+    if (a < 0 && b < 0 && a < INT16MIN / b) return [false, 'underflow']
+    return [true, a * b]
   },
   muli32:  (ra, rb) => {
     if (!ra[0]) return ra
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (a > 0 && b > 0 && a > INT32MAX / b) return [0, 'overflow']
-    if (a < 0 && b < 0 && a < INT32MIN / b) return [0, 'underflow']
-    return [1, a * b]
+    if (a > 0 && b > 0 && a > INT32MAX / b) return [false, 'overflow']
+    if (a < 0 && b < 0 && a < INT32MIN / b) return [false, 'underflow']
+    return [true, a * b]
   },
   muli64:  (ra, rb) => {
     if (!ra[0]) return ra
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (a > 0n && b > 0n && a > INT64MAX / b) return [0, 'overflow']
-    if (a < 0n && b < 0n && a < INT64MIN / b) return [0, 'underflow']
-    return [1, a * b]
+    if (a > 0n && b > 0n && a > INT64MAX / b) return [false, 'overflow']
+    if (a < 0n && b < 0n && a < INT64MIN / b) return [false, 'underflow']
+    return [true, a * b]
   },
   mulf32:  (ra, rb) => {
     if (!ra[0]) return ra
@@ -336,9 +336,9 @@ module.exports = {
     const a = ra[1]
     const b = rb[1]
     const out = a * b
-    if (out === Number.POSITIVE_INFINITY) return [0, 'overflow']
-    if (out === Number.NEGATIVE_INFINITY) return [0, 'underflow']
-    return [1, out]
+    if (out === Number.POSITIVE_INFINITY) return [false, 'overflow']
+    if (out === Number.NEGATIVE_INFINITY) return [false, 'underflow']
+    return [true, out]
   },
   mulf64:  (ra, rb) => {
     if (!ra[0]) return ra
@@ -346,9 +346,9 @@ module.exports = {
     const a = ra[1]
     const b = rb[1]
     const out = a * b
-    if (out === Number.POSITIVE_INFINITY) return [0, 'overflow']
-    if (out === Number.NEGATIVE_INFINITY) return [0, 'underflow']
-    return [1, out]
+    if (out === Number.POSITIVE_INFINITY) return [false, 'overflow']
+    if (out === Number.NEGATIVE_INFINITY) return [false, 'underflow']
+    return [true, out]
   },
 
   divi8:   (ra, rb) => {
@@ -356,54 +356,54 @@ module.exports = {
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (b === 0) return [0, 'divide-by-zero']
-    return [1, Math.floor(a / b)]
+    if (b === 0) return [false, 'divide-by-zero']
+    return [true, Math.floor(a / b)]
   },
   divi16:  (ra, rb) => {
     if (!ra[0]) return ra
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (b === 0) return [0, 'divide-by-zero']
-    return [1, Math.floor(a / b)]
+    if (b === 0) return [false, 'divide-by-zero']
+    return [true, Math.floor(a / b)]
   },
   divi32:  (ra, rb) => {
     if (!ra[0]) return ra
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (b === 0) return [0, 'divide-by-zero']
-    return [1, Math.floor(a / b)]
+    if (b === 0) return [false, 'divide-by-zero']
+    return [true, Math.floor(a / b)]
   },
   divi64:  (ra, rb) => {
     if (!ra[0]) return ra
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (b === 0n) return [0, 'divide-by-zero']
-    return [1, a / b]
+    if (b === 0n) return [false, 'divide-by-zero']
+    return [true, a / b]
   },
   divf32:  (ra, rb) => {
     if (!ra[0]) return ra
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (b === 0.0) return [0, 'divide-by-zero']
+    if (b === 0.0) return [false, 'divide-by-zero']
     const out = a / b
-    if (out === Number.POSITIVE_INFINITY) return [0, 'overflow']
-    if (out === Number.NEGATIVE_INFINITY) return [0, 'underflow']
-    return [1, out]
+    if (out === Number.POSITIVE_INFINITY) return [false, 'overflow']
+    if (out === Number.NEGATIVE_INFINITY) return [false, 'underflow']
+    return [true, out]
   },
   divf64:  (ra, rb) => {
     if (!ra[0]) return ra
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (b === 0.0) return [0, 'divide-by-zero']
+    if (b === 0.0) return [false, 'divide-by-zero']
     const out = a / b
-    if (out === Number.POSITIVE_INFINITY) return [0, 'overflow']
-    if (out === Number.NEGATIVE_INFINITY) return [0, 'underflow']
-    return [1, out]
+    if (out === Number.POSITIVE_INFINITY) return [false, 'overflow']
+    if (out === Number.NEGATIVE_INFINITY) return [false, 'underflow']
+    return [true, out]
   },
 
   modi8:   (a, b) => a % b,
@@ -416,27 +416,27 @@ module.exports = {
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (a > 0 && b > 1 && a > INT8MAX ** (1 / b)) return [0, 'overflow']
-    if (a < 0 && b > 1 && a < INT8MIN ** (1 / b)) return [0, 'underflow']
-    return [1, Math.floor(a ** b)]
+    if (a > 0 && b > 1 && a > INT8MAX ** (1 / b)) return [false, 'overflow']
+    if (a < 0 && b > 1 && a < INT8MIN ** (1 / b)) return [false, 'underflow']
+    return [true, Math.floor(a ** b)]
   },
   powi16:  (ra, rb) => {
     if (!ra[0]) return ra
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (a > 0 && b > 1 && a > INT16MAX ** (1 / b)) return [0, 'overflow']
-    if (a < 0 && b > 1 && a < INT16MIN ** (1 / b)) return [0, 'underflow']
-    return [1, Math.floor(a ** b)]
+    if (a > 0 && b > 1 && a > INT16MAX ** (1 / b)) return [false, 'overflow']
+    if (a < 0 && b > 1 && a < INT16MIN ** (1 / b)) return [false, 'underflow']
+    return [true, Math.floor(a ** b)]
   },
   powi32:  (ra, rb) => {
     if (!ra[0]) return ra
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (a > 0 && b > 1 && a > INT32MAX ** (1 / b)) return [0, 'overflow']
-    if (a < 0 && b > 1 && a < INT32MIN ** (1 / b)) return [0, 'underflow']
-    return [1, Math.floor(a ** b)]
+    if (a > 0 && b > 1 && a > INT32MAX ** (1 / b)) return [false, 'overflow']
+    if (a < 0 && b > 1 && a < INT32MIN ** (1 / b)) return [false, 'underflow']
+    return [true, Math.floor(a ** b)]
   },
   powi64:  (ra, rb) => {
     if (!ra[0]) return ra
@@ -447,15 +447,15 @@ module.exports = {
       const af = parseFloat(a.toString())
       const bf = parseFloat(b.toString())
       const maxf = parseFloat(INT64MAX.toString())
-      if (af > maxf ** (1 / bf)) return [0, 'overflow']
+      if (af > maxf ** (1 / bf)) return [false, 'overflow']
     }
     if (a < 0n && b > 1n) {
       const af = parseFloat(a.toString())
       const bf = parseFloat(b.toString())
       const minf = parseFloat(INT64MIN.toString())
-      if (af < minf ** (1 / bf)) return [0, 'underflow']
+      if (af < minf ** (1 / bf)) return [false, 'underflow']
     }
-    return [1, a ** b]
+    return [true, a ** b]
   },
   powf32:  (ra, rb) => {
     if (!ra[0]) return ra
@@ -463,9 +463,9 @@ module.exports = {
     const a = ra[1]
     const b = rb[1]
     const out = a ** b
-    if (out === Number.POSITIVE_INFINITY) return [0, 'overflow']
-    if (out === Number.NEGATIVE_INFINITY) return [0, 'underflow']
-    return [1, out]
+    if (out === Number.POSITIVE_INFINITY) return [false, 'overflow']
+    if (out === Number.NEGATIVE_INFINITY) return [false, 'underflow']
+    return [true, out]
   },
   powf64:  (ra, rb) => {
     if (!ra[0]) return ra
@@ -473,9 +473,9 @@ module.exports = {
     const a = ra[1]
     const b = rb[1]
     const out = a ** b
-    if (out === Number.POSITIVE_INFINITY) return [0, 'overflow']
-    if (out === Number.NEGATIVE_INFINITY) return [0, 'underflow']
-    return [1, out]
+    if (out === Number.POSITIVE_INFINITY) return [false, 'overflow']
+    if (out === Number.NEGATIVE_INFINITY) return [false, 'underflow']
+    return [true, out]
   },
 
   sqrtf32:  a => Math.sqrt(a),
@@ -582,7 +582,7 @@ module.exports = {
   // TODO: templ, after maps are figured out
   matches: (a, b) => RegExp(b).test(a),
   indstr:  (a, b) => {
-    const ind = a.indexOf(b)
+    const ind = BigInt(a.indexOf(b))
     return ind > -1 ? [ true, ind, ] : [ false, 'substring not found', ]
   },
   lenstr:   a => BigInt(a.length),
@@ -614,18 +614,18 @@ module.exports = {
     }
   },
   join:    (arr, sep) => arr.join(sep),
-  map:     async (arr, fn) => await Promise.all(arr.map(fn)),
-  mapl:    async (arr, fn) => await Promise.all(arr.map(fn)),
+  map:     async (arr, fn) => await Promise.all(arr.map((v, i) => fn(v, BigInt(i)))),
+  mapl:    async (arr, fn) => await Promise.all(arr.map((v, i) => fn(v, BigInt(i)))),
   reparr:  (arr, n) => Array.from(new Array(parseInt(n.toString()) * arr.length))
     .map((_, i) => typeof arr[i % arr.length] === 'bigint' ?
       BigInt(arr[i % arr.length]) :
       JSON.parse(JSON.stringify(arr[i % arr.length]))
     ),
-  each:    async (arr, fn) => {
-    await Promise.all(arr.map(fn)) // Thrown away but awaited to maintain consistent execution
+  each:    async (arr, fn) => { // Thrown away but awaited to maintain consistent execution
+    await Promise.all(arr.map((v, i) => fn(v, BigInt(i))))
   },
-  eachl:   async (arr, fn) => {
-    await Promise.all(arr.map(fn)) // Thrown away but awaited to maintain consistent execution
+  eachl:   async (arr, fn) => { // Thrown away but awaited to maintain consistent execution
+    await Promise.all(arr.map((v, i) => fn(v, BigInt(i))))
   },
   find:    async (arr, fn) => {
     let val = undefined
