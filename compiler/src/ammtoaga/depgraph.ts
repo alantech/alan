@@ -1,4 +1,4 @@
-import { LP, LPNode, LPError, NamedAnd, NulLP } from './lp';
+import { LP, LPNode, LPError, NamedAnd, NulLP } from '../lp';
 
 const unhandled = (val) => {
   console.log('========== UNHANDLED')
