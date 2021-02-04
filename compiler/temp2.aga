@@ -1,0 +1,80 @@
+Alan Graphcode Assembler v0.0.1
+
+globalMem
+  @-1: "foo"
+  @-17: "bar"
+  @-33: "\n"
+  @-49: "baz"
+  @-65: ""
+  @-73: "inc"
+  @-89: 0i64
+  @-97: 100i64
+  @-105: 200i64
+  @-113: 300i64
+  @-121: 1i64
+  @-129: 8i64
+  @-137: 3i64
+
+customEvents
+  stdout: -1
+  exit: 8
+  stderr: -1
+  waitAndInc: 8
+  _5cfbca59_27f9_4a3a_8964_12763cf526a7: 0
+
+handler for _start with size 21
+  @0 = dshas(@-1, @-17) #0
+  @1 = boolstr(@0, @0) #1 <- [#0]
+  @2 = catstr(@1, @-33) #2 <- [#1]
+  @3 = stdoutp(@2, @0) #3 <- [#2, #0]
+  dssetv(@-1, @-17, @-49) #4
+  @4 = dshas(@-1, @-17) #5
+  @5 = boolstr(@4, @0) #6 <- [#5, #0]
+  @6 = catstr(@5, @-33) #7 <- [#6]
+  @7 = stdoutp(@6, @0) #8 <- [#7, #0]
+  @8 = dsgetv(@-1, @-17) #9
+  @9 = getOrRS(@8, @-65) #10 <- [#9]
+  @10 = catstr(@9, @-33) #11 <- [#10]
+  @11 = stdoutp(@10, @0) #12 <- [#11, #0]
+  @12 = dsdel(@-1, @-17) #13
+  @13 = dshas(@-1, @-17) #14
+  @14 = boolstr(@13, @0) #15 <- [#14, #0]
+  @15 = catstr(@14, @-33) #16 <- [#15]
+  @16 = stdoutp(@15, @0) #17 <- [#16, #0]
+  @17 = dsgetv(@-1, @-17) #18
+  @18 = getOrRS(@17, @-65) #19 <- [#18]
+  @19 = catstr(@18, @-33) #20 <- [#19]
+  @20 = stdoutp(@19, @0) #21 <- [#20, #0]
+  dssetf(@-1, @-73, @-89) #22
+  emit(waitAndInc, @-97) #23 <- [#0]
+  emit(waitAndInc, @-105) #24 <- [#23, #0]
+  emit(waitAndInc, @-113) #25 <- [#24, #0]
+
+handler for stdout with size 2
+  @1 = stdoutp(@0, @0) #0
+
+handler for exit with size 2
+  @1 = exitop(@0, @0) #0
+
+handler for stderr with size 2
+  @1 = stderrp(@0, @0) #0
+
+handler for waitAndInc with size 14
+  @1 = waitop(@0, @0) #0
+  @2 = dsgetf(@-1, @-73) #1
+  @3 = getOrR(@2, @-89) #2 <- [#1]
+  @4 = reff(@3, @0) #3 <- [#2]
+  @5 = okR(@4, @-129) #4 <- [#3]
+  @6 = okR(@-121, @-129) #5
+  @7 = addi64(@5, @6) #6 <- [#4, #5]
+  @8 = getOrR(@7, @-89) #7 <- [#6]
+  @4 = reff(@8, @0) #8 <- [#7]
+  @9 = i64str(@4, @0) #9 <- [#8]
+  @10 = catstr(@9, @-33) #10 <- [#9]
+  @11 = stdoutp(@10, @0) #11 <- [#10]
+  dssetf(@-1, @-73, @4) #12 <- [#8]
+  @12 = eqi64(@4, @-137) #13 <- [#8]
+  @13 = condfn(@12, _5cfbca59_27f9_4a3a_8964_12763cf526a7) #14 <- [#13]
+
+closure for _5cfbca59_27f9_4a3a_8964_12763cf526a7 with size 14
+  emit(exit, @-89) #0
