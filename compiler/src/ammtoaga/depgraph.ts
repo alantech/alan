@@ -1,16 +1,72 @@
 import { LP, LPNode, LPError, NamedAnd, NulLP } from '../lp';
 
-const unhandled = (val) => {
-  console.log('========== UNHANDLED')
-  console.log(val)
-  console.log()
+const unhandled = (val, reason?: string) => {
+  console.error(`========== UNHANDLED: ${reason}`)
+  console.error(val)
+  console.error()
   throw new Error()
 }
 
 export class HandlerGraph {
-  build(stmts: LPNode[]) {}
+  byOrder: HandlerNode[]
+  byText: {[text: string]: HandlerNode}
+  byVar: {[varname: string]: HandlerNode[]}
+  outerGraph?: HandlerGraph
+  outerDeps: HandlerNode[]
+  outerMuts: string[]
 
-  getLastMutationFor(varName: String): HandlerNode { return null }
+  constructor(fn?: LPNode, outer?: HandlerGraph) {
+    this.byOrder = []
+    this.byText = {}
+    this.byVar = {}
+    this.outerGraph = outer || null
+    this.outerDeps = []
+    this.outerMuts = []
+
+    if (fn) {
+      let stmts = fn.get('functions')
+        .get('functionbody')
+        .get('statements').getAll()
+        .filter(s => !s.has('whitespace'))
+        .filter(s => !s.has('exits'))
+      this.build(stmts)
+    }
+  }
+
+  build(stmts: LPNode[]) {
+    for (let stmt of stmts) {
+      let node = new HandlerNode(stmt, this)
+      for (let mutated of node.mutates) {
+        if (this.outerGraph && this.outerGraph.getLastMutationFor(mutated)) {
+          this.outerMuts.push(mutated)
+        }
+
+        if (!this.byVar[mutated]) {
+          this.byVar[mutated] = []
+        }
+        this.byVar[mutated].push(node)
+      }
+      this.byText[node.stmt] = node
+      this.byOrder.push(node)
+    }
+  }
+
+  getLastMutationFor(varName: string): HandlerNode {
+    let nodes = this.byVar[varName]
+    if (nodes && nodes.length != 0) {
+      return nodes[nodes.length - 1]
+    }
+
+    if (this.outerGraph) {
+      let outer = this.outerGraph.getLastMutationFor(varName)
+      if (outer) {
+        this.outerDeps.push(outer)
+        return outer
+      }
+    }
+
+    return null
+  }
 }
 
 export class HandlerNode {
@@ -21,19 +77,59 @@ export class HandlerNode {
   mutates: string[]
 
   constructor(stmt: LPNode, graph: HandlerGraph) {
+    this.stmt = stmt.t.trim()
+    this.upstream = []
+    this.downstream = []
+    this.closure = null
+    this.mutates = []
+
     if (stmt.has('declarations')) {
       let dec = stmt.get('declarations')
-      if (dec.has('constdeclaration')) dec = dec.get('constdeclaration')
-      else if (dec.has('letdeclaration')) dec = dec.get('letdeclaration')
-      else unhandled(dec)
+      if (dec.has('constdeclaration')) {
+        dec = dec.get('constdeclaration')
+      } else if (dec.has('letdeclaration')) {
+        dec = dec.get('letdeclaration')
+      } else {
+        unhandled(dec, 'dec kind')
+      }
+      this.fromAssignment(dec, graph)
+    } else if (stmt.has('assignments')) {
+      this.fromAssignment(stmt.get('assignments'), graph)
+    } else if (stmt.has('calls')) {
+      this.fromCall(stmt.get('calls'), graph)
+    } else if (stmt.has('emits')) {
+      let upstream = graph.getLastMutationFor(stmt.get('emits').get('value').t.trim())
+      if (upstream) {
+        this.upstream.push(upstream)
+        upstream.downstream.push(this)
+      }
+    } else {
+      unhandled(stmt, 'node top-level')
+    }
+  }
 
-      if (dec.get('fulltypename').t.trim() == 'function') {
-        // TODO: recurse into functions
-        unhandled(dec)
-      } else if (dec.has('assignables') && dec.get('assignables').has('calls')) {
-        this.fromCall(dec.get('assignables').get('calls'), graph)
-      } else unhandled(dec)
-    } else unhandled(stmt)
+  fromAssignment(assign: LPNode, graph: HandlerGraph) {
+    if (!assign.has('assignables')) {
+      unhandled(assign, 'non-assignment assignment?')
+    }
+
+    this.mutates.push(assign.get('decname').t.trim())
+    if (assign.get('fulltypename').t.trim() == 'function') {
+      this.closure = new HandlerGraph(assign.get('assignables'), graph)
+      this.upstream = this.closure.outerDeps
+      this.mutates.concat(...this.closure.outerMuts)
+    } else if (assign.has('assignables')) {
+      assign = assign.get('assignables')
+      if (assign.has('calls')) {
+        this.fromCall(assign.get('calls'), graph)
+      } else if (assign.has('value')) {
+        // do nothing
+      } else {
+        unhandled(assign, 'assignable')
+      }
+    } else {
+      unhandled(assign, 'non-assignable... assignable... ?')
+    }
   }
 
   fromCall(call: LPNode, graph: HandlerGraph) {
@@ -41,8 +137,13 @@ export class HandlerNode {
     let args = call.get('calllist').getAll()
     let mutated = []
     let opMutability = opcodeParamMutabilities[opcodeName]
+    if (!opMutability) {
+      unhandled(opMutability, 'opcode ' + opcodeName)
+    }
     for (let ii = 0; ii < opMutability.length; ii++) {
-      if (opMutability[ii]) mutated.push(args[ii].t.trim())
+      if (opMutability[ii]) {
+        mutated.push(args[ii].t.trim())
+      }
     }
     this.mutates = mutated
     for (let arg of args) {
@@ -184,7 +285,12 @@ export const opcodeParamMutabilities = {
   nandi16: [false, false],
   nandi32: [false, false],
   nandi64: [false, false],
-  nandbool: [false, false],
+  nandboo: [false, false],
+  nori8: [false, false],
+  nori16: [false, false],
+  nori32: [false, false],
+  nori64: [false, false],
+  norbool: [false, false],
   xnori8: [false, false],
   xnori16: [false, false],
   xnori32: [false, false],

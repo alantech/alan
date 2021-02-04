@@ -7,6 +7,7 @@ import {
 } from '../lp'
 
 import amm from '../amm'
+import { HandlerGraph } from './depgraph'
 
 // This project depends on BigNum and associated support in Node's Buffer, so must be >= Node 10.20
 // and does not work in the browser. It would be possible to implement a browser-compatible version
@@ -650,9 +651,17 @@ const ammToAga = (amm: LPNode) => {
   }
   // Load the events, get the event id offset (for reuse with closures) and the event declarations
   let eventDecs = loadEventDecs(amm.get('eventDec').getAll())
+
+  const handlers = amm.get('handlers').getAll()
   // Determine the amount of memory to allocate per handler and map declarations to addresses
-  const handlerMem = getHandlersMem(amm.get('handlers').getAll())
-  // const depGraph = getDepGraph(amm.get('handlers').getAll())
+  const handlerMem = getHandlersMem(handlers)
+  const depGraphs: HandlerGraph[] = []
+  for (let handler of handlers) {
+    handler = handler.get()
+    if (handler instanceof NamedAnd) {
+      depGraphs.push(new HandlerGraph(handler))
+    }
+  }
   const closures = extractClosures(amm.get('handlers').getAll(), handlerMem, eventDecs, addressMap)
   // Make sure closures are accessible as addresses for statements to use
   closures.forEach((c: any) => addressMap[c.name] = c.name)
