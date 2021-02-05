@@ -261,10 +261,10 @@ impl HandlerMemory {
     self: &'mem mut Arc<HandlerMemory>,
     addr: i64,
   ) -> &'mem mut Vec<(usize, i64)> {
-    let ((a, _), hm_opt) = self.addr_to_idxs(addr);
+    let ((a, b), hm_opt) = self.addr_to_idxs(addr);
     if let Some(hm) = hm_opt {
       // copy necessary data from ancestor
-      HandlerMemory::transfer(&hm, addr, self, addr);
+      HandlerMemory::transfer_idxs(&hm, a, b, self, addr);
     }
     &mut Arc::get_mut(self)
       .expect("couldn't grab mutable memory: dangling pointer")
@@ -557,7 +557,17 @@ impl HandlerMemory {
       Some(orig) => orig,
       None => origin,
     };
-    if addr_type(orig_addr) == GMEM_ADDR {
+    return HandlerMemory::transfer_idxs(orig, a, b, dest, dest_addr);
+  }
+
+  pub fn transfer_idxs(
+    orig: &Arc<HandlerMemory>,
+    a: usize,
+    b: usize,
+    dest: &mut Arc<HandlerMemory>,
+    dest_addr: i64,
+  ) {
+    if a == 0 {
       // Special behavior for global memory transfers since it may be a single value or a string
       let mem_slice = &orig.mems[a][b..];
       // To make this distinction we're gonna do some tests on the memory and see if it evals as a
@@ -605,8 +615,7 @@ impl HandlerMemory {
       // until no new ones are added
       let mut check_idx = 0;
       let mut orig_arr_addrs: Vec<usize> = vec![a];
-      let mut orig_arr_copies: Vec<Vec<(usize, i64)>> =
-        vec![orig.read_fractal(orig_addr).block.clone()];
+      let mut orig_arr_copies: Vec<Vec<(usize, i64)>> = vec![orig.mems[a].clone()];
       while check_idx < orig_arr_addrs.len() {
         let arr = &orig_arr_copies[check_idx];
         let l = arr.len();
