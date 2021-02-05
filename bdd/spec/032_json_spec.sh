@@ -37,9 +37,8 @@ null"
     End
 
     It "runs agc"
-      Pending debugging-whats-wrong-in-compiler-or-avm
-      #When run test_agc
-      #The output should eq "$BASICOUTPUT"
+      When run test_agc
+      The output should eq "$BASICOUTPUT"
     End
   End
 End

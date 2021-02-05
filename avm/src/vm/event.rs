@@ -77,6 +77,13 @@ impl EventHandler {
         self.fragments.push(frag);
       }
     } else {
+      // Temporarily disable all IO opcode reordering to test a theory
+      // Can't even batch them together because one IO opcode may depend on the previously listed
+      // one
+      // TODO: Restore the commented code below!
+      self.fragments.push(vec![ins]);
+    }
+    /*} else {
       // io opcode is a "movable capstone" in execution
       let cur_max_dep = ins.dep_ids.iter().max().unwrap_or(&-1);
       // merge this capstone with an existing one if possible
@@ -101,7 +108,7 @@ impl EventHandler {
       // mark it as a new capstone
       self.movable_capstones.push(self.fragments.len());
       self.fragments.push(vec![ins]);
-    }
+    }*/
   }
 
   pub fn len(self: &EventHandler) -> usize {

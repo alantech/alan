@@ -31,6 +31,9 @@ const loadGlobalMem = (globalMemAst: LPNode): bigint[] => {
     if (value.has('i64')) {
       const val = BigInt(value.t.replace(/i64$/, ''))
       globalMem.push(val)
+    } else if (value.has('i8')) {
+      const val = BigInt(value.t.replace(/i8$/, ''))
+      globalMem.push(val)
     } else if (value.has('f64')) {
       const buf = Buffer.alloc(8)
       buf.writeDoubleLE(parseFloat(value.t.replace(/f64$/, '')))
@@ -105,6 +108,8 @@ const loadStatements = (statements: LPNode, eventLookup: Object): bigint[] => {
         out = int64ToUint64(BigInt((argOpt.get('memoryAddress').get(1).t)))
       } else if (argOpt.has('i64')) {
         out = BigInt(argOpt.t.replace(/i64$/, ''))
+      } else if (argOpt.has('i8')) {
+        out = BigInt(argOpt.t.replace(/i8$/, ''))
       } else if (argOpt.has('f64')) {
         const buf = Buffer.alloc(8)
         buf.writeDoubleLE(parseFloat(argOpt.t.replace(/f64$/, '')))

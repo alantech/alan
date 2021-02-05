@@ -572,7 +572,7 @@ export fn toString(j: JSON): string {
       }
     });
     // Wipe the set by marking all values as false (we don't have HashMap deletes, yet)
-    nodeList.keys().each(fn (k: int64) = nodeList.set(k, false));
+    nodeList.keys().eachLin(fn (k: int64) = nodeList.set(k, false));
     // Then for each node, if it has a parent, add its parent to the set and its value to the lookup
     nodes.eachLin(fn (n: Node<JSONNode>, i: int64) {
       const parentId = n.getParent().id;
