@@ -2591,7 +2591,7 @@ export fn toSubtree(n: Node<any>): Tree<any> {
   let children = n.tree.children[n.id].getOr(new Array<int64> []);
   if children.length().gt(0) {
     let parentIds = [0].repeat(children.length());
-    seqdo(newseq(pow(2, 63).getOr(0)), fn (): bool {
+    seqdo(newseq(pow(2, 62).getOr(0)), fn (): bool {
       const childId = children.pop();
       const parentId = parentIds.pop();
       const childVal = n.tree.vals[childId].getR();

@@ -557,7 +557,7 @@ export fn toString(j: JSON): string {
     nodeList.set(kv.key, false);
   });
   // Execute the following block over and over again until there are no more nodes to process
-  seqdo(newseq(pow(2, 63).getOr(0)), fn (): bool {
+  seqdo(newseq(pow(2, 62).getOr(0)), fn (): bool {
     // Generate a list of ids from the nodeList by filtering out all `false` entries and mapping
     // the remaining ids into Nodes
     const nodes = nodeList
