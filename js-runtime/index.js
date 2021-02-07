@@ -883,7 +883,7 @@ module.exports = {
       return [ false, 'namespace-key pair not found', ]
     }
   },
-  newseq:  (limit) => [0, limit],
+  newseq:  (limit) => [0n, limit],
   seqnext: (seq) => {
     if (seq[0] < seq[1]) {
       const out = [true, seq[0]]
