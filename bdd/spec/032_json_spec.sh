@@ -76,9 +76,8 @@ null"
     End
 
     It "runs agc"
-      Pending debug-what-goes-wrong-on-avm-again
-      #When run test_agc
-      #The output should eq "$COMPLEXOUTPUT"
+      When run test_agc
+      The output should eq "$COMPLEXOUTPUT"
     End
   End
 End
