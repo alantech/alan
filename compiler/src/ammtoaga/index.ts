@@ -662,6 +662,7 @@ const ammToAga = (amm: LPNode) => {
       depGraphs.push(new HandlerGraph(handler))
     }
   }
+  // console.log(`[${depGraphs.map(g => g.toString()).join(',\n')}]`)
   const closures = extractClosures(amm.get('handlers').getAll(), handlerMem, eventDecs, addressMap)
   // Make sure closures are accessible as addresses for statements to use
   closures.forEach((c: any) => addressMap[c.name] = c.name)

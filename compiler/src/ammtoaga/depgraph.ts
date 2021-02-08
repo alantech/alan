@@ -1,4 +1,4 @@
-import { LP, LPNode, LPError, NamedAnd, NulLP } from '../lp';
+import { LPNode } from '../lp';
 
 const unhandled = (val, reason?: string) => {
   console.error(`========== UNHANDLED: ${reason}`)
@@ -36,6 +36,8 @@ export class HandlerGraph {
   build(stmts: LPNode[]) {
     for (let stmt of stmts) {
       let node = new HandlerNode(stmt, this)
+      // console.log(`mutates:`)
+      // console.log(node.mutates)
       for (let mutated of node.mutates) {
         if (this.outerGraph && this.outerGraph.getLastMutationFor(mutated)) {
           this.outerMuts.push(mutated)
@@ -53,19 +55,44 @@ export class HandlerGraph {
 
   getLastMutationFor(varName: string): HandlerNode {
     let nodes = this.byVar[varName]
+    // console.log(`------- ${varName}`)
+    // console.log('nodes:')
+    // console.log(nodes)
     if (nodes && nodes.length != 0) {
       return nodes[nodes.length - 1]
     }
 
+    // console.log('og:')
+    // console.log(this.outerGraph)
     if (this.outerGraph) {
       let outer = this.outerGraph.getLastMutationFor(varName)
-      if (outer) {
+      if (outer != null) {
         this.outerDeps.push(outer)
         return outer
       }
     }
 
     return null
+  }
+
+  toString(): string {
+    let bo = this.byOrder.map(n => n.toString())
+    let bt = Object.keys(this.byText).map(k => `"${k.replace(/\n/g, '\\n')}"`)
+    let bv = Object.keys(this.byVar).map(v => `"${v}"`)
+    let od = this.outerDeps.map(n => n.toString())
+    return `{
+      "byOrder": [
+        ${bo.join(',\n')}],
+      "byText": [
+        ${bt.join(',\n')}],
+      "byVar": [
+        ${bv.join(',\n')}],
+      "outerGraph": ${this.outerGraph != null},
+      "outerDeps": [
+        ${od.join(',\n')}],
+      "outerMuts": [
+        ${this.outerMuts.map(m => `"${m}"`).join(',\n')}]
+    }`
   }
 }
 
@@ -109,16 +136,27 @@ export class HandlerNode {
   }
 
   fromAssignment(assign: LPNode, graph: HandlerGraph) {
+    // console.log(assign)
     if (!assign.has('assignables')) {
       unhandled(assign, 'non-assignment assignment?')
     }
 
-    this.mutates.push(assign.get('decname').t.trim())
+    let decname = assign.get('decname').t.trim()
+    // console.log(`decname: ${decname}`)
+    let prev = graph.getLastMutationFor(decname)
+    if (prev != null) {
+      this.upstream.push(prev)
+    }
+
+    this.mutates.push(decname)
     if (assign.get('fulltypename').t.trim() == 'function') {
       this.closure = new HandlerGraph(assign.get('assignables'), graph)
       this.upstream = this.closure.outerDeps
       this.mutates.concat(...this.closure.outerMuts)
     } else if (assign.has('assignables')) {
+      if (prev != null) {
+        prev.downstream.push(this)
+      }
       assign = assign.get('assignables')
       if (assign.has('calls')) {
         this.fromCall(assign.get('calls'), graph)
@@ -134,25 +172,56 @@ export class HandlerNode {
 
   fromCall(call: LPNode, graph: HandlerGraph) {
     let opcodeName = call.get('variable').t.trim()
-    let args = call.get('calllist').getAll()
+    let args = call.get('calllist').getAll().map(c => c.get('variable'))
     let mutated = []
     let opMutability = opcodeParamMutabilities[opcodeName]
     if (!opMutability) {
       unhandled(opMutability, 'opcode ' + opcodeName)
     }
     for (let ii = 0; ii < opMutability.length; ii++) {
-      if (opMutability[ii]) {
+      if (opMutability[ii] === true) {
         mutated.push(args[ii].t.trim())
+      } else if (opMutability[ii] == null) {
+        // null indicates that the parameter expects a closure,
+        // so the mutability of the overall call depends on the
+        // mutability of the specified closure. Because of this,
+        // we have to grab the node for the closure declaration
+        // and use its mutabilities instead
+
+        // the closure def will be the first node in the list
+        let closure = graph.byVar[args[ii].t.trim()][0]
+        if (!closure) {
+          unhandled(graph.byVar, `no nodes declared for ${args[ii].t.trim()}`)
+        } else if (closure.closure == null) {
+          unhandled(closure, 'expected a closure')
+        }
+        mutated.concat(...closure.mutates)
       }
     }
-    this.mutates = mutated
+    this.mutates.concat(...mutated)
+    // console.log('---')
+    // console.log(this.stmt)
     for (let arg of args) {
+      // console.log(arg)
       let upstream = graph.getLastMutationFor(arg.t.trim())
+      // console.log(upstream)
       if (upstream) {
         this.upstream.push(upstream)
         upstream.downstream.push(this)
       }
     }
+  }
+
+  toString(): string {
+    let closure = null;
+    if (this.closure) closure = this.closure.toString()
+    return `{
+      "stmt": "${this.stmt.replace(/\n/g, '\\n')}",
+      "upstream": ${this.upstream.length},
+      "downstream": ${this.downstream.length},
+      "closure": ${closure},
+      "mutates": [${this.mutates.map(m => `"${m}"`).join(', ')}]
+    }`
   }
 }
 
@@ -358,26 +427,26 @@ export const opcodeParamMutabilities = {
   lenstr: [false],
   lenarr: [false],
   trim: [false],
-  condfn: [false, null], // TODO: should i use null to specify it's dependent on the input function?
+  condfn: [false, null],
   pusharr: [true, false, false],
   poparr: [true],
   delindx: [true, false],
-  each: [null, null],
-  eachl: [null, null],
-  map: [null, null],
-  mapl: [null, null],
-  reducel: [null, null],
-  reducep: [null, null],
-  foldl: [null, null],
-  foldp: [null, null],
-  filter: [null, null],
-  filterl: [null, null],
-  find: [null, null],
-  findl: [null, null],
-  every: [null, null],
-  everyl: [null, null],
-  some: [null, null],
-  somel: [null, null],
+  each: [false, null],
+  eachl: [false, null],
+  map: [false, null],
+  mapl: [false, null],
+  reducel: [false, null],
+  reducep: [false, null],
+  foldl: [false, null],
+  foldp: [false, null],
+  filter: [false, null],
+  filterl: [false, null],
+  find: [false, null],
+  findl: [false, null],
+  every: [false, null],
+  everyl: [false, null],
+  some: [false, null],
+  somel: [false, null],
   join: [false, false],
   newarr: [false],
   stdoutp: [false],
