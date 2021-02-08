@@ -121,6 +121,7 @@ export fn isObjectOrArray(a: JSONBase): bool {
       return c.isMain();
     }
   }
+  return false;
 }
 export fn isNull(a: JSONBase): bool {
   if a.isAlt() {
@@ -464,11 +465,13 @@ export fn addKeyVal(j: JSON, key: string, val: JSON): JSON {
   // Now mutate the attached sub-tree's root node to become a KeyVal pair
   const baseNode = childNode || toJSONNode();
   if baseNode.isKeyVal() {
-    // Just update the key to match
-    baseNode.getMainOr(new KeyVal<string, JSONBase> {
+    // Just update the key to match.
+    // TODO, Make this assignment work in one line
+    let n = baseNode.getMainOr(new KeyVal<string, JSONBase> {
       key: key,
       val: toJSONBase(),
-    }).key = key;
+    });
+    n.key = key;
     return j;
   }
   // We need to replace the JSONNode itself
@@ -532,7 +535,7 @@ export fn toString(j: JSON): string {
     };
   }).toHashMap();
   // Construct a list of nodes to process, based on the parents of the leaf nodes, using a HashMap
-  // as a set
+  // as a set, but only those parents that have all children set by these leaves
   let nodeList = newHashMap(-1, false);
   leaves.eachLin(fn (l: Node<JSONNode>) {
     const parentId = l.getParent().id;
@@ -540,8 +543,21 @@ export fn toString(j: JSON): string {
       nodeList.set(l.getParent().id, true);
     }
   });
+  nodeList.keyVal().filter(fn (kv: KeyVal<int64, bool>): bool {
+    const n = j.getNodeById(kv.key);
+    const children = n.getChildren();
+    let missingChildren = false;
+    children.eachLin(fn (c: Node<JSONNode>) {
+      if lookup.get(c.id).isErr() {
+        missingChildren = true;
+      }
+    });
+    return missingChildren;
+  }).eachLin(fn (kv: KeyVal<int64, bool>) {
+    nodeList.set(kv.key, false);
+  });
   // Execute the following block over and over again until there are no more nodes to process
-  seqdo(newseq(pow(2, 64).getOr(0)), fn (): bool {
+  seqdo(newseq(pow(2, 62).getOr(0)), fn (): bool {
     // Generate a list of ids from the nodeList by filtering out all `false` entries and mapping
     // the remaining ids into Nodes
     const nodes = nodeList
@@ -559,6 +575,22 @@ export fn toString(j: JSON): string {
     // child arrays
     const newVals = nodes.map(fn (n: Node<JSONNode>, i: int64): string {
       const nodeVal = n || toJSONNode();
+      if nodeVal.isKeyVal() {
+        const kv = nodeVal.getKeyVal() || new KeyVal<string, JSONBase> {
+          key: '',
+          val: toJSONBase(),
+        };
+        if kv.val.isObjectOrArray() {
+          const isObject = kv.val.getIsObject().getR();
+          if isObject.isObject {
+            return '"' + kv.key + '": {' + childVals[i].getR().join(', ') + '}';
+          } else {
+            return '"' + kv.key + '": [' + childVals[i].getR().join(', ') + ']';
+          }
+        } else {
+          return nodeVal.toString();
+        }
+      }
       if nodeVal.isObjectOrArray() {
         const isObject = nodeVal.getIsObject().getR();
         if isObject.isObject {
@@ -577,7 +609,7 @@ export fn toString(j: JSON): string {
     nodes.eachLin(fn (n: Node<JSONNode>, i: int64) {
       const parentId = n.getParent().id;
       if parentId > -1 {
-        nodeList.set(n.getParent().id, true);
+        nodeList.set(parentId, true);
       }
       lookup.set(n.id, newVals[i].getR());
     });

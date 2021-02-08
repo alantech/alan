@@ -2372,8 +2372,6 @@ export fn set(hm: HashMap<Hashable, any>, key: Hashable, val: any): HashMap<Hash
     key: key,
     val: val,
   };
-  const index = length(hm.keyVal);
-  push(hm.keyVal, kv);
   const hash = key.toHash().abs() % length(hm.lookup);
   const list = getR(hm.lookup[hash]);
   if list.length() == 8 {
@@ -2392,10 +2390,12 @@ export fn set(hm: HashMap<Hashable, any>, key: Hashable, val: any): HashMap<Hash
     list.eachLin(fn (idx: int64, i: int64) {
       const rec = hm.keyVal[idx].getR();
       if eq(rec.key, key) {
-        list.set(i, index);
+        hm.keyVal.set(idx, kv);
       }
     });
   } else {
+    const index = length(hm.keyVal);
+    push(hm.keyVal, kv);
     list.push(index);
   }
   return hm;
@@ -2591,9 +2591,9 @@ export fn toSubtree(n: Node<any>): Tree<any> {
   let children = n.tree.children[n.id].getOr(new Array<int64> []);
   if children.length().gt(0) {
     let parentIds = [0].repeat(children.length());
-    seqdo(newseq(pow(2, 64).getOr(0)), fn (): bool {
-      const childId = children.pop();
-      const parentId = parentIds.pop();
+    seqdo(newseq(pow(2, 62).getOr(0)), fn (): bool {
+      const childId = children.pop().getOr(-1);
+      const parentId = parentIds.pop().getOr(-1);
       const childVal = n.tree.vals[childId].getR();
       const grandchildIds = n.tree.children[childId].getOr(new Array<int64> []);
       const newParentId = outTree.vals.length();
@@ -2638,16 +2638,17 @@ export fn addChild(n: Node<any>, val: any): Node<any> {
 //               B'  C'
 export fn addChild(n: Node<any>, val: Tree<any>): Node<any> {
   const childIdOffset = n.tree.vals.length();
-  const newParents = n.tree.parents.map(fn (p: int64): int64 {
+  const newParents = val.parents.map(fn (p: int64): int64 {
     if p == -1 {
       return n.id;
     } else {
       return p.add(childIdOffset).getOr(0);
     }
   });
-  const newChildren = n.tree.children.map(fn (ca: Array<int64>): Array<int64> {
+  const newChildren = val.children.map(fn (ca: Array<int64>): Array<int64> {
     return ca.map(fn (c: int64): int64 = c.add(childIdOffset).getOr(0));
   });
+  n.tree.children = n.tree.children.concat(newChildren);
   n.tree.children[n.id].getOr(new Array<int64> []).push(childIdOffset);
   n.tree.vals = n.tree.vals.concat(val.vals);
   n.tree.parents = n.tree.parents.concat(newParents);
