@@ -423,7 +423,7 @@ export const opcodeParamMutabilities = {
   xnori16: [false, false],
   xnori32: [false, false],
   xnori64: [false, false],
-  xnorbool: [false, false],
+  xnorboo: [false, false],
   eqi8: [false, false],
   eqi16: [false, false],
   eqi32: [false, false],
