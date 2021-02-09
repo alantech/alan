@@ -41,16 +41,6 @@ export class Block {
       }
     }
     return JSON.stringify(dependencies)
-    // const idxByNode = {}
-    // for (let ii = 0; ii < this.statements.length; ii++) {
-    //   if (this.statements[ii].depNode === null) continue;
-    //   idxByNode[this.statements[ii].depNode.stmt] = ii
-    //   for (let upstream of this.statements[ii].depNode.upstream) {
-    //     if (idxByNode[upstream.stmt] !== undefined && idxByNode[upstream.stmt] !== null) {
-    //       this.statements[ii].deps.push(idxByNode[upstream.stmt])
-    //     }
-    //   }
-    // }
   }
 
   toString() {

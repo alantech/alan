@@ -1,6 +1,6 @@
 import { LPNode } from '../lp';
-import { Block, Statement } from './aga'
 
+// this is just here for debugging purposes
 const unhandled = (val: any, reason?: string) => {
   console.error(`========== UNHANDLED: ${reason}`)
   console.error(val)
@@ -15,29 +15,24 @@ export class DepGraph {
    */
   byOrder: DepNode[]
   /**
-   * Allows grabbing the `FunNode` for a specific `LPNode`, by using the `LPNode`'s
-   * `.t.trim()` value. Idk, might be easier to go by the actual `LPNode` object...
-   * Useful for grabbing an already well-known node without worrying about ordering
-   * or anything like that.
-   */
-  // if filtering closures out of `byOrder` doesn't work, make this `Map<LPNode, DepNode>` and then use `LPNode` in `Statement`s to grab the corresponding node and lookup based on that.
-  byText: {[text: string]: DepNode}
-  /**
    * The keys are the AMM variable name. Multiple nodes can be assigned to a given key,
    * since a variable can be assigned to or mutated multiple times. Note that I said
    * "mutated" - all mutations are inserted into the array, with the initial declaration
    * (or in-scope assignment/mutation) being the first value in the list.
    */
   byVar: {[varname: string]: DepNode[]}
+  /**
+   * Uses the `LPNode` as the key to a `DepNode`. Note that this does not act
+   * recursively - it'll only work for the top-level nodes of the current handler
+   * or function.
+   */
   byLP: Map<LPNode, DepNode>
-  /// check
   outerGraph?: DepGraph
   outerDeps: DepNode[]
   outerMuts: string[]
 
   constructor(fn?: LPNode, outer?: DepGraph) {
     this.byOrder = []
-    this.byText = {}
     this.byVar = {}
     this.byLP = new Map()
     this.outerGraph = outer || null
@@ -69,7 +64,6 @@ export class DepGraph {
         }
         this.byVar[mutated].push(node)
       }
-      this.byText[node.stmt] = node
       this.byOrder.push(node)
       this.byLP.set(stmt, node)
     }
@@ -100,35 +94,14 @@ export class DepGraph {
   }
 
   toJSON(): object {
-    // let bo = this.byOrder.map(n => n.toJSON())
-    // let bt = Object.keys(this.byText).map(k => `"${k.replace(/\n/g, '\\n')}"`)
-    // let bv = Object.keys(this.byVar).map(v => `"${v}"`)
-    // let od = this.outerDeps.map(n => n.toJSON())
     return {
       byOrder: this.byOrder.map(n => n.toJSON()),
-      byText: Object.keys(this.byText).map(k => k.replace(/\n/g, '\\n')),
       byVar: Object.keys(this.byVar),
+      byLP: this.byLP.size,
       outerGraph: this.outerGraph !== null,
       outerDeps: this.outerDeps.map(n => n.toJSON()),
       outerMuts: this.outerMuts,
     }
-    // return `{
-    //   "byOrder": [
-    //     ${bo.join(',\n')}],
-    //   "byText": [
-    //     ${bt.join(',\n')}],
-    //   "byVar": [
-    //     ${bv.join(',\n')}],
-    //   "outerGraph": ${this.outerGraph !== null},
-    //   "outerDeps": [
-    //     ${od.join(',\n')}],
-    //   "outerMuts": [
-    //     ${this.outerMuts.map(m => `"${m}"`).join(',\n')}]
-    // }`
-  }
-
-  toBlock(mode: string): Block {
-    return null;
   }
 }
 
@@ -270,17 +243,6 @@ export class DepNode {
       closure: this.closure,
       mutates: this.mutates,
     }
-    // return `{
-    //   "stmt": "${this.stmt.replace(/\n/g, '\\n')}",
-    //   "upstream": ${this.upstream.length},
-    //   "downstream": ${this.downstream.length},
-    //   "closure": ${closure},
-    //   "mutates": [${this.mutates.map(m => `"${m}"`).join(', ')}]
-    // }`
-  }
-
-  toStatement(): Statement | null {
-    return null
   }
 }
 

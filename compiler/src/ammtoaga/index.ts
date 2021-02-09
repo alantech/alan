@@ -7,10 +7,8 @@ import {
 } from '../lp'
 
 import amm from '../amm'
-import { DepGraph, DepNode } from './depgraph'
+import { DepGraph } from './depgraph'
 import { Block, Statement} from './aga'
-import { group } from 'console'
-import { stat } from 'fs'
 
 // This project depends on BigNum and associated support in Node's Buffer, so must be >= Node 10.20
 // and does not work in the browser. It would be possible to implement a browser-compatible version
@@ -245,7 +243,6 @@ const extractClosures = (handlers: LPNode[], handlerMem: object, eventDecs: obje
   return Object.values(closures)
 }
 
-// might have to put this in `aga.ts`
 const loadStatements = (
   statements: LPNode[],
   localMem: object,
@@ -287,7 +284,7 @@ const loadStatements = (
       // It's a closure, skip it
       continue
     }
-    const node = depGraph.byText[statement.t.trim()]
+    const node = depGraph.byLP.get(statement)
     const hasClosureArgs = isClosure && fnArgs.length > 0
     let s: Statement
     if (statement.has('declarations')) {
@@ -536,63 +533,6 @@ const loadClosures = (closures: any[], globalMem: object) => {
   return vec
 }
 
-// Perform basic dependency stitching within a single block, but also attach unknown dependencies
-// to the block object for later "stitching"
-const innerBlockDeps = (block: Block) => {
-  const depMap = {}
-  let lastEmit = null
-  const statements = block.statements
-  for (const s of statements) {
-    for (const a of s.inArgs) {
-      if (depMap.hasOwnProperty(a)) {
-        s.deps.push(depMap[a])
-      } else if (/^@/.test(a)) {
-        block.deps.push(a)
-      }
-    }
-    if (s.fn === 'emit') {
-      if (lastEmit !== null) {
-        s.deps.push(lastEmit)
-      }
-      lastEmit = s.line
-    }
-    if (s.outArg !== null) {
-      depMap[s.outArg] = s.line
-    }
-  }
-  return block
-}
-
-// Use the unknown dependencies attached to the block scope and attach them in the outer level
-// TODO: Handle dependencies many nested levels deep, perhaps with an iterative approach?
-const closureDeps = (blocks: Block[]) => {
-  const blockMap = {}
-  for (const b of blocks) {
-    blockMap[b.name] = b
-  }
-  const blockNames = Object.keys(blockMap)
-  for (const b of blocks) {
-    let argMap = {}
-    for (const s of b.statements) {
-      if (s.outArg !== null) {
-        argMap[s.outArg] = s.line
-      }
-      for (const a of s.inArgs) {
-        if (blockNames.includes(a)) {
-          const blockDeps = blockMap[a].deps
-          for (const bd of blockDeps) {
-            if (argMap.hasOwnProperty(bd)) {
-              s.deps.push(argMap[bd])
-            }
-          }
-        }
-      }
-      s.deps = [...new Set(s.deps)] // Dedupe the final dependencies list
-    }
-  }
-  return blocks
-}
-
 const ammToAga = (amm: LPNode) => {
   // Declare the AGA header
   let outStr = 'Alan Graphcode Assembler v0.0.1\n\n'
@@ -607,19 +547,17 @@ const ammToAga = (amm: LPNode) => {
   }
   // Load the events, get the event id offset (for reuse with closures) and the event declarations
   let eventDecs = loadEventDecs(amm.get('eventDec').getAll())
-
-  const handlers = amm.get('handlers').getAll()
   // Determine the amount of memory to allocate per handler and map declarations to addresses
-  const handlerMem = getHandlersMem(handlers)
+  const handlerMem = getHandlersMem(amm.get('handlers').getAll())
   const depGraphs: DepGraph[] = []
-  for (let handler of handlers) {
+  for (let handler of amm.get('handlers').getAll()) {
     handler = handler.get()
     if (handler instanceof NamedAnd) {
       depGraphs.push(new DepGraph(handler))
     }
   }
   // console.log(depGraphs.map(g => JSON.stringify(g.toJSON())).join(','))
-  const closures = extractClosures(handlers, handlerMem, eventDecs, addressMap, depGraphs)
+  const closures = extractClosures(amm.get('handlers').getAll(), handlerMem, eventDecs, addressMap, depGraphs)
   // Make sure closures are accessible as addresses for statements to use
   closures.forEach((c: any) => addressMap[c.name] = c.name)
   // Then output the custom events, which may include closures, if needed
@@ -633,8 +571,6 @@ const ammToAga = (amm: LPNode) => {
   const closureVec = loadClosures(closures, addressMap);
   ([...handlerVec, ...closureVec]).map(b => b.build())
   // console.log(([...handlerVec, ...closureVec]).map(b => b.build()).join(','))
-  // const blockVec = closureDeps([...handlerVec, ...closureVec].map(b => innerBlockDeps(b)))
-  //   .map(b => b.toString())
   const blockVec = [...handlerVec, ...closureVec].map(b => b.toString())
   outStr += blockVec.join('\n')
   return outStr
