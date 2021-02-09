@@ -1,24 +1,45 @@
 import { LPNode } from '../lp';
+import { Block, Statement } from './aga'
 
-const unhandled = (val, reason?: string) => {
+const unhandled = (val: any, reason?: string) => {
   console.error(`========== UNHANDLED: ${reason}`)
   console.error(val)
   console.error()
   throw new Error()
 }
 
-export class HandlerGraph {
-  byOrder: HandlerNode[]
-  byText: {[text: string]: HandlerNode}
-  byVar: {[varname: string]: HandlerNode[]}
-  outerGraph?: HandlerGraph
-  outerDeps: HandlerNode[]
+export class DepGraph {
+  /**
+   * Goes by order of the statements in the AMM input. Note that this ordering
+   * is not preserved in the AGA output, so this can't be used for AGA dependencies.
+   */
+  byOrder: DepNode[]
+  /**
+   * Allows grabbing the `FunNode` for a specific `LPNode`, by using the `LPNode`'s
+   * `.t.trim()` value. Idk, might be easier to go by the actual `LPNode` object...
+   * Useful for grabbing an already well-known node without worrying about ordering
+   * or anything like that.
+   */
+  // if filtering closures out of `byOrder` doesn't work, make this `Map<LPNode, DepNode>` and then use `LPNode` in `Statement`s to grab the corresponding node and lookup based on that.
+  byText: {[text: string]: DepNode}
+  /**
+   * The keys are the AMM variable name. Multiple nodes can be assigned to a given key,
+   * since a variable can be assigned to or mutated multiple times. Note that I said
+   * "mutated" - all mutations are inserted into the array, with the initial declaration
+   * (or in-scope assignment/mutation) being the first value in the list.
+   */
+  byVar: {[varname: string]: DepNode[]}
+  byLP: Map<LPNode, DepNode>
+  /// check
+  outerGraph?: DepGraph
+  outerDeps: DepNode[]
   outerMuts: string[]
 
-  constructor(fn?: LPNode, outer?: HandlerGraph) {
+  constructor(fn?: LPNode, outer?: DepGraph) {
     this.byOrder = []
     this.byText = {}
     this.byVar = {}
+    this.byLP = new Map()
     this.outerGraph = outer || null
     this.outerDeps = []
     this.outerMuts = []
@@ -35,38 +56,40 @@ export class HandlerGraph {
 
   build(stmts: LPNode[]) {
     for (let stmt of stmts) {
-      let node = new HandlerNode(stmt, this)
+      let node = new DepNode(stmt, this)
       // console.log(`mutates:`)
       // console.log(node.mutates)
       for (let mutated of node.mutates) {
-        if (this.outerGraph && this.outerGraph.getLastMutationFor(mutated)) {
+        if (this.outerGraph !== null && this.outerGraph.getLastMutationFor(mutated) !== null) {
           this.outerMuts.push(mutated)
         }
 
-        if (!this.byVar[mutated]) {
+        if (this.byVar[mutated] === null || this.byVar[mutated] === undefined) {
           this.byVar[mutated] = []
         }
         this.byVar[mutated].push(node)
       }
       this.byText[node.stmt] = node
       this.byOrder.push(node)
+      this.byLP.set(stmt, node)
     }
   }
 
-  getLastMutationFor(varName: string): HandlerNode {
+  getLastMutationFor(varName: string): DepNode {
     let nodes = this.byVar[varName]
     // console.log(`------- ${varName}`)
     // console.log('nodes:')
     // console.log(nodes)
-    if (nodes && nodes.length != 0) {
+    if ((nodes !== null && nodes !== undefined) && nodes.length !== 0) {
       return nodes[nodes.length - 1]
     }
 
     // console.log('og:')
     // console.log(this.outerGraph)
-    if (this.outerGraph) {
+    if (this.outerGraph !== null) {
       let outer = this.outerGraph.getLastMutationFor(varName)
-      if (outer != null) {
+      if (outer !== null) {
+        // console.log(`found outer for ${varName}`)
         this.outerDeps.push(outer)
         return outer
       }
@@ -75,40 +98,54 @@ export class HandlerGraph {
     return null
   }
 
-  toString(): string {
-    let bo = this.byOrder.map(n => n.toString())
-    let bt = Object.keys(this.byText).map(k => `"${k.replace(/\n/g, '\\n')}"`)
-    let bv = Object.keys(this.byVar).map(v => `"${v}"`)
-    let od = this.outerDeps.map(n => n.toString())
-    return `{
-      "byOrder": [
-        ${bo.join(',\n')}],
-      "byText": [
-        ${bt.join(',\n')}],
-      "byVar": [
-        ${bv.join(',\n')}],
-      "outerGraph": ${this.outerGraph != null},
-      "outerDeps": [
-        ${od.join(',\n')}],
-      "outerMuts": [
-        ${this.outerMuts.map(m => `"${m}"`).join(',\n')}]
-    }`
+  toJSON(): object {
+    // let bo = this.byOrder.map(n => n.toJSON())
+    // let bt = Object.keys(this.byText).map(k => `"${k.replace(/\n/g, '\\n')}"`)
+    // let bv = Object.keys(this.byVar).map(v => `"${v}"`)
+    // let od = this.outerDeps.map(n => n.toJSON())
+    return {
+      byOrder: this.byOrder.map(n => n.toJSON()),
+      byText: Object.keys(this.byText).map(k => k.replace(/\n/g, '\\n')),
+      byVar: Object.keys(this.byVar),
+      outerGraph: this.outerGraph !== null,
+      outerDeps: this.outerDeps.map(n => n.toJSON()),
+      outerMuts: this.outerMuts,
+    }
+    // return `{
+    //   "byOrder": [
+    //     ${bo.join(',\n')}],
+    //   "byText": [
+    //     ${bt.join(',\n')}],
+    //   "byVar": [
+    //     ${bv.join(',\n')}],
+    //   "outerGraph": ${this.outerGraph !== null},
+    //   "outerDeps": [
+    //     ${od.join(',\n')}],
+    //   "outerMuts": [
+    //     ${this.outerMuts.map(m => `"${m}"`).join(',\n')}]
+    // }`
+  }
+
+  toBlock(mode: string): Block {
+    return null;
   }
 }
 
-export class HandlerNode {
+export class DepNode {
   stmt: string
-  upstream: HandlerNode[]
-  downstream: HandlerNode[]
-  closure?: HandlerGraph
+  upstream: DepNode[]
+  downstream: DepNode[]
+  closure?: DepGraph
   mutates: string[]
+  graph: DepGraph
 
-  constructor(stmt: LPNode, graph: HandlerGraph) {
+  constructor(stmt: LPNode, graph: DepGraph) {
     this.stmt = stmt.t.trim()
     this.upstream = []
     this.downstream = []
     this.closure = null
     this.mutates = []
+    this.graph = graph
 
     if (stmt.has('declarations')) {
       let dec = stmt.get('declarations')
@@ -119,11 +156,11 @@ export class HandlerNode {
       } else {
         unhandled(dec, 'dec kind')
       }
-      this.fromAssignment(dec, graph)
+      this.fromAssignment(dec)
     } else if (stmt.has('assignments')) {
-      this.fromAssignment(stmt.get('assignments'), graph)
+      this.fromAssignment(stmt.get('assignments'))
     } else if (stmt.has('calls')) {
-      this.fromCall(stmt.get('calls'), graph)
+      this.fromCall(stmt.get('calls'))
     } else if (stmt.has('emits')) {
       let upstream = graph.getLastMutationFor(stmt.get('emits').get('value').t.trim())
       if (upstream) {
@@ -135,7 +172,7 @@ export class HandlerNode {
     }
   }
 
-  fromAssignment(assign: LPNode, graph: HandlerGraph) {
+  fromAssignment(assign: LPNode) {
     // console.log(assign)
     if (!assign.has('assignables')) {
       unhandled(assign, 'non-assignment assignment?')
@@ -143,23 +180,26 @@ export class HandlerNode {
 
     let decname = assign.get('decname').t.trim()
     // console.log(`decname: ${decname}`)
-    let prev = graph.getLastMutationFor(decname)
-    if (prev != null) {
+    let prev = this.graph.getLastMutationFor(decname)
+    if (prev !== null) {
       this.upstream.push(prev)
     }
 
     this.mutates.push(decname)
-    if (assign.get('fulltypename').t.trim() == 'function') {
-      this.closure = new HandlerGraph(assign.get('assignables'), graph)
+    if (assign.get('fulltypename').t.trim() === 'function') {
+      this.closure = new DepGraph(assign.get('assignables'), this.graph)
+      // for closures, only add upstream since the closure isn't actually
+      // evaluated until its called. this just makes it so that the actual
+      // use-site of the closure can inherit the upstream dependencies.
       this.upstream = this.closure.outerDeps
       this.mutates.concat(...this.closure.outerMuts)
     } else if (assign.has('assignables')) {
-      if (prev != null) {
+      if (prev !== null) {
         prev.downstream.push(this)
       }
       assign = assign.get('assignables')
       if (assign.has('calls')) {
-        this.fromCall(assign.get('calls'), graph)
+        this.fromCall(assign.get('calls'))
       } else if (assign.has('value')) {
         // do nothing
       } else {
@@ -170,18 +210,18 @@ export class HandlerNode {
     }
   }
 
-  fromCall(call: LPNode, graph: HandlerGraph) {
+  fromCall(call: LPNode) {
     let opcodeName = call.get('variable').t.trim()
     let args = call.get('calllist').getAll().map(c => c.get('variable'))
     let mutated = []
     let opMutability = opcodeParamMutabilities[opcodeName]
-    if (!opMutability) {
+    if (opMutability === undefined || opMutability === null) {
       unhandled(opMutability, 'opcode ' + opcodeName)
     }
     for (let ii = 0; ii < opMutability.length; ii++) {
       if (opMutability[ii] === true) {
         mutated.push(args[ii].t.trim())
-      } else if (opMutability[ii] == null) {
+      } else if (opMutability[ii] === null) {
         // null indicates that the parameter expects a closure,
         // so the mutability of the overall call depends on the
         // mutability of the specified closure. Because of this,
@@ -189,10 +229,10 @@ export class HandlerNode {
         // and use its mutabilities instead
 
         // the closure def will be the first node in the list
-        let closure = graph.byVar[args[ii].t.trim()][0]
-        if (!closure) {
-          unhandled(graph.byVar, `no nodes declared for ${args[ii].t.trim()}`)
-        } else if (closure.closure == null) {
+        let closure = this.graph.byVar[args[ii].t.trim()][0]
+        if (closure === null || closure === undefined) {
+          unhandled(this.graph.byVar, `no nodes declared for ${args[ii].t.trim()}`)
+        } else if (closure.closure === null) {
           unhandled(closure, 'expected a closure')
         }
         mutated.concat(...closure.mutates)
@@ -203,25 +243,42 @@ export class HandlerNode {
     // console.log(this.stmt)
     for (let arg of args) {
       // console.log(arg)
-      let upstream = graph.getLastMutationFor(arg.t.trim())
+      let upstream = this.graph.getLastMutationFor(arg.t.trim())
       // console.log(upstream)
-      if (upstream) {
-        this.upstream.push(upstream)
-        upstream.downstream.push(this)
+      if (upstream !== null) {
+        if (upstream.closure !== null) {
+          // if it's a closure, inherit the upstreams
+          this.upstream.concat(...upstream.upstream)
+          upstream.upstream.forEach(n => n.downstream.push(this))
+        } else {
+          this.upstream.push(upstream)
+          upstream.downstream.push(this)
+        }
       }
     }
   }
 
-  toString(): string {
+  toJSON(): object {
     let closure = null;
-    if (this.closure) closure = this.closure.toString()
-    return `{
-      "stmt": "${this.stmt.replace(/\n/g, '\\n')}",
-      "upstream": ${this.upstream.length},
-      "downstream": ${this.downstream.length},
-      "closure": ${closure},
-      "mutates": [${this.mutates.map(m => `"${m}"`).join(', ')}]
-    }`
+    if (this.closure) closure = this.closure.toJSON()
+    return {
+      stmt: this.stmt.replace(/\n/g, '\\n'),
+      upstream: this.upstream.length,
+      downstream: this.downstream.length,
+      closure: this.closure,
+      mutates: this.mutates,
+    }
+    // return `{
+    //   "stmt": "${this.stmt.replace(/\n/g, '\\n')}",
+    //   "upstream": ${this.upstream.length},
+    //   "downstream": ${this.downstream.length},
+    //   "closure": ${closure},
+    //   "mutates": [${this.mutates.map(m => `"${m}"`).join(', ')}]
+    // }`
+  }
+
+  toStatement(): Statement | null {
+    return null
   }
 }
 
