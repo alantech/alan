@@ -4,9 +4,11 @@ use std::path::Path;
 use clap::{crate_name, crate_version, App, AppSettings, SubCommand};
 
 use crate::compile::compile::compile;
+use crate::daemon::daemon::{start};
 use crate::vm::deploy::{kill, status, new, upgrade};
 use crate::vm::run::exec;
 
+mod daemon;
 mod compile;
 mod vm;
 
@@ -38,7 +40,6 @@ fn main() {
     )
     .subcommand(SubCommand::with_name("install")
       .about("Install '/dependencies' from '.dependencies.ln'")
-      .version(crate_version!())
     )
     .subcommand(SubCommand::with_name("deploy")
       .about("Deploy .agz files to the cloud provider described in the deploy config at ~/.alan/deploy.json")
@@ -60,6 +61,12 @@ fn main() {
         .arg_from_usage("<APP_ID> 'Specifies the alan app to upgrade'")
         .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'")
       )
+    )
+    .subcommand(SubCommand::with_name("daemon")
+      .about("Run an .agz file in daemon mode. Used on deploy within cloud provider VMs.")
+      .arg_from_usage("<APP_ID> 'Specifies the alan app to upgrade'")
+      .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'")
+      .arg_from_usage("<DEPLOY_TOKEN> 'Specifies the .agz file to deploy'")
     )
     .arg_from_usage("[SOURCE] 'Specifies a source ln file to compile and run'");
 
@@ -114,6 +121,12 @@ fn main() {
         // rely on AppSettings::SubcommandRequiredElseHelp
         _ => {}
       }
+    },
+    ("daemon",  Some(matches)) => {
+      let agz_file = matches.value_of("AGZ_FILE").unwrap();
+      let app_id = matches.value_of("APP_ID").unwrap();
+      let deploy_key = matches.value_of("DEPLOY_KEY").unwrap();
+      start(agz_file, app_id, deploy_key);
     },
     _ => {
       // AppSettings::SubcommandRequiredElseHelp does not cut it here
