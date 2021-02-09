@@ -2109,6 +2109,8 @@ export matches // opcode with signature `fn matches(s: string, t: string): bool`
 export fn index(s: string, t: string) = indstr(s, t);
 export fn length(s: string) = lenstr(s);
 export trim // opcode with signature `fn trim(s: string): string`
+// toCharArray would be better as an opcode, but this works for now.
+export fn toCharArray(a: string): Array<string> = a.split('').filter(fn (c: string) = c.length().gt(0));
 
 // Array functions
 export fn concat(a: Array<any>, b: Array<any>) = catarr(a, b);
