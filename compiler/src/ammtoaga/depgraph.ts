@@ -137,7 +137,7 @@ export class DepNode {
       this.fromCall(stmt.get('calls'))
     } else if (stmt.has('emits')) {
       let upstream = graph.getLastMutationFor(stmt.get('emits').get('value').t.trim())
-      if (upstream) {
+      if (upstream !== null) {
         this.upstream.push(upstream)
         upstream.downstream.push(this)
       }

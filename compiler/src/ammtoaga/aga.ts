@@ -71,7 +71,7 @@ export class Statement {
     this.outArg = outArg
     this.line = line
     this.deps = deps
-    this.depNode = depNode
+    this.depNode = depNode || null
   }
 
   toString() {

@@ -150,7 +150,9 @@ const closuresFromDeclaration = (
   depGraph: DepGraph,
 ) => {
   const name = declaration.get('constdeclaration').get('decname').t.trim()
-  if (!depGraph.byVar[name] || depGraph.byVar[name].length == 0 || !depGraph.byVar[name][0].closure) {
+  if ((depGraph.byVar[name] === null || depGraph.byVar[name] === undefined)
+      || depGraph.byVar[name].length == 0
+      || depGraph.byVar[name][0].closure === null) {
     throw new Error('trying to build a closure, but the dependency graph did not build a closure')
   }
   const graph = depGraph.byVar[name][0].closure
