@@ -73,6 +73,7 @@ export class DepGraph {
       this.byOrder.push(node)
       this.byLP.set(stmt, node)
     }
+    this.outerDeps = [ ...new Set(this.outerDeps) ]
   }
 
   getLastMutationFor(varName: string): DepNode {
@@ -170,6 +171,8 @@ export class DepNode {
     } else {
       unhandled(stmt, 'node top-level')
     }
+    this.upstream = [ ...new Set(this.upstream) ]
+    this.mutates = [ ...new Set(this.mutates) ]
   }
 
   fromAssignment(assign: LPNode) {
@@ -191,8 +194,8 @@ export class DepNode {
       // for closures, only add upstream since the closure isn't actually
       // evaluated until its called. this just makes it so that the actual
       // use-site of the closure can inherit the upstream dependencies.
-      this.upstream = this.closure.outerDeps
-      this.mutates.concat(...this.closure.outerMuts)
+      this.upstream.push(...this.closure.outerDeps)
+      this.mutates.push(...this.closure.outerMuts)
     } else if (assign.has('assignables')) {
       if (prev !== null) {
         prev.downstream.push(this)
@@ -235,10 +238,10 @@ export class DepNode {
         } else if (closure.closure === null) {
           unhandled(closure, 'expected a closure')
         }
-        mutated.concat(...closure.mutates)
+        mutated.push(...closure.mutates)
       }
     }
-    this.mutates.concat(...mutated)
+    this.mutates.push(...mutated)
     // console.log('---')
     // console.log(this.stmt)
     for (let arg of args) {
@@ -248,8 +251,7 @@ export class DepNode {
       if (upstream !== null) {
         if (upstream.closure !== null) {
           // if it's a closure, inherit the upstreams
-          this.upstream.concat(...upstream.upstream)
-          upstream.upstream.forEach(n => n.downstream.push(this))
+          this.upstream.push(...upstream.upstream)
         } else {
           this.upstream.push(upstream)
           upstream.downstream.push(this)
