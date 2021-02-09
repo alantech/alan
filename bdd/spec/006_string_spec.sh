@@ -103,6 +103,45 @@ World!"
     End
   End
 
+  Describe "toCharArray"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+
+        on start {
+          const fooCharArray = 'foo'.toCharArray();
+          print(#fooCharArray);
+          print(fooCharArray[0]);
+          print(fooCharArray[1]);
+          print(fooCharArray[2]);
+
+          emit exit 0;
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    CHARARRAYOUTPUT="3
+f
+o
+o"
+
+    It "runs js"
+      When run test_js
+      The output should eq "$CHARARRAYOUTPUT"
+    End
+
+    It "runs agc"
+      When run test_agc
+      The output should eq "$CHARARRAYOUTPUT"
+    End
+  End
+
   Describe "templating"
     before() {
       # TODO: sourceToAll
