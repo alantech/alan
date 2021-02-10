@@ -101,6 +101,19 @@ fn get_app_str(agz_file: &str) -> String {
   return base64::encode(app);
 }
 
+pub async fn vm_health(app_id: &str, deploy_key: &str) {
+  // TODO pass in vm health
+  let body = json!({
+    "deployKey": deploy_key,
+    "appId": app_id,
+  });
+  let resp = post(format!("{}/v1/appHealth", URL), body).await;
+  match resp {
+    Ok(_) => println!("Succesfully sent health for app with id {}", app_id),
+    Err(err) => println!("Failed to send health for app with id {}. Error: {}", app_id, err)
+  }
+}
+
 pub async fn kill(app_id: &str) {
   let body = json!({
     "deployConfig": get_config(),
