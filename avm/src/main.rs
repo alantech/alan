@@ -7,7 +7,7 @@ use tokio::runtime::Builder;
 use crate::compile::compile::compile;
 use crate::daemon::daemon::start;
 use crate::vm::telemetry;
-use crate::vm::deploy::{terminate, status, new, upgrade};
+use crate::vm::deploy::{info, new, terminate, upgrade};
 use crate::vm::run::run;
 
 mod daemon;
@@ -51,7 +51,7 @@ fn main() {
         .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'")
         .arg_from_usage("<CLOUD_ALIAS> 'Specifies the cloud provider to deploy to based on its alias'")
       )
-      .subcommand(SubCommand::with_name("status")
+      .subcommand(SubCommand::with_name("info")
         .about("Displays all the apps deployed in the cloud provider described in the deploy config at ~/.alan/deploy.json")
       )
       .subcommand(SubCommand::with_name("terminate")
@@ -125,8 +125,8 @@ fn main() {
             let agz_file = matches.value_of("AGZ_FILE").unwrap();
             upgrade(app_id, agz_file).await;
           },
-          ("status",  _) => {
-            status().await;
+          ("info",  _) => {
+            info().await;
           },
           // rely on AppSettings::SubcommandRequiredElseHelp
           _ => {}

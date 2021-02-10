@@ -125,7 +125,6 @@ pub async fn terminate(app_id: &str) {
     Ok(_) => format!("Terminated app {} succesfully!", app_id),
     Err(err) => format!("Failed to terminate app {}. Error {}", app_id, err),
   };
-  sp.update(format!(""));
   sp.message(res);
   sp.close();
 }
@@ -161,15 +160,15 @@ pub async fn upgrade(app_id: &str, agz_file: &str) {
     Ok(_) => format!("Upgraded app {} succesfully!", app_id),
     Err(err) => format!("Failed to upgrade app {} with {}. Error: {}", app_id, agz_file, err),
   };
-  sp.update(res);
+  sp.message(res);
   sp.close();
 }
 
-pub async fn status() {
+pub async fn info() {
   let body = json!({
     "deployConfig": get_config(),
   });
-  let resp = post(format!("{}/v1/status", URL), body).await;
+  let resp = post(format!("{}/v1/info", URL), body).await;
   if let Err(err) = resp {
     println!("Displaying status for apps failed with error: {}", err);
     std::process::exit(1);
