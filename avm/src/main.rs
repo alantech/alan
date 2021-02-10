@@ -2,22 +2,26 @@ use std::env;
 use std::path::Path;
 
 use clap::{crate_name, crate_version, App, AppSettings, SubCommand};
+use tokio::runtime::Builder;
 
 use crate::compile::compile::compile;
+use crate::daemon::daemon::start;
+use crate::vm::telemetry;
 use crate::vm::deploy::{kill, status, new, upgrade};
-use crate::vm::run::exec;
+use crate::vm::run::run;
 
+mod daemon;
 mod compile;
 mod vm;
 
-fn compile_and_run(source_file: &str) -> i32 {
+async fn compile_and_run(source_file: &str) -> i32 {
   let dest_file = "temp.agc";
   let status_code = compile(&source_file, &dest_file, true);
   if status_code == 0 {
     let mut path = env::current_dir().unwrap();
     path.push(dest_file);
     let fp = path.into_os_string().into_string().unwrap();
-    exec(&fp, true);
+    run(&fp, true).await;
   }
   return status_code;
 }
@@ -38,7 +42,6 @@ fn main() {
     )
     .subcommand(SubCommand::with_name("install")
       .about("Install '/dependencies' from '.dependencies.ln'")
-      .version(crate_version!())
     )
     .subcommand(SubCommand::with_name("deploy")
       .about("Deploy .agz files to the cloud provider described in the deploy config at ~/.alan/deploy.json")
@@ -61,69 +64,90 @@ fn main() {
         .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'")
       )
     )
+    .subcommand(SubCommand::with_name("daemon")
+      .about("Run an .agz file in daemon mode. Used on deploy within cloud provider VMs.")
+      .arg_from_usage("<APP_ID> 'Specifies the alan app to upgrade'")
+      .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'")
+      .arg_from_usage("<DEPLOY_TOKEN> 'Specifies the .agz file to deploy'")
+    )
     .arg_from_usage("[SOURCE] 'Specifies a source ln file to compile and run'");
 
   let matches = app.clone().get_matches();
 
-  match matches.subcommand() {
-    ("run",  Some(matches)) => {
-      let agc_file = matches.value_of("FILE").unwrap();
-      let fp = &format!(
-        "{:}/{:}",
-        env::current_dir().ok().unwrap().to_str().unwrap(),
-        agc_file
-      );
-      exec(&fp, false);
-    },
-    ("compile",  Some(matches)) => {
-      let source_file = matches.value_of("INPUT").unwrap();
-      let dest_file = matches.value_of("OUTPUT").unwrap();
-      std::process::exit(compile(&source_file, &dest_file, false));
-    },
-    ("install",  _) => {
-      let source_file = ".dependencies.ln";
-      if Path::new(source_file).exists() {
-        std::process::exit(compile_and_run(source_file));
-      } else {
-        println!(
-          "{} does not exist. Dependencies can only be installed for {}",
-          source_file, source_file
+  let rt = Builder::new_multi_thread()
+    .enable_time()
+    .enable_io()
+    .build()
+    .unwrap();
+
+  rt.block_on(async move {
+    match matches.subcommand() {
+      ("run",  Some(matches)) => {
+        let agc_file = matches.value_of("FILE").unwrap();
+        let fp = &format!(
+          "{:}/{:}",
+          env::current_dir().ok().unwrap().to_str().unwrap(),
+          agc_file
         );
-        std::process::exit(1);
-      }
-    },
-    ("deploy", Some(sub_matches)) => {
-      match sub_matches.subcommand() {
-        ("new",  Some(matches)) => {
-          let agz_file = matches.value_of("AGZ_FILE").unwrap();
-          let cloud_alias = matches.value_of("CLOUD_ALIAS").unwrap();
-          new(agz_file, cloud_alias);
-        },
-        ("kill",  Some(matches)) => {
-          let app_id = matches.value_of("APP_ID").unwrap();
-          kill(app_id);
-        },
-        ("upgrade",  Some(matches)) => {
-          let app_id = matches.value_of("APP_ID").unwrap();
-          let agz_file = matches.value_of("AGZ_FILE").unwrap();
-          upgrade(app_id, agz_file);
-        },
-        ("status",  _) => {
-          status();
-        },
-        // rely on AppSettings::SubcommandRequiredElseHelp
-        _ => {}
-      }
-    },
-    _ => {
-      // AppSettings::SubcommandRequiredElseHelp does not cut it here
-      if let Some(source_file) = matches.value_of("SOURCE") {
-        let path = Path::new(source_file);
-        if path.extension().is_some() {
-          std::process::exit(compile_and_run(source_file));
+        telemetry::log("avm-run").await;
+        run(&fp, false).await;
+      },
+      ("compile",  Some(matches)) => {
+        let source_file = matches.value_of("INPUT").unwrap();
+        let dest_file = matches.value_of("OUTPUT").unwrap();
+        std::process::exit(compile(&source_file, &dest_file, false));
+      },
+      ("install",  _) => {
+        let source_file = ".dependencies.ln";
+        if Path::new(source_file).exists() {
+          std::process::exit(compile_and_run(source_file).await);
+        } else {
+          println!(
+            "{} does not exist. Dependencies can only be installed for {}",
+            source_file, source_file
+          );
+          std::process::exit(1);
         }
+      },
+      ("deploy", Some(sub_matches)) => {
+        match sub_matches.subcommand() {
+          ("new",  Some(matches)) => {
+            let agz_file = matches.value_of("AGZ_FILE").unwrap();
+            let cloud_alias = matches.value_of("CLOUD_ALIAS").unwrap();
+            new(agz_file, cloud_alias).await;
+          },
+          ("kill",  Some(matches)) => {
+            let app_id = matches.value_of("APP_ID").unwrap();
+            kill(app_id).await;
+          },
+          ("upgrade",  Some(matches)) => {
+            let app_id = matches.value_of("APP_ID").unwrap();
+            let agz_file = matches.value_of("AGZ_FILE").unwrap();
+            upgrade(app_id, agz_file).await;
+          },
+          ("status",  _) => {
+            status().await;
+          },
+          // rely on AppSettings::SubcommandRequiredElseHelp
+          _ => {}
+        }
+      },
+      ("daemon",  Some(matches)) => {
+        let agz_file = matches.value_of("AGZ_FILE").unwrap();
+        let app_id = matches.value_of("APP_ID").unwrap();
+        let deploy_key = matches.value_of("DEPLOY_KEY").unwrap();
+        start(agz_file, app_id, deploy_key).await;
+      },
+      _ => {
+        // AppSettings::SubcommandRequiredElseHelp does not cut it here
+        if let Some(source_file) = matches.value_of("SOURCE") {
+          let path = Path::new(source_file);
+          if path.extension().is_some() {
+            std::process::exit(compile_and_run(source_file).await);
+          }
+        }
+        app.clone().print_help().unwrap();
       }
-      app.clone().print_help().unwrap();
     }
-  }
+  });
 }

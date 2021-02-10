@@ -11,7 +11,6 @@ use std::path::Path;
 
 use ascii_table::{AsciiTable, Column, Align};
 use base64;
-use tokio::runtime::Runtime;
 
 const URL: &str = "https://deploy.alantechnologies.com";
 
@@ -81,18 +80,15 @@ fn get_config() -> HashMap<String, AWSConfig> {
   config.unwrap()
 }
 
-fn post(url: String, body: Value) -> Result<String, Box<dyn Error>> {
+async fn post(url: String, body: Value) -> Result<String, Box<dyn Error>> {
   let client = Client::builder().build::<_, Body>(hyper_tls::HttpsConnector::new());
-  let rt  = Runtime::new().unwrap();
-  rt.block_on(async move {
-    let req = Request::post(url)
-      .header("Content-Type", "application/json")
-      .body(body.to_string().into())?;
-    let mut resp = client.request(req).await?;
-    let data = hyper::body::to_bytes(resp.body_mut()).await?;
-    let str = String::from_utf8(data.to_vec())?;
-    Ok(str)
-  })
+  let req = Request::post(url)
+    .header("Content-Type", "application/json")
+    .body(body.to_string().into())?;
+  let mut resp = client.request(req).await?;
+  let data = hyper::body::to_bytes(resp.body_mut()).await?;
+  let str = String::from_utf8(data.to_vec())?;
+  Ok(str)
 }
 
 fn get_app_str(agz_file: &str) -> String {
@@ -105,19 +101,32 @@ fn get_app_str(agz_file: &str) -> String {
   return base64::encode(app);
 }
 
-pub fn kill(app_id: &str) {
+pub async fn vm_health(app_id: &str, deploy_key: &str) {
+  // TODO pass in vm health
+  let body = json!({
+    "deployKey": deploy_key,
+    "appId": app_id,
+  });
+  let resp = post(format!("{}/v1/appHealth", URL), body).await;
+  match resp {
+    Ok(_) => println!("Succesfully sent health for app with id {}", app_id),
+    Err(err) => println!("Failed to send health for app with id {}. Error: {}", app_id, err)
+  }
+}
+
+pub async fn kill(app_id: &str) {
   let body = json!({
     "deployConfig": get_config(),
     "appId": app_id,
   });
-  let resp = post(format!("{}/v1/kill", URL), body);
+  let resp = post(format!("{}/v1/kill", URL), body).await;
   match resp {
     Ok(_) => println!("Killing app with id {} if it exists...\n", app_id),
     Err(err) => println!("Killing app with id {} failed. Error: {}", app_id, err)
   }
 }
 
-pub fn new(agz_file: &str, cloud_alias: &str) {
+pub async fn new(agz_file: &str, cloud_alias: &str) {
   let app_str = get_app_str(agz_file);
   let body = json!({
     "deployConfig": get_config(),
@@ -125,32 +134,32 @@ pub fn new(agz_file: &str, cloud_alias: &str) {
     "cloudAlias": cloud_alias,
   });
   let body = json!(body);
-  let resp = post(format!("{}/v1/new", URL), body);
+  let resp = post(format!("{}/v1/new", URL), body).await;
   match resp {
     Ok(app_id) => println!("Creating new app with id {} in {}...\n", app_id, cloud_alias),
     Err(err) => println!("Failed to create a new app. Error: {}", err)
   }
 }
 
-pub fn upgrade(app_id: &str, agz_file: &str) {
+pub async fn upgrade(app_id: &str, agz_file: &str) {
   let app_str = get_app_str(agz_file);
   let body = json!({
     "deployConfig": get_config(),
     "appId": app_id,
     "agzB64": app_str,
   });
-  let resp = post(format!("{}/v1/upgrade", URL), body);
+  let resp = post(format!("{}/v1/upgrade", URL), body).await;
   match resp {
     Ok(_) => println!("Upgrading app {}...\n", app_id),
     Err(err) => println!("Failed to upgrade app {}. Error: {}", app_id, err)
   }
 }
 
-pub fn status() {
+pub async fn status() {
   let body = json!({
     "deployConfig": get_config(),
   });
-  let resp = post(format!("{}/v1/status", URL), body);
+  let resp = post(format!("{}/v1/status", URL), body).await;
   if let Err(err) = resp {
     println!("Displaying status for apps failed with error: {}", err);
     std::process::exit(1);
