@@ -730,7 +730,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
             if (r.has('opttypegenerics')) {
               innerGenerics.push(r.get('opttypegenerics').get('generics').get('fulltypename').t)
               r.get('opttypegenerics').get('generics').get('cdr').getAll().forEach(r2 => {
-                innerGenerics.push(r2.t)
+                innerGenerics.push(r2.get('fulltypename').t)
               })
             }
             t = (scope.deepGet(r.get('typename').t) as Type).solidify(innerGenerics, scope)

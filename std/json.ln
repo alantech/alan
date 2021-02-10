@@ -127,9 +127,9 @@ export fn isNull(a: JSONBase): bool {
   if a.isAlt() {
     const b = a.getAltOr(main(''));
     if b.isAlt() {
-      const c = b.getAltOr(new IsObject {
+      const c = b.getAltOr(main(new IsObject {
         isObject: false,
-      });
+      }));
       return c.isAlt();
     }
   }
@@ -633,6 +633,155 @@ export fn toString(j: JSON): string {
   });
   // Lookup the root node's value as that should be the output and return it
   return lookup.get(j.getRootNode().id).getR();
+}
+
+export fn parse(s: string): Result<JSON> {
+  // The various states the parser can transition through. An enum would be really nice here
+  const START = 0;
+  const NUM = 1;
+  const TRUE = 2;
+  const FALSE = 3;
+  const NULL = 4;
+  const STRING = 5;
+  const OBJ = 6;
+  const ARR = 7;
+  const KEY = 8;
+  const VAL = 9;
+  const SEP = 10;
+  const INVALID = 11;
+  const END = 12;
+  const chars = s.toCharArray();
+  let json = err('JSON not assigned, yet');
+  let stateStack = [START];
+  let i = 0;
+  let j = 0;
+  let tempKey = '';
+  let tempVal = toJSON();
+  seqdo(newseq(chars.length()), fn (): bool {
+    const c = chars[i] || '';
+    const state = stateStack.pop() || END;
+    if state == START {
+      if c == '"' {
+        stateStack.push(STRING);
+        j = i;
+        i = i + 1 || 0;
+        return true;
+      }
+      if c == 'n' {
+        stateStack.push(NULL);
+        j = i;
+        i = i + 1 || 0;
+        return true;
+      }
+      if c == 'f' {
+        stateStack.push(FALSE);
+        j = i;
+        i = i + 1 || 0;
+        return true;
+      }
+      if c == 't' {
+        stateStack.push(TRUE);
+        j = i;
+        i = i + 1 || 0;
+        return true;
+      }
+      if c ~ '[0-9]' {
+        stateStack.push(NUM);
+        j = i;
+        i = i + 1 || 0;
+        return true;
+      }
+      // TODO, add support for objects and arrays
+      stateStack.push(INVALID);
+      return false;
+    }
+    if state == STRING {
+      if c == '"' {
+        // String is done, attach it to the JSON object (or replace if first assignment)
+        const str = chars.map(fn (c: string, k: int64): string = (k > j) && (k < i) ? c : '').join('');
+        if json.isErr() {
+          json = ok(toJSON(str));
+          stateStack.push(END);
+          return false;
+        }
+        // TODO, add support for strings in objects and arrays in the future
+        stateStack.push(INVALID);
+        return false;
+      }
+      stateStack.push(STRING);
+      i = i + 1 || 0;
+      return true;
+    }
+    if state == NULL {
+      if j + 3 || 0 == i {
+        const str = chars.map(fn (c: string, k: int64): string = (k >= j) && (k <= i) ? c : '').join('');
+        if str == 'null' {
+          if json.isErr() {
+            json = ok(toJSON());
+            stateStack.push(END);
+            return false;
+          }
+          // TODO, support for values in objects and arrays
+          stateStack.push(INVALID);
+          return false;
+        }
+        // This path is actually invalid, we entered the `null` state but didn't get a null value
+        stateStack.push(INVALID);
+        return false;
+      }
+      stateStack.push(NULL);
+      i = i + 1 || 0;
+      return true;
+    }
+    if state == FALSE {
+      if j + 4 || 0 == i {
+        const str = chars.map(fn (c: string, k: int64): string = (k >= j) && (k <= i) ? c : '').join('');
+        if str == 'false' {
+          if json.isErr() {
+            json = ok(toJSON(false));
+            stateStack.push(END);
+            return false;
+          }
+          // TODO, support for values in objects and arrays
+          stateStack.push(INVALID);
+          return false;
+        }
+        // This path is actually invalid, we entered the `null` state but didn't get a null value
+        stateStack.push(INVALID);
+        return false;
+      }
+      stateStack.push(FALSE);
+      i = i + 1 || 0;
+      return true;
+    }
+    if state == TRUE {
+      if j + 3 || 0 == i {
+        const str = chars.map(fn (c: string, k: int64): string = (k >= j) && (k <= i) ? c : '').join('');
+        if str == 'true' {
+          if json.isErr() {
+            json = ok(toJSON(true));
+            stateStack.push(END);
+            return false;
+          }
+          // TODO, support for values in objects and arrays
+          stateStack.push(INVALID);
+          return false;
+        }
+        // This path is actually invalid, we entered the `null` state but didn't get a null value
+        stateStack.push(INVALID);
+        return false;
+      }
+      stateStack.push(TRUE);
+      i = i + 1 || 0;
+      return true;
+    }
+    return false;
+  });
+  const state = stateStack.pop() || INVALID;
+  if state == INVALID || state == START {
+    return err('Invalid JSON: ' + s);
+  }
+  return json;
 }
 
 export interface json {

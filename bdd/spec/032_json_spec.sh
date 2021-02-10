@@ -80,4 +80,60 @@ null"
       The output should eq "$COMPLEXOUTPUT"
     End
   End
+  
+  Describe "JSON parsing"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+        from @std/json import JSON, toJSON, JSONBase, JSONNode, IsObject, Null, parse, isBool, getBool, toJSONNode, isNull
+
+        on start {
+          print('Parsing \"true\"');
+          'true'.parse().getOr(toJSON()).getRootNode().getOr(toJSONNode()).isBool().print();
+          'true'.parse().getOr(toJSON()).getRootNode().getOr(toJSONNode()).getBool().print();
+
+          print('Parsing \"false\"');
+          const falseJson = 'false'.parse().getOr(toJSON());
+          falseJson.getRootNode().getOr(toJSONNode()).isBool().print();
+          falseJson.getRootNode().getOr(toJSONNode()).getBool().print();
+
+          print('Parsing \"null\"');
+          const nullJson = 'null'.parse().getOr(toJSON(true));
+          nullJson.getRootNode().getOr(toJSONNode(true)).isNull().print();
+
+          print('Parsing \"garbage\"');
+          'garbage'.parse().isOk().print();
+
+          emit exit 0;
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    PARSEOUTPUT="Parsing \"true\"
+true
+true
+Parsing \"false\"
+true
+false
+Parsing \"null\"
+true
+Parsing \"garbage\"
+false"
+
+    It "runs js"
+      When run test_js
+      The output should eq "$PARSEOUTPUT"
+    End
+
+    It "runs agc"
+      When run test_agc
+      The output should eq "$PARSEOUTPUT"
+    End
+  End
 End
