@@ -67,26 +67,13 @@ export class DepGraph {
           // the whole constructor, since this node is just a param declaration
           // and doesn't need to go through the whole shebang. We just need it
           // for when we're generating the dependencies of the aga output
-          this.params[param.get('variable').t.trim()] = {
-            stmt: param.t.trim(),
-            upstream: [],
-            downstream: [],
-            mutates: [],
-            graph: this,
-            isParam: true,
-            fromExit: () => {},
-            fromAssignment: () => {},
-            fromCall: () => {},
-            toJSON: () => null,
-          }
+          this.params[param.get('variable').t.trim()] = new DepNode(param, this, true)
         } else {
           unhandled(param, 'unknown param ast')
         }
       } else if (param instanceof ZeroOrMore) {
         params.unshift(...param.getAll())
-      } else if (param instanceof NulLP) {
-        // do nothing
-      } else {
+      } else if (!(param instanceof NulLP)) {
         unhandled(param, 'unknown ast type for function parameters')
       }
     }
@@ -164,14 +151,19 @@ export class DepNode {
   graph: DepGraph
   isParam: boolean
 
-  constructor(stmt: LPNode, graph: DepGraph) {
+  constructor(stmt: LPNode, graph: DepGraph, isParam?: boolean) {
     this.stmt = stmt.t.trim()
     this.upstream = []
     this.downstream = []
     this.closure = null
     this.mutates = []
     this.graph = graph
-    this.isParam = false
+    this.isParam = isParam || false // if `isParam` is `true`, retains it. Otherwise, always at least `false`
+
+    // if this node is a parameter declaration, don't do extra work
+    if (this.isParam) {
+      return
+    }
 
     if (stmt.has('declarations')) {
       let dec = stmt.get('declarations')
@@ -608,6 +600,6 @@ export const opcodeParamMutabilities = {
   seqeach: [false, null],
   seqwhile: [false, null, null], // TODO: ok so i don't *want* to make the 2nd value `null`, but it's not impossible for someone to mutate a value in the second function...
   seqdo: [false, null],
-  selfrec: [false, false], // TODO: figure this out. maybe just mark both as false??
+  selfrec: [false, false], // FIXME: there should be a way to handle recursive dependencies, but this works for now.
   seqrec: [false, null],
 }

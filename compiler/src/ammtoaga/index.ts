@@ -286,7 +286,7 @@ const loadStatements = (
       // It's a closure, skip it
       continue
     }
-    const node = depGraph.byLP.get(statement) || null
+    const node = depGraph.byLP.get(statement)
     const hasClosureArgs = isClosure && fnArgs.length > 0
     let s: Statement
     if (statement.has('declarations')) {
