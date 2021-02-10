@@ -1,4 +1,4 @@
-import { LPNode } from '../lp';
+import { LPNode, NamedAnd, NulLP, ZeroOrMore } from '../lp';
 
 // this is just here for debugging purposes
 const unhandled = (val: any, reason?: string) => {
@@ -30,6 +30,7 @@ export class DepGraph {
   outerGraph?: DepGraph
   outerDeps: DepNode[]
   outerMuts: string[]
+  params?: {[varname: string]: DepNode}
 
   constructor(fn?: LPNode, outer?: DepGraph) {
     this.byOrder = []
@@ -38,14 +39,56 @@ export class DepGraph {
     this.outerGraph = outer || null
     this.outerDeps = []
     this.outerMuts = []
+    this.params = null
 
-    if (fn) {
-      let stmts = fn.get('functions')
-        .get('functionbody')
+    if (fn !== null && fn !== undefined) {
+      fn = fn.get('functions')
+
+      if (fn.has('args')) this.buildParams([...fn.get('args').getAll()])
+
+      let stmts = fn.get('functionbody')
         .get('statements').getAll()
         .filter(s => !s.has('whitespace'))
-        .filter(s => !s.has('exits'))
       this.build(stmts)
+    }
+  }
+
+  private buildParams(params: LPNode[]) {
+    this.params = {}
+    while (params.length > 0) {
+      let param = params.shift()
+      if (param instanceof NamedAnd) {
+        if (param.has('arg')) {
+          param = param.get('arg')
+        }
+
+        if (param.has('variable') && param.get('variable').t.trim() !== '') {
+          // assign a very basic `DepNode` struct to avoid having to go through
+          // the whole constructor, since this node is just a param declaration
+          // and doesn't need to go through the whole shebang. We just need it
+          // for when we're generating the dependencies of the aga output
+          this.params[param.get('variable').t.trim()] = {
+            stmt: param.t.trim(),
+            upstream: [],
+            downstream: [],
+            mutates: [],
+            graph: this,
+            isParam: true,
+            fromExit: () => {},
+            fromAssignment: () => {},
+            fromCall: () => {},
+            toJSON: () => null,
+          }
+        } else {
+          unhandled(param, 'unknown param ast')
+        }
+      } else if (param instanceof ZeroOrMore) {
+        params.unshift(...param.getAll())
+      } else if (param instanceof NulLP) {
+        // do nothing
+      } else {
+        unhandled(param, 'unknown ast type for function parameters')
+      }
     }
   }
 
@@ -77,6 +120,13 @@ export class DepGraph {
     // console.log(nodes)
     if ((nodes !== null && nodes !== undefined) && nodes.length !== 0) {
       return nodes[nodes.length - 1]
+    }
+
+    // if there's no mutation, check to see if it's a variable first
+    if (this.params !== null && this.params[varName] !== null && this.params[varName] !== undefined) {
+      // don't even make up a node for it, it's just dependent on the param
+      // which is always guaranteed to be satisfied
+      return this.params[varName]
     }
 
     // console.log('og:')
@@ -112,6 +162,7 @@ export class DepNode {
   closure?: DepGraph
   mutates: string[]
   graph: DepGraph
+  isParam: boolean
 
   constructor(stmt: LPNode, graph: DepGraph) {
     this.stmt = stmt.t.trim()
@@ -120,6 +171,7 @@ export class DepNode {
     this.closure = null
     this.mutates = []
     this.graph = graph
+    this.isParam = false
 
     if (stmt.has('declarations')) {
       let dec = stmt.get('declarations')
@@ -141,11 +193,23 @@ export class DepNode {
         this.upstream.push(upstream)
         upstream.downstream.push(this)
       }
+    } else if (stmt.has('exits')) {
+      this.fromExit(stmt.get('exits'))
     } else {
       unhandled(stmt, 'node top-level')
     }
     this.upstream = [ ...new Set(this.upstream) ]
     this.mutates = [ ...new Set(this.mutates) ]
+  }
+
+  fromExit(assign: LPNode) {
+    if (assign.has('variable')) {
+      let upstream = this.graph.getLastMutationFor(assign.get('variable').t.trim())
+      if (upstream !== null) {
+        this.upstream.push(upstream)
+        upstream.downstream.push(this)
+      }
+    }
   }
 
   fromAssignment(assign: LPNode) {
@@ -205,13 +269,17 @@ export class DepNode {
         // and use its mutabilities instead
 
         // the closure def will be the first node in the list
-        let closure = this.graph.byVar[args[ii].t.trim()][0]
-        if (closure === null || closure === undefined) {
-          unhandled(this.graph.byVar, `no nodes declared for ${args[ii].t.trim()}`)
-        } else if (closure.closure === null) {
-          unhandled(closure, 'expected a closure')
+        let closure = this.graph.getLastMutationFor(args[ii].t.trim())
+        if (closure.closure) {
+          if (closure === null || closure === undefined) {
+            unhandled(this.graph.byVar, `no nodes declared for ${args[ii].t.trim()}`)
+          }
+          mutated.push(...closure.mutates)
+        } else if (closure.isParam) {
+          mutated.push(closure)
+        } else {
+          unhandled(closure, 'expected to inherit mutations')
         }
-        mutated.push(...closure.mutates)
       }
     }
     this.mutates.push(...mutated)
@@ -540,6 +608,6 @@ export const opcodeParamMutabilities = {
   seqeach: [false, null],
   seqwhile: [false, null, null], // TODO: ok so i don't *want* to make the 2nd value `null`, but it's not impossible for someone to mutate a value in the second function...
   seqdo: [false, null],
-  selfrec: [null, null], // TODO: figure this out. maybe just mark both as false??
+  selfrec: [false, false], // TODO: figure this out. maybe just mark both as false??
   seqrec: [false, null],
 }

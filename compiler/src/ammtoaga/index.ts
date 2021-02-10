@@ -151,7 +151,7 @@ const closuresFromDeclaration = (
 ) => {
   const name = declaration.get('constdeclaration').get('decname').t.trim()
   if ((depGraph.byVar[name] === null || depGraph.byVar[name] === undefined)
-      || depGraph.byVar[name].length == 0
+      || depGraph.byVar[name].length === 0
       || depGraph.byVar[name][0].closure === null) {
     throw new Error('trying to build a closure, but the dependency graph did not build a closure')
   }
@@ -271,7 +271,7 @@ const loadStatements = (
     if (globalMem.hasOwnProperty(arg + fnName)) {
       let resultAddress = globalMem[arg + fnName]
       let val = CLOSURE_ARG_MEM_START + BigInt(1) + BigInt(i)
-      let s = new Statement('refv', [`@${val}`, '@0'], `@${resultAddress}`, line, [], null) // TODO: DepGraph should support closure args, but we don't use them right now in AGA so just use null.
+      let s = new Statement('refv', [`@${val}`, '@0'], `@${resultAddress}`, line, [], depGraph.params[arg] || null)
       vec.push(s)
       line += 1
     }
@@ -286,7 +286,7 @@ const loadStatements = (
       // It's a closure, skip it
       continue
     }
-    const node = depGraph.byLP.get(statement)
+    const node = depGraph.byLP.get(statement) || null
     const hasClosureArgs = isClosure && fnArgs.length > 0
     let s: Statement
     if (statement.has('declarations')) {
