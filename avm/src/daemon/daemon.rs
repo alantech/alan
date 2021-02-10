@@ -2,7 +2,6 @@ use once_cell::sync::OnceCell;
 use tokio::task;
 use tokio::time::{Duration, sleep};
 
-use crate::vm::deploy::vm_health;
 use crate::vm::run::run;
 
 pub static APP_ID: OnceCell<String> = OnceCell::new();
