@@ -6,13 +6,11 @@ use std::sync::Arc;
 use byteorder::{LittleEndian, ReadBytesExt};
 use flate2::read::GzDecoder;
 use once_cell::sync::OnceCell;
-use tokio::runtime;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
 use crate::vm::event::{BuiltInEvents, EventEmit, HandlerFragment};
 use crate::vm::memory::HandlerMemory;
 use crate::vm::program::{Program, PROGRAM};
-use crate::vm::telemetry;
 
 pub static EVENT_TX: OnceCell<UnboundedSender<EventEmit>> = OnceCell::new();
 
@@ -64,51 +62,42 @@ impl VM {
   }
 }
 
-pub fn exec(fp: &str, delete_after_load: bool) {
-  let rt = runtime::Builder::new_multi_thread()
-    .enable_time()
-    .enable_io()
-    .build()
-    .unwrap();
-  // Start the root task backed by a single thread
-  rt.block_on(async {
-    let fptr = File::open(fp);
-    if fptr.is_err() {
-      eprintln!("File not found: {}", fp);
-      std::process::exit(2);
-    }
-    // Test if it's gzip compressed
-    let mut bytes = Vec::new();
-    File::open(fp).unwrap().read_to_end(&mut bytes).unwrap();
-    let gz = GzDecoder::new(bytes.as_slice());
-    let mut bytecode;
-    if gz.header().is_some() {
-      let count = gz.bytes().count();
-      bytecode = vec![0; count / 8];
-      let mut gz = GzDecoder::new(bytes.as_slice());
-      gz.read_i64_into::<LittleEndian>(&mut bytecode).unwrap();
-    } else {
-      let bytes = File::open(fp).unwrap().bytes().count();
-      bytecode = vec![0; bytes / 8];
-      let mut f = File::open(fp).unwrap();
-      f.read_i64_into::<LittleEndian>(&mut bytecode).unwrap();
-    }
-    if delete_after_load {
-      std::fs::remove_file(Path::new(fp)).unwrap();
-    }
-    let program = Program::load(bytecode);
-    let set_global = PROGRAM.set(program);
-    if set_global.is_err() {
-      eprintln!("Failed to load bytecode");
-      std::process::exit(1);
-    }
-    let mut vm = VM::new();
-    let start = EventEmit {
-      id: i64::from(BuiltInEvents::START),
-      payload: None,
-    };
-    vm.add(start);
-    telemetry::log().await;
-    vm.run().await;
-  })
+pub async fn run(fp: &str, delete_after_load: bool) {
+  let fptr = File::open(fp);
+  if fptr.is_err() {
+    eprintln!("File not found: {}", fp);
+    std::process::exit(2);
+  }
+  // Test if it's gzip compressed
+  let mut bytes = Vec::new();
+  File::open(fp).unwrap().read_to_end(&mut bytes).unwrap();
+  let gz = GzDecoder::new(bytes.as_slice());
+  let mut bytecode;
+  if gz.header().is_some() {
+    let count = gz.bytes().count();
+    bytecode = vec![0; count / 8];
+    let mut gz = GzDecoder::new(bytes.as_slice());
+    gz.read_i64_into::<LittleEndian>(&mut bytecode).unwrap();
+  } else {
+    let bytes = File::open(fp).unwrap().bytes().count();
+    bytecode = vec![0; bytes / 8];
+    let mut f = File::open(fp).unwrap();
+    f.read_i64_into::<LittleEndian>(&mut bytecode).unwrap();
+  }
+  if delete_after_load {
+    std::fs::remove_file(Path::new(fp)).unwrap();
+  }
+  let program = Program::load(bytecode);
+  let set_global = PROGRAM.set(program);
+  if set_global.is_err() {
+    eprintln!("Failed to load bytecode");
+    std::process::exit(1);
+  }
+  let mut vm = VM::new();
+  let start = EventEmit {
+    id: i64::from(BuiltInEvents::START),
+    payload: None,
+  };
+  vm.add(start);
+  vm.run().await;
 }

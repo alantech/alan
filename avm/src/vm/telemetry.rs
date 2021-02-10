@@ -9,7 +9,7 @@ const ALAN_VERSION: Option<&'static str> = option_env!("CARGO_PKG_VERSION");
 const NO_TELEMETRY: Option<&'static str> = option_env!("ALAN_TELEMETRY_OFF");
 const OS: &str = std::env::consts::OS;
 
-pub async fn log() {
+pub async fn log(event: &str) {
   let no_telemetry = NO_TELEMETRY.unwrap_or("false") == "true";
   if no_telemetry {
     return;
@@ -18,8 +18,8 @@ pub async fn log() {
     "api_key": AMPLITUDE_API_KEY,
     "events": [
       {
-        "user_id": "oneforallandallforone",
-        "event_type": "avm-run",
+        "user_id": "alancli",
+        "event_type": event,
         "app_version": ALAN_VERSION.unwrap(),
         "os_name": OS,
       }
