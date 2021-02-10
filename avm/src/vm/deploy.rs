@@ -88,7 +88,11 @@ async fn post(url: String, body: Value) -> Result<String, Box<dyn Error>> {
   let mut resp = client.request(req).await?;
   let data = hyper::body::to_bytes(resp.body_mut()).await?;
   let str = String::from_utf8(data.to_vec())?;
-  Ok(str)
+  return if resp.status().is_success() {
+    Ok(str)
+  } else {
+    Err(str.into())
+  };
 }
 
 fn get_app_str(agz_file: &str) -> String {
@@ -123,7 +127,7 @@ pub async fn terminate(app_id: &str) {
   let resp = post(format!("{}/v1/terminate", URL), body).await;
   let res = match resp {
     Ok(_) => format!("Terminated app {} succesfully!", app_id),
-    Err(err) => format!("Failed to terminate app {}. Error {}", app_id, err),
+    Err(err) => format!("Failed to terminate app {}. Error: {}", app_id, err),
   };
   sp.message(res);
   sp.close();
