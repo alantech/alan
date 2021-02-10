@@ -127,17 +127,19 @@ baz"
     }
     AfterAll after
 
-    THINGOUTPUT="hey I got a string! hi
-I also got a string! hi"
+    THINGOUTPUT1="hey I got a string! hi"
+    THINGOUTPUT2="I also got a string! hi"
 
     It "runs js"
       When run test_js
-      The output should eq "$THINGOUTPUT"
+      The output should include "$THINGOUTPUT1"
+      The output should include "$THINGOUTPUT2"
     End
 
     It "runs agc"
       When run test_agc
-      The output should eq "$THINGOUTPUT"
+      The output should include "$THINGOUTPUT1"
+      The output should include "$THINGOUTPUT2"
     End
   End
 End

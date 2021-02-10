@@ -4,9 +4,11 @@ import {
   LPError,
   NamedAnd,
   NulLP,
-} from './lp'
+} from '../lp'
 
-import amm from './amm'
+import amm from '../amm'
+import { DepGraph } from './depgraph'
+import { Block, Statement} from './aga'
 
 // This project depends on BigNum and associated support in Node's Buffer, so must be >= Node 10.20
 // and does not work in the browser. It would be possible to implement a browser-compatible version
@@ -145,8 +147,15 @@ const closuresFromDeclaration = (
   // parent scope arguments
   argRerefOffset: number,
   scope: string[],
+  depGraph: DepGraph,
 ) => {
   const name = declaration.get('constdeclaration').get('decname').t.trim()
+  if ((depGraph.byVar[name] === null || depGraph.byVar[name] === undefined)
+      || depGraph.byVar[name].length === 0
+      || depGraph.byVar[name][0].closure === null) {
+    throw new Error('trying to build a closure, but the dependency graph did not build a closure')
+  }
+  const graph = depGraph.byVar[name][0].closure
   const fn = declaration.get('constdeclaration').get('assignables').get('functions')
   let fnArgs = []
   fn.get('args').getAll()[0].getAll().forEach((argdef) => {
@@ -182,6 +191,7 @@ const closuresFromDeclaration = (
       addressMap,
       argRerefOffset,
       [ name, ...scope, ], // Newest scope gets highest priority
+      graph,
     )
   ).reduce((obj, rec) => ({
     ...obj,
@@ -196,17 +206,19 @@ const closuresFromDeclaration = (
       statements,
       closureMem,
       scope: [ name, ...scope, ],
+      graph,
     },
     ...otherClosures,
   }
 }
 
-const extractClosures = (handlers: LPNode[], handlerMem: object, eventDecs: object, addressMap: object) => {
+const extractClosures = (handlers: LPNode[], handlerMem: object, eventDecs: object, addressMap: object, depGraphs: DepGraph[]) => {
   let closures = {}
   let recs = handlers.filter(h => h.get() instanceof NamedAnd)
   for (let i = 0; i < recs.length; i++) {
     const rec = recs[i].get()
     const closureMem = handlerMem[i]
+    const handlerGraph = depGraphs[i]
     for (const statement of rec.get('functions').get('functionbody').get('statements').getAll()) {
       if (
         statement.has('declarations') &&
@@ -221,6 +233,7 @@ const extractClosures = (handlers: LPNode[], handlerMem: object, eventDecs: obje
           addressMap,
           5,
           [],
+          handlerGraph,
         )
         closures = {
           ...closures,
@@ -232,40 +245,6 @@ const extractClosures = (handlers: LPNode[], handlerMem: object, eventDecs: obje
   return Object.values(closures)
 }
 
-class Statement {
-  fn: string
-  inArgs: [string, string] | [string, string, string]
-  outArg: string | null
-  line: number
-  deps: number[]
-
-  constructor(
-    fn: string,
-    inArgs: [string, string] | [string, string, string],
-    outArg: string | null,
-    line: number,
-    deps: number[],
-  ) {
-    this.fn = fn
-    this.inArgs = inArgs
-    this.outArg = outArg
-    this.line = line
-    this.deps = deps
-  }
-
-  toString() {
-    let s = ''
-    if (this.outArg !== null) {
-      s += `${this.outArg} = `
-    }
-    s += `${this.fn}(${this.inArgs.join(', ')}) #${this.line}`
-    if (this.deps.length > 0) {
-      s += ` <- [${this.deps.map(d => `#${d}`).join(', ')}]`
-    }
-    return s
-  }
-}
-
 const loadStatements = (
   statements: LPNode[],
   localMem: object,
@@ -274,6 +253,7 @@ const loadStatements = (
   fnName: string,
   isClosure: boolean,
   closureScope: string[],
+  depGraph: DepGraph,
 ) => {
   let vec = []
   let line = 0
@@ -291,7 +271,7 @@ const loadStatements = (
     if (globalMem.hasOwnProperty(arg + fnName)) {
       let resultAddress = globalMem[arg + fnName]
       let val = CLOSURE_ARG_MEM_START + BigInt(1) + BigInt(i)
-      let s = new Statement('refv', [`@${val}`, '@0'], `@${resultAddress}`, line, [])
+      let s = new Statement('refv', [`@${val}`, '@0'], `@${resultAddress}`, line, [], depGraph.params[arg] || null)
       vec.push(s)
       line += 1
     }
@@ -306,6 +286,7 @@ const loadStatements = (
       // It's a closure, skip it
       continue
     }
+    const node = depGraph.byLP.get(statement)
     const hasClosureArgs = isClosure && fnArgs.length > 0
     let s: Statement
     if (statement.has('declarations')) {
@@ -339,7 +320,7 @@ const loadStatements = (
           }
         }).map(a => typeof a === 'string' ? a : `@${a}`)
         while (args.length < 2) args.push('@0')
-        s = new Statement(fnName, args as [string, string], `@${resultAddress}`, line, [])
+        s = new Statement(fnName, args as [string, string], `@${resultAddress}`, line, [], node)
       } else if (assignables.has('value')) {
         // Only required for `let` statements
         let fn: string
@@ -380,7 +361,7 @@ const loadStatements = (
         default:
           throw new Error(`Unsupported variable type ${dec.get('fulltypename').t}`)
         }
-        s = new Statement(fn, [val, '@0'], `@${resultAddress}`, line, [])
+        s = new Statement(fn, [val, '@0'], `@${resultAddress}`, line, [], node)
       } else if (assignables.has('variable')) {
         throw new Error('This should have been squashed')
       }
@@ -412,7 +393,7 @@ const loadStatements = (
           } else return v
         }).map(a => typeof a === 'string' ? a : `@${a}`)
         while (args.length < 2) args.push('@0')
-        s = new Statement(fnName, args as [string, string], `@${resultAddress}`, line, [])
+        s = new Statement(fnName, args as [string, string], `@${resultAddress}`, line, [], node)
       } else if (assignables.has('value')) {
         // Only required for `let` statements
         let fn: string
@@ -433,7 +414,7 @@ const loadStatements = (
           fn = 'seti64'
           val = valStr + 'i64'
         }
-        s = new Statement(fn, [val, '@0'], `@${resultAddress}`, line, [])
+        s = new Statement(fn, [val, '@0'], `@${resultAddress}`, line, [], node)
       } else if (assignables.has('variable')) {
         throw new Error('This should have been squashed')
       }
@@ -458,7 +439,7 @@ const loadStatements = (
         } else return v
       }).map(a => typeof a === 'string' ? a : `@${a}`)
       while (args.length < 3) args.push('@0')
-      s = new Statement(fnName, args as [string, string, string], null, line, [])
+      s = new Statement(fnName, args as [string, string, string], null, line, [], node)
     } else if (statement.has('emits')) {
       const emit = statement.get('emits')
       const evtName = emit.get('variable').t.trim()
@@ -476,6 +457,7 @@ const loadStatements = (
         null,
         line,
         [],
+        node,
       )
     } else if (statement.has('exits')) {
       const exit = statement.get('exits')
@@ -500,7 +482,7 @@ const loadStatements = (
       }).map(a => typeof a === 'string' ? a : `@${a}`)
       while (args.length < 2) args.push('@0')
       const ref = exitVarType === 'variable' ? 'refv' : 'reff'
-      s = new Statement(ref, args as [string, string], `@${CLOSURE_ARG_MEM_START}`, line, [])
+      s = new Statement(ref, args as [string, string], `@${CLOSURE_ARG_MEM_START}`, line, [], node)
     }
     vec.push(s)
     line += 1
@@ -508,35 +490,7 @@ const loadStatements = (
   return vec
 }
 
-class Block {
-  type: string
-  name: string
-  memSize: number
-  statements: Statement[]
-  deps: string[]
-
-  constructor(
-    type: string,
-    name: string,
-    memSize: number,
-    statements: Statement[],
-    deps: string[]
-  ) {
-    this.type = type
-    this.name = name
-    this.memSize = memSize
-    this.statements = statements
-    this.deps = deps
-  }
-
-  toString() {
-    let b = `${this.type} for ${this.name} with size ${this.memSize}\n`
-    this.statements.forEach(s => b += `  ${s.toString()}\n`)
-    return b
-  }
-}
-
-const loadHandlers = (handlers: LPNode[], handlerMem: object, globalMem: object) => {
+const loadHandlers = (handlers: LPNode[], handlerMem: object, globalMem: object, depGraphs: DepGraph[]) => {
   const vec = []
   const recs = handlers.filter(h => h.get() instanceof NamedAnd)
   for (let i = 0; i < recs.length; i++) {
@@ -552,6 +506,7 @@ const loadHandlers = (handlers: LPNode[], handlerMem: object, globalMem: object)
       eventName,
       false,
       [],
+      depGraphs[i],
     ), [])
     vec.push(h)
   }
@@ -573,67 +528,11 @@ const loadClosures = (closures: any[], globalMem: object) => {
       eventName,
       true,
       closure.scope,
+      closure.graph,
     ), [])
     vec.push(c)
   }
   return vec
-}
-
-// Perform basic dependency stitching within a single block, but also attach unknown dependencies
-// to the block object for later "stitching"
-const innerBlockDeps = (block: Block) => {
-  const depMap = {}
-  let lastEmit = null
-  const statements = block.statements
-  for (const s of statements) {
-    for (const a of s.inArgs) {
-      if (depMap.hasOwnProperty(a)) {
-        s.deps.push(depMap[a])
-      } else if (/^@/.test(a)) {
-        block.deps.push(a)
-      }
-    }
-    if (s.fn === 'emit') {
-      if (lastEmit !== null) {
-        s.deps.push(lastEmit)
-      }
-      lastEmit = s.line
-    }
-    if (s.outArg !== null) {
-      depMap[s.outArg] = s.line
-    }
-  }
-  return block
-}
-
-// Use the unknown dependencies attached to the block scope and attach them in the outer level
-// TODO: Handle dependencies many nested levels deep, perhaps with an iterative approach?
-const closureDeps = (blocks: Block[]) => {
-  const blockMap = {}
-  for (const b of blocks) {
-    blockMap[b.name] = b
-  }
-  const blockNames = Object.keys(blockMap)
-  for (const b of blocks) {
-    let argMap = {}
-    for (const s of b.statements) {
-      if (s.outArg !== null) {
-        argMap[s.outArg] = s.line
-      }
-      for (const a of s.inArgs) {
-        if (blockNames.includes(a)) {
-          const blockDeps = blockMap[a].deps
-          for (const bd of blockDeps) {
-            if (argMap.hasOwnProperty(bd)) {
-              s.deps.push(argMap[bd])
-            }
-          }
-        }
-      }
-      s.deps = [...new Set(s.deps)] // Dedupe the final dependencies list
-    }
-  }
-  return blocks
 }
 
 const ammToAga = (amm: LPNode) => {
@@ -652,7 +551,15 @@ const ammToAga = (amm: LPNode) => {
   let eventDecs = loadEventDecs(amm.get('eventDec').getAll())
   // Determine the amount of memory to allocate per handler and map declarations to addresses
   const handlerMem = getHandlersMem(amm.get('handlers').getAll())
-  const closures = extractClosures(amm.get('handlers').getAll(), handlerMem, eventDecs, addressMap)
+  const depGraphs: DepGraph[] = []
+  for (let handler of amm.get('handlers').getAll()) {
+    handler = handler.get()
+    if (handler instanceof NamedAnd) {
+      depGraphs.push(new DepGraph(handler))
+    }
+  }
+  // console.log(depGraphs.map(g => JSON.stringify(g.toJSON())).join(','))
+  const closures = extractClosures(amm.get('handlers').getAll(), handlerMem, eventDecs, addressMap, depGraphs)
   // Make sure closures are accessible as addresses for statements to use
   closures.forEach((c: any) => addressMap[c.name] = c.name)
   // Then output the custom events, which may include closures, if needed
@@ -662,10 +569,11 @@ const ammToAga = (amm: LPNode) => {
     outStr += '\n'
   }
   // Load the handlers and load the closures (as handlers) if present
-  const handlerVec = loadHandlers(amm.get('handlers').getAll(), handlerMem, addressMap)
-  const closureVec = loadClosures(closures, addressMap)
-  const blockVec = closureDeps([...handlerVec, ...closureVec].map(b => innerBlockDeps(b)))
-    .map(b => b.toString())
+  const handlerVec = loadHandlers(amm.get('handlers').getAll(), handlerMem, addressMap, depGraphs)
+  const closureVec = loadClosures(closures, addressMap);
+  ([...handlerVec, ...closureVec]).map(b => b.build())
+  // console.log(([...handlerVec, ...closureVec]).map(b => b.build()).join(','))
+  const blockVec = [...handlerVec, ...closureVec].map(b => b.toString())
   outStr += blockVec.join('\n')
   return outStr
 }
