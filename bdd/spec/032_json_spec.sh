@@ -85,7 +85,7 @@ null"
     before() {
       sourceToAll "
         from @std/app import start, print, exit
-        from @std/json import JSON, toJSON, JSONBase, JSONNode, IsObject, Null, parse, isBool, getBool, toJSONNode, isNull
+        from @std/json import JSON, toJSON, JSONBase, JSONNode, IsObject, Null, parse, isBool, getBool, toJSONNode, isNull, isString, getString
 
         on start {
           print('Parsing \"true\"');
@@ -103,6 +103,11 @@ null"
 
           print('Parsing \"garbage\"');
           'garbage'.parse().isOk().print();
+
+          print(\"Parsing '\\\"garbage\\\"'\");
+          const strJson = '\"garbage\"'.parse().getOr(toJSON());
+          strJson.getRootNode().getOr(toJSONNode()).isString().print();
+          strJson.getRootNode().getOr(toJSONNode()).getString().print();
 
           emit exit 0;
         }
@@ -124,7 +129,10 @@ false
 Parsing \"null\"
 true
 Parsing \"garbage\"
-false"
+false
+Parsing '\"garbage\"'
+true
+garbage"
 
     It "runs js"
       When run test_js
