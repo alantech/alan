@@ -1,6 +1,7 @@
 use hyper::{client::Client, Body, Request};
 use serde::{Deserialize, Serialize};
 use serde_json::{from_reader, from_str, json, Value};
+use spinner::SpinnerBuilder;
 
 use std::collections::HashMap;
 use std::error::Error;
@@ -34,7 +35,6 @@ struct AWSConfig {
 struct App {
   id: String,
   url: String,
-  status: String,
   cloudProvider: String,
   cloudAlias: String,
 }
@@ -88,7 +88,11 @@ async fn post(url: String, body: Value) -> Result<String, Box<dyn Error>> {
   let mut resp = client.request(req).await?;
   let data = hyper::body::to_bytes(resp.body_mut()).await?;
   let str = String::from_utf8(data.to_vec())?;
-  Ok(str)
+  return if resp.status().is_success() {
+    Ok(str)
+  } else {
+    Err(str.into())
+  };
 }
 
 fn get_app_str(agz_file: &str) -> String {
@@ -114,16 +118,19 @@ pub async fn vm_health(app_id: &str, deploy_key: &str) {
   }
 }
 
-pub async fn kill(app_id: &str) {
+pub async fn terminate(app_id: &str) {
   let body = json!({
     "deployConfig": get_config(),
     "appId": app_id,
   });
-  let resp = post(format!("{}/v1/kill", URL), body).await;
-  match resp {
-    Ok(_) => println!("Killing app with id {} if it exists...\n", app_id),
-    Err(err) => println!("Killing app with id {} failed. Error: {}", app_id, err)
-  }
+  let sp = SpinnerBuilder::new(format!("Terminating app {} if it exists", app_id)).start();
+  let resp = post(format!("{}/v1/terminate", URL), body).await;
+  let res = match resp {
+    Ok(_) => format!("Terminated app {} succesfully!", app_id),
+    Err(err) => format!("Failed to terminate app {}. Error: {}", app_id, err),
+  };
+  sp.message(res);
+  sp.close();
 }
 
 pub async fn new(agz_file: &str, cloud_alias: &str) {
@@ -134,11 +141,14 @@ pub async fn new(agz_file: &str, cloud_alias: &str) {
     "cloudAlias": cloud_alias,
   });
   let body = json!(body);
+  let sp = SpinnerBuilder::new(format!("Creating new app in {}", cloud_alias)).start();
   let resp = post(format!("{}/v1/new", URL), body).await;
-  match resp {
-    Ok(app_id) => println!("Creating new app with id {} in {}...\n", app_id, cloud_alias),
-    Err(err) => println!("Failed to create a new app. Error: {}", err)
-  }
+  let res = match resp {
+    Ok(app_id) => format!("Created app with id {} in {} succesfully!", app_id, cloud_alias),
+    Err(err) => format!("Failed to create a new app in {}. Error: {}", cloud_alias, err),
+  };
+  sp.message(res);
+  sp.close();
 }
 
 pub async fn upgrade(app_id: &str, agz_file: &str) {
@@ -148,18 +158,21 @@ pub async fn upgrade(app_id: &str, agz_file: &str) {
     "appId": app_id,
     "agzB64": app_str,
   });
+  let sp = SpinnerBuilder::new(format!("Upgrading app {} with {}", app_id, agz_file)).start();
   let resp = post(format!("{}/v1/upgrade", URL), body).await;
-  match resp {
-    Ok(_) => println!("Upgrading app {}...\n", app_id),
-    Err(err) => println!("Failed to upgrade app {}. Error: {}", app_id, err)
-  }
+  let res = match resp {
+    Ok(_) => format!("Upgraded app {} succesfully!", app_id),
+    Err(err) => format!("Failed to upgrade app {} with {}. Error: {}", app_id, agz_file, err),
+  };
+  sp.message(res);
+  sp.close();
 }
 
-pub async fn status() {
+pub async fn info() {
   let body = json!({
     "deployConfig": get_config(),
   });
-  let resp = post(format!("{}/v1/status", URL), body).await;
+  let resp = post(format!("{}/v1/info", URL), body).await;
   if let Err(err) = resp {
     println!("Displaying status for apps failed with error: {}", err);
     std::process::exit(1);
@@ -180,28 +193,23 @@ pub async fn status() {
   ascii_table.columns.insert(0, column);
 
   let mut column = Column::default();
-  column.header = "Status".into();
-  column.align = Align::Center;
-  ascii_table.columns.insert(1, column);
-
-  let mut column = Column::default();
   column.header = "Url".into();
   column.align = Align::Right;
-  ascii_table.columns.insert(2, column);
+  ascii_table.columns.insert(1, column);
 
   let mut column = Column::default();
   column.header = "Cloud".into();
   column.align = Align::Right;
-  ascii_table.columns.insert(3, column);
+  ascii_table.columns.insert(2, column);
 
   let mut column = Column::default();
   column.header = "Cloud Alias".into();
   column.align = Align::Right;
-  ascii_table.columns.insert(4, column);
+  ascii_table.columns.insert(3, column);
 
   let mut data: Vec<Vec<&dyn Display>> = vec![];
   for app in &mut apps {
-    data.push(vec![&app.id, &app.status, &app.url, &app.cloudProvider, &app.cloudAlias]);
+    data.push(vec![&app.id, &app.url, &app.cloudProvider, &app.cloudAlias]);
   }
 
   println!("Status of all apps deployed using the cloud credentials in ~/{}\n", CONFIG_NAME);

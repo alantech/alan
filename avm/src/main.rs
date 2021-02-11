@@ -7,7 +7,7 @@ use tokio::runtime::Builder;
 use crate::compile::compile::compile;
 use crate::daemon::daemon::start;
 use crate::vm::telemetry;
-use crate::vm::deploy::{kill, status, new, upgrade};
+use crate::vm::deploy::{info, new, terminate, upgrade};
 use crate::vm::run::run;
 
 mod daemon;
@@ -51,12 +51,12 @@ fn main() {
         .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'")
         .arg_from_usage("<CLOUD_ALIAS> 'Specifies the cloud provider to deploy to based on its alias'")
       )
-      .subcommand(SubCommand::with_name("status")
+      .subcommand(SubCommand::with_name("info")
         .about("Displays all the apps deployed in the cloud provider described in the deploy config at ~/.alan/deploy.json")
       )
-      .subcommand(SubCommand::with_name("kill")
-        .about("Kills an app with the provided id in the cloud provider described in the deploy config at ~/.alan/deploy.json")
-        .arg_from_usage("<APP_ID> 'Specifies the alan app to kill'")
+      .subcommand(SubCommand::with_name("terminate")
+        .about("Terminate an app with the provided id in the cloud provider described in the deploy config at ~/.alan/deploy.json")
+        .arg_from_usage("<APP_ID> 'Specifies the alan app to terminate'")
       )
       .subcommand(SubCommand::with_name("upgrade")
         .about("Deploys an .agz file to an existing app in the cloud provider described in the deploy config at ~/.alan/deploy.json")
@@ -116,17 +116,17 @@ fn main() {
             let cloud_alias = matches.value_of("CLOUD_ALIAS").unwrap();
             new(agz_file, cloud_alias).await;
           },
-          ("kill",  Some(matches)) => {
+          ("terminate",  Some(matches)) => {
             let app_id = matches.value_of("APP_ID").unwrap();
-            kill(app_id).await;
+            terminate(app_id).await;
           },
           ("upgrade",  Some(matches)) => {
             let app_id = matches.value_of("APP_ID").unwrap();
             let agz_file = matches.value_of("AGZ_FILE").unwrap();
             upgrade(app_id, agz_file).await;
           },
-          ("status",  _) => {
-            status().await;
+          ("info",  _) => {
+            info().await;
           },
           // rely on AppSettings::SubcommandRequiredElseHelp
           _ => {}
