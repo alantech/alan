@@ -195,17 +195,17 @@ pub async fn info() {
   let mut column = Column::default();
   column.header = "Url".into();
   column.align = Align::Right;
-  ascii_table.columns.insert(2, column);
+  ascii_table.columns.insert(1, column);
 
   let mut column = Column::default();
   column.header = "Cloud".into();
   column.align = Align::Right;
-  ascii_table.columns.insert(3, column);
+  ascii_table.columns.insert(2, column);
 
   let mut column = Column::default();
   column.header = "Cloud Alias".into();
   column.align = Align::Right;
-  ascii_table.columns.insert(4, column);
+  ascii_table.columns.insert(3, column);
 
   let mut data: Vec<Vec<&dyn Display>> = vec![];
   for app in &mut apps {
