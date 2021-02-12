@@ -263,7 +263,6 @@ impl HandlerMemory {
   ) -> &'mem mut Vec<(usize, i64)> {
     let ((a, b), hm_opt) = self.addr_to_idxs(addr);
     if let Some(hm) = hm_opt {
-      println!("let's gooooooo");
       // copy necessary data from ancestor
       HandlerMemory::transfer_idxs(&hm, a, b, self, addr);
     }
