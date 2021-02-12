@@ -484,6 +484,51 @@ export fn addKeyVal(j: JSON, key: string, val: JSON): JSON {
   return j;
 }
 
+export fn push(n: Node<JSONNode>, val: JSON): Node<JSONNode> {
+  n.addChild(val);
+  return n;
+}
+
+export fn push(n: Node<JSONNode>, val: JSONNode): Node<JSONNode> {
+  n.addChild(val);
+  return n;
+}
+
+export fn push(n: Node<JSONNode>, val: JSONBase): Node<JSONNode> {
+  n.addChild(val.toJSONNode());
+  return n;
+}
+
+export fn push(n: Node<JSONNode>, val: float64): Node<JSONNode> {
+  n.addChild(val.toJSONNode());
+  return n;
+}
+
+export fn push(n: Node<JSONNode>, val: bool): Node<JSONNode> {
+  n.addChild(val.toJSONNode());
+  return n;
+}
+
+export fn push(n: Node<JSONNode>, val: string): Node<JSONNode> {
+  n.addChild(val.toJSONNode());
+  return n;
+}
+
+export fn push(n: Node<JSONNode>, val: IsObject): Node<JSONNode> {
+  n.addChild(val.toJSONNode());
+  return n;
+}
+
+export fn push(n: Node<JSONNode>, val: Null): Node<JSONNode> {
+  n.addChild(val.toJSONNode());
+  return n;
+}
+
+export fn push(n: Node<JSONNode>): Node<JSONNode> {
+  n.addChild(toJSONNode());
+  return n;
+}
+
 export fn push(j: JSON, val: JSON): JSON {
   j.addChild(val);
   return j;
@@ -660,7 +705,7 @@ export fn parse(s: string): Result<JSON> {
   seqdo(newseq(chars.length()), fn (): bool {
     const c = chars[i] || '';
     const state = stateStack.pop() || END;
-    if state == START {
+    if state == START || state == ARR {
       if c == '"' {
         stateStack.push(STRING);
         j = i;
@@ -691,6 +736,32 @@ export fn parse(s: string): Result<JSON> {
         i = i + 1 || 0;
         return true;
       }
+      if c == '[' {
+        if state == START {
+          json = ok(newJSONArray().getRootNode());
+        }
+        if state == ARR {
+          const parentJson = json.getOr(toJSON().getRootNode()).getParent();
+          const newJson = newJSONArray();
+          parentJson.push(newJson);
+          json = parentJson.getChildren().pop();
+        }
+        stateStack.push(ARR);
+        j = i;
+        i = i + 1 || 0;
+        return true;
+      }
+      if c ~ '[, ]' {
+        // Skip commas and whitespace if already in the ARR state, they don't add any useful info
+        i = i + 1 || 0;
+        return true;
+      }
+      if c == ']' {
+        // We've already popped off the ARR state, so pop up to the parent JSON Node and continue
+        json = json.getOr(toJSON().getRootNode()).getParent().ok();
+        i = i + 1 || 0;
+        return true;
+      }
       // TODO, add support for objects and arrays
       stateStack.push(INVALID);
       return false;
@@ -700,11 +771,19 @@ export fn parse(s: string): Result<JSON> {
         // String is done, attach it to the JSON object (or replace if first assignment)
         const str = chars.map(fn (c: string, k: int64): string = (k > j) && (k < i) ? c : '').join('');
         if json.isErr() {
-          json = ok(toJSON(str));
+          json = ok(toJSON(str).getRootNode());
           stateStack.push(END);
           return false;
         }
-        // TODO, add support for strings in objects and arrays in the future
+        const outerState = stateStack.pop() || END;
+        if outerState == ARR {
+          stateStack.push(ARR);
+          const parentJson = json.getOr(toJSON().getRootNode()).getParent();
+          parentJson.push(str.toJSON());
+          i = i + 1 || 0;
+          return true;
+        }
+        // TODO, add support for strings in objects in the future
         stateStack.push(INVALID);
         return false;
       }
@@ -717,11 +796,19 @@ export fn parse(s: string): Result<JSON> {
         const str = chars.map(fn (c: string, k: int64): string = (k >= j) && (k <= i) ? c : '').join('');
         if str == 'null' {
           if json.isErr() {
-            json = ok(toJSON());
+            json = ok(toJSON().getRootNode());
             stateStack.push(END);
             return false;
           }
-          // TODO, support for values in objects and arrays
+          const outerState = stateStack.pop() || END;
+          if outerState == ARR {
+            stateStack.push(ARR);
+            const parentJson = json.getOr(toJSON().getRootNode()).getParent();
+            parentJson.push(toJSON());
+            i = i + 1 || 0;
+            return true;
+          }
+          // TODO, support for values in objects
           stateStack.push(INVALID);
           return false;
         }
@@ -738,11 +825,19 @@ export fn parse(s: string): Result<JSON> {
         const str = chars.map(fn (c: string, k: int64): string = (k >= j) && (k <= i) ? c : '').join('');
         if str == 'false' {
           if json.isErr() {
-            json = ok(toJSON(false));
+            json = ok(toJSON(false).getRootNode());
             stateStack.push(END);
             return false;
           }
-          // TODO, support for values in objects and arrays
+          const outerState = stateStack.pop() || END;
+          if outerState == ARR {
+            stateStack.push(ARR);
+            const parentJson = json.getOr(toJSON().getRootNode()).getParent();
+            parentJson.push(toJSON(false));
+            i = i + 1 || 0;
+            return true;
+          }
+          // TODO, support for values in objects
           stateStack.push(INVALID);
           return false;
         }
@@ -759,11 +854,19 @@ export fn parse(s: string): Result<JSON> {
         const str = chars.map(fn (c: string, k: int64): string = (k >= j) && (k <= i) ? c : '').join('');
         if str == 'true' {
           if json.isErr() {
-            json = ok(toJSON(true));
+            json = ok(toJSON(true).getRootNode());
             stateStack.push(END);
             return false;
           }
-          // TODO, support for values in objects and arrays
+          const outerState = stateStack.pop() || END;
+          if outerState == ARR {
+            stateStack.push(ARR);
+            const parentJson = json.getOr(toJSON().getRootNode()).getParent();
+            parentJson.push(toJSON(true));
+            i = i + 1 || 0;
+            return true;
+          }
+          // TODO, support for values in objects
           stateStack.push(INVALID);
           return false;
         }
@@ -778,6 +881,19 @@ export fn parse(s: string): Result<JSON> {
     if state == NUM {
       if c ~ '[0-9\\.]' {
         stateStack.push(NUM);
+        i = i + 1 || 0;
+        return true;
+      }
+      const outerState = stateStack.pop() || END;
+      if outerState == ARR {
+        stateStack.push(ARR);
+        const str = chars.map(fn (c: string, k: int64): string = (k >= j) && (k <= i) ? c : '').join('');
+        const parts = str.split('.');
+        if parts.length() > 2 {
+          return err('Invalid JSON: ' + s);
+        }
+        const parentJson = json.getOr(toJSON().getRootNode()).getParent();
+        parentJson.push(toJSON(str.toFloat64()));
         i = i + 1 || 0;
         return true;
       }
@@ -800,7 +916,11 @@ export fn parse(s: string): Result<JSON> {
       return ok(toJSON(str.toFloat64()));
     }
   }
-  return json;
+  if json.isOk() {
+    return json.getOr(toJSON().getRootNode()).getTree().ok();
+  } else {
+    return json;
+  }
 }
 
 export interface json {
