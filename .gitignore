@@ -19,3 +19,4 @@ compiler/cypress/plugins/
 compiler/cypress/support/
 compiler/cypress/videos/
 compiler/alan-compile
+.vscode
