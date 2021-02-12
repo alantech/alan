@@ -775,11 +775,30 @@ export fn parse(s: string): Result<JSON> {
       i = i + 1 || 0;
       return true;
     }
+    if state == NUM {
+      if c ~ '[0-9\\.]' {
+        stateStack.push(NUM);
+        i = i + 1 || 0;
+        return true;
+      }
+      // TODO, support for values in objects and arrays
+      stateStack.push(INVALID);
+      return false;
+    }
     return false;
   });
   const state = stateStack.pop() || INVALID;
   if state == INVALID || state == START {
     return err('Invalid JSON: ' + s);
+  }
+  if state == NUM {
+    const str = chars.map(fn (c: string, k: int64): string = (k >= j) && (k <= i) ? c : '').join('');
+    const parts = str.split('.');
+    if parts.length() > 2 {
+      return err('Invalid JSON: ' + s);
+    } else {
+      return ok(toJSON(str.toFloat64()));
+    }
   }
   return json;
 }

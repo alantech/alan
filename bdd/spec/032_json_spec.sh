@@ -80,12 +80,12 @@ null"
       The output should eq "$COMPLEXOUTPUT"
     End
   End
-  
+
   Describe "JSON parsing"
     before() {
       sourceToAll "
         from @std/app import start, print, exit
-        from @std/json import JSON, toJSON, JSONBase, JSONNode, IsObject, Null, parse, isBool, getBool, toJSONNode, isNull, isString, getString
+        from @std/json import JSON, toJSON, JSONBase, JSONNode, IsObject, Null, parse, isBool, getBool, toJSONNode, isNull, isString, getString, isFloat64, getFloat64
 
         on start {
           print('Parsing \"true\"');
@@ -108,6 +108,19 @@ null"
           const strJson = '\"garbage\"'.parse().getOr(toJSON());
           strJson.getRootNode().getOr(toJSONNode()).isString().print();
           strJson.getRootNode().getOr(toJSONNode()).getString().print();
+
+          print('Parsing \"5\"');
+          const fiveJson = '5'.parse().getOr(toJSON());
+          fiveJson.getRootNode().getOr(toJSONNode()).isFloat64().print();
+          fiveJson.getRootNode().getOr(toJSONNode()).getFloat64().print();
+
+          print('Parsing \"3.14\"');
+          const piJson = '3.14'.parse().getOr(toJSON());
+          piJson.getRootNode().getOr(toJSONNode()).isFloat64().print();
+          piJson.getRootNode().getOr(toJSONNode()).getFloat64().print();
+
+          print('Parsing \"0.1.26\"');
+          '0.1.26'.parse().isOk().print();
 
           emit exit 0;
         }
@@ -132,7 +145,15 @@ Parsing \"garbage\"
 false
 Parsing '\"garbage\"'
 true
-garbage"
+garbage
+Parsing \"5\"
+true
+5
+Parsing \"3.14\"
+true
+3.14
+Parsing \"0.1.26\"
+false"
 
     It "runs js"
       When run test_js
