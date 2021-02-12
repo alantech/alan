@@ -8,7 +8,6 @@ use std::hash::Hasher;
 use std::io::{self, Write};
 use std::net::SocketAddr;
 use std::pin::Pin;
-use std::process::Command;
 use std::str;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -24,6 +23,7 @@ use once_cell::sync::Lazy;
 use rand::rngs::OsRng;
 use rand::RngCore;
 use regex::Regex;
+use tokio::process::Command;
 use tokio::time::sleep;
 use twox_hash::XxHash64;
 
@@ -2727,7 +2727,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     Box::pin(async move {
       let full_cmd = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
       let split_cmd: Vec<&str> = full_cmd.split(" ").collect();
-      let output = Command::new(split_cmd[0]).args(&split_cmd[1..]).output();
+      let output = Command::new(split_cmd[0]).args(&split_cmd[1..]).output().await;
       hand_mem.init_fractal(args[2]);
       match output {
         Err(e) => {
