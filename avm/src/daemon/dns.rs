@@ -23,13 +23,13 @@ impl DNS {
     let name = format!("{}.{}", app_id, self.domain);
     let err = format!("Failed to fetch TXT record with name {}", &name);
     let resp = self.resolver.txt_lookup(name).await;
-    let mut vm_ids = Vec::new();
+    let mut ip_addrs = Vec::new();
     for rec in resp.expect(&err) {
       let data = &rec.txt_data()[0];
-      let vm_id = DNS::ip_from_txt_data(data);
-      vm_ids.push(vm_id);
+      let ip_addr = DNS::ip_from_txt_data(data);
+      ip_addrs.push(ip_addr);
     }
-    vm_ids
+    ip_addrs
   }
 
   fn ip_from_txt_data(data: &[u8]) -> String {
