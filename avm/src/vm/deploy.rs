@@ -87,11 +87,11 @@ async fn post(url: String, body: Value) -> Result<String, Box<dyn Error>> {
     .body(body.to_string().into())?;
   let mut resp = client.request(req).await?;
   let data = hyper::body::to_bytes(resp.body_mut()).await?;
-  let str = String::from_utf8(data.to_vec())?;
+  let data_str = String::from_utf8(data.to_vec())?;
   return if resp.status().is_success() {
-    Ok(str)
+    Ok(data_str)
   } else {
-    Err(str.into())
+    Err(data_str.into())
   };
 }
 
@@ -111,11 +111,8 @@ pub async fn vm_health(app_id: &str, deploy_key: &str) {
     "deployKey": deploy_key,
     "appId": app_id,
   });
-  let resp = post(format!("{}/v1/appHealth", URL), body).await;
-  match resp {
-    Ok(_) => println!("Succesfully sent health for app with id {}", app_id),
-    Err(err) => println!("Failed to send health for app with id {}. Error: {}", app_id, err)
-  }
+  post(format!("{}/v1/appHealth", URL), body).await.unwrap();
+  println!("Sent health for app with id {}", app_id);
 }
 
 pub async fn terminate(app_id: &str) {

@@ -68,7 +68,7 @@ fn main() {
       .about("Run an .agz file in daemon mode. Used on deploy within cloud provider VMs.")
       .arg_from_usage("<APP_ID> 'Specifies the alan app to upgrade'")
       .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'")
-      .arg_from_usage("<DEPLOY_TOKEN> 'Specifies the .agz file to deploy'")
+      .arg_from_usage("<DEPLOY_TOKEN> 'Specifies the deploy token'")
     )
     .arg_from_usage("[SOURCE] 'Specifies a source ln file to compile and run'");
 
@@ -135,8 +135,8 @@ fn main() {
       ("daemon",  Some(matches)) => {
         let agz_file = matches.value_of("AGZ_FILE").unwrap();
         let app_id = matches.value_of("APP_ID").unwrap();
-        let deploy_key = matches.value_of("DEPLOY_KEY").unwrap();
-        start(agz_file, app_id, deploy_key).await;
+        let deploy_token = matches.value_of("DEPLOY_TOKEN").unwrap();
+        start(agz_file, app_id, deploy_token).await;
       },
       _ => {
         // AppSettings::SubcommandRequiredElseHelp does not cut it here
