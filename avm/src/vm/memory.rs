@@ -214,7 +214,7 @@ impl HandlerMemory {
           .parent
           .as_ref()
           // fail if no parent
-          .expect("Memory address referenced in parent, but no parent pointer defined")
+          .expect(format!("Memory address {} referenced in parent, but no parent pointer defined\nhm:{:?}", addr, self).as_str())
           .addr_to_idxs(addr);
         let hm = match res.1 {
           Some(hm) => Some(hm),
@@ -263,6 +263,7 @@ impl HandlerMemory {
   ) -> &'mem mut Vec<(usize, i64)> {
     let ((a, b), hm_opt) = self.addr_to_idxs(addr);
     if let Some(hm) = hm_opt {
+      println!("let's gooooooo");
       // copy necessary data from ancestor
       HandlerMemory::transfer_idxs(&hm, a, b, self, addr);
     }
@@ -793,22 +794,25 @@ impl HandlerMemory {
       }
     }
     // Finally pull any addresses added by the old object into the new with a similar stitching
-    /*if hm.addr.0.len() > self.addr.0.len() {
-      self.addr.0.resize(hm.addr.0.len(), (0, 0));
+    if hm.addr.0.len() > parent.addr.0.len() {
+      parent.addr.0.resize(hm.addr.0.len(), None);
     }
     for i in 0..hm.addr.0.len() {
-      let (a, b) = hm.addr.0[i];
-      let (c, d) = self.addr.0[i];
-      if a != c || b != d {
-        if a + offset >= s && a != std::usize::MAX {
-          self.addr.0[i] = (a + offset, b);
-        } else {
-          self.addr.0[i] = (a, b);
+      if let Some((a, b)) = hm.addr.0[i] {
+        match parent.addr.0[i] {
+          Some((c, d)) if (a != c || b != d) => {
+            if a + offset >= s && a != std::usize::MAX {
+              parent.addr.0[i] = Some((a + offset, b))
+            } else {
+              parent.addr.0[i] = Some((a, b))
+            }
+          }
+          Some((c, _)) if a == c => parent.addr.0[i] = Some((a, b)),
+          Some(_) => (),
+          None => parent.addr.0[i] = Some((a, b)),
         }
-      } else if a == c {
-        self.addr.0[i] = (a, b);
       }
-    }*/
+    }
   }
 
   /// Takes a UTF-8 string and converts it to fractal memory that can be stored inside of a
