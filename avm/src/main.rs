@@ -1,13 +1,13 @@
 use std::env;
 use std::path::Path;
 
+use anycloud::deploy::deploy::{info, new, terminate, upgrade};
 use clap::{crate_name, crate_version, App, AppSettings, SubCommand};
 use tokio::runtime::Builder;
 
 use crate::compile::compile::compile;
 use crate::daemon::daemon::start;
 use crate::vm::telemetry;
-use crate::vm::deploy::{info, new, terminate, upgrade};
 use crate::vm::run::run;
 
 mod daemon;
