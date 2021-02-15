@@ -104,10 +104,8 @@ pub struct HandlerMemory {
   /// The first is the "normal" memory space, and the second is the args memory space.
   /// Global addresses are fixed for the application and do not need a mutable vector to parse.
   addr: (Vec<Option<(usize, usize)>>, Vec<Option<(usize, usize)>>),
-  /// Specifies which memory block to push "normal" values into.
+  /// Specifies which memory block to push values into.
   mem_addr: usize,
-  /// Specifies which memory block to push "args" into.
-  args_addr: usize,
 }
 
 impl HandlerMemory {
@@ -120,7 +118,6 @@ impl HandlerMemory {
         mems: [Program::global().gmem.clone(), Vec::new()].to_vec(),
         addr: (Vec::new(), Vec::new()),
         mem_addr: 1,
-        args_addr: 1,
         parent: None,
       }),
     };
@@ -368,11 +365,7 @@ impl HandlerMemory {
   /// Stores a fixed value in a given address. Determines where to place it based on the kind of
   /// address in question.
   pub fn write_fixed(self: &mut Arc<HandlerMemory>, addr: i64, val: i64) {
-    let a = if addr_type(addr) == NORMAL_ADDR {
-      self.mem_addr
-    } else {
-      self.args_addr
-    };
+    let a = self.mem_addr;
     let hm = Arc::get_mut(self).expect("couldn't write to HandlerMemory: dangling pointer");
     let b = hm.mems[a].len();
     hm.mems[a].push((std::usize::MAX, val));
@@ -742,7 +735,6 @@ impl HandlerMemory {
     handmem.parent = Some(parent);
     handmem.mems.resize(s + 1, Vec::new());
     handmem.mem_addr = s;
-    handmem.args_addr = s;
     return hm;
   }
 
@@ -808,7 +800,7 @@ impl HandlerMemory {
           }
           Some((c, _)) if a == c => parent.addr.0[i] = Some((a, b)),
           Some(_) => (),
-          None => parent.addr.0[i] = Some((a, b)),
+          None => parent.addr.0[i] = Some((a + offset, b)),
         }
       }
     }

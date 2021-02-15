@@ -40,6 +40,7 @@ pub struct EventEmit {
 }
 
 /// Describes the handler for an event
+#[derive(Debug)]
 pub struct EventHandler {
   /// event id
   pub(crate) event_id: i64,
