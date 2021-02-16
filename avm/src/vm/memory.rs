@@ -747,32 +747,23 @@ impl HandlerMemory {
   /// Since the HandlerMemory has been transfered back into the original, this method assumes that
   /// the atomic reference is the *only one*, and consumes it so that it can't be used again.
   pub fn join(self: &mut Arc<HandlerMemory>, mut hm: Arc<HandlerMemory>) {
+    let s = hm.mem_addr; // The initial block that will be transferred (plus all following blocks)
+    let s2 = self.mems.len(); // The new address of the initial block
+    let offset = s2 - s; // Assuming it was made by `fork` this should be positive or zero
+    if let Some((a, b)) = hm.addr_to_idxs_opt(CLOSURE_ARG_MEM_START) { // The only address that can "escape"
+      let off = if a < std::usize::MAX && a >= s { offset } else { 0 };
+      self.set_addr(CLOSURE_ARG_MEM_START, a + off, b);
+    };
+
+    // println!("a: {}, b: {}, s: {}, in_fork: {}, in_parent: {}", a, b, s, hm.is_idx_defined(a, b), self.is_idx_defined(a, b));
     let hm =
       Arc::get_mut(&mut hm).expect("unable to join child memory into parent: dangling pointer");
     let parent = Arc::get_mut(self).expect("unable to accept child hm: dangling pointer");
+    hm.mems.drain(..s);             // Remove the irrelevant memory blocks
+    parent.mems.append(&mut hm.mems);     // Append the relevant ones to the original HandlerMemory
+                                          // Set the return address on the original HandlerMemory to the acquired indexes, potentially
+                                          // offset if it is a pointer at new data
 
-    let s = hm.mem_addr; // The initial block that will be transferred (plus all following blocks)
-    let s2 = parent.mems.len(); // The new address of the initial block
-    let offset = s2 - s; // Assuming it was made by `fork` this should be positive or zero
-    let parent = if hm.addr.1.len() > 0 {
-      let (a, b) = hm.addr_to_idxs_opt(CLOSURE_ARG_MEM_START).unwrap(); // The only address that can "escape"
-                                                                        // println!("a: {}, b: {}, s: {}, in_fork: {}, in_parent: {}", a, b, s, hm.is_idx_defined(a, b), self.is_idx_defined(a, b));
-      hm.mems.drain(..s); // Remove the irrelevant memory blocks
-      parent.mems.append(&mut hm.mems); // Append the relevant ones to the original HandlerMemory
-                                        // Set the return address on the original HandlerMemory to the acquired indexes, potentially
-                                        // offset if it is a pointer at new data
-      drop(parent); // drop the `&mut HandlerMemory` since `&Arc<HM>` is neded here:
-      if a < std::usize::MAX && a >= s {
-        self.set_addr(CLOSURE_ARG_MEM_START, a + offset, b);
-      } else {
-        self.set_addr(CLOSURE_ARG_MEM_START, a, b);
-      }
-      Arc::get_mut(self).expect("unable to accept child hm: dangling pointer")
-    } else {
-      hm.mems.drain(..s); // Remove the irrelevant memory blocks
-      parent.mems.append(&mut hm.mems); // Append the relevant ones to the original HandlerMemory
-      parent
-    };
     // Similarly "stitch up" every pointer in the moved data with a pass-through scan and update
     let l = parent.mems.len();
     for i in s2..l {
