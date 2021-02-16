@@ -1,7 +1,7 @@
 use std::env;
 use std::path::Path;
 
-use anycloud::deploy::deploy::{info, new, terminate, upgrade};
+use anycloud::deploy::{info, new, terminate, upgrade};
 use clap::{crate_name, crate_version, App, AppSettings, SubCommand};
 use tokio::runtime::Builder;
 

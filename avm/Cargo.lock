@@ -66,7 +66,7 @@ dependencies = [
 [[package]]
 name = "anycloud"
 version = "0.1.1"
-source = "git+ssh://git@github.com/alantech/anycloud?branch=cli#6aee9e78579fbec2cd1998e896806e4daf3282ec"
+source = "git+ssh://git@github.com/alantech/anycloud?branch=main#4556a4b837b3f7dc5a196cbc16acd620beb142e4"
 dependencies = [
  "ascii_table",
  "base64",

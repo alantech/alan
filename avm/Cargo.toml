@@ -13,7 +13,7 @@ edition = "2018"
 
 [dependencies]
 # New commits to a git dependency are locked in place and only replaced by a `cargo update`.
-anycloud = { git = "ssh://git@github.com/alantech/anycloud", branch = "cli" }
+anycloud = { git = "ssh://git@github.com/alantech/anycloud", branch = "main" }
 # For local development, it is possible to specify a relative path location instead of a git repository
 # anycloud = { path = "../../anycloud/cli" }
 base64 = "0.13"
