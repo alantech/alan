@@ -4,7 +4,6 @@ use tokio::time::{Duration, sleep};
 
 use crate::daemon::dns::DNS;
 use crate::daemon::lrh::LogRendezvousHash;
-use crate::vm::deploy::vm_health;
 use crate::vm::run::run;
 
 pub async fn get_ip() -> String {
@@ -18,7 +17,7 @@ pub async fn get_ip() -> String {
 
 pub async fn start(agz_file: &str, app_id: &str, deploy_token: &str) {
   let app_id = app_id.to_string();
-  let deploy_token = deploy_token.to_string();
+  let _deploy_token = deploy_token.to_string();
   task::spawn(async move {
     let dns = DNS::new("alandeploy.com");
     let ip_addrs = dns.get_ip_addrs(&app_id).await;
@@ -33,7 +32,7 @@ pub async fn start(agz_file: &str, app_id: &str, deploy_token: &str) {
         // TODO send health stats
         // cpu, ram, file descriptors, network utilization, and disk utilization in decreasing importance
         // For everything, we want both the maximums and the current value
-        vm_health(&app_id, &deploy_token).await;
+        // vm_health(&app_id, &deploy_token).await;
         sleep(period).await
       }
     }

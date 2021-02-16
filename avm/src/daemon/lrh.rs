@@ -46,7 +46,7 @@ impl LogRendezvousHash {
 
   // Runs a binary search for the record whose hash is closest to the key hash without
   // going over. If none are found, the *last* record in the list is returned as it wraps around.
-  pub fn get_id_for_key(&self, key: &str) -> &str {
+  pub fn _get_id_for_key(&self, key: &str) -> &str {
     let mut key_hasher = XxHash64::with_seed(0xfa57);
     key_hasher.write(key.as_bytes());
     let key_hash = key_hasher.finish();
