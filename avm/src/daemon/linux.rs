@@ -2,7 +2,6 @@ use anycloud::deploy::post_v1;
 use serde::Serialize;
 use serde_json::{json, Value};
 use futures::stream::StreamExt;
-#[cfg(target_os = "linux")]
 use heim::{
   host,
   cpu::{self, os::linux::CpuTimeExt},
@@ -48,12 +47,6 @@ pub async fn post(endpoint: &str, body: Value) -> String {
   }
 }
 
-#[cfg(not(target_os = "linux"))]
-pub async fn start(_app_id: &str, _agz_b64: &str, _deploy_token: &str) {
-  panic!("Daemon only works on Linux");
-}
-
-#[cfg(target_os = "linux")]
 pub async fn start(app_id: &str, agz_b64: &str, deploy_token: &str) {
   let app_id = app_id.to_string();
   let deploy_token = deploy_token.to_string();
