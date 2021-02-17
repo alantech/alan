@@ -8,7 +8,7 @@ use tokio::runtime::Builder;
 use crate::compile::compile::compile;
 use crate::daemon::daemon::start;
 use crate::vm::telemetry;
-use crate::vm::run::run;
+use crate::vm::run::run_file;
 
 mod daemon;
 mod compile;
@@ -21,7 +21,7 @@ async fn compile_and_run(source_file: &str) -> i32 {
     let mut path = env::current_dir().unwrap();
     path.push(dest_file);
     let fp = path.into_os_string().into_string().unwrap();
-    run(&fp, true).await;
+    run_file(&fp, true).await;
   }
   return status_code;
 }
@@ -67,7 +67,7 @@ fn main() {
     .subcommand(SubCommand::with_name("daemon")
       .about("Run an .agz file in daemon mode. Used on deploy within cloud provider VMs.")
       .arg_from_usage("<APP_ID> 'Specifies the alan app to upgrade'")
-      .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'")
+      .arg_from_usage("<AGZ_B64> 'Specifies the .agz program as a base64 encoded string'")
       .arg_from_usage("<DEPLOY_TOKEN> 'Specifies the deploy token'")
     )
     .arg_from_usage("[SOURCE] 'Specifies a source ln file to compile and run'");
@@ -90,7 +90,7 @@ fn main() {
           agc_file
         );
         telemetry::log("avm-run").await;
-        run(&fp, false).await;
+        run_file(&fp, false).await;
       },
       ("compile",  Some(matches)) => {
         let source_file = matches.value_of("INPUT").unwrap();
@@ -133,10 +133,10 @@ fn main() {
         }
       },
       ("daemon",  Some(matches)) => {
-        let agz_file = matches.value_of("AGZ_FILE").unwrap();
+        let agz_b64 = matches.value_of("AGZ_B64").unwrap();
         let app_id = matches.value_of("APP_ID").unwrap();
         let deploy_token = matches.value_of("DEPLOY_TOKEN").unwrap();
-        start(agz_file, app_id, deploy_token).await;
+        start(agz_b64, app_id, deploy_token).await;
       },
       _ => {
         // AppSettings::SubcommandRequiredElseHelp does not cut it here
