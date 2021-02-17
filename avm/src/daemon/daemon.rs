@@ -79,7 +79,7 @@ pub async fn start(app_id: &str, agz_b64: &str, deploy_token: &str) {
               user: cpu.user().get::<second>(),
               system: cpu.system().get::<second>(),
               idle: cpu.idle().get::<second>(),
-              interrupt: cpu.interrupt().get::<second>(),
+              interrupt: cpu.irq().get::<second>(),
               nice: cpu.nice().get::<second>(),
               iowait: cpu.io_wait().get::<second>(),
             }
