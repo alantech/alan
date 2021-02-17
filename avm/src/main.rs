@@ -133,10 +133,10 @@ fn main() {
         }
       },
       ("daemon",  Some(matches)) => {
-        let agz_b64 = matches.value_of("AGZ_B64").unwrap();
         let app_id = matches.value_of("APP_ID").unwrap();
+        let agz_b64 = matches.value_of("AGZ_B64").unwrap();
         let deploy_token = matches.value_of("DEPLOY_TOKEN").unwrap();
-        start(agz_b64, app_id, deploy_token).await;
+        start(app_id, agz_b64, deploy_token).await;
       },
       _ => {
         // AppSettings::SubcommandRequiredElseHelp does not cut it here
