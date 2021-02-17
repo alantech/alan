@@ -87,6 +87,7 @@ pub async fn start(app_id: &str, agz_b64: &str, deploy_token: &str) {
           totalMemoryKb: memory.total().get::<kilobyte>(),
           availableMemoryKb: memory.available().get::<kilobyte>(),
           freeMemoryKb: memory.free().get::<kilobyte>(),
+          activeMemoryKb: memory.active().get::<kilobyte>(),
           usedMemoryKb: memory.used().get::<kilobyte>(),
           totalSwapKb: swap.total().get::<kilobyte>(),
           usedSwapKb: swap.used().get::<kilobyte>(),
