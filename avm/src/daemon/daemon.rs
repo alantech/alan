@@ -2,7 +2,13 @@ use anycloud::deploy::post_v1;
 use serde::Serialize;
 use serde_json::{json, Value};
 use futures::stream::StreamExt;
-use heim::{host, cpu, memory, units::{information::kilobyte, time::second}};
+#[cfg(target_os = "linux")]
+use heim::{
+  host,
+  cpu::{self, os::linux::CpuTimeExt},
+  memory::{self, os::linux::MemoryExt},
+  units::{information::kilobyte, time::second}
+};
 use tokio::task;
 use tokio::time::{Duration, sleep};
 
@@ -81,7 +87,7 @@ pub async fn start(app_id: &str, agz_b64: &str, deploy_token: &str) {
           totalMemoryKb: memory.total().get::<kilobyte>(),
           availableMemoryKb: memory.available().get::<kilobyte>(),
           freeMemoryKb: memory.free().get::<kilobyte>(),
-          usedMemory: memory.used().get::<kilobyte>(),
+          usedMemoryKb: memory.used().get::<kilobyte>(),
           totalSwapKb: swap.total().get::<kilobyte>(),
           usedSwapKb: swap.used().get::<kilobyte>(),
           freeSwapKb: swap.free().get::<kilobyte>(),
