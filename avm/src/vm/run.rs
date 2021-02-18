@@ -3,6 +3,7 @@ use std::io::Read;
 use std::path::Path;
 use std::sync::Arc;
 
+use base64;
 use byteorder::{LittleEndian, ReadBytesExt};
 use flate2::read::GzDecoder;
 use once_cell::sync::OnceCell;
@@ -62,7 +63,7 @@ impl VM {
   }
 }
 
-pub async fn run(fp: &str, delete_after_load: bool) {
+pub async fn run_file(fp: &str, delete_after_load: bool) {
   let fptr = File::open(fp);
   if fptr.is_err() {
     eprintln!("File not found: {}", fp);
@@ -87,6 +88,20 @@ pub async fn run(fp: &str, delete_after_load: bool) {
   if delete_after_load {
     std::fs::remove_file(Path::new(fp)).unwrap();
   }
+  run(bytecode).await;
+}
+
+pub async fn run_agz_b64(agz_b64: &str) {
+  let bytes = base64::decode(agz_b64).unwrap();
+  let agz = GzDecoder::new(bytes.as_slice());
+  let count = agz.bytes().count();
+  let mut bytecode = vec![0; count / 8];
+  let mut gz = GzDecoder::new(bytes.as_slice());
+  gz.read_i64_into::<LittleEndian>(&mut bytecode).unwrap();
+  run(bytecode).await;
+}
+
+pub async fn run(bytecode: Vec<i64>) {
   let program = Program::load(bytecode);
   let set_global = PROGRAM.set(program);
   if set_global.is_err() {
