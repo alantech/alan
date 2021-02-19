@@ -8,6 +8,28 @@ pub struct DNS {
   domain: String
 }
 
+pub struct VMMetadata {
+  schema_version: String,
+  pub(crate) private_ip_addr: String,
+  pub(crate) alan_version: String,
+}
+
+impl VMMetadata {
+  fn from_txt_data(data: &[u8]) -> VMMetadata {
+    let txt = str::from_utf8(&*data).expect("Data in TXT record is not a valid string");
+    let err = format!("VM metadata in DNS TXT record has invalid schema version: `{}`", &txt);
+    let parts: Vec<&str> = txt.split("|").collect();
+    if parts.len() != 5 || parts[0] != "v1" {
+      panic!(err);
+    }
+    VMMetadata {
+      schema_version: parts[0].to_string(),
+      alan_version: parts[1].to_string(),
+      private_ip_addr: parts[4].to_string(),
+    }
+  }
+}
+
 impl DNS {
   pub fn new(domain: &str) -> DNS {
     // Get a new resolver with the cloudflare nameservers as the upstream recursive resolvers
@@ -19,26 +41,16 @@ impl DNS {
       ).unwrap()
     }
   }
-  pub async fn get_ip_addrs(&self, app_id: &str) -> Vec<String> {
-    let name = format!("{}.{}", app_id, self.domain);
+  pub async fn get_vms(&self, cluster_id: &str) -> Vec<VMMetadata> {
+    let name = format!("{}.{}", cluster_id, self.domain);
     let err = format!("Failed to fetch TXT record with name {}", &name);
     let resp = self.resolver.txt_lookup(name).await;
-    let mut ip_addrs = Vec::new();
+    let mut vms = Vec::new();
     for rec in resp.expect(&err) {
       let data = &rec.txt_data()[0];
-      let ip_addr = DNS::ip_from_txt_data(data);
-      ip_addrs.push(ip_addr);
+      let vm = VMMetadata::from_txt_data(data);
+      vms.push(vm);
     }
-    ip_addrs
-  }
-
-  fn ip_from_txt_data(data: &[u8]) -> String {
-    let txt = str::from_utf8(&*data).expect("Data in TXT record is not a valid string");
-    let err = format!("VM metadata in DNS TXT record has invalid schema version: `{}`", &txt);
-    let parts: Vec<&str> = txt.split("|").collect();
-    if parts.len() != 4 || parts[0] != "v1" {
-      panic!(err);
-    }
-    parts[3].to_string()
+    vms
   }
 }

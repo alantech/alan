@@ -26,15 +26,12 @@ pub async fn log(event: &str) {
     ]
   });
   let client = Client::builder().build::<_, Body>(hyper_tls::HttpsConnector::new());
-  if client
+  client
     .request(
       Request::post(AMPLITUDE_URL)
         .body(body.to_string().into())
         .unwrap(),
     )
     .await
-    .is_ok()
-  {
-    // Do nothing
-  }
+    .unwrap();
 }
