@@ -122,7 +122,6 @@ pub async fn start(cluster_id: &str, agz_b64: &str, deploy_token: &str) {
     let lrh = LogRendezvousHash::new(ips);
     let leader_ip = lrh.get_leader_id();
     let self_ip = get_private_ip().await;
-    println!("self_ip: {}, leader_ip: {}, equals? {}", self_ip, leader_ip, leader_ip == self_ip);
     if leader_ip == self_ip {
       // TODO better period determination
       let period = Duration::from_secs(30);
@@ -132,7 +131,7 @@ pub async fn start(cluster_id: &str, agz_b64: &str, deploy_token: &str) {
         if delta != 0 {
           post_v1_scale(&cluster_id, &agzb64, &deploy_token, alan_version, delta).await;
         }
-        // TODO upgrade to latest alan version when delta = 0?
+        // TODO maybe ask deploy service to /upgrade if delta = 0 and not on the latest alan version
         sleep(period).await
       }
     }
