@@ -32,12 +32,18 @@ impl VMMetadata {
 
 impl DNS {
   pub fn new(domain: &str) -> DNS {
+    let mut resolver_opts = ResolverOpts::default();
+    // ignore /ect/hosts
+    resolver_opts.use_hosts_file = false;
+    // DNSSec
+    resolver_opts.validate = true;
     // Get a new resolver with the cloudflare nameservers as the upstream recursive resolvers
+    let resolver = ResolverConfig::cloudflare_tls();
     DNS {
       domain: domain.to_string(),
       resolver: TokioAsyncResolver::tokio(
-        ResolverConfig::cloudflare(),
-        ResolverOpts::default(),
+        resolver,
+        resolver_opts,
       ).unwrap()
     }
   }

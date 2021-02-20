@@ -39,6 +39,8 @@ struct VMStatsV1 {
   freeSwapKb: u64,
 }
 
+const DOMAIN: &'static str = "anycloudapp.com";
+
 async fn get_private_ip() -> String {
   let res = Command::new("hostname")
     .arg("-I")
@@ -49,6 +51,9 @@ async fn get_private_ip() -> String {
   String::from_utf8(stdout)
     .expect(err)
     .trim()
+    .split_whitespace()
+    .next()
+    .unwrap()
     .to_string()
 }
 
@@ -114,7 +119,7 @@ pub async fn start(cluster_id: &str, agz_b64: &str, deploy_token: &str) {
   let deploy_token = deploy_token.to_string();
   let agzb64 = agz_b64.to_string();
   task::spawn(async move {
-    let dns = DNS::new("alandeploy.com");
+    let dns = DNS::new(DOMAIN);
     let vms = dns.get_vms(&cluster_id).await;
     let cluster_size = vms.len();
     let ips = vms.iter().map(|vm| vm.private_ip_addr.to_string()).collect();
@@ -131,7 +136,6 @@ pub async fn start(cluster_id: &str, agz_b64: &str, deploy_token: &str) {
         if delta != 0 {
           post_v1_scale(&cluster_id, &agzb64, &deploy_token, alan_version, delta).await;
         }
-        // TODO maybe ask deploy service to /upgrade if delta = 0 and not on the latest alan version
         sleep(period).await
       }
     }
