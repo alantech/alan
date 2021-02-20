@@ -30,7 +30,7 @@ regex = "1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
 heim = "0.0.11"
-trust-dns-resolver = "0.20.0"
+trust-dns-resolver = { version = "0.20.0", features = ["dns-over-rustls"] }
 tokio = { version = "1.2", features = ["rt-multi-thread", "macros", "process", "sync", "time"] }
 twox-hash = "1.5.0"
 flate2 = "1.0"
