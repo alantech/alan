@@ -1,8 +1,11 @@
 use std::env;
+use std::fs::read;
 use std::path::Path;
 
-use anycloud::deploy::{info, new, terminate, upgrade};
+use anycloud::deploy::{info, get_config, new, terminate, upgrade};
+use base64;
 use clap::{crate_name, crate_version, App, AppSettings, SubCommand};
+use serde_json::json;
 use tokio::runtime::Builder;
 
 use crate::compile::compile::compile;
@@ -13,6 +16,11 @@ use crate::vm::run::run_file;
 mod daemon;
 mod compile;
 mod vm;
+
+fn get_agz_b64(agz_file: &str) -> String {
+  let agz = read(agz_file).expect(&format!("No agz file found in {}", agz_file));
+  return base64::encode(agz);
+}
 
 async fn compile_and_run(source_file: &str) -> i32 {
   let dest_file = "temp.agc";
@@ -49,7 +57,7 @@ fn main() {
       .subcommand(SubCommand::with_name("new")
         .about("Deploys an .agz file to a new app in one of the cloud providers described in the deploy config at ~/.alan/deploy.json")
         .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'")
-        .arg_from_usage("<CLOUD_ALIAS> 'Specifies the cloud provider to deploy to based on its alias'")
+        .arg_from_usage("[CLOUD_ALIAS] 'Specifies the cloud provider to deploy to based on its alias, or the first one defined if not provided'")
       )
       .subcommand(SubCommand::with_name("info")
         .about("Displays all the apps deployed in the cloud provider described in the deploy config at ~/.alan/deploy.json")
@@ -112,18 +120,32 @@ fn main() {
       ("deploy", Some(sub_matches)) => {
         match sub_matches.subcommand() {
           ("new",  Some(matches)) => {
+            let config = get_config();
             let agz_file = matches.value_of("AGZ_FILE").unwrap();
-            let cloud_alias = matches.value_of("CLOUD_ALIAS").unwrap();
-            new(agz_file, cloud_alias).await;
+            let cloud_alias = matches.value_of("CLOUD_ALIAS").unwrap_or(
+              config.keys().take(1).next().unwrap()
+            );
+            let body = json!({
+              "deployConfig": config,
+              "cloudAlias": cloud_alias,
+              "agzB64": get_agz_b64(agz_file),
+            });
+            new(body).await;
           },
           ("terminate",  Some(matches)) => {
             let app_id = matches.value_of("APP_ID").unwrap();
             terminate(app_id).await;
           },
           ("upgrade",  Some(matches)) => {
-            let app_id = matches.value_of("APP_ID").unwrap();
+            let config = get_config();
+            let cluster_id = matches.value_of("APP_ID").unwrap();
             let agz_file = matches.value_of("AGZ_FILE").unwrap();
-            upgrade(app_id, agz_file).await;
+            let body = json!({
+              "clusterId": cluster_id,
+              "deployConfig": config,
+              "agzB64": get_agz_b64(agz_file),
+            });
+            upgrade(body).await;
           },
           ("info",  _) => {
             info().await;
