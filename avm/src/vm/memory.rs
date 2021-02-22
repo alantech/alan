@@ -51,8 +51,8 @@ impl FractalMemory {
   }
 
   /// Determines this Fractal was read from the provided HandlerMemory
-  pub fn belongs(self: &FractalMemory, hm: &HandlerMemory) -> bool {
-    return self.hm_id == 0 || self.hm_id == hm as *const HandlerMemory as usize;
+  pub fn belongs(self: &FractalMemory, hm: &Arc<HandlerMemory>) -> bool {
+    return self.hm_id == 0 || self.hm_id == Arc::as_ptr(hm) as usize;
   }
 
   /// Length of memory block
@@ -371,9 +371,8 @@ impl HandlerMemory {
 
   /// Stores a nested fractal of data in a given address.
   pub fn write_fractal(self: &mut Arc<HandlerMemory>, addr: i64, fractal: &FractalMemory) {
-    let mut_self = Arc::get_mut(self).expect("couldn't write fractal to HM: dangling pointer");
-    let a = mut_self.mems.len();
-    if !fractal.belongs(mut_self) {
+    let a = self.mems.len();
+    if !fractal.belongs(self) {
       if fractal.hm_addr.is_none() {
         panic!(
           "Writing a forked/read-only FractalMemory that is also deeply-nested is not possible"
@@ -387,6 +386,7 @@ impl HandlerMemory {
       drop(hm);
       todo!()
     }
+    let mut_self = Arc::get_mut(self).expect("couldn't write fractal to HM: dangling pointer");
     mut_self.mems.push(fractal.block.clone());
     self.set_addr(addr, a, std::usize::MAX);
   }
