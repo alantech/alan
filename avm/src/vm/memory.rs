@@ -197,9 +197,11 @@ impl HandlerMemory {
     };
   }
 
-  /// Recursively taks a given address and looks up the fractal location and
+  /// Recursively takes a given address and looks up the fractal location and
   /// `mems` indexes relevant to it. It also returns an Option that is
   /// None if the address is in self or a ptr to the ancestor if `self` is forked
+  // TODO: determine if we have to do the following:
+  // if addr < self.mem_addr { copy_from_parent };
   fn addr_to_idxs(
     self: &Arc<HandlerMemory>,
     addr: i64,
@@ -207,17 +209,17 @@ impl HandlerMemory {
     return match self.addr_to_idxs_opt(addr) {
       Some(res) => (res, self.hm_for_idxs(res.0, res.1)),
       None => {
-        let res = self
+        let (idxs, hm_opt) = self
           .parent
           .as_ref()
           // fail if no parent
           .expect(format!("Memory address {} referenced in parent, but no parent pointer defined\nhm:{:?}", addr, self).as_str())
           .addr_to_idxs(addr);
-        let hm = match res.1 {
+        let hm = match hm_opt {
           Some(hm) => Some(hm),
           None => self.parent.clone(),
         };
-        (res.0, hm)
+        (idxs, hm)
       }
     };
   }
@@ -228,10 +230,7 @@ impl HandlerMemory {
     return if a == std::usize::MAX {
       b as i64
     } else {
-      let hm = match hm_opt.as_ref() {
-        Some(hm) => hm.as_ref(),
-        None => self.as_ref(),
-      };
+      let hm = hm_opt.as_ref().unwrap_or(self).as_ref();
       hm.mems[a][b].1
     };
   }
@@ -240,10 +239,7 @@ impl HandlerMemory {
   pub fn read_fractal(self: &Arc<HandlerMemory>, addr: i64) -> FractalMemory {
     let ((a, b), hm_opt) = self.addr_to_idxs(addr);
     // eprintln!("addr: {}, self?: {}, (a,b): ({},{})", addr, hm_opt.is_none(), a, b);
-    let hm = match hm_opt.as_ref() {
-      Some(hm) => &hm,
-      None => self,
-    };
+    let hm = hm_opt.as_ref().unwrap_or(self);
     // Special behavior to read strings out of global memory
     let start = if addr_type(addr) == GMEM_ADDR { b } else { 0 };
     return FractalMemory {
@@ -258,10 +254,11 @@ impl HandlerMemory {
     self: &'mem mut Arc<HandlerMemory>,
     addr: i64,
   ) -> &'mem mut Vec<(usize, i64)> {
-    let ((a, b), hm_opt) = self.addr_to_idxs(addr);
+    let ((mut a, b), hm_opt) = self.addr_to_idxs(addr);
     if let Some(hm) = hm_opt {
       // copy necessary data from ancestor
       HandlerMemory::transfer_idxs(&hm, a, b, self, addr);
+      a = self.addr_to_idxs(addr).0.0; // recalculate `a` since it changed
     }
     &mut Arc::get_mut(self)
       .expect("couldn't grab mutable memory: dangling pointer")
@@ -790,7 +787,20 @@ impl HandlerMemory {
             }
           }
           Some((c, _)) if a == c => parent.addr.0[i] = Some((a, b)),
-          Some(_) => (),
+          Some(_) => {
+            // TODO: Since we now `fork`/`join` on IO opcodes, we need to figure out how to handle
+            // the case where all children edit the same value. Right now, we work around this
+            // in a couple ways:
+            // 1. parallelized io opcode closures will refuse to compile if they edit a variable
+            // 2. linear io opcodes *can* edit external variables, but since they can only be
+            //    executed in their own batch, we work around this by only `fork`/`join`ing
+            //    for batches with >1 IO opcode.
+            // However, as we start increasing efficiency in the AVM, we may eventually come to a
+            // point where we actually *do* have to merge the parent/children memories. Until then,
+            // the workarounds should be fine.
+            eprintln!("unable to merge memories");
+            std::process::exit(1);
+          },
           None => parent.addr.0[i] = Some((a + offset, b)),
         }
       }

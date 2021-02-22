@@ -2277,20 +2277,18 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     hand_mem.init_fractal(args[2]);
     None
   });
-  io!(map => fn(args, hand_mem) {
+  io!(map => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let hand_mem_ref = Arc::new(hand_mem);
-      let fractal = hand_mem_ref.read_fractal(args[0]);
+      let fractal = hand_mem.read_fractal(args[0]);
       let subhandler = HandlerFragment::new(args[1], 0);
       let mut mappers = Vec::with_capacity(fractal.len());
       for i in 0..fractal.len() {
-        let mut hm = HandlerMemory::fork(Arc::clone(&hand_mem_ref));
+        let mut hm = HandlerMemory::fork(hand_mem.clone());
         hm.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
         hm.write_fixed(CLOSURE_ARG_MEM_START + 2, i as i64);
         mappers.push(subhandler.clone().run(hm).then(HandlerMemory::drop_parent_async));
       }
       let hms = join_all(mappers).await;
-      let mut hand_mem = Arc::try_unwrap(hand_mem_ref).expect("Dangling reference to parent HM in parallel opcode");
       hand_mem.init_fractal(args[2]);
       for hm in hms {
         hand_mem.join(hm);
@@ -2342,25 +2340,24 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   io!(each => fn(args, hand_mem) {
     Box::pin(async move {
-      let hand_mem_ref = Arc::new(hand_mem);
-      let fractal = hand_mem_ref.read_fractal(args[0]);
+      let fractal = hand_mem.read_fractal(args[0]);
       let subhandler = HandlerFragment::new(args[1], 0);
       let mut runners = Vec::with_capacity(fractal.len());
       for i in 0..fractal.len() {
-        let mut hm = HandlerMemory::fork(Arc::clone(&hand_mem_ref));
+        let mut hm = HandlerMemory::fork(hand_mem.clone());
         hm.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
         hm.write_fixed(CLOSURE_ARG_MEM_START + 2, i as i64);
         runners.push(subhandler.clone().run(hm).then(HandlerMemory::drop_parent_async));
       }
       join_all(runners).await;
-      Arc::try_unwrap(hand_mem_ref).expect("Dangling reference to parent HM in parallel opcode")
+      hand_mem
     })
   });
   io!(eachl => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let fractal = hand_mem.read_fractal(args[0]);
+      let n = hand_mem.read_fractal(args[0]).len();
       let subhandler = HandlerFragment::new(args[1], 0);
-      for i in 0..fractal.len() {
+      for i in 0..n {
         hand_mem.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
         hand_mem.write_fixed(CLOSURE_ARG_MEM_START + 2, i as i64);
         hand_mem = subhandler.clone().run(hand_mem).await;
@@ -2368,15 +2365,14 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem
     })
   });
-  io!(find => fn(args, hand_mem) {
+  io!(find => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let hand_mem = Arc::new(hand_mem);
       let fractal = hand_mem.read_fractal(args[0]);
       let len = fractal.len();
       let subhandler = HandlerFragment::new(args[1], 0);
       let mut finders = Vec::with_capacity(fractal.len());
       for i in 0..len {
-        let mut hm = HandlerMemory::fork(Arc::clone(&hand_mem));
+        let mut hm = HandlerMemory::fork(hand_mem.clone());
         hm.register_out(args[0], i, CLOSURE_ARG_MEM_START + 1);
         finders.push(subhandler.clone().run(hm));
       }
@@ -2389,11 +2385,10 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
           idx = Some(i);
         }
       }
-      let mut hand_mem = Arc::try_unwrap(hand_mem).expect("Dangling reference to parent HM in parallel opcode");
       hand_mem.init_fractal(args[2]);
-      if idx.is_some() {
+      if let Some(idx) = idx {
         hand_mem.push_fixed(args[2], 1);
-        hand_mem.push_register_out(args[2], &fractal, idx.unwrap());
+        hand_mem.push_register_out(args[2], &fractal, idx);
       } else {
         hand_mem.push_fixed(args[2], 0);
         hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("no element matches"));
@@ -3183,8 +3178,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   io!(selfrec => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let hand_mem_ref = Arc::new(hand_mem);
-      let mut hm = HandlerMemory::fork(Arc::clone(&hand_mem_ref));
+      let mut hm = HandlerMemory::fork(hand_mem.clone());
       // MUST read these first in case the arguments are themselves closure args being overwritten
       // for the recursive function.
       hm.register(CLOSURE_ARG_MEM_START + 1, args[0], false);
@@ -3197,11 +3191,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         hm.write_fixed_in_fractal(&mut seq, 0, curr + 1);
         hm = recurse_fn.run(hm).await;
         hm = hm.drop_parent();
-        hand_mem = Arc::try_unwrap(hand_mem_ref).unwrap();
         hand_mem.join(hm);
         hand_mem.register(args[2], CLOSURE_ARG_MEM_START, false);
       } else {
-        hand_mem = Arc::try_unwrap(hand_mem_ref).unwrap();
         hand_mem.init_fractal(args[2]);
         hand_mem.push_fixed(args[2], 0);
         hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("error: sequence out-of-bounds"));

@@ -196,12 +196,12 @@ impl HandlerFragment {
           let event_tx = EVENT_TX.get().unwrap();
           if let Err(_) = event_tx.send(event) {
             eprintln!("Event transmission error");
-            std::process::exit(2);
+            std::process::exit(1);
           }
         };
       } else {
         eprintln!("expected another CPU instruction");
-        std::process::exit(2);
+        std::process::exit(1);
       }
     });
     hand_mem
@@ -209,17 +209,27 @@ impl HandlerFragment {
 
   #[inline(always)]
   async fn run_io(&mut self, mut hand_mem: Arc<HandlerMemory>, instrs: &Vec<Instruction>) -> Arc<HandlerMemory> {
-    let futures: Vec<_> = instrs.iter().map(|i| {
-      if let OpcodeFn::Io(func) = i.opcode.fun {
-        func(i.args.clone(), HandlerMemory::fork(hand_mem.clone())).then(HandlerMemory::drop_parent_async)
+    if instrs.len() == 1 {
+      let op = &instrs[0];
+      if let OpcodeFn::Io(func) = op.opcode.fun {
+        return func(op.args.clone(), hand_mem).await;
       } else {
-        eprintln!("expected another IO instruction");
-        std::process::exit(2);
+        eprintln!("expected an IO instruction");
+        std::process::exit(1);
       }
-    }).collect();
-    let hms = join_all(futures).await;
-    for hm in hms.into_iter() {
-      hand_mem.join(hm);
+    } else {
+      let futures: Vec<_> = instrs.iter().map(|i| {
+        if let OpcodeFn::Io(func) = i.opcode.fun {
+          func(i.args.clone(), HandlerMemory::fork(hand_mem.clone())).then(HandlerMemory::drop_parent_async)
+        } else {
+          eprintln!("expected another IO instruction");
+          std::process::exit(1);
+        }
+      }).collect();
+      let hms = join_all(futures).await;
+      for hm in hms.into_iter() {
+        hand_mem.join(hm);
+      }
     }
     hand_mem
   }
