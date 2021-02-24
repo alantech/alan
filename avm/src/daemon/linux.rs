@@ -103,12 +103,12 @@ async fn get_v1_stats() -> VMStatsV1 {
 }
 
 // returns cluster delta
-async fn post_v1_stats(deploy_token: &str, cluster_size: usize) -> String {
+async fn post_v1_stats(cluster_id: &str, deploy_token: &str) -> String {
   let vm_stats = get_v1_stats().await;
   let stats_body = json!({
     "deployToken": deploy_token,
     "vmStats": vm_stats,
-    "clusterSize": cluster_size,
+    "clusterId": cluster_id,
   });
   post_v1("stats", stats_body).await
 }
@@ -120,7 +120,6 @@ pub async fn start(cluster_id: &str, agz_b64: &str, deploy_token: &str) {
   task::spawn(async move {
     let dns = DNS::new(DOMAIN);
     let vms = dns.get_vms(&cluster_id).await;
-    let cluster_size = vms.len();
     let ips = vms.iter().map(|vm| vm.private_ip_addr.to_string()).collect();
     let alan_version = &vms[0].alan_version;
     let lrh = LogRendezvousHash::new(ips);
@@ -130,8 +129,8 @@ pub async fn start(cluster_id: &str, agz_b64: &str, deploy_token: &str) {
       // TODO better period determination
       let period = Duration::from_secs(30);
       loop {
-        let factor = post_v1_stats(&deploy_token, cluster_size).await;
-        println!("VM stats sent for cluster {} of size {}. Cluster factor: {}.", cluster_id, cluster_size, factor);
+        let factor = post_v1_stats(&cluster_id, &deploy_token).await;
+        println!("VM stats sent for cluster {} of size {}. Cluster factor: {}.", cluster_id, vms.len(), factor);
         if factor != "1" {
           post_v1_scale(&cluster_id, &agzb64, &deploy_token, alan_version, &factor).await;
         }
