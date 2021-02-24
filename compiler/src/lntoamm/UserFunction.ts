@@ -262,6 +262,21 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
     `.trim()
   }
 
+  maybeTransform(interfaceMap: Map<Type, Type>, scope?: Scope) {
+    let result: UserFunction;
+    try {
+      result = this.maybeTransformLATEST(interfaceMap, scope);
+    } catch (e) {
+      // fall back on legacy transformations if the conditional rewrite rewrite can't solve
+      result = this.maybeTransformLEGACY(interfaceMap, scope);
+    }
+    return result;
+  }
+
+  maybeTransformLATEST(interfaceMap: Map<Type, Type>, scope?: Scope): UserFunction {
+    throw new Error();
+  }
+
   static conditionalToCond(cond: LPNode, scope: Scope) {
     let newStatements: Array<LPNode> = []
     let hasConditionalReturn = false // Flag for potential second pass
@@ -445,7 +460,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
     return replacementStatements
   }
 
-  maybeTransform(interfaceMap: Map<Type, Type>, scope?: Scope) {
+  maybeTransformLEGACY(interfaceMap: Map<Type, Type>, scope?: Scope) {
     if (
       this.statements.some(s => s.isConditionalStatement()) ||
       this.statements.some(s => s.hasObjectLiteral())
