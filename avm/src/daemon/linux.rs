@@ -65,13 +65,13 @@ async fn post_v1(endpoint: &str, body: Value) -> String {
   }
 }
 
-async fn post_v1_scale(cluster_id: &str, agz_b64: &str, deploy_token: &str, alan_version: &str, delta: i32) -> String {
+async fn post_v1_scale(cluster_id: &str, agz_b64: &str, deploy_token: &str, alan_version: &str, factor: &str) -> String {
   let scale_body = json!({
     "alanVersion": alan_version,
     "clusterId": cluster_id,
     "agzB64": agz_b64,
     "deployToken": deploy_token,
-    "clusterDelta": delta,
+    "clusterFactor": factor,
   });
   post_v1("scale", scale_body).await
 }
@@ -103,15 +103,14 @@ async fn get_v1_stats() -> VMStatsV1 {
 }
 
 // returns cluster delta
-async fn post_v1_stats(deploy_token: &str, cluster_size: usize) -> i32 {
+async fn post_v1_stats(deploy_token: &str, cluster_size: usize) -> String {
   let vm_stats = get_v1_stats().await;
   let stats_body = json!({
     "deployToken": deploy_token,
     "vmStats": vm_stats,
     "clusterSize": cluster_size,
   });
-  let resp = post_v1("stats", stats_body).await;
-  resp.parse().expect("Failed to parse cluster delta")
+  post_v1("stats", stats_body).await
 }
 
 pub async fn start(cluster_id: &str, agz_b64: &str, deploy_token: &str) {
@@ -131,10 +130,10 @@ pub async fn start(cluster_id: &str, agz_b64: &str, deploy_token: &str) {
       // TODO better period determination
       let period = Duration::from_secs(30);
       loop {
-        let delta = post_v1_stats(&deploy_token, cluster_size).await;
-        println!("VM stats sent for cluster {} of size {}. Cluster delta: {}.", cluster_id, cluster_size, delta);
-        if delta != 0 {
-          post_v1_scale(&cluster_id, &agzb64, &deploy_token, alan_version, delta).await;
+        let factor = post_v1_stats(&deploy_token, cluster_size).await;
+        println!("VM stats sent for cluster {} of size {}. Cluster factor: {}.", cluster_id, cluster_size, factor);
+        if factor != "1" {
+          post_v1_scale(&cluster_id, &agzb64, &deploy_token, alan_version, &factor).await;
         }
         sleep(period).await
       }
