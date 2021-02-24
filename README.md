@@ -22,7 +22,7 @@
 <br/>
 
 👩‍🚀 Alan is a programming language that does concurrency for you and can thus separate how the software is written from how it runs.
-To learn more about Alan, take a look at [runnable examples](https://docs.alan-lang.org/advanced_examples.html) or the most [Frequently Asked Questions](https://github.com/alantech/alan/blob/main/FAQ.md).
+To learn more about Alan, take a look at [runnable examples](https://docs.alan-lang.org/examples.html) or the most [Frequently Asked Questions](https://github.com/alantech/alan/blob/main/FAQ.md).
 
 <br/>
 <h2 align="center">Installation</h2>
