@@ -1,0 +1,12 @@
+from @std/app import start, print, exit
+
+on start {
+  if true {
+    print('true');
+  } else if false {
+    print('false');
+  } else {
+    print('yikes');
+  }
+  emit exit 0;
+}

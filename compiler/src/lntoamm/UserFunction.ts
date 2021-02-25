@@ -268,13 +268,103 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
       result = this.maybeTransformLATEST(interfaceMap, scope);
     } catch (e) {
       // fall back on legacy transformations if the conditional rewrite rewrite can't solve
+      // for debugging purposes: (todo: make sure this is commented out before landing in main)
+      // console.warn(e);
       result = this.maybeTransformLEGACY(interfaceMap, scope);
     }
     return result;
   }
 
   maybeTransformLATEST(interfaceMap: Map<Type, Type>, scope?: Scope): UserFunction {
-    throw new Error();
+    let name = this.name;
+    let args = this.args;
+    let retType = this.returnType;
+    let stmts = [];
+    let pure = this.pure;
+    if (scope) {
+      scope = new Scope(scope);
+      scope.secondaryPar = this.scope;
+    } else {
+      scope = this.scope;
+    }
+
+    /*
+    conditionals {
+      ifn assignables blocklike
+      elsebranch {
+        elsen condorblock {
+          conditionals
+        }
+      }
+    }
+     */
+
+    for (let stmt of this.statements) {
+      if (stmt.isConditionalStatement()) {
+        stmts.push(...UserFunction.rewriteConditional(stmt.statementAst, scope));
+      } else {
+        throw new Error(`unsupported statement kind`);
+      }
+    }
+    throw new Error('incomplete');
+
+    return new UserFunction(name, args, retType, scope, stmts, pure);
+  }
+
+  static rewriteConditional(node: LPNode, scope: Scope): [Statement[], Type | null] {
+    let res = [];
+    let resTy = null;
+
+    let branches = UserFunction.extractConditionals(node);
+
+    // `extractconditionals` is just meant to build racket-style `cond` https://docs.racket-lang.org/guide/conditionals.html#%28part._cond%29
+    // console.log('(cond');
+    // for (let branch of branches) {
+    //   if (branch[0] !== null) {
+    //     console.log(`  [(${branch[0]}) (${branch[1]})]`);
+    //   } else {
+    //     console.log(`  [else (${branch[1]})]`);
+    //   }
+    // }
+    // console.log('  )');
+
+    let condBranches: [LPNode | null, LPNode, Type | null][] = branches.map(br => UserFunction.inferCondBranchType(br, scope));
+
+    return [res, resTy];
+  }
+
+  static inferCondBranchType(cond: [LPNode | null, LPNode], scope: Scope): [LPNode | null, LPNode, Type | null] {
+    return null;
+  }
+
+  static extractConditionals(node: LPNode): [LPNode | null, LPNode][] {
+    let res = [];
+    while (true) {
+      if (node.has('conditionals')) {
+        node = node.get('conditionals');
+        // if <assignables> <blocklike> <elsebranch?>
+        if (!node.has('assignables')) throw new Error('conditional witout assignables');
+        if (!node.has('blocklike')) throw new Error('conditionals without blocklike');
+        let cond = node.get('assignables');
+        let then = node.get('blocklike');
+        res.push([cond, then]);
+
+        if (node.has('elsebranch')) {
+          let el = node.get('elsebranch');
+          if (!el.has('condorblock')) throw new Error('elsebranch without condorblock');
+          node = el.get('condorblock');
+        } else {
+          break;
+        }
+      } else if (node.has('blocklike')) {
+        // it's an else block, this is the last element that can even be parsed I'm pretty sure
+        res.push([null, node.get('blocklike')]);
+        break;
+      } else {
+        throw new Error('not conditional');
+      }
+    }
+    return res;
   }
 
   static conditionalToCond(cond: LPNode, scope: Scope) {

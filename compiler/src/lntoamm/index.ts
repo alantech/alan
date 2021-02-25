@@ -205,6 +205,7 @@ const ammFromModuleAsts = (moduleAsts: ModuleAstLookup) => {
   for (let evt of Event.allEvents) {
     for (let handler of evt.handlers) {
       if (handler instanceof UserFunction) {
+        handler = handler.maybeTransform(new Map());
         // Define the handler preamble
         let handlerDec = "on " + evt.name + " fn ("
         let argList = []
@@ -224,7 +225,7 @@ const ammFromModuleAsts = (moduleAsts: ModuleAstLookup) => {
         handlerDec += argList.join(", ")
         handlerDec += "): " + handler.getReturnType().typename + " {"
         // Extract the handler statements and compile into microstatements
-        const statements = handler.maybeTransform(new Map()).statements;
+        const statements = handler.statements;
         for (const s of statements) {
           Microstatement.fromStatement(s, microstatements)
         }
