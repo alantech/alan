@@ -924,7 +924,23 @@ module.exports = {
   seqrec: (seq, recurseFn) => [seq, recurseFn],
 
   // IO opcodes
-  httpget:  async url => {
+  httpreq:  async req => {
+    const [ method, url, headers, body, ] = req
+    try {
+      const response = await fetch(url, {
+        method,
+        headers,
+        body: body.length > 0 ? body : undefined,
+      });
+      const rstatus = response.status
+      const rheaders = response.headers
+      const rbody = await response.text()
+      return [ true, [ rstatus, rheaders, rbody, 0n ] ]
+    } catch (e) {
+      return [ false, e.toString() ]
+    }
+  },
+  /*httpget:  async url => {
     try {
       const response = await fetch(url)
       const result = await response.text()
@@ -941,7 +957,7 @@ module.exports = {
     } catch (e) {
       return [ false, e.toString() ]
     }
-  },
+  },*/
   httplsn:  async (port) => {
     const server = http.createServer((req, res) => {
       const connId = Number(hashf(Math.random().toString()))

@@ -2758,7 +2758,82 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     })
   });
 
-  async fn __httpget(uri: String) -> std::result::Result<String, Box<dyn std::error::Error>> {
+  fn __httpreq(
+    method: String,
+    uri: String,
+    headers: Vec<(String, String)>,
+    body: Option<String>,
+  ) -> FutureResult {
+    let mut req = Request::builder()
+      .method(method)
+      .uri(uri);
+    for header in headers {
+      req = req.header(header.0, header.1);
+    }
+    if body.is_some() {
+      req = req.body(body.unwrap());
+    }
+    Client::builder()
+      .build::<_, Body>(HttpsConnector::new())
+      .request(req)
+  }
+  io!(httpreq => fn(args, mut hand_mem) {
+    Box::pin(async move {
+      let req = hand_mem.read_fractal(args[0]);
+      let method = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(req, 0).0);
+      let url = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(req, 1).0);
+      let headers = hand_mem.read_from_fractal(req, 2).0;
+      let out_headers = Vec::new();
+      for i in 0..outHeaders.len() {
+        let header = hand_mem.read_from_fractal(headers, i).0;
+        let key = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(header, 0).0);
+        let val = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(header, 1).0);
+        out_headers.push((key, val));
+      }
+      let body = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(req, 3).0);
+      let out_body = if body.len() > 0 { Some(body) /* once told me... */ } else { None };
+      let res = __httpreq(method, url, out_headers, out_body).await;
+      hand_mem.init_fractal(args[2]);
+      hand_mem.push_fixed(args[2], if res.is_ok() { 1i64 } else { 0i64 });
+      match res {
+        Ok(res) => {
+          // We need some scratch space to construct the deeply nested fractal that will be inside
+          // of the result. This is because the memory API does not allow us to manipulate fractals
+          // two layers deep. Currently relying on how the return address is only set at the end of
+          // a closure call by referencing another address, so it *should* be safe to use that
+          // address temporarily in here. TODO: Find a better way, or at least a way to save the
+          // internal pointers of the return address to restore back when done.
+          hand_mem.init_fractal(CLOSURE_ARG_MEM_START);
+          hand_mem.push_fixed(CLOSURE_ARG_MEM_START, res.status() as i64);
+          let headers = res.headers();
+          let mut headers_hm = HandlerMemory::new(None, headers.len() as i64);
+          let mut i = 0;
+          for (key, val) in headers.iter() {
+            let key_str = key.as_str();
+            let val_str = val.to_str().unwrap();
+            headers_hm.init_fractal(i);
+            headers_hm.push_fractal(i, HandlerMemory::str_to_fractal(key_str));
+            headers_hm.push_fractal(i, HandlerMemory::str_to_fractal(val_str));
+            i = i + 1;
+          }
+          hand_mem.push_fractal(CLOSURE_ARG_MEM_START, headers_hm);
+          let body = hyper::body::to_bytes(response.body_mut()).await;
+          if body.is_ok() {
+            let body_str = String::from_utf8(body.to_vec()).unwrap_or("");
+            hand_mem.push_fractal(CLOSURE_ARG_MEM_START, HandlerMemory::str_to_fractal(&body_str));
+          } else {
+            hand_mem.push_fractal(CLOSURE_ARG_MEM_START, HandlerMemory::str_to_fractal(""));
+          }
+          hand_mem.push_fixed(CLOSURE_ARG_MEM_START, 0i64);
+          hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
+          // TODO: Removing the mutation to CLOSURE_ARG_MEM_START here would be great 
+        },
+        Err(ee) => hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(format!("{}", ee).as_str())),
+      }
+      hand_mem
+    })
+  });
+  /*async fn __httpget(uri: String) -> std::result::Result<String, Box<dyn std::error::Error>> {
     let url = TryInto::<Uri>::try_into(uri)?;
     let mut response = Client::builder()
       .build::<_, Body>(HttpsConnector::new())
@@ -2803,7 +2878,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       }
       hand_mem
     })
-  });
+  });*/
 
   async fn http_listener(req: Request<Body>) -> Result<Response<Body>, Infallible> {
     // Create a new event handler memory to add to the event queue

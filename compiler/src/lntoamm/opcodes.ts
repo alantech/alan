@@ -39,6 +39,7 @@ Type.builtinTypes.Result.solidify(['int64'], opcodeScope)
 Type.builtinTypes.Result.solidify(['float32'], opcodeScope)
 Type.builtinTypes.Result.solidify(['float64'], opcodeScope)
 Type.builtinTypes.Result.solidify(['string'], opcodeScope)
+Type.builtinTypes.Result.solidify(['InternalResponse'], opcodeScope)
 Type.builtinTypes.Either.solidify(['any', 'anythingElse'], opcodeScope)
 Type.builtinTypes.InitialReduce.solidify(['any', 'anythingElse'], opcodeScope)
 opcodeScope.put("start", new Event("_start", Type.builtinTypes.void, true))
@@ -714,8 +715,7 @@ addopcodes({
   gtef32: [{ a: t('float32'), b: t('float32'), }, t('bool')],
   gtef64: [{ a: t('float64'), b: t('float64'), }, t('bool')],
   gtestr: [{ a: t('string'), b: t('string'), }, t('bool')],
-  httpget: [{ a: t('string')}, t('Result<string>')],
-  httppost: [{ a: t('string'), b: t('string')}, t('Result<string>')],
+  httpreq: [{ a: t('InternalRequest')}, t('Result<InternalResponse>')],
   httplsn: [{ a: t('int64'), }, t('Result<string>')],
   httpsend: [{ a: t('InternalResponse'), }, t('Result<string>')],
   execop: [{ a: t('string')}, t('ExecRes')],
