@@ -68,9 +68,14 @@ Describe "@std/http"
         from @std/http import connection, listen, body, send, Connection
 
         on connection fn (conn: Connection) {
+          const req = conn.req;
           const res = conn.res;
           set(res.headers, 'Content-Type', 'text/plain');
-          const sendStatus = res.body('Hello, World!').send();
+          if req.method == 'GET' {
+            res.body('Hello, World!').send();
+          } else {
+            res.body('Hello, Failure!').send();
+          }
         }
 
         on start {

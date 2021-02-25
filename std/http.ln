@@ -15,6 +15,7 @@ export fn post(url: string, payload: string) = httppost(url, payload);
 
 // The InternalRequest type for inbound http requests
 type InternalRequest {
+  method: string,
   url: string,
   headers: Array<KeyVal<string, string>>,
   body: string,
@@ -31,6 +32,7 @@ type InternalResponse {
 
 // The exposed Request type
 export type Request {
+  method: string,
   url: string,
   headers: HashMap<string, string>,
   body: string,
@@ -59,6 +61,7 @@ export event connection: Connection
 on __conn fn (conn: InternalRequest) {
   emit connection new Connection {
     req: new Request {
+      method: conn.method,
       url: conn.url,
       headers: toHashMap(conn.headers),
       body: conn.body,
