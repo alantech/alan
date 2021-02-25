@@ -328,12 +328,13 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
     // }
     // console.log('  )');
 
-    let condBranches: [LPNode | null, LPNode, Type | null][] = branches.map(br => UserFunction.inferCondBranchType(br, scope));
+    let retName = uuid().replace(/-/g, '_');
+    let condBranches: [LPNode | null, LPNode, Type | null][] = branches.map(br => UserFunction.inferCondBranchType(br, scope, retName));
 
     return [res, resTy];
   }
 
-  static inferCondBranchType(cond: [LPNode | null, LPNode], scope: Scope): [LPNode | null, LPNode, Type | null] {
+  static inferCondBranchType(cond: [LPNode | null, LPNode], scope: Scope, retName: string): [LPNode | null, LPNode, Type | null] {
     return null;
   }
 
