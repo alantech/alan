@@ -2808,6 +2808,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   async fn http_listener(req: Request<Body>) -> Result<Response<Body>, Infallible> {
     // Create a new event handler memory to add to the event queue
     let mut event = HandlerMemory::new(None, 1);
+    // Grab the method
+    let method_str = req.method().to_string();
+    let method = HandlerMemory::str_to_fractal(&method_str);
     // Grab the URL
     let url_str = req.uri().to_string();
     let url = HandlerMemory::str_to_fractal(&url_str);
@@ -2839,6 +2842,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let conn_id = OsRng.next_u64() as i64;
     // Populate the event and emit it
     event.init_fractal(0);
+    event.push_fractal(0, method);
     event.push_fractal(0, url);
     HandlerMemory::transfer(&headers_hm, 0, &mut event, CLOSURE_ARG_MEM_START);
     event.push_register(0, CLOSURE_ARG_MEM_START);

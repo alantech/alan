@@ -649,6 +649,7 @@ export class Type {
     }),
     // HTTP server opcode-related builtin Types, also defined in std/http.ln
     InternalRequest: new Type("InternalRequest", true, false, {
+      method: new Type("string", true),
       url: new Type("string", true),
       headers: new Type("Array<KeyVal<string, string>>", true, false, {
         records: new Type('KeyVal<string, string>>', true, false, {

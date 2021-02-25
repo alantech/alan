@@ -955,6 +955,7 @@ module.exports = {
       })
       req.on('end', () => {
         e.emit('__conn', [
+          req.method,
           req.url,
           Object.entries(req.headers),
           body,
