@@ -65,9 +65,8 @@ async fn post_v1(endpoint: &str, body: Value) -> String {
   }
 }
 
-async fn post_v1_scale(cluster_id: &str, agz_b64: &str, deploy_token: &str, alan_version: &str, factor: &str) -> String {
+async fn post_v1_scale(cluster_id: &str, agz_b64: &str, deploy_token: &str, factor: &str) -> String {
   let scale_body = json!({
-    "alanVersion": alan_version,
     "clusterId": cluster_id,
     "agzB64": agz_b64,
     "deployToken": deploy_token,
@@ -118,24 +117,30 @@ pub async fn start(cluster_id: &str, agz_b64: &str, deploy_token: &str) {
   let deploy_token = deploy_token.to_string();
   let agzb64 = agz_b64.to_string();
   task::spawn(async move {
+    // TODO better period determination
+    let period = Duration::from_secs(30);
     let dns = DNS::new(DOMAIN);
-    let vms = dns.get_vms(&cluster_id).await;
-    let ips = vms.iter().map(|vm| vm.private_ip_addr.to_string()).collect();
-    let alan_version = &vms[0].alan_version;
-    let lrh = LogRendezvousHash::new(ips);
-    let leader_ip = lrh.get_leader_id();
     let self_ip = get_private_ip().await;
-    if leader_ip == self_ip {
-      // TODO better period determination
-      let period = Duration::from_secs(30);
-      loop {
+    let mut cluster_size = 0;
+    let mut leader_ip = "".to_string();
+    loop {
+      let vms = dns.get_vms(&cluster_id).await;
+      // triggered the first time since cluster_size == 0
+      // and every time the cluster changes size
+      if vms.len() != cluster_size {
+        cluster_size = vms.len();
+        let ips = vms.iter().map(|vm| vm.private_ip_addr.to_string()).collect();
+        let lrh = LogRendezvousHash::new(ips);
+        leader_ip = lrh.get_leader_id().to_string();
+      }
+      if leader_ip == self_ip {
         let factor = post_v1_stats(&cluster_id, &deploy_token).await;
         println!("VM stats sent for cluster {} of size {}. Cluster factor: {}.", cluster_id, vms.len(), factor);
         if factor != "1" {
-          post_v1_scale(&cluster_id, &agzb64, &deploy_token, alan_version, &factor).await;
+          post_v1_scale(&cluster_id, &agzb64, &deploy_token, &factor).await;
         }
-        sleep(period).await
       }
+      sleep(period).await
     }
   });
   run_agz_b64(agz_b64).await;
