@@ -39,7 +39,7 @@ export type Response {
  * HTTP Client
  */
 
-/*export fn fetch(req: Request): Result<Response> {
+export fn fetch(req: Request): Result<Response> {
   const i = new InternalRequest {
     method: req.method,
     url: req.url,
@@ -59,9 +59,9 @@ export type Response {
       connId: o.connId,
     });
   }
-}*/
+}
 
-export fn fetch(req: Request): Result<Response> = httpreq(new InternalRequest {
+/*export fn fetch(req: Request): Result<Response> = httpreq(new InternalRequest {
   method: req.method,
   url: req.url,
   headers: req.headers,
@@ -72,7 +72,7 @@ export fn fetch(req: Request): Result<Response> = httpreq(new InternalRequest {
   headers: r.headers.toHashMap(),
   body: r.body,
   connId: r.connId,
-});
+});*/
 
 export fn get(url: string): Result<string> {
   const res = fetch(new Request {

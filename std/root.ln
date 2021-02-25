@@ -179,14 +179,6 @@ export fn getOrExit(result: Result<any>): any {
     return result.getR();
   }
 }
-export fn map(r: Result<any>, f: function): Result<anythingElse> {
-  if r.isErr() {
-    return r;
-  } else {
-    const res = r.getR();
-    return ok(f(res));
-  }
-}
 
 export fn main(val: any) = mainE(val, 0);
 export fn main(val: int8) = mainE(val, 8);
