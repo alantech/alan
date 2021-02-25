@@ -17,7 +17,7 @@ use byteorder::{ByteOrder, LittleEndian};
 use dashmap::DashMap;
 use hyper::header::{HeaderName, HeaderValue};
 use hyper::service::{make_service_fn, service_fn};
-use hyper::{client::Client, server::Server, Body, Request, Response, StatusCode, Uri};
+use hyper::{client::{Client, ResponseFuture}, server::Server, Body, Request, Response, StatusCode, Uri};
 use hyper_tls::HttpsConnector;
 use once_cell::sync::Lazy;
 use rand::rngs::OsRng;
@@ -2763,48 +2763,44 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     uri: String,
     headers: Vec<(String, String)>,
     body: Option<String>,
-  ) -> FutureResult {
+  ) -> ResponseFuture {
     let mut req = Request::builder()
-      .method(method)
-      .uri(uri);
+      .method(method.as_str())
+      .uri(uri.as_str());
     for header in headers {
-      req = req.header(header.0, header.1);
+      req = req.header(header.0.as_str(), header.1.as_str());
     }
-    if body.is_some() {
-      req = req.body(body.unwrap());
-    }
+    let req_obj = if body.is_some() {
+      req.body(Body::from(body.unwrap())).unwrap()
+    } else {
+      req.body(Body::empty()).unwrap()
+    };
     Client::builder()
       .build::<_, Body>(HttpsConnector::new())
-      .request(req)
+      .request(req_obj)
   }
   io!(httpreq => fn(args, mut hand_mem) {
     Box::pin(async move {
       let req = hand_mem.read_fractal(args[0]);
-      let method = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(req, 0).0);
-      let url = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(req, 1).0);
-      let headers = hand_mem.read_from_fractal(req, 2).0;
-      let out_headers = Vec::new();
-      for i in 0..outHeaders.len() {
-        let header = hand_mem.read_from_fractal(headers, i).0;
-        let key = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(header, 0).0);
-        let val = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(header, 1).0);
+      let method = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&req, 0).0);
+      let url = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&req, 1).0);
+      let headers = hand_mem.read_from_fractal(&req, 2).0;
+      let mut out_headers = Vec::new();
+      for i in 0..out_headers.len() {
+        let header = hand_mem.read_from_fractal(&headers, i).0;
+        let key = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&header, 0).0);
+        let val = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&header, 1).0);
         out_headers.push((key, val));
       }
-      let body = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(req, 3).0);
+      let body = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&req, 3).0);
       let out_body = if body.len() > 0 { Some(body) /* once told me... */ } else { None };
-      let res = __httpreq(method, url, out_headers, out_body).await;
+      let mut res = __httpreq(method, url, out_headers, out_body).await;
       hand_mem.init_fractal(args[2]);
       hand_mem.push_fixed(args[2], if res.is_ok() { 1i64 } else { 0i64 });
       match res {
-        Ok(res) => {
-          // We need some scratch space to construct the deeply nested fractal that will be inside
-          // of the result. This is because the memory API does not allow us to manipulate fractals
-          // two layers deep. Currently relying on how the return address is only set at the end of
-          // a closure call by referencing another address, so it *should* be safe to use that
-          // address temporarily in here. TODO: Find a better way, or at least a way to save the
-          // internal pointers of the return address to restore back when done.
-          hand_mem.init_fractal(CLOSURE_ARG_MEM_START);
-          hand_mem.push_fixed(CLOSURE_ARG_MEM_START, res.status() as i64);
+        Ok(mut res) => {
+          let mut res_hm = HandlerMemory::new(None, 3);
+          res_hm.push_fixed(0, res.status().as_u16() as i64);
           let headers = res.headers();
           let mut headers_hm = HandlerMemory::new(None, headers.len() as i64);
           let mut i = 0;
@@ -2816,17 +2812,18 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
             headers_hm.push_fractal(i, HandlerMemory::str_to_fractal(val_str));
             i = i + 1;
           }
-          hand_mem.push_fractal(CLOSURE_ARG_MEM_START, headers_hm);
-          let body = hyper::body::to_bytes(response.body_mut()).await;
+          HandlerMemory::transfer(&headers_hm, 0, &mut res_hm, CLOSURE_ARG_MEM_START);
+          res_hm.push_register(0, CLOSURE_ARG_MEM_START);
+          let body = hyper::body::to_bytes(res.body_mut()).await;
           if body.is_ok() {
-            let body_str = String::from_utf8(body.to_vec()).unwrap_or("");
-            hand_mem.push_fractal(CLOSURE_ARG_MEM_START, HandlerMemory::str_to_fractal(&body_str));
+            let body_str = String::from_utf8(body.unwrap().to_vec()).unwrap_or("".to_string());
+            res_hm.push_fractal(0, HandlerMemory::str_to_fractal(&body_str));
           } else {
-            hand_mem.push_fractal(CLOSURE_ARG_MEM_START, HandlerMemory::str_to_fractal(""));
+            res_hm.push_fractal(0, HandlerMemory::str_to_fractal(&""));
           }
-          hand_mem.push_fixed(CLOSURE_ARG_MEM_START, 0i64);
+          res_hm.push_fixed(0, 0i64);
+          HandlerMemory::transfer(&res_hm, 0, &mut hand_mem, CLOSURE_ARG_MEM_START);
           hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
-          // TODO: Removing the mutation to CLOSURE_ARG_MEM_START here would be great 
         },
         Err(ee) => hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(format!("{}", ee).as_str())),
       }
