@@ -940,24 +940,6 @@ module.exports = {
       return [ false, e.toString() ]
     }
   },
-  /*httpget:  async url => {
-    try {
-      const response = await fetch(url)
-      const result = await response.text()
-      return [ true, result ]
-    } catch (e) {
-      return [ false, e.toString() ]
-    }
-  },
-  httppost: async (url, body) => {
-    try {
-      const response = await fetch(url, { method: 'POST', body })
-      const result = await response.text()
-      return [ true, result ]
-    } catch (e) {
-      return [ false, e.toString() ]
-    }
-  },*/
   httplsn:  async (port) => {
     const server = http.createServer((req, res) => {
       const connId = Number(hashf(Math.random().toString()))
