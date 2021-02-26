@@ -2763,21 +2763,25 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     uri: String,
     headers: Vec<(String, String)>,
     body: Option<String>,
-  ) -> ResponseFuture {
+  ) -> Result<ResponseFuture, String> {
     let mut req = Request::builder()
       .method(method.as_str())
       .uri(uri.as_str());
     for header in headers {
       req = req.header(header.0.as_str(), header.1.as_str());
     }
-    let req_obj = if body.is_some() {
-      req.body(Body::from(body.unwrap())).unwrap()
+    let req_obj = if let Some(body) = body {
+      req.body(Body::from(body))
     } else {
-      req.body(Body::empty()).unwrap()
+      req.body(Body::empty())
     };
-    Client::builder()
-      .build::<_, Body>(HttpsConnector::new())
-      .request(req_obj)
+    if req_obj.is_err() {
+      return Err("Failed to construct request, invalid body provided".to_string());
+    } else {
+      return Ok(Client::builder()
+        .build::<_, Body>(HttpsConnector::new())
+        .request(req_obj.unwrap()));
+    }
   }
   io!(httpreq => fn(args, mut hand_mem) {
     Box::pin(async move {
@@ -2786,7 +2790,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let url = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&req, 1).0);
       let headers = hand_mem.read_from_fractal(&req, 2).0;
       let mut out_headers = Vec::new();
-      for i in 0..out_headers.len() {
+      for i in 0..headers.len() {
         let header = hand_mem.read_from_fractal(&headers, i).0;
         let key = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&header, 0).0);
         let val = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&header, 1).0);
@@ -2794,41 +2798,87 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       }
       let body = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&req, 3).0);
       let out_body = if body.len() > 0 { Some(body) /* once told me... */ } else { None };
-      let res = __httpreq(method, url, out_headers, out_body).await;
+      let res = __httpreq(method, url, out_headers, out_body);
       hand_mem.init_fractal(args[2]);
-      hand_mem.push_fixed(args[2], if res.is_ok() { 1i64 } else { 0i64 });
       match res {
-        Ok(mut res) => {
-          let mut res_hm = HandlerMemory::new(None, 3);
-          res_hm.init_fractal(0);
-          res_hm.push_fixed(0, res.status().as_u16() as i64);
-          let headers = res.headers();
-          let mut headers_hm = HandlerMemory::new(None, headers.len() as i64);
-          let mut i = 0;
-          for (key, val) in headers.iter() {
-            let key_str = key.as_str();
-            let val_str = val.to_str().unwrap();
-            headers_hm.init_fractal(i);
-            headers_hm.push_fractal(i, HandlerMemory::str_to_fractal(key_str));
-            headers_hm.push_fractal(i, HandlerMemory::str_to_fractal(val_str));
-            i = i + 1;
+        Err(estring) => {
+          hand_mem.push_fixed(args[2], 0i64);
+          hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(&estring));
+        }
+        Ok(res) => {
+          let res = res.await;
+          //hand_mem.push_fixed(args[2], if res.is_ok() { 1i64 } else { 0i64 });
+          match res {
+            Ok(mut res) => {
+              // The headers and body can fail, so check those first
+              let mut header_success = true;
+              let headers = res.headers();
+              let mut headers_hm = HandlerMemory::new(None, headers.len() as i64);
+              for (i, (key, val)) in headers.iter().enumerate() {
+                let key_str = key.as_str();
+                let val_str = val.to_str();
+                match val_str {
+                  Ok(val_str) => {
+                    headers_hm.init_fractal(i as i64);
+                    headers_hm.push_fractal(i as i64, HandlerMemory::str_to_fractal(key_str));
+                    headers_hm.push_fractal(i as i64, HandlerMemory::str_to_fractal(val_str));
+                  },
+                  Err(_) => {
+                    header_success = false;
+                  },
+                }
+              }
+              let body = hyper::body::to_bytes(res.body_mut()).await;
+              match body {
+                Ok(body) if header_success => {
+                  let body_str = String::from_utf8(body.to_vec());
+                  match body_str {
+                    Ok(body_str) => {
+                      hand_mem.push_fixed(args[2], 1i64);
+                      let mut res_hm = HandlerMemory::new(None, 3);
+                      res_hm.init_fractal(0);
+                      res_hm.push_fixed(0, res.status().as_u16() as i64);
+                      HandlerMemory::transfer(&headers_hm, 0, &mut res_hm, CLOSURE_ARG_MEM_START);
+                      res_hm.push_register(0, CLOSURE_ARG_MEM_START);
+                      res_hm.push_fractal(0, HandlerMemory::str_to_fractal(&body_str));
+                      res_hm.push_fixed(0, 0i64);
+                      HandlerMemory::transfer(&res_hm, 0, &mut hand_mem, CLOSURE_ARG_MEM_START);
+                      hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
+                    },
+                    Err(ee) => {
+                      hand_mem.push_fixed(args[2], 0i64);
+                      hand_mem.push_fractal(
+                        args[2],
+                        HandlerMemory::str_to_fractal(format!("{}", ee).as_str())
+                      );
+                    },
+                  }
+                },
+                Err(ee) => {
+                  hand_mem.push_fixed(args[2], 0i64);
+                  hand_mem.push_fractal(
+                    args[2],
+                    HandlerMemory::str_to_fractal(format!("{}", ee).as_str())
+                  );
+                },
+                _ => {
+                  hand_mem.push_fixed(args[2], 0i64);
+                  hand_mem.push_fractal(
+                    args[2],
+                    HandlerMemory::str_to_fractal("Malformed headers encountered")
+                  );
+                },
+              }
+            },
+            Err(ee) => {
+              hand_mem.push_fixed(args[2], 0i64);
+              hand_mem.push_fractal(
+                args[2],
+                HandlerMemory::str_to_fractal(format!("{}", ee).as_str())
+              );
+            },
           }
-          HandlerMemory::transfer(&headers_hm, 0, &mut res_hm, CLOSURE_ARG_MEM_START);
-          res_hm.push_register(0, CLOSURE_ARG_MEM_START);
-          let body = hyper::body::to_bytes(res.body_mut()).await;
-          if body.is_ok() {
-            let body_str = String::from_utf8(body.unwrap().to_vec()).unwrap_or("".to_string());
-            res_hm.push_fractal(0, HandlerMemory::str_to_fractal(&body_str));
-          } else {
-            res_hm.push_fractal(0, HandlerMemory::str_to_fractal(&""));
-          }
-          res_hm.push_fixed(0, 0i64);
-          HandlerMemory::transfer(&res_hm, 0, &mut hand_mem, CLOSURE_ARG_MEM_START);
-          hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
-        },
-        Err(ee) => {
-          hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(format!("{}", ee).as_str()))
-        },
+        }
       }
       hand_mem
     })
