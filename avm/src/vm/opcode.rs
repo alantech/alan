@@ -1,7 +1,7 @@
 use futures::future::{join_all, poll_fn, FutureExt};
 use futures::task::{Context, Poll};
 use std::collections::HashMap;
-use std::convert::{Infallible, TryInto};
+use std::convert::Infallible;
 use std::fmt::Debug;
 use std::future::Future;
 use std::hash::Hasher;
@@ -17,7 +17,7 @@ use byteorder::{ByteOrder, LittleEndian};
 use dashmap::DashMap;
 use hyper::header::{HeaderName, HeaderValue};
 use hyper::service::{make_service_fn, service_fn};
-use hyper::{client::{Client, ResponseFuture}, server::Server, Body, Request, Response, StatusCode, Uri};
+use hyper::{client::{Client, ResponseFuture}, server::Server, Body, Request, Response, StatusCode};
 use hyper_tls::HttpsConnector;
 use once_cell::sync::Lazy;
 use rand::rngs::OsRng;
@@ -2794,7 +2794,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       }
       let body = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&req, 3).0);
       let out_body = if body.len() > 0 { Some(body) /* once told me... */ } else { None };
-      let mut res = __httpreq(method, url, out_headers, out_body).await;
+      let res = __httpreq(method, url, out_headers, out_body).await;
       hand_mem.init_fractal(args[2]);
       hand_mem.push_fixed(args[2], if res.is_ok() { 1i64 } else { 0i64 });
       match res {
@@ -2833,52 +2833,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem
     })
   });
-  /*async fn __httpget(uri: String) -> std::result::Result<String, Box<dyn std::error::Error>> {
-    let url = TryInto::<Uri>::try_into(uri)?;
-    let mut response = Client::builder()
-      .build::<_, Body>(HttpsConnector::new())
-      .get(url)
-      .await?;
-    let body = hyper::body::to_bytes(response.body_mut()).await?;
-    let res = String::from_utf8(body.to_vec())?;
-    Ok(res)
-  }
-  io!(httpget => fn(args, mut hand_mem) {
-    Box::pin(async move {
-      let res = __httpget(HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]))).await;
-      hand_mem.init_fractal(args[2]);
-      hand_mem.push_fixed(args[2], if res.is_ok() { 1i64 } else { 0i64 });
-      match res {
-        Ok(res) => hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(&res)),
-        Err(ee) => hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(format!("{}", ee).as_str())),
-      }
-      hand_mem
-    })
-  });
-
-  async fn __httppost(uri: String, payload: String) -> Result<String, Box<dyn std::error::Error>> {
-    let url = TryInto::<Uri>::try_into(uri)?;
-    let request = Request::post(url).body(Body::from(payload))?;
-    let client = Client::builder().build::<_, Body>(HttpsConnector::new());
-    let mut response = client.request(request).await?;
-    let body = hyper::body::to_bytes(response.body_mut()).await?;
-    let res = String::from_utf8(body.to_vec())?;
-    Ok(res)
-  }
-  io!(httppost => fn(args, mut hand_mem) {
-    Box::pin(async move {
-      let uri = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
-      let payload = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
-      let res = __httppost(uri, payload).await;
-      hand_mem.init_fractal(args[2]);
-      hand_mem.push_fixed(args[2], if res.is_ok() { 1i64 } else { 0i64 });
-      match res {
-        Ok(res) => hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(&res)),
-        Err(ee) => hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(format!("{}", ee).as_str())),
-      }
-      hand_mem
-    })
-  });*/
 
   async fn http_listener(req: Request<Body>) -> Result<Response<Body>, Infallible> {
     // Create a new event handler memory to add to the event queue
