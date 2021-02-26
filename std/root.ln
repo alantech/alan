@@ -173,7 +173,7 @@ export fn toString(n: Result<Stringifiable>): string {
 }
 export fn getOrExit(result: Result<any>): any {
   if result.isErr() {
-    stderrp(result.toString());
+    stderrp(result.getErr(noerr()).toString());
     exitop(1.toInt8());
   } else {
     return result.getR();
@@ -2411,7 +2411,7 @@ export fn newHashMap(firstKey: Hashable, firstVal: any): HashMap<Hashable, any> 
   return hm.set(firstKey, firstVal);
 }
 
-export fn toHashMap(kva: Array<KeyVal<Hashable, any>>) {
+export fn toHashMap(kva: Array<KeyVal<Hashable, any>>): HashMap<Hashable, any> {
   let hm = new HashMap<Hashable, any> {
     keyVal: kva,
     lookup: new Array<Array<int64>> [ new Array<int64> [] ] * 128,

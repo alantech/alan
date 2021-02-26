@@ -61,6 +61,52 @@ Describe "@std/http"
     End
   End
 
+  Describe "fetch directly"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+        from @std/http import fetch, Request, Response
+
+        on start {
+          const res = fetch(new Request {
+            method: 'GET',
+            url: 'https://raw.githubusercontent.com/alantech/hellodep/aea1ce817a423d00107577a430a046993e4e6cad/index.ln',
+            headers: newHashMap('Content-Length', '0'),
+            body: '',
+          });
+          print(res.isOk());
+          const r = res.getOrExit();
+          print(r.status);
+          print(r.headers.length());
+          print(r.body);
+          emit exit 0;
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+
+    FETCHOUTPUT="true
+200
+2
+export const comeGetMe = \"You got me!\""
+
+    It "runs js"
+      When run test_js
+      The output should eq "$FETCHOUTPUT"
+    End
+
+    It "runs agc"
+      When run test_agc
+      The output should eq "$FETCHOUTPUT"
+    End
+  End
+
   Describe "Hello World webserver"
     before() {
       sourceToAll "

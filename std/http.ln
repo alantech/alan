@@ -2,18 +2,7 @@
  * @std/http - Built-in client and server for http
  */
 
-/**
- * HTTP Client
- */
-
-export fn get(url: string) = httpget(url);
-export fn post(url: string, payload: string) = httppost(url, payload);
-
-/**
- * HTTP Server
- */
-
-// The InternalRequest type for inbound http requests
+// The InternalRequest type for http requests
 type InternalRequest {
   method: string,
   url: string,
@@ -22,7 +11,7 @@ type InternalRequest {
   connId: int64,
 }
 
-// The InternalResponse type for inbount http requests
+// The InternalResponse type for http responses
 type InternalResponse {
   status: int64,
   headers: Array<KeyVal<string, string>>,
@@ -45,6 +34,109 @@ export type Response {
   body: string,
   connId: int64,
 }
+
+/**
+ * HTTP Client
+ */
+
+export fn fetch(req: Request): Result<Response> {
+  const i = new InternalRequest {
+    method: req.method,
+    url: req.url,
+    headers: req.headers.keyVal,
+    body: req.body,
+    connId: 0, // Unused by the client
+  };
+  const ro = httpreq(i);
+  if ro.isErr() {
+    return ro;
+  } else {
+    const o = ro.getR();
+    return ok(new Response {
+      status: o.status,
+      headers: toHashMap(o.headers),
+      body: o.body,
+      connId: o.connId,
+    });
+  }
+}
+
+export fn get(url: string): Result<string> {
+  const res = fetch(new Request {
+    method: 'GET',
+    url: url,
+    headers: newHashMap('Content-Length', '0'),
+    body: '',
+  });
+  if res.isOk() {
+    const r = res.getR();
+    if r.status < 300 {
+      return ok(r.body);
+    } else {
+      return err('Response was not ok');
+    }
+  } else {
+    return res;
+  }
+}
+export fn post(url: string, body: string): Result<string> {
+  const res = fetch(new Request {
+    method: 'POST',
+    url: url,
+    headers: newHashMap('Content-Length', body.length().toString()),
+    body: body,
+  });
+  if res.isOk() {
+    const r = res.getR();
+    if r.status < 300 {
+      return ok(r.body);
+    } else {
+      return err('Response was not ok');
+    }
+  } else {
+    return res;
+  }
+}
+export fn put(url: string, body: string): Result<string> {
+  const res = fetch(new Request {
+    method: 'PUT',
+    url: url,
+    headers: newHashMap('Content-Length', body.length().toString()),
+    body: body,
+  });
+  if res.isOk() {
+    const r = res.getR();
+    if r.status < 300 {
+      return ok(r.body);
+    } else {
+      return err('Response was not ok');
+    }
+  } else {
+    return res;
+  }
+}
+export fn del(url: string): Result<string> {
+  const res = fetch(new Request {
+    method: 'DELETE',
+    url: url,
+    headers: newHashMap('Content-Length', '0'),
+    body: '',
+  });
+  if res.isOk() {
+    const r = res.getR();
+    if r.status < 300 {
+      return ok(r.body);
+    } else {
+      return err('Response was not ok');
+    }
+  } else {
+    return res;
+  }
+}
+
+/**
+ * HTTP Server
+ */
 
 // The roll-up Connection type with both
 export type Connection {

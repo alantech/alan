@@ -924,20 +924,18 @@ module.exports = {
   seqrec: (seq, recurseFn) => [seq, recurseFn],
 
   // IO opcodes
-  httpget:  async url => {
+  httpreq:  async req => {
+    const [ method, url, headers, body, ] = req
     try {
-      const response = await fetch(url)
-      const result = await response.text()
-      return [ true, result ]
-    } catch (e) {
-      return [ false, e.toString() ]
-    }
-  },
-  httppost: async (url, body) => {
-    try {
-      const response = await fetch(url, { method: 'POST', body })
-      const result = await response.text()
-      return [ true, result ]
+      const response = await fetch(url, {
+        method,
+        headers,
+        body: body.length > 0 ? body : undefined,
+      });
+      const rstatus = response.status
+      const rheaders = Object.entries(response.headers)
+      const rbody = await response.text()
+      return [ true, [ rstatus, rheaders, rbody, 0n ] ]
     } catch (e) {
       return [ false, e.toString() ]
     }

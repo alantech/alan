@@ -1,7 +1,7 @@
 use futures::future::{join_all, poll_fn, FutureExt};
 use futures::task::{Context, Poll};
 use std::collections::HashMap;
-use std::convert::{Infallible, TryInto};
+use std::convert::Infallible;
 use std::fmt::Debug;
 use std::future::Future;
 use std::hash::Hasher;
@@ -17,7 +17,7 @@ use byteorder::{ByteOrder, LittleEndian};
 use dashmap::DashMap;
 use hyper::header::{HeaderName, HeaderValue};
 use hyper::service::{make_service_fn, service_fn};
-use hyper::{client::Client, server::Server, Body, Request, Response, StatusCode, Uri};
+use hyper::{client::{Client, ResponseFuture}, server::Server, Body, Request, Response, StatusCode};
 use hyper_tls::HttpsConnector;
 use once_cell::sync::Lazy;
 use rand::rngs::OsRng;
@@ -2758,49 +2758,120 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     })
   });
 
-  async fn __httpget(uri: String) -> std::result::Result<String, Box<dyn std::error::Error>> {
-    let url = TryInto::<Uri>::try_into(uri)?;
-    let mut response = Client::builder()
-      .build::<_, Body>(HttpsConnector::new())
-      .get(url)
-      .await?;
-    let body = hyper::body::to_bytes(response.body_mut()).await?;
-    let res = String::from_utf8(body.to_vec())?;
-    Ok(res)
+  fn __httpreq(
+    method: String,
+    uri: String,
+    headers: Vec<(String, String)>,
+    body: Option<String>,
+  ) -> Result<ResponseFuture, String> {
+    let mut req = Request::builder()
+      .method(method.as_str())
+      .uri(uri.as_str());
+    for header in headers {
+      req = req.header(header.0.as_str(), header.1.as_str());
+    }
+    let req_obj = if let Some(body) = body {
+      req.body(Body::from(body))
+    } else {
+      req.body(Body::empty())
+    };
+    if req_obj.is_err() {
+      return Err("Failed to construct request, invalid body provided".to_string());
+    } else {
+      return Ok(Client::builder()
+        .build::<_, Body>(HttpsConnector::new())
+        .request(req_obj.unwrap()));
+    }
   }
-  io!(httpget => fn(args, mut hand_mem) {
+  io!(httpreq => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let res = __httpget(HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]))).await;
-      hand_mem.init_fractal(args[2]);
-      hand_mem.push_fixed(args[2], if res.is_ok() { 1i64 } else { 0i64 });
-      match res {
-        Ok(res) => hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(&res)),
-        Err(ee) => hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(format!("{}", ee).as_str())),
+      let req = hand_mem.read_fractal(args[0]);
+      let method = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&req, 0).0);
+      let url = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&req, 1).0);
+      let headers = hand_mem.read_from_fractal(&req, 2).0;
+      let mut out_headers = Vec::new();
+      for i in 0..headers.len() {
+        let header = hand_mem.read_from_fractal(&headers, i).0;
+        let key = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&header, 0).0);
+        let val = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&header, 1).0);
+        out_headers.push((key, val));
       }
-      hand_mem
-    })
-  });
-
-  async fn __httppost(uri: String, payload: String) -> Result<String, Box<dyn std::error::Error>> {
-    let url = TryInto::<Uri>::try_into(uri)?;
-    let request = Request::post(url).body(Body::from(payload))?;
-    let client = Client::builder().build::<_, Body>(HttpsConnector::new());
-    let mut response = client.request(request).await?;
-    let body = hyper::body::to_bytes(response.body_mut()).await?;
-    let res = String::from_utf8(body.to_vec())?;
-    Ok(res)
-  }
-  io!(httppost => fn(args, mut hand_mem) {
-    Box::pin(async move {
-      let uri = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
-      let payload = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1]));
-      let res = __httppost(uri, payload).await;
+      let body = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&req, 3).0);
+      let out_body = if body.len() > 0 { Some(body) /* once told me... */ } else { None };
       hand_mem.init_fractal(args[2]);
-      hand_mem.push_fixed(args[2], if res.is_ok() { 1i64 } else { 0i64 });
-      match res {
-        Ok(res) => hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(&res)),
-        Err(ee) => hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(format!("{}", ee).as_str())),
+      let res = match __httpreq(method, url, out_headers, out_body) {
+        Ok(res) => res,
+        Err(estring) => {
+          hand_mem.push_fixed(args[2], 0i64);
+          hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(&estring));
+          return hand_mem;
+        },
+      };
+      let mut res = match res.await {
+        Ok(res) => res,
+        Err(ee) => {
+          hand_mem.push_fixed(args[2], 0i64);
+          hand_mem.push_fractal(
+            args[2],
+            HandlerMemory::str_to_fractal(format!("{}", ee).as_str())
+          );
+          return hand_mem;
+        },
+      };
+      // The headers and body can fail, so check those first
+      let headers = res.headers();
+      let mut headers_hm = HandlerMemory::new(None, headers.len() as i64);
+      for (i, (key, val)) in headers.iter().enumerate() {
+        let key_str = key.as_str();
+        let val_str = val.to_str();
+        match val_str {
+          Ok(val_str) => {
+            headers_hm.init_fractal(i as i64);
+            headers_hm.push_fractal(i as i64, HandlerMemory::str_to_fractal(key_str));
+            headers_hm.push_fractal(i as i64, HandlerMemory::str_to_fractal(val_str));
+          },
+          Err(_) => {
+            hand_mem.push_fixed(args[2], 0i64);
+            hand_mem.push_fractal(
+              args[2],
+              HandlerMemory::str_to_fractal("Malformed headers encountered")
+            );
+            return hand_mem;
+          },
+        }
       }
+      let body = match hyper::body::to_bytes(res.body_mut()).await {
+        Ok(body) => body,
+        Err(ee) => {
+          hand_mem.push_fixed(args[2], 0i64);
+          hand_mem.push_fractal(
+            args[2],
+            HandlerMemory::str_to_fractal(format!("{}", ee).as_str())
+          );
+          return hand_mem;
+        },
+      };
+      let body_str = match String::from_utf8(body.to_vec()) {
+        Ok(body_str) => body_str,
+        Err(ee) => {
+          hand_mem.push_fixed(args[2], 0i64);
+          hand_mem.push_fractal(
+            args[2],
+            HandlerMemory::str_to_fractal(format!("{}", ee).as_str())
+          );
+          return hand_mem;
+        },
+      };
+      hand_mem.push_fixed(args[2], 1i64);
+      let mut res_hm = HandlerMemory::new(None, 3);
+      res_hm.init_fractal(0);
+      res_hm.push_fixed(0, res.status().as_u16() as i64);
+      HandlerMemory::transfer(&headers_hm, 0, &mut res_hm, CLOSURE_ARG_MEM_START);
+      res_hm.push_register(0, CLOSURE_ARG_MEM_START);
+      res_hm.push_fractal(0, HandlerMemory::str_to_fractal(&body_str));
+      res_hm.push_fixed(0, 0i64);
+      HandlerMemory::transfer(&res_hm, 0, &mut hand_mem, CLOSURE_ARG_MEM_START);
+      hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
       hand_mem
     })
   });

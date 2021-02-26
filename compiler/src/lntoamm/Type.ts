@@ -502,25 +502,23 @@ export class Type {
     const otherTypeAst = fulltypenameAstFromString(otherType.typename)
     let generics = []
     if (typeAst.has('opttypegenerics')) {
-      const genericsAst = typeAst.get('opttypegenerics').get('generics')
-      generics.push(genericsAst.get('fulltypename').t)
-      genericsAst.get('cdr').getAll().forEach(r => {
+      generics.push(typeAst.get('opttypegenerics').get('generics').get('fulltypename').t)
+      typeAst.get('opttypegenerics').get('generics').get('cdr').getAll().forEach(r => {
         generics.push(r.get('fulltypename').t)
       })
     }
     generics = generics.map(
-      g => scope.deepGet(g) || Type.fromStringWithMap(g, interfaceMap, scope) as Type
+      g => scope.deepGet(g) || Type.fromStringWithMap(g, interfaceMap, scope) as Type || new Type('-bogus-', false, true)
     )
     let otherGenerics = []
     if (otherTypeAst.has('opttypegenerics')) {
-      const genericsAst = otherTypeAst.get('opttypegenerics').get('generics')
-      otherGenerics.push(genericsAst.get('fulltypename').t)
-      genericsAst.get('cdr').getAll().forEach(r => {
+      otherGenerics.push(otherTypeAst.get('opttypegenerics').get('generics').get('fulltypename').t)
+      otherTypeAst.get('opttypegenerics').get('generics').get('cdr').getAll().forEach(r => {
         otherGenerics.push(r.get('fulltypename').t)
       })
     }
     otherGenerics = otherGenerics.map(
-      g => scope.deepGet(g) || Type.fromStringWithMap(g, interfaceMap, scope) as Type
+      g => scope.deepGet(g) || Type.fromStringWithMap(g, interfaceMap, scope) as Type || new Type('-bogus-', false, true)
     )
     return generics.every((t: Type, i) => t.typeApplies(otherGenerics[i], scope, interfaceMap))
   }
@@ -647,27 +645,25 @@ export class Type {
       T: 0,
       U: 1,
     }),
-    // HTTP server opcode-related builtin Types, also defined in std/http.ln
+    KeyVal: new Type("KeyVal", false, false, {
+      key: new Type("K", true, true),
+      val: new Type("V", true, true),
+    }, {
+      K: 0,
+      V: 1,
+    }),
+    // Placeholders to be replaced through weirdness with opcodes.ts as the self-referential piece
+    // does not play well with `static`
     InternalRequest: new Type("InternalRequest", true, false, {
       method: new Type("string", true),
       url: new Type("string", true),
-      headers: new Type("Array<KeyVal<string, string>>", true, false, {
-        records: new Type('KeyVal<string, string>>', true, false, {
-          key: new Type("string", true),
-          val: new Type("string", true),
-        }),
-      }),
+      headers: new Type("headers", true),
       body: new Type('string', true),
       connId: new Type('int64', true),
     }),
     InternalResponse: new Type("InternalResponse", true, false, {
       status: new Type("int64", true),
-      headers: new Type("Array<KeyVal<string, string>>", true, false, {
-        records: new Type('KeyVal<string, string>>', true, false, {
-          key: new Type("string", true),
-          val: new Type("string", true),
-        }),
-      }),
+      headers: new Type("headers", true),
       body: new Type('string', true),
       connId: new Type('int64', true),
     }),
