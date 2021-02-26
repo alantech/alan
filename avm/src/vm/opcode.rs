@@ -2819,7 +2819,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         },
       };
       // The headers and body can fail, so check those first
-      let mut header_success = true;
       let headers = res.headers();
       let mut headers_hm = HandlerMemory::new(None, headers.len() as i64);
       for (i, (key, val)) in headers.iter().enumerate() {
@@ -2832,25 +2831,22 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
             headers_hm.push_fractal(i as i64, HandlerMemory::str_to_fractal(val_str));
           },
           Err(_) => {
-            header_success = false;
+            hand_mem.push_fixed(args[2], 0i64);
+            hand_mem.push_fractal(
+              args[2],
+              HandlerMemory::str_to_fractal("Malformed headers encountered")
+            );
+            return hand_mem;
           },
         }
       }
       let body = match hyper::body::to_bytes(res.body_mut()).await {
-        Ok(body) if header_success => body,
+        Ok(body) => body,
         Err(ee) => {
           hand_mem.push_fixed(args[2], 0i64);
           hand_mem.push_fractal(
             args[2],
             HandlerMemory::str_to_fractal(format!("{}", ee).as_str())
-          );
-          return hand_mem;
-        },
-        _ => {
-          hand_mem.push_fixed(args[2], 0i64);
-          hand_mem.push_fractal(
-            args[2],
-            HandlerMemory::str_to_fractal("Malformed headers encountered")
           );
           return hand_mem;
         },
