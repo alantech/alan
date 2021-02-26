@@ -508,7 +508,7 @@ export class Type {
       })
     }
     generics = generics.map(
-      g => scope.deepGet(g) || Type.fromStringWithMap(g, interfaceMap, scope) as Type
+      g => scope.deepGet(g) || Type.fromStringWithMap(g, interfaceMap, scope) as Type || new Type('-bogus-', false, true)
     )
     let otherGenerics = []
     if (otherTypeAst.has('opttypegenerics')) {
@@ -518,7 +518,7 @@ export class Type {
       })
     }
     otherGenerics = otherGenerics.map(
-      g => scope.deepGet(g) || Type.fromStringWithMap(g, interfaceMap, scope) as Type
+      g => scope.deepGet(g) || Type.fromStringWithMap(g, interfaceMap, scope) as Type || new Type('-bogus-', false, true)
     )
     return generics.every((t: Type, i) => t.typeApplies(otherGenerics[i], scope, interfaceMap))
   }

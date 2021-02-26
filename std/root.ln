@@ -173,7 +173,7 @@ export fn toString(n: Result<Stringifiable>): string {
 }
 export fn getOrExit(result: Result<any>): any {
   if result.isErr() {
-    stderrp(result.toString());
+    stderrp(result.getErr(noerr()).toString());
     exitop(1.toInt8());
   } else {
     return result.getR();

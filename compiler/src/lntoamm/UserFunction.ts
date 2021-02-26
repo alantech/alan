@@ -824,10 +824,12 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
   static dispatchFn(
     fns: Array<Fn>,
     argumentTypeList: Array<Type>,
-    scope: Scope
+    s: Scope
   ) {
     let fn = null
     for (let i = 0; i < fns.length; i++) {
+      const scope = new Scope(s)
+      scope.secondaryPar = (fns[i] as UserFunction).scope
       const args = fns[i].getArguments()
       const argList = Object.values(args)
       if (argList.length !== argumentTypeList.length) continue

@@ -61,19 +61,6 @@ export fn fetch(req: Request): Result<Response> {
   }
 }
 
-/*export fn fetch(req: Request): Result<Response> = httpreq(new InternalRequest {
-  method: req.method,
-  url: req.url,
-  headers: req.headers,
-  body: req.body,
-  connId: 0, // Unused by the client
-}).map(fn (r: InternalResponse): Response = new Response {
-  status: r.status,
-  headers: r.headers.toHashMap(),
-  body: r.body,
-  connId: r.connId,
-});*/
-
 export fn get(url: string): Result<string> {
   const res = fetch(new Request {
     method: 'GET',
