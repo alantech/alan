@@ -642,9 +642,11 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
 
   microstatementInlining(
     realArgNames: Array<string>,
-    scope: Scope,
+    s: Scope,
     microstatements: Array<Microstatement>,
   ) {
+    const scope = new Scope(s)
+    scope.secondaryPar = this.scope
     // Get the current statement length for usage in multiple cleanup routines
     const originalStatementLength = microstatements.length
     // First, check if there are any ENTERFN microstatements indicating a nested inlining, then

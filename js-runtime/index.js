@@ -933,7 +933,7 @@ module.exports = {
         body: body.length > 0 ? body : undefined,
       });
       const rstatus = response.status
-      const rheaders = response.headers
+      const rheaders = Object.entries(response.headers)
       const rbody = await response.text()
       return [ true, [ rstatus, rheaders, rbody, 0n ] ]
     } catch (e) {

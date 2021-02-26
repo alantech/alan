@@ -43,10 +43,10 @@ export fn fetch(req: Request): Result<Response> {
   const i = new InternalRequest {
     method: req.method,
     url: req.url,
-    headers: req.headers,
+    headers: req.headers.keyVal,
     body: req.body,
     connId: 0, // Unused by the client
-  });
+  };
   const ro = httpreq(i);
   if ro.isErr() {
     return ro;
@@ -54,7 +54,7 @@ export fn fetch(req: Request): Result<Response> {
     const o = ro.getR();
     return ok(new Response {
       status: o.status,
-      headers: o.headers.toHashMap(),
+      headers: toHashMap(o.headers),
       body: o.body,
       connId: o.connId,
     });
@@ -81,15 +81,15 @@ export fn get(url: string): Result<string> {
     headers: newHashMap('Content-Length', '0'),
     body: '',
   });
-  if res.isErr() {
-    return res;
-  } else {
+  if res.isOk() {
     const r = res.getR();
     if r.status < 300 {
       return ok(r.body);
     } else {
       return err('Response was not ok');
     }
+  } else {
+    return res;
   }
 }
 export fn post(url: string, body: string): Result<string> {

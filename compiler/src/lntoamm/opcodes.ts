@@ -19,7 +19,7 @@ const addBuiltIn = (name: string) => {
 ([
   'void', 'int8', 'int16', 'int32', 'int64', 'float32', 'float64', 'bool', 'string', 'function',
   'operator', 'Error', 'Maybe', 'Result', 'Either', 'Array', 'ExecRes', 'InitialReduce',
-  'InternalResponse', 'Seq', 'Self',
+  'KeyVal', 'InternalRequest', 'InternalResponse', 'Seq', 'Self',
 ].map(addBuiltIn))
 Type.builtinTypes['Array'].solidify(['string'], opcodeScope)
 opcodeScope.put('any', new Type('any', true, false, {}, {}, null, new Interface('any')))
@@ -29,6 +29,22 @@ opcodeScope.put(
 )
 Type.builtinTypes['Array'].solidify(['any'], opcodeScope)
 Type.builtinTypes['Array'].solidify(['anythingElse'], opcodeScope)
+Type.builtinTypes['KeyVal'].solidify(['string', 'string'], opcodeScope)
+Type.builtinTypes['Array'].solidify(['KeyVal<string, string>'], opcodeScope)
+// HTTP server opcode-related builtin Types hackery, also defined in std/http.ln
+Type.builtinTypes.InternalRequest.properties = {
+  method: opcodeScope.get('string') as Type,
+  url: opcodeScope.get('string') as Type,
+  headers: opcodeScope.get('Array<KeyVal<string, string>>') as Type,
+  body: opcodeScope.get('string') as Type,
+  connId: opcodeScope.get('int64') as Type,
+}
+Type.builtinTypes.InternalResponse.properties = {
+  status: opcodeScope.get('int64') as Type,
+  headers: opcodeScope.get('Array<KeyVal<string, string>>') as Type,
+  body: opcodeScope.get('string') as Type,
+  connId: opcodeScope.get('int64') as Type,
+}
 Type.builtinTypes.Maybe.solidify(['any'], opcodeScope)
 Type.builtinTypes.Result.solidify(['any'], opcodeScope)
 Type.builtinTypes.Result.solidify(['anythingElse'], opcodeScope)
@@ -40,6 +56,7 @@ Type.builtinTypes.Result.solidify(['float32'], opcodeScope)
 Type.builtinTypes.Result.solidify(['float64'], opcodeScope)
 Type.builtinTypes.Result.solidify(['string'], opcodeScope)
 Type.builtinTypes.Result.solidify(['InternalResponse'], opcodeScope)
+console.dir(opcodeScope.get('Result<InternalResponse>'), { colors: true, depth: 15, })
 Type.builtinTypes.Either.solidify(['any', 'anythingElse'], opcodeScope)
 Type.builtinTypes.InitialReduce.solidify(['any', 'anythingElse'], opcodeScope)
 opcodeScope.put("start", new Event("_start", Type.builtinTypes.void, true))
