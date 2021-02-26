@@ -1,4 +1,8 @@
+use std::env::var;
+use std::fs::read;
+
 use anycloud::deploy;
+use base64;
 use serde::Serialize;
 use serde_json::{json, Value};
 use futures::stream::StreamExt;
@@ -66,12 +70,27 @@ async fn post_v1(endpoint: &str, body: Value) -> String {
 }
 
 async fn post_v1_scale(cluster_id: &str, agz_b64: &str, deploy_token: &str, factor: &str) -> String {
-  let scale_body = json!({
-    "clusterId": cluster_id,
-    "agzB64": agz_b64,
-    "deployToken": deploy_token,
-    "clusterFactor": factor,
-  });
+  // transmit Dockerfile and app.tar.gz if available
+  let pwd = var("PWD").unwrap();
+  let dockerfile = read(format!("{}/Dockerfile", pwd));
+  let app_tar_gz = read(format!("{}/app.tar.gz", pwd));
+  let scale_body = if dockerfile.is_ok() && app_tar_gz.is_ok() {
+    json!({
+      "clusterId": cluster_id,
+      "agzB64": agz_b64,
+      "deployToken": deploy_token,
+      "clusterFactor": factor,
+      "DockerfileB64": base64::encode(dockerfile.unwrap()),
+      "appTarGzB64": base64::encode(app_tar_gz.unwrap()),
+    })
+  } else {
+    json!({
+      "clusterId": cluster_id,
+      "agzB64": agz_b64,
+      "deployToken": deploy_token,
+      "clusterFactor": factor,
+    })
+  };
   post_v1("scale", scale_body).await
 }
 
