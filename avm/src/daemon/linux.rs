@@ -118,7 +118,7 @@ pub async fn start(cluster_id: &str, agz_b64: &str, deploy_token: &str) {
   let agzb64 = agz_b64.to_string();
   task::spawn(async move {
     // TODO better period determination
-    let period = Duration::from_secs(30);
+    let period = Duration::from_secs(180);
     let dns = DNS::new(DOMAIN);
     let self_ip = get_private_ip().await;
     let mut cluster_size = 0;
