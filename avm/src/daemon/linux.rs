@@ -70,7 +70,7 @@ async fn post_v1(endpoint: &str, body: Value) -> String {
 }
 
 async fn post_v1_scale(cluster_id: &str, agz_b64: &str, deploy_token: &str, factor: &str) -> String {
-  // transmit Dockerfile and app.tar.gz if available
+  // transmit the Dockerfile and app.tar.gz if both are available
   let pwd = var("PWD").unwrap();
   let dockerfile = read(format!("{}/Dockerfile", pwd));
   let app_tar_gz = read(format!("{}/app.tar.gz", pwd));
