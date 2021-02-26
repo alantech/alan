@@ -2798,88 +2798,84 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       }
       let body = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&req, 3).0);
       let out_body = if body.len() > 0 { Some(body) /* once told me... */ } else { None };
-      let res = __httpreq(method, url, out_headers, out_body);
       hand_mem.init_fractal(args[2]);
-      match res {
+      let res = match __httpreq(method, url, out_headers, out_body) {
+        Ok(res) => res,
         Err(estring) => {
           hand_mem.push_fixed(args[2], 0i64);
           hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(&estring));
-        }
-        Ok(res) => {
-          let res = res.await;
-          //hand_mem.push_fixed(args[2], if res.is_ok() { 1i64 } else { 0i64 });
-          match res {
-            Ok(mut res) => {
-              // The headers and body can fail, so check those first
-              let mut header_success = true;
-              let headers = res.headers();
-              let mut headers_hm = HandlerMemory::new(None, headers.len() as i64);
-              for (i, (key, val)) in headers.iter().enumerate() {
-                let key_str = key.as_str();
-                let val_str = val.to_str();
-                match val_str {
-                  Ok(val_str) => {
-                    headers_hm.init_fractal(i as i64);
-                    headers_hm.push_fractal(i as i64, HandlerMemory::str_to_fractal(key_str));
-                    headers_hm.push_fractal(i as i64, HandlerMemory::str_to_fractal(val_str));
-                  },
-                  Err(_) => {
-                    header_success = false;
-                  },
-                }
-              }
-              let body = hyper::body::to_bytes(res.body_mut()).await;
-              match body {
-                Ok(body) if header_success => {
-                  let body_str = String::from_utf8(body.to_vec());
-                  match body_str {
-                    Ok(body_str) => {
-                      hand_mem.push_fixed(args[2], 1i64);
-                      let mut res_hm = HandlerMemory::new(None, 3);
-                      res_hm.init_fractal(0);
-                      res_hm.push_fixed(0, res.status().as_u16() as i64);
-                      HandlerMemory::transfer(&headers_hm, 0, &mut res_hm, CLOSURE_ARG_MEM_START);
-                      res_hm.push_register(0, CLOSURE_ARG_MEM_START);
-                      res_hm.push_fractal(0, HandlerMemory::str_to_fractal(&body_str));
-                      res_hm.push_fixed(0, 0i64);
-                      HandlerMemory::transfer(&res_hm, 0, &mut hand_mem, CLOSURE_ARG_MEM_START);
-                      hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
-                    },
-                    Err(ee) => {
-                      hand_mem.push_fixed(args[2], 0i64);
-                      hand_mem.push_fractal(
-                        args[2],
-                        HandlerMemory::str_to_fractal(format!("{}", ee).as_str())
-                      );
-                    },
-                  }
-                },
-                Err(ee) => {
-                  hand_mem.push_fixed(args[2], 0i64);
-                  hand_mem.push_fractal(
-                    args[2],
-                    HandlerMemory::str_to_fractal(format!("{}", ee).as_str())
-                  );
-                },
-                _ => {
-                  hand_mem.push_fixed(args[2], 0i64);
-                  hand_mem.push_fractal(
-                    args[2],
-                    HandlerMemory::str_to_fractal("Malformed headers encountered")
-                  );
-                },
-              }
-            },
-            Err(ee) => {
-              hand_mem.push_fixed(args[2], 0i64);
-              hand_mem.push_fractal(
-                args[2],
-                HandlerMemory::str_to_fractal(format!("{}", ee).as_str())
-              );
-            },
-          }
+          return hand_mem;
+        },
+      };
+      let mut res = match res.await {
+        Ok(res) => res,
+        Err(ee) => {
+          hand_mem.push_fixed(args[2], 0i64);
+          hand_mem.push_fractal(
+            args[2],
+            HandlerMemory::str_to_fractal(format!("{}", ee).as_str())
+          );
+          return hand_mem;
+        },
+      };
+      // The headers and body can fail, so check those first
+      let mut header_success = true;
+      let headers = res.headers();
+      let mut headers_hm = HandlerMemory::new(None, headers.len() as i64);
+      for (i, (key, val)) in headers.iter().enumerate() {
+        let key_str = key.as_str();
+        let val_str = val.to_str();
+        match val_str {
+          Ok(val_str) => {
+            headers_hm.init_fractal(i as i64);
+            headers_hm.push_fractal(i as i64, HandlerMemory::str_to_fractal(key_str));
+            headers_hm.push_fractal(i as i64, HandlerMemory::str_to_fractal(val_str));
+          },
+          Err(_) => {
+            header_success = false;
+          },
         }
       }
+      let body = match hyper::body::to_bytes(res.body_mut()).await {
+        Ok(body) if header_success => body,
+        Err(ee) => {
+          hand_mem.push_fixed(args[2], 0i64);
+          hand_mem.push_fractal(
+            args[2],
+            HandlerMemory::str_to_fractal(format!("{}", ee).as_str())
+          );
+          return hand_mem;
+        },
+        _ => {
+          hand_mem.push_fixed(args[2], 0i64);
+          hand_mem.push_fractal(
+            args[2],
+            HandlerMemory::str_to_fractal("Malformed headers encountered")
+          );
+          return hand_mem;
+        },
+      };
+      let body_str = match String::from_utf8(body.to_vec()) {
+        Ok(body_str) => body_str,
+        Err(ee) => {
+          hand_mem.push_fixed(args[2], 0i64);
+          hand_mem.push_fractal(
+            args[2],
+            HandlerMemory::str_to_fractal(format!("{}", ee).as_str())
+          );
+          return hand_mem;
+        },
+      };
+      hand_mem.push_fixed(args[2], 1i64);
+      let mut res_hm = HandlerMemory::new(None, 3);
+      res_hm.init_fractal(0);
+      res_hm.push_fixed(0, res.status().as_u16() as i64);
+      HandlerMemory::transfer(&headers_hm, 0, &mut res_hm, CLOSURE_ARG_MEM_START);
+      res_hm.push_register(0, CLOSURE_ARG_MEM_START);
+      res_hm.push_fractal(0, HandlerMemory::str_to_fractal(&body_str));
+      res_hm.push_fixed(0, 0i64);
+      HandlerMemory::transfer(&res_hm, 0, &mut hand_mem, CLOSURE_ARG_MEM_START);
+      hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
       hand_mem
     })
   });
