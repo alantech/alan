@@ -2800,6 +2800,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       match res {
         Ok(mut res) => {
           let mut res_hm = HandlerMemory::new(None, 3);
+          res_hm.init_fractal(0);
           res_hm.push_fixed(0, res.status().as_u16() as i64);
           let headers = res.headers();
           let mut headers_hm = HandlerMemory::new(None, headers.len() as i64);
@@ -2825,7 +2826,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
           HandlerMemory::transfer(&res_hm, 0, &mut hand_mem, CLOSURE_ARG_MEM_START);
           hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
         },
-        Err(ee) => hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(format!("{}", ee).as_str())),
+        Err(ee) => {
+          hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(format!("{}", ee).as_str()))
+        },
       }
       hand_mem
     })
