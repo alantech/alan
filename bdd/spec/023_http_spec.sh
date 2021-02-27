@@ -90,20 +90,26 @@ Describe "@std/http"
     }
     AfterAll after
 
-
-    FETCHOUTPUT="true
+    # The number of headers returned in the two runtimes is slightly different. Node includes the
+    # "connection: close" header and Hyper.rs does not
+    FETCHJSOUTPUT="true
 200
-2
+24
+export const comeGetMe = \"You got me!\""
+
+    FETCHAGCOUTPUT="true
+200
+24
 export const comeGetMe = \"You got me!\""
 
     It "runs js"
       When run test_js
-      The output should eq "$FETCHOUTPUT"
+      The output should eq "$FETCHJSOUTPUT"
     End
 
     It "runs agc"
       When run test_agc
-      The output should eq "$FETCHOUTPUT"
+      The output should eq "$FETCHAGCOUTPUT"
     End
   End
 
