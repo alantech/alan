@@ -99,7 +99,7 @@ export const comeGetMe = \"You got me!\""
 
     FETCHAGCOUTPUT="true
 200
-24
+23
 export const comeGetMe = \"You got me!\""
 
     It "runs js"
