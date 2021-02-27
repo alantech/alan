@@ -2821,6 +2821,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       // The headers and body can fail, so check those first
       let headers = res.headers();
       let mut headers_hm = HandlerMemory::new(None, headers.len() as i64);
+      headers_hm.init_fractal(CLOSURE_ARG_MEM_START);
       for (i, (key, val)) in headers.iter().enumerate() {
         let key_str = key.as_str();
         let val_str = val.to_str();
@@ -2829,6 +2830,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
             headers_hm.init_fractal(i as i64);
             headers_hm.push_fractal(i as i64, HandlerMemory::str_to_fractal(key_str));
             headers_hm.push_fractal(i as i64, HandlerMemory::str_to_fractal(val_str));
+            headers_hm.push_register(CLOSURE_ARG_MEM_START, i as i64);
           },
           Err(_) => {
             hand_mem.push_fixed(args[2], 0i64);
@@ -2866,7 +2868,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let mut res_hm = HandlerMemory::new(None, 3);
       res_hm.init_fractal(0);
       res_hm.push_fixed(0, res.status().as_u16() as i64);
-      HandlerMemory::transfer(&headers_hm, 0, &mut res_hm, CLOSURE_ARG_MEM_START);
+      HandlerMemory::transfer(&headers_hm, CLOSURE_ARG_MEM_START, &mut res_hm, CLOSURE_ARG_MEM_START);
       res_hm.push_register(0, CLOSURE_ARG_MEM_START);
       res_hm.push_fractal(0, HandlerMemory::str_to_fractal(&body_str));
       res_hm.push_fixed(0, 0i64);
@@ -2888,14 +2890,14 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     // Grab the headers
     let headers = req.headers();
     let mut headers_hm = HandlerMemory::new(None, headers.len() as i64);
-    let mut i = 0;
-    for (key, val) in headers.iter() {
+    headers_hm.init_fractal(CLOSURE_ARG_MEM_START);
+    for (i, (key, val)) in headers.iter().enumerate() {
       let key_str = key.as_str();
       let val_str = val.to_str().unwrap();
-      headers_hm.init_fractal(i);
-      headers_hm.push_fractal(i, HandlerMemory::str_to_fractal(key_str));
-      headers_hm.push_fractal(i, HandlerMemory::str_to_fractal(val_str));
-      i = i + 1;
+      headers_hm.init_fractal(i as i64);
+      headers_hm.push_fractal(i as i64, HandlerMemory::str_to_fractal(key_str));
+      headers_hm.push_fractal(i as i64, HandlerMemory::str_to_fractal(val_str));
+      headers_hm.push_register(CLOSURE_ARG_MEM_START, i as i64);
     }
     // Grab the body, if any
     let body_req = match hyper::body::to_bytes(req.into_body()).await {
@@ -2915,7 +2917,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     event.init_fractal(0);
     event.push_fractal(0, method);
     event.push_fractal(0, url);
-    HandlerMemory::transfer(&headers_hm, 0, &mut event, CLOSURE_ARG_MEM_START);
+    HandlerMemory::transfer(&headers_hm, CLOSURE_ARG_MEM_START, &mut event, CLOSURE_ARG_MEM_START);
     event.push_register(0, CLOSURE_ARG_MEM_START);
     event.push_fractal(0, body);
     event.push_fixed(0, conn_id);
