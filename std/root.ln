@@ -2306,7 +2306,7 @@ export fn set(arr: Array<bool>, idx: int64, val: bool) {
 // Ternary functions
 export fn pair(trueval: any, falseval: any) = new Array<any> [ trueval, falseval ];
 export fn cond(c: bool, options: Array<any>) = getR(options[1.sub(c.toInt64())]);
-export fn cond(c: bool, optional: function): void = condfn(c, optional);
+export fn cond(c: bool, optional: function): void = if c optional;
 
 // "clone" function useful for hoisting assignments and making duplicates
 export fn clone(a: any) = copyarr(a);

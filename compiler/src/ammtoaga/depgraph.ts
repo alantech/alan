@@ -507,7 +507,19 @@ export const opcodeParamMutabilities = {
   lenstr: [false],
   lenarr: [false],
   trim: [false],
-  condfn: [false, null],
+
+  // This is pretty hacky but I'm pretty sure it's the best/only way to
+  // do it with the current mutation tracking. It's obvious that in `condfn`
+  // it mutates the 1st arg and not the 2nd arg (the "cond table" and bool,
+  // respectively), but the closure (3rd arg) isn't actually evaluated until
+  // `evalcond`. However, we can't track mutations at the argument level
+  // across multiple instructions, so we can't simply say that the `evalcond`
+  // call mutates any values referenced by the closures passed into `condfn`
+  // for the given value. Instead, we mark the mutations as happening when
+  // the closure is passed in to `condfn` so that they don't get moved around
+  // by the AVM.
+  condfn: [true, false, null],
+  evalcond: [true, null],
   pusharr: [true, false, false],
   poparr: [true],
   delindx: [true, false],
