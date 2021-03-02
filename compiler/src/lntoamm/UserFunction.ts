@@ -8,8 +8,6 @@ import StatementType from './StatementType'
 import Type from './Type'
 import { Args, Fn, } from './Function'
 import { LPNode, } from '../lp'
-import { stat } from 'fs'
-import { passCommandToAction } from 'commander'
 
 class UserFunction implements Fn {
   name: string
@@ -270,6 +268,8 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
       let statement = this.statements[ii];
       // if/else desugaring
       if (statement.statementAst.has('conditionals')) {
+        console.log('--------------------------------------');
+        console.log(statement.statementAst)
         const StatementFrom = (str: string) => Statement.create(Ast.fromString(str), scope);
         // define the tail function
         let tailname = uuid().replace(/-/g, '_');
@@ -450,7 +450,6 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
       const fn = UserFunction.fromAst(Ast.functionAstFromString(fnStr), this.scope)
       return fn
     } else {
-      this.desugar(interfaceMap, scope);
       let hasNewType = false
       const newArgs = {}
       for (const argName in this.args) {

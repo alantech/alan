@@ -10,6 +10,7 @@ enum StatementType {
   ENTERFN = 'ENTERFN',
   EXIT = 'EXIT',
   CLOSUREDEF = 'CLOSUREDEF',
+  TAIL = 'TAIL',
 }
 
 export default StatementType

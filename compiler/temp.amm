@@ -1,0 +1,16 @@
+const _6ae81bfc_ab80_4064_abb5_add8b5a7c6fe: int64 = 0
+event stdout: string
+event exit: int8
+event stderr: string
+on _start fn (): void {
+  emit exit _6ae81bfc_ab80_4064_abb5_add8b5a7c6fe
+}
+on stdout fn (out: string): void {
+  const _42bd4b81_1b98_4cf6_aa7d_9be913a0c327: void = stdoutp(out)
+}
+on exit fn (status: int8): void {
+  const _ad6903fc_fbf3_4136_9cf3_1bb942768f19: void = exitop(status)
+}
+on stderr fn (err: string): void {
+  const _a5626057_2596_4ba5_934f_292af27594c4: void = stderrp(err)
+}

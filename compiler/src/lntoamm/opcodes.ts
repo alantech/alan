@@ -96,6 +96,9 @@ const addopcodes = (opcodes: object) => {
             microstatements.splice(bodyidx, 0, bodyclosure)
             realArgNames[2] = bodyclosure.outputName
           }
+          if (['evalcond'].includes(opcodeName)) {
+            // TODO: early return with a TAIL mStatement
+          }
           microstatements.push(new Microstatement(
             StatementType.CALL,
             scope,
