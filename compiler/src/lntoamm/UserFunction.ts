@@ -276,7 +276,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
         tailname = tailname.substring(0, tailname.length - 4) + 'tail';
         let tail = this.statements.splice(ii).splice(1); // tail is the rest of the function excluding the if/else. remove so we can deal with them in the new UserFunction
         let tailfn = new UserFunction(
-          uuid().replace(/-/g, '_'),
+          null,
           {},
           this.returnType,
           scope,
