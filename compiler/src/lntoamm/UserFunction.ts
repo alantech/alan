@@ -9,6 +9,7 @@ import Type from './Type'
 import { Args, Fn, } from './Function'
 import { LPNode, } from '../lp'
 import { stat } from 'fs'
+import { passCommandToAction } from 'commander'
 
 class UserFunction implements Fn {
   name: string
@@ -450,14 +451,13 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
     let ii = 0;
     while (ii < this.statements.length) {
       let statement = this.statements[ii];
-      let newStatements: LPNode[] = [];
-
       // if/else desugaring
       if (statement.statementAst.has('conditionals')) {
-        // if we're handling if/else, then we have to split the rest of the
-        // function anyways (since we pass it into evalcond)
-        let tail = this.statements.splice(ii).splice(1); // tail is the rest of the function excluding the if/else
-        // define the tail
+        const StatementFrom = (str: string) => Statement.create(Ast.fromString(str), scope);
+        // define the tail function
+        let tailname = uuid().replace(/-/g, '_');
+        tailname = tailname.substring(0, tailname.length - 4) + 'tail';
+        let tail = this.statements.splice(ii).splice(1); // tail is the rest of the function excluding the if/else. remove so we can deal with them in the new UserFunction
         let tailfn = new UserFunction(
           uuid().replace(/-/g, '_'),
           {},
@@ -466,224 +466,164 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
           tail,
           this.pure
         );
-        // parse the new function
-        let parsedTail = Ast.fromString(tailfn.toFnStr()); // possibility to throw, we don't catch that here.
-        // push to current fn's statements
-        this.statements.push(new Statement(parsedTail, scope, this.pure));
-
+        let tailfntext = `const ${tailname}: function = ${tailfn.toFnStr()};`;
+        this.statements.push(StatementFrom(tailfntext));
         // create the cond table
         let condTable = uuid().replace(/-/g, '_');
         condTable = condTable.substring(0, condTable.length - 4) + 'tble';
-        // TODO
-
+        const condTableDec = `const ${condTable}: Maybe<function> = none();`;
+        this.statements.push(StatementFrom(condTableDec))
+        // "populate" the cond table
         let conds = extractConds(statement.statementAst);
         for (let cond of conds) {
           let name = uuid().replace(/-/g, '_');
-          // i wanna keep all of the lengths the same for my own sanity (when
-          // reading amm output) and this doesn't *really* increase the likelihood
-          // of a naming collision.
-          name = '_' + name.substring(0, name.length - 5);
+          name = name.substring(0, name.length - 4);
           let condname = name + 'cond';
-          let evalname = name + 'eval';
-
-          // no, it's not that.
-          let condtext = `const ${condname}: bool = ${cond[0] === true ? 'true' : cond[0].t}`.trim();
-          let evalfn = cond[1].has('fnbody') ?
+          let thenname = name + 'then';
+          // condition
+          let condtext = `const ${condname}: bool = ${cond[0] === true ? 'true' : cond[0].t}`.trim() + ';';
+          this.statements.push(StatementFrom(condtext));
+          // executed
+          let thenfn = cond[1].has('fnbody') ?
                         UserFunction.fromFunctionbodyAst(cond[1].get('functionbody'), scope) :
-                        null;
+                        (() => {throw new Error('unhandled')})();
+          let thenfntext = `const ${thenname}: function = ${thenfn.toFnStr()};`;
+          this.statements.push(StatementFrom(thenfntext));
+          // populate
+          let calltext = `condfn(${condTable}, ${condname}, ${thenname});`;
+          this.statements.push(StatementFrom(calltext));
         }
-      }
-
-      if (newStatements.length > 0) {
-        this.statements.push
+        // evaluate the table and maybe evaluate the tail
+        let evaltext = `return evalcond(${condTable}, ${tailname})`;
+        this.statements.push(StatementFrom(evaltext));
       }
     }
   }
 
   maybeTransform(interfaceMap: Map<Type, Type>, scope?: Scope) {
-    // if (
-    //   this.statements.some(s => s.isConditionalStatement()) ||
-    //   this.statements.some(s => s.hasObjectLiteral())
-    // ) {
+    if (this.statements.some(s => s.hasObjectLiteral())) {
     //   // First pass, convert conditionals to `cond` fn calls and wrap assignment statements
-    //   let statementAsts = []
+      let statementAsts = []
     //   let hasConditionalReturn = false // Flag for potential second pass
-    //   for (let i = 0; i < this.statements.length; i++) {
-    //     let s = new Statement(
-    //       this.statements[i].statementAst,
-    //       this.statements[i].scope,
-    //       this.statements[i].pure,
-    //     )
-    //     // Potentially rewrite the type for the object literal to match the interface type used by
-    //     // a specific call
-    //     const str = s.statementAst.t
-    //     const corrected = str.replace(/new ([^<]+)<([^{\[]+)> *([{\[])/g, (
-    //       _: any,
-    //       basetypestr: string,
-    //       genericstr: string,
-    //       openstr: string,
-    //     ) => {
-    //       let newScope = this.scope
-    //       if (scope !== undefined) {
-    //         newScope = new Scope(scope)
-    //         newScope.secondaryPar = this.scope
-    //       }
-    //       const originaltypestr = `${basetypestr.trim()}<${genericstr.trim()}>`
-    //       let originalType = newScope.deepGet(originaltypestr) as Type
-    //       if (!originalType || !(originalType instanceof Type)) {
-    //         // It may be the first time this particular type has shown up, let's build it
-    //         const typeAst = Ast.fulltypenameAstFromString(originaltypestr)
-    //         const baseTypeName = typeAst.get('typename').t
-    //         const generics = []
-    //         if (typeAst.has('opttypegenerics')) {
-    //           const genericsAst = typeAst.get('opttypegenerics').get('generics')
-    //           generics.push(genericsAst.get('fulltypename').t)
-    //           genericsAst.get('cdr').getAll().forEach(r => {
-    //             generics.push(r.get('fulltypename').t)
-    //           })
-    //         }
-    //         const baseType = newScope.deepGet(baseTypeName) as Type
-    //         if (!baseType || !(baseType instanceof Type)) { // Now we panic
-    //           throw new Error('This should be impossible')
-    //         }
-    //         originalType = baseType.solidify(generics, newScope)
-    //       }
-    //       const replacementType = originalType.realize(interfaceMap, newScope)
-    //       return `new ${replacementType.typename} ${openstr}`
-    //     })
-    //     // TODO: Get rid of these regex-based type corrections
-    //     const secondCorrection = corrected.replace(/: (?!new )([^:<,]+)<([^{\)]+)>( *[,{\)])/g, (
-    //       _: any,
-    //       basetypestr: string,
-    //       genericstr: string,
-    //       openstr: string,
-    //     ) => {
-    //       let newScope = this.scope
-    //       if (scope !== undefined) {
-    //         newScope = new Scope(scope)
-    //         newScope.secondaryPar = this.scope
-    //       }
-    //       const originaltypestr = `${basetypestr.trim()}<${genericstr.trim()}>`
-    //       let originalType = newScope.deepGet(originaltypestr) as Type
-    //       if (!originalType || !(originalType instanceof Type)) {
-    //         // It may be the first time this particular type has shown up, let's build it
-    //         const typeAst = Ast.fulltypenameAstFromString(originaltypestr)
-    //         const baseTypeName = typeAst.get('typename').t
-    //         const generics = []
-    //         if (typeAst.has('opttypegenerics')) {
-    //           const genericsAst = typeAst.get('opttypegenerics').get('generics')
-    //           generics.push(genericsAst.get('fulltypename').t)
-    //           genericsAst.get('cdr').getAll().forEach(r => {
-    //             generics.push(r.get('fulltypename').t)
-    //           })
-    //         }
-    //         const baseType = newScope.deepGet(baseTypeName) as Type
-    //         if (!baseType || !(baseType instanceof Type)) { // Now we panic
-    //           throw new Error('This should be impossible')
-    //         }
-    //         originalType = baseType.solidify(generics, newScope)
-    //       }
-    //       const replacementType = originalType.realize(interfaceMap, newScope)
-    //       return `: ${replacementType.typename}${openstr}`
-    //     })
-    //     const correctedAst = Ast.statementAstFromString(secondCorrection)
-    //     s.statementAst = correctedAst
-    //     // statementAsts.push(correctedAst)
-    //     let newScope = this.scope
-    //     if (scope !== undefined) {
-    //       newScope = new Scope(scope)
-    //       newScope.secondaryPar = this.scope
-    //     }
-    //     if (s.isConditionalStatement()) {
-    //       const cond = s.statementAst.get('conditionals')
-    //       const res = UserFunction.conditionalToCond(cond, newScope)
-    //       const newStatements = res[0] as Array<LPNode>
-    //       if (res[1]) hasConditionalReturn = true
-    //       statementAsts.push(...newStatements)
-    //     } else if (s.statementAst.has('assignments')) {
-    //       const a = s.statementAst.get('assignments')
-    //       const wrappedAst = Ast.statementAstFromString(`
-    //         ${a.get('varn').t} = ref(${a.get('assignables').t})
-    //       `.trim() + ';')
-    //       statementAsts.push(wrappedAst)
-    //     } else if (
-    //       s.statementAst.has('declarations') &&
-    //       s.statementAst.get('declarations').has('letdeclaration')
-    //     ) {
-    //       const l = s.statementAst.get('declarations').get('letdeclaration')
-    //       const name = l.get('variable').t
-    //       const type = l.has('typedec') ? l.get('typedec').get('fulltypename').t : undefined
-    //       const v = l.get('assignables').t
-    //       const wrappedAst = Ast.statementAstFromString(`
-    //         let ${name}${type ? `: ${type}` : ''} = ref(${v})
-    //       `.trim() + ';')
-    //       statementAsts.push(wrappedAst)
-    //     } else {
-    //       statementAsts.push(s.statementAst)
-    //     }
-    //   }
-    //   // Second pass, there was a conditional return, mutate everything *again* so the return is
-    //   // instead hoisted into writing a closure variable
-    //   if (hasConditionalReturn) {
-    //     // Need the UUID to make sure this is unique if there's multiple layers of nested returns
-    //     const retNamePostfix = "_" + uuid().replace(/-/g, "_")
-    //     const retVal = "retVal" + retNamePostfix
-    //     const retNotSet = "retNotSet" + retNamePostfix
-    //     const retValStatement = Ast.statementAstFromString(`
-    //       let ${retVal}: ${this.getReturnType().typename} = clone()
-    //     `.trim() + ';')
-    //     const retNotSetStatement = Ast.statementAstFromString(`
-    //       let ${retNotSet}: bool = clone(true)
-    //     `.trim() + ';')
-    //     let replacementStatements = [retValStatement, retNotSetStatement]
-    //     replacementStatements.push(...UserFunction.earlyReturnRewrite(
-    //       retVal, retNotSet, statementAsts, this.scope
-    //     ))
-    //     replacementStatements.push(Ast.statementAstFromString(`
-    //       return ${retVal}
-    //     `.trim() + ';'))
-    //     statementAsts = replacementStatements
-    //   }
-
-    //   // TODO: Should these be attached to the scope or should callers provide a merged scope?
-    //   const newArgs = {}
-    //   for (const argName in this.args) {
-    //     const a = this.args[argName]
-    //     newArgs[argName] = interfaceMap.has(a) ? interfaceMap.get(a) : a
-    //     this.scope.put(newArgs[argName].typename, newArgs[argName])
-    //   }
-    //   const newRet = interfaceMap.has(this.getReturnType()) ?
-    //     interfaceMap.get(this.getReturnType()) : this.getReturnType()
-    //   this.scope.put(newRet.typename, newRet)
-
-    //   const fnStr = `
-    //     fn ${this.name || ''} (${Object.keys(newArgs).map(argName => `${argName}: ${newArgs[argName].typename}`).join(', ')}): ${newRet.typename} {
-    //       ${statementAsts.map(s => s.t).join('\n')}
-    //     }
-    //   `.trim()
-    //   const fn = UserFunction.fromAst(Ast.functionAstFromString(fnStr), this.scope)
-    //   return fn
-    // } else {
-
-    this.desugar(interfaceMap, scope);
-    let hasNewType = false
-    const newArgs = {}
-    for (const argName in this.args) {
-      const a = this.args[argName]
-      newArgs[argName] = interfaceMap.has(a) ? interfaceMap.get(a) : a
-      if (newArgs[argName] !== this.args[argName]) {
-        this.scope.put(newArgs[argName].typename, newArgs[argName])
-        hasNewType = true
+      for (let i = 0; i < this.statements.length; i++) {
+        let s = new Statement(
+          this.statements[i].statementAst,
+          this.statements[i].scope,
+          this.statements[i].pure,
+        )
+        // Potentially rewrite the type for the object literal to match the interface type used by
+        // a specific call
+        const str = s.statementAst.t
+        const corrected = str.replace(/new ([^<]+)<([^{\[]+)> *([{\[])/g, (
+          _: any,
+          basetypestr: string,
+          genericstr: string,
+          openstr: string,
+        ) => {
+          let newScope = this.scope
+          if (scope !== undefined) {
+            newScope = new Scope(scope)
+            newScope.secondaryPar = this.scope
+          }
+          const originaltypestr = `${basetypestr.trim()}<${genericstr.trim()}>`
+          let originalType = newScope.deepGet(originaltypestr) as Type
+          if (!originalType || !(originalType instanceof Type)) {
+            // It may be the first time this particular type has shown up, let's build it
+            const typeAst = Ast.fulltypenameAstFromString(originaltypestr)
+            const baseTypeName = typeAst.get('typename').t
+            const generics = []
+            if (typeAst.has('opttypegenerics')) {
+              const genericsAst = typeAst.get('opttypegenerics').get('generics')
+              generics.push(genericsAst.get('fulltypename').t)
+              genericsAst.get('cdr').getAll().forEach(r => {
+                generics.push(r.get('fulltypename').t)
+              })
+            }
+            const baseType = newScope.deepGet(baseTypeName) as Type
+            if (!baseType || !(baseType instanceof Type)) { // Now we panic
+              throw new Error('This should be impossible')
+            }
+            originalType = baseType.solidify(generics, newScope)
+          }
+          const replacementType = originalType.realize(interfaceMap, newScope)
+          return `new ${replacementType.typename} ${openstr}`
+        })
+        // TODO: Get rid of these regex-based type corrections
+        const secondCorrection = corrected.replace(/: (?!new )([^:<,]+)<([^{\)]+)>( *[,{\)])/g, (
+          _: any,
+          basetypestr: string,
+          genericstr: string,
+          openstr: string,
+        ) => {
+          let newScope = this.scope
+          if (scope !== undefined) {
+            newScope = new Scope(scope)
+            newScope.secondaryPar = this.scope
+          }
+          const originaltypestr = `${basetypestr.trim()}<${genericstr.trim()}>`
+          let originalType = newScope.deepGet(originaltypestr) as Type
+          if (!originalType || !(originalType instanceof Type)) {
+            // It may be the first time this particular type has shown up, let's build it
+            const typeAst = Ast.fulltypenameAstFromString(originaltypestr)
+            const baseTypeName = typeAst.get('typename').t
+            const generics = []
+            if (typeAst.has('opttypegenerics')) {
+              const genericsAst = typeAst.get('opttypegenerics').get('generics')
+              generics.push(genericsAst.get('fulltypename').t)
+              genericsAst.get('cdr').getAll().forEach(r => {
+                generics.push(r.get('fulltypename').t)
+              })
+            }
+            const baseType = newScope.deepGet(baseTypeName) as Type
+            if (!baseType || !(baseType instanceof Type)) { // Now we panic
+              throw new Error('This should be impossible')
+            }
+            originalType = baseType.solidify(generics, newScope)
+          }
+          const replacementType = originalType.realize(interfaceMap, newScope)
+          return `: ${replacementType.typename}${openstr}`
+        })
+        const correctedAst = Ast.statementAstFromString(secondCorrection)
+        s.statementAst = correctedAst
+        // statementAsts.push(correctedAst)
+        let newScope = this.scope
+        if (scope !== undefined) {
+          newScope = new Scope(scope)
+          newScope.secondaryPar = this.scope
+        }
+        if (s.statementAst.has('assignments')) {
+          const a = s.statementAst.get('assignments')
+          const wrappedAst = Ast.statementAstFromString(`
+            ${a.get('varn').t} = ref(${a.get('assignables').t})
+          `.trim() + ';')
+          statementAsts.push(wrappedAst)
+        } else if (
+          s.statementAst.has('declarations') &&
+          s.statementAst.get('declarations').has('letdeclaration')
+        ) {
+          const l = s.statementAst.get('declarations').get('letdeclaration')
+          const name = l.get('variable').t
+          const type = l.has('typedec') ? l.get('typedec').get('fulltypename').t : undefined
+          const v = l.get('assignables').t
+          const wrappedAst = Ast.statementAstFromString(`
+            let ${name}${type ? `: ${type}` : ''} = ref(${v})
+          `.trim() + ';')
+          statementAsts.push(wrappedAst)
+        } else {
+          statementAsts.push(s.statementAst)
+        }
       }
-    }
-    const newRet = interfaceMap.has(this.getReturnType()) ?
-      interfaceMap.get(this.getReturnType()) : this.getReturnType()
-    if (newRet !== this.getReturnType()) {
+      // TODO: Should these be attached to the scope or should callers provide a merged scope?
+      const newArgs = {}
+      for (const argName in this.args) {
+        const a = this.args[argName]
+        newArgs[argName] = interfaceMap.has(a) ? interfaceMap.get(a) : a
+        this.scope.put(newArgs[argName].typename, newArgs[argName])
+      }
+      const newRet = interfaceMap.has(this.getReturnType()) ?
+        interfaceMap.get(this.getReturnType()) : this.getReturnType()
       this.scope.put(newRet.typename, newRet)
-      hasNewType = true
-    }
-    if (hasNewType) {
-      const statementAsts = this.statements.map(s => s.statementAst)
+
       const fnStr = `
         fn ${this.name || ''} (${Object.keys(newArgs).map(argName => `${argName}: ${newArgs[argName].typename}`).join(', ')}): ${newRet.typename} {
           ${statementAsts.map(s => s.t).join('\n')}
@@ -692,9 +632,36 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
       const fn = UserFunction.fromAst(Ast.functionAstFromString(fnStr), this.scope)
       return fn
     } else {
-      return this
+      this.desugar(interfaceMap, scope);
+      let hasNewType = false
+      const newArgs = {}
+      for (const argName in this.args) {
+        const a = this.args[argName]
+        newArgs[argName] = interfaceMap.has(a) ? interfaceMap.get(a) : a
+        if (newArgs[argName] !== this.args[argName]) {
+          this.scope.put(newArgs[argName].typename, newArgs[argName])
+          hasNewType = true
+        }
+      }
+      const newRet = interfaceMap.has(this.getReturnType()) ?
+        interfaceMap.get(this.getReturnType()) : this.getReturnType()
+      if (newRet !== this.getReturnType()) {
+        this.scope.put(newRet.typename, newRet)
+        hasNewType = true
+      }
+      if (hasNewType) {
+        const statementAsts = this.statements.map(s => s.statementAst)
+        const fnStr = `
+          fn ${this.name || ''} (${Object.keys(newArgs).map(argName => `${argName}: ${newArgs[argName].typename}`).join(', ')}): ${newRet.typename} {
+            ${statementAsts.map(s => s.t).join('\n')}
+          }
+        `.trim()
+        const fn = UserFunction.fromAst(Ast.functionAstFromString(fnStr), this.scope)
+        return fn
+      } else {
+        return this
+      }
     }
-    // }
   }
 
   microstatementInlining(
