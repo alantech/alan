@@ -1,14 +1,10 @@
-from @std/app import start, exit, print
+from @std/app import start, print, exit
 
 on start {
-  print('start');
-  if true {
-    print('true');
-  } else if flase {
-    print('false');
+  if 0 == 1 {
+    print('true!');
   } else {
-    print('elsed');
+    print('oof');
   }
-  print('another closure');
   emit exit 0;
 }
