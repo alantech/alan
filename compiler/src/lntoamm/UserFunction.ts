@@ -311,9 +311,10 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
           this.statements.push(StatementFrom(calltext));
         }
         // evaluate the table and maybe evaluate the tail
-        let evaltext = `return evalcond(${condTable}, ${tailname})`;
+        let evaltext = `return evalcond(${condTable}, ${tailname});`;
         this.statements.push(StatementFrom(evaltext));
       }
+      ii++;
     }
   }
 
