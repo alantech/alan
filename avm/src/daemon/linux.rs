@@ -30,8 +30,6 @@ struct CPUSecsV1 {
   ioWait: f64,
   softIrq: f64,
   steal: f64,
-  guest: f64,
-  guestNice: f64,
 }
 
 #[allow(non_snake_case)]
@@ -114,8 +112,6 @@ async fn get_v1_stats() -> VMStatsV1 {
         ioWait: cpu.io_wait().get::<second>(),
         softIrq: cpu.soft_irq().get::<second>(),
         steal: cpu.steal().get::<second>(),
-        guest: cpu.guest().get::<second>(),
-        guestNice: cpu.guest_nice().get::<second>(),
       }
     }).collect().await,
     totalMemoryKb: memory.total().get::<kilobyte>(),
