@@ -20,7 +20,7 @@ use crate::daemon::lrh::LogRendezvousHash;
 use crate::vm::run::run_agz_b64;
 
 #[derive(Debug, Serialize)]
-struct CPUSecsV1 {
+struct CPUStatsV1 {
   user: f64,
   system: f64,
   idle: f64,
@@ -98,13 +98,16 @@ async fn get_v1_stats() -> VMStatsV1 {
   let memory = memory::memory().await.expect("Failed to get system memory information");
   let swap = memory::swap().await.expect("Failed to get swap information");
   VMStatsV1 {
-    cpuSecs: cpu::times().map(|r| {
+    cpuStats: cpu::times().map(|r| {
       let cpu = r.expect("Failed to get CPU times");
-      CPUSecsV1 {
+      CPUStatsV1 {
         user: cpu.user().get::<second>(),
         system: cpu.system().get::<second>(),
         idle: cpu.idle().get::<second>(),
-        interrupt: cpu.irq().get::<second>(),
+        irq: cpu.irq().get::<second>(),
+        softirq: cpu.softirq().get::<second>(),
+        steal: cpu.steal().get::<second>(),
+        guest: cpu.guest().get::<second>(),
         nice: cpu.nice().get::<second>(),
         iowait: cpu.io_wait().get::<second>(),
       }
