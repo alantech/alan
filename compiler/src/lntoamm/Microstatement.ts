@@ -562,7 +562,7 @@ ${objectLiteralsAst.t} on line ${objectLiteralsAst.line}:${objectLiteralsAst.cha
         scope,
         true,
         last.outputName,
-        last.outputType
+        fn.getReturnType(), // if this causes a type error, that's good. (a little hack to avoid having to grab the return type for condfn and evalcond)
       ))
     }
     microstatements.push(new Microstatement(
@@ -1650,9 +1650,12 @@ ${assignablesAst.t}`
           scope,
           true,
           condname,
+          scope.deepGet('bool') as Type,
+          ['true'],
         ));
       } else {
         // simulate a boolean assignment
+        // TODO: replace with real code.
         const haxx = NamedAnd.build({
           'variable': Token.build(condname),
           'assignables': cond, // probably wrong but idc software works for you, not the other way around.
@@ -1681,6 +1684,19 @@ ${assignablesAst.t}`
       );
     });
     // now we insert the TAIL and let UserFunction take care of the rest
+    opcodes.exportScope.get('evalcond')[0].microstatementInlining(
+      [tableName],
+      scope,
+      microstatements
+    );
+    // microstatements.push(new Microstatement(
+    //   StatementType.TAIL,
+    //   scope,
+    //   false, // right?
+    //   '',
+    //   null,
+    //   [tableName],
+    // ))
   }
 
   static fromStatement(

@@ -654,11 +654,49 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
     // after this one so we don't mark non-recursive calls to a function multiple times as recursive
     // TODO: This is not the most efficient way to do things, come up with a better metadata
     // mechanism to pass around.
+    let tailed: [Microstatement, Array<Microstatement>] | null = null;
     for (let i = originalStatementLength; i < microstatements.length; i++) {
       if (microstatements[i].statementType === StatementType.ENTERFN) {
         microstatements.splice(i, 1)
         i--
+      } else if (microstatements[i].statementType === StatementType.TAIL) {
+        tailed = [
+          // TAIL mStmt
+          microstatements.splice(i, 1)[0],
+          // everything that goes in the tail function. even if there are no more elements,
+          // assume we still need to provide an empty closure.
+          microstatements.splice(i).filter(ms => ms.statementType !== StatementType.ENTERFN)
+        ];
+        break;
       }
+    }
+    if (tailed !== null) {
+      let [tail, tailfn] = tailed;
+      // TODO: more user-friendly errors here
+      if (tail == null) throw new Error('set prep for tail but no tail');
+      // still allows for []
+      else if (tailfn == null) throw new Error('set prep for tailfn but it cant be used');
+      // we need to define the tailfn first
+      let tailFnName = uuid().replace(/-/g, '_');
+      microstatements.push(new Microstatement(
+        StatementType.CLOSURE,
+        scope,
+        true,
+        tailFnName,
+        Type.builtinTypes['function'],
+        [],
+        [],
+        '',
+        false, // right?
+        tailfn,
+        {},
+        this.getReturnType(), // TODO: might have to check length of mStmts and say void...
+      ));
+      // now fix and insert the TAIL
+      tail.statementType = StatementType.EXIT;
+      tail.inputNames.push(tailFnName);
+      tail.outputType = this.getReturnType()
+      microstatements.push(tail);
     }
   }
 
