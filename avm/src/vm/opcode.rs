@@ -3181,18 +3181,25 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let mut hm = HandlerMemory::fork(hand_mem.clone());
       // MUST read these first in case the arguments are themselves closure args being overwritten
       // for the recursive function.
+      // Since we mutate the `Self` object in this, it *must* be read as mutable *first* to make
+      // sure that the later registration of the `Self` object is pointing at the correct copy
+      let slf = hm.read_mut_fractal(args[0]);
+      let recurse_fn = HandlerFragment::new(slf[1].1, 0);
+      let seq_addr = slf[0].0;
+      drop(slf);
       hm.register(CLOSURE_ARG_MEM_START + 1, args[0], false);
       hm.register(CLOSURE_ARG_MEM_START + 2, args[1], false);
-      let slf = hm.read_fractal(args[0]);
-      let recurse_fn = HandlerFragment::new(slf.read_fixed(1), 0);
-      let (mut seq, _) = hm.read_from_fractal(&slf, 0);
-      let curr = seq.read_fixed(0);
-      if curr < seq.read_fixed(1) {
-        hm.write_fixed_in_fractal(&mut seq, 0, curr + 1);
+      let seq = hm.read_mut_fractal_by_idx(seq_addr);
+      let curr = seq[0].1;
+      if curr < seq[1].1 {
+        seq[0].1 = curr + 1;
         hm = recurse_fn.run(hm).await;
         hm = hm.drop_parent();
-        hand_mem.join(hm);
-        hand_mem.register(args[2], CLOSURE_ARG_MEM_START, false);
+        // CANNOT `join` the memory like usual because the nested `recurse` calls have set "future"
+        // values in the handler and will cause weird behavior. Only transfer the Self mutation and
+        // the return value between iterations
+        HandlerMemory::transfer(&mut hm, CLOSURE_ARG_MEM_START, &mut hand_mem, args[2]);
+        HandlerMemory::transfer(&mut hm, CLOSURE_ARG_MEM_START + 1, &mut hand_mem, args[0]);
       } else {
         hand_mem.init_fractal(args[2]);
         hand_mem.push_fixed(args[2], 0);
