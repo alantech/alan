@@ -86,7 +86,7 @@ impl Program {
     self.event_handlers.insert(httpconn, Vec::new());
     // NOP
     // the compiler should prevent programs from handling this event.
-    let nop: i64 = i64::MAX;
+    let nop: i64 = i64::from(BuiltInEvents::NOP);
     self.event_pls.insert(nop, 0);
     self.event_handlers.insert(nop, Vec::with_capacity(0));
   }

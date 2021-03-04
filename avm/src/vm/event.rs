@@ -20,6 +20,7 @@ pub enum BuiltInEvents {
   START,
   /// '__conn ' in ASCII or 5f5f 636f 6e6e 20(80)
   HTTPCONN,
+  NOP,
 }
 
 impl From<BuiltInEvents> for i64 {
@@ -27,6 +28,7 @@ impl From<BuiltInEvents> for i64 {
     match ev {
       BuiltInEvents::START => -9213673853036498142,
       BuiltInEvents::HTTPCONN => -9214243417005793441,
+      BuiltInEvents::NOP => i64::MAX,
     }
   }
 }
