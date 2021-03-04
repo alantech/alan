@@ -49,6 +49,7 @@ pub type HMFuture = Pin<Box<dyn Future<Output = Arc<HandlerMemory>> + Send>>;
 /// A function to be run for an opcode.
 pub(crate) enum OpcodeFn {
   Cpu(fn(&[i64], &mut Arc<HandlerMemory>) -> Option<EventEmit>),
+  UnpredCpu(fn(Vec<i64>, Arc<HandlerMemory>) -> HMFuture),
   Io(fn(Vec<i64>, Arc<HandlerMemory>) -> HMFuture),
 }
 
@@ -56,6 +57,7 @@ impl Debug for OpcodeFn {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
       OpcodeFn::Cpu(_) => write!(f, "cpu"),
+      OpcodeFn::UnpredCpu(_) => write!(f, "unpred_cpu"),
       OpcodeFn::Io(_) => write!(f, "io"),
     }
   }
@@ -88,6 +90,7 @@ impl ByteOpcode {
   pub(crate) fn pred_exec(&self) -> bool {
     match self.fun {
       OpcodeFn::Cpu(_) => true,
+      OpcodeFn::UnpredCpu(_) => false,
       OpcodeFn::Io(_) => false,
     }
   }
@@ -117,6 +120,60 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         _id: id,
         _name: stringify!($name).to_string(),
         fun: OpcodeFn::Cpu($name),
+      };
+      o.insert(id, opcode);
+    };
+  }
+  macro_rules! unpred_cpu {
+    ($name:ident => fn ($args:ident , $hand_mem:ident) $body:block) => {
+      #[allow(non_snake_case)]
+      fn $name($args: Vec<i64>, $hand_mem: Arc<HandlerMemory>) -> HMFuture {
+        $body
+      }
+      let id = opcode_id(stringify!($name));
+      let opcode = ByteOpcode {
+        _id: id,
+        _name: stringify!($name).to_string(),
+        fun: OpcodeFn::UnpredCpu($name),
+      };
+      o.insert(id, opcode);
+    };
+    ($name:ident => fn (mut $args:ident , $hand_mem:ident) $body:block) => {
+      #[allow(non_snake_case)]
+      fn $name(mut $args: Vec<i64>, $hand_mem: Arc<HandlerMemory>) -> HMFuture {
+        $body
+      }
+      let id = opcode_id(stringify!($name));
+      let opcode = ByteOpcode {
+        _id: id,
+        _name: stringify!($name).to_string(),
+        fun: OpcodeFn::UnpredCpu($name),
+      };
+      o.insert(id, opcode);
+    };
+    ($name:ident => fn ($args:ident , mut $hand_mem:ident) $body:block) => {
+      #[allow(non_snake_case)]
+      fn $name($args: Vec<i64>, mut $hand_mem: Arc<HandlerMemory>) -> HMFuture {
+        $body
+      }
+      let id = opcode_id(stringify!($name));
+      let opcode = ByteOpcode {
+        _id: id,
+        _name: stringify!($name).to_string(),
+        fun: OpcodeFn::UnpredCpu($name),
+      };
+      o.insert(id, opcode);
+    };
+    ($name:ident => fn (mut $args:ident , mut $hand_mem:ident) $body:block) => {
+      #[allow(non_snake_case)]
+      fn $name(mut $args: Vec<i64>, mut $hand_mem: Arc<HandlerMemory>) -> HMFuture {
+        $body
+      }
+      let id = opcode_id(stringify!($name));
+      let opcode = ByteOpcode {
+        _id: id,
+        _name: stringify!($name).to_string(),
+        fun: OpcodeFn::UnpredCpu($name),
       };
       o.insert(id, opcode);
     };
@@ -2297,7 +2354,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem
     })
   });
-  io!(mapl => fn(args, mut hand_mem) {
+  unpred_cpu!(mapl => fn(args, mut hand_mem) {
     Box::pin(async move {
       let fractal = hand_mem.read_fractal(args[0]);
       let subhandler = HandlerFragment::new(args[1], 0);
@@ -2353,7 +2410,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem
     })
   });
-  io!(eachl => fn(args, mut hand_mem) {
+  unpred_cpu!(eachl => fn(args, mut hand_mem) {
     Box::pin(async move {
       let n = hand_mem.read_fractal(args[0]).len();
       let subhandler = HandlerFragment::new(args[1], 0);
@@ -2396,7 +2453,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem
     })
   });
-  io!(findl => fn(args, mut hand_mem) {
+  unpred_cpu!(findl => fn(args, mut hand_mem) {
     Box::pin(async move {
       let fractal = hand_mem.read_fractal(args[0]);
       let subhandler = HandlerFragment::new(args[1], 0);
@@ -2440,7 +2497,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem
     })
   });
-  io!(somel => fn(args, mut hand_mem) {
+  unpred_cpu!(somel => fn(args, mut hand_mem) {
     Box::pin(async move {
       let fractal = hand_mem.read_fractal(args[0]);
       let subhandler = HandlerFragment::new(args[1], 0);
@@ -2480,7 +2537,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem
     })
   });
-  io!(everyl => fn(args, mut hand_mem) {
+  unpred_cpu!(everyl => fn(args, mut hand_mem) {
     Box::pin(async move {
       let fractal = hand_mem.read_fractal(args[0]);
       let subhandler = HandlerFragment::new(args[1], 0);
@@ -2548,7 +2605,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem
     })
   });
-  io!(reducel => fn(args, mut hand_mem) {
+  unpred_cpu!(reducel => fn(args, mut hand_mem) {
     Box::pin(async move {
       let fractal = hand_mem.read_fractal(args[0]);
       if fractal.len() == 0 {
@@ -2628,7 +2685,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   //     hand_mem
   //   })
   // });
-  io!(foldl => fn(args, mut hand_mem) {
+  unpred_cpu!(foldl => fn(args, mut hand_mem) {
     Box::pin(async move {
       let obj = hand_mem.read_fractal(args[0]);
       let (arr, _) = hand_mem.read_from_fractal(&obj, 0);
@@ -2681,7 +2738,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem
     })
   });
-  io!(filterl => fn(args, mut hand_mem) {
+  unpred_cpu!(filterl => fn(args, mut hand_mem) {
     Box::pin(async move {
       let fractal = hand_mem.read_fractal(args[0]);
       let len = fractal.len();
@@ -2700,7 +2757,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
 
   // Conditional opcode
-  io!(condfn => fn(args, mut hand_mem) {
+  unpred_cpu!(condfn => fn(args, mut hand_mem) {
     Box::pin(async move {
       let cond = hand_mem.read_fixed(args[0]);
       let subhandler = HandlerFragment::new(args[1], 0);
@@ -3116,7 +3173,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }
     None
   });
-  io!(seqeach => fn(args, mut hand_mem) {
+  unpred_cpu!(seqeach => fn(args, mut hand_mem) {
     Box::pin(async move {
       let mut seq = hand_mem.read_fractal(args[0]);
       let current = seq.read_fixed(0);
@@ -3135,7 +3192,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem
     })
   });
-  io!(seqwhile => fn(args, mut hand_mem) {
+  unpred_cpu!(seqwhile => fn(args, mut hand_mem) {
     Box::pin(async move {
       let seq = hand_mem.read_fractal(args[0]);
       let mut current = seq.read_fixed(0);
@@ -3157,7 +3214,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem
     })
   });
-  io!(seqdo => fn(args, mut hand_mem) {
+  unpred_cpu!(seqdo => fn(args, mut hand_mem) {
     Box::pin(async move {
       let seq = hand_mem.read_fractal(args[0]);
       let mut current = seq.read_fixed(0);
@@ -3176,7 +3233,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem
     })
   });
-  io!(selfrec => fn(args, mut hand_mem) {
+  unpred_cpu!(selfrec => fn(args, mut hand_mem) {
     Box::pin(async move {
       let mut hm = HandlerMemory::fork(hand_mem.clone());
       // MUST read these first in case the arguments are themselves closure args being overwritten

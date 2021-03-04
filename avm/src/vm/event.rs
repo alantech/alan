@@ -68,42 +68,49 @@ impl EventHandler {
 
   pub fn add_instruction(self: &mut EventHandler, ins: Instruction) {
     self.ins_count += 1;
-    if ins.opcode.pred_exec() {
-      let mut frag = self.fragments.pop().unwrap_or(Vec::new());
-      if frag.len() > 0 && !frag[frag.len() - 1].opcode.pred_exec() {
-        // if last instruction in the last fragment is a (io or cpu) capstone start a new fragment
-        self.fragments.push(frag);
-        self.fragments.push(vec![ins]);
-      } else {
-        // add to last fragment
-        frag.push(ins);
-        self.fragments.push(frag);
-      }
-    } else {
-      // io opcode is a "movable capstone" in execution
-      let cur_max_dep = ins.dep_ids.iter().max().unwrap_or(&-1);
-      // merge this capstone with an existing one if possible
-      for frag_idx in &self.movable_capstones {
-        let fragment = self.fragments.get_mut(*frag_idx).unwrap();
-        let prev_max_dep = fragment
-          .iter()
-          .map(|i| i.dep_ids.iter().max().unwrap_or(&-1))
-          .max()
-          .unwrap();
-        let prev_min_id = &fragment.iter().map(|i| i.id).min().unwrap();
-        // merge curr in prev if *everything* that cur needs has ran by prev.
-        // since poset is ranked we can check the max dep id of curr is:
-        // less than the min id in the prev capstone
-        // less than or equal to the max dep id from prev capstone
-        if prev_min_id > cur_max_dep && prev_max_dep >= cur_max_dep {
-          fragment.push(ins);
-          return;
+    match ins.opcode.fun {
+      OpcodeFn::Cpu(_) => {
+        let mut frag = self.fragments.pop().unwrap_or(Vec::new());
+        if frag.len() > 0 && !frag[frag.len() - 1].opcode.pred_exec() {
+          // if last instruction in the last fragment is a (io or cpu) capstone start a new fragment
+          self.fragments.push(frag);
+          self.fragments.push(vec![ins]);
+        } else {
+          // add to last fragment
+          frag.push(ins);
+          self.fragments.push(frag);
         }
-      }
-      // this is the first capstone or it cannot be merged
-      // mark it as a new capstone
-      self.movable_capstones.push(self.fragments.len());
-      self.fragments.push(vec![ins]);
+      },
+      OpcodeFn::UnpredCpu(_) => {
+        // always put this instruction on a new fragment
+        self.fragments.push(vec![ins]);
+      },
+      OpcodeFn::Io(_) => {
+        // io opcode is a "movable capstone" in execution
+        let cur_max_dep = ins.dep_ids.iter().max().unwrap_or(&-1);
+        // merge this capstone with an existing one if possible
+        for frag_idx in &self.movable_capstones {
+          let fragment = self.fragments.get_mut(*frag_idx).unwrap();
+          let prev_max_dep = fragment
+            .iter()
+            .map(|i| i.dep_ids.iter().max().unwrap_or(&-1))
+            .max()
+            .unwrap();
+          let prev_min_id = &fragment.iter().map(|i| i.id).min().unwrap();
+          // merge curr in prev if *everything* that cur needs has ran by prev.
+          // since poset is ranked we can check the max dep id of curr is:
+          // less than the min id in the prev capstone
+          // less than or equal to the max dep id from prev capstone
+          if prev_min_id > cur_max_dep && prev_max_dep >= cur_max_dep {
+            fragment.push(ins);
+            return;
+          }
+        }
+        // this is the first capstone or it cannot be merged
+        // mark it as a new capstone
+        self.movable_capstones.push(self.fragments.len());
+        self.fragments.push(vec![ins]);
+      },
     }
   }
 
@@ -189,9 +196,14 @@ impl HandlerFragment {
   }
 
   #[inline(always)]
-  async fn run_cpu(&mut self, mut hand_mem: Arc<HandlerMemory>, instrs: &Vec<Instruction>) -> Arc<HandlerMemory> {
+  async fn run_cpu(
+    &mut self,
+    mut hand_mem: Arc<HandlerMemory>,
+    instrs: &Vec<Instruction>
+  ) -> Arc<HandlerMemory> {
     instrs.iter().for_each(|i| {
       if let OpcodeFn::Cpu(func) = i.opcode.fun {
+        //eprintln!("{} {:?}", i.opcode._name, i.args);
         if let Some(event) = func(i.args.as_slice(), &mut hand_mem) {
           let event_tx = EVENT_TX.get().unwrap();
           if let Err(_) = event_tx.send(event) {
@@ -208,10 +220,32 @@ impl HandlerFragment {
   }
 
   #[inline(always)]
-  async fn run_io(&mut self, mut hand_mem: Arc<HandlerMemory>, instrs: &Vec<Instruction>) -> Arc<HandlerMemory> {
+  async fn run_unpred_cpu(
+    &mut self,
+    hand_mem: Arc<HandlerMemory>,
+    instrs: &Vec<Instruction>
+  ) -> Arc<HandlerMemory> {
+    // These instructions are always in groups by themselves
+    let op = &instrs[0];
+    if let OpcodeFn::UnpredCpu(func) = op.opcode.fun {
+      //eprintln!("{} {:?}", op.opcode._name, op.args);
+      return func(op.args.clone(), hand_mem).await;
+    } else {
+      eprintln!("expected an UnpredCpu instruction");
+      std::process::exit(1);
+    }
+  }
+
+  #[inline(always)]
+  async fn run_io(
+    &mut self,
+    mut hand_mem: Arc<HandlerMemory>,
+    instrs: &Vec<Instruction>
+  ) -> Arc<HandlerMemory> {
     if instrs.len() == 1 {
       let op = &instrs[0];
       if let OpcodeFn::Io(func) = op.opcode.fun {
+        //eprintln!("{} {:?}", op.opcode._name, op.args);
         return func(op.args.clone(), hand_mem).await;
       } else {
         eprintln!("expected an IO instruction");
@@ -220,6 +254,7 @@ impl HandlerFragment {
     } else {
       let futures: Vec<_> = instrs.iter().map(|i| {
         if let OpcodeFn::Io(func) = i.opcode.fun {
+          //eprintln!("{} {:?}", i.opcode._name, i.args);
           func(i.args.clone(), HandlerMemory::fork(hand_mem.clone())).then(HandlerMemory::drop_parent_async)
         } else {
           eprintln!("expected another IO instruction");
@@ -252,6 +287,7 @@ impl HandlerFragment {
       let instrs = self.get_instruction_fragment();
       hand_mem = match instrs[0].opcode.fun {
         OpcodeFn::Cpu(_) => self.run_cpu(hand_mem, instrs).await,
+        OpcodeFn::UnpredCpu(_) => self.run_unpred_cpu(hand_mem, instrs).await,
         OpcodeFn::Io(_) => self.run_io(hand_mem, instrs).await,
       };
       if let Some(frag) = self.get_next_fragment() {
