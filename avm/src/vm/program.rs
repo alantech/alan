@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
+use once_cell::sync::OnceCell;
+
 use crate::vm::event::{BuiltInEvents, EventHandler};
 use crate::vm::instruction::Instruction;
-use crate::vm::opcode::ByteOpcode;
-
-use once_cell::sync::OnceCell;
+use crate::vm::opcode::{ByteOpcode, opcode_id, OPCODES};
 
 // Facilitates parsing the alan graph code program
 struct BytecodeParser {
@@ -65,6 +65,8 @@ pub struct Program {
   pub(crate) event_pls: HashMap<i64, i64>,
   /// Memory of the program for global variables and string literals
   pub(crate) gmem: Vec<(usize, i64)>,
+  /// The port the http server should use
+  pub(crate) http_port: u16,
 }
 
 pub static PROGRAM: OnceCell<Program> = OnceCell::new();
@@ -87,12 +89,13 @@ impl Program {
   }
 
   // Parses and safely initializes the alan graph code program as static, global data
-  pub fn load(bytecode: Vec<i64>) -> Program {
+  pub fn load(bytecode: Vec<i64>, http_port: u16) -> Program {
     let mut parser = BytecodeParser { pc: 0, bytecode };
     let mut program = Program {
       event_handlers: HashMap::new(),
       event_pls: HashMap::new(),
       gmem: Vec::new(),
+      http_port,
     };
     program.load_builtin();
     // parse agc version
@@ -164,6 +167,33 @@ impl Program {
       .get_mut(&cur_handler.event_id)
       .unwrap();
     handlers.push(cur_handler);
+    // special logic to auto-listen on the http server if it is being used
+    if program.event_handlers.get(&BuiltInEvents::HTTPCONN.into()).unwrap().len() > 0 {
+      let start_handlers = program.event_handlers.get_mut(&BuiltInEvents::START.into()).unwrap();
+      if start_handlers.len() == 0 {
+        // Create a new handler that just executes `httplsn`
+        let mut listen_handler = EventHandler::new(1, BuiltInEvents::START.into());
+        listen_handler.add_instruction(Instruction {
+          id: 0,
+          opcode: OPCODES.get(&opcode_id("httplsn")).unwrap(),
+          args: vec![0, 0, 0],
+          dep_ids: vec![],
+        });
+        start_handlers.push(listen_handler);
+      } else {
+        // Append the listen opcode to the end of the first start handler found
+        let start_handler = &mut start_handlers[0];
+        let start_handler_fragment_idx = start_handler.fragments.len() - 1;
+        let last_frag = &mut start_handler.fragments[start_handler_fragment_idx];
+        let last_id = last_frag[last_frag.len() - 1].id;
+        start_handler.add_instruction(Instruction {
+          id: i64::MAX, // That shouldn't collide with anything
+          opcode: OPCODES.get(&opcode_id("httplsn")).unwrap(),
+          args: vec![0, 0, 0],
+          dep_ids: vec![last_id], // To make sure this is the last instruction run (usually)
+        });
+      }
+    }
     return program;
   }
 }

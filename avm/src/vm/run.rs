@@ -88,7 +88,7 @@ pub async fn run_file(fp: &str, delete_after_load: bool) {
   if delete_after_load {
     std::fs::remove_file(Path::new(fp)).unwrap();
   }
-  run(bytecode).await;
+  run(bytecode, 8000).await;
 }
 
 pub async fn run_agz_b64(agz_b64: &str) {
@@ -98,11 +98,11 @@ pub async fn run_agz_b64(agz_b64: &str) {
   let mut bytecode = vec![0; count / 8];
   let mut gz = GzDecoder::new(bytes.as_slice());
   gz.read_i64_into::<LittleEndian>(&mut bytecode).unwrap();
-  run(bytecode).await;
+  run(bytecode, 80).await;
 }
 
-pub async fn run(bytecode: Vec<i64>) {
-  let program = Program::load(bytecode);
+pub async fn run(bytecode: Vec<i64>, http_port: u16) {
+  let program = Program::load(bytecode, http_port);
   let set_global = PROGRAM.set(program);
   if set_global.is_err() {
     eprintln!("Failed to load bytecode");

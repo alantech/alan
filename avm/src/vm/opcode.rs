@@ -20,8 +20,8 @@ use hyper::service::{make_service_fn, service_fn};
 use hyper::{client::{Client, ResponseFuture}, server::Server, Body, Request, Response, StatusCode};
 use hyper_rustls::HttpsConnector;
 use once_cell::sync::Lazy;
-use rand::rngs::OsRng;
 use rand::RngCore;
+use rand::rngs::OsRng;
 use regex::Regex;
 use tokio::process::Command;
 use tokio::time::sleep;
@@ -29,6 +29,7 @@ use twox_hash::XxHash64;
 
 use crate::vm::event::{BuiltInEvents, EventEmit, HandlerFragment};
 use crate::vm::memory::{FractalMemory, HandlerMemory, CLOSURE_ARG_MEM_START};
+use crate::vm::program::Program;
 use crate::vm::run::EVENT_TX;
 
 static HTTP_RESPONSES: Lazy<Arc<Mutex<HashMap<i64, Arc<HandlerMemory>>>>> =
@@ -3021,7 +3022,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   }
   io!(httplsn => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let port_num = hand_mem.read_fixed(args[0]) as u16;
+      let port_num = Program::global().http_port;
       let addr = SocketAddr::from(([0, 0, 0, 0], port_num));
       let make_svc = make_service_fn(|_conn| async { Ok::<_, Infallible>(service_fn(http_listener)) });
 
