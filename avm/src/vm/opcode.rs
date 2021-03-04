@@ -3020,22 +3020,20 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let body = HandlerMemory::fractal_to_string(response_hm.read_fractal(2));
     Ok(res.body(body.into()).unwrap())
   }
-  io!(httplsn => fn(args, mut hand_mem) {
+  io!(httplsn => fn(_args, hand_mem) {
     Box::pin(async move {
       let port_num = Program::global().http_port;
       let addr = SocketAddr::from(([0, 0, 0, 0], port_num));
       let make_svc = make_service_fn(|_conn| async { Ok::<_, Infallible>(service_fn(http_listener)) });
 
       let bind = Server::try_bind(&addr);
-      hand_mem.init_fractal(args[2]);
-      hand_mem.push_fixed(args[2], if bind.is_ok() { 1i64 } else { 0i64 });
       match bind {
         Ok(server) => {
-          hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("ok"));
           let server = server.serve(make_svc);
           tokio::spawn(async move { server.await });
+          println!("HTTP server listening on port {}", port_num);
         },
-        Err(ee) => hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(format!("{}", ee).as_str())),
+        Err(ee) => eprintln!("HTTP server failed to listen on port {}: {}", port_num, ee),
       }
       return hand_mem;
     })
