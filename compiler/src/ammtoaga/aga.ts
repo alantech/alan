@@ -1,5 +1,4 @@
-import { stat } from "fs"
-import { DepGraph, DepNode } from "./depgraph"
+import { DepNode } from "./depgraph"
 
 export class Block {
   type: string

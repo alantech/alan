@@ -84,6 +84,11 @@ impl Program {
     let httpconn = i64::from(BuiltInEvents::HTTPCONN);
     self.event_pls.insert(httpconn, 0);
     self.event_handlers.insert(httpconn, Vec::new());
+    // NOP
+    // the compiler should prevent programs from handling this event.
+    let nop: i64 = i64::MAX;
+    self.event_pls.insert(nop, 0);
+    self.event_handlers.insert(nop, Vec::with_capacity(0));
   }
 
   // Parses and safely initializes the alan graph code program as static, global data
