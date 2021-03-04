@@ -398,7 +398,7 @@ impl HandlerMemory {
       let hm = hm_opt.expect("couldn't write fractal to HandlerMemory: address doesn't exist");
       Arc::get_mut(self).expect("how").mems[a] = hm.mems[a].clone();
       drop(hm);
-      todo!()
+      todo!("Writing to a fractal that a child scope has access to mutably but never acquired mutably. Please report this error!")
     }
     let mut_self = Arc::get_mut(self).expect("couldn't write fractal to HM: dangling pointer");
     mut_self.mems.push(fractal.block.clone());
