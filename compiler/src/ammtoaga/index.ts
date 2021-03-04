@@ -196,7 +196,7 @@ const closuresFromDeclaration = (
       [ name, ...scope, ], // Newest scope gets highest priority
       graph,
     )
-  ).filter((clos) => clos != null).reduce((obj, rec) => ({
+  ).filter((clos) => clos !== null).reduce((obj, rec) => ({
     ...obj,
     ...rec,
   }), {})
