@@ -70,22 +70,29 @@ const addopcodes = (opcodes: object) => {
     const opcodeDef = opcodes[opcodeName]
     const [args, returnType] = opcodeDef
     // chameleon opcodes that are super special
-    // if (['evalcond'].includes(opcodeName)) {
-    //   opcodeScope.put(opcodeName, [{
-    //     getName: () => opcodeName,
-    //     getArguments: () => args,
-    //     getReturnType: () => null, // it's a chameleon
-    //     isPure: () => false, // evalcond isn't pure because neither of the args are expected to be pure
-    //     microstatementInlining: (
-    //       realArgNames: Array<string>,
-    //       scope: Scope,
-    //       microstatements: Array<Microstatement>,
-    //     ) => {
-    //       const inputs = realArgNames.map(n => Microstatement.fromVarName(n, scope, microstatements));
-    //       const inputTypes = inputs.map
-    //     }
-    //   }])
-    // } else
+    if (['evalcond'].includes(opcodeName)) {
+      opcodeScope.put(opcodeName, [{
+        getName: () => opcodeName,
+        getArguments: () => args,
+        getReturnType: () => null, // it's a chameleon
+        isPure: () => false, // evalcond isn't pure because neither of the args are expected to be pure
+        microstatementInlining: (
+          realArgNames: Array<string>,
+          scope: Scope,
+          microstatements: Array<Microstatement>,
+        ) => {
+          microstatements.push(new Microstatement(
+            StatementType.TAIL,
+            scope,
+            false,
+            '',
+            null,
+            realArgNames,
+            [],
+          ))
+        }
+      }])
+    } else
     if (!returnType) { // This is a three-arg, 0-return opcode
       const opcodeObj = {
         getName: () => opcodeName,
@@ -142,22 +149,21 @@ const addopcodes = (opcodes: object) => {
           const inputTypes = inputs.map(i => i.outputType)
           const interfaceMap: Map<Type, Type> = new Map()
           Object.values(args).forEach((t: Type, i) => {
-            if (t === null) throw new Error(`null type for ${opcodeName} (i=${i})`)
             t.typeApplies(inputTypes[i], scope, interfaceMap)
           })
-          // "chameleon" opcodes (opcodes that must have the rest of the function applied to them for the
-          // containing function's return)
-          if (['evalcond'].includes(opcodeName)) {
-            microstatements.push(new Microstatement(
-              StatementType.TAIL,
-              scope,
-              false, // the tail function isn't expected to be pure
-              '', // don't assign to a value since this will be changed to an EXIT
-              null, // special
-              realArgNames, // not expected to be complete
-              [opcodeObj], // TODO: is this right?
-            ));
-          } else {
+          // // "chameleon" opcodes (opcodes that must have the rest of the function applied to them for the
+          // // containing function's return)
+          // if (['evalcond'].includes(opcodeName)) {
+          //   microstatements.push(new Microstatement(
+          //     StatementType.TAIL,
+          //     scope,
+          //     false, // the tail function isn't expected to be pure
+          //     '', // don't assign to a value since this will be changed to an EXIT
+          //     null, // special
+          //     realArgNames, // not expected to be complete
+          //     [opcodeObj], // TODO: is this right?
+          //   ));
+          // } else {
             microstatements.push(new Microstatement(
               StatementType.CONSTDEC,
               scope,
@@ -573,7 +579,7 @@ const addopcodes = (opcodes: object) => {
               realArgNames,
               [opcodeObj],
             ))
-          }
+          // }
         },
       }
       // Add each opcode
