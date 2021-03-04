@@ -28,7 +28,7 @@ impl From<BuiltInEvents> for i64 {
     match ev {
       BuiltInEvents::START => -9213673853036498142,
       BuiltInEvents::HTTPCONN => -9214243417005793441,
-      BuiltInEvents::NOP => i64::MAX,
+      BuiltInEvents::NOP => i64::MIN,
     }
   }
 }
