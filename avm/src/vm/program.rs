@@ -56,6 +56,7 @@ impl From<i64> for GraphOpcode {
 }
 
 /// Representation of the alan graph code program as static, global data
+#[derive(Debug)]
 pub struct Program {
   /// Event id to Map of handler id to handler obj
   pub(crate) event_handlers: HashMap<i64, Vec<EventHandler>>,

@@ -41,7 +41,7 @@ node_modules: build
 
 .PHONY: clean
 clean:
-	git clean -ffdx
+	git clean -ffdxe .vscode
 
 .PHONY: install
 install: avm/target/release/alan
