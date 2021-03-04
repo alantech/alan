@@ -1,3 +1,5 @@
+use futures::FutureExt;
+use futures::future::join_all;
 use std::sync::Arc;
 use tokio::task;
 
@@ -38,6 +40,7 @@ pub struct EventEmit {
 }
 
 /// Describes the handler for an event
+#[derive(Debug)]
 pub struct EventHandler {
   /// event id
   pub(crate) event_id: i64,
@@ -65,50 +68,50 @@ impl EventHandler {
 
   pub fn add_instruction(self: &mut EventHandler, ins: Instruction) {
     self.ins_count += 1;
-    if ins.opcode.pred_exec() {
-      let mut frag = self.fragments.pop().unwrap_or(Vec::new());
-      if frag.len() > 0 && !frag.get(frag.len() - 1).unwrap().opcode.pred_exec() {
-        // if last instruction in the last fragment is a (io or cpu) capstone start a new fragment
-        self.fragments.push(frag);
-        self.fragments.push(vec![ins]);
-      } else {
-        // add to last fragment
-        frag.push(ins);
-        self.fragments.push(frag);
-      }
-    } else {
-      // Temporarily disable all IO opcode reordering to test a theory
-      // Can't even batch them together because one IO opcode may depend on the previously listed
-      // one
-      // TODO: Restore the commented code below!
-      self.fragments.push(vec![ins]);
-    }
-    /*} else {
-      // io opcode is a "movable capstone" in execution
-      let cur_max_dep = ins.dep_ids.iter().max().unwrap_or(&-1);
-      // merge this capstone with an existing one if possible
-      for frag_idx in &self.movable_capstones {
-        let fragment = self.fragments.get_mut(*frag_idx).unwrap();
-        let prev_max_dep = fragment
-          .iter()
-          .map(|i| i.dep_ids.iter().max().unwrap_or(&-1))
-          .max()
-          .unwrap();
-        let prev_min_id = &fragment.iter().map(|i| i.id).min().unwrap();
-        // merge curr in prev if *everything* that cur needs has ran by prev.
-        // since poset is ranked we can check the max dep id of curr is:
-        // less than the min id in the prev capstone
-        // less than or equal to the max dep id from prev capstone
-        if prev_min_id > cur_max_dep && prev_max_dep >= cur_max_dep {
-          fragment.push(ins);
-          return;
+    match ins.opcode.fun {
+      OpcodeFn::Cpu(_) => {
+        let mut frag = self.fragments.pop().unwrap_or(Vec::new());
+        if frag.len() > 0 && !frag[frag.len() - 1].opcode.pred_exec() {
+          // if last instruction in the last fragment is a (io or cpu) capstone start a new fragment
+          self.fragments.push(frag);
+          self.fragments.push(vec![ins]);
+        } else {
+          // add to last fragment
+          frag.push(ins);
+          self.fragments.push(frag);
         }
-      }
-      // this is the first capstone or it cannot be merged
-      // mark it as a new capstone
-      self.movable_capstones.push(self.fragments.len());
-      self.fragments.push(vec![ins]);
-    }*/
+      },
+      OpcodeFn::UnpredCpu(_) => {
+        // always put this instruction on a new fragment
+        self.fragments.push(vec![ins]);
+      },
+      OpcodeFn::Io(_) => {
+        // io opcode is a "movable capstone" in execution
+        let cur_max_dep = ins.dep_ids.iter().max().unwrap_or(&-1);
+        // merge this capstone with an existing one if possible
+        for frag_idx in &self.movable_capstones {
+          let fragment = self.fragments.get_mut(*frag_idx).unwrap();
+          let prev_max_dep = fragment
+            .iter()
+            .map(|i| i.dep_ids.iter().max().unwrap_or(&-1))
+            .max()
+            .unwrap();
+          let prev_min_id = &fragment.iter().map(|i| i.id).min().unwrap();
+          // merge curr in prev if *everything* that cur needs has ran by prev.
+          // since poset is ranked we can check the max dep id of curr is:
+          // less than the min id in the prev capstone
+          // less than or equal to the max dep id from prev capstone
+          if prev_min_id > cur_max_dep && prev_max_dep >= cur_max_dep {
+            fragment.push(ins);
+            return;
+          }
+        }
+        // this is the first capstone or it cannot be merged
+        // mark it as a new capstone
+        self.movable_capstones.push(self.fragments.len());
+        self.fragments.push(vec![ins]);
+      },
+    }
   }
 
   pub fn len(self: &EventHandler) -> usize {
@@ -125,7 +128,7 @@ impl EventHandler {
 }
 
 /// Identifies an exact fragment of an event handler
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct HandlerFragmentID {
   event_id: i64,
   handler_idx: usize,
@@ -133,7 +136,7 @@ struct HandlerFragmentID {
 }
 
 /// Identifies the fragment of an event handler
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct HandlerFragment {
   /// handler stack for other handlers sequentially running within itself.
   /// Required IDs to identify the event handler placed into a Vec
@@ -192,6 +195,80 @@ impl HandlerFragment {
     };
   }
 
+  #[inline(always)]
+  async fn run_cpu(
+    &mut self,
+    mut hand_mem: Arc<HandlerMemory>,
+    instrs: &Vec<Instruction>
+  ) -> Arc<HandlerMemory> {
+    instrs.iter().for_each(|i| {
+      if let OpcodeFn::Cpu(func) = i.opcode.fun {
+        //eprintln!("{} {:?}", i.opcode._name, i.args);
+        if let Some(event) = func(i.args.as_slice(), &mut hand_mem) {
+          let event_tx = EVENT_TX.get().unwrap();
+          if let Err(_) = event_tx.send(event) {
+            eprintln!("Event transmission error");
+            std::process::exit(1);
+          }
+        };
+      } else {
+        eprintln!("expected another CPU instruction");
+        std::process::exit(1);
+      }
+    });
+    hand_mem
+  }
+
+  #[inline(always)]
+  async fn run_unpred_cpu(
+    &mut self,
+    hand_mem: Arc<HandlerMemory>,
+    instrs: &Vec<Instruction>
+  ) -> Arc<HandlerMemory> {
+    // These instructions are always in groups by themselves
+    let op = &instrs[0];
+    if let OpcodeFn::UnpredCpu(func) = op.opcode.fun {
+      //eprintln!("{} {:?}", op.opcode._name, op.args);
+      return func(op.args.clone(), hand_mem).await;
+    } else {
+      eprintln!("expected an UnpredCpu instruction");
+      std::process::exit(1);
+    }
+  }
+
+  #[inline(always)]
+  async fn run_io(
+    &mut self,
+    mut hand_mem: Arc<HandlerMemory>,
+    instrs: &Vec<Instruction>
+  ) -> Arc<HandlerMemory> {
+    if instrs.len() == 1 {
+      let op = &instrs[0];
+      if let OpcodeFn::Io(func) = op.opcode.fun {
+        //eprintln!("{} {:?}", op.opcode._name, op.args);
+        return func(op.args.clone(), hand_mem).await;
+      } else {
+        eprintln!("expected an IO instruction");
+        std::process::exit(1);
+      }
+    } else {
+      let futures: Vec<_> = instrs.iter().map(|i| {
+        if let OpcodeFn::Io(func) = i.opcode.fun {
+          //eprintln!("{} {:?}", i.opcode._name, i.args);
+          func(i.args.clone(), HandlerMemory::fork(hand_mem.clone())).then(HandlerMemory::drop_parent_async)
+        } else {
+          eprintln!("expected another IO instruction");
+          std::process::exit(1);
+        }
+      }).collect();
+      let hms = join_all(futures).await;
+      for hm in hms.into_iter() {
+        hand_mem.join(hm);
+      }
+    }
+    hand_mem
+  }
+
   /// Runs the specified handler in Tokio tasks. Tokio tasks are allocated to a threadpool bound by
   /// the number of CPU cores on the machine it is executing on. Actual IO work gets scheduled into
   /// an IO threadpool (unbounded, according to Tokio) while CPU work uses the special
@@ -206,74 +283,15 @@ impl HandlerFragment {
     mut self: HandlerFragment,
     mut hand_mem: Arc<HandlerMemory>,
   ) -> Arc<HandlerMemory> {
-    let mut instructions = self.get_instruction_fragment();
     loop {
-      // io-bound fragment
-      match &instructions[0].opcode.fun {
-        OpcodeFn::Io(io_func) => {
-          if instructions.len() > 1 {
-            // TODO: Revive IO parallelization, again, once AGA dependency graph *actually* works
-            /*let futures: Vec<HMFuture> = instructions.iter().map(|ins| {
-              //eprintln!("{} {} {} {}", ins.opcode._name, ins.args[0], ins.args[1], ins.args[2]);
-              let async_func = ins.opcode.async_func.unwrap();
-              return async_func(ins.args.clone(), hand_mem.fork());
-            }).collect();
-            let hms = task::spawn(async move {
-              join_all(futures).await
-            }).await.unwrap();
-            //eprintln!(">>>>>>>>>>>>>>>>>>");
-            //eprintln!("{:?}", &hand_mem);
-            //eprintln!("{:?}", &hms);
-            for hm in hms {
-              hand_mem.join(hm);
-            }
-            //eprintln!("{:?}", &hand_mem);
-            //eprintln!("<<<<<<<<<<<<<<<<<");
-            */
-            for i in 0..instructions.len() {
-              let ins = &instructions[i];
-              if let OpcodeFn::Io(async_func) = ins.opcode.fun {
-                hand_mem = async_func(ins.args.clone(), hand_mem).await;
-              } else {
-                eprintln!("expected another IO instruction, found a CPU instruction");
-              };
-              //eprintln!("{} {} {} {}", ins.opcode._name, ins.args[0], ins.args[1], ins.args[2]);
-            }
-          } else {
-            //eprintln!("{} {} {} {}", instructions[0].opcode._name, instructions[0].args[0], instructions[0].args[1], instructions[0].args[2]);
-            let future = io_func(instructions[0].args.clone(), hand_mem);
-            hand_mem = future.await;
-          }
-        }
-        OpcodeFn::Cpu(_) => {
-          // cpu-bound fragment
-          let self_and_hand_mem = task::block_in_place(move || {
-            instructions.iter().for_each(|i| {
-              if let OpcodeFn::Cpu(func) = i.opcode.fun {
-                //eprintln!("{} {} {} {}", i.opcode._name, i.args[0], i.args[1], i.args[2]);
-                let event = func(i.args.as_slice(), &mut hand_mem);
-                if event.is_some() {
-                  let event_tx = EVENT_TX.get().unwrap();
-                  let event_sent = event_tx.send(event.unwrap());
-                  if event_sent.is_err() {
-                    eprintln!("Event transmission error");
-                    std::process::exit(2);
-                  }
-                }
-              } else {
-                eprintln!("expected another CPU instruction, found an IO instruction");
-              };
-            });
-            (self, hand_mem)
-          });
-          self = self_and_hand_mem.0;
-          hand_mem = self_and_hand_mem.1;
-        }
-      }
-      let next_frag = self.get_next_fragment();
-      if next_frag.is_some() {
-        self = next_frag.unwrap();
-        instructions = self.get_instruction_fragment();
+      let instrs = self.get_instruction_fragment();
+      hand_mem = match instrs[0].opcode.fun {
+        OpcodeFn::Cpu(_) => self.run_cpu(hand_mem, instrs).await,
+        OpcodeFn::UnpredCpu(_) => self.run_unpred_cpu(hand_mem, instrs).await,
+        OpcodeFn::Io(_) => self.run_io(hand_mem, instrs).await,
+      };
+      if let Some(frag) = self.get_next_fragment() {
+        self = frag;
       } else {
         break;
       }
@@ -332,7 +350,7 @@ mod tests {
     hand.add_instruction(get_io_ins(1, vec![]));
     hand.add_instruction(get_io_ins(2, vec![]));
     hand.add_instruction(get_io_ins(3, vec![]));
-    //assert_eq!(hand.last_frag_idx(), 0);
+    assert_eq!(hand.last_frag_idx(), 0);
   }
 
   // chained io operations forms a fragment per io operation
@@ -355,9 +373,9 @@ mod tests {
     hand.add_instruction(get_io_ins(1, vec![]));
     hand.add_instruction(get_cpu_ins(2, vec![]));
     hand.add_instruction(get_io_ins(3, vec![]));
-    /*assert_eq!(hand.last_frag_idx(), 1);
+    assert_eq!(hand.last_frag_idx(), 1);
     assert_eq!(hand.get_fragment(0).len(), 3);
-    assert_eq!(hand.get_fragment(1).len(), 1);*/
+    assert_eq!(hand.get_fragment(1).len(), 1);
   }
 
   // independent io operations, then independent cpu operation
@@ -369,10 +387,10 @@ mod tests {
     hand.add_instruction(get_io_ins(1, vec![]));
     hand.add_instruction(get_cpu_ins(2, vec![]));
     hand.add_instruction(get_io_ins(3, vec![2]));
-    /*assert_eq!(hand.last_frag_idx(), 2);
+    assert_eq!(hand.last_frag_idx(), 2);
     assert_eq!(hand.get_fragment(0).len(), 2);
     assert_eq!(hand.get_fragment(1).len(), 1);
-    assert_eq!(hand.get_fragment(2).len(), 1);*/
+    assert_eq!(hand.get_fragment(2).len(), 1);
   }
 
   // independent io operations, then independent cpu operation
@@ -384,10 +402,10 @@ mod tests {
     hand.add_instruction(get_io_ins(1, vec![]));
     hand.add_instruction(get_cpu_ins(2, vec![]));
     hand.add_instruction(get_io_ins(3, vec![1]));
-    /*assert_eq!(hand.last_frag_idx(), 2);
+    assert_eq!(hand.last_frag_idx(), 2);
     assert_eq!(hand.get_fragment(0).len(), 2);
     assert_eq!(hand.get_fragment(1).len(), 1);
-    assert_eq!(hand.get_fragment(2).len(), 1);*/
+    assert_eq!(hand.get_fragment(2).len(), 1);
   }
 
   // chained cpu operations form one fragment
@@ -413,10 +431,10 @@ mod tests {
     hand.add_instruction(get_io_ins(3, vec![]));
     hand.add_instruction(get_cpu_ins(4, vec![]));
     hand.add_instruction(get_io_ins(5, vec![2]));
-    /*assert_eq!(hand.last_frag_idx(), 2);
+    assert_eq!(hand.last_frag_idx(), 2);
     assert_eq!(hand.get_fragment(0).len(), 3);
     assert_eq!(hand.get_fragment(1).len(), 2);
-    assert_eq!(hand.get_fragment(2).len(), 1);*/
+    assert_eq!(hand.get_fragment(2).len(), 1);
   }
 
   // independent: io operation, then independent cpu operation
@@ -431,14 +449,14 @@ mod tests {
     hand.add_instruction(get_io_ins(3, vec![0]));
     hand.add_instruction(get_cpu_ins(4, vec![]));
     hand.add_instruction(get_io_ins(5, vec![]));
-    /*assert_eq!(hand.last_frag_idx(), 3);
+    assert_eq!(hand.last_frag_idx(), 3);
     assert_eq!(hand.get_fragment(0).len(), 3);
     assert_eq!(hand.get_fragment(1).len(), 1);
     assert_eq!(hand.get_fragment(2).len(), 1);
-    assert_eq!(hand.get_fragment(3).len(), 1);*/
+    assert_eq!(hand.get_fragment(3).len(), 1);
   }
 
-  // condfn is an movable capstone for cpu operations even when no deps
+  // condfn is an unpred_cpu instruction that causes a break in fragments
   #[test]
   fn test_frag_grouping_9() {
     let mut hand = EventHandler::new(123, 123);
@@ -446,29 +464,29 @@ mod tests {
     hand.add_instruction(get_cpu_ins(1, vec![]));
     hand.add_instruction(get_cond_ins(2, vec![]));
     hand.add_instruction(get_cpu_ins(3, vec![]));
-    /*assert_eq!(hand.movable_capstones.len(), 1);
-    assert_eq!(hand.last_frag_idx(), 2);*/
+    assert_eq!(hand.movable_capstones.len(), 0);
+    assert_eq!(hand.last_frag_idx(), 2);
   }
 
-  // condfn and io operations with no deps run in the same fragment
+  // condfn and io operations with no deps run in two fragments
   #[test]
   fn test_frag_grouping_10() {
     let mut hand = EventHandler::new(123, 123);
     hand.add_instruction(get_io_ins(0, vec![]));
     hand.add_instruction(get_cond_ins(1, vec![]));
     hand.add_instruction(get_io_ins(2, vec![]));
-    /*assert_eq!(hand.movable_capstones.len(), 1);
-    assert_eq!(hand.last_frag_idx(), 0);*/
+    assert_eq!(hand.movable_capstones.len(), 1);
+    assert_eq!(hand.last_frag_idx(), 1);
   }
 
-  // multiple condfns run in the same fragment
+  // multiple condfns run in the separate fragments
   #[test]
   fn test_frag_grouping_11() {
     let mut hand = EventHandler::new(123, 123);
     hand.add_instruction(get_cond_ins(0, vec![]));
     hand.add_instruction(get_cond_ins(1, vec![]));
     hand.add_instruction(get_cond_ins(2, vec![]));
-    /*assert_eq!(hand.movable_capstones.len(), 1);
-    assert_eq!(hand.last_frag_idx(), 0);*/
+    assert_eq!(hand.movable_capstones.len(), 0);
+    assert_eq!(hand.last_frag_idx(), 2);
   }
 }

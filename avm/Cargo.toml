@@ -5,7 +5,7 @@ license = "AGPL-3.0"
 homepage = "https://alan-lang.org"
 documentation = "https://docs.alan-lang.org"
 repository = "https://github.com/alantech/alan"
-version = "0.1.28"
+version = "0.1.31"
 authors = ["Luis de Pombo <luis@alantechnologies.com>", "David Ellis <david@alantechnologies.com>"]
 edition = "2018"
 
@@ -22,7 +22,7 @@ clap = "2.33.1"
 dashmap = "3.11.10"
 futures = "0.3.8"
 hyper = { version = "0.14", features = ["client", "http1", "http2", "runtime", "server"] }
-hyper-tls = "0.5" # needed for HTTPS w/ hyper
+hyper-rustls = "0.22.1" # needed for HTTPS w/ hyper
 num_cpus = "1.0"
 once_cell = "1.5.2"
 rand = "0.7.3"

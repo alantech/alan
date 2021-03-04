@@ -19,14 +19,17 @@ use crate::daemon::dns::DNS;
 use crate::daemon::lrh::LogRendezvousHash;
 use crate::vm::run::run_agz_b64;
 
+#[allow(non_snake_case)]
 #[derive(Debug, Serialize)]
 struct CPUSecsV1 {
   user: f64,
   system: f64,
   idle: f64,
-  interrupt: f64,
+  irq: f64,
   nice: f64,
-  iowait: f64,
+  ioWait: f64,
+  softIrq: f64,
+  steal: f64,
 }
 
 #[allow(non_snake_case)]
@@ -104,9 +107,11 @@ async fn get_v1_stats() -> VMStatsV1 {
         user: cpu.user().get::<second>(),
         system: cpu.system().get::<second>(),
         idle: cpu.idle().get::<second>(),
-        interrupt: cpu.irq().get::<second>(),
+        irq: cpu.irq().get::<second>(),
         nice: cpu.nice().get::<second>(),
-        iowait: cpu.io_wait().get::<second>(),
+        ioWait: cpu.io_wait().get::<second>(),
+        softIrq: cpu.soft_irq().get::<second>(),
+        steal: cpu.steal().get::<second>(),
       }
     }).collect().await,
     totalMemoryKb: memory.total().get::<kilobyte>(),

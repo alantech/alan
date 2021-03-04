@@ -48,9 +48,7 @@ export fn fetch(req: Request): Result<Response> {
     connId: 0, // Unused by the client
   };
   const ro = httpreq(i);
-  if ro.isErr() {
-    return ro;
-  } else {
+  if ro.isOk() {
     const o = ro.getR();
     return ok(new Response {
       status: o.status,
@@ -58,6 +56,8 @@ export fn fetch(req: Request): Result<Response> {
       body: o.body,
       connId: o.connId,
     });
+  } else {
+    return ro;
   }
 }
 
