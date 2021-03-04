@@ -3257,9 +3257,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
           hand_mem = body_handler.clone().run(hand_mem).await;
         }
         current = current + 1;
-        if args[2] != NOP_ID {
-          hand_mem = cond_handler.clone().run(hand_mem).await;
-        }
+        hand_mem = cond_handler.clone().run(hand_mem).await;
       }
       let mut seq = hand_mem.read_fractal(args[0]);
       hand_mem.write_fixed_in_fractal(&mut seq, 0, current);

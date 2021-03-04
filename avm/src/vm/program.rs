@@ -85,7 +85,8 @@ impl Program {
     self.event_pls.insert(httpconn, 0);
     self.event_handlers.insert(httpconn, Vec::new());
     // NOP
-    // the compiler should prevent programs from handling this event.
+    // the compiler does not allow explicitly defining handlers for this event
+    // and it's used internally by the compiler for closures in unused conditional branches
     let nop: i64 = i64::from(BuiltInEvents::NOP);
     self.event_pls.insert(nop, 0);
     self.event_handlers.insert(nop, Vec::with_capacity(0));
