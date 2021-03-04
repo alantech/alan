@@ -18,7 +18,7 @@ use dashmap::DashMap;
 use hyper::header::{HeaderName, HeaderValue};
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{client::{Client, ResponseFuture}, server::Server, Body, Request, Response, StatusCode};
-use hyper_tls::HttpsConnector;
+use hyper_rustls::HttpsConnector;
 use once_cell::sync::Lazy;
 use rand::rngs::OsRng;
 use rand::RngCore;
@@ -2825,7 +2825,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       return Err("Failed to construct request, invalid body provided".to_string());
     } else {
       return Ok(Client::builder()
-        .build::<_, Body>(HttpsConnector::new())
+        .build::<_, Body>(HttpsConnector::with_native_roots())
         .request(req_obj.unwrap()));
     }
   }
