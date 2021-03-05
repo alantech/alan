@@ -2810,7 +2810,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
 
   // Std opcodes
-  io!(execop => fn(args, mut hand_mem) {
+  unpred_cpu!(execop => fn(args, mut hand_mem) {
     Box::pin(async move {
       let full_cmd = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
       let split_cmd: Vec<&str> = full_cmd.split(" ").collect();
