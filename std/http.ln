@@ -1,5 +1,5 @@
 /**
- * @std/http - Built-in client and server for http
+ * @std/http - Built-in client for http(s)
  */
 
 // The InternalRequest type for http requests
@@ -132,64 +132,4 @@ export fn del(url: string): Result<string> {
   } else {
     return res;
   }
-}
-
-/**
- * HTTP Server
- */
-
-// The roll-up Connection type with both
-export type Connection {
-  req: Request,
-  res: Response,
-}
-
-// The connection event
-export event connection: Connection
-
-// The special connection event with a signature like `event __conn: InternalConnection`
-// This wrapper function takes the internal connection object, converts it to the user-friendly
-// connection object, and then emits it on a new event for user code to pick up
-on __conn fn (conn: InternalRequest) {
-  emit connection new Connection {
-    req: new Request {
-      method: conn.method,
-      url: conn.url,
-      headers: toHashMap(conn.headers),
-      body: conn.body,
-    },
-    res: new Response {
-      status: 200, // If not set by the user, assume they meant it to be good
-      headers: newHashMap('Content-Length', '0'), // If not set by the user, assume no data
-      body: '', // If not set by the user, assume no data
-      connId: conn.connId,
-    },
-  };
-}
-
-// The body function sets the body for a Response, sets the Content-Length header, and retuns the
-// Response for chaining needs
-export fn body(res: Response, body: string) {
-  res.body = body;
-  const len = body.length();
-  set(res.headers, 'Content-Length', len.toString());
-  return res;
-}
-
-// The status function sets the status of the response
-export fn status(res: Response, status: int64) {
-  res.status = status;
-  return res;
-}
-
-// The send function converts the response object into an internal response object and passed that
-// back to the HTTP server. A Result type with either an 'ok' string or an error is returned
-export fn send(res: Response): Result<string> {
-  const ires = new InternalResponse {
-    status: res.status,
-    headers: res.headers.keyVal,
-    body: res.body,
-    connId: res.connId,
-  };
-  return httpsend(ires);
 }

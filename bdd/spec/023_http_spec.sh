@@ -117,7 +117,7 @@ export const comeGetMe = \"You got me!\""
     before() {
       sourceToAll "
         from @std/app import start, exit
-        from @std/http import connection, body, send, Connection
+        from @std/httpserver import connection, body, send, Connection
 
         on connection fn (conn: Connection) {
           const req = conn.req;
@@ -146,7 +146,6 @@ export const comeGetMe = \"You got me!\""
     After afterEach
 
     It "runs js"
-      Pending how-do-we-detect-this-in-amm-to-js
       node test_$$/temp.js 1>/dev/null 2>/dev/null &
       PID=$!
       sleep 1
