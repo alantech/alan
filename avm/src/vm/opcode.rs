@@ -27,7 +27,7 @@ use tokio::process::Command;
 use tokio::time::sleep;
 use twox_hash::XxHash64;
 
-use crate::vm::event::{BuiltInEvents, EventEmit, HandlerFragment};
+use crate::vm::event::{NOP_ID, BuiltInEvents, EventEmit, HandlerFragment};
 use crate::vm::memory::{FractalMemory, HandlerMemory, CLOSURE_ARG_MEM_START};
 use crate::vm::run::EVENT_TX;
 
@@ -2397,6 +2397,10 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   io!(each => fn(args, hand_mem) {
     Box::pin(async move {
+      if args[1] == NOP_ID {
+        // each is expected to result in purely side effects
+        return hand_mem;
+      }
       let fractal = hand_mem.read_fractal(args[0]);
       let subhandler = HandlerFragment::new(args[1], 0);
       let mut runners = Vec::with_capacity(fractal.len());
@@ -2412,6 +2416,10 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   unpred_cpu!(eachl => fn(args, mut hand_mem) {
     Box::pin(async move {
+      if args[1] == NOP_ID {
+        // eachl is expected to result in purely side effects
+        return hand_mem;
+      }
       let n = hand_mem.read_fractal(args[0]).len();
       let subhandler = HandlerFragment::new(args[1], 0);
       for i in 0..n {
@@ -2424,6 +2432,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   io!(find => fn(args, mut hand_mem) {
     Box::pin(async move {
+      if args[1] == NOP_ID {
+        panic!("NOP closure provided when finding");
+      }
       let fractal = hand_mem.read_fractal(args[0]);
       let len = fractal.len();
       let subhandler = HandlerFragment::new(args[1], 0);
@@ -2455,6 +2466,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   unpred_cpu!(findl => fn(args, mut hand_mem) {
     Box::pin(async move {
+      if args[1] == NOP_ID {
+        panic!("NOP closure provided when finding");
+      }
       let fractal = hand_mem.read_fractal(args[0]);
       let subhandler = HandlerFragment::new(args[1], 0);
       for i in 0..fractal.len() {
@@ -2476,6 +2490,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   io!(some => fn(args, mut hand_mem) {
     Box::pin(async move {
+      if args[1] == NOP_ID {
+        panic!("NOP closure provided when checking if some");
+      }
       let fractal = hand_mem.read_fractal(args[0]);
       let subhandler = HandlerFragment::new(args[1], 0);
       let mut somers = Vec::with_capacity(fractal.len());
@@ -2499,6 +2516,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   unpred_cpu!(somel => fn(args, mut hand_mem) {
     Box::pin(async move {
+      if args[1] == NOP_ID {
+        panic!("NOP closure provided when checking if some");
+      }
       let fractal = hand_mem.read_fractal(args[0]);
       let subhandler = HandlerFragment::new(args[1], 0);
       for i in 0..fractal.len() {
@@ -2516,6 +2536,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   io!(every => fn(args, mut hand_mem) {
     Box::pin(async move {
+      if args[1] == NOP_ID {
+        panic!("NOP closure provided when checking if every");
+      }
       let fractal = hand_mem.read_fractal(args[0]);
       let subhandler = HandlerFragment::new(args[1], 0);
       let mut somers = Vec::with_capacity(fractal.len());
@@ -2539,6 +2562,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   unpred_cpu!(everyl => fn(args, mut hand_mem) {
     Box::pin(async move {
+      if args[1] == NOP_ID {
+        panic!("NOP closure provided when checking if every");
+      }
       let fractal = hand_mem.read_fractal(args[0]);
       let subhandler = HandlerFragment::new(args[1], 0);
       for i in 0..fractal.len() {
@@ -2568,6 +2594,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   io!(reducep => fn(args, mut hand_mem) {
     Box::pin(async move {
+      if args[1] == NOP_ID {
+        panic!("NOP closure provided when reducing");
+      }
       let fractal = hand_mem.read_fractal(args[0]);
       let mut vals = Vec::with_capacity(fractal.len());
       for i in 0..fractal.len() {
@@ -2607,6 +2636,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   unpred_cpu!(reducel => fn(args, mut hand_mem) {
     Box::pin(async move {
+      if args[1] == NOP_ID {
+        panic!("NOP closure provided when reducing");
+      }
       let fractal = hand_mem.read_fractal(args[0]);
       if fractal.len() == 0 {
         return hand_mem;
@@ -2687,6 +2719,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   // });
   unpred_cpu!(foldl => fn(args, mut hand_mem) {
     Box::pin(async move {
+      if args[1] == NOP_ID {
+        panic!("NOP closure provided when folding");
+      }
       let obj = hand_mem.read_fractal(args[0]);
       let (arr, _) = hand_mem.read_from_fractal(&obj, 0);
       let mut vals = Vec::with_capacity(arr.len());
@@ -2713,6 +2748,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   io!(filter => fn(args, mut hand_mem) {
     Box::pin(async move {
+      if args[1] == NOP_ID {
+        panic!("NOP closure provided when filtering");
+      }
       let fractal = hand_mem.read_fractal(args[0]);
       let len = fractal.len();
       let subhandler = HandlerFragment::new(args[1], 0);
@@ -2740,6 +2778,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   unpred_cpu!(filterl => fn(args, mut hand_mem) {
     Box::pin(async move {
+      if args[1] == NOP_ID {
+        panic!("NOP closure provided when filtering");
+      }
       let fractal = hand_mem.read_fractal(args[0]);
       let len = fractal.len();
       let subhandler = HandlerFragment::new(args[1], 0);
@@ -3175,6 +3216,10 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   unpred_cpu!(seqeach => fn(args, mut hand_mem) {
     Box::pin(async move {
+      if args[1] == NOP_ID {
+        // same as `each`
+        return hand_mem;
+      }
       let mut seq = hand_mem.read_fractal(args[0]);
       let current = seq.read_fixed(0);
       let limit = seq.read_fixed(1);
@@ -3194,6 +3239,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   unpred_cpu!(seqwhile => fn(args, mut hand_mem) {
     Box::pin(async move {
+      if args[1] == NOP_ID {
+        panic!("NOP closure provided instead of a while condition");
+      }
       let seq = hand_mem.read_fractal(args[0]);
       let mut current = seq.read_fixed(0);
       let limit = seq.read_fixed(1);
@@ -3205,7 +3253,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       }
       hand_mem = cond_handler.clone().run(hand_mem).await;
       while current < limit && hand_mem.read_fixed(CLOSURE_ARG_MEM_START) > 0 {
-        hand_mem = body_handler.clone().run(hand_mem).await;
+        if args[2] != NOP_ID {
+          hand_mem = body_handler.clone().run(hand_mem).await;
+        }
         current = current + 1;
         hand_mem = cond_handler.clone().run(hand_mem).await;
       }
@@ -3222,7 +3272,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       drop(seq);
       let subhandler = HandlerFragment::new(args[1], 0);
       loop {
-        hand_mem = subhandler.clone().run(hand_mem).await;
+        if args[1] != NOP_ID {
+          hand_mem = subhandler.clone().run(hand_mem).await;
+        }
         current = current + 1;
         if current >= limit || hand_mem.read_fixed(CLOSURE_ARG_MEM_START) == 0 {
           break;
@@ -3266,6 +3318,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     })
   });
   cpu!(seqrec => fn(args, hand_mem) {
+    if args[1] == NOP_ID {
+      panic!("NOP can't be recursive");
+    }
     hand_mem.init_fractal(args[2]);
     hand_mem.push_register(args[2], args[0]);
     hand_mem.push_fixed(args[2], args[1]);
