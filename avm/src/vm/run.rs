@@ -39,6 +39,11 @@ impl VM {
   }
 
   fn sched_event(self: &mut VM, event: EventEmit) {
+    // skip NOP event always
+    if event.id == i64::from(BuiltInEvents::NOP) {
+      return;
+    }
+
     // schedule 1st fragment of each handler of this event
     let handlers = Program::global().event_handlers.get(&event.id).unwrap();
     for (i, hand) in handlers.iter().enumerate() {

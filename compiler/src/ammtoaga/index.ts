@@ -16,6 +16,9 @@ import { Block, Statement} from './aga'
 const ceil8 = (n: number) => Math.ceil(n / 8) * 8
 const CLOSURE_ARG_MEM_START = BigInt(Math.pow(-2,63))
 
+// special closure that does nothing
+const NOP_CLOSURE = '-9223372036854775808';
+
 const loadGlobalMem = (globalMemAst: LPNode[], addressMap: object) => {
   const globalMem = {}
   let currentOffset = -1
@@ -193,23 +196,26 @@ const closuresFromDeclaration = (
       [ name, ...scope, ], // Newest scope gets highest priority
       graph,
     )
-  ).reduce((obj, rec) => ({
+  ).filter((clos) => clos !== null).reduce((obj, rec) => ({
     ...obj,
     ...rec,
   }), {})
   eventDecs[name] = 0
 
-  return {
-    [name]: {
+  if (!graph.isNop) {
+    otherClosures[name] = {
       name,
       fn,
       statements,
       closureMem,
       scope: [ name, ...scope, ],
       graph,
-    },
-    ...otherClosures,
+    }
+  } else {
+    addressMap[name] = NOP_CLOSURE
   }
+
+  return otherClosures
 }
 
 const extractClosures = (handlers: LPNode[], handlerMem: object, eventDecs: object, addressMap: object, depGraphs: DepGraph[]) => {
@@ -561,7 +567,11 @@ const ammToAga = (amm: LPNode) => {
   // console.log(depGraphs.map(g => JSON.stringify(g.toJSON())).join(','))
   const closures = extractClosures(amm.get('handlers').getAll(), handlerMem, eventDecs, addressMap, depGraphs)
   // Make sure closures are accessible as addresses for statements to use
-  closures.forEach((c: any) => addressMap[c.name] = c.name)
+  closures.forEach((c: any) => {
+    if (addressMap[c.name] !== NOP_CLOSURE) {
+      addressMap[c.name] = c.name
+    }
+  })
   // Then output the custom events, which may include closures, if needed
   if (Object.keys(eventDecs).length > 0) {
     outStr += 'customEvents\n'

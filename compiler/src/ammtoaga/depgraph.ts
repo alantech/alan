@@ -32,6 +32,10 @@ export class DepGraph {
   outerMuts: string[]
   params?: {[varname: string]: DepNode}
 
+  get isNop(): boolean {
+    return (this.byOrder.length === 0) || this.byOrder.every(n => n.closure != null && n.closure.isNop)
+  }
+
   constructor(fn?: LPNode, outer?: DepGraph) {
     this.byOrder = []
     this.byVar = {}

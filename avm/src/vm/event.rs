@@ -9,6 +9,8 @@ use crate::vm::opcode::OpcodeFn;
 use crate::vm::program::Program;
 use crate::vm::run::EVENT_TX;
 
+pub const NOP_ID: i64 = i64::MIN;
+
 #[derive(PartialEq, Eq, Hash)]
 /// Special events in alan found in standard library modules, @std.
 /// The IDs for built-in events are negative to avoid collision with positive, custom event IDs.
@@ -20,6 +22,7 @@ pub enum BuiltInEvents {
   START,
   /// '__conn ' in ASCII or 5f5f 636f 6e6e 20(80)
   HTTPCONN,
+  NOP,
 }
 
 impl From<BuiltInEvents> for i64 {
@@ -27,6 +30,7 @@ impl From<BuiltInEvents> for i64 {
     match ev {
       BuiltInEvents::START => -9213673853036498142,
       BuiltInEvents::HTTPCONN => -9214243417005793441,
+      BuiltInEvents::NOP => NOP_ID,
     }
   }
 }
