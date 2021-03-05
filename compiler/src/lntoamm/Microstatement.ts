@@ -122,6 +122,7 @@ class Microstatement {
       case StatementType.REREF:
       case StatementType.ARG:
       case StatementType.CLOSUREDEF:
+      case StatementType.TAIL:
         // Intentionally never output anything, this is metadata for the transpiler algo only
         break
     }
@@ -1636,8 +1637,8 @@ ${assignablesAst.t}`
       scope,
       true,
       tableName,
-      scope.deepGet('Maybe<function>') as Type,
-      ['noneM'],
+      opcodes.moduleScope.deepGet('CondTable') as Type,
+      ['zeroed'],
       [],
     ));
     // insert the conditions and matching execution

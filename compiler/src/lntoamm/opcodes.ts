@@ -1,3 +1,8 @@
+// !!IMPORTANT!!
+// do NOT try and import this module as a TS module. Instead, you must ref it like:
+// `const opcodes = require('path/to/this/file/opcodes.ts').default`
+// and then use it like that.
+
 import { v4 as uuid, } from 'uuid'
 
 import Event from './Event'
@@ -21,6 +26,10 @@ const addBuiltIn = (name: string) => {
   'operator', 'Error', 'Maybe', 'Result', 'Either', 'Array', 'ExecRes', 'InitialReduce',
   'KeyVal', 'InternalRequest', 'InternalResponse', 'Seq', 'Self',
 ].map(addBuiltIn))
+// FIXME: it should be possible to replace this once function types are introduced? Until then,
+// the `CondTable` type is a construct that exists only at the compiler level to work around
+// the fact that its return type is the same as the outermost caller
+addBuiltIn('CondTable')
 Type.builtinTypes['Array'].solidify(['string'], opcodeScope)
 opcodeScope.put('any', new Type('any', true, false, {}, {}, null, new Interface('any')))
 opcodeScope.put(
@@ -46,7 +55,6 @@ Type.builtinTypes.InternalResponse.properties = {
   connId: opcodeScope.get('int64') as Type,
 }
 Type.builtinTypes.Maybe.solidify(['any'], opcodeScope)
-Type.builtinTypes.Maybe.solidify(['function'], opcodeScope)
 Type.builtinTypes.Result.solidify(['any'], opcodeScope)
 Type.builtinTypes.Result.solidify(['anythingElse'], opcodeScope)
 Type.builtinTypes.Result.solidify(['int8'], opcodeScope)
@@ -789,8 +797,9 @@ addopcodes({
   lenstr: [{ s: t('string'), }, t('int64')],
   lenarr: [{ arr: t('Array<any>'), }, t('int64')],
   trim: [{ s: t('string'), }, t('string')],
-  condfn: [{ table: t('Maybe<function>'), cond: t('bool'), then: t('function'), }],
-  evalcond: [{ table: t('Maybe<function>'), ifNoReturn: t('function') }, t('any')], // FIXME: this *should* be defined here but we need to use the outer function's return type, which is impossible with the codegen above.
+  condfn: [{ table: t('CondTable'), cond: t('bool'), then: t('function'), }],
+  evalcond: [{ table: t('CondTable'), ifNoReturn: t('function') }, t('any')], // FIXME: this *should* be defined here but we need to use the outer function's return type, which is impossible with the codegen above.
+                                                                              // Also: the return type is marked as `any` but it should get replaced with the return type of the outermost function (will be clearer once we have fn types)
   pusharr: [{ arr: t('Array<any>'), val: t('any'), size: t('int64')}],
   poparr: [{ arr: t('Array<any>')}, t('Result<any>')],
   delindx: [{ arr: t('Array<any>'), idx: t('int64')}, t('Result<any>')],
