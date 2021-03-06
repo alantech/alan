@@ -39,7 +39,7 @@ export type Response {
  * HTTP Client
  */
 
-export fn fetch(req: Request): Result<Response> {
+export fn fetchEager(req: Request): Result<Response> {
   const i = new InternalRequest {
     method: req.method,
     url: req.url,
@@ -61,12 +61,70 @@ export fn fetch(req: Request): Result<Response> {
   }
 }
 
+export fn fetch(req: Request): Result<Response> {
+  const i = new InternalRequest {
+    method: req.method,
+    url: req.url,
+    headers: req.headers.keyVal,
+    body: req.body,
+    connId: 0, // Unused by the client
+  };
+  const ro = syncop(fn (ir: InternalRequest) = httpreq(ir), i);
+  if ro.isOk() {
+    const o = ro.getR();
+    return ok(new Response {
+      status: o.status,
+      headers: toHashMap(o.headers),
+      body: o.body,
+      connId: o.connId,
+    });
+  } else {
+    return ro;
+  }
+}
+
+export fn getEager(url: string): Result<string> {
+  const res = fetchEager(new Request {
+    method: 'GET',
+    url: url,
+    headers: newHashMap('Content-Length', '0'),
+    body: '',
+  });
+  if res.isOk() {
+    const r = res.getR();
+    if r.status < 300 {
+      return ok(r.body);
+    } else {
+      return err('Response was not ok');
+    }
+  } else {
+    return res;
+  }
+}
 export fn get(url: string): Result<string> {
   const res = fetch(new Request {
     method: 'GET',
     url: url,
     headers: newHashMap('Content-Length', '0'),
     body: '',
+  });
+  if res.isOk() {
+    const r = res.getR();
+    if r.status < 300 {
+      return ok(r.body);
+    } else {
+      return err('Response was not ok');
+    }
+  } else {
+    return res;
+  }
+}
+export fn postEager(url: string, body: string): Result<string> {
+  const res = fetchEager(new Request {
+    method: 'POST',
+    url: url,
+    headers: newHashMap('Content-Length', body.length().toString()),
+    body: body,
   });
   if res.isOk() {
     const r = res.getR();
@@ -97,12 +155,48 @@ export fn post(url: string, body: string): Result<string> {
     return res;
   }
 }
+export fn putEager(url: string, body: string): Result<string> {
+  const res = fetchEager(new Request {
+    method: 'PUT',
+    url: url,
+    headers: newHashMap('Content-Length', body.length().toString()),
+    body: body,
+  });
+  if res.isOk() {
+    const r = res.getR();
+    if r.status < 300 {
+      return ok(r.body);
+    } else {
+      return err('Response was not ok');
+    }
+  } else {
+    return res;
+  }
+}
 export fn put(url: string, body: string): Result<string> {
   const res = fetch(new Request {
     method: 'PUT',
     url: url,
     headers: newHashMap('Content-Length', body.length().toString()),
     body: body,
+  });
+  if res.isOk() {
+    const r = res.getR();
+    if r.status < 300 {
+      return ok(r.body);
+    } else {
+      return err('Response was not ok');
+    }
+  } else {
+    return res;
+  }
+}
+export fn delEager(url: string): Result<string> {
+  const res = fetchEager(new Request {
+    method: 'DELETE',
+    url: url,
+    headers: newHashMap('Content-Length', '0'),
+    body: '',
   });
   if res.isOk() {
     const r = res.getR();

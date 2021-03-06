@@ -2813,9 +2813,12 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   // Std opcodes
   io!(execop => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let full_cmd = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
-      let split_cmd: Vec<&str> = full_cmd.split(" ").collect();
-      let output = Command::new(split_cmd[0]).args(&split_cmd[1..]).output().await;
+      let cmd = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
+      let output = if cfg!(target_os = "windows") {
+        Command::new("cmd").arg("/C").arg(cmd).output().await
+      } else {
+        Command::new("sh").arg("-c").arg(cmd).output().await
+      };
       hand_mem.init_fractal(args[2]);
       match output {
         Err(e) => {
@@ -2837,8 +2840,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     })
   });
 
-  // IO opcodes
-  io!(waitop => fn(args, hand_mem) {
+  unpred_cpu!(waitop => fn(args, hand_mem) {
     Box::pin(async move {
       let ms = hand_mem.read_fixed(args[0]) as u64;
       sleep(Duration::from_millis(ms)).await;
@@ -2846,6 +2848,17 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     })
   });
 
+  unpred_cpu!(syncop => fn(args, mut hand_mem) {
+    Box::pin(async move {
+      let closure = HandlerFragment::new(args[0], 0);
+      hand_mem.register(CLOSURE_ARG_MEM_START + 1, args[1], true);
+      hand_mem = closure.clone().run(hand_mem).await;
+      hand_mem.register(args[2], CLOSURE_ARG_MEM_START, true);
+      hand_mem
+    })
+  });
+
+  // IO opcodes
   fn __httpreq(
     method: String,
     uri: String,

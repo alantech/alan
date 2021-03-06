@@ -499,6 +499,7 @@ export const opcodeParamMutabilities = {
   httpsend: [false],
   execop: [false],
   waitop: [false],
+  syncop: [false, false],
   catstr: [false, false],
   catarr: [false, false],
   split: [false, false],

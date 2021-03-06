@@ -322,7 +322,7 @@ mod tests {
   fn get_io_ins(id: i64, dep_ids: Vec<i64>) -> Instruction {
     return Instruction {
       id,
-      opcode: &OPCODES.get(&opcode_id("waitop")).unwrap(),
+      opcode: &OPCODES.get(&opcode_id("execop")).unwrap(),
       args: vec![],
       dep_ids,
     };

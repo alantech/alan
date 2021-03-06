@@ -130,6 +130,18 @@ const addopcodes = (opcodes: object) => {
             true,
             "_" + uuid().replace(/-/g, "_"),
             ((inputTypes, scope) => {
+              // The `syncop` opcode's return type is always the return type of the closure it was
+              // given, so we can short circuit this really quickly.
+              if (opcodeName === 'syncop') {
+                const fn = inputs[0].fns[0]
+                const idx = microstatements.indexOf(inputs[0])
+                const m = microstatements.slice(0, idx)
+                Microstatement.closureFromUserFunction(fn, fn.scope || scope, m, interfaceMap)
+                const closure = m[m.length - 1]
+                microstatements.splice(idx, 0, closure)
+                realArgNames[0] = closure.outputName
+                return fn.getReturnType()
+              }
               if (!!returnType.iface) {
                 // Path 1: the opcode returns an interface based on the interface type of an input
                 let replacementType: Type
@@ -735,6 +747,7 @@ addopcodes({
   httpsend: [{ a: t('InternalResponse'), }, t('Result<string>')],
   execop: [{ a: t('string')}, t('ExecRes')],
   waitop: [{ a: t('int64')}, t('void')],
+  syncop: [{ f: t('function'), a: t('any')}, t('anythingElse')],
   catstr: [{ a: t('string'), b: t('string'), }, t('string')],
   catarr: [{ a: t('Array<any>'), b: t('Array<any>')}, t('Array<any>')],
   split: [{ str: t('string'), spl: t('string'), }, t('Array<string>')],
