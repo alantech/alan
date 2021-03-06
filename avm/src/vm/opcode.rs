@@ -2813,9 +2813,12 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   // Std opcodes
   io!(execop => fn(args, mut hand_mem) {
     Box::pin(async move {
-      let full_cmd = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
-      let split_cmd: Vec<&str> = full_cmd.split(" ").collect();
-      let output = Command::new(split_cmd[0]).args(&split_cmd[1..]).output().await;
+      let cmd = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0]));
+      let output = if cfg!(target_os = "windows") {
+        Command::new("cmd").arg("/C").arg(cmd).output().await
+      } else {
+        Command::new("sh").arg("-c").arg(cmd).output().await
+      };
       hand_mem.init_fractal(args[2]);
       match output {
         Err(e) => {
