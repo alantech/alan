@@ -58,7 +58,7 @@ Describe "@std/cmd"
     }
     AfterAll after
 
-    EXECSEQPATTERN="foo*bar"
+    EXECSEQPATTERN="foo*bar*"
 
     It "runs js"
       When run test_js
