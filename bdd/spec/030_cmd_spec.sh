@@ -58,16 +58,16 @@ Describe "@std/cmd"
     }
     AfterAll after
 
-    EXECSEQOUTPUT="foo
-bar"
+    EXECSEQPATTERN="foo*bar"
+
     It "runs js"
       When run test_js
-      The output should include "$EXECSEQOUTPUT"
+      The output should match pattern "$EXECSEQPATTERN"
     End
 
     It "runs agc"
       When run test_agc
-      The output should include "$EXECSEQOUTPUT"
+      The output should match pattern "$EXECSEQPATTERN"
     End
   End
 End
