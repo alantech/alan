@@ -940,7 +940,7 @@ module.exports = {
       return [ false, e.toString() ]
     }
   },
-  httplsn:  async (port) => {
+  httplsn:  async () => {
     const server = http.createServer((req, res) => {
       const connId = Number(hashf(Math.random().toString()))
       httpConns[connId] = {
@@ -961,12 +961,17 @@ module.exports = {
         ])
       })
     })
-    return await new Promise(resolve => {
-      server.on('error', e => resolve([ false, e.code, ]))
+    const listenResult = await new Promise(resolve => {
+      server.on('error', e => resolve(e))
       server.listen({
-        port: parseInt(port.toString()),
-      }, () => resolve([ true, 'ok', ]))
+        port: 8000,
+      }, () => resolve(true))
     })
+    if (listenResult === true) {
+      console.log("HTTP server listening on port 8000")
+    } else {
+      console.error(`HTTP server failed to listen to port 8000: ${e}`)
+    }
   },
   httpsend: ires => {
     const [ status, headers, body, connId, ] = ires

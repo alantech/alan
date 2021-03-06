@@ -732,7 +732,6 @@ addopcodes({
   gtef64: [{ a: t('float64'), b: t('float64'), }, t('bool')],
   gtestr: [{ a: t('string'), b: t('string'), }, t('bool')],
   httpreq: [{ a: t('InternalRequest')}, t('Result<InternalResponse>')],
-  httplsn: [{ a: t('int64'), }, t('Result<string>')],
   httpsend: [{ a: t('InternalResponse'), }, t('Result<string>')],
   execop: [{ a: t('string')}, t('ExecRes')],
   waitop: [{ a: t('int64')}, t('void')],

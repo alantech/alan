@@ -117,7 +117,7 @@ export const comeGetMe = \"You got me!\""
     before() {
       sourceToAll "
         from @std/app import start, exit
-        from @std/http import connection, listen, body, send, Connection
+        from @std/httpserver import connection, body, send, Connection
 
         on connection fn (conn: Connection) {
           const req = conn.req;
@@ -127,13 +127,6 @@ export const comeGetMe = \"You got me!\""
             res.body('Hello, World!').send();
           } else {
             res.body('Hello, Failure!').send();
-          }
-        }
-
-        on start {
-          const serverStatus = listen(8080);
-          if serverStatus.isErr() {
-            emit exit 1;
           }
         }
       "
@@ -156,7 +149,7 @@ export const comeGetMe = \"You got me!\""
       node test_$$/temp.js 1>/dev/null 2>/dev/null &
       PID=$!
       sleep 1
-      When run curl -s localhost:8080
+      When run curl -s localhost:8000
       The output should eq "Hello, World!"
     End
 
@@ -164,7 +157,7 @@ export const comeGetMe = \"You got me!\""
       alan run test_$$/temp.agc 1>/dev/null 2>/dev/null &
       PID=$!
       sleep 1
-      When run curl -s localhost:8080
+      When run curl -s localhost:8000
       The output should eq "Hello, World!"
     End
   End

@@ -54,7 +54,7 @@ pub struct EventHandler {
   movable_capstones: Vec<usize>,
   /// topological order of the instructions split into fragments
   /// by unpredictable or partially predictable opcodes
-  fragments: Vec<Vec<Instruction>>,
+  pub fragments: Vec<Vec<Instruction>>,
   /// total count of instructions within fragments
   ins_count: usize,
 }

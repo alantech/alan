@@ -89,6 +89,7 @@ const ammToJsText = (amm: LPNode) => {
   }
   // We can also skip the event declarations because they are lazily bound by EventEmitter
   // Now we convert the handlers to Javascript. This is the vast majority of the work
+  let hasConn = false
   for (const handler of amm.get('handlers').getAll()) {
     const rec = handler.get()
     if (!(rec instanceof NamedAnd)) continue
@@ -98,10 +99,12 @@ const ammToJsText = (amm: LPNode) => {
     }
     const eventVarName = !(arg instanceof NulLP) ?
       arg.get('variable').t : ""
+    if (rec.get('variable').t === '__conn') hasConn = true
     outFile += `r.on('${rec.get('variable').t}', async (${eventVarName}) => {\n`
     outFile += functionbodyToJsText(rec.get('functions').get('functionbody'), '')
     outFile += '})\n' // End this handler
   }
+  if (hasConn) outFile += "r.on('_start', () => r.httplsn())\n" // Make sure a web server starts up
   outFile += "r.emit('_start', undefined)\n" // Let's get it started in here
   return outFile
 }
