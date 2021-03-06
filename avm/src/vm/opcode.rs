@@ -2848,6 +2848,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   unpred_cpu!(syncop => fn(args, mut hand_mem) {
     Box::pin(async move {
       let closure = HandlerFragment::new(args[0], 0);
+      hand_mem.register(CLOSURE_ARG_MEM_START + 1, args[1], true);
       hand_mem = closure.clone().run(hand_mem).await;
       hand_mem.register(args[2], CLOSURE_ARG_MEM_START, true);
       hand_mem

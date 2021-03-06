@@ -3,4 +3,6 @@
  */
 
 export fn execEager(n: string) = execop(n);
-export fn exec(n: string) = execop.sync(n);
+export fn exec(n: string) {
+  return syncop(execEager, n);
+}

@@ -30,7 +30,6 @@ export type float = float64
 // Default Interfaces
 export interface any {}
 export interface anythingElse = any // Same as `any` but doesn't match with it
-export interface any2ElectricBoogaloo = any // Same as `any` but doesn't match with it
 export interface Stringifiable {
   toString(Stringifiable): string,
 }
@@ -2100,10 +2099,6 @@ export fn wait(n: int8) = waitop(i8i64(n));
 export fn wait(n: int16) = waitop(i16i64(n));
 export fn wait(n: int32) = waitop(i32i64(n));
 export fn wait(n: int64) = waitop(n);
-
-// Sync functions
-export fn sync(iofn: function, a: any): anythingElse = syncop(fn () = ioopcode(a));
-export fn sync(iofn: function, a: any, b: anythingElse): any2ElectricBoogaloo = syncop(fn () = ioopcode(a, b));
 
 // String functions
 export fn concat(a: string, b: string) = catstr(a, b);

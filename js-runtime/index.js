@@ -989,7 +989,7 @@ module.exports = {
     })
   },
   waitop:   async (a) => await new Promise(resolve => setTimeout(resolve, Number(a))),
-  syncop:   async (f) => await f(),
+  syncop:   async (f, a) => await f(a),
   execop:   async (cmd) => {
     try {
       const res = await exec(cmd)
