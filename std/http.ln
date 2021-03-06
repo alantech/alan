@@ -69,7 +69,7 @@ export fn fetch(req: Request): Result<Response> {
     body: req.body,
     connId: 0, // Unused by the client
   };
-  const ro = httpreq.syncop(i);
+  const ro = syncop(fn (ir: InternalRequest) = httpreq(ir), i);
   if ro.isOk() {
     const o = ro.getR();
     return ok(new Response {
