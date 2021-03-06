@@ -62,12 +62,12 @@ Describe "@std/cmd"
 bar"
     It "runs js"
       When run test_js
-      The output should eq "$EXECSEQOUTPUT"
+      The output should starts with "$EXECSEQOUTPUT"
     End
 
     It "runs agc"
       When run test_agc
-      The output should eq "$EXECSEQOUTPUT"
+      The output should starts with "$EXECSEQOUTPUT"
     End
   End
 End
