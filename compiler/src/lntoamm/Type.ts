@@ -678,6 +678,7 @@ export class Type {
       }),
       recurseFn: new Type("function", true),
     }),
+    CondTable: new Type('CondTable', true),
     "function": new Type("function", true),
     operator: new Type("operator", true),
     Event: new Type("Event", true, false, {

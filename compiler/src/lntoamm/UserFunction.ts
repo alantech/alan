@@ -262,197 +262,67 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
     `.trim()
   }
 
-  static conditionalToCond(cond: LPNode, scope: Scope) {
-    let newStatements: Array<LPNode> = []
-    let hasConditionalReturn = false // Flag for potential second pass
-    const condName = "_" + uuid().replace(/-/g, "_")
-    const condStatement = Ast.statementAstFromString(`
-      const ${condName}: bool = ${cond.get('assignables').t}
-    `.trim() + ';')
-    const condBlockFn = (cond.get('blocklike').has('functionbody') ?
-      UserFunction.fromFunctionbodyAst(cond.get('blocklike').get('functionbody'), scope) :
-      cond.get('blocklike').has('fnname') ?
-        // TODO: If more than one function matches, need to run multiple dispatch logic
-        scope.deepGet(cond.get('blocklike').get('fnname').t)[0] :
-        UserFunction.fromFunctionsAst(cond.get('blocklike').get('functions'), scope)
-    ).maybeTransform(new Map(), scope)
-    if (condBlockFn.statements[condBlockFn.statements.length - 1].isReturnStatement()) {
-      hasConditionalReturn = true
-    }
-    const condBlock = condBlockFn.toFnStr()
-    const condCall = Ast.statementAstFromString(`
-      cond(${condName}, ${condBlock})
-    `.trim() + ';') // TODO: If the blocklike is a reference, grab it and inline it
-    newStatements.push(condStatement, condCall)
-    if (cond.has('elsebranch')) {
-      const notcond = cond.get('elsebranch')
-      if (notcond.get('condorblock').has('blocklike')) {
-        const notblock = notcond.get('condorblock').get('blocklike')
-        const elseBlockFn = (notblock.has('functionbody') ?
-          UserFunction.fromFunctionbodyAst(notblock.get('functionbody'), scope) :
-          notblock.has('fnname') ?
-            // TODO: If more than one function matches, need to run multiple dispatch logic
-            scope.deepGet(notblock.get('fnname').t)[0] :
-            UserFunction.fromFunctionsAst(notblock.get('functions'), scope)
-        ).maybeTransform(new Map(), scope)
-        if (elseBlockFn.statements[elseBlockFn.statements.length - 1].isReturnStatement()) {
-          hasConditionalReturn = true
+  desugar(interfaceMap: Map<Type, Type>, scope: Scope) {
+    let ii = 0;
+    while (ii < this.statements.length) {
+      let statement = this.statements[ii];
+      // if/else desugaring
+      if (statement.statementAst.has('conditionals')) {
+        console.log('--------------------------------------');
+        console.log(statement.statementAst)
+        const StatementFrom = (str: string) => Statement.create(Ast.fromString(str), scope);
+        // define the tail function
+        let tailname = uuid().replace(/-/g, '_');
+        tailname = tailname.substring(0, tailname.length - 4) + 'tail';
+        let tail = this.statements.splice(ii).splice(1); // tail is the rest of the function excluding the if/else. remove so we can deal with them in the new UserFunction
+        let tailfn = new UserFunction(
+          null,
+          {},
+          this.returnType,
+          scope,
+          tail,
+          this.pure
+        );
+        let tailfntext = `const ${tailname}: function = ${tailfn.toFnStr()};`;
+        this.statements.push(StatementFrom(tailfntext));
+        // create the cond table
+        let condTable = uuid().replace(/-/g, '_');
+        condTable = condTable.substring(0, condTable.length - 4) + 'tble';
+        const condTableDec = `const ${condTable}: Maybe<function> = none();`;
+        this.statements.push(StatementFrom(condTableDec))
+        // "populate" the cond table
+        let conds = extractConds(statement.statementAst);
+        for (let cond of conds) {
+          let name = uuid().replace(/-/g, '_');
+          name = name.substring(0, name.length - 4);
+          let condname = name + 'cond';
+          let thenname = name + 'then';
+          // condition
+          let condtext = `const ${condname}: bool = ${cond[0] === true ? 'true' : cond[0].t}`.trim() + ';';
+          this.statements.push(StatementFrom(condtext));
+          // executed
+          let thenfn = cond[1].has('fnbody') ?
+                        UserFunction.fromFunctionbodyAst(cond[1].get('functionbody'), scope) :
+                        (() => {throw new Error('unhandled')})();
+          let thenfntext = `const ${thenname}: function = ${thenfn.toFnStr()};`;
+          this.statements.push(StatementFrom(thenfntext));
+          // populate
+          let calltext = `condfn(${condTable}, ${condname}, ${thenname});`;
+          this.statements.push(StatementFrom(calltext));
         }
-        const elseBlock = elseBlockFn.toFnStr()
-        const elseStatement = Ast.statementAstFromString(`
-          cond(not(${condName}), ${elseBlock})
-        `.trim() + ';')
-        newStatements.push(elseStatement)
-      } else {
-        const res = UserFunction.conditionalToCond(
-          notcond.get('condorblock').get('conditionals'),
-          scope
-        )
-        const innerCondStatements = res[0] as Array<LPNode>
-        if (res[1]) hasConditionalReturn = true
-        const elseStatement = Ast.statementAstFromString(`
-          cond(!${condName}, fn {
-            ${innerCondStatements.map(s => s.t).join('\n')}
-          })
-        `.trim() + ';')
-        newStatements.push(elseStatement)
+        // evaluate the table and maybe evaluate the tail
+        let evaltext = `return evalcond(${condTable}, ${tailname});`;
+        this.statements.push(StatementFrom(evaltext));
       }
+      ii++;
     }
-    return [newStatements, hasConditionalReturn]
-  }
-
-  static earlyReturnRewrite(
-    retVal: string,
-    retNotSet: string,
-    statements: Array<LPNode>,
-    scope: Scope
-  ) {
-    let replacementStatements = []
-    while (statements.length > 0) {
-      const s = statements.shift()
-      // TODO: This doesn't work for actual direct-usage of `cond` in some sort of method chaining
-      // if that's even possible. Probably lots of other weirdness to deal with here.
-      if (
-        s.has('assignables') &&
-        s
-          .get('assignables')
-          .get('assignables')
-          .getAll()[0]
-          .get('withoperators')
-          .get('baseassignablelist')
-          .getAll()
-          .length >= 2 &&
-        s
-          .get('assignables')
-          .get('assignables')
-          .getAll()[0]
-          .get('withoperators')
-          .get('baseassignablelist')
-          .getAll()[0]
-          .t
-          .trim() === 'cond' &&
-        s
-          .get('assignables')
-          .get('assignables')
-          .getAll()[0]
-          .get('withoperators')
-          .get('baseassignablelist')
-          .getAll()[1]
-          .get('baseassignable')
-          .has('fncall')
-      ) {
-        // TODO: Really need to rewrite
-        const argsAst = s
-            .get('assignables')
-            .get('assignables')
-            .getAll()[0]
-            .get('withoperators')
-            .get('baseassignablelist')
-            .getAll()[1]
-            .get('baseassignable')
-            .get('fncall')
-            .get('assignablelist')
-        const args = []
-        if (argsAst.has('assignables')) {
-          args.push(argsAst.get('assignables'))
-          argsAst.get('cdr').getAll().forEach(r => {
-            args.push(r.get('assignables'))
-          })
-        }
-        if (args.length == 2) {
-          const block = args[1]
-            .getAll()[0]
-            .get('withoperators')
-            .has('baseassignablelist') ?
-            args[1]
-              .getAll()[0]
-              .get('withoperators')
-              .get('baseassignablelist')
-              .getAll()[0]
-              .get('baseassignable') :
-            null
-          if (block) {
-            const blockFn = UserFunction.fromAst(block, scope)
-            if (blockFn.statements[blockFn.statements.length - 1].isReturnStatement()) {
-              const innerStatements = blockFn.statements.map(s => s.statementAst)
-              const newBlockStatements = UserFunction.earlyReturnRewrite(
-                retVal, retNotSet, innerStatements, scope
-              )
-              const cond = args[0].t.trim()
-              const newBlock = Ast.statementAstFromString(`
-                cond(${cond}, fn {
-                  ${newBlockStatements.map(s => s.t).join('\n')}
-                })
-              `.trim() + ';')
-              replacementStatements.push(newBlock)
-              if (statements.length > 0) {
-                const remainingStatements = UserFunction.earlyReturnRewrite(
-                  retVal, retNotSet, statements, scope
-                )
-                const remainingBlock = Ast.statementAstFromString(`
-                  cond(${retNotSet}, fn {
-                    ${remainingStatements.map(s => s.t).join('\n')}
-                  })
-                `.trim() + ';')
-                replacementStatements.push(remainingBlock)
-              }
-            } else {
-              replacementStatements.push(s)
-            }
-          } else {
-            replacementStatements.push(s)
-          }
-        } else {
-          replacementStatements.push(s)
-        }
-      } else {
-        replacementStatements.push(s)
-      }
-    }
-    // If no inner conditional was found in this branch, check if there's a final return
-    if (replacementStatements[replacementStatements.length - 1].has('exits')) {
-      const retStatement = replacementStatements.pop()
-      if (retStatement.get('exits').get('retval').has('assignables')) {
-        const newAssign = Ast.statementAstFromString(`
-          ${retVal} = ref(${retStatement.get('exits').get('retval').get('assignables').t})
-        `.trim() + ';')
-        replacementStatements.push(newAssign)
-      }
-      replacementStatements.push(Ast.statementAstFromString(`
-        ${retNotSet} = clone(false)
-      `.trim() + ';'))
-    }
-    return replacementStatements
   }
 
   maybeTransform(interfaceMap: Map<Type, Type>, scope?: Scope) {
-    if (
-      this.statements.some(s => s.isConditionalStatement()) ||
-      this.statements.some(s => s.hasObjectLiteral())
-    ) {
-      // First pass, convert conditionals to `cond` fn calls and wrap assignment statements
+    if (this.statements.some(s => s.hasObjectLiteral())) {
+    //   // First pass, convert conditionals to `cond` fn calls and wrap assignment statements
       let statementAsts = []
-      let hasConditionalReturn = false // Flag for potential second pass
+    //   let hasConditionalReturn = false // Flag for potential second pass
       for (let i = 0; i < this.statements.length; i++) {
         let s = new Statement(
           this.statements[i].statementAst,
@@ -539,13 +409,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
           newScope = new Scope(scope)
           newScope.secondaryPar = this.scope
         }
-        if (s.isConditionalStatement()) {
-          const cond = s.statementAst.get('conditionals')
-          const res = UserFunction.conditionalToCond(cond, newScope)
-          const newStatements = res[0] as Array<LPNode>
-          if (res[1]) hasConditionalReturn = true
-          statementAsts.push(...newStatements)
-        } else if (s.statementAst.has('assignments')) {
+        if (s.statementAst.has('assignments')) {
           const a = s.statementAst.get('assignments')
           const wrappedAst = Ast.statementAstFromString(`
             ${a.get('varn').t} = ref(${a.get('assignables').t})
@@ -567,29 +431,6 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
           statementAsts.push(s.statementAst)
         }
       }
-      // Second pass, there was a conditional return, mutate everything *again* so the return is
-      // instead hoisted into writing a closure variable
-      if (hasConditionalReturn) {
-        // Need the UUID to make sure this is unique if there's multiple layers of nested returns
-        const retNamePostfix = "_" + uuid().replace(/-/g, "_")
-        const retVal = "retVal" + retNamePostfix
-        const retNotSet = "retNotSet" + retNamePostfix
-        const retValStatement = Ast.statementAstFromString(`
-          let ${retVal}: ${this.getReturnType().typename} = clone()
-        `.trim() + ';')
-        const retNotSetStatement = Ast.statementAstFromString(`
-          let ${retNotSet}: bool = clone(true)
-        `.trim() + ';')
-        let replacementStatements = [retValStatement, retNotSetStatement]
-        replacementStatements.push(...UserFunction.earlyReturnRewrite(
-          retVal, retNotSet, statementAsts, this.scope
-        ))
-        replacementStatements.push(Ast.statementAstFromString(`
-          return ${retVal}
-        `.trim() + ';'))
-        statementAsts = replacementStatements
-      }
-
       // TODO: Should these be attached to the scope or should callers provide a merged scope?
       const newArgs = {}
       for (const argName in this.args) {
@@ -813,11 +654,49 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
     // after this one so we don't mark non-recursive calls to a function multiple times as recursive
     // TODO: This is not the most efficient way to do things, come up with a better metadata
     // mechanism to pass around.
+    let tailed: [Microstatement, Array<Microstatement>] | null = null;
     for (let i = originalStatementLength; i < microstatements.length; i++) {
       if (microstatements[i].statementType === StatementType.ENTERFN) {
         microstatements.splice(i, 1)
         i--
+      } else if (microstatements[i].statementType === StatementType.TAIL) {
+        tailed = [
+          // TAIL mStmt
+          microstatements.splice(i, 1)[0],
+          // everything that goes in the tail function. even if there are no more elements,
+          // assume we still need to provide an empty closure.
+          microstatements.splice(i).filter(ms => ms.statementType !== StatementType.ENTERFN)
+        ];
+        break;
       }
+    }
+    if (tailed !== null) {
+      let [tail, tailfn] = tailed;
+      // TODO: more user-friendly errors here
+      if (tail == null) throw new Error('set prep for tail but no tail');
+      // still allows for []
+      else if (tailfn == null) throw new Error('set prep for tailfn but it cant be used');
+      // we need to define the tailfn first
+      let tailFnName = uuid().replace(/-/g, '_');
+      microstatements.push(new Microstatement(
+        StatementType.CLOSURE,
+        scope,
+        true,
+        tailFnName,
+        Type.builtinTypes['function'],
+        [],
+        [],
+        '',
+        false, // right?
+        tailfn,
+        {},
+        this.getReturnType(), // TODO: might have to check length of mStmts and say void...
+      ));
+      // now fix and insert the TAIL
+      tail.statementType = StatementType.EXIT;
+      tail.inputNames.push(tailFnName);
+      tail.outputType = this.getReturnType()
+      microstatements.push(tail);
     }
   }
 
@@ -866,3 +745,30 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
 }
 
 export default UserFunction
+
+const extractConds = (node: LPNode): [LPNode | true, LPNode][] => {
+  let res = [];
+  // if <assignables> <blocklike> <elsebranch?>
+  // else <blocklike>
+  while (node !== undefined && node !== null) {
+    if (!node.has('blocklike')) {
+      throw new Error('conditional without a blocklike');
+    }
+
+    let cond: LPNode | true; // LPNode if it's an `if`, true if it's an `else`
+    if (node.has('assignables')) {
+      cond = node.get('assignables');
+    } else {
+      cond = true;
+    }
+    let then = node.get('blocklike');
+    res.push([cond, then]);
+
+    if (cond !== true && node.has('elsebranch')) {
+      node = node.get('elsebranch')
+    } else {
+      break;
+    }
+  }
+  return res;
+}

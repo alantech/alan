@@ -10,7 +10,7 @@ import StatementType from './StatementType'
 import Type from './Type'
 import UserFunction from './UserFunction'
 import { Args, Fn, } from './Function'
-import { LPNode, ZeroOrMore, } from '../lp'
+import { LPNode, NamedAnd, Token, } from '../lp'
 
 const FIXED_TYPES = [ 'int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'bool', 'void' ]
 
@@ -122,6 +122,7 @@ class Microstatement {
       case StatementType.REREF:
       case StatementType.ARG:
       case StatementType.CLOSUREDEF:
+      case StatementType.TAIL:
         // Intentionally never output anything, this is metadata for the transpiler algo only
         break
     }
@@ -562,7 +563,7 @@ ${objectLiteralsAst.t} on line ${objectLiteralsAst.line}:${objectLiteralsAst.cha
         scope,
         true,
         last.outputName,
-        last.outputType
+        fn.getReturnType(), // if this causes a type error, that's good. (a little hack to avoid having to grab the return type for condfn and evalcond)
       ))
     }
     microstatements.push(new Microstatement(
@@ -1003,7 +1004,6 @@ ${letdeclarationAst.t} on line ${letdeclarationAst.line}:${letdeclarationAst.cha
     scope: Scope,
     microstatements: Array<Microstatement>,
   ) {
-    const constName = "_" + uuid().replace(/-/g, "_")
     const constAlias = constdeclarationAst.get('variable').t
     const constTypeHint = constdeclarationAst.get('typedec').has() ?
       constdeclarationAst.get('typedec').get('fulltypename').t :
@@ -1091,6 +1091,13 @@ ${constdeclarationAst.t} on line ${constdeclarationAst.line}:${constdeclarationA
     if (statementAst.has('emits')) {
       Microstatement.fromEmitsAst(
         statementAst.get('emits'),
+        scope,
+        microstatements
+      )
+    }
+    if (statementAst.has('conditionals')) {
+      Microstatement.fromConditionalsAst(
+        statementAst.get('conditionals'), // conditionals need the full ast
         scope,
         microstatements
       )
@@ -1322,7 +1329,7 @@ ${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
               microstatements,
             )
             // We'll need a reference to this for later
-            const typeRecord = currVal 
+            const typeRecord = currVal
             // Set the original to this newly-generated microstatement
             currVal = microstatements[microstatements.length - 1]
             // Now we do something odd, but correct here; we need to replace the `outputType` from
@@ -1616,6 +1623,83 @@ ${assignablesAst.t}`
     }
   }
 
+  static fromConditionalsAst(
+    conditionalsAst: LPNode,
+    scope: Scope,
+    microstatements: Array<Microstatement>,
+  ) {
+    const opcodes = require('./opcodes').default;
+
+    // inject the return value
+    const tableName = uuid().replace(/-/g, '_');
+    microstatements.push(new Microstatement(
+      StatementType.CONSTDEC,
+      scope,
+      true,
+      tableName,
+      opcodes.moduleScope.deepGet('CondTable') as Type,
+      ['zeroed'],
+      [],
+    ));
+    // insert the conditions and matching execution
+    extractCondClauses(conditionalsAst).forEach(clause => {
+      let cond = clause[0];
+      let condname = uuid().replace(/-/g, '_');
+      if (cond === true) {
+        microstatements.push(new Microstatement(
+          StatementType.CONSTDEC,
+          scope,
+          true,
+          condname,
+          scope.deepGet('bool') as Type,
+          ['true'],
+        ));
+      } else {
+        // simulate a boolean assignment
+        // TODO: replace with real code.
+        const haxx = NamedAnd.build({
+          'variable': Token.build(condname),
+          'assignables': cond, // probably wrong but idc software works for you, not the other way around.
+        });
+        Microstatement.fromConstdeclarationAst(haxx, scope, microstatements);
+      }
+
+      let then = clause[1];
+      let thenname: string;
+      if (then.has('functionbody')) {
+        UserFunction
+          .fromFunctionbodyAst(then.get('functionbody'), scope)
+          .maybeTransform(new Map(), scope)
+          .microstatementInlining([], scope, microstatements); // no "real args" since these functions must be `() -> ()`
+      } else if (then.has('fnname')) {
+        throw new Error('figure this crap out');
+      } else {
+        console.log(then);
+        throw new Error('unsure how to handle above LPNode when generating conditional');
+      }
+
+      opcodes.exportScope.get('condfn')[0].microstatementInlining(
+        [tableName, condname, thenname],
+        scope,
+        microstatements,
+      );
+    });
+    // now we insert the TAIL and let UserFunction take care of the rest
+    opcodes.exportScope.get('evalcond')[0].microstatementInlining(
+      [tableName],
+      scope,
+      microstatements
+    );
+    // microstatements.push(new Microstatement(
+    //   StatementType.TAIL,
+    //   scope,
+    //   false, // right?
+    //   '',
+    //   null,
+    //   [tableName],
+    // ))
+  }
+
   static fromStatement(
     statement: Statement,
     microstatements: Array<Microstatement>,
@@ -1640,3 +1724,33 @@ ${assignablesAst.t}`
 }
 
 export default Microstatement
+
+const extractCondClauses = (node: LPNode): [LPNode | true, LPNode][] => {
+  let res = [];
+  // if <assignables> <blocklike> <elsebranch?>
+  // else <blocklike>
+  while (node !== undefined && node !== null) {
+    if (!node.has('blocklike')) {
+      throw new Error('conditional without a blocklike');
+    }
+
+    let cond: LPNode | true;
+    if (node.has('assignables')) {
+      cond = node.get('assignables');
+    } else {
+      cond = true;
+    }
+    let then = node.get('blocklike');
+    res.push([cond, then]);
+
+    // TODO: eventually, determine if the cond is always going to be true.
+    if (cond === true || !node.has('elsebranch')) {
+      break;
+    }
+    node = node.get('elsebranch').get('condorblock');
+    if (node.has('conditionals')) {
+      node = node.get('conditionals');
+    }
+  }
+  return res;
+}
