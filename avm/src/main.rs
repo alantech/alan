@@ -77,6 +77,7 @@ fn main() {
       .arg_from_usage("<APP_ID> 'Specifies the alan app to upgrade'")
       .arg_from_usage("<AGZ_B64> 'Specifies the .agz program as a base64 encoded string'")
       .arg_from_usage("<DEPLOY_TOKEN> 'Specifies the deploy token'")
+      .arg_from_usage("<DOMAIN> 'Specifies the application domain'")
     )
     .arg_from_usage("[SOURCE] 'Specifies a source ln file to compile and run'");
 
@@ -158,7 +159,8 @@ fn main() {
         let app_id = matches.value_of("APP_ID").unwrap();
         let agz_b64 = matches.value_of("AGZ_B64").unwrap();
         let deploy_token = matches.value_of("DEPLOY_TOKEN").unwrap();
-        start(app_id, agz_b64, deploy_token).await;
+        let domain = matches.value_of("DOMAIN").unwrap();
+        start(app_id, agz_b64, deploy_token, domain).await;
       },
       _ => {
         // AppSettings::SubcommandRequiredElseHelp does not cut it here

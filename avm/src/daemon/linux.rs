@@ -46,8 +46,6 @@ struct VMStatsV1 {
   freeSwapKb: u64,
 }
 
-const DOMAIN: &'static str = "anycloudapp.com";
-
 async fn get_private_ip() -> String {
   let res = Command::new("hostname")
     .arg("-I")
@@ -136,14 +134,15 @@ async fn post_v1_stats(cluster_id: &str, deploy_token: &str) -> String {
   post_v1("stats", stats_body).await
 }
 
-pub async fn start(cluster_id: &str, agz_b64: &str, deploy_token: &str) {
+pub async fn start(cluster_id: &str, agz_b64: &str, deploy_token: &str, domain: &str) {
   let cluster_id = cluster_id.to_string();
   let deploy_token = deploy_token.to_string();
   let agzb64 = agz_b64.to_string();
+  let domain = domain.to_string();
   task::spawn(async move {
     // TODO better period determination
     let period = Duration::from_secs(180);
-    let dns = DNS::new(DOMAIN);
+    let dns = DNS::new(domain);
     let self_ip = get_private_ip().await;
     let mut cluster_size = 0;
     let mut leader_ip = "".to_string();
