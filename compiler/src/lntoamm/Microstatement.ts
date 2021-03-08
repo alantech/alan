@@ -1645,6 +1645,7 @@ ${assignablesAst.t}`
     extractCondClauses(conditionalsAst).forEach(clause => {
       let cond = clause[0];
       let condname = uuid().replace(/-/g, '_');
+      condname = condname.substring(0, condname.length - 5) + '_COND';
       if (cond === true) {
         microstatements.push(new Microstatement(
           StatementType.CONSTDEC,
@@ -1665,11 +1666,15 @@ ${assignablesAst.t}`
       }
 
       let then = clause[1];
-      let thenname: string;
+      let thenname = uuid().replace(/-/g, '_');
+      thenname = thenname.substring(0, thenname.length - 5) + '_THEN';
       if (then.has('functionbody')) {
-        UserFunction
-          .fromFunctionbodyAst(then.get('functionbody'), scope)
-          .maybeTransform(new Map(), scope)
+        let thenfn = UserFunction
+          .fromFunctionbodyAst(then.get('functionbody'), scope);
+        thenfn.name = thenname;
+        // console.log(thenfn.statements)
+        // throw new Error('done');
+        thenfn.maybeTransform(new Map(), scope)
           .microstatementInlining([], scope, microstatements); // no "real args" since these functions must be `() -> ()`
       } else if (then.has('fnname')) {
         throw new Error('figure this crap out');
@@ -1698,6 +1703,8 @@ ${assignablesAst.t}`
     //   null,
     //   [tableName],
     // ))
+    // console.log(microstatements);
+    // throw new Error('dun')
   }
 
   static fromStatement(

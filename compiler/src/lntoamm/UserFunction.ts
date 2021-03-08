@@ -541,7 +541,14 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
     const fn = this.maybeTransform(interfaceMap, scope)
     for (const s of fn.statements) {
       Microstatement.fromStatement(s, microstatements, scope)
+      console.log(';;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;');
+      console.log(microstatements[microstatements.length - 1]);
+      console.log(';;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;');
+      if (microstatements[microstatements.length - 1].statementType === StatementType.TAIL) {
+        throw new Error('finally')
+      }
     }
+    // throw new Error('cool')
     // Delete `REREF`s except a `return` statement's `REREF` to make sure it doesn't interfere with
     // the outer scope (if it has the same variable name defined, for instance)
     for (let i = originalStatementLength; i < microstatements.length - 1; i++) {
@@ -660,6 +667,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
         microstatements.splice(i, 1)
         i--
       } else if (microstatements[i].statementType === StatementType.TAIL) {
+        throw new Error('yikes')
         tailed = [
           // TAIL mStmt
           microstatements.splice(i, 1)[0],
@@ -671,6 +679,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
       }
     }
     if (tailed !== null) {
+      throw new Error('bruh');
       let [tail, tailfn] = tailed;
       // TODO: more user-friendly errors here
       if (tail == null) throw new Error('set prep for tail but no tail');
@@ -678,6 +687,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
       else if (tailfn == null) throw new Error('set prep for tailfn but it cant be used');
       // we need to define the tailfn first
       let tailFnName = uuid().replace(/-/g, '_');
+      tailFnName = tailFnName.substring(0, tailFnName.length - 5) + '_TAIL';
       microstatements.push(new Microstatement(
         StatementType.CLOSURE,
         scope,

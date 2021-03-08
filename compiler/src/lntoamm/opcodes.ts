@@ -89,6 +89,7 @@ const addopcodes = (opcodes: object) => {
           scope: Scope,
           microstatements: Array<Microstatement>,
         ) => {
+          // throw new Error('ok?');
           microstatements.push(new Microstatement(
             StatementType.TAIL,
             scope,
