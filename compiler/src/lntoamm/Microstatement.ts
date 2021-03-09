@@ -1655,33 +1655,8 @@ ${assignablesAst.t}`
         ));
       } else {
         // TODO: ???
-        // Microstatement.fromAssignablesAst(cond, scope, microstatements)
-        // const def = microstatements.pop()
-        // if (def.statementType === StatementType.REREF) {
-        //   def.alias = condname;
-        // } else {
-        //   def.outputName = condname;
-        // }
-        // microstatements.push(def);
-        // simulate a boolean assignment
-        // TODO: replace with real code.
-        const haxx = NamedAnd.build({
-          'variable': Token.build(condname),
-          'typedec': NamedAnd.build({
-            'fulltypename': {
-              // booooooooo
-              t: 'bool',
-              line: 0,
-              char: 0,
-              get: null,
-              getAll: null,
-              has: null,
-              apply: null,
-            }
-          }),
-          'assignables': cond, // probably wrong but idc software works for you, not the other way around.
-        });
-        Microstatement.fromConstdeclarationAst(haxx, scope, microstatements);
+        Microstatement.fromAssignablesAst(cond, scope, microstatements)
+        condname = microstatements[microstatements.length - 1].outputName
       }
 
       let then = clause[1];
