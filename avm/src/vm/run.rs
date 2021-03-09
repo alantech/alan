@@ -97,6 +97,7 @@ pub async fn run_file(fp: &str, delete_after_load: bool) {
   run(bytecode, HttpType::HTTP(HttpConfig { port: 8000, })).await;
 }
 
+// Used by the `daemon` mode only
 pub async fn run_agz_b64(agz_b64: &str, priv_key_b64: Option<&str>, cert_b64: Option<&str>) {
   let bytes = base64::decode(agz_b64).unwrap();
   let agz = GzDecoder::new(bytes.as_slice());
