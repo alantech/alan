@@ -29,12 +29,14 @@ name = "alan"
 version = "0.1.32"
 dependencies = [
  "anycloud",
+ "async-stream",
  "base64",
  "byteorder",
  "clap",
  "dashmap",
  "flate2",
  "futures",
+ "futures-util",
  "heim",
  "hyper",
  "hyper-rustls",
@@ -42,9 +44,11 @@ dependencies = [
  "once_cell",
  "rand 0.7.3",
  "regex",
+ "rustls",
  "serde",
  "serde_json",
  "tokio",
+ "tokio-rustls",
  "trust-dns-resolver",
  "twox-hash",
 ]
@@ -97,6 +101,27 @@ name = "ascii_table"
 version = "3.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51f0a58f3b1453981b910b603a4a7346be14fccd50f8edd7c954725a9210c24f"
+
+[[package]]
+name = "async-stream"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3670df70cbc01729f901f94c887814b3c68db038aad1329a418bae178bc5295c"
+dependencies = [
+ "async-stream-impl",
+ "futures-core",
+]
+
+[[package]]
+name = "async-stream-impl"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a3548b8efc9f8e8a5a0a2808c5bd8451a9031b9e5b879a79590304ae928b0a70"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "async-trait"

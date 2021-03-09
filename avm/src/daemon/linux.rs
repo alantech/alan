@@ -134,7 +134,14 @@ async fn post_v1_stats(cluster_id: &str, deploy_token: &str) -> String {
   post_v1("stats", stats_body).await
 }
 
-pub async fn start(cluster_id: &str, agz_b64: &str, deploy_token: &str, domain: &str) {
+pub async fn start(
+  cluster_id: &str,
+  agz_b64: &str,
+  deploy_token: &str,
+  domain: &str,
+  priv_key_b64: Option<&str>,
+  cert_b64: Option<&str>,
+) {
   let cluster_id = cluster_id.to_string();
   let deploy_token = deploy_token.to_string();
   let agzb64 = agz_b64.to_string();
@@ -166,5 +173,5 @@ pub async fn start(cluster_id: &str, agz_b64: &str, deploy_token: &str, domain: 
       sleep(period).await
     }
   });
-  run_agz_b64(agz_b64).await;
+  run_agz_b64(agz_b64, priv_key_b64, cert_b64).await;
 }
