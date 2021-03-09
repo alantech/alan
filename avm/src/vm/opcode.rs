@@ -32,6 +32,24 @@ use crate::vm::memory::{FractalMemory, HandlerMemory, CLOSURE_ARG_MEM_START};
 use crate::vm::program::Program;
 use crate::vm::run::EVENT_TX;
 
+#[derive(Debug)]
+pub struct HttpConfig {
+  pub port: u16,
+}
+
+#[derive(Debug)]
+pub struct HttpsConfig {
+  pub port: u16,
+  pub priv_key_b64: String,
+  pub cert_b64: String,
+}
+
+#[derive(Debug)]
+pub enum HttpType {
+  HTTP(HttpConfig),
+  HTTPS(HttpsConfig),
+}
+
 static HTTP_RESPONSES: Lazy<Arc<Mutex<HashMap<i64, Arc<HandlerMemory>>>>> =
   Lazy::new(|| Arc::new(Mutex::new(HashMap::<i64, Arc<HandlerMemory>>::new())));
 
@@ -3076,7 +3094,10 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   }
   io!(httplsn => fn(_args, hand_mem) {
     Box::pin(async move {
-      let port_num = Program::global().http_port;
+      let port_num = match &Program::global().http_config {
+        HttpType::HTTP(http) => http.port,
+        HttpType::HTTPS(https) => https.port,
+      };
       let addr = SocketAddr::from(([0, 0, 0, 0], port_num));
       let make_svc = make_service_fn(|_conn| async { Ok::<_, Infallible>(service_fn(http_listener)) });
 

@@ -78,6 +78,8 @@ fn main() {
       .arg_from_usage("<AGZ_B64> 'Specifies the .agz program as a base64 encoded string'")
       .arg_from_usage("<DEPLOY_TOKEN> 'Specifies the deploy token'")
       .arg_from_usage("<DOMAIN> 'Specifies the application domain'")
+      .arg_from_usage("-k, --private-key=[PRIV_KEY_B64] 'An optional base64 encoded private key for HTTPS mode'")
+      .arg_from_usage("-c, --certificate=[CERT_B64] 'An optional base64 encoded certificate for HTTPS mode'")
     )
     .arg_from_usage("[SOURCE] 'Specifies a source ln file to compile and run'");
 
@@ -161,6 +163,9 @@ fn main() {
         let deploy_token = matches.value_of("DEPLOY_TOKEN").unwrap();
         let domain = matches.value_of("DOMAIN").unwrap();
         start(app_id, agz_b64, deploy_token, domain).await;
+        let priv_key_b64 = matches.value_of("private-key");
+        let cert_b64 = matches.value_of("certificate");
+        start(app_id, agz_b64, deploy_token, domain, priv_key_b64, cert_b64).await;
       },
       _ => {
         // AppSettings::SubcommandRequiredElseHelp does not cut it here

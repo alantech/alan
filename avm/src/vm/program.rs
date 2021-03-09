@@ -4,7 +4,7 @@ use once_cell::sync::OnceCell;
 
 use crate::vm::event::{BuiltInEvents, EventHandler};
 use crate::vm::instruction::Instruction;
-use crate::vm::opcode::{ByteOpcode, opcode_id, OPCODES};
+use crate::vm::opcode::{ByteOpcode, opcode_id, OPCODES, HttpType};
 
 // Facilitates parsing the alan graph code program
 struct BytecodeParser {
@@ -66,7 +66,7 @@ pub struct Program {
   /// Memory of the program for global variables and string literals
   pub(crate) gmem: Vec<(usize, i64)>,
   /// The port the http server should use
-  pub(crate) http_port: u16,
+  pub(crate) http_config: HttpType,
 }
 
 pub static PROGRAM: OnceCell<Program> = OnceCell::new();
@@ -95,13 +95,13 @@ impl Program {
   }
 
   // Parses and safely initializes the alan graph code program as static, global data
-  pub fn load(bytecode: Vec<i64>, http_port: u16) -> Program {
+  pub fn load(bytecode: Vec<i64>, http_config: HttpType) -> Program {
     let mut parser = BytecodeParser { pc: 0, bytecode };
     let mut program = Program {
       event_handlers: HashMap::new(),
       event_pls: HashMap::new(),
       gmem: Vec::new(),
-      http_port,
+      http_config,
     };
     program.load_builtin();
     // parse agc version
