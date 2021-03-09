@@ -3140,52 +3140,32 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
             let certs = pemfile::certs(
               &mut BufReader::new(base64::decode(https.cert_b64.as_str()).unwrap().as_slice())
             );
-            let certs = match certs {
-              Ok(certs) => certs,
-              Err(_) => panic!("Failed to load certificate"),
-            };
-            eprintln!("{:?}", certs);
+            let certs = certs.expect("Failed to load certificate");
             let key = {
               let keys = pemfile::pkcs8_private_keys(
                 &mut BufReader::new(
                   base64::decode(https.priv_key_b64.as_str()).unwrap().as_slice()
                 )
               );
-              let keys = match keys {
-                Ok(keys) => keys,
-                Err(_) => panic!("Failed to load private key"),
-              };
+              let keys = keys.expect("Failed to load private key");
               if keys.len() != 1 {
-                eprintln!("{:?}", keys);
                 panic!("Expected a single private key");
               }
               keys[0].clone()
             };
             let mut cfg = rustls::ServerConfig::new(rustls::NoClientAuth::new());
-            cfg.set_single_cert(certs, key)
-              .map_err(|e| panic!(e)).unwrap();
+            cfg.set_single_cert(certs, key).unwrap();
             cfg.set_protocols(&[b"h2".to_vec(), b"http/1.1".to_vec()]);
             Arc::new(cfg)
           };
           let tcp = TcpListener::bind(&addr).await;
-          let tcp = match tcp {
-            Ok(tcp) => tcp,
-            Err(e) => panic!(e),
-          };
+          let tcp = tcp.unwrap();
           let tls_acceptor = TlsAcceptor::from(tls_cfg);
           let incoming_tls_stream = stream! {
             loop {
               let accept = tcp.accept().await;
               if accept.is_err() { continue; }
-              let accept = match accept {
-                Ok(accept) => accept,
-                Err(e) => {
-                  eprintln!("TLS Error: {:?}", e);
-                  continue;
-                },
-              };
-              let (socket, _) = accept;
-              //let (socket, _) = tcp.accept().await;
+              let (socket, _) = accept.unwrap();
               let strm = tls_acceptor.accept(socket);
               yield strm.await;
             }
