@@ -58,7 +58,7 @@ fn main() {
         .about("Deploys an .agz file to a new app with one of the deploy configs at ~/.anycloud/deploy.json")
         .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'")
         .arg_from_usage("[DEPLOY_NAME] 'Specifies the name of the deploy config to use, or the first definition if not specified'")
-        .arg_from_usage("--app-id=[APP_ID] '[Optional] Specifies the application identifier'")
+        .arg_from_usage("-a, --app-id=[APP_ID] 'Specifies an optional application identifier'")
       )
       .subcommand(SubCommand::with_name("info")
         .about("Displays all the apps deployed with  described in the deploy config at ~/.anycloud/deploy.json")
