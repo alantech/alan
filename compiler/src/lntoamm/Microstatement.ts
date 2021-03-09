@@ -1631,10 +1631,19 @@ ${assignablesAst.t}`
     const opcodes = require('./opcodes').default;
 
     // inject the return value
+    const trueMaybeSize = '_' + uuid().replace(/-/g, '_');
+    microstatements.push(new Microstatement(
+      StatementType.CONSTDEC,
+      scope,
+      true,
+      trueMaybeSize,
+      scope.deepGet('int64') as Type,
+      ['2'],
+    ));
     let tableName = uuid().replace(/-/g, '_');
     tableName = '_' + tableName.substring(0, tableName.length - 5) + '_TBLE';
-    opcodes.exportScope.get('zeroed')[0].microstatementInlining(
-      [],
+    opcodes.exportScope.get('newarr')[0].microstatementInlining(
+      [trueMaybeSize],
       scope,
       microstatements
     );
