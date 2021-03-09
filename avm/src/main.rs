@@ -162,7 +162,6 @@ fn main() {
         let agz_b64 = matches.value_of("AGZ_B64").unwrap();
         let deploy_token = matches.value_of("DEPLOY_TOKEN").unwrap();
         let domain = matches.value_of("DOMAIN").unwrap();
-        start(app_id, agz_b64, deploy_token, domain).await;
         let priv_key_b64 = matches.value_of("private-key");
         let cert_b64 = matches.value_of("certificate");
         start(app_id, agz_b64, deploy_token, domain, priv_key_b64, cert_b64).await;

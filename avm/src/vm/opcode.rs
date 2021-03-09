@@ -5,7 +5,7 @@ use std::convert::Infallible;
 use std::fmt::Debug;
 use std::future::Future;
 use std::hash::Hasher;
-use std::io::{self, Write};
+use std::io::{self, Write, BufReader};
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::str;
@@ -13,8 +13,11 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
+use async_stream::stream;
+use base64;
 use byteorder::{ByteOrder, LittleEndian};
 use dashmap::DashMap;
+use futures_util::stream::Stream;
 use hyper::header::{HeaderName, HeaderValue};
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{client::{Client, ResponseFuture}, server::Server, Body, Request, Response, StatusCode};
@@ -23,8 +26,12 @@ use once_cell::sync::Lazy;
 use rand::RngCore;
 use rand::rngs::OsRng;
 use regex::Regex;
+use rustls::internal::pemfile;
+use tokio::net::{TcpListener, TcpStream};
 use tokio::process::Command;
 use tokio::time::sleep;
+use tokio_rustls::TlsAcceptor;
+use tokio_rustls::server::TlsStream;
 use twox_hash::XxHash64;
 
 use crate::vm::event::{NOP_ID, BuiltInEvents, EventEmit, HandlerFragment};
@@ -48,6 +55,22 @@ pub struct HttpsConfig {
 pub enum HttpType {
   HTTP(HttpConfig),
   HTTPS(HttpsConfig),
+}
+
+struct HyperAcceptor<'a> {
+  acceptor: Pin<Box<dyn Stream<Item = Result<TlsStream<TcpStream>, io::Error>> + Send + 'a>>,
+}
+
+impl hyper::server::accept::Accept for HyperAcceptor<'_> {
+  type Conn = TlsStream<TcpStream>;
+  type Error = io::Error;
+
+  fn poll_accept(
+    mut self: Pin<&mut Self>,
+    cx: &mut Context,
+    ) -> Poll<Option<Result<Self::Conn, Self::Error>>> {
+    Pin::new(&mut self.acceptor).poll_next(cx)
+  }
 }
 
 static HTTP_RESPONSES: Lazy<Arc<Mutex<HashMap<i64, Arc<HandlerMemory>>>>> =
@@ -3094,21 +3117,86 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   }
   io!(httplsn => fn(_args, hand_mem) {
     Box::pin(async move {
-      let port_num = match &Program::global().http_config {
-        HttpType::HTTP(http) => http.port,
-        HttpType::HTTPS(https) => https.port,
-      };
-      let addr = SocketAddr::from(([0, 0, 0, 0], port_num));
-      let make_svc = make_service_fn(|_conn| async { Ok::<_, Infallible>(service_fn(http_listener)) });
+      match &Program::global().http_config {
+        HttpType::HTTP(http) => {
+          let port_num = http.port;
+          let addr = SocketAddr::from(([0, 0, 0, 0], port_num));
+          let make_svc = make_service_fn(|_conn| async { Ok::<_, Infallible>(service_fn(http_listener)) });
 
-      let bind = Server::try_bind(&addr);
-      match bind {
-        Ok(server) => {
-          let server = server.serve(make_svc);
-          tokio::spawn(async move { server.await });
-          println!("HTTP server listening on port {}", port_num);
+          let bind = Server::try_bind(&addr);
+          match bind {
+            Ok(server) => {
+              let server = server.serve(make_svc);
+              tokio::spawn(async move { server.await });
+              println!("HTTP server listening on port {}", port_num);
+            },
+            Err(ee) => eprintln!("HTTP server failed to listen on port {}: {}", port_num, ee),
+          }
         },
-        Err(ee) => eprintln!("HTTP server failed to listen on port {}: {}", port_num, ee),
+        HttpType::HTTPS(https) => {
+          let port_num = https.port;
+          let addr = SocketAddr::from(([0, 0, 0, 0], port_num));
+          let tls_cfg = {
+            let certs = pemfile::certs(
+              &mut BufReader::new(base64::decode(https.cert_b64.as_str()).unwrap().as_slice())
+            );
+            let certs = match certs {
+              Ok(certs) => certs,
+              Err(_) => panic!("Failed to load certificate"),
+            };
+            eprintln!("{:?}", certs);
+            let key = {
+              let keys = pemfile::pkcs8_private_keys(
+                &mut BufReader::new(
+                  base64::decode(https.priv_key_b64.as_str()).unwrap().as_slice()
+                )
+              );
+              let keys = match keys {
+                Ok(keys) => keys,
+                Err(_) => panic!("Failed to load private key"),
+              };
+              if keys.len() != 1 {
+                eprintln!("{:?}", keys);
+                panic!("Expected a single private key");
+              }
+              keys[0].clone()
+            };
+            let mut cfg = rustls::ServerConfig::new(rustls::NoClientAuth::new());
+            cfg.set_single_cert(certs, key)
+              .map_err(|e| panic!(e)).unwrap();
+            cfg.set_protocols(&[b"h2".to_vec(), b"http/1.1".to_vec()]);
+            Arc::new(cfg)
+          };
+          let tcp = TcpListener::bind(&addr).await;
+          let tcp = match tcp {
+            Ok(tcp) => tcp,
+            Err(e) => panic!(e),
+          };
+          let tls_acceptor = TlsAcceptor::from(tls_cfg);
+          let incoming_tls_stream = stream! {
+            loop {
+              let accept = tcp.accept().await;
+              if accept.is_err() { continue; }
+              let accept = match accept {
+                Ok(accept) => accept,
+                Err(e) => {
+                  eprintln!("TLS Error: {:?}", e);
+                  continue;
+                },
+              };
+              let (socket, _) = accept;
+              //let (socket, _) = tcp.accept().await;
+              let strm = tls_acceptor.accept(socket);
+              yield strm.await;
+            }
+          };
+          let make_svc = make_service_fn(|_conn| async { Ok::<_, Infallible>(service_fn(http_listener)) });
+          let server = Server::builder(HyperAcceptor {
+            acceptor: Box::pin(incoming_tls_stream),
+          }).serve(make_svc);
+          println!("HTTPS server listening on port {}", port_num);
+          tokio::spawn(async move { server.await });
+        },
       }
       return hand_mem;
     })
