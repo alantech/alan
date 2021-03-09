@@ -79,7 +79,7 @@ const addopcodes = (opcodes: object) => {
     const [args, returnType] = opcodeDef
     // chameleon opcodes that are super special
     if (['evalcond'].includes(opcodeName)) {
-      opcodeScope.put(opcodeName, [{
+      const opcodeObj = {
         getName: () => opcodeName,
         getArguments: () => args,
         getReturnType: () => null, // it's a chameleon
@@ -89,18 +89,20 @@ const addopcodes = (opcodes: object) => {
           scope: Scope,
           microstatements: Array<Microstatement>,
         ) => {
-          // throw new Error('ok?');
+          let outName = uuid().replace(/-/g, '_');
+          outName = '_' + outName.substring(0, outName.length - 4) + '_RET';
           microstatements.push(new Microstatement(
             StatementType.TAIL,
             scope,
             false,
-            '',
+            outName,
             null,
             realArgNames,
-            [],
+            [opcodeObj],
           ))
         }
-      }])
+      };
+      opcodeScope.put(opcodeName, [opcodeObj]);
     } else
     if (!returnType) { // This is a three-arg, 0-return opcode
       const opcodeObj = {

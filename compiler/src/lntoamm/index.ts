@@ -11,6 +11,7 @@ import StatementType from './StatementType'
 import Type from './Type'
 import UserFunction from './UserFunction'
 import { LPNode, } from '../lp'
+import Statement from './Statement'
 
 const hoistConst = (
   microstatements: Array<Microstatement>,
@@ -208,7 +209,7 @@ const ammFromModuleAsts = (moduleAsts: ModuleAstLookup) => {
         // Define the handler preamble
         let handlerDec = "on " + evt.name + " fn ("
         let argList = []
-        let microstatements = []
+        let microstatements: Array<Microstatement> = []
         for (const arg of Object.keys(handler.getArguments())) {
           argList.push(arg + ": " + handler.getArguments()[arg].typename)
           microstatements.push(new Microstatement(
@@ -225,10 +226,57 @@ const ammFromModuleAsts = (moduleAsts: ModuleAstLookup) => {
         handlerDec += "): " + handler.getReturnType().typename + " {"
         // Extract the handler statements and compile into microstatements
         const statements = handler.maybeTransform(new Map()).statements;
-        for (const s of statements) {
-          Microstatement.fromStatement(s, microstatements)
+        let tailed: [Microstatement, Array<Microstatement>, Array<Statement>] | null = null;
+        for (let ii = 0; ii < statements.length; ii++) {
+          const start = microstatements.length;
+          Microstatement.fromStatement(statements[ii], microstatements)
+          let tailidx = microstatements
+                .slice(start)
+                .findIndex((mstmt) => mstmt.statementType === StatementType.TAIL);
+          if (tailidx >= 0) {
+            tailed = [
+              microstatements.splice(tailidx, 1)[0],
+              microstatements.splice(tailidx),
+              statements.splice(ii + 1),
+            ]
+            break;
+          }
         }
-        // Pull the constants out of the microstatements into the constants set.
+        if (tailed !== null) {
+          let [tail, posttail, resttail] = tailed;
+          let tailname = uuid().replace(/-/g, '_');
+          tailname = '_' + tailname.substring(0, tailname.length - 5) + '_TAIL';
+          const closure = new Microstatement(
+            StatementType.CLOSURE,
+            tail.scope,
+            true,
+            tailname,
+            handler.getReturnType(),
+            [],
+            [],
+            '',
+            true,
+            [...posttail],
+          );
+          for (let next of resttail) {
+            Microstatement.fromStatement(next, closure.closureStatements, closure.scope);
+          }
+          microstatements.push(closure);
+          // now fix and append the TAIL as a CONSTDEC
+          tail.statementType = StatementType.CONSTDEC; // use constdec to get evalcond output
+          tail.inputNames.push(tailname);
+          tail.outputType = handler.getReturnType();
+          microstatements.push(tail);
+          // EXIT expects only outputname
+          // insert final EXIT with outputname=tail output name
+          microstatements.push(new Microstatement(
+            StatementType.EXIT,
+            tail.scope,
+            true,
+            tail.outputName,
+          ));
+        }
+
         hoistConst(
           microstatements,
           constantDedupeLookup,

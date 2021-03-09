@@ -3,6 +3,10 @@ from @std/app import start, print, exit
 on start {
   if 0 == 1 {
     print('true!');
+    const out: string = 'ha!';
+    print(out);
+  } else if false {
+    print('yikes');
   } else {
     print('oof');
   }

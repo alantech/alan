@@ -1631,21 +1631,19 @@ ${assignablesAst.t}`
     const opcodes = require('./opcodes').default;
 
     // inject the return value
-    const tableName = uuid().replace(/-/g, '_');
-    microstatements.push(new Microstatement(
-      StatementType.CONSTDEC,
-      scope,
-      true,
-      tableName,
-      opcodes.moduleScope.deepGet('CondTable') as Type,
-      ['zeroed'],
+    let tableName = uuid().replace(/-/g, '_');
+    tableName = '_' + tableName.substring(0, tableName.length - 5) + '_TBLE';
+    opcodes.exportScope.get('zeroed')[0].microstatementInlining(
       [],
-    ));
+      scope,
+      microstatements
+    );
+    microstatements[microstatements.length - 1].outputName = tableName;
     // insert the conditions and matching execution
     extractCondClauses(conditionalsAst).forEach(clause => {
       let cond = clause[0];
       let condname = uuid().replace(/-/g, '_');
-      condname = condname.substring(0, condname.length - 5) + '_COND';
+      condname = '_' + condname.substring(0, condname.length - 5) + '_COND';
       if (cond === true) {
         microstatements.push(new Microstatement(
           StatementType.CONSTDEC,
@@ -1656,10 +1654,31 @@ ${assignablesAst.t}`
           ['true'],
         ));
       } else {
+        // TODO: ???
+        // Microstatement.fromAssignablesAst(cond, scope, microstatements)
+        // const def = microstatements.pop()
+        // if (def.statementType === StatementType.REREF) {
+        //   def.alias = condname;
+        // } else {
+        //   def.outputName = condname;
+        // }
+        // microstatements.push(def);
         // simulate a boolean assignment
         // TODO: replace with real code.
         const haxx = NamedAnd.build({
           'variable': Token.build(condname),
+          'typedec': NamedAnd.build({
+            'fulltypename': {
+              // booooooooo
+              t: 'bool',
+              line: 0,
+              char: 0,
+              get: null,
+              getAll: null,
+              has: null,
+              apply: null,
+            }
+          }),
           'assignables': cond, // probably wrong but idc software works for you, not the other way around.
         });
         Microstatement.fromConstdeclarationAst(haxx, scope, microstatements);
@@ -1667,15 +1686,25 @@ ${assignablesAst.t}`
 
       let then = clause[1];
       let thenname = uuid().replace(/-/g, '_');
-      thenname = thenname.substring(0, thenname.length - 5) + '_THEN';
+      thenname = '_' + thenname.substring(0, thenname.length - 5) + '_THEN';
       if (then.has('functionbody')) {
-        let thenfn = UserFunction
-          .fromFunctionbodyAst(then.get('functionbody'), scope);
-        thenfn.name = thenname;
-        // console.log(thenfn.statements)
-        // throw new Error('done');
-        thenfn.maybeTransform(new Map(), scope)
-          .microstatementInlining([], scope, microstatements); // no "real args" since these functions must be `() -> ()`
+        let closure = new Microstatement(
+          StatementType.CLOSURE,
+          scope,
+          false, // TODO: detect
+          thenname,
+          undefined,
+          [],
+          [],
+          undefined,
+          false,
+          []
+        );
+        const thenStmtAsts = then.get('functionbody').get('statements').getAll();
+        for (let ast of thenStmtAsts) {
+          Microstatement.fromStatementsAst(ast.get('statement'), scope, closure.closureStatements)
+        }
+        microstatements.push(closure);
       } else if (then.has('fnname')) {
         throw new Error('figure this crap out');
       } else {
@@ -1695,16 +1724,6 @@ ${assignablesAst.t}`
       scope,
       microstatements
     );
-    // microstatements.push(new Microstatement(
-    //   StatementType.TAIL,
-    //   scope,
-    //   false, // right?
-    //   '',
-    //   null,
-    //   [tableName],
-    // ))
-    // console.log(microstatements);
-    // throw new Error('dun')
   }
 
   static fromStatement(
