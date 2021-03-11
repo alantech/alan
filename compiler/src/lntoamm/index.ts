@@ -268,7 +268,6 @@ const ammFromModuleAsts = (moduleAsts: ModuleAstLookup) => {
           tail.outputType = handler.getReturnType();
           microstatements.push(tail);
           // EXIT expects only outputname
-          // insert final EXIT with outputname=tail output name
           microstatements.push(new Microstatement(
             StatementType.EXIT,
             tail.scope,
