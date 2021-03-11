@@ -134,6 +134,7 @@ fn main() {
               "deployConfig": config,
               "deployName": deploy_name,
               "agzB64": get_agz_b64(agz_file),
+              "alanVersion": crate_version!(),
               "appId": app_id,
             });
             new(body).await;
@@ -150,6 +151,7 @@ fn main() {
               "clusterId": cluster_id,
               "deployConfig": config,
               "agzB64": get_agz_b64(agz_file),
+              "alanVersion": crate_version!(),
             });
             upgrade(body).await;
           },
