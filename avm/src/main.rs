@@ -58,6 +58,7 @@ fn main() {
         .about("Deploys an .agz file to a new app with one of the deploy configs at ~/.anycloud/deploy.json")
         .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'")
         .arg_from_usage("[DEPLOY_NAME] 'Specifies the name of the deploy config to use, or the first definition if not specified'")
+        .arg_from_usage("-a, --app-id=[APP_ID] 'Specifies an optional application identifier'")
       )
       .subcommand(SubCommand::with_name("info")
         .about("Displays all the apps deployed with  described in the deploy config at ~/.anycloud/deploy.json")
@@ -78,6 +79,8 @@ fn main() {
       .arg_from_usage("<AGZ_B64> 'Specifies the .agz program as a base64 encoded string'")
       .arg_from_usage("<DEPLOY_TOKEN> 'Specifies the deploy token'")
       .arg_from_usage("<DOMAIN> 'Specifies the application domain'")
+      .arg_from_usage("-k, --private-key=[PRIV_KEY_B64] 'An optional base64 encoded private key for HTTPS mode'")
+      .arg_from_usage("-c, --certificate=[CERT_B64] 'An optional base64 encoded certificate for HTTPS mode'")
     )
     .arg_from_usage("[SOURCE] 'Specifies a source ln file to compile and run'");
 
@@ -126,11 +129,13 @@ fn main() {
             let deploy_name = matches.value_of("DEPLOY_NAME").unwrap_or(
               config.keys().take(1).next().unwrap()
             );
+            let app_id = matches.value_of("app-id");
             let body = json!({
               "deployConfig": config,
               "deployName": deploy_name,
               "agzB64": get_agz_b64(agz_file),
               "alanVersion": crate_version!(),
+              "appId": app_id,
             });
             new(body).await;
           },
@@ -162,7 +167,9 @@ fn main() {
         let agz_b64 = matches.value_of("AGZ_B64").unwrap();
         let deploy_token = matches.value_of("DEPLOY_TOKEN").unwrap();
         let domain = matches.value_of("DOMAIN").unwrap();
-        start(app_id, agz_b64, deploy_token, domain).await;
+        let priv_key_b64 = matches.value_of("private-key");
+        let cert_b64 = matches.value_of("certificate");
+        start(app_id, agz_b64, deploy_token, domain, priv_key_b64, cert_b64).await;
       },
       _ => {
         // AppSettings::SubcommandRequiredElseHelp does not cut it here

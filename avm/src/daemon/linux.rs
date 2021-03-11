@@ -6,11 +6,9 @@ use base64;
 use serde::Serialize;
 use serde_json::{json, Value};
 use futures::stream::StreamExt;
-use heim::{
-  cpu::{self, os::linux::CpuTimeExt},
-  memory::{self, os::linux::MemoryExt},
-  units::{information::kilobyte, time::second}
-};
+use heim_cpu::os::linux::CpuTimeExt;
+use heim_memory::os::linux::MemoryExt;
+use heim_common::units::{information::kilobyte, time::second};
 use tokio::process::Command;
 use tokio::task;
 use tokio::time::{Duration, sleep};
@@ -66,7 +64,7 @@ async fn post_v1(endpoint: &str, body: Value) -> String {
   let resp = deploy::post_v1(endpoint, body).await;
   match resp {
     Ok(res) => res,
-    Err(err) => err.to_string(),
+    Err(err) => format!("{:?}", err),
   }
 }
 
@@ -96,10 +94,10 @@ async fn post_v1_scale(cluster_id: &str, agz_b64: &str, deploy_token: &str, fact
 }
 
 async fn get_v1_stats() -> VMStatsV1 {
-  let memory = memory::memory().await.expect("Failed to get system memory information");
-  let swap = memory::swap().await.expect("Failed to get swap information");
+  let memory = heim_memory::memory().await.expect("Failed to get system memory information");
+  let swap = heim_memory::swap().await.expect("Failed to get swap information");
   VMStatsV1 {
-    cpuSecs: cpu::times().map(|r| {
+    cpuSecs: heim_cpu::times().map(|r| {
       let cpu = r.expect("Failed to get CPU times");
       CPUSecsV1 {
         user: cpu.user().get::<second>(),
@@ -134,7 +132,14 @@ async fn post_v1_stats(cluster_id: &str, deploy_token: &str) -> String {
   post_v1("stats", stats_body).await
 }
 
-pub async fn start(cluster_id: &str, agz_b64: &str, deploy_token: &str, domain: &str) {
+pub async fn start(
+  cluster_id: &str,
+  agz_b64: &str,
+  deploy_token: &str,
+  domain: &str,
+  priv_key_b64: Option<&str>,
+  cert_b64: Option<&str>,
+) {
   let cluster_id = cluster_id.to_string();
   let deploy_token = deploy_token.to_string();
   let agzb64 = agz_b64.to_string();
@@ -166,5 +171,5 @@ pub async fn start(cluster_id: &str, agz_b64: &str, deploy_token: &str, domain: 
       sleep(period).await
     }
   });
-  run_agz_b64(agz_b64).await;
+  run_agz_b64(agz_b64, priv_key_b64, cert_b64).await;
 }

@@ -16,21 +16,27 @@ edition = "2018"
 anycloud = { git = "https://github.com/alantech/anycloud", branch = "main" }
 # For local development, it is possible to specify a relative path location instead of a git repository
 # anycloud = { path = "../../anycloud/cli" }
+async-stream = "0.3.0"
 base64 = "0.13"
 byteorder = "1.3.4"
 clap = "2.33.1"
 dashmap = "3.11.10"
+flate2 = "1.0"
 futures = "0.3.8"
+futures-util = "0.3.13"
+heim-cpu = "0.0.11"
+heim-memory = "0.0.11"
+heim-common = "0.0.11"
 hyper = { version = "0.14", features = ["client", "http1", "http2", "runtime", "server"] }
 hyper-rustls = "0.22.1" # needed for HTTPS w/ hyper
 num_cpus = "1.0"
 once_cell = "1.5.2"
 rand = "0.7.3"
 regex = "1"
+rustls = "0.19.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
-heim = "0.0.11"
-trust-dns-resolver = { version = "0.20.0", features = ["dns-over-rustls"] }
 tokio = { version = "1.2", features = ["rt-multi-thread", "macros", "process", "sync", "time"] }
+tokio-rustls = "0.22.0"
+trust-dns-resolver = { version = "0.20.0", features = ["dns-over-rustls"] }
 twox-hash = "1.5.0"
-flate2 = "1.0"
