@@ -3166,8 +3166,10 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
               let accept = tcp.accept().await;
               if accept.is_err() { continue; }
               let (socket, _) = accept.unwrap();
-              let strm = tls_acceptor.accept(socket);
-              yield strm.await;
+              let strm = tls_acceptor.accept(socket).into_failable();
+              let strm_val = strm.await;
+              if strm_val.is_err() { continue; }
+              yield Ok(strm_val.unwrap());
             }
           };
           let make_svc = make_service_fn(|_conn| async { Ok::<_, Infallible>(service_fn(http_listener)) });
