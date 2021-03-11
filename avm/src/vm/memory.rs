@@ -778,7 +778,7 @@ impl HandlerMemory {
       }
     }
     // Append the relevant ones to the original HandlerMemory
-    parent.mems.append(&mut hm.mems);     
+    parent.mems.append(&mut hm.mems);
 
     // Set the return address on the original HandlerMemory to the acquired indexes, potentially
     // offset if it is a pointer at new data
