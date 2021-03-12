@@ -680,7 +680,14 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
     const inputTypes = inputs.map(i => i.outputType)
     const originalTypes = Object.values(this.getArguments())
     const interfaceMap: Map<Type, Type> = new Map()
-    originalTypes.forEach((t, i) => t.typeApplies(inputTypes[i], scope, interfaceMap))
+    originalTypes.forEach((t, i) => {
+      t.typeApplies(inputTypes[i], scope, interfaceMap)
+      // if the parameter is a void, that's illegal!
+      // TODO: if ammtoaga throws an equivalent error, then typeApplies is missing some cases
+      if (t.typeApplies(Type.builtinTypes['void'], scope, interfaceMap)) {
+        throw new Error(`Illegal void parameter '${realArgNames[i]}' in function '${this.getName()}'`)
+      }
+    })
     for (let i = 0; i < internalNames.length; i++) {
       const realArgName = realArgNames[i]
       // Instead of copying the relevant data, define a reference to where the data is located with
