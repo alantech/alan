@@ -154,6 +154,11 @@ export class DepNode {
   mutates: string[]
   graph: DepGraph
   isParam: boolean
+  assignedVoid: boolean
+
+  get isVoidTyped(): boolean {
+    return this.assignedVoid
+  }
 
   constructor(stmt: LPNode, graph: DepGraph, isParam?: boolean) {
     this.stmt = stmt.t.trim()
@@ -163,9 +168,13 @@ export class DepNode {
     this.mutates = []
     this.graph = graph
     this.isParam = isParam || false // if `isParam` is `true`, retains it. Otherwise, always at least `false`
+    this.assignedVoid = stmt.has('fulltypename') ? stmt.get('fulltypename').t.trim() === 'void' : false
 
     // if this node is a parameter declaration, don't do extra work
     if (this.isParam) {
+      if (this.assignedVoid) {
+        throw new Error('Unexpectedly found a closure with a void parameter. Please report this error!')
+      }
       return
     }
 
@@ -250,7 +259,7 @@ export class DepNode {
     let opcodeName = call.get('variable').t.trim()
     let args = call.get('calllist').getAll().map(c => c.get('variable'))
     let mutated = []
-    let opMutability = opcodeParamMutabilities[opcodeName]
+    let opMutability = opcodeParamModes[opcodeName]
     if (opMutability === undefined || opMutability === null) {
       unhandled(opMutability, 'opcode ' + opcodeName)
     }
@@ -304,13 +313,50 @@ export class DepNode {
       stmt: this.stmt.replace(/\n/g, '\\n'),
       upstream: this.upstream.length,
       downstream: this.downstream.length,
-      closure: this.closure,
+      closure,
       mutates: this.mutates,
     }
   }
 }
 
-export const opcodeParamMutabilities = {
+// This is how each node's coloring is determined. Each node is colored in 2
+// dimensions: in terms of mutation and in terms of "voidy"-ness. Note that
+// the mutation coloring isn't (currently) used to determine if a program is
+// valid or not, as the rules are upheld in other places of the compiler; but
+// the "voidy"-ness coloring rules *are* used for the purposes of checking a
+// program's validity.
+//
+// The rules for mutation are relatively simple:
+// - A value is not painted until it has been instantiated
+// - The color of a value changes when it has been mutated
+// - A value being used must be painted some color
+// - Two adjacent nodes using the same value must agree on the color of the value
+// In non-graph speak, these rules can be rewritten and generalized as 2 rules:
+// - Values must be declared before they are used
+// - All uses of a value after it has been mutated must reflect that mutation
+// In order to accomplish this, we use 3 different rules for interacting with the
+// color of a node:
+// use: simply observe the color of the value
+// mutate: change the color of the value for all future nodes
+// inherit: inherit the "use" and "mutate" instructions of the given value
+//
+// The 'void' value has some constraints:
+// - may be used as the return value of a function
+// - may be used as a field of a type
+// - may not be the parameter of a function
+// - may not be mutated
+// These can be rewritten as graph-coloring rules as such:
+// In order to enforce these constraints, we have our 2nd dimension of coloring:
+// not-voidy: it is guaranteed (at some point in the compilation process) that this value is not voidy
+// may-voidy: if the value being passed in is determined to be void
+export type opcodeMode
+  = 'use'
+  | 'mut'
+  | 'inherit'
+  | 'use-voidy'
+  | 'use-ban-voidy'
+
+export const opcodeParamModes = {
   i8f64: [false],
   i16f64: [false],
   i32f64: [false],
@@ -567,8 +613,8 @@ export const opcodeParamMutabilities = {
   reff: [false],
   refv: [false],
   noerr: [],
-  errorstr: [false],
-  someM: [false, false],
+  errorstr: ['used'],
+  someM: ['used', false],
   noneM: [],
 
   // TODO: RFC-12 might impact these:
