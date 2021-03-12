@@ -262,62 +262,6 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
     `.trim()
   }
 
-  desugar(interfaceMap: Map<Type, Type>, scope: Scope) {
-    let ii = 0;
-    while (ii < this.statements.length) {
-      let statement = this.statements[ii];
-      // if/else desugaring
-      if (statement.statementAst.has('conditionals')) {
-        console.log('--------------------------------------');
-        console.log(statement.statementAst)
-        const StatementFrom = (str: string) => Statement.create(Ast.fromString(str), scope);
-        // define the tail function
-        let tailname = uuid().replace(/-/g, '_');
-        tailname = tailname.substring(0, tailname.length - 4) + 'tail';
-        let tail = this.statements.splice(ii).splice(1); // tail is the rest of the function excluding the if/else. remove so we can deal with them in the new UserFunction
-        let tailfn = new UserFunction(
-          null,
-          {},
-          this.returnType,
-          scope,
-          tail,
-          this.pure
-        );
-        let tailfntext = `const ${tailname}: function = ${tailfn.toFnStr()};`;
-        this.statements.push(StatementFrom(tailfntext));
-        // create the cond table
-        let condTable = uuid().replace(/-/g, '_');
-        condTable = condTable.substring(0, condTable.length - 4) + 'tble';
-        const condTableDec = `const ${condTable}: Maybe<function> = none();`;
-        this.statements.push(StatementFrom(condTableDec))
-        // "populate" the cond table
-        let conds = extractConds(statement.statementAst);
-        for (let cond of conds) {
-          let name = uuid().replace(/-/g, '_');
-          name = name.substring(0, name.length - 4);
-          let condname = name + 'cond';
-          let thenname = name + 'then';
-          // condition
-          let condtext = `const ${condname}: bool = ${cond[0] === true ? 'true' : cond[0].t}`.trim() + ';';
-          this.statements.push(StatementFrom(condtext));
-          // executed
-          let thenfn = cond[1].has('fnbody') ?
-                        UserFunction.fromFunctionbodyAst(cond[1].get('functionbody'), scope) :
-                        (() => {throw new Error('unhandled')})();
-          let thenfntext = `const ${thenname}: function = ${thenfn.toFnStr()};`;
-          this.statements.push(StatementFrom(thenfntext));
-          // populate
-          let calltext = `condfn(${condTable}, ${condname}, ${thenname});`;
-          this.statements.push(StatementFrom(calltext));
-        }
-        // evaluate the table and maybe evaluate the tail
-        let evaltext = `return evalcond(${condTable}, ${tailname});`;
-        this.statements.push(StatementFrom(evaltext));
-      }
-      ii++;
-    }
-  }
-
   maybeTransform(interfaceMap: Map<Type, Type>, scope?: Scope) {
     if (this.statements.some(s => s.hasObjectLiteral())) {
     //   // First pass, convert conditionals to `cond` fn calls and wrap assignment statements
