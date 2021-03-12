@@ -95,7 +95,7 @@ pub async fn run_file(fp: &str, delete_after_load: bool) {
   if delete_after_load {
     std::fs::remove_file(Path::new(fp)).unwrap();
   }
-  run(bytecode, HttpType::HTTP(HttpConfig { port: 8000, })).await;
+  run(bytecode, HttpType::HTTP(HttpConfig { port: 8000, }), None).await;
 }
 
 // Used by the `daemon` mode only
