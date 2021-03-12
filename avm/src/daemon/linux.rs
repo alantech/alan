@@ -139,6 +139,7 @@ pub async fn start(
   domain: &str,
   priv_key_b64: Option<&str>,
   cert_b64: Option<&str>,
+  env_file: Option<&str>,
 ) {
   let cluster_id = cluster_id.to_string();
   let deploy_token = deploy_token.to_string();
@@ -171,5 +172,5 @@ pub async fn start(
       sleep(period).await
     }
   });
-  run_agz_b64(agz_b64, priv_key_b64, cert_b64).await;
+  run_agz_b64(agz_b64, priv_key_b64, cert_b64, env_file).await;
 }

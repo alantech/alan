@@ -5,6 +5,7 @@ pub async fn start(
   _domain: &str,
   _priv_key_b64: Option<&str>,
   _cert_b64: Option<&str>,
+  _env_file: Option<&str>,
 ) {
   panic!("Daemon only works on Linux");
 }

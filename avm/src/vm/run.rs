@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use std::sync::Arc;
+use std::env;
 
 use base64;
 use byteorder::{LittleEndian, ReadBytesExt};
@@ -98,7 +99,7 @@ pub async fn run_file(fp: &str, delete_after_load: bool) {
 }
 
 // Used by the `daemon` mode only
-pub async fn run_agz_b64(agz_b64: &str, priv_key_b64: Option<&str>, cert_b64: Option<&str>) {
+pub async fn run_agz_b64(agz_b64: &str, priv_key_b64: Option<&str>, cert_b64: Option<&str>, env_file: Option<&str>) {
   let bytes = base64::decode(agz_b64).unwrap();
   let agz = GzDecoder::new(bytes.as_slice());
   let count = agz.bytes().count();
@@ -110,15 +111,18 @@ pub async fn run_agz_b64(agz_b64: &str, priv_key_b64: Option<&str>, cert_b64: Op
       port: 443,
       priv_key_b64: priv_key_b64.unwrap().to_string(),
       cert_b64: cert_b64.unwrap().to_string(),
-    })).await;
+    }), env_file).await;
   } else {
-    run(bytecode, HttpType::HTTP(HttpConfig { port: 80, })).await;
+    run(bytecode, HttpType::HTTP(HttpConfig { port: 80, }), env_file).await;
   }
 }
 
-pub async fn run(bytecode: Vec<i64>, http_config: HttpType) {
+pub async fn run(bytecode: Vec<i64>, http_config: HttpType, env_file: Option<&str>) {
   let program = Program::load(bytecode, http_config);
   let set_global = PROGRAM.set(program);
+  if env_file.is_some(){
+    env::set_var("ENV_FILE", env_file.unwrap().to_string());
+  }
   if set_global.is_err() {
     eprintln!("Failed to load bytecode");
     std::process::exit(1);
