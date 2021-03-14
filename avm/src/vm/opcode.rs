@@ -1,4 +1,4 @@
-use futures::future::{join_all, poll_fn, FutureExt};
+use futures::future::{join_all, FutureExt};
 use futures::task::{Context, Poll};
 use std::collections::HashMap;
 use std::convert::Infallible;
@@ -9,8 +9,7 @@ use std::io::{self, Write, BufReader};
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::str;
-use std::sync::{Arc, Mutex};
-use std::thread;
+use std::sync::Arc;
 use std::time::Duration;
 
 use async_stream::stream;
@@ -29,6 +28,7 @@ use regex::Regex;
 use rustls::internal::pemfile;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::process::Command;
+use tokio::sync::RwLock;
 use tokio::time::sleep;
 use tokio_rustls::TlsAcceptor;
 use tokio_rustls::server::TlsStream;
@@ -73,8 +73,8 @@ impl hyper::server::accept::Accept for HyperAcceptor<'_> {
   }
 }
 
-static HTTP_RESPONSES: Lazy<Arc<Mutex<HashMap<i64, Arc<HandlerMemory>>>>> =
-  Lazy::new(|| Arc::new(Mutex::new(HashMap::<i64, Arc<HandlerMemory>>::new())));
+static HTTP_RESPONSES: Lazy<Arc<RwLock<HashMap<i64, Arc<HandlerMemory>>>>> =
+  Lazy::new(|| Arc::new(RwLock::new(HashMap::<i64, Arc<HandlerMemory>>::new())));
 
 static DS: Lazy<Arc<DashMap<String, Arc<HandlerMemory>>>> =
   Lazy::new(|| Arc::new(DashMap::<String, Arc<HandlerMemory>>::new()));
@@ -3072,29 +3072,18 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       eprintln!("Event transmission error");
       std::process::exit(3);
     }
-    // Get the HTTP responses lock and periodically poll it for responses from the user code
-    // TODO: Swap from a timing-based poll to getting the waker to the user code so it can be
-    // woken only once and reduce pressure on this lock.
+    // Get the HTTP responses lock and async poll it for responses from the user code
     let responses = Arc::clone(&HTTP_RESPONSES);
-    let response_hm = poll_fn(|cx: &mut Context<'_>| -> Poll<Arc<HandlerMemory>> {
-      let responses_hm = responses.lock().unwrap();
-      let hm = responses_hm.get(&conn_id);
-      if let Some(hm) = hm {
-        Poll::Ready(hm.clone())
+    loop {
+      let responses_hm = responses.read().await;
+      if responses_hm.get(&conn_id).is_some() {
+        break;
       } else {
-        drop(hm);
-        drop(responses_hm);
-        let waker = cx.waker().clone();
-        // TODO: os threads are quite expensive and could cause our runtime to
-        // stop executing, this might be a point of optimization:
-        thread::spawn(|| {
-          thread::sleep(Duration::from_millis(10));
-          waker.wake();
-        });
-        Poll::Pending
+        sleep(Duration::from_millis(10)).await;
       }
-    })
-    .await;
+    }
+    let responses_hm = responses.read().await;
+    let response_hm = responses_hm.get(&conn_id).unwrap();
     // Get the status from the user response and begin building the response object
     let status = response_hm.read_fixed(0) as u16;
     let mut res = Response::builder().status(StatusCode::from_u16(status).unwrap());
@@ -3189,7 +3178,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let fractal = hand_mem.read_fractal(args[0]);
       let conn_id = fractal.read_fixed(3);
       let responses = Arc::clone(&HTTP_RESPONSES);
-      let mut responses_hm = responses.lock().unwrap();
+      let mut responses_hm = responses.write().await;
       let mut hm = HandlerMemory::new(None, 1);
       HandlerMemory::transfer(&hand_mem, args[0], &mut hm, CLOSURE_ARG_MEM_START);
       let res_out = hm.read_fractal(CLOSURE_ARG_MEM_START);
