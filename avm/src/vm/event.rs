@@ -205,22 +205,25 @@ impl HandlerFragment {
     mut hand_mem: Arc<HandlerMemory>,
     instrs: &Vec<Instruction>
   ) -> Arc<HandlerMemory> {
-    instrs.iter().for_each(|i| {
-      if let OpcodeFn::Cpu(func) = i.opcode.fun {
-        //eprintln!("{} {:?}", i.opcode._name, i.args);
-        if let Some(event) = func(i.args.as_slice(), &mut hand_mem) {
-          let event_tx = EVENT_TX.get().unwrap();
-          if let Err(_) = event_tx.send(event) {
-            eprintln!("Event transmission error");
-            std::process::exit(1);
+    task::block_in_place(move || {
+      instrs.iter().for_each(|i| {
+        if let OpcodeFn::Cpu(func) = i.opcode.fun {
+          //eprintln!("{} {} {} {}", i.opcode._name, i.args[0], i.args[1], i.args[2]);
+          let event = func(i.args.as_slice(), &mut hand_mem);
+          if event.is_some() {
+            let event_tx = EVENT_TX.get().unwrap();
+            let event_sent = event_tx.send(event.unwrap());
+            if event_sent.is_err() {
+              eprintln!("Event transmission error");
+              std::process::exit(2);
+            }
           }
+        } else {
+          eprintln!("expected another CPU instruction, found an IO instruction");
         };
-      } else {
-        eprintln!("expected another CPU instruction");
-        std::process::exit(1);
-      }
-    });
-    hand_mem
+      });
+      hand_mem
+    })
   }
 
   #[inline(always)]
