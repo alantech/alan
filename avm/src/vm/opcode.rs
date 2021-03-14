@@ -19,7 +19,7 @@ use dashmap::DashMap;
 use futures_util::stream::Stream;
 use hyper::header::{HeaderName, HeaderValue};
 use hyper::service::{make_service_fn, service_fn};
-use hyper::{client::{Client, ResponseFuture}, server::Server, Body, Request, Response, StatusCode};
+use hyper::{client::{Client, HttpConnector, ResponseFuture}, server::Server, Body, Request, Response, StatusCode};
 use hyper_rustls::HttpsConnector;
 use once_cell::sync::Lazy;
 use rand::RngCore;
@@ -72,6 +72,9 @@ impl hyper::server::accept::Accept for HyperAcceptor<'_> {
   }
 }
 
+static HTTP_CLIENT: Lazy<Client<HttpsConnector<HttpConnector>>> =
+  Lazy::new(|| Client::builder().build::<_, Body>(HttpsConnector::with_native_roots()));
+
 static HTTP_RESPONSES: Lazy<Arc<DashMap<i64, Arc<HandlerMemory>>>> =
   Lazy::new(|| Arc::new(DashMap::<i64, Arc<HandlerMemory>>::new()));
 
@@ -106,13 +109,6 @@ impl Debug for OpcodeFn {
 
 /// To allow concise definition of opcodes we have a struct that stores all the information
 /// about an opcode and how to run it.
-/// To define CPU-bound opcodes we use a function pointer type which describes a function whose identity
-/// is not necessarily known at compile-time. A closure without context is a function pointer since it can run anywhere.
-/// To define IO-bound opcodes it is trickier because `async` fns returns an opaque `impl Future` type so we have to jump through some Rust hoops
-/// to be able to define this behaviour
-/// For more information see:
-/// https://stackoverflow.com/questions/27831944/how-do-i-store-a-closure-in-a-struct-in-rust
-/// https://stackoverflow.com/questions/59035366/how-do-i-store-a-variable-of-type-impl-trait-in-a-struct
 #[derive(Debug)]
 pub struct ByteOpcode {
   /// Opcode value as an i64 number
@@ -2919,9 +2915,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     if req_obj.is_err() {
       return Err("Failed to construct request, invalid body provided".to_string());
     } else {
-      return Ok(Client::builder()
-        .build::<_, Body>(HttpsConnector::with_native_roots())
-        .request(req_obj.unwrap()));
+      return Ok(HTTP_CLIENT.request(req_obj.unwrap()));
     }
   }
   io!(httpreq => fn(args, mut hand_mem) {
