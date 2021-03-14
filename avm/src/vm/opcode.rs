@@ -28,7 +28,6 @@ use regex::Regex;
 use rustls::internal::pemfile;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::process::Command;
-use tokio::sync::RwLock;
 use tokio::time::sleep;
 use tokio_rustls::TlsAcceptor;
 use tokio_rustls::server::TlsStream;
@@ -73,8 +72,8 @@ impl hyper::server::accept::Accept for HyperAcceptor<'_> {
   }
 }
 
-static HTTP_RESPONSES: Lazy<Arc<RwLock<HashMap<i64, Arc<HandlerMemory>>>>> =
-  Lazy::new(|| Arc::new(RwLock::new(HashMap::<i64, Arc<HandlerMemory>>::new())));
+static HTTP_RESPONSES: Lazy<Arc<DashMap<i64, Arc<HandlerMemory>>>> =
+  Lazy::new(|| Arc::new(DashMap::<i64, Arc<HandlerMemory>>::new()));
 
 static DS: Lazy<Arc<DashMap<String, Arc<HandlerMemory>>>> =
   Lazy::new(|| Arc::new(DashMap::<String, Arc<HandlerMemory>>::new()));
@@ -3075,15 +3074,13 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     // Get the HTTP responses lock and async poll it for responses from the user code
     let responses = Arc::clone(&HTTP_RESPONSES);
     loop {
-      let responses_hm = responses.read().await;
-      if responses_hm.get(&conn_id).is_some() {
+      if responses.get(&conn_id).is_some() {
         break;
       } else {
         sleep(Duration::from_millis(10)).await;
       }
     }
-    let responses_hm = responses.read().await;
-    let response_hm = responses_hm.get(&conn_id).unwrap();
+    let response_hm = responses.get(&conn_id).unwrap();
     // Get the status from the user response and begin building the response object
     let status = response_hm.read_fixed(0) as u16;
     let mut res = Response::builder().status(StatusCode::from_u16(status).unwrap());
@@ -3178,15 +3175,14 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let fractal = hand_mem.read_fractal(args[0]);
       let conn_id = fractal.read_fixed(3);
       let responses = Arc::clone(&HTTP_RESPONSES);
-      let mut responses_hm = responses.write().await;
       let mut hm = HandlerMemory::new(None, 1);
       HandlerMemory::transfer(&hand_mem, args[0], &mut hm, CLOSURE_ARG_MEM_START);
       let res_out = hm.read_fractal(CLOSURE_ARG_MEM_START);
       for i in 0..res_out.len() {
         hm.register_from_fractal(i as i64, &res_out, i);
       }
-      responses_hm.insert(conn_id, hm);
-      drop(responses_hm);
+      responses.insert(conn_id, hm);
+      drop(responses);
       // TODO: Add a second synchronization tool to return a valid Result status, for now, just
       // return success
       hand_mem.init_fractal(args[2]);
