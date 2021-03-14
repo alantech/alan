@@ -101,14 +101,15 @@ async fn get_procs_cpu_usage() -> Vec<f32> {
   let mut usages = Vec::new();
   let mut processes = processes();
   while let Some(process) = processes.next().await {
-    let proc = process.expect("Failed to get system process");
-    let measurement_1 = proc.cpu_usage().await.expect("Failed to get CPU usage for process");
-    // CpuUsage struct represents instantaneous CPU usage and
-    // does not represent any reasonable value by itself
-    sleep(Duration::from_secs(5)).await;
-    let measurement_2 = proc.cpu_usage().await.expect("Failed to get CPU usage for process");
-    let usage = (measurement_2 - measurement_1).get::<percent>();
-    usages.push(usage);
+    if let Ok(proc) = process {
+      let measurement_1 = proc.cpu_usage().await.expect("Failed to get CPU usage for process");
+      // CpuUsage struct represents instantaneous CPU usage and
+      // does not represent any reasonable value by itself
+      sleep(Duration::from_secs(1)).await;
+      let measurement_2 = proc.cpu_usage().await.expect("Failed to get CPU usage for process");
+      let usage = (measurement_2 - measurement_1).get::<percent>();
+      usages.push(usage);
+    }
   }
   usages
 }
