@@ -11,7 +11,7 @@ use heim_cpu::os::linux::CpuTimeExt;
 #[cfg(target_os = "linux")]
 use heim_memory::os::linux::MemoryExt;
 use heim_process::processes;
-use heim_common::units::{information::kilobyte, ratio::percent, time::second};
+use heim_common::units::{information::kilobyte, ratio::ratio, time::second};
 use tokio::process::Command;
 use tokio::task;
 use tokio::time::{Duration, sleep};
@@ -107,7 +107,7 @@ async fn get_procs_cpu_usage() -> Vec<f32> {
       // does not represent any reasonable value by itself
       sleep(Duration::from_secs(1)).await;
       let measurement_2 = proc.cpu_usage().await.expect("Failed to get CPU usage for process");
-      let usage = (measurement_2 - measurement_1).get::<percent>();
+      let usage = (measurement_2 - measurement_1).get::<ratio>();
       usages.push(usage);
     }
   }
