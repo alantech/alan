@@ -106,7 +106,8 @@ async fn post_v1_scale(cluster_id: &str, agz_b64: &str, deploy_token: &str, fact
 
 async fn get_procs_tot_secs() -> Vec<ProcTotalSecsV1> {
   let mut procs_total_secs = Vec::new();
-  while let Some(process) = processes().next().await {
+  let mut processes = processes();
+  while let Some(process) = processes.next().await {
     let proc = process.expect("Failed to get system process");
     let cpu = proc.cpu_time().await.expect("Failed to get process total CPU times");
     procs_total_secs.push(
