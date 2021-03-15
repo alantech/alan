@@ -3165,18 +3165,24 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       for i in 0..res_out.len() {
         hm.register_from_fractal(i as i64, &res_out, i);
       }
+      // Get the watch channel tx from the raw ptr previously generated in http_listener
+      let tx_raw_ptr = fractal.read_fixed(3) as *const Sender<Arc<HandlerMemory>>;
+      // We need an unsafe block here to efficiently synchronize the completion of every
+      // http server response without using a broadcast/pubsub channel on every request
+      // or introducing shared mutable state accessed by every HTTP request.
+      // We create a pointer/Arc from a raw pointer once per HTTP request on the listen event.
+      // httpsend is guaranteed to always be called after the pointer is created since that
+      // is where it gets the raw pointer from
       unsafe {
-        // get watch tx from the raw ptr
-        let tx_raw_ptr = fractal.read_fixed(3) as *const Sender<Arc<HandlerMemory>>;
         let tx = Arc::from_raw(tx_raw_ptr);
         tx.send(hm).unwrap();
-        // TODO: Add a second synchronization tool to return a valid Result status, for now, just
-        // return success
-        hand_mem.init_fractal(args[2]);
-        hand_mem.push_fixed(args[2], 0i64);
-        hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("ok"));
-        hand_mem
       }
+      // TODO: Add a second synchronization tool to return a valid Result status, for now, just
+      // return success
+      hand_mem.init_fractal(args[2]);
+      hand_mem.push_fixed(args[2], 0i64);
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("ok"));
+      hand_mem
     })
   });
 
