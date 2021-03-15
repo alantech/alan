@@ -3050,6 +3050,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     event.push_register(0, CLOSURE_ARG_MEM_START);
     event.push_fractal(0, body);
     // Generate a threadsafe raw ptr to the tx of a watch channel
+    // A ptr is unsafely created from the raw ptr in httpsend once the
+    // user's code has completed and sends the new HandlerMemory so we
+    // can resume execution of this HTTP request
     let (tx, mut rx): (Sender<Arc<HandlerMemory>>, Receiver<Arc<HandlerMemory>>) = watch::channel(HandlerMemory::new(None, 0));
     let tx_ptr = Arc::into_raw(Arc::new(tx)) as i64;
     event.push_fixed(0, tx_ptr);
