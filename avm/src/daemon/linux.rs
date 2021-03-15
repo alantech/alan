@@ -73,25 +73,19 @@ async fn post_v1_scale(cluster_id: &str, agz_b64: &str, deploy_token: &str, fact
   let pwd = var("PWD").unwrap();
   let dockerfile = read(format!("{}/Dockerfile", pwd));
   let app_tar_gz = read(format!("{}/app.tar.gz", pwd));
-  let env_file = read(format!("{}/.anycloud.env", pwd));
-  let scale_body = if dockerfile.is_ok() && app_tar_gz.is_ok() {
-    json!({
-      "clusterId": cluster_id,
-      "agzB64": agz_b64,
-      "deployToken": deploy_token,
-      "clusterFactor": factor,
-      "DockerfileB64": base64::encode(dockerfile.unwrap()),
-      "appTarGzB64": base64::encode(app_tar_gz.unwrap()),
-      "envFileB64": base64::encode(env_file.unwrap()),
-    })
-  } else {
-    json!({
-      "clusterId": cluster_id,
-      "agzB64": agz_b64,
-      "deployToken": deploy_token,
-      "clusterFactor": factor,
-      "envFileB64": base64::encode(env_file.unwrap()),
-    })
+  let env_file = read(format!("{}/anycloud.env", pwd));
+  let mut scale_body = json!({
+    "clusterId": cluster_id,
+    "agzB64": agz_b64,
+    "deployToken": deploy_token,
+    "clusterFactor": factor,
+  });
+  if dockerfile.is_ok() && app_tar_gz.is_ok() {
+    scale_body.as_object_mut().unwrap().insert(format!("DockerfileB64"), json!(base64::encode(dockerfile.unwrap())));
+    scale_body.as_object_mut().unwrap().insert(format!("appTarGzB64"), json!(base64::encode(app_tar_gz.unwrap())));
+  }
+  if env_file.is_ok() {
+    scale_body.as_object_mut().unwrap().insert(format!("envB64"), json!(base64::encode(env_file.unwrap())));
   };
   post_v1("scale", scale_body).await
 }
