@@ -22,12 +22,11 @@ use hyper::service::{make_service_fn, service_fn};
 use hyper::{client::{Client, HttpConnector, ResponseFuture}, server::Server, Body, Request, Response, StatusCode};
 use hyper_rustls::HttpsConnector;
 use once_cell::sync::Lazy;
-use rand::RngCore;
-use rand::rngs::OsRng;
 use regex::Regex;
 use rustls::internal::pemfile;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::process::Command;
+use tokio::sync::watch::{self, Sender, Receiver};
 use tokio::time::sleep;
 use tokio_rustls::TlsAcceptor;
 use tokio_rustls::server::TlsStream;
@@ -74,9 +73,6 @@ impl hyper::server::accept::Accept for HyperAcceptor<'_> {
 
 static HTTP_CLIENT: Lazy<Client<HttpsConnector<HttpConnector>>> =
   Lazy::new(|| Client::builder().build::<_, Body>(HttpsConnector::with_native_roots()));
-
-static HTTP_RESPONSES: Lazy<Arc<DashMap<i64, Arc<HandlerMemory>>>> =
-  Lazy::new(|| Arc::new(DashMap::<i64, Arc<HandlerMemory>>::new()));
 
 static DS: Lazy<Arc<DashMap<String, Arc<HandlerMemory>>>> =
   Lazy::new(|| Arc::new(DashMap::<String, Arc<HandlerMemory>>::new()));
@@ -3046,8 +3042,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     };
     let body_str = str::from_utf8(&body_req).unwrap().to_string();
     let body = HandlerMemory::str_to_fractal(&body_str);
-    // Generate a connection ID
-    let conn_id = OsRng.next_u64() as i64;
     // Populate the event and emit it
     event.init_fractal(0);
     event.push_fractal(0, method);
@@ -3055,7 +3049,10 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     HandlerMemory::transfer(&headers_hm, CLOSURE_ARG_MEM_START, &mut event, CLOSURE_ARG_MEM_START);
     event.push_register(0, CLOSURE_ARG_MEM_START);
     event.push_fractal(0, body);
-    event.push_fixed(0, conn_id);
+    // Generate a threadsafe raw ptr to the tx of a watch channel
+    let (tx, mut rx): (Sender<Arc<HandlerMemory>>, Receiver<Arc<HandlerMemory>>) = watch::channel(HandlerMemory::new(None, 0));
+    let tx_ptr = Arc::into_raw(Arc::new(tx)) as i64;
+    event.push_fixed(0, tx_ptr);
     let event_emit = EventEmit {
       id: i64::from(BuiltInEvents::HTTPCONN),
       payload: Some(event),
@@ -3065,16 +3062,11 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       eprintln!("Event transmission error");
       std::process::exit(3);
     }
-    // Get the HTTP responses lock and async poll it for responses from the user code
-    let responses = Arc::clone(&HTTP_RESPONSES);
-    loop {
-      if responses.get(&conn_id).is_some() {
-        break;
-      } else {
-        sleep(Duration::from_millis(10)).await;
-      }
-    }
-    let response_hm = responses.get(&conn_id).unwrap();
+    // Await HTTP response from the user code
+    let response_hm = match rx.changed().await {
+      Ok(_) => rx.borrow(),
+      Err(_) => panic!("Failed to receive a response for an HTTP request"),
+    };
     // Get the status from the user response and begin building the response object
     let status = response_hm.read_fixed(0) as u16;
     let mut res = Response::builder().status(StatusCode::from_u16(status).unwrap());
@@ -3167,22 +3159,24 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     Box::pin(async move {
       hand_mem.dupe(args[0], args[0]); // Make sure there's no pointers involved
       let fractal = hand_mem.read_fractal(args[0]);
-      let conn_id = fractal.read_fixed(3);
-      let responses = Arc::clone(&HTTP_RESPONSES);
       let mut hm = HandlerMemory::new(None, 1);
       HandlerMemory::transfer(&hand_mem, args[0], &mut hm, CLOSURE_ARG_MEM_START);
       let res_out = hm.read_fractal(CLOSURE_ARG_MEM_START);
       for i in 0..res_out.len() {
         hm.register_from_fractal(i as i64, &res_out, i);
       }
-      responses.insert(conn_id, hm);
-      drop(responses);
-      // TODO: Add a second synchronization tool to return a valid Result status, for now, just
-      // return success
-      hand_mem.init_fractal(args[2]);
-      hand_mem.push_fixed(args[2], 0i64);
-      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("ok"));
-      hand_mem
+      unsafe {
+        // get watch tx from the raw ptr
+        let tx_raw_ptr = fractal.read_fixed(3) as *const Sender<Arc<HandlerMemory>>;
+        let tx = Arc::from_raw(tx_raw_ptr);
+        tx.send(hm).unwrap();
+        // TODO: Add a second synchronization tool to return a valid Result status, for now, just
+        // return success
+        hand_mem.init_fractal(args[2]);
+        hand_mem.push_fixed(args[2], 0i64);
+        hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("ok"));
+        hand_mem
+      }
     })
   });
 
