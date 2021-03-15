@@ -616,14 +616,10 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
     }
     if (tailed !== null) {
       let [tail, tailfn] = tailed;
-      // TODO: more user-friendly errors here
-      if (tail == null) throw new Error('set prep for tail but no tail');
-      // still allows for []
-      else if (tailfn == null) throw new Error('set prep for tailfn but it cant be used');
       // we need to define the tailfn first
       let tailFnName = uuid().replace(/-/g, '_');
-      tailFnName = tailFnName.substring(0, tailFnName.length - 5) + '_TAIL';
-      microstatements.push(new Microstatement(
+      tailFnName = '_' + tailFnName.substring(0, tailFnName.length - 5) + '_TAIL';
+      const closure = new Microstatement(
         StatementType.CLOSURE,
         scope,
         true,
@@ -635,8 +631,8 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
         false, // right?
         tailfn,
         {},
-        this.getReturnType(), // TODO: might have to check length of mStmts and say void...
-      ));
+        this.getReturnType(),
+      );
       // now fix and insert the TAIL
       tail.statementType = StatementType.EXIT;
       tail.inputNames.push(tailFnName);
@@ -690,30 +686,3 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
 }
 
 export default UserFunction
-
-const extractConds = (node: LPNode): [LPNode | true, LPNode][] => {
-  let res = [];
-  // if <assignables> <blocklike> <elsebranch?>
-  // else <blocklike>
-  while (node !== undefined && node !== null) {
-    if (!node.has('blocklike')) {
-      throw new Error('conditional without a blocklike');
-    }
-
-    let cond: LPNode | true; // LPNode if it's an `if`, true if it's an `else`
-    if (node.has('assignables')) {
-      cond = node.get('assignables');
-    } else {
-      cond = true;
-    }
-    let then = node.get('blocklike');
-    res.push([cond, then]);
-
-    if (cond !== true && node.has('elsebranch')) {
-      node = node.get('elsebranch')
-    } else {
-      break;
-    }
-  }
-  return res;
-}

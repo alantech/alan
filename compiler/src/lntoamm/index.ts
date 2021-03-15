@@ -251,12 +251,14 @@ const ammFromModuleAsts = (moduleAsts: ModuleAstLookup) => {
             tail.scope,
             true,
             tailname,
-            handler.getReturnType(),
+            Type.builtinTypes['function'],
             [],
             [],
             '',
-            true,
+            false, // assume so
             [...posttail],
+            {},
+            handler.getReturnType(),
           );
           for (let next of resttail) {
             Microstatement.fromStatement(next, closure.closureStatements, closure.scope);
@@ -267,7 +269,6 @@ const ammFromModuleAsts = (moduleAsts: ModuleAstLookup) => {
           tail.inputNames.push(tailname);
           tail.outputType = handler.getReturnType();
           microstatements.push(tail);
-          // EXIT expects only outputname
           microstatements.push(new Microstatement(
             StatementType.EXIT,
             tail.scope,

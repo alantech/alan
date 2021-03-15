@@ -26,6 +26,7 @@ enum StatementType {
    *    mStmt in the current fn)
    */
   TAIL = 'TAIL',
+  ENTERCONDFN = 'ENTERCONDFN',
 }
 
 export default StatementType

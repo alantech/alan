@@ -162,19 +162,6 @@ const addopcodes = (opcodes: object) => {
           Object.values(args).forEach((t: Type, i) => {
             t.typeApplies(inputTypes[i], scope, interfaceMap)
           })
-          // // "chameleon" opcodes (opcodes that must have the rest of the function applied to them for the
-          // // containing function's return)
-          // if (['evalcond'].includes(opcodeName)) {
-          //   microstatements.push(new Microstatement(
-          //     StatementType.TAIL,
-          //     scope,
-          //     false, // the tail function isn't expected to be pure
-          //     '', // don't assign to a value since this will be changed to an EXIT
-          //     null, // special
-          //     realArgNames, // not expected to be complete
-          //     [opcodeObj], // TODO: is this right?
-          //   ));
-          // } else {
             microstatements.push(new Microstatement(
               StatementType.CONSTDEC,
               scope,
@@ -590,7 +577,6 @@ const addopcodes = (opcodes: object) => {
               realArgNames,
               [opcodeObj],
             ))
-          // }
         },
       }
       // Add each opcode

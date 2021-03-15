@@ -563,7 +563,7 @@ ${objectLiteralsAst.t} on line ${objectLiteralsAst.line}:${objectLiteralsAst.cha
         scope,
         true,
         last.outputName,
-        fn.getReturnType(), // if this causes a type error, that's good. (a little hack to avoid having to grab the return type for condfn and evalcond)
+        last.outputType,
       ))
     }
     microstatements.push(new Microstatement(
@@ -1630,6 +1630,20 @@ ${assignablesAst.t}`
   ) {
     const opcodes = require('./opcodes').default;
 
+    // first figure out if this is a nested condfn
+    let isRewriteReturn = false;
+    // i wish Array.prototype.reverse didn't act on the original :(
+    for (let ii = microstatements.length - 1; ii >= 0; ii++) {
+      const m = microstatements[ii];
+      // TODO: this might be wrong
+      if (m.statementType === StatementType.ENTERFN) {
+        isRewriteReturn = true;
+        break;
+      } else if (m.statementType === StatementType.ENTERCONDFN) {
+        break;
+      }
+    }
+
     // inject the return value
     const trueMaybeSize = '_' + uuid().replace(/-/g, '_');
     microstatements.push(new Microstatement(
@@ -1663,38 +1677,94 @@ ${assignablesAst.t}`
           ['true'],
         ));
       } else {
-        // TODO: ???
-        Microstatement.fromAssignablesAst(cond, scope, microstatements)
+        const condstmt = Ast.statementAstFromString(`
+          const ${condname}: bool = ${cond};
+        `.trim())
+        Microstatement.fromStatementsAst(condstmt, scope, microstatements)
         condname = microstatements[microstatements.length - 1].outputName
       }
 
       let then = clause[1];
       let thenname = uuid().replace(/-/g, '_');
       thenname = '_' + thenname.substring(0, thenname.length - 5) + '_THEN';
+      const closure = new Microstatement(
+        StatementType.CLOSURE,
+        scope,
+        false, // TODO: detect
+        thenname,
+        undefined,
+        [],
+        [],
+        undefined,
+        false,
+        [],
+      );
+      // insert ENTERCONDFN so there aren't any recursive value rewrites
+      closure.closureStatements.push(new Microstatement(
+        StatementType.ENTERCONDFN,
+        scope,
+        true,
+        '',
+      ));
       if (then.has('functionbody')) {
-        let closure = new Microstatement(
-          StatementType.CLOSURE,
-          scope,
-          false, // TODO: detect
-          thenname,
-          undefined,
-          [],
-          [],
-          undefined,
-          false,
-          []
-        );
         const thenStmtAsts = then.get('functionbody').get('statements').getAll();
         for (let ast of thenStmtAsts) {
-          Microstatement.fromStatementsAst(ast.get('statement'), scope, closure.closureStatements)
+          if (ast.has('exit')) {
+            const retName = '_' + uuid().replace(/-/g, '_');
+            if (ast.get('retval').has()) {
+              // delegate assigning the value
+              const originalRetValName = '_' + uuid().replace(/-/g, '_');
+              const originalRetVal = Ast.statementAstFromString(`
+                const ${originalRetValName} = ${ast.get('retval').get().t.trim()};
+              `.trim());
+              Microstatement.fromStatementsAst(originalRetVal, scope, closure.closureStatements);
+              // the above probably reassigned the name
+              const renamed = closure.closureStatements[closure.closureStatements.length - 1].outputName;
+              // now wrap the value in a `Some`
+              closure.closureStatements.push(new Microstatement(
+                StatementType.CONSTDEC,
+                scope,
+                true,
+                retName,
+                undefined,
+                [renamed],
+                [opcodes.exportScope.get('someM')],
+              ));
+            } else {
+              closure.closureStatements.push(new Microstatement(
+                StatementType.CONSTDEC,
+                scope,
+                true,
+                retName,
+                undefined,
+                [],
+                [opcodes.exportScope.get('noneM')],
+              ));
+            }
+            closure.closureStatements.push(new Microstatement(
+              StatementType.EXIT,
+              scope,
+              true,
+              retName
+            ));
+          } else {
+            Microstatement.fromStatementsAst(ast.get('statement'), scope, closure.closureStatements)
+          }
         }
-        microstatements.push(closure);
       } else if (then.has('fnname')) {
+        const originalName = then.get('fnname').t.trim();
+        const thenFn = scope.deepGet(originalName);
+        if (thenFn === null) {
+          throw new Error(`Error: function not found: ${originalName}`)
+        } else if (!(thenFn instanceof Function)) {
+          throw new Error(`Error: ${originalName} is not a function`)
+        }
         throw new Error('figure this crap out');
       } else {
         console.log(then);
         throw new Error('unsure how to handle above LPNode when generating conditional');
       }
+      microstatements.push(closure);
 
       opcodes.exportScope.get('condfn')[0].microstatementInlining(
         [tableName, condname, thenname],
