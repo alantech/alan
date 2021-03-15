@@ -73,6 +73,7 @@ async fn post_v1_scale(cluster_id: &str, agz_b64: &str, deploy_token: &str, fact
   let pwd = var("PWD").unwrap();
   let dockerfile = read(format!("{}/Dockerfile", pwd));
   let app_tar_gz = read(format!("{}/app.tar.gz", pwd));
+  let env_file = read(format!("{}/.anycloud.env", pwd));
   let scale_body = if dockerfile.is_ok() && app_tar_gz.is_ok() {
     json!({
       "clusterId": cluster_id,
@@ -81,6 +82,7 @@ async fn post_v1_scale(cluster_id: &str, agz_b64: &str, deploy_token: &str, fact
       "clusterFactor": factor,
       "DockerfileB64": base64::encode(dockerfile.unwrap()),
       "appTarGzB64": base64::encode(app_tar_gz.unwrap()),
+      "envFileB64": base64::encode(env_file.unwrap()),
     })
   } else {
     json!({
@@ -88,6 +90,7 @@ async fn post_v1_scale(cluster_id: &str, agz_b64: &str, deploy_token: &str, fact
       "agzB64": agz_b64,
       "deployToken": deploy_token,
       "clusterFactor": factor,
+      "envFileB64": base64::encode(env_file.unwrap()),
     })
   };
   post_v1("scale", scale_body).await
