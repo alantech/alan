@@ -6,9 +6,12 @@ use base64;
 use serde::Serialize;
 use serde_json::{json, Value};
 use futures::stream::StreamExt;
+#[cfg(target_os = "linux")]
 use heim_cpu::os::linux::CpuTimeExt;
+#[cfg(target_os = "linux")]
 use heim_memory::os::linux::MemoryExt;
-use heim_common::units::{information::kilobyte, time::second};
+use heim_process::processes;
+use heim_common::units::{information::kilobyte, ratio::ratio, time::second};
 use tokio::process::Command;
 use tokio::task;
 use tokio::time::{Duration, sleep};
@@ -34,6 +37,7 @@ struct CPUSecsV1 {
 #[derive(Debug, Serialize)]
 struct VMStatsV1 {
   cpuSecs: Vec<CPUSecsV1>,
+  procsCpuUsage: Vec<f32>,
   totalMemoryKb: u64,
   availableMemoryKb: u64,
   freeMemoryKb: u64,
@@ -93,6 +97,24 @@ async fn post_v1_scale(cluster_id: &str, agz_b64: &str, deploy_token: &str, fact
   post_v1("scale", scale_body).await
 }
 
+async fn get_procs_cpu_usage() -> Vec<f32> {
+  let mut usages = Vec::new();
+  let mut processes = processes();
+  while let Some(process) = processes.next().await {
+    if let Ok(proc) = process {
+      let measurement_1 = proc.cpu_usage().await.expect("Failed to get CPU usage for process");
+      // CpuUsage struct represents instantaneous CPU usage and
+      // does not represent any reasonable value by itself
+      sleep(Duration::from_secs(1)).await;
+      let measurement_2 = proc.cpu_usage().await.expect("Failed to get CPU usage for process");
+      let usage = (measurement_2 - measurement_1).get::<ratio>();
+      usages.push(usage);
+    }
+  }
+  usages
+}
+
+#[cfg(target_os = "linux")]
 async fn get_v1_stats() -> VMStatsV1 {
   let memory = heim_memory::memory().await.expect("Failed to get system memory information");
   let swap = heim_memory::swap().await.expect("Failed to get swap information");
@@ -110,11 +132,43 @@ async fn get_v1_stats() -> VMStatsV1 {
         steal: cpu.steal().get::<second>(),
       }
     }).collect().await,
+    procsCpuUsage: get_procs_cpu_usage().await,
     totalMemoryKb: memory.total().get::<kilobyte>(),
     availableMemoryKb: memory.available().get::<kilobyte>(),
     freeMemoryKb: memory.free().get::<kilobyte>(),
     activeMemoryKb: memory.active().get::<kilobyte>(),
     usedMemoryKb: memory.used().get::<kilobyte>(),
+    totalSwapKb: swap.total().get::<kilobyte>(),
+    usedSwapKb: swap.used().get::<kilobyte>(),
+    freeSwapKb: swap.free().get::<kilobyte>(),
+  }
+}
+
+// zero out linux specific stats
+#[cfg(not(target_os = "linux"))]
+async fn get_v1_stats() -> VMStatsV1 {
+  let memory = heim_memory::memory().await.expect("Failed to get system memory information");
+  let swap = heim_memory::swap().await.expect("Failed to get swap information");
+  VMStatsV1 {
+    cpuSecs: heim_cpu::times().map(|r| {
+      let cpu = r.expect("Failed to get CPU times");
+      CPUSecsV1 {
+        user: cpu.user().get::<second>(),
+        system: cpu.system().get::<second>(),
+        idle: cpu.idle().get::<second>(),
+        irq: 0.0,
+        nice: 0.0,
+        ioWait: 0.0,
+        softIrq: 0.0,
+        steal: 0.0,
+      }
+    }).collect().await,
+    procsCpuUsage: get_procs_cpu_usage().await,
+    totalMemoryKb: memory.total().get::<kilobyte>(),
+    availableMemoryKb: memory.available().get::<kilobyte>(),
+    freeMemoryKb: memory.free().get::<kilobyte>(),
+    activeMemoryKb: 0,
+    usedMemoryKb: 0,
     totalSwapKb: swap.total().get::<kilobyte>(),
     usedSwapKb: swap.used().get::<kilobyte>(),
     freeSwapKb: swap.free().get::<kilobyte>(),

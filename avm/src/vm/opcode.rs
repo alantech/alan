@@ -1,4 +1,4 @@
-use futures::future::{join_all, poll_fn, FutureExt};
+use futures::future::{join_all, FutureExt};
 use futures::task::{Context, Poll};
 use std::collections::HashMap;
 use std::convert::Infallible;
@@ -9,8 +9,7 @@ use std::io::{self, Write, BufReader};
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::str;
-use std::sync::{Arc, Mutex};
-use std::thread;
+use std::sync::Arc;
 use std::time::Duration;
 
 use async_stream::stream;
@@ -20,15 +19,14 @@ use dashmap::DashMap;
 use futures_util::stream::Stream;
 use hyper::header::{HeaderName, HeaderValue};
 use hyper::service::{make_service_fn, service_fn};
-use hyper::{client::{Client, ResponseFuture}, server::Server, Body, Request, Response, StatusCode};
+use hyper::{client::{Client, HttpConnector, ResponseFuture}, server::Server, Body, Request, Response, StatusCode};
 use hyper_rustls::HttpsConnector;
 use once_cell::sync::Lazy;
-use rand::RngCore;
-use rand::rngs::OsRng;
 use regex::Regex;
 use rustls::internal::pemfile;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::process::Command;
+use tokio::sync::watch::{self, Sender, Receiver};
 use tokio::time::sleep;
 use tokio_rustls::TlsAcceptor;
 use tokio_rustls::server::TlsStream;
@@ -73,8 +71,8 @@ impl hyper::server::accept::Accept for HyperAcceptor<'_> {
   }
 }
 
-static HTTP_RESPONSES: Lazy<Arc<Mutex<HashMap<i64, Arc<HandlerMemory>>>>> =
-  Lazy::new(|| Arc::new(Mutex::new(HashMap::<i64, Arc<HandlerMemory>>::new())));
+static HTTP_CLIENT: Lazy<Client<HttpsConnector<HttpConnector>>> =
+  Lazy::new(|| Client::builder().build::<_, Body>(HttpsConnector::with_native_roots()));
 
 static DS: Lazy<Arc<DashMap<String, Arc<HandlerMemory>>>> =
   Lazy::new(|| Arc::new(DashMap::<String, Arc<HandlerMemory>>::new()));
@@ -107,13 +105,6 @@ impl Debug for OpcodeFn {
 
 /// To allow concise definition of opcodes we have a struct that stores all the information
 /// about an opcode and how to run it.
-/// To define CPU-bound opcodes we use a function pointer type which describes a function whose identity
-/// is not necessarily known at compile-time. A closure without context is a function pointer since it can run anywhere.
-/// To define IO-bound opcodes it is trickier because `async` fns returns an opaque `impl Future` type so we have to jump through some Rust hoops
-/// to be able to define this behaviour
-/// For more information see:
-/// https://stackoverflow.com/questions/27831944/how-do-i-store-a-closure-in-a-struct-in-rust
-/// https://stackoverflow.com/questions/59035366/how-do-i-store-a-variable-of-type-impl-trait-in-a-struct
 #[derive(Debug)]
 pub struct ByteOpcode {
   /// Opcode value as an i64 number
@@ -2920,9 +2911,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     if req_obj.is_err() {
       return Err("Failed to construct request, invalid body provided".to_string());
     } else {
-      return Ok(Client::builder()
-        .build::<_, Body>(HttpsConnector::with_native_roots())
-        .request(req_obj.unwrap()));
+      return Ok(HTTP_CLIENT.request(req_obj.unwrap()));
     }
   }
   io!(httpreq => fn(args, mut hand_mem) {
@@ -3053,8 +3042,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     };
     let body_str = str::from_utf8(&body_req).unwrap().to_string();
     let body = HandlerMemory::str_to_fractal(&body_str);
-    // Generate a connection ID
-    let conn_id = OsRng.next_u64() as i64;
     // Populate the event and emit it
     event.init_fractal(0);
     event.push_fractal(0, method);
@@ -3062,7 +3049,10 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     HandlerMemory::transfer(&headers_hm, CLOSURE_ARG_MEM_START, &mut event, CLOSURE_ARG_MEM_START);
     event.push_register(0, CLOSURE_ARG_MEM_START);
     event.push_fractal(0, body);
-    event.push_fixed(0, conn_id);
+    // Generate a threadsafe raw ptr to the tx of a watch channel
+    let (tx, mut rx): (Sender<Arc<HandlerMemory>>, Receiver<Arc<HandlerMemory>>) = watch::channel(HandlerMemory::new(None, 0));
+    let tx_ptr = Arc::into_raw(Arc::new(tx)) as i64;
+    event.push_fixed(0, tx_ptr);
     let event_emit = EventEmit {
       id: i64::from(BuiltInEvents::HTTPCONN),
       payload: Some(event),
@@ -3072,29 +3062,11 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       eprintln!("Event transmission error");
       std::process::exit(3);
     }
-    // Get the HTTP responses lock and periodically poll it for responses from the user code
-    // TODO: Swap from a timing-based poll to getting the waker to the user code so it can be
-    // woken only once and reduce pressure on this lock.
-    let responses = Arc::clone(&HTTP_RESPONSES);
-    let response_hm = poll_fn(|cx: &mut Context<'_>| -> Poll<Arc<HandlerMemory>> {
-      let responses_hm = responses.lock().unwrap();
-      let hm = responses_hm.get(&conn_id);
-      if let Some(hm) = hm {
-        Poll::Ready(hm.clone())
-      } else {
-        drop(hm);
-        drop(responses_hm);
-        let waker = cx.waker().clone();
-        // TODO: os threads are quite expensive and could cause our runtime to
-        // stop executing, this might be a point of optimization:
-        thread::spawn(|| {
-          thread::sleep(Duration::from_millis(10));
-          waker.wake();
-        });
-        Poll::Pending
-      }
-    })
-    .await;
+    // Await HTTP response from the user code
+    let response_hm = match rx.changed().await {
+      Ok(_) => rx.borrow(),
+      Err(_) => panic!("Failed to receive a response for an HTTP request"),
+    };
     // Get the status from the user response and begin building the response object
     let status = response_hm.read_fixed(0) as u16;
     let mut res = Response::builder().status(StatusCode::from_u16(status).unwrap());
@@ -3187,17 +3159,24 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     Box::pin(async move {
       hand_mem.dupe(args[0], args[0]); // Make sure there's no pointers involved
       let fractal = hand_mem.read_fractal(args[0]);
-      let conn_id = fractal.read_fixed(3);
-      let responses = Arc::clone(&HTTP_RESPONSES);
-      let mut responses_hm = responses.lock().unwrap();
       let mut hm = HandlerMemory::new(None, 1);
       HandlerMemory::transfer(&hand_mem, args[0], &mut hm, CLOSURE_ARG_MEM_START);
       let res_out = hm.read_fractal(CLOSURE_ARG_MEM_START);
       for i in 0..res_out.len() {
         hm.register_from_fractal(i as i64, &res_out, i);
       }
-      responses_hm.insert(conn_id, hm);
-      drop(responses_hm);
+      // Get the watch channel tx from the raw ptr previously generated in http_listener
+      let tx_raw_ptr = fractal.read_fixed(3) as *const Sender<Arc<HandlerMemory>>;
+      // We need an unsafe block here to efficiently synchronize the completion of every
+      // http server response without using a broadcast/pubsub channel on every request
+      // or introducing shared mutable state accessed by every HTTP request.
+      // We create a pointer/Arc from a raw pointer once per HTTP request on the listen event.
+      // httpsend is guaranteed to always be called after the pointer is created since that
+      // is where it gets the raw pointer from
+      unsafe {
+        let tx = Arc::from_raw(tx_raw_ptr);
+        tx.send(hm).unwrap();
+      }
       // TODO: Add a second synchronization tool to return a valid Result status, for now, just
       // return success
       hand_mem.init_fractal(args[2]);
