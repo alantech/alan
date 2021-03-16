@@ -102,7 +102,7 @@ async fn post_v1_scale(cluster_id: &str, agz_b64: &str, deploy_token: &str, fact
 
 async fn get_procs_cpu_usage() -> Vec<f32> {
   let processes = processes();
-  let mut stream = processes
+  let futures = processes
     .map(|process| async {
       match process {
         Ok(proc) => {
@@ -116,11 +116,9 @@ async fn get_procs_cpu_usage() -> Vec<f32> {
         },
         Err(_) => 0.0
       }
-    });
-  let mut futures = Vec::new();
-  while let Some(fut) = stream.next().await {
-    futures.push(fut);
-  }
+    })
+    .collect::<Vec<_>>()
+    .await;
   join_all(futures).await
 }
 
