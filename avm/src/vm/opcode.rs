@@ -1,42 +1,33 @@
 use futures::future::{join_all, FutureExt};
-use futures::task::{Context, Poll};
 use std::collections::HashMap;
 use std::convert::Infallible;
 use std::fmt::Debug;
 use std::future::Future;
 use std::hash::Hasher;
-use std::io::{self, Write, BufReader};
-use std::net::SocketAddr;
+use std::io::{self, Write};
 use std::pin::Pin;
 use std::str;
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_stream::stream;
 use base64;
 use byteorder::{ByteOrder, LittleEndian};
 use dashmap::DashMap;
-use futures_util::stream::Stream;
 use hyper::header::{HeaderName, HeaderValue};
-use hyper::service::{make_service_fn, service_fn};
-use hyper::{client::{Client, HttpConnector, ResponseFuture}, server::Server, Body, Request, Response, StatusCode};
-use hyper_rustls::HttpsConnector;
+use hyper::{client::ResponseFuture, Body, Request, Response, StatusCode};
 use once_cell::sync::Lazy;
 use regex::Regex;
-use rustls::internal::pemfile;
-use tokio::net::{TcpListener, TcpStream};
 use tokio::process::Command;
 use tokio::sync::watch::{self, Sender, Receiver};
 use tokio::time::sleep;
-use tokio_rustls::TlsAcceptor;
-use tokio_rustls::server::TlsStream;
 use twox_hash::XxHash64;
 
+use crate::make_server;
 use crate::vm::event::{NOP_ID, BuiltInEvents, EventEmit, HandlerFragment};
+use crate::vm::http::HTTP_CLIENT;
 use crate::vm::memory::{FractalMemory, HandlerMemory, CLOSURE_ARG_MEM_START};
 use crate::vm::program::Program;
 use crate::vm::run::EVENT_TX;
-use crate::vm::http::{HTTP_CLIENT, make_server};
 
 static DS: Lazy<Arc<DashMap<String, Arc<HandlerMemory>>>> =
   Lazy::new(|| Arc::new(DashMap::<String, Arc<HandlerMemory>>::new()));
@@ -3053,7 +3044,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   }
   io!(httplsn => fn(_args, hand_mem) {
     Box::pin(async move {
-      make_server(&Program::global().http_config, http_listener);
+      make_server!(&Program::global().http_config, http_listener);
       return hand_mem;
     })
   });
