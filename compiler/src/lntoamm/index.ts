@@ -268,12 +268,27 @@ const ammFromModuleAsts = (moduleAsts: ModuleAstLookup) => {
           tail.statementType = StatementType.CONSTDEC; // use constdec to get evalcond output
           tail.inputNames.push(tailname);
           tail.outputType = handler.getReturnType();
+          let isUnwrapReturn = tail.isUnwrapReturn;
+          let retName = tail.outputName;
           microstatements.push(tail);
+          if (isUnwrapReturn) {
+            const opcodes = require('./opcodes').default;
+            retName = '_' + uuid().replace(/-/g, '_');
+            microstatements.push(new Microstatement(
+              StatementType.CONSTDEC,
+              tail.scope,
+              true,
+              retName,
+              undefined,
+              [tail.outputName],
+              [opcodes.exportScope.get('getR')],
+            ));
+          }
           microstatements.push(new Microstatement(
             StatementType.EXIT,
             tail.scope,
             true,
-            tail.outputName,
+            retName,
           ));
         }
 

@@ -40,6 +40,8 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
     this.pure = pure
   }
 
+  isUnwrapReturn: () => false
+
   static fromAst(functionishAst: LPNode, scope: Scope) {
     if (
       functionishAst.has('fnname') ||

@@ -83,12 +83,15 @@ const addopcodes = (opcodes: object) => {
         getName: () => opcodeName,
         getArguments: () => args,
         getReturnType: () => null, // it's a chameleon
-        isPure: () => false, // evalcond isn't pure because neither of the args are expected to be pure
+        isPure: () => false,
+        isUnwrapReturn: () => false, // evalcond isn't pure because neither of the args are expected to be pure
         microstatementInlining: (
           realArgNames: Array<string>,
           scope: Scope,
           microstatements: Array<Microstatement>,
+          isUnwrapReturn?: boolean,
         ) => {
+          opcodeObj.isUnwrapReturn = () => (isUnwrapReturn || false);
           let outName = uuid().replace(/-/g, '_');
           outName = '_' + outName.substring(0, outName.length - 4) + '_RET';
           microstatements.push(new Microstatement(
@@ -99,8 +102,8 @@ const addopcodes = (opcodes: object) => {
             null,
             realArgNames,
             [opcodeObj],
-          ))
-        }
+          ));
+        },
       };
       opcodeScope.put(opcodeName, [opcodeObj]);
     } else
@@ -110,6 +113,7 @@ const addopcodes = (opcodes: object) => {
         getArguments: () => args,
         getReturnType: () => Type.builtinTypes.void,
         isPure: () => true,
+        isUnwrapReturn: () => false,
         microstatementInlining: (
           realArgNames: Array<string>,
           scope: Scope,
@@ -151,6 +155,7 @@ const addopcodes = (opcodes: object) => {
         getArguments: () => args,
         getReturnType: () => returnType,
         isPure: () => true,
+        isUnwrapReturn: () => false,
         microstatementInlining: (
           realArgNames: Array<string>,
           scope: Scope,

@@ -27,6 +27,7 @@ class Microstatement {
   closureStatements: Array<Microstatement>
   closureArgs: Args
   closureOutputType: Type
+  isUnwrapReturn: boolean
 
   constructor(
     statementType: StatementType,
@@ -41,6 +42,7 @@ class Microstatement {
     closureStatements: Array<Microstatement> = [],
     closureArgs: Args = {},
     closureOutputType: Type = Type.builtinTypes.void,
+    isUnwrapReturn: boolean = false,
   ) {
     this.statementType = statementType
     this.scope = scope
@@ -54,6 +56,7 @@ class Microstatement {
     this.closureStatements = closureStatements
     this.closureArgs = closureArgs
     this.closureOutputType = closureOutputType
+    this.isUnwrapReturn = isUnwrapReturn;
   }
 
   toString() {
@@ -1631,13 +1634,13 @@ ${assignablesAst.t}`
     const opcodes = require('./opcodes').default;
 
     // first figure out if this is a nested condfn
-    let isRewriteReturn = false;
+    let isUnwrapReturn = false;
     // i wish Array.prototype.reverse didn't act on the original :(
     for (let ii = microstatements.length - 1; ii >= 0; ii++) {
       const m = microstatements[ii];
       // TODO: this might be wrong
       if (m.statementType === StatementType.ENTERFN) {
-        isRewriteReturn = true;
+        isUnwrapReturn = true;
         break;
       } else if (m.statementType === StatementType.ENTERCONDFN) {
         break;
@@ -1710,42 +1713,47 @@ ${assignablesAst.t}`
         const thenStmtAsts = then.get('functionbody').get('statements').getAll();
         for (let ast of thenStmtAsts) {
           if (ast.has('exit')) {
-            const retName = '_' + uuid().replace(/-/g, '_');
+            let originalRetValName = '_' + uuid().replace(/-/g, '_');
             if (ast.get('retval').has()) {
               // delegate assigning the value
-              const originalRetValName = '_' + uuid().replace(/-/g, '_');
               const originalRetVal = Ast.statementAstFromString(`
                 const ${originalRetValName} = ${ast.get('retval').get().t.trim()};
               `.trim());
               Microstatement.fromStatementsAst(originalRetVal, scope, closure.closureStatements);
-              // the above probably reassigned the name
-              const renamed = closure.closureStatements[closure.closureStatements.length - 1].outputName;
-              // now wrap the value in a `Some`
-              closure.closureStatements.push(new Microstatement(
-                StatementType.CONSTDEC,
-                scope,
-                true,
-                retName,
-                undefined,
-                [renamed],
-                [opcodes.exportScope.get('someM')],
-              ));
+              // undo the REREF that got inserted because i don't want to put up with that
+              if (closure.closureStatements[closure.closureStatements.length - 1].statementType === StatementType.REREF) {
+                closure.closureStatements.pop();
+                originalRetValName = closure.closureStatements[closure.closureStatements.length - 1].outputName;
+              } else {
+                throw new Error('???');
+              }
             } else {
               closure.closureStatements.push(new Microstatement(
                 StatementType.CONSTDEC,
                 scope,
                 true,
-                retName,
+                originalRetValName,
                 undefined,
                 [],
                 [opcodes.exportScope.get('noneM')],
               ));
             }
+            const retName = '_' + uuid().replace(/-/g, '_');
+            // now wrap the return value in `someM`
+            closure.closureStatements.push(new Microstatement(
+              StatementType.CONSTDEC,
+              scope,
+              true,
+              retName,
+              Type.builtinTypes['Maybe'],
+              [originalRetValName],
+              [opcodes.exportScope.get('someM')],
+            ));
             closure.closureStatements.push(new Microstatement(
               StatementType.EXIT,
               scope,
               true,
-              retName
+              retName,
             ));
           } else {
             Microstatement.fromStatementsAst(ast.get('statement'), scope, closure.closureStatements)
@@ -1776,7 +1784,8 @@ ${assignablesAst.t}`
     opcodes.exportScope.get('evalcond')[0].microstatementInlining(
       [tableName],
       scope,
-      microstatements
+      microstatements,
+      isUnwrapReturn
     );
   }
 

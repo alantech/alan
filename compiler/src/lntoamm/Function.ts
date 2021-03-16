@@ -16,6 +16,7 @@ export interface Fn {
     scope: Scope,
     microstatements: Array<Microstatement>
   ): void
+  isUnwrapReturn(): boolean
 }
 
 export default Fn
