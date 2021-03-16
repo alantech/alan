@@ -5,6 +5,7 @@ use anycloud::deploy;
 use base64;
 use serde::Serialize;
 use serde_json::{json, Value};
+use futures::future::join_all;
 use futures::stream::StreamExt;
 #[cfg(target_os = "linux")]
 use heim_cpu::os::linux::CpuTimeExt;
@@ -100,20 +101,27 @@ async fn post_v1_scale(cluster_id: &str, agz_b64: &str, deploy_token: &str, fact
 }
 
 async fn get_procs_cpu_usage() -> Vec<f32> {
-  let mut usages = Vec::new();
-  let mut processes = processes();
-  while let Some(process) = processes.next().await {
-    if let Ok(proc) = process {
-      let measurement_1 = proc.cpu_usage().await.expect("Failed to get CPU usage for process");
-      // CpuUsage struct represents instantaneous CPU usage and
-      // does not represent any reasonable value by itself
-      sleep(Duration::from_secs(1)).await;
-      let measurement_2 = proc.cpu_usage().await.expect("Failed to get CPU usage for process");
-      let usage = (measurement_2 - measurement_1).get::<ratio>();
-      usages.push(usage);
-    }
+  let processes = processes();
+  let mut stream = processes
+    .map(|process| async {
+      match process {
+        Ok(proc) => {
+          let measurement_1 = proc.cpu_usage().await.expect("Failed to get CPU usage for process");
+          // CpuUsage struct represents instantaneous CPU usage and
+          // does not represent any reasonable value by itself
+          sleep(Duration::from_secs(1)).await;
+          let measurement_2 = proc.cpu_usage().await.expect("Failed to get CPU usage for process");
+          let usage = (measurement_2 - measurement_1).get::<ratio>();
+          usage
+        },
+        Err(_) => 0.0
+      }
+    });
+  let mut futures = Vec::new();
+  while let Some(fut) = stream.next().await {
+    futures.push(fut);
   }
-  usages
+  join_all(futures).await
 }
 
 #[cfg(target_os = "linux")]
