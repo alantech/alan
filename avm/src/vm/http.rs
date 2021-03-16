@@ -1,10 +1,10 @@
+use futures::task::{Context, Poll};
 use std::io;
 use std::pin::Pin;
-use futures::task::{Context, Poll};
 
-use hyper_rustls::HttpsConnector;
 use futures_util::stream::Stream;
 use hyper::{client::{Client, HttpConnector}, Body};
+use hyper_rustls::HttpsConnector;
 use once_cell::sync::Lazy;
 use tokio::net::TcpStream;
 use tokio_rustls::server::TlsStream;
