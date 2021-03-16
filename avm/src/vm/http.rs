@@ -73,14 +73,14 @@ macro_rules! make_server {
         let tls_cfg = {
           let certs = rustls::internal::pemfile::certs(
             &mut std::io::BufReader::new(
-              base64::decode(https.cert_b64.as_str()).unwrap().as_slice()
+              ::base64::decode(https.cert_b64.as_str()).unwrap().as_slice()
             )
           );
           let certs = certs.expect("Failed to load certificate");
           let key = {
             let keys = rustls::internal::pemfile::pkcs8_private_keys(
               &mut std::io::BufReader::new(
-                base64::decode(https.priv_key_b64.as_str()).unwrap().as_slice()
+                ::base64::decode(https.priv_key_b64.as_str()).unwrap().as_slice()
               )
             );
             let keys = keys.expect("Failed to load private key");

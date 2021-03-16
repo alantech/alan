@@ -10,7 +10,6 @@ use std::str;
 use std::sync::Arc;
 use std::time::Duration;
 
-use base64;
 use byteorder::{ByteOrder, LittleEndian};
 use dashmap::DashMap;
 use hyper::header::{HeaderName, HeaderValue};
@@ -22,7 +21,6 @@ use tokio::sync::watch::{self, Sender, Receiver};
 use tokio::time::sleep;
 use twox_hash::XxHash64;
 
-use crate::make_server;
 use crate::vm::event::{NOP_ID, BuiltInEvents, EventEmit, HandlerFragment};
 use crate::vm::http::HTTP_CLIENT;
 use crate::vm::memory::{FractalMemory, HandlerMemory, CLOSURE_ARG_MEM_START};

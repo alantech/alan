@@ -1,5 +1,5 @@
 pub mod event;
-pub mod http;
+#[macro_use] pub mod http;
 pub mod instruction;
 pub mod memory;
 pub mod opcode;
