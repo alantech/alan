@@ -3,6 +3,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use std::sync::Arc;
+use std::net::TcpStream;
 
 use base64;
 use byteorder::{LittleEndian, ReadBytesExt};
@@ -101,7 +102,16 @@ pub async fn run_file(fp: &str, delete_after_load: bool) {
 
 async fn control_port(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
   // TODO: Add secret validation once the deploy service starts creating one for the cluster
-  Ok(Response::builder().status(200).body("ok".into()).unwrap())
+  if TcpStream::connect("127.0.0.1:443").is_err() {
+    Ok(Response::builder().status(500).body("fail".into()).unwrap())
+  } else if 
+    Path::new("./Dockerfile").exists() &&
+    Path::new("./app.tar.gz").exists() &&
+    TcpStream::connect("127.0.0.1:8088").is_err() {
+    Ok(Response::builder().status(500).body("fail".into()).unwrap())
+  } else {
+    Ok(Response::builder().status(200).body("ok".into()).unwrap())
+  }
 }
 
 // Used by the `daemon` mode only
