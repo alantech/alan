@@ -57,6 +57,10 @@ class Microstatement {
     this.closureArgs = closureArgs
     this.closureOutputType = closureOutputType
     this.isUnwrapReturn = isUnwrapReturn;
+
+    if (statementType === StatementType.CONSTDEC && fns === null) {
+      throw new Error()
+    }
   }
 
   toString() {
@@ -667,7 +671,7 @@ ${emitsAst.t} on line ${emitsAst.line}:${emitsAst.char}`)
         constName,
         Type.builtinTypes.void,
         ["void"],
-        null
+        // null
       ))
     }
   }
