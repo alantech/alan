@@ -10,8 +10,8 @@ use once_cell::sync::OnceCell;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
 use crate::vm::event::{BuiltInEvents, EventEmit, HandlerFragment};
+use crate::vm::http::{HttpType, HttpConfig, HttpsConfig};
 use crate::vm::memory::HandlerMemory;
-use crate::vm::opcode::{HttpType, HttpConfig, HttpsConfig};
 use crate::vm::program::{Program, PROGRAM};
 
 pub static EVENT_TX: OnceCell<UnboundedSender<EventEmit>> = OnceCell::new();
