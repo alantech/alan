@@ -1,4 +1,4 @@
-use std::env::var;
+use std::env;
 use std::fs::read;
 
 use anycloud::deploy;
@@ -74,27 +74,29 @@ async fn post_v1(endpoint: &str, body: Value) -> String {
 
 async fn post_v1_scale(cluster_id: &str, agz_b64: &str, deploy_token: &str, factor: &str) -> String {
   // transmit the Dockerfile and app.tar.gz if both are available
-  let pwd = var("PWD").unwrap();
-  let dockerfile = read(format!("{}/Dockerfile", pwd));
-  let app_tar_gz = read(format!("{}/app.tar.gz", pwd));
-  let scale_body = if dockerfile.is_ok() && app_tar_gz.is_ok() {
-    json!({
-      "clusterId": cluster_id,
-      "agzB64": agz_b64,
-      "deployToken": deploy_token,
-      "clusterFactor": factor,
-      "DockerfileB64": base64::encode(dockerfile.unwrap()),
-      "appTarGzB64": base64::encode(app_tar_gz.unwrap()),
-    })
-  } else {
-    json!({
-      "clusterId": cluster_id,
-      "agzB64": agz_b64,
-      "deployToken": deploy_token,
-      "clusterFactor": factor,
-    })
-  };
-  post_v1("scale", scale_body).await
+  let pwd = env::current_dir();
+  match pwd {
+    Ok(pwd) => {
+      let dockerfile = read(format!("{}/Dockerfile", pwd.display()));
+      let app_tar_gz = read(format!("{}/app.tar.gz", pwd.display()));
+      let env_file = read(format!("{}/anycloud.env", pwd.display()));
+      let mut scale_body = json!({
+        "clusterId": cluster_id,
+        "agzB64": agz_b64,
+        "deployToken": deploy_token,
+        "clusterFactor": factor,
+      });
+      if let (Ok(dockerfile), Ok(app_tar_gz)) = (dockerfile, app_tar_gz) {
+        scale_body.as_object_mut().unwrap().insert(format!("DockerfileB64"), json!(base64::encode(dockerfile)));
+        scale_body.as_object_mut().unwrap().insert(format!("appTarGzB64"), json!(base64::encode(app_tar_gz)));
+      }
+      if let Ok(env_file) = env_file {
+        scale_body.as_object_mut().unwrap().insert(format!("envB64"), json!(base64::encode(env_file)));
+      };
+      post_v1("scale", scale_body).await
+    },
+    Err(err) => format!("{:?}", err),
+  }
 }
 
 async fn get_procs_cpu_usage() -> Vec<f32> {
