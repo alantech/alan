@@ -4,7 +4,8 @@ use once_cell::sync::OnceCell;
 
 use crate::vm::event::{BuiltInEvents, EventHandler};
 use crate::vm::instruction::Instruction;
-use crate::vm::opcode::{ByteOpcode, opcode_id, OPCODES, HttpType};
+use crate::vm::http::HttpType;
+use crate::vm::opcode::{ByteOpcode, opcode_id, OPCODES};
 
 // Facilitates parsing the alan graph code program
 struct BytecodeParser {
