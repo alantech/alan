@@ -91,7 +91,6 @@ const addopcodes = (opcodes: object) => {
           microstatements: Array<Microstatement>,
           isUnwrapReturn?: boolean,
         ) => {
-          opcodeObj.isUnwrapReturn = () => (isUnwrapReturn || false);
           let outName = uuid().replace(/-/g, '_');
           outName = '_' + outName.substring(0, outName.length - 4) + '_RET';
           microstatements.push(new Microstatement(
@@ -102,6 +101,12 @@ const addopcodes = (opcodes: object) => {
             null,
             realArgNames,
             [opcodeObj],
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            isUnwrapReturn,
           ));
         },
       };

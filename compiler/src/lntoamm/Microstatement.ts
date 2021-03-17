@@ -1638,15 +1638,17 @@ ${assignablesAst.t}`
     const opcodes = require('./opcodes').default;
 
     // first figure out if this is a nested condfn
-    let isUnwrapReturn = false;
+    // defaults to true so it works in handlers without having to insert
+    // a ENTERFN.
+    let isUnwrapReturn = true;
     // i wish Array.prototype.reverse didn't act on the original :(
     for (let ii = microstatements.length - 1; ii >= 0; ii++) {
       const m = microstatements[ii];
       // TODO: this might be wrong
       if (m.statementType === StatementType.ENTERFN) {
-        isUnwrapReturn = true;
         break;
       } else if (m.statementType === StatementType.ENTERCONDFN) {
+        isUnwrapReturn = false;
         break;
       }
     }

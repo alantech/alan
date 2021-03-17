@@ -5,6 +5,7 @@ import { v4 as uuid, } from 'uuid'
 import * as Ast from './Ast'
 import * as Std from './Std'
 import Event from './Event'
+import Args from './Function'
 import Microstatement from './Microstatement'
 import Module from './Module'
 import StatementType from './StatementType'
@@ -12,6 +13,7 @@ import Type from './Type'
 import UserFunction from './UserFunction'
 import { LPNode, } from '../lp'
 import Statement from './Statement'
+import Scope from './Scope'
 
 const hoistConst = (
   microstatements: Array<Microstatement>,
@@ -272,7 +274,6 @@ const ammFromModuleAsts = (moduleAsts: ModuleAstLookup) => {
           let retName = tail.outputName;
           microstatements.push(tail);
           if (isUnwrapReturn) {
-            const opcodes = require('./opcodes').default;
             retName = '_' + uuid().replace(/-/g, '_');
             microstatements.push(new Microstatement(
               StatementType.CONSTDEC,
@@ -281,7 +282,15 @@ const ammFromModuleAsts = (moduleAsts: ModuleAstLookup) => {
               retName,
               undefined,
               [tail.outputName],
-              [opcodes.exportScope.get('getR')],
+              // force insert a getR call to avoid type-checking et-al
+              [{
+                getName: () => 'getR',
+                getArguments: () => null, // doesn't matter
+                getReturnType: () => null,
+                isPure: () => null,
+                microstatementInlining: (_ran: string[], _s: Scope, _mstmts: Microstatement[]) => {},
+                isUnwrapReturn: () => false,
+              }],
             ));
           }
           microstatements.push(new Microstatement(
