@@ -2815,30 +2815,36 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   unpred_cpu!(evalcond => fn(args, mut hand_mem) {
     Box::pin(async move {
+      // clear CLOSURE_ARG_MEM_START just to be sure
       let table = hand_mem.read_fractal(args[0]);
+      // initialize the return value - this will get set no matter what
+      hand_mem.init_fractal(args[2]);
       if table.read_fixed(0) == 1 {
         // if the table has been assigned a closure, run it
         let subhandler = HandlerFragment::new(table.read_fixed(1), 0);
         hand_mem = subhandler.run(hand_mem).await;
+        // if there's a return value, wrap it in a Some and exit
         if hand_mem.addr_to_idxs_opt(CLOSURE_ARG_MEM_START).is_some() {
+          // wrap the return value in a Some
+          hand_mem.push_fixed(args[2], 1);
+          hand_mem.register_in(CLOSURE_ARG_MEM_START, args[2], 1);
           // a return value is set, don't execute the rest of the function
           // and instead early return.
           return hand_mem;
         }
-        // let maybe = hand_mem.read_fractal(CLOSURE_ARG_MEM_START);
-        // if maybe.read_fixed(0) == 1 {
-        //   // if the closure returned a Some, this is an early return
-        //   if maybe.read_fixed(1) == 1 {
-        //     // there is a value to return, return it.
-        //     // if this branch doesn't execute, we are returning void.
-        //     hand_mem.register_out(CLOSURE_ARG_MEM_START, 2, args[2]);
-        //   }
-        //   return hand_mem;
-        // }
       }
       // now execute the rest of the function
       let subhandler = HandlerFragment::new(args[1], 0);
       hand_mem = subhandler.run(hand_mem).await;
+      // detect if there's a return value
+      if hand_mem.addr_to_idxs_opt(CLOSURE_ARG_MEM_START).is_some() {
+        // wrap the return value in a Some
+        hand_mem.push_fixed(args[2], 1);
+        hand_mem.register_in(CLOSURE_ARG_MEM_START, args[2], 1);
+      } else {
+        // return None
+        hand_mem.push_fixed(args[2], 0);
+      }
       hand_mem
     })
   });

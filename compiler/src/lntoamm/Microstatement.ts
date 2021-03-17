@@ -1718,30 +1718,30 @@ ${assignablesAst.t}`
       ));
       if (then.has('functionbody')) {
         const thenStmtAsts = then.get('functionbody').get('statements').getAll();
+        // let doesReturn = false;
         for (let ast of thenStmtAsts) {
           ast = ast.get('statement');
           if (ast.has('exits')) {
-            console.log('exiting')
-            let originalRetValName = '_' + uuid().replace(/-/g, '_');
+            let retName = '_' + uuid().replace(/-/g, '_');
             if (ast.get('retval').has()) {
               // delegate assigning the value
               const originalRetVal = Ast.statementAstFromString(`
-                const ${originalRetValName} = ${ast.get('retval').get().t.trim()};
+                const ${retName} = ${ast.get('retval').get().t.trim()};
               `.trim());
               Microstatement.fromStatementsAst(originalRetVal, scope, closure.closureStatements);
               // undo the REREF that got inserted because i don't want to put up with that
               if (closure.closureStatements[closure.closureStatements.length - 1].statementType === StatementType.REREF) {
                 closure.closureStatements.pop();
-                originalRetValName = closure.closureStatements[closure.closureStatements.length - 1].outputName;
+                retName = closure.closureStatements[closure.closureStatements.length - 1].outputName;
               } else {
-                throw new Error('???');
+                throw new Error('could not grab reference to returned value for then branch (please report this error)');
               }
             } else {
               closure.closureStatements.push(new Microstatement(
                 StatementType.CONSTDEC,
                 scope,
                 true,
-                originalRetValName,
+                retName,
                 undefined,
                 [],
                 [{
@@ -1754,34 +1754,52 @@ ${assignablesAst.t}`
                 }],
               ));
             }
-            const retName = '_' + uuid().replace(/-/g, '_');
-            // now wrap the return value in `someM`
-            closure.closureStatements.push(new Microstatement(
-              StatementType.CONSTDEC,
-              scope,
-              true,
-              retName,
-              Type.builtinTypes['Maybe'],
-              [originalRetValName],
-              [{
-                getName: () => 'someM',
-                getArguments: () => null,
-                getReturnType: () => null,
-                isPure: () => null,
-                microstatementInlining: (_ran, _s, _mstmts) => null,
-                isUnwrapReturn: () => null,
-              }],
-            ));
+            // retName = '_' + uuid().replace(/-/g, '_');
+            // // now wrap the return value in `someM`
+            // closure.closureStatements.push(new Microstatement(
+            //   StatementType.CONSTDEC,
+            //   scope,
+            //   true,
+            //   retName,
+            //   Type.builtinTypes['Maybe'],
+            //   [retName],
+            //   [{
+            //     getName: () => 'someM',
+            //     getArguments: () => null,
+            //     getReturnType: () => null,
+            //     isPure: () => null,
+            //     microstatementInlining: (_ran, _s, _mstmts) => null,
+            //     isUnwrapReturn: () => null,
+            //   }],
+            // ));
             closure.closureStatements.push(new Microstatement(
               StatementType.EXIT,
               scope,
               true,
               retName,
             ));
+            // doesReturn = true;
           } else {
             Microstatement.fromStatementsAst(ast, scope, closure.closureStatements)
           }
         }
+
+        // // if there isn't a return, we still need to insert one
+        // if (!doesReturn) {
+        //   const insertedReturn = Ast.statementAstFromString(`
+        //   return none();
+        //   `.trim());
+        //   Microstatement.fromStatementsAst(insertedReturn, scope, closure.closureStatements);
+        //   // TODO: right now, fromExitsAst rewrites the call to be a CONSTDEC instead,
+        //   // but we still want to return!
+        //   const retName = closure.closureStatements[closure.closureStatements.length - 1].outputName;
+        //   closure.closureStatements.push(new Microstatement(
+        //     StatementType.EXIT,
+        //     scope,
+        //     true,
+        //     retName,
+        //   ))
+        // }
       } else if (then.has('fnname')) {
         const originalName = then.get('fnname').t.trim();
         const thenFn = scope.deepGet(originalName);
