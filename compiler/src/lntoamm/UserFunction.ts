@@ -8,6 +8,7 @@ import StatementType from './StatementType'
 import Type from './Type'
 import { Args, Fn, } from './Function'
 import { LPNode, } from '../lp'
+import { Conditional } from './Conditional'
 
 class UserFunction implements Fn {
   name: string
@@ -596,51 +597,21 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
         break
       }
     }
+    // handle conditional work before getting rid of the ENTERFNs, since it depends on it
+    const tailIdx = microstatements.findIndex(ms => ms.statementType === StatementType.TAIL);
+    if (tailIdx !== -1) {
+      const tail = microstatements.splice(tailIdx);
+      Conditional.handleTail(
+        microstatements,
+        tail,
+        [],
+      )
+    }
     // Now that we're done with this, we need to pop out all of the ENTERFN microstatements created
     // after this one so we don't mark non-recursive calls to a function multiple times as recursive
     // TODO: This is not the most efficient way to do things, come up with a better metadata
     // mechanism to pass around.
-    let tailed: [Microstatement, Array<Microstatement>] | null = null;
-    for (let i = originalStatementLength; i < microstatements.length; i++) {
-      if (microstatements[i].statementType === StatementType.ENTERFN) {
-        microstatements.splice(i, 1)
-        i--
-      } else if (microstatements[i].statementType === StatementType.TAIL) {
-        tailed = [
-          // TAIL mStmt
-          microstatements.splice(i, 1)[0],
-          // everything that goes in the tail function. even if there are no more elements,
-          // assume we still need to provide an empty closure.
-          microstatements.splice(i).filter(ms => ms.statementType !== StatementType.ENTERFN)
-        ];
-        break;
-      }
-    }
-    if (tailed !== null) {
-      let [tail, tailfn] = tailed;
-      // we need to define the tailfn first
-      let tailFnName = uuid().replace(/-/g, '_');
-      tailFnName = '_' + tailFnName.substring(0, tailFnName.length - 5) + '_TAIL';
-      const closure = new Microstatement(
-        StatementType.CLOSURE,
-        scope,
-        true,
-        tailFnName,
-        Type.builtinTypes['function'],
-        [],
-        [],
-        '',
-        false, // right?
-        tailfn,
-        {},
-        this.getReturnType(),
-      );
-      // now fix and insert the TAIL
-      tail.statementType = StatementType.EXIT;
-      tail.inputNames.push(tailFnName);
-      tail.outputType = this.getReturnType()
-      microstatements.push(tail);
-    }
+    microstatements.filter(ms => ms.statementType !== StatementType.ENTERFN)
   }
 
   static dispatchFn(

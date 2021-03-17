@@ -9,23 +9,24 @@ globalMem
   @-57: true
   @-65: "yikes"
   @-81: "oof"
+  @-97: false
 
 customEvents
   stdout: -1
   exit: 8
   stderr: -1
-  _9cb685c5_95b9_420f_ad16_24a4fc4_THEN: 0
-  _4bb78162_e502_4d31_aee3_1ba7542_THEN: 0
-  _c5beb69d_b921_4ed9_a352_40a23f8_THEN: 0
-  _289a7b38_d148_401f_b731_1aaf8fe_TAIL: 0
+  _a60e597d_903c_4f8b_92bb_77f1e2b_THEN: 0
+  _8df5ae53_aedc_4641_ae69_2795564_THEN: 0
+  _72798b5f_a7ce_47f0_90c7_c751b98_THEN: 0
+  _97b2a8e0_2cba_421a_b4b7_4a8786f60c9b: 0
 
 handler for _start with size 12
   @0 = newarr(@-1, @0) #0
   @1 = eqi64(@-9, @-17) #1
-  condfn(@0, @1, _9cb685c5_95b9_420f_ad16_24a4fc4_THEN) #2 <- [#0, #1]
-  condfn(@0, @-57, _4bb78162_e502_4d31_aee3_1ba7542_THEN) #3 <- [#2]
-  condfn(@0, @-57, _c5beb69d_b921_4ed9_a352_40a23f8_THEN) #4 <- [#3]
-  @10 = evalcond(@0, _289a7b38_d148_401f_b731_1aaf8fe_TAIL) #5 <- [#4]
+  condfn(@0, @1, _a60e597d_903c_4f8b_92bb_77f1e2b_THEN) #2 <- [#0, #1]
+  condfn(@0, @-97, _8df5ae53_aedc_4641_ae69_2795564_THEN) #3 <- [#2]
+  condfn(@0, @-57, _72798b5f_a7ce_47f0_90c7_c751b98_THEN) #4 <- [#3]
+  @10 = evalcond(@0, _97b2a8e0_2cba_421a_b4b7_4a8786f60c9b) #5 <- [#4]
   @11 = getR(@10, @0) #6 <- [#5]
   @-9223372036854775808 = refv(@11, @0) #7 <- [#6]
 
@@ -38,21 +39,21 @@ handler for exit with size 2
 handler for stderr with size 2
   @1 = stderrp(@0, @0) #0
 
-closure for _9cb685c5_95b9_420f_ad16_24a4fc4_THEN with size 12
+closure for _a60e597d_903c_4f8b_92bb_77f1e2b_THEN with size 12
   @2 = catstr(@-25, @-41) #0
   @3 = stdoutp(@2, @0) #1 <- [#0]
 
-closure for _4bb78162_e502_4d31_aee3_1ba7542_THEN with size 12
+closure for _8df5ae53_aedc_4641_ae69_2795564_THEN with size 12
   @4 = catstr(@-65, @-41) #0
   @5 = stdoutp(@4, @0) #1 <- [#0]
   @6 = noneM(@0, @0) #2
   @-9223372036854775808 = refv(@6, @0) #3 <- [#2]
 
-closure for _c5beb69d_b921_4ed9_a352_40a23f8_THEN with size 12
+closure for _72798b5f_a7ce_47f0_90c7_c751b98_THEN with size 12
   @7 = catstr(@-81, @-41) #0
   @8 = stdoutp(@7, @0) #1 <- [#0]
 
-closure for _289a7b38_d148_401f_b731_1aaf8fe_TAIL with size 12
+closure for _97b2a8e0_2cba_421a_b4b7_4a8786f60c9b with size 12
   emit(exit, @-9) #0
   @9 = noneM(@0, @0) #1
   @-9223372036854775808 = refv(@9, @0) #2 <- [#1]
