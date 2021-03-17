@@ -265,6 +265,33 @@ const ammFromModuleAsts = (moduleAsts: ModuleAstLookup) => {
           for (let next of resttail) {
             Microstatement.fromStatement(next, closure.closureStatements, closure.scope);
           }
+          // check if there's a return at the end of the tail fn - if there isn't, insert one (assumes it's a `void` fn)
+          if (closure.closureStatements[closure.closureStatements.length - 1].statementType !== StatementType.EXIT) {
+            let retName = '_' + uuid().replace(/-/g, '_');
+            retName = retName.substring(0, retName.length - 3) + 'BAK';
+            closure.closureStatements.push(new Microstatement(
+              StatementType.CONSTDEC,
+              tail.scope,
+              true,
+              retName,
+              Type.builtinTypes.Maybe.solidify(['void'], tail.scope),
+              [],
+              [{
+                getName: () => 'noneM',
+                getArguments: () => null,
+                getReturnType: () => null,
+                isPure: () => null,
+                microstatementInlining: (_ran, _s, _mstmts) => null,
+                isUnwrapReturn: () => null,
+              }]
+            ));
+            closure.closureStatements.push(new Microstatement(
+              StatementType.EXIT,
+              tail.scope,
+              true,
+              retName,
+            ));
+          }
           microstatements.push(closure);
           // now fix and append the TAIL as a CONSTDEC
           tail.statementType = StatementType.CONSTDEC; // use constdec to get evalcond output

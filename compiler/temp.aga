@@ -6,29 +6,28 @@ globalMem
   @-17: 1i64
   @-25: "true!"
   @-41: "\n"
-  @-57: false
+  @-57: true
   @-65: "yikes"
-  @-81: true
-  @-89: "oof"
+  @-81: "oof"
 
 customEvents
   stdout: -1
   exit: 8
   stderr: -1
-  _68bffb68_2f28_4a69_8131_8193ce9_THEN: 0
-  _a3dd3ea6_789f_4889_ab4c_f81fa53_THEN: 0
-  _ad9adac4_5c57_4ed4_8516_e58e832_THEN: 0
-  _d210b4a5_ccd0_4c2c_9dea_07e08cf_TAIL: 0
+  _9cb685c5_95b9_420f_ad16_24a4fc4_THEN: 0
+  _4bb78162_e502_4d31_aee3_1ba7542_THEN: 0
+  _c5beb69d_b921_4ed9_a352_40a23f8_THEN: 0
+  _289a7b38_d148_401f_b731_1aaf8fe_TAIL: 0
 
-handler for _start with size 11
+handler for _start with size 12
   @0 = newarr(@-1, @0) #0
   @1 = eqi64(@-9, @-17) #1
-  condfn(@0, @1, _68bffb68_2f28_4a69_8131_8193ce9_THEN) #2 <- [#0, #1]
-  condfn(@0, @-57, _a3dd3ea6_789f_4889_ab4c_f81fa53_THEN) #3 <- [#2]
-  condfn(@0, @-81, _ad9adac4_5c57_4ed4_8516_e58e832_THEN) #4 <- [#3]
-  @9 = evalcond(@0, _d210b4a5_ccd0_4c2c_9dea_07e08cf_TAIL) #5 <- [#4]
-  @10 = getR(@9, @0) #6 <- [#5]
-  @-9223372036854775808 = refv(@10, @0) #7 <- [#6]
+  condfn(@0, @1, _9cb685c5_95b9_420f_ad16_24a4fc4_THEN) #2 <- [#0, #1]
+  condfn(@0, @-57, _4bb78162_e502_4d31_aee3_1ba7542_THEN) #3 <- [#2]
+  condfn(@0, @-57, _c5beb69d_b921_4ed9_a352_40a23f8_THEN) #4 <- [#3]
+  @10 = evalcond(@0, _289a7b38_d148_401f_b731_1aaf8fe_TAIL) #5 <- [#4]
+  @11 = getR(@10, @0) #6 <- [#5]
+  @-9223372036854775808 = refv(@11, @0) #7 <- [#6]
 
 handler for stdout with size 2
   @1 = stdoutp(@0, @0) #0
@@ -39,19 +38,21 @@ handler for exit with size 2
 handler for stderr with size 2
   @1 = stderrp(@0, @0) #0
 
-closure for _68bffb68_2f28_4a69_8131_8193ce9_THEN with size 11
+closure for _9cb685c5_95b9_420f_ad16_24a4fc4_THEN with size 12
   @2 = catstr(@-25, @-41) #0
   @3 = stdoutp(@2, @0) #1 <- [#0]
 
-closure for _a3dd3ea6_789f_4889_ab4c_f81fa53_THEN with size 11
+closure for _4bb78162_e502_4d31_aee3_1ba7542_THEN with size 12
   @4 = catstr(@-65, @-41) #0
   @5 = stdoutp(@4, @0) #1 <- [#0]
   @6 = noneM(@0, @0) #2
   @-9223372036854775808 = refv(@6, @0) #3 <- [#2]
 
-closure for _ad9adac4_5c57_4ed4_8516_e58e832_THEN with size 11
-  @7 = catstr(@-89, @-41) #0
+closure for _c5beb69d_b921_4ed9_a352_40a23f8_THEN with size 12
+  @7 = catstr(@-81, @-41) #0
   @8 = stdoutp(@7, @0) #1 <- [#0]
 
-closure for _d210b4a5_ccd0_4c2c_9dea_07e08cf_TAIL with size 11
+closure for _289a7b38_d148_401f_b731_1aaf8fe_TAIL with size 12
   emit(exit, @-9) #0
+  @9 = noneM(@0, @0) #1
+  @-9223372036854775808 = refv(@9, @0) #2 <- [#1]

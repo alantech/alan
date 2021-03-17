@@ -2827,7 +2827,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         if hand_mem.addr_to_idxs_opt(CLOSURE_ARG_MEM_START).is_some() {
           // wrap the return value in a Some
           hand_mem.push_fixed(args[2], 1);
-          hand_mem.register_in(CLOSURE_ARG_MEM_START, args[2], 1);
+          hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
           // a return value is set, don't execute the rest of the function
           // and instead early return.
           return hand_mem;
@@ -2840,7 +2840,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       if hand_mem.addr_to_idxs_opt(CLOSURE_ARG_MEM_START).is_some() {
         // wrap the return value in a Some
         hand_mem.push_fixed(args[2], 1);
-        hand_mem.register_in(CLOSURE_ARG_MEM_START, args[2], 1);
+        hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
       } else {
         // return None
         hand_mem.push_fixed(args[2], 0);
