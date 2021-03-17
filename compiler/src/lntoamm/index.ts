@@ -14,6 +14,7 @@ import UserFunction from './UserFunction'
 import { LPNode, } from '../lp'
 import Statement from './Statement'
 import Scope from './Scope'
+import { Conditional } from './Conditional'
 
 const hoistConst = (
   microstatements: Array<Microstatement>,
@@ -246,86 +247,11 @@ const ammFromModuleAsts = (moduleAsts: ModuleAstLookup) => {
         }
         if (tailed !== null) {
           let [tail, posttail, resttail] = tailed;
-          let tailname = uuid().replace(/-/g, '_');
-          tailname = '_' + tailname.substring(0, tailname.length - 5) + '_TAIL';
-          const closure = new Microstatement(
-            StatementType.CLOSURE,
-            tail.scope,
-            true,
-            tailname,
-            Type.builtinTypes['function'],
-            [],
-            [],
-            '',
-            false, // assume so
-            [...posttail],
-            {},
-            handler.getReturnType(),
-          );
-          for (let next of resttail) {
-            Microstatement.fromStatement(next, closure.closureStatements, closure.scope);
-          }
-          // check if there's a return at the end of the tail fn - if there isn't, insert one (assumes it's a `void` fn)
-          if (closure.closureStatements[closure.closureStatements.length - 1].statementType !== StatementType.EXIT) {
-            let retName = '_' + uuid().replace(/-/g, '_');
-            retName = retName.substring(0, retName.length - 3) + 'BAK';
-            closure.closureStatements.push(new Microstatement(
-              StatementType.CONSTDEC,
-              tail.scope,
-              true,
-              retName,
-              Type.builtinTypes.Maybe.solidify(['void'], tail.scope),
-              [],
-              [{
-                getName: () => 'noneM',
-                getArguments: () => null,
-                getReturnType: () => null,
-                isPure: () => null,
-                microstatementInlining: (_ran, _s, _mstmts) => null,
-                isUnwrapReturn: () => null,
-              }]
-            ));
-            closure.closureStatements.push(new Microstatement(
-              StatementType.EXIT,
-              tail.scope,
-              true,
-              retName,
-            ));
-          }
-          microstatements.push(closure);
-          // now fix and append the TAIL as a CONSTDEC
-          tail.statementType = StatementType.CONSTDEC; // use constdec to get evalcond output
-          tail.inputNames.push(tailname);
-          tail.outputType = handler.getReturnType();
-          let isUnwrapReturn = tail.isUnwrapReturn;
-          let retName = tail.outputName;
-          microstatements.push(tail);
-          if (isUnwrapReturn) {
-            retName = '_' + uuid().replace(/-/g, '_');
-            microstatements.push(new Microstatement(
-              StatementType.CONSTDEC,
-              tail.scope,
-              true,
-              retName,
-              undefined,
-              [tail.outputName],
-              // force insert a getR call to avoid type-checking et-al
-              [{
-                getName: () => 'getR',
-                getArguments: () => null, // doesn't matter
-                getReturnType: () => null,
-                isPure: () => null,
-                microstatementInlining: (_ran: string[], _s: Scope, _mstmts: Microstatement[]) => {},
-                isUnwrapReturn: () => false,
-              }],
-            ));
-          }
-          microstatements.push(new Microstatement(
-            StatementType.EXIT,
-            tail.scope,
-            true,
-            retName,
-          ));
+          Conditional.handleTail(
+            microstatements,
+            [tail, ...posttail],
+            resttail,
+          )
         }
 
         hoistConst(
