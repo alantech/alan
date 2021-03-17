@@ -69,6 +69,7 @@ class Microstatement {
       case StatementType.CONSTDEC:
         outString = "const " + this.outputName + ": " + this.outputType.typename
         if (this.fns.length > 0) {
+          if (typeof this.fns[0].getName !== 'function') throw new Error(this.outputName)
           outString += " = " + this.fns[0].getName() + "(" + this.inputNames.join(", ") + ")"
         } else if (this.inputNames.length > 0) {
           outString += " = " + this.inputNames[0] // Doesn't appear the list is ever used here
@@ -1718,7 +1719,9 @@ ${assignablesAst.t}`
       if (then.has('functionbody')) {
         const thenStmtAsts = then.get('functionbody').get('statements').getAll();
         for (let ast of thenStmtAsts) {
-          if (ast.has('exit')) {
+          ast = ast.get('statement');
+          if (ast.has('exits')) {
+            console.log('exiting')
             let originalRetValName = '_' + uuid().replace(/-/g, '_');
             if (ast.get('retval').has()) {
               // delegate assigning the value
@@ -1741,7 +1744,14 @@ ${assignablesAst.t}`
                 originalRetValName,
                 undefined,
                 [],
-                [opcodes.exportScope.get('noneM')],
+                [{
+                  getName: () => 'noneM',
+                  getArguments: () => null,
+                  getReturnType: () => null,
+                  isPure: () => null,
+                  microstatementInlining: (_ran, _s, _mstmts) => null,
+                  isUnwrapReturn: () => null,
+                }],
               ));
             }
             const retName = '_' + uuid().replace(/-/g, '_');
@@ -1753,7 +1763,14 @@ ${assignablesAst.t}`
               retName,
               Type.builtinTypes['Maybe'],
               [originalRetValName],
-              [opcodes.exportScope.get('someM')],
+              [{
+                getName: () => 'someM',
+                getArguments: () => null,
+                getReturnType: () => null,
+                isPure: () => null,
+                microstatementInlining: (_ran, _s, _mstmts) => null,
+                isUnwrapReturn: () => null,
+              }],
             ));
             closure.closureStatements.push(new Microstatement(
               StatementType.EXIT,
@@ -1762,7 +1779,7 @@ ${assignablesAst.t}`
               retName,
             ));
           } else {
-            Microstatement.fromStatementsAst(ast.get('statement'), scope, closure.closureStatements)
+            Microstatement.fromStatementsAst(ast, scope, closure.closureStatements)
           }
         }
       } else if (then.has('fnname')) {

@@ -1,0 +1,58 @@
+Alan Graphcode Assembler v0.0.1
+
+globalMem
+  @-1: 2i64
+  @-9: 0i64
+  @-17: 1i64
+  @-25: "true!"
+  @-41: "\n"
+  @-57: false
+  @-65: "yikes"
+  @-81: true
+  @-89: "oof"
+
+customEvents
+  stdout: -1
+  exit: 8
+  stderr: -1
+  _df735184_2994_404a_8c9a_074ab9f_THEN: 0
+  _5fe85df3_1664_4aee_9f63_b2affc0_THEN: 0
+  _b43ab1e5_21b3_4bbf_a80a_a1bfd01_THEN: 0
+  _9a5befa6_191a_4fd9_8a7d_ae5d76e_TAIL: 0
+
+handler for _start with size 12
+  @0 = newarr(@-1, @0) #0
+  @1 = eqi64(@-9, @-17) #1
+  condfn(@0, @1, _df735184_2994_404a_8c9a_074ab9f_THEN) #2 <- [#0, #1]
+  condfn(@0, @-57, _5fe85df3_1664_4aee_9f63_b2affc0_THEN) #3 <- [#2]
+  condfn(@0, @-81, _b43ab1e5_21b3_4bbf_a80a_a1bfd01_THEN) #4 <- [#3]
+  @10 = evalcond(@0, _9a5befa6_191a_4fd9_8a7d_ae5d76e_TAIL) #5 <- [#4]
+  @11 = getR(@10, @0) #6 <- [#5]
+  @-9223372036854775808 = refv(@11, @0) #7 <- [#6]
+
+handler for stdout with size 2
+  @1 = stdoutp(@0, @0) #0
+
+handler for exit with size 2
+  @1 = exitop(@0, @0) #0
+
+handler for stderr with size 2
+  @1 = stderrp(@0, @0) #0
+
+closure for _df735184_2994_404a_8c9a_074ab9f_THEN with size 12
+  @2 = catstr(@-25, @-41) #0
+  @3 = stdoutp(@2, @0) #1 <- [#0]
+
+closure for _5fe85df3_1664_4aee_9f63_b2affc0_THEN with size 12
+  @4 = catstr(@-65, @-41) #0
+  @5 = stdoutp(@4, @0) #1 <- [#0]
+  @6 = noneM(@0, @0) #2
+  @7 = someM(@6, @0) #3 <- [#2]
+  @-9223372036854775808 = refv(@7, @0) #4 <- [#3]
+
+closure for _b43ab1e5_21b3_4bbf_a80a_a1bfd01_THEN with size 12
+  @8 = catstr(@-89, @-41) #0
+  @9 = stdoutp(@8, @0) #1 <- [#0]
+
+closure for _9a5befa6_191a_4fd9_8a7d_ae5d76e_TAIL with size 12
+  emit(exit, @-9) #0
