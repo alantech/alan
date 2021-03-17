@@ -3007,7 +3007,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     // user's code has completed and sends the new HandlerMemory so we
     // can resume execution of this HTTP request
     let (tx, mut rx): (Sender<Arc<HandlerMemory>>, Receiver<Arc<HandlerMemory>>) = watch::channel(HandlerMemory::new(None, 0));
-    let tx_ptr = Arc::into_raw(Arc::new(tx)) as i64;
+    let tx_ptr = Box::into_raw(Box::new(tx)) as i64;
     event.push_fixed(0, tx_ptr);
     let event_emit = EventEmit {
       id: i64::from(BuiltInEvents::HTTPCONN),
@@ -3060,17 +3060,21 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         hm.register_from_fractal(i as i64, &res_out, i);
       }
       // Get the watch channel tx from the raw ptr previously generated in http_listener
-      let tx_raw_ptr = fractal.read_fixed(3) as *const Sender<Arc<HandlerMemory>>;
+      let tx_raw_ptr = fractal.read_fixed(3) as *mut Sender<Arc<HandlerMemory>>;
       // We need an unsafe block here to efficiently synchronize the completion of every
       // http server response without using a broadcast/pubsub channel on every request
       // or introducing shared mutable state accessed by every HTTP request.
       // We create a pointer/Arc from a raw pointer once per HTTP request on the listen event.
       // httpsend is guaranteed to always be called after the pointer is created since that
       // is where it gets the raw pointer from
-      unsafe {
-        let tx = Arc::from_raw(tx_raw_ptr);
-        tx.send(hm).unwrap();
-      }
+      let tx = unsafe { Box::from_raw(tx_raw_ptr) };
+      tx.send(hm).unwrap();
+      // Since the pointer still exists in the fractal, we don't want the `Box` to get
+      // dropped, resulting in the memory getting freed and resulting in future calls
+      // here to be invalid. Since this function returns a mutable reference to the value,
+      // which we don't need, we ignore the return value and allow the leaked `Box` to
+      // continue to exist.
+      Box::leak(tx);
       // TODO: Add a second synchronization tool to return a valid Result status, for now, just
       // return success
       hand_mem.init_fractal(args[2]);
