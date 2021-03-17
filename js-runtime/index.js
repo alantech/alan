@@ -752,19 +752,22 @@ module.exports = {
   // Ternary functions
   // TODO: pair and condarr after arrays are figured out
   condfn: (tbl, cond, then) => {
-    if (tbl.length === 0 && cond) {
-      tbl.push(then)
+    if (tbl.length === 0 || tbl[0] === 0) {
+      if (cond) {
+        tbl[0] = 1
+        tbl[1] = then
+      }
     }
   },
   evalcond: async (tbl, els) => {
-    let res = undefined;
-    if (tbl.length > 0) {
-      res = await tbl[0]();
+    if (tbl.length !== 0 && tbl[0] === 1) {
+      const res = tbl[1]()
+      if (res !== undefined) {
+        return [1, res]
+      }
     }
-    if (res === undefined) {
-      return els();
-    }
-    return res;
+    const res = els()
+    return res !== undefined ? [1, res] : [0]
   },
 
   // Copy opcodes (for let reassignment)

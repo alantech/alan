@@ -2815,7 +2815,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   unpred_cpu!(evalcond => fn(args, mut hand_mem) {
     Box::pin(async move {
-      // clear CLOSURE_ARG_MEM_START just to be sure
       let table = hand_mem.read_fractal(args[0]);
       // initialize the return value - this will get set no matter what
       hand_mem.init_fractal(args[2]);
