@@ -1639,23 +1639,8 @@ ${assignablesAst.t}`
   ) {
     const opcodes = require('./opcodes').default;
 
-    // first figure out if this is a nested condfn
-    // defaults to true so it works in handlers without having to insert
-    // a ENTERFN.
-    let isUnwrapReturn = true;
-    // i wish Array.prototype.reverse didn't act on the original :(
-    for (let ii = microstatements.length - 1; ii >= 0; ii--) {
-      const m = microstatements[ii];
-      // TODO: this might be wrong
-      if (m.statementType === StatementType.ENTERFN) {
-        break;
-      } else if (m.statementType === StatementType.ENTERCONDFN) {
-        isUnwrapReturn = false;
-        break;
-      }
-    }
-
-    // inject the return value
+    const [evalCondRetTy, isUnwrapReturn] = Conditional.determineEvalCondReturn(microstatements, scope)
+    // inject the condtable
     const trueMaybeSize = '_' + uuid().replace(/-/g, '_');
     microstatements.push(new Microstatement(
       StatementType.CONSTDEC,
@@ -1739,69 +1724,17 @@ ${assignablesAst.t}`
               }
             } else {
               Conditional.getVoid.microstatementInlining([retName], scope, closure.closureStatements)
-              // closure.closureStatements.push(new Microstatement(
-              //   StatementType.CONSTDEC,
-              //   scope,
-              //   true,
-              //   retName,
-              //   undefined,
-              //   [],
-              //   [{
-              //     getName: () => 'noneM',
-              //     getArguments: () => null,
-              //     getReturnType: () => null,
-              //     isPure: () => null,
-              //     microstatementInlining: (_ran, _s, _mstmts) => null,
-              //     isUnwrapReturn: () => null,
-              //   }],
-              // ));
             }
-            // retName = '_' + uuid().replace(/-/g, '_');
-            // // now wrap the return value in `someM`
-            // closure.closureStatements.push(new Microstatement(
-            //   StatementType.CONSTDEC,
-            //   scope,
-            //   true,
-            //   retName,
-            //   Type.builtinTypes['Maybe'],
-            //   [retName],
-            //   [{
-            //     getName: () => 'someM',
-            //     getArguments: () => null,
-            //     getReturnType: () => null,
-            //     isPure: () => null,
-            //     microstatementInlining: (_ran, _s, _mstmts) => null,
-            //     isUnwrapReturn: () => null,
-            //   }],
-            // ));
             closure.closureStatements.push(new Microstatement(
               StatementType.EXIT,
               scope,
               true,
               retName,
             ));
-            // doesReturn = true;
           } else {
             Microstatement.fromStatementsAst(ast, scope, closure.closureStatements)
           }
         }
-
-        // // if there isn't a return, we still need to insert one
-        // if (!doesReturn) {
-        //   const insertedReturn = Ast.statementAstFromString(`
-        //   return none();
-        //   `.trim());
-        //   Microstatement.fromStatementsAst(insertedReturn, scope, closure.closureStatements);
-        //   // TODO: right now, fromExitsAst rewrites the call to be a CONSTDEC instead,
-        //   // but we still want to return!
-        //   const retName = closure.closureStatements[closure.closureStatements.length - 1].outputName;
-        //   closure.closureStatements.push(new Microstatement(
-        //     StatementType.EXIT,
-        //     scope,
-        //     true,
-        //     retName,
-        //   ))
-        // }
       } else if (then.has('fnname')) {
         const originalName = then.get('fnname').t.trim();
         const thenFn = scope.deepGet(originalName);
@@ -1828,7 +1761,9 @@ ${assignablesAst.t}`
       [tableName],
       scope,
       microstatements,
-      isUnwrapReturn
+      // note: these are very special and specific to only evalcond
+      isUnwrapReturn,
+      evalCondRetTy,
     );
   }
 

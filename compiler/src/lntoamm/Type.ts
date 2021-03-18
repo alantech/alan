@@ -269,6 +269,7 @@ export class Type {
   originalType: Type | null
   iface: Interface | null
   alias: Type | null
+  remappedGenerics: Map<Type, Type>
 
   constructor(
     typename: string,
@@ -279,6 +280,7 @@ export class Type {
     originalType: Type | null = null,
     iface: Interface | null = null,
     alias: Type | null = null,
+    remappedGenerics: Map<Type, Type> = new Map(),
   ) {
     this.typename = typename
     this.builtIn = builtIn
@@ -288,6 +290,7 @@ export class Type {
     this.originalType = originalType
     this.iface = iface
     this.alias = alias
+    this.remappedGenerics = remappedGenerics
   }
 
   toString() {
@@ -473,7 +476,17 @@ export class Type {
     const genericMap = new Map()
     genericTypes.forEach((g, i) => genericMap.set(g, replacementTypes[i]))
     const solidifiedName = this.typename + "<" + genericReplacements.join(", ") + ">"
-    let solidified = new Type(solidifiedName, this.builtIn)
+    let solidified = new Type(
+      solidifiedName,
+      this.builtIn,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      genericMap,
+    )
     solidified.originalType = this
     for (const propKey of Object.keys(this.properties)) {
       const propValue = this.properties[propKey]

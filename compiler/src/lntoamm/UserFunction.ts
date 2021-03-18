@@ -460,6 +460,11 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
         Type.builtinTypes.void,
         [],
         [this],
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        this.getReturnType(),
       ))
     // }
     // Perform a transform, if necessary, before generating the microstatements
@@ -602,7 +607,13 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
     // after this one so we don't mark non-recursive calls to a function multiple times as recursive
     // TODO: This is not the most efficient way to do things, come up with a better metadata
     // mechanism to pass around.
-    microstatements = microstatements.filter(ms => ms.statementType !== StatementType.ENTERFN)
+    // note: keep the ENTERFN that we inserted, it's necessary for handling conditionals
+    for (let i = originalStatementLength + 1; i < microstatements.length; i++) {
+      if (microstatements[i].statementType === StatementType.ENTERFN) {
+        microstatements.splice(i, 1);
+        i--;
+      }
+    }
 
     const tailIdx = microstatements.findIndex(ms => ms.statementType === StatementType.TAIL);
     if (tailIdx !== -1) {
@@ -612,7 +623,13 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
         tail,
         [],
       )
+      // if this isn't a closure, drop the return that got inserted at the end of handleTail
+      if (originalStatementLength === 0) {
+        microstatements.pop();
+      }
     }
+
+    microstatements.splice(originalStatementLength, 1);
   }
 
   static dispatchFn(

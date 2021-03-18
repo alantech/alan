@@ -82,25 +82,35 @@ const addopcodes = (opcodes: object) => {
       const opcodeObj = {
         getName: () => opcodeName,
         getArguments: () => args,
-        getReturnType: () => undefined, // it's a chameleon
+        getReturnType: () => { throw new Error() },
         isPure: () => false,
         isUnwrapReturn: () => false, // evalcond isn't pure because neither of the args are expected to be pure
         microstatementInlining: (
           realArgNames: Array<string>,
           scope: Scope,
           microstatements: Array<Microstatement>,
+          // if these aren't set, it's invalid! only necessary because of how special evalcond is.
           isUnwrapReturn?: boolean,
+          retTy?: Type,
         ) => {
+          // `== null` checks against both undefined and null. these *must* be set to valid values.
+          if (isUnwrapReturn == null || retTy == null) {
+            throw new Error('evalcond has very specific requirements and they were not met');
+          }
           let outName = uuid().replace(/-/g, '_');
           outName = '_' + outName.substring(0, outName.length - 4) + '_RET';
+          const opcode = {
+            getReturnType: () => retTy,
+            ...opcodeObj,
+          };
           microstatements.push(new Microstatement(
             StatementType.TAIL,
             scope,
             false,
             outName,
-            undefined,
+            retTy,
             realArgNames,
-            [opcodeObj],
+            [opcode],
             undefined,
             undefined,
             undefined,
