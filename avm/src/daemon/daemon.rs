@@ -3,19 +3,19 @@ use std::fs::read;
 
 use anycloud::deploy;
 use base64;
-use serde::Serialize;
-use serde_json::{json, Value};
 use futures::future::join_all;
 use futures::stream::StreamExt;
+use heim_common::units::{information::kilobyte, ratio::ratio, time::second};
 #[cfg(target_os = "linux")]
 use heim_cpu::os::linux::CpuTimeExt;
 #[cfg(target_os = "linux")]
 use heim_memory::os::linux::MemoryExt;
 use heim_process::processes;
-use heim_common::units::{information::kilobyte, ratio::ratio, time::second};
+use serde::Serialize;
+use serde_json::{json, Value};
 use tokio::process::Command;
 use tokio::task;
-use tokio::time::{Duration, sleep};
+use tokio::time::{sleep, Duration};
 
 use crate::daemon::dns::DNS;
 use crate::daemon::lrh::LogRendezvousHash;
@@ -50,10 +50,7 @@ struct VMStatsV1 {
 }
 
 async fn get_private_ip() -> String {
-  let res = Command::new("hostname")
-    .arg("-I")
-    .output()
-    .await;
+  let res = Command::new("hostname").arg("-I").output().await;
   let err = "Failed to execute `hostname`";
   let stdout = res.expect(err).stdout;
   String::from_utf8(stdout)
@@ -73,7 +70,12 @@ async fn post_v1(endpoint: &str, body: Value) -> String {
   }
 }
 
-async fn post_v1_scale(cluster_id: &str, agz_b64: &str, deploy_token: &str, factor: &str) -> String {
+async fn post_v1_scale(
+  cluster_id: &str,
+  agz_b64: &str,
+  deploy_token: &str,
+  factor: &str,
+) -> String {
   // transmit the Dockerfile and app.tar.gz if both are available
   let pwd = env::current_dir();
   match pwd {
@@ -88,14 +90,23 @@ async fn post_v1_scale(cluster_id: &str, agz_b64: &str, deploy_token: &str, fact
         "clusterFactor": factor,
       });
       if let (Ok(dockerfile), Ok(app_tar_gz)) = (dockerfile, app_tar_gz) {
-        scale_body.as_object_mut().unwrap().insert(format!("DockerfileB64"), json!(base64::encode(dockerfile)));
-        scale_body.as_object_mut().unwrap().insert(format!("appTarGzB64"), json!(base64::encode(app_tar_gz)));
+        scale_body
+          .as_object_mut()
+          .unwrap()
+          .insert(format!("DockerfileB64"), json!(base64::encode(dockerfile)));
+        scale_body
+          .as_object_mut()
+          .unwrap()
+          .insert(format!("appTarGzB64"), json!(base64::encode(app_tar_gz)));
       }
       if let Ok(env_file) = env_file {
-        scale_body.as_object_mut().unwrap().insert(format!("envB64"), json!(base64::encode(env_file)));
+        scale_body
+          .as_object_mut()
+          .unwrap()
+          .insert(format!("envB64"), json!(base64::encode(env_file)));
       };
       post_v1("scale", scale_body).await
-    },
+    }
     Err(err) => format!("{:?}", err),
   }
 }
@@ -111,12 +122,12 @@ async fn get_procs_cpu_usage() -> Vec<f32> {
           sleep(Duration::from_secs(1)).await;
           let measurement_2 = proc.cpu_usage().await;
           if measurement_1.is_err() || measurement_2.is_err() {
-            return 0.0
+            return 0.0;
           }
           let usage = measurement_2.unwrap() - measurement_1.unwrap();
           usage.get::<ratio>()
-        },
-        Err(_) => 0.0
+        }
+        Err(_) => 0.0,
       }
     })
     .collect::<Vec<_>>()
@@ -126,22 +137,29 @@ async fn get_procs_cpu_usage() -> Vec<f32> {
 
 #[cfg(target_os = "linux")]
 async fn get_v1_stats() -> VMStatsV1 {
-  let memory = heim_memory::memory().await.expect("Failed to get system memory information");
-  let swap = heim_memory::swap().await.expect("Failed to get swap information");
+  let memory = heim_memory::memory()
+    .await
+    .expect("Failed to get system memory information");
+  let swap = heim_memory::swap()
+    .await
+    .expect("Failed to get swap information");
   VMStatsV1 {
-    cpuSecs: heim_cpu::times().map(|r| {
-      let cpu = r.expect("Failed to get CPU times");
-      CPUSecsV1 {
-        user: cpu.user().get::<second>(),
-        system: cpu.system().get::<second>(),
-        idle: cpu.idle().get::<second>(),
-        irq: cpu.irq().get::<second>(),
-        nice: cpu.nice().get::<second>(),
-        ioWait: cpu.io_wait().get::<second>(),
-        softIrq: cpu.soft_irq().get::<second>(),
-        steal: cpu.steal().get::<second>(),
-      }
-    }).collect().await,
+    cpuSecs: heim_cpu::times()
+      .map(|r| {
+        let cpu = r.expect("Failed to get CPU times");
+        CPUSecsV1 {
+          user: cpu.user().get::<second>(),
+          system: cpu.system().get::<second>(),
+          idle: cpu.idle().get::<second>(),
+          irq: cpu.irq().get::<second>(),
+          nice: cpu.nice().get::<second>(),
+          ioWait: cpu.io_wait().get::<second>(),
+          softIrq: cpu.soft_irq().get::<second>(),
+          steal: cpu.steal().get::<second>(),
+        }
+      })
+      .collect()
+      .await,
     procsCpuUsage: get_procs_cpu_usage().await,
     totalMemoryKb: memory.total().get::<kilobyte>(),
     availableMemoryKb: memory.available().get::<kilobyte>(),
@@ -157,22 +175,29 @@ async fn get_v1_stats() -> VMStatsV1 {
 // zero out linux specific stats
 #[cfg(not(target_os = "linux"))]
 async fn get_v1_stats() -> VMStatsV1 {
-  let memory = heim_memory::memory().await.expect("Failed to get system memory information");
-  let swap = heim_memory::swap().await.expect("Failed to get swap information");
+  let memory = heim_memory::memory()
+    .await
+    .expect("Failed to get system memory information");
+  let swap = heim_memory::swap()
+    .await
+    .expect("Failed to get swap information");
   VMStatsV1 {
-    cpuSecs: heim_cpu::times().map(|r| {
-      let cpu = r.expect("Failed to get CPU times");
-      CPUSecsV1 {
-        user: cpu.user().get::<second>(),
-        system: cpu.system().get::<second>(),
-        idle: cpu.idle().get::<second>(),
-        irq: 0.0,
-        nice: 0.0,
-        ioWait: 0.0,
-        softIrq: 0.0,
-        steal: 0.0,
-      }
-    }).collect().await,
+    cpuSecs: heim_cpu::times()
+      .map(|r| {
+        let cpu = r.expect("Failed to get CPU times");
+        CPUSecsV1 {
+          user: cpu.user().get::<second>(),
+          system: cpu.system().get::<second>(),
+          idle: cpu.idle().get::<second>(),
+          irq: 0.0,
+          nice: 0.0,
+          ioWait: 0.0,
+          softIrq: 0.0,
+          steal: 0.0,
+        }
+      })
+      .collect()
+      .await,
     procsCpuUsage: get_procs_cpu_usage().await,
     totalMemoryKb: memory.total().get::<kilobyte>(),
     availableMemoryKb: memory.available().get::<kilobyte>(),
@@ -221,13 +246,21 @@ pub async fn start(
       // and every time the cluster changes size
       if vms.len() != cluster_size {
         cluster_size = vms.len();
-        let ips = vms.iter().map(|vm| vm.private_ip_addr.to_string()).collect();
+        let ips = vms
+          .iter()
+          .map(|vm| vm.private_ip_addr.to_string())
+          .collect();
         let lrh = LogRendezvousHash::new(ips);
         leader_ip = lrh.get_leader_id().to_string();
       }
       if leader_ip == self_ip {
         let factor = post_v1_stats(&cluster_id, &deploy_token).await;
-        println!("VM stats sent for cluster {} of size {}. Cluster factor: {}.", cluster_id, vms.len(), factor);
+        println!(
+          "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
+          cluster_id,
+          vms.len(),
+          factor
+        );
         if factor != "1" {
           post_v1_scale(&cluster_id, &agzb64, &deploy_token, &factor).await;
         }
