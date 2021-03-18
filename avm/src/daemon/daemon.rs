@@ -225,11 +225,18 @@ async fn get_v1_stats() -> VMStatsV1 {
 // returns cluster delta
 async fn post_v1_stats(cluster_id: &str, deploy_token: &str) -> String {
   let vm_stats = get_v1_stats().await;
-  let stats_body = json!({
+  let mut stats_body = json!({
     "deployToken": deploy_token,
     "vmStats": vm_stats,
     "clusterId": cluster_id,
   });
+  let secret_string = SECRET_STRING.get().unwrap();
+  if let Some(secret_string) = secret_string.as_ref() {
+    stats_body.as_object_mut().unwrap().insert(
+      "secretString".to_string(),
+      json!(secret_string),
+    );
+  }
   post_v1("stats", stats_body).await
 }
 
@@ -263,13 +270,13 @@ pub async fn run_agz_b64(agz_b64: &str, priv_key_b64: Option<&str>, cert_b64: Op
   let mut bytecode = vec![0; count / 8];
   let mut gz = GzDecoder::new(bytes.as_slice());
   gz.read_i64_into::<LittleEndian>(&mut bytecode).unwrap();
-  if priv_key_b64.is_some() && cert_b64.is_some() {
+  if let (Some(priv_key_b64), Some(cert_b64)) = (priv_key_b64, cert_b64) {
     // Spin up a control port if we can start a secure connection
     make_server!(
       HttpType::HTTPS(HttpsConfig {
         port: 4142, // 4 = A, 1 = L, 2 = N (sideways) => ALAN
-        priv_key_b64: priv_key_b64.unwrap().to_string(),
-        cert_b64: cert_b64.unwrap().to_string(),
+        priv_key_b64: priv_key_b64.to_string(),
+        cert_b64: cert_b64.to_string(),
       }),
       control_port
     );
@@ -277,8 +284,8 @@ pub async fn run_agz_b64(agz_b64: &str, priv_key_b64: Option<&str>, cert_b64: Op
       bytecode,
       HttpType::HTTPS(HttpsConfig {
         port: 443,
-        priv_key_b64: priv_key_b64.unwrap().to_string(),
-        cert_b64: cert_b64.unwrap().to_string(),
+        priv_key_b64: priv_key_b64.to_string(),
+        cert_b64: cert_b64.to_string(),
       }),
     )
     .await;
