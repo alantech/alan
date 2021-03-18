@@ -441,16 +441,16 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
     // check that list for self-containment, which would cause an infinite loop in compilation and
     // abort with a useful error message.
     const enterfns = microstatements.filter(m => m.statementType === StatementType.ENTERFN)
-    // const isRecursive = enterfns.some(m => m.fns[0] === this)
-    // if (isRecursive) {
-    //   let path = enterfns
-    //     .slice(enterfns.findIndex(m => m.fns[0] === this))
-    //     .map(m => m.fns[0].getName())
-    //   path.push(this.getName())
-    //   let pathstr = path.join(' -> ')
-    //   console.log(microstatements)
-    //   throw new Error(`Recursive callstack detected: ${pathstr}. Aborting.`)
-    // } else {
+    const isRecursive = enterfns.some(m => m.fns[0] === this)
+    if (isRecursive) {
+      let path = enterfns
+        .slice(enterfns.findIndex(m => m.fns[0] === this))
+        .map(m => m.fns[0].getName())
+      path.push(this.getName())
+      let pathstr = path.join(' -> ')
+      console.log(microstatements)
+      throw new Error(`Recursive callstack detected: ${pathstr}. Aborting.`)
+    } else {
       // Otherwise, add a marker for this
       microstatements.push(new Microstatement(
         StatementType.ENTERFN,
@@ -466,7 +466,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
         undefined,
         this.getReturnType(),
       ))
-    // }
+    }
     // Perform a transform, if necessary, before generating the microstatements
     // Resolve circular dependency issue
     const internalNames = Object.keys(this.args)
