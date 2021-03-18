@@ -624,7 +624,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
         [],
       )
       // if this isn't a closure, drop the return that got inserted at the end of handleTail
-      if (originalStatementLength === 0) {
+      if (originalStatementLength !== 0) {
         microstatements.pop();
       }
     }

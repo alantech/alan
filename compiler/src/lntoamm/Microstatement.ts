@@ -1694,6 +1694,8 @@ ${assignablesAst.t}`
         undefined,
         false,
         [],
+        undefined,
+        evalCondRetTy
       );
       // insert ENTERCONDFN so there aren't any recursive value rewrites
       closure.closureStatements.push(new Microstatement(
