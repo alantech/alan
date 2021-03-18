@@ -1,8 +1,14 @@
+use std::convert::Infallible;
 use std::env;
 use std::fs::read;
+use std::io::Read;
+use std::net::TcpStream;
+use std::path::Path;
 
 use anycloud::deploy;
 use base64;
+use byteorder::{LittleEndian, ReadBytesExt};
+use flate2::read::GzDecoder;
 use futures::future::join_all;
 use futures::stream::StreamExt;
 use heim_common::units::{information::kilobyte, ratio::ratio, time::second};
@@ -11,6 +17,8 @@ use heim_cpu::os::linux::CpuTimeExt;
 #[cfg(target_os = "linux")]
 use heim_memory::os::linux::MemoryExt;
 use heim_process::processes;
+use hyper::{Body, Request, Response};
+use once_cell::sync::OnceCell;
 use serde::Serialize;
 use serde_json::{json, Value};
 use tokio::process::Command;
@@ -19,7 +27,11 @@ use tokio::time::{sleep, Duration};
 
 use crate::daemon::dns::DNS;
 use crate::daemon::lrh::LogRendezvousHash;
-use crate::vm::run::run_agz_b64;
+use crate::make_server;
+use crate::vm::http::{HttpConfig, HttpType, HttpsConfig};
+use crate::vm::run::run;
+
+pub static SECRET_STRING: OnceCell<Option<String>> = OnceCell::new();
 
 #[allow(non_snake_case)]
 #[derive(Debug, Serialize)]
@@ -219,6 +231,60 @@ async fn post_v1_stats(cluster_id: &str, deploy_token: &str) -> String {
     "clusterId": cluster_id,
   });
   post_v1("stats", stats_body).await
+}
+
+async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> {
+  let secret_string = SECRET_STRING.get().unwrap();
+  if secret_string.is_some() && !req.headers().contains_key(secret_string.as_ref().unwrap()) {
+    // If this control port is guarded by a secret string, make sure there's a header with that
+    // secret as the key (we don't care about the value) and abort otherwise
+    Ok(Response::builder().status(500).body("fail".into()).unwrap())
+  } else if TcpStream::connect("127.0.0.1:443").is_err() {
+    // If the Alan HTTPS server has not yet started, mark as a failure
+    Ok(Response::builder().status(500).body("fail".into()).unwrap())
+  } else if Path::new("./Dockerfile").exists()
+    && Path::new("./app.tar.gz").exists()
+    && TcpStream::connect("127.0.0.1:8088").is_err()
+  {
+    // If this is an Anycloud deployment and the child process hasn't started, mark as a failure
+    // TODO: Any way to generalize this so we don't have special logic for Anycloud?
+    Ok(Response::builder().status(500).body("fail".into()).unwrap())
+  } else {
+    // Everything passed, send an ok
+    Ok(Response::builder().status(200).body("ok".into()).unwrap())
+  }
+}
+
+// Used by the `daemon` mode only
+pub async fn run_agz_b64(agz_b64: &str, priv_key_b64: Option<&str>, cert_b64: Option<&str>) {
+  let bytes = base64::decode(agz_b64).unwrap();
+  let agz = GzDecoder::new(bytes.as_slice());
+  let count = agz.bytes().count();
+  let mut bytecode = vec![0; count / 8];
+  let mut gz = GzDecoder::new(bytes.as_slice());
+  gz.read_i64_into::<LittleEndian>(&mut bytecode).unwrap();
+  if priv_key_b64.is_some() && cert_b64.is_some() {
+    // Spin up a control port if we can start a secure connection
+    make_server!(
+      HttpType::HTTPS(HttpsConfig {
+        port: 4142, // 4 = A, 1 = L, 2 = N (sideways) => ALAN
+        priv_key_b64: priv_key_b64.unwrap().to_string(),
+        cert_b64: cert_b64.unwrap().to_string(),
+      }),
+      control_port
+    );
+    run(
+      bytecode,
+      HttpType::HTTPS(HttpsConfig {
+        port: 443,
+        priv_key_b64: priv_key_b64.unwrap().to_string(),
+        cert_b64: cert_b64.unwrap().to_string(),
+      }),
+    )
+    .await;
+  } else {
+    run(bytecode, HttpType::HTTP(HttpConfig { port: 80 })).await;
+  }
 }
 
 pub async fn start(
