@@ -9,17 +9,8 @@ use anycloud::deploy;
 use base64;
 use byteorder::{LittleEndian, ReadBytesExt};
 use flate2::read::GzDecoder;
-use futures::future::join_all;
-use futures::stream::StreamExt;
-use heim_common::units::{information::kilobyte, ratio::ratio, time::second};
-#[cfg(target_os = "linux")]
-use heim_cpu::os::linux::CpuTimeExt;
-#[cfg(target_os = "linux")]
-use heim_memory::os::linux::MemoryExt;
-use heim_process::processes;
 use hyper::{Body, Request, Response};
 use once_cell::sync::OnceCell;
-use serde::Serialize;
 use serde_json::{json, Value};
 use tokio::process::Command;
 use tokio::task;
@@ -27,40 +18,14 @@ use tokio::time::{sleep, Duration};
 
 use crate::daemon::dns::DNS;
 use crate::daemon::lrh::LogRendezvousHash;
+use crate::daemon::stats::get_v1_stats;
 use crate::make_server;
 use crate::vm::http::{HttpConfig, HttpType, HttpsConfig};
 use crate::vm::run::run;
 
 pub static CLUSTER_SECRET: OnceCell<Option<String>> = OnceCell::new();
 
-#[allow(non_snake_case)]
-#[derive(Debug, Serialize)]
-struct CPUSecsV1 {
-  user: f64,
-  system: f64,
-  idle: f64,
-  irq: f64,
-  nice: f64,
-  ioWait: f64,
-  softIrq: f64,
-  steal: f64,
-}
-
-#[allow(non_snake_case)]
-#[derive(Debug, Serialize)]
-struct VMStatsV1 {
-  cpuSecs: Vec<CPUSecsV1>,
-  procsCpuUsage: Vec<f32>,
-  totalMemoryKb: u64,
-  availableMemoryKb: u64,
-  freeMemoryKb: u64,
-  usedMemoryKb: u64,
-  activeMemoryKb: u64,
-  totalSwapKb: u64,
-  usedSwapKb: u64,
-  freeSwapKb: u64,
-}
-
+#[cfg(target_os = "linux")]
 async fn get_private_ip() -> String {
   let res = Command::new("hostname").arg("-I").output().await;
   let err = "Failed to execute `hostname`";
@@ -72,6 +37,11 @@ async fn get_private_ip() -> String {
     .next()
     .unwrap()
     .to_string()
+}
+
+#[cfg(not(target_os = "linux"))]
+async fn get_private_ip() -> String {
+  panic!("`hostname` command does not exist in this OS");
 }
 
 async fn post_v1(endpoint: &str, body: Value) -> String {
@@ -120,105 +90,6 @@ async fn post_v1_scale(
       post_v1("scale", scale_body).await
     }
     Err(err) => format!("{:?}", err),
-  }
-}
-
-async fn get_procs_cpu_usage() -> Vec<f32> {
-  let futures = processes()
-    .map(|process| async {
-      match process {
-        Ok(proc) => {
-          let measurement_1 = proc.cpu_usage().await;
-          // CpuUsage struct represents instantaneous CPU usage and
-          // does not represent any reasonable value by itself
-          sleep(Duration::from_secs(1)).await;
-          let measurement_2 = proc.cpu_usage().await;
-          if measurement_1.is_err() || measurement_2.is_err() {
-            return 0.0;
-          }
-          let usage = measurement_2.unwrap() - measurement_1.unwrap();
-          usage.get::<ratio>()
-        }
-        Err(_) => 0.0,
-      }
-    })
-    .collect::<Vec<_>>()
-    .await;
-  join_all(futures).await
-}
-
-#[cfg(target_os = "linux")]
-async fn get_v1_stats() -> VMStatsV1 {
-  let memory = heim_memory::memory()
-    .await
-    .expect("Failed to get system memory information");
-  let swap = heim_memory::swap()
-    .await
-    .expect("Failed to get swap information");
-  VMStatsV1 {
-    cpuSecs: heim_cpu::times()
-      .map(|r| {
-        let cpu = r.expect("Failed to get CPU times");
-        CPUSecsV1 {
-          user: cpu.user().get::<second>(),
-          system: cpu.system().get::<second>(),
-          idle: cpu.idle().get::<second>(),
-          irq: cpu.irq().get::<second>(),
-          nice: cpu.nice().get::<second>(),
-          ioWait: cpu.io_wait().get::<second>(),
-          softIrq: cpu.soft_irq().get::<second>(),
-          steal: cpu.steal().get::<second>(),
-        }
-      })
-      .collect()
-      .await,
-    procsCpuUsage: get_procs_cpu_usage().await,
-    totalMemoryKb: memory.total().get::<kilobyte>(),
-    availableMemoryKb: memory.available().get::<kilobyte>(),
-    freeMemoryKb: memory.free().get::<kilobyte>(),
-    activeMemoryKb: memory.active().get::<kilobyte>(),
-    usedMemoryKb: memory.used().get::<kilobyte>(),
-    totalSwapKb: swap.total().get::<kilobyte>(),
-    usedSwapKb: swap.used().get::<kilobyte>(),
-    freeSwapKb: swap.free().get::<kilobyte>(),
-  }
-}
-
-// zero out linux specific stats
-#[cfg(not(target_os = "linux"))]
-async fn get_v1_stats() -> VMStatsV1 {
-  let memory = heim_memory::memory()
-    .await
-    .expect("Failed to get system memory information");
-  let swap = heim_memory::swap()
-    .await
-    .expect("Failed to get swap information");
-  VMStatsV1 {
-    cpuSecs: heim_cpu::times()
-      .map(|r| {
-        let cpu = r.expect("Failed to get CPU times");
-        CPUSecsV1 {
-          user: cpu.user().get::<second>(),
-          system: cpu.system().get::<second>(),
-          idle: cpu.idle().get::<second>(),
-          irq: 0.0,
-          nice: 0.0,
-          ioWait: 0.0,
-          softIrq: 0.0,
-          steal: 0.0,
-        }
-      })
-      .collect()
-      .await,
-    procsCpuUsage: get_procs_cpu_usage().await,
-    totalMemoryKb: memory.total().get::<kilobyte>(),
-    availableMemoryKb: memory.available().get::<kilobyte>(),
-    freeMemoryKb: memory.free().get::<kilobyte>(),
-    activeMemoryKb: 0,
-    usedMemoryKb: 0,
-    totalSwapKb: swap.total().get::<kilobyte>(),
-    usedSwapKb: swap.used().get::<kilobyte>(),
-    freeSwapKb: swap.free().get::<kilobyte>(),
   }
 }
 
