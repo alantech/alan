@@ -49,6 +49,7 @@ struct VMStatsV1 {
   freeSwapKb: u64,
 }
 
+#[cfg(target_os = "linux")]
 async fn get_private_ip() -> String {
   let res = Command::new("hostname").arg("-I").output().await;
   let err = "Failed to execute `hostname`";
@@ -60,6 +61,11 @@ async fn get_private_ip() -> String {
     .next()
     .unwrap()
     .to_string()
+}
+
+#[cfg(not(target_os = "linux"))]
+async fn get_private_ip() -> String {
+  panic!("`hostname` command does not exist in this OS");
 }
 
 async fn post_v1(endpoint: &str, body: Value) -> String {
@@ -135,6 +141,69 @@ async fn get_procs_cpu_usage() -> Vec<f32> {
   join_all(futures).await
 }
 
+#[cfg(not(target_os = "linux"))]
+async fn get_cpu_times() -> Vec<CPUSecsV1> {
+  heim_cpu::times()
+    .map(|r| {
+      let cpu = r.expect("Failed to get CPU times");
+      CPUSecsV1 {
+        user: cpu.user().get::<second>(),
+        system: cpu.system().get::<second>(),
+        idle: cpu.idle().get::<second>(),
+        irq: 0.0,
+        nice: 0.0,
+        ioWait: 0.0,
+        softIrq: 0.0,
+        steal: 0.0,
+      }
+    })
+    .collect()
+    .await
+}
+
+#[cfg(target_os = "linux")]
+async fn get_cpu_times() -> Vec<CPUSecsV1> {
+  heim_cpu::times()
+    .map(|r| {
+      let cpu = r.expect("Failed to get CPU times");
+      CPUSecsV1 {
+        user: cpu.user().get::<second>(),
+        system: cpu.system().get::<second>(),
+        idle: cpu.idle().get::<second>(),
+        irq: cpu.irq().get::<second>(),
+        nice: cpu.nice().get::<second>(),
+        ioWait: cpu.io_wait().get::<second>(),
+        softIrq: cpu.soft_irq().get::<second>(),
+        steal: cpu.steal().get::<second>(),
+      }
+    })
+    .collect()
+    .await
+}
+
+// Cpu Times from /proc/stat are for the entire lifetime of the VM
+// so take a snapshot
+async fn get_cpu_time_windows() -> Vec<CPUSecsV1> {
+  let times_1 = get_cpu_times().await;
+  sleep(Duration::from_secs(1)).await;
+  let times_2 = get_cpu_times().await;
+  let mut time_window = Vec::new();
+  for (idx, t2) in times_2.iter().enumerate() {
+    let t1 = &times_1[idx];
+    time_window.push(CPUSecsV1 {
+      user: t2.user - t1.user,
+      system: t2.system - t1.system,
+      idle: t2.idle - t1.idle,
+      irq: t2.irq - t1.irq,
+      nice: t2.nice - t1.nice,
+      ioWait: t2.ioWait - t1.ioWait,
+      softIrq: t2.softIrq - t1.softIrq,
+      steal: t2.steal - t1.steal,
+    })
+  }
+  time_window
+}
+
 #[cfg(target_os = "linux")]
 async fn get_v1_stats() -> VMStatsV1 {
   let memory = heim_memory::memory()
@@ -144,22 +213,7 @@ async fn get_v1_stats() -> VMStatsV1 {
     .await
     .expect("Failed to get swap information");
   VMStatsV1 {
-    cpuSecs: heim_cpu::times()
-      .map(|r| {
-        let cpu = r.expect("Failed to get CPU times");
-        CPUSecsV1 {
-          user: cpu.user().get::<second>(),
-          system: cpu.system().get::<second>(),
-          idle: cpu.idle().get::<second>(),
-          irq: cpu.irq().get::<second>(),
-          nice: cpu.nice().get::<second>(),
-          ioWait: cpu.io_wait().get::<second>(),
-          softIrq: cpu.soft_irq().get::<second>(),
-          steal: cpu.steal().get::<second>(),
-        }
-      })
-      .collect()
-      .await,
+    cpuSecs: get_cpu_time_windows().await,
     procsCpuUsage: get_procs_cpu_usage().await,
     totalMemoryKb: memory.total().get::<kilobyte>(),
     availableMemoryKb: memory.available().get::<kilobyte>(),
@@ -182,22 +236,7 @@ async fn get_v1_stats() -> VMStatsV1 {
     .await
     .expect("Failed to get swap information");
   VMStatsV1 {
-    cpuSecs: heim_cpu::times()
-      .map(|r| {
-        let cpu = r.expect("Failed to get CPU times");
-        CPUSecsV1 {
-          user: cpu.user().get::<second>(),
-          system: cpu.system().get::<second>(),
-          idle: cpu.idle().get::<second>(),
-          irq: 0.0,
-          nice: 0.0,
-          ioWait: 0.0,
-          softIrq: 0.0,
-          steal: 0.0,
-        }
-      })
-      .collect()
-      .await,
+    cpuSecs: get_cpu_time_windows().await,
     procsCpuUsage: get_procs_cpu_usage().await,
     totalMemoryKb: memory.total().get::<kilobyte>(),
     availableMemoryKb: memory.available().get::<kilobyte>(),
