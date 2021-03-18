@@ -1,5 +1,4 @@
 import { v4 as uuid } from 'uuid';
-import { LPNode } from '../lp';
 import { Args, Fn} from './Function';
 import Microstatement from "./Microstatement";
 import Scope from './Scope';
@@ -39,33 +38,21 @@ export const determineEvalCondReturn = (microstatements: Microstatement[], scope
   return [retTy, isUnwrap];
 }
 
-export const isNested = (microstatements: Microstatement[]): boolean => {
-  for (let ii = microstatements.length - 1; ii >= 0; ii--) {
-    const m = microstatements[ii];
-    if (m.statementType === StatementType.ENTERFN) {
-      break;
-    } else if (m.statementType === StatementType.ENTERCONDFN) {
-      return true;
-    }
-  }
-  return false;
-}
-
 export const handleTail = (
   microstatements: Microstatement[],
   tailed: Microstatement[],
   rest: Statement[],
 ) => {
   if (tailed.length === 0) return;
-  const isNest = isNested(microstatements);
   const tail = tailed.shift();
+  const isUnwrapReturn = tail.isUnwrapReturn;
   const tailFnName = '_' + uuid().replace(/-/g, '_');
   const closureMstmts: Microstatement[] = [...tailed];
   for (let next of rest) {
     Microstatement.fromStatement(next, closureMstmts, tail.scope);
   }
   // if we absolutely need a return value, insert a void return
-  if (!isNest && (closureMstmts.length === 0 || (closureMstmts[closureMstmts.length - 1].statementType !== StatementType.EXIT))) {
+  if (isUnwrapReturn && (closureMstmts.length === 0 || (closureMstmts[closureMstmts.length - 1].statementType !== StatementType.EXIT))) {
     returnVoid(closureMstmts, tail.scope);
   }
   // insert the tail function definition
@@ -86,7 +73,6 @@ export const handleTail = (
   // now fix and append the TAIL as a CONSTDEC (it's an evalcond or you can cut my legs and call me shorty)
   tail.statementType = StatementType.CONSTDEC;
   tail.inputNames.push(tailFnName);
-  const isUnwrapReturn = tail.isUnwrapReturn;
   let retName = tail.outputName;
   microstatements.push(tail);
   // if we need to unwrap the tail, do so

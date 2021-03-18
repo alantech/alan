@@ -1688,7 +1688,7 @@ ${assignablesAst.t}`
         scope,
         false, // TODO: detect
         thenname,
-        undefined,
+        evalCondRetTy,
         [],
         [],
         undefined,
@@ -1701,6 +1701,14 @@ ${assignablesAst.t}`
         scope,
         true,
         '',
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        evalCondRetTy,
       ));
       if (then.has('functionbody')) {
         const thenStmtAsts = then.get('functionbody').get('statements').getAll();
