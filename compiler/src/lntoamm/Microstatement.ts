@@ -11,6 +11,7 @@ import Type from './Type'
 import UserFunction from './UserFunction'
 import { Args, Fn, } from './Function'
 import { LPNode, NamedAnd, Token, } from '../lp'
+import * as Conditional from './Conditional'
 
 const FIXED_TYPES = [ 'int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'bool', 'void' ]
 
@@ -1643,7 +1644,7 @@ ${assignablesAst.t}`
     // a ENTERFN.
     let isUnwrapReturn = true;
     // i wish Array.prototype.reverse didn't act on the original :(
-    for (let ii = microstatements.length - 1; ii >= 0; ii++) {
+    for (let ii = microstatements.length - 1; ii >= 0; ii--) {
       const m = microstatements[ii];
       // TODO: this might be wrong
       if (m.statementType === StatementType.ENTERFN) {
@@ -1737,22 +1738,23 @@ ${assignablesAst.t}`
                 throw new Error('could not grab reference to returned value for then branch (please report this error)');
               }
             } else {
-              closure.closureStatements.push(new Microstatement(
-                StatementType.CONSTDEC,
-                scope,
-                true,
-                retName,
-                undefined,
-                [],
-                [{
-                  getName: () => 'noneM',
-                  getArguments: () => null,
-                  getReturnType: () => null,
-                  isPure: () => null,
-                  microstatementInlining: (_ran, _s, _mstmts) => null,
-                  isUnwrapReturn: () => null,
-                }],
-              ));
+              Conditional.getVoid.microstatementInlining([retName], scope, closure.closureStatements)
+              // closure.closureStatements.push(new Microstatement(
+              //   StatementType.CONSTDEC,
+              //   scope,
+              //   true,
+              //   retName,
+              //   undefined,
+              //   [],
+              //   [{
+              //     getName: () => 'noneM',
+              //     getArguments: () => null,
+              //     getReturnType: () => null,
+              //     isPure: () => null,
+              //     microstatementInlining: (_ran, _s, _mstmts) => null,
+              //     isUnwrapReturn: () => null,
+              //   }],
+              // ));
             }
             // retName = '_' + uuid().replace(/-/g, '_');
             // // now wrap the return value in `someM`

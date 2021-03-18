@@ -82,7 +82,7 @@ const addopcodes = (opcodes: object) => {
       const opcodeObj = {
         getName: () => opcodeName,
         getArguments: () => args,
-        getReturnType: () => null, // it's a chameleon
+        getReturnType: () => undefined, // it's a chameleon
         isPure: () => false,
         isUnwrapReturn: () => false, // evalcond isn't pure because neither of the args are expected to be pure
         microstatementInlining: (
@@ -98,7 +98,7 @@ const addopcodes = (opcodes: object) => {
             scope,
             false,
             outName,
-            null,
+            undefined,
             realArgNames,
             [opcodeObj],
             undefined,

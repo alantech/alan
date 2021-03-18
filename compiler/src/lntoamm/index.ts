@@ -14,7 +14,7 @@ import UserFunction from './UserFunction'
 import { LPNode, } from '../lp'
 import Statement from './Statement'
 import Scope from './Scope'
-import { Conditional } from './Conditional'
+import * as Conditional from './Conditional'
 
 const hoistConst = (
   microstatements: Array<Microstatement>,

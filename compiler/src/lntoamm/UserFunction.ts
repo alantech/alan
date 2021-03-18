@@ -8,7 +8,7 @@ import StatementType from './StatementType'
 import Type from './Type'
 import { Args, Fn, } from './Function'
 import { LPNode, } from '../lp'
-import { Conditional } from './Conditional'
+import * as Conditional from './Conditional'
 
 class UserFunction implements Fn {
   name: string
@@ -441,15 +441,16 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
     // check that list for self-containment, which would cause an infinite loop in compilation and
     // abort with a useful error message.
     const enterfns = microstatements.filter(m => m.statementType === StatementType.ENTERFN)
-    const isRecursive = enterfns.some(m => m.fns[0] === this)
-    if (isRecursive) {
-      let path = enterfns
-        .slice(enterfns.findIndex(m => m.fns[0] === this))
-        .map(m => m.fns[0].getName())
-      path.push(this.getName())
-      let pathstr = path.join(' -> ')
-      throw new Error(`Recursive callstack detected: ${pathstr}. Aborting.`)
-    } else {
+    // const isRecursive = enterfns.some(m => m.fns[0] === this)
+    // if (isRecursive) {
+    //   let path = enterfns
+    //     .slice(enterfns.findIndex(m => m.fns[0] === this))
+    //     .map(m => m.fns[0].getName())
+    //   path.push(this.getName())
+    //   let pathstr = path.join(' -> ')
+    //   console.log(microstatements)
+    //   throw new Error(`Recursive callstack detected: ${pathstr}. Aborting.`)
+    // } else {
       // Otherwise, add a marker for this
       microstatements.push(new Microstatement(
         StatementType.ENTERFN,
@@ -460,7 +461,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
         [],
         [this],
       ))
-    }
+    // }
     // Perform a transform, if necessary, before generating the microstatements
     // Resolve circular dependency issue
     const internalNames = Object.keys(this.args)
@@ -597,7 +598,12 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
         break
       }
     }
-    // handle conditional work before getting rid of the ENTERFNs, since it depends on it
+    // Now that we're done with this, we need to pop out all of the ENTERFN microstatements created
+    // after this one so we don't mark non-recursive calls to a function multiple times as recursive
+    // TODO: This is not the most efficient way to do things, come up with a better metadata
+    // mechanism to pass around.
+    microstatements = microstatements.filter(ms => ms.statementType !== StatementType.ENTERFN)
+
     const tailIdx = microstatements.findIndex(ms => ms.statementType === StatementType.TAIL);
     if (tailIdx !== -1) {
       const tail = microstatements.splice(tailIdx);
@@ -607,11 +613,6 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
         [],
       )
     }
-    // Now that we're done with this, we need to pop out all of the ENTERFN microstatements created
-    // after this one so we don't mark non-recursive calls to a function multiple times as recursive
-    // TODO: This is not the most efficient way to do things, come up with a better metadata
-    // mechanism to pass around.
-    microstatements.filter(ms => ms.statementType !== StatementType.ENTERFN)
   }
 
   static dispatchFn(

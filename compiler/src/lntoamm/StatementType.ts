@@ -1,3 +1,5 @@
+import * as Conditional from './Conditional';
+
 enum StatementType {
   CONSTDEC = 'CONSTDEC',
   LETDEC = 'LETDEC',
