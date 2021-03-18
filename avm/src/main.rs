@@ -171,7 +171,9 @@ fn main() {
         let priv_key_b64 = matches.value_of("private-key");
         let cert_b64 = matches.value_of("certificate");
         let secret_string = matches.value_of("secret");
-        SECRET_STRING.set(secret_string.map(|s| s.to_string())).unwrap();
+        SECRET_STRING
+          .set(secret_string.map(|s| s.to_string()))
+          .unwrap();
         start(
           app_id,
           agz_b64,
