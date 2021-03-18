@@ -81,7 +81,7 @@ fn main() {
       .arg_from_usage("<DOMAIN> 'Specifies the application domain'")
       .arg_from_usage("-k, --private-key=[PRIV_KEY_B64] 'An optional base64 encoded private key for HTTPS mode'")
       .arg_from_usage("-c, --certificate=[CERT_B64] 'An optional base64 encoded certificate for HTTPS mode'")
-      .arg_from_usage("-s, --cluster-secret=[SECRET_STRING] 'An optional secret string to constrain access to the control port'")
+      .arg_from_usage("-s, --cluster-secret=[CLUSTER_SECRET] 'An optional secret string to constrain access to the control port'")
     )
     .arg_from_usage("[SOURCE] 'Specifies a source ln file to compile and run'");
 
