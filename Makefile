@@ -10,6 +10,7 @@ env-check:
 
 .PHONY: avm-unit
 avm-unit: compiler/alan-compile
+	cd avm && cargo fmt -- --check
 	cd avm && cargo test
 
 .PHONY: compiler-browser-check
@@ -22,6 +23,7 @@ compiler-browser-check:
 	cd compiler && ../node_modules/.bin/pkg --targets host .
 
 ./avm/target/release/alan: compiler/alan-compile
+	cd avm && cargo fmt
 	cd avm && cargo build --release
 
 .PHONY: build-js-runtime

@@ -1,11 +1,11 @@
 use std::str;
 
-use trust_dns_resolver::TokioAsyncResolver;
 use trust_dns_resolver::config::{ResolverConfig, ResolverOpts};
+use trust_dns_resolver::TokioAsyncResolver;
 
 pub struct DNS {
   resolver: TokioAsyncResolver,
-  domain: String
+  domain: String,
 }
 
 pub struct VMMetadata {
@@ -17,7 +17,10 @@ pub struct VMMetadata {
 impl VMMetadata {
   fn from_txt_data(data: &[u8]) -> VMMetadata {
     let txt = str::from_utf8(&*data).expect("Data in TXT record is not a valid string");
-    let err = format!("VM metadata in DNS TXT record has invalid schema version: `{}`", &txt);
+    let err = format!(
+      "VM metadata in DNS TXT record has invalid schema version: `{}`",
+      &txt
+    );
     let parts: Vec<&str> = txt.split("|").collect();
     if parts.len() != 5 || parts[0] != "v1" {
       panic!(err);
@@ -41,10 +44,7 @@ impl DNS {
     let resolver = ResolverConfig::cloudflare_tls();
     DNS {
       domain: domain.to_string(),
-      resolver: TokioAsyncResolver::tokio(
-        resolver,
-        resolver_opts,
-      ).unwrap()
+      resolver: TokioAsyncResolver::tokio(resolver, resolver_opts).unwrap(),
     }
   }
   pub async fn get_vms(&self, cluster_id: &str) -> Vec<VMMetadata> {

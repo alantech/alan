@@ -34,14 +34,12 @@ impl LogRendezvousHash {
       sorted_hashes.push(HashedId::new(id));
     }
     sorted_hashes.sort_by(|a, b| a.hash.cmp(&b.hash));
-    LogRendezvousHash {
-      sorted_hashes,
-    }
+    LogRendezvousHash { sorted_hashes }
   }
 
   pub fn get_leader_id(&self) -> &str {
     let last_idx = self.sorted_hashes.len() - 1;
-    &self.sorted_hashes[last_idx].id 
+    &self.sorted_hashes[last_idx].id
   }
 
   // Runs a binary search for the record whose hash is closest to the key hash without
@@ -50,7 +48,10 @@ impl LogRendezvousHash {
     let mut key_hasher = XxHash64::with_seed(0xfa57);
     key_hasher.write(key.as_bytes());
     let key_hash = key_hasher.finish();
-    let idx = match self.sorted_hashes.binary_search_by(|a| a.hash.cmp(&key_hash)) {
+    let idx = match self
+      .sorted_hashes
+      .binary_search_by(|a| a.hash.cmp(&key_hash))
+    {
       Ok(res) => res,
       // All were too large, implies last (which wraps around) owns it
       Err(_) => self.sorted_hashes.len() - 1,

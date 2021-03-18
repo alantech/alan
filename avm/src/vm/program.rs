@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use once_cell::sync::OnceCell;
 
 use crate::vm::event::{BuiltInEvents, EventHandler};
-use crate::vm::instruction::Instruction;
 use crate::vm::http::HttpType;
-use crate::vm::opcode::{ByteOpcode, opcode_id, OPCODES};
+use crate::vm::instruction::Instruction;
+use crate::vm::opcode::{opcode_id, ByteOpcode, OPCODES};
 
 // Facilitates parsing the alan graph code program
 struct BytecodeParser {
@@ -175,8 +175,17 @@ impl Program {
       .unwrap();
     handlers.push(cur_handler);
     // special logic to auto-listen on the http server if it is being used
-    if program.event_handlers.get(&BuiltInEvents::HTTPCONN.into()).unwrap().len() > 0 {
-      let start_handlers = program.event_handlers.get_mut(&BuiltInEvents::START.into()).unwrap();
+    if program
+      .event_handlers
+      .get(&BuiltInEvents::HTTPCONN.into())
+      .unwrap()
+      .len()
+      > 0
+    {
+      let start_handlers = program
+        .event_handlers
+        .get_mut(&BuiltInEvents::START.into())
+        .unwrap();
       if start_handlers.len() == 0 {
         // Create a new handler that just executes `httplsn`
         let mut listen_handler = EventHandler::new(1, BuiltInEvents::START.into());

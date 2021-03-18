@@ -17,11 +17,11 @@ use hyper::{client::ResponseFuture, Body, Request, Response, StatusCode};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use tokio::process::Command;
-use tokio::sync::watch::{self, Sender, Receiver};
+use tokio::sync::watch::{self, Receiver, Sender};
 use tokio::time::sleep;
 use twox_hash::XxHash64;
 
-use crate::vm::event::{NOP_ID, BuiltInEvents, EventEmit, HandlerFragment};
+use crate::vm::event::{BuiltInEvents, EventEmit, HandlerFragment, NOP_ID};
 use crate::vm::http::HTTP_CLIENT;
 use crate::vm::memory::{FractalMemory, HandlerMemory, CLOSURE_ARG_MEM_START};
 use crate::vm::program::Program;
@@ -2850,9 +2850,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     headers: Vec<(String, String)>,
     body: Option<String>,
   ) -> Result<ResponseFuture, String> {
-    let mut req = Request::builder()
-      .method(method.as_str())
-      .uri(uri.as_str());
+    let mut req = Request::builder().method(method.as_str()).uri(uri.as_str());
     for header in headers {
       req = req.header(header.0.as_str(), header.1.as_str());
     }
@@ -2999,14 +2997,20 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     event.init_fractal(0);
     event.push_fractal(0, method);
     event.push_fractal(0, url);
-    HandlerMemory::transfer(&headers_hm, CLOSURE_ARG_MEM_START, &mut event, CLOSURE_ARG_MEM_START);
+    HandlerMemory::transfer(
+      &headers_hm,
+      CLOSURE_ARG_MEM_START,
+      &mut event,
+      CLOSURE_ARG_MEM_START,
+    );
     event.push_register(0, CLOSURE_ARG_MEM_START);
     event.push_fractal(0, body);
     // Generate a threadsafe raw ptr to the tx of a watch channel
     // A ptr is unsafely created from the raw ptr in httpsend once the
     // user's code has completed and sends the new HandlerMemory so we
     // can resume execution of this HTTP request
-    let (tx, mut rx): (Sender<Arc<HandlerMemory>>, Receiver<Arc<HandlerMemory>>) = watch::channel(HandlerMemory::new(None, 0));
+    let (tx, mut rx): (Sender<Arc<HandlerMemory>>, Receiver<Arc<HandlerMemory>>) =
+      watch::channel(HandlerMemory::new(None, 0));
     let tx_ptr = Arc::into_raw(Arc::new(tx)) as i64;
     event.push_fixed(0, tx_ptr);
     let event_emit = EventEmit {
