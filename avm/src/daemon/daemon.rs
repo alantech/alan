@@ -31,7 +31,7 @@ use crate::make_server;
 use crate::vm::http::{HttpConfig, HttpType, HttpsConfig};
 use crate::vm::run::run;
 
-pub static SECRET_STRING: OnceCell<Option<String>> = OnceCell::new();
+pub static CLUSTER_SECRET: OnceCell<Option<String>> = OnceCell::new();
 
 #[allow(non_snake_case)]
 #[derive(Debug, Serialize)]
@@ -230,19 +230,19 @@ async fn post_v1_stats(cluster_id: &str, deploy_token: &str) -> String {
     "vmStats": vm_stats,
     "clusterId": cluster_id,
   });
-  let secret_string = SECRET_STRING.get().unwrap();
-  if let Some(secret_string) = secret_string.as_ref() {
+  let cluster_secret = CLUSTER_SECRET.get().unwrap();
+  if let Some(cluster_secret) = cluster_secret.as_ref() {
     stats_body
       .as_object_mut()
       .unwrap()
-      .insert("secretString".to_string(), json!(secret_string));
+      .insert("clusterSecret".to_string(), json!(cluster_secret));
   }
   post_v1("stats", stats_body).await
 }
 
 async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> {
-  let secret_string = SECRET_STRING.get().unwrap();
-  if secret_string.is_some() && !req.headers().contains_key(secret_string.as_ref().unwrap()) {
+  let cluster_secret = CLUSTER_SECRET.get().unwrap();
+  if cluster_secret.is_some() && !req.headers().contains_key(cluster_secret.as_ref().unwrap()) {
     // If this control port is guarded by a secret string, make sure there's a header with that
     // secret as the key (we don't care about the value) and abort otherwise
     Ok(Response::builder().status(500).body("fail".into()).unwrap())
