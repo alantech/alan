@@ -262,8 +262,7 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
   }
 }
 
-// Used by the `daemon` mode only
-pub async fn run_agz_b64(agz_b64: &str, priv_key_b64: Option<&str>, cert_b64: Option<&str>) {
+async fn run_agz_b64(agz_b64: &str, priv_key_b64: Option<&str>, cert_b64: Option<&str>) {
   let bytes = base64::decode(agz_b64).unwrap();
   let agz = GzDecoder::new(bytes.as_slice());
   let count = agz.bytes().count();
