@@ -232,10 +232,10 @@ async fn post_v1_stats(cluster_id: &str, deploy_token: &str) -> String {
   });
   let secret_string = SECRET_STRING.get().unwrap();
   if let Some(secret_string) = secret_string.as_ref() {
-    stats_body.as_object_mut().unwrap().insert(
-      "secretString".to_string(),
-      json!(secret_string),
-    );
+    stats_body
+      .as_object_mut()
+      .unwrap()
+      .insert("secretString".to_string(), json!(secret_string));
   }
   post_v1("stats", stats_body).await
 }
