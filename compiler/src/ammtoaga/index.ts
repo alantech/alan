@@ -17,7 +17,7 @@ const ceil8 = (n: number) => Math.ceil(n / 8) * 8
 const CLOSURE_ARG_MEM_START = BigInt(Math.pow(-2,63))
 
 // special closure that does nothing
-const NOP_CLOSURE = '-9223372036854775808';
+const NOP_CLOSURE = '-9223372036854775808i64';
 
 const loadGlobalMem = (globalMemAst: LPNode[], addressMap: object) => {
   const globalMem = {}
