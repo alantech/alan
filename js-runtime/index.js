@@ -761,12 +761,12 @@ module.exports = {
   },
   evalcond: async (tbl, els) => {
     if (tbl.length !== 0 && tbl[0] === 1) {
-      const res = tbl[1]()
+      const res = await tbl[1]()
       if (res !== undefined) {
         return [1, res]
       }
     }
-    const res = els()
+    const res = await els()
     return res !== undefined ? [1, res] : [0]
   },
 
