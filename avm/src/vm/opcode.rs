@@ -3017,15 +3017,17 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       payload: Some(event),
     };
     let event_tx = EVENT_TX.get().unwrap();
+    let mut err_res = Response::new("Error synchronizing `send` for HTTP request".into());
+    *err_res.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
     if event_tx.send(event_emit).is_err() {
-      eprintln!("Event transmission error");
-      std::process::exit(3);
+      return Ok(err_res);
     }
     // Await HTTP response from the user code
     let response_hm = match rx.await {
       Ok(hm) => hm,
-      // TODO: return error response
-      Err(_) => panic!("Failed to receive a response for an HTTP request"),
+      Err(_) => {
+        return Ok(err_res);
+      }
     };
     // Get the status from the user response and begin building the response object
     let status = response_hm.read_fixed(0) as u16;
@@ -3063,9 +3065,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         hm.register_from_fractal(i as i64, &res_out, i);
       }
       // Get the watch channel tx from the raw ptr previously generated in http_listener
-      let fractal = hand_mem.read_mut_fractal(args[0]);
-      // TODO: avoid the panic if the value doesn't exist and return an error
-      let tx_raw_ptr = fractal.remove(3).1 as *mut Sender<Arc<HandlerMemory>>;
+      let fractal = hand_mem.read_fractal(args[0]);
+      let tx_raw_ptr = fractal.read_fixed(3) as *mut Sender<Arc<HandlerMemory>>;
       // We need an unsafe block here to efficiently synchronize the completion of every
       // http server response without using a broadcast/pubsub channel on every request
       // or introducing shared mutable state accessed by every HTTP request.
