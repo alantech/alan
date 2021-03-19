@@ -18,6 +18,7 @@ use tokio::task;
 use tokio::time::{Duration, sleep};
 
 use crate::daemon::dns::DNS;
+use crate::daemon::logger::init;
 use crate::daemon::lrh::LogRendezvousHash;
 use crate::vm::run::run_agz_b64;
 
@@ -197,6 +198,7 @@ pub async fn start(
   priv_key_b64: Option<&str>,
   cert_b64: Option<&str>,
 ) {
+  init().unwrap(); // Logger initialization
   let cluster_id = cluster_id.to_string();
   let deploy_token = deploy_token.to_string();
   let agzb64 = agz_b64.to_string();
