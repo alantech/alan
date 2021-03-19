@@ -1718,11 +1718,12 @@ ${assignablesAst.t}`
         for (let ast of thenStmtAsts) {
           ast = ast.get('statement');
           if (ast.has('exits')) {
+            ast = ast.get('exits')
             let retName = '_' + uuid().replace(/-/g, '_');
             if (ast.get('retval').has()) {
               // delegate assigning the value
               const originalRetVal = Ast.statementAstFromString(`
-                const ${retName} = ${ast.get('retval').get().t.trim()};
+                const ${retName} = ${ast.get('retval').t.trim()};
               `.trim());
               Microstatement.fromStatementsAst(originalRetVal, scope, closure.closureStatements);
               // undo the REREF that got inserted because i don't want to put up with that
