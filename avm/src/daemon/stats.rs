@@ -140,7 +140,7 @@ pub async fn get_v1_stats() -> VMStatsV1 {
     .expect("Failed to get swap information");
   VMStatsV1 {
     cpuSecs: get_cores_times().await,
-    procsCpuUsage: get_procs_cpu_usage().await,
+    procsCpuUsage: get_proc_usages().await,
     totalMemoryKb: memory.total().get::<kilobyte>(),
     availableMemoryKb: memory.available().get::<kilobyte>(),
     freeMemoryKb: memory.free().get::<kilobyte>(),
