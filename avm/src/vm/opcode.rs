@@ -17,7 +17,7 @@ use hyper::{client::ResponseFuture, Body, Request, Response, StatusCode};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use tokio::process::Command;
-use tokio::sync::watch::{self, Receiver, Sender};
+use tokio::sync::oneshot::{self, Sender, Receiver};
 use tokio::time::sleep;
 use twox_hash::XxHash64;
 
@@ -3009,9 +3009,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     // A ptr is unsafely created from the raw ptr in httpsend once the
     // user's code has completed and sends the new HandlerMemory so we
     // can resume execution of this HTTP request
-    let (tx, mut rx): (Sender<Arc<HandlerMemory>>, Receiver<Arc<HandlerMemory>>) =
-      watch::channel(HandlerMemory::new(None, 0));
-    let tx_ptr = Arc::into_raw(Arc::new(tx)) as i64;
+    let (tx, rx): (Sender<Arc<HandlerMemory>>, Receiver<Arc<HandlerMemory>>) = oneshot::channel();
+    let tx_ptr = Box::into_raw(Box::new(tx)) as i64;
     event.push_fixed(0, tx_ptr);
     let event_emit = EventEmit {
       id: i64::from(BuiltInEvents::HTTPCONN),
@@ -3023,8 +3022,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       std::process::exit(3);
     }
     // Await HTTP response from the user code
-    let response_hm = match rx.changed().await {
-      Ok(_) => rx.borrow(),
+    let response_hm = match rx.await {
+      Ok(hm) => hm,
+      // TODO: return error response
       Err(_) => panic!("Failed to receive a response for an HTTP request"),
     };
     // Get the status from the user response and begin building the response object
@@ -3056,7 +3056,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   io!(httpsend => fn(args, mut hand_mem) {
     Box::pin(async move {
       hand_mem.dupe(args[0], args[0]); // Make sure there's no pointers involved
-      let fractal = hand_mem.read_fractal(args[0]);
       let mut hm = HandlerMemory::new(None, 1);
       HandlerMemory::transfer(&hand_mem, args[0], &mut hm, CLOSURE_ARG_MEM_START);
       let res_out = hm.read_fractal(CLOSURE_ARG_MEM_START);
@@ -3064,22 +3063,25 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         hm.register_from_fractal(i as i64, &res_out, i);
       }
       // Get the watch channel tx from the raw ptr previously generated in http_listener
-      let tx_raw_ptr = fractal.read_fixed(3) as *const Sender<Arc<HandlerMemory>>;
+      let fractal = hand_mem.read_mut_fractal(args[0]);
+      // TODO: avoid the panic if the value doesn't exist and return an error
+      let tx_raw_ptr = fractal.remove(3).1 as *mut Sender<Arc<HandlerMemory>>;
       // We need an unsafe block here to efficiently synchronize the completion of every
       // http server response without using a broadcast/pubsub channel on every request
       // or introducing shared mutable state accessed by every HTTP request.
       // We create a pointer/Arc from a raw pointer once per HTTP request on the listen event.
       // httpsend is guaranteed to always be called after the pointer is created since that
       // is where it gets the raw pointer from
-      unsafe {
-        let tx = Arc::from_raw(tx_raw_ptr);
-        tx.send(hm).unwrap();
-      }
+      let tx: Box<Sender<Arc<HandlerMemory>>> = unsafe { Box::from_raw(tx_raw_ptr) };
+      let (status, string) = match tx.send(hm) {
+        Ok(_) => (1, "ok"),
+        Err(_) => (0, "could not send response to server"),
+      };
       // TODO: Add a second synchronization tool to return a valid Result status, for now, just
       // return success
       hand_mem.init_fractal(args[2]);
-      hand_mem.push_fixed(args[2], 0i64);
-      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("ok"));
+      hand_mem.push_fixed(args[2], status);
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(string));
       hand_mem
     })
   });
