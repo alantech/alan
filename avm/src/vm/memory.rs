@@ -72,10 +72,6 @@ impl FractalMemory {
     }
     return self.block[idx].1;
   }
-
-  pub fn remove(self: &mut FractalMemory, idx: usize) -> (usize, i64) {
-    return self.block.remove(idx);
-  }
 }
 
 impl PartialEq for FractalMemory {
