@@ -12,6 +12,7 @@ use heim_cpu::os::linux::CpuTimeExt;
 use heim_memory::os::linux::MemoryExt;
 use heim_process::processes;
 use heim_common::units::{information::kilobyte, ratio::ratio, time::second};
+use log::info;
 use tokio::process::Command;
 use tokio::task;
 use tokio::time::{Duration, sleep};
@@ -219,7 +220,7 @@ pub async fn start(
       }
       if leader_ip == self_ip {
         let factor = post_v1_stats(&cluster_id, &deploy_token).await;
-        println!("VM stats sent for cluster {} of size {}. Cluster factor: {}.", cluster_id, vms.len(), factor);
+        info!("VM stats sent for cluster {} of size {}. Cluster factor: {}.", cluster_id, vms.len(), factor);
         if factor != "1" {
           post_v1_scale(&cluster_id, &agzb64, &deploy_token, &factor).await;
         }

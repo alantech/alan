@@ -19,6 +19,7 @@ anycloud = { git = "https://github.com/alantech/anycloud", branch = "main" }
 async-stream = "0.3.0"
 base64 = "0.13"
 byteorder = "1.3.4"
+chrono = "0.4"
 clap = "2.33.1"
 dashmap = "3.11.10"
 flate2 = "1.0"
@@ -31,6 +32,7 @@ heim-process = "0.0.11"
 hyper = { version = "0.14", features = ["client", "http1", "http2", "runtime", "server"] }
 hyper-rustls = "0.22.1" # needed for HTTPS w/ hyper
 num_cpus = "1.0"
+log = { version = "0.4.14", features = ["std"] }
 once_cell = "1.5.2"
 rand = "0.7.3"
 regex = "1"
