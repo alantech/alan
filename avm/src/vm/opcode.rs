@@ -17,7 +17,7 @@ use hyper::{client::ResponseFuture, Body, Request, Response, StatusCode};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use tokio::process::Command;
-use tokio::sync::oneshot::{self, Sender, Receiver};
+use tokio::sync::oneshot::{self, Receiver, Sender};
 use tokio::time::sleep;
 use twox_hash::XxHash64;
 
