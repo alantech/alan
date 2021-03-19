@@ -1,5 +1,5 @@
-use futures::FutureExt;
 use futures::future::join_all;
+use futures::FutureExt;
 use std::sync::Arc;
 use tokio::task;
 
@@ -84,11 +84,11 @@ impl EventHandler {
           frag.push(ins);
           self.fragments.push(frag);
         }
-      },
+      }
       OpcodeFn::UnpredCpu(_) => {
         // always put this instruction on a new fragment
         self.fragments.push(vec![ins]);
-      },
+      }
       OpcodeFn::Io(_) => {
         // io opcode is a "movable capstone" in execution
         let cur_max_dep = ins.dep_ids.iter().max().unwrap_or(&-1);
@@ -114,7 +114,7 @@ impl EventHandler {
         // mark it as a new capstone
         self.movable_capstones.push(self.fragments.len());
         self.fragments.push(vec![ins]);
-      },
+      }
     }
   }
 
@@ -203,7 +203,7 @@ impl HandlerFragment {
   async fn run_cpu(
     &mut self,
     mut hand_mem: Arc<HandlerMemory>,
-    instrs: &Vec<Instruction>
+    instrs: &Vec<Instruction>,
   ) -> Arc<HandlerMemory> {
     task::block_in_place(move || {
       instrs.iter().for_each(|i| {
@@ -230,7 +230,7 @@ impl HandlerFragment {
   async fn run_unpred_cpu(
     &mut self,
     hand_mem: Arc<HandlerMemory>,
-    instrs: &Vec<Instruction>
+    instrs: &Vec<Instruction>,
   ) -> Arc<HandlerMemory> {
     // These instructions are always in groups by themselves
     let op = &instrs[0];
@@ -247,7 +247,7 @@ impl HandlerFragment {
   async fn run_io(
     &mut self,
     mut hand_mem: Arc<HandlerMemory>,
-    instrs: &Vec<Instruction>
+    instrs: &Vec<Instruction>,
   ) -> Arc<HandlerMemory> {
     if instrs.len() == 1 {
       let op = &instrs[0];
@@ -259,15 +259,19 @@ impl HandlerFragment {
         std::process::exit(1);
       }
     } else {
-      let futures: Vec<_> = instrs.iter().map(|i| {
-        if let OpcodeFn::Io(func) = i.opcode.fun {
-          //eprintln!("{} {:?}", i.opcode._name, i.args);
-          func(i.args.clone(), HandlerMemory::fork(hand_mem.clone())).then(HandlerMemory::drop_parent_async)
-        } else {
-          eprintln!("expected another IO instruction");
-          std::process::exit(1);
-        }
-      }).collect();
+      let futures: Vec<_> = instrs
+        .iter()
+        .map(|i| {
+          if let OpcodeFn::Io(func) = i.opcode.fun {
+            //eprintln!("{} {:?}", i.opcode._name, i.args);
+            func(i.args.clone(), HandlerMemory::fork(hand_mem.clone()))
+              .then(HandlerMemory::drop_parent_async)
+          } else {
+            eprintln!("expected another IO instruction");
+            std::process::exit(1);
+          }
+        })
+        .collect();
       let hms = join_all(futures).await;
       for hm in hms.into_iter() {
         hand_mem.join(hm);

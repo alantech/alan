@@ -8,6 +8,10 @@ build: env-check avm/target/release/alan build-js-runtime
 env-check:
 	bash -c "./.envcheck.sh"
 
+.PHONY: avm-style
+avm-style:
+	cd avm && cargo fmt -- --check
+
 .PHONY: avm-unit
 avm-unit: compiler/alan-compile
 	cd avm && cargo test
@@ -22,6 +26,7 @@ compiler-browser-check:
 	cd compiler && ../node_modules/.bin/pkg --targets host .
 
 ./avm/target/release/alan: compiler/alan-compile
+	cd avm && cargo fmt
 	cd avm && cargo build --release
 
 .PHONY: build-js-runtime

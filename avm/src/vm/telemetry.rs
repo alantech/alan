@@ -25,7 +25,8 @@ pub async fn log(event: &str) {
       }
     ]
   });
-  let client = Client::builder().build::<_, Body>(hyper_rustls::HttpsConnector::with_native_roots());
+  let client =
+    Client::builder().build::<_, Body>(hyper_rustls::HttpsConnector::with_native_roots());
   if client
     .request(
       Request::post(AMPLITUDE_URL)

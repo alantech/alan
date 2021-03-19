@@ -217,7 +217,13 @@ impl HandlerMemory {
           .parent
           .as_ref()
           // fail if no parent
-          .expect(format!("Memory address {} referenced in parent, but no parent pointer defined\nhm:{:?}", addr, self).as_str())
+          .expect(
+            format!(
+              "Memory address {} referenced in parent, but no parent pointer defined\nhm:{:?}",
+              addr, self
+            )
+            .as_str(),
+          )
           .addr_to_idxs(addr);
         let hm = match hm_opt {
           Some(hm) => Some(hm),
@@ -765,8 +771,13 @@ impl HandlerMemory {
     let s = hm.mem_addr; // The initial block that will be transferred (plus all following blocks)
     let s2 = self.mems.len(); // The new address of the initial block
     let offset = s2 - s; // Assuming it was made by `fork` this should be positive or zero
-    if let Some((a, b)) = hm.addr_to_idxs_opt(CLOSURE_ARG_MEM_START) { // The only address that can "escape"
-      let off = if a < std::usize::MAX && a >= s { offset } else { 0 };
+    if let Some((a, b)) = hm.addr_to_idxs_opt(CLOSURE_ARG_MEM_START) {
+      // The only address that can "escape"
+      let off = if a < std::usize::MAX && a >= s {
+        offset
+      } else {
+        0
+      };
       self.set_addr(CLOSURE_ARG_MEM_START, a + off, b);
     };
 
@@ -826,7 +837,7 @@ impl HandlerMemory {
             // the workarounds should be fine.
             eprintln!("unable to merge memories");
             std::process::exit(1);
-          },
+          }
           None => parent.addr.0[i] = Some((a + offset, b)),
         }
       }

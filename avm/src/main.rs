@@ -2,19 +2,19 @@ use std::env;
 use std::fs::read;
 use std::path::Path;
 
-use anycloud::deploy::{info, get_config, new, terminate, upgrade};
+use anycloud::deploy::{get_config, info, new, terminate, upgrade};
 use base64;
 use clap::{crate_name, crate_version, App, AppSettings, SubCommand};
 use serde_json::json;
 use tokio::runtime::Builder;
 
 use crate::compile::compile::compile;
-use crate::daemon::daemon::start;
-use crate::vm::telemetry;
+use crate::daemon::daemon::{start, CLUSTER_SECRET};
 use crate::vm::run::run_file;
+use crate::vm::telemetry;
 
-mod daemon;
 mod compile;
+mod daemon;
 mod vm;
 
 fn get_agz_b64(agz_file: &str) -> String {
@@ -81,6 +81,7 @@ fn main() {
       .arg_from_usage("<DOMAIN> 'Specifies the application domain'")
       .arg_from_usage("-k, --private-key=[PRIV_KEY_B64] 'An optional base64 encoded private key for HTTPS mode'")
       .arg_from_usage("-c, --certificate=[CERT_B64] 'An optional base64 encoded certificate for HTTPS mode'")
+      .arg_from_usage("-s, --cluster-secret=[CLUSTER_SECRET] 'An optional secret string to constrain access to the control port'")
     )
     .arg_from_usage("[SOURCE] 'Specifies a source ln file to compile and run'");
 
@@ -94,7 +95,7 @@ fn main() {
 
   rt.block_on(async move {
     match matches.subcommand() {
-      ("run",  Some(matches)) => {
+      ("run", Some(matches)) => {
         let agc_file = matches.value_of("FILE").unwrap();
         let fp = &format!(
           "{:}/{:}",
@@ -103,13 +104,13 @@ fn main() {
         );
         telemetry::log("avm-run").await;
         run_file(&fp, false).await;
-      },
-      ("compile",  Some(matches)) => {
+      }
+      ("compile", Some(matches)) => {
         let source_file = matches.value_of("INPUT").unwrap();
         let dest_file = matches.value_of("OUTPUT").unwrap();
         std::process::exit(compile(&source_file, &dest_file, false));
-      },
-      ("install",  _) => {
+      }
+      ("install", _) => {
         let source_file = ".dependencies.ln";
         if Path::new(source_file).exists() {
           std::process::exit(compile_and_run(source_file).await);
@@ -120,15 +121,15 @@ fn main() {
           );
           std::process::exit(1);
         }
-      },
+      }
       ("deploy", Some(sub_matches)) => {
         match sub_matches.subcommand() {
-          ("new",  Some(matches)) => {
+          ("new", Some(matches)) => {
             let config = get_config();
             let agz_file = matches.value_of("AGZ_FILE").unwrap();
-            let deploy_name = matches.value_of("DEPLOY_NAME").unwrap_or(
-              config.keys().take(1).next().unwrap()
-            );
+            let deploy_name = matches
+              .value_of("DEPLOY_NAME")
+              .unwrap_or(config.keys().take(1).next().unwrap());
             let app_id = matches.value_of("app-id");
             let body = json!({
               "deployConfig": config,
@@ -138,12 +139,12 @@ fn main() {
               "appId": app_id,
             });
             new(body).await;
-          },
-          ("terminate",  Some(matches)) => {
+          }
+          ("terminate", Some(matches)) => {
             let app_id = matches.value_of("APP_ID").unwrap();
             terminate(app_id).await;
-          },
-          ("upgrade",  Some(matches)) => {
+          }
+          ("upgrade", Some(matches)) => {
             let config = get_config();
             let cluster_id = matches.value_of("APP_ID").unwrap();
             let agz_file = matches.value_of("AGZ_FILE").unwrap();
@@ -154,23 +155,35 @@ fn main() {
               "alanVersion": concat!("v", crate_version!()),
             });
             upgrade(body).await;
-          },
-          ("info",  _) => {
+          }
+          ("info", _) => {
             info().await;
-          },
+          }
           // rely on AppSettings::SubcommandRequiredElseHelp
           _ => {}
         }
-      },
-      ("daemon",  Some(matches)) => {
+      }
+      ("daemon", Some(matches)) => {
         let app_id = matches.value_of("APP_ID").unwrap();
         let agz_b64 = matches.value_of("AGZ_B64").unwrap();
         let deploy_token = matches.value_of("DEPLOY_TOKEN").unwrap();
         let domain = matches.value_of("DOMAIN").unwrap();
         let priv_key_b64 = matches.value_of("private-key");
         let cert_b64 = matches.value_of("certificate");
-        start(app_id, agz_b64, deploy_token, domain, priv_key_b64, cert_b64).await;
-      },
+        let cluster_secret = matches.value_of("cluster-secret");
+        CLUSTER_SECRET
+          .set(cluster_secret.map(|s| s.to_string()))
+          .unwrap();
+        start(
+          app_id,
+          agz_b64,
+          deploy_token,
+          domain,
+          priv_key_b64,
+          cert_b64,
+        )
+        .await;
+      }
       _ => {
         // AppSettings::SubcommandRequiredElseHelp does not cut it here
         if let Some(source_file) = matches.value_of("SOURCE") {

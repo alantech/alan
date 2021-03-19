@@ -1,19 +1,15 @@
-use std::convert::Infallible;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use std::sync::Arc;
-use std::net::TcpStream;
 
-use base64;
 use byteorder::{LittleEndian, ReadBytesExt};
 use flate2::read::GzDecoder;
-use hyper::{Body, Request, Response};
 use once_cell::sync::OnceCell;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
 use crate::vm::event::{BuiltInEvents, EventEmit, HandlerFragment};
-use crate::vm::http::{HttpType, HttpConfig, HttpsConfig};
+use crate::vm::http::{HttpConfig, HttpType};
 use crate::vm::memory::HandlerMemory;
 use crate::vm::program::{Program, PROGRAM};
 
@@ -97,46 +93,7 @@ pub async fn run_file(fp: &str, delete_after_load: bool) {
   if delete_after_load {
     std::fs::remove_file(Path::new(fp)).unwrap();
   }
-  run(bytecode, HttpType::HTTP(HttpConfig { port: 8000, })).await;
-}
-
-async fn control_port(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
-  // TODO: Add secret validation once the deploy service starts creating one for the cluster
-  if TcpStream::connect("127.0.0.1:443").is_err() {
-    Ok(Response::builder().status(500).body("fail".into()).unwrap())
-  } else if 
-    Path::new("./Dockerfile").exists() &&
-    Path::new("./app.tar.gz").exists() &&
-    TcpStream::connect("127.0.0.1:8088").is_err() {
-    Ok(Response::builder().status(500).body("fail".into()).unwrap())
-  } else {
-    Ok(Response::builder().status(200).body("ok".into()).unwrap())
-  }
-}
-
-// Used by the `daemon` mode only
-pub async fn run_agz_b64(agz_b64: &str, priv_key_b64: Option<&str>, cert_b64: Option<&str>) {
-  let bytes = base64::decode(agz_b64).unwrap();
-  let agz = GzDecoder::new(bytes.as_slice());
-  let count = agz.bytes().count();
-  let mut bytecode = vec![0; count / 8];
-  let mut gz = GzDecoder::new(bytes.as_slice());
-  gz.read_i64_into::<LittleEndian>(&mut bytecode).unwrap();
-  if priv_key_b64.is_some() && cert_b64.is_some() {
-    // Spin up a control port if we can start a secure connection
-    make_server!(HttpType::HTTPS(HttpsConfig {
-      port: 4142, // 4 = A, 1 = L, 2 = N (sideways) => ALAN
-      priv_key_b64: priv_key_b64.unwrap().to_string(),
-      cert_b64: cert_b64.unwrap().to_string(),
-    }), control_port);
-    run(bytecode, HttpType::HTTPS(HttpsConfig{
-      port: 443,
-      priv_key_b64: priv_key_b64.unwrap().to_string(),
-      cert_b64: cert_b64.unwrap().to_string(),
-    })).await;
-  } else {
-    run(bytecode, HttpType::HTTP(HttpConfig { port: 80, })).await;
-  }
+  run(bytecode, HttpType::HTTP(HttpConfig { port: 8000 })).await;
 }
 
 pub async fn run(bytecode: Vec<i64>, http_config: HttpType) {

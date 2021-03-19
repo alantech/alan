@@ -21,7 +21,7 @@ use tokio::sync::oneshot::{self, Sender, Receiver};
 use tokio::time::sleep;
 use twox_hash::XxHash64;
 
-use crate::vm::event::{NOP_ID, BuiltInEvents, EventEmit, HandlerFragment};
+use crate::vm::event::{BuiltInEvents, EventEmit, HandlerFragment, NOP_ID};
 use crate::vm::http::HTTP_CLIENT;
 use crate::vm::memory::{FractalMemory, HandlerMemory, CLOSURE_ARG_MEM_START};
 use crate::vm::program::Program;
@@ -2850,9 +2850,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     headers: Vec<(String, String)>,
     body: Option<String>,
   ) -> Result<ResponseFuture, String> {
-    let mut req = Request::builder()
-      .method(method.as_str())
-      .uri(uri.as_str());
+    let mut req = Request::builder().method(method.as_str()).uri(uri.as_str());
     for header in headers {
       req = req.header(header.0.as_str(), header.1.as_str());
     }
@@ -2999,7 +2997,12 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     event.init_fractal(0);
     event.push_fractal(0, method);
     event.push_fractal(0, url);
-    HandlerMemory::transfer(&headers_hm, CLOSURE_ARG_MEM_START, &mut event, CLOSURE_ARG_MEM_START);
+    HandlerMemory::transfer(
+      &headers_hm,
+      CLOSURE_ARG_MEM_START,
+      &mut event,
+      CLOSURE_ARG_MEM_START,
+    );
     event.push_register(0, CLOSURE_ARG_MEM_START);
     event.push_fractal(0, body);
     // Generate a threadsafe raw ptr to the tx of a watch channel
