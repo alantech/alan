@@ -17,7 +17,7 @@ use hyper::{client::ResponseFuture, Body, Request, Response, StatusCode};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use tokio::process::Command;
-use tokio::sync::watch::{self, Sender, Receiver};
+use tokio::sync::oneshot::{self, Sender, Receiver};
 use tokio::time::sleep;
 use twox_hash::XxHash64;
 
@@ -3006,7 +3006,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     // A ptr is unsafely created from the raw ptr in httpsend once the
     // user's code has completed and sends the new HandlerMemory so we
     // can resume execution of this HTTP request
-    let (tx, mut rx): (Sender<Arc<HandlerMemory>>, Receiver<Arc<HandlerMemory>>) = watch::channel(HandlerMemory::new(None, 0));
+    let (tx, rx): (Sender<Arc<HandlerMemory>>, Receiver<Arc<HandlerMemory>>) = oneshot::channel();
     let tx_ptr = Box::into_raw(Box::new(tx)) as i64;
     event.push_fixed(0, tx_ptr);
     let event_emit = EventEmit {
@@ -3019,8 +3019,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       std::process::exit(3);
     }
     // Await HTTP response from the user code
-    let response_hm = match rx.changed().await {
-      Ok(_) => rx.borrow(),
+    let response_hm = match rx.await {
+      Ok(hm) => hm,
       Err(_) => panic!("Failed to receive a response for an HTTP request"),
     };
     // Get the status from the user response and begin building the response object
@@ -3067,19 +3067,16 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       // We create a pointer/Arc from a raw pointer once per HTTP request on the listen event.
       // httpsend is guaranteed to always be called after the pointer is created since that
       // is where it gets the raw pointer from
-      let tx = unsafe { Box::from_raw(tx_raw_ptr) };
-      tx.send(hm).unwrap();
-      // Since the pointer still exists in the fractal, we don't want the `Box` to get
-      // dropped, resulting in the memory getting freed and resulting in future calls
-      // here to be invalid. Since this function returns a mutable reference to the value,
-      // which we don't need, we ignore the return value and allow the leaked `Box` to
-      // continue to exist.
-      Box::leak(tx);
+      let tx: Box<Sender<Arc<HandlerMemory>>> = unsafe { Box::from_raw(tx_raw_ptr) };
+      let (status, string) = match tx.send(hm) {
+        Ok(_) => (1, "ok"),
+        Err(_) => (0, "could not send response to server"),
+      };
       // TODO: Add a second synchronization tool to return a valid Result status, for now, just
       // return success
       hand_mem.init_fractal(args[2]);
-      hand_mem.push_fixed(args[2], 0i64);
-      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("ok"));
+      hand_mem.push_fixed(args[2], status);
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(string));
       hand_mem
     })
   });
