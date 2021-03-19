@@ -973,7 +973,7 @@ module.exports = {
       console.error(`HTTP server failed to listen to port 8000: ${e}`)
     }
   },
-  httpsend: ires => {
+  httpsend: async (ires) => {
     const [ status, headers, body, connId, ] = ires
     const conn = httpConns[connId]
     if (!conn) return [ false, 'connection not found', ]

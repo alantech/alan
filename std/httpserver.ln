@@ -81,5 +81,6 @@ export fn send(res: Response): Result<string> {
     body: res.body,
     connId: res.connId,
   };
+  res.connId = 0; // Clear out the connection ID after use so it can't be used again
   return httpsend(ires);
 }
