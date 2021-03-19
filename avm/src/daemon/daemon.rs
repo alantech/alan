@@ -177,13 +177,14 @@ pub async fn start(
   let agzb64 = agz_b64.to_string();
   let domain = domain.to_string();
   task::spawn(async move {
-    // TODO better period determination
-    let period = Duration::from_secs(180);
+    // TODO even better period determination
+    let period = Duration::from_secs(5 * 60);
     let dns = DNS::new(&domain);
     let self_ip = get_private_ip().await;
     let mut cluster_size = 0;
     let mut leader_ip = "".to_string();
     loop {
+      sleep(period).await;
       let vms = dns.get_vms(&cluster_id).await;
       // triggered the first time since cluster_size == 0
       // and every time the cluster changes size
@@ -208,7 +209,6 @@ pub async fn start(
           post_v1_scale(&cluster_id, &agzb64, &deploy_token, &factor).await;
         }
       }
-      sleep(period).await
     }
   });
   run_agz_b64(agz_b64, priv_key_b64, cert_b64).await;
