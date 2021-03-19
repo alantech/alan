@@ -1,14 +1,14 @@
 from @std/app import start, print, exit
 
 on start {
-  if 0 == 1 {
-    print('true!');
-  } else if false {
-    print('yikes');
-    return;
-  } else {
-    print('oof');
-  }
+  // if 0 == 1 {
+  //   print('true!');
+  // } else if false {
+  //   print('yikes');
+  //   return;
+  // } else {
+  //   print('oof');
+  // }
   (1 + 1).print();
   emit exit 0;
 }

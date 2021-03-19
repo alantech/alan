@@ -1683,22 +1683,9 @@ ${assignablesAst.t}`
       let then = clause[1];
       let thenname = uuid().replace(/-/g, '_');
       thenname = '_' + thenname.substring(0, thenname.length - 5) + '_THEN';
-      const closure = new Microstatement(
-        StatementType.CLOSURE,
-        scope,
-        false, // TODO: detect
-        thenname,
-        evalCondRetTy,
-        [],
-        [],
-        undefined,
-        false,
-        [],
-        undefined,
-        evalCondRetTy
-      );
+      const enterThenIdx = microstatements.length;
       // insert ENTERCONDFN so there aren't any recursive value rewrites
-      closure.closureStatements.push(new Microstatement(
+      microstatements.push(new Microstatement(
         StatementType.ENTERCONDFN,
         scope,
         true,
@@ -1725,25 +1712,25 @@ ${assignablesAst.t}`
               const originalRetVal = Ast.statementAstFromString(`
                 const ${retName} = ${ast.get('retval').t.trim()};
               `.trim());
-              Microstatement.fromStatementsAst(originalRetVal, scope, closure.closureStatements);
+              Microstatement.fromStatementsAst(originalRetVal, scope, microstatements);
               // undo the REREF that got inserted because i don't want to put up with that
-              if (closure.closureStatements[closure.closureStatements.length - 1].statementType === StatementType.REREF) {
-                closure.closureStatements.pop();
-                retName = closure.closureStatements[closure.closureStatements.length - 1].outputName;
+              if (microstatements[microstatements.length - 1].statementType === StatementType.REREF) {
+                microstatements.pop();
+                retName = microstatements[microstatements.length - 1].outputName;
               } else {
                 throw new Error('could not grab reference to returned value for then branch (please report this error)');
               }
             } else {
-              Conditional.getVoid.microstatementInlining([retName], scope, closure.closureStatements)
+              Conditional.getVoid.microstatementInlining([retName], scope, microstatements)
             }
-            closure.closureStatements.push(new Microstatement(
+            microstatements.push(new Microstatement(
               StatementType.EXIT,
               scope,
               true,
               retName,
             ));
           } else {
-            Microstatement.fromStatementsAst(ast, scope, closure.closureStatements)
+            Microstatement.fromStatementsAst(ast, scope, microstatements)
           }
         }
       } else if (then.has('fnname')) {
@@ -1759,6 +1746,21 @@ ${assignablesAst.t}`
         console.log(then);
         throw new Error('unsure how to handle above LPNode when generating conditional');
       }
+      const thenMicrostatements = microstatements.splice(enterThenIdx);
+      const closure = new Microstatement(
+        StatementType.CLOSURE,
+        scope,
+        false, // TODO: detect
+        thenname,
+        evalCondRetTy,
+        [],
+        [],
+        undefined,
+        false,
+        thenMicrostatements,
+        undefined,
+        evalCondRetTy
+      );
       microstatements.push(closure);
 
       opcodes.exportScope.get('condfn')[0].microstatementInlining(

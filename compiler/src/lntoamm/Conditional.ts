@@ -1,5 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import { Args, Fn} from './Function';
+import * as Ast from './Ast';
 import Microstatement from "./Microstatement";
 import Scope from './Scope';
 import Statement from "./Statement";
@@ -50,10 +51,6 @@ export const handleTail = (
   const closureMstmts: Microstatement[] = [...tailed];
   for (let next of rest) {
     Microstatement.fromStatement(next, closureMstmts, tail.scope);
-  }
-  // if we absolutely need a return value, insert a void return
-  if (isUnwrapReturn && (closureMstmts.length === 0 || (closureMstmts[closureMstmts.length - 1].statementType !== StatementType.EXIT))) {
-    returnVoid(closureMstmts, tail.scope);
   }
   // insert the tail function definition
   microstatements.push(new Microstatement(
@@ -131,7 +128,6 @@ const unwrapEvalcond: Fn = {
     // assume that the previous microstatement is an evalcond call
     const evalCondRetTy = microstatements[microstatements.length - 1].outputType;
     const getRRetTy = evalCondRetTy.remappedGenerics.values().next().value as Type;
-    console.log(`unwrapped type: ${getRRetTy.typename}`)
     microstatements.push(new Microstatement(
       StatementType.CONSTDEC,
       scope,

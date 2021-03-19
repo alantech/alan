@@ -77,8 +77,7 @@ const addopcodes = (opcodes: object) => {
   opcodeNames.forEach((opcodeName) => {
     const opcodeDef = opcodes[opcodeName]
     const [args, returnType] = opcodeDef
-    // chameleon opcodes that are super special
-    if (['evalcond'].includes(opcodeName)) {
+    if (['evalcond'].includes(opcodeName)) { // chameleon opcodes that are super special
       const opcodeObj = {
         getName: () => opcodeName,
         getArguments: () => args,
@@ -121,8 +120,7 @@ const addopcodes = (opcodes: object) => {
         },
       };
       opcodeScope.put(opcodeName, [opcodeObj]);
-    } else
-    if (!returnType) { // This is a three-arg, 0-return opcode
+    } else if (!returnType) { // This is a three-arg, 0-return opcode
       const opcodeObj = {
         getName: () => opcodeName,
         getArguments: () => args,
