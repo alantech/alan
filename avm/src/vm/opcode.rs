@@ -3027,7 +3027,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       Ok(hm) => hm,
       Err(_) => {
         return Ok(err_res);
-      },
+      }
     };
     // Get the status from the user response and begin building the response object
     let status = response_hm.read_fixed(0) as u16;
