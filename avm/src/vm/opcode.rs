@@ -3053,7 +3053,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   io!(httpsend => fn(args, mut hand_mem) {
     Box::pin(async move {
       hand_mem.dupe(args[0], args[0]); // Make sure there's no pointers involved
-      let fractal = hand_mem.read_fractal(args[0]);
       let mut hm = HandlerMemory::new(None, 1);
       HandlerMemory::transfer(&hand_mem, args[0], &mut hm, CLOSURE_ARG_MEM_START);
       let res_out = hm.read_fractal(CLOSURE_ARG_MEM_START);
@@ -3061,7 +3060,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         hm.register_from_fractal(i as i64, &res_out, i);
       }
       // Get the watch channel tx from the raw ptr previously generated in http_listener
-      let tx_raw_ptr = fractal.read_fixed(3) as *mut Sender<Arc<HandlerMemory>>;
+      let fractal = hand_mem.read_mut_fractal(args[0]);
+      // TODO: avoid the panic if the value doesn't exist and return an error
+      let tx_raw_ptr = fractal.remove(3).1 as *mut Sender<Arc<HandlerMemory>>;
       // We need an unsafe block here to efficiently synchronize the completion of every
       // http server response without using a broadcast/pubsub channel on every request
       // or introducing shared mutable state accessed by every HTTP request.
