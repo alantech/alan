@@ -201,4 +201,59 @@ correct"
       The output should eq "${GETGETOUTPUT}"
     End
   End
+
+  Describe "Double-send in a single connection doesn't crash"
+    before() {
+      sourceToAll "
+        from @std/app import print, exit
+        from @std/httpserver import connection, Connection, body, send
+
+        on connection fn (conn: Connection) {
+          const res = conn.res;
+          const firstMessage = res.body('First Message').send();
+          print(firstMessage);
+          const secondMessage = res.body('Second Message').send();
+          print(secondMessage);
+          emit exit 0;
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    It "runs js"
+      node test_$$/temp.js 1>./out.txt 2>/dev/null &
+      sleep 1
+      When run curl -s localhost:8000
+      The output should eq "First Message"
+    End
+
+    It "response from js"
+      When run cat ./out.txt
+      The output should eq "HTTP server listening on port 8000
+ok
+connection not found"
+      rm out.txt
+    End
+
+    It "runs agc"
+      alan run test_$$/temp.agc 1>./out.txt 2>/dev/null &
+      sleep 1
+      When run curl -s localhost:8000
+      The output should eq "First Message"
+    End
+
+    It "response from agc"
+      When run cat ./out.txt
+      The output should eq "HTTP server listening on port 8000
+ok
+cannot call send twice for the same connection"
+      rm out.txt
+    End
+  End
+
 End

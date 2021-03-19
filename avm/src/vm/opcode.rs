@@ -6,6 +6,7 @@ use std::future::Future;
 use std::hash::Hasher;
 use std::io::{self, Write};
 use std::pin::Pin;
+use std::ptr::NonNull;
 use std::str;
 use std::sync::Arc;
 use std::time::Duration;
@@ -3055,36 +3056,35 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       return hand_mem;
     })
   });
-  io!(httpsend => fn(args, mut hand_mem) {
-    Box::pin(async move {
-      hand_mem.dupe(args[0], args[0]); // Make sure there's no pointers involved
-      let mut hm = HandlerMemory::new(None, 1);
-      HandlerMemory::transfer(&hand_mem, args[0], &mut hm, CLOSURE_ARG_MEM_START);
-      let res_out = hm.read_fractal(CLOSURE_ARG_MEM_START);
-      for i in 0..res_out.len() {
-        hm.register_from_fractal(i as i64, &res_out, i);
-      }
-      // Get the watch channel tx from the raw ptr previously generated in http_listener
-      let fractal = hand_mem.read_fractal(args[0]);
-      let tx_raw_ptr = fractal.read_fixed(3) as *mut Sender<Arc<HandlerMemory>>;
-      // We need an unsafe block here to efficiently synchronize the completion of every
-      // http server response without using a broadcast/pubsub channel on every request
-      // or introducing shared mutable state accessed by every HTTP request.
-      // We create a pointer/Arc from a raw pointer once per HTTP request on the listen event.
-      // httpsend is guaranteed to always be called after the pointer is created since that
-      // is where it gets the raw pointer from
-      let tx: Box<Sender<Arc<HandlerMemory>>> = unsafe { Box::from_raw(tx_raw_ptr) };
+  cpu!(httpsend => fn(args, hand_mem) {
+    hand_mem.dupe(args[0], args[0]); // Make sure there's no pointers involved
+    let mut hm = HandlerMemory::new(None, 1);
+    HandlerMemory::transfer(&hand_mem, args[0], &mut hm, CLOSURE_ARG_MEM_START);
+    let res_out = hm.read_fractal(CLOSURE_ARG_MEM_START);
+    for i in 0..res_out.len() {
+      hm.register_from_fractal(i as i64, &res_out, i);
+    }
+    // Get the oneshot channel tx from the raw ptr previously generated in http_listener
+    let fractal = hand_mem.read_fractal(args[0]);
+    let tx_ptr = NonNull::new(fractal.read_fixed(3) as *mut Sender<Arc<HandlerMemory>>);
+    if let Some(tx_nonnull) = tx_ptr {
+      let tx = unsafe { Box::from_raw(tx_nonnull.as_ptr()) };
       let (status, string) = match tx.send(hm) {
         Ok(_) => (1, "ok"),
         Err(_) => (0, "could not send response to server"),
       };
-      // TODO: Add a second synchronization tool to return a valid Result status, for now, just
-      // return success
       hand_mem.init_fractal(args[2]);
       hand_mem.push_fixed(args[2], status);
       hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(string));
-      hand_mem
-    })
+    } else {
+      hand_mem.init_fractal(args[2]);
+      hand_mem.push_fixed(args[2], 0);
+      hand_mem.push_fractal(
+        args[2],
+        HandlerMemory::str_to_fractal("cannot call send twice for the same connection")
+      );
+    }
+    None
   });
 
   // Datastore opcodes
