@@ -3064,7 +3064,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     for i in 0..res_out.len() {
       hm.register_from_fractal(i as i64, &res_out, i);
     }
-    // Get the watch channel tx from the raw ptr previously generated in http_listener
+    // Get the oneshot channel tx from the raw ptr previously generated in http_listener
     let fractal = hand_mem.read_fractal(args[0]);
     let tx_ptr = NonNull::new(fractal.read_fixed(3) as *mut Sender<Arc<HandlerMemory>>);
     if let Some(tx_nonnull) = tx_ptr {
