@@ -3017,15 +3017,17 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       payload: Some(event),
     };
     let event_tx = EVENT_TX.get().unwrap();
+    let mut err_res = Response::new("Error synchronizing `send` for HTTP request".into());
+    *err_res.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
     if event_tx.send(event_emit).is_err() {
-      eprintln!("Event transmission error");
-      std::process::exit(3);
+      return Ok(err_res);
     }
     // Await HTTP response from the user code
     let response_hm = match rx.await {
       Ok(hm) => hm,
-      // TODO: return error response
-      Err(_) => panic!("Failed to receive a response for an HTTP request"),
+      Err(_) => {
+        return Ok(err_res);
+      },
     };
     // Get the status from the user response and begin building the response object
     let status = response_hm.read_fixed(0) as u16;
