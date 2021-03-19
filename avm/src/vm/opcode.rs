@@ -3021,6 +3021,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     // Await HTTP response from the user code
     let response_hm = match rx.await {
       Ok(hm) => hm,
+      // TODO: return error response
       Err(_) => panic!("Failed to receive a response for an HTTP request"),
     };
     // Get the status from the user response and begin building the response object
