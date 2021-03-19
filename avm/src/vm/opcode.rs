@@ -3065,7 +3065,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         hm.register_from_fractal(i as i64, &res_out, i);
       }
       // Get the watch channel tx from the raw ptr previously generated in http_listener
-      let fractal = hand_mem.read_mut_fractal(args[0]);
+      let fractal = hand_mem.read_fractal(args[0]);
+      let tx_raw_ptr = fractal.read_fixed(3) as *mut Sender<Arc<HandlerMemory>>;
       // We need an unsafe block here to efficiently synchronize the completion of every
       // http server response without using a broadcast/pubsub channel on every request
       // or introducing shared mutable state accessed by every HTTP request.
