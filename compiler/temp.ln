@@ -1,16 +1,16 @@
 from @std/app import print, start, exit
-// on start { emit exit add(toInt8(1), toInt8(2)).getOrExit(); }
+on start { emit exit add(toInt8(1), toInt8(2)).getOrExit(); }
 
-on start {
-  if 0 == 1 {
-    print('true!');
-  } else if false {
-    print('yikes');
-    emit exit 0;
-    return;
-  } else {
-    print('oof');
-  }
-  (1 + 1).print();
-  emit exit 0;
-}
+// on start {
+//   if 0 == 1 {
+//     print('true!');
+//   } else if false {
+//     print('yikes');
+//     emit exit 0;
+//     return;
+//   } else {
+//     print('oof');
+//   }
+//   (1 + 1).print();
+//   emit exit 0;
+// }

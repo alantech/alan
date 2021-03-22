@@ -1,73 +1,44 @@
-const _c02764eb_a3bf_43d1_a985_0fb859a88bc5: int64 = 2
-const _1d8c15ce_ae16_42a4_bbaf_c0faa7ff356f: int64 = 0
-const _14b89360_6209_4dff_8272_ff16188c9fb8: int64 = 1
-const _ca58ed09_e9e2_41d7_a570_43a633d4ab48: string = "true!"
-const _cb517b29_1434_4fb5_b210_a5a5a60820cd: string = "\n"
-const _d93522eb_f7fb_452c_8c47_a33119ee4f3b: bool = false
-const _0c2bbcbc_581e_4c2c_b4fe_4ef80758f48a: string = "yikes"
-const _bf004c1a_e895_4a06_b580_d76b8b5_COND: bool = true
-const _bf7d7cdf_e41f_4c5e_8d60_58411b651498: string = "oof"
-const _9fa53443_80d0_4cd5_85be_a2f101cee66d: int64 = 8
+const _56c7d07c_350a_414e_a912_bca769d9d94f: int64 = 1
+const _32d3ced6_58aa_45f9_8d33_13a89cf58aa7: int64 = 2
+const _07c21bb0_25fb_4527_8697_7c0c4f10471a: int64 = 8
+const _c38d25a8_069d_4217_9c14_d777327_COND: bool = true
 event stdout: string
 event exit: int8
 event stderr: string
 on _start fn (): void {
-  const _cb287979_a471_44ff_8915_cfdeb4e_TBLE: Array<any> = newarr(_c02764eb_a3bf_43d1_a985_0fb859a88bc5)
-  const _038a67d5_2252_4055_8ebd_e232e314db3e: bool = eqi64(_1d8c15ce_ae16_42a4_bbaf_c0faa7ff356f, _14b89360_6209_4dff_8272_ff16188c9fb8)
-  const _54024251_97b1_474f_af99_280d224_THEN: function = fn (): void {
-    const _d24c8072_edc7_4017_92f5_af06a5fd6cac: string = catstr(_ca58ed09_e9e2_41d7_a570_43a633d4ab48, _cb517b29_1434_4fb5_b210_a5a5a60820cd)
-    const _36d0206b_cb30_4c2e_baec_c49506fb34af: void = stdoutp(_d24c8072_edc7_4017_92f5_af06a5fd6cac)
+  const _a962c13a_1fbe_4aba_9748_109f9e01133d: int8 = i64i8(_56c7d07c_350a_414e_a912_bca769d9d94f)
+  const _f21a12d4_0a35_47ce_8a56_9e0a84f21dfc: int8 = i64i8(_32d3ced6_58aa_45f9_8d33_13a89cf58aa7)
+  const _6fb0a924_607a_44d2_9597_5a35e7838189: Result<int8> = okR(_a962c13a_1fbe_4aba_9748_109f9e01133d, _07c21bb0_25fb_4527_8697_7c0c4f10471a)
+  const _95fd91a2_a8dd_4bbb_b096_6705026e409c: Result<int8> = okR(_f21a12d4_0a35_47ce_8a56_9e0a84f21dfc, _07c21bb0_25fb_4527_8697_7c0c4f10471a)
+  const _00481ca1_28e0_4f89_beaa_5ba79050cdd1: Result<int8> = addi8(_6fb0a924_607a_44d2_9597_5a35e7838189, _95fd91a2_a8dd_4bbb_b096_6705026e409c)
+  const _603ccfb0_0201_4185_8328_38991d5_TBLE: Array<any> = newarr(_32d3ced6_58aa_45f9_8d33_13a89cf58aa7)
+  const _fd27e814_c377_4d9f_ba37_51c729c20114: bool = isErr(_00481ca1_28e0_4f89_beaa_5ba79050cdd1)
+  const _4ec421b0_f340_4bc8_a58b_0913f48_THEN: function = fn (): int8 {
+    const _98bacba0_4ae2_4acb_b99c_6697e25dd44c: Error = noerr()
+    const _d00ed6f8_28b8_4c29_b480_ee577dc15d11: Error = getErr(_00481ca1_28e0_4f89_beaa_5ba79050cdd1, _98bacba0_4ae2_4acb_b99c_6697e25dd44c)
+    const _ddcc842d_0eea_4418_8de5_5a7da3969050: string = errorstr(_d00ed6f8_28b8_4c29_b480_ee577dc15d11)
+    const _7a21fa4e_0649_4d25_b110_a0575d1536e7: void = stderrp(_ddcc842d_0eea_4418_8de5_5a7da3969050)
+    const _fd3810e8_483d_4aa1_abad_5b95bc701ab0: int8 = i64i8(_56c7d07c_350a_414e_a912_bca769d9d94f)
+    const _567a03a9_6d7c_4629_97af_bbc8da95ccc0: void = exitop(_fd3810e8_483d_4aa1_abad_5b95bc701ab0)
   }
-  condfn(_cb287979_a471_44ff_8915_cfdeb4e_TBLE, _038a67d5_2252_4055_8ebd_e232e314db3e, _54024251_97b1_474f_af99_280d224_THEN)
-  const _27cc0f34_0481_4d10_92a6_02103bf_THEN: function = fn (): void {
-    const _a8e9fc6f_7972_40bd_a725_42279c6e61f7: string = catstr(_0c2bbcbc_581e_4c2c_b4fe_4ef80758f48a, _cb517b29_1434_4fb5_b210_a5a5a60820cd)
-    const _b047d27b_e782_4664_ae31_af0818e633cd: void = stdoutp(_a8e9fc6f_7972_40bd_a725_42279c6e61f7)
-    emit exit _1d8c15ce_ae16_42a4_bbaf_c0faa7ff356f
-    const _6478275f_776e_4b13_bed4_89455d528088: void = noneM()
-    return _6478275f_776e_4b13_bed4_89455d528088
+  condfn(_603ccfb0_0201_4185_8328_38991d5_TBLE, _fd27e814_c377_4d9f_ba37_51c729c20114, _4ec421b0_f340_4bc8_a58b_0913f48_THEN)
+  const _30059bca_1478_4262_8c30_d5b5a46_THEN: function = fn (): int8 {
+    const _270dd496_9442_4881_9e3b_4445307735bb: int8 = getR(_00481ca1_28e0_4f89_beaa_5ba79050cdd1)
+    return _270dd496_9442_4881_9e3b_4445307735bb
   }
-  condfn(_cb287979_a471_44ff_8915_cfdeb4e_TBLE, _d93522eb_f7fb_452c_8c47_a33119ee4f3b, _27cc0f34_0481_4d10_92a6_02103bf_THEN)
-  const _2d7a3b7b_1981_4996_a022_3a114c1_THEN: function = fn (): void {
-    const _65b55658_f1ee_4d9b_806e_5e1d02846b94: string = catstr(_bf7d7cdf_e41f_4c5e_8d60_58411b651498, _cb517b29_1434_4fb5_b210_a5a5a60820cd)
-    const _e545799e_2a0b_4a87_b421_e25c2b4161d4: void = stdoutp(_65b55658_f1ee_4d9b_806e_5e1d02846b94)
+  condfn(_603ccfb0_0201_4185_8328_38991d5_TBLE, _c38d25a8_069d_4217_9c14_d777327_COND, _30059bca_1478_4262_8c30_d5b5a46_THEN)
+  const _2dc84398_aa0a_41c8_ac35_eaa1db9d9df5: function = fn (): int8 {
   }
-  condfn(_cb287979_a471_44ff_8915_cfdeb4e_TBLE, _bf004c1a_e895_4a06_b580_d76b8b5_COND, _2d7a3b7b_1981_4996_a022_3a114c1_THEN)
-  const _938e435c_51ec_497a_a40f_030381f1a242: function = fn (): void {
-    const _a8a976f0_0998_4b0c_a40f_f32cd38c2d7d: Result<int64> = okR(_14b89360_6209_4dff_8272_ff16188c9fb8, _9fa53443_80d0_4cd5_85be_a2f101cee66d)
-    const _4d6eb88c_1f8e_4dba_89e7_38cd6e83a8bd: Result<int64> = okR(_14b89360_6209_4dff_8272_ff16188c9fb8, _9fa53443_80d0_4cd5_85be_a2f101cee66d)
-    const _b84837a3_83f9_4cf8_8f2b_cc59c3de46bf: Result<int64> = addi64(_a8a976f0_0998_4b0c_a40f_f32cd38c2d7d, _4d6eb88c_1f8e_4dba_89e7_38cd6e83a8bd)
-    const _012d2241_368e_4b56_ac16_cb14e95_TBLE: Array<any> = newarr(_c02764eb_a3bf_43d1_a985_0fb859a88bc5)
-    const _a6887893_04c1_4238_8837_1fbbfda310e5: bool = isOk(_b84837a3_83f9_4cf8_8f2b_cc59c3de46bf)
-    const _6d39849f_e6e2_4a19_8947_c688dd5_THEN: function = fn (): string {
-      const _9cb86504_31f9_44c1_8550_af666ad7c65e: int64 = getR(_b84837a3_83f9_4cf8_8f2b_cc59c3de46bf)
-      const _9b5ef742_7d70_42df_b8d5_8f562e23d4e7: string = i64str(_9cb86504_31f9_44c1_8550_af666ad7c65e)
-      return _9b5ef742_7d70_42df_b8d5_8f562e23d4e7
-    }
-    condfn(_012d2241_368e_4b56_ac16_cb14e95_TBLE, _a6887893_04c1_4238_8837_1fbbfda310e5, _6d39849f_e6e2_4a19_8947_c688dd5_THEN)
-    const _d785d3bb_948e_47aa_8b60_7aaed4e_THEN: function = fn (): string {
-      const _e5b5b488_7541_439c_8333_c19f0cbc9c7c: Error = noerr()
-      const _74c69a61_390e_432e_bc28_e3f22a93e07b: Error = getErr(_b84837a3_83f9_4cf8_8f2b_cc59c3de46bf, _e5b5b488_7541_439c_8333_c19f0cbc9c7c)
-      const _2888c819_8c00_40bb_8ffc_b3fea7a5540c: string = errorstr(_74c69a61_390e_432e_bc28_e3f22a93e07b)
-      return _2888c819_8c00_40bb_8ffc_b3fea7a5540c
-    }
-    condfn(_012d2241_368e_4b56_ac16_cb14e95_TBLE, _bf004c1a_e895_4a06_b580_d76b8b5_COND, _d785d3bb_948e_47aa_8b60_7aaed4e_THEN)
-    const _22e8dd2e_d98f_47a1_96fd_29d3bf5d3e96: function = fn (): string {
-    }
-    const _1c9b640c_30f3_4e48_bcc2_2acdc70e_RET: Maybe<string> = evalcond(_012d2241_368e_4b56_ac16_cb14e95_TBLE, _22e8dd2e_d98f_47a1_96fd_29d3bf5d3e96)
-    const _d5e362c0_acc7_482d_825f_f40c4170ffb1: string = getR(_1c9b640c_30f3_4e48_bcc2_2acdc70e_RET)
-    const _0a437f6a_a5cb_4bcb_ab74_bee2e534cecf: string = catstr(_d5e362c0_acc7_482d_825f_f40c4170ffb1, _cb517b29_1434_4fb5_b210_a5a5a60820cd)
-    const _fc00e748_56b3_410f_bd75_5c0ac603522d: void = stdoutp(_0a437f6a_a5cb_4bcb_ab74_bee2e534cecf)
-    emit exit _1d8c15ce_ae16_42a4_bbaf_c0faa7ff356f
-  }
-  const _c7fcfdcf_0cc4_4a2c_952e_c5cb6e0b_RET: Maybe<void> = evalcond(_cb287979_a471_44ff_8915_cfdeb4e_TBLE, _938e435c_51ec_497a_a40f_030381f1a242)
-  return _c7fcfdcf_0cc4_4a2c_952e_c5cb6e0b_RET
+  const _ecc97b91_ae38_462a_addb_9b6fe059_RET: Maybe<int8> = evalcond(_603ccfb0_0201_4185_8328_38991d5_TBLE, _2dc84398_aa0a_41c8_ac35_eaa1db9d9df5)
+  const _76bc1199_735f_4ac6_9b87_82ef20ac285b: int8 = getR(_ecc97b91_ae38_462a_addb_9b6fe059_RET)
+  emit exit _76bc1199_735f_4ac6_9b87_82ef20ac285b
 }
 on stdout fn (out: string): void {
-  const _00e2817b_d9dd_46fe_8eaa_e7629498a263: void = stdoutp(out)
+  const _0a97ee23_4bdd_465e_9f6b_5d2ef96763c7: void = stdoutp(out)
 }
 on exit fn (status: int8): void {
-  const _38ed7129_4b30_4be5_877a_a0fe92d124b3: void = exitop(status)
+  const _3544a757_dc8d_4e70_80d7_fb5acf2ab72d: void = exitop(status)
 }
 on stderr fn (err: string): void {
-  const _9e85de65_650a_488b_857c_bbeafc5bbe5f: void = stderrp(err)
+  const _9ddf2458_95b2_42b8_b99e_436f772cfe72: void = stderrp(err)
 }

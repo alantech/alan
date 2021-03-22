@@ -450,22 +450,6 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
     //   let pathstr = path.join(' -> ')
     //   console.log(microstatements)
     //   throw new Error(`Recursive callstack detected: ${pathstr}. Aborting.`)
-    // } else {
-      // Otherwise, add a marker for this
-      microstatements.push(new Microstatement(
-        StatementType.ENTERFN,
-        scope,
-        true,
-        '',
-        Type.builtinTypes.void,
-        [],
-        [this],
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        this.getReturnType(),
-      ))
     // }
     // Perform a transform, if necessary, before generating the microstatements
     // Resolve circular dependency issue
@@ -492,6 +476,21 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
       ))
     }
     const fn = this.maybeTransform(interfaceMap, scope)
+    // add a marker for this function
+    microstatements.push(new Microstatement(
+      StatementType.ENTERFN,
+      scope,
+      true,
+      '',
+      Type.builtinTypes.void,
+      [],
+      [fn],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      fn.getReturnType(),
+    ))
     for (const s of fn.statements) {
       Microstatement.fromStatement(s, microstatements, scope)
     }
