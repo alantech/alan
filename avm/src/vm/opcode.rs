@@ -1,78 +1,32 @@
 use futures::future::{join_all, FutureExt};
-use futures::task::{Context, Poll};
 use std::collections::HashMap;
 use std::convert::Infallible;
 use std::fmt::Debug;
 use std::future::Future;
 use std::hash::Hasher;
-use std::io::{self, Write, BufReader};
-use std::net::SocketAddr;
+use std::io::{self, Write};
 use std::pin::Pin;
+use std::ptr::NonNull;
 use std::str;
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_stream::stream;
-use base64;
 use byteorder::{ByteOrder, LittleEndian};
 use dashmap::DashMap;
-use futures_util::stream::Stream;
 use hyper::header::{HeaderName, HeaderValue};
-use hyper::service::{make_service_fn, service_fn};
-use hyper::{client::{Client, HttpConnector, ResponseFuture}, server::Server, Body, Request, Response, StatusCode};
-use hyper_rustls::HttpsConnector;
+use hyper::{client::ResponseFuture, Body, Request, Response, StatusCode};
 use once_cell::sync::Lazy;
 use regex::Regex;
-use rustls::internal::pemfile;
-use tokio::net::{TcpListener, TcpStream};
 use tokio::process::Command;
-use tokio::sync::watch::{self, Sender, Receiver};
+use tokio::sync::oneshot::{self, Receiver, Sender};
 use tokio::time::sleep;
-use tokio_rustls::TlsAcceptor;
-use tokio_rustls::server::TlsStream;
 use twox_hash::XxHash64;
 
-use crate::vm::event::{NOP_ID, BuiltInEvents, EventEmit, HandlerFragment};
+use crate::vm::event::{BuiltInEvents, EventEmit, HandlerFragment, NOP_ID};
+use crate::vm::http::HTTP_CLIENT;
 use crate::vm::memory::{FractalMemory, HandlerMemory, CLOSURE_ARG_MEM_START};
 use crate::vm::program::Program;
 use crate::vm::run::EVENT_TX;
-
-#[derive(Debug)]
-pub struct HttpConfig {
-  pub port: u16,
-}
-
-#[derive(Debug)]
-pub struct HttpsConfig {
-  pub port: u16,
-  pub priv_key_b64: String,
-  pub cert_b64: String,
-}
-
-#[derive(Debug)]
-pub enum HttpType {
-  HTTP(HttpConfig),
-  HTTPS(HttpsConfig),
-}
-
-struct HyperAcceptor<'a> {
-  acceptor: Pin<Box<dyn Stream<Item = Result<TlsStream<TcpStream>, io::Error>> + Send + 'a>>,
-}
-
-impl hyper::server::accept::Accept for HyperAcceptor<'_> {
-  type Conn = TlsStream<TcpStream>;
-  type Error = io::Error;
-
-  fn poll_accept(
-    mut self: Pin<&mut Self>,
-    cx: &mut Context,
-    ) -> Poll<Option<Result<Self::Conn, Self::Error>>> {
-    Pin::new(&mut self.acceptor).poll_next(cx)
-  }
-}
-
-static HTTP_CLIENT: Lazy<Client<HttpsConnector<HttpConnector>>> =
-  Lazy::new(|| Client::builder().build::<_, Body>(HttpsConnector::with_native_roots()));
 
 static DS: Lazy<Arc<DashMap<String, Arc<HandlerMemory>>>> =
   Lazy::new(|| Arc::new(DashMap::<String, Arc<HandlerMemory>>::new()));
@@ -2897,9 +2851,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     headers: Vec<(String, String)>,
     body: Option<String>,
   ) -> Result<ResponseFuture, String> {
-    let mut req = Request::builder()
-      .method(method.as_str())
-      .uri(uri.as_str());
+    let mut req = Request::builder().method(method.as_str()).uri(uri.as_str());
     for header in headers {
       req = req.header(header.0.as_str(), header.1.as_str());
     }
@@ -3046,26 +2998,37 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     event.init_fractal(0);
     event.push_fractal(0, method);
     event.push_fractal(0, url);
-    HandlerMemory::transfer(&headers_hm, CLOSURE_ARG_MEM_START, &mut event, CLOSURE_ARG_MEM_START);
+    HandlerMemory::transfer(
+      &headers_hm,
+      CLOSURE_ARG_MEM_START,
+      &mut event,
+      CLOSURE_ARG_MEM_START,
+    );
     event.push_register(0, CLOSURE_ARG_MEM_START);
     event.push_fractal(0, body);
     // Generate a threadsafe raw ptr to the tx of a watch channel
-    let (tx, mut rx): (Sender<Arc<HandlerMemory>>, Receiver<Arc<HandlerMemory>>) = watch::channel(HandlerMemory::new(None, 0));
-    let tx_ptr = Arc::into_raw(Arc::new(tx)) as i64;
+    // A ptr is unsafely created from the raw ptr in httpsend once the
+    // user's code has completed and sends the new HandlerMemory so we
+    // can resume execution of this HTTP request
+    let (tx, rx): (Sender<Arc<HandlerMemory>>, Receiver<Arc<HandlerMemory>>) = oneshot::channel();
+    let tx_ptr = Box::into_raw(Box::new(tx)) as i64;
     event.push_fixed(0, tx_ptr);
     let event_emit = EventEmit {
       id: i64::from(BuiltInEvents::HTTPCONN),
       payload: Some(event),
     };
     let event_tx = EVENT_TX.get().unwrap();
+    let mut err_res = Response::new("Error synchronizing `send` for HTTP request".into());
+    *err_res.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
     if event_tx.send(event_emit).is_err() {
-      eprintln!("Event transmission error");
-      std::process::exit(3);
+      return Ok(err_res);
     }
     // Await HTTP response from the user code
-    let response_hm = match rx.changed().await {
-      Ok(_) => rx.borrow(),
-      Err(_) => panic!("Failed to receive a response for an HTTP request"),
+    let response_hm = match rx.await {
+      Ok(hm) => hm,
+      Err(_) => {
+        return Ok(err_res);
+      }
     };
     // Get the status from the user response and begin building the response object
     let status = response_hm.read_fixed(0) as u16;
@@ -3089,101 +3052,39 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   }
   io!(httplsn => fn(_args, hand_mem) {
     Box::pin(async move {
-      match &Program::global().http_config {
-        HttpType::HTTP(http) => {
-          let port_num = http.port;
-          let addr = SocketAddr::from(([0, 0, 0, 0], port_num));
-          let make_svc = make_service_fn(|_conn| async { Ok::<_, Infallible>(service_fn(http_listener)) });
-
-          let bind = Server::try_bind(&addr);
-          match bind {
-            Ok(server) => {
-              let server = server.serve(make_svc);
-              tokio::spawn(async move { server.await });
-              println!("HTTP server listening on port {}", port_num);
-            },
-            Err(ee) => eprintln!("HTTP server failed to listen on port {}: {}", port_num, ee),
-          }
-        },
-        HttpType::HTTPS(https) => {
-          let port_num = https.port;
-          let addr = SocketAddr::from(([0, 0, 0, 0], port_num));
-          let tls_cfg = {
-            let certs = pemfile::certs(
-              &mut BufReader::new(base64::decode(https.cert_b64.as_str()).unwrap().as_slice())
-            );
-            let certs = certs.expect("Failed to load certificate");
-            let key = {
-              let keys = pemfile::pkcs8_private_keys(
-                &mut BufReader::new(
-                  base64::decode(https.priv_key_b64.as_str()).unwrap().as_slice()
-                )
-              );
-              let keys = keys.expect("Failed to load private key");
-              if keys.len() != 1 {
-                panic!("Expected a single private key");
-              }
-              keys[0].clone()
-            };
-            let mut cfg = rustls::ServerConfig::new(rustls::NoClientAuth::new());
-            cfg.set_single_cert(certs, key).unwrap();
-            cfg.set_protocols(&[b"h2".to_vec(), b"http/1.1".to_vec()]);
-            Arc::new(cfg)
-          };
-          let tcp = TcpListener::bind(&addr).await;
-          let tcp = tcp.unwrap();
-          let tls_acceptor = TlsAcceptor::from(tls_cfg);
-          let incoming_tls_stream = stream! {
-            loop {
-              let accept = tcp.accept().await;
-              if accept.is_err() { continue; }
-              let (socket, _) = accept.unwrap();
-              let strm = tls_acceptor.accept(socket).into_failable();
-              let strm_val = strm.await;
-              if strm_val.is_err() { continue; }
-              yield Ok(strm_val.unwrap());
-            }
-          };
-          let make_svc = make_service_fn(|_conn| async { Ok::<_, Infallible>(service_fn(http_listener)) });
-          let server = Server::builder(HyperAcceptor {
-            acceptor: Box::pin(incoming_tls_stream),
-          }).serve(make_svc);
-          println!("HTTPS server listening on port {}", port_num);
-          tokio::spawn(async move { server.await });
-        },
-      }
+      make_server!(&Program::global().http_config, http_listener);
       return hand_mem;
     })
   });
-  io!(httpsend => fn(args, mut hand_mem) {
-    Box::pin(async move {
-      hand_mem.dupe(args[0], args[0]); // Make sure there's no pointers involved
-      let fractal = hand_mem.read_fractal(args[0]);
-      let mut hm = HandlerMemory::new(None, 1);
-      HandlerMemory::transfer(&hand_mem, args[0], &mut hm, CLOSURE_ARG_MEM_START);
-      let res_out = hm.read_fractal(CLOSURE_ARG_MEM_START);
-      for i in 0..res_out.len() {
-        hm.register_from_fractal(i as i64, &res_out, i);
-      }
-      // Get the watch channel tx from the raw ptr previously generated in http_listener
-      let tx_raw_ptr = fractal.read_fixed(3) as *const Sender<Arc<HandlerMemory>>;
-      // We need an unsafe block here to efficiently synchronize the completion of every
-      // http server response without using a broadcast/pubsub channel on every request
-      // or introducing shared mutable state accessed by every HTTP request.
-      // We create a pointer/Arc from a raw pointer once per HTTP request on the listen event.
-      // httpsend is guaranteed to always be called after the pointer is created since that
-      // is where it gets the raw pointer from
-      unsafe {
-        let tx = Arc::from_raw(tx_raw_ptr);
-        tx.send(hm).unwrap();
-      }
-      // TODO: Add a second synchronization tool to return a valid Result status, for now, just
-      // return success
+  cpu!(httpsend => fn(args, hand_mem) {
+    hand_mem.dupe(args[0], args[0]); // Make sure there's no pointers involved
+    let mut hm = HandlerMemory::new(None, 1);
+    HandlerMemory::transfer(&hand_mem, args[0], &mut hm, CLOSURE_ARG_MEM_START);
+    let res_out = hm.read_fractal(CLOSURE_ARG_MEM_START);
+    for i in 0..res_out.len() {
+      hm.register_from_fractal(i as i64, &res_out, i);
+    }
+    // Get the oneshot channel tx from the raw ptr previously generated in http_listener
+    let fractal = hand_mem.read_fractal(args[0]);
+    let tx_ptr = NonNull::new(fractal.read_fixed(3) as *mut Sender<Arc<HandlerMemory>>);
+    if let Some(tx_nonnull) = tx_ptr {
+      let tx = unsafe { Box::from_raw(tx_nonnull.as_ptr()) };
+      let (status, string) = match tx.send(hm) {
+        Ok(_) => (1, "ok"),
+        Err(_) => (0, "could not send response to server"),
+      };
       hand_mem.init_fractal(args[2]);
-      hand_mem.push_fixed(args[2], 0i64);
-      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("ok"));
-      hand_mem
-    })
+      hand_mem.push_fixed(args[2], status);
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(string));
+    } else {
+      hand_mem.init_fractal(args[2]);
+      hand_mem.push_fixed(args[2], 0);
+      hand_mem.push_fractal(
+        args[2],
+        HandlerMemory::str_to_fractal("cannot call send twice for the same connection")
+      );
+    }
+    None
   });
 
   // Datastore opcodes
