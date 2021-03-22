@@ -1759,7 +1759,7 @@ ${assignablesAst.t}`
         false,
         thenMicrostatements,
         undefined,
-        evalCondRetTy
+        evalCondRetTy,
       );
       microstatements.push(closure);
 

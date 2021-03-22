@@ -498,7 +498,6 @@ export class Type {
   }
 
   typeApplies(otherType: Type, scope: Scope, interfaceMap: Map<Type, Type> = new Map()) {
-    if (otherType == null) throw new Error(`comparing against ${this.toString()}`)
     if (this.typename === otherType.typename) return true
     if (!!this.iface) {
       const applies = this.iface.typeApplies(otherType, scope)

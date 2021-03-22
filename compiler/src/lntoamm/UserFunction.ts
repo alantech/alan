@@ -506,11 +506,11 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
     // If the output return type is an interface or is a realized generic with an inner interface
     // type, figure out what its actual type is. This is assuming that any input type of the same
     // interface's real type is the same as the output type, which is a valid assumption as long as
-    // all inputs of that particular interface are the same type. TODO: If this is not true, it must
+    // all inputs of that particular interface are the same type. TODO: If fn is not true, it must
     // be a compile-time error earlier on.
     const last = microstatements[microstatements.length - 1]
-    if (!this.getReturnType().typeApplies(last.outputType, scope, new Map()))  {
-      const returnTypeAst = Ast.fulltypenameAstFromString(this.getReturnType().typename)
+    if (!fn.getReturnType().typeApplies(last.outputType, scope, new Map()))  {
+      const returnTypeAst = Ast.fulltypenameAstFromString(fn.getReturnType().typename)
       let returnSubtypes = []
       if (returnTypeAst.has('opttypegenerics')) {
         const generics = returnTypeAst.get('opttypegenerics').get('generics')
@@ -534,16 +534,16 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
           return t
         })
       }
-      if (this.getReturnType().iface) {
-        const originalArgTypes = Object.values(this.args)
+      if (fn.getReturnType().iface) {
+        const originalArgTypes = Object.values(fn.args)
         for (let i = 0; i < inputTypes.length; i++) {
-          if (this.getReturnType() === originalArgTypes[i]) {
+          if (fn.getReturnType() === originalArgTypes[i]) {
             microstatements[microstatements.length - 1].outputType = inputTypes[i]
           }
         }
       } else if (returnSubtypes.some((t: Type) => t.hasInterfaceType())) {
-        const oldReturnType = this.getReturnType()
-        const originalArgTypes = Object.values(this.args)
+        const oldReturnType = fn.getReturnType()
+        const originalArgTypes = Object.values(fn.args)
         for (let i = 0; i < inputTypes.length; i++) {
           for (let j = 0; j < returnSubtypes.length; j++) {
             if (returnSubtypes[j] === originalArgTypes[i]) {
@@ -553,7 +553,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
         }
         // Try to tackle issue with `main` and `alt` when they are in a function without branching
         if (returnSubtypes.some((t: Type) => !!t.iface)) {
-          last.outputType = this.getReturnType()
+          last.outputType = fn.getReturnType()
         } else {
           // We were able to piece together the right type info, let's use it
           let newReturnType = oldReturnType.originalType.solidify(
@@ -574,7 +574,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
         }
         if (lastSubtypes.some((t: Type) => t.hasInterfaceType())) {
           const oldLastType = last.outputType
-          const originalArgTypes = Object.values(this.args)
+          const originalArgTypes = Object.values(fn.args)
           for (let i = 0; i < inputTypes.length; i++) {
             for (let j = 0; j < lastSubtypes.length; j++) {
               if (lastSubtypes[j] === originalArgTypes[i]) {
@@ -584,7 +584,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
           }
           if (lastSubtypes.some((t: Type) => t.hasInterfaceType())) {
             // Just fall back to the user-provided type for now
-            last.outputType = this.getReturnType()
+            last.outputType = fn.getReturnType()
           } else {
             let newLastType = oldLastType.originalType.solidify(
               lastSubtypes.map((t: Type) => t.typename),
@@ -603,8 +603,8 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
         break
       }
     }
-    // Now that we're done with this, we need to pop out all of the ENTERFN microstatements created
-    // after this one so we don't mark non-recursive calls to a function multiple times as recursive
+    // Now that we're done with fn, we need to pop out all of the ENTERFN microstatements created
+    // after fn one so we don't mark non-recursive calls to a function multiple times as recursive
     // TODO: This is not the most efficient way to do things, come up with a better metadata
     // mechanism to pass around.
     // note: keep the ENTERFN that we inserted, it's necessary for handling conditionals
@@ -623,7 +623,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
         tail,
         [],
       )
-      // if this isn't a closure, drop the return that got inserted at the end of handleTail
+      // if fn isn't a closure, drop the return that got inserted at the end of handleTail
       if (originalStatementLength !== 0) {
         microstatements.pop();
       }
