@@ -12,7 +12,7 @@ use byteorder::{LittleEndian, ReadBytesExt};
 use flate2::read::GzDecoder;
 use futures::FutureExt;
 use hyper::{Body, Request, Response};
-use log::error;
+use log::{error, info};
 use once_cell::sync::OnceCell;
 use serde_json::{json, Value};
 use tokio::process::Command;
@@ -216,9 +216,13 @@ pub async fn start(
       }
     }
   });
+  info!("running daemon");
   let agz_run = async { run_agz_b64(agz_b64, priv_key_b64, cert_b64) };
+  info!("after agz run");
   let agz_run_res = agz_run.catch_unwind().await;
+  info!("after await");
   if let Err(agz_run_res) = agz_run_res {
+    info!("before logging error");
     error!("{:#?}", agz_run_res);
     panic!(agz_run_res);
   }
