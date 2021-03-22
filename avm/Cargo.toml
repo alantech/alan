@@ -13,13 +13,12 @@ edition = "2018"
 
 [dependencies]
 # New commits to a git dependency are locked in place and only replaced by a `cargo update`.
-anycloud = { git = "https://github.com/alantech/anycloud", branch = "main" }
+anycloud = { git = "https://github.com/alantech/anycloud", branch = "feat/logger" }
 # For local development, it is possible to specify a relative path location instead of a git repository
 # anycloud = { path = "../../anycloud/cli" }
 async-stream = "0.3.0"
 base64 = "0.13"
 byteorder = "1.3.4"
-chrono = "0.4"
 clap = "2.33.1"
 dashmap = "3.11.10"
 flate2 = "1.0"

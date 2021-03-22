@@ -6,10 +6,13 @@ use std::net::TcpStream;
 use std::path::Path;
 
 use anycloud::deploy;
+use anycloud::logger;
 use base64;
 use byteorder::{LittleEndian, ReadBytesExt};
+use futures::FutureExt;
 use flate2::read::GzDecoder;
 use hyper::{Body, Request, Response};
+use log::error;
 use once_cell::sync::OnceCell;
 use serde_json::{json, Value};
 use tokio::process::Command;
@@ -17,7 +20,6 @@ use tokio::task;
 use tokio::time::{sleep, Duration};
 
 use crate::daemon::dns::DNS;
-use crate::daemon::logger::init;
 use crate::daemon::lrh::LogRendezvousHash;
 use crate::daemon::stats::get_v1_stats;
 use crate::make_server;
@@ -135,6 +137,7 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
 }
 
 async fn run_agz_b64(agz_b64: &str, priv_key_b64: Option<&str>, cert_b64: Option<&str>) {
+  panic!("test panic");
   let bytes = base64::decode(agz_b64).unwrap();
   let agz = GzDecoder::new(bytes.as_slice());
   let count = agz.bytes().count();
@@ -173,7 +176,7 @@ pub async fn start(
   priv_key_b64: Option<&str>,
   cert_b64: Option<&str>,
 ) {
-  init().unwrap(); // Logger initialization
+  logger::init().unwrap(); // Logger initialization
   let cluster_id = cluster_id.to_string();
   let deploy_token = deploy_token.to_string();
   let agzb64 = agz_b64.to_string();
@@ -213,5 +216,10 @@ pub async fn start(
       }
     }
   });
-  run_agz_b64(agz_b64, priv_key_b64, cert_b64).await;
+  let agz_run = async { run_agz_b64(agz_b64, priv_key_b64, cert_b64) };
+  let agz_run_res = agz_run.catch_unwind().await;
+  if let Err(agz_run_res) = agz_run_res {
+    error!("{:#?}", agz_run_res);
+    panic!(agz_run_res);
+  }
 }
