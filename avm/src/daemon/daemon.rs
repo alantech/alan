@@ -10,7 +10,6 @@ use anycloud::logger;
 use base64;
 use byteorder::{LittleEndian, ReadBytesExt};
 use flate2::read::GzDecoder;
-use futures::FutureExt;
 use hyper::{Body, Request, Response};
 use log::{error, info};
 use once_cell::sync::OnceCell;
@@ -215,13 +214,5 @@ pub async fn start(
       }
     }
   });
-  // Need this due to a reference may not be safely transferrable across a catch_unwind boundary
-  let agz_run = async { run_agz_b64(agz_b64, priv_key_b64, cert_b64) };
-  let agz_run_res = agz_run.catch_unwind().await;
-  if agz_run_res.is_ok() {
-    info!("Going to sleep to let logs arrive");
-    let period = Duration::from_secs(1);
-    sleep(period).await;
-    panic!("Panicked");
-  }
+  run_agz_b64(agz_b64, priv_key_b64, cert_b64).await;
 }
