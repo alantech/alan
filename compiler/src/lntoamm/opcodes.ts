@@ -837,6 +837,8 @@ addopcodes({
   isAlt: [{ a: t('Either<any, anythingElse>'), }, t('bool')],
   mainOr: [{ a: t('Either<any, anythingElse>'), b: t('any'), }, t('any')],
   altOr: [{ a: t('Either<any, anythingElse>'), b: t('anythingElse'), }, t('anythingElse')],
+  getMain: [{ a: t('Either<any, anythingElse>') }, t('any')],
+  getAlt: [{ a: t('Either<any, anythingElse>') }, t('anythingElse')],
   hashf: [{ a: t('any'), }, t('int64')],
   hashv: [{ a: t('any'), }, t('int64')],
   dssetf: [{ ns: t('string'), key: t('string'), val: t('any'), }],

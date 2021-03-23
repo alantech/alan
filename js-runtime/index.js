@@ -853,6 +853,20 @@ module.exports = {
   isAlt:    a => !a[0],
   mainOr:  (a, b) => a[0] ? a[1] : b,
   altOr:   (a, b) => a[0] ? b : a[1],
+  getMain:  a => {
+    if (a[0]) {
+      return a[1]
+    } else {
+      throw new Error('runtime error: illegal access')
+    }
+  },
+  getAlt:  a => {
+    if (!a[0]) {
+      return a[1]
+    } else {
+      throw new Error('runtime error: illegal access')
+    }
+  },
 
   // Hashing opcodes (hashv is recursive, needs to be defined elsewhere)
   hashf,

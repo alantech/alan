@@ -214,6 +214,27 @@ export isMain // opcode with signature `fn isMain(Either<any, anythingElse>): bo
 export isAlt // opcode with signature `fn isAlt(Either<any, anythingElse): bool`
 export fn getMainOr(either: Either<any, anythingElse>, default: any) = mainOr(either, default);
 export fn getAltOr(either: Either<any, anythingElse>, default: anythingElse) = altOr(either, default);
+export fn toString(either: Either<Stringifiable, Stringifiable>): string {
+  if either.isMain() {
+    return either.getMain().toString();
+  } else {
+    return either.getAlt().toString();
+  }
+}
+export fn getMainOrExit(either: Either<any, anythingElse>): any {
+  if either.isAlt() {
+    exitop(1.toInt8());
+  } else {
+    return either.getMain();
+  }
+}
+export fn getAltOrExit(either: Either<any, anythingElse>): any {
+  if either.isMain() {
+    exitop(1.toInt8());
+  } else {
+    return either.getAlt();
+  }
+}
 
 // Arithmetic functions
 export fn add(a: int8, b: int8) = addi8(ok(a), ok(b));

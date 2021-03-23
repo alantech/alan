@@ -591,6 +591,8 @@ export const opcodeParamMutabilities = {
   isAlt: [false],
   mainOr: [false, false],
   altOr: [false, false],
+  getMain: [false],
+  getAlt: [false],
 
   hashf: [false],
   hashv: [false],

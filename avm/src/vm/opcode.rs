@@ -3737,6 +3737,26 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }
     None
   });
+  cpu!(getMain => fn(args, hand_mem) {
+    let fractal = hand_mem.read_fractal(args[0]);
+    let variant = fractal.read_fixed(0);
+    if variant == 1 {
+      hand_mem.register_out(args[0], 1, args[2]);
+    } else {
+      panic!("runtime error: illegal access");
+    }
+    None
+  });
+  cpu!(getAlt => fn(args, hand_mem) {
+    let fractal = hand_mem.read_fractal(args[0]);
+    let variant = fractal.read_fixed(0);
+    if variant == 0 {
+      hand_mem.register_out(args[0], 1, args[2]);
+    } else {
+      panic!("runtime error: illegal access");
+    }
+    None
+  });
 
   cpu!(hashf => fn(args, hand_mem) {
     let val = hand_mem.read_fixed(args[0]);
