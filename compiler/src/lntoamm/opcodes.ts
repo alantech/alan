@@ -821,7 +821,7 @@ addopcodes({
   isSome: [{ a: t('Maybe<any>'), }, t('bool')],
   isNone: [{ a: t('Maybe<any>'), }, t('bool')],
   getOrM: [{ a: t('Maybe<any>'), b: t('any'), }, t('any')],
-  getM: [{ a: t('Maybe<any>') }, t('any')],
+  getMaybe: [{ a: t('Maybe<any>') }, t('any')],
   okR: [{ a: t('any'), size: t('int64'), }, t('Result<any>')],
   err: [{ a: t('string'), }, t('Result<any>')],
   isOk: [{ a: t('Result<any>'), }, t('bool')],

@@ -3563,7 +3563,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }
     None
   });
-  cpu!(getM => fn(args, hand_mem) {
+  cpu!(getMaybe => fn(args, hand_mem) {
     let fractal = hand_mem.read_fractal(args[0]);
     let variant = fractal.read_fixed(0);
     if variant == 1 {
