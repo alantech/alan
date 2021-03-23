@@ -2302,6 +2302,10 @@ export fn set(arr: Array<bool>, idx: int64, val: bool) {
     return some(arr);
   }
 }
+export fn toString(arr: Array<Stringifiable>): string {
+  const strings = arr.map(toString);
+  return '[' + strings.join(', ') + ']';
+}
 
 // Ternary functions
 export fn pair(trueval: any, falseval: any) = new Array<any> [ trueval, falseval ];
