@@ -433,24 +433,9 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
     s: Scope,
     microstatements: Array<Microstatement>,
   ) {
+    const dbg = (msg: any) => this.getName() === 'reducePar' && console.log(msg);
     const scope = new Scope(s)
     scope.secondaryPar = this.scope
-    // Get the current statement length for usage in multiple cleanup routines
-    const originalStatementLength = microstatements.length
-    // First, check if there are any ENTERFN microstatements indicating a nested inlining, then
-    // check that list for self-containment, which would cause an infinite loop in compilation and
-    // abort with a useful error message.
-    // const enterfns = microstatements.filter(m => m.statementType === StatementType.ENTERFN)
-    // const isRecursive = enterfns.some(m => m.fns[0] === this)
-    // if (isRecursive) {
-    //   let path = enterfns
-    //     .slice(enterfns.findIndex(m => m.fns[0] === this))
-    //     .map(m => m.fns[0].getName())
-    //   path.push(this.getName())
-    //   let pathstr = path.join(' -> ')
-    //   console.log(microstatements)
-    //   throw new Error(`Recursive callstack detected: ${pathstr}. Aborting.`)
-    // }
     // Perform a transform, if necessary, before generating the microstatements
     // Resolve circular dependency issue
     const internalNames = Object.keys(this.args)
@@ -459,6 +444,37 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
     const originalTypes = Object.values(this.getArguments())
     const interfaceMap: Map<Type, Type> = new Map()
     originalTypes.forEach((t, i) => t.typeApplies(inputTypes[i], scope, interfaceMap))
+    const fn = this.maybeTransform(interfaceMap, scope)
+    // First, check that there are no ENTERFNS that contain a similar instance of the
+    // transformed function, which would cause an infinite loop in compilation and
+    // abort with a useful error message.
+    // const recursiveProof = microstatements.findIndex(m => m.statementType === StatementType.ENTERFN && m.fns[0] == fn)
+    // if (recursiveProof !== -1) {
+    //   let path = [microstatements[recursiveProof].fns[0].getName()];
+    //   path.push(fn.getName());
+    //   const pathstr = path.join(' -> ');
+    //   throw new Error(`Recursive callstack detected: ${pathstr}. Aborting.`);
+    // }
+    // Get the current statement length for usage in multiple cleanup routines
+    // TODO: fix opcodes inserting mstmts and re-enable this
+    const originalStatementLength = microstatements.length
+    dbg(`original length: ${originalStatementLength}`)
+    // add a marker for this function
+    const enterfn = new Microstatement(
+      StatementType.ENTERFN,
+      scope,
+      true,
+      '',
+      Type.builtinTypes.void,
+      [],
+      [fn],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      fn.getReturnType(),
+    )
+    microstatements.push(enterfn)
     for (let i = 0; i < internalNames.length; i++) {
       const realArgName = realArgNames[i]
       // Instead of copying the relevant data, define a reference to where the data is located with
@@ -475,25 +491,27 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
         internalNames[i],
       ))
     }
-    const fn = this.maybeTransform(interfaceMap, scope)
-    // add a marker for this function
-    microstatements.push(new Microstatement(
-      StatementType.ENTERFN,
-      scope,
-      true,
-      '',
-      Type.builtinTypes.void,
-      [],
-      [fn],
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      fn.getReturnType(),
-    ))
     for (const s of fn.statements) {
+      // const before = microstatements[originalStatementLength];
+      // const snapshot = [...microstatements];
       Microstatement.fromStatement(s, microstatements, scope)
+      // TODO: opcodes that accept a closure (that aren't condfn) cause this
+      // if statement to get evaluated...
+      // if (microstatements[originalStatementLength] !== before) {
+      //   console.log('------------------ VIOLATION');
+      //   // console.log(s.statementAst.t.trim());
+      //   // console.log(before)
+      //   // console.log(microstatements[originalStatementLength])
+      //   for (let ii = 0; ii < microstatements.length; ii++) {
+      //     if (microstatements[ii] !== snapshot[ii]) {
+      //       console.log(snapshot[ii])
+      //       console.log(microstatements[ii])
+      //       break;
+      //     }
+      //   }
+      // }
     }
+    // const originalStatementLength = microstatements.findIndex(m => m === enterfn);
     // Delete `REREF`s except a `return` statement's `REREF` to make sure it doesn't interfere with
     // the outer scope (if it has the same variable name defined, for instance)
     for (let i = originalStatementLength; i < microstatements.length - 1; i++) {
@@ -505,7 +523,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
     // If the output return type is an interface or is a realized generic with an inner interface
     // type, figure out what its actual type is. This is assuming that any input type of the same
     // interface's real type is the same as the output type, which is a valid assumption as long as
-    // all inputs of that particular interface are the same type. TODO: If fn is not true, it must
+    // all inputs of that particular interface are the same type. TODO: If this is not true, it must
     // be a compile-time error earlier on.
     const last = microstatements[microstatements.length - 1]
     if (!fn.getReturnType().typeApplies(last.outputType, scope, new Map()))  {
@@ -602,7 +620,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
         break
       }
     }
-    // Now that we're done with fn, we need to pop out all of the ENTERFN microstatements created
+    // Now that we're done with this, we need to pop out all of the ENTERFN microstatements created
     // after fn one so we don't mark non-recursive calls to a function multiple times as recursive
     // TODO: This is not the most efficient way to do things, come up with a better metadata
     // mechanism to pass around.
@@ -614,7 +632,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
       }
     }
 
-    const tailIdx = microstatements.findIndex(ms => ms.statementType === StatementType.TAIL);
+    const tailIdx = microstatements.slice(originalStatementLength).findIndex(ms => ms.statementType === StatementType.TAIL);
     if (tailIdx !== -1) {
       const tail = microstatements.splice(tailIdx);
       Conditional.handleTail(

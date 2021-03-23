@@ -58,10 +58,6 @@ class Microstatement {
     this.closureArgs = closureArgs
     this.closureOutputType = closureOutputType
     this.isUnwrapReturn = isUnwrapReturn;
-
-    if (statementType === StatementType.CONSTDEC && fns === null) {
-      throw new Error()
-    }
   }
 
   toString() {
@@ -614,6 +610,7 @@ ${emitsAst.t} on line ${emitsAst.line}:${emitsAst.char}`)
         last.outputType != event.type &&
         !event.type.castable(last.outputType)
       ) {
+        console.log(microstatements.map(m => m.toString()).join('\n'))
         throw new Error(`Attempting to assign a value of type ${last.outputType.typename} to an event of type ${event.type.typename}
 ${emitsAst.t} on line ${emitsAst.line}:${emitsAst.char}`)
       }
@@ -673,7 +670,6 @@ ${emitsAst.t} on line ${emitsAst.line}:${emitsAst.char}`)
         constName,
         Type.builtinTypes.void,
         ["void"],
-        // null
       ))
     }
   }

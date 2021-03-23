@@ -1,5 +1,8 @@
 from @std/app import print, start, exit
-on start { emit exit add(toInt8(1), toInt8(2)).getOrExit(); }
+on start {
+  const res = add(toInt8(1), toInt8(2));
+  emit exit res.getOrExit();
+}
 
 // on start {
 //   if 0 == 1 {
@@ -12,5 +15,17 @@ on start { emit exit add(toInt8(1), toInt8(2)).getOrExit(); }
 //     print('oof');
 //   }
 //   (1 + 1).print();
+//   emit exit 0;
+// }
+
+// on start {
+//   const test = [ 1, 1, 2, 3, 5, 8 ];
+
+//   // TODO: Even more ridiculous when you want to allow parallelism
+//   test.reducePar(
+//     fn (acc: string, i: int): string = ((acc == '') && (i % 2 == 1)) ? i.toString() : (i % 2 == 1 ? (acc + ', ' + i.toString()) : acc),
+//     fn (acc: string, cur: string): string = ((acc != '') && (cur != '')) ? (acc + ', ' + cur) : (acc != '' ? acc : cur),
+//     '').print();
+
 //   emit exit 0;
 // }
