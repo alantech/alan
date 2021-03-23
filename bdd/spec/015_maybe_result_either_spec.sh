@@ -40,6 +40,10 @@ Describe "Maybe, Result, and Either"
           } else {
             print('uhhh');
           }
+
+          maybe5.toString().print();
+          maybeNot5.toString().print();
+
           emit exit 0;
         }
       "
@@ -54,7 +58,9 @@ Describe "Maybe, Result, and Either"
     MAYBEOUTPUT="5
 Correctly received nothing!
 5
-Correctly received nothing!"
+Correctly received nothing!
+5
+none"
 
     It "runs js"
       When run test_js
@@ -107,6 +113,10 @@ Correctly received nothing!"
           } else {
             print('uhhh');
           }
+
+          oneFifth.toString().print();
+          oneZeroth.toString().print();
+
           emit exit 0;
         }
       "
@@ -121,7 +131,9 @@ Correctly received nothing!"
     RESULTOUTPUT="0.2
 Divide by zero error!
 0.2
-1.2345"
+1.2345
+0.2
+Divide by zero error!"
 
     It "runs js"
       When run test_js
@@ -140,20 +152,32 @@ Divide by zero error!
         from @std/app import start, print, exit
 
         on start {
-          const strOrNum = main('string');
+          const strOrNum = getMainOrAlt(true);
           if strOrNum.isMain() {
             print(strOrNum.getMainOr(''));
           } else {
             print('what?');
           }
 
-          const strOrNum2 = alt(2);
+          const strOrNum2 = getMainOrAlt(false);
           if strOrNum2.isAlt() {
             print(strOrNum2.getAltOr(0));
           } else {
             print('uhhh');
           }
+
+          strOrNum.toString().print();
+          strOrNum2.toString().print();
+
           emit exit 0;
+        }
+
+        fn getMainOrAlt(isMain: bool) {
+          if isMain {
+            return main('string');
+          } else {
+            return alt(2);
+          }
         }
       "
     }
@@ -165,6 +189,8 @@ Divide by zero error!
     AfterAll after
 
     EITHEROUTPUT="string
+2
+string
 2"
 
     It "runs js"

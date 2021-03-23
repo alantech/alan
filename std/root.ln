@@ -149,6 +149,20 @@ export fn none() = noneM();
 export isSome // opcode with signature `fn isSome(Maybe<any>): bool`
 export isNone // opcode with signature `fn isNone(Maybe<any>): bool`
 export fn getOr(maybe: Maybe<any>, default: any) = getOrM(maybe, default);
+export fn toString(maybe: Maybe<Stringifiable>): string {
+  if maybe.isSome() {
+    return maybe.getMaybe().toString();
+  } else {
+    return 'none';
+  }
+}
+export fn getOrExit(maybe: Maybe<any>): any {
+  if maybe.isNone() {
+    exitop(1.toInt8());
+  } else {
+    return maybe.getMaybe();
+  }
+}
 
 export fn ok(val: any) = okR(val, 0);
 export fn ok(val: int8) = okR(val, 8);
@@ -200,6 +214,27 @@ export isMain // opcode with signature `fn isMain(Either<any, anythingElse>): bo
 export isAlt // opcode with signature `fn isAlt(Either<any, anythingElse): bool`
 export fn getMainOr(either: Either<any, anythingElse>, default: any) = mainOr(either, default);
 export fn getAltOr(either: Either<any, anythingElse>, default: anythingElse) = altOr(either, default);
+export fn toString(either: Either<Stringifiable, Stringifiable>): string {
+  if either.isMain() {
+    return either.getMain().toString();
+  } else {
+    return either.getAlt().toString();
+  }
+}
+export fn getMainOrExit(either: Either<any, anythingElse>): any {
+  if either.isAlt() {
+    exitop(1.toInt8());
+  } else {
+    return either.getMain();
+  }
+}
+export fn getAltOrExit(either: Either<any, anythingElse>): any {
+  if either.isMain() {
+    exitop(1.toInt8());
+  } else {
+    return either.getAlt();
+  }
+}
 
 // Arithmetic functions
 export fn add(a: int8, b: int8) = addi8(ok(a), ok(b));
@@ -2301,6 +2336,10 @@ export fn set(arr: Array<bool>, idx: int64, val: bool) {
     copytof(arr, idx, val);
     return some(arr);
   }
+}
+export fn toString(arr: Array<Stringifiable>): string {
+  const strings = arr.map(toString);
+  return '[' + strings.join(', ') + ']';
 }
 
 // Ternary functions

@@ -3563,6 +3563,16 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }
     None
   });
+  cpu!(getMaybe => fn(args, hand_mem) {
+    let fractal = hand_mem.read_fractal(args[0]);
+    let variant = fractal.read_fixed(0);
+    if variant == 1 {
+      hand_mem.register_out(args[0], 1, args[2]);
+    } else {
+      panic!("runtime error: illegal access");
+    }
+    None
+  });
   cpu!(okR => fn(args, hand_mem) {
     hand_mem.init_fractal(args[2]);
     hand_mem.push_fixed(args[2], 1i64);
@@ -3724,6 +3734,26 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       } else {
         hand_mem.write_fixed(args[2], data.read_fixed(0));
       }
+    }
+    None
+  });
+  cpu!(getMain => fn(args, hand_mem) {
+    let fractal = hand_mem.read_fractal(args[0]);
+    let variant = fractal.read_fixed(0);
+    if variant == 1 {
+      hand_mem.register_out(args[0], 1, args[2]);
+    } else {
+      panic!("runtime error: illegal access");
+    }
+    None
+  });
+  cpu!(getAlt => fn(args, hand_mem) {
+    let fractal = hand_mem.read_fractal(args[0]);
+    let variant = fractal.read_fixed(0);
+    if variant == 0 {
+      hand_mem.register_out(args[0], 1, args[2]);
+    } else {
+      panic!("runtime error: illegal access");
     }
     None
   });

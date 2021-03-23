@@ -575,6 +575,7 @@ export const opcodeParamMutabilities = {
   isSome: [false],
   isNone: [false],
   getOrM: [false, false],
+  getMaybe: [false],
   okR: [false, false],
   err: [false],
   isOk: [false],
@@ -590,6 +591,8 @@ export const opcodeParamMutabilities = {
   isAlt: [false],
   mainOr: [false, false],
   altOr: [false, false],
+  getMain: [false],
+  getAlt: [false],
 
   hashf: [false],
   hashv: [false],

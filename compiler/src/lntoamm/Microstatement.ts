@@ -1322,7 +1322,7 @@ ${baseassignable.t} on line ${baseassignable.line}:${baseassignable.char}`)
               microstatements,
             )
             // We'll need a reference to this for later
-            const typeRecord = currVal 
+            const typeRecord = currVal
             // Set the original to this newly-generated microstatement
             currVal = microstatements[microstatements.length - 1]
             // Now we do something odd, but correct here; we need to replace the `outputType` from
