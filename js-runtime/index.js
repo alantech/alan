@@ -799,6 +799,13 @@ module.exports = {
   isSome:   a => a[0],
   isNone:   a => !a[0],
   getOrM:  (a, b) => a[0] ? a[1] : b,
+  getM:     a => {
+    if (a[0]) {
+      return a[1]
+    } else {
+      throw new Error('runtime error: illegal access')
+    }
+  },
   okR:      a => [
     true,
     a,

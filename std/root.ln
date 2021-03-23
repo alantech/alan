@@ -149,6 +149,20 @@ export fn none() = noneM();
 export isSome // opcode with signature `fn isSome(Maybe<any>): bool`
 export isNone // opcode with signature `fn isNone(Maybe<any>): bool`
 export fn getOr(maybe: Maybe<any>, default: any) = getOrM(maybe, default);
+export fn toString(maybe: Maybe<Stringifiable>): string {
+  if maybe.isSome() {
+    return maybe.getM().toString();
+  } else {
+    return 'none';
+  }
+}
+export fn getOrExit(maybe: Maybe<any>): any {
+  if maybe.isNone() {
+    exitop(1.toInt8());
+  } else {
+    return maybe.getM();
+  }
+}
 
 export fn ok(val: any) = okR(val, 0);
 export fn ok(val: int8) = okR(val, 8);
