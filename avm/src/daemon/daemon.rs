@@ -137,7 +137,6 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
 }
 
 async fn run_agz_b64(agz_b64: &str, priv_key_b64: Option<&str>, cert_b64: Option<&str>) {
-  panic!("test panic");
   let bytes = base64::decode(agz_b64).unwrap();
   let agz = GzDecoder::new(bytes.as_slice());
   let count = agz.bytes().count();
@@ -216,14 +215,13 @@ pub async fn start(
       }
     }
   });
-  info!("running daemon");
+  // Need this due to a reference may not be safely transferrable across a catch_unwind boundary
   let agz_run = async { run_agz_b64(agz_b64, priv_key_b64, cert_b64) };
-  info!("after agz run");
   let agz_run_res = agz_run.catch_unwind().await;
-  info!("after await");
-  if let Err(agz_run_res) = agz_run_res {
-    info!("before logging error");
-    error!("{:#?}", agz_run_res);
-    panic!(agz_run_res);
+  if agz_run_res.is_ok() {
+    info!("Going to sleep to let logs arrive");
+    let period = Duration::from_secs(1);
+    sleep(period).await;
+    panic!("Panicked");
   }
 }

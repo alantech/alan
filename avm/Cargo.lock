@@ -75,7 +75,7 @@ dependencies = [
 [[package]]
 name = "anycloud"
 version = "0.1.5"
-source = "git+https://github.com/alantech/anycloud?branch=feat/logger#a584e7bd020eecc4e72ac30dc4d2d21617210e1b"
+source = "git+https://github.com/alantech/anycloud?branch=feat/logger#8456c212eb42e2041318238983a0d8d6d265574e"
 dependencies = [
  "ascii_table",
  "base64 0.13.0",
