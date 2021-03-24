@@ -2,7 +2,7 @@ SHELL = /bin/bash
 
 .PHONY: build
 build: env-check avm/target/release/alan build-js-runtime
-	echo Done
+	@echo Done
 
 .PHONY: env-check
 env-check:
