@@ -130,7 +130,7 @@ In order to share more nuanced details about the new front-end, here are the ste
 1. Assign the variable `val` to type `T`. There are no constraints on the type `T`.
 2. Desugar the if/else. How this is done is unimportant, but the body of the `toString` function will effectively be desugared into (ignore the invalid `conditionTailFn` function body - it's required for `evalcond` to work but its contents won't be checked by the type checker, since this desugaring will actually happen just before generating the Microstatements):
 ```ln
-const conditionalTable = newarr(2);
+let conditionalTable = newarr(2);
 const condition1Boolean = val.isSome();
 const condition1ThenFn = fn(): U { return val.getMaybe().toString(); };
 condfn(conditionalTable, condition1Boolean, condition1ThenFn);
