@@ -1,3 +1,5 @@
+use std::error::Error;
+
 use futures::future::join_all;
 use futures::stream::StreamExt;
 use heim_common::units::{information::kilobyte, time::second};
@@ -132,45 +134,53 @@ async fn get_cores_times() -> Vec<CPUSecsV1> {
 
 #[cfg(target_os = "linux")]
 pub async fn get_v1_stats() -> VMStatsV1 {
-  let memory = heim_memory::memory()
-    .await
-    .expect("Failed to get system memory information");
-  let swap = heim_memory::swap()
-    .await
-    .expect("Failed to get swap information");
-  VMStatsV1 {
-    cpuSecs: get_cores_times().await,
-    procsCpuUsage: get_proc_usages().await,
-    totalMemoryKb: memory.total().get::<kilobyte>(),
-    availableMemoryKb: memory.available().get::<kilobyte>(),
-    freeMemoryKb: memory.free().get::<kilobyte>(),
-    activeMemoryKb: memory.active().get::<kilobyte>(),
-    usedMemoryKb: memory.used().get::<kilobyte>(),
-    totalSwapKb: swap.total().get::<kilobyte>(),
-    usedSwapKb: swap.used().get::<kilobyte>(),
-    freeSwapKb: swap.free().get::<kilobyte>(),
+  let memory = heim_memory::memory().await;
+  match memory {
+    Ok(memory) => {
+      let swap = heim_memory::swap().await;
+      match swap {
+        Ok(swap) => Ok(VMStatsV1 {
+          cpuSecs: get_cores_times().await,
+          procsCpuUsage: get_proc_usages().await,
+          totalMemoryKb: memory.total().get::<kilobyte>(),
+          availableMemoryKb: memory.available().get::<kilobyte>(),
+          freeMemoryKb: memory.free().get::<kilobyte>(),
+          activeMemoryKb: memory.active().get::<kilobyte>(),
+          usedMemoryKb: memory.used().get::<kilobyte>(),
+          totalSwapKb: swap.total().get::<kilobyte>(),
+          usedSwapKb: swap.used().get::<kilobyte>(),
+          freeSwapKb: swap.free().get::<kilobyte>(),
+        }),
+        Err(_) => return Err("Failed to get swap information".into())
+      }
+    },
+    Err(_) => return Err("Failed to get system memory information".into()),
   }
 }
 
 // zero out linux specific stats
 #[cfg(not(target_os = "linux"))]
-pub async fn get_v1_stats() -> VMStatsV1 {
-  let memory = heim_memory::memory()
-    .await
-    .expect("Failed to get system memory information");
-  let swap = heim_memory::swap()
-    .await
-    .expect("Failed to get swap information");
-  VMStatsV1 {
-    cpuSecs: get_cores_times().await,
-    procsCpuUsage: get_proc_usages().await,
-    totalMemoryKb: memory.total().get::<kilobyte>(),
-    availableMemoryKb: memory.available().get::<kilobyte>(),
-    freeMemoryKb: memory.free().get::<kilobyte>(),
-    activeMemoryKb: 0,
-    usedMemoryKb: 0,
-    totalSwapKb: swap.total().get::<kilobyte>(),
-    usedSwapKb: swap.used().get::<kilobyte>(),
-    freeSwapKb: swap.free().get::<kilobyte>(),
+pub async fn get_v1_stats() -> Result<VMStatsV1, Box<dyn Error>> {
+  let memory = heim_memory::memory().await;
+  match memory {
+    Ok(memory) => {
+      let swap = heim_memory::swap().await;
+      match swap {
+        Ok(swap) => Ok(VMStatsV1 {
+          cpuSecs: get_cores_times().await,
+          procsCpuUsage: get_proc_usages().await,
+          totalMemoryKb: memory.total().get::<kilobyte>(),
+          availableMemoryKb: memory.available().get::<kilobyte>(),
+          freeMemoryKb: memory.free().get::<kilobyte>(),
+          activeMemoryKb: 0,
+          usedMemoryKb: 0,
+          totalSwapKb: swap.total().get::<kilobyte>(),
+          usedSwapKb: swap.used().get::<kilobyte>(),
+          freeSwapKb: swap.free().get::<kilobyte>(),
+        }),
+        Err(_) => return Err("Failed to get swap information".into())
+      }
+    },
+    Err(_) => return Err("Failed to get system memory information".into()),
   }
 }

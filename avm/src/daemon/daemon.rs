@@ -103,7 +103,7 @@ async fn post_v1_scale(
 
 // returns cluster delta
 async fn post_v1_stats(cluster_id: &str, deploy_token: &str) -> Result<String, Box<dyn Error>> {
-  let vm_stats = get_v1_stats().await;//?;
+  let vm_stats = get_v1_stats().await?;
   let mut stats_body = json!({
     "deployToken": deploy_token,
     "vmStats": vm_stats,
