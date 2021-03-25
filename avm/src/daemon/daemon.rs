@@ -30,7 +30,7 @@ use crate::vm::run::run;
 pub static CLUSTER_SECRET: OnceCell<Option<String>> = OnceCell::new();
 
 #[cfg(target_os = "linux")]
-async fn get_private_ip() -> Result<String, Box<dyn Error>>  {
+async fn get_private_ip() -> Result<String, Box<dyn Error>> {
   let res = Command::new("hostname").arg("-I").output().await;
   let err = "Failed to execute `hostname`";
   let stdout = res.expect(err).stdout;
@@ -194,7 +194,10 @@ pub async fn start(
     let dns = DNS::new(&domain).unwrap();
     loop {
       sleep(period).await;
-      let vms = dns.get_vms(&cluster_id).await.unwrap_or_else(|e| { error!("{}", e); return Vec::new(); });
+      let vms = dns.get_vms(&cluster_id).await.unwrap_or_else(|e| {
+        error!("{}", e);
+        return Vec::new();
+      });
       // triggered the first time since cluster_size == 0
       // and every time the cluster changes size
       if vms.len() != cluster_size {

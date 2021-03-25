@@ -68,6 +68,5 @@ impl DNS {
     } else {
       return Err(err.into());
     }
-    
   }
 }
