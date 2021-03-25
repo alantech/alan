@@ -109,7 +109,10 @@ async fn post_v1_stats(cluster_id: &str, deploy_token: &str) -> Result<String, B
     "vmStats": vm_stats,
     "clusterId": cluster_id,
   });
-  let cluster_secret = CLUSTER_SECRET.get().unwrap_or(&None::<String>);
+  let cluster_secret = CLUSTER_SECRET.get().unwrap_or_else(|| {
+    error!("No cluster secret");
+    return &None::<String>;
+  });
   if let Some(cluster_secret) = cluster_secret.as_ref() {
     stats_body
       .as_object_mut()
