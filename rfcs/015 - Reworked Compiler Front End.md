@@ -39,12 +39,13 @@ Until the new front-end is able to replace the current one, bdd tests will gradu
 ## Proposal
 
 This RFC proposes a new compiler front-end, with the most significant difference being the use of a Hindley-Milner-based type resolution system.
-By modifying the Hindley-Milner inference systems to use Alan's interface and generic types, the compiler will be able to determine the types of functions without type annotations, while also allowing the compiler to select one of many functions depending on the input types being passed in.
+By modifying the Hindley-Milner inference systems to use Alan's interface and generic types, the compiler will be able to determine the types of functions without (theoretically, any) type annotations, while also allowing the compiler to select one of many functions depending on the input types being passed in.
+Relatively little from the current front-end will be changed - for example, parsing and module resolution will be untouched in the new front-end (effectively resulting in the new `lnntoamm` directory being a partial fork of the current `lntoamm` directory).
 To explain how the new front-end will differ from the current one, we'll use examples that grow in complexity.
 
-It's worth noting that, since this PR is talking about the inner architecture of the compiler front-end, there is terminology that is used that is specific to the compiler's current architectural design.
-Some quick definitions:
-- Microstatement: The atom of the current `lntoamm` phase's internal language. The set of Microstatements is a superset of the `amm` language - a valid `amm` program is a valid program of Microstatements, but not all Microstatements are valid in `amm`.
+It's worth noting that, since this PR is talking about the inner architecture of the compiler front-end, the term "Microstatement" is used often.
+Microstatements are the atom of the current `lntoamm` phase's internal language.
+The set of Microstatements is a superset of the `amm` language - a valid `amm` program is a valid program of Microstatements, but not all Microstatements are valid in `amm`.
 
 Also, "constraint" is used in literature related to Hindley-Milner type checking to signify that a narrowing-down on the type of a value, expression, or function.
 A type can only be selected if it matches constraints, and if there are constraints that conflict with each other, that results in an invalid program.
@@ -109,7 +110,8 @@ The current front-end will require substantial work to support this, requiring o
 - An interface (internal or in `root.ln`) that ensures there's an `add` operation for the type of `num` (for example, `Addable`).
 - Type-checking can only happen once the function is inlined.
 
-However, the new type resolution system would simply add a constraint that there be a function named `add` that satisfies the signature `(T, 4 as T) -> T` (ignoring the fact that arithmetic operations in Alan actually use `Result` values).
+However, the new type resolution system would simply add a constraint that there be a function named `add` that satisfies the signature `(T, U) -> T` (ignoring the fact that arithmetic operations in Alan actually use `Result` values).
+However, since `U` would be constrained to an `int64` by default and immediately, the signature would effectively be `(T, int64) -> T`.
 This wouldn't require the `Addable` interface to be defined at all, and instead would allow for an anonymous interface that's only visible in the compiler to be created.
 The constraints would then not need to be computed for each time the function is called - instead, we must only ensure that the value passed in to `add4` satisfies the so-called "Addable" interface.
 
@@ -140,7 +142,7 @@ const conditionResult: Maybe<U> = evalcond(conditionalTable, conditionTailFn);
 const conditionResultUnwrapped: U = conditionResult.getMaybe();
 return conditionResultUnwrapped;
 ```
-3. Add the constraint that `val` has type `A` where there's a function called `isSome` with the signature `(A) -> bool`.
+3. Add the constraint that `val` has type `A` where there's a function called `isSome` with the signature `(A) -> X`, with `X` constrained to a `bool` due to its use in the conditional part of an `if` statement.
 4. Add the constraint that `val` has type `B` where there's a function called `getMaybe` with the signature `(B) -> C`.
 5. Add the constraint that type `C` from `getMaybe` has a function called `toString` with the signature `(C) -> U`.
 6. Add the constraint that type `U` is the same as the concrete type `string` (this is from the `return 'none'` statement).
@@ -171,9 +173,11 @@ However, as much of the current compiler already performs well, that would not b
 
 ## Affected Components
 
-A brief listing of what part(s) of the language ecosystem will be impacted should be written here.
+The language ecosystem itself will be untouched.
+This is intended to only impact the front end of the compiler, when translating from Alan code to AMM microcode.
 
 ## Expected Timeline
 
-An RFC proposal should define the set of work that needs to be done, in what order, and with an expected level of effort and turnaround time necessary. *No* multi-stage work proposal should leave the language in a non-functioning state.
-
+Roughly half of the bdd test suite can be implemented in 5 days.
+It will take an additional 2-5 days to implement some of the more nuanced tests, depending on complexity.
+Overall, this new compiler front-end should be on-par with the current front-end's features in 2 weeks.
