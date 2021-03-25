@@ -153,33 +153,41 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
 }
 
 async fn run_agz_b64(agz_b64: &str, priv_key_b64: Option<&str>, cert_b64: Option<&str>) {
-  let bytes = base64::decode(agz_b64).unwrap();
-  let agz = GzDecoder::new(bytes.as_slice());
-  let count = agz.bytes().count();
-  let mut bytecode = vec![0; count / 8];
-  let mut gz = GzDecoder::new(bytes.as_slice());
-  gz.read_i64_into::<LittleEndian>(&mut bytecode).unwrap();
-  if let (Some(priv_key_b64), Some(cert_b64)) = (priv_key_b64, cert_b64) {
-    // Spin up a control port if we can start a secure connection
-    make_server!(
-      HttpType::HTTPS(HttpsConfig {
-        port: 4142, // 4 = A, 1 = L, 2 = N (sideways) => ALAN
-        priv_key_b64: priv_key_b64.to_string(),
-        cert_b64: cert_b64.to_string(),
-      }),
-      control_port
-    );
-    run(
-      bytecode,
-      HttpType::HTTPS(HttpsConfig {
-        port: 443,
-        priv_key_b64: priv_key_b64.to_string(),
-        cert_b64: cert_b64.to_string(),
-      }),
-    )
-    .await;
+  let bytes = base64::decode(agz_b64);
+  if let Ok(bytes) = bytes {
+    let agz = GzDecoder::new(bytes.as_slice());
+    let count = agz.bytes().count();
+    let mut bytecode = vec![0; count / 8];
+    let mut gz = GzDecoder::new(bytes.as_slice());
+    let gz_read_i64 = gz.read_i64_into::<LittleEndian>(&mut bytecode);
+    if gz_read_i64.is_ok() {
+      if let (Some(priv_key_b64), Some(cert_b64)) = (priv_key_b64, cert_b64) {
+        // Spin up a control port if we can start a secure connection
+        make_server!(
+          HttpType::HTTPS(HttpsConfig {
+            port: 4142, // 4 = A, 1 = L, 2 = N (sideways) => ALAN
+            priv_key_b64: priv_key_b64.to_string(),
+            cert_b64: cert_b64.to_string(),
+          }),
+          control_port
+        );
+        run(
+          bytecode,
+          HttpType::HTTPS(HttpsConfig {
+            port: 443,
+            priv_key_b64: priv_key_b64.to_string(),
+            cert_b64: cert_b64.to_string(),
+          }),
+        )
+        .await;
+      } else {
+        run(bytecode, HttpType::HTTP(HttpConfig { port: 80 })).await;
+      }
+    } else {
+      error!("Error reading signed 64 bit integers from src into dst.");  
+    }
   } else {
-    run(bytecode, HttpType::HTTP(HttpConfig { port: 80 })).await;
+    error!("Unable to decaode agz base64.");
   }
 }
 
