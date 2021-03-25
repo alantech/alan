@@ -102,8 +102,8 @@ async fn post_v1_scale(
 }
 
 // returns cluster delta
-async fn post_v1_stats(cluster_id: &str, deploy_token: &str) -> String {
-  let vm_stats = get_v1_stats().await;
+async fn post_v1_stats(cluster_id: &str, deploy_token: &str) -> Result<String, Box<dyn Error>> {
+  let vm_stats = get_v1_stats().await;//?;
   let mut stats_body = json!({
     "deployToken": deploy_token,
     "vmStats": vm_stats,
@@ -116,7 +116,7 @@ async fn post_v1_stats(cluster_id: &str, deploy_token: &str) -> String {
       .unwrap()
       .insert("clusterSecret".to_string(), json!(cluster_secret));
   }
-  post_v1("stats", stats_body).await
+  Ok(post_v1("stats", stats_body).await)
 }
 
 async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> {
@@ -210,7 +210,10 @@ pub async fn start(
         leader_ip = lrh.get_leader_id().to_string();
       }
       if leader_ip == self_ip {
-        let factor = post_v1_stats(&cluster_id, &deploy_token).await;
+        let factor = post_v1_stats(&cluster_id, &deploy_token).await.unwrap_or_else(|e| {
+          error!("Failed getting stats. Error: {}", e);
+          return "1".to_string();
+        });
         println!(
           "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
           cluster_id,
