@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::str;
 
 use trust_dns_resolver::config::{ResolverConfig, ResolverOpts};
@@ -34,7 +35,7 @@ impl VMMetadata {
 }
 
 impl DNS {
-  pub fn new(domain: &str) -> DNS {
+  pub fn new(domain: &str) -> Result<DNS, Box<dyn Error>> {
     let mut resolver_opts = ResolverOpts::default();
     // ignore /ect/hosts
     resolver_opts.use_hosts_file = false;
@@ -42,21 +43,31 @@ impl DNS {
     resolver_opts.validate = true;
     // Get a new resolver with the cloudflare nameservers as the upstream recursive resolvers
     let resolver = ResolverConfig::cloudflare_tls();
-    DNS {
-      domain: domain.to_string(),
-      resolver: TokioAsyncResolver::tokio(resolver, resolver_opts).unwrap(),
+    let resolver_result = TokioAsyncResolver::tokio(resolver, resolver_opts);
+    match resolver_result {
+      Ok(resolver) => Ok(DNS {
+        domain: domain.to_string(),
+        resolver: resolver,
+      }),
+      Err(e) => Err(e.into()),
     }
   }
-  pub async fn get_vms(&self, cluster_id: &str) -> Vec<VMMetadata> {
+
+  pub async fn get_vms(&self, cluster_id: &str) -> Result<Vec<VMMetadata>, Box<dyn Error>> {
     let name = format!("{}.{}", cluster_id, self.domain);
     let err = format!("Failed to fetch TXT record with name {}", &name);
     let resp = self.resolver.txt_lookup(name).await;
     let mut vms = Vec::new();
-    for rec in resp.expect(&err) {
-      let data = &rec.txt_data()[0];
-      let vm = VMMetadata::from_txt_data(data);
-      vms.push(vm);
+    if let Ok(resp) = resp {
+      for rec in resp {
+        let data = &rec.txt_data()[0];
+        let vm = VMMetadata::from_txt_data(data);
+        vms.push(vm);
+      }
+      Ok(vms)
+    } else {
+      return Err(err.into());
     }
-    vms
+    
   }
 }

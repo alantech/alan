@@ -1,8 +1,10 @@
 use std::convert::Infallible;
 use std::env;
+use std::error::Error;
 use std::fs::read;
 use std::io::Read;
 use std::net::TcpStream;
+use std::panic;
 use std::path::Path;
 
 use anycloud::deploy;
@@ -28,21 +30,25 @@ use crate::vm::run::run;
 pub static CLUSTER_SECRET: OnceCell<Option<String>> = OnceCell::new();
 
 #[cfg(target_os = "linux")]
-async fn get_private_ip() -> String {
+async fn get_private_ip() -> Result<String, Box<dyn Error>>  {
   let res = Command::new("hostname").arg("-I").output().await;
   let err = "Failed to execute `hostname`";
   let stdout = res.expect(err).stdout;
-  String::from_utf8(stdout)
+  let private_ip = String::from_utf8(stdout)
     .expect(err)
     .trim()
     .split_whitespace()
     .next()
     .unwrap()
-    .to_string()
+    .to_string();
+  match private_ip {
+    Ok(private_ip) => private_ip,
+    Err(e) => return Err(e.into()),
+  }
 }
 
 #[cfg(not(target_os = "linux"))]
-async fn get_private_ip() -> String {
+async fn get_private_ip() -> Result<String, Box<dyn Error>> {
   panic!("`hostname` command does not exist in this OS");
 }
 
@@ -174,21 +180,21 @@ pub async fn start(
   priv_key_b64: Option<&str>,
   cert_b64: Option<&str>,
 ) {
-  logger::init().unwrap(); // Logger initialization
+  logger::init().unwrap_or(()); // Logger initialization
   let cluster_id = cluster_id.to_string();
   let deploy_token = deploy_token.to_string();
   let agzb64 = agz_b64.to_string();
   let domain = domain.to_string();
-  task::spawn(async move {
+  let stats_res = task::spawn(async move {
     // TODO even better period determination
     let period = Duration::from_secs(5 * 60);
-    let dns = DNS::new(&domain);
-    let self_ip = get_private_ip().await;
+    let self_ip = get_private_ip().await.unwrap();
     let mut cluster_size = 0;
     let mut leader_ip = "".to_string();
+    let dns = DNS::new(&domain).unwrap();
     loop {
       sleep(period).await;
-      let vms = dns.get_vms(&cluster_id).await;
+      let vms = dns.get_vms(&cluster_id).await.unwrap_or_else(|e| { error!("{}", e); return Vec::new(); });
       // triggered the first time since cluster_size == 0
       // and every time the cluster changes size
       if vms.len() != cluster_size {
@@ -214,5 +220,9 @@ pub async fn start(
       }
     }
   });
+  if let Err(err) = stats_res.await {
+    error!("outside {}", err);
+    panic!("panic {}", err);
+  };
   run_agz_b64(agz_b64, priv_key_b64, cert_b64).await;
 }
