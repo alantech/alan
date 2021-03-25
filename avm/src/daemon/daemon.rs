@@ -12,6 +12,7 @@ use anycloud::logger;
 use base64;
 use byteorder::{LittleEndian, ReadBytesExt};
 use flate2::read::GzDecoder;
+use futures::FutureExt;
 use hyper::{Body, Request, Response};
 use log::{error, info};
 use once_cell::sync::OnceCell;
@@ -249,5 +250,10 @@ pub async fn start(
     error!("outside {}", err);
     panic!("panic {}", err);
   };
-  run_agz_b64(agz_b64, priv_key_b64, cert_b64).await;
+  let agz_run = async { run_agz_b64(agz_b64, priv_key_b64, cert_b64) };
+  let agz_run_res = agz_run.catch_unwind().await;
+  if let Err(err) = agz_run_res {
+    error!("{:?}", err);
+    panic!("{:?}", err);
+  }
 }
