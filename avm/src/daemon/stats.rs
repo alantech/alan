@@ -7,6 +7,7 @@ use heim_common::units::{information::kilobyte, time::second};
 use heim_cpu::os::linux::CpuTimeExt;
 #[cfg(target_os = "linux")]
 use heim_memory::os::linux::MemoryExt;
+use log::error;
 use serde::Serialize;
 use tokio::time::{sleep, Duration};
 
@@ -72,16 +73,29 @@ async fn get_proc_usages() -> Vec<f64> {
 async fn get_cores_total_times() -> Vec<CPUSecsV1> {
   heim_cpu::times()
     .map(|r| {
-      let cpu = r.expect("Failed to get CPU times");
-      CPUSecsV1 {
-        user: cpu.user().get::<second>(),
-        system: cpu.system().get::<second>(),
-        idle: cpu.idle().get::<second>(),
-        irq: 0.0,
-        nice: 0.0,
-        ioWait: 0.0,
-        softIrq: 0.0,
-        steal: 0.0,
+      if let Ok(cpu) = r {
+        CPUSecsV1 {
+          user: cpu.user().get::<second>(),
+          system: cpu.system().get::<second>(),
+          idle: cpu.idle().get::<second>(),
+          irq: 0.0,
+          nice: 0.0,
+          ioWait: 0.0,
+          softIrq: 0.0,
+          steal: 0.0,
+        }
+      } else {
+        error!("Failed to get CPU times");
+        CPUSecsV1 {
+          user: 0.0,
+          system: 0.0,
+          idle: 0.0,
+          irq: 0.0,
+          nice: 0.0,
+          ioWait: 0.0,
+          softIrq: 0.0,
+          steal: 0.0,
+        }
       }
     })
     .collect()
@@ -93,16 +107,29 @@ async fn get_cores_total_times() -> Vec<CPUSecsV1> {
 async fn get_cores_total_times() -> Vec<CPUSecsV1> {
   heim_cpu::times()
     .map(|r| {
-      let cpu = r.expect("Failed to get CPU times");
-      CPUSecsV1 {
-        user: cpu.user().get::<second>(),
-        system: cpu.system().get::<second>(),
-        idle: cpu.idle().get::<second>(),
-        irq: cpu.irq().get::<second>(),
-        nice: cpu.nice().get::<second>(),
-        ioWait: cpu.io_wait().get::<second>(),
-        softIrq: cpu.soft_irq().get::<second>(),
-        steal: cpu.steal().get::<second>(),
+      if let Ok(cpu) = r {
+        CPUSecsV1 {
+          user: cpu.user().get::<second>(),
+          system: cpu.system().get::<second>(),
+          idle: cpu.idle().get::<second>(),
+          irq: cpu.irq().get::<second>(),
+          nice: cpu.nice().get::<second>(),
+          ioWait: cpu.io_wait().get::<second>(),
+          softIrq: cpu.soft_irq().get::<second>(),
+          steal: cpu.steal().get::<second>(),
+        }
+      } else {
+        error!("Failed to get CPU times");
+        CPUSecsV1 {
+          user: 0.0,
+          system: 0.0,
+          idle: 0.0,
+          irq: 0.0,
+          nice: 0.0,
+          ioWait: 0.0,
+          softIrq: 0.0,
+          steal: 0.0,
+        }
       }
     })
     .collect()
@@ -133,7 +160,7 @@ async fn get_cores_times() -> Vec<CPUSecsV1> {
 }
 
 #[cfg(target_os = "linux")]
-pub async fn get_v1_stats() -> VMStatsV1 {
+pub async fn get_v1_stats() -> Result<VMStatsV1, Box<dyn Error>> {
   let memory = heim_memory::memory().await;
   match memory {
     Ok(memory) => {
