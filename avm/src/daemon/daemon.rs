@@ -56,7 +56,11 @@ async fn post_v1(endpoint: &str, body: Value) -> String {
   let resp = deploy::post_v1(endpoint, body).await;
   match resp {
     Ok(res) => res,
-    Err(err) => format!("{:?}", err),
+    Err(err) => {
+      let err = format!("{:?}", err);
+      error!("{}", err);
+      err
+    },
   }
 }
 
