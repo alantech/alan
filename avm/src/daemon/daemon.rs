@@ -101,7 +101,11 @@ async fn post_v1_scale(
       };
       post_v1("scale", scale_body).await
     }
-    Err(err) => format!("{:?}", err),
+    Err(err) => {
+      let err = format!("{:?}", err);
+      error!("{}", err);
+      err
+    },
   }
 }
 
