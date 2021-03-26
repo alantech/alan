@@ -204,6 +204,8 @@ pub async fn start(
   cert_b64: Option<&str>,
 ) {
   logger::init().unwrap_or(()); // Logger initialization
+  info!("starting daemon...");
+  println!("starting daemon...");
   let cluster_id = cluster_id.to_string();
   let deploy_token = deploy_token.to_string();
   let agzb64 = agz_b64.to_string();
