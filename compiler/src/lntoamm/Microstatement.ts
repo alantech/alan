@@ -124,10 +124,23 @@ class Microstatement {
         }
         outString += "  }"
         break
-      case StatementType.REREF:
-      case StatementType.ARG:
-      case StatementType.CLOSUREDEF:
       case StatementType.TAIL:
+        // outString = `TAIL evalcond(${this.inputNames.join(',')}) returns ${this.closureOutputType.typename}`
+        break;
+      case StatementType.REREF:
+        // outString = `REREF ${this.alias} = ${this.outputName}`
+        break;
+      case StatementType.ARG:
+        // outString = `ARG`
+        break;
+      case StatementType.CLOSUREDEF:
+        // outString = `CLOSUREDEF ${this.outputName} ${this.outputType} ${this.closureOutputType.typename}`
+        break;
+      case StatementType.ENTERFN:
+        // outString = "ENTERFN"
+        break;
+      case StatementType.ENTERCONDFN:
+        // outString = "ENTERCONDFN"
         // Intentionally never output anything, this is metadata for the transpiler algo only
         break
     }
@@ -610,7 +623,6 @@ ${emitsAst.t} on line ${emitsAst.line}:${emitsAst.char}`)
         last.outputType != event.type &&
         !event.type.castable(last.outputType)
       ) {
-        console.log(microstatements.map(m => m.toString()).join('\n'))
         throw new Error(`Attempting to assign a value of type ${last.outputType.typename} to an event of type ${event.type.typename}
 ${emitsAst.t} on line ${emitsAst.line}:${emitsAst.char}`)
       }

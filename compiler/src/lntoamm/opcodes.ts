@@ -92,7 +92,6 @@ const addopcodes = (opcodes: object) => {
           isUnwrapReturn?: boolean,
           retTy?: Type,
         ) => {
-          console.log(`inserting evalcond with args ${realArgNames}`)
           // `== null` checks against both undefined and null. these *must* be set to valid values.
           if (isUnwrapReturn == null || retTy == null) {
             throw new Error('evalcond has very specific requirements and they were not met');
@@ -238,7 +237,6 @@ const addopcodes = (opcodes: object) => {
                         closureArgs[0].typeApplies(arrayInnerType, scope, interfaceMap)
                         closureArgs[1].typeApplies(arrayInnerType, scope, interfaceMap)
                       } else if (['foldl'].includes(opcodeName)) {
-                        console.log(`foldl insert closure at index ${idx}`)
                         const reducerTypes = Object.values(inputTypes[0].properties) as Type[]
                         const inType = scope.deepGet(
                           reducerTypes[0].typename.replace(/^Array<(.*)>$/, "$1")
@@ -438,7 +436,6 @@ const addopcodes = (opcodes: object) => {
                     const m = microstatements.slice(0, idx)
                     Microstatement.closureFromUserFunction(fn, fn.scope || scope, m, interfaceMap)
                     const closure = m[m.length - 1]
-                    console.log(`foldl inserting a closure at index ${idx}`)
                     microstatements.splice(idx, 0, closure)
                     realArgNames[1] = closure.outputName
                     return closure.closureOutputType

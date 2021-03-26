@@ -433,7 +433,6 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
     s: Scope,
     microstatements: Array<Microstatement>,
   ) {
-    const dbg = (msg: any) => this.getName() === 'reducePar' && console.log(msg);
     const scope = new Scope(s)
     scope.secondaryPar = this.scope
     // Perform a transform, if necessary, before generating the microstatements
@@ -448,17 +447,16 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
     // First, check that there are no ENTERFNS that contain a similar instance of the
     // transformed function, which would cause an infinite loop in compilation and
     // abort with a useful error message.
-    // const recursiveProof = microstatements.findIndex(m => m.statementType === StatementType.ENTERFN && m.fns[0] == fn)
-    // if (recursiveProof !== -1) {
-    //   let path = [microstatements[recursiveProof].fns[0].getName()];
-    //   path.push(fn.getName());
-    //   const pathstr = path.join(' -> ');
-    //   throw new Error(`Recursive callstack detected: ${pathstr}. Aborting.`);
-    // }
+    const recursiveProof = microstatements.findIndex(m => m.statementType === StatementType.ENTERFN && m.fns[0] == fn)
+    if (recursiveProof !== -1) {
+      let path = [microstatements[recursiveProof].fns[0].getName()];
+      path.push(fn.getName());
+      const pathstr = path.join(' -> ');
+      throw new Error(`Recursive callstack detected: ${pathstr}. Aborting.`);
+    }
     // Get the current statement length for usage in multiple cleanup routines
     // TODO: fix opcodes inserting mstmts and re-enable this
     const originalStatementLength = microstatements.length
-    dbg(`original length: ${originalStatementLength}`)
     // add a marker for this function
     const enterfn = new Microstatement(
       StatementType.ENTERFN,
@@ -492,24 +490,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
       ))
     }
     for (const s of fn.statements) {
-      // const before = microstatements[originalStatementLength];
-      // const snapshot = [...microstatements];
       Microstatement.fromStatement(s, microstatements, scope)
-      // TODO: opcodes that accept a closure (that aren't condfn) cause this
-      // if statement to get evaluated...
-      // if (microstatements[originalStatementLength] !== before) {
-      //   console.log('------------------ VIOLATION');
-      //   // console.log(s.statementAst.t.trim());
-      //   // console.log(before)
-      //   // console.log(microstatements[originalStatementLength])
-      //   for (let ii = 0; ii < microstatements.length; ii++) {
-      //     if (microstatements[ii] !== snapshot[ii]) {
-      //       console.log(snapshot[ii])
-      //       console.log(microstatements[ii])
-      //       break;
-      //     }
-      //   }
-      // }
     }
     // const originalStatementLength = microstatements.findIndex(m => m === enterfn);
     // Delete `REREF`s except a `return` statement's `REREF` to make sure it doesn't interfere with
@@ -634,7 +615,7 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
 
     const tailIdx = microstatements.slice(originalStatementLength).findIndex(ms => ms.statementType === StatementType.TAIL);
     if (tailIdx !== -1) {
-      const tail = microstatements.splice(tailIdx);
+      const tail = microstatements.splice(originalStatementLength + tailIdx);
       Conditional.handleTail(
         microstatements,
         tail,
