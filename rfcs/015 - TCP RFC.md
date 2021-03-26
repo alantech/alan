@@ -40,7 +40,7 @@ The main issue is that Alan's event system is intentionally a static event syste
 
 While changes to the language are on the table (and some of the alternatives will cover a few of them), the best overall solution (considering implementation complexity and cognitive complexity) doesn't need it. :)
 
-The clearest way to introduce the new syntax is to simply use it in an example similar to how it will be used by Anycloud:
+The clearest way to introduce the new syntax is to simply use it in a proxying example similar to how it will be used by Anycloud:
 
 ```ln
 from @std/tcpserver import connection
