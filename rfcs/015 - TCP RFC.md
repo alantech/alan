@@ -13,7 +13,7 @@ YYYY-MM-DD
 #### Approvers
 
 - Luis De Pombo <luis@alantechnologies.com>
-- Colton Donnely <colton@alantechnologies.com>
+- Colton Donnelly <colton@alantechnologies.com>
 
 ### Implementation
 
@@ -44,28 +44,20 @@ The clearest way to introduce the new syntax is to simply use it in an example s
 
 ```ln
 from @std/tcpserver import connection
-from @std/tcp import Connection, connect, addContext, chunk, Chunk, Context, read, write, connClose, close, connError, connTimeout
+from @std/tcp import TcpChannel, connect, addContext, chunk, Chunk, TcpContext, read, write, tcpClose, close
 
-on connection fn (conn: Connection) {
+on connection fn (channel: TcpChannel) {
   const tunnel = connect('localhost', 8088);
-  conn.addContext(tunnel);
-  tunnel.addContext(conn);
+  channel.addContext(tunnel);
+  tunnel.addContext(channel);
 }
 
-on chunk fn (ctx: Context<Connection>) {
-  const c: Chunk = ctx.conn.read();
+on chunk fn (ctx: TcpContext<TcpChannel>) {
+  const c: Chunk = ctx.channel.read();
   ctx.context.write(c);
 }
 
-on connClose fn (ctx: Context<Connection>) {
-  ctx.context.close();
-}
-
-on connError fn (ctx: Context<Connection>) {
-  ctx.context.close();
-}
-
-on connTimeout fn (ctx: Context<Connection>) {
+on tcpClose fn (ctx: TcpContext<TcpChannel>) {
   ctx.context.close();
 }
 ```
@@ -74,21 +66,21 @@ The TCP server is a separate module for the same reason as the http server. The 
 
 The connection handler in this case triggers the construction of a TCP client connection to the specified host and port. Once constructed, the server's connection and the client connection are added to each other's contexts.
 
-And that's it. Once constructed, the AVM will keep it resident and emit events involving that connection. Those events get the `Context<T>` type, where the `T` is the type that was added to the context. One known vulnerability with this as-is is that the client and server context types need to match each other and the compiler will not be able to keep this completely safe. This could potentially be avoided by having completely separate events for client and server, but that also nearly doubles the size of the codebase so it is being avoided for now. This can also be worked around with an `Either<ServerType, ClientType>` that is checked by the handlers which is why this is not considered a huge problem.
+And that's it. Once constructed, the AVM will keep it resident and emit events involving that connection. Those events get the `TcpContext<T>` type, where the `T` is the type that was added to the context. One known vulnerability with this as-is is that the client and server context types need to match each other and the compiler will not be able to keep this completely safe. This could potentially be avoided by having completely separate events for client and server, but that also nearly doubles the size of the codebase so it is being avoided for now. This can also be worked around with an `Either<ServerType, ClientType>` that is checked by the handlers which is why this is not considered a huge problem.
 
-The `Context<T>` type has two properties, the `conn: Connection` that corresponds to the connection that the triggered the event, and the `context: T` property that is whatever value was attached to the connection, which in this case is another connection.
+The `TcpContext<T>` type has two properties, the `channel: TcpChannel` that corresponds to the connection that the triggered the event, and the `context: T` property that is whatever value was attached to the channel, which in this case is another channel.
 
-The `chunk` event is triggered when a "chunk" of data has arrived. The implementation of the `Chunk` type is an opaque type that is essentially a pointer to the actual chunk of data that has arrived. The `read` function returns that chunk, which is guaranteed to exist when the event is triggered. A follow-up read or a read out of the chunk event should return an empty chunk. For normal Alan applications that want to actually manipulate the Chunk data, `toInt8Array` and `toAsciiString` methods would exist to provide parseable data. ASCII instead of UTF-8 because a chunk could split a multi-byte UTF-8 char. There should be an `Array<int8>` `toResultString` implementation that converts UTF-8, if possible, though, so repeatedly-appended chunks could be stream processed with a second layer of event logic (or all-at-once on connection close).
+The `chunk` event is triggered when a "chunk" of data has arrived. The implementation of the `Chunk` type is an opaque type that is essentially a pointer to the actual chunk of data that has arrived. The `read` function returns that chunk, which is guaranteed to exist when the event is triggered. A follow-up read or a read out of the chunk event should return an empty chunk. For normal Alan applications that want to actually manipulate the Chunk data, `toInt8Array` and `toAsciiString` methods would exist to provide parseable data. ASCII instead of UTF-8 because a chunk could split a multi-byte UTF-8 char. There should be an `Array<int8>` `toResultString` implementation that converts UTF-8, if possible, though, so repeatedly-appended chunks could be stream processed with a second layer of event logic (or all-at-once on channel close).
 
 The chunk handler in our case just takes the `Chunk` and immediately writes it to the connection stored in the `context` field. This nice and tidily joins the two streams to each other in 4 lines of code.
 
-The remaining three events deal with event closure. I am tempted to make it just one event with a helper function to get the reason for the closing, but that might encourage ignoring errors, so I'm not sure.
+The last event handles event closure and closes out the other end when it happens. This looks like it would technically infinitely loop on `tcpClose` events as they both call each others' `close` method over and over again, but it won't be a loop if trying to close an already closed event does nothing. This makes it impossible to write "crashy" or "loopy" code involving these streams, so doing so even if it makes the AVM implementation more complicated is the way to go here.
 
-All of these do the same thing: close out the other end when the other closes. This looks like it would technically infinitely loop on `connClose` events as they both call each others' `close` method over and over again, but it won't be a loop if trying to close an already closed event does nothing. This makes it impossible to write "crashy" or "loopy" code involving these streams, so doing so even if it makes the AVM implementation more complicated is the way to go here.
+There are multiple reasons why a TCP connection could be closed: explicit closing messaging between the ends, a timeout, or some other error. Being able to query the `channel` state to get the reason will allow this event to potentially do something different in the different scenarios.
 
-The `Context<T>` type makes this structure possible, as the various events can "share" state between one another. That state is copied to each event, not actually shared, but it can be atomically updated by re-calling `addContext` on the `conn` property, allowing actual mutable state to be passed between the handlers, though it is a synchronization point.
+The `TcpContext<T>` type makes this structure possible, as the various events can "share" state between one another. That state is copied to each event, not actually shared, but it can be atomically updated by re-calling `addContext` on the `channel` property, allowing actual mutable state to be passed between the handlers, though it is a synchronization point.
 
-To re-emphasize, the biggest flaw of this approach is that the `T` in `Context<T>` is enforced poorly by the compiler. The `addContext` function will take `any` value, and it's up to the user to make sure the `T` they add to their listeners matches the `T` they set it with.
+To re-emphasize, the biggest flaw of this approach is that the `T` in `TcpContext<T>` is enforced poorly by the compiler. The `addContext` function will take `any` value, and it's up to the user to make sure the `T` they add to their listeners matches the `T` they set it with.
 
 ### Alternatives Considered
 
