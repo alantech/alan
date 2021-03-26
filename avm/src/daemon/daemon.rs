@@ -61,7 +61,7 @@ async fn post_v1(endpoint: &str, body: Value) -> String {
       let err = format!("{:?}", err);
       error!("{}", err);
       err
-    },
+    }
   }
 }
 
@@ -106,7 +106,7 @@ async fn post_v1_scale(
       let err = format!("{:?}", err);
       error!("{}", err);
       err
-    },
+    }
   }
 }
 
@@ -185,7 +185,7 @@ async fn run_agz_b64(agz_b64: &str, priv_key_b64: Option<&str>, cert_b64: Option
         run(bytecode, HttpType::HTTP(HttpConfig { port: 80 })).await;
       }
     } else {
-      error!("Error reading signed 64 bit integers from src into dst.");  
+      error!("Error reading signed 64 bit integers from src into dst.");
     }
   } else {
     error!("Unable to decaode agz base64.");
@@ -230,10 +230,12 @@ pub async fn start(
         leader_ip = lrh.get_leader_id().to_string();
       }
       if leader_ip == self_ip {
-        let factor = post_v1_stats(&cluster_id, &deploy_token).await.unwrap_or_else(|e| {
-          error!("Failed getting stats. Error: {}", e);
-          return "1".to_string();
-        });
+        let factor = post_v1_stats(&cluster_id, &deploy_token)
+          .await
+          .unwrap_or_else(|e| {
+            error!("Failed getting stats. Error: {}", e);
+            return "1".to_string();
+          });
         println!(
           "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
           cluster_id,
