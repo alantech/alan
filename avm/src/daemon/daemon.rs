@@ -34,14 +34,19 @@ pub static CLUSTER_SECRET: OnceCell<Option<String>> = OnceCell::new();
 async fn get_private_ip() -> Result<String, Box<dyn Error>> {
   let res = Command::new("hostname").arg("-I").output().await;
   let err = "Failed to execute `hostname`";
-  let stdout = res.expect(err).stdout;
-  let mut private_ip = String::from_utf8(stdout);
-  match private_ip {
-    Ok(private_ip) => match private_ip.trim().split_whitespace().next() {
-      Some(private_ip) => Ok(private_ip.to_string()),
-      None => return Err("No ip found".into()),
-    },
-    Err(err) => return Err(err.into()),
+  match res {
+    Ok(res) => {
+      let stdout = res.stdout;
+      let mut private_ip = String::from_utf8(stdout);
+      match private_ip {
+        Ok(private_ip) => match private_ip.trim().split_whitespace().next() {
+          Some(private_ip) => Ok(private_ip.to_string()),
+          None => return Err("No ip found".into()),
+        },
+        Err(err) => return Err(err.into()),
+      }
+    }
+    Err(_) => return Err(err.into()),
   }
 }
 
