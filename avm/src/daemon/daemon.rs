@@ -35,16 +35,16 @@ async fn get_private_ip() -> Result<String, Box<dyn Error>> {
   let res = Command::new("hostname").arg("-I").output().await;
   let err = "Failed to execute `hostname`";
   let stdout = res.expect(err).stdout;
-  let private_ip = String::from_utf8(stdout)
-    .expect(err)
-    .trim()
-    .split_whitespace()
-    .next()
-    .unwrap()
-    .to_string();
+  let mut private_ip = String::from_utf8(stdout);
   match private_ip {
-    Ok(private_ip) => private_ip,
-    Err(e) => return Err(e.into()),
+    Ok(private_ip) => {
+      private_ip.trim().split_whitespace().next();
+      match private_ip {
+        Ok(private_ip) => private_ip.to_string(),
+        Err(err) => return Err(err.into()),
+      }
+    }
+    Err(err) => return Err(err),
   }
 }
 
