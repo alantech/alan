@@ -34,7 +34,7 @@ This would be a minor update if Alan was post-1.0.0 as it adds new functionality
 
 ## Proposal
 
-A TCP connection has four essential states: open, closed-on-purpose, closed-on-error, and closed-by-timeout. While in the open state, data can be read from its output, written to its input, or explicitly closed as triggers by the user, while it can also unexpectedly transition to the other two closed states. The amount of data received at any particular point in time is completely arbitrary and up to both the originating machine and the local kernel, which makes it a good fit for the event system so the users' code is prompted when each chunk is ready to work with that it can continue with.
+A TCP connection has four essential states: open, closed-on-purpose, closed-on-error, and closed-by-timeout. While in the open state, data can be read from its output, written to its input, or explicitly closed as triggers by the user, while it can also unexpectedly transition to the other two closed states. The amount of data received at any particular point in time is completely arbitrary and up to both the originating machine and the local kernel, which makes it a good fit for the event system so the users' code is prompted when each chunk is ready to process.
 
 The main issue is that Alan's event system is intentionally a static event system determined at compile time, so it is impossible to add new event handlers for each new socket that is opened by the users' code or has been received by the TCP server. The secondary issue is that the AVM's internal memory model would require an expensive conversion of that chunk from packed bytes to an internal `Array<int8>` type which, to simplify the memory model, is actually really an `Array<int64>` under the hood, which is very wasteful for a true byte array, so being able to avoid that conversion when possible would be good. Finally, the ergonomics of the API need to be both easy-to-understand and mesh well with the existing syntax while adding stream processing support at the same time.
 
@@ -43,8 +43,8 @@ While changes to the language are on the table (and some of the alternatives wil
 The clearest way to introduce the new syntax is to simply use it in an example similar to how it will be used by Anycloud:
 
 ```ln
-from @std/tcpserver import connection, Connection
-from @std/tcp import connect, addContext, chunk, Chunk, Context, read, write, connClose, close, connError, connTimeout
+from @std/tcpserver import connection
+from @std/tcp import Connection, connect, addContext, chunk, Chunk, Context, read, write, connClose, close, connError, connTimeout
 
 on connection fn (conn: Connection) {
   const tunnel = connect('localhost', 8088);
