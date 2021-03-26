@@ -1,4 +1,4 @@
-# 000 - RFC Template
+# 016 - Reworked Compiler Front End
 
 ## Current Status
 
@@ -8,11 +8,12 @@
 
 ### Accepted
 
-YYYY-MM-DD
+2021-03-26
 
 #### Approvers
 
-- Full Name <email@example.com>
+- David Ellis <david@alantechnologies.com>
+- Luis De Pombo <luis@alantechnologies.com>
 
 ### Implementation
 
@@ -154,7 +155,7 @@ return conditionResultUnwrapped;
 12. `Maybe<Stringifiable>` is the minimal interface value for `val`, so the signature of the `toString` fn is now rewritten as `(Maybe<Stringifiable>) -> U`.
 13. `string` is the concrete type representation for `U`, so the signature of the `toString` fn is now rewritten as `(Maybe<Stringifiable>) -> string`.
 
-(side note: the `getMaybe()` call will also eventually be syntactic sugar, according to [RFC 12][RFC-12]).
+(side note: the `getMaybe()` call will also eventually be syntactic sugar, according to RFC 12).
 
 ### Alternatives Considered
 
