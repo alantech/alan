@@ -156,6 +156,7 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
 }
 
 async fn run_agz_b64(agz_b64: &str, priv_key_b64: Option<&str>, cert_b64: Option<&str>) {
+  info!("Runing agz b64");
   let bytes = base64::decode(agz_b64);
   if let Ok(bytes) = bytes {
     let agz = GzDecoder::new(bytes.as_slice());
@@ -254,6 +255,7 @@ pub async fn start(
     error!("outside {}", err);
     panic!("panic {}", err);
   };
+  info!("Will run agz b64");
   let agz_run = async { run_agz_b64(agz_b64, priv_key_b64, cert_b64) };
   let agz_run_res = agz_run.catch_unwind().await;
   if let Err(err) = agz_run_res {
