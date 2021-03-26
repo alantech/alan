@@ -16,20 +16,25 @@ pub struct VMMetadata {
 }
 
 impl VMMetadata {
-  fn from_txt_data(data: &[u8]) -> VMMetadata {
-    let txt = str::from_utf8(&*data).expect("Data in TXT record is not a valid string");
-    let err = format!(
-      "VM metadata in DNS TXT record has invalid schema version: `{}`",
-      &txt
-    );
-    let parts: Vec<&str> = txt.split("|").collect();
-    if parts.len() != 5 || parts[0] != "v1" {
-      panic!(err);
-    }
-    VMMetadata {
-      schema_version: parts[0].to_string(),
-      alan_version: parts[1].to_string(),
-      private_ip_addr: parts[4].to_string(),
+  fn from_txt_data(data: &[u8]) -> Result<VMMetadata, Box<dyn Error>> {
+    let txt = str::from_utf8(&*data);
+    match txt {
+      Ok(txt) => {
+        let err = format!(
+          "VM metadata in DNS TXT record has invalid schema version: `{}`",
+          &txt
+        );
+        let parts: Vec<&str> = txt.split("|").collect();
+        if parts.len() != 5 || parts[0] != "v1" {
+          return Err(err.into());
+        }
+        Ok(VMMetadata {
+          schema_version: parts[0].to_string(),
+          alan_version: parts[1].to_string(),
+          private_ip_addr: parts[4].to_string(),
+        })
+      }
+      Err(_) => return Err("Data in TXT record is not a valid string".into()),
     }
   }
 }
@@ -62,7 +67,12 @@ impl DNS {
       for rec in resp {
         let data = &rec.txt_data()[0];
         let vm = VMMetadata::from_txt_data(data);
-        vms.push(vm);
+        match vm {
+          Ok(vm) => {
+            vms.push(vm);
+          }
+          Err(err) => return Err(err.into()),
+        }
       }
       Ok(vms)
     } else {
