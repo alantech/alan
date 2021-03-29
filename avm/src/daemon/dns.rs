@@ -16,7 +16,7 @@ pub struct VMMetadata {
 }
 
 impl VMMetadata {
-  fn from_txt_data(data: &[u8]) -> Result<VMMetadata, Box<dyn Error>> {
+  fn from_txt_data(data: &[u8]) -> Result<VMMetadata, Box<dyn Error + Send + Sync>> {
     let txt = str::from_utf8(&*data);
     match txt {
       Ok(txt) => {
@@ -40,7 +40,7 @@ impl VMMetadata {
 }
 
 impl DNS {
-  pub fn new(domain: &str) -> Result<DNS, Box<dyn Error>> {
+  pub fn new(domain: &str) -> Result<DNS, Box<dyn Error + Send + Sync>> {
     let mut resolver_opts = ResolverOpts::default();
     // ignore /ect/hosts
     resolver_opts.use_hosts_file = false;
@@ -58,7 +58,7 @@ impl DNS {
     }
   }
 
-  pub async fn get_vms(&self, cluster_id: &str) -> Result<Vec<VMMetadata>, Box<dyn Error>> {
+  pub async fn get_vms(&self, cluster_id: &str) -> Result<Vec<VMMetadata>, Box<dyn Error + Send + Sync>> {
     let name = format!("{}.{}", cluster_id, self.domain);
     let err = format!("Failed to fetch TXT record with name {}", &name);
     let resp = self.resolver.txt_lookup(name).await;

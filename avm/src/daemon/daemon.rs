@@ -31,7 +31,7 @@ use crate::vm::run::run;
 pub static CLUSTER_SECRET: OnceCell<Option<String>> = OnceCell::new();
 
 #[cfg(target_os = "linux")]
-async fn get_private_ip() -> Result<String, Box<dyn Error>> {
+async fn get_private_ip() -> Result<String, Box<dyn Error + Send + Sync>> {
   let res = Command::new("hostname").arg("-I").output().await;
   let err = "Failed to execute `hostname`";
   match res {
@@ -51,7 +51,7 @@ async fn get_private_ip() -> Result<String, Box<dyn Error>> {
 }
 
 #[cfg(not(target_os = "linux"))]
-async fn get_private_ip() -> Result<String, Box<dyn Error>> {
+async fn get_private_ip() -> Result<String, Box<dyn Error + Send + Sync>> {
   panic!("`hostname` command does not exist in this OS");
 }
 
@@ -210,55 +210,65 @@ pub async fn start(
   let deploy_token = deploy_token.to_string();
   let agzb64 = agz_b64.to_string();
   let domain = domain.to_string();
-  let stats_res = task::spawn(async move {
+  task::spawn(async move {
     // TODO even better period determination
     let period = Duration::from_secs(5 * 60);
-    let self_ip = get_private_ip().await.unwrap();
+    let mut self_ip = get_private_ip().await;
     let mut cluster_size = 0;
     let mut leader_ip = "".to_string();
-    let dns = DNS::new(&domain).unwrap();
-    loop {
-      sleep(period).await;
-      let vms = dns.get_vms(&cluster_id).await.unwrap_or_else(|e| {
-        error!("{}", e);
-        return Vec::new();
-      });
-      // triggered the first time since cluster_size == 0
-      // and every time the cluster changes size
-      if vms.len() != cluster_size {
-        cluster_size = vms.len();
-        let ips = vms
-          .iter()
-          .map(|vm| vm.private_ip_addr.to_string())
-          .collect();
-        let lrh = LogRendezvousHash::new(ips);
-        leader_ip = lrh.get_leader_id().to_string();
-      }
-      if leader_ip == self_ip {
-        let factor = post_v1_stats(&cluster_id, &deploy_token)
-          .await
-          .unwrap_or_else(|e| {
-            error!("Failed getting stats. Error: {}", e);
-            return "1".to_string();
+    let mut dns = DNS::new(&domain);
+    match (dns, self_ip) {
+      (Ok(dns), Ok(self_ip)) => {
+        loop {
+          sleep(period).await;
+          let vms = dns.get_vms(&cluster_id).await.unwrap_or_else(|e| {
+            error!("{}", e);
+            return Vec::new();
           });
-        println!(
-          "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
-          cluster_id,
-          vms.len(),
-          factor
-        );
-        if factor != "1" {
-          post_v1_scale(&cluster_id, &agzb64, &deploy_token, &factor).await;
+          // triggered the first time since cluster_size == 0
+          // and every time the cluster changes size
+          if vms.len() != cluster_size {
+            cluster_size = vms.len();
+            let ips = vms
+              .iter()
+              .map(|vm| vm.private_ip_addr.to_string())
+              .collect();
+            let lrh = LogRendezvousHash::new(ips);
+            leader_ip = lrh.get_leader_id().to_string();
+          }
+          if leader_ip == self_ip {
+            let factor = post_v1_stats(&cluster_id, &deploy_token)
+              .await
+              .unwrap_or_else(|e| {
+                error!("Failed getting stats. Error: {}", e);
+                return "1".to_string();
+              });
+            println!(
+              "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
+              cluster_id,
+              vms.len(),
+              factor
+            );
+            if factor != "1" {
+              post_v1_scale(&cluster_id, &agzb64, &deploy_token, &factor).await;
+            }
+          }
         }
-      }
+      },
+      (Err(dns_err), Ok(_self_ip)) => {
+        error!("DNS error: {}", dns_err);
+        panic!("DNS error: {}", dns_err);
+      },
+      (Ok(_dns), Err(self_ip_err)) => {
+        error!("Private ip error: {}", self_ip_err);
+        panic!("Private ip error: {}", self_ip_err);
+      },
+      (Err(dns_err), Err(self_ip_err)) => {
+        error!("DNS error: {} and Private ip error: {}", dns_err, self_ip_err);
+        panic!("DNS error: {} and Private ip error: {}", dns_err, self_ip_err);
+      },
     }
   });
-  info!("maybe endless await?");
-  println!("maybe endless await?");
-  if let Err(err) = stats_res.await {
-    error!("outside {}", err);
-    panic!("panic {}", err);
-  };
   info!("Will run agz b64");
   println!("Will run agz b64");
   let agz_run = async { run_agz_b64(agz_b64, priv_key_b64, cert_b64) };
