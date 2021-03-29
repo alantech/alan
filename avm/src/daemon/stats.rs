@@ -85,7 +85,6 @@ async fn get_cores_total_times() -> Vec<CPUSecsV1> {
           steal: 0.0,
         }
       } else {
-        error!("Failed to get CPU times");
         CPUSecsV1 {
           user: 0.0,
           system: 0.0,
@@ -119,7 +118,6 @@ async fn get_cores_total_times() -> Vec<CPUSecsV1> {
           steal: cpu.steal().get::<second>(),
         }
       } else {
-        error!("Failed to get CPU times");
         CPUSecsV1 {
           user: 0.0,
           system: 0.0,
@@ -160,7 +158,7 @@ async fn get_cores_times() -> Vec<CPUSecsV1> {
 }
 
 #[cfg(target_os = "linux")]
-pub async fn get_v1_stats() -> Result<VMStatsV1, Box<dyn Error>> {
+pub async fn get_v1_stats() -> Result<VMStatsV1, Box<dyn Error + Send + Sync>> {
   let memory = heim_memory::memory().await;
   match memory {
     Ok(memory) => {
@@ -187,7 +185,7 @@ pub async fn get_v1_stats() -> Result<VMStatsV1, Box<dyn Error>> {
 
 // zero out linux specific stats
 #[cfg(not(target_os = "linux"))]
-pub async fn get_v1_stats() -> Result<VMStatsV1, Box<dyn Error>> {
+pub async fn get_v1_stats() -> Result<VMStatsV1, Box<dyn Error + Send + Sync>> {
   let memory = heim_memory::memory().await;
   match memory {
     Ok(memory) => {

@@ -113,7 +113,7 @@ async fn post_v1_scale(
 }
 
 // returns cluster delta
-async fn post_v1_stats(cluster_id: &str, deploy_token: &str) -> Result<String, Box<dyn Error>> {
+async fn post_v1_stats(cluster_id: &str, deploy_token: &str) -> Result<String, Box<dyn Error + Send + Sync>> {
   let vm_stats = get_v1_stats().await?;
   let mut stats_body = json!({
     "deployToken": deploy_token,
@@ -213,10 +213,10 @@ pub async fn start(
   task::spawn(async move {
     // TODO even better period determination
     let period = Duration::from_secs(5 * 60);
-    let mut self_ip = get_private_ip().await;
+    let self_ip = get_private_ip().await;
     let mut cluster_size = 0;
     let mut leader_ip = "".to_string();
-    let mut dns = DNS::new(&domain);
+    let dns = DNS::new(&domain);
     match (dns, self_ip) {
       (Ok(dns), Ok(self_ip)) => {
         loop {
