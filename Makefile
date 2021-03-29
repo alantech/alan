@@ -23,7 +23,7 @@ compiler-browser-check:
 ./compiler/alan-compile:
 	cd compiler && yarn
 	yarn add pkg
-	cd compiler && ../node_modules/.bin/pkg --targets node14.4.0 .
+	cd compiler && ../node_modules/.bin/pkg --targets host .
 
 ./avm/target/release/alan: compiler/alan-compile
 	cd avm && cargo fmt
