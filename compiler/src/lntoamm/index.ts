@@ -229,30 +229,11 @@ const ammFromModuleAsts = (moduleAsts: ModuleAstLookup) => {
         handlerDec += "): " + handler.getReturnType().typename + " {"
         // Extract the handler statements and compile into microstatements
         const statements = handler.maybeTransform(new Map()).statements;
-        let tailed: [Microstatement, Array<Microstatement>, Array<Statement>] | null = null;
         for (let ii = 0; ii < statements.length; ii++) {
-          const start = microstatements.length;
           Microstatement.fromStatement(statements[ii], microstatements)
-          let tailidx = microstatements
-                .slice(start)
-                .findIndex((mstmt) => mstmt.statementType === StatementType.TAIL);
-          if (tailidx >= 0) {
-            tailed = [
-              microstatements.splice(tailidx, 1)[0],
-              microstatements.splice(tailidx),
-              statements.splice(ii + 1),
-            ]
-            break;
-          }
         }
-        if (tailed !== null) {
-          let [tail, posttail, resttail] = tailed;
-          Conditional.handleTail(
-            microstatements,
-            [tail, ...posttail],
-            resttail,
-          )
-        }
+
+        Conditional.handleTails(microstatements)
 
         hoistConst(
           microstatements,

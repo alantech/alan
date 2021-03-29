@@ -613,18 +613,17 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
       }
     }
 
-    const tailIdx = microstatements.slice(originalStatementLength).findIndex(ms => ms.statementType === StatementType.TAIL);
-    if (tailIdx !== -1) {
-      const tail = microstatements.splice(originalStatementLength + tailIdx);
-      Conditional.handleTail(
-        microstatements,
-        tail,
-        [],
-      )
-      // if fn isn't a closure, drop the return that got inserted at the end of handleTail
-      if (originalStatementLength !== 0) {
-        microstatements.pop();
+    // if this is an inlined function, handle
+    if (originalStatementLength === 0) {
+      const fromHere = microstatements.splice(originalStatementLength);
+      if (fromHere.some(m => m.statementType === StatementType.TAIL)) {
+        Conditional.handleTails(fromHere);
       }
+      microstatements.push(...fromHere);
+    }
+
+    if (originalStatementLength !== 0 && microstatements[microstatements.length - 1].statementType === StatementType.EXIT) {
+      microstatements.pop();
     }
 
     microstatements.splice(originalStatementLength, 1);

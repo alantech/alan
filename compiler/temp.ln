@@ -1,31 +1,38 @@
-from @std/app import print, start, exit
-on start {
-  const res = add(toInt8(1), toInt8(2));
-  emit exit res.getOrExit();
+from @std/app import start, print, exit
+
+fn bar() {
+  print('bar!');
 }
 
-// on start {
-//   if 0 == 1 {
-//     print('true!');
-//   } else if false {
-//     print('yikes');
-//     emit exit 0;
-//     return;
-//   } else {
-//     print('oof');
-//   }
-//   (1 + 1).print();
-//   emit exit 0;
-// }
+fn baz() {
+  print('baz!');
+}
 
-// on start {
-//   const test = [ 1, 1, 2, 3, 5, 8 ];
+on start {
+  if 1 == 0 {
+    print('What!?');
+  } else {
+    print('Math is sane...');
+  }
 
-//   // TODO: Even more ridiculous when you want to allow parallelism
-//   test.reducePar(
-//     fn (acc: string, i: int): string = ((acc == '') && (i % 2 == 1)) ? i.toString() : (i % 2 == 1 ? (acc + ', ' + i.toString()) : acc),
-//     fn (acc: string, cur: string): string = ((acc != '') && (cur != '')) ? (acc + ', ' + cur) : (acc != '' ? acc : cur),
-//     '').print();
+  if 1 == 0 {
+    print('Not this again...');
+  } else if 1 == 2 {
+    print('Still wrong...');
+  } else {
+    print('Math is still sane, for now...');
+  }
 
-//   emit exit 0;
-// }
+  const foo: bool = true == true;
+  if foo bar else baz
+
+  const isTrue = true == true;
+  cond(isTrue, fn {
+    print("It's true!");
+  });
+  cond(!isTrue, fn {
+    print('This should not have run');
+  });
+
+  emit exit 0;
+}

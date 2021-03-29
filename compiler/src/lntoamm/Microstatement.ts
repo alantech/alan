@@ -1666,6 +1666,7 @@ ${assignablesAst.t}`
       microstatements
     );
     microstatements[microstatements.length - 1].outputName = tableName;
+    const retTys: Type[] = [];
     // insert the conditions and matching execution
     extractCondClauses(conditionalsAst).forEach(clause => {
       let cond = clause[0];
@@ -1692,7 +1693,7 @@ ${assignablesAst.t}`
       let thenname = uuid().replace(/-/g, '_');
       thenname = '_' + thenname.substring(0, thenname.length - 5) + '_THEN';
       const enterThenIdx = microstatements.length;
-      // insert ENTERCONDFN so there aren't any recursive value rewrites
+      // handle the THEN fn inline to ensure that scope and such don't break
       microstatements.push(new Microstatement(
         StatementType.ENTERCONDFN,
         scope,
@@ -1707,9 +1708,9 @@ ${assignablesAst.t}`
         undefined,
         evalCondRetTy,
       ));
+      let isClosure = true;
       if (then.has('functionbody')) {
         const thenStmtAsts = then.get('functionbody').get('statements').getAll();
-        // let doesReturn = false;
         for (let ast of thenStmtAsts) {
           ast = ast.get('statement');
           if (ast.has('exits')) {
@@ -1743,33 +1744,53 @@ ${assignablesAst.t}`
         }
       } else if (then.has('fnname')) {
         const originalName = then.get('fnname').t.trim();
-        const thenFn = scope.deepGet(originalName);
+        let thenFn = scope.deepGet(originalName);
+        if (thenFn === null) {
+          thenFn = Microstatement.fromVarName(originalName, scope, microstatements);
+        }
+
         if (thenFn === null) {
           throw new Error(`Error: function not found: ${originalName}`)
+        } else if (thenFn instanceof Array) {
+          const fns = (thenFn as Array<Fn>).filter(fn => Object.keys(fn.getArguments()).length === 0);
+          const possibilities = fns.filter(possible => retTys.every(retTy => possible.getReturnType().typeApplies(retTy, scope)));
+          if (possibilities.length === 0) {
+            throw new Error(`Error: function not found: ${originalName}`);
+          }
+          // just select the first i guess?
+          possibilities[0].microstatementInlining([], scope, microstatements);
+        } else if (thenFn instanceof Microstatement && thenFn.outputType === Type.builtinTypes.function) {
+          if (!retTys.every(retTy => retTy.typeApplies((thenFn as Microstatement).closureOutputType, scope))) {
+            throw new Error(`Error: mismatched types: return type of ${originalName} does not apply to the other conditional branches`);
+          }
+          isClosure = false;
+          thenname = thenFn.outputName;
+          thenFn.statementType = StatementType.CLOSURE;
         } else if (!(thenFn instanceof Function)) {
-          throw new Error(`Error: ${originalName} is not a function`)
+          throw new Error(`Error: ${originalName} is not a function`);
         }
-        throw new Error('figure this crap out');
       } else {
         console.log(then);
         throw new Error('unsure how to handle above LPNode when generating conditional');
       }
-      const thenMicrostatements = microstatements.splice(enterThenIdx);
-      const closure = new Microstatement(
-        StatementType.CLOSURE,
-        scope,
-        false, // TODO: detect
-        thenname,
-        evalCondRetTy,
-        [],
-        [],
-        undefined,
-        false,
-        thenMicrostatements,
-        undefined,
-        evalCondRetTy,
-      );
-      microstatements.push(closure);
+      if (isClosure) {
+        const thenMicrostatements = microstatements.splice(enterThenIdx);
+        const closure = new Microstatement(
+          StatementType.CLOSURE,
+          scope,
+          false, // TODO: detect
+          thenname,
+          evalCondRetTy,
+          [],
+          [],
+          undefined,
+          false,
+          thenMicrostatements,
+          undefined,
+          evalCondRetTy,
+        );
+        microstatements.push(closure);
+      }
 
       opcodes.exportScope.get('condfn')[0].microstatementInlining(
         [tableName, condname, thenname],

@@ -38,10 +38,24 @@ export const determineEvalCondReturn = (microstatements: Microstatement[], scope
   return [retTy, isUnwrap];
 }
 
+export const handleTails = (microstatements: Microstatement[]) => {
+  for (let ii = microstatements.length - 1; ii >= 0; ii--) {
+    if (microstatements[ii].statementType !== StatementType.TAIL) {
+      if (microstatements[ii].statementType === StatementType.CLOSURE) {
+        handleTails(microstatements[ii].closureStatements)
+      }
+      continue;
+    }
+
+    const tailed = [...microstatements.splice(ii)];
+    handleTail(microstatements, tailed);
+  }
+}
+
 export const handleTail = (
   microstatements: Microstatement[],
   tailed: Microstatement[],
-  rest: Statement[],
+  rest: Statement[] = [],
 ) => {
   if (tailed.length === 0) return;
   const tail = tailed.shift();
