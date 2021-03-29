@@ -113,7 +113,10 @@ async fn post_v1_scale(
 }
 
 // returns cluster delta
-async fn post_v1_stats(cluster_id: &str, deploy_token: &str) -> Result<String, Box<dyn Error + Send + Sync>> {
+async fn post_v1_stats(
+  cluster_id: &str,
+  deploy_token: &str,
+) -> Result<String, Box<dyn Error + Send + Sync>> {
   let vm_stats = get_v1_stats().await?;
   let mut stats_body = json!({
     "deployToken": deploy_token,
@@ -254,19 +257,25 @@ pub async fn start(
             }
           }
         }
-      },
+      }
       (Err(dns_err), Ok(_self_ip)) => {
         error!("DNS error: {}", dns_err);
         panic!("DNS error: {}", dns_err);
-      },
+      }
       (Ok(_dns), Err(self_ip_err)) => {
         error!("Private ip error: {}", self_ip_err);
         panic!("Private ip error: {}", self_ip_err);
-      },
+      }
       (Err(dns_err), Err(self_ip_err)) => {
-        error!("DNS error: {} and Private ip error: {}", dns_err, self_ip_err);
-        panic!("DNS error: {} and Private ip error: {}", dns_err, self_ip_err);
-      },
+        error!(
+          "DNS error: {} and Private ip error: {}",
+          dns_err, self_ip_err
+        );
+        panic!(
+          "DNS error: {} and Private ip error: {}",
+          dns_err, self_ip_err
+        );
+      }
     }
   });
   info!("Will run agz b64");
