@@ -194,10 +194,12 @@ async fn run_agz_b64(agz_b64: &str, priv_key_b64: Option<&str>, cert_b64: Option
     } else {
     println!("Error reading signed 64 bit integers from src into dst.");
     error!("Error reading signed 64 bit integers from src into dst.");
+    panic!("Error reading signed 64 bit integers from src into dst.");
     }
   } else {
-    println!("Unable to decaode agz base64.");
-    error!("Unable to decaode agz base64.");
+    println!("Unable to decode agz base64.");
+    error!("Unable to decode agz base64.");
+    panic!("Unable to decode agz base64.");
   }
 }
 
@@ -283,10 +285,5 @@ pub async fn start(
   });
   info!("Will run agz b64");
   println!("Will run agz b64");
-  let agz_run = async { run_agz_b64(agz_b64, priv_key_b64, cert_b64) };
-  let agz_run_res = agz_run.catch_unwind().await;
-  if let Err(err) = agz_run_res {
-    error!("{:?}", err);
-    panic!("{:?}", err);
-  }
+  run_agz_b64(agz_b64, priv_key_b64, cert_b64).await;
 }
