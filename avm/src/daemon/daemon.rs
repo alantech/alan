@@ -285,5 +285,13 @@ pub async fn start(
   });
   info!("Will run agz b64");
   println!("Will run agz b64");
-  run_agz_b64(agz_b64, priv_key_b64, cert_b64).await;
+  let agz_res = std::panic::catch_unwind(|| async {
+    run_agz_b64(agz_b64, priv_key_b64, cert_b64).await;
+  });
+  if let Ok(_) = agz_res {
+    info!("Ok runing b64");
+  }
+  if let Err(_) = agz_res {
+    error!("Error runing b64");
+  }
 }
