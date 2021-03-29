@@ -67,7 +67,7 @@ async fn get_proc_usages() -> Vec<f64> {
 // get total cpu times per core since the VM's uptime
 // while setting linux specific fields to 0
 #[cfg(not(target_os = "linux"))]
-async fn get_cores_total_times() -> Vec<CPUSecsV1> {
+async fn get_cores_total_times() -> Vec<Result<CPUSecsV1, String>> {
   heim_cpu::times()
     .map(|r| {
       let cpu = r.expect("Failed to get CPU times");
