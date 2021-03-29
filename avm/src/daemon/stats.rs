@@ -158,7 +158,7 @@ async fn get_cores_times() -> Vec<CPUSecsV1> {
 }
 
 #[cfg(target_os = "linux")]
-pub async fn get_v1_stats() -> Result<VMStatsV1, Box<dyn Error + Send + Sync>> {
+pub async fn get_v1_stats() -> Result<VMStatsV1, String> {
   let memory = heim_memory::memory().await;
   match memory {
     Ok(memory) => {
@@ -176,16 +176,16 @@ pub async fn get_v1_stats() -> Result<VMStatsV1, Box<dyn Error + Send + Sync>> {
           usedSwapKb: swap.used().get::<kilobyte>(),
           freeSwapKb: swap.free().get::<kilobyte>(),
         }),
-        Err(_) => return Err("Failed to get swap information".into()),
+        Err(_) => return Err("Failed to get swap information".to_string()),
       }
     }
-    Err(_) => return Err("Failed to get system memory information".into()),
+    Err(_) => return Err("Failed to get system memory information".to_string()),
   }
 }
 
 // zero out linux specific stats
 #[cfg(not(target_os = "linux"))]
-pub async fn get_v1_stats() -> Result<VMStatsV1, Box<dyn Error + Send + Sync>> {
+pub async fn get_v1_stats() -> Result<VMStatsV1, String> {
   let memory = heim_memory::memory().await;
   match memory {
     Ok(memory) => {
@@ -203,9 +203,9 @@ pub async fn get_v1_stats() -> Result<VMStatsV1, Box<dyn Error + Send + Sync>> {
           usedSwapKb: swap.used().get::<kilobyte>(),
           freeSwapKb: swap.free().get::<kilobyte>(),
         }),
-        Err(_) => return Err("Failed to get swap information".into()),
+        Err(_) => return Err("Failed to get swap information".to_string()),
       }
     }
-    Err(_) => return Err("Failed to get system memory information".into()),
+    Err(_) => return Err("Failed to get system memory information".to_string()),
   }
 }

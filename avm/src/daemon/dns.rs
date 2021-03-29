@@ -16,7 +16,7 @@ pub struct VMMetadata {
 }
 
 impl VMMetadata {
-  fn from_txt_data(data: &[u8]) -> Result<VMMetadata, Box<dyn Error + Send + Sync>> {
+  fn from_txt_data(data: &[u8]) -> Result<VMMetadata, String> {
     let txt = str::from_utf8(&*data);
     match txt {
       Ok(txt) => {
@@ -26,7 +26,7 @@ impl VMMetadata {
         );
         let parts: Vec<&str> = txt.split("|").collect();
         if parts.len() != 5 || parts[0] != "v1" {
-          return Err(err.into());
+          return Err(err.to_string());
         }
         Ok(VMMetadata {
           schema_version: parts[0].to_string(),
@@ -34,13 +34,13 @@ impl VMMetadata {
           private_ip_addr: parts[4].to_string(),
         })
       }
-      Err(_) => return Err("Data in TXT record is not a valid string".into()),
+      Err(_) => return Err("Data in TXT record is not a valid string".to_string()),
     }
   }
 }
 
 impl DNS {
-  pub fn new(domain: &str) -> Result<DNS, Box<dyn Error + Send + Sync>> {
+  pub fn new(domain: &str) -> Result<DNS, String> {
     let mut resolver_opts = ResolverOpts::default();
     // ignore /ect/hosts
     resolver_opts.use_hosts_file = false;
@@ -54,14 +54,14 @@ impl DNS {
         domain: domain.to_string(),
         resolver: resolver,
       }),
-      Err(e) => Err(e.into()),
+      Err(e) => Err(e.to_string()),
     }
   }
 
   pub async fn get_vms(
     &self,
     cluster_id: &str,
-  ) -> Result<Vec<VMMetadata>, Box<dyn Error + Send + Sync>> {
+  ) -> Result<Vec<VMMetadata>, String> {
     let name = format!("{}.{}", cluster_id, self.domain);
     let err = format!("Failed to fetch TXT record with name {}", &name);
     let resp = self.resolver.txt_lookup(name).await;
@@ -74,12 +74,12 @@ impl DNS {
           Ok(vm) => {
             vms.push(vm);
           }
-          Err(err) => return Err(err.into()),
+          Err(err) => return Err(err.to_string()),
         }
       }
       Ok(vms)
     } else {
-      return Err(err.into());
+      return Err(err.to_string());
     }
   }
 }
