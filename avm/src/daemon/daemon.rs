@@ -159,6 +159,7 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
 }
 
 async fn run_agz_b64(agz_b64: &str, priv_key_b64: Option<&str>, cert_b64: Option<&str>) {
+  println!("Runing agz b64");
   info!("Runing agz b64");
   let bytes = base64::decode(agz_b64);
   if let Ok(bytes) = bytes {
@@ -191,9 +192,11 @@ async fn run_agz_b64(agz_b64: &str, priv_key_b64: Option<&str>, cert_b64: Option
         run(bytecode, HttpType::HTTP(HttpConfig { port: 80 })).await;
       }
     } else {
-      error!("Error reading signed 64 bit integers from src into dst.");
+    println!("Error reading signed 64 bit integers from src into dst.");
+    error!("Error reading signed 64 bit integers from src into dst.");
     }
   } else {
+    println!("Unable to decaode agz base64.");
     error!("Unable to decaode agz base64.");
   }
 }
