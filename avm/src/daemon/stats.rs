@@ -67,11 +67,11 @@ async fn get_proc_usages() -> Vec<f64> {
 // get total cpu times per core since the VM's uptime
 // while setting linux specific fields to 0
 #[cfg(not(target_os = "linux"))]
-async fn get_cores_total_times() -> Vec<CPUSecsV1> {
+async fn get_cores_total_times() -> Vec<Result<CPUSecsV1, String>> {
   heim_cpu::times()
     .map(|r| {
       if let Ok(cpu) = r {
-        CPUSecsV1 {
+        Ok(CPUSecsV1 {
           user: cpu.user().get::<second>(),
           system: cpu.system().get::<second>(),
           idle: cpu.idle().get::<second>(),
@@ -80,18 +80,9 @@ async fn get_cores_total_times() -> Vec<CPUSecsV1> {
           ioWait: 0.0,
           softIrq: 0.0,
           steal: 0.0,
-        }
+        })
       } else {
-        CPUSecsV1 {
-          user: 0.0,
-          system: 0.0,
-          idle: 0.0,
-          irq: 0.0,
-          nice: 0.0,
-          ioWait: 0.0,
-          softIrq: 0.0,
-          steal: 0.0,
-        }
+        Err("Failed to get CPU times".to_string())
       }
     })
     .collect()
@@ -100,7 +91,7 @@ async fn get_cores_total_times() -> Vec<CPUSecsV1> {
 
 // get total cpu times per core since the VM's uptime
 #[cfg(target_os = "linux")]
-async fn get_cores_total_times() -> Vec<CPUSecsV1> {
+async fn get_cores_total_times() -> Vec<Result<CPUSecsV1, String>> {
   heim_cpu::times()
     .map(|r| {
       if let Ok(cpu) = r {
@@ -115,16 +106,7 @@ async fn get_cores_total_times() -> Vec<CPUSecsV1> {
           steal: cpu.steal().get::<second>(),
         }
       } else {
-        CPUSecsV1 {
-          user: 0.0,
-          system: 0.0,
-          idle: 0.0,
-          irq: 0.0,
-          nice: 0.0,
-          ioWait: 0.0,
-          softIrq: 0.0,
-          steal: 0.0,
-        }
+        Err("Failed to get CPU times".to_string())
       }
     })
     .collect()
@@ -133,25 +115,29 @@ async fn get_cores_total_times() -> Vec<CPUSecsV1> {
 
 // Cpu Times from /proc/stat are for the entire lifetime of the VM
 // so generate it twice with a wait in between to generate a time window
-async fn get_cores_times() -> Vec<CPUSecsV1> {
+async fn get_cores_times() -> Result<Vec<CPUSecsV1>, String> {
   let times_1 = get_cores_total_times().await;
   sleep(Duration::from_secs(1)).await;
   let times_2 = get_cores_total_times().await;
   let mut time_window = Vec::new();
   for (idx, t2) in times_2.iter().enumerate() {
     let t1 = &times_1[idx];
-    time_window.push(CPUSecsV1 {
-      user: t2.user - t1.user,
-      system: t2.system - t1.system,
-      idle: t2.idle - t1.idle,
-      irq: t2.irq - t1.irq,
-      nice: t2.nice - t1.nice,
-      ioWait: t2.ioWait - t1.ioWait,
-      softIrq: t2.softIrq - t1.softIrq,
-      steal: t2.steal - t1.steal,
-    })
+    if let (Ok(t1), Ok(t2)) = (t1, t2) {
+      time_window.push(CPUSecsV1 {
+        user: t2.user - t1.user,
+        system: t2.system - t1.system,
+        idle: t2.idle - t1.idle,
+        irq: t2.irq - t1.irq,
+        nice: t2.nice - t1.nice,
+        ioWait: t2.ioWait - t1.ioWait,
+        softIrq: t2.softIrq - t1.softIrq,
+        steal: t2.steal - t1.steal,
+      });
+    } else {
+      return Err("Failed to get CPU times".to_string());
+    }
   }
-  time_window
+  Ok(time_window)
 }
 
 #[cfg(target_os = "linux")]
@@ -188,18 +174,24 @@ pub async fn get_v1_stats() -> Result<VMStatsV1, String> {
     Ok(memory) => {
       let swap = heim_memory::swap().await;
       match swap {
-        Ok(swap) => Ok(VMStatsV1 {
-          cpuSecs: get_cores_times().await,
-          procsCpuUsage: get_proc_usages().await,
-          totalMemoryKb: memory.total().get::<kilobyte>(),
-          availableMemoryKb: memory.available().get::<kilobyte>(),
-          freeMemoryKb: memory.free().get::<kilobyte>(),
-          activeMemoryKb: 0,
-          usedMemoryKb: 0,
-          totalSwapKb: swap.total().get::<kilobyte>(),
-          usedSwapKb: swap.used().get::<kilobyte>(),
-          freeSwapKb: swap.free().get::<kilobyte>(),
-        }),
+        Ok(swap) => {
+          let core_times = get_cores_times().await;
+          match core_times {
+            Ok(core_times) => Ok(VMStatsV1 {
+              cpuSecs: core_times,
+              procsCpuUsage: get_proc_usages().await,
+              totalMemoryKb: memory.total().get::<kilobyte>(),
+              availableMemoryKb: memory.available().get::<kilobyte>(),
+              freeMemoryKb: memory.free().get::<kilobyte>(),
+              activeMemoryKb: 0,
+              usedMemoryKb: 0,
+              totalSwapKb: swap.total().get::<kilobyte>(),
+              usedSwapKb: swap.used().get::<kilobyte>(),
+              freeSwapKb: swap.free().get::<kilobyte>(),
+            }),
+            Err(err) => return Err(err),
+          }
+        }
         Err(_) => return Err("Failed to get swap information".to_string()),
       }
     }
