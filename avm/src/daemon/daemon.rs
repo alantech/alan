@@ -1,6 +1,5 @@
 use std::convert::Infallible;
 use std::env;
-use std::error::Error;
 use std::fs::read;
 use std::io::Read;
 use std::net::TcpStream;
@@ -8,16 +7,13 @@ use std::panic;
 use std::path::Path;
 
 use anycloud::deploy;
-use anycloud::logger;
 use base64;
 use byteorder::{LittleEndian, ReadBytesExt};
 use flate2::read::GzDecoder;
-use futures::FutureExt;
 use hyper::{Body, Request, Response};
 use log::{error, info};
 use once_cell::sync::OnceCell;
 use serde_json::{json, Value};
-use tokio::process::Command;
 use tokio::task;
 use tokio::time::{sleep, Duration};
 
@@ -158,7 +154,7 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
   }
 }
 
-async fn run_agz_b64(agz_b64: &str, priv_key_b64: Option<&str>, cert_b64: Option<&str>) {
+async fn run_agz_b64(agz_b64: String, priv_key_b64: Option<String>, cert_b64: Option<String>) {
   // panic!("Panicked!!!");
   println!("Runing agz b64");
   info!("Runing agz b64");
@@ -194,12 +190,12 @@ async fn run_agz_b64(agz_b64: &str, priv_key_b64: Option<&str>, cert_b64: Option
       }
     } else {
     println!("Error reading signed 64 bit integers from src into dst.");
-    error!("Error reading signed 64 bit integers from src into dst.");
+    // error!("Error reading signed 64 bit integers from src into dst.");
     panic!("Error reading signed 64 bit integers from src into dst.");
     }
   } else {
     println!("Unable to decode agz base64.");
-    error!("Unable to decode agz base64.");
+    // error!("Unable to decode agz base64.");
     panic!("Unable to decode agz base64.");
   }
 }
@@ -212,10 +208,15 @@ pub async fn start(
   priv_key_b64: Option<&str>,
   cert_b64: Option<&str>,
 ) {
-  logger::init().unwrap_or(()); // Logger initialization
-  // let clone_agz_b64 = String::from(agz_b64);
-  // let clone_priv_key_b64 = priv_key_b64.clone();
-  // let clone_cert_b64= None;
+  let clone_agz_b64 = String::from(agz_b64);
+  let mut clone_priv_key_b64: Option<String> = None;// = if let Some(priv_key_b64) = priv_key_b64 { Some(&String::from(priv_key_b64)) } else { None };
+  let mut clone_cert_b64: Option<String> = None; // = if let Some(cert_b64) = cert_b64 { Some(&String::from(cert_b64)) } else { None };
+  if let (Some(some_priv_key_b64), Some(some_cert_b64)) = (priv_key_b64, cert_b64) {
+    let priv_key_b64_str: String = String::from(some_priv_key_b64);
+    clone_priv_key_b64 = Some(priv_key_b64_str);
+    clone_cert_b64 = None;
+  }
+  
   info!("starting daemon...");
   println!("starting daemon...");
   let cluster_id = cluster_id.to_string();
@@ -300,10 +301,10 @@ pub async fn start(
   //   clone_priv_key_b64 = None;
   // };
 
-  // let agz_res: task::JoinHandle<Result<String, String>> = task::spawn(async {
-  //   run_agz_b64(&clone_agz_b64, clone_priv_key_b64, clone_cert_b64).await;
-  //   Ok("ok".to_string())
-  // });
+  let agz_res/*: task::JoinHandle<Result<String, String>> */= task::spawn(async move {
+    run_agz_b64(clone_agz_b64, clone_priv_key_b64, clone_cert_b64).await;
+    // Ok("ok".to_string())
+  });
 
   // match agz_res.await {
   //   Ok(result) => match result {
@@ -324,5 +325,8 @@ pub async fn start(
   //   error!("Error runing b64");
   // }
 
-  run_agz_b64(agz_b64, priv_key_b64, cert_b64).await;
+  match agz_res.await {
+    Ok(_) => println!("Run ok"),
+    Err(_) => eprintln!("Run err"),
+  }
 }
