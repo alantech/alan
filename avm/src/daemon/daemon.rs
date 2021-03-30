@@ -153,7 +153,6 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
 
 async fn run_agz_b64(agz_b64: String, priv_key_b64: Option<String>, cert_b64: Option<String>) {
   let bytes = base64::decode(agz_b64);
-  panic!("this error");
   if let Ok(bytes) = bytes {
     let agz = GzDecoder::new(bytes.as_slice());
     let count = agz.bytes().count();
