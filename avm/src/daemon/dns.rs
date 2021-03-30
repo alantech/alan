@@ -57,10 +57,7 @@ impl DNS {
     }
   }
 
-  pub async fn get_vms(
-    &self,
-    cluster_id: &str,
-  ) -> Result<Vec<VMMetadata>, String> {
+  pub async fn get_vms(&self, cluster_id: &str) -> Result<Vec<VMMetadata>, String> {
     let name = format!("{}.{}", cluster_id, self.domain);
     let err = format!("Failed to fetch TXT record with name {}", &name);
     let resp = self.resolver.txt_lookup(name).await;
