@@ -1,5 +1,3 @@
-use std::error::Error;
-
 use futures::future::join_all;
 use futures::stream::StreamExt;
 use heim_common::units::{information::kilobyte, time::second};
@@ -7,7 +5,6 @@ use heim_common::units::{information::kilobyte, time::second};
 use heim_cpu::os::linux::CpuTimeExt;
 #[cfg(target_os = "linux")]
 use heim_memory::os::linux::MemoryExt;
-use log::error;
 use serde::Serialize;
 use tokio::time::{sleep, Duration};
 
