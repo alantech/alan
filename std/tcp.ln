@@ -22,7 +22,7 @@ export tcpClose
 // Creates a client connection to a TCP server.
 // `tcpconn` has the type signature `fn(string, int16): TcpChannel`
 export fn connect(host: string, port: int64) = tcpconn(host, port.toInt16());
-export fn connect(host: string, port: int16) = tcpconn(host, port));
+export fn connect(host: string, port: int16) = tcpconn(host, port);
 
 // Attaches a context value to a channel. Exposed to the other events wrapped the other way around
 // but this type is opaque so it is fine. `tcpAddC` has the type `fn(TcpChannel, any): TcpChannel`
@@ -65,8 +65,9 @@ export fn write(channel: TcpChannel, chunk: Chunk) = tcpWrite(channel, chunk);
  */
 
 // Closes a channel. Always succeeds even if the underlying channel is already closed.
-// `tcpClose` has the type `fn(TcpChannel): void`
-export fn close(channel: TcpChannel) = tcpClose(channel);
+// `tcpTerm` has the type `fn(TcpChannel): void` (called `tcpTerm` to not clash with the `tcpClose`
+// event defined above
+export fn close(channel: TcpChannel) = tcpTerm(channel);
 
 /**
  * TODO: The following functions should eventually be added for inspecting channel status, but they

@@ -62,6 +62,9 @@ Type.builtinTypes.Either.solidify(['any', 'anythingElse'], opcodeScope)
 Type.builtinTypes.InitialReduce.solidify(['any', 'anythingElse'], opcodeScope)
 opcodeScope.put("start", new Event("_start", Type.builtinTypes.void, true))
 opcodeScope.put("__conn", new Event("__conn", Type.builtinTypes.InternalRequest, true))
+opcodeScope.put("tcpConn", new Event("tcpConn", Type.builtinTypes.TcpChannel, true))
+opcodeScope.put("chunk", new Event("chunk", opcodeScope.get('TcpContext<any>') as Type, true))
+opcodeScope.put("tcpClose", new Event("tcpClose", opcodeScope.get('TcpContext<any>') as Type, true))
 const t = (str: string) => opcodeScope.get(str)
 
 // opcode declarations
@@ -856,6 +859,11 @@ addopcodes({
   seqdo: [{ seq: t('Seq'), bodyFn: t('function'), }, t('void')],
   selfrec: [{ self: t('Self'), arg: t('any'), }, t('Result<anythingElse>')],
   seqrec: [{ seq: t('Seq'), recurseFn: t('function'), }, t('Self')],
+  tcpconn: [{ host: t('string'), port: t('int16'), }, t('TcpChannel')],
+  tcpAddC: [{ channel: t('TcpChannel'), context: t('any'), }, t('TcpChannel')],
+  tcpRead: [{ channel: t('TcpChannel'), }, t('Chunk')],
+  tcpWrite: [{ channel: t('TcpChannel'), chunk: t('Chunk'), }, t('TcpChannel')],
+  tcpTerm: [{ channel: t('TcpChannel'), }, t('void')],
 })
 
 export default opcodeModule
