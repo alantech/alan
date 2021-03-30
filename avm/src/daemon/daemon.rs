@@ -30,7 +30,7 @@ fn set_panic_hook() {
   panic::set_hook(Box::new(|panic_info| {
     if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
         eprintln!("Unexpected error occurred: {:?}", s);
-        // Log
+        // TODO: Logger
     } else {
         println!("Unexpected error occurred.");
     }
@@ -68,6 +68,7 @@ async fn post_v1(endpoint: &str, body: Value) -> String {
     Ok(res) => res,
     Err(err) => {
       let err = format!("{:?}", err);
+      // TODO: Logger
       // error!("{}", err);
       err
     }
@@ -113,6 +114,7 @@ async fn post_v1_scale(
     }
     Err(err) => {
       let err = format!("{:?}", err);
+      // TODO: Logger
       // error!("{}", err);
       err
     }
@@ -128,6 +130,7 @@ async fn post_v1_stats(cluster_id: &str, deploy_token: &str) -> Result<String, S
     "clusterId": cluster_id,
   });
   let cluster_secret = CLUSTER_SECRET.get().unwrap_or_else(|| {
+    // TODO: Logger
     // error!("No cluster secret");
     return &None::<String>;
   });
@@ -228,6 +231,7 @@ pub async fn start(
         loop {
           sleep(period).await;
           let vms = dns.get_vms(&cluster_id).await.unwrap_or_else(|e| {
+            // TODO: Logger
             // error!("{}", e);
             return Vec::new();
           });
@@ -246,6 +250,7 @@ pub async fn start(
             let factor = post_v1_stats(&cluster_id, &deploy_token)
               .await
               .unwrap_or_else(|e| {
+                // TODO: Logger
                 // error!("Failed getting stats. Error: {}", e);
                 return "1".to_string();
               });
@@ -262,14 +267,17 @@ pub async fn start(
         }
       }
       (Err(dns_err), Ok(_self_ip)) => {
+        // TODO: Logger
         // error!("DNS error: {}", dns_err);
         panic!("DNS error: {}", dns_err);
       }
       (Ok(_dns), Err(self_ip_err)) => {
+        // TODO: Logger
         // error!("Private ip error: {}", self_ip_err);
         panic!("Private ip error: {}", self_ip_err);
       }
       (Err(dns_err), Err(self_ip_err)) => {
+        // TODO: Logger
         // error!(
         //   "DNS error: {} and Private ip error: {}",
         //   dns_err, self_ip_err
