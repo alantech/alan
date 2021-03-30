@@ -159,7 +159,7 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
 }
 
 async fn run_agz_b64(agz_b64: &str, priv_key_b64: Option<&str>, cert_b64: Option<&str>) {
-  panic!("Panicked!!!");
+  // panic!("Panicked!!!");
   println!("Runing agz b64");
   info!("Runing agz b64");
   let bytes = base64::decode(agz_b64);
@@ -314,13 +314,15 @@ pub async fn start(
   // }
 
 
-  let agz_res = std::panic::catch_unwind(|| async {
-    run_agz_b64(agz_b64, priv_key_b64, cert_b64).await;
-  });
-  if let Ok(_) = agz_res {
-    info!("Ok runing b64");
-  }
-  if let Err(_) = agz_res {
-    error!("Error runing b64");
-  }
+  // let agz_res = std::panic::catch_unwind(|| async {
+  //   run_agz_b64(agz_b64, priv_key_b64, cert_b64).await;
+  // });
+  // if let Ok(_) = agz_res {
+  //   info!("Ok runing b64");
+  // }
+  // if let Err(_) = agz_res {
+  //   error!("Error runing b64");
+  // }
+
+  run_agz_b64(agz_b64, priv_key_b64, cert_b64).await;
 }
