@@ -208,16 +208,6 @@ pub async fn start(
   priv_key_b64: Option<&str>,
   cert_b64: Option<&str>,
 ) {
-  let clone_agz_b64 = String::from(agz_b64);
-  let mut clone_priv_key_b64: Option<String> = None;// = if let Some(priv_key_b64) = priv_key_b64 { Some(&String::from(priv_key_b64)) } else { None };
-  let mut clone_cert_b64: Option<String> = None; // = if let Some(cert_b64) = cert_b64 { Some(&String::from(cert_b64)) } else { None };
-  if let (Some(some_priv_key_b64), Some(some_cert_b64)) = (priv_key_b64, cert_b64) {
-    let priv_key_b64_str: String = String::from(some_priv_key_b64);
-    clone_priv_key_b64 = Some(priv_key_b64_str);
-    clone_cert_b64 = None;
-  }
-  
-  // info!("starting daemon...");
   println!("starting daemon...");
   let cluster_id = cluster_id.to_string();
   let deploy_token = deploy_token.to_string();
@@ -291,8 +281,6 @@ pub async fn start(
   // info!("Will run agz b64");
   println!("Will run agz b64");
 
-
-
   // if let (Some(priv_key_b64), Some(cert_b64)) = (priv_key_b64, cert_b64) {
   //   new_priv_key_b64 = String::from(priv_key_b64);
   //   clone_priv_key_b64 = Some(&new_priv_key_b64);
@@ -300,6 +288,16 @@ pub async fn start(
   // } else {
   //   clone_priv_key_b64 = None;
   // };
+
+  let clone_agz_b64 = String::from(agz_b64);
+  let mut clone_priv_key_b64: Option<String> = None;
+  let mut clone_cert_b64: Option<String> = None;
+  if let (Some(priv_key_b64), Some(cert_b64)) = (priv_key_b64, cert_b64) {
+    let priv_key_b64_str: String = String::from(priv_key_b64);
+    let cert_b64_str: String = String::from(cert_b64);
+    clone_priv_key_b64 = Some(priv_key_b64_str);
+    clone_cert_b64 = Some(cert_b64_str);
+  }
 
   let agz_res/*: task::JoinHandle<Result<String, String>> */= task::spawn(async move {
     run_agz_b64(clone_agz_b64, clone_priv_key_b64, clone_cert_b64).await;
