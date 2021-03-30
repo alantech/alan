@@ -155,7 +155,7 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
 }
 
 async fn run_agz_b64(agz_b64: String, priv_key_b64: Option<String>, cert_b64: Option<String>) {
-  // panic!("Panicked!!!");
+  panic!("Panicked!!!");
   println!("Runing agz b64");
   // info!("Runing agz b64");
   let bytes = base64::decode(agz_b64);
