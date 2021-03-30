@@ -11,7 +11,6 @@ use base64;
 use byteorder::{LittleEndian, ReadBytesExt};
 use flate2::read::GzDecoder;
 use hyper::{Body, Request, Response};
-use log::{error, info};
 use once_cell::sync::OnceCell;
 use serde_json::{json, Value};
 use tokio::process::Command;
@@ -58,7 +57,7 @@ async fn post_v1(endpoint: &str, body: Value) -> String {
     Ok(res) => res,
     Err(err) => {
       let err = format!("{:?}", err);
-      error!("{}", err);
+      // error!("{}", err);
       err
     }
   }
@@ -103,7 +102,7 @@ async fn post_v1_scale(
     }
     Err(err) => {
       let err = format!("{:?}", err);
-      error!("{}", err);
+      // error!("{}", err);
       err
     }
   }
@@ -121,7 +120,7 @@ async fn post_v1_stats(
     "clusterId": cluster_id,
   });
   let cluster_secret = CLUSTER_SECRET.get().unwrap_or_else(|| {
-    error!("No cluster secret");
+    // error!("No cluster secret");
     return &None::<String>;
   });
   if let Some(cluster_secret) = cluster_secret.as_ref() {
@@ -158,7 +157,7 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
 async fn run_agz_b64(agz_b64: String, priv_key_b64: Option<String>, cert_b64: Option<String>) {
   // panic!("Panicked!!!");
   println!("Runing agz b64");
-  info!("Runing agz b64");
+  // info!("Runing agz b64");
   let bytes = base64::decode(agz_b64);
   if let Ok(bytes) = bytes {
     let agz = GzDecoder::new(bytes.as_slice());
@@ -218,7 +217,7 @@ pub async fn start(
     clone_cert_b64 = None;
   }
   
-  info!("starting daemon...");
+  // info!("starting daemon...");
   println!("starting daemon...");
   let cluster_id = cluster_id.to_string();
   let deploy_token = deploy_token.to_string();
@@ -236,7 +235,7 @@ pub async fn start(
         loop {
           sleep(period).await;
           let vms = dns.get_vms(&cluster_id).await.unwrap_or_else(|e| {
-            error!("{}", e);
+            // error!("{}", e);
             return Vec::new();
           });
           // triggered the first time since cluster_size == 0
@@ -254,7 +253,7 @@ pub async fn start(
             let factor = post_v1_stats(&cluster_id, &deploy_token)
               .await
               .unwrap_or_else(|e| {
-                error!("Failed getting stats. Error: {}", e);
+                // error!("Failed getting stats. Error: {}", e);
                 return "1".to_string();
               });
             println!(
@@ -270,18 +269,18 @@ pub async fn start(
         }
       }
       (Err(dns_err), Ok(_self_ip)) => {
-        error!("DNS error: {}", dns_err);
+        // error!("DNS error: {}", dns_err);
         panic!("DNS error: {}", dns_err);
       }
       (Ok(_dns), Err(self_ip_err)) => {
-        error!("Private ip error: {}", self_ip_err);
+        // error!("Private ip error: {}", self_ip_err);
         panic!("Private ip error: {}", self_ip_err);
       }
       (Err(dns_err), Err(self_ip_err)) => {
-        error!(
-          "DNS error: {} and Private ip error: {}",
-          dns_err, self_ip_err
-        );
+        // error!(
+        //   "DNS error: {} and Private ip error: {}",
+        //   dns_err, self_ip_err
+        // );
         panic!(
           "DNS error: {} and Private ip error: {}",
           dns_err, self_ip_err
@@ -289,7 +288,7 @@ pub async fn start(
       }
     }
   });
-  info!("Will run agz b64");
+  // info!("Will run agz b64");
   println!("Will run agz b64");
 
 

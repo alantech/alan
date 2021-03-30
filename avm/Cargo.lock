@@ -43,7 +43,6 @@ dependencies = [
  "heim-process",
  "hyper",
  "hyper-rustls",
- "log",
  "num_cpus",
  "once_cell",
  "rand 0.7.3",
