@@ -31,7 +31,7 @@ use crate::vm::run::run;
 pub static CLUSTER_SECRET: OnceCell<Option<String>> = OnceCell::new();
 
 #[cfg(target_os = "linux")]
-async fn get_private_ip() -> Result<String, Box<dyn Error + Send + Sync>> {
+async fn get_private_ip() -> Result<String, String> {
   let res = Command::new("hostname").arg("-I").output().await;
   let err = "Failed to execute `hostname`";
   match res {
@@ -41,17 +41,17 @@ async fn get_private_ip() -> Result<String, Box<dyn Error + Send + Sync>> {
       match private_ip {
         Ok(private_ip) => match private_ip.trim().split_whitespace().next() {
           Some(private_ip) => Ok(private_ip.to_string()),
-          None => return Err("No ip found".into()),
+          None => return Err("No ip found".to_string()),
         },
-        Err(err) => return Err(err.into()),
+        Err(err) => return Err(err.to_string()),
       }
     }
-    Err(_) => return Err(err.into()),
+    Err(_) => return Err(err.to_string()),
   }
 }
 
 #[cfg(not(target_os = "linux"))]
-async fn get_private_ip() -> Result<String, Box<dyn Error + Send + Sync>> {
+async fn get_private_ip() -> Result<String, String> {
   panic!("`hostname` command does not exist in this OS");
 }
 
@@ -116,7 +116,7 @@ async fn post_v1_scale(
 async fn post_v1_stats(
   cluster_id: &str,
   deploy_token: &str,
-) -> Result<String, Box<dyn Error + Send + Sync>> {
+) -> Result<String, String> {
   let vm_stats = get_v1_stats().await?;
   let mut stats_body = json!({
     "deployToken": deploy_token,
@@ -159,6 +159,7 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
 }
 
 async fn run_agz_b64(agz_b64: &str, priv_key_b64: Option<&str>, cert_b64: Option<&str>) {
+  // panic!("Panicked!!!");
   println!("Runing agz b64");
   info!("Runing agz b64");
   let bytes = base64::decode(agz_b64);
@@ -212,6 +213,9 @@ pub async fn start(
   cert_b64: Option<&str>,
 ) {
   logger::init().unwrap_or(()); // Logger initialization
+  // let clone_agz_b64 = String::from(agz_b64);
+  // let clone_priv_key_b64 = priv_key_b64.clone();
+  // let clone_cert_b64= None;
   info!("starting daemon...");
   println!("starting daemon...");
   let cluster_id = cluster_id.to_string();
@@ -285,13 +289,40 @@ pub async fn start(
   });
   info!("Will run agz b64");
   println!("Will run agz b64");
-  let agz_res = std::panic::catch_unwind(|| async {
-    run_agz_b64(agz_b64, priv_key_b64, cert_b64).await;
-  });
-  if let Ok(_) = agz_res {
-    info!("Ok runing b64");
-  }
-  if let Err(_) = agz_res {
-    error!("Error runing b64");
-  }
+
+
+
+  // if let (Some(priv_key_b64), Some(cert_b64)) = (priv_key_b64, cert_b64) {
+  //   new_priv_key_b64 = String::from(priv_key_b64);
+  //   clone_priv_key_b64 = Some(&new_priv_key_b64);
+
+  // } else {
+  //   clone_priv_key_b64 = None;
+  // };
+
+  // let agz_res: task::JoinHandle<Result<String, String>> = task::spawn(async {
+  //   run_agz_b64(&clone_agz_b64, clone_priv_key_b64, clone_cert_b64).await;
+  //   Ok("ok".to_string())
+  // });
+
+  // match agz_res.await {
+  //   Ok(result) => match result {
+  //       Ok(_) => println!("Ok result"),
+  //       Err(_) => println!("Error result"),
+  //   },
+  //   Err(_) => println!("Error handle"),
+  // }
+
+
+  // let agz_res = std::panic::catch_unwind(|| async {
+  //   run_agz_b64(agz_b64, priv_key_b64, cert_b64).await;
+  // });
+  // if let Ok(_) = agz_res {
+  //   info!("Ok runing b64");
+  // }
+  // if let Err(_) = agz_res {
+  //   error!("Error runing b64");
+  // }
+
+  run_agz_b64(agz_b64, priv_key_b64, cert_b64).await;
 }
