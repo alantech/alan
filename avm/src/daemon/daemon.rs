@@ -109,10 +109,7 @@ async fn post_v1_scale(
 }
 
 // returns cluster delta
-async fn post_v1_stats(
-  cluster_id: &str,
-  deploy_token: &str,
-) -> Result<String, String> {
+async fn post_v1_stats(cluster_id: &str, deploy_token: &str) -> Result<String, String> {
   let vm_stats = get_v1_stats().await?;
   let mut stats_body = json!({
     "deployToken": deploy_token,
@@ -155,10 +152,8 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
 }
 
 async fn run_agz_b64(agz_b64: String, priv_key_b64: Option<String>, cert_b64: Option<String>) {
-  panic!("Panicked!!!");
-  println!("Runing agz b64");
-  // info!("Runing agz b64");
   let bytes = base64::decode(agz_b64);
+  panic!("this error");
   if let Ok(bytes) = bytes {
     let agz = GzDecoder::new(bytes.as_slice());
     let count = agz.bytes().count();
@@ -189,13 +184,11 @@ async fn run_agz_b64(agz_b64: String, priv_key_b64: Option<String>, cert_b64: Op
         run(bytecode, HttpType::HTTP(HttpConfig { port: 80 })).await;
       }
     } else {
-    println!("Error reading signed 64 bit integers from src into dst.");
-    // error!("Error reading signed 64 bit integers from src into dst.");
-    panic!("Error reading signed 64 bit integers from src into dst.");
+      eprintln!("Error reading signed 64 bit integers from src into dst.");
+      panic!("Error reading signed 64 bit integers from src into dst.");
     }
   } else {
-    println!("Unable to decode agz base64.");
-    // error!("Unable to decode agz base64.");
+    eprintln!("Unable to decode agz base64.");
     panic!("Unable to decode agz base64.");
   }
 }
@@ -278,17 +271,12 @@ pub async fn start(
       }
     }
   });
-  // info!("Will run agz b64");
+
   println!("Will run agz b64");
 
-  // if let (Some(priv_key_b64), Some(cert_b64)) = (priv_key_b64, cert_b64) {
-  //   new_priv_key_b64 = String::from(priv_key_b64);
-  //   clone_priv_key_b64 = Some(&new_priv_key_b64);
-
-  // } else {
-  //   clone_priv_key_b64 = None;
-  // };
-
+  // Need to clone the values since they will be needed inside tokio task:
+  // ... has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
+  // and is required to live as long as `'static` ...
   let clone_agz_b64 = String::from(agz_b64);
   let mut clone_priv_key_b64: Option<String> = None;
   let mut clone_cert_b64: Option<String> = None;
@@ -299,32 +287,15 @@ pub async fn start(
     clone_cert_b64 = Some(cert_b64_str);
   }
 
-  let agz_res/*: task::JoinHandle<Result<String, String>> */= task::spawn(async move {
+  let agz_res = task::spawn(async move {
     run_agz_b64(clone_agz_b64, clone_priv_key_b64, clone_cert_b64).await;
-    // Ok("ok".to_string())
   });
 
-  // match agz_res.await {
-  //   Ok(result) => match result {
-  //       Ok(_) => println!("Ok result"),
-  //       Err(_) => println!("Error result"),
-  //   },
-  //   Err(_) => println!("Error handle"),
-  // }
-
-
-  // let agz_res = std::panic::catch_unwind(|| async {
-  //   run_agz_b64(agz_b64, priv_key_b64, cert_b64).await;
-  // });
-  // if let Ok(_) = agz_res {
-  //   info!("Ok runing b64");
-  // }
-  // if let Err(_) = agz_res {
-  //   error!("Error runing b64");
-  // }
-
   match agz_res.await {
-    Ok(_) => println!("Run ok"),
-    Err(_) => eprintln!("Run err"),
+    Ok(_) => println!("ok"),
+    Err(err) => {
+      eprintln!("Error occurred running agz: {}", err);
+      // Log
+    }
   }
 }
