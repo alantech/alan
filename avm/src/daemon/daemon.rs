@@ -29,10 +29,10 @@ pub static CLUSTER_SECRET: OnceCell<Option<String>> = OnceCell::new();
 fn set_panic_hook() {
   panic::set_hook(Box::new(|panic_info| {
     if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
-        eprintln!("Unexpected error occurred: {:?}", s);
-        // TODO: Logger
+      eprintln!("Unexpected error occurred: {:?}", s);
+      // TODO: Logger
     } else {
-        println!("Unexpected error occurred.");
+      println!("Unexpected error occurred.");
     }
   }));
 }
