@@ -1732,43 +1732,57 @@ ${assignablesAst.t}`
             } else {
               Conditional.getVoid.microstatementInlining([retName], scope, microstatements)
             }
+            const maybeWrapped = '_' + uuid().replace(/-/g, '_');
+            opcodes.exportScope.get('someM')[0].microstatementInlining(
+              [retName, maybeWrapped],
+              scope,
+              microstatements
+            );
             microstatements.push(new Microstatement(
               StatementType.EXIT,
               scope,
               true,
-              retName,
+              maybeWrapped,
             ));
           } else {
             Microstatement.fromStatementsAst(ast, scope, microstatements)
           }
         }
       } else if (then.has('fnname')) {
-        const originalName = then.get('fnname').t.trim();
-        let thenFn = scope.deepGet(originalName);
-        if (thenFn === null) {
-          thenFn = Microstatement.fromVarName(originalName, scope, microstatements);
-        }
+        throw new Error('support for `if COND FNNAME` is temporarily disabled');
+        // const originalName = then.get('fnname').t.trim();
+        // let thenFn = scope.deepGet(originalName);
+        // if (thenFn === null) {
+        //   thenFn = Microstatement.fromVarName(originalName, scope, microstatements);
+        // }
 
-        if (thenFn === null) {
-          throw new Error(`Error: function not found: ${originalName}`)
-        } else if (thenFn instanceof Array) {
-          const fns = (thenFn as Array<Fn>).filter(fn => Object.keys(fn.getArguments()).length === 0);
-          const possibilities = fns.filter(possible => retTys.every(retTy => possible.getReturnType().typeApplies(retTy, scope)));
-          if (possibilities.length === 0) {
-            throw new Error(`Error: function not found: ${originalName}`);
-          }
-          // just select the first i guess?
-          possibilities[0].microstatementInlining([], scope, microstatements);
-        } else if (thenFn instanceof Microstatement && thenFn.outputType === Type.builtinTypes.function) {
-          if (!retTys.every(retTy => retTy.typeApplies((thenFn as Microstatement).closureOutputType, scope))) {
-            throw new Error(`Error: mismatched types: return type of ${originalName} does not apply to the other conditional branches`);
-          }
-          isClosure = false;
-          thenname = thenFn.outputName;
-          thenFn.statementType = StatementType.CLOSURE;
-        } else if (!(thenFn instanceof Function)) {
-          throw new Error(`Error: ${originalName} is not a function`);
-        }
+        // if (thenFn === null) {
+        //   throw new Error(`fn not found: ${originalName}`)
+        // } else if (thenFn instanceof Array) {
+        //   const fns = (thenFn as Array<Fn>).filter(fn => Object.keys(fn.getArguments()).length === 0);
+        //   const possibilities = fns.filter(possible => retTys.every(retTy => possible.getReturnType().typeApplies(retTy, scope)));
+        //   if (possibilities.length === 0) {
+        //     throw new Error(`function not found: ${originalName}`);
+        //   }
+        //   // just select the first i guess?
+        //   possibilities[0].microstatementInlining([], scope, microstatements);
+        // } else if (thenFn instanceof Microstatement && thenFn.outputType === Type.builtinTypes.function) {
+        //   if (!retTys.every(retTy => retTy.typeApplies((thenFn as Microstatement).closureOutputType, scope))) {
+        //     throw new Error(`mismatched types: return type of ${originalName} does not apply to the other conditional branches`);
+        //   }
+        //   isClosure = false;
+        //   if (thenFn.fns.length === 0) {
+        //     throw new Error(`no function found`);
+        //   }
+        //   const m = [...thenFn.closureStatements];
+        //   const fn = thenFn.fns[0] as UserFunction;
+        //   Microstatement.closureFromUserFunction(fn, fn.scope || scope, m, new Map());
+        //   const closure = m.pop();
+        //   closure.outputName = thenname;
+        //   microstatements.push(closure);
+        // } else if (!(thenFn instanceof Function)) {
+        //   throw new Error(`Error: ${originalName} is not a function`);
+        // }
       } else {
         console.log(then);
         throw new Error('unsure how to handle above LPNode when generating conditional');

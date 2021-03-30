@@ -1,5 +1,7 @@
 import { v4 as uuid } from 'uuid';
-import { Args, Fn} from './Function';
+import { LPNode } from '../lp';
+import { Args, Fn } from './Function';
+import * as Ast from './Ast';
 import Microstatement from "./Microstatement";
 import Scope from './Scope';
 import Statement from "./Statement";
@@ -22,7 +24,7 @@ export const determineEvalCondReturn = (microstatements: Microstatement[], scope
     // that happen to be in the same containing function, the ENTERFN should be deleted.
     if (m.statementType === StatementType.ENTERFN) {
       // the return type is a Maybe-wrapped value of the return type of the function
-      retTy = m.closureOutputType;
+      retTy = Type.builtinTypes.Maybe.solidify([m.closureOutputType.typename], scope);
       // if the return type is `Maybe<void>`, then we don't really care about the return value,
       // it's just there to ensure that things compile and run correctly. The value doesn't
       // need to get unwrapped, as it shouldn't get used anywhere else anyways.
@@ -38,21 +40,34 @@ export const determineEvalCondReturn = (microstatements: Microstatement[], scope
   return [retTy, isUnwrap];
 }
 
-export const handleTails = (microstatements: Microstatement[]) => {
-  for (let ii = microstatements.length - 1; ii >= 0; ii--) {
-    if (microstatements[ii].statementType !== StatementType.TAIL) {
-      if (microstatements[ii].statementType === StatementType.CLOSURE) {
-        handleTails(microstatements[ii].closureStatements)
-      }
-      continue;
+export const handleTails = (microstatements: Microstatement[], print?: boolean) => {
+  for (let ii = 0; ii < microstatements.length; ii++) {
+    const m = microstatements[ii];
+    if (m.statementType === StatementType.TAIL) {
+      const tailed = [...microstatements.splice(ii)];
+      handleTail(microstatements, tailed);
+      // ensure that the inserted CLOSURE gets checked
+      ii--;
+    } else if (m.statementType === StatementType.CLOSURE) {
+      handleTails(m.closureStatements);
     }
-
-    const tailed = [...microstatements.splice(ii)];
-    handleTail(microstatements, tailed);
   }
+
+  // for (let ii = microstatements.length - 1; ii >= 0; ii--) {
+  //   const m = microstatements[ii];
+  //   if (microstatements[ii].statementType !== StatementType.TAIL) {
+  //     if (microstatements[ii].statementType === StatementType.CLOSURE) {
+  //       handleTails(microstatements[ii].closureStatements)
+  //     }
+  //     continue;
+  //   }
+
+  //   const tailed = [...microstatements.splice(ii)];
+  //   handleTail(microstatements, tailed);
+  // }
 }
 
-export const handleTail = (
+const handleTail = (
   microstatements: Microstatement[],
   tailed: Microstatement[],
   rest: Statement[] = [],

@@ -27,12 +27,21 @@ on start {
   if foo bar else baz
 
   const isTrue = true == true;
-  cond(isTrue, fn {
+  const then1 = fn {
     print("It's true!");
-  });
-  cond(!isTrue, fn {
-    print('This should not have run');
-  });
+  };
+  const then2 = fn {
+    print("This should not have run");
+  };
+  if isTrue then1
+  if !isTrue then2
+
+  // cond(isTrue, fn {
+  //   print("It's true!");
+  // });
+  // cond(!isTrue, fn {
+  //   print('This should not have run');
+  // });
 
   emit exit 0;
 }

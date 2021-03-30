@@ -433,6 +433,8 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
     s: Scope,
     microstatements: Array<Microstatement>,
   ) {
+    const dbg = (msg) => console.log(this.getName(), msg);
+
     const scope = new Scope(s)
     scope.secondaryPar = this.scope
     // Perform a transform, if necessary, before generating the microstatements
@@ -490,7 +492,11 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
       ))
     }
     for (const s of fn.statements) {
+      const snap = microstatements[originalStatementLength];
       Microstatement.fromStatement(s, microstatements, scope)
+      if (snap !== microstatements[originalStatementLength]) {
+        throw new Error('aha')
+      }
     }
     // const originalStatementLength = microstatements.findIndex(m => m === enterfn);
     // Delete `REREF`s except a `return` statement's `REREF` to make sure it doesn't interfere with
@@ -614,16 +620,17 @@ ${statements[i].statementAst.t.trim()} on line ${statements[i].statementAst.line
     }
 
     // if this is an inlined function, handle
-    if (originalStatementLength === 0) {
+    if (originalStatementLength !== 0) {
       const fromHere = microstatements.splice(originalStatementLength);
       if (fromHere.some(m => m.statementType === StatementType.TAIL)) {
-        Conditional.handleTails(fromHere);
+        dbg(`before ~~~~~~~~~~~~~~~~~\n${fromHere.map(m => m.toString()).join('\n')}`)
+        Conditional.handleTails(fromHere, true);
+        dbg(`after  ~~~~~~~~~~~~~~~~~\n${fromHere.map(m => m.toString()).join('\n')}`)
       }
       microstatements.push(...fromHere);
-    }
-
-    if (originalStatementLength !== 0 && microstatements[microstatements.length - 1].statementType === StatementType.EXIT) {
-      microstatements.pop();
+      if (microstatements[microstatements.length - 1].statementType === StatementType.EXIT) {
+        microstatements.pop();
+      }
     }
 
     microstatements.splice(originalStatementLength, 1);
