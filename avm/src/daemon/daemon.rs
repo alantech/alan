@@ -26,6 +26,17 @@ use crate::vm::run::run;
 
 pub static CLUSTER_SECRET: OnceCell<Option<String>> = OnceCell::new();
 
+fn set_panic_hook() {
+  panic::set_hook(Box::new(|panic_info| {
+    if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
+        eprintln!("Unexpected error occurred: {:?}", s);
+        // Log
+    } else {
+        println!("Unexpected error occurred.");
+    }
+  }));
+}
+
 #[cfg(target_os = "linux")]
 async fn get_private_ip() -> Result<String, String> {
   let res = Command::new("hostname").arg("-I").output().await;
@@ -151,7 +162,7 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
   }
 }
 
-async fn run_agz_b64(agz_b64: String, priv_key_b64: Option<String>, cert_b64: Option<String>) {
+async fn run_agz_b64(agz_b64: &str, priv_key_b64: Option<&str>, cert_b64: Option<&str>) {
   let bytes = base64::decode(agz_b64);
   if let Ok(bytes) = bytes {
     let agz = GzDecoder::new(bytes.as_slice());
@@ -270,31 +281,8 @@ pub async fn start(
       }
     }
   });
-
+  println!("Setting hook");
+  set_panic_hook();
   println!("Will run agz b64");
-
-  // Need to clone the values since they will be needed inside tokio task:
-  // ... has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
-  // and is required to live as long as `'static` ...
-  let clone_agz_b64 = String::from(agz_b64);
-  let mut clone_priv_key_b64: Option<String> = None;
-  let mut clone_cert_b64: Option<String> = None;
-  if let (Some(priv_key_b64), Some(cert_b64)) = (priv_key_b64, cert_b64) {
-    let priv_key_b64_str: String = String::from(priv_key_b64);
-    let cert_b64_str: String = String::from(cert_b64);
-    clone_priv_key_b64 = Some(priv_key_b64_str);
-    clone_cert_b64 = Some(cert_b64_str);
-  }
-
-  let agz_res = task::spawn(async move {
-    run_agz_b64(clone_agz_b64, clone_priv_key_b64, clone_cert_b64).await;
-  });
-
-  match agz_res.await {
-    Ok(_) => println!("ok"),
-    Err(err) => {
-      eprintln!("Error occurred running agz: {}", err);
-      // Log
-    }
-  }
+  run_agz_b64(agz_b64, priv_key_b64, cert_b64).await;
 }
