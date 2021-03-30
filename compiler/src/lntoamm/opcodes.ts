@@ -19,7 +19,8 @@ const addBuiltIn = (name: string) => {
 ([
   'void', 'int8', 'int16', 'int32', 'int64', 'float32', 'float64', 'bool', 'string', 'function',
   'operator', 'Error', 'Maybe', 'Result', 'Either', 'Array', 'ExecRes', 'InitialReduce',
-  'KeyVal', 'InternalRequest', 'InternalResponse', 'Seq', 'Self',
+  'KeyVal', 'InternalRequest', 'InternalResponse', 'Seq', 'Self', 'TcpChannel', 'TcpContext',
+  'Chunk',
 ].map(addBuiltIn))
 Type.builtinTypes['Array'].solidify(['string'], opcodeScope)
 opcodeScope.put('any', new Type('any', true, false, {}, {}, null, new Interface('any')))
@@ -31,6 +32,7 @@ Type.builtinTypes['Array'].solidify(['any'], opcodeScope)
 Type.builtinTypes['Array'].solidify(['anythingElse'], opcodeScope)
 Type.builtinTypes['KeyVal'].solidify(['string', 'string'], opcodeScope)
 Type.builtinTypes['Array'].solidify(['KeyVal<string, string>'], opcodeScope)
+Type.builtinTypes['TcpContext'].solidify(['any'], opcodeScope)
 // HTTP server opcode-related builtin Types hackery, also defined in std/http.ln
 Type.builtinTypes.InternalRequest.properties = {
   method: opcodeScope.get('string') as Type,
