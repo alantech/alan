@@ -95,7 +95,7 @@ async fn get_cores_total_times() -> Vec<Result<CPUSecsV1, String>> {
   heim_cpu::times()
     .map(|r| {
       if let Ok(cpu) = r {
-        CPUSecsV1 {
+        Ok(CPUSecsV1 {
           user: cpu.user().get::<second>(),
           system: cpu.system().get::<second>(),
           idle: cpu.idle().get::<second>(),
@@ -104,7 +104,7 @@ async fn get_cores_total_times() -> Vec<Result<CPUSecsV1, String>> {
           ioWait: cpu.io_wait().get::<second>(),
           softIrq: cpu.soft_irq().get::<second>(),
           steal: cpu.steal().get::<second>(),
-        }
+        })
       } else {
         Err("Failed to get CPU times".to_string())
       }
@@ -147,18 +147,24 @@ pub async fn get_v1_stats() -> Result<VMStatsV1, String> {
     Ok(memory) => {
       let swap = heim_memory::swap().await;
       match swap {
-        Ok(swap) => Ok(VMStatsV1 {
-          cpuSecs: get_cores_times().await,
-          procsCpuUsage: get_proc_usages().await,
-          totalMemoryKb: memory.total().get::<kilobyte>(),
-          availableMemoryKb: memory.available().get::<kilobyte>(),
-          freeMemoryKb: memory.free().get::<kilobyte>(),
-          activeMemoryKb: memory.active().get::<kilobyte>(),
-          usedMemoryKb: memory.used().get::<kilobyte>(),
-          totalSwapKb: swap.total().get::<kilobyte>(),
-          usedSwapKb: swap.used().get::<kilobyte>(),
-          freeSwapKb: swap.free().get::<kilobyte>(),
-        }),
+        Ok(swap) => {
+          let core_times = get_cores_times().await;
+          match core_times {
+            Ok(core_times) => Ok(VMStatsV1 {
+              cpuSecs: core_times,
+              procsCpuUsage: get_proc_usages().await,
+              totalMemoryKb: memory.total().get::<kilobyte>(),
+              availableMemoryKb: memory.available().get::<kilobyte>(),
+              freeMemoryKb: memory.free().get::<kilobyte>(),
+              activeMemoryKb: memory.active().get::<kilobyte>(),
+              usedMemoryKb: memory.used().get::<kilobyte>(),
+              totalSwapKb: swap.total().get::<kilobyte>(),
+              usedSwapKb: swap.used().get::<kilobyte>(),
+              freeSwapKb: swap.free().get::<kilobyte>(),
+            }),
+            Err(err) => return Err(err),
+          }
+        }
         Err(_) => return Err("Failed to get swap information".to_string()),
       }
     }

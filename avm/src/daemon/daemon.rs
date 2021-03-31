@@ -44,7 +44,7 @@ async fn get_private_ip() -> Result<String, String> {
   match res {
     Ok(res) => {
       let stdout = res.stdout;
-      let mut private_ip = String::from_utf8(stdout);
+      let private_ip = String::from_utf8(stdout);
       match private_ip {
         Ok(private_ip) => match private_ip.trim().split_whitespace().next() {
           Some(private_ip) => Ok(private_ip.to_string()),
