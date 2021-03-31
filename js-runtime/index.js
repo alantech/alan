@@ -763,10 +763,12 @@ module.exports = {
     if (tbl.length !== 0 && tbl[0] === 1) {
       const res = await tbl[1]()
       if (res !== undefined) {
-        return [1, res]
+        // the function from the cond table returns a Maybe
+        return res
       }
     }
     const res = await els()
+    // we have to insert the Maybe for the tail fn
     return res !== undefined ? [1, res] : [0]
   },
 

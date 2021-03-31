@@ -2825,7 +2825,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         // if there's a return value, wrap it in a Some and exit
         if hand_mem.addr_to_idxs_opt(CLOSURE_ARG_MEM_START).is_some() {
           // wrap the return value in a Some
-          hand_mem.push_fixed(args[2], 1);
           hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START);
           // a return value is set, don't execute the rest of the function
           // and instead early return.
@@ -2834,7 +2833,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       }
       // now execute the rest of the function
       let subhandler = HandlerFragment::new(args[1], 0);
+      println!("uh");
       hand_mem = subhandler.run(hand_mem).await;
+      println!("hm?");
       // detect if there's a return value
       if hand_mem.addr_to_idxs_opt(CLOSURE_ARG_MEM_START).is_some() {
         // wrap the return value in a Some
@@ -2844,6 +2845,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         // return None
         hand_mem.push_fixed(args[2], 0);
       }
+      println!("howdy: {:?}", hand_mem.addr_to_idxs_opt(CLOSURE_ARG_MEM_START));
       hand_mem
     })
   });
