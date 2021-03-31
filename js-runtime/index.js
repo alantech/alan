@@ -1,6 +1,7 @@
 require('cross-fetch/polyfill')
 const EventEmitter = require('events')
 const http = require('http')
+const net = require('net')
 const util = require('util')
 
 const xxh = require('xxhashjs')
@@ -95,6 +96,9 @@ const copyarr = a => {
 
 // Not very OOP, but since the HTTP server is a singleton right now, store open connections here
 const httpConns = {}
+
+// Same justification for the TCP server
+const tcpConns = {}
 
 // The shared mutable state for the datastore library
 const ds = {}
@@ -991,7 +995,7 @@ module.exports = {
     if (listenResult === true) {
       console.log("HTTP server listening on port 8000")
     } else {
-      console.error(`HTTP server failed to listen to port 8000: ${e}`)
+      console.error(`HTTP server failed to listen to port 8000: ${listenResult}`)
     }
   },
   httpsend: async (ires) => {
@@ -1019,6 +1023,104 @@ module.exports = {
     } catch (e) {
       return [ e.signal, e.stdout, e.stderr ]
     }
+  },
+  tcplsn: async () => {
+    const server = net.createServer((c) => {
+      // To allow the `tcpConn` event to set up anything it needs
+      c.pause()
+      const connId = Number(hashf(Math.random().toString()))
+      const context = [connId, undefined, {
+        c,
+        dataArr: [],
+        state: 'paused',
+      }]
+      tcpConns[connId] = context
+      c.on('data', (buf) => {
+        context[2].dataArr.push(buf)
+        e.emit('chunk', context)
+      })
+      c.on('error', () => context[2].state = 'error')
+      c.on('timeout', () => {
+        context[2].state = 'timeout'
+        c.end() // Node.js doesn't automatically do this on timeout for some reason?
+      })
+      c.on('close', () => {
+        if (context[2].state === 'open') context[2].state = 'closed'
+        e.emit('tcpClose', context)
+        delete tcpConns[connId]
+      })
+      e.emit('tcpConn', connId)
+    })
+    const listenResult = await new Promise(resolve => {
+      server.on('error', e => resolve(e))
+      server.listen({
+        port: 8000,
+      }, () => resolve(true))
+    })
+    if (listenResult === true) {
+      console.log("TCP server listening on port 8000")
+    } else {
+      console.error(`TCP server failed to listen on port 8000: ${listenResult}`)
+    }
+  },
+  tcpconn: async (host, port) => {
+    return new Promise(resolve => {
+      const c = net.createConnection(port, host, () => {
+        const connId = Number(hashf(Math.random().toString()))
+        const context = [connId, undefined, {
+          connId,
+          c,
+          dataArr: [],
+          state: 'paused',
+        }]
+        tcpConns[connId] = context
+        c.on('data', (buf) => {
+          context[2].dataArr.push(buf)
+          e.emit('chunk', context)
+        })
+        c.on('error', () => context[2].state = 'error')
+        c.on('timeout', () => {
+          context[2].state = 'timeout'
+          c.end() // Node.js doesn't automatically do this on timeout for some reason
+        })
+        c.on('close', () => {
+          if (context[2].state === 'open') context[2].state = 'closed'
+          e.emit('tcpClose', context)
+          delete tcpConns[connId]
+        })
+        resolve(connId)
+      })
+      // To allow the setup of everything needed
+      c.pause()
+    })
+  },
+  tcpAddC: (connId, context) => {
+    tcpConns[connId][1] = context
+    return connId
+  },
+  tcpReady: (connId) => {
+    const channel = tcpConns[connId]
+    if (!channel) return connId
+    channel[2].state = 'open'
+    channel[2].c.resume()
+    return connId
+  },
+  tcpRead: (connId) => {
+    const channel = tcpConns[connId]
+    if (!channel) return new Buffer()
+    const chunk = channel[2].dataArr.shift()
+    return chunk
+  },
+  tcpWrite: (connId, chunk) => {
+    const channel = tcpConns[connId]
+    if (!channel) return connId
+    channel[2].c.write(chunk)
+    return connId
+  },
+  tcpTerm: (connId) => {
+    const channel = tcpConns[connId]
+    if (!channel) return undefined
+    channel[2].c.end()
   },
 
   // "Special" opcodes

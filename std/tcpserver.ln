@@ -1,0 +1,6 @@
+/**
+ * @std/tcpserver - Built-in server for TCP
+ */
+
+// Built-in event solely for the TCP server. Has the signature `event tcpConn: TcpChannel`
+export tcpConn

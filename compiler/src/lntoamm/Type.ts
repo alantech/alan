@@ -678,6 +678,14 @@ export class Type {
       }),
       recurseFn: new Type("function", true),
     }),
+    TcpChannel: new Type("TcpChannel", true),
+    TcpContext: new Type("TcpContext", true, false, {
+      context: new Type("C", true, true),
+      channel: new Type("TcpChannel", true),
+    }, {
+      C: 0,
+    }),
+    Chunk: new Type("Chunk", true),
     "function": new Type("function", true),
     operator: new Type("operator", true),
     Event: new Type("Event", true, false, {
