@@ -861,6 +861,7 @@ addopcodes({
   seqrec: [{ seq: t('Seq'), recurseFn: t('function'), }, t('Self')],
   tcpconn: [{ host: t('string'), port: t('int16'), }, t('TcpChannel')],
   tcpAddC: [{ channel: t('TcpChannel'), context: t('any'), }, t('TcpChannel')],
+  tcpReady: [{ channel: t('TcpChannel'), }, t('TcpChannel')],
   tcpRead: [{ channel: t('TcpChannel'), }, t('Chunk')],
   tcpWrite: [{ channel: t('TcpChannel'), chunk: t('Chunk'), }, t('TcpChannel')],
   tcpTerm: [{ channel: t('TcpChannel'), }, t('void')],

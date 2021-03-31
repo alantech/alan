@@ -28,6 +28,11 @@ export fn connect(host: string, port: int16) = tcpconn(host, port);
 // but this type is opaque so it is fine. `tcpAddC` has the type `fn(TcpChannel, any): TcpChannel`
 export fn addContext(channel: TcpChannel, context: any) = tcpAddC(channel, context);
 
+// Marks the channel as ready to receive data from the other side. Useful if data is immediately
+// pushed at you, which is common for servers, but also possible for clients
+// `tcpReady` has the type `fn (TcpChannel): void`
+export fn ready(channel: TcpChannel) = tcpReady(channel);
+
 // Reads a chunk of data from a channel. Since this is supposed to be called when the `chunk` event
 // is triggered, it is a CPU-bound operation that returns a chunk referencing actual data on the
 // first call, and a chunk representing no data on subsequent calls until the event is triggered
