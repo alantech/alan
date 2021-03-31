@@ -31,9 +31,14 @@ fn set_panic_hook() {
     if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
       eprintln!("Unexpected error occurred: {:?}", s);
       // TODO: Logger
+    } else if let Some(s) = panic_info.payload().downcast_ref::<String>() {
+      eprintln!("Unexpected error occurred: {:?}", s);
+      // TODO: Logger
     } else {
-      println!("Unexpected error occurred.");
+      eprintln!("Unexpected error occurred.");
+      // TODO: Logger
     }
+    std::process::exit(1);
   }));
 }
 
@@ -214,7 +219,7 @@ pub async fn start(
   priv_key_b64: Option<&str>,
   cert_b64: Option<&str>,
 ) {
-  println!("starting daemon...");
+  set_panic_hook();
   let cluster_id = cluster_id.to_string();
   let deploy_token = deploy_token.to_string();
   let agzb64 = agz_b64.to_string();
@@ -289,8 +294,5 @@ pub async fn start(
       }
     }
   });
-  println!("Setting hook");
-  set_panic_hook();
-  println!("Will run agz b64");
   run_agz_b64(agz_b64, priv_key_b64, cert_b64).await;
 }
