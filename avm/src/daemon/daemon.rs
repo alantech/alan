@@ -177,7 +177,6 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
 }
 
 async fn run_agz_b64(agz_b64: String, priv_key_b64: Option<String>, cert_b64: Option<String>) {
-  panic!("run agz panic!!");
   let bytes = base64::decode(agz_b64);
   if let Ok(bytes) = bytes {
     let agz = GzDecoder::new(bytes.as_slice());
@@ -265,10 +264,12 @@ pub async fn start(
           }
           if leader_ip == self_ip {
             let mut factor_err: Option<String> = None;
-            let factor = post_v1_stats(&cluster_id, &deploy_token).await.unwrap_or_else(|err| {
-              factor_err = Some(format!("{}", err));
-              return "1".to_string();
-            });
+            let factor = post_v1_stats(&cluster_id, &deploy_token)
+              .await
+              .unwrap_or_else(|err| {
+                factor_err = Some(format!("{}", err));
+                return "1".to_string();
+              });
             if let Some(err) = factor_err {
               // deploy::client_error(113, Some(&format!("{}", err)), Some(&cluster_id)).await;
             };
@@ -312,22 +313,24 @@ pub async fn start(
     clone_priv_key_b64 = None;
     clone_cert_b64 = None;
   }
-  let run_agz = task::spawn(async {run_agz_b64(clone_agz_b64, clone_priv_key_b64, clone_cert_b64).await;}).await;
+  let run_agz = task::spawn(async {
+    run_agz_b64(clone_agz_b64, clone_priv_key_b64, clone_cert_b64).await;
+  })
+  .await;
   match run_agz {
     Ok(_) => println!("ok"),
     Err(e) => {
       println!("{:?}", e);
       if let Ok(reason) = e.try_into_panic() {
         match reason.downcast_ref::<&str>() {
-          Some(as_string) => {
-            eprintln!("String ({}): {}", as_string.len(), as_string);
+          Some(err) => {
+            eprintln!("{}", err);
           }
           None => {
             eprintln!("{:?}", reason);
           }
-        } 
+        }
       }
-    },    
+    }
   }
-
 }
