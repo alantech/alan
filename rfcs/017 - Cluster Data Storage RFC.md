@@ -14,6 +14,7 @@ YYYY-MM-DD
 
 - Luis De Pombo <luis@alantechnologies.com>
 - Alejandro Guillen <alejandro@alantechnologies.com>
+- Colton Donnelly <colton@alantechnologies.com>
 
 ### Implementation
 
