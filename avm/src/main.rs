@@ -3,7 +3,7 @@ use std::fs::read;
 use std::path::Path;
 
 use anycloud::deploy::{get_config, info, new, terminate, upgrade};
-use anycloud::oauth::get_token;
+use anycloud::oauth::{authenticate, get_token};
 use base64;
 use clap::{crate_name, crate_version, App, AppSettings, SubCommand};
 use serde_json::json;
@@ -124,10 +124,10 @@ fn main() {
         }
       }
       ("deploy", Some(sub_matches)) => {
-        let token = get_token().await;
+        authenticate().await;
         match sub_matches.subcommand() {
           ("new", Some(matches)) => {
-            let config = get_config(&token).await;
+            let config = get_config().await;
             let agz_file = matches.value_of("AGZ_FILE").unwrap();
             let deploy_name = matches
               .value_of("DEPLOY_NAME")
@@ -139,17 +139,17 @@ fn main() {
               "agzB64": get_agz_b64(agz_file),
               "alanVersion": concat!("v", crate_version!()),
               "appId": app_id,
-              "accessToken": token,
+              "accessToken": get_token(),
               "osName": std::env::consts::OS,
             });
             new(body).await;
           }
           ("terminate", Some(matches)) => {
             let app_id = matches.value_of("APP_ID").unwrap();
-            terminate(app_id, &token).await;
+            terminate(app_id).await;
           }
           ("upgrade", Some(matches)) => {
-            let config = get_config(&token).await;
+            let config = get_config().await;
             let cluster_id = matches.value_of("APP_ID").unwrap();
             let agz_file = matches.value_of("AGZ_FILE").unwrap();
             let body = json!({
@@ -157,13 +157,13 @@ fn main() {
               "deployConfig": config,
               "agzB64": get_agz_b64(agz_file),
               "alanVersion": concat!("v", crate_version!()),
-              "accessToken": token,
+              "accessToken": get_token(),
               "osName": std::env::consts::OS,
             });
             upgrade(body).await;
           }
           ("info", _) => {
-            info(&token).await;
+            info().await;
           }
           // rely on AppSettings::SubcommandRequiredElseHelp
           _ => {}
