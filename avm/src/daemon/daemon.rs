@@ -177,6 +177,7 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
 }
 
 async fn run_agz_b64(agz_b64: String, priv_key_b64: Option<String>, cert_b64: Option<String>) {
+  panic!("run agz panic!!");
   let bytes = base64::decode(agz_b64);
   if let Ok(bytes) = bytes {
     let agz = GzDecoder::new(bytes.as_slice());
@@ -319,10 +320,10 @@ pub async fn start(
       if let Ok(reason) = e.try_into_panic() {
         match reason.downcast_ref::<&str>() {
           Some(as_string) => {
-            println!("String ({}): {}", as_string.len(), as_string);
+            eprintln!("String ({}): {}", as_string.len(), as_string);
           }
           None => {
-            println!("{:?}", reason);
+            eprintln!("{:?}", reason);
           }
         } 
       }
