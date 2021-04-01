@@ -24,23 +24,33 @@ use crate::make_server;
 use crate::vm::http::{HttpConfig, HttpType, HttpsConfig};
 use crate::vm::run::run;
 
+pub static CLUSTER_ID: OnceCell<Option<String>> = OnceCell::new();
 pub static CLUSTER_SECRET: OnceCell<Option<String>> = OnceCell::new();
 
-fn set_panic_hook() {
-  panic::set_hook(Box::new(|panic_info| {
-    if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
-      eprintln!("Unexpected error occurred: {:?}", s);
-      // TODO: Logger
-    } else if let Some(s) = panic_info.payload().downcast_ref::<String>() {
-      eprintln!("Unexpected error occurred: {:?}", s);
-      // TODO: Logger
-    } else {
-      eprintln!("Unexpected error occurred.");
-      // TODO: Logger
-    }
-    std::process::exit(1);
-  }));
-}
+// fn set_panic_hook() {
+//   panic::set_hook(Box::new(|panic_info| {
+//     let mut log_msg = String::from("Unexpected error occured.");
+//     if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
+//       eprintln!("Unexpected error occurred: {:?}", s);
+//       log_msg = format!("{} {}", log_msg, s);
+//     } else if let Some(s) = panic_info.payload().downcast_ref::<String>() {
+//       eprintln!("Unexpected error occurred: {:?}", s);
+//       log_msg = format!("{} {}", log_msg, s);
+//     } else {
+//       eprintln!("Unexpected error occurred.");
+//     }
+//     let cluster_id: Option<&str>;
+//     if let Some(id) = CLUSTER_ID.get().unwrap() {
+//       cluster_id = Some(id);
+//     } else {
+//       cluster_id = None;
+//     }
+//     task::spawn(async move {
+//       deploy::client_error(199, Some(&log_msg), cluster_id).await;
+//       std::process::exit(1);
+//     });
+//   }));
+// }
 
 #[cfg(target_os = "linux")]
 async fn get_private_ip() -> Result<String, String> {
@@ -73,8 +83,7 @@ async fn post_v1(endpoint: &str, body: Value) -> String {
     Ok(res) => res,
     Err(err) => {
       let err = format!("{:?}", err);
-      // TODO: Logger
-      // error!("{}", err);
+      // deploy::client_error(119, Some(&format!("{:?}", err)), None).await; //TODO: SET CLUSTER
       err
     }
   }
@@ -119,8 +128,7 @@ async fn post_v1_scale(
     }
     Err(err) => {
       let err = format!("{:?}", err);
-      // TODO: Logger
-      // error!("{}", err);
+      // deploy::client_error(118, Some(&format!("{:?}", err)), Some(&cluster_id)).await;
       err
     }
   }
@@ -134,16 +142,14 @@ async fn post_v1_stats(cluster_id: &str, deploy_token: &str) -> Result<String, S
     "vmStats": vm_stats,
     "clusterId": cluster_id,
   });
-  let cluster_secret = CLUSTER_SECRET.get().unwrap_or_else(|| {
-    // TODO: Logger
-    // error!("No cluster secret");
-    return &None::<String>;
-  });
+  let cluster_secret = CLUSTER_SECRET.get().unwrap();
   if let Some(cluster_secret) = cluster_secret.as_ref() {
     stats_body
       .as_object_mut()
       .unwrap()
       .insert("clusterSecret".to_string(), json!(cluster_secret));
+  } else {
+    // deploy::client_error(114, Some("No cluster secret found."), Some(&cluster_id)).await;
   }
   Ok(post_v1("stats", stats_body).await)
 }
@@ -170,7 +176,7 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
   }
 }
 
-async fn run_agz_b64(agz_b64: &str, priv_key_b64: Option<&str>, cert_b64: Option<&str>) {
+async fn run_agz_b64(agz_b64: String, priv_key_b64: Option<String>, cert_b64: Option<String>) {
   let bytes = base64::decode(agz_b64);
   if let Ok(bytes) = bytes {
     let agz = GzDecoder::new(bytes.as_slice());
@@ -219,8 +225,10 @@ pub async fn start(
   priv_key_b64: Option<&str>,
   cert_b64: Option<&str>,
 ) {
-  set_panic_hook();
+  // set_panic_hook();
+  // panic!("test panic");
   let cluster_id = cluster_id.to_string();
+  CLUSTER_ID.set(Some(String::from(&cluster_id))).unwrap();
   let deploy_token = deploy_token.to_string();
   let agzb64 = agz_b64.to_string();
   let domain = domain.to_string();
@@ -235,11 +243,14 @@ pub async fn start(
       (Ok(dns), Ok(self_ip)) => {
         loop {
           sleep(period).await;
-          let vms = dns.get_vms(&cluster_id).await.unwrap_or_else(|e| {
-            // TODO: Logger
-            // error!("{}", e);
+          let mut vms_err: Option<String> = None;
+          let vms = dns.get_vms(&cluster_id).await.unwrap_or_else(|err| {
+            vms_err = Some(format!("{}", err));
             return Vec::new();
           });
+          if let Some(err) = vms_err {
+            // deploy::client_error(112, Some(&format!("{}", err)), Some(&cluster_id)).await;
+          };
           // triggered the first time since cluster_size == 0
           // and every time the cluster changes size
           if vms.len() != cluster_size {
@@ -252,13 +263,14 @@ pub async fn start(
             leader_ip = lrh.get_leader_id().to_string();
           }
           if leader_ip == self_ip {
-            let factor = post_v1_stats(&cluster_id, &deploy_token)
-              .await
-              .unwrap_or_else(|e| {
-                // TODO: Logger
-                // error!("Failed getting stats. Error: {}", e);
-                return "1".to_string();
-              });
+            let mut factor_err: Option<String> = None;
+            let factor = post_v1_stats(&cluster_id, &deploy_token).await.unwrap_or_else(|err| {
+              factor_err = Some(format!("{}", err));
+              return "1".to_string();
+            });
+            if let Some(err) = factor_err {
+              // deploy::client_error(113, Some(&format!("{}", err)), Some(&cluster_id)).await;
+            };
             println!(
               "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
               cluster_id,
@@ -272,21 +284,16 @@ pub async fn start(
         }
       }
       (Err(dns_err), Ok(_self_ip)) => {
-        // TODO: Logger
-        // error!("DNS error: {}", dns_err);
+        // deploy::client_error(115, Some(&format!("DNS error: {}", dns_err)), Some(&cluster_id)).await;
         panic!("DNS error: {}", dns_err);
       }
       (Ok(_dns), Err(self_ip_err)) => {
-        // TODO: Logger
-        // error!("Private ip error: {}", self_ip_err);
+        // deploy::client_error(116, Some(&format!("Private ip error: {}", self_ip_err)), Some(&cluster_id)).await;
         panic!("Private ip error: {}", self_ip_err);
       }
       (Err(dns_err), Err(self_ip_err)) => {
-        // TODO: Logger
-        // error!(
-        //   "DNS error: {} and Private ip error: {}",
-        //   dns_err, self_ip_err
-        // );
+        // deploy::client_error(117, Some(&format!("DNS error: {} and Private ip error: {}",
+        // dns_err, self_ip_err)), Some(&cluster_id)).await;
         panic!(
           "DNS error: {} and Private ip error: {}",
           dns_err, self_ip_err
@@ -294,5 +301,32 @@ pub async fn start(
       }
     }
   });
-  run_agz_b64(agz_b64, priv_key_b64, cert_b64).await;
+  let clone_agz_b64 = String::from(agz_b64);
+  let clone_priv_key_b64: Option<String>;
+  let clone_cert_b64: Option<String>;
+  if let (Some(priv_key), Some(cert)) = (priv_key_b64, cert_b64) {
+    clone_priv_key_b64 = Some(String::from(priv_key));
+    clone_cert_b64 = Some(String::from(cert));
+  } else {
+    clone_priv_key_b64 = None;
+    clone_cert_b64 = None;
+  }
+  let run_agz = task::spawn(async {run_agz_b64(clone_agz_b64, clone_priv_key_b64, clone_cert_b64).await;}).await;
+  match run_agz {
+    Ok(_) => println!("ok"),
+    Err(e) => {
+      println!("{:?}", e);
+      if let Ok(reason) = e.try_into_panic() {
+        match reason.downcast_ref::<&str>() {
+          Some(as_string) => {
+            println!("String ({}): {}", as_string.len(), as_string);
+          }
+          None => {
+            println!("{:?}", reason);
+          }
+        } 
+      }
+    },    
+  }
+
 }

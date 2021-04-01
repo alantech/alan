@@ -26,7 +26,7 @@ dependencies = [
 
 [[package]]
 name = "alan"
-version = "0.1.35-15"
+version = "0.1.35-16"
 dependencies = [
  "anycloud",
  "async-stream",
@@ -74,7 +74,7 @@ dependencies = [
 [[package]]
 name = "anycloud"
 version = "0.1.6"
-source = "git+https://github.com/alantech/anycloud?branch=main#becd8934454fdb03cbe0d9edd17d6ede2cb7088b"
+source = "git+https://github.com/alantech/anycloud?branch=main#47230c0eff818b2d533f9888ac8079597639410b"
 dependencies = [
  "ascii_table",
  "base64 0.13.0",
@@ -1722,9 +1722,9 @@ dependencies = [
 
 [[package]]
 name = "serde_with"
-version = "1.7.0"
+version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f23bb4df023db259e4423c8a5c248d75d83c0e20c8f0063254f41b859a65ab3"
+checksum = "e557c650adfb38b32a5aec07082053253c703bc3cec654b27a5dbcf61995bb9b"
 dependencies = [
  "rustversion",
  "serde",
