@@ -162,7 +162,7 @@ A third way to tackle SQL-like tables on top of datastore is to house the entire
       <td>Fully <code>atomic</code></td>
       <td>Infinite*</td>
       <td>Infinite*</td>
-      <td>1 / runtime of `atomic` function</td>
+      <td>1 / runtime of <code>atomic</code> function</td>
       <td>Compliant</td>
     </tr>
     <tr>
@@ -176,7 +176,7 @@ A third way to tackle SQL-like tables on top of datastore is to house the entire
       <td>Localized code execution</td>
       <td>Single node's memory limit</td>
       <td>Single node's compute and/or IO limit, unless replicas are read, but that breaks ACID</td>
-      <td>1 / runtime of local mutation time (much faster that first, but competing with reads</td>
+      <td>1 / runtime of local mutation time (much faster that first, but competing with reads)</td>
       <td>Compliant, unless read replicas are used</td>
     </tr>
   </tbody>
