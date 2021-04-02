@@ -6,7 +6,6 @@ use std::net::TcpStream;
 use std::panic;
 use std::path::Path;
 
-#[macro_use]
 use anycloud::error;
 use anycloud::deploy;
 use anycloud::deploy::client_error; // Needed for error macro
@@ -34,6 +33,7 @@ pub static CLUSTER_SECRET: OnceCell<Option<String>> = OnceCell::new();
 async fn get_private_ip() -> Result<String, String> {
   let res = Command::new("hostname").arg("-I").output().await;
   let err = "Failed to execute `hostname`";
+  error!(116, "TEST priv ip").await;
   match res {
     Ok(res) => {
       let stdout = res.stdout;
@@ -121,6 +121,7 @@ async fn post_v1_stats(cluster_id: &str, deploy_token: &str) -> Result<String, S
     "clusterId": cluster_id,
   });
   let cluster_secret = CLUSTER_SECRET.get().unwrap();
+  error!(116, "TEST POSTING STATS").await;
   if let Some(cluster_secret) = cluster_secret.as_ref() {
     stats_body
       .as_object_mut()
@@ -155,6 +156,7 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
 }
 
 async fn run_agz_b64(agz_b64: String, priv_key_b64: Option<String>, cert_b64: Option<String>) {
+  error!(116, "TEST run agz").await;
   let bytes = base64::decode(agz_b64);
   if let Ok(bytes) = bytes {
     let agz = GzDecoder::new(bytes.as_slice());
