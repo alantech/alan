@@ -6,6 +6,11 @@ use std::net::TcpStream;
 use std::panic;
 use std::path::Path;
 
+
+#[macro_use]
+use anycloud::error;
+use anycloud::CLUSTER_ID; // Needed for error macro
+use anycloud::deploy::client_error; // Needed for error macro
 use anycloud::deploy;
 use base64;
 use byteorder::{LittleEndian, ReadBytesExt};
@@ -24,33 +29,7 @@ use crate::make_server;
 use crate::vm::http::{HttpConfig, HttpType, HttpsConfig};
 use crate::vm::run::run;
 
-pub static CLUSTER_ID: OnceCell<Option<String>> = OnceCell::new();
 pub static CLUSTER_SECRET: OnceCell<Option<String>> = OnceCell::new();
-
-// fn set_panic_hook() {
-//   panic::set_hook(Box::new(|panic_info| {
-//     let mut log_msg = String::from("Unexpected error occured.");
-//     if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
-//       eprintln!("Unexpected error occurred: {:?}", s);
-//       log_msg = format!("{} {}", log_msg, s);
-//     } else if let Some(s) = panic_info.payload().downcast_ref::<String>() {
-//       eprintln!("Unexpected error occurred: {:?}", s);
-//       log_msg = format!("{} {}", log_msg, s);
-//     } else {
-//       eprintln!("Unexpected error occurred.");
-//     }
-//     let cluster_id: Option<&str>;
-//     if let Some(id) = CLUSTER_ID.get().unwrap() {
-//       cluster_id = Some(id);
-//     } else {
-//       cluster_id = None;
-//     }
-//     task::spawn(async move {
-//       deploy::client_error(199, Some(&log_msg), cluster_id).await;
-//       std::process::exit(1);
-//     });
-//   }));
-// }
 
 #[cfg(target_os = "linux")]
 async fn get_private_ip() -> Result<String, String> {
@@ -83,7 +62,7 @@ async fn post_v1(endpoint: &str, body: Value) -> String {
     Ok(res) => res,
     Err(err) => {
       let err = format!("{:?}", err);
-      // deploy::client_error(119, Some(&format!("{:?}", err)), None).await; //TODO: SET CLUSTER
+      error!(121, "{:?}", err).await;
       err
     }
   }
@@ -128,7 +107,7 @@ async fn post_v1_scale(
     }
     Err(err) => {
       let err = format!("{:?}", err);
-      // deploy::client_error(118, Some(&format!("{:?}", err)), Some(&cluster_id)).await;
+      error!(120, "{:?}", err).await;
       err
     }
   }
@@ -149,7 +128,7 @@ async fn post_v1_stats(cluster_id: &str, deploy_token: &str) -> Result<String, S
       .unwrap()
       .insert("clusterSecret".to_string(), json!(cluster_secret));
   } else {
-    // deploy::client_error(114, Some("No cluster secret found."), Some(&cluster_id)).await;
+    error!(116, "No cluster secret found.").await;
   }
   Ok(post_v1("stats", stats_body).await)
 }
@@ -225,10 +204,8 @@ pub async fn start(
   priv_key_b64: Option<&str>,
   cert_b64: Option<&str>,
 ) {
-  // set_panic_hook();
-  // panic!("test panic");
   let cluster_id = cluster_id.to_string();
-  CLUSTER_ID.set(Some(String::from(&cluster_id))).unwrap();
+  CLUSTER_ID.set(String::from(&cluster_id)).unwrap();
   let deploy_token = deploy_token.to_string();
   let agzb64 = agz_b64.to_string();
   let domain = domain.to_string();
@@ -249,7 +226,7 @@ pub async fn start(
             return Vec::new();
           });
           if let Some(err) = vms_err {
-            // deploy::client_error(112, Some(&format!("{}", err)), Some(&cluster_id)).await;
+            error!(114, "{}", err).await;
           };
           // triggered the first time since cluster_size == 0
           // and every time the cluster changes size
@@ -271,7 +248,7 @@ pub async fn start(
                 return "1".to_string();
               });
             if let Some(err) = factor_err {
-              // deploy::client_error(113, Some(&format!("{}", err)), Some(&cluster_id)).await;
+              error!(115, "{}", err).await;
             };
             println!(
               "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
@@ -286,16 +263,15 @@ pub async fn start(
         }
       }
       (Err(dns_err), Ok(_self_ip)) => {
-        // deploy::client_error(115, Some(&format!("DNS error: {}", dns_err)), Some(&cluster_id)).await;
+        error!(117, "DNS error: {}", dns_err).await;
         panic!("DNS error: {}", dns_err);
       }
       (Ok(_dns), Err(self_ip_err)) => {
-        // deploy::client_error(116, Some(&format!("Private ip error: {}", self_ip_err)), Some(&cluster_id)).await;
+        error!(118, "Private ip error: {}", self_ip_err).await;
         panic!("Private ip error: {}", self_ip_err);
       }
       (Err(dns_err), Err(self_ip_err)) => {
-        // deploy::client_error(117, Some(&format!("DNS error: {} and Private ip error: {}",
-        // dns_err, self_ip_err)), Some(&cluster_id)).await;
+        error!(119, "DNS error: {} and Private ip error: {}", dns_err, self_ip_err).await;
         panic!(
           "DNS error: {} and Private ip error: {}",
           dns_err, self_ip_err
