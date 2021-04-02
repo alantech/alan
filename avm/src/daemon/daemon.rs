@@ -6,12 +6,11 @@ use std::net::TcpStream;
 use std::panic;
 use std::path::Path;
 
-
 #[macro_use]
 use anycloud::error;
-use anycloud::CLUSTER_ID; // Needed for error macro
-use anycloud::deploy::client_error; // Needed for error macro
 use anycloud::deploy;
+use anycloud::deploy::client_error; // Needed for error macro
+use anycloud::CLUSTER_ID; // Needed for error macro
 use base64;
 use byteorder::{LittleEndian, ReadBytesExt};
 use flate2::read::GzDecoder;
@@ -271,7 +270,11 @@ pub async fn start(
         panic!("Private ip error: {}", self_ip_err);
       }
       (Err(dns_err), Err(self_ip_err)) => {
-        error!(119, "DNS error: {} and Private ip error: {}", dns_err, self_ip_err).await;
+        error!(
+          119,
+          "DNS error: {} and Private ip error: {}", dns_err, self_ip_err
+        )
+        .await;
         panic!(
           "DNS error: {} and Private ip error: {}",
           dns_err, self_ip_err
