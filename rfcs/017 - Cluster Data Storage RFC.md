@@ -145,6 +145,43 @@ export fn addUser(firstName: string, lastName: string, email: string): Maybe<Err
 
 There are performance issues with this particular approach (the incrementing ID field means that the construction of the record goes hand-in-hand with creating the record, which can slow things down and reduce the maximum possible throughput of the cluster to `1 / runtime of this function` (so a runtime of `100ms` to create this data means you can only insert 10 records per second for the entire cluster, regardless of the size of the cluster). This can be avoided by having distributed [threadsafe queues](https://docs.oracle.com/javase/7/docs/api/java/util/concurrent/ConcurrentLinkedQueue.html) if there's a tolerance for inserted records to not be immediately queryable. Then that queue can be consumed multiple records at a time to generate the index updates out-of-band, making insertion scalable with the cluster size and pushing the maximum indexes / sec much higher, but with eventually consistent semantics instead of fully ACID-compliant (so it could also make sense to make both options available for users to choose from).
 
+A third way to tackle SQL-like tables on top of datastore is to house the entirety of the table into a single key, and then push execution of all mutations to the node that "owns" the table and code there handles queries out of it. This increases the upper bound of the throughput of the cluster for a singular table compared to the "simple" `atomic`-based form above, but has other trade-offs.
+
+<table>
+  <thead>
+    <tr>
+      <td>Approach</td>
+      <td>Max Rows</td>
+      <td>Max Read Throughput</td>
+      <td>Max Write Throughput</td>
+      <td>ACID Compliance</td>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Fully <code>atomic</code></td>
+      <td>Infinite*</td>
+      <td>Infinite*</td>
+      <td>1 / runtime of `atomic` function</td>
+      <td>Compliant</td>
+    </tr>
+    <tr>
+      <td><code>atomic</code> with index queueing</td>
+      <td>Infinite*</td>
+      <td>Infinite*</td>
+      <td>1 / runtime of batch of queue indexing (much higher than above)</td>
+      <td>Non-compliant. Eventually consistent indexing</td>
+    </tr>
+    <tr>
+      <td>Localized code execution</td>
+      <td>Single node's memory limit</td>
+      <td>Single node's compute and/or IO limit, unless replicas are read, but that breaks ACID</td>
+      <td>1 / runtime of local mutation time (much faster that first, but competing with reads</td>
+      <td>Compliant, unless read replicas are used</td>
+    </tr>
+  </tbody>
+</table>
+
 Regardless, the way that the `atomic` mechanism would work is that all datastore reads would go out to the cluster as normal, but internally it holds on to the original key-val pair and provides the value as a copy to the Alan code. All writes out are intercepted in this atomic mode and held in the same memory as the read copies are stored. Once the closure has finished running, the atomic function's opcode tries to commit the changes across the cluster. If successful it returns a `none` value for the `Maybe<Error>`, otherwise it re-runs the underlying function again until it eventually hits a maximum execution limit. There would be a default number of runs (3?) that could be overridden by with a second form of the function with two arguments, the other being a `Seq` object to consume (the 1-arg version would just construct such a `Seq` object internally and immediately consume it).
 
 The algorithm for atomically updating the fields at the end of the run is based on the TCP SYN-ACK algorithm. The node that is doing the mutation will send the original and new version of each key that was mutated during the `atomic` call (any key that was read but not written to does not count) to the nodes in charge of said keys. They will respond with either a `fail` error or a random key indicating success. At this point, the nodes really do lock for a very brief period of time. The mutating node, if all keys come back successful, responds back with the key and `ok`, otherwise it responds only to the nodes that succeeded with the key and `fail` to unlock them or commit the changes. This depends on the response times of every node, but ideally in the single-millisecond timeframe. In case the node trying to do the mutation fails, all nodes will eventually assume failure and not unlock if enough time has passed, say 100ms.
