@@ -74,7 +74,7 @@ dependencies = [
 [[package]]
 name = "anycloud"
 version = "0.1.6"
-source = "git+https://github.com/alantech/anycloud?branch=feat/error-codes#47f0366cad2565e7d92da71c9658958956c08c4c"
+source = "git+https://github.com/alantech/anycloud?branch=feat/error-codes#9f3dd4da7c6898ebb7f0d065a008f717bc10e4fa"
 dependencies = [
  "ascii_table",
  "base64",
