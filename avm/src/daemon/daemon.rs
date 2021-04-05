@@ -54,7 +54,7 @@ async fn get_private_ip() -> Result<String, String> {
 }
 
 async fn post_v1(endpoint: &str, body: Value) -> String {
-  let resp = deploy::post_v1(endpoint, body).await;
+  let resp = post_v1(endpoint, body).await;
   match resp {
     Ok(res) => res,
     Err(err) => {
