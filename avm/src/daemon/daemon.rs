@@ -303,7 +303,7 @@ pub async fn start(
   match run_agz {
     Ok(_) => println!("ok"),
     Err(e) => {
-      println!("{:?}", e);
+      eprintln!("{:?}", e);
       if let Ok(reason) = e.try_into_panic() {
         match reason.downcast_ref::<&str>() {
           Some(err) => {
