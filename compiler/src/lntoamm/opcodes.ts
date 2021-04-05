@@ -19,7 +19,8 @@ const addBuiltIn = (name: string) => {
 ([
   'void', 'int8', 'int16', 'int32', 'int64', 'float32', 'float64', 'bool', 'string', 'function',
   'operator', 'Error', 'Maybe', 'Result', 'Either', 'Array', 'ExecRes', 'InitialReduce',
-  'KeyVal', 'InternalRequest', 'InternalResponse', 'Seq', 'Self',
+  'KeyVal', 'InternalRequest', 'InternalResponse', 'Seq', 'Self', 'TcpChannel', 'TcpContext',
+  'Chunk',
 ].map(addBuiltIn))
 Type.builtinTypes['Array'].solidify(['string'], opcodeScope)
 opcodeScope.put('any', new Type('any', true, false, {}, {}, null, new Interface('any')))
@@ -31,6 +32,7 @@ Type.builtinTypes['Array'].solidify(['any'], opcodeScope)
 Type.builtinTypes['Array'].solidify(['anythingElse'], opcodeScope)
 Type.builtinTypes['KeyVal'].solidify(['string', 'string'], opcodeScope)
 Type.builtinTypes['Array'].solidify(['KeyVal<string, string>'], opcodeScope)
+Type.builtinTypes['TcpContext'].solidify(['any'], opcodeScope)
 // HTTP server opcode-related builtin Types hackery, also defined in std/http.ln
 Type.builtinTypes.InternalRequest.properties = {
   method: opcodeScope.get('string') as Type,
@@ -60,6 +62,9 @@ Type.builtinTypes.Either.solidify(['any', 'anythingElse'], opcodeScope)
 Type.builtinTypes.InitialReduce.solidify(['any', 'anythingElse'], opcodeScope)
 opcodeScope.put("start", new Event("_start", Type.builtinTypes.void, true))
 opcodeScope.put("__conn", new Event("__conn", Type.builtinTypes.InternalRequest, true))
+opcodeScope.put("tcpConn", new Event("tcpConn", Type.builtinTypes.TcpChannel, true))
+opcodeScope.put("chunk", new Event("chunk", opcodeScope.get('TcpContext<any>') as Type, true))
+opcodeScope.put("tcpClose", new Event("tcpClose", opcodeScope.get('TcpContext<any>') as Type, true))
 const t = (str: string) => opcodeScope.get(str)
 
 // opcode declarations
@@ -854,6 +859,12 @@ addopcodes({
   seqdo: [{ seq: t('Seq'), bodyFn: t('function'), }, t('void')],
   selfrec: [{ self: t('Self'), arg: t('any'), }, t('Result<anythingElse>')],
   seqrec: [{ seq: t('Seq'), recurseFn: t('function'), }, t('Self')],
+  tcpconn: [{ host: t('string'), port: t('int16'), }, t('TcpChannel')],
+  tcpAddC: [{ channel: t('TcpChannel'), context: t('any'), }, t('TcpChannel')],
+  tcpReady: [{ channel: t('TcpChannel'), }, t('TcpChannel')],
+  tcpRead: [{ channel: t('TcpChannel'), }, t('Chunk')],
+  tcpWrite: [{ channel: t('TcpChannel'), chunk: t('Chunk'), }, t('TcpChannel')],
+  tcpTerm: [{ channel: t('TcpChannel'), }, t('void')],
 })
 
 export default opcodeModule

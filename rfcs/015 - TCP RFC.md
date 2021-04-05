@@ -17,7 +17,8 @@
 
 ### Implementation
 
-- [ ] Implemented: [One or more PRs](https://github.com/alantech/alan/some-pr-link-here) YYYY-MM-DD
+- Implemented: 
+  - [x] [Implement @std/tcp for the js-runtime](https://github.com/alantech/alan/pull/470) 2021-03-31 
 - [ ] Revoked/Superceded by: [RFC ###](./000 - RFC Template.md) YYYY-MM-DD
 
 ## Author(s)
