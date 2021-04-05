@@ -184,12 +184,14 @@ async fn run_agz_b64(agz_b64: String, priv_key_b64: Option<String>, cert_b64: Op
         run(bytecode, HttpType::HTTP(HttpConfig { port: 80 })).await;
       }
     } else {
-      eprintln!("Error reading signed 64 bit integers from src into dst.");
-      panic!("Error reading signed 64 bit integers from src into dst.");
+      let err = "AGZ file appears to be corrupt.";
+      eprintln!("{}", err);
+      panic!(err);
     }
   } else {
-    eprintln!("Unable to decode agz base64.");
-    panic!("Unable to decode agz base64.");
+    let err = "Unable to decode agz base64.";
+    eprintln!("{}", err);
+    panic!(err);
   }
 }
 
