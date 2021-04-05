@@ -189,7 +189,7 @@ async fn run_agz_b64(agz_b64: String, priv_key_b64: Option<String>, cert_b64: Op
       panic!(err);
     }
   } else {
-    let err = "Unable to decode agz base64.";
+    let err = "AGZ payload not properly base64-encoded.";
     eprintln!("{}", err);
     panic!(err);
   }
