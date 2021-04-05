@@ -1,5 +1,6 @@
 use std::convert::Infallible;
 use std::env;
+use std::error::Error;
 use std::fs::read;
 use std::io::Read;
 use std::net::TcpStream;
@@ -111,7 +112,10 @@ async fn post_v1_scale(
 }
 
 // returns cluster delta
-async fn post_v1_stats(cluster_id: &str, deploy_token: &str) -> Result<String, String> {
+async fn post_v1_stats(
+  cluster_id: &str,
+  deploy_token: &str,
+) -> Result<String, Box<dyn Error + Send + Sync>> {
   let vm_stats = get_v1_stats().await?;
   let mut stats_body = json!({
     "deployToken": deploy_token,
@@ -266,11 +270,7 @@ pub async fn start(
         panic!("DNS error: {}", dns_err);
       }
       (Ok(_dns), Err(self_ip_err)) => {
-        error!(
-          ErrorType::NoPrivateIp,
-          "Private ip error: {}", self_ip_err
-        )
-        .await;
+        error!(ErrorType::NoPrivateIp, "Private ip error: {}", self_ip_err).await;
         panic!("Private ip error: {}", self_ip_err);
       }
       (Err(dns_err), Err(self_ip_err)) => {
