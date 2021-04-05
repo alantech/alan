@@ -176,31 +176,23 @@ pub async fn get_v1_stats() -> Result<VMStatsV1, String> {
 #[cfg(not(target_os = "linux"))]
 pub async fn get_v1_stats() -> Result<VMStatsV1, String> {
   let memory = heim_memory::memory().await;
-  match memory {
-    Ok(memory) => {
-      let swap = heim_memory::swap().await;
-      match swap {
-        Ok(swap) => {
-          let core_times = get_cores_times().await;
-          match core_times {
-            Ok(core_times) => Ok(VMStatsV1 {
-              cpuSecs: core_times,
-              procsCpuUsage: get_proc_usages().await,
-              totalMemoryKb: memory.total().get::<kilobyte>(),
-              availableMemoryKb: memory.available().get::<kilobyte>(),
-              freeMemoryKb: memory.free().get::<kilobyte>(),
-              activeMemoryKb: 0,
-              usedMemoryKb: 0,
-              totalSwapKb: swap.total().get::<kilobyte>(),
-              usedSwapKb: swap.used().get::<kilobyte>(),
-              freeSwapKb: swap.free().get::<kilobyte>(),
-            }),
-            Err(err) => return Err(err),
-          }
-        }
-        Err(_) => return Err("Failed to get swap information".to_string()),
-      }
-    }
-    Err(_) => return Err("Failed to get system memory information".to_string()),
+  let swap = heim_memory::swap().await;
+  let core_times = get_cores_times().await;
+  match (memory, swap, core_times) {
+    (Ok(memory), Ok(swap), Ok(core_times)) => Ok(VMStatsV1 {
+        cpuSecs: core_times,
+        procsCpuUsage: get_proc_usages().await,
+        totalMemoryKb: memory.total().get::<kilobyte>(),
+        availableMemoryKb: memory.available().get::<kilobyte>(),
+        freeMemoryKb: memory.free().get::<kilobyte>(),
+        activeMemoryKb: 0,
+        usedMemoryKb: 0,
+        totalSwapKb: swap.total().get::<kilobyte>(),
+        usedSwapKb: swap.used().get::<kilobyte>(),
+        freeSwapKb: swap.free().get::<kilobyte>(),
+    }),
+    (Err(_err_memory), _, _) => return Err("Failed to get system memory information".to_string()),
+    (_, Err(_err_swap), _) => return Err("Failed to get swap information".to_string()),
+    (_, _, Err(err_core_times)) => return Err(err_core_times),
   }
 }
