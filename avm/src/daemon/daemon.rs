@@ -6,10 +6,9 @@ use std::net::TcpStream;
 use std::panic;
 use std::path::Path;
 
-use anycloud::error;
-use anycloud::deploy;
-use anycloud::deploy::client_error; // Needed for error macro
-use anycloud::CLUSTER_ID; // Needed for error macro
+use anycloud::deploy::{client_error, post_v1}; 
+use anycloud::logger::ErrorKind;
+use anycloud::{error, CLUSTER_ID};
 use base64;
 use byteorder::{LittleEndian, ReadBytesExt};
 use flate2::read::GzDecoder;
@@ -33,7 +32,6 @@ pub static CLUSTER_SECRET: OnceCell<Option<String>> = OnceCell::new();
 async fn get_private_ip() -> Result<String, String> {
   let res = Command::new("hostname").arg("-I").output().await;
   let err = "Failed to execute `hostname`";
-  error!(116, "TEST priv ip").await;
   match res {
     Ok(res) => {
       let stdout = res.stdout;
@@ -61,7 +59,7 @@ async fn post_v1(endpoint: &str, body: Value) -> String {
     Ok(res) => res,
     Err(err) => {
       let err = format!("{:?}", err);
-      error!(121, "{:?}", err).await;
+      error!(ErrorKind::PostFailed as u8, "{:?}", err).await;
       err
     }
   }
@@ -106,7 +104,7 @@ async fn post_v1_scale(
     }
     Err(err) => {
       let err = format!("{:?}", err);
-      error!(120, "{:?}", err).await;
+      error!(ErrorKind::ScaleFailed as u8, "{:?}", err).await;
       err
     }
   }
@@ -121,14 +119,13 @@ async fn post_v1_stats(cluster_id: &str, deploy_token: &str) -> Result<String, S
     "clusterId": cluster_id,
   });
   let cluster_secret = CLUSTER_SECRET.get().unwrap();
-  error!(116, "TEST POSTING STATS").await;
   if let Some(cluster_secret) = cluster_secret.as_ref() {
     stats_body
       .as_object_mut()
       .unwrap()
       .insert("clusterSecret".to_string(), json!(cluster_secret));
   } else {
-    error!(116, "No cluster secret found.").await;
+    error!(ErrorKind::NoClusterSecret as u8, "No cluster secret found.").await;
   }
   Ok(post_v1("stats", stats_body).await)
 }
@@ -156,7 +153,6 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
 }
 
 async fn run_agz_b64(agz_b64: String, priv_key_b64: Option<String>, cert_b64: Option<String>) {
-  error!(116, "TEST run agz").await;
   let bytes = base64::decode(agz_b64);
   if let Ok(bytes) = bytes {
     let agz = GzDecoder::new(bytes.as_slice());
@@ -227,7 +223,7 @@ pub async fn start(
             return Vec::new();
           });
           if let Some(err) = vms_err {
-            error!(114, "{}", err).await;
+            error!(ErrorKind::NoDnsVms as u8, "{}", err).await;
           };
           // triggered the first time since cluster_size == 0
           // and every time the cluster changes size
@@ -249,7 +245,7 @@ pub async fn start(
                 return "1".to_string();
               });
             if let Some(err) = factor_err {
-              error!(115, "{}", err).await;
+              error!(ErrorKind::PostStats as u8, "{}", err).await;
             };
             println!(
               "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
@@ -264,16 +260,20 @@ pub async fn start(
         }
       }
       (Err(dns_err), Ok(_self_ip)) => {
-        error!(117, "DNS error: {}", dns_err).await;
+        error!(ErrorKind::NoDns as u8, "DNS error: {}", dns_err).await;
         panic!("DNS error: {}", dns_err);
       }
       (Ok(_dns), Err(self_ip_err)) => {
-        error!(118, "Private ip error: {}", self_ip_err).await;
+        error!(
+          ErrorKind::NoPrivateIp as u8,
+          "Private ip error: {}", self_ip_err
+        )
+        .await;
         panic!("Private ip error: {}", self_ip_err);
       }
       (Err(dns_err), Err(self_ip_err)) => {
         error!(
-          119,
+          ErrorKind::NoDnsPrivateIp as u8,
           "DNS error: {} and Private ip error: {}", dns_err, self_ip_err
         )
         .await;
