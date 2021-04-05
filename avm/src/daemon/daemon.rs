@@ -7,7 +7,7 @@ use std::panic;
 use std::path::Path;
 
 use anycloud::deploy::{client_error, post_v1 as deploy_post_v1};
-use anycloud::logger::ErrorKind;
+use anycloud::logger::ErrorType;
 use anycloud::{error, CLUSTER_ID};
 use base64;
 use byteorder::{LittleEndian, ReadBytesExt};
@@ -59,7 +59,7 @@ async fn post_v1(endpoint: &str, body: Value) -> String {
     Ok(res) => res,
     Err(err) => {
       let err = format!("{:?}", err);
-      error!(ErrorKind::PostFailed as u8, "{:?}", err).await;
+      error!(ErrorType::PostFailed, "{:?}", err).await;
       err
     }
   }
@@ -104,7 +104,7 @@ async fn post_v1_scale(
     }
     Err(err) => {
       let err = format!("{:?}", err);
-      error!(ErrorKind::ScaleFailed as u8, "{:?}", err).await;
+      error!(ErrorType::ScaleFailed, "{:?}", err).await;
       err
     }
   }
@@ -125,7 +125,7 @@ async fn post_v1_stats(cluster_id: &str, deploy_token: &str) -> Result<String, S
       .unwrap()
       .insert("clusterSecret".to_string(), json!(cluster_secret));
   } else {
-    error!(ErrorKind::NoClusterSecret as u8, "No cluster secret found.").await;
+    error!(ErrorType::NoClusterSecret, "No cluster secret found.").await;
   }
   Ok(post_v1("stats", stats_body).await)
 }
@@ -225,7 +225,7 @@ pub async fn start(
             return Vec::new();
           });
           if let Some(err) = vms_err {
-            error!(ErrorKind::NoDnsVms as u8, "{}", err).await;
+            error!(ErrorType::NoDnsVms, "{}", err).await;
           };
           // triggered the first time since cluster_size == 0
           // and every time the cluster changes size
@@ -247,7 +247,7 @@ pub async fn start(
                 return "1".to_string();
               });
             if let Some(err) = factor_err {
-              error!(ErrorKind::PostStats as u8, "{}", err).await;
+              error!(ErrorType::PostStats, "{}", err).await;
             };
             println!(
               "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
@@ -262,12 +262,12 @@ pub async fn start(
         }
       }
       (Err(dns_err), Ok(_self_ip)) => {
-        error!(ErrorKind::NoDns as u8, "DNS error: {}", dns_err).await;
+        error!(ErrorType::NoDns, "DNS error: {}", dns_err).await;
         panic!("DNS error: {}", dns_err);
       }
       (Ok(_dns), Err(self_ip_err)) => {
         error!(
-          ErrorKind::NoPrivateIp as u8,
+          ErrorType::NoPrivateIp,
           "Private ip error: {}", self_ip_err
         )
         .await;
@@ -275,7 +275,7 @@ pub async fn start(
       }
       (Err(dns_err), Err(self_ip_err)) => {
         error!(
-          ErrorKind::NoDnsPrivateIp as u8,
+          ErrorType::NoDnsPrivateIp,
           "DNS error: {} and Private ip error: {}", dns_err, self_ip_err
         )
         .await;
