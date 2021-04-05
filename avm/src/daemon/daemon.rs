@@ -30,27 +30,21 @@ use crate::vm::run::run;
 pub static CLUSTER_SECRET: OnceCell<Option<String>> = OnceCell::new();
 
 #[cfg(target_os = "linux")]
-async fn get_private_ip() -> Result<String, String> {
-  let res = Command::new("hostname").arg("-I").output().await;
-  let err = "Failed to execute `hostname`";
-  match res {
-    Ok(res) => {
-      let stdout = res.stdout;
-      let private_ip = String::from_utf8(stdout);
-      match private_ip {
-        Ok(private_ip) => match private_ip.trim().split_whitespace().next() {
-          Some(private_ip) => Ok(private_ip.to_string()),
-          None => return Err("No ip found".to_string()),
-        },
-        Err(err) => return Err(err.to_string()),
-      }
-    }
-    Err(_) => return Err(err.to_string()),
+async fn get_private_ip() -> Result<String, Box<dyn Error + Send + Sync>> {
+  let res = Command::new("hostname").arg("-I").output().await?;
+  let stdout = res.stdout;
+  let private_ip = String::from_utf8(stdout);
+  match private_ip {
+    Ok(private_ip) => match private_ip.trim().split_whitespace().next() {
+      Some(private_ip) => Ok(private_ip.to_string()),
+      None => return Err("No ip found".into()),
+    },
+    Err(err) => return Err(err.into()),
   }
 }
 
 #[cfg(not(target_os = "linux"))]
-async fn get_private_ip() -> Result<String, String> {
+async fn get_private_ip() -> Result<String, Box<dyn Error + Send + Sync>> {
   panic!("`hostname` command does not exist in this OS");
 }
 
