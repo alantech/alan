@@ -6,7 +6,7 @@ use std::net::TcpStream;
 use std::panic;
 use std::path::Path;
 
-use anycloud::deploy::{client_error, post_v1 as deploy_post_v1}; 
+use anycloud::deploy::{client_error, post_v1 as deploy_post_v1};
 use anycloud::logger::ErrorKind;
 use anycloud::{error, CLUSTER_ID};
 use base64;
