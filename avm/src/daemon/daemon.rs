@@ -171,6 +171,7 @@ async fn run_agz_b64(
           }),
           control_port
         );
+        // TODO: return a Result in order to catch the error and log it
         run(
           bytecode,
           HttpType::HTTPS(HttpsConfig {
@@ -181,6 +182,7 @@ async fn run_agz_b64(
         )
         .await;
       } else {
+        // TODO: return a Result in order to catch the error and log it
         run(bytecode, HttpType::HTTP(HttpConfig { port: 80 })).await;
       }
     } else {
