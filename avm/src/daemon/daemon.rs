@@ -234,16 +234,13 @@ pub async fn start(
           leader_ip = lrh.get_leader_id().to_string();
         }
         if leader_ip == self_ip.to_string() {
-          let mut factor_err: Option<String> = None;
-          let factor = post_v1_stats(&cluster_id, &deploy_token)
-            .await
-            .unwrap_or_else(|err| {
-              factor_err = Some(format!("{}", err));
-              return "1".to_string();
-            });
-          if let Some(err) = factor_err {
+          let mut factor = String::from("1");
+          let stats_factor = post_v1_stats(&cluster_id, &deploy_token).await;
+          if let Ok(stats_factor) = stats_factor {
+            factor = stats_factor
+          } else if let Err(err) = stats_factor {
             error!(ErrorType::PostStats, "{}", err).await;
-          };
+          }
           println!(
             "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
             cluster_id,
