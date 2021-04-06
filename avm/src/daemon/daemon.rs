@@ -282,6 +282,6 @@ pub async fn start(
   });
   if let Err(err) = run_agz_b64(agz_b64, priv_key_b64, cert_b64).await {
     error!(ErrorType::RunAgzFailed, "{:?}", err).await;
-    panic!(err);
+    panic!("{:?}", err);
   }
 }
