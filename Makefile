@@ -46,7 +46,7 @@ node_modules: build
 
 .PHONY: clean
 clean:
-	git clean -ffdxe .vscode -e compiler/src/lnntoamm
+	git clean -ffdxe .vscode
 
 .PHONY: install
 install: avm/target/release/alan
