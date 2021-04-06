@@ -26,10 +26,12 @@ use crate::make_server;
 use crate::vm::http::{HttpConfig, HttpType, HttpsConfig};
 use crate::vm::run::run;
 
+pub type DaemonResult<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
+
 pub static CLUSTER_SECRET: OnceCell<Option<String>> = OnceCell::new();
 
 #[cfg(target_os = "linux")]
-async fn get_private_ip() -> Result<String, Box<dyn Error + Send + Sync>> {
+async fn get_private_ip() -> DaemonResult<String> {
   let res = Command::new("hostname").arg("-I").output().await?;
   let stdout = res.stdout;
   let private_ip = String::from_utf8(stdout);
@@ -43,7 +45,7 @@ async fn get_private_ip() -> Result<String, Box<dyn Error + Send + Sync>> {
 }
 
 #[cfg(not(target_os = "linux"))]
-async fn get_private_ip() -> Result<String, Box<dyn Error + Send + Sync>> {
+async fn get_private_ip() -> DaemonResult<String> {
   panic!("`hostname` command does not exist in this OS");
 }
 
@@ -105,10 +107,7 @@ async fn post_v1_scale(
 }
 
 // returns cluster delta
-async fn post_v1_stats(
-  cluster_id: &str,
-  deploy_token: &str,
-) -> Result<String, Box<dyn Error + Send + Sync>> {
+async fn post_v1_stats(cluster_id: &str, deploy_token: &str) -> DaemonResult<String> {
   let vm_stats = get_v1_stats().await?;
   let mut stats_body = json!({
     "deployToken": deploy_token,
@@ -153,7 +152,7 @@ async fn run_agz_b64(
   agz_b64: &str,
   priv_key_b64: Option<&str>,
   cert_b64: Option<&str>,
-) -> Result<(), Box<dyn Error + Send + Sync>> {
+) -> DaemonResult<()> {
   let bytes = base64::decode(agz_b64);
   if let Ok(bytes) = bytes {
     let agz = GzDecoder::new(bytes.as_slice());

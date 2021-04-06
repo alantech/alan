@@ -4,6 +4,8 @@ use std::str;
 use trust_dns_resolver::config::{ResolverConfig, ResolverOpts};
 use trust_dns_resolver::TokioAsyncResolver;
 
+use crate::daemon::daemon::DaemonResult;
+
 pub struct DNS {
   resolver: TokioAsyncResolver,
   domain: String,
@@ -16,7 +18,7 @@ pub struct VMMetadata {
 }
 
 impl VMMetadata {
-  fn from_txt_data(data: &[u8]) -> Result<VMMetadata, Box<dyn Error + Send + Sync>> {
+  fn from_txt_data(data: &[u8]) -> DaemonResult<VMMetadata> {
     let txt = str::from_utf8(&*data);
     match txt {
       Ok(txt) => {
@@ -40,7 +42,7 @@ impl VMMetadata {
 }
 
 impl DNS {
-  pub fn new(domain: &str) -> Result<DNS, Box<dyn Error + Send + Sync>> {
+  pub fn new(domain: &str) -> DaemonResult<DNS> {
     let mut resolver_opts = ResolverOpts::default();
     // ignore /ect/hosts
     resolver_opts.use_hosts_file = false;
@@ -55,10 +57,7 @@ impl DNS {
     })
   }
 
-  pub async fn get_vms(
-    &self,
-    cluster_id: &str,
-  ) -> Result<Vec<VMMetadata>, Box<dyn Error + Send + Sync>> {
+  pub async fn get_vms(&self, cluster_id: &str) -> DaemonResult<Vec<VMMetadata>> {
     let name = format!("{}.{}", cluster_id, self.domain);
     let err = format!("Failed to fetch TXT record with name {}", &name);
     let resp = self.resolver.txt_lookup(name).await;

@@ -10,6 +10,8 @@ use heim_memory::os::linux::MemoryExt;
 use serde::Serialize;
 use tokio::time::{sleep, Duration};
 
+use crate::daemon::daemon::DaemonResult;
+
 #[derive(Debug, Serialize)]
 pub struct CPUSecsV1 {
   user: f64,
@@ -69,7 +71,7 @@ async fn get_proc_usages() -> Vec<f64> {
 // get total cpu times per core since the VM's uptime
 // while setting linux specific fields to 0
 #[cfg(not(target_os = "linux"))]
-async fn get_cores_total_times() -> Vec<Result<CPUSecsV1, Box<dyn Error + Send + Sync>>> {
+async fn get_cores_total_times() -> Vec<DaemonResult<CPUSecsV1>> {
   heim_cpu::times()
     .map(|r| {
       if let Ok(cpu) = r {
@@ -93,7 +95,7 @@ async fn get_cores_total_times() -> Vec<Result<CPUSecsV1, Box<dyn Error + Send +
 
 // get total cpu times per core since the VM's uptime
 #[cfg(target_os = "linux")]
-async fn get_cores_total_times() -> Vec<Result<CPUSecsV1, Box<dyn Error + Send + Sync>>> {
+async fn get_cores_total_times() -> Vec<DaemonResult<CPUSecsV1>> {
   heim_cpu::times()
     .map(|r| {
       if let Ok(cpu) = r {
@@ -117,7 +119,7 @@ async fn get_cores_total_times() -> Vec<Result<CPUSecsV1, Box<dyn Error + Send +
 
 // Cpu Times from /proc/stat are for the entire lifetime of the VM
 // so generate it twice with a wait in between to generate a time window
-async fn get_cores_times() -> Result<Vec<CPUSecsV1>, Box<dyn Error + Send + Sync>> {
+async fn get_cores_times() -> DaemonResult<Vec<CPUSecsV1>> {
   let times_1 = get_cores_total_times().await;
   sleep(Duration::from_secs(1)).await;
   let times_2 = get_cores_total_times().await;
@@ -143,7 +145,7 @@ async fn get_cores_times() -> Result<Vec<CPUSecsV1>, Box<dyn Error + Send + Sync
 }
 
 #[cfg(target_os = "linux")]
-pub async fn get_v1_stats() -> Result<VMStatsV1, Box<dyn Error + Send + Sync>> {
+pub async fn get_v1_stats() -> DaemonResult<VMStatsV1> {
   let memory = heim_memory::memory().await;
   let swap = heim_memory::swap().await;
   let core_times = get_cores_times().await?;
@@ -167,7 +169,7 @@ pub async fn get_v1_stats() -> Result<VMStatsV1, Box<dyn Error + Send + Sync>> {
 
 // zero out linux specific stats
 #[cfg(not(target_os = "linux"))]
-pub async fn get_v1_stats() -> Result<VMStatsV1, Box<dyn Error + Send + Sync>> {
+pub async fn get_v1_stats() -> DaemonResult<VMStatsV1> {
   let memory = heim_memory::memory().await;
   let swap = heim_memory::swap().await;
   let core_times = get_cores_times().await?;
