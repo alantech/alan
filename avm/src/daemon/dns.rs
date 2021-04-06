@@ -48,14 +48,11 @@ impl DNS {
     resolver_opts.validate = true;
     // Get a new resolver with the cloudflare nameservers as the upstream recursive resolvers
     let resolver = ResolverConfig::cloudflare_tls();
-    let resolver_result = TokioAsyncResolver::tokio(resolver, resolver_opts);
-    match resolver_result {
-      Ok(resolver) => Ok(DNS {
-        domain: domain.to_string(),
-        resolver: resolver,
-      }),
-      Err(e) => Err(e.into()),
-    }
+    let resolver = TokioAsyncResolver::tokio(resolver, resolver_opts)?;
+    Ok(DNS {
+      domain: domain.to_string(),
+      resolver: resolver,
+    })
   }
 
   pub async fn get_vms(
