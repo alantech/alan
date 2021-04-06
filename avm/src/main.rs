@@ -156,22 +156,12 @@ fn main() {
         match sub_matches.subcommand() {
           ("new", Some(matches)) => {
             let agz_file = matches.value_of("AGZ_FILE").unwrap();
-            deploy::new(
-              get_agz_b64(agz_file),
-              None,
-              None,
-            )
-            .await;
+            deploy::new(get_agz_b64(agz_file), None, None).await;
           }
           ("terminate", _) => deploy::terminate().await,
           ("upgrade", Some(matches)) => {
             let agz_file = matches.value_of("AGZ_FILE").unwrap();
-            deploy::upgrade(
-              get_agz_b64(agz_file),
-              None,
-              None,
-            )
-            .await;
+            deploy::upgrade(get_agz_b64(agz_file), None, None).await;
           }
           ("info", _) => deploy::info().await,
           ("credentials", Some(sub_matches)) => {
