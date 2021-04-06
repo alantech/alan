@@ -210,12 +210,20 @@ pub async fn start(
   task::spawn(async move {
     // TODO even better period determination
     let period = Duration::from_secs(5 * 60);
-    let self_ip = get_private_ip().await;
     let mut cluster_size = 0;
     let mut leader_ip = String::new();
+    let mut self_ip_err = None;
+    let self_ip = get_private_ip().await.unwrap_or_else(|err| {
+      self_ip_err = Some(err);
+      String::new()
+    });
+    if let Some(self_ip_err) = self_ip_err {
+      error!(ErrorType::NoPrivateIp, "Private ip error: {}", self_ip_err).await;
+      panic!("Private ip error: {}", self_ip_err);
+    }
     let dns = DNS::new(&domain);
-    match (dns, self_ip) {
-      (Ok(dns), Ok(self_ip)) => {
+    match dns {
+      Ok(dns) => {
         loop {
           sleep(period).await;
           let mut vms_err: Option<String> = None;
@@ -260,24 +268,9 @@ pub async fn start(
           }
         }
       }
-      (Err(dns_err), Ok(_self_ip)) => {
+      Err(dns_err) => {
         error!(ErrorType::NoDns, "DNS error: {}", dns_err).await;
         panic!("DNS error: {}", dns_err);
-      }
-      (Ok(_dns), Err(self_ip_err)) => {
-        error!(ErrorType::NoPrivateIp, "Private ip error: {}", self_ip_err).await;
-        panic!("Private ip error: {}", self_ip_err);
-      }
-      (Err(dns_err), Err(self_ip_err)) => {
-        error!(
-          ErrorType::NoDnsPrivateIp,
-          "DNS error: {} and Private ip error: {}", dns_err, self_ip_err
-        )
-        .await;
-        panic!(
-          "DNS error: {} and Private ip error: {}",
-          dns_err, self_ip_err
-        );
       }
     }
   });
