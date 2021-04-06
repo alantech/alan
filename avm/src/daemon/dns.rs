@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::str;
 
 use trust_dns_resolver::config::{ResolverConfig, ResolverOpts};
@@ -15,7 +16,7 @@ pub struct VMMetadata {
 }
 
 impl VMMetadata {
-  fn from_txt_data(data: &[u8]) -> Result<VMMetadata, String> {
+  fn from_txt_data(data: &[u8]) -> Result<VMMetadata, Box<dyn Error + Send + Sync>> {
     let txt = str::from_utf8(&*data);
     match txt {
       Ok(txt) => {
@@ -25,7 +26,7 @@ impl VMMetadata {
         );
         let parts: Vec<&str> = txt.split("|").collect();
         if parts.len() != 5 || parts[0] != "v1" {
-          return Err(err.to_string());
+          return Err(err.into());
         }
         Ok(VMMetadata {
           schema_version: parts[0].to_string(),
@@ -33,13 +34,13 @@ impl VMMetadata {
           private_ip_addr: parts[4].to_string(),
         })
       }
-      Err(_) => return Err("Data in TXT record is not a valid string".to_string()),
+      Err(_) => return Err("Data in TXT record is not a valid string".into()),
     }
   }
 }
 
 impl DNS {
-  pub fn new(domain: &str) -> Result<DNS, String> {
+  pub fn new(domain: &str) -> Result<DNS, Box<dyn Error + Send + Sync>> {
     let mut resolver_opts = ResolverOpts::default();
     // ignore /ect/hosts
     resolver_opts.use_hosts_file = false;
@@ -53,11 +54,14 @@ impl DNS {
         domain: domain.to_string(),
         resolver: resolver,
       }),
-      Err(e) => Err(e.to_string()),
+      Err(e) => Err(e.into()),
     }
   }
 
-  pub async fn get_vms(&self, cluster_id: &str) -> Result<Vec<VMMetadata>, String> {
+  pub async fn get_vms(
+    &self,
+    cluster_id: &str,
+  ) -> Result<Vec<VMMetadata>, Box<dyn Error + Send + Sync>> {
     let name = format!("{}.{}", cluster_id, self.domain);
     let err = format!("Failed to fetch TXT record with name {}", &name);
     let resp = self.resolver.txt_lookup(name).await;
@@ -70,12 +74,12 @@ impl DNS {
           Ok(vm) => {
             vms.push(vm);
           }
-          Err(err) => return Err(err.to_string()),
+          Err(err) => return Err(err.into()),
         }
       }
       Ok(vms)
     } else {
-      return Err(err.to_string());
+      return Err(err.into());
     }
   }
 }
