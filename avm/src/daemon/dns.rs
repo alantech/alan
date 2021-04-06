@@ -66,17 +66,12 @@ impl DNS {
     if let Ok(resp) = resp {
       for rec in resp {
         let data = &rec.txt_data()[0];
-        let vm = VMMetadata::from_txt_data(data);
-        match vm {
-          Ok(vm) => {
-            vms.push(vm);
-          }
-          Err(err) => return Err(err.into()),
-        }
+        let vm = VMMetadata::from_txt_data(data)?;
+        vms.push(vm);
       }
       Ok(vms)
     } else {
-      return Err(err.into());
+      Err(err.into())
     }
   }
 }
