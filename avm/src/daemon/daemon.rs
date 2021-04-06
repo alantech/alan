@@ -4,7 +4,6 @@ use std::error::Error;
 use std::fs::read;
 use std::io::Read;
 use std::net::TcpStream;
-use std::panic;
 use std::path::Path;
 
 use anycloud::deploy;
