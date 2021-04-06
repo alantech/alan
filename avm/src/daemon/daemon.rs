@@ -34,13 +34,10 @@ pub static CLUSTER_SECRET: OnceCell<Option<String>> = OnceCell::new();
 async fn get_private_ip() -> DaemonResult<String> {
   let res = Command::new("hostname").arg("-I").output().await?;
   let stdout = res.stdout;
-  let private_ip = String::from_utf8(stdout);
-  match private_ip {
-    Ok(private_ip) => match private_ip.trim().split_whitespace().next() {
-      Some(private_ip) => Ok(private_ip.to_string()),
-      None => Err("No ip found".into()),
-    },
-    Err(err) => Err(err.into()),
+  let private_ip = String::from_utf8(stdout)?;
+  match private_ip.trim().split_whitespace().next() {
+    Some(private_ip) => Ok(private_ip.to_string()),
+    None => Err("No ip found".into()),
   }
 }
 
