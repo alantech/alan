@@ -150,7 +150,11 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
   }
 }
 
-async fn run_agz_b64(agz_b64: String, priv_key_b64: Option<String>, cert_b64: Option<String>) {
+async fn run_agz_b64(
+  agz_b64: &str,
+  priv_key_b64: Option<&str>,
+  cert_b64: Option<&str>,
+) -> Result<(), Box<dyn Error + Send + Sync>> {
   let bytes = base64::decode(agz_b64);
   if let Ok(bytes) = bytes {
     let agz = GzDecoder::new(bytes.as_slice());
@@ -182,15 +186,12 @@ async fn run_agz_b64(agz_b64: String, priv_key_b64: Option<String>, cert_b64: Op
         run(bytecode, HttpType::HTTP(HttpConfig { port: 80 })).await;
       }
     } else {
-      let err = "AGZ file appears to be corrupt.";
-      eprintln!("{}", err);
-      panic!(err);
+      return Err("AGZ file appears to be corrupt.".into());
     }
   } else {
-    let err = "AGZ payload not properly base64-encoded.";
-    eprintln!("{}", err);
-    panic!(err);
+    return Err("AGZ payload not properly base64-encoded.".into());
   }
+  Ok(())
 }
 
 pub async fn start(
@@ -280,34 +281,8 @@ pub async fn start(
       }
     }
   });
-  let clone_agz_b64 = String::from(agz_b64);
-  let clone_priv_key_b64: Option<String>;
-  let clone_cert_b64: Option<String>;
-  if let (Some(priv_key), Some(cert)) = (priv_key_b64, cert_b64) {
-    clone_priv_key_b64 = Some(String::from(priv_key));
-    clone_cert_b64 = Some(String::from(cert));
-  } else {
-    clone_priv_key_b64 = None;
-    clone_cert_b64 = None;
-  }
-  let run_agz = task::spawn(async {
-    run_agz_b64(clone_agz_b64, clone_priv_key_b64, clone_cert_b64).await;
-  })
-  .await;
-  match run_agz {
-    Ok(_) => println!("ok"),
-    Err(e) => {
-      eprintln!("{:?}", e);
-      if let Ok(reason) = e.try_into_panic() {
-        match reason.downcast_ref::<&str>() {
-          Some(err) => {
-            eprintln!("{}", err);
-          }
-          None => {
-            eprintln!("{:?}", reason);
-          }
-        }
-      }
-    }
+  if let Err(err) = run_agz_b64(agz_b64, priv_key_b64, cert_b64).await {
+    error!(ErrorType::RunAgzFailed, "{:?}", err).await;
+    panic!(err);
   }
 }
