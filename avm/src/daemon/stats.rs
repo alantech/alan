@@ -145,7 +145,7 @@ async fn get_cores_times() -> Result<Vec<CPUSecsV1>, Box<dyn Error + Send + Sync
 #[cfg(target_os = "linux")]
 pub async fn get_v1_stats() -> Result<VMStatsV1, Box<dyn Error + Send + Sync>> {
   let memory = heim_memory::memory().await;
-  let swap = heim_memory::swap().await?;
+  let swap = heim_memory::swap().await;
   let core_times = get_cores_times().await?;
   match (memory, swap) {
     (Ok(memory), Ok(swap)) => Ok(VMStatsV1 {
