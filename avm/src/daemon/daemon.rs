@@ -211,7 +211,7 @@ pub async fn start(
     let period = Duration::from_secs(5 * 60);
     let self_ip = get_private_ip().await;
     let mut cluster_size = 0;
-    let mut leader_ip = "".to_string();
+    let mut leader_ip = String::new();
     let dns = DNS::new(&domain);
     match (dns, self_ip) {
       (Ok(dns), Ok(self_ip)) => {
