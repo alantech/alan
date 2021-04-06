@@ -160,8 +160,8 @@ pub async fn get_v1_stats() -> Result<VMStatsV1, Box<dyn Error + Send + Sync>> {
       usedSwapKb: swap.used().get::<kilobyte>(),
       freeSwapKb: swap.free().get::<kilobyte>(),
     }),
-    (Err(_err_memory), Err(_)) => return Err("Failed to get system memory information".into()),
-    (Err(_), Err(_err_swap)) => return Err("Failed to get swap information".into()),
+    (Err(_err_memory), _) => return Err("Failed to get system memory information".into()),
+    (_, Err(_err_swap)) => return Err("Failed to get swap information".into()),
   }
 }
 
