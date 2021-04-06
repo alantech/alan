@@ -26,7 +26,7 @@ dependencies = [
 
 [[package]]
 name = "alan"
-version = "0.1.36-5"
+version = "0.1.36"
 dependencies = [
  "anycloud",
  "async-stream",
@@ -68,7 +68,7 @@ dependencies = [
 [[package]]
 name = "anycloud"
 version = "0.1.6"
-source = "git+https://github.com/alantech/anycloud?branch=feat/run-agz-code#a31bd075f10dee04bf6d40aeeaee0ddb07f8acc7"
+source = "git+https://github.com/alantech/anycloud?branch=main#b76700e3bc5d35805880db83d5cdf0c1c1e314b5"
 dependencies = [
  "ascii_table",
  "base64",
