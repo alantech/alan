@@ -36,9 +36,9 @@ async fn get_private_ip() -> Result<String, Box<dyn Error + Send + Sync>> {
   match private_ip {
     Ok(private_ip) => match private_ip.trim().split_whitespace().next() {
       Some(private_ip) => Ok(private_ip.to_string()),
-      None => return Err("No ip found".into()),
+      None => Err("No ip found".into()),
     },
-    Err(err) => return Err(err.into()),
+    Err(err) => Err(err.into()),
   }
 }
 
