@@ -22,6 +22,12 @@ pub enum BuiltInEvents {
   START,
   /// '__conn ' in ASCII or 5f5f 636f 6e6e 20(80)
   HTTPCONN,
+  /// 'tcpConn' in ASCII or 7463 7043 6f6e 6e(80)
+  TCPCONN,
+  /// 'chunk  ' in ASCII or 6368 756e 6b20 20(80)
+  CHUNK,
+  /// 'tcpClos' in ASCII or 7463 7043 6c6f 73(80)
+  TCPCLOSE,
   NOP,
 }
 
@@ -30,6 +36,9 @@ impl From<BuiltInEvents> for i64 {
     match ev {
       BuiltInEvents::START => -9213673853036498142,
       BuiltInEvents::HTTPCONN => -9214243417005793441,
+      BuiltInEvents::TCPCONN => -9192288365264739468,
+      BuiltInEvents::CHUNK => -9214329191813257117,
+      BuiltInEvents::TCPCLOSE => -9190879903754460300,
       BuiltInEvents::NOP => NOP_ID,
     }
   }

@@ -609,4 +609,11 @@ export const opcodeParamMutabilities = {
   seqdo: [false, null],
   selfrec: [false, false], // FIXME: there should be a way to handle recursive dependencies, but this works for now.
   seqrec: [false, null],
+  tcplsn: [false],
+  tcpconn: [false, false],
+  tcpAddC: [true, false],
+  tcpReady: [false],
+  tcpRead: [true],
+  tcpWrite: [true, false],
+  tcpTerm: [true],
 }

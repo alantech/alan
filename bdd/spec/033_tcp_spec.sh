@@ -3,7 +3,7 @@ Include build_tools.sh
 Describe "@std/tcp"
   Describe "webserver tunnel test"
     before() {
-      sourceToTemp "
+      sourceToAll "
         from @std/tcpserver import tcpConn
         from @std/tcp import TcpChannel, connect, addContext, ready, chunk, TcpContext, read, write, tcpClose, close
 
@@ -23,8 +23,6 @@ Describe "@std/tcp"
           ctx.context.close();
         }
       "
-      tempToAmm
-      tempToJs
       sourceToFile test_server.js "
         const http = require('http')
 
@@ -56,5 +54,15 @@ Describe "@std/tcp"
       When run curl -s localhost:8000
       The output should eq "Hello, World!"
     End
+  End
+
+  It "runs agc"
+    node test_$$/test_server.js 1>/dev/null 2>/dev/null &
+    PID1=$!
+    alan run test_$$/temp.agc 1>/dev/null 2>/dev/null &
+    PID2=$!
+    sleep 1
+    When run curl -s localhost:8000
+    The output should eq "Hello, World!"
   End
 End

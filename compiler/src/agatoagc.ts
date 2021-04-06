@@ -160,21 +160,18 @@ const astToAgc = (ast: NamedAnd): Buffer => {
     vec.push(BigInt(0))
   }
   // Declare the event lookup table (event string to id) with the singular special event `"start"`
+  const makeEvent = name => {
+    // `name` must be an 8 character string padded with spaces
+    const buf = Buffer.from(name, 'utf8')
+    buf.writeUInt8(0x80, 7)
+    return { eventId: buf.readBigUInt64LE(0), }
+  }
   const eventLookup = {
-    _start: {
-      eventId: (() => {
-        const buf = Buffer.from('"start" ', 'utf8')
-        buf.writeUInt8(0x80, 7)
-        return buf.readBigUInt64LE(0)
-      })(),
-    },
-    __conn: {
-      eventId: (() => {
-        const buf = Buffer.from('__conn  ', 'utf8')
-        buf.writeUInt8(0x80, 7)
-        return buf.readBigUInt64LE(0)
-      })(),
-    },
+    _start: makeEvent('"start" '),
+    __conn: makeEvent('__conn  '),
+    tcpConn: makeEvent('tcpConn '),
+    chunk: makeEvent('chunk   '),
+    tcpClose: makeEvent('tcpClose'),
   }
   // Load the events, get the event id offset (for reuse with closures) and the event declarations
   const customEvents = ast.get('customEvents')

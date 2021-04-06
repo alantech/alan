@@ -87,6 +87,18 @@ impl Program {
     let httpconn = i64::from(BuiltInEvents::HTTPCONN);
     self.event_pls.insert(httpconn, 0);
     self.event_handlers.insert(httpconn, Vec::new());
+    // TCPCONN
+    let tcpconn = i64::from(BuiltInEvents::TCPCONN);
+    self.event_pls.insert(tcpconn, 8);
+    self.event_handlers.insert(tcpconn, Vec::new());
+    // CHUNK
+    let chunk = i64::from(BuiltInEvents::CHUNK);
+    self.event_pls.insert(chunk, 8);
+    self.event_handlers.insert(chunk, Vec::new());
+    // TCPCLOSE
+    let tcpclose = i64::from(BuiltInEvents::TCPCLOSE);
+    self.event_pls.insert(tcpclose, 8);
+    self.event_handlers.insert(tcpclose, Vec::new());
     // NOP
     // the compiler does not allow explicitly defining handlers for this event
     // and it's used internally by the compiler for closures in unused conditional branches
