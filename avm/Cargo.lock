@@ -68,7 +68,7 @@ dependencies = [
 [[package]]
 name = "anycloud"
 version = "0.1.6"
-source = "git+https://github.com/alantech/anycloud?branch=feat/run-agz-code#d0975f82d3a090435e1b3c8f5a8b067b73eaad0d"
+source = "git+https://github.com/alantech/anycloud?branch=feat/run-agz-code#929b99d57f94f20e71a455dc9e0cda3dca6c67d6"
 dependencies = [
  "ascii_table",
  "base64",
