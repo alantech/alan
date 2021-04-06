@@ -7,7 +7,7 @@ use std::net::TcpStream;
 use std::panic;
 use std::path::Path;
 
-use anycloud::deploy::{client_error, post_v1 as deploy_post_v1};
+use anycloud::deploy;
 use anycloud::logger::ErrorType;
 use anycloud::{error, CLUSTER_ID};
 use base64;
@@ -49,7 +49,7 @@ async fn get_private_ip() -> Result<String, Box<dyn Error + Send + Sync>> {
 }
 
 async fn post_v1(endpoint: &str, body: Value) -> String {
-  let resp = deploy_post_v1(endpoint, body).await;
+  let resp = deploy::post_v1(endpoint, body).await;
   match resp {
     Ok(res) => res,
     Err(err) => {
