@@ -43,7 +43,7 @@ async fn get_private_ip() -> DaemonResult<String> {
 
 #[cfg(not(target_os = "linux"))]
 async fn get_private_ip() -> DaemonResult<String> {
-  panic!("`hostname` command does not exist in this OS");
+  Err("`hostname` command does not exist in this OS".into())
 }
 
 async fn post_v1(endpoint: &str, body: Value) -> String {
@@ -237,7 +237,7 @@ pub async fn start(
           let mut factor = String::from("1");
           let stats_factor = post_v1_stats(&cluster_id, &deploy_token).await;
           if let Ok(stats_factor) = stats_factor {
-            factor = stats_factor
+            factor = stats_factor;
           } else if let Err(err) = stats_factor {
             error!(ErrorType::PostStats, "{}", err).await;
           }
