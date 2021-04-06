@@ -2,11 +2,10 @@ use std::env;
 use std::fs::read;
 use std::path::Path;
 
-use anycloud::deploy::{get_config, info, new, terminate, upgrade};
-use anycloud::oauth::get_token;
+use anycloud::deploy;
+use anycloud::oauth::authenticate;
 use base64;
 use clap::{crate_name, crate_version, App, AppSettings, SubCommand};
-use serde_json::json;
 use tokio::runtime::Builder;
 
 use crate::compile::compile::compile;
@@ -53,25 +52,54 @@ fn main() {
       .about("Install '/dependencies' from '.dependencies.ln'")
     )
     .subcommand(SubCommand::with_name("deploy")
-      .about("Deploy .agz files to one of the deploy configs at ~/.anycloud/deploy.json")
+      .about("Deploy .agz files to one of the Deploy Configs from anycloud.json")
       .setting(AppSettings::SubcommandRequiredElseHelp)
       .subcommand(SubCommand::with_name("new")
-        .about("Deploys an .agz file to a new app with one of the deploy configs at ~/.anycloud/deploy.json")
+        .about("Deploys an .agz file to a new app with one of the Deploy Configs from anycloud.json")
         .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'")
-        .arg_from_usage("[DEPLOY_NAME] 'Specifies the name of the deploy config to use, or the first definition if not specified'")
-        .arg_from_usage("-a, --app-id=[APP_ID] 'Specifies an optional application identifier'")
+        .arg_from_usage("-a, --app-id=[APP_ID] 'Specifies an optional App ID'")
       )
       .subcommand(SubCommand::with_name("info")
-        .about("Displays all the apps deployed with  described in the deploy config at ~/.anycloud/deploy.json")
+        .about("Displays all the Apps deployed with the Deploy Configs from anycloud.json")
       )
       .subcommand(SubCommand::with_name("terminate")
-        .about("Terminate an app with the provided id hosted in one of the deploy configs at ~/.anycloud/deploy.json")
-        .arg_from_usage("<APP_ID> 'Specifies the alan app to terminate'")
+        .about("Terminate an App hosted in one of the Deploy Configs from anycloud.json")
       )
       .subcommand(SubCommand::with_name("upgrade")
-        .about("Deploys your repository to an existing app hosted in one of the deploy configs at ~/.anycloud/deploy.json")
-        .arg_from_usage("<APP_ID> 'Specifies the alan app to upgrade'")
+        .about("Deploys your repository to an existing App hosted in one of the Deploy Configs from anycloud.json")
         .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'")
+      )
+      .subcommand(SubCommand::with_name("config")
+        .about("Manage Deploy Configs used by Apps from the anycloud.json in the current directory")
+        .setting(AppSettings::SubcommandRequiredElseHelp)
+        .subcommand(SubCommand::with_name("add")
+          .about("Add a new Deploy Config to the anycloud.json in the current directory and creates the file if it doesn't exist.")
+        )
+        .subcommand(SubCommand::with_name("list")
+          .about("List all the Deploy Configs from the anycloud.json in the current directory")
+        )
+        .subcommand(SubCommand::with_name("edit")
+          .about("Edit an existing Deploy Config from the anycloud.json in the current directory")
+        )
+        .subcommand(SubCommand::with_name("remove")
+          .about("Remove an existing Deploy Config from the anycloud.json in the current directory")
+        )
+      )
+      .subcommand(SubCommand::with_name("credentials")
+        .about("Manage all Credentials used by Deploy Configs from the credentials file at ~/.anycloud/credentials.json")
+        .setting(AppSettings::SubcommandRequiredElseHelp)
+        .subcommand(SubCommand::with_name("add")
+          .about("Add a new Credentials")
+        )
+        .subcommand(SubCommand::with_name("list")
+          .about("List all the available Credentials")
+        )
+        .subcommand(SubCommand::with_name("edit")
+          .about("Edit an existing Credentials")
+        )
+        .subcommand(SubCommand::with_name("remove")
+          .about("Remove an existing Credentials")
+        )
       )
     )
     .subcommand(SubCommand::with_name("daemon")
@@ -124,46 +152,39 @@ fn main() {
         }
       }
       ("deploy", Some(sub_matches)) => {
-        let token = get_token().await;
+        authenticate().await;
         match sub_matches.subcommand() {
           ("new", Some(matches)) => {
-            let config = get_config(&token).await;
             let agz_file = matches.value_of("AGZ_FILE").unwrap();
-            let deploy_name = matches
-              .value_of("DEPLOY_NAME")
-              .unwrap_or(config.keys().take(1).next().unwrap());
-            let app_id = matches.value_of("app-id");
-            let body = json!({
-              "deployConfig": config,
-              "deployName": deploy_name,
-              "agzB64": get_agz_b64(agz_file),
-              "alanVersion": concat!("v", crate_version!()),
-              "appId": app_id,
-              "accessToken": token,
-              "osName": std::env::consts::OS,
-            });
-            new(body).await;
+            deploy::new(get_agz_b64(agz_file), None, None).await;
           }
-          ("terminate", Some(matches)) => {
-            let app_id = matches.value_of("APP_ID").unwrap();
-            terminate(app_id, &token).await;
-          }
+          ("terminate", _) => deploy::terminate().await,
           ("upgrade", Some(matches)) => {
-            let config = get_config(&token).await;
-            let cluster_id = matches.value_of("APP_ID").unwrap();
             let agz_file = matches.value_of("AGZ_FILE").unwrap();
-            let body = json!({
-              "clusterId": cluster_id,
-              "deployConfig": config,
-              "agzB64": get_agz_b64(agz_file),
-              "alanVersion": concat!("v", crate_version!()),
-              "accessToken": token,
-              "osName": std::env::consts::OS,
-            });
-            upgrade(body).await;
+            deploy::upgrade(get_agz_b64(agz_file), None, None).await;
           }
-          ("info", _) => {
-            info(&token).await;
+          ("info", _) => deploy::info().await,
+          ("credentials", Some(sub_matches)) => {
+            match sub_matches.subcommand() {
+              ("add", _) => {
+                deploy::add_cred().await;
+              }
+              ("edit", _) => deploy::edit_cred().await,
+              ("list", _) => deploy::list_creds().await,
+              ("remove", _) => deploy::remove_cred().await,
+              // rely on AppSettings::SubcommandRequiredElseHelp
+              _ => {}
+            }
+          }
+          ("config", Some(sub_matches)) => {
+            match sub_matches.subcommand() {
+              ("add", _) => deploy::add_deploy_config().await,
+              ("list", _) => deploy::list_deploy_configs().await,
+              ("edit", _) => deploy::edit_deploy_config().await,
+              ("remove", _) => deploy::remove_deploy_config().await,
+              // rely on AppSettings::SubcommandRequiredElseHelp
+              _ => {}
+            }
           }
           // rely on AppSettings::SubcommandRequiredElseHelp
           _ => {}
