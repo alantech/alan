@@ -3087,6 +3087,37 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     None
   });
 
+  io!(tcplsn => fn(_args, hand_mem) {
+    // TODO
+    Box::pin(async move {
+      hand_mem
+    })
+  });
+  cpu!(tcpconn => fn(_args, _hand_mem) {
+    // TODO
+    None
+  });
+  cpu!(tcpAddC => fn(_args, _hand_mem) {
+    // TODO
+    None
+  });
+  cpu!(tcpReady => fn(_args, _hand_mem) {
+    // TODO
+    None
+  });
+  cpu!(tcpRead => fn(_args, _hand_mem) {
+    // TODO
+    None
+  });
+  cpu!(tcpWrite => fn(_args, _hand_mem) {
+    // TODO
+    None
+  });
+  cpu!(tcpTerm => fn(_args, _hand_mem) {
+    // TODO
+    None
+  });
+
   // Datastore opcodes
   io!(dssetf => fn(args, hand_mem) {
     Box::pin(async move {

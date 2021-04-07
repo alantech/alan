@@ -1,61 +1,33 @@
-use futures::task::{Context, Poll};
-use std::io;
-use std::pin::Pin;
-
-use futures_util::stream::Stream;
-use hyper::{
-  client::{Client, HttpConnector},
-  Body,
-};
-use hyper_rustls::HttpsConnector;
-use once_cell::sync::Lazy;
 use tokio::net::TcpStream;
 use tokio_rustls::server::TlsStream;
 
 #[derive(Debug)]
-pub struct HttpConfig {
+pub struct TcpConfig {
   pub port: u16,
 }
 
 #[derive(Debug)]
-pub struct HttpsConfig {
+pub struct TlsConfig {
   pub port: u16,
   pub priv_key_b64: String,
   pub cert_b64: String,
 }
 
 #[derive(Debug)]
-pub enum HttpType {
-  HTTP(HttpConfig),
-  HTTPS(HttpsConfig),
+pub enum TcpType {
+  TCP(TcpConfig),
+  TLS(TlsConfig),
 }
-
-pub struct HyperAcceptor<'a> {
-  pub acceptor: Pin<Box<dyn Stream<Item = Result<TlsStream<TcpStream>, io::Error>> + Send + 'a>>,
-}
-
-impl hyper::server::accept::Accept for HyperAcceptor<'_> {
-  type Conn = TlsStream<TcpStream>;
-  type Error = io::Error;
-
-  fn poll_accept(
-    mut self: Pin<&mut Self>,
-    cx: &mut Context,
-  ) -> Poll<Option<Result<Self::Conn, Self::Error>>> {
-    Pin::new(&mut self.acceptor).poll_next(cx)
-  }
-}
-
-pub static HTTP_CLIENT: Lazy<Client<HttpsConnector<HttpConnector>>> =
-  Lazy::new(|| Client::builder().build::<_, Body>(HttpsConnector::with_native_roots()));
 
 #[macro_export]
-macro_rules! make_http_server {
+macro_rules! make_tcp_server {
   ($config:expr, $listener:expr) => {
     match $config {
-      crate::vm::http::HttpType::HTTP(http) => {
-        let port_num = http.port;
+      crate::vm::tcp::TcpType::TCP(tcp) => {
+        let port_num = tcp.port;
         let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port_num));
+        let tcp = tokio::net::TcpListener::bind(&addr).await;
+        let tcp = tcp.unwrap();
         let make_svc = hyper::service::make_service_fn(|_conn| async {
           Ok::<_, std::convert::Infallible>(hyper::service::service_fn($listener))
         });
