@@ -62,7 +62,7 @@ class Module {
         const resolved = Ast.resolveDependency(path, importAst.get('dependency'));
         const importedModule = modules[resolved];
         module.moduleScope.put(importName, importedModule.exportScope);
-      } else if (importAst.has('fromImport')) {
+      } else {
         importAst = importAst.get('fromImport');
         const resolvedDep = Ast.resolveDependency(path, importAst.get('dependency'));
         const importedModule = modules[resolvedDep];
@@ -88,67 +88,26 @@ class Module {
     const body = ast.get('body').getAll();
 
     // type
-    const onTypeAst = (insertScope: Scope) => (typeAst: LPNode) => {
-      typeAst = typeAst.get('types');
-      const newType = Type.fromAst(typeAst, module.moduleScope);
-      insertScope.put(newType.name, newType);
-    };
-    body.filter(r => r.has('types')).forEach(onTypeAst(module.moduleScope));
+    body.filter(r => r.has('types')).forEach(a => module.addTypeAst(a, false));
 
     // interface
-    const onInterfaceAst = (insertScope: Scope) => (interfaceAst: LPNode) => {
-      interfaceAst = interfaceAst.get('interfaces');
-      const newInterface = Interface.fromAst(interfaceAst, module.moduleScope);
-      insertScope.put(newInterface.name, newInterface);
-    };
-    body.filter(r => r.has('interfaces')).forEach(onInterfaceAst(module.moduleScope));
+    body.filter(r => r.has('interfaces')).forEach(a => module.addInterfaceAst(a, false));
 
     // const
-    const onConstAst = (insertScope: Scope) => (constAst: LPNode) => {
-      constAst = constAst.get('constdeclaration');
-      const newConst = Const.fromAst(constAst, module.moduleScope);
-      insertScope.put(newConst.name, newConst);
-    };
-    body.filter(r => r.has('constdeclaration')).forEach(onConstAst(module.moduleScope))
+    body.filter(r => r.has('constdeclaration')).forEach(a => module.addConstAst(a, false));
 
     // event
-    const onEventAst = (insertScope: Scope) => (eventAst: LPNode) => {
-      eventAst = eventAst.get('events');
-      const newEvent = Event.fromAst(eventAst, module.moduleScope);
-      insertScope.put(newEvent.name, newEvent);
-    };
-    body.filter(r => r.has('events')).forEach(onEventAst(module.moduleScope));
+    body.filter(r => r.has('events')).forEach(a => module.addEventAst(a, false));
 
     // fn
-    const onFnAst = (insertScope: Scope) => (fnAst: LPNode) => {
-      fnAst = fnAst.get('functions');
-      const newFn = Fn.fromFunctionsAst(fnAst, module.moduleScope);
-      if (newFn.name === null) {
-        throw new Error('Module-level functions must have a name');
-      }
-      const otherFns = module.moduleScope.get(newFn.name) || new Array<Fn>();
-      if (!(otherFns instanceof Array)) {
-        throw new Error('Only functions can have the same name at the module level');
-      }
-      if (otherFns.length > 0 && !(otherFns[0] instanceof Fn)) {
-        throw new Error('Only functions can have the same name at the module level');
-      }
-      insertScope.put(newFn.name, [...otherFns, newFn]);
-    };
-    body.filter(r => r.has('functions')).forEach(onFnAst(module.moduleScope));
+    body.filter(r => r.has('functions')).forEach(a => module.addFnAst(a, false));
 
     // operator
-    const onOpAst = (insertScope: Scope) => (opAst: LPNode) => {
-      opAst = opAst.get('operatormapping');
-      const newOp = Operator.fromAst(opAst, module.moduleScope);
-      const otherOps = module.moduleScope.get(newOp.name) || new Array<Operator>();
-      insertScope.put(newOp.name, [...otherOps, newOp]);
-    };
-    body.filter(r => r.has('operatormapping')).forEach(onOpAst(module.moduleScope));
+    body.filter(r => r.has('operatormapping')).forEach(a => module.addOpAst(a, false));
 
     // export
     body.filter(r => r.has('exportsn')).forEach(node => {
-      node = node.get('exportable');
+      node = node.get('exportsn').get('exportable');
       if (node.has('ref')) {
         const ref = node.get('ref');
         const exportVar = module.moduleScope.deepGet(ref.t.trim());
@@ -156,52 +115,22 @@ class Module {
         module.moduleScope.put(name, exportVar);
         module.exportScope.put(name, exportVar);
       } else if (node.has('types')) {
-        onTypeAst(module.exportScope)(node);
+        module.addTypeAst(node, true);
       } else if (node.has('interfaces')) {
-        onInterfaceAst(module.exportScope)(node);
+        module.addInterfaceAst(node, true);
       } else if (node.has('constdeclaration')) {
-        onConstAst(module.exportScope)(node);
+        module.addConstAst(node, true);
       } else if (node.has('events')) {
-        onEventAst(module.exportScope)(node);
+        module.addEventAst(node, true);
       } else if (node.has('functions')) {
-        onFnAst(module.exportScope)(node);
+        module.addFnAst(node, true);
       } else if (node.has('operatormapping')) {
-        onOpAst(module.exportScope)(node);
+        module.addOpAst(node, true);
       }
     });
 
     // on event handler
-    body.filter(r => r.has('handlers')).forEach(handlerAst => {
-      handlerAst = handlerAst.get('handlers');
-      const eventName = handlerAst.get('eventname').t.trim();
-      let event = module.moduleScope.deepGet(eventName);
-      if (event === null) {
-        throw new Error(`Could not find specified event: ${eventName}`);
-      } else if (!(event instanceof Event)) {
-        throw new Error(`${eventName} is not an event`);
-      }
-
-      handlerAst = handlerAst.get('handler');
-      let fns: Fn | Fn[] = null;
-      if (handlerAst.has('fnname')) {
-        const fnName = handlerAst.get('fnname').t.trim();
-        const asScoped = module.moduleScope.deepGet(fnName);
-        if (asScoped === null) {
-          throw new Error(`Could not find specified function: ${fnName}`);
-        } else if (!(asScoped instanceof Array) || !(asScoped[0] instanceof Fn)) {
-          throw new Error(`${fnName} is not a function`);
-        }
-        fns = asScoped as Fn[];
-      } else if (handlerAst.has('functions')) {
-        const fn = Fn.fromFunctionsAst(handlerAst.get('functions'), module.moduleScope);
-        fns = fn;
-      } else if (handlerAst.has('functionbody')) {
-        const fn = Fn.fromFunctionbody(handlerAst.get('functionbody'), module.moduleScope);
-        fns = fn;
-      }
-      // gets type-checked later
-      event.handlers.push(fns);
-    });
+    body.filter(r => r.has('handlers')).forEach(a => module.addHandlerAst(a));
 
     return module;
   }
@@ -230,6 +159,103 @@ class Module {
       }
     }
     return modules;
+  }
+
+  addTypeAst(typeAst: LPNode, isExport: boolean) {
+    typeAst = typeAst.get('types');
+    const newType = Type.fromAst(typeAst, this.moduleScope);
+    this.moduleScope.put(newType.name, newType);
+    if (isExport) {
+      this.exportScope.put(newType.name, newType);
+    }
+  }
+
+  addInterfaceAst(interfaceAst: LPNode, isExport: boolean) {
+    interfaceAst = interfaceAst.get('interfaces');
+    const newInterface = Interface.fromAst(interfaceAst, this.moduleScope);
+    this.moduleScope.put(newInterface.name, newInterface);
+    if (isExport) {
+      this.exportScope.put(newInterface.name, newInterface);
+    }
+  }
+
+  addConstAst(constAst: LPNode, isExport: boolean) {
+    constAst = constAst.get('constdeclaration');
+    const newConst = Const.fromAst(constAst, this.moduleScope);
+    this.moduleScope.put(newConst.name, newConst);
+    if (isExport) {
+      this.exportScope.put(newConst.name, newConst);
+    }
+  }
+
+  addEventAst(eventAst: LPNode, isExport: boolean) {
+    eventAst = eventAst.get('events');
+    const newEvent = Event.fromAst(eventAst, this.moduleScope);
+    this.moduleScope.put(newEvent.name, newEvent);
+    if (isExport) {
+      this.exportScope.put(newEvent.name, newEvent);
+    }
+  }
+
+  addFnAst(fnAst: LPNode, isExport: boolean) {
+    fnAst = fnAst.get('functions');
+    const newFn = Fn.fromFunctionsAst(fnAst, this.moduleScope);
+    if (newFn.name === null) {
+      throw new Error('Module-level functions must have a name');
+    }
+    let insertScopes = [this.moduleScope];
+    if (isExport) insertScopes.push(this.exportScope);
+    for (let scope of insertScopes) {
+      const otherFns = scope.get(newFn.name) || [];
+      if (!(otherFns instanceof Array)) {
+        throw new Error(`Tried to define function ${newFn.name}, but a non-function by that name is already in scope`);
+      } else if (otherFns.length > 0 && !(otherFns[0] instanceof Fn)) {
+        throw new Error(`Tried to define function ${newFn.name}, but a non-function by that name is already in scope`);
+      }
+      scope.put(newFn.name, [...otherFns, newFn]);
+    }
+  }
+
+  addOpAst(opAst: LPNode, isExport: boolean) {
+    opAst = opAst.get('operatormapping');
+    const newOp = Operator.fromAst(opAst, this.moduleScope);
+    // no need to validate this since only operators can have such a name
+    const otherOps = this.moduleScope.get(newOp.name) || [];
+    this.moduleScope.put(newOp.name, [...otherOps, newOp]);
+    if (isExport) {
+      const exportedOps = this.exportScope.get(newOp.name) || [];
+      this.moduleScope.put(newOp.name, [...exportedOps, newOp]);
+    }
+  }
+
+  addHandlerAst(handlerAst: LPNode) {
+    handlerAst = handlerAst.get('handlers');
+    const eventName = handlerAst.get('eventname').t;
+    let event = this.moduleScope.deepGet(eventName);
+    if (event === null) {
+      throw new Error(`Could not find specified event: ${eventName}`);
+    } else if (!(event instanceof Event)) {
+      throw new Error(`${eventName} is not an event`);
+    }
+
+    handlerAst = handlerAst.get('handler');
+    let fns: Fn | Fn[] = null;
+    if (handlerAst.has('fnname')) {
+      const fnName = handlerAst.get('fnname').t;
+      const inScope = this.moduleScope.deepGet(fnName);
+      if (inScope === null) {
+        throw new Error(`Could not find specified function: ${fnName}`);
+      } else if (!(inScope instanceof Array) || !(inScope[0] instanceof Fn)) {
+        throw new Error(`${fnName} is not a function`);
+      }
+      fns = inScope as Fn[];
+    } else if (handlerAst.has('functions')) {
+      fns = Fn.fromFunctionsAst(handlerAst.get('functions'), this.moduleScope);
+    } else if (handlerAst.has('functionbody')) {
+      fns = Fn.fromFunctionbody(handlerAst.get('functionbody'), this.moduleScope);
+    }
+    // gets type-checked later
+    event.handlers.push(fns);
   }
 }
 

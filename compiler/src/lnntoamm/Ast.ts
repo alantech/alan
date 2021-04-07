@@ -179,7 +179,7 @@ export const resolveDependency = (modulePath: string, dependency: LPNode): strin
   return importPath;
 }
 
-export const resolveImports = (modulePath: string, ast: LPNode) => {
+export const resolveImports = (modulePath: string, ast: LPNode): string[] => {
   let resolvedImports = [];
   let imports = ast.get('imports').getAll();
   for (let i = 0; i < imports.length; i++) {

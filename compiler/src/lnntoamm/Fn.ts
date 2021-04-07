@@ -1,10 +1,10 @@
 import { LPNode } from "../lp";
 import Scope from "./Scope";
 import Statement, { StatementMetaData } from "./Statement";
-import { Type } from "./Types";
+import { Interface, Type } from "./Types";
 
 // the value is null if the type is to be inferred
-export type Args = {[name: string]: Type | null};
+export type Args = {[name: string]: Type | Interface | null};
 
 export default class Fn {
   ast: LPNode

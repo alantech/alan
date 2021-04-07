@@ -1,7 +1,9 @@
-import * as fs from 'fs';
-import { LPNode } from '../lp';
+import * as fs from 'fs'
 
-import * as Ast from './Ast';
+import * as Ast from './Ast'
+import * as Std from './Std'
+import { LPNode } from '../lp'
+import Module from './Module';
 
 type ModuleAsts = {[path: string]: LPNode};
 
@@ -14,6 +16,9 @@ const ammFromModuleAsts = (asts: ModuleAsts): string => {
       }
     }
   }
+  Std.loadStdModules(stdFiles);
+  const rootScope = Module.getAllModules()['<root>'].exportScope;
+  Module.modulesFromAsts(asts, rootScope);
   return ''
 }
 
@@ -43,7 +48,7 @@ const moduleAstsFromFile = (filename: string): ModuleAsts => {
   return moduleAsts;
 }
 
-export const fromFile: (string) => string | Buffer = (filename) => ammFromModuleAsts(moduleAstsFromFile(filename));
+export const fromFile = (filename: string): string | Buffer => ammFromModuleAsts(moduleAstsFromFile(filename));
 
 export const fromString = (str: string): string | Buffer => {
   return null;
