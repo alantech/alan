@@ -4,6 +4,8 @@ import * as Ast from './Ast'
 import * as Std from './Std'
 import { LPNode } from '../lp'
 import Module from './Module';
+import TypeChecker from './typecheck';
+import Event from './Event';
 
 type ModuleAsts = {[path: string]: LPNode};
 
@@ -19,6 +21,7 @@ const ammFromModuleAsts = (asts: ModuleAsts): string => {
   Std.loadStdModules(stdFiles);
   const rootScope = Module.getAllModules()['<root>'].exportScope;
   Module.modulesFromAsts(asts, rootScope);
+  TypeChecker.checkEvents(Event.allEvents);
   return ''
 }
 

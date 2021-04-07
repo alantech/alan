@@ -2,6 +2,7 @@ import { LPNode } from "../lp";
 import Scope from "./Scope";
 import Statement, { StatementMetaData } from "./Statement";
 import { Interface, Type } from "./Types";
+import { TODO } from "./util";
 
 // the value is null if the type is to be inferred
 export type Args = {[name: string]: Type | Interface | null};
@@ -36,6 +37,8 @@ export default class Fn {
     this.retTy = retTy;
     this.body = body;
     this.stmtMeta = stmtMeta !== null ? stmtMeta : new StatementMetaData();
+
+    console.log(this.name, this.body);
   }
 
   static fromFunctionsAst(
@@ -43,13 +46,15 @@ export default class Fn {
     scope: Scope,
     stmtMeta: StatementMetaData = null,
   ): Fn {
-    const name = ast.get('optname').has() ? ast.get('optname').get().t.trim() : null;
+    let work = ast;
+    const name = work.get('optname').has() ? work.get('optname').get().t : null;
     let args: Args = {};
-    if (ast.get('optargs').has('arglist')) {
+    if (work.get('optargs').has('arglist')) {
+      // console.log(work.get('optargs').get('arglist'))
       // RIP DRY :(
-      let argsAst = ast.get('optargs').get('arglist');
-      let argName = argsAst.get('variable').t.trim();
-      let typename = argsAst.get('fulltypename').t.trim();
+      let argsAst = work.get('optargs').get('arglist');
+      let argName = argsAst.get('variable').t;
+      let typename = argsAst.get('fulltypename').t;
       let argTy = scope.get(typename);
       if (argTy === null) {
         throw new Error(`Could not find type ${typename} for argument ${argName}`);
@@ -69,11 +74,11 @@ export default class Fn {
         args[argName] = argTy;
       }
     }
-    const retTy = ast.get('optreturntype').has() ? ast.get('optreturntype').get().get('fulltypename') : null;
-    let body = ast.get('fullfunctionbody');
+    const retTy = work.get('optreturntype').has() ? work.get('optreturntype').get().get('fulltypename') : null;
+    let body: LPNode | LPNode[] = work.get('fullfunctionbody');
     if (body.has('functionbody')) {
-      body = body.get('functionbody').get('statements');
-    } else if (body.has('assignfunction')) {
+      body = body.get('functionbody').get('statements').getAll();
+    } else {
       body = body.get('assignfunction').get('assignables');
     }
 
@@ -100,8 +105,45 @@ export default class Fn {
       {},
       // TODO: this should be `void`
       null,
-      ast.get('statements'),
+      ast.get('statements').getAll(),
       stmtMeta,
     );
   }
+
+  transform() {
+    if (isLPNode(this.body)) {
+      // it's an LPNode
+      this.body = Statement.fromAst(this.body, this.scope, this.stmtMeta);
+    } else if (isLPNodeArr(this.body)) {
+      // it's a list of LPNodes
+      this.body.map(node => Statement.fromAst(node, this.scope, this.stmtMeta));
+    }
+
+    if (this.body instanceof Statement) {
+      this.body = this.body.transform();
+    } else if (isStatementArr(this.body)) {
+      const body = this.body;
+      this.body = [];
+      for (let stmt of body) {
+        (this.body as Statement[]).push(...stmt.transform());
+      }
+    }
+  }
+
+  getReturnType(): Type | Interface {
+    TODO('generate return type of functions');
+    return null;
+  }
+}
+
+const isLPNode = (obj: LPNode | LPNode[] | Statement | Statement[]): obj is LPNode => {
+  return !Array.isArray(obj) && !(obj instanceof Statement);
+}
+
+const isLPNodeArr = (obj: LPNode | LPNode[] | Statement | Statement[]): obj is LPNode[] => {
+  return Array.isArray(obj) && (obj.length === 0 || obj[0] instanceof Statement);
+}
+
+const isStatementArr = (obj: LPNode | LPNode[] | Statement | Statement[]): obj is Statement[] => {
+  return Array.isArray(obj) && (obj.length === 0 || obj[0] instanceof Fn);
 }
