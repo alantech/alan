@@ -1,11 +1,14 @@
 use std::convert::Infallible;
 use std::env;
+use std::error::Error;
 use std::fs::read;
 use std::io::Read;
 use std::net::TcpStream;
 use std::path::Path;
 
 use anycloud::deploy;
+use anycloud::logger::ErrorType;
+use anycloud::{error, CLUSTER_ID};
 use base64;
 use byteorder::{LittleEndian, ReadBytesExt};
 use flate2::read::GzDecoder;
@@ -23,32 +26,35 @@ use crate::make_server;
 use crate::vm::http::{HttpConfig, HttpType, HttpsConfig};
 use crate::vm::run::run;
 
+pub type DaemonResult<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
+
 pub static CLUSTER_SECRET: OnceCell<Option<String>> = OnceCell::new();
 
 #[cfg(target_os = "linux")]
-async fn get_private_ip() -> String {
-  let res = Command::new("hostname").arg("-I").output().await;
-  let err = "Failed to execute `hostname`";
-  let stdout = res.expect(err).stdout;
-  String::from_utf8(stdout)
-    .expect(err)
-    .trim()
-    .split_whitespace()
-    .next()
-    .unwrap()
-    .to_string()
+async fn get_private_ip() -> DaemonResult<String> {
+  let res = Command::new("hostname").arg("-I").output().await?;
+  let stdout = res.stdout;
+  let private_ip = String::from_utf8(stdout)?;
+  match private_ip.trim().split_whitespace().next() {
+    Some(private_ip) => Ok(private_ip.to_string()),
+    None => Err("No ip found".into()),
+  }
 }
 
 #[cfg(not(target_os = "linux"))]
-async fn get_private_ip() -> String {
-  panic!("`hostname` command does not exist in this OS");
+async fn get_private_ip() -> DaemonResult<String> {
+  Err("`hostname` command does not exist in this OS".into())
 }
 
 async fn post_v1(endpoint: &str, body: Value) -> String {
   let resp = deploy::post_v1(endpoint, body).await;
   match resp {
     Ok(res) => res,
-    Err(err) => format!("{:?}", err),
+    Err(err) => {
+      let err = format!("{:?}", err);
+      error!(ErrorType::PostFailed, "{:?}", err).await;
+      err
+    }
   }
 }
 
@@ -89,13 +95,17 @@ async fn post_v1_scale(
       };
       post_v1("scale", scale_body).await
     }
-    Err(err) => format!("{:?}", err),
+    Err(err) => {
+      let err = format!("{:?}", err);
+      error!(ErrorType::ScaleFailed, "{:?}", err).await;
+      err
+    }
   }
 }
 
 // returns cluster delta
-async fn post_v1_stats(cluster_id: &str, deploy_token: &str) -> String {
-  let vm_stats = get_v1_stats().await;
+async fn post_v1_stats(cluster_id: &str, deploy_token: &str) -> DaemonResult<String> {
+  let vm_stats = get_v1_stats().await?;
   let mut stats_body = json!({
     "deployToken": deploy_token,
     "vmStats": vm_stats,
@@ -107,8 +117,10 @@ async fn post_v1_stats(cluster_id: &str, deploy_token: &str) -> String {
       .as_object_mut()
       .unwrap()
       .insert("clusterSecret".to_string(), json!(cluster_secret));
+  } else {
+    error!(ErrorType::NoClusterSecret, "No cluster secret found.").await;
   }
-  post_v1("stats", stats_body).await
+  Ok(post_v1("stats", stats_body).await)
 }
 
 async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> {
@@ -133,35 +145,50 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
   }
 }
 
-async fn run_agz_b64(agz_b64: &str, priv_key_b64: Option<&str>, cert_b64: Option<&str>) {
-  let bytes = base64::decode(agz_b64).unwrap();
-  let agz = GzDecoder::new(bytes.as_slice());
-  let count = agz.bytes().count();
-  let mut bytecode = vec![0; count / 8];
-  let mut gz = GzDecoder::new(bytes.as_slice());
-  gz.read_i64_into::<LittleEndian>(&mut bytecode).unwrap();
-  if let (Some(priv_key_b64), Some(cert_b64)) = (priv_key_b64, cert_b64) {
-    // Spin up a control port if we can start a secure connection
-    make_server!(
-      HttpType::HTTPS(HttpsConfig {
-        port: 4142, // 4 = A, 1 = L, 2 = N (sideways) => ALAN
-        priv_key_b64: priv_key_b64.to_string(),
-        cert_b64: cert_b64.to_string(),
-      }),
-      control_port
-    );
-    run(
-      bytecode,
-      HttpType::HTTPS(HttpsConfig {
-        port: 443,
-        priv_key_b64: priv_key_b64.to_string(),
-        cert_b64: cert_b64.to_string(),
-      }),
-    )
-    .await;
+async fn run_agz_b64(
+  agz_b64: &str,
+  priv_key_b64: Option<&str>,
+  cert_b64: Option<&str>,
+) -> DaemonResult<()> {
+  let bytes = base64::decode(agz_b64);
+  if let Ok(bytes) = bytes {
+    let agz = GzDecoder::new(bytes.as_slice());
+    let count = agz.bytes().count();
+    let mut bytecode = vec![0; count / 8];
+    let mut gz = GzDecoder::new(bytes.as_slice());
+    let gz_read_i64 = gz.read_i64_into::<LittleEndian>(&mut bytecode);
+    if gz_read_i64.is_ok() {
+      if let (Some(priv_key_b64), Some(cert_b64)) = (priv_key_b64, cert_b64) {
+        // Spin up a control port if we can start a secure connection
+        make_server!(
+          HttpType::HTTPS(HttpsConfig {
+            port: 4142, // 4 = A, 1 = L, 2 = N (sideways) => ALAN
+            priv_key_b64: priv_key_b64.to_string(),
+            cert_b64: cert_b64.to_string(),
+          }),
+          control_port
+        );
+        // TODO: return a Result in order to catch the error and log it
+        run(
+          bytecode,
+          HttpType::HTTPS(HttpsConfig {
+            port: 443,
+            priv_key_b64: priv_key_b64.to_string(),
+            cert_b64: cert_b64.to_string(),
+          }),
+        )
+        .await;
+      } else {
+        // TODO: return a Result in order to catch the error and log it
+        run(bytecode, HttpType::HTTP(HttpConfig { port: 80 })).await;
+      }
+    } else {
+      return Err("AGZ file appears to be corrupt.".into());
+    }
   } else {
-    run(bytecode, HttpType::HTTP(HttpConfig { port: 80 })).await;
+    return Err("AGZ payload not properly base64-encoded.".into());
   }
+  Ok(())
 }
 
 pub async fn start(
@@ -173,43 +200,68 @@ pub async fn start(
   cert_b64: Option<&str>,
 ) {
   let cluster_id = cluster_id.to_string();
+  CLUSTER_ID.set(String::from(&cluster_id)).unwrap();
   let deploy_token = deploy_token.to_string();
   let agzb64 = agz_b64.to_string();
   let domain = domain.to_string();
   task::spawn(async move {
     // TODO even better period determination
     let period = Duration::from_secs(5 * 60);
-    let dns = DNS::new(&domain);
-    let self_ip = get_private_ip().await;
     let mut cluster_size = 0;
-    let mut leader_ip = "".to_string();
-    loop {
-      sleep(period).await;
-      let vms = dns.get_vms(&cluster_id).await;
-      // triggered the first time since cluster_size == 0
-      // and every time the cluster changes size
-      if vms.len() != cluster_size {
-        cluster_size = vms.len();
-        let ips = vms
-          .iter()
-          .map(|vm| vm.private_ip_addr.to_string())
-          .collect();
-        let lrh = LogRendezvousHash::new(ips);
-        leader_ip = lrh.get_leader_id().to_string();
-      }
-      if leader_ip == self_ip {
-        let factor = post_v1_stats(&cluster_id, &deploy_token).await;
-        println!(
-          "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
-          cluster_id,
-          vms.len(),
-          factor
-        );
-        if factor != "1" {
-          post_v1_scale(&cluster_id, &agzb64, &deploy_token, &factor).await;
+    let mut leader_ip = String::new();
+    let self_ip = get_private_ip().await;
+    let dns = DNS::new(&domain);
+    if let (Ok(dns), Ok(self_ip)) = (&dns, &self_ip) {
+      loop {
+        sleep(period).await;
+        let mut vms_err: Option<String> = None;
+        let vms = dns.get_vms(&cluster_id).await.unwrap_or_else(|err| {
+          vms_err = Some(format!("{}", err));
+          return Vec::new();
+        });
+        if let Some(err) = vms_err {
+          error!(ErrorType::NoDnsVms, "{}", err).await;
+        };
+        // triggered the first time since cluster_size == 0
+        // and every time the cluster changes size
+        if vms.len() != cluster_size {
+          cluster_size = vms.len();
+          let ips = vms
+            .iter()
+            .map(|vm| vm.private_ip_addr.to_string())
+            .collect();
+          let lrh = LogRendezvousHash::new(ips);
+          leader_ip = lrh.get_leader_id().to_string();
+        }
+        if leader_ip == self_ip.to_string() {
+          let mut factor = String::from("1");
+          let stats_factor = post_v1_stats(&cluster_id, &deploy_token).await;
+          if let Ok(stats_factor) = stats_factor {
+            factor = stats_factor;
+          } else if let Err(err) = stats_factor {
+            error!(ErrorType::PostStats, "{}", err).await;
+          }
+          println!(
+            "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
+            cluster_id,
+            vms.len(),
+            factor
+          );
+          if factor != "1" {
+            post_v1_scale(&cluster_id, &agzb64, &deploy_token, &factor).await;
+          }
         }
       }
+    } else if let Err(dns_err) = &dns {
+      error!(ErrorType::NoDns, "DNS error: {}", dns_err).await;
+      panic!("DNS error: {}", dns_err);
+    } else if let Err(self_ip_err) = &self_ip {
+      error!(ErrorType::NoPrivateIp, "Private ip error: {}", self_ip_err).await;
+      panic!("Private ip error: {}", self_ip_err);
     }
   });
-  run_agz_b64(agz_b64, priv_key_b64, cert_b64).await;
+  if let Err(err) = run_agz_b64(agz_b64, priv_key_b64, cert_b64).await {
+    error!(ErrorType::RunAgzFailed, "{:?}", err).await;
+    panic!("{:?}", err);
+  }
 }
