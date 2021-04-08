@@ -937,31 +937,25 @@ fn set_addr_pb(hm: &Arc<HandlerMemory>, proto_hm: &mut protos::HandlerMemory::Ha
   let mut mem_space_args_vec: protobuf::RepeatedField<
     protos::HandlerMemory::HandlerMemory_MemSpace,
   > = protobuf::RepeatedField::new();
-  for hm_mem_space in (hm.addr.0).iter() {
-    let mut mem_space = protos::HandlerMemory::HandlerMemory_MemSpace::new();
-    if let Some(hm_mem_space) = hm_mem_space {
-      let mut mem_space_struct = protos::HandlerMemory::HandlerMemory_MemSpaceStruct::new();
-      mem_space_struct.set_first(hm_mem_space.0 as u64);
-      mem_space_struct.set_second(hm_mem_space.1 as u64);
-      mem_space.set_memspacestruct(mem_space_struct);
-    } else {
-      mem_space.clear_memspacestruct();
-    }
-    mem_space_vec.push(mem_space);
-  }
-  for hm_mem_space_args in (hm.addr.1).iter() {
-    let mut mem_space = protos::HandlerMemory::HandlerMemory_MemSpace::new();
-    if let Some(hm_mem_space_args) = hm_mem_space_args {
-      let mut mem_space_struct = protos::HandlerMemory::HandlerMemory_MemSpaceStruct::new();
-      mem_space_struct.set_first(hm_mem_space_args.0 as u64);
-      mem_space_struct.set_second(hm_mem_space_args.1 as u64);
-      mem_space.set_memspacestruct(mem_space_struct);
-    } else {
-      mem_space.clear_memspacestruct();
-    }
-    mem_space_args_vec.push(mem_space);
-  }
+  complete_mem_space(&mut mem_space_vec, &(hm.addr.0));
+  complete_mem_space(&mut mem_space_args_vec, &(hm.addr.1));
   addr.set_mem_space(mem_space_vec);
   addr.set_mem_space_args(mem_space_args_vec);
   proto_hm.set_addr(addr);
+}
+
+fn complete_mem_space(mem_space_vec: &mut protobuf::RepeatedField<
+  protos::HandlerMemory::HandlerMemory_MemSpace>, hm_addr: &Vec<Option<(usize, usize)>>) {
+    for hm_mem_space in hm_addr.iter() {
+      let mut mem_space = protos::HandlerMemory::HandlerMemory_MemSpace::new();
+      if let Some(hm_mem_space) = hm_mem_space {
+        let mut mem_space_struct = protos::HandlerMemory::HandlerMemory_MemSpaceStruct::new();
+        mem_space_struct.set_first(hm_mem_space.0 as u64);
+        mem_space_struct.set_second(hm_mem_space.1 as u64);
+        mem_space.set_memspacestruct(mem_space_struct);
+      } else {
+        mem_space.clear_memspacestruct();
+      }
+      mem_space_vec.push(mem_space);
+    }
 }
