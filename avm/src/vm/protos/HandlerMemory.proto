@@ -3,7 +3,7 @@ syntax = "proto3";
 message HandlerMemory {
   // mems = 2
   message MemBlock {
-    fixed64 mem_type = 1;
+    uint64 mem_type = 1;
     sfixed64 mem_val = 2; 
   }
   message Mems {
@@ -11,8 +11,8 @@ message HandlerMemory {
   }
   // addr = 3
   message MemSpaceStruct {
-    fixed64 first = 1;
-    fixed64 second = 2;
+    uint64 first = 1;
+    uint64 second = 2;
   }
   message MemSpace {
     optional MemSpaceStruct memspacestruct = 1;
@@ -25,5 +25,5 @@ message HandlerMemory {
   optional HandlerMemory parent = 1;
   repeated Mems mems = 2;
   Addr addr = 3;
-  fixed64 mem_addr = 4;
+  uint64 mem_addr = 4;
 }

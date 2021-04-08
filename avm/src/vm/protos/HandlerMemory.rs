@@ -159,7 +159,7 @@ impl HandlerMemory {
         self.addr.take().unwrap_or_else(|| HandlerMemory_Addr::new())
     }
 
-    // fixed64 mem_addr = 4;
+    // uint64 mem_addr = 4;
 
 
     pub fn get_mem_addr(&self) -> u64 {
@@ -212,10 +212,10 @@ impl ::protobuf::Message for HandlerMemory {
                     ::protobuf::rt::read_singular_message_into(wire_type, is, &mut self.addr)?;
                 },
                 4 => {
-                    if wire_type != ::protobuf::wire_format::WireTypeFixed64 {
+                    if wire_type != ::protobuf::wire_format::WireTypeVarint {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
-                    let tmp = is.read_fixed64()?;
+                    let tmp = is.read_uint64()?;
                     self.mem_addr = tmp;
                 },
                 _ => {
@@ -239,7 +239,7 @@ impl ::protobuf::Message for HandlerMemory {
             my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
         }
         if self.mem_addr != 0 {
-            my_size += 9;
+            my_size += ::protobuf::rt::value_size(4, self.mem_addr, ::protobuf::wire_format::WireTypeVarint);
         }
         if let ::std::option::Option::Some(ref v) = self._parent {
             match v {
@@ -266,7 +266,7 @@ impl ::protobuf::Message for HandlerMemory {
             v.write_to_with_cached_sizes(os)?;
         }
         if self.mem_addr != 0 {
-            os.write_fixed64(4, self.mem_addr)?;
+            os.write_uint64(4, self.mem_addr)?;
         }
         if let ::std::option::Option::Some(ref v) = self._parent {
             match v {
@@ -330,7 +330,7 @@ impl ::protobuf::Message for HandlerMemory {
                 |m: &HandlerMemory| { &m.addr },
                 |m: &mut HandlerMemory| { &mut m.addr },
             ));
-            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeFixed64>(
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint64>(
                 "mem_addr",
                 |m: &HandlerMemory| { &m.mem_addr },
                 |m: &mut HandlerMemory| { &mut m.mem_addr },
@@ -392,7 +392,7 @@ impl HandlerMemory_MemBlock {
         ::std::default::Default::default()
     }
 
-    // fixed64 mem_type = 1;
+    // uint64 mem_type = 1;
 
 
     pub fn get_mem_type(&self) -> u64 {
@@ -433,10 +433,10 @@ impl ::protobuf::Message for HandlerMemory_MemBlock {
             let (field_number, wire_type) = is.read_tag_unpack()?;
             match field_number {
                 1 => {
-                    if wire_type != ::protobuf::wire_format::WireTypeFixed64 {
+                    if wire_type != ::protobuf::wire_format::WireTypeVarint {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
-                    let tmp = is.read_fixed64()?;
+                    let tmp = is.read_uint64()?;
                     self.mem_type = tmp;
                 },
                 2 => {
@@ -459,7 +459,7 @@ impl ::protobuf::Message for HandlerMemory_MemBlock {
     fn compute_size(&self) -> u32 {
         let mut my_size = 0;
         if self.mem_type != 0 {
-            my_size += 9;
+            my_size += ::protobuf::rt::value_size(1, self.mem_type, ::protobuf::wire_format::WireTypeVarint);
         }
         if self.mem_val != 0 {
             my_size += 9;
@@ -471,7 +471,7 @@ impl ::protobuf::Message for HandlerMemory_MemBlock {
 
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
         if self.mem_type != 0 {
-            os.write_fixed64(1, self.mem_type)?;
+            os.write_uint64(1, self.mem_type)?;
         }
         if self.mem_val != 0 {
             os.write_sfixed64(2, self.mem_val)?;
@@ -514,7 +514,7 @@ impl ::protobuf::Message for HandlerMemory_MemBlock {
         static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
         descriptor.get(|| {
             let mut fields = ::std::vec::Vec::new();
-            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeFixed64>(
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint64>(
                 "mem_type",
                 |m: &HandlerMemory_MemBlock| { &m.mem_type },
                 |m: &mut HandlerMemory_MemBlock| { &mut m.mem_type },
@@ -745,7 +745,7 @@ impl HandlerMemory_MemSpaceStruct {
         ::std::default::Default::default()
     }
 
-    // fixed64 first = 1;
+    // uint64 first = 1;
 
 
     pub fn get_first(&self) -> u64 {
@@ -760,7 +760,7 @@ impl HandlerMemory_MemSpaceStruct {
         self.first = v;
     }
 
-    // fixed64 second = 2;
+    // uint64 second = 2;
 
 
     pub fn get_second(&self) -> u64 {
@@ -786,17 +786,17 @@ impl ::protobuf::Message for HandlerMemory_MemSpaceStruct {
             let (field_number, wire_type) = is.read_tag_unpack()?;
             match field_number {
                 1 => {
-                    if wire_type != ::protobuf::wire_format::WireTypeFixed64 {
+                    if wire_type != ::protobuf::wire_format::WireTypeVarint {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
-                    let tmp = is.read_fixed64()?;
+                    let tmp = is.read_uint64()?;
                     self.first = tmp;
                 },
                 2 => {
-                    if wire_type != ::protobuf::wire_format::WireTypeFixed64 {
+                    if wire_type != ::protobuf::wire_format::WireTypeVarint {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
-                    let tmp = is.read_fixed64()?;
+                    let tmp = is.read_uint64()?;
                     self.second = tmp;
                 },
                 _ => {
@@ -812,10 +812,10 @@ impl ::protobuf::Message for HandlerMemory_MemSpaceStruct {
     fn compute_size(&self) -> u32 {
         let mut my_size = 0;
         if self.first != 0 {
-            my_size += 9;
+            my_size += ::protobuf::rt::value_size(1, self.first, ::protobuf::wire_format::WireTypeVarint);
         }
         if self.second != 0 {
-            my_size += 9;
+            my_size += ::protobuf::rt::value_size(2, self.second, ::protobuf::wire_format::WireTypeVarint);
         }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
@@ -824,10 +824,10 @@ impl ::protobuf::Message for HandlerMemory_MemSpaceStruct {
 
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
         if self.first != 0 {
-            os.write_fixed64(1, self.first)?;
+            os.write_uint64(1, self.first)?;
         }
         if self.second != 0 {
-            os.write_fixed64(2, self.second)?;
+            os.write_uint64(2, self.second)?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -867,12 +867,12 @@ impl ::protobuf::Message for HandlerMemory_MemSpaceStruct {
         static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
         descriptor.get(|| {
             let mut fields = ::std::vec::Vec::new();
-            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeFixed64>(
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint64>(
                 "first",
                 |m: &HandlerMemory_MemSpaceStruct| { &m.first },
                 |m: &mut HandlerMemory_MemSpaceStruct| { &mut m.first },
             ));
-            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeFixed64>(
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint64>(
                 "second",
                 |m: &HandlerMemory_MemSpaceStruct| { &m.second },
                 |m: &mut HandlerMemory_MemSpaceStruct| { &mut m.second },
@@ -1337,12 +1337,12 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x18\x01\x20\x01(\x0b2\x0e.HandlerMemoryH\0R\x06parent\x88\x01\x01\x12'\
     \n\x04mems\x18\x02\x20\x03(\x0b2\x13.HandlerMemory.MemsR\x04mems\x12'\n\
     \x04addr\x18\x03\x20\x01(\x0b2\x13.HandlerMemory.AddrR\x04addr\x12\x19\n\
-    \x08mem_addr\x18\x04\x20\x01(\x06R\x07memAddr\x1a>\n\x08MemBlock\x12\x19\
-    \n\x08mem_type\x18\x01\x20\x01(\x06R\x07memType\x12\x17\n\x07mem_val\x18\
+    \x08mem_addr\x18\x04\x20\x01(\x04R\x07memAddr\x1a>\n\x08MemBlock\x12\x19\
+    \n\x08mem_type\x18\x01\x20\x01(\x04R\x07memType\x12\x17\n\x07mem_val\x18\
     \x02\x20\x01(\x10R\x06memVal\x1a1\n\x04Mems\x12)\n\x03mem\x18\x01\x20\
     \x03(\x0b2\x17.HandlerMemory.MemBlockR\x03mem\x1a>\n\x0eMemSpaceStruct\
-    \x12\x14\n\x05first\x18\x01\x20\x01(\x06R\x05first\x12\x16\n\x06second\
-    \x18\x02\x20\x01(\x06R\x06second\x1ai\n\x08MemSpace\x12J\n\x0ememspacest\
+    \x12\x14\n\x05first\x18\x01\x20\x01(\x04R\x05first\x12\x16\n\x06second\
+    \x18\x02\x20\x01(\x04R\x06second\x1ai\n\x08MemSpace\x12J\n\x0ememspacest\
     ruct\x18\x01\x20\x01(\x0b2\x1d.HandlerMemory.MemSpaceStructH\0R\x0ememsp\
     acestruct\x88\x01\x01B\x11\n\x0f_memspacestruct\x1a{\n\x04Addr\x124\n\tm\
     em_space\x18\x01\x20\x03(\x0b2\x17.HandlerMemory.MemSpaceR\x08memSpace\
