@@ -17,6 +17,7 @@ export default class Fn {
   // null if the type is to be inferred
   retTy: LPNode | Type | null
   // later on, we can also add `| Microstatement[]` as an optimization
+  // TODO: get rid of singular Statement type
   body: LPNode | LPNode[] | Statement | Statement[]
   // not used by this class, but used by Statements
   stmtMeta: StatementMetaData
@@ -37,8 +38,6 @@ export default class Fn {
     this.retTy = retTy;
     this.body = body;
     this.stmtMeta = stmtMeta !== null ? stmtMeta : new StatementMetaData();
-
-    console.log(this.name, this.body);
   }
 
   static fromFunctionsAst(
@@ -50,7 +49,6 @@ export default class Fn {
     const name = work.get('optname').has() ? work.get('optname').get().t : null;
     let args: Args = {};
     if (work.get('optargs').has('arglist')) {
-      // console.log(work.get('optargs').get('arglist'))
       // RIP DRY :(
       let argsAst = work.get('optargs').get('arglist');
       let argName = argsAst.get('variable').t;
@@ -79,7 +77,7 @@ export default class Fn {
     if (body.has('functionbody')) {
       body = body.get('functionbody').get('statements').getAll();
     } else {
-      body = body.get('assignfunction').get('assignables');
+      body = body.get('assignfunction');
     }
 
     return new Fn(

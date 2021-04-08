@@ -1,5 +1,5 @@
+import { NulLP } from '../lp';
 import Event from './Event';
-import Fn, { Args } from "./Fn";
 import Scope from "./Scope";
 import { Interface, Type } from './Types';
 
@@ -12,28 +12,39 @@ const opcodes = (): Scope => {
 
 export default opcodes;
 
-class Opcode extends Fn {
-  constructor(name: string, argDecs: {[name: string]: string}, retTyName: string) {
-    let args: Args = {};
-    for (let argName of Object.keys(argDecs)) {
-      let argTy = argDecs[argName];
-      let ty = __opcodes.get(argTy);
-      if (ty === null) {
-        throw new Error(`opcode ${name} arg ${argName} uses a type that's not defined in the opcode scope (${argTy})`);
-      } else if (!(ty instanceof Type) && !(ty instanceof Interface)) {
-        throw new Error(`opcode ${name} arg ${argName} doesn't have a valid type (${argTy})`);
-      } else {
-        args[ty[0]] = ty;
-      }
+const addOpcode = (
+  name: string,
+  argDecs: {[name: string]: string},
+  retTyName: string,
+) => {
+  let args = {};
+  for (let argName of Object.keys(argDecs)) {
+    let argTy = argDecs[argName];
+    let ty = __opcodes.get(argTy);
+    if (ty === null) {
+      throw new Error(`opcode ${name} arg ${argName} uses a type that's not defined`);
+    } else if (!(ty instanceof Type) && !(ty instanceof Interface)) {
+      throw new Error(`opcode ${name} arg ${argName} doesn't have a valid type`);
+    } else {
+      args[ty[0]] = ty;
     }
-    let ret: Type = __opcodes.get(retTyName);
-    if (ret === null || !(ret instanceof Type)) {
-      throw new Error(`opcode ${name} doesn't return a valid type`);
-    }
-    super(null, __opcodes, name, args, ret, []);
-
-    __opcodes.put(this.name, [this]);
   }
+  let retTy = __opcodes.get(retTyName);
+  if (retTy === null || !(retTy instanceof Type)) {
+    throw new Error(`opcode ${name} doesn't return a valid type`);
+  }
+  const opcode = {
+    name,
+    ast: new NulLP(),
+    scope: __opcodes,
+    args,
+    retTy,
+    body: [],
+    stmtMeta: null,
+    transform: () => {},
+    getReturnType: () => retTy,
+  };
+  __opcodes.put(name, [opcode]);
 }
 
 const load = (): void => {
@@ -81,5 +92,5 @@ const load = (): void => {
   } as {
     [opcode: string]: [{[arg: string]: string}, string]
     // Opcode constructor inserts into the opcode scope for us
-  }).forEach(([name, [args, ret]]) => new Opcode(name, args, ret));
+  }).forEach(([name, [args, ret]]) => addOpcode(name, args, ret));
 };

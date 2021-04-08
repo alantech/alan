@@ -16,6 +16,7 @@ export default class TypeChecker {
           possibilities.transform();
           return possibilities;
         }
+        // TODO: handler selection can be done earlier (functions can't be selected based on ret ty)
         const fnName = possibilities[0].name;
         possibilities.forEach(fn => fn.transform());
         if (event.eventTy === opcodeScope.get('void')) {

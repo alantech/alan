@@ -43,7 +43,6 @@ export default class Statement {
   }
 
   static fromAst(ast: LPNode, scope: Scope, metadata: StatementMetaData): Statement {
-    console.log('parsing statement:\n', ast)
     let content: Stmt = null;
     if (ast.has('assignables')) {
       content = Assignable.fromAst(ast.get('assignables'), scope, metadata);
@@ -57,6 +56,8 @@ export default class Statement {
       content = Emit.fromAst(ast.get('emits'), scope, metadata);
     } else if (ast.has('exits')) {
       content = Exit.fromAst(ast.get('exits'), scope, metadata);
+    } else {
+      throw new Error(`invalid statement ast`);
     }
     return new Statement(ast, content);
   }
@@ -91,7 +92,7 @@ class Assignable implements Stmt {
 
   split(): Statement[] {
     let split = [];
-    console.log(this.ast);
+    
     for (let assignable of this.ast.getAll()) {
       if (assignable.has('baseassignablelist')) {
         Assignable.splitBaseAssignableList(assignable.get('baseassignablelist'), split);
@@ -103,6 +104,7 @@ class Assignable implements Stmt {
   }
 
   constrain(constraints: Constraint[]) {
+    throw new Error(`Assignable can't be type-checked!`);
   }
 
   static splitBaseAssignableList(list: LPNode, split: Statement[]) {
@@ -202,6 +204,7 @@ class Conditional implements Stmt {
       } else if (thenAst.has('functionbody')) {
         then = Fn.fromFunctionbody(thenAst.get('functionbody'), scope, new StatementMetaData(metadata));
       } else {
+        // TODO: prefer most-recently-defined
         // note: do not pass in the metadata, since functions shouldn't be able to
         // reference variables that aren't in their defined scope.
         thenAst = thenAst.get('fnname');
@@ -374,6 +377,7 @@ class Emit implements Stmt {
       }
     } else if (this.final !== null) {
       // constrain the variable we're emitting to the type of the event
+      TODO('');
     } else {
       throw new Error(`Something's not quite right - emit statement with no varref`)
     }
@@ -501,11 +505,13 @@ class FnCall implements Stmt {
 
   constrain(constraints: Constraint[], name?: string) {
     const params = Object.keys(this.fn.args);
+    // This sanity check isn't necessary - gets caught when generating this class
     if (this.args.length < params.length) {
       throw new Error(`Not enough arguments passed to function ${this.fn.name}`);
     } else if (this.args.length > params.length) {
       throw new Error(`Too many arguments passed to function ${this.fn.name}`);
     }
+    TODO('have fn generate constraints');
     for (let i = 0; i < params.length; i++) {
       constraints.push([this.args[i].name, this.fn.args[params[i]]]);
     }
