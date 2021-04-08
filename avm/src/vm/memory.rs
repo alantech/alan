@@ -905,8 +905,29 @@ impl HandlerMemory {
 
   // TODO
   pub fn from_pb(proto_hm: protos::HandlerMemory::HandlerMemory) -> Arc<HandlerMemory> {
-    HandlerMemory::new(None, 1)
+    let mut hm = HandlerMemory::new(None, 1);
+    let mut hm_mut = Arc::get_mut(&mut hm).expect("unable to get memory handler");
+    // mems from Vec<Vec<{u64, i64}>>, to Vec<Vec<(usize, i64)>>,
+    set_mems_from_pb(&proto_hm, hm_mut);
+    // addr from {a: Vec<Option<(u64, u64)>, b: Vec<Option<(u64, u64)>} to (Vec<Option<(usize, usize)>>, Vec<Option<(usize, usize)>>)
+    set_addr_from_pb(&proto_hm, hm_mut);
+    // parent from Option<Box<HandlerMemory>> to Option<Arc<HandlerMemory>>
+    // mem_addr from u64 to usize
+    hm_mut.mem_addr = proto_hm.get_mem_addr() as usize;
+    hm
   }
+}
+
+fn set_mems_from_pb(proto_hm: &protos::HandlerMemory:: HandlerMemory, hm: &mut HandlerMemory) {
+  let mut mems = Vec::new();
+  for pb_mem in proto_hm.get_mems() {
+    let mut mem = Vec::new();
+    for mem_block in pb_mem.get_mem() {
+      mem.push((mem_block.get_mem_type() as usize, mem_block.get_mem_val()));
+    }
+    mems.push(mem);
+  }
+  hm.mems = mems;
 }
 
 fn set_mems_pb(hm: &Arc<HandlerMemory>, proto_hm: &mut protos::HandlerMemory::HandlerMemory) {
@@ -927,6 +948,13 @@ fn set_mems_pb(hm: &Arc<HandlerMemory>, proto_hm: &mut protos::HandlerMemory::Ha
     mem_vec.push(mem);
   }
   proto_hm.set_mems(mem_vec);
+}
+
+fn set_addr_from_pb(proto_hm: &protos::HandlerMemory:: HandlerMemory, hm: &mut HandlerMemory) {
+  let mut mem_space = Vec::new();
+  let mut mem_space_args = Vec::new();
+  
+  hm.addr = (mem_space, mem_space_args);
 }
 
 fn set_addr_pb(hm: &Arc<HandlerMemory>, proto_hm: &mut protos::HandlerMemory::HandlerMemory) {
