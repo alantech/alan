@@ -2,7 +2,10 @@ use std::convert::TryInto;
 use std::str;
 use std::sync::Arc;
 
+use protobuf::{Message, ProtobufError, ProtobufResult};
+
 use crate::vm::program::Program;
+use crate::vm::protos;
 
 // -2^63
 pub const CLOSURE_ARG_MEM_START: i64 = -9223372036854775808;
@@ -883,4 +886,82 @@ impl HandlerMemory {
     let s = str::from_utf8(&s_bytes[0..s_len]).unwrap();
     s.to_string()
   }
+
+  /// takes handler memory and return protobuf message bytes
+  pub fn to_pb(hm: &Arc<HandlerMemory>) -> protos::HandlerMemory::HandlerMemory {
+    let mut proto_hm = protos::HandlerMemory::HandlerMemory::new();
+    // Create mems
+    set_mems_pb(hm, &mut proto_hm);
+    // Create addr
+    set_addr_pb(hm, &mut proto_hm);
+    // Recursion parent
+    if let Some(parent) = &hm.parent {
+      proto_hm.set_parent(HandlerMemory::to_pb(&parent));
+    }
+    // Mem addr
+    proto_hm.set_mem_addr(hm.mem_addr as u64);
+    proto_hm
+  }
+
+  // TODO
+  pub fn from_pb(proto_hm: protos::HandlerMemory::HandlerMemory) -> Arc<HandlerMemory> {
+    HandlerMemory::new(None, 1)
+  }
+}
+
+fn set_mems_pb(hm: &Arc<HandlerMemory>, proto_hm: &mut protos::HandlerMemory::HandlerMemory) {
+  //mems: Vec<Vec<(usize, i64)>>
+  let mut mem_vec: protobuf::RepeatedField<protos::HandlerMemory::HandlerMemory_Mems> =
+    protobuf::RepeatedField::new();
+  for hm_inner_vec in hm.mems.iter() {
+    let mut inner_vec: protobuf::RepeatedField<protos::HandlerMemory::HandlerMemory_MemBlock> =
+      protobuf::RepeatedField::new();
+    for hm_mem_block in hm_inner_vec.iter() {
+      let mut mem_block = protos::HandlerMemory::HandlerMemory_MemBlock::new();
+      mem_block.set_mem_type(hm_mem_block.0 as u64);
+      mem_block.set_mem_val(hm_mem_block.1 as i64);
+      inner_vec.push(mem_block);
+    }
+    let mut mem = protos::HandlerMemory::HandlerMemory_Mems::new();
+    mem.set_mem(inner_vec);
+    mem_vec.push(mem);
+  }
+  proto_hm.set_mems(mem_vec);
+}
+
+fn set_addr_pb(hm: &Arc<HandlerMemory>, proto_hm: &mut protos::HandlerMemory::HandlerMemory) {
+  //addr: (Vec<Option<(usize, usize)>>, Vec<Option<(usize, usize)>>),
+  let mut addr = protos::HandlerMemory::HandlerMemory_Addr::new();
+  let mut mem_space_vec: protobuf::RepeatedField<protos::HandlerMemory::HandlerMemory_MemSpace> =
+    protobuf::RepeatedField::new();
+  let mut mem_space_args_vec: protobuf::RepeatedField<
+    protos::HandlerMemory::HandlerMemory_MemSpace,
+  > = protobuf::RepeatedField::new();
+  for hm_mem_space in (hm.addr.0).iter() {
+    let mut mem_space = protos::HandlerMemory::HandlerMemory_MemSpace::new();
+    if let Some(hm_mem_space) = hm_mem_space {
+      let mut mem_space_struct = protos::HandlerMemory::HandlerMemory_MemSpaceStruct::new();
+      mem_space_struct.set_first(hm_mem_space.0 as u64);
+      mem_space_struct.set_second(hm_mem_space.1 as u64);
+      mem_space.set_memspacestruct(mem_space_struct);
+    } else {
+      mem_space.clear_memspacestruct();
+    }
+    mem_space_vec.push(mem_space);
+  }
+  for hm_mem_space_args in (hm.addr.1).iter() {
+    let mut mem_space = protos::HandlerMemory::HandlerMemory_MemSpace::new();
+    if let Some(hm_mem_space_args) = hm_mem_space_args {
+      let mut mem_space_struct = protos::HandlerMemory::HandlerMemory_MemSpaceStruct::new();
+      mem_space_struct.set_first(hm_mem_space_args.0 as u64);
+      mem_space_struct.set_second(hm_mem_space_args.1 as u64);
+      mem_space.set_memspacestruct(mem_space_struct);
+    } else {
+      mem_space.clear_memspacestruct();
+    }
+    mem_space_args_vec.push(mem_space);
+  }
+  addr.set_mem_space(mem_space_vec);
+  addr.set_mem_space_args(mem_space_args_vec);
+  proto_hm.set_addr(addr);
 }
