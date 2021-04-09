@@ -1,4 +1,4 @@
 hard_tabs = false
 newline_style = "Unix"
 tab_spaces = 2
-ignore = ["src/vm/protos/HandlerMemory.rs"]
+ignore = ["src/vm/protos/"]
