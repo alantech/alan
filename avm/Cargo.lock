@@ -46,6 +46,7 @@ dependencies = [
  "num_cpus",
  "once_cell",
  "protobuf",
+ "protoc-bin-vendored",
  "protoc-rust",
  "rand 0.7.3",
  "regex",
@@ -1235,6 +1236,11 @@ dependencies = [
  "log",
  "which",
 ]
+
+[[package]]
+name = "protoc-bin-vendored"
+version = "3.0.0-pre"
+source = "git+https://github.com/aguillenv/rust-protobuf?branch=update-protoc-bin#407793a74ebe32038cf307365f464ea1e05afa8b"
 
 [[package]]
 name = "protoc-rust"

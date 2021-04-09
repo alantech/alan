@@ -44,4 +44,7 @@ trust-dns-resolver = { version = "0.20.0", features = ["dns-over-rustls"] }
 twox-hash = "1.5.0"
 
 [build-dependencies]
-protoc-rust = "2.0"
+# Using forked branch due to dependency update needed. PR opened.
+protoc-bin-vendored = { git = "https://github.com/aguillenv/rust-protobuf", branch = "update-protoc-bin" }
+# protoc-bin-vendored = "2.22.1"
+protoc-rust = "2.22.1"

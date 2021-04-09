@@ -1,15 +1,18 @@
+extern crate protoc_bin_vendored;
 extern crate protoc_rust;
 
+use protoc_bin_vendored::protoc_bin_path;
 use protoc_rust::Customize;
 
 fn main() {
-  protoc_rust::run(protoc_rust::Args {
-    out_dir: "src/vm/protos",
-    input: &["src/vm/protos/HandlerMemory.proto"],
-    includes: &["src/vm/protos"],
-    customize: Customize {
+  protoc_rust::Codegen::new()
+    .protoc_path(protoc_bin_path().unwrap())
+    .out_dir("src/vm/protos")
+    .inputs(&["src/vm/protos/HandlerMemory.proto"])
+    .includes(&["src/vm/protos"])
+    .customize(Customize {
       ..Default::default()
-    },
-  })
-  .expect("protoc");
+    })
+    .run()
+    .expect("protoc");
 }
