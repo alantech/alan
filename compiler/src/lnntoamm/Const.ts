@@ -1,10 +1,10 @@
 import { LPNode } from "../lp";
 import Scope from "./Scope";
-import { Type } from "./Types";
+import Type from "./Types";
 
 export default class Const {
   name: string
-  ty: Type | null
+  ty: Type
   assignablesAst: LPNode
 
   constructor(
@@ -13,7 +13,7 @@ export default class Const {
     assignablesAst: LPNode,
   ) {
     this.name = name;
-    this.ty = ty;
+    this.ty = ty !== null ? ty : Type.generate();
     this.assignablesAst = assignablesAst;
   }
 

@@ -1,8 +1,6 @@
 import { LPNode } from '../lp'
-import * as Ast from './Ast'
 import Fn from './Fn'
 import Scope from './Scope'
-import { Type } from './Types'
 
 class Operator {
   name: string

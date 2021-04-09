@@ -1,29 +1,45 @@
-import { LPNode, NulLP } from "../lp";
+import { LPNode } from "../lp";
 import Event from "./Event";
 import Fn from "./Fn";
 import opcodes from "./opcodes";
 import Scope from "./Scope";
-import { Constraint } from "./typecheck";
-import { Interface, Type } from "./Types";
-import { TODO } from "./util";
+import Type from "./Types";
+import { genName, TODO } from "./util";
 
 interface Stmt {
+  ast: LPNode;
   split(): Statement[];
-  constrain(constraints: Constraint[]): void;
+  constrain(metadata: StatementMetaData): void;
+  getOutputType(): Type;
+}
+
+export interface VarMetadata {
+  dec: Declaration,
+  constraints: Type[],
 }
 
 // very similar to a Scope, but there's no exports and might
 // contain more than just declarations? idk yet
 export class StatementMetaData {
+  outputConstraints: Type[]
+  vars: {[name: string]: VarMetadata}
+
   constructor(
     private __upstream: StatementMetaData = null,
-    private __declarations: {[name: string]: Declaration} = {},
-  ) {}
+    vars: {[name: string]: VarMetadata} = {},
+  ) {
+    this.outputConstraints = [];
+    this.vars = vars;
+  }
 
-  getDec(name: string): Declaration {
-    const local = this.__declarations[name];
-    if (local === undefined && this.__upstream !== null) {
-      return this.__upstream.getDec(name);
+  var(name: string): VarMetadata {
+    const local = this.vars[name];
+    if (local == undefined) {
+      if (this.__upstream !== null) {
+        return this.__upstream.var(name);
+      } else {
+        return null;
+      }
     } else {
       return local;
     }
@@ -66,8 +82,8 @@ export default class Statement {
     return this.content.split();
   }
 
-  constrain(constraints: Constraint[]) {
-    this.content.constrain(constraints);
+  constrain(metadata: StatementMetaData) {
+    this.content.constrain(metadata);
   }
 }
 
@@ -92,10 +108,10 @@ class Assignable implements Stmt {
 
   split(): Statement[] {
     let split = [];
-    
-    for (let assignable of this.ast.getAll()) {
+
+    for (let assignable of this.ast.getAll().map(a => a.get('withoperators'))) {
       if (assignable.has('baseassignablelist')) {
-        Assignable.splitBaseAssignableList(assignable.get('baseassignablelist'), split);
+        this.splitBaseAssignableList(assignable.get('baseassignablelist'), split);
       } else {
         TODO('operator support in splitting');
       }
@@ -103,11 +119,15 @@ class Assignable implements Stmt {
     return split;
   }
 
-  constrain(constraints: Constraint[]) {
+  constrain(_metadata: StatementMetaData) {
     throw new Error(`Assignable can't be type-checked!`);
   }
 
-  static splitBaseAssignableList(list: LPNode, split: Statement[]) {
+  getOutputType(): Type {
+    throw new Error(`Can't determine type of Assignable`);
+  }
+
+  private splitBaseAssignableList(list: LPNode, split: Statement[]) {
     for (let assignable of list.getAll()) {
       assignable = assignable.get('baseassignable');
       if (assignable.has('objectliterals')) {
@@ -117,9 +137,12 @@ class Assignable implements Stmt {
       } else if (assignable.has('fncall')) {
         TODO('fncall');
       } else if (assignable.has('variable')) {
+        console.log(list)
         TODO('variable');
       } else if (assignable.has('constants')) {
-        TODO('constants');
+        assignable = assignable.get('constants');
+        let dec = Declaration.generate(new Literal(assignable));
+        split.push(new Statement(assignable, dec));
       } else if (assignable.has('methodsep')) {
         TODO('methodsep');
       }
@@ -148,15 +171,15 @@ class Assignment implements Stmt {
   static fromAst(ast: LPNode, scope: Scope, metadata: StatementMetaData): Assignment {
     const assignName = ast.get('varn').t;
     // can only assign to declarations, nothing in Scope.
-    if (metadata.getDec(assignName) === undefined) {
+    if (metadata.var(assignName) === null) {
       throw new Error(`${assignName} is not defined`);
     }
-    const upstream = metadata.getDec(assignName);
-    if (!upstream.mutable) {
+    const upstream = metadata.var(assignName);
+    if (!upstream.dec.mutable) {
       throw new Error(`can't reassign to ${assignName} (not a let variable)`);
     }
     const assignable = Assignable.fromAst(ast.get('assignables'), scope, metadata);
-    return new Assignment(ast, upstream, assignable);
+    return new Assignment(ast, upstream.dec, assignable);
   }
 
   split(): Statement[] {
@@ -171,16 +194,32 @@ class Assignment implements Stmt {
     return split;
   }
 
-  constrain(constraints: Constraint[]) {
+  constrain(metadata: StatementMetaData) {
+    if (this.final === null) {
+      throw new Error(`Assignment isn't prepared`);
+    }
+    this.final.constrain(metadata);
+    let metavar = metadata.var(this.upstream.name);
+    if (metavar === null) {
+      throw new Error(`${this.upstream.name} doesn't exist in metadata?`);
+    }
+    metavar.constraints.push(this.final.getOutputType());
+  }
+
+  getOutputType(): Type {
+    throw new Error(`assignments aren't expressions`);
   }
 }
 
 class Conditional implements Stmt {
+  ast: LPNode
   branches: Array<[[Assignable | true, LPNode], [Fn, LPNode]]>
 
   constructor(
+    ast: LPNode,
     branches: Array<[[Assignable | true, LPNode], [Fn, LPNode]]>,
   ) {
+    this.ast = ast;
     this.branches = branches;
   }
 
@@ -223,7 +262,7 @@ class Conditional implements Stmt {
       // don't check the return type yet - we'll do that when type-checking
       branches.push([[cond, condAst], [then, thenAst]]);
     } while (ast.has('blocklike'));
-    return new Conditional(branches);
+    return new Conditional(ast, branches);
   }
 
   split(): Statement[] {
@@ -236,15 +275,20 @@ class Conditional implements Stmt {
     return split;
   }
 
-  constrain(constraints: Constraint[]) {
+  constrain(metadata: StatementMetaData) {
+    TODO('conditionals');
+  }
+
+  getOutputType(): Type {
+    return TODO('conditionals');
   }
 }
 
-class Declaration implements Stmt {
+export class Declaration implements Stmt {
   ast: LPNode
   mutable: boolean
   name: string
-  ty: Type | Interface | null
+  ty: Type
   assignable: Assignable
   final: Stmt | null
 
@@ -252,14 +296,14 @@ class Declaration implements Stmt {
     ast: LPNode,
     mutable: boolean,
     name: string,
-    ty: Type | Interface | null,
+    ty: Type | null,
     assignable: Assignable,
     final: Stmt | null = null,
   ) {
     this.ast = ast;
     this.mutable = mutable;
     this.name = name;
-    this.ty = ty;
+    this.ty = ty !== null ? ty : Type.generate();
     this.assignable = assignable;
     this.final = final;
   }
@@ -288,10 +332,26 @@ class Declaration implements Stmt {
       ty,
       assignables,
     );
-    if (metadata.getDec(dec.name) !== undefined) {
+    if (metadata.var(dec.name) !== null) {
       throw new Error(`cannot shadow variable names`);
     }
+    metadata.vars[this.name] = {
+      dec,
+      constraints: [],
+    }
     return dec;
+  }
+
+  static generate(final: Stmt = null): Declaration {
+    // const _abc123 = final;
+    return new Declaration(
+      final.ast,
+      false,
+      genName(),
+      null,
+      null,
+      final,
+    );
   }
 
   ref(): VarRef {
@@ -311,7 +371,36 @@ class Declaration implements Stmt {
     return split;
   }
 
-  constrain(constraints: Constraint[]) {
+  constrain(metadata: StatementMetaData) {
+    console.log(`declaration ${this.name} 0`, metadata.vars)
+    if (this.final === null) {
+      throw new Error(`Declaration isn't prepared`);
+    }
+    this.final.constrain(metadata);
+    console.log(`declaration ${this.name} 1`, metadata.vars)
+    let metavar = metadata.var(this.name);
+    if (metavar === null) {
+      metadata.vars[this.name] = {
+        dec: this,
+        constraints: [],
+      };
+      metavar = metadata.var(this.name);
+    }
+    if (metavar.dec !== this) {
+      throw new Error(`invalid declaration state`)
+    }
+    console.log(`declaration ${this.name} 2`, metadata.vars)
+    metavar.constraints.push(this.final.getOutputType());
+    console.log(`declaration ${this.name} 3`, metadata.vars)
+  }
+
+  getOutputType(): Type {
+    throw new Error(`declarations aren't expressions`);
+  }
+
+  acceptConstraints(constraints: Type[]) {
+    for (let constraint of constraints) {
+    }
   }
 }
 
@@ -335,7 +424,7 @@ class Emit implements Stmt {
 
   static fromAst(ast: LPNode, scope: Scope, metadata: StatementMetaData): Emit {
     const eventName = ast.get('eventname').t.trim();
-    const event = scope.get(eventName);
+    const event = scope.deepGet(eventName);
     if (event === null) {
       throw new Error(`event not defined: ${eventName}`);
     } else if (!(event instanceof Event)) {
@@ -345,7 +434,7 @@ class Emit implements Stmt {
     let assignables = null;
     if (ast.get('retval').has()) {
       assignables = Assignable.fromAst(
-        ast.get('retval').get().get('assignables'),
+        ast.get('retval').get('assignables'),
         scope,
         metadata,
       );
@@ -370,18 +459,36 @@ class Emit implements Stmt {
     return assignables;
   }
 
-  constrain(constraints: Constraint[]) {
-    if (this.assignable === null) {
-      if (this.event.eventTy !== opcodes().get('void')) {
-        throw new Error(`Must emit a value to non-void events`);
-      }
-    } else if (this.final !== null) {
-      // constrain the variable we're emitting to the type of the event
-      TODO('');
-    } else {
-      throw new Error(`Something's not quite right - emit statement with no varref`)
+  constrain(metadata: StatementMetaData) {
+    if (this.final === null) {
+      throw new Error(`Emit isn't prepared`);
     }
+    this.final.constrain(metadata);
+    let metavar = metadata.var(this.final.dec.name);
+    if (metavar === null) {
+      throw new Error(`${this.final.dec.name} doesn't exist in metadata?`);
+    }
+    metavar.constraints.push(this.event.eventTy);
   }
+
+  getOutputType(): Type {
+    throw new Error(`emits aren't expressions`);
+  }
+  // constrain(constraints: Constraint[]) {
+  //   if (this.assignable === null) {
+  //     if (this.event.eventTy !== opcodes().get('void')) {
+  //       throw new Error(`Must emit a value to non-void events`);
+  //     }
+  //   } else if (this.final !== null) {
+  //     // constrain the variable we're emitting to the type of the event
+  //     if (!(this.final instanceof VarRef)) {
+  //       throw new Error('not emitting a varref?');
+  //     }
+  //     this.final.constrain(constraints, this.event.eventTy);
+  //   } else {
+  //     throw new Error(`Something's not quite right - emit statement with no varref`)
+  //   }
+  // }
 }
 
 export class Exit implements Stmt {
@@ -423,20 +530,92 @@ export class Exit implements Stmt {
     return assignables;
   }
 
-  constrain(constraints: Constraint[]) {
-    if (this.assignable === null) {
-      // it's a void value (naked return)
-      constraints.push([null, opcodes().get('void')]);
-    } else if (this.final !== null) {
-      this.final.constrain(constraints, null);
-    } else {
-      throw new Error(`Something's not quite right - return statement with no varref`);
-    }
+  constrain(metadata: StatementMetaData) {
+    let retTy = this.final !== null ? this.final.dec.ty : opcodes().get('void');
+    metadata.outputConstraints.push(retTy);
   }
+
+  getOutputType(): Type {
+    return TODO('')
+  }
+  // constrain(constraints: Constraint[]) {
+  //   if (this.assignable === null) {
+  //     // it's a void value (naked return)
+  //     constraints.push([null, opcodes().get('void')]);
+  //   } else if (this.final !== null) {
+  //     this.final.constrain(constraints, null);
+  //   } else {
+  //     throw new Error(`Something's not quite right - return statement with no varref`);
+  //   }
+  // }
 }
 
 // ===================================================
-// types that Assignables boil down to (shouldn't be used directly in a Statement)
+// types that Assignables boil down to (shouldn't be used directly in a Statement built from LPNodes)
+class Literal implements Stmt {
+  ast: LPNode
+
+  constructor(
+    ast: LPNode,
+  ) {
+    this.ast = ast;
+  }
+
+  split(): Statement[] {
+    return [new Statement(this.ast, this)];
+  }
+
+  constrain(_metadata: StatementMetaData) {
+    // do nothing
+  }
+
+  getOutputType(): Type {
+    if (this.ast.has('bool')) {
+      return opcodes().get('bool');
+    } else if (this.ast.has('str')) {
+      return opcodes().get('string');
+    } else if (this.ast.get('num')) {
+      let num = this.ast.get('num').t;
+      if (num.indexOf('.') !== -1) {
+        return Type.oneOf([
+          'float64',
+          'float32',
+        ].map(t => opcodes().get(t)));
+      } else {
+        return Type.oneOf([
+          'int64',
+          'int32',
+          'int16',
+          'int8',
+          'float64',
+          'float32',
+        ].map(t => opcodes().get(t)));
+      }
+    } else {
+      throw new Error('invalid literal node');
+    }
+  }
+  // constrain(constraints: Constraint[], name?: string) {
+  //   if (name === undefined) {
+  //     throw new Error(`attempting to constrain a type to a non-existent value`);
+  //   }
+  //   if (this.ast.has('bool')) {
+  //     constraints.push([name, opcodes().get('bool')]);
+  //   } else if (this.ast.has('num')) {
+  //     let num = this.ast.get('num');
+  //     if (num.has('integer')) {
+  //       constraints.push([name, opcodes().get('int64')]);
+  //     } else if (num.has('real')) {
+  //       constraints.push([name, opcodes().get('float64')]);
+  //     }
+  //   } else if (this.ast.has('str')) {
+  //     constraints.push([name, opcodes().get('string')]);
+  //   } else {
+  //     throw new Error('unrecognized constant literal type');
+  //   }
+  // }
+}
+
 class Closure implements Stmt {
   ast: LPNode
   fn: Fn
@@ -453,12 +632,19 @@ class Closure implements Stmt {
     return [new Statement(this.ast, this)];
   }
 
-  constrain(constraints: Constraint[], name?: string) {
-    TODO('fn types')
+  constrain(metadata: StatementMetaData) {
+    TODO('')
   }
+
+  getOutputType(): Type {
+    return TODO('')
+  }
+  // constrain(constraints: Constraint[], name?: string) {
+  //   TODO('fn types')
+  // }
 }
 
-class VarRef implements Stmt {
+export class VarRef implements Stmt {
   ast: LPNode
   dec: Declaration
 
@@ -474,14 +660,31 @@ class VarRef implements Stmt {
     return [new Statement(this.ast, this)];
   }
 
-  constrain(constraints: Constraint[], to?: string | Type | Interface) {
-    if (to !== undefined) {
-      if (this.dec.ty === null) {
-        throw new Error(`${this.dec.name} doesn't have a type!`);
-      }
-      TODO('here')
-    }
+  constrain(_metadata: StatementMetaData) {
+    // do nothing
   }
+
+  getOutputType(): Type {
+    let outTy = this.dec.final.getOutputType();
+    if (outTy === null) {
+      console.log(this.dec);
+      throw new Error('ah');
+    }
+    return outTy;
+  }
+  // constrain(constraints: Constraint[], to?: string | Ty) {
+  //   if (to === undefined) {
+  //     throw new Error('varref has nothing to constrain to')
+  //   }
+  //   if (this.dec.ty === null) {
+  //     throw new Error(`${this.dec.name} doesn't have a type!`);
+  //   }
+  //   if (typeof to === 'string') {
+  //     constraints.push([to, this.dec.ty]);
+  //   } else {
+  //     constraints.push([this.dec.name, to]);
+  //   }
+  // }
 }
 
 class FnCall implements Stmt {
@@ -503,20 +706,27 @@ class FnCall implements Stmt {
     return [new Statement(this.ast, this)];
   }
 
-  constrain(constraints: Constraint[], name?: string) {
-    const params = Object.keys(this.fn.args);
-    // This sanity check isn't necessary - gets caught when generating this class
-    if (this.args.length < params.length) {
-      throw new Error(`Not enough arguments passed to function ${this.fn.name}`);
-    } else if (this.args.length > params.length) {
-      throw new Error(`Too many arguments passed to function ${this.fn.name}`);
-    }
-    TODO('have fn generate constraints');
-    for (let i = 0; i < params.length; i++) {
-      constraints.push([this.args[i].name, this.fn.args[params[i]]]);
-    }
-    if (name !== undefined) {
-      constraints.push([name, this.fn.getReturnType()]);
-    }
+  constrain(metadata: StatementMetaData) {
+    TODO('')
   }
+
+  getOutputType(): Type {
+    return TODO('')
+  }
+  // constrain(constraints: Constraint[], name?: string) {
+  //   const params = Object.keys(this.fn.args);
+  //   // This sanity check isn't necessary - gets caught when generating this class
+  //   if (this.args.length < params.length) {
+  //     throw new Error(`Not enough arguments passed to function ${this.fn.name}`);
+  //   } else if (this.args.length > params.length) {
+  //     throw new Error(`Too many arguments passed to function ${this.fn.name}`);
+  //   }
+  //   TODO('have fn generate constraints');
+  //   for (let i = 0; i < params.length; i++) {
+  //     constraints.push([this.args[i].name, this.fn.args[params[i]]]);
+  //   }
+  //   if (name !== undefined) {
+  //     constraints.push([name, this.fn.getReturnType()]);
+  //   }
+  // }
 }

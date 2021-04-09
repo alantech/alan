@@ -1,7 +1,7 @@
 import { NulLP } from '../lp';
 import Event from './Event';
 import Scope from "./Scope";
-import { Interface, Type } from './Types';
+import Type from './Types';
 
 let __opcodes: Scope = null;
 
@@ -23,7 +23,7 @@ const addOpcode = (
     let ty = __opcodes.get(argTy);
     if (ty === null) {
       throw new Error(`opcode ${name} arg ${argName} uses a type that's not defined`);
-    } else if (!(ty instanceof Type) && !(ty instanceof Interface)) {
+    } else if (!(ty instanceof Type)) {
       throw new Error(`opcode ${name} arg ${argName} doesn't have a valid type`);
     } else {
       args[ty[0]] = ty;
@@ -42,8 +42,11 @@ const addOpcode = (
     body: [],
     stmtMeta: null,
     transform: () => {},
+    constraints: () => [[], []] as [any[], any[]], // ugh
     getReturnType: () => retTy,
   };
+  // if this line errors, that's because we're not successfully duck-typing the opcode as a Fn
+  // (duck-typing necessary because otherwise Node complains about circular dependencies)
   __opcodes.put(name, [opcode]);
 }
 
@@ -61,9 +64,7 @@ const load = (): void => {
     bool: [],
     string: [],
   }).forEach(([name, generics]: [string, string[]]) => {
-    let genericTypes = {};
-    generics.forEach(gen => genericTypes[gen] = null);
-    __opcodes.put(name, new Type(name, genericTypes, null, {}));
+    __opcodes.put(name, Type.newBuiltin(name, generics))
   });
 
   Object.entries({

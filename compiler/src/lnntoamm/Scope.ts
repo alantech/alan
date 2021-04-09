@@ -2,11 +2,11 @@ import Const from './Const';
 import Event from './Event';
 import Fn from './Fn';
 import Operator from './Operator';
-import { Interface, Type } from './Types';
+import Ty from './Types';
 
 // type Boxish = Type | Scope | Microstatement | Array<Operator> | Array<Fn> | Event | Constant | undefined
 // Scope instead of a Module
-type Boxish = Scope | Const | Event | Fn[] | Interface | Operator[] | Type
+type Boxish = Scope | Const | Event | Fn[] | Operator[] | Ty
 
 type BoxSet = {
   [K: string]: Boxish

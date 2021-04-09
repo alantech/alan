@@ -5,7 +5,7 @@ import Event from './Event';
 import Fn from './Fn';
 import Operator from './Operator';
 import Scope from './Scope';
-import { Interface, Type } from './Types';
+import Type from './Types';
 
 const modules: {[name: string]: Module} = {}
 
@@ -163,7 +163,7 @@ class Module {
 
   addTypeAst(typeAst: LPNode, isExport: boolean) {
     typeAst = typeAst.get('types');
-    const newType = Type.fromAst(typeAst, this.moduleScope);
+    const newType = Type.fromTypesAst(typeAst, this.moduleScope);
     this.moduleScope.put(newType.name, newType);
     if (isExport) {
       this.exportScope.put(newType.name, newType);
@@ -172,7 +172,7 @@ class Module {
 
   addInterfaceAst(interfaceAst: LPNode, isExport: boolean) {
     interfaceAst = interfaceAst.get('interfaces');
-    const newInterface = Interface.fromAst(interfaceAst, this.moduleScope);
+    const newInterface = Type.fromInterfacesAst(interfaceAst, this.moduleScope);
     this.moduleScope.put(newInterface.name, newInterface);
     if (isExport) {
       this.exportScope.put(newInterface.name, newInterface);
