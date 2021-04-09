@@ -903,8 +903,7 @@ impl HandlerMemory {
     proto_hm
   }
 
-  // TODO
-  pub fn from_pb(proto_hm: protos::HandlerMemory::HandlerMemory) -> Arc<HandlerMemory> {
+  pub fn from_pb(proto_hm: &protos::HandlerMemory::HandlerMemory) -> Arc<HandlerMemory> {
     let mut hm = HandlerMemory::new(None, 1);
     let mut hm_mut = Arc::get_mut(&mut hm).expect("unable to get memory handler");
     // mems from Vec<Vec<{u64, i64}>>, to Vec<Vec<(usize, i64)>>,
@@ -912,6 +911,10 @@ impl HandlerMemory {
     // addr from {a: Vec<Option<(u64, u64)>, b: Vec<Option<(u64, u64)>} to (Vec<Option<(usize, usize)>>, Vec<Option<(usize, usize)>>)
     set_addr_from_pb(&proto_hm, hm_mut);
     // parent from Option<Box<HandlerMemory>> to Option<Arc<HandlerMemory>>
+    if proto_hm.has_parent() {
+      let parent = proto_hm.get_parent();
+      hm_mut.parent = Some(HandlerMemory::from_pb(&parent));
+    }
     // mem_addr from u64 to usize
     hm_mut.mem_addr = proto_hm.get_mem_addr() as usize;
     hm
@@ -950,10 +953,11 @@ fn set_mems_pb(hm: &Arc<HandlerMemory>, proto_hm: &mut protos::HandlerMemory::Ha
   proto_hm.set_mems(mem_vec);
 }
 
-fn set_addr_from_pb(proto_hm: &protos::HandlerMemory:: HandlerMemory, hm: &mut HandlerMemory) {
+fn set_addr_from_pb(proto_hm: &protos::HandlerMemory::HandlerMemory, hm: &mut HandlerMemory) {
   let mut mem_space = Vec::new();
   let mut mem_space_args = Vec::new();
-  
+  complete_mem_space(&mut mem_space, &proto_hm.get_addr().get_mem_space());
+  complete_mem_space(&mut mem_space_args, &proto_hm.get_addr().get_mem_space_args());
   hm.addr = (mem_space, mem_space_args);
 }
 
@@ -965,14 +969,14 @@ fn set_addr_pb(hm: &Arc<HandlerMemory>, proto_hm: &mut protos::HandlerMemory::Ha
   let mut mem_space_args_vec: protobuf::RepeatedField<
     protos::HandlerMemory::HandlerMemory_MemSpace,
   > = protobuf::RepeatedField::new();
-  complete_mem_space(&mut mem_space_vec, &(hm.addr.0));
-  complete_mem_space(&mut mem_space_args_vec, &(hm.addr.1));
+  complete_proto_mem_space(&mut mem_space_vec, &(hm.addr.0));
+  complete_proto_mem_space(&mut mem_space_args_vec, &(hm.addr.1));
   addr.set_mem_space(mem_space_vec);
   addr.set_mem_space_args(mem_space_args_vec);
   proto_hm.set_addr(addr);
 }
 
-fn complete_mem_space(mem_space_vec: &mut protobuf::RepeatedField<
+fn complete_proto_mem_space(mem_space_vec: &mut protobuf::RepeatedField<
   protos::HandlerMemory::HandlerMemory_MemSpace>, hm_addr: &Vec<Option<(usize, usize)>>) {
     for hm_mem_space in hm_addr.iter() {
       let mut mem_space = protos::HandlerMemory::HandlerMemory_MemSpace::new();
@@ -986,4 +990,15 @@ fn complete_mem_space(mem_space_vec: &mut protobuf::RepeatedField<
       }
       mem_space_vec.push(mem_space);
     }
+}
+
+fn complete_mem_space(mem_space_vec: &mut Vec<Option<(usize, usize)>>, proto_mem_space: &[protos::HandlerMemory::HandlerMemory_MemSpace]) {
+  for mem_space in proto_mem_space.iter() {
+    if mem_space.has_memspacestruct() {
+      let mem_space_struct = mem_space.get_memspacestruct();
+      mem_space_vec.push(Some((mem_space_struct.get_first() as usize, mem_space_struct.get_second() as usize)));
+    } else {
+      mem_space_vec.push(None);
+    }
+  }
 }
