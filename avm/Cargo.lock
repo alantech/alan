@@ -1240,7 +1240,7 @@ dependencies = [
 [[package]]
 name = "protoc-bin-vendored"
 version = "3.0.0-pre"
-source = "git+https://github.com/aguillenv/rust-protobuf?branch=update-protoc-bin#407793a74ebe32038cf307365f464ea1e05afa8b"
+source = "git+https://github.com/aguillenv/rust-protobuf?branch=update-protoc-bin#3d063009793bfb72962b76aeda070ab7ed374a0b"
 
 [[package]]
 name = "protoc-rust"
