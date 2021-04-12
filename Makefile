@@ -23,7 +23,7 @@ compiler-browser-check:
 ./compiler/alan-compile:
 	cd compiler && yarn
 	yarn add pkg
-	cd compiler && ../node_modules/.bin/pkg --targets host .
+	cd compiler && ../node_modules/.bin/pkg --targets node14-macos-x64 .
 
 ./avm/target/release/alan: compiler/alan-compile
 	cd avm && cargo fmt
@@ -50,11 +50,11 @@ clean:
 
 .PHONY: install
 install: avm/target/release/alan
-	cp ./avm/target/release/alan /usr/local/bin/alan
+	cp ./avm/target/release/alan /opt/alan
 
 .PHONY: uninstall
 uninstall:
-	rm /usr/local/bin/alan
+	rm /opt/alan
 
 .PHONY: version
 version:
