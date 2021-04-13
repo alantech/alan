@@ -12,6 +12,10 @@ export default class Event {
   // if it's a single fn
   handlers: Array<Fn | Fn[]>
 
+  get ammName(): string {
+    return TODO('Event AMM name');
+  }
+
   static get allEvents(): Event[] {
     return allEvents;
   }

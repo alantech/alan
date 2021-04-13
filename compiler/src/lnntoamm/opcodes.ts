@@ -40,9 +40,9 @@ const addOpcode = (
     args,
     retTy,
     body: [],
-    stmtMeta: null,
+    metadata: null,
     fnType: null,
-    transform: () => {},
+    // transform: () => {},
     constraints: () => [[], []] as [any[], any[]], // ugh
     getReturnType: () => retTy,
     getType: () => null,

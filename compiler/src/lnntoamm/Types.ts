@@ -56,8 +56,8 @@ export default abstract class Type {
     );
   }
 
-  static getFromTypename(ast: LPNode, scope: Scope): Type {
-    return scope.get(ast.t.trim());
+  static getFromTypename(name: LPNode | string, scope: Scope): Type {
+    return scope.get(name.toString().trim());
   }
 
   abstract compatibleWithConstraint(that: Type): boolean;
@@ -66,18 +66,16 @@ export default abstract class Type {
 export class FunctionType extends Type {
   argTys: Type[]
   retTy: Type
-  callConstraints: Type[]
+  callSelect: Type
 
   constructor(
     name: string,
     argTys: Type[],
     retTy: Type,
-    callConstraints: Type[] = [],
   ) {
     super(name, null);
     this.argTys = argTys;
     this.retTy = retTy;
-    this.callConstraints = callConstraints;
   }
 
   compatibleWithConstraint(that: Type): boolean {
