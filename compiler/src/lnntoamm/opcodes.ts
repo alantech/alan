@@ -41,9 +41,11 @@ const addOpcode = (
     retTy,
     body: [],
     stmtMeta: null,
+    fnType: null,
     transform: () => {},
     constraints: () => [[], []] as [any[], any[]], // ugh
     getReturnType: () => retTy,
+    getType: () => null,
   };
   // if this line errors, that's because we're not successfully duck-typing the opcode as a Fn
   // (duck-typing necessary because otherwise Node complains about circular dependencies)

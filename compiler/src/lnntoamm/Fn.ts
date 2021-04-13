@@ -1,7 +1,7 @@
 import { LPNode } from "../lp";
 import Scope from "./Scope";
 import Statement, { Declaration, StatementMetaData, VarMetadata } from "./Statement";
-import Type from "./Types";
+import Type, { FunctionType } from "./Types";
 
 // the value is null if the type is to be inferred
 export type Args = {[name: string]: Type | null};
@@ -14,19 +14,20 @@ export default class Fn {
   scope: Scope
   args: Args
   // null if the type is to be inferred
-  retTy: LPNode | Type
+  retTy: Type
   // later on, we can also add `| Microstatement[]` as an optimization
   // TODO: get rid of singular Statement type
   body: LPNode | LPNode[] | Statement | Statement[]
   // not used by this class, but used by Statements
   stmtMeta: StatementMetaData
+  fnType: FunctionType
 
   constructor(
     ast: LPNode,
     scope: Scope,
     name: string | null,
     args: Args,
-    retTy: LPNode | Type | null,
+    retTy: Type | null,
     body: LPNode | LPNode[] | Statement | Statement[],
     stmtMeta: StatementMetaData = null,
   ) {
@@ -34,9 +35,15 @@ export default class Fn {
     this.scope = scope;
     this.name = name;
     this.args = args;
+    for (let argName of Object.keys(this.args)) {
+      if (this.args[argName] === null) {
+        this.args[argName] = Type.generate();
+      }
+    }
     this.retTy = retTy !== null ? retTy : Type.generate();
     this.body = body;
     this.stmtMeta = stmtMeta !== null ? stmtMeta : new StatementMetaData();
+    this.fnType = new FunctionType(this.name, Object.values(this.args), this.retTy);
   }
 
   static fromFunctionsAst(
@@ -48,25 +55,18 @@ export default class Fn {
     const name = work.get('optname').has() ? work.get('optname').get().t : null;
     let args: Args = {};
     if (work.get('optargs').has('arglist')) {
-      // RIP DRY :(
-      let argsAst = work.get('optargs').get('arglist');
-      let argName = argsAst.get('variable').t;
-      let typename = argsAst.get('fulltypename').t;
-      let argTy = scope.get(typename);
-      if (argTy === null) {
-        throw new Error(`Could not find type ${typename} for argument ${argName}`);
-      } else if (!(argTy instanceof Type)) {
-        throw new Error(`Function argument is not a valid type: ${typename}`);
-      }
-      args[argName] = argTy;
-      for (let argAst of argsAst.get('cdr').getAll()) {
-        argName = argAst.get('variable').t.trim();
-        typename = argAst.get('fulltypename').t.trim();
-        argTy = scope.get(typename);
+      let argAsts = [
+        work.get('optargs').get('arglist'),
+        ...work.get('optargs').get('arglist').get('cdr').getAll(),
+      ];
+      for (let argAst of argAsts) {
+        let argName = argAst.get('variable').t;
+        let typename = argAst.get('fulltypename');
+        let argTy = Type.getFromTypename(typename, scope);
         if (argTy === null) {
-          throw new Error(`Could not find type ${typename} for argument ${argName}`);
+          throw new Error(`Could not find type ${typename.t.trim()} for argument ${argName}`);
         } else if (!(argTy instanceof Type)) {
-          throw new Error(`Function argument is not a valid type: ${typename}`);
+          throw new Error(`Function argument is not a valid type: ${typename.t.trim()}`);
         }
         args[argName] = argTy;
       }
@@ -84,7 +84,7 @@ export default class Fn {
       new Scope(scope),
       name,
       args,
-      retTy,
+      Type.getFromTypename(retTy, scope),
       body,
       stmtMeta,
     );
@@ -131,6 +131,10 @@ export default class Fn {
       console.log(this.body)
       throw new Error('not transforming...?');
     }
+  }
+
+  getType(): FunctionType {
+    return null;
   }
 
   // TODO: pretty sure this is just gonna be Function types :)

@@ -63,11 +63,21 @@ export default abstract class Type {
   abstract compatibleWithConstraint(that: Type): boolean;
 }
 
-class FunctionType extends Type {
+export class FunctionType extends Type {
+  argTys: Type[]
+  retTy: Type
+  callConstraints: Type[]
+
   constructor(
     name: string,
+    argTys: Type[],
+    retTy: Type,
+    callConstraints: Type[] = [],
   ) {
     super(name, null);
+    this.argTys = argTys;
+    this.retTy = retTy;
+    this.callConstraints = callConstraints;
   }
 
   compatibleWithConstraint(that: Type): boolean {
@@ -150,6 +160,7 @@ class Interface extends Type {
   }
 }
 
+// Types not available in Alan, but we must use anyways
 class Generated extends Type {
   delegate: Type | null
 
