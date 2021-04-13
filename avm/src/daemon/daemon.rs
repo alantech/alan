@@ -104,7 +104,11 @@ async fn post_v1_scale(
 }
 
 // returns cluster delta
-async fn post_v1_stats(vm_stats: Vec<VMStatsV1>, cluster_id: &str, deploy_token: &str) -> DaemonResult<String> {
+async fn post_v1_stats(
+  vm_stats: Vec<VMStatsV1>,
+  cluster_id: &str,
+  deploy_token: &str,
+) -> DaemonResult<String> {
   let mut stats_body = json!({
     "deployToken": deploy_token,
     "vmStats": vm_stats,
@@ -218,7 +222,7 @@ pub async fn start(
           Err(err) => {
             error!(ErrorType::NoDnsVms, "{}", err).await;
             Vec::new()
-          },
+          }
         };
         // triggered the first time since cluster_size == 0
         // and every time the cluster changes size
