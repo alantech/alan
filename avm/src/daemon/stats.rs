@@ -12,7 +12,7 @@ use tokio::time::{sleep, Duration};
 
 use crate::daemon::daemon::DaemonResult;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct CPUSecsV1 {
   user: f64,
   system: f64,
@@ -25,7 +25,7 @@ pub struct CPUSecsV1 {
 }
 
 #[allow(non_snake_case)]
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct VMStatsV1 {
   cpuSecs: Vec<CPUSecsV1>,
   procsCpuUsage: Vec<f64>,
@@ -40,15 +40,15 @@ pub struct VMStatsV1 {
 }
 
 // calculate the cpu times usage per process using the process'
-// total cpu time delta in a given time window
+// total cpu time delta in a 100ms time window
 async fn get_proc_usages() -> Vec<f64> {
-  let duration = 1.0;
+  let duration = 0.1; // seconds
   let futures = heim_process::processes()
     .map(|process| async {
       match process {
         Ok(proc) => {
           let cpu_1 = proc.cpu_time().await;
-          sleep(Duration::from_secs(duration as u64)).await;
+          sleep(Duration::from_millis((duration * 1000.0) as u64)).await;
           let cpu_2 = proc.cpu_time().await;
           // account for zombie process
           if cpu_1.is_err() || cpu_2.is_err() {
@@ -121,7 +121,7 @@ async fn get_cores_total_times() -> Vec<DaemonResult<CPUSecsV1>> {
 // so generate it twice with a wait in between to generate a time window
 async fn get_cores_times() -> DaemonResult<Vec<CPUSecsV1>> {
   let times_1 = get_cores_total_times().await;
-  sleep(Duration::from_secs(1)).await;
+  sleep(Duration::from_millis(100)).await;
   let times_2 = get_cores_total_times().await;
   let mut time_window = Vec::new();
   for (idx, t2) in times_2.iter().enumerate() {

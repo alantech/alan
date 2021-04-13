@@ -21,7 +21,7 @@ use tokio::time::{sleep, Duration};
 
 use crate::daemon::dns::DNS;
 use crate::daemon::lrh::LogRendezvousHash;
-use crate::daemon::stats::get_v1_stats;
+use crate::daemon::stats::{get_v1_stats, VMStatsV1};
 use crate::make_server;
 use crate::vm::http::{HttpConfig, HttpType, HttpsConfig};
 use crate::vm::run::run;
@@ -104,8 +104,7 @@ async fn post_v1_scale(
 }
 
 // returns cluster delta
-async fn post_v1_stats(cluster_id: &str, deploy_token: &str) -> DaemonResult<String> {
-  let vm_stats = get_v1_stats().await?;
+async fn post_v1_stats(vm_stats: Vec<VMStatsV1>, cluster_id: &str, deploy_token: &str) -> DaemonResult<String> {
   let mut stats_body = json!({
     "deployToken": deploy_token,
     "vmStats": vm_stats,
@@ -205,8 +204,8 @@ pub async fn start(
   let agzb64 = agz_b64.to_string();
   let domain = domain.to_string();
   task::spawn(async move {
-    // TODO even better period determination
-    let period = Duration::from_secs(5 * 60);
+    let period = Duration::from_secs(60);
+    let mut stats = Vec::new();
     let mut cluster_size = 0;
     let mut leader_ip = String::new();
     let self_ip = get_private_ip().await;
@@ -214,13 +213,12 @@ pub async fn start(
     if let (Ok(dns), Ok(self_ip)) = (&dns, &self_ip) {
       loop {
         sleep(period).await;
-        let mut vms_err: Option<String> = None;
-        let vms = dns.get_vms(&cluster_id).await.unwrap_or_else(|err| {
-          vms_err = Some(format!("{}", err));
-          return Vec::new();
-        });
-        if let Some(err) = vms_err {
-          error!(ErrorType::NoDnsVms, "{}", err).await;
+        let vms = match dns.get_vms(&cluster_id).await {
+          Ok(vms) => vms,
+          Err(err) => {
+            error!(ErrorType::NoDnsVms, "{}", err).await;
+            Vec::new()
+          },
         };
         // triggered the first time since cluster_size == 0
         // and every time the cluster changes size
@@ -234,12 +232,19 @@ pub async fn start(
           leader_ip = lrh.get_leader_id().to_string();
         }
         if leader_ip == self_ip.to_string() {
+          match get_v1_stats().await {
+            Ok(s) => stats.push(s),
+            Err(err) => error!(ErrorType::NoStats, "{}", err).await,
+          };
+        }
+        if stats.len() >= 5 {
           let mut factor = String::from("1");
-          let stats_factor = post_v1_stats(&cluster_id, &deploy_token).await;
+          let stats_factor = post_v1_stats(stats.to_owned(), &cluster_id, &deploy_token).await;
+          stats = Vec::new();
           if let Ok(stats_factor) = stats_factor {
             factor = stats_factor;
           } else if let Err(err) = stats_factor {
-            error!(ErrorType::PostStats, "{}", err).await;
+            error!(ErrorType::PostFailed, "{}", err).await;
           }
           println!(
             "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
