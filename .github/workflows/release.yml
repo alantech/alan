@@ -107,7 +107,7 @@ jobs:
         cd anycloud/cli
         cargo build --release
         cd ..
-        Compress-Archive -Path "$(Join-Path (Get-Location).Path '\\cli\\target\\release\\anycloud.exe')" -DestinationPath "$(Join-Path (Get-Location).Path 'anycloud-windows.zip')"
+        Compress-Archive -Path "$(Join-Path (Get-Location).Path '\\anycloud\\cli\\target\\release\\anycloud.exe')" -DestinationPath "$(Join-Path (Get-Location).Path 'anycloud-windows.zip')"
 
     - name: Upload Anycloud zip
       uses: actions/upload-release-asset@v1
