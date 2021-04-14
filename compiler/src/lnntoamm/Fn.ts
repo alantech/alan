@@ -205,6 +205,11 @@ abstract class Stmt {
     this.ast = ast;
   }
 
+  // interface fns
+  abstract exprTy(): Type;
+
+  // =================
+  // factory functions
   static fromAst(ast: LPNode, metadata: MetaData): Stmt[] {
     let stmts = [];
     if (ast.has('assignables')) {
@@ -306,8 +311,23 @@ class Assign extends Stmt {
   static fromAssignmentsAst(ast: LPNode, metadata: MetaData): Stmt[] {
     let stmts: Stmt[] = [];
     const name = ast.get('varn').t;
-    if (metadata.var[name] === null) {}
+    const upstream = metadata.var(name);
+    if (upstream === null) {
+      throw new Error(`can't assign to ${name}: not found`);
+    }
+    stmts.push(...Stmt.fromAssignables(ast.get('assignables'), metadata));
+    const expr = stmts.pop();
+    if (!(expr instanceof Dec)) {
+      throw new Error(`invalid assignment state: not a declaration`);
+    }
+    const assign = new Assign(ast, upstream.dec, expr.val);
+    upstream.constraints.push(assign.assignTo.exprTy());
+    stmts.push(assign);
     return stmts;
+  }
+
+  exprTy(): Type {
+    throw new Error(`assignments aren't expressions`);
   }
 }
 
@@ -344,6 +364,7 @@ class Call extends Stmt {
     this.retTy = retTy;
     this.callTy = callTy;
     const fnTypes = this.fns.map(fn => fn.fnType);
+    // TODO: i have a feeling this isn't the right way to go...
     this.callTy.callSelect = Type.oneOf(fnTypes);
   }
 
@@ -381,22 +402,54 @@ class Call extends Stmt {
       TODO('closure calling')
     }
 
-    stmts.push(new Call(
+    const call = new Call(
       wholeAst,
       fns,
       args,
-    ))
+    );
+    if (call.fns.length === 0) {
+      throw new Error('sanity check failed :(');
+    } else if (call.fns.length > 1) {
+      TODO('type-constraining for function selection');
+    } else {
+      // TODO: will probably have to change this once fn selection is done.
+      let fnTy = call.fns[0];
+      if (Object.keys(fnTy.args).length !== args.length) {
+        throw new Error('~~ Minecraft Villager sad noise :( ~~');
+      }
+      for (let ii = 0; ii < args.length; ii++) {
+        let argName = args[ii].dec.name;
+        let argMeta = metadata.var(argName);
+        if (argMeta.dec !== args[ii].dec) {
+          throw new Error('invalid call state: arg ref and var def mismatch');
+        }
+        let paramTy = Object.values(fnTy.args)[ii].ty;
+        argMeta.constraints.push(paramTy);
+      }
+    }
+    stmts.push(call);
 
     return stmts;
+  }
+
+  exprTy(): Type {
+    return this.retTy;
   }
 }
 
 class Closure extends Stmt {
+  exprTy(): Type {
+    return TODO('closures')
+  }
 }
 
 class Cond extends Stmt {
   static fromConditionalsAst(ast: LPNode, metadata: MetaData): Stmt[] {
     return TODO('build conditionals');
+  }
+
+  exprTy(): Type {
+    throw new Error(`conditionals can't be used as expressions`);
   }
 }
 
@@ -445,7 +498,14 @@ class Dec extends Stmt {
     } else {
       throw new Error(`Can't get declaration value from most recent node (${last})`);
     }
-    stmts.push(new Dec(ast, mutable, name, ty, val));
+    const dec = new Dec(ast, mutable, name, ty, val);
+    metadata.define(dec);
+    let metaVar = metadata.var(dec.name);
+    if (metaVar.dec !== dec) {
+      throw new Error('oof');
+    }
+    metaVar.constraints.push(dec.val.exprTy());
+    stmts.push(dec);
     return stmts;
   }
 
@@ -461,6 +521,10 @@ class Dec extends Stmt {
 
   ref(): Ref {
     return new Ref(this.ast, this);
+  }
+
+  exprTy(): Type {
+    throw new Error(`declarations can't be used as expressions`);
   }
 }
 
@@ -487,6 +551,10 @@ class FnArg extends Dec {
     }
     const arg = new FnArg(ast, name, argTy);
     metadata.define(arg);
+    const metaVar = metadata.var(arg.name);
+    if (metaVar.dec !== arg) {
+      throw new Error('ugggghhhhh');
+    }
     return arg;
   }
 }
@@ -519,11 +587,18 @@ class Emit extends Stmt {
     } else if (!(event instanceof Event)) {
       throw new Error(`cannot emit to non-events (${eventName} is not an event)`);
     }
-    let emitVal = stmts[stmts.length - 1];
+    const emitVal = stmts[stmts.length - 1];
     if (!(emitVal instanceof Dec) && !(emitVal instanceof Ref)) {
       throw new Error('no declaration or reference created for emit value');
     }
-    stmts.push(new Emit(ast, event, emitVal.ref()))
+    const emitRef = emitVal.ref();
+    const emit = new Emit(ast, event, emitRef)
+    let metavar = metadata.var(emitRef.dec.name);
+    if (metavar.dec !== emitRef.dec) {
+      throw new Error('uuhhh ohhhh');
+    }
+    metavar.constraints.push(event.eventTy);
+    stmts.push(emit);
     return stmts;
   }
 
@@ -535,6 +610,10 @@ class Emit extends Stmt {
       ' ',
       this.emitVal.ammName,
     );
+  }
+
+  exprTy(): Type {
+    throw new Error(`emits can't be used as expressions`);
   }
 }
 
@@ -555,13 +634,16 @@ class Exit extends Stmt {
       let exitValAst = ast.get('retval').get('assignables');
       let exitValSplit = Stmt.fromAssignables(exitValAst, metadata);
       stmts.push(...exitValSplit);
-      let exitVal = stmts[stmts.length - 1];
+      const exitVal = stmts[stmts.length - 1];
       if (!(exitVal instanceof Dec) && !(exitVal instanceof Ref)) {
         throw new Error('no declaration or reference created for emit value');
       }
-      stmts.push(new Exit(ast, exitVal.ref()));
+      const exitRef = exitVal.ref();
+      stmts.push(new Exit(ast, exitRef));
+      metadata.retConstraints.push(exitRef.ty);
     } else {
       stmts.push(new Exit(ast, null));
+      metadata.retConstraints.push(opcodes().get('void'));
     }
     return stmts;
   }
@@ -572,6 +654,10 @@ class Exit extends Stmt {
       'return',
       ...(this.exitVal !== null ? [' ', this.exitVal.ammName] : []),
     );
+  }
+
+  exprTy(): Type {
+    throw new Error(`returns can't be used as expressions`);
   }
 }
 
@@ -617,6 +703,10 @@ class Lit extends Stmt {
     }
     return new Lit(ast, val, ty);
   }
+
+  exprTy(): Type {
+    return this.ty;
+  }
 }
 
 class Ref extends Stmt {
@@ -640,5 +730,9 @@ class Ref extends Stmt {
 
   ref(): Ref {
     return this;
+  }
+
+  exprTy(): Type {
+    return this.dec.ty;
   }
 }

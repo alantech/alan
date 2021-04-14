@@ -79,7 +79,7 @@ export class FunctionType extends Type {
   }
 
   compatibleWithConstraint(that: Type): boolean {
-    return TODO()
+    return TODO('?')
   }
 }
 
