@@ -1,3 +1,5 @@
+// note: most-recently-defined wins as tie-breaker
+
 export void
 export int8
 export int16
