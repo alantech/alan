@@ -15,8 +15,8 @@ use tokio::process::Command;
 use tokio::task;
 use tokio::time::{sleep, Duration};
 
-use crate::daemon::dns::DNS;
 use crate::daemon::ctrl::ControlPort;
+use crate::daemon::dns::DNS;
 use crate::daemon::stats::{get_v1_stats, VMStatsV1};
 use crate::vm::http::{HttpType, HttpsConfig};
 use crate::vm::run::run;
@@ -121,11 +121,7 @@ async fn post_v1_stats(
   Ok(post_v1("stats", stats_body).await)
 }
 
-async fn run_agz_b64(
-  agz_b64: &str,
-  priv_key_b64: &str,
-  cert_b64: &str,
-) -> DaemonResult<()> {
+async fn run_agz_b64(agz_b64: &str, priv_key_b64: &str, cert_b64: &str) -> DaemonResult<()> {
   let bytes = base64::decode(agz_b64);
   if let Ok(bytes) = bytes {
     let agz = GzDecoder::new(bytes.as_slice());

@@ -5,7 +5,10 @@ use std::path::Path;
 use std::sync::Arc;
 
 use futures::future::join_all;
-use hyper::{Body, Request, Response, client::{Client, HttpConnector}};
+use hyper::{
+  client::{Client, HttpConnector},
+  Body, Request, Response,
+};
 use hyper_rustls::HttpsConnector;
 use rustls::ClientConfig;
 use twox_hash::XxHash64;
@@ -82,11 +85,11 @@ impl LogRendezvousHash {
     let idx = match self
       .sorted_hashes
       .binary_search_by(|a| a.hash.cmp(&key_hash))
-      {
-        Ok(res) => res,
-        // All were too large, implies last (which wraps around) owns it
-        Err(_) => self.sorted_hashes.len() - 1,
-      };
+    {
+      Ok(res) => res,
+      // All were too large, implies last (which wraps around) owns it
+      Err(_) => self.sorted_hashes.len() - 1,
+    };
     &self.sorted_hashes[idx].id
   }
 }
@@ -110,15 +113,15 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
     Ok(Response::builder().status(500).body("fail".into()).unwrap())
   } else if Path::new("./Dockerfile").exists()
     && Path::new("./app.tar.gz").exists()
-      && TcpStream::connect("127.0.0.1:8088").is_err()
-      {
-        // If this is an Anycloud deployment and the child process hasn't started, mark as a failure
-        // TODO: Any way to generalize this so we don't have special logic for Anycloud?
-        Ok(Response::builder().status(500).body("fail".into()).unwrap())
-      } else {
-        // Everything passed, send an ok
-        Ok(Response::builder().status(200).body("ok".into()).unwrap())
-      }
+    && TcpStream::connect("127.0.0.1:8088").is_err()
+  {
+    // If this is an Anycloud deployment and the child process hasn't started, mark as a failure
+    // TODO: Any way to generalize this so we don't have special logic for Anycloud?
+    Ok(Response::builder().status(500).body("fail".into()).unwrap())
+  } else {
+    // Everything passed, send an ok
+    Ok(Response::builder().status(200).body("ok".into()).unwrap())
+  }
 }
 
 mod naive {
@@ -133,7 +136,7 @@ mod naive {
       _presented_certs: &[rustls::Certificate],
       _dns_name: tokio_rustls::webpki::DNSNameRef,
       _ocsp_response: &[u8],
-      ) -> Result<rustls::ServerCertVerified, rustls::TLSError> {
+    ) -> Result<rustls::ServerCertVerified, rustls::TLSError> {
       Ok(rustls::ServerCertVerified::assertion())
     }
   }
@@ -151,7 +154,9 @@ impl ControlPort {
       control_port
     );
     let mut tls = ClientConfig::new();
-    tls.dangerous().set_certificate_verifier(Arc::new(naive::TLS {}));
+    tls
+      .dangerous()
+      .set_certificate_verifier(Arc::new(naive::TLS {}));
     let mut http_connector = HttpConnector::new();
     http_connector.enforce_http(false);
 
@@ -174,7 +179,9 @@ impl ControlPort {
     let mut health = vec![];
     let nodes = self.lrh.get_mut_nodes();
     for node in nodes.iter() {
-      let mut req = Request::builder().method("GET").uri(format!("https://{}:4142/", node.id));
+      let mut req = Request::builder()
+        .method("GET")
+        .uri(format!("https://{}:4142/", node.id));
       req = req.header(cluster_secret.as_str(), "true");
       health.push(self.client.request(req.body(Body::empty()).unwrap()));
     }
@@ -183,7 +190,7 @@ impl ControlPort {
       match res {
         Err(_) => {
           nodes[i].is_up = false;
-        },
+        }
         Ok(res) => {
           nodes[i].is_up = res.status().as_u16() == 200;
         }
