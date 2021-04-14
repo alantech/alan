@@ -1,4 +1,4 @@
-// This build script depends on `alan-compile` being build and compiles the anycloud.ln file so it
+// This build script depends on `alan-compile` being built and compiles the anycloud.ln file so it
 // can be included as raw data within the anycloud binary
 use std::process::Command;
 
