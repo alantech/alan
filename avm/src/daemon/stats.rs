@@ -2,7 +2,10 @@ use std::error::Error;
 
 use futures::future::join_all;
 use futures::stream::StreamExt;
-use heim_common::units::{information::kilobyte, time::second};
+use heim_common::units::{
+  information::kilobyte,
+  time::{millisecond, second},
+};
 #[cfg(target_os = "linux")]
 use heim_cpu::os::linux::CpuTimeExt;
 #[cfg(target_os = "linux")]
@@ -39,16 +42,16 @@ pub struct VMStatsV1 {
   freeSwapKb: u64,
 }
 
-// calculate the cpu times usage per process using the process'
+// calculate the cpu % usage per process using the process'
 // total cpu time delta in a 100ms time window
 async fn get_proc_usages() -> Vec<f64> {
-  let duration = 0.1; // seconds
+  let duration = 100.0; // ms
   let futures = heim_process::processes()
     .map(|process| async {
       match process {
         Ok(proc) => {
           let cpu_1 = proc.cpu_time().await;
-          sleep(Duration::from_millis((duration * 1000.0) as u64)).await;
+          sleep(Duration::from_millis(duration as u64)).await;
           let cpu_2 = proc.cpu_time().await;
           // account for zombie process
           if cpu_1.is_err() || cpu_2.is_err() {
@@ -56,8 +59,9 @@ async fn get_proc_usages() -> Vec<f64> {
           }
           let times_1 = cpu_1.unwrap();
           let times_2 = cpu_2.unwrap();
-          let system = times_2.system().get::<second>() - times_1.system().get::<second>();
-          let user = times_2.user().get::<second>() - times_1.user().get::<second>();
+          let system =
+            times_2.system().get::<millisecond>() - times_1.system().get::<millisecond>();
+          let user = times_2.user().get::<millisecond>() - times_1.user().get::<millisecond>();
           (user + system) / duration
         }
         Err(_) => 0.0,
