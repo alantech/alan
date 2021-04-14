@@ -23,6 +23,10 @@ cd compiler
 yarn
 cd -
 
+cd anycloud/cli
+cargo build
+cd -
+
 cd avm
 cargo build
 cd -
