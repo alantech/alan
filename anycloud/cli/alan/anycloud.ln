@@ -1,0 +1,52 @@
+from @std/app import start, print, eprint, exit
+from @std/cmd import exec
+from @std/httpserver import connection, Connection, body, send
+from @std/http import fetch, Request, Response
+
+on start {
+  print('Starting Anycloud...');
+  const untarRes = exec('tar -xzf app.tar.gz');
+  if untarRes.exitCode != 0 {
+    eprint('app.tar.gz could not be unpacked');
+    eprint(untarRes.stderr);
+    emit exit untarRes.exitCode;
+  }
+
+  const dockerRes = exec('docker build -t anycloud/app .');
+  if dockerRes.exitCode != 0 {
+    eprint('Docker container could not be built');
+    eprint(dockerRes.stderr);
+    emit exit dockerRes.exitCode;
+  }
+
+  // We need to use the --env-file option only if we are sure the file exists 
+  const envFile = exec('stat anycloud.env');
+  const containerStr = envFile.exitCode != 0 ? 'docker run -p 8088:8088 -d anycloud/app:latest' : 'docker run --env-file anycloud.env -p 8088:8088 -d anycloud/app:latest';
+  const containerRes = exec(containerStr);
+  if containerRes.exitCode != 0 {
+    eprint('Docker container could not be started');
+    eprint(containerRes.stderr);
+    emit exit containerRes.exitCode;
+  }
+}
+
+on connection fn (conn: Connection) {
+  const req = conn.req;
+  const innerRes = fetch(new Request {
+    method: req.method,
+    headers: req.headers,
+    body: req.body,
+    url: 'http://localhost:8088' + req.url,
+  });
+  const res = conn.res;
+  if innerRes.isErr() {
+    res.status = 500;
+    res.body('Internal Server Error').send();
+  } else {
+    const unwrappedRes = innerRes.getOrExit(); // Safe because of conditional checking
+    res.status = unwrappedRes.status;
+    res.headers = unwrappedRes.headers;
+    res.body(unwrappedRes.body).send();
+  }
+}
+

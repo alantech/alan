@@ -124,6 +124,7 @@ The Alan Programming Language is made up of multiple sub-projects housed within 
   * bdd
   * js-runtime
   * std
+  * anycloud
 * AGPL 3.0
   * compiler
   * avm
