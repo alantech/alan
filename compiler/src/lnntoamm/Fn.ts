@@ -2,7 +2,6 @@ import { LPNode, NamedAnd, NamedOr, NulLP } from '../lp';
 import Event from './Event';
 import opcodes from './opcodes';
 import Scope from './Scope';
-// import Statement, { Arg, Declaration, StatementMetaData, VarMetadata } from "./Statement";
 import Type, { FunctionType } from './Types';
 import { genName, TODO } from './util';
 
@@ -116,47 +115,11 @@ export default class Fn {
     );
   }
 
-  // transform() {
-  //   if (isLPNode(this.body)) {
-  //     // it's an LPNode
-  //     this.body = Statement.fromAst(this.body, this.scope, this.stmtMeta);
-  //   } else if (isLPNodeArr(this.body)) {
-  //     // it's a list of LPNodes
-  //     this.body = this.body.map(node => Statement.fromAst(node, this.scope, this.stmtMeta));
-  //   } else {
-  //     console.log(this.body);
-  //     throw new Error('uhhhhhhhh?');
-  //   }
-
-  //   if (this.body instanceof Statement) {
-  //     this.body = this.body.transform();
-  //   }
-
-  //   if (isStatementArr(this.body)) {
-  //     const body = this.body;
-  //     this.body = [];
-  //     for (let arg of Object.values(this.args)) {
-  //       (this.body as Statement[]).push(new Statement(arg.ast as LPNode, arg));
-  //     }
-  //     for (let stmt of body) {
-  //       (this.body as Statement[]).push(...stmt.transform());
-  //     }
-  //   } else {
-  //     console.log(this.body)
-  //     throw new Error('not transforming...?');
-  //   }
-  // }
-
   getType(): FunctionType {
     return this.fnType;
   }
 
-  // TODO: pretty sure this is just gonna be Function types :)
   constraints(): [VarMD[], Type[]] {
-    // this.body.forEach(stmt => stmt.constrain(this.stmtMeta));
-    // const varConstraints = Object.values(this.stmtMeta.vars);
-    // console.log(varConstraints);
-    // return [varConstraints, this.stmtMeta.outputConstraints];
     return [Object.values(this.metadata.variables), this.metadata.retConstraints];
   }
 }
@@ -189,18 +152,6 @@ export class OpcodeFn extends Fn {
     __opcodes.put(name, [this]);
   }
 }
-
-// const isLPNode = (obj: LPNode | LPNode[] | Statement | Statement[]): obj is LPNode => {
-//   return !Array.isArray(obj) && !(obj instanceof Statement);
-// }
-
-// const isLPNodeArr = (obj: LPNode | LPNode[] | Statement | Statement[]): obj is LPNode[] => {
-//   return Array.isArray(obj) && (obj.length === 0 || isLPNode(obj[0]));
-// }
-
-// const isStatementArr = (obj: LPNode | LPNode[] | Statement | Statement[]): obj is Statement[] => {
-//   return Array.isArray(obj) && (obj.length === 0 || !isLPNode(obj[0]));
-// }
 
 class VarMD {
   dec: Dec
@@ -299,10 +250,6 @@ abstract class Stmt {
         const next = asts[ii + 1];
         if (next.has('fncall')) {
           // make things nice and pretty :)
-          // let callAst = NamedAnd.build({
-          //   fnname: work.get('variable'),
-          //   fncall: next.get('fncall'),
-          // });
           let callAst = new NamedAnd(
             work.get('variable').t + next.get('fncall').t,
             {
