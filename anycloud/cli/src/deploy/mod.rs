@@ -750,8 +750,12 @@ pub async fn get_config() -> HashMap<String, Vec<Config>> {
   all_configs
 }
 
-pub async fn post_v1(endpoint: &str, body: Value) -> Result<String, PostV1Error> {
+pub async fn post_v1(endpoint: &str, mut body: Value) -> Result<String, PostV1Error> {
   let url = get_url();
+  let mut_body = body.as_object_mut().unwrap();
+  mut_body.insert(format!("accessToken"), json!(get_token()));
+  mut_body.insert(format!("alanVersion"), json!(format!("v{}", VERSION)));
+  mut_body.insert(format!("osName"), json!(std::env::consts::OS));
   let req = Request::post(format!("{}/v1/{}", url, endpoint))
     .header("Content-Type", "application/json")
     .body(body.to_string().into());
@@ -786,9 +790,6 @@ pub async fn post_v1(endpoint: &str, body: Value) -> Result<String, PostV1Error>
 pub async fn client_error(err_code: ErrorType, message: &str) {
   let mut body = json!({
     "errorCode": err_code as u64,
-    "accessToken": get_token(),
-    "alanVersion": format!("v{}", VERSION),
-    "osName": std::env::consts::OS,
     "message": message,
   });
   if let Some(cluster_id) = CLUSTER_ID.get() {
@@ -818,7 +819,6 @@ pub async fn terminate() {
   let body = json!({
     "deployConfig": get_config().await,
     "clusterId": cluster_id,
-    "accessToken": get_token(),
   });
   let resp = post_v1("terminate", body).await;
   let res = match resp {
@@ -871,9 +871,6 @@ pub async fn new(
     "deployName": deploy_config,
     "deployConfig": config,
     "agzB64": agz_b64,
-    "alanVersion": format!("v{}", VERSION),
-    "accessToken": get_token(),
-    "osName": std::env::consts::OS,
   });
   let mut_body = body.as_object_mut().unwrap();
   if let Ok(app_id) = app_id {
@@ -927,9 +924,6 @@ pub async fn upgrade(
     "clusterId": cluster_id,
     "deployConfig": config,
     "agzB64": agz_b64,
-    "alanVersion": format!("v{}", VERSION),
-    "accessToken": get_token(),
-    "osName": std::env::consts::OS,
   });
   let mut_body = body.as_object_mut().unwrap();
   if let Some(anycloud_params) = anycloud_params {
@@ -958,13 +952,11 @@ pub async fn upgrade(
 
 async fn get_apps(status: bool) -> Vec<App> {
   let config = get_config().await;
-  let token = get_token();
   let sp = ProgressBar::new_spinner();
   sp.enable_steady_tick(10);
   sp.set_message("Gathering information about Apps deployed");
   let body = json!({
     "deployConfig": config,
-    "accessToken": token,
     "status": status,
   });
   let response = post_v1("info", body).await;
