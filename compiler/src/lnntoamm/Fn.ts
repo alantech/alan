@@ -794,7 +794,7 @@ class Ref extends Stmt {
   dec: Dec
 
   get ammName(): string {
-    return TODO('ref amm name');
+    return this.dec.ammName;
   }
 
   get ty(): Type {

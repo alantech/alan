@@ -17,6 +17,22 @@ export default class Output {
     this.handlers = [];
   }
 
+  toString(): string {
+    let res = '';
+    for (let [ty, constants] of this.constants.entries()) {
+      for (let constName of Object.keys(constants)) {
+        res = res.concat('const ', constName, ': ', ty.ammName, ' = ', constants[constName]);
+      }
+    }
+    for (let eventName of Object.keys(this.events)) {
+      res = res.concat('event ', eventName, ': ', this.events[eventName].ammName);
+    }
+    for (let handler of this.handlers) {
+      res = res.concat(handler);
+    }
+    return res;
+  }
+
   global(
     kind: 'const' | 'event',
     ty: Builtin,

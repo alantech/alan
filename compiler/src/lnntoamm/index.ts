@@ -23,7 +23,7 @@ const ammFromModuleAsts = (asts: ModuleAsts): string => {
   Module.modulesFromAsts(asts, rootScope);
   let amm = new Output();
   Event.allEvents.forEach(e => e.compile(amm));
-  return ''
+  return amm.toString();
 }
 
 const moduleAstsFromFile = (filename: string): ModuleAsts => {
