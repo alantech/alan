@@ -5,5 +5,6 @@ pub mod instruction;
 pub mod memory;
 pub mod opcode;
 pub mod program;
+pub mod protos;
 pub mod run;
 pub mod telemetry;

@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+message HandlerMemory {
+  // mems = 2
+  message MemBlock {
+    uint64 mem_type = 1;
+    sfixed64 mem_val = 2; 
+  }
+  message Mems {
+    repeated MemBlock mem = 1;
+  }
+  // addr = 3
+  message MemSpaceStruct {
+    uint64 first = 1;
+    uint64 second = 2;
+  }
+  message MemSpace {
+    optional MemSpaceStruct memspacestruct = 1;
+  }
+  message Addr {
+    repeated MemSpace mem_space = 1;
+    repeated MemSpace mem_space_args = 2;
+  }
+  // Memory handler
+  optional HandlerMemory parent = 1;
+  repeated Mems mems = 2;
+  Addr addr = 3;
+  uint64 mem_addr = 4;
+}
