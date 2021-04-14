@@ -17,7 +17,7 @@ use crate::logger::ErrorType;
 use crate::oauth::{clear_token, get_token};
 use crate::CLUSTER_ID;
 
-pub const ALAN_VERSION: &'static str = env!("ALAN_VERSION");
+pub const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const REQUEST_TIMEOUT: &str =
   "Operation is still in progress. It might take a few more minutes for \
   the cloud provider to finish up.";
@@ -787,7 +787,7 @@ pub async fn client_error(err_code: ErrorType, message: &str) {
   let mut body = json!({
     "errorCode": err_code as u64,
     "accessToken": get_token(),
-    "alanVersion": format!("v{}", ALAN_VERSION),
+    "alanVersion": format!("v{}", VERSION),
     "osName": std::env::consts::OS,
     "message": message,
   });
@@ -871,7 +871,7 @@ pub async fn new(
     "deployName": deploy_config,
     "deployConfig": config,
     "agzB64": agz_b64,
-    "alanVersion": format!("v{}", ALAN_VERSION),
+    "alanVersion": format!("v{}", VERSION),
     "accessToken": get_token(),
     "osName": std::env::consts::OS,
   });
@@ -927,7 +927,7 @@ pub async fn upgrade(
     "clusterId": cluster_id,
     "deployConfig": config,
     "agzB64": agz_b64,
-    "alanVersion": format!("v{}", ALAN_VERSION),
+    "alanVersion": format!("v{}", VERSION),
     "accessToken": get_token(),
     "osName": std::env::consts::OS,
   });
