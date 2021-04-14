@@ -1,10 +1,10 @@
-import { LPNode, NamedAnd, NulLP } from "../lp";
+import { LPNode, NamedAnd, NamedOr, NulLP } from '../lp';
 import Event from './Event';
-import opcodes from "./opcodes";
-import Scope from "./Scope";
+import opcodes from './opcodes';
+import Scope from './Scope';
 // import Statement, { Arg, Declaration, StatementMetaData, VarMetadata } from "./Statement";
-import Type, { FunctionType } from "./Types";
-import { genName, TODO } from "./util";
+import Type, { FunctionType } from './Types';
+import { genName, TODO } from './util';
 
 // the value is null if the type is to be inferred
 export type Args = {[name: string]: FnArg};
@@ -43,7 +43,7 @@ export default class Fn {
     }
     this.retTy = retTy !== null ? retTy : Type.generate();
     this.body = body;
-    this.metadata = metadata !== null ? metadata : new MetaData();
+    this.metadata = metadata !== null ? metadata : new MetaData(scope);
     this.fnType = new FunctionType(
       this.name,
       Object.values(this.args).map(a => a.ty),
@@ -57,7 +57,7 @@ export default class Fn {
     // metadata: MetaData = null,
   ): Fn {
     // TODO: inheritance
-    let metadata = new MetaData();
+    let metadata = new MetaData(scope);
 
     let work = ast;
     const name = work.get('optname').has() ? work.get('optname').get().t : null;
@@ -79,7 +79,7 @@ export default class Fn {
       bodyAsts.forEach(ast => body.push(...Stmt.fromAst(ast, metadata)));
     } else {
       bodyAsts = bodyAsts.get('assignfunction');
-      body = Stmt.fromAst(ast, metadata);
+      body = Stmt.fromAst(bodyAsts, metadata);
       const retVal = body[body.length - 1];
       if (!(retVal instanceof Dec)) {
         throw new Error(`illegal function body: ${bodyAsts}`);
@@ -102,7 +102,7 @@ export default class Fn {
     scope: Scope,
   ): Fn {
     let body = [];
-    let metadata = new MetaData();
+    let metadata = new MetaData(scope);
     ast.get('statements').getAll().map(s => s.get('statement')).forEach(ast => body.push(...Stmt.fromAst(ast, metadata)));
 
     return new Fn(
@@ -161,6 +161,35 @@ export default class Fn {
   }
 }
 
+// circular dependency issue when this is defined in opcodes.ts :(
+export class OpcodeFn extends Fn {
+  constructor(
+    name: string,
+    argDecs: {[name: string]: string},
+    retTyName: string,
+    __opcodes: Scope,
+  ) {
+    let args = {};
+    for (let argName of Object.keys(argDecs)) {
+      let argTy = argDecs[argName];
+      let ty = __opcodes.get(argTy);
+      if (ty === null) {
+        throw new Error(`opcode ${name} arg ${argName} uses a type that's not defined`);
+      } else if (!(ty instanceof Type)) {
+        throw new Error(`opcode ${name} arg ${argName} doesn't have a valid type`);
+      } else {
+        args[argName] = new FnArg(new NulLP(), argName, ty);
+      }
+    }
+    let retTy = __opcodes.get(retTyName);
+    if (retTy === null || !(retTy instanceof Type)) {
+      throw new Error()
+    }
+    super(new NulLP(), __opcodes, name, args, retTy, []);
+    __opcodes.put(name, [this]);
+  }
+}
+
 // const isLPNode = (obj: LPNode | LPNode[] | Statement | Statement[]): obj is LPNode => {
 //   return !Array.isArray(obj) && !(obj instanceof Statement);
 // }
@@ -190,6 +219,16 @@ class MetaData {
   scope: Scope
   variables: { [name: string]: VarMD }
   retConstraints: Type[]
+
+  constructor(
+    scope: Scope,
+    variables: { [name: string]: VarMD } = null,
+    retConstraints: Type[] = null,
+  ) {
+    this.scope = scope;
+    this.variables = variables !== null ? variables : {};
+    this.retConstraints = retConstraints !== null ? retConstraints : [];
+  }
 
   var(name: string): VarMD {
     if (this.variables[name] == null) {
@@ -240,7 +279,7 @@ abstract class Stmt {
 
     let asts: LPNode[] = ast.getAll();
     if (asts.length > 1) TODO('operators');
-    asts = asts.length === 1 ? asts.pop().get('withoperators').get('baseassignablelist').getAll() : [];
+    asts = asts.length === 1 ? asts.pop().get('withoperators').get('baseassignablelist').getAll().map(a => a.get('baseassignable')) : [];
     for (let ii = 0; ii < asts.length; ii++) {
       let work = asts[ii];
       if (work.has('objectliterals')) {
@@ -249,7 +288,7 @@ abstract class Stmt {
         TODO('functions in functions');
       } else if (work.has('variable')) {
         const varName = work.get('variable').t;
-        if (ii = asts.length - 1) {
+        if (ii === asts.length - 1) {
           let dec = metadata.var(varName);
           if (dec === null) {
             throw new Error(`${varName} not defined`);
@@ -260,10 +299,20 @@ abstract class Stmt {
         const next = asts[ii + 1];
         if (next.has('fncall')) {
           // make things nice and pretty :)
-          let callAst = NamedAnd.build({
-            fnname: work.get('variable'),
-            fncall: next.get('fncall'),
-          });
+          // let callAst = NamedAnd.build({
+          //   fnname: work.get('variable'),
+          //   fncall: next.get('fncall'),
+          // });
+          let callAst = new NamedAnd(
+            work.get('variable').t + next.get('fncall').t,
+            {
+              fnname: work.get('variable'),
+              fncall: next.get('fncall'),
+            },
+            (work as NamedOr).filename,
+            work.line,
+            work.char,
+          );
           stmts.push(...Call.fromAsts(
             callAst,
             null,
@@ -329,9 +378,8 @@ class Call extends Stmt {
     callTy: FunctionType = null,
   ) {
     super(ast);
-    fns = fns
-          .filter(fn => Object.keys(fn.args).length !== args.length)
-          .filter(fn => callTy.compatibleWithConstraint(fn.fnType));
+    fns = fns.filter(fn => Object.keys(fn.args).length === args.length)
+    fns = fns.filter(fn => callTy.compatibleWithConstraint(fn.fnType));
     if (fns.length === 0) {
       throw new Error(`could not find function for call site \`${ast}\``)
     }
@@ -385,7 +433,6 @@ class Call extends Stmt {
     if (metadata.var(fnName) !== null) {
       TODO('closure calling')
     }
-
 
     stmts.push(new Call(
       wholeAst,
