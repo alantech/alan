@@ -56,6 +56,23 @@ jobs:
         asset_name: alan-ubuntu.tar.gz
         asset_content_type: application/gzip
 
+    - name: Generate Anycloud tar.gz
+      run: |
+        cd cli
+        cargo build --release
+        cd ./target/release
+        tar -czf /tmp/anycloud-ubuntu.tar.gz anycloud
+
+    - name: Upload Anycloud tar.gz
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create_release.outputs.upload_url }}
+        asset_path: /tmp/anycloud-ubuntu.tar.gz
+        asset_name: anycloud-ubuntu.tar.gz
+        asset_content_type: application/gzip
+
   windows:
     needs: create_release
     runs-on: windows-latest
@@ -84,6 +101,24 @@ jobs:
         asset_path: ./alan-windows.zip
         asset_name: alan-windows.zip
         asset_content_type: application/zip
+
+    - name: Generate Anycloud zip
+      run: |
+        cd cli
+        cargo build --release
+        cd ..
+        Compress-Archive -Path "$(Join-Path (Get-Location).Path '\\cli\\target\\release\\anycloud.exe')" -DestinationPath "$(Join-Path (Get-Location).Path 'anycloud-windows.zip')"
+
+    - name: Upload Anycloud zip
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create_release.outputs.upload_url }}
+        asset_path: ./anycloud-windows.zip
+        asset_name: anycloud-windows.zip
+        asset_content_type: application/zip
+
 
   macos:
     needs: create_release
@@ -114,4 +149,21 @@ jobs:
         upload_url: ${{ needs.create_release.outputs.upload_url }}
         asset_path: /tmp/alan-macos.tar.gz
         asset_name: alan-macos.tar.gz
+        asset_content_type: application/gzip
+    
+    - name: Generate Anycloud tar.gz
+      run: |
+        cd cli
+        cargo build --release
+        cd ./target/release
+        gtar -czf /tmp/anycloud-macos.tar.gz anycloud
+
+    - name: Upload Anycloud tar.gz
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create_release.outputs.upload_url }}
+        asset_path: /tmp/anycloud-macos.tar.gz
+        asset_name: anycloud-macos.tar.gz
         asset_content_type: application/gzip

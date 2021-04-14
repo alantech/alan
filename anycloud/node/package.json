@@ -1,0 +1,35 @@
+{
+  "name": "anycloud",
+  "version": "0.1.2",
+  "description": "Lambda alternative that works with multiple cloud providers",
+  "main": "dist/index.js",
+  "bin": {
+    "anycloud": "./bin/anycloud"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "preinstall": "node ./get-anycloud.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/alantech/anycloud.git"
+  },
+  "keywords": [
+    "anycloud",
+    "lambda",
+    "alan"
+  ],
+  "author": "David Ellis <david@alantechnologies.com>",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/alantech/anycloud/issues"
+  },
+  "homepage": "https://github.com/alantech/anycloud#readme",
+  "devDependencies": {
+    "typescript": "^4.1.5"
+  },
+  "dependencies": {
+    "@types/node": "^14.14.28"
+  }
+}
