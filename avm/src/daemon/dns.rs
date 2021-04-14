@@ -1,4 +1,3 @@
-use std::error::Error;
 use std::str;
 
 use trust_dns_resolver::config::{ResolverConfig, ResolverOpts};
