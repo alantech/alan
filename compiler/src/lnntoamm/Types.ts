@@ -61,6 +61,7 @@ export default abstract class Type {
     return scope.get(name.toString().trim());
   }
 
+  abstract breakdown(): Builtin;
   abstract compatibleWithConstraint(that: Type): boolean;
 }
 
@@ -75,8 +76,13 @@ export class Builtin extends Type {
     super(name, null);
   }
 
+  breakdown(): Builtin {
+    return this;
+  }
+
   compatibleWithConstraint(that: Type): boolean {
-    throw new Error("Method not implemented.");
+    // TODO: generics, other checks that aren't lazy
+    return this === that;
   }
 }
 
@@ -93,6 +99,10 @@ export class FunctionType extends Type {
     super(name, null);
     this.argTys = argTys;
     this.retTy = retTy;
+  }
+
+  breakdown(): Builtin {
+    return TODO('function types???');
   }
 
   compatibleWithConstraint(that: Type): boolean {
@@ -150,8 +160,13 @@ class Struct extends Type {
     }
   }
 
+  breakdown(): Builtin {
+    return TODO('breakdown structs');
+  }
+
   compatibleWithConstraint(that: Type): boolean {
     if (that instanceof Struct) {
+      // TODO: generics
       return this === that;
     } else {
       TODO()
@@ -170,6 +185,10 @@ class Interface extends Type {
     return null;
   }
 
+  breakdown(): Builtin {
+    return TODO('can interfaces even be broken down? i think not...');
+  }
+
   compatibleWithConstraint(that: Type): boolean {
     return TODO()
   }
@@ -182,6 +201,14 @@ class Generated extends Type {
   constructor() {
     super(genName(), null);
     this.delegate = null;
+  }
+
+  breakdown(): Builtin {
+    if (this.delegate !== null) {
+      return this.delegate.breakdown();
+    } else {
+      throw new Error(`Couldn't resolve generated type`);
+    }
   }
 
   compatibleWithConstraint(that: Type): boolean {
@@ -202,6 +229,14 @@ class OneOf extends Type {
   ) {
     super(genName(), null);
     this.possibilities = possibilities;
+  }
+
+  breakdown(): Builtin {
+    let delegate = this.possibilities[this.possibilities.length - 1];
+    if (!delegate) {
+      throw new Error(`none of the types worked`);
+    }
+    return delegate.breakdown();
   }
 
   compatibleWithConstraint(that: Type): boolean {

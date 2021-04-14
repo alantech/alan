@@ -1,6 +1,7 @@
 import { LPNode } from "../lp";
 import Output from "./Amm";
 import Fn from './Fn';
+import opcodes from "./opcodes";
 import Scope from "./Scope";
 import Type, { Builtin } from "./Types";
 import { genName, TODO } from "./util";
@@ -56,10 +57,21 @@ export default class Event {
       if (!(handler instanceof Fn)) {
         throw new Error('Too many possible event handlers');
       }
-      let [varConstraints, retConstraints] = handler.constraints();
+      let [varConstraints, retConstraints] = handler.constraints([this.eventTy]);
       for (let {dec, constraints} of varConstraints) {
-        console.log(dec.name, 'is', dec.ty.name, 'constraints:', constraints);
+        if (!constraints.every(con => dec.ty.compatibleWithConstraint(con))) {
+          throw new Error(`failed to type-check: declaration ${dec}`);
+        }
       }
+      retConstraints.push(opcodes().get('void') as Type);
+      // really tsc????? you're gonna complain that handler could be an array
+      // here but not above? wat?
+      if (!retConstraints.every(con => (handler as Fn).retTy.compatibleWithConstraint(con))) {
+        throw new Error(`failed to type-check: event handler ${handler}`);
+      }
+      amm.addHandler(this.ammName, [Object.keys(handler.args).pop(), this.eventTy.breakdown()])
+      handler.body.forEach(stmt => stmt.inline(amm));
+      amm.return();
     }
   }
 

@@ -52,48 +52,44 @@ export default class Output {
     args: string[] | null = null,
   ) {
     let line = this.indent
-    if (kind !== '') {
-      line.concat(kind, ' ');
+    if (kind === '') {
+      line = line.concat(name, ' = ');
+    } else {
+      line = line.concat(kind, ' ', name, ': ', ty.ammName, ' = ');
     }
-    line = line.concat(name, ': ', ty.ammName, ' = ');
     if (assign instanceof OpcodeFn) {
-      line.concat(assign.name, '(');
+      line = line.concat(assign.name, '(');
       if (args === null) {
         throw new Error(`attempting to call opcode ${assign.name} but there are no args defined`)
       }
       for (let ii = 0; ii < args.length; ii++) {
-        line.concat(args[ii]);
+        line = line.concat(args[ii]);
         if (ii !== args.length - 1) {
-          line.concat(', ');
+          line = line.concat(', ');
         }
       }
     } else {
-      let constants = this.constants.get(ty) || {};
-      if (Object.keys(constants).findIndex(c => c === assign) === -1) {
-        constants[assign] = genName();
-        this.constants.set(ty, constants);
-      }
-      let assignName = constants[assign];
-      line.concat(assignName);
+      let assignName = this.global('const', ty, assign);
+      line = line.concat(assignName);
     }
-    this.handlers[0].concat(line.concat('\n'));
+    this.handlers[0] = this.handlers[0].concat(line.concat('\n'));
   }
 
   emit(
     eventName: string,
     val: string,
   ) {
-    this.handlers[0].concat(this.indent, 'emit ', eventName, ' ', val, '\n');
+    this.handlers[0] = this.handlers[0].concat(this.indent, 'emit ', eventName, ' ', val, '\n');
   }
 
   return(
     val: string | null = null,
   ) {
     if (val !== null) {
-      this.handlers[0].concat(this.indent, 'return ', val, '\n');
+      this.handlers[0] = this.handlers[0].concat(this.indent, 'return ', val, '\n');
     }
     // only replace the first newline with nothing
-    this.indent.replace(/\n/, '');
-    this.handlers[0].concat(this.indent, '}');
+    this.indent = this.indent.replace(/\n/, '');
+    this.handlers[0] = this.handlers[0].concat(this.indent, '}');
   }
 }

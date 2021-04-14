@@ -1,8 +1,9 @@
 import { LPNode, NamedAnd, NamedOr, NulLP } from '../lp';
+import Output from './Amm';
 import Event from './Event';
 import opcodes from './opcodes';
 import Scope from './Scope';
-import Type, { FunctionType } from './Types';
+import Type, { Builtin, FunctionType } from './Types';
 import { genName, TODO } from './util';
 
 // the value is null if the type is to be inferred
@@ -218,6 +219,7 @@ abstract class Stmt {
 
   // interface fns
   abstract exprTy(): Type;
+  abstract inline(amm: Output);
 
   // =================
   // factory functions
@@ -308,7 +310,7 @@ abstract class Stmt {
 
 class Assign extends Stmt {
   upstream: Dec
-  assignTo: Stmt
+  val: Stmt
 
   constructor(
     ast: LPNode,
@@ -317,7 +319,7 @@ class Assign extends Stmt {
   ) {
     super(ast);
     this.upstream = upstream;
-    this.assignTo = assignTo;
+    this.val = assignTo;
   }
 
   static fromAssignmentsAst(ast: LPNode, metadata: MetaData): Stmt[] {
@@ -333,13 +335,25 @@ class Assign extends Stmt {
       throw new Error(`invalid assignment state: not a declaration`);
     }
     const assign = new Assign(ast, upstream.dec, expr.val);
-    upstream.constraints.push(assign.assignTo.exprTy());
+    upstream.constraints.push(assign.val.exprTy());
     stmts.push(assign);
     return stmts;
   }
 
   exprTy(): Type {
     throw new Error(`assignments aren't expressions`);
+  }
+
+  inline(amm: Output) {
+    const name = this.upstream.ammName;
+    const ty = this.upstream.ty.breakdown(); // always use the declaration's type, since it's been reduced.
+    if (this.val instanceof Call) {
+      this.val.inline(amm, name, ty);
+    } else if (this.val instanceof Lit) {
+      amm.assign('', name, ty, this.val.val);
+    } else {
+      throw new Error(`Unexpected assignment expression: ${this.val}`);
+    }
   }
 }
 
@@ -448,6 +462,10 @@ class Call extends Stmt {
     return stmts;
   }
 
+  inline(amm: Output, assignName?: string, assignTy?: Type) {
+    TODO('inline fns');
+  }
+
   exprTy(): Type {
     return this.retTy;
   }
@@ -456,6 +474,10 @@ class Call extends Stmt {
 class Closure extends Stmt {
   exprTy(): Type {
     return TODO('closures')
+  }
+
+  inline(amm: Output) {
+    TODO('closure inlining');
   }
 }
 
@@ -467,9 +489,14 @@ class Cond extends Stmt {
   exprTy(): Type {
     throw new Error(`conditionals can't be used as expressions`);
   }
+
+  inline(amm: Output) {
+    TODO('conditional inlining');
+  }
 }
 
 class Dec extends Stmt {
+  ammName: string
   mutable: boolean
   name: string
   ty: Type
@@ -481,12 +508,14 @@ class Dec extends Stmt {
     name: string,
     ty: Type | null = null,
     val: Stmt,
+    ammName: string = name,
   ) {
     super(ast);
     this.mutable = mutable;
     this.name = name;
     this.ty = ty !== null ? ty : Type.generate();
     this.val = val;
+    this.ammName = ammName;
   }
 
   static fromAst(ast: LPNode, metadata: MetaData): Stmt[] {
@@ -501,6 +530,7 @@ class Dec extends Stmt {
       mutable = true;
     }
     const name = work.get('variable').t;
+    const exists = metadata.var(name) !== null;
     let ty: Type = null;
     if (work.has('typedec')) {
       const tyName = work.get('typedec').get('fulltypename');
@@ -514,7 +544,14 @@ class Dec extends Stmt {
     } else {
       throw new Error(`Can't get declaration value from most recent node (${last})`);
     }
-    const dec = new Dec(ast, mutable, name, ty, val);
+    const dec = new Dec(
+      ast,
+      mutable,
+      name,
+      ty,
+      val,
+      exists ? genName() : undefined,
+    );
     metadata.define(dec);
     let metaVar = metadata.var(dec.name);
     if (metaVar.dec !== dec) {
@@ -530,7 +567,7 @@ class Dec extends Stmt {
       stmt.ast,
       false,
       genName(),
-      null, // TODO: getOutputName
+      null,
       stmt,
     );
   }
@@ -541,6 +578,18 @@ class Dec extends Stmt {
 
   exprTy(): Type {
     throw new Error(`declarations can't be used as expressions`);
+  }
+
+  inline(amm: Output) {
+    const name = this.ammName;
+    const ty = this.ty.breakdown();
+    if (this.val instanceof Call) {
+      this.val.inline(amm, name, ty);
+    } else if (this.val instanceof Lit) {
+      amm.assign('const', name, ty, this.val.val);
+    } else {
+      throw new Error(`unexpected expression: ${this.val}`);
+    }
   }
 }
 
@@ -572,6 +621,10 @@ class FnArg extends Dec {
       throw new Error('ugggghhhhh');
     }
     return arg;
+  }
+
+  ammOut(): [string, Builtin] {
+    return TODO('TODO:')
   }
 }
 
@@ -631,6 +684,10 @@ class Emit extends Stmt {
   exprTy(): Type {
     throw new Error(`emits can't be used as expressions`);
   }
+
+  inline(amm: Output) {
+    amm.emit(this.event.ammName, this.emitVal.ammName);
+  }
 }
 
 class Exit extends Stmt {
@@ -674,6 +731,10 @@ class Exit extends Stmt {
 
   exprTy(): Type {
     throw new Error(`returns can't be used as expressions`);
+  }
+
+  inline(amm: Output) {
+    amm.return(this.exitVal.ammName);
   }
 }
 
@@ -723,6 +784,10 @@ class Lit extends Stmt {
   exprTy(): Type {
     return this.ty;
   }
+
+  inline(_amm: Output) {
+    throw new Error('literals cannot be statements in AMM');
+  }
 }
 
 class Ref extends Stmt {
@@ -750,5 +815,9 @@ class Ref extends Stmt {
 
   exprTy(): Type {
     return this.dec.ty;
+  }
+
+  inline(_amm: Output) {
+    throw new Error('references cannot be statements in AMM');
   }
 }
