@@ -46,14 +46,15 @@ export default abstract class Type {
   }
 
   static newBuiltin(name: string, generics: string[]): Type {
-    let genericArgs: GenericArgs = {};
-    generics.forEach(arg => genericArgs[arg] = null);
-    return new Struct(
-      name,
-      null,
-      genericArgs,
-      {},
-    );
+    return new Builtin(name);
+    // let genericArgs: GenericArgs = {};
+    // generics.forEach(arg => genericArgs[arg] = null);
+    // return new Struct(
+    //   name,
+    //   null,
+    //   genericArgs,
+    //   {},
+    // );
   }
 
   static getFromTypename(name: LPNode | string, scope: Scope): Type {
@@ -61,6 +62,22 @@ export default abstract class Type {
   }
 
   abstract compatibleWithConstraint(that: Type): boolean;
+}
+
+export class Builtin extends Type {
+  get ammName(): string {
+    return this.name;
+  }
+
+  constructor(
+    name: string,
+  ) {
+    super(name, null);
+  }
+
+  compatibleWithConstraint(that: Type): boolean {
+    throw new Error("Method not implemented.");
+  }
 }
 
 export class FunctionType extends Type {

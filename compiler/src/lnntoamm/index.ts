@@ -5,6 +5,7 @@ import * as Std from './Std'
 import { LPNode } from '../lp'
 import Module from './Module';
 import Event from './Event';
+import Output from './Amm';
 
 type ModuleAsts = {[path: string]: LPNode};
 
@@ -20,7 +21,8 @@ const ammFromModuleAsts = (asts: ModuleAsts): string => {
   Std.loadStdModules(stdFiles);
   const rootScope = Module.getAllModules()['<root>'].exportScope;
   Module.modulesFromAsts(asts, rootScope);
-  Event.allEvents.forEach(event => event.typeCheck());
+  let amm = new Output();
+  Event.allEvents.forEach(e => e.compile(amm));
   return ''
 }
 

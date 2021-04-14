@@ -15,7 +15,6 @@ export default class Fn {
   // the scope this function is defined in is the `par`
   scope: Scope
   args: Args
-  // null if the type is to be inferred
   retTy: Type
   body: Stmt[]
   // not used by this class, but used by Statements
@@ -119,8 +118,20 @@ export default class Fn {
     return this.fnType;
   }
 
-  constraints(): [VarMD[], Type[]] {
-    return [Object.values(this.metadata.variables), this.metadata.retConstraints];
+  constraints(argTys: Type[] = []): [VarMD[], Type[]] {
+    let metaVars: VarMD[] = [];
+    for (let varName of Object.keys(this.metadata.variables)) {
+      const original = this.metadata.variables[varName];
+      let metaVar = {
+        dec: original.dec,
+        constraints: [...original.constraints],
+      };
+      if (original.dec instanceof FnArg && this.args[varName]) {
+        metaVar.constraints.push(argTys.shift());
+      }
+      metaVars.push(metaVar);
+    }
+    return [metaVars, this.metadata.retConstraints];
   }
 }
 
@@ -233,9 +244,9 @@ abstract class Stmt {
   static fromAssignables(ast: LPNode, metadata: MetaData): Stmt[] {
     let stmts = [];
 
-    let asts: LPNode[] = ast.getAll();
+    let asts: LPNode[] = ast.getAll().map(a => a.get('withoperators'));
     if (asts.length > 1) TODO('operators');
-    asts = asts.length === 1 ? asts.pop().get('withoperators').get('baseassignablelist').getAll().map(a => a.get('baseassignable')) : [];
+    asts = asts.length === 1 ? asts.pop().get('baseassignablelist').getAll().map(a => a.get('baseassignable')) : [];
     for (let ii = 0; ii < asts.length; ii++) {
       let work = asts[ii];
       if (work.has('objectliterals')) {
@@ -274,6 +285,7 @@ abstract class Stmt {
           ));
           const call = stmts.pop();
           stmts.push(Dec.generate(call));
+          ii += 1;
         } else if (next.has('methodsep')) {
           TODO('accesses/methods');
         } else {
@@ -345,13 +357,6 @@ class Call extends Stmt {
     callTy: FunctionType = null,
   ) {
     super(ast);
-    fns = fns.filter(fn => Object.keys(fn.args).length === args.length)
-    fns = fns.filter(fn => callTy.compatibleWithConstraint(fn.fnType));
-    if (fns.length === 0) {
-      throw new Error(`could not find function for call site \`${ast}\``)
-    }
-    this.fns = fns;
-    this.args = args;
     if (retTy === null) {
       retTy = Type.generate();
     }
@@ -361,9 +366,16 @@ class Call extends Stmt {
     if (callTy.retTy !== retTy) {
       throw new Error('errr');
     }
+    fns = fns.filter(fn => Object.keys(fn.args).length === args.length)
+    // fns = fns.filter(fn => callTy.compatibleWithConstraint(fn.fnType));
+    if (fns.length === 0) {
+      throw new Error(`could not find function for call site \`${ast}\``)
+    }
+    const fnTypes = fns.map(fn => fn.fnType);
+    this.fns = fns;
+    this.args = args;
     this.retTy = retTy;
     this.callTy = callTy;
-    const fnTypes = this.fns.map(fn => fn.fnType);
     // TODO: i have a feeling this isn't the right way to go...
     this.callTy.callSelect = Type.oneOf(fnTypes);
   }
@@ -387,7 +399,11 @@ class Call extends Stmt {
       if (!(dec instanceof Dec)) {
         throw new Error(`declaration not generated for arg ${ast.t.trim()}`);
       }
-      return dec.ref();
+      if (dec.val instanceof Ref) {
+        return dec.val;
+      } else {
+        return dec.ref();
+      }
     });
     if (accessed !== null) {
       args.unshift(accessed.ref());
@@ -411,7 +427,7 @@ class Call extends Stmt {
       throw new Error('sanity check failed :(');
     } else if (call.fns.length > 1) {
       TODO('type-constraining for function selection');
-    } else {
+    } else { // call.fns.length === 1
       // TODO: will probably have to change this once fn selection is done.
       let fnTy = call.fns[0];
       if (Object.keys(fnTy.args).length !== args.length) {
