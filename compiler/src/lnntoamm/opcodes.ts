@@ -40,7 +40,11 @@ const load = (): void => {
       throw new Error(`builtin event ${name} is declared with type ${tyName}, but that's not a valid type`);
     }
     const event = new Event(name, eventTy, []);
-    __opcodes.put(name, event);
+    if (name === 'start') {
+      __opcodes.put('_start', event);
+    } else {
+      __opcodes.put(name, event);
+    }
   });
 
   Object.entries({
