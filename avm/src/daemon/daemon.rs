@@ -153,6 +153,7 @@ async fn run_agz_b64(
   priv_key_b64: Option<&str>,
   cert_b64: Option<&str>,
 ) -> DaemonResult<()> {
+  println!("anycloud running agz b64");
   let bytes = base64::decode(agz_b64);
   if let Ok(bytes) = bytes {
     let agz = GzDecoder::new(bytes.as_slice());
@@ -163,6 +164,7 @@ async fn run_agz_b64(
     if gz_read_i64.is_ok() {
       if let (Some(priv_key_b64), Some(cert_b64)) = (priv_key_b64, cert_b64) {
         // Spin up a control port if we can start a secure connection
+        println!("anycloud certs ok");
         make_server!(
           HttpType::HTTPS(HttpsConfig {
             port: 4142, // 4 = A, 1 = L, 2 = N (sideways) => ALAN
@@ -171,6 +173,7 @@ async fn run_agz_b64(
           }),
           control_port
         );
+        println!("anycloud ctrl port ok");
         // TODO: return a Result in order to catch the error and log it
         run(
           bytecode,
@@ -181,14 +184,18 @@ async fn run_agz_b64(
           }),
         )
         .await;
+        println!("anycloud run ok");
       } else {
+        println!("anycloud certs not ok");
         // TODO: return a Result in order to catch the error and log it
         run(bytecode, HttpType::HTTP(HttpConfig { port: 80 })).await;
       }
     } else {
+      println!("anycloud corrupt");
       return Err("AGZ file appears to be corrupt.".into());
     }
   } else {
+    println!("anycloud cagz decode");
     return Err("AGZ payload not properly base64-encoded.".into());
   }
   Ok(())
