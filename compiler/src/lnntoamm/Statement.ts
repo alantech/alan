@@ -692,9 +692,9 @@ export class Exit extends Stmt {
 
   inline(amm: Output) {
     if (!this.exitVal.ty.compatibleWithConstraint(opcodes().get('void'))) {
-      amm.return(this.exitVal.ammName);
+      amm.exit(this.exitVal.ammName);
     } else {
-      amm.return();
+      amm.exit();
     }
   }
 }

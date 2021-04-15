@@ -152,7 +152,7 @@ export default class Fn {
       if (this.retTy.breakdown() !== opcodes().get('void')) {
         throw new Error(`no return value for function`);
       }
-      amm.return();
+      amm.exit();
     }
   }
 

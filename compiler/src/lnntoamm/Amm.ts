@@ -119,7 +119,7 @@ export default class Output {
     this.handlers[0] = this.handlers[0].concat(line.concat('\n'));
   }
 
-  return(
+  exit(
     val: string | null = null,
   ) {
     if (val !== null) {
