@@ -1,7 +1,6 @@
 import { LPNode } from "../lp";
 import Output from "./Amm";
 import Fn from './Fn';
-import opcodes from "./opcodes";
 import Scope from "./Scope";
 import Type, { Builtin } from "./Types";
 import { genName, TODO } from "./util";
@@ -14,6 +13,7 @@ export default class Event {
   eventTy: Type
   // if it's a single fn
   handlers: Array<Fn | Fn[]>
+  runtimeDefined: boolean
 
   static get allEvents(): Event[] {
     return allEvents;
@@ -22,7 +22,8 @@ export default class Event {
   constructor(
     name: string,
     eventTy: Type,
-    handlers: Array<Fn | Fn[]> = []
+    handlers: Array<Fn | Fn[]> = [],
+    runtimeDefined: boolean = false,
   ) {
     this.name = name;
     this.eventTy = eventTy;
@@ -32,6 +33,7 @@ export default class Event {
     } else {
       this.ammName = this.name;
     }
+    this.runtimeDefined = runtimeDefined;
     allEvents.push(this);
   }
 
@@ -48,7 +50,9 @@ export default class Event {
   }
 
   compile(amm: Output) {
-    amm.global('event', this.eventTy as Builtin, this.ammName);
+    if (this.runtimeDefined === false) {
+      amm.global('event', this.eventTy as Builtin, this.ammName);
+    }
     for (let handler of this.handlers) {
       if (handler instanceof Array) {
         return TODO('Event handler selection');

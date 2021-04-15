@@ -551,7 +551,7 @@ export class FnArg extends Dec {
       }
       return super.val.ammName;
     } else {
-      return super.ammName;
+      return this.name;
     }
   }
 

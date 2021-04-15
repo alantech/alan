@@ -1,4 +1,3 @@
-import { NulLP } from '../lp';
 import Event from './Event';
 import { OpcodeFn } from './Fn';
 import Scope from "./Scope";
@@ -39,12 +38,13 @@ const load = (): void => {
     } else if (!(eventTy instanceof Type)) {
       throw new Error(`builtin event ${name} is declared with type ${tyName}, but that's not a valid type`);
     }
-    const event = new Event(name, eventTy, []);
+    let event: Event;
     if (name === 'start') {
-      __opcodes.put('_start', event);
+      event = new Event('_start', eventTy, [], true);
     } else {
-      __opcodes.put(name, event);
+      event = new Event(name, eventTy, [], false);
     }
+    __opcodes.put(name, event);
   });
 
   Object.entries({
