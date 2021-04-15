@@ -191,6 +191,7 @@ pub async fn start(
           control_port.update_ips(ips);
           leader_ip = control_port.get_leader().to_string();
         }
+        println!("Leader: {} Me: {}", leader_ip, self_ip);
         if leader_ip == self_ip.to_string() {
           match get_v1_stats().await {
             Ok(s) => stats.push(s),
