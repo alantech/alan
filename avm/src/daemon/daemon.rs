@@ -172,7 +172,6 @@ pub async fn start(
     let dns = DNS::new(&domain);
     if let (Ok(dns), Ok(self_ip)) = (&dns, &self_ip) {
       loop {
-        sleep(period).await;
         let vms = match dns.get_vms(&cluster_id).await {
           Ok(vms) => vms,
           Err(err) => {
@@ -197,7 +196,7 @@ pub async fn start(
             Err(err) => error!(ErrorType::NoStats, "{}", err).await,
           };
         }
-        if stats.len() >= 5 {
+        if stats.len() >= 4 {
           let mut factor = String::from("1");
           let stats_factor = post_v1_stats(stats.to_owned(), &cluster_id, &deploy_token).await;
           stats = Vec::new();
@@ -217,6 +216,7 @@ pub async fn start(
           }
         }
         control_port.check_cluster_health().await;
+        sleep(period).await;
       }
     } else if let Err(dns_err) = &dns {
       error!(ErrorType::NoDns, "DNS error: {}", dns_err).await;
