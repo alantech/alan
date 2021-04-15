@@ -3,10 +3,10 @@
 # Be very *vexing* with the output, but good for debugging if something goes wrong
 set -vex
 
-# The new version
+# The prerelease version
 VERSION=$1
 
-echo Version: ${VERSION}
+echo Prerelease Version: ${VERSION}
 
 # Update the package metadata with the specified version
 JSRUNTIME="$(jq ".version = \"${VERSION}\"" js-runtime/package.json)" && echo "${JSRUNTIME}" > js-runtime/package.json
@@ -34,11 +34,5 @@ cd -
 # Commit and tag the update
 git add js-runtime/package.json js-runtime/yarn.lock compiler/package.json compiler/yarn.lock avm/Cargo.toml avm/Cargo.lock anycloud/cli/Cargo.toml anycloud/cli/Cargo.lock
 git commit -m "v${VERSION}"
-git push origin main
-gh release create v${VERSION} -t v${VERSION} -n v${VERSION} --target main
-
-# Publish the js-runtime to NPM with the new version
-cd js-runtime
-npm publish
-cd -
-
+git push origin $(git branch --show-current)
+gh release create v${VERSION} -t v${VERSION} -n Pre-release --target $(git branch --show-current) -p

@@ -1,5 +1,3 @@
-use std::error::Error;
-
 use futures::future::join_all;
 use futures::stream::StreamExt;
 use heim_common::units::{

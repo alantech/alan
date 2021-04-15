@@ -5,7 +5,7 @@ license = "AGPL-3.0"
 homepage = "https://alan-lang.org"
 documentation = "https://docs.alan-lang.org"
 repository = "https://github.com/alantech/alan"
-version = "0.1.36"
+version = "0.1.37-beta5"
 authors = ["Luis de Pombo <luis@alantechnologies.com>", "David Ellis <david@alantechnologies.com>"]
 edition = "2018"
 
@@ -16,7 +16,7 @@ anycloud = { path = "../anycloud/cli" }
 async-stream = "0.3.0"
 base64 = "0.13"
 byteorder = "1.3.4"
-clap = "2.33.1"
+clap = "2.33.3"
 dashmap = "3.11.10"
 flate2 = "1.0"
 futures = "0.3.8"
@@ -32,7 +32,7 @@ once_cell = "1.5.2"
 protobuf = "2.22.1"
 rand = "0.7.3"
 regex = "1"
-rustls = "0.19.0"
+rustls = { version = "0.19.0", features = ["dangerous_configuration"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
 tokio = { version = "1.2", features = ["rt-multi-thread", "macros", "process", "sync", "time"] }

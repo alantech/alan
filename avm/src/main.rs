@@ -107,9 +107,9 @@ fn main() {
       .arg_from_usage("<AGZ_B64> 'Specifies the .agz program as a base64 encoded string'")
       .arg_from_usage("<DEPLOY_TOKEN> 'Specifies the deploy token'")
       .arg_from_usage("<DOMAIN> 'Specifies the application domain'")
-      .arg_from_usage("-k, --private-key=[PRIV_KEY_B64] 'An optional base64 encoded private key for HTTPS mode'")
-      .arg_from_usage("-c, --certificate=[CERT_B64] 'An optional base64 encoded certificate for HTTPS mode'")
-      .arg_from_usage("-s, --cluster-secret=[CLUSTER_SECRET] 'An optional secret string to constrain access to the control port'")
+      .arg_from_usage("<PRIVATE_KEY> -k, --private-key=<PRIV_KEY_B64> 'A base64 encoded private key for HTTPS mode'")
+      .arg_from_usage("<CERT_B64> -c, --certificate=<CERT_B64> 'A base64 encoded certificate for HTTPS mode'")
+      .arg_from_usage("<CLUSTER_SECRET> -s, --cluster-secret=<CLUSTER_SECRET> 'A secret string to constrain access to the control port'")
     )
     .arg_from_usage("[SOURCE] 'Specifies a source ln file to compile and run'");
 
@@ -194,11 +194,11 @@ fn main() {
         let agz_b64 = matches.value_of("AGZ_B64").unwrap();
         let deploy_token = matches.value_of("DEPLOY_TOKEN").unwrap();
         let domain = matches.value_of("DOMAIN").unwrap();
-        let priv_key_b64 = matches.value_of("private-key");
-        let cert_b64 = matches.value_of("certificate");
-        let cluster_secret = matches.value_of("cluster-secret");
+        let priv_key_b64 = matches.value_of("PRIVATE_KEY").unwrap();
+        let cert_b64 = matches.value_of("CERT_B64").unwrap();
+        let cluster_secret = matches.value_of("CLUSTER_SECRET").unwrap();
         CLUSTER_SECRET
-          .set(cluster_secret.map(|s| s.to_string()))
+          .set(Some(cluster_secret.to_string()))
           .unwrap();
         start(
           app_id,
