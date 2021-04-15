@@ -1,0 +1,7 @@
+from @std/app import start, exit, stdout
+
+on start {
+  emit stdout 'hello, world!';
+  emit exit 0;
+}
+

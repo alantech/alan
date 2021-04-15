@@ -4,8 +4,9 @@ import Const from './Const';
 import Event from './Event';
 import Fn from './Fn';
 import Operator from './Operator';
-import Scope from './Scope';
+import Scope, { isFunctions } from './Scope';
 import Type from './Types';
+import { TODO } from './util';
 
 const modules: {[name: string]: Module} = {}
 
@@ -79,7 +80,22 @@ class Module {
             importName = moduleVar.get('renamed').get('varop').t.trim();
           }
           const thing = importedModule.exportScope.shallowGet(exportName);
-          throw new Error(`can't do from imports yet`)
+          if (thing === null) {
+            throw new Error(`couldn't import ${exportName}: not defined in ${resolvedDep}`)
+          } else if (isFunctions(thing)) {
+            const otherthing = module.moduleScope.deepGet(importName);
+            if (otherthing === null) {
+              module.moduleScope.put(importName, [...thing]);
+            } else if (isFunctions(otherthing)) {
+              // note: this was `...thing, ...otherthing` before, but that
+              // breaks preference for more-recently-defined things
+              module.moduleScope.put(importName, [...otherthing, ...thing]);
+            } else {
+              throw new Error(`incompatible imports for ${importName}`);
+            }
+          } else {
+            module.moduleScope.put(importName, thing);
+          }
         });
       }
     });
