@@ -8,13 +8,27 @@ sourceToTemp() {
   echo "$1" > test_$$/temp.ln
 }
 
+lnn_sourceToTemp() {
+  mkdir -p test_$$
+  echo "$1" > test_$$/temp.lnn
+}
+
 tempToAmm() {
   alan compile test_$$/temp.ln test_$$/temp.amm 1>/dev/null
+}
+
+lnn_tempToAmm() {
+  alan compile test_$$/temp.lnn test_$$/temp.amm 1>/dev/null
 }
 
 sourceToAmm() {
   sourceToTemp "$1"
   tempToAmm
+}
+
+lnn_sourceToAmm() {
+  lnn_sourceToTemp "$1"
+  lnn_tempToAmm
 }
 
 tempToAgc() {
@@ -35,8 +49,20 @@ sourceToJs() {
   tempToJs
 }
 
+lnn_sourceToJs() {
+  lnn_sourceToTemp "$1"
+  tempToJs
+}
+
 sourceToAll() {
   sourceToTemp "$1"
+  tempToAmm
+  tempToAgc
+  tempToJs
+}
+
+lnn_sourceToAll() {
+  lnn_sourceToTemp "$1"
   tempToAmm
   tempToAgc
   tempToJs
