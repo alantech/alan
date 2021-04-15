@@ -1,0 +1,18 @@
+const _69404e75_c0de_4c4a_9c99_b3e0ce9a3fb3: string = "hello, world!"
+const _31875cd6_9675_4a8b_b41a_cdd76c2d2efc: int64 = 0
+event stdout: string
+event exit: int8
+event stderr: string
+on _start fn (): void {
+  emit stdout _69404e75_c0de_4c4a_9c99_b3e0ce9a3fb3
+  emit exit _31875cd6_9675_4a8b_b41a_cdd76c2d2efc
+}
+on stdout fn (out: string): void {
+  const _568fdfc4_9ef4_4c93_bcc0_79ee1843f8f7: void = stdoutp(out)
+}
+on exit fn (status: int8): void {
+  const _e47c89f9_3f6d_4c7e_8f97_ae417fe5e659: void = exitop(status)
+}
+on stderr fn (err: string): void {
+  const _926cd187_8703_4434_aba2_c3a142a012a1: void = stderrp(err)
+}

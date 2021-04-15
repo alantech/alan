@@ -21,11 +21,11 @@ export default class Output {
     let res = '';
     for (let [ty, constants] of this.constants.entries()) {
       for (let constName of Object.keys(constants)) {
-        res = res.concat('const ', constName, ': ', ty.ammName, ' = ', constants[constName]);
+        res = res.concat('const ', constName, ': ', ty.ammName, ' = ', constants[constName], '\n');
       }
     }
     for (let eventName of Object.keys(this.events)) {
-      res = res.concat('event ', eventName, ': ', this.events[eventName].ammName);
+      res = res.concat('event ', eventName, ': ', this.events[eventName].ammName, '\n');
     }
     for (let handler of this.handlers) {
       res = res.concat(handler);
@@ -44,18 +44,33 @@ export default class Output {
         constants[val] = genName();
         this.constants.set(ty, constants);
       }
+      console.log('-> const', constants[val], ':', ty.ammName, '=', val);
       return constants[val];
     } else {
       if (this.events[val]) {
         throw new Error(`AMM can't handle multiple events of the same name`);
       }
       this.events[val] = ty;
+      console.log('-> event', val, ':', ty.ammName);
       return val;
     }
   }
 
-  addHandler(event: string, arg: [string, Builtin]) {
-    this.handlers.unshift('on '.concat(event, ' fn (', arg[0], ': ', arg[1].ammName, '): void {'));
+  addHandler(
+    event: string,
+    args: [string, Builtin][],
+    retTy?: Builtin,
+  ) {
+    let line = 'on '.concat(event, ' fn (');
+    for (let ii = 0; ii < args.length; ii++) {
+      if (ii !== 0) {
+        line = line.concat(', ');
+      }
+      line = line.concat(args[ii][0], ': ', args[ii][1].ammName);
+    }
+    line = line.concat('): ', retTy ? retTy.ammName : 'void', ' {');
+    console.log(line);
+    this.handlers.unshift(line.concat('\n'));
     this.indent = INDENT;
   }
 
@@ -88,6 +103,7 @@ export default class Output {
       let assignName = this.global('const', ty, assign);
       line = line.concat(assignName);
     }
+    console.log(line);
     this.handlers[0] = this.handlers[0].concat(line.concat('\n'));
   }
 
@@ -95,17 +111,23 @@ export default class Output {
     eventName: string,
     val: string,
   ) {
-    this.handlers[0] = this.handlers[0].concat(this.indent, 'emit ', eventName, ' ', val, '\n');
+    const line = this.indent.concat('emit ', eventName, ' ', val);
+    console.log(line);
+    this.handlers[0] = this.handlers[0].concat(line.concat('\n'));
   }
 
   return(
     val: string | null = null,
   ) {
     if (val !== null) {
-      this.handlers[0] = this.handlers[0].concat(this.indent, 'return ', val, '\n');
+      const line = this.indent.concat('return ', val, '\n');
+      console.log(line);
+      this.handlers[0] = this.handlers[0].concat(line);
     }
     // only replace the first newline with nothing
     this.indent = this.indent.replace(/\n/, '');
-    this.handlers[0] = this.handlers[0].concat(this.indent, '}');
+    const line = this.indent.concat('}');
+    console.log(line);
+    this.handlers[0] = this.handlers[0].concat(line.concat('\n'));
   }
 }

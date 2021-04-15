@@ -1,0 +1,6 @@
+import @std/app
+
+on app.start {
+  emit app.stdout 'hello, world!';
+  emit app.exit 0;
+}

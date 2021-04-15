@@ -69,9 +69,7 @@ export default class Event {
       if (!retConstraints.every(con => (handler as Fn).retTy.compatibleWithConstraint(con))) {
         throw new Error(`failed to type-check: event handler ${handler}`);
       }
-      amm.addHandler(this.ammName, [Object.keys(handler.args).pop(), this.eventTy.breakdown()])
-      handler.body.forEach(stmt => stmt.inline(amm));
-      amm.return();
+      handler.asHandler(amm, this.ammName);
     }
   }
 
