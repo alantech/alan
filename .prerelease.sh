@@ -34,5 +34,5 @@ cd -
 # Commit and tag the update
 git add js-runtime/package.json js-runtime/yarn.lock compiler/package.json compiler/yarn.lock avm/Cargo.toml avm/Cargo.lock anycloud/cli/Cargo.toml anycloud/cli/Cargo.lock
 git commit -m "v${VERSION}"
-git push origin
+git push origin $(git branch --show-current)
 gh release create v${VERSION} -p
