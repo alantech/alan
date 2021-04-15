@@ -528,18 +528,15 @@ pub async fn add_deploy_config() {
       .with_prompt("Virtual machine type")
       .interact_text()
       .unwrap();
-    let min_replicas: Option<u32>;
     let replicas: String = Input::with_theme(&ColorfulTheme::default())
       .with_prompt("Minimum number of replicas")
       .default("1".to_string())
       .interact_text()
       .unwrap();
-    if let Ok(replicas) = replicas.parse::<u32>() {
-      min_replicas = Some(replicas);
-    } else {
+    let min_replicas: Option<u32> = Some(replicas.parse::<u32>().unwrap_or_else(|_| {
       eprintln!("{} is not a valid number of replicas", replicas);
       std::process::exit(1);
-    }
+    }));
     let mut max_replicas = None;
     let prompt = "Would you like to define a maximum number of replicas for this region?";
     if Confirm::with_theme(&ColorfulTheme::default())
@@ -624,18 +621,15 @@ pub async fn edit_deploy_config() {
       .with_initial_text(config.vmType.to_string())
       .interact_text()
       .unwrap();
-    let min_replicas: Option<u32>;
     let replicas: String = Input::with_theme(&ColorfulTheme::default())
       .with_prompt("Minimum number of replicas")
       .default("1".to_string())
       .interact_text()
       .unwrap();
-    if let Ok(replicas) = replicas.parse::<u32>() {
-      min_replicas = Some(replicas);
-    } else {
+    let min_replicas: Option<u32> = Some(replicas.parse::<u32>().unwrap_or_else(|_| {
       eprintln!("{} is not a valid number of replicas", replicas);
       std::process::exit(1);
-    }
+    }));
     let mut max_replicas = None;
     let prompt = "Would you like to define a maximum number of replicas for this region?";
     if Confirm::with_theme(&ColorfulTheme::default())
