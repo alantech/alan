@@ -1,7 +1,7 @@
 SHELL = /bin/bash
 
 .PHONY: build
-build: env-check avm/target/release/alan build-js-runtime
+build: env-check avm/target/release/alan build-js-runtime anycloud/cli/target/release/anycloud
 	@echo Done
 
 .PHONY: env-check
@@ -16,6 +16,10 @@ avm-style:
 avm-unit: compiler/alan-compile
 	cd avm && cargo test
 
+.PHONY: anycloud-style
+anycloud-style:
+	cd anycloud/cli && cargo fmt -- --check
+
 .PHONY: compiler-browser-check
 compiler-browser-check:
 	cd compiler && yarn && yarn test
@@ -28,6 +32,10 @@ compiler-browser-check:
 ./avm/target/release/alan: compiler/alan-compile
 	cd avm && cargo fmt
 	cd avm && cargo build --release
+
+./anycloud/cli/target/release/anycloud: compiler/alan-compile
+	cd anycloud/cli && cargo fmt
+	cd anycloud/cli && cargo build --release
 
 .PHONY: build-js-runtime
 build-js-runtime:
