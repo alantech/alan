@@ -7,28 +7,7 @@ on:
 name: Create Release
 
 jobs:
-  create_release:
-    name: Create Release
-    runs-on: ubuntu-latest
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: ${{ github.ref }}
-          body: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
   ubuntu:
-    needs: create_release
     runs-on: ubuntu-latest
 
     steps:
@@ -47,14 +26,12 @@ jobs:
       run: cd ./avm/target/release && tar -czf /tmp/alan-ubuntu.tar.gz alan
 
     - name: Upload Alan tar.gz
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: svenstaro/upload-release-action@v2
       with:
-        upload_url: ${{ needs.create_release.outputs.upload_url }}
-        asset_path: /tmp/alan-ubuntu.tar.gz
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        tag: ${{ github.ref }}
+        file: /tmp/alan-ubuntu.tar.gz
         asset_name: alan-ubuntu.tar.gz
-        asset_content_type: application/gzip
 
     - name: Generate Anycloud tar.gz
       run: |
@@ -64,17 +41,14 @@ jobs:
         tar -czf /tmp/anycloud-ubuntu.tar.gz anycloud
 
     - name: Upload Anycloud tar.gz
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: svenstaro/upload-release-action@v2
       with:
-        upload_url: ${{ needs.create_release.outputs.upload_url }}
-        asset_path: /tmp/anycloud-ubuntu.tar.gz
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        tag: ${{ github.ref }}
+        file: /tmp/anycloud-ubuntu.tar.gz
         asset_name: anycloud-ubuntu.tar.gz
-        asset_content_type: application/gzip
 
   windows:
-    needs: create_release
     runs-on: windows-latest
 
     steps:
@@ -93,14 +67,12 @@ jobs:
       run: Compress-Archive -Path "$(Join-Path (Get-Location).Path '\\avm\\target\\release\\alan.exe')" -DestinationPath "$(Join-Path (Get-Location).Path 'alan-windows.zip')"
 
     - name: Upload Alan zip
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: svenstaro/upload-release-action@v2
       with:
-        upload_url: ${{ needs.create_release.outputs.upload_url }}
-        asset_path: ./alan-windows.zip
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        tag: ${{ github.ref }}
+        file: ./alan-windows.zip
         asset_name: alan-windows.zip
-        asset_content_type: application/zip
 
     - name: Generate Anycloud zip
       run: |
@@ -110,18 +82,15 @@ jobs:
         Compress-Archive -Path "$(Join-Path (Get-Location).Path '\\anycloud\\cli\\target\\release\\anycloud.exe')" -DestinationPath "$(Join-Path (Get-Location).Path 'anycloud-windows.zip')"
 
     - name: Upload Anycloud zip
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: svenstaro/upload-release-action@v2
       with:
-        upload_url: ${{ needs.create_release.outputs.upload_url }}
-        asset_path: ./anycloud-windows.zip
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        tag: ${{ github.ref }}
+        file: ./anycloud-windows.zip
         asset_name: anycloud-windows.zip
-        asset_content_type: application/zip
 
 
   macos:
-    needs: create_release
     runs-on: macos-latest
 
     steps:
@@ -142,14 +111,12 @@ jobs:
         cd ./avm/target/release && gtar -czf /tmp/alan-macos.tar.gz alan
 
     - name: Upload Alan tar.gz
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: svenstaro/upload-release-action@v2
       with:
-        upload_url: ${{ needs.create_release.outputs.upload_url }}
-        asset_path: /tmp/alan-macos.tar.gz
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        tag: ${{ github.ref }}
+        file: /tmp/alan-macos.tar.gz
         asset_name: alan-macos.tar.gz
-        asset_content_type: application/gzip
     
     - name: Generate Anycloud tar.gz
       run: |
@@ -159,11 +126,9 @@ jobs:
         gtar -czf /tmp/anycloud-macos.tar.gz anycloud
 
     - name: Upload Anycloud tar.gz
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: svenstaro/upload-release-action@v2
       with:
-        upload_url: ${{ needs.create_release.outputs.upload_url }}
-        asset_path: /tmp/anycloud-macos.tar.gz
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        tag: ${{ github.ref }}
+        file: /tmp/anycloud-macos.tar.gz
         asset_name: anycloud-macos.tar.gz
-        asset_content_type: application/gzip
