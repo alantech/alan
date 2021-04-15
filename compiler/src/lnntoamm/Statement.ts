@@ -179,7 +179,7 @@ export class Assign extends Stmt {
     const name = this.upstream.ammName;
     const ty = this.upstream.ty.breakdown(); // always use the declaration's type, since it's been reduced.
     if (this.val instanceof Call) {
-      this.val.inline(amm, name, ty, true);
+      this.val.inline(amm, name, ty, '');
     } else if (this.val instanceof Lit) {
       amm.assign('', name, ty, this.val.val);
     } else {
@@ -269,14 +269,14 @@ export class Call extends Stmt {
     return this.fn.retTy;
   }
 
-  inline(amm: Output, assign?: string, ty?: Type, isReassign?: boolean): void {
+  inline(amm: Output, assign?: string, ty?: Type, kind?: 'const' | 'let' | ''): void {
     // TODO: determine if/when to inline vs just call once that syntax is supported in AMM
     // TODO: also fix this so that functions can be called multiple times
-    if (!assign || !ty || isReassign == null) {
+    if (!assign || !ty || !kind) {
       throw new Error(`bad call`);
     }
     ty.constrain(this.fn.retTy);
-    this.fn.inline(amm, this.args, assign, isReassign);
+    this.fn.inline(amm, this.args, assign, kind);
   }
 }
 // // TODO: try and revive fn selection using ideas from this class:
@@ -532,7 +532,8 @@ export class Dec extends Stmt {
       throw e;
     }
     if (this.val instanceof Call) {
-      this.val.inline(amm, name, ty, false);
+      const kind = this.mutable ? 'let' : 'const';
+      this.val.inline(amm, name, ty, kind);
     } else if (this.val instanceof Lit) {
       // don't copy the global value, just use it whenever this declaration is used
       this.__ammName = amm.global('const', this.val.ty.breakdown(), this.val.val);
@@ -544,9 +545,9 @@ export class Dec extends Stmt {
 
 export class FnArg extends Dec {
   get ammName(): string {
-    if (super.val !== null) {
+    if (super.val != null) {
       if (!(super.val instanceof Ref)) {
-        throw new Error(`expected fn arg to be set to a reference`);
+        throw new Error(`expected fn arg to be set to a reference (here it is: ${super.val})`);
       }
       return super.val.ammName;
     } else {
@@ -577,7 +578,6 @@ export class FnArg extends Dec {
     let name = ast.get('variable').t;
     let typename = ast.get('fulltypename');
     let argTy = Type.getFromTypename(typename, metadata.scope);
-    console.log('~~~~~~~~ arg', name, 'is', argTy, '(from', typename.t, ')');
     if (argTy === null) {
       TODO('args with implicit types');
     } else if (!(argTy instanceof Type)) {

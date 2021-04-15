@@ -20,8 +20,8 @@ export default class Output {
   toString(): string {
     let res = '';
     for (let [ty, constants] of this.constants.entries()) {
-      for (let constName of Object.keys(constants)) {
-        res = res.concat('const ', constName, ': ', ty.ammName, ' = ', constants[constName], '\n');
+      for (let constVal of Object.keys(constants)) {
+        res = res.concat('const ', constants[constVal], ': ', ty.ammName, ' = ', constVal, '\n');
       }
     }
     for (let eventName of Object.keys(this.events)) {
@@ -125,7 +125,7 @@ export default class Output {
       this.handlers[0] = this.handlers[0].concat(line);
     }
     // only replace the first newline with nothing
-    this.indent = this.indent.replace(/\n/, '');
+    this.indent = this.indent.replace(/  /, '');
     const line = this.indent.concat('}');
     console.log(line);
     this.handlers[0] = this.handlers[0].concat(line.concat('\n'));

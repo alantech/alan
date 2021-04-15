@@ -71,7 +71,10 @@ export default class Fn {
         work.get('optargs').get('arglist'),
         ...work.get('optargs').get('arglist').get('cdr').getAll(),
       ];
-      argAsts.forEach(argAst => FnArg.fromArgAst(argAst, metadata));
+      argAsts.forEach(argAst => {
+        const arg = FnArg.fromArgAst(argAst, metadata)
+        args[arg.name] = arg;
+      });
     }
 
     const retTy = work.get('optreturntype').has() ? work.get('optreturntype').get().get('fulltypename') : 'void';
@@ -108,7 +111,6 @@ export default class Fn {
     let body = [];
     let metadata = new MetaData(scope);
     ast.get('statements').getAll().map(s => s.get('statement')).forEach(ast => body.push(...Stmt.fromAst(ast, metadata)));
-
     return new Fn(
       ast,
       new Scope(scope),
@@ -142,13 +144,14 @@ export default class Fn {
 
   asHandler(amm: Output, event: string) {
     let handlerArgs = [];
-    for (let arg in this.args) {
-      handlerArgs[arg] = this.args[arg].ty.breakdown();
+    for (let arg of Object.keys(this.args)) {
+      handlerArgs.push([arg, this.args[arg].ty.breakdown()]);
     }
     amm.addHandler(event, handlerArgs, this.retTy.breakdown());
     let isReturned = false;
     for (let ii = 0; ii < this.body.length; ii++) {
       const stmt = this.body[ii];
+      console.log(stmt);
       if (stmt instanceof Dec || stmt instanceof Assign || stmt instanceof Emit) {
         stmt.inline(amm);
       } else if (stmt instanceof Exit) {
@@ -171,10 +174,7 @@ export default class Fn {
   }
 
   // TODO: this will have to change in order to call fns multiple times - maybe deep cloning?
-  inline(amm: Output, args: Ref[], assign: string, isReassign: boolean) {
-    if (isReassign) {
-      TODO('figure out how to do return value rewriting');
-    }
+  inline(amm: Output, args: Ref[], assign: string, kind: 'const' | 'let' | '') {
     let argNames = Object.keys(this.args);
     if (argNames.length !== args.length) {
       // this should be caught by Call, it's just a sanity check
@@ -182,6 +182,20 @@ export default class Fn {
     }
     for (let ii = 0; ii < argNames.length; ii++) {
       this.args[argNames[ii]].val = args[ii];
+    }
+    for (let arg in this.args) {
+      console.log('+++ arg:', arg, 'is referenced to', this.args[arg].val)
+    }
+    const last = this.body[this.body.length - 1];
+    if (last instanceof Exit && last.exitVal !== null) {
+      if (kind === 'const' && last.exitVal.dec.mutable) {
+        kind = 'let';
+      } else if (kind === 'let' && !last.exitVal.dec.mutable) {
+        last.exitVal.dec.mutable = true;
+      } else if (kind === '') {
+        TODO('figure out how to do return value rewrites pls');
+      }
+      last.exitVal.dec.ammName = assign;
     }
     // let [vars, retConstraints] = this.constraints(args.map(ref => ref.ty));
     // for (let variable of vars) {
@@ -198,7 +212,12 @@ export default class Fn {
       if (stmt instanceof Dec || stmt instanceof Assign || stmt instanceof Emit) {
         stmt.inline(amm);
       } else if (stmt instanceof Exit) {
-        // do nothing: the output value was already assigned
+        amm.assign(
+          kind,
+          assign,
+          stmt.exitVal.ty.breakdown(),
+          stmt.exitVal.ammName,
+        );
       } else {
         throw new Error(`did not expect to inline stmt: ${stmt}`);
       }
@@ -234,9 +253,9 @@ export class OpcodeFn extends Fn {
     __opcodes.put(name, [this]);
   }
 
-  inline(amm: Output, args: Ref[], assign: string, isReassign: boolean) {
+  inline(amm: Output, args: Ref[], assign: string, kind: 'const' | 'let' | '') {
     amm.assign(
-      isReassign ? '' : 'let',
+      kind,
       assign,
       this.retTy.breakdown(),
       this,

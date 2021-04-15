@@ -1,19 +1,22 @@
-const 0: bool = _95165e6b_5f8c_4333_aecd_50601da8bd15
-const 'hello, world!': bool = _c7ce0877_f4d0_466d_8dee_50e3e7d7e92b
+const _cf10d317_270d_48c8_a616_d5555085aecf: bool = 0
+const _91550965_9bad_4209_a1ad_90baff01199c: bool = 'hello, world!'
 event start: void
 event stdout: string
 event exit: int8
 event stderr: string
-on stderr fn (): void {
-  return _a7e41403_acf7_49d4_b2a0_2855275b488d
-  }
-on exit fn (): void {
-  return _28e734fe_8b94_4945_8a11_2d47912baada
-  }
-on stdout fn (): void {
-  return _f4910e7d_f126_4941_8639_3070ce26707a
-  }
+on stderr fn (err: string): void {
+  let _5b3e95ae_c321_4be9_a746_53027056421d: void = stderrp(_558dd1c6_d82c_48ac_a107_56aa7806deb8
+  return _5b3e95ae_c321_4be9_a746_53027056421d
+}
+on exit fn (status: int8): void {
+  let _a1c17dee_7348_4a50_abb8_1d1b6a132824: void = exitop(_f9cb9ee4_59e3_4820_bbf8_a1f615ee45a3
+  return _a1c17dee_7348_4a50_abb8_1d1b6a132824
+}
+on stdout fn (out: string): void {
+  let _54b0fb91_b840_4c43_aa0e_7cc665c0ad15: void = stdoutp(_955ee120_08e7_4c17_96c7_33a0a9621ef1
+  return _54b0fb91_b840_4c43_aa0e_7cc665c0ad15
+}
 on start fn (): void {
-  emit stdout _c7ce0877_f4d0_466d_8dee_50e3e7d7e92b
-  emit exit _95165e6b_5f8c_4333_aecd_50601da8bd15
-  }
+  emit stdout _91550965_9bad_4209_a1ad_90baff01199c
+  emit exit _cf10d317_270d_48c8_a616_d5555085aecf
+}
