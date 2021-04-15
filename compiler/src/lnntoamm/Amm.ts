@@ -4,6 +4,8 @@ import { Builtin } from './Types';
 import { genName } from './util';
 
 const INDENT = '  ';
+// keep this since this compiler is WIP - once it's finished we shouldn't need it anymore, and in fact it'll hurt performance (barely? i think?)
+const DEBUG_MODE_PRINTING = false;
 
 export default class Output {
   private constants: Map<Builtin, {[val: string]: string}>
@@ -44,14 +46,14 @@ export default class Output {
         constants[val] = genName();
         this.constants.set(ty, constants);
       }
-      console.log('-> const', constants[val], ':', ty.ammName, '=', val);
+      DEBUG_MODE_PRINTING && console.log('-> const', constants[val], ':', ty.ammName, '=', val);
       return constants[val];
     } else {
       if (this.events[val]) {
         throw new Error(`AMM can't handle multiple events of the same name`);
       }
       this.events[val] = ty;
-      console.log('-> event', val, ':', ty.ammName);
+      DEBUG_MODE_PRINTING && console.log('-> event', val, ':', ty.ammName);
       return val;
     }
   }
@@ -69,7 +71,7 @@ export default class Output {
       line = line.concat(args[ii][0], ': ', args[ii][1].ammName);
     }
     line = line.concat('): ', retTy ? retTy.ammName : 'void', ' {');
-    console.log(line);
+    DEBUG_MODE_PRINTING && console.log(line);
     this.handlers.unshift(line.concat('\n'));
     this.indent = INDENT;
   }
@@ -99,11 +101,12 @@ export default class Output {
           line = line.concat(', ');
         }
       }
+      line = line.concat(')');
     } else {
       let assignName = this.global('const', ty, assign);
       line = line.concat(assignName);
     }
-    console.log(line);
+    DEBUG_MODE_PRINTING && console.log(line);
     this.handlers[0] = this.handlers[0].concat(line.concat('\n'));
   }
 
@@ -112,7 +115,7 @@ export default class Output {
     val: string,
   ) {
     const line = this.indent.concat('emit ', eventName, ' ', val);
-    console.log(line);
+    DEBUG_MODE_PRINTING && console.log(line);
     this.handlers[0] = this.handlers[0].concat(line.concat('\n'));
   }
 
@@ -121,13 +124,13 @@ export default class Output {
   ) {
     if (val !== null) {
       const line = this.indent.concat('return ', val, '\n');
-      console.log(line);
+      DEBUG_MODE_PRINTING && console.log(line);
       this.handlers[0] = this.handlers[0].concat(line);
     }
     // only replace the first newline with nothing
     this.indent = this.indent.replace(/  /, '');
     const line = this.indent.concat('}');
-    console.log(line);
+    DEBUG_MODE_PRINTING && console.log(line);
     this.handlers[0] = this.handlers[0].concat(line.concat('\n'));
   }
 }

@@ -122,7 +122,7 @@ export default abstract class Stmt {
         }
       } else if (work.has('constants')) {
         work = work.get('constants');
-        let dec = Dec.generate(Lit.fromConstantsAst(ast, metadata));
+        let dec = Dec.generate(Lit.fromConstantsAst(work, metadata));
         metadata.define(dec);
         stmts.push(dec);
       } else {
@@ -691,7 +691,11 @@ export class Exit extends Stmt {
   }
 
   inline(amm: Output) {
-    amm.return(this.exitVal.ammName);
+    if (!this.exitVal.ty.compatibleWithConstraint(opcodes().get('void'))) {
+      amm.return(this.exitVal.ammName);
+    } else {
+      amm.return();
+    }
   }
 }
 
@@ -710,12 +714,13 @@ export class Lit extends Stmt {
   }
 
   static fromConstantsAst(ast: LPNode, _metadata: MetaData): Lit {
-    const val = ast.t.trim();
+    let val = ast.t.trim();
     let ty = null;
     if (ast.has('bool')) {
       ty = opcodes().get('bool');
     } else if (ast.has('str')) {
       ty = opcodes().get('string');
+      val = val.replace(/^'|'$/g, '"');
     } else if (ast.has('num')) {
       if (val.indexOf('.') !== -1) {
         ty = Type.oneOf([

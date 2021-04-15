@@ -48,7 +48,6 @@ export default class Event {
   }
 
   compile(amm: Output) {
-    console.log('compiling', this.name);
     amm.global('event', this.eventTy as Builtin, this.ammName);
     for (let handler of this.handlers) {
       if (handler instanceof Array) {

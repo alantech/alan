@@ -151,7 +151,7 @@ export default class Fn {
     let isReturned = false;
     for (let ii = 0; ii < this.body.length; ii++) {
       const stmt = this.body[ii];
-      console.log(stmt);
+      // console.log(stmt);
       if (stmt instanceof Dec || stmt instanceof Assign || stmt instanceof Emit) {
         stmt.inline(amm);
       } else if (stmt instanceof Exit) {
@@ -183,9 +183,9 @@ export default class Fn {
     for (let ii = 0; ii < argNames.length; ii++) {
       this.args[argNames[ii]].val = args[ii];
     }
-    for (let arg in this.args) {
-      console.log('+++ arg:', arg, 'is referenced to', this.args[arg].val)
-    }
+    // for (let arg in this.args) {
+    //   console.log('+++ arg:', arg, 'is referenced to', this.args[arg].val)
+    // }
     const last = this.body[this.body.length - 1];
     if (last instanceof Exit && last.exitVal !== null) {
       if (kind === 'const' && last.exitVal.dec.mutable) {
