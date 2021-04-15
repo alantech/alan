@@ -67,3 +67,7 @@ uninstall:
 .PHONY: version
 version:
 	./.version.sh $(version)
+
+.PHONY: prerelease 
+prerelease:
+	./.prerelease.sh $(version)
