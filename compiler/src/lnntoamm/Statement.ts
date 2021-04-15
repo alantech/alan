@@ -7,27 +7,14 @@ import Scope from "./Scope";
 import Type, { Builtin, FunctionType } from "./Types";
 import { genName, TODO } from "./util";
 
-export class VarMD {
-  dec: Dec
-  constraints: Type[]
-
-  constructor(
-    dec: Dec,
-    constraints: Type[] = [],
-  ) {
-    this.dec = dec;
-    this.constraints = constraints;
-  }
-}
-
 export class MetaData {
   scope: Scope
-  variables: { [name: string]: VarMD }
+  variables: { [name: string]: Dec }
   retConstraints: Type[]
 
   constructor(
     scope: Scope,
-    variables: { [name: string]: VarMD } = null,
+    variables: { [name: string]: Dec } = null,
     retConstraints: Type[] = null,
   ) {
     this.scope = scope;
@@ -35,7 +22,7 @@ export class MetaData {
     this.retConstraints = retConstraints !== null ? retConstraints : [];
   }
 
-  var(name: string): VarMD {
+  var(name: string): Dec {
     if (this.variables[name] == null) {
       return null;
     }
@@ -46,7 +33,7 @@ export class MetaData {
     if (this.var(dec.name) !== null) {
       throw new Error(`Can't redefine value ${dec.name}`);
     }
-    this.variables[dec.name] = new VarMD(dec);
+    this.variables[dec.name] = dec;
   }
 }
 
@@ -104,7 +91,7 @@ export default abstract class Stmt {
           if (dec === null) {
             throw new Error(`${varName} not defined`);
           }
-          stmts.push(dec.dec.ref());
+          stmts.push(dec.ref());
           break;
         }
         const next = asts[ii + 1];
@@ -122,13 +109,11 @@ export default abstract class Stmt {
           );
           stmts.push(...Call.fromAsts(
             callAst,
-            null,
+            // null,
             varName,
             next.get('fncall'),
             metadata,
           ));
-          const call = stmts.pop();
-          stmts.push(Dec.generate(call));
           ii += 1;
         } else if (next.has('methodsep')) {
           TODO('accesses/methods');
@@ -173,11 +158,15 @@ export class Assign extends Stmt {
     }
     stmts.push(...Stmt.fromAssignables(ast.get('assignables'), metadata));
     const expr = stmts.pop();
-    if (!(expr instanceof Dec)) {
+    let assign: Assign;
+    if (expr instanceof Dec) {
+      assign = new Assign(ast, upstream, expr.val);
+    } else if (expr instanceof Ref) {
+      TODO('figure out how to resolve this???');
+    } else {
       throw new Error(`invalid assignment state: not a declaration`);
     }
-    const assign = new Assign(ast, upstream.dec, expr.val);
-    upstream.constraints.push(assign.val.exprTy());
+    upstream.ty.constrain(assign.val.exprTy());
     stmts.push(assign);
     return stmts;
   }
@@ -190,7 +179,7 @@ export class Assign extends Stmt {
     const name = this.upstream.ammName;
     const ty = this.upstream.ty.breakdown(); // always use the declaration's type, since it's been reduced.
     if (this.val instanceof Call) {
-      this.val.inline(amm, name, ty);
+      this.val.inline(amm, name, ty, true);
     } else if (this.val instanceof Lit) {
       amm.assign('', name, ty, this.val.val);
     } else {
@@ -200,118 +189,223 @@ export class Assign extends Stmt {
 }
 
 export class Call extends Stmt {
-  fns: Fn[]
+  fn: Fn
   args: Ref[]
-  retTy: Type
-  callTy: FunctionType
 
   constructor(
     ast: LPNode,
-    fns: Fn[],
+    fn: Fn,
     args: Ref[],
-    retTy: Type = null,
-    callTy: FunctionType = null,
   ) {
-    super(ast);
-    if (retTy === null) {
-      retTy = Type.generate();
-    }
-    if (callTy === null) {
-      callTy = new FunctionType('CALL', args.map(r => r.ty), retTy);
-    }
-    if (callTy.retTy !== retTy) {
-      throw new Error('errr');
-    }
-    fns = fns.filter(fn => Object.keys(fn.args).length === args.length)
-    // fns = fns.filter(fn => callTy.compatibleWithConstraint(fn.fnType));
-    if (fns.length === 0) {
-      throw new Error(`could not find function for call site \`${ast}\``)
-    }
-    const fnTypes = fns.map(fn => fn.fnType);
-    this.fns = fns;
+    super(ast)
+    this.fn = fn;
     this.args = args;
-    this.retTy = retTy;
-    this.callTy = callTy;
-    // TODO: i have a feeling this isn't the right way to go...
-    this.callTy.callSelect = Type.oneOf(fnTypes);
   }
 
   static fromAsts(
     wholeAst: LPNode,
-    accessed: Dec | Ref | null,
     fnName: string,
     fnCallAst: LPNode,
     metadata: MetaData,
   ): Stmt[] {
-    let stmts: Stmt[] = [];
+    let stmts = [];
 
     fnCallAst = fnCallAst.get('assignablelist');
-    let args: Ref[] = [
+    const argAsts: LPNode[] = [
       fnCallAst.get('assignables'),
-      ...fnCallAst.get('cdr').getAll().map(n => n.get('assignables')),
-    ].map(ast => {
-      stmts.push(...Stmt.fromAssignables(ast, metadata));
-      let dec: Stmt = stmts[stmts.length - 1];
-      if (!(dec instanceof Dec) && !(dec instanceof Ref)) {
-        throw new Error(`declaration not generated for arg ${ast.t.trim()}`);
+      ...fnCallAst.get('cdr').getAll().map(a => a.get('assignables')),
+    ];
+    const args: Ref[] = argAsts.map(a => {
+      const snap = stmts.length;
+      stmts.push(...Stmt.fromAssignables(a, metadata));
+      if (stmts.length <= snap) {
+        throw new Error(`didn't generate any statements for arg ${a.t.trim()}`);
       }
-      if (dec instanceof Ref) {
+      let dec: Stmt = stmts[stmts.length - 1];
+      if (dec instanceof Dec) {
+        return dec.ref();
+      } else if (dec instanceof Ref) {
         return stmts.pop() as Ref;
       } else {
-        return dec.ref();
+        console.log(dec);
+        throw new Error(`got unexpected statement for arg ${a.t.trim()}: ${dec}`);
       }
     });
-    if (accessed !== null) {
-      args.unshift(accessed.ref());
-    }
 
-    let fns: Fn[] = [];
-    let fromScope = metadata.scope.get(fnName);
-    if (Array.isArray(fromScope) && fromScope.length > 0 && fromScope[0] instanceof Fn) {
-      fns.push(...fromScope);
+    let fns = metadata.scope.deepGet(fnName);
+    if (fns === null) {
+      fns = [];
     }
-    if (metadata.var(fnName) !== null) {
-      TODO('closure calling')
+    if (!(fns instanceof Array) || !(fns.length > 0 && fns[0] instanceof Fn)) {
+      throw new Error(`not a function: ${fnName}`);
     }
-
+    // TODO: try and get it from `metadata.var` here as well
+    if (fns.length === 0) {
+      throw new Error(`no function found for ${fnName}`);
+    } else if (fns.length > 1) {
+      TODO('fn selection')
+    }
+    let fn = fns[0];
+    if (Object.keys(fn.args).length !== args.length) {
+      throw new Error(`argument mismatch: ${fnName} expects ${Object.keys(fn.args).length} args but ${args.length} were provided`);
+    }
     const call = new Call(
       wholeAst,
-      fns,
+      fn,
       args,
     );
-    if (call.fns.length === 0) {
-      throw new Error('sanity check failed :(');
-    } else if (call.fns.length > 1) {
-      TODO('type-constraining for function selection');
-    } else { // call.fns.length === 1
-      // TODO: will probably have to change this once fn selection is done.
-      let fnTy = call.fns[0];
-      if (Object.keys(fnTy.args).length !== args.length) {
-        throw new Error('~~ Minecraft Villager sad noise :( ~~');
-      }
-      for (let ii = 0; ii < args.length; ii++) {
-        let argName = args[ii].dec.name;
-        let argMeta = metadata.var(argName);
-        if (argMeta.dec !== args[ii].dec) {
-          throw new Error('invalid call state: arg ref and var def mismatch');
-        }
-        let paramTy = Object.values(fnTy.args)[ii].ty;
-        argMeta.constraints.push(paramTy);
-      }
-    }
-    stmts.push(call);
+    let dec = Dec.generate(call);
+    // just in case the return value of the function has to mutate the value
+    dec.mutable = true;
+    // TODO: will probably change with fn selection?
+    dec.ty.constrain(fn.retTy);
+    metadata.define(dec);
+    stmts.push(dec);
 
     return stmts;
   }
 
-  inline(amm: Output, assignName?: string, assignTy?: Type) {
-    TODO('inline fns');
+  exprTy(): Type {
+    return this.fn.retTy;
   }
 
-  exprTy(): Type {
-    return this.retTy;
+  inline(amm: Output, assign?: string, ty?: Type, isReassign?: boolean): void {
+    // TODO: determine if/when to inline vs just call once that syntax is supported in AMM
+    // TODO: also fix this so that functions can be called multiple times
+    if (!assign || !ty || isReassign == null) {
+      throw new Error(`bad call`);
+    }
+    ty.constrain(this.fn.retTy);
+    this.fn.inline(amm, this.args, assign, isReassign);
   }
 }
+// // TODO: try and revive fn selection using ideas from this class:
+// export class Call extends Stmt {
+//   // TODO: Fn[]
+//   fns: Fn
+//   args: Ref[]
+//   retTy: Type
+//   callTy: FunctionType
+
+//   constructor(
+//     ast: LPNode,
+//     fns: Fn,
+//     args: Ref[],
+//     retTy: Type = null,
+//     callTy: FunctionType = null,
+//   ) {
+//     super(ast);
+//     // TODO: selection logic is pretty off :/
+//     // fns = fns.filter(fn => Object.keys(fn.args).length === args.length)
+//     // // fns = fns.filter(fn => callTy.compatibleWithConstraint(fn.fnType));
+//     // if (fns.length === 0) {
+//     //   throw new Error(`could not find function for call site \`${ast}\``)
+//     // }
+//     // let fnRet = fns[0].retTy;
+//     // for (let ii = 1; ii < fns.length; ii++) {
+//     //   if (fnRet !== fns[ii].retTy) {
+//     //     fnRet = null;
+//     //   }
+//     // }
+//     // if (fnRet !== null) {
+//     // }
+//     if (retTy === null) {
+//       // TODO: retTy = Type.generate();
+//       retTy = fns.retTy;
+//     }
+//     // if (callTy === null) {
+//     //   callTy = new FunctionType('CALL', args.map(r => r.ty), retTy);
+//     // }
+//     // if (callTy.retTy !== retTy) {
+//     //   throw new Error('errr');
+//     // }
+//     // const fnTypes = fns.map(fn => fn.fnType);
+//     // this.fns = fns;
+//     this.args = args;
+//     this.retTy = retTy;
+//     this.callTy = callTy;
+//     // TODO: i have a feeling this isn't the right way to go...
+//     // this.callTy.callSelect = Type.oneOf(fnTypes);
+//   }
+
+//   static fromAsts(
+//     wholeAst: LPNode,
+//     accessed: Dec | Ref | null,
+//     fnName: string,
+//     fnCallAst: LPNode,
+//     metadata: MetaData,
+//   ): Stmt[] {
+//     let stmts: Stmt[] = [];
+
+//     fnCallAst = fnCallAst.get('assignablelist');
+//     let args: Ref[] = [
+//       fnCallAst.get('assignables'),
+//       ...fnCallAst.get('cdr').getAll().map(n => n.get('assignables')),
+//     ].map(ast => {
+//       stmts.push(...Stmt.fromAssignables(ast, metadata));
+//       let dec: Stmt = stmts[stmts.length - 1];
+//       if (!(dec instanceof Dec) && !(dec instanceof Ref)) {
+//         throw new Error(`declaration not generated for arg ${ast.t.trim()}`);
+//       }
+//       if (dec instanceof Ref) {
+//         return stmts.pop() as Ref;
+//       } else {
+//         return dec.ref();
+//       }
+//     });
+//     if (accessed !== null) {
+//       args.unshift(accessed.ref());
+//     }
+
+//     // TODO: function selection
+//     // let fns: Fn[] = [];
+//     // let fromScope = metadata.scope.get(fnName);
+//     // if (Array.isArray(fromScope) && fromScope.length > 0 && fromScope[0] instanceof Fn) {
+//     //   fns.push(...fromScope);
+//     // }
+//     // if (metadata.var(fnName) !== null) {
+//     //   TODO('closure calling')
+//     // }
+//     let fns = metadata.scope.get(fnName) || metadata.var(fnName);
+
+//     const call = new Call(
+//       wholeAst,
+//       fns,
+//       args,
+//     );
+//     // if (call.fns.length === 0) {
+//     //   throw new Error('sanity check failed :(');
+//     // } else if (call.fns.length > 1) {
+//     //   TODO('type-constraining for function selection');
+//     // } else { // call.fns.length === 1
+//     //   // TODO: will probably have to change this once fn selection is done.
+//     //   let fnTy = call.fns[0];
+//     //   if (Object.keys(fnTy.args).length !== args.length) {
+//     //     throw new Error('~~ Minecraft Villager sad noise :( ~~');
+//     //   }
+//     //   for (let ii = 0; ii < args.length; ii++) {
+//     //     let argName = args[ii].dec.name;
+//     //     let argMeta = metadata.var(argName);
+//     //     if (argMeta.dec !== args[ii].dec) {
+//     //       throw new Error('invalid call state: arg ref and var def mismatch');
+//     //     }
+//     //     let paramTy = Object.values(fnTy.args)[ii].ty;
+//     //     argMeta.constraints.push(paramTy);
+//     //   }
+//     // }
+//     stmts.push(call);
+
+//     return stmts;
+//   }
+
+//   inline(amm: Output, assignName?: string, assignTy?: Type) {
+//     TODO('inline fns?');
+//   }
+
+//   exprTy(): Type {
+//     return this.retTy;
+//   }
+// }
 
 export class Closure extends Stmt {
   exprTy(): Type {
@@ -348,20 +442,23 @@ export class Dec extends Stmt {
     return this.__ammName;
   }
 
+  set ammName(to: string) {
+    this.__ammName = to;
+  }
+
   constructor(
     ast: LPNode,
     mutable: boolean,
     name: string,
     ty: Type | null = null,
     val: Stmt,
-    ammName: string = name,
   ) {
     super(ast);
     this.mutable = mutable;
     this.name = name;
     this.ty = ty !== null ? ty : Type.generate();
     this.val = val;
-    this.__ammName = ammName;
+    this.ammName = genName();
   }
 
   static fromAst(ast: LPNode, metadata: MetaData): Stmt[] {
@@ -376,7 +473,6 @@ export class Dec extends Stmt {
       mutable = true;
     }
     const name = work.get('variable').t;
-    const exists = metadata.var(name) !== null;
     let ty: Type = null;
     if (work.has('typedec')) {
       const tyName = work.get('typedec').get('fulltypename');
@@ -384,34 +480,27 @@ export class Dec extends Stmt {
     }
     stmts.push(...Stmt.fromAssignables(work.get('assignables'), metadata));
     let dec = stmts.pop();
-    if (!(dec instanceof Dec)) {
-      throw new Error(`Can't get declaration value from most recent node (${dec})`);
+    if (dec instanceof Dec) {
+      metadata.variables[name] = metadata.var(dec.name);
+      metadata.variables[dec.name] = null;
+      dec.ty.constrain(ty);
+      dec.mutable = mutable;
+      dec.name = name;
+    } else if (dec instanceof Ref) {
+      const upTy = dec.ty;
+      dec = new Dec(
+        ast,
+        mutable,
+        name,
+        ty,
+        dec,
+      );
+      (dec as Dec).ty.constrain(upTy);
+      metadata.define(dec as Dec);
+    } else {
+      throw new Error(`Can't get declaration value from most recent node: ${dec}`);
     }
-    let metaVar = metadata.var(dec.name);
-    if (ty !== null) {
-      metaVar.constraints.push(ty);
-    }
-    metadata.variables[dec.name] = undefined;
-    metadata.variables[name] = metaVar;
-    dec.mutable = mutable;
-    dec.name = name;
-    if (!exists) dec.__ammName = name;
     stmts.push(dec);
-    // const dec = new Dec(
-    //   ast,
-    //   mutable,
-    //   name,
-    //   ty,
-    //   val,
-    //   exists ? genName() : undefined,
-    // );
-    // metadata.define(dec);
-    // let metaVar = metadata.var(dec.name);
-    // if (metaVar.dec !== dec) {
-    //   throw new Error('oof');
-    // }
-    // metaVar.constraints.push(dec.val.exprTy());
-    // stmts.push(dec);
     return stmts;
   }
 
@@ -437,13 +526,13 @@ export class Dec extends Stmt {
     const name = this.ammName;
     let ty: Builtin;
     try {
-      ty =  this.ty.breakdown();
+      ty = this.ty.breakdown();
     } catch (e) {
       console.log('~~~', this);
       throw e;
     }
     if (this.val instanceof Call) {
-      this.val.inline(amm, name, ty);
+      this.val.inline(amm, name, ty, false);
     } else if (this.val instanceof Lit) {
       // don't copy the global value, just use it whenever this declaration is used
       this.__ammName = amm.global('const', this.val.ty.breakdown(), this.val.val);
@@ -462,6 +551,14 @@ export class FnArg extends Dec {
       return super.val.ammName;
     } else {
       return super.ammName;
+    }
+  }
+
+  set ammName(to: string) {
+    if (super.val === null) {
+      throw new Error(`cannot rename variables that aren't being inlined`);
+    } else {
+      super.ammName = to;
     }
   }
 
@@ -488,8 +585,8 @@ export class FnArg extends Dec {
     }
     const arg = new FnArg(ast, name, argTy);
     metadata.define(arg);
-    const metaVar = metadata.var(arg.name);
-    if (metaVar.dec !== arg) {
+    const dec = metadata.var(arg.name);
+    if (dec !== arg) {
       throw new Error('ugggghhhhh');
     }
     return arg;
@@ -534,11 +631,7 @@ export class Emit extends Stmt {
     }
     const emitRef = emitVal.ref();
     const emit = new Emit(ast, event, emitRef)
-    let metavar = metadata.var(emitRef.dec.name);
-    if (metavar.dec !== emitRef.dec) {
-      throw new Error('uuhhh ohhhh');
-    }
-    metavar.constraints.push(event.eventTy);
+    emit.emitVal.dec.ty.constrain(event.eventTy);
     stmts.push(emit);
     return stmts;
   }

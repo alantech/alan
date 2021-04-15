@@ -3,7 +3,7 @@ import Output from './Amm';
 import Event from './Event';
 import opcodes from './opcodes';
 import Scope from './Scope';
-import Stmt, { Assign, Dec, Emit, Exit, FnArg, MetaData, Ref, VarMD } from './Statement';
+import Stmt, { Assign, Dec, Emit, Exit, FnArg, MetaData, Ref } from './Statement';
 import Type, { Builtin, FunctionType } from './Types';
 import { genName, TODO } from './util';
 
@@ -22,6 +22,10 @@ export default class Fn {
   // not used by this class, but used by Statements
   metadata: MetaData
   fnType: FunctionType
+
+  get argNames(): string[] {
+    return Object.keys(this.args);
+  }
 
   constructor(
     ast: LPNode,
@@ -120,21 +124,21 @@ export default class Fn {
     return this.fnType;
   }
 
-  constraints(argTys: Type[] = []): [VarMD[], Type[]] {
-    let metaVars: VarMD[] = [];
-    for (let varName of Object.keys(this.metadata.variables)) {
-      const original = this.metadata.variables[varName];
-      let metaVar = {
-        dec: original.dec,
-        constraints: [...original.constraints],
-      };
-      if (original.dec instanceof FnArg && this.args[varName]) {
-        metaVar.constraints.push(argTys.shift());
-      }
-      metaVars.push(metaVar);
-    }
-    return [metaVars, this.metadata.retConstraints];
-  }
+  // constraints(argTys: Type[] = []): [[], Type[]] {
+    // let metaVars: VarMD[] = [];
+    // for (let varName of Object.keys(this.metadata.variables)) {
+    //   const original = this.metadata.variables[varName];
+    //   let metaVar = {
+    //     dec: original.dec,
+    //     constraints: [...original.constraints],
+    //   };
+    //   if (original.dec instanceof FnArg && this.args[varName]) {
+    //     metaVar.constraints.push(argTys.shift());
+    //   }
+    //   metaVars.push(metaVar);
+    // }
+    // return [metaVars, this.metadata.retConstraints];
+  // }
 
   asHandler(amm: Output, event: string) {
     let handlerArgs = [];
@@ -166,7 +170,11 @@ export default class Fn {
     }
   }
 
-  inline(amm: Output, args: Ref[]): Stmt | null {
+  // TODO: this will have to change in order to call fns multiple times - maybe deep cloning?
+  inline(amm: Output, args: Ref[], assign: string, isReassign: boolean) {
+    if (isReassign) {
+      TODO('figure out how to do return value rewriting');
+    }
     let argNames = Object.keys(this.args);
     if (argNames.length !== args.length) {
       // this should be caught by Call, it's just a sanity check
@@ -175,28 +183,26 @@ export default class Fn {
     for (let ii = 0; ii < argNames.length; ii++) {
       this.args[argNames[ii]].val = args[ii];
     }
-    // TODO: this will have to change in order to call fns multiple times - maybe deep cloning?
-    let [vars, retConstraints] = this.constraints(args.map(ref => ref.ty));
-    for (let variable of vars) {
-      if (!variable.constraints.every(ty => variable.dec.ty.compatibleWithConstraint(ty))) {
-        throw new Error(`incompatible constraints for variable ${variable.dec}`);
-      }
-    }
-    const retTy: Type = opcodes().get('void');
-    if (!retConstraints.every(ty => retTy.compatibleWithConstraint(ty))) {
-      throw new Error(`expected void return on handler`);
-    }
+    // let [vars, retConstraints] = this.constraints(args.map(ref => ref.ty));
+    // for (let variable of vars) {
+    //   if (!variable.constraints.every(ty => variable.dec.ty.compatibleWithConstraint(ty))) {
+    //     throw new Error(`incompatible constraints for variable ${variable.dec}`);
+    //   }
+    // }
+    // const retTy: Type = opcodes().get('void');
+    // if (!retConstraints.every(ty => retTy.compatibleWithConstraint(ty))) {
+    //   throw new Error(`expected void return on handler`);
+    // }
     for (let ii = 0; ii < this.body.length; ii++) {
       const stmt = this.body[ii];
       if (stmt instanceof Dec || stmt instanceof Assign || stmt instanceof Emit) {
         stmt.inline(amm);
       } else if (stmt instanceof Exit) {
-        return stmt.exitVal;
+        // do nothing: the output value was already assigned
       } else {
         throw new Error(`did not expect to inline stmt: ${stmt}`);
       }
     }
-    return null;
   }
 }
 
@@ -226,5 +232,15 @@ export class OpcodeFn extends Fn {
     }
     super(new NulLP(), __opcodes, name, args, retTy, []);
     __opcodes.put(name, [this]);
+  }
+
+  inline(amm: Output, args: Ref[], assign: string, isReassign: boolean) {
+    amm.assign(
+      isReassign ? '' : 'let',
+      assign,
+      this.retTy.breakdown(),
+      this,
+      args.map(ref => ref.ammName),
+    );
   }
 }

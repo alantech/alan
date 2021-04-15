@@ -1,18 +1,19 @@
-const _69404e75_c0de_4c4a_9c99_b3e0ce9a3fb3: string = "hello, world!"
-const _31875cd6_9675_4a8b_b41a_cdd76c2d2efc: int64 = 0
+const 0: bool = _95165e6b_5f8c_4333_aecd_50601da8bd15
+const 'hello, world!': bool = _c7ce0877_f4d0_466d_8dee_50e3e7d7e92b
+event start: void
 event stdout: string
 event exit: int8
 event stderr: string
-on _start fn (): void {
-  emit stdout _69404e75_c0de_4c4a_9c99_b3e0ce9a3fb3
-  emit exit _31875cd6_9675_4a8b_b41a_cdd76c2d2efc
-}
-on stdout fn (out: string): void {
-  const _568fdfc4_9ef4_4c93_bcc0_79ee1843f8f7: void = stdoutp(out)
-}
-on exit fn (status: int8): void {
-  const _e47c89f9_3f6d_4c7e_8f97_ae417fe5e659: void = exitop(status)
-}
-on stderr fn (err: string): void {
-  const _926cd187_8703_4434_aba2_c3a142a012a1: void = stderrp(err)
-}
+on stderr fn (): void {
+  return _a7e41403_acf7_49d4_b2a0_2855275b488d
+  }
+on exit fn (): void {
+  return _28e734fe_8b94_4945_8a11_2d47912baada
+  }
+on stdout fn (): void {
+  return _f4910e7d_f126_4941_8639_3070ce26707a
+  }
+on start fn (): void {
+  emit stdout _c7ce0877_f4d0_466d_8dee_50e3e7d7e92b
+  emit exit _95165e6b_5f8c_4333_aecd_50601da8bd15
+  }

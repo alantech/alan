@@ -62,6 +62,7 @@ export default abstract class Type {
   }
 
   abstract breakdown(): Builtin;
+  abstract constrain(that: Type): void;
   abstract compatibleWithConstraint(that: Type): boolean;
 }
 
@@ -80,8 +81,17 @@ export class Builtin extends Type {
     return this;
   }
 
+  constrain(that: Type) {
+    // TODO: more complex builtins
+    if (that instanceof Builtin && this !== that) {
+      throw new Error(`type ${this.name} could not be constrained to ${that.name}`);
+    } else if (that instanceof Generated && that.delegate !== null && this !== that.delegate) {
+      throw new Error(`type ${this.name} could not be constrained to ${that.delegate.name}`);
+    }
+  }
+
   compatibleWithConstraint(that: Type): boolean {
-    // TODO: generics, other checks that aren't lazy
+    // TODO: more complex builtins
     return this === that;
   }
 }
@@ -103,6 +113,10 @@ export class FunctionType extends Type {
 
   breakdown(): Builtin {
     return TODO('function types???');
+  }
+
+  constrain(that: Type) {
+    return TODO('?');
   }
 
   compatibleWithConstraint(that: Type): boolean {
@@ -164,12 +178,23 @@ class Struct extends Type {
     return TODO('breakdown structs');
   }
 
+  constrain(that: Type) {
+    if (that instanceof Struct) {
+      // TODO: more complex structs
+      if (this === that) {
+        throw new Error(`incompatible types: ${this.name} cannot be constrained to ${that.name}`);
+      }
+    } else {
+      TODO();
+    }
+  }
+
   compatibleWithConstraint(that: Type): boolean {
     if (that instanceof Struct) {
-      // TODO: generics
+      // TODO: more complex structs
       return this === that;
     } else {
-      TODO()
+      TODO();
     }
   }
 }
@@ -189,8 +214,12 @@ class Interface extends Type {
     return TODO('can interfaces even be broken down? i think not...');
   }
 
+  constrain(that: Type) {
+    return TODO();
+  }
+
   compatibleWithConstraint(that: Type): boolean {
-    return TODO()
+    return TODO();
   }
 }
 
@@ -211,9 +240,16 @@ class Generated extends Type {
     }
   }
 
-  compatibleWithConstraint(that: Type): boolean {
+  constrain(that: Type) {
     if (this.delegate === null) {
       this.delegate = that;
+    } else {
+      this.delegate.constrain(that);
+    }
+  }
+
+  compatibleWithConstraint(that: Type): boolean {
+    if (this.delegate === null) {
       return true;
     } else {
       return this.delegate.compatibleWithConstraint(that);
@@ -240,7 +276,14 @@ class OneOf extends Type {
   }
 
   compatibleWithConstraint(that: Type): boolean {
+    let possibilities = this.possibilities.filter(ty => ty.compatibleWithConstraint(that));
+    return possibilities.length > 0;
+  }
+
+  constrain(that: Type) {
     this.possibilities = this.possibilities.filter(ty => ty.compatibleWithConstraint(that));
-    return this.possibilities.length > 0;
+    if (this.possibilities.length === 0) {
+      throw new Error(`couldn't determine the type`)
+    }
   }
 }
