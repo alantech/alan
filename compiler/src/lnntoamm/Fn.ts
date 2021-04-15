@@ -1,11 +1,10 @@
-import { LPNode, NamedAnd, NamedOr, NulLP } from '../lp';
+import { LPNode, NulLP } from '../lp';
 import Output from './Amm';
-import Event from './Event';
 import opcodes from './opcodes';
 import Scope from './Scope';
 import Stmt, { Assign, Dec, Emit, Exit, FnArg, MetaData, Ref } from './Statement';
-import Type, { Builtin, FunctionType } from './Types';
-import { genName, TODO } from './util';
+import Type, { FunctionType } from './Types';
+import { TODO } from './util';
 
 // the value is null if the type is to be inferred
 export type Args = {[name: string]: FnArg};
@@ -126,22 +125,6 @@ export default class Fn {
     return this.fnType;
   }
 
-  // constraints(argTys: Type[] = []): [[], Type[]] {
-    // let metaVars: VarMD[] = [];
-    // for (let varName of Object.keys(this.metadata.variables)) {
-    //   const original = this.metadata.variables[varName];
-    //   let metaVar = {
-    //     dec: original.dec,
-    //     constraints: [...original.constraints],
-    //   };
-    //   if (original.dec instanceof FnArg && this.args[varName]) {
-    //     metaVar.constraints.push(argTys.shift());
-    //   }
-    //   metaVars.push(metaVar);
-    // }
-    // return [metaVars, this.metadata.retConstraints];
-  // }
-
   asHandler(amm: Output, event: string) {
     let handlerArgs = [];
     for (let arg of Object.keys(this.args)) {
@@ -183,9 +166,6 @@ export default class Fn {
     for (let ii = 0; ii < argNames.length; ii++) {
       this.args[argNames[ii]].val = args[ii];
     }
-    // for (let arg in this.args) {
-    //   console.log('+++ arg:', arg, 'is referenced to', this.args[arg].val)
-    // }
     const last = this.body[this.body.length - 1];
     if (last instanceof Exit && last.exitVal !== null) {
       if (kind === 'const' && last.exitVal.dec.mutable) {
@@ -197,16 +177,6 @@ export default class Fn {
       }
       last.exitVal.dec.ammName = assign;
     }
-    // let [vars, retConstraints] = this.constraints(args.map(ref => ref.ty));
-    // for (let variable of vars) {
-    //   if (!variable.constraints.every(ty => variable.dec.ty.compatibleWithConstraint(ty))) {
-    //     throw new Error(`incompatible constraints for variable ${variable.dec}`);
-    //   }
-    // }
-    // const retTy: Type = opcodes().get('void');
-    // if (!retConstraints.every(ty => retTy.compatibleWithConstraint(ty))) {
-    //   throw new Error(`expected void return on handler`);
-    // }
     for (let ii = 0; ii < this.body.length; ii++) {
       const stmt = this.body[ii];
       if (stmt instanceof Dec || stmt instanceof Assign || stmt instanceof Emit) {

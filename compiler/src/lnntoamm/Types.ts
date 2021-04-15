@@ -47,6 +47,7 @@ export default abstract class Type {
 
   static newBuiltin(name: string, generics: string[]): Type {
     return new Builtin(name);
+    // TODO: this maybe?
     // let genericArgs: GenericArgs = {};
     // generics.forEach(arg => genericArgs[arg] = null);
     // return new Struct(

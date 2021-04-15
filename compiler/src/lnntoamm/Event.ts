@@ -60,40 +60,7 @@ export default class Event {
       if (!(handler instanceof Fn)) {
         throw new Error('Too many possible event handlers');
       }
-      // let [varConstraints, retConstraints] = handler.constraints([this.eventTy]);
-      // for (let {dec, constraints} of varConstraints) {
-      //   if (!constraints.every(con => dec.ty.compatibleWithConstraint(con))) {
-      //     throw new Error(`failed to type-check: declaration ${dec}`);
-      //   }
-      // }
-      // retConstraints.push(opcodes().get('void') as Type);
-      // really tsc????? you're gonna complain that handler could be an array
-      // here but not above? wat?
-      // if (!retConstraints.every(con => (handler as Fn).retTy.compatibleWithConstraint(con))) {
-      //   throw new Error(`failed to type-check: event handler ${handler}`);
-      // }
       handler.asHandler(amm, this.ammName);
     }
   }
-
-  // typeCheck() {
-  //   for (let handler of this.handlers) {
-  //     if (handler instanceof Array) {
-  //       TODO('Event handler selection')
-  //     }
-  //     if (!(handler instanceof Fn)) {
-  //       throw new Error('Too many possible event handlers');
-  //     }
-  //     let [varConstraints, retConstraints] = (handler as Fn).constraints();
-  //     console.log(`------ handler for ${this.name} returns ${retConstraints.map(t => t.name).join(',')}`)
-  //     for (let {dec, constraints} of varConstraints) {
-  //       if (dec ===  null) {
-  //         retConstraints.push(...constraints);
-  //         continue;
-  //       }
-  //       console.log(dec.name, 'is', dec.ty.name, 'constraints:', constraints);
-  //       console.log(`${dec.name} is ${dec.ty.name}, constrained: ${constraints.map(t => t.name).join(',')}`)
-  //     }
-  //   }
-  // }
 }
