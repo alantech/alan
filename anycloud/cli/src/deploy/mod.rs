@@ -84,6 +84,8 @@ pub struct DeployConfig {
   credentialsName: String,
   region: String,
   vmType: String,
+  minReplicas: Option<u32>,
+  maxReplicas: Option<u32>,
 }
 
 #[allow(non_snake_case)]
@@ -93,6 +95,8 @@ pub struct Config {
   region: String,
   cloudProvider: String,
   vmType: String,
+  minReplicas: Option<u32>,
+  maxReplicas: Option<u32>,
 }
 
 #[allow(non_snake_case)]
@@ -524,10 +528,43 @@ pub async fn add_deploy_config() {
       .with_prompt("Virtual machine type")
       .interact_text()
       .unwrap();
+    let min_replicas: Option<u32>;
+    let replicas: String = Input::with_theme(&ColorfulTheme::default())
+      .with_prompt("Minimum number of replicas")
+      .default("1".to_string())
+      .interact_text()
+      .unwrap();
+    if let Ok(replicas) = replicas.parse::<u32>() {
+      min_replicas = Some(replicas);
+    } else {
+      eprintln!("{} is not a valid number of replicas", replicas);
+      std::process::exit(1);
+    }
+    let mut max_replicas = None;
+    let prompt = "Would you like to define a maximum number of replicas for this region?";
+    if Confirm::with_theme(&ColorfulTheme::default())
+      .with_prompt(prompt)
+      .default(false)
+      .interact()
+      .unwrap()
+    {
+      let replicas: String = Input::with_theme(&ColorfulTheme::default())
+        .with_prompt("Maximum number of replicas")
+        .interact_text()
+        .unwrap();
+      if let Ok(replicas) = replicas.parse::<u32>() {
+        max_replicas = Some(replicas);
+      } else {
+        eprintln!("{} is not a valid number of replicas", replicas);
+        std::process::exit(1);
+      }
+    }
     cloud_configs.push(DeployConfig {
       credentialsName: cred,
       vmType: vm_type,
       region,
+      minReplicas: min_replicas,
+      maxReplicas: max_replicas,
     });
     let prompt = if creds.len() > 1 {
       "Do you want to add another region or cloud provider to this Deploy Config?"
@@ -587,10 +624,43 @@ pub async fn edit_deploy_config() {
       .with_initial_text(config.vmType.to_string())
       .interact_text()
       .unwrap();
+    let min_replicas: Option<u32>;
+    let replicas: String = Input::with_theme(&ColorfulTheme::default())
+      .with_prompt("Minimum number of replicas")
+      .default("1".to_string())
+      .interact_text()
+      .unwrap();
+    if let Ok(replicas) = replicas.parse::<u32>() {
+      min_replicas = Some(replicas);
+    } else {
+      eprintln!("{} is not a valid number of replicas", replicas);
+      std::process::exit(1);
+    }
+    let mut max_replicas = None;
+    let prompt = "Would you like to define a maximum number of replicas for this region?";
+    if Confirm::with_theme(&ColorfulTheme::default())
+      .with_prompt(prompt)
+      .default(false)
+      .interact()
+      .unwrap()
+    {
+      let replicas: String = Input::with_theme(&ColorfulTheme::default())
+        .with_prompt("Maximum number of replicas")
+        .interact_text()
+        .unwrap();
+      if let Ok(replicas) = replicas.parse::<u32>() {
+        max_replicas = Some(replicas);
+      } else {
+        eprintln!("{} is not a valid number of replicas", replicas);
+        std::process::exit(1);
+      }
+    }
     new_cloud_configs.push(DeployConfig {
       credentialsName: cred,
       vmType: vm_type,
       region,
+      minReplicas: min_replicas,
+      maxReplicas: max_replicas,
     });
   }
   deploy_configs.insert(config_name.to_string(), new_cloud_configs);
@@ -743,6 +813,8 @@ pub async fn get_config() -> HashMap<String, Vec<Config>> {
         cloudProvider: cred.cloudProvider.to_string(),
         region: deploy_config.region,
         vmType: deploy_config.vmType,
+        minReplicas: deploy_config.minReplicas,
+        maxReplicas: deploy_config.maxReplicas,
       });
     }
     all_configs.insert(deploy_name, configs);
