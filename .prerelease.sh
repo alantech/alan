@@ -35,4 +35,4 @@ cd -
 git add js-runtime/package.json js-runtime/yarn.lock compiler/package.json compiler/yarn.lock avm/Cargo.toml avm/Cargo.lock anycloud/cli/Cargo.toml anycloud/cli/Cargo.lock
 git commit -m "v${VERSION}"
 git push origin $(git branch --show-current)
-gh release create v${VERSION} -p
+gh release create v${VERSION} -t v${VERSION} -n Pre-release --target $(git branch --show-current) -p
