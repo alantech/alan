@@ -18,7 +18,7 @@ async fn get_dockerfile_b64() -> String {
     Ok(pwd) => {
       let dockerfile = read(format!("{}/Dockerfile", pwd.display()));
       if let Err(_) = dockerfile {
-        error!(
+        warn!(
           ErrorType::NoDockerFile,
           "No Dockerfile at {}",
           pwd.display()
@@ -29,7 +29,7 @@ async fn get_dockerfile_b64() -> String {
       return base64::encode(dockerfile.unwrap());
     }
     Err(_) => {
-      error!(
+      warn!(
         ErrorType::InvalidPwd,
         "Current working directory value is invalid"
       )
@@ -47,7 +47,7 @@ async fn get_env_file_b64(env_file_path: String) -> String {
       match env_file {
         Ok(env_file) => base64::encode(env_file),
         Err(_) => {
-          error!(
+          warn!(
             ErrorType::NoEnvFile,
             "No environment file at {}/{}",
             pwd.display(),
@@ -59,7 +59,7 @@ async fn get_env_file_b64(env_file_path: String) -> String {
       }
     }
     Err(_) => {
-      error!(
+      warn!(
         ErrorType::InvalidPwd,
         "Current working directory value is invalid"
       )
@@ -78,7 +78,7 @@ async fn get_app_tar_gz_b64() -> String {
 
   let msg = String::from_utf8(output.stdout).unwrap();
   if msg.contains("M ") {
-    error!(
+    warn!(
       ErrorType::GitChanges,
       "Please stash, commit or .gitignore your changes before deploying and try again:\n\n{}", msg
     )
@@ -96,7 +96,7 @@ async fn get_app_tar_gz_b64() -> String {
     .unwrap();
 
   if output.status.code().unwrap() != 0 {
-    error!(ErrorType::NoGit, "Your code must be managed by git in order to deploy correctly, please run `git init && git commit -am \"Initial commit\"` and try again.").await;
+    warn!(ErrorType::NoGit, "Your code must be managed by git in order to deploy correctly, please run `git init && git commit -am \"Initial commit\"` and try again.").await;
     std::process::exit(output.status.code().unwrap());
   }
 
@@ -106,7 +106,7 @@ async fn get_app_tar_gz_b64() -> String {
   let output = Command::new("rm").arg("app.tar.gz").output().unwrap();
 
   if output.status.code().unwrap() != 0 {
-    error!(
+    warn!(
       ErrorType::DeleteTmpAppTar,
       "Somehow could not delete temporary app.tar.gz file"
     )

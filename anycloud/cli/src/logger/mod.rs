@@ -24,11 +24,24 @@ pub enum ErrorType {
 macro_rules! error {
   ($errCode:expr, $($message:tt)+) => {async{
     eprintln!($($message)+);
-    $crate::deploy::client_error($errCode, &format!($($message)+)).await;
+    $crate::deploy::client_error($errCode, &format!($($message)+), true).await;
   }};
   (metadata: $metadata:tt, $errCode:tt, $($message:tt)+) => {async{
     let value = json!($metadata);
     eprintln!($($message)+);
-    $crate::deploy::client_error($errCode, &format!($($message)+)).await;
+    $crate::deploy::client_error($errCode, &format!($($message)+), true).await;
+  }}
+}
+
+#[macro_export]
+macro_rules! warn {
+  ($errCode:expr, $($message:tt)+) => {async{
+    eprintln!($($message)+);
+    $crate::deploy::client_error($errCode, &format!($($message)+), false).await;
+  }};
+  (metadata: $metadata:tt, $errCode:tt, $($message:tt)+) => {async{
+    let value = json!($metadata);
+    eprintln!($($message)+);
+    $crate::deploy::client_error($errCode, &format!($($message)+), false).await;
   }}
 }
