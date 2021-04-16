@@ -55,6 +55,7 @@ export default class Event {
     }
     for (let handler of this.handlers) {
       if (handler instanceof Array) {
+        // select all of the handlers that accept `this.eventTy` and return `void`.
         return TODO('Event handler selection');
       }
       if (!(handler instanceof Fn)) {

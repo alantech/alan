@@ -22,7 +22,7 @@ export class MetaData {
     this.retConstraints = retConstraints !== null ? retConstraints : [];
   }
 
-  get(name: string): Dec {
+  get(name: string): Dec | null {
     if (!this.variables.hasOwnProperty(name)) {
       return null;
     }
@@ -120,7 +120,6 @@ export default abstract class Stmt {
           stmts.push(...Call.fromAsts(
             callAst,
             varName,
-            next.get('fncall'),
             metadata,
           ));
           ii += 1;
@@ -217,12 +216,11 @@ export class Call extends Stmt {
   static fromAsts(
     wholeAst: LPNode,
     fnName: string,
-    fnCallAst: LPNode,
     metadata: MetaData,
   ): Stmt[] {
     let stmts = [];
 
-    fnCallAst = fnCallAst.get('assignablelist');
+    let fnCallAst = wholeAst.get('fncall').get('assignablelist');
     const argAsts: LPNode[] = [
       fnCallAst.get('assignables'),
       ...fnCallAst.get('cdr').getAll().map(a => a.get('assignables')),
