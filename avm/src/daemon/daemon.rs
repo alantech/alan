@@ -1,10 +1,7 @@
-use std::convert::Infallible;
 use std::env;
 use std::error::Error;
 use std::fs::read;
 use std::io::Read;
-use std::net::TcpStream;
-use std::path::Path;
 
 use anycloud::deploy;
 use anycloud::logger::ErrorType;
@@ -12,18 +9,16 @@ use anycloud::{error, CLUSTER_ID};
 use base64;
 use byteorder::{LittleEndian, ReadBytesExt};
 use flate2::read::GzDecoder;
-use hyper::{Body, Request, Response};
 use once_cell::sync::OnceCell;
 use serde_json::{json, Value};
 use tokio::process::Command;
 use tokio::task;
 use tokio::time::{sleep, Duration};
 
+use crate::daemon::ctrl::ControlPort;
 use crate::daemon::dns::DNS;
-use crate::daemon::lrh::LogRendezvousHash;
 use crate::daemon::stats::{get_v1_stats, VMStatsV1};
-use crate::make_server;
-use crate::vm::http::{HttpConfig, HttpType, HttpsConfig};
+use crate::vm::http::{HttpType, HttpsConfig};
 use crate::vm::run::run;
 
 pub type DaemonResult<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
@@ -126,33 +121,7 @@ async fn post_v1_stats(
   Ok(post_v1("stats", stats_body).await)
 }
 
-async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> {
-  let cluster_secret = CLUSTER_SECRET.get().unwrap();
-  if cluster_secret.is_some() && !req.headers().contains_key(cluster_secret.as_ref().unwrap()) {
-    // If this control port is guarded by a secret string, make sure there's a header with that
-    // secret as the key (we don't care about the value) and abort otherwise
-    Ok(Response::builder().status(500).body("fail".into()).unwrap())
-  } else if TcpStream::connect("127.0.0.1:443").is_err() {
-    // If the Alan HTTPS server has not yet started, mark as a failure
-    Ok(Response::builder().status(500).body("fail".into()).unwrap())
-  } else if Path::new("./Dockerfile").exists()
-    && Path::new("./app.tar.gz").exists()
-    && TcpStream::connect("127.0.0.1:8088").is_err()
-  {
-    // If this is an Anycloud deployment and the child process hasn't started, mark as a failure
-    // TODO: Any way to generalize this so we don't have special logic for Anycloud?
-    Ok(Response::builder().status(500).body("fail".into()).unwrap())
-  } else {
-    // Everything passed, send an ok
-    Ok(Response::builder().status(200).body("ok".into()).unwrap())
-  }
-}
-
-async fn run_agz_b64(
-  agz_b64: &str,
-  priv_key_b64: Option<&str>,
-  cert_b64: Option<&str>,
-) -> DaemonResult<()> {
+async fn run_agz_b64(agz_b64: &str, priv_key_b64: &str, cert_b64: &str) -> DaemonResult<()> {
   let bytes = base64::decode(agz_b64);
   if let Ok(bytes) = bytes {
     let agz = GzDecoder::new(bytes.as_slice());
@@ -161,30 +130,16 @@ async fn run_agz_b64(
     let mut gz = GzDecoder::new(bytes.as_slice());
     let gz_read_i64 = gz.read_i64_into::<LittleEndian>(&mut bytecode);
     if gz_read_i64.is_ok() {
-      if let (Some(priv_key_b64), Some(cert_b64)) = (priv_key_b64, cert_b64) {
-        // Spin up a control port if we can start a secure connection
-        make_server!(
-          HttpType::HTTPS(HttpsConfig {
-            port: 4142, // 4 = A, 1 = L, 2 = N (sideways) => ALAN
-            priv_key_b64: priv_key_b64.to_string(),
-            cert_b64: cert_b64.to_string(),
-          }),
-          control_port
-        );
-        // TODO: return a Result in order to catch the error and log it
-        run(
-          bytecode,
-          HttpType::HTTPS(HttpsConfig {
-            port: 443,
-            priv_key_b64: priv_key_b64.to_string(),
-            cert_b64: cert_b64.to_string(),
-          }),
-        )
-        .await;
-      } else {
-        // TODO: return a Result in order to catch the error and log it
-        run(bytecode, HttpType::HTTP(HttpConfig { port: 80 })).await;
-      }
+      // TODO: return a Result in order to catch the error and log it
+      run(
+        bytecode,
+        HttpType::HTTPS(HttpsConfig {
+          port: 443,
+          priv_key_b64: priv_key_b64.to_string(),
+          cert_b64: cert_b64.to_string(),
+        }),
+      )
+      .await;
     } else {
       return Err("AGZ file appears to be corrupt.".into());
     }
@@ -199,14 +154,15 @@ pub async fn start(
   agz_b64: &str,
   deploy_token: &str,
   domain: &str,
-  priv_key_b64: Option<&str>,
-  cert_b64: Option<&str>,
+  priv_key_b64: &str,
+  cert_b64: &str,
 ) {
   let cluster_id = cluster_id.to_string();
   CLUSTER_ID.set(String::from(&cluster_id)).unwrap();
   let deploy_token = deploy_token.to_string();
   let agzb64 = agz_b64.to_string();
   let domain = domain.to_string();
+  let mut control_port = ControlPort::start(priv_key_b64, cert_b64).await;
   task::spawn(async move {
     let period = Duration::from_secs(60);
     let mut stats = Vec::new();
@@ -216,7 +172,6 @@ pub async fn start(
     let dns = DNS::new(&domain);
     if let (Ok(dns), Ok(self_ip)) = (&dns, &self_ip) {
       loop {
-        sleep(period).await;
         let vms = match dns.get_vms(&cluster_id).await {
           Ok(vms) => vms,
           Err(err) => {
@@ -232,8 +187,8 @@ pub async fn start(
             .iter()
             .map(|vm| vm.private_ip_addr.to_string())
             .collect();
-          let lrh = LogRendezvousHash::new(ips);
-          leader_ip = lrh.get_leader_id().to_string();
+          control_port.update_ips(ips);
+          leader_ip = control_port.get_leader().to_string();
         }
         if leader_ip == self_ip.to_string() {
           match get_v1_stats().await {
@@ -241,7 +196,7 @@ pub async fn start(
             Err(err) => error!(ErrorType::NoStats, "{}", err).await,
           };
         }
-        if stats.len() >= 5 {
+        if stats.len() >= 4 {
           let mut factor = String::from("1");
           let stats_factor = post_v1_stats(stats.to_owned(), &cluster_id, &deploy_token).await;
           stats = Vec::new();
@@ -260,6 +215,8 @@ pub async fn start(
             post_v1_scale(&cluster_id, &agzb64, &deploy_token, &factor).await;
           }
         }
+        control_port.check_cluster_health().await;
+        sleep(period).await;
       }
     } else if let Err(dns_err) = &dns {
       error!(ErrorType::NoDns, "DNS error: {}", dns_err).await;
