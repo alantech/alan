@@ -23,7 +23,7 @@ jobs:
     - name: Invoke workflow in another repo with inputs
       uses: benc-uk/workflow-dispatch@v1
       with:
-        workflow: autoupdate.yml
+        workflow: autoupdate
         repo: alantech/homebrew-core
         token: ${{ secrets.GITHUB_TOKEN }}
         inputs: '{"alan_version": "v0.1.36"}'
