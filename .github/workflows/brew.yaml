@@ -19,11 +19,20 @@ jobs:
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
-    - name: Update homebrew
-      run: |
-        alanversion=v0.1.36 #$(echo ${{github.ref}} | sed "s/refs\/tags\///")
-        curl \
-        -X POST \
-        -H "Accept: application/vnd.github.v3+json" \
-        https://api.github.com/repos/alantech/homebrew-core/actions/workflows/autoupdate.yml/dispatches \
-        -d '{"ref":"main", "inputs": {"alan_version": $alanversion}}'
+
+    - name: Invoke workflow in another repo with inputs
+      uses: benc-uk/workflow-dispatch@v1
+      with:
+        workflow: autoupdate.yml
+        repo: alantech/homebrew-core
+        token: ${{ secrets.GITHUB_TOKEN }}
+        inputs: '{"alan_version": v0.1.36}'
+
+    # - name: Update homebrew
+    #   run: |
+    #     alanversion=v0.1.36 #$(echo ${{github.ref}} | sed "s/refs\/tags\///")
+    #     curl \
+    #     -X POST \
+    #     -H "Accept: application/vnd.github.v3+json" \
+    #     https://api.github.com/repos/alantech/homebrew-core/actions/workflows/autoupdate.yml/dispatches \
+    #     -d '{"ref":"main", "inputs": {"alan_version": $alanversion}}'
