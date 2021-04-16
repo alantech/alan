@@ -26,7 +26,7 @@ jobs:
         workflow: autoupdate.yml
         repo: alantech/homebrew-core
         token: ${{ secrets.GITHUB_TOKEN }}
-        inputs: '{"alan_version": v0.1.36}'
+        inputs: '{"alan_version": "v0.1.36"}'
 
     # - name: Update homebrew
     #   run: |
