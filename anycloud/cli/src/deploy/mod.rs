@@ -528,40 +528,12 @@ pub async fn add_deploy_config() {
       .with_prompt("Virtual machine type")
       .interact_text()
       .unwrap();
-    let replicas: String = Input::with_theme(&ColorfulTheme::default())
-      .with_prompt("Minimum number of replicas")
-      .default("1".to_string())
-      .interact_text()
-      .unwrap();
-    let min_replicas: Option<u32> = Some(replicas.parse::<u32>().unwrap_or_else(|_| {
-      eprintln!("{} is not a valid number of replicas", replicas);
-      std::process::exit(1);
-    }));
-    let mut max_replicas = None;
-    let prompt = "Would you like to define a maximum number of replicas for this region?";
-    if Confirm::with_theme(&ColorfulTheme::default())
-      .with_prompt(prompt)
-      .default(false)
-      .interact()
-      .unwrap()
-    {
-      let replicas: String = Input::with_theme(&ColorfulTheme::default())
-        .with_prompt("Maximum number of replicas")
-        .interact_text()
-        .unwrap();
-      if let Ok(replicas) = replicas.parse::<u32>() {
-        max_replicas = Some(replicas);
-      } else {
-        eprintln!("{} is not a valid number of replicas", replicas);
-        std::process::exit(1);
-      }
-    }
     cloud_configs.push(DeployConfig {
       credentialsName: cred,
       vmType: vm_type,
       region,
-      minReplicas: min_replicas,
-      maxReplicas: max_replicas,
+      minReplicas: None,
+      maxReplicas: None,
     });
     let prompt = if creds.len() > 1 {
       "Do you want to add another region or cloud provider to this Deploy Config?"
@@ -577,6 +549,52 @@ pub async fn add_deploy_config() {
       break;
     }
   }
+  let prompt = if creds.len() > 1 {
+    "Minimum number of replicas per region or cloud"
+  } else {
+    "Minimum number of replicas per region"
+  };
+  let replicas: String = Input::with_theme(&ColorfulTheme::default())
+    .with_prompt(prompt)
+    .default("1".to_string())
+    .interact_text()
+    .unwrap();
+  let min_replicas: Option<u32> = Some(replicas.parse::<u32>().unwrap_or_else(|_| {
+    eprintln!("{} is not a valid number of replicas", replicas);
+    std::process::exit(1);
+  }));
+  let mut max_replicas = None;
+  let prompt = "Would you like to define a maximum number of replicas?";
+  if Confirm::with_theme(&ColorfulTheme::default())
+    .with_prompt(prompt)
+    .default(false)
+    .interact()
+    .unwrap()
+  {
+    let prompt = if creds.len() > 1 {
+      "Maximum number of replicas per region or cloud"
+    } else {
+      "Maximum number of replicas per region"
+    };
+    let replicas: String = Input::with_theme(&ColorfulTheme::default())
+      .with_prompt(prompt)
+      .interact_text()
+      .unwrap();
+    if let Ok(replicas) = replicas.parse::<u32>() {
+      max_replicas = Some(replicas);
+    } else {
+      eprintln!("{} is not a valid number of replicas", replicas);
+      std::process::exit(1);
+    }
+  }
+  cloud_configs = cloud_configs
+    .into_iter()
+    .map(|mut c| {
+      c.minReplicas = min_replicas;
+      c.maxReplicas = max_replicas;
+      c
+    })
+    .collect();
   deploy_configs.insert(name.to_string(), cloud_configs);
   update_anycloud_file(deploy_configs).await;
   println!("Successfully created {} Deploy Config.", style(name).bold());
@@ -621,42 +639,60 @@ pub async fn edit_deploy_config() {
       .with_initial_text(config.vmType.to_string())
       .interact_text()
       .unwrap();
-    let replicas: String = Input::with_theme(&ColorfulTheme::default())
-      .with_prompt("Minimum number of replicas")
-      .default("1".to_string())
-      .interact_text()
-      .unwrap();
-    let min_replicas: Option<u32> = Some(replicas.parse::<u32>().unwrap_or_else(|_| {
-      eprintln!("{} is not a valid number of replicas", replicas);
-      std::process::exit(1);
-    }));
-    let mut max_replicas = None;
-    let prompt = "Would you like to define a maximum number of replicas for this region?";
-    if Confirm::with_theme(&ColorfulTheme::default())
-      .with_prompt(prompt)
-      .default(false)
-      .interact()
-      .unwrap()
-    {
-      let replicas: String = Input::with_theme(&ColorfulTheme::default())
-        .with_prompt("Maximum number of replicas")
-        .interact_text()
-        .unwrap();
-      if let Ok(replicas) = replicas.parse::<u32>() {
-        max_replicas = Some(replicas);
-      } else {
-        eprintln!("{} is not a valid number of replicas", replicas);
-        std::process::exit(1);
-      }
-    }
     new_cloud_configs.push(DeployConfig {
       credentialsName: cred,
       vmType: vm_type,
       region,
-      minReplicas: min_replicas,
-      maxReplicas: max_replicas,
+      minReplicas: None,
+      maxReplicas: None,
     });
   }
+  let prompt = if creds.len() > 1 {
+    "Minimum number of replicas per region or cloud"
+  } else {
+    "Minimum number of replicas per region"
+  };
+  let replicas: String = Input::with_theme(&ColorfulTheme::default())
+    .with_prompt(prompt)
+    .default("1".to_string())
+    .interact_text()
+    .unwrap();
+  let min_replicas: Option<u32> = Some(replicas.parse::<u32>().unwrap_or_else(|_| {
+    eprintln!("{} is not a valid number of replicas", replicas);
+    std::process::exit(1);
+  }));
+  let mut max_replicas = None;
+  let prompt = "Would you like to define a maximum number of replicas?";
+  if Confirm::with_theme(&ColorfulTheme::default())
+    .with_prompt(prompt)
+    .default(false)
+    .interact()
+    .unwrap()
+  {
+    let prompt = if creds.len() > 1 {
+      "Maximum number of replicas per region or cloud"
+    } else {
+      "Maximum number of replicas per region"
+    };
+    let replicas: String = Input::with_theme(&ColorfulTheme::default())
+      .with_prompt(prompt)
+      .interact_text()
+      .unwrap();
+    if let Ok(replicas) = replicas.parse::<u32>() {
+      max_replicas = Some(replicas);
+    } else {
+      eprintln!("{} is not a valid number of replicas", replicas);
+      std::process::exit(1);
+    }
+  }
+  new_cloud_configs = new_cloud_configs
+    .into_iter()
+    .map(|mut c| {
+      c.minReplicas = min_replicas;
+      c.maxReplicas = max_replicas;
+      c
+    })
+    .collect();
   deploy_configs.insert(config_name.to_string(), new_cloud_configs);
   update_anycloud_file(deploy_configs).await;
   println!(
