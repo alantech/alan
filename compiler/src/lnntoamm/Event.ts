@@ -5,7 +5,7 @@ import Scope from "./Scope";
 import Type, { Builtin } from "./Types";
 import { genName, TODO } from "./util";
 
-var allEvents: Event[] = [];
+let allEvents: Event[] = [];
 
 export default class Event {
   ammName: string

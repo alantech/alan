@@ -102,26 +102,12 @@ class Module {
 
     // now we're done with imports, move on to the body
     const body = ast.get('body').getAll();
-
-    // type
     body.filter(r => r.has('types')).forEach(a => module.addTypeAst(a, false));
-
-    // interface
     body.filter(r => r.has('interfaces')).forEach(a => module.addInterfaceAst(a, false));
-
-    // const
     body.filter(r => r.has('constdeclaration')).forEach(a => module.addConstAst(a, false));
-
-    // event
     body.filter(r => r.has('events')).forEach(a => module.addEventAst(a, false));
-
-    // fn
     body.filter(r => r.has('functions')).forEach(a => module.addFnAst(a, false));
-
-    // operator
     body.filter(r => r.has('operatormapping')).forEach(a => module.addOpAst(a, false));
-
-    // export
     body.filter(r => r.has('exportsn')).forEach(node => {
       node = node.get('exportsn').get('exportable');
       if (node.has('ref')) {
@@ -144,8 +130,6 @@ class Module {
         module.addOpAst(node, true);
       }
     });
-
-    // on event handler
     body.filter(r => r.has('handlers')).forEach(a => module.addHandlerAst(a));
 
     return module;

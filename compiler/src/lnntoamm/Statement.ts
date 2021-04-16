@@ -22,15 +22,15 @@ export class MetaData {
     this.retConstraints = retConstraints !== null ? retConstraints : [];
   }
 
-  var(name: string): Dec {
-    if (this.variables[name] == null) {
+  get(name: string): Dec {
+    if (!this.variables.hasOwnProperty(name)) {
       return null;
     }
     return this.variables[name];
   }
 
   define(dec: Dec) {
-    if (this.var(dec.name) !== null) {
+    if (this.get(dec.name) !== null) {
       throw new Error(`Can't redefine value ${dec.name}`);
     }
     this.variables[dec.name] = dec;
@@ -77,7 +77,17 @@ export default abstract class Stmt {
 
     let asts: LPNode[] = ast.getAll().map(a => a.get('withoperators'));
     if (asts.length > 1) TODO('operators');
-    asts = asts.length === 1 ? asts.pop().get('baseassignablelist').getAll().map(a => a.get('baseassignable')) : [];
+    if (asts.length === 1) {
+      asts = asts.pop().get('baseassignablelist').getAll().map(a => {
+        if (a.has('operators')) {
+          TODO('operators');
+        } else {
+          return a.get('baseassignable');
+        }
+      });
+    } else if (asts.length === 0) {
+      asts = [];
+    }
     for (let ii = 0; ii < asts.length; ii++) {
       let work = asts[ii];
       if (work.has('objectliterals')) {
@@ -87,7 +97,7 @@ export default abstract class Stmt {
       } else if (work.has('variable')) {
         const varName = work.get('variable').t;
         if (ii === asts.length - 1) {
-          let dec = metadata.var(varName);
+          let dec = metadata.get(varName);
           if (dec === null) {
             throw new Error(`${varName} not defined`);
           }
@@ -109,7 +119,6 @@ export default abstract class Stmt {
           );
           stmts.push(...Call.fromAsts(
             callAst,
-            // null,
             varName,
             next.get('fncall'),
             metadata,
@@ -131,6 +140,9 @@ export default abstract class Stmt {
       }
     }
 
+    if (stmts.length === 0) {
+      throw new Error(`no statements generated for expression: \`${ast.t.trim()}\``);
+    }
     return stmts;
   }
 }
@@ -152,7 +164,7 @@ export class Assign extends Stmt {
   static fromAssignmentsAst(ast: LPNode, metadata: MetaData): Stmt[] {
     let stmts: Stmt[] = [];
     const name = ast.get('varn').t;
-    const upstream = metadata.var(name);
+    const upstream = metadata.get(name);
     if (upstream === null) {
       throw new Error(`can't assign to ${name}: not found`);
     }
@@ -227,7 +239,6 @@ export class Call extends Stmt {
       } else if (dec instanceof Ref) {
         return stmts.pop() as Ref;
       } else {
-        console.log(dec);
         throw new Error(`got unexpected statement for arg ${a.t.trim()}: ${dec}`);
       }
     });
@@ -423,6 +434,7 @@ export class Cond extends Stmt {
   }
 
   exprTy(): Type {
+    // TODO: if expressions?
     throw new Error(`conditionals can't be used as expressions`);
   }
 
@@ -481,7 +493,7 @@ export class Dec extends Stmt {
     stmts.push(...Stmt.fromAssignables(work.get('assignables'), metadata));
     let dec = stmts.pop();
     if (dec instanceof Dec) {
-      metadata.variables[name] = metadata.var(dec.name);
+      metadata.variables[name] = metadata.get(dec.name);
       metadata.variables[dec.name] = null;
       dec.ty.constrain(ty);
       dec.mutable = mutable;
@@ -524,13 +536,7 @@ export class Dec extends Stmt {
 
   inline(amm: Output) {
     const name = this.ammName;
-    let ty: Builtin;
-    try {
-      ty = this.ty.breakdown();
-    } catch (e) {
-      console.log('~~~', this);
-      throw e;
-    }
+    let ty = this.ty.breakdown();
     if (this.val instanceof Call) {
       const kind = this.mutable ? 'let' : 'const';
       this.val.inline(amm, name, ty, kind);
@@ -579,21 +585,14 @@ export class FnArg extends Dec {
     let typename = ast.get('fulltypename');
     let argTy = Type.getFromTypename(typename, metadata.scope);
     if (argTy === null) {
-      TODO('args with implicit types');
+      argTy = Type.generate();
+      TODO('args with implicit types are not supported yet');
     } else if (!(argTy instanceof Type)) {
       throw new Error(`Function argument is not a valid type: ${typename.t}`);
     }
     const arg = new FnArg(ast, name, argTy);
     metadata.define(arg);
-    const dec = metadata.var(arg.name);
-    if (dec !== arg) {
-      throw new Error('ugggghhhhh');
-    }
     return arg;
-  }
-
-  ammOut(): [string, Builtin] {
-    return TODO('TODO:')
   }
 }
 
@@ -636,22 +635,16 @@ export class Emit extends Stmt {
     return stmts;
   }
 
-  pushAMM(indent: string, output: string) {
-    output.concat(
-      indent,
-      'emit ',
-      this.event.ammName,
-      ' ',
-      this.emitVal.ammName,
-    );
-  }
-
   exprTy(): Type {
     throw new Error(`emits can't be used as expressions`);
   }
 
   inline(amm: Output) {
-    amm.emit(this.event.ammName, this.emitVal.ammName);
+    if (this.event.eventTy !== opcodes().get('void')) {
+      amm.emit(this.event.ammName, this.emitVal.ammName);
+    } else {
+      amm.emit(this.event.ammName);
+    }
   }
 }
 

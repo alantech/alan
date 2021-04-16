@@ -6,7 +6,6 @@ import Stmt, { Assign, Dec, Emit, Exit, FnArg, MetaData, Ref } from './Statement
 import Type, { FunctionType } from './Types';
 import { TODO } from './util';
 
-// the value is null if the type is to be inferred
 export type Args = {[name: string]: FnArg};
 
 export default class Fn {
@@ -39,11 +38,6 @@ export default class Fn {
     this.scope = scope;
     this.name = name;
     this.args = args;
-    for (let argName of Object.keys(this.args)) {
-      if (this.args[argName].ty === null) {
-        this.args[argName].ty = Type.generate();
-      }
-    }
     this.retTy = retTy !== null ? retTy : Type.generate();
     this.body = body;
     this.metadata = metadata !== null ? metadata : new MetaData(scope);
@@ -57,18 +51,16 @@ export default class Fn {
   static fromFunctionsAst(
     ast: LPNode,
     scope: Scope,
-    // metadata: MetaData = null,
   ): Fn {
     // TODO: inheritance
     let metadata = new MetaData(scope);
 
-    let work = ast;
-    const name = work.get('optname').has() ? work.get('optname').get().t : null;
+    const name = ast.get('optname').has() ? ast.get('optname').get().t : null;
     let args: Args = {};
-    if (work.get('optargs').has('arglist')) {
+    if (ast.get('optargs').has('arglist')) {
       let argAsts = [
-        work.get('optargs').get('arglist'),
-        ...work.get('optargs').get('arglist').get('cdr').getAll(),
+        ast.get('optargs').get('arglist'),
+        ...ast.get('optargs').get('arglist').get('cdr').getAll(),
       ];
       argAsts.forEach(argAst => {
         const arg = FnArg.fromArgAst(argAst, metadata)
@@ -76,10 +68,22 @@ export default class Fn {
       });
     }
 
-    const retTy = work.get('optreturntype').has() ? work.get('optreturntype').get().get('fulltypename') : 'void';
+    let retTy: Type;
+    if (ast.get('optreturntype').has()) {
+      const name = ast.get('optreturntype').get().get('fulltypename');
+      retTy = Type.getFromTypename(name, scope);
+      if (retTy === null) {
+        throw new Error(`Type not in scope: ${name.t.trim()}`);
+      }
+    } else {
+      retTy = Type.oneOf([
+        Type.generate(),
+        opcodes().get('void'),
+      ])
+    }
 
     let body = [];
-    let bodyAsts: LPNode | LPNode[] = work.get('fullfunctionbody');
+    let bodyAsts: LPNode | LPNode[] = ast.get('fullfunctionbody');
     if (bodyAsts.has('functionbody')) {
       bodyAsts = bodyAsts.get('functionbody').get('statements').getAll().map(s => s.get('statement'));
       bodyAsts.forEach(ast => body.push(...Stmt.fromAst(ast, metadata)));
@@ -98,7 +102,7 @@ export default class Fn {
       new Scope(scope),
       name,
       args,
-      Type.getFromTypename(retTy, scope),
+      retTy,
       body,
     );
   }
@@ -115,6 +119,7 @@ export default class Fn {
       new Scope(scope),
       null,
       {},
+      // TODO: if expressions will mean that it's not necessarily void...
       opcodes().get('void'),
       body,
       metadata,
@@ -134,7 +139,6 @@ export default class Fn {
     let isReturned = false;
     for (let ii = 0; ii < this.body.length; ii++) {
       const stmt = this.body[ii];
-      // console.log(stmt);
       if (stmt instanceof Dec || stmt instanceof Assign || stmt instanceof Emit) {
         stmt.inline(amm);
       } else if (stmt instanceof Exit) {

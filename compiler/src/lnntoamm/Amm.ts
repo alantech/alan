@@ -112,9 +112,12 @@ export default class Output {
 
   emit(
     eventName: string,
-    val: string,
+    val?: string,
   ) {
-    const line = this.indent.concat('emit ', eventName, ' ', val);
+    let line = this.indent.concat('emit ', eventName);
+    if (val) {
+      line = line.concat(' ', val);
+    }
     DEBUG_MODE_PRINTING && console.log(line);
     this.handlers[0] = this.handlers[0].concat(line.concat('\n'));
   }
