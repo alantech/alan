@@ -787,11 +787,11 @@ pub async fn post_v1(endpoint: &str, mut body: Value) -> Result<String, PostV1Er
   };
 }
 
-pub async fn client_error(err_code: ErrorType, message: &str, is_error: bool) {
+pub async fn client_error(err_code: ErrorType, message: &str, level: &str) {
   let mut body = json!({
     "errorCode": err_code as u64,
     "message": message,
-    "isError": is_error,
+    "level": level,
   });
   if let Some(cluster_id) = CLUSTER_ID.get() {
     body
