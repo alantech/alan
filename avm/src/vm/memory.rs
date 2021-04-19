@@ -4,6 +4,9 @@ use std::sync::Arc;
 
 use protobuf::{Message, ProtobufError, ProtobufResult};
 
+use crate::vm::InvalidState;
+use crate::vm::VMError;
+use crate::vm::VMResult;
 use crate::vm::program::Program;
 use crate::vm::protos;
 
@@ -114,7 +117,7 @@ pub struct HandlerMemory {
 impl HandlerMemory {
   /// Constructs a new HandlerMemory. If given another HandlerMemory it simply adjusts it to the
   /// expected memory needs, otherwise constructs a new one with said memory requirements.
-  pub fn new(payload_mem: Option<Arc<HandlerMemory>>, mem_req: i64) -> Arc<HandlerMemory> {
+  pub fn new(payload_mem: Option<Arc<HandlerMemory>>, mem_req: i64) -> VMResult<Arc<HandlerMemory>> {
     let mut hm = match payload_mem {
       Some(payload) => payload,
       None => Arc::new(HandlerMemory {
@@ -125,9 +128,9 @@ impl HandlerMemory {
       }),
     };
     let handlermemory =
-      Arc::get_mut(&mut hm).expect("Couldn't reserve in HandlerMemory: dangling pointer");
+      Arc::get_mut(&mut hm).ok_or_else(|| VMError::InvalidState(InvalidState::HandMemDanglingPtr))?;
     handlermemory.mems[1].reserve(mem_req as usize);
-    return hm;
+    return Ok(hm);
   }
 
   /// Grabs the relevant data for the event and constructs a new HandlerMemory with that value in
@@ -136,15 +139,15 @@ impl HandlerMemory {
     event_id: i64,
     curr_addr: i64,
     curr_hand_mem: &Arc<HandlerMemory>,
-  ) -> Option<Arc<HandlerMemory>> {
+  ) -> VMResult<Option<Arc<HandlerMemory>>> {
     let pls = Program::global().event_pls.get(&event_id).unwrap().clone();
     return if pls == 0 {
       // no payload, void event
-      None
+      Ok(None)
     } else {
-      let mut hm = HandlerMemory::new(None, 1);
+      let mut hm = HandlerMemory::new(None, 1)?;
       HandlerMemory::transfer(curr_hand_mem, curr_addr, &mut hm, 0);
-      Some(hm)
+      Ok(Some(hm))
     };
   }
 
@@ -748,14 +751,14 @@ impl HandlerMemory {
   }
 
   /// Returns a new HandlerMemory with a read-only reference to HandlerMemory as parent
-  pub fn fork(parent: Arc<HandlerMemory>) -> Arc<HandlerMemory> {
+  pub fn fork(parent: Arc<HandlerMemory>) -> VMResult<Arc<HandlerMemory>> {
     let s = parent.mems.len();
-    let mut hm = HandlerMemory::new(None, 1);
+    let mut hm = HandlerMemory::new(None, 1)?;
     let handmem = Arc::get_mut(&mut hm).expect("somehow a dangling pointer for a brand new HM?");
     handmem.parent = Some(parent);
     handmem.mems.resize(s + 1, Vec::new());
     handmem.mem_addr = s;
-    return hm;
+    return Ok(hm);
   }
 
   /// Joins two HandlerMemory structs back together. Assumes that the passed in handler memory was
@@ -900,17 +903,17 @@ impl HandlerMemory {
   }
 
   /// Returns a HandlerMemory from a new Protobuf HandlerMemory
-  pub fn from_pb(proto_hm: &protos::HandlerMemory::HandlerMemory) -> Arc<HandlerMemory> {
-    let mut hm = HandlerMemory::new(None, 1);
+  pub fn from_pb(proto_hm: &protos::HandlerMemory::HandlerMemory) -> VMResult<Arc<HandlerMemory>> {
+    let mut hm = HandlerMemory::new(None, 1)?;
     let mut hm_mut = Arc::get_mut(&mut hm).expect("unable to get memory handler");
     set_mems_from_pb(&proto_hm, hm_mut);
     set_addr_from_pb(&proto_hm, hm_mut);
     if proto_hm.has_parent() {
       let parent = proto_hm.get_parent();
-      hm_mut.parent = Some(HandlerMemory::from_pb(&parent));
+      hm_mut.parent = Some(HandlerMemory::from_pb(&parent)?);
     }
     hm_mut.mem_addr = proto_hm.get_mem_addr() as usize;
-    hm
+    Ok(hm)
   }
 }
 

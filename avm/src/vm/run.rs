@@ -62,7 +62,7 @@ impl VM {
         None => None,
       };
       // memory frag representing the memory for each handler call
-      let hand_mem = HandlerMemory::new(payload, hand.mem_req);
+      let hand_mem = HandlerMemory::new(payload, hand.mem_req)?;
       frag.spawn(hand_mem);
     }
     Ok(())

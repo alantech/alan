@@ -21,6 +21,8 @@ pub enum VMError {
 
 pub enum InvalidState {
   AlreadyRunning,
+  UnexpectedInstruction(String),
+  HandMemDanglingPtr,
   ShutDown,
   Other(String),
 }
