@@ -4,6 +4,7 @@ use std::io::Read;
 use std::path::Path;
 use std::sync::Arc;
 
+use byteorder::ByteOrder;
 use byteorder::{LittleEndian, ReadBytesExt};
 use flate2::read::GzDecoder;
 use once_cell::sync::OnceCell;
@@ -97,19 +98,18 @@ pub async fn run_file(fp: &str, delete_after_load: bool) -> VMResult<()> {
   let mut bytes = Vec::with_capacity(fsize);
   file.read_to_end(&mut bytes).map_err(VMError::IOError)?;
   let mut gz = GzDecoder::new(bytes.as_slice());
-  let bytecode: Vec<i64> = if gz.header().is_some() {
-    let mut bytecode = Vec::with_capacity((fsize + 7) / 8);
-    gz.read_i64_into::<LittleEndian>(&mut bytecode)
+  if gz.header().is_some() {
+    let mut uncompressed = Vec::with_capacity(fsize * 2);
+    let _bytes_read = gz
+      .read_to_end(&mut uncompressed)
       .map_err(VMError::IOError)?;
-    bytecode
-  } else {
-    let mut bytecode = Vec::with_capacity(fsize);
-    bytes
-      .as_slice()
-      .read_i64_into::<LittleEndian>(&mut bytecode)
-      .map_err(VMError::IOError)?;
-    bytecode
-  };
+    bytes = uncompressed;
+  }
+  let bytecode = bytes
+    .as_slice()
+    .chunks(8)
+    .map(LittleEndian::read_i64)
+    .collect::<Vec<_>>();
   if delete_after_load {
     std::fs::remove_file(Path::new(fp)).map_err(VMError::IOError)?;
   }
