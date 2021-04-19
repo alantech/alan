@@ -18,6 +18,7 @@ pub enum ErrorType {
   ScaleFailed = 120,
   PostFailed = 121,
   RunAgzFailed = 122,
+  NoDaemonProps = 123,
 }
 
 #[macro_export]

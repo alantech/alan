@@ -25,14 +25,15 @@ use crate::vm::run::run;
 pub type DaemonResult<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 pub static CLUSTER_SECRET: OnceCell<Option<String>> = OnceCell::new();
+pub static DAEMON_PROPS: OnceCell<DaemonProperties> = OnceCell::new();
 
 #[allow(non_snake_case)]
 #[derive(Deserialize, Debug, Serialize)]
 pub struct DaemonProperties {
-  clusterId: String,
-  agzB64: String,
-  deployToken: String,
-  domain: String,
+  pub clusterId: String,
+  pub agzB64: String,
+  pub deployToken: String,
+  pub domain: String,
 }
 
 #[cfg(target_os = "linux")]
@@ -131,27 +132,42 @@ async fn post_v1_stats(
   Ok(post_v1("stats", stats_body).await)
 }
 
-async fn run_agz_b64(agz_b64: &str, priv_key_b64: &str, cert_b64: &str) -> DaemonResult<()> {
+async fn run_agz_b64(agz_b64: &str) -> DaemonResult<()> {
   let bytes = base64::decode(agz_b64);
   if let Ok(bytes) = bytes {
-    let agz = GzDecoder::new(bytes.as_slice());
-    let count = agz.bytes().count();
-    let mut bytecode = vec![0; count / 8];
-    let mut gz = GzDecoder::new(bytes.as_slice());
-    let gz_read_i64 = gz.read_i64_into::<LittleEndian>(&mut bytecode);
-    if gz_read_i64.is_ok() {
-      // TODO: return a Result in order to catch the error and log it
-      run(
-        bytecode,
-        HttpType::HTTPS(HttpsConfig {
-          port: 443,
-          priv_key_b64: priv_key_b64.to_string(),
-          cert_b64: cert_b64.to_string(),
-        }),
-      )
-      .await;
-    } else {
-      return Err("AGZ file appears to be corrupt.".into());
+    let pwd = env::current_dir();
+    match pwd {
+      Ok(pwd) => {
+        let priv_key_b64 = read(format!("{}/priv_key_b64", pwd.display()));
+        let cert_b64 = read(format!("{}/cert_b64", pwd.display()));
+        if let (Ok(priv_key_b64), Ok(cert_b64)) = (priv_key_b64, cert_b64) {
+          let agz = GzDecoder::new(bytes.as_slice());
+          let count = agz.bytes().count();
+          let mut bytecode = vec![0; count / 8];
+          let mut gz = GzDecoder::new(bytes.as_slice());
+
+          let gz_read_i64 = gz.read_i64_into::<LittleEndian>(&mut bytecode);
+          if gz_read_i64.is_ok() {
+            // TODO: return a Result in order to catch the error and log it
+            run(
+              bytecode,
+              HttpType::HTTPS(HttpsConfig {
+                port: 443,
+                priv_key_b64: base64::encode(priv_key_b64),
+                cert_b64: base64::encode(cert_b64),
+              }),
+            )
+            .await;
+          } else {
+            return Err("AGZ file appears to be corrupt.".into());
+          }
+        }
+      }
+      Err(err) => {
+        let err = format!("{:?}", err);
+        error!(ErrorType::RunAgzFailed, "{:?}", err).await;
+        return Err(err.into());
+      }
     }
   } else {
     return Err("AGZ payload not properly base64-encoded.".into());
@@ -159,93 +175,103 @@ async fn run_agz_b64(agz_b64: &str, priv_key_b64: &str, cert_b64: &str) -> Daemo
   Ok(())
 }
 
-// pub async fn set_up(
-//   priv_key_b64: &str,
-//   cert_b64: &str,
-// ) {
-//   // Start control pott with uninitialized state
-//   ControlPort::start(priv_key_b64, cert_b64).await;
-// }
-
-pub async fn start(
-  cluster_id: &str,
-  agz_b64: &str,
-  deploy_token: &str,
-  domain: &str,
-  priv_key_b64: &str,
-  cert_b64: &str,
-) {
-  let cluster_id = cluster_id.to_string();
-  CLUSTER_ID.set(String::from(&cluster_id)).unwrap();
-  let deploy_token = deploy_token.to_string();
-  let agzb64 = agz_b64.to_string();
-  let domain = domain.to_string();
+pub async fn start(priv_key_b64: &str, cert_b64: &str) {
   let mut control_port = ControlPort::start(priv_key_b64, cert_b64).await;
-  task::spawn(async move {
-    let period = Duration::from_secs(60);
-    let mut stats = Vec::new();
-    let mut cluster_size = 0;
-    let mut leader_ip = String::new();
-    let self_ip = get_private_ip().await;
-    let dns = DNS::new(&domain);
-    if let (Ok(dns), Ok(self_ip)) = (&dns, &self_ip) {
-      loop {
-        let vms = match dns.get_vms(&cluster_id).await {
-          Ok(vms) => vms,
-          Err(err) => {
-            error!(ErrorType::NoDnsVms, "{}", err).await;
-            Vec::new()
-          }
-        };
-        // triggered the first time since cluster_size == 0
-        // and every time the cluster changes size
-        if vms.len() != cluster_size {
-          cluster_size = vms.len();
-          let ips = vms
-            .iter()
-            .map(|vm| vm.private_ip_addr.to_string())
-            .collect();
-          control_port.update_ips(ips);
-          leader_ip = control_port.get_leader().to_string();
+  let self_ip = get_private_ip().await;
+  match get_private_ip().await {
+    Ok(self_ip) => {
+      let mut daemon_props: Option<&DaemonProperties> = None;
+      let duration = Duration::from_secs(10);
+      let mut counter: u8 = 30;
+      // Check every 10s over 5 min if props are ready
+      while counter < 30 && daemon_props.is_none() {
+        // Request to props ready
+        if let Some(props) = DAEMON_PROPS.get() {
+          daemon_props = Some(props);
         }
-        if leader_ip == self_ip.to_string() {
-          match get_v1_stats().await {
-            Ok(s) => stats.push(s),
-            Err(err) => error!(ErrorType::NoStats, "{}", err).await,
-          };
-        }
-        if stats.len() >= 4 {
-          let mut factor = String::from("1");
-          let stats_factor = post_v1_stats(stats.to_owned(), &cluster_id, &deploy_token).await;
-          stats = Vec::new();
-          if let Ok(stats_factor) = stats_factor {
-            factor = stats_factor;
-          } else if let Err(err) = stats_factor {
-            error!(ErrorType::PostFailed, "{}", err).await;
-          }
-          println!(
-            "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
-            cluster_id,
-            vms.len(),
-            factor
-          );
-          if factor != "1" {
-            post_v1_scale(&cluster_id, &agzb64, &deploy_token, &factor).await;
-          }
-        }
-        control_port.check_cluster_health().await;
-        sleep(period).await;
+        counter += 1;
+        sleep(duration).await;
       }
-    } else if let Err(dns_err) = &dns {
-      error!(ErrorType::NoDns, "DNS error: {}", dns_err).await;
-      panic!("DNS error: {}", dns_err);
-    } else if let Err(self_ip_err) = &self_ip {
+      if let Some(daemon_props) = daemon_props {
+        let cluster_id = &daemon_props.clusterId;
+        CLUSTER_ID.set(String::from(cluster_id)).unwrap();
+        let cluster_id = &daemon_props.clusterId;
+        let domain = &daemon_props.domain;
+        let deploy_token = &daemon_props.deployToken;
+        let agz_b64 = &daemon_props.agzB64;
+        task::spawn(async move {
+          let period = Duration::from_secs(60);
+          let mut stats = Vec::new();
+          let mut cluster_size = 0;
+          let mut leader_ip = String::new();
+          let dns = DNS::new(&domain);
+          if let Ok(dns) = &dns {
+            loop {
+              let vms = match dns.get_vms(&cluster_id).await {
+                Ok(vms) => vms,
+                Err(err) => {
+                  error!(ErrorType::NoDnsVms, "{}", err).await;
+                  Vec::new()
+                }
+              };
+              // triggered the first time since cluster_size == 0
+              // and every time the cluster changes size
+              if vms.len() != cluster_size {
+                cluster_size = vms.len();
+                let ips = vms
+                  .iter()
+                  .map(|vm| vm.private_ip_addr.to_string())
+                  .collect();
+                control_port.update_ips(ips);
+                leader_ip = control_port.get_leader().to_string();
+              }
+              if leader_ip == self_ip.to_string() {
+                match get_v1_stats().await {
+                  Ok(s) => stats.push(s),
+                  Err(err) => error!(ErrorType::NoStats, "{}", err).await,
+                };
+              }
+              if stats.len() >= 4 {
+                let mut factor = String::from("1");
+                let stats_factor =
+                  post_v1_stats(stats.to_owned(), &cluster_id, &deploy_token).await;
+                stats = Vec::new();
+                if let Ok(stats_factor) = stats_factor {
+                  factor = stats_factor;
+                } else if let Err(err) = stats_factor {
+                  error!(ErrorType::PostFailed, "{}", err).await;
+                }
+                println!(
+                  "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
+                  cluster_id,
+                  vms.len(),
+                  factor
+                );
+                if factor != "1" {
+                  post_v1_scale(&cluster_id, &agz_b64, &deploy_token, &factor).await;
+                }
+              }
+              control_port.check_cluster_health().await;
+              sleep(period).await;
+            }
+          } else if let Err(dns_err) = &dns {
+            error!(ErrorType::NoDns, "DNS error: {}", dns_err).await;
+            panic!("DNS error: {}", dns_err);
+          }
+        });
+        if let Err(err) = run_agz_b64(&agz_b64).await {
+          error!(ErrorType::RunAgzFailed, "{:?}", err).await;
+          panic!("{:?}", err);
+        }
+      } else {
+        let msg = "No daemon properties defined";
+        error!(ErrorType::NoDaemonProps, "{}", msg).await;
+        panic!("{}", msg);
+      }
+    }
+    Err(self_ip_err) => {
       error!(ErrorType::NoPrivateIp, "Private ip error: {}", self_ip_err).await;
       panic!("Private ip error: {}", self_ip_err);
     }
-  });
-  if let Err(err) = run_agz_b64(agz_b64, priv_key_b64, cert_b64).await {
-    error!(ErrorType::RunAgzFailed, "{:?}", err).await;
-    panic!("{:?}", err);
   }
 }

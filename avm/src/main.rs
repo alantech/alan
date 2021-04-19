@@ -103,10 +103,6 @@ fn main() {
     )
     .subcommand(SubCommand::with_name("daemon")
       .about("Run an .agz file in daemon mode. Used on deploy within cloud provider VMs.")
-      .arg_from_usage("<APP_ID> 'Specifies the alan app to upgrade'")
-      .arg_from_usage("<AGZ_B64> 'Specifies the .agz program as a base64 encoded string'")
-      .arg_from_usage("<DEPLOY_TOKEN> 'Specifies the deploy token'")
-      .arg_from_usage("<DOMAIN> 'Specifies the application domain'")
       .arg_from_usage("<PRIVATE_KEY> -k, --private-key=<PRIV_KEY_B64> 'A base64 encoded private key for HTTPS mode'")
       .arg_from_usage("<CERT_B64> -c, --certificate=<CERT_B64> 'A base64 encoded certificate for HTTPS mode'")
       .arg_from_usage("<CLUSTER_SECRET> -s, --cluster-secret=<CLUSTER_SECRET> 'A secret string to constrain access to the control port'")
@@ -190,25 +186,13 @@ fn main() {
         }
       }
       ("daemon", Some(matches)) => {
-        let app_id = matches.value_of("APP_ID").unwrap();
-        let agz_b64 = matches.value_of("AGZ_B64").unwrap();
-        let deploy_token = matches.value_of("DEPLOY_TOKEN").unwrap();
-        let domain = matches.value_of("DOMAIN").unwrap();
         let priv_key_b64 = matches.value_of("PRIVATE_KEY").unwrap();
         let cert_b64 = matches.value_of("CERT_B64").unwrap();
         let cluster_secret = matches.value_of("CLUSTER_SECRET").unwrap();
         CLUSTER_SECRET
           .set(Some(cluster_secret.to_string()))
           .unwrap();
-        start(
-          app_id,
-          agz_b64,
-          deploy_token,
-          domain,
-          priv_key_b64,
-          cert_b64,
-        )
-        .await;
+        start(priv_key_b64, cert_b64).await;
       }
       _ => {
         // AppSettings::SubcommandRequiredElseHelp does not cut it here

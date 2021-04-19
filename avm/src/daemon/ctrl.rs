@@ -18,7 +18,7 @@ use once_cell::sync::OnceCell;
 use rustls::ClientConfig;
 use twox_hash::XxHash64;
 
-use crate::daemon::daemon::{DaemonProperties, CLUSTER_SECRET};
+use crate::daemon::daemon::{DaemonProperties, CLUSTER_SECRET, DAEMON_PROPS};
 use crate::make_server;
 use crate::vm::http::{HttpType, HttpsConfig};
 
@@ -163,7 +163,14 @@ async fn handle_start(req: Request<Body>) -> Result<(), Box<dyn Error>> {
   let bytes = body::to_bytes(req.into_body()).await?;
   let body: DaemonProperties = serde_json::from_slice(&bytes).unwrap();
   println!("{:?}", body);
-  // start(req).await;
+  DAEMON_PROPS
+    .set(DaemonProperties {
+      clusterId: body.clusterId,
+      agzB64: body.agzB64,
+      deployToken: body.deployToken,
+      domain: body.domain,
+    })
+    .unwrap();
   Ok(())
 }
 
