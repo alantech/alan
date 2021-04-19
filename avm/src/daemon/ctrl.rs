@@ -143,7 +143,7 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
         Ok(Response::builder().status(200).body("ok".into()).unwrap())
       }
     } else if ctrl_port_initialized.is_none() && req.uri().path() == "/start" {
-      // Receive POST and start machine
+      // Receive POST and save daemon properties
       match handle_start(req).await {
         Ok(_) => {
           CTRL_PORT_INITIALIZED.set(true).unwrap();
