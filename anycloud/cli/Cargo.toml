@@ -5,7 +5,7 @@ license = "Apache-2.0"
 homepage = "https://github.com/alantech/anycloud"
 documentation = "https://alantech.gitbook.io/anycloud"
 repository = "https://github.com/alantech/anycloud"
-version = "0.1.37-beta10"
+version = "0.1.37-beta9"
 authors = ["Luis de Pombo <luis@alantechnologies.com>", "David Ellis <david@alantechnologies.com>"]
 edition = "2018"
 
