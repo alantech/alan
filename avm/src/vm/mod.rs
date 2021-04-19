@@ -25,15 +25,13 @@ pub enum VMError {
 impl Display for VMError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
-      VMError::FileNotFound(path) => write!(f, "file not found: {}", path),
-      VMError::InvalidFile(reason) => write!(f, "file is invalid: {}", reason),
+      VMError::FileNotFound(path) => writeln!(f, "File not found: {}", path),
+      VMError::InvalidFile(reason) => writeln!(f, "File is invalid: {}", reason),
       VMError::IOError(err) => err.fmt(f),
-      VMError::InvalidState(InvalidState::AlreadyRunning) => write!(f, ""),
-      VMError::InvalidState(InvalidState::UnexpectedInstruction(expected)) => write!(f, ""),
-      VMError::InvalidState(InvalidState::HandMemDanglingPtr) => write!(f, ""),
-      VMError::InvalidState(InvalidState::ShutDown) => write!(f, ""),
-      VMError::InvalidState(InvalidState::Other(reason)) => write!(f, ""),
-      VMError::EventNotDefined(_) => write!(f, ""),
+      VMError::InvalidState(state) => writeln!(f, "Invalid AVM state: {}", state),
+      VMError::EventNotDefined(event_id) => {
+        writeln!(f, "Event with event id {} is not defined", event_id)
+      }
     }
   }
 }
@@ -49,9 +47,31 @@ pub enum InvalidState {
   Other(String),
 }
 
+impl Display for InvalidState {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    match self {
+      InvalidState::AlreadyRunning => write!(f, "another AVM instance is already running"),
+      InvalidState::UnexpectedInstruction(InstrType::CPU) => {
+        write!(f, "expected another CPU instruction")
+      }
+      InvalidState::UnexpectedInstruction(InstrType::IO) => {
+        write!(f, "expected another IO instruction")
+      }
+      InvalidState::UnexpectedInstruction(InstrType::UnpredictableCPU) => {
+        write!(f, "expected another unpredictable CPU instruction")
+      }
+      InvalidState::HandMemDanglingPtr => {
+        write!(f, "there is a dangling pointer to a HandlerMemory")
+      }
+      InvalidState::ShutDown => write!(f, "the AVM has been shut down"),
+      InvalidState::Other(reason) => reason.fmt(f),
+    }
+  }
+}
+
 #[derive(Debug)]
 pub enum InstrType {
-  IO,
   CPU,
+  IO,
   UnpredictableCPU,
 }

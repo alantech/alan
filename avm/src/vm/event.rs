@@ -250,7 +250,7 @@ impl HandlerFragment {
       return func(op.args.clone(), hand_mem).await;
     } else {
       return Err(VMError::InvalidState(InvalidState::UnexpectedInstruction(
-        InstrType::CPU,
+        InstrType::UnpredictableCPU,
       )));
     }
   }
