@@ -10,6 +10,7 @@ use base64;
 use byteorder::{LittleEndian, ReadBytesExt};
 use flate2::read::GzDecoder;
 use once_cell::sync::OnceCell;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::process::Command;
 use tokio::task;
@@ -24,6 +25,15 @@ use crate::vm::run::run;
 pub type DaemonResult<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 pub static CLUSTER_SECRET: OnceCell<Option<String>> = OnceCell::new();
+
+#[allow(non_snake_case)]
+#[derive(Deserialize, Debug, Serialize)]
+pub struct DaemonProperties {
+  clusterId: String,
+  agzB64: String,
+  deployToken: String,
+  domain: String,
+}
 
 #[cfg(target_os = "linux")]
 async fn get_private_ip() -> DaemonResult<String> {
@@ -148,6 +158,14 @@ async fn run_agz_b64(agz_b64: &str, priv_key_b64: &str, cert_b64: &str) -> Daemo
   }
   Ok(())
 }
+
+// pub async fn set_up(
+//   priv_key_b64: &str,
+//   cert_b64: &str,
+// ) {
+//   // Start control pott with uninitialized state
+//   ControlPort::start(priv_key_b64, cert_b64).await;
+// }
 
 pub async fn start(
   cluster_id: &str,

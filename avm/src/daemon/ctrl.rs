@@ -1,21 +1,28 @@
 use std::convert::Infallible;
+use std::error::Error;
 use std::hash::Hasher;
 use std::net::TcpStream;
 use std::path::Path;
 use std::sync::Arc;
 
+use anycloud::logger::ErrorType;
+use anycloud::warn;
 use futures::future::join_all;
 use hyper::{
+  body,
   client::{Client, HttpConnector},
   Body, Request, Response,
 };
 use hyper_rustls::HttpsConnector;
+use once_cell::sync::OnceCell;
 use rustls::ClientConfig;
 use twox_hash::XxHash64;
 
-use crate::daemon::daemon::CLUSTER_SECRET;
+use crate::daemon::daemon::{DaemonProperties, CLUSTER_SECRET};
 use crate::make_server;
 use crate::vm::http::{HttpType, HttpsConfig};
+
+static CTRL_PORT_INITIALIZED: OnceCell<bool> = OnceCell::new();
 
 #[derive(Debug)]
 pub struct HashedId {
@@ -104,24 +111,60 @@ pub struct ControlPort {
 
 async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> {
   let cluster_secret = CLUSTER_SECRET.get().unwrap();
+  let ctrl_port_initialized = CTRL_PORT_INITIALIZED.get();
+  warn!(
+    ErrorType::RunAgzFailed,
+    "Control port test. Current uri: {}. current req: {:?}",
+    req.uri().path(),
+    req
+  )
+  .await;
   if cluster_secret.is_some() && !req.headers().contains_key(cluster_secret.as_ref().unwrap()) {
     // If this control port is guarded by a secret string, make sure there's a header with that
     // secret as the key (we don't care about the value) and abort otherwise
     Ok(Response::builder().status(500).body("fail".into()).unwrap())
-  } else if TcpStream::connect("127.0.0.1:443").is_err() {
-    // If the Alan HTTPS server has not yet started, mark as a failure
-    Ok(Response::builder().status(500).body("fail".into()).unwrap())
-  } else if Path::new("./Dockerfile").exists()
-    && Path::new("./app.tar.gz").exists()
-    && TcpStream::connect("127.0.0.1:8088").is_err()
-  {
-    // If this is an Anycloud deployment and the child process hasn't started, mark as a failure
-    // TODO: Any way to generalize this so we don't have special logic for Anycloud?
-    Ok(Response::builder().status(500).body("fail".into()).unwrap())
   } else {
-    // Everything passed, send an ok
-    Ok(Response::builder().status(200).body("ok".into()).unwrap())
+    if ctrl_port_initialized.is_none() && req.uri().path() == "/ping" {
+      // Control port listening but with uninitialized state. Waiting to start daemon
+      Ok(Response::builder().status(200).body("pong".into()).unwrap())
+    } else if ctrl_port_initialized.is_some() && req.uri().path() == "/status" {
+      if TcpStream::connect("127.0.0.1:443").is_err() {
+        // If the Alan HTTPS server has not yet started, mark as a failure
+        Ok(Response::builder().status(500).body("fail".into()).unwrap())
+      } else if Path::new("./Dockerfile").exists()
+        && Path::new("./app.tar.gz").exists()
+        && TcpStream::connect("127.0.0.1:8088").is_err()
+      {
+        // If this is an Anycloud deployment and the child process hasn't started, mark as a failure
+        // TODO: Any way to generalize this so we don't have special logic for Anycloud?
+        Ok(Response::builder().status(500).body("fail".into()).unwrap())
+      } else {
+        // Everything passed, send an ok
+        Ok(Response::builder().status(200).body("ok".into()).unwrap())
+      }
+    } else if ctrl_port_initialized.is_none() && req.uri().path() == "/start" {
+      // Receive POST and start machine
+      match handle_start(req).await {
+        Ok(_) => {
+          CTRL_PORT_INITIALIZED.set(true).unwrap();
+          Ok(Response::builder().status(200).body("ok".into()).unwrap())
+        }
+        Err(_) => Ok(Response::builder().status(500).body("fail".into()).unwrap()),
+      }
+    } else if ctrl_port_initialized.is_none() {
+      Ok(Response::builder().status(500).body("fail".into()).unwrap())
+    } else {
+      Ok(Response::builder().status(404).body("fail".into()).unwrap())
+    }
   }
+}
+
+async fn handle_start(req: Request<Body>) -> Result<(), Box<dyn Error>> {
+  let bytes = body::to_bytes(req.into_body()).await?;
+  let body: DaemonProperties = serde_json::from_slice(&bytes).unwrap();
+  println!("{:?}", body);
+  // start(req).await;
+  Ok(())
 }
 
 mod naive {
