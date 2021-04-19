@@ -30,8 +30,8 @@ compiler-browser-check:
 	cd compiler && ../node_modules/.bin/pkg --targets host .
 
 ./avm/target/release/alan: compiler/alan-compile
-	cd avm && cargo fmt
 	cd avm && cargo build --release
+	cd avm && cargo fmt
 
 ./anycloud/cli/target/release/anycloud: compiler/alan-compile
 	cd anycloud/cli && cargo fmt
@@ -68,6 +68,6 @@ uninstall:
 version:
 	./.version.sh $(version)
 
-.PHONY: prerelease 
+.PHONY: prerelease
 prerelease:
 	./.prerelease.sh $(version)

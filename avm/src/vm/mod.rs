@@ -8,3 +8,19 @@ pub mod program;
 pub mod protos;
 pub mod run;
 pub mod telemetry;
+
+pub type VMResult<T> = Result<T, VMError>;
+
+pub enum VMError {
+  FileNotFound(String), // path
+  InvalidFile(String),  // reason
+  IOError(std::io::Error),
+  InvalidState(InvalidState), // reason
+  EventNotDefined(i64),
+}
+
+pub enum InvalidState {
+  AlreadyRunning,
+  ShutDown,
+  Other(String),
+}
