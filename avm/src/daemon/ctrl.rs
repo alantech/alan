@@ -1,12 +1,14 @@
 use std::convert::Infallible;
+use std::env;
 use std::error::Error;
+use std::fs::write;
 use std::hash::Hasher;
 use std::net::TcpStream;
 use std::path::Path;
 use std::sync::Arc;
 
 use anycloud::logger::ErrorType;
-use anycloud::warn;
+use anycloud::{error, warn};
 use futures::future::join_all;
 use hyper::{
   body,
@@ -162,13 +164,43 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
 async fn handle_start(req: Request<Body>) -> Result<(), Box<dyn Error>> {
   let bytes = body::to_bytes(req.into_body()).await?;
   let body: DaemonProperties = serde_json::from_slice(&bytes).unwrap();
-  println!("{:?}", body);
+  let pwd = env::current_dir();
+  match pwd {
+    Ok(pwd) => {
+      if let Some(dockerfile_b64) = &body.dockerfileB64 {
+        write(
+          format!("{}/Dockerfile", pwd.display()),
+          base64::decode(dockerfile_b64).unwrap(),
+        )?;
+      }
+      if let Some(app_tar_gz_b64) = &body.appTarGzB64 {
+        write(
+          format!("{}/app.tar.gz", pwd.display()),
+          base64::decode(app_tar_gz_b64).unwrap(),
+        )?;
+      }
+      if let Some(env_b64) = &body.envB64 {
+        write(
+          format!("{}/anycloud.env", pwd.display()),
+          base64::decode(env_b64).unwrap(),
+        )?;
+      }
+    }
+    Err(err) => {
+      let err = format!("{:?}", err);
+      error!(ErrorType::DaemonStart, "{:?}", err).await;
+      return Err(err.into());
+    }
+  }
   DAEMON_PROPS
     .set(DaemonProperties {
       clusterId: body.clusterId,
       agzB64: body.agzB64,
       deployToken: body.deployToken,
       domain: body.domain,
+      dockerfileB64: body.dockerfileB64,
+      appTarGzB64: body.appTarGzB64,
+      envB64: body.envB64,
     })
     .unwrap();
   Ok(())
