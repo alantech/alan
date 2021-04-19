@@ -127,7 +127,7 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
     if ctrl_port_initialized.is_none() && req.uri().path() == "/ping" {
       // Control port listening but with uninitialized state. Waiting to start daemon
       Ok(Response::builder().status(200).body("pong".into()).unwrap())
-    } else if ctrl_port_initialized.is_some() && req.uri().path() == "/status" {
+    } else if ctrl_port_initialized.is_some() && req.uri().path() == "/health" {
       if TcpStream::connect("127.0.0.1:443").is_err() {
         // If the Alan HTTPS server has not yet started, mark as a failure
         Ok(Response::builder().status(500).body("fail".into()).unwrap())
@@ -224,7 +224,7 @@ impl ControlPort {
     for node in nodes.iter() {
       let mut req = Request::builder()
         .method("GET")
-        .uri(format!("https://{}:4142/", node.id));
+        .uri(format!("https://{}:4142/health", node.id));
       req = req.header(cluster_secret.as_str(), "true");
       health.push(self.client.request(req.body(Body::empty()).unwrap()));
     }
