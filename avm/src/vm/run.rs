@@ -97,16 +97,19 @@ pub async fn run_file(fp: &str, delete_after_load: bool) -> VMResult<()> {
   let mut bytes = Vec::with_capacity(fsize);
   file.read_to_end(&mut bytes).map_err(VMError::IOError)?;
   let mut gz = GzDecoder::new(bytes.as_slice());
-  let mut bytecode = Vec::with_capacity((fsize + 7) / 8);
-  if gz.header().is_some() {
+  let bytecode: Vec<i64> = if gz.header().is_some() {
+    let mut bytecode = Vec::with_capacity((fsize + 7) / 8);
     gz.read_i64_into::<LittleEndian>(&mut bytecode)
       .map_err(VMError::IOError)?;
+    bytecode
   } else {
+    let mut bytecode = Vec::with_capacity(fsize);
     bytes
       .as_slice()
       .read_i64_into::<LittleEndian>(&mut bytecode)
       .map_err(VMError::IOError)?;
-  }
+    bytecode
+  };
   if delete_after_load {
     std::fs::remove_file(Path::new(fp)).map_err(VMError::IOError)?;
   }
