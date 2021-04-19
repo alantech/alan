@@ -2,8 +2,6 @@ use std::convert::TryInto;
 use std::str;
 use std::sync::Arc;
 
-use protobuf::{Message, ProtobufError, ProtobufResult};
-
 use crate::vm::program::Program;
 use crate::vm::protos;
 use crate::vm::InvalidState;
@@ -163,10 +161,6 @@ impl HandlerMemory {
     let hm = Arc::get_mut(&mut self).expect("unable to drop parent HM: dangling pointer");
     hm.parent.take();
     self
-  }
-
-  pub(crate) async fn drop_parent_async(self: Arc<HandlerMemory>) -> Arc<HandlerMemory> {
-    self.drop_parent()
   }
 
   /// Returns true if the idxs are valid in self

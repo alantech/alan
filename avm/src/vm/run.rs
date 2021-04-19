@@ -5,7 +5,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use byteorder::ByteOrder;
-use byteorder::{LittleEndian, ReadBytesExt};
+use byteorder::LittleEndian;
 use flate2::read::GzDecoder;
 use once_cell::sync::OnceCell;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};

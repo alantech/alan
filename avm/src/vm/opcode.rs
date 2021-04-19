@@ -1,6 +1,5 @@
-use futures::future::{join_all, FutureExt};
+use futures::future::join_all;
 use std::collections::HashMap;
-use std::convert::Infallible;
 use std::fmt::Debug;
 use std::future::Future;
 use std::hash::Hasher;
@@ -3832,11 +3831,11 @@ impl From<i64> for &ByteOpcode {
   fn from(v: i64) -> Self {
     let opc = OPCODES.get(&v);
     if opc.is_none() {
-      panic!(format!(
+      panic!(
         "Illegal byte opcode {} ({})",
         v,
         str::from_utf8(&v.to_ne_bytes()).unwrap()
-      ));
+      );
     }
     return &opc.unwrap();
   }

@@ -12,8 +12,6 @@ use once_cell::sync::Lazy;
 use tokio::net::TcpStream;
 use tokio_rustls::server::TlsStream;
 
-use crate::vm::VMError;
-
 #[derive(Debug)]
 pub struct HttpConfig {
   pub port: u16,
