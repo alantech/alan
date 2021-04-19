@@ -3,14 +3,15 @@ use futures::FutureExt;
 use std::sync::Arc;
 use tokio::task;
 
-use crate::vm::InvalidState;
-use crate::vm::VMError;
-use crate::vm::VMResult;
 use crate::vm::instruction::Instruction;
 use crate::vm::memory::HandlerMemory;
 use crate::vm::opcode::OpcodeFn;
 use crate::vm::program::Program;
 use crate::vm::run::EVENT_TX;
+use crate::vm::InstrType;
+use crate::vm::InvalidState;
+use crate::vm::VMError;
+use crate::vm::VMResult;
 
 pub const NOP_ID: i64 = i64::MIN;
 
@@ -210,23 +211,28 @@ impl HandlerFragment {
     instrs: &Vec<Instruction>,
   ) -> VMResult<Arc<HandlerMemory>> {
     task::block_in_place(move || {
-      instrs.iter().map(|i| {
-        if let OpcodeFn::Cpu(func) = i.opcode.fun {
-          //eprintln!("{} {} {} {}", i.opcode._name, i.args[0], i.args[1], i.args[2]);
-          let event = func(i.args.as_slice(), &mut hand_mem);
-          if let Some(event) = event? {
-            let event_tx = EVENT_TX.get().unwrap();
-            let event_sent = event_tx.send(event);
-            if event_sent.is_err() {
-              eprintln!("Event transmission error");
-              std::process::exit(2);
+      instrs
+        .iter()
+        .map(|i| {
+          if let OpcodeFn::Cpu(func) = i.opcode.fun {
+            //eprintln!("{} {} {} {}", i.opcode._name, i.args[0], i.args[1], i.args[2]);
+            let event = func(i.args.as_slice(), &mut hand_mem);
+            if let Some(event) = event? {
+              let event_tx = EVENT_TX.get().unwrap();
+              let event_sent = event_tx.send(event);
+              if event_sent.is_err() {
+                eprintln!("Event transmission error");
+                std::process::exit(2);
+              }
             }
+            Ok(())
+          } else {
+            Err(VMError::InvalidState(InvalidState::UnexpectedInstruction(
+              InstrType::CPU,
+            )))
           }
-        } else {
-          eprintln!("expected another CPU instruction, found an IO instruction");
-        };
-        Ok(())
-      }).collect::<VMResult<Vec<_>>>()?;
+        })
+        .collect::<VMResult<Vec<_>>>()?;
       Ok(hand_mem)
     })
   }
@@ -243,8 +249,9 @@ impl HandlerFragment {
       //eprintln!("{} {:?}", op.opcode._name, op.args);
       return func(op.args.clone(), hand_mem).await;
     } else {
-      eprintln!("expected an UnpredCpu instruction");
-      std::process::exit(1);
+      return Err(VMError::InvalidState(InvalidState::UnexpectedInstruction(
+        InstrType::CPU,
+      )));
     }
   }
 
@@ -258,10 +265,11 @@ impl HandlerFragment {
       let op = &instrs[0];
       if let OpcodeFn::Io(func) = op.opcode.fun {
         //eprintln!("{} {:?}", op.opcode._name, op.args);
-        todo!();
-        // return func(op.args.clone(), hand_mem).await;
+        return func(op.args.clone(), hand_mem).await;
       } else {
-        return Err(VMError::InvalidState(InvalidState::UnexpectedInstruction("expected an IO instruction".to_string())))
+        return Err(VMError::InvalidState(InvalidState::UnexpectedInstruction(
+          InstrType::IO,
+        )));
       }
     } else {
       let futures: Vec<_> = instrs
@@ -277,7 +285,9 @@ impl HandlerFragment {
               // Ok(func(i.args.clone(), HandlerMemory::fork(hand_mem.clone())?)
               //   .then(|res| HandlerMemory::drop_parent_async).await)
             } else {
-              Err(VMError::InvalidState(InvalidState::UnexpectedInstruction("expected an IO instruction".to_string())))
+              Err(VMError::InvalidState(InvalidState::UnexpectedInstruction(
+                InstrType::IO,
+              )))
             }
           }
         })

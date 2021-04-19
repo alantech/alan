@@ -22,12 +22,12 @@ use tokio::sync::oneshot::{self, Receiver, Sender};
 use tokio::time::sleep;
 use twox_hash::XxHash64;
 
-use crate::vm::VMResult;
 use crate::vm::event::{BuiltInEvents, EventEmit, HandlerFragment, NOP_ID};
 use crate::vm::http::HTTP_CLIENT;
 use crate::vm::memory::{FractalMemory, HandlerMemory, CLOSURE_ARG_MEM_START};
 use crate::vm::program::Program;
 use crate::vm::run::EVENT_TX;
+use crate::vm::VMResult;
 
 static DS: Lazy<Arc<DashMap<String, Arc<HandlerMemory>>>> =
   Lazy::new(|| Arc::new(DashMap::<String, Arc<HandlerMemory>>::new()));
@@ -2625,8 +2625,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         // special field
         let maybe_hm = if vals.len() == 1 { Some(vals.remove(0)) } else { None };
         let hms = join_all(reducers).await;
-        for mut hm in hms {
-          let hm = hm?;
+        for hm in hms {
+          let mut hm = hm?;
           hm.register(0, CLOSURE_ARG_MEM_START, false);
           vals.push(hm);
         }

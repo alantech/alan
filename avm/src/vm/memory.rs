@@ -4,11 +4,11 @@ use std::sync::Arc;
 
 use protobuf::{Message, ProtobufError, ProtobufResult};
 
+use crate::vm::program::Program;
+use crate::vm::protos;
 use crate::vm::InvalidState;
 use crate::vm::VMError;
 use crate::vm::VMResult;
-use crate::vm::program::Program;
-use crate::vm::protos;
 
 // -2^63
 pub const CLOSURE_ARG_MEM_START: i64 = -9223372036854775808;
@@ -117,7 +117,10 @@ pub struct HandlerMemory {
 impl HandlerMemory {
   /// Constructs a new HandlerMemory. If given another HandlerMemory it simply adjusts it to the
   /// expected memory needs, otherwise constructs a new one with said memory requirements.
-  pub fn new(payload_mem: Option<Arc<HandlerMemory>>, mem_req: i64) -> VMResult<Arc<HandlerMemory>> {
+  pub fn new(
+    payload_mem: Option<Arc<HandlerMemory>>,
+    mem_req: i64,
+  ) -> VMResult<Arc<HandlerMemory>> {
     let mut hm = match payload_mem {
       Some(payload) => payload,
       None => Arc::new(HandlerMemory {
@@ -127,8 +130,8 @@ impl HandlerMemory {
         parent: None,
       }),
     };
-    let handlermemory =
-      Arc::get_mut(&mut hm).ok_or_else(|| VMError::InvalidState(InvalidState::HandMemDanglingPtr))?;
+    let handlermemory = Arc::get_mut(&mut hm)
+      .ok_or_else(|| VMError::InvalidState(InvalidState::HandMemDanglingPtr))?;
     handlermemory.mems[1].reserve(mem_req as usize);
     return Ok(hm);
   }
