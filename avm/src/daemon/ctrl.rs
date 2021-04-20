@@ -1,7 +1,7 @@
 use std::convert::Infallible;
 use std::env;
 use std::error::Error;
-use std::fs::write;
+use std::fs::{read, write};
 use std::hash::Hasher;
 use std::net::TcpStream;
 use std::path::Path;
@@ -225,26 +225,44 @@ mod naive {
 }
 
 impl ControlPort {
-  pub async fn start(priv_key_b64: &str, cert_b64: &str) -> ControlPort {
-    // TODO: Make this not a side-effect
-    make_server!(
-      HttpType::HTTPS(HttpsConfig {
-        port: 4142, // 4 = A, 1 = L, 2 = N (sideways) => ALAN
-        priv_key_b64: priv_key_b64.to_string(),
-        cert_b64: cert_b64.to_string(),
-      }),
-      control_port
-    );
-    let mut tls = ClientConfig::new();
-    tls
-      .dangerous()
-      .set_certificate_verifier(Arc::new(naive::TLS {}));
-    let mut http_connector = HttpConnector::new();
-    http_connector.enforce_http(false);
+  pub async fn start() -> ControlPort {
+    let pwd = env::current_dir();
+    match pwd {
+      Ok(pwd) => {
+        let priv_key_b64 = read(format!("{}/priv_key_b64", pwd.display()));
+        let cert_b64 = read(format!("{}/cert_b64", pwd.display()));
+        if let (Ok(priv_key_b64), Ok(cert_b64)) = (priv_key_b64, cert_b64) {
+          // TODO: Make this not a side-effect
+          make_server!(
+            HttpType::HTTPS(HttpsConfig {
+              port: 4142, // 4 = A, 1 = L, 2 = N (sideways) => ALAN
+              priv_key_b64: String::from_utf8(priv_key_b64).unwrap(),
+              cert_b64: String::from_utf8(cert_b64).unwrap(),
+            }),
+            control_port
+          );
+          let mut tls = ClientConfig::new();
+          tls
+            .dangerous()
+            .set_certificate_verifier(Arc::new(naive::TLS {}));
+          let mut http_connector = HttpConnector::new();
+          http_connector.enforce_http(false);
 
-    ControlPort {
-      lrh: LogRendezvousHash::new(vec![]),
-      client: Client::builder().build::<_, Body>(HttpsConnector::from((http_connector, tls))),
+          ControlPort {
+            lrh: LogRendezvousHash::new(vec![]),
+            client: Client::builder().build::<_, Body>(HttpsConnector::from((http_connector, tls))),
+          }
+        } else {
+          let err = "Failed getting ssl certificate or key";
+          error!(ErrorType::CtrlPortStartFailed, "{}", err).await;
+          panic!("{}", err);
+        }
+      }
+      Err(err) => {
+        let err = format!("{:?}", err);
+        error!(ErrorType::CtrlPortStartFailed, "{:?}", err).await;
+        panic!("{:?}", err);
+      }
     }
   }
 

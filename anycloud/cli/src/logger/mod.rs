@@ -20,6 +20,7 @@ pub enum ErrorType {
   RunAgzFailed = 122,
   NoDaemonProps = 123,
   DaemonStart = 124,
+  CtrlPortStartFailed = 125,
 }
 
 #[macro_export]

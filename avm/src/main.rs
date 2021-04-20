@@ -103,8 +103,6 @@ fn main() {
     )
     .subcommand(SubCommand::with_name("daemon")
       .about("Run an .agz file in daemon mode. Used on deploy within cloud provider VMs.")
-      .arg_from_usage("<PRIVATE_KEY> -k, --private-key=<PRIV_KEY_B64> 'A base64 encoded private key for HTTPS mode'")
-      .arg_from_usage("<CERT_B64> -c, --certificate=<CERT_B64> 'A base64 encoded certificate for HTTPS mode'")
       .arg_from_usage("<CLUSTER_SECRET> -s, --cluster-secret=<CLUSTER_SECRET> 'A secret string to constrain access to the control port'")
     )
     .arg_from_usage("[SOURCE] 'Specifies a source ln file to compile and run'");
@@ -186,13 +184,11 @@ fn main() {
         }
       }
       ("daemon", Some(matches)) => {
-        let priv_key_b64 = matches.value_of("PRIVATE_KEY").unwrap();
-        let cert_b64 = matches.value_of("CERT_B64").unwrap();
         let cluster_secret = matches.value_of("CLUSTER_SECRET").unwrap();
         CLUSTER_SECRET
           .set(Some(cluster_secret.to_string()))
           .unwrap();
-        start(priv_key_b64, cert_b64).await;
+        start().await;
       }
       _ => {
         // AppSettings::SubcommandRequiredElseHelp does not cut it here
