@@ -185,7 +185,7 @@ pub async fn start(priv_key_b64: &str, cert_b64: &str) {
     Ok(self_ip) => {
       let mut daemon_props: Option<&DaemonProperties> = None;
       let duration = Duration::from_secs(10);
-      let mut counter: u8 = 30;
+      let mut counter: u8 = 0;
       // Check every 10s over 5 min if props are ready
       while counter < 30 && daemon_props.is_none() {
         // Request to props ready
