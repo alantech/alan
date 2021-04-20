@@ -7,8 +7,8 @@ use std::net::TcpStream;
 use std::path::Path;
 use std::sync::Arc;
 
-use anycloud::logger::ErrorType;
 use anycloud::error;
+use anycloud::logger::ErrorType;
 use futures::future::join_all;
 use hyper::{
   body,
@@ -147,7 +147,7 @@ async fn handle_start(req: Request<Body>) -> Result<Response<Body>, Infallible> 
     Err(err) => {
       error!(ErrorType::DaemonStartFailed, "{:?}", err).await;
       Ok(Response::builder().status(500).body("fail".into()).unwrap())
-    },
+    }
   }
 }
 
