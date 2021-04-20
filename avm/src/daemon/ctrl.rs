@@ -173,19 +173,19 @@ fn might_dump_files(daemon_props: &DaemonProperties) -> DaemonResult<()> {
   let pwd = env::current_dir();
   match pwd {
     Ok(pwd) => {
-      if let Some(dockerfile_b64) = daemon_props.dockerfileB64 {
+      if let Some(dockerfile_b64) = &daemon_props.dockerfileB64 {
         write(
           format!("{}/Dockerfile", pwd.display()),
           base64::decode(dockerfile_b64).unwrap(),
         )?;
       }
-      if let Some(app_tar_gz_b64) = daemon_props.appTarGzB64 {
+      if let Some(app_tar_gz_b64) = &daemon_props.appTarGzB64 {
         write(
           format!("{}/app.tar.gz", pwd.display()),
           base64::decode(app_tar_gz_b64).unwrap(),
         )?;
       }
-      if let Some(env_b64) = daemon_props.envB64 {
+      if let Some(env_b64) = &daemon_props.envB64 {
         write(
           format!("{}/anycloud.env", pwd.display()),
           base64::decode(env_b64).unwrap(),
