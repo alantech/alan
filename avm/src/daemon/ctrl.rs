@@ -15,11 +15,14 @@ use rustls::ClientConfig;
 use twox_hash::XxHash64;
 use anycloud::logger::ErrorType;
 use anycloud::error;
+use once_cell::sync::OnceCell;
 
 use crate::daemon::daemon::CLUSTER_SECRET;
 use crate::make_server;
 use crate::vm::http::{HttpType, HttpsConfig};
 use crate::daemon::dns::VMMetadata;
+
+pub static NAIVE_CLIENT: OnceCell<Client<HttpsConnector<HttpConnector>>> = OnceCell::new();
 
 #[derive(Debug)]
 pub struct HashedId {
@@ -166,10 +169,22 @@ impl ControlPort {
       .set_certificate_verifier(Arc::new(naive::TLS {}));
     let mut http_connector = HttpConnector::new();
     http_connector.enforce_http(false);
+   
+    // This works because we only construct the control port once
+    let client = Client::builder().build::<_, Body>(HttpsConnector::from((http_connector, tls)));
+    NAIVE_CLIENT.set(client);
+    // Make a second client. TODO: Share this? Or split into a naive-client generator function?
+    let mut tls = ClientConfig::new();
+    tls
+      .dangerous()
+      .set_certificate_verifier(Arc::new(naive::TLS {}));
+    let mut http_connector = HttpConnector::new();
+    http_connector.enforce_http(false);
+    let client = Client::builder().build::<_, Body>(HttpsConnector::from((http_connector, tls)));
 
     ControlPort {
       lrh: LogRendezvousHash::new(vec![]),
-      client: Client::builder().build::<_, Body>(HttpsConnector::from((http_connector, tls))),
+      client,
       vms: HashMap::new(),
       self_vm: None,
       region_vms: HashMap::new(),

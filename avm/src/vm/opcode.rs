@@ -21,7 +21,9 @@ use tokio::process::Command;
 use tokio::sync::oneshot::{self, Receiver, Sender};
 use tokio::time::sleep;
 use twox_hash::XxHash64;
+use rand::{thread_rng, Rng};
 
+use crate::daemon::ctrl::NAIVE_CLIENT;
 use crate::vm::event::{BuiltInEvents, EventEmit, HandlerFragment, NOP_ID};
 use crate::vm::http::HTTP_CLIENT;
 use crate::vm::memory::{FractalMemory, HandlerMemory, CLOSURE_ARG_MEM_START};
@@ -30,6 +32,9 @@ use crate::vm::run::EVENT_TX;
 
 static DS: Lazy<Arc<DashMap<String, Arc<HandlerMemory>>>> =
   Lazy::new(|| Arc::new(DashMap::<String, Arc<HandlerMemory>>::new()));
+
+// used for load balancing in the cluster
+static REGION_VMS: Lazy<Arc<Vec<String>>> = Lazy::new(|| Arc::new(Vec::new()));
 
 // type aliases
 /// Futures implement an Unpin marker that guarantees to the compiler that the future will not move while it is running
@@ -2962,6 +2967,84 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
 
   async fn http_listener(req: Request<Body>) -> Result<Response<Body>, Infallible> {
+    // Grab the headers
+    let headers = req.headers();
+    // Check if we should load balance this request
+    if !headers.contains_key("X-Alan-RR") {
+      let l = REGION_VMS.len();
+      let i = async move {
+        let mut rng = thread_rng();
+        rng.gen_range(0..=l)
+      }.await;
+      // If it's equal to the length process this request normally, otherwise, load balance this
+      // request to another instance
+      if i != REGION_VMS.len() {
+        // Otherwise, round-robin this to another node in the cluster and increment the counter
+        let headers = headers.clone();
+        let host = &REGION_VMS[i];
+        let method_str = req.method().to_string();
+        let orig_uri = req.uri().clone();
+        let orig_query = match orig_uri.query() {
+          Some(q) => format!("?{}", q),
+          None => format!(""),
+        };
+        let uri_str = format!("https://{}{}{}", host, orig_uri.path(), orig_query);
+        // Grab the body, if any
+        let body_req = match hyper::body::to_bytes(req.into_body()).await {
+          Ok(bytes) => bytes,
+          // If we error out while getting the body, just close this listener out immediately
+          Err(ee) => {
+            return Ok(Response::new(
+              format!("Connection terminated: {}", ee).into(),
+            ));
+          }
+        };
+        let body_str = str::from_utf8(&body_req).unwrap().to_string();
+        let mut rr_req = Request::builder().method(method_str.as_str()).uri(uri_str);
+        let rr_headers = rr_req.headers_mut().unwrap();
+        for (key, val) in headers.iter() {
+          rr_headers.insert(key, val.clone());
+        }
+        let req_obj = if body_str.len() > 0 {
+          rr_req.body(Body::from(body_str))
+        } else {
+          rr_req.body(Body::empty())
+        };
+        let req_obj = match req_obj {
+          Ok(req_obj) => req_obj,
+          Err(ee) => {
+            return Ok(Response::new(
+              format!("Connection terminated: {}", ee).into(),
+            ));
+          },
+        };
+        let mut rr_res = match NAIVE_CLIENT.get().unwrap().request(req_obj).await {
+          Ok(res) => res,
+          Err(ee) => {
+            return Ok(Response::new(
+              format!("Connection terminated: {}", ee).into(),
+            ));
+          },
+        };
+        // Get the status from the round-robin response and begin building the response object
+        let status = rr_res.status();
+        let mut res = Response::builder().status(status);
+        // Get the headers and populate the response object
+        let headers = res.headers_mut().unwrap();
+        for (key, val) in rr_res.headers().iter() {
+          headers.insert(key, val.clone());
+        }
+        let body = match hyper::body::to_bytes(rr_res.body_mut()).await {
+          Ok(body) => body,
+          Err(ee) => {
+            return Ok(Response::new(
+              format!("Connection terminated: {}", ee).into(),
+            ));
+          },
+        };
+        return Ok(res.body(body.into()).unwrap());
+      }
+    }
     // Create a new event handler memory to add to the event queue
     let mut event = HandlerMemory::new(None, 1);
     // Grab the method
