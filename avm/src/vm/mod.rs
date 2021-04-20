@@ -15,23 +15,36 @@ pub type VMResult<T> = Result<T, VMError>;
 
 #[derive(Debug)]
 pub enum VMError {
-  FileNotFound(String), // path
-  InvalidFile(String),  // reason
-  IOError(std::io::Error),
-  InvalidState(InvalidState), // reason
   EventNotDefined(i64),
+  FileNotFound(String), // path
+  HandMemDanglingPtr,
+  InvalidFile(String), // reason
+  IOError(std::io::Error),
+  IllegalAccess,
+  InvalidState(InvalidState), // reason
+  InvalidString,
+  OrphanMemory,
+  Other(String),
 }
 
 impl Display for VMError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
-      VMError::FileNotFound(path) => writeln!(f, "File not found: {}", path),
-      VMError::InvalidFile(reason) => writeln!(f, "File is invalid: {}", reason),
-      VMError::IOError(err) => err.fmt(f),
-      VMError::InvalidState(state) => writeln!(f, "Invalid AVM state: {}", state),
       VMError::EventNotDefined(event_id) => {
         writeln!(f, "Event with event id {} is not defined", event_id)
       }
+      VMError::FileNotFound(path) => writeln!(f, "File not found: {}", path),
+      VMError::HandMemDanglingPtr => writeln!(f, "There is a dangling pointer to a HandlerMemory"),
+      VMError::InvalidFile(reason) => writeln!(f, "File is invalid: {}", reason),
+      VMError::IOError(err) => err.fmt(f),
+      VMError::IllegalAccess => writeln!(f, "Illegal access"),
+      VMError::InvalidState(state) => writeln!(f, "Invalid AVM state: {}", state),
+      VMError::InvalidString => writeln!(f, "Invalid string"),
+      VMError::OrphanMemory => writeln!(
+        f,
+        "Memory referenced in parent, but no parent pointer defined"
+      ),
+      VMError::Other(reason) => reason.fmt(f),
     }
   }
 }

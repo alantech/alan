@@ -293,7 +293,7 @@ impl HandlerFragment {
         .collect();
       let hms = join_all(futures).await;
       for hm in hms {
-        hand_mem.join(hm?);
+        hand_mem.join(hm?)?;
       }
     }
     Ok(hand_mem)
