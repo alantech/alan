@@ -1,21 +1,29 @@
+use std::collections::HashMap;
 use std::convert::Infallible;
 use std::hash::Hasher;
 use std::net::TcpStream;
 use std::path::Path;
 use std::sync::Arc;
 
+use anycloud::error;
+use anycloud::logger::ErrorType;
 use futures::future::join_all;
 use hyper::{
   client::{Client, HttpConnector},
   Body, Request, Response,
 };
 use hyper_rustls::HttpsConnector;
+use once_cell::sync::OnceCell;
 use rustls::ClientConfig;
 use twox_hash::XxHash64;
 
 use crate::daemon::daemon::CLUSTER_SECRET;
+use crate::daemon::dns::VMMetadata;
 use crate::make_server;
 use crate::vm::http::{HttpType, HttpsConfig};
+use crate::vm::opcode::REGION_VMS;
+
+pub static NAIVE_CLIENT: OnceCell<Client<HttpsConnector<HttpConnector>>> = OnceCell::new();
 
 #[derive(Debug)]
 pub struct HashedId {
@@ -65,6 +73,9 @@ impl LogRendezvousHash {
   }
 
   pub fn get_leader_id(&self) -> &str {
+    if self.sorted_hashes.len() == 0 {
+      return "";
+    }
     let mut last_idx = self.sorted_hashes.len() - 1;
     while last_idx > 0 && !self.sorted_hashes[last_idx].is_up {
       last_idx = last_idx - 1;
@@ -100,6 +111,9 @@ pub struct ControlPort {
   // TODO: Once the crazy type info of the server can be figured out, we can attach it to this
   // struct and then make it possible to wind down the control port server
   // server: &'a dyn Service<std::convert::Infallible>,
+  vms: HashMap<String, VMMetadata>, // All VMs in the cluster. String is private IP
+  self_vm: Option<VMMetadata>,      // This VM. Not set on initialization
+  region_vms: HashMap<String, VMMetadata>, // VMs in the same cloud and region. String is private IP
 }
 
 async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> {
@@ -160,18 +174,95 @@ impl ControlPort {
     let mut http_connector = HttpConnector::new();
     http_connector.enforce_http(false);
 
+    // This works because we only construct the control port once
+    let client = Client::builder().build::<_, Body>(HttpsConnector::from((http_connector, tls)));
+    NAIVE_CLIENT.set(client);
+    // Make a second client. TODO: Share this? Or split into a naive-client generator function?
+    let mut tls = ClientConfig::new();
+    tls
+      .dangerous()
+      .set_certificate_verifier(Arc::new(naive::TLS {}));
+    let mut http_connector = HttpConnector::new();
+    http_connector.enforce_http(false);
+    let client = Client::builder().build::<_, Body>(HttpsConnector::from((http_connector, tls)));
+
     ControlPort {
       lrh: LogRendezvousHash::new(vec![]),
-      client: Client::builder().build::<_, Body>(HttpsConnector::from((http_connector, tls))),
+      client,
+      vms: HashMap::new(),
+      self_vm: None,
+      region_vms: HashMap::new(),
     }
   }
 
-  pub fn update_ips(self: &mut ControlPort, ips: Vec<String>) {
+  pub async fn update_vms(self: &mut ControlPort, self_ip: &str, vms: Vec<VMMetadata>) {
+    let ips = vms
+      .iter()
+      .map(|vm| vm.private_ip_addr.to_string())
+      .collect();
+    let self_vm_vec: Vec<&VMMetadata> = vms
+      .iter()
+      .filter(|vm| vm.private_ip_addr == self_ip)
+      .collect();
+    if self_vm_vec.len() == 0 {
+      error!(
+        ErrorType::NoDnsPrivateIp,
+        "Failed to find self in cluster. Maybe I am being shut down?"
+      )
+      .await;
+      // TODO: Should this error propagate up to the stats loop or no?
+      return;
+    } else if self_vm_vec.len() > 1 {
+      // This hopefully never happens, but if it does, we need to change the daemon initialization
+      error!(
+        ErrorType::DuplicateDnsPrivateIp,
+        "Private IP address collision detected! I don't know who I really am!"
+      )
+      .await;
+      // TODO: Should this error propagate up to the stats loop or no?
+      return;
+    }
+    let self_vm = self_vm_vec[0].clone();
+    let mut region_vms = HashMap::new();
+    vms
+      .iter()
+      .filter(|vm| vm.cloud == self_vm.cloud && vm.region == self_vm.region)
+      .for_each(|vm| {
+        region_vms.insert(vm.private_ip_addr.clone(), vm.clone());
+      });
+    let mut all_vms = HashMap::new();
+    vms.iter().for_each(|vm| {
+      all_vms.insert(vm.private_ip_addr.clone(), vm.clone());
+    });
+    let mut other_region_ips: Vec<String> = region_vms
+      .keys()
+      .filter(|ip| ip.as_str() != self_ip)
+      .map(|ip| ip.clone())
+      .collect();
+    let region_ips = Arc::clone(&REGION_VMS);
+    let mut region_ips_mut = region_ips.write().unwrap();
+    region_ips_mut.clear();
+    region_ips_mut.append(&mut other_region_ips);
+    drop(region_ips_mut);
+    drop(region_ips);
+    self.vms = all_vms;
+    self.self_vm = Some(self_vm);
+    self.region_vms = region_vms;
     self.lrh.update(ips);
   }
 
-  pub fn get_leader(self: &ControlPort) -> &str {
-    self.lrh.get_leader_id()
+  pub fn is_leader(self: &ControlPort) -> bool {
+    match &self.self_vm {
+      Some(self_vm) => self.lrh.get_leader_id() == self_vm.private_ip_addr,
+      None => false,
+    }
+  }
+
+  pub fn get_leader(self: &ControlPort) -> Option<&VMMetadata> {
+    match self.vms.get(self.lrh.get_leader_id()) {
+      Some(vm) => Some(&vm),
+      None => None,
+    }
   }
 
   pub async fn check_cluster_health(self: &mut ControlPort) {
