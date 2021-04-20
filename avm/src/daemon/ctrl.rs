@@ -114,13 +114,6 @@ pub struct ControlPort {
 async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> {
   let cluster_secret = CLUSTER_SECRET.get().unwrap();
   let ctrl_port_initialized = CTRL_PORT_INITIALIZED.get();
-  warn!(
-    ErrorType::RunAgzFailed,
-    "Control port test. Current uri: {}. current req: {:?}",
-    req.uri().path(),
-    req
-  )
-  .await;
   if cluster_secret.is_some() && !req.headers().contains_key(cluster_secret.as_ref().unwrap()) {
     // If this control port is guarded by a secret string, make sure there's a header with that
     // secret as the key (we don't care about the value) and abort otherwise
