@@ -41,16 +41,27 @@ impl std::error::Error for VMError {}
 #[derive(Debug)]
 pub enum InvalidState {
   AlreadyRunning,
-  UnexpectedInstruction(InstrType),
   HandMemDanglingPtr,
+  IllegalAccess,
+  InvalidNOP,
+  MemoryNotOwned,
   ShutDown,
   Other(String),
+  UnexpectedInstruction(InstrType),
 }
 
 impl Display for InvalidState {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
       InvalidState::AlreadyRunning => write!(f, "another AVM instance is already running"),
+      InvalidState::HandMemDanglingPtr => {
+        write!(f, "there is a dangling pointer to a HandlerMemory")
+      }
+      InvalidState::IllegalAccess => write!(f, "illegal access"),
+      InvalidState::InvalidNOP => write!(f, "a NOP operation was used where it's not permitted"),
+      InvalidState::MemoryNotOwned => write!(f, "attempting to write to memory not owned by the current handler"),
+      InvalidState::ShutDown => write!(f, "the AVM has been shut down"),
+      InvalidState::Other(reason) => reason.fmt(f),
       InvalidState::UnexpectedInstruction(InstrType::CPU) => {
         write!(f, "expected another CPU instruction")
       }
@@ -60,11 +71,6 @@ impl Display for InvalidState {
       InvalidState::UnexpectedInstruction(InstrType::UnpredictableCPU) => {
         write!(f, "expected another unpredictable CPU instruction")
       }
-      InvalidState::HandMemDanglingPtr => {
-        write!(f, "there is a dangling pointer to a HandlerMemory")
-      }
-      InvalidState::ShutDown => write!(f, "the AVM has been shut down"),
-      InvalidState::Other(reason) => reason.fmt(f),
     }
   }
 }

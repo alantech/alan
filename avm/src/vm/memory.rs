@@ -70,11 +70,12 @@ impl FractalMemory {
   }
 
   /// Reads fixed data from a given address.
-  pub fn read_fixed(self: &FractalMemory, idx: usize) -> i64 {
+  pub fn read_fixed(self: &FractalMemory, idx: usize) -> VMResult<i64> {
     if self.block[idx].0 != usize::MAX {
-      panic!("Trying to read raw data from memory when it is a pointer")
+      Err(VMError::InvalidState(InvalidState::IllegalAccess))
+    } else {
+      Ok(self.block[idx].1)
     }
-    return self.block[idx].1;
   }
 }
 
@@ -147,7 +148,7 @@ impl HandlerMemory {
       Ok(None)
     } else {
       let mut hm = HandlerMemory::new(None, 1)?;
-      HandlerMemory::transfer(curr_hand_mem, curr_addr, &mut hm, 0);
+      HandlerMemory::transfer(curr_hand_mem, curr_addr, &mut hm, 0)?;
       Ok(Some(hm))
     };
   }
@@ -373,12 +374,12 @@ impl HandlerMemory {
     fractal: &mut FractalMemory,
     idx: usize,
     val: i64,
-  ) {
+  ) -> VMResult<()> {
     fractal.block[idx].1 = val;
     if fractal.belongs(self) && fractal.hm_addr.is_some() {
-      self.write_fractal(fractal.hm_addr.unwrap(), fractal);
+      self.write_fractal(fractal.hm_addr.unwrap(), fractal)
     } else {
-      panic!("Attempting to write fixed data to a fractal owned by a different HandlerMemory");
+      Err(VMError::InvalidState(InvalidState::MemoryNotOwned))
     }
   }
 
@@ -393,13 +394,11 @@ impl HandlerMemory {
   }
 
   /// Stores a nested fractal of data in a given address.
-  pub fn write_fractal(self: &mut Arc<HandlerMemory>, addr: i64, fractal: &FractalMemory) {
+  pub fn write_fractal(self: &mut Arc<HandlerMemory>, addr: i64, fractal: &FractalMemory) -> VMResult<()> {
     let a = self.mems.len();
     if !fractal.belongs(self) {
       if fractal.hm_addr.is_none() {
-        panic!(
-          "Writing a forked/read-only FractalMemory that is also deeply-nested is not possible"
-        );
+        return Err(VMError::InvalidState(InvalidState::MemoryNotOwned));
       }
       // copy fractal from ancestor
       let addr = fractal.hm_addr.as_ref().unwrap().clone();
@@ -412,6 +411,7 @@ impl HandlerMemory {
     let mut_self = Arc::get_mut(self).expect("couldn't write fractal to HM: dangling pointer");
     mut_self.mems.push(fractal.block.clone());
     self.set_addr(addr, a, std::usize::MAX);
+    Ok(())
   }
 
   /// Stores a nested empty fractal of data in a given address.
@@ -472,14 +472,15 @@ impl HandlerMemory {
   /* REGISTER MANIPULATION METHODS */
 
   /// Creates a pointer from `orig_addr` to `addr`
-  pub fn register(self: &mut Arc<HandlerMemory>, addr: i64, orig_addr: i64, is_variable: bool) {
+  pub fn register(self: &mut Arc<HandlerMemory>, addr: i64, orig_addr: i64, is_variable: bool) -> VMResult<()> {
     let ((a, b), _) = self.addr_to_idxs(orig_addr);
     if addr_type(orig_addr) == GMEM_ADDR && is_variable {
       // Special behavior to read strings out of global memory
       let string = HandlerMemory::fractal_to_string(FractalMemory::new(self.mems[a][b..].to_vec()));
-      self.write_fractal(addr, &HandlerMemory::str_to_fractal(&string));
+      self.write_fractal(addr, &HandlerMemory::str_to_fractal(&string))
     } else {
       self.set_addr(addr, a, b);
+      Ok(())
     }
   }
 
@@ -564,7 +565,7 @@ impl HandlerMemory {
     orig_addr: i64,
     dest: &mut Arc<HandlerMemory>,
     dest_addr: i64,
-  ) {
+  ) -> VMResult<()> {
     let ((a, b), hm_opt) = origin.addr_to_idxs(orig_addr);
     let orig = match hm_opt.as_ref() {
       Some(orig) => orig,
@@ -579,7 +580,7 @@ impl HandlerMemory {
     b: usize,
     dest: &mut Arc<HandlerMemory>,
     dest_addr: i64,
-  ) {
+  ) -> VMResult<()> {
     if a == 0 {
       // Special behavior for global memory transfers since it may be a single value or a string
       let mem_slice = &orig.mems[a][b..];
@@ -591,7 +592,7 @@ impl HandlerMemory {
       if len == 0 {
         // Assume zero is not a string
         dest.write_fixed(dest_addr, mem_slice[0].1);
-        return;
+        return Ok(())
       }
       let mut s_bytes: Vec<u8> = Vec::new();
       for i in 1..mem_slice.len() {
@@ -601,7 +602,7 @@ impl HandlerMemory {
       if len > s_bytes.len() {
         // Absolutely not correct
         dest.write_fixed(dest_addr, mem_slice[0].1);
-        return;
+        return Ok(());
       }
       let try_str = str::from_utf8(&s_bytes[0..len]);
       if try_str.is_err() {
@@ -609,8 +610,7 @@ impl HandlerMemory {
         dest.write_fixed(dest_addr, mem_slice[0].1);
       } else {
         // Well, waddaya know!
-        dest.write_fractal(dest_addr, &HandlerMemory::str_to_fractal(try_str.unwrap()));
-        return;
+        return dest.write_fractal(dest_addr, &HandlerMemory::str_to_fractal(try_str.unwrap()));
       }
     }
     if a == std::usize::MAX {
@@ -681,6 +681,7 @@ impl HandlerMemory {
       // Finally, set the destination address to point at the original, main nested array
       dest.set_addr(dest_addr, dest_offset, std::usize::MAX);
     }
+    Ok(())
   }
 
   /// Creates a duplicate of data at one address in the HandlerMemory in a new address. Makes the
