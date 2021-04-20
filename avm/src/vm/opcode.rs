@@ -3340,8 +3340,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
 
   // "Special" opcodes
   cpu!(exitop => fn(args, hand_mem) {
-    let _ = io::stdout().flush();
-    let _ = io::stderr().flush();
+    io::stdout().flush().map_err(VMError::IOError)?;
+    io::stderr().flush().map_err(VMError::IOError)?;
     std::process::exit(hand_mem.read_fixed(args[0])? as i32);
   });
   cpu!(stdoutp => fn(args, hand_mem) {

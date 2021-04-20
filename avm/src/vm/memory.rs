@@ -2,14 +2,9 @@ use std::array::IntoIter;
 use std::str;
 use std::sync::Arc;
 
-use byteorder::ByteOrder;
-use byteorder::NativeEndian;
+use byteorder::{ByteOrder, NativeEndian};
 
-use crate::vm::program::Program;
-use crate::vm::protos;
-use crate::vm::InvalidState;
-use crate::vm::VMError;
-use crate::vm::VMResult;
+use crate::vm::{program::Program, protos, InvalidState, VMError, VMResult};
 
 // -2^63
 pub const CLOSURE_ARG_MEM_START: i64 = -9223372036854775808;
