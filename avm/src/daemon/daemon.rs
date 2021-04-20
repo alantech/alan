@@ -188,7 +188,6 @@ pub async fn start() {
       let mut counter: u8 = 0;
       // Check every 10s over 5 min if props are ready
       while counter < 30 && daemon_props.is_none() {
-        // Request to props ready
         if let Some(props) = DAEMON_PROPS.get() {
           daemon_props = Some(props);
         }
