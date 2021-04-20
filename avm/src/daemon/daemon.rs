@@ -167,7 +167,6 @@ pub async fn start(
     let period = Duration::from_secs(60);
     let mut stats = Vec::new();
     let mut cluster_size = 0;
-    let mut leader_ip = String::new();
     let self_ip = get_private_ip().await;
     let dns = DNS::new(&domain);
     if let (Ok(dns), Ok(self_ip)) = (&dns, &self_ip) {
@@ -181,16 +180,14 @@ pub async fn start(
         };
         // triggered the first time since cluster_size == 0
         // and every time the cluster changes size
+        // TODO: It will be possible in the future for the cluster to change instances without
+        // changing size once spot instances are added. This logic will need to be updated to
+        // check for differences between the two clusters, not just the length
         if vms.len() != cluster_size {
           cluster_size = vms.len();
-          let ips = vms
-            .iter()
-            .map(|vm| vm.private_ip_addr.to_string())
-            .collect();
-          control_port.update_ips(ips);
-          leader_ip = control_port.get_leader().to_string();
+          control_port.update_vms(self_ip, vms);
         }
-        if leader_ip == self_ip.to_string() {
+        if control_port.is_leader() {
           match get_v1_stats().await {
             Ok(s) => stats.push(s),
             Err(err) => error!(ErrorType::NoStats, "{}", err).await,
@@ -208,7 +205,7 @@ pub async fn start(
           println!(
             "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
             cluster_id,
-            vms.len(),
+            cluster_size,
             factor
           );
           if factor != "1" {
