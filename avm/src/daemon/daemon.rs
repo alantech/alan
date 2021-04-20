@@ -172,26 +172,26 @@ pub async fn start(
     if let (Ok(dns), Ok(self_ip)) = (&dns, &self_ip) {
       loop {
         let vms = match dns.get_vms(&cluster_id).await {
-          Ok(vms) => vms,
+          Ok(vms) => Some(vms),
           Err(err) => {
             error!(ErrorType::NoDnsVms, "{}", err).await;
-            Vec::new()
+            None
           }
         };
-        // triggered the first time since cluster_size == 0
-        // and every time the cluster changes size
-        // TODO: It will be possible in the future for the cluster to change instances without
-        // changing size once spot instances are added. This logic will need to be updated to
-        // check for differences between the two clusters, not just the length
-        if vms.len() != cluster_size {
+        // TODO: Figure out how to avoid flushing the LogRendezvousHash table every iteration, but
+        // avoid bugs with misidentifying cluster changes as not-changed
+        if let Some(vms) = vms {
           cluster_size = vms.len();
           control_port.update_vms(self_ip, vms);
         }
         if control_port.is_leader() {
+          println!("I am leader!");
           match get_v1_stats().await {
             Ok(s) => stats.push(s),
             Err(err) => error!(ErrorType::NoStats, "{}", err).await,
           };
+        } else { // Debug print for now
+          println!("I am NOT the leader! :(");
         }
         if stats.len() >= 4 {
           let mut factor = String::from("1");
