@@ -151,7 +151,10 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
           CTRL_PORT_INITIALIZED.set(true).unwrap();
           Ok(Response::builder().status(200).body("ok".into()).unwrap())
         }
-        Err(_) => Ok(Response::builder().status(500).body("fail".into()).unwrap()),
+        Err(err) => {
+          error!(ErrorType::DaemonStartFailed, "{:?}", err).await;
+          Ok(Response::builder().status(500).body("fail".into()).unwrap())
+        },
       }
     } else if ctrl_port_initialized.is_none() {
       Ok(Response::builder().status(500).body("fail".into()).unwrap())
@@ -188,7 +191,6 @@ async fn handle_start(req: Request<Body>) -> Result<(), Box<dyn Error>> {
     }
     Err(err) => {
       let err = format!("{:?}", err);
-      error!(ErrorType::DaemonStart, "{:?}", err).await;
       return Err(err.into());
     }
   }
