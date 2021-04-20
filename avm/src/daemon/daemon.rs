@@ -156,8 +156,8 @@ async fn run_agz_b64(agz_b64: &str) -> DaemonResult<()> {
               bytecode,
               HttpType::HTTPS(HttpsConfig {
                 port: 443,
-                priv_key_b64: base64::encode(priv_key_b64),
-                cert_b64: base64::encode(cert_b64),
+                priv_key_b64: String::from_utf8(priv_key_b64).unwrap(),
+                cert_b64: String::from_utf8(cert_b64).unwrap(),
               }),
             )
             .await;
