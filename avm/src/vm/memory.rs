@@ -460,9 +460,10 @@ impl HandlerMemory {
     if mem.len() > 0 {
       return Ok(FractalMemory::new(vec![mem
         .pop()
+        // if pop returned a None, that means something very bad has happened.
         .ok_or(VMError::IllegalAccess)?]));
     } else {
-      return Err(VMError::InvalidState(InvalidState::IllegalAccess));
+      return Err(VMError::Other(format!("cannot pop empty array")));
     }
   }
 
@@ -472,7 +473,11 @@ impl HandlerMemory {
     if mem.len() > 0 && mem.len() > idx {
       return Ok(FractalMemory::new(vec![mem.remove(idx)]));
     } else {
-      return Err(VMError::InvalidState(InvalidState::IllegalAccess));
+      return Err(VMError::Other(format!(
+        "cannot remove idx {} from array with length {}",
+        idx,
+        mem.len()
+      )));
     }
   }
 

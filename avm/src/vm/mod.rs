@@ -24,6 +24,7 @@ pub enum VMError {
   InvalidState(InvalidState), // reason
   InvalidString,
   OrphanMemory,
+  ShutDown,
   Other(String),
 }
 
@@ -44,6 +45,7 @@ impl Display for VMError {
         f,
         "Memory referenced in parent, but no parent pointer defined"
       ),
+      VMError::ShutDown => writeln!(f, "The AVM instance appears to be shut down"),
       VMError::Other(reason) => reason.fmt(f),
     }
   }

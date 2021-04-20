@@ -2134,7 +2134,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!(matches => fn(args, hand_mem) {
     let a_str = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0])?)?;
     let b_str = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1])?)?;
-    let b_regex = Regex::new(&b_str).unwrap();
+    let b_regex = Regex::new(&b_str).map_err(|regex_err| VMError::Other(format!("Bad regex construction: {}", regex_err)))?;
     let out = if b_regex.is_match(&a_str) { 1i64 } else { 0i64 };
     hand_mem.write_fixed(args[2], out)?;
     Ok(None)
@@ -2144,13 +2144,15 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let b_str = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1])?)?;
     let out_option = a_str.find(&b_str);
     hand_mem.init_fractal(args[2])?;
-    if out_option.is_none() {
-      hand_mem.push_fixed(args[2], 0i64)?;
-      hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal("substring not found"))?;
-    } else {
-      hand_mem.push_fixed(args[2], 1i64)?;
-      let out = out_option.unwrap() as i64;
-      hand_mem.push_fixed(args[2], out)?;
+    match out_option {
+      Some(out) => {
+        hand_mem.push_fixed(args[2], 1)?;
+        hand_mem.push_fixed(args[2], out as i64)?;
+      },
+      None => {
+        hand_mem.push_fixed(args[2], 0)?;
+        hand_mem.write_fractal(args[2], &HandlerMemory::str_to_fractal("substring not found"))?;
+      },
     }
     Ok(None)
   });
@@ -2880,10 +2882,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     } else {
       req.body(Body::empty())
     };
-    if req_obj.is_err() {
-      return Err("Failed to construct request, invalid body provided".to_string());
-    } else {
-      return Ok(HTTP_CLIENT.request(req_obj.unwrap()));
+    match req_obj {
+      Ok(req) => Ok(HTTP_CLIENT.request(req)),
+      Err(_) => Err("Failed to construct request, invalid body provided".to_string()),
     }
   }
   io!(httpreq => fn(args, mut hand_mem) {
@@ -2996,6 +2997,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     headers_hm.init_fractal(CLOSURE_ARG_MEM_START)?;
     for (i, (key, val)) in headers.iter().enumerate() {
       let key_str = key.as_str();
+      // TODO: get rid of the potential panic here
       let val_str = val.to_str().unwrap();
       headers_hm.init_fractal(i as i64)?;
       headers_hm.push_fractal(i as i64, HandlerMemory::str_to_fractal(key_str))?;
@@ -3012,6 +3014,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         ));
       }
     };
+    // TODO: get rid of the potential panic here
     let body_str = str::from_utf8(&body_req).unwrap().to_string();
     let body = HandlerMemory::str_to_fractal(&body_str);
     // Populate the event and emit it
@@ -3037,7 +3040,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       id: i64::from(BuiltInEvents::HTTPCONN),
       payload: Some(event),
     };
-    let event_tx = EVENT_TX.get().unwrap();
+    let event_tx = EVENT_TX.get().ok_or(VMError::ShutDown)?;
     let mut err_res = Response::new("Error synchronizing `send` for HTTP request".into());
     *err_res.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
     if event_tx.send(event_emit).is_err() {
@@ -3052,8 +3055,10 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     };
     // Get the status from the user response and begin building the response object
     let status = response_hm.read_fixed(0)? as u16;
-    let mut res = Response::builder().status(StatusCode::from_u16(status).unwrap());
+    let mut res = Response::builder()
+      .status(StatusCode::from_u16(status).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR));
     // Get the headers and populate the response object
+    // TODO: figure out how to handle this potential panic
     let headers = res.headers_mut().unwrap();
     let header_hms = response_hm.read_fractal(1)?;
     for i in 0..header_hms.len() {
@@ -3062,12 +3067,15 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let (val_hm, _) = response_hm.read_from_fractal(&h, 1);
       let key = HandlerMemory::fractal_to_string(key_hm)?;
       let val = HandlerMemory::fractal_to_string(val_hm)?;
+      // TODO: figure out how to handle this potential panic
       let name = HeaderName::from_bytes(key.as_bytes()).unwrap();
+      // TODO: figure out how to handle this potential panic
       let value = HeaderValue::from_str(&val).unwrap();
       headers.insert(name, value);
     }
     // Get the body, populate the response object, and fire it out
     let body = HandlerMemory::fractal_to_string(response_hm.read_fractal(2)?)?;
+    // TODO: figure out how to handle this potential panic
     Ok(res.body(body.into()).unwrap())
   }
   io!(httplsn => fn(_args, hand_mem) {
@@ -3332,8 +3340,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
 
   // "Special" opcodes
   cpu!(exitop => fn(args, hand_mem) {
-    io::stdout().flush().unwrap();
-    io::stderr().flush().unwrap();
+    let _ = io::stdout().flush();
+    let _ = io::stderr().flush();
     std::process::exit(hand_mem.read_fixed(args[0])? as i32);
   });
   cpu!(stdoutp => fn(args, hand_mem) {
@@ -3801,7 +3809,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     } else {
       let mut stack: Vec<FractalMemory> = vec![hand_mem.read_fractal(args[0])?];
       while stack.len() > 0 {
-        let fractal = stack.pop().unwrap();
+        let fractal = stack.pop().ok_or(VMError::IllegalAccess)?;
         for i in 0..fractal.len() {
           let (data, is_fractal) = hand_mem.read_from_fractal(&fractal, i);
           if is_fractal {
