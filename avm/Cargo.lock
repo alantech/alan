@@ -26,7 +26,7 @@ dependencies = [
 
 [[package]]
 name = "alan"
-version = "0.1.37-beta15"
+version = "0.1.37-beta14"
 dependencies = [
  "anycloud",
  "async-stream",
