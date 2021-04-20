@@ -1,26 +1,27 @@
+use std::collections::HashMap;
 use std::convert::Infallible;
 use std::hash::Hasher;
 use std::net::TcpStream;
 use std::path::Path;
 use std::sync::Arc;
-use std::collections::HashMap;
 
+use anycloud::error;
+use anycloud::logger::ErrorType;
 use futures::future::join_all;
 use hyper::{
   client::{Client, HttpConnector},
   Body, Request, Response,
 };
 use hyper_rustls::HttpsConnector;
+use once_cell::sync::OnceCell;
 use rustls::ClientConfig;
 use twox_hash::XxHash64;
-use anycloud::logger::ErrorType;
-use anycloud::error;
-use once_cell::sync::OnceCell;
 
 use crate::daemon::daemon::CLUSTER_SECRET;
+use crate::daemon::dns::VMMetadata;
 use crate::make_server;
 use crate::vm::http::{HttpType, HttpsConfig};
-use crate::daemon::dns::VMMetadata;
+use crate::vm::opcode::REGION_VMS;
 
 pub static NAIVE_CLIENT: OnceCell<Client<HttpsConnector<HttpConnector>>> = OnceCell::new();
 
@@ -108,7 +109,7 @@ pub struct ControlPort {
   // struct and then make it possible to wind down the control port server
   // server: &'a dyn Service<std::convert::Infallible>,
   vms: HashMap<String, VMMetadata>, // All VMs in the cluster. String is private IP
-  self_vm: Option<VMMetadata>, // This VM. Not set on initialization
+  self_vm: Option<VMMetadata>,      // This VM. Not set on initialization
   region_vms: HashMap<String, VMMetadata>, // VMs in the same cloud and region. String is private IP
 }
 
@@ -169,7 +170,7 @@ impl ControlPort {
       .set_certificate_verifier(Arc::new(naive::TLS {}));
     let mut http_connector = HttpConnector::new();
     http_connector.enforce_http(false);
-   
+
     // This works because we only construct the control port once
     let client = Client::builder().build::<_, Body>(HttpsConnector::from((http_connector, tls)));
     NAIVE_CLIENT.set(client);
@@ -196,9 +197,16 @@ impl ControlPort {
       .iter()
       .map(|vm| vm.private_ip_addr.to_string())
       .collect();
-    let self_vm_vec: Vec<&VMMetadata> = vms.iter().filter(|vm| vm.private_ip_addr == self_ip).collect();
+    let self_vm_vec: Vec<&VMMetadata> = vms
+      .iter()
+      .filter(|vm| vm.private_ip_addr == self_ip)
+      .collect();
     if self_vm_vec.len() == 0 {
-      error!(ErrorType::NoDnsPrivateIp, "Failed to find self in cluster. Maybe I am being shut down?").await;
+      error!(
+        ErrorType::NoDnsPrivateIp,
+        "Failed to find self in cluster. Maybe I am being shut down?"
+      )
+      .await;
       // TODO: Should this error propagate up to the stats loop or no?
       return;
     } else if self_vm_vec.len() > 1 {
@@ -206,7 +214,8 @@ impl ControlPort {
       error!(
         ErrorType::DuplicateDnsPrivateIp,
         "Private IP address collision detected! I don't know who I really am!"
-      ).await;
+      )
+      .await;
       // TODO: Should this error propagate up to the stats loop or no?
       return;
     }
@@ -222,6 +231,17 @@ impl ControlPort {
     vms.iter().for_each(|vm| {
       all_vms.insert(vm.private_ip_addr.clone(), vm.clone());
     });
+    let mut other_region_ips: Vec<String> = region_vms
+      .keys()
+      .filter(|ip| ip.as_str() != self_ip)
+      .map(|ip| ip.clone())
+      .collect();
+    let mut region_ips = Arc::clone(&REGION_VMS);
+    let region_ips_mut = Arc::get_mut(&mut region_ips).unwrap();
+    region_ips_mut.clear();
+    region_ips_mut.append(&mut other_region_ips);
+    drop(region_ips_mut);
+    drop(region_ips);
     self.vms = all_vms;
     self.self_vm = Some(self_vm);
     self.region_vms = region_vms;
