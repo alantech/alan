@@ -16,12 +16,12 @@ use dashmap::DashMap;
 use hyper::header::{HeaderName, HeaderValue};
 use hyper::{client::ResponseFuture, Body, Request, Response, StatusCode};
 use once_cell::sync::Lazy;
+use rand::{thread_rng, Rng};
 use regex::Regex;
 use tokio::process::Command;
 use tokio::sync::oneshot::{self, Receiver, Sender};
 use tokio::time::sleep;
 use twox_hash::XxHash64;
-use rand::{thread_rng, Rng};
 
 use crate::daemon::ctrl::NAIVE_CLIENT;
 use crate::vm::event::{BuiltInEvents, EventEmit, HandlerFragment, NOP_ID};
@@ -34,7 +34,7 @@ static DS: Lazy<Arc<DashMap<String, Arc<HandlerMemory>>>> =
   Lazy::new(|| Arc::new(DashMap::<String, Arc<HandlerMemory>>::new()));
 
 // used for load balancing in the cluster
-static REGION_VMS: Lazy<Arc<Vec<String>>> = Lazy::new(|| Arc::new(Vec::new()));
+pub static REGION_VMS: Lazy<Arc<Vec<String>>> = Lazy::new(|| Arc::new(Vec::new()));
 
 // type aliases
 /// Futures implement an Unpin marker that guarantees to the compiler that the future will not move while it is running
@@ -2975,7 +2975,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let i = async move {
         let mut rng = thread_rng();
         rng.gen_range(0..=l)
-      }.await;
+      }
+      .await;
       // If it's equal to the length process this request normally, otherwise, load balance this
       // request to another instance
       if i != REGION_VMS.len() {
@@ -3016,7 +3017,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
             return Ok(Response::new(
               format!("Connection terminated: {}", ee).into(),
             ));
-          },
+          }
         };
         let mut rr_res = match NAIVE_CLIENT.get().unwrap().request(req_obj).await {
           Ok(res) => res,
@@ -3024,7 +3025,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
             return Ok(Response::new(
               format!("Connection terminated: {}", ee).into(),
             ));
-          },
+          }
         };
         // Get the status from the round-robin response and begin building the response object
         let status = rr_res.status();
@@ -3040,7 +3041,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
             return Ok(Response::new(
               format!("Connection terminated: {}", ee).into(),
             ));
-          },
+          }
         };
         return Ok(res.body(body.into()).unwrap());
       }

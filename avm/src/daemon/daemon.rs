@@ -204,9 +204,7 @@ pub async fn start(
           }
           println!(
             "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
-            cluster_id,
-            cluster_size,
-            factor
+            cluster_id, cluster_size, factor
           );
           if factor != "1" {
             post_v1_scale(&cluster_id, &agzb64, &deploy_token, &factor).await;
