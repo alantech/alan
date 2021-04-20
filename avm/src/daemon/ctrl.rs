@@ -19,7 +19,7 @@ use hyper_rustls::HttpsConnector;
 use rustls::ClientConfig;
 use twox_hash::XxHash64;
 
-use crate::daemon::daemon::{DaemonProperties, CLUSTER_SECRET, DAEMON_PROPS};
+use crate::daemon::daemon::{DaemonProperties, DaemonResult, CLUSTER_SECRET, DAEMON_PROPS};
 use crate::make_server;
 use crate::vm::http::{HttpType, HttpsConfig};
 
@@ -151,7 +151,7 @@ async fn handle_start(req: Request<Body>) -> Result<Response<Body>, Infallible> 
   }
 }
 
-async fn get_daemon_props(req: Request<Body>) -> Result<(), Box<dyn Error>> {
+async fn get_daemon_props(req: Request<Body>) -> DaemonResult<()> {
   let bytes = body::to_bytes(req.into_body()).await?;
   let body: DaemonProperties = serde_json::from_slice(&bytes).unwrap();
   let pwd = env::current_dir();
