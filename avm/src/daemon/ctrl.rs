@@ -3,6 +3,7 @@ use std::hash::Hasher;
 use std::net::TcpStream;
 use std::path::Path;
 use std::sync::Arc;
+use std::collections::HashMap;
 
 use futures::future::join_all;
 use hyper::{
@@ -12,10 +13,13 @@ use hyper::{
 use hyper_rustls::HttpsConnector;
 use rustls::ClientConfig;
 use twox_hash::XxHash64;
+use anycloud::logger::ErrorType;
+use anycloud::error;
 
 use crate::daemon::daemon::CLUSTER_SECRET;
 use crate::make_server;
 use crate::vm::http::{HttpType, HttpsConfig};
+use crate::daemon::dns::VMMetadata;
 
 #[derive(Debug)]
 pub struct HashedId {
@@ -100,6 +104,9 @@ pub struct ControlPort {
   // TODO: Once the crazy type info of the server can be figured out, we can attach it to this
   // struct and then make it possible to wind down the control port server
   // server: &'a dyn Service<std::convert::Infallible>,
+  vms: HashMap<String, VMMetadata>, // All VMs in the cluster. String is private IP
+  self_vm: Option<VMMetadata>, // This VM. Not set on initialization
+  region_vms: HashMap<String, VMMetadata>, // VMs in the same cloud and region. String is private IP
 }
 
 async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> {
@@ -163,15 +170,54 @@ impl ControlPort {
     ControlPort {
       lrh: LogRendezvousHash::new(vec![]),
       client: Client::builder().build::<_, Body>(HttpsConnector::from((http_connector, tls))),
+      vms: HashMap::new(),
+      self_vm: None,
+      region_vms: HashMap::new(),
     }
   }
 
-  pub fn update_ips(self: &mut ControlPort, ips: Vec<String>) {
+  pub async fn update_vms(self: &mut ControlPort, self_ip: &str, vms: Vec<VMMetadata>) {
+    let ips = vms
+      .iter()
+      .map(|vm| vm.private_ip_addr.to_string())
+      .collect();
+    let self_vm_vec: Vec<&VMMetadata> = vms.iter().filter(|vm| vm.private_ip_addr == self_ip).collect();
+    if self_vm_vec.len() == 0 {
+      error!(ErrorType::NoDnsPrivateIp, "Failed to find self in cluster. Maybe I am being shut down?").await;
+      // TODO: Should this error propagate up to the stats loop or no?
+      return;
+    } else if self_vm_vec.len() > 1 {
+      // This hopefully never happens, but if it does, we need to change the daemon initialization
+      error!(
+        ErrorType::DuplicateDnsPrivateIp,
+        "Private IP address collision detected! I don't know who I really am!"
+      ).await;
+      // TODO: Should this error propagate up to the stats loop or no?
+      return;
+    }
+    let self_vm = self_vm_vec[0].clone();
+    let mut region_vms = HashMap::new();
+    vms
+      .iter()
+      .filter(|vm| vm.cloud == self_vm.cloud && vm.region == self_vm.region)
+      .for_each(|vm| {
+        region_vms.insert(vm.private_ip_addr.clone(), vm.clone());
+      });
+    let mut all_vms = HashMap::new();
+    vms.iter().for_each(|vm| {
+      all_vms.insert(vm.private_ip_addr.clone(), vm.clone());
+    });
+    self.vms = all_vms;
+    self.self_vm = Some(self_vm);
+    self.region_vms = region_vms;
     self.lrh.update(ips);
   }
 
-  pub fn get_leader(self: &ControlPort) -> &str {
-    self.lrh.get_leader_id()
+  pub fn is_leader(self: &ControlPort) -> bool {
+    match &self.self_vm {
+      Some(self_vm) => self.lrh.get_leader_id() == self_vm.private_ip_addr,
+      None => false,
+    }
   }
 
   pub async fn check_cluster_health(self: &mut ControlPort) {

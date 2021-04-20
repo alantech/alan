@@ -10,6 +10,7 @@ pub struct DNS {
   domain: String,
 }
 
+#[derive(Clone)]
 pub struct VMMetadata {
   schema_version: String,
   pub(crate) private_ip_addr: String,
