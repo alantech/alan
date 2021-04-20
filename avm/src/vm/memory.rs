@@ -158,10 +158,11 @@ impl HandlerMemory {
   /// that cannot be performed on an object within an Arc. As a result,
   /// all the forked children drop their reference to the parent, we take
   /// the parent out of the Arc after parallel work is done and then join on its children.
-  pub fn drop_parent(mut self: Arc<HandlerMemory>) -> Arc<HandlerMemory> {
-    let hm = Arc::get_mut(&mut self).expect("unable to drop parent HM: dangling pointer");
+  pub fn drop_parent(mut self: Arc<HandlerMemory>) -> VMResult<Arc<HandlerMemory>> {
+    let hm =
+      Arc::get_mut(&mut self).ok_or(VMError::InvalidState(InvalidState::HandMemDanglingPtr))?;
     hm.parent.take();
-    self
+    Ok(self)
   }
 
   /// Returns true if the idxs are valid in self
@@ -209,69 +210,67 @@ impl HandlerMemory {
   fn addr_to_idxs(
     self: &Arc<HandlerMemory>,
     addr: i64,
-  ) -> ((usize, usize), Option<Arc<HandlerMemory>>) {
+  ) -> VMResult<((usize, usize), Option<Arc<HandlerMemory>>)> {
     return match self.addr_to_idxs_opt(addr) {
-      Some(res) => (res, self.hm_for_idxs(res.0, res.1)),
+      Some(res) => Ok((res, self.hm_for_idxs(res.0, res.1))),
       None => {
         let (idxs, hm_opt) = self
           .parent
           .as_ref()
           // fail if no parent
-          .expect(
-            format!(
-              "Memory address {} referenced in parent, but no parent pointer defined\nhm:{:?}",
-              addr, self
-            )
-            .as_str(),
-          )
-          .addr_to_idxs(addr);
+          .ok_or(VMError::InvalidState(InvalidState::OrphanMemory))?
+          .addr_to_idxs(addr)?;
         let hm = match hm_opt {
           Some(hm) => Some(hm),
           None => self.parent.clone(),
         };
-        (idxs, hm)
+        Ok((idxs, hm))
       }
     };
   }
 
   /// Reads fixed data from a given address.
-  pub fn read_fixed(self: &Arc<HandlerMemory>, addr: i64) -> i64 {
-    let ((a, b), hm_opt) = self.addr_to_idxs(addr);
+  pub fn read_fixed(self: &Arc<HandlerMemory>, addr: i64) -> VMResult<i64> {
+    let ((a, b), hm_opt) = self.addr_to_idxs(addr)?;
     return if a == std::usize::MAX {
-      b as i64
+      Ok(b as i64)
     } else {
       let hm = hm_opt.as_ref().unwrap_or(self).as_ref();
-      hm.mems[a][b].1
+      Ok(hm.mems[a][b].1)
     };
   }
 
   /// Reads an array of data from the given address.
-  pub fn read_fractal(self: &Arc<HandlerMemory>, addr: i64) -> FractalMemory {
-    let ((a, b), hm_opt) = self.addr_to_idxs(addr);
+  pub fn read_fractal(self: &Arc<HandlerMemory>, addr: i64) -> VMResult<FractalMemory> {
+    let ((a, b), hm_opt) = self.addr_to_idxs(addr)?;
     // eprintln!("addr: {}, self?: {}, (a,b): ({},{})", addr, hm_opt.is_none(), a, b);
     let hm = hm_opt.as_ref().unwrap_or(self);
     // Special behavior to read strings out of global memory
     let start = if addr_type(addr) == GMEM_ADDR { b } else { 0 };
-    return FractalMemory {
+    return Ok(FractalMemory {
       hm_addr: Some(addr),
       block: hm.mems[a][start..].to_vec(),
       hm_id: Arc::as_ptr(hm) as usize,
-    };
+    });
   }
 
   /// Provides a mutable array of data from the given address.
   pub fn read_mut_fractal<'mem>(
     self: &'mem mut Arc<HandlerMemory>,
     addr: i64,
-  ) -> &'mem mut Vec<(usize, i64)> {
-    let ((a, _), hm_opt) = self.addr_to_idxs(addr);
+  ) -> VMResult<&'mem mut Vec<(usize, i64)>> {
+    let ((a, _), hm_opt) = self.addr_to_idxs(addr)?;
     if let Some(hm) = hm_opt {
       // copy necessary data from ancestor
-      Arc::get_mut(self).expect("how").mems[a] = hm.mems[a].clone();
+      Arc::get_mut(self)
+        .ok_or(VMError::InvalidState(InvalidState::HandMemDanglingPtr))?
+        .mems[a] = hm.mems[a].clone();
     }
-    &mut Arc::get_mut(self)
-      .expect("couldn't grab mutable memory: dangling pointer")
-      .mems[a]
+    Ok(
+      &mut Arc::get_mut(self)
+        .expect("couldn't grab mutable memory: dangling pointer")
+        .mems[a],
+    )
   }
 
   /// You better know what you're doing if you use this
@@ -290,8 +289,8 @@ impl HandlerMemory {
   /// For a given address, determines if the data is a single value or an array of values, and
   /// returns that value either as a vector or the singular value wrapped in a vector, and a
   /// boolean indicating if it was a fractal value or not.
-  pub fn read_either(self: &Arc<HandlerMemory>, addr: i64) -> (FractalMemory, bool) {
-    let ((a, b), hm_opt) = self.addr_to_idxs(addr);
+  pub fn read_either(self: &Arc<HandlerMemory>, addr: i64) -> VMResult<(FractalMemory, bool)> {
+    let ((a, b), hm_opt) = self.addr_to_idxs(addr)?;
     let hm = match hm_opt.as_ref() {
       Some(hm) => hm,
       None => self,
@@ -301,14 +300,14 @@ impl HandlerMemory {
     } else {
       (hm.mems[a].clone(), true)
     };
-    return (
+    return Ok((
       FractalMemory {
         hm_addr: Some(addr),
         block,
         hm_id: Arc::as_ptr(hm) as usize,
       },
       is_fractal,
-    );
+    ));
   }
 
   /// Simply sets a given address to an explicit set of `mems` indexes. Simplifies pointer creation
@@ -394,7 +393,11 @@ impl HandlerMemory {
   }
 
   /// Stores a nested fractal of data in a given address.
-  pub fn write_fractal(self: &mut Arc<HandlerMemory>, addr: i64, fractal: &FractalMemory) -> VMResult<()> {
+  pub fn write_fractal(
+    self: &mut Arc<HandlerMemory>,
+    addr: i64,
+    fractal: &FractalMemory,
+  ) -> VMResult<()> {
     let a = self.mems.len();
     if !fractal.belongs(self) {
       if fractal.hm_addr.is_none() {
@@ -402,7 +405,7 @@ impl HandlerMemory {
       }
       // copy fractal from ancestor
       let addr = fractal.hm_addr.as_ref().unwrap().clone();
-      let ((a, _), hm_opt) = self.addr_to_idxs(addr);
+      let ((a, _), hm_opt) = self.addr_to_idxs(addr)?;
       let hm = hm_opt.expect("couldn't write fractal to HandlerMemory: address doesn't exist");
       Arc::get_mut(self).expect("how").mems[a] = hm.mems[a].clone();
       drop(hm);
@@ -425,55 +428,58 @@ impl HandlerMemory {
   }
 
   /// Pushes a fixed value into a fractal at a given address.
-  pub fn push_fixed(self: &mut Arc<HandlerMemory>, addr: i64, val: i64) {
-    let mem = self.read_mut_fractal(addr);
+  pub fn push_fixed(self: &mut Arc<HandlerMemory>, addr: i64, val: i64) -> VMResult<()> {
+    let mem = self.read_mut_fractal(addr)?;
     mem.push((std::usize::MAX, val));
+    Ok(())
   }
 
   /// Pushes a nested fractal value into a fractal at a given address.
-  pub fn push_fractal(self: &mut Arc<HandlerMemory>, addr: i64, val: FractalMemory) {
+  pub fn push_fractal(
+    self: &mut Arc<HandlerMemory>,
+    addr: i64,
+    val: FractalMemory,
+  ) -> VMResult<()> {
     let a = self.mems.len();
-    let mem = self.read_mut_fractal(addr);
+    let mem = self.read_mut_fractal(addr)?;
     mem.push((a, std::usize::MAX as i64));
     Arc::get_mut(self)
-      .expect("couldn't push fractal: dangling pointer")
+      .ok_or(VMError::InvalidState(InvalidState::HandMemDanglingPtr))?
       .mems
       .push(val.block);
+    Ok(())
   }
 
   /// Pops a value off of the fractal. May be fixed data or a virtual pointer.
-  pub fn pop(self: &mut Arc<HandlerMemory>, addr: i64) -> Result<FractalMemory, String> {
-    let mem = self.read_mut_fractal(addr);
+  pub fn pop(self: &mut Arc<HandlerMemory>, addr: i64) -> VMResult<FractalMemory> {
+    let mem = self.read_mut_fractal(addr)?;
     if mem.len() > 0 {
       return Ok(FractalMemory::new(vec![mem.pop().unwrap()]));
     } else {
-      return Err("cannot pop empty array".to_string());
+      return Err(VMError::InvalidState(InvalidState::IllegalAccess));
     }
   }
 
   /// Deletes a value off of the fractal at the given idx. May be fixed data or a virtual pointer.
-  pub fn delete(
-    self: &mut Arc<HandlerMemory>,
-    addr: i64,
-    idx: usize,
-  ) -> Result<FractalMemory, String> {
-    let mem = self.read_mut_fractal(addr);
+  pub fn delete(self: &mut Arc<HandlerMemory>, addr: i64, idx: usize) -> VMResult<FractalMemory> {
+    let mem = self.read_mut_fractal(addr)?;
     if mem.len() > 0 && mem.len() > idx {
       return Ok(FractalMemory::new(vec![mem.remove(idx)]));
     } else {
-      return Err(format!(
-        "cannot remove idx {} from array with length {}",
-        idx,
-        mem.len()
-      ));
+      return Err(VMError::InvalidState(InvalidState::IllegalAccess));
     }
   }
 
   /* REGISTER MANIPULATION METHODS */
 
   /// Creates a pointer from `orig_addr` to `addr`
-  pub fn register(self: &mut Arc<HandlerMemory>, addr: i64, orig_addr: i64, is_variable: bool) -> VMResult<()> {
-    let ((a, b), _) = self.addr_to_idxs(orig_addr);
+  pub fn register(
+    self: &mut Arc<HandlerMemory>,
+    addr: i64,
+    orig_addr: i64,
+    is_variable: bool,
+  ) -> VMResult<()> {
+    let ((a, b), _) = self.addr_to_idxs(orig_addr)?;
     if addr_type(orig_addr) == GMEM_ADDR && is_variable {
       // Special behavior to read strings out of global memory
       let string = HandlerMemory::fractal_to_string(FractalMemory::new(self.mems[a][b..].to_vec()));
@@ -485,22 +491,23 @@ impl HandlerMemory {
   }
 
   /// Pushes a pointer from `orig_addr` address into the fractal at `addr`.
-  pub fn push_register(self: &mut Arc<HandlerMemory>, addr: i64, orig_addr: i64) {
-    let ((a, b), _) = self.addr_to_idxs(orig_addr);
+  pub fn push_register(self: &mut Arc<HandlerMemory>, addr: i64, orig_addr: i64) -> VMResult<()> {
+    let ((a, b), _) = self.addr_to_idxs(orig_addr)?;
     // Special path for strings in global memory which is the same for parent and self
     if a == 0 {
       let strmem = self.mems[0][b..].to_vec().clone();
       let new_a = self.mems.len();
       Arc::get_mut(self)
-        .expect("couldn't push register: dangling pointer")
+        .ok_or(VMError::InvalidState(InvalidState::HandMemDanglingPtr))?
         .mems
         .push(strmem);
-      let mem = self.read_mut_fractal(addr);
+      let mem = self.read_mut_fractal(addr)?;
       mem.push((new_a, std::usize::MAX as i64));
     } else {
-      let mem = self.read_mut_fractal(addr);
+      let mem = self.read_mut_fractal(addr)?;
       mem.push((a, b as i64));
     }
+    Ok(())
   }
 
   /// Creates a pointer from `orig_addr` to index/offset `offset_addr` of fractal in `fractal_addr`
@@ -509,10 +516,11 @@ impl HandlerMemory {
     orig_addr: i64,
     fractal_addr: i64,
     offset_addr: i64,
-  ) {
-    let ((a, b), _) = self.addr_to_idxs(orig_addr);
-    let mem = self.read_mut_fractal(fractal_addr);
+  ) -> VMResult<()> {
+    let ((a, b), _) = self.addr_to_idxs(orig_addr)?;
+    let mem = self.read_mut_fractal(fractal_addr)?;
     mem[offset_addr as usize] = (a, b as i64);
+    Ok(())
   }
 
   /// Creates a pointer from index/offset `offset_addr` of fractal in `fractal_addr` to `out_addr`
@@ -522,15 +530,16 @@ impl HandlerMemory {
     fractal_addr: i64,
     offset_addr: usize,
     out_addr: i64,
-  ) {
-    let ((arr_a, _), _) = self.addr_to_idxs(fractal_addr);
-    let fractal = self.read_fractal(fractal_addr);
+  ) -> VMResult<()> {
+    let ((arr_a, _), _) = self.addr_to_idxs(fractal_addr)?;
+    let fractal = self.read_fractal(fractal_addr)?;
     let (a, b) = fractal.block[offset_addr];
     if a < std::usize::MAX {
       self.set_addr(out_addr, a, b as usize);
     } else {
       self.set_addr(out_addr, arr_a, offset_addr);
     }
+    Ok(())
   }
 
   /// Creates a pointer from index/offset `idx` in FractalMemory to `out_addr`
@@ -551,9 +560,10 @@ impl HandlerMemory {
     out_addr: i64,
     fractal: &FractalMemory,
     offset_addr: usize,
-  ) {
-    let mem = self.read_mut_fractal(out_addr);
+  ) -> VMResult<()> {
+    let mem = self.read_mut_fractal(out_addr)?;
     mem.push(fractal.block[offset_addr]);
+    Ok(())
   }
 
   /* DATA TRANSFER, FORKING AND DUPLICATION METHODS */
@@ -566,7 +576,7 @@ impl HandlerMemory {
     dest: &mut Arc<HandlerMemory>,
     dest_addr: i64,
   ) -> VMResult<()> {
-    let ((a, b), hm_opt) = origin.addr_to_idxs(orig_addr);
+    let ((a, b), hm_opt) = origin.addr_to_idxs(orig_addr)?;
     let orig = match hm_opt.as_ref() {
       Some(orig) => orig,
       None => origin,
@@ -592,7 +602,7 @@ impl HandlerMemory {
       if len == 0 {
         // Assume zero is not a string
         dest.write_fixed(dest_addr, mem_slice[0].1);
-        return Ok(())
+        return Ok(());
       }
       let mut s_bytes: Vec<u8> = Vec::new();
       for i in 1..mem_slice.len() {
@@ -686,12 +696,12 @@ impl HandlerMemory {
 
   /// Creates a duplicate of data at one address in the HandlerMemory in a new address. Makes the
   /// `clone` function in Alan possible.
-  pub fn dupe(self: &mut Arc<HandlerMemory>, orig_addr: i64, dest_addr: i64) {
+  pub fn dupe(self: &mut Arc<HandlerMemory>, orig_addr: i64, dest_addr: i64) -> VMResult<()> {
     // This *should be possible with something like this:
     // HandlerMemory::transfer(self, orig_addr, self, dest_addr);
     // But Rust's borrow checker doesn't like it, so we basically have to replicate the code here
     // despite the fact that it should work just fine...
-    let ((a, b), _) = self.addr_to_idxs(orig_addr);
+    let ((a, b), _) = self.addr_to_idxs(orig_addr)?;
     if a == std::usize::MAX {
       self.write_fixed(dest_addr, b as i64);
     } else if a < std::usize::MAX && (b as usize) < std::usize::MAX {
@@ -707,7 +717,7 @@ impl HandlerMemory {
       let mut check_idx = 0;
       let mut orig_arr_addrs: Vec<usize> = vec![a];
       let mut orig_arr_copies: Vec<Vec<(usize, i64)>> =
-        vec![self.read_fractal(orig_addr).block.clone()];
+        vec![self.read_fractal(orig_addr)?.block.clone()];
       while check_idx < orig_arr_addrs.len() {
         let arr = &orig_arr_copies[check_idx];
         let l = arr.len();
@@ -746,6 +756,7 @@ impl HandlerMemory {
       // Finally, set the destination address to point at the original, main nested array
       self.set_addr(dest_addr, dest_offset, std::usize::MAX);
     }
+    Ok(())
   }
 
   /// Returns a new HandlerMemory with a read-only reference to HandlerMemory as parent

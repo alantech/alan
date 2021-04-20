@@ -280,7 +280,7 @@ impl HandlerFragment {
               //eprintln!("{} {:?}", i.opcode._name, i.args);
               let forked = HandlerMemory::fork(hand_mem.clone())?;
               let res = func(i.args.clone(), forked).await?;
-              Ok(HandlerMemory::drop_parent(res))
+              Ok(HandlerMemory::drop_parent(res)?)
               // Ok(func(i.args.clone(), HandlerMemory::fork(hand_mem.clone())?)
               //   .then(|res| HandlerMemory::drop_parent_async).await)
             } else {

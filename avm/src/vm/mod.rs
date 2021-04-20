@@ -45,6 +45,7 @@ pub enum InvalidState {
   IllegalAccess,
   InvalidNOP,
   MemoryNotOwned,
+  OrphanMemory,
   ShutDown,
   Other(String),
   UnexpectedInstruction(InstrType),
@@ -59,7 +60,14 @@ impl Display for InvalidState {
       }
       InvalidState::IllegalAccess => write!(f, "illegal access"),
       InvalidState::InvalidNOP => write!(f, "a NOP operation was used where it's not permitted"),
-      InvalidState::MemoryNotOwned => write!(f, "attempting to write to memory not owned by the current handler"),
+      InvalidState::MemoryNotOwned => write!(
+        f,
+        "attempting to write to memory not owned by the current handler"
+      ),
+      InvalidState::OrphanMemory => write!(
+        f,
+        "memory referenced in parent, but no parent pointer defined"
+      ),
       InvalidState::ShutDown => write!(f, "the AVM has been shut down"),
       InvalidState::Other(reason) => reason.fmt(f),
       InvalidState::UnexpectedInstruction(InstrType::CPU) => {
