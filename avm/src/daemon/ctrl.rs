@@ -154,33 +154,7 @@ async fn handle_start(req: Request<Body>) -> Result<Response<Body>, Infallible> 
 async fn get_daemon_props(req: Request<Body>) -> DaemonResult<()> {
   let bytes = body::to_bytes(req.into_body()).await?;
   let body: DaemonProperties = serde_json::from_slice(&bytes).unwrap();
-  let pwd = env::current_dir();
-  match pwd {
-    Ok(pwd) => {
-      if let Some(dockerfile_b64) = &body.dockerfileB64 {
-        write(
-          format!("{}/Dockerfile", pwd.display()),
-          base64::decode(dockerfile_b64).unwrap(),
-        )?;
-      }
-      if let Some(app_tar_gz_b64) = &body.appTarGzB64 {
-        write(
-          format!("{}/app.tar.gz", pwd.display()),
-          base64::decode(app_tar_gz_b64).unwrap(),
-        )?;
-      }
-      if let Some(env_b64) = &body.envB64 {
-        write(
-          format!("{}/anycloud.env", pwd.display()),
-          base64::decode(env_b64).unwrap(),
-        )?;
-      }
-    }
-    Err(err) => {
-      let err = format!("{:?}", err);
-      return Err(err.into());
-    }
-  }
+  might_dump_files(&body)?;
   DAEMON_PROPS
     .set(DaemonProperties {
       clusterId: body.clusterId,
@@ -192,6 +166,37 @@ async fn get_daemon_props(req: Request<Body>) -> DaemonResult<()> {
       envB64: body.envB64,
     })
     .unwrap();
+  Ok(())
+}
+
+fn might_dump_files(daemon_props: &DaemonProperties) -> DaemonResult<()> {
+  let pwd = env::current_dir();
+  match pwd {
+    Ok(pwd) => {
+      if let Some(dockerfile_b64) = daemon_props.dockerfileB64 {
+        write(
+          format!("{}/Dockerfile", pwd.display()),
+          base64::decode(dockerfile_b64).unwrap(),
+        )?;
+      }
+      if let Some(app_tar_gz_b64) = daemon_props.appTarGzB64 {
+        write(
+          format!("{}/app.tar.gz", pwd.display()),
+          base64::decode(app_tar_gz_b64).unwrap(),
+        )?;
+      }
+      if let Some(env_b64) = daemon_props.envB64 {
+        write(
+          format!("{}/anycloud.env", pwd.display()),
+          base64::decode(env_b64).unwrap(),
+        )?;
+      }
+    }
+    Err(err) => {
+      let err = format!("{:?}", err);
+      return Err(err.into());
+    }
+  }
   Ok(())
 }
 
