@@ -18,6 +18,7 @@ pub enum ErrorType {
   ScaleFailed = 120,
   PostFailed = 121,
   RunAgzFailed = 122,
+  DuplicateDnsPrivateIp = 123,
 }
 
 #[macro_export]

@@ -167,34 +167,44 @@ pub async fn start(
     let period = Duration::from_secs(60);
     let mut stats = Vec::new();
     let mut cluster_size = 0;
-    let mut leader_ip = String::new();
     let self_ip = get_private_ip().await;
     let dns = DNS::new(&domain);
     if let (Ok(dns), Ok(self_ip)) = (&dns, &self_ip) {
       loop {
         let vms = match dns.get_vms(&cluster_id).await {
-          Ok(vms) => vms,
+          Ok(vms) => Some(vms),
           Err(err) => {
             error!(ErrorType::NoDnsVms, "{}", err).await;
-            Vec::new()
+            None
           }
         };
-        // triggered the first time since cluster_size == 0
-        // and every time the cluster changes size
-        if vms.len() != cluster_size {
+        println!("vms from dns {:?}", &vms);
+        // TODO: Figure out how to avoid flushing the LogRendezvousHash table every iteration, but
+        // avoid bugs with misidentifying cluster changes as not-changed
+        if let Some(vms) = vms {
           cluster_size = vms.len();
-          let ips = vms
-            .iter()
-            .map(|vm| vm.private_ip_addr.to_string())
-            .collect();
-          control_port.update_ips(ips);
-          leader_ip = control_port.get_leader().to_string();
+          println!("update_vms is being called!");
+          control_port.update_vms(self_ip, vms).await;
+        } else {
+          println!("update_vms is not being called!");
         }
-        if leader_ip == self_ip.to_string() {
+        if control_port.is_leader() {
+          println!("I am leader!");
           match get_v1_stats().await {
             Ok(s) => stats.push(s),
             Err(err) => error!(ErrorType::NoStats, "{}", err).await,
           };
+        } else {
+          // Debug print for now
+          println!("I am NOT the leader! :(");
+          println!(
+            "Me: {} Leader: {}",
+            self_ip,
+            control_port
+              .get_leader()
+              .map(|vm| vm.private_ip_addr.clone())
+              .unwrap_or("<None>".to_string())
+          );
         }
         if stats.len() >= 4 {
           let mut factor = String::from("1");
@@ -207,9 +217,7 @@ pub async fn start(
           }
           println!(
             "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
-            cluster_id,
-            vms.len(),
-            factor
+            cluster_id, cluster_size, factor
           );
           if factor != "1" {
             post_v1_scale(&cluster_id, &agzb64, &deploy_token, &factor).await;
