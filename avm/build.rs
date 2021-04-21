@@ -11,7 +11,6 @@ fn main() {
     .inputs(&["src/vm/protos/HandlerMemory.proto"])
     .includes(&["src/vm/protos"])
     .customize(Customize {
-      // gen_mod_rs: Some(true),
       ..Default::default()
     })
     .run()
