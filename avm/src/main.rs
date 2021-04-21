@@ -29,7 +29,10 @@ async fn compile_and_run(source_file: &str) -> i32 {
     let mut path = env::current_dir().unwrap();
     path.push(dest_file);
     let fp = path.into_os_string().into_string().unwrap();
-    run_file(&fp, true).await;
+    if let Err(ee) = run_file(&fp, true).await {
+      eprintln!("{}", ee);
+      return 2;
+    };
   }
   return status_code;
 }
@@ -131,7 +134,10 @@ fn main() {
           agc_file
         );
         telemetry::log("avm-run").await;
-        run_file(&fp, false).await;
+        if let Err(ee) = run_file(&fp, false).await {
+          eprintln!("{}", ee);
+          std::process::exit(2);
+        };
       }
       ("compile", Some(matches)) => {
         let source_file = matches.value_of("INPUT").unwrap();
