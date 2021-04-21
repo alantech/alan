@@ -3005,6 +3005,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         let body_str = str::from_utf8(&body_req).unwrap().to_string();
         let mut rr_req = Request::builder().method(method_str.as_str()).uri(uri_str);
         let rr_headers = rr_req.headers_mut().unwrap();
+        let name = HeaderName::from_bytes("X-Alan-RR".as_bytes()).unwrap();
+        let value = HeaderValue::from_str("true").unwrap();
+        rr_headers.insert(name, value);
         for (key, val) in headers.iter() {
           rr_headers.insert(key, val.clone());
         }
