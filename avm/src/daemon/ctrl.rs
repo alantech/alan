@@ -116,14 +116,14 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
     return Ok(Response::builder().status(500).body("fail".into()).unwrap());
   }
   match req.uri().path() {
-    "/ping" => Ok(Response::builder().status(200).body("pong".into()).unwrap()),
-    "/health" => handle_health(),
+    "/health" => Ok(Response::builder().status(200).body("ok".into()).unwrap()),
+    "/clusterHealth" => handle_cluster_health(),
     "/start" => handle_start(req).await,
     _ => Ok(Response::builder().status(404).body("fail".into()).unwrap()),
   }
 }
 
-fn handle_health() -> Result<Response<Body>, Infallible> {
+fn handle_cluster_health() -> Result<Response<Body>, Infallible> {
   if TcpStream::connect("127.0.0.1:443").is_err() {
     // If the Alan HTTPS server has not yet started, mark as a failure
     Ok(Response::builder().status(500).body("fail".into()).unwrap())
@@ -275,7 +275,7 @@ impl ControlPort {
     for node in nodes.iter() {
       let mut req = Request::builder()
         .method("GET")
-        .uri(format!("https://{}:4142/health", node.id));
+        .uri(format!("https://{}:4142/clusterHealth", node.id));
       req = req.header(cluster_secret.as_str(), "true");
       health.push(self.client.request(req.body(Body::empty()).unwrap()));
     }
