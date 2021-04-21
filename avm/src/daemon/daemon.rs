@@ -34,7 +34,7 @@ pub struct DaemonProperties {
   pub agzB64: String,
   pub deployToken: String,
   pub domain: String,
-  pub dockerfileB64: Option<String>,
+  pub DockerfileB64: Option<String>,
   pub appTarGzB64: Option<String>,
   pub envB64: Option<String>,
 }

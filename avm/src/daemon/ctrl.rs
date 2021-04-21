@@ -161,7 +161,7 @@ async fn get_daemon_props(req: Request<Body>) -> DaemonResult<()> {
       agzB64: body.agzB64,
       deployToken: body.deployToken,
       domain: body.domain,
-      dockerfileB64: body.dockerfileB64,
+      DockerfileB64: body.DockerfileB64,
       appTarGzB64: body.appTarGzB64,
       envB64: body.envB64,
     })
@@ -173,7 +173,7 @@ fn might_dump_files(daemon_props: &DaemonProperties) -> DaemonResult<()> {
   let pwd = env::current_dir();
   match pwd {
     Ok(pwd) => {
-      if let Some(dockerfile_b64) = &daemon_props.dockerfileB64 {
+      if let Some(dockerfile_b64) = &daemon_props.DockerfileB64 {
         write(
           format!("{}/Dockerfile", pwd.display()),
           base64::decode(dockerfile_b64).unwrap(),
