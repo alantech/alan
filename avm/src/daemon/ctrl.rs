@@ -248,7 +248,7 @@ impl ControlPort {
           }
         } else {
           let err = "Failed getting ssl certificate or key";
-          error!(ErrorType::CtrlPortStartFailed, "{}", err).await;
+          error!(ErrorType::NoSSLCert, "{}", err).await;
           panic!("{}", err);
         }
       }

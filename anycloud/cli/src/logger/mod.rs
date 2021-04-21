@@ -21,6 +21,7 @@ pub enum ErrorType {
   NoDaemonProps = 128,
   DaemonStartFailed = 129,
   CtrlPortStartFailed = 130,
+  NoSSLCert = 131,
 }
 
 #[macro_export]
