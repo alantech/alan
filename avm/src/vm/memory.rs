@@ -127,8 +127,7 @@ impl HandlerMemory {
         parent: None,
       }),
     };
-    let handlermemory = Arc::get_mut(&mut hm)
-      .ok_or_else(|| VMError::HandMemDanglingPtr)?;
+    let handlermemory = Arc::get_mut(&mut hm).ok_or_else(|| VMError::HandMemDanglingPtr)?;
     handlermemory.mems[1].reserve(mem_req as usize);
     return Ok(hm);
   }
@@ -161,8 +160,7 @@ impl HandlerMemory {
   /// all the forked children drop their reference to the parent, we take
   /// the parent out of the Arc after parallel work is done and then join on its children.
   pub fn drop_parent(mut self: Arc<HandlerMemory>) -> VMResult<Arc<HandlerMemory>> {
-    let hm =
-      Arc::get_mut(&mut self).ok_or(VMError::HandMemDanglingPtr)?;
+    let hm = Arc::get_mut(&mut self).ok_or(VMError::HandMemDanglingPtr)?;
     hm.parent.take();
     Ok(self)
   }
@@ -264,9 +262,7 @@ impl HandlerMemory {
     let ((a, _), hm_opt) = self.addr_to_idxs(addr)?;
     if let Some(hm) = hm_opt {
       // copy necessary data from ancestor
-      Arc::get_mut(self)
-        .ok_or(VMError::HandMemDanglingPtr)?
-        .mems[a] = hm.mems[a].clone();
+      Arc::get_mut(self).ok_or(VMError::HandMemDanglingPtr)?.mems[a] = hm.mems[a].clone();
     }
     Ok(&mut Arc::get_mut(self).ok_or(VMError::HandMemDanglingPtr)?.mems[a])
   }

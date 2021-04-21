@@ -45,14 +45,19 @@ impl Display for VMError {
       VMError::IllegalAccess => write!(f, "Illegal access"),
       VMError::InvalidNOP => write!(f, "A NOP operation was used in an illegal context"),
       VMError::InvalidString => write!(f, "Invalid string"),
-      VMError::MemoryNotOwned => write!(f, "Attempting to write to memory not owned by the current handler"),
+      VMError::MemoryNotOwned => write!(
+        f,
+        "Attempting to write to memory not owned by the current handler"
+      ),
       VMError::OrphanMemory => write!(
         f,
         "Memory referenced in parent, but no parent pointer defined"
       ),
       VMError::ShutDown => write!(f, "The AVM instance appears to be shut down"),
       VMError::Other(reason) => reason.fmt(f),
-      VMError::UnexpectedInstruction(instr_ty) => write!(f, "Expected another {} instruction", instr_ty),
+      VMError::UnexpectedInstruction(instr_ty) => {
+        write!(f, "Expected another {} instruction", instr_ty)
+      }
     }
   }
 }

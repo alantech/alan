@@ -225,9 +225,7 @@ impl HandlerFragment {
             }
             Ok(())
           } else {
-            Err(VMError::UnexpectedInstruction(
-              InstrType::CPU,
-            ))
+            Err(VMError::UnexpectedInstruction(InstrType::CPU))
           }
         })
         .collect::<VMResult<Vec<_>>>()?;
