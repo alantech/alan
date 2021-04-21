@@ -200,10 +200,14 @@ impl ControlPort {
       .iter()
       .map(|vm| vm.private_ip_addr.to_string())
       .collect();
+    println!("DEBUG1::::::::::::");
+    println!("{:?}", ips);
     let self_vm_vec: Vec<&VMMetadata> = vms
       .iter()
       .filter(|vm| vm.private_ip_addr == self_ip)
       .collect();
+    println!("DEBUG2::::::::::::");
+    println!("{:?}", self_vm_vec);
     if self_vm_vec.len() == 0 {
       error!(
         ErrorType::NoDnsPrivateIp,
@@ -223,6 +227,8 @@ impl ControlPort {
       return;
     }
     let self_vm = self_vm_vec[0].clone();
+    println!("DEBUG3::::::::::::");
+    println!("{:?}", self_vm);
     let mut region_vms = HashMap::new();
     vms
       .iter()
@@ -230,15 +236,21 @@ impl ControlPort {
       .for_each(|vm| {
         region_vms.insert(vm.private_ip_addr.clone(), vm.clone());
       });
+    println!("DEBUG4::::::::::::");
+    println!("{:?}", region_vms);
     let mut all_vms = HashMap::new();
     vms.iter().for_each(|vm| {
       all_vms.insert(vm.private_ip_addr.clone(), vm.clone());
     });
+    println!("DEBUG5::::::::::::");
+    println!("{:?}", all_vms);
     let mut other_region_ips: Vec<String> = region_vms
       .keys()
       .filter(|ip| ip.as_str() != self_ip)
       .map(|ip| ip.clone())
       .collect();
+    println!("DEBUG6::::::::::::");
+    println!("{:?}", other_region_ips);
     let mut region_ips = Arc::clone(&REGION_VMS);
     let region_ips_mut = Arc::get_mut(&mut region_ips).unwrap();
     region_ips_mut.clear();
