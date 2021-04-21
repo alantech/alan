@@ -550,9 +550,9 @@ pub async fn add_deploy_config() {
     }
   }
   let prompt = if creds.len() > 1 {
-    "Minimum number of replicas per region or cloud"
+    "Minimum number of VMs per region or cloud"
   } else {
-    "Minimum number of replicas per region"
+    "Minimum number of VMs per region"
   };
   let replicas: String = Input::with_theme(&ColorfulTheme::default())
     .with_prompt(prompt)
@@ -560,11 +560,11 @@ pub async fn add_deploy_config() {
     .interact_text()
     .unwrap();
   let min_replicas: Option<u32> = Some(replicas.parse::<u32>().unwrap_or_else(|_| {
-    eprintln!("{} is not a valid number of replicas", replicas);
+    eprintln!("{} is not a valid number of VMs", replicas);
     std::process::exit(1);
   }));
   let mut max_replicas = None;
-  let prompt = "Would you like to define a maximum number of replicas?";
+  let prompt = "Would you like to define a maximum number of VMs?";
   if Confirm::with_theme(&ColorfulTheme::default())
     .with_prompt(prompt)
     .default(false)
@@ -572,9 +572,9 @@ pub async fn add_deploy_config() {
     .unwrap()
   {
     let prompt = if creds.len() > 1 {
-      "Maximum number of replicas per region or cloud"
+      "Maximum number of VMs per region or cloud"
     } else {
-      "Maximum number of replicas per region"
+      "Maximum number of VMs per region"
     };
     let replicas: String = Input::with_theme(&ColorfulTheme::default())
       .with_prompt(prompt)
@@ -583,7 +583,7 @@ pub async fn add_deploy_config() {
     if let Ok(replicas) = replicas.parse::<u32>() {
       max_replicas = Some(replicas);
     } else {
-      eprintln!("{} is not a valid number of replicas", replicas);
+      eprintln!("{} is not a valid number of VMs", replicas);
       std::process::exit(1);
     }
   }
@@ -648,9 +648,9 @@ pub async fn edit_deploy_config() {
     });
   }
   let prompt = if creds.len() > 1 {
-    "Minimum number of replicas per region or cloud"
+    "Minimum number of VMs per region or cloud"
   } else {
-    "Minimum number of replicas per region"
+    "Minimum number of VMs per region"
   };
   let replicas: String = Input::with_theme(&ColorfulTheme::default())
     .with_prompt(prompt)
@@ -658,11 +658,11 @@ pub async fn edit_deploy_config() {
     .interact_text()
     .unwrap();
   let min_replicas: Option<u32> = Some(replicas.parse::<u32>().unwrap_or_else(|_| {
-    eprintln!("{} is not a valid number of replicas", replicas);
+    eprintln!("{} is not a valid number of VMs", replicas);
     std::process::exit(1);
   }));
   let mut max_replicas = None;
-  let prompt = "Would you like to define a maximum number of replicas?";
+  let prompt = "Would you like to define a maximum number of VMs?";
   if Confirm::with_theme(&ColorfulTheme::default())
     .with_prompt(prompt)
     .default(false)
@@ -670,9 +670,9 @@ pub async fn edit_deploy_config() {
     .unwrap()
   {
     let prompt = if creds.len() > 1 {
-      "Maximum number of replicas per region or cloud"
+      "Maximum number of VMs per region or cloud"
     } else {
-      "Maximum number of replicas per region"
+      "Maximum number of VMs per region"
     };
     let replicas: String = Input::with_theme(&ColorfulTheme::default())
       .with_prompt(prompt)
@@ -681,7 +681,7 @@ pub async fn edit_deploy_config() {
     if let Ok(replicas) = replicas.parse::<u32>() {
       max_replicas = Some(replicas);
     } else {
-      eprintln!("{} is not a valid number of replicas", replicas);
+      eprintln!("{} is not a valid number of VMs", replicas);
       std::process::exit(1);
     }
   }
