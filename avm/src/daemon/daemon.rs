@@ -184,7 +184,7 @@ pub async fn start(
         if let Some(vms) = vms {
           cluster_size = vms.len();
           println!("update_vms is being called!");
-          control_port.update_vms(self_ip, vms);
+          control_port.update_vms(self_ip, vms).await;
         } else {
           println!("update_vms is not being called!");
         }
