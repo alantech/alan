@@ -154,7 +154,7 @@ async fn handle_start(req: Request<Body>) -> Result<Response<Body>, Infallible> 
 async fn get_daemon_props(req: Request<Body>) -> DaemonResult<()> {
   let bytes = body::to_bytes(req.into_body()).await?;
   let body: DaemonProperties = serde_json::from_slice(&bytes).unwrap();
-  might_dump_files(&body)?;
+  maybe_dump_files(&body)?;
   DAEMON_PROPS
     .set(DaemonProperties {
       clusterId: body.clusterId,
@@ -169,7 +169,7 @@ async fn get_daemon_props(req: Request<Body>) -> DaemonResult<()> {
   Ok(())
 }
 
-fn might_dump_files(daemon_props: &DaemonProperties) -> DaemonResult<()> {
+fn maybe_dump_files(daemon_props: &DaemonProperties) -> DaemonResult<()> {
   let pwd = env::current_dir();
   match pwd {
     Ok(pwd) => {
