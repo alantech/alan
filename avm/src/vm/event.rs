@@ -8,7 +8,6 @@ use crate::vm::opcode::OpcodeFn;
 use crate::vm::program::Program;
 use crate::vm::run::EVENT_TX;
 use crate::vm::InstrType;
-use crate::vm::InvalidState;
 use crate::vm::VMError;
 use crate::vm::VMResult;
 
@@ -226,9 +225,9 @@ impl HandlerFragment {
             }
             Ok(())
           } else {
-            Err(VMError::InvalidState(InvalidState::UnexpectedInstruction(
+            Err(VMError::UnexpectedInstruction(
               InstrType::CPU,
-            )))
+            ))
           }
         })
         .collect::<VMResult<Vec<_>>>()?;
@@ -248,9 +247,7 @@ impl HandlerFragment {
       //eprintln!("{} {:?}", op.opcode._name, op.args);
       return func(op.args.clone(), hand_mem).await;
     } else {
-      return Err(VMError::InvalidState(InvalidState::UnexpectedInstruction(
-        InstrType::UnpredictableCPU,
-      )));
+      return Err(VMError::UnexpectedInstruction(InstrType::UnpredictableCPU));
     }
   }
 
@@ -266,9 +263,7 @@ impl HandlerFragment {
         //eprintln!("{} {:?}", op.opcode._name, op.args);
         return func(op.args.clone(), hand_mem).await;
       } else {
-        return Err(VMError::InvalidState(InvalidState::UnexpectedInstruction(
-          InstrType::IO,
-        )));
+        return Err(VMError::UnexpectedInstruction(InstrType::IO));
       }
     } else {
       let futures: Vec<_> = instrs
@@ -284,9 +279,7 @@ impl HandlerFragment {
               // Ok(func(i.args.clone(), HandlerMemory::fork(hand_mem.clone())?)
               //   .then(|res| HandlerMemory::drop_parent_async).await)
             } else {
-              Err(VMError::InvalidState(InvalidState::UnexpectedInstruction(
-                InstrType::IO,
-              )))
+              Err(VMError::UnexpectedInstruction(InstrType::IO))
             }
           }
         })

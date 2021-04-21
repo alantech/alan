@@ -14,9 +14,7 @@ use crate::vm::event::{BuiltInEvents, EventEmit, HandlerFragment};
 use crate::vm::http::{HttpConfig, HttpType};
 use crate::vm::memory::HandlerMemory;
 use crate::vm::program::{Program, PROGRAM};
-use crate::vm::InvalidState;
-use crate::vm::VMError;
-use crate::vm::VMResult;
+use crate::vm::{VMError, VMResult};
 
 pub static EVENT_TX: OnceCell<UnboundedSender<EventEmit>> = OnceCell::new();
 
@@ -33,7 +31,7 @@ impl VM {
     // outside of the opcodes and instruction scheduler for http and future IO sources
     EVENT_TX
       .set(event_tx.clone())
-      .map_err(|_| VMError::InvalidState(InvalidState::AlreadyRunning))?;
+      .map_err(|_| VMError::AlreadyRunning)?;
     return Ok(VM { event_tx, event_rx });
   }
 
@@ -41,7 +39,7 @@ impl VM {
     self
       .event_tx
       .send(event)
-      .map_err(|_| VMError::InvalidState(InvalidState::ShutDown))
+      .map_err(|_| VMError::ShutDown)
   }
 
   fn sched_event(self: &mut VM, event: EventEmit) -> VMResult<()> {
@@ -119,9 +117,9 @@ pub async fn run_file(fp: &str, delete_after_load: bool) -> VMResult<()> {
 pub async fn run(bytecode: Vec<i64>, http_config: HttpType) -> VMResult<()> {
   let program = Program::load(bytecode, http_config);
   PROGRAM.set(program).map_err(|_| {
-    VMError::InvalidState(InvalidState::Other(
+    VMError::Other(
       "A program is already loaded".to_string(),
-    ))
+    )
   })?;
   let mut vm = VM::new()?;
   const START: EventEmit = EventEmit {

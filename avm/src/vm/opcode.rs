@@ -1,5 +1,6 @@
 use futures::future::join_all;
 use std::collections::HashMap;
+use std::convert::Infallible;
 use std::fmt::Debug;
 use std::future::Future;
 use std::hash::Hasher;
@@ -26,9 +27,7 @@ use crate::vm::http::HTTP_CLIENT;
 use crate::vm::memory::{FractalMemory, HandlerMemory, CLOSURE_ARG_MEM_START};
 use crate::vm::program::Program;
 use crate::vm::run::EVENT_TX;
-use crate::vm::InvalidState;
-use crate::vm::VMError;
-use crate::vm::VMResult;
+use crate::vm::{VMError, VMResult};
 
 static DS: Lazy<Arc<DashMap<String, Arc<HandlerMemory>>>> =
   Lazy::new(|| Arc::new(DashMap::<String, Arc<HandlerMemory>>::new()));
@@ -2437,7 +2436,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   io!(find => fn(args, mut hand_mem) {
     Box::pin(async move {
       if args[1] == NOP_ID {
-        return Err(VMError::InvalidState(InvalidState::InvalidNOP));
+        return Err(VMError::InvalidNOP);
       }
       let fractal = hand_mem.read_fractal(args[0])?;
       let len = fractal.len();
@@ -2472,7 +2471,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   unpred_cpu!(findl => fn(args, mut hand_mem) {
     Box::pin(async move {
       if args[1] == NOP_ID {
-        return Err(VMError::InvalidState(InvalidState::InvalidNOP));
+        return Err(VMError::InvalidNOP);
       }
       let fractal = hand_mem.read_fractal(args[0])?;
       let subhandler = HandlerFragment::new(args[1], 0);
@@ -2496,7 +2495,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   io!(some => fn(args, mut hand_mem) {
     Box::pin(async move {
       if args[1] == NOP_ID {
-        return Err(VMError::InvalidState(InvalidState::InvalidNOP));
+        return Err(VMError::InvalidNOP);
       }
       let fractal = hand_mem.read_fractal(args[0])?;
       let subhandler = HandlerFragment::new(args[1], 0);
@@ -2523,7 +2522,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   unpred_cpu!(somel => fn(args, mut hand_mem) {
     Box::pin(async move {
       if args[1] == NOP_ID {
-        return Err(VMError::InvalidState(InvalidState::InvalidNOP));
+        return Err(VMError::InvalidNOP);
       }
       let fractal = hand_mem.read_fractal(args[0])?;
       let subhandler = HandlerFragment::new(args[1], 0);
@@ -2543,7 +2542,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   io!(every => fn(args, mut hand_mem) {
     Box::pin(async move {
       if args[1] == NOP_ID {
-        return Err(VMError::InvalidState(InvalidState::InvalidNOP));
+        return Err(VMError::InvalidNOP);
       }
       let fractal = hand_mem.read_fractal(args[0])?;
       let subhandler = HandlerFragment::new(args[1], 0);
@@ -2570,7 +2569,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   unpred_cpu!(everyl => fn(args, mut hand_mem) {
     Box::pin(async move {
       if args[1] == NOP_ID {
-        return Err(VMError::InvalidState(InvalidState::InvalidNOP));
+        return Err(VMError::InvalidNOP);
       }
       let fractal = hand_mem.read_fractal(args[0])?;
       let subhandler = HandlerFragment::new(args[1], 0);
@@ -2602,7 +2601,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   io!(reducep => fn(args, mut hand_mem) {
     Box::pin(async move {
       if args[1] == NOP_ID {
-        return Err(VMError::InvalidState(InvalidState::InvalidNOP));
+        return Err(VMError::InvalidNOP);
       }
       let fractal = hand_mem.read_fractal(args[0])?;
       let mut vals = Vec::with_capacity(fractal.len());
@@ -2645,7 +2644,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   unpred_cpu!(reducel => fn(args, mut hand_mem) {
     Box::pin(async move {
       if args[1] == NOP_ID {
-        return Err(VMError::InvalidState(InvalidState::InvalidNOP));
+        return Err(VMError::InvalidNOP);
       }
       let fractal = hand_mem.read_fractal(args[0])?;
       if fractal.len() == 0 {
@@ -2728,7 +2727,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   unpred_cpu!(foldl => fn(args, mut hand_mem) {
     Box::pin(async move {
       if args[1] == NOP_ID {
-        return Err(VMError::InvalidState(InvalidState::InvalidNOP));
+        return Err(VMError::InvalidNOP);
       }
       let obj = hand_mem.read_fractal(args[0])?;
       let (arr, _) = hand_mem.read_from_fractal(&obj, 0);
@@ -2757,7 +2756,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   io!(filter => fn(args, mut hand_mem) {
     Box::pin(async move {
       if args[1] == NOP_ID {
-        return Err(VMError::InvalidState(InvalidState::InvalidNOP));
+        return Err(VMError::InvalidNOP);
       }
       let fractal = hand_mem.read_fractal(args[0])?;
       let len = fractal.len();
@@ -2788,7 +2787,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   unpred_cpu!(filterl => fn(args, mut hand_mem) {
     Box::pin(async move {
       if args[1] == NOP_ID {
-        return Err(VMError::InvalidState(InvalidState::InvalidNOP));
+        return Err(VMError::InvalidNOP);
       }
       let fractal = hand_mem.read_fractal(args[0])?;
       let len = fractal.len();
@@ -3080,7 +3079,18 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   }
   io!(httplsn => fn(_args, hand_mem) {
     Box::pin(async move {
-      make_server!(&Program::global().http_config, http_listener);
+      // this extra fn is so that we can just use `?` inside of http_listener instead of
+      // having a bunch of `match`es that call a closure
+      async fn listen(req: Request<Body>) -> Result<Response<Body>, Infallible> {
+        match http_listener(req).await {
+          Ok(res) => Ok(res),
+          Err(_) => {
+            // TODO: log the error?
+            Ok(Response::builder().status(500).body(Body::empty()).unwrap())
+          }
+        }
+      }
+      make_server!(&Program::global().http_config, listen);
       return Ok(hand_mem);
     })
   });
@@ -3251,7 +3261,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   unpred_cpu!(seqwhile => fn(args, mut hand_mem) {
     Box::pin(async move {
       if args[1] == NOP_ID {
-        return Err(VMError::InvalidState(InvalidState::InvalidNOP));
+        return Err(VMError::InvalidNOP);
       }
       let seq = hand_mem.read_fractal(args[0])?;
       let mut current = seq.read_fixed(0)?;
@@ -3330,7 +3340,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
   cpu!(seqrec => fn(args, hand_mem) {
     if args[1] == NOP_ID {
-      return Err(VMError::InvalidState(InvalidState::InvalidNOP));
+      return Err(VMError::InvalidNOP);
     }
     hand_mem.init_fractal(args[2])?;
     hand_mem.push_register(args[2], args[0])?;
@@ -3598,7 +3608,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem.register_out(args[0], 1, args[2])?;
       Ok(None)
     } else {
-      Err(VMError::InvalidState(InvalidState::IllegalAccess))
+      Err(VMError::IllegalAccess)
     }
   });
   cpu!(okR => fn(args, hand_mem) {
@@ -3662,7 +3672,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem.register_out(args[0], 1, args[2])?;
       Ok(None)
     } else {
-      Err(VMError::InvalidState(InvalidState::IllegalAccess))
+      Err(VMError::IllegalAccess)
     }
   });
   cpu!(getErr => fn(args, hand_mem) {
@@ -3772,7 +3782,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem.register_out(args[0], 1, args[2])?;
       Ok(None)
     } else {
-      Err(VMError::InvalidState(InvalidState::IllegalAccess))
+      Err(VMError::IllegalAccess)
     }
   });
   cpu!(getAlt => fn(args, hand_mem) {
@@ -3782,7 +3792,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       hand_mem.register_out(args[0], 1, args[2])?;
       Ok(None)
     } else {
-      Err(VMError::InvalidState(InvalidState::IllegalAccess))
+      Err(VMError::IllegalAccess)
     }
   });
 

@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use byteorder::{ByteOrder, NativeEndian};
 
-use crate::vm::{program::Program, protos, InvalidState, VMError, VMResult};
+use crate::vm::{program::Program, protos, VMError, VMResult};
 
 // -2^63
 pub const CLOSURE_ARG_MEM_START: i64 = -9223372036854775808;
@@ -70,7 +70,7 @@ impl FractalMemory {
   /// Reads fixed data from a given address.
   pub fn read_fixed(self: &FractalMemory, idx: usize) -> VMResult<i64> {
     if self.block[idx].0 != usize::MAX {
-      Err(VMError::InvalidState(InvalidState::IllegalAccess))
+      Err(VMError::IllegalAccess)
     } else {
       Ok(self.block[idx].1)
     }
@@ -128,7 +128,7 @@ impl HandlerMemory {
       }),
     };
     let handlermemory = Arc::get_mut(&mut hm)
-      .ok_or_else(|| VMError::InvalidState(InvalidState::HandMemDanglingPtr))?;
+      .ok_or_else(|| VMError::HandMemDanglingPtr)?;
     handlermemory.mems[1].reserve(mem_req as usize);
     return Ok(hm);
   }
@@ -162,7 +162,7 @@ impl HandlerMemory {
   /// the parent out of the Arc after parallel work is done and then join on its children.
   pub fn drop_parent(mut self: Arc<HandlerMemory>) -> VMResult<Arc<HandlerMemory>> {
     let hm =
-      Arc::get_mut(&mut self).ok_or(VMError::InvalidState(InvalidState::HandMemDanglingPtr))?;
+      Arc::get_mut(&mut self).ok_or(VMError::HandMemDanglingPtr)?;
     hm.parent.take();
     Ok(self)
   }
@@ -220,7 +220,7 @@ impl HandlerMemory {
           .parent
           .as_ref()
           // fail if no parent
-          .ok_or(VMError::InvalidState(InvalidState::OrphanMemory))?
+          .ok_or(VMError::OrphanMemory)?
           .addr_to_idxs(addr)?;
         let hm = match hm_opt {
           Some(hm) => Some(hm),
@@ -265,7 +265,7 @@ impl HandlerMemory {
     if let Some(hm) = hm_opt {
       // copy necessary data from ancestor
       Arc::get_mut(self)
-        .ok_or(VMError::InvalidState(InvalidState::HandMemDanglingPtr))?
+        .ok_or(VMError::HandMemDanglingPtr)?
         .mems[a] = hm.mems[a].clone();
     }
     Ok(&mut Arc::get_mut(self).ok_or(VMError::HandMemDanglingPtr)?.mems[a])
@@ -374,7 +374,7 @@ impl HandlerMemory {
     fractal.block[idx].1 = val;
     match (fractal.belongs(self), fractal.hm_addr) {
       (true, Some(addr)) => self.write_fractal(addr, fractal),
-      _ => Err(VMError::InvalidState(InvalidState::MemoryNotOwned)),
+      _ => Err(VMError::MemoryNotOwned),
     }
   }
 
@@ -397,7 +397,7 @@ impl HandlerMemory {
     let a = self.mems.len();
     if !fractal.belongs(self) {
       if fractal.hm_addr.is_none() {
-        return Err(VMError::InvalidState(InvalidState::MemoryNotOwned));
+        return Err(VMError::MemoryNotOwned);
       }
       // copy fractal from ancestor
       let addr = fractal
@@ -443,7 +443,7 @@ impl HandlerMemory {
     let mem = self.read_mut_fractal(addr)?;
     mem.push((a, std::usize::MAX as i64));
     Arc::get_mut(self)
-      .ok_or(VMError::InvalidState(InvalidState::HandMemDanglingPtr))?
+      .ok_or(VMError::HandMemDanglingPtr)?
       .mems
       .push(val.block);
     Ok(())
@@ -504,7 +504,7 @@ impl HandlerMemory {
       let strmem = self.mems[0][b..].to_vec().clone();
       let new_a = self.mems.len();
       Arc::get_mut(self)
-        .ok_or(VMError::InvalidState(InvalidState::HandMemDanglingPtr))?
+        .ok_or(VMError::HandMemDanglingPtr)?
         .mems
         .push(strmem);
       let mem = self.read_mut_fractal(addr)?;

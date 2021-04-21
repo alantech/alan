@@ -57,7 +57,7 @@ macro_rules! make_server {
         let port_num = http.port;
         let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port_num));
         let make_svc = hyper::service::make_service_fn(|_conn| async {
-          Ok::<_, $crate::vm::VMError>(hyper::service::service_fn($listener))
+          Ok::<_, std::convert::Infallible>(hyper::service::service_fn($listener))
         });
 
         let bind = hyper::server::Server::try_bind(&addr);
