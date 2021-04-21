@@ -255,6 +255,10 @@ impl ControlPort {
     }
   }
 
+  pub fn get_leader(self: &ControlPort) -> &VMMetadata {
+    &self.vms[self.lrh.get_leader_id()]
+  }
+
   pub async fn check_cluster_health(self: &mut ControlPort) {
     let cluster_secret = CLUSTER_SECRET.get().unwrap().as_ref().unwrap().clone();
     let mut health = vec![];
