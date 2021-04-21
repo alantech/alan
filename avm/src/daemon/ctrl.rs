@@ -73,7 +73,9 @@ impl LogRendezvousHash {
   }
 
   pub fn get_leader_id(&self) -> &str {
-    if self.sorted_hashes.len() == 0 { return ""; }
+    if self.sorted_hashes.len() == 0 {
+      return "";
+    }
     let mut last_idx = self.sorted_hashes.len() - 1;
     while last_idx > 0 && !self.sorted_hashes[last_idx].is_up {
       last_idx = last_idx - 1;
