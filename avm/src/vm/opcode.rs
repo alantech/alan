@@ -8,7 +8,7 @@ use std::io::{self, Write};
 use std::pin::Pin;
 use std::ptr::NonNull;
 use std::str;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 use byteorder::{ByteOrder, LittleEndian};
@@ -34,7 +34,9 @@ static DS: Lazy<Arc<DashMap<String, Arc<HandlerMemory>>>> =
   Lazy::new(|| Arc::new(DashMap::<String, Arc<HandlerMemory>>::new()));
 
 // used for load balancing in the cluster
-pub static REGION_VMS: Lazy<Arc<Vec<String>>> = Lazy::new(|| Arc::new(Vec::new()));
+pub static REGION_VMS: Lazy<Arc<RwLock<Vec<String>>>> = Lazy::new(
+  || Arc::new(RwLock::new(Vec::new()))
+);
 
 // type aliases
 /// Futures implement an Unpin marker that guarantees to the compiler that the future will not move while it is running
@@ -2971,7 +2973,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let headers = req.headers();
     // Check if we should load balance this request
     if !headers.contains_key("X-Alan-RR") {
-      let l = REGION_VMS.len();
+      let l = REGION_VMS.read().unwrap().len();
       let i = async move {
         let mut rng = thread_rng();
         rng.gen_range(0..=l)
@@ -2979,10 +2981,10 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       .await;
       // If it's equal to the length process this request normally, otherwise, load balance this
       // request to another instance
-      if i != REGION_VMS.len() {
+      if i != l {
         // Otherwise, round-robin this to another node in the cluster and increment the counter
         let headers = headers.clone();
-        let host = &REGION_VMS[i];
+        let host = &REGION_VMS.read().unwrap()[i].clone();
         let method_str = req.method().to_string();
         let orig_uri = req.uri().clone();
         let orig_query = match orig_uri.query() {

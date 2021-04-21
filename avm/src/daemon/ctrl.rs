@@ -251,8 +251,8 @@ impl ControlPort {
       .collect();
     println!("DEBUG6::::::::::::");
     println!("{:?}", other_region_ips);
-    let mut region_ips = Arc::clone(&REGION_VMS);
-    let region_ips_mut = Arc::get_mut(&mut region_ips).unwrap();
+    let region_ips = Arc::clone(&REGION_VMS);
+    let mut region_ips_mut = region_ips.write().unwrap();
     region_ips_mut.clear();
     region_ips_mut.append(&mut other_region_ips);
     drop(region_ips_mut);
