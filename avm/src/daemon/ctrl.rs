@@ -76,9 +76,28 @@ impl LogRendezvousHash {
     &mut self.sorted_hashes
   }
 
+  pub fn get_primary_node_id(&self, key: &str) -> &str {
+    self.get_assigned_nodes_id(key)[0]
+  }
+
+  pub fn get_assigned_nodes_id(&self, key: &str) -> Vec<&str> {
+    let top = 3; // Number of replicas
+    // If only one node, nothing to do
+    if self.sorted_hashes.len() == 1 {
+      return self.sorted_hashes.iter().map(|hash| &hash.id as &str).collect::<Vec<&str>>();
+    }
+    let mut idx = self.get_idx_for_key(key);
+    let ids: Vec<&str> = Vec::new();
+    for _ in 0..top {
+      ids.push(&self.sorted_hashes[idx].id);
+      idx = (idx + 1) % self.sorted_hashes.len();
+    }
+    ids
+  }
+
   // Runs a binary search for the record whose hash is closest to the key hash without
   // going over. If none are found, the *last* record in the list is returned as it wraps around.
-  pub fn _get_id_for_key(&self, key: &str) -> &str {
+  fn get_idx_for_key(&self, key: &str) -> usize {
     let mut key_hasher = XxHash64::with_seed(0xa1a2);
     key_hasher.write(key.as_bytes());
     let key_hash = key_hasher.finish();
@@ -90,7 +109,7 @@ impl LogRendezvousHash {
       // All were too large, implies last (which wraps around) owns it
       Err(_) => self.sorted_hashes.len() - 1,
     };
-    &self.sorted_hashes[idx].id
+    idx
   }
 }
 
