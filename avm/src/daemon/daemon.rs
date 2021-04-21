@@ -190,7 +190,8 @@ pub async fn start(
             Ok(s) => stats.push(s),
             Err(err) => error!(ErrorType::NoStats, "{}", err).await,
           };
-        } else { // Debug print for now
+        } else {
+          // Debug print for now
           println!("I am NOT the leader! :(");
         }
         if stats.len() >= 4 {
