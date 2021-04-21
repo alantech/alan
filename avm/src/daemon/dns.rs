@@ -14,6 +14,8 @@ pub struct VMMetadata {
   schema_version: String,
   pub(crate) private_ip_addr: String,
   pub(crate) alan_version: String,
+  pub(crate) region: String,
+  pub(crate) cloud: String,
 }
 
 impl VMMetadata {
@@ -26,13 +28,15 @@ impl VMMetadata {
           &txt
         );
         let parts: Vec<&str> = txt.split("|").collect();
-        if parts.len() != 5 || parts[0] != "v1" {
+        if parts.len() != 7 || parts[0] != "v1" {
           return Err(err.into());
         }
         Ok(VMMetadata {
           schema_version: parts[0].to_string(),
           alan_version: parts[1].to_string(),
           private_ip_addr: parts[4].to_string(),
+          region: parts[5].to_string(),
+          cloud: parts[6].to_string(),
         })
       }
       Err(_) => return Err("Data in TXT record is not a valid string".into()),
