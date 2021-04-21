@@ -255,8 +255,11 @@ impl ControlPort {
     }
   }
 
-  pub fn get_leader(self: &ControlPort) -> &VMMetadata {
-    &self.vms[self.lrh.get_leader_id()]
+  pub fn get_leader(self: &ControlPort) -> Option<&VMMetadata> {
+    match self.vms.get(self.lrh.get_leader_id()) {
+      Some(vm) => Some(&vm),
+      None => None,
+    }
   }
 
   pub async fn check_cluster_health(self: &mut ControlPort) {

@@ -193,7 +193,11 @@ pub async fn start(
         } else {
           // Debug print for now
           println!("I am NOT the leader! :(");
-          println!("Me: {} Leader: {}", self_ip, control_port.get_leader().private_ip_addr);
+          println!(
+            "Me: {} Leader: {}",
+            self_ip,
+            control_port.get_leader().map(|vm| vm.private_ip_addr.clone()).unwrap_or("<None>".to_string())
+          );
         }
         if stats.len() >= 4 {
           let mut factor = String::from("1");
