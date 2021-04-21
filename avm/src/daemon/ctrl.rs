@@ -73,6 +73,7 @@ impl LogRendezvousHash {
   }
 
   pub fn get_leader_id(&self) -> &str {
+    if self.sorted_hashes.len() == 0 { return ""; }
     let mut last_idx = self.sorted_hashes.len() - 1;
     while last_idx > 0 && !self.sorted_hashes[last_idx].is_up {
       last_idx = last_idx - 1;
@@ -242,6 +243,12 @@ impl ControlPort {
     region_ips_mut.append(&mut other_region_ips);
     drop(region_ips_mut);
     drop(region_ips);
+    println!("DEBUG::::::::::::::::::::::::");
+    println!("ips {:?}", ips);
+    println!("vms {:?}", all_vms);
+    println!("self_vm {:?}", self_vm);
+    println!("region_vms {:?}", region_vms);
+    println!("DEBUG::::::::::::::::::::::::");
     self.vms = all_vms;
     self.self_vm = Some(self_vm);
     self.region_vms = region_vms;

@@ -196,7 +196,10 @@ pub async fn start(
           println!(
             "Me: {} Leader: {}",
             self_ip,
-            control_port.get_leader().map(|vm| vm.private_ip_addr.clone()).unwrap_or("<None>".to_string())
+            control_port
+              .get_leader()
+              .map(|vm| vm.private_ip_addr.clone())
+              .unwrap_or("<None>".to_string())
           );
         }
         if stats.len() >= 4 {
