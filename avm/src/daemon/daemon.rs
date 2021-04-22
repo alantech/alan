@@ -30,7 +30,6 @@ pub static DAEMON_PROPS: OnceCell<DaemonProperties> = OnceCell::new();
 #[derive(Deserialize, Debug, Serialize)]
 pub struct DaemonFileB64 {
   pub name: String,
-  pub ext: Option<String>,
   pub content: String,
 }
 
@@ -49,7 +48,7 @@ pub struct DaemonProperties {
   pub agzB64: String,
   pub deployToken: String,
   pub domain: String,
-  pub filesB64: DaemonFilesB64,
+  pub filesB64: Option<DaemonFilesB64>,
 }
 
 #[cfg(target_os = "linux")]

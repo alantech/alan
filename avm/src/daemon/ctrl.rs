@@ -154,9 +154,7 @@ async fn handle_start(req: Request<Body>) -> Result<Response<Body>, Infallible> 
 
 async fn get_daemon_props(req: Request<Body>) -> DaemonResult<()> {
   let bytes = body::to_bytes(req.into_body()).await?;
-  warn!(DaemonStartFailed, "debug before serialization").await;
   let body: DaemonProperties = serde_json::from_slice(&bytes).unwrap();
-  warn!(DaemonStartFailed, "debug after serialization {:?}", body).await;
   maybe_dump_files(&body).await?;
   DAEMON_PROPS.set(body).unwrap();
   Ok(())
@@ -164,17 +162,18 @@ async fn get_daemon_props(req: Request<Body>) -> DaemonResult<()> {
 
 async fn maybe_dump_files(daemon_props: &DaemonProperties) -> DaemonResult<()> {
   let pwd = env::current_dir();
-  warn!(DaemonStartFailed, "debug dumping file {:?}", &daemon_props.filesB64).await;
   match pwd {
     Ok(pwd) => {
-      if let Some(dockerfile) = &daemon_props.filesB64.Dockerfile {
-        write_b64_file(&pwd, dockerfile)?;
-      }
-      if let Some(app_tar_gz) = &daemon_props.filesB64.appTarGz {
-        write_b64_file(&pwd, app_tar_gz)?;
-      }
-      if let Some(env) = &daemon_props.filesB64.environment {
-        write_b64_file(&pwd, env)?;
+      if let Some(files_b64) = &daemon_props.filesB64 {
+        if let Some(dockerfile) = &files_b64.Dockerfile {
+          write_b64_file(&pwd, dockerfile)?;
+        }
+        if let Some(app_tar_gz) = &files_b64.appTarGz {
+          write_b64_file(&pwd, app_tar_gz)?;
+        }
+        if let Some(env) = &files_b64.environment {
+          write_b64_file(&pwd, env)?;
+        }
       }
     }
     Err(err) => {
@@ -186,12 +185,8 @@ async fn maybe_dump_files(daemon_props: &DaemonProperties) -> DaemonResult<()> {
 }
 
 fn write_b64_file(pwd: &PathBuf, file: &DaemonFileB64) -> io::Result<()> {
-  let mut file_name = file.name.to_owned();
-  if let Some(ext) = &file.ext {
-    file_name = file_name + &ext;
-  }
   write(
-    format!("{}/{}", pwd.display(), &file_name),
+    format!("{}/{}", pwd.display(), &file.name),
     base64::decode(&file.content).unwrap(),
   )
 }
