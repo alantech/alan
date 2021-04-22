@@ -1,6 +1,5 @@
 use std::convert::Infallible;
 use std::env;
-use std::error::Error;
 use std::fs::{read, write};
 use std::hash::Hasher;
 use std::net::TcpStream;
@@ -8,7 +7,6 @@ use std::path::Path;
 use std::sync::Arc;
 
 use anycloud::error;
-use anycloud::logger::ErrorType;
 use futures::future::join_all;
 use hyper::{
   body,
@@ -145,7 +143,7 @@ async fn handle_start(req: Request<Body>) -> Result<Response<Body>, Infallible> 
   match get_daemon_props(req).await {
     Ok(_) => Ok(Response::builder().status(200).body("ok".into()).unwrap()),
     Err(err) => {
-      error!(ErrorType::DaemonStartFailed, "{:?}", err).await;
+      error!(DaemonStartFailed, "{:?}", err).await;
       Ok(Response::builder().status(500).body("fail".into()).unwrap())
     }
   }
@@ -248,13 +246,13 @@ impl ControlPort {
           }
         } else {
           let err = "Failed getting ssl certificate or key";
-          error!(ErrorType::NoSSLCert, "{}", err).await;
+          error!(NoSSLCert, "{}", err).await;
           panic!("{}", err);
         }
       }
       Err(err) => {
         let err = format!("{:?}", err);
-        error!(ErrorType::CtrlPortStartFailed, "{:?}", err).await;
+        error!(CtrlPortStartFailed, "{:?}", err).await;
         panic!("{:?}", err);
       }
     }

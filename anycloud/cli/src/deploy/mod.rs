@@ -264,7 +264,7 @@ async fn update_cred_file(credentials: HashMap<String, Credentials>) {
   let writer = BufWriter::new(file.unwrap());
   if let Err(err) = serde_json::to_writer_pretty(writer, &credentials) {
     warn!(
-      ErrorType::InvalidCredentialsFile,
+      InvalidCredentialsFile,
       "Failed to write to {}. Error: {}", CREDENTIALS_FILE, err
     )
     .await;
@@ -285,7 +285,7 @@ async fn update_anycloud_file(deploy_configs: HashMap<String, Vec<DeployConfig>>
   let writer = BufWriter::new(file.unwrap());
   if let Err(err) = serde_json::to_writer_pretty(writer, &deploy_configs) {
     warn!(
-      ErrorType::InvalidAnycloudFile,
+      InvalidAnycloudFile,
       "Failed to write to {}. Error: {}", ANYCLOUD_FILE, err
     )
     .await;
@@ -683,7 +683,7 @@ async fn get_creds() -> HashMap<String, Credentials> {
   let creds = serde_json::from_reader(reader);
   if let Err(err) = creds {
     warn!(
-      ErrorType::InvalidCredentialsFile,
+      InvalidCredentialsFile,
       "Failed to read from {}. Error: {}", CREDENTIALS_FILE, err
     )
     .await;
@@ -703,7 +703,7 @@ async fn get_deploy_configs() -> HashMap<String, Vec<DeployConfig>> {
   let config = serde_json::from_reader(reader);
   if let Err(err) = config {
     warn!(
-      ErrorType::InvalidAnycloudFile,
+      InvalidAnycloudFile,
       "Failed to read from {}. Error: {}", ANYCLOUD_FILE, err
     )
     .await;

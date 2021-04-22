@@ -4,7 +4,6 @@ use std::fs::read;
 use std::io::Read;
 
 use anycloud::deploy;
-use anycloud::logger::ErrorType;
 use anycloud::{error, CLUSTER_ID};
 use base64;
 use byteorder::{LittleEndian, ReadBytesExt};
@@ -61,7 +60,7 @@ async fn post_v1(endpoint: &str, body: Value) -> String {
     Ok(res) => res,
     Err(err) => {
       let err = format!("{:?}", err);
-      error!(ErrorType::PostFailed, "{:?}", err).await;
+      error!(PostFailed, "{:?}", err).await;
       err
     }
   }
@@ -106,7 +105,7 @@ async fn post_v1_scale(
     }
     Err(err) => {
       let err = format!("{:?}", err);
-      error!(ErrorType::ScaleFailed, "{:?}", err).await;
+      error!(ScaleFailed, "{:?}", err).await;
       err
     }
   }
@@ -130,7 +129,7 @@ async fn post_v1_stats(
       .unwrap()
       .insert("clusterSecret".to_string(), json!(cluster_secret));
   } else {
-    error!(ErrorType::NoClusterSecret, "No cluster secret found.").await;
+    error!(NoClusterSecret, "No cluster secret found.").await;
   }
   Ok(post_v1("stats", stats_body).await)
 }
@@ -168,7 +167,7 @@ async fn run_agz_b64(agz_b64: &str) -> DaemonResult<()> {
       }
       Err(err) => {
         let err = format!("{:?}", err);
-        error!(ErrorType::RunAgzFailed, "{:?}", err).await;
+        error!(RunAgzFailed, "{:?}", err).await;
         return Err(err.into());
       }
     }
@@ -212,7 +211,7 @@ pub async fn start() {
               let vms = match dns.get_vms(&cluster_id).await {
                 Ok(vms) => vms,
                 Err(err) => {
-                  error!(ErrorType::NoDnsVms, "{}", err).await;
+                  error!(NoDnsVms, "{}", err).await;
                   Vec::new()
                 }
               };
@@ -230,7 +229,7 @@ pub async fn start() {
               if leader_ip == self_ip.to_string() {
                 match get_v1_stats().await {
                   Ok(s) => stats.push(s),
-                  Err(err) => error!(ErrorType::NoStats, "{}", err).await,
+                  Err(err) => error!(NoStats, "{}", err).await,
                 };
               }
               if stats.len() >= 4 {
@@ -241,7 +240,7 @@ pub async fn start() {
                 if let Ok(stats_factor) = stats_factor {
                   factor = stats_factor;
                 } else if let Err(err) = stats_factor {
-                  error!(ErrorType::PostFailed, "{}", err).await;
+                  error!(PostFailed, "{}", err).await;
                 }
                 println!(
                   "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
@@ -257,22 +256,22 @@ pub async fn start() {
               sleep(period).await;
             }
           } else if let Err(dns_err) = &dns {
-            error!(ErrorType::NoDns, "DNS error: {}", dns_err).await;
+            error!(NoDns, "DNS error: {}", dns_err).await;
             panic!("DNS error: {}", dns_err);
           }
         });
         if let Err(err) = run_agz_b64(&agz_b64).await {
-          error!(ErrorType::RunAgzFailed, "{:?}", err).await;
+          error!(RunAgzFailed, "{:?}", err).await;
           panic!("{:?}", err);
         }
       } else {
         let msg = "No daemon properties defined";
-        error!(ErrorType::NoDaemonProps, "{}", msg).await;
+        error!(NoDaemonProps, "{}", msg).await;
         panic!("{}", msg);
       }
     }
     Err(self_ip_err) => {
-      error!(ErrorType::NoPrivateIp, "Private ip error: {}", self_ip_err).await;
+      error!(NoPrivateIp, "Private ip error: {}", self_ip_err).await;
       panic!("Private ip error: {}", self_ip_err);
     }
   }
