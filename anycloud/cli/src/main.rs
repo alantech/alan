@@ -17,22 +17,13 @@ async fn get_dockerfile_b64() -> String {
     Ok(pwd) => {
       let dockerfile = read(format!("{}/Dockerfile", pwd.display()));
       if let Err(_) = dockerfile {
-        warn!(
-          NoDockerFile,
-          "No Dockerfile at {}",
-          pwd.display()
-        )
-        .await;
+        warn!(NoDockerFile, "No Dockerfile at {}", pwd.display()).await;
         std::process::exit(1);
       }
       return base64::encode(dockerfile.unwrap());
     }
     Err(_) => {
-      warn!(
-        InvalidPwd,
-        "Current working directory value is invalid"
-      )
-      .await;
+      warn!(InvalidPwd, "Current working directory value is invalid").await;
       std::process::exit(1);
     }
   }
@@ -58,11 +49,7 @@ async fn get_env_file_b64(env_file_path: String) -> String {
       }
     }
     Err(_) => {
-      warn!(
-        InvalidPwd,
-        "Current working directory value is invalid"
-      )
-      .await;
+      warn!(InvalidPwd, "Current working directory value is invalid").await;
       std::process::exit(1);
     }
   }
