@@ -2972,7 +2972,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     // Grab the headers
     let headers = req.headers();
     // Check if we should load balance this request
-    if !headers.contains_key("X-Alan-RR") {
+    if !headers.contains_key("x-alan-rr") {
       let l = REGION_VMS.read().unwrap().len();
       let i = async move {
         let mut rng = thread_rng();
@@ -3005,7 +3005,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         let body_str = str::from_utf8(&body_req).unwrap().to_string();
         let mut rr_req = Request::builder().method(method_str.as_str()).uri(uri_str);
         let rr_headers = rr_req.headers_mut().unwrap();
-        let name = HeaderName::from_bytes("X-Alan-RR".as_bytes()).unwrap();
+        let name = HeaderName::from_bytes("x-alan-rr".as_bytes()).unwrap();
         let value = HeaderValue::from_str("true").unwrap();
         rr_headers.insert(name, value);
         for (key, val) in headers.iter() {
