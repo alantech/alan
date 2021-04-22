@@ -2992,6 +2992,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
           None => format!(""),
         };
         let uri_str = format!("https://{}{}{}", host, orig_uri.path(), orig_query);
+        println!("Forward url: {}", uri_str);
         // Grab the body, if any
         let body_req = match hyper::body::to_bytes(req.into_body()).await {
           Ok(bytes) => bytes,
