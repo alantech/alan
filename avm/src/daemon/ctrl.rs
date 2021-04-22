@@ -185,7 +185,7 @@ fn maybe_dump_files(daemon_props: &DaemonProperties) -> DaemonResult<()> {
 fn write_b64_file(pwd: &PathBuf, file: &DaemonFileB64) -> io::Result<()> {
   let mut file_name = file.name.to_owned();
   if let Some(ext) = &file.ext {
-    file_name = file_name + &format!(".{}", ext);
+    file_name = file_name + &ext;
   }
   write(
     format!("{}/{}", pwd.display(), &file_name),
@@ -216,15 +216,15 @@ impl ControlPort {
     let pwd = env::current_dir();
     match pwd {
       Ok(pwd) => {
-        let priv_key_b64 = read(format!("{}/priv_key_b64", pwd.display()));
-        let cert_b64 = read(format!("{}/cert_b64", pwd.display()));
-        if let (Ok(priv_key_b64), Ok(cert_b64)) = (priv_key_b64, cert_b64) {
+        let priv_key = read(format!("{}/key.pem", pwd.display()));
+        let cert = read(format!("{}/certificate.pem", pwd.display()));
+        if let (Ok(priv_key), Ok(cert)) = (priv_key, cert) {
           // TODO: Make this not a side-effect
           make_server!(
             HttpType::HTTPS(HttpsConfig {
               port: 4142, // 4 = A, 1 = L, 2 = N (sideways) => ALAN
-              priv_key_b64: String::from_utf8(priv_key_b64).unwrap(),
-              cert_b64: String::from_utf8(cert_b64).unwrap(),
+              priv_key: String::from_utf8(priv_key).unwrap(),
+              cert: String::from_utf8(cert).unwrap(),
             }),
             control_port
           );

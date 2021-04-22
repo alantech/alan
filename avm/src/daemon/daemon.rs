@@ -154,9 +154,9 @@ async fn run_agz_b64(agz_b64: &str) -> DaemonResult<()> {
     let pwd = env::current_dir();
     match pwd {
       Ok(pwd) => {
-        let priv_key_b64 = read(format!("{}/priv_key_b64", pwd.display()));
-        let cert_b64 = read(format!("{}/cert_b64", pwd.display()));
-        if let (Ok(priv_key_b64), Ok(cert_b64)) = (priv_key_b64, cert_b64) {
+        let priv_key = read(format!("{}/key.pem", pwd.display()));
+        let cert = read(format!("{}/certificate.pem", pwd.display()));
+        if let (Ok(priv_key), Ok(cert)) = (priv_key, cert) {
           let agz = GzDecoder::new(bytes.as_slice());
           let count = agz.bytes().count();
           let mut bytecode = vec![0; count / 8];
@@ -169,8 +169,8 @@ async fn run_agz_b64(agz_b64: &str) -> DaemonResult<()> {
               bytecode,
               HttpType::HTTPS(HttpsConfig {
                 port: 443,
-                priv_key_b64: String::from_utf8(priv_key_b64).unwrap(),
-                cert_b64: String::from_utf8(cert_b64).unwrap(),
+                priv_key: String::from_utf8(priv_key).unwrap(),
+                cert: String::from_utf8(cert).unwrap(),
               }),
             )
             .await;
