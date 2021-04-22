@@ -118,7 +118,6 @@ async fn get_app_tar_gz_b64() -> String {
 
 #[tokio::main]
 pub async fn main() {
-  warn!(InvalidPwd, "message").await;
   let anycloud_agz = base64::encode(include_bytes!("../alan/anycloud.agz"));
   let desc: &str = &format!("{}", env!("CARGO_PKG_DESCRIPTION"));
   let app = App::new(crate_name!())
