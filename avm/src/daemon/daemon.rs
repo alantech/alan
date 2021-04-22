@@ -38,7 +38,7 @@ pub struct DaemonFileB64 {
 pub struct DaemonFilesB64 {
   pub Dockerfile: Option<DaemonFileB64>,
   pub appTarGz: Option<DaemonFileB64>,
-  pub environment: Option<DaemonFileB64>,
+  pub envVariables: Option<DaemonFileB64>,
 }
 
 #[allow(non_snake_case)]

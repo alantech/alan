@@ -171,7 +171,7 @@ async fn maybe_dump_files(daemon_props: &DaemonProperties) -> DaemonResult<()> {
         if let Some(app_tar_gz) = &files_b64.appTarGz {
           write_b64_file(&pwd, app_tar_gz)?;
         }
-        if let Some(env) = &files_b64.environment {
+        if let Some(env) = &files_b64.envVariables {
           write_b64_file(&pwd, env)?;
         }
       }
