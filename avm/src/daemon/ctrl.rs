@@ -1,3 +1,4 @@
+use std::cmp;
 use std::convert::Infallible;
 use std::hash::Hasher;
 use std::net::TcpStream;
@@ -77,20 +78,12 @@ impl LogRendezvousHash {
   }
 
   pub fn _get_primary_node_id(&self, key: &str) -> &str {
-    self._get_assigned_nodes_id(key)[0]
+    self.get_assigned_nodes_id(key)[0]
   }
 
-  pub fn _get_assigned_nodes_id(&self, key: &str) -> Vec<&str> {
-    let top = 3; // Number of replicas
-    if self.sorted_hashes.len() == 1 {
-      // If only one node, nothing to do
-      return self
-        .sorted_hashes
-        .iter()
-        .map(|hash| &hash.id as &str)
-        .collect::<Vec<&str>>();
-    }
-    let mut idx = self._get_idx_for_key(key);
+  pub fn get_assigned_nodes_id(&self, key: &str) -> Vec<&str> {
+    let top = cmp::min(3, self.sorted_hashes.len());
+    let mut idx = self.get_idx_for_key(key);
     let mut ids: Vec<&str> = Vec::new();
     for _ in 0..top {
       ids.push(&self.sorted_hashes[idx].id);
@@ -101,7 +94,7 @@ impl LogRendezvousHash {
 
   // Runs a binary search for the record whose hash is closest to the key hash without
   // going over. If none are found, the *last* record in the list is returned as it wraps around.
-  fn _get_idx_for_key(&self, key: &str) -> usize {
+  fn get_idx_for_key(&self, key: &str) -> usize {
     let mut key_hasher = XxHash64::with_seed(0xa1a2);
     key_hasher.write(key.as_bytes());
     let key_hash = key_hasher.finish();
