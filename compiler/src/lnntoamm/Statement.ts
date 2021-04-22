@@ -4,7 +4,7 @@ import Event from './Event'
 import Fn from "./Fn";
 import opcodes from "./opcodes";
 import Scope from "./Scope";
-import Type, { Builtin, FunctionType } from "./Types";
+import Type, { FunctionType } from "./Types";
 import { genName, TODO } from "./util";
 
 export class MetaData {
@@ -200,18 +200,52 @@ export class Assign extends Stmt {
 }
 
 export class Call extends Stmt {
-  fn: Fn
+  fns: Fn[]
   args: Ref[]
+  callTy: FunctionType
 
   constructor(
     ast: LPNode,
-    fn: Fn,
+    fns: Fn[],
     args: Ref[],
   ) {
-    super(ast)
-    this.fn = fn;
+    super(ast);
+
     this.args = args;
+    let retTy = Type.generate();
+    this.callTy = new FunctionType(`CALL: ${ast.t}`, args.map(arg => arg.ty), retTy);
+    // TODO: i think interfaces will mean this will have to be reflexive?
+    this.fns = fns.filter(fn => this.callTy.compatibleWithConstraint(fn.fnType))
+    retTy.constrain(Type.oneOf(fns.map(fn => fn.retTy)));
   }
+
+  // this was the first attempt, but it might be too complicated. keeping it though,
+  // since some of its details might make sense
+  // constructor(ast: LPNode, fns: Fn[], args: Ref[]) {
+  //   super(ast);
+  //   // apply an early filter to remove all fns that don't have matching arg counts
+  //   // and that can be immediately ruled out by the current constraints of the arguments.
+  //   // this filtering will happen again later, but this results in more accurate intermediate
+  //   // types throughout the rest of the containing function(s), so it's better.
+  //   let basicCallTy = new FunctionType('CALL', args.map(arg => arg.ty), Type.generate());
+  //   fns = fns.filter(fn => fn.fnType.compatibleWithConstraint(basicCallTy));
+  //   if (fns.length === 0) {
+  //     throw new Error(`function call mismatch: no functions that accept types (${args.map(arg => arg.ty.name).join(', ')}) as parameters`);
+  //   }
+  //   let retTy = Type.oneOf(fns.map(fn => fn.retTy));
+  //   let argTys = fns.reduce((argTys, fn) => {
+  //     let paramTys = fn.fnType.argTys;
+  //     let res: Type[][] = [];
+  //     for (let ii = 0; ii < paramTys.length; ii++) {
+  //       res[ii] = [
+  //         ...(argTys[ii] || []),
+  //         paramTys[ii],
+  //       ];
+  //     }
+  //     return res;
+  //   }, [] as Type[][]);
+  //   let callTy = new FunctionType('CALL', argTys.map(Type.oneOf), retTy);
+  // }
 
   static fromAsts(
     wholeAst: LPNode,
@@ -251,23 +285,15 @@ export class Call extends Stmt {
     // TODO: try and get it from `metadata.var` here as well
     if (fns.length === 0) {
       throw new Error(`no function found for ${fnName}`);
-    } else if (fns.length > 1) {
-      TODO('fn selection')
-    }
-    let fn = fns[0];
-    if (Object.keys(fn.args).length !== args.length) {
-      throw new Error(`argument mismatch: ${fnName} expects ${Object.keys(fn.args).length} args but ${args.length} were provided`);
     }
     const call = new Call(
       wholeAst,
-      fn,
+      fns as Fn[],
       args,
     );
     let dec = Dec.generate(call);
     // just in case the return value of the function has to mutate the value
     dec.mutable = true;
-    // TODO: will probably change with fn selection?
-    dec.ty.constrain(fn.retTy);
     metadata.define(dec);
     stmts.push(dec);
 
@@ -275,17 +301,28 @@ export class Call extends Stmt {
   }
 
   exprTy(): Type {
-    return this.fn.retTy;
+    return this.callTy.retTy;
   }
 
-  inline(amm: Output, assign?: string, ty?: Type, kind?: 'const' | 'let' | ''): void {
-    // TODO: determine if/when to inline vs just call once that syntax is supported in AMM
-    // TODO: also fix this so that functions can be called multiple times
+  inline(
+    amm: Output,
+    assign?: string,
+    ty?: Type,
+    kind?: 'const' | 'let' | '',
+  ) {
     if (!assign || !ty || !kind) {
-      throw new Error(`bad call`);
+      throw new Error(`cannot inline function call because not enough information was provided`);
     }
-    ty.constrain(this.fn.retTy);
-    this.fn.inline(amm, this.args, assign, kind);
+    let fn: Fn | null = this.fns.reduce((prev, curr) => this.callTy.compatibleWithConstraint(curr.fnType) ? curr : prev, null);
+    if (fn === null) {
+      throw new Error(`no function could be selected for call \`${this.ast}\``);
+    }
+    // TODO: might have to do something like `fn = fn.select(this.args.map(arg => arg.ty))` ??
+    // TODO: this might break if the function returns an interface... make it reflexive maybe?
+    ty.constrain(fn.retTy);
+    console.log('~~~ calling')
+    fn.inline(amm, this.args, assign, kind);
+    console.log('~~~ end')
   }
 }
 // // TODO: try and revive fn selection using ideas from this class:
@@ -514,14 +551,16 @@ export class Dec extends Stmt {
     return stmts;
   }
 
-  static generate(stmt: Stmt) {
-    return new Dec(
-      stmt.ast,
+  static generate(expr: Stmt) {
+    let dec = new Dec(
+      expr.ast,
       false,
       genName(),
       null,
-      stmt,
+      expr,
     );
+    dec.ty.constrain(expr.exprTy());
+    return dec;
   }
 
   ref(): Ref {
@@ -549,11 +588,11 @@ export class Dec extends Stmt {
 
 export class FnArg extends Dec {
   get ammName(): string {
-    if (super.val != null) {
-      if (!(super.val instanceof Ref)) {
+    if (this.val != null) {
+      if (!(this.val instanceof Ref)) {
         throw new Error(`expected fn arg to be set to a reference (here it is: ${super.val})`);
       }
-      return super.val.ammName;
+      return this.val.ammName;
     } else {
       return this.name;
     }

@@ -70,9 +70,10 @@ export default class Fn {
 
     let retTy: Type;
     if (ast.get('optreturntype').has()) {
-      const name = ast.get('optreturntype').get().get('fulltypename');
+      const name = ast.get('optreturntype').get('fulltypename');
       retTy = Type.getFromTypename(name, scope);
       if (retTy === null) {
+        console.log(ast.get('optreturntype'));
         throw new Error(`Type not in scope: ${name.t.trim()}`);
       }
     } else {
@@ -131,6 +132,7 @@ export default class Fn {
   }
 
   asHandler(amm: Output, event: string) {
+    console.log(this.body);
     let handlerArgs = [];
     for (let arg of Object.keys(this.args)) {
       handlerArgs.push([arg, this.args[arg].ty.breakdown()]);
@@ -162,6 +164,7 @@ export default class Fn {
 
   // TODO: this will have to change in order to call fns multiple times - maybe deep cloning?
   inline(amm: Output, args: Ref[], assign: string, kind: 'const' | 'let' | '') {
+    console.log(this.body);
     let argNames = Object.keys(this.args);
     if (argNames.length !== args.length) {
       // this should be caught by Call, it's just a sanity check
@@ -228,6 +231,11 @@ export class OpcodeFn extends Fn {
   }
 
   inline(amm: Output, args: Ref[], assign: string, kind: 'const' | 'let' | '') {
+    console.log('%%%%%%%%%%%%%%%%%%', this.name)
+    console.log('args:', args)
+    console.log('assign:', assign)
+    console.log('kind:', kind)
+    console.log('%%%%%%%%%%%%%%%%%%')
     amm.assign(
       kind,
       assign,

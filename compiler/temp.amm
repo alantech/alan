@@ -1,0 +1,26 @@
+const _dce321ec_84aa_49c3_8785_511a4449121f: int64 = 5
+const _a7f41227_8635_47a9_8fe7_6ebccac22181: string = _894c371c_2de9_4e59_8106_ef4a2c277309
+const _88545741_eeba_448a_adb5_b7a26e02e84c: string = _9e37a6c3_6e27_4d5a_a99d_4791ab4d9e1e
+const _81acb317_af2a_40ab_bfdd_259717883bc9: bool = true
+const _727fcd14_2609_4b50_911e_f96fe8a5cb4c: int8 = 5
+event stdout: string
+event exit: int8
+event stderr: string
+on stderr fn (err: string): void {
+  let _efc11233_fd3f_4ab8_a9f5_d6006884297a: void = stderrp(err)
+}
+on exit fn (status: int8): void {
+  let _1d469578_7a5f_4c39_b2e7_a2b85821705f: void = exitop(status)
+}
+on stdout fn (out: string): void {
+  let _888a7686_5fc2_4861_aabe_6aabfd17c3c2: void = stdoutp(out)
+}
+on _start fn (): void {
+  let _894c371c_2de9_4e59_8106_ef4a2c277309: string = i64str(_dce321ec_84aa_49c3_8785_511a4449121f)
+  let _894c371c_2de9_4e59_8106_ef4a2c277309: string = _a7f41227_8635_47a9_8fe7_6ebccac22181
+  emit stdout _894c371c_2de9_4e59_8106_ef4a2c277309
+  let _9e37a6c3_6e27_4d5a_a99d_4791ab4d9e1e: string = boolstr(_81acb317_af2a_40ab_bfdd_259717883bc9)
+  let _9e37a6c3_6e27_4d5a_a99d_4791ab4d9e1e: string = _88545741_eeba_448a_adb5_b7a26e02e84c
+  emit stdout _9e37a6c3_6e27_4d5a_a99d_4791ab4d9e1e
+  emit exit _727fcd14_2609_4b50_911e_f96fe8a5cb4c
+}

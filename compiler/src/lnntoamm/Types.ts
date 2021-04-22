@@ -100,7 +100,6 @@ export class Builtin extends Type {
 export class FunctionType extends Type {
   argTys: Type[]
   retTy: Type
-  callSelect: Type
 
   constructor(
     name: string,
@@ -117,11 +116,21 @@ export class FunctionType extends Type {
   }
 
   constrain(that: Type) {
-    return TODO('?');
+    if (!(that instanceof FunctionType)) {
+      throw new Error(`can't constrain Function type: not a Function constraint`);
+    }
+    if (this.argTys.length !== that.argTys.length) {
+      throw new Error(`can't constrain Function type: mismatched arg lengths (expected ${this.argTys.length} args, found ${that.argTys.length})`);
+    }
+    this.argTys.forEach((argTy, ii) => argTy.constrain(that.argTys[ii]));
+    this.retTy.constrain(that.retTy);
   }
 
   compatibleWithConstraint(that: Type): boolean {
-    return TODO('?')
+    return that instanceof FunctionType &&
+      this.argTys.length === that.argTys.length &&
+      this.argTys.every((ty, ii) => ty.compatibleWithConstraint(that.argTys[ii])) &&
+      this.retTy.compatibleWithConstraint(that.retTy);
   }
 }
 
@@ -277,8 +286,7 @@ class OneOf extends Type {
   }
 
   compatibleWithConstraint(that: Type): boolean {
-    let possibilities = this.possibilities.filter(ty => ty.compatibleWithConstraint(that));
-    return possibilities.length > 0;
+    return this.possibilities.some(ty => ty.compatibleWithConstraint(that));
   }
 
   constrain(that: Type) {

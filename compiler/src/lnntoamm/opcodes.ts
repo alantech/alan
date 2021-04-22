@@ -54,6 +54,8 @@ const load = (): void => {
 
     i64str: [{a: 'int64'}, 'string'],
 
+    boolstr: [{a: 'bool'}, 'string'],
+
     stdoutp: [{out: 'string'}, 'void'],
     stderrp: [{err: 'string'}, 'void'],
     exitop: [{status: 'int8'}, 'void'],

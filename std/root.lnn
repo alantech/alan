@@ -17,3 +17,5 @@ export string
 export fn toFloat64(n: int64): float64 = i64f64(n);
 export fn toFloat32(n: int64): float64 = i64f32(n);
 export fn toString(n: int64): string = i64str(n);
+
+export fn toString(b: bool): string = boolstr(b);
