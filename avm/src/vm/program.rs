@@ -51,7 +51,7 @@ impl From<i64> for GraphOpcode {
     } else if v == custom_num {
       return GraphOpcode::CUSTOMEVENT;
     } else {
-      panic!(format!("Illegal graph opcode {}", v));
+      panic!("Illegal graph opcode {}", v);
     }
   }
 }
