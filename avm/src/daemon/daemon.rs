@@ -28,14 +28,28 @@ pub static DAEMON_PROPS: OnceCell<DaemonProperties> = OnceCell::new();
 
 #[allow(non_snake_case)]
 #[derive(Deserialize, Debug, Serialize)]
+pub struct DaemonFileB64 {
+  pub name: String,
+  pub ext: Option<String>,
+  pub content: String,
+}
+
+#[allow(non_snake_case)]
+#[derive(Deserialize, Debug, Serialize)]
+pub struct DaemonFilesB64 {
+  pub Dockerfile: Option<DaemonFileB64>,
+  pub appTarGz: Option<DaemonFileB64>,
+  pub environment: Option<DaemonFileB64>,
+}
+
+#[allow(non_snake_case)]
+#[derive(Deserialize, Debug, Serialize)]
 pub struct DaemonProperties {
   pub clusterId: String,
   pub agzB64: String,
   pub deployToken: String,
   pub domain: String,
-  pub DockerfileB64: Option<String>,
-  pub appTarGzB64: Option<String>,
-  pub envB64: Option<String>,
+  pub filesB64: DaemonFilesB64,
 }
 
 #[cfg(target_os = "linux")]

@@ -3,7 +3,7 @@ use std::env;
 use std::fs::{read, write};
 use std::hash::Hasher;
 use std::net::TcpStream;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anycloud::error;
@@ -17,7 +17,7 @@ use hyper_rustls::HttpsConnector;
 use rustls::ClientConfig;
 use twox_hash::XxHash64;
 
-use crate::daemon::daemon::{DaemonProperties, DaemonResult, CLUSTER_SECRET, DAEMON_PROPS};
+use crate::daemon::daemon::{DaemonFileB64, DaemonProperties, DaemonResult, CLUSTER_SECRET, DAEMON_PROPS};
 use crate::make_server;
 use crate::vm::http::{HttpType, HttpsConfig};
 
@@ -154,15 +154,7 @@ async fn get_daemon_props(req: Request<Body>) -> DaemonResult<()> {
   let body: DaemonProperties = serde_json::from_slice(&bytes).unwrap();
   maybe_dump_files(&body)?;
   DAEMON_PROPS
-    .set(DaemonProperties {
-      clusterId: body.clusterId,
-      agzB64: body.agzB64,
-      deployToken: body.deployToken,
-      domain: body.domain,
-      DockerfileB64: body.DockerfileB64,
-      appTarGzB64: body.appTarGzB64,
-      envB64: body.envB64,
-    })
+    .set(body)
     .unwrap();
   Ok(())
 }
@@ -171,23 +163,14 @@ fn maybe_dump_files(daemon_props: &DaemonProperties) -> DaemonResult<()> {
   let pwd = env::current_dir();
   match pwd {
     Ok(pwd) => {
-      if let Some(dockerfile_b64) = &daemon_props.DockerfileB64 {
-        write(
-          format!("{}/Dockerfile", pwd.display()),
-          base64::decode(dockerfile_b64).unwrap(),
-        )?;
+      if let Some(dockerfile) = &daemon_props.filesB64.Dockerfile {
+        write_b64_file(pwd, dockerfile)?;
       }
-      if let Some(app_tar_gz_b64) = &daemon_props.appTarGzB64 {
-        write(
-          format!("{}/app.tar.gz", pwd.display()),
-          base64::decode(app_tar_gz_b64).unwrap(),
-        )?;
+      if let Some(app_tar_gz) = &daemon_props.filesB64.appTarGz {
+        write_b64_file(pwd, app_tar_gz)?;
       }
-      if let Some(env_b64) = &daemon_props.envB64 {
-        write(
-          format!("{}/anycloud.env", pwd.display()),
-          base64::decode(env_b64).unwrap(),
-        )?;
+      if let Some(env) = &daemon_props.filesB64.environment {
+        write_b64_file(pwd, env)?;
       }
     }
     Err(err) => {
@@ -196,6 +179,17 @@ fn maybe_dump_files(daemon_props: &DaemonProperties) -> DaemonResult<()> {
     }
   }
   Ok(())
+}
+
+fn write_b64_file(pwd: PathBuf, file: &DaemonFileB64) -> io::Result<()> {
+  let mut file_name = file.name;
+  if let Some(ext) = file.ext {
+    file_name += format!(".{}", ext);
+  }
+  write(
+    format!("{}/{}", pwd.display(), file_name),
+    base64::decode(file.content).unwrap(),
+  )?
 }
 
 mod naive {
