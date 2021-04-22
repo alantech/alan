@@ -2971,6 +2971,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   async fn http_listener(req: Request<Body>) -> Result<Response<Body>, Infallible> {
     // Grab the headers
     let headers = req.headers();
+    println!("headers: {:?}", headers.keys());
     // Check if we should load balance this request
     if !headers.contains_key("x-alan-rr") {
       let l = REGION_VMS.read().unwrap().len();
