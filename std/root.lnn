@@ -1,0 +1,19 @@
+// note: most-recently-defined wins as tie-breaker
+
+export void
+export int8
+export int16
+export int32
+export int64
+export float32
+export float64
+export bool
+export string
+// TODO: other builtin types
+
+// TODO: alias int = int64, float = float64
+
+// TODO: other defs
+export fn toFloat64(n: int64): float64 = i64f64(n);
+export fn toFloat32(n: int64): float64 = i64f32(n);
+export fn toString(n: int64): string = i64str(n);

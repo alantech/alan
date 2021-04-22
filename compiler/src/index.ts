@@ -10,6 +10,7 @@ import * as agctoagz from './agctoagz'
 import * as ammtoaga from './ammtoaga'
 import * as ammtojs from './ammtojs'
 import * as lntoamm from './lntoamm'
+import * as lnntoamm from './lnntoamm'
 
 const start = Date.now()
 
@@ -25,6 +26,7 @@ const formatTime = (ms: number) => {
 
 const convert = buildPipeline([
   ['ln', 'amm', lntoamm],
+  ['lnn', 'amm', lnntoamm],
   ['amm', 'aga', ammtoaga],
   ['amm', 'js', ammtojs],
   ['aga', 'agc', agatoagc],
@@ -64,6 +66,7 @@ And to resume from these intermediate representations
 
 Supports the following input formats:
 - ln (Alan source code)
+- lnn (Alan source code, using the new compiler front-end)
 - amm (Alan-- intermediate representation)
 - aga (Alan Graphcode Assembler representation)
 

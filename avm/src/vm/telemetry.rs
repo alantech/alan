@@ -36,6 +36,6 @@ pub async fn log(event: &str) {
     .await
     .is_ok()
   {
-    // Do nothing
+    // do nothing
   }
 }
