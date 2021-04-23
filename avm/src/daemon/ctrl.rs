@@ -7,7 +7,7 @@ use std::net::TcpStream;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use anycloud::{error, warn};
+use anycloud::error;
 use futures::future::join_all;
 use hyper::{
   body,
@@ -18,9 +18,7 @@ use hyper_rustls::HttpsConnector;
 use rustls::ClientConfig;
 use twox_hash::XxHash64;
 
-use crate::daemon::daemon::{
-  DaemonFileB64, DaemonProperties, DaemonResult, CLUSTER_SECRET, DAEMON_PROPS,
-};
+use crate::daemon::daemon::{DaemonProperties, DaemonResult, CLUSTER_SECRET, DAEMON_PROPS};
 use crate::make_server;
 use crate::vm::http::{HttpType, HttpsConfig};
 
