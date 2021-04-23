@@ -3079,7 +3079,13 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let method_str = req.method().to_string();
     let method = HandlerMemory::str_to_fractal(&method_str);
     // Grab the URL
-    let url_str = req.uri().to_string();
+    let orig_uri = req.uri().clone();
+    let orig_query = match orig_uri.query() {
+      Some(q) => format!("?{}", q),
+      None => format!(""),
+    };
+    let url_str = format!("{}{}", orig_uri.path(), orig_query);
+    //let url_str = req.uri().to_string();
     let url = HandlerMemory::str_to_fractal(&url_str);
     let mut headers_hm = HandlerMemory::new(None, headers.len() as i64)?;
     headers_hm.init_fractal(CLOSURE_ARG_MEM_START)?;
