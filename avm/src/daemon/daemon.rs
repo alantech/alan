@@ -256,22 +256,22 @@ pub async fn start() {
             }
           } else if let Err(dns_err) = &dns {
             error!(NoDns, "DNS error: {}", dns_err).await;
-            panic!("DNS error: {}", dns_err);
+            std::process::exit(1);
           }
         });
         if let Err(err) = run_agz_b64(&agz_b64).await {
           error!(RunAgzFailed, "{:?}", err).await;
-          panic!("{:?}", err);
+          std::process::exit(1);
         }
       } else {
         let msg = "No daemon properties defined";
         error!(NoDaemonProps, "{}", msg).await;
-        panic!("{}", msg);
+        std::process::exit(1);
       }
     }
     Err(self_ip_err) => {
       error!(NoPrivateIp, "Private ip error: {}", self_ip_err).await;
-      panic!("Private ip error: {}", self_ip_err);
+      std::process::exit(1);
     }
   }
 }

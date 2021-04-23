@@ -230,13 +230,13 @@ impl ControlPort {
         } else {
           let err = "Failed getting ssl certificate or key";
           error!(NoSSLCert, "{}", err).await;
-          panic!("{}", err);
+          std::process::exit(1);
         }
       }
       Err(err) => {
         let err = format!("{:?}", err);
         error!(CtrlPortStartFailed, "{:?}", err).await;
-        panic!("{:?}", err);
+        std::process::exit(1);
       }
     }
   }
