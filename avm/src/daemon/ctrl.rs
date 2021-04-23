@@ -12,9 +12,12 @@ use hyper::{
   client::{Client, HttpConnector},
   Body, Request, Response,
 };
-use hyper_rustls::HttpsConnector;
+// TODO: Restore rustls once it can connect directly by IP address
+//use hyper_rustls::HttpsConnector;
+use hyper_openssl::HttpsConnector;
 use once_cell::sync::OnceCell;
-use rustls::ClientConfig;
+use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
+//use rustls::ClientConfig;
 use twox_hash::XxHash64;
 
 use crate::daemon::daemon::CLUSTER_SECRET;
@@ -138,7 +141,8 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
   }
 }
 
-mod naive {
+// TODO: Revive once rustls supports IP addresses
+/*mod naive {
   use rustls;
 
   pub struct TLS {}
@@ -154,7 +158,7 @@ mod naive {
       Ok(rustls::ServerCertVerified::assertion())
     }
   }
-}
+}*/
 
 impl ControlPort {
   pub async fn start(priv_key_b64: &str, cert_b64: &str) -> ControlPort {
@@ -167,24 +171,30 @@ impl ControlPort {
       }),
       control_port
     );
-    let mut tls = ClientConfig::new();
+    let mut tls = SslConnector::builder(SslMethod::tls_client()).unwrap();
+    tls.set_verify(SslVerifyMode::NONE);
+    /*let mut tls = ClientConfig::new();
     tls
       .dangerous()
-      .set_certificate_verifier(Arc::new(naive::TLS {}));
+      .set_certificate_verifier(Arc::new(naive::TLS {}));*/
     let mut http_connector = HttpConnector::new();
     http_connector.enforce_http(false);
 
     // This works because we only construct the control port once
-    let client = Client::builder().build::<_, Body>(HttpsConnector::from((http_connector, tls)));
+    let client = Client::builder().build::<_, Body>(HttpsConnector::with_connector(http_connector, tls).unwrap());
+    //let client = Client::builder().build::<_, Body>(HttpsConnector::from((http_connector, tls)));
     NAIVE_CLIENT.set(client);
     // Make a second client. TODO: Share this? Or split into a naive-client generator function?
-    let mut tls = ClientConfig::new();
+    let mut tls = SslConnector::builder(SslMethod::tls_client()).unwrap();
+    tls.set_verify(SslVerifyMode::NONE);
+    /*let mut tls = ClientConfig::new();
     tls
       .dangerous()
-      .set_certificate_verifier(Arc::new(naive::TLS {}));
+      .set_certificate_verifier(Arc::new(naive::TLS {}));*/
     let mut http_connector = HttpConnector::new();
     http_connector.enforce_http(false);
-    let client = Client::builder().build::<_, Body>(HttpsConnector::from((http_connector, tls)));
+    let client = Client::builder().build::<_, Body>(HttpsConnector::with_connector(http_connector, tls).unwrap());
+    //let client = Client::builder().build::<_, Body>(HttpsConnector::from((http_connector, tls)));
 
     ControlPort {
       lrh: LogRendezvousHash::new(vec![]),
