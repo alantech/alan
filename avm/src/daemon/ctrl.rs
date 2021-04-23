@@ -164,16 +164,8 @@ async fn maybe_dump_files(daemon_props: &DaemonProperties) -> DaemonResult<()> {
   let pwd = env::current_dir();
   match pwd {
     Ok(pwd) => {
-      if let Some(files_b64) = &daemon_props.filesB64 {
-        if let Some(dockerfile) = &files_b64.Dockerfile {
-          write_b64_file(&pwd, dockerfile)?;
-        }
-        if let Some(app_tar_gz) = &files_b64.appTarGz {
-          write_b64_file(&pwd, app_tar_gz)?;
-        }
-        if let Some(env) = &files_b64.envVariables {
-          write_b64_file(&pwd, env)?;
-        }
+      for (file_name, content) in &daemon_props.filesB64 {
+        write_b64_file(&pwd, file_name, content)?;
       }
     }
     Err(err) => {
@@ -184,10 +176,10 @@ async fn maybe_dump_files(daemon_props: &DaemonProperties) -> DaemonResult<()> {
   Ok(())
 }
 
-fn write_b64_file(pwd: &PathBuf, file: &DaemonFileB64) -> io::Result<()> {
+fn write_b64_file(pwd: &PathBuf, file_name: &str, content: &str) -> io::Result<()> {
   write(
-    format!("{}/{}", pwd.display(), &file.name),
-    base64::decode(&file.content).unwrap(),
+    format!("{}/{}", pwd.display(), file_name),
+    base64::decode(content).unwrap(),
   )
 }
 
