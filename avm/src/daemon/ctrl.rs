@@ -172,7 +172,8 @@ impl ControlPort {
       control_port
     );
     let mut tls = SslConnector::builder(SslMethod::tls_client()).unwrap();
-    tls.set_verify(SslVerifyMode::NONE);
+    //tls.set_verify(SslVerifyMode::NONE);
+    tls.set_verify_callback(SslVerifyMode::NONE, |_, _| true);
     /*let mut tls = ClientConfig::new();
     tls
       .dangerous()
@@ -186,7 +187,8 @@ impl ControlPort {
     NAIVE_CLIENT.set(client);
     // Make a second client. TODO: Share this? Or split into a naive-client generator function?
     let mut tls = SslConnector::builder(SslMethod::tls_client()).unwrap();
-    tls.set_verify(SslVerifyMode::NONE);
+    //tls.set_verify(SslVerifyMode::NONE);
+    tls.set_verify_callback(SslVerifyMode::NONE, |_, _| true);
     /*let mut tls = ClientConfig::new();
     tls
       .dangerous()
