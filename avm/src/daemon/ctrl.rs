@@ -16,7 +16,7 @@ use hyper::{
 //use hyper_rustls::HttpsConnector;
 use hyper_openssl::HttpsConnector;
 use once_cell::sync::OnceCell;
-use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
+use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode, SslVersion};
 //use rustls::ClientConfig;
 use twox_hash::XxHash64;
 
@@ -175,6 +175,7 @@ impl ControlPort {
     //tls.set_verify(SslVerifyMode::NONE);
     tls.set_verify_callback(SslVerifyMode::PEER, |_, _| true);
     tls.set_servername_callback(|_, _| Ok(()));
+    tls.set_min_proto_version(Some(SslVersion::TLS1_2));
     /*let mut tls = ClientConfig::new();
     tls
       .dangerous()
@@ -191,6 +192,7 @@ impl ControlPort {
     //tls.set_verify(SslVerifyMode::NONE);
     tls.set_verify_callback(SslVerifyMode::PEER, |_, _| true);
     tls.set_servername_callback(|_, _| Ok(()));
+    tls.set_min_proto_version(Some(SslVersion::TLS1_2));
     /*let mut tls = ClientConfig::new();
     tls
       .dangerous()
