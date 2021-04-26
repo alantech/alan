@@ -3047,6 +3047,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         let mut rr_res = match NAIVE_CLIENT.get().unwrap().request(req_obj).await {
           Ok(res) => res,
           Err(ee) => {
+            eprintln!("I'm hitting this path");
+            eprintln!("{:?}", ee);
             return Ok(Response::new(
               format!("Connection terminated: {}", ee).into(),
             ));
