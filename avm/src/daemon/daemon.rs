@@ -203,9 +203,9 @@ pub async fn start() {
           let mut stats = Vec::new();
           let mut cluster_size = 0;
           let mut leader_ip = String::new();
-          let dns = DNS::new(&domain);
-          if let Ok(dns) = &dns {
-            loop {
+          loop {
+            let dns = DNS::new(&domain);
+            if let Ok(dns) = &dns {
               let vms = match dns.get_vms(&cluster_id).await {
                 Ok(vms) => vms,
                 Err(err) => {
@@ -252,10 +252,10 @@ pub async fn start() {
               }
               control_port.check_cluster_health().await;
               sleep(period).await;
+            } else if let Err(dns_err) = &dns {
+              error!(NoDns, "DNS error: {}", dns_err).await;
+              std::process::exit(1);
             }
-          } else if let Err(dns_err) = &dns {
-            error!(NoDns, "DNS error: {}", dns_err).await;
-            std::process::exit(1);
           }
         });
         if let Err(err) = run_agz_b64(&agz_b64).await {
