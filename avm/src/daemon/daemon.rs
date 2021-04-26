@@ -203,12 +203,20 @@ pub async fn start() {
           let mut stats = Vec::new();
           let mut cluster_size = 0;
           let mut leader_ip = String::new();
+          let mut dns = DNS::new(&domain);
+          let mut should_update_dns = false;
           loop {
-            let dns = DNS::new(&domain);
+            if should_update_dns {
+              dns = DNS::new(&domain);
+            }
             if let Ok(dns) = &dns {
               let vms = match dns.get_vms(&cluster_id).await {
-                Ok(vms) => vms,
+                Ok(vms) => {
+                  should_update_dns = false;
+                  vms
+                }
                 Err(err) => {
+                  should_update_dns = true;
                   error!(NoDnsVms, "{}", err).await;
                   Vec::new()
                 }
