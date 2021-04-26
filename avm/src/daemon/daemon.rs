@@ -207,6 +207,7 @@ pub async fn start() {
           let mut should_update_dns = false;
           loop {
             if should_update_dns {
+              println!("Recreating dns");
               dns = DNS::new(&domain);
             }
             if let Ok(dns) = &dns {
