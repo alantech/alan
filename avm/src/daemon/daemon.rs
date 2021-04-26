@@ -195,7 +195,6 @@ pub async fn start() {
       if let Some(daemon_props) = daemon_props {
         let cluster_id = &daemon_props.clusterId;
         CLUSTER_ID.set(String::from(cluster_id)).unwrap();
-        let cluster_id = &daemon_props.clusterId;
         let domain = &daemon_props.domain;
         let deploy_token = &daemon_props.deployToken;
         let agz_b64 = &daemon_props.agzB64;
