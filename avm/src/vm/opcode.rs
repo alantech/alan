@@ -3011,7 +3011,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
           None => format!(""),
         };
         let uri_str = format!("https://{}{}{}", host, orig_uri.path(), orig_query);
-        println!("Forward url: {}", uri_str);
         // Grab the body, if any
         let body_req = match hyper::body::to_bytes(req.into_body()).await {
           Ok(bytes) => bytes,
@@ -3047,8 +3046,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         let mut rr_res = match NAIVE_CLIENT.get().unwrap().request(req_obj).await {
           Ok(res) => res,
           Err(ee) => {
-            eprintln!("I'm hitting this path");
-            eprintln!("{:?}", ee);
             return Ok(Response::new(
               format!("Connection terminated: {}", ee).into(),
             ));
@@ -3072,8 +3069,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         };
         return Ok(res.body(body.into()).unwrap());
       }
-    } else {
-      println!("We got a load-balancing request!");
     }
     // Create a new event handler memory to add to the event queue
     let mut event = HandlerMemory::new(None, 1)?;

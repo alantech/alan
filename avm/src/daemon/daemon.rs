@@ -178,17 +178,14 @@ pub async fn start(
             None
           }
         };
-        println!("vms from dns {:?}", &vms);
         // TODO: Figure out how to avoid flushing the LogRendezvousHash table every iteration, but
         // avoid bugs with misidentifying cluster changes as not-changed
         if let Some(vms) = vms {
           cluster_size = vms.len();
-          println!("update_vms is being called!");
           control_port.update_vms(self_ip, vms).await;
-        } else {
-          println!("update_vms is not being called!");
         }
         if control_port.is_leader() {
+          // TODO: Should we keep these leader announcements in the stdout logging?
           println!("I am leader!");
           match get_v1_stats().await {
             Ok(s) => stats.push(s),
