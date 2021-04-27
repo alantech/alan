@@ -1215,24 +1215,24 @@ dependencies = [
 
 [[package]]
 name = "protobuf"
-version = "2.22.1"
+version = "2.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b7f4a129bb3754c25a4e04032a90173c68f85168f77118ac4cb4936e7f06f92"
+checksum = "45604fc7a88158e7d514d8e22e14ac746081e7a70d7690074dd0029ee37458d6"
 
 [[package]]
 name = "protobuf-codegen"
-version = "2.22.1"
+version = "2.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5d2fa3a461857508103b914da60dd7b489c1a834967c2e214ecc1496f0c486a"
+checksum = "cb87f342b585958c1c086313dbc468dcac3edf5e90362111c26d7a58127ac095"
 dependencies = [
  "protobuf",
 ]
 
 [[package]]
 name = "protoc"
-version = "2.22.1"
+version = "2.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6653d384a260fedff0a466e894e05c5b8d75e261a14e9f93e81e43ef86cad23"
+checksum = "4677a99cc1f866078918c00773cbb46dd72eecad949a31981de5aad1ff9bcc8d"
 dependencies = [
  "log",
  "which",
@@ -1240,14 +1240,15 @@ dependencies = [
 
 [[package]]
 name = "protoc-bin-vendored"
-version = "3.0.0-pre"
-source = "git+https://github.com/aguillenv/rust-protobuf?branch=update-protoc-bin#3d063009793bfb72962b76aeda070ab7ed374a0b"
+version = "2.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "33169b068b77489fc2c655ef358beb00a78b2090dc1e03c5395d3ed51e96c77a"
 
 [[package]]
 name = "protoc-rust"
-version = "2.22.1"
+version = "2.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5198afa8fca3f419b36db9a70ede51ff845938ef0386b49f4b02a5a322015a6"
+checksum = "b35a8c288bd8b80ab9eb660b75de7b99be75ee1a0a3920f15b4924d38da43f6c"
 dependencies = [
  "protobuf",
  "protobuf-codegen",
