@@ -162,12 +162,12 @@ async fn run_agz_b64(agz_b64: &str) -> DaemonResult<()> {
           } else {
             return Err("AGZ file appears to be corrupt.".into());
           }
+        } else {
+          return Err("No self-signed certificate".into());
         }
       }
       Err(err) => {
-        let err = format!("{:?}", err);
-        error!(RunAgzFailed, "{:?}", err).await;
-        return Err(err.into());
+        return Err(format!("{:?}", err).into());
       }
     }
   } else {
