@@ -148,6 +148,12 @@ jobs:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
 
+    # The AVM requires openssl dev files to build now, and apparently the rust openssl code can auto-acquire it through vcpkg, so set that up
+    - name: Set up vcpkg
+      run: |
+        git clone https://github.com/microsoft/vcpkg
+        cd vcpkg && bootstrap-vcpkg.bat && vcpkg integrate install && vcpkg install openssl --triplet x64-windows-static-md
+
     # Rust is automatically set up and included by default according to: https://github.com/actions/starter-workflows/blob/master/ci/rust.yml
     # Run unit tests
     - name: Run unit tests
@@ -169,6 +175,12 @@ jobs:
       uses: actions/setup-node@v1
       with:
         node-version: 14.x
+
+    # The AVM requires openssl dev files to build now, and apparently the rust openssl code can auto-acquire it through vcpkg, so set that up
+    - name: Set up vcpkg
+      run: |
+        git clone https://github.com/microsoft/vcpkg
+        cd vcpkg && bootstrap-vcpkg.bat && vcpkg integrate install && vcpkg install openssl --triplet x64-windows-static-md
 
     # Run the BDD tests
     - name: Run BDD tests
