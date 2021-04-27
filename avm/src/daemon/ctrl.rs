@@ -16,7 +16,7 @@ use hyper::{
 //use hyper_rustls::HttpsConnector;
 use hyper_openssl::HttpsConnector;
 use once_cell::sync::OnceCell;
-use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode, SslVersion};
+use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
 //use rustls::ClientConfig;
 use twox_hash::XxHash64;
 
@@ -172,10 +172,7 @@ impl ControlPort {
       control_port
     );
     let mut tls = SslConnector::builder(SslMethod::tls_client()).unwrap();
-    //tls.set_verify(SslVerifyMode::NONE);
-    tls.set_verify_callback(SslVerifyMode::NONE, |_, _| true);
-    tls.set_servername_callback(|_, _| Ok(()));
-    tls.set_min_proto_version(Some(SslVersion::TLS1_2));
+    tls.set_verify(SslVerifyMode::NONE);
     /*let mut tls = ClientConfig::new();
     tls
       .dangerous()
@@ -184,22 +181,29 @@ impl ControlPort {
     http_connector.enforce_http(false);
 
     // This works because we only construct the control port once
-    let client = Client::builder().build::<_, Body>(HttpsConnector::with_connector(http_connector, tls).unwrap());
+    let mut https = HttpsConnector::with_connector(http_connector, tls).unwrap();
+    https.set_callback(|cc, _| {
+      cc.set_use_server_name_indication(false);
+      Ok(())
+    });
+    let client = Client::builder().build::<_, Body>(https);
     //let client = Client::builder().build::<_, Body>(HttpsConnector::from((http_connector, tls)));
-    NAIVE_CLIENT.set(client);
+    NAIVE_CLIENT.set(client).unwrap();
     // Make a second client. TODO: Share this? Or split into a naive-client generator function?
     let mut tls = SslConnector::builder(SslMethod::tls_client()).unwrap();
-    //tls.set_verify(SslVerifyMode::NONE);
-    tls.set_verify_callback(SslVerifyMode::NONE, |_, _| true);
-    tls.set_servername_callback(|_, _| Ok(()));
-    tls.set_min_proto_version(Some(SslVersion::TLS1_2));
+    tls.set_verify(SslVerifyMode::NONE);
     /*let mut tls = ClientConfig::new();
     tls
       .dangerous()
       .set_certificate_verifier(Arc::new(naive::TLS {}));*/
     let mut http_connector = HttpConnector::new();
     http_connector.enforce_http(false);
-    let client = Client::builder().build::<_, Body>(HttpsConnector::with_connector(http_connector, tls).unwrap());
+    let mut https = HttpsConnector::with_connector(http_connector, tls).unwrap();
+    https.set_callback(|cc, _| {
+      cc.set_use_server_name_indication(false);
+      Ok(())
+    });
+    let client = Client::builder().build::<_, Body>(https);
     //let client = Client::builder().build::<_, Body>(HttpsConnector::from((http_connector, tls)));
 
     ControlPort {
