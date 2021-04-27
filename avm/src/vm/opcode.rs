@@ -2990,7 +2990,15 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   async fn http_listener(req: Request<Body>) -> VMResult<Response<Body>> {
     // Grab the headers
     let headers = req.headers();
-    // Check if we should load balance this request
+    // Check if we should load balance this request. If the special `x-alan-rr` header is present,
+    // that means it was already load-balanced to us and we should process it locally. If not, then
+    // use a random number generator to decide if we should process this here or if we should
+    // distribute the load to one of our local-region peers. This adds an extra network hop, but
+    // within the same firewall group inside of the datacenter, so that part should be a minimal
+    // impact on the total latency. This is done because cloudflare's routing is "sticky" to an
+    // individual IP address without moving to a more expensive tier, so there's no actual load
+    // balancing going on, just fallbacks in case of an outage. This adds stochastic load balancing
+    // to the cluster even if we didn't have cloudflare fronting things.
     if !headers.contains_key("x-alan-rr") {
       let l = REGION_VMS.read().unwrap().len();
       let i = async move {
