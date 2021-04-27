@@ -117,6 +117,7 @@ pub struct ControlPort {
   vms: HashMap<String, VMMetadata>, // All VMs in the cluster. String is private IP
   self_vm: Option<VMMetadata>,      // This VM. Not set on initialization
   region_vms: HashMap<String, VMMetadata>, // VMs in the same cloud and region. String is private IP
+  vms_up: HashMap<String, bool>, // VMs by private IP versus health status
 }
 
 async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> {
@@ -212,6 +213,7 @@ impl ControlPort {
       vms: HashMap::new(),
       self_vm: None,
       region_vms: HashMap::new(),
+      vms_up: HashMap::new(),
     }
   }
 
@@ -257,6 +259,7 @@ impl ControlPort {
     let mut other_region_ips: Vec<String> = region_vms
       .keys()
       .filter(|ip| ip.as_str() != self_ip)
+      .filter(|ip| *self.vms_up.get(ip.clone()).unwrap_or(&false))
       .map(|ip| ip.clone())
       .collect();
     let region_ips = Arc::clone(&REGION_VMS);
@@ -301,9 +304,12 @@ impl ControlPort {
       match res {
         Err(_) => {
           nodes[i].is_up = false;
+          self.vms_up.insert(nodes[i].id.clone(), false);
         }
         Ok(res) => {
-          nodes[i].is_up = res.status().as_u16() == 200;
+          let is_up = res.status().as_u16() == 200;
+          nodes[i].is_up = is_up;
+          self.vms_up.insert(nodes[i].id.clone(), is_up);
         }
       }
     }
