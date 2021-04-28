@@ -552,6 +552,581 @@ export fn sqrt(n: Result<float64>) {
   return sqrtf64(n.getR());
 }
 
+export fn sadd(a: int8, b: int8) = saddi8(a, b);
+export fn sadd(a: Result<int8>, b: int8) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(saddi8(a.getOrExit(), b));
+}
+export fn sadd(a: int8, b: Result<int8>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(saddi8(a, b.getOrExit()));
+}
+export fn sadd(a: Result<int8>, b: Result<int8>) {
+  if a.isErr().or(b.isErr()) {
+    return a;
+  }
+  return ok(saddi8(a.getOrExit(), b.getOrExit()));
+}
+export fn sadd(a: int16, b: int16) = saddi16(a, b);
+export fn sadd(a: Result<int16>, b: int16) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(saddi16(a.getOrExit(), b));
+}
+export fn sadd(a: int16, b: Result<int16>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(saddi16(a, b.getOrExit()));
+}
+export fn sadd(a: Result<int16>, b: Result<int16>) {
+  if a.isErr().or(b.isErr()) {
+    return a;
+  }
+  return ok(saddi16(a.getOrExit(), b.getOrExit()));
+}
+export fn sadd(a: int32, b: int32) = saddi32(a, b);
+export fn sadd(a: Result<int32>, b: int32) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(saddi32(a.getOrExit(), b));
+}
+export fn sadd(a: int32, b: Result<int32>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(saddi32(a, b.getOrExit()));
+}
+export fn sadd(a: Result<int32>, b: Result<int32>) {
+  if a.isErr().or(b.isErr()) {
+    return a;
+  }
+  return ok(saddi32(a.getOrExit(), b.getOrExit()));
+}
+export fn sadd(a: int64, b: int64) = saddi64(a, b);
+export fn sadd(a: Result<int64>, b: int64) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(saddi64(a.getOrExit(), b));
+}
+export fn sadd(a: int64, b: Result<int64>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(saddi64(a, b.getOrExit()));
+}
+export fn sadd(a: Result<int64>, b: Result<int64>) {
+  if a.isErr().or(b.isErr()) {
+    return a;
+  }
+  return ok(saddi64(a.getOrExit(), b.getOrExit()));
+}
+export fn sadd(a: float32, b: float32) = saddf32(a, b);
+export fn sadd(a: Result<float32>, b: float32) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(saddf32(a.getOrExit(), b));
+}
+export fn sadd(a: float32, b: Result<float32>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(saddf32(a, b.getOrExit()));
+}
+export fn sadd(a: Result<float32>, b: Result<float32>) {
+  if a.isErr().or(b.isErr()) {
+    return a;
+  }
+  return ok(saddf32(a.getOrExit(), b.getOrExit()));
+}
+export fn sadd(a: float64, b: float64) = saddf64(a, b);
+export fn sadd(a: Result<float64>, b: float64) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(saddf64(a.getOrExit(), b));
+}
+export fn sadd(a: float64, b: Result<float64>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(saddf64(a, b.getOrExit()));
+}
+export fn sadd(a: Result<float64>, b: Result<float64>) {
+  if a.isErr().or(b.isErr()) {
+    return a;
+  }
+  return ok(saddf64(a.getOrExit(), b.getOrExit()));
+}
+
+export fn ssub(a: int8, b: int8) = ssubi8(a, b);
+export fn ssub(a: Result<int8>, b: int8) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(ssubi8(a.getOrExit(), b));
+}
+export fn ssub(a: int8, b: Result<int8>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(ssubi8(a, b.getOrExit()));
+}
+export fn ssub(a: Result<int8>, b: Result<int8>) {
+  if a.isErr().or(b.isErr()) {
+    return a;
+  }
+  return ok(ssubi8(a.getOrExit(), b.getOrExit()));
+}
+export fn ssub(a: int16, b: int16) = ssubi16(a, b);
+export fn ssub(a: Result<int16>, b: int16) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(ssubi16(a.getOrExit(), b));
+}
+export fn ssub(a: int16, b: Result<int16>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(ssubi16(a, b.getOrExit()));
+}
+export fn ssub(a: Result<int16>, b: Result<int16>) {
+  if a.isErr().or(b.isErr()) {
+    return a;
+  }
+  return ok(ssubi16(a.getOrExit(), b.getOrExit()));
+}
+export fn ssub(a: int32, b: int32) = ssubi32(a, b);
+export fn ssub(a: Result<int32>, b: int32) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(ssubi32(a.getOrExit(), b));
+}
+export fn ssub(a: int32, b: Result<int32>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(ssubi32(a, b.getOrExit()));
+}
+export fn ssub(a: Result<int32>, b: Result<int32>) {
+  if a.isErr().or(b.isErr()) {
+    return a;
+  }
+  return ok(ssubi32(a.getOrExit(), b.getOrExit()));
+}
+export fn ssub(a: int64, b: int64) = ssubi64(a, b);
+export fn ssub(a: Result<int64>, b: int64) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(ssubi64(a.getOrExit(), b));
+}
+export fn ssub(a: int64, b: Result<int64>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(ssubi64(a, b.getOrExit()));
+}
+export fn ssub(a: Result<int64>, b: Result<int64>) {
+  if a.isErr().or(b.isErr()) {
+    return a;
+  }
+  return ok(ssubi64(a.getOrExit(), b.getOrExit()));
+}
+export fn ssub(a: float32, b: float32) = ssubf32(a, b);
+export fn ssub(a: Result<float32>, b: float32) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(ssubf32(a.getOrExit(), b));
+}
+export fn ssub(a: float32, b: Result<float32>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(ssubf32(a, b.getOrExit()));
+}
+export fn ssub(a: Result<float32>, b: Result<float32>) {
+  if a.isErr().or(b.isErr()) {
+    return a;
+  }
+  return ok(ssubf32(a.getOrExit(), b.getOrExit()));
+}
+export fn ssub(a: float64, b: float64) = ssubf64(a, b);
+export fn ssub(a: Result<float64>, b: float64) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(ssubf64(a.getOrExit(), b));
+}
+export fn ssub(a: float64, b: Result<float64>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(ssubf64(a, b.getOrExit()));
+}
+export fn ssub(a: Result<float64>, b: Result<float64>) {
+  if a.isErr().or(b.isErr()) {
+    return a;
+  }
+  return ok(ssubf64(a.getOrExit(), b.getOrExit()));
+}
+
+export fn smul(a: int8, b: int8) = smuli8(a, b);
+export fn smul(a: Result<int8>, b: int8) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(smuli8(a.getOrExit(), b));
+}
+export fn smul(a: int8, b: Result<int8>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(smuli8(a, b.getOrExit()));
+}
+export fn smul(a: Result<int8>, b: Result<int8>) {
+  if a.isErr().or(b.isErr()) {
+    return a;
+  }
+  return ok(smuli8(a.getOrExit(), b.getOrExit()));
+}
+export fn smul(a: int16, b: int16) = smuli16(a, b);
+export fn smul(a: Result<int16>, b: int16) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(smuli16(a.getOrExit(), b));
+}
+export fn smul(a: int16, b: Result<int16>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(smuli16(a, b.getOrExit()));
+}
+export fn smul(a: Result<int16>, b: Result<int16>) {
+  if a.isErr().or(b.isErr()) {
+    return a;
+  }
+  return ok(smuli16(a.getOrExit(), b.getOrExit()));
+}
+export fn smul(a: int32, b: int32) = smuli32(a, b);
+export fn smul(a: Result<int32>, b: int32) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(smuli32(a.getOrExit(), b));
+}
+export fn smul(a: int32, b: Result<int32>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(smuli32(a, b.getOrExit()));
+}
+export fn smul(a: Result<int32>, b: Result<int32>) {
+  if a.isErr().or(b.isErr()) {
+    return a;
+  }
+  return ok(smuli32(a.getOrExit(), b.getOrExit()));
+}
+export fn smul(a: int64, b: int64) = smuli64(a, b);
+export fn smul(a: Result<int64>, b: int64) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(smuli64(a.getOrExit(), b));
+}
+export fn smul(a: int64, b: Result<int64>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(smuli64(a, b.getOrExit()));
+}
+export fn smul(a: Result<int64>, b: Result<int64>) {
+  if a.isErr().or(b.isErr()) {
+    return a;
+  }
+  return ok(smuli64(a.getOrExit(), b.getOrExit()));
+}
+export fn smul(a: float32, b: float32) = smulf32(a, b);
+export fn smul(a: Result<float32>, b: float32) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(smulf32(a.getOrExit(), b));
+}
+export fn smul(a: float32, b: Result<float32>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(smulf32(a, b.getOrExit()));
+}
+export fn smul(a: Result<float32>, b: Result<float32>) {
+  if a.isErr().or(b.isErr()) {
+    return a;
+  }
+  return ok(smulf32(a.getOrExit(), b.getOrExit()));
+}
+export fn smul(a: float64, b: float64) = smulf64(a, b);
+export fn smul(a: Result<float64>, b: float64) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(smulf64(a.getOrExit(), b));
+}
+export fn smul(a: float64, b: Result<float64>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(smulf64(a, b.getOrExit()));
+}
+export fn smul(a: Result<float64>, b: Result<float64>) {
+  if a.isErr().or(b.isErr()) {
+    return a;
+  }
+  return ok(smulf64(a.getOrExit(), b.getOrExit()));
+}
+
+export fn sdiv(a: int8, b: int8) = sdivi8(a, b);
+export fn sdiv(a: Result<int8>, b: int8) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(sdivi8(a.getOrExit(), b));
+}
+export fn sdiv(a: int8, b: Result<int8>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(sdivi8(a, b.getOrExit()));
+}
+export fn sdiv(a: Result<int8>, b: Result<int8>) {
+  if a.isErr().or(b.isErr()) {
+    return a;
+  }
+  return ok(sdivi8(a.getOrExit(), b.getOrExit()));
+}
+export fn sdiv(a: int16, b: int16) = sdivi16(a, b);
+export fn sdiv(a: Result<int16>, b: int16) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(sdivi16(a.getOrExit(), b));
+}
+export fn sdiv(a: int16, b: Result<int16>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(sdivi16(a, b.getOrExit()));
+}
+export fn sdiv(a: Result<int16>, b: Result<int16>) {
+  if a.isErr().or(b.isErr()) {
+    return a;
+  }
+  return ok(sdivi16(a.getOrExit(), b.getOrExit()));
+}
+export fn sdiv(a: int32, b: int32) = sdivi32(a, b);
+export fn sdiv(a: Result<int32>, b: int32) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(sdivi32(a.getOrExit(), b));
+}
+export fn sdiv(a: int32, b: Result<int32>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(sdivi32(a, b.getOrExit()));
+}
+export fn sdiv(a: Result<int32>, b: Result<int32>) {
+  if a.isErr().or(b.isErr()) {
+    return a;
+  }
+  return ok(sdivi32(a.getOrExit(), b.getOrExit()));
+}
+export fn sdiv(a: int64, b: int64) = sdivi64(a, b);
+export fn sdiv(a: Result<int64>, b: int64) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(sdivi64(a.getOrExit(), b));
+}
+export fn sdiv(a: int64, b: Result<int64>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(sdivi64(a, b.getOrExit()));
+}
+export fn sdiv(a: Result<int64>, b: Result<int64>) {
+  if a.isErr().or(b.isErr()) {
+    return a;
+  }
+  return ok(sdivi64(a.getOrExit(), b.getOrExit()));
+}
+export fn sdiv(a: float32, b: float32) = sdivf32(a, b);
+export fn sdiv(a: Result<float32>, b: float32) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(sdivf32(a.getOrExit(), b));
+}
+export fn sdiv(a: float32, b: Result<float32>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(sdivf32(a, b.getOrExit()));
+}
+export fn sdiv(a: Result<float32>, b: Result<float32>) {
+  if a.isErr().or(b.isErr()) {
+    return a;
+  }
+  return ok(sdivf32(a.getOrExit(), b.getOrExit()));
+}
+export fn sdiv(a: float64, b: float64) = sdivf64(a, b);
+export fn sdiv(a: Result<float64>, b: float64) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(sdivf64(a.getOrExit(), b));
+}
+export fn sdiv(a: float64, b: Result<float64>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(sdivf64(a, b.getOrExit()));
+}
+export fn sdiv(a: Result<float64>, b: Result<float64>) {
+  if a.isErr().or(b.isErr()) {
+    return a;
+  }
+  return ok(sdivf64(a.getOrExit(), b.getOrExit()));
+}
+
+export fn spow(a: int8, b: int8) = spowi8(a, b);
+export fn spow(a: Result<int8>, b: int8) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(spowi8(a.getOrExit(), b));
+}
+export fn spow(a: int8, b: Result<int8>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(spowi8(a, b.getOrExit()));
+}
+export fn spow(a: Result<int8>, b: Result<int8>) {
+  if a.isErr().or(b.isErr()) {
+    return a;
+  }
+  return ok(spowi8(a.getOrExit(), b.getOrExit()));
+}
+export fn spow(a: int16, b: int16) = spowi16(a, b);
+export fn spow(a: Result<int16>, b: int16) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(spowi16(a.getOrExit(), b));
+}
+export fn spow(a: int16, b: Result<int16>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(spowi16(a, b.getOrExit()));
+}
+export fn spow(a: Result<int16>, b: Result<int16>) {
+  if a.isErr().or(b.isErr()) {
+    return a;
+  }
+  return ok(spowi16(a.getOrExit(), b.getOrExit()));
+}
+export fn spow(a: int32, b: int32) = spowi32(a, b);
+export fn spow(a: Result<int32>, b: int32) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(spowi32(a.getOrExit(), b));
+}
+export fn spow(a: int32, b: Result<int32>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(spowi32(a, b.getOrExit()));
+}
+export fn spow(a: Result<int32>, b: Result<int32>) {
+  if a.isErr().or(b.isErr()) {
+    return a;
+  }
+  return ok(spowi32(a.getOrExit(), b.getOrExit()));
+}
+export fn spow(a: int64, b: int64) = spowi64(a, b);
+export fn spow(a: Result<int64>, b: int64) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(spowi64(a.getOrExit(), b));
+}
+export fn spow(a: int64, b: Result<int64>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(spowi64(a, b.getOrExit()));
+}
+export fn spow(a: Result<int64>, b: Result<int64>) {
+  if a.isErr().or(b.isErr()) {
+    return a;
+  }
+  return ok(spowi64(a.getOrExit(), b.getOrExit()));
+}
+export fn spow(a: float32, b: float32) = spowf32(a, b);
+export fn spow(a: Result<float32>, b: float32) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(spowf32(a.getOrExit(), b));
+}
+export fn spow(a: float32, b: Result<float32>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(spowf32(a, b.getOrExit()));
+}
+export fn spow(a: Result<float32>, b: Result<float32>) {
+  if a.isErr().or(b.isErr()) {
+    return a;
+  }
+  return ok(spowf32(a.getOrExit(), b.getOrExit()));
+}
+export fn spow(a: float64, b: float64) = spowf64(a, b);
+export fn spow(a: Result<float64>, b: float64) {
+  if a.isErr() {
+    return a;
+  }
+  return ok(spowf64(a.getOrExit(), b));
+}
+export fn spow(a: float64, b: Result<float64>) {
+  if b.isErr() {
+    return b;
+  }
+  return ok(spowf64(a, b.getOrExit()));
+}
+export fn spow(a: Result<float64>, b: Result<float64>) {
+  if a.isErr().or(b.isErr()) {
+    return a;
+  }
+  return ok(spowf64(a.getOrExit(), b.getOrExit()));
+}
+
 export fn min(x: Orderable, y: Orderable): Orderable {
   return cond(lte(x, y), [x, y]);
 }
@@ -2762,6 +3337,11 @@ export infix split as / precedence 3
 export infix mod as % precedence 3
 // export infix template as % precedence 3
 export infix pow as ** precedence 4
+export infix sadd as +. precedence 2
+export infix ssub as -. precedence 2
+export infix smul as *. precedence 3
+export infix sdiv as /. precedence 3
+export infix spow as **. precedence 4
 export infix and as & precedence 3
 export infix and as && precedence 3
 export infix or as | precedence 2
