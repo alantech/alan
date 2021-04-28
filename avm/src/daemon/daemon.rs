@@ -178,7 +178,6 @@ async fn run_agz_b64(agz_b64: &str) -> DaemonResult<()> {
 
 pub async fn start() {
   let mut control_port = ControlPort::start().await;
-  let self_ip = get_private_ip().await;
   match get_private_ip().await {
     Ok(self_ip) => {
       let mut daemon_props: Option<&DaemonProperties> = None;
