@@ -9,6 +9,7 @@ use anycloud::{error, CLUSTER_ID};
 use base64;
 use byteorder::{LittleEndian, ReadBytesExt};
 use flate2::read::GzDecoder;
+use lazy_static::lazy_static;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -27,6 +28,11 @@ pub type DaemonResult<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 pub static CLUSTER_SECRET: OnceCell<Option<String>> = OnceCell::new();
 pub static DAEMON_PROPS: OnceCell<DaemonProperties> = OnceCell::new();
 
+lazy_static! {
+  static ref ALAN_TECH_ENV: String =
+    std::env::var("ALAN_TECH_ENV").unwrap_or("production".to_string());
+}
+
 #[allow(non_snake_case)]
 #[derive(Deserialize, Debug, Serialize)]
 pub struct DaemonProperties {
@@ -39,18 +45,26 @@ pub struct DaemonProperties {
 
 #[cfg(target_os = "linux")]
 async fn get_private_ip() -> DaemonResult<String> {
-  let res = Command::new("hostname").arg("-I").output().await?;
-  let stdout = res.stdout;
-  let private_ip = String::from_utf8(stdout)?;
-  match private_ip.trim().split_whitespace().next() {
-    Some(private_ip) => Ok(private_ip.to_string()),
-    None => Err("No ip found".into()),
+  match ALAN_TECH_ENV.as_str() {
+    "local" => Ok("127.0.0.1".to_string()),
+    _ => {
+      let res = Command::new("hostname").arg("-I").output().await?;
+      let stdout = res.stdout;
+      let private_ip = String::from_utf8(stdout)?;
+      match private_ip.trim().split_whitespace().next() {
+        Some(private_ip) => Ok(private_ip.to_string()),
+        None => Err("No ip found".into()),
+      }
+    }
   }
 }
 
 #[cfg(not(target_os = "linux"))]
 async fn get_private_ip() -> DaemonResult<String> {
-  Err("`hostname` command does not exist in this OS".into())
+  match ALAN_TECH_ENV.as_str() {
+    "local" => Ok("127.0.0.1".to_string()),
+    _ => Err("`hostname` command does not exist in this OS".into()),
+  }
 }
 
 async fn post_v1(endpoint: &str, body: Value) -> String {
@@ -181,7 +195,6 @@ pub async fn start() {
   // TODO: MANAGE SELF SIGNED CERTS. SHOULD THEY BE GENERATED AT BUILD TIME? SHOULD WE FIXED THEIR PATH?
   let mut control_port = ControlPort::start().await;
   match get_private_ip().await {
-    // TODO: RETURN LOCAL HOST IP
     Ok(self_ip) => {
       let mut daemon_props: Option<&DaemonProperties> = None;
       let duration = Duration::from_secs(10);

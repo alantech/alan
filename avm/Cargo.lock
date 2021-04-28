@@ -44,6 +44,7 @@ dependencies = [
  "hyper",
  "hyper-openssl",
  "hyper-rustls",
+ "lazy_static",
  "num_cpus",
  "once_cell",
  "openssl",
