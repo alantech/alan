@@ -18,7 +18,7 @@ SUBCOMMANDS:
     credentials    Manage all Credentials used by Deploy Configs from the credentials file at
                    ~/.anycloud/credentials.json
     help           Prints this message or the help of the given subcommand(s)
-    info           Displays all the Apps deployed with the Deploy Configs from anycloud.json
+    list           Displays all the Apps deployed with the Deploy Configs from anycloud.json
     new            Deploys your repository to a new App with a Deploy Config from anycloud.json
     terminate      Terminate an App hosted in one of the Deploy Configs from anycloud.json
     upgrade        Deploys your repository to an existing App hosted in one of the Deploy Configs from anycloud.json
@@ -58,14 +58,14 @@ OPTIONS:
     -e, --env-file <ENV_FILE>    Specifies an optional environment file relative path
 ```
 
-## info
+## list
 
 ```
-$ anycloud help info
+$ anycloud help list
 Displays all the Apps deployed with the Deploy Configs from anycloud.json
 
 USAGE:
-    anycloud info
+    anycloud list
 
 FLAGS:
     -h, --help       Prints help information
@@ -100,7 +100,7 @@ FLAGS:
     -V, --version    Prints version information
 
 SUBCOMMANDS:
-    add       Add a new Credentials
+    new       Add a new Credentials
     edit      Edit an existing Credentials
     help      Prints this message or the help of the given subcommand(s)
     list      List all the available Credentials
@@ -121,7 +121,7 @@ FLAGS:
     -V, --version    Prints version information
 
 SUBCOMMANDS:
-    add       Add a new Deploy Config to the anycloud.json in the current directory and creates the file if it
+    new       Add a new Deploy Config to the anycloud.json in the current directory and creates the file if it
               doesn't exist.
     edit      Edit an existing Deploy Config from the anycloud.json in the current directory
     help      Prints this message or the help of the given subcommand(s)

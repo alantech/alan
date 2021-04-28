@@ -129,7 +129,7 @@ pub async fn main() {
       .about("Deploys your repository to a new App with a Deploy Config from anycloud.json")
       .arg_from_usage("-e, --env-file=[ENV_FILE] 'Specifies an optional environment file'")
     )
-    .subcommand(SubCommand::with_name("info")
+    .subcommand(SubCommand::with_name("list")
       .about("Displays all the Apps deployed with the Deploy Configs from anycloud.json")
     )
     .subcommand(SubCommand::with_name("terminate")
@@ -142,7 +142,7 @@ pub async fn main() {
     .subcommand(SubCommand::with_name("config")
       .about("Manage Deploy Configs used by Apps from the anycloud.json in the current directory")
       .setting(AppSettings::SubcommandRequiredElseHelp)
-      .subcommand(SubCommand::with_name("add")
+      .subcommand(SubCommand::with_name("new")
         .about("Add a new Deploy Config to the anycloud.json in the current directory and creates the file if it doesn't exist.")
       )
       .subcommand(SubCommand::with_name("list")
@@ -158,7 +158,7 @@ pub async fn main() {
     .subcommand(SubCommand::with_name("credentials")
       .about("Manage all Credentials used by Deploy Configs from the credentials file at ~/.anycloud/credentials.json")
       .setting(AppSettings::SubcommandRequiredElseHelp)
-      .subcommand(SubCommand::with_name("add")
+      .subcommand(SubCommand::with_name("new")
         .about("Add a new Credentials")
       )
       .subcommand(SubCommand::with_name("list")
@@ -204,10 +204,10 @@ pub async fn main() {
       )
       .await;
     }
-    ("info", _) => deploy::info().await,
+    ("list", _) => deploy::info().await,
     ("credentials", Some(sub_matches)) => {
       match sub_matches.subcommand() {
-        ("add", _) => {
+        ("new", _) => {
           deploy::add_cred().await;
         }
         ("edit", _) => deploy::edit_cred().await,
@@ -219,7 +219,7 @@ pub async fn main() {
     }
     ("config", Some(sub_matches)) => {
       match sub_matches.subcommand() {
-        ("add", _) => deploy::add_deploy_config().await,
+        ("new", _) => deploy::add_deploy_config().await,
         ("list", _) => deploy::list_deploy_configs().await,
         ("edit", _) => deploy::edit_deploy_config().await,
         ("remove", _) => deploy::remove_deploy_config().await,
