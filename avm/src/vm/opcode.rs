@@ -1526,57 +1526,25 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!(saddi8 => fn(args, hand_mem) {
     let a = hand_mem.read_fixed(args[0])? as i8;
     let b = hand_mem.read_fixed(args[1])? as i8;
-    if a > 0 && b > 0 && a > std::i8::MAX - b {
-      hand_mem.write_fixed(args[2], std::i8::MAX as i64)?;
-      return Ok(None);
-    }
-    if a < 0 && b < 0 && a < std::i8::MIN - b {
-      hand_mem.write_fixed(args[2], std::i8::MIN as i64)?;
-      return Ok(None);
-    }
-    hand_mem.write_fixed(args[2], (a + b) as i64)?;
+    hand_mem.write_fixed(args[2], a.saturating_add(b) as i64)?;
     Ok(None)
   });
   cpu!(saddi16 => fn(args, hand_mem) {
     let a = hand_mem.read_fixed(args[0])? as i16;
     let b = hand_mem.read_fixed(args[1])? as i16;
-    if a > 0 && b > 0 && a > std::i16::MAX - b {
-      hand_mem.write_fixed(args[2], std::i16::MAX as i64)?;
-      return Ok(None);
-    }
-    if a < 0 && b < 0 && a < std::i16::MIN - b {
-      hand_mem.write_fixed(args[2], std::i16::MIN as i64)?;
-      return Ok(None);
-    }
-    hand_mem.write_fixed(args[2], (a + b) as i64)?;
+    hand_mem.write_fixed(args[2], a.saturating_add(b) as i64)?;
     Ok(None)
   });
   cpu!(saddi32 => fn(args, hand_mem) {
     let a = hand_mem.read_fixed(args[0])? as i32;
     let b = hand_mem.read_fixed(args[1])? as i32;
-    if a > 0 && b > 0 && a > std::i32::MAX - b {
-      hand_mem.write_fixed(args[2], std::i32::MAX as i64)?;
-      return Ok(None);
-    }
-    if a < 0 && b < 0 && a < std::i32::MIN - b {
-      hand_mem.write_fixed(args[2], std::i32::MIN as i64)?;
-      return Ok(None);
-    }
-    hand_mem.write_fixed(args[2], (a + b) as i64)?;
+    hand_mem.write_fixed(args[2], a.saturating_add(b) as i64)?;
     Ok(None)
   });
   cpu!(saddi64 => fn(args, hand_mem) {
     let a = hand_mem.read_fixed(args[0])?;
     let b = hand_mem.read_fixed(args[1])?;
-    if a > 0 && b > 0 && a > std::i64::MAX - b {
-      hand_mem.write_fixed(args[2], std::i64::MAX)?;
-      return Ok(None);
-    }
-    if a < 0 && b < 0 && a < std::i64::MIN - b {
-      hand_mem.write_fixed(args[2], std::i64::MIN)?;
-      return Ok(None);
-    }
-    hand_mem.write_fixed(args[2], a + b)?;
+    hand_mem.write_fixed(args[2], a.saturating_add(b))?;
     Ok(None)
   });
   cpu!(saddf32 => fn(args, hand_mem) {
@@ -1599,57 +1567,25 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!(ssubi8 => fn(args, hand_mem) {
     let a = hand_mem.read_fixed(args[0])? as i8;
     let b = hand_mem.read_fixed(args[1])? as i8;
-    if a > 0 && b < 0 && a > std::i8::MAX + b {
-      hand_mem.write_fixed(args[2], std::i8::MAX as i64)?;
-      return Ok(None);
-    }
-    if a < 0 && b > 0 && a < std::i8::MIN + b {
-      hand_mem.write_fixed(args[2], std::i8::MIN as i64)?;
-      return Ok(None);
-    }
-    hand_mem.write_fixed(args[2], (a - b) as i64)?;
+    hand_mem.write_fixed(args[2], a.saturating_sub(b) as i64)?;
     Ok(None)
   });
   cpu!(ssubi16 => fn(args, hand_mem) {
     let a = hand_mem.read_fixed(args[0])? as i16;
     let b = hand_mem.read_fixed(args[1])? as i16;
-    if a > 0 && b < 0 && a > std::i16::MAX + b {
-      hand_mem.write_fixed(args[2], std::i16::MAX as i64)?;
-      return Ok(None);
-    }
-    if a < 0 && b > 0 && a < std::i16::MIN + b {
-      hand_mem.write_fixed(args[2], std::i16::MIN as i64)?;
-      return Ok(None);
-    }
-    hand_mem.write_fixed(args[2], (a - b) as i64)?;
+    hand_mem.write_fixed(args[2], a.saturating_sub(b) as i64)?;
     Ok(None)
   });
   cpu!(ssubi32 => fn(args, hand_mem) {
     let a = hand_mem.read_fixed(args[0])? as i32;
     let b = hand_mem.read_fixed(args[1])? as i32;
-    if a > 0 && b < 0 && a > std::i32::MAX + b {
-      hand_mem.write_fixed(args[2], std::i32::MAX as i64)?;
-      return Ok(None);
-    }
-    if a < 0 && b > 0 && a < std::i32::MIN + b {
-      hand_mem.write_fixed(args[2], std::i32::MIN as i64)?;
-      return Ok(None);
-    }
-    hand_mem.write_fixed(args[2], (a - b) as i64)?;
+    hand_mem.write_fixed(args[2], a.saturating_sub(b) as i64)?;
     Ok(None)
   });
   cpu!(ssubi64 => fn(args, hand_mem) {
     let a = hand_mem.read_fixed(args[0])?;
     let b = hand_mem.read_fixed(args[1])?;
-    if a > 0 && b < 0 && a > std::i64::MAX + b {
-      hand_mem.write_fixed(args[2], std::i64::MAX)?;
-      return Ok(None);
-    }
-    if a < 0 && b > 0 && a < std::i64::MIN + b {
-      hand_mem.write_fixed(args[2], std::i64::MIN)?;
-      return Ok(None);
-    }
-    hand_mem.write_fixed(args[2], a - b)?;
+    hand_mem.write_fixed(args[2], a.saturating_sub(b))?;
     Ok(None)
   });
   cpu!(ssubf32 => fn(args, hand_mem) {
@@ -1672,57 +1608,25 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!(smuli8 => fn(args, hand_mem) {
     let a = hand_mem.read_fixed(args[0])? as i8;
     let b = hand_mem.read_fixed(args[1])? as i8;
-    if a > 0 && b > 0 && (a as f64) > (std::i8::MAX as f64) / (b as f64) {
-      hand_mem.write_fixed(args[2], std::i8::MAX as i64)?;
-      return Ok(None);
-    }
-    if a < 0 && b < 0 && (a as f64) < (std::i8::MIN as f64) / (b as f64) {
-      hand_mem.write_fixed(args[2], std::i8::MIN as i64)?;
-      return Ok(None);
-    }
-    hand_mem.write_fixed(args[2], (a * b) as i64)?;
+    hand_mem.write_fixed(args[2], a.saturating_mul(b) as i64)?;
     Ok(None)
   });
   cpu!(smuli16 => fn(args, hand_mem) {
     let a = hand_mem.read_fixed(args[0])? as i16;
     let b = hand_mem.read_fixed(args[1])? as i16;
-    if a > 0 && b > 0 && (a as f64) > (std::i16::MAX as f64) / (b as f64) {
-      hand_mem.write_fixed(args[2], std::i16::MAX as i64)?;
-      return Ok(None);
-    }
-    if a < 0 && b < 0 && (a as f64) < (std::i16::MIN as f64) / (b as f64) {
-      hand_mem.write_fixed(args[2], std::i16::MIN as i64)?;
-      return Ok(None);
-    }
-    hand_mem.write_fixed(args[2], (a * b) as i64)?;
+    hand_mem.write_fixed(args[2], a.saturating_mul(b) as i64)?;
     Ok(None)
   });
   cpu!(smuli32 => fn(args, hand_mem) {
     let a = hand_mem.read_fixed(args[0])? as i32;
     let b = hand_mem.read_fixed(args[1])? as i32;
-    if a > 0 && b > 0 && (a as f64) > (std::i32::MAX as f64) / (b as f64) {
-      hand_mem.write_fixed(args[2], std::i32::MAX as i64)?;
-      return Ok(None);
-    }
-    if a < 0 && b < 0 && (a as f64) < (std::i32::MIN as f64) / (b as f64) {
-      hand_mem.write_fixed(args[2], std::i32::MIN as i64)?;
-      return Ok(None);
-    }
-    hand_mem.write_fixed(args[2], (a * b) as i64)?;
+    hand_mem.write_fixed(args[2], a.saturating_mul(b) as i64)?;
     Ok(None)
   });
   cpu!(smuli64 => fn(args, hand_mem) {
     let a = hand_mem.read_fixed(args[0])?;
     let b = hand_mem.read_fixed(args[1])?;
-    if a > 0 && b > 0 && (a as f64) > (std::i64::MAX as f64) / (b as f64) {
-      hand_mem.write_fixed(args[2], std::i64::MAX)?;
-      return Ok(None);
-    }
-    if a < 0 && b < 0 && (a as f64) < (std::i64::MIN as f64) / (b as f64) {
-      hand_mem.write_fixed(args[2], std::i64::MIN)?;
-      return Ok(None);
-    }
-    hand_mem.write_fixed(args[2], a * b)?;
+    hand_mem.write_fixed(args[2], a.saturating_mul(b))?;
     Ok(None)
   });
   cpu!(smulf32 => fn(args, hand_mem) {
@@ -1806,60 +1710,28 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!(spowi8 => fn(args, hand_mem) {
     let a = hand_mem.read_fixed(args[0])? as i8;
     let b = hand_mem.read_fixed(args[1])? as i8;
-    if a > 0 && b > 1 && (a as f64) > f64::powf(std::i8::MAX as f64, 1.0 / (b as f64)) {
-      hand_mem.write_fixed(args[2], std::i8::MAX as i64)?;
-      return Ok(None);
-    }
-    if a < 0 && b > 1 && (a as f64) < f64::powf(std::i8::MIN as f64, 1.0 / (b as f64)) {
-      hand_mem.write_fixed(args[2], std::i8::MIN as i64)?;
-      return Ok(None);
-    }
-    let out = if b < 0 { 0i64 } else { i8::pow(a, b as u32) as i64 };
+    let out = if b < 0 { 0i64 } else { i8::saturating_pow(a, b as u32) as i64 };
     hand_mem.write_fixed(args[2], out)?;
     Ok(None)
   });
   cpu!(spowi16 => fn(args, hand_mem) {
     let a = hand_mem.read_fixed(args[0])? as i16;
     let b = hand_mem.read_fixed(args[1])? as i16;
-    if a > 0 && b > 1 && (a as f64) > f64::powf(std::i16::MAX as f64, 1.0 / (b as f64)) {
-      hand_mem.write_fixed(args[2], std::i16::MAX as i64)?;
-      return Ok(None);
-    }
-    if a < 0 && b > 1 && (a as f64) < f64::powf(std::i16::MIN as f64, 1.0 / (b as f64)) {
-      hand_mem.write_fixed(args[2], std::i16::MIN as i64)?;
-      return Ok(None);
-    }
-    let out = if b < 0 { 0i64 } else { i16::pow(a, b as u32) as i64 };
+    let out = if b < 0 { 0i64 } else { i16::saturating_pow(a, b as u32) as i64 };
     hand_mem.write_fixed(args[2], out)?;
     Ok(None)
   });
   cpu!(spowi32 => fn(args, hand_mem) {
     let a = hand_mem.read_fixed(args[0])? as i32;
     let b = hand_mem.read_fixed(args[1])? as i32;
-    if a > 0 && b > 1 && (a as f64) > f64::powf(std::i32::MAX as f64, 1.0 / (b as f64)) {
-      hand_mem.write_fixed(args[2], std::i32::MAX as i64)?;
-      return Ok(None);
-    }
-    if a < 0 && b > 1 && (a as f64) < f64::powf(std::i32::MIN as f64, 1.0 / (b as f64)) {
-      hand_mem.write_fixed(args[2], std::i32::MIN as i64)?;
-      return Ok(None);
-    }
-    let out = if b < 0 { 0i64 } else { i32::pow(a, b as u32) as i64 };
+    let out = if b < 0 { 0i64 } else { i32::saturating_pow(a, b as u32) as i64 };
     hand_mem.write_fixed(args[2], out)?;
     Ok(None)
   });
   cpu!(spowi64 => fn(args, hand_mem) {
     let a = hand_mem.read_fixed(args[0])?;
     let b = hand_mem.read_fixed(args[1])?;
-    if a > 0 && b > 1 && (a as f64) > f64::powf(std::i64::MAX as f64, 1.0 / (b as f64)) {
-      hand_mem.write_fixed(args[2], std::i64::MAX)?;
-      return Ok(None);
-    }
-    if a < 0 && b > 1 && (a as f64) < f64::powf(std::i64::MIN as f64, 1.0 / (b as f64)) {
-      hand_mem.write_fixed(args[2], std::i64::MIN)?;
-      return Ok(None);
-    }
-    let out = if b < 0 { 0i64 } else { i64::pow(a, b as u32) as i64 };
+    let out = if b < 0 { 0i64 } else { i64::saturating_pow(a, b as u32) as i64 };
     hand_mem.write_fixed(args[2], out)?;
     Ok(None)
   });
