@@ -10,7 +10,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anycloud::error;
-use anycloud::logger::ErrorType;
 use futures::future::join_all;
 use hyper::{
   body,
@@ -318,7 +317,7 @@ impl ControlPort {
       .collect();
     if self_vm_vec.len() == 0 {
       error!(
-        ErrorType::NoDnsPrivateIp,
+        NoDnsPrivateIp,
         "Failed to find self in cluster. Maybe I am being shut down?"
       )
       .await;
@@ -327,7 +326,7 @@ impl ControlPort {
     } else if self_vm_vec.len() > 1 {
       // This hopefully never happens, but if it does, we need to change the daemon initialization
       error!(
-        ErrorType::DuplicateDnsPrivateIp,
+        DuplicateDnsPrivateIp,
         "Private IP address collision detected! I don't know who I really am!"
       )
       .await;

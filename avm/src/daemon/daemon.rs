@@ -224,7 +224,7 @@ pub async fn start() {
               // avoid bugs with misidentifying cluster changes as not-changed
               if let Some(vms) = vms {
                 cluster_size = vms.len();
-                control_port.update_vms(self_ip, vms).await;
+                control_port.update_vms(&self_ip, vms).await;
               }
               if control_port.is_leader() {
                 // TODO: Should we keep these leader announcements in the stdout logging?
