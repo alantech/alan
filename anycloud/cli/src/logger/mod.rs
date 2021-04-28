@@ -22,6 +22,7 @@ pub enum ErrorType {
   DaemonStartFailed = 129,
   CtrlPortStartFailed = 130,
   NoSSLCert = 131,
+  DuplicateDnsPrivateIp = 132,
 }
 
 #[macro_export]

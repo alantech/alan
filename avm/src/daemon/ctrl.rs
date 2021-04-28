@@ -1,4 +1,5 @@
 use std::cmp;
+use std::collections::HashMap;
 use std::convert::Infallible;
 use std::env;
 use std::fs::{read, write};
@@ -9,19 +10,28 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anycloud::error;
+use anycloud::logger::ErrorType;
 use futures::future::join_all;
 use hyper::{
   body,
   client::{Client, HttpConnector},
   Body, Request, Response,
 };
-use hyper_rustls::HttpsConnector;
-use rustls::ClientConfig;
+// TODO: Restore rustls once it can connect directly by IP address
+//use hyper_rustls::HttpsConnector;
+use hyper_openssl::HttpsConnector;
+use once_cell::sync::OnceCell;
+use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
+//use rustls::ClientConfig;
 use twox_hash::XxHash64;
 
 use crate::daemon::daemon::{DaemonProperties, DaemonResult, CLUSTER_SECRET, DAEMON_PROPS};
+use crate::daemon::dns::VMMetadata;
 use crate::make_server;
 use crate::vm::http::{HttpType, HttpsConfig};
+use crate::vm::opcode::REGION_VMS;
+
+pub static NAIVE_CLIENT: OnceCell<Client<HttpsConnector<HttpConnector>>> = OnceCell::new();
 
 #[derive(Debug)]
 pub struct HashedId {
@@ -71,6 +81,9 @@ impl LogRendezvousHash {
   }
 
   pub fn get_leader_id(&self) -> &str {
+    if self.sorted_hashes.len() == 0 {
+      return "";
+    }
     let mut last_idx = self.sorted_hashes.len() - 1;
     while last_idx > 0 && !self.sorted_hashes[last_idx].is_up {
       last_idx = last_idx - 1;
@@ -121,6 +134,10 @@ pub struct ControlPort {
   // TODO: Once the crazy type info of the server can be figured out, we can attach it to this
   // struct and then make it possible to wind down the control port server
   // server: &'a dyn Service<std::convert::Infallible>,
+  vms: HashMap<String, VMMetadata>, // All VMs in the cluster. String is private IP
+  self_vm: Option<VMMetadata>,      // This VM. Not set on initialization
+  region_vms: HashMap<String, VMMetadata>, // VMs in the same cloud and region. String is private IP
+  vms_up: HashMap<String, bool>,    // VMs by private IP versus health status
 }
 
 async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> {
@@ -197,7 +214,8 @@ fn write_b64_file(pwd: &PathBuf, file_name: &str, content: &str) -> io::Result<(
   )
 }
 
-mod naive {
+// TODO: Revive once rustls supports IP addresses
+/*mod naive {
   use rustls;
 
   pub struct TLS {}
@@ -213,7 +231,7 @@ mod naive {
       Ok(rustls::ServerCertVerified::assertion())
     }
   }
-}
+}*/
 
 impl ControlPort {
   pub async fn start() -> ControlPort {
@@ -232,16 +250,48 @@ impl ControlPort {
             }),
             control_port
           );
-          let mut tls = ClientConfig::new();
+          let mut tls = SslConnector::builder(SslMethod::tls_client()).unwrap();
+          tls.set_verify(SslVerifyMode::NONE);
+          /*let mut tls = ClientConfig::new();
           tls
             .dangerous()
-            .set_certificate_verifier(Arc::new(naive::TLS {}));
+            .set_certificate_verifier(Arc::new(naive::TLS {}));*/
           let mut http_connector = HttpConnector::new();
           http_connector.enforce_http(false);
 
+          // This works because we only construct the control port once
+          let mut https = HttpsConnector::with_connector(http_connector, tls).unwrap();
+          https.set_callback(|cc, _| {
+            cc.set_use_server_name_indication(false);
+            Ok(())
+          });
+          let client = Client::builder().build::<_, Body>(https);
+          //let client = Client::builder().build::<_, Body>(HttpsConnector::from((http_connector, tls)));
+          NAIVE_CLIENT.set(client).unwrap();
+          // Make a second client. TODO: Share this? Or split into a naive-client generator function?
+          let mut tls = SslConnector::builder(SslMethod::tls_client()).unwrap();
+          tls.set_verify(SslVerifyMode::NONE);
+          /*let mut tls = ClientConfig::new();
+          tls
+            .dangerous()
+            .set_certificate_verifier(Arc::new(naive::TLS {}));*/
+          let mut http_connector = HttpConnector::new();
+          http_connector.enforce_http(false);
+          let mut https = HttpsConnector::with_connector(http_connector, tls).unwrap();
+          https.set_callback(|cc, _| {
+            cc.set_use_server_name_indication(false);
+            Ok(())
+          });
+          let client = Client::builder().build::<_, Body>(https);
+          //let client = Client::builder().build::<_, Body>(HttpsConnector::from((http_connector, tls)));
+
           ControlPort {
             lrh: LogRendezvousHash::new(vec![]),
-            client: Client::builder().build::<_, Body>(HttpsConnector::from((http_connector, tls))),
+            client,
+            vms: HashMap::new(),
+            self_vm: None,
+            region_vms: HashMap::new(),
+            vms_up: HashMap::new(),
           }
         } else {
           let err = "Failed getting ssl certificate or key";
@@ -257,12 +307,72 @@ impl ControlPort {
     }
   }
 
-  pub fn update_ips(self: &mut ControlPort, ips: Vec<String>) {
+  pub async fn update_vms(self: &mut ControlPort, self_ip: &str, vms: Vec<VMMetadata>) {
+    let ips = vms
+      .iter()
+      .map(|vm| vm.private_ip_addr.to_string())
+      .collect();
+    let self_vm_vec: Vec<&VMMetadata> = vms
+      .iter()
+      .filter(|vm| vm.private_ip_addr == self_ip)
+      .collect();
+    if self_vm_vec.len() == 0 {
+      error!(
+        ErrorType::NoDnsPrivateIp,
+        "Failed to find self in cluster. Maybe I am being shut down?"
+      )
+      .await;
+      // TODO: Should this error propagate up to the stats loop or no?
+      return;
+    } else if self_vm_vec.len() > 1 {
+      // This hopefully never happens, but if it does, we need to change the daemon initialization
+      error!(
+        ErrorType::DuplicateDnsPrivateIp,
+        "Private IP address collision detected! I don't know who I really am!"
+      )
+      .await;
+      // TODO: Should this error propagate up to the stats loop or no?
+      return;
+    }
+    let self_vm = self_vm_vec[0].clone();
+    let mut region_vms = HashMap::new();
+    vms
+      .iter()
+      .filter(|vm| vm.cloud == self_vm.cloud && vm.region == self_vm.region)
+      .for_each(|vm| {
+        region_vms.insert(vm.private_ip_addr.clone(), vm.clone());
+      });
+    let mut all_vms = HashMap::new();
+    vms.iter().for_each(|vm| {
+      all_vms.insert(vm.private_ip_addr.clone(), vm.clone());
+    });
+    let mut other_region_ips: Vec<String> = region_vms
+      .keys()
+      .filter(|ip| ip.as_str() != self_ip)
+      .filter(|ip| *self.vms_up.get(ip.clone()).unwrap_or(&false))
+      .map(|ip| ip.clone())
+      .collect();
+    let region_ips = Arc::clone(&REGION_VMS);
+    let mut region_ips_mut = region_ips.write().unwrap();
+    region_ips_mut.clear();
+    region_ips_mut.append(&mut other_region_ips);
+    drop(region_ips_mut);
+    drop(region_ips);
+    self.vms = all_vms;
+    self.self_vm = Some(self_vm);
+    self.region_vms = region_vms;
     self.lrh.update(ips);
   }
 
-  pub fn get_leader(self: &ControlPort) -> &str {
-    self.lrh.get_leader_id()
+  pub fn is_leader(self: &ControlPort) -> bool {
+    match &self.self_vm {
+      Some(self_vm) => self.lrh.get_leader_id() == self_vm.private_ip_addr,
+      None => false,
+    }
+  }
+
+  pub fn get_leader(self: &ControlPort) -> Option<&VMMetadata> {
+    self.vms.get(self.lrh.get_leader_id())
   }
 
   pub async fn check_cluster_health(self: &mut ControlPort) {
@@ -281,9 +391,12 @@ impl ControlPort {
       match res {
         Err(_) => {
           nodes[i].is_up = false;
+          self.vms_up.insert(nodes[i].id.clone(), false);
         }
         Ok(res) => {
-          nodes[i].is_up = res.status().as_u16() == 200;
+          let is_up = res.status().as_u16() == 200;
+          nodes[i].is_up = is_up;
+          self.vms_up.insert(nodes[i].id.clone(), is_up);
         }
       }
     }

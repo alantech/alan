@@ -202,7 +202,6 @@ pub async fn start() {
           let period = Duration::from_secs(60);
           let mut stats = Vec::new();
           let mut cluster_size = 0;
-          let mut leader_ip = String::new();
           let mut dns = DNS::new(&domain);
           let mut should_update_dns = false;
           loop {
@@ -213,30 +212,38 @@ pub async fn start() {
               let vms = match dns.get_vms(&cluster_id).await {
                 Ok(vms) => {
                   should_update_dns = false;
-                  vms
+                  Some(vms)
                 }
                 Err(err) => {
                   should_update_dns = true;
                   error!(NoDnsVms, "{}", err).await;
-                  Vec::new()
+                  None
                 }
               };
-              // triggered the first time since cluster_size == 0
-              // and every time the cluster changes size
-              if vms.len() != cluster_size {
+              // TODO: Figure out how to avoid flushing the LogRendezvousHash table every iteration, but
+              // avoid bugs with misidentifying cluster changes as not-changed
+              if let Some(vms) = vms {
                 cluster_size = vms.len();
-                let ips = vms
-                  .iter()
-                  .map(|vm| vm.private_ip_addr.to_string())
-                  .collect();
-                control_port.update_ips(ips);
-                leader_ip = control_port.get_leader().to_string();
+                control_port.update_vms(self_ip, vms).await;
               }
-              if leader_ip == self_ip.to_string() {
+              if control_port.is_leader() {
+                // TODO: Should we keep these leader announcements in the stdout logging?
+                println!("I am leader!");
                 match get_v1_stats().await {
                   Ok(s) => stats.push(s),
                   Err(err) => error!(NoStats, "{}", err).await,
                 };
+              } else {
+                // Debug print for now
+                println!("I am NOT the leader! :(");
+                println!(
+                  "Me: {} Leader: {}",
+                  self_ip,
+                  control_port
+                    .get_leader()
+                    .map(|vm| vm.private_ip_addr.clone())
+                    .unwrap_or("<None>".to_string())
+                );
               }
               if stats.len() >= 4 {
                 let mut factor = String::from("1");
@@ -250,9 +257,7 @@ pub async fn start() {
                 }
                 println!(
                   "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
-                  cluster_id,
-                  vms.len(),
-                  factor
+                  cluster_id, cluster_size, factor
                 );
                 if factor != "1" {
                   post_v1_scale(&cluster_id, &agz_b64, &deploy_token, &factor).await;
