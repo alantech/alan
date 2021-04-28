@@ -126,6 +126,7 @@ Describe "Basic Saturating Math"
         The status should eq "36"
       End
     End
+  End
 
   Describe "int16 (not default)"
     Describe "addition"
@@ -267,6 +268,7 @@ Describe "Basic Saturating Math"
         The output should eq "36"
       End
     End
+  End
 
   Describe "int32 (not default)"
     Describe "addition"
@@ -408,6 +410,7 @@ Describe "Basic Saturating Math"
         The output should eq "36"
       End
     End
+  End
 
   Describe "int64 (default)"
     Describe "addition"
@@ -549,6 +552,7 @@ Describe "Basic Saturating Math"
         The output should eq "36"
       End
     End
+  End
 
   Describe "float32 (not default)"
     Describe "addition"
@@ -690,6 +694,7 @@ Describe "Basic Saturating Math"
         The output should eq "36"
       End
     End
+  End
 
   Describe "float64 (default)"
     Describe "addition"
