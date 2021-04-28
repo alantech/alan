@@ -139,6 +139,7 @@ async fn run_agz_b64(agz_b64: &str) -> DaemonResult<()> {
     let pwd = env::current_dir();
     match pwd {
       Ok(pwd) => {
+        // TODO: SAME AS CTRL PORT
         let priv_key = read(format!("{}/key.pem", pwd.display()));
         let cert = read(format!("{}/certificate.pem", pwd.display()));
         if let (Ok(priv_key), Ok(cert)) = (priv_key, cert) {
@@ -177,14 +178,17 @@ async fn run_agz_b64(agz_b64: &str) -> DaemonResult<()> {
 }
 
 pub async fn start() {
+  // TODO: MANAGE SELF SIGNED CERTS. SHOULD THEY BE GENERATED AT BUILD TIME? SHOULD WE FIXED THEIR PATH?
   let mut control_port = ControlPort::start().await;
   match get_private_ip().await {
+    // TODO: RETURN LOCAL HOST IP
     Ok(self_ip) => {
       let mut daemon_props: Option<&DaemonProperties> = None;
       let duration = Duration::from_secs(10);
       let mut counter: u8 = 0;
       // Check every 10s over 5 min if props are ready
       while counter < 30 && daemon_props.is_none() {
+        // TODO: SEND POSTMAN REQUEST WITH B64 FILES, HAVE FILE WITH MODKED DATA OR IGNORE LOOP?
         if let Some(props) = DAEMON_PROPS.get() {
           daemon_props = Some(props);
         }
@@ -196,8 +200,9 @@ pub async fn start() {
         CLUSTER_ID.set(String::from(cluster_id)).unwrap();
         let domain = &daemon_props.domain;
         let deploy_token = &daemon_props.deployToken;
-        let agz_b64 = &daemon_props.agzB64;
+        let agz_b64 = &daemon_props.agzB64; // TODO: GENERATE AUTOMATICALLY ON BUILD?
         task::spawn(async move {
+          // TODO: IGNORE STATS/SCALE LOOP?
           let period = Duration::from_secs(60);
           let mut stats = Vec::new();
           let mut cluster_size = 0;
