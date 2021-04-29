@@ -113,6 +113,8 @@ async fn get_cores_total_times() -> Vec<DaemonResult<CPUSecsV1>> {
         })
       } else if let Err(err_cpu) = r {
         Err(format!("Failed to get CPU times. {:?}", err_cpu).into())
+      } else {
+        Err("Failed to get CPU times".into())
       }
     })
     .collect()
