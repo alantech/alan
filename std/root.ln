@@ -2994,7 +2994,7 @@ export fn vals(hm: HashMap<Hashable, any>): Array<any> = map(hm.keyVal, fn (kv: 
 export fn length(hm: HashMap<Hashable, any>): int64 = length(hm.keyVal);
 
 export fn get(hm: HashMap<Hashable, any>, key: Hashable): Result<any> {
-  const hash = key.toHash().abs() % length(hm.lookup);
+  const hash = key.toHash().sabs() % length(hm.lookup);
   const list = getR(hm.lookup[hash]);
   const index = list.find(fn (i: int64): Result<int64> {
     const kv = getR(hm.keyVal[i]);
@@ -3014,14 +3014,14 @@ export fn set(hm: HashMap<Hashable, any>, key: Hashable, val: any): HashMap<Hash
     key: key,
     val: val,
   };
-  const hash = key.toHash().abs() % length(hm.lookup);
+  const hash = key.toHash().sabs() % length(hm.lookup);
   const list = getR(hm.lookup[hash]);
   if list.length() == 8 {
     // Rebucket everything
     const lookupLen = length(hm.lookup) * 2 || 0;
     hm.lookup = new Array<Array<int64>> [ new Array<int64> [], ] * lookupLen;
     eachl(hm.keyVal, fn (kv: KeyVal<Hashable, any>, i: int64) {
-      const hash = toHash(kv.key).abs() % lookupLen;
+      const hash = toHash(kv.key).sabs() % lookupLen;
       const list = getR(hm.lookup[hash]);
       list.push(i);
     });
@@ -3057,7 +3057,7 @@ export fn toHashMap(kva: Array<KeyVal<Hashable, any>>): HashMap<Hashable, any> {
     lookup: new Array<Array<int64>> [ new Array<int64> [] ] * 128,
   };
   kva.eachl(fn (kv: KeyVal<Hashable, any>, i: int64) {
-    const hash = toHash(kv.key).abs() % length(hm.lookup);
+    const hash = toHash(kv.key).sabs() % length(hm.lookup);
     const list = getR(hm.lookup[hash]);
     list.push(i);
   });
