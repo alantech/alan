@@ -2750,38 +2750,83 @@ export fn find(t: Tree<any>, mapper: function): Node<any> {
   );
 }
 
-// Operator declarations
-export infix add as + precedence 2
-export infix concat as + precedence 2
-export infix sub as - precedence 2
+// not, neg
+// pow
+// mul, div, mod
+// add, sub
+// lt, lte, gt, gte
+// eq, neq
+// and
+// xor
+// or
+// cond
+
+export prefix length as # precedence 1
+export prefix not as ! precedence 1
 export prefix negate as - precedence 1
+export prefix trim as ` precedence 1
+export infix pow as ** precedence 2
 export infix mul as * precedence 3
 export infix repeat as * precedence 3
 export infix div as / precedence 3
 export infix split as / precedence 3
 export infix mod as % precedence 3
+export infix add as + precedence 4
+export infix concat as + precedence 4
+export infix sub as - precedence 4
+export infix pair as : precedence 4
+export infix push as : precedence 5
+export infix lt as < precedence 5
+export infix lte as <= precedence 5
+export infix gt as > precedence 5
+export infix gte as >= precedence 5
+export infix eq as == precedence 6
+export infix neq as != precedence 6
+export infix matches as ~ precedence 6
+export infix and as & precedence 7
+export infix and as && precedence 7
+export infix nand as !& precedence 7
+export infix xnor as !^ precedence 8
+export infix xor as ^ precedence 8
+export infix index as @ precedence 8
+export infix nor as !| precedence 9
+export infix or as | precedence 9
+export infix boolor as || precedence 9
+export infix getOr as || precedence 10
+export infix cond as ? precedence 10
+
+// Operator declarations
+// export infix add as + precedence 2
+// export infix concat as + precedence 2
+// export infix sub as - precedence 2
+// export prefix negate as - precedence 1
+// export infix mul as * precedence 3
+// export infix repeat as * precedence 3
+// export infix div as / precedence 3
+// export infix split as / precedence 3
+// export infix mod as % precedence 3
 // export infix template as % precedence 3
-export infix pow as ** precedence 4
-export infix and as & precedence 3
-export infix and as && precedence 3
-export infix or as | precedence 2
-export infix boolor as || precedence 2
-export infix xor as ^ precedence 2
-export prefix not as ! precedence 4
-export infix nand as !& precedence 3
-export infix nor as !| precedence 2
-export infix xnor as !^ precedence 2
-export infix eq as == precedence 1
-export infix neq as != precedence 1
-export infix lt as < precedence 1
-export infix lte as <= precedence 1
-export infix gt as > precedence 1
-export infix gte as >= precedence 1
-export infix matches as ~ precedence 1
-export infix index as @ precedence 1
-export prefix length as # precedence 4
-export prefix trim as ` precedence 4
-export infix pair as : precedence 5
-export infix push as : precedence 6
-export infix cond as ? precedence 0
-export infix getOr as || precedence 2
+// export infix pow as ** precedence 4
+// export infix and as & precedence 3
+// export infix and as && precedence 3
+// export infix or as | precedence 2
+// export infix boolor as || precedence 2
+// export infix xor as ^ precedence 2
+// export prefix not as ! precedence 4
+// export infix nand as !& precedence 3
+// export infix nor as !| precedence 2
+// export infix xnor as !^ precedence 2
+// export infix eq as == precedence 1
+// export infix neq as != precedence 1
+// export infix lt as < precedence 1
+// export infix lte as <= precedence 1
+// export infix gt as > precedence 1
+// export infix gte as >= precedence 1
+// export infix matches as ~ precedence 1
+// export infix index as @ precedence 1
+// export prefix length as # precedence 4
+// export prefix trim as ` precedence 4
+// export infix pair as : precedence 5
+// export infix push as : precedence 6
+// export infix cond as ? precedence 0
+// export infix getOr as || precedence 2
