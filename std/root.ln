@@ -287,91 +287,31 @@ export fn sub(a: Result<float64>, b: float64) = subf64(a, ok(b));
 export fn sub(a: float64, b: Result<float64>) = subf64(ok(a), b);
 export fn sub(a: Result<float64>, b: Result<float64>) = subf64(a, b);
 
-export fn negate(n: int8) = negi8(n);
-export fn negate(n: Result<int8>) {
-  if n.isErr() {
-    return n;
-  }
-  return ok(negi8(n.getR()));
-}
-export fn negate(n: int16) = negi16(n);
-export fn negate(n: Result<int16>) {
-  if n.isErr() {
-    return n;
-  }
-  return ok(negi16(n.getR()));
-}
-export fn negate(n: int32) = negi32(n);
-export fn negate(n: Result<int32>) {
-  if n.isErr() {
-    return n;
-  }
-  return ok(negi32(n.getR()));
-}
-export fn negate(n: int64) = negi64(n);
-export fn negate(n: Result<int64>) {
-  if n.isErr() {
-    return n;
-  }
-  return ok(negi64(n.getR()));
-}
-export fn negate(n: float32) = negf32(n);
-export fn negate(n: Result<float32>) {
-  if n.isErr() {
-    return n;
-  }
-  return ok(negf32(n.getR()));
-}
-export fn negate(n: float64) = negf64(n);
-export fn negate(n: Result<float64>) {
-  if n.isErr() {
-    return n;
-  }
-  return ok(negf64(n.getR()));
-}
+export fn negate(n: int8) = negi8(ok(n));
+export fn negate(n: Result<int8>) = negi8(n);
+export fn negate(n: int16) = negi16(ok(n));
+export fn negate(n: Result<int16>) = negi16(n);
+export fn negate(n: int32) = negi32(ok(n));
+export fn negate(n: Result<int32>) = negi32(n);
+export fn negate(n: int64) = negi64(ok(n));
+export fn negate(n: Result<int64>) = negi64(n);
+export fn negate(n: float32) = negi32(ok(n));
+export fn negate(n: Result<float32>) = negi32(n);
+export fn negate(n: float64) = negi64(ok(n));
+export fn negate(n: Result<float64>) = negi64(n);
 
-export fn abs(n: int8) = absi8(n);
-export fn abs(n: Result<int8>) {
-  if n.isErr() {
-    return n;
-  }
-  return ok(absi8(n.getR()));
-}
-export fn abs(n: int16) = absi16(n);
-export fn abs(n: Result<int16>) {
-  if n.isErr() {
-    return n;
-  }
-  return ok(absi16(n.getR()));
-}
-export fn abs(n: int32) = absi32(n);
-export fn abs(n: Result<int32>) {
-  if n.isErr() {
-    return n;
-  }
-  return ok(absi32(n.getR()));
-}
-export fn abs(n: int64) = absi64(n);
-export fn abs(n: Result<int64>) {
-  if n.isErr() {
-    return n;
-  }
-  return ok(absi64(n.getR()));
-}
-export fn abs(n: float32) = absf32(n);
-export fn abs(n: Result<float32>) {
-  if n.isErr() {
-    return n;
-  }
-  return ok(absf32(n.getR()));
-}
-export fn abs(n: float64) = absf64(n);
-export fn abs(n: Result<float64>) {
-  if n.isErr() {
-    return n;
-  }
-  return ok(absf64(n.getR()));
-}
+export fn abs(n: int8) = absi8(ok(n));
+export fn abs(n: Result<int8>) = absi8(n);
+export fn abs(n: int16) = absi16(ok(n));
+export fn abs(n: Result<int16>) = absi16(n);
+export fn abs(n: int32) = absi32(ok(n));
+export fn abs(n: Result<int32>) = absi32(n);
+export fn abs(n: int64) = absi64(ok(n));
+export fn abs(n: Result<int64>) = absi64(n);
+export fn abs(n: float32) = absf32(ok(n));
+export fn abs(n: Result<float32>) = absf32(n);
+export fn abs(n: float64) = absf64(ok(n));
+export fn abs(n: Result<float64>) = absf64(n);
 
 export fn mul(a: int8, b: int8) = muli8(ok(a), ok(b));
 export fn mul(a: Result<int8>, b: int8) = muli8(a, ok(b));
@@ -780,6 +720,92 @@ export fn ssub(a: Result<float64>, b: Result<float64>) {
     return a;
   }
   return ok(ssubf64(a.getOrExit(), b.getOrExit()));
+}
+
+export fn snegate(n: int8) = snegi8(n);
+export fn snegate(n: Result<int8>) {
+  if n.isErr() {
+    return n;
+  }
+  return ok(snegi8(n.getR()));
+}
+export fn snegate(n: int16) = snegi16(n);
+export fn snegate(n: Result<int16>) {
+  if n.isErr() {
+    return n;
+  }
+  return ok(snegi16(n.getR()));
+}
+export fn snegate(n: int32) = snegi32(n);
+export fn snegate(n: Result<int32>) {
+  if n.isErr() {
+    return n;
+  }
+  return ok(snegi32(n.getR()));
+}
+export fn snegate(n: int64) = snegi64(n);
+export fn snegate(n: Result<int64>) {
+  if n.isErr() {
+    return n;
+  }
+  return ok(snegi64(n.getR()));
+}
+export fn snegate(n: float32) = snegf32(n);
+export fn snegate(n: Result<float32>) {
+  if n.isErr() {
+    return n;
+  }
+  return ok(snegf32(n.getR()));
+}
+export fn snegate(n: float64) = snegf64(n);
+export fn snegate(n: Result<float64>) {
+  if n.isErr() {
+    return n;
+  }
+  return ok(snegf64(n.getR()));
+}
+
+export fn sabs(n: int8) = sabsi8(n);
+export fn sabs(n: Result<int8>) {
+  if n.isErr() {
+    return n;
+  }
+  return ok(sabsi8(n.getR()));
+}
+export fn sabs(n: int16) = sabsi16(n);
+export fn sabs(n: Result<int16>) {
+  if n.isErr() {
+    return n;
+  }
+  return ok(sabsi16(n.getR()));
+}
+export fn sabs(n: int32) = sabsi32(n);
+export fn sabs(n: Result<int32>) {
+  if n.isErr() {
+    return n;
+  }
+  return ok(sabsi32(n.getR()));
+}
+export fn sabs(n: int64) = sabsi64(n);
+export fn sabs(n: Result<int64>) {
+  if n.isErr() {
+    return n;
+  }
+  return ok(sabsi64(n.getR()));
+}
+export fn sabs(n: float32) = sabsf32(n);
+export fn sabs(n: Result<float32>) {
+  if n.isErr() {
+    return n;
+  }
+  return ok(sabsf32(n.getR()));
+}
+export fn sabs(n: float64) = sabsf64(n);
+export fn sabs(n: Result<float64>) {
+  if n.isErr() {
+    return n;
+  }
+  return ok(sabsf64(n.getR()));
 }
 
 export fn smul(a: int8, b: int8) = smuli8(a, b);
@@ -3338,6 +3364,7 @@ export infix mod as % precedence 3
 // export infix template as % precedence 3
 export infix pow as ** precedence 4
 export infix sadd as +. precedence 2
+export prefix snegate as -. precedence 1
 export infix ssub as -. precedence 2
 export infix smul as *. precedence 3
 export infix sdiv as /. precedence 3

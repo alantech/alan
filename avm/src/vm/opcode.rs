@@ -894,76 +894,184 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
 
   cpu!(negi8 => fn(args, hand_mem) {
-    let a = hand_mem.read_fixed(args[0])? as i8;
-    let out = (0 - a) as i64;
-    hand_mem.write_fixed(args[2], out)?;
+    let ra = hand_mem.read_fractal(args[0])?;
+    if ra.read_fixed(0)? == 0 {
+      hand_mem.write_fractal(args[2], &ra)?;
+      return Ok(None);
+    }
+    let a = ra.read_fixed(1)? as i8;
+    hand_mem.init_fractal(args[2])?;
+    if a == std::i8::MIN {
+      hand_mem.push_fixed(args[2], 0)?;
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"))?;
+    }
+    hand_mem.push_fixed(args[2], 1)?;
+    hand_mem.push_fixed(args[2], (0 - a) as i64)?;
     Ok(None)
   });
   cpu!(negi16 => fn(args, hand_mem) {
-    let a = hand_mem.read_fixed(args[0])? as i16;
-    let out = (0 - a) as i64;
-    hand_mem.write_fixed(args[2], out)?;
+    let ra = hand_mem.read_fractal(args[0])?;
+    if ra.read_fixed(0)? == 0 {
+      hand_mem.write_fractal(args[2], &ra)?;
+      return Ok(None);
+    }
+    let a = ra.read_fixed(1)? as i16;
+    hand_mem.init_fractal(args[2])?;
+    if a == std::i16::MIN {
+      hand_mem.push_fixed(args[2], 0)?;
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"))?;
+    }
+    hand_mem.push_fixed(args[2], 1)?;
+    hand_mem.push_fixed(args[2], (0 - a) as i64)?;
     Ok(None)
   });
   cpu!(negi32 => fn(args, hand_mem) {
-    let a = hand_mem.read_fixed(args[0])? as i32;
-    let out = (0 - a) as i64;
-    hand_mem.write_fixed(args[2], out)?;
+    let ra = hand_mem.read_fractal(args[0])?;
+    if ra.read_fixed(0)? == 0 {
+      hand_mem.write_fractal(args[2], &ra)?;
+      return Ok(None);
+    }
+    let a = ra.read_fixed(1)? as i32;
+    hand_mem.init_fractal(args[2])?;
+    if a == std::i32::MIN {
+      hand_mem.push_fixed(args[2], 0)?;
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"))?;
+    }
+    hand_mem.push_fixed(args[2], 1)?;
+    hand_mem.push_fixed(args[2], (0 - a) as i64)?;
     Ok(None)
   });
   cpu!(negi64 => fn(args, hand_mem) {
-    let a = hand_mem.read_fixed(args[0])?;
-    let out = 0 - a;
-    hand_mem.write_fixed(args[2], out)?;
+    let ra = hand_mem.read_fractal(args[0])?;
+    if ra.read_fixed(0)? == 0 {
+      hand_mem.write_fractal(args[2], &ra)?;
+      return Ok(None);
+    }
+    let a = ra.read_fixed(1)?;
+    hand_mem.init_fractal(args[2])?;
+    if a == std::i64::MIN {
+      hand_mem.push_fixed(args[2], 0)?;
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"))?;
+    }
+    hand_mem.push_fixed(args[2], 1)?;
+    hand_mem.push_fixed(args[2], 0 - a)?;
     Ok(None)
   });
   cpu!(negf32 => fn(args, hand_mem) {
-    let a = f32::from_ne_bytes((hand_mem.read_fixed(args[0])? as i32).to_ne_bytes());
+    let ra = hand_mem.read_fractal(args[0])?;
+    if ra.read_fixed(0)? == 0 {
+      hand_mem.write_fractal(args[2], &ra)?;
+      return Ok(None);
+    }
+    let a = f32::from_ne_bytes((ra.read_fixed(1)? as i32).to_ne_bytes());
+    hand_mem.init_fractal(args[2])?;
+    hand_mem.push_fixed(args[2], 1)?;
     let out = i32::from_ne_bytes((0.0 - a).to_ne_bytes()) as i64;
-    hand_mem.write_fixed(args[2], out)?;
+    hand_mem.push_fixed(args[2], out)?;
     Ok(None)
   });
   cpu!(negf64 => fn(args, hand_mem) {
-    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0])?.to_ne_bytes());
+    let ra = hand_mem.read_fractal(args[0])?;
+    if ra.read_fixed(0)? == 0 {
+      hand_mem.write_fractal(args[2], &ra)?;
+      return Ok(None);
+    }
+    let a = f64::from_ne_bytes(ra.read_fixed(1)?.to_ne_bytes());
+    hand_mem.init_fractal(args[2])?;
+    hand_mem.push_fixed(args[2], 1)?;
     let out = i64::from_ne_bytes((0.0 - a).to_ne_bytes());
-    hand_mem.write_fixed(args[2], out)?;
+    hand_mem.push_fixed(args[2], out)?;
     Ok(None)
   });
 
   cpu!(absi8 => fn(args, hand_mem) {
-    let a = hand_mem.read_fixed(args[0])? as i8;
-    let out = a.abs() as i64;
-    hand_mem.write_fixed(args[2], out)?;
+    let ra = hand_mem.read_fractal(args[0])?;
+    if ra.read_fixed(0)? == 0 {
+      hand_mem.write_fractal(args[2], &ra)?;
+      return Ok(None);
+    }
+    let a = ra.read_fixed(1)? as i8;
+    hand_mem.init_fractal(args[2])?;
+    if a == std::i8::MIN {
+      hand_mem.push_fixed(args[2], 0)?;
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"))?;
+    }
+    hand_mem.push_fixed(args[2], 1)?;
+    hand_mem.push_fixed(args[2], a.abs() as i64)?;
     Ok(None)
   });
   cpu!(absi16 => fn(args, hand_mem) {
-    let a = hand_mem.read_fixed(args[0])? as i16;
-    let out = a.abs() as i64;
-    hand_mem.write_fixed(args[2], out)?;
+    let ra = hand_mem.read_fractal(args[0])?;
+    if ra.read_fixed(0)? == 0 {
+      hand_mem.write_fractal(args[2], &ra)?;
+      return Ok(None);
+    }
+    let a = ra.read_fixed(1)? as i16;
+    hand_mem.init_fractal(args[2])?;
+    if a == std::i16::MIN {
+      hand_mem.push_fixed(args[2], 0)?;
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"))?;
+    }
+    hand_mem.push_fixed(args[2], 1)?;
+    hand_mem.push_fixed(args[2], a.abs() as i64)?;
     Ok(None)
   });
   cpu!(absi32 => fn(args, hand_mem) {
-    let a = hand_mem.read_fixed(args[0])? as i32;
-    let out = a.abs() as i64;
-    hand_mem.write_fixed(args[2], out)?;
+    let ra = hand_mem.read_fractal(args[0])?;
+    if ra.read_fixed(0)? == 0 {
+      hand_mem.write_fractal(args[2], &ra)?;
+      return Ok(None);
+    }
+    let a = ra.read_fixed(1)? as i32;
+    hand_mem.init_fractal(args[2])?;
+    if a == std::i32::MIN {
+      hand_mem.push_fixed(args[2], 0)?;
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"))?;
+    }
+    hand_mem.push_fixed(args[2], 1)?;
+    hand_mem.push_fixed(args[2], a.abs() as i64)?;
     Ok(None)
   });
   cpu!(absi64 => fn(args, hand_mem) {
-    let a = hand_mem.read_fixed(args[0])?;
-    let out = a.abs();
-    hand_mem.write_fixed(args[2], out)?;
+    let ra = hand_mem.read_fractal(args[0])?;
+    if ra.read_fixed(0)? == 0 {
+      hand_mem.write_fractal(args[2], &ra)?;
+      return Ok(None);
+    }
+    let a = ra.read_fixed(1)?;
+    hand_mem.init_fractal(args[2])?;
+    if a == std::i64::MIN {
+      hand_mem.push_fixed(args[2], 0)?;
+      hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("overflow"))?;
+    }
+    hand_mem.push_fixed(args[2], 1)?;
+    hand_mem.push_fixed(args[2], a.abs())?;
     Ok(None)
   });
   cpu!(absf32 => fn(args, hand_mem) {
-    let a = f32::from_ne_bytes((hand_mem.read_fixed(args[0])? as i32).to_ne_bytes());
+    let ra = hand_mem.read_fractal(args[0])?;
+    if ra.read_fixed(0)? == 0 {
+      hand_mem.write_fractal(args[2], &ra)?;
+      return Ok(None);
+    }
+    let a = f32::from_ne_bytes((ra.read_fixed(1)? as i32).to_ne_bytes());
+    hand_mem.init_fractal(args[2])?;
+    hand_mem.push_fixed(args[2], 1)?;
     let out = i32::from_ne_bytes(a.abs().to_ne_bytes()) as i64;
-    hand_mem.write_fixed(args[2], out)?;
+    hand_mem.push_fixed(args[2], out)?;
     Ok(None)
   });
   cpu!(absf64 => fn(args, hand_mem) {
-    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0])?.to_ne_bytes());
+    let ra = hand_mem.read_fractal(args[0])?;
+    if ra.read_fixed(0)? == 0 {
+      hand_mem.write_fractal(args[2], &ra)?;
+      return Ok(None);
+    }
+    let a = f64::from_ne_bytes(ra.read_fixed(1)?.to_ne_bytes());
+    hand_mem.init_fractal(args[2])?;
+    hand_mem.push_fixed(args[2], 1)?;
     let out = i64::from_ne_bytes(a.abs().to_ne_bytes());
-    hand_mem.write_fixed(args[2], out)?;
+    hand_mem.push_fixed(args[2], out)?;
     Ok(None)
   });
 
@@ -1602,6 +1710,80 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     let out = a - b;
     let num = i64::from_ne_bytes(out.to_ne_bytes());
     hand_mem.write_fixed(args[2], num)?;
+    Ok(None)
+  });
+
+  cpu!(snegi8 => fn(args, hand_mem) {
+    let a = hand_mem.read_fixed(args[0])? as i8;
+    let out = a.saturating_neg() as i64;
+    hand_mem.write_fixed(args[2], out)?;
+    Ok(None)
+  });
+  cpu!(snegi16 => fn(args, hand_mem) {
+    let a = hand_mem.read_fixed(args[0])? as i16;
+    let out = a.saturating_neg() as i64;
+    hand_mem.write_fixed(args[2], out)?;
+    Ok(None)
+  });
+  cpu!(snegi32 => fn(args, hand_mem) {
+    let a = hand_mem.read_fixed(args[0])? as i32;
+    let out = a.saturating_neg() as i64;
+    hand_mem.write_fixed(args[2], out)?;
+    Ok(None)
+  });
+  cpu!(snegi64 => fn(args, hand_mem) {
+    let a = hand_mem.read_fixed(args[0])?;
+    let out = a.saturating_neg();
+    hand_mem.write_fixed(args[2], out)?;
+    Ok(None)
+  });
+  cpu!(snegf32 => fn(args, hand_mem) {
+    let a = f32::from_ne_bytes((hand_mem.read_fixed(args[0])? as i32).to_ne_bytes());
+    let out = i32::from_ne_bytes((0.0 - a).to_ne_bytes()) as i64;
+    hand_mem.write_fixed(args[2], out)?;
+    Ok(None)
+  });
+  cpu!(snegf64 => fn(args, hand_mem) {
+    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0])?.to_ne_bytes());
+    let out = i64::from_ne_bytes((0.0 - a).to_ne_bytes());
+    hand_mem.write_fixed(args[2], out)?;
+    Ok(None)
+  });
+
+  cpu!(sabsi8 => fn(args, hand_mem) {
+    let a = hand_mem.read_fixed(args[0])? as i8;
+    let out = a.saturating_abs() as i64;
+    hand_mem.write_fixed(args[2], out)?;
+    Ok(None)
+  });
+  cpu!(sabsi16 => fn(args, hand_mem) {
+    let a = hand_mem.read_fixed(args[0])? as i16;
+    let out = a.saturating_abs() as i64;
+    hand_mem.write_fixed(args[2], out)?;
+    Ok(None)
+  });
+  cpu!(sabsi32 => fn(args, hand_mem) {
+    let a = hand_mem.read_fixed(args[0])? as i32;
+    let out = a.saturating_abs() as i64;
+    hand_mem.write_fixed(args[2], out)?;
+    Ok(None)
+  });
+  cpu!(sabsi64 => fn(args, hand_mem) {
+    let a = hand_mem.read_fixed(args[0])?;
+    let out = a.saturating_abs() as i64;
+    hand_mem.write_fixed(args[2], out)?;
+    Ok(None)
+  });
+  cpu!(sabsf32 => fn(args, hand_mem) {
+    let a = f32::from_ne_bytes((hand_mem.read_fixed(args[0])? as i32).to_ne_bytes());
+    let out = i32::from_ne_bytes(a.abs().to_ne_bytes()) as i64;
+    hand_mem.write_fixed(args[2], out)?;
+    Ok(None)
+  });
+  cpu!(sabsf64 => fn(args, hand_mem) {
+    let a = f64::from_ne_bytes(hand_mem.read_fixed(args[0])?.to_ne_bytes());
+    let out = i64::from_ne_bytes(a.abs().to_ne_bytes());
+    hand_mem.write_fixed(args[2], out)?;
     Ok(None)
   });
 
