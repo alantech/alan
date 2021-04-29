@@ -146,11 +146,10 @@ async fn run_agz_b64(agz_b64: &str) -> DaemonResult<()> {
           let count = agz.bytes().count();
           let mut bytecode = vec![0; count / 8];
           let mut gz = GzDecoder::new(bytes.as_slice());
-
           let gz_read_i64 = gz.read_i64_into::<LittleEndian>(&mut bytecode);
           if gz_read_i64.is_ok() {
             // TODO: return a Result in order to catch the error and log it
-            run(
+            if let Err(err) = run(
               bytecode,
               HttpType::HTTPS(HttpsConfig {
                 port: 443,
@@ -158,7 +157,10 @@ async fn run_agz_b64(agz_b64: &str) -> DaemonResult<()> {
                 cert: String::from_utf8(cert).unwrap(),
               }),
             )
-            .await;
+            .await
+            {
+              return Err(format!("Run server has failed. {}", err).into());
+            }
           } else {
             return Err("AGZ file appears to be corrupt.".into());
           }
@@ -176,113 +178,111 @@ async fn run_agz_b64(agz_b64: &str) -> DaemonResult<()> {
   Ok(())
 }
 
+async fn get_daemon_props() -> Option<&'static DaemonProperties> {
+  let duration = Duration::from_secs(10);
+  let mut counter: u8 = 0;
+  // Check every 10s over 5 min if props are ready
+  while counter < 30 {
+    if let Some(props) = DAEMON_PROPS.get() {
+      return Some(props);
+    }
+    counter += 1;
+    sleep(duration).await;
+  }
+  None
+}
+
 pub async fn start() {
   let mut control_port = ControlPort::start().await;
-  match get_private_ip().await {
-    Ok(self_ip) => {
-      let mut daemon_props: Option<&DaemonProperties> = None;
-      let duration = Duration::from_secs(10);
-      let mut counter: u8 = 0;
-      // Check every 10s over 5 min if props are ready
-      while counter < 30 && daemon_props.is_none() {
-        if let Some(props) = DAEMON_PROPS.get() {
-          daemon_props = Some(props);
+  if let Some(daemon_props) = get_daemon_props().await {
+    let cluster_id = &daemon_props.clusterId;
+    CLUSTER_ID.set(String::from(cluster_id)).unwrap();
+    let domain = &daemon_props.domain;
+    let deploy_token = &daemon_props.deployToken;
+    let agz_b64 = &daemon_props.agzB64;
+    task::spawn(async move {
+      let period = Duration::from_secs(60);
+      let mut stats = Vec::new();
+      let mut cluster_size = 0;
+      let self_ip = get_private_ip().await;
+      let mut dns = DNS::new(&domain);
+      let mut should_update_dns = false;
+      loop {
+        if should_update_dns {
+          dns = DNS::new(&domain);
         }
-        counter += 1;
-        sleep(duration).await;
-      }
-      if let Some(daemon_props) = daemon_props {
-        let cluster_id = &daemon_props.clusterId;
-        CLUSTER_ID.set(String::from(cluster_id)).unwrap();
-        let domain = &daemon_props.domain;
-        let deploy_token = &daemon_props.deployToken;
-        let agz_b64 = &daemon_props.agzB64;
-        task::spawn(async move {
-          let period = Duration::from_secs(60);
-          let mut stats = Vec::new();
-          let mut cluster_size = 0;
-          let mut dns = DNS::new(&domain);
-          let mut should_update_dns = false;
-          loop {
-            if should_update_dns {
-              dns = DNS::new(&domain);
+        if let (Ok(dns), Ok(self_ip)) = (&dns, &self_ip) {
+          let vms = match dns.get_vms(&cluster_id).await {
+            Ok(vms) => {
+              should_update_dns = false;
+              Some(vms)
             }
-            if let Ok(dns) = &dns {
-              let vms = match dns.get_vms(&cluster_id).await {
-                Ok(vms) => {
-                  should_update_dns = false;
-                  Some(vms)
-                }
-                Err(err) => {
-                  should_update_dns = true;
-                  error!(NoDnsVms, "{}", err).await;
-                  None
-                }
-              };
-              // TODO: Figure out how to avoid flushing the LogRendezvousHash table every iteration, but
-              // avoid bugs with misidentifying cluster changes as not-changed
-              if let Some(vms) = vms {
-                cluster_size = vms.len();
-                control_port.update_vms(&self_ip, vms).await;
-              }
-              if control_port.is_leader() {
-                // TODO: Should we keep these leader announcements in the stdout logging?
-                println!("I am leader!");
-                match get_v1_stats().await {
-                  Ok(s) => stats.push(s),
-                  Err(err) => error!(NoStats, "{}", err).await,
-                };
-              } else {
-                // Debug print for now
-                println!("I am NOT the leader! :(");
-                println!(
-                  "Me: {} Leader: {}",
-                  self_ip,
-                  control_port
-                    .get_leader()
-                    .map(|vm| vm.private_ip_addr.clone())
-                    .unwrap_or("<None>".to_string())
-                );
-              }
-              if stats.len() >= 4 {
-                let mut factor = String::from("1");
-                let stats_factor =
-                  post_v1_stats(stats.to_owned(), &cluster_id, &deploy_token).await;
-                stats = Vec::new();
-                if let Ok(stats_factor) = stats_factor {
-                  factor = stats_factor;
-                } else if let Err(err) = stats_factor {
-                  error!(PostFailed, "{}", err).await;
-                }
-                println!(
-                  "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
-                  cluster_id, cluster_size, factor
-                );
-                if factor != "1" {
-                  post_v1_scale(&cluster_id, &agz_b64, &deploy_token, &factor).await;
-                }
-              }
-              control_port.check_cluster_health().await;
-              sleep(period).await;
-            } else if let Err(dns_err) = &dns {
-              error!(NoDns, "DNS error: {}", dns_err).await;
-              std::process::exit(1);
+            Err(err) => {
+              should_update_dns = true;
+              error!(NoDnsVms, "{}", err).await;
+              None
+            }
+          };
+          // TODO: Figure out how to avoid flushing the LogRendezvousHash table every iteration, but
+          // avoid bugs with misidentifying cluster changes as not-changed
+          if let Some(vms) = vms {
+            cluster_size = vms.len();
+            control_port.update_vms(self_ip, vms).await;
+          }
+          if control_port.is_leader() {
+            // TODO: Should we keep these leader announcements in the stdout logging?
+            println!("I am leader!");
+            match get_v1_stats().await {
+              Ok(s) => stats.push(s),
+              Err(err) => error!(NoStats, "{}", err).await,
+            };
+          } else {
+            // Debug print for now
+            println!("I am NOT the leader! :(");
+            println!(
+              "Me: {} Leader: {}",
+              self_ip,
+              control_port
+                .get_leader()
+                .map(|vm| vm.private_ip_addr.clone())
+                .unwrap_or("<None>".to_string())
+            );
+          }
+          if stats.len() >= 4 {
+            let mut factor = String::from("1");
+            let stats_factor = post_v1_stats(stats.to_owned(), &cluster_id, &deploy_token).await;
+            stats = Vec::new();
+            if let Ok(stats_factor) = stats_factor {
+              factor = stats_factor;
+            } else if let Err(err) = stats_factor {
+              error!(PostFailed, "{}", err).await;
+            }
+            println!(
+              "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
+              cluster_id, cluster_size, factor
+            );
+            if factor != "1" {
+              post_v1_scale(&cluster_id, &agz_b64, &deploy_token, &factor).await;
             }
           }
-        });
-        if let Err(err) = run_agz_b64(&agz_b64).await {
-          error!(RunAgzFailed, "{:?}", err).await;
+          control_port.check_cluster_health().await;
+          sleep(period).await;
+        } else if let Err(dns_err) = &dns {
+          error!(NoDns, "DNS error: {}", dns_err).await;
+          std::process::exit(1);
+        } else if let Err(self_ip_err) = &self_ip {
+          error!(NoPrivateIp, "Private ip error: {}", self_ip_err).await;
           std::process::exit(1);
         }
-      } else {
-        let msg = "No daemon properties defined";
-        error!(NoDaemonProps, "{}", msg).await;
-        std::process::exit(1);
       }
-    }
-    Err(self_ip_err) => {
-      error!(NoPrivateIp, "Private ip error: {}", self_ip_err).await;
+    });
+    if let Err(err) = run_agz_b64(&agz_b64).await {
+      error!(RunAgzFailed, "{:?}", err).await;
       std::process::exit(1);
     }
+  } else {
+    let msg = "No daemon properties defined";
+    error!(NoDaemonProps, "{}", msg).await;
+    std::process::exit(1);
   }
 }
