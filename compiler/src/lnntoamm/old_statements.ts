@@ -4,7 +4,7 @@ import Event from './Event'
 import Fn from "./Fn";
 import opcodes from "./opcodes";
 import Scope from "./Scope";
-import Type, { FunctionType } from "./Types";
+import Type, { FunctionType } from "./old_types";
 import { genName, TODO } from "./util";
 
 export class MetaData {
@@ -192,7 +192,7 @@ export class Assign extends Stmt {
     if (this.val instanceof Call) {
       this.val.inline(amm, name, ty, '');
     } else if (this.val instanceof Lit) {
-      amm.assign('', name, ty, this.val.val);
+      // amm.assign('', name, ty, this.val.val);
     } else {
       throw new Error(`Unexpected assignment expression: ${this.val}`);
     }
@@ -215,8 +215,8 @@ export class Call extends Stmt {
     let retTy = Type.generate();
     this.callTy = new FunctionType(`CALL: ${ast.t}`, args.map(arg => arg.ty), retTy);
     // TODO: i think interfaces will mean this will have to be reflexive?
-    this.fns = fns.filter(fn => this.callTy.compatibleWithConstraint(fn.fnType))
-    retTy.constrain(Type.oneOf(fns.map(fn => fn.retTy)));
+    // this.fns = fns.filter(fn => this.callTy.compatibleWithConstraint(fn.fnType))
+    // retTy.constrain(Type.oneOf(fns.map(fn => fn.retTy)));
   }
 
   // this was the first attempt, but it might be too complicated. keeping it though,
@@ -313,16 +313,16 @@ export class Call extends Stmt {
     if (!assign || !ty || !kind) {
       throw new Error(`cannot inline function call because not enough information was provided`);
     }
-    let fn: Fn | null = this.fns.reduce((prev, curr) => this.callTy.compatibleWithConstraint(curr.fnType) ? curr : prev, null);
-    if (fn === null) {
-      throw new Error(`no function could be selected for call \`${this.ast}\``);
-    }
+    // let fn: Fn | null = this.fns.reduce((prev, curr) => this.callTy.compatibleWithConstraint(curr.fnType) ? curr : prev, null);
+    // if (fn === null) {
+    //   throw new Error(`no function could be selected for call \`${this.ast}\``);
+    // }
     // TODO: might have to do something like `fn = fn.select(this.args.map(arg => arg.ty))` ??
     // TODO: this might break if the function returns an interface... make it reflexive maybe?
-    ty.constrain(fn.retTy);
-    console.log('~~~ calling')
-    fn.inline(amm, this.args, assign, kind);
-    console.log('~~~ end')
+    // ty.constrain(fn.retTy);
+    // console.log('~~~ calling for', assign)
+    // fn.inline(amm, this.args, assign, kind);
+    // console.log('~~~ end for', assign)
   }
 }
 // // TODO: try and revive fn selection using ideas from this class:
@@ -484,6 +484,7 @@ export class Dec extends Stmt {
   name: string
   ty: Type
   val: Stmt
+  returnTo: Dec | Assign | null
 
   get ammName(): string {
     return this.__ammName;
@@ -579,7 +580,7 @@ export class Dec extends Stmt {
       this.val.inline(amm, name, ty, kind);
     } else if (this.val instanceof Lit) {
       // don't copy the global value, just use it whenever this declaration is used
-      this.__ammName = amm.global('const', this.val.ty.breakdown(), this.val.val);
+      // this.__ammName = amm.global('const', this.val.ty.breakdown(), this.val.val);
     } else {
       throw new Error(`unexpected expression: ${this.val}`);
     }
@@ -667,7 +668,7 @@ export class Emit extends Stmt {
     }
     const emitRef = emitVal.ref();
     const emit = new Emit(ast, event, emitRef)
-    emit.emitVal.dec.ty.constrain(event.eventTy);
+    // emit.emitVal.dec.ty.constrain(event.eventTy);
     stmts.push(emit);
     return stmts;
   }
@@ -677,11 +678,13 @@ export class Emit extends Stmt {
   }
 
   inline(amm: Output) {
+    console.log('########## emit');
     if (this.event.eventTy !== opcodes().get('void')) {
       amm.emit(this.event.ammName, this.emitVal.ammName);
     } else {
       amm.emit(this.event.ammName);
     }
+    console.log('########## end emit');
   }
 }
 
