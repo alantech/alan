@@ -143,6 +143,8 @@ async fn get_cores_times() -> DaemonResult<Vec<CPUSecsV1>> {
       return Err(format!("Failed to get CPU times. {:?}", err_t1).into());
     } else if let Err(err_t2) = t2 {
       return Err(format!("Failed to get CPU times. {:?}", err_t2).into());
+    } else {
+      return Err("Failed to get CPU times".into());
     }
   }
   Ok(time_window)
