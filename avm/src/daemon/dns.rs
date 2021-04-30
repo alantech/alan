@@ -73,6 +73,8 @@ impl DNS {
         vms.push(vm);
       }
       Ok(vms)
+    } else if let Err(err_resp) = resp {
+      Err(format!("{}. {:?}", err, err_resp).into())
     } else {
       Err(err.into())
     }
