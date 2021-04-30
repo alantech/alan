@@ -1,15 +1,18 @@
 use std::cmp;
 use std::collections::HashMap;
 use std::convert::Infallible;
+use std::env;
+use std::fs::{read, write};
 use std::hash::Hasher;
+use std::io;
 use std::net::TcpStream;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anycloud::error;
-use anycloud::logger::ErrorType;
 use futures::future::join_all;
 use hyper::{
+  body,
   client::{Client, HttpConnector},
   Body, Request, Response,
 };
@@ -21,7 +24,7 @@ use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
 //use rustls::ClientConfig;
 use twox_hash::XxHash64;
 
-use crate::daemon::daemon::CLUSTER_SECRET;
+use crate::daemon::daemon::{DaemonProperties, DaemonResult, CLUSTER_SECRET, DAEMON_PROPS};
 use crate::daemon::dns::VMMetadata;
 use crate::make_server;
 use crate::vm::http::{HttpType, HttpsConfig};
@@ -141,8 +144,18 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
   if cluster_secret.is_some() && !req.headers().contains_key(cluster_secret.as_ref().unwrap()) {
     // If this control port is guarded by a secret string, make sure there's a header with that
     // secret as the key (we don't care about the value) and abort otherwise
-    Ok(Response::builder().status(500).body("fail".into()).unwrap())
-  } else if TcpStream::connect("127.0.0.1:443").is_err() {
+    return Ok(Response::builder().status(500).body("fail".into()).unwrap());
+  }
+  match req.uri().path() {
+    "/health" => Ok(Response::builder().status(200).body("ok".into()).unwrap()),
+    "/clusterHealth" => handle_cluster_health(),
+    "/start" => handle_start(req).await,
+    _ => Ok(Response::builder().status(404).body("fail".into()).unwrap()),
+  }
+}
+
+fn handle_cluster_health() -> Result<Response<Body>, Infallible> {
+  if TcpStream::connect("127.0.0.1:443").is_err() {
     // If the Alan HTTPS server has not yet started, mark as a failure
     Ok(Response::builder().status(500).body("fail".into()).unwrap())
   } else if Path::new("./Dockerfile").exists()
@@ -156,6 +169,48 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
     // Everything passed, send an ok
     Ok(Response::builder().status(200).body("ok".into()).unwrap())
   }
+}
+
+async fn handle_start(req: Request<Body>) -> Result<Response<Body>, Infallible> {
+  // Receive POST and save daemon properties
+  match get_daemon_props(req).await {
+    Ok(_) => Ok(Response::builder().status(200).body("ok".into()).unwrap()),
+    Err(err) => {
+      error!(DaemonStartFailed, "{:?}", err).await;
+      Ok(Response::builder().status(500).body("fail".into()).unwrap())
+    }
+  }
+}
+
+async fn get_daemon_props(req: Request<Body>) -> DaemonResult<()> {
+  let bytes = body::to_bytes(req.into_body()).await?;
+  let body: DaemonProperties = serde_json::from_slice(&bytes).unwrap();
+  maybe_dump_files(&body).await?;
+  DAEMON_PROPS.set(body).unwrap();
+  Ok(())
+}
+
+async fn maybe_dump_files(daemon_props: &DaemonProperties) -> DaemonResult<()> {
+  let pwd = env::current_dir();
+  match pwd {
+    Ok(pwd) => {
+      for (file_name, content) in &daemon_props.filesB64 {
+        write_b64_file(&pwd, file_name, content)?;
+      }
+    }
+    Err(err) => {
+      let err = format!("{:?}", err);
+      return Err(err.into());
+    }
+  }
+  Ok(())
+}
+
+fn write_b64_file(pwd: &PathBuf, file_name: &str, content: &str) -> io::Result<()> {
+  write(
+    format!("{}/{}", pwd.display(), file_name),
+    base64::decode(content).unwrap(),
+  )
 }
 
 // TODO: Revive once rustls supports IP addresses
@@ -178,58 +233,76 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
 }*/
 
 impl ControlPort {
-  pub async fn start(priv_key_b64: &str, cert_b64: &str) -> ControlPort {
-    // TODO: Make this not a side-effect
-    make_server!(
-      HttpType::HTTPS(HttpsConfig {
-        port: 4142, // 4 = A, 1 = L, 2 = N (sideways) => ALAN
-        priv_key_b64: priv_key_b64.to_string(),
-        cert_b64: cert_b64.to_string(),
-      }),
-      control_port
-    );
-    let mut tls = SslConnector::builder(SslMethod::tls_client()).unwrap();
-    tls.set_verify(SslVerifyMode::NONE);
-    /*let mut tls = ClientConfig::new();
-    tls
-      .dangerous()
-      .set_certificate_verifier(Arc::new(naive::TLS {}));*/
-    let mut http_connector = HttpConnector::new();
-    http_connector.enforce_http(false);
+  pub async fn start() -> ControlPort {
+    let pwd = env::current_dir();
+    match pwd {
+      Ok(pwd) => {
+        let priv_key = read(format!("{}/key.pem", pwd.display()));
+        let cert = read(format!("{}/certificate.pem", pwd.display()));
+        if let (Ok(priv_key), Ok(cert)) = (priv_key, cert) {
+          // TODO: Make this not a side-effect
+          make_server!(
+            HttpType::HTTPS(HttpsConfig {
+              port: 4142, // 4 = A, 1 = L, 2 = N (sideways) => ALAN
+              priv_key: String::from_utf8(priv_key).unwrap(),
+              cert: String::from_utf8(cert).unwrap(),
+            }),
+            control_port
+          );
+          let mut tls = SslConnector::builder(SslMethod::tls_client()).unwrap();
+          tls.set_verify(SslVerifyMode::NONE);
+          /*let mut tls = ClientConfig::new();
+          tls
+            .dangerous()
+            .set_certificate_verifier(Arc::new(naive::TLS {}));*/
+          let mut http_connector = HttpConnector::new();
+          http_connector.enforce_http(false);
 
-    // This works because we only construct the control port once
-    let mut https = HttpsConnector::with_connector(http_connector, tls).unwrap();
-    https.set_callback(|cc, _| {
-      cc.set_use_server_name_indication(false);
-      Ok(())
-    });
-    let client = Client::builder().build::<_, Body>(https);
-    //let client = Client::builder().build::<_, Body>(HttpsConnector::from((http_connector, tls)));
-    NAIVE_CLIENT.set(client).unwrap();
-    // Make a second client. TODO: Share this? Or split into a naive-client generator function?
-    let mut tls = SslConnector::builder(SslMethod::tls_client()).unwrap();
-    tls.set_verify(SslVerifyMode::NONE);
-    /*let mut tls = ClientConfig::new();
-    tls
-      .dangerous()
-      .set_certificate_verifier(Arc::new(naive::TLS {}));*/
-    let mut http_connector = HttpConnector::new();
-    http_connector.enforce_http(false);
-    let mut https = HttpsConnector::with_connector(http_connector, tls).unwrap();
-    https.set_callback(|cc, _| {
-      cc.set_use_server_name_indication(false);
-      Ok(())
-    });
-    let client = Client::builder().build::<_, Body>(https);
-    //let client = Client::builder().build::<_, Body>(HttpsConnector::from((http_connector, tls)));
+          // This works because we only construct the control port once
+          let mut https = HttpsConnector::with_connector(http_connector, tls).unwrap();
+          https.set_callback(|cc, _| {
+            cc.set_use_server_name_indication(false);
+            Ok(())
+          });
+          let client = Client::builder().build::<_, Body>(https);
+          //let client = Client::builder().build::<_, Body>(HttpsConnector::from((http_connector, tls)));
+          NAIVE_CLIENT.set(client).unwrap();
+          // Make a second client. TODO: Share this? Or split into a naive-client generator function?
+          let mut tls = SslConnector::builder(SslMethod::tls_client()).unwrap();
+          tls.set_verify(SslVerifyMode::NONE);
+          /*let mut tls = ClientConfig::new();
+          tls
+            .dangerous()
+            .set_certificate_verifier(Arc::new(naive::TLS {}));*/
+          let mut http_connector = HttpConnector::new();
+          http_connector.enforce_http(false);
+          let mut https = HttpsConnector::with_connector(http_connector, tls).unwrap();
+          https.set_callback(|cc, _| {
+            cc.set_use_server_name_indication(false);
+            Ok(())
+          });
+          let client = Client::builder().build::<_, Body>(https);
+          //let client = Client::builder().build::<_, Body>(HttpsConnector::from((http_connector, tls)));
 
-    ControlPort {
-      lrh: LogRendezvousHash::new(vec![]),
-      client,
-      vms: HashMap::new(),
-      self_vm: None,
-      region_vms: HashMap::new(),
-      vms_up: HashMap::new(),
+          ControlPort {
+            lrh: LogRendezvousHash::new(vec![]),
+            client,
+            vms: HashMap::new(),
+            self_vm: None,
+            region_vms: HashMap::new(),
+            vms_up: HashMap::new(),
+          }
+        } else {
+          let err = "Failed getting ssl certificate or key";
+          error!(NoSSLCert, "{}", err).await;
+          std::process::exit(1);
+        }
+      }
+      Err(err) => {
+        let err = format!("{:?}", err);
+        error!(CtrlPortStartFailed, "{:?}", err).await;
+        std::process::exit(1);
+      }
     }
   }
 
@@ -244,7 +317,7 @@ impl ControlPort {
       .collect();
     if self_vm_vec.len() == 0 {
       error!(
-        ErrorType::NoDnsPrivateIp,
+        NoDnsPrivateIp,
         "Failed to find self in cluster. Maybe I am being shut down?"
       )
       .await;
@@ -253,7 +326,7 @@ impl ControlPort {
     } else if self_vm_vec.len() > 1 {
       // This hopefully never happens, but if it does, we need to change the daemon initialization
       error!(
-        ErrorType::DuplicateDnsPrivateIp,
+        DuplicateDnsPrivateIp,
         "Private IP address collision detected! I don't know who I really am!"
       )
       .await;
@@ -308,7 +381,7 @@ impl ControlPort {
     for node in nodes.iter() {
       let mut req = Request::builder()
         .method("GET")
-        .uri(format!("https://{}:4142/", node.id));
+        .uri(format!("https://{}:4142/clusterHealth", node.id));
       req = req.header(cluster_secret.as_str(), "true");
       health.push(self.client.request(req.body(Body::empty()).unwrap()));
     }

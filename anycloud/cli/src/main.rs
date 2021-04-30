@@ -6,7 +6,6 @@ use base64;
 use clap::{crate_name, crate_version, App, AppSettings, SubCommand};
 
 use anycloud::deploy;
-use anycloud::logger::ErrorType;
 use anycloud::oauth::authenticate;
 
 #[macro_use]
@@ -18,22 +17,13 @@ async fn get_dockerfile_b64() -> String {
     Ok(pwd) => {
       let dockerfile = read(format!("{}/Dockerfile", pwd.display()));
       if let Err(_) = dockerfile {
-        warn!(
-          ErrorType::NoDockerFile,
-          "No Dockerfile at {}",
-          pwd.display()
-        )
-        .await;
+        warn!(NoDockerFile, "No Dockerfile at {}", pwd.display()).await;
         std::process::exit(1);
       }
       return base64::encode(dockerfile.unwrap());
     }
     Err(_) => {
-      warn!(
-        ErrorType::InvalidPwd,
-        "Current working directory value is invalid"
-      )
-      .await;
+      warn!(InvalidPwd, "Current working directory value is invalid").await;
       std::process::exit(1);
     }
   }
@@ -48,7 +38,7 @@ async fn get_env_file_b64(env_file_path: String) -> String {
         Ok(env_file) => base64::encode(env_file),
         Err(_) => {
           warn!(
-            ErrorType::NoEnvFile,
+            NoEnvFile,
             "No environment file at {}/{}",
             pwd.display(),
             env_file_path
@@ -59,11 +49,7 @@ async fn get_env_file_b64(env_file_path: String) -> String {
       }
     }
     Err(_) => {
-      warn!(
-        ErrorType::InvalidPwd,
-        "Current working directory value is invalid"
-      )
-      .await;
+      warn!(InvalidPwd, "Current working directory value is invalid").await;
       std::process::exit(1);
     }
   }
@@ -79,7 +65,7 @@ async fn get_app_tar_gz_b64() -> String {
   let msg = String::from_utf8(output.stdout).unwrap();
   if msg.contains("M ") {
     warn!(
-      ErrorType::GitChanges,
+      GitChanges,
       "Please stash, commit or .gitignore your changes before deploying and try again:\n\n{}", msg
     )
     .await;
@@ -96,7 +82,7 @@ async fn get_app_tar_gz_b64() -> String {
     .unwrap();
 
   if output.status.code().unwrap() != 0 {
-    warn!(ErrorType::NoGit, "Your code must be managed by git in order to deploy correctly, please run `git init && git commit -am \"Initial commit\"` and try again.").await;
+    warn!(NoGit, "Your code must be managed by git in order to deploy correctly, please run `git init && git commit -am \"Initial commit\"` and try again.").await;
     std::process::exit(output.status.code().unwrap());
   }
 
@@ -107,7 +93,7 @@ async fn get_app_tar_gz_b64() -> String {
 
   if output.status.code().unwrap() != 0 {
     warn!(
-      ErrorType::DeleteTmpAppTar,
+      DeleteTmpAppTar,
       "Somehow could not delete temporary app.tar.gz file"
     )
     .await;
