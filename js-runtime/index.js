@@ -19,6 +19,11 @@ const INT32MIN = -(2 ** 31)
 const INT64MAX = 2n ** 63n - 1n
 const INT64MIN = -(2n ** 63n)
 
+// JS really doesn't have BigInt equivalents of these?
+const BigMin = (a, b) => a < b ? a : b
+const BigMax = (a, b) => a > b ? a : b
+const BigAbs = a => a > 0n ? a : -a // A six pack?
+
 // Hashing opcodes (hashv is recursive, needs to be defined outside of the export object)
 const hashcore = (hasher, a) => {
   // TODO: We have to turn these values into ArrayBuffers of the right type. There's currently an
@@ -259,8 +264,8 @@ module.exports = {
     if (!rb[0]) return rb
     const a = ra[1]
     const b = rb[1]
-    if (a > 0n && b < 0n && a > INT32MAX + b) return [false, 'overflow']
-    if (a < 0n && b > 0n && a < INT32MIN + b) return [false, 'underflow']
+    if (a > 0n && b < 0n && a > INT64MAX + b) return [false, 'overflow']
+    if (a < 0n && b > 0n && a < INT64MIN + b) return [false, 'underflow']
     return [true, a - b]
   },
   subf32:  (ra, rb) => {
@@ -284,19 +289,19 @@ module.exports = {
     return [true, out]
   },
 
-  negi8:    a => 0 - a,
-  negi16:   a => 0 - a,
-  negi32:   a => 0 - a,
-  negi64:   a => 0n - a,
-  negf32:   a => 0.0 - a,
-  negf64:   a => 0.0 - a,
+  negi8:    ra => !ra[0] ? ra : (0 - ra[1] <= INT8MAX ? [true, 0 - ra[1]] : [false, 'overflow']),
+  negi16:   ra => !ra[0] ? ra : (0 - ra[1] <= INT16MAX ? [true, 0 - ra[1]] : [false, 'overflow']),
+  negi32:   ra => !ra[0] ? ra : (0 - ra[1] <= INT32MAX ? [true, 0 - ra[1]] : [false, 'overflow']),
+  negi64:   ra => !ra[0] ? ra : (0n - ra[1] <= INT64MAX ? [true, 0n - ra[1]] : [false, 'overflow']),
+  negf32:   ra => !ra[0] ? ra : [true, 0.0 - a],
+  negf64:   ra => !ra[0] ? ra : [true, 0.0 - a],
 
-  absi8:    a => Math.abs(a),
-  absi16:   a => Math.abs(a),
-  absi32:   a => Math.abs(a),
-  absi64:   a => a > 0n ? a : -a,
-  absf32:   a => Math.abs(a),
-  absf64:   a => Math.abs(a),
+  absi8:    ra => !ra[0] ? ra : (Math.abs(ra[1]) <= INT8MAX ? [true, Math.abs(ra[1])] : [false, 'overflow']),
+  absi16:   ra => !ra[0] ? ra : (Math.abs(ra[1]) <= INT16MAX ? [true, Math.abs(ra[1])] : [false, 'overflow']),
+  absi32:   ra => !ra[0] ? ra : (Math.abs(ra[1]) <= INT32MAX ? [true, Math.abs(ra[1])] : [false, 'overflow']),
+  absi64:   ra => !ra[0] ? ra : (BigAbs(ra[1]) <= INT64MAX ? [true, BigAbs(ra[1])] : [false, 'overflow']),
+  absf32:   ra => !ra[0] ? ra : [true, Math.abs(ra[1])],
+  absf64:   ra => !ra[0] ? ra : [true, Math.abs(ra[1])],
 
   muli8:   (ra, rb) => {
     if (!ra[0]) return ra
@@ -484,6 +489,142 @@ module.exports = {
 
   sqrtf32:  a => Math.sqrt(a),
   sqrtf64:  a => Math.sqrt(a),
+
+  // Saturating arithmetic
+  saddi8:   (a, b) => {
+    if (a > 0 && b > 0 && a > INT8MAX - b) return INT8MAX
+    if (a < 0 && b < 0 && a < INT8MIN - b) return INT8MIN
+    return a + b
+  },
+  saddi16:  (a, b) => {
+    if (a > 0 && b > 0 && a > INT16MAX - b) return INT16MAX
+    if (a < 0 && b < 0 && a < INT16MIN - b) return INT16MIN
+    return a + b
+  },
+  saddi32:  (a, b) => {
+    if (a > 0 && b > 0 && a > INT32MAX - b) return INT32MAX
+    if (a < 0 && b < 0 && a < INT32MIN - b) return INT32MIN
+    return a + b
+  },
+  saddi64:  (a, b) => {
+    if (a > 0n && b > 0n && a > INT64MAX - b) return INT64MAX
+    if (a < 0n && b < 0n && a < INT64MIN - b) return INT64MIN
+    return a + b
+  },
+  saddf32:  (a, b) => a + b,
+  saddf64:  (a, b) => a + b,
+
+  ssubi8:   (a, b) => {
+    if (a > 0 && b < 0 && a > INT8MAX + b) return INT8MAX
+    if (a < 0 && b > 0 && a < INT8MIN + b) return INT8MIN
+    return a - b
+  },
+  ssubi16:  (a, b) => {
+    if (a > 0 && b < 0 && a > INT16MAX + b) return INT16MAX
+    if (a < 0 && b > 0 && a < INT16MIN + b) return INT16MIN
+    return a - b
+  },
+  ssubi32:  (a, b) => {
+    if (a > 0 && b < 0 && a > INT32MAX + b) return INT32MAX
+    if (a < 0 && b > 0 && a < INT32MIN + b) return INT32MIN
+    return a - b
+  },
+  ssubi64:  (a, b) => {
+    if (a > 0n && b < 0n && a > INT64MAX + b) return INT64MAX
+    if (a < 0n && b > 0n && a < INT64MIN + b) return INT64MIN
+    return a - b
+  },
+  ssubf32:  (a, b) => a - b,
+  ssubf64:  (a, b) => a - b,
+
+  snegi8:    a => Math.min(0 - a, INT8MAX),
+  snegi16:   a => Math.min(0 - a, INT16MAX),
+  snegi32:   a => Math.min(0 - a, INT32MAX),
+  snegi64:   a => BigMin(0n - a, INT64MAX),
+  snegf32:   a => 0.0 - a,
+  snegf64:   a => 0.0 - a,
+
+  sabsi8:    a => Math.min(Math.abs(a), INT8MAX),
+  sabsi16:   a => Math.min(Math.abs(a), INT16MAX),
+  sabsi32:   a => Math.min(Math.abs(a), INT32MAX),
+  sabsi64:   a => BigMin(a > 0n ? a : -a, INT64MAX),
+  sabsf32:   a => Math.abs(a),
+  sabsf64:   a => Math.abs(a),
+
+  smuli8:   (a, b) => {
+    if (a > 0 && b > 0 && a > INT8MAX / b) return INT8MAX
+    if (a < 0 && b < 0 && a < INT8MIN / b) return INT8MIN
+    return a * b
+  },
+  smuli16:  (a, b) => {
+    if (a > 0 && b > 0 && a > INT16MAX / b) return INT16MAX
+    if (a < 0 && b < 0 && a < INT16MIN / b) return INT16MIN
+    return a * b
+  },
+  smuli32:  (a, b) => {
+    if (a > 0 && b > 0 && a > INT32MAX / b) return INT32MAX
+    if (a < 0 && b < 0 && a < INT32MIN / b) return INT32MIN
+    return a * b
+  },
+  smuli64:  (a, b) => {
+    if (a > 0n && b > 0n && a > INT64MAX / b) return INT64MAX
+    if (a < 0n && b < 0n && a < INT64MIN / b) return INT64MIN
+    return a * b
+  },
+  smulf32:  (a, b) => a * b,
+  smulf64:  (a, b) => a * b,
+
+  sdivi8:   (a, b) => {
+    if (b === 0) return a > 0 ? INT8MAX : INT8MIN
+    return Math.floor(a / b)
+  },
+  sdivi16:  (a, b) => {
+    if (b === 0) return a > 0 ? INT16MAX : INT16MIN
+    return Math.floor(a / b)
+  },
+  sdivi32:  (a, b) => {
+    if (b === 0) return a > 0 ? INT32MAX : INT32MIN
+    return Math.floor(a / b)
+  },
+  sdivi64:  (a, b) => {
+    if (b === 0n) return a > 0n ? INT64MAX : INT64MIN
+    return a / b
+  },
+  sdivf32:  (a, b) => a / b,
+  sdivf64:  (a, b) => a / b,
+
+  spowi8:   (a, b) => {
+    if (a > 0 && b > 1 && a > INT8MAX ** (1 / b)) return INT8MAX
+    if (a < 0 && b > 1 && a < INT8MIN ** (1 / b)) return INT8MIN
+    return Math.floor(a ** b)
+  },
+  spowi16:  (a, b) => {
+    if (a > 0 && b > 1 && a > INT16MAX ** (1 / b)) return INT16MAX
+    if (a < 0 && b > 1 && a < INT16MIN ** (1 / b)) return INT16MIN
+    return Math.floor(a ** b)
+  },
+  spowi32:  (a, b) => {
+    if (a > 0 && b > 1 && a > INT32MAX ** (1 / b)) return INT32MAX
+    if (a < 0 && b > 1 && a < INT32MIN ** (1 / b)) return INT32MIN
+    return Math.floor(a ** b)
+  },
+  spowi64:  (a, b) => {
+    if (a > 0 && b > 1n) {
+      const af = parseFloat(a.toString())
+      const bf = parseFloat(b.toString())
+      const maxf = parseFloat(INT64MAX.toString())
+      if (af > maxf ** (1 / bf)) return INT64MAX
+    }
+    if (a < 0n && b > 1n) {
+      const af = parseFloat(a.toString())
+      const bf = parseFloat(b.toString())
+      const minf = parseFloat(INT64MIN.toString())
+      if (af < minf ** (1 / bf)) return INT64MIN
+    }
+    return a ** b
+  },
+  spowf32:  (a, b) => a ** b,
+  spowf64:  (a, b) => a ** b,
 
   // Boolean and bitwise opcodes
   andi8:   (a, b) => a & b,
