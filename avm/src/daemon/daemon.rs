@@ -205,20 +205,12 @@ pub async fn start() {
       let mut stats = Vec::new();
       let mut cluster_size = 0;
       let self_ip = get_private_ip().await;
-      let mut dns = DNS::new(&domain);
-      let mut should_update_dns = false;
-      loop {
-        if should_update_dns {
-          dns = DNS::new(&domain);
-        }
-        if let (Ok(dns), Ok(self_ip)) = (&dns, &self_ip) {
+      let dns = DNS::new(&domain);
+      if let (Ok(dns), Ok(self_ip)) = (&dns, &self_ip) {
+        loop {
           let vms = match dns.get_vms(&cluster_id).await {
-            Ok(vms) => {
-              should_update_dns = false;
-              Some(vms)
-            }
+            Ok(vms) => Some(vms),
             Err(err) => {
-              should_update_dns = true;
               error!(NoDnsVms, "{}", err).await;
               None
             }
@@ -267,13 +259,13 @@ pub async fn start() {
           }
           control_port.check_cluster_health().await;
           sleep(period).await;
-        } else if let Err(dns_err) = &dns {
-          error!(NoDns, "DNS error: {}", dns_err).await;
-          std::process::exit(1);
-        } else if let Err(self_ip_err) = &self_ip {
-          error!(NoPrivateIp, "Private ip error: {}", self_ip_err).await;
-          std::process::exit(1);
         }
+      } else if let Err(dns_err) = &dns {
+        error!(NoDns, "DNS error: {}", dns_err).await;
+        std::process::exit(1);
+      } else if let Err(self_ip_err) = &self_ip {
+        error!(NoPrivateIp, "Private ip error: {}", self_ip_err).await;
+        std::process::exit(1);
       }
     });
     if let Err(err) = run_agz_b64(&agz_b64).await {
