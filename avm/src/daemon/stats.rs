@@ -170,8 +170,12 @@ pub async fn get_v1_stats() -> DaemonResult<VMStatsV1> {
       usedSwapKb: swap.used().get::<kilobyte>(),
       freeSwapKb: swap.free().get::<kilobyte>(),
     }),
-    (Err(err_memory), _) => return Err(format!("Failed to get system memory information. {:?}", err_memory).into()),
-    (_, Err(err_swap)) => return Err(format!("Failed to get swap information. {:?}", err_swap).into()),
+    (Err(err_memory), _) => {
+      return Err(format!("Failed to get system memory information. {:?}", err_memory).into())
+    }
+    (_, Err(err_swap)) => {
+      return Err(format!("Failed to get swap information. {:?}", err_swap).into())
+    }
   }
 }
 
