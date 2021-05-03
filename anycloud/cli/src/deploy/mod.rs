@@ -819,11 +819,20 @@ pub async fn list_deploy_configs() {
   let mut data: Vec<Vec<&dyn Display>> = vec![];
   for (name, config) in &mut configs.iter() {
     for (i, c) in config.iter().enumerate() {
+      let mut display_vec: Vec<&dyn Display> = Vec::new();
       if i == 0 {
-        data.push(vec![name, &c.credentialsName, &c.region, &c.vmType])
+        display_vec.push(name);
       } else {
-        data.push(vec![&"", &c.credentialsName, &c.region, &c.vmType])
+        display_vec.push(&"");
       };
+      display_vec.push(&c.credentialsName);
+      if let Some(region) = &c.region {
+        display_vec.push(region);
+      }
+      if let Some(vm_type) = &c.vmType {
+        display_vec.push(vm_type);
+      }
+      data.push(display_vec)
     }
   }
 
@@ -1237,11 +1246,19 @@ pub async fn info() {
       continue;
     }
     for (i, profile) in app.cloudConfigs.iter().enumerate() {
+      let mut display_vec: Vec<&dyn Display> = Vec::new();
       if i == 0 {
-        profile_data.push(vec![&app.deployName, &profile.region, &profile.vmType])
+        display_vec.push(&app.deployName);
       } else {
-        profile_data.push(vec![&"", &profile.region, &profile.vmType])
+        display_vec.push(&"");
       };
+      if let Some(region) = &profile.region {
+        display_vec.push(region);
+      }
+      if let Some(vm_type) = &profile.vmType {
+        display_vec.push(vm_type);
+      }
+      profile_data.push(display_vec)
     }
     deploy_profiles.insert(&app.deployName);
   }
