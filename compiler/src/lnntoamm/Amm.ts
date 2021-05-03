@@ -105,8 +105,7 @@ export default class Output {
       }
       line = line.concat(')');
     } else {
-      let assignName = this.global('const', ty, assign);
-      line = line.concat(assignName);
+      line = line.concat(assign);
     }
     DEBUG_MODE_PRINTING && console.log(line);
     this.handlers[0] = this.handlers[0].concat(line.concat('\n'));
