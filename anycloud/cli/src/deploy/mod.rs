@@ -84,7 +84,9 @@ pub struct DeployConfig {
   credentialsName: String,
   region: String,
   vmType: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
   minReplicas: Option<u32>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   maxReplicas: Option<u32>,
 }
 
@@ -95,7 +97,9 @@ pub struct Config {
   region: String,
   cloudProvider: String,
   vmType: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
   minReplicas: Option<u32>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   maxReplicas: Option<u32>,
 }
 
