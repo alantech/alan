@@ -570,16 +570,12 @@ pub async fn add_deploy_config() {
         .with_prompt("Region name")
         .interact_text()
         .unwrap();
-      if !input_region.is_empty() {
-        region = Some(input_region);
-      };
+      region = Some(input_region);
       let input_vm_type: String = Input::with_theme(&ColorfulTheme::default())
         .with_prompt("Virtual machine type")
         .interact_text()
         .unwrap();
-      if !input_vm_type.is_empty() {
-        vm_type = Some(input_vm_type);
-      };
+      vm_type = Some(input_vm_type);
     };
     cloud_configs.push(DeployConfig {
       credentialsName: cred,
@@ -697,17 +693,13 @@ pub async fn edit_deploy_config() {
           .with_initial_text(reg.to_string())
           .interact_text()
           .unwrap();
-        if !input_region.is_empty() {
-          region = Some(input_region);
-        };
+        region = Some(input_region);
         let input_vm_type: String = Input::with_theme(&ColorfulTheme::default())
           .with_prompt("Virtual machine type")
           .with_initial_text(vm_t.to_string())
           .interact_text()
           .unwrap();
-        if !input_vm_type.is_empty() {
-          vm_type = Some(input_vm_type);
-        };
+        vm_type = Some(input_vm_type);
       } else {
         region = Some(reg.to_string());
         vm_type = Some(vm_t.to_string());
@@ -724,16 +716,12 @@ pub async fn edit_deploy_config() {
           .with_prompt("Region name")
           .interact_text()
           .unwrap();
-        if !input_region.is_empty() {
-          region = Some(input_region);
-        };
+        region = Some(input_region);
         let input_vm_type: String = Input::with_theme(&ColorfulTheme::default())
           .with_prompt("Virtual machine type")
           .interact_text()
           .unwrap();
-        if !input_vm_type.is_empty() {
-          vm_type = Some(input_vm_type);
-        };
+        vm_type = Some(input_vm_type);
       };
     }
     new_cloud_configs.push(DeployConfig {
