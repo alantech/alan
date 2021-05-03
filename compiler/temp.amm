@@ -1,27 +1,27 @@
-const _d6f1debe_6816_47f4_bfcb_c46f602eede6: int64 = 5
-const _16864ecd_ef07_42c2_9d08_3d3e48bd8fc9: bool = true
-const _aea81e5f_41b2_4de8_a3b6_bffbd597f060: int8 = 5
+const _2b283549_23bb_45b6_ac04_ab8bae788b9f: int64 = 5
+const _e72840c6_22c9_429c_be6c_83e6e6cd0c4b: bool = true
+const _47410000_edbd_406a_bfd9_30a7c6ab0047: int8 = 5
 event stdout: string
 event exit: int8
 event stderr: string
 on stderr fn (err: string): void {
-  let _8748e13e_f88a_4b80_8779_f0aaafc6cfb4: void = stderrp(err)
+  let _bffb957f_fec9_4c61_835b_d047f4d9ff58: void = stderrp(err)
 }
 on exit fn (status: int8): void {
-  let _45916a1f_f5b8_4985_a3fa_308655b9ed56: void = exitop(status)
+  let _a12b184a_c1d6_4eee_8c55_0bb84f7b09b7: void = exitop(status)
 }
 on stdout fn (out: string): void {
-  let _a9966c93_3150_4e7f_aa87_ba2401341b70: void = stdoutp(out)
+  let _4a0bfacd_bf5b_4fd6_a39c_ad821da714a8: void = stdoutp(out)
 }
 on _start fn (): void {
-  let _48e32ccf_5ce8_470f_95c5_5df2ba22c43b: int64 = _d6f1debe_6816_47f4_bfcb_c46f602eede6
-  let _580712c8_1c5e_4a68_bfe3_9f67a58c942c: string = i64str(n)
-  let _a80b76d5_68db_4a0e_b948_b3406ed90756: string = ref(_f736e7d9_7cca_4781_9342_2c585924bf20)
+  let _de68bf63_3720_48a9_84c9_404b953ff51c: int64 = _2b283549_23bb_45b6_ac04_ab8bae788b9f
+  let _d8ca19e1_a021_485d_a0d4_b689ad0dc7d3: string = i64str(n)
+  let _680a60d0_9407_400d_b17d_a8583c920ca1: string = reff(_a352c7de_2ae2_4c22_a502_eb8c4bd3888c)
   emit stdout
-  let _7f7336ab_58e4_4471_9194_dbec76d263f9: bool = _16864ecd_ef07_42c2_9d08_3d3e48bd8fc9
-  let _78cf738b_2c65_419a_af33_4ad995b18d6a: string = boolstr(b)
-  let _bd5b852f_037a_496c_87c9_195028b8300d: string = ref(_52b6b56b_86f1_4f16_b653_5e7fcff74b7d)
+  let _13a24d3b_5a85_4705_9dd5_57f52d6cf1db: bool = _e72840c6_22c9_429c_be6c_83e6e6cd0c4b
+  let _4b882d9d_68e3_4773_a992_3e98a8a03594: string = boolstr(b)
+  let _fee86851_b532_4d18_9398_5ea18ab6b460: string = reff(_61943a99_333a_4bd9_a896_f2aa32a72e5a)
   emit stdout
-  let _d5cfd0b9_8872_4435_bffa_236fa1012da7: int8 = _aea81e5f_41b2_4de8_a3b6_bffbd597f060
+  let _0d8cbf88_0d2f_4dc3_a76d_8b5d586cbd01: int8 = _47410000_edbd_406a_bfd9_30a7c6ab0047
   emit exit
 }

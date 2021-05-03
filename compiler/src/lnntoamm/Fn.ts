@@ -188,7 +188,7 @@ export default class Fn {
           throw new Error(`got a return at a bad time (should've been caught already?)`);
         }
         console.log(`^^^^^^^^ assigning reference to ${stmt.ret.ammName}`)
-        amm.assign(kind, name, ty, 'ref', [stmt.ret.ammName]);
+        amm.assign(kind, name, ty, 'reff', [stmt.ret.ammName]);
         break;
       }
       stmt.inline(amm);
