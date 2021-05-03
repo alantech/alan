@@ -57,12 +57,14 @@ clean:
 	git clean -ffdxe .vscode
 
 .PHONY: install
-install: avm/target/release/alan
+install: avm/target/release/alan anycloud/cli/target/release/anycloud
 	cp ./avm/target/release/alan /usr/local/bin/alan
+	cp ./anycloud/cli/target/release/anycloud /usr/local/bin/anycloud
 
 .PHONY: uninstall
 uninstall:
 	rm /usr/local/bin/alan
+	rm /usr/local/bin/anycloud
 
 .PHONY: version
 version:
