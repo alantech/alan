@@ -125,9 +125,11 @@ pub struct DeployConfig {
 #[derive(Deserialize, Debug, Serialize)]
 pub struct Config {
   credentials: CloudCredentials,
-  region: String,
   cloudProvider: String,
-  vmType: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  region: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  vmType: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
   minReplicas: Option<u32>,
   #[serde(skip_serializing_if = "Option::is_none")]
