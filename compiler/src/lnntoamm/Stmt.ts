@@ -98,7 +98,7 @@ class Assign extends Stmt {
   }
 
   inline(amm: Output) {
-    this.expr.inline(amm, '', this.upstream.name, this.upstream.ty.breakdown());
+    this.expr.inline(amm, '', this.upstream.ammName, this.upstream.ty.breakdown());
   }
 }
 
@@ -112,10 +112,26 @@ class Cond extends Stmt {
   }
 }
 
+/*
+let x = doSomething(5);
+
+const _abc123 = 5;
+let x = doSomething(_abc123);
+
+const _abc123 = 5;
+let x = _abc123;
+
+fn doSomething(i: int64): int64 {
+  return i;
+}
+*/
+
 export abstract class VarDef extends Stmt {
   immutable: boolean
   name: string
   ty: Type
+
+  abstract get ammName(): string;
 
   constructor(
     ast: LPNode,
@@ -135,7 +151,15 @@ export abstract class VarDef extends Stmt {
 }
 
 export class Dec extends VarDef {
+  private __ammName: string = '';
   expr: Expr
+
+  get ammName(): string {
+    if (this.__ammName === '') {
+      this.__ammName = genName();
+    }
+    return this.__ammName;
+  }
 
   constructor(
     ast: LPNode,
@@ -204,6 +228,10 @@ export class Dec extends VarDef {
 }
 
 export class FnParam extends VarDef {
+  get ammName(): string {
+    return this.name;
+  }
+
   constructor(
     ast: LPNode,
     name: string,

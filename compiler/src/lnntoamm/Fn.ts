@@ -1,11 +1,11 @@
 import { LPNode, NulLP } from '../lp';
 import Output, { AssignKind } from './Amm';
-import { Ref } from './Expr';
+import Expr, { Ref } from './Expr';
 import opcodes from './opcodes';
 import Scope from './Scope';
-import Stmt, { Dec, Exit, FnParam, MetaData, VarDef } from './Stmt';
-import Type, { Builtin, Types } from './Types';
-import { MapButBetter, TODO } from './util';
+import Stmt, { Dec, Exit, FnParam, MetaData } from './Stmt';
+import Type, { Builtin } from './Types';
+import { TODO } from './util';
 
 export type Params = {[name: string]: FnParam};
 
@@ -23,7 +23,8 @@ export default class Fn {
   // fnType: FunctionType
 
   // TODO: call ABI?
-  finalized: MapButBetter<Types, Fn>
+  // TODO: figure out if this is even necessary
+  // finalized: MapButBetter<Types, Fn>
 
   get argNames(): string[] {
     return Object.keys(this.params);
@@ -45,7 +46,7 @@ export default class Fn {
     this.retTy = retTy !== null ? retTy : Type.generate();
     this.body = body;
     this.metadata = metadata !== null ? metadata : new MetaData(scope, this.retTy);
-    this.finalized = new MapButBetter();
+    // this.finalized = new MapButBetter();
     // this.fnType = new FunctionType(
     //   this.name,
     //   Object.values(this.params).map(a => a.ty),
@@ -94,12 +95,11 @@ export default class Fn {
       bodyAsts = bodyAsts.get('functionbody').get('statements').getAll().map(s => s.get('statement'));
       bodyAsts.forEach(ast => body.push(...Stmt.fromAst(ast, metadata)));
     } else {
-      bodyAsts = bodyAsts.get('assignfunction');
-      body = Stmt.fromAst(bodyAsts, metadata);
-      const retVal = body[body.length - 1];
-      if (!(retVal instanceof Dec)) {
-        throw new Error(`illegal function body: ${bodyAsts}`);
-      }
+      bodyAsts = bodyAsts.get('assignfunction').get('assignables');
+      let exitVal: Expr;
+      [body, exitVal] = Expr.fromAssignablesAst(bodyAsts, metadata);
+      let retVal = Dec.gen(exitVal, metadata);
+      body.push(retVal);
       body.push(new Exit(bodyAsts, retVal.ref()));
     }
 
@@ -133,7 +133,16 @@ export default class Fn {
   }
 
   acceptsTypes(tys: Type[]): boolean {
-    return false;
+    let params = Object.values(this.params);
+    if (params.length !== tys.length) {
+      return false;
+    }
+    for (let ii = 0; ii < params.length; ii++) {
+      if (!params[ii].ty.compatibleWithConstraint(tys[ii])) {
+        return false;
+      }
+    }
+    return true;
   }
 
   asHandler(amm: Output, event: string) {
@@ -160,15 +169,41 @@ export default class Fn {
       }
       amm.exit();
     }
-    console.log('#####');
+    console.log('#####', this.name);
   }
 
   inline(amm: Output, args: Ref[], kind: AssignKind, name: string, ty: Builtin) {
+    console.log('#####', this.name, this.body);
+    let paramDefs = Object.values(this.params);
+    if (args.length !== paramDefs.length) {
+      throw new Error(`function call argument mismatch`);
+    }
+    for (let ii = 0; ii < paramDefs.length; ii++) {
+      paramDefs[ii].ty.tempConstrain(args[ii].ty);
+    }
+    for (let ii = 0; ii < this.body.length; ii++) {
+      const stmt = this.body[ii];
+      if (stmt instanceof Exit) {
+        if (ii !== this.body.length - 1) {
+          throw new Error(`got a return at a bad time (should've been caught already?)`);
+        }
+        console.log(`^^^^^^^^ assigning reference to ${stmt.ret.ammName}`)
+        amm.assign(kind, name, ty, 'ref', [stmt.ret.ammName]);
+        break;
+      }
+      stmt.inline(amm);
+    }
+    paramDefs.forEach(def => def.ty.resetTempConstraints());
+    console.log('#####', this.name);
   }
 
-  select(argTys: Type[]): Fn | null {
-    return null;
-  }
+  // TODO: call abi? figure out if this is even necessary?
+  // select(argTys: Type[]): Fn | null {
+  //   if (!this.acceptsTypes(argTys)) {
+  //     return null;
+  //   }
+  //   return null;
+  // }
 
   // getType(): FunctionType {
   //   return this.fnType;
@@ -281,7 +316,20 @@ export class OpcodeFn extends Fn {
     __opcodes.put(name, [this]);
   }
 
-  inline(amm: Output, args: Ref[], assign: string, kind: AssignKind, ty: Builtin) {
+  asHandler(_amm: Output, _event: string) {
+    TODO('opcodes as event listener???');
+  }
+
+  inline(amm: Output, args: Ref[], kind: AssignKind, assign: string, ty: Builtin) {
+    console.log('%%%%%', this.name);
+    amm.assign(
+      kind,
+      assign,
+      ty,
+      this,
+      args.map(ref => ref.ammName),
+    );
+    console.log('%%%%%', this.name)
   }
 
   // inline(amm: Output, args: Ref[], assign: string, kind: 'const' | 'let' | '') {

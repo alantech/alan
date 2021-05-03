@@ -91,10 +91,11 @@ export default class Output {
     } else {
       line = line.concat(kind, ' ', name, ': ', ty.ammName, ' = ');
     }
-    if (assign instanceof OpcodeFn) {
-      line = line.concat(assign.name, '(');
+    if (assign instanceof OpcodeFn || args !== null) {
+      const fnName = assign instanceof OpcodeFn ? assign.name : assign;
+      line = line.concat(fnName, '(');
       if (args === null) {
-        throw new Error(`attempting to call opcode ${assign.name} but there are no args defined`)
+        throw new Error(`attempting to call opcode ${fnName} but there are no args defined`)
       }
       for (let ii = 0; ii < args.length; ii++) {
         line = line.concat(args[ii]);

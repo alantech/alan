@@ -19,7 +19,7 @@ export default abstract class Expr {
   abstract inline(amm: Output, kind: AssignKind, name: string, ty: Builtin): void;
 
   private static fromBaseassignablelist(ast: LPNode, metadata: MetaData): [Stmt[], Expr] {
-    let asts = ast.getAll();
+    let asts = ast.getAll().map(a => a.get('baseassignable'));
     let generated = [];
     let expr: Expr = null;
     for (let ii = 0; ii < asts.length; ii++) {
@@ -73,7 +73,7 @@ export default abstract class Expr {
         } else if (next.has('methodsep')) {
           TODO('accesses/methods on non-constants');
         } else {
-          throw new Error(`unexpected token: expected dor or call, found ${next.t.trim()}`);
+          throw new Error(`unexpected token: expected dot or call, found ${next.t.trim()}`);
         }
       } else if (work.has('constants')) {
         work = work.get('constants');
@@ -85,6 +85,7 @@ export default abstract class Expr {
         expr = constant;
       } else {
         // TODO: don't lump in HOF and chains
+        console.log(work);
         throw new Error(`unexpected token: expected variable or value, found ${work.t.trim()}`);
       }
     }
@@ -190,6 +191,12 @@ class Call extends Expr {
   }
 
   inline(amm: Output, kind: AssignKind, name: string, ty: Builtin) {
+    const argTys = this.args.map(arg => arg.ty);
+    const selected = this.fns.reverse().find(fn => fn.acceptsTypes(argTys)) || null;
+    if (selected === null) {
+      throw new Error(`no function selected: ${this.ast.t.trim()}`);
+    }
+    selected.inline(amm, this.args, kind, name, ty);
   }
 }
 
@@ -245,12 +252,17 @@ class Const extends Expr {
 
   inline(amm: Output, kind: AssignKind, name: string, ty: Builtin) {
     const globalName = amm.global('const', ty, this.val);
+    console.log('%%%%%%%%%%', kind, name, ty, globalName);
     amm.assign(kind, name, ty, globalName);
   }
 }
 
 export class Ref extends Expr {
   def: VarDef
+
+  get ammName(): string {
+    return this.def.ammName;
+  }
 
   get ty(): Type {
     return this.def.ty;
