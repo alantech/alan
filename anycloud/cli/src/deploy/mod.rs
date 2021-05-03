@@ -28,6 +28,35 @@ const NAME_CONFLICT: &str = "Another application with same App ID already exists
 const UNAUTHORIZED_OPERATION: &str =
   "Invalid AnyCloud authentication credentials. Please retry and you will be asked to reauthenticate.";
 
+// #[derive(Deserialize, Debug, Clone, Serialize)]
+// pub struct VMTypeRegionConfig {
+//   region: String,
+//   vmType: String
+// }
+
+// #[derive(Deserialize, Debug, Clone, Serialize)]
+// pub struct DefaultVMTypes {
+//   AWS: VMTypeRegionConfig,
+//   GCP: VMTypeRegionConfig,
+//   Azure: VMTypeRegionConfig,
+// }
+
+// // Setting by default region as us east Virginia and 2vCPU - 8Gb memory non burstable machines
+// const DEFAULT_VM_TYPES: DefaultVMTypes = DefaultVMTypes {
+//   AWS: VMTypeRegionConfig {
+//     region: "us-east-1".to_string(),
+//     vmType: "m5.large".to_string()
+//   },
+//   GCP:  VMTypeRegionConfig {
+//     region: "us-east4-a".to_string(),
+//     vmType: "e2-standard-2".to_string()
+//   },
+//   Azure:  VMTypeRegionConfig {
+//     region: "eastus".to_string(),
+//     vmType: "Standard_D2_v4".to_string()
+//   }
+// };
+
 #[derive(Deserialize, Debug, Clone, Serialize)]
 pub struct AWSCLICredentialsFile {
   default: AWSCLICredentials,
