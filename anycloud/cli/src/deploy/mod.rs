@@ -555,14 +555,26 @@ pub async fn add_deploy_config() {
       options[selection].to_string()
     };
     // TODO validate these fields?
-    let region: String = Input::with_theme(&ColorfulTheme::default())
-      .with_prompt("Region name")
-      .interact_text()
-      .unwrap();
-    let vm_type: String = Input::with_theme(&ColorfulTheme::default())
-      .with_prompt("Virtual machine type")
-      .interact_text()
-      .unwrap();
+    let prompt = "Do you want to add region and virtual machine type to this Deploy Config?";
+    let mut region = None;
+    let mut vm_type = None;
+    if Confirm::with_theme(&ColorfulTheme::default())
+      .with_prompt(prompt)
+      .default(false)
+      .interact()
+      .unwrap()
+    {
+      let input_region: String = Input::with_theme(&ColorfulTheme::default())
+        .with_prompt("Region name")
+        .interact_text()
+        .unwrap();
+      if !input_region.is_empty() { region = Some(input_region); };
+      let input_vm_type: String = Input::with_theme(&ColorfulTheme::default())
+        .with_prompt("Virtual machine type")
+        .interact_text()
+        .unwrap();
+      if !input_vm_type.is_empty() { vm_type = Some(input_vm_type); };
+    };  
     cloud_configs.push(DeployConfig {
       credentialsName: cred,
       vmType: vm_type,
@@ -664,16 +676,54 @@ pub async fn edit_deploy_config() {
       .interact()
       .unwrap();
     let cred = cred_options[selection].to_string();
-    let region: String = Input::with_theme(&ColorfulTheme::default())
-      .with_prompt("Region name")
-      .with_initial_text(config.region.to_string())
-      .interact_text()
-      .unwrap();
-    let vm_type: String = Input::with_theme(&ColorfulTheme::default())
-      .with_prompt("Virtual machine type")
-      .with_initial_text(config.vmType.to_string())
-      .interact_text()
-      .unwrap();
+    let mut region = None;
+    let mut vm_type = None;
+    if let (Some(reg), Some(vm_t)) = (&config.region, &config.vmType) {
+      let prompt = "Do you want to edit region and virtual machine type to this Deploy Config?";
+      if Confirm::with_theme(&ColorfulTheme::default())
+        .with_prompt(prompt)
+        .default(true)
+        .interact()
+        .unwrap()
+      {
+        let input_region: String = Input::with_theme(&ColorfulTheme::default())
+          .with_prompt("Region name")
+          .with_initial_text(reg.to_string())
+          .interact_text()
+          .unwrap();
+        if !input_region.is_empty() { region = Some(input_region); };
+        let input_vm_type: String = Input::with_theme(&ColorfulTheme::default())
+          .with_prompt("Virtual machine type")
+          .with_initial_text(vm_t.to_string())
+          .interact_text()
+          .unwrap();
+        if !input_vm_type.is_empty() { vm_type = Some(input_vm_type); };
+      } else {
+        region = Some(reg.to_string());
+        vm_type = Some(vm_t.to_string());
+      }
+    } else {
+      let prompt = "Do you want to add region and virtual machine type to this Deploy Config?";
+      let mut region = None;
+      let mut vm_type = None;
+      if Confirm::with_theme(&ColorfulTheme::default())
+        .with_prompt(prompt)
+        .default(false)
+        .interact()
+        .unwrap()
+      {
+        let input_region: String = Input::with_theme(&ColorfulTheme::default())
+          .with_prompt("Region name")
+          .interact_text()
+          .unwrap();
+        if !input_region.is_empty() { region = Some(input_region); };
+        let input_vm_type: String = Input::with_theme(&ColorfulTheme::default())
+          .with_prompt("Virtual machine type")
+          .interact_text()
+          .unwrap();
+        if !input_vm_type.is_empty() { vm_type = Some(input_vm_type); };
+      };  
+    }
     new_cloud_configs.push(DeployConfig {
       credentialsName: cred,
       vmType: vm_type,
