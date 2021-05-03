@@ -153,7 +153,6 @@ async fn run_agz_b64(agz_b64: &str) -> DaemonResult<()> {
     let pwd = env::current_dir();
     match pwd {
       Ok(pwd) => {
-        // TODO: SAME AS CTRL PORT
         let priv_key = read(format!("{}/key.pem", pwd.display()));
         let cert = read(format!("{}/certificate.pem", pwd.display()));
         if let (Ok(priv_key), Ok(cert)) = (priv_key, cert) {
@@ -163,7 +162,6 @@ async fn run_agz_b64(agz_b64: &str) -> DaemonResult<()> {
           let mut gz = GzDecoder::new(bytes.as_slice());
           let gz_read_i64 = gz.read_i64_into::<LittleEndian>(&mut bytecode);
           if gz_read_i64.is_ok() {
-            // TODO: return a Result in order to catch the error and log it
             if let Err(err) = run(
               bytecode,
               HttpType::HTTPS(HttpsConfig {
@@ -193,7 +191,26 @@ async fn run_agz_b64(agz_b64: &str) -> DaemonResult<()> {
   Ok(())
 }
 
+fn set_local_daemon_props() -> () {
+  let pwd = env::current_dir();
+  match pwd {
+    Ok(pwd) => {
+      let daemon_props_slice = read(format!("{}/daemon_props.json", pwd.display())).unwrap();
+      let mut daemon_props: DaemonProperties = serde_json::from_slice(&daemon_props_slice).unwrap();
+      let dockerfile = read(format!("{}/Dockerfile", pwd.display()));
+      let app_tar_gz = read(format!("{}/app.tar.gz", pwd.display()));
+      DAEMON_PROPS.set(daemon_props).unwrap();
+    },
+    Err(_) => {
+      eprintln!("No daemon properties");
+      std::process::exit(1);}
+  }
+}
+
 async fn get_daemon_props() -> Option<&'static DaemonProperties> {
+  if ALAN_TECH_ENV.as_str() == "local" {
+    set_local_daemon_props()
+  }
   let duration = Duration::from_secs(10);
   let mut counter: u8 = 0;
   // Check every 10s over 5 min if props are ready
@@ -208,7 +225,6 @@ async fn get_daemon_props() -> Option<&'static DaemonProperties> {
 }
 
 pub async fn start() {
-  // TODO: MANAGE SELF SIGNED CERTS. SHOULD THEY BE GENERATED AT BUILD TIME? SHOULD WE FIXED THEIR PATH?
   let mut control_port = ControlPort::start().await;
   // TODO: SEND POSTMAN REQUEST WITH B64 FILES, HAVE FILE WITH MODKED DATA OR IGNORE LOOP?
   if let Some(daemon_props) = get_daemon_props().await {
