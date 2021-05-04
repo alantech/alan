@@ -14,7 +14,7 @@
 
 ```bash
 $ anycloud credentials new
-? Pick cloud provider for the new credentials ›
+? Pick cloud provider for the new Credentials ›
   AWS
   GCP
 ❯ Azure
