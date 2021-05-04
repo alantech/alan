@@ -27,6 +27,54 @@ const FORBIDDEN_OPERATION: &str =
 const NAME_CONFLICT: &str = "Another application with same App ID already exists.";
 const UNAUTHORIZED_OPERATION: &str =
   "Invalid AnyCloud authentication credentials. Please retry and you will be asked to reauthenticate.";
+// AWS: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/burstable-performance-instances.html
+// GCP: https://cloud.google.com/compute/docs/machine-types#cpu-bursting
+// Azure: https://docs.microsoft.com/en-us/azure/virtual-machines/sizes-b-series-burstable
+const BURSTABLE_VMS: [&'static str; 43] = [
+  "t2.nano",
+  "t2.micro",
+  "t2.small",
+  "t2.medium",
+  "t2.large",
+  "t2.xlarge",
+  "t2.2xlarge",
+  "t3.nano",
+  "t3.micro",
+  "t3.small",
+  "t3.medium",
+  "t3.large",
+  "t3.xlarge",
+  "t3.2xlarge",
+  "t3a.nano",
+  "t3a.micro",
+  "t3a.small",
+  "t3a.medium",
+  "t3a.large",
+  "t3a.xlarge",
+  "t3a.2xlarge",
+  "t4g.nano",
+  "t4g.micro",
+  "t4g.small",
+  "t4g.medium",
+  "t4g.large",
+  "t4g.xlarge",
+  "t4g.2xlarge",
+  "f1-micro",
+  "g1-small",
+  "e2-micro",
+  "e2-small",
+  "e2-medium",
+  "Standard_B1ls",
+  "Standard_B1s",
+  "Standard_B1ms",
+  "Standard_B2s",
+  "Standard_B2ms",
+  "Standard_B4ms",
+  "Standard_B8ms",
+  "Standard_B12ms",
+  "Standard_B16ms",
+  "Standard_B20ms",
+];
 
 #[derive(Deserialize, Debug, Clone, Serialize)]
 pub struct AWSCLICredentialsFile {
@@ -542,6 +590,7 @@ pub async fn add_deploy_config() {
       false,
     ) {
       let input_vm_type: String = input_prompt("Virtual machine type");
+      warn_if_burstable(&input_vm_type);
       vm_type = Some(input_vm_type);
     };
     cloud_configs.push(DeployConfig {
@@ -672,6 +721,7 @@ pub async fn edit_deploy_config() {
         true,
       ) {
         let input_vm_type: String = input_prompt("Virtual machine type");
+        warn_if_burstable(&input_vm_type);
         vm_type = Some(input_vm_type);
       } else {
         vm_type = Some(vm_t.to_string());
@@ -682,6 +732,7 @@ pub async fn edit_deploy_config() {
         false,
       ) {
         let input_vm_type: String = input_prompt("Virtual machine type");
+        warn_if_burstable(&input_vm_type);
         vm_type = Some(input_vm_type);
       };
     }
@@ -1262,4 +1313,10 @@ fn input_prompt(prompt: &str) -> String {
     .with_prompt(prompt)
     .interact_text()
     .unwrap()
+}
+
+fn warn_if_burstable(vm_type: &str) -> () {
+  if BURSTABLE_VMS.contains(&vm_type) {
+    println!("WARNING: You have selected a burstable virtual machine type. This virtual machine types can misbehave under heavy load and do not work as it best with our autoscaler")
+  };
 }
