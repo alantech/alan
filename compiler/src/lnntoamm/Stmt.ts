@@ -221,15 +221,21 @@ export class Dec extends VarDef {
     this.expr.inline(
       amm,
       this.immutable ? 'const' : 'let',
-      this.name,
+      this.ammName,
       this.ty.breakdown(),
     );
   }
 }
 
 export class FnParam extends VarDef {
+  private __assigned: Ref | null
+
   get ammName(): string {
-    return this.name;
+    if (this.__assigned === null) {
+      return this.name;
+    } else {
+      return this.__assigned.ammName;
+    }
   }
 
   constructor(
@@ -243,6 +249,7 @@ export class FnParam extends VarDef {
       name,
       ty,
     );
+    this.__assigned = null;
   }
 
   static fromArgAst(ast: LPNode, metadata: MetaData): FnParam {
@@ -260,8 +267,16 @@ export class FnParam extends VarDef {
     return param;
   }
 
+  assign(to: Ref) {
+    this.__assigned = to;
+  }
+
   inline(_amm: Output) {
     throw new Error(`function parameters shouldn't be inlined`);
+  }
+
+  unassign() {
+    this.__assigned = null;
   }
 }
 
@@ -306,8 +321,8 @@ class Emit extends Stmt {
   }
 
   inline(amm: Output) {
-    if (this.event.eventTy === opcodes().get('void')) {
-      amm.emit(this.event.ammName, this.emitVal.def.name);
+    if (!this.event.eventTy.eq(opcodes().get('void'))) {
+      amm.emit(this.event.ammName, this.emitVal.ammName);
     } else {
       amm.emit(this.event.ammName);
     }
@@ -342,7 +357,7 @@ export class Exit extends Stmt {
 
   inline(amm: Output) {
     if (!this.ret.ty.compatibleWithConstraint(opcodes().get('void'))) {
-      amm.exit(this.ret.def.name);
+      amm.exit(this.ret.ammName);
     } else {
       amm.exit();
     }

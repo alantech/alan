@@ -32,8 +32,8 @@ export default abstract class Type implements Equalable {
   abstract constrain(to: Type): void;
   abstract eq(that: Equalable): boolean;
   abstract instance(): Type;
-  abstract resetTempConstraints(): void;
-  abstract tempConstrain(to: Type): void;
+  // abstract resetTempConstraints(): void;
+  // abstract tempConstrain(to: Type): void;
 
   static getFromTypename(name: LPNode | string, scope: Scope): Type {
     // TODO: change this to use parseFulltypename
@@ -91,7 +91,6 @@ export class Builtin extends Type {
     } if (ty instanceof OneOf || ty instanceof Generated) {
       return ty.compatibleWithConstraint(this);
     } else {
-      console.log(ty);
       TODO('other types constraining to builtin types');
     }
   }
@@ -293,19 +292,19 @@ class Generated extends Type {
     }
   }
 
-  resetTempConstraints() {
-    if (this.delegate === null) {
-      throw new Error('bad sign - generated type should not have its temporary constraints reset because they cannot have temporary constraints');
-    }
-    this.delegate.resetTempConstraints();
-  }
+  // resetTempConstraints() {
+  //   if (this.delegate === null) {
+  //     throw new Error('bad sign - generated type should not have its temporary constraints reset because they cannot have temporary constraints');
+  //   }
+  //   this.delegate.resetTempConstraints();
+  // }
 
-  tempConstrain(to: Type) {
-    if (this.delegate === null) {
-      throw new Error('generated types without constraints cannot have temporary constraints');
-    }
-    this.delegate.tempConstrain(to);
-  }
+  // tempConstrain(to: Type) {
+  //   if (this.delegate === null) {
+  //     throw new Error('generated types without constraints cannot have temporary constraints');
+  //   }
+  //   this.delegate.tempConstrain(to);
+  // }
 }
 
 class OneOf extends Type {

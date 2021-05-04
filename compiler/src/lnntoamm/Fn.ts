@@ -63,7 +63,6 @@ export default class Fn {
       const name = ast.get('optreturntype').get('fulltypename');
       retTy = Type.getFromTypename(name, scope);
       if (retTy === null) {
-        console.log(ast.get('optreturntype'));
         throw new Error(`Type not in scope: ${name.t.trim()}`);
       }
     } else {
@@ -146,7 +145,6 @@ export default class Fn {
   }
 
   asHandler(amm: Output, event: string) {
-    console.log('#####', this.name, this.body);
     let handlerParams = [];
     for (let param of Object.keys(this.params)) {
       handlerParams.push([param, this.params[param].ty.breakdown()]);
@@ -169,17 +167,15 @@ export default class Fn {
       }
       amm.exit();
     }
-    console.log('#####', this.name);
   }
 
   inline(amm: Output, args: Ref[], kind: AssignKind, name: string, ty: Builtin) {
-    console.log('#####', this.name, this.body);
     let paramDefs = Object.values(this.params);
     if (args.length !== paramDefs.length) {
       throw new Error(`function call argument mismatch`);
     }
     for (let ii = 0; ii < paramDefs.length; ii++) {
-      paramDefs[ii].ty.tempConstrain(args[ii].ty);
+      paramDefs[ii].assign(args[ii]);
     }
     for (let ii = 0; ii < this.body.length; ii++) {
       const stmt = this.body[ii];
@@ -187,14 +183,12 @@ export default class Fn {
         if (ii !== this.body.length - 1) {
           throw new Error(`got a return at a bad time (should've been caught already?)`);
         }
-        console.log(`^^^^^^^^ assigning reference to ${stmt.ret.ammName}`)
         amm.assign(kind, name, ty, 'reff', [stmt.ret.ammName]);
         break;
       }
       stmt.inline(amm);
     }
-    paramDefs.forEach(def => def.ty.resetTempConstraints());
-    console.log('#####', this.name);
+    paramDefs.forEach(def => def.unassign());
   }
 
   // TODO: call abi? figure out if this is even necessary?
@@ -321,7 +315,6 @@ export class OpcodeFn extends Fn {
   }
 
   inline(amm: Output, args: Ref[], kind: AssignKind, assign: string, ty: Builtin) {
-    console.log('%%%%%', this.name);
     amm.assign(
       kind,
       assign,
@@ -329,7 +322,6 @@ export class OpcodeFn extends Fn {
       this,
       args.map(ref => ref.ammName),
     );
-    console.log('%%%%%', this.name)
   }
 
   // inline(amm: Output, args: Ref[], assign: string, kind: 'const' | 'let' | '') {

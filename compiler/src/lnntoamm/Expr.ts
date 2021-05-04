@@ -85,7 +85,6 @@ export default abstract class Expr {
         expr = constant;
       } else {
         // TODO: don't lump in HOF and chains
-        console.log(work);
         throw new Error(`unexpected token: expected variable or value, found ${work.t.trim()}`);
       }
     }
@@ -252,7 +251,6 @@ class Const extends Expr {
 
   inline(amm: Output, kind: AssignKind, name: string, ty: Builtin) {
     const globalName = amm.global('const', ty, this.val);
-    console.log('%%%%%%%%%%', kind, name, ty, globalName);
     amm.assign(kind, name, ty, globalName);
   }
 }
