@@ -529,14 +529,18 @@ pub async fn add_deploy_config() {
     };
     // TODO validate these fields?
     let mut region = None;
-    if confirm_prompt("Do you want to add a region name to this Deploy Config?", false)
-    {
+    if confirm_prompt(
+      "Do you want to add a region name to this Deploy Config?",
+      false,
+    ) {
       let input_region: String = input_prompt("Region name");
       region = Some(input_region);
     };
     let mut vm_type = None;
-    if confirm_prompt("Do you want to add a virtual machine type to this Deploy Config?", false)
-    {
+    if confirm_prompt(
+      "Do you want to add a virtual machine type to this Deploy Config?",
+      false,
+    ) {
       let input_vm_type: String = input_prompt("Virtual machine type");
       vm_type = Some(input_vm_type);
     };
@@ -644,30 +648,39 @@ pub async fn edit_deploy_config() {
     let mut region = None;
     let mut vm_type = None;
     if let Some(reg) = &config.region {
-      if confirm_prompt("Do you want to edit region to this Deploy Config?", true)
-      {
+      if confirm_prompt(
+        "Do you want to edit the region name for this Deploy Config?",
+        true,
+      ) {
         let input_region: String = input_prompt("Region name");
         region = Some(input_region);
       } else {
         region = Some(reg.to_string());
       }
     } else {
-      if confirm_prompt("Do you want to add a region to this Deploy Config?", false) {
+      if confirm_prompt(
+        "Do you want to add a region name to this Deploy Config?",
+        false,
+      ) {
         let input_region: String = input_prompt("Region name");
         region = Some(input_region);
       };
     }
     if let Some(vm_t) = &config.vmType {
-      if confirm_prompt("Do you want to edit virtual machine type to this Deploy Config?", true)
-      {
+      if confirm_prompt(
+        "Do you want to edit the virtual machine type for this Deploy Config?",
+        true,
+      ) {
         let input_vm_type: String = input_prompt("Virtual machine type");
         vm_type = Some(input_vm_type);
       } else {
         vm_type = Some(vm_t.to_string());
       }
     } else {
-      if confirm_prompt("Do you want to add a virtual machine type to this Deploy Config?", false)
-      {
+      if confirm_prompt(
+        "Do you want to add a virtual machine type to this Deploy Config?",
+        false,
+      ) {
         let input_vm_type: String = input_prompt("Virtual machine type");
         vm_type = Some(input_vm_type);
       };
