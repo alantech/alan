@@ -1317,6 +1317,10 @@ fn input_prompt(prompt: &str) -> String {
 
 fn warn_if_burstable(vm_type: &str) -> () {
   if BURSTABLE_VMS.contains(&vm_type) {
-    println!("WARNING: You have selected a burstable virtual machine type. This virtual machine types can misbehave under heavy load and do not work as it best with our autoscaler")
+    println!(
+      "WARNING: You have selected a burstable virtual machine type. \
+      This virtual machine types can misbehave under heavy load and \
+      do not work as it best with our autoscaler"
+    )
   };
 }
