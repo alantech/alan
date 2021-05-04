@@ -20,51 +20,42 @@ const CLOSURE_ARG_MEM_START = BigInt(Math.pow(-2,63))
 const NOP_CLOSURE = '-9223372036854775808';
 
 const loadGlobalMem = (globalMemAst: LPNode[], addressMap: object) => {
+  const suffixes = {
+    int64: 'i64',
+    int32: 'i32',
+    int16: 'i16',
+    int8: 'i8',
+    float64: 'f64',
+    float32: 'f32',
+  };
+
   const globalMem = {}
   let currentOffset = -1
   for (const globalConst of globalMemAst) {
     const rec = globalConst.get()
     if (!(rec instanceof NamedAnd)) continue
-    let val: string
-    switch (rec.get('fulltypename').t.trim()) {
-    case "int64":
-      val = rec.get('assignables').t.trim() + 'i64'
-      globalMem[`@${currentOffset}`] = val
-      addressMap[rec.get('decname').t] = currentOffset
-      currentOffset -= 8
-      break
-    case "float64":
-      val = rec.get('assignables').t.trim() + 'f64'
-      globalMem[`@${currentOffset}`] = val
-      addressMap[rec.get('decname').t] = currentOffset
-      currentOffset -= 8
-      break
-    case "string":
+    let offset: number = 8;
+    let val: string = rec.get('assignables').t.trim()
+    const typename = rec.get('fulltypename').t.trim()
+    if (typename === 'string') {
       let str: string
       try {
         // Will fail on strings with escape chars
-        str = JSON.parse(rec.get('assignables').t.trim())
+        str = JSON.parse(val)
       } catch (e) {
-        // Hackery to get these strings to work
         str = JSON.stringify(
-          rec.get('assignables').t.trim().replace(/^["']/, '').replace(/["']$/, '')
+          val.replace(/^["']/, '').replace(/["']$/, '')
         )
       }
-      let len = ceil8(str.length) + 8
-      val = rec.get('assignables').t.trim()
-      globalMem[`@${currentOffset}`] = val
-      addressMap[rec.get('decname').t] = currentOffset
-      currentOffset -= len
-      break
-    case "bool":
-      val = rec.get('assignables').t.trim()
-      globalMem[`@${currentOffset}`] = val
-      addressMap[rec.get('decname').t] = currentOffset
-      currentOffset -= 8
-      break
-    default:
+      offset = ceil8(str.length) + 8
+    } else if (suffixes.hasOwnProperty(typename)) {
+      val += suffixes[typename]
+    } else if (typename !== 'bool') {
       throw new Error(rec.get('fulltypename').t + ' not yet implemented')
     }
+    globalMem[`@${currentOffset}`] = val
+    addressMap[rec.get('decname').t] = currentOffset
+    currentOffset -= offset
   }
   return globalMem
 }
