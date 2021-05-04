@@ -112,20 +112,6 @@ class Cond extends Stmt {
   }
 }
 
-/*
-let x = doSomething(5);
-
-const _abc123 = 5;
-let x = doSomething(_abc123);
-
-const _abc123 = 5;
-let x = _abc123;
-
-fn doSomething(i: int64): int64 {
-  return i;
-}
-*/
-
 export abstract class VarDef extends Stmt {
   immutable: boolean
   name: string

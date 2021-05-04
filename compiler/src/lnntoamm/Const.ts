@@ -1,6 +1,6 @@
-import { LPNode } from "../lp";
-import Scope from "./Scope";
-import Type from "./Types";
+import { LPNode } from '../lp';
+import Scope from './Scope';
+import Type from './Types';
 
 export default class Const {
   name: string

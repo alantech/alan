@@ -1,6 +1,6 @@
 import Event from './Event';
 import { OpcodeFn } from './Fn';
-import Scope from "./Scope";
+import Scope from './Scope';
 import Type from './Types';
 
 let __opcodes: Scope = null;

@@ -20,11 +20,6 @@ export default class Fn {
   body: Stmt[]
   // not used by this class, but used by Statements
   metadata: MetaData
-  // fnType: FunctionType
-
-  // TODO: call ABI?
-  // TODO: figure out if this is even necessary
-  // finalized: MapButBetter<Types, Fn>
 
   get argNames(): string[] {
     return Object.keys(this.params);
@@ -46,12 +41,6 @@ export default class Fn {
     this.retTy = retTy !== null ? retTy : Type.generate();
     this.body = body;
     this.metadata = metadata !== null ? metadata : new MetaData(scope, this.retTy);
-    // this.finalized = new MapButBetter();
-    // this.fnType = new FunctionType(
-    //   this.name,
-    //   Object.values(this.params).map(a => a.ty),
-    //   this.retTy
-    // );
   }
 
   static fromFunctionsAst(
@@ -190,96 +179,6 @@ export default class Fn {
     }
     paramDefs.forEach(def => def.unassign());
   }
-
-  // TODO: call abi? figure out if this is even necessary?
-  // select(argTys: Type[]): Fn | null {
-  //   if (!this.acceptsTypes(argTys)) {
-  //     return null;
-  //   }
-  //   return null;
-  // }
-
-  // getType(): FunctionType {
-  //   return this.fnType;
-  // }
-
-  // finalize(args: Ref[], assign: Dec | Assign): Fn {
-  //   let argTys = args.map(arg => arg.ty);
-  //   let params: Params = {};
-  //   return null;
-  // }
-
-  // asHandler(amm: Output, event: string) {
-  //   console.log(this.body);
-  //   let handlerArgs = [];
-  //   for (let arg of Object.keys(this.params)) {
-  //     handlerArgs.push([arg, this.params[arg].ty.breakdown()]);
-  //   }
-  //   amm.addHandler(event, handlerArgs, this.retTy.breakdown());
-  //   let isReturned = false;
-  //   for (let ii = 0; ii < this.body.length; ii++) {
-  //     const stmt = this.body[ii];
-  //     if (stmt instanceof Dec || stmt instanceof Assign || stmt instanceof Emit) {
-  //       stmt.inline(amm);
-  //     } else if (stmt instanceof Exit) {
-  //       stmt.inline(amm);
-  //       isReturned = true;
-  //       if (ii !== this.body.length - 1) {
-  //         throw new Error(`hmmmm... unreachable statements probably should've been caught earlier?`);
-  //       }
-  //       break;
-  //     } else {
-  //       throw new Error(`did not expect to inline stmt: ${stmt}`);
-  //     }
-  //   }
-  //   if (!isReturned) {
-  //     if (this.retTy.breakdown() !== opcodes().get('void')) {
-  //       throw new Error(`no return value for function`);
-  //     }
-  //     amm.exit();
-  //   }
-  // }
-
-  // // TODO: this will have to change in order to call fns multiple times - maybe deep cloning?
-  // inline(amm: Output, args: Ref[], assign: string, kind: 'const' | 'let' | '') {
-  //   console.log('$$$$$$$$$ start', this.name);
-  //   console.log(this.body);
-  //   let argNames = Object.keys(this.params);
-  //   if (argNames.length !== args.length) {
-  //     // this should be caught by Call, it's just a sanity check
-  //     throw new Error(`number of arguments off`);
-  //   }
-  //   for (let ii = 0; ii < argNames.length; ii++) {
-  //     this.params[argNames[ii]].val = args[ii];
-  //   }
-  //   const last = this.body[this.body.length - 1];
-  //   if (last instanceof Exit && last.exitVal !== null) {
-  //     if (kind === 'const' && last.exitVal.dec.mutable) {
-  //       kind = 'let';
-  //     } else if (kind === 'let' && !last.exitVal.dec.mutable) {
-  //       last.exitVal.dec.mutable = true;
-  //     } else if (kind === '') {
-  //       TODO('figure out how to do return value rewrites pls');
-  //     }
-  //     last.exitVal.dec.ammName = assign;
-  //   }
-  //   for (let ii = 0; ii < this.body.length; ii++) {
-  //     const stmt = this.body[ii];
-  //     if (stmt instanceof Dec || stmt instanceof Assign || stmt instanceof Emit) {
-  //       stmt.inline(amm);
-  //     } else if (stmt instanceof Exit) {
-  //       amm.assign(
-  //         kind,
-  //         assign,
-  //         stmt.exitVal.ty.breakdown(),
-  //         stmt.exitVal.ammName,
-  //       );
-  //     } else {
-  //       throw new Error(`did not expect to inline stmt: ${stmt}`);
-  //     }
-  //   }
-  //   console.log('$$$$$$$$$ end', this.name);
-  // }
 }
 
 // circular dependency issue when this is defined in opcodes.ts :(
@@ -323,19 +222,4 @@ export class OpcodeFn extends Fn {
       args.map(ref => ref.ammName),
     );
   }
-
-  // inline(amm: Output, args: Ref[], assign: string, kind: 'const' | 'let' | '') {
-  //   console.log('%%%%%%%%%%%%%%%%%% start', this.name)
-  //   console.log('args:', args)
-  //   console.log('assign:', assign)
-  //   console.log('kind:', kind)
-  //   amm.assign(
-  //     kind,
-  //     assign,
-  //     this.retTy.breakdown(),
-  //     this,
-  //     args.map(ref => ref.ammName),
-  //   );
-  //   console.log('%%%%%%%%%%%%%%%%%% end', this.name)
-  // }
 }

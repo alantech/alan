@@ -32,8 +32,6 @@ export default abstract class Type implements Equalable {
   abstract constrain(to: Type): void;
   abstract eq(that: Equalable): boolean;
   abstract instance(): Type;
-  // abstract resetTempConstraints(): void;
-  // abstract tempConstrain(to: Type): void;
 
   static getFromTypename(name: LPNode | string, scope: Scope): Type {
     // TODO: change this to use parseFulltypename
@@ -109,15 +107,6 @@ export class Builtin extends Type {
 
   instance(): Type {
     return this;
-  }
-
-  resetTempConstraints() {
-    // do nothing
-  }
-
-  tempConstrain(to: Type) {
-    // builtins don't actually mutate any state when constrained
-    this.constrain(to);
   }
 }
 
@@ -197,16 +186,6 @@ class Struct extends Type {
   instance(): Type {
     return this; // TODO: this right?
   }
-
-  resetTempConstraints() {
-    // do nothing, no temporary constrains are accepted
-  }
-
-  tempConstrain(to: Type) {
-    if (!this.compatibleWithConstraint(to)) {
-      throw new Error(`incompatible types: ${this.name} is not compatible with ${to.name}`);
-    }
-  }
 }
 
 class Interface extends Type {
@@ -233,14 +212,6 @@ class Interface extends Type {
 
   instance(): Type {
     return TODO();
-  }
-
-  resetTempConstraints() {
-    TODO();
-  }
-
-  tempConstrain(to: Type) {
-    TODO();
   }
 }
 
@@ -291,20 +262,6 @@ class Generated extends Type {
       return new Generated();
     }
   }
-
-  // resetTempConstraints() {
-  //   if (this.delegate === null) {
-  //     throw new Error('bad sign - generated type should not have its temporary constraints reset because they cannot have temporary constraints');
-  //   }
-  //   this.delegate.resetTempConstraints();
-  // }
-
-  // tempConstrain(to: Type) {
-  //   if (this.delegate === null) {
-  //     throw new Error('generated types without constraints cannot have temporary constraints');
-  //   }
-  //   this.delegate.tempConstrain(to);
-  // }
 }
 
 class OneOf extends Type {
@@ -348,34 +305,4 @@ class OneOf extends Type {
   instance(): Type {
     return this.select().instance();
   }
-
-  resetTempConstraints() {
-    this.tempSelect = null;
-  }
-
-  tempConstrain(to: Type) {
-    let selected = this.selection.reverse().find(ty => ty.compatibleWithConstraint(to)) || null;
-    if (selected === null) {
-      throw new Error(`couldn't select a type - none of the possibilities were compatible`);
-    }
-    this.tempSelect = selected;
-  }
 }
-
-// export class Types extends Type {
-//   breakdown(): Builtin {
-//     throw new Error('Method not implemented.');
-//   }
-//   compatibleWithConstraint(ty: Type): boolean {
-//     throw new Error('Method not implemented.');
-//   }
-//   constrain(to: Type): void {
-//     throw new Error('Method not implemented.');
-//   }
-//   eq(that: Equalable): boolean {
-//     throw new Error('Method not implemented.');
-//   }
-//   instance(): Type {
-//     throw new Error('Method not implemented.');
-//   }
-// }
