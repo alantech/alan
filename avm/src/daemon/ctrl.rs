@@ -32,7 +32,7 @@ use crate::vm::opcode::REGION_VMS;
 
 pub static NAIVE_CLIENT: OnceCell<Client<HttpsConnector<HttpConnector>>> = OnceCell::new();
 
-#[derive(Debug)]
+#[derive(Clone,Debug)]
 pub struct HashedId {
   pub id: String,
   pub hash: u64,
@@ -54,7 +54,7 @@ impl HashedId {
 // An algorithm based on the classic Rendezvous Hash but with changes to make the performance
 // closer to modern Consistent Hash algorithms while retaining Rendezvous Hash's coordination-free
 // routing.
-#[derive(Debug)]
+#[derive(Clone,Debug)]
 pub struct LogRendezvousHash {
   sorted_hashes: Vec<HashedId>,
 }
@@ -127,6 +127,7 @@ impl LogRendezvousHash {
   }
 }
 
+#[derive(Clone,Debug)]
 pub struct ControlPort {
   lrh: LogRendezvousHash,
   client: Client<HttpsConnector<HttpConnector>>,
