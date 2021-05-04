@@ -12,9 +12,9 @@ Name for new Deploy Config: production
   Create new Credentials
 ? Region name › us-west-1
 ? Virtual Machine Type › t2.medium
-? Do you want to add another region to this Deploy Config? (n) › n
-? Minimum number of VMs per region or cloud (1) › 2
-? Would you like to define a maximum number of VMs? (n) › n
+? Do you want to add another region to this Deploy Config? › n
+? Minimum number of VMs per region or cloud › 2
+? Would you like to define a maximum number of VMs? › n
 Successfully created "production" Credentials
 ```
 
@@ -28,9 +28,9 @@ Name for new Deploy Config: production
   Create new Credentials
 ? Region name › us-west-1
 ? Virtual Machine Type › t2.medium
-? Do you want to add another region to this Deploy Config? (n) › n
-? Minimum number of VMs per region or cloud (1) ›
-? Would you like to define a maximum number of VMs? (n) › y
-Maximum number of VMs per region or cloud 5
+? Do you want to add another region to this Deploy Config? › n
+? Minimum number of VMs per region or cloud › 1
+? Would you like to define a maximum number of VMs? › y
+Maximum number of VMs per region or cloud › 5
 Successfully created "production" Credentials
 ```
