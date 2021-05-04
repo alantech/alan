@@ -76,6 +76,18 @@ const BURSTABLE_VMS: [&'static str; 43] = [
   "Standard_B20ms",
 ];
 
+// TODO: add azure and gcp ones
+const SMALL_VM_TYPES: [&'static str; 8] = [
+  "t4g.nano",
+  "t2.micro",
+  "t3.micro",
+  "t4g.micro",
+  "t3.nano",
+  "t2.nano",
+  "t3a.nano",
+  "t3a.micro",
+];
+
 #[derive(Deserialize, Debug, Clone, Serialize)]
 pub struct AWSCLICredentialsFile {
   default: AWSCLICredentials,
@@ -591,6 +603,7 @@ pub async fn add_deploy_config() {
     ) {
       let input_vm_type: String = input_prompt("Virtual machine type");
       warn_if_burstable(&input_vm_type);
+      warn_if_small(&input_vm_type);
       vm_type = Some(input_vm_type);
     };
     cloud_configs.push(DeployConfig {
@@ -722,6 +735,7 @@ pub async fn edit_deploy_config() {
       ) {
         let input_vm_type: String = input_prompt("Virtual machine type");
         warn_if_burstable(&input_vm_type);
+        warn_if_small(&input_vm_type);
         vm_type = Some(input_vm_type);
       } else {
         vm_type = Some(vm_t.to_string());
@@ -733,6 +747,7 @@ pub async fn edit_deploy_config() {
       ) {
         let input_vm_type: String = input_prompt("Virtual machine type");
         warn_if_burstable(&input_vm_type);
+        warn_if_small(&input_vm_type);
         vm_type = Some(input_vm_type);
       };
     }
@@ -1321,6 +1336,15 @@ fn warn_if_burstable(vm_type: &str) -> () {
       "WARNING: You have selected a burstable virtual machine type. \
       This virtual machine types can misbehave under heavy load and \
       do not work as it best with our autoscaler"
+    )
+  };
+}
+
+fn warn_if_small(vm_type: &str) -> () {
+  if SMALL_VM_TYPES.contains(&vm_type) {
+    println!(
+      "WARNING: You have selected a small virtual machine type. \
+      This virtual machine types can underperform and take more time to start"
     )
   };
 }
