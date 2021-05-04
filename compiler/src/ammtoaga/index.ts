@@ -27,7 +27,7 @@ const loadGlobalMem = (globalMemAst: LPNode[], addressMap: object) => {
     int8: 'i8',
     float64: 'f64',
     float32: 'f32',
-  };
+  }
 
   const globalMem = {}
   let currentOffset = -1
