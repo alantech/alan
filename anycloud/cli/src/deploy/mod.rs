@@ -75,9 +75,11 @@ const BURSTABLE_VMS: [&'static str; 43] = [
   "Standard_B16ms",
   "Standard_B20ms",
 ];
-
-// TODO: add azure and gcp ones
-const SMALL_VM_TYPES: [&'static str; 8] = [
+// VM types with 1GB of memory or less
+// AWS: aws ec2 describe-instance-types --filters Name=memory-info.size-in-mib,Values=512,1024 | jq '.InstanceTypes[] | .InstanceType'
+// GCP: gcloud compute machine-types list --filter="memoryMb:(512 1024)" --format json | jq '.[] | .name'
+// Azure: az vm list-sizes -l westus | jq '.[] | if .memoryInMb <= 1024 then .name else "" end'
+const SMALL_VM_TYPES: [&'static str; 13] = [
   "t4g.nano",
   "t2.micro",
   "t3.micro",
@@ -86,6 +88,11 @@ const SMALL_VM_TYPES: [&'static str; 8] = [
   "t2.nano",
   "t3a.nano",
   "t3a.micro",
+  "e2-micro",
+  "Standard_B1ls",
+  "Standard_B1s",
+  "Standard_A0",
+  "Basic_A0",
 ];
 
 #[derive(Deserialize, Debug, Clone, Serialize)]
@@ -1335,11 +1342,12 @@ fn warn_if_burstable(vm_type: &str) -> () {
     println!(
       "WARNING: You have selected a burstable virtual machine type. \
       This virtual machine types can misbehave under heavy load and \
-      do not work as it best with our autoscaler"
+      do not work properly with our autoscaler"
     )
   };
 }
 
+// Warn if user choose 1GB or less memory machine type
 fn warn_if_small(vm_type: &str) -> () {
   if SMALL_VM_TYPES.contains(&vm_type) {
     println!(
