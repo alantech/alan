@@ -82,9 +82,13 @@ pub struct Credentials {
 #[derive(Deserialize, Debug, Serialize)]
 pub struct DeployConfig {
   credentialsName: String,
-  region: String,
-  vmType: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  region: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  vmType: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   minReplicas: Option<u32>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   maxReplicas: Option<u32>,
 }
 
@@ -92,10 +96,14 @@ pub struct DeployConfig {
 #[derive(Deserialize, Debug, Serialize)]
 pub struct Config {
   credentials: CloudCredentials,
-  region: String,
   cloudProvider: String,
-  vmType: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  region: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  vmType: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   minReplicas: Option<u32>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   maxReplicas: Option<u32>,
 }
 
@@ -520,14 +528,22 @@ pub async fn add_deploy_config() {
       options[selection].to_string()
     };
     // TODO validate these fields?
-    let region: String = Input::with_theme(&ColorfulTheme::default())
-      .with_prompt("Region name")
-      .interact_text()
-      .unwrap();
-    let vm_type: String = Input::with_theme(&ColorfulTheme::default())
-      .with_prompt("Virtual machine type")
-      .interact_text()
-      .unwrap();
+    let mut region = None;
+    if confirm_prompt(
+      "Do you want to choose a specific region for this Deploy Config?",
+      false,
+    ) {
+      let input_region: String = input_prompt("Region name");
+      region = Some(input_region);
+    };
+    let mut vm_type = None;
+    if confirm_prompt(
+      "Do you want to select which virtual machine type to use for this Deploy Config?",
+      false,
+    ) {
+      let input_vm_type: String = input_prompt("Virtual machine type");
+      vm_type = Some(input_vm_type);
+    };
     cloud_configs.push(DeployConfig {
       credentialsName: cred,
       vmType: vm_type,
@@ -629,16 +645,46 @@ pub async fn edit_deploy_config() {
       .interact()
       .unwrap();
     let cred = cred_options[selection].to_string();
-    let region: String = Input::with_theme(&ColorfulTheme::default())
-      .with_prompt("Region name")
-      .with_initial_text(config.region.to_string())
-      .interact_text()
-      .unwrap();
-    let vm_type: String = Input::with_theme(&ColorfulTheme::default())
-      .with_prompt("Virtual machine type")
-      .with_initial_text(config.vmType.to_string())
-      .interact_text()
-      .unwrap();
+    let mut region = None;
+    let mut vm_type = None;
+    if let Some(reg) = &config.region {
+      if confirm_prompt(
+        "Do you want to edit the region to use for this Deploy Config?",
+        true,
+      ) {
+        let input_region: String = input_prompt("Region name");
+        region = Some(input_region);
+      } else {
+        region = Some(reg.to_string());
+      }
+    } else {
+      if confirm_prompt(
+        "Do you want to choose a specific region for this Deploy Config?",
+        false,
+      ) {
+        let input_region: String = input_prompt("Region name");
+        region = Some(input_region);
+      };
+    }
+    if let Some(vm_t) = &config.vmType {
+      if confirm_prompt(
+        "Do you want to edit the virtual machine type for this Deploy Config?",
+        true,
+      ) {
+        let input_vm_type: String = input_prompt("Virtual machine type");
+        vm_type = Some(input_vm_type);
+      } else {
+        vm_type = Some(vm_t.to_string());
+      }
+    } else {
+      if confirm_prompt(
+        "Do you want to select which virtual machine type to use for this Deploy Config?",
+        false,
+      ) {
+        let input_vm_type: String = input_prompt("Virtual machine type");
+        vm_type = Some(input_vm_type);
+      };
+    }
     new_cloud_configs.push(DeployConfig {
       credentialsName: cred,
       vmType: vm_type,
@@ -732,11 +778,20 @@ pub async fn list_deploy_configs() {
   let mut data: Vec<Vec<&dyn Display>> = vec![];
   for (name, config) in &mut configs.iter() {
     for (i, c) in config.iter().enumerate() {
+      let mut display_vec: Vec<&dyn Display> = Vec::new();
       if i == 0 {
-        data.push(vec![name, &c.credentialsName, &c.region, &c.vmType])
+        display_vec.push(name);
       } else {
-        data.push(vec![&"", &c.credentialsName, &c.region, &c.vmType])
+        display_vec.push(&"");
       };
+      display_vec.push(&c.credentialsName);
+      if let Some(region) = &c.region {
+        display_vec.push(region);
+      }
+      if let Some(vm_type) = &c.vmType {
+        display_vec.push(vm_type);
+      }
+      data.push(display_vec)
     }
   }
 
@@ -1150,11 +1205,19 @@ pub async fn info() {
       continue;
     }
     for (i, profile) in app.cloudConfigs.iter().enumerate() {
+      let mut display_vec: Vec<&dyn Display> = Vec::new();
       if i == 0 {
-        profile_data.push(vec![&app.deployName, &profile.region, &profile.vmType])
+        display_vec.push(&app.deployName);
       } else {
-        profile_data.push(vec![&"", &profile.region, &profile.vmType])
+        display_vec.push(&"");
       };
+      if let Some(region) = &profile.region {
+        display_vec.push(region);
+      }
+      if let Some(vm_type) = &profile.vmType {
+        display_vec.push(vm_type);
+      }
+      profile_data.push(display_vec)
     }
     deploy_profiles.insert(&app.deployName);
   }
@@ -1184,4 +1247,19 @@ pub async fn info() {
   profiles.columns.insert(2, column);
   println!("\nDeploy Configs used:\n");
   profiles.print(profile_data);
+}
+
+fn confirm_prompt(prompt: &str, default: bool) -> bool {
+  Confirm::with_theme(&ColorfulTheme::default())
+    .with_prompt(prompt)
+    .default(default)
+    .interact()
+    .unwrap()
+}
+
+fn input_prompt(prompt: &str) -> String {
+  Input::with_theme(&ColorfulTheme::default())
+    .with_prompt(prompt)
+    .interact_text()
+    .unwrap()
 }

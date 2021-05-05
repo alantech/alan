@@ -9,15 +9,15 @@
 3) Take a look at the exported JSON file. Add a new `Credentials` by taking the `privateKey`, `clientEmail` and `projectId` from step 2. You will need to pick a name or alias for the `Credentials`. The initial value will be `gcp`. In this example, we will call it `mystartup-gcp`.
 
 ```bash
-$ anycloud credentials add
-Pick cloud provider for the new credentials:
+$ anycloud credentials new
+? Pick cloud provider for the new credentials ›
   AWS
-> GCP
+❯ GCP
   Azure
-Credentials Name: mystartup-gcp
-GCP Project ID: my-gcp-project
-GCP Client Email: *******-compute@developer.gserviceaccount.com
-GCP Private Key: -----BEGIN PRIVATE KEY-----\*****\n-----END PRIVATE KEY-----\n
+? Credentials Name › mystartup-gcp
+? GCP Project ID › my-gcp-project
+? GCP Client Email › *******-compute@developer.gserviceaccount.com
+? GCP Private Key › -----BEGIN PRIVATE KEY-----\*****\n-----END PRIVATE KEY-----\n
 Successfully created "mystartup-gcp" credentials
 ```
 
@@ -28,11 +28,12 @@ Define a new `Deploy Config` in the `anycloud.json` project you want to deploy t
 ```bash
 $ anycloud config add
 Name for new Deploy Config: staging
-Pick Credentials to use:
-> mystartup-gcp
-Region name: us-west1-c
-Virtual Machine Type: e2-medium
-Do you want to add another region to this Deploy Config? n
+? Pick Credentials to use ›
+❯ mystartup-gcp
+  Create new Credentials
+Region name › us-east4-a
+? Virtual Machine Type › e2-standard-2
+? Do you want to add another region to this Deploy Config? n
 Successfully created "staging" Deploy Config
 ```
 
