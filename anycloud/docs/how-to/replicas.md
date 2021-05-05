@@ -7,14 +7,14 @@ While defining the configuration, Anycloud will ask for a minimum number of VMs 
 ```bash
 $ anycloud config add
 Name for new Deploy Config: production
-Pick Credentials to use:
-> mystartup-aws
-- Create new Credentials
-Region name: us-west-1
-Virtual Machine Type: t2.medium
-Do you want to add another region to this Deploy Config? n
-Minimum number of VMs per region or cloud (1) 2
-Would you like to define a maximum number of VMs? (y/n) n
+? Pick Credentials to use ›
+❯ mystartup-aws
+  Create new Credentials
+? Region name › us-west-1
+? Virtual Machine Type › t2.medium
+? Do you want to add another region to this Deploy Config? › n
+? Minimum number of VMs per region or cloud › 2
+? Would you like to define a maximum number of VMs? › n
 Successfully created "production" Credentials
 ```
 
@@ -23,14 +23,14 @@ Successfully created "production" Credentials
 ```bash
 $ anycloud config add
 Name for new Deploy Config: production
-Pick Credentials to use:
-> mystartup-aws
-- Create new Credentials
-Region name: us-west-1
-Virtual Machine Type: t2.medium
-Do you want to add another region to this Deploy Config? n
-Minimum number of VMs per region or cloud (1) 2
-Would you like to define a maximum number of VMs? (y/n) y
-Maximum number of VMs per region or cloud 5
+? Pick Credentials to use ›
+❯ mystartup-aws
+  Create new Credentials
+? Region name › us-west-1
+? Virtual Machine Type › t2.medium
+? Do you want to add another region to this Deploy Config? › n
+? Minimum number of VMs per region or cloud › 1
+? Would you like to define a maximum number of VMs? › y
+Maximum number of VMs per region or cloud › 5
 Successfully created "production" Credentials
 ```
