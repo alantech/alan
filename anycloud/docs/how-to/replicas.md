@@ -10,12 +10,14 @@ Name for new Deploy Config: production
 ? Pick Credentials to use ›
 ❯ mystartup-aws
   Create new Credentials
+? Do you want to choose a specific region for this Deploy Config? › y
 ? Region name › us-west-1
+? Do you want to select which virtual machine type to use for this Deploy Config? › y
 ? Virtual Machine Type › t2.medium
 ? Do you want to add another region to this Deploy Config? › n
 ? Minimum number of VMs per region or cloud › 2
 ? Would you like to define a maximum number of VMs? › n
-Successfully created "production" Credentials
+Successfully created "production" Deploy Config.
 ```
 
 ## Defining a maximum
@@ -26,11 +28,13 @@ Name for new Deploy Config: production
 ? Pick Credentials to use ›
 ❯ mystartup-aws
   Create new Credentials
+? Do you want to choose a specific region for this Deploy Config? › y
 ? Region name › us-west-1
+? Do you want to select which virtual machine type to use for this Deploy Config? › y
 ? Virtual Machine Type › t2.medium
 ? Do you want to add another region to this Deploy Config? › n
 ? Minimum number of VMs per region or cloud › 1
 ? Would you like to define a maximum number of VMs? › y
-Maximum number of VMs per region or cloud › 5
-Successfully created "production" Credentials
+? Maximum number of VMs per region or cloud › 5
+Successfully created "production" Deploy Config.
 ```
