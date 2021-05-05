@@ -86,10 +86,14 @@ $ anycloud config new
 ? Pick Credentials to use ›
 ❯ mystartup-aws
   Create new Credentials
+? Do you want to choose a specific region for this Deploy Config? › y
 ? Region name › us-east-1
+? Do you want to select which virtual machine type to use for this Deploy Config? › y
 ? Virtual Machine Type › m5.large
 ? Do you want to add another region to this Deploy Config? › n
-Successfully created "staging" Credentials
+? Minimum number of VMs per region or cloud › 1
+? Would you like to define a maximum number of VMs? › n
+Successfully created "staging" Deploy Config.
 ```
 
 7) Make sure all of the changes in the git repo are committed or they won't be deployed.
