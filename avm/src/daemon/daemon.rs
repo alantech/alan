@@ -30,7 +30,7 @@ pub static CLUSTER_SECRET: OnceCell<Option<String>> = OnceCell::new();
 pub static DAEMON_PROPS: OnceCell<DaemonProperties> = OnceCell::new();
 
 lazy_static! {
-  static ref ALAN_TECH_ENV: String =
+  pub static ref ALAN_TECH_ENV: String =
     std::env::var("ALAN_TECH_ENV").unwrap_or("production".to_string());
 }
 
@@ -263,76 +263,74 @@ pub async fn start() {
     let domain = &daemon_props.domain;
     let deploy_token = &daemon_props.deployToken;
     let agz_b64 = &daemon_props.agzB64;
-    if ALAN_TECH_ENV.as_str() != "local" {
-      task::spawn(async move {
-        let period = Duration::from_secs(60);
-        let mut stats = Vec::new();
-        let mut cluster_size = 0;
-        let self_ip = get_private_ip().await;
-        let dns = DNS::new(&domain);
-        if let (Ok(dns), Ok(self_ip)) = (&dns, &self_ip) {
-          loop {
-            let vms = match dns.get_vms(&cluster_id).await {
-              Ok(vms) => Some(vms),
-              Err(err) => {
-                error!(NoDnsVms, "{}", err).await;
-                None
-              }
-            };
-            // TODO: Figure out how to avoid flushing the LogRendezvousHash table every iteration, but
-            // avoid bugs with misidentifying cluster changes as not-changed
-            if let Some(vms) = vms {
-              cluster_size = vms.len();
-              control_port.update_vms(self_ip, vms).await;
+    task::spawn(async move {
+      let period = Duration::from_secs(60);
+      let mut stats = Vec::new();
+      let mut cluster_size = 0;
+      let self_ip = get_private_ip().await;
+      let dns = DNS::new(&domain);
+      if let (Ok(dns), Ok(self_ip)) = (&dns, &self_ip) {
+        loop {
+          let vms = match dns.get_vms(&cluster_id).await {
+            Ok(vms) => Some(vms),
+            Err(err) => {
+              error!(NoDnsVms, "{}", err).await;
+              None
             }
-            if control_port.is_leader() {
-              // TODO: Should we keep these leader announcements in the stdout logging?
-              println!("I am leader!");
-              match get_v1_stats().await {
-                Ok(s) => stats.push(s),
-                Err(err) => error!(NoStats, "{}", err).await,
-              };
-            } else {
-              // Debug print for now
-              println!("I am NOT the leader! :(");
-              println!(
-                "Me: {} Leader: {}",
-                self_ip,
-                control_port
-                  .get_leader()
-                  .map(|vm| vm.private_ip_addr.clone())
-                  .unwrap_or("<None>".to_string())
-              );
-            }
-            if stats.len() >= 4 {
-              let mut factor = String::from("1");
-              let stats_factor = post_v1_stats(stats.to_owned(), &cluster_id, &deploy_token).await;
-              stats = Vec::new();
-              if let Ok(stats_factor) = stats_factor {
-                factor = stats_factor;
-              } else if let Err(err) = stats_factor {
-                error!(PostFailed, "{}", err).await;
-              }
-              println!(
-                "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
-                cluster_id, cluster_size, factor
-              );
-              if factor != "1" {
-                post_v1_scale(&cluster_id, &agz_b64, &deploy_token, &factor).await;
-              }
-            }
-            control_port.check_cluster_health().await;
-            sleep(period).await;
+          };
+          // TODO: Figure out how to avoid flushing the LogRendezvousHash table every iteration, but
+          // avoid bugs with misidentifying cluster changes as not-changed
+          if let Some(vms) = vms {
+            cluster_size = vms.len();
+            control_port.update_vms(self_ip, vms).await;
           }
-        } else if let Err(dns_err) = &dns {
-          error!(NoDns, "DNS error: {}", dns_err).await;
-          std::process::exit(1);
-        } else if let Err(self_ip_err) = &self_ip {
-          error!(NoPrivateIp, "Private ip error: {}", self_ip_err).await;
-          std::process::exit(1);
+          if control_port.is_leader() {
+            // TODO: Should we keep these leader announcements in the stdout logging?
+            println!("I am leader!");
+            match get_v1_stats().await {
+              Ok(s) => stats.push(s),
+              Err(err) => error!(NoStats, "{}", err).await,
+            };
+          } else {
+            // Debug print for now
+            println!("I am NOT the leader! :(");
+            println!(
+              "Me: {} Leader: {}",
+              self_ip,
+              control_port
+                .get_leader()
+                .map(|vm| vm.private_ip_addr.clone())
+                .unwrap_or("<None>".to_string())
+            );
+          }
+          if stats.len() >= 4 {
+            let mut factor = String::from("1");
+            let stats_factor = post_v1_stats(stats.to_owned(), &cluster_id, &deploy_token).await;
+            stats = Vec::new();
+            if let Ok(stats_factor) = stats_factor {
+              factor = stats_factor;
+            } else if let Err(err) = stats_factor {
+              error!(PostFailed, "{}", err).await;
+            }
+            println!(
+              "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
+              cluster_id, cluster_size, factor
+            );
+            if factor != "1" {
+              post_v1_scale(&cluster_id, &agz_b64, &deploy_token, &factor).await;
+            }
+          }
+          control_port.check_cluster_health().await;
+          sleep(period).await;
         }
-      });
-    };
+      } else if let Err(dns_err) = &dns {
+        error!(NoDns, "DNS error: {}", dns_err).await;
+        std::process::exit(1);
+      } else if let Err(self_ip_err) = &self_ip {
+        error!(NoPrivateIp, "Private ip error: {}", self_ip_err).await;
+        std::process::exit(1);
+      }
+    });
     if let Err(err) = run_agz_b64(&agz_b64).await {
       error!(RunAgzFailed, "{:?}", err).await;
       std::process::exit(1);

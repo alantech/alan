@@ -3,7 +3,7 @@ use std::str;
 use trust_dns_resolver::config::{ResolverConfig, ResolverOpts};
 use trust_dns_resolver::TokioAsyncResolver;
 
-use crate::daemon::daemon::DaemonResult;
+use crate::daemon::daemon::{DaemonResult, ALAN_TECH_ENV};
 
 pub struct DNS {
   resolver: TokioAsyncResolver,
@@ -43,6 +43,16 @@ impl VMMetadata {
       Err(_) => return Err("Data in TXT record is not a valid string".into()),
     }
   }
+
+  fn get_local_metadata() -> DaemonResult<Vec<VMMetadata>> {
+    Ok(vec![VMMetadata {
+      schema_version: "v1".to_string(),
+      alan_version: option_env!("CARGO_PKG_VERSION").unwrap().to_string(),
+      cloud: "AWS".to_string(),
+      private_ip_addr: "127.0.0.1".to_string(),
+      region: "eu-west-1".to_string(),
+    }])
+  }
 }
 
 impl DNS {
@@ -62,6 +72,9 @@ impl DNS {
   }
 
   pub async fn get_vms(&self, cluster_id: &str) -> DaemonResult<Vec<VMMetadata>> {
+    if ALAN_TECH_ENV.as_str() == "local" {
+      return VMMetadata::get_local_metadata();
+    };
     let name = format!("{}.{}", cluster_id, self.domain);
     let err = format!("Failed to fetch TXT record with name {}", &name);
     let resp = self.resolver.txt_lookup(name).await;
