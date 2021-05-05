@@ -200,10 +200,11 @@ fn set_local_daemon_props() -> () {
       let dockerfile = read(format!("{}/Dockerfile", pwd.display()));
       let app_tar_gz = read(format!("{}/app.tar.gz", pwd.display()));
       DAEMON_PROPS.set(daemon_props).unwrap();
-    },
+    }
     Err(_) => {
       eprintln!("No daemon properties");
-      std::process::exit(1);}
+      std::process::exit(1);
+    }
   }
 }
 
