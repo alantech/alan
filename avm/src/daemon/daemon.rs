@@ -207,13 +207,25 @@ fn write_b64_file(file_name: &str, content: &str) -> DaemonResult<()> {
   Ok(())
 }
 
-async fn set_local_daemon_props() -> () {
+async fn get_files_b64() -> HashMap<String, String> {
   let mut files_b64 = HashMap::new();
   files_b64.insert("Dockerfile".to_string(), get_dockerfile_b64().await);
   files_b64.insert("app.tar.gz".to_string(), get_app_tar_gz_b64().await);
-  if let Some(content) = files_b64.get(&"app.tar.gz".to_string()) {
-    write_b64_file("app.tar.gz", &content);
+  files_b64
+}
+
+fn create_app_tar(content: Option<&String>) -> () {
+  if let Some(content) = content {
+    if let Err(err) = write_b64_file("app.tar.gz", &content) {
+      eprintln!("Could not create app.tar.gz. {:?}", err);
+      std::process::exit(1);
+    }
   }
+}
+
+async fn set_local_daemon_props() -> () {
+  let files_b64 = get_files_b64().await;
+  create_app_tar(files_b64.get(&"app.tar.gz".to_string()));
   DAEMON_PROPS
     .set(DaemonProperties {
       clusterId: "daemon-local-cluster".to_string(),
