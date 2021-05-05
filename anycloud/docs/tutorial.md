@@ -13,12 +13,12 @@ In this tutorial we will deploy the [sample express Node.js HTTP server](https:/
 4) Take the `accessKeyId` and `secretAccessKey` from step 2 and create an AWS `Credentials` in AnyCloud. You will need to pick a name or alias for the `Credentials`. The initial value will be `aws`. In this example, we will call it `aws-personal`.
 
 ```bash
-$ anycloud credentials add
-Pick cloud provider for the new Credentials:
-> AWS
+$ anycloud credentials new
+? Pick cloud provider for the new credentials ›
+❯ AWS
   GCP
   Azure
-Name for new Credentials: aws-personal
+Name for new Credentials: mystartup-aws
 AWS Access Key ID: ******************
 AWS Secret Access Key: ******************
 Successfully created "mystartup-aws" Credentials
@@ -81,11 +81,14 @@ Which should return `Hello World!`
 6) Use the AnyCloud CLI to create an `anycloud.json` file in the project directory and define a `Deploy Config`. You will need to pick a name or alias for the `Deploy Config`. The initial value will be `staging`. Since there is only `Credentials`, the CLI will default to that for your new `Deploy Config`.
 
 ```bash
-$ anycloud config add
-Name for new Deploy Config: staging
-Region name: us-west-1
-Virtual Machine Type: t2.medium
-Do you want to add another region to this Deploy Config? n
+$ anycloud config new
+? Name for new Deploy Config › staging
+? Pick Credentials to use ›
+❯ mystartup-aws
+  Create new Credentials
+? Region name › us-east-1
+? Virtual Machine Type › m5.large
+? Do you want to add another region to this Deploy Config? › n
 Successfully created "staging" Credentials
 ```
 
@@ -105,7 +108,7 @@ It might take a few minutes for your App to start while the virtual machine is p
 2) Check the status of your App:
 
 ```bash
-$ anycloud info
+$ anycloud list
 Apps deployed:
 
 ┌────────────────┬───────────────────────────────────────┬───────────────┬──────┬────────┐
@@ -119,7 +122,7 @@ Deploy Configs used:
 ┌───────────────┬───────────┬───────────┐
 │ Deploy Config │ Region    │ VM Type   │
 ├───────────────┼───────────┼───────────┤
-│ staging       │ us-west-1 │ t3.medium │
+│ staging       │ us-east-1 │ m5.large  │
 └───────────────┴───────────┴───────────┘
 
 ```
@@ -135,5 +138,7 @@ Which should return `Hello World!`
 4) Terminate your AnyCloud App when you no longer need it
 
 ```bash
-anycloud terminate crimson-tick-5
+anycloud terminate
+? Pick App to terminate ›
+❯ crimson-tick-5
 ```

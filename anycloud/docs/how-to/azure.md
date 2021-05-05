@@ -13,16 +13,16 @@
 5) Add a new `Credentials` by taking the values from the previous steps. You will need to pick a name or alias for the `Credentials`. The initial value will be `azure`. In this example, we will call it `mystartup-azure`.
 
 ```bash
-$ anycloud credentials add
-Pick cloud provider for the new Credentials:
+$ anycloud credentials new
+? Pick cloud provider for the new Credentials ›
   AWS
   GCP
-> Azure
-Credentials Name: mystartup-azure
-Azure Application ID: ********-****-****-****-************
-Azure Directory ID: ********-****-****-****-************
-Azure Subscription ID: ********-****-****-****-************
-Azure Secret: **********************************
+❯ Azure
+? Credentials Name › mystartup-azure
+? Azure Application ID › ********-****-****-****-************
+? Azure Directory ID › ********-****-****-****-************
+? Azure Subscription ID › ********-****-****-****-************
+? Azure Secret › **********************************
 Successfully created "mystartup-gcp" Credentials
 ```
 
@@ -31,12 +31,13 @@ Successfully created "mystartup-gcp" Credentials
 Define a new `Deploy Config` in the `anycloud.json` project you want to deploy to Azure using the AnyCloud CLI:
 
 ```bash
-$ anycloud config add
+$ anycloud config new
 Name for new Deploy Config: staging
-Pick Credentials to use:
-> mystartup-azure
-Region name: westus2
-Virtual Machine Type: Standard_B1ls
-Do you want to add another region to this Deploy Config? n
+? Pick Credentials to use ›
+❯ mystartup-azure
+  Create new Credentials
+? Region name › eastus
+? Virtual Machine Type › Standard_D2_v4
+? Do you want to add another region to this Deploy Config? n
 Successfully created "staging" Deploy Config
 ```
