@@ -1,10 +1,8 @@
-use std::process::Command;
+extern crate protoc_bin_vendored;
+extern crate protoc_rust;
 
 use protoc_bin_vendored::protoc_bin_path;
 use protoc_rust::Customize;
-
-extern crate protoc_bin_vendored;
-extern crate protoc_rust;
 
 fn main() {
   // Tell Cargo that if the build.rs or HandlerMemory.proto files change, rerun this build script
