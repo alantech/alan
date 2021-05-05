@@ -24,6 +24,7 @@ use tokio::time::sleep;
 use twox_hash::XxHash64;
 
 use crate::daemon::ctrl::NAIVE_CLIENT;
+use crate::daemon::daemon::CONTROL_PORT_CHANNEL;
 use crate::vm::event::{BuiltInEvents, EventEmit, HandlerFragment, NOP_ID};
 use crate::vm::http::HTTP_CLIENT;
 use crate::vm::memory::{FractalMemory, HandlerMemory, CLOSURE_ARG_MEM_START};
@@ -3646,8 +3647,20 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0])?)?;
       let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1])?)?;
       let nskey = format!("{}:{}", ns, key);
-      let ds = Arc::clone(&DS);
-      ds.insert(nskey, hm);
+      let ctrl_port = CONTROL_PORT_CHANNEL.get();
+      let is_key_owner = match ctrl_port {
+        Some(ctrl_port) => {
+          let ctrl_port = ctrl_port.borrow().clone(); // TODO: Use thread-local storage
+          ctrl_port.is_key_owner(&nskey)
+        },
+        None => true,
+      };
+      if is_key_owner {
+        let ds = Arc::clone(&DS);
+        ds.insert(nskey, hm);
+      } else {
+        // TODO
+      }
       Ok(hand_mem)
     })
   });
@@ -3658,8 +3671,20 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0])?)?;
       let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1])?)?;
       let nskey = format!("{}:{}", ns, key);
-      let ds = Arc::clone(&DS);
-      ds.insert(nskey, hm);
+      let ctrl_port = CONTROL_PORT_CHANNEL.get();
+      let is_key_owner = match ctrl_port {
+        Some(ctrl_port) => {
+          let ctrl_port = ctrl_port.borrow().clone(); // TODO: Use thread-local storage
+          ctrl_port.is_key_owner(&nskey)
+        },
+        None => true,
+      };
+      if is_key_owner {
+        let ds = Arc::clone(&DS);
+        ds.insert(nskey, hm);
+      } else {
+        // TODO
+      }
       Ok(hand_mem)
     })
   });
@@ -3668,9 +3693,21 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0])?)?;
       let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1])?)?;
       let nskey = format!("{}:{}", ns, key);
-      let ds = Arc::clone(&DS);
-      let has = ds.contains_key(&nskey);
-      hand_mem.write_fixed(args[2], if has { 1i64 } else { 0i64 })?;
+      let ctrl_port = CONTROL_PORT_CHANNEL.get();
+      let is_key_owner = match ctrl_port {
+        Some(ctrl_port) => {
+          let ctrl_port = ctrl_port.borrow().clone(); // TODO: Use thread-local storage
+          ctrl_port.is_key_owner(&nskey)
+        },
+        None => true,
+      };
+      if is_key_owner {
+        let ds = Arc::clone(&DS);
+        let has = ds.contains_key(&nskey);
+        hand_mem.write_fixed(args[2], if has { 1i64 } else { 0i64 })?;
+      } else {
+        // TODO
+      }
       Ok(hand_mem)
     })
   });
@@ -3679,9 +3716,22 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0])?)?;
       let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1])?)?;
       let nskey = format!("{}:{}", ns, key);
+      // If it exists locally, remove it here, too
       let ds = Arc::clone(&DS);
       let removed = ds.remove(&nskey).is_some();
-      hand_mem.write_fixed(args[2], if removed { 1i64 } else { 0i64 })?;
+      let ctrl_port = CONTROL_PORT_CHANNEL.get();
+      let is_key_owner = match ctrl_port {
+        Some(ctrl_port) => {
+          let ctrl_port = ctrl_port.borrow().clone(); // TODO: Use thread-local storage
+          ctrl_port.is_key_owner(&nskey)
+        },
+        None => true,
+      };
+      if is_key_owner {
+        hand_mem.write_fixed(args[2], if removed { 1i64 } else { 0i64 })?;
+      } else {
+        // TODO
+      }
       Ok(hand_mem)
     })
   });
@@ -3691,7 +3741,20 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1])?)?;
       let nskey = format!("{}:{}", ns, key);
       let ds = Arc::clone(&DS);
-      let maybe_hm = ds.get(&nskey);
+      let ctrl_port = CONTROL_PORT_CHANNEL.get();
+      let is_key_owner = match ctrl_port {
+        Some(ctrl_port) => {
+          let ctrl_port = ctrl_port.borrow().clone(); // TODO: Use thread-local storage
+          ctrl_port.is_key_owner(&nskey)
+        },
+        None => true,
+      };
+      let maybe_hm = if is_key_owner {
+        ds.get(&nskey)
+      } else {
+        // TODO
+        None
+      };
       hand_mem.init_fractal(args[2])?;
       hand_mem.push_fixed(args[2], if maybe_hm.is_some() { 1i64 } else { 0i64 })?;
       match maybe_hm {
@@ -3707,7 +3770,20 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1])?)?;
       let nskey = format!("{}:{}", ns, key);
       let ds = Arc::clone(&DS);
-      let maybe_hm = ds.get(&nskey);
+      let ctrl_port = CONTROL_PORT_CHANNEL.get();
+      let is_key_owner = match ctrl_port {
+        Some(ctrl_port) => {
+          let ctrl_port = ctrl_port.borrow().clone(); // TODO: Use thread-local storage
+          ctrl_port.is_key_owner(&nskey)
+        },
+        None => true,
+      };
+      let maybe_hm = if is_key_owner {
+        ds.get(&nskey)
+      } else {
+        // TODO
+        None
+      };
       hand_mem.init_fractal(args[2])?;
       match maybe_hm {
         Some(hm) => {

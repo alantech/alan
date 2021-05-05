@@ -94,7 +94,7 @@ impl LogRendezvousHash {
     &mut self.sorted_hashes
   }
 
-  pub fn _get_primary_node_id(&self, key: &str) -> &str {
+  pub fn get_primary_node_id(&self, key: &str) -> &str {
     self.get_assigned_nodes_id(key)[0]
   }
 
@@ -399,6 +399,17 @@ impl ControlPort {
           self.vms_up.insert(nodes[i].id.clone(), is_up);
         }
       }
+    }
+  }
+
+  pub fn get_vm_for_key(self: &ControlPort, key: &str) -> &VMMetadata {
+    &self.vms[self.lrh.get_primary_node_id(key)]
+  }
+
+  pub fn is_key_owner(self: &ControlPort, key: &str) -> bool {
+    match &self.self_vm {
+      Some(my) => self.get_vm_for_key(key).private_ip_addr == my.private_ip_addr,
+      None => false
     }
   }
 }
