@@ -1353,7 +1353,7 @@ fn print_burstable_vm_warn() -> () {
   )
 }
 
-// Warn if user choose 1GB or less memory machine type
+// Warn if user choose a machine type with 1GB or less memory
 fn print_small_vm_warn() -> () {
   println!(
     "WARNING: You have selected a small virtual machine type. \
