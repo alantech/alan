@@ -608,7 +608,7 @@ pub async fn add_deploy_config() {
       "Do you want to select which virtual machine type to use for this Deploy Config?",
       false,
     ) {
-      vm_type = Some(vm_type_input());
+      vm_type = Some(get_vm_type_input());
     };
     cloud_configs.push(DeployConfig {
       credentialsName: cred,
@@ -737,7 +737,7 @@ pub async fn edit_deploy_config() {
         "Do you want to edit the virtual machine type for this Deploy Config?",
         true,
       ) {
-        vm_type = Some(vm_type_input());
+        vm_type = Some(get_vm_type_input());
       } else {
         vm_type = Some(vm_t.to_string());
       }
@@ -746,7 +746,7 @@ pub async fn edit_deploy_config() {
         "Do you want to select which virtual machine type to use for this Deploy Config?",
         false,
       ) {
-        vm_type = Some(vm_type_input());
+        vm_type = Some(get_vm_type_input());
       };
     }
     new_cloud_configs.push(DeployConfig {
@@ -1361,7 +1361,7 @@ fn print_small_vm_warn() -> () {
   )
 }
 
-fn vm_type_input() -> String {
+fn get_vm_type_input() -> String {
   loop {
     let input_vm_type: String = input_prompt("Virtual machine type");
     if is_burstable(&input_vm_type) || is_small(&input_vm_type) {
