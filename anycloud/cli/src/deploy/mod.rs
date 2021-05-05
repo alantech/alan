@@ -590,7 +590,7 @@ pub async fn add_deploy_config() {
     // TODO validate these fields?
     let mut region = None;
     if confirm_prompt(
-      "Do you want to add a region name to this Deploy Config?",
+      "Do you want to choose a specific region for this Deploy Config?",
       false,
     ) {
       let input_region: String = input_prompt("Region name");
@@ -598,7 +598,7 @@ pub async fn add_deploy_config() {
     };
     let mut vm_type = None;
     if confirm_prompt(
-      "Do you want to add a virtual machine type to this Deploy Config?",
+      "Do you want to select which virtual machine type to use for this Deploy Config?",
       false,
     ) {
       let input_vm_type: String = input_prompt("Virtual machine type");
@@ -711,7 +711,7 @@ pub async fn edit_deploy_config() {
     let mut vm_type = None;
     if let Some(reg) = &config.region {
       if confirm_prompt(
-        "Do you want to edit the region name for this Deploy Config?",
+        "Do you want to edit the region to use for this Deploy Config?",
         true,
       ) {
         let input_region: String = input_prompt("Region name");
@@ -721,7 +721,7 @@ pub async fn edit_deploy_config() {
       }
     } else {
       if confirm_prompt(
-        "Do you want to add a region name to this Deploy Config?",
+        "Do you want to choose a specific region for this Deploy Config?",
         false,
       ) {
         let input_region: String = input_prompt("Region name");
@@ -742,7 +742,7 @@ pub async fn edit_deploy_config() {
       }
     } else {
       if confirm_prompt(
-        "Do you want to add a virtual machine type to this Deploy Config?",
+        "Do you want to select which virtual machine type to use for this Deploy Config?",
         false,
       ) {
         let input_vm_type: String = input_prompt("Virtual machine type");
