@@ -4,7 +4,7 @@ Describe "Booleans"
   before() {
     lnn_sourceToAll "
       from @std/app import start, stdout, exit
-      
+
       on start {
         emit stdout toString(true);
         emit stdout toString(false);
@@ -34,6 +34,7 @@ true
 true
 false
 true
+false
 false"
 
   It "runs js"
