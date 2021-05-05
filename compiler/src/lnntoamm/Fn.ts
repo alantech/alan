@@ -152,7 +152,7 @@ export default class Fn {
     }
     if (!isReturned) {
       if (!this.retTy.compatibleWithConstraint(opcodes().get('void'))) {
-        throw new Error(`no return value for function`);
+        throw new Error(`event handlers should not return values`);
       }
       amm.exit();
     }

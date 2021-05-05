@@ -43,6 +43,7 @@ const loadGlobalMem = (globalMemAst: LPNode[], addressMap: object) => {
         // Will fail on strings with escape chars
         str = JSON.parse(val)
       } catch (e) {
+        // Hackery to get these strings to work
         str = JSON.stringify(
           val.replace(/^["']/, '').replace(/["']$/, '')
         )

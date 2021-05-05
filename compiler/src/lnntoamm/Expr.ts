@@ -98,7 +98,7 @@ export default abstract class Expr {
       if (work.has('baseassignablelist')) {
         return Expr.fromBaseassignablelist(work.get('baseassignablelist'), metadata);
       } else if (work.has('operators')) {
-        return work;
+        return TODO('operators');
       } else {
         throw new Error(`unexpected assignable ast: ${work}`);
       }

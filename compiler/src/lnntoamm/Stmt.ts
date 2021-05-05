@@ -83,7 +83,7 @@ class Assign extends Stmt {
     this.upstream = upstream;
     this.expr = expr;
     if (this.upstream.immutable) {
-      throw new Error(`cannot reassign to a const value`);
+      throw new Error(`cannot reassign to ${this.upstream.name} since it was declared as a const`);
     }
   }
 
