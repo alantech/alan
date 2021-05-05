@@ -36,8 +36,12 @@ Name for new Deploy Config: staging
 ? Pick Credentials to use ›
 ❯ mystartup-azure
   Create new Credentials
+? Do you want to choose a specific region for this Deploy Config? › y
 ? Region name › eastus
+? Do you want to select which virtual machine type to use for this Deploy Config? › y
 ? Virtual Machine Type › Standard_D2_v4
-? Do you want to add another region to this Deploy Config? n
-Successfully created "staging" Deploy Config
+? Do you want to add another region to this Deploy Config? › n
+? Minimum number of VMs per region or cloud › 1
+? Would you like to define a maximum number of VMs? › n
+Successfully created "staging" Deploy Config.
 ```

@@ -17,19 +17,27 @@ $ anycloud config add
 Name for new Deploy Config: staging
 Pick Credentials to use:
 > mystartup-aws
+? Do you want to choose a specific region for this Deploy Config? › y
 Region name: us-west-1
+? Do you want to select which virtual machine type to use for this Deploy Config? › y
 Virtual Machine Type: t2.medium
-Do you want to add another region to this Deploy Config? n
-Successfully created "staging" Deploy Config
+? Do you want to add another region to this Deploy Config? › n
+? Minimum number of VMs per region or cloud › 1
+? Would you like to define a maximum number of VMs? › n
+Successfully created "staging" Deploy Config.
 
 $ anycloud config add
 Name for new Deploy Config: production
 Pick Credentials to use:
 > mystartup-aws
-Region name: us-west-1
-Virtual Machine Type: t2.xlarge
-Do you want to add another region to this Deploy Config? n
-Successfully created "production" Deploy Config
+? Do you want to choose a specific region for this Deploy Config? › y
+? Region name: us-west-1
+? Do you want to select which virtual machine type to use for this Deploy Config? › y
+? Virtual Machine Type: t2.xlarge
+? Do you want to add another region to this Deploy Config? › n
+? Minimum number of VMs per region or cloud › 2
+? Would you like to define a maximum number of VMs? › n
+Successfully created "production" Deploy Config.
 
 $ anycloud config list
 
@@ -51,13 +59,15 @@ The resulting `anycloud.json` contains two `Deploy Config`s called `staging` and
     "cloudProvider": "AWS",
     "region": "us-west-1",
     "vmType": "t2.medium",
-    "credentialsName": "mystartup-aws"
+    "credentialsName": "mystartup-aws",
+    "minReplicas": 1
   }],
   "production": [{
     "cloudProvider": "AWS",
     "region": "us-west-1",
     "vmType": "t2.xlarge",
-    "credentialsName": "mystartup-aws"
+    "credentialsName": "mystartup-aws",
+    "minReplicas": 2
   }]
 }
 ```
