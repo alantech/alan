@@ -32,7 +32,7 @@ use crate::vm::program::Program;
 use crate::vm::run::EVENT_TX;
 use crate::vm::{VMError, VMResult};
 
-static DS: Lazy<Arc<DashMap<String, Arc<HandlerMemory>>>> =
+pub static DS: Lazy<Arc<DashMap<String, Arc<HandlerMemory>>>> =
   Lazy::new(|| Arc::new(DashMap::<String, Arc<HandlerMemory>>::new()));
 
 // used for load balancing in the cluster
