@@ -22,30 +22,4 @@ fn main() {
     })
     .run()
     .expect("protoc");
-
-  // Self signed certs for local dev
-  // openssl req -newkey rsa:2048 -nodes -keyout key.pem -x509 -days 365 -out certificate.pem -subj "/C=US/ST=California/O=Alan Technologies, Inc/CN=*.anycloudapp.com"
-  if "local" == std::env::var("ALAN_TECH_ENV").unwrap_or("production".to_string()) {
-    let subj = if cfg!(target_os = "windows") {
-      "//C=US\\ST=California\\O=Alan Technologies, Inc\\CN=*.anycloudapp.com"
-    } else {
-      "/C=US/ST=California/O=Alan Technologies, Inc/CN=*.anycloudapp.com"
-    };
-    Command::new("openssl")
-      .arg("req")
-      .arg("-newkey")
-      .arg("rsa:2048")
-      .arg("-nodes")
-      .arg("-keyout")
-      .arg("key.pem")
-      .arg("-x509")
-      .arg("-days")
-      .arg("365")
-      .arg("-out")
-      .arg("certificate.pem")
-      .arg("-subj")
-      .arg(subj)
-      .spawn()
-      .expect("Error generating self signed certificate");
-  }
 }

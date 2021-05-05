@@ -237,6 +237,35 @@ async fn set_local_daemon_props() -> () {
     .unwrap();
 }
 
+fn maybe_set_local_certs() -> () {
+  if ALAN_TECH_ENV.as_str() == "local" {
+    // Self signed certs for local dev
+    // openssl req -newkey rsa:2048 -nodes -keyout key.pem -x509 -days 365 -out certificate.pem -subj "/C=US/ST=California/O=Alan Technologies, Inc/CN=*.anycloudapp.com"
+    let subj = if cfg!(target_os = "windows") {
+      "//C=US\\ST=California\\O=Alan Technologies, Inc\\CN=*.anycloudapp.com"
+    } else {
+      "/C=US/ST=California/O=Alan Technologies, Inc/CN=*.anycloudapp.com"
+    };
+    std::process::Command::new("openssl")
+      .stdout(std::process::Stdio::null())
+      .arg("req")
+      .arg("-newkey")
+      .arg("rsa:2048")
+      .arg("-nodes")
+      .arg("-keyout")
+      .arg("key.pem")
+      .arg("-x509")
+      .arg("-days")
+      .arg("365")
+      .arg("-out")
+      .arg("certificate.pem")
+      .arg("-subj")
+      .arg(subj)
+      .spawn()
+      .expect("Error generating self signed certificate");
+  }
+}
+
 async fn get_daemon_props() -> Option<&'static DaemonProperties> {
   if ALAN_TECH_ENV.as_str() == "local" {
     set_local_daemon_props().await;
@@ -256,6 +285,7 @@ async fn get_daemon_props() -> Option<&'static DaemonProperties> {
 }
 
 pub async fn start() {
+  maybe_set_local_certs();
   let mut control_port = ControlPort::start().await;
   if let Some(daemon_props) = get_daemon_props().await {
     let cluster_id = &daemon_props.clusterId;
