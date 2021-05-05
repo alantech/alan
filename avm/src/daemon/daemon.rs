@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 use std::env;
 use std::error::Error;
-use std::fs::read;
+use std::fs::{read, write};
 use std::io::Read;
 
+use anycloud::common::{get_app_tar_gz_b64, get_base_agz_b64, get_dockerfile_b64};
 use anycloud::deploy;
 use anycloud::{error, CLUSTER_ID};
 use base64;
@@ -191,26 +192,43 @@ async fn run_agz_b64(agz_b64: &str) -> DaemonResult<()> {
   Ok(())
 }
 
-fn set_local_daemon_props() -> () {
+fn write_b64_file(file_name: &str, content: &str) -> DaemonResult<()> {
   let pwd = env::current_dir();
   match pwd {
-    Ok(pwd) => {
-      let daemon_props_slice = read(format!("{}/daemon_props.json", pwd.display())).unwrap();
-      let mut daemon_props: DaemonProperties = serde_json::from_slice(&daemon_props_slice).unwrap();
-      let dockerfile = read(format!("{}/Dockerfile", pwd.display()));
-      let app_tar_gz = read(format!("{}/app.tar.gz", pwd.display()));
-      DAEMON_PROPS.set(daemon_props).unwrap();
-    }
-    Err(_) => {
-      eprintln!("No daemon properties");
-      std::process::exit(1);
+    Ok(pwd) => write(
+      format!("{}/{}", pwd.display(), file_name),
+      base64::decode(content).unwrap(),
+    )?,
+    Err(err) => {
+      let err = format!("{:?}", err);
+      return Err(err.into());
     }
   }
+  Ok(())
+}
+
+async fn set_local_daemon_props() -> () {
+  let mut files_b64 = HashMap::new();
+  files_b64.insert("Dockerfile".to_string(), get_dockerfile_b64().await);
+  files_b64.insert("app.tar.gz".to_string(), get_app_tar_gz_b64().await);
+  if let Some(content) = files_b64.get(&"app.tar.gz".to_string()) {
+    write_b64_file("app.tar.gz", &content);
+  }
+  DAEMON_PROPS
+    .set(DaemonProperties {
+      clusterId: "daemon-local-cluster".to_string(),
+      agzB64: get_base_agz_b64(),
+      deployToken: "dummy".to_string(),
+      domain: "alandeploy.com".to_string(),
+      filesB64: files_b64,
+    })
+    .unwrap();
 }
 
 async fn get_daemon_props() -> Option<&'static DaemonProperties> {
   if ALAN_TECH_ENV.as_str() == "local" {
-    set_local_daemon_props()
+    set_local_daemon_props().await;
+    return DAEMON_PROPS.get();
   }
   let duration = Duration::from_secs(10);
   let mut counter: u8 = 0;
@@ -227,82 +245,82 @@ async fn get_daemon_props() -> Option<&'static DaemonProperties> {
 
 pub async fn start() {
   let mut control_port = ControlPort::start().await;
-  // TODO: SEND POSTMAN REQUEST WITH B64 FILES, HAVE FILE WITH MODKED DATA OR IGNORE LOOP?
   if let Some(daemon_props) = get_daemon_props().await {
     let cluster_id = &daemon_props.clusterId;
     CLUSTER_ID.set(String::from(cluster_id)).unwrap();
     let domain = &daemon_props.domain;
     let deploy_token = &daemon_props.deployToken;
-    let agz_b64 = &daemon_props.agzB64; // TODO: GENERATE AUTOMATICALLY ON BUILD?
-    task::spawn(async move {
-      // TODO: IGNORE STATS/SCALE LOOP?
-      let period = Duration::from_secs(60);
-      let mut stats = Vec::new();
-      let mut cluster_size = 0;
-      let self_ip = get_private_ip().await;
-      let dns = DNS::new(&domain);
-      if let (Ok(dns), Ok(self_ip)) = (&dns, &self_ip) {
-        loop {
-          let vms = match dns.get_vms(&cluster_id).await {
-            Ok(vms) => Some(vms),
-            Err(err) => {
-              error!(NoDnsVms, "{}", err).await;
-              None
-            }
-          };
-          // TODO: Figure out how to avoid flushing the LogRendezvousHash table every iteration, but
-          // avoid bugs with misidentifying cluster changes as not-changed
-          if let Some(vms) = vms {
-            cluster_size = vms.len();
-            control_port.update_vms(self_ip, vms).await;
-          }
-          if control_port.is_leader() {
-            // TODO: Should we keep these leader announcements in the stdout logging?
-            println!("I am leader!");
-            match get_v1_stats().await {
-              Ok(s) => stats.push(s),
-              Err(err) => error!(NoStats, "{}", err).await,
+    let agz_b64 = &daemon_props.agzB64;
+    if ALAN_TECH_ENV.as_str() != "local" {
+      task::spawn(async move {
+        let period = Duration::from_secs(60);
+        let mut stats = Vec::new();
+        let mut cluster_size = 0;
+        let self_ip = get_private_ip().await;
+        let dns = DNS::new(&domain);
+        if let (Ok(dns), Ok(self_ip)) = (&dns, &self_ip) {
+          loop {
+            let vms = match dns.get_vms(&cluster_id).await {
+              Ok(vms) => Some(vms),
+              Err(err) => {
+                error!(NoDnsVms, "{}", err).await;
+                None
+              }
             };
-          } else {
-            // Debug print for now
-            println!("I am NOT the leader! :(");
-            println!(
-              "Me: {} Leader: {}",
-              self_ip,
-              control_port
-                .get_leader()
-                .map(|vm| vm.private_ip_addr.clone())
-                .unwrap_or("<None>".to_string())
-            );
-          }
-          if stats.len() >= 4 {
-            let mut factor = String::from("1");
-            let stats_factor = post_v1_stats(stats.to_owned(), &cluster_id, &deploy_token).await;
-            stats = Vec::new();
-            if let Ok(stats_factor) = stats_factor {
-              factor = stats_factor;
-            } else if let Err(err) = stats_factor {
-              error!(PostFailed, "{}", err).await;
+            // TODO: Figure out how to avoid flushing the LogRendezvousHash table every iteration, but
+            // avoid bugs with misidentifying cluster changes as not-changed
+            if let Some(vms) = vms {
+              cluster_size = vms.len();
+              control_port.update_vms(self_ip, vms).await;
             }
-            println!(
-              "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
-              cluster_id, cluster_size, factor
-            );
-            if factor != "1" {
-              post_v1_scale(&cluster_id, &agz_b64, &deploy_token, &factor).await;
+            if control_port.is_leader() {
+              // TODO: Should we keep these leader announcements in the stdout logging?
+              println!("I am leader!");
+              match get_v1_stats().await {
+                Ok(s) => stats.push(s),
+                Err(err) => error!(NoStats, "{}", err).await,
+              };
+            } else {
+              // Debug print for now
+              println!("I am NOT the leader! :(");
+              println!(
+                "Me: {} Leader: {}",
+                self_ip,
+                control_port
+                  .get_leader()
+                  .map(|vm| vm.private_ip_addr.clone())
+                  .unwrap_or("<None>".to_string())
+              );
             }
+            if stats.len() >= 4 {
+              let mut factor = String::from("1");
+              let stats_factor = post_v1_stats(stats.to_owned(), &cluster_id, &deploy_token).await;
+              stats = Vec::new();
+              if let Ok(stats_factor) = stats_factor {
+                factor = stats_factor;
+              } else if let Err(err) = stats_factor {
+                error!(PostFailed, "{}", err).await;
+              }
+              println!(
+                "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
+                cluster_id, cluster_size, factor
+              );
+              if factor != "1" {
+                post_v1_scale(&cluster_id, &agz_b64, &deploy_token, &factor).await;
+              }
+            }
+            control_port.check_cluster_health().await;
+            sleep(period).await;
           }
-          control_port.check_cluster_health().await;
-          sleep(period).await;
+        } else if let Err(dns_err) = &dns {
+          error!(NoDns, "DNS error: {}", dns_err).await;
+          std::process::exit(1);
+        } else if let Err(self_ip_err) = &self_ip {
+          error!(NoPrivateIp, "Private ip error: {}", self_ip_err).await;
+          std::process::exit(1);
         }
-      } else if let Err(dns_err) = &dns {
-        error!(NoDns, "DNS error: {}", dns_err).await;
-        std::process::exit(1);
-      } else if let Err(self_ip_err) = &self_ip {
-        error!(NoPrivateIp, "Private ip error: {}", self_ip_err).await;
-        std::process::exit(1);
-      }
-    });
+      });
+    };
     if let Err(err) = run_agz_b64(&agz_b64).await {
       error!(RunAgzFailed, "{:?}", err).await;
       std::process::exit(1);
