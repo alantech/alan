@@ -1341,8 +1341,8 @@ fn warn_if_burstable(vm_type: &str) -> () {
   if BURSTABLE_VMS.contains(&vm_type) {
     println!(
       "WARNING: You have selected a burstable virtual machine type. \
-      This virtual machine types can misbehave under heavy load and \
-      do not work properly with our autoscaler"
+      These virtual machine types can misbehave under heavy load and \
+      do not work correctly with our automatic scale."
     )
   };
 }
@@ -1352,7 +1352,7 @@ fn warn_if_small(vm_type: &str) -> () {
   if SMALL_VM_TYPES.contains(&vm_type) {
     println!(
       "WARNING: You have selected a small virtual machine type. \
-      This virtual machine types can underperform and take more time to start"
+      These virtual machine types can underperform and take more time to start"
     )
   };
 }
