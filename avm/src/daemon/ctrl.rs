@@ -623,4 +623,133 @@ impl ControlPort {
     let pb = protos::HandlerMemory::HandlerMemory::parse_from_bytes(&bytes)?;
     Ok(HandlerMemory::from_pb(&pb)?)
   }
+
+  pub async fn dsgetv(self: &ControlPort, key: &str) -> Option<Arc<HandlerMemory>> {
+    match self.dsgetv_inner(key).await {
+      Ok(hm) => Some(hm),
+      Err(_) => None,
+    }
+  }
+
+  async fn dsgetv_inner(self: &ControlPort, key: &str) -> DaemonResult<Arc<HandlerMemory>> {
+    let vm = self.get_vm_for_key(key);
+    let url = format!("https://{}:4142/datastore/getv", vm.public_ip_addr);
+    let req = Request::builder().method("POST").uri(url);
+    let cluster_secret = CLUSTER_SECRET.get().unwrap().as_ref().unwrap().clone();
+    let req = req.header(cluster_secret.as_str(), "true");
+    let req_obj = req.body(Body::from(
+      json!(DSGet {
+        nskey: key.to_string()
+      })
+      .to_string(),
+    ))?;
+    let mut res = self.client.request(req_obj).await?;
+    let bytes = hyper::body::to_bytes(res.body_mut()).await?;
+    let pb = protos::HandlerMemory::HandlerMemory::parse_from_bytes(&bytes)?;
+    Ok(HandlerMemory::from_pb(&pb)?)
+  }
+
+  pub async fn dshas(self: &ControlPort, key: &str) -> bool {
+    match self.dshas_inner(key).await {
+      Ok(has) => has,
+      Err(_) => false,
+    }
+  }
+
+  async fn dshas_inner(self: &ControlPort, key: &str) -> DaemonResult<bool> {
+    let vm = self.get_vm_for_key(key);
+    let url = format!("https://{}:4142/datastore/has", vm.public_ip_addr);
+    let req = Request::builder().method("POST").uri(url);
+    let cluster_secret = CLUSTER_SECRET.get().unwrap().as_ref().unwrap().clone();
+    let req = req.header(cluster_secret.as_str(), "true");
+    let req_obj = req.body(Body::from(
+      json!(DSGet {
+        nskey: key.to_string()
+      })
+      .to_string(),
+    ))?;
+    let mut res = self.client.request(req_obj).await?;
+    let bytes = hyper::body::to_bytes(res.body_mut()).await?;
+    Ok(std::str::from_utf8(&bytes)? == "true")
+  }
+
+  pub async fn dsdel(self: &ControlPort, key: &str) -> bool {
+    match self.dsdel_inner(key).await {
+      Ok(has) => has,
+      Err(_) => false,
+    }
+  }
+
+  async fn dsdel_inner(self: &ControlPort, key: &str) -> DaemonResult<bool> {
+    let vm = self.get_vm_for_key(key);
+    let url = format!("https://{}:4142/datastore/del", vm.public_ip_addr);
+    let req = Request::builder().method("POST").uri(url);
+    let cluster_secret = CLUSTER_SECRET.get().unwrap().as_ref().unwrap().clone();
+    let req = req.header(cluster_secret.as_str(), "true");
+    let req_obj = req.body(Body::from(
+      json!(DSGet {
+        nskey: key.to_string()
+      })
+      .to_string(),
+    ))?;
+    let mut res = self.client.request(req_obj).await?;
+    let bytes = hyper::body::to_bytes(res.body_mut()).await?;
+    Ok(std::str::from_utf8(&bytes)? == "true")
+  }
+
+  pub async fn dssetf(self: &ControlPort, key: &str, val: &Arc<HandlerMemory>) -> bool {
+    match self.dssetf_inner(key, val).await {
+      Ok(set) => set,
+      Err(_) => false,
+    }
+  }
+
+  async fn dssetf_inner(
+    self: &ControlPort,
+    key: &str,
+    val: &Arc<HandlerMemory>,
+  ) -> DaemonResult<bool> {
+    let vm = self.get_vm_for_key(key);
+    let url = format!("https://{}:4142/datastore/setf", vm.public_ip_addr);
+    let mut hm = HandlerMemory::new(None, 1)?;
+    hm.write_fractal(0, &HandlerMemory::str_to_fractal(key))?;
+    HandlerMemory::transfer(val, 0, &mut hm, 1)?;
+    let mut out = vec![];
+    hm.to_pb().write_to_vec(&mut out).unwrap();
+    let req = Request::builder().method("POST").uri(url);
+    let cluster_secret = CLUSTER_SECRET.get().unwrap().as_ref().unwrap().clone();
+    let req = req.header(cluster_secret.as_str(), "true");
+    let req_obj = req.body(Body::from(out))?;
+    let mut res = self.client.request(req_obj).await?;
+    let bytes = hyper::body::to_bytes(res.body_mut()).await?;
+    Ok(std::str::from_utf8(&bytes)? == "true")
+  }
+
+  pub async fn dssetv(self: &ControlPort, key: &str, val: &Arc<HandlerMemory>) -> bool {
+    match self.dssetv_inner(key, val).await {
+      Ok(set) => set,
+      Err(_) => false,
+    }
+  }
+
+  async fn dssetv_inner(
+    self: &ControlPort,
+    key: &str,
+    val: &Arc<HandlerMemory>,
+  ) -> DaemonResult<bool> {
+    let vm = self.get_vm_for_key(key);
+    let url = format!("https://{}:4142/datastore/setv", vm.public_ip_addr);
+    let mut hm = HandlerMemory::new(None, 1)?;
+    hm.write_fractal(0, &HandlerMemory::str_to_fractal(key))?;
+    HandlerMemory::transfer(val, 0, &mut hm, 1)?;
+    let mut out = vec![];
+    hm.to_pb().write_to_vec(&mut out).unwrap();
+    let req = Request::builder().method("POST").uri(url);
+    let cluster_secret = CLUSTER_SECRET.get().unwrap().as_ref().unwrap().clone();
+    let req = req.header(cluster_secret.as_str(), "true");
+    let req_obj = req.body(Body::from(out))?;
+    let mut res = self.client.request(req_obj).await?;
+    let bytes = hyper::body::to_bytes(res.body_mut()).await?;
+    Ok(std::str::from_utf8(&bytes)? == "true")
+  }
 }
