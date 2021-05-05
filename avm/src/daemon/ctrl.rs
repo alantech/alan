@@ -22,20 +22,22 @@ use hyper_openssl::HttpsConnector;
 use once_cell::sync::OnceCell;
 use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
 //use rustls::ClientConfig;
-use twox_hash::XxHash64;
-use serde::{Deserialize, Serialize};
 use protobuf::Message;
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+use twox_hash::XxHash64;
 
 use crate::daemon::daemon::{DaemonProperties, DaemonResult, CLUSTER_SECRET, DAEMON_PROPS};
 use crate::daemon::dns::VMMetadata;
 use crate::make_server;
 use crate::vm::http::{HttpType, HttpsConfig};
-use crate::vm::memory::{CLOSURE_ARG_MEM_START, HandlerMemory};
+use crate::vm::memory::{HandlerMemory, CLOSURE_ARG_MEM_START};
 use crate::vm::opcode::{DS, REGION_VMS};
+use crate::vm::protos;
 
 pub static NAIVE_CLIENT: OnceCell<Client<HttpsConnector<HttpConnector>>> = OnceCell::new();
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct HashedId {
   pub id: String,
   pub hash: u64,
@@ -57,7 +59,7 @@ impl HashedId {
 // An algorithm based on the classic Rendezvous Hash but with changes to make the performance
 // closer to modern Consistent Hash algorithms while retaining Rendezvous Hash's coordination-free
 // routing.
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct LogRendezvousHash {
   sorted_hashes: Vec<HashedId>,
 }
@@ -130,7 +132,7 @@ impl LogRendezvousHash {
   }
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct ControlPort {
   lrh: LogRendezvousHash,
   client: Client<HttpsConnector<HttpConnector>>,
@@ -234,7 +236,7 @@ async fn handle_dsgetf(req: Request<Body>) -> Result<Response<Body>, Infallible>
       let mut out = vec![];
       hand_mem.to_pb().write_to_vec(&mut out).unwrap();
       Ok(Response::builder().status(200).body(out.into()).unwrap())
-    },
+    }
     Err(err) => {
       // TODO: What error message here? Also should this also be a valid HM out of here?
       eprintln!("{:?}", err);
@@ -254,7 +256,10 @@ async fn dsgetf_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
   hand_mem.push_fixed(0, if maybe_hm.is_some() { 1i64 } else { 0i64 })?;
   match maybe_hm {
     Some(hm) => hand_mem.push_fixed(0, hm.read_fixed(0)?),
-    None => hand_mem.push_fractal(0, HandlerMemory::str_to_fractal("namespace-key pair not found")),
+    None => hand_mem.push_fractal(
+      0,
+      HandlerMemory::str_to_fractal("namespace-key pair not found"),
+    ),
   }?;
   Ok(hand_mem)
 }
@@ -265,7 +270,7 @@ async fn handle_dsgetv(req: Request<Body>) -> Result<Response<Body>, Infallible>
       let mut out = vec![];
       hand_mem.to_pb().write_to_vec(&mut out).unwrap();
       Ok(Response::builder().status(200).body(out.into()).unwrap())
-    },
+    }
     Err(err) => {
       // TODO: What error message here? Also should this also be a valid HM out of here?
       eprintln!("{:?}", err);
@@ -287,9 +292,12 @@ async fn dsgetv_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
     Some(hm) => {
       HandlerMemory::transfer(&hm, 0, &mut hand_mem, CLOSURE_ARG_MEM_START)?;
       hand_mem.push_register(0, CLOSURE_ARG_MEM_START)?;
-    },
+    }
     None => {
-      hand_mem.push_fractal(0, HandlerMemory::str_to_fractal("namespace-key pair not found"))?;
+      hand_mem.push_fractal(
+        0,
+        HandlerMemory::str_to_fractal("namespace-key pair not found"),
+      )?;
     }
   };
   Ok(hand_mem)
@@ -297,7 +305,12 @@ async fn dsgetv_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
 
 async fn handle_dshas(req: Request<Body>) -> Result<Response<Body>, Infallible> {
   match dshas_inner(req).await {
-    Ok(has) => Ok(Response::builder().status(200).body(has.to_string().into()).unwrap()),
+    Ok(has) => Ok(
+      Response::builder()
+        .status(200)
+        .body(has.to_string().into())
+        .unwrap(),
+    ),
     Err(err) => {
       // TODO: What error message here? Also should this also be a valid HM out of here?
       eprintln!("{:?}", err);
@@ -316,7 +329,12 @@ async fn dshas_inner(req: Request<Body>) -> DaemonResult<bool> {
 
 async fn handle_dsdel(req: Request<Body>) -> Result<Response<Body>, Infallible> {
   match dsdel_inner(req).await {
-    Ok(del) => Ok(Response::builder().status(200).body(del.to_string().into()).unwrap()),
+    Ok(del) => Ok(
+      Response::builder()
+        .status(200)
+        .body(del.to_string().into())
+        .unwrap(),
+    ),
     Err(err) => {
       // TODO: What error message here? Also should this also be a valid HM out of here?
       eprintln!("{:?}", err);
@@ -334,25 +352,52 @@ async fn dsdel_inner(req: Request<Body>) -> DaemonResult<bool> {
 }
 
 async fn handle_dssetf(req: Request<Body>) -> Result<Response<Body>, Infallible> {
-  // Receive POST and save daemon properties
-  match get_daemon_props(req).await {
-    Ok(_) => Ok(Response::builder().status(200).body("ok".into()).unwrap()),
+  match dssetf_inner(req).await {
+    Ok(_) => Ok(Response::builder().status(200).body("true".into()).unwrap()),
     Err(err) => {
-      error!(DaemonStartFailed, "{:?}", err).await;
+      // TODO: What error message here? Also should this also be a valid HM out of here?
+      eprintln!("{:?}", err);
       Ok(Response::builder().status(500).body("fail".into()).unwrap())
     }
   }
 }
 
+async fn dssetf_inner(req: Request<Body>) -> DaemonResult<()> {
+  // For now assume this was directed at the right node, later on add some auto-forwarding logic
+  let bytes = body::to_bytes(req.into_body()).await?;
+  let pb = protos::HandlerMemory::HandlerMemory::parse_from_bytes(&bytes)?;
+  let hand_mem = HandlerMemory::from_pb(&pb)?;
+  let nskey = HandlerMemory::fractal_to_string(hand_mem.read_fractal(0)?)?;
+  let val = hand_mem.read_fixed(1)?;
+  let mut hm = HandlerMemory::new(None, 1)?;
+  hm.write_fixed(0, val)?;
+  let ds = Arc::clone(&DS);
+  ds.insert(nskey, hm);
+  Ok(())
+}
+
 async fn handle_dssetv(req: Request<Body>) -> Result<Response<Body>, Infallible> {
-  // Receive POST and save daemon properties
-  match get_daemon_props(req).await {
-    Ok(_) => Ok(Response::builder().status(200).body("ok".into()).unwrap()),
+  match dssetv_inner(req).await {
+    Ok(_) => Ok(Response::builder().status(200).body("true".into()).unwrap()),
     Err(err) => {
-      error!(DaemonStartFailed, "{:?}", err).await;
+      // TODO: What error message here? Also should this also be a valid HM out of here?
+      eprintln!("{:?}", err);
       Ok(Response::builder().status(500).body("fail".into()).unwrap())
     }
   }
+}
+
+async fn dssetv_inner(req: Request<Body>) -> DaemonResult<()> {
+  // For now assume this was directed at the right node, later on add some auto-forwarding logic
+  let bytes = body::to_bytes(req.into_body()).await?;
+  let pb = protos::HandlerMemory::HandlerMemory::parse_from_bytes(&bytes)?;
+  let hand_mem = HandlerMemory::from_pb(&pb)?;
+  let nskey = HandlerMemory::fractal_to_string(hand_mem.read_fractal(0)?)?;
+  let mut hm = HandlerMemory::new(None, 1)?;
+  HandlerMemory::transfer(&hand_mem, 1, &mut hm, 0)?;
+  let ds = Arc::clone(&DS);
+  ds.insert(nskey, hm);
+  Ok(())
 }
 
 // TODO: Revive once rustls supports IP addresses
@@ -550,7 +595,32 @@ impl ControlPort {
   pub fn is_key_owner(self: &ControlPort, key: &str) -> bool {
     match &self.self_vm {
       Some(my) => self.get_vm_for_key(key).private_ip_addr == my.private_ip_addr,
-      None => false
+      None => false,
     }
+  }
+
+  pub async fn dsgetf(self: &ControlPort, key: &str) -> Option<Arc<HandlerMemory>> {
+    match self.dsgetf_inner(key).await {
+      Ok(hm) => Some(hm),
+      Err(_) => None,
+    }
+  }
+
+  async fn dsgetf_inner(self: &ControlPort, key: &str) -> DaemonResult<Arc<HandlerMemory>> {
+    let vm = self.get_vm_for_key(key);
+    let url = format!("https://{}:4142/datastore/getf", vm.public_ip_addr);
+    let req = Request::builder().method("POST").uri(url);
+    let cluster_secret = CLUSTER_SECRET.get().unwrap().as_ref().unwrap().clone();
+    let req = req.header(cluster_secret.as_str(), "true");
+    let req_obj = req.body(Body::from(
+      json!(DSGet {
+        nskey: key.to_string()
+      })
+      .to_string(),
+    ))?;
+    let mut res = self.client.request(req_obj).await?;
+    let bytes = hyper::body::to_bytes(res.body_mut()).await?;
+    let pb = protos::HandlerMemory::HandlerMemory::parse_from_bytes(&bytes)?;
+    Ok(HandlerMemory::from_pb(&pb)?)
   }
 }

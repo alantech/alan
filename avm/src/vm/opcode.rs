@@ -3742,18 +3742,18 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let nskey = format!("{}:{}", ns, key);
       let ds = Arc::clone(&DS);
       let ctrl_port = CONTROL_PORT_CHANNEL.get();
+      let ctrl_port = match ctrl_port {
+        Some(ctrl_port) => Some(ctrl_port.borrow().clone()), // TODO: Use thread-local storage
+        None => None,
+      };
       let is_key_owner = match ctrl_port {
-        Some(ctrl_port) => {
-          let ctrl_port = ctrl_port.borrow().clone(); // TODO: Use thread-local storage
-          ctrl_port.is_key_owner(&nskey)
-        },
+        Some(ref ctrl_port) => ctrl_port.is_key_owner(&nskey),
         None => true,
       };
       let maybe_hm = if is_key_owner {
-        ds.get(&nskey)
+        ds.get(&nskey).map(|hm| hm.clone())
       } else {
-        // TODO
-        None
+        ctrl_port.unwrap().dsgetf(&nskey).await
       };
       hand_mem.init_fractal(args[2])?;
       hand_mem.push_fixed(args[2], if maybe_hm.is_some() { 1i64 } else { 0i64 })?;
