@@ -227,7 +227,7 @@ async fn generate_token() -> String {
   let body = json!({
     "deployConfig": deploy::get_config().await,
   });
-  post_v1("token", body).await
+  post_v1("localDaemonToken", body).await
 }
 
 async fn set_local_daemon_props() -> () {
