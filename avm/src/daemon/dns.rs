@@ -13,6 +13,7 @@ pub struct DNS {
 #[derive(Clone, Debug)]
 pub struct VMMetadata {
   schema_version: String,
+  pub(crate) public_ip_addr: String,
   pub(crate) private_ip_addr: String,
   pub(crate) alan_version: String,
   pub(crate) region: String,
@@ -35,6 +36,7 @@ impl VMMetadata {
         Ok(VMMetadata {
           schema_version: parts[0].to_string(),
           alan_version: parts[1].to_string(),
+          public_ip_addr: parts[3].to_string(),
           private_ip_addr: parts[4].to_string(),
           region: parts[5].to_string(),
           cloud: parts[6].to_string(),

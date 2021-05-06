@@ -13,6 +13,7 @@ use tokio::time::{sleep, Duration};
 
 use crate::daemon::daemon::DaemonResult;
 
+#[allow(non_snake_case)]
 #[derive(Debug, Clone, Serialize)]
 pub struct CPUSecsV1 {
   user: f64,
