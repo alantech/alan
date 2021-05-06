@@ -237,7 +237,7 @@ async fn set_local_daemon_props() -> () {
     .unwrap();
 }
 
-fn maybe_set_local_certs() -> () {
+fn create_certs_if_local() -> () {
   if ALAN_TECH_ENV.as_str() == "local" {
     // Self signed certs for local dev
     // openssl req -newkey rsa:2048 -nodes -keyout key.pem -x509 -days 365 -out certificate.pem -subj "/C=US/ST=California/O=Alan Technologies, Inc/CN=*.anycloudapp.com"
@@ -285,7 +285,7 @@ async fn get_daemon_props() -> Option<&'static DaemonProperties> {
 }
 
 pub async fn start() {
-  maybe_set_local_certs();
+  create_certs_if_local();
   let mut control_port = ControlPort::start().await;
   if let Some(daemon_props) = get_daemon_props().await {
     let cluster_id = &daemon_props.clusterId;
