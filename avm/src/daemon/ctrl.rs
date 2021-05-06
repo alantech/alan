@@ -248,8 +248,7 @@ async fn dsgetf_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
   // TODO: For now assume this was directed at the right node, later on add auto-forwarding logic
   let bytes = body::to_bytes(req.into_body()).await?;
   let body: DSGet = serde_json::from_slice(&bytes).unwrap();
-  let ds = Arc::clone(&DS);
-  let maybe_hm = ds.get(&body.nskey);
+  let maybe_hm = DS.get(&body.nskey);
   let mut hand_mem = HandlerMemory::new(None, 1)?;
   hand_mem.init_fractal(0)?;
   hand_mem.push_fixed(0, if maybe_hm.is_some() { 1i64 } else { 0i64 })?;
@@ -282,8 +281,7 @@ async fn dsgetv_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
   // TODO: For now assume this was directed at the right node, later on add auto-forwarding logic
   let bytes = body::to_bytes(req.into_body()).await?;
   let body: DSGet = serde_json::from_slice(&bytes).unwrap();
-  let ds = Arc::clone(&DS);
-  let maybe_hm = ds.get(&body.nskey);
+  let maybe_hm = DS.get(&body.nskey);
   let mut hand_mem = HandlerMemory::new(None, 1)?;
   hand_mem.init_fractal(0)?;
   hand_mem.push_fixed(0, if maybe_hm.is_some() { 1i64 } else { 0i64 })?;
@@ -322,8 +320,7 @@ async fn dshas_inner(req: Request<Body>) -> DaemonResult<bool> {
   // TODO: For now assume this was directed at the right node, later on add auto-forwarding logic
   let bytes = body::to_bytes(req.into_body()).await?;
   let body: DSGet = serde_json::from_slice(&bytes).unwrap();
-  let ds = Arc::clone(&DS);
-  Ok(ds.contains_key(&body.nskey))
+  Ok(DS.contains_key(&body.nskey))
 }
 
 async fn handle_dsdel(req: Request<Body>) -> Result<Response<Body>, Infallible> {
@@ -346,8 +343,7 @@ async fn dsdel_inner(req: Request<Body>) -> DaemonResult<bool> {
   // TODO: For now assume this was directed at the right node, later on add auto-forwarding logic
   let bytes = body::to_bytes(req.into_body()).await?;
   let body: DSGet = serde_json::from_slice(&bytes).unwrap();
-  let ds = Arc::clone(&DS);
-  Ok(ds.remove(&body.nskey).is_some())
+  Ok(DS.remove(&body.nskey).is_some())
 }
 
 async fn handle_dssetf(req: Request<Body>) -> Result<Response<Body>, Infallible> {
@@ -370,8 +366,7 @@ async fn dssetf_inner(req: Request<Body>) -> DaemonResult<()> {
   let val = hand_mem.read_fixed(1)?;
   let mut hm = HandlerMemory::new(None, 1)?;
   hm.write_fixed(0, val)?;
-  let ds = Arc::clone(&DS);
-  ds.insert(nskey, hm);
+  DS.insert(nskey, hm);
   Ok(())
 }
 
@@ -394,8 +389,7 @@ async fn dssetv_inner(req: Request<Body>) -> DaemonResult<()> {
   let nskey = HandlerMemory::fractal_to_string(hand_mem.read_fractal(0)?)?;
   let mut hm = HandlerMemory::new(None, 1)?;
   HandlerMemory::transfer(&hand_mem, 1, &mut hm, 0)?;
-  let ds = Arc::clone(&DS);
-  ds.insert(nskey, hm);
+  DS.insert(nskey, hm);
   Ok(())
 }
 
