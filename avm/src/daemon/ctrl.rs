@@ -100,20 +100,17 @@ impl LogRendezvousHash {
   }
 
   pub fn get_primary_node_id(&self, key: &str) -> &str {
-    eprintln!("LRH: {:?}", self);
     self.get_assigned_nodes_id(key)[0]
   }
 
   pub fn get_assigned_nodes_id(&self, key: &str) -> Vec<&str> {
     let top = cmp::min(3, self.sorted_hashes.len());
     let mut idx = self.get_idx_for_key(key);
-    eprintln!("Main index: {}", idx);
     let mut ids: Vec<&str> = Vec::new();
     for _ in 0..top {
       ids.push(&self.sorted_hashes[idx].id);
       idx = (idx + 1) % self.sorted_hashes.len();
     }
-    eprintln!("Selected ids: {:?}", ids);
     ids
   }
 
@@ -124,7 +121,6 @@ impl LogRendezvousHash {
     let mut key_hasher = XxHash64::with_seed(0xa1a2);
     key_hasher.write(key.as_bytes());
     let key_hash = key_hasher.finish() % (l as u64);
-    eprintln!("key: {} key_hash: {}", key, key_hash);
     let idx = match self
       .sorted_hashes
       .binary_search_by(|a| a.hash.cmp(&key_hash))
