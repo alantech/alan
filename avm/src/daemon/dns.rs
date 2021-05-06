@@ -48,9 +48,9 @@ impl VMMetadata {
     Ok(vec![VMMetadata {
       schema_version: "v1".to_string(),
       alan_version: option_env!("CARGO_PKG_VERSION").unwrap().to_string(),
-      cloud: "AWS".to_string(),
+      cloud: "LOCAL".to_string(),
       private_ip_addr: "127.0.0.1".to_string(),
-      region: "eu-west-1".to_string(),
+      region: "localhost".to_string(),
     }])
   }
 }
