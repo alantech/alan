@@ -27,6 +27,73 @@ const FORBIDDEN_OPERATION: &str =
 const NAME_CONFLICT: &str = "Another application with same App ID already exists.";
 const UNAUTHORIZED_OPERATION: &str =
   "Invalid AnyCloud authentication credentials. Please retry and you will be asked to reauthenticate.";
+const BURSTABLE_VM_TYPES: [&'static str; 43] = [
+  // AWS: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/burstable-performance-instances.html
+  "t2.nano",
+  "t2.micro",
+  "t2.small",
+  "t2.medium",
+  "t2.large",
+  "t2.xlarge",
+  "t2.2xlarge",
+  "t3.nano",
+  "t3.micro",
+  "t3.small",
+  "t3.medium",
+  "t3.large",
+  "t3.xlarge",
+  "t3.2xlarge",
+  "t3a.nano",
+  "t3a.micro",
+  "t3a.small",
+  "t3a.medium",
+  "t3a.large",
+  "t3a.xlarge",
+  "t3a.2xlarge",
+  "t4g.nano",
+  "t4g.micro",
+  "t4g.small",
+  "t4g.medium",
+  "t4g.large",
+  "t4g.xlarge",
+  "t4g.2xlarge",
+  // GCP: https://cloud.google.com/compute/docs/machine-types#cpu-bursting
+  "f1-micro",
+  "g1-small",
+  "e2-micro",
+  "e2-small",
+  "e2-medium",
+  // Azure: https://docs.microsoft.com/en-us/azure/virtual-machines/sizes-b-series-burstable
+  "Standard_B1ls",
+  "Standard_B1s",
+  "Standard_B1ms",
+  "Standard_B2s",
+  "Standard_B2ms",
+  "Standard_B4ms",
+  "Standard_B8ms",
+  "Standard_B12ms",
+  "Standard_B16ms",
+  "Standard_B20ms",
+];
+// VM types with 1GB of memory or less
+// AWS: aws ec2 describe-instance-types --filters Name=memory-info.size-in-mib,Values=512,1024 | jq '.InstanceTypes[] | .InstanceType'
+// GCP: gcloud compute machine-types list --filter="memoryMb:(512 1024)" --format json | jq '.[] | .name'
+// Azure: az vm list-sizes -l westus | jq '.[] | if .memoryInMb <= 1024 then .name else "" end'
+const SMALL_VM_TYPES: [&'static str; 13] = [
+  "t4g.nano",
+  "t2.micro",
+  "t3.micro",
+  "t4g.micro",
+  "t3.nano",
+  "t2.nano",
+  "t3a.nano",
+  "t3a.micro",
+  "e2-micro",
+  "Standard_B1ls",
+  "Standard_B1s",
+  "Standard_A0",
+  "Basic_A0",
+];
 
 #[derive(Deserialize, Debug, Clone, Serialize)]
 pub struct AWSCLICredentialsFile {
@@ -541,8 +608,7 @@ pub async fn add_deploy_config() {
       "Do you want to select which virtual machine type to use for this Deploy Config?",
       false,
     ) {
-      let input_vm_type: String = input_prompt("Virtual machine type");
-      vm_type = Some(input_vm_type);
+      vm_type = get_some_vm_type_input();
     };
     cloud_configs.push(DeployConfig {
       credentialsName: cred,
@@ -671,8 +737,7 @@ pub async fn edit_deploy_config() {
         "Do you want to edit the virtual machine type for this Deploy Config?",
         true,
       ) {
-        let input_vm_type: String = input_prompt("Virtual machine type");
-        vm_type = Some(input_vm_type);
+        vm_type = get_some_vm_type_input();
       } else {
         vm_type = Some(vm_t.to_string());
       }
@@ -681,8 +746,7 @@ pub async fn edit_deploy_config() {
         "Do you want to select which virtual machine type to use for this Deploy Config?",
         false,
       ) {
-        let input_vm_type: String = input_prompt("Virtual machine type");
-        vm_type = Some(input_vm_type);
+        vm_type = get_some_vm_type_input();
       };
     }
     new_cloud_configs.push(DeployConfig {
@@ -1262,4 +1326,54 @@ fn input_prompt(prompt: &str) -> String {
     .with_prompt(prompt)
     .interact_text()
     .unwrap()
+}
+
+fn is_burstable(vm_type: &str) -> bool {
+  BURSTABLE_VM_TYPES.contains(&vm_type)
+}
+
+fn is_small(vm_type: &str) -> bool {
+  SMALL_VM_TYPES.contains(&vm_type)
+}
+
+fn print_vm_type_warns(vm_type: &str) -> () {
+  if is_burstable(vm_type) {
+    print_burstable_vm_warn();
+  }
+  if is_small(vm_type) {
+    print_small_vm_warn();
+  }
+}
+
+fn print_burstable_vm_warn() -> () {
+  println!(
+    "WARNING: You have selected a burstable virtual machine type. \
+    These virtual machine types can misbehave under heavy load and \
+    do not work correctly with our automatic scale."
+  )
+}
+
+// Warn if user choose a machine type with 1GB or less memory
+fn print_small_vm_warn() -> () {
+  println!(
+    "WARNING: You have selected a virtual machine type that is too small. \
+    These virtual machine types can underperform and take more time to start."
+  )
+}
+
+fn get_some_vm_type_input() -> Option<String> {
+  loop {
+    let input_vm_type: String = input_prompt("Virtual machine type");
+    if is_burstable(&input_vm_type) || is_small(&input_vm_type) {
+      print_vm_type_warns(&input_vm_type);
+      if confirm_prompt(
+        "Are you sure you want to continue with the selected virtual machine type?",
+        false,
+      ) {
+        return Some(input_vm_type);
+      }
+    } else {
+      return Some(input_vm_type);
+    }
+  }
 }
