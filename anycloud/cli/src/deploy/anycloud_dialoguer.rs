@@ -1,4 +1,4 @@
-use dialoguer::{theme::ColorfulTheme, Confirm, Input, Select};
+use dialoguer::{theme::ColorfulTheme, Confirm, Input, Select, Validator};
 
 pub fn select_with_default(prompt: &str, items: &Vec<String>, default: usize) -> usize {
   Select::with_theme(&ColorfulTheme::default())
@@ -9,15 +9,18 @@ pub fn select_with_default(prompt: &str, items: &Vec<String>, default: usize) ->
     .unwrap()
 }
 
-// pub fn input_with_default_and_validation<F>(prompt: &str, default: String, validation_fn: F) -> String
-// where F: FnMut(&String) -> Result<(), &str> {
-//   Input::with_theme(&ColorfulTheme::default())
-//     .with_prompt(prompt)
-//     .validate_with(validation_fn)
-//     .default(default)
-//     .interact_text()
-//     .unwrap()
-// }
+pub fn input_with_default_and_validation(
+  prompt: &str,
+  default: String,
+  validator: impl Validator<String>,
+) -> String {
+  Input::with_theme(&ColorfulTheme::default())
+    .with_prompt(prompt)
+    .validate_with(validator)
+    .default(default)
+    .interact_text()
+    .unwrap()
+}
 
 pub fn confirm_with_default(prompt: &str, default: bool) -> bool {
   Confirm::with_theme(&ColorfulTheme::default())

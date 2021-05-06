@@ -1,4 +1,4 @@
-use dialoguer::{console::style, theme::ColorfulTheme, Input};
+use dialoguer::console::style;
 use hyper::{Request, StatusCode};
 use indicatif::ProgressBar;
 use serde::{Deserialize, Serialize};
@@ -222,19 +222,17 @@ pub async fn add_cred() -> String {
     0,
   );
   let cloud = &clouds[selection];
-  // TODO: Find a way to migrate passing the closure
-  let cred_name = Input::with_theme(&ColorfulTheme::default())
-    .with_prompt("Name for new Credential")
-    .validate_with(|input: &String| -> Result<(), &str> {
+  let cred_name = anycloud_dialoguer::input_with_default_and_validation(
+    "Name for new Credential",
+    cloud.to_lowercase(),
+    |input: &String| -> Result<(), &str> {
       if credentials.contains_key(input) {
         Err("Credential name already exists")
       } else {
         Ok(())
       }
-    })
-    .default(cloud.to_lowercase())
-    .interact_text()
-    .unwrap();
+    },
+  );
   let name = cred_name.to_string();
   match cloud.as_str() {
     "AWS" => {
@@ -503,19 +501,17 @@ pub async fn list_creds() {
 pub async fn add_deploy_config() {
   let mut deploy_configs = get_deploy_configs().await;
   let creds = get_creds().await;
-  // TODO: Find a way to migrate passing the closure
-  let name: String = Input::with_theme(&ColorfulTheme::default())
-    .with_prompt("Name for new Deploy Config")
-    .validate_with(|input: &String| -> Result<(), &str> {
+  let name: String = anycloud_dialoguer::input_with_default_and_validation(
+    "Name for new Deploy Config",
+    "staging".into(),
+    |input: &String| -> Result<(), &str> {
       if deploy_configs.contains_key(input) {
         Err("Deploy Config name already exists")
       } else {
         Ok(())
       }
-    })
-    .default("staging".into())
-    .interact_text()
-    .unwrap();
+    },
+  );
   let mut cloud_configs = Vec::new();
   if creds.len() == 0 {
     prompt_add_cred(false).await;
