@@ -117,18 +117,18 @@ impl LogRendezvousHash {
   // Runs a binary search for the record whose hash is closest to the key hash without
   // going over. If none are found, the *last* record in the list is returned as it wraps around.
   fn get_idx_for_key(&self, key: &str) -> usize {
-    let l = self.sorted_hashes.len();
     let mut key_hasher = XxHash64::with_seed(0xa1a2);
     key_hasher.write(key.as_bytes());
-    let key_hash = key_hasher.finish() % (l as u64);
+    let key_hash = key_hasher.finish();
     let idx = match self
       .sorted_hashes
       .binary_search_by(|a| a.hash.cmp(&key_hash))
     {
       Ok(res) => res,
-      // All were too large, implies last (which wraps around) owns it
-      Err(_) => l - 1,
+      Err(res) => res, // This is actually the last index less than the hash, which is what we want
     };
+    eprintln!("key_hash {} idx {}", key_hash, idx);
+    eprintln!("sorted_hashes {:?}", self.sorted_hashes);
     idx
   }
 }
@@ -247,7 +247,7 @@ async fn handle_dsgetf(req: Request<Body>) -> Result<Response<Body>, Infallible>
 }
 
 async fn dsgetf_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
-  // For now assume this was directed at the right node, later on add some auto-forwarding logic
+  // TODO: For now assume this was directed at the right node, later on add auto-forwarding logic
   let bytes = body::to_bytes(req.into_body()).await?;
   let body: DSGet = serde_json::from_slice(&bytes).unwrap();
   let ds = Arc::clone(&DS);
@@ -281,7 +281,7 @@ async fn handle_dsgetv(req: Request<Body>) -> Result<Response<Body>, Infallible>
 }
 
 async fn dsgetv_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
-  // For now assume this was directed at the right node, later on add some auto-forwarding logic
+  // TODO: For now assume this was directed at the right node, later on add auto-forwarding logic
   let bytes = body::to_bytes(req.into_body()).await?;
   let body: DSGet = serde_json::from_slice(&bytes).unwrap();
   let ds = Arc::clone(&DS);
@@ -321,7 +321,7 @@ async fn handle_dshas(req: Request<Body>) -> Result<Response<Body>, Infallible> 
 }
 
 async fn dshas_inner(req: Request<Body>) -> DaemonResult<bool> {
-  // For now assume this was directed at the right node, later on add some auto-forwarding logic
+  // TODO: For now assume this was directed at the right node, later on add auto-forwarding logic
   let bytes = body::to_bytes(req.into_body()).await?;
   let body: DSGet = serde_json::from_slice(&bytes).unwrap();
   let ds = Arc::clone(&DS);
@@ -345,7 +345,7 @@ async fn handle_dsdel(req: Request<Body>) -> Result<Response<Body>, Infallible> 
 }
 
 async fn dsdel_inner(req: Request<Body>) -> DaemonResult<bool> {
-  // For now assume this was directed at the right node, later on add some auto-forwarding logic
+  // TODO: For now assume this was directed at the right node, later on add auto-forwarding logic
   let bytes = body::to_bytes(req.into_body()).await?;
   let body: DSGet = serde_json::from_slice(&bytes).unwrap();
   let ds = Arc::clone(&DS);
@@ -364,7 +364,7 @@ async fn handle_dssetf(req: Request<Body>) -> Result<Response<Body>, Infallible>
 }
 
 async fn dssetf_inner(req: Request<Body>) -> DaemonResult<()> {
-  // For now assume this was directed at the right node, later on add some auto-forwarding logic
+  // TODO: For now assume this was directed at the right node, later on add auto-forwarding logic
   let bytes = body::to_bytes(req.into_body()).await?;
   let pb = protos::HandlerMemory::HandlerMemory::parse_from_bytes(&bytes)?;
   let hand_mem = HandlerMemory::from_pb(&pb)?;
@@ -389,7 +389,7 @@ async fn handle_dssetv(req: Request<Body>) -> Result<Response<Body>, Infallible>
 }
 
 async fn dssetv_inner(req: Request<Body>) -> DaemonResult<()> {
-  // For now assume this was directed at the right node, later on add some auto-forwarding logic
+  // TODO: For now assume this was directed at the right node, later on add auto-forwarding logic
   let bytes = body::to_bytes(req.into_body()).await?;
   let pb = protos::HandlerMemory::HandlerMemory::parse_from_bytes(&bytes)?;
   let hand_mem = HandlerMemory::from_pb(&pb)?;
