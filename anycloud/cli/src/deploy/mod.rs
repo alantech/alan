@@ -27,10 +27,8 @@ const FORBIDDEN_OPERATION: &str =
 const NAME_CONFLICT: &str = "Another application with same App ID already exists.";
 const UNAUTHORIZED_OPERATION: &str =
   "Invalid AnyCloud authentication credentials. Please retry and you will be asked to reauthenticate.";
-// AWS: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/burstable-performance-instances.html
-// GCP: https://cloud.google.com/compute/docs/machine-types#cpu-bursting
-// Azure: https://docs.microsoft.com/en-us/azure/virtual-machines/sizes-b-series-burstable
 const BURSTABLE_VM_TYPES: [&'static str; 43] = [
+  // AWS: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/burstable-performance-instances.html
   "t2.nano",
   "t2.micro",
   "t2.small",
@@ -59,11 +57,13 @@ const BURSTABLE_VM_TYPES: [&'static str; 43] = [
   "t4g.large",
   "t4g.xlarge",
   "t4g.2xlarge",
+  // GCP: https://cloud.google.com/compute/docs/machine-types#cpu-bursting
   "f1-micro",
   "g1-small",
   "e2-micro",
   "e2-small",
   "e2-medium",
+  // Azure: https://docs.microsoft.com/en-us/azure/virtual-machines/sizes-b-series-burstable
   "Standard_B1ls",
   "Standard_B1s",
   "Standard_B1ms",
@@ -1356,8 +1356,8 @@ fn print_burstable_vm_warn() -> () {
 // Warn if user choose a machine type with 1GB or less memory
 fn print_small_vm_warn() -> () {
   println!(
-    "WARNING: You have selected a small virtual machine type. \
-    These virtual machine types can underperform and take more time to start"
+    "WARNING: You have selected a virtual machine type that is too small. \
+    These virtual machine types can underperform and take more time to start."
   )
 }
 
