@@ -100,6 +100,7 @@ impl LogRendezvousHash {
   }
 
   pub fn get_primary_node_id(&self, key: &str) -> &str {
+    eprintln!("LRH: {:?}", self);
     self.get_assigned_nodes_id(key)[0]
   }
 
