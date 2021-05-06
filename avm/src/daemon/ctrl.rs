@@ -127,8 +127,6 @@ impl LogRendezvousHash {
       Ok(res) => res,
       Err(res) => res, // This is actually the last index less than the hash, which is what we want
     } % self.sorted_hashes.len();
-    eprintln!("key_hash {} idx {}", key_hash, idx);
-    eprintln!("sorted_hashes {:?}", self.sorted_hashes);
     idx
   }
 }
