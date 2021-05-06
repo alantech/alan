@@ -120,9 +120,10 @@ impl LogRendezvousHash {
   // Runs a binary search for the record whose hash is closest to the key hash without
   // going over. If none are found, the *last* record in the list is returned as it wraps around.
   fn get_idx_for_key(&self, key: &str) -> usize {
+    let l = self.sorted_hashes.len();
     let mut key_hasher = XxHash64::with_seed(0xa1a2);
     key_hasher.write(key.as_bytes());
-    let key_hash = key_hasher.finish();
+    let key_hash = key_hasher.finish() % (l as u64);
     eprintln!("key: {} key_hash: {}", key, key_hash);
     let idx = match self
       .sorted_hashes
@@ -130,7 +131,7 @@ impl LogRendezvousHash {
     {
       Ok(res) => res,
       // All were too large, implies last (which wraps around) owns it
-      Err(_) => self.sorted_hashes.len() - 1,
+      Err(_) => l - 1,
     };
     idx
   }
