@@ -223,6 +223,13 @@ fn create_app_tar(content: Option<&String>) -> () {
   }
 }
 
+async fn generate_token() -> String {
+  let body = json!({
+    "deployConfig": deploy::get_config().await,
+  });
+  post_v1("token", body).await
+}
+
 async fn set_local_daemon_props() -> () {
   let files_b64 = get_files_b64().await;
   create_app_tar(files_b64.get(&"app.tar.gz".to_string()));
@@ -230,7 +237,7 @@ async fn set_local_daemon_props() -> () {
     .set(DaemonProperties {
       clusterId: "daemon-local-cluster".to_string(),
       agzB64: get_base_agz_b64(),
-      deployToken: "dummy".to_string(),
+      deployToken: generate_token().await,
       domain: "alandeploy.com".to_string(),
       filesB64: files_b64,
     })
