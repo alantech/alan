@@ -593,10 +593,7 @@ impl ControlPort {
   }
 
   pub async fn dsgetf(self: &ControlPort, key: &str) -> Option<Arc<HandlerMemory>> {
-    match self.dsgetf_inner(key).await {
-      Ok(hm) => Some(hm),
-      Err(_) => None,
-    }
+    self.dsgetf_inner(key).await.ok()
   }
 
   async fn dsgetf_inner(self: &ControlPort, key: &str) -> DaemonResult<Arc<HandlerMemory>> {
@@ -618,10 +615,7 @@ impl ControlPort {
   }
 
   pub async fn dsgetv(self: &ControlPort, key: &str) -> Option<Arc<HandlerMemory>> {
-    match self.dsgetv_inner(key).await {
-      Ok(hm) => Some(hm),
-      Err(_) => None,
-    }
+    self.dsgetv_inner(key).await.ok()
   }
 
   async fn dsgetv_inner(self: &ControlPort, key: &str) -> DaemonResult<Arc<HandlerMemory>> {
@@ -643,10 +637,7 @@ impl ControlPort {
   }
 
   pub async fn dshas(self: &ControlPort, key: &str) -> bool {
-    match self.dshas_inner(key).await {
-      Ok(has) => has,
-      Err(_) => false,
-    }
+    self.dshas_inner(key).await.unwrap_or(false)
   }
 
   async fn dshas_inner(self: &ControlPort, key: &str) -> DaemonResult<bool> {
@@ -667,10 +658,7 @@ impl ControlPort {
   }
 
   pub async fn dsdel(self: &ControlPort, key: &str) -> bool {
-    match self.dsdel_inner(key).await {
-      Ok(has) => has,
-      Err(_) => false,
-    }
+    self.dsdel_inner(key).await.unwrap_or(false)
   }
 
   async fn dsdel_inner(self: &ControlPort, key: &str) -> DaemonResult<bool> {
@@ -691,10 +679,7 @@ impl ControlPort {
   }
 
   pub async fn dssetf(self: &ControlPort, key: &str, val: &Arc<HandlerMemory>) -> bool {
-    match self.dssetf_inner(key, val).await {
-      Ok(set) => set,
-      Err(_) => false,
-    }
+    self.dssetf_inner(key, val).await.unwrap_or(false)
   }
 
   async fn dssetf_inner(
@@ -719,10 +704,7 @@ impl ControlPort {
   }
 
   pub async fn dssetv(self: &ControlPort, key: &str, val: &Arc<HandlerMemory>) -> bool {
-    match self.dssetv_inner(key, val).await {
-      Ok(set) => set,
-      Err(_) => false,
-    }
+    self.dssetv_inner(key, val).await.unwrap_or(false)
   }
 
   async fn dssetv_inner(
