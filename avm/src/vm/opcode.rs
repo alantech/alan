@@ -3784,23 +3784,32 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         Some(ref ctrl_port) => ctrl_port.is_key_owner(&nskey),
         None => true,
       };
-      let maybe_hm = if is_key_owner {
-        ds.get(&nskey).map(|hm| hm.clone())
+      if is_key_owner {
+        hand_mem.init_fractal(args[2])?;
+        let maybe_hm = ds.get(&nskey);
+        match maybe_hm {
+          Some(hm) => {
+            hand_mem.push_fixed(args[2], 1i64)?;
+            HandlerMemory::transfer(&hm, 0, &mut hand_mem, CLOSURE_ARG_MEM_START)?;
+            hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START)?;
+          },
+          None => {
+            hand_mem.push_fixed(args[2], 0i64)?;
+            hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("namespace-key pair not found"))?;
+          },
+        }
       } else {
-        ctrl_port.unwrap().dsgetv(&nskey).await
-      };
-      eprintln!("Raw maybe_hm: {:?}", maybe_hm);
-      hand_mem.init_fractal(args[2])?;
-      match maybe_hm {
-        Some(hm) => {
-          hand_mem.push_fixed(args[2], 1i64)?;
-          HandlerMemory::transfer(&hm, 0, &mut hand_mem, CLOSURE_ARG_MEM_START)?;
-          hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START)?;
-        },
-        None => {
-          hand_mem.push_fixed(args[2], 0i64)?;
-          hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("namespace-key pair not found"))?;
-        },
+        let maybe_hm = ctrl_port.unwrap().dsgetv(&nskey).await;
+        match maybe_hm {
+          Some(hm) => {
+            HandlerMemory::transfer(&hm, 0, &mut hand_mem, args[2])?;
+          },
+          None => {
+            hand_mem.init_fractal(args[2])?;
+            hand_mem.push_fixed(args[2], 0i64)?;
+            hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("namespace-key pair not found"))?;
+          },
+        }
       }
       Ok(hand_mem)
     })
