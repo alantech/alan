@@ -1,15 +1,16 @@
 use std::env;
 
-use base64;
 use clap::{crate_name, crate_version, App, AppSettings, SubCommand};
 
-use anycloud::common::{get_app_tar_gz_b64, get_dockerfile_b64, get_env_file_b64};
+use anycloud::common::{
+  get_app_tar_gz_b64, get_base_agz_b64, get_dockerfile_b64, get_env_file_b64,
+};
 use anycloud::deploy;
 use anycloud::oauth::authenticate;
 
 #[tokio::main]
 pub async fn main() {
-  let anycloud_agz = base64::encode(include_bytes!("../alan/anycloud.agz"));
+  let anycloud_agz = get_base_agz_b64();
   let desc: &str = &format!("{}", env!("CARGO_PKG_DESCRIPTION"));
   let app = App::new(crate_name!())
     .version(crate_version!())
