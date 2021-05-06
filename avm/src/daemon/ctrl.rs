@@ -555,7 +555,7 @@ impl ControlPort {
   }
 
   pub async fn check_cluster_health(self: &mut ControlPort) {
-    let cluster_secret = CLUSTER_SECRET.get().unwrap().as_ref().unwrap().clone();
+    let cluster_secret = CLUSTER_SECRET.get().unwrap().clone().unwrap();
     let mut health = vec![];
     let nodes = self.lrh.get_mut_nodes();
     for node in nodes.iter() {
@@ -600,7 +600,7 @@ impl ControlPort {
     let vm = self.get_vm_for_key(key);
     let url = format!("https://{}:4142/datastore/getf", vm.public_ip_addr);
     let req = Request::builder().method("POST").uri(url);
-    let cluster_secret = CLUSTER_SECRET.get().unwrap().as_ref().unwrap().clone();
+    let cluster_secret = CLUSTER_SECRET.get().unwrap().clone().unwrap();
     let req = req.header(cluster_secret.as_str(), "true");
     let req_obj = req.body(Body::from(
       json!(DSGet {
@@ -622,7 +622,7 @@ impl ControlPort {
     let vm = self.get_vm_for_key(key);
     let url = format!("https://{}:4142/datastore/getv", vm.public_ip_addr);
     let req = Request::builder().method("POST").uri(url);
-    let cluster_secret = CLUSTER_SECRET.get().unwrap().as_ref().unwrap().clone();
+    let cluster_secret = CLUSTER_SECRET.get().unwrap().clone().unwrap();
     let req = req.header(cluster_secret.as_str(), "true");
     let req_obj = req.body(Body::from(
       json!(DSGet {
@@ -644,7 +644,7 @@ impl ControlPort {
     let vm = self.get_vm_for_key(key);
     let url = format!("https://{}:4142/datastore/has", vm.public_ip_addr);
     let req = Request::builder().method("POST").uri(url);
-    let cluster_secret = CLUSTER_SECRET.get().unwrap().as_ref().unwrap().clone();
+    let cluster_secret = CLUSTER_SECRET.get().unwrap().clone().unwrap();
     let req = req.header(cluster_secret.as_str(), "true");
     let req_obj = req.body(Body::from(
       json!(DSGet {
@@ -665,7 +665,7 @@ impl ControlPort {
     let vm = self.get_vm_for_key(key);
     let url = format!("https://{}:4142/datastore/del", vm.public_ip_addr);
     let req = Request::builder().method("POST").uri(url);
-    let cluster_secret = CLUSTER_SECRET.get().unwrap().as_ref().unwrap().clone();
+    let cluster_secret = CLUSTER_SECRET.get().unwrap().clone().unwrap();
     let req = req.header(cluster_secret.as_str(), "true");
     let req_obj = req.body(Body::from(
       json!(DSGet {
@@ -695,7 +695,7 @@ impl ControlPort {
     let mut out = vec![];
     hm.to_pb().write_to_vec(&mut out).unwrap();
     let req = Request::builder().method("POST").uri(url);
-    let cluster_secret = CLUSTER_SECRET.get().unwrap().as_ref().unwrap().clone();
+    let cluster_secret = CLUSTER_SECRET.get().unwrap().clone().unwrap();
     let req = req.header(cluster_secret.as_str(), "true");
     let req_obj = req.body(Body::from(out))?;
     let mut res = self.client.request(req_obj).await?;
@@ -720,7 +720,7 @@ impl ControlPort {
     let mut out = vec![];
     hm.to_pb().write_to_vec(&mut out).unwrap();
     let req = Request::builder().method("POST").uri(url);
-    let cluster_secret = CLUSTER_SECRET.get().unwrap().as_ref().unwrap().clone();
+    let cluster_secret = CLUSTER_SECRET.get().unwrap().clone().unwrap();
     let req = req.header(cluster_secret.as_str(), "true");
     let req_obj = req.body(Body::from(out))?;
     let mut res = self.client.request(req_obj).await?;
