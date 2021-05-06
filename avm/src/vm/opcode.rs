@@ -3789,6 +3789,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       } else {
         ctrl_port.unwrap().dsgetv(&nskey).await
       };
+      eprintln!("Raw maybe_hm: {:?}", maybe_hm);
       hand_mem.init_fractal(args[2])?;
       match maybe_hm {
         Some(hm) => {
