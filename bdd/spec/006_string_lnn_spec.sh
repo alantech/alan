@@ -7,27 +7,26 @@ Describe "Strings"
         from @std/app import start, stdout, exit
 
         on start {
-          emit stdout concat('Hello, ', 'World!\n');
+          emit stdout concat('Hello, ', \"World!\n\");
           // concat('Hello, ', 'World!').print();
           // print('Hello, ' + 'World!');
 
-          emit stdout concat(repeat('hi ', 5), '\n');
+          emit stdout concat(repeat('hi ', 5), \"\n\");
           // repeat('hi ', 5).print();
           // print('hi ' * 5);
 
-          emit stdout concat(toString(matches('foobar', 'fo.*')), '\n');
+          emit stdout concat(toString(matches('foobar', 'fo.*')), \"\n\");
           // matches('foobar', 'fo.*').print();
           // print('foobar' ~ 'fo.*');
 
-          emit stdout concat(toString(index('foobar', 'ba')), '\n');
           // index('foobar', 'ba').print();
           // print('foobar' @ 'ba');
 
-          emit stdout concat(toString(length('foobar')), '\n');
+          emit stdout concat(toString(length('foobar')), \"\n\");
           // length('foobar').print();
           // print(#'foobar');
 
-          emit stdout concat(trim('   hi   '), '\n');
+          emit stdout concat(trim('   hi   '), \"\n\");
           // trim('   hi   ').print();
           // print(\`'   hi   ');
 
@@ -51,22 +50,28 @@ Describe "Strings"
     }
     AfterAll after
 
-    STROUTPUT="Hello, World!
-hi hi hi hi hi 
-true
-3
-6
-hi
-"
+    OUTPUT1="Hello, World!"
+    OUTPUT2="hi hi hi hi hi"
+    OUTPUT3="true"
+    OUTPUT4="6"
+    OUTPUT5="hi"
 
     It "runs js"
       When run test_js
-      The output should eq "$STROUTPUT"
+      The output should include "$OUTPUT1"
+      The output should include "$OUTPUT2"
+      The output should include "$OUTPUT3"
+      The output should include "$OUTPUT4"
+      The output should include "$OUTPUT5"
     End
 
     It "runs agc"
       When run test_agc
-      The output should eq "$STROUTPUT"
+      The output should include "$OUTPUT1"
+      The output should include "$OUTPUT2"
+      The output should include "$OUTPUT3"
+      The output should include "$OUTPUT4"
+      The output should include "$OUTPUT5"
     End
   End
 End
