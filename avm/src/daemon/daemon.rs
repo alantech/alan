@@ -251,12 +251,6 @@ fn create_certs_if_local() -> () {
   if ALAN_TECH_ENV.as_str() == "local" {
     // Self signed certs for local dev
     // openssl req -newkey rsa:2048 -nodes -keyout key.pem -x509 -days 365 -out certificate.pem -subj "/C=US/ST=California/O=Alan Technologies, Inc/CN=*.anycloudapp.com"
-    // let subj = if cfg!(target_os = "windows") {
-    //   "//C=US\\ST=California\\O=Alan Technologies, Inc\\CN=*.anycloudapp.com"
-    // } else {
-    //   "/C=US/ST=California/O=Alan Technologies, Inc/CN=*.anycloudapp.com"
-    // };
-    let subj = "/C=US/ST=California/O=Alan Technologies, Inc/CN=*.anycloudapp.com";
     std::process::Command::new("openssl")
       .stdout(std::process::Stdio::null())
       .stderr(std::process::Stdio::null())
@@ -272,7 +266,7 @@ fn create_certs_if_local() -> () {
       .arg("-out")
       .arg("certificate.pem")
       .arg("-subj")
-      .arg(subj)
+      .arg("/C=US/ST=California/O=Alan Technologies, Inc/CN=*.anycloudapp.com")
       .spawn()
       .expect("Error generating self signed certificate");
   }
