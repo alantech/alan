@@ -40,7 +40,7 @@ pub async fn get_agz_file_b64(agz_file_path: String) -> String {
   match get_file(&agz_file_path).await {
     Ok(file) => base64::encode(file),
     Err(err) => {
-      warn!(NoAGZFile, "{}", err).await;
+      warn!(NoDaemonAGZFile, "{}", err).await;
       std::process::exit(1);
     }
   }
