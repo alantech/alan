@@ -2,21 +2,13 @@ use std::env;
 use std::fs::read;
 use std::process::Command;
 
-pub fn get_base_agz_b64() -> String {
-  base64::encode(include_bytes!("../../alan/anycloud.agz"))
-}
-
-pub async fn get_dockerfile_b64() -> String {
+async fn get_file(file_path: &str) -> Result<Vec<u8>, String> {
   let pwd = env::current_dir();
   match pwd {
-    Ok(pwd) => {
-      let dockerfile = read(format!("{}/Dockerfile", pwd.display()));
-      if let Err(_) = dockerfile {
-        warn!(NoDockerFile, "No Dockerfile at {}", pwd.display()).await;
-        std::process::exit(1);
-      }
-      return base64::encode(dockerfile.unwrap());
-    }
+    Ok(pwd) => match read(format!("{}/{}", pwd.display(), file_path)) {
+      Ok(file) => Ok(file),
+      Err(_) => Err(format!("No Dockerfile at {}", pwd.display()).into()),
+    },
     Err(_) => {
       warn!(InvalidPwd, "Current working directory value is invalid").await;
       std::process::exit(1);
@@ -24,27 +16,31 @@ pub async fn get_dockerfile_b64() -> String {
   }
 }
 
-pub async fn get_env_file_b64(env_file_path: String) -> String {
-  let pwd = env::current_dir();
-  match pwd {
-    Ok(pwd) => {
-      let env_file = read(format!("{}/{}", pwd.display(), env_file_path));
-      match env_file {
-        Ok(env_file) => base64::encode(env_file),
-        Err(_) => {
-          warn!(
-            NoEnvFile,
-            "No environment file at {}/{}",
-            pwd.display(),
-            env_file_path
-          )
-          .await;
-          std::process::exit(1);
-        }
-      }
+pub async fn get_dockerfile_b64() -> String {
+  match get_file("Dockerfile").await {
+    Ok(file) => base64::encode(file),
+    Err(err) => {
+      warn!(NoDockerFile, "{}", err).await;
+      std::process::exit(1);
     }
-    Err(_) => {
-      warn!(InvalidPwd, "Current working directory value is invalid").await;
+  }
+}
+
+pub async fn get_env_file_b64(env_file_path: String) -> String {
+  match get_file(&env_file_path).await {
+    Ok(file) => base64::encode(file),
+    Err(err) => {
+      warn!(NoEnvFile, "{}", err).await;
+      std::process::exit(1);
+    }
+  }
+}
+
+pub async fn get_agz_file_b64(agz_file_path: String) -> String {
+  match get_file(&agz_file_path).await {
+    Ok(file) => base64::encode(file),
+    Err(err) => {
+      warn!(NoAGZFile, "{}", err).await;
       std::process::exit(1);
     }
   }
