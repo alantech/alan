@@ -233,13 +233,19 @@ async fn generate_token() -> String {
   post_v1("localDaemonToken", body).await
 }
 
-async fn set_local_daemon_props(agz_b64: Option<String>) -> () {
+async fn set_local_daemon_props(local_agz_b64: Option<String>) -> () {
   let files_b64 = get_files_b64().await;
   create_app_tar(files_b64.get(&"app.tar.gz".to_string()));
+  let agz_b64 = if let Some(local_agz_b64) = local_agz_b64 {
+    local_agz_b64
+  } else {
+    eprintln!("No agz found");
+    std::process::exit(1);
+  };
   DAEMON_PROPS
     .set(DaemonProperties {
       clusterId: "daemon-local-cluster".to_string(),
-      agzB64: agz_b64.unwrap(),
+      agzB64: agz_b64,
       deployToken: generate_token().await,
       domain: "alandeploy.com".to_string(),
       filesB64: files_b64,
@@ -273,13 +279,10 @@ fn create_certs_if_local() -> () {
   }
 }
 
-async fn get_daemon_props(agz_b64: Option<String>) -> Option<&'static DaemonProperties> {
-  if ALAN_TECH_ENV.as_str() == "local" && agz_b64.is_some() {
-    set_local_daemon_props(agz_b64).await;
+async fn get_daemon_props(local_agz_b64: Option<String>) -> Option<&'static DaemonProperties> {
+  if ALAN_TECH_ENV.as_str() == "local" {
+    set_local_daemon_props(local_agz_b64).await;
     return DAEMON_PROPS.get();
-  } else if ALAN_TECH_ENV.as_str() == "local" && agz_b64.is_none() {
-    eprintln!("No agz found");
-    std::process::exit(1);
   }
   let duration = Duration::from_secs(10);
   let mut counter: u8 = 0;
@@ -294,12 +297,12 @@ async fn get_daemon_props(agz_b64: Option<String>) -> Option<&'static DaemonProp
   None
 }
 
-pub async fn start(agz_b64: Option<String>) {
+pub async fn start(local_agz_b64: Option<String>) {
   create_certs_if_local();
   let mut control_port = ControlPort::start().await;
   let (ctrl_tx, ctrl_rx) = watch::channel(control_port.clone());
   CONTROL_PORT_CHANNEL.set(ctrl_rx).unwrap();
-  if let Some(daemon_props) = get_daemon_props(agz_b64).await {
+  if let Some(daemon_props) = get_daemon_props(local_agz_b64).await {
     let cluster_id = &daemon_props.clusterId;
     CLUSTER_ID.set(String::from(cluster_id)).unwrap();
     let domain = &daemon_props.domain;

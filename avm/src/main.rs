@@ -193,14 +193,14 @@ fn main() {
       }
       ("daemon", Some(matches)) => {
         let cluster_secret = matches.value_of("CLUSTER_SECRET").unwrap();
-        let agz_b64 = match matches.value_of("agz-file") {
+        let local_agz_b64 = match matches.value_of("agz-file") {
           Some(agz_file_path) => Some(get_agz_file_b64(agz_file_path.to_string()).await),
           None => None,
         };
         CLUSTER_SECRET
           .set(Some(cluster_secret.to_string()))
           .unwrap();
-        start(agz_b64).await;
+        start(local_agz_b64).await;
       }
       _ => {
         // AppSettings::SubcommandRequiredElseHelp does not cut it here
