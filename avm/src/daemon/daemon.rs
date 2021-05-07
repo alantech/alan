@@ -239,7 +239,10 @@ async fn set_local_daemon_props(local_agz_b64: Option<String>) -> () {
   let agz_b64 = if let Some(local_agz_b64) = local_agz_b64 {
     local_agz_b64
   } else {
-    eprintln!("No agz found");
+    eprintln!(
+      "running the Alan Daemon in a local environment requires the \
+               --agz-file argument specifying the .agz file to run"
+    );
     std::process::exit(1);
   };
   DAEMON_PROPS
