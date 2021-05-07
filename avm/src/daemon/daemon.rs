@@ -4,7 +4,7 @@ use std::error::Error;
 use std::fs::{read, write};
 use std::io::Read;
 
-use anycloud::common::{get_app_tar_gz_b64, get_base_agz_b64, get_dockerfile_b64};
+use anycloud::common::{get_app_tar_gz_b64, get_dockerfile_b64};
 use anycloud::deploy;
 use anycloud::{error, CLUSTER_ID};
 use base64;
@@ -232,13 +232,13 @@ async fn generate_token() -> String {
   post_v1("localDaemonToken", body).await
 }
 
-async fn set_local_daemon_props() -> () {
+async fn set_local_daemon_props(agz_b64: Option<String>) -> () {
   let files_b64 = get_files_b64().await;
   create_app_tar(files_b64.get(&"app.tar.gz".to_string()));
   DAEMON_PROPS
     .set(DaemonProperties {
       clusterId: "daemon-local-cluster".to_string(),
-      agzB64: get_base_agz_b64(),
+      agzB64: agz_b64.unwrap(),
       deployToken: generate_token().await,
       domain: "alandeploy.com".to_string(),
       filesB64: files_b64,
@@ -257,6 +257,7 @@ fn create_certs_if_local() -> () {
     };
     std::process::Command::new("openssl")
       .stdout(std::process::Stdio::null())
+      .stderr(std::process::Stdio::null())
       .arg("req")
       .arg("-newkey")
       .arg("rsa:2048")
@@ -275,10 +276,13 @@ fn create_certs_if_local() -> () {
   }
 }
 
-async fn get_daemon_props() -> Option<&'static DaemonProperties> {
-  if ALAN_TECH_ENV.as_str() == "local" {
-    set_local_daemon_props().await;
+async fn get_daemon_props(agz_b64: Option<String>) -> Option<&'static DaemonProperties> {
+  if ALAN_TECH_ENV.as_str() == "local" && agz_b64.is_some() {
+    set_local_daemon_props(agz_b64).await;
     return DAEMON_PROPS.get();
+  } else if ALAN_TECH_ENV.as_str() == "local" && agz_b64.is_none() {
+    eprintln!("No agz found");
+    std::process::exit(1);
   }
   let duration = Duration::from_secs(10);
   let mut counter: u8 = 0;
@@ -293,12 +297,12 @@ async fn get_daemon_props() -> Option<&'static DaemonProperties> {
   None
 }
 
-pub async fn start() {
+pub async fn start(agz_b64: Option<String>) {
   create_certs_if_local();
   let mut control_port = ControlPort::start().await;
   let (ctrl_tx, ctrl_rx) = watch::channel(control_port.clone());
   CONTROL_PORT_CHANNEL.set(ctrl_rx).unwrap();
-  if let Some(daemon_props) = get_daemon_props().await {
+  if let Some(daemon_props) = get_daemon_props(agz_b64).await {
     let cluster_id = &daemon_props.clusterId;
     CLUSTER_ID.set(String::from(cluster_id)).unwrap();
     let domain = &daemon_props.domain;
