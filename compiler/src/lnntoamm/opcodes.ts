@@ -165,9 +165,8 @@ const load = (): void => {
     waitop: [{t: 'int64'}, 'void'],
 
     catstr: [{a: 'string', b: 'string'}, 'string'],
-    repstr: [{s: 'string', n: 'string'}, 'string'],
+    repstr: [{s: 'string', n: 'int64'}, 'string'],
     matches: [{a: 'string', b: 'string'}, 'bool'],
-    indstr: [{s: 'string', t: 'string'}, 'string'],
     lenstr: [{s: 'string'}, 'int64'],
     trim: [{s: 'string'}, 'string'],
 

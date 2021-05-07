@@ -190,7 +190,7 @@ class Call extends Expr {
   }
 
   inline(amm: Output, kind: AssignKind, name: string, ty: Builtin) {
-    const argTys = this.args.map(arg => arg.ty);
+    const argTys = this.args.map(arg => arg.ty.instance());
     const selected = this.fns.reverse().find(fn => fn.acceptsTypes(argTys)) || null;
     if (selected === null) {
       throw new Error(`no function selected: ${this.ast.t.trim()}`);
@@ -227,6 +227,10 @@ class Const extends Expr {
       detectedTy = opcodes().get('bool');
     } else if (ast.has('str')) {
       detectedTy = opcodes().get('string');
+      // sanitize single-quoted strings, not double-quoted strings
+      if (val.startsWith("'")) {
+        val = JSON.stringify(val.substring(1, val.length - 1));
+      }
     } else if (ast.has('num')) {
       if (val.indexOf('.') !== -1) {
         detectedTy = Type.oneOf([
@@ -251,7 +255,37 @@ class Const extends Expr {
 
   inline(amm: Output, kind: AssignKind, name: string, ty: Builtin) {
     const globalName = amm.global('const', ty, this.val);
-    amm.assign(kind, name, ty, globalName);
+    let copyOp = 'copy';
+    switch (ty.ammName) {
+      case 'int8':
+        copyOp += 'i8';
+        break;
+      case 'int16':
+        copyOp += 'i16';
+        break;
+      case 'int32':
+        copyOp += 'i32';
+        break;
+      case 'int64':
+        copyOp += 'i64';
+        break;
+      case 'float32':
+        copyOp += 'f32';
+        break;
+      case 'float64':
+        copyOp += 'f64';
+        break;
+      case 'string':
+        copyOp += 'str';
+        break;
+      case 'bool':
+        copyOp += 'bool';
+        break;
+      default:
+        // sanity check
+        throw new Error(`unhandled const type ${ty.ammName}`);
+    }
+    amm.assign(kind, name, ty, copyOp, [globalName]);
   }
 }
 

@@ -70,7 +70,7 @@ export default abstract class Stmt {
   }
 }
 
-class Assign extends Stmt {
+export class Assign extends Stmt {
   upstream: VarDef
   expr: Expr
 
@@ -137,13 +137,10 @@ export abstract class VarDef extends Stmt {
 }
 
 export class Dec extends VarDef {
-  private __ammName: string = '';
+  private __ammName: string = '<UNSET>';
   expr: Expr
 
   get ammName(): string {
-    if (this.__ammName === '') {
-      this.__ammName = genName();
-    }
     return this.__ammName;
   }
 
@@ -204,6 +201,9 @@ export class Dec extends VarDef {
   }
 
   inline(amm: Output) {
+    // refs don't escape the current scope and this only happens 1x/scope,
+    // so this is fine
+    this.__ammName = genName();
     this.expr.inline(
       amm,
       this.immutable ? 'const' : 'let',

@@ -3,11 +3,9 @@ import Output, { AssignKind } from './Amm';
 import Expr, { Ref } from './Expr';
 import opcodes from './opcodes';
 import Scope from './Scope';
-import Stmt, { Dec, Exit, FnParam, MetaData } from './Stmt';
+import Stmt, { Assign, Dec, Exit, FnParam, MetaData } from './Stmt';
 import Type, { Builtin } from './Types';
 import { TODO } from './util';
-
-export type Params = {[name: string]: FnParam};
 
 export default class Fn {
   // null if it's an anonymous fn
@@ -15,9 +13,10 @@ export default class Fn {
   ast: LPNode
   // the scope this function is defined in is the `par`
   scope: Scope
-  params: Params
+  params: FnParam[]
   retTy: Type
   body: Stmt[]
+  exprFn: Expr
   // not used by this class, but used by Statements
   metadata: MetaData
 
@@ -29,7 +28,7 @@ export default class Fn {
     ast: LPNode,
     scope: Scope,
     name: string | null,
-    params: Params,
+    params: FnParam[],
     retTy: Type | null,
     body: Stmt[],
     metadata: MetaData = null,
@@ -65,17 +64,10 @@ export default class Fn {
     let metadata = new MetaData(scope, retTy);
 
     const name = ast.get('optname').has() ? ast.get('optname').get().t : null;
-    let params: Params = {};
-    if (ast.get('optargs').has('arglist')) {
-      let paramAsts = [
-        ast.get('optargs').get('arglist'),
-        ...ast.get('optargs').get('arglist').get('cdr').getAll(),
-      ];
-      paramAsts.forEach(paramAst => {
-        const arg = FnParam.fromArgAst(paramAst, metadata)
-        params[arg.name] = arg;
-      });
-    }
+    let params = [
+      ast.get('optargs').get('arglist'),
+      ...ast.get('optargs').get('arglist').get('cdr').getAll(),
+    ].map(paramAst => FnParam.fromArgAst(paramAst, metadata));
 
     let body = [];
     let bodyAsts: LPNode | LPNode[] = ast.get('fullfunctionbody');
@@ -86,9 +78,13 @@ export default class Fn {
       bodyAsts = bodyAsts.get('assignfunction').get('assignables');
       let exitVal: Expr;
       [body, exitVal] = Expr.fromAssignablesAst(bodyAsts, metadata);
-      let retVal = Dec.gen(exitVal, metadata);
-      body.push(retVal);
-      body.push(new Exit(bodyAsts, retVal.ref()));
+      if (exitVal instanceof Ref) {
+        body.push(new Exit(bodyAsts, exitVal));
+      } else {
+        let retVal = Dec.gen(exitVal, metadata);
+        body.push(retVal);
+        body.push(new Exit(bodyAsts, retVal.ref()));
+      }
     }
 
     return new Fn(
@@ -112,7 +108,7 @@ export default class Fn {
       ast,
       new Scope(scope),
       null,
-      {},
+      [],
       // TODO: if expressions will mean that it's not necessarily void...
       opcodes().get('void'),
       body,
@@ -135,8 +131,8 @@ export default class Fn {
 
   asHandler(amm: Output, event: string) {
     let handlerParams = [];
-    for (let param of Object.keys(this.params)) {
-      handlerParams.push([param, this.params[param].ty.breakdown()]);
+    for (let param of this.params) {
+      handlerParams.push([param.ammName, param.ty.breakdown()]);
     }
     amm.addHandler(event, handlerParams, this.retTy.breakdown());
     let isReturned = false;
@@ -158,26 +154,38 @@ export default class Fn {
     }
   }
 
+  // FIXME: it'll take a bit more work to do better inlining, but it *should* be possible
+  // to have `inline` load all of the amm code into a new `Stmt[]` which is then iterated
+  // at the handler level to do optimizations and such, similar to the `Microstatement[]`
+  // that was loaded but using the same JS objects(?) and the optimizations should only
+  // be further inlining...
+  // FIXME: another option is to convert to SSA form (talked a bit about in Amm.ts) and then
+  // perform optimizations from there. This *might* require the `Stmt[]` array from above
+  // *or* we can do it in Amm.ts using only strings (although that might be harder)
+  // FIXME: a 3rd option is to make amm itself only SSA and perform the the "register
+  // selection" in the ammtox stage. This might be the best solution, since it's the most
+  // flexible regardless of the backend, and amm is where that diverges.
   inline(amm: Output, args: Ref[], kind: AssignKind, name: string, ty: Builtin) {
-    let paramDefs = Object.values(this.params);
-    if (args.length !== paramDefs.length) {
+    if (args.length !== this.params.length) {
       throw new Error(`function call argument mismatch`);
     }
-    for (let ii = 0; ii < paramDefs.length; ii++) {
-      paramDefs[ii].assign(args[ii]);
-    }
+    this.params.forEach((param, ii) => param.assign(args[ii]));
     for (let ii = 0; ii < this.body.length; ii++) {
       const stmt = this.body[ii];
       if (stmt instanceof Exit) {
         if (ii !== this.body.length - 1) {
           throw new Error(`got a return at a bad time (should've been caught already?)`);
         }
-        amm.assign(kind, name, ty, 'reff', [stmt.ret.ammName]);
+        let refCall = 'reff';
+        if (ty.eq(opcodes().get('string'))) {
+          refCall = 'refv';
+        }
+        amm.assign(kind, name, ty, refCall, [stmt.ret.ammName]);
         break;
       }
       stmt.inline(amm);
     }
-    paramDefs.forEach(def => def.unassign());
+    this.params.forEach(param => param.unassign());
   }
 }
 
@@ -189,23 +197,14 @@ export class OpcodeFn extends Fn {
     retTyName: string,
     __opcodes: Scope,
   ) {
-    let args = {};
-    for (let argName of Object.keys(argDecs)) {
-      let argTy = argDecs[argName];
-      let ty = __opcodes.get(argTy);
-      if (ty === null) {
-        throw new Error(`opcode ${name} arg ${argName} uses a type that's not defined`);
-      } else if (!(ty instanceof Type)) {
-        throw new Error(`opcode ${name} arg ${argName} doesn't have a valid type`);
-      } else {
-        args[argName] = new FnParam(new NulLP(), argName, ty);
-      }
-    }
+    let params = Object.entries(argDecs).map(([name, tyName]) => {
+      return new FnParam(new NulLP(), name, opcodes().get(tyName));
+    });
     let retTy = __opcodes.get(retTyName);
     if (retTy === null || !(retTy instanceof Type)) {
       throw new Error()
     }
-    super(new NulLP(), __opcodes, name, args, retTy, []);
+    super(new NulLP(), __opcodes, name, params, retTy, []);
     __opcodes.put(name, [this]);
   }
 
@@ -218,7 +217,7 @@ export class OpcodeFn extends Fn {
       kind,
       assign,
       ty,
-      this,
+      this.name,
       args.map(ref => ref.ammName),
     );
   }

@@ -1,4 +1,3 @@
-import { OpcodeFn } from './Fn';
 import { Builtin } from './Types';
 import { genName } from './util';
 
@@ -8,6 +7,10 @@ const DEBUG_MODE_PRINTING = false;
 
 export type AssignKind = '' | 'const' | 'let';
 
+// TODO: a better solution would be to generate SSA:
+// 1. only accept opcode calls and references
+// 2. return a generated name that is guaranteed not in-scope
+// 3. perform "register selection" - reassign variables based on usage and references
 export default class Output {
   private constants: Map<Builtin, {[val: string]: string}>
   private events: {[name: string]: Builtin}
@@ -82,7 +85,7 @@ export default class Output {
     kind: '' | 'const' | 'let',
     name: string,
     ty: Builtin,
-    assign: string | OpcodeFn,
+    assign: string,
     args: string[] | null = null,
   ) {
     let line = this.indent
@@ -91,8 +94,8 @@ export default class Output {
     } else {
       line = line.concat(kind, ' ', name, ': ', ty.ammName, ' = ');
     }
-    if (assign instanceof OpcodeFn || args !== null) {
-      const fnName = assign instanceof OpcodeFn ? assign.name : assign;
+    if (args !== null) {
+      const fnName = assign;
       line = line.concat(fnName, '(');
       if (args === null) {
         throw new Error(`attempting to call opcode ${fnName} but there are no args defined`)
