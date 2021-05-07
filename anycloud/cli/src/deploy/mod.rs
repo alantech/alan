@@ -1,4 +1,4 @@
-use dialoguer::{console::style, theme::ColorfulTheme, Confirm, Input, Select};
+use dialoguer::console::style;
 use hyper::{Request, StatusCode};
 use indicatif::ProgressBar;
 use serde::{Deserialize, Serialize};
@@ -16,6 +16,8 @@ use crate::http::CLIENT;
 use crate::logger::ErrorType;
 use crate::oauth::{clear_token, get_token};
 use crate::CLUSTER_ID;
+
+mod anycloud_dialoguer;
 
 pub const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const REQUEST_TIMEOUT: &str =
@@ -213,48 +215,38 @@ fn get_aws_cli_creds() -> Result<AWSCLICredentialsFile, String> {
 
 pub async fn add_cred() -> String {
   let mut credentials = get_creds().await;
-  let clouds = vec!["AWS", "GCP", "Azure"];
-  let selection = Select::with_theme(&ColorfulTheme::default())
-    .with_prompt("Pick cloud provider for the new Credential")
-    .items(&clouds)
-    .default(0)
-    .interact()
-    .unwrap();
-  let cloud = clouds[selection];
-  let cred_name = Input::with_theme(&ColorfulTheme::default())
-    .with_prompt("Name for new Credential")
-    .validate_with(|input: &String| -> Result<(), &str> {
+  let clouds = vec!["AWS".to_string(), "GCP".to_string(), "Azure".to_string()];
+  let selection = anycloud_dialoguer::select_with_default(
+    "Pick cloud provider for the new Credential",
+    &clouds,
+    0,
+  );
+  let cloud = &clouds[selection];
+  let cred_name = anycloud_dialoguer::input_with_default_and_validation(
+    "Name for new Credential",
+    cloud.to_lowercase(),
+    |input: &String| -> Result<(), &str> {
       if credentials.contains_key(input) {
         Err("Credential name already exists")
       } else {
         Ok(())
       }
-    })
-    .default(cloud.to_lowercase())
-    .interact_text()
-    .unwrap();
+    },
+  );
   let name = cred_name.to_string();
-  match cloud {
+  match cloud.as_str() {
     "AWS" => {
       let aws_cli_creds = get_aws_cli_creds();
       let (access_key, secret) = if aws_cli_creds.is_ok()
-        && Confirm::with_theme(&ColorfulTheme::default())
-          .with_prompt("Default AWS CLI credentials found. Do you wish to use those?")
-          .default(true)
-          .interact()
-          .unwrap()
-      {
+        && anycloud_dialoguer::confirm_with_default(
+          "Default AWS CLI credentials found. Do you wish to use those?",
+          true,
+        ) {
         let creds = aws_cli_creds.unwrap().default;
         (creds.aws_access_key_id, creds.aws_secret_access_key)
       } else {
-        let access_key: String = Input::with_theme(&ColorfulTheme::default())
-          .with_prompt("AWS Access Key ID")
-          .interact_text()
-          .unwrap();
-        let secret: String = Input::with_theme(&ColorfulTheme::default())
-          .with_prompt("AWS Secret Access Key")
-          .interact_text()
-          .unwrap();
+        let access_key: String = anycloud_dialoguer::input("AWS Access Key ID");
+        let secret: String = anycloud_dialoguer::input("AWS Secret Access Key");
         (access_key, secret)
       };
       credentials.insert(
@@ -269,18 +261,9 @@ pub async fn add_cred() -> String {
       );
     }
     "GCP" => {
-      let project_id: String = Input::with_theme(&ColorfulTheme::default())
-        .with_prompt("GCP Project ID")
-        .interact_text()
-        .unwrap();
-      let client_email: String = Input::with_theme(&ColorfulTheme::default())
-        .with_prompt("GCP Client Email")
-        .interact_text()
-        .unwrap();
-      let private_key: String = Input::with_theme(&ColorfulTheme::default())
-        .with_prompt("GCP Private Key")
-        .interact_text()
-        .unwrap();
+      let project_id: String = anycloud_dialoguer::input("GCP Project ID");
+      let client_email: String = anycloud_dialoguer::input("GCP Client Email");
+      let private_key: String = anycloud_dialoguer::input("GCP Private Key");
       credentials.insert(
         cred_name,
         Credentials {
@@ -294,22 +277,10 @@ pub async fn add_cred() -> String {
       );
     }
     "Azure" => {
-      let application_id: String = Input::with_theme(&ColorfulTheme::default())
-        .with_prompt("Azure Application ID")
-        .interact_text()
-        .unwrap();
-      let directory_id: String = Input::with_theme(&ColorfulTheme::default())
-        .with_prompt("Azure Directory ID")
-        .interact_text()
-        .unwrap();
-      let subscription_id: String = Input::with_theme(&ColorfulTheme::default())
-        .with_prompt("Azure Subscription ID")
-        .interact_text()
-        .unwrap();
-      let secret: String = Input::with_theme(&ColorfulTheme::default())
-        .with_prompt("Azure Secret")
-        .interact_text()
-        .unwrap();
+      let application_id: String = anycloud_dialoguer::input("Azure Application ID");
+      let directory_id: String = anycloud_dialoguer::input("Azure Directory ID");
+      let subscription_id: String = anycloud_dialoguer::input("Azure Subscription ID");
+      let secret: String = anycloud_dialoguer::input("Azure Secret");
       credentials.insert(
         cred_name,
         Credentials {
@@ -378,27 +349,21 @@ pub async fn edit_cred() {
   if cred_options.len() == 0 {
     prompt_add_cred(true).await;
   }
-  let selection = Select::with_theme(&ColorfulTheme::default())
-    .items(&cred_options)
-    .with_prompt("Pick Credentials to edit")
-    .default(0)
-    .interact()
-    .unwrap();
+  let selection =
+    anycloud_dialoguer::select_with_default("Pick Credentials to edit", &cred_options, 0);
   let name = &cred_options[selection];
   let cred = credentials.get(name).unwrap();
   let cred_name = name.to_string();
   match &cred.credentials {
     CloudCredentials::AWS(cred) => {
-      let access_key: String = Input::with_theme(&ColorfulTheme::default())
-        .with_prompt("AWS Access Key ID")
-        .with_initial_text(cred.accessKeyId.to_string())
-        .interact_text()
-        .unwrap();
-      let secret: String = Input::with_theme(&ColorfulTheme::default())
-        .with_prompt("AWS Secret Access Key")
-        .with_initial_text(cred.secretAccessKey.to_string())
-        .interact_text()
-        .unwrap();
+      let access_key: String = anycloud_dialoguer::input_with_initial_text(
+        "AWS Access Key ID",
+        cred.accessKeyId.to_string(),
+      );
+      let secret: String = anycloud_dialoguer::input_with_initial_text(
+        "AWS Secret Access Key",
+        cred.secretAccessKey.to_string(),
+      );
       credentials.insert(
         cred_name,
         Credentials {
@@ -411,21 +376,14 @@ pub async fn edit_cred() {
       );
     }
     CloudCredentials::GCP(cred) => {
-      let client_email: String = Input::with_theme(&ColorfulTheme::default())
-        .with_prompt("GCP Client Email")
-        .with_initial_text(cred.clientEmail.to_string())
-        .interact_text()
-        .unwrap();
-      let project_id: String = Input::with_theme(&ColorfulTheme::default())
-        .with_prompt("GCP Project ID")
-        .with_initial_text(cred.projectId.to_string())
-        .interact_text()
-        .unwrap();
-      let private_key: String = Input::with_theme(&ColorfulTheme::default())
-        .with_prompt("GCP Private Key")
-        .with_initial_text(cred.privateKey.to_string())
-        .interact_text()
-        .unwrap();
+      let client_email: String = anycloud_dialoguer::input_with_initial_text(
+        "GCP Client Email",
+        cred.clientEmail.to_string(),
+      );
+      let project_id: String =
+        anycloud_dialoguer::input_with_initial_text("GCP Project ID", cred.projectId.to_string());
+      let private_key: String =
+        anycloud_dialoguer::input_with_initial_text("GCP Private Key", cred.privateKey.to_string());
       credentials.insert(
         cred_name,
         Credentials {
@@ -439,26 +397,20 @@ pub async fn edit_cred() {
       );
     }
     CloudCredentials::Azure(cred) => {
-      let application_id: String = Input::with_theme(&ColorfulTheme::default())
-        .with_prompt("Azure Application ID")
-        .with_initial_text(cred.applicationId.to_string())
-        .interact_text()
-        .unwrap();
-      let directory_id: String = Input::with_theme(&ColorfulTheme::default())
-        .with_prompt("Azure Directory ID")
-        .with_initial_text(cred.directoryId.to_owned())
-        .interact_text()
-        .unwrap();
-      let subscription_id: String = Input::with_theme(&ColorfulTheme::default())
-        .with_prompt("Azure Subscription ID")
-        .with_initial_text(cred.subscriptionId.to_string())
-        .interact_text()
-        .unwrap();
-      let secret: String = Input::with_theme(&ColorfulTheme::default())
-        .with_prompt("Azure Secret")
-        .with_initial_text(cred.secret.to_string())
-        .interact_text()
-        .unwrap();
+      let application_id: String = anycloud_dialoguer::input_with_initial_text(
+        "Azure Application ID",
+        cred.applicationId.to_string(),
+      );
+      let directory_id: String = anycloud_dialoguer::input_with_initial_text(
+        "Azure Directory ID",
+        cred.directoryId.to_owned(),
+      );
+      let subscription_id: String = anycloud_dialoguer::input_with_initial_text(
+        "Azure Subscription ID",
+        cred.subscriptionId.to_string(),
+      );
+      let secret: String =
+        anycloud_dialoguer::input_with_initial_text("Azure Secret", cred.secret.to_string());
       credentials.insert(
         cred_name,
         Credentials {
@@ -480,12 +432,7 @@ pub async fn edit_cred() {
 // prompt the user to create a deploy credentials if none exists
 pub async fn prompt_add_cred(exit_on_done: bool) -> String {
   let prompt = "No Credentials have been created. Let's create one?";
-  if Confirm::with_theme(&ColorfulTheme::default())
-    .with_prompt(prompt)
-    .default(true)
-    .interact()
-    .unwrap()
-  {
+  if anycloud_dialoguer::confirm_with_default(prompt, true) {
     let cred = add_cred().await;
     if exit_on_done {
       std::process::exit(0)
@@ -499,12 +446,7 @@ pub async fn prompt_add_cred(exit_on_done: bool) -> String {
 // prompt the user to create a deploy config if none exists
 pub async fn prompt_add_config() {
   let prompt = "No Deploy Configs have been created. Let's create one?";
-  if Confirm::with_theme(&ColorfulTheme::default())
-    .with_prompt(prompt)
-    .default(true)
-    .interact()
-    .unwrap()
-  {
+  if anycloud_dialoguer::confirm_with_default(prompt, true) {
     add_deploy_config().await;
   }
   std::process::exit(0);
@@ -516,12 +458,8 @@ pub async fn remove_cred() {
   if cred_options.len() == 0 {
     prompt_add_cred(true).await;
   };
-  let selection = Select::with_theme(&ColorfulTheme::default())
-    .items(&cred_options)
-    .with_prompt("Pick Credentials to remove")
-    .default(0)
-    .interact()
-    .unwrap();
+  let selection =
+    anycloud_dialoguer::select_with_default("Pick Credentials to remove", &cred_options, 0);
   let cred_name = &cred_options[selection];
   creds.remove(cred_name).unwrap();
   update_cred_file(creds).await;
@@ -563,18 +501,17 @@ pub async fn list_creds() {
 pub async fn add_deploy_config() {
   let mut deploy_configs = get_deploy_configs().await;
   let creds = get_creds().await;
-  let name: String = Input::with_theme(&ColorfulTheme::default())
-    .with_prompt("Name for new Deploy Config")
-    .validate_with(|input: &String| -> Result<(), &str> {
+  let name: String = anycloud_dialoguer::input_with_default_and_validation(
+    "Name for new Deploy Config",
+    "staging".into(),
+    |input: &String| -> Result<(), &str> {
       if deploy_configs.contains_key(input) {
         Err("Deploy Config name already exists")
       } else {
         Ok(())
       }
-    })
-    .default("staging".into())
-    .interact_text()
-    .unwrap();
+    },
+  );
   let mut cloud_configs = Vec::new();
   if creds.len() == 0 {
     prompt_add_cred(false).await;
@@ -583,12 +520,7 @@ pub async fn add_deploy_config() {
   let new_cred_idx = options.len();
   options.push("Create new Credentials".to_string());
   loop {
-    let selection = Select::with_theme(&ColorfulTheme::default())
-      .items(&options)
-      .with_prompt("Pick Credentials to use")
-      .default(0)
-      .interact()
-      .unwrap();
+    let selection = anycloud_dialoguer::select_with_default("Pick Credentials to use", &options, 0);
     let cred = if selection == new_cred_idx {
       add_cred().await
     } else {
@@ -596,15 +528,15 @@ pub async fn add_deploy_config() {
     };
     // TODO validate these fields?
     let mut region = None;
-    if confirm_prompt(
+    if anycloud_dialoguer::confirm_with_default(
       "Do you want to choose a specific region for this Deploy Config?",
       false,
     ) {
-      let input_region: String = input_prompt("Region name");
+      let input_region: String = anycloud_dialoguer::input("Region name");
       region = Some(input_region);
     };
     let mut vm_type = None;
-    if confirm_prompt(
+    if anycloud_dialoguer::confirm_with_default(
       "Do you want to select which virtual machine type to use for this Deploy Config?",
       false,
     ) {
@@ -622,12 +554,7 @@ pub async fn add_deploy_config() {
     } else {
       "Do you want to add another region to this Deploy Config?"
     };
-    if !Confirm::with_theme(&ColorfulTheme::default())
-      .with_prompt(prompt)
-      .default(false)
-      .interact()
-      .unwrap()
-    {
+    if !anycloud_dialoguer::confirm_with_default(prompt, false) {
       break;
     }
   }
@@ -636,32 +563,20 @@ pub async fn add_deploy_config() {
   } else {
     "Minimum number of VMs per region"
   };
-  let replicas: String = Input::with_theme(&ColorfulTheme::default())
-    .with_prompt(prompt)
-    .default("1".to_string())
-    .interact_text()
-    .unwrap();
+  let replicas: String = anycloud_dialoguer::input_with_default(prompt, "1".to_string());
   let min_replicas: Option<u32> = Some(replicas.parse::<u32>().unwrap_or_else(|_| {
     eprintln!("{} is not a valid number of VMs", replicas);
     std::process::exit(1);
   }));
   let mut max_replicas = None;
   let prompt = "Would you like to define a maximum number of VMs?";
-  if Confirm::with_theme(&ColorfulTheme::default())
-    .with_prompt(prompt)
-    .default(false)
-    .interact()
-    .unwrap()
-  {
+  if anycloud_dialoguer::confirm_with_default(prompt, false) {
     let prompt = if creds.len() > 1 {
       "Maximum number of VMs per region or cloud"
     } else {
       "Maximum number of VMs per region"
     };
-    let replicas: String = Input::with_theme(&ColorfulTheme::default())
-      .with_prompt(prompt)
-      .interact_text()
-      .unwrap();
+    let replicas: String = anycloud_dialoguer::input(prompt);
     if let Ok(replicas) = replicas.parse::<u32>() {
       max_replicas = Some(replicas);
     } else {
@@ -688,12 +603,8 @@ pub async fn edit_deploy_config() {
   if config_names.len() == 0 {
     prompt_add_config().await;
   }
-  let selection = Select::with_theme(&ColorfulTheme::default())
-    .items(&config_names)
-    .with_prompt("Pick Deploy Config to edit")
-    .default(0)
-    .interact()
-    .unwrap();
+  let selection =
+    anycloud_dialoguer::select_with_default("Pick Deploy Config to edit", &config_names, 0);
   let config_name = config_names[selection].to_string();
   let creds = get_creds().await;
   let cloud_configs: &Vec<DeployConfig> = deploy_configs.get(&config_name).unwrap();
@@ -704,36 +615,32 @@ pub async fn edit_deploy_config() {
       .iter()
       .position(|r| r == &config.credentialsName)
       .unwrap();
-    let selection = Select::with_theme(&ColorfulTheme::default())
-      .items(&cred_options)
-      .with_prompt("Pick Credentials to use")
-      .default(index)
-      .interact()
-      .unwrap();
+    let selection =
+      anycloud_dialoguer::select_with_default("Pick Credentials to use", &cred_options, index);
     let cred = cred_options[selection].to_string();
     let mut region = None;
     let mut vm_type = None;
     if let Some(reg) = &config.region {
-      if confirm_prompt(
+      if anycloud_dialoguer::confirm_with_default(
         "Do you want to edit the region to use for this Deploy Config?",
         true,
       ) {
-        let input_region: String = input_prompt("Region name");
+        let input_region: String = anycloud_dialoguer::input("Region name");
         region = Some(input_region);
       } else {
         region = Some(reg.to_string());
       }
     } else {
-      if confirm_prompt(
+      if anycloud_dialoguer::confirm_with_default(
         "Do you want to choose a specific region for this Deploy Config?",
         false,
       ) {
-        let input_region: String = input_prompt("Region name");
+        let input_region: String = anycloud_dialoguer::input("Region name");
         region = Some(input_region);
       };
     }
     if let Some(vm_t) = &config.vmType {
-      if confirm_prompt(
+      if anycloud_dialoguer::confirm_with_default(
         "Do you want to edit the virtual machine type for this Deploy Config?",
         true,
       ) {
@@ -742,7 +649,7 @@ pub async fn edit_deploy_config() {
         vm_type = Some(vm_t.to_string());
       }
     } else {
-      if confirm_prompt(
+      if anycloud_dialoguer::confirm_with_default(
         "Do you want to select which virtual machine type to use for this Deploy Config?",
         false,
       ) {
@@ -762,32 +669,20 @@ pub async fn edit_deploy_config() {
   } else {
     "Minimum number of VMs per region"
   };
-  let replicas: String = Input::with_theme(&ColorfulTheme::default())
-    .with_prompt(prompt)
-    .default("1".to_string())
-    .interact_text()
-    .unwrap();
+  let replicas: String = anycloud_dialoguer::input_with_default(prompt, "1".to_string());
   let min_replicas: Option<u32> = Some(replicas.parse::<u32>().unwrap_or_else(|_| {
     eprintln!("{} is not a valid number of VMs", replicas);
     std::process::exit(1);
   }));
   let mut max_replicas = None;
   let prompt = "Would you like to define a maximum number of VMs?";
-  if Confirm::with_theme(&ColorfulTheme::default())
-    .with_prompt(prompt)
-    .default(false)
-    .interact()
-    .unwrap()
-  {
+  if anycloud_dialoguer::confirm_with_default(prompt, false) {
     let prompt = if creds.len() > 1 {
       "Maximum number of VMs per region or cloud"
     } else {
       "Maximum number of VMs per region"
     };
-    let replicas: String = Input::with_theme(&ColorfulTheme::default())
-      .with_prompt(prompt)
-      .interact_text()
-      .unwrap();
+    let replicas: String = anycloud_dialoguer::input(prompt);
     if let Ok(replicas) = replicas.parse::<u32>() {
       max_replicas = Some(replicas);
     } else {
@@ -817,12 +712,8 @@ pub async fn remove_deploy_config() {
   if config_names.len() == 0 {
     prompt_add_config().await;
   }
-  let selection = Select::with_theme(&ColorfulTheme::default())
-    .items(&config_names)
-    .with_prompt("Pick Deploy Config to remove")
-    .default(0)
-    .interact()
-    .unwrap();
+  let selection =
+    anycloud_dialoguer::select_with_default("Pick Deploy Config to remove", &config_names, 0);
   let config_name = config_names[selection].to_string();
   deploy_configs.remove(&config_name);
   update_anycloud_file(deploy_configs).await;
@@ -1025,13 +916,8 @@ pub async fn client_error(err_code: ErrorType, message: &str, level: &str) {
 
 pub async fn terminate() {
   let apps = get_apps(false).await;
-  let ids = apps.iter().map(|a| a.id.as_str()).collect::<Vec<&str>>();
-  let selection = Select::with_theme(&ColorfulTheme::default())
-    .items(&ids)
-    .with_prompt("Pick App to terminate")
-    .default(0)
-    .interact()
-    .unwrap();
+  let ids = apps.into_iter().map(|a| a.id).collect::<Vec<String>>();
+  let selection = anycloud_dialoguer::select_with_default("Pick App to terminate", &ids, 0);
   let cluster_id = &ids[selection];
   CLUSTER_ID.set(cluster_id.to_string()).unwrap();
   let styled_cluster_id = style(cluster_id).bold();
@@ -1075,17 +961,11 @@ pub async fn new(
   if config_names.len() == 0 {
     prompt_add_config().await;
   }
-  let selection = Select::with_theme(&ColorfulTheme::default())
-    .items(&config_names)
-    .with_prompt("Pick Deploy Config for App")
-    .default(0)
-    .interact()
-    .unwrap();
+  let selection =
+    anycloud_dialoguer::select_with_default("Pick Deploy Config for App", &config_names, 0);
   let deploy_config = &config_names[selection];
-  let app_id: std::io::Result<String> = Input::with_theme(&ColorfulTheme::default())
-    .with_prompt("Optional App name")
-    .allow_empty(true)
-    .interact_text();
+  let app_id: std::io::Result<String> =
+    anycloud_dialoguer::input_with_allow_empty_as_result("Optional App name", true);
   let sp = ProgressBar::new_spinner();
   sp.enable_steady_tick(10);
   sp.set_message("Creating new App");
@@ -1128,14 +1008,9 @@ pub async fn upgrade(
   env_b64: Option<String>,
 ) {
   let apps = get_apps(false).await;
-  let ids = apps.iter().map(|a| a.id.as_str()).collect::<Vec<&str>>();
-  let selection = Select::with_theme(&ColorfulTheme::default())
-    .items(&ids)
-    .with_prompt("Pick App to upgrade")
-    .default(0)
-    .interact()
-    .unwrap();
-  let cluster_id = ids[selection];
+  let ids = apps.into_iter().map(|a| a.id).collect::<Vec<String>>();
+  let selection = anycloud_dialoguer::select_with_default("Pick App to upgrade", &ids, 0);
+  let cluster_id = &ids[selection];
   CLUSTER_ID.set(cluster_id.to_string()).unwrap();
   let styled_cluster_id = style(cluster_id).bold();
   let config = get_config().await;
@@ -1313,21 +1188,6 @@ pub async fn info() {
   profiles.print(profile_data);
 }
 
-fn confirm_prompt(prompt: &str, default: bool) -> bool {
-  Confirm::with_theme(&ColorfulTheme::default())
-    .with_prompt(prompt)
-    .default(default)
-    .interact()
-    .unwrap()
-}
-
-fn input_prompt(prompt: &str) -> String {
-  Input::with_theme(&ColorfulTheme::default())
-    .with_prompt(prompt)
-    .interact_text()
-    .unwrap()
-}
-
 fn is_burstable(vm_type: &str) -> bool {
   BURSTABLE_VM_TYPES.contains(&vm_type)
 }
@@ -1363,10 +1223,10 @@ fn print_small_vm_warn() -> () {
 
 fn get_some_vm_type_input() -> Option<String> {
   loop {
-    let input_vm_type: String = input_prompt("Virtual machine type");
+    let input_vm_type: String = anycloud_dialoguer::input("Virtual machine type");
     if is_burstable(&input_vm_type) || is_small(&input_vm_type) {
       print_vm_type_warns(&input_vm_type);
-      if confirm_prompt(
+      if anycloud_dialoguer::confirm_with_default(
         "Are you sure you want to continue with the selected virtual machine type?",
         false,
       ) {
