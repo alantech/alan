@@ -53,6 +53,7 @@ impl VMMetadata {
       cloud: "LOCAL".to_string(),
       private_ip_addr: "127.0.0.1".to_string(),
       region: "localhost".to_string(),
+      public_ip_addr: "127.0.0.1".to_string(),
     }])
   }
 }
