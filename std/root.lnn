@@ -146,7 +146,6 @@ export fn wait(n: int64): void = waitop(n);
 export fn concat(a: string, b: string): string = catstr(a, b);
 export fn repeat(s: string, n: int64): string = repstr(s, n);
 export matches
-export fn index(s: string, t: string): string = indstr(s, t);
 export fn length(s: string): int64 = lenstr(s);
 export trim
 
