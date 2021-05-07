@@ -6,16 +6,17 @@ Describe "Booleans"
       from @std/app import start, stdout, exit
 
       on start {
-        emit stdout toString(true);
-        emit stdout toString(false);
-        emit stdout toString(toBool(1));
-        emit stdout toString(toBool(0));
-        emit stdout toString(toBool(15));
-        emit stdout toString(toBool(-1));
-        emit stdout toString(toBool(0.0));
-        emit stdout toString(toBool(1.2));
-        emit stdout toString(toBool(''));
-        emit stdout toString(toBool('hi'));
+        emit stdout concat(toString(true), '\n');
+        emit stdout concat(toString(false), '\n');
+        emit stdout concat(toString(toBool(1)), '\n');
+        emit stdout concat(toString(toBool(0)), '\n');
+        emit stdout concat(toString(toBool(15)), '\n');
+        emit stdout concat(toString(toBool(-1)), '\n');
+        emit stdout concat(toString(toBool(0.0)), '\n');
+        emit stdout concat(toString(toBool(1.2)), '\n');
+        emit stdout concat(toString(toBool('')), '\n');
+        emit stdout concat(toString(toBool('hi')), '\n');
+        emit exit 0;
       }
     "
   }

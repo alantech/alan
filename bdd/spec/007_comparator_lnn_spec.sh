@@ -7,6 +7,7 @@ Describe "Comparators"
         from @std/app import start, stdout, exit
 
         on start {
+          // constrained to an int8 from the emit exit at the bottom
           const i8val = 0;
           emit stdout concat(toString(eq(i8val, 0)), '\n');
           emit stdout concat(toString(eq(i8val, 1)), '\n');
