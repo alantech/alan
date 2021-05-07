@@ -251,7 +251,7 @@ fn create_certs_if_local() -> () {
   if ALAN_TECH_ENV.as_str() == "local" {
     // Self signed certs for local dev
     // openssl req -newkey rsa:2048 -nodes -keyout key.pem -x509 -days 365 -out certificate.pem -subj "/C=US/ST=California/O=Alan Technologies, Inc/CN=*.anycloudapp.com"
-    std::process::Command::new("openssl")
+    let mut open_ssl = std::process::Command::new("openssl")
       .stdout(std::process::Stdio::null())
       .stderr(std::process::Stdio::null())
       .arg("req")
@@ -269,6 +269,7 @@ fn create_certs_if_local() -> () {
       .arg("/C=US/ST=California/O=Alan Technologies, Inc/CN=*.anycloudapp.com")
       .spawn()
       .expect("Error generating self signed certificate");
+    open_ssl.wait().expect("Failed to wait on child");
   }
 }
 
