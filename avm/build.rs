@@ -20,4 +20,24 @@ fn main() {
     })
     .run()
     .expect("protoc");
+
+  let subj = "/C=US/ST=California/O=Alan Technologies, Inc/CN=*.anycloudapp.com";
+  std::process::Command::new("openssl")
+    .stdout(std::process::Stdio::null())
+    .stderr(std::process::Stdio::null())
+    .arg("req")
+    .arg("-newkey")
+    .arg("rsa:2048")
+    .arg("-nodes")
+    .arg("-keyout")
+    .arg("key.pem")
+    .arg("-x509")
+    .arg("-days")
+    .arg("365")
+    .arg("-out")
+    .arg("certificate.pem")
+    .arg("-subj")
+    .arg(subj)
+    .spawn()
+    .expect("Error generating self signed certificate");
 }
