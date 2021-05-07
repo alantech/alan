@@ -111,7 +111,6 @@ export fn lt(a: int64, b: int64): bool = lti64(a, b);
 export fn lt(a: float32, b: float32): bool = ltf32(a, b);
 export fn lt(a: float64, b: float64): bool = ltf64(a, b);
 export fn lt(a: string, b: string): bool = ltstr(a, b);
-export fn lt(a: bool, b: bool): bool = ltbool(a, b);
 
 export fn lte(a: int8, b: int8): bool = ltei8(a, b);
 export fn lte(a: int16, b: int16): bool = ltei16(a, b);
@@ -120,7 +119,6 @@ export fn lte(a: int64, b: int64): bool = ltei64(a, b);
 export fn lte(a: float32, b: float32): bool = ltef32(a, b);
 export fn lte(a: float64, b: float64): bool = ltef64(a, b);
 export fn lte(a: string, b: string): bool = ltestr(a, b);
-export fn lte(a: bool, b: bool): bool = ltebool(a, b);
 
 export fn gt(a: int8, b: int8): bool = gti8(a, b);
 export fn gt(a: int16, b: int16): bool = gti16(a, b);
@@ -129,7 +127,6 @@ export fn gt(a: int64, b: int64): bool = gti64(a, b);
 export fn gt(a: float32, b: float32): bool = gtf32(a, b);
 export fn gt(a: float64, b: float64): bool = gtf64(a, b);
 export fn gt(a: string, b: string): bool = gtstr(a, b);
-export fn gt(a: bool, b: bool): bool = gtbool(a, b);
 
 export fn gte(a: int8, b: int8): bool = gtei8(a, b);
 export fn gte(a: int16, b: int16): bool = gtei16(a, b);
@@ -138,7 +135,6 @@ export fn gte(a: int64, b: int64): bool = gtei64(a, b);
 export fn gte(a: float32, b: float32): bool = gtef32(a, b);
 export fn gte(a: float64, b: float64): bool = gtef64(a, b);
 export fn gte(a: string, b: string): bool = gtestr(a, b);
-export fn gte(a: bool, b: bool): bool = gtebool(a, b);
 
 // Wait functions
 export fn wait(n: int8): void = waitop(i8i64(n));
