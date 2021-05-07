@@ -15,6 +15,7 @@ use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::process::Command;
+use tokio::sync::watch::{self, Receiver};
 use tokio::task;
 use tokio::time::{sleep, Duration};
 
@@ -28,6 +29,7 @@ pub type DaemonResult<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 pub static CLUSTER_SECRET: OnceCell<Option<String>> = OnceCell::new();
 pub static DAEMON_PROPS: OnceCell<DaemonProperties> = OnceCell::new();
+pub static CONTROL_PORT_CHANNEL: OnceCell<Receiver<ControlPort>> = OnceCell::new();
 
 lazy_static! {
   pub static ref ALAN_TECH_ENV: String =
@@ -294,6 +296,8 @@ async fn get_daemon_props() -> Option<&'static DaemonProperties> {
 pub async fn start() {
   create_certs_if_local();
   let mut control_port = ControlPort::start().await;
+  let (ctrl_tx, ctrl_rx) = watch::channel(control_port.clone());
+  CONTROL_PORT_CHANNEL.set(ctrl_rx).unwrap();
   if let Some(daemon_props) = get_daemon_props().await {
     let cluster_id = &daemon_props.clusterId;
     CLUSTER_ID.set(String::from(cluster_id)).unwrap();
@@ -320,6 +324,7 @@ pub async fn start() {
           if let Some(vms) = vms {
             cluster_size = vms.len();
             control_port.update_vms(self_ip, vms).await;
+            ctrl_tx.send(control_port.clone()).unwrap();
           }
           if control_port.is_leader() {
             // TODO: Should we keep these leader announcements in the stdout logging?

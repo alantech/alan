@@ -24,6 +24,7 @@ use tokio::time::sleep;
 use twox_hash::XxHash64;
 
 use crate::daemon::ctrl::NAIVE_CLIENT;
+use crate::daemon::daemon::CONTROL_PORT_CHANNEL;
 use crate::vm::event::{BuiltInEvents, EventEmit, HandlerFragment, NOP_ID};
 use crate::vm::http::HTTP_CLIENT;
 use crate::vm::memory::{FractalMemory, HandlerMemory, CLOSURE_ARG_MEM_START};
@@ -31,7 +32,7 @@ use crate::vm::program::Program;
 use crate::vm::run::EVENT_TX;
 use crate::vm::{VMError, VMResult};
 
-static DS: Lazy<Arc<DashMap<String, Arc<HandlerMemory>>>> =
+pub static DS: Lazy<Arc<DashMap<String, Arc<HandlerMemory>>>> =
   Lazy::new(|| Arc::new(DashMap::<String, Arc<HandlerMemory>>::new()));
 
 // used for load balancing in the cluster
@@ -3646,8 +3647,20 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0])?)?;
       let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1])?)?;
       let nskey = format!("{}:{}", ns, key);
-      let ds = Arc::clone(&DS);
-      ds.insert(nskey, hm);
+      let ctrl_port = CONTROL_PORT_CHANNEL.get();
+      let ctrl_port = match ctrl_port {
+        Some(ctrl_port) => Some(ctrl_port.borrow().clone()), // TODO: Use thread-local storage
+        None => None,
+      };
+      let is_key_owner = match ctrl_port {
+        Some(ref ctrl_port) => ctrl_port.is_key_owner(&nskey),
+        None => true,
+      };
+      if is_key_owner {
+        DS.insert(nskey, hm);
+      } else {
+        ctrl_port.unwrap().dssetf(&nskey, &hm).await;
+      }
       Ok(hand_mem)
     })
   });
@@ -3658,8 +3671,20 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0])?)?;
       let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1])?)?;
       let nskey = format!("{}:{}", ns, key);
-      let ds = Arc::clone(&DS);
-      ds.insert(nskey, hm);
+      let ctrl_port = CONTROL_PORT_CHANNEL.get();
+      let ctrl_port = match ctrl_port {
+        Some(ctrl_port) => Some(ctrl_port.borrow().clone()), // TODO: Use thread-local storage
+        None => None,
+      };
+      let is_key_owner = match ctrl_port {
+        Some(ref ctrl_port) => ctrl_port.is_key_owner(&nskey),
+        None => true,
+      };
+      if is_key_owner {
+        DS.insert(nskey, hm);
+      } else {
+        ctrl_port.unwrap().dssetv(&nskey, &hm).await;
+      }
       Ok(hand_mem)
     })
   });
@@ -3668,8 +3693,20 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0])?)?;
       let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1])?)?;
       let nskey = format!("{}:{}", ns, key);
-      let ds = Arc::clone(&DS);
-      let has = ds.contains_key(&nskey);
+      let ctrl_port = CONTROL_PORT_CHANNEL.get();
+      let ctrl_port = match ctrl_port {
+        Some(ctrl_port) => Some(ctrl_port.borrow().clone()), // TODO: Use thread-local storage
+        None => None,
+      };
+      let is_key_owner = match ctrl_port {
+        Some(ref ctrl_port) => ctrl_port.is_key_owner(&nskey),
+        None => true,
+      };
+      let has = if is_key_owner {
+        DS.contains_key(&nskey)
+      } else {
+        ctrl_port.unwrap().dshas(&nskey).await
+      };
       hand_mem.write_fixed(args[2], if has { 1i64 } else { 0i64 })?;
       Ok(hand_mem)
     })
@@ -3679,8 +3716,22 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0])?)?;
       let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1])?)?;
       let nskey = format!("{}:{}", ns, key);
-      let ds = Arc::clone(&DS);
-      let removed = ds.remove(&nskey).is_some();
+      // If it exists locally, remove it here, too
+      let removed = DS.remove(&nskey).is_some();
+      let ctrl_port = CONTROL_PORT_CHANNEL.get();
+      let ctrl_port = match ctrl_port {
+        Some(ctrl_port) => Some(ctrl_port.borrow().clone()), // TODO: Use thread-local storage
+        None => None,
+      };
+      let is_key_owner = match ctrl_port {
+        Some(ref ctrl_port) => ctrl_port.is_key_owner(&nskey),
+        None => true,
+      };
+      let removed = if is_key_owner {
+        removed
+      } else {
+        ctrl_port.unwrap().dsdel(&nskey).await
+      };
       hand_mem.write_fixed(args[2], if removed { 1i64 } else { 0i64 })?;
       Ok(hand_mem)
     })
@@ -3690,14 +3741,41 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0])?)?;
       let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1])?)?;
       let nskey = format!("{}:{}", ns, key);
-      let ds = Arc::clone(&DS);
-      let maybe_hm = ds.get(&nskey);
-      hand_mem.init_fractal(args[2])?;
-      hand_mem.push_fixed(args[2], if maybe_hm.is_some() { 1i64 } else { 0i64 })?;
-      match maybe_hm {
-        Some(hm) => hand_mem.push_fixed(args[2], hm.read_fixed(0)?),
-        None => hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("namespace-key pair not found")),
-      }?;
+      let ctrl_port = CONTROL_PORT_CHANNEL.get();
+      let ctrl_port = match ctrl_port {
+        Some(ctrl_port) => Some(ctrl_port.borrow().clone()), // TODO: Use thread-local storage
+        None => None,
+      };
+      let is_key_owner = match ctrl_port {
+        Some(ref ctrl_port) => ctrl_port.is_key_owner(&nskey),
+        None => true,
+      };
+      if is_key_owner {
+        hand_mem.init_fractal(args[2])?;
+        let maybe_hm = DS.get(&nskey);
+        match maybe_hm {
+          Some(hm) => {
+            hand_mem.push_fixed(args[2], 1i64)?;
+            hand_mem.push_fixed(args[2], hm.read_fixed(0)?)?;
+          },
+          None => {
+            hand_mem.push_fixed(args[2], 0i64)?;
+            hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("namespace-key pair not found"))?;
+          },
+        }
+      } else {
+        let maybe_hm = ctrl_port.unwrap().dsgetf(&nskey).await;
+        match maybe_hm {
+          Some(hm) => {
+            HandlerMemory::transfer(&hm, 0, &mut hand_mem, args[2])?;
+          },
+          None => {
+            hand_mem.init_fractal(args[2])?;
+            hand_mem.push_fixed(args[2], 0i64)?;
+            hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("namespace-key pair not found"))?;
+          },
+        }
+      };
       Ok(hand_mem)
     })
   });
@@ -3706,19 +3784,41 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0])?)?;
       let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1])?)?;
       let nskey = format!("{}:{}", ns, key);
-      let ds = Arc::clone(&DS);
-      let maybe_hm = ds.get(&nskey);
-      hand_mem.init_fractal(args[2])?;
-      match maybe_hm {
-        Some(hm) => {
-          hand_mem.push_fixed(args[2], 1i64)?;
-          HandlerMemory::transfer(&hm, 0, &mut hand_mem, CLOSURE_ARG_MEM_START)?;
-          hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START)?;
-        },
-        None => {
-          hand_mem.push_fixed(args[2], 0i64)?;
-          hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("namespace-key pair not found"))?;
-        },
+      let ctrl_port = CONTROL_PORT_CHANNEL.get();
+      let ctrl_port = match ctrl_port {
+        Some(ctrl_port) => Some(ctrl_port.borrow().clone()), // TODO: Use thread-local storage
+        None => None,
+      };
+      let is_key_owner = match ctrl_port {
+        Some(ref ctrl_port) => ctrl_port.is_key_owner(&nskey),
+        None => true,
+      };
+      if is_key_owner {
+        hand_mem.init_fractal(args[2])?;
+        let maybe_hm = DS.get(&nskey);
+        match maybe_hm {
+          Some(hm) => {
+            hand_mem.push_fixed(args[2], 1i64)?;
+            HandlerMemory::transfer(&hm, 0, &mut hand_mem, CLOSURE_ARG_MEM_START)?;
+            hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START)?;
+          },
+          None => {
+            hand_mem.push_fixed(args[2], 0i64)?;
+            hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("namespace-key pair not found"))?;
+          },
+        }
+      } else {
+        let maybe_hm = ctrl_port.unwrap().dsgetv(&nskey).await;
+        match maybe_hm {
+          Some(hm) => {
+            HandlerMemory::transfer(&hm, 0, &mut hand_mem, args[2])?;
+          },
+          None => {
+            hand_mem.init_fractal(args[2])?;
+            hand_mem.push_fixed(args[2], 0i64)?;
+            hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("namespace-key pair not found"))?;
+          },
+        }
       }
       Ok(hand_mem)
     })

@@ -883,14 +883,14 @@ impl HandlerMemory {
   }
 
   /// Returns a new Protobuf HandlerMemory from an existing HandlerMemory
-  pub fn to_pb(hm: &Arc<HandlerMemory>) -> protos::HandlerMemory::HandlerMemory {
+  pub fn to_pb(self: &Arc<HandlerMemory>) -> protos::HandlerMemory::HandlerMemory {
     let mut proto_hm = protos::HandlerMemory::HandlerMemory::new();
-    set_pb_mems(hm, &mut proto_hm);
-    set_pb_addr(hm, &mut proto_hm);
-    if let Some(parent) = &hm.parent {
+    set_pb_mems(self, &mut proto_hm);
+    set_pb_addr(self, &mut proto_hm);
+    if let Some(parent) = &self.parent {
       proto_hm.set_parent(HandlerMemory::to_pb(&parent));
     }
-    proto_hm.set_mem_addr(hm.mem_addr as u64);
+    proto_hm.set_mem_addr(self.mem_addr as u64);
     proto_hm
   }
 
