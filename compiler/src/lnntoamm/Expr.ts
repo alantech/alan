@@ -227,9 +227,12 @@ class Const extends Expr {
       detectedTy = opcodes().get('bool');
     } else if (ast.has('str')) {
       detectedTy = opcodes().get('string');
-      // sanitize single-quoted strings, not double-quoted strings
+      // sanitize single-quoted strings
+      // don't need to for double-quoted strings, since the string output
+      // is double-quoted
       if (val.startsWith("'")) {
-        val = JSON.stringify(val.substring(1, val.length - 1));
+        let sanitized = val.substring(1, val.length - 1).replace(/'/g, "\\'");
+        val = `"${sanitized.replace(/"/g, '\\"')}"`;
       }
     } else if (ast.has('num')) {
       if (val.indexOf('.') !== -1) {

@@ -14,7 +14,7 @@ Describe "Booleans"
         emit stdout concat(toString(toBool(-1)), \" <- -1\n\");
         emit stdout concat(toString(toBool(0.0)), \" <- 0.0\n\");
         emit stdout concat(toString(toBool(1.2)), \" <- 1.2\n\");
-        emit stdout concat(toString(toBool('')), \" <- ''\n\");
+        emit stdout concat(toString(toBool('')), ' <- \"\"\n');
         emit stdout concat(toString(toBool('hi')), \" <- 'hi'\n\");
         emit stdout concat(toString(toBool('true')), \" <- 'true'\n\");
         emit exit 0;
@@ -36,7 +36,7 @@ Describe "Booleans"
   OUTPUT6="true <- -1"
   OUTPUT7="false <- 0.0"
   OUTPUT8="true <- 1.2"
-  OUTPUT9="false <- ''"
+  OUTPUT9="false <- \"\""
   OUTPUT10="false <- 'hi'"
   OUTPUT11="true <- 'true'"
 
