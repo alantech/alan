@@ -176,9 +176,10 @@ export default class Fn {
         if (ii !== this.body.length - 1) {
           throw new Error(`got a return at a bad time (should've been caught already?)`);
         }
-        let refCall = 'reff';
-        if (ty.eq(opcodes().get('string'))) {
-          refCall = 'refv';
+        let refCall = 'refv';
+        const fixedTypes = ['int8', 'int16', 'int32', 'int64', 'float32', 'float64', 'bool'];
+        if (fixedTypes.some(fixedTypeName => ty.eq(opcodes().get(fixedTypeName)))) {
+          refCall = 'reff';
         }
         amm.assign(kind, name, ty, refCall, [stmt.ret.ammName]);
         break;
