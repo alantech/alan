@@ -17,6 +17,7 @@ Describe "Booleans"
         emit stdout concat(toString(toBool('')), ' <- \"\"\n');
         emit stdout concat(toString(toBool('hi')), \" <- 'hi'\n\");
         emit stdout concat(toString(toBool('true')), \" <- 'true'\n\");
+        wait(1000);
         emit exit 0;
       }
     "

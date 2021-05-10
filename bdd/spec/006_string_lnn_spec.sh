@@ -39,6 +39,7 @@ Describe "Strings"
           // const res2 = 'Hello, World!' / ', ';
           // print(res2[1]);
 
+          wait(1000);
           emit exit 0;
         }
       "

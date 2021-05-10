@@ -93,6 +93,7 @@ Describe "Events"
 
       on aNumber fn(num: int64) {
         print('I got a number! ' + num.toString());
+        wait(1000);
         emit exit 0;
       }
 
