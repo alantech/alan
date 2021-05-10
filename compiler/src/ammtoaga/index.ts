@@ -34,8 +34,8 @@ const loadGlobalMem = (globalMemAst: LPNode[], addressMap: object) => {
   for (const globalConst of globalMemAst) {
     const rec = globalConst.get()
     if (!(rec instanceof NamedAnd)) continue
-    let offset: number = 8;
-    let val: string = rec.get('assignables').t.trim()
+    let offset = 8
+    let val = rec.get('assignables').t.trim()
     const typename = rec.get('fulltypename').t.trim()
     if (typename === 'string') {
       let str: string

@@ -24,14 +24,14 @@ const functionbodyToJsText = (fnbody: LPNode, indent: string) => {
     if (statement.has('declarations')) {
       if (statement.get('declarations').has('constdeclaration')) {
         const dec = statement.get('declarations').get('constdeclaration')
-        outText += `const ${dec.get('decname').t} = ${assignableToJsText(dec.get('assignables'), indent, dec.get('fulltypename'))}\n`
+        outText += `const ${dec.get('decname').t} = ${assignableToJsText(dec.get('assignables'), dec.get('fulltypename'), indent)}\n`
       } else if (statement.get('declarations').has('letdeclaration')) {
         const dec = statement.get('declarations').get('letdeclaration')
-        outText += `let ${dec.get('decname').t} = ${assignableToJsText(dec.get('assignables'), indent, dec.get('fulltypename'))}\n`
+        outText += `let ${dec.get('decname').t} = ${assignableToJsText(dec.get('assignables'), dec.get('fulltypename'), indent)}\n`
       }
     } else if (statement.has('assignments')) {
       const assign = statement.get('assignments')
-      outText += `${assign.get('decname').t} = ${assignableToJsText(assign.get('assignables'), indent, assign.get('fulltypename'))}\n`
+      outText += `${assign.get('decname').t} = ${assignableToJsText(assign.get('assignables'), assign.get('fulltypename'), indent)}\n`
     } else if (statement.has('calls')) {
       outText += `${callToJsText(statement.get('calls'))}\n`
     } else if (statement.has('emits')) {
@@ -46,7 +46,7 @@ const functionbodyToJsText = (fnbody: LPNode, indent: string) => {
   return outText
 }
 
-const assignableToJsText = (assignable: LPNode, indent: string, fulltypename?: LPNode) => {
+const assignableToJsText = (assignable: LPNode, fulltypename: LPNode, indent: string) => {
   let outText = ""
   if (assignable.has('functions')) {
     const args = assignable.get('functions').get('args')
@@ -87,7 +87,7 @@ const ammToJsText = (amm: LPNode) => {
     const rec = globalConst.get()
     if (!(rec instanceof NamedAnd)) continue
     outFile +=
-      `const ${rec.get('decname').t} = ${assignableToJsText(rec.get('assignables'), '', rec.get('fulltypename'))}\n`
+      `const ${rec.get('decname').t} = ${assignableToJsText(rec.get('assignables'), rec.get('fulltypename'), '')}\n`
   }
   // We can also skip the event declarations because they are lazily bound by EventEmitter
   // Now we convert the handlers to Javascript. This is the vast majority of the work
