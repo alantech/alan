@@ -83,11 +83,13 @@ true
 false"
 
     It "runs js"
+      Pending types-depending-on-each-other
       When run test_js
       The output should eq "$EQUALS"
     End
 
     It "runs agc"
+      Pending types-depending-on-each-other
       When run test_agc
       The output should eq "$EQUALS"
     End
