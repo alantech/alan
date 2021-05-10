@@ -222,17 +222,21 @@ pub async fn add_cred() -> String {
     0,
   );
   let cloud = &clouds[selection];
-  let cred_name = anycloud_dialoguer::input_with_default_and_validation(
-    "Name for new Credential",
-    cloud.to_lowercase(),
-    |input: &String| -> Result<(), &str> {
-      if credentials.contains_key(input) {
-        Err("Credential name already exists")
-      } else {
-        Ok(())
-      }
-    },
-  );
+  let default = cloud.to_lowercase();
+  let prompt = "Name for new Credential";
+  let validator = |input: &String| -> Result<(), &str> {
+    if credentials.contains_key(input) {
+      Err("Credential name already exists")
+    } else {
+      Ok(())
+    }
+  };
+  let cred_name;
+  if credentials.contains_key(&default) {
+    cred_name = anycloud_dialoguer::input_with_validation(prompt, validator);
+  } else {
+    cred_name = anycloud_dialoguer::input_with_default_and_validation(prompt, default, validator);
+  }
   let name = cred_name.to_string();
   match cloud.as_str() {
     "AWS" => {
