@@ -81,5 +81,15 @@ true
 false
 true
 false"
+
+    It "runs js"
+      When run test_js
+      The output should eq "$EQUALS"
+    End
+
+    It "runs agc"
+      When run test_agc
+      The output should eq "$EQUALS"
+    End
   End
 End

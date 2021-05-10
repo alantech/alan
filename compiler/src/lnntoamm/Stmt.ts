@@ -51,7 +51,7 @@ export default abstract class Stmt {
   static fromAst(ast: LPNode, metadata: MetaData): Stmt[] {
     let stmts = [];
     if (ast.has('assignables')) {
-      let [generatedStmts, expr] = Expr.fromAssignablesAst(ast.get('assignments'), metadata);
+      let [generatedStmts, expr] = Expr.fromAssignablesAst(ast.get('assignables').get('assignables'), metadata);
       stmts.push(...generatedStmts, Dec.gen(expr, metadata));
     } else if (ast.has('assignments')) {
       stmts.push(...Assign.fromAssignments(ast.get('assignments'), metadata));

@@ -37,7 +37,7 @@ export fn toInt64(n: int16): int64 = i16i64(n);
 export fn toInt64(n: int32): int64 = i32i64(n);
 export fn toInt64(n: int64): int64 = n;
 export fn toInt64(n: float32): int64 = f32i64(n);
-export fn toInt64(n: float64): int64 = f32i64(n);
+export fn toInt64(n: float64): int64 = f64i64(n);
 export fn toInt64(n: string): int64 = stri64(n);
 export fn toInt64(n: bool): int64 = booli64(n);
 

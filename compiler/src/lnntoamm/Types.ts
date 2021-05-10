@@ -32,6 +32,8 @@ export default abstract class Type implements Equalable {
   abstract constrain(to: Type): void;
   abstract eq(that: Equalable): boolean;
   abstract instance(): Type;
+  abstract tempConstrain(to: Type): void;
+  abstract resetTemp(): void;
 
   static getFromTypename(name: LPNode | string, scope: Scope): Type {
     // TODO: change this to use parseFulltypename
@@ -107,6 +109,14 @@ export class Builtin extends Type {
 
   instance(): Type {
     return this;
+  }
+
+  tempConstrain(ty: Type) {
+    this.constrain(ty);
+  }
+
+  resetTemp() {
+    // do nothing
   }
 }
 
@@ -186,6 +196,15 @@ class Struct extends Type {
   instance(): Type {
     return this; // TODO: this right?
   }
+
+  tempConstrain(to: Type) {
+    // TODO: can structs have temp constraints?
+    this.constrain(to);
+  }
+
+  resetTemp() {
+    // TODO: can structs have temp constraints?
+  }
 }
 
 class Interface extends Type {
@@ -213,18 +232,30 @@ class Interface extends Type {
   instance(): Type {
     return TODO();
   }
+
+  tempConstrain(to: Type) {
+    TODO();
+  }
+
+  resetTemp() {
+    TODO();
+  }
 }
 
 class Generated extends Type {
   private delegate: Type | null
+  private tempDelegate: Type | null
 
   constructor() {
     super(genName());
     this.delegate = null;
+    this.tempDelegate = null;
   }
 
   breakdown(): Builtin {
-    if (this.delegate !== null) {
+    if (this.tempDelegate !== null) {
+      return this.tempDelegate.breakdown();
+    } else if (this.delegate !== null) {
       return this.delegate.breakdown();
     } else {
       throw new Error(`Couldn't resolve generated type`);
@@ -232,18 +263,29 @@ class Generated extends Type {
   }
 
   compatibleWithConstraint(ty: Type): boolean {
-    if (this.delegate === null) {
-      return true;
-    } else {
+    if (this.tempDelegate !== null) {
+      return this.tempDelegate.compatibleWithConstraint(ty);
+    } else if (this.delegate !== null) {
       return this.delegate.compatibleWithConstraint(ty);
+    } else {
+      return true;
     }
   }
 
   constrain(to: Type) {
-    if (this.delegate === null) {
-      this.delegate = to;
-    } else {
+    // if `this.tempDelegate` is set, something is *very* wrong because
+    // all permanent constraints should already be processed...
+    // if we need to allow `tempConstrain`s to get processed `constrain`s,
+    // then this check should be at the end of this method and pass the
+    // removed `tempDelegate` to the new permanent delegate's `tempConstrain`
+    if (this.tempDelegate) {
+      throw new Error(`cannot process temporary type constraints after permanent type constraints`);
+    }
+
+    if (this.delegate !== null) {
       this.delegate.constrain(to);
+    } else {
+      this.delegate = to;
     }
   }
 
@@ -262,23 +304,45 @@ class Generated extends Type {
       return new Generated();
     }
   }
+
+  tempConstrain(to: Type) {
+    if (this.delegate !== null) {
+      this.delegate.tempConstrain(to);
+    } else if (this.tempDelegate !== null) {
+      TODO('temp constraints to a temporary constraint???');
+    } else {
+      this.tempDelegate = to;
+    }
+  }
+
+  resetTemp() {
+    if (this.tempDelegate !== null) {
+      this.tempDelegate = null;
+    } else if (this.delegate !== null) {
+      this.tempDelegate.resetTemp();
+    }
+  }
 }
 
 class OneOf extends Type {
   selection: Type[]
-  tempSelect: Type | null
+  tempSelect: Type[] | null
 
   constructor(
     selection: Type[],
+    tempSelect: Type[] = null,
   ) {
     super(genName());
     this.selection = selection;
-    this.tempSelect = null;
+    this.tempSelect = tempSelect;
   }
 
   private select(): Type {
     if (this.tempSelect !== null) {
-      return this.tempSelect;
+      if (this.tempSelect.length === 0) {
+        throw new Error();
+      }
+      return this.tempSelect[this.tempSelect.length - 1];
     } else if (this.selection.length > 0) {
       return this.selection[this.selection.length - 1];
     } else {
@@ -304,5 +368,13 @@ class OneOf extends Type {
 
   instance(): Type {
     return this.select().instance();
+  }
+
+  tempConstrain(to: Type) {
+    this.tempSelect = this.selection.filter(ty => ty.compatibleWithConstraint(to));
+  }
+
+  resetTemp() {
+    this.tempSelect = [];
   }
 }

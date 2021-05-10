@@ -156,7 +156,7 @@ class Call extends Expr {
       argAst.get('assignables'),
       ...argAst.get('cdr').getAll().map(a => a.get('assignables')),
     ];
-    let args = [];
+    let args: Ref[] = [];
     if (accessed !== null) {
       args.push(accessed);
     }
@@ -181,6 +181,25 @@ class Call extends Expr {
     if (fns === null || !isFnArray(fns)) {
       fns = [] as Fn[];
     }
+    // first reduction
+    let argTys = args.map(arg => arg.ty);
+    // console.log('~~~~~~~~~', ast.t.trim());
+    // console.log('before filter', fns);
+    fns = fns.filter(fn => fn.acceptsTypes(argTys));
+    // console.log('after filter', fns);
+    // now, constrain all of the args to their possible types
+    // makes it so that the type of the parameters in each position are in their own list
+    // ie, given `do(int8, int16)` and `do(int8, int8)`, will result in this 2D array:
+    // [ [int8, int8],
+    //   [int16, int8] ]
+    // for some reason TS thinks that `fns` is `Boxish` but *only* in the lambda here,
+    // which is why I have to specify `fns: Fn[]`...
+    argTys.forEach((ty, ii) => {
+      let paramTys = (fns as Fn[]).map(fn => fn.params[ii].ty);
+      // console.log('constraining', ty, 'to', paramTys);
+      ty.constrain(Type.oneOf(paramTys));
+      // console.log('constrained:', ty);
+    });
     let retPossibilities = [];
     retPossibilities.push(...fns.map(fn => fn.retTy));
     if (closure !== null) {
@@ -192,6 +211,7 @@ class Call extends Expr {
   inline(amm: Output, kind: AssignKind, name: string, ty: Builtin) {
     const argTys = this.args.map(arg => arg.ty.instance());
     const selected = this.fns.reverse().find(fn => fn.acceptsTypes(argTys)) || null;
+    // console.log('!!!!!!!!!!', this.ast.t.trim(), selected);
     if (selected === null) {
       throw new Error(`no function selected: ${this.ast.t.trim()}`);
     }

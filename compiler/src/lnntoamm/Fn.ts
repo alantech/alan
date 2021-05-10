@@ -3,7 +3,7 @@ import Output, { AssignKind } from './Amm';
 import Expr, { Ref } from './Expr';
 import opcodes from './opcodes';
 import Scope from './Scope';
-import Stmt, { Assign, Dec, Exit, FnParam, MetaData } from './Stmt';
+import Stmt, { Dec, Exit, FnParam, MetaData } from './Stmt';
 import Type, { Builtin } from './Types';
 import { TODO } from './util';
 
@@ -178,6 +178,9 @@ export default class Fn {
         }
         let refCall = 'refv';
         const fixedTypes = ['int8', 'int16', 'int32', 'int64', 'float32', 'float64', 'bool'];
+        if (ty.eq(opcodes().get('void'))) {
+          break;
+        }
         if (fixedTypes.some(fixedTypeName => ty.eq(opcodes().get(fixedTypeName)))) {
           refCall = 'reff';
         }
