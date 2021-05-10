@@ -22,6 +22,14 @@ pub fn input_with_default_and_validation(
     .unwrap()
 }
 
+pub fn input_with_validation(prompt: &str, validator: impl Validator<String>) -> String {
+  Input::with_theme(&ColorfulTheme::default())
+    .with_prompt(prompt)
+    .validate_with(validator)
+    .interact_text()
+    .unwrap()
+}
+
 pub fn confirm_with_default(prompt: &str, default: bool) -> bool {
   Confirm::with_theme(&ColorfulTheme::default())
     .with_prompt(prompt)
