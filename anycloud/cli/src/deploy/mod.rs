@@ -231,12 +231,11 @@ pub async fn add_cred() -> String {
       Ok(())
     }
   };
-  let cred_name;
-  if credentials.contains_key(&default) {
-    cred_name = anycloud_dialoguer::input_with_validation(prompt, validator);
+  let cred_name = if credentials.contains_key(&default) {
+    anycloud_dialoguer::input_with_validation(prompt, validator)
   } else {
-    cred_name = anycloud_dialoguer::input_with_default_and_validation(prompt, default, validator);
-  }
+    anycloud_dialoguer::input_with_default_and_validation(prompt, default, validator)
+  };
   let name = cred_name.to_string();
   match cloud.as_str() {
     "AWS" => {
@@ -514,12 +513,11 @@ pub async fn add_deploy_config() {
       Ok(())
     }
   };
-  let name;
-  if deploy_configs.contains_key(&default) {
-    name = anycloud_dialoguer::input_with_validation(prompt, validator);
+  let name = if deploy_configs.contains_key(&default) {
+    anycloud_dialoguer::input_with_validation(prompt, validator)
   } else {
-    name = anycloud_dialoguer::input_with_default_and_validation(prompt, default, validator);
-  }
+    anycloud_dialoguer::input_with_default_and_validation(prompt, default, validator)
+  };
   let mut cloud_configs = Vec::new();
   if creds.len() == 0 {
     prompt_add_cred(false).await;
