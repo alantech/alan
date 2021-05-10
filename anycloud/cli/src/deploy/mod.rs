@@ -505,17 +505,21 @@ pub async fn list_creds() {
 pub async fn add_deploy_config() {
   let mut deploy_configs = get_deploy_configs().await;
   let creds = get_creds().await;
-  let name: String = anycloud_dialoguer::input_with_default_and_validation(
-    "Name for new Deploy Config",
-    "staging".into(),
-    |input: &String| -> Result<(), &str> {
-      if deploy_configs.contains_key(input) {
-        Err("Deploy Config name already exists")
-      } else {
-        Ok(())
-      }
-    },
-  );
+  let default = "staging".to_string();
+  let prompt = "Name for new Deploy Config";
+  let validator = |input: &String| -> Result<(), &str> {
+    if deploy_configs.contains_key(input) {
+      Err("Deploy Config name already exists")
+    } else {
+      Ok(())
+    }
+  };
+  let name;
+  if deploy_configs.contains_key(&default) {
+    name = anycloud_dialoguer::input_with_validation(prompt, validator);
+  } else {
+    name = anycloud_dialoguer::input_with_default_and_validation(prompt, default, validator);
+  }
   let mut cloud_configs = Vec::new();
   if creds.len() == 0 {
     prompt_add_cred(false).await;
