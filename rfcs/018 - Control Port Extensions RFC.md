@@ -63,7 +63,8 @@ Option 1 provides the least annoyance to application developers as they don't ha
 In the end, a service that establishes an HTTPS server and custom control port functionality would simply have two handlers, one for each:
 
 ```ln
-from @std/httpserver import connection, controlPort, Connection, status, body, send
+from @std/httpserver import connection, Connection, status, body, send
+from @std/avmdaemon import controlPort
 
 on connection fn (conn: Connection) {
   const res = conn.res;
