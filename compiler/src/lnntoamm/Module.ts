@@ -219,11 +219,11 @@ class Module {
     opAst = opAst.get('operatormapping');
     const newOp = Operator.fromAst(opAst, this.moduleScope);
     // no need to validate this since only operators can have such a name
-    const otherOps = this.moduleScope.get(newOp.name) || [];
-    this.moduleScope.put(newOp.name, [...otherOps, newOp]);
+    const otherOps = this.moduleScope.get(newOp.symbol) || [];
+    this.moduleScope.put(newOp.symbol, [...otherOps, newOp]);
     if (isExport) {
-      const exportedOps = this.exportScope.get(newOp.name) || [];
-      this.moduleScope.put(newOp.name, [...exportedOps, newOp]);
+      const exportedOps = this.exportScope.get(newOp.symbol) || [];
+      this.moduleScope.put(newOp.symbol, [...exportedOps, newOp]);
     }
   }
 
