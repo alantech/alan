@@ -41,7 +41,7 @@ npm init
 npm install express --save
 ```
 
-3) Define an HTTP server listening on port `8088` in an `index.js` file:
+3) Define an HTTP server listening on port `8088` in an `index.js` file
 
 ```javascript
 const express = require('express')
@@ -57,7 +57,7 @@ app.listen(port, () => {
 })
 ```
 
-4) Define the `Dockerfile` like this: 
+4) Define the `Dockerfile`
 
 ```bash
 FROM node:lts
@@ -78,7 +78,7 @@ $ curl localhost:8088
 
 Which should return `Hello World!`
 
-6) Use the AnyCloud CLI to create an `anycloud.json` file in the project directory and define a `Deploy Config`. You will need to pick a name or alias for the `Deploy Config`. The initial value will be `staging`. Since there is only `Credentials`, the CLI will default to that for your new `Deploy Config`.
+6) Use the AnyCloud CLI to create an `anycloud.json` file in the project directory and define a `Deploy Config`. You will need to pick a name or alias for the `Deploy Config`. The default value will be `staging`. You will also need to associate `Credentials` to this `Deploy Config`.
 
 ```bash
 $ anycloud config new
