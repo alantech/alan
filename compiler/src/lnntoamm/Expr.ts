@@ -2,9 +2,10 @@ import { LPNode, NamedAnd, NamedOr } from '../lp';
 import Output, { AssignKind } from './Amm';
 import Fn from './Fn';
 import opcodes from './opcodes';
+import Operator from './Operator';
 import Stmt, { Dec, MetaData, VarDef } from './Stmt';
 import Type, { Builtin } from './Types';
-import { isFnArray, TODO } from './util';
+import { isFnArray, isOpArray, TODO } from './util';
 
 export default abstract class Expr {
   ast: LPNode
@@ -93,12 +94,23 @@ export default abstract class Expr {
 
   static fromAssignablesAst(ast: LPNode, metadata: MetaData): [Stmt[], Expr] {
     // break it up so that we're only working on one base assignable list or operator at a time.
-    let operated = ast.getAll().map(work => {
+    let operated: Array<[Stmt[], Expr] | Operator[]> = ast.getAll().map(work => {
       work = work.get('withoperators');
       if (work.has('baseassignablelist')) {
         return Expr.fromBaseassignablelist(work.get('baseassignablelist'), metadata);
       } else if (work.has('operators')) {
-        return TODO('operators');
+        // TODO: this won't work with operators associated with interfaces.
+        // Will have to iterate through all of the interfaces in-scope and collect
+        // the applicable types as well
+        const op = work.get('operators').get('operators').t;
+        let operators = metadata.scope.get(op) as Operator[];
+        if (operators === null) {
+          throw new Error(`can't find operator ${op}`);
+        } else if (!isOpArray(operators)) {
+          // sanity check
+          throw new Error(`somehow ${op} isn't an operator?`);
+        }
+        return operators;
       } else {
         throw new Error(`unexpected assignable ast: ${work}`);
       }
@@ -106,13 +118,51 @@ export default abstract class Expr {
     if (operated.length === 0) {
       throw new Error(`no expressions generated for ast: ${ast}`);
     } else if (operated.length === 1) {
-      if (operated[0][0] instanceof Array) {
-        return operated[0] as [Stmt[], Expr];
-      } else {
+      if (isOpArray(operated)) {
         throw new Error(`variables can't be assigned to operators`);
       }
+      return operated[0] as [Stmt[], Expr];
+    }
+    // now we have to resolve operators - start by filtering out operators if they
+    // are in a position that must be prefix or infix
+    // since there are no suffix operators, this is relatively easy - operators
+    // immediately following an expression must be infix, while all others must be
+    // a prefix
+    // TODO: make sure errors match lntoamm
+    let stmts: Stmt[] = [];
+    // let operation: Array<Operator[] | Ref> = [];
+    let infixPosition = false;
+    let operation = operated.map(op => {
+      if (!isOpArray(op)) {
+        if (infixPosition) {
+          throw new Error(`invalid expression: expected operator, found ${op[1].ast.t.trim()}`);
+        }
+        infixPosition = true;
+        const dec = Dec.gen(op[1], metadata);
+        stmts.push(...op[0], dec);
+        return dec.ref();
+      } else if (infixPosition) {
+        infixPosition = false;
+        return op.filter(op => !op.isPrefix);
+      } else {
+        return op.filter(op => op.isPrefix);
+      }
+    });
+
+    // Now we build the precedence table for this application
+    const precedences = operation.map(opOrRef => {
+      if (opOrRef instanceof Ref) {
+        return opOrRef;
+      } else {
+        return opOrRef.reduce((prec, op) => prec.add(op.precedence), new Set<number>());
+      }
+    });
+
+    // if we can absolutely solve the calling order then everything is ok
+    if (precedences.some(prec => prec instanceof Set && prec.size === 1)) {
+      // TODO
     } else {
-      return TODO('operators');
+      // there are some precedence mismatches, so things get messy
     }
   }
 }
