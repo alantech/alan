@@ -1,5 +1,3 @@
-import { listenerCount } from 'process';
-import { OpcodeFn } from './Fn';
 import { Builtin } from './Types';
 import { genName } from './util';
 
@@ -7,6 +5,12 @@ const INDENT = '  ';
 // keep this since this compiler is WIP - once it's finished we shouldn't need it anymore, and in fact it'll hurt performance (barely? i think?)
 const DEBUG_MODE_PRINTING = false;
 
+export type AssignKind = '' | 'const' | 'let';
+
+// TODO: a better solution would be to generate SSA:
+// 1. only accept opcode calls and references
+// 2. return a generated name that is guaranteed not in-scope
+// 3. perform "register selection" - reassign variables based on usage and references
 export default class Output {
   private constants: Map<Builtin, {[val: string]: string}>
   private events: {[name: string]: Builtin}
@@ -81,7 +85,7 @@ export default class Output {
     kind: '' | 'const' | 'let',
     name: string,
     ty: Builtin,
-    assign: string | OpcodeFn,
+    assign: string,
     args: string[] | null = null,
   ) {
     let line = this.indent
@@ -90,10 +94,11 @@ export default class Output {
     } else {
       line = line.concat(kind, ' ', name, ': ', ty.ammName, ' = ');
     }
-    if (assign instanceof OpcodeFn) {
-      line = line.concat(assign.name, '(');
+    if (args !== null) {
+      const fnName = assign;
+      line = line.concat(fnName, '(');
       if (args === null) {
-        throw new Error(`attempting to call opcode ${assign.name} but there are no args defined`)
+        throw new Error(`attempting to call opcode ${fnName} but there are no args defined`)
       }
       for (let ii = 0; ii < args.length; ii++) {
         line = line.concat(args[ii]);
@@ -103,8 +108,7 @@ export default class Output {
       }
       line = line.concat(')');
     } else {
-      let assignName = this.global('const', ty, assign);
-      line = line.concat(assignName);
+      line = line.concat(assign);
     }
     DEBUG_MODE_PRINTING && console.log(line);
     this.handlers[0] = this.handlers[0].concat(line.concat('\n'));
