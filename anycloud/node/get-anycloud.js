@@ -5,7 +5,7 @@ const path = require('path');
 
 const pjson = require('./package.json');
 
-const anycloudUrlBase = `https://github.com/alantech/anycloud/releases/download/v${pjson.version}/`;
+const anycloudUrlBase = `https://github.com/alantech/alan/releases/download/v${pjson.version}/`;
 let shell = '/bin/sh';
 let request = '';
 let extract = '';

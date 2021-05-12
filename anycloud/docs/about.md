@@ -1,6 +1,6 @@
 # AnyCloud Documentation
 
-[AnyCloud](https://anycloudapp.com) takes API credentials from your preferred cloud provider and a `Dockerfile` in order to elastically scale an HTTP server in your own cloud account.
+[AnyCloud](https://anycloudapp.com) is a CLI that takes API credentials from your preferred cloud provider and a `Dockerfile` in order to elastically scale an HTTP server in your own cloud account.
 
 ## About the documentation
 
