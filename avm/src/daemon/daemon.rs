@@ -14,8 +14,6 @@ use lazy_static::lazy_static;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-#[allow(unused_imports)]
-use tokio::process::Command;
 use tokio::sync::watch::{self, Receiver};
 use tokio::task;
 use tokio::time::{sleep, Duration};
@@ -52,7 +50,10 @@ async fn get_private_ip() -> DaemonResult<String> {
   match ALAN_TECH_ENV.as_str() {
     "local" => Ok("127.0.0.1".to_string()),
     _ => {
-      let res = Command::new("hostname").arg("-I").output().await?;
+      let res = tokio::process::Command::new("hostname")
+        .arg("-I")
+        .output()
+        .await?;
       let stdout = res.stdout;
       let private_ip = String::from_utf8(stdout)?;
       match private_ip.trim().split_whitespace().next() {
