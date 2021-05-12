@@ -1,9 +1,9 @@
-import { LPNode } from "../lp";
-import Output from "./Amm";
+import { LPNode } from '../lp';
+import Output from './Amm';
 import Fn from './Fn';
-import Scope from "./Scope";
-import Type, { Builtin } from "./Types";
-import { genName, TODO } from "./util";
+import Scope from './Scope';
+import Type, { Builtin } from './Types';
+import { genName, TODO } from './util';
 
 let allEvents: Event[] = [];
 

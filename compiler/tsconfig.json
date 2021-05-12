@@ -12,6 +12,7 @@
     "src/**/*"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "src/lnntoamm/old_*"
   ]
 }

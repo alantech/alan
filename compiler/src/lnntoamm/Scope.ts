@@ -4,7 +4,6 @@ import Fn from './Fn';
 import Operator from './Operator';
 import Ty from './Types';
 
-// type Boxish = Type | Scope | Microstatement | Array<Operator> | Array<Fn> | Event | Constant | undefined
 // Scope instead of a Module
 type Boxish = Scope | Const | Event | Fn[] | Operator[] | Ty
 

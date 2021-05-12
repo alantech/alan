@@ -63,7 +63,7 @@ sourceToAll() {
 
 lnn_sourceToAll() {
   lnn_sourceToTemp "$1"
-  tempToAmm
+  lnn_tempToAmm
   tempToAgc
   tempToJs
 }

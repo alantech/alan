@@ -222,17 +222,20 @@ pub async fn add_cred() -> String {
     0,
   );
   let cloud = &clouds[selection];
-  let cred_name = anycloud_dialoguer::input_with_default_and_validation(
-    "Name for new Credential",
-    cloud.to_lowercase(),
-    |input: &String| -> Result<(), &str> {
-      if credentials.contains_key(input) {
-        Err("Credential name already exists")
-      } else {
-        Ok(())
-      }
-    },
-  );
+  let default = cloud.to_lowercase();
+  let prompt = "Name for new Credential";
+  let validator = |input: &String| -> Result<(), &str> {
+    if credentials.contains_key(input) {
+      Err("Credential name already exists")
+    } else {
+      Ok(())
+    }
+  };
+  let cred_name = if credentials.contains_key(&default) {
+    anycloud_dialoguer::input_with_validation(prompt, validator)
+  } else {
+    anycloud_dialoguer::input_with_default_and_validation(prompt, default, validator)
+  };
   let name = cred_name.to_string();
   match cloud.as_str() {
     "AWS" => {
@@ -501,17 +504,20 @@ pub async fn list_creds() {
 pub async fn add_deploy_config() {
   let mut deploy_configs = get_deploy_configs().await;
   let creds = get_creds().await;
-  let name: String = anycloud_dialoguer::input_with_default_and_validation(
-    "Name for new Deploy Config",
-    "staging".into(),
-    |input: &String| -> Result<(), &str> {
-      if deploy_configs.contains_key(input) {
-        Err("Deploy Config name already exists")
-      } else {
-        Ok(())
-      }
-    },
-  );
+  let default = "staging".to_string();
+  let prompt = "Name for new Deploy Config";
+  let validator = |input: &String| -> Result<(), &str> {
+    if deploy_configs.contains_key(input) {
+      Err("Deploy Config name already exists")
+    } else {
+      Ok(())
+    }
+  };
+  let name = if deploy_configs.contains_key(&default) {
+    anycloud_dialoguer::input_with_validation(prompt, validator)
+  } else {
+    anycloud_dialoguer::input_with_default_and_validation(prompt, default, validator)
+  };
   let mut cloud_configs = Vec::new();
   if creds.len() == 0 {
     prompt_add_cred(false).await;

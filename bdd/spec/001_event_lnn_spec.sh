@@ -56,12 +56,12 @@ Describe "Events"
 
   Describe "no global memory exit code"
     before() {
-      sourceToAll "
+      lnn_sourceToAll "
         import @std/app
 
         on app.start {
           let x: int64 = 0;
-          emit app.exit x;
+          emit app.exit toInt8(x);
         }
       "
     }
@@ -93,6 +93,7 @@ Describe "Events"
 
       on aNumber fn(num: int64) {
         print('I got a number! ' + num.toString());
+        wait(1000);
         emit exit 0;
       }
 
@@ -110,13 +111,13 @@ Describe "Events"
     INTOUTPUT="I got a number! 5"
 
     It "runs js"
-      Pending function-selection
+      Pending methods-interfaces-and-operators
       When run test_js
       The output should eq "$INTOUTPUT"
     End
 
     It "runs agc"
-      Pending function-selection
+      Pending methods-interfaces-and-operators
       When run test_agc
       The output should eq "$INTOUTPUT"
     End

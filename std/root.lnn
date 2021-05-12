@@ -14,6 +14,147 @@ export string
 // TODO: alias int = int64, float = float64
 
 // TODO: other defs
+export fn toFloat64(n: int8): float64 = i8f64(n);
+export fn toFloat64(n: int16): float64 = i16f64(n);
+export fn toFloat64(n: int32): float64 = i32f64(n);
 export fn toFloat64(n: int64): float64 = i64f64(n);
-export fn toFloat32(n: int64): float64 = i64f32(n);
+export fn toFloat64(n: float32): float64 = f32f64(n);
+export fn toFloat64(n: float64): float64 = n;
+export fn toFloat64(n: string): float64 = strf64(n);
+export fn toFloat64(n: bool): float64 = boolf64(n);
+
+export fn toFloat32(n: int8): float32 = i8f32(n);
+export fn toFloat32(n: int16): float32 = i16f32(n);
+export fn toFloat32(n: int32): float32 = i32f32(n);
+export fn toFloat32(n: int64): float32 = i64f32(n);
+export fn toFloat32(n: float32): float32 = n;
+export fn toFloat32(n: float64): float32 = f64f32(n);
+export fn toFloat32(n: string): float32 = strf32(n);
+export fn toFloat32(n: bool): float32 = boolf32(n);
+
+export fn toInt64(n: int8): int64 = i8i64(n);
+export fn toInt64(n: int16): int64 = i16i64(n);
+export fn toInt64(n: int32): int64 = i32i64(n);
+export fn toInt64(n: int64): int64 = n;
+export fn toInt64(n: float32): int64 = f32i64(n);
+export fn toInt64(n: float64): int64 = f64i64(n);
+export fn toInt64(n: string): int64 = stri64(n);
+export fn toInt64(n: bool): int64 = booli64(n);
+
+export fn toInt32(n: int8): int32 = i8i32(n);
+export fn toInt32(n: int16): int32 = i16i32(n);
+export fn toInt32(n: int32): int32 = n;
+export fn toInt32(n: int64): int32 = i64i32(n);
+export fn toInt32(n: float32): int32 = f32i32(n);
+export fn toInt32(n: float64): int32 = f64i32(n);
+export fn toInt32(n: string): int32 = stri32(n);
+export fn toInt32(n: bool): int32 = booli32(n);
+
+export fn toInt16(n: int8): int16 = i8i16(n);
+export fn toInt16(n: int16): int16 = n;
+export fn toInt16(n: int32): int16 = i32i16(n);
+export fn toInt16(n: int64): int16 = i64i16(n);
+export fn toInt16(n: float32): int16 = f32i16(n);
+export fn toInt16(n: float64): int16 = f64i16(n);
+export fn toInt16(n: string): int16 = stri16(n);
+export fn toInt16(n: bool): int16 = booli16(n);
+
+export fn toInt8(n: int8): int8 = n;
+export fn toInt8(n: int16): int8 = i16i8(n);
+export fn toInt8(n: int32): int8 = i32i8(n);
+export fn toInt8(n: int64): int8 = i64i8(n);
+export fn toInt8(n: float32): int8 = f32i8(n);
+export fn toInt8(n: float64): int8 = f64i8(n);
+export fn toInt8(n: string): int8 = stri8(n);
+export fn toInt8(n: bool): int8 = booli8(n);
+
+export fn toBool(n: int8): bool = i8bool(n);
+export fn toBool(n: int16): bool = i16bool(n);
+export fn toBool(n: int32): bool = i32bool(n);
+export fn toBool(n: int64): bool = i64bool(n);
+export fn toBool(n: float32): bool = f32bool(n);
+export fn toBool(n: float64): bool = f64bool(n);
+export fn toBool(n: string): bool = strbool(n);
+export fn toBool(n: bool): bool = n;
+
+export fn toString(n: int8): string = i8str(n);
+export fn toString(n: int16): string = i16str(n);
+export fn toString(n: int32): string = i32str(n);
 export fn toString(n: int64): string = i64str(n);
+export fn toString(n: float32): string = f32str(n);
+export fn toString(n: float64): string = f64str(n);
+export fn toString(n: string): string = n;
+export fn toString(n: bool): string = boolstr(n);
+
+export fn eq(a: int8, b: int8): bool = eqi8(a, b);
+export fn eq(a: int16, b: int16): bool = eqi16(a, b);
+export fn eq(a: int32, b: int32): bool = eqi32(a, b);
+export fn eq(a: int64, b: int64): bool = eqi64(a, b);
+export fn eq(a: float32, b: float32): bool = eqf32(a, b);
+export fn eq(a: float64, b: float64): bool = eqf64(a, b);
+export fn eq(a: string, b: string): bool = eqstr(a, b);
+export fn eq(a: bool, b: bool): bool = eqbool(a, b);
+
+export fn neq(a: int8, b: int8): bool = neqi8(a, b);
+export fn neq(a: int16, b: int16): bool = neqi16(a, b);
+export fn neq(a: int32, b: int32): bool = neqi32(a, b);
+export fn neq(a: int64, b: int64): bool = neqi64(a, b);
+export fn neq(a: float32, b: float32): bool = neqf32(a, b);
+export fn neq(a: float64, b: float64): bool = neqf64(a, b);
+export fn neq(a: string, b: string): bool = neqstr(a, b);
+export fn neq(a: bool, b: bool): bool = neqbool(a, b);
+
+export fn lt(a: int8, b: int8): bool = lti8(a, b);
+export fn lt(a: int16, b: int16): bool = lti16(a, b);
+export fn lt(a: int32, b: int32): bool = lti32(a, b);
+export fn lt(a: int64, b: int64): bool = lti64(a, b);
+export fn lt(a: float32, b: float32): bool = ltf32(a, b);
+export fn lt(a: float64, b: float64): bool = ltf64(a, b);
+export fn lt(a: string, b: string): bool = ltstr(a, b);
+
+export fn lte(a: int8, b: int8): bool = ltei8(a, b);
+export fn lte(a: int16, b: int16): bool = ltei16(a, b);
+export fn lte(a: int32, b: int32): bool = ltei32(a, b);
+export fn lte(a: int64, b: int64): bool = ltei64(a, b);
+export fn lte(a: float32, b: float32): bool = ltef32(a, b);
+export fn lte(a: float64, b: float64): bool = ltef64(a, b);
+export fn lte(a: string, b: string): bool = ltestr(a, b);
+
+export fn gt(a: int8, b: int8): bool = gti8(a, b);
+export fn gt(a: int16, b: int16): bool = gti16(a, b);
+export fn gt(a: int32, b: int32): bool = gti32(a, b);
+export fn gt(a: int64, b: int64): bool = gti64(a, b);
+export fn gt(a: float32, b: float32): bool = gtf32(a, b);
+export fn gt(a: float64, b: float64): bool = gtf64(a, b);
+export fn gt(a: string, b: string): bool = gtstr(a, b);
+
+export fn gte(a: int8, b: int8): bool = gtei8(a, b);
+export fn gte(a: int16, b: int16): bool = gtei16(a, b);
+export fn gte(a: int32, b: int32): bool = gtei32(a, b);
+export fn gte(a: int64, b: int64): bool = gtei64(a, b);
+export fn gte(a: float32, b: float32): bool = gtef32(a, b);
+export fn gte(a: float64, b: float64): bool = gtef64(a, b);
+export fn gte(a: string, b: string): bool = gtestr(a, b);
+
+// Wait functions
+export fn wait(n: int8): void = waitop(i8i64(n));
+export fn wait(n: int16): void = waitop(i16i64(n));
+export fn wait(n: int32): void = waitop(i32i64(n));
+export fn wait(n: int64): void = waitop(n);
+
+// String functions
+export fn concat(a: string, b: string): string = catstr(a, b);
+export fn repeat(s: string, n: int64): string = repstr(s, n);
+export matches
+export fn length(s: string): int64 = lenstr(s);
+export trim
+
+// "clone" function useful for hoisting assignments and making duplicates
+export fn clone(a: int8): int8 = copyi8(a);
+export fn clone(a: int16): int16 = copyi16(a);
+export fn clone(a: int32): int32 = copyi32(a);
+export fn clone(a: int64): int64 = copyi64(a);
+export fn clone(a: float32): float32 = copyf32(a);
+export fn clone(a: float64): float64 = copyf64(a);
+export fn clone(a: bool): bool = copybool(a);
+export fn clone(a: string): string = copystr(a);
