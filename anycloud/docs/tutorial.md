@@ -2,15 +2,15 @@
 
 In this tutorial we will deploy the [sample express Node.js HTTP server](https://expressjs.com/en/starter/hello-world.html) in your own AWS account with AnyCloud. All the code can be found in this [template repository](https://github.com/alantech/hello-anycloud) which you can use to [create a new repository](https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/creating-a-repository-from-a-template) for your AnyCloud project.
 
-## Enable programmatic AWS access for AnyCloud
+## Enable programmatic AWS access to VMs for AnyCloud
 
-1) Create a new an IAM user in your AWS account using their console/UI as described [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html#id_users_create_console).
+1) Create a new IAM user in your AWS account using their console/UI as described [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html#id_users_create_console).
 
 2) Create a new access key under that IAM user using their console/UI as described [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html#Using_CreateAccessKey).
 
 3) Enable programmatic access for that IAM user, and attach the built-in [`AmazonEC2FullAccess`](https://console.aws.amazon.com/iam/home#/policies/arn%3Aaws%3Aiam%3A%3Aaws%3Apolicy%2FAmazonEC2FullAccess)policy to it as described [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_manage-attach-detach.html#add-policies-console).
 
-4) Take the `accessKeyId` and `secretAccessKey` from step 2 and create an AWS `Credentials` in AnyCloud. You will need to pick a name or alias for the `Credentials`. The initial value will be `aws`. In this example, we will call it `aws-personal`.
+4) Take the `accessKeyId` and `secretAccessKey` from step 2 and create AWS `Credentials` stored locally at `~/.anycloud/credentials.json` only. You will need to pick a name or alias for the `Credentials`. The default value will be `aws`. In this example, we will call it `mystartup-aws`.
 
 ```bash
 $ anycloud credentials new
@@ -41,7 +41,7 @@ npm init
 npm install express --save
 ```
 
-3) Define an HTTP server listening on port `8088` in an `index.js` file:
+3) Define an HTTP server listening on port `8088` in an `index.js` file
 
 ```javascript
 const express = require('express')
@@ -57,7 +57,7 @@ app.listen(port, () => {
 })
 ```
 
-4) Define the `Dockerfile` like this: 
+4) Define the `Dockerfile`
 
 ```bash
 FROM node:lts
@@ -78,7 +78,7 @@ $ curl localhost:8088
 
 Which should return `Hello World!`
 
-6) Use the AnyCloud CLI to create an `anycloud.json` file in the project directory and define a `Deploy Config`. You will need to pick a name or alias for the `Deploy Config`. The initial value will be `staging`. Since there is only `Credentials`, the CLI will default to that for your new `Deploy Config`.
+6) Use the AnyCloud CLI to create an `anycloud.json` file in the project directory and define a `Deploy Config`. You will need to pick a name or alias for the `Deploy Config`. The default value will be `staging`. You will also need to associate `Credentials` to this `Deploy Config`.
 
 ```bash
 $ anycloud config new
@@ -100,10 +100,13 @@ Successfully created "staging" Deploy Config.
 
 ## Deploy an App
 
-1) Make sure you [installed the AnyCloud CLI](about.md#cli-installation). Now deploy your Node.js server to your AWS account using the AnyCloud CLI. The only argument required is the value of one of the keys in `anycloud.json` to reference a deploy configuration. We use `staging` which we previously defined:
+1) Make sure you [installed the AnyCloud CLI](about.md#cli-installation). Now deploy your Node.js server to your AWS account using the AnyCloud CLI.
 
 ```bash
-$ anycloud new staging
+$ anycloud new
+? Pick Deploy Config for App ›
+❯ staging
+? Optional App name ›
 ▇ Creating new App
 ```
 
