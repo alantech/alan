@@ -4,7 +4,7 @@ use std::error::Error;
 use std::fs::{read, write};
 use std::io::Read;
 
-use anycloud::common::{get_app_tar_gz_b64, get_dockerfile_b64};
+use anycloud::common::{file_exist, get_app_tar_gz_b64, get_dockerfile_b64};
 use anycloud::deploy;
 use anycloud::{error, CLUSTER_ID};
 use base64;
@@ -213,8 +213,13 @@ fn write_b64_file(file_name: &str, content: &str) -> DaemonResult<()> {
 
 async fn get_files_b64() -> HashMap<String, String> {
   let mut files_b64 = HashMap::new();
-  files_b64.insert("Dockerfile".to_string(), get_dockerfile_b64().await);
-  files_b64.insert("app.tar.gz".to_string(), get_app_tar_gz_b64().await);
+  // Check for AnyCloud files
+  if file_exist("Dockerfile") {
+    files_b64.insert("Dockerfile".to_string(), get_dockerfile_b64().await);
+  }
+  if file_exist("app.tar.gz") {
+    files_b64.insert("app.tar.gz".to_string(), get_app_tar_gz_b64().await);
+  }
   files_b64
 }
 

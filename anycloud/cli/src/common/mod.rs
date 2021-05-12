@@ -93,3 +93,16 @@ pub async fn get_app_tar_gz_b64() -> String {
 
   return base64::encode(app_tar_gz);
 }
+
+pub fn file_exist(file_path: &str) -> bool {
+  let pwd = env::current_dir();
+  match pwd {
+    Ok(pwd) => match read(format!("{}/{}", pwd.display(), file_path)) {
+      Ok(_) => true,
+      Err(_) => false,
+    },
+    Err(_) => {
+      false
+    }
+  }
+}
