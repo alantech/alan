@@ -235,8 +235,8 @@ async fn set_local_daemon_props(local_agz_b64: Option<String>) -> () {
     .unwrap();
 }
 
-fn create_certs_if_local() -> () {
-  if ALAN_TECH_ENV.as_str() == "local" {
+fn maybe_create_certs() {
+  if !file_exist("key.pem") && !file_exist("certificate.pem") {
     // Self signed certs for local dev
     // openssl req -newkey rsa:2048 -nodes -keyout key.pem -x509 -days 365 -out certificate.pem -subj "/C=US/ST=California/O=Alan Technologies, Inc/CN=*.anycloudapp.com"
     let mut open_ssl = std::process::Command::new("openssl")
@@ -280,7 +280,7 @@ async fn get_daemon_props(local_agz_b64: Option<String>) -> Option<&'static Daem
 }
 
 pub async fn start(local_agz_b64: Option<String>) {
-  create_certs_if_local();
+  maybe_create_certs();
   let mut control_port = ControlPort::start().await;
   let (ctrl_tx, ctrl_rx) = watch::channel(control_port.clone());
   CONTROL_PORT_CHANNEL.set(ctrl_rx).unwrap();
