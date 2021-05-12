@@ -1,6 +1,6 @@
 [package]
 name = "anycloud"
-description = "Elastically scale webservers in any cloud provider"
+description = "CLI to elastically scale webservers in any cloud provider"
 license = "Apache-2.0"
 homepage = "https://github.com/alantech/anycloud"
 documentation = "https://alantech.gitbook.io/anycloud"
