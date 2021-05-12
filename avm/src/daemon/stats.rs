@@ -1,8 +1,7 @@
-use futures::future::join_all;
 use futures::stream::StreamExt;
 use heim_common::units::{
   information::kilobyte,
-  time::{millisecond, second},
+  time::second,
 };
 #[cfg(target_os = "linux")]
 use heim_cpu::os::linux::CpuTimeExt;
@@ -43,7 +42,10 @@ pub struct VMStatsV1 {
 
 // calculate the cpu % usage per process using the process'
 // total cpu time delta in a 100ms time window
+#[cfg(not(target_arch = "aarch64"))]
 async fn get_proc_usages() -> Vec<f64> {
+  use futures::future::join_all;
+  use heim_common::units::time::millisecond;
   let duration = 100.0; // ms
   let futures = heim_process::processes()
     .map(|process| async {
@@ -69,6 +71,10 @@ async fn get_proc_usages() -> Vec<f64> {
     .collect::<Vec<_>>()
     .await;
   join_all(futures).await
+}
+#[cfg(target_arch = "aarch64")]
+async fn get_proc_usages() -> Vec<f64> {
+    vec![]
 }
 
 // get total cpu times per core since the VM's uptime
