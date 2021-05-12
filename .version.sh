@@ -45,6 +45,7 @@ cd -
 
 # Publish the anycloud/node to NPM with the new version
 cd anycloud/node
+# make sure tsc/typescript is installed which is required for the build script
 yarn install
 yarn build
 rm -rf node_modules/ bin
