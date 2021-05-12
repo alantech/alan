@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::env;
 use std::error::Error;
-use std::fs::{read, write};
+use std::fs::read;
 use std::io::Read;
 
 use anycloud::common::{file_exist, get_app_tar_gz_b64, get_dockerfile_b64};
@@ -196,40 +196,14 @@ async fn run_agz_b64(agz_b64: &str) -> DaemonResult<()> {
   Ok(())
 }
 
-fn write_b64_file(file_name: &str, content: &str) -> DaemonResult<()> {
-  let pwd = env::current_dir();
-  match pwd {
-    Ok(pwd) => write(
-      format!("{}/{}", pwd.display(), file_name),
-      base64::decode(content).unwrap(),
-    )?,
-    Err(err) => {
-      let err = format!("{:?}", err);
-      return Err(err.into());
-    }
-  }
-  Ok(())
-}
-
 async fn get_files_b64() -> HashMap<String, String> {
   let mut files_b64 = HashMap::new();
   // Check for AnyCloud files
-  if file_exist("Dockerfile") {
+  if file_exist("anycloud.json") {
     files_b64.insert("Dockerfile".to_string(), get_dockerfile_b64().await);
-  }
-  if file_exist("app.tar.gz") {
-    files_b64.insert("app.tar.gz".to_string(), get_app_tar_gz_b64().await);
+    files_b64.insert("app.tar.gz".to_string(), get_app_tar_gz_b64(false).await);
   }
   files_b64
-}
-
-fn create_app_tar(content: Option<&String>) -> () {
-  if let Some(content) = content {
-    if let Err(err) = write_b64_file("app.tar.gz", &content) {
-      eprintln!("Could not create app.tar.gz. {:?}", err);
-      std::process::exit(1);
-    }
-  }
 }
 
 async fn generate_token() -> String {
@@ -241,7 +215,6 @@ async fn generate_token() -> String {
 
 async fn set_local_daemon_props(local_agz_b64: Option<String>) -> () {
   let files_b64 = get_files_b64().await;
-  create_app_tar(files_b64.get(&"app.tar.gz".to_string()));
   let agz_b64 = if let Some(local_agz_b64) = local_agz_b64 {
     local_agz_b64
   } else {

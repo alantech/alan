@@ -66,7 +66,7 @@ pub async fn main() {
   match matches.subcommand() {
     ("new", Some(matches)) => {
       let dockerfile_b64 = get_dockerfile_b64().await;
-      let app_tar_gz_b64 = get_app_tar_gz_b64().await;
+      let app_tar_gz_b64 = get_app_tar_gz_b64(true).await;
       let env_b64 = match matches.value_of("env-file") {
         Some(env_file) => Some(get_env_file_b64(env_file.to_string()).await),
         None => None,
@@ -81,7 +81,7 @@ pub async fn main() {
     ("terminate", _) => deploy::terminate().await,
     ("upgrade", Some(matches)) => {
       let dockerfile_b64 = get_dockerfile_b64().await;
-      let app_tar_gz_b64 = get_app_tar_gz_b64().await;
+      let app_tar_gz_b64 = get_app_tar_gz_b64(true).await;
       let env_b64 = match matches.value_of("env-file") {
         Some(env_file) => Some(get_env_file_b64(env_file.to_string()).await),
         None => None,

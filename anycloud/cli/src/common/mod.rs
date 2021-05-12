@@ -46,7 +46,23 @@ pub async fn get_agz_file_b64(agz_file_path: String) -> String {
   }
 }
 
-pub async fn get_app_tar_gz_b64() -> String {
+pub async fn get_app_tar_gz_b64(should_remove_app_tar: bool) -> String {
+  git_status().await;
+  git_archive_app_tar().await;
+  let app_tar_gz = match get_file("app.tar.gz").await {
+    Ok(file) => file,
+    Err(err) => {
+      warn!(NoTarballFile, "{}", err).await;
+      std::process::exit(1);
+    }
+  };
+  if should_remove_app_tar {
+    git_remove_app_tar().await;
+  }
+  return base64::encode(app_tar_gz);
+}
+
+async fn git_status() {
   let output = Command::new("git")
     .arg("status")
     .arg("--porcelain")
@@ -62,7 +78,9 @@ pub async fn get_app_tar_gz_b64() -> String {
     .await;
     std::process::exit(1);
   }
+}
 
+async fn git_archive_app_tar() {
   let output = Command::new("git")
     .arg("archive")
     .arg("--format=tar.gz")
@@ -76,10 +94,9 @@ pub async fn get_app_tar_gz_b64() -> String {
     warn!(NoGit, "Your code must be managed by git in order to deploy correctly, please run `git init && git commit -am \"Initial commit\"` and try again.").await;
     std::process::exit(output.status.code().unwrap());
   }
+}
 
-  let pwd = std::env::var("PWD").unwrap();
-  let app_tar_gz = read(format!("{}/app.tar.gz", pwd)).expect("app.tar.gz was not generated");
-
+async fn git_remove_app_tar() {
   let output = Command::new("rm").arg("app.tar.gz").output().unwrap();
 
   if output.status.code().unwrap() != 0 {
@@ -90,8 +107,6 @@ pub async fn get_app_tar_gz_b64() -> String {
     .await;
     std::process::exit(output.status.code().unwrap());
   }
-
-  return base64::encode(app_tar_gz);
 }
 
 pub fn file_exist(file_path: &str) -> bool {
@@ -101,8 +116,6 @@ pub fn file_exist(file_path: &str) -> bool {
       Ok(_) => true,
       Err(_) => false,
     },
-    Err(_) => {
-      false
-    }
+    Err(_) => false,
   }
 }

@@ -24,6 +24,7 @@ pub enum ErrorType {
   NoSSLCert = 131,
   DuplicateDnsPrivateIp = 132,
   NoDaemonAGZFile = 133,
+  NoTarballFile = 134,
 }
 
 #[macro_export]
