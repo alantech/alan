@@ -1,8 +1,5 @@
 use futures::stream::StreamExt;
-use heim_common::units::{
-  information::kilobyte,
-  time::second,
-};
+use heim_common::units::{information::kilobyte, time::second};
 #[cfg(target_os = "linux")]
 use heim_cpu::os::linux::CpuTimeExt;
 #[cfg(target_os = "linux")]
@@ -74,7 +71,7 @@ async fn get_proc_usages() -> Vec<f64> {
 }
 #[cfg(target_arch = "aarch64")]
 async fn get_proc_usages() -> Vec<f64> {
-    vec![]
+  vec![]
 }
 
 // get total cpu times per core since the VM's uptime
