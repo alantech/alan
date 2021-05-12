@@ -33,7 +33,7 @@ cargo build
 cd -
 
 # Commit and tag the update
-git add js-runtime/package.json js-runtime/yarn.lock anycloud/node/package.json anycloud/node/yarn.lock compiler/package.json compiler/yarn.lock avm/Cargo.toml avm/Cargo.lock anycloud/cli/Cargo.toml anycloud/cli/Cargo.lock
+git add js-runtime/package.json js-runtime/yarn.lock anycloud/node/package.json compiler/package.json compiler/yarn.lock avm/Cargo.toml avm/Cargo.lock anycloud/cli/Cargo.toml anycloud/cli/Cargo.lock
 git commit -m "v${VERSION}"
 git push origin main
 gh release create v${VERSION} -t v${VERSION} -n v${VERSION} --target main
