@@ -45,6 +45,7 @@ cd -
 
 # Publish the anycloud/node to NPM with the new version
 cd anycloud/node
+yarn build
 yarn install
 rm -rf node_modules/ bin
 npm publish
