@@ -46,5 +46,6 @@ cd -
 # Publish the anycloud/node to NPM with the new version
 cd anycloud/node
 rm -rf node_modules/ bin
+npm run build
 npm publish
 cd -
