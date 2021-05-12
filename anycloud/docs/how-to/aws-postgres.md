@@ -1,8 +1,8 @@
 # Persist data to PostgreSQL in AWS
 
-The guide covers how to deploy a Node.js REST HTTP API to AWS using AnyCloud that also persists data to a PostgreSQL instance in AWS RDS. We will use the ORM [Prisma](https://www.prisma.io) and start from their [rest-express](https://github.com/prisma/prisma-examples/tree/latest/typescript/rest-express) example. This is one of Prisma's ready-to-run example projects demonstrating a backend-only HTTP server written using Typescript, Node.js and [Express](https://expressjs.com). The REST endpoints use Prisma to persist and retrieve data from a PostgreSQL instance.
+The guide covers how to deploy a Node.js REST HTTP API to AWS using AnyCloud. The HTTP server persists data to a PostgreSQL instance in AWS RDS. We will use the ORM [Prisma](https://www.prisma.io) and start from their [rest-express](https://github.com/prisma/prisma-examples/tree/latest/typescript/rest-express) example. This is one of Prisma's ready-to-run example projects demonstrating a backend-only HTTP server written using Typescript, Node.js and [Express](https://expressjs.com). The REST endpoints use Prisma to persist and retrieve data from a PostgreSQL instance.
 
-All the code from this guide can be found in this [template repository](https://github.com/alantech/anycloud-node-aws-psql) which you can use to [create a new repository](https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/creating-a-repository-from-a-template) for your AnyCloud project.
+All the code from this guide can be found in this [template repository](https://github.com/alantech/anycloud-node-aws-psql) which you can use to [create a new repository](https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/creating-a-repository-from-a-template) as a starting point for your project.
 
 ## Create a PostgreSQL instance on AWS RDS
 
@@ -86,7 +86,7 @@ $ anycloud config new
 ? Do you want to add another region to this Deploy Config? › n
 ? Minimum number of VMs per region or cloud › 1
 ? Would you like to define a maximum number of VMs? › n
-Successfully created "staging" Credentials
+Successfully created "staging" Deploy Config
 ```
 
 6) Deploy the Node.js server to your AWS account using the AnyCloud CLI
