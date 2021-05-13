@@ -108,8 +108,8 @@ fn main() {
     .subcommand(SubCommand::with_name("daemon")
       .about("Run an .agz file in daemon mode. Used on deploy within cloud provider VMs.")
       .arg_from_usage("<CLUSTER_SECRET> -s, --cluster-secret=<CLUSTER_SECRET> 'A secret string to constrain access to the control port'")
-      .arg_from_usage("-f, --agz-file=[AGZ_FILE] 'Specifies an optional agz file relative path'")
-      .arg_from_usage("[ANYCLOUD_APP] -a, --anycloud-app 'Specifies an optional AnyCloud app flag'")
+      .arg_from_usage("-f, --agz-file=[AGZ_FILE] 'Specifies an optional agz file relative path for local usage'")
+      .arg_from_usage("[ANYCLOUD_APP] -a, --anycloud-app 'Specifies an optional AnyCloud app flag for local usage'")
     )
     .arg_from_usage("[SOURCE] 'Specifies a source ln file to compile and run'");
 
