@@ -26,7 +26,7 @@ datasource db {
 }
 ```
 
-Now set the environment variable `DATABASE_URL` in the `.env` file by replacing `USER`, `PASSWORD`, `HOST`, `PORT` and `DATABASE` with the appropiate values
+Then set the environment variable `DATABASE_URL` in the `.env` file by replacing `USER`, `PASSWORD`, `HOST`, `PORT` and `DATABASE` with the appropriate values
 
 ```
 DATABASE_URL=postgresql://<USER>:<PASSWORD>@<HOST>:<PORT>/<DATABASE>
@@ -38,25 +38,27 @@ The value for your local PostgreSQL should be something like
 DATABASE_URL=postgresql://postgres@localhost:5432/postgres
 ```
 
-3) Create the initial database migration which creates the `User` and `Post` tables that are defined in `anycloud-node-aws-psql/prisma/schema.prisma` and a migrations folder with a timestamped migration named `init`
+4) Create the initial database migration which creates the `User` and `Post` tables that are defined in `anycloud-node-aws-psql/prisma/schema.prisma` and a migrations folder with a timestamped migration named `init`
 
 ```
 npx prisma migrate dev --name init
 ```
 
-4) Add `scripts` to the `package.json` file
+5) Add `scripts` to the `package.json` file
 
 ```
 ...
+
 "scripts": {
   "build": "tsc",
   "clean": "rm -rf dist",
   "start": "node ./dist/src/index.js",
 }
+
 ...
 ```
 
-5) Define the `Dockerfile`
+6) Define the `Dockerfile`
 
 ```bash
 FROM node:lts
@@ -68,7 +70,7 @@ RUN npm run build
 CMD npm run start
 ```
 
-6) Initialize a `git` repository and commit your changes
+7) Initialize a `git` repository and commit your changes
 
 ```bash
 git init
@@ -76,17 +78,19 @@ git add .
 git commit -m "Initial commit"
 ```
 
-6) Change HTTP server port in `src/index.ts` from `3000` to `8088` which is what what AnyCloud expects.
+8) Change HTTP server port in `src/index.ts` from `3000` to `8088` which is what what AnyCloud expects.
 
 ```
 ...
+
 const server = app.listen(8088, () =>
   console.log(`
 🚀 Server ready at: http://localhost:8088
+
 ...
 ```
 
-7) Make sure everything works locally
+9) Make sure everything works locally
 
 ```
 $ npm run start
@@ -205,10 +209,12 @@ DATABASE_URL=postgresql://<USER>:<PASSWORD>@<HOST>:<PORT>/<DATABASE>
 
 ```
 ...
+
 "scripts": {
   "start": "npx prisma migrate deploy && node ./dist/src/index.js",
   ...
 },
+
 ...
 ```
 
