@@ -586,7 +586,12 @@ impl ControlPort {
   }
 
   pub fn get_vms_for_key(self: &ControlPort, key: &str) -> Vec<&VMMetadata> {
-    self.lrh.get_assigned_nodes_id(key).into_iter().map(|priv_ip_addr| &self.vms[&priv_ip_addr.to_string()]).collect()
+    self
+      .lrh
+      .get_assigned_nodes_id(key)
+      .into_iter()
+      .map(|priv_ip_addr| &self.vms[&priv_ip_addr.to_string()])
+      .collect()
   }
 
   pub fn is_key_owner(self: &ControlPort, key: &str) -> bool {
@@ -663,7 +668,10 @@ impl ControlPort {
 
   pub async fn dsdel(self: &ControlPort, key: &str) -> bool {
     let vms = self.get_vms_for_key(key);
-    let urls: Vec<String> = vms.into_iter().map(|vm| format!("https://{}:4142/datastore/del", vm.public_ip_addr)).collect();
+    let urls: Vec<String> = vms
+      .into_iter()
+      .map(|vm| format!("https://{}:4142/datastore/del", vm.public_ip_addr))
+      .collect();
     let calls = urls.into_iter().map(|url| self.dsdel_inner(url, key));
     let reses = join_all(calls).await;
     *reses[0].as_ref().unwrap_or(&false)
@@ -687,7 +695,10 @@ impl ControlPort {
 
   pub async fn dssetf(self: &ControlPort, key: &str, val: &Arc<HandlerMemory>) -> bool {
     let vms = self.get_vms_for_key(key);
-    let urls: Vec<String> = vms.into_iter().map(|vm| format!("https://{}:4142/datastore/setf", vm.public_ip_addr)).collect();
+    let urls: Vec<String> = vms
+      .into_iter()
+      .map(|vm| format!("https://{}:4142/datastore/setf", vm.public_ip_addr))
+      .collect();
     let calls = urls.into_iter().map(|url| self.dssetf_inner(url, key, val));
     let reses = join_all(calls).await;
     *reses[0].as_ref().unwrap_or(&false)
@@ -715,7 +726,10 @@ impl ControlPort {
 
   pub async fn dssetv(self: &ControlPort, key: &str, val: &Arc<HandlerMemory>) -> bool {
     let vms = self.get_vms_for_key(key);
-    let urls: Vec<String> = vms.into_iter().map(|vm| format!("https://{}:4142/datastore/setf", vm.public_ip_addr)).collect();
+    let urls: Vec<String> = vms
+      .into_iter()
+      .map(|vm| format!("https://{}:4142/datastore/setv", vm.public_ip_addr))
+      .collect();
     let calls = urls.into_iter().map(|url| self.dssetv_inner(url, key, val));
     let reses = join_all(calls).await;
     *reses[0].as_ref().unwrap_or(&false)
