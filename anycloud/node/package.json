@@ -1,7 +1,7 @@
 {
   "name": "anycloud",
-  "version": "0.1.2",
-  "description": "Lambda alternative that works with multiple cloud providers",
+  "version": "0.1.40",
+  "description": "CLI to elastically scale webservers in any cloud provider",
   "main": "dist/index.js",
   "bin": {
     "anycloud": "./bin/anycloud"
@@ -13,7 +13,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/alantech/anycloud.git"
+    "url": "git+ssh://git@github.com/alantech/alan.git"
   },
   "keywords": [
     "anycloud",
@@ -23,9 +23,9 @@
   "author": "David Ellis <david@alantechnologies.com>",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/alantech/anycloud/issues"
+    "url": "https://discord.com/invite/cX2C8MJQq6"
   },
-  "homepage": "https://github.com/alantech/anycloud#readme",
+  "homepage": "https://anycloudapp.com",
   "devDependencies": {
     "typescript": "^4.1.5"
   },

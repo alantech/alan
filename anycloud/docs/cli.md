@@ -1,8 +1,14 @@
 # CLI
 
-## Installation
+## Installation via NPM
 
-### MacOS
+```
+npm install -g anycloud
+```
+
+## Installation per OS
+
+### MacOS via Homebrew
 
 ```bash
 brew install alantech/homebrew-core/anycloud
