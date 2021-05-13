@@ -5,7 +5,7 @@ license = "AGPL-3.0"
 homepage = "https://alan-lang.org"
 documentation = "https://docs.alan-lang.org"
 repository = "https://github.com/alantech/alan"
-version = "0.1.40"
+version = "0.1.41-beta1"
 authors = ["Luis de Pombo <luis@alantechnologies.com>", "David Ellis <david@alantechnologies.com>", "Alejandro Guillen <alejandro@alantechnologies.com>"]
 edition = "2018"
 resolver = "2"
@@ -28,6 +28,7 @@ heim-memory = "0.0.11"
 hyper = { version = "0.14", features = ["client", "http1", "http2", "runtime", "server"] }
 hyper-openssl = "0.9.1"
 hyper-rustls = "0.22.1" # needed for HTTPS w/ hyper
+lazy_static = "1.4.0"
 num_cpus = "1.0"
 once_cell = "1.5.2"
 openssl = "0.10.33"

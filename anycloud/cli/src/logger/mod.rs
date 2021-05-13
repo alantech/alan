@@ -23,6 +23,8 @@ pub enum ErrorType {
   CtrlPortStartFailed = 130,
   NoSSLCert = 131,
   DuplicateDnsPrivateIp = 132,
+  NoDaemonAGZFile = 133,
+  NoTarballFile = 134,
 }
 
 #[macro_export]

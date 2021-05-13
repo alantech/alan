@@ -1,9 +1,21 @@
 use std::str;
 
+use lazy_static::lazy_static;
 use trust_dns_resolver::config::{ResolverConfig, ResolverOpts};
 use trust_dns_resolver::TokioAsyncResolver;
 
-use crate::daemon::daemon::DaemonResult;
+use crate::daemon::daemon::{DaemonResult, ALAN_TECH_ENV};
+
+lazy_static! {
+  static ref LOCAL_VM_METADATA: Vec<VMMetadata> = vec![VMMetadata {
+    schema_version: "v1".to_string(),
+    alan_version: option_env!("CARGO_PKG_VERSION").unwrap().to_string(),
+    cloud: "LOCAL".to_string(),
+    private_ip_addr: "127.0.0.1".to_string(),
+    region: "localhost".to_string(),
+    public_ip_addr: "127.0.0.1".to_string(),
+  }];
+}
 
 pub struct DNS {
   resolver: TokioAsyncResolver,
@@ -64,6 +76,9 @@ impl DNS {
   }
 
   pub async fn get_vms(&self, cluster_id: &str) -> DaemonResult<Vec<VMMetadata>> {
+    if ALAN_TECH_ENV.as_str() == "local" {
+      return Ok(LOCAL_VM_METADATA.to_vec());
+    };
     let name = format!("{}.{}", cluster_id, self.domain);
     let err = format!("Failed to fetch TXT record with name {}", &name);
     let resp = self.resolver.txt_lookup(name).await;

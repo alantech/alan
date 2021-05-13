@@ -2,6 +2,7 @@ use std::env;
 use std::fs::read;
 use std::path::Path;
 
+use anycloud::common::get_agz_file_b64;
 use anycloud::deploy;
 use anycloud::oauth::authenticate;
 use base64;
@@ -107,6 +108,8 @@ fn main() {
     .subcommand(SubCommand::with_name("daemon")
       .about("Run an .agz file in daemon mode. Used on deploy within cloud provider VMs.")
       .arg_from_usage("<CLUSTER_SECRET> -s, --cluster-secret=<CLUSTER_SECRET> 'A secret string to constrain access to the control port'")
+      .arg_from_usage("-f, --agz-file=[AGZ_FILE] 'Specifies an optional agz file relative path for local usage'")
+      .arg_from_usage("[ANYCLOUD_APP] -a, --anycloud-app 'Specifies an optional AnyCloud app flag for local usage'")
     )
     .arg_from_usage("[SOURCE] 'Specifies a source ln file to compile and run'");
 
@@ -191,10 +194,18 @@ fn main() {
       }
       ("daemon", Some(matches)) => {
         let cluster_secret = matches.value_of("CLUSTER_SECRET").unwrap();
+        let local_agz_b64 = match matches.value_of("agz-file") {
+          Some(agz_file_path) => Some(get_agz_file_b64(agz_file_path.to_string()).await),
+          None => None,
+        };
+        let is_local_anycloud_app: bool = match matches.values_of("ANYCLOUD_APP") {
+          Some(_) => true,
+          None => false,
+        };
         CLUSTER_SECRET
           .set(Some(cluster_secret.to_string()))
           .unwrap();
-        start().await;
+        start(is_local_anycloud_app, local_agz_b64).await;
       }
       _ => {
         // AppSettings::SubcommandRequiredElseHelp does not cut it here

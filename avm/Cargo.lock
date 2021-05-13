@@ -26,7 +26,7 @@ dependencies = [
 
 [[package]]
 name = "alan"
-version = "0.1.40"
+version = "0.1.41-beta1"
 dependencies = [
  "anycloud",
  "async-stream",
@@ -44,6 +44,7 @@ dependencies = [
  "hyper",
  "hyper-openssl",
  "hyper-rustls",
+ "lazy_static",
  "num_cpus",
  "once_cell",
  "openssl",
@@ -72,7 +73,7 @@ dependencies = [
 
 [[package]]
 name = "anycloud"
-version = "0.1.40"
+version = "0.1.41-beta1"
 dependencies = [
  "ascii_table",
  "base64",

@@ -4,15 +4,16 @@ use std::error::Error;
 use std::fs::read;
 use std::io::Read;
 
+use anycloud::common::{file_exist, get_app_tar_gz_b64, get_dockerfile_b64};
 use anycloud::deploy;
 use anycloud::{error, CLUSTER_ID};
 use base64;
 use byteorder::{LittleEndian, ReadBytesExt};
 use flate2::read::GzDecoder;
+use lazy_static::lazy_static;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use tokio::process::Command;
 use tokio::sync::watch::{self, Receiver};
 use tokio::task;
 use tokio::time::{sleep, Duration};
@@ -29,6 +30,11 @@ pub static CLUSTER_SECRET: OnceCell<Option<String>> = OnceCell::new();
 pub static DAEMON_PROPS: OnceCell<DaemonProperties> = OnceCell::new();
 pub static CONTROL_PORT_CHANNEL: OnceCell<Receiver<ControlPort>> = OnceCell::new();
 
+lazy_static! {
+  pub static ref ALAN_TECH_ENV: String =
+    std::env::var("ALAN_TECH_ENV").unwrap_or("production".to_string());
+}
+
 #[allow(non_snake_case)]
 #[derive(Deserialize, Debug, Serialize)]
 pub struct DaemonProperties {
@@ -41,18 +47,29 @@ pub struct DaemonProperties {
 
 #[cfg(target_os = "linux")]
 async fn get_private_ip() -> DaemonResult<String> {
-  let res = Command::new("hostname").arg("-I").output().await?;
-  let stdout = res.stdout;
-  let private_ip = String::from_utf8(stdout)?;
-  match private_ip.trim().split_whitespace().next() {
-    Some(private_ip) => Ok(private_ip.to_string()),
-    None => Err("No ip found".into()),
+  match ALAN_TECH_ENV.as_str() {
+    "local" => Ok("127.0.0.1".to_string()),
+    _ => {
+      let res = tokio::process::Command::new("hostname")
+        .arg("-I")
+        .output()
+        .await?;
+      let stdout = res.stdout;
+      let private_ip = String::from_utf8(stdout)?;
+      match private_ip.trim().split_whitespace().next() {
+        Some(private_ip) => Ok(private_ip.to_string()),
+        None => Err("No ip found".into()),
+      }
+    }
   }
 }
 
 #[cfg(not(target_os = "linux"))]
 async fn get_private_ip() -> DaemonResult<String> {
-  Err("`hostname` command does not exist in this OS".into())
+  match ALAN_TECH_ENV.as_str() {
+    "local" => Ok("127.0.0.1".to_string()),
+    _ => Err("`hostname` command does not exist in this OS".into()),
+  }
 }
 
 async fn post_v1(endpoint: &str, body: Value) -> String {
@@ -150,7 +167,6 @@ async fn run_agz_b64(agz_b64: &str) -> DaemonResult<()> {
           let mut gz = GzDecoder::new(bytes.as_slice());
           let gz_read_i64 = gz.read_i64_into::<LittleEndian>(&mut bytecode);
           if gz_read_i64.is_ok() {
-            // TODO: return a Result in order to catch the error and log it
             if let Err(err) = run(
               bytecode,
               HttpType::HTTPS(HttpsConfig {
@@ -180,7 +196,79 @@ async fn run_agz_b64(agz_b64: &str) -> DaemonResult<()> {
   Ok(())
 }
 
-async fn get_daemon_props() -> Option<&'static DaemonProperties> {
+async fn get_files_b64(is_local_anycloud_app: bool) -> HashMap<String, String> {
+  let mut files_b64 = HashMap::new();
+  // Check for AnyCloud files
+  if is_local_anycloud_app {
+    files_b64.insert("Dockerfile".to_string(), get_dockerfile_b64().await);
+    files_b64.insert("app.tar.gz".to_string(), get_app_tar_gz_b64(false).await);
+  }
+  files_b64
+}
+
+async fn generate_token() -> String {
+  let body = json!({
+    "deployConfig": deploy::get_config().await,
+  });
+  post_v1("localDaemonToken", body).await
+}
+
+async fn set_local_daemon_props(is_local_anycloud_app: bool, local_agz_b64: Option<String>) -> () {
+  let files_b64 = get_files_b64(is_local_anycloud_app).await;
+  let agz_b64 = if let Some(local_agz_b64) = local_agz_b64 {
+    local_agz_b64
+  } else {
+    eprintln!(
+      "running the Alan Daemon in a local environment requires the \
+               --agz-file argument specifying the .agz file to run"
+    );
+    std::process::exit(1);
+  };
+  DAEMON_PROPS
+    .set(DaemonProperties {
+      clusterId: "daemon-local-cluster".to_string(),
+      agzB64: agz_b64,
+      deployToken: generate_token().await,
+      domain: "alandeploy.com".to_string(),
+      filesB64: files_b64,
+    })
+    .unwrap();
+}
+
+fn maybe_create_certs() {
+  if !file_exist("key.pem") && !file_exist("certificate.pem") {
+    // Self signed certs for local dev
+    // openssl req -newkey rsa:2048 -nodes -keyout key.pem -x509 -days 365 -out certificate.pem -subj "/C=US/ST=California/O=Alan Technologies, Inc/CN=*.anycloudapp.com"
+    let mut open_ssl = std::process::Command::new("openssl")
+      .stdout(std::process::Stdio::null())
+      .stderr(std::process::Stdio::null())
+      .arg("req")
+      .arg("-newkey")
+      .arg("rsa:2048")
+      .arg("-nodes")
+      .arg("-keyout")
+      .arg("key.pem")
+      .arg("-x509")
+      .arg("-days")
+      .arg("365")
+      .arg("-out")
+      .arg("certificate.pem")
+      .arg("-subj")
+      .arg("/C=US/ST=California/O=Alan Technologies, Inc/CN=*.anycloudapp.com")
+      .spawn()
+      .expect("Error generating self signed certificate");
+    open_ssl.wait().expect("Failed to wait on child");
+  }
+}
+
+async fn get_daemon_props(
+  is_local_anycloud_app: bool,
+  local_agz_b64: Option<String>,
+) -> Option<&'static DaemonProperties> {
+  if ALAN_TECH_ENV.as_str() == "local" {
+    set_local_daemon_props(is_local_anycloud_app, local_agz_b64).await;
+    return DAEMON_PROPS.get();
+  }
   let duration = Duration::from_secs(10);
   let mut counter: u8 = 0;
   // Check every 10s over 5 min if props are ready
@@ -194,11 +282,12 @@ async fn get_daemon_props() -> Option<&'static DaemonProperties> {
   None
 }
 
-pub async fn start() {
+pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
+  maybe_create_certs();
   let mut control_port = ControlPort::start().await;
   let (ctrl_tx, ctrl_rx) = watch::channel(control_port.clone());
   CONTROL_PORT_CHANNEL.set(ctrl_rx).unwrap();
-  if let Some(daemon_props) = get_daemon_props().await {
+  if let Some(daemon_props) = get_daemon_props(is_local_anycloud_app, local_agz_b64).await {
     let cluster_id = &daemon_props.clusterId;
     CLUSTER_ID.set(String::from(cluster_id)).unwrap();
     let domain = &daemon_props.domain;
