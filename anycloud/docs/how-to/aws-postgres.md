@@ -4,7 +4,7 @@ The guide covers how to deploy a Node.js REST HTTP API to AWS using AnyCloud. Th
 
 All the code from this guide can be found in this [template repository](https://github.com/alantech/anycloud-node-aws-psql) which you can use to [create a new repository](https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/creating-a-repository-from-a-template) as a starting point for your project.
 
-## Setup your project locally
+## Setup the project locally
 
 1) First download Prisma's example and install dependencies
 
