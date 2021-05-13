@@ -15,7 +15,7 @@ cd anycloud-node-aws-psql
 npm install
 ```
 
-2) Install and start a local PostgreSQL instance by following Prisma's [guide](https://www.prisma.io/dataguide/postgresql/setting-up-a-local-postgresql-database).
+2) Install and start a local PostgreSQL instance by following Prisma's [guide](https://www.prisma.io/dataguide/postgresql/setting-up-a-local-postgresql-database) on how to do it.
 
 3) Now point your project's Node.js REST Prisma ORM to the local PostgreSQL instance you just created by setting the [datasource](https://www.prisma.io/docs/concepts/database-connectors/postgresql/) in the Prisma schema file at `anycloud-node-aws-psql/prisma/schema.prisma` to the environment variable `DATABASE_URL`.
 
