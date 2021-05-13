@@ -198,14 +198,14 @@ fn main() {
           Some(agz_file_path) => Some(get_agz_file_b64(agz_file_path.to_string()).await),
           None => None,
         };
-        let is_anycloud_app: bool = match matches.values_of("ANYCLOUD_APP") {
+        let is_local_anycloud_app: bool = match matches.values_of("ANYCLOUD_APP") {
           Some(_) => true,
           None => false,
         };
         CLUSTER_SECRET
           .set(Some(cluster_secret.to_string()))
           .unwrap();
-        start(is_anycloud_app, local_agz_b64).await;
+        start(is_local_anycloud_app, local_agz_b64).await;
       }
       _ => {
         // AppSettings::SubcommandRequiredElseHelp does not cut it here

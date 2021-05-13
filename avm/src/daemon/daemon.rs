@@ -196,10 +196,10 @@ async fn run_agz_b64(agz_b64: &str) -> DaemonResult<()> {
   Ok(())
 }
 
-async fn get_files_b64(is_anycloud_app: bool) -> HashMap<String, String> {
+async fn get_files_b64(is_local_anycloud_app: bool) -> HashMap<String, String> {
   let mut files_b64 = HashMap::new();
   // Check for AnyCloud files
-  if is_anycloud_app {
+  if is_local_anycloud_app {
     files_b64.insert("Dockerfile".to_string(), get_dockerfile_b64().await);
     files_b64.insert("app.tar.gz".to_string(), get_app_tar_gz_b64(false).await);
   }
@@ -213,8 +213,8 @@ async fn generate_token() -> String {
   post_v1("localDaemonToken", body).await
 }
 
-async fn set_local_daemon_props(is_anycloud_app: bool, local_agz_b64: Option<String>) -> () {
-  let files_b64 = get_files_b64(is_anycloud_app).await;
+async fn set_local_daemon_props(is_local_anycloud_app: bool, local_agz_b64: Option<String>) -> () {
+  let files_b64 = get_files_b64(is_local_anycloud_app).await;
   let agz_b64 = if let Some(local_agz_b64) = local_agz_b64 {
     local_agz_b64
   } else {
@@ -262,11 +262,11 @@ fn maybe_create_certs() {
 }
 
 async fn get_daemon_props(
-  is_anycloud_app: bool,
+  is_local_anycloud_app: bool,
   local_agz_b64: Option<String>,
 ) -> Option<&'static DaemonProperties> {
   if ALAN_TECH_ENV.as_str() == "local" {
-    set_local_daemon_props(is_anycloud_app, local_agz_b64).await;
+    set_local_daemon_props(is_local_anycloud_app, local_agz_b64).await;
     return DAEMON_PROPS.get();
   }
   let duration = Duration::from_secs(10);
@@ -282,12 +282,12 @@ async fn get_daemon_props(
   None
 }
 
-pub async fn start(is_anycloud_app: bool, local_agz_b64: Option<String>) {
+pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
   maybe_create_certs();
   let mut control_port = ControlPort::start().await;
   let (ctrl_tx, ctrl_rx) = watch::channel(control_port.clone());
   CONTROL_PORT_CHANNEL.set(ctrl_rx).unwrap();
-  if let Some(daemon_props) = get_daemon_props(is_anycloud_app, local_agz_b64).await {
+  if let Some(daemon_props) = get_daemon_props(is_local_anycloud_app, local_agz_b64).await {
     let cluster_id = &daemon_props.clusterId;
     CLUSTER_ID.set(String::from(cluster_id)).unwrap();
     let domain = &daemon_props.domain;
