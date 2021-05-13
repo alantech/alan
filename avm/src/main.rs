@@ -109,6 +109,7 @@ fn main() {
       .about("Run an .agz file in daemon mode. Used on deploy within cloud provider VMs.")
       .arg_from_usage("<CLUSTER_SECRET> -s, --cluster-secret=<CLUSTER_SECRET> 'A secret string to constrain access to the control port'")
       .arg_from_usage("-f, --agz-file=[AGZ_FILE] 'Specifies an optional agz file relative path'")
+      .arg_from_usage("[ANYCLOUD_APP] -a, --anycloud-app 'Specifies an optional AnyCloud app flag'")
     )
     .arg_from_usage("[SOURCE] 'Specifies a source ln file to compile and run'");
 
@@ -197,10 +198,14 @@ fn main() {
           Some(agz_file_path) => Some(get_agz_file_b64(agz_file_path.to_string()).await),
           None => None,
         };
+        let is_anycloud_app: bool = match matches.values_of("ANYCLOUD_APP") {
+          Some(_) => true,
+          None => false,
+        };
         CLUSTER_SECRET
           .set(Some(cluster_secret.to_string()))
           .unwrap();
-        start(local_agz_b64).await;
+        start(is_anycloud_app, local_agz_b64).await;
       }
       _ => {
         // AppSettings::SubcommandRequiredElseHelp does not cut it here
