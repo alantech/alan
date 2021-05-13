@@ -95,7 +95,7 @@ const server = app.listen(8088, () =>
 
 9) Make sure everything works locally
 
-```javascript
+```bash
 $ npm run start
 
 > rest-express@1.0.0 start
