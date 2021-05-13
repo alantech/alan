@@ -8,7 +8,7 @@ All the code from this guide can be found in this [template repository](https://
 
 1) First download Prisma's example and install dependencies
 
-```
+```bash
 curl https://codeload.github.com/prisma/prisma-examples/tar.gz/latest | tar -xz --strip=2 prisma-examples-latest/typescript/rest-express
 mv rest-express anycloud-node-aws-psql
 cd anycloud-node-aws-psql
@@ -19,7 +19,7 @@ npm install
 
 3) Now point your project's Node.js REST Prisma ORM to the local PostgreSQL instance you just created by setting the [datasource](https://www.prisma.io/docs/concepts/database-connectors/postgresql/) in the Prisma schema file at `anycloud-node-aws-psql/prisma/schema.prisma` to the environment variable `DATABASE_URL`.
 
-```
+```javascript
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -28,25 +28,25 @@ datasource db {
 
 Then set the environment variable `DATABASE_URL` in the `.env` file by replacing `USER`, `PASSWORD`, `HOST`, `PORT` and `DATABASE` with the appropriate values
 
-```
+```bash
 DATABASE_URL=postgresql://<USER>:<PASSWORD>@<HOST>:<PORT>/<DATABASE>
 ```
 
 The value for your local PostgreSQL should be something like
 
-```
+```bash
 DATABASE_URL=postgresql://postgres@localhost:5432/postgres
 ```
 
 4) Create the initial database migration which creates the `User` and `Post` tables that are defined in `anycloud-node-aws-psql/prisma/schema.prisma` and a migrations folder with a timestamped migration named `init`
 
-```
+```bash
 npx prisma migrate dev --name init
 ```
 
 5) Add `scripts` to the `package.json` file
 
-```
+```javascript
 ...
 
 "scripts": {
@@ -80,7 +80,7 @@ git commit -m "Initial commit"
 
 8) Change HTTP server port in `src/index.ts` from `3000` to `8088` which is what what AnyCloud expects.
 
-```
+```javascript
 ...
 
 const server = app.listen(8088, () =>
@@ -95,7 +95,7 @@ const server = app.listen(8088, () =>
 
 9) Make sure everything works locally
 
-```
+```javascript
 $ npm run start
 
 > rest-express@1.0.0 start
@@ -198,19 +198,19 @@ Now scroll down to the `Connectivity` section and add an additional Security Gro
 
 5) Now point your project's Node.js REST Prisma ORM to the hosted PostgreSQL instance by changing the environment variable `DATABASE_URL` in the `.env` file to something like
 
-```
+```bash
 DATABASE_URL=postgresql://postgres:XIJw6Gf4grPucMVcSuMe@database-2.cwryagwpxlyd.us-west-1.rds.amazonaws.com:5432/postgres
 ```
 
 Again replacing `USER`, `PASSWORD`, `HOST`, `PORT` and `DATABASE` with the appropiate values
 
-```
+```bash
 DATABASE_URL=postgresql://<USER>:<PASSWORD>@<HOST>:<PORT>/<DATABASE>
 ```
 
 6) Let's make sure we run migrations on the hosted PostgreSQL when starting, or upgrading, our Node.js app by modifying the previously defined `start` script in our `package.json` file.
 
-```
+```javascript
 ...
 
 "scripts": {
@@ -223,7 +223,7 @@ DATABASE_URL=postgresql://<USER>:<PASSWORD>@<HOST>:<PORT>/<DATABASE>
 
 7) Finally, commit your changes and upgrade the new app to have the changes take effect.
 
-```
+```bash
 git add .
 git commit -m "anycloud setup"
 anycloud upgrade -e .env
