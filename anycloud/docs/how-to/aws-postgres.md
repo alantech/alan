@@ -4,6 +4,108 @@ The guide covers how to deploy a Node.js REST HTTP API to AWS using AnyCloud. Th
 
 All the code from this guide can be found in this [template repository](https://github.com/alantech/anycloud-node-aws-psql) which you can use to [create a new repository](https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/creating-a-repository-from-a-template) as a starting point for your project.
 
+## Setup your project locally
+
+1) First download Prisma's example and install dependencies
+
+```
+curl https://codeload.github.com/prisma/prisma-examples/tar.gz/latest | tar -xz --strip=2 prisma-examples-latest/typescript/rest-express
+mv rest-express anycloud-node-aws-psql
+cd anycloud-node-aws-psql
+npm install
+```
+
+2) Install and start a local PostgreSQL instance by following Prisma's [guide](https://www.prisma.io/dataguide/postgresql/setting-up-a-local-postgresql-database).
+
+3) Now point your project's Node.js REST Prisma ORM to the local PostgreSQL instance you just created by setting the [datasource](https://www.prisma.io/docs/concepts/database-connectors/postgresql/) in the Prisma schema file at `anycloud-node-aws-psql/prisma/schema.prisma` to the environment variable `DATABASE_URL`.
+
+```
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+```
+
+Now set the environment variable `DATABASE_URL` in the `.env` file by replacing `USER`, `PASSWORD`, `HOST`, `PORT` and `DATABASE` with the appropiate values
+
+```
+DATABASE_URL=postgresql://<USER>:<PASSWORD>@<HOST>:<PORT>/<DATABASE>
+```
+
+The value for your local PostgreSQL should be something like
+
+```
+DATABASE_URL=postgresql://postgres@localhost:5432/postgres
+```
+
+3) Create the initial database migration which creates the `User` and `Post` tables that are defined in `anycloud-node-aws-psql/prisma/schema.prisma` and a migrations folder with a timestamped migration named `init`
+
+```
+npx prisma migrate dev --name init
+```
+
+4) Add `scripts` to the `package.json` file
+
+```
+...
+"scripts": {
+  "build": "tsc",
+  "clean": "rm -rf dist",
+  "start": "node ./dist/src/index.js",
+}
+...
+```
+
+5) Define the `Dockerfile`
+
+```bash
+FROM node:lts
+
+COPY . .
+
+RUN npm install
+RUN npm run build
+CMD npm run start
+```
+
+6) Initialize a `git` repository and commit your changes
+
+```bash
+git init
+git add .
+git commit -m "Initial commit"
+```
+
+6) Change HTTP server port in `src/index.ts` from `3000` to `8088` which is what what AnyCloud expects.
+
+```
+...
+const server = app.listen(8088, () =>
+  console.log(`
+🚀 Server ready at: http://localhost:8088
+...
+```
+
+7) Make sure everything works locally
+
+```
+$ npm run start
+
+> rest-express@1.0.0 start
+> npx prisma migrate deploy && node ./dist/src/index.js
+
+Environment variables loaded from .env
+Prisma schema loaded from prisma/schema.prisma
+Datasource "db": PostgreSQL database "postgres", schema "public" at "localhost:5432"
+
+1 migration found in prisma/migrations
+
+No pending migrations to apply.
+
+🚀 Server ready at: http://localhost:8088
+⭐️ See sample requests: http://pris.ly/e/ts/rest-express#3-using-the-rest-api
+```
+
 ## Create a PostgreSQL instance on AWS RDS
 
 Follow this [AWS guide](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_GettingStarted.CreatingConnecting.PostgreSQL.html#CHAP_GettingStarted.Creating.PostgreSQL) to create a PostgreSQL on AWS RDS. Make sure to pick the `Easy create` method.
@@ -32,48 +134,7 @@ Successfully created "mystartup-aws" Credentials
 
 ## Deploy the REST API using AnyCloud and link it to the PostgreSQL instance
 
-1) First download Prisma's example and install dependencies
-
-```
-curl https://codeload.github.com/prisma/prisma-examples/tar.gz/latest | tar -xz --strip=2 prisma-examples-latest/typescript/rest-express
-mv rest-express anycloud-node-aws-psql
-cd anycloud-node-aws-psql
-npm install
-```
-
-2) Add `scripts` to the `package.json` file
-
-```
-...
-"scripts": {
-  "build": "tsc",
-  "clean": "rm -rf dist",
-  "start": "node ./dist/src/index.js",
-}
-...
-```
-
-3) Define the `Dockerfile`
-
-```bash
-FROM node:lts
-
-COPY . .
-
-RUN npm install
-RUN npm run build
-CMD npm run start
-```
-
-4) Initialize a `git` repository and commit your changes
-
-```bash
-git init
-git add .
-git commit -m "Initial commit"
-```
-
-5) Use the AnyCloud CLI to create an `anycloud.json` file in the project directory and define a `Deploy Config`. You will need to pick a name or alias for the `Deploy Config`. The default value will be `staging`. You will also need to associate `Credentials` to this `Deploy Config`.
+1) Use the AnyCloud CLI to create an `anycloud.json` file in the project directory and define a `Deploy Config`. You will need to pick a name or alias for the `Deploy Config`. The default value will be `staging`. You will also need to associate `Credentials` to this `Deploy Config`.
 
 ```bash
 $ anycloud config new
@@ -89,7 +150,7 @@ $ anycloud config new
 Successfully created "staging" Deploy Config
 ```
 
-6) Deploy the Node.js server to your AWS account using the AnyCloud CLI
+2) Deploy the Node.js server to your AWS account using the AnyCloud CLI
 
 ```bash
 $ anycloud new
@@ -99,7 +160,7 @@ $ anycloud new
 ▇ Creating new App
 ```
 
-7) Check the id, or name, of your App using `anycloud list`
+3) Check the id, or name, of your App using `anycloud list`
 
 ```bash
 $ anycloud list
@@ -120,7 +181,7 @@ Deploy Configs used:
 └───────────────┴───────────┴───────────┘
 ```
 
-8) Now go to [AWS RDS](https://console.aws.amazon.com/rds/home) website and select the PostgreSQL instance you just created in order to include the [Security Group](https://console.aws.amazon.com/ec2/v2/home?#SecurityGroups) for the newly created AnyCloud app. First click `Modify`
+4) Now go to [AWS RDS](https://console.aws.amazon.com/rds/home) website and select the PostgreSQL instance you just created in order to include the [Security Group](https://console.aws.amazon.com/ec2/v2/home?#SecurityGroups) for the newly created AnyCloud app. First click `Modify`
 
 <img src="../assets/modify-rds.png" />
 
@@ -128,36 +189,33 @@ Now scroll down to the `Connectivity` section and add an additional Security Gro
 
 <img src="../assets/add-connectivity.png" />
 
-9) Now point the Node.js REST Prisma ORM to the PostgreSQL instance you just created by setting the [datasource](https://www.prisma.io/docs/concepts/database-connectors/postgresql/) in the Prisma schema file at `rest-express/prisma/schema.prisma` to the environment variable `DATABASE_URL`.
-
-```
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-```
-
-Define `DATABASE_URL` in a `.env` file by replacing `USER`, `PASSWORD`, `HOST`, `PORT` and `DATABASE` with the appropiate values
-
-```
-DATABASE_URL=postgresql://<USER>:<PASSWORD>@<HOST>:<PORT>/<DATABASE>
-```
-
-An example with filled out values will be
+5) Now point your project's Node.js REST Prisma ORM to the hosted PostgreSQL instance by changing the environment variable `DATABASE_URL` in the `.env` file to something like
 
 ```
 DATABASE_URL=postgresql://postgres:XIJw6Gf4grPucMVcSuMe@database-2.cwryagwpxlyd.us-west-1.rds.amazonaws.com:5432/postgres
 ```
 
-10) Finally, let's make sure we run migrations when starting, or upgrading, our Node.js app by modifying the previously defined `build` script in our `package.json` file.
+Again replacing `USER`, `PASSWORD`, `HOST`, `PORT` and `DATABASE` with the appropiate values
+
+```
+DATABASE_URL=postgresql://<USER>:<PASSWORD>@<HOST>:<PORT>/<DATABASE>
+```
+
+6) Let's make sure we run migrations on the hosted PostgreSQL when starting, or upgrading, our Node.js app by modifying the previously defined `start` script in our `package.json` file.
 
 ```
 ...
 "scripts": {
-  "build": "tsc && npx prisma migrate deploy",
+  "start": "npx prisma migrate deploy && node ./dist/src/index.js",
   ...
-}
+},
 ...
 ```
 
-11) Finally run `anycloud upgrade -e .env` to upgrade the new app and have the changes take effect.
+7) Finally, commit your changes and upgrade the new app to have the changes take effect.
+
+```
+git add .
+git commit -m "anycloud setup"
+anycloud upgrade -e .env
+```
