@@ -86,6 +86,9 @@ git commit -m "Initial commit"
 const server = app.listen(8088, () =>
   console.log(`
 🚀 Server ready at: http://localhost:8088
+⭐️ See sample requests: http://pris.ly/e/ts/rest-express#3-using-the-rest-api`,
+  ),
+)
 
 ...
 ```
