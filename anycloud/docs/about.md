@@ -1,11 +1,12 @@
-# AnyCloud Documentation
+The [AnyCloud](https://anycloudapp.com) CLI takes cloud provider credentials and a `Dockerfile` to elastically scale any kind of HTTP server in your own cloud account.
 
-[AnyCloud](https://anycloudapp.com) is a CLI that takes API credentials from your preferred cloud provider and a `Dockerfile` in order to elastically scale an HTTP server in your own cloud account.
+## Setup
 
-## About the documentation
+* [Install](install.md) the CLI
+* [Authenticate](authenticate.md) the CLI
 
-A high-level overview of how the AnyCloud documentation is organized will help you know how to quickly find what you are looking for:
+## Documentation
 
-* The [Tutorial](tutorial.md) will guide you from 0 to a sample Node.js HTTP server deployed in your AWS account with AnyCloud. Start here if you’re new to AnyCloud.
-* [How-to guides](how-to/README.md) are recipes. They guide you through the steps involved in addressing key problems and use-cases. They are more advanced than the tutorial and assume some knowledge of how AnyCloud works.
-* [Technical reference](reference/README.md) for built-in APIs and JSON file configuration schemas. They describe how it works and how to use it but assume some knowledge of how AnyCloud works
+* The initial [tutorial](tutorials/aws-node.md) will guide you from 0 to a sample Node.js HTTP server deployed in your AWS account. Start here if you’re new to AnyCloud.
+* [How-to guides](how-to/README.md) are recipes. They guide you through the steps involved in addressing key problems and use-cases. They assume some knowledge of how AnyCloud works.
+* [Technical reference](reference/README.md) for built-in APIs and JSON file configuration schemas.

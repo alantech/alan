@@ -1,5 +1,3 @@
-# Deploy to Azure
-
 ## Enable programmatic Azure access for AnyCloud
 
 1) Create an Azure Active Directory application and its Service Principal as described [here](https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal). After following the previous instructions you can copy your `Application (client) ID` and your `Directory (tenant) ID`.
