@@ -596,7 +596,9 @@ impl ControlPort {
 
   pub fn get_closest_vm_for_key(self: &ControlPort, key: &str) -> (&VMMetadata, bool) {
     let vms = self.get_vms_for_key(key);
-    let mut close_vms = vms.into_iter().filter(|vm| self.region_vms.contains_key(&vm.private_ip_addr));
+    let mut close_vms = vms
+      .into_iter()
+      .filter(|vm| self.region_vms.contains_key(&vm.private_ip_addr));
     match close_vms.next() {
       Some(close_vm) => (&close_vm, true),
       // Nothing is close, just go with the primary node
@@ -644,9 +646,9 @@ impl ControlPort {
   async fn dsgetv_inner(self: &ControlPort, key: &str) -> DaemonResult<Arc<HandlerMemory>> {
     let (vm, is_close) = self.get_closest_vm_for_key(key);
     let url = if is_close {
-      format!("https://{}:4142/datastore/getf", vm.private_ip_addr)
+      format!("https://{}:4142/datastore/getv", vm.private_ip_addr)
     } else {
-      format!("https://{}:4142/datastore/getf", vm.public_ip_addr)
+      format!("https://{}:4142/datastore/getv", vm.public_ip_addr)
     };
     let req = Request::builder().method("POST").uri(url);
     let cluster_secret = CLUSTER_SECRET.get().unwrap().clone().unwrap();
@@ -670,9 +672,9 @@ impl ControlPort {
   async fn dshas_inner(self: &ControlPort, key: &str) -> DaemonResult<bool> {
     let (vm, is_close) = self.get_closest_vm_for_key(key);
     let url = if is_close {
-      format!("https://{}:4142/datastore/getf", vm.private_ip_addr)
+      format!("https://{}:4142/datastore/has", vm.private_ip_addr)
     } else {
-      format!("https://{}:4142/datastore/getf", vm.public_ip_addr)
+      format!("https://{}:4142/datastore/has", vm.public_ip_addr)
     };
     let req = Request::builder().method("POST").uri(url);
     let cluster_secret = CLUSTER_SECRET.get().unwrap().clone().unwrap();
