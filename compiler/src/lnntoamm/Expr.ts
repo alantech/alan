@@ -93,8 +93,9 @@ export default abstract class Expr {
   }
 
   static fromAssignablesAst(ast: LPNode, metadata: MetaData): [Stmt[], Expr] {
+    const asts = ast.getAll();
     // break it up so that we're only working on one base assignable list or operator at a time.
-    let operated: Array<[Stmt[], Expr] | Operator[]> = ast.getAll().map(work => {
+    let operated: Array<[Stmt[], Expr] | Operator[]> = asts.map(work => {
       work = work.get('withoperators');
       if (work.has('baseassignablelist')) {
         return Expr.fromBaseassignablelist(work.get('baseassignablelist'), metadata);
@@ -102,14 +103,16 @@ export default abstract class Expr {
         // TODO: this won't work with operators associated with interfaces.
         // Will have to iterate through all of the interfaces in-scope and collect
         // the applicable types as well
-        const op = work.get('operators').get('operators').t;
+        const op = work.get('operators').t.trim();
         let operators = metadata.scope.get(op) as Operator[];
         if (operators === null) {
+          console.log(metadata.scope);
           throw new Error(`can't find operator ${op}`);
         } else if (!isOpArray(operators)) {
           // sanity check
           throw new Error(`somehow ${op} isn't an operator?`);
         }
+        console.log('-< for', op, 'check', operators, 'from', metadata.scope);
         return operators;
       } else {
         throw new Error(`unexpected assignable ast: ${work}`);
@@ -154,16 +157,99 @@ export default abstract class Expr {
       if (opOrRef instanceof Ref) {
         return opOrRef;
       } else {
-        return opOrRef.reduce((prec, op) => prec.add(op.precedence), new Set<number>());
+        // return opOrRef.reduce((prec, op) => prec.add(op.precedence), new Set<number>());
+        // TODO: do i need this?
+        return opOrRef.reduce((prec, op) => prec.set(op.precedence, [...(prec.get(op.precedence) || []), op]), new Map<number, Operator[]>());
       }
     });
 
-    // if we can absolutely solve the calling order then everything is ok
-    if (precedences.some(prec => prec instanceof Set && prec.size === 1)) {
-      // TODO
-    } else {
-      // there are some precedence mismatches, so things get messy
+    // now to try to solve operators.
+    // TODO: this might not work if there are multiple operator precedences for
+    // the same symbol. If that's the case, then we'll have to create an Expr
+    // that acts as a permutation over the different possible operator expansions
+    // (it can be done after eliminating operators that aren't compatible with
+    // the provided types)
+    while (true) {
+      // find the highest-precedence operations
+      let prec = -1;
+      let idxs = precedences.reduce((idxs, opOrRef, ii) => {
+        if (opOrRef instanceof Ref) return idxs;
+        let precs = Array.from(opOrRef.keys());
+        if (precs.length > 1) {
+          TODO('figure out multiple precedences?');
+        }
+        let maxPrec = precs.sort().pop();
+        if (maxPrec > prec) {
+          prec = maxPrec;
+          return [ii];
+        } else if (maxPrec === prec) {
+          return [...idxs, ii];
+        } else {
+          return idxs;
+        }
+      }, []);
+      if (prec === -1 || idxs.length === 0) {
+        break;
+      }
+      for (let jj = 0; jj < idxs.length; jj++) {
+        let idx = idxs[jj];
+        let item = precedences[idx];
+        // heat-death-of-the-universe check
+        if (item instanceof Ref) {
+          throw new Error(`uh, how?`);
+        }
+        // prefer the last-defined operators, so we must pop()
+        let ops = [...item.get(prec)];
+        // all of the operations should be the same infix/prefix mode
+        // if the result is null, that means they're not - idk if that's
+        // ever a case so just TODO it
+        const prefix = ops.reduce(
+          (mode, op) => {
+            if (mode === null) return mode;
+            return mode === op.isPrefix ? mode : null;
+          },
+          ops[0].isPrefix,
+        );
+        if (prefix === null) {
+          TODO('operator is both prefix and infix');
+        }
+        if (prefix) {
+          TODO();
+        } else {
+          // since infix operators are left-associated, and we iterate
+          // left->right anyways, this impl is easy
+          let fns = [];
+          let left = precedences[idx - 1];
+          let right = precedences[idx - 1];
+          if (!left || !right) {
+            throw new Error(`operator in invalid position`);
+          } else if (!(left instanceof Ref) || !(right instanceof Ref)) {
+            throw new Error(`operator ambiguity`);
+          }
+          while (ops.length > 0) {
+            const op = ops.pop();
+            const selected = op.select(left, right);
+            fns.push(...selected);
+          }
+          const call = new Call(
+            null,
+            fns,
+            null,
+            [left, right],
+            Type.generate(),
+          );
+          const dec = Dec.gen(call, metadata);
+          stmts.push(dec);
+          precedences[idx - 1] = dec.ref();
+          precedences.splice(idx, 2);
+        }
+      }
     }
+
+    if (precedences.length !== 1) {
+      throw new Error(`couldn't resolve operators`);
+    }
+    return [stmts, precedences.pop() as Ref];
   }
 }
 
