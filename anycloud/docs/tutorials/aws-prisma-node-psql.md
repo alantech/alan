@@ -2,7 +2,9 @@
 
 The guide covers how to deploy a Node.js REST HTTP API to AWS using AnyCloud. The HTTP server persists data to a PostgreSQL instance in AWS RDS. We will use the ORM [Prisma](https://www.prisma.io) and start from their [rest-express](https://github.com/prisma/prisma-examples/tree/latest/typescript/rest-express) example. This is one of Prisma's ready-to-run example projects demonstrating a backend-only HTTP server written using Typescript, Node.js and [Express](https://expressjs.com). The REST endpoints use Prisma to persist and retrieve data from a PostgreSQL instance.
 
+{% hint style="info" %}
 All the code from this guide can be found in this [template repository](https://github.com/alantech/anycloud-node-aws-psql) which you can use to [create a new repository](https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/creating-a-repository-from-a-template) as a starting point for your project.
+{% endhint %}
 
 ## Setup the project locally
 
@@ -115,7 +117,11 @@ No pending migrations to apply.
 
 ## Create a PostgreSQL instance on AWS RDS
 
-Follow this [AWS guide](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_GettingStarted.CreatingConnecting.PostgreSQL.html#CHAP_GettingStarted.Creating.PostgreSQL) to create a PostgreSQL on AWS RDS. Make sure to pick the `Easy create` method.
+Follow this [AWS guide](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_GettingStarted.CreatingConnecting.PostgreSQL.html#CHAP_GettingStarted.Creating.PostgreSQL) to create a PostgreSQL on AWS RDS.
+
+{% hint style="info" %}
+Make sure to pick the `Easy create` method.
+{% endhint %}
 
 ## Enable programmatic AWS access to VMs for AnyCloud
 
