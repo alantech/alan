@@ -181,11 +181,11 @@ $ anycloud new
 $ anycloud list
 Apps deployed:
 
-┌────────────────┬───────────────────────────────────────┬───────────────┬──────┬────────┐
-│ App ID         │ Url                                   │ Deploy Config │ Size │ Status │
-├────────────────┼───────────────────────────────────────┼───────────────┼──────┼────────┤
-│ crimson-tick-5 │ https://crimson-tick-5.alandeploy.com │ staging       │ 1    │ up     │
-└────────────────┴───────────────────────────────────────┴───────────────┴──────┴────────┘
+┌────────────────┬────────────────────────────────────────┬───────────────┬──────┬────────┐
+│ App ID         │ Url                                    │ Deploy Config │ Size │ Status │
+├────────────────┼────────────────────────────────────────┼───────────────┼──────┼────────┤
+│ crimson-tick-5 │ https://crimson-tick-5.anycloudapp.com │ staging       │ 1    │ up     │
+└────────────────┴────────────────────────────────────────┴───────────────┴──────┴────────┘
 
 Deploy Configs used:
 
@@ -236,3 +236,12 @@ git add .
 git commit -m "anycloud setup"
 anycloud upgrade -e .env
 ```
+
+8) Verify everything is working by hitting the [REST API](https://github.com/prisma/prisma-examples/tree/latest/typescript/rest-express#get) for all the users, which should return an empty list
+
+```bash
+$ curl https://crimson-tick-5.anycloudapp.com/users
+[]
+```
+
+Do not hesitate to reach out to us on [Discord](https://discord.com/invite/cX2C8MJQq6) if you have any questions, comments or suggestions!
