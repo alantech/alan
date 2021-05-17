@@ -112,7 +112,6 @@ export default abstract class Expr {
           // sanity check
           throw new Error(`somehow ${op} isn't an operator?`);
         }
-        console.log('-< for', op, 'check', operators, 'from', metadata.scope);
         return operators;
       } else {
         throw new Error(`unexpected assignable ast: ${work}`);
@@ -141,9 +140,14 @@ export default abstract class Expr {
           throw new Error(`invalid expression: expected operator, found ${op[1].ast.t.trim()}`);
         }
         infixPosition = true;
-        const dec = Dec.gen(op[1], metadata);
-        stmts.push(...op[0], dec);
-        return dec.ref();
+        stmts.push(...op[0]);
+        if (op[1] instanceof Ref) {
+          return op[1];
+        } else {
+          const dec = Dec.gen(op[1], metadata);
+          stmts.push(dec);
+          return dec.ref();
+        }
       } else if (infixPosition) {
         infixPosition = false;
         return op.filter(op => !op.isPrefix);

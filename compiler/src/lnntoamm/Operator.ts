@@ -25,10 +25,13 @@ class Operator {
     const precedence = opmap.get('opprecedence').get('num');
     const symbol = opmap.get('fntoop').get('operators');
     const fnName = opmap.get('fntoop').get('fnname');
-    const fns = scope.get(fnName.t).filter(fn => (fn as Fn).params.length === (isPrefix ? 1 : 2));
-    if (fns === null || !isFnArray(fns)) {
-      throw new Error(`cannot create operator ${symbol.t} - no functions named ${fnName}`);
+    const scoped = scope.get(fnName.t);
+    if (scoped === null) {
+      throw new Error(`${fnName.t} cannot be used as an operator - not found`);
+    } else if (!isFnArray(scoped)) {
+      throw new Error(`${fnName.t} cannot be used as an operator - it's not a function`);
     }
+    const fns = scoped.filter(fn => fn.params.length === (isPrefix ? 1 : 2));
     return new Operator(
       ast,
       symbol.t,
