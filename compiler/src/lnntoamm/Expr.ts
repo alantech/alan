@@ -141,13 +141,7 @@ export default abstract class Expr {
         }
         infixPosition = true;
         stmts.push(...op[0]);
-        if (op[1] instanceof Ref) {
-          return op[1];
-        } else {
-          const dec = Dec.gen(op[1], metadata);
-          stmts.push(dec);
-          return dec.ref();
-        }
+        return op[1];
       } else if (infixPosition) {
         infixPosition = false;
         return op.filter(op => !op.isPrefix);
@@ -158,7 +152,7 @@ export default abstract class Expr {
 
     // Now we build the precedence table for this application
     const precedences = operation.map(opOrRef => {
-      if (opOrRef instanceof Ref) {
+      if (opOrRef instanceof Expr) {
         return opOrRef;
       } else {
         // return opOrRef.reduce((prec, op) => prec.add(op.precedence), new Set<number>());
@@ -177,7 +171,7 @@ export default abstract class Expr {
       // find the highest-precedence operations
       let prec = -1;
       let idxs = precedences.reduce((idxs, opOrRef, ii) => {
-        if (opOrRef instanceof Ref) return idxs;
+        if (opOrRef instanceof Expr) return idxs;
         let precs = Array.from(opOrRef.keys());
         if (precs.length > 1) {
           TODO('figure out multiple precedences?');
@@ -199,7 +193,7 @@ export default abstract class Expr {
         let idx = idxs[jj];
         let item = precedences[idx];
         // heat-death-of-the-universe check
-        if (item instanceof Ref) {
+        if (item instanceof Expr) {
           throw new Error(`uh, how?`);
         }
         // prefer the last-defined operators, so we must pop()
@@ -223,12 +217,22 @@ export default abstract class Expr {
           // since infix operators are left-associated, and we iterate
           // left->right anyways, this impl is easy
           let fns = [];
-          let left = precedences[idx - 1];
-          let right = precedences[idx - 1];
+          let left = precedences[idx - 1] as Ref;
+          let right = precedences[idx - 1] as Ref;
           if (!left || !right) {
             throw new Error(`operator in invalid position`);
-          } else if (!(left instanceof Ref) || !(right instanceof Ref)) {
+          } else if (!(left instanceof Expr) || !(right instanceof Expr)) {
             throw new Error(`operator ambiguity`);
+          }
+          if (!(left instanceof Ref)) {
+            const dec = Dec.gen(left, metadata);
+            stmts.push(dec);
+            left = dec.ref();
+          }
+          if (!(right instanceof Ref)) {
+            const dec = Dec.gen(right, metadata);
+            stmts.push(dec);
+            right = dec.ref();
           }
           while (ops.length > 0) {
             const op = ops.pop();
@@ -242,9 +246,7 @@ export default abstract class Expr {
             [left, right],
             Type.generate(),
           );
-          const dec = Dec.gen(call, metadata);
-          stmts.push(dec);
-          precedences[idx - 1] = dec.ref();
+          precedences[idx - 1] = call;
           precedences.splice(idx, 2);
         }
       }
