@@ -27,9 +27,9 @@ class Operator {
     const fnName = opmap.get('fntoop').get('fnname');
     const scoped = scope.get(fnName.t);
     if (scoped === null) {
-      throw new Error(`${fnName.t} cannot be used as an operator - not found`);
+      throw new Error(`\`${fnName.t}\` cannot be used as an operator - function not found`);
     } else if (!isFnArray(scoped)) {
-      throw new Error(`${fnName.t} cannot be used as an operator - it's not a function`);
+      throw new Error(`\`${fnName.t}\` cannot be used as an operator - it's not a function`);
     }
     const fns = scoped.filter(fn => fn.params.length === (isPrefix ? 1 : 2));
     return new Operator(
