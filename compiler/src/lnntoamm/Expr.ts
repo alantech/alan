@@ -170,7 +170,7 @@ export default abstract class Expr {
     while (true) {
       // find the highest-precedence operations
       let prec = -1;
-      let idxs = precedences.reduce((idxs, opOrRef, ii) => {
+      let idxs: number[] = precedences.reduce((idxs, opOrRef, ii) => {
         if (opOrRef instanceof Expr) return idxs;
         let precs = Array.from(opOrRef.keys());
         if (precs.length > 1) {
@@ -201,18 +201,52 @@ export default abstract class Expr {
         // all of the operations should be the same infix/prefix mode
         // if the result is null, that means they're not - idk if that's
         // ever a case so just TODO it
-        const prefix = ops.reduce(
+        const prefixModeOf = (vals: Operator[]) => vals.reduce(
           (mode, op) => {
             if (mode === null) return mode;
             return mode === op.isPrefix ? mode : null;
           },
           ops[0].isPrefix,
-        );
+        )
+        const prefix = prefixModeOf(ops);
         if (prefix === null) {
-          TODO('operator is both prefix and infix');
+          TODO('operator is both prefix and infix - how to determine?');
         }
         if (prefix) {
-          TODO();
+          // prefix operators are right-associated, so we have to go
+          // ahead in the indices to ensure that the right-most is
+          // handled first
+          let applyIdx = precedences.slice(idx).findIndex(val => val instanceof Expr);
+          // make sure all of the operators between are the same precedence
+          // and prefixes
+          precedences.slice(idx + 1, applyIdx).forEach((opOrExpr, idx) => {
+            if (opOrExpr instanceof Expr) {
+              throw new Error(`this error should not be thrown`);
+            }
+            if (!idxs.includes(idx)) {
+              throw new Error(`unable to resolve operators - operator precedence ambiguity`);
+            }
+            if (prefixModeOf(opOrExpr.get(prec)) !== true) {
+              throw new Error(`unable to resolve operators - operator ambiguity`);
+            }
+          })
+          // slice copies the array, so this is ok :)
+          for (let op of precedences.slice(idx, applyIdx).reverse()) {
+            if (op instanceof Expr) {
+              throw new Error(`unexpected expression during computation? this error should never happen`);
+            }
+            if (!(precedences[applyIdx] instanceof Ref)) {
+              const dec = Dec.gen(precedences[applyIdx] as Expr, metadata);
+              stmts.push(dec);
+              precedences[applyIdx] = dec.ref();
+            }
+            const applyTo = precedences[applyIdx] as Ref;
+            let fns = ops.reduce((fns, op) => [...fns, ...op.select(applyTo)], new Array<Fn>());
+            precedences[applyIdx] = new Call(null, fns, null, [applyTo]);
+          }
+          let rm = precedences.splice(idx, applyIdx);
+          // update indices
+          idxs = idxs.map((idx, kk) => kk > jj ? idx - rm.length : kk);
         } else {
           // since infix operators are left-associated, and we iterate
           // left->right anyways, this impl is easy
@@ -244,10 +278,10 @@ export default abstract class Expr {
             fns,
             null,
             [left, right],
-            Type.generate(),
           );
           precedences[idx - 1] = call;
           precedences.splice(idx, 2);
+          idxs = idxs.map((idx, kk) => kk > jj ? idx - 1 : kk);
         }
       }
     }
@@ -274,7 +308,6 @@ class Call extends Expr {
     fns: Fn[],
     maybeClosure: VarDef | null,
     args: Ref[],
-    retTy: Type,
   ) {
     super(ast);
     if (fns.length === 0 && maybeClosure === null) {
@@ -283,7 +316,7 @@ class Call extends Expr {
     this.fns = fns;
     this.maybeClosure = maybeClosure;
     this.args = args;
-    this.retTy = retTy;
+    this.retTy = Type.oneOf(Array.from(new Set(fns.map(fn => fn.retTy))));
   }
 
   static fromCallAst(
@@ -342,12 +375,10 @@ class Call extends Expr {
       ty.constrain(Type.oneOf(paramTys));
       // console.log('constrained:', ty);
     });
-    let retPossibilities = [];
-    retPossibilities.push(...fns.map(fn => fn.retTy));
     if (closure !== null) {
       TODO('closures');
     }
-    return [stmts, new Call(ast, fns, closure, args, Type.oneOf(retPossibilities))];
+    return [stmts, new Call(ast, fns, closure, args)];
   }
 
   inline(amm: Output, kind: AssignKind, name: string, ty: Builtin) {
