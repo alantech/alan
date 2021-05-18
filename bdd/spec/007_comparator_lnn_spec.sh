@@ -99,31 +99,31 @@ false"
   Describe "Not Equals"
     before() {
       lnn_sourceToAll "
-        from @std/app import start, exit
+        from @std/app import start, stdout, exit
 
         on start { 
           const i8val = 0;
           emit stdout toString(i8val != 0);
           wait(10);
-          emit stdout toString(i8Val != 1);
+          emit stdout toString(i8val != 1);
           wait(10);
 
           const i16val: int16 = 0;
           emit stdout toString(i16val != 0);
           wait(10);
-          emit stdout toString(i16Val != 1);
+          emit stdout toString(i16val != 1);
           wait(10);
 
           const i32val: int32 = 0;
           emit stdout toString(i32val != 0);
           wait(10);
-          emit stdout toString(i32Val != 1);
+          emit stdout toString(i32val != 1);
           wait(10);
 
           const i64val: int64 = 0;
           emit stdout toString(i64val != 0);
           wait(10);
-          emit stdout toString(i64Val != 1);
+          emit stdout toString(i64val != 1);
           wait(10);
 
           const f32val: float32 = 0;
@@ -183,7 +183,7 @@ true"
   Describe "Less Than"
     before() {
       lnn_sourceToAll "
-        from @std/app import start, exit
+        from @std/app import start, stdout, exit
 
         on start {
           const i8val = 0;
@@ -255,7 +255,7 @@ false"
   Describe "Less Than Or Equal"
     before() {
       lnn_sourceToAll "
-        from @std/app import start, exit
+        from @std/app import start, stdout, exit
 
         on start {
           const i8val = 0;
@@ -327,7 +327,7 @@ true"
   Describe "Greater Than"
     before() {
       lnn_sourceToAll "
-        from @std/app import start, exit
+        from @std/app import start, stdout, exit
 
         on start {
           const i8val = 0;
@@ -399,7 +399,7 @@ true"
   Describe "Greater Than Or Equal"
     before() {
       lnn_sourceToAll "
-        from @std/app import start, exit
+        from @std/app import start, stdout, exit
 
         on start {
           const i8val = 0;

@@ -1,36 +1,46 @@
 from @std/app import start, stdout, exit
 
 on start {
-  emit stdout 'length:' + toString(#'hello, world!') + '\n';
-  emit stdout 'not:' + toString(!true) + '\n';
-  emit stdout `'  trimmed  ' + '\n';
+  const i8val = 0;
+  emit stdout toString(i8val != 0);
+  wait(10);
+  emit stdout toString(i8Val != 1);
+  wait(10);
 
-  // TODO: ('r' * 3) + '\n';
-  // until then, gotta wait to make sure these are output together
-  wait(100);
-  emit stdout 'r' * 3;
-  wait(100);
-  emit stdout '\n';
-  wait(100);
+  const i16val: int16 = 0;
+  emit stdout toString(i16val != 0);
+  wait(10);
+  emit stdout toString(i16Val != 1);
+  wait(10);
 
-  emit stdout 'lt:' + toString(1 < 2) + '\n';
-  emit stdout 'gt:' + toString(1 > 2) + '\n';
-  emit stdout 'lte:' + toString(1 <= 2) + '\n';
-  emit stdout 'gte:' + toString(1 >= 2) + '\n';
-  emit stdout 'eq:' + toString(1 == 2) + '\n';
-  emit stdout 'neq:' + toString(1 != 2) + '\n';
+  const i32val: int32 = 0;
+  emit stdout toString(i32val != 0);
+  wait(10);
+  emit stdout toString(i32Val != 1);
+  wait(10);
 
-  emit stdout 'matches:' + toString('hi there' ~ 'i t') + '\n';
+  const i64val: int64 = 0;
+  emit stdout toString(i64val != 0);
+  wait(10);
+  emit stdout toString(i64Val != 1);
+  wait(10);
 
-  emit stdout 'and:' + toString(true & true) + '\n';
-  emit stdout 'booland:' + toString(true && true) + '\n';
-  emit stdout 'nand:' + toString(true !& true) + '\n';
-  emit stdout 'xnor:' + toString(true !^ true) + '\n';
-  emit stdout 'xor:' + toString(true ^ true) + '\n';
-  emit stdout 'or:' + toString(true | true) + '\n';
-  emit stdout 'boolor:' + toString(true || true) + '\n';
-  emit stdout 'nor:' + toString(true !| true) + '\n';
+  const f32val: float32 = 0;
+  emit stdout toString(f32val != 0.0);
+  wait(10);
+  emit stdout toString(f32val != 1.0);
+  wait(10);
 
-  wait(100);
-  emit exit 0;
+  const f64val: float64 = 0;
+  emit stdout toString(f64val != 0.0);
+  wait(10);
+  emit stdout toString(f64val != 1.0);
+  wait(10);
+
+  emit stdout toString(true != true);
+  wait(10);
+  emit stdout toString(true != false);
+  wait(10);
+
+  emit exit i8val;
 }
