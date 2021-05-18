@@ -132,7 +132,6 @@ export default abstract class Expr {
     // a prefix
     // TODO: make sure errors match lntoamm
     let stmts: Stmt[] = [];
-    // let operation: Array<Operator[] | Ref> = [];
     let infixPosition = false;
     let operation = operated.map(op => {
       if (!isOpArray(op)) {
