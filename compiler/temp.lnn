@@ -27,7 +27,6 @@ on start {
   emit stdout 'nand:' + toString(true !& true) + '\n';
   emit stdout 'xnor:' + toString(true !^ true) + '\n';
   emit stdout 'xor:' + toString(true ^ true) + '\n';
-  emit stdout 'xnor:' + toString(true !^ true) + '\n';
   emit stdout 'or:' + toString(true | true) + '\n';
   emit stdout 'boolor:' + toString(true || true) + '\n';
   emit stdout 'nor:' + toString(true !| true) + '\n';

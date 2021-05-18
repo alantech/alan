@@ -194,10 +194,6 @@ export default abstract class Expr {
         let item = precedences[idx];
         // heat-death-of-the-universe check
         if (item instanceof Expr) {
-          console.log('-> ', idxs);
-          console.log('-> ', precedences);
-          console.log('-> ', idx);
-          console.log('-> ', prec);
           throw new Error(`uh, how?`);
         }
         // prefer the last-defined operators, so we must pop()
@@ -285,7 +281,7 @@ export default abstract class Expr {
           );
           precedences[idx - 1] = call;
           precedences.splice(idx, 2);
-          idxs = idxs.map((idx, kk) => kk > jj ? idx - 1 : kk);
+          idxs = idxs.map((idx, kk) => kk > jj ? idx - 2 : kk);
         }
       }
     }
