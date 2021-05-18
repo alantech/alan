@@ -1,0 +1,37 @@
+from @std/app import start, stdout, exit
+
+on start {
+  emit stdout 'length:' + toString(#'hello, world!') + '\n';
+  emit stdout 'not:' + toString(!true) + '\n';
+  emit stdout `'  trimmed  ' + '\n';
+
+  // TODO: ('r' * 3) + '\n';
+  // until then, gotta wait to make sure these are output together
+  wait(100);
+  emit stdout 'r' * 3;
+  wait(100);
+  emit stdout '\n';
+  wait(100);
+
+  emit stdout 'lt:' + toString(1 < 2) + '\n';
+  emit stdout 'gt:' + toString(1 > 2) + '\n';
+  emit stdout 'lte:' + toString(1 <= 2) + '\n';
+  emit stdout 'gte:' + toString(1 >= 2) + '\n';
+  emit stdout 'eq:' + toString(1 == 2) + '\n';
+  emit stdout 'neq:' + toString(1 != 2) + '\n';
+
+  emit stdout 'matches:' + toString('hi there' ~ 'i t') + '\n';
+
+  emit stdout 'and:' + toString(true & true) + '\n';
+  emit stdout 'booland:' + toString(true && true) + '\n';
+  emit stdout 'nand:' + toString(true !& true) + '\n';
+  emit stdout 'xnor:' + toString(true !^ true) + '\n';
+  emit stdout 'xor:' + toString(true ^ true) + '\n';
+  emit stdout 'xnor:' + toString(true !^ true) + '\n';
+  emit stdout 'or:' + toString(true | true) + '\n';
+  emit stdout 'boolor:' + toString(true || true) + '\n';
+  emit stdout 'nor:' + toString(true !| true) + '\n';
+
+  wait(100);
+  emit exit 0;
+}

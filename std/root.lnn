@@ -144,6 +144,7 @@ export fn xor(a: bool, b: bool): bool = xorbool(a, b);
 export fn nor(a: bool, b: bool): bool = norbool(a, b);
 export fn xnor(a: bool, b: bool): bool = xnorboo(a, b);
 // This aliasing is for operator definition purposes only
+export fn booland(a: bool, b: bool): bool = and(a, b);
 export fn boolor(a: bool, b: bool): bool = or(a, b);
 
 // Wait functions
@@ -192,7 +193,7 @@ export infix eq as == precedence 6
 export infix neq as != precedence 6
 export infix matches as ~ precedence 6
 export infix and as & precedence 7
-export infix and as && precedence 7
+export infix booland as && precedence 7
 export infix nand as !& precedence 7
 export infix xnor as !^ precedence 8
 export infix xor as ^ precedence 8

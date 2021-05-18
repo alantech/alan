@@ -1,0 +1,37 @@
+const _80f87d5b_987b_45dc_97ad_36c8b20aea05: string = "hello, world!"
+const _1fc7e135_e673_443b_98d9_614082bc4a3c: string = "\n"
+const _920d6630_3ac2_4b41_bc68_52845b6e12ef: bool = true
+const _8694de7d_017e_4b2e_98b3_6381280eead8: int64 = 100
+const _8ce68d0f_1e5c_428d_a379_aee1d0d25454: int8 = 0
+event stdout: string
+event exit: int8
+event stderr: string
+on stderr fn (err: string): void {
+  let _6e2c823a_0d10_4b37_afc6_589860d4f165: void = stderrp(err)
+}
+on exit fn (status: int8): void {
+  let _313923a1_eb1c_4df7_9590_746c8996cdfe: void = exitop(status)
+}
+on stdout fn (out: string): void {
+  let _ac65084c_77e9_4b70_a5ff_3dbb9e6c6880: void = stdoutp(out)
+}
+on _start fn (): void {
+  let _e11d3e42_f996_43b1_88b1_e95e2ecd281b: string = copystr(_80f87d5b_987b_45dc_97ad_36c8b20aea05)
+  let _a1e7d56f_5416_40f1_8106_d8ab276bf412: string = copystr(_1fc7e135_e673_443b_98d9_614082bc4a3c)
+  let _d940dd3d_859a_41d8_a117_8f5804beaf5b: string = catstr(_e11d3e42_f996_43b1_88b1_e95e2ecd281b, _a1e7d56f_5416_40f1_8106_d8ab276bf412)
+  let _240b2f67_027a_42c2_8c1a_776e7bd8ed14: string = refv(_d940dd3d_859a_41d8_a117_8f5804beaf5b)
+  emit stdout _240b2f67_027a_42c2_8c1a_776e7bd8ed14
+  let _c7da7db2_d684_4b52_bc75_b7b46248d933: bool = copybool(_920d6630_3ac2_4b41_bc68_52845b6e12ef)
+  let _4dbef199_61f8_419f_9c78_edb026b6f9e9: bool = notbool(_c7da7db2_d684_4b52_bc75_b7b46248d933)
+  let _b3423481_46c3_4bc1_936d_16eb15a9e410: bool = reff(_4dbef199_61f8_419f_9c78_edb026b6f9e9)
+  let _6618cd4a_99cd_495a_95ed_8f428f89a5eb: string = boolstr(_b3423481_46c3_4bc1_936d_16eb15a9e410)
+  let _559c836c_080e_4829_b031_61aed000857d: string = refv(_6618cd4a_99cd_495a_95ed_8f428f89a5eb)
+  let _e0f3d3ab_e5d6_407b_b1a3_51245b862b9c: string = copystr(_1fc7e135_e673_443b_98d9_614082bc4a3c)
+  let _e7ffc1ff_8b13_4842_99c1_1990ec0cff36: string = catstr(_559c836c_080e_4829_b031_61aed000857d, _e0f3d3ab_e5d6_407b_b1a3_51245b862b9c)
+  let _6aa435c5_16a1_46b4_98e1_c6b7e8937b3a: string = refv(_e7ffc1ff_8b13_4842_99c1_1990ec0cff36)
+  emit stdout _6aa435c5_16a1_46b4_98e1_c6b7e8937b3a
+  let _ae38a92c_9969_477d_a674_13437846077b: int64 = copyi64(_8694de7d_017e_4b2e_98b3_6381280eead8)
+  let _e8edf9fc_f1ae_4ee2_bc01_009f1b9dc36c: void = waitop(_ae38a92c_9969_477d_a674_13437846077b)
+  let _95991f2b_a021_4b03_bc2e_10b89e55cd1c: int8 = copyi8(_8ce68d0f_1e5c_428d_a379_aee1d0d25454)
+  emit exit _95991f2b_a021_4b03_bc2e_10b89e55cd1c
+}

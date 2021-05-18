@@ -194,6 +194,10 @@ export default abstract class Expr {
         let item = precedences[idx];
         // heat-death-of-the-universe check
         if (item instanceof Expr) {
+          console.log('-> ', idxs);
+          console.log('-> ', precedences);
+          console.log('-> ', idx);
+          console.log('-> ', prec);
           throw new Error(`uh, how?`);
         }
         // prefer the last-defined operators, so we must pop()
