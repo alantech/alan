@@ -252,7 +252,7 @@ export default abstract class Expr {
           // left->right anyways, this impl is easy
           let fns = [];
           let left = precedences[idx - 1] as Ref;
-          let right = precedences[idx - 1] as Ref;
+          let right = precedences[idx + 1] as Ref;
           if (!left || !right) {
             throw new Error(`operator in invalid position`);
           } else if (!(left instanceof Expr) || !(right instanceof Expr)) {
