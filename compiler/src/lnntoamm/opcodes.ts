@@ -162,6 +162,14 @@ const load = (): void => {
     gtef64: [{a: 'float64', b: 'float64'}, 'bool'],
     gtestr: [{a: 'string', b: 'string'}, 'bool'],
 
+    notbool: [{b: 'bool'}, 'bool'],
+    andbool: [{a: 'bool', b: 'bool'}, 'bool'],
+    nandboo: [{a: 'bool', b: 'bool'}, 'bool'],
+    orbool: [{a: 'bool', b: 'bool'}, 'bool'],
+    xorbool: [{a: 'bool', b: 'bool'}, 'bool'],
+    norbool: [{a: 'bool', b: 'bool'}, 'bool'],
+    xnorboo: [{a: 'bool', b: 'bool'}, 'bool'],
+
     waitop: [{t: 'int64'}, 'void'],
 
     catstr: [{a: 'string', b: 'string'}, 'string'],
