@@ -1,8 +1,10 @@
-# Persist data to PostgreSQL in AWS
+<img src="../assets/aws-prisma-node-psql.jpg" />
 
 The guide covers how to deploy a Node.js REST HTTP API to AWS using AnyCloud. The HTTP server persists data to a PostgreSQL instance in AWS RDS. We will use the ORM [Prisma](https://www.prisma.io) and start from their [rest-express](https://github.com/prisma/prisma-examples/tree/latest/typescript/rest-express) example. This is one of Prisma's ready-to-run example projects demonstrating a backend-only HTTP server written using Typescript, Node.js and [Express](https://expressjs.com). The REST endpoints use Prisma to persist and retrieve data from a PostgreSQL instance.
 
+{% hint style="info" %}
 All the code from this guide can be found in this [template repository](https://github.com/alantech/anycloud-node-aws-psql) which you can use to [create a new repository](https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/creating-a-repository-from-a-template) as a starting point for your project.
+{% endhint %}
 
 ## Setup the project locally
 
@@ -115,7 +117,11 @@ No pending migrations to apply.
 
 ## Create a PostgreSQL instance on AWS RDS
 
-Follow this [AWS guide](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_GettingStarted.CreatingConnecting.PostgreSQL.html#CHAP_GettingStarted.Creating.PostgreSQL) to create a PostgreSQL on AWS RDS. Make sure to pick the `Easy create` method.
+Follow this [AWS guide](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_GettingStarted.CreatingConnecting.PostgreSQL.html#CHAP_GettingStarted.Creating.PostgreSQL) to create a PostgreSQL on AWS RDS.
+
+{% hint style="info" %}
+Make sure to pick the `Easy create` method.
+{% endhint %}
 
 ## Enable programmatic AWS access to VMs for AnyCloud
 
@@ -125,7 +131,11 @@ Follow this [AWS guide](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/C
 
 3) Enable programmatic access for that IAM user, and attach the built-in [`AmazonEC2FullAccess`](https://console.aws.amazon.com/iam/home#/policies/arn%3Aaws%3Aiam%3A%3Aaws%3Apolicy%2FAmazonEC2FullAccess) policy to it as described [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_manage-attach-detach.html#add-policies-console).
 
-4) Take the `accessKeyId` and `secretAccessKey` from step 2 and create AWS `Credentials` stored locally at `~/.anycloud/credentials.json` only. You will need to pick a name or alias for the `Credentials`. The default value will be `aws`. In this example, we will call it `mystartup-aws`.
+4) Take the `accessKeyId` and `secretAccessKey` from step 2 and create AWS `Credentials` stored locally at `~/.anycloud/credentials.json` only.
+
+{% hint style="info" %}
+You will need to pick a name or alias for the `Credentials`. The default value will be `aws`. In this example, we will call it `mystartup-aws`.
+{% endhint %}
 
 ```bash
 $ anycloud credentials new
@@ -141,7 +151,11 @@ Successfully created "mystartup-aws" Credentials
 
 ## Deploy the REST API using AnyCloud and link it to the PostgreSQL instance
 
-1) Use the AnyCloud CLI to create an `anycloud.json` file in the project directory and define a `Deploy Config`. You will need to pick a name or alias for the `Deploy Config`. The default value will be `staging`. You will also need to associate `Credentials` to this `Deploy Config`.
+1) Use the AnyCloud CLI to create an `anycloud.json` file in the project directory and define a `Deploy Config`.
+
+{% hint style="info" %}
+You will need to pick a name, or alias, for the `Deploy Config`. The default value will be `staging`. You will also need to associate `Credentials` to this `Deploy Config`.
+{% endhint %}
 
 ```bash
 $ anycloud config new
@@ -173,11 +187,11 @@ $ anycloud new
 $ anycloud list
 Apps deployed:
 
-┌────────────────┬───────────────────────────────────────┬───────────────┬──────┬────────┐
-│ App ID         │ Url                                   │ Deploy Config │ Size │ Status │
-├────────────────┼───────────────────────────────────────┼───────────────┼──────┼────────┤
-│ crimson-tick-5 │ https://crimson-tick-5.alandeploy.com │ staging       │ 1    │ up     │
-└────────────────┴───────────────────────────────────────┴───────────────┴──────┴────────┘
+┌────────────────┬────────────────────────────────────────┬───────────────┬──────┬────────┐
+│ App ID         │ Url                                    │ Deploy Config │ Size │ Status │
+├────────────────┼────────────────────────────────────────┼───────────────┼──────┼────────┤
+│ crimson-tick-5 │ https://crimson-tick-5.anycloudapp.com │ staging       │ 1    │ up     │
+└────────────────┴────────────────────────────────────────┴───────────────┴──────┴────────┘
 
 Deploy Configs used:
 
@@ -228,3 +242,12 @@ git add .
 git commit -m "anycloud setup"
 anycloud upgrade -e .env
 ```
+
+8) Verify everything is working by hitting the [REST API](https://github.com/prisma/prisma-examples/tree/latest/typescript/rest-express#get) for all the users, which should return an empty list
+
+```bash
+$ curl https://crimson-tick-5.anycloudapp.com/users
+[]
+```
+
+Do not hesitate to reach out to us on [Discord](https://discord.com/invite/cX2C8MJQq6) if you have any questions, comments or suggestions!

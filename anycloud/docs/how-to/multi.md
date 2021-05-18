@@ -1,10 +1,8 @@
-# Deploy an app to multiple clouds and/or regions
-
 AnyCloud makes it trivial to deploy a singular logical cluster, or application, to multiple regions and/or multiple clouds at the same time. AnyCloud will always keep at least one running server in each region/cloud defined.
 
 ## Multiple regions
 
-Generate a Deploy Config across AWS regions `us-west-1` and `us-west-2`.
+Generate a `Deploy Config` across AWS regions `us-west-1` and `us-west-2`.
 
 ```bash
 $ anycloud config new
@@ -32,7 +30,7 @@ Successfully created "production" Deploy Config.
 
 ## Multiple clouds
 
-Generate a Deploy Config across AWS region `us-west-1` and GCP region `us-west1-c`.
+Generate a `Deploy Config` across AWS region `us-west-1` and GCP region `us-west1-c`.
 
 ```bash
 $ anycloud config new

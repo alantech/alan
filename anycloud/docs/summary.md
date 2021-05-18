@@ -1,17 +1,24 @@
 # Table of contents
 
-* [AnyCloud Documentation](about.md)
-* [CLI Installation and Authentication](cli.md)
-* [Tutorial](tutorial.md)
+* [Get Started](about.md)
+
+## Setup
+
+* [Install](install.md)
+* [Authenticate](authenticate.md)
+
+## Documentation
+
 * [How-to guides](how-to/README.md)
   * [Pass environment variables](how-to/env.md)
-  * [Persist data to PostgreSQL in AWS](how-to/aws-postgres.md)
   * [Deploy to GCP](how-to/gcp.md)
   * [Deploy to Azure](how-to/azure.md)
   * [Deploy an app to multiple clouds and/or regions](how-to/multi.md)
-  * [Define minimum and maximum number of VMs per region or cloud](how-to/replicas.md)
+  * [Set min/max number of VMs per region or cloud](how-to/replicas.md)
 * [Technical Reference](reference/README.md)
   * [Project Structure](reference/project-structure.md)
   * [Credentials](reference/credentials.md)
   * [CLI API](reference/cli-api.md)
-
+* [Tutorial Series](tutorials/README.md)
+  * [Deploy a Node.js HTTP server to AWS](tutorials/aws-node.md)
+  * [Persist data to PostgreSQL via Prisma in AWS](tutorials/aws-prisma-node-psql.md)
