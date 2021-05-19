@@ -2,9 +2,10 @@ import { LPNode, NamedAnd, NamedOr } from '../lp';
 import Output, { AssignKind } from './Amm';
 import Fn from './Fn';
 import opcodes from './opcodes';
+import Operator from './Operator';
 import Stmt, { Dec, MetaData, VarDef } from './Stmt';
 import Type, { Builtin } from './Types';
-import { isFnArray, TODO } from './util';
+import { isFnArray, isOpArray, TODO } from './util';
 
 export default abstract class Expr {
   ast: LPNode
@@ -92,13 +93,27 @@ export default abstract class Expr {
   }
 
   static fromAssignablesAst(ast: LPNode, metadata: MetaData): [Stmt[], Expr] {
+    const asts = ast.getAll();
     // break it up so that we're only working on one base assignable list or operator at a time.
-    let operated = ast.getAll().map(work => {
+    let operated: Array<[Stmt[], Expr] | Operator[]> = asts.map(work => {
       work = work.get('withoperators');
       if (work.has('baseassignablelist')) {
         return Expr.fromBaseassignablelist(work.get('baseassignablelist'), metadata);
       } else if (work.has('operators')) {
-        return TODO('operators');
+        // TODO: this won't work with operators associated with interfaces.
+        // Will have to iterate through all of the interfaces in-scope and collect
+        // the applicable types as well
+        const op = work.get('operators').t.trim();
+        let operators = metadata.scope.get(op) as Operator[];
+        if (operators === null) {
+          console.log(metadata.scope);
+          throw new Error(`can't find operator ${op}`);
+        } else if (!isOpArray(operators)) {
+          // sanity check
+          console.log(operators);
+          throw new Error(`somehow ${op} isn't an operator?`);
+        }
+        return operators;
       } else {
         throw new Error(`unexpected assignable ast: ${work}`);
       }
@@ -106,14 +121,204 @@ export default abstract class Expr {
     if (operated.length === 0) {
       throw new Error(`no expressions generated for ast: ${ast}`);
     } else if (operated.length === 1) {
-      if (operated[0][0] instanceof Array) {
-        return operated[0] as [Stmt[], Expr];
-      } else {
+      if (isOpArray(operated)) {
         throw new Error(`variables can't be assigned to operators`);
       }
-    } else {
-      return TODO('operators');
+      return operated[0] as [Stmt[], Expr];
     }
+    // now we have to resolve operators - start by filtering out operators if they
+    // are in a position that must be prefix or infix
+    // since there are no suffix operators, this is relatively easy - operators
+    // immediately following an expression must be infix, while all others must be
+    // a prefix
+    // TODO: make sure errors match lntoamm
+    let stmts: Stmt[] = [];
+    let infixPosition = false;
+    let operation = operated.map(op => {
+      if (!isOpArray(op)) {
+        if (infixPosition) {
+          throw new Error(`invalid expression: expected operator, found ${op[1].ast.t.trim()}`);
+        }
+        infixPosition = true;
+        stmts.push(...op[0]);
+        return op[1];
+      } else if (infixPosition) {
+        infixPosition = false;
+        return op.filter(op => !op.isPrefix);
+      } else {
+        return op.filter(op => op.isPrefix);
+      }
+    });
+
+    // Now we build the precedence table for this application
+    const precedences = operation.map(opOrRef => {
+      if (opOrRef instanceof Expr) {
+        return opOrRef;
+      } else {
+        // return opOrRef.reduce((prec, op) => prec.add(op.precedence), new Set<number>());
+        // TODO: do i need this?
+        return opOrRef.reduce((prec, op) => prec.set(op.precedence, [...(prec.get(op.precedence) || []), op]), new Map<number, Operator[]>());
+      }
+    });
+
+    // now to try to solve operators.
+    // TODO: this might not work if there are multiple operator precedences for
+    // the same symbol. If that's the case, then we'll have to create an Expr
+    // that acts as a permutation over the different possible operator expansions
+    // (it can be done after eliminating operators that aren't compatible with
+    // the provided types)
+    while (true) {
+      // find the highest-precedence operations
+      let prec = -1;
+      let idxs: number[] = precedences.reduce((idxs, opOrRef, ii) => {
+        if (opOrRef instanceof Expr) return idxs;
+        let precs = Array.from(opOrRef.keys());
+        if (precs.length > 1) {
+          // TODO: this is just a stop for future cases. might have
+          // to revisit this whole loop, but just to remind myself
+          TODO('figure out multiple precedences?');
+        }
+        let maxPrec = precs.sort().pop();
+        if (maxPrec > prec) {
+          prec = maxPrec;
+          return [ii];
+        } else if (maxPrec === prec) {
+          return [...idxs, ii];
+        } else {
+          return idxs;
+        }
+      }, []);
+      if (prec === -1 || idxs.length === 0) {
+        break;
+      }
+
+      // all of the selected operators should be the same infix/prefix mode
+      // if the result is null, that means they're not - idk if that's
+      // ever a case so just TODO it
+      const prefixModeOf = (vals: Operator[]) => vals.reduce(
+        (mode, op) => {
+          if (mode === null) return mode;
+          return mode === op.isPrefix ? mode : null;
+        },
+        vals[0].isPrefix
+      );
+
+      idxs.forEach(idx => {
+        const val = precedences[idx];
+        // heat-death-of-the-universe check
+        if (val instanceof Expr) {
+          throw new Error(`uh, how?`)
+        }
+        // ensure that none of the operators disagree on fixity
+        const mode = prefixModeOf(val.get(prec));
+        if (mode === null) {
+          TODO('operator is both prefix and infix - how to determine?');
+        }
+      });
+      // first, prefix operators - we need to mutate idxs so no `.forEach`
+      // do prefix operators first to ensure that there's no operator
+      // ambiguity. If there's a prefix before an infix operator (not an
+      // expression), this still gets caught below.
+      // TODO: this can be iterated through in reverse, but it's a quick
+      // refactor during PR review so do that later
+      for (let jj = 0; jj < idxs.length; jj++) {
+        let idx = idxs[jj];
+        let item = precedences[idx] as Map<number, Operator[]>;
+        let operators = [...item.get(prec)];
+        const isPrefix = prefixModeOf(operators);
+        if (!isPrefix) continue;
+        // prefix operators are right-associated, so we have to go ahead
+        // in the indices to ensure that the right-most is handled first
+        let applyIdx = precedences.slice(idx).findIndex(val => val instanceof Expr);
+        // make sure all of the operators between are prefix operators
+        // with the same precedence
+        precedences.slice(idx + 1, applyIdx).forEach((opOrExpr, idx) => {
+          if (opOrExpr instanceof Expr) {
+            throw new Error(`this error should not be thrown`);
+          } else if (!idxs.includes(idx)) {
+            throw new Error(`unable to resolve operators - operator precedence ambiguity`);
+          } else if (prefixModeOf(opOrExpr.get(prec)) !== true) {
+            throw new Error(`unable to resolve operators - operator ambiguity`);
+          }
+        });
+        // slice copies the array, so this is ok :)
+        for (let op of precedences.slice(idx, applyIdx).reverse()) {
+          if (op instanceof Expr) {
+            throw new Error(`unexpected expression during computation? this error should never happen`);
+          }
+          if (!(precedences[applyIdx] instanceof Ref)) {
+            const dec = Dec.gen(precedences[applyIdx] as Expr, metadata);
+            stmts.push(dec);
+            precedences[applyIdx] = dec.ref();
+          }
+          const applyTo = precedences[applyIdx] as Ref;
+          let fns = operators.reduce((fns, op) => [...fns, ...op.select(applyTo)], new Array<Fn>());
+          precedences[applyIdx] = new Call(null, fns, null, [applyTo]);
+          let rm = precedences.splice(idx, applyIdx);
+          // update indices
+          idxs = idxs.map((idx, kk) => kk > jj ? idx - rm.length : kk);
+          // remove the operators we used so they aren't looked at later
+          idxs.splice(jj, rm.length);
+          jj -= 1;
+        }
+      }
+      // now suffix operators
+      for (let jj = 0; jj < idxs.length; jj++) {
+        let idx = idxs[jj];
+        let item = precedences[idx];
+        // heat-death-of-the-universe check
+        if (item instanceof Expr) {
+          console.log('-> prec', prec);
+          console.log('-> idxs', idxs);
+          console.log('-> idx', idx);
+          throw new Error(`uh, how?`);
+        }
+        // prefer the last-defined operators, so we must pop()
+        let ops = [...item.get(prec)];
+        if (prefixModeOf(ops) === true) {
+          throw new Error(`prefix operators at precedence level ${prec} should've already been handled`);
+        }
+        // since infix operators are left-associated, and we iterate
+        // left->right anyways, this impl is easy
+        let fns = [];
+        let left = precedences[idx - 1] as Ref;
+        let right = precedences[idx + 1] as Ref;
+        if (!left || !right) {
+          throw new Error(`operator in invalid position`);
+        } else if (!(left instanceof Expr) || !(right instanceof Expr)) {
+          throw new Error(`operator ambiguity`);
+        }
+        if (!(left instanceof Ref)) {
+          const dec = Dec.gen(left, metadata);
+          stmts.push(dec);
+          left = dec.ref();
+        }
+        if (!(right instanceof Ref)) {
+          const dec = Dec.gen(right, metadata);
+          stmts.push(dec);
+          right = dec.ref();
+        }
+        while (ops.length > 0) {
+          const op = ops.pop();
+          const selected = op.select(left, right);
+          fns.push(...selected);
+        }
+        const call = new Call(
+          null,
+          fns,
+          null,
+          [left, right],
+        );
+        precedences[idx - 1] = call;
+        precedences.splice(idx, 2);
+        idxs = idxs.map((idx, kk) => kk > jj ? idx - 2 : kk);
+      }
+    }
+
+    if (precedences.length !== 1) {
+      throw new Error(`couldn't resolve operators`);
+    }
+    return [stmts, precedences.pop() as Ref];
   }
 }
 
@@ -132,7 +337,6 @@ class Call extends Expr {
     fns: Fn[],
     maybeClosure: VarDef | null,
     args: Ref[],
-    retTy: Type,
   ) {
     super(ast);
     if (fns.length === 0 && maybeClosure === null) {
@@ -141,7 +345,7 @@ class Call extends Expr {
     this.fns = fns;
     this.maybeClosure = maybeClosure;
     this.args = args;
-    this.retTy = retTy;
+    this.retTy = Type.oneOf(Array.from(new Set(fns.map(fn => fn.retTy))));
   }
 
   static fromCallAst(
@@ -200,20 +404,55 @@ class Call extends Expr {
       ty.constrain(Type.oneOf(paramTys));
       // console.log('constrained:', ty);
     });
-    let retPossibilities = [];
-    retPossibilities.push(...fns.map(fn => fn.retTy));
     if (closure !== null) {
       TODO('closures');
     }
-    return [stmts, new Call(ast, fns, closure, args, Type.oneOf(retPossibilities))];
+    return [stmts, new Call(ast, fns, closure, args)];
   }
 
+  /*
+  FIXME:
+  Currently, this only works because of the way `root.lnn` is structured -
+  functions that accept f32s are defined first and i64s are defined last.
+  However, we can't rely on function declaration order to impact type checking
+  or type inferrence, since that could unpredictably break users' code. Instead,
+  if we have `OneOf` types, we should prefer the types in its list in ascending
+  order. I think that the solution is to create a matrix of all of the possible
+  types to each other, insert functions matching the types in each dimension,
+  and pick the function furthest from the all-0 index. For example, given
+  `1 + 2`, the matrix would be:
+  |         |  float32   |  float64   |   int8   |   int16    |   int32    |   int64    |
+  | float32 |add(f32,f32)|            |          |            |            |            |
+  | float64 |            |add(f64,f64)|          |            |            |            |
+  |  int8   |            |            |add(i8,i8)|            |            |            |
+  |  int16  |            |            |          |add(i16,i16)|            |            |
+  |  int32  |            |            |          |            |add(i32,i32)|            |
+  |  int64  |            |            |          |            |            |add(i64,i64)|
+  in this case, it would prefer `add(int64,int64)`. Note that constraining the
+  type will impact this: given the code `const x: int8 = 0; const y = x + 1;`,
+  the matrix would be:
+  |         | float32 | float64 |    int8    | int16 | int32 | int64 |
+  |  int8   |         |         | add(i8,i8) |       |       |       |
+  where the columns represent the type of the constant `1`. There's only 1
+  possibility, but we'd still have to check `int8,int64`, `int8,int32`, and
+  `int8,int16` until it finds `int8,int8`.
+
+
+  This should also happen in the unimplemented "solidification" phase.
+  */
   inline(amm: Output, kind: AssignKind, name: string, ty: Builtin) {
     const argTys = this.args.map(arg => arg.ty.instance());
     const selected = this.fns.reverse().find(fn => fn.acceptsTypes(argTys)) || null;
     // console.log('!!!!!!!!!!', this.ast.t.trim(), selected);
     if (selected === null) {
-      throw new Error(`no function selected: ${this.ast.t.trim()}`);
+      // TODO: to get better error reporting, we need to pass an ast when using
+      // operators. i'm not worried about error reporting yet, though :)
+      console.log('~~~ ERROR')
+      console.log('selection pool:', this.fns);
+      console.log('args:', this.args);
+      console.log('kind:', kind);
+      console.log('expected output type:', ty);
+      throw new Error(`no function selected`);
     }
     selected.inline(amm, this.args, kind, name, ty);
   }

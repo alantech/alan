@@ -6,6 +6,7 @@ import Fn from './Fn';
 import Operator from './Operator';
 import Scope, { isFunctions } from './Scope';
 import Type from './Types';
+import { isFnArray, TODO } from './util';
 
 const modules: {[name: string]: Module} = {}
 
@@ -205,10 +206,10 @@ class Module {
     let insertScopes = [this.moduleScope];
     if (isExport) insertScopes.push(this.exportScope);
     for (let scope of insertScopes) {
-      const otherFns = scope.get(newFn.name) || [];
+      const otherFns = scope.shallowGet(newFn.name) || [];
       if (!(otherFns instanceof Array)) {
         throw new Error(`Tried to define function ${newFn.name}, but a non-function by that name is already in scope`);
-      } else if (otherFns.length > 0 && !(otherFns[0] instanceof Fn)) {
+      } else if (!isFnArray(otherFns)) {
         throw new Error(`Tried to define function ${newFn.name}, but a non-function by that name is already in scope`);
       }
       scope.put(newFn.name, [...otherFns, newFn]);
@@ -219,11 +220,11 @@ class Module {
     opAst = opAst.get('operatormapping');
     const newOp = Operator.fromAst(opAst, this.moduleScope);
     // no need to validate this since only operators can have such a name
-    const otherOps = this.moduleScope.get(newOp.name) || [];
-    this.moduleScope.put(newOp.name, [...otherOps, newOp]);
+    const otherOps = this.moduleScope.get(newOp.symbol) || [];
+    this.moduleScope.put(newOp.symbol, [...otherOps, newOp]);
     if (isExport) {
-      const exportedOps = this.exportScope.get(newOp.name) || [];
-      this.moduleScope.put(newOp.name, [...exportedOps, newOp]);
+      const exportedOps = (this.exportScope.shallowGet(newOp.symbol) as Operator[]) || [];
+      this.exportScope.put(newOp.symbol, [...exportedOps, newOp]);
     }
   }
 

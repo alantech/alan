@@ -31,8 +31,19 @@ const loadGlobalMem = (globalMemAst: LPNode): bigint[] => {
     if (value.has('i64')) {
       const val = BigInt(value.t.replace(/i64$/, ''))
       globalMem.push(val)
+    } else if (value.has('i32')) {
+      const val = BigInt(value.t.replace(/i32$/, ''))
+      globalMem.push(val)
+    } else if (value.has('i16')) {
+      const val = BigInt(value.t.replace(/i16$/, ''))
+      globalMem.push(val)
     } else if (value.has('i8')) {
       const val = BigInt(value.t.replace(/i8$/, ''))
+      globalMem.push(val)
+    } else if (value.has('f32')) {
+      const buf = Buffer.alloc(8)
+      buf.writeFloatLE(parseFloat(value.t.replace(/f32$/, '')))
+      const val = buf.readBigUInt64LE(0)
       globalMem.push(val)
     } else if (value.has('f64')) {
       const buf = Buffer.alloc(8)
