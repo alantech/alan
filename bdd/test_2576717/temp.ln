@@ -1,0 +1,11 @@
+
+        from @std/app import start, print, exit
+
+        fn double(x: int64): int64 = x * 2 || 0;
+
+        on start {
+          const numbers = [1, 2, 3, 4, 5];
+          numbers.map(double).map(toString).join(', ').print();
+          emit exit 0;
+        }
+      

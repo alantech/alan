@@ -1,0 +1,40 @@
+
+        from @std/app import start, stdout, exit
+
+        on start {
+          const i8val = 0;
+          const otheri8: int8 = 1;
+          emit stdout toString(i8val < otheri8) + '\n';
+          wait(10);
+          emit stdout toString(otheri8 < i8val) + '\n';
+          wait(10);
+
+          const i16val: int16 = 0;
+          const otheri16: int16 = 1;
+          emit stdout toString(i16val < otheri16) + '\n';
+          wait(10);
+          emit stdout toString(otheri16 < i16val) + '\n';
+          wait(10);
+
+          const i32val: int32 = 0;
+          const otheri32: int32 = 1;
+          emit stdout toString(i32val < otheri32) + '\n';
+          wait(10);
+          emit stdout toString(otheri32 < i32val) + '\n';
+          wait(10);
+
+          const i64val: int64 = 0;
+          const otheri64: int64 = 1;
+          emit stdout toString(i64val < otheri64) + '\n';
+          wait(10);
+          emit stdout toString(otheri64 < i64val) + '\n';
+          wait(10);
+
+          emit stdout toString('hello' < 'world') + '\n';
+          wait(10);
+          emit stdout toString('hello' < 'hello') + '\n';
+          wait(10);
+
+          emit exit i8val;
+        }
+      

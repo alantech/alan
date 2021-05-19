@@ -1,0 +1,13 @@
+
+      from @std/app import start, print, exit
+
+      on start {
+        print('Testing...');
+        const test = '1,2,3'.split(',');
+        print(test.length());
+        print(test[0]);
+        print(test[1]);
+        print(test[2]);
+        emit exit 0;
+      }
+    

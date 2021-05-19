@@ -1,0 +1,10 @@
+
+        from @std/app import start, print, exit
+        from @std/seq import seq, each
+
+        on start {
+          let s = seq(3);
+          s.each(fn (i: int64) = print(i));
+          emit exit 0;
+        }
+      

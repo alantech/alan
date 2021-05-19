@@ -1,0 +1,20 @@
+
+        from @std/tcpserver import tcpConn
+        from @std/tcp import TcpChannel, connect, addContext, ready, chunk, TcpContext, read, write, tcpClose, close
+
+        on tcpConn fn (channel: TcpChannel) {
+          const tunnel = connect('localhost', 8088);
+          channel.addContext(tunnel);
+          tunnel.addContext(channel);
+          channel.ready();
+          tunnel.ready();
+        }
+
+        on chunk fn (ctx: TcpContext<TcpChannel>) {
+          ctx.context.write(ctx.channel.read());
+        }
+
+        on tcpClose fn (ctx: TcpContext<TcpChannel>) {
+          ctx.context.close();
+        }
+      

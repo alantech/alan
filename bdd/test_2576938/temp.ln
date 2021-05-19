@@ -1,0 +1,15 @@
+
+        from @std/app import start, print, exit
+
+        const three = add(1, 2);
+
+        fn fiver() = 5;
+
+        const five = fiver();
+
+        on start {
+          print(three);
+          print(five);
+          emit exit 0;
+        }
+      

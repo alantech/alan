@@ -1,0 +1,34 @@
+
+        from @std/app import start, print, exit
+
+        on start {
+          concat('Hello, ', 'World!').print();
+          print('Hello, ' + 'World!');
+
+          repeat('hi ', 5).print();
+          print('hi ' * 5);
+
+          matches('foobar', 'fo.*').print();
+          print('foobar' ~ 'fo.*');
+
+          index('foobar', 'ba').print();
+          print('foobar' @ 'ba');
+
+          length('foobar').print();
+          print(#'foobar');
+
+          trim('   hi   ').print();
+          print(`'   hi   ');
+
+          split('Hello, World!', ', ')[0].print();
+          print(('Hello, World!' / ', ')[1]);
+
+          const res = split('Hello, World!', ', ');
+          res[0].print();
+
+          const res2 = 'Hello, World!' / ', ';
+          print(res2[1]);
+
+          emit exit 0;
+        }
+      

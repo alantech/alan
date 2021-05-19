@@ -1,0 +1,9 @@
+
+        from @std/app import start, print, exit
+        from @std/http import get
+
+        on start {
+          print(get('https://raw.githubusercontent.com/alantech/hellodep/aea1ce817a423d00107577a430a046993e4e6cad/index.ln'));
+          emit exit 0;
+        }
+      

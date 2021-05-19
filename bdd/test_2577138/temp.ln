@@ -1,0 +1,13 @@
+
+        from @std/app import start, print, exit
+
+        fn unreachable() {
+          return 'blah';
+          print('unreachable!');
+        }
+
+        on start {
+          unreachable();
+          emit exit 0;
+        }
+      

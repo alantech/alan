@@ -1,0 +1,10 @@
+
+        import @std/app
+        import @std/cmd
+
+        on app.start {
+          const executionResult: cmd.ExecRes = cmd.exec('echo 1');
+          app.print(executionResult.stdout);
+          emit app.exit 0;
+        }
+      
