@@ -1,4 +1,0 @@
-
-          from @std/app import start, exit
-          on start { emit exit add(toInt8(1), toInt8(2)).getOrExit(); }
-        

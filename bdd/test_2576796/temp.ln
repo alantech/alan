@@ -1,5 +1,0 @@
-
-        from @std/app import start, exit
-
-        on start { emit exit 1; }
-      
