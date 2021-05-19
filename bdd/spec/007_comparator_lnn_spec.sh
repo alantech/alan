@@ -3,58 +3,69 @@ Include build_tools.sh
 Describe "Comparators"
   Describe "Equals"
     before() {
-      # TODO: lnn_sourceToAll 
-      sourceToTemp "
+      lnn_sourceToTemp "
         from @std/app import start, stdout, exit
 
         on start {
           // constrained to an int8 from the emit exit at the bottom
           const i8val = 0;
-          emit stdout toString(i8val == 0) + '\n';
-          wait(1000);
-          emit stdout toString(i8val == 1) + '\n';
-          wait(1000);
+          const i8val1: int8 = 0;
+          emit stdout toString(i8val == i8val1) + '\n';
+          wait(10);
+          const i8val2: int8 = 1;
+          emit stdout toString(i8val == i8val2) + '\n';
+          wait(10);
 
           const i16val: int16 = 0;
-          emit stdout toString(i16val == 0) + '\n';
-          wait(1000);
-          emit stdout toString(i16val == 1) + '\n';
-          wait(1000);
+          const i16val1: int16 = 0;
+          emit stdout toString(i16val == i16val1) + '\n';
+          wait(10);
+          const i16val2: int16 = 1;
+          emit stdout toString(i16val == i16val2) + '\n';
+          wait(10);
 
           const i32val: int32 = 0;
-          emit stdout toString(i32val == 0) + '\n';
-          wait(1000);
-          emit stdout toString(i32val == 1) + '\n';
-          wait(1000);
+          const i32val1: int32 = 0;
+          emit stdout toString(i32val == i32val1) + '\n';
+          wait(10);
+          const i32val2: int32 = 1;
+          emit stdout toString(i32val == i32val2) + '\n';
+          wait(10);
 
           const i64val: int64 = 0;
-          emit stdout toString(i64val == 0) + '\n';
-          wait(1000);
-          emit stdout toString(i64val == 1) + '\n';
-          wait(1000);
+          const i64val1: int64 = 0;
+          emit stdout toString(i64val == i64val1) + '\n';
+          wait(10);
+          const i64val2: int64 = 1;
+          emit stdout toString(i64val == i64val2) + '\n';
+          wait(10);
 
           const f32val: float32 = 0.0;
-          emit stdout toString(f32val == 0.0) + '\n';
-          wait(1000);
-          emit stdout toString(f32val == 1.0) + '\n';
-          wait(1000);
+          const f32val1: float32 = 0.0;
+          emit stdout toString(f32val == f32val1) + '\n';
+          wait(10);
+          const f32val2: float32 = 1.0;
+          emit stdout toString(f32val == f32val2) + '\n';
+          wait(10);
 
           const f64val: float64 = 0.0;
-          emit stdout toString(f64val == 0.0) + '\n';
-          wait(1000);
-          emit stdout toString(f64val == 1.0) + '\n';
-          wait(1000);
+          const f64val1: float64 = 0.0;
+          emit stdout toString(f64val == f64val1) + '\n';
+          wait(10);
+          const f64val2: float64 = 1.0;
+          emit stdout toString(f64val == f64val2) + '\n';
+          wait(10);
 
-          emit stdout toString(true == true)) + '\n';
-          wait(1000);
+          emit stdout toString(true == true) + '\n';
+          wait(10);
           emit stdout toString(true == false) + '\n';
-          wait(1000);
+          wait(10);
 
-          emit stdout toString('hello' + \"hello\") + '\n';
-          wait(1000);
-          emit stdout toString('hello' + \"world\") + '\n';
+          emit stdout toString('hello' == \"hello\") + '\n';
+          wait(10);
+          emit stdout toString('hello' == \"world\") + '\n';
+          wait(10);
 
-          wait(1000);
           emit exit i8val;
         }
       "
@@ -84,13 +95,11 @@ true
 false"
 
     It "runs js"
-      Pending types-depending-on-each-other
       When run test_js
       The output should eq "$EQUALS"
     End
 
     It "runs agc"
-      Pending types-depending-on-each-other
       When run test_agc
       The output should eq "$EQUALS"
     End
@@ -103,44 +112,61 @@ false"
 
         on start { 
           const i8val = 0;
-          emit stdout toString(i8val != 0);
+          const i8val1: int8 = 0;
+          emit stdout toString(i8val != i8val1) + '\n';
           wait(10);
-          emit stdout toString(i8val != 1);
+          const i8val2: int8 = 1;
+          emit stdout toString(i8val != i8val2) + '\n';
           wait(10);
 
           const i16val: int16 = 0;
-          emit stdout toString(i16val != 0);
+          const i16val1: int16 = 0;
+          emit stdout toString(i16val != i16val1) + '\n';
           wait(10);
-          emit stdout toString(i16val != 1);
+          const i16val2: int16 = 1;
+          emit stdout toString(i16val != i16val2) + '\n';
           wait(10);
 
           const i32val: int32 = 0;
-          emit stdout toString(i32val != 0);
+          const i32val1: int32 = 0;
+          emit stdout toString(i32val != i32val1) + '\n';
           wait(10);
-          emit stdout toString(i32val != 1);
+          const i32val2: int32 = 1;
+          emit stdout toString(i32val != i32val2) + '\n';
           wait(10);
 
           const i64val: int64 = 0;
-          emit stdout toString(i64val != 0);
+          const i64val1: int64 = 0;
+          emit stdout toString(i64val != i64val1) + '\n';
           wait(10);
-          emit stdout toString(i64val != 1);
+          const i64val2: int64 = 1;
+          emit stdout toString(i64val != i64val2) + '\n';
           wait(10);
 
           const f32val: float32 = 0;
-          emit stdout toString(f32val != 0.0);
+          const f32val1: float32 = 0.0;
+          emit stdout toString(f32val != f32val1) + '\n';
           wait(10);
-          emit stdout toString(f32val != 1.0);
+          const f32val2: float32 = 1.0;
+          emit stdout toString(f32val != f32val2) + '\n';
           wait(10);
 
           const f64val: float64 = 0;
-          emit stdout toString(f64val != 0.0);
+          const f64val1: float64 = 0.0;
+          emit stdout toString(f64val != f64val1) + '\n';
           wait(10);
-          emit stdout toString(f64val != 1.0);
+          const f64val2: float64 = 1.0;
+          emit stdout toString(f64val != f64val2) + '\n';
           wait(10);
 
-          emit stdout toString(true != true);
+          emit stdout toString(true != true) + '\n';
           wait(10);
-          emit stdout toString(true != false);
+          emit stdout toString(true != false) + '\n';
+          wait(10);
+
+          emit stdout toString(\"hello\" != \"hello\") + '\n';
+          wait(10);
+          emit stdout toString(\"hello\" != \"world\") + '\n';
           wait(10);
 
           emit exit i8val;
@@ -155,6 +181,8 @@ false"
     AfterAll after
 
     NOTEQUALS="false
+true
+false
 true
 false
 true
@@ -187,32 +215,36 @@ true"
 
         on start {
           const i8val = 0;
-          emit stdout toString(i8val < 1);
+          const otheri8: int8 = 1;
+          emit stdout toString(i8val < otheri8) + '\n';
           wait(10);
-          emit stdout toString(1 < i8val);
+          emit stdout toString(otheri8 < i8val) + '\n';
           wait(10);
 
           const i16val: int16 = 0;
-          emit stdout toString(i16val < 1);
+          const otheri16: int16 = 1;
+          emit stdout toString(i16val < otheri16) + '\n';
           wait(10);
-          emit stdout toString(1 < i16val);
+          emit stdout toString(otheri16 < i16val) + '\n';
           wait(10);
 
           const i32val: int32 = 0;
-          emit stdout toString(i32val < 1);
+          const otheri32: int32 = 1;
+          emit stdout toString(i32val < otheri32) + '\n';
           wait(10);
-          emit stdout toString(1 < i32val);
+          emit stdout toString(otheri32 < i32val) + '\n';
           wait(10);
 
           const i64val: int64 = 0;
-          emit stdout toString(i64val < 1);
+          const otheri64: int64 = 1;
+          emit stdout toString(i64val < otheri64) + '\n';
           wait(10);
-          emit stdout toString(1 < i64val);
+          emit stdout toString(otheri64 < i64val) + '\n';
           wait(10);
 
-          emit stdout toString('hello' < 'world');
+          emit stdout toString('hello' < 'world') + '\n';
           wait(10);
-          emit stdout toString('hello' < 'hello');
+          emit stdout toString('hello' < 'hello') + '\n';
           wait(10);
 
           emit exit i8val;
@@ -227,10 +259,6 @@ true"
     AfterAll after
 
     LESSTHAN="true
-false
-true
-false
-true
 false
 true
 false
@@ -259,32 +287,36 @@ false"
 
         on start {
           const i8val = 0;
-          emit stdout toString(i8val <= 1);
+          const otheri8: int8 = 1;
+          emit stdout toString(i8val <= otheri8) + '\n';
           wait(10);
-          emit stdout toString(1 <= i8val);
+          emit stdout toString(otheri8 <= i8val) + '\n';
           wait(10);
 
           const i16val: int16 = 0;
-          emit stdout toString(i16val <= 1);
+          const otheri16: int16 = 1;
+          emit stdout toString(i16val <= otheri16) + '\n';
           wait(10);
-          emit stdout toString(1 <= i16val);
+          emit stdout toString(otheri16 <= i16val) + '\n';
           wait(10);
 
           const i32val: int32 = 0;
-          emit stdout toString(i32val <= 1);
+          const otheri32: int32 = 1;
+          emit stdout toString(i32val <= otheri32) + '\n';
           wait(10);
-          emit stdout toString(1 <= i32val);
+          emit stdout toString(otheri32 <= i32val) + '\n';
           wait(10);
 
           const i64val: int64 = 0;
-          emit stdout toString(i64val <= 1);
+          const otheri64: int64 = 1;
+          emit stdout toString(i64val <= otheri64) + '\n';
           wait(10);
-          emit stdout toString(1 <= i64val);
+          emit stdout toString(otheri64 <= i64val) + '\n';
           wait(10);
 
-          emit stdout toString('hello' <= 'world');
+          emit stdout toString('hello' <= 'world') + '\n';
           wait(10);
-          emit stdout toString('hello' <= 'hello');
+          emit stdout toString('hello' <= 'hello') + '\n';
           wait(10);
 
           emit exit i8val;
@@ -299,10 +331,6 @@ false"
     AfterAll after
 
     LESSTHANEQUAL="true
-false
-true
-false
-true
 false
 true
 false
@@ -331,32 +359,36 @@ true"
 
         on start {
           const i8val = 0;
-          emit stdout toString(i8val > 1);
+          const otheri8: int8 = 1;
+          emit stdout toString(i8val > otheri8) + '\n';
           wait(10);
-          emit stdout toString(1 > i8val);
+          emit stdout toString(otheri8 > i8val) + '\n';
           wait(10);
 
           const i16val: int16 = 0;
-          emit stdout toString(i16val > 1);
+          const otheri16: int16 = 1;
+          emit stdout toString(i16val > otheri16) + '\n';
           wait(10);
-          emit stdout toString(1 > i16val);
+          emit stdout toString(otheri16 > i16val) + '\n';
           wait(10);
 
           const i32val: int32 = 0;
-          emit stdout toString(i32val > 1);
+          const otheri32: int32 = 1;
+          emit stdout toString(i32val > otheri32) + '\n';
           wait(10);
-          emit stdout toString(1 > i32val);
+          emit stdout toString(otheri32 > i32val) + '\n';
           wait(10);
 
           const i64val: int64 = 0;
-          emit stdout toString(i64val > 1);
+          const otheri64: int64 = 1;
+          emit stdout toString(i64val > otheri64) + '\n';
           wait(10);
-          emit stdout toString(1 > i64val);
+          emit stdout toString(otheri64 > i64val) + '\n';
           wait(10);
 
-          emit stdout toString('hello' > 'world');
+          emit stdout toString('world' > 'world') + '\n';
           wait(10);
-          emit stdout toString('hello' > 'hello');
+          emit stdout toString('world' > 'hello') + '\n';
           wait(10);
 
           emit exit i8val;
@@ -371,10 +403,6 @@ true"
     AfterAll after
 
     GREATERTHAN="false
-true
-false
-true
-false
 true
 false
 true
@@ -403,32 +431,36 @@ true"
 
         on start {
           const i8val = 0;
-          emit stdout toString(i8val >= 1);
+          const otheri8: int8 = 1;
+          emit stdout toString(i8val >= otheri8) + '\n';
           wait(10);
-          emit stdout toString(1 >= i8val);
+          emit stdout toString(otheri8 >= i8val) + '\n';
           wait(10);
 
           const i16val: int16 = 0;
-          emit stdout toString(i16val >= 1);
+          const otheri16: int16 = 1;
+          emit stdout toString(i16val >= otheri16) + '\n';
           wait(10);
-          emit stdout toString(1 >= i16val);
+          emit stdout toString(otheri16 >= i16val) + '\n';
           wait(10);
 
           const i32val: int32 = 0;
-          emit stdout toString(i32val >= 1);
+          const otheri32: int32 = 1;
+          emit stdout toString(i32val >= otheri32) + '\n';
           wait(10);
-          emit stdout toString(1 >= i32val);
+          emit stdout toString(otheri32 >= i32val) + '\n';
           wait(10);
 
           const i64val: int64 = 0;
-          emit stdout toString(i64val >= 1);
+          const otheri64: int64 = 1;
+          emit stdout toString(i64val >= otheri64) + '\n';
           wait(10);
-          emit stdout toString(1 >= i64val);
+          emit stdout toString(otheri64 >= i64val) + '\n';
           wait(10);
 
-          emit stdout toString('hello' >= 'world');
+          emit stdout toString('hello' >= 'world') + '\n';
           wait(10);
-          emit stdout toString('hello' >= 'hello');
+          emit stdout toString('hello' >= 'hello') + '\n';
           wait(10);
 
           emit exit i8val;
@@ -442,8 +474,7 @@ true"
     }
     AfterAll after
 
-    GREATERTHANOREQUAL="true
-false
+    GREATERTHANOREQUAL="false
 true
 false
 true
@@ -452,10 +483,7 @@ true
 false
 true
 false
-true
-false
-true
-false"
+true"
 
     It "runs js"
       When run test_js
