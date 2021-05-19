@@ -911,7 +911,8 @@ impl HandlerMemory {
 
 /// Sets mems HandlerMemory attribute from Protobuf HandlerMemory struct
 fn set_mems_from_pb(proto_hm: &protos::HandlerMemory::HandlerMemory, hm: &mut HandlerMemory) {
-  let mut mems = Vec::new();
+  // Set global memory first
+  let mut mems = [Program::global().gmem.clone()].to_vec();
   for pb_mem in proto_hm.get_mems() {
     let mut mem = Vec::new();
     for mem_block in pb_mem.get_mem() {
@@ -926,7 +927,11 @@ fn set_mems_from_pb(proto_hm: &protos::HandlerMemory::HandlerMemory, hm: &mut Ha
 fn set_pb_mems(hm: &Arc<HandlerMemory>, proto_hm: &mut protos::HandlerMemory::HandlerMemory) {
   let mut mem_vec: protobuf::RepeatedField<protos::HandlerMemory::HandlerMemory_Mems> =
     protobuf::RepeatedField::new();
-  for hm_inner_vec in hm.mems.iter() {
+  for (i, hm_inner_vec) in hm.mems.iter().enumerate() {
+    // Ignore global memory
+    if i == 0 {
+      continue;
+    };
     let mut inner_vec: protobuf::RepeatedField<protos::HandlerMemory::HandlerMemory_MemBlock> =
       protobuf::RepeatedField::new();
     for hm_mem_block in hm_inner_vec.iter() {
