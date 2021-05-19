@@ -3,7 +3,7 @@ Include build_tools.sh
 Describe "Comparators"
   Describe "Equals"
     before() {
-      lnn_sourceToTemp "
+      lnn_sourceToAll "
         from @std/app import start, stdout, exit
 
         on start {
