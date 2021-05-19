@@ -122,10 +122,10 @@ $ anycloud new
 ▇ Creating new App
 ```
 {% hint style="info" %}
-It might take a few minutes for your App to start while the virtual machine is provisioned and upgraded. The AnyCloud CLI will generate a random App name for you, but [a custom app name can be used](how-to/custom-app.md).
+It might take a few minutes for your App to start while the virtual machine is provisioned and upgraded.
 {% endhint %}
 
-2) Check the status of your App:
+2) Check the status of your App
 
 ```bash
 $ anycloud list

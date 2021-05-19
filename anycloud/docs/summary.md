@@ -19,6 +19,7 @@
   * [Project Structure](reference/project-structure.md)
   * [Credentials](reference/credentials.md)
   * [CLI API](reference/cli-api.md)
+* [Architecture](architecture.md)
 * [Tutorial Series](tutorials/README.md)
   * [Deploy a Node.js HTTP server to AWS](tutorials/aws-node.md)
   * [Persist data to PostgreSQL via Prisma in AWS](tutorials/aws-prisma-node-psql.md)
