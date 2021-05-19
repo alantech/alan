@@ -174,6 +174,8 @@ export default abstract class Expr {
         if (opOrRef instanceof Expr) return idxs;
         let precs = Array.from(opOrRef.keys());
         if (precs.length > 1) {
+          // TODO: this is just a stop for future cases. might have
+          // to revisit this whole loop, but just to remind myself
           TODO('figure out multiple precedences?');
         }
         let maxPrec = precs.sort().pop();
@@ -267,6 +269,9 @@ export default abstract class Expr {
         }
         // prefer the last-defined operators, so we must pop()
         let ops = [...item.get(prec)];
+        if (prefixModeOf(ops) === true) {
+          throw new Error(`prefix operators at precedence level ${prec} should've already been handled`);
+        }
         // since infix operators are left-associated, and we iterate
         // left->right anyways, this impl is easy
         let fns = [];
