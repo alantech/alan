@@ -1,6 +1,4 @@
-# Define minimum and maximum number of VMs per region or cloud
-
-While defining the configuration, Anycloud will ask for a minimum number of VMs to keep running on each region/cloud defined. The same will happen for a maximum if you would like to specify one. Anycloud autoscaling will take these limits into account. By default, the minimum number of VMs is one and no maximum defined, meaning scaling as much as needed.
+When defining a `Deploy Config`, AnyCloud will ask for a minimum number of VMs to keep running on each region/cloud defined. The same will happen for a maximum if you would like to specify one. AnyCloud's autoscaling will respect these limits. By default, the minimum number of VMs is one and no maximum defined, meaning scaling as much as needed.
 
 ## Defining a minimum
 

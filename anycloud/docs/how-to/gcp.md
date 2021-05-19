@@ -1,12 +1,15 @@
-# Deploy to GCP
-
 ## Enable programmatic GCP access for AnyCloud
 
 1) Create a service account for your GCP project as described [here](https://cloud.google.com/iam/docs/creating-managing-service-accounts#iam-service-accounts-create-console) with the [`Compute Engine Admin role`](https://cloud.google.com/compute/docs/access/iam#compute.admin).
 
-2) Create a service account key for your newly service account as described [here](https://cloud.google.com/iam/docs/creating-managing-service-account-keys) and export it as a JSON file.
+2) Create a service account key for your newly created service account as described [here](https://cloud.google.com/iam/docs/creating-managing-service-account-keys) and export it as a JSON file.
 
-3) Take a look at the exported JSON file. Add a new `Credentials` by taking the `privateKey`, `clientEmail` and `projectId` from step 2. You will need to pick a name or alias for the `Credentials`. The initial value will be `gcp`. In this example, we will call it `mystartup-gcp`.
+3) Take a look at the exported JSON file. Add a new `Credentials` by taking the `privateKey`, `clientEmail` and `projectId` from step 2.
+
+{% hint style="info" %}
+You will need to pick a name, or alias, for the `Credentials`. The default value will be `gcp`. In this example, we will call it `mystartup-gcp`.
+{% endhint %}
+
 
 ```bash
 $ anycloud credentials new

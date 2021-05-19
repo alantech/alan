@@ -1,5 +1,3 @@
-# Credentials
-
 AnyCloud supports managing multiple cloud `Credentials` via the `anycloud credentials` CLI command. The `Credentials` are stored in a local file that is not committed to any repository located at `~/.anycloud/credentials.json`. AnyCloud supports `Credentials` for AWS, GCP and Azure. Each `Credentials` has a name, or alias, to refer to it within the `Deploy Configs`. This allows you to, for example, create credentials for your personal AWS and GCP accounts as well as for a company's AWS account and use each of them to create separate `Deploy Configs` for different `Apps` or create a multi region/cloud `Deploy Config` for the same `App`.
 
 ## AWS
