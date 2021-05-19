@@ -257,6 +257,9 @@ export default abstract class Expr {
           let rm = precedences.splice(idx, applyIdx);
           // update indices
           idxs = idxs.map((idx, kk) => kk > jj ? idx - rm.length : kk);
+          // remove the operators we used so they aren't looked at later
+          idxs.splice(jj, rm.length);
+          jj -= 1;
         }
       }
       // now suffix operators
@@ -265,6 +268,9 @@ export default abstract class Expr {
         let item = precedences[idx];
         // heat-death-of-the-universe check
         if (item instanceof Expr) {
+          console.log('-> prec', prec);
+          console.log('-> idxs', idxs);
+          console.log('-> idx', idx);
           throw new Error(`uh, how?`);
         }
         // prefer the last-defined operators, so we must pop()
