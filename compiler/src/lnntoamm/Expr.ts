@@ -189,6 +189,75 @@ export default abstract class Expr {
       if (prec === -1 || idxs.length === 0) {
         break;
       }
+
+      // all of the selected operators should be the same infix/prefix mode
+      // if the result is null, that means they're not - idk if that's
+      // ever a case so just TODO it
+      const prefixModeOf = (vals: Operator[]) => vals.reduce(
+        (mode, op) => {
+          if (mode === null) return mode;
+          return mode === op.isPrefix ? mode : null;
+        },
+        vals[0].isPrefix
+      );
+
+      idxs.forEach(idx => {
+        const val = precedences[idx];
+        // heat-death-of-the-universe check
+        if (val instanceof Expr) {
+          throw new Error(`uh, how?`)
+        }
+        // ensure that none of the operators disagree on fixity
+        const mode = prefixModeOf(val.get(prec));
+        if (mode === null) {
+          TODO('operator is both prefix and infix - how to determine?');
+        }
+      });
+      // first, prefix operators - we need to mutate idxs so no `.forEach`
+      // do prefix operators first to ensure that there's no operator
+      // ambiguity. If there's a prefix before an infix operator (not an
+      // expression), this still gets caught below.
+      // TODO: this can be iterated through in reverse, but it's a quick
+      // refactor during PR review so do that later
+      for (let jj = 0; jj < idxs.length; jj++) {
+        let idx = idxs[jj];
+        let item = precedences[idx] as Map<number, Operator[]>;
+        let operators = [...item.get(prec)];
+        const isPrefix = prefixModeOf(operators);
+        if (!isPrefix) continue;
+        // prefix operators are right-associated, so we have to go ahead
+        // in the indices to ensure that the right-most is handled first
+        let applyIdx = precedences.slice(idx).findIndex(val => val instanceof Expr);
+        // make sure all of the operators between are prefix operators
+        // with the same precedence
+        precedences.slice(idx + 1, applyIdx).forEach((opOrExpr, idx) => {
+          if (opOrExpr instanceof Expr) {
+            throw new Error(`this error should not be thrown`);
+          } else if (!idxs.includes(idx)) {
+            throw new Error(`unable to resolve operators - operator precedence ambiguity`);
+          } else if (prefixModeOf(opOrExpr.get(prec)) !== true) {
+            throw new Error(`unable to resolve operators - operator ambiguity`);
+          }
+        });
+        // slice copies the array, so this is ok :)
+        for (let op of precedences.slice(idx, applyIdx).reverse()) {
+          if (op instanceof Expr) {
+            throw new Error(`unexpected expression during computation? this error should never happen`);
+          }
+          if (!(precedences[applyIdx] instanceof Ref)) {
+            const dec = Dec.gen(precedences[applyIdx] as Expr, metadata);
+            stmts.push(dec);
+            precedences[applyIdx] = dec.ref();
+          }
+          const applyTo = precedences[applyIdx] as Ref;
+          let fns = operators.reduce((fns, op) => [...fns, ...op.select(applyTo)], new Array<Fn>());
+          precedences[applyIdx] = new Call(null, fns, null, [applyTo]);
+          let rm = precedences.splice(idx, applyIdx);
+          // update indices
+          idxs = idxs.map((idx, kk) => kk > jj ? idx - rm.length : kk);
+        }
+      }
+      // now suffix operators
       for (let jj = 0; jj < idxs.length; jj++) {
         let idx = idxs[jj];
         let item = precedences[idx];
@@ -198,91 +267,40 @@ export default abstract class Expr {
         }
         // prefer the last-defined operators, so we must pop()
         let ops = [...item.get(prec)];
-        // all of the operations should be the same infix/prefix mode
-        // if the result is null, that means they're not - idk if that's
-        // ever a case so just TODO it
-        const prefixModeOf = (vals: Operator[]) => vals.reduce(
-          (mode, op) => {
-            if (mode === null) return mode;
-            return mode === op.isPrefix ? mode : null;
-          },
-          ops[0].isPrefix,
-        )
-        const prefix = prefixModeOf(ops);
-        if (prefix === null) {
-          TODO('operator is both prefix and infix - how to determine?');
+        // since infix operators are left-associated, and we iterate
+        // left->right anyways, this impl is easy
+        let fns = [];
+        let left = precedences[idx - 1] as Ref;
+        let right = precedences[idx + 1] as Ref;
+        if (!left || !right) {
+          throw new Error(`operator in invalid position`);
+        } else if (!(left instanceof Expr) || !(right instanceof Expr)) {
+          throw new Error(`operator ambiguity`);
         }
-        if (prefix) {
-          // prefix operators are right-associated, so we have to go
-          // ahead in the indices to ensure that the right-most is
-          // handled first
-          let applyIdx = precedences.slice(idx).findIndex(val => val instanceof Expr);
-          // make sure all of the operators between are the same precedence
-          // and prefixes
-          precedences.slice(idx + 1, applyIdx).forEach((opOrExpr, idx) => {
-            if (opOrExpr instanceof Expr) {
-              throw new Error(`this error should not be thrown`);
-            }
-            if (!idxs.includes(idx)) {
-              throw new Error(`unable to resolve operators - operator precedence ambiguity`);
-            }
-            if (prefixModeOf(opOrExpr.get(prec)) !== true) {
-              throw new Error(`unable to resolve operators - operator ambiguity`);
-            }
-          })
-          // slice copies the array, so this is ok :)
-          for (let op of precedences.slice(idx, applyIdx).reverse()) {
-            if (op instanceof Expr) {
-              throw new Error(`unexpected expression during computation? this error should never happen`);
-            }
-            if (!(precedences[applyIdx] instanceof Ref)) {
-              const dec = Dec.gen(precedences[applyIdx] as Expr, metadata);
-              stmts.push(dec);
-              precedences[applyIdx] = dec.ref();
-            }
-            const applyTo = precedences[applyIdx] as Ref;
-            let fns = ops.reduce((fns, op) => [...fns, ...op.select(applyTo)], new Array<Fn>());
-            precedences[applyIdx] = new Call(null, fns, null, [applyTo]);
-          }
-          let rm = precedences.splice(idx, applyIdx);
-          // update indices
-          idxs = idxs.map((idx, kk) => kk > jj ? idx - rm.length : kk);
-        } else {
-          // since infix operators are left-associated, and we iterate
-          // left->right anyways, this impl is easy
-          let fns = [];
-          let left = precedences[idx - 1] as Ref;
-          let right = precedences[idx + 1] as Ref;
-          if (!left || !right) {
-            throw new Error(`operator in invalid position`);
-          } else if (!(left instanceof Expr) || !(right instanceof Expr)) {
-            throw new Error(`operator ambiguity`);
-          }
-          if (!(left instanceof Ref)) {
-            const dec = Dec.gen(left, metadata);
-            stmts.push(dec);
-            left = dec.ref();
-          }
-          if (!(right instanceof Ref)) {
-            const dec = Dec.gen(right, metadata);
-            stmts.push(dec);
-            right = dec.ref();
-          }
-          while (ops.length > 0) {
-            const op = ops.pop();
-            const selected = op.select(left, right);
-            fns.push(...selected);
-          }
-          const call = new Call(
-            null,
-            fns,
-            null,
-            [left, right],
-          );
-          precedences[idx - 1] = call;
-          precedences.splice(idx, 2);
-          idxs = idxs.map((idx, kk) => kk > jj ? idx - 2 : kk);
+        if (!(left instanceof Ref)) {
+          const dec = Dec.gen(left, metadata);
+          stmts.push(dec);
+          left = dec.ref();
         }
+        if (!(right instanceof Ref)) {
+          const dec = Dec.gen(right, metadata);
+          stmts.push(dec);
+          right = dec.ref();
+        }
+        while (ops.length > 0) {
+          const op = ops.pop();
+          const selected = op.select(left, right);
+          fns.push(...selected);
+        }
+        const call = new Call(
+          null,
+          fns,
+          null,
+          [left, right],
+        );
+        precedences[idx - 1] = call;
+        precedences.splice(idx, 2);
+        idxs = idxs.map((idx, kk) => kk > jj ? idx - 2 : kk);
       }
     }
 
