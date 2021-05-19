@@ -380,12 +380,44 @@ class Call extends Expr {
     return [stmts, new Call(ast, fns, closure, args)];
   }
 
+  /*
+  FIXME:
+  Currently, this only works because of the way `root.lnn` is structured -
+  functions that accept f32s are defined first and i64s are defined last.
+  However, we can't rely on function declaration order to impact type checking
+  or type inferrence, since that could unpredictably break users' code. Instead,
+  if we have `OneOf` types, we should prefer the types in its list in ascending
+  order. I think that the solution is to create a matrix of all of the possible
+  types to each other, insert functions matching the types in each dimension,
+  and pick the function furthest from the all-0 index. For example, given
+  `1 + 2`, the matrix would be:
+  |         |  float32   |  float64   |   int8   |   int16    |   int32    |   int64    |
+  | float32 |add(f32,f32)|            |          |            |            |            |
+  | float64 |            |add(f64,f64)|          |            |            |            |
+  |  int8   |            |            |add(i8,i8)|            |            |            |
+  |  int16  |            |            |          |add(i16,i16)|            |            |
+  |  int32  |            |            |          |            |add(i32,i32)|            |
+  |  int64  |            |            |          |            |            |add(i64,i64)|
+  in this case, it would prefer `add(int64,int64)`. Note that constraining the
+  type will impact this: given the code `const x: int8 = 0; const y = x + 1;`,
+  the matrix would be:
+  |         | float32 | float64 |    int8    | int16 | int32 | int64 |
+  |  int8   |         |         | add(i8,i8) |       |       |       |
+  where the columns represent the type of the constant `1`. There's only 1
+  possibility, but we'd still have to check `int8,int64`, `int8,int32`, and
+  `int8,int16` until it finds `int8,int8`.
+
+
+  This should also happen in the unimplemented "solidification" phase.
+  */
   inline(amm: Output, kind: AssignKind, name: string, ty: Builtin) {
     const argTys = this.args.map(arg => arg.ty.instance());
     const selected = this.fns.reverse().find(fn => fn.acceptsTypes(argTys)) || null;
     // console.log('!!!!!!!!!!', this.ast.t.trim(), selected);
     if (selected === null) {
-      throw new Error(`no function selected: ${this.ast.t.trim()}`);
+      // TODO: to get better error reporting, we need to pass an ast when using
+      // operators. i'm not worried about error reporting yet, though :)
+      throw new Error(`no function selected`);
     }
     selected.inline(amm, this.args, kind, name, ty);
   }
