@@ -43,6 +43,12 @@ class Operator {
 
   select(arg1: Ref, arg2?: Ref): Fn[] {
     if ((this.isPrefix && arg2) || (!this.isPrefix && !arg2)) {
+      console.log('~~~ ERROR');
+      console.log('for operator:', this);
+      console.log('arg1:', arg1);
+      if (arg2) {
+        console.log('arg2:', arg2);
+      }
       throw new Error(`nope`);
     }
     const tys = [arg1.ty, ...(arg2 ? [arg2.ty] : [])];

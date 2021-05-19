@@ -110,6 +110,7 @@ export default abstract class Expr {
           throw new Error(`can't find operator ${op}`);
         } else if (!isOpArray(operators)) {
           // sanity check
+          console.log(operators);
           throw new Error(`somehow ${op} isn't an operator?`);
         }
         return operators;
@@ -417,6 +418,11 @@ class Call extends Expr {
     if (selected === null) {
       // TODO: to get better error reporting, we need to pass an ast when using
       // operators. i'm not worried about error reporting yet, though :)
+      console.log('~~~ ERROR')
+      console.log('selection pool:', this.fns);
+      console.log('args:', this.args);
+      console.log('kind:', kind);
+      console.log('expected output type:', ty);
       throw new Error(`no function selected`);
     }
     selected.inline(amm, this.args, kind, name, ty);
