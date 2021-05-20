@@ -61,7 +61,7 @@ Describe "Events"
 
         on app.start {
           let x: int64 = 0;
-          emit app.exit toInt8(x);
+          emit app.exit x.toInt8();
         }
       "
     }
@@ -111,13 +111,13 @@ Describe "Events"
     INTOUTPUT="I got a number! 5"
 
     It "runs js"
-      Pending methods-interfaces-and-operators
+      Pending generics
       When run test_js
       The output should eq "$INTOUTPUT"
     End
 
     It "runs agc"
-      Pending methods-interfaces-and-operators
+      Pending generics
       When run test_agc
       The output should eq "$INTOUTPUT"
     End
