@@ -24,6 +24,11 @@ export default abstract class Expr {
     let generated = [];
     let expr: Expr = null;
     for (let ii = 0; ii < asts.length; ii++) {
+      const skipDotIfNext = () => {
+        if (ii + 1 < asts.length && asts[ii + 1].has('methodsep')) {
+          ii += 1;
+        }
+      };
       let work = asts[ii];
       if (work.has('objectliterals')) {
         TODO('object literals');
@@ -41,7 +46,9 @@ export default abstract class Expr {
         }
         const next = asts[ii + 1];
         if (next.has('fncall')) {
-          let text = `${expr !== null ? expr.ast.t.trim() + '.' : ''}${varName}${next.get('fncall').t.trim()}`;
+          // TODO: this is broken because operators don't pass their AST yet
+          // let text = `${expr !== null ? expr.ast.t.trim() + '.' : ''}${varName}${next.get('fncall').t.trim()}`;
+          let text = `${expr !== null ? expr + '.' : ''}${varName}${next.get('fncall').t.trim()}`;
           let and: any = {
             fnname: work.get('variable'),
             fncall: next.get('fncall'),
@@ -50,9 +57,13 @@ export default abstract class Expr {
           // DO NOT access `expr` past this block until it is set.
           if (expr !== null) {
             and.fnaccess = expr.ast;
-            let dec = Dec.gen(expr, metadata);
-            generated.push(dec);
-            accessed = dec.ref();
+            if (!(expr instanceof Ref)) {
+              let dec = Dec.gen(expr, metadata);
+              generated.push(dec);
+              accessed = dec.ref();
+            } else {
+              accessed = expr;
+            }
             expr = null;
           }
           let callAst = new NamedAnd(
@@ -71,8 +82,14 @@ export default abstract class Expr {
           generated.push(...intermediates);
           expr = call;
           ii += 1;
+          skipDotIfNext();
         } else if (next.has('methodsep')) {
-          TODO('accesses/methods on non-constants');
+          const val = metadata.get(varName);
+          if (!val) {
+            throw new Error(`${varName} not defined`);
+          }
+          expr = val.ref();
+          ii += 1;
         } else {
           throw new Error(`unexpected token: expected dot or call, found ${next.t.trim()}`);
         }
@@ -84,8 +101,37 @@ export default abstract class Expr {
         let [int, constant] = Const.fromConstantsAst(work, metadata);
         generated.push(...int);
         expr = constant;
+        skipDotIfNext();
+      } else if (work.has('fncall')) {
+        work = work.get('fncall');
+        if (expr === null) {
+          let assignableList = work.get('assignablelist');
+          if (!assignableList.has('assignables') || assignableList.get('cdr').has(0)) {
+            console.log(assignableList, assignableList.has('assignables'), assignableList.get('cdr').has(0));
+            throw new Error(`unexpected token: found ${work.t.trim()} but it's not applied to a function`);
+          }
+          const [intermediates, res] = Expr.fromAssignablesAst(assignableList.get('assignables'), metadata);
+          generated.push(...intermediates);
+          expr = res;
+          skipDotIfNext();
+        } else {
+          // it's probably an HOF
+          let text = `${expr.ast.t.trim()}${work.t.trim()}`;
+          const and = {
+            fnaccess: expr.ast,
+            fncall: work,
+          };
+          const callAst = new NamedAnd(
+            text,
+            and,
+            (work as NamedAnd).filename,
+            work.line,
+            work.char,
+          );
+          TODO('closures/HOFs');
+        }
       } else {
-        // TODO: don't lump in HOF and chains
+          console.log(asts);
         throw new Error(`unexpected token: expected variable or value, found ${work.t.trim()}`);
       }
     }
@@ -115,6 +161,8 @@ export default abstract class Expr {
         }
         return operators;
       } else {
+        console.log(work)
+        console.log(ast);
         throw new Error(`unexpected assignable ast: ${work}`);
       }
     });
@@ -356,10 +404,13 @@ class Call extends Expr {
   ): [Stmt[], Expr] {
     let stmts = [];
     let argAst = ast.get('fncall').get('assignablelist');
-    const argAsts: LPNode[] = [
-      argAst.get('assignables'),
-      ...argAst.get('cdr').getAll().map(a => a.get('assignables')),
-    ];
+    let argAsts: LPNode[] = [];
+    if (argAst.has('assignables')) {
+      argAsts.push(argAst.get('assignables'));
+      if (argAst.has('cdr')) {
+        argAsts.push(...argAst.get('cdr').getAll().map(a => a.get('assignables')));
+      }
+    }
     let args: Ref[] = [];
     if (accessed !== null) {
       args.push(accessed);
