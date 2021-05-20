@@ -85,14 +85,13 @@ Describe "Events"
 
   Describe "passing integers from global memory"
     before() {
-      # TODO: sourceToAll
-      sourceToTemp "
-      from @std/app import start, print, exit
+      lnn_sourceToAll "
+      from @std/app import start, stdout, exit
 
-      event aNumber: int64;
+      event aNumber: int64
 
       on aNumber fn(num: int64) {
-        print('I got a number! ' + num.toString());
+        emit stdout 'I got a number! ' + num.toString() + '\n';
         wait(1000);
         emit exit 0;
       }
@@ -111,13 +110,11 @@ Describe "Events"
     INTOUTPUT="I got a number! 5"
 
     It "runs js"
-      Pending generics
       When run test_js
       The output should eq "$INTOUTPUT"
     End
 
     It "runs agc"
-      Pending generics
       When run test_agc
       The output should eq "$INTOUTPUT"
     End

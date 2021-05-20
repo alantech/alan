@@ -51,7 +51,7 @@ Describe "Booleans"
         emit stdout (false !^ true).toString() + ' <- \"false !^ true\"\n';
         emit stdout false.xnor(true).toString() + ' <- \"false.xnor(true)\"\n';
 
-        wait(10);
+        wait(500);
         emit exit 0;
       }
     "
