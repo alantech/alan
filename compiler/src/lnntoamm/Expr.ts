@@ -131,7 +131,7 @@ export default abstract class Expr {
           TODO('closures/HOFs');
         }
       } else {
-          console.log(asts);
+        console.error(asts);
         throw new Error(`unexpected token: expected variable or value, found ${work.t.trim()}`);
       }
     }
@@ -161,8 +161,8 @@ export default abstract class Expr {
         }
         return operators;
       } else {
-        console.log(work)
-        console.log(ast);
+        console.error(work);
+        console.error(ast);
         throw new Error(`unexpected assignable ast: ${work}`);
       }
     });
