@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use once_cell::sync::OnceCell;
 
+use crate::daemon::ctrl::CONTROL_PORT_EXTENSIONS;
 use crate::vm::event::{BuiltInEvents, EventHandler};
 use crate::vm::http::HttpType;
 use crate::vm::instruction::Instruction;
@@ -210,6 +211,17 @@ impl Program {
         });
       }
     }
+    // detection of control port extensions, at least the logic is contained elsehwere!
+    CONTROL_PORT_EXTENSIONS
+      .set(
+        program
+          .event_handlers
+          .get(&BuiltInEvents::CTRLPORT.into())
+          .unwrap()
+          .len()
+          > 0,
+      )
+      .unwrap();
     return program;
   }
 }

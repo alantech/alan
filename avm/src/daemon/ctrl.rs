@@ -7,6 +7,7 @@ use std::hash::Hasher;
 use std::io;
 use std::net::TcpStream;
 use std::path::{Path, PathBuf};
+use std::str;
 use std::sync::Arc;
 
 use anycloud::error;
@@ -14,7 +15,8 @@ use futures::future::join_all;
 use hyper::{
   body,
   client::{Client, HttpConnector},
-  Body, Request, Response,
+  header::{HeaderName, HeaderValue},
+  Body, Request, Response, StatusCode,
 };
 // TODO: Restore rustls once it can connect directly by IP address
 //use hyper_rustls::HttpsConnector;
@@ -26,6 +28,8 @@ use protobuf::Message;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use twox_hash::XxHash64;
+use tokio::sync::oneshot::{self, Receiver, Sender};
+use rand::{thread_rng, Rng};
 
 use crate::daemon::daemon::{DaemonProperties, DaemonResult, CLUSTER_SECRET, DAEMON_PROPS};
 use crate::daemon::dns::VMMetadata;
@@ -34,8 +38,12 @@ use crate::vm::http::{HttpType, HttpsConfig};
 use crate::vm::memory::{HandlerMemory, CLOSURE_ARG_MEM_START};
 use crate::vm::opcode::{DS, REGION_VMS};
 use crate::vm::protos;
+use crate::vm::{VMError, VMResult};
+use crate::vm::event::{BuiltInEvents, EventEmit};
+use crate::vm::run::EVENT_TX;
 
 pub static NAIVE_CLIENT: OnceCell<Client<HttpsConnector<HttpConnector>>> = OnceCell::new();
+pub static CONTROL_PORT_EXTENSIONS: OnceCell<bool> = OnceCell::new();
 
 #[derive(Clone, Debug)]
 pub struct HashedId {
@@ -161,8 +169,213 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
     "/datastore/del" => handle_dsdel(req).await,
     "/datastore/setf" => handle_dssetf(req).await,
     "/datastore/setv" => handle_dssetv(req).await,
-    _ => Ok(Response::builder().status(404).body("fail".into()).unwrap()),
+    _ => {
+      if *CONTROL_PORT_EXTENSIONS.get().unwrap() {
+        handle_extensions(req).await
+      } else {
+        Ok(Response::builder().status(404).body("fail".into()).unwrap())
+      }
+    }
   }
+}
+
+async fn handle_extensions(req: Request<Body>) -> Result<Response<Body>, Infallible> {
+  match extension_listener(req).await {
+    Ok(res) => Ok(res),
+    Err(_) => Ok(Response::builder().status(404).body("fail".into()).unwrap()),
+  }
+}
+
+async fn extension_listener(req: Request<Body>) -> VMResult<Response<Body>> {
+  // Stolen from the `http_listener` in the opcodes with minor modifications. TODO: DRY this out
+  // Grab the headers
+  let headers = req.headers();
+  // Check if we should load balance this request. If the special `x-alan-rr` header is present,
+  // that means it was already load-balanced to us and we should process it locally. If not, then
+  // use a random number generator to decide if we should process this here or if we should
+  // distribute the load to one of our local-region peers. This adds an extra network hop, but
+  // within the same firewall group inside of the datacenter, so that part should be a minimal
+  // impact on the total latency. This is done because cloudflare's routing is "sticky" to an
+  // individual IP address without moving to a more expensive tier, so there's no actual load
+  // balancing going on, just fallbacks in case of an outage. This adds stochastic load balancing
+  // to the cluster even if we didn't have cloudflare fronting things.
+  if !headers.contains_key("x-alan-rr") {
+    let l = REGION_VMS.read().unwrap().len();
+    let i = async move {
+      let mut rng = thread_rng();
+      rng.gen_range(0..=l)
+    }
+    .await;
+    // If it's equal to the length process this request normally, otherwise, load balance this
+    // request to another instance
+    if i != l {
+      // Otherwise, round-robin this to another node in the cluster and increment the counter
+      let headers = headers.clone();
+      let host = &REGION_VMS.read().unwrap()[i].clone();
+      let method_str = req.method().to_string();
+      let orig_uri = req.uri().clone();
+      let orig_query = match orig_uri.query() {
+        Some(q) => format!("?{}", q),
+        None => format!(""),
+      };
+      let uri_str = format!("https://{}{}{}", host, orig_uri.path(), orig_query);
+      // Grab the body, if any
+      let body_req = match hyper::body::to_bytes(req.into_body()).await {
+        Ok(bytes) => bytes,
+        // If we error out while getting the body, just close this listener out immediately
+        Err(ee) => {
+          return Ok(Response::new(
+            format!("Connection terminated: {}", ee).into(),
+          ));
+        }
+      };
+      let body_str = str::from_utf8(&body_req).unwrap().to_string();
+      let mut rr_req = Request::builder().method(method_str.as_str()).uri(uri_str);
+      let rr_headers = rr_req.headers_mut().unwrap();
+      let name = HeaderName::from_bytes("x-alan-rr".as_bytes()).unwrap();
+      let value = HeaderValue::from_str("true").unwrap();
+      rr_headers.insert(name, value);
+      for (key, val) in headers.iter() {
+        rr_headers.insert(key, val.clone());
+      }
+      let req_obj = if body_str.len() > 0 {
+        rr_req.body(Body::from(body_str))
+      } else {
+        rr_req.body(Body::empty())
+      };
+      let req_obj = match req_obj {
+        Ok(req_obj) => req_obj,
+        Err(ee) => {
+          return Ok(Response::new(
+            format!("Connection terminated: {}", ee).into(),
+          ));
+        }
+      };
+      let mut rr_res = match NAIVE_CLIENT.get().unwrap().request(req_obj).await {
+        Ok(res) => res,
+        Err(ee) => {
+          return Ok(Response::new(
+            format!("Connection terminated: {}", ee).into(),
+          ));
+        }
+      };
+      // Get the status from the round-robin response and begin building the response object
+      let status = rr_res.status();
+      let mut res = Response::builder().status(status);
+      // Get the headers and populate the response object
+      let headers = res.headers_mut().unwrap();
+      for (key, val) in rr_res.headers().iter() {
+        headers.insert(key, val.clone());
+      }
+      let body = match hyper::body::to_bytes(rr_res.body_mut()).await {
+        Ok(body) => body,
+        Err(ee) => {
+          return Ok(Response::new(
+            format!("Connection terminated: {}", ee).into(),
+          ));
+        }
+      };
+      return Ok(res.body(body.into()).unwrap());
+    }
+  }
+  // Create a new event handler memory to add to the event queue
+  let mut event = HandlerMemory::new(None, 1)?;
+  // Grab the method
+  let method_str = req.method().to_string();
+  let method = HandlerMemory::str_to_fractal(&method_str);
+  // Grab the URL
+  let orig_uri = req.uri().clone();
+  let orig_query = match orig_uri.query() {
+    Some(q) => format!("?{}", q),
+    None => format!(""),
+  };
+  let url_str = format!("{}{}", orig_uri.path(), orig_query);
+  //let url_str = req.uri().to_string();
+  let url = HandlerMemory::str_to_fractal(&url_str);
+  let mut headers_hm = HandlerMemory::new(None, headers.len() as i64)?;
+  headers_hm.init_fractal(CLOSURE_ARG_MEM_START)?;
+  for (i, (key, val)) in headers.iter().enumerate() {
+    let key_str = key.as_str();
+    // TODO: get rid of the potential panic here
+    let val_str = val.to_str().unwrap();
+    headers_hm.init_fractal(i as i64)?;
+    headers_hm.push_fractal(i as i64, HandlerMemory::str_to_fractal(key_str))?;
+    headers_hm.push_fractal(i as i64, HandlerMemory::str_to_fractal(val_str))?;
+    headers_hm.push_register(CLOSURE_ARG_MEM_START, i as i64)?;
+  }
+  // Grab the body, if any
+  let body_req = match hyper::body::to_bytes(req.into_body()).await {
+    Ok(bytes) => bytes,
+    // If we error out while getting the body, just close this listener out immediately
+    Err(ee) => {
+      return Ok(Response::new(
+        format!("Connection terminated: {}", ee).into(),
+      ));
+    }
+  };
+  // TODO: get rid of the potential panic here
+  let body_str = str::from_utf8(&body_req).unwrap().to_string();
+  let body = HandlerMemory::str_to_fractal(&body_str);
+  // Populate the event and emit it
+  event.init_fractal(0)?;
+  event.push_fractal(0, method)?;
+  event.push_fractal(0, url)?;
+  HandlerMemory::transfer(
+    &headers_hm,
+    CLOSURE_ARG_MEM_START,
+    &mut event,
+    CLOSURE_ARG_MEM_START,
+  )?;
+  event.push_register(0, CLOSURE_ARG_MEM_START)?;
+  event.push_fractal(0, body)?;
+  // Generate a threadsafe raw ptr to the tx of a watch channel
+  // A ptr is unsafely created from the raw ptr in httpsend once the
+  // user's code has completed and sends the new HandlerMemory so we
+  // can resume execution of this HTTP request
+  let (tx, rx): (Sender<Arc<HandlerMemory>>, Receiver<Arc<HandlerMemory>>) = oneshot::channel();
+  let tx_ptr = Box::into_raw(Box::new(tx)) as i64;
+  event.push_fixed(0, tx_ptr)?;
+  let event_emit = EventEmit {
+    id: i64::from(BuiltInEvents::CTRLPORT),
+    payload: Some(event),
+  };
+  let event_tx = EVENT_TX.get().ok_or(VMError::ShutDown)?;
+  let mut err_res = Response::new("Error synchronizing `send` for HTTP request".into());
+  *err_res.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
+  if event_tx.send(event_emit).is_err() {
+    return Ok(err_res);
+  }
+  // Await HTTP response from the user code
+  let response_hm = match rx.await {
+    Ok(hm) => hm,
+    Err(_) => {
+      return Ok(err_res);
+    }
+  };
+  // Get the status from the user response and begin building the response object
+  let status = response_hm.read_fixed(0)? as u16;
+  let mut res = Response::builder()
+    .status(StatusCode::from_u16(status).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR));
+  // Get the headers and populate the response object
+  // TODO: figure out how to handle this potential panic
+  let headers = res.headers_mut().unwrap();
+  let header_hms = response_hm.read_fractal(1)?;
+  for i in 0..header_hms.len() {
+    let (h, _) = response_hm.read_from_fractal(&header_hms.clone(), i);
+    let (key_hm, _) = response_hm.read_from_fractal(&h, 0);
+    let (val_hm, _) = response_hm.read_from_fractal(&h, 1);
+    let key = HandlerMemory::fractal_to_string(key_hm)?;
+    let val = HandlerMemory::fractal_to_string(val_hm)?;
+    // TODO: figure out how to handle this potential panic
+    let name = HeaderName::from_bytes(key.as_bytes()).unwrap();
+    // TODO: figure out how to handle this potential panic
+    let value = HeaderValue::from_str(&val).unwrap();
+    headers.insert(name, value);
+  }
+  // Get the body, populate the response object, and fire it out
+  let body = HandlerMemory::fractal_to_string(response_hm.read_fractal(2)?)?;
+  // TODO: figure out how to handle this potential panic
+  Ok(res.body(body.into()).unwrap())
 }
 
 fn handle_cluster_health() -> Result<Response<Body>, Infallible> {
