@@ -1,9 +1,9 @@
-<img src="../assets/aws-node.jpg" />
+<img src="../assets/aws-deno.jpg" />
 
-In this tutorial we will deploy the [sample express Node.js HTTP server](https://expressjs.com/en/starter/hello-world.html) in your own AWS account with AnyCloud.
+In this tutorial we will deploy a simple Deno HTTP server in your own AWS account with AnyCloud.
 
 {% hint style="info" %}
-All the code can be found in this [template repository](https://github.com/alantech/hello-anycloud) which you can use to [create a new repository](https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/creating-a-repository-from-a-template) for your AnyCloud project.
+All the code can be found in this [template repository](https://github.com/alantech/anycloud-deno) which you can use to [create a new repository](https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/creating-a-repository-from-a-template) for your AnyCloud project.
 {% endhint %}
 
 ## Enable programmatic AWS access to VMs for AnyCloud
@@ -42,38 +42,25 @@ git add -A
 git commit -m "Initial commit"
 ```
 
-2) Initialize your `package.json` and install `express`
+2) Define an HTTP server listening on port `8088` in an `index.ts` file
 
-```bash
-npm init
-npm install express --save
-```
-
-3) Define an HTTP server listening on port `8088` in an `index.js` file
-
-```javascript
-const express = require('express')
-const app = express()
-const port = 8088
-
-app.get('/', (req, res) => {
-  res.send('Hello World!')
-})
-
-app.listen(port, () => {
-  console.log(`Example app listening at http://localhost:${port}`)
-})
+```typescript
+import { serve } from "https://deno.land/std@0.97.0/http/server.ts";
+const s = serve({ port: 8088 });
+console.log("http://localhost:8088/");
+for await (const req of s) {
+  req.respond({ body: "Hello World\n" });
+}
 ```
 
 4) Define the `Dockerfile`
 
 ```bash
-FROM node:lts
+FROM hayd/deno:1.10.2
 
 COPY . .
 
-RUN npm install
-CMD node index.js
+CMD ["deno", "run", "--allow-net", "index.ts"]
 ```
 
 5) Test the `Dockerfile` locally by installing [Docker Desktop](https://www.docker.com/products/docker-desktop), building the Docker image and then running the server within the container
