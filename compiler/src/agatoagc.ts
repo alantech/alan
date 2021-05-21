@@ -175,6 +175,13 @@ const astToAgc = (ast: NamedAnd): Buffer => {
         return buf.readBigUInt64LE(0)
       })(),
     },
+    __ctrl: {
+      eventId: (() => {
+        const buf = Buffer.from('__ctrl  ', 'utf8')
+        buf.writeUInt8(0x80, 7)
+        return buf.readBigUInt64LE(0)
+      })(),
+    },
   }
   // Load the events, get the event id offset (for reuse with closures) and the event declarations
   const customEvents = ast.get('customEvents')
