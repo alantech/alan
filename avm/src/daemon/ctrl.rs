@@ -25,22 +25,22 @@ use once_cell::sync::OnceCell;
 use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
 //use rustls::ClientConfig;
 use protobuf::Message;
+use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use twox_hash::XxHash64;
 use tokio::sync::oneshot::{self, Receiver, Sender};
-use rand::{thread_rng, Rng};
+use twox_hash::XxHash64;
 
 use crate::daemon::daemon::{DaemonProperties, DaemonResult, CLUSTER_SECRET, DAEMON_PROPS};
 use crate::daemon::dns::VMMetadata;
 use crate::make_server;
+use crate::vm::event::{BuiltInEvents, EventEmit};
 use crate::vm::http::{HttpType, HttpsConfig};
 use crate::vm::memory::{HandlerMemory, CLOSURE_ARG_MEM_START};
 use crate::vm::opcode::{DS, REGION_VMS};
 use crate::vm::protos;
-use crate::vm::{VMError, VMResult};
-use crate::vm::event::{BuiltInEvents, EventEmit};
 use crate::vm::run::EVENT_TX;
+use crate::vm::{VMError, VMResult};
 
 pub static NAIVE_CLIENT: OnceCell<Client<HttpsConnector<HttpConnector>>> = OnceCell::new();
 pub static CONTROL_PORT_EXTENSIONS: OnceCell<bool> = OnceCell::new();
