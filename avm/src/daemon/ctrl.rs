@@ -169,8 +169,8 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
     "/datastore/del" => handle_dsdel(req).await,
     "/datastore/setf" => handle_dssetf(req).await,
     "/datastore/setv" => handle_dssetv(req).await,
-    _ => {
-      if *CONTROL_PORT_EXTENSIONS.get().unwrap() {
+    path => {
+      if *CONTROL_PORT_EXTENSIONS.get().unwrap() && path.starts_with("/app/") {
         handle_extensions(req).await
       } else {
         Ok(Response::builder().status(404).body("fail".into()).unwrap())
