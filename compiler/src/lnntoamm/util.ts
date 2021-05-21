@@ -1,10 +1,15 @@
 import { v4 as uuid } from 'uuid';
 import Fn from './Fn';
+import Operator from './Operator';
 
 export const genName = () => '_' + uuid().replace(/-/g, '_');
 
 export const isFnArray = (val: any): val is Array<Fn> => {
   return val instanceof Array && (val.length === 0 || val[0] instanceof Fn);
+}
+
+export const isOpArray = (val: any): val is Array<Operator> => {
+  return val instanceof Array && (val.length === 0 || val[0] instanceof Operator);
 }
 
 export const TODO = (task?: string) => { throw new Error(`TODO${task !== undefined ? ': ' + task : ''}`) };

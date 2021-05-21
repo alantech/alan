@@ -136,6 +136,17 @@ export fn gte(a: float32, b: float32): bool = gtef32(a, b);
 export fn gte(a: float64, b: float64): bool = gtef64(a, b);
 export fn gte(a: string, b: string): bool = gtestr(a, b);
 
+export fn not(b: bool): bool = notbool(b);
+export fn and(a: bool, b: bool): bool = andbool(a, b);
+export fn nand(a: bool, b: bool): bool = nandboo(a, b);
+export fn or(a: bool, b: bool): bool = orbool(a, b);
+export fn xor(a: bool, b: bool): bool = xorbool(a, b);
+export fn nor(a: bool, b: bool): bool = norbool(a, b);
+export fn xnor(a: bool, b: bool): bool = xnorboo(a, b);
+// This aliasing is for operator definition purposes only
+export fn booland(a: bool, b: bool): bool = and(a, b);
+export fn boolor(a: bool, b: bool): bool = or(a, b);
+
 // Wait functions
 export fn wait(n: int8): void = waitop(i8i64(n));
 export fn wait(n: int16): void = waitop(i16i64(n));
@@ -158,3 +169,37 @@ export fn clone(a: float32): float32 = copyf32(a);
 export fn clone(a: float64): float64 = copyf64(a);
 export fn clone(a: bool): bool = copybool(a);
 export fn clone(a: string): string = copystr(a);
+
+export prefix length as # precedence 10
+export prefix not as ! precedence 10
+// export prefix negate as - precedence 10
+export prefix trim as ` precedence 10
+// export infix pow as ** precedence 2
+// export infix mul as * precedence 3
+export infix repeat as * precedence 3
+// export infix div as / precedence 3
+// export infix split as / precedence 3
+// export infix mod as % precedence 3
+// export infix add as + precedence 4
+export infix concat as + precedence 4
+// export infix sub as - precedence 4
+// export infix pair as : precedence 4
+// export infix push as : precedence 5
+export infix lt as < precedence 5
+export infix lte as <= precedence 5
+export infix gt as > precedence 5
+export infix gte as >= precedence 5
+export infix eq as == precedence 6
+export infix neq as != precedence 6
+export infix matches as ~ precedence 6
+export infix and as & precedence 7
+export infix booland as && precedence 7
+export infix nand as !& precedence 7
+export infix xnor as !^ precedence 8
+export infix xor as ^ precedence 8
+// export infix index as @ precedence 8
+export infix nor as !| precedence 9
+export infix or as | precedence 9
+export infix boolor as || precedence 9
+// export infix getOr as || precedence 10
+// export infix cond as ? precedence 10

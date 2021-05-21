@@ -35,6 +35,7 @@ Describe "Printing"
         from @std/app import start, stdout, exit
         on start {
           emit stdout 'Hello, World';
+          wait(10);
           emit exit 0;
         }
       "

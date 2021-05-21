@@ -286,9 +286,14 @@ class Emit extends Stmt {
     if (ast.get('retval').has()) {
       let emitVal = ast.get('retval').get('assignables');
       let [generated, expr] = Expr.fromAssignablesAst(emitVal, metadata);
-      let emitDec = Dec.gen(expr, metadata);
-      stmts.push(...generated, emitDec);
-      emitRef = emitDec.ref();
+      stmts.push(...generated);
+      if (expr instanceof Ref) {
+        emitRef = expr;
+      } else {
+        const emitDec = Dec.gen(expr, metadata);
+        stmts.push(emitDec);
+        emitRef = emitDec.ref();
+      }
     }
     const eventName = ast.get('eventname').t;
     const event = metadata.scope.deepGet(eventName);
