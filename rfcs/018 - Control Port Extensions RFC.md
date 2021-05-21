@@ -18,7 +18,7 @@
 
 ### Implementation
 
-- [ ] Implemented: [One or more PRs](https://github.com/alantech/alan/some-pr-link-here) YYYY-MM-DD
+- [x] Implemented: [Implement Control Port Extensions](https://github.com/alantech/alan/pull/539) 2021-05-21
 - [ ] Revoked/Superceded by: [RFC ###](./000 - RFC Template.md) YYYY-MM-DD
 
 ## Author(s)
