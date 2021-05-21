@@ -26,7 +26,7 @@ pub enum BuiltInEvents {
   /// '__conn ' in ASCII or 5f5f 636f 6e6e 20(80)
   HTTPCONN = -9214243417005793441,
   /// '__ctrl ' in ASCII or 5f5f 6374 72 6c 20(80)
-  CTRLPORT = -9214245598769291425,
+  CTRLPORT = -9214245598765293729,
   NOP = NOP_ID,
 }
 
@@ -35,7 +35,7 @@ impl From<BuiltInEvents> for i64 {
     match ev {
       BuiltInEvents::START => -9213673853036498142,
       BuiltInEvents::HTTPCONN => -9214243417005793441,
-      BuiltInEvents::CTRLPORT => -9214245598769291425,
+      BuiltInEvents::CTRLPORT => -9214245598765293729,
       BuiltInEvents::NOP => NOP_ID,
     }
   }
