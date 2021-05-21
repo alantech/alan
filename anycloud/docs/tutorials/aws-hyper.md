@@ -1,6 +1,6 @@
 <img src="../assets/aws-rust.jpg" />
 
-In this tutorial we will deploy a simple Rust [Hyper](https://hyper.rs) HTTP server in your own AWS account with AnyCloud.
+In this tutorial we will deploy a simple Rust [Hyper](https://hyper.rs) HTTP server in your own AWS account with [AnyCloud](https://anycloudapp.com).
 
 {% hint style="info" %}
 All the code can be found in this [template repository](https://github.com/alantech/hello-anycloud) which you can use to [create a new repository](https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/creating-a-repository-from-a-template) for your AnyCloud project.
