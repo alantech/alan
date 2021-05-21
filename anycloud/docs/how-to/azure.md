@@ -25,7 +25,7 @@ $ anycloud credentials new
 ? Azure Directory ID › ********-****-****-****-************
 ? Azure Subscription ID › ********-****-****-****-************
 ? Azure Secret › **********************************
-Successfully created "mystartup-gcp" Credentials
+Successfully created "mystartup-azure" Credentials
 ```
 
 ## **Configure your project**

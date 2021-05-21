@@ -1,6 +1,6 @@
-<img src="../assets/aws-node.jpg" />
+<img src="../assets/aws-rust.jpg" />
 
-In this tutorial we will deploy the [sample express Node.js HTTP server](https://expressjs.com/en/starter/hello-world.html) in your own AWS account with [AnyCloud](https://anycloudapp.com).
+In this tutorial we will deploy a simple Rust [Hyper](https://hyper.rs) HTTP server in your own AWS account with [AnyCloud](https://anycloudapp.com).
 
 {% hint style="info" %}
 All the code can be found in this [template repository](https://github.com/alantech/hello-anycloud) which you can use to [create a new repository](https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/creating-a-repository-from-a-template) for your AnyCloud project.
@@ -42,38 +42,56 @@ git add -A
 git commit -m "Initial commit"
 ```
 
-2) Initialize your `package.json` and install `express`
+2) Initialize your Cargo project
 
 ```bash
-npm init
-npm install express --save
+cargo init
 ```
 
-3) Define an HTTP server listening on port `8088` in an `index.js` file
+3) Add `tokio` and `hyper` as dependencies
 
-```javascript
-const express = require('express')
-const app = express()
-const port = 8088
+{% code title="Cargo.toml" %}
+```bash
+hyper = { version = "0.14", features = ["full"] }
+tokio = { version = "1", features = ["full"] }
+```
+{% endcode %}
 
-app.get('/', (req, res) => {
-  res.send('Hello World!')
-})
+4) Define an HTTP server listening on port `8088` in `src/main.rs` file
 
-app.listen(port, () => {
-  console.log(`Example app listening at http://localhost:${port}`)
-})
+```rust
+use std::{convert::Infallible, net::SocketAddr};
+use hyper::{Body, Request, Response, Server};
+use hyper::service::{make_service_fn, service_fn};
+
+async fn handle(_: Request<Body>) -> Result<Response<Body>, Infallible> {
+  Ok(Response::new("Hello, World!".into()))
+}
+
+#[tokio::main]
+async fn main() {
+  let addr = SocketAddr::from(([0, 0, 0, 0], 8088));
+
+  let make_svc = make_service_fn(|_conn| async {
+    Ok::<_, Infallible>(service_fn(handle))
+  });
+
+  let server = Server::bind(&addr).serve(make_svc);
+
+  if let Err(e) = server.await {
+      eprintln!("server error: {}", e);
+  }
+}
 ```
 
 4) Define the `Dockerfile`
 
 ```bash
-FROM node:lts
+FROM rust:1.51
 
 COPY . .
 
-RUN npm install
-CMD node index.js
+CMD ["cargo", "run", "--release"]
 ```
 
 5) Test the `Dockerfile` locally by installing [Docker Desktop](https://www.docker.com/products/docker-desktop), building the Docker image and then running the server within the container
