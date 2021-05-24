@@ -19,18 +19,25 @@ module.exports = {
         Module.getAllModules()['<root>'] = rootModule
       }
     })
-    // Now load the remainig modules based on the root scope
-    stdAsts.forEach((moduleAst) => {
-      if (moduleAst.name != 'root.ln') {
-        moduleAst.name = '@std/' + moduleAst.name.replace(/.ln$/, '')
-        const stdModule = Module.populateModule(
-          moduleAst.name,
-          moduleAst.ast,
-          rootModule.exportScope,
-          true
-        )
-        Module.getAllModules()[moduleAst.name] = stdModule
+    // Now load the remaining modules based on the root scope
+    while (stdAsts.length > 0) {
+      const moduleAst = stdAsts.shift();
+      if (moduleAst.name !== 'root.ln') {
+        const currName = moduleAst.name;
+        try {
+          moduleAst.name = '@std/' + moduleAst.name.replace(/.ln$/, '')
+          const stdModule = Module.populateModule(
+            moduleAst.name,
+            moduleAst.ast,
+            rootModule.exportScope,
+            true
+          )
+          Module.getAllModules()[moduleAst.name] = stdModule
+        } catch (e) { // Failed to load, throw it back on the list to try again
+          moduleAst.name = currName;
+          stdAsts.push(moduleAst);
+        }
       }
-    })
+    }
   },
 }

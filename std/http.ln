@@ -2,38 +2,12 @@
  * @std/http - Built-in client for http(s)
  */
 
-// The InternalRequest type for http requests
-type InternalRequest {
-  method: string,
-  url: string,
-  headers: Array<KeyVal<string, string>>,
-  body: string,
-  connId: int64,
-}
+from @std/httpcommon import InternalRequest, InternalResponse, Request, Response
 
-// The InternalResponse type for http responses
-type InternalResponse {
-  status: int64,
-  headers: Array<KeyVal<string, string>>,
-  body: string,
-  connId: int64,
-}
+// Re-export Request and Response
 
-// The exposed Request type
-export type Request {
-  method: string,
-  url: string,
-  headers: HashMap<string, string>,
-  body: string,
-}
-
-// The exposed Response type
-export type Response {
-  status: int64,
-  headers: HashMap<string, string>,
-  body: string,
-  connId: int64,
-}
+export Request
+export Response
 
 /**
  * HTTP Client
