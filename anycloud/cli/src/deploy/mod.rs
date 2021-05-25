@@ -9,6 +9,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 use std::fs::OpenOptions;
 use std::io::{BufReader, BufWriter};
+use std::time::Duration;
 
 use ascii_table::{AsciiTable, Column};
 
@@ -319,8 +320,7 @@ async fn update_cred_file(credentials: HashMap<String, Credentials>) {
     warn!(
       InvalidCredentialsFile,
       "Failed to write to {}. Error: {}", CREDENTIALS_FILE, err
-    )
-    .await;
+    );
     std::process::exit(1);
   }
 }
@@ -340,8 +340,7 @@ async fn update_anycloud_file(deploy_configs: HashMap<String, Vec<DeployConfig>>
     warn!(
       InvalidAnycloudFile,
       "Failed to write to {}. Error: {}", ANYCLOUD_FILE, err
-    )
-    .await;
+    );
     std::process::exit(1);
   }
 }
@@ -801,8 +800,7 @@ async fn get_creds() -> HashMap<String, Credentials> {
     warn!(
       InvalidCredentialsFile,
       "Failed to read from {}. Error: {}", CREDENTIALS_FILE, err
-    )
-    .await;
+    );
     std::process::exit(1);
   }
   creds.unwrap()
@@ -821,8 +819,7 @@ async fn get_deploy_configs() -> HashMap<String, Vec<DeployConfig>> {
     warn!(
       InvalidAnycloudFile,
       "Failed to read from {}. Error: {}", ANYCLOUD_FILE, err
-    )
-    .await;
+    );
     std::process::exit(1);
   }
   config.unwrap()
@@ -993,7 +990,12 @@ pub async fn new(
   }
   let resp = post_v1("new", body).await;
   let res = match resp {
-    Ok(res) => format!("Created App {} successfully!", style(res).bold()),
+    Ok(res) => {
+      // idc if it's been set before, I'm setting it now!!!
+      let _ = CLUSTER_ID.set(res);
+      poll().await;
+      return;
+    }
     Err(err) => match err {
       PostV1Error::Timeout => format!("{}", REQUEST_TIMEOUT),
       PostV1Error::Forbidden => format!("{}", FORBIDDEN_OPERATION),
@@ -1192,6 +1194,44 @@ pub async fn info() {
   profiles.columns.insert(2, column);
   println!("\nDeploy Configs used:\n");
   profiles.print(profile_data);
+}
+
+pub async fn poll() {
+  let mut lines: Vec<String> = vec![];
+  let sp = ProgressBar::new_spinner();
+  sp.enable_steady_tick(10);
+  let logs_url = format!("{}/logs", get_url());
+  let body = json!({
+    "clusterId": CLUSTER_ID.get().expect("cluster ID not set..."),
+  });
+  loop {
+    let req = Request::get(&logs_url)
+      .header("Content-Type", "application/json")
+      .body((&body).to_string().into())
+      .unwrap();
+    let mut res = CLIENT.request(req).await.unwrap();
+    let data = hyper::body::to_bytes(res.body_mut()).await.unwrap();
+    let data_str = String::from_utf8(data.to_vec()).unwrap();
+    // it's ok to leave out the newline chars, since `sp.println` will insert
+    // those for us
+    let new_lines = data_str.split("\n").skip(lines.len()).collect::<Vec<_>>();
+    if new_lines.len() != 0 {
+      // update the spinner and lines above the spinner
+      new_lines.into_iter().for_each(|line| {
+        if let Some(last_line) = lines.get(lines.len() - 1) {
+          sp.println(last_line);
+        }
+        sp.set_message(line);
+        lines.push(line.to_string());
+      });
+      let apps = get_apps(true).await;
+      if apps.into_iter().all(|app| app.status == "up") {
+        sp.finish();
+        break;
+      }
+    }
+    tokio::time::sleep(Duration::from_secs(10)).await;
+  }
 }
 
 fn is_burstable(vm_type: &str) -> bool {

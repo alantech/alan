@@ -145,8 +145,7 @@ async fn generate_token() {
         warn!(
           AuthFailed,
           "Authentication failed. Please try again. Err: {}", error
-        )
-        .await;
+        );
         std::process::exit(1);
       }
     }
