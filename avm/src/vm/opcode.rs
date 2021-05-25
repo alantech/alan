@@ -3751,6 +3751,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         None => true,
       };
       if is_key_owner {
+        println!("{} belongs to me!", nskey);
         hand_mem.init_fractal(args[2])?;
         let maybe_hm = DS.get(&nskey);
         match maybe_hm {
@@ -3764,6 +3765,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
           },
         }
       } else {
+        println!("{} belongs to someone else!", nskey);
         let maybe_hm = ctrl_port.unwrap().dsgetf(&nskey).await;
         match maybe_hm {
           Some(hm) => {
@@ -3794,6 +3796,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         None => true,
       };
       if is_key_owner {
+        println!("{} belongs to me!", nskey);
         hand_mem.init_fractal(args[2])?;
         let maybe_hm = DS.get(&nskey);
         match maybe_hm {
@@ -3808,6 +3811,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
           },
         }
       } else {
+        println!("{} belongs to someone else!", nskey);
         let maybe_hm = ctrl_port.unwrap().dsgetv(&nskey).await;
         match maybe_hm {
           Some(hm) => {
