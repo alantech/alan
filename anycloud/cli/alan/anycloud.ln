@@ -2,7 +2,7 @@ from @std/app import start, print, eprint, exit
 from @std/cmd import exec
 from @std/httpserver import connection, Connection, body, send
 from @std/http import fetch, Request, Response
-from @std/avmdaemon import getClusterSecret
+from @std/avmdaemon import getclustersecret
 
 on start {
   print('Starting Anycloud...');
@@ -20,7 +20,7 @@ on start {
     emit exit dockerRes.exitCode;
   }
 
-  const clusterSecret = getClusterSecret()
+  const clusterSecret = getclustersecret;
   // We need to use the --env-file option only if we are sure the file exists 
   const envFile = exec('stat anycloud.env');
   const containerStr = envFile.exitCode != 0 ? 'docker run --env CLUSTER_SECRET=' + clusterSecret + ' -p 8088:8088 -d anycloud/app:latest' : 'docker run --env CLUSTER_SECRET=' + clusterSecret + ' --env-file anycloud.env -p 8088:8088 -d anycloud/app:latest';

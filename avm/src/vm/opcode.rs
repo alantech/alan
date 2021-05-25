@@ -3833,7 +3833,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         },
         None => {
           hand_mem.push_fixed(args[2], 0i64)?;
-          hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("cluster secret not found"))?;
+          hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(""))?;
         },
       };
       Ok(hand_mem)
