@@ -3676,7 +3676,15 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         Some(ctrl_port) => Some(ctrl_port.borrow().clone()), // TODO: Use thread-local storage
         None => None,
       };
-      let is_key_owner = match ctrl_port {
+      match ctrl_port {
+        Some(ref ctrl_port) => {
+          ctrl_port.dssetv(&nskey, &hm).await;
+        },
+        None => {
+          DS.insert(nskey, hm);
+        },
+      }
+      /*let is_key_owner = match ctrl_port {
         Some(ref ctrl_port) => ctrl_port.is_key_owner(&nskey),
         None => true,
       };
@@ -3684,7 +3692,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         DS.insert(nskey, hm);
       } else {
         ctrl_port.unwrap().dssetv(&nskey, &hm).await;
-      }
+      }*/
       Ok(hand_mem)
     })
   });
