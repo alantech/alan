@@ -476,8 +476,10 @@ async fn dsgetf_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
 }
 
 async fn handle_dsgetv(req: Request<Body>) -> Result<Response<Body>, Infallible> {
+  println!("I'm handling a cluster datastore request!");
   match dsgetv_inner(req).await {
     Ok(hand_mem) => {
+      println!("I handled it successfully!");
       let mut out = vec![];
       hand_mem.to_pb().write_to_vec(&mut out).unwrap();
       Ok(Response::builder().status(200).body(out.into()).unwrap())
@@ -500,10 +502,12 @@ async fn dsgetv_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
   hand_mem.push_fixed(0, if maybe_hm.is_some() { 1i64 } else { 0i64 })?;
   match maybe_hm {
     Some(hm) => {
+      println!("I found the data we want!");
       HandlerMemory::transfer(&hm, 0, &mut hand_mem, CLOSURE_ARG_MEM_START)?;
       hand_mem.push_register(0, CLOSURE_ARG_MEM_START)?;
     }
     None => {
+      println!("I didn't find the data we want!");
       hand_mem.push_fractal(
         0,
         HandlerMemory::str_to_fractal("namespace-key pair not found"),
@@ -853,6 +857,7 @@ impl ControlPort {
   }
 
   pub async fn dsgetv(self: &ControlPort, key: &str) -> Option<Arc<HandlerMemory>> {
+    println!("I'm requesting for {} on another node", key);
     self.dsgetv_inner(key).await.ok()
   }
 
