@@ -644,7 +644,7 @@ export const opcodeParamMutabilities = {
   dsdel: [true, false],
   dsgetf: [false, false],
   dsgetv: [false, false],
-  getclustersecret: [],
+  getcs: [],
   newseq: [false],
   seqnext: [false],
   seqeach: [false, null],

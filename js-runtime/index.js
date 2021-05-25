@@ -1049,8 +1049,7 @@ module.exports = {
       return [ false, 'namespace-key pair not found', ]
     }
   },
-  // TODO: figure out what should be here
-  getclustersecret:  () => '',
+  getcs:  () => [false],
   newseq:  (limit) => [0n, limit],
   seqnext: (seq) => {
     if (seq[0] < seq[1]) {

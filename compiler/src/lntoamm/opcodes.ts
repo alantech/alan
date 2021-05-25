@@ -895,7 +895,7 @@ addopcodes({
   dsdel: [{ ns: t('string'), key: t('string'), }, t('bool')],
   dsgetf: [{ ns: t('string'), key: t('string'), }, t('Result<any>')],
   dsgetv: [{ ns: t('string'), key: t('string'), }, t('Result<any>')],
-  getclustersecret: [{ }, t('string')],
+  getcs: [{ }, t('Result<string>')],
   newseq: [{ limit: t('int64'), }, t('Seq')],
   seqnext: [{ seq: t('Seq'), }, t('Result<int64>')],
   seqeach: [{ seq: t('Seq'), func: t('function'), }, t('void')],
