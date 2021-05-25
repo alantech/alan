@@ -35,3 +35,5 @@ on __ctrl fn (conn: InternalRequest) {
     },
   };
 }
+
+export fn getClusterSecret() = getclustersecret;
