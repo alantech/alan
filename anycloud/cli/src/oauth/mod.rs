@@ -1,4 +1,4 @@
-use std::fs::{read_to_string, remove_file, File};
+use std::fs::{create_dir, read_to_string, remove_file, File};
 use std::io::prelude::*;
 use std::path::Path;
 
@@ -20,6 +20,7 @@ const CODE_BODY: &'static str = "{\
 }";
 const POLL_URL: &'static str = "https://github.com/login/oauth/access_token";
 const ERR: &'static str = "Failed to perform OAuth 2.0 authentication with GitHub";
+const ANYCLOUD_DIR: &str = ".anycloud";
 const TOKEN_FILE: &str = ".anycloud/.token";
 static TOKEN: OnceCell<String> = OnceCell::new();
 
@@ -119,6 +120,11 @@ async fn generate_token() {
     let json: Value = serde_json::from_str(&data_str).expect(ERR);
     if let Some(token) = json["access_token"].as_str() {
       let home = std::env::var("HOME").unwrap();
+      let dir_name = &format!("{}/{}", home, ANYCLOUD_DIR);
+      let path = Path::new(dir_name);
+      if !path.exists() {
+        create_dir(path).expect(ERR);
+      }
       let file_name = &format!("{}/{}", home, TOKEN_FILE);
       let path = Path::new(file_name);
       // remove old token, if it exists

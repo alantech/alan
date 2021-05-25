@@ -1,0 +1,43 @@
+/**
+ * @std/httpcommon - Common type definitions for the http-related standard libraries
+ *
+ */
+
+// The InternalRequest type for http requests
+export type InternalRequest {
+  method: string,
+  url: string,
+  headers: Array<KeyVal<string, string>>,
+  body: string,
+  connId: int64,
+}
+
+// The InternalResponse type for http responses
+export type InternalResponse {
+  status: int64,
+  headers: Array<KeyVal<string, string>>,
+  body: string,
+  connId: int64,
+}
+
+// The exposed Request type
+export type Request {
+  method: string,
+  url: string,
+  headers: HashMap<string, string>,
+  body: string,
+}
+
+// The exposed Response type
+export type Response {
+  status: int64,
+  headers: HashMap<string, string>,
+  body: string,
+  connId: int64,
+}
+
+// The roll-up Connection type with both
+export type Connection {
+  req: Request,
+  res: Response,
+}

@@ -103,6 +103,7 @@ const ammToJsText = (amm: LPNode) => {
     const eventVarName = !(arg instanceof NulLP) ?
       arg.get('variable').t : ""
     if (rec.get('variable').t === '__conn') hasConn = true
+    if (rec.get('variable').t === '__ctrl') throw new Error('AVM Control Port unavailable in JS')
     if (rec.get('variable').t === 'tcpConn') hasTcpConn = true
     outFile += `r.on('${rec.get('variable').t}', async (${eventVarName}) => {\n`
     outFile += functionbodyToJsText(rec.get('functions').get('functionbody'), '')
