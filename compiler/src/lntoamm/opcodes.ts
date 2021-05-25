@@ -48,6 +48,7 @@ Type.builtinTypes.InternalResponse.properties = {
   connId: opcodeScope.get('int64') as Type,
 }
 Type.builtinTypes.Maybe.solidify(['any'], opcodeScope)
+Type.builtinTypes.Maybe.solidify(['string'], opcodeScope)
 Type.builtinTypes.Result.solidify(['any'], opcodeScope)
 Type.builtinTypes.Result.solidify(['anythingElse'], opcodeScope)
 Type.builtinTypes.Result.solidify(['int8'], opcodeScope)
@@ -895,7 +896,7 @@ addopcodes({
   dsdel: [{ ns: t('string'), key: t('string'), }, t('bool')],
   dsgetf: [{ ns: t('string'), key: t('string'), }, t('Result<any>')],
   dsgetv: [{ ns: t('string'), key: t('string'), }, t('Result<any>')],
-  getcs: [{ }, t('Result<string>')],
+  getcs: [{ }, t('Maybe<string>')],
   newseq: [{ limit: t('int64'), }, t('Seq')],
   seqnext: [{ seq: t('Seq'), }, t('Result<int64>')],
   seqeach: [{ seq: t('Seq'), func: t('function'), }, t('void')],

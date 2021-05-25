@@ -21,7 +21,7 @@ on start {
   }
 
   const clusterSecret = getClusterSecret();
-  if clusterSecret.isErr() {
+  if clusterSecret.isNone() {
     eprint('No cluster secret defined');
     emit exit 1;
   }
