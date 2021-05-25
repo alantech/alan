@@ -1,6 +1,6 @@
 {
   "name": "anycloud",
-  "version": "0.1.40",
+  "version": "0.1.41",
   "description": "CLI to elastically scale webservers in any cloud provider",
   "main": "dist/index.js",
   "bin": {
