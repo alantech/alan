@@ -3826,8 +3826,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   io!(getclustersecret => fn(args, mut hand_mem) {
     Box::pin(async move {
       hand_mem.init_fractal(args[2])?;
-      let cluster_secret = CLUSTER_SECRET.get().unwrap();
-      let cluster_secret = match cluster_secret {
+      match CLUSTER_SECRET.get().unwrap() {
         Some(cluster_secret) => {
           hand_mem.push_fixed(args[2], 1i64)?;
           hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(cluster_secret))?;
