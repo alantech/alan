@@ -28,7 +28,9 @@ on start {
 
   // We need to use the --env-file option only if we are sure the file exists 
   const envFile = exec('stat anycloud.env');
-  const containerStr = envFile.exitCode != 0 ? ('docker run --env CLUSTER_SECRET=' + clusterSecret.getOrExit() + ' -p 8088:8088 -d anycloud/app:latest') : ('docker run --env CLUSTER_SECRET=' + clusterSecret.getOrExit() + ' --env-file anycloud.env -p 8088:8088 -d anycloud/app:latest');
+  const containerStr = envFile.exitCode != 0 ? 
+    ('docker run --env CLUSTER_SECRET=' + clusterSecret.getOrExit() + ' -p 8088:8088 -d anycloud/app:latest') : 
+    ('docker run --env CLUSTER_SECRET=' + clusterSecret.getOrExit() + ' --env-file anycloud.env -p 8088:8088 -d anycloud/app:latest');
   print(containerStr);
   const containerRes = exec(containerStr);
   if containerRes.exitCode != 0 {
