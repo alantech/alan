@@ -3652,14 +3652,13 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         Some(ctrl_port) => Some(ctrl_port.borrow().clone()), // TODO: Use thread-local storage
         None => None,
       };
-      let is_key_owner = match ctrl_port {
-        Some(ref ctrl_port) => ctrl_port.is_key_owner(&nskey),
-        None => true,
-      };
-      if is_key_owner {
-        DS.insert(nskey, hm);
-      } else {
-        ctrl_port.unwrap().dssetf(&nskey, &hm).await;
+      match ctrl_port {
+        Some(ref ctrl_port) => {
+          ctrl_port.dssetf(&nskey, &hm).await;
+        },
+        None => {
+          DS.insert(nskey, hm);
+        },
       }
       Ok(hand_mem)
     })
@@ -3684,15 +3683,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
           DS.insert(nskey, hm);
         },
       }
-      /*let is_key_owner = match ctrl_port {
-        Some(ref ctrl_port) => ctrl_port.is_key_owner(&nskey),
-        None => true,
-      };
-      if is_key_owner {
-        DS.insert(nskey, hm);
-      } else {
-        ctrl_port.unwrap().dssetv(&nskey, &hm).await;
-      }*/
       Ok(hand_mem)
     })
   });
@@ -3706,14 +3696,13 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         Some(ctrl_port) => Some(ctrl_port.borrow().clone()), // TODO: Use thread-local storage
         None => None,
       };
-      let is_key_owner = match ctrl_port {
-        Some(ref ctrl_port) => ctrl_port.is_key_owner(&nskey),
-        None => true,
-      };
-      let has = if is_key_owner {
-        DS.contains_key(&nskey)
-      } else {
-        ctrl_port.unwrap().dshas(&nskey).await
+      let has = match ctrl_port {
+        Some(ref ctrl_port) => {
+          ctrl_port.dshas(&nskey).await
+        },
+        None => {
+          DS.contains_key(&nskey)
+        },
       };
       hand_mem.write_fixed(args[2], if has { 1i64 } else { 0i64 })?;
       Ok(hand_mem)
@@ -3731,14 +3720,13 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         Some(ctrl_port) => Some(ctrl_port.borrow().clone()), // TODO: Use thread-local storage
         None => None,
       };
-      let is_key_owner = match ctrl_port {
-        Some(ref ctrl_port) => ctrl_port.is_key_owner(&nskey),
-        None => true,
-      };
-      let removed = if is_key_owner {
-        removed
-      } else {
-        ctrl_port.unwrap().dsdel(&nskey).await
+      let removed = match ctrl_port {
+        Some(ref ctrl_port) => {
+          ctrl_port.dsdel(&nskey).await
+        },
+        None => {
+          removed
+        },
       };
       hand_mem.write_fixed(args[2], if removed { 1i64 } else { 0i64 })?;
       Ok(hand_mem)
@@ -3759,7 +3747,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         None => true,
       };
       if is_key_owner {
-        println!("{} belongs to me!", nskey);
         hand_mem.init_fractal(args[2])?;
         let maybe_hm = DS.get(&nskey);
         match maybe_hm {
@@ -3773,7 +3760,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
           },
         }
       } else {
-        println!("{} belongs to someone else!", nskey);
         let maybe_hm = ctrl_port.unwrap().dsgetf(&nskey).await;
         match maybe_hm {
           Some(hm) => {
@@ -3804,7 +3790,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         None => true,
       };
       if is_key_owner {
-        println!("{} belongs to me!", nskey);
         hand_mem.init_fractal(args[2])?;
         let maybe_hm = DS.get(&nskey);
         match maybe_hm {
@@ -3819,7 +3804,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
           },
         }
       } else {
-        println!("{} belongs to someone else!", nskey);
         let maybe_hm = ctrl_port.unwrap().dsgetv(&nskey).await;
         match maybe_hm {
           Some(hm) => {
