@@ -1,19 +1,35 @@
 use std::str;
 
+use lazy_static::lazy_static;
 use trust_dns_resolver::config::{ResolverConfig, ResolverOpts};
 use trust_dns_resolver::TokioAsyncResolver;
 
-use crate::daemon::daemon::DaemonResult;
+use crate::daemon::daemon::{DaemonResult, ALAN_TECH_ENV};
+
+lazy_static! {
+  static ref LOCAL_VM_METADATA: Vec<VMMetadata> = vec![VMMetadata {
+    schema_version: "v1".to_string(),
+    alan_version: option_env!("CARGO_PKG_VERSION").unwrap().to_string(),
+    cloud: "LOCAL".to_string(),
+    private_ip_addr: "127.0.0.1".to_string(),
+    region: "localhost".to_string(),
+    public_ip_addr: "127.0.0.1".to_string(),
+  }];
+}
 
 pub struct DNS {
   resolver: TokioAsyncResolver,
   domain: String,
 }
 
+#[derive(Clone, Debug)]
 pub struct VMMetadata {
   schema_version: String,
+  pub(crate) public_ip_addr: String,
   pub(crate) private_ip_addr: String,
   pub(crate) alan_version: String,
+  pub(crate) region: String,
+  pub(crate) cloud: String,
 }
 
 impl VMMetadata {
@@ -26,13 +42,16 @@ impl VMMetadata {
           &txt
         );
         let parts: Vec<&str> = txt.split("|").collect();
-        if parts.len() != 5 || parts[0] != "v1" {
+        if parts.len() != 7 || parts[0] != "v1" {
           return Err(err.into());
         }
         Ok(VMMetadata {
           schema_version: parts[0].to_string(),
           alan_version: parts[1].to_string(),
+          public_ip_addr: parts[3].to_string(),
           private_ip_addr: parts[4].to_string(),
+          region: parts[5].to_string(),
+          cloud: parts[6].to_string(),
         })
       }
       Err(_) => return Err("Data in TXT record is not a valid string".into()),
@@ -57,6 +76,9 @@ impl DNS {
   }
 
   pub async fn get_vms(&self, cluster_id: &str) -> DaemonResult<Vec<VMMetadata>> {
+    if ALAN_TECH_ENV.as_str() == "local" {
+      return Ok(LOCAL_VM_METADATA.to_vec());
+    };
     let name = format!("{}.{}", cluster_id, self.domain);
     let err = format!("Failed to fetch TXT record with name {}", &name);
     let resp = self.resolver.txt_lookup(name).await;
@@ -68,6 +90,8 @@ impl DNS {
         vms.push(vm);
       }
       Ok(vms)
+    } else if let Err(err_resp) = resp {
+      Err(format!("{}. {:?}", err, err_resp).into())
     } else {
       Err(err.into())
     }

@@ -1,9 +1,5 @@
-use futures::future::join_all;
 use futures::stream::StreamExt;
-use heim_common::units::{
-  information::kilobyte,
-  time::{millisecond, second},
-};
+use heim_common::units::{information::kilobyte, time::second};
 #[cfg(target_os = "linux")]
 use heim_cpu::os::linux::CpuTimeExt;
 #[cfg(target_os = "linux")]
@@ -13,6 +9,7 @@ use tokio::time::{sleep, Duration};
 
 use crate::daemon::daemon::DaemonResult;
 
+#[allow(non_snake_case)]
 #[derive(Debug, Clone, Serialize)]
 pub struct CPUSecsV1 {
   user: f64,
@@ -42,7 +39,10 @@ pub struct VMStatsV1 {
 
 // calculate the cpu % usage per process using the process'
 // total cpu time delta in a 100ms time window
+#[cfg(not(target_arch = "aarch64"))]
 async fn get_proc_usages() -> Vec<f64> {
+  use futures::future::join_all;
+  use heim_common::units::time::millisecond;
   let duration = 100.0; // ms
   let futures = heim_process::processes()
     .map(|process| async {
@@ -68,6 +68,10 @@ async fn get_proc_usages() -> Vec<f64> {
     .collect::<Vec<_>>()
     .await;
   join_all(futures).await
+}
+#[cfg(target_arch = "aarch64")]
+async fn get_proc_usages() -> Vec<f64> {
+  vec![]
 }
 
 // get total cpu times per core since the VM's uptime
@@ -111,6 +115,8 @@ async fn get_cores_total_times() -> Vec<DaemonResult<CPUSecsV1>> {
           softIrq: cpu.soft_irq().get::<second>(),
           steal: cpu.steal().get::<second>(),
         })
+      } else if let Err(err_cpu) = r {
+        Err(format!("Failed to get CPU times. {:?}", err_cpu).into())
       } else {
         Err("Failed to get CPU times".into())
       }
@@ -139,6 +145,10 @@ async fn get_cores_times() -> DaemonResult<Vec<CPUSecsV1>> {
         softIrq: t2.softIrq - t1.softIrq,
         steal: t2.steal - t1.steal,
       });
+    } else if let Err(err_t1) = t1 {
+      return Err(format!("Failed to get CPU times. {:?}", err_t1).into());
+    } else if let Err(err_t2) = t2 {
+      return Err(format!("Failed to get CPU times. {:?}", err_t2).into());
     } else {
       return Err("Failed to get CPU times".into());
     }
@@ -164,8 +174,12 @@ pub async fn get_v1_stats() -> DaemonResult<VMStatsV1> {
       usedSwapKb: swap.used().get::<kilobyte>(),
       freeSwapKb: swap.free().get::<kilobyte>(),
     }),
-    (Err(_err_memory), _) => return Err("Failed to get system memory information".into()),
-    (_, Err(_err_swap)) => return Err("Failed to get swap information".into()),
+    (Err(err_memory), _) => {
+      return Err(format!("Failed to get system memory information. {:?}", err_memory).into())
+    }
+    (_, Err(err_swap)) => {
+      return Err(format!("Failed to get swap information. {:?}", err_swap).into())
+    }
   }
 }
 

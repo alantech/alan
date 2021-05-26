@@ -5,9 +5,10 @@ license = "AGPL-3.0"
 homepage = "https://alan-lang.org"
 documentation = "https://docs.alan-lang.org"
 repository = "https://github.com/alantech/alan"
-version = "0.1.37-beta6"
-authors = ["Luis de Pombo <luis@alantechnologies.com>", "David Ellis <david@alantechnologies.com>"]
+version = "0.1.41"
+authors = ["Luis de Pombo <luis@alantechnologies.com>", "David Ellis <david@alantechnologies.com>", "Alejandro Guillen <alejandro@alantechnologies.com>"]
 edition = "2018"
+resolver = "2"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -21,16 +22,18 @@ dashmap = "3.11.10"
 flate2 = "1.0"
 futures = "0.3.8"
 futures-util = "0.3.13"
+heim-common = "0.0.11"
 heim-cpu = "0.0.11"
 heim-memory = "0.0.11"
-heim-common = "0.0.11"
-heim-process = "0.0.11"
 hyper = { version = "0.14", features = ["client", "http1", "http2", "runtime", "server"] }
+hyper-openssl = "0.9.1"
 hyper-rustls = "0.22.1" # needed for HTTPS w/ hyper
+lazy_static = "1.4.0"
 num_cpus = "1.0"
 once_cell = "1.5.2"
-protobuf = "2.22.1"
-rand = "0.7.3"
+openssl = "0.10.33"
+protobuf = "2.23.0"
+rand = "0.8.3"
 regex = "1"
 rustls = { version = "0.19.0", features = ["dangerous_configuration"] }
 serde = { version = "1.0", features = ["derive"] }
@@ -40,8 +43,9 @@ tokio-rustls = "0.22.0"
 trust-dns-resolver = { version = "0.20.0", features = ["dns-over-rustls"] }
 twox-hash = "1.5.0"
 
+[target.'cfg(not(target_arch = "aarch64"))'.dependencies]
+heim-process = "0.0.11"
+
 [build-dependencies]
-# Using forked branch due to dependency update needed. PR opened.
-protoc-bin-vendored = { git = "https://github.com/aguillenv/rust-protobuf", branch = "update-protoc-bin" }
-# protoc-bin-vendored = "2.22.1"
-protoc-rust = "2.22.1"
+protoc-bin-vendored = "2.23.0"
+protoc-rust = "2.23.0"

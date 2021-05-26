@@ -31,8 +31,19 @@ const loadGlobalMem = (globalMemAst: LPNode): bigint[] => {
     if (value.has('i64')) {
       const val = BigInt(value.t.replace(/i64$/, ''))
       globalMem.push(val)
+    } else if (value.has('i32')) {
+      const val = BigInt(value.t.replace(/i32$/, ''))
+      globalMem.push(val)
+    } else if (value.has('i16')) {
+      const val = BigInt(value.t.replace(/i16$/, ''))
+      globalMem.push(val)
     } else if (value.has('i8')) {
       const val = BigInt(value.t.replace(/i8$/, ''))
+      globalMem.push(val)
+    } else if (value.has('f32')) {
+      const buf = Buffer.alloc(8)
+      buf.writeFloatLE(parseFloat(value.t.replace(/f32$/, '')))
+      const val = buf.readBigUInt64LE(0)
       globalMem.push(val)
     } else if (value.has('f64')) {
       const buf = Buffer.alloc(8)
@@ -171,6 +182,13 @@ const astToAgc = (ast: NamedAnd): Buffer => {
     __conn: {
       eventId: (() => {
         const buf = Buffer.from('__conn  ', 'utf8')
+        buf.writeUInt8(0x80, 7)
+        return buf.readBigUInt64LE(0)
+      })(),
+    },
+    __ctrl: {
+      eventId: (() => {
+        const buf = Buffer.from('__ctrl  ', 'utf8')
         buf.writeUInt8(0x80, 7)
         return buf.readBigUInt64LE(0)
       })(),

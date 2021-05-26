@@ -5,14 +5,14 @@ const path = require('path');
 
 const pjson = require('./package.json');
 
-const anycloudUrlBase = `https://github.com/alantech/anycloud/releases/download/v${pjson.version}/`;
+const anycloudUrlBase = `https://github.com/alantech/alan/releases/download/v${pjson.version}/`;
 let shell = '/bin/sh';
 let request = '';
 let extract = '';
 let file = 'anycloud-ubuntu.tar.gz';
 if (process.platform === 'darwin') {
   file = 'anycloud-macos.tar.gz';
-  request = `curl -OL ${anycloudUrlBase}${file}`;
+  request = `curl -fOL ${anycloudUrlBase}${file}`;
   extract = `tar -xzf ${file}`;
 } else if (process.platform === 'win32') {
   shell = 'powershell.exe';
@@ -20,7 +20,7 @@ if (process.platform === 'darwin') {
   request = `Invoke-WebRequest -OutFile anycloud-windows.zip -Uri ${anycloudUrlBase}${file}`;
   extract = 'Expand-Archive -Path anycloud-windows.zip -DestinationPath .';
 } else {
-  request = `curl -OL ${anycloudUrlBase}${file}`;
+  request = `curl -fOL ${anycloudUrlBase}${file}`;
   extract = `tar -xzf ${file}`;
 }
 

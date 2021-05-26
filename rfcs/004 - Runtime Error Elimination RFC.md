@@ -16,12 +16,12 @@
 
 ### Implementation
 
-- [ ] Implemented:
+- [x] Implemented:
   - [Native Error, Maybe, Result, and Either Implementation](https://github.com/alantech/alan/pull/148) 2020-07-28
   - [Result-wrapped Array read accessors](https://github.com/alantech/alan/pull/150) 2020-07-30
   - [Result-wrapped Array set function](https://github.com/alantech/alan/pull/152) 2020-07-31
-  - [Result-wrapped Math opcodes](tbd) YYYY-MM-DD
-  - [Saturating Math opcodes](tbd) YYYY-MM-DD
+  - [Result-wrapped Math opcodes](https://github.com/alantech/alan/pull/364) 2021-01-08
+  - [Saturating Math opcodes](https://github.com/alantech/alan/pull/502) 2021-04-27
 - [ ] Revoked/Superceded by: [RFC ###](./000 - RFC Template.md) YYYY-MM-DD
 
 ## Author(s)

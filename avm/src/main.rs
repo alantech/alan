@@ -2,6 +2,7 @@ use std::env;
 use std::fs::read;
 use std::path::Path;
 
+use anycloud::common::get_agz_file_b64;
 use anycloud::deploy;
 use anycloud::oauth::authenticate;
 use base64;
@@ -29,7 +30,10 @@ async fn compile_and_run(source_file: &str) -> i32 {
     let mut path = env::current_dir().unwrap();
     path.push(dest_file);
     let fp = path.into_os_string().into_string().unwrap();
-    run_file(&fp, true).await;
+    if let Err(ee) = run_file(&fp, true).await {
+      eprintln!("{}", ee);
+      return 2;
+    };
   }
   return status_code;
 }
@@ -58,7 +62,7 @@ fn main() {
         .about("Deploys an .agz file to a new app with one of the Deploy Configs from anycloud.json")
         .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'")
       )
-      .subcommand(SubCommand::with_name("info")
+      .subcommand(SubCommand::with_name("list")
         .about("Displays all the Apps deployed with the Deploy Configs from anycloud.json")
       )
       .subcommand(SubCommand::with_name("terminate")
@@ -71,7 +75,7 @@ fn main() {
       .subcommand(SubCommand::with_name("config")
         .about("Manage Deploy Configs used by Apps from the anycloud.json in the current directory")
         .setting(AppSettings::SubcommandRequiredElseHelp)
-        .subcommand(SubCommand::with_name("add")
+        .subcommand(SubCommand::with_name("new")
           .about("Add a new Deploy Config to the anycloud.json in the current directory and creates the file if it doesn't exist.")
         )
         .subcommand(SubCommand::with_name("list")
@@ -87,7 +91,7 @@ fn main() {
       .subcommand(SubCommand::with_name("credentials")
         .about("Manage all Credentials used by Deploy Configs from the credentials file at ~/.anycloud/credentials.json")
         .setting(AppSettings::SubcommandRequiredElseHelp)
-        .subcommand(SubCommand::with_name("add")
+        .subcommand(SubCommand::with_name("new")
           .about("Add a new Credentials")
         )
         .subcommand(SubCommand::with_name("list")
@@ -103,13 +107,9 @@ fn main() {
     )
     .subcommand(SubCommand::with_name("daemon")
       .about("Run an .agz file in daemon mode. Used on deploy within cloud provider VMs.")
-      .arg_from_usage("<APP_ID> 'Specifies the alan app to upgrade'")
-      .arg_from_usage("<AGZ_B64> 'Specifies the .agz program as a base64 encoded string'")
-      .arg_from_usage("<DEPLOY_TOKEN> 'Specifies the deploy token'")
-      .arg_from_usage("<DOMAIN> 'Specifies the application domain'")
-      .arg_from_usage("<PRIVATE_KEY> -k, --private-key=<PRIV_KEY_B64> 'A base64 encoded private key for HTTPS mode'")
-      .arg_from_usage("<CERT_B64> -c, --certificate=<CERT_B64> 'A base64 encoded certificate for HTTPS mode'")
       .arg_from_usage("<CLUSTER_SECRET> -s, --cluster-secret=<CLUSTER_SECRET> 'A secret string to constrain access to the control port'")
+      .arg_from_usage("-f, --agz-file=[AGZ_FILE] 'Specifies an optional agz file relative path for local usage'")
+      .arg_from_usage("[ANYCLOUD_APP] -a, --anycloud-app 'Specifies an optional AnyCloud app flag for local usage'")
     )
     .arg_from_usage("[SOURCE] 'Specifies a source ln file to compile and run'");
 
@@ -131,7 +131,10 @@ fn main() {
           agc_file
         );
         telemetry::log("avm-run").await;
-        run_file(&fp, false).await;
+        if let Err(ee) = run_file(&fp, false).await {
+          eprintln!("{}", ee);
+          std::process::exit(2);
+        };
       }
       ("compile", Some(matches)) => {
         let source_file = matches.value_of("INPUT").unwrap();
@@ -162,10 +165,10 @@ fn main() {
             let agz_file = matches.value_of("AGZ_FILE").unwrap();
             deploy::upgrade(get_agz_b64(agz_file), None, None).await;
           }
-          ("info", _) => deploy::info().await,
+          ("list", _) => deploy::info().await,
           ("credentials", Some(sub_matches)) => {
             match sub_matches.subcommand() {
-              ("add", _) => {
+              ("new", _) => {
                 deploy::add_cred().await;
               }
               ("edit", _) => deploy::edit_cred().await,
@@ -177,7 +180,7 @@ fn main() {
           }
           ("config", Some(sub_matches)) => {
             match sub_matches.subcommand() {
-              ("add", _) => deploy::add_deploy_config().await,
+              ("new", _) => deploy::add_deploy_config().await,
               ("list", _) => deploy::list_deploy_configs().await,
               ("edit", _) => deploy::edit_deploy_config().await,
               ("remove", _) => deploy::remove_deploy_config().await,
@@ -190,25 +193,19 @@ fn main() {
         }
       }
       ("daemon", Some(matches)) => {
-        let app_id = matches.value_of("APP_ID").unwrap();
-        let agz_b64 = matches.value_of("AGZ_B64").unwrap();
-        let deploy_token = matches.value_of("DEPLOY_TOKEN").unwrap();
-        let domain = matches.value_of("DOMAIN").unwrap();
-        let priv_key_b64 = matches.value_of("PRIVATE_KEY").unwrap();
-        let cert_b64 = matches.value_of("CERT_B64").unwrap();
         let cluster_secret = matches.value_of("CLUSTER_SECRET").unwrap();
+        let local_agz_b64 = match matches.value_of("agz-file") {
+          Some(agz_file_path) => Some(get_agz_file_b64(agz_file_path.to_string()).await),
+          None => None,
+        };
+        let is_local_anycloud_app: bool = match matches.values_of("ANYCLOUD_APP") {
+          Some(_) => true,
+          None => false,
+        };
         CLUSTER_SECRET
           .set(Some(cluster_secret.to_string()))
           .unwrap();
-        start(
-          app_id,
-          agz_b64,
-          deploy_token,
-          domain,
-          priv_key_b64,
-          cert_b64,
-        )
-        .await;
+        start(is_local_anycloud_app, local_agz_b64).await;
       }
       _ => {
         // AppSettings::SubcommandRequiredElseHelp does not cut it here

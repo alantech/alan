@@ -30,8 +30,8 @@ compiler-browser-check:
 	cd compiler && ../node_modules/.bin/pkg --targets host .
 
 ./avm/target/release/alan: compiler/alan-compile
-	cd avm && cargo fmt
 	cd avm && cargo build --release
+	cd avm && cargo fmt
 
 ./anycloud/cli/target/release/anycloud: compiler/alan-compile
 	cd anycloud/cli && cargo fmt
@@ -57,17 +57,19 @@ clean:
 	git clean -ffdxe .vscode
 
 .PHONY: install
-install: avm/target/release/alan
+install: avm/target/release/alan anycloud/cli/target/release/anycloud
 	cp ./avm/target/release/alan /usr/local/bin/alan
+	cp ./anycloud/cli/target/release/anycloud /usr/local/bin/anycloud
 
 .PHONY: uninstall
 uninstall:
 	rm /usr/local/bin/alan
+	rm /usr/local/bin/anycloud
 
 .PHONY: version
 version:
 	./.version.sh $(version)
 
-.PHONY: prerelease 
+.PHONY: prerelease
 prerelease:
 	./.prerelease.sh $(version)

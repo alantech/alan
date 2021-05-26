@@ -35,6 +35,7 @@ Describe "Error printing"
         from @std/app import start, stderr, exit
         on start {
           emit stderr 'This is an error';
+          wait(10);
           emit exit 0;
         }
       "

@@ -1,4 +1,4 @@
-use std::fs::{read_to_string, remove_file, File};
+use std::fs::{create_dir, read_to_string, remove_file, File};
 use std::io::prelude::*;
 use std::path::Path;
 
@@ -10,7 +10,6 @@ use tokio::time::{sleep, Duration};
 use webbrowser;
 
 use crate::http::CLIENT;
-use crate::logger::ErrorType;
 
 const CODE_URL: &'static str = "https://github.com/login/device/code";
 const CLIENT_ID: &'static str = "f6e1ede88556627925d6";
@@ -21,6 +20,7 @@ const CODE_BODY: &'static str = "{\
 }";
 const POLL_URL: &'static str = "https://github.com/login/oauth/access_token";
 const ERR: &'static str = "Failed to perform OAuth 2.0 authentication with GitHub";
+const ANYCLOUD_DIR: &str = ".anycloud";
 const TOKEN_FILE: &str = ".anycloud/.token";
 static TOKEN: OnceCell<String> = OnceCell::new();
 
@@ -87,17 +87,19 @@ async fn generate_token() {
     style("!").yellow(),
     style(user_code).bold()
   );
-  if !Confirm::with_theme(&ColorfulTheme::default())
+  let open_browser = Confirm::with_theme(&ColorfulTheme::default())
     .with_prompt(format!(
       "{} to open github.com in your browser",
       style("Press Enter").bold(),
     ))
     .default(true)
     .interact()
-    .unwrap()
-    || webbrowser::open(verification_uri).is_err()
-  {
-    std::process::exit(0);
+    .unwrap();
+  if !open_browser || (open_browser && webbrowser::open(verification_uri).is_err()) {
+    println!(
+      "Open the following url in your browser: {}",
+      style(verification_uri).bold()
+    );
   }
   let interval = json["interval"].as_u64().unwrap();
   let period = Duration::from_secs(interval + 1);
@@ -118,6 +120,11 @@ async fn generate_token() {
     let json: Value = serde_json::from_str(&data_str).expect(ERR);
     if let Some(token) = json["access_token"].as_str() {
       let home = std::env::var("HOME").unwrap();
+      let dir_name = &format!("{}/{}", home, ANYCLOUD_DIR);
+      let path = Path::new(dir_name);
+      if !path.exists() {
+        create_dir(path).expect(ERR);
+      }
       let file_name = &format!("{}/{}", home, TOKEN_FILE);
       let path = Path::new(file_name);
       // remove old token, if it exists
@@ -141,8 +148,8 @@ async fn generate_token() {
       return;
     } else if let Some(error) = json["error"].as_str() {
       if error != "authorization_pending" {
-        error!(
-          ErrorType::AuthFailed,
+        warn!(
+          AuthFailed,
           "Authentication failed. Please try again. Err: {}", error
         )
         .await;

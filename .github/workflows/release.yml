@@ -60,6 +60,12 @@ jobs:
       with:
         node-version: 14.x
 
+    # The AVM requires openssl dev files to build now, and apparently the rust openssl code can auto-acquire it through vcpkg, so set that up
+    - name: Set up vcpkg
+      run: |
+        git clone https://github.com/microsoft/vcpkg
+        cd vcpkg && bootstrap-vcpkg.bat && vcpkg integrate install && vcpkg install openssl --triplet x64-windows-static-md
+
     - name: Build alan app
       run: make
 

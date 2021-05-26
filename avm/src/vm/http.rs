@@ -20,8 +20,8 @@ pub struct HttpConfig {
 #[derive(Debug)]
 pub struct HttpsConfig {
   pub port: u16,
-  pub priv_key_b64: String,
-  pub cert_b64: String,
+  pub priv_key: String,
+  pub cert: String,
 }
 
 #[derive(Debug)]
@@ -75,16 +75,12 @@ macro_rules! make_server {
         let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port_num));
         let tls_cfg = {
           let certs = rustls::internal::pemfile::certs(&mut std::io::BufReader::new(
-            ::base64::decode(https.cert_b64.as_str())
-              .unwrap()
-              .as_slice(),
+            https.cert.as_str().as_bytes(),
           ));
           let certs = certs.expect("Failed to load certificate");
           let key = {
             let keys = rustls::internal::pemfile::pkcs8_private_keys(&mut std::io::BufReader::new(
-              ::base64::decode(https.priv_key_b64.as_str())
-                .unwrap()
-                .as_slice(),
+              https.priv_key.as_str().as_bytes(),
             ));
             let keys = keys.expect("Failed to load private key");
             if keys.len() != 1 {

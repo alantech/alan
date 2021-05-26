@@ -223,7 +223,7 @@ Describe "Interfaces"
             date: dt.date,
             time: dt.time,
             timezone: new HourMinute {
-              hour: -timezone.hour,
+              hour: timezone.hour.snegate(),
               minute: timezone.minute
             }
           };
@@ -234,19 +234,10 @@ Describe "Interfaces"
             date: dt.date,
             time: dt.time,
             timezone: new HourMinute {
-              hour: -toInt8(timezone[0]),
+              hour: toInt8(timezone[0]).snegate(),
               minute: toInt8(timezone[1])
             }
           };
-        }
-
-        // TODO: This should be in the root scope as an opcode
-        fn abs(n: int8): int8 {
-          if n < toInt8(0) {
-            return -n;
-          } else {
-            return n;
-          }
         }
 
         export fn print(dt: DateTime) {
@@ -255,7 +246,7 @@ Describe "Interfaces"
           let str = (new Array<string> [
             toString(dt.date.year), \"-\", toString(dt.date.month), \"-\", toString(dt.date.day), \"@\",
             toString(dt.time.hour), \":\", toString(dt.time.minute), \":\", toString(dt.time.second),
-            timezoneOffsetSymbol, abs(dt.timezone.hour).toString(), \":\", toString(dt.timezone.minute)
+            timezoneOffsetSymbol, sabs(dt.timezone.hour).toString(), \":\", toString(dt.timezone.minute)
           ]).join('');
           print(str);
         }

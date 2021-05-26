@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use once_cell::sync::OnceCell;
 
+use crate::daemon::ctrl::CONTROL_PORT_EXTENSIONS;
 use crate::vm::event::{BuiltInEvents, EventHandler};
 use crate::vm::http::HttpType;
 use crate::vm::instruction::Instruction;
@@ -51,7 +52,7 @@ impl From<i64> for GraphOpcode {
     } else if v == custom_num {
       return GraphOpcode::CUSTOMEVENT;
     } else {
-      panic!(format!("Illegal graph opcode {}", v));
+      panic!("Illegal graph opcode {}", v);
     }
   }
 }
@@ -87,6 +88,10 @@ impl Program {
     let httpconn = i64::from(BuiltInEvents::HTTPCONN);
     self.event_pls.insert(httpconn, 0);
     self.event_handlers.insert(httpconn, Vec::new());
+    // CTRLPORT
+    let ctrlport = i64::from(BuiltInEvents::CTRLPORT);
+    self.event_pls.insert(ctrlport, 0);
+    self.event_handlers.insert(ctrlport, Vec::new());
     // NOP
     // the compiler does not allow explicitly defining handlers for this event
     // and it's used internally by the compiler for closures in unused conditional branches
@@ -210,6 +215,17 @@ impl Program {
         });
       }
     }
+    // detection of control port extensions, at least the logic is contained elsehwere!
+    CONTROL_PORT_EXTENSIONS
+      .set(
+        program
+          .event_handlers
+          .get(&BuiltInEvents::CTRLPORT.into())
+          .unwrap()
+          .len()
+          > 0,
+      )
+      .unwrap();
     return program;
   }
 }
