@@ -44,4 +44,4 @@ jobs:
         -H "Accept: application/vnd.github.everest-preview+json" \
         -H "Content-Type: application/json" \
         https://api.github.com/repos/alantech/homebrew-core/actions/workflows/update.yml/dispatches \
-        -d '{"alan_version": "v0.1.36"}'
+        -d '{"ref": "auto-update", "inputs": {"alan_version": "v0.1.36"}}'
