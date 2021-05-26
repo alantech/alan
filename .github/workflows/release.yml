@@ -151,5 +151,5 @@ jobs:
         -H "Content-Type: application/json" \
         -H "authorization: token ${{secrets.AUTOPUBLISH}}" \
         https://api.github.com/repos/alantech/homebrew-core/actions/workflows/update.yml/dispatches \
-        -d '{"ref": "auto-update", "inputs": {"alan_version": "'"$alanversion"'"}}' \
+        -d '{"ref": "main", "inputs": {"alan_version": "'"$alanversion"'"}}' \
         || echo "Prerelease. Do not update homebrew"
