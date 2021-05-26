@@ -140,7 +140,6 @@ jobs:
         asset_name: anycloud-macos.tar.gz
 
     - name: Update homebrew
-      # TODO: should we create a new token or reuse the AUTOPUBLISH one?
       run: |
         alanversion=$(echo ${{github.ref}} | sed "s/refs\/tags\///")
         [[ $alanversion != *'beta'* ]] && \
