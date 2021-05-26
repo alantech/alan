@@ -142,8 +142,12 @@ jobs:
     - name: Update homebrew
       run: |
         alanversion=$(echo ${{github.ref}} | sed "s/refs\/tags\///")
+        [[ $alanversion != *'beta'* ]] && \
         curl \
-        -X POST \
-        -H "Accept: application/vnd.github.v3+json" \
-        https://api.github.com/repos/alantech/homebrew-core/actions/workflows/autoupdate/dispatches \
-        -d '{"ref":"ref", "inputs": {"alan_version": $alanversion}}'
+        --fail \
+        -XPOST \
+        -u "aguillenv:${{secrets.WORKFLOW_PAT}}" \
+        -H "Accept: application/vnd.github.everest-preview+json" \
+        -H "Content-Type: application/json" \
+        https://api.github.com/repos/alantech/homebrew-core/actions/workflows/update.yml/dispatches \
+        -d '{"ref": "auto-update", "inputs": {"alan_version": "'"$alanversion"'"}}'
