@@ -42,6 +42,6 @@ jobs:
         -XPOST \
         -H "Accept: application/vnd.github.everest-preview+json" \
         -H "Content-Type: application/json" \
-        -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+        -u "aguillenv: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"
         https://api.github.com/repos/alantech/homebrew-core/actions/workflows/update.yml/dispatches \
         -d "{"alan_version": "v0.1.36"}"
