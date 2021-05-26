@@ -38,6 +38,7 @@ jobs:
       #   -d "{"alan_version": "v0.1.36"}"
       run: |
         echo ${{ github.ref }}
+        echo ${GITHUB_REF#refs/*/}
         alanversion=$(echo ${{ github.ref }})
         curl \
         --fail \
