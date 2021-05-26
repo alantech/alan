@@ -17,7 +17,7 @@ For Linux and Windows it is recommended to install AnyCloud via the [published a
 ### Linux
 
 ```bash
-wget https://github.com/alantech/anycloud/releases/latest/download/anycloud-ubuntu.tar.gz
+wget https://github.com/alantech/alan/releases/latest/download/anycloud-ubuntu.tar.gz
 tar -xzf anycloud-ubuntu.tar.gz
 sudo mv anycloud /usr/local/bin/anycloud
 ```
@@ -25,6 +25,6 @@ sudo mv anycloud /usr/local/bin/anycloud
 ### Windows PowerShell
 
 ```bash
-Invoke-WebRequest -OutFile anycloud-windows.zip -Uri https://github.com/alantech/anycloud/releases/latest/download/anycloud-windows.zip
+Invoke-WebRequest -OutFile anycloud-windows.zip -Uri https://github.com/alantech/alan/releases/latest/download/anycloud-windows.zip
 Expand-Archive -Path anycloud-windows.zip -DestinationPath C:\windows
 ```
