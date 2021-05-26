@@ -37,14 +37,13 @@ jobs:
       #   https://api.github.com/repos/alantech/homebrew-core/dispatches \
       #   -d "{"alan_version": "v0.1.36"}"
       run: |
-        echo ${{ github.ref }}
-        echo ${GITHUB_REF#refs/*/}
-        alanversion=$(echo ${{ github.ref }})
+        alanversion=$(echo V0.1.41)
+        [[ $alanversion != *'beta'* ]] && \
         curl \
         --fail \
         -XPOST \
-        -u "aguillenv:${{secrets.WORKFLOW_PAT}}" \
         -H "Accept: application/vnd.github.everest-preview+json" \
         -H "Content-Type: application/json" \
+        -H "authorization: token ${{secrets.AUTOPUBLISH}}"
         https://api.github.com/repos/alantech/homebrew-core/actions/workflows/update.yml/dispatches \
         -d '{"ref": "auto-update", "inputs": {"alan_version": "'"$alanversion"'"}}'
