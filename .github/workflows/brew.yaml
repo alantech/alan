@@ -39,9 +39,10 @@ jobs:
       run: |
         alanversion=$(echo ${{github.ref}} | sed "s/refs\/tags\///")
         curl \
+        --fail \
         -XPOST \
         -u "aguillenv:${{secrets.WORKFLOW_PAT}}" \
         -H "Accept: application/vnd.github.everest-preview+json" \
         -H "Content-Type: application/json" \
         https://api.github.com/repos/alantech/homebrew-core/actions/workflows/update.yml/dispatches \
-        -d '{"ref": "auto-update", "inputs": {"alan_version": '"$alanversion"'}}'
+        -d '{"ref": "auto-update", "inputs": {"alan_version": "'"$alanversion"'"}}'
