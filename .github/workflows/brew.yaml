@@ -44,6 +44,6 @@ jobs:
         -XPOST \
         -H "Accept: application/vnd.github.everest-preview+json" \
         -H "Content-Type: application/json" \
-        -H "authorization: token ${{secrets.AUTOPUBLISH}}"
+        -H "authorization: token ${{secrets.AUTOPUBLISH}}" \
         https://api.github.com/repos/alantech/homebrew-core/actions/workflows/update.yml/dispatches \
         -d '{"ref": "auto-update", "inputs": {"alan_version": "'"$alanversion"'"}}'
