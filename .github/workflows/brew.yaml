@@ -37,7 +37,7 @@ jobs:
       #   https://api.github.com/repos/alantech/homebrew-core/dispatches \
       #   -d "{"alan_version": "v0.1.36"}"
       run: |
-        alanversion=$(${GITHUB_REF/refs\/tags\//}")
+        alanversion=$(${GITHUB_REF/refs\/tags\//})
         curl \
         --fail \
         -XPOST \
