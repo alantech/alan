@@ -140,14 +140,15 @@ jobs:
         asset_name: anycloud-macos.tar.gz
 
     - name: Update homebrew
+      # TODO: should we create a new token or reuse the AUTOPUBLISH one?
       run: |
         alanversion=$(echo ${{github.ref}} | sed "s/refs\/tags\///")
         [[ $alanversion != *'beta'* ]] && \
         curl \
         --fail \
         -XPOST \
-        -u "aguillenv:${{secrets.WORKFLOW_PAT}}" \
         -H "Accept: application/vnd.github.everest-preview+json" \
         -H "Content-Type: application/json" \
+        -H "authorization: token ${{secrets.AUTOPUBLISH}}"
         https://api.github.com/repos/alantech/homebrew-core/actions/workflows/update.yml/dispatches \
         -d '{"ref": "auto-update", "inputs": {"alan_version": "'"$alanversion"'"}}'
