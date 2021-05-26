@@ -21,6 +21,13 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Update homebrew
+      # run: |
+      #   curl \
+      #   -XPOST \
+      #   -u "${{ secrets.PAT_USERNAME}}:${{secrets.PAT_TOKEN}}" \
+      #   -H "Accept: application/vnd.github.everest-preview+json" \
+      #   -H "Content-Type: application/json" \
+      #   https://api.github.com/repos/YOURNAME/APPLICATION_NAME/dispatches --data '{"event_type": "build_application"}'
       run: |
         alanversion="v0.1.36" #$(echo ${{github.ref}} | sed "s/refs\/tags\///")
         curl \
@@ -28,4 +35,4 @@ jobs:
         -H "Accept: application/vnd.github.v3+json" \
         -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
         https://api.github.com/repos/alantech/homebrew-core/dispatches \
-        -d "{'alan_version': $alanversion}"
+        -d "{"alan_version": "v0.1.36"}"
