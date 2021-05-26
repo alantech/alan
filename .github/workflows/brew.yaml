@@ -40,8 +40,8 @@ jobs:
         alanversion="v0.1.36" #$(echo ${{github.ref}} | sed "s/refs\/tags\///")
         curl \
         -XPOST \
+        -u "aguillenv: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" \
         -H "Accept: application/vnd.github.everest-preview+json" \
         -H "Content-Type: application/json" \
-        -u "aguillenv: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"
         https://api.github.com/repos/alantech/homebrew-core/actions/workflows/update.yml/dispatches \
         -d "{"alan_version": "v0.1.36"}"
