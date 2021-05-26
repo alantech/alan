@@ -142,7 +142,7 @@ jobs:
     - name: Update homebrew
       run: |
         alanversion=$(echo ${{github.ref}} | sed "s/refs\/tags\///")
-        [[ $alanversion == *'beta'* ]] && \
+        [[ $alanversion != *'beta'* ]] && \
         curl \
         --fail \
         -XPOST \
