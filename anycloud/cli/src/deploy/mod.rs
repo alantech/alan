@@ -918,14 +918,19 @@ pub async fn client_error(err_code: ErrorType, message: &str, level: &str) {
 }
 
 pub async fn terminate() {
+  let sp = ProgressBar::new_spinner();
+  sp.enable_steady_tick(10);
+  sp.set_message("Gathering information about Apps deployed");
   let apps = get_apps(false).await;
+  if apps.len() == 0 {
+    println!("No Apps deployed");
+    std::process::exit(0);
+  }
   let ids = apps.into_iter().map(|a| a.id).collect::<Vec<String>>();
   let selection = anycloud_dialoguer::select_with_default("Pick App to terminate", &ids, 0);
   let cluster_id = &ids[selection];
   CLUSTER_ID.set(cluster_id.to_string()).unwrap();
   let styled_cluster_id = style(cluster_id).bold();
-  let sp = ProgressBar::new_spinner();
-  sp.enable_steady_tick(10);
   sp.set_message(&format!("Terminating App {}", styled_cluster_id));
   let body = json!({
     "deployConfig": get_config().await,
@@ -993,7 +998,7 @@ pub async fn new(
     Ok(res) => {
       // idc if it's been set before, I'm setting it now!!!
       let _ = CLUSTER_ID.set(res);
-      poll().await;
+      poll(&sp).await;
       return;
     }
     Err(err) => match err {
@@ -1015,14 +1020,21 @@ pub async fn upgrade(
   anycloud_params: Option<(String, String)>,
   env_b64: Option<String>,
 ) {
+  let sp = ProgressBar::new_spinner();
+  sp.enable_steady_tick(10);
+  sp.set_message("Gathering information about Apps deployed");
   let apps = get_apps(false).await;
+  sp.finish_and_clear();
+  if apps.len() == 0 {
+    println!("No Apps deployed");
+    std::process::exit(0);
+  }
   let ids = apps.into_iter().map(|a| a.id).collect::<Vec<String>>();
   let selection = anycloud_dialoguer::select_with_default("Pick App to upgrade", &ids, 0);
   let cluster_id = &ids[selection];
   CLUSTER_ID.set(cluster_id.to_string()).unwrap();
   let styled_cluster_id = style(cluster_id).bold();
   let config = get_config().await;
-  let sp = ProgressBar::new_spinner();
   sp.enable_steady_tick(10);
   sp.set_message(&format!("Upgrading App {}", styled_cluster_id));
   let mut body = json!({
@@ -1057,15 +1069,11 @@ pub async fn upgrade(
 
 async fn get_apps(status: bool) -> Vec<App> {
   let config = get_config().await;
-  let sp = ProgressBar::new_spinner();
-  sp.enable_steady_tick(10);
-  sp.set_message("Gathering information about Apps deployed");
   let body = json!({
     "deployConfig": config,
     "status": status,
   });
   let response = post_v1("info", body).await;
-  sp.finish_and_clear();
   let resp = match &response {
     Ok(resp) => resp,
     Err(err) => {
@@ -1093,16 +1101,19 @@ async fn get_apps(status: bool) -> Vec<App> {
       std::process::exit(1);
     }
   };
-  let apps: Vec<App> = serde_json::from_str(resp).unwrap();
-  if apps.len() == 0 {
-    println!("No Apps currently deployed");
-    std::process::exit(0);
-  }
-  apps
+  serde_json::from_str(resp).unwrap()
 }
 
 pub async fn info() {
+  let sp = ProgressBar::new_spinner();
+  sp.enable_steady_tick(10);
+  sp.set_message("Gathering information about Apps deployed");
   let mut apps = get_apps(true).await;
+  sp.finish_and_clear();
+  if apps.len() == 0 {
+    println!("No Apps deployed");
+    std::process::exit(0);
+  }
 
   let mut clusters = AsciiTable::default();
   clusters.max_width = 140;
@@ -1196,39 +1207,36 @@ pub async fn info() {
   profiles.print(profile_data);
 }
 
-pub async fn poll() {
+pub async fn poll(sp: &ProgressBar) {
   let mut lines: Vec<String> = vec![];
-  let sp = ProgressBar::new_spinner();
-  sp.enable_steady_tick(10);
-  let logs_url = format!("{}/logs", get_url());
   let body = json!({
     "clusterId": CLUSTER_ID.get().expect("cluster ID not set..."),
   });
   loop {
-    let req = Request::get(&logs_url)
-      .header("Content-Type", "application/json")
-      .body((&body).to_string().into())
-      .unwrap();
-    let mut res = CLIENT.request(req).await.unwrap();
-    let data = hyper::body::to_bytes(res.body_mut()).await.unwrap();
-    let data_str = String::from_utf8(data.to_vec()).unwrap();
+    sp.println("loop");
+    let logs = match post_v1("logs", body.clone()).await {
+      Ok(logs) => logs,
+      Err(PostV1Error::Conflict) => todo!("conflict"),
+      Err(PostV1Error::Forbidden) => todo!("forbidden"),
+      Err(PostV1Error::Timeout) => todo!("timeout"),
+      Err(PostV1Error::Unauthorized) => todo!("unauthorized"),
+      Err(PostV1Error::Other(reason)) => todo!("other: {}", reason),
+    };
     // it's ok to leave out the newline chars, since `sp.println` will insert
     // those for us
-    let new_lines = data_str.split("\n").skip(lines.len()).collect::<Vec<_>>();
-    if new_lines.len() != 0 {
-      // update the spinner and lines above the spinner
-      new_lines.into_iter().for_each(|line| {
-        if let Some(last_line) = lines.get(lines.len() - 1) {
-          sp.println(last_line);
-        }
-        sp.set_message(line);
-        lines.push(line.to_string());
-      });
-      let apps = get_apps(true).await;
-      if apps.into_iter().all(|app| app.status == "up") {
-        sp.finish();
-        break;
+    let new_lines = logs.split("\n").skip(lines.len()).collect::<Vec<_>>();
+    // update the spinner and lines above the spinner
+    new_lines.into_iter().for_each(|line| {
+      if let Some(last_line) = lines.get(lines.len() - 1) {
+        sp.println(last_line);
       }
+      sp.set_message(line);
+      lines.push(line.to_string());
+    });
+    let apps = get_apps(true).await;
+    if apps.len() != 0 && apps.into_iter().all(|app| app.status == "up") {
+      sp.finish();
+      break;
     }
     tokio::time::sleep(Duration::from_secs(10)).await;
   }
