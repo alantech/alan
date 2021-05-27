@@ -138,3 +138,17 @@ jobs:
         tag: ${{ github.ref }}
         file: /tmp/anycloud-macos.tar.gz
         asset_name: anycloud-macos.tar.gz
+
+    - name: Update homebrew
+      run: |
+        alanversion=$(echo ${{github.ref}} | sed "s/refs\/tags\///")
+        [[ $alanversion != *'beta'* ]] && \
+        curl \
+        --fail \
+        -XPOST \
+        -H "Accept: application/vnd.github.everest-preview+json" \
+        -H "Content-Type: application/json" \
+        -H "authorization: token ${{secrets.AUTOPUBLISH}}" \
+        https://api.github.com/repos/alantech/homebrew-core/actions/workflows/update.yml/dispatches \
+        -d '{"ref": "main", "inputs": {"alan_version": "'"$alanversion"'"}}' \
+        || echo "Prerelease. Do not update homebrew"
