@@ -350,7 +350,7 @@ pub async fn edit_cred() {
   let mut credentials = get_creds().await;
   let cred_options = credentials.keys().cloned().collect::<Vec<String>>();
   if cred_options.len() == 0 {
-    prompt_add_cred(true).await;
+    prompt_add_cred(true, None).await;
   }
   let selection =
     anycloud_dialoguer::select_with_default("Pick Credentials to edit", &cred_options, 0);
@@ -433,17 +433,29 @@ pub async fn edit_cred() {
 }
 
 // prompt the user to create a deploy credentials if none exists
-pub async fn prompt_add_cred(exit_on_done: bool) -> String {
-  let prompt = "No Credentials have been created. Let's create one?";
-  if anycloud_dialoguer::confirm_with_default(prompt, true) {
-    let cred = add_cred().await;
-    if exit_on_done {
-      std::process::exit(0)
+pub async fn prompt_add_cred(exit_on_done: bool, cred_name: Option<&str>) -> String {
+  let cred = match cred_name {
+    Some(cred_name) => {
+      let prompt = format!("No Credentials found with name {}. Let's create it?", cred_name);
+      if anycloud_dialoguer::confirm_with_default(&prompt, true) {
+        add_cred(Some(cred_name)).await
+      } else {
+        std::process::exit(0);
+      }
+    },
+    None => {
+      let prompt = "No Credentials have been created. Let's create one?";
+      if anycloud_dialoguer::confirm_with_default(prompt, true) {
+        add_cred(None).await
+      } else {
+        std::process::exit(0);
+      }
     }
-    cred
-  } else {
+  };
+  if exit_on_done {
     std::process::exit(0);
   }
+  cred
 }
 
 // prompt the user to create a deploy config if none exists
@@ -459,7 +471,7 @@ pub async fn remove_cred() {
   let mut creds = get_creds().await;
   let cred_options = creds.keys().cloned().collect::<Vec<String>>();
   if cred_options.len() == 0 {
-    prompt_add_cred(true).await;
+    prompt_add_cred(true, None).await;
   };
   let selection =
     anycloud_dialoguer::select_with_default("Pick Credentials to remove", &cred_options, 0);
@@ -497,7 +509,7 @@ pub async fn list_creds() {
       }
     }
   } else {
-    prompt_add_cred(true).await;
+    prompt_add_cred(true, None).await;
   }
 }
 
@@ -520,7 +532,7 @@ pub async fn add_deploy_config() {
   };
   let mut cloud_configs = Vec::new();
   if creds.len() == 0 {
-    prompt_add_cred(false).await;
+    prompt_add_cred(false, None).await;
   }
   let mut options = creds.keys().cloned().collect::<Vec<String>>();
   let new_cred_idx = options.len();
