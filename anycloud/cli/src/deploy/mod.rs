@@ -436,13 +436,16 @@ pub async fn edit_cred() {
 pub async fn prompt_add_cred(exit_on_done: bool, cred_name: Option<&str>) -> String {
   let cred = match cred_name {
     Some(cred_name) => {
-      let prompt = format!("No Credentials found with name {}. Let's create it?", cred_name);
+      let prompt = format!(
+        "No Credentials found with name {}. Let's create it?",
+        cred_name
+      );
       if anycloud_dialoguer::confirm_with_default(&prompt, true) {
         add_cred(Some(cred_name)).await
       } else {
         std::process::exit(0);
       }
-    },
+    }
     None => {
       let prompt = "No Credentials have been created. Let's create one?";
       if anycloud_dialoguer::confirm_with_default(prompt, true) {
@@ -875,10 +878,10 @@ pub async fn get_config() -> HashMap<String, Vec<Config>> {
             creds = get_creds().await;
             cred = match creds.get(cred_name) {
               Some(cred) => cred,
-              None => continue
+              None => continue,
             };
             break;
-          };
+          }
           cred
         }
       };
