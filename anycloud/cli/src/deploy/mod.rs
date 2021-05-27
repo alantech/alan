@@ -854,7 +854,7 @@ fn get_url() -> &'static str {
 
 pub async fn get_config() -> HashMap<String, Vec<Config>> {
   let anycloud_prof = get_deploy_configs().await;
-  let creds = get_creds().await;
+  let mut creds = get_creds().await;
   if creds.len() == 0 {
     prompt_add_cred(true, None).await;
   }
@@ -865,7 +865,23 @@ pub async fn get_config() -> HashMap<String, Vec<Config>> {
   for (deploy_name, deploy_configs) in anycloud_prof.into_iter() {
     let mut configs = Vec::new();
     for deploy_config in deploy_configs {
-      let cred = creds.get(&deploy_config.credentialsName).unwrap();
+      let cred_name = &deploy_config.credentialsName;
+      let cred = match creds.get(cred_name) {
+        Some(cred) => cred,
+        None => {
+          let cred: &Credentials;
+          loop {
+            prompt_add_cred(false, Some(cred_name)).await;
+            creds = get_creds().await;
+            cred = match creds.get(cred_name) {
+              Some(cred) => cred,
+              None => continue
+            };
+            break;
+          };
+          cred
+        }
+      };
       configs.push(Config {
         credentials: cred.credentials.clone(),
         cloudProvider: cred.cloudProvider.to_string(),
