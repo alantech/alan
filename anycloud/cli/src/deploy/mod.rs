@@ -213,7 +213,7 @@ fn get_aws_cli_creds() -> Result<AWSCLICredentialsFile, String> {
   }
 }
 
-pub async fn add_cred() -> String {
+pub async fn add_cred(cred_name: Option<&str>) -> String {
   let mut credentials = get_creds().await;
   let clouds = vec!["AWS".to_string(), "GCP".to_string(), "Azure".to_string()];
   let selection = anycloud_dialoguer::select_with_default(
@@ -222,7 +222,7 @@ pub async fn add_cred() -> String {
     0,
   );
   let cloud = &clouds[selection];
-  let default = cloud.to_lowercase();
+  let default = cred_name.unwrap_or(&cloud.to_lowercase()).to_string();
   let prompt = "Name for new Credential";
   let validator = |input: &String| -> Result<(), &str> {
     if credentials.contains_key(input) {
@@ -528,7 +528,7 @@ pub async fn add_deploy_config() {
   loop {
     let selection = anycloud_dialoguer::select_with_default("Pick Credentials to use", &options, 0);
     let cred = if selection == new_cred_idx {
-      add_cred().await
+      add_cred(None).await
     } else {
       options[selection].to_string()
     };
@@ -844,7 +844,7 @@ pub async fn get_config() -> HashMap<String, Vec<Config>> {
   let anycloud_prof = get_deploy_configs().await;
   let creds = get_creds().await;
   if creds.len() == 0 {
-    prompt_add_cred(true).await;
+    prompt_add_cred(true, None).await;
   }
   if anycloud_prof.len() == 0 {
     prompt_add_config().await;

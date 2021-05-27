@@ -97,7 +97,7 @@ pub async fn main() {
     ("credentials", Some(sub_matches)) => {
       match sub_matches.subcommand() {
         ("new", _) => {
-          deploy::add_cred().await;
+          deploy::add_cred(None).await;
         }
         ("edit", _) => deploy::edit_cred().await,
         ("list", _) => deploy::list_creds().await,
