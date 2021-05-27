@@ -3,6 +3,7 @@ import Output, { AssignKind } from './Amm';
 import Fn from './Fn';
 import opcodes from './opcodes';
 import Operator from './Operator';
+import Scope from './Scope';
 import Stmt, { Dec, MetaData, VarDef } from './Stmt';
 import Type, { Builtin } from './Types';
 import { isFnArray, isOpArray, TODO } from './util';
@@ -300,8 +301,8 @@ export default abstract class Expr {
             precedences[applyIdx] = dec.ref();
           }
           const applyTo = precedences[applyIdx] as Ref;
-          let fns = operators.reduce((fns, op) => [...fns, ...op.select(applyTo)], new Array<Fn>());
-          precedences[applyIdx] = new Call(null, fns, null, [applyTo]);
+          let fns = operators.reduce((fns, op) => [...fns, ...op.select(metadata.scope, applyTo)], new Array<Fn>());
+          precedences[applyIdx] = new Call(null, fns, null, [applyTo], metadata.scope);
           let rm = precedences.splice(idx, applyIdx);
           // update indices
           idxs = idxs.map((idx, kk) => kk > jj ? idx - rm.length : kk);
@@ -348,7 +349,7 @@ export default abstract class Expr {
         }
         while (ops.length > 0) {
           const op = ops.pop();
-          const selected = op.select(left, right);
+          const selected = op.select(metadata.scope, left, right);
           fns.push(...selected);
         }
         const call = new Call(
@@ -356,6 +357,7 @@ export default abstract class Expr {
           fns,
           null,
           [left, right],
+          metadata.scope,
         );
         precedences[idx - 1] = call;
         precedences.splice(idx, 2);
@@ -375,6 +377,9 @@ class Call extends Expr {
   maybeClosure: VarDef | null
   args: Ref[]
   retTy: Type
+  // FIXME: once the matrix as below is implemented, get rid of this field
+  // and just pass it into the selection phase
+  scope: Scope
 
   get ty(): Type {
     return this.retTy;
@@ -385,6 +390,7 @@ class Call extends Expr {
     fns: Fn[],
     maybeClosure: VarDef | null,
     args: Ref[],
+    scope: Scope,
   ) {
     super(ast);
     if (fns.length === 0 && maybeClosure === null) {
@@ -394,6 +400,7 @@ class Call extends Expr {
     this.maybeClosure = maybeClosure;
     this.args = args;
     this.retTy = Type.oneOf(Array.from(new Set(fns.map(fn => fn.retTy))));
+    this.scope = scope;
   }
 
   static fromCallAst(
@@ -440,7 +447,7 @@ class Call extends Expr {
     let argTys = args.map(arg => arg.ty);
     // console.log('~~~~~~~~~', ast.t.trim());
     // console.log('before filter', fns);
-    fns = fns.filter(fn => fn.acceptsTypes(argTys));
+    fns = fns.filter(fn => fn.acceptsTypes(argTys, metadata.scope));
     // console.log('after filter', fns);
     // now, constrain all of the args to their possible types
     // makes it so that the type of the parameters in each position are in their own list
@@ -452,13 +459,13 @@ class Call extends Expr {
     argTys.forEach((ty, ii) => {
       let paramTys = (fns as Fn[]).map(fn => fn.params[ii].ty);
       // console.log('constraining', ty, 'to', paramTys);
-      ty.constrain(Type.oneOf(paramTys));
+      ty.constrain(Type.oneOf(paramTys), metadata.scope);
       // console.log('constrained:', ty);
     });
     if (closure !== null) {
       TODO('closures');
     }
-    return [stmts, new Call(ast, fns, closure, args)];
+    return [stmts, new Call(ast, fns, closure, args, metadata.scope)];
   }
 
   /*
@@ -493,7 +500,7 @@ class Call extends Expr {
   */
   inline(amm: Output, kind: AssignKind, name: string, ty: Builtin) {
     const argTys = this.args.map(arg => arg.ty.instance());
-    const selected = this.fns.reverse().find(fn => fn.acceptsTypes(argTys)) || null;
+    const selected = this.fns.reverse().find(fn => fn.acceptsTypes(argTys, this.scope)) || null;
     // console.log('!!!!!!!!!!', this.ast.t.trim(), selected);
     if (selected === null) {
       // TODO: to get better error reporting, we need to pass an ast when using

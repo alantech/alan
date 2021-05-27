@@ -28,11 +28,11 @@ export default abstract class Type implements Equalable {
   }
 
   abstract breakdown(): Builtin;
-  abstract compatibleWithConstraint(ty: Type): boolean;
-  abstract constrain(to: Type): void;
+  abstract compatibleWithConstraint(ty: Type, scope: Scope): boolean;
+  abstract constrain(to: Type, scope: Scope): void;
   abstract eq(that: Equalable): boolean;
   abstract instance(): Type;
-  abstract tempConstrain(to: Type): void;
+  abstract tempConstrain(to: Type, scope: Scope): void;
   abstract resetTemp(): void;
 
   static getFromTypename(name: LPNode | string, scope: Scope): Type {
@@ -68,6 +68,18 @@ export default abstract class Type implements Equalable {
     //   {},
     // );
   }
+
+  static hasField(name: string, ty: Type): Type {
+    return new HasField(name, ty);
+  }
+
+  static hasMethod(name: string, params: Type[], ret: Type): Type {
+    return new HasMethod(name, params, ret);
+  }
+
+  static hasOperator(name: string, params: Type[], ret: Type, isPrefix: boolean): Type {
+    return new HasOperator(name, params, ret, isPrefix);
+  }
 }
 
 export class Builtin extends Type {
@@ -85,20 +97,26 @@ export class Builtin extends Type {
     return this;
   }
 
-  compatibleWithConstraint(ty: Type): boolean {
+  compatibleWithConstraint(ty: Type, scope: Scope): boolean {
     if (ty instanceof Builtin) {
       return this.eq(ty);
-    } if (ty instanceof OneOf || ty instanceof Generated) {
-      return ty.compatibleWithConstraint(this);
+    } else if (ty instanceof OneOf || ty instanceof Generated) {
+      return ty.compatibleWithConstraint(this, scope);
+    } else if (ty instanceof HasMethod) {
+      TODO('get methods and operators for types');
+    } else if (ty instanceof HasField) {
+      return false;
     } else {
       TODO('other types constraining to builtin types');
     }
   }
 
-  constrain(ty: Type) {
+  constrain(ty: Type, scope: Scope) {
     if (ty instanceof OneOf || ty instanceof Generated) {
-      ty.constrain(this);
-    } else if (!this.compatibleWithConstraint(ty)) {
+      ty.constrain(this, scope);
+    } else if (ty instanceof HasMethod) {
+      TODO('get methods and operators for types');
+    } else if (!this.compatibleWithConstraint(ty, scope)) {
       throw new Error(`type ${this.name} could not be constrained to ${ty.name}`);
     }
   }
@@ -111,8 +129,8 @@ export class Builtin extends Type {
     return this;
   }
 
-  tempConstrain(ty: Type) {
-    this.constrain(ty);
+  tempConstrain(ty: Type, scope: Scope) {
+    this.constrain(ty, scope);
   }
 
   resetTemp() {
@@ -177,6 +195,10 @@ class Struct extends Type {
   compatibleWithConstraint(ty: Type): boolean {
     if (ty instanceof Struct) {
       return this.eq(ty);
+    } else if (ty instanceof HasField) {
+      // TODO:
+    } else if (ty instanceof HasMethod) {
+      TODO('get methods and operators for types');
     } else {
       TODO('constraints with other types for structs');
     }
@@ -207,7 +229,109 @@ class Struct extends Type {
   }
 }
 
+abstract class Has extends Type {
+  constructor(
+    name: string,
+  ) {
+    super(name);
+  }
+
+  breakdown(): Builtin {
+    throw new Error(`cannot breakdown a Has constraint (this error should never be thrown)`);
+  }
+
+  // convenience for `Type.hasX(...).compatibleWithConstraint(ty)`
+  compatibleWithConstraint(ty: Type, scope: Scope): boolean {
+    return ty.compatibleWithConstraint(this, scope);
+  }
+
+  // convenience for `Type.hasX(...).constrain(ty)`
+  constrain(to: Type, scope: Scope) {
+    to.constrain(this, scope);
+  }
+
+  eq(that: Equalable): boolean {
+    return that instanceof Has && that.name === this.name;
+  }
+
+  instance(): Type {
+    throw new Error(`cannot get instance of Has constraint (this error should never be thrown)`);
+  }
+
+  // there should never be a case where `Type.hasX(...).tempConstrain(...)`
+  tempConstrain(_t: Type) {
+    throw new Error(`cannot temporarily constrain a Has constraint (this error should never be thrown)`);
+  }
+
+  // there can never be temp constraints
+  resetTemp() {
+    throw new Error(`Has constraints cannot have temporary constraints (this error should never be thrown)`);
+  }
+}
+
+class HasField extends Has {
+  ty: Type
+
+  constructor(
+    name: string,
+    ty: Type,
+  ) {
+    super(name);
+    this.ty = ty;
+  }
+
+  eq(that: Equalable): boolean {
+    return super.eq(that) && that instanceof HasField && that.ty.eq(this.ty);
+  }
+}
+
+class HasMethod extends Has {
+  // null if it refers to the implementor's type. Only used when
+  // working on interfaces
+  params: (Type | null)[]
+  ret: Type | null
+
+  constructor(
+    name: string,
+    params: (Type | null)[],
+    ret: Type | null,
+  ) {
+    super(name);
+    this.params = params;
+    this.ret = ret;
+  }
+
+  eq(that: Equalable): boolean {
+    return super.eq(that) &&
+      that instanceof HasMethod &&
+      this.params.reduce((eq, param, ii) => eq && param.eq(that.params[ii]), true) &&
+      this.ret.eq(that.ret);
+  }
+}
+
+class HasOperator extends HasMethod {
+  isPrefix: boolean
+
+  constructor(
+    name: string,
+    params: (Type | null)[],
+    ret: Type | null,
+    isPrefix: boolean,
+  ) {
+    super(name, params, ret);
+    this.isPrefix = isPrefix;
+  }
+
+  eq(that: Equalable): boolean {
+    return super.eq(that) && that instanceof HasOperator && this.isPrefix === that.isPrefix;
+  }
+}
+
 class Interface extends Type {
+  fields: HasField[]
+  methods: HasMethod[]
+  operators: HasOperator[]
+
   static fromAst(ast: LPNode, scope: Scope): Interface {
     return null;
   }
@@ -262,17 +386,17 @@ class Generated extends Type {
     }
   }
 
-  compatibleWithConstraint(ty: Type): boolean {
+  compatibleWithConstraint(ty: Type, scope: Scope): boolean {
     if (this.tempDelegate !== null) {
-      return this.tempDelegate.compatibleWithConstraint(ty);
+      return this.tempDelegate.compatibleWithConstraint(ty, scope);
     } else if (this.delegate !== null) {
-      return this.delegate.compatibleWithConstraint(ty);
+      return this.delegate.compatibleWithConstraint(ty, scope);
     } else {
       return true;
     }
   }
 
-  constrain(to: Type) {
+  constrain(to: Type, scope: Scope) {
     // if `this.tempDelegate` is set, something is *very* wrong because
     // all permanent constraints should already be processed...
     // if we need to allow `tempConstrain`s to get processed `constrain`s,
@@ -283,7 +407,9 @@ class Generated extends Type {
     }
 
     if (this.delegate !== null) {
-      this.delegate.constrain(to);
+      this.delegate.constrain(to, scope);
+    } else if (to instanceof Has) {
+      TODO('generate interface and delegate');
     } else {
       this.delegate = to;
     }
@@ -305,11 +431,13 @@ class Generated extends Type {
     }
   }
 
-  tempConstrain(to: Type) {
+  tempConstrain(to: Type, scope: Scope) {
     if (this.delegate !== null) {
-      this.delegate.tempConstrain(to);
+      this.delegate.tempConstrain(to, scope);
     } else if (this.tempDelegate !== null) {
       TODO('temp constraints to a temporary constraint???');
+    } else if (to instanceof Has) {
+      TODO("i'm not sure");
     } else {
       this.tempDelegate = to;
     }
@@ -354,12 +482,12 @@ class OneOf extends Type {
     return this.select().breakdown();
   }
 
-  compatibleWithConstraint(constraint: Type): boolean {
-    return this.selection.some(ty => ty.compatibleWithConstraint(constraint));
+  compatibleWithConstraint(constraint: Type, scope: Scope): boolean {
+    return this.selection.some(ty => ty.compatibleWithConstraint(constraint, scope));
   }
 
-  constrain(constraint: Type) {
-    this.selection = this.selection.filter(ty => ty.compatibleWithConstraint(constraint));
+  constrain(constraint: Type, scope: Scope) {
+    this.selection = this.selection.filter(ty => ty.compatibleWithConstraint(constraint, scope));
   }
 
   eq(that: Equalable): boolean {
@@ -370,8 +498,8 @@ class OneOf extends Type {
     return this.select().instance();
   }
 
-  tempConstrain(to: Type) {
-    this.tempSelect = this.selection.filter(ty => ty.compatibleWithConstraint(to));
+  tempConstrain(to: Type, scope: Scope) {
+    this.tempSelect = this.selection.filter(ty => ty.compatibleWithConstraint(to, scope));
   }
 
   resetTemp() {

@@ -41,7 +41,7 @@ class Operator {
     );
   }
 
-  select(arg1: Ref, arg2?: Ref): Fn[] {
+  select(scope: Scope, arg1: Ref, arg2?: Ref): Fn[] {
     if ((this.isPrefix && arg2) || (!this.isPrefix && !arg2)) {
       console.log('~~~ ERROR');
       console.log('for operator:', this);
@@ -52,7 +52,7 @@ class Operator {
       throw new Error(`nope`);
     }
     const tys = [arg1.ty, ...(arg2 ? [arg2.ty] : [])];
-    return this.fns.filter(fn => fn.acceptsTypes(tys));
+    return this.fns.filter(fn => fn.acceptsTypes(tys, scope));
   }
 }
 

@@ -116,13 +116,13 @@ export default class Fn {
     );
   }
 
-  acceptsTypes(tys: Type[]): boolean {
+  acceptsTypes(tys: Type[], scope: Scope): boolean {
     let params = Object.values(this.params);
     if (params.length !== tys.length) {
       return false;
     }
     for (let ii = 0; ii < params.length; ii++) {
-      if (!params[ii].ty.compatibleWithConstraint(tys[ii])) {
+      if (!params[ii].ty.compatibleWithConstraint(tys[ii], scope)) {
         return false;
       }
     }
@@ -147,7 +147,7 @@ export default class Fn {
       }
     }
     if (!isReturned) {
-      if (!this.retTy.compatibleWithConstraint(opcodes().get('void'))) {
+      if (!this.retTy.compatibleWithConstraint(opcodes().get('void'), this.metadata.scope)) {
         throw new Error(`event handlers should not return values`);
       }
       amm.exit();

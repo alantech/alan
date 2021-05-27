@@ -6,7 +6,7 @@ import Fn from './Fn';
 import Operator from './Operator';
 import Scope, { isFunctions } from './Scope';
 import Type from './Types';
-import { isFnArray, TODO } from './util';
+import { isFnArray } from './util';
 
 const modules: {[name: string]: Module} = {}
 
