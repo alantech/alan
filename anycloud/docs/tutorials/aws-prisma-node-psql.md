@@ -60,7 +60,9 @@ npx prisma migrate dev --name init
 ...
 ```
 
-6) Define the `Dockerfile`
+6) Also add `prisma` and `@prisma/client` as normal `dependencies`, instead of `devDependencies` in your `package.json` to ensure that it's available in the Docker container.
+
+7) Define the `Dockerfile`
 
 ```bash
 FROM node:lts
@@ -72,7 +74,15 @@ RUN npm run build
 CMD npm run start
 ```
 
-7) Initialize a `git` repository and commit your changes
+8) Add a `.dockerignore` file to ensure that any `node_modules` from the host machine are not copied into the Docker image
+
+```
+node_modules/
+dist/
+*.env*
+```
+
+9) Initialize a `git` repository and commit your changes
 
 ```bash
 git init
@@ -80,7 +90,7 @@ git add .
 git commit -m "Initial commit"
 ```
 
-8) Change HTTP server port in `src/index.ts` from `3000` to `8088` which is what what AnyCloud expects.
+10) Change HTTP server port in `src/index.ts` from `3000` to `8088` which is what what AnyCloud expects.
 
 ```javascript
 ...
@@ -95,7 +105,7 @@ const server = app.listen(8088, () =>
 ...
 ```
 
-9) Make sure everything works locally
+11) Make sure everything works locally
 
 ```bash
 $ npm run start
