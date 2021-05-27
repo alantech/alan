@@ -1,6 +1,6 @@
 {
   "name": "alan-compile",
-  "version": "0.1.42-beta4",
+  "version": "0.1.42-beta5",
   "description": "Compile Alan code (ln) to amm, js, aga, and agc",
   "engines": {
     "node": ">=10.20.1"
