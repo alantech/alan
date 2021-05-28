@@ -433,6 +433,7 @@ pub async fn edit_cred() {
 }
 
 // prompt the user to create a deploy credentials if none exists
+// or if the requested credentials name does not exists.
 pub async fn prompt_add_cred(exit_on_done: bool, cred_name: Option<&str>) -> String {
   let cred = match cred_name {
     Some(cred_name) => {
