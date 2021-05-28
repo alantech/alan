@@ -20,11 +20,14 @@ const parseFulltypename = (node: LPNode): TypeName => {
 // TODO: figure out type aliases (i think it actually makes sense to make a new type?)
 export default abstract class Type implements Equalable {
   name: string
+  ast: LPNode | null
 
   constructor(
     name: string,
+    ast: LPNode = null,
   ) {
     this.name = name;
+    this.ast = ast;
   }
 
   abstract breakdown(): Builtin;
@@ -70,15 +73,15 @@ export default abstract class Type implements Equalable {
   }
 
   static hasField(name: string, ty: Type): Type {
-    return new HasField(name, ty);
+    return new HasField(name, null, ty);
   }
 
   static hasMethod(name: string, params: Type[], ret: Type): Type {
-    return new HasMethod(name, params, ret);
+    return new HasMethod(name, null, params, ret);
   }
 
   static hasOperator(name: string, params: Type[], ret: Type, isPrefix: boolean): Type {
-    return new HasOperator(name, params, ret, isPrefix);
+    return new HasOperator(name, null, params, ret, isPrefix);
   }
 }
 
@@ -139,18 +142,16 @@ export class Builtin extends Type {
 }
 
 class Struct extends Type {
-  ast: LPNode
   args: GenericArgs
   fields: Fields
 
   constructor(
     name: string,
-    ast: LPNode,
+    ast: LPNode | null,
     args: GenericArgs,
     fields: Fields,
   ) {
-    super(name);
-    this.ast = ast;
+    super(name, ast);
     this.args = args;
     this.fields = fields;
   }
@@ -232,8 +233,9 @@ class Struct extends Type {
 abstract class Has extends Type {
   constructor(
     name: string,
+    ast: LPNode | null,
   ) {
-    super(name);
+    super(name, ast);
   }
 
   breakdown(): Builtin {
@@ -274,10 +276,21 @@ class HasField extends Has {
 
   constructor(
     name: string,
+    ast: LPNode | null,
     ty: Type,
   ) {
-    super(name);
+    super(name, ast);
     this.ty = ty;
+  }
+
+  static fromPropertyTypeLine(ast: LPNode, scope: Scope): HasField {
+    const name = ast.get('variable').t.trim();
+    const ty = Type.getFromTypename(ast.get('fulltypename'), scope);
+    return new HasField(
+      name,
+      ast,
+      ty,
+    );
   }
 
   eq(that: Equalable): boolean {
@@ -293,12 +306,24 @@ class HasMethod extends Has {
 
   constructor(
     name: string,
+    ast: LPNode | null,
     params: (Type | null)[],
     ret: Type | null,
   ) {
-    super(name);
+    super(name, ast);
     this.params = params;
     this.ret = ret;
+  }
+
+  static fromFunctionTypeLine(ast: LPNode, scope: Scope, ifaceName: string): HasMethod {
+    const name = ast.get('variable').t.trim();
+    let work = ast.get('functiontype');
+    let params: (Type | null)[] = [
+      work.get('fulltypename'),
+      ...work.get('cdr').getAll().map(cdr => cdr.get('fulltypename')),
+    ].map(tyNameAst => tyNameAst.t.trim() === ifaceName ? null : Type.getFromTypename(tyNameAst, scope));
+    let ret = work.get('returntype').t.trim() === ifaceName ? null : Type.getFromTypename(work.get('returntype'), scope);
+    return new HasMethod(name, ast, params, ret);
   }
 
   eq(that: Equalable): boolean {
@@ -314,12 +339,37 @@ class HasOperator extends HasMethod {
 
   constructor(
     name: string,
+    ast: LPNode | null,
     params: (Type | null)[],
     ret: Type | null,
     isPrefix: boolean,
   ) {
-    super(name, params, ret);
+    super(name, ast, params, ret);
     this.isPrefix = isPrefix;
+  }
+
+  static fromOperatorTypeLine(ast: LPNode, scope: Scope, ifaceName: string): HasOperator {
+    let isPrefix = true;
+    let params: (Type | null)[] = [];
+    if (ast.get('optleftarg').has()) {
+      let leftTypename = ast.get('optleftarg').get('leftarg');
+      let leftTy = leftTypename.t.trim() === ifaceName ? null : Type.getFromTypename(leftTypename, scope);
+      params.push(leftTy);
+      isPrefix = false;
+    }
+    const op = ast.get('operators').t.trim();
+    let rightTypename = ast.get('rightarg');
+    let rightTy = rightTypename.t.trim() === ifaceName ? null : Type.getFromTypename(rightTypename, scope);
+    params.push(rightTy);
+    let retTypename = ast.get('fulltypename');
+    let retTy = retTypename.t.trim() === ifaceName ? null : Type.getFromTypename(retTypename, scope);
+    return new HasOperator(
+      op,
+      ast,
+      params,
+      retTy,
+      isPrefix,
+    );
   }
 
   eq(that: Equalable): boolean {
@@ -332,8 +382,54 @@ class Interface extends Type {
   methods: HasMethod[]
   operators: HasOperator[]
 
+  constructor(
+    name: string,
+    ast: LPNode | null,
+    fields: HasField[],
+    methods: HasMethod[],
+    operators: HasOperator[],
+  ) {
+    super(name, ast);
+    this.fields = fields;
+    this.methods = methods;
+    this.operators = operators;
+  }
+
   static fromAst(ast: LPNode, scope: Scope): Interface {
-    return null;
+    const name = ast.get('variable').t.trim();
+    let work = ast.get('interfacedef');
+    if (work.has('interfacebody')) {
+      work = work.get('interfacebody').get('interfacelist');
+      const lines = [
+        work.get('interfaceline'),
+        ...work.get('cdr').getAll().map(cdr => cdr.get('interfaceline')),
+      ];
+      let fields: HasField[] = [];
+      let methods: HasMethod[] = [];
+      let operators: HasOperator[] = [];
+      lines.forEach(line => {
+        if (line.has('propertytypeline')) {
+          fields.push(HasField.fromPropertyTypeLine(line.get('propertytypeline'), scope));
+        } else if (line.has('functiontypeline')) {
+          methods.push(HasMethod.fromFunctionTypeLine(line.get('functiontypeline'), scope, name));
+        } else if (line.has('operatortypeline')) {
+          operators.push(HasOperator.fromOperatorTypeLine(line.get('operatortypeline'), scope, name));
+        } else {
+          throw new Error(`invalid ast: ${work}`);
+        }
+      });
+      return new Interface(
+        name,
+        ast,
+        fields,
+        methods,
+        operators,
+      );
+    } else if (work.has('interfacealias')) {
+      TODO('interface aliases')
+    } else {
+      throw new Error(`invalid ast: ${work}`);
+    }
   }
 
   breakdown(): Builtin {
