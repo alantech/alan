@@ -6,7 +6,6 @@ use crate::vm::instruction::Instruction;
 use crate::vm::memory::HandlerMemory;
 use crate::vm::opcode::OpcodeFn;
 use crate::vm::program::Program;
-use crate::vm::run::EVENT_TX;
 use crate::vm::InstrType;
 use crate::vm::VMError;
 use crate::vm::VMResult;
@@ -217,15 +216,7 @@ impl HandlerFragment {
         .map(|i| {
           if let OpcodeFn::Cpu(func) = i.opcode.fun {
             //eprintln!("{} {} {} {}", i.opcode._name, i.args[0], i.args[1], i.args[2]);
-            let event = func(i.args.as_slice(), &mut hand_mem);
-            if let Some(event) = event? {
-              let event_tx = EVENT_TX.get().unwrap();
-              let event_sent = event_tx.send(event);
-              if event_sent.is_err() {
-                eprintln!("Event transmission error");
-                std::process::exit(2);
-              }
-            }
+            func(i.args.as_slice(), &mut hand_mem)?;
             Ok(())
           } else {
             Err(VMError::UnexpectedInstruction(InstrType::CPU))
