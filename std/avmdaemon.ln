@@ -35,3 +35,9 @@ on __ctrl fn (conn: InternalRequest) {
     },
   };
 }
+
+/**
+ * The Cluster Secret
+ */
+
+export fn getClusterSecret(): Maybe<string> = getcs();
