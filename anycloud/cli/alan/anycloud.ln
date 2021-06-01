@@ -82,11 +82,9 @@ on controlPort fn (conn: Connection) {
       res.body('ok').send();
     } else if modeStr == 'has' {
       res.body(ns.has(keyStr).toString()).send();
-    } 
-    else if modeStr == 'del' {
+    } else if modeStr == 'del' {
       res.body(ns.del(keyStr).toString()).send();
-    } 
-    else {
+    } else {
       res.status(400).body('Invalid access').send();
     }
   }
