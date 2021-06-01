@@ -117,6 +117,9 @@ none"
           oneFifth.toString().print();
           oneZeroth.toString().print();
 
+          const res = ok('foo');
+          print(res.getErr('there is no error'));
+
           emit exit 0;
         }
       "
@@ -133,7 +136,8 @@ Divide by zero error!
 0.2
 1.2345
 0.2
-Divide by zero error!"
+Divide by zero error!
+there is no error"
 
     It "runs js"
       When run test_js

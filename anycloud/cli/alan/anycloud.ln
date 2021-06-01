@@ -1,5 +1,5 @@
 from @std/app import start, print, eprint, exit
-from @std/avmdaemon import controlPort
+from @std/avmdaemon import controlPort, getClusterSecret
 from @std/cmd import exec
 from @std/datastore import namespace, getOr, set, has, del
 from @std/http import fetch, Request, Response
@@ -26,9 +26,17 @@ on start {
     emit exit dockerRes.exitCode;
   }
 
+  const clusterSecret = getClusterSecret();
+  if clusterSecret.isNone() {
+    eprint('No cluster secret defined');
+    emit exit 1;
+  }
+
   // We need to use the --env-file option only if we are sure the file exists 
   const envFile = exec('stat anycloud.env');
-  const containerStr = envFile.exitCode != 0 ? 'docker run --net=host -d anycloud/app:latest' : 'docker run --env-file anycloud.env --net=host -d anycloud/app:latest';
+  const containerStr = envFile.exitCode != 0 ? 
+    ('docker run --env CLUSTER_SECRET=' + clusterSecret.getOrExit() + ' --net=host -d anycloud/app:latest') : 
+    ('docker run --env CLUSTER_SECRET=' + clusterSecret.getOrExit() + ' --env-file anycloud.env --net=host -d anycloud/app:latest');
   const containerRes = exec(containerStr);
   if containerRes.exitCode != 0 {
     eprint('Docker container could not be started');

@@ -24,7 +24,7 @@ use tokio::time::sleep;
 use twox_hash::XxHash64;
 
 use crate::daemon::ctrl::NAIVE_CLIENT;
-use crate::daemon::daemon::CONTROL_PORT_CHANNEL;
+use crate::daemon::daemon::{CLUSTER_SECRET, CONTROL_PORT_CHANNEL};
 use crate::vm::event::{BuiltInEvents, EventEmit, HandlerFragment, NOP_ID};
 use crate::vm::http::HTTP_CLIENT;
 use crate::vm::memory::{FractalMemory, HandlerMemory, CLOSURE_ARG_MEM_START};
@@ -3818,6 +3818,21 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       }
       Ok(hand_mem)
     })
+  });
+
+  // cluster secret for avmdaemon
+  cpu!(getcs => fn(args, hand_mem) {
+    hand_mem.init_fractal(args[2])?;
+    match CLUSTER_SECRET.get().unwrap() {
+      Some(cluster_secret) => {
+        hand_mem.push_fixed(args[2], 1i64)?;
+        hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal(cluster_secret))?;
+      },
+      None => {
+        hand_mem.push_fixed(args[2], 0i64)?;
+      },
+    };
+    Ok(None)
   });
 
   // seq opcodes

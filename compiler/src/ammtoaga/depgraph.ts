@@ -644,6 +644,7 @@ export const opcodeParamMutabilities = {
   dsdel: [true, false],
   dsgetf: [false, false],
   dsgetv: [false, false],
+  getcs: [],
   newseq: [false],
   seqnext: [false],
   seqeach: [false, null],
