@@ -3832,7 +3832,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         hand_mem.push_fixed(args[2], 0i64)?;
       },
     };
-    Ok(None)
+    Ok(())
   });
 
   // seq opcodes
