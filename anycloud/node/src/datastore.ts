@@ -1,16 +1,32 @@
+import { dsdel, dsgetv, dshas, dssetv } from 'alan-js-runtime';
+
+const ns = 'kv';
+
 export const DS = new Proxy({}, {
-  get: function (oTarget, dsKey) {
-    return oTarget[dsKey]; //|| /** dsget call */ || undefined;
+  get: function (_, dsKey) {
+    const dsValue = dsgetv(ns, dsKey);
+    return dsValue.length === 2 ? dsValue[1] : 'Value not found';
   },
-  set: function (oTarget, dsKey, dsValue) {
-    if (dsKey in oTarget) { return false; }
-    return oTarget[dsKey] = dsValue/** dsset call */;
+  set: function (_, dsKey, dsValue) {
+    if (dshas(ns, dsKey)) { return false; }
+    dssetv(ns, dsKey, dsValue)
+    return true;
   },
-  deleteProperty: function (oTarget, dsKey) {
-    if (!(dsKey in oTarget)) { return false; }
-    return delete oTarget[dsKey]/** dsdet call */;
+  deleteProperty: function (_, dsKey) {
+    if (!(dshas(ns, dsKey))) { return false; }
+    return dsdel(ns, dsKey);
   },
-  has: function (oTarget, dsKey) {
-    return dsKey in oTarget // || /** dshas call */;
+  has: function (_, dsKey) {
+    return dshas(ns, dsKey);
   },
 });
+
+
+console.log(DS['foo'] = 'bar');
+console.log(DS['foo']);
+console.log('foo' in DS);
+console.log(delete DS['foo']);
+console.log('foo' in DS);
+console.log(DS['foo'] = {foo1: "bar1"});
+console.log(DS['foo']);
+console.log(delete DS['foo']);
