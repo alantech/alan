@@ -116,17 +116,14 @@ export default class Fn {
     );
   }
 
-  acceptsTypes(tys: Type[], scope: Scope): boolean {
-    let params = Object.values(this.params);
-    if (params.length !== tys.length) {
-      return false;
-    }
-    for (let ii = 0; ii < params.length; ii++) {
-      if (!params[ii].ty.compatibleWithConstraint(tys[ii], scope)) {
-        return false;
-      }
-    }
-    return true;
+  // FIXME: this should implement the matrix that i mentioned in the FIXME comment
+  // for Expr#inline
+  static select(fns: Fn[], argTys: Type[], scope: Scope): Fn[] {
+    return fns.filter(fn => {
+      let params = Object.values(fn.params);
+      return params.length === argTys.length &&
+        params.every((param, ii) => param.ty.compatibleWithConstraint(argTys[ii], scope));
+    });
   }
 
   asHandler(amm: Output, event: string) {

@@ -1,6 +1,8 @@
 import { LPNode } from '../lp';
+import Fn from './Fn';
+import Operator from './Operator';
 import Scope from './Scope';
-import { Equalable, genName, TODO } from './util';
+import { Equalable, genName, isFnArray, isOpArray, TODO } from './util';
 
 type Fields = {[name: string]: Type | null};
 type GenericArgs = {[name: string]: Type | null};
@@ -115,7 +117,7 @@ export class Builtin extends Type {
   }
 
   constrain(ty: Type, scope: Scope) {
-    if (ty instanceof OneOf || ty instanceof Generated) {
+    if (ty instanceof OneOf || ty instanceof Generated || ty instanceof Interface) {
       ty.constrain(this, scope);
     } else if (ty instanceof HasMethod) {
       TODO('get methods and operators for types');
@@ -193,20 +195,22 @@ class Struct extends Type {
     return TODO('breakdown structs');
   }
 
-  compatibleWithConstraint(ty: Type): boolean {
+  compatibleWithConstraint(ty: Type, scope: Scope): boolean {
     if (ty instanceof Struct) {
       return this.eq(ty);
     } else if (ty instanceof HasField) {
       // TODO:
     } else if (ty instanceof HasMethod) {
       TODO('get methods and operators for types');
+    } else if (ty instanceof Interface) {
+      return ty.compatibleWithConstraint(this, scope);
     } else {
       TODO('constraints with other types for structs');
     }
   }
 
-  constrain(to: Type) {
-    if (!this.compatibleWithConstraint(to)) {
+  constrain(to: Type, scope: Scope) {
+    if (!this.compatibleWithConstraint(to, scope)) {
       throw new Error(`incompatible types: ${this.name} is not compatible with ${to.name}`);
     }
   }
@@ -220,9 +224,9 @@ class Struct extends Type {
     return this; // TODO: this right?
   }
 
-  tempConstrain(to: Type) {
+  tempConstrain(to: Type, scope: Scope) {
     // TODO: can structs have temp constraints?
-    this.constrain(to);
+    this.constrain(to, scope);
   }
 
   resetTemp() {
@@ -236,6 +240,40 @@ abstract class Has extends Type {
     ast: LPNode | null,
   ) {
     super(name, ast);
+  }
+
+  private static none = () => [];
+
+  // convenience HOF for checking if a Type has the given field
+  static field(field: HasField): (ty: Type) => boolean {
+    return (ty: Type) => (ty instanceof Struct && ty.fields[field.name] && ty.fields[field.name].eq(field.ty));
+  }
+
+  // convenience HOF for checking if a Type has the given field
+  static methods(method: HasMethod, scope: Scope): (ty: Type) => Fn[] {
+    let fns = scope.get(method.name);
+    // if there is no fn by that name, RIP
+    if (!isFnArray(fns)) {
+      return Has.none;
+    }
+    // filter out
+    return (ty: Type) => [];
+  }
+
+  // convenience HOF for checking if a Type has the given field
+  static operators(operator: HasOperator, scope: Scope): (ty: Type) => Operator[] {
+    let ops: Operator[] = scope.get(operator.name);
+    // if there is no op by that name, RIP
+    if (!isOpArray(ops)) {
+      return Has.none;
+    }
+    // filter out ops that aren't the same fixity
+    ops = ops.filter(op => op.isPrefix === operator.isPrefix);
+    if (operator.isPrefix) {
+      return (ty: Type) => ops.filter(op => op.select(scope, operator.params[0] || ty) !== []);
+    } else {
+      return (ty: Type) => ops.filter(op => op.select(scope, operator.params[0] || ty, operator.params[1] || ty) !== []);
+	  }
   }
 
   breakdown(): Builtin {
@@ -293,6 +331,10 @@ class HasField extends Has {
     );
   }
 
+  check(ty: Struct): boolean {
+    return TODO()
+  }
+
   eq(that: Equalable): boolean {
     return super.eq(that) && that instanceof HasField && that.ty.eq(this.ty);
   }
@@ -324,6 +366,10 @@ class HasMethod extends Has {
     ].map(tyNameAst => tyNameAst.t.trim() === ifaceName ? null : Type.getFromTypename(tyNameAst, scope));
     let ret = work.get('returntype').t.trim() === ifaceName ? null : Type.getFromTypename(work.get('returntype'), scope);
     return new HasMethod(name, ast, params, ret);
+  }
+
+  check(ty: Type, scope: Scope): boolean {
+    return TODO()
   }
 
   eq(that: Equalable): boolean {
@@ -370,6 +416,20 @@ class HasOperator extends HasMethod {
       retTy,
       isPrefix,
     );
+  }
+
+  with(ty: Type): HasOperator {
+    return new HasOperator(
+      this.name,
+      this.ast,
+      this.params.map(p => p === null ? ty : p),
+      this.ret === null ? ty : this.ret,
+      this.isPrefix,
+    );
+  }
+
+  check(ty: Type, scope: Scope): boolean {
+    return TODO()
   }
 
   eq(that: Equalable): boolean {
@@ -436,11 +496,47 @@ class Interface extends Type {
     throw new Error(`interfaces cannot be broken down, and no concrete type was specified`);
   }
 
-  compatibleWithConstraint(ty: Type): boolean {
-    return TODO();
+  compatibleWithConstraint(ty: Type, scope: Scope): boolean {
+    if (ty instanceof Builtin || ty instanceof Struct) {
+      if (ty instanceof Builtin && this.fields.length !== 0) {
+        // if ty is a Builtin and there are field requirements,
+        // then this interface doesn't apply.
+        // TODO: this might change depending on the opaque types
+        // we introduce
+        return false;
+      } else if (ty instanceof Struct) {
+        // ty is a Struct, ensure it has the same fields
+        // if (!this.fields.every(field => ty.fields[field.name] && ty.fields[field.name].eq(field.ty))) {
+        //   return false;
+        // }
+        if (!this.fields.every(field => field.check(ty))) {
+          return false;
+        }
+      }
+
+      // check methods
+      return this.methods.every(method => method.check(ty, scope)) &&
+        this.operators.every(op => op.check(ty, scope));
+      // check operators
+    } else if (ty instanceof Interface) {
+      // ensure `ty ⊆ this`
+      return ty.fields.every(field => this.fields.find(f => f.eq(field))) &&
+        ty.methods.every(method => this.methods.find(m => m.eq(method))) &&
+        ty.operators.every(operator => this.operators.find(o => o.eq(operator)));
+    } else if (ty instanceof HasField) {
+      return this.fields.some(field => field.eq(ty));
+    } else if (ty instanceof HasOperator) {
+      return this.operators.some(operator => operator.eq(ty));
+    } else if (ty instanceof HasMethod) {
+      return this.methods.some(method => method.eq(ty));
+    } else if (ty instanceof Generated || ty instanceof OneOf) {
+      return ty.compatibleWithConstraint(this, scope);
+    } else {
+      throw new Error(`unsure of what type the constraint is - this error should never be thrown!`);
+    }
   }
 
-  constrain(to: Type) {
+  constrain(to: Type, scope: Scope) {
     return TODO();
   }
 

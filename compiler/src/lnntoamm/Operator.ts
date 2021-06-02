@@ -2,6 +2,7 @@ import { LPNode } from '../lp'
 import { Ref } from './Expr'
 import Fn from './Fn'
 import Scope from './Scope'
+import Type from './Types'
 import { isFnArray } from './util'
 
 class Operator {
@@ -41,7 +42,7 @@ class Operator {
     );
   }
 
-  select(scope: Scope, arg1: Ref, arg2?: Ref): Fn[] {
+  select(scope: Scope, arg1: Type, arg2?: Type): Fn[] {
     if ((this.isPrefix && arg2) || (!this.isPrefix && !arg2)) {
       console.log('~~~ ERROR');
       console.log('for operator:', this);
@@ -51,8 +52,8 @@ class Operator {
       }
       throw new Error(`nope`);
     }
-    const tys = [arg1.ty, ...(arg2 ? [arg2.ty] : [])];
-    return this.fns.filter(fn => fn.acceptsTypes(tys, scope));
+    const tys = [arg1, ...(arg2 ? [arg2] : [])];
+    return Fn.select(this.fns, tys, scope);
   }
 }
 

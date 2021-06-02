@@ -301,7 +301,7 @@ export default abstract class Expr {
             precedences[applyIdx] = dec.ref();
           }
           const applyTo = precedences[applyIdx] as Ref;
-          let fns = operators.reduce((fns, op) => [...fns, ...op.select(metadata.scope, applyTo)], new Array<Fn>());
+          let fns = operators.reduce((fns, op) => [...fns, ...op.select(metadata.scope, applyTo.ty)], new Array<Fn>());
           precedences[applyIdx] = new Call(null, fns, null, [applyTo], metadata.scope);
           let rm = precedences.splice(idx, applyIdx);
           // update indices
@@ -349,7 +349,7 @@ export default abstract class Expr {
         }
         while (ops.length > 0) {
           const op = ops.pop();
-          const selected = op.select(metadata.scope, left, right);
+          const selected = op.select(metadata.scope, left.ty, right.ty);
           fns.push(...selected);
         }
         const call = new Call(
@@ -447,7 +447,7 @@ class Call extends Expr {
     let argTys = args.map(arg => arg.ty);
     // console.log('~~~~~~~~~', ast.t.trim());
     // console.log('before filter', fns);
-    fns = fns.filter(fn => fn.acceptsTypes(argTys, metadata.scope));
+    fns = Fn.select(fns, argTys, metadata.scope);
     // console.log('after filter', fns);
     // now, constrain all of the args to their possible types
     // makes it so that the type of the parameters in each position are in their own list
@@ -500,9 +500,9 @@ class Call extends Expr {
   */
   inline(amm: Output, kind: AssignKind, name: string, ty: Builtin) {
     const argTys = this.args.map(arg => arg.ty.instance());
-    const selected = this.fns.reverse().find(fn => fn.acceptsTypes(argTys, this.scope)) || null;
+    const selected = Fn.select(this.fns.reverse(), argTys, this.scope) || [];
     // console.log('!!!!!!!!!!', this.ast.t.trim(), selected);
-    if (selected === null) {
+    if (selected.length === 0) {
       // TODO: to get better error reporting, we need to pass an ast when using
       // operators. i'm not worried about error reporting yet, though :)
       console.log('~~~ ERROR')
@@ -512,7 +512,8 @@ class Call extends Expr {
       console.log('expected output type:', ty);
       throw new Error(`no function selected`);
     }
-    selected.inline(amm, this.args, kind, name, ty);
+    const fn = selected.pop();
+    fn.inline(amm, this.args, kind, name, ty);
   }
 }
 
