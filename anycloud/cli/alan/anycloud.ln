@@ -46,7 +46,9 @@ on start {
 }
 
 on connection fn (conn: Connection) {
+  print('Normal connection');
   const req = conn.req;
+  print(req.url);
   const innerRes = fetch(new Request {
     method: req.method,
     headers: req.headers,
@@ -66,7 +68,9 @@ on connection fn (conn: Connection) {
 }
 
 on controlPort fn (conn: Connection) {
+  print('Control port connection');
   const req = conn.req;
+  print(req.url);
   const res = conn.res;
   const modeAndKey = getModeAndKey(req.url);
   if modeAndKey.isErr() {
