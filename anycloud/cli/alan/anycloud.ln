@@ -1,8 +1,14 @@
 from @std/app import start, print, eprint, exit
+from @std/avmdaemon import controlPort, getClusterSecret
 from @std/cmd import exec
-from @std/httpserver import connection, Connection, body, send
+from @std/datastore import namespace, getOr, set, has, del
 from @std/http import fetch, Request, Response
-from @std/avmdaemon import getClusterSecret
+from @std/httpserver import connection, Connection, body, send, status
+
+type ModeAndKey {
+  mode: string,
+  key: string,
+}
 
 on start {
   print('Starting Anycloud...');
@@ -59,3 +65,42 @@ on connection fn (conn: Connection) {
   }
 }
 
+on controlPort fn (conn: Connection) {
+  const req = conn.req;
+  const res = conn.res;
+  const modeAndKey = getModeAndKey(req.url);
+  if modeAndKey.isErr() {
+    res.status(400).body(modeAndKey.getErr(error("Invalid access")).toString()).send();
+  } else {
+    const ns = namespace('kv');
+    const modeStr = modeAndKey.getOrExit().mode;
+    const keyStr = modeAndKey.getOrExit().key;
+    if modeStr == 'get' {
+      res.body(ns.getOr(keyStr, '<key not found>')).send();
+    } else if modeStr == 'set' {
+      ns.set(keyStr, req.body);
+      res.body('ok').send();
+    } else if modeStr == 'has' {
+      res.body(ns.has(keyStr).toString()).send();
+    } else if modeStr == 'del' {
+      res.body(ns.del(keyStr).toString()).send();
+    } else {
+      res.status(400).body('Invalid access').send();
+    }
+  }
+}
+
+fn getModeAndKey(url: string): Result<ModeAndKey> {
+  const parts = url.split('/');
+  const len = parts.length();
+  const mode = parts[len - 2]; 
+  const key = parts[len - 1];
+  if mode.isErr() || key.isErr() {
+    return err('Invalid URL');
+  } else {
+    return ok(new ModeAndKey {
+      mode: mode || 'invalid',
+      key: key || 'invalid',
+    });
+  }
+}
