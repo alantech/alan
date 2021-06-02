@@ -35,8 +35,8 @@ on start {
   // We need to use the --env-file option only if we are sure the file exists 
   const envFile = exec('stat anycloud.env');
   const containerStr = envFile.exitCode != 0 ? 
-    ('docker run --env CLUSTER_SECRET=' + clusterSecret.getOrExit() + ' -p 8088:8088 -d anycloud/app:latest') : 
-    ('docker run --env CLUSTER_SECRET=' + clusterSecret.getOrExit() + ' --env-file anycloud.env -p 8088:8088 -d anycloud/app:latest');
+    ('docker run --env CLUSTER_SECRET=' + clusterSecret.getOrExit() + ' --net=host -d anycloud/app:latest') : 
+    ('docker run --env CLUSTER_SECRET=' + clusterSecret.getOrExit() + ' --env-file anycloud.env --net=host -d anycloud/app:latest');
   const containerRes = exec(containerStr);
   if containerRes.exitCode != 0 {
     eprint('Docker container could not be started');
@@ -63,7 +63,7 @@ on connection fn (conn: Connection) {
     const unwrappedRes = innerRes.getOrExit(); // Safe because of conditional checking
     res.status = unwrappedRes.status;
     res.headers = unwrappedRes.headers;
-    res.body('Normal connection ' + unwrappedRes.body).send();
+    res.body(unwrappedRes.body).send();
   }
 }
 
@@ -74,22 +74,22 @@ on controlPort fn (conn: Connection) {
   const res = conn.res;
   const modeAndKey = getModeAndKey(req.url);
   if modeAndKey.isErr() {
-    res.status(400).body('Control port connection ' + modeAndKey.getErr(error("Invalid access")).toString()).send();
+    res.status(400).body(modeAndKey.getErr(error("Invalid access")).toString()).send();
   } else {
     const ns = namespace('kv');
     const modeStr = modeAndKey.getOrExit().mode;
     const keyStr = modeAndKey.getOrExit().key;
     if modeStr == 'get' {
-      res.body('Control port connection ' + ns.getOr(keyStr, '<key not found>')).send();
+      res.body(ns.getOr(keyStr, '<key not found>')).send();
     } else if modeStr == 'set' {
       ns.set(keyStr, req.body);
       res.body('ok').send();
     } else if modeStr == 'has' {
-      res.body('Control port connection ' + ns.has(keyStr).toString()).send();
+      res.body(ns.has(keyStr).toString()).send();
     } else if modeStr == 'del' {
-      res.body('Control port connection ' + ns.del(keyStr).toString()).send();
+      res.body(ns.del(keyStr).toString()).send();
     } else {
-      res.status(400).body('Control port connection ' + 'Invalid access').send();
+      res.status(400).body('Invalid access').send();
     }
   }
 }
