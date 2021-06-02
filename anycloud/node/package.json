@@ -3,13 +3,15 @@
   "version": "0.1.41",
   "description": "CLI to elastically scale webservers in any cloud provider",
   "main": "dist/index.js",
+  "types": "index.d.ts",
   "bin": {
     "anycloud": "./bin/anycloud"
   },
   "scripts": {
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "preinstall": "node ./get-anycloud.js"
+    "preinstall": "node ./get-anycloud.js",
+    "prepublish": "rm -rf bin && tsc"
   },
   "repository": {
     "type": "git",
