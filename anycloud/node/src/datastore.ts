@@ -1,8 +1,8 @@
-require('cross-fetch/polyfill')
+import fetch from 'cross-fetch';
+const https = require('https');
 
-class DataStore {
+export class DataStore {
   private localDS: any;
-  private ns: string;
   private clusterSecret?: string;
   private isLocal: boolean;
   private headers?: any;
@@ -10,15 +10,15 @@ class DataStore {
 
   constructor() {
     this.localDS = {};
-    this.ns = 'kv';
     this.clusterSecret = process.env.CLUSTER_SECRET;
     this.isLocal = this.clusterSecret ? false : true;
-    this.headers = this.clusterSecret ? {[this.clusterSecret]: 'true'} : null;
-    this.ctrlPortUrl = 'https://localhost:4142';
+    this.headers = this.clusterSecret ? { [this.clusterSecret]: 'true' } : null;
+    this.ctrlPortUrl = 'https://localhost:4142/app/';
+    // To avoid failure due to self signed certs
+    https.globalAgent.options.rejectUnauthorized = false;
   }
 
   private async request(method: string, url: string, body?: any): Promise<Response> {
-    console.log('localpath', this.isLocal);
     return fetch(url, {
       method: method,
       headers: this.headers,
@@ -26,42 +26,52 @@ class DataStore {
     });
   }
 
-  get(dsKey: string): any | Promise<Response> {
-    if (this.isLocal) return this.localDS[dsKey];
-    return this.request('GET', `${this.ctrlPortUrl}/app/get/${dsKey.toString()}`);
-  }
-
-  set(dsKey: string, dsValue: any): any | Promise<Response> {
-    if (this.isLocal) {
-      return this.localDS[dsKey] = dsValue;
+  async get(dsKey: string): Promise<string> {
+    if (this.isLocal) return Promise.resolve(this.localDS[dsKey].toString());
+    try {
+      const res = await this.request('GET', `${this.ctrlPortUrl}get/${dsKey.toString()}`);
+      return await res.text();
+    } catch (e) {
+      return Promise.resolve(e);
     }
-    return this.request('POST', `${this.ctrlPortUrl}/app/set/${dsKey.toString()}`, dsValue);
   }
 
-  del(dsKey: string): boolean | Promise<Response> {
+  async set(dsKey: string, dsValue: any): Promise<string> {
+    if (this.isLocal) {
+      this.localDS[dsKey] = dsValue;
+      return Promise.resolve('ok');
+    }
+    try {
+      const res = await this.request('POST', `${this.ctrlPortUrl}set/${dsKey.toString()}`, dsValue);
+      return await res.text();
+    } catch (_) {
+      return Promise.resolve('fail');
+    }
+  }
+
+  async del(dsKey: string): Promise<boolean> {
     if (this.isLocal) {
       if (!(dsKey in this.localDS)) return false;
-      return delete this.localDS[dsKey];
+      return Promise.resolve(delete this.localDS[dsKey]);
     }
-    return this.request('GET', `${this.ctrlPortUrl}/app/del/${dsKey.toString()}`);
+    try {
+      const res = await this.request('GET', `${this.ctrlPortUrl}del/${dsKey.toString()}`);
+      return !!(await res.text());
+    } catch (_) {
+      return Promise.resolve(false);
+    }
   }
 
-  has(dsKey: string): boolean | Promise<Response> {
+  async has(dsKey: string): Promise<boolean> {
     if (this.isLocal) {
-      return dsKey in this.localDS;
+      return Promise.resolve(dsKey in this.localDS);
     }
-    return this.request('GET', `${this.ctrlPortUrl}/app/has/${dsKey.toString()}`);
+    try {
+      const res = await this.request('GET', `${this.ctrlPortUrl}has/${dsKey.toString()}`);
+      return !!(await res.text());
+    } catch (_) {
+      return Promise.resolve(false);
+    }
   }
 }
 
-export const DS = new DataStore();
-
-// TODO: remove before merge
-console.log(DS.set('foo', 'bar'));
-console.log(DS.get('foo'));
-console.log(DS.has('foo'));
-console.log(DS.del('foo'));
-console.log(DS.has('foo'));
-console.log(DS.set('foo', {foo1: "bar1"}));
-console.log(DS.get('foo'));
-console.log(DS.del('foo'));
