@@ -32,7 +32,9 @@ export class DataStore {
   }
   async get(dsKey: string): Promise<string> {
     if (this.isLocal) {
-      return dsKey in this.localDS ? this.localDS[dsKey].toString() : undefined;
+      return dsKey in this.localDS ?
+        JSON.stringify(this.localDS[dsKey]) || this.localDS[dsKey].toString() :
+        undefined;
     }
     try {
       return await this.request('GET', `${this.ctrlPortUrl}get/${dsKey.toString()}`);
