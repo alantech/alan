@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
     "preinstall": "node ./get-anycloud.js",
     "prepublish": "rm -rf bin && tsc"
   },
@@ -29,6 +29,9 @@
   },
   "homepage": "https://anycloudapp.com",
   "devDependencies": {
+    "@types/jest": "^26.0.23",
+    "jest": "^27.0.4",
+    "ts-jest": "^27.0.2",
     "typescript": "^4.1.5"
   },
   "dependencies": {
