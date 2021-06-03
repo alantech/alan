@@ -33,6 +33,6 @@
   },
   "dependencies": {
     "@types/node": "^14.14.28",
-    "cross-fetch": "^3.0.6"
+    "node-fetch": "^2.6.1"
   }
 }
