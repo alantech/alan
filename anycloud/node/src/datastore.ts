@@ -31,6 +31,7 @@ export class DataStore {
     return await response.text();
   }
   async get(dsKey: string): Promise<string> {
+    if (!dsKey) return undefined;
     if (this.isLocal) {
       return dsKey in this.localDS ?
         JSON.stringify(this.localDS[dsKey]) || this.localDS[dsKey].toString() :
@@ -44,6 +45,7 @@ export class DataStore {
   }
 
   async set(dsKey: string, dsValue: any): Promise<string> {
+    if (!dsKey) return 'fail';
     if (this.isLocal) {
       this.localDS[dsKey] = dsValue;
       return 'ok';
@@ -56,6 +58,7 @@ export class DataStore {
   }
 
   async del(dsKey: string): Promise<boolean> {
+    if (!dsKey) return false;
     if (this.isLocal) {
       return dsKey in this.localDS ? delete this.localDS[dsKey] : false;
     }
@@ -67,6 +70,7 @@ export class DataStore {
   }
 
   async has(dsKey: string): Promise<boolean> {
+    if (!dsKey) return false;
     if (this.isLocal) {
       return dsKey in this.localDS;
     }
