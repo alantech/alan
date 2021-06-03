@@ -11,7 +11,8 @@
     "build": "tsc",
     "test": "jest",
     "preinstall": "node ./get-anycloud.js",
-    "prepublish": "jest && rm -rf bin && tsc"
+    "prepublish": "jest && rm -rf bin && tsc",
+    "clean": "rm -rf dist bin node_modules"
   },
   "repository": {
     "type": "git",
