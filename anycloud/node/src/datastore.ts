@@ -34,18 +34,14 @@ export class DataStore {
     if (!dsKey) return undefined;
     if (this.isLocal) {
       if (dsKey in this.localDS) {
-        const val = this.localDS[dsKey]; 
-        if (typeof(val) === 'object') {
-          return JSON.stringify(val);
-        } else {
-          return `${val}`;
-        }
+        const val = this.localDS[dsKey];
+        return JSON.stringify(val);
       } else {
         return undefined;
       }
     }
     try {
-      return await this.request('GET', `${this.ctrlPortUrl}get/${dsKey.toString()}`);
+      return JSON.stringify(await this.request('GET', `${this.ctrlPortUrl}get/${dsKey.toString()}`));
     } catch (e) {
       return e;
     }
@@ -53,12 +49,20 @@ export class DataStore {
 
   async set(dsKey: string, dsValue: any): Promise<string> {
     if (!dsKey) return 'fail';
+    const parsedDSValue = (function () {
+      try {
+        return JSON.stringify(dsValue);
+      } catch (_) {
+        return null;
+      }
+    })();
+    if (parsedDSValue === null) return 'fail';
     if (this.isLocal) {
-      this.localDS[dsKey] = dsValue;
+      this.localDS[dsKey] = parsedDSValue;
       return 'ok';
     }
     try {
-      return await this.request('POST', `${this.ctrlPortUrl}set/${dsKey.toString()}`, dsValue);
+      return await this.request('POST', `${this.ctrlPortUrl}set/${dsKey.toString()}`, parsedDSValue);
     } catch (_) {
       return 'fail';
     }
