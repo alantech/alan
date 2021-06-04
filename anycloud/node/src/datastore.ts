@@ -37,19 +37,23 @@ class DataStore {
 
   async get(dsKey: string): Promise<string> {
     if (DataStore.isInvalidKey(dsKey)) return undefined;
+    let dsValue;
     if (this.isLocal) {
       if (dsKey in this.localDS) {
-        const val = this.localDS[dsKey];
-        return JSON.parse(val) || val;
+        dsValue = this.localDS[dsKey];
       } else {
         return undefined;
       }
     }
     try {
-      const dsValue = await this.request('GET', `${this.ctrlPortUrl}get/${dsKey}`);
-      return JSON.parse(dsValue) || dsValue;
+      dsValue = await this.request('GET', `${this.ctrlPortUrl}get/${dsKey}`);
     } catch (e) {
       return e;
+    }
+    try {
+      return JSON.parse(dsValue);
+    } catch (_) {
+      return dsValue === '<key not found>' ? undefined : dsValue;
     }
   }
 
