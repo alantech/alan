@@ -98,24 +98,30 @@ class DataStore {
   }
 }
 
-const ds = new DataStore();
+const dsHandler = () => {
+  const ds = new DataStore();
+  return {
+    get: async (_, dsKey: string): Promise<string> => {
+      if (DataStore.isInvalidKey(dsKey)) {
+        return undefined;
+      }
+      return await ds.get(dsKey);
+    },
+    set: (_, dsKey: string, dsValue: any): boolean => {
+      if (DataStore.isInvalidKey(dsKey)) {
+        return false;
+      }
+      ds.set(dsKey, dsValue);
+      return true;
+    },
+    deleteProperty: (_, dsKey: string): boolean => {
+      if (DataStore.isInvalidKey(dsKey)) {
+        return false;
+      }
+      ds.del(dsKey);
+      return true;
+    }
+  };
+};
 
-export const DS = new Proxy({}, {
-  get: async (_, dsKey: string): Promise<string> => {
-    return await ds.get(dsKey);
-  },
-  set: (_, dsKey: string, dsValue: any): boolean => {
-    if (DataStore.isInvalidKey(dsKey)) {
-      return false;
-    }
-    ds.set(dsKey, dsValue);
-    return true;
-  },
-  deleteProperty: (_, dsKey: string): boolean => {
-    if (DataStore.isInvalidKey(dsKey)) {
-      return false;
-    }
-    ds.del(dsKey);
-    return true;
-  }
-});
+export const datastore = new Proxy({}, dsHandler());
