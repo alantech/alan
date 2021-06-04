@@ -173,6 +173,10 @@ class Module {
   addInterfaceAst(interfaceAst: LPNode, isExport: boolean) {
     interfaceAst = interfaceAst.get('interfaces');
     const newInterface = Type.fromInterfacesAst(interfaceAst, this.moduleScope);
+    const alreadyInScope = this.moduleScope.shallowGet(newInterface.name);
+    if (alreadyInScope !== null) {
+      throw new Error(`Tried to define interface ${newInterface.name}, but that name is already in scope`);
+    }
     this.moduleScope.put(newInterface.name, newInterface);
     if (isExport) {
       this.exportScope.put(newInterface.name, newInterface);
@@ -183,6 +187,10 @@ class Module {
     constAst = constAst.get('constdeclaration');
     const newConst = Const.fromAst(constAst, this.moduleScope);
     this.moduleScope.put(newConst.name, newConst);
+    const alreadyInScope = this.moduleScope.shallowGet(newConst.name);
+    if (alreadyInScope !== null) {
+      throw new Error(`Tried to define const ${newConst.name}, but that name is already in scope`);
+    }
     if (isExport) {
       this.exportScope.put(newConst.name, newConst);
     }
@@ -191,6 +199,10 @@ class Module {
   addEventAst(eventAst: LPNode, isExport: boolean) {
     eventAst = eventAst.get('events');
     const newEvent = Event.fromAst(eventAst, this.moduleScope);
+    const alreadyInScope = this.moduleScope.shallowGet(newEvent.name);
+    if (alreadyInScope !== null) {
+      throw new Error(`Tried to define event ${newEvent.name}, but that name is already in scope`);
+    }
     this.moduleScope.put(newEvent.name, newEvent);
     if (isExport) {
       this.exportScope.put(newEvent.name, newEvent);
@@ -207,9 +219,7 @@ class Module {
     if (isExport) insertScopes.push(this.exportScope);
     for (let scope of insertScopes) {
       const otherFns = scope.shallowGet(newFn.name) || [];
-      if (!(otherFns instanceof Array)) {
-        throw new Error(`Tried to define function ${newFn.name}, but a non-function by that name is already in scope`);
-      } else if (!isFnArray(otherFns)) {
+      if (!isFnArray(otherFns)) {
         throw new Error(`Tried to define function ${newFn.name}, but a non-function by that name is already in scope`);
       }
       scope.put(newFn.name, [...otherFns, newFn]);
