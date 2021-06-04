@@ -35,13 +35,13 @@ export class DataStore {
     if (this.isLocal) {
       if (dsKey in this.localDS) {
         const val = this.localDS[dsKey];
-        return JSON.stringify(val);
+        return JSON.parse(val);
       } else {
         return undefined;
       }
     }
     try {
-      return JSON.stringify(await this.request('GET', `${this.ctrlPortUrl}get/${dsKey.toString()}`));
+      return JSON.parse(await this.request('GET', `${this.ctrlPortUrl}get/${dsKey.toString()}`));
     } catch (e) {
       return e;
     }
