@@ -1,7 +1,7 @@
 import fetch from 'node-fetch';
 const https = require('https');
 
-export class DataStore {
+class DataStore {
   private localDS: any;
   private clusterSecret?: string;
   private isLocal: boolean;
@@ -30,6 +30,7 @@ export class DataStore {
     });
     return await response.text();
   }
+
   async get(dsKey: string): Promise<string> {
     if (!dsKey) return undefined;
     if (this.isLocal) {
@@ -92,3 +93,25 @@ export class DataStore {
     }
   }
 }
+
+const ds = new DataStore();
+
+export const DS = new Proxy({}, {
+  get: async (_, dsKey: string): Promise<string> => {
+    return await ds.get(dsKey);
+  },
+  set: (_, dsKey: string, dsValue: any): boolean => {
+    if (!dsKey) {
+      return false;
+    }
+    ds.set(dsKey, dsValue);
+    return true;
+  },
+  deleteProperty: (_, dsKey: string): boolean => {
+    if (!dsKey) {
+      return false;
+    }
+    ds.del(dsKey);
+    return true;
+  }
+});
