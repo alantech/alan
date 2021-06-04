@@ -22,7 +22,7 @@ class DataStore {
   }
 
   static isInvalidKey(key: string): boolean {
-    return !key || typeof(key) !== 'string';
+    return !key || typeof (key) !== 'string';
   }
 
   private async request(method: string, url: string, body?: any): Promise<string> {
@@ -35,8 +35,8 @@ class DataStore {
     return await response.text();
   }
 
-  async get(dsKey: string): Promise<string> {
-    if (DataStore.isInvalidKey(dsKey)) return undefined;
+  async get(dsKey: string): Promise<string | Error> {
+    if (DataStore.isInvalidKey(dsKey)) return new Error('Invalid key');
     let dsValue;
     if (this.isLocal) {
       if (dsKey in this.localDS) {
@@ -44,11 +44,12 @@ class DataStore {
       } else {
         return undefined;
       }
-    }
-    try {
-      dsValue = await this.request('GET', `${this.ctrlPortUrl}get/${dsKey}`);
-    } catch (e) {
-      return e;
+    } else {
+      try {
+        dsValue = await this.request('GET', `${this.ctrlPortUrl}get/${dsKey}`);
+      } catch (e) {
+        return Error(e);
+      }
     }
     try {
       return JSON.parse(dsValue);
@@ -57,8 +58,8 @@ class DataStore {
     }
   }
 
-  async set(dsKey: string, dsValue: any): Promise<string> {
-    if (DataStore.isInvalidKey(dsKey)) return 'fail';
+  async set(dsKey: string, dsValue: any): Promise<boolean | Error> {
+    if (DataStore.isInvalidKey(dsKey)) return new Error('Invalid key');
     const maybeStringifiedValue = (function () {
       try {
         return JSON.stringify(dsValue);
@@ -68,36 +69,37 @@ class DataStore {
     })();
     if (this.isLocal) {
       this.localDS[dsKey] = maybeStringifiedValue;
-      return 'ok';
+      return true;
     }
     try {
-      return await this.request('POST', `${this.ctrlPortUrl}set/${dsKey}`, maybeStringifiedValue);
-    } catch (_) {
-      return 'fail';
+      await this.request('POST', `${this.ctrlPortUrl}set/${dsKey}`, maybeStringifiedValue)
+      return true;
+    } catch (e) {
+      return Error(e);
     }
   }
 
-  async del(dsKey: string): Promise<boolean> {
-    if (DataStore.isInvalidKey(dsKey)) return false;
+  async del(dsKey: string): Promise<boolean | Error> {
+    if (DataStore.isInvalidKey(dsKey)) return new Error('Invalid key');
     if (this.isLocal) {
       return dsKey in this.localDS ? delete this.localDS[dsKey] : false;
     }
     try {
       return await this.request('GET', `${this.ctrlPortUrl}del/${dsKey}`) === 'true';
-    } catch (_) {
-      return false;
+    } catch (e) {
+      return Error(e);
     }
   }
 
-  async has(dsKey: string): Promise<boolean> {
-    if (DataStore.isInvalidKey(dsKey)) return false;
+  async has(dsKey: string): Promise<boolean | Error> {
+    if (DataStore.isInvalidKey(dsKey)) return new Error('Invalid key');
     if (this.isLocal) {
       return dsKey in this.localDS;
     }
     try {
       return await this.request('GET', `${this.ctrlPortUrl}has/${dsKey}`) === 'true';
-    } catch (_) {
-      return false;
+    } catch (e) {
+      return Error(e);;
     }
   }
 }
@@ -109,7 +111,8 @@ const dsHandler = () => {
       if (DataStore.isInvalidKey(dsKey)) {
         return undefined;
       }
-      return await ds.get(dsKey);
+      const response = await ds.get(dsKey);
+      return response instanceof Error ? undefined : response;
     },
     set: (_, dsKey: string, dsValue: any): boolean => {
       if (DataStore.isInvalidKey(dsKey)) {
