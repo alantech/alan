@@ -1,7 +1,7 @@
 import fetch from 'node-fetch';
 const https = require('https');
 
-class DataStore {
+class Datastore {
   private localDS: any;
   private clusterSecret?: string;
   private isLocal: boolean;
@@ -36,7 +36,7 @@ class DataStore {
   }
 
   async get(dsKey: string): Promise<string | undefined | Error> {
-    if (DataStore.isInvalidKey(dsKey)) return new Error('Invalid key');
+    if (Datastore.isInvalidKey(dsKey)) return new Error('Invalid key');
     let dsValue;
     if (this.isLocal) {
       if (dsKey in this.localDS) {
@@ -59,7 +59,7 @@ class DataStore {
   }
 
   async set(dsKey: string, dsValue: any): Promise<boolean | Error> {
-    if (DataStore.isInvalidKey(dsKey)) return new Error('Invalid key');
+    if (Datastore.isInvalidKey(dsKey)) return new Error('Invalid key');
     const maybeStringifiedValue = (function () {
       try {
         return JSON.stringify(dsValue);
@@ -80,7 +80,7 @@ class DataStore {
   }
 
   async del(dsKey: string): Promise<boolean | Error> {
-    if (DataStore.isInvalidKey(dsKey)) return new Error('Invalid key');
+    if (Datastore.isInvalidKey(dsKey)) return new Error('Invalid key');
     if (this.isLocal) {
       return dsKey in this.localDS ? delete this.localDS[dsKey] : false;
     }
@@ -92,7 +92,7 @@ class DataStore {
   }
 
   async has(dsKey: string): Promise<boolean | Error> {
-    if (DataStore.isInvalidKey(dsKey)) return new Error('Invalid key');
+    if (Datastore.isInvalidKey(dsKey)) return new Error('Invalid key');
     if (this.isLocal) {
       return dsKey in this.localDS;
     }
@@ -105,24 +105,24 @@ class DataStore {
 }
 
 const dsHandler = () => {
-  const ds = new DataStore();
+  const ds = new Datastore();
   return {
     get: async (_, dsKey: string): Promise<string | undefined> => {
-      if (DataStore.isInvalidKey(dsKey)) {
+      if (Datastore.isInvalidKey(dsKey)) {
         return undefined;
       }
       const response = await ds.get(dsKey);
       return response instanceof Error ? undefined : response;
     },
     set: (_, dsKey: string, dsValue: any): boolean => {
-      if (DataStore.isInvalidKey(dsKey)) {
+      if (Datastore.isInvalidKey(dsKey)) {
         return false;
       }
       ds.set(dsKey, dsValue);
       return true;
     },
     deleteProperty: (_, dsKey: string): boolean => {
-      if (DataStore.isInvalidKey(dsKey)) {
+      if (Datastore.isInvalidKey(dsKey)) {
         return false;
       }
       ds.del(dsKey);
@@ -131,4 +131,5 @@ const dsHandler = () => {
   };
 };
 
-export const datastore = new Proxy({}, dsHandler());
+export const ds = new Proxy({}, dsHandler());
+export const datastore = new Datastore();
