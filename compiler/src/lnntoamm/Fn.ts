@@ -119,10 +119,11 @@ export default class Fn {
   // FIXME: this should implement the matrix that i mentioned in the FIXME comment
   // for Expr#inline
   static select(fns: Fn[], argTys: Type[], scope: Scope): Fn[] {
+    console.log('+++++++++++++++ testing', fns, argTys)
     return fns.filter(fn => {
       let params = Object.values(fn.params);
       return params.length === argTys.length &&
-        params.every((param, ii) => param.ty.compatibleWithConstraint(argTys[ii], scope));
+        params.every((param, ii) => argTys[ii].compatibleWithConstraint(param.ty, scope));
     });
   }
 

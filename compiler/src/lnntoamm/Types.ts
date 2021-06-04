@@ -508,8 +508,8 @@ class Interface extends Type {
       }
 
       // check methods
-      return this.methods.every(method => method.find(ty, scope)) &&
-        this.operators.every(op => op.find(ty, scope));
+      return this.methods.every(m => Has.method(m, scope, ty)) &&
+        this.operators.every(o => Has.operator(o, scope, ty));
       // check operators
     } else if (ty instanceof Interface) {
       // ensure `ty ⊆ this`

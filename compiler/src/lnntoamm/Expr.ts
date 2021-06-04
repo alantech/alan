@@ -1,4 +1,4 @@
-import { LPNode, NamedAnd, NamedOr } from '../lp';
+import { LPNode, NamedAnd, NamedOr, NulLP } from '../lp';
 import Output, { AssignKind } from './Amm';
 import Fn from './Fn';
 import opcodes from './opcodes';
@@ -49,7 +49,7 @@ export default abstract class Expr {
         if (next.has('fncall')) {
           // TODO: this is broken because operators don't pass their AST yet
           // let text = `${expr !== null ? expr.ast.t.trim() + '.' : ''}${varName}${next.get('fncall').t.trim()}`;
-          let text = `${expr !== null ? expr + '.' : ''}${varName}${next.get('fncall').t.trim()}`;
+          let text = `${expr !== null ? expr.ast.get('variable').t + '.' : ''}${varName}${next.get('fncall').t.trim()}`;
           let and: any = {
             fnname: work.get('variable'),
             fncall: next.get('fncall'),
@@ -302,7 +302,7 @@ export default abstract class Expr {
           }
           const applyTo = precedences[applyIdx] as Ref;
           let fns = operators.reduce((fns, op) => [...fns, ...op.select(metadata.scope, applyTo.ty)], new Array<Fn>());
-          precedences[applyIdx] = new Call(null, fns, null, [applyTo], metadata.scope);
+          precedences[applyIdx] = new Call(new NulLP(), fns, null, [applyTo], metadata.scope);
           let rm = precedences.splice(idx, applyIdx);
           // update indices
           idxs = idxs.map((idx, kk) => kk > jj ? idx - rm.length : kk);
@@ -353,7 +353,7 @@ export default abstract class Expr {
           fns.push(...selected);
         }
         const call = new Call(
-          null,
+          new NulLP(),
           fns,
           null,
           [left, right],
@@ -392,6 +392,7 @@ class Call extends Expr {
     args: Ref[],
     scope: Scope,
   ) {
+    // console.log('~~~ generating call ', ast, fns, maybeClosure, args, scope);
     super(ast);
     if (fns.length === 0 && maybeClosure === null) {
       throw new Error(`no function possibilities provided for ${ast.t.trim()}`);
@@ -445,10 +446,10 @@ class Call extends Expr {
     }
     // first reduction
     let argTys = args.map(arg => arg.ty);
-    // console.log('~~~~~~~~~', ast.t.trim());
-    // console.log('before filter', fns);
+    console.log('~~~~~~~~~', ast.t.trim());
+    console.log('before filter', fns);
     fns = Fn.select(fns, argTys, metadata.scope);
-    // console.log('after filter', fns);
+    console.log('after filter', fns);
     // now, constrain all of the args to their possible types
     // makes it so that the type of the parameters in each position are in their own list
     // ie, given `do(int8, int16)` and `do(int8, int8)`, will result in this 2D array:
