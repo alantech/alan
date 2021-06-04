@@ -1,4 +1,4 @@
-import { LPNode } from '../lp';
+import { LPNode, NulLP } from '../lp';
 import Fn from './Fn';
 import Operator from './Operator';
 import Scope from './Scope';
@@ -107,10 +107,16 @@ export class Builtin extends Type {
       return this.eq(ty);
     } else if (ty instanceof OneOf || ty instanceof Generated) {
       return ty.compatibleWithConstraint(this, scope);
+    } else if (ty instanceof HasOperator) {
+      return Has.operator(ty, scope, this).length !== 0;
     } else if (ty instanceof HasMethod) {
-      TODO('get methods and operators for types');
+      return Has.method(ty, scope, this).length !== 0;
     } else if (ty instanceof HasField) {
       return false;
+    } else if (ty instanceof Interface) {
+      return ty.fields.length !== 0 &&
+            ty.methods.every(m => this.compatibleWithConstraint(m, scope)) &&
+            ty.operators.every(o => this.compatibleWithConstraint(o, scope));
     } else {
       TODO('other types constraining to builtin types');
     }
@@ -119,8 +125,16 @@ export class Builtin extends Type {
   constrain(ty: Type, scope: Scope) {
     if (ty instanceof OneOf || ty instanceof Generated || ty instanceof Interface) {
       ty.constrain(this, scope);
+    } else if (ty instanceof HasOperator) {
+      if (Has.operator(ty, scope, this).length === 0) {
+        throw new Error(`type ${this.name} does not have operator ${ty.name}`);
+      }
     } else if (ty instanceof HasMethod) {
-      TODO('get methods and operators for types');
+      if (Has.method(ty, scope, this).length === 0) {
+        throw new Error(`type ${this.name} does not have method ${ty.name}(${ty.params.map(p => p === null ? this : p).map(ty => ty.name).join(', ')})`);
+      }
+    } else if (ty instanceof HasField) {
+      throw new Error(`type ${this.name} does not have field ${ty.name}`);
     } else if (!this.compatibleWithConstraint(ty, scope)) {
       throw new Error(`type ${this.name} could not be constrained to ${ty.name}`);
     }
@@ -242,37 +256,26 @@ abstract class Has extends Type {
     super(name, ast);
   }
 
-  private static none = () => [];
-
-  // convenience HOF for checking if a Type has the given field
-  static field(field: HasField): (ty: Type) => boolean {
-    return (ty: Type) => (ty instanceof Struct && ty.fields[field.name] && ty.fields[field.name].eq(field.ty));
-  }
-
-  // convenience HOF for checking if a Type has the given field
-  static methods(method: HasMethod, scope: Scope): (ty: Type) => Fn[] {
+  static method(method: HasMethod, scope: Scope, ty: Type): Fn[] {
     let fns = scope.get(method.name);
-    // if there is no fn by that name, RIP
     if (!isFnArray(fns)) {
-      return Has.none;
+      return [];
     }
-    // filter out
-    return (ty: Type) => [];
+    return Fn.select(fns, method.params.map(p => p === null ? ty : p), scope);
   }
 
-  // convenience HOF for checking if a Type has the given field
-  static operators(operator: HasOperator, scope: Scope): (ty: Type) => Operator[] {
+  static operator(operator: HasOperator, scope: Scope, ty: Type): Operator[] {
     let ops: Operator[] = scope.get(operator.name);
     // if there is no op by that name, RIP
     if (!isOpArray(ops)) {
-      return Has.none;
+      return [];
     }
     // filter out ops that aren't the same fixity
     ops = ops.filter(op => op.isPrefix === operator.isPrefix);
     if (operator.isPrefix) {
-      return (ty: Type) => ops.filter(op => op.select(scope, operator.params[0] || ty) !== []);
+      return ops.filter(op => op.select(scope, operator.params[0] || ty) !== []);
     } else {
-      return (ty: Type) => ops.filter(op => op.select(scope, operator.params[0] || ty, operator.params[1] || ty) !== []);
+      return ops.filter(op => op.select(scope, operator.params[0] || ty, operator.params[1] || ty) !== []);
 	  }
   }
 
@@ -331,7 +334,7 @@ class HasField extends Has {
     );
   }
 
-  check(ty: Struct): boolean {
+  check(ty: Type): boolean {
     return TODO()
   }
 
@@ -368,7 +371,7 @@ class HasMethod extends Has {
     return new HasMethod(name, ast, params, ret);
   }
 
-  check(ty: Type, scope: Scope): boolean {
+  find(ty: Type, scope: Scope): Fn[] {
     return TODO()
   }
 
@@ -418,17 +421,7 @@ class HasOperator extends HasMethod {
     );
   }
 
-  with(ty: Type): HasOperator {
-    return new HasOperator(
-      this.name,
-      this.ast,
-      this.params.map(p => p === null ? ty : p),
-      this.ret === null ? ty : this.ret,
-      this.isPrefix,
-    );
-  }
-
-  check(ty: Type, scope: Scope): boolean {
+  find(ty: Type, scope: Scope): Fn[] {
     return TODO()
   }
 
@@ -515,8 +508,8 @@ class Interface extends Type {
       }
 
       // check methods
-      return this.methods.every(method => method.check(ty, scope)) &&
-        this.operators.every(op => op.check(ty, scope));
+      return this.methods.every(method => method.find(ty, scope)) &&
+        this.operators.every(op => op.find(ty, scope));
       // check operators
     } else if (ty instanceof Interface) {
       // ensure `ty ⊆ this`
@@ -536,8 +529,26 @@ class Interface extends Type {
     }
   }
 
-  constrain(to: Type, scope: Scope) {
-    return TODO();
+  constrain(ty: Type, scope: Scope) {
+    const baseErrorString = `type ${ty.name} was constrained to interface ${this.name} but doesn't have`;
+    this.fields.forEach(f => {
+      if (!ty.compatibleWithConstraint(f, scope)) {
+        throw new Error(`${baseErrorString} field ${f.name} with type ${f.ty}`);
+      }
+    });
+    this.methods.forEach(m => {
+      if (!Has.method(m, scope, ty)) {
+        throw new Error(`${baseErrorString} method ${m.name}(${m.params.map(p => p === null ? ty : p).map(t => t.name).join(', ')})`);
+      }
+    });
+    this.operators.forEach(o => {
+      if (Has.operator(o, scope, ty)) return;
+      if (o.isPrefix) {
+        throw new Error(`${baseErrorString} prefix operator \`${o.name} ${ty.name}\``);
+      } else {
+        throw new Error(`${baseErrorString} infix operator \`${o.params[0] || ty.name} ${o.name} ${o.params[1] || ty.name}\``);
+      }
+    });
   }
 
   eq(that: Equalable): boolean {
@@ -549,7 +560,7 @@ class Interface extends Type {
     return TODO();
   }
 
-  tempConstrain(to: Type) {
+  tempConstrain(to: Type, scope: Scope) {
     TODO();
   }
 
@@ -558,12 +569,15 @@ class Interface extends Type {
   }
 }
 
-class Generated extends Type {
+// technically, generated types are a kind of interface - we just get to build up
+// the interface through type constraints instead of through explicit requirements.
+// this'll make untyped fn parameters easier once they're implemented.
+class Generated extends Interface {
   private delegate: Type | null
   private tempDelegate: Type | null
 
   constructor() {
-    super(genName());
+    super(genName(), new NulLP(), [], [], []);
     this.delegate = null;
     this.tempDelegate = null;
   }
@@ -600,10 +614,15 @@ class Generated extends Type {
 
     if (this.delegate !== null) {
       this.delegate.constrain(to, scope);
-    } else if (to instanceof Has) {
-      TODO('generate interface and delegate');
+    } else if (to instanceof HasOperator) {
+      super.operators.push(to);
+    } else if (to instanceof HasMethod) {
+      super.methods.push(to);
+    } else if (to instanceof HasField) {
+      super.fields.push(to);
     } else {
       this.delegate = to;
+      super.constrain(this.delegate, scope);
     }
   }
 
