@@ -2,7 +2,7 @@ import { DataStore } from './datastore';
 
 let ds;
 
-describe('Datastore local test', () => {
+describe('Datastore class local test', () => {
 
   beforeEach(() => {
     ds = new DataStore();
@@ -50,14 +50,14 @@ describe('Datastore local test', () => {
       const key = 'key';
       const val = 123;
       await ds.set(key, val);
-      expect(await ds.get(key)).toEqual(val.toString());
+      expect(await ds.get(key)).toEqual(val);
     });
 
     test('should get object value setted', async () => {
       const key = 'key';
       const val = { a: 1 };
       await ds.set(key, val);
-      expect(await ds.get(key)).toEqual(JSON.stringify(val));
+      expect(await ds.get(key)).toEqual(val);
     });
   });
 
