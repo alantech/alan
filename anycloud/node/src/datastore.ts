@@ -48,7 +48,7 @@ class DataStore {
       try {
         dsValue = await this.request('GET', `${this.ctrlPortUrl}get/${dsKey}`);
       } catch (e) {
-        return new Error(e);
+        return e;
       }
     }
     try {
@@ -75,7 +75,7 @@ class DataStore {
       await this.request('POST', `${this.ctrlPortUrl}set/${dsKey}`, maybeStringifiedValue)
       return true;
     } catch (e) {
-      return new Error(e);
+      return e;
     }
   }
 
@@ -87,7 +87,7 @@ class DataStore {
     try {
       return await this.request('GET', `${this.ctrlPortUrl}del/${dsKey}`) === 'true';
     } catch (e) {
-      return new Error(e);
+      return e;
     }
   }
 
@@ -99,7 +99,7 @@ class DataStore {
     try {
       return await this.request('GET', `${this.ctrlPortUrl}has/${dsKey}`) === 'true';
     } catch (e) {
-      return new Error(e);
+      return e;
     }
   }
 }
