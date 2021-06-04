@@ -35,7 +35,7 @@ class DataStore {
     return await response.text();
   }
 
-  async get(dsKey: string): Promise<string | Error> {
+  async get(dsKey: string): Promise<string | undefined | Error> {
     if (DataStore.isInvalidKey(dsKey)) return new Error('Invalid key');
     let dsValue;
     if (this.isLocal) {
@@ -107,7 +107,7 @@ class DataStore {
 const dsHandler = () => {
   const ds = new DataStore();
   return {
-    get: async (_, dsKey: string): Promise<string> => {
+    get: async (_, dsKey: string): Promise<string | undefined> => {
       if (DataStore.isInvalidKey(dsKey)) {
         return undefined;
       }
