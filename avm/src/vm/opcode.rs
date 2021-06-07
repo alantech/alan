@@ -24,7 +24,7 @@ use tokio::time::sleep;
 use twox_hash::XxHash64;
 
 use crate::daemon::ctrl::NAIVE_CLIENT;
-use crate::daemon::daemon::{CLUSTER_SECRET, CONTROL_PORT_CHANNEL};
+use crate::daemon::daemon::{AGZ_RUN_ERROR, CLUSTER_SECRET, CONTROL_PORT_CHANNEL};
 use crate::vm::event::{BuiltInEvents, EventEmit, HandlerFragment, NOP_ID};
 use crate::vm::http::HTTP_CLIENT;
 use crate::vm::memory::{FractalMemory, HandlerMemory, CLOSURE_ARG_MEM_START};
@@ -3832,6 +3832,13 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
         hand_mem.push_fixed(args[2], 0i64)?;
       },
     };
+    Ok(())
+  });
+
+  // set anycloud.ln initialize error
+  cpu!(setlnerr => fn(args, hand_mem) {
+    let error = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0])?)?;
+    AGZ_RUN_ERROR.set(Some(error)).unwrap();
     Ok(())
   });
 

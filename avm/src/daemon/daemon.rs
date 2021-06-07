@@ -26,6 +26,7 @@ use crate::vm::run::run;
 
 pub type DaemonResult<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
+pub static AGZ_RUN_ERROR: OnceCell<Option<String>> = OnceCell::new();
 pub static CLUSTER_SECRET: OnceCell<Option<String>> = OnceCell::new();
 pub static DAEMON_PROPS: OnceCell<DaemonProperties> = OnceCell::new();
 pub static CONTROL_PORT_CHANNEL: OnceCell<Receiver<ControlPort>> = OnceCell::new();
