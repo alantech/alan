@@ -3,7 +3,7 @@
   "version": "0.1.41",
   "description": "CLI to elastically scale webservers in any cloud provider",
   "main": "dist/index.js",
-  "types": "index.d.ts",
+  "types": "dist/index.d.ts",
   "bin": {
     "anycloud": "./bin/anycloud"
   },
@@ -11,7 +11,7 @@
     "build": "tsc",
     "test": "jest",
     "preinstall": "node ./get-anycloud.js",
-    "beforepublish": "jest && rm -rf bin && tsc",
+    "prepublishOnly": "yarn clean && yarn install && jest && rm -rf bin && tsc",
     "clean": "rm -rf dist bin node_modules"
   },
   "repository": {
