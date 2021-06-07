@@ -1,5 +1,5 @@
 from @std/app import start, print, eprint, exit
-from @std/avmdaemon import controlPort, getClusterSecret
+from @std/avmdaemon import controlPort, getClusterSecret, setRunError
 from @std/cmd import exec
 from @std/datastore import namespace, getOr, set, has, del
 from @std/http import fetch, Request, Response
@@ -14,21 +14,27 @@ on start {
   print('Starting Anycloud...');
   const untarRes = exec('tar -xzf app.tar.gz');
   if untarRes.exitCode != 0 {
-    eprint('app.tar.gz could not be unpacked');
+    const err = 'app.tar.gz could not be unpacked';
+    eprint(err);
     eprint(untarRes.stderr);
+    setRunError(err + ' | ' + untarRes.stderr);
     emit exit untarRes.exitCode;
   }
 
   const dockerRes = exec('docker build -t anycloud/app .');
   if dockerRes.exitCode != 0 {
-    eprint('Docker container could not be built');
+    const err = 'Docker container could not be built';
+    eprint(err);
     eprint(dockerRes.stderr);
+    setRunError(err + ' | ' + dockerRes.stderr);
     emit exit dockerRes.exitCode;
   }
 
   const clusterSecret = getClusterSecret();
   if clusterSecret.isNone() {
-    eprint('No cluster secret defined');
+    const err = 'No cluster secret defined';
+    eprint(err);
+    setRunError(err);
     emit exit 1;
   }
 
@@ -39,8 +45,10 @@ on start {
     ('docker run --env CLUSTER_SECRET=' + clusterSecret.getOrExit() + ' --env-file anycloud.env --net=host -d anycloud/app:latest');
   const containerRes = exec(containerStr);
   if containerRes.exitCode != 0 {
-    eprint('Docker container could not be started');
+    const err = 'Docker container could not be started'; 
+    eprint(err);
     eprint(containerRes.stderr);
+    setRunError(err + ' | ' + containerRes.stderr);
     emit exit containerRes.exitCode;
   }
 }
