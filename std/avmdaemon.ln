@@ -41,3 +41,9 @@ on __ctrl fn (conn: InternalRequest) {
  */
 
 export fn getClusterSecret(): Maybe<string> = getcs();
+
+/**
+ * Set anycloud.ln run error
+ */
+
+export fn setRunError(err: string): void = setlnerr(err);
