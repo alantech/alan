@@ -1,109 +1,75 @@
-// import rewire = require('babel-plugin-rewire');
-// const datastore = rewire('./datastore');
+import { datastore } from './datastore';
 
-// // import datastore = require('./datastore');
+describe('Datastore class local test', () => {
+  const key = 'foo';
+  const strVal = 'hello world';
+  const numberVal = 123;
+  const objVal = { bar: 'baz' }
+  beforeEach(() => {
+    datastore.del(key);
+  });
 
-// describe('Datastore class local test', () => {
-//   let ds;
+  describe('set', () => {
+    test('should set string value', async () => {
+      expect(await datastore.set(key, strVal)).toEqual(true);
+    });
 
-//   beforeEach(() => {
-//     const dsClass = datastore.__get__('DataStore');
-//     ds = new dsClass();
-//   });
+    test('should set number value', async () => {
+      expect(await datastore.set(key, numberVal)).toEqual(true);
+    });
 
-//   describe('set', () => {
-//     test('should fail if no key passed', async () => {
-//       expect(await ds.set()).toEqual('fail');
-//     });
+    test('should set object value', async () => {
+      expect(await datastore.set(key, objVal)).toEqual(true);
+    });
+  });
 
-//     test('should set undefined value', async () => {
-//       expect(await ds.set('key')).toEqual('ok');
-//     });
+  describe('get', () => {
+    test('should return undefined if key not found', async () => {
+      expect(await datastore.get(key)).toEqual(undefined);
+    });
 
-//     test('should set string value', async () => {
-//       expect(await ds.set('key', 'hello world')).toEqual('ok');
-//     });
+    test('should get string value setted', async () => {
+      await datastore.set(key, strVal);
+      expect(await datastore.get(key)).toEqual(strVal);
+    });
 
-//     test('should set number value', async () => {
-//       expect(await ds.set('key', 123)).toEqual('ok');
-//     });
+    test('should get number value setted', async () => {
+      await datastore.set(key, numberVal);
+      expect(await datastore.get(key)).toEqual(numberVal);
+    });
 
-//     test('should set object value', async () => {
-//       expect(await ds.set('key', { a: 1 })).toEqual('ok');
-//     });
-//   });
+    test('should get object value setted', async () => {
+      await datastore.set(key, objVal);
+      expect(await datastore.get(key)).toEqual(objVal);
+    });
+  });
 
-//   describe('get', () => {
-//     test('should return undefined if no key passed', async () => {
-//       expect(await ds.get()).toEqual(undefined);
-//     });
+  describe('has', () => {
+    test('should return false if key not found', async () => {
+      expect(await datastore.has(key)).toEqual(false);
+    });
 
-//     test('should return undefined if key not found', async () => {
-//       expect(await ds.get('key')).toEqual(undefined);
-//     });
+    test('should return true if value exist after setted', async () => {
+      await datastore.set(key, strVal);
+      expect(await datastore.has(key)).toEqual(true);
+    });
+  });
 
-//     test('should get string value setted', async () => {
-//       const key = 'key';
-//       const val = 'hello world';
-//       await ds.set(key, val);
-//       expect(await ds.get(key)).toEqual(val);
-//     });
+  describe('del', () => {
+    test('should return false if key not found', async () => {
+      expect(await datastore.del(key)).toEqual(false);
+    });
 
-//     test('should get number value setted', async () => {
-//       const key = 'key';
-//       const val = 123;
-//       await ds.set(key, val);
-//       expect(await ds.get(key)).toEqual(val);
-//     });
+    test('should return true if value found and deleted', async () => {
+      await datastore.set(key, strVal);
+      expect(await datastore.del(key)).toEqual(true);
+    });
 
-//     test('should get object value setted', async () => {
-//       const key = 'key';
-//       const val = { a: 1 };
-//       await ds.set(key, val);
-//       expect(await ds.get(key)).toEqual(val);
-//     });
-//   });
-
-//   describe('has', () => {
-//     test('should return false if no key passed', async () => {
-//       expect(await ds.has()).toEqual(false);
-//     });
-
-//     test('should return false if key not found', async () => {
-//       expect(await ds.has('key')).toEqual(false);
-//     });
-
-//     test('should return true if value setted', async () => {
-//       const key = 'key';
-//       const val = 'hello world';
-//       await ds.set(key, val);
-//       expect(await ds.has(key)).toEqual(true);
-//     });
-//   });
-
-//   describe('del', () => {
-//     test('should return false if no key passed', async () => {
-//       expect(await ds.del()).toEqual(false);
-//     });
-
-//     test('should return false if key not found', async () => {
-//       expect(await ds.del('key')).toEqual(false);
-//     });
-
-//     test('should return true if value found and deleted', async () => {
-//       const key = 'key';
-//       const val = 'hello world';
-//       await ds.set(key, val);
-//       expect(await ds.del(key)).toEqual(true);
-//     });
-
-//     test('should delete value', async () => {
-//       const key = 'key';
-//       const val = 'hello world';
-//       await ds.set(key, val);
-//       await ds.del(key);
-//       expect(await ds.get(key)).toEqual(undefined);
-//       expect(await ds.has(key)).toEqual(false);
-//     });
-//   });
-// });
+    test('should delete value', async () => {
+      await datastore.set(key, strVal);
+      await datastore.del(key);
+      expect(await datastore.get(key)).toEqual(undefined);
+      expect(await datastore.has(key)).toEqual(false);
+    });
+  });
+});
