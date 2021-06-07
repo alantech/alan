@@ -11,7 +11,7 @@
     "build": "tsc",
     "test": "jest",
     "preinstall": "node ./get-anycloud.js",
-    "prepublishOnly": "yarn clean && yarn install && jest && rm -rf bin && tsc",
+    "prepublishOnly": "yarn clean && yarn install --ignore-scripts && yarn test && rm -rf bin && yarn build",
     "clean": "rm -rf dist bin node_modules"
   },
   "repository": {
