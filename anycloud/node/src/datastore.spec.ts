@@ -1,10 +1,11 @@
-import { datastore } from './datastore';
+import { datastore, ds } from './datastore';
+
+const key = 'foo';
+const strVal = 'hello world';
+const numberVal = 123;
+const objVal = { bar: 'baz' }
 
 describe('Datastore class local test', () => {
-  const key = 'foo';
-  const strVal = 'hello world';
-  const numberVal = 123;
-  const objVal = { bar: 'baz' }
   beforeEach(() => {
     datastore.del(key);
   });
@@ -70,6 +71,64 @@ describe('Datastore class local test', () => {
       await datastore.del(key);
       expect(await datastore.get(key)).toEqual(undefined);
       expect(await datastore.has(key)).toEqual(false);
+    });
+  });
+});
+
+describe('Datastore proxy object local test', () => {
+  beforeEach(() => {
+    delete ds[key];
+  });
+
+  describe('set', () => {
+    test('should set string value', () => {
+      expect(ds[key] = strVal).toEqual(strVal);
+    });
+
+    test('should set number value', () => {
+      expect(ds[key] = numberVal).toEqual(numberVal);
+    });
+
+    test('should set object value', () => {
+      expect(ds[key] = objVal).toEqual(objVal);
+    });
+  });
+
+  describe('get', () => {
+    test('should return undefined if key not found', async () => {
+      expect(await ds[key]).toEqual(undefined);
+    });
+
+    test('should get string value setted', async () => {
+      ds[key] = strVal;
+      expect(await ds[key]).toEqual(strVal);
+    });
+
+    test('should get number value setted', async () => {
+      ds[key] = numberVal;
+      expect(await ds[key]).toEqual(numberVal);
+    });
+
+    test('should get object value setted', async () => {
+      ds[key] = objVal;
+      expect(await ds[key]).toEqual(objVal);
+    });
+  });
+
+  describe('del', () => {
+    test('should return true if key not found', () => {
+      expect(delete ds[key]).toEqual(true);
+    });
+
+    test('should return true if value found and deleted', () => {
+      ds[key] = objVal;
+      expect(delete ds[key]).toEqual(true);
+    });
+
+    test('should delete value', async () => {
+      ds[key] = objVal;
+      delete ds[key];
+      expect(await ds[key]).toEqual(undefined);
     });
   });
 });
