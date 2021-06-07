@@ -291,12 +291,16 @@ async fn extension_listener(req: Request<Body>) -> VMResult<Response<Body>> {
 
 fn handle_cluster_health() -> Result<Response<Body>, Infallible> {
   println!("CALLING CONTROL PORT HEALTH");
-  println!("{:?}", AGZ_RUN_ERROR.get().unwrap());
+  println!("{:?}", AGZ_RUN_ERROR.get());
   if TcpStream::connect("127.0.0.1:443").is_err() {
     // If the Alan HTTPS server has not yet started, mark as a failure
     Ok(Response::builder().status(500).body("fail".into()).unwrap())
-  } else if let Some(err) = AGZ_RUN_ERROR.get().unwrap() {
-    Ok(Response::builder().status(500).body(err.to_string().into()).unwrap())
+  } else if AGZ_RUN_ERROR.get().is_some() { // TODO: this might replace below AnyCloud case?
+    let err_opt = AGZ_RUN_ERROR.get().unwrap();
+    match err_opt {
+      Some(err) => Ok(Response::builder().status(500).body(err.to_string().into()).unwrap()),
+      None => Ok(Response::builder().status(500).body("fail".into()).unwrap())
+    }
   } else if Path::new("./Dockerfile").exists()
     && Path::new("./app.tar.gz").exists()
     && TcpStream::connect("127.0.0.1:8088").is_err()
