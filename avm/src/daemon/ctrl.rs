@@ -30,7 +30,7 @@ use serde_json::json;
 use tokio::sync::oneshot::{self, Receiver, Sender};
 use twox_hash::XxHash64;
 
-use crate::daemon::daemon::{DaemonProperties, DaemonResult, CLUSTER_SECRET, DAEMON_PROPS};
+use crate::daemon::daemon::{DaemonProperties, DaemonResult, AGZ_RUN_ERROR, CLUSTER_SECRET, DAEMON_PROPS};
 use crate::daemon::dns::VMMetadata;
 use crate::make_server;
 use crate::vm::event::{BuiltInEvents, EventEmit};
@@ -290,9 +290,13 @@ async fn extension_listener(req: Request<Body>) -> VMResult<Response<Body>> {
 }
 
 fn handle_cluster_health() -> Result<Response<Body>, Infallible> {
+  println!("CALLING CONTROL PORT HEALTH");
+  println!("{:?}", AGZ_RUN_ERROR.get().unwrap());
   if TcpStream::connect("127.0.0.1:443").is_err() {
     // If the Alan HTTPS server has not yet started, mark as a failure
     Ok(Response::builder().status(500).body("fail".into()).unwrap())
+  } else if let Some(err) = AGZ_RUN_ERROR.get().unwrap() {
+    Ok(Response::builder().status(500).body(err.to_string().into()).unwrap())
   } else if Path::new("./Dockerfile").exists()
     && Path::new("./app.tar.gz").exists()
     && TcpStream::connect("127.0.0.1:8088").is_err()
