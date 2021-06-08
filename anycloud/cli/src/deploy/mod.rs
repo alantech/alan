@@ -327,12 +327,14 @@ async fn update_cred_file(credentials: HashMap<String, Credentials>) {
     .open(file_name);
   let writer = BufWriter::new(file.unwrap());
   if let Err(err) = serde_json::to_writer_pretty(writer, &credentials) {
-    warn!(
+    warn_and_exit!(
+      1,
       InvalidCredentialsFile,
-      "Failed to write to {}. Error: {}", CREDENTIALS_FILE, err
+      "Failed to write to {}. Error: {}",
+      CREDENTIALS_FILE,
+      err
     )
-    .await;
-    std::process::exit(1);
+    .await
   }
 }
 
@@ -348,12 +350,14 @@ async fn update_anycloud_file(deploy_configs: HashMap<String, Vec<DeployConfig>>
     .open(file_name);
   let writer = BufWriter::new(file.unwrap());
   if let Err(err) = serde_json::to_writer_pretty(writer, &deploy_configs) {
-    warn!(
+    warn_and_exit!(
+      1,
       InvalidAnycloudFile,
-      "Failed to write to {}. Error: {}", ANYCLOUD_FILE, err
+      "Failed to write to {}. Error: {}",
+      ANYCLOUD_FILE,
+      err
     )
-    .await;
-    std::process::exit(1);
+    .await
   }
 }
 
@@ -822,7 +826,7 @@ async fn get_creds(non_interactive: bool) -> HashMap<String, Credentials> {
     let cred_name = match std::env::var("CRED_NAME") {
       Ok(name) => name,
       Err(_) => {
-        // TODO: check stringify! and/or eval/to_value in order to DRY this
+        // TODO: use new error type
         warn_and_exit!(1, InvalidCredentialsFile, "No credentials found").await
       }
     };
@@ -833,7 +837,8 @@ async fn get_creds(non_interactive: bool) -> HashMap<String, Credentials> {
             let access_key: String = std::env::var("AWS_ACCESS_KEY").unwrap_or("".to_string());
             let secret: String = std::env::var("AWS_SECRET").unwrap_or("".to_string());
             if access_key.is_empty() || secret.is_empty() {
-              // TODO: exit
+              // TODO: use new error type
+              warn_and_exit!(1, InvalidCredentialsFile, "No credentials found").await
             }
             credentials.insert(
               cred_name,
@@ -851,7 +856,8 @@ async fn get_creds(non_interactive: bool) -> HashMap<String, Credentials> {
             let client_email: String = std::env::var("GCP_CLIENT_EMAIL").unwrap_or("".to_string());
             let private_key: String = std::env::var("GCP_PRIVATE_KEY").unwrap_or("".to_string());
             if project_id.is_empty() || client_email.is_empty() || private_key.is_empty() {
-              // TODO: exit
+              // TODO: use new error type
+              warn_and_exit!(1, InvalidCredentialsFile, "No credentials found").await
             }
             credentials.insert(
               cred_name,
@@ -876,7 +882,8 @@ async fn get_creds(non_interactive: bool) -> HashMap<String, Credentials> {
               || subscription_id.is_empty()
               || secret.is_empty()
             {
-              // TODO: exit
+              // TODO: use new error type
+              warn_and_exit!(1, InvalidCredentialsFile, "No credentials found").await
             }
             credentials.insert(
               cred_name,
@@ -909,14 +916,17 @@ async fn get_creds(non_interactive: bool) -> HashMap<String, Credentials> {
   let reader = BufReader::new(file.unwrap());
   let creds = serde_json::from_reader(reader);
   if let Err(err) = creds {
-    warn!(
+    warn_and_exit!(
+      1,
       InvalidCredentialsFile,
-      "Failed to read from {}. Error: {}", CREDENTIALS_FILE, err
+      "Failed to read from {}. Error: {}",
+      CREDENTIALS_FILE,
+      err
     )
-    .await;
-    std::process::exit(1);
+    .await
+  } else {
+    creds.unwrap()
   }
-  creds.unwrap()
 }
 
 async fn get_deploy_configs() -> HashMap<String, Vec<DeployConfig>> {
@@ -929,14 +939,17 @@ async fn get_deploy_configs() -> HashMap<String, Vec<DeployConfig>> {
   let reader = BufReader::new(file.unwrap());
   let config = serde_json::from_reader(reader);
   if let Err(err) = config {
-    warn!(
+    warn_and_exit!(
+      1,
       InvalidAnycloudFile,
-      "Failed to read from {}. Error: {}", ANYCLOUD_FILE, err
+      "Failed to read from {}. Error: {}",
+      ANYCLOUD_FILE,
+      err
     )
-    .await;
-    std::process::exit(1);
+    .await
+  } else {
+    config.unwrap()
   }
-  config.unwrap()
 }
 
 // This method can be called as a binary by the end user in the CLI or as a library by the Alan daemon
