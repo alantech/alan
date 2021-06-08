@@ -829,7 +829,7 @@ async fn get_creds(non_interactive: bool) -> HashMap<String, Credentials> {
         warn_and_exit!(1, InvalidCredentialsFile, "No CREDENTIALS_NAME defined").await
       }
     };
-    match std::env::var("CRED_CLOUD") {
+    match std::env::var("CLOUD_NAME") {
       Ok(cloud) => {
         match cloud.as_str() {
           "AWS" => {
@@ -901,7 +901,7 @@ async fn get_creds(non_interactive: bool) -> HashMap<String, Credentials> {
         }
       }
       Err(_) => {
-        warn_and_exit!(1, InvalidCredentialsFile, "No CRED_CLOUD defined").await;
+        warn_and_exit!(1, InvalidCredentialsFile, "No CLOUD_NAME defined").await;
       }
     }
     return credentials;
@@ -986,6 +986,7 @@ pub async fn get_config(non_interactive: bool) -> HashMap<String, Vec<Config>> {
       let cred = match creds.get(cred_name) {
         Some(cred) => cred,
         None => {
+          if non_interactive { continue; }
           let cred: &Credentials;
           loop {
             prompt_add_cred(false, Some(cred_name)).await;
