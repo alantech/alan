@@ -1112,17 +1112,26 @@ pub async fn new(
 ) {
   let config = get_config(non_interactive).await;
   let config_names = config.keys().cloned().collect::<Vec<String>>();
-  if config_names.len() == 0 {
+  if config_names.len() == 0 && !non_interactive {
     prompt_add_config().await;
+  } else if config_names.len() == 0 && non_interactive {
+    // TODO: add err type
+    warn_and_exit!(
+      1,
+      NoTarballFile,
+      "Non interactive mode. No deploy configuration found."
+    )
+    .await
   }
   let selection: usize = match config_name {
     Some(name) => config_names.iter().position(|n| &name == n).unwrap(),
     None => {
       if non_interactive {
+        // TODO: add err type
         warn_and_exit!(
           1,
           NoTarballFile,
-          "Non interactive mode. No deploy config selected."
+          "Non interactive mode. No deploy configuration selected."
         )
         .await
       }
