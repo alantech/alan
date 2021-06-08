@@ -214,7 +214,7 @@ fn get_aws_cli_creds() -> Result<AWSCLICredentialsFile, String> {
 }
 
 pub async fn add_cred(cred_name: Option<&str>) -> String {
-  let mut credentials = get_creds().await;
+  let mut credentials = get_creds(false).await;
   let clouds = vec!["AWS".to_string(), "GCP".to_string(), "Azure".to_string()];
   let selection = anycloud_dialoguer::select_with_default(
     "Pick cloud provider for the new Credential",
@@ -347,7 +347,7 @@ async fn update_anycloud_file(deploy_configs: HashMap<String, Vec<DeployConfig>>
 }
 
 pub async fn edit_cred() {
-  let mut credentials = get_creds().await;
+  let mut credentials = get_creds(false).await;
   let cred_options = credentials.keys().cloned().collect::<Vec<String>>();
   if cred_options.len() == 0 {
     prompt_add_cred(true, None).await;
@@ -472,7 +472,7 @@ pub async fn prompt_add_config() {
 }
 
 pub async fn remove_cred() {
-  let mut creds = get_creds().await;
+  let mut creds = get_creds(false).await;
   let cred_options = creds.keys().cloned().collect::<Vec<String>>();
   if cred_options.len() == 0 {
     prompt_add_cred(true, None).await;
@@ -489,7 +489,7 @@ pub async fn remove_cred() {
 }
 
 pub async fn list_creds() {
-  let credentials = get_creds().await;
+  let credentials = get_creds(false).await;
   if credentials.len() > 0 {
     for (cred_name, cred) in credentials.into_iter() {
       println!("\n{}", cred_name);
@@ -519,7 +519,7 @@ pub async fn list_creds() {
 
 pub async fn add_deploy_config() {
   let mut deploy_configs = get_deploy_configs().await;
-  let creds = get_creds().await;
+  let creds = get_creds(false).await;
   let default = "staging".to_string();
   let prompt = "Name for new Deploy Config";
   let validator = |input: &String| -> Result<(), &str> {
@@ -628,7 +628,7 @@ pub async fn edit_deploy_config() {
   let selection =
     anycloud_dialoguer::select_with_default("Pick Deploy Config to edit", &config_names, 0);
   let config_name = config_names[selection].to_string();
-  let creds = get_creds().await;
+  let creds = get_creds(false).await;
   let cloud_configs: &Vec<DeployConfig> = deploy_configs.get(&config_name).unwrap();
   let mut new_cloud_configs = Vec::new();
   let cred_options = creds.keys().cloned().collect::<Vec<String>>();
@@ -966,7 +966,7 @@ pub async fn get_config(non_interactive: bool) -> HashMap<String, Vec<Config>> {
           let cred: &Credentials;
           loop {
             prompt_add_cred(false, Some(cred_name)).await;
-            creds = get_creds().await;
+            creds = get_creds(false).await;
             cred = match creds.get(cred_name) {
               Some(cred) => cred,
               None => continue,
