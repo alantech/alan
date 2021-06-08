@@ -17,6 +17,17 @@ use crate::logger::ErrorType;
 use crate::oauth::{clear_token, get_token};
 use crate::CLUSTER_ID;
 
+macro_rules! warn_and_exit {
+  ($exitCode:expr, $errCode:ident, $($message:tt)+) => {async{
+    warn!(
+      $errCode,
+      $($message)+
+    )
+    .await;
+    std::process::exit($exitCode);
+  }};
+}
+
 mod anycloud_dialoguer;
 
 pub const VERSION: &'static str = env!("CARGO_PKG_VERSION");
@@ -812,13 +823,7 @@ async fn get_creds(non_interactive: bool) -> HashMap<String, Credentials> {
       Ok(name) => name,
       Err(_) => {
         // TODO: check stringify! and/or eval/to_value in order to DRY this
-        warn!(
-          // TODO: change this identifier
-          InvalidCredentialsFile,
-          "No credentials found"
-        )
-        .await;
-        std::process::exit(1);
+        warn_and_exit!(1, InvalidCredentialsFile, "No credentials found").await
       }
     };
     match std::env::var("CRED_CLOUD") {
@@ -840,7 +845,7 @@ async fn get_creds(non_interactive: bool) -> HashMap<String, Credentials> {
                 cloudProvider: "AWS".to_owned(),
               },
             );
-          },
+          }
           "GCP" => {
             let project_id: String = std::env::var("GCP_PROJECT_ID").unwrap_or("".to_string());
             let client_email: String = std::env::var("GCP_CLIENT_EMAIL").unwrap_or("".to_string());
@@ -859,13 +864,18 @@ async fn get_creds(non_interactive: bool) -> HashMap<String, Credentials> {
                 cloudProvider: "GCP".to_owned(),
               },
             );
-          },
+          }
           "Azure" => {
             let application_id: String = std::env::var("AZ_APP_ID").unwrap_or("".to_string());
             let directory_id: String = std::env::var("AZ_DIRECTORY_ID").unwrap_or("".to_string());
-            let subscription_id: String = std::env::var("AZ_SUBSCRIPTION_ID").unwrap_or("".to_string());
+            let subscription_id: String =
+              std::env::var("AZ_SUBSCRIPTION_ID").unwrap_or("".to_string());
             let secret: String = std::env::var("AZ_SECRET").unwrap_or("".to_string());
-            if application_id.is_empty() || directory_id.is_empty() || subscription_id.is_empty() || secret.is_empty() {
+            if application_id.is_empty()
+              || directory_id.is_empty()
+              || subscription_id.is_empty()
+              || secret.is_empty()
+            {
               // TODO: exit
             }
             credentials.insert(
@@ -881,16 +891,11 @@ async fn get_creds(non_interactive: bool) -> HashMap<String, Credentials> {
               },
             );
           }
+          _ => {}
         }
-      },
+      }
       Err(_) => {
-        warn!(
-          // TODO: change this identifier
-          InvalidCredentialsFile,
-          "No credentials found"
-        )
-        .await;
-        std::process::exit(1);    
+        warn_and_exit!(1, InvalidCredentialsFile, "No credentials found").await;
       }
     }
     return credentials;
