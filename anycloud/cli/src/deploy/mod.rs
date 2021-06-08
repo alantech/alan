@@ -1053,7 +1053,7 @@ pub async fn terminate() {
   sp.enable_steady_tick(10);
   sp.set_message(&format!("Terminating App {}", styled_cluster_id));
   let body = json!({
-    "deployConfig": get_config().await,
+    "deployConfig": get_config(false).await,
     "clusterId": cluster_id,
   });
   let resp = post_v1("terminate", body).await;
@@ -1159,7 +1159,7 @@ pub async fn upgrade(
   let cluster_id = &ids[selection];
   CLUSTER_ID.set(cluster_id.to_string()).unwrap();
   let styled_cluster_id = style(cluster_id).bold();
-  let config = get_config().await;
+  let config = get_config(false).await;
   let sp = ProgressBar::new_spinner();
   sp.enable_steady_tick(10);
   sp.set_message(&format!("Upgrading App {}", styled_cluster_id));
@@ -1194,7 +1194,7 @@ pub async fn upgrade(
 }
 
 async fn get_apps(status: bool) -> Vec<App> {
-  let config = get_config().await;
+  let config = get_config(false).await;
   let sp = ProgressBar::new_spinner();
   sp.enable_steady_tick(10);
   sp.set_message("Gathering information about Apps deployed");
