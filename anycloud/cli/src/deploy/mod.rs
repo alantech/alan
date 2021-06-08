@@ -17,6 +17,8 @@ use crate::logger::ErrorType;
 use crate::oauth::{clear_token, get_token};
 use crate::CLUSTER_ID;
 
+mod anycloud_dialoguer;
+
 macro_rules! warn_and_exit {
   ($exitCode:expr, $errCode:ident, $($message:tt)+) => {async{
     warn!(
@@ -27,8 +29,6 @@ macro_rules! warn_and_exit {
     std::process::exit($exitCode);
   }};
 }
-
-mod anycloud_dialoguer;
 
 pub const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const REQUEST_TIMEOUT: &str =
