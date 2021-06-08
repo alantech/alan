@@ -805,6 +805,7 @@ pub async fn list_deploy_configs() {
 }
 
 async fn get_creds() -> HashMap<String, Credentials> {
+  // TODO: get credentials from ENV
   let home = std::env::var("HOME").unwrap();
   let file_name = &format!("{}/{}", home, CREDENTIALS_FILE);
   let file = OpenOptions::new().read(true).open(file_name);
@@ -993,17 +994,35 @@ pub async fn new(
   agz_b64: String,
   anycloud_params: Option<(String, String)>,
   env_b64: Option<String>,
+  app_name: Option<String>,
+  config_name: Option<String>,
+  non_interactive: bool,
 ) {
+  // TODO: add auto path
   let config = get_config().await;
   let config_names = config.keys().cloned().collect::<Vec<String>>();
   if config_names.len() == 0 {
     prompt_add_config().await;
   }
-  let selection =
-    anycloud_dialoguer::select_with_default("Pick Deploy Config for App", &config_names, 0);
+  let selection: usize = match config_name {
+    Some(name) => config_names.iter().position(|n| &name == n).unwrap(),
+    None => anycloud_dialoguer::select_with_default("Pick Deploy Config for App", &config_names, 0),
+  };
   let deploy_config = &config_names[selection];
-  let app_id: std::io::Result<String> =
-    anycloud_dialoguer::input_with_allow_empty_as_result("Optional App name", true);
+  // TODO: add auto path
+  let app_id: std::io::Result<String> = match app_name {
+    Some(name) => Ok(name),
+    None => {
+      if non_interactive {
+        Err(std::io::Error::new(
+          std::io::ErrorKind::NotFound,
+          "Non interactive mode with no app name defined",
+        ))
+      } else {
+        anycloud_dialoguer::input_with_allow_empty_as_result("Optional App name", true)
+      }
+    }
+  };
   let sp = ProgressBar::new_spinner();
   sp.enable_steady_tick(10);
   sp.set_message("Creating new App");

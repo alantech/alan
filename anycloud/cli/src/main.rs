@@ -17,6 +17,9 @@ pub async fn main() {
     .subcommand(SubCommand::with_name("new")
       .about("Deploys your repository to a new App with a Deploy Config from anycloud.json")
       .arg_from_usage("-e, --env-file=[ENV_FILE] 'Specifies an optional environment file'")
+      .arg_from_usage("[NON_INTERACTIVE] -n, --non-interactive 'Specifies an optional flag for non interactive CLI mode'")
+      .arg_from_usage("-a, --app-name=[APP_NAME] 'Specifies an optional app name.'")
+      .arg_from_usage("-c, --config-name=[CONFIG_NAME] 'Specifies an optional config name.'")
     )
     .subcommand(SubCommand::with_name("list")
       .about("Displays all the Apps deployed with the Deploy Configs from anycloud.json")
@@ -71,10 +74,25 @@ pub async fn main() {
         Some(env_file) => Some(get_env_file_b64(env_file.to_string()).await),
         None => None,
       };
+      let non_interactive: bool = match matches.values_of("NON_INTERACTIVE") {
+        Some(_) => true,
+        None => false,
+      };
+      let app_name = match matches.value_of("app-name") {
+        Some(name) => Some(name.to_string()),
+        None => None,
+      };
+      let config_name = match matches.value_of("config-name") {
+        Some(name) => Some(name.to_string()),
+        None => None,
+      };
       deploy::new(
         anycloud_agz,
         Some((dockerfile_b64, app_tar_gz_b64)),
         env_b64,
+        app_name,
+        config_name,
+        non_interactive,
       )
       .await;
     }
