@@ -804,8 +804,65 @@ pub async fn list_deploy_configs() {
   }
 }
 
-async fn get_creds() -> HashMap<String, Credentials> {
+async fn get_creds(non_interactive: bool) -> HashMap<String, Credentials> {
   // TODO: get credentials from ENV
+  if non_interactive {
+    let mut credentials = HashMap::new();
+    let cred_name = match std::env::var("CRED_NAME") {
+      Ok(name) => name,
+      Err(_) => {
+        // TODO: check stringify! and/or eval/to_value in order to DRY this
+        warn!(
+          // TODO: change this identifier
+          InvalidCredentialsFile,
+          "No credentials found"
+        )
+        .await;
+        std::process::exit(1);
+      }
+    };
+    match std::env::var("CRED_CLOUD") {
+      Ok(cloud) => {
+        match cloud.as_str() {
+          "AWS" => {
+            
+          },
+          "GCP" => {
+            let project_id: String = std::env::var("CRED_PROJECT_ID").unwrap_or("".to_string());
+            let client_email: String = std::env::var("CRED_CLIENT_EMAIL").unwrap_or("".to_string());
+            let private_key: String = std::env::var("CRED_PRVATE_KEY").unwrap_or("".to_string());
+            if project_id.is_empty() || client_email.is_empty() || private_key.is_empty() {
+              // TODO: exit
+            }
+            credentials.insert(
+              cred_name,
+              Credentials {
+                credentials: CloudCredentials::GCP(GCPCredentials {
+                  privateKey: private_key,
+                  clientEmail: client_email,
+                  projectId: project_id,
+                }),
+                cloudProvider: "GCP".to_owned(),
+              },
+            );
+          },
+          "Azure" => {
+
+          }
+        }
+      },
+      Err(_) => {
+        warn!(
+          // TODO: change this identifier
+          InvalidCredentialsFile,
+          "No credentials found"
+        )
+        .await;
+        std::process::exit(1);    
+      }
+    }
+    return credentials;
+  }
   let home = std::env::var("HOME").unwrap();
   let file_name = &format!("{}/{}", home, CREDENTIALS_FILE);
   let file = OpenOptions::new().read(true).open(file_name);
@@ -857,9 +914,9 @@ fn get_url() -> &'static str {
   }
 }
 
-pub async fn get_config() -> HashMap<String, Vec<Config>> {
+pub async fn get_config(non_interactive: bool) -> HashMap<String, Vec<Config>> {
   let anycloud_prof = get_deploy_configs().await;
-  let mut creds = get_creds().await;
+  let mut creds = get_creds(non_interactive).await;
   if creds.len() == 0 {
     prompt_add_cred(true, None).await;
   }
@@ -999,7 +1056,7 @@ pub async fn new(
   non_interactive: bool,
 ) {
   // TODO: add auto path
-  let config = get_config().await;
+  let config = get_config(non_interactive).await;
   let config_names = config.keys().cloned().collect::<Vec<String>>();
   if config_names.len() == 0 {
     prompt_add_config().await;
