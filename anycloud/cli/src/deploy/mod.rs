@@ -820,14 +820,13 @@ pub async fn list_deploy_configs() {
 }
 
 async fn get_creds(non_interactive: bool) -> HashMap<String, Credentials> {
-  // TODO: get credentials from ENV
   if non_interactive {
     let mut credentials = HashMap::new();
     let cred_name = match std::env::var("CRED_NAME") {
       Ok(name) => name,
       Err(_) => {
         // TODO: use new error type
-        warn_and_exit!(1, InvalidCredentialsFile, "No credentials found").await
+        warn_and_exit!(1, InvalidCredentialsFile, "No CRED_NAME defined").await
       }
     };
     match std::env::var("CRED_CLOUD") {
@@ -838,7 +837,7 @@ async fn get_creds(non_interactive: bool) -> HashMap<String, Credentials> {
             let secret: String = std::env::var("AWS_SECRET").unwrap_or("".to_string());
             if access_key.is_empty() || secret.is_empty() {
               // TODO: use new error type
-              warn_and_exit!(1, InvalidCredentialsFile, "No credentials found").await
+              warn_and_exit!(1, InvalidCredentialsFile, "No AWS variables defined").await
             }
             credentials.insert(
               cred_name,
@@ -857,7 +856,7 @@ async fn get_creds(non_interactive: bool) -> HashMap<String, Credentials> {
             let private_key: String = std::env::var("GCP_PRIVATE_KEY").unwrap_or("".to_string());
             if project_id.is_empty() || client_email.is_empty() || private_key.is_empty() {
               // TODO: use new error type
-              warn_and_exit!(1, InvalidCredentialsFile, "No credentials found").await
+              warn_and_exit!(1, InvalidCredentialsFile, "No GCP variables defined").await
             }
             credentials.insert(
               cred_name,
@@ -883,7 +882,7 @@ async fn get_creds(non_interactive: bool) -> HashMap<String, Credentials> {
               || secret.is_empty()
             {
               // TODO: use new error type
-              warn_and_exit!(1, InvalidCredentialsFile, "No credentials found").await
+              warn_and_exit!(1, InvalidCredentialsFile, "No Azure variables defined").await
             }
             credentials.insert(
               cred_name,
@@ -902,7 +901,7 @@ async fn get_creds(non_interactive: bool) -> HashMap<String, Credentials> {
         }
       }
       Err(_) => {
-        warn_and_exit!(1, InvalidCredentialsFile, "No credentials found").await;
+        warn_and_exit!(1, InvalidCredentialsFile, "No CRED_CLOUD defined").await;
       }
     }
     return credentials;
@@ -967,11 +966,17 @@ fn get_url() -> &'static str {
 pub async fn get_config(non_interactive: bool) -> HashMap<String, Vec<Config>> {
   let anycloud_prof = get_deploy_configs().await;
   let mut creds = get_creds(non_interactive).await;
-  if creds.len() == 0 {
+  if creds.len() == 0 && !non_interactive {
     prompt_add_cred(true, None).await;
+  } else if creds.len() == 0 && non_interactive {
+    // TODO: add new error type
+    warn_and_exit!(1, InvalidCredentialsFile, "No credentials defined").await
   }
-  if anycloud_prof.len() == 0 {
+  if anycloud_prof.len() == 0 && !non_interactive {
     prompt_add_config().await;
+  } else if anycloud_prof.len() == 0 && non_interactive {
+    // TODO: add new error type
+    warn_and_exit!(1, InvalidCredentialsFile, "No configuration defined").await
   }
   let mut all_configs = HashMap::new();
   for (deploy_name, deploy_configs) in anycloud_prof.into_iter() {
@@ -1105,7 +1110,6 @@ pub async fn new(
   config_name: Option<String>,
   non_interactive: bool,
 ) {
-  // TODO: add auto path
   let config = get_config(non_interactive).await;
   let config_names = config.keys().cloned().collect::<Vec<String>>();
   if config_names.len() == 0 {
@@ -1113,17 +1117,26 @@ pub async fn new(
   }
   let selection: usize = match config_name {
     Some(name) => config_names.iter().position(|n| &name == n).unwrap(),
-    None => anycloud_dialoguer::select_with_default("Pick Deploy Config for App", &config_names, 0),
+    None => {
+      if non_interactive {
+        warn_and_exit!(
+          1,
+          NoTarballFile,
+          "Non interactive mode. No deploy config selected."
+        )
+        .await
+      }
+      anycloud_dialoguer::select_with_default("Pick Deploy Config for App", &config_names, 0)
+    }
   };
   let deploy_config = &config_names[selection];
-  // TODO: add auto path
   let app_id: std::io::Result<String> = match app_name {
     Some(name) => Ok(name),
     None => {
       if non_interactive {
         Err(std::io::Error::new(
           std::io::ErrorKind::NotFound,
-          "Non interactive mode with no app name defined",
+          "Non interactive mode. No app name defined",
         ))
       } else {
         anycloud_dialoguer::input_with_allow_empty_as_result("Optional App name", true)

@@ -68,6 +68,7 @@ pub async fn main() {
   let matches = app.get_matches();
   match matches.subcommand() {
     ("new", Some(matches)) => {
+      // TODO: create a function and merge new and update?
       let dockerfile_b64 = get_dockerfile_b64().await;
       let app_tar_gz_b64 = get_app_tar_gz_b64(true).await;
       let env_b64 = match matches.value_of("env-file") {
