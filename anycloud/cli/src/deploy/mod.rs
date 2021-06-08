@@ -822,11 +822,11 @@ pub async fn list_deploy_configs() {
 async fn get_creds(non_interactive: bool) -> HashMap<String, Credentials> {
   if non_interactive {
     let mut credentials = HashMap::new();
-    let cred_name = match std::env::var("CRED_NAME") {
+    let cred_name = match std::env::var("CREDENTIALS_NAME") {
       Ok(name) => name,
       Err(_) => {
         // TODO: use new error type
-        warn_and_exit!(1, InvalidCredentialsFile, "No CRED_NAME defined").await
+        warn_and_exit!(1, InvalidCredentialsFile, "No CREDENTIALS_NAME defined").await
       }
     };
     match std::env::var("CRED_CLOUD") {
