@@ -986,7 +986,9 @@ pub async fn get_config(non_interactive: bool) -> HashMap<String, Vec<Config>> {
       let cred = match creds.get(cred_name) {
         Some(cred) => cred,
         None => {
-          if non_interactive { continue; }
+          if non_interactive {
+            continue;
+          }
           let cred: &Credentials;
           loop {
             prompt_add_cred(false, Some(cred_name)).await;
