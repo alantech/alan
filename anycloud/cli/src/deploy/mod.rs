@@ -1124,7 +1124,12 @@ pub async fn new(
   non_interactive: bool,
 ) {
   println!("{:?} - {:?} - {:?}", app_name, config_name, non_interactive);
-  println!("{:#?} - {:#?} - {:#?}", std::env::var("CREDENTIALS_NAME"), std::env::var("CLOUD_NAME"), std::env::var("AWS_SECRET"));
+  println!(
+    "{:#?} - {:#?} - {:#?}",
+    std::env::var("CREDENTIALS_NAME"),
+    std::env::var("CLOUD_NAME"),
+    std::env::var("AWS_SECRET")
+  );
   let config = get_config(&config_name, non_interactive).await;
   let config_names = config.keys().cloned().collect::<Vec<String>>();
   if config_names.len() == 0 && !non_interactive {
@@ -1138,10 +1143,10 @@ pub async fn new(
     .await
   }
   let selection: usize = match config_name {
-    Some(name) => {
-      match config_names.iter().position(|n| &name == n) {
-        Some(pos) => pos,
-        None => warn_and_exit!(
+    Some(name) => match config_names.iter().position(|n| &name == n) {
+      Some(pos) => pos,
+      None => {
+        warn_and_exit!(
           1,
           NoDeployConfig,
           "No deploy configuration found with name {}.",
