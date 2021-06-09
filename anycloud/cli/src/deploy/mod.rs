@@ -963,7 +963,7 @@ fn get_url() -> &'static str {
   }
 }
 
-pub async fn get_config(non_interactive: bool) -> HashMap<String, Vec<Config>> {
+pub async fn get_config(config_name: &Option<String>, non_interactive: bool) -> HashMap<String, Vec<Config>> {
   let anycloud_prof = get_deploy_configs().await;
   let mut creds = get_creds(non_interactive).await;
   if creds.len() == 0 && !non_interactive {
@@ -986,8 +986,20 @@ pub async fn get_config(non_interactive: bool) -> HashMap<String, Vec<Config>> {
       let cred = match creds.get(cred_name) {
         Some(cred) => cred,
         None => {
-          if non_interactive {
-            continue;
+          match config_name {
+            Some(name) => {
+              if non_interactive && &deploy_name != name {
+                continue;
+              } else if non_interactive && &deploy_name == name {
+                // TODO: add new error type
+                warn_and_exit!(1, InvalidCredentialsFile, "Non interactive mode. No credentials defined for desired config {}", name).await;
+              }
+            },
+            None =>  {
+              if non_interactive {
+                continue;
+              }
+            }
           }
           let cred: &Credentials;
           loop {
@@ -1079,7 +1091,7 @@ pub async fn terminate() {
   sp.enable_steady_tick(10);
   sp.set_message(&format!("Terminating App {}", styled_cluster_id));
   let body = json!({
-    "deployConfig": get_config(false).await,
+    "deployConfig": get_config(&None, false).await,
     "clusterId": cluster_id,
   });
   let resp = post_v1("terminate", body).await;
@@ -1113,7 +1125,7 @@ pub async fn new(
   config_name: Option<String>,
   non_interactive: bool,
 ) {
-  let config = get_config(non_interactive).await;
+  let config = get_config(&config_name, non_interactive).await;
   let config_names = config.keys().cloned().collect::<Vec<String>>();
   if config_names.len() == 0 && !non_interactive {
     prompt_add_config().await;
@@ -1202,7 +1214,7 @@ pub async fn upgrade(
   let cluster_id = &ids[selection];
   CLUSTER_ID.set(cluster_id.to_string()).unwrap();
   let styled_cluster_id = style(cluster_id).bold();
-  let config = get_config(false).await;
+  let config = get_config(&None, false).await;
   let sp = ProgressBar::new_spinner();
   sp.enable_steady_tick(10);
   sp.set_message(&format!("Upgrading App {}", styled_cluster_id));
@@ -1237,7 +1249,7 @@ pub async fn upgrade(
 }
 
 async fn get_apps(status: bool) -> Vec<App> {
-  let config = get_config(false).await;
+  let config = get_config(&None, false).await;
   let sp = ProgressBar::new_spinner();
   sp.enable_steady_tick(10);
   sp.set_message("Gathering information about Apps deployed");
