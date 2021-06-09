@@ -126,8 +126,8 @@ macro_rules! make_tunnel {
   ($config:expr, $dest_port:expr) => {{
     match $config {
       crate::vm::http::HttpType::HTTP(http) => {
-        use tokio::io::AsyncWriteExt;
         let port_num = http.port;
+        eprintln!("Trying to listen on {}", http.port);
         let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port_num));
         let bind = tokio::net::TcpListener::bind(addr).await;
         match bind {
@@ -143,106 +143,13 @@ macro_rules! make_tunnel {
                         tokio::net::TcpStream::connect(format!("127.0.0.1:{}", $dest_port)).await;
                       match dest_socket {
                         Ok(mut dest_stream) => {
-                          let mut src_data = vec![0; 4096];
-                          let mut src_start = 0;
-                          let mut src_stop = 0;
-                          let mut dest_data = vec![0; 4096];
-                          let mut dest_start = 0;
-                          let mut dest_stop = 0;
-                          loop {
-                            let src_ready = src_stream
-                              .ready(tokio::io::Interest::READABLE | tokio::io::Interest::WRITABLE)
-                              .await;
-                            let dest_ready = dest_stream
-                              .ready(tokio::io::Interest::READABLE | tokio::io::Interest::WRITABLE)
-                              .await;
-                            match (src_ready, dest_ready) {
-                              (Ok(src_ready), Ok(dest_ready)) => {
-                                // First try to empty the buffers, if possible
-                                if src_ready.is_writable() && dest_start != dest_stop {
-                                  match src_stream.try_write(&dest_data[dest_start..dest_stop]) {
-                                    Ok(n) => {
-                                      dest_start = dest_start + n;
-                                      if dest_start == dest_stop {
-                                        dest_start = 0;
-                                        dest_stop = 0;
-                                      }
-                                    }
-                                    Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                                      continue;
-                                    }
-                                    Err(_) => {
-                                      // Assume the source closed
-                                      dest_stream.flush().await.expect("failed to flush dest?");
-                                      dest_stream
-                                        .shutdown()
-                                        .await
-                                        .expect("failed to shutdown dest?");
-                                    }
-                                  };
-                                }
-                                if dest_ready.is_writable() && src_start != src_stop {
-                                  match dest_stream.try_write(&src_data[src_start..src_stop]) {
-                                    Ok(n) => {
-                                      src_start = src_start + n;
-                                      if src_start == src_stop {
-                                        src_start = 0;
-                                        src_stop = 0;
-                                      }
-                                    }
-                                    Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                                      continue;
-                                    }
-                                    Err(_) => {
-                                      // Assume the destination closed
-                                      src_stream.flush().await.expect("failed to flush src?");
-                                      src_stream
-                                        .shutdown()
-                                        .await
-                                        .expect("failed to shutdown src?");
-                                    }
-                                  };
-                                }
-                                // Next, if the buffers are empty, try to read data
-                                if src_ready.is_readable() && src_stop == 0 {
-                                  match src_stream.try_read(&mut src_data) {
-                                    Ok(n) => {
-                                      src_stop = src_stop + n;
-                                    }
-                                    Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                                      continue;
-                                    }
-                                    Err(_) => {
-                                      // Assume the source closed
-                                      dest_stream.flush().await.expect("failed to flush dest?");
-                                      dest_stream
-                                        .shutdown()
-                                        .await
-                                        .expect("failed to shutdown dest?");
-                                    }
-                                  };
-                                }
-                                if dest_ready.is_readable() && dest_stop == 0 {
-                                  match dest_stream.try_read(&mut dest_data) {
-                                    Ok(n) => {
-                                      dest_stop = dest_stop + n;
-                                    }
-                                    Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                                      continue;
-                                    }
-                                    Err(_) => {
-                                      // Assume the destination closed
-                                      src_stream.flush().await.expect("failed to flush src?");
-                                      src_stream
-                                        .shutdown()
-                                        .await
-                                        .expect("failed to shutdown src?");
-                                    }
-                                  };
-                                }
-                              }
-                              _ => eprintln!("Failed to determine if a socketis ready?"),
-                            };
+                          let res = tokio::io::copy_bidirectional(
+                            &mut src_stream,
+                            &mut dest_stream
+                          ).await;
+                          match res {
+                            Ok(_) => { /* Do nothing */ },
+                            Err(_) => { /* Also do nothing? */ },
                           }
                         }
                         Err(ee) => eprintln!(
@@ -259,13 +166,15 @@ macro_rules! make_tunnel {
             true
           }
           Err(ee) => {
-            eprintln!("HTTP server failed to listen on port {}: {}", port_num, ee);
+            eprintln!("TCP tunnel failed to listen on port {}: {}", port_num, ee);
             false
           }
         }
       }
       crate::vm::http::HttpType::HTTPS(https) => {
-        /*let port_num = https.port;
+        use futures_util::StreamExt;
+        let port_num = https.port;
+        eprintln!("Trying to listen on {}", https.port);
         let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port_num));
         let tls_cfg = {
           let certs = rustls::internal::pemfile::certs(&mut std::io::BufReader::new(
@@ -288,29 +197,69 @@ macro_rules! make_tunnel {
           std::sync::Arc::new(cfg)
         };
         let tcp = tokio::net::TcpListener::bind(&addr).await;
-        let tcp = tcp.unwrap();
-        let tls_acceptor = tokio_rustls::TlsAcceptor::from(tls_cfg);
-        let incoming_tls_stream = async_stream::stream! {
-          loop {
-            let accept = tcp.accept().await;
-            if accept.is_err() { continue; }
-            let (socket, _) = accept.unwrap();
-            let strm = tls_acceptor.accept(socket).into_failable();
-            let strm_val = strm.await;
-            if strm_val.is_err() { continue; }
-            yield Ok(strm_val.unwrap());
+        match tcp {
+          Ok(tcp) => {
+            tokio::spawn(async move {
+              let tls_acceptor = tokio_rustls::TlsAcceptor::from(tls_cfg);
+              let incoming_tls_stream = async_stream::stream! {
+                loop {
+                  let accept = tcp.accept().await;
+                  if accept.is_err() { continue; }
+                  let (socket, _) = accept.unwrap();
+                  let strm = tls_acceptor.accept(socket).into_failable();
+                  let strm_val = strm.await;
+                  if strm_val.is_err() { continue; }
+                  yield Ok(strm_val.unwrap());
+                  if 1 == 0 { yield Err("never"); } // Make Rust type inference shut up :(
+                }
+              };
+              futures_util::pin_mut!(incoming_tls_stream);
+              while let Some(src_socket) = incoming_tls_stream.next().await {
+                tokio::spawn(async move {
+                  eprintln!("Hi there!");
+                  eprintln!("{:?}", src_socket);
+                  //use tokio::io::{AsyncRead, AsyncReadExt};
+                  match src_socket {
+                    Ok(mut src_stream) => {
+                      /*let mut buf = [0; 4096];
+                      let amount = src_stream.read(&mut buf).await;
+                      eprintln!("amount {:?}", amount);
+                      drop(amount);
+                      eprintln!("buf {:?}", buf);*/
+                      // Do we need the source address for anything?
+                      // Maybe load balancing?
+                      let dest_socket =
+                        tokio::net::TcpStream::connect(format!("127.0.0.1:{}", $dest_port)).await;
+                      match dest_socket {
+                        Ok(mut dest_stream) => {
+                          eprintln!("Hi again");
+                          let res = tokio::io::copy_bidirectional(
+                            &mut src_stream,
+                            &mut dest_stream
+                          ).await;
+                          match res {
+                            Ok(_) => { /* Do nothing */ },
+                            Err(e) => { panic!("Wut {:?}", e); /* Also do nothing? */ },
+                          }
+                        }
+                        Err(ee) => eprintln!(
+                          "Tunnel failed to connect to downstream on port {}: {}",
+                          $dest_port, ee
+                        ),
+                      };
+                    }
+                    Err(ee) => eprintln!("Tunnel failed to open the socket? {}", ee),
+                  };
+                });
+              }
+            });
+            true
+          },
+          Err(ee) => {
+            eprintln!("TLS tunnel failed to listen on port {}: {}", port_num, ee);
+            false
           }
-        };
-        let make_svc = hyper::service::make_service_fn(|_conn| async {
-          Ok::<_, std::convert::Infallible>(hyper::service::service_fn($listener))
-        });
-        let server = hyper::server::Server::builder(crate::vm::http::HyperAcceptor {
-          acceptor: Box::pin(incoming_tls_stream),
-        })
-        .serve(make_svc);
-        println!("HTTPS server listening on port {}", port_num);
-        tokio::spawn(async move { server.await });*/
-        true
+        }
       }
     }
   }};
