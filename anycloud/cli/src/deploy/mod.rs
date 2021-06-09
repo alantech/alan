@@ -963,7 +963,10 @@ fn get_url() -> &'static str {
   }
 }
 
-pub async fn get_config(config_name: &Option<String>, non_interactive: bool) -> HashMap<String, Vec<Config>> {
+pub async fn get_config(
+  config_name: &Option<String>,
+  non_interactive: bool,
+) -> HashMap<String, Vec<Config>> {
   let anycloud_prof = get_deploy_configs().await;
   let mut creds = get_creds(non_interactive).await;
   if creds.len() == 0 && !non_interactive {
@@ -992,10 +995,16 @@ pub async fn get_config(config_name: &Option<String>, non_interactive: bool) -> 
                 continue;
               } else if non_interactive && &deploy_name == name {
                 // TODO: add new error type
-                warn_and_exit!(1, InvalidCredentialsFile, "Non interactive mode. No credentials defined for desired config {}", name).await;
+                warn_and_exit!(
+                  1,
+                  InvalidCredentialsFile,
+                  "Non interactive mode. No credentials defined for desired config {}",
+                  name
+                )
+                .await;
               }
-            },
-            None =>  {
+            }
+            None => {
               if non_interactive {
                 continue;
               }
