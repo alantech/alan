@@ -25,6 +25,9 @@ pub enum ErrorType {
   DuplicateDnsPrivateIp = 132,
   NoDaemonAGZFile = 133,
   NoTarballFile = 134,
+  InvalidEnvVar = 135,
+  NoCredentials = 136,
+  NoDeployConfig = 137,
 }
 
 #[macro_export]

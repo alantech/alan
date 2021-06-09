@@ -825,8 +825,7 @@ async fn get_creds(non_interactive: bool) -> HashMap<String, Credentials> {
     let cred_name = match std::env::var("CREDENTIALS_NAME") {
       Ok(name) => name,
       Err(_) => {
-        // TODO: use new error type
-        warn_and_exit!(1, InvalidCredentialsFile, "No CREDENTIALS_NAME defined").await
+        warn_and_exit!(1, InvalidEnvVar, "No CREDENTIALS_NAME defined").await
       }
     };
     match std::env::var("CLOUD_NAME") {
@@ -836,8 +835,7 @@ async fn get_creds(non_interactive: bool) -> HashMap<String, Credentials> {
             let access_key: String = std::env::var("AWS_ACCESS_KEY").unwrap_or("".to_string());
             let secret: String = std::env::var("AWS_SECRET").unwrap_or("".to_string());
             if access_key.is_empty() || secret.is_empty() {
-              // TODO: use new error type
-              warn_and_exit!(1, InvalidCredentialsFile, "No AWS variables defined").await
+              warn_and_exit!(1, InvalidEnvVar, "No AWS variables defined").await
             }
             credentials.insert(
               cred_name,
@@ -855,8 +853,7 @@ async fn get_creds(non_interactive: bool) -> HashMap<String, Credentials> {
             let client_email: String = std::env::var("GCP_CLIENT_EMAIL").unwrap_or("".to_string());
             let private_key: String = std::env::var("GCP_PRIVATE_KEY").unwrap_or("".to_string());
             if project_id.is_empty() || client_email.is_empty() || private_key.is_empty() {
-              // TODO: use new error type
-              warn_and_exit!(1, InvalidCredentialsFile, "No GCP variables defined").await
+              warn_and_exit!(1, InvalidEnvVar, "No GCP variables defined").await
             }
             credentials.insert(
               cred_name,
@@ -881,8 +878,7 @@ async fn get_creds(non_interactive: bool) -> HashMap<String, Credentials> {
               || subscription_id.is_empty()
               || secret.is_empty()
             {
-              // TODO: use new error type
-              warn_and_exit!(1, InvalidCredentialsFile, "No Azure variables defined").await
+              warn_and_exit!(1, InvalidEnvVar, "No Azure variables defined").await
             }
             credentials.insert(
               cred_name,
@@ -972,14 +968,12 @@ pub async fn get_config(
   if creds.len() == 0 && !non_interactive {
     prompt_add_cred(true, None).await;
   } else if creds.len() == 0 && non_interactive {
-    // TODO: add new error type
-    warn_and_exit!(1, InvalidCredentialsFile, "No credentials defined").await
+    warn_and_exit!(1, NoCredentials, "No credentials defined").await
   }
   if anycloud_prof.len() == 0 && !non_interactive {
     prompt_add_config().await;
   } else if anycloud_prof.len() == 0 && non_interactive {
-    // TODO: add new error type
-    warn_and_exit!(1, InvalidCredentialsFile, "No configuration defined").await
+    warn_and_exit!(1, NoDeployConfig, "No configuration defined").await
   }
   let mut all_configs = HashMap::new();
   for (deploy_name, deploy_configs) in anycloud_prof.into_iter() {
@@ -994,10 +988,9 @@ pub async fn get_config(
               if non_interactive && &deploy_name != name {
                 continue;
               } else if non_interactive && &deploy_name == name {
-                // TODO: add new error type
                 warn_and_exit!(
                   1,
-                  InvalidCredentialsFile,
+                  NoCredentials,
                   "Non interactive mode. No credentials defined for desired config {}",
                   name
                 )
@@ -1139,10 +1132,9 @@ pub async fn new(
   if config_names.len() == 0 && !non_interactive {
     prompt_add_config().await;
   } else if config_names.len() == 0 && non_interactive {
-    // TODO: add err type
     warn_and_exit!(
       1,
-      NoTarballFile,
+      NoDeployConfig,
       "Non interactive mode. No deploy configuration found."
     )
     .await
@@ -1151,10 +1143,9 @@ pub async fn new(
     Some(name) => config_names.iter().position(|n| &name == n).unwrap(),
     None => {
       if non_interactive {
-        // TODO: add err type
         warn_and_exit!(
           1,
-          NoTarballFile,
+          NoDeployConfig,
           "Non interactive mode. No deploy configuration selected."
         )
         .await
