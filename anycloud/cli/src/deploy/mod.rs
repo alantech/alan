@@ -918,10 +918,11 @@ pub async fn client_error(err_code: ErrorType, message: &str, level: &str) {
 }
 
 pub async fn terminate() {
-  let sp = ProgressBar::new_spinner();
+  let mut sp = ProgressBar::new_spinner();
   sp.enable_steady_tick(10);
   sp.set_message("Gathering information about Apps deployed");
   let apps = get_apps(false).await;
+  sp.finish_and_clear();
   if apps.len() == 0 {
     println!("No Apps deployed");
     std::process::exit(0);
@@ -931,6 +932,8 @@ pub async fn terminate() {
   let cluster_id = &ids[selection];
   CLUSTER_ID.set(cluster_id.to_string()).unwrap();
   let styled_cluster_id = style(cluster_id).bold();
+  sp = ProgressBar::new_spinner();
+  sp.enable_steady_tick(10);
   sp.set_message(&format!("Terminating App {}", styled_cluster_id));
   let body = json!({
     "deployConfig": get_config().await,
@@ -999,6 +1002,7 @@ pub async fn new(
       // idc if it's been set before, I'm setting it now!!!
       let _ = CLUSTER_ID.set(res);
       poll(&sp).await;
+      sp.finish();
       return;
     }
     Err(err) => match err {
@@ -1052,7 +1056,10 @@ pub async fn upgrade(
   }
   let resp = post_v1("upgrade", body).await;
   let res = match resp {
-    Ok(_) => format!("Upgraded App {} successfully!", styled_cluster_id),
+    Ok(_) => {
+      poll(&sp).await;
+      format!("Upgraded App {} successfully!", styled_cluster_id)
+    },
     Err(err) => match err {
       PostV1Error::Timeout => format!("{}", REQUEST_TIMEOUT),
       PostV1Error::Forbidden => format!("{}", FORBIDDEN_OPERATION),
@@ -1208,12 +1215,12 @@ pub async fn info() {
 }
 
 pub async fn poll(sp: &ProgressBar) {
-  let mut lines: Vec<String> = vec![];
   let body = json!({
     "clusterId": CLUSTER_ID.get().expect("cluster ID not set..."),
   });
+  let mut lines: Vec<String> = vec![];
+  let mut is_done = false;
   loop {
-    sp.println("loop");
     let logs = match post_v1("logs", body.clone()).await {
       Ok(logs) => logs,
       Err(PostV1Error::Conflict) => todo!("conflict"),
@@ -1226,18 +1233,22 @@ pub async fn poll(sp: &ProgressBar) {
     // those for us
     let new_lines = logs.split("\n").skip(lines.len()).collect::<Vec<_>>();
     // update the spinner and lines above the spinner
-    new_lines.into_iter().for_each(|line| {
+    new_lines.into_iter().filter(|line| !line.is_empty()).for_each(|line| {
       if let Some(last_line) = lines.get(lines.len() - 1) {
         sp.println(last_line);
       }
       sp.set_message(line);
       lines.push(line.to_string());
     });
-    let apps = get_apps(true).await;
-    if apps.len() != 0 && apps.into_iter().all(|app| app.status == "up") {
-      sp.finish();
+    if is_done {
       break;
     }
+    let apps = get_apps(true).await;
+    // we can't simply break when this is true because there's a race condition -
+    // what if the "your app is ready" message is inserted in redis after we POST
+    // to `/logs` but before we POST to `/info`? We can't depend on the log output
+    // to determine when this should end so we POST to `/info` 1 more time
+    is_done = apps.len() != 0 && apps.into_iter().all(|app| app.status == "up");
     tokio::time::sleep(Duration::from_secs(10)).await;
   }
 }
