@@ -44,7 +44,7 @@ pub async fn authenticate() {
     let file_name = &format!("{}/{}", home, TOKEN_FILE);
     match read_to_string(file_name) {
       Ok(file_token) => TOKEN.set(file_token).unwrap(),
-      Err(_) => match std::env::var("GITHUB_TOKEN") {
+      Err(_) => match std::env::var("AUTH_TOKEN") {
         Ok(token) => TOKEN.set(token).unwrap(),
         Err(_) => generate_token().await,
       },
