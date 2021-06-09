@@ -1136,7 +1136,18 @@ pub async fn new(
     .await
   }
   let selection: usize = match config_name {
-    Some(name) => config_names.iter().position(|n| &name == n).unwrap(),
+    Some(name) => {
+      match config_names.iter().position(|n| &name == n) {
+        Some(pos) => pos,
+        None => warn_and_exit!(
+          1,
+          NoDeployConfig,
+          "No deploy configuration found with name {}.",
+          name
+        )
+        .await
+      }
+    },
     None => {
       if non_interactive {
         warn_and_exit!(
