@@ -1205,6 +1205,25 @@ module.exports = {
       console.error(`TCP server failed to listen on port 8000: ${listenResult}`)
     }
   },
+  tcptun: async (port) => {
+    const server = net.createServer((c) => {
+      // To set up the connection to the server to forward this data to.
+      c.pause();
+      const t = net.createConnection({ port, }, () => {
+        c.resume();
+      });
+      c.on('data', (data) => t.write(data));
+      t.on('data', (data) => c.write(data));
+      c.on('end', () => t.end());
+      t.on('end', () => c.end());
+    });
+    return await new Promise((resolve) => {
+      server.on('error', e => resolve(e));
+      server.listen({
+        port: 8000,
+      }, () => resolve(true));
+    });
+  },
   tcpconn: async (host, port) => {
     return new Promise(resolve => {
       const c = net.createConnection(port, host, () => {
