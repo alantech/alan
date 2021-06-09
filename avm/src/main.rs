@@ -61,6 +61,9 @@ fn main() {
       .subcommand(SubCommand::with_name("new")
         .about("Deploys an .agz file to a new app with one of the Deploy Configs from anycloud.json")
         .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'")
+        .arg_from_usage("[NON_INTERACTIVE] -n, --non-interactive 'Specifies an optional flag for non interactive CLI mode'")
+        .arg_from_usage("-a, --app-name=[APP_NAME] 'Specifies an optional app name.'")
+        .arg_from_usage("-c, --config-name=[CONFIG_NAME] 'Specifies an optional config name.'")
       )
       .subcommand(SubCommand::with_name("list")
         .about("Displays all the Apps deployed with the Deploy Configs from anycloud.json")
@@ -158,7 +161,27 @@ fn main() {
         match sub_matches.subcommand() {
           ("new", Some(matches)) => {
             let agz_file = matches.value_of("AGZ_FILE").unwrap();
-            deploy::new(get_agz_b64(agz_file), None, None).await;
+            let non_interactive: bool = match matches.values_of("NON_INTERACTIVE") {
+              Some(_) => true,
+              None => false,
+            };
+            let app_name = match matches.value_of("app-name") {
+              Some(name) => Some(name.to_string()),
+              None => None,
+            };
+            let config_name = match matches.value_of("config-name") {
+              Some(name) => Some(name.to_string()),
+              None => None,
+            };
+            deploy::new(
+              get_agz_b64(agz_file),
+              None,
+              None,
+              app_name,
+              config_name,
+              non_interactive,
+            )
+            .await;
           }
           ("terminate", _) => deploy::terminate().await,
           ("upgrade", Some(matches)) => {
