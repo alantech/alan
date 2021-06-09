@@ -824,78 +824,74 @@ async fn get_creds(non_interactive: bool) -> HashMap<String, Credentials> {
     let mut credentials = HashMap::new();
     let cred_name = match std::env::var("CREDENTIALS_NAME") {
       Ok(name) => name,
-      Err(_) => {
-        warn_and_exit!(1, InvalidEnvVar, "No CREDENTIALS_NAME defined").await
-      }
+      Err(_) => warn_and_exit!(1, InvalidEnvVar, "No CREDENTIALS_NAME defined").await,
     };
     match std::env::var("CLOUD_NAME") {
-      Ok(cloud) => {
-        match cloud.as_str() {
-          "AWS" => {
-            let access_key: String = std::env::var("AWS_ACCESS_KEY").unwrap_or("".to_string());
-            let secret: String = std::env::var("AWS_SECRET").unwrap_or("".to_string());
-            if access_key.is_empty() || secret.is_empty() {
-              warn_and_exit!(1, InvalidEnvVar, "No AWS variables defined").await
-            }
-            credentials.insert(
-              cred_name,
-              Credentials {
-                credentials: CloudCredentials::AWS(AWSCredentials {
-                  accessKeyId: access_key,
-                  secretAccessKey: secret,
-                }),
-                cloudProvider: "AWS".to_owned(),
-              },
-            );
+      Ok(cloud) => match cloud.as_str() {
+        "AWS" => {
+          let access_key: String = std::env::var("AWS_ACCESS_KEY").unwrap_or("".to_string());
+          let secret: String = std::env::var("AWS_SECRET").unwrap_or("".to_string());
+          if access_key.is_empty() || secret.is_empty() {
+            warn_and_exit!(1, InvalidEnvVar, "No AWS variables defined").await
           }
-          "GCP" => {
-            let project_id: String = std::env::var("GCP_PROJECT_ID").unwrap_or("".to_string());
-            let client_email: String = std::env::var("GCP_CLIENT_EMAIL").unwrap_or("".to_string());
-            let private_key: String = std::env::var("GCP_PRIVATE_KEY").unwrap_or("".to_string());
-            if project_id.is_empty() || client_email.is_empty() || private_key.is_empty() {
-              warn_and_exit!(1, InvalidEnvVar, "No GCP variables defined").await
-            }
-            credentials.insert(
-              cred_name,
-              Credentials {
-                credentials: CloudCredentials::GCP(GCPCredentials {
-                  privateKey: private_key,
-                  clientEmail: client_email,
-                  projectId: project_id,
-                }),
-                cloudProvider: "GCP".to_owned(),
-              },
-            );
-          }
-          "Azure" => {
-            let application_id: String = std::env::var("AZ_APP_ID").unwrap_or("".to_string());
-            let directory_id: String = std::env::var("AZ_DIRECTORY_ID").unwrap_or("".to_string());
-            let subscription_id: String =
-              std::env::var("AZ_SUBSCRIPTION_ID").unwrap_or("".to_string());
-            let secret: String = std::env::var("AZ_SECRET").unwrap_or("".to_string());
-            if application_id.is_empty()
-              || directory_id.is_empty()
-              || subscription_id.is_empty()
-              || secret.is_empty()
-            {
-              warn_and_exit!(1, InvalidEnvVar, "No Azure variables defined").await
-            }
-            credentials.insert(
-              cred_name,
-              Credentials {
-                credentials: CloudCredentials::Azure(AzureCredentials {
-                  applicationId: application_id,
-                  subscriptionId: subscription_id,
-                  directoryId: directory_id,
-                  secret: secret,
-                }),
-                cloudProvider: "Azure".to_owned(),
-              },
-            );
-          }
-          _ => {}
+          credentials.insert(
+            cred_name,
+            Credentials {
+              credentials: CloudCredentials::AWS(AWSCredentials {
+                accessKeyId: access_key,
+                secretAccessKey: secret,
+              }),
+              cloudProvider: "AWS".to_owned(),
+            },
+          );
         }
-      }
+        "GCP" => {
+          let project_id: String = std::env::var("GCP_PROJECT_ID").unwrap_or("".to_string());
+          let client_email: String = std::env::var("GCP_CLIENT_EMAIL").unwrap_or("".to_string());
+          let private_key: String = std::env::var("GCP_PRIVATE_KEY").unwrap_or("".to_string());
+          if project_id.is_empty() || client_email.is_empty() || private_key.is_empty() {
+            warn_and_exit!(1, InvalidEnvVar, "No GCP variables defined").await
+          }
+          credentials.insert(
+            cred_name,
+            Credentials {
+              credentials: CloudCredentials::GCP(GCPCredentials {
+                privateKey: private_key,
+                clientEmail: client_email,
+                projectId: project_id,
+              }),
+              cloudProvider: "GCP".to_owned(),
+            },
+          );
+        }
+        "Azure" => {
+          let application_id: String = std::env::var("AZ_APP_ID").unwrap_or("".to_string());
+          let directory_id: String = std::env::var("AZ_DIRECTORY_ID").unwrap_or("".to_string());
+          let subscription_id: String =
+            std::env::var("AZ_SUBSCRIPTION_ID").unwrap_or("".to_string());
+          let secret: String = std::env::var("AZ_SECRET").unwrap_or("".to_string());
+          if application_id.is_empty()
+            || directory_id.is_empty()
+            || subscription_id.is_empty()
+            || secret.is_empty()
+          {
+            warn_and_exit!(1, InvalidEnvVar, "No Azure variables defined").await
+          }
+          credentials.insert(
+            cred_name,
+            Credentials {
+              credentials: CloudCredentials::Azure(AzureCredentials {
+                applicationId: application_id,
+                subscriptionId: subscription_id,
+                directoryId: directory_id,
+                secret: secret,
+              }),
+              cloudProvider: "Azure".to_owned(),
+            },
+          );
+        }
+        _ => {}
+      },
       Err(_) => {
         warn_and_exit!(1, InvalidCredentialsFile, "No CLOUD_NAME defined").await;
       }
