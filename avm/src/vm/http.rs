@@ -142,13 +142,11 @@ macro_rules! make_tunnel {
                         tokio::net::TcpStream::connect(format!("127.0.0.1:{}", $dest_port)).await;
                       match dest_socket {
                         Ok(mut dest_stream) => {
-                          let res = tokio::io::copy_bidirectional(
-                            &mut src_stream,
-                            &mut dest_stream
-                          ).await;
+                          let res =
+                            tokio::io::copy_bidirectional(&mut src_stream, &mut dest_stream).await;
                           match res {
-                            Ok(_) => { /* Do nothing */ },
-                            Err(_) => { /* Also do nothing? */ },
+                            Ok(_) => { /* Do nothing */ }
+                            Err(_) => { /* Also do nothing? */ }
                           }
                         }
                         Err(ee) => eprintln!(
@@ -191,7 +189,11 @@ macro_rules! make_tunnel {
           };
           let mut cfg = rustls::ServerConfig::new(rustls::NoClientAuth::new());
           cfg.set_single_cert(certs, key).unwrap();
-          let alpns: Vec<Vec<u8>> = std::env::var("AVM_ALPN").unwrap_or("http/1.1".to_string()).split(",").map(|s| s.to_string().into_bytes()).collect();
+          let alpns: Vec<Vec<u8>> = std::env::var("AVM_ALPN")
+            .unwrap_or("http/1.1".to_string())
+            .split(",")
+            .map(|s| s.to_string().into_bytes())
+            .collect();
           cfg.set_protocols(alpns.as_slice().as_ref());
           std::sync::Arc::new(cfg)
         };
@@ -201,10 +203,41 @@ macro_rules! make_tunnel {
             tokio::spawn(async move {
               let tls_acceptor = tokio_rustls::TlsAcceptor::from(tls_cfg);
               let incoming_tls_stream = async_stream::stream! {
+                use crate::vm::opcode::REGION_VMS;
+                use rand::{thread_rng, Rng};
                 loop {
+                  let l = REGION_VMS.read().unwrap().len();
+                  let i = async move {
+                    let mut rng = thread_rng();
+                    rng.gen_range(0..=l)
+                  }
+                  .await;
                   let accept = tcp.accept().await;
                   if accept.is_err() { continue; }
-                  let (socket, _) = accept.unwrap();
+                  let (mut socket, source_addr) = accept.unwrap();
+                  if i != l {
+                    let region_vms = REGION_VMS.read().unwrap().clone();
+                    let source_ip = source_addr.ip().to_string();
+                    if region_vms.iter().any(|ip| *ip == source_ip) { continue; }
+                    tokio::spawn(async move {
+                      let dest_socket = tokio::net::TcpStream::connect(format!("{}:443", region_vms[i])).await;
+                      match dest_socket {
+                        Ok(mut dest_stream) => {
+                          let res =
+                            tokio::io::copy_bidirectional(&mut socket, &mut dest_stream).await;
+                          match res {
+                            Ok(_) => { /* Do nothing */ }
+                            Err(_) => { /* Also do nothing? */ }
+                          }
+                        }
+                        Err(ee) => eprintln!(
+                          "Tunnel failed to load balance to {}: {}",
+                          region_vms[i], ee
+                        ),
+                      };
+                    });
+                    continue;
+                  }
                   let strm = tls_acceptor.accept(socket).into_failable();
                   let strm_val = strm.await;
                   if strm_val.is_err() { continue; }
@@ -225,22 +258,20 @@ macro_rules! make_tunnel {
                       match dest_socket {
                         Ok(mut dest_stream) => {
                           loop {
-                            let dest_ready = dest_stream.ready(
-                              tokio::io::Interest::READABLE.add(tokio::io::Interest::WRITABLE)
-                            ).await;
-                            if let Ok(_) = dest_ready { break; }
+                            let dest_ready = dest_stream
+                              .ready(
+                                tokio::io::Interest::READABLE.add(tokio::io::Interest::WRITABLE),
+                              )
+                              .await;
+                            if let Ok(_) = dest_ready {
+                              break;
+                            }
                           }
-                          let res = tokio::io::copy_bidirectional(
-                            &mut src_stream,
-                            &mut dest_stream
-                          ).await;
+                          let res =
+                            tokio::io::copy_bidirectional(&mut src_stream, &mut dest_stream).await;
                           match res {
-                            Ok(_) => { /* Do nothing */ },
-                            Err(_) => {
-                              /*dbg!(src_stream.get_ref().0.peer_addr());
-                              dbg!(dest_stream.peer_addr());*/
-                              /* Also do nothing? */
-                            },
+                            Ok(_) => { /* Do nothing */ }
+                            Err(_) => { /* Also do nothing? */ }
                           }
                         }
                         Err(ee) => eprintln!(
@@ -255,7 +286,7 @@ macro_rules! make_tunnel {
               }
             });
             true
-          },
+          }
           Err(ee) => {
             eprintln!("TLS tunnel failed to listen on port {}: {}", port_num, ee);
             false
