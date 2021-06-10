@@ -271,8 +271,8 @@ async fn get_daemon_props(
   }
   let duration = Duration::from_secs(10);
   let mut counter: u8 = 0;
-  // Check every 10s over 5 min if props are ready
-  while counter < 30 {
+  // Check every 10s over 10 min if props are ready
+  while counter < 60 {
     if let Some(props) = DAEMON_PROPS.get() {
       return Some(props);
     }
