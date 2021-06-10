@@ -718,7 +718,7 @@ impl ControlPort {
     }
     let health_res = join_all(health).await;
     let mut results = Vec::new();
-    for (_, res) in health_res.iter().enumerate() {
+    for res in health_res.iter() {
       match res {
         Err(_) => {
           results.push(false);
@@ -728,7 +728,6 @@ impl ControlPort {
         }
       }
     }
-    println!("CHECKING IF CLUSTER IS UP: {:#?}", results);
     return results.iter().all(|e| *e);
   }
 
