@@ -68,47 +68,25 @@ pub async fn main() {
   let matches = app.get_matches();
   match matches.subcommand() {
     ("new", Some(matches)) => {
-      // TODO: create a function and merge new and update?
-      let dockerfile_b64 = get_dockerfile_b64().await;
-      let app_tar_gz_b64 = get_app_tar_gz_b64(true).await;
-      let env_b64 = match matches.value_of("env-file") {
-        Some(env_file) => Some(get_env_file_b64(env_file.to_string()).await),
-        None => None,
-      };
-      let non_interactive: bool = match matches.values_of("NON_INTERACTIVE") {
-        Some(_) => true,
-        None => false,
-      };
-      let app_name = match matches.value_of("app-name") {
-        Some(name) => Some(name.to_string()),
-        None => None,
-      };
-      let config_name = match matches.value_of("config-name") {
-        Some(name) => Some(name.to_string()),
-        None => None,
-      };
-      deploy::new(
+      new_or_upgrade(
+        "new",
         anycloud_agz,
-        Some((dockerfile_b64, app_tar_gz_b64)),
-        env_b64,
-        app_name,
-        config_name,
-        non_interactive,
+        matches.value_of("env-file"),
+        matches.value_of("app-name"),
+        matches.value_of("config-name"),
+        matches.value_of("non-interactive"),
       )
       .await;
     }
     ("terminate", _) => deploy::terminate().await,
     ("upgrade", Some(matches)) => {
-      let dockerfile_b64 = get_dockerfile_b64().await;
-      let app_tar_gz_b64 = get_app_tar_gz_b64(true).await;
-      let env_b64 = match matches.value_of("env-file") {
-        Some(env_file) => Some(get_env_file_b64(env_file.to_string()).await),
-        None => None,
-      };
-      deploy::upgrade(
+      new_or_upgrade(
+        "upgrade",
         anycloud_agz,
-        Some((dockerfile_b64, app_tar_gz_b64)),
-        env_b64,
+        matches.value_of("env-file"),
+        matches.value_of("app-name"),
+        matches.value_of("config-name"),
+        matches.value_of("non-interactive"),
       )
       .await;
     }
@@ -138,4 +116,57 @@ pub async fn main() {
     // rely on AppSettings::SubcommandRequiredElseHelp
     _ => {}
   }
+}
+
+async fn new_or_upgrade(
+  mode: &str,
+  anycloud_agz: String,
+  env_file: Option<&str>,
+  app_name: Option<&str>,
+  config_name: Option<&str>,
+  non_interactive: Option<&str>,
+) {
+  let dockerfile_b64 = get_dockerfile_b64().await;
+  let app_tar_gz_b64 = get_app_tar_gz_b64(true).await;
+  let env_b64 = match env_file {
+    Some(env_file) => Some(get_env_file_b64(env_file.to_string()).await),
+    None => None,
+  };
+  let non_interactive: bool = match non_interactive {
+    Some(_) => true,
+    None => false,
+  };
+  let app_name = match app_name {
+    Some(name) => Some(name.to_string()),
+    None => None,
+  };
+  let config_name = match config_name {
+    Some(name) => Some(name.to_string()),
+    None => None,
+  };
+  match mode {
+    "new" => {
+      deploy::new(
+        anycloud_agz,
+        Some((dockerfile_b64, app_tar_gz_b64)),
+        env_b64,
+        app_name,
+        config_name,
+        non_interactive,
+      )
+      .await
+    }
+    "upgrade" => {
+      deploy::upgrade(
+        anycloud_agz,
+        Some((dockerfile_b64, app_tar_gz_b64)),
+        env_b64,
+        app_name,
+        config_name,
+        non_interactive,
+      )
+      .await
+    }
+    _ => {}
+  };
 }
