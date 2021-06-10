@@ -135,8 +135,7 @@ macro_rules! make_tunnel {
               loop {
                 let src_socket = server.accept().await;
                 match src_socket {
-                  Ok((mut src_stream, _src_addr)) => {
-                    // Do we need the source address for anything?
+                  Ok((mut src_stream, _)) => {
                     tokio::spawn(async move {
                       let dest_socket =
                         tokio::net::TcpStream::connect(format!("127.0.0.1:{}", $dest_port)).await;
@@ -254,11 +253,8 @@ macro_rules! make_tunnel {
               futures_util::pin_mut!(incoming_tls_stream);
               while let Some(src_socket) = incoming_tls_stream.next().await {
                 tokio::spawn(async move {
-                  //use tokio::io::{AsyncRead, AsyncReadExt};
                   match src_socket {
                     Ok(mut src_stream) => {
-                      // Do we need the source address for anything?
-                      // Maybe load balancing?
                       let dest_socket =
                         tokio::net::TcpStream::connect(format!("127.0.0.1:{}", $dest_port)).await;
                       match dest_socket {
