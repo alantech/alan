@@ -301,7 +301,7 @@ pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
       let dns = DNS::new(&domain);
       if let (Ok(dns), Ok(self_ip)) = (&dns, &self_ip) {
         loop {
-          // Do not send stats until cluster is up
+          // Do not send stats until cluster is up. Otherwise, will have scaling issues.
           if !control_port.is_cluster_up().await {
             sleep(Duration::from_secs(1)).await;
             continue;
