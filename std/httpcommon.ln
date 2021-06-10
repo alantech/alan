@@ -41,3 +41,31 @@ export type Connection {
   req: Request,
   res: Response,
 }
+
+// The body function sets the body for a Response, sets the Content-Length header, and retuns the
+// Response for chaining needs
+export fn body(res: Response, body: string) {
+  res.body = body;
+  const len = body.length();
+  set(res.headers, 'Content-Length', len.toString());
+  return res;
+}
+
+// The status function sets the status of the response
+export fn status(res: Response, status: int64) {
+  res.status = status;
+  return res;
+}
+
+// The send function converts the response object into an internal response object and passed that
+// back to the HTTP server. A Result type with either an 'ok' string or an error is returned
+export fn send(res: Response): Result<string> {
+  const ires = new InternalResponse {
+    status: res.status,
+    headers: res.headers.keyVal,
+    body: res.body,
+    connId: res.connId,
+  };
+  res.connId = 0; // Clear out the connection ID after use so it can't be used again
+  return httpsend(ires);
+}

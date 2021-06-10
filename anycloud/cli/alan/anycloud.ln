@@ -1,8 +1,7 @@
 from @std/app import start, print, eprint, exit
-from @std/avmdaemon import controlPort, getClusterSecret
+from @std/avmdaemon import controlPort, getClusterSecret, Connection, body, send, status
 from @std/cmd import exec
 from @std/datastore import namespace, getOr, set, has, del
-from @std/httpserver import Connection, body, send, status
 from @std/tcpserver import tunnel
 
 type ModeAndKey {
