@@ -942,12 +942,16 @@ pub async fn terminate() {
   });
   let resp = post_v1("terminate", body).await;
   let res = match resp {
-    Ok(_) => poll(&sp, || async {
-      get_apps(false).await
-        .into_iter()
-        .find(|app| &app.id == cluster_id)
-        .is_none()
-    }).await,
+    Ok(_) => {
+      poll(&sp, || async {
+        get_apps(false)
+          .await
+          .into_iter()
+          .find(|app| &app.id == cluster_id)
+          .is_none()
+      })
+      .await
+    }
     Err(err) => match err {
       PostV1Error::Timeout => format!("{}", REQUEST_TIMEOUT),
       PostV1Error::Forbidden => format!("{}", FORBIDDEN_OPERATION),
@@ -1008,12 +1012,14 @@ pub async fn new(
       // idc if it's been set before, I'm setting it now!!!
       let _ = CLUSTER_ID.set(res);
       poll(&sp, || async {
-        get_apps(true).await
+        get_apps(true)
+          .await
           .into_iter()
           .find(|app| &app.deployName == deploy_config)
           .map(|app| app.status == "up")
           .unwrap_or(false)
-      }).await
+      })
+      .await
     }
     Err(err) => match err {
       PostV1Error::Timeout => format!("{}", REQUEST_TIMEOUT),
@@ -1066,18 +1072,22 @@ pub async fn upgrade(
   }
   let resp = post_v1("upgrade", body).await;
   let res = match resp {
-    Ok(_) => poll(&sp, || async {
-      get_apps(false).await
-        .into_iter()
-        .find(|app| &app.id == cluster_id)
-        // going to hard-depend on the latency of the network - if the user
-        // is using the anycloud cli from the same datacenter as the deploy
-        // service, then this may return too early. However, that's not very
-        // likely, and we intend on enabling a flag for signalling when an
-        // update is complete, so this is good enough for now
-        .map(|app| app.size == sizes[selection])
-        .unwrap_or(false)
-    }).await,
+    Ok(_) => {
+      poll(&sp, || async {
+        get_apps(false)
+          .await
+          .into_iter()
+          .find(|app| &app.id == cluster_id)
+          // going to hard-depend on the latency of the network - if the user
+          // is using the anycloud cli from the same datacenter as the deploy
+          // service, then this may return too early. However, that's not very
+          // likely, and we intend on enabling a flag for signalling when an
+          // update is complete, so this is good enough for now
+          .map(|app| app.size == sizes[selection])
+          .unwrap_or(false)
+      })
+      .await
+    }
     Err(err) => match err {
       PostV1Error::Timeout => format!("{}", REQUEST_TIMEOUT),
       PostV1Error::Forbidden => format!("{}", FORBIDDEN_OPERATION),
@@ -1233,9 +1243,10 @@ pub async fn info() {
 }
 
 pub async fn poll<Callback, CallbackFut>(sp: &ProgressBar, terminator: Callback) -> String
-  where
-    Callback: Fn() -> CallbackFut,
-    CallbackFut: Future<Output = bool> {
+where
+  Callback: Fn() -> CallbackFut,
+  CallbackFut: Future<Output = bool>,
+{
   let body = json!({
     "clusterId": CLUSTER_ID.get().expect("cluster ID not set..."),
   });
@@ -1261,28 +1272,30 @@ pub async fn poll<Callback, CallbackFut>(sp: &ProgressBar, terminator: Callback)
           PostV1Error::Conflict => {
             clear_token();
             NAME_CONFLICT.to_string()
-          },
+          }
           PostV1Error::Other(err) => format!("Unexpected error: {}", err),
         };
-      },
+      }
     };
     // it's ok to leave out the newline chars, since `sp.println` will insert
     // those for us
     let new_lines = logs.split("\n").skip(lines.len()).collect::<Vec<_>>();
     // update the spinner and lines above the spinner
-    new_lines.into_iter().filter(|line| !line.is_empty()).for_each(|line| {
-      if let Some(last_line) = lines.get(lines.len() - 1) {
-        sp.println(last_line);
-      }
-      sp.set_message(line);
-      lines.push(line.to_string());
-    });
-    tokio::time::sleep(
-      match sleep_override.take() {
-        None => DEFAULT_SLEEP_DURATION,
-        Some(sleep_override) => sleep_override,
-      }
-    ).await;
+    new_lines
+      .into_iter()
+      .filter(|line| !line.is_empty())
+      .for_each(|line| {
+        if let Some(last_line) = lines.get(lines.len() - 1) {
+          sp.println(last_line);
+        }
+        sp.set_message(line);
+        lines.push(line.to_string());
+      });
+    tokio::time::sleep(match sleep_override.take() {
+      None => DEFAULT_SLEEP_DURATION,
+      Some(sleep_override) => sleep_override,
+    })
+    .await;
   }
   lines.pop().unwrap_or_default()
 }
