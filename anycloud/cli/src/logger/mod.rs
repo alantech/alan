@@ -44,15 +44,15 @@ macro_rules! error {
 
 #[macro_export]
 macro_rules! warn {
-  ($errCode:ident, $($message:tt)+) => {async{
+  ($errCode:ident, $($message:tt)+) => {
     let err_type = $crate::logger::ErrorType::$errCode;
     eprintln!($($message)+);
     $crate::deploy::client_error(err_type, &format!($($message)+), "warn").await;
-  }};
-  (metadata: $metadata:tt, $errCode:ident, $($message:tt)+) => {async{
+  };
+  (metadata: $metadata:tt, $errCode:ident, $($message:tt)+) => {
     let err_type = $crate::logger::ErrorType::$errCode;
     let value = json!($metadata);
     eprintln!($($message)+);
     $crate::deploy::client_error(err_type, &format!($($message)+), "warn").await;
-  }}
+  };
 }
