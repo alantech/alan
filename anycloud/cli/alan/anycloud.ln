@@ -2,8 +2,8 @@ from @std/app import start, print, eprint, exit
 from @std/avmdaemon import controlPort, getClusterSecret
 from @std/cmd import exec
 from @std/datastore import namespace, getOr, set, has, del
-from @std/http import fetch, Request, Response
-from @std/httpserver import connection, Connection, body, send, status
+from @std/httpserver import Connection, body, send, status
+from @std/tcpserver import tunnel
 
 type ModeAndKey {
   mode: string,
@@ -43,26 +43,9 @@ on start {
     eprint(containerRes.stderr);
     emit exit containerRes.exitCode;
   }
-}
 
-on connection fn (conn: Connection) {
-  const req = conn.req;
-  const innerRes = fetch(new Request {
-    method: req.method,
-    headers: req.headers,
-    body: req.body,
-    url: 'http://localhost:8088' + req.url,
-  });
-  const res = conn.res;
-  if innerRes.isErr() {
-    res.status = 500;
-    res.body('Internal Server Error').send();
-  } else {
-    const unwrappedRes = innerRes.getOrExit(); // Safe because of conditional checking
-    res.status = unwrappedRes.status;
-    res.headers = unwrappedRes.headers;
-    res.body(unwrappedRes.body).send();
-  }
+  let connected = tunnel(8088);
+  print(connected ? "Tunneling to 8088" : "Failed to establish a tunnel");
 }
 
 on controlPort fn (conn: Connection) {
