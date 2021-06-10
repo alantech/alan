@@ -67,7 +67,6 @@ pub async fn main() {
       )
     );
 
-  authenticate().await;
   let matches = app.get_matches();
   match matches.subcommand() {
     ("new", Some(matches)) => {
@@ -75,6 +74,7 @@ pub async fn main() {
         Some(_) => true,
         None => false,
       };
+      authenticate(non_interactive).await;
       new_or_upgrade(
         "new",
         anycloud_agz,
@@ -85,12 +85,16 @@ pub async fn main() {
       )
       .await;
     }
-    ("terminate", _) => deploy::terminate().await,
+    ("terminate", _) => {
+      authenticate(false).await;
+      deploy::terminate().await
+    }
     ("upgrade", Some(matches)) => {
       let non_interactive: bool = match matches.values_of("NON_INTERACTIVE") {
         Some(_) => true,
         None => false,
       };
+      authenticate(non_interactive).await;
       new_or_upgrade(
         "upgrade",
         anycloud_agz,
@@ -101,8 +105,12 @@ pub async fn main() {
       )
       .await;
     }
-    ("list", _) => deploy::info().await,
+    ("list", _) => {
+      authenticate(false).await;
+      deploy::info().await
+    }
     ("credentials", Some(sub_matches)) => {
+      authenticate(false).await;
       match sub_matches.subcommand() {
         ("new", _) => {
           deploy::add_cred(None).await;
@@ -115,6 +123,7 @@ pub async fn main() {
       }
     }
     ("config", Some(sub_matches)) => {
+      authenticate(false).await;
       match sub_matches.subcommand() {
         ("new", _) => deploy::add_deploy_config().await,
         ("list", _) => deploy::list_deploy_configs().await,
@@ -125,7 +134,9 @@ pub async fn main() {
       }
     }
     // rely on AppSettings::SubcommandRequiredElseHelp
-    _ => {}
+    _ => {
+      authenticate(false).await;
+    }
   }
 }
 

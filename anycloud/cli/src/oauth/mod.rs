@@ -37,7 +37,7 @@ pub fn get_token() -> &'static str {
 }
 
 // Get previously generated OAuth access token or generate a new one
-pub async fn authenticate() {
+pub async fn authenticate(non_interactive: bool) {
   let token = TOKEN.get();
   if token.is_none() {
     let home = std::env::var("HOME").unwrap();
@@ -46,7 +46,16 @@ pub async fn authenticate() {
       Ok(file_token) => TOKEN.set(file_token).unwrap(),
       Err(_) => match std::env::var("AUTH_TOKEN") {
         Ok(token) => TOKEN.set(token).unwrap(),
-        Err(_) => generate_token().await,
+        Err(_) => {
+          if non_interactive {
+            warn!(
+              AuthFailed,
+              "Non interactive mode. Token need to be defined in AUTH_TOKEN environment variable."
+            )
+            .await;
+          }
+          generate_token().await
+        }
       },
     };
   };

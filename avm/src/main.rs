@@ -160,14 +160,14 @@ fn main() {
         }
       }
       ("deploy", Some(sub_matches)) => {
-        authenticate().await;
         match sub_matches.subcommand() {
           ("new", Some(matches)) => {
-            let agz_file = matches.value_of("AGZ_FILE").unwrap();
             let non_interactive: bool = match matches.values_of("NON_INTERACTIVE") {
               Some(_) => true,
               None => false,
             };
+            authenticate(non_interactive).await;
+            let agz_file = matches.value_of("AGZ_FILE").unwrap();
             let app_name = match matches.value_of("app-name") {
               Some(name) => Some(name.to_string()),
               None => None,
@@ -186,13 +186,17 @@ fn main() {
             )
             .await;
           }
-          ("terminate", _) => deploy::terminate().await,
+          ("terminate", _) => {
+            authenticate(false).await;
+            deploy::terminate().await
+          }
           ("upgrade", Some(matches)) => {
-            let agz_file = matches.value_of("AGZ_FILE").unwrap();
             let non_interactive: bool = match matches.values_of("NON_INTERACTIVE") {
               Some(_) => true,
               None => false,
             };
+            authenticate(non_interactive).await;
+            let agz_file = matches.value_of("AGZ_FILE").unwrap();
             let app_name = match matches.value_of("app-name") {
               Some(name) => Some(name.to_string()),
               None => None,
@@ -211,8 +215,12 @@ fn main() {
             )
             .await;
           }
-          ("list", _) => deploy::info().await,
+          ("list", _) => {
+            authenticate(false).await;
+            deploy::info().await
+          }
           ("credentials", Some(sub_matches)) => {
+            authenticate(false).await;
             match sub_matches.subcommand() {
               ("new", _) => {
                 deploy::add_cred(None).await;
@@ -225,6 +233,7 @@ fn main() {
             }
           }
           ("config", Some(sub_matches)) => {
+            authenticate(false).await;
             match sub_matches.subcommand() {
               ("new", _) => deploy::add_deploy_config().await,
               ("list", _) => deploy::list_deploy_configs().await,
@@ -235,7 +244,9 @@ fn main() {
             }
           }
           // rely on AppSettings::SubcommandRequiredElseHelp
-          _ => {}
+          _ => {
+            authenticate(false).await;
+          }
         }
       }
       ("daemon", Some(matches)) => {
