@@ -30,6 +30,9 @@ pub async fn main() {
     .subcommand(SubCommand::with_name("upgrade")
       .about("Deploys your repository to an existing App hosted in one of the Deploy Configs from anycloud.json")
       .arg_from_usage("-e, --env-file=[ENV_FILE] 'Specifies an optional environment file relative path'")
+      .arg_from_usage("[NON_INTERACTIVE] -n, --non-interactive 'Specifies an optional flag for non interactive CLI mode'")
+      .arg_from_usage("-a, --app-name=[APP_NAME] 'Specifies an optional app name.'")
+      .arg_from_usage("-c, --config-name=[CONFIG_NAME] 'Specifies an optional config name.'")
     )
     .subcommand(SubCommand::with_name("config")
       .about("Manage Deploy Configs used by Apps from the anycloud.json in the current directory")
@@ -68,25 +71,33 @@ pub async fn main() {
   let matches = app.get_matches();
   match matches.subcommand() {
     ("new", Some(matches)) => {
+      let non_interactive: bool = match matches.values_of("NON_INTERACTIVE") {
+        Some(_) => true,
+        None => false,
+      };
       new_or_upgrade(
         "new",
         anycloud_agz,
         matches.value_of("env-file"),
         matches.value_of("app-name"),
         matches.value_of("config-name"),
-        matches.value_of("non-interactive"),
+        non_interactive,
       )
       .await;
     }
     ("terminate", _) => deploy::terminate().await,
     ("upgrade", Some(matches)) => {
+      let non_interactive: bool = match matches.values_of("NON_INTERACTIVE") {
+        Some(_) => true,
+        None => false,
+      };
       new_or_upgrade(
         "upgrade",
         anycloud_agz,
         matches.value_of("env-file"),
         matches.value_of("app-name"),
         matches.value_of("config-name"),
-        matches.value_of("non-interactive"),
+        non_interactive,
       )
       .await;
     }
@@ -124,17 +135,13 @@ async fn new_or_upgrade(
   env_file: Option<&str>,
   app_name: Option<&str>,
   config_name: Option<&str>,
-  non_interactive: Option<&str>,
+  non_interactive: bool,
 ) {
   let dockerfile_b64 = get_dockerfile_b64().await;
   let app_tar_gz_b64 = get_app_tar_gz_b64(true).await;
   let env_b64 = match env_file {
     Some(env_file) => Some(get_env_file_b64(env_file.to_string()).await),
     None => None,
-  };
-  let non_interactive: bool = match non_interactive {
-    Some(_) => true,
-    None => false,
   };
   let app_name = match app_name {
     Some(name) => Some(name.to_string()),
