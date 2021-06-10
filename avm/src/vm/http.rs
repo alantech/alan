@@ -218,7 +218,13 @@ macro_rules! make_tunnel {
                   if i != l {
                     let region_vms = REGION_VMS.read().unwrap().clone();
                     let source_ip = source_addr.ip().to_string();
-                    if region_vms.iter().any(|ip| *ip == source_ip) { continue; }
+                    if region_vms.iter().any(|ip| *ip == source_ip) {
+                      let strm = tls_acceptor.accept(socket).into_failable();
+                      let strm_val = strm.await;
+                      if strm_val.is_err() { continue; }
+                      yield Ok(strm_val.unwrap());
+                      continue;
+                    }
                     tokio::spawn(async move {
                       let dest_socket = tokio::net::TcpStream::connect(format!("{}:443", region_vms[i])).await;
                       match dest_socket {
