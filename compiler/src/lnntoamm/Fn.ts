@@ -166,7 +166,7 @@ export default class Fn {
     if (args.length !== this.params.length) {
       throw new Error(`function call argument mismatch`);
     }
-    this.params.forEach((param, ii) => param.assign(args[ii]));
+    this.params.forEach((param, ii) => param.assign(args[ii], this.scope));
     for (let ii = 0; ii < this.body.length; ii++) {
       const stmt = this.body[ii];
       if (stmt instanceof Exit) {

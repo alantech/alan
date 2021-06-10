@@ -253,8 +253,9 @@ export class FnParam extends VarDef {
     return param;
   }
 
-  assign(to: Ref) {
+  assign(to: Ref, scope: Scope) {
     this.__assigned = to;
+    this.ty.tempConstrain(to.ty, scope);
   }
 
   inline(_amm: Output) {
@@ -263,6 +264,7 @@ export class FnParam extends VarDef {
 
   unassign() {
     this.__assigned = null;
+    this.ty.resetTemp();
   }
 }
 

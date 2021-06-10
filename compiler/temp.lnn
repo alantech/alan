@@ -1,0 +1,15 @@
+from @std/app import start, stdout, exit
+
+interface Stringifiable {
+  toString(Stringifiable): string,
+}
+
+fn print(s: Stringifiable) {
+  emit stdout s.toString();
+}
+
+on start {
+  'hello world'.print();
+  1.print();
+  emit exit 0;
+}

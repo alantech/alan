@@ -565,15 +565,22 @@ class Interface extends Type {
   }
 
   instance(): Type {
-    return TODO();
+    if (this.tempDelegate !== null) {
+      return this.tempDelegate.instance();
+    } else {
+      throw new Error(`Could not resolve interface type`);
+    }
   }
 
-  tempConstrain(to: Type, scope: Scope) {
-    TODO();
+  tempConstrain(to: Type, _scope: Scope) {
+    if (this.tempDelegate !== null) {
+      throw new Error('interface type is already constrained');
+    }
+    this.tempDelegate = to;
   }
 
   resetTemp() {
-    TODO();
+    this.tempDelegate = null;
   }
 }
 
