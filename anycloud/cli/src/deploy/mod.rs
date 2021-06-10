@@ -1040,7 +1040,7 @@ pub async fn upgrade(
   anycloud_params: Option<(String, String)>,
   env_b64: Option<String>,
 ) {
-  let sp = ProgressBar::new_spinner();
+  let mut sp = ProgressBar::new_spinner();
   sp.enable_steady_tick(10);
   sp.set_message("Gathering information about Apps deployed");
   let apps = get_apps(false).await;
@@ -1055,6 +1055,7 @@ pub async fn upgrade(
   CLUSTER_ID.set(cluster_id.to_string()).unwrap();
   let styled_cluster_id = style(cluster_id).bold();
   let config = get_config().await;
+  sp = ProgressBar::new_spinner();
   sp.enable_steady_tick(10);
   sp.set_message(&format!("Upgrading App {}", styled_cluster_id));
   let mut body = json!({
