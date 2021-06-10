@@ -28,9 +28,13 @@ $ anycloud credentials new
 Successfully created "mystartup-azure" Credentials
 ```
 
-## **Configure your project**
+## Configure your project
 
-Define a new `Deploy Config` in the `anycloud.json` project you want to deploy to Azure using the AnyCloud CLI:
+Define a new `Deploy Config` in the `anycloud.json` project you want to deploy to Azure using the AnyCloud CLI
+
+{% hint style="info" %}
+You will need to pick a name, or alias, for the `Deploy Config`. The default value will be `staging`. You will also need to associate `Credentials` to this `Deploy Config`.
+{% endhint %}
 
 ```bash
 $ anycloud config new

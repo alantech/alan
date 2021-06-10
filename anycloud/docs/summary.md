@@ -11,6 +11,7 @@
 
 * [How-to guides](how-to/README.md)
   * [Pass environment variables](how-to/env.md)
+  * [Deploy to AWS](how-to/aws.md)
   * [Deploy to GCP](how-to/gcp.md)
   * [Deploy to Azure](how-to/azure.md)
   * [Deploy an app to multiple clouds and/or regions](how-to/multi.md)
@@ -21,9 +22,9 @@
   * [CLI API](reference/cli-api.md)
 * [Architecture](topics/architecture.md)
 * [Tutorial Series](tutorials/README.md)
-  * [Persist data to PostgreSQL via Prisma in AWS](tutorials/aws-prisma-node-psql.md)
   * [Deploy a Node.js HTTP server to AWS](tutorials/aws-node.md)
   * [Deploy a Node.js HTTP server to GCP](tutorials/gcp-node.md)
   * [Deploy a Node.js HTTP server to Azure](tutorials/azure-node.md)
+  * [Persist data to PostgreSQL via Prisma in AWS](tutorials/aws-prisma-node-psql.md)
   * [Deploy a Deno HTTP server to AWS](tutorials/aws-deno.md)
   * [Deploy a Rust Hyper HTTP server to AWS](tutorials/aws-hyper.md)
