@@ -127,7 +127,6 @@ macro_rules! make_tunnel {
     match $config {
       crate::vm::http::HttpType::HTTP(http) => {
         let port_num = http.port;
-        eprintln!("Trying to listen on {}", http.port);
         let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port_num));
         let bind = tokio::net::TcpListener::bind(addr).await;
         match bind {
@@ -174,7 +173,6 @@ macro_rules! make_tunnel {
       crate::vm::http::HttpType::HTTPS(https) => {
         use futures_util::StreamExt;
         let port_num = https.port;
-        eprintln!("Trying to listen on {}", https.port);
         let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port_num));
         let tls_cfg = {
           let certs = rustls::internal::pemfile::certs(&mut std::io::BufReader::new(
@@ -193,7 +191,8 @@ macro_rules! make_tunnel {
           };
           let mut cfg = rustls::ServerConfig::new(rustls::NoClientAuth::new());
           cfg.set_single_cert(certs, key).unwrap();
-          cfg.set_protocols(&[b"h2".to_vec(), b"http/1.1".to_vec()]);
+          let alpns: Vec<Vec<u8>> = std::env::var("AVM_ALPN").unwrap_or("http/1.1".to_string()).split(",").map(|s| s.to_string().into_bytes()).collect();
+          cfg.set_protocols(alpns.as_slice().as_ref());
           std::sync::Arc::new(cfg)
         };
         let tcp = tokio::net::TcpListener::bind(&addr).await;
@@ -216,30 +215,32 @@ macro_rules! make_tunnel {
               futures_util::pin_mut!(incoming_tls_stream);
               while let Some(src_socket) = incoming_tls_stream.next().await {
                 tokio::spawn(async move {
-                  eprintln!("Hi there!");
-                  eprintln!("{:?}", src_socket);
                   //use tokio::io::{AsyncRead, AsyncReadExt};
                   match src_socket {
                     Ok(mut src_stream) => {
-                      /*let mut buf = [0; 4096];
-                      let amount = src_stream.read(&mut buf).await;
-                      eprintln!("amount {:?}", amount);
-                      drop(amount);
-                      eprintln!("buf {:?}", buf);*/
                       // Do we need the source address for anything?
                       // Maybe load balancing?
                       let dest_socket =
                         tokio::net::TcpStream::connect(format!("127.0.0.1:{}", $dest_port)).await;
                       match dest_socket {
                         Ok(mut dest_stream) => {
-                          eprintln!("Hi again");
+                          loop {
+                            let dest_ready = dest_stream.ready(
+                              tokio::io::Interest::READABLE.add(tokio::io::Interest::WRITABLE)
+                            ).await;
+                            if let Ok(_) = dest_ready { break; }
+                          }
                           let res = tokio::io::copy_bidirectional(
                             &mut src_stream,
                             &mut dest_stream
                           ).await;
                           match res {
                             Ok(_) => { /* Do nothing */ },
-                            Err(e) => { panic!("Wut {:?}", e); /* Also do nothing? */ },
+                            Err(_) => {
+                              /*dbg!(src_stream.get_ref().0.peer_addr());
+                              dbg!(dest_stream.peer_addr());*/
+                              /* Also do nothing? */
+                            },
                           }
                         }
                         Err(ee) => eprintln!(
