@@ -832,7 +832,12 @@ async fn get_creds(non_interactive: bool) -> HashMap<String, Credentials> {
           let access_key: String = std::env::var("AWS_ACCESS_KEY").unwrap_or("".to_string());
           let secret: String = std::env::var("AWS_SECRET").unwrap_or("".to_string());
           if access_key.is_empty() || secret.is_empty() {
-            warn_and_exit!(1, InvalidEnvVar, "No AWS variables defined").await
+            warn_and_exit!(
+              1,
+              InvalidEnvVar,
+              "No AWS environment variables defined (AWS_ACCESS_KEY, AWS_SECRET)."
+            )
+            .await
           }
           credentials.insert(
             cred_name,
@@ -850,7 +855,7 @@ async fn get_creds(non_interactive: bool) -> HashMap<String, Credentials> {
           let client_email: String = std::env::var("GCP_CLIENT_EMAIL").unwrap_or("".to_string());
           let private_key: String = std::env::var("GCP_PRIVATE_KEY").unwrap_or("".to_string());
           if project_id.is_empty() || client_email.is_empty() || private_key.is_empty() {
-            warn_and_exit!(1, InvalidEnvVar, "No GCP variables defined").await
+            warn_and_exit!(1, InvalidEnvVar, "No GCP environment variables defined (GCP_PROJECT_ID, GCP_CLIENT_EMAIL, GCP_PRIVATE_KEY).").await
           }
           credentials.insert(
             cred_name,
@@ -875,7 +880,7 @@ async fn get_creds(non_interactive: bool) -> HashMap<String, Credentials> {
             || subscription_id.is_empty()
             || secret.is_empty()
           {
-            warn_and_exit!(1, InvalidEnvVar, "No Azure variables defined").await
+            warn_and_exit!(1, InvalidEnvVar, "No Azure environment variables defined (AZ_APP_ID, AZ_DIRECTORY_ID, AZ_SUBSCRIPTION_ID, AZ_SECRET).").await
           }
           credentials.insert(
             cred_name,
