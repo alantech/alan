@@ -8,6 +8,7 @@ use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 use std::fs::OpenOptions;
+use std::future::Future;
 use std::io::{BufReader, BufWriter};
 use std::time::Duration;
 
@@ -941,7 +942,12 @@ pub async fn terminate() {
   });
   let resp = post_v1("terminate", body).await;
   let res = match resp {
-    Ok(_) => format!("Terminated App {} successfully!", styled_cluster_id),
+    Ok(_) => poll(&sp, || async {
+      get_apps(false).await
+        .into_iter()
+        .find(|app| &app.id == cluster_id)
+        .is_none()
+    }).await,
     Err(err) => match err {
       PostV1Error::Timeout => format!("{}", REQUEST_TIMEOUT),
       PostV1Error::Forbidden => format!("{}", FORBIDDEN_OPERATION),
@@ -1001,9 +1007,13 @@ pub async fn new(
     Ok(res) => {
       // idc if it's been set before, I'm setting it now!!!
       let _ = CLUSTER_ID.set(res);
-      poll(&sp).await;
-      sp.finish();
-      return;
+      poll(&sp, || async {
+        get_apps(true).await
+          .into_iter()
+          .find(|app| &app.deployName == deploy_config)
+          .map(|app| app.status == "up")
+          .unwrap_or(false)
+      }).await
     }
     Err(err) => match err {
       PostV1Error::Timeout => format!("{}", REQUEST_TIMEOUT),
@@ -1033,7 +1043,7 @@ pub async fn upgrade(
     println!("No Apps deployed");
     std::process::exit(0);
   }
-  let ids = apps.into_iter().map(|a| a.id).collect::<Vec<String>>();
+  let (ids, sizes): (Vec<String>, Vec<usize>) = apps.into_iter().map(|a| (a.id, a.size)).unzip();
   let selection = anycloud_dialoguer::select_with_default("Pick App to upgrade", &ids, 0);
   let cluster_id = &ids[selection];
   CLUSTER_ID.set(cluster_id.to_string()).unwrap();
@@ -1056,10 +1066,18 @@ pub async fn upgrade(
   }
   let resp = post_v1("upgrade", body).await;
   let res = match resp {
-    Ok(_) => {
-      poll(&sp).await;
-      format!("Upgraded App {} successfully!", styled_cluster_id)
-    },
+    Ok(_) => poll(&sp, || async {
+      get_apps(false).await
+        .into_iter()
+        .find(|app| &app.id == cluster_id)
+        // going to hard-depend on the latency of the network - if the user
+        // is using the anycloud cli from the same datacenter as the deploy
+        // service, then this may return too early. However, that's not very
+        // likely, and we intend on enabling a flag for signalling when an
+        // update is complete, so this is good enough for now
+        .map(|app| app.size == sizes[selection])
+        .unwrap_or(false)
+    }).await,
     Err(err) => match err {
       PostV1Error::Timeout => format!("{}", REQUEST_TIMEOUT),
       PostV1Error::Forbidden => format!("{}", FORBIDDEN_OPERATION),
@@ -1214,20 +1232,39 @@ pub async fn info() {
   profiles.print(profile_data);
 }
 
-pub async fn poll(sp: &ProgressBar) {
+pub async fn poll<Callback, CallbackFut>(sp: &ProgressBar, terminator: Callback) -> String
+  where
+    Callback: Fn() -> CallbackFut,
+    CallbackFut: Future<Output = bool> {
   let body = json!({
     "clusterId": CLUSTER_ID.get().expect("cluster ID not set..."),
   });
   let mut lines: Vec<String> = vec![];
   let mut is_done = false;
-  loop {
+  const DEFAULT_SLEEP_DURATION: Duration = Duration::from_secs(10);
+  let mut sleep_override = None;
+  while !is_done {
+    is_done = terminator().await;
+    if is_done {
+      sleep_override = Some(Duration::from_secs(0));
+    }
     let logs = match post_v1("logs", body.clone()).await {
       Ok(logs) => logs,
-      Err(PostV1Error::Conflict) => todo!("conflict"),
-      Err(PostV1Error::Forbidden) => todo!("forbidden"),
-      Err(PostV1Error::Timeout) => todo!("timeout"),
-      Err(PostV1Error::Unauthorized) => todo!("unauthorized"),
-      Err(PostV1Error::Other(reason)) => todo!("other: {}", reason),
+      Err(err) => {
+        if let Some(last_line) = lines.get(lines.len() - 1) {
+          sp.println(last_line);
+        }
+        return match err {
+          PostV1Error::Timeout => REQUEST_TIMEOUT.to_string(),
+          PostV1Error::Forbidden => FORBIDDEN_OPERATION.to_string(),
+          PostV1Error::Unauthorized => UNAUTHORIZED_OPERATION.to_string(),
+          PostV1Error::Conflict => {
+            clear_token();
+            NAME_CONFLICT.to_string()
+          },
+          PostV1Error::Other(err) => format!("Unexpected error: {}", err),
+        };
+      },
     };
     // it's ok to leave out the newline chars, since `sp.println` will insert
     // those for us
@@ -1240,17 +1277,14 @@ pub async fn poll(sp: &ProgressBar) {
       sp.set_message(line);
       lines.push(line.to_string());
     });
-    if is_done {
-      break;
-    }
-    let apps = get_apps(true).await;
-    // we can't simply break when this is true because there's a race condition -
-    // what if the "your app is ready" message is inserted in redis after we POST
-    // to `/logs` but before we POST to `/info`? We can't depend on the log output
-    // to determine when this should end so we POST to `/info` 1 more time
-    is_done = apps.len() != 0 && apps.into_iter().all(|app| app.status == "up");
-    tokio::time::sleep(Duration::from_secs(10)).await;
+    tokio::time::sleep(
+      match sleep_override.take() {
+        None => DEFAULT_SLEEP_DURATION,
+        Some(sleep_override) => sleep_override,
+      }
+    ).await;
   }
+  lines.pop().unwrap_or_default()
 }
 
 fn is_burstable(vm_type: &str) -> bool {
