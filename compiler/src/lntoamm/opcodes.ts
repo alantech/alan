@@ -910,6 +910,7 @@ addopcodes({
   tcpRead: [{ channel: t('TcpChannel'), }, t('Chunk')],
   tcpWrite: [{ channel: t('TcpChannel'), chunk: t('Chunk'), }, t('TcpChannel')],
   tcpTerm: [{ channel: t('TcpChannel'), }, t('void')],
+  tcptun: [{ port: t('int16'), }, t('bool')],
 })
 
 export default opcodeModule
