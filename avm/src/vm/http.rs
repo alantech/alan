@@ -211,17 +211,19 @@ macro_rules! make_tunnel {
                     rng.gen_range(0..=l)
                   }
                   .await;
-                  let accept = tcp.accept().await;
-                  if accept.is_err() { continue; }
-                  let (mut socket, source_addr) = accept.unwrap();
+                  let (mut socket, source_addr) = match tcp.accept().await {
+                    Ok(accepted) => accepted,
+                    Err(_) => continue,
+                  };
                   if i != l {
                     let region_vms = REGION_VMS.read().unwrap().clone();
                     let source_ip = source_addr.ip().to_string();
                     if region_vms.iter().any(|ip| *ip == source_ip) {
                       let strm = tls_acceptor.accept(socket).into_failable();
-                      let strm_val = strm.await;
-                      if strm_val.is_err() { continue; }
-                      yield Ok(strm_val.unwrap());
+                      yield Ok(match strm.await {
+                        Ok(strm) => strm,
+                        Err(_) => continue,
+                      });
                       continue;
                     }
                     tokio::spawn(async move {
@@ -244,9 +246,10 @@ macro_rules! make_tunnel {
                     continue;
                   }
                   let strm = tls_acceptor.accept(socket).into_failable();
-                  let strm_val = strm.await;
-                  if strm_val.is_err() { continue; }
-                  yield Ok(strm_val.unwrap());
+                  yield Ok(match strm.await {
+                    Ok(strm) => strm,
+                    Err(_) => continue,
+                  });
                   if 1 == 0 { yield Err("never"); } // Make Rust type inference shut up :(
                 }
               };
