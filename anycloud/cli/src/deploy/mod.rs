@@ -955,10 +955,7 @@ fn get_url() -> &'static str {
   }
 }
 
-pub async fn get_config(
-  config_name: &Option<String>,
-  non_interactive: bool,
-) -> HashMap<String, Vec<Config>> {
+pub async fn get_config(config_name: &str, non_interactive: bool) -> HashMap<String, Vec<Config>> {
   let anycloud_prof = get_deploy_configs().await;
   let mut creds = get_creds(non_interactive).await;
   if creds.len() == 0 && !non_interactive {
@@ -979,26 +976,25 @@ pub async fn get_config(
       let cred = match creds.get(cred_name) {
         Some(cred) => cred,
         None => {
-          match config_name {
-            Some(name) => {
-              if non_interactive && &deploy_name != name {
-                continue;
-              } else if non_interactive && &deploy_name == name {
-                warn_and_exit!(
-                  1,
-                  NoCredentials,
-                  "Non interactive mode. No credentials defined for desired config {}",
-                  name
-                )
-                .await;
-              }
+          if config_name.is_empty() && non_interactive {
+            // Case when is non interactive and there is no config name specified.
+            // Should be caught earlier but in case we arrive here we are not interested in ask for credentials.
+            continue;
+          } else if !config_name.is_empty() {
+            if non_interactive && &deploy_name != config_name {
+              // If it is not the one we are interested in, continue.
+              continue;
+            } else if non_interactive && &deploy_name == config_name {
+              // If no credentials found for the config specified in non interactive mode we warn and exit.
+              warn_and_exit!(
+                1,
+                NoCredentials,
+                "Non interactive mode. No credentials defined for desired config {}",
+                config_name
+              )
+              .await;
             }
-            None => {
-              if non_interactive {
-                continue;
-              }
-            }
-          }
+          };
           let cred: &Credentials;
           loop {
             prompt_add_cred(false, Some(cred_name)).await;
@@ -1089,7 +1085,7 @@ pub async fn terminate() {
   sp.enable_steady_tick(10);
   sp.set_message(&format!("Terminating App {}", styled_cluster_id));
   let body = json!({
-    "deployConfig": get_config(&None, false).await,
+    "deployConfig": get_config("", false).await,
     "clusterId": cluster_id,
   });
   let resp = post_v1("terminate", body).await;
@@ -1123,9 +1119,33 @@ pub async fn new(
   config_name: Option<String>,
   non_interactive: bool,
 ) {
+  let interactive = !non_interactive;
+  let app_name = if let Some(app_name) = app_name {
+    app_name
+  } else {
+    "".to_string()
+  };
+  let config_name = if let Some(config_name) = config_name {
+    config_name
+  } else {
+    "".to_string()
+  };
+  if !app_name.is_empty() {
+    // Check if app exists
+    let apps = get_apps(false).await;
+    let ids = apps.into_iter().map(|a| a.id).collect::<Vec<String>>();
+    let app_exists: bool = match ids.iter().position(|id| &app_name == id) {
+      Some(_) => true,
+      None => false,
+    };
+    if app_exists {
+      upgrade(agz_b64, anycloud_params, env_b64).await;
+      return;
+    }
+  }
   let config = get_config(&config_name, non_interactive).await;
   let config_names = config.keys().cloned().collect::<Vec<String>>();
-  if config_names.len() == 0 && !non_interactive {
+  if config_names.len() == 0 && interactive {
     prompt_add_config().await;
   } else if config_names.len() == 0 && non_interactive {
     warn_and_exit!(
@@ -1135,44 +1155,39 @@ pub async fn new(
     )
     .await
   }
-  let selection: usize = match config_name {
-    Some(name) => match config_names.iter().position(|n| &name == n) {
+  let selection: usize = if config_name.is_empty() && interactive {
+    anycloud_dialoguer::select_with_default("Pick Deploy Config for App", &config_names, 0)
+  } else if config_name.is_empty() && non_interactive {
+    warn_and_exit!(
+      1,
+      NoDeployConfig,
+      "Non interactive mode. No deploy configuration selected."
+    )
+    .await
+  } else {
+    match config_names.iter().position(|n| &config_name == n) {
       Some(pos) => pos,
       None => {
         warn_and_exit!(
           1,
           NoDeployConfig,
           "No deploy configuration found with name {}.",
-          name
+          config_name
         )
         .await
       }
-    },
-    None => {
-      if non_interactive {
-        warn_and_exit!(
-          1,
-          NoDeployConfig,
-          "Non interactive mode. No deploy configuration selected."
-        )
-        .await
-      }
-      anycloud_dialoguer::select_with_default("Pick Deploy Config for App", &config_names, 0)
     }
   };
   let deploy_config = &config_names[selection];
-  let app_id: std::io::Result<String> = match app_name {
-    Some(name) => Ok(name),
-    None => {
-      if non_interactive {
-        Err(std::io::Error::new(
-          std::io::ErrorKind::NotFound,
-          "Non interactive mode. No app name defined",
-        ))
-      } else {
-        anycloud_dialoguer::input_with_allow_empty_as_result("Optional App name", true)
-      }
-    }
+  let app_id: std::io::Result<String> = if app_name.is_empty() && interactive {
+    anycloud_dialoguer::input_with_allow_empty_as_result("Optional App name", true)
+  } else if app_name.is_empty() && non_interactive {
+    Err(std::io::Error::new(
+      std::io::ErrorKind::NotFound,
+      "Non interactive mode. No app name defined",
+    ))
+  } else {
+    Ok(app_name)
   };
   let sp = ProgressBar::new_spinner();
   sp.enable_steady_tick(10);
@@ -1221,7 +1236,7 @@ pub async fn upgrade(
   let cluster_id = &ids[selection];
   CLUSTER_ID.set(cluster_id.to_string()).unwrap();
   let styled_cluster_id = style(cluster_id).bold();
-  let config = get_config(&None, false).await;
+  let config = get_config("", false).await;
   let sp = ProgressBar::new_spinner();
   sp.enable_steady_tick(10);
   sp.set_message(&format!("Upgrading App {}", styled_cluster_id));
@@ -1256,7 +1271,7 @@ pub async fn upgrade(
 }
 
 async fn get_apps(status: bool) -> Vec<App> {
-  let config = get_config(&None, false).await;
+  let config = get_config("", false).await;
   let sp = ProgressBar::new_spinner();
   sp.enable_steady_tick(10);
   sp.set_message("Gathering information about Apps deployed");
