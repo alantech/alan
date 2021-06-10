@@ -1139,7 +1139,23 @@ pub async fn new(
       None => false,
     };
     if app_exists {
-      upgrade(agz_b64, anycloud_params, env_b64).await;
+      upgrade(
+        agz_b64,
+        anycloud_params,
+        env_b64,
+        if app_name.is_empty() {
+          Some(app_name.to_string())
+        } else {
+          None
+        },
+        if config_name.is_empty() {
+          Some(config_name.to_string())
+        } else {
+          None
+        },
+        non_interactive,
+      )
+      .await;
       return;
     }
   }
@@ -1229,14 +1245,50 @@ pub async fn upgrade(
   agz_b64: String,
   anycloud_params: Option<(String, String)>,
   env_b64: Option<String>,
+  app_name: Option<String>,
+  config_name: Option<String>,
+  non_interactive: bool,
 ) {
+  let interactive = !non_interactive;
+  let app_name = if let Some(app_name) = app_name {
+    app_name
+  } else {
+    "".to_string()
+  };
+  let config_name = if let Some(config_name) = config_name {
+    config_name
+  } else {
+    "".to_string()
+  };
   let apps = get_apps(false).await;
   let ids = apps.into_iter().map(|a| a.id).collect::<Vec<String>>();
-  let selection = anycloud_dialoguer::select_with_default("Pick App to upgrade", &ids, 0);
+  let selection: usize = if app_name.is_empty() && interactive {
+    anycloud_dialoguer::select_with_default("Pick App to upgrade", &ids, 0)
+  } else if app_name.is_empty() && non_interactive {
+    warn_and_exit!(
+      1,
+      NoAppNameDefined,
+      "Non interactive mode. No app name provided to upgrade."
+    )
+    .await
+  } else {
+    match ids.iter().position(|id| &app_name == id) {
+      Some(pos) => pos,
+      None => {
+        warn_and_exit!(
+          1,
+          NoAppNameDefined,
+          "No app name found with name {}.",
+          app_name
+        )
+        .await
+      }
+    }
+  };
   let cluster_id = &ids[selection];
   CLUSTER_ID.set(cluster_id.to_string()).unwrap();
   let styled_cluster_id = style(cluster_id).bold();
-  let config = get_config("", false).await;
+  let config = get_config(&config_name, non_interactive).await;
   let sp = ProgressBar::new_spinner();
   sp.enable_steady_tick(10);
   sp.set_message(&format!("Upgrading App {}", styled_cluster_id));

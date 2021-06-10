@@ -28,6 +28,7 @@ pub enum ErrorType {
   InvalidEnvVar = 135,
   NoCredentials = 136,
   NoDeployConfig = 137,
+  NoAppNameDefined = 138,
 }
 
 #[macro_export]
