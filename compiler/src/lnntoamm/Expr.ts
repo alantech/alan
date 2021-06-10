@@ -153,7 +153,6 @@ export default abstract class Expr {
         const op = work.get('operators').t.trim();
         let operators = metadata.scope.get(op) as Operator[];
         if (operators === null) {
-          console.log(metadata.scope);
           throw new Error(`can't find operator ${op}`);
         } else if (!isOpArray(operators)) {
           // sanity check
@@ -395,7 +394,7 @@ class Call extends Expr {
     // console.log('~~~ generating call ', ast, fns, maybeClosure, args, scope);
     super(ast);
     if (fns.length === 0 && maybeClosure === null) {
-      throw new Error(`no function possibilities provided for ${ast.t.trim()}`);
+      throw new Error(`no function possibilities provided for ${ast}`);
     }
     this.fns = fns;
     this.maybeClosure = maybeClosure;
@@ -446,10 +445,7 @@ class Call extends Expr {
     }
     // first reduction
     let argTys = args.map(arg => arg.ty);
-    console.log('~~~~~~~~~', ast.t.trim());
-    console.log('before filter', fns);
     fns = Fn.select(fns, argTys, metadata.scope);
-    console.log('after filter', fns);
     // now, constrain all of the args to their possible types
     // makes it so that the type of the parameters in each position are in their own list
     // ie, given `do(int8, int16)` and `do(int8, int8)`, will result in this 2D array:

@@ -114,7 +114,7 @@ export class Builtin extends Type {
     } else if (ty instanceof HasField) {
       return false;
     } else if (ty instanceof Interface) {
-      return ty.fields.length !== 0 &&
+      return ty.fields.length === 0 &&
             ty.methods.every(m => this.compatibleWithConstraint(m, scope)) &&
             ty.operators.every(o => this.compatibleWithConstraint(o, scope));
     } else {
@@ -434,6 +434,7 @@ class Interface extends Type {
   fields: HasField[]
   methods: HasMethod[]
   operators: HasOperator[]
+  protected tempDelegate: Type | null
 
   constructor(
     name: string,
@@ -446,6 +447,7 @@ class Interface extends Type {
     this.fields = fields;
     this.methods = methods;
     this.operators = operators;
+    this.tempDelegate = null;
   }
 
   static fromAst(ast: LPNode, scope: Scope): Interface {
@@ -486,10 +488,16 @@ class Interface extends Type {
   }
 
   breakdown(): Builtin {
+    if (this.tempDelegate !== null) {
+      return this.tempDelegate.breakdown();
+    }
     throw new Error(`interfaces cannot be broken down, and no concrete type was specified`);
   }
 
   compatibleWithConstraint(ty: Type, scope: Scope): boolean {
+    if (this.tempDelegate !== null) {
+      return this.tempDelegate.compatibleWithConstraint(ty, scope);
+    }
     if (ty instanceof Builtin || ty instanceof Struct) {
       if (ty instanceof Builtin && this.fields.length !== 0) {
         // if ty is a Builtin and there are field requirements,
@@ -574,41 +582,46 @@ class Interface extends Type {
 // this'll make untyped fn parameters easier once they're implemented.
 class Generated extends Interface {
   private delegate: Type | null
-  private tempDelegate: Type | null
 
   constructor() {
     super(genName(), new NulLP(), [], [], []);
     this.delegate = null;
-    this.tempDelegate = null;
   }
 
   breakdown(): Builtin {
-    if (this.tempDelegate !== null) {
-      return this.tempDelegate.breakdown();
-    } else if (this.delegate !== null) {
+    if (this.delegate !== null) {
       return this.delegate.breakdown();
-    } else {
+    } else try { // try? more like DRY amiright
+      return super.breakdown();
+    } catch (e) {
       throw new Error(`Couldn't resolve generated type`);
     }
   }
 
+  // TODO: ok so i have to do a couple of things
+  // 1. move tempDelegate to the interface type
+  // 2. delegate to super if delegate isn't set
+  // 3. ???
   compatibleWithConstraint(ty: Type, scope: Scope): boolean {
-    if (this.tempDelegate !== null) {
-      return this.tempDelegate.compatibleWithConstraint(ty, scope);
-    } else if (this.delegate !== null) {
-      return this.delegate.compatibleWithConstraint(ty, scope);
-    } else {
-      return true;
+    if (this.delegate && super.tempDelegate) {
+      throw new Error('ugh')
     }
+    if (this.delegate !== null) {
+      return this.delegate.compatibleWithConstraint(ty, scope);
+    }
+    if (super.tempDelegate !== null) {
+      return super.tempDelegate.compatibleWithConstraint(ty, scope);
+    }
+    return true;
   }
 
   constrain(to: Type, scope: Scope) {
-    // if `this.tempDelegate` is set, something is *very* wrong because
+    // if `super.tempDelegate` is set, something is *very* wrong because
     // all permanent constraints should already be processed...
     // if we need to allow `tempConstrain`s to get processed `constrain`s,
     // then this check should be at the end of this method and pass the
     // removed `tempDelegate` to the new permanent delegate's `tempConstrain`
-    if (this.tempDelegate) {
+    if (super.tempDelegate) {
       throw new Error(`cannot process temporary type constraints after permanent type constraints`);
     }
 
@@ -620,6 +633,10 @@ class Generated extends Interface {
       super.methods.push(to);
     } else if (to instanceof HasField) {
       super.fields.push(to);
+    } else if (to instanceof Interface) {
+      super.fields.push(...to.fields);
+      super.methods.push(...to.methods);
+      super.operators.push(...to.operators);
     } else {
       this.delegate = to;
       super.constrain(this.delegate, scope);
@@ -637,6 +654,8 @@ class Generated extends Interface {
   instance(): Type {
     if (this.delegate !== null) {
       return this.delegate.instance();
+    } else if (super.tempDelegate !== null) {
+      return super.tempDelegate.instance();
     } else {
       return new Generated();
     }
@@ -645,20 +664,20 @@ class Generated extends Interface {
   tempConstrain(to: Type, scope: Scope) {
     if (this.delegate !== null) {
       this.delegate.tempConstrain(to, scope);
-    } else if (this.tempDelegate !== null) {
+    } else if (super.tempDelegate !== null) {
       TODO('temp constraints to a temporary constraint???');
     } else if (to instanceof Has) {
       TODO("i'm not sure");
     } else {
-      this.tempDelegate = to;
+      super.tempDelegate = to;
     }
   }
 
   resetTemp() {
-    if (this.tempDelegate !== null) {
-      this.tempDelegate = null;
+    if (super.tempDelegate !== null) {
+      super.tempDelegate = null;
     } else if (this.delegate !== null) {
-      this.tempDelegate.resetTemp();
+      super.tempDelegate.resetTemp();
     }
   }
 }
