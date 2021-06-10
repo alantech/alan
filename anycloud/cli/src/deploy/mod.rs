@@ -1139,19 +1139,21 @@ pub async fn new(
       None => false,
     };
     if app_exists {
+      // TODO: update with spinner once CLI updates are merged
+      println!("App name {} already exists. Upgrading app...", app_name);
       upgrade(
         agz_b64,
         anycloud_params,
         env_b64,
         if app_name.is_empty() {
-          Some(app_name.to_string())
-        } else {
           None
+        } else {
+          Some(app_name.to_string())
         },
         if config_name.is_empty() {
-          Some(config_name.to_string())
-        } else {
           None
+        } else {
+          Some(config_name.to_string())
         },
         non_interactive,
       )
