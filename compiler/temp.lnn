@@ -1,12 +1,4 @@
-from @std/app import start, stdout, exit
-
-interface Stringifiable {
-  toString(Stringifiable): string,
-}
-
-fn print(s: Stringifiable) {
-  emit stdout s.toString();
-}
+from @std/app import start, print, exit
 
 on start {
   'hello world'.print();
