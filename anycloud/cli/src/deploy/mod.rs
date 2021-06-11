@@ -1296,7 +1296,7 @@ where
       Ok(logs) => logs,
       Err(err) => {
         if let Some(last_line) = lines.get(lines.len() - 1) {
-          sp.println(last_line);
+          sp.prinqtln(last_line);
         }
         return match err {
           PostV1Error::Timeout => REQUEST_TIMEOUT.to_string(),
@@ -1313,17 +1313,19 @@ where
     // it's ok to leave out the newline chars, since `sp.println` will insert
     // those for us
     let new_lines = logs.split("\n").skip(lines.len()).collect::<Vec<_>>();
-    // print latest line if any
-    if lines.len() > 0 {
-      if let Some(last_line) = lines.get(lines.len() - 1) {
-        sp.println(last_line);
-      }
-    }
     // update the spinner and lines above the spinner
     new_lines
       .into_iter()
       .filter(|new_line| !new_line.is_empty())
       .for_each(|new_line| {
+        // print latest line if any.
+        // Will not print multiple times the same line since here we are adding a new one
+        // If no new lines, this iter will not execute and will not duplicate lines as if we put this check outside
+        if lines.len() > 0 {
+          if let Some(last_line) = lines.get(lines.len() - 1) {
+            sp.println(last_line);
+          }
+        };
         sp.set_message(new_line);
         lines.push(new_line.to_string());
       });
