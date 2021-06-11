@@ -26,8 +26,7 @@ macro_rules! warn_and_exit {
     warn!(
       $errCode,
       $($message)+
-    )
-    .await;
+    );
     std::process::exit($exitCode);
   }};
 }

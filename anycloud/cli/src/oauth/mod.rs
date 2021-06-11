@@ -51,8 +51,7 @@ pub async fn authenticate(non_interactive: bool) {
             warn!(
               AuthFailed,
               "Non interactive mode. Token need to be defined in AUTH_TOKEN environment variable."
-            )
-            .await;
+            );
           }
           generate_token().await
         }
