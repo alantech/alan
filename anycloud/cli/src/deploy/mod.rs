@@ -1296,7 +1296,7 @@ where
       Ok(logs) => logs,
       Err(err) => {
         if let Some(last_line) = lines.get(lines.len() - 1) {
-          sp.prinqtln(last_line);
+          sp.println(last_line);
         }
         return match err {
           PostV1Error::Timeout => REQUEST_TIMEOUT.to_string(),
