@@ -1039,15 +1039,15 @@ pub async fn new(
     mut_body.insert(format!("envB64"), json!(env_b64));
   }
   let resp = post_v1("new", body).await;
-  let res = match resp {
+  let res = match &resp {
     Ok(res) => {
       // idc if it's been set before, I'm setting it now!!!
-      let _ = CLUSTER_ID.set(res);
+      let _ = CLUSTER_ID.set(res.to_string());
       poll(&sp, || async {
         get_apps(true)
           .await
           .into_iter()
-          .find(|app| &app.deployName == deploy_config)
+          .find(|app| &app.id == res)
           .map(|app| app.status == "up")
           .unwrap_or(false)
       })
@@ -1316,13 +1316,18 @@ where
     // update the spinner and lines above the spinner
     new_lines
       .into_iter()
-      .filter(|line| !line.is_empty())
-      .for_each(|line| {
-        if let Some(last_line) = lines.get(lines.len() - 1) {
-          sp.println(last_line);
-        }
-        sp.set_message(line);
-        lines.push(line.to_string());
+      .filter(|new_line| !new_line.is_empty())
+      .for_each(|new_line| {
+        // print latest line if any.
+        // Will not print multiple times the same line since here we are adding a new one
+        // If no new lines, this iter will not execute and will not duplicate lines as if we put this check outside
+        if lines.len() > 0 {
+          if let Some(last_line) = lines.get(lines.len() - 1) {
+            sp.println(last_line);
+          }
+        };
+        sp.set_message(new_line);
+        lines.push(new_line.to_string());
       });
     tokio::time::sleep(match sleep_override.take() {
       None => DEFAULT_SLEEP_DURATION,
