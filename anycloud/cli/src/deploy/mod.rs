@@ -1039,15 +1039,15 @@ pub async fn new(
     mut_body.insert(format!("envB64"), json!(env_b64));
   }
   let resp = post_v1("new", body).await;
-  let res = match resp {
+  let res = match &resp {
     Ok(res) => {
       // idc if it's been set before, I'm setting it now!!!
-      let _ = CLUSTER_ID.set(res);
+      let _ = CLUSTER_ID.set(res.to_string());
       poll(&sp, || async {
         get_apps(true)
           .await
           .into_iter()
-          .find(|app| &app.deployName == deploy_config)
+          .find(|app| &app.id == res)
           .map(|app| app.status == "up")
           .unwrap_or(false)
       })
