@@ -1318,8 +1318,10 @@ where
       .into_iter()
       .filter(|line| !line.is_empty())
       .for_each(|line| {
-        if let Some(last_line) = lines.get(lines.len() - 1) {
-          sp.println(last_line);
+        if lines.len() > 0 {
+          if let Some(last_line) = lines.get(lines.len() - 1) {
+            sp.println(last_line);
+          }
         }
         sp.set_message(line);
         lines.push(line.to_string());
