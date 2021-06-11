@@ -1353,16 +1353,26 @@ pub async fn upgrade(
   let resp = post_v1("upgrade", body).await;
   let res = match resp {
     Ok(_) => {
+      // Check every 10s over 5 min if app already start upgrading
+      let mut counter: u8 = 0;
+      while counter < 30 {
+        let is_upgrading = get_apps(true)
+          .await
+          .into_iter()
+          .find(|app| &app.id == cluster_id)
+          .map(|app| app.status == "down")
+          .unwrap_or(false);
+        if is_upgrading {
+          break;
+        }
+        counter += 1;
+        tokio::time::sleep(Duration::from_secs(10)).await;
+      };
       poll(&sp, || async {
         get_apps(false)
           .await
           .into_iter()
           .find(|app| &app.id == cluster_id)
-          // going to hard-depend on the latency of the network - if the user
-          // is using the anycloud cli from the same datacenter as the deploy
-          // service, then this may return too early. However, that's not very
-          // likely, and we intend on enabling a flag for signalling when an
-          // update is complete, so this is good enough for now
           .map(|app| app.size == sizes[selection])
           .unwrap_or(false)
       })
