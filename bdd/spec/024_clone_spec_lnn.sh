@@ -3,14 +3,14 @@ Include build_tools.sh
 Describe "clone"
   before() {
     lnn_sourceToAll "
-      from @std/app import start, stdout, exit
+      from @std/app import start, print, exit
 
       on start {
         let a = 3;
         let b = a.clone();
         a = 4;
-        emit stdout concat(toString(a), '\n');
-        emit stdout concat(toString(b), '\n');
+        print(a);
+        print(b);
         emit exit 0;
       }
     "

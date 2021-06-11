@@ -4,67 +4,52 @@ Describe "Comparators"
   Describe "Equals"
     before() {
       lnn_sourceToAll "
-        from @std/app import start, stdout, exit
+        from @std/app import start, print, exit
 
         on start {
           // constrained to an int8 from the emit exit at the bottom
           const i8val = 0;
           const i8val1: int8 = 0;
-          emit stdout toString(i8val == i8val1) + '\n';
-          wait(10);
+          print(i8val == i8val1);
           const i8val2: int8 = 1;
-          emit stdout toString(i8val == i8val2) + '\n';
-          wait(10);
+          print(i8val == i8val2);
 
           const i16val: int16 = 0;
           const i16val1: int16 = 0;
-          emit stdout toString(i16val == i16val1) + '\n';
-          wait(10);
+          print(i16val == i16val1);
           const i16val2: int16 = 1;
-          emit stdout toString(i16val == i16val2) + '\n';
-          wait(10);
+          print(i16val == i16val2);
 
           const i32val: int32 = 0;
           const i32val1: int32 = 0;
-          emit stdout toString(i32val == i32val1) + '\n';
-          wait(10);
+          print(i32val == i32val1);
           const i32val2: int32 = 1;
-          emit stdout toString(i32val == i32val2) + '\n';
-          wait(10);
+          print(i32val == i32val2);
 
           const i64val: int64 = 0;
           const i64val1: int64 = 0;
-          emit stdout toString(i64val == i64val1) + '\n';
-          wait(10);
+          print(i64val == i64val1);
           const i64val2: int64 = 1;
-          emit stdout toString(i64val == i64val2) + '\n';
+          print(i64val == i64val2);
           wait(10);
 
           const f32val: float32 = 0.0;
           const f32val1: float32 = 0.0;
-          emit stdout toString(f32val == f32val1) + '\n';
-          wait(10);
+          print(f32val == f32val1);
           const f32val2: float32 = 1.0;
-          emit stdout toString(f32val == f32val2) + '\n';
-          wait(10);
+          print(f32val == f32val2);
 
           const f64val: float64 = 0.0;
           const f64val1: float64 = 0.0;
-          emit stdout toString(f64val == f64val1) + '\n';
-          wait(10);
+          print(f64val == f64val1);
           const f64val2: float64 = 1.0;
-          emit stdout toString(f64val == f64val2) + '\n';
-          wait(10);
+          print(f64val == f64val2);
 
-          emit stdout toString(true == true) + '\n';
-          wait(10);
-          emit stdout toString(true == false) + '\n';
-          wait(10);
+          print(true == true);
+          print(true == false);
 
-          emit stdout toString('hello' == \"hello\") + '\n';
-          wait(10);
-          emit stdout toString('hello' == \"world\") + '\n';
-          wait(10);
+          print('hello' == \"hello\");
+          print('hello' == \"world\");
 
           emit exit i8val;
         }
