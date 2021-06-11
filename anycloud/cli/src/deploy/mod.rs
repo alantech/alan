@@ -8,7 +8,9 @@ use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 use std::fs::OpenOptions;
+use std::future::Future;
 use std::io::{BufReader, BufWriter};
+use std::time::Duration;
 
 use ascii_table::{AsciiTable, Column};
 
@@ -1080,13 +1082,21 @@ pub async fn client_error(err_code: ErrorType, message: &str, level: &str) {
 }
 
 pub async fn terminate() {
+  let mut sp = ProgressBar::new_spinner();
+  sp.enable_steady_tick(10);
+  sp.set_message("Gathering information about Apps deployed");
   let apps = get_apps(false).await;
+  sp.finish_and_clear();
+  if apps.len() == 0 {
+    println!("No Apps deployed");
+    std::process::exit(0);
+  }
   let ids = apps.into_iter().map(|a| a.id).collect::<Vec<String>>();
   let selection = anycloud_dialoguer::select_with_default("Pick App to terminate", &ids, 0);
   let cluster_id = &ids[selection];
   CLUSTER_ID.set(cluster_id.to_string()).unwrap();
   let styled_cluster_id = style(cluster_id).bold();
-  let sp = ProgressBar::new_spinner();
+  sp = ProgressBar::new_spinner();
   sp.enable_steady_tick(10);
   sp.set_message(&format!("Terminating App {}", styled_cluster_id));
   let body = json!({
@@ -1095,7 +1105,16 @@ pub async fn terminate() {
   });
   let resp = post_v1("terminate", body).await;
   let res = match resp {
-    Ok(_) => format!("Terminated App {} successfully!", styled_cluster_id),
+    Ok(_) => {
+      poll(&sp, || async {
+        get_apps(false)
+          .await
+          .into_iter()
+          .find(|app| &app.id == cluster_id)
+          .is_none()
+      })
+      .await
+    }
     Err(err) => match err {
       PostV1Error::Timeout => format!("{}", REQUEST_TIMEOUT),
       PostV1Error::Forbidden => format!("{}", FORBIDDEN_OPERATION),
@@ -1233,7 +1252,19 @@ pub async fn new(
   }
   let resp = post_v1("new", body).await;
   let res = match resp {
-    Ok(res) => format!("Created App {} successfully!", style(res).bold()),
+    Ok(res) => {
+      // idc if it's been set before, I'm setting it now!!!
+      let _ = CLUSTER_ID.set(res);
+      poll(&sp, || async {
+        get_apps(true)
+          .await
+          .into_iter()
+          .find(|app| &app.deployName == deploy_config)
+          .map(|app| app.status == "up")
+          .unwrap_or(false)
+      })
+      .await
+    }
     Err(err) => match err {
       PostV1Error::Timeout => format!("{}", REQUEST_TIMEOUT),
       PostV1Error::Forbidden => format!("{}", FORBIDDEN_OPERATION),
@@ -1267,8 +1298,16 @@ pub async fn upgrade(
   } else {
     "".to_string()
   };
+  let mut sp = ProgressBar::new_spinner();
+  sp.enable_steady_tick(10);
+  sp.set_message("Gathering information about Apps deployed");
   let apps = get_apps(false).await;
-  let ids = apps.into_iter().map(|a| a.id).collect::<Vec<String>>();
+  sp.finish_and_clear();
+  if apps.len() == 0 {
+    println!("No Apps deployed");
+    std::process::exit(0);
+  }
+  let (ids, sizes): (Vec<String>, Vec<usize>) = apps.into_iter().map(|a| (a.id, a.size)).unzip();
   let selection: usize = if app_name.is_empty() && interactive {
     anycloud_dialoguer::select_with_default("Pick App to upgrade", &ids, 0)
   } else if app_name.is_empty() && non_interactive {
@@ -1296,7 +1335,7 @@ pub async fn upgrade(
   CLUSTER_ID.set(cluster_id.to_string()).unwrap();
   let styled_cluster_id = style(cluster_id).bold();
   let config = get_config(&config_name, non_interactive).await;
-  let sp = ProgressBar::new_spinner();
+  sp = ProgressBar::new_spinner();
   sp.enable_steady_tick(10);
   sp.set_message(&format!("Upgrading App {}", styled_cluster_id));
   let mut body = json!({
@@ -1314,7 +1353,22 @@ pub async fn upgrade(
   }
   let resp = post_v1("upgrade", body).await;
   let res = match resp {
-    Ok(_) => format!("Upgraded App {} successfully!", styled_cluster_id),
+    Ok(_) => {
+      poll(&sp, || async {
+        get_apps(false)
+          .await
+          .into_iter()
+          .find(|app| &app.id == cluster_id)
+          // going to hard-depend on the latency of the network - if the user
+          // is using the anycloud cli from the same datacenter as the deploy
+          // service, then this may return too early. However, that's not very
+          // likely, and we intend on enabling a flag for signalling when an
+          // update is complete, so this is good enough for now
+          .map(|app| app.size == sizes[selection])
+          .unwrap_or(false)
+      })
+      .await
+    }
     Err(err) => match err {
       PostV1Error::Timeout => format!("{}", REQUEST_TIMEOUT),
       PostV1Error::Forbidden => format!("{}", FORBIDDEN_OPERATION),
@@ -1331,15 +1385,11 @@ pub async fn upgrade(
 
 async fn get_apps(status: bool) -> Vec<App> {
   let config = get_config("", false).await;
-  let sp = ProgressBar::new_spinner();
-  sp.enable_steady_tick(10);
-  sp.set_message("Gathering information about Apps deployed");
   let body = json!({
     "deployConfig": config,
     "status": status,
   });
   let response = post_v1("info", body).await;
-  sp.finish_and_clear();
   let resp = match &response {
     Ok(resp) => resp,
     Err(err) => {
@@ -1367,16 +1417,19 @@ async fn get_apps(status: bool) -> Vec<App> {
       std::process::exit(1);
     }
   };
-  let apps: Vec<App> = serde_json::from_str(resp).unwrap();
-  if apps.len() == 0 {
-    println!("No Apps currently deployed");
-    std::process::exit(0);
-  }
-  apps
+  serde_json::from_str(resp).unwrap()
 }
 
 pub async fn info() {
+  let sp = ProgressBar::new_spinner();
+  sp.enable_steady_tick(10);
+  sp.set_message("Gathering information about Apps deployed");
   let mut apps = get_apps(true).await;
+  sp.finish_and_clear();
+  if apps.len() == 0 {
+    println!("No Apps deployed");
+    std::process::exit(0);
+  }
 
   let mut clusters = AsciiTable::default();
   clusters.max_width = 140;
@@ -1468,6 +1521,64 @@ pub async fn info() {
   profiles.columns.insert(2, column);
   println!("\nDeploy Configs used:\n");
   profiles.print(profile_data);
+}
+
+pub async fn poll<Callback, CallbackFut>(sp: &ProgressBar, terminator: Callback) -> String
+where
+  Callback: Fn() -> CallbackFut,
+  CallbackFut: Future<Output = bool>,
+{
+  let body = json!({
+    "clusterId": CLUSTER_ID.get().expect("cluster ID not set..."),
+  });
+  let mut lines: Vec<String> = vec![];
+  let mut is_done = false;
+  const DEFAULT_SLEEP_DURATION: Duration = Duration::from_secs(10);
+  let mut sleep_override = None;
+  while !is_done {
+    is_done = terminator().await;
+    if is_done {
+      sleep_override = Some(Duration::from_secs(0));
+    }
+    let logs = match post_v1("logs", body.clone()).await {
+      Ok(logs) => logs,
+      Err(err) => {
+        if let Some(last_line) = lines.get(lines.len() - 1) {
+          sp.println(last_line);
+        }
+        return match err {
+          PostV1Error::Timeout => REQUEST_TIMEOUT.to_string(),
+          PostV1Error::Forbidden => FORBIDDEN_OPERATION.to_string(),
+          PostV1Error::Unauthorized => UNAUTHORIZED_OPERATION.to_string(),
+          PostV1Error::Conflict => {
+            clear_token();
+            NAME_CONFLICT.to_string()
+          }
+          PostV1Error::Other(err) => format!("Unexpected error: {}", err),
+        };
+      }
+    };
+    // it's ok to leave out the newline chars, since `sp.println` will insert
+    // those for us
+    let new_lines = logs.split("\n").skip(lines.len()).collect::<Vec<_>>();
+    // update the spinner and lines above the spinner
+    new_lines
+      .into_iter()
+      .filter(|line| !line.is_empty())
+      .for_each(|line| {
+        if let Some(last_line) = lines.get(lines.len() - 1) {
+          sp.println(last_line);
+        }
+        sp.set_message(line);
+        lines.push(line.to_string());
+      });
+    tokio::time::sleep(match sleep_override.take() {
+      None => DEFAULT_SLEEP_DURATION,
+      Some(sleep_override) => sleep_override,
+    })
+    .await;
+  }
+  lines.pop().unwrap_or_default()
 }
 
 fn is_burstable(vm_type: &str) -> bool {

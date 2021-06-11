@@ -45,11 +45,5 @@ cd -
 
 # Publish the anycloud/node to NPM with the new version
 cd anycloud/node
-# make sure tsc/typescript is installed which is required for the build script, however ignore `preinstall` script since
-# tarball is not available yet so `get-anycloud.js` will fail
-yarn install --ignore-scripts
-yarn build
-# Delete these before publishing so users don't accidentally end up with a bin in their tarball since it is populated based on your OS.
-rm -rf node_modules/ bin
 npm publish
 cd -
