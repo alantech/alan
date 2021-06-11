@@ -616,8 +616,8 @@ class Generated extends Interface {
     if (this.delegate !== null) {
       return this.delegate.compatibleWithConstraint(ty, scope);
     }
-    if (super.tempDelegate !== null) {
-      return super.tempDelegate.compatibleWithConstraint(ty, scope);
+    if (this.tempDelegate !== null) {
+      return this.tempDelegate.compatibleWithConstraint(ty, scope);
     }
     return true;
   }
@@ -628,25 +628,25 @@ class Generated extends Interface {
     // if we need to allow `tempConstrain`s to get processed `constrain`s,
     // then this check should be at the end of this method and pass the
     // removed `tempDelegate` to the new permanent delegate's `tempConstrain`
-    if (super.tempDelegate) {
+    if (this.tempDelegate) {
       throw new Error(`cannot process temporary type constraints after permanent type constraints`);
     }
 
     if (this.delegate !== null) {
       this.delegate.constrain(to, scope);
     } else if (to instanceof HasOperator) {
-      super.operators.push(to);
+      this.operators.push(to);
     } else if (to instanceof HasMethod) {
-      super.methods.push(to);
+      this.methods.push(to);
     } else if (to instanceof HasField) {
-      super.fields.push(to);
+      this.fields.push(to);
     } else if (to instanceof Interface) {
-      super.fields.push(...to.fields);
-      super.methods.push(...to.methods);
-      super.operators.push(...to.operators);
+      this.fields.push(...to.fields);
+      this.methods.push(...to.methods);
+      this.operators.push(...to.operators);
     } else {
       this.delegate = to;
-      super.constrain(this.delegate, scope);
+      this.constrain(this.delegate, scope);
     }
   }
 
@@ -661,8 +661,8 @@ class Generated extends Interface {
   instance(): Type {
     if (this.delegate !== null) {
       return this.delegate.instance();
-    } else if (super.tempDelegate !== null) {
-      return super.tempDelegate.instance();
+    } else if (this.tempDelegate !== null) {
+      return this.tempDelegate.instance();
     } else {
       return new Generated();
     }
@@ -671,20 +671,20 @@ class Generated extends Interface {
   tempConstrain(to: Type, scope: Scope) {
     if (this.delegate !== null) {
       this.delegate.tempConstrain(to, scope);
-    } else if (super.tempDelegate !== null) {
+    } else if (this.tempDelegate !== null) {
       TODO('temp constraints to a temporary constraint???');
     } else if (to instanceof Has) {
       TODO("i'm not sure");
     } else {
-      super.tempDelegate = to;
+      this.tempDelegate = to;
     }
   }
 
   resetTemp() {
     if (super.tempDelegate !== null) {
-      super.tempDelegate = null;
+      this.tempDelegate = null;
     } else if (this.delegate !== null) {
-      super.tempDelegate.resetTemp();
+      this.tempDelegate.resetTemp();
     }
   }
 }
