@@ -1316,15 +1316,15 @@ where
     // update the spinner and lines above the spinner
     new_lines
       .into_iter()
-      .filter(|line| !line.is_empty())
-      .for_each(|line| {
+      .filter(|new_line| !new_line.is_empty())
+      .for_each(|new_line| {
         if lines.len() > 0 {
           if let Some(last_line) = lines.get(lines.len() - 1) {
             sp.println(last_line);
           }
         }
-        sp.set_message(line);
-        lines.push(line.to_string());
+        sp.set_message(new_line);
+        lines.push(new_line.to_string());
       });
     tokio::time::sleep(match sleep_override.take() {
       None => DEFAULT_SLEEP_DURATION,
