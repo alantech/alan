@@ -525,7 +525,11 @@ async fn handle_keys() -> Result<Response<Body>, Infallible> {
 }
 
 async fn keys_inner() -> DaemonResult<String> {
-  let keys = DS.iter().map(|kvs| kvs.key().clone()).collect::<Vec<String>>().join("\n");
+  let keys = DS
+    .iter()
+    .map(|kvs| kvs.key().clone())
+    .collect::<Vec<String>>()
+    .join("\n");
   Ok(keys)
 }
 
@@ -635,7 +639,9 @@ impl ControlPort {
     } else {
       false
     };
-    if !changed { return }
+    if !changed {
+      return;
+    }
     let self_vm_vec: Vec<&VMMetadata> = vms
       .iter()
       .filter(|vm| vm.private_ip_addr == self_ip)
@@ -676,7 +682,8 @@ impl ControlPort {
       .filter(|ip| *self.vms_up.get(ip.clone()).unwrap_or(&false))
       .map(|ip| ip.clone())
       .collect();
-    { // WTF, Rust? Why is `drop(var)` not good enough when there's an `await` later on?
+    {
+      // WTF, Rust? Why is `drop(var)` not good enough when there's an `await` later on?
       let region_ips = Arc::clone(&REGION_VMS);
       let mut region_ips_mut = region_ips.write().unwrap();
       region_ips_mut.clear();
@@ -937,7 +944,10 @@ impl ControlPort {
   }
 
   pub async fn dskeys(self: &ControlPort, ip: &str) -> (String, Vec<String>) {
-    (ip.to_string(), self.dskeys_inner(ip).await.unwrap_or(Vec::new()))
+    (
+      ip.to_string(),
+      self.dskeys_inner(ip).await.unwrap_or(Vec::new()),
+    )
   }
 
   async fn dskeys_inner(self: &ControlPort, ip: &str) -> DaemonResult<Vec<String>> {
@@ -948,15 +958,26 @@ impl ControlPort {
     let req_obj = req.body(Body::empty())?;
     let mut res = self.client.request(req_obj).await?;
     let bytes = hyper::body::to_bytes(res.body_mut()).await?;
-    Ok(std::str::from_utf8(&bytes)?.split("\n").map(|s| s.to_string()).collect())
+    Ok(
+      std::str::from_utf8(&bytes)?
+        .split("\n")
+        .map(|s| s.to_string())
+        .collect(),
+    )
   }
 
   fn get_all_vms_by_ip(self: &ControlPort) -> Vec<String> {
-    self.vms.iter().map(|(k, v)| if self.region_vms.contains_key(k) {
-      v.private_ip_addr.clone()
-    } else {
-      v.public_ip_addr.clone()
-    }).collect()
+    self
+      .vms
+      .iter()
+      .map(|(k, v)| {
+        if self.region_vms.contains_key(k) {
+          v.private_ip_addr.clone()
+        } else {
+          v.public_ip_addr.clone()
+        }
+      })
+      .collect()
   }
 
   async fn rebalance_data(self: &ControlPort) {
@@ -987,22 +1008,30 @@ impl ControlPort {
       let ip_str = ip.to_string();
       key_list.iter().for_each(|key| {
         let relevant_nodes = self.get_vms_for_key(key);
-        let self_in_list = relevant_nodes.iter().any(|node| node.public_ip_addr == self_vm.public_ip_addr);
-        if !self_in_list { return; }
+        let self_in_list = relevant_nodes
+          .iter()
+          .any(|node| node.public_ip_addr == self_vm.public_ip_addr);
+        if !self_in_list {
+          return;
+        }
         let primary_node = relevant_nodes[0];
         let first_secondary = relevant_nodes[1];
         let self_primary = primary_node.public_ip_addr == self_vm.public_ip_addr;
         if self_primary {
-          let this_list_first_secondary = first_secondary.public_ip_addr == ip_str || first_secondary.private_ip_addr == ip_str;
+          let this_list_first_secondary =
+            first_secondary.public_ip_addr == ip_str || first_secondary.private_ip_addr == ip_str;
           if this_list_first_secondary {
             get_list.push((key.to_string(), ip.to_string()));
           }
-          let this_list_irrelevant = relevant_nodes.iter().all(|node| node.public_ip_addr != ip_str && node.private_ip_addr != ip_str);
+          let this_list_irrelevant = relevant_nodes
+            .iter()
+            .all(|node| node.public_ip_addr != ip_str && node.private_ip_addr != ip_str);
           if this_list_irrelevant {
             del_list.push((key.to_string(), ip.to_string()));
           }
         } else {
-          let this_list_primary = primary_node.public_ip_addr == ip_str || primary_node.private_ip_addr == ip_str;
+          let this_list_primary =
+            primary_node.public_ip_addr == ip_str || primary_node.private_ip_addr == ip_str;
           if this_list_primary {
             get_list.push((key.to_string(), ip.to_string()));
           }
