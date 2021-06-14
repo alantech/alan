@@ -274,6 +274,11 @@ abstract class Has extends Type {
     super(name, ast);
   }
 
+  static field(field: HasField, ty: Type): boolean {
+    // TODO: structs
+    return false;
+  }
+
   static method(method: HasMethod, scope: Scope, ty: Type): Fn[] {
     let fns = scope.get(method.name);
     if (!isFnArray(fns)) {
@@ -356,10 +361,6 @@ class HasField extends Has {
     );
   }
 
-  check(ty: Type): boolean {
-    return TODO()
-  }
-
   eq(that: Equalable): boolean {
     return super.eq(that) && that instanceof HasField && that.ty.eq(this.ty);
   }
@@ -391,10 +392,6 @@ class HasMethod extends Has {
     ].map(tyNameAst => tyNameAst.t.trim() === ifaceName ? null : Type.getFromTypename(tyNameAst, scope));
     let ret = work.get('returntype').t.trim() === ifaceName ? null : Type.getFromTypename(work.get('returntype'), scope);
     return new HasMethod(name, ast, params, ret);
-  }
-
-  find(ty: Type, scope: Scope): Fn[] {
-    return TODO()
   }
 
   eq(that: Equalable): boolean {
@@ -534,7 +531,7 @@ class Interface extends Type {
         // if (!this.fields.every(field => ty.fields[field.name] && ty.fields[field.name].eq(field.ty))) {
         //   return false;
         // }
-        if (!this.fields.every(field => field.check(ty))) {
+        if (!this.fields.every(field => Has.field(field, ty))) {
           return false;
         }
       }
