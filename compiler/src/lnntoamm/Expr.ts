@@ -497,7 +497,7 @@ class Call extends Expr {
   */
   inline(amm: Output, kind: AssignKind, name: string, ty: Builtin) {
     const argTys = this.args.map(arg => arg.ty.instance());
-    const selected = Fn.select(this.fns.reverse(), argTys, this.scope) || [];
+    const selected = Fn.select(this.fns, argTys, this.scope) || [];
     // console.log('!!!!!!!!!!', this.ast.t.trim(), selected);
     if (selected.length === 0) {
       // TODO: to get better error reporting, we need to pass an ast when using

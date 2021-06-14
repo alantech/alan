@@ -133,10 +133,8 @@ export class Builtin extends Type {
       if (Has.operator(ty, scope, this).length === 0) {
         throw new Error(`type ${this.name} does not have operator ${ty.name}`);
       }
-    } else if (ty instanceof HasMethod) {
-      if (Has.method(ty, scope, this).length === 0) {
-        throw new Error(`type ${this.name} does not have method ${ty.name}(${ty.params.map(p => p === null ? this : p).map(ty => ty.name).join(', ')})`);
-      }
+    } else if (ty instanceof HasMethod && Has.method(ty, scope, this).length === 0) {
+      throw new Error(`type ${this.name} does not have method ${ty.name}(${ty.params.map(p => p === null ? this : p).map(ty => ty.name).join(', ')})`);
     } else if (ty instanceof HasField) {
       throw new Error(`type ${this.name} does not have field ${ty.name}`);
     } else if (!this.compatibleWithConstraint(ty, scope)) {
@@ -226,7 +224,7 @@ class Struct extends Type {
     if (ty instanceof Struct) {
       return this.eq(ty);
     } else if (ty instanceof HasField) {
-      // TODO:
+      TODO('struct types')
     } else if (ty instanceof HasMethod) {
       TODO('get methods and operators for types');
     } else if (ty instanceof Interface) {
@@ -294,7 +292,7 @@ abstract class Has extends Type {
       return ops.filter(op => op.select(scope, operator.params[0] || ty) !== []);
     } else {
       return ops.filter(op => op.select(scope, operator.params[0] || ty, operator.params[1] || ty) !== []);
-	  }
+    }
   }
 
   breakdown(): Builtin {
