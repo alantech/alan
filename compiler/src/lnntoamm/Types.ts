@@ -116,7 +116,7 @@ export class Builtin extends Type {
     } else if (ty instanceof HasMethod) {
       return Has.method(ty, scope, this).length !== 0;
     } else if (ty instanceof HasField) {
-      return false;
+      return TODO('add field support for builtins');
     } else if (ty instanceof Interface) {
       return ty.fields.length === 0 &&
             ty.methods.every(m => this.compatibleWithConstraint(m, scope)) &&
