@@ -105,7 +105,7 @@ Name for new Deploy Config: staging-azure
 ? Do you want to choose a specific region for this Deploy Config? › y
 ? Region name › eastus
 ? Do you want to select which virtual machine type to use for this Deploy Config? › y
-? Virtual Machine Type › Standard_D2_v4
+? Virtual Machine Type › Standard_B1s
 ? Do you want to add another region to this Deploy Config? › n
 ? Minimum number of VMs per region or cloud › 1
 ? Would you like to define a maximum number of VMs? › n
@@ -146,7 +146,7 @@ Deploy Configs used:
 ┌─────────────────────┬───────────┬─────────────────┐
 │ Deploy Config       │ Region    │ VM Type         │
 ├─────────────────────┼───────────┼─────────────────┤
-│ staging-azure       │ eastus    │ Standard_D2_v4  │
+│ staging-azure       │ eastus    │ Standard_B1s  │
 └─────────────────────┴───────────┴─────────────────┘
 
 ```
