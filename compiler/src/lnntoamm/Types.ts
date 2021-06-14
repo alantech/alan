@@ -37,6 +37,7 @@ export default abstract class Type implements Equalable {
   abstract constrain(to: Type, scope: Scope): void;
   abstract eq(that: Equalable): boolean;
   abstract instance(): Type;
+  abstract dupIfNotLocalInterface(): Type | null;
   abstract tempConstrain(to: Type, scope: Scope): void;
   abstract resetTemp(): void;
 
@@ -141,7 +142,16 @@ export class Builtin extends Type {
   }
 
   eq(that: Equalable): boolean {
-    return that instanceof Builtin && this.ammName === that.ammName;
+    if (that instanceof Builtin) {
+      return this.ammName === that.ammName;
+    } else if (that instanceof Interface) {
+      if (that instanceof Generated && that.delegate !== null) {
+        return this.eq(that.delegate);
+      }
+      return that.tempDelegate !== null && this.eq(that.tempDelegate);
+    } else {
+      return false;
+    }
   }
 
   instance(): Type {
@@ -154,6 +164,10 @@ export class Builtin extends Type {
 
   resetTemp() {
     // do nothing
+  }
+
+  dupIfNotLocalInterface(): Type | null {
+    return null;
   }
 }
 
@@ -246,6 +260,10 @@ class Struct extends Type {
   resetTemp() {
     // TODO: can structs have temp constraints?
   }
+
+  dupIfNotLocalInterface(): Type | null {
+    return null;
+  }
 }
 
 abstract class Has extends Type {
@@ -309,6 +327,10 @@ abstract class Has extends Type {
   // there can never be temp constraints
   resetTemp() {
     throw new Error(`Has constraints cannot have temporary constraints (this error should never be thrown)`);
+  }
+
+  dupIfNotLocalInterface(): Type | null {
+    return null;
   }
 }
 
@@ -378,7 +400,7 @@ class HasMethod extends Has {
   eq(that: Equalable): boolean {
     return super.eq(that) &&
       that instanceof HasMethod &&
-      this.params.reduce((eq, param, ii) => eq && param.eq(that.params[ii]), true) &&
+      this.params.reduce((eq, param, ii) => eq && (param === null ? that.params[ii] === null : param.eq(that.params[ii])), true) &&
       this.ret.eq(that.ret);
   }
 }
@@ -434,7 +456,8 @@ class Interface extends Type {
   fields: HasField[]
   methods: HasMethod[]
   operators: HasOperator[]
-  protected tempDelegate: Type | null
+  tempDelegate: Type | null
+  private isDuped: boolean
 
   constructor(
     name: string,
@@ -448,6 +471,7 @@ class Interface extends Type {
     this.methods = methods;
     this.operators = operators;
     this.tempDelegate = null;
+    this.isDuped = false;
   }
 
   static fromAst(ast: LPNode, scope: Scope): Interface {
@@ -560,8 +584,19 @@ class Interface extends Type {
   }
 
   eq(that: Equalable): boolean {
-    // TODO: gets more complicated later
-    return that instanceof Interface && this === that;
+    if (that instanceof Generated) {
+      return that.eq(this);
+    } else if (that instanceof Interface) {
+      // FIXME: this is technically wrong, but there's no other way
+      // to get the current generic types working without depending
+      // on `eq` returning this. Ideally, we would be checking to
+      // make sure all of the constraints match
+      return this === that;
+    } else if (this.tempDelegate) {
+      return this.tempDelegate.eq(that);
+    } else {
+      return false;
+    }
   }
 
   instance(): Type {
@@ -573,7 +608,10 @@ class Interface extends Type {
   }
 
   tempConstrain(to: Type, _scope: Scope) {
-    if (this.tempDelegate !== null) {
+    if (this === to) {
+      throw new Error('huh?')
+    }
+    if (this.tempDelegate !== null && !this.tempDelegate.eq(to)) {
       throw new Error('interface type is already constrained');
     }
     this.tempDelegate = to;
@@ -582,13 +620,26 @@ class Interface extends Type {
   resetTemp() {
     this.tempDelegate = null;
   }
+
+  dupIfNotLocalInterface(): Type | null {
+    if (this.isDuped) return null;
+    let dup = new Interface(
+      this.name,
+      this.ast,
+      [...this.fields],
+      [...this.methods],
+      [...this.operators],
+    );
+    dup.isDuped = true;
+    return dup;
+  }
 }
 
 // technically, generated types are a kind of interface - we just get to build up
 // the interface through type constraints instead of through explicit requirements.
 // this'll make untyped fn parameters easier once they're implemented.
 class Generated extends Interface {
-  private delegate: Type | null
+  delegate: Type | null
 
   constructor() {
     super(genName(), new NulLP(), [], [], []);
@@ -653,6 +704,18 @@ class Generated extends Interface {
   eq(that: Equalable): boolean {
     if (that instanceof Generated) {
       return this.delegate !== null && that.delegate !== null && this.delegate.eq(that.delegate);
+    } else if (that instanceof Interface) {
+      if (that.tempDelegate !== null) {
+        if (this.delegate !== null) {
+          return this.delegate.eq(that.tempDelegate);
+        } else if (this.tempDelegate !== null) {
+          return this.tempDelegate.eq(that.tempDelegate);
+        } else {
+          return false;
+        }
+      } else {
+        return this.delegate === null && this.tempDelegate === null;
+      }
     } else {
       return this.delegate !== null && this.delegate.eq(that);
     }
@@ -686,6 +749,10 @@ class Generated extends Interface {
     } else if (this.delegate !== null) {
       this.tempDelegate.resetTemp();
     }
+  }
+
+  dupIfNotLocalInterface(): Type | null {
+    return null;
   }
 }
 
@@ -741,5 +808,9 @@ class OneOf extends Type {
 
   resetTemp() {
     this.tempSelect = [];
+  }
+
+  dupIfNotLocalInterface(): Type | null {
+    return null;
   }
 }

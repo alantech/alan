@@ -248,6 +248,11 @@ export class FnParam extends VarDef {
     } else if (!(paramTy instanceof Type)) {
       throw new Error(`Function parameter is not a valid type: ${typename.t}`);
     }
+    let duped = paramTy.dupIfNotLocalInterface();
+    if (duped !== null) {
+      metadata.scope.put(duped.name, duped);
+      paramTy = duped;
+    }
     const param = new FnParam(ast, name, paramTy);
     metadata.define(param);
     return param;

@@ -46,6 +46,7 @@ export default class Fn {
     ast: LPNode,
     scope: Scope,
   ): Fn {
+    scope = new Scope(scope);
     let retTy: Type;
     if (ast.get('optreturntype').has()) {
       const name = ast.get('optreturntype').get('fulltypename');
@@ -101,12 +102,13 @@ export default class Fn {
     ast: LPNode,
     scope: Scope,
   ): Fn {
+    scope = new Scope(scope);
     let body = [];
     let metadata = new MetaData(scope, opcodes().get('void'));
     ast.get('statements').getAll().map(s => s.get('statement')).forEach(ast => body.push(...Stmt.fromAst(ast, metadata)));
     return new Fn(
       ast,
-      new Scope(scope),
+      scope,
       null,
       [],
       // TODO: if expressions will mean that it's not necessarily void...
