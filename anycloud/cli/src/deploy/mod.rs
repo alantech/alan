@@ -1142,6 +1142,7 @@ pub async fn new(
   config_name: Option<String>,
   non_interactive: bool,
 ) {
+  println!("calling inner new");
   let interactive = !non_interactive;
   let app_name = if let Some(app_name) = app_name {
     app_name
