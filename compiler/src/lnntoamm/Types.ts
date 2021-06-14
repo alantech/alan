@@ -37,7 +37,6 @@ export default abstract class Type implements Equalable {
   abstract constrain(to: Type, scope: Scope): void;
   abstract eq(that: Equalable): boolean;
   abstract instance(): Type;
-  abstract dupIfNotLocalInterface(): Type | null;
   abstract tempConstrain(to: Type, scope: Scope): void;
   abstract resetTemp(): void;
 
@@ -85,6 +84,10 @@ export default abstract class Type implements Equalable {
 
   static hasOperator(name: string, params: Type[], ret: Type, isPrefix: boolean): Type {
     return new HasOperator(name, null, params, ret, isPrefix);
+  }
+
+  dupIfNotLocalInterface(): Type | null {
+    return null;
   }
 }
 
@@ -164,10 +167,6 @@ export class Builtin extends Type {
 
   resetTemp() {
     // do nothing
-  }
-
-  dupIfNotLocalInterface(): Type | null {
-    return null;
   }
 }
 
@@ -260,10 +259,6 @@ class Struct extends Type {
   resetTemp() {
     // TODO: can structs have temp constraints?
   }
-
-  dupIfNotLocalInterface(): Type | null {
-    return null;
-  }
 }
 
 abstract class Has extends Type {
@@ -332,10 +327,6 @@ abstract class Has extends Type {
   // there can never be temp constraints
   resetTemp() {
     throw new Error(`Has constraints cannot have temporary constraints (this error should never be thrown)`);
-  }
-
-  dupIfNotLocalInterface(): Type | null {
-    return null;
   }
 }
 
@@ -438,10 +429,6 @@ class HasOperator extends HasMethod {
       retTy,
       isPrefix,
     );
-  }
-
-  find(ty: Type, scope: Scope): Fn[] {
-    return TODO()
   }
 
   eq(that: Equalable): boolean {
@@ -747,10 +734,6 @@ class Generated extends Interface {
       this.tempDelegate.resetTemp();
     }
   }
-
-  dupIfNotLocalInterface(): Type | null {
-    return null;
-  }
 }
 
 class OneOf extends Type {
@@ -805,9 +788,5 @@ class OneOf extends Type {
 
   resetTemp() {
     this.tempSelect = [];
-  }
-
-  dupIfNotLocalInterface(): Type | null {
-    return null;
   }
 }
