@@ -1154,6 +1154,7 @@ pub async fn new(
   } else {
     "".to_string()
   };
+  println!("app name = {}  and config name = {}", app_name, config_name);
   if !app_name.is_empty() {
     // Check if app exists
     let apps = get_apps(false).await;
@@ -1184,8 +1185,11 @@ pub async fn new(
       .await;
       return;
     }
-  }
+  };
+  println!("maybe is an error getting config");
   let config = get_config(&config_name, non_interactive).await;
+  println!("maybe not");
+  println!("maybe is an error selecting config name");
   let config_names = config.keys().cloned().collect::<Vec<String>>();
   if config_names.len() == 0 && interactive {
     prompt_add_config().await;
@@ -1221,6 +1225,7 @@ pub async fn new(
     }
   };
   let deploy_config = &config_names[selection];
+  println!("maybe is an error selecting app id");
   let app_id: std::io::Result<String> = if app_name.is_empty() && interactive {
     anycloud_dialoguer::input_with_allow_empty_as_result("Optional App name", true)
   } else if app_name.is_empty() && non_interactive {
@@ -1231,9 +1236,11 @@ pub async fn new(
   } else {
     Ok(app_name)
   };
+  println!("maybe is an error with the spinner");
   let sp = ProgressBar::new_spinner();
   sp.enable_steady_tick(10);
   sp.set_message("Creating new App");
+  println!("maybe not");
   let mut body = json!({
     "deployName": deploy_config,
     "deployConfig": config,
@@ -1250,11 +1257,14 @@ pub async fn new(
   if let Some(env_b64) = env_b64 {
     mut_body.insert(format!("envB64"), json!(env_b64));
   }
+  println!("maybe is an error posting new");
   let resp = post_v1("new", body).await;
+  println!("maybe not");
   let res = match &resp {
     Ok(res) => {
       // idc if it's been set before, I'm setting it now!!!
       let _ = CLUSTER_ID.set(res.to_string());
+      println!("maybe is an error polling");
       poll(&sp, || async {
         get_apps(true)
           .await
@@ -1276,6 +1286,7 @@ pub async fn new(
       PostV1Error::Other(err) => format!("Failed to create a new App. Error: {}", err),
     },
   };
+  println!("maybe not");
   sp.finish_with_message(&res);
 }
 
