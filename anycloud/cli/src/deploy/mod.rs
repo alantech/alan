@@ -1120,7 +1120,7 @@ pub async fn upgrade(
         }
         counter += 1;
         tokio::time::sleep(Duration::from_secs(10)).await;
-      };
+      }
       poll(&sp, || async {
         get_apps(false)
           .await
