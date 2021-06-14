@@ -1122,11 +1122,11 @@ pub async fn upgrade(
         tokio::time::sleep(Duration::from_secs(10)).await;
       };
       poll(&sp, || async {
-        get_apps(true)
+        get_apps(false)
           .await
           .into_iter()
           .find(|app| &app.id == cluster_id)
-          .map(|app| app.status == "up")
+          .map(|app| app.size == sizes[selection])
           .unwrap_or(false)
       })
       .await
