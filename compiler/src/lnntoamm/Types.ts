@@ -570,7 +570,7 @@ class Interface extends Type {
       return that.eq(this);
     } else if (that instanceof Interface) {
       // FIXME: this is technically wrong, but there's no other way
-      // to get the current generic types working without depending
+      // to get the current generic params working without depending
       // on `eq` returning this. Ideally, we would be checking to
       // make sure all of the constraints match
       return this === that;
