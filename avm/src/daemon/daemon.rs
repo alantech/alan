@@ -271,8 +271,8 @@ async fn get_daemon_props(
   }
   let duration = Duration::from_secs(10);
   let mut counter: u8 = 0;
-  // Check every 10s over 5 min if props are ready
-  while counter < 30 {
+  // Check every 10s over 10 min if props are ready
+  while counter < 60 {
     if let Some(props) = DAEMON_PROPS.get() {
       return Some(props);
     }
@@ -301,6 +301,11 @@ pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
       let dns = DNS::new(&domain);
       if let (Ok(dns), Ok(self_ip)) = (&dns, &self_ip) {
         loop {
+          // Do not send stats until cluster is up. Otherwise, will have scaling issues.
+          if !control_port.is_cluster_up().await {
+            sleep(Duration::from_secs(1)).await;
+            continue;
+          };
           let vms = match dns.get_vms(&cluster_id).await {
             Ok(vms) => Some(vms),
             Err(err) => {
