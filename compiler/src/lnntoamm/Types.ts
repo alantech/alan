@@ -435,6 +435,8 @@ class HasOperator extends HasMethod {
 }
 
 class Interface extends Type {
+  // TODO: it's more optimal to have fields, methods, and operators in
+  // maps so we can cut down searching and such.
   fields: HasField[]
   methods: HasMethod[]
   operators: HasOperator[]
