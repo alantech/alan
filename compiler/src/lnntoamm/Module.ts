@@ -186,11 +186,12 @@ class Module {
   addConstAst(constAst: LPNode, isExport: boolean) {
     constAst = constAst.get('constdeclaration');
     const newConst = Const.fromAst(constAst, this.moduleScope);
-    this.moduleScope.put(newConst.name, newConst);
     const alreadyInScope = this.moduleScope.shallowGet(newConst.name);
     if (alreadyInScope !== null) {
+      console.log(this.moduleScope);
       throw new Error(`Tried to define const ${newConst.name}, but that name is already in scope`);
     }
+    this.moduleScope.put(newConst.name, newConst);
     if (isExport) {
       this.exportScope.put(newConst.name, newConst);
     }
