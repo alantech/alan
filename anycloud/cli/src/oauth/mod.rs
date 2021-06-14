@@ -52,6 +52,7 @@ pub async fn authenticate(non_interactive: bool) {
               AuthFailed,
               "Non interactive mode. Token need to be defined in AUTH_TOKEN environment variable."
             );
+            std::process::exit(1);
           }
           generate_token().await
         }
