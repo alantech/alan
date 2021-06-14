@@ -1,7 +1,0 @@
-from @std/app import start, print, exit
-
-on start {
-  'hello world'.print();
-  1.print();
-  emit exit 0;
-}
