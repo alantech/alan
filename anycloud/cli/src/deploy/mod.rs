@@ -1121,15 +1121,22 @@ pub async fn upgrade(
         counter += 1;
         tokio::time::sleep(Duration::from_secs(10)).await;
       }
-      poll(&sp, || async {
-        get_apps(false)
-          .await
-          .into_iter()
-          .find(|app| &app.id == cluster_id)
-          .map(|app| app.size == sizes[selection])
-          .unwrap_or(false)
-      })
-      .await
+      if counter == 30 {
+        format!(
+          "Could not find any information related to {}, try again later.",
+          cluster_id
+        )
+      } else {
+        poll(&sp, || async {
+          get_apps(false)
+            .await
+            .into_iter()
+            .find(|app| &app.id == cluster_id)
+            .map(|app| app.size == sizes[selection])
+            .unwrap_or(false)
+        })
+        .await
+      }
     }
     Err(err) => match err {
       PostV1Error::Timeout => format!("{}", REQUEST_TIMEOUT),
