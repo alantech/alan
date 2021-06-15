@@ -1084,7 +1084,7 @@ pub async fn terminate() {
   let mut sp = ProgressBar::new_spinner();
   sp.enable_steady_tick(10);
   sp.set_message("Gathering information about Apps deployed");
-  let apps = get_apps(false).await;
+  let apps = get_apps(false, "", false).await;
   sp.finish_and_clear();
   if apps.len() == 0 {
     println!("No Apps deployed");
@@ -1106,7 +1106,7 @@ pub async fn terminate() {
   let res = match resp {
     Ok(_) => {
       poll(&sp, || async {
-        get_apps(false)
+        get_apps(false, "", false)
           .await
           .into_iter()
           .find(|app| &app.id == cluster_id)
@@ -1158,7 +1158,7 @@ pub async fn new(
   if !app_name.is_empty() {
     println!("App name is not empty");
     // Check if app exists
-    let apps = get_apps(false).await;
+    let apps = get_apps(false, &config_name, non_interactive).await;
     println!("apps retreived");
     let ids = apps.into_iter().map(|a| a.id).collect::<Vec<String>>();
     println!("ids collected {:?}", ids);
@@ -1270,7 +1270,7 @@ pub async fn new(
       let _ = CLUSTER_ID.set(res.to_string());
       println!("maybe is an error polling");
       poll(&sp, || async {
-        get_apps(true)
+        get_apps(true, &config_name, non_interactive)
           .await
           .into_iter()
           .find(|app| &app.id == res)
@@ -1316,7 +1316,7 @@ pub async fn upgrade(
   let mut sp = ProgressBar::new_spinner();
   sp.enable_steady_tick(10);
   sp.set_message("Gathering information about Apps deployed");
-  let apps = get_apps(false).await;
+  let apps = get_apps(false, &config_name, non_interactive).await;
   sp.finish_and_clear();
   if apps.len() == 0 {
     println!("No Apps deployed");
@@ -1372,7 +1372,7 @@ pub async fn upgrade(
       // Check every 10s over 5 min if app already start upgrading
       let mut counter: u8 = 0;
       while counter < 30 {
-        let is_upgrading = get_apps(true)
+        let is_upgrading = get_apps(true, &config_name, non_interactive)
           .await
           .into_iter()
           .find(|app| &app.id == cluster_id)
@@ -1385,7 +1385,7 @@ pub async fn upgrade(
         tokio::time::sleep(Duration::from_secs(10)).await;
       }
       poll(&sp, || async {
-        get_apps(false)
+        get_apps(false, &config_name, non_interactive)
           .await
           .into_iter()
           .find(|app| &app.id == cluster_id)
@@ -1408,9 +1408,9 @@ pub async fn upgrade(
   sp.finish_with_message(&res);
 }
 
-async fn get_apps(status: bool) -> Vec<App> {
+async fn get_apps(status: bool, config_name: &str, non_interactive: bool) -> Vec<App> {
   println!("getting apps");
-  let config = get_config("", false).await;
+  let config = get_config(config_name, non_interactive).await;
   println!("getting config");
   let body = json!({
     "deployConfig": config,
@@ -1453,7 +1453,7 @@ pub async fn info() {
   let sp = ProgressBar::new_spinner();
   sp.enable_steady_tick(10);
   sp.set_message("Gathering information about Apps deployed");
-  let mut apps = get_apps(true).await;
+  let mut apps = get_apps(true, "", false).await;
   sp.finish_and_clear();
   if apps.len() == 0 {
     println!("No Apps deployed");
