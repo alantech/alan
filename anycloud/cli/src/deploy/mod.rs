@@ -1156,13 +1156,17 @@ pub async fn new(
   };
   println!("app name = {}  and config name = {}", app_name, config_name);
   if !app_name.is_empty() {
+    println!("App name is not empty");
     // Check if app exists
     let apps = get_apps(false).await;
+    println!("apps retreived");
     let ids = apps.into_iter().map(|a| a.id).collect::<Vec<String>>();
+    println!("ids collected {:?}", ids);
     let app_exists: bool = match ids.iter().position(|id| &app_name == id) {
       Some(_) => true,
       None => false,
     };
+    println!("app exists ? {}", app_exists);
     if app_exists {
       // TODO: update with spinner once CLI updates are merged
       println!("App name {} already exists. Upgrading app...", app_name);
@@ -1405,12 +1409,16 @@ pub async fn upgrade(
 }
 
 async fn get_apps(status: bool) -> Vec<App> {
+  println!("getting apps");
   let config = get_config("", false).await;
+  println!("getting config");
   let body = json!({
     "deployConfig": config,
     "status": status,
   });
+  println!("Sending info request with body {:?}", body);
   let response = post_v1("info", body).await;
+  println!("info request with response {:?}", response);
   let resp = match &response {
     Ok(resp) => resp,
     Err(err) => {
