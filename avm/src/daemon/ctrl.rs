@@ -958,12 +958,14 @@ impl ControlPort {
     let req_obj = req.body(Body::empty())?;
     let mut res = self.client.request(req_obj).await?;
     let bytes = hyper::body::to_bytes(res.body_mut()).await?;
-    Ok(
-      std::str::from_utf8(&bytes)?
-        .split("\n")
-        .map(|s| s.to_string())
-        .collect(),
-    )
+    let key_str = std::str::from_utf8(&bytes)?;
+    if key_str.len() > 0 {
+      Ok(key_str.split("\n").map(|s| s.to_string()).collect())
+    } else {
+      Err(Box::new(VMError::Other(
+        "No keys on remote node".to_string(),
+      )))
+    }
   }
 
   fn get_all_vms_by_ip(self: &ControlPort) -> Vec<String> {
