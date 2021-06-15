@@ -86,13 +86,12 @@ Describe "Events"
   Describe "passing integers from global memory"
     before() {
       lnn_sourceToAll "
-      from @std/app import start, stdout, exit
+      from @std/app import start, print, exit
 
       event aNumber: int64
 
       on aNumber fn(num: int64) {
-        emit stdout 'I got a number! ' + num.toString() + '\n';
-        wait(1000);
+        ('I got a number! ' + num.toString()).print();
         emit exit 0;
       }
 

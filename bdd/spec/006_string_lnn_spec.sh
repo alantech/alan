@@ -4,31 +4,26 @@ Describe "Strings"
   Describe "most operations"
     before() {
       lnn_sourceToAll "
-        from @std/app import start, stdout, exit
+        from @std/app import start, print, exit
 
         on start {
-          emit stdout concat('Hello, ', \"World!\n\");
-          // concat('Hello, ', 'World!').print();
-          // print('Hello, ' + 'World!');
+          concat('Hello, ', \"World!\").print();
+          print('Hello, ' + 'World!');
 
-          emit stdout concat(repeat('hi ', 5), \"\n\");
-          // repeat('hi ', 5).print();
-          // print('hi ' * 5);
+          repeat('hi ', 5).print();
+          print('hey ' * 5);
 
-          emit stdout concat(toString(matches('foobar', 'fo.*')), \"\n\");
-          // matches('foobar', 'fo.*').print();
-          // print('foobar' ~ 'fo.*');
+          matches('foobar', 'fo.*').print();
+          print('foobar' ~ 'fo.*');
 
           // index('foobar', 'ba').print();
-          // print('foobar' @ 'ba');
+          // print('foobar' @ 'ra');
 
-          emit stdout concat(toString(length('foobar')), \"\n\");
-          // length('foobar').print();
-          // print(#'foobar');
+          length('foobar').print();
+          print(#'foo');
 
-          emit stdout concat(trim('   hi   '), \"\n\");
-          // trim('   hi   ').print();
-          // print(\`'   hi   ');
+          trim('   hi  ').print();
+          print(\`' hey   ');
 
           // split('Hello, World!', ', ')[0].print();
           // print(('Hello, World!' / ', ')[1]);
@@ -51,6 +46,17 @@ Describe "Strings"
     }
     AfterAll after
 
+    OUTPUT="Hello, World!
+Hello, World!
+hi hi hi hi hi 
+hey hey hey hey hey 
+true
+false
+6
+3
+hi
+hey
+"
     OUTPUT1="Hello, World!"
     OUTPUT2="hi hi hi hi hi"
     OUTPUT3="true"
