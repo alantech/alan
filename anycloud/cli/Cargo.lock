@@ -11,7 +11,7 @@ dependencies = [
 
 [[package]]
 name = "anycloud"
-version = "0.1.42-beta25"
+version = "0.1.42-beta36"
 dependencies = [
  "ascii_table",
  "base64",
