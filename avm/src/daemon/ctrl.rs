@@ -164,6 +164,7 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
     "/start" => handle_start(req).await,
     "/datastore/getf" => handle_dsgetf(req).await, // TODO: How to better organize the datastore stuff?
     "/datastore/getv" => handle_dsgetv(req).await,
+    "/datastore/getr" => handle_dsgetr(req).await,
     "/datastore/has" => handle_dshas(req).await,
     "/datastore/del" => handle_dsdel(req).await,
     "/datastore/setf" => handle_dssetf(req).await,
@@ -422,6 +423,33 @@ async fn dsgetv_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
     }
   };
   Ok(hand_mem)
+}
+
+async fn handle_dsgetr(req: Request<Body>) -> Result<Response<Body>, Infallible> {
+  match dsgetr_inner(req).await {
+    Ok(hand_mem) => {
+      let mut out = vec![];
+      hand_mem.to_pb().write_to_vec(&mut out).unwrap();
+      Ok(Response::builder().status(200).body(out.into()).unwrap())
+    }
+    Err(err) => {
+      // TODO: What error message here? Also should this also be a valid HM out of here?
+      eprintln!("{:?}", err);
+      Ok(Response::builder().status(500).body("fail".into()).unwrap())
+    }
+  }
+}
+
+async fn dsgetr_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
+  let bytes = body::to_bytes(req.into_body()).await?;
+  let body: DSGet = serde_json::from_slice(&bytes).unwrap();
+  let maybe_hm = DS.get(&body.nskey);
+  match maybe_hm {
+    Some(hm) => Ok(hm.clone()),
+    None => Err(Box::new(VMError::Other(
+      "namespace-key pair not found".to_string(),
+    ))),
+  }
 }
 
 async fn handle_dshas(req: Request<Body>) -> Result<Response<Body>, Infallible> {
@@ -1048,9 +1076,9 @@ impl ControlPort {
     eprintln!("get_list {:?}", get_list);
     eprintln!("del_list {:?}", del_list);
     for (key, ip) in get_list.iter() {
-      // For our purposes, dsgetf and dsgetv are identical, so just use one of them, I think?
-      // TODO: Every `?` needs to be removed and replaced with fallback logic
-      let url = format!("https://{}:4142/datastore/getv", ip);
+      // For our purposes, we don't want the query result-wrapped, so we have a special raw
+      // endpoint to get the data from
+      let url = format!("https://{}:4142/datastore/getr", ip);
       let req = Request::builder().method("POST").uri(url);
       let cluster_secret = CLUSTER_SECRET.get().unwrap().clone().unwrap();
       let req = req.header(cluster_secret.as_str(), "true");
@@ -1080,6 +1108,7 @@ impl ControlPort {
         Ok(hm) => hm,
         Err(_) => panic!("hot topic"),
       };
+      eprintln!("key {} hm {:?}", key, hm);
       DS.insert(key.to_string(), hm);
     }
     for (key, ip) in del_list.iter() {
