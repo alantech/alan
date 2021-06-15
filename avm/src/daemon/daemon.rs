@@ -301,11 +301,6 @@ pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
       let dns = DNS::new(&domain);
       if let (Ok(dns), Ok(self_ip)) = (&dns, &self_ip) {
         loop {
-          // Do not send stats until cluster is up. Otherwise, will have scaling issues.
-          if !control_port.is_cluster_up().await {
-            sleep(Duration::from_secs(1)).await;
-            continue;
-          };
           let vms = match dns.get_vms(&cluster_id).await {
             Ok(vms) => Some(vms),
             Err(err) => {
@@ -339,7 +334,8 @@ pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
                 .unwrap_or("<None>".to_string())
             );
           }
-          if stats.len() >= 4 {
+          // Do not send stats until cluster is up. Otherwise, will have scaling issues.
+          if stats.len() >= 4 && control_port.is_cluster_up().await {
             let mut factor = String::from("1");
             let stats_factor = post_v1_stats(stats.to_owned(), &cluster_id, &deploy_token).await;
             stats = Vec::new();
