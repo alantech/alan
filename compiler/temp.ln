@@ -1,0 +1,19 @@
+from @std/app import start, print, exit
+
+event go: Thing
+
+type Thing {
+  field: string,
+}
+
+on go fn (thing: Thing) {
+  thing.field.print();
+}
+
+on start {
+  let field = 'hello, world';
+  let val = new Thing {
+    field: field,
+  };
+  emit exit 0;
+}

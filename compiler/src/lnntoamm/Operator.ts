@@ -1,5 +1,4 @@
 import { LPNode } from '../lp'
-import { Ref } from './Expr'
 import Fn from './Fn'
 import Scope from './Scope'
 import Type from './Types'

@@ -4,7 +4,7 @@ import Expr, { Ref } from './Expr';
 import opcodes from './opcodes';
 import Scope from './Scope';
 import Stmt, { Dec, Exit, FnParam, MetaData } from './Stmt';
-import Type, { Builtin } from './Types';
+import Type from './Types';
 import { TODO } from './util';
 
 export default class Fn {
@@ -164,7 +164,7 @@ export default class Fn {
   // FIXME: a 3rd option is to make amm itself only SSA and perform the the "register
   // selection" in the ammtox stage. This might be the best solution, since it's the most
   // flexible regardless of the backend, and amm is where that diverges.
-  inline(amm: Output, args: Ref[], kind: AssignKind, name: string, ty: Builtin) {
+  inline(amm: Output, args: Ref[], kind: AssignKind, name: string, ty: Type) {
     if (args.length !== this.params.length) {
       throw new Error(`function call argument mismatch`);
     }
@@ -215,7 +215,7 @@ export class OpcodeFn extends Fn {
     TODO('opcodes as event listener???');
   }
 
-  inline(amm: Output, args: Ref[], kind: AssignKind, assign: string, ty: Builtin) {
+  inline(amm: Output, args: Ref[], kind: AssignKind, assign: string, ty: Type) {
     amm.assign(
       kind,
       assign,

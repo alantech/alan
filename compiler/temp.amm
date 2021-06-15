@@ -1,0 +1,29 @@
+const _114361a4_b935_443f_90fa_f39354479f9f: string = "hello, world"
+const _2630fc82_4025_4bb1_b4cb_0e4af395a599: int64 = 1
+const _a3152542_3ae7_4ff4_adbe_37563529ac88: int64 = 0
+const _251553d8_f677_4502_8f99_777b7776ce38: string = "\n"
+event stdout: string
+event exit: int8
+event stderr: string
+event go: Thing
+on _start fn (): void {
+  let _f906f952_4b5f_467c_9c42_c03245f2d27d: string = refv(_114361a4_b935_443f_90fa_f39354479f9f)
+  const _6bef5f07_e590_4e0b_bcf4_ba58d0740ede: Thing = newarr(_2630fc82_4025_4bb1_b4cb_0e4af395a599)
+  pusharr(_6bef5f07_e590_4e0b_bcf4_ba58d0740ede, _f906f952_4b5f_467c_9c42_c03245f2d27d, _a3152542_3ae7_4ff4_adbe_37563529ac88)
+  let _f1cd8bef_2d98_49ca_8bb5_a3fe6ec1fbe6: Thing = refv(_6bef5f07_e590_4e0b_bcf4_ba58d0740ede)
+  emit exit _a3152542_3ae7_4ff4_adbe_37563529ac88
+}
+on stdout fn (out: string): void {
+  const _32f7bd12_1d10_4942_816b_bcdf1f0f3114: void = stdoutp(out)
+}
+on exit fn (status: int8): void {
+  const _e0013900_c739_41fd_8401_22a3226328c6: void = exitop(status)
+}
+on stderr fn (err: string): void {
+  const _c9f5ced7_5907_431e_994d_f1c652f02085: void = stderrp(err)
+}
+on go fn (thing: Thing): void {
+  const _55935174_d5c7_4968_9c8d_9ad64ffe80b5: string = register(thing, _a3152542_3ae7_4ff4_adbe_37563529ac88)
+  const _17b15d3c_30ab_479c_a768_38673c37a4b8: string = catstr(_55935174_d5c7_4968_9c8d_9ad64ffe80b5, _251553d8_f677_4502_8f99_777b7776ce38)
+  const _12ed3120_0027_4c7f_8020_a2cbc1ed7c48: void = stdoutp(_17b15d3c_30ab_479c_a768_38673c37a4b8)
+}

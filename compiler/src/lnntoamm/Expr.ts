@@ -5,7 +5,7 @@ import opcodes from './opcodes';
 import Operator from './Operator';
 import Scope from './Scope';
 import Stmt, { Dec, MetaData, VarDef } from './Stmt';
-import Type, { Builtin } from './Types';
+import Type from './Types';
 import { isFnArray, isOpArray, TODO } from './util';
 
 export default abstract class Expr {
@@ -18,7 +18,7 @@ export default abstract class Expr {
     this.ast = ast;
   }
 
-  abstract inline(amm: Output, kind: AssignKind, name: string, ty: Builtin): void;
+  abstract inline(amm: Output, kind: AssignKind, name: string, ty: Type): void;
 
   private static fromBaseassignablelist(ast: LPNode, metadata: MetaData): [Stmt[], Expr] {
     let asts = ast.getAll().map(a => a.get('baseassignable'));
@@ -495,7 +495,7 @@ class Call extends Expr {
 
   This should also happen in the unimplemented "solidification" phase.
   */
-  inline(amm: Output, kind: AssignKind, name: string, ty: Builtin) {
+  inline(amm: Output, kind: AssignKind, name: string, ty: Type) {
     const argTys = this.args.map(arg => arg.ty.instance());
     const selected = Fn.select(this.fns, argTys, this.scope) || [];
     // console.log('!!!!!!!!!!', this.ast.t.trim(), selected);
@@ -516,7 +516,7 @@ class Call extends Expr {
 
 class Const extends Expr {
   val: string
-  private detectedTy: Builtin
+  private detectedTy: Type
 
   get ty(): Type {
     return this.detectedTy;
@@ -525,7 +525,7 @@ class Const extends Expr {
   constructor(
     ast: LPNode,
     val: string,
-    detectedTy: Builtin,
+    detectedTy: Type,
   ) {
     super(ast);
     this.val = val;
@@ -571,7 +571,7 @@ class Const extends Expr {
     return [[], new Const(ast, val, detectedTy)];
   }
 
-  inline(amm: Output, kind: AssignKind, name: string, ty: Builtin) {
+  inline(amm: Output, kind: AssignKind, name: string, ty: Type) {
     const suffixes = {
       int8: 'i8',
       int16: 'i16',
@@ -613,7 +613,7 @@ export class Ref extends Expr {
     this.def = def;
   }
 
-  inline(_amm: Output, _kind: AssignKind, _name: string, _ty: Builtin) {
+  inline(_amm: Output, _kind: AssignKind, _name: string, _ty: Type) {
     throw new Error(`did not expect to inline a variable reference`);
   }
 }

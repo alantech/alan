@@ -2,7 +2,7 @@ import { LPNode } from '../lp';
 import Output from './Amm';
 import Fn from './Fn';
 import Scope from './Scope';
-import Type, { Builtin } from './Types';
+import Type from './Types';
 import { genName, TODO } from './util';
 
 let allEvents: Event[] = [];
@@ -51,7 +51,7 @@ export default class Event {
 
   compile(amm: Output) {
     if (this.runtimeDefined === false) {
-      amm.global('event', this.eventTy as Builtin, this.ammName);
+      amm.global('event', this.eventTy, this.ammName);
     }
     for (let handler of this.handlers) {
       if (handler instanceof Array) {

@@ -23,6 +23,7 @@ const parseFulltypename = (node: LPNode): TypeName => {
 export default abstract class Type implements Equalable {
   name: string
   ast: LPNode | null
+  abstract get ammName(): string;
 
   constructor(
     name: string,
@@ -91,7 +92,7 @@ export default abstract class Type implements Equalable {
   }
 }
 
-export class Builtin extends Type {
+class Builtin extends Type {
   get ammName(): string {
     return this.name;
   }
@@ -172,6 +173,10 @@ export class Builtin extends Type {
 class Struct extends Type {
   args: GenericArgs
   fields: Fields
+
+  get ammName(): string {
+    return this.name;
+  }
 
   constructor(
     name: string,
@@ -261,6 +266,10 @@ class Struct extends Type {
 }
 
 abstract class Has extends Type {
+  get ammName(): string {
+    throw new Error('None of the `Has` constraints should have their ammName requested...');
+  }
+
   constructor(
     name: string,
     ast: LPNode | null,
@@ -444,6 +453,14 @@ class Interface extends Type {
   tempDelegate: Type | null
   private isDuped: boolean
 
+  get ammName(): string {
+    if (this.tempDelegate) {
+      return this.tempDelegate.ammName;
+    } else {
+      throw new Error(`Interfaces should not have their ammName requested`);
+    }
+  }
+
   constructor(
     name: string,
     ast: LPNode | null,
@@ -626,6 +643,16 @@ class Interface extends Type {
 class Generated extends Interface {
   delegate: Type | null
 
+  get ammName(): string {
+    if (this.delegate) {
+      return this.delegate.ammName;
+    } else if (this.tempDelegate) {
+      return this.tempDelegate.ammName;
+    } else {
+      throw new Error(`Could not determine ammName for Generated type`);
+    }
+  }
+
   constructor() {
     super(genName(), new NulLP(), [], [], []);
     this.delegate = null;
@@ -740,6 +767,10 @@ class Generated extends Interface {
 class OneOf extends Type {
   selection: Type[]
   tempSelect: Type[] | null
+
+  get ammName(): string {
+    return this.select().ammName;
+  }
 
   constructor(
     selection: Type[],
