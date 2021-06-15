@@ -998,17 +998,20 @@ impl ControlPort {
     //     explicitly deleted. TODO: Add log records to verify this?
     // 4. Iterate through the 'del' list and delete the data from the node that should no longer
     //    have it. Failure means that something else deleted it already, so it can be ignored.
+    eprintln!("Rebalancing Keys");
     let vms = self.get_all_vms_by_ip();
     let fake_vm = VMMetadata::fake_vm();
     let self_vm = self.self_vm.as_ref().unwrap_or(&fake_vm);
     let key_lists = join_all(vms.iter().map(|ip| self.dskeys(ip))).await;
+    eprintln!("key_lists {:?}", key_lists);
     let mut get_list: Vec<(String, String)> = Vec::new(); // (Key, Source IP)
     let mut del_list: Vec<(String, String)> = Vec::new(); // (Key, Source IP)
     key_lists.iter().for_each(|(ip, key_list)| {
       let ip_str = ip.to_string();
       key_list.iter().for_each(|key| {
         let relevant_nodes = self.get_vms_for_key(key);
-        if relevant_nodes.len() > 1 { // Don't try to do any of this if the cluster is just 1 node
+        if relevant_nodes.len() > 1 {
+          // Don't try to do any of this if the cluster is just 1 node
           let self_in_list = relevant_nodes
             .iter()
             .any(|node| node.public_ip_addr == self_vm.public_ip_addr);
@@ -1040,6 +1043,8 @@ impl ControlPort {
         }
       });
     });
+    eprintln!("get_list {:?}", get_list);
+    eprintln!("del_list {:?}", del_list);
     for (key, ip) in get_list.iter() {
       // For our purposes, dsgetf and dsgetv are identical, so just use one of them, I think?
       // TODO: Every `?` needs to be removed and replaced with fallback logic
@@ -1098,5 +1103,6 @@ impl ControlPort {
       /*let bytes = hyper::body::to_bytes(res.body_mut()).await?;
       std::str::from_utf8(&bytes)? == "true"*/
     }
+    eprintln!("Done rebalancing keys");
   }
 }
