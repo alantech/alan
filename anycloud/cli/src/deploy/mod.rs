@@ -858,11 +858,12 @@ async fn get_creds(non_interactive: bool) -> HashMap<String, Credentials> {
           if project_id.is_empty() || client_email.is_empty() || private_key.is_empty() {
             warn_and_exit!(1, InvalidEnvVar, "No GCP environment variables defined (GCP_PROJECT_ID, GCP_CLIENT_EMAIL, GCP_PRIVATE_KEY).").await
           }
+          let clean_private_key = private_key.replace("\\n", "\n");
           credentials.insert(
             cred_name,
             Credentials {
               credentials: CloudCredentials::GCP(GCPCredentials {
-                privateKey: private_key,
+                privateKey: clean_private_key,
                 clientEmail: client_email,
                 projectId: project_id,
               }),
