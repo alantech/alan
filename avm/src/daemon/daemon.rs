@@ -318,10 +318,15 @@ pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
           if control_port.is_leader() {
             // TODO: Should we keep these leader announcements in the stdout logging?
             println!("I am leader!");
-            match get_v1_stats().await {
-              Ok(s) => stats.push(s),
-              Err(err) => error!(NoStats, "{}", err).await,
-            };
+            // Do not collect stats until cluster is up. Otherwise, will have scaling issues.
+            if control_port.is_cluster_up() {
+              match get_v1_stats().await {
+                Ok(s) => stats.push(s),
+                Err(err) => error!(NoStats, "{}", err).await,
+              };
+            } else {
+              println!("Cluster is not ready. Do not collect stats");
+            }
           } else {
             // Debug print for now
             println!("I am NOT the leader! :(");
@@ -334,8 +339,7 @@ pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
                 .unwrap_or("<None>".to_string())
             );
           }
-          // Do not send stats until cluster is up. Otherwise, will have scaling issues.
-          if stats.len() >= 4 && control_port.is_cluster_up().await {
+          if stats.len() >= 4 {
             let mut factor = String::from("1");
             let stats_factor = post_v1_stats(stats.to_owned(), &cluster_id, &deploy_token).await;
             stats = Vec::new();
