@@ -74,10 +74,7 @@ pub async fn main() {
         Some(_) => true,
         None => false,
       };
-      println!("authenticating");
-      println!("non interactive: {}", non_interactive);
       authenticate(non_interactive).await;
-      println!("authenticated");
       new_or_upgrade(
         "new",
         anycloud_agz,
@@ -151,7 +148,6 @@ async fn new_or_upgrade(
   config_name: Option<&str>,
   non_interactive: bool,
 ) {
-  println!("New upgrade method");
   let dockerfile_b64 = get_dockerfile_b64().await;
   let app_tar_gz_b64 = get_app_tar_gz_b64(true).await;
   let env_b64 = match env_file {
@@ -168,8 +164,6 @@ async fn new_or_upgrade(
   };
   match mode {
     "new" => {
-      println!("Calling mode new");
-
       deploy::new(
         anycloud_agz,
         Some((dockerfile_b64, app_tar_gz_b64)),
@@ -181,8 +175,6 @@ async fn new_or_upgrade(
       .await
     }
     "upgrade" => {
-      println!("Calling mode upgrade");
-
       deploy::upgrade(
         anycloud_agz,
         Some((dockerfile_b64, app_tar_gz_b64)),
@@ -193,8 +185,6 @@ async fn new_or_upgrade(
       )
       .await
     }
-    _ => {
-      println!("no mode");
-    }
+    _ => {}
   };
 }

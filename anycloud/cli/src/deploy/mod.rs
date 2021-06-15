@@ -1142,7 +1142,6 @@ pub async fn new(
   config_name: Option<String>,
   non_interactive: bool,
 ) {
-  println!("calling inner new");
   let interactive = !non_interactive;
   let app_name = if let Some(app_name) = app_name {
     app_name
@@ -1154,19 +1153,14 @@ pub async fn new(
   } else {
     "".to_string()
   };
-  println!("app name = {}  and config name = {}", app_name, config_name);
   if !app_name.is_empty() {
-    println!("App name is not empty");
     // Check if app exists
     let apps = get_apps(false, &config_name, non_interactive).await;
-    println!("apps retreived");
     let ids = apps.into_iter().map(|a| a.id).collect::<Vec<String>>();
-    println!("ids collected {:?}", ids);
     let app_exists: bool = match ids.iter().position(|id| &app_name == id) {
       Some(_) => true,
       None => false,
     };
-    println!("app exists ? {}", app_exists);
     if app_exists {
       // TODO: update with spinner once CLI updates are merged
       println!("App name {} already exists. Upgrading app...", app_name);
@@ -1190,10 +1184,7 @@ pub async fn new(
       return;
     }
   };
-  println!("maybe is an error getting config");
   let config = get_config(&config_name, non_interactive).await;
-  println!("maybe not");
-  println!("maybe is an error selecting config name");
   let config_names = config.keys().cloned().collect::<Vec<String>>();
   if config_names.len() == 0 && interactive {
     prompt_add_config().await;
@@ -1229,7 +1220,6 @@ pub async fn new(
     }
   };
   let deploy_config = &config_names[selection];
-  println!("maybe is an error selecting app id");
   let app_id: std::io::Result<String> = if app_name.is_empty() && interactive {
     anycloud_dialoguer::input_with_allow_empty_as_result("Optional App name", true)
   } else if app_name.is_empty() && non_interactive {
@@ -1240,11 +1230,9 @@ pub async fn new(
   } else {
     Ok(app_name)
   };
-  println!("maybe is an error with the spinner");
   let sp = ProgressBar::new_spinner();
   sp.enable_steady_tick(10);
   sp.set_message("Creating new App");
-  println!("maybe not");
   let mut body = json!({
     "deployName": deploy_config,
     "deployConfig": config,
@@ -1261,14 +1249,11 @@ pub async fn new(
   if let Some(env_b64) = env_b64 {
     mut_body.insert(format!("envB64"), json!(env_b64));
   }
-  println!("maybe is an error posting new");
   let resp = post_v1("new", body).await;
-  println!("maybe not");
   let res = match &resp {
     Ok(res) => {
       // idc if it's been set before, I'm setting it now!!!
       let _ = CLUSTER_ID.set(res.to_string());
-      println!("maybe is an error polling");
       poll(&sp, || async {
         get_apps(true, &config_name, non_interactive)
           .await
@@ -1290,7 +1275,6 @@ pub async fn new(
       PostV1Error::Other(err) => format!("Failed to create a new App. Error: {}", err),
     },
   };
-  println!("maybe not");
   sp.finish_with_message(&res);
 }
 
@@ -1409,16 +1393,12 @@ pub async fn upgrade(
 }
 
 async fn get_apps(status: bool, config_name: &str, non_interactive: bool) -> Vec<App> {
-  println!("getting apps");
   let config = get_config(config_name, non_interactive).await;
-  println!("getting config");
   let body = json!({
     "deployConfig": config,
     "status": status,
   });
-  println!("Sending info request with body {:?}", body);
   let response = post_v1("info", body).await;
-  println!("info request with response {:?}", response);
   let resp = match &response {
     Ok(resp) => resp,
     Err(err) => {
