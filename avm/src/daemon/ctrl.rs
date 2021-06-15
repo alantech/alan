@@ -1008,32 +1008,34 @@ impl ControlPort {
       let ip_str = ip.to_string();
       key_list.iter().for_each(|key| {
         let relevant_nodes = self.get_vms_for_key(key);
-        let self_in_list = relevant_nodes
-          .iter()
-          .any(|node| node.public_ip_addr == self_vm.public_ip_addr);
-        if !self_in_list {
-          return;
-        }
-        let primary_node = relevant_nodes[0];
-        let first_secondary = relevant_nodes[1];
-        let self_primary = primary_node.public_ip_addr == self_vm.public_ip_addr;
-        if self_primary {
-          let this_list_first_secondary =
-            first_secondary.public_ip_addr == ip_str || first_secondary.private_ip_addr == ip_str;
-          if this_list_first_secondary {
-            get_list.push((key.to_string(), ip.to_string()));
-          }
-          let this_list_irrelevant = relevant_nodes
+        if relevant_nodes.len() > 1 { // Don't try to do any of this if the cluster is just 1 node
+          let self_in_list = relevant_nodes
             .iter()
-            .all(|node| node.public_ip_addr != ip_str && node.private_ip_addr != ip_str);
-          if this_list_irrelevant {
-            del_list.push((key.to_string(), ip.to_string()));
+            .any(|node| node.public_ip_addr == self_vm.public_ip_addr);
+          if !self_in_list {
+            return;
           }
-        } else {
-          let this_list_primary =
-            primary_node.public_ip_addr == ip_str || primary_node.private_ip_addr == ip_str;
-          if this_list_primary {
-            get_list.push((key.to_string(), ip.to_string()));
+          let primary_node = relevant_nodes[0];
+          let first_secondary = relevant_nodes[1];
+          let self_primary = primary_node.public_ip_addr == self_vm.public_ip_addr;
+          if self_primary {
+            let this_list_first_secondary =
+              first_secondary.public_ip_addr == ip_str || first_secondary.private_ip_addr == ip_str;
+            if this_list_first_secondary {
+              get_list.push((key.to_string(), ip.to_string()));
+            }
+            let this_list_irrelevant = relevant_nodes
+              .iter()
+              .all(|node| node.public_ip_addr != ip_str && node.private_ip_addr != ip_str);
+            if this_list_irrelevant {
+              del_list.push((key.to_string(), ip.to_string()));
+            }
+          } else {
+            let this_list_primary =
+              primary_node.public_ip_addr == ip_str || primary_node.private_ip_addr == ip_str;
+            if this_list_primary {
+              get_list.push((key.to_string(), ip.to_string()));
+            }
           }
         }
       });
