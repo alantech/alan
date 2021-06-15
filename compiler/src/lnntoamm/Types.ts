@@ -33,7 +33,6 @@ export default abstract class Type implements Equalable {
     this.ast = ast;
   }
 
-  abstract breakdown(): Builtin;
   abstract compatibleWithConstraint(ty: Type, scope: Scope): boolean;
   abstract constrain(to: Type, scope: Scope): void;
   abstract eq(that: Equalable): boolean;
@@ -101,10 +100,6 @@ class Builtin extends Type {
     name: string,
   ) {
     super(name);
-  }
-
-  breakdown(): Builtin {
-    return this;
   }
 
   compatibleWithConstraint(ty: Type, scope: Scope): boolean {
@@ -222,10 +217,6 @@ class Struct extends Type {
     }
   }
 
-  breakdown(): Builtin {
-    return TODO('breakdown structs');
-  }
-
   compatibleWithConstraint(ty: Type, scope: Scope): boolean {
     if (ty instanceof Struct) {
       return this.eq(ty);
@@ -303,10 +294,6 @@ abstract class Has extends Type {
     } else {
       return ops.filter(op => op.select(scope, operator.params[0] || ty, operator.params[1] || ty) !== []);
     }
-  }
-
-  breakdown(): Builtin {
-    throw new Error(`cannot breakdown a Has constraint (this error should never be thrown)`);
   }
 
   // convenience for `Type.hasX(...).compatibleWithConstraint(ty)`
@@ -513,13 +500,6 @@ class Interface extends Type {
     }
   }
 
-  breakdown(): Builtin {
-    if (this.tempDelegate !== null) {
-      return this.tempDelegate.breakdown();
-    }
-    throw new Error(`interfaces cannot be broken down, and no concrete type was specified`);
-  }
-
   compatibleWithConstraint(ty: Type, scope: Scope): boolean {
     if (this.tempDelegate !== null) {
       return this.tempDelegate.compatibleWithConstraint(ty, scope);
@@ -658,16 +638,6 @@ class Generated extends Interface {
     this.delegate = null;
   }
 
-  breakdown(): Builtin {
-    if (this.delegate !== null) {
-      return this.delegate.breakdown();
-    } else try { // try? more like DRY amiright
-      return super.breakdown();
-    } catch (e) {
-      throw new Error(`Couldn't resolve generated type`);
-    }
-  }
-
   // TODO: ok so i have to do a couple of things
   // 1. move tempDelegate to the interface type
   // 2. delegate to super if delegate isn't set
@@ -792,10 +762,6 @@ class OneOf extends Type {
     } else {
       throw new Error(`type selection impossible - no possible types left`);
     }
-  }
-
-  breakdown(): Builtin {
-    return this.select().breakdown();
   }
 
   compatibleWithConstraint(constraint: Type, scope: Scope): boolean {

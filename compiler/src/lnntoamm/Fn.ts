@@ -131,9 +131,9 @@ export default class Fn {
   asHandler(amm: Output, event: string) {
     let handlerParams = [];
     for (let param of this.params) {
-      handlerParams.push([param.ammName, param.ty.breakdown()]);
+      handlerParams.push([param.ammName, param.ty]);
     }
-    amm.addHandler(event, handlerParams, this.retTy.breakdown());
+    amm.addHandler(event, handlerParams, this.retTy);
     let isReturned = false;
     for (let ii = 0; ii < this.body.length; ii++) {
       const stmt = this.body[ii];

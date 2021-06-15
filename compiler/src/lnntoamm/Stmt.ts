@@ -98,7 +98,7 @@ export class Assign extends Stmt {
   }
 
   inline(amm: Output) {
-    this.expr.inline(amm, '', this.upstream.ammName, this.upstream.ty.breakdown());
+    this.expr.inline(amm, '', this.upstream.ammName, this.upstream.ty.instance());
   }
 }
 
@@ -208,7 +208,7 @@ export class Dec extends VarDef {
       amm,
       this.immutable ? 'const' : 'let',
       this.ammName,
-      this.ty.breakdown(),
+      this.ty.instance(),
     );
   }
 }
