@@ -279,11 +279,12 @@ pub async fn add_cred(cred_name: Option<&str>) -> String {
       let project_id: String = anycloud_dialoguer::input("GCP Project ID");
       let client_email: String = anycloud_dialoguer::input("GCP Client Email");
       let private_key: String = anycloud_dialoguer::input("GCP Private Key");
+      let clean_private_key = private_key.replace("\\n", "\n");
       credentials.insert(
         cred_name,
         Credentials {
           credentials: CloudCredentials::GCP(GCPCredentials {
-            privateKey: private_key,
+            privateKey: clean_private_key,
             clientEmail: client_email,
             projectId: project_id,
           }),
