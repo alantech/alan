@@ -705,7 +705,7 @@ impl ControlPort {
     }
   }
 
-  pub async fn is_cluster_up(self: &mut ControlPort) -> bool {
+  pub fn is_cluster_up(self: &mut ControlPort) -> bool {
     return self.vms_up.values().all(|s| *s);
   }
 
