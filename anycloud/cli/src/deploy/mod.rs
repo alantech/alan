@@ -1162,7 +1162,6 @@ pub async fn new(
       None => false,
     };
     if app_exists {
-      // TODO: update with spinner once CLI updates are merged
       println!("App name {} already exists. Upgrading app...", app_name);
       upgrade(
         agz_b64,
