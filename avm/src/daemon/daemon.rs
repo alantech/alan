@@ -318,8 +318,8 @@ pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
           if control_port.is_leader() {
             // TODO: Should we keep these leader announcements in the stdout logging?
             println!("I am leader!");
-            // Do not collect stats until cluster is up. Otherwise, will have scaling issues.
-            if control_port.is_cluster_up() {
+            // Do not collect stats until this leader vm is up. Otherwise, will have scaling issues.
+            if control_port.is_up() {
               match get_v1_stats().await {
                 Ok(s) => stats.push(s),
                 Err(err) => error!(NoStats, "{}", err).await,

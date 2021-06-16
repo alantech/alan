@@ -705,8 +705,14 @@ impl ControlPort {
     }
   }
 
-  pub fn is_cluster_up(self: &mut ControlPort) -> bool {
-    return self.vms_up.values().all(|s| *s);
+  pub fn is_up(self: &mut ControlPort) -> bool {
+    match &self.self_vm {
+      Some(self_vm) => match self.vms_up.get(&self_vm.private_ip_addr) {
+        Some(s) => *s,
+        None => false,
+      },
+      None => false,
+    }
   }
 
   pub fn get_vm_for_key(self: &ControlPort, key: &str) -> &VMMetadata {
