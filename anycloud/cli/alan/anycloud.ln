@@ -1,13 +1,20 @@
 from @std/app import start, print, eprint, exit
-from @std/avmdaemon import controlPort, getClusterSecret, Connection, body, send, status, setRunError
+from @std/avmdaemon import controlPort, getClusterSecret, Connection, body, send, status
 from @std/cmd import exec
 from @std/datastore import namespace, getOr, set, has, del
+from @std/http import post
 from @std/tcpserver import tunnel
 
 type ModeAndKey {
   mode: string,
   key: string,
 }
+
+const alanTechEnv = exec('echo $ALAN_TECH_ENV');
+const serviceUrl = alanTechEnv == 'staging' ? 
+  'https://deploy-staging.alantechnologies.com' : 
+  'https://deploy.alantechnologies.com';
+const errorEndpoint = '/clientError';
 
 on start {
   print('Starting Anycloud...');
@@ -16,7 +23,7 @@ on start {
     const err = 'app.tar.gz could not be unpacked';
     eprint(err);
     eprint(untarRes.stderr);
-    setRunError(err + ' | ' + untarRes.stderr);
+    post(err + ' | ' + untarRes.stderr);
     emit exit untarRes.exitCode;
   }
 
