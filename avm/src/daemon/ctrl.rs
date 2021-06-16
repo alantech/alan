@@ -1028,12 +1028,11 @@ impl ControlPort {
     //     explicitly deleted. TODO: Add log records to verify this?
     // 4. Iterate through the 'del' list and delete the data from the node that should no longer
     //    have it. Failure means that something else deleted it already, so it can be ignored.
-    eprintln!("Rebalancing Keys");
+    println!("Rebalancing Keys");
     let vms = self.get_all_vms_by_ip();
     let fake_vm = VMMetadata::fake_vm();
     let self_vm = self.self_vm.as_ref().unwrap_or(&fake_vm);
     let key_lists = join_all(vms.iter().map(|ip| self.dskeys(ip))).await;
-    eprintln!("key_lists {:?}", key_lists);
     let mut get_list: Vec<(String, String)> = Vec::new(); // (Key, Source IP)
     let mut del_list: Vec<(String, String)> = Vec::new(); // (Key, Source IP)
     key_lists.iter().for_each(|(ip, key_list)| {
@@ -1073,8 +1072,6 @@ impl ControlPort {
         }
       });
     });
-    eprintln!("get_list {:?}", get_list);
-    eprintln!("del_list {:?}", del_list);
     for (key, ip) in get_list.iter() {
       // For our purposes, we don't want the query result-wrapped, so we have a special raw
       // endpoint to get the data from
@@ -1108,7 +1105,6 @@ impl ControlPort {
         Ok(hm) => hm,
         Err(_) => panic!("hot topic"),
       };
-      eprintln!("key {} hm {:?}", key, hm);
       DS.insert(key.to_string(), hm);
     }
     for (key, ip) in del_list.iter() {
@@ -1134,6 +1130,5 @@ impl ControlPort {
       /*let bytes = hyper::body::to_bytes(res.body_mut()).await?;
       std::str::from_utf8(&bytes)? == "true"*/
     }
-    eprintln!("Done rebalancing keys");
   }
 }
