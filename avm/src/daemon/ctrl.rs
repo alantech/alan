@@ -660,13 +660,7 @@ impl ControlPort {
       .map(|vm| vm.private_ip_addr.to_string())
       .collect();
     // Detect changes and exit early if nothing has changed
-    let changed = if ips.len() != self.vms.len() {
-      true
-    } else if ips.iter().any(|ip| !self.vms.contains_key(ip)) {
-      true
-    } else {
-      false
-    };
+    let changed = ips.len() != self.vms.len() || ips.iter().any(|ip| !self.vms.contains_key(ip));
     if !changed {
       return;
     }
