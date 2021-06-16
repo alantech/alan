@@ -174,7 +174,7 @@ $ anycloud config new
 ❯ mystartup-aws
   Create new Credentials
 ? Region name › us-east-1
-? Virtual Machine Type › m5.large
+? Virtual Machine Type › t2.micro
 ? Do you want to add another region to this Deploy Config? › n
 ? Minimum number of VMs per region or cloud › 1
 ? Would you like to define a maximum number of VMs? › n
@@ -208,7 +208,7 @@ Deploy Configs used:
 ┌───────────────┬───────────┬───────────┐
 │ Deploy Config │ Region    │ VM Type   │
 ├───────────────┼───────────┼───────────┤
-│ staging       │ us-east-1 │ m5.large  │
+│ staging       │ us-east-1 │ t2.micro  │
 └───────────────┴───────────┴───────────┘
 ```
 

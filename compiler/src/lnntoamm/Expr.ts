@@ -1,8 +1,9 @@
-import { LPNode, NamedAnd, NamedOr } from '../lp';
+import { LPNode, NamedAnd, NamedOr, NulLP } from '../lp';
 import Output, { AssignKind } from './Amm';
 import Fn from './Fn';
 import opcodes from './opcodes';
 import Operator from './Operator';
+import Scope from './Scope';
 import Stmt, { Dec, MetaData, VarDef } from './Stmt';
 import Type, { Builtin } from './Types';
 import { isFnArray, isOpArray, TODO } from './util';
@@ -48,7 +49,7 @@ export default abstract class Expr {
         if (next.has('fncall')) {
           // TODO: this is broken because operators don't pass their AST yet
           // let text = `${expr !== null ? expr.ast.t.trim() + '.' : ''}${varName}${next.get('fncall').t.trim()}`;
-          let text = `${expr !== null ? expr + '.' : ''}${varName}${next.get('fncall').t.trim()}`;
+          let text = `${expr !== null ? expr.ast.get('variable').t + '.' : ''}${varName}${next.get('fncall').t.trim()}`;
           let and: any = {
             fnname: work.get('variable'),
             fncall: next.get('fncall'),
@@ -152,7 +153,6 @@ export default abstract class Expr {
         const op = work.get('operators').t.trim();
         let operators = metadata.scope.get(op) as Operator[];
         if (operators === null) {
-          console.log(metadata.scope);
           throw new Error(`can't find operator ${op}`);
         } else if (!isOpArray(operators)) {
           // sanity check
@@ -300,8 +300,8 @@ export default abstract class Expr {
             precedences[applyIdx] = dec.ref();
           }
           const applyTo = precedences[applyIdx] as Ref;
-          let fns = operators.reduce((fns, op) => [...fns, ...op.select(applyTo)], new Array<Fn>());
-          precedences[applyIdx] = new Call(null, fns, null, [applyTo]);
+          let fns = operators.reduce((fns, op) => [...fns, ...op.select(metadata.scope, applyTo.ty)], new Array<Fn>());
+          precedences[applyIdx] = new Call(new NulLP(), fns, null, [applyTo], metadata.scope);
           let rm = precedences.splice(idx, applyIdx);
           // update indices
           idxs = idxs.map((idx, kk) => kk > jj ? idx - rm.length : kk);
@@ -348,14 +348,15 @@ export default abstract class Expr {
         }
         while (ops.length > 0) {
           const op = ops.pop();
-          const selected = op.select(left, right);
+          const selected = op.select(metadata.scope, left.ty, right.ty);
           fns.push(...selected);
         }
         const call = new Call(
-          null,
+          new NulLP(),
           fns,
           null,
           [left, right],
+          metadata.scope,
         );
         precedences[idx - 1] = call;
         precedences.splice(idx, 2);
@@ -375,6 +376,9 @@ class Call extends Expr {
   maybeClosure: VarDef | null
   args: Ref[]
   retTy: Type
+  // FIXME: once the matrix as below is implemented, get rid of this field
+  // and just pass it into the selection phase
+  scope: Scope
 
   get ty(): Type {
     return this.retTy;
@@ -385,15 +389,18 @@ class Call extends Expr {
     fns: Fn[],
     maybeClosure: VarDef | null,
     args: Ref[],
+    scope: Scope,
   ) {
+    // console.log('~~~ generating call ', ast, fns, maybeClosure, args, scope);
     super(ast);
     if (fns.length === 0 && maybeClosure === null) {
-      throw new Error(`no function possibilities provided for ${ast.t.trim()}`);
+      throw new Error(`no function possibilities provided for ${ast}`);
     }
     this.fns = fns;
     this.maybeClosure = maybeClosure;
     this.args = args;
     this.retTy = Type.oneOf(Array.from(new Set(fns.map(fn => fn.retTy))));
+    this.scope = scope;
   }
 
   static fromCallAst(
@@ -438,10 +445,7 @@ class Call extends Expr {
     }
     // first reduction
     let argTys = args.map(arg => arg.ty);
-    // console.log('~~~~~~~~~', ast.t.trim());
-    // console.log('before filter', fns);
-    fns = fns.filter(fn => fn.acceptsTypes(argTys));
-    // console.log('after filter', fns);
+    fns = Fn.select(fns, argTys, metadata.scope);
     // now, constrain all of the args to their possible types
     // makes it so that the type of the parameters in each position are in their own list
     // ie, given `do(int8, int16)` and `do(int8, int8)`, will result in this 2D array:
@@ -452,13 +456,13 @@ class Call extends Expr {
     argTys.forEach((ty, ii) => {
       let paramTys = (fns as Fn[]).map(fn => fn.params[ii].ty);
       // console.log('constraining', ty, 'to', paramTys);
-      ty.constrain(Type.oneOf(paramTys));
+      ty.constrain(Type.oneOf(paramTys), metadata.scope);
       // console.log('constrained:', ty);
     });
     if (closure !== null) {
       TODO('closures');
     }
-    return [stmts, new Call(ast, fns, closure, args)];
+    return [stmts, new Call(ast, fns, closure, args, metadata.scope)];
   }
 
   /*
@@ -493,9 +497,9 @@ class Call extends Expr {
   */
   inline(amm: Output, kind: AssignKind, name: string, ty: Builtin) {
     const argTys = this.args.map(arg => arg.ty.instance());
-    const selected = this.fns.reverse().find(fn => fn.acceptsTypes(argTys)) || null;
+    const selected = Fn.select(this.fns, argTys, this.scope) || [];
     // console.log('!!!!!!!!!!', this.ast.t.trim(), selected);
-    if (selected === null) {
+    if (selected.length === 0) {
       // TODO: to get better error reporting, we need to pass an ast when using
       // operators. i'm not worried about error reporting yet, though :)
       console.log('~~~ ERROR')
@@ -505,7 +509,8 @@ class Call extends Expr {
       console.log('expected output type:', ty);
       throw new Error(`no function selected`);
     }
-    selected.inline(amm, this.args, kind, name, ty);
+    const fn = selected.pop();
+    fn.inline(amm, this.args, kind, name, ty);
   }
 }
 

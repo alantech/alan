@@ -12,9 +12,9 @@ export event stdout: string
 on stdout fn (out: string) = stdoutp(out);
 
 // The `print` function converts its input to a string, appends a newline, and does a blocking write to stdout
-// export fn print(out: Stringifiable) {
-//   stdoutp(out.toString() + "\n");
-// }
+export fn print(out: Stringifiable) {
+  stdoutp(out.toString() + "\n");
+}
 
 // The `exit` event
 export event exit: int8

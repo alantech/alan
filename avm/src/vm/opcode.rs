@@ -3590,6 +3590,14 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     // TODO: figure out how to handle this potential panic
     Ok(res.body(body.into()).unwrap())
   }
+  io!(tcptun => fn(args, mut hand_mem) {
+    Box::pin(async move {
+      let port = hand_mem.read_fixed(args[0])? as i16;
+      let connected = make_tunnel!(&Program::global().http_config, port);
+      hand_mem.write_fixed(args[2], if connected { 1 } else { 0 })?;
+      return Ok(hand_mem);
+    })
+  });
   io!(httplsn => fn(_args, hand_mem) {
     Box::pin(async move {
       // this extra fn is so that we can just use `?` inside of http_listener instead of

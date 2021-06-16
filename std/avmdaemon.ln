@@ -7,7 +7,7 @@
  * running code, etc.
  */
 
-from @std/httpcommon import Connection, InternalRequest, InternalResponse, Request, Response
+from @std/httpcommon import Connection, InternalRequest, InternalResponse, Request, Response, body, status, send
 
 /**
  * The Control Port
@@ -15,6 +15,16 @@ from @std/httpcommon import Connection, InternalRequest, InternalResponse, Reque
 
 // The controlPort event
 export event controlPort: Connection
+
+// Re-export the Connection, Request, and Response types
+export Connection
+export Request
+export Response
+
+// Re-export the body, status, and send functions
+export body
+export status
+export send
 
 // The special control port event with a signature like `event __ctrl: InternalRequest`
 // This wraper function takes the internal request object, converts it to the user-friendly

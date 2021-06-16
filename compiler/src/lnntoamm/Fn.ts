@@ -46,6 +46,7 @@ export default class Fn {
     ast: LPNode,
     scope: Scope,
   ): Fn {
+    scope = new Scope(scope);
     let retTy: Type;
     if (ast.get('optreturntype').has()) {
       const name = ast.get('optreturntype').get('fulltypename');
@@ -101,12 +102,13 @@ export default class Fn {
     ast: LPNode,
     scope: Scope,
   ): Fn {
+    scope = new Scope(scope);
     let body = [];
     let metadata = new MetaData(scope, opcodes().get('void'));
     ast.get('statements').getAll().map(s => s.get('statement')).forEach(ast => body.push(...Stmt.fromAst(ast, metadata)));
     return new Fn(
       ast,
-      new Scope(scope),
+      scope,
       null,
       [],
       // TODO: if expressions will mean that it's not necessarily void...
@@ -116,17 +118,14 @@ export default class Fn {
     );
   }
 
-  acceptsTypes(tys: Type[]): boolean {
-    let params = Object.values(this.params);
-    if (params.length !== tys.length) {
-      return false;
-    }
-    for (let ii = 0; ii < params.length; ii++) {
-      if (!params[ii].ty.compatibleWithConstraint(tys[ii])) {
-        return false;
-      }
-    }
-    return true;
+  // FIXME: this should implement the matrix that i mentioned in the FIXME comment
+  // for Expr#inline
+  static select(fns: Fn[], argTys: Type[], scope: Scope): Fn[] {
+    return fns.filter(fn => {
+      let params = Object.values(fn.params);
+      return params.length === argTys.length &&
+        params.every((param, ii) => argTys[ii].compatibleWithConstraint(param.ty, scope));
+    });
   }
 
   asHandler(amm: Output, event: string) {
@@ -147,7 +146,7 @@ export default class Fn {
       }
     }
     if (!isReturned) {
-      if (!this.retTy.compatibleWithConstraint(opcodes().get('void'))) {
+      if (!this.retTy.compatibleWithConstraint(opcodes().get('void'), this.metadata.scope)) {
         throw new Error(`event handlers should not return values`);
       }
       amm.exit();
@@ -169,7 +168,7 @@ export default class Fn {
     if (args.length !== this.params.length) {
       throw new Error(`function call argument mismatch`);
     }
-    this.params.forEach((param, ii) => param.assign(args[ii]));
+    this.params.forEach((param, ii) => param.assign(args[ii], this.scope));
     for (let ii = 0; ii < this.body.length; ii++) {
       const stmt = this.body[ii];
       if (stmt instanceof Exit) {
