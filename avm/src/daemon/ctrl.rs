@@ -705,30 +705,8 @@ impl ControlPort {
     }
   }
 
-  pub async fn is_cluster_up(self: &mut ControlPort) -> bool {
-    let cluster_secret = CLUSTER_SECRET.get().unwrap().clone().unwrap();
-    let mut health = vec![];
-    let nodes = self.lrh.get_mut_nodes();
-    for node in nodes.iter() {
-      let mut req = Request::builder()
-        .method("GET")
-        .uri(format!("https://{}:4142/clusterHealth", node.id));
-      req = req.header(cluster_secret.as_str(), "true");
-      health.push(self.client.request(req.body(Body::empty()).unwrap()));
-    }
-    let health_res = join_all(health).await;
-    let mut results = Vec::new();
-    for res in health_res.iter() {
-      match res {
-        Err(_) => {
-          results.push(false);
-        }
-        Ok(res) => {
-          results.push(res.status().as_u16() == 200);
-        }
-      }
-    }
-    return results.iter().all(|e| *e);
+  pub fn is_cluster_up(self: &mut ControlPort) -> bool {
+    return self.vms_up.values().all(|s| *s);
   }
 
   pub fn get_vm_for_key(self: &ControlPort, key: &str) -> &VMMetadata {

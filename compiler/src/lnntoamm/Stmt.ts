@@ -92,7 +92,7 @@ export class Assign extends Stmt {
     const name = ast.get('varn').t;
     const upstream = metadata.get(name);
     let [generated, expr] = Expr.fromAssignablesAst(ast, metadata);
-    upstream.ty.constrain(expr.ty);
+    upstream.ty.constrain(expr.ty, metadata.scope);
     stmts.push(...generated, new Assign(ast, upstream, expr));
     return stmts;
   }
@@ -173,7 +173,7 @@ export class Dec extends VarDef {
       const tyName = work.get('typedec').get('fulltypename');
       ty = Type.getFromTypename(tyName, metadata.scope);
     }
-    ty.constrain(expr.ty);
+    ty.constrain(expr.ty, metadata.scope);
     let dec = new Dec(
       ast,
       immutable,
@@ -188,7 +188,7 @@ export class Dec extends VarDef {
 
   static gen(expr: Expr, metadata: MetaData): Dec {
     let ty = Type.generate();
-    ty.constrain(expr.ty);
+    ty.constrain(expr.ty, metadata.scope);
     const dec = new Dec(
       expr.ast,
       false, // default to mutable in case of eg builder pattern
@@ -248,13 +248,19 @@ export class FnParam extends VarDef {
     } else if (!(paramTy instanceof Type)) {
       throw new Error(`Function parameter is not a valid type: ${typename.t}`);
     }
+    let duped = paramTy.dupIfNotLocalInterface();
+    if (duped !== null) {
+      metadata.scope.put(duped.name, duped);
+      paramTy = duped;
+    }
     const param = new FnParam(ast, name, paramTy);
     metadata.define(param);
     return param;
   }
 
-  assign(to: Ref) {
+  assign(to: Ref, scope: Scope) {
     this.__assigned = to;
+    this.ty.tempConstrain(to.ty, scope);
   }
 
   inline(_amm: Output) {
@@ -263,6 +269,7 @@ export class FnParam extends VarDef {
 
   unassign() {
     this.__assigned = null;
+    this.ty.resetTemp();
   }
 }
 
@@ -302,10 +309,10 @@ class Emit extends Stmt {
     } else if (!(event instanceof Event)) {
       throw new Error(`cannot emit to non-events (${eventName} is not an event)`);
     } else if (emitRef !== null) {
-      emitRef.ty.constrain(event.eventTy);
+      emitRef.ty.constrain(event.eventTy, metadata.scope);
     }
     stmts.push(new Emit(ast, event, emitRef));
-    if (!event.eventTy.compatibleWithConstraint(emitRef.ty)) {
+    if (!event.eventTy.compatibleWithConstraint(emitRef.ty, metadata.scope)) {
       throw new Error(``)
     }
     return stmts;
@@ -338,16 +345,16 @@ export class Exit extends Stmt {
       let [generated, expr] = Expr.fromAssignablesAst(exitValAst, metadata);
       let retVal = Dec.gen(expr, metadata);
       stmts.push(...generated, retVal, new Exit(ast, retVal.ref()));
-      metadata.retTy.constrain(expr.ty);
+      metadata.retTy.constrain(expr.ty, metadata.scope);
     } else {
       stmts.push(new Exit(ast, null));
-      metadata.retTy.constrain(opcodes().get('void'));
+      metadata.retTy.constrain(opcodes().get('void'), metadata.scope);
     }
     return stmts;
   }
 
   inline(amm: Output) {
-    if (!this.ret.ty.compatibleWithConstraint(opcodes().get('void'))) {
+    if (!this.ret.ty.compatibleWithConstraint(opcodes().get('void'), opcodes())) {
       amm.exit(this.ret.ammName);
     } else {
       amm.exit();

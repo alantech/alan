@@ -301,11 +301,6 @@ pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
       let dns = DNS::new(&domain);
       if let (Ok(dns), Ok(self_ip)) = (&dns, &self_ip) {
         loop {
-          // Do not send stats until cluster is up. Otherwise, will have scaling issues.
-          if !control_port.is_cluster_up().await {
-            sleep(Duration::from_secs(1)).await;
-            continue;
-          };
           let vms = match dns.get_vms(&cluster_id).await {
             Ok(vms) => Some(vms),
             Err(err) => {
@@ -323,10 +318,15 @@ pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
           if control_port.is_leader() {
             // TODO: Should we keep these leader announcements in the stdout logging?
             println!("I am leader!");
-            match get_v1_stats().await {
-              Ok(s) => stats.push(s),
-              Err(err) => error!(NoStats, "{}", err).await,
-            };
+            // Do not collect stats until cluster is up. Otherwise, will have scaling issues.
+            if control_port.is_cluster_up() {
+              match get_v1_stats().await {
+                Ok(s) => stats.push(s),
+                Err(err) => error!(NoStats, "{}", err).await,
+              };
+            } else {
+              println!("Cluster is not ready. Do not collect stats");
+            }
           } else {
             // Debug print for now
             println!("I am NOT the leader! :(");
