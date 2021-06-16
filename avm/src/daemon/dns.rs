@@ -57,6 +57,18 @@ impl VMMetadata {
       Err(_) => return Err("Data in TXT record is not a valid string".into()),
     }
   }
+
+  pub fn fake_vm() -> VMMetadata {
+    let fake_data = "-1".to_string();
+    VMMetadata {
+      schema_version: fake_data.clone(),
+      alan_version: fake_data.clone(),
+      public_ip_addr: fake_data.clone(),
+      private_ip_addr: fake_data.clone(),
+      region: fake_data.clone(),
+      cloud: fake_data.clone(),
+    }
+  }
 }
 
 impl DNS {
