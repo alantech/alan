@@ -325,7 +325,7 @@ pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
                 Err(err) => error!(NoStats, "{}", err).await,
               };
             } else {
-              println!("Cluster is not ready. Do not collect stats");
+              println!("Leader is not ready. Do not collect stats");
             }
           } else {
             // Debug print for now
