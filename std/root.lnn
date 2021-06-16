@@ -11,6 +11,10 @@ export bool
 export string
 // TODO: other builtin types
 
+export interface Stringifiable {
+  toString(Stringifiable): string,
+}
+
 // TODO: alias int = int64, float = float64
 
 // TODO: other defs
