@@ -766,10 +766,6 @@ impl ControlPort {
     }
   }
 
-  pub fn is_cluster_up(self: &mut ControlPort) -> bool {
-    return self.vms_up.values().all(|s| *s);
-  }
-
   pub fn get_vm_for_key(self: &ControlPort, key: &str) -> &VMMetadata {
     &self.vms[self.lrh.get_primary_node_id(key)]
   }
