@@ -169,7 +169,7 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
     "/datastore/del" => handle_dsdel(req).await,
     "/datastore/setf" => handle_dssetf(req).await,
     "/datastore/setv" => handle_dssetv(req).await,
-    "/datastore/keys" => handle_keys().await,
+    "/datastore/keys" => handle_keys(),
     path => {
       if *CONTROL_PORT_EXTENSIONS.get().unwrap() && path.starts_with("/app/") {
         handle_extensions(req).await
@@ -373,7 +373,7 @@ async fn handle_dsgetf(req: Request<Body>) -> Result<Response<Body>, Infallible>
 async fn dsgetf_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
   // TODO: For now assume this was directed at the right node, later on add auto-forwarding logic
   let bytes = body::to_bytes(req.into_body()).await?;
-  let body: DSGet = serde_json::from_slice(&bytes).unwrap();
+  let body: DSGet = serde_json::from_slice(&bytes)?;
   let maybe_hm = DS.get(&body.nskey);
   let mut hand_mem = HandlerMemory::new(None, 1)?;
   hand_mem.init_fractal(0)?;
@@ -405,7 +405,7 @@ async fn handle_dsgetv(req: Request<Body>) -> Result<Response<Body>, Infallible>
 
 async fn dsgetv_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
   let bytes = body::to_bytes(req.into_body()).await?;
-  let body: DSGet = serde_json::from_slice(&bytes).unwrap();
+  let body: DSGet = serde_json::from_slice(&bytes)?;
   let maybe_hm = DS.get(&body.nskey);
   let mut hand_mem = HandlerMemory::new(None, 1)?;
   hand_mem.init_fractal(0)?;
@@ -442,7 +442,7 @@ async fn handle_dsgetr(req: Request<Body>) -> Result<Response<Body>, Infallible>
 
 async fn dsgetr_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
   let bytes = body::to_bytes(req.into_body()).await?;
-  let body: DSGet = serde_json::from_slice(&bytes).unwrap();
+  let body: DSGet = serde_json::from_slice(&bytes)?;
   let maybe_hm = DS.get(&body.nskey);
   match maybe_hm {
     Some(hm) => Ok(hm.clone()),
@@ -470,7 +470,7 @@ async fn handle_dshas(req: Request<Body>) -> Result<Response<Body>, Infallible> 
 
 async fn dshas_inner(req: Request<Body>) -> DaemonResult<bool> {
   let bytes = body::to_bytes(req.into_body()).await?;
-  let body: DSGet = serde_json::from_slice(&bytes).unwrap();
+  let body: DSGet = serde_json::from_slice(&bytes)?;
   Ok(DS.contains_key(&body.nskey))
 }
 
@@ -492,7 +492,7 @@ async fn handle_dsdel(req: Request<Body>) -> Result<Response<Body>, Infallible> 
 
 async fn dsdel_inner(req: Request<Body>) -> DaemonResult<bool> {
   let bytes = body::to_bytes(req.into_body()).await?;
-  let body: DSGet = serde_json::from_slice(&bytes).unwrap();
+  let body: DSGet = serde_json::from_slice(&bytes)?;
   Ok(DS.remove(&body.nskey).is_some())
 }
 
@@ -541,24 +541,13 @@ async fn dssetv_inner(req: Request<Body>) -> DaemonResult<()> {
   Ok(())
 }
 
-async fn handle_keys() -> Result<Response<Body>, Infallible> {
-  match keys_inner().await {
-    Ok(keys) => Ok(Response::builder().status(200).body(keys.into()).unwrap()),
-    Err(err) => {
-      // TODO: What error message here? Also should this also be a valid HM out of here?
-      eprintln!("{:?}", err);
-      Ok(Response::builder().status(500).body("fail".into()).unwrap())
-    }
-  }
-}
-
-async fn keys_inner() -> DaemonResult<String> {
+fn handle_keys() -> Result<Response<Body>, Infallible> {
   let keys = DS
     .iter()
     .map(|kvs| kvs.key().clone())
     .collect::<Vec<String>>()
     .join("\n");
-  Ok(keys)
+  Ok(Response::builder().status(200).body(keys.into()).unwrap())
 }
 
 // TODO: Revive once rustls supports IP addresses
@@ -1081,23 +1070,38 @@ impl ControlPort {
       ));
       let req_obj = match req_obj {
         Ok(req_obj) => req_obj,
-        Err(_) => panic!("Should be impossible"),
+        Err(e) => {
+          error!(UnexpectedError, "Should be impossible {:?}", e).await;
+          continue;
+        }
       };
       let mut res = match self.client.request(req_obj).await {
         Ok(res) => res,
-        Err(_) => panic!("TODO"),
+        Err(e) => {
+          error!(UnexpectedError, "Could not talk to peer {:?}", e).await;
+          continue;
+        }
       };
       let bytes = match hyper::body::to_bytes(res.body_mut()).await {
         Ok(bytes) => bytes,
-        Err(_) => panic!("TODO"),
+        Err(e) => {
+          error!(UnexpectedError, "Could not read data from peer {:?}", e).await;
+          continue;
+        }
       };
       let pb = match protos::HandlerMemory::HandlerMemory::parse_from_bytes(&bytes) {
         Ok(pb) => pb,
-        Err(_) => panic!("jelly"),
+        Err(e) => {
+          error!(UnexpectedError, "Could not parse data from peer {:?}", e).await;
+          continue;
+        }
       };
       let hm = match HandlerMemory::from_pb(&pb) {
         Ok(hm) => hm,
-        Err(_) => panic!("hot topic"),
+        Err(e) => {
+          error!(UnexpectedError, "This should be impossible {:?}", e).await;
+          continue;
+        }
       };
       DS.insert(key.to_string(), hm);
     }
@@ -1114,15 +1118,18 @@ impl ControlPort {
       ));
       let req_obj = match req_obj {
         Ok(req_obj) => req_obj,
-        Err(_) => panic!("Should be impossible"),
+        Err(e) => {
+          error!(UnexpectedError, "Should be impossible {:?}", e).await;
+          continue;
+        }
       };
-      let _res = match self.client.request(req_obj).await {
+      match self.client.request(req_obj).await {
         Ok(res) => res,
-        Err(_) => panic!("todo"),
+        Err(e) => {
+          error!(UnexpectedError, "Could not talk to peer {:?}", e).await;
+          continue;
+        }
       };
-      // TODO: How to handle if the various nodes are out-of-sync
-      /*let bytes = hyper::body::to_bytes(res.body_mut()).await?;
-      std::str::from_utf8(&bytes)? == "true"*/
     }
   }
 }
