@@ -32,7 +32,17 @@ export default abstract class Expr {
       };
       let work = asts[ii];
       if (work.has('objectliterals')) {
-        TODO('object literals');
+        if (expr !== null) {
+          throw new Error(`unexpected object literal following an expression`);
+        }
+        work = work.get('objectliterals');
+        if (work.has('typeliteral')) {
+          let [stmts, newVal] = New.fromTypeLiteral(work.get('typeliteral'), metadata);
+          generated.push(...stmts);
+          expr = newVal;
+        } else {
+          TODO('arrays');
+        }
       } else if (work.has('functions')) {
         TODO('functions in functions');
       } else if (work.has('variable')) {
@@ -592,6 +602,84 @@ class Const extends Expr {
       throw new Error(`unhandled const type ${ty.ammName}`);
     }
     amm.assign(kind, name, ty, copyOp, [globalName]);
+  }
+}
+
+class New extends Expr {
+  valTy: Type
+  fields: {[name: string]: Ref}
+
+  get ty(): Type {
+    return this.valTy;
+  }
+
+  /**
+   * NOTE: does NOT check to make sure that the fields
+   * are valid.
+   */
+  constructor(
+    ast: LPNode,
+    valTy: Type,
+    fields: {[name: string]: Ref},
+  ) {
+    super(ast);
+    this.valTy = valTy;
+    this.fields = fields;
+  }
+
+  static fromTypeLiteral(
+    ast: LPNode,
+    metadata: MetaData,
+  ): [Stmt[], New] {
+    let stmts: Stmt[] = [];
+
+    // get the constructed type
+    let typename = ast.get('literaldec').get('fulltypename');
+    let valTy = Type.getFromTypename(typename, metadata.scope);
+
+    let fieldsAst = ast.get('typebase').get('typeassignlist');
+    let fieldAsts: LPNode[] = [
+      fieldsAst,
+      ...fieldsAst.get('cdr').getAll(),
+    ];
+    let fields: {[name: string]: Ref} = {};
+    // type that we're generating to make sure that the constructed object
+    // has the appropriate fields.
+    let fieldCheck = Type.generate();
+
+    for (let fieldAst of fieldAsts) {
+      const fieldName = fieldAst.get('variable').t.trim();
+      // assign the value of the field to a variable
+      let [newStmts, fieldVal] = Expr.fromAssignablesAst(fieldAst.get('assignables'), metadata);
+      const fieldDef = Dec.gen(fieldVal, metadata);
+      // push the generated statements
+      stmts.push(...newStmts);
+      stmts.push(fieldDef);
+      // assign the field to our pseudo-object
+      fields[fieldName] = fieldDef.ref();
+      // add the field to our generated type
+      fieldCheck.constrain(Type.hasField(fieldName, fieldDef.ty), metadata.scope);
+    }
+
+    // ensure that the type we just constructed matches the type intended
+    // to be constructed. if our generated type isn't compatible with the
+    // intended type, then that means we don't have all of its fields. If
+    // the intended type isn't compatible with our generated type, that
+    // means we have some unexpected fields
+    // TODO: MUCH better error handling. Ideally without exposing the
+    // internal details of the `Type`.
+    if (!fieldCheck.compatibleWithConstraint(valTy, metadata.scope)) {
+      throw new Error(`Constructed value doesn't have all of the fields in type ${valTy.name}`);
+    } else if (!valTy.compatibleWithConstraint(fieldCheck, metadata.scope)) {
+      throw new Error(`Constructed value has fields that don't exist in ${valTy.name}`);
+    }
+
+    // *new* new
+    return [stmts, new New(ast, valTy, fields)];
+  }
+
+  inline(amm: Output, kind: AssignKind, name: string, ty: Type): void {
+    throw new Error('Method not implemented.');
   }
 }
 
