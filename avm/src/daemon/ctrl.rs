@@ -164,10 +164,12 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
     "/start" => handle_start(req).await,
     "/datastore/getf" => handle_dsgetf(req).await, // TODO: How to better organize the datastore stuff?
     "/datastore/getv" => handle_dsgetv(req).await,
+    "/datastore/getr" => handle_dsgetr(req).await,
     "/datastore/has" => handle_dshas(req).await,
     "/datastore/del" => handle_dsdel(req).await,
     "/datastore/setf" => handle_dssetf(req).await,
     "/datastore/setv" => handle_dssetv(req).await,
+    "/datastore/keys" => handle_keys(),
     path => {
       if *CONTROL_PORT_EXTENSIONS.get().unwrap() && path.starts_with("/app/") {
         handle_extensions(req).await
@@ -371,7 +373,7 @@ async fn handle_dsgetf(req: Request<Body>) -> Result<Response<Body>, Infallible>
 async fn dsgetf_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
   // TODO: For now assume this was directed at the right node, later on add auto-forwarding logic
   let bytes = body::to_bytes(req.into_body()).await?;
-  let body: DSGet = serde_json::from_slice(&bytes).unwrap();
+  let body: DSGet = serde_json::from_slice(&bytes)?;
   let maybe_hm = DS.get(&body.nskey);
   let mut hand_mem = HandlerMemory::new(None, 1)?;
   hand_mem.init_fractal(0)?;
@@ -402,9 +404,8 @@ async fn handle_dsgetv(req: Request<Body>) -> Result<Response<Body>, Infallible>
 }
 
 async fn dsgetv_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
-  // TODO: For now assume this was directed at the right node, later on add auto-forwarding logic
   let bytes = body::to_bytes(req.into_body()).await?;
-  let body: DSGet = serde_json::from_slice(&bytes).unwrap();
+  let body: DSGet = serde_json::from_slice(&bytes)?;
   let maybe_hm = DS.get(&body.nskey);
   let mut hand_mem = HandlerMemory::new(None, 1)?;
   hand_mem.init_fractal(0)?;
@@ -424,6 +425,33 @@ async fn dsgetv_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
   Ok(hand_mem)
 }
 
+async fn handle_dsgetr(req: Request<Body>) -> Result<Response<Body>, Infallible> {
+  match dsgetr_inner(req).await {
+    Ok(hand_mem) => {
+      let mut out = vec![];
+      hand_mem.to_pb().write_to_vec(&mut out).unwrap();
+      Ok(Response::builder().status(200).body(out.into()).unwrap())
+    }
+    Err(err) => {
+      // TODO: What error message here? Also should this also be a valid HM out of here?
+      eprintln!("{:?}", err);
+      Ok(Response::builder().status(500).body("fail".into()).unwrap())
+    }
+  }
+}
+
+async fn dsgetr_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
+  let bytes = body::to_bytes(req.into_body()).await?;
+  let body: DSGet = serde_json::from_slice(&bytes)?;
+  let maybe_hm = DS.get(&body.nskey);
+  match maybe_hm {
+    Some(hm) => Ok(hm.clone()),
+    None => Err(Box::new(VMError::Other(
+      "namespace-key pair not found".to_string(),
+    ))),
+  }
+}
+
 async fn handle_dshas(req: Request<Body>) -> Result<Response<Body>, Infallible> {
   match dshas_inner(req).await {
     Ok(has) => Ok(
@@ -441,9 +469,8 @@ async fn handle_dshas(req: Request<Body>) -> Result<Response<Body>, Infallible> 
 }
 
 async fn dshas_inner(req: Request<Body>) -> DaemonResult<bool> {
-  // TODO: For now assume this was directed at the right node, later on add auto-forwarding logic
   let bytes = body::to_bytes(req.into_body()).await?;
-  let body: DSGet = serde_json::from_slice(&bytes).unwrap();
+  let body: DSGet = serde_json::from_slice(&bytes)?;
   Ok(DS.contains_key(&body.nskey))
 }
 
@@ -464,9 +491,8 @@ async fn handle_dsdel(req: Request<Body>) -> Result<Response<Body>, Infallible> 
 }
 
 async fn dsdel_inner(req: Request<Body>) -> DaemonResult<bool> {
-  // TODO: For now assume this was directed at the right node, later on add auto-forwarding logic
   let bytes = body::to_bytes(req.into_body()).await?;
-  let body: DSGet = serde_json::from_slice(&bytes).unwrap();
+  let body: DSGet = serde_json::from_slice(&bytes)?;
   Ok(DS.remove(&body.nskey).is_some())
 }
 
@@ -482,7 +508,6 @@ async fn handle_dssetf(req: Request<Body>) -> Result<Response<Body>, Infallible>
 }
 
 async fn dssetf_inner(req: Request<Body>) -> DaemonResult<()> {
-  // TODO: For now assume this was directed at the right node, later on add auto-forwarding logic
   let bytes = body::to_bytes(req.into_body()).await?;
   let pb = protos::HandlerMemory::HandlerMemory::parse_from_bytes(&bytes)?;
   let hand_mem = HandlerMemory::from_pb(&pb)?;
@@ -506,7 +531,6 @@ async fn handle_dssetv(req: Request<Body>) -> Result<Response<Body>, Infallible>
 }
 
 async fn dssetv_inner(req: Request<Body>) -> DaemonResult<()> {
-  // TODO: For now assume this was directed at the right node, later on add auto-forwarding logic
   let bytes = body::to_bytes(req.into_body()).await?;
   let pb = protos::HandlerMemory::HandlerMemory::parse_from_bytes(&bytes)?;
   let hand_mem = HandlerMemory::from_pb(&pb)?;
@@ -515,6 +539,15 @@ async fn dssetv_inner(req: Request<Body>) -> DaemonResult<()> {
   HandlerMemory::transfer(&hand_mem, 1, &mut hm, 0)?;
   DS.insert(nskey, hm);
   Ok(())
+}
+
+fn handle_keys() -> Result<Response<Body>, Infallible> {
+  let keys = DS
+    .iter()
+    .map(|kvs| kvs.key().clone())
+    .collect::<Vec<String>>()
+    .join("\n");
+  Ok(Response::builder().status(200).body(keys.into()).unwrap())
 }
 
 // TODO: Revive once rustls supports IP addresses
@@ -611,10 +644,15 @@ impl ControlPort {
   }
 
   pub async fn update_vms(self: &mut ControlPort, self_ip: &str, vms: Vec<VMMetadata>) {
-    let ips = vms
+    let ips: Vec<String> = vms
       .iter()
       .map(|vm| vm.private_ip_addr.to_string())
       .collect();
+    // Detect changes and exit early if nothing has changed
+    let changed = ips.len() != self.vms.len() || ips.iter().any(|ip| !self.vms.contains_key(ip));
+    if !changed {
+      return;
+    }
     let self_vm_vec: Vec<&VMMetadata> = vms
       .iter()
       .filter(|vm| vm.private_ip_addr == self_ip)
@@ -655,16 +693,18 @@ impl ControlPort {
       .filter(|ip| *self.vms_up.get(ip.clone()).unwrap_or(&false))
       .map(|ip| ip.clone())
       .collect();
-    let region_ips = Arc::clone(&REGION_VMS);
-    let mut region_ips_mut = region_ips.write().unwrap();
-    region_ips_mut.clear();
-    region_ips_mut.append(&mut other_region_ips);
-    drop(region_ips_mut);
-    drop(region_ips);
+    {
+      // WTF, Rust? Why is `drop(var)` not good enough when there's an `await` later on?
+      let region_ips = Arc::clone(&REGION_VMS);
+      let mut region_ips_mut = region_ips.write().unwrap();
+      region_ips_mut.clear();
+      region_ips_mut.append(&mut other_region_ips);
+    }
     self.vms = all_vms;
     self.self_vm = Some(self_vm);
     self.region_vms = region_vms;
     self.lrh.update(ips);
+    self.rebalance_data().await;
   }
 
   pub fn is_leader(self: &ControlPort) -> bool {
@@ -690,18 +730,39 @@ impl ControlPort {
       health.push(self.client.request(req.body(Body::empty()).unwrap()));
     }
     let health_res = join_all(health).await;
+    let mut health_change = false;
     for (i, res) in health_res.iter().enumerate() {
+      let id = nodes[i].id.clone();
       match res {
         Err(_) => {
+          if !self.vms_up.contains_key(&id) || *self.vms_up.get(&id).unwrap() == true {
+            health_change = true;
+          }
           nodes[i].is_up = false;
-          self.vms_up.insert(nodes[i].id.clone(), false);
+          self.vms_up.insert(id, false);
         }
         Ok(res) => {
           let is_up = res.status().as_u16() == 200;
+          if !self.vms_up.contains_key(&id) || *self.vms_up.get(&id).unwrap() != is_up {
+            health_change = true;
+          }
           nodes[i].is_up = is_up;
-          self.vms_up.insert(nodes[i].id.clone(), is_up);
+          self.vms_up.insert(id, is_up);
         }
       }
+    }
+    if health_change {
+      self.rebalance_data().await;
+    }
+  }
+
+  pub fn is_up(self: &mut ControlPort) -> bool {
+    match &self.self_vm {
+      Some(self_vm) => match self.vms_up.get(&self_vm.private_ip_addr) {
+        Some(s) => *s,
+        None => false,
+      },
+      None => false,
     }
   }
 
@@ -905,5 +966,184 @@ impl ControlPort {
     let mut res = self.client.request(req_obj).await?;
     let bytes = hyper::body::to_bytes(res.body_mut()).await?;
     Ok(std::str::from_utf8(&bytes)? == "true")
+  }
+
+  pub async fn dskeys(self: &ControlPort, ip: &str) -> (String, Vec<String>) {
+    (
+      ip.to_string(),
+      self.dskeys_inner(ip).await.unwrap_or(Vec::new()),
+    )
+  }
+
+  async fn dskeys_inner(self: &ControlPort, ip: &str) -> DaemonResult<Vec<String>> {
+    let url = format!("https://{}:4142/datastore/keys", ip);
+    let req = Request::builder().method("GET").uri(url);
+    let cluster_secret = CLUSTER_SECRET.get().unwrap().clone().unwrap();
+    let req = req.header(cluster_secret.as_str(), "true");
+    let req_obj = req.body(Body::empty())?;
+    let mut res = self.client.request(req_obj).await?;
+    let bytes = hyper::body::to_bytes(res.body_mut()).await?;
+    let key_str = std::str::from_utf8(&bytes)?;
+    if key_str.len() > 0 {
+      Ok(key_str.split("\n").map(|s| s.to_string()).collect())
+    } else {
+      Err(Box::new(VMError::Other(
+        "No keys on remote node".to_string(),
+      )))
+    }
+  }
+
+  fn get_all_vms_by_ip(self: &ControlPort) -> Vec<String> {
+    self
+      .vms
+      .iter()
+      .map(|(k, v)| {
+        if self.region_vms.contains_key(k) {
+          v.private_ip_addr.clone()
+        } else {
+          v.public_ip_addr.clone()
+        }
+      })
+      .collect()
+  }
+
+  async fn rebalance_data(self: &ControlPort) {
+    // 1. Get lists of keys across all live nodes in the cluster
+    // 2. For each list:
+    // 2a. Determine if this node should have the key as the new primary owner, secondary owner, or
+    //     not at all.
+    // 2b. If the primary owner and this list is from the node that is the first secondary owner,
+    //     push the key and node IP to a 'get' list.
+    // 2c. If the primary owner and this list is from a node that should not own the key, push the
+    //     key and the node IP to a 'del' list.
+    // 2d. If a secondary owner and this list is from the node that is the primary owner, push the
+    //     key and node IP to a 'get' list. Do not create a 'del' entry.
+    // 3. Iterate through the 'get' list and grab the data for each key and store it.
+    // 3a. On failure, expand the query to every node that should have the data and re-query again.
+    // 3b. On failure again, query every node, period, for the data.
+    // 3c. On final failure, abort. It may have been a race condition with a key that was
+    //     explicitly deleted. TODO: Add log records to verify this?
+    // 4. Iterate through the 'del' list and delete the data from the node that should no longer
+    //    have it. Failure means that something else deleted it already, so it can be ignored.
+    println!("Rebalancing Keys");
+    let vms = self.get_all_vms_by_ip();
+    let fake_vm = VMMetadata::fake_vm();
+    let self_vm = self.self_vm.as_ref().unwrap_or(&fake_vm);
+    let key_lists = join_all(vms.iter().map(|ip| self.dskeys(ip))).await;
+    let mut get_list: Vec<(String, String)> = Vec::new(); // (Key, Source IP)
+    let mut del_list: Vec<(String, String)> = Vec::new(); // (Key, Source IP)
+    key_lists.iter().for_each(|(ip, key_list)| {
+      let ip_str = ip.to_string();
+      key_list.iter().for_each(|key| {
+        let relevant_nodes = self.get_vms_for_key(key);
+        if relevant_nodes.len() > 1 {
+          // Don't try to do any of this if the cluster is just 1 node
+          let self_in_list = relevant_nodes
+            .iter()
+            .any(|node| node.public_ip_addr == self_vm.public_ip_addr);
+          if !self_in_list {
+            return;
+          }
+          let primary_node = relevant_nodes[0];
+          let first_secondary = relevant_nodes[1];
+          let self_primary = primary_node.public_ip_addr == self_vm.public_ip_addr;
+          if self_primary {
+            let this_list_first_secondary =
+              first_secondary.public_ip_addr == ip_str || first_secondary.private_ip_addr == ip_str;
+            if this_list_first_secondary {
+              get_list.push((key.to_string(), ip.to_string()));
+            }
+            let this_list_irrelevant = relevant_nodes
+              .iter()
+              .all(|node| node.public_ip_addr != ip_str && node.private_ip_addr != ip_str);
+            if this_list_irrelevant {
+              del_list.push((key.to_string(), ip.to_string()));
+            }
+          } else {
+            let this_list_primary =
+              primary_node.public_ip_addr == ip_str || primary_node.private_ip_addr == ip_str;
+            if this_list_primary {
+              get_list.push((key.to_string(), ip.to_string()));
+            }
+          }
+        }
+      });
+    });
+    for (key, ip) in get_list.iter() {
+      // For our purposes, we don't want the query result-wrapped, so we have a special raw
+      // endpoint to get the data from
+      let url = format!("https://{}:4142/datastore/getr", ip);
+      let req = Request::builder().method("POST").uri(url);
+      let cluster_secret = CLUSTER_SECRET.get().unwrap().clone().unwrap();
+      let req = req.header(cluster_secret.as_str(), "true");
+      let req_obj = req.body(Body::from(
+        json!(DSGet {
+          nskey: key.to_string()
+        })
+        .to_string(),
+      ));
+      let req_obj = match req_obj {
+        Ok(req_obj) => req_obj,
+        Err(e) => {
+          error!(UnexpectedError, "Should be impossible {:?}", e).await;
+          continue;
+        }
+      };
+      let mut res = match self.client.request(req_obj).await {
+        Ok(res) => res,
+        Err(e) => {
+          error!(UnexpectedError, "Could not talk to peer {:?}", e).await;
+          continue;
+        }
+      };
+      let bytes = match hyper::body::to_bytes(res.body_mut()).await {
+        Ok(bytes) => bytes,
+        Err(e) => {
+          error!(UnexpectedError, "Could not read data from peer {:?}", e).await;
+          continue;
+        }
+      };
+      let pb = match protos::HandlerMemory::HandlerMemory::parse_from_bytes(&bytes) {
+        Ok(pb) => pb,
+        Err(e) => {
+          error!(UnexpectedError, "Could not parse data from peer {:?}", e).await;
+          continue;
+        }
+      };
+      let hm = match HandlerMemory::from_pb(&pb) {
+        Ok(hm) => hm,
+        Err(e) => {
+          error!(UnexpectedError, "This should be impossible {:?}", e).await;
+          continue;
+        }
+      };
+      DS.insert(key.to_string(), hm);
+    }
+    for (key, ip) in del_list.iter() {
+      let url = format!("https://{}:4142/datastore/del", ip);
+      let req = Request::builder().method("POST").uri(url);
+      let cluster_secret = CLUSTER_SECRET.get().unwrap().clone().unwrap();
+      let req = req.header(cluster_secret.as_str(), "true");
+      let req_obj = req.body(Body::from(
+        json!(DSGet {
+          nskey: key.to_string()
+        })
+        .to_string(),
+      ));
+      let req_obj = match req_obj {
+        Ok(req_obj) => req_obj,
+        Err(e) => {
+          error!(UnexpectedError, "Should be impossible {:?}", e).await;
+          continue;
+        }
+      };
+      match self.client.request(req_obj).await {
+        Ok(res) => res,
+        Err(e) => {
+          error!(UnexpectedError, "Could not talk to peer {:?}", e).await;
+          continue;
+        }
+      };
+    }
   }
 }

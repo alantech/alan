@@ -29,6 +29,7 @@ pub enum ErrorType {
   NoCredentials = 136,
   NoDeployConfig = 137,
   NoAppNameDefined = 138,
+  UnexpectedError = 139,
 }
 
 #[macro_export]
