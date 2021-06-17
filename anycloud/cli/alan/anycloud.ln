@@ -2,7 +2,6 @@ from @std/app import start, print, eprint, exit
 from @std/avmdaemon import controlPort, getClusterSecret, Connection, body, send, status
 from @std/cmd import exec
 from @std/datastore import namespace, getOr, set, has, del
-from @std/http import post
 from @std/tcpserver import tunnel
 
 type ModeAndKey {
@@ -10,37 +9,25 @@ type ModeAndKey {
   key: string,
 }
 
-const alanTechEnv = exec('echo $ALAN_TECH_ENV');
-const serviceUrl = alanTechEnv == 'staging' ? 
-  'https://deploy-staging.alantechnologies.com' : 
-  'https://deploy.alantechnologies.com';
-const errorEndpoint = '/clientError';
-
 on start {
   print('Starting Anycloud...');
   const untarRes = exec('tar -xzf app.tar.gz');
   if untarRes.exitCode != 0 {
-    const err = 'app.tar.gz could not be unpacked';
-    eprint(err);
+    eprint('app.tar.gz could not be unpacked');
     eprint(untarRes.stderr);
-    post(err + ' | ' + untarRes.stderr);
     emit exit untarRes.exitCode;
   }
 
   const dockerRes = exec('docker build -t anycloud/app .');
   if dockerRes.exitCode != 0 {
-    const err = 'Docker container could not be built';
-    eprint(err);
+    eprint('Docker container could not be built');
     eprint(dockerRes.stderr);
-    setRunError(err + ' | ' + dockerRes.stderr);
     emit exit dockerRes.exitCode;
   }
 
   const clusterSecret = getClusterSecret();
   if clusterSecret.isNone() {
-    const err = 'No cluster secret defined';
-    eprint(err);
-    setRunError(err);
+    eprint('No cluster secret defined');
     emit exit 1;
   }
 
@@ -51,10 +38,8 @@ on start {
     ('docker run --env CLUSTER_SECRET=' + clusterSecret.getOrExit() + ' --env-file anycloud.env --net=host -d anycloud/app:latest');
   const containerRes = exec(containerStr);
   if containerRes.exitCode != 0 {
-    const err = 'Docker container could not be started'; 
-    eprint(err);
+    eprint('Docker container could not be started');
     eprint(containerRes.stderr);
-    setRunError(err + ' | ' + containerRes.stderr);
     emit exit containerRes.exitCode;
   }
 
