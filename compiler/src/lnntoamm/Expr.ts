@@ -22,7 +22,7 @@ export default abstract class Expr {
 
   private static fromBaseassignablelist(ast: LPNode, metadata: MetaData): [Stmt[], Expr] {
     let asts = ast.getAll().map(a => a.get('baseassignable'));
-    let generated = [];
+    let generated: Stmt[] = [];
     let expr: Expr = null;
     for (let ii = 0; ii < asts.length; ii++) {
       const skipDotIfNext = () => {
@@ -50,13 +50,14 @@ export default abstract class Expr {
         if (ii === asts.length - 1) {
           let dec = metadata.get(varName);
           if (dec === null) {
-            throw new Error(`${varName} not defined`);
+            throw new Error(`:/ ${varName} not defined`);
           }
           expr = dec.ref();
           break;
         }
         const next = asts[ii + 1];
         if (next.has('fncall')) {
+          // it's a function call
           // TODO: this is broken because operators don't pass their AST yet
           // let text = `${expr !== null ? expr.ast.t.trim() + '.' : ''}${varName}${next.get('fncall').t.trim()}`;
           let text = `${expr !== null ? expr.ast.get('variable').t + '.' : ''}${varName}${next.get('fncall').t.trim()}`;
@@ -94,15 +95,30 @@ export default abstract class Expr {
           expr = call;
           ii += 1;
           skipDotIfNext();
-        } else if (next.has('methodsep')) {
+        } else if (expr !== null) {
+          // it's a field access
+          if (!(expr instanceof Ref)) {
+            const dec = Dec.gen(expr, metadata);
+            generated.push(dec);
+            expr = dec.ref();
+          }
+          // ensure that the value has the field
+          let fieldTy = Type.generate();
+          const hasField = Type.hasField(varName, fieldTy);
+          if (!expr.ty.compatibleWithConstraint(hasField, metadata.scope)) {
+            throw new Error(`cannot access ${varName} on type ${expr.ty.name} because it doesn't have that field`);
+          }
+          fieldTy.constrain(expr.ty, metadata.scope);
+          // TODO: better ast
+          expr = new AccessField(asts[ii], expr as Ref, varName, fieldTy);
+        } else {
+          // it's a variable reference
           const val = metadata.get(varName);
           if (!val) {
             throw new Error(`${varName} not defined`);
           }
           expr = val.ref();
           ii += 1;
-        } else {
-          throw new Error(`unexpected token: expected dot or call, found ${next.t.trim()}`);
         }
       } else if (work.has('constants')) {
         work = work.get('constants');
@@ -378,6 +394,32 @@ export default abstract class Expr {
       throw new Error(`couldn't resolve operators`);
     }
     return [stmts, precedences.pop() as Ref];
+  }
+}
+
+class AccessField extends Expr {
+  struct: Ref
+  fieldName: string
+  fieldTy: Type
+
+  get ty(): Type {
+    return this.fieldTy;
+  }
+
+  constructor(
+    ast: LPNode,
+    struct: Ref,
+    fieldName: string,
+    fieldTy: Type,
+  ) {
+    super(ast);
+    this.struct = struct;
+    this.fieldName = fieldName;
+    this.fieldTy = fieldTy;
+  }
+
+  inline(amm: Output, kind: AssignKind, name: string, ty: Type): void {
+    throw new Error('Method not implemented.');
   }
 }
 
