@@ -79,4 +79,40 @@ Describe "Closure Functions"
       The output should eq "$REFOUTPUT"
     End
   End
+
+  Describe "inlined closures with argument"
+    before() {
+      sourceToTemp "
+        from @std/app import start, print, exit
+
+        on start {
+          const arghFn = fn(argh: string) {
+            print(argh);
+          };
+          arghFn('argh');
+          emit exit 0;
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    OUTPUT="argh"
+
+    It "runs js"
+      Pending arguments-for-inlined-closures
+      When run test_js
+      The output should eq "$OUTPUT"
+    End
+
+    It "runs agc"
+      Pending arguments-for-inlined-closures
+      When run test_agc
+      The output should eq "$OUTPUT"
+    End
+  End
 End
