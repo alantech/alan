@@ -1,4 +1,4 @@
-AnyCloud CLI has enable a set of flags in order to deploy applications directly from a CI/CD tool in a non-interactive way.
+AnyCloud CLI has a set of flags useful for deploying applications directly from a CI/CD tool.
 
 ## Relevant non-interactive mode AnyCloud flags
 
