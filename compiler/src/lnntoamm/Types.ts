@@ -767,7 +767,7 @@ class Generated extends Interface {
     } else if (this.tempDelegate !== null) {
       return this.tempDelegate.instance();
     } else {
-      return new Generated();
+      throw new Error(`could not resolve Generated type`);
     }
   }
 
