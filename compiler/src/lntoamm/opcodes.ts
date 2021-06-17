@@ -897,7 +897,6 @@ addopcodes({
   dsgetf: [{ ns: t('string'), key: t('string'), }, t('Result<any>')],
   dsgetv: [{ ns: t('string'), key: t('string'), }, t('Result<any>')],
   getcs: [{ }, t('Maybe<string>')],
-  setlnerr: [{ err: t('string') }, t('void')],
   newseq: [{ limit: t('int64'), }, t('Seq')],
   seqnext: [{ seq: t('Seq'), }, t('Result<int64>')],
   seqeach: [{ seq: t('Seq'), func: t('function'), }, t('void')],

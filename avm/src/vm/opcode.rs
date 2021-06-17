@@ -3843,13 +3843,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     Ok(())
   });
 
-  // set anycloud.ln initialize error
-  cpu!(setlnerr => fn(args, hand_mem) {
-    let error = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0])?)?;
-    AGZ_RUN_ERROR.set(Some(error)).unwrap();
-    Ok(())
-  });
-
   // seq opcodes
   cpu!(newseq => fn(args, hand_mem) {
     hand_mem.init_fractal(args[2])?;
