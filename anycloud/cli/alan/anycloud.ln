@@ -2,6 +2,7 @@ from @std/app import start, print, eprint, exit
 from @std/avmdaemon import controlPort, getClusterSecret, Connection, body, send, status
 from @std/cmd import exec
 from @std/datastore import namespace, getOr, set, has, del
+from @std/http import fetch, Request
 from @std/tcpserver import tunnel
 
 type ModeAndKey {
@@ -9,8 +10,37 @@ type ModeAndKey {
   key: string,
 }
 
+type ServiceRequestBody {
+  errorCode: int64,
+  accessToken: string,
+  osName: string,
+  alanVersion: string,
+  level: string,
+}
+
 on start {
   print('Starting Anycloud...');
+
+  const alanVersion = exec('alan --version');
+  if alanVersion.exitCode != 0 {
+    eprint('Error getting alan version');
+  }
+  const alanTechEnv = exec('echo $ALAN_TECH_ENV');
+  if alanTechEnv.exitCode != 0 {
+    eprint('Error retreiveing $ALAN_TECH_ENV variable');
+  }
+  const serviceUrl = alanTechEnv.stdout == 'staging' ? 
+    'https://deploy-staging.alantechnologies.com' : 
+    'https://deploy.alantechnologies.com';
+  const errorEndpoint = '/clientError';
+
+  const clusterSecret = getClusterSecret();
+  if clusterSecret.isNone() {
+    const err = 'No cluster secret defined';
+    eprint(err);
+    emit exit 1;
+  }
+
   const untarRes = exec('tar -xzf app.tar.gz');
   if untarRes.exitCode != 0 {
     eprint('app.tar.gz could not be unpacked');
@@ -22,13 +52,24 @@ on start {
   if dockerRes.exitCode != 0 {
     eprint('Docker container could not be built');
     eprint(dockerRes.stderr);
+    // const body = new ServiceRequestBody {
+    //   errorCode: 130,
+    //   accessToken: "anycloud",
+    //   osName: "anycloud",
+    //   alanVersion: alanVersion.stdout,
+    //   level: "error",
+    // };
+    // const body = "{errorCode: 130, accessToken: 'anycloud', osName: 'anycloud', alanVersion: " + alanVersion.stdout + ", level: 'error'}";
+    const body = "";
+    const res = fetch(new Request {
+      method: 'POST',
+      url: serviceUrl + errorEndpoint,
+      headers: newHashMap('Content-Length', body.length().toString()),
+      body: body,
+    });
+    print("Response:");
+    print(res.isOk());
     emit exit dockerRes.exitCode;
-  }
-
-  const clusterSecret = getClusterSecret();
-  if clusterSecret.isNone() {
-    eprint('No cluster secret defined');
-    emit exit 1;
   }
 
   // We need to use the --env-file option only if we are sure the file exists 
