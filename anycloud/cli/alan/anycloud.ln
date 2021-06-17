@@ -55,20 +55,8 @@ on start {
     const errStr = 'Docker container could not be built'; 
     eprint(errStr);
     eprint(dockerRes.stderr);
-    const bodyStr = new ServiceRequestBody {
-      errorCode: 140,
-      alanVersion: 'v' + alanVersion.stdout,
-      level: "error",
-      message: "error",
-    }.toString();
-    const headers = newHashMap('Content-Length', bodyStr.length().toString());
-    headers.set('Content-type', 'application/json');
-    fetch(new Request {
-      method: 'POST',
-      url: serviceUrl + errorEndpoint,
-      headers: headers,
-      body: bodyStr,
-    });
+    // TODO: replace " with ' on dockerRes.stderr to be able to send it in the message
+    sendDaemonError(serviceUrl + errorEndpoint, errStr, alanVersion.stdout);
     emit exit dockerRes.exitCode;
   }
 
@@ -126,6 +114,23 @@ fn getModeAndKey(url: string): Result<ModeAndKey> {
       key: key || 'invalid',
     });
   }
+}
+
+fn sendDaemonError(url: string, message: string, alanVersion: string) {
+  const bodyStr = new ServiceRequestBody {
+    errorCode: 140,
+    alanVersion: 'v' + alanVersion,
+    level: "error",
+    message: message,
+  }.toString();
+  const headers = newHashMap('Content-Length', bodyStr.length().toString());
+  headers.set('Content-type', 'application/json');
+  fetch(new Request {
+    method: 'POST',
+    url: url,
+    headers: headers,
+    body: bodyStr,
+  });
 }
 
 fn toString(reqBody: ServiceRequestBody): string {
