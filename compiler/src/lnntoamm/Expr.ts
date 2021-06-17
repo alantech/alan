@@ -419,7 +419,9 @@ class AccessField extends Expr {
   }
 
   inline(amm: Output, kind: AssignKind, name: string, ty: Type): void {
-    throw new Error('Method not implemented.');
+    const fieldIndices = this.fieldTy.fieldIndices();
+    const index = fieldIndices[this.fieldName];
+    amm.assign(kind, name, ty, 'register', [this.struct.ammName, `${index}`]);
   }
 }
 
@@ -721,7 +723,7 @@ class New extends Expr {
   }
 
   inline(amm: Output, kind: AssignKind, name: string, ty: Type): void {
-    throw new Error('Method not implemented.');
+    amm.assign(kind, name, ty, 'newarr', [`${this.ty.size()}`]);
   }
 }
 

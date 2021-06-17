@@ -5,7 +5,7 @@ import Scope from './Scope';
 import { Equalable, genName, isFnArray, isOpArray, TODO } from './util';
 
 type Fields = {[name: string]: Type | null};
-export type FieldOrder = {[name: string]: number};
+export type FieldIndices = {[name: string]: number};
 type GenericArgs = {[name: string]: Type | null};
 type TypeName = [string, TypeName[]];
 
@@ -96,7 +96,7 @@ export default abstract class Type implements Equalable {
     return null;
   }
 
-  fieldOrder(): FieldOrder {
+  fieldIndices(): FieldIndices {
     let name: string;
     try {
       name = this.instance().name;
@@ -171,7 +171,7 @@ class Builtin extends Type {
     }
   }
 
-  fieldOrder(): FieldOrder {
+  fieldIndices(): FieldIndices {
     return TODO("determine if it's even worth keeping the Builtin class");
   }
 
@@ -203,7 +203,7 @@ class Builtin extends Type {
 class Struct extends Type {
   args: GenericArgs
   fields: Fields
-  order: FieldOrder
+  order: FieldIndices
 
   get ammName(): string {
     return this.name;
@@ -257,7 +257,7 @@ class Struct extends Type {
     if (ty instanceof Struct) {
       return this.eq(ty);
     } else if (ty instanceof HasField) {
-      TODO('struct types')
+      return this.fields.hasOwnProperty(ty.name) && this.fields[ty.name].compatibleWithConstraint(ty.ty, scope);
     } else if (ty instanceof HasMethod) {
       TODO('get methods and operators for types');
     } else if (ty instanceof Interface) {
@@ -278,7 +278,7 @@ class Struct extends Type {
     return that instanceof Struct && this === that;
   }
 
-  fieldOrder(): FieldOrder {
+  fieldIndices(): FieldIndices {
     return this.order;
   }
 
