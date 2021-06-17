@@ -1,4 +1,5 @@
 use std::env;
+use std::future::Future;
 
 use clap::{crate_name, crate_version, App, AppSettings, SubCommand};
 
@@ -76,12 +77,22 @@ pub async fn main() {
       };
       authenticate(non_interactive).await;
       new_or_upgrade(
-        "new",
         anycloud_agz,
         matches.value_of("env-file"),
         matches.value_of("app-name"),
         matches.value_of("config-name"),
         non_interactive,
+        |anycloud_agz, anycloud_params, env_b64, app_name, config_name, non_interactive| async move {
+          deploy::new(
+            anycloud_agz,
+            anycloud_params,
+            env_b64,
+            app_name,
+            config_name,
+            non_interactive,
+          )
+          .await
+        },
       )
       .await;
     }
@@ -96,12 +107,22 @@ pub async fn main() {
       };
       authenticate(non_interactive).await;
       new_or_upgrade(
-        "upgrade",
         anycloud_agz,
         matches.value_of("env-file"),
         matches.value_of("app-name"),
         matches.value_of("config-name"),
         non_interactive,
+        |anycloud_agz, anycloud_params, env_b64, app_name, config_name, non_interactive| async move {
+          deploy::upgrade(
+            anycloud_agz,
+            anycloud_params,
+            env_b64,
+            app_name,
+            config_name,
+            non_interactive,
+          )
+          .await
+        },
       )
       .await;
     }
@@ -140,14 +161,24 @@ pub async fn main() {
   }
 }
 
-async fn new_or_upgrade(
-  mode: &str,
+async fn new_or_upgrade<Callback, CallbackFut>(
   anycloud_agz: String,
   env_file: Option<&str>,
   app_name: Option<&str>,
   config_name: Option<&str>,
   non_interactive: bool,
-) {
+  deploy_fn: Callback,
+) where
+  Callback: Fn(
+    String,
+    Option<(String, String)>,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+    bool,
+  ) -> CallbackFut,
+  CallbackFut: Future<Output = ()>,
+{
   let dockerfile_b64 = get_dockerfile_b64().await;
   let app_tar_gz_b64 = get_app_tar_gz_b64(true).await;
   let env_b64 = match env_file {
@@ -162,29 +193,13 @@ async fn new_or_upgrade(
     Some(name) => Some(name.to_string()),
     None => None,
   };
-  match mode {
-    "new" => {
-      deploy::new(
-        anycloud_agz,
-        Some((dockerfile_b64, app_tar_gz_b64)),
-        env_b64,
-        app_name,
-        config_name,
-        non_interactive,
-      )
-      .await
-    }
-    "upgrade" => {
-      deploy::upgrade(
-        anycloud_agz,
-        Some((dockerfile_b64, app_tar_gz_b64)),
-        env_b64,
-        app_name,
-        config_name,
-        non_interactive,
-      )
-      .await
-    }
-    _ => {}
-  };
+  deploy_fn(
+    anycloud_agz,
+    Some((dockerfile_b64, app_tar_gz_b64)),
+    env_b64,
+    app_name,
+    config_name,
+    non_interactive,
+  )
+  .await
 }
