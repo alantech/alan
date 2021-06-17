@@ -272,8 +272,8 @@ async fn get_daemon_props(
   }
   let duration = Duration::from_secs(10);
   let mut counter: u8 = 0;
-  // Check every 10s over 5 min if props are ready
-  while counter < 30 {
+  // Check every 10s over 10 min if props are ready
+  while counter < 60 {
     if let Some(props) = DAEMON_PROPS.get() {
       return Some(props);
     }
@@ -319,10 +319,15 @@ pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
           if control_port.is_leader() {
             // TODO: Should we keep these leader announcements in the stdout logging?
             println!("I am leader!");
-            match get_v1_stats().await {
-              Ok(s) => stats.push(s),
-              Err(err) => error!(NoStats, "{}", err).await,
-            };
+            // Do not collect stats until this leader vm is up. Otherwise, will have scaling issues.
+            if control_port.is_up() {
+              match get_v1_stats().await {
+                Ok(s) => stats.push(s),
+                Err(err) => error!(NoStats, "{}", err).await,
+              };
+            } else {
+              println!("Leader is not ready. Do not collect stats");
+            }
           } else {
             // Debug print for now
             println!("I am NOT the leader! :(");

@@ -41,7 +41,7 @@ Name for new Deploy Config: staging
 ? Do you want to choose a specific region for this Deploy Config? › y
 ? Region name › us-east4-a
 ? Do you want to select which virtual machine type to use for this Deploy Config? › y
-? Virtual Machine Type › e2-standard-2
+? Virtual Machine Type › f1-micro
 ? Do you want to add another region to this Deploy Config? › n
 ? Minimum number of VMs per region or cloud › 1
 ? Would you like to define a maximum number of VMs? › n
