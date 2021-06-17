@@ -696,14 +696,16 @@ class New extends Expr {
       const fieldName = fieldAst.get('variable').t.trim();
       // assign the value of the field to a variable
       let [newStmts, fieldVal] = Expr.fromAssignablesAst(fieldAst.get('assignables'), metadata);
-      const fieldDef = Dec.gen(fieldVal, metadata);
-      // push the generated statements
       stmts.push(...newStmts);
-      stmts.push(fieldDef);
+      if (!(fieldVal instanceof Ref)) {
+        const fieldDef = Dec.gen(fieldVal, metadata);
+        stmts.push(fieldDef);
+        fieldVal = fieldDef.ref();
+      }
       // assign the field to our pseudo-object
-      fields[fieldName] = fieldDef.ref();
+      fields[fieldName] = fieldVal as Ref;
       // add the field to our generated type
-      fieldCheck.constrain(Type.hasField(fieldName, fieldDef.ty), metadata.scope);
+      fieldCheck.constrain(Type.hasField(fieldName, fieldVal.ty), metadata.scope);
     }
 
     // ensure that the type we just constructed matches the type intended
