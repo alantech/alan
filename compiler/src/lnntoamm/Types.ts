@@ -259,11 +259,11 @@ class Struct extends Type {
     } else if (ty instanceof HasField) {
       return this.fields.hasOwnProperty(ty.name) && this.fields[ty.name].compatibleWithConstraint(ty.ty, scope);
     } else if (ty instanceof HasMethod) {
-      TODO('get methods and operators for types');
-    } else if (ty instanceof Interface) {
+      TODO('get methods and operators for types? (probably during fn selection fix?)');
+    } else if (ty instanceof Interface || ty instanceof OneOf) {
       return ty.compatibleWithConstraint(this, scope);
     } else {
-      TODO('constraints with other types for structs');
+      return false;
     }
   }
 
