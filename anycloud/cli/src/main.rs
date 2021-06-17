@@ -27,6 +27,9 @@ pub async fn main() {
     )
     .subcommand(SubCommand::with_name("terminate")
       .about("Terminate an App hosted in one of the Deploy Configs from anycloud.json")
+      .arg_from_usage("[NON_INTERACTIVE] -n, --non-interactive 'Enables non-interactive CLI mode useful for scripting.'")
+      .arg_from_usage("-a, --app-name=[APP_NAME] 'Specifies an optional app name.'")
+      .arg_from_usage("-c, --config-name=[CONFIG_NAME] 'Specifies a config name, required only in non-interactive mode.'")
     )
     .subcommand(SubCommand::with_name("upgrade")
       .about("Deploys your repository to an existing App hosted in one of the Deploy Configs from anycloud.json")
@@ -97,8 +100,20 @@ pub async fn main() {
       .await;
     }
     ("terminate", _) => {
-      authenticate(false).await;
-      deploy::terminate().await
+      let non_interactive: bool = match matches.values_of("NON_INTERACTIVE") {
+        Some(_) => true,
+        None => false,
+      };
+      authenticate(non_interactive).await;
+      let app_name = match matches.value_of("app-name") {
+        Some(name) => Some(name.to_string()),
+        None => None,
+      };
+      let config_name = match matches.value_of("config-name") {
+        Some(name) => Some(name.to_string()),
+        None => None,
+      };
+      deploy::terminate(app_name, config_name, non_interactive).await
     }
     ("upgrade", Some(matches)) => {
       let non_interactive: bool = match matches.values_of("NON_INTERACTIVE") {

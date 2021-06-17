@@ -1082,18 +1082,55 @@ pub async fn client_error(err_code: ErrorType, message: &str, level: &str) {
   let _resp = post_v1("clientError", body).await;
 }
 
-pub async fn terminate() {
+pub async fn terminate(
+  app_name: Option<String>,
+  config_name: Option<String>,
+  non_interactive: bool,
+) {
+  let interactive = !non_interactive;
+  let app_name = if let Some(app_name) = app_name {
+    app_name
+  } else {
+    "".to_string()
+  };
+  let config_name = if let Some(config_name) = config_name {
+    config_name
+  } else {
+    "".to_string()
+  };
   let mut sp = ProgressBar::new_spinner();
   sp.enable_steady_tick(10);
   sp.set_message("Gathering information about Apps deployed");
-  let apps = get_apps(false, "", false).await;
+  let apps = get_apps(false, &config_name, non_interactive).await;
   sp.finish_and_clear();
   if apps.len() == 0 {
     println!("No Apps deployed");
     std::process::exit(0);
   }
   let ids = apps.into_iter().map(|a| a.id).collect::<Vec<String>>();
-  let selection = anycloud_dialoguer::select_with_default("Pick App to terminate", &ids, 0);
+  let selection: usize = if app_name.is_empty() && interactive {
+    anycloud_dialoguer::select_with_default("Pick App to terminate", &ids, 0)
+  } else if app_name.is_empty() && non_interactive {
+    warn_and_exit!(
+      1,
+      NoAppNameDefined,
+      "Non interactive mode. No app name provided to terminate."
+    )
+    .await
+  } else {
+    match ids.iter().position(|id| &app_name == id) {
+      Some(pos) => pos,
+      None => {
+        warn_and_exit!(
+          1,
+          NoAppNameDefined,
+          "No app name found with name {}.",
+          app_name
+        )
+        .await
+      }
+    }
+  };
   let cluster_id = &ids[selection];
   CLUSTER_ID.set(cluster_id.to_string()).unwrap();
   let styled_cluster_id = style(cluster_id).bold();
@@ -1101,14 +1138,14 @@ pub async fn terminate() {
   sp.enable_steady_tick(10);
   sp.set_message(&format!("Terminating App {}", styled_cluster_id));
   let body = json!({
-    "deployConfig": get_config("", false).await,
+    "deployConfig": get_config(&config_name, non_interactive).await,
     "clusterId": cluster_id,
   });
   let resp = post_v1("terminate", body).await;
   let res = match resp {
     Ok(_) => {
       poll(&sp, || async {
-        get_apps(false, "", false)
+        get_apps(false, &config_name, non_interactive)
           .await
           .into_iter()
           .find(|app| &app.id == cluster_id)

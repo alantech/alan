@@ -187,8 +187,20 @@ fn main() {
             .await;
           }
           ("terminate", _) => {
-            authenticate(false).await;
-            deploy::terminate().await
+            let non_interactive: bool = match matches.values_of("NON_INTERACTIVE") {
+              Some(_) => true,
+              None => false,
+            };
+            authenticate(non_interactive).await;
+            let app_name = match matches.value_of("app-name") {
+              Some(name) => Some(name.to_string()),
+              None => None,
+            };
+            let config_name = match matches.value_of("config-name") {
+              Some(name) => Some(name.to_string()),
+              None => None,
+            };
+            deploy::terminate(app_name, config_name, non_interactive).await
           }
           ("upgrade", Some(matches)) => {
             let non_interactive: bool = match matches.values_of("NON_INTERACTIVE") {
