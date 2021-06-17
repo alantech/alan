@@ -95,6 +95,19 @@ export default abstract class Type implements Equalable {
   dupIfNotLocalInterface(): Type | null {
     return null;
   }
+
+  fieldOrder(): FieldOrder {
+    let name: string;
+    try {
+      name = this.instance().name;
+    } catch (e) {
+      name = this.name;
+    }
+    if (name !== '') {
+      name = ` ${name}`;
+    }
+    throw new Error(`Type${name} does not have fields`);
+  }
 }
 
 class Builtin extends Type {
