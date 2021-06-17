@@ -5,6 +5,7 @@ import Scope from './Scope';
 import { Equalable, genName, isFnArray, isOpArray, TODO } from './util';
 
 type Fields = {[name: string]: Type | null};
+export type FieldOrder = {[name: string]: number};
 type GenericArgs = {[name: string]: Type | null};
 type TypeName = [string, TypeName[]];
 
@@ -39,6 +40,11 @@ export default abstract class Type implements Equalable {
   abstract instance(): Type;
   abstract tempConstrain(to: Type, scope: Scope): void;
   abstract resetTemp(): void;
+
+  /**
+   * Pls don't call this outside of Types.ts k thx bai <3
+   */
+  abstract size(): number;
 
   static getFromTypename(name: LPNode | string, scope: Scope): Type {
     // TODO: change this to use parseFulltypename
@@ -141,7 +147,7 @@ class Builtin extends Type {
 
   eq(that: Equalable): boolean {
     if (that instanceof Builtin) {
-      return this.ammName === that.ammName;
+      return this === that;
     } else if (that instanceof Interface) {
       if (that instanceof Generated && that.delegate !== null) {
         return this.eq(that.delegate);
@@ -150,6 +156,10 @@ class Builtin extends Type {
     } else {
       return false;
     }
+  }
+
+  fieldOrder(): FieldOrder {
+    return TODO("determine if it's even worth keeping the Builtin class");
   }
 
   instance(): Type {
@@ -163,11 +173,24 @@ class Builtin extends Type {
   resetTemp() {
     // do nothing
   }
+
+  size(): number {
+    // TODO: should probably figure out non-opaque types but we'll see
+    // what happens with this class first (after fn selection fix)
+    switch (this.name) {
+      case 'void':
+        return 0;
+      default:
+        // yes, strings are only size 1 since they're Pascal string ptrs
+        return 1;
+    }
+  }
 }
 
 class Struct extends Type {
   args: GenericArgs
   fields: Fields
+  order: FieldOrder
 
   get ammName(): string {
     return this.name;
@@ -242,6 +265,10 @@ class Struct extends Type {
     return that instanceof Struct && this === that;
   }
 
+  fieldOrder(): FieldOrder {
+    return this.order;
+  }
+
   instance(): Type {
     return this; // TODO: this right?
   }
@@ -253,6 +280,12 @@ class Struct extends Type {
 
   resetTemp() {
     // TODO: can structs have temp constraints?
+  }
+
+  size(): number {
+    // by lazily calculating, should be able to avoid having `OneOf` select
+    // issues in ducked types
+    return Object.values(this.fields).map(ty => ty.size()).reduce((l, r) => l + r);
   }
 }
 
@@ -322,6 +355,10 @@ abstract class Has extends Type {
   // there can never be temp constraints
   resetTemp() {
     throw new Error(`Has constraints cannot have temporary constraints (this error should never be thrown)`);
+  }
+
+  size(): number {
+    throw new Error(`Has constraints do not have a size (this error should never be thrown)`);
   }
 }
 
@@ -615,6 +652,14 @@ class Interface extends Type {
     dup.isDuped = true;
     return dup;
   }
+
+  size(): number {
+    if (this.tempDelegate) {
+      return this.tempDelegate.size();
+    } else {
+      TODO(`figure out how Interface should return from size() if there's not tempDelegate`);
+    }
+  }
 }
 
 // technically, generated types are a kind of interface - we just get to build up
@@ -732,11 +777,22 @@ class Generated extends Interface {
       this.tempDelegate.resetTemp();
     }
   }
+
+  size(): number {
+    if (this.delegate) {
+      return this.delegate.size();
+    } else if (this.tempDelegate) {
+      return this.tempDelegate.size();
+    } else {
+      TODO(`figure out how Generated should return from size() if there's not tempDelegate`);
+    }
+  }
 }
 
 class OneOf extends Type {
   selection: Type[]
   tempSelect: Type[] | null
+  private selected: Type | null;
 
   get ammName(): string {
     return this.select().ammName;
@@ -749,18 +805,28 @@ class OneOf extends Type {
     super(genName());
     this.selection = selection;
     this.tempSelect = tempSelect;
+    this.selected = null;
   }
 
   private select(): Type {
+    let selected: Type;
     if (this.tempSelect !== null) {
       if (this.tempSelect.length === 0) {
         throw new Error();
       }
-      return this.tempSelect[this.tempSelect.length - 1];
+      selected = this.tempSelect[this.tempSelect.length - 1];
     } else if (this.selection.length > 0) {
-      return this.selection[this.selection.length - 1];
+      selected = this.selection[this.selection.length - 1];
     } else {
       throw new Error(`type selection impossible - no possible types left`);
+    }
+    if (this.selected === null) {
+      this.selected = selected;
+    } else if (this.selected !== selected) {
+      // this should never happen, but let's make sure of that :)
+      TODO('uh somehow selected different types - check on this');
+    } else {
+      return this.selected;
     }
   }
 
@@ -786,5 +852,9 @@ class OneOf extends Type {
 
   resetTemp() {
     this.tempSelect = [];
+  }
+
+  size(): number {
+    return this.select().size();
   }
 }
