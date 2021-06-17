@@ -24,7 +24,7 @@ use tokio::time::sleep;
 use twox_hash::XxHash64;
 
 use crate::daemon::ctrl::NAIVE_CLIENT;
-use crate::daemon::daemon::{AGZ_RUN_ERROR, CLUSTER_SECRET, CONTROL_PORT_CHANNEL};
+use crate::daemon::daemon::{CLUSTER_SECRET, CONTROL_PORT_CHANNEL};
 use crate::vm::event::{BuiltInEvents, EventEmit, HandlerFragment, NOP_ID};
 use crate::vm::http::HTTP_CLIENT;
 use crate::vm::memory::{FractalMemory, HandlerMemory, CLOSURE_ARG_MEM_START};
