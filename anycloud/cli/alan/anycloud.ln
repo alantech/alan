@@ -54,9 +54,25 @@ on start {
   if dockerRes.exitCode != 0 {
     const errStr = 'Docker container could not be built'; 
     eprint(errStr);
-    eprint(dockerRes.stderr);
     // TODO: replace " with ' on dockerRes.stderr to be able to send it in the message
-    sendDaemonError(serviceUrl + errorEndpoint, errStr, alanVersion.stdout);
+    eprint(dockerRes.stderr);
+    const url = serviceUrl + errorEndpoint;
+    const version = alanVersion.stdout;
+    // TODO: DRY this into a function after fixing interfaces + functions + type definitions all in the same scope
+    const bodyStr = new ServiceRequestBody {
+      errorCode: 140,
+      alanVersion: version,
+      level: "error",
+      message: errStr,
+    }.toString();
+    const headers = newHashMap('Content-Length', bodyStr.length().toString());
+    headers.set('Content-type', 'application/json');
+    fetch(new Request {
+      method: 'POST',
+      url: url,
+      headers: headers,
+      body: bodyStr,
+    });
     emit exit dockerRes.exitCode;
   }
 
@@ -67,8 +83,27 @@ on start {
     ('docker run --env CLUSTER_SECRET=' + clusterSecret.getOrExit() + ' --env-file anycloud.env --net=host -d anycloud/app:latest');
   const containerRes = exec(containerStr);
   if containerRes.exitCode != 0 {
-    eprint('Docker container could not be started');
+    const errStr = 'Docker container could not be started';
+    eprint(errStr);
+    // TODO: replace " with ' on containerRes.stderr to be able to send it in the message
     eprint(containerRes.stderr);
+    const url = serviceUrl + errorEndpoint;
+    const version = alanVersion.stdout;
+    // TODO: DRY this into a function after fixing interfaces + functions + type definitions all in the same scope
+    const bodyStr = new ServiceRequestBody {
+      errorCode: 140,
+      alanVersion: version,
+      level: "error",
+      message: errStr,
+    }.toString();
+    const headers = newHashMap('Content-Length', bodyStr.length().toString());
+    headers.set('Content-type', 'application/json');
+    fetch(new Request {
+      method: 'POST',
+      url: url,
+      headers: headers,
+      body: bodyStr,
+    });
     emit exit containerRes.exitCode;
   }
 
@@ -114,23 +149,6 @@ fn getModeAndKey(url: string): Result<ModeAndKey> {
       key: key || 'invalid',
     });
   }
-}
-
-fn sendDaemonError(url: string, message: string, alanVersion: string) {
-  const bodyStr = new ServiceRequestBody {
-    errorCode: 140,
-    alanVersion: 'v' + alanVersion,
-    level: "error",
-    message: message,
-  }.toString();
-  const headers = newHashMap('Content-Length', bodyStr.length().toString());
-  headers.set('Content-type', 'application/json');
-  fetch(new Request {
-    method: 'POST',
-    url: url,
-    headers: headers,
-    body: bodyStr,
-  });
 }
 
 fn toString(reqBody: ServiceRequestBody): string {
