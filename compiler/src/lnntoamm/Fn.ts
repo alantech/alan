@@ -54,6 +54,12 @@ export default class Fn {
       if (retTy === null) {
         throw new Error(`Type not in scope: ${name.t.trim()}`);
       }
+      if (retTy.dupIfNotLocalInterface() !== null) {
+        // TODO: figure out how to prevent type erasure while allowing
+        // eg the generic identity function. Or just wait until generic
+        // fn type parameters.
+        throw new Error(`type erasure is illegal`);
+      }
     } else {
       retTy = Type.oneOf([
         Type.generate(),
