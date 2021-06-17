@@ -111,6 +111,7 @@ export default abstract class Expr {
           fieldTy.constrain(expr.ty, metadata.scope);
           // TODO: better ast
           expr = new AccessField(asts[ii], expr as Ref, varName, fieldTy);
+          skipDotIfNext();
         } else {
           // it's a variable reference
           const val = metadata.get(varName);
