@@ -101,8 +101,8 @@ Describe "Types"
     afterEach() {
       kill $PID1
       wait $PID1 2>/dev/null
-      kill $PID2
-      wait $PID2 2>/dev/null
+      # kill $PID2
+      # wait $PID2 2>/dev/null
       return 0
     }
     After afterEach
@@ -111,8 +111,8 @@ Describe "Types"
       Pending unimported-types-returned-by-imported-functions
       node test_$$/test_server.js 1>test_$$/test_server.js.out 2>/dev/null &
       PID1=$!
-      node test_$$/temp.js 1>/dev/null &
-      PID2=$!
+      # node test_$$/temp.js 1>/dev/null &
+      # PID2=$!
       sleep 1
       When run cat test_$$/test_server.js.out
       The output should eq "received"
@@ -122,8 +122,8 @@ Describe "Types"
       Pending unimported-types-returned-by-imported-functions
       node test_$$/test_server.js 1>test_$$/test_server.agc.out 2>/dev/null &
       PID1=$!
-      alan run test_$$/temp.agc 1>/dev/null 2>/dev/null  &
-      PID2=$!
+      # alan run test_$$/temp.agc 1>/dev/null 2>/dev/null  &
+      # PID2=$!
       sleep 1
       When run cat test_$$/test_server.agc.out
       The output should eq "received"
