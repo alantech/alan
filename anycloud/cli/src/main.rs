@@ -99,7 +99,7 @@ pub async fn main() {
       )
       .await;
     }
-    ("terminate", _) => {
+    ("terminate", Some(matches)) => {
       let non_interactive: bool = match matches.values_of("NON_INTERACTIVE") {
         Some(_) => true,
         None => false,
