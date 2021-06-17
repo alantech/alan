@@ -838,9 +838,8 @@ class OneOf extends Type {
     } else if (this.selected !== selected) {
       // this should never happen, but let's make sure of that :)
       TODO('uh somehow selected different types - check on this');
-    } else {
-      return this.selected;
     }
+    return selected;
   }
 
   compatibleWithConstraint(constraint: Type, scope: Scope): boolean {
@@ -856,7 +855,11 @@ class OneOf extends Type {
   }
 
   instance(): Type {
-    return this.select().instance();
+    const selected =  this.select();
+    if (selected === undefined) {
+      throw new Error(`uh whaaaaat`);
+    }
+    return selected.instance();
   }
 
   tempConstrain(to: Type, scope: Scope) {
