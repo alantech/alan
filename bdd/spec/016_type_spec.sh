@@ -90,18 +90,16 @@ Describe "Types"
     }
     AfterAll after
 
-    OUTPUT="{\"success\":\"true\"}"
-
     It "runs js"
       Pending unimported-types-returned-by-imported-functions
       When run test_js
-      The output should eq "$GENTYPEOUTPUT"
+      The output should eq ""
     End
 
     It "runs agc"
       Pending unimported-types-returned-by-imported-functions
       When run test_agc
-      The output should eq "$GENTYPEOUTPUT"
+      The output should eq ""
     End
   End
 End
