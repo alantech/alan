@@ -74,10 +74,7 @@ pub async fn main() {
   let matches = app.get_matches();
   match matches.subcommand() {
     ("new", Some(matches)) => {
-      let non_interactive: bool = match matches.values_of("NON_INTERACTIVE") {
-        Some(_) => true,
-        None => false,
-      };
+      let non_interactive: bool = matches.values_of("NON_INTERACTIVE").is_some();
       authenticate(non_interactive).await;
       new_or_upgrade(
         anycloud_agz,
@@ -100,26 +97,14 @@ pub async fn main() {
       .await;
     }
     ("terminate", Some(matches)) => {
-      let non_interactive: bool = match matches.values_of("NON_INTERACTIVE") {
-        Some(_) => true,
-        None => false,
-      };
+      let non_interactive: bool = matches.values_of("NON_INTERACTIVE").is_some();
       authenticate(non_interactive).await;
-      let app_name = match matches.value_of("app-name") {
-        Some(name) => Some(name.to_string()),
-        None => None,
-      };
-      let config_name = match matches.value_of("config-name") {
-        Some(name) => Some(name.to_string()),
-        None => None,
-      };
+      let app_name = matches.value_of("app-name").map(String::from);
+      let config_name = matches.value_of("config-name").map(String::from);
       deploy::terminate(app_name, config_name, non_interactive).await
     }
     ("upgrade", Some(matches)) => {
-      let non_interactive: bool = match matches.values_of("NON_INTERACTIVE") {
-        Some(_) => true,
-        None => false,
-      };
+      let non_interactive: bool = matches.values_of("NON_INTERACTIVE").is_some();
       authenticate(non_interactive).await;
       new_or_upgrade(
         anycloud_agz,
@@ -200,14 +185,8 @@ async fn new_or_upgrade<Callback, CallbackFut>(
     Some(env_file) => Some(get_env_file_b64(env_file.to_string()).await),
     None => None,
   };
-  let app_name = match app_name {
-    Some(name) => Some(name.to_string()),
-    None => None,
-  };
-  let config_name = match config_name {
-    Some(name) => Some(name.to_string()),
-    None => None,
-  };
+  let app_name = app_name.map(String::from);
+  let config_name = config_name.map(String::from);
   deploy_fn(
     anycloud_agz,
     Some((dockerfile_b64, app_tar_gz_b64)),

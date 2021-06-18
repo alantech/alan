@@ -162,20 +162,11 @@ fn main() {
       ("deploy", Some(sub_matches)) => {
         match sub_matches.subcommand() {
           ("new", Some(matches)) => {
-            let non_interactive: bool = match matches.values_of("NON_INTERACTIVE") {
-              Some(_) => true,
-              None => false,
-            };
+            let non_interactive: bool = matches.values_of("NON_INTERACTIVE").is_some();
             authenticate(non_interactive).await;
             let agz_file = matches.value_of("AGZ_FILE").unwrap();
-            let app_name = match matches.value_of("app-name") {
-              Some(name) => Some(name.to_string()),
-              None => None,
-            };
-            let config_name = match matches.value_of("config-name") {
-              Some(name) => Some(name.to_string()),
-              None => None,
-            };
+            let app_name = matches.value_of("app-name").map(String::from);
+            let config_name = matches.value_of("config-name").map(String::from);
             deploy::new(
               get_agz_b64(agz_file),
               None,
@@ -187,36 +178,18 @@ fn main() {
             .await;
           }
           ("terminate", Some(matches)) => {
-            let non_interactive: bool = match matches.values_of("NON_INTERACTIVE") {
-              Some(_) => true,
-              None => false,
-            };
+            let non_interactive: bool = matches.values_of("NON_INTERACTIVE").is_some();
             authenticate(non_interactive).await;
-            let app_name = match matches.value_of("app-name") {
-              Some(name) => Some(name.to_string()),
-              None => None,
-            };
-            let config_name = match matches.value_of("config-name") {
-              Some(name) => Some(name.to_string()),
-              None => None,
-            };
+            let app_name = matches.value_of("app-name").map(String::from);
+            let config_name = matches.value_of("config-name").map(String::from);
             deploy::terminate(app_name, config_name, non_interactive).await
           }
           ("upgrade", Some(matches)) => {
-            let non_interactive: bool = match matches.values_of("NON_INTERACTIVE") {
-              Some(_) => true,
-              None => false,
-            };
+            let non_interactive: bool = matches.values_of("NON_INTERACTIVE").is_some();
             authenticate(non_interactive).await;
             let agz_file = matches.value_of("AGZ_FILE").unwrap();
-            let app_name = match matches.value_of("app-name") {
-              Some(name) => Some(name.to_string()),
-              None => None,
-            };
-            let config_name = match matches.value_of("config-name") {
-              Some(name) => Some(name.to_string()),
-              None => None,
-            };
+            let app_name = matches.value_of("app-name").map(String::from);
+            let config_name = matches.value_of("config-name").map(String::from);
             deploy::upgrade(
               get_agz_b64(agz_file),
               None,
