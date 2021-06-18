@@ -108,7 +108,7 @@ export default abstract class Expr {
           if (!expr.ty.compatibleWithConstraint(hasField, metadata.scope)) {
             throw new Error(`cannot access ${varName} on type ${expr.ty.name} because it doesn't have that field`);
           }
-          fieldTy.constrain(expr.ty, metadata.scope);
+          expr.ty.constrain(hasField, metadata.scope);
           // TODO: better ast
           expr = new AccessField(asts[ii], expr as Ref, varName, fieldTy);
           skipDotIfNext();
@@ -420,7 +420,7 @@ class AccessField extends Expr {
   }
 
   inline(amm: Output, kind: AssignKind, name: string, ty: Type): void {
-    const fieldIndices = this.fieldTy.fieldIndices();
+    const fieldIndices = this.struct.ty.fieldIndices();
     const index = fieldIndices[this.fieldName];
     amm.assign(kind, name, ty, 'register', [this.struct.ammName, `${index}`]);
   }
@@ -726,7 +726,16 @@ class New extends Expr {
   }
 
   inline(amm: Output, kind: AssignKind, name: string, ty: Type): void {
-    amm.assign(kind, name, ty, 'newarr', [`${this.ty.size()}`]);
+    const int64 = opcodes().get('int64');
+    const size = amm.global('const', int64, this.ty.size().toString());
+    amm.assign(kind, name, ty, 'newarr', [size]);
+    // now assign all of the fields
+    const fieldIndices = this.ty.fieldIndices();
+    for (let field in this.fields) {
+      const index = fieldIndices[field];
+      const pusharrIdx = amm.global('const', int64, index.toString());
+      amm.call('pusharr', [name, pusharrIdx, this.fields[field].ammName]);
+    }
   }
 }
 

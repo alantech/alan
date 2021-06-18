@@ -88,7 +88,7 @@ export default class Output {
     assign: string,
     args: string[] | null = null,
   ) {
-    let line = this.indent
+    let line = this.indent;
     if (kind === '') {
       line = line.concat(name, ' = ');
     } else {
@@ -110,6 +110,18 @@ export default class Output {
     } else {
       line = line.concat(assign);
     }
+    DEBUG_MODE_PRINTING && console.log(line);
+    this.handlers[0] = this.handlers[0].concat(line.concat('\n'));
+  }
+
+  call(
+    opcodeName: string,
+    args: string[],
+  ) {
+    let line = this.indent;
+    line = line.concat(opcodeName, '(');
+    line = line.concat(args.join(', '));
+    line = line.concat(')');
     DEBUG_MODE_PRINTING && console.log(line);
     this.handlers[0] = this.handlers[0].concat(line.concat('\n'));
   }

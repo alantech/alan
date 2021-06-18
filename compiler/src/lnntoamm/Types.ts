@@ -138,6 +138,7 @@ class Builtin extends Type {
             ty.methods.every(m => this.compatibleWithConstraint(m, scope)) &&
             ty.operators.every(o => this.compatibleWithConstraint(o, scope));
     } else {
+      console.log(ty);
       TODO('other types constraining to builtin types');
     }
   }
@@ -218,6 +219,12 @@ class Struct extends Type {
     super(name, ast);
     this.args = args;
     this.fields = fields;
+    this.order = {};
+    let sizeTracker = 0;
+    for (let fieldName in this.fields) {
+      this.order[fieldName] = sizeTracker;
+      sizeTracker += this.fields[fieldName].size();
+    }
   }
 
   static fromAst(ast: LPNode, scope: Scope): Type {
@@ -270,6 +277,9 @@ class Struct extends Type {
   constrain(to: Type, scope: Scope) {
     if (!this.compatibleWithConstraint(to, scope)) {
       throw new Error(`incompatible types: ${this.name} is not compatible with ${to.name}`);
+    }
+    if (to instanceof HasField) {
+      to.ty.constrain(this.fields[to.name], scope);
     }
   }
 
@@ -720,7 +730,7 @@ class Generated extends Interface {
     // then this check should be at the end of this method and pass the
     // removed `tempDelegate` to the new permanent delegate's `tempConstrain`
     if (this.tempDelegate) {
-      throw new Error(`cannot process temporary type constraints after permanent type constraints`);
+      throw new Error(`cannot process temporary type constraints before permanent type constraints`);
     }
 
     if (this.delegate !== null) {
@@ -735,6 +745,9 @@ class Generated extends Interface {
       this.fields.push(...to.fields);
       this.methods.push(...to.methods);
       this.operators.push(...to.operators);
+      if (to instanceof Generated && to.delegate !== null) {
+        this.delegate = to.delegate;
+      }
     } else {
       this.delegate = to;
       this.constrain(this.delegate, scope);
