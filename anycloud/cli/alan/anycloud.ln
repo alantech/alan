@@ -138,7 +138,7 @@ fn getCleanError(error: string): string {
   return error
     .split("\n").join(" ")
     .split("").map(fn(value: string): string {
-      return value == '"' ? "'" : value;
+      return value == '"' ? '\"' : value;
     }).join("");
 }
 
