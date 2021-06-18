@@ -20,21 +20,26 @@ type ServiceRequestBody {
 on start {
   print('Starting Anycloud...');
 
-  const alanVersion = exec('alan --version | sed "s/alan //" | xargs echo -n');
-  if alanVersion.exitCode != 0 {
+  const alanVersionExec = exec('alan --version | sed "s/alan //" | xargs echo -n');
+  if alanVersionExec.exitCode != 0 {
     eprint('Error getting alan version');
   }
-  const alanTechEnv = exec('echo $ALAN_TECH_ENV | xargs echo -n');
-  if alanTechEnv.exitCode != 0 {
+  const alanVersion = alanVersionExec.stdout;
+
+  const alanTechEnvExec = exec('echo $ALAN_TECH_ENV | xargs echo -n');
+  if alanTechEnvExec.exitCode != 0 {
     eprint('Error retreiveing $ALAN_TECH_ENV variable');
   }
-  const serviceUrl = alanTechEnv.stdout == 'local' ? 
+  const alanTechEnv = alanTechEnvExec.stdout;
+
+  const serviceUrl = alanTechEnv == 'local' ? 
     'http://localhost:8080/v1' : 
-    (alanTechEnv.stdout == 'staging' ? 
+    (alanTechEnv == 'staging' ? 
       'https://deploy-staging.alantechnologies.com/v1' : 
       'https://deploy.alantechnologies.com/v1'
     );
   const errorEndpoint = '/daemonError';
+  const url = serviceUrl + errorEndpoint;
 
   const clusterSecret = getClusterSecret();
   if clusterSecret.isNone() {
@@ -55,13 +60,9 @@ on start {
     const errStr = 'Docker container could not be built'; 
     eprint(errStr);
     eprint(dockerRes.stderr);
-    const cleanDockerErr = dockerRes.stderr.split("\n").join(" ").split("").map(fn(value: string): string {
-      return value == '"' ? "'" : value;
-    }).join("");
-    const url = serviceUrl + errorEndpoint;
-    const version = alanVersion.stdout;
+    const cleanDockerErr = getCleanError(dockerRes.stderr);
     const message = errStr + ': ' + cleanDockerErr;
-    sendDaemonError(url, message, version);
+    sendDaemonError(url, message, alanVersion);
     emit exit dockerRes.exitCode;
   }
 
@@ -74,25 +75,10 @@ on start {
   if containerRes.exitCode != 0 {
     const errStr = 'Docker container could not be started';
     eprint(errStr);
-    // TODO: replace " with ' on containerRes.stderr to be able to send it in the message
     eprint(containerRes.stderr);
-    const url = serviceUrl + errorEndpoint;
-    const version = alanVersion.stdout;
-    // TODO: DRY this into a function after fixing interfaces + functions + type definitions all in the same scope
-    const bodyStr = new ServiceRequestBody {
-      errorCode: 140,
-      alanVersion: version,
-      level: "error",
-      message: errStr,
-    }.toString();
-    const headers = newHashMap('Content-Length', bodyStr.length().toString());
-    headers.set('Content-type', 'application/json');
-    fetch(new Request {
-      method: 'POST',
-      url: url,
-      headers: headers,
-      body: bodyStr,
-    });
+    const cleanDockerErr = getCleanError(containerRes.stderr);
+    const message = errStr + ': ' + cleanDockerErr;
+    sendDaemonError(url, message, alanVersion);
     emit exit containerRes.exitCode;
   }
 
@@ -146,6 +132,14 @@ fn toString(reqBody: ServiceRequestBody): string {
   const levelStr = '"level": "' + reqBody.level + '"';
   const messageStr = '"message": "' + reqBody.message + '"';
   return '{' + errorCodeStr + ', ' + alanVersionStr + ', ' + levelStr + ', ' + messageStr + '}';
+}
+
+fn getCleanError(error: string): string {
+  return error
+    .split("\n").join(" ")
+    .split("").map(fn(value: string): string {
+      return value == '"' ? "'" : value;
+    }).join("");
 }
 
 fn sendDaemonError(url: string, message: string, alanVersion: string) {
