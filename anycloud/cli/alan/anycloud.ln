@@ -54,16 +54,19 @@ on start {
   if dockerRes.exitCode != 0 {
     const errStr = 'Docker container could not be built'; 
     eprint(errStr);
-    // TODO: replace " with ' on dockerRes.stderr to be able to send it in the message
     eprint(dockerRes.stderr);
+    const cleanDockerErr = dockerRes.stderr.split("\n").join(" ").split("").map(fn(value: string): string {
+      return value == '"' ? "'" : value;
+    }).join("");
     const url = serviceUrl + errorEndpoint;
     const version = alanVersion.stdout;
+    const message = errStr + ': ' + cleanDockerErr;
     // TODO: DRY this into a function after fixing interfaces + functions + type definitions all in the same scope
     const bodyStr = new ServiceRequestBody {
       errorCode: 140,
       alanVersion: version,
       level: "error",
-      message: errStr,
+      message: message,
     }.toString();
     const headers = newHashMap('Content-Length', bodyStr.length().toString());
     headers.set('Content-type', 'application/json');
