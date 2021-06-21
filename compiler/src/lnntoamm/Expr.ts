@@ -414,7 +414,8 @@ class AccessField extends Expr {
   inline(amm: Output, kind: AssignKind, name: string, ty: Type): void {
     const fieldIndices = this.struct.ty.fieldIndices();
     const index = fieldIndices[this.fieldName];
-    amm.assign(kind, name, ty, 'register', [this.struct.ammName, `${index}`]);
+    const indexVal = amm.global('const', opcodes().get('int64'), `${index}`)
+    amm.assign(kind, name, ty, 'register', [this.struct.ammName, indexVal]);
   }
 }
 
