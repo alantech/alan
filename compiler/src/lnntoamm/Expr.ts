@@ -47,15 +47,7 @@ export default abstract class Expr {
         TODO('functions in functions');
       } else if (work.has('variable')) {
         const varName = work.get('variable').t;
-        if (ii === asts.length - 1) {
-          let dec = metadata.get(varName);
-          if (dec === null) {
-            throw new Error(`:/ ${varName} not defined`);
-          }
-          expr = dec.ref();
-          break;
-        }
-        const next = asts[ii + 1];
+        const next = asts[ii + 1] || new NulLP();
         if (next.has('fncall')) {
           // it's a function call
           // TODO: this is broken because operators don't pass their AST yet
