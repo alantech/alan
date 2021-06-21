@@ -40,10 +40,6 @@ export default abstract class Type implements Equalable {
   abstract instance(): Type;
   abstract tempConstrain(to: Type, scope: Scope): void;
   abstract resetTemp(): void;
-
-  /**
-   * Pls don't call this outside of Types.ts k thx bai <3
-   */
   abstract size(): number;
 
   static getFromTypename(name: LPNode | string, scope: Scope): Type {
@@ -107,6 +103,11 @@ export default abstract class Type implements Equalable {
       name = ` ${name}`;
     }
     throw new Error(`Type${name} does not have fields`);
+  }
+
+  isFixed(): boolean {
+    // only a handful of builtin types are fixed
+    return false;
   }
 }
 
@@ -178,6 +179,24 @@ class Builtin extends Type {
 
   instance(): Type {
     return this;
+  }
+
+  isFixed(): boolean {
+    // TODO: this is pretty lazy and we should probably have a better
+    // way to do this
+    switch (this.name) {
+      case 'int64':
+      case 'int32':
+      case 'int16':
+      case 'int8':
+      case 'float64':
+      case 'float32':
+      case 'bool':
+      case 'void':
+        return true;
+      default:
+        return false;
+    }
   }
 
   tempConstrain(ty: Type, scope: Scope) {

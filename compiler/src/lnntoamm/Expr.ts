@@ -723,7 +723,12 @@ class New extends Expr {
     const size = amm.global('const', int64, this.ty.size().toString());
     amm.assign(kind, name, ty, 'newarr', [size]);
     for (let field in this.fields) {
-      const sizeHint = amm.global('const', int64, `${this.fields[field].ty.instance().size()}`);
+      const tyInstance = this.fields[field].ty.instance();
+      // TODO: determine if we need to fix `pusharr` since this isn't actually
+      // the size or if we should change the variable names in `pusharr` impls
+      // to reflect that they aren't actually using the 3rd val as a size hint
+      const sh = tyInstance.isFixed() ? '8' : '0';
+      const sizeHint = amm.global('const', int64, `${sh}`);
       amm.call('pusharr', [name, this.fields[field].ammName, sizeHint]);
     }
   }
