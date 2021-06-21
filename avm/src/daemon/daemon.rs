@@ -10,7 +10,6 @@ use anycloud::{error, CLUSTER_ID};
 use base64;
 use byteorder::{LittleEndian, ReadBytesExt};
 use flate2::read::GzDecoder;
-use lazy_static::lazy_static;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -30,11 +29,6 @@ pub static CLUSTER_SECRET: OnceCell<Option<String>> = OnceCell::new();
 pub static DAEMON_PROPS: OnceCell<DaemonProperties> = OnceCell::new();
 pub static CONTROL_PORT_CHANNEL: OnceCell<Receiver<ControlPort>> = OnceCell::new();
 
-lazy_static! {
-  pub static ref ALAN_TECH_ENV: String =
-    std::env::var("ALAN_TECH_ENV").unwrap_or("production".to_string());
-}
-
 #[allow(non_snake_case)]
 #[derive(Deserialize, Debug, Serialize)]
 pub struct DaemonProperties {
@@ -46,29 +40,29 @@ pub struct DaemonProperties {
 }
 
 #[cfg(target_os = "linux")]
-async fn get_private_ip() -> DaemonResult<String> {
-  match ALAN_TECH_ENV.as_str() {
-    "local" => Ok("127.0.0.1".to_string()),
-    _ => {
-      let res = tokio::process::Command::new("hostname")
-        .arg("-I")
-        .output()
-        .await?;
-      let stdout = res.stdout;
-      let private_ip = String::from_utf8(stdout)?;
-      match private_ip.trim().split_whitespace().next() {
-        Some(private_ip) => Ok(private_ip.to_string()),
-        None => Err("No ip found".into()),
-      }
+async fn get_private_ip(is_local: bool) -> DaemonResult<String> {
+  if is_local {
+    Ok("127.0.0.1".to_string())
+  } else {
+    let res = tokio::process::Command::new("hostname")
+      .arg("-I")
+      .output()
+      .await?;
+    let stdout = res.stdout;
+    let private_ip = String::from_utf8(stdout)?;
+    match private_ip.trim().split_whitespace().next() {
+      Some(private_ip) => Ok(private_ip.to_string()),
+      None => Err("No ip found".into()),
     }
   }
 }
 
 #[cfg(not(target_os = "linux"))]
-async fn get_private_ip() -> DaemonResult<String> {
-  match ALAN_TECH_ENV.as_str() {
-    "local" => Ok("127.0.0.1".to_string()),
-    _ => Err("`hostname` command does not exist in this OS".into()),
+async fn get_private_ip(is_local: bool) -> DaemonResult<String> {
+  if is_local {
+    Ok("127.0.0.1".to_string())
+  } else {
+    Err("`hostname` command does not exist in this OS".into())
   }
 }
 
@@ -277,7 +271,7 @@ async fn get_daemon_props(
 
 pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
   maybe_create_certs();
-  let is_local_run = local_agz_b64.is_some();
+  let is_local = local_agz_b64.is_some();
   let mut control_port = ControlPort::start().await;
   let (ctrl_tx, ctrl_rx) = watch::channel(control_port.clone());
   CONTROL_PORT_CHANNEL.set(ctrl_rx).unwrap();
@@ -285,31 +279,31 @@ pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
     let agz_b64 = &daemon_props.agzB64;
     let cluster_id = &daemon_props.clusterId;
     CLUSTER_ID.set(String::from(cluster_id)).unwrap();
-    if !is_local_run {
-      let domain = &daemon_props.domain;
-      let deploy_token = &daemon_props.deployToken;
-      task::spawn(async move {
-        let period = Duration::from_secs(60);
-        let mut stats = Vec::new();
-        let mut cluster_size = 0;
-        let self_ip = get_private_ip().await;
-        let dns = DNS::new(&domain);
-        if let (Ok(dns), Ok(self_ip)) = (&dns, &self_ip) {
-          loop {
-            let vms = match dns.get_vms(&cluster_id).await {
-              Ok(vms) => Some(vms),
-              Err(err) => {
-                error!(NoDnsVms, "{}", err).await;
-                None
-              }
-            };
-            // TODO: Figure out how to avoid flushing the LogRendezvousHash table every iteration, but
-            // avoid bugs with misidentifying cluster changes as not-changed
-            if let Some(vms) = vms {
-              cluster_size = vms.len();
-              control_port.update_vms(self_ip, vms).await;
-              ctrl_tx.send(control_port.clone()).unwrap();
+    let domain = &daemon_props.domain;
+    let deploy_token = &daemon_props.deployToken;
+    task::spawn(async move {
+      let period = Duration::from_secs(60);
+      let mut stats = Vec::new();
+      let mut cluster_size = 0;
+      let self_ip = get_private_ip(is_local).await;
+      let dns = DNS::new(&domain);
+      if let (Ok(dns), Ok(self_ip)) = (&dns, &self_ip) {
+        loop {
+          let vms = match dns.get_vms(&cluster_id, is_local).await {
+            Ok(vms) => Some(vms),
+            Err(err) => {
+              error!(NoDnsVms, "{}", err).await;
+              None
             }
+          };
+          // TODO: Figure out how to avoid flushing the LogRendezvousHash table every iteration, but
+          // avoid bugs with misidentifying cluster changes as not-changed
+          if let Some(vms) = vms {
+            cluster_size = vms.len();
+            control_port.update_vms(self_ip, vms).await;
+            ctrl_tx.send(control_port.clone()).unwrap();
+          }
+          if !is_local {
             if control_port.is_leader() {
               // TODO: Should we keep these leader announcements in the stdout logging?
               println!("I am leader!");
@@ -351,18 +345,18 @@ pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
                 post_v1_scale(&cluster_id, &agz_b64, &deploy_token, &factor).await;
               }
             }
-            control_port.check_cluster_health().await;
-            sleep(period).await;
           }
-        } else if let Err(dns_err) = &dns {
-          error!(NoDns, "DNS error: {}", dns_err).await;
-          std::process::exit(1);
-        } else if let Err(self_ip_err) = &self_ip {
-          error!(NoPrivateIp, "Private ip error: {}", self_ip_err).await;
-          std::process::exit(1);
+          control_port.check_cluster_health().await;
+          sleep(period).await;
         }
-      });
-    }
+      } else if let Err(dns_err) = &dns {
+        error!(NoDns, "DNS error: {}", dns_err).await;
+        std::process::exit(1);
+      } else if let Err(self_ip_err) = &self_ip {
+        error!(NoPrivateIp, "Private ip error: {}", self_ip_err).await;
+        std::process::exit(1);
+      }
+    });
     if let Err(err) = run_agz_b64(&agz_b64).await {
       error!(RunAgzFailed, "{:?}", err).await;
       std::process::exit(1);
