@@ -557,7 +557,7 @@ export const opcodeParamMutabilities = {
   condfn: [false, null],
   pusharr: [true, false, false],
   pushf: [true, false, false],
-  pushv: [true, false, false],
+  pushv: [true, false],
   poparr: [true],
   delindx: [true, false],
   each: [false, null],

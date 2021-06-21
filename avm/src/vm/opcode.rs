@@ -2709,7 +2709,6 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     Ok(())
   });
   cpu!(pushv => fn(args, hand_mem) {
-    // ignore the size at `args[2]`
     hand_mem.push_register(args[0], args[1])?;
     Ok(())
   });
