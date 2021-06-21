@@ -62,7 +62,9 @@ on start {
     eprint(dockerRes.stderr);
     const cleanDockerErr = getCleanError(dockerRes.stderr);
     const message = errStr + ': ' + cleanDockerErr;
+    print("Before sending error to daemon");
     sendDaemonError(url, message, alanVersion);
+    print("After sending error to daemon");
     emit exit dockerRes.exitCode;
   }
 
@@ -143,6 +145,10 @@ fn getCleanError(error: string): string {
 }
 
 fn sendDaemonError(url: string, message: string, alanVersion: string) {
+  print("Sending error to daemon");
+  print("url" + url);
+  print("message" + message);
+  print("alan version" + alanVersion);
   let version = 'v' + alanVersion;
   const bodyStr = new ServiceRequestBody {
     errorCode: 140,
@@ -150,6 +156,7 @@ fn sendDaemonError(url: string, message: string, alanVersion: string) {
     level: "error",
     message: message,
   }.toString();
+  print(bodyStr);
   const headers = newHashMap('Content-Length', bodyStr.length().toString());
   headers.set('Content-type', 'application/json');
   fetch(new Request {
