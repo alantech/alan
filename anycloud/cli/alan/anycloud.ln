@@ -159,10 +159,11 @@ fn sendDaemonError(url: string, message: string, alanVersion: string) {
   print(bodyStr);
   const headers = newHashMap('Content-Length', bodyStr.length().toString());
   headers.set('Content-type', 'application/json');
-  fetch(new Request {
+  const res = fetch(new Request {
     method: 'POST',
     url: url,
     headers: headers,
     body: bodyStr,
   });
+  print(res.isOk());
 }
