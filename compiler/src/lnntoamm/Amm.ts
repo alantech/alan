@@ -118,10 +118,7 @@ export default class Output {
     opcodeName: string,
     args: string[],
   ) {
-    let line = this.indent;
-    line = line.concat(opcodeName, '(');
-    line = line.concat(args.join(', '));
-    line = line.concat(')');
+    const line = `${this.indent}${opcodeName}(${args.join(', ')})`;
     DEBUG_MODE_PRINTING && console.log(line);
     this.handlers[0] = this.handlers[0].concat(line.concat('\n'));
   }
