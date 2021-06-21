@@ -150,7 +150,6 @@ fn sendDaemonError(url: string, message: string, alanVersion: string) {
     level: "error",
     message: message,
   }.toString();
-  print(bodyStr);
   const headers = newHashMap('Content-Length', bodyStr.length().toString());
   headers.set('Content-type', 'application/json');
   fetch(new Request {
