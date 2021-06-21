@@ -71,10 +71,15 @@ export default class Fn {
     let metadata = new MetaData(scope, retTy);
 
     const name = ast.get('optname').has() ? ast.get('optname').get().t : null;
-    let params = [
-      ast.get('optargs').get('arglist'),
-      ...ast.get('optargs').get('arglist').get('cdr').getAll(),
-    ].map(paramAst => FnParam.fromArgAst(paramAst, metadata));
+    let p: LPNode[] = [];
+    const arglist = ast.get('optargs').get('arglist');
+    if (arglist.has()) {
+      p.push(arglist);
+      if (arglist.get('cdr').has()) {
+        p.push(...arglist.get('cdr').getAll());
+      }
+    }
+    const params = p.map(paramAst => FnParam.fromArgAst(paramAst, metadata));
 
     let body = [];
     let bodyAsts: LPNode | LPNode[] = ast.get('fullfunctionbody');
