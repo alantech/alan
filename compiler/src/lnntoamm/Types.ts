@@ -139,7 +139,6 @@ class Builtin extends Type {
             ty.methods.every(m => this.compatibleWithConstraint(m, scope)) &&
             ty.operators.every(o => this.compatibleWithConstraint(o, scope));
     } else {
-      console.log(ty);
       TODO('other types constraining to builtin types');
     }
   }
@@ -215,6 +214,7 @@ class Builtin extends Type {
         // FIXME: currently the AVM encodes every value (including 8-bit values)
         // in 8 bytes, so we have to enforce that behavior here by assuming that
         // the size is in factors of 8 bytes. Eventually, we'll have to fix this.
+        // Or we just pretend 64-bits is sufficient for everything and don't.
         return 1;
     }
   }
@@ -887,9 +887,9 @@ class OneOf extends Type {
   }
 
   instance(): Type {
-    const selected =  this.select();
+    const selected = this.select();
     if (selected === undefined) {
-      throw new Error(`uh whaaaaat`);
+      throw new Error('uh whaaaaat');
     }
     return selected.instance();
   }

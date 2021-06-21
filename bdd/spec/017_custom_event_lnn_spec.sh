@@ -54,7 +54,6 @@ Describe "Custom events"
     End
   End
 
-  # TODO: this
   Describe "event with user-defined type"
     before() {
       lnn_sourceToAll "

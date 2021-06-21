@@ -101,7 +101,8 @@ export default abstract class Expr {
             throw new Error(`cannot access ${varName} on type ${expr.ty.name} because it doesn't have that field`);
           }
           expr.ty.constrain(hasField, metadata.scope);
-          // TODO: better ast
+          // TODO: better ast - currently only gives the ast for the field name
+          // (instead of giving the way the struct is accessed as well)
           expr = new AccessField(asts[ii], expr as Ref, varName, fieldTy);
           skipDotIfNext();
         } else {
@@ -653,7 +654,9 @@ class New extends Expr {
 
   /**
    * NOTE: does NOT check to make sure that the fields
-   * are valid.
+   * are valid. Ensure that the caller has already done
+   * validated the fields (fromTypeLiteral does this
+   * already).
    */
   constructor(
     ast: LPNode,
