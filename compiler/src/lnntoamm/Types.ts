@@ -182,8 +182,6 @@ class Builtin extends Type {
   }
 
   isFixed(): boolean {
-    // TODO: this is pretty lazy and we should probably have a better
-    // way to do this
     switch (this.name) {
       case 'int64':
       case 'int32':
@@ -214,7 +212,9 @@ class Builtin extends Type {
       case 'void':
         return 0;
       default:
-        // yes, strings are only size 1 since they're Pascal string ptrs
+        // FIXME: currently the AVM encodes every value (including 8-bit values)
+        // in 8 bytes, so we have to enforce that behavior here by assuming that
+        // the size is in factors of 8 bytes. Eventually, we'll have to fix this.
         return 1;
     }
   }

@@ -186,14 +186,10 @@ export default class Fn {
         if (ii !== this.body.length - 1) {
           throw new Error(`got a return at a bad time (should've been caught already?)`);
         }
-        let refCall = 'refv';
-        const fixedTypes = ['int8', 'int16', 'int32', 'int64', 'float32', 'float64', 'bool'];
         if (ty.eq(opcodes().get('void'))) {
           break;
         }
-        if (fixedTypes.some(fixedTypeName => ty.eq(opcodes().get(fixedTypeName)))) {
-          refCall = 'reff';
-        }
+        const refCall = ty.isFixed() ? 'reff' : 'refv';
         amm.assign(kind, name, ty, refCall, [stmt.ret.ammName]);
         break;
       }
