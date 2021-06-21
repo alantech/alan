@@ -283,9 +283,9 @@ pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
   CONTROL_PORT_CHANNEL.set(ctrl_rx).unwrap();
   if let Some(daemon_props) = get_daemon_props(is_local_anycloud_app, local_agz_b64).await {
     let agz_b64 = &daemon_props.agzB64;
+    let cluster_id = &daemon_props.clusterId;
+    CLUSTER_ID.set(String::from(cluster_id)).unwrap();
     if !is_local_run {
-      let cluster_id = &daemon_props.clusterId;
-      CLUSTER_ID.set(String::from(cluster_id)).unwrap();
       let domain = &daemon_props.domain;
       let deploy_token = &daemon_props.deployToken;
       task::spawn(async move {
