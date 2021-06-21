@@ -721,12 +721,9 @@ class New extends Expr {
     const int64 = opcodes().get('int64');
     const size = amm.global('const', int64, this.ty.size().toString());
     amm.assign(kind, name, ty, 'newarr', [size]);
-    // now assign all of the fields
-    const fieldIndices = this.ty.fieldIndices();
     for (let field in this.fields) {
-      const index = fieldIndices[field];
-      const pusharrIdx = amm.global('const', int64, index.toString());
-      amm.call('pusharr', [name, pusharrIdx, this.fields[field].ammName]);
+      const sizeHint = amm.global('const', int64, `${this.fields[field].ty.instance().size()}`);
+      amm.call('pusharr', [name, this.fields[field].ammName, sizeHint]);
     }
   }
 }
