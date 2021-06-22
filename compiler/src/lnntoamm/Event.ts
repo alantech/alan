@@ -5,15 +5,15 @@ import Scope from './Scope';
 import Type from './Types';
 import { genName, TODO } from './util';
 
-let allEvents: Event[] = [];
+const allEvents: Event[] = [];
 
 export default class Event {
-  ammName: string
-  name: string
-  eventTy: Type
+  ammName: string;
+  name: string;
+  eventTy: Type;
   // if it's a single fn
-  handlers: Array<Fn | Fn[]>
-  runtimeDefined: boolean
+  handlers: Array<Fn | Fn[]>;
+  runtimeDefined: boolean;
 
   static get allEvents(): Event[] {
     return allEvents;
@@ -23,12 +23,12 @@ export default class Event {
     name: string,
     eventTy: Type,
     handlers: Array<Fn | Fn[]> = [],
-    runtimeDefined: boolean = false,
+    runtimeDefined = false,
   ) {
     this.name = name;
     this.eventTy = eventTy;
     this.handlers = handlers;
-    if (allEvents.some(event => event.name === this.name)) {
+    if (allEvents.some((event) => event.name === this.name)) {
       this.ammName = genName();
     } else {
       this.ammName = this.name;
@@ -53,7 +53,7 @@ export default class Event {
     if (this.runtimeDefined === false) {
       amm.global('event', this.eventTy, this.ammName);
     }
-    for (let handler of this.handlers) {
+    for (const handler of this.handlers) {
       if (handler instanceof Array) {
         // select all of the handlers that accept `this.eventTy` and return `void`.
         return TODO('Event handler selection');

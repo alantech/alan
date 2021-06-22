@@ -8,9 +8,9 @@ import Type from './Types';
 import { genName, TODO } from './util';
 
 export class MetaData {
-  scope: Scope
-  variables: { [name: string]: VarDef }
-  retTy: Type
+  scope: Scope;
+  variables: { [name: string]: VarDef };
+  retTy: Type;
 
   constructor(
     scope: Scope,
@@ -38,20 +38,21 @@ export class MetaData {
 }
 
 export default abstract class Stmt {
-  ast: LPNode
+  ast: LPNode;
 
-  constructor(
-    ast: LPNode,
-  ) {
+  constructor(ast: LPNode) {
     this.ast = ast;
   }
 
   abstract inline(amm: Output): void;
 
   static fromAst(ast: LPNode, metadata: MetaData): Stmt[] {
-    let stmts = [];
+    const stmts = [];
     if (ast.has('assignables')) {
-      let [generatedStmts, expr] = Expr.fromAssignablesAst(ast.get('assignables').get('assignables'), metadata);
+      const [generatedStmts, expr] = Expr.fromAssignablesAst(
+        ast.get('assignables').get('assignables'),
+        metadata,
+      );
       stmts.push(...generatedStmts, Dec.gen(expr, metadata));
     } else if (ast.has('assignments')) {
       stmts.push(...Assign.fromAssignments(ast.get('assignments'), metadata));
@@ -71,34 +72,37 @@ export default abstract class Stmt {
 }
 
 export class Assign extends Stmt {
-  upstream: VarDef
-  expr: Expr
+  upstream: VarDef;
+  expr: Expr;
 
-  constructor(
-    ast: LPNode,
-    upstream: VarDef,
-    expr: Expr,
-  ) {
+  constructor(ast: LPNode, upstream: VarDef, expr: Expr) {
     super(ast);
     this.upstream = upstream;
     this.expr = expr;
     if (this.upstream.immutable) {
-      throw new Error(`cannot reassign to ${this.upstream.name} since it was declared as a const`);
+      throw new Error(
+        `cannot reassign to ${this.upstream.name} since it was declared as a const`,
+      );
     }
   }
 
   static fromAssignments(ast: LPNode, metadata: MetaData): Stmt[] {
-    let stmts: Stmt[] = [];
+    const stmts: Stmt[] = [];
     const name = ast.get('varn').t;
     const upstream = metadata.get(name);
-    let [generated, expr] = Expr.fromAssignablesAst(ast, metadata);
+    const [generated, expr] = Expr.fromAssignablesAst(ast, metadata);
     upstream.ty.constrain(expr.ty, metadata.scope);
     stmts.push(...generated, new Assign(ast, upstream, expr));
     return stmts;
   }
 
   inline(amm: Output) {
-    this.expr.inline(amm, '', this.upstream.ammName, this.upstream.ty.instance());
+    this.expr.inline(
+      amm,
+      '',
+      this.upstream.ammName,
+      this.upstream.ty.instance(),
+    );
   }
 }
 
@@ -113,18 +117,13 @@ class Cond extends Stmt {
 }
 
 export abstract class VarDef extends Stmt {
-  immutable: boolean
-  name: string
-  ty: Type
+  immutable: boolean;
+  name: string;
+  ty: Type;
 
   abstract get ammName(): string;
 
-  constructor(
-    ast: LPNode,
-    immutable: boolean,
-    name: string,
-    ty: Type,
-  ) {
+  constructor(ast: LPNode, immutable: boolean, name: string, ty: Type) {
     super(ast);
     this.immutable = immutable;
     this.name = name;
@@ -137,8 +136,8 @@ export abstract class VarDef extends Stmt {
 }
 
 export class Dec extends VarDef {
-  private __ammName: string = '<UNSET>';
-  expr: Expr
+  private __ammName = '<UNSET>';
+  expr: Expr;
 
   get ammName(): string {
     return this.__ammName;
@@ -156,7 +155,7 @@ export class Dec extends VarDef {
   }
 
   static fromDeclarations(ast: LPNode, metadata: MetaData): Stmt[] {
-    let stmts: Stmt[] = [];
+    const stmts: Stmt[] = [];
     let work: LPNode;
     let immutable: boolean;
     if (ast.has('constdeclaration')) {
@@ -167,27 +166,24 @@ export class Dec extends VarDef {
       immutable = false;
     }
     const name = work.get('variable').t;
-    let [generated, expr] = Expr.fromAssignablesAst(work.get('assignables'), metadata);
+    const [generated, expr] = Expr.fromAssignablesAst(
+      work.get('assignables'),
+      metadata,
+    );
     let ty: Type = expr.ty;
     if (work.has('typedec')) {
       const tyName = work.get('typedec').get('fulltypename');
       ty = Type.getFromTypename(tyName, metadata.scope);
     }
     ty.constrain(expr.ty, metadata.scope);
-    let dec = new Dec(
-      ast,
-      immutable,
-      name,
-      ty,
-      expr,
-    );
+    const dec = new Dec(ast, immutable, name, ty, expr);
     stmts.push(...generated, dec);
     metadata.define(dec);
     return stmts;
   }
 
   static gen(expr: Expr, metadata: MetaData): Dec {
-    let ty = Type.generate();
+    const ty = Type.generate();
     ty.constrain(expr.ty, metadata.scope);
     const dec = new Dec(
       expr.ast,
@@ -214,7 +210,7 @@ export class Dec extends VarDef {
 }
 
 export class FnParam extends VarDef {
-  private __assigned: Ref | null
+  private __assigned: Ref | null;
 
   get ammName(): string {
     if (this.__assigned === null) {
@@ -224,11 +220,7 @@ export class FnParam extends VarDef {
     }
   }
 
-  constructor(
-    ast: LPNode,
-    name: string,
-    ty: Type,
-  ) {
+  constructor(ast: LPNode, name: string, ty: Type) {
     super(
       ast,
       false, // default to mutable for fn params
@@ -239,8 +231,8 @@ export class FnParam extends VarDef {
   }
 
   static fromArgAst(ast: LPNode, metadata: MetaData): FnParam {
-    let name = ast.get('variable').t;
-    let typename = ast.get('fulltypename');
+    const name = ast.get('variable').t;
+    const typename = ast.get('fulltypename');
     let paramTy = Type.getFromTypename(typename, metadata.scope);
     if (paramTy === null) {
       paramTy = Type.generate();
@@ -248,7 +240,7 @@ export class FnParam extends VarDef {
     } else if (!(paramTy instanceof Type)) {
       throw new Error(`Function parameter is not a valid type: ${typename.t}`);
     }
-    let duped = paramTy.dupIfNotLocalInterface();
+    const duped = paramTy.dupIfNotLocalInterface();
     if (duped !== null) {
       metadata.scope.put(duped.name, duped);
       paramTy = duped;
@@ -274,25 +266,21 @@ export class FnParam extends VarDef {
 }
 
 class Emit extends Stmt {
-  event: Event
-  emitVal: Ref | null
+  event: Event;
+  emitVal: Ref | null;
 
-  constructor(
-    ast: LPNode,
-    event: Event,
-    emitVal: Ref | null,
-  ) {
+  constructor(ast: LPNode, event: Event, emitVal: Ref | null) {
     super(ast);
     this.event = event;
     this.emitVal = emitVal;
   }
 
   static fromEmits(ast: LPNode, metadata: MetaData): Stmt[] {
-    let stmts: Stmt[] = [];
+    const stmts: Stmt[] = [];
     let emitRef: Ref | null = null;
     if (ast.get('retval').has()) {
-      let emitVal = ast.get('retval').get('assignables');
-      let [generated, expr] = Expr.fromAssignablesAst(emitVal, metadata);
+      const emitVal = ast.get('retval').get('assignables');
+      const [generated, expr] = Expr.fromAssignablesAst(emitVal, metadata);
       stmts.push(...generated);
       if (expr instanceof Ref) {
         emitRef = expr;
@@ -307,13 +295,15 @@ class Emit extends Stmt {
     if (event === null) {
       throw new Error(`event ${eventName} not defined`);
     } else if (!(event instanceof Event)) {
-      throw new Error(`cannot emit to non-events (${eventName} is not an event)`);
+      throw new Error(
+        `cannot emit to non-events (${eventName} is not an event)`,
+      );
     } else if (emitRef !== null) {
       emitRef.ty.constrain(event.eventTy, metadata.scope);
     }
     stmts.push(new Emit(ast, event, emitRef));
     if (!event.eventTy.compatibleWithConstraint(emitRef.ty, metadata.scope)) {
-      throw new Error(``)
+      throw new Error(``);
     }
     return stmts;
   }
@@ -328,22 +318,19 @@ class Emit extends Stmt {
 }
 
 export class Exit extends Stmt {
-  ret: Ref | null
+  ret: Ref | null;
 
-  constructor(
-    ast: LPNode,
-    ret: Ref | null,
-  ) {
+  constructor(ast: LPNode, ret: Ref | null) {
     super(ast);
     this.ret = ret;
   }
 
   static fromExits(ast: LPNode, metadata: MetaData): Stmt[] {
-    let stmts: Stmt[] = [];
+    const stmts: Stmt[] = [];
     if (ast.get('retval').has()) {
-      let exitValAst = ast.get('retval').get('assignables');
-      let [generated, expr] = Expr.fromAssignablesAst(exitValAst, metadata);
-      let retVal = Dec.gen(expr, metadata);
+      const exitValAst = ast.get('retval').get('assignables');
+      const [generated, expr] = Expr.fromAssignablesAst(exitValAst, metadata);
+      const retVal = Dec.gen(expr, metadata);
       stmts.push(...generated, retVal, new Exit(ast, retVal.ref()));
       metadata.retTy.constrain(expr.ty, metadata.scope);
     } else {
@@ -354,7 +341,9 @@ export class Exit extends Stmt {
   }
 
   inline(amm: Output) {
-    if (!this.ret.ty.compatibleWithConstraint(opcodes().get('void'), opcodes())) {
+    if (
+      !this.ret.ty.compatibleWithConstraint(opcodes().get('void'), opcodes())
+    ) {
       amm.exit(this.ret.ammName);
     } else {
       amm.exit();

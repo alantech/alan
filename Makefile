@@ -24,6 +24,10 @@ anycloud-style:
 compiler-browser-check:
 	cd compiler && yarn && yarn test
 
+.PHONY: compiler-style
+compiler-style:
+	cd compiler && yarn && yarn style
+
 ./compiler/alan-compile:
 	cd compiler && yarn
 	yarn add pkg

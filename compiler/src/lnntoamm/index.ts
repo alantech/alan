@@ -1,34 +1,34 @@
-import * as fs from 'fs'
+import * as fs from 'fs';
 
-import * as Ast from './Ast'
-import * as Std from './Std'
-import { LPNode } from '../lp'
+import * as Ast from './Ast';
+import * as Std from './Std';
+import { LPNode } from '../lp';
 import Module from './Module';
 import Event from './Event';
 import Output from './Amm';
 
-type ModuleAsts = {[path: string]: LPNode};
+type ModuleAsts = { [path: string]: LPNode };
 
 const ammFromModuleAsts = (asts: ModuleAsts): string => {
-  let stdFiles: Set<string> = new Set();
+  const stdFiles: Set<string> = new Set();
   for (const [modPath, mod] of Object.entries(asts)) {
     for (const importt of Ast.resolveImports(modPath, mod)) {
       if (importt.substring(0, 5) === '@std/') {
-        stdFiles.add(importt.substring(5, importt.length) + '.lnn')
+        stdFiles.add(importt.substring(5, importt.length) + '.lnn');
       }
     }
   }
   Std.loadStdModules(stdFiles);
   const rootScope = Module.getAllModules()['<root>'].exportScope;
   Module.modulesFromAsts(asts, rootScope);
-  let amm = new Output();
-  Event.allEvents.forEach(e => e.compile(amm));
+  const amm = new Output();
+  Event.allEvents.forEach((e) => e.compile(amm));
   return amm.toString();
-}
+};
 
 const moduleAstsFromFile = (filename: string): ModuleAsts => {
-  let moduleAsts: ModuleAsts = {};
-  let paths = [];
+  const moduleAsts: ModuleAsts = {};
+  const paths = [];
   const rootPath = fs.realpathSync(filename);
   paths.push(rootPath);
 
@@ -44,16 +44,20 @@ const moduleAstsFromFile = (filename: string): ModuleAsts => {
     moduleAsts[modulePath] = module;
     const imports = Ast.resolveImports(modulePath, module);
     for (let i = 0; i < imports.length; i++) {
-      if (!moduleAsts[imports[i]] && !(imports[i].substring(0, 5) === '@std/')) {
+      if (
+        !moduleAsts[imports[i]] &&
+        !(imports[i].substring(0, 5) === '@std/')
+      ) {
         paths.push(imports[i]);
       }
     }
   }
   return moduleAsts;
-}
+};
 
-export const fromFile = (filename: string): string | Buffer => ammFromModuleAsts(moduleAstsFromFile(filename));
+export const fromFile = (filename: string): string | Buffer =>
+  ammFromModuleAsts(moduleAstsFromFile(filename));
 
 export const fromString = (str: string): string | Buffer => {
   return null;
-}
+};

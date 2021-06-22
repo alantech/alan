@@ -9,16 +9,16 @@ import { TODO } from './util';
 
 export default class Fn {
   // null if it's an anonymous fn
-  name: string | null
-  ast: LPNode
+  name: string | null;
+  ast: LPNode;
   // the scope this function is defined in is the `par`
-  scope: Scope
-  params: FnParam[]
-  retTy: Type
-  body: Stmt[]
-  exprFn: Expr
+  scope: Scope;
+  params: FnParam[];
+  retTy: Type;
+  body: Stmt[];
+  exprFn: Expr;
   // not used by this class, but used by Statements
-  metadata: MetaData
+  metadata: MetaData;
 
   get argNames(): string[] {
     return Object.keys(this.params);
@@ -39,13 +39,11 @@ export default class Fn {
     this.params = params;
     this.retTy = retTy !== null ? retTy : Type.generate();
     this.body = body;
-    this.metadata = metadata !== null ? metadata : new MetaData(scope, this.retTy);
+    this.metadata =
+      metadata !== null ? metadata : new MetaData(scope, this.retTy);
   }
 
-  static fromFunctionsAst(
-    ast: LPNode,
-    scope: Scope,
-  ): Fn {
+  static fromFunctionsAst(ast: LPNode, scope: Scope): Fn {
     scope = new Scope(scope);
     let retTy: Type;
     if (ast.get('optreturntype').has()) {
@@ -61,17 +59,14 @@ export default class Fn {
         throw new Error(`type erasure is illegal`);
       }
     } else {
-      retTy = Type.oneOf([
-        Type.generate(),
-        opcodes().get('void'),
-      ])
+      retTy = Type.oneOf([Type.generate(), opcodes().get('void')]);
     }
 
     // TODO: inheritance
-    let metadata = new MetaData(scope, retTy);
+    const metadata = new MetaData(scope, retTy);
 
     const name = ast.get('optname').has() ? ast.get('optname').get().t : null;
-    let p: LPNode[] = [];
+    const p: LPNode[] = [];
     const arglist = ast.get('optargs').get('arglist');
     if (arglist.has()) {
       p.push(arglist);
@@ -79,13 +74,17 @@ export default class Fn {
         p.push(...arglist.get('cdr').getAll());
       }
     }
-    const params = p.map(paramAst => FnParam.fromArgAst(paramAst, metadata));
+    const params = p.map((paramAst) => FnParam.fromArgAst(paramAst, metadata));
 
     let body = [];
     let bodyAsts: LPNode | LPNode[] = ast.get('fullfunctionbody');
     if (bodyAsts.has('functionbody')) {
-      bodyAsts = bodyAsts.get('functionbody').get('statements').getAll().map(s => s.get('statement'));
-      bodyAsts.forEach(ast => body.push(...Stmt.fromAst(ast, metadata)));
+      bodyAsts = bodyAsts
+        .get('functionbody')
+        .get('statements')
+        .getAll()
+        .map((s) => s.get('statement'));
+      bodyAsts.forEach((ast) => body.push(...Stmt.fromAst(ast, metadata)));
     } else {
       bodyAsts = bodyAsts.get('assignfunction').get('assignables');
       let exitVal: Expr;
@@ -93,30 +92,24 @@ export default class Fn {
       if (exitVal instanceof Ref) {
         body.push(new Exit(bodyAsts, exitVal));
       } else {
-        let retVal = Dec.gen(exitVal, metadata);
+        const retVal = Dec.gen(exitVal, metadata);
         body.push(retVal);
         body.push(new Exit(bodyAsts, retVal.ref()));
       }
     }
 
-    return new Fn(
-      ast,
-      new Scope(scope),
-      name,
-      params,
-      retTy,
-      body,
-    );
+    return new Fn(ast, new Scope(scope), name, params, retTy, body);
   }
 
-  static fromFunctionbody(
-    ast: LPNode,
-    scope: Scope,
-  ): Fn {
+  static fromFunctionbody(ast: LPNode, scope: Scope): Fn {
     scope = new Scope(scope);
-    let body = [];
-    let metadata = new MetaData(scope, opcodes().get('void'));
-    ast.get('statements').getAll().map(s => s.get('statement')).forEach(ast => body.push(...Stmt.fromAst(ast, metadata)));
+    const body = [];
+    const metadata = new MetaData(scope, opcodes().get('void'));
+    ast
+      .get('statements')
+      .getAll()
+      .map((s) => s.get('statement'))
+      .forEach((ast) => body.push(...Stmt.fromAst(ast, metadata)));
     return new Fn(
       ast,
       scope,
@@ -132,16 +125,20 @@ export default class Fn {
   // FIXME: this should implement the matrix that i mentioned in the FIXME comment
   // for Expr#inline
   static select(fns: Fn[], argTys: Type[], scope: Scope): Fn[] {
-    return fns.filter(fn => {
-      let params = Object.values(fn.params);
-      return params.length === argTys.length &&
-        params.every((param, ii) => argTys[ii].compatibleWithConstraint(param.ty, scope));
+    return fns.filter((fn) => {
+      const params = Object.values(fn.params);
+      return (
+        params.length === argTys.length &&
+        params.every((param, ii) =>
+          argTys[ii].compatibleWithConstraint(param.ty, scope),
+        )
+      );
     });
   }
 
   asHandler(amm: Output, event: string) {
-    let handlerParams = [];
-    for (let param of this.params) {
+    const handlerParams = [];
+    for (const param of this.params) {
       handlerParams.push([param.ammName, param.ty]);
     }
     amm.addHandler(event, handlerParams, this.retTy);
@@ -152,12 +149,19 @@ export default class Fn {
       if (stmt instanceof Exit) {
         isReturned = true;
         if (ii !== this.body.length - 1) {
-          throw new Error(`hmmmm... unreachable statements probably should've been caught earlier?`);
+          throw new Error(
+            `hmmmm... unreachable statements probably should've been caught earlier?`,
+          );
         }
       }
     }
     if (!isReturned) {
-      if (!this.retTy.compatibleWithConstraint(opcodes().get('void'), this.metadata.scope)) {
+      if (
+        !this.retTy.compatibleWithConstraint(
+          opcodes().get('void'),
+          this.metadata.scope,
+        )
+      ) {
         throw new Error(`event handlers should not return values`);
       }
       amm.exit();
@@ -184,7 +188,9 @@ export default class Fn {
       const stmt = this.body[ii];
       if (stmt instanceof Exit) {
         if (ii !== this.body.length - 1) {
-          throw new Error(`got a return at a bad time (should've been caught already?)`);
+          throw new Error(
+            `got a return at a bad time (should've been caught already?)`,
+          );
         }
         if (ty.eq(opcodes().get('void'))) {
           break;
@@ -195,7 +201,7 @@ export default class Fn {
       }
       stmt.inline(amm);
     }
-    this.params.forEach(param => param.unassign());
+    this.params.forEach((param) => param.unassign());
   }
 }
 
@@ -203,16 +209,16 @@ export default class Fn {
 export class OpcodeFn extends Fn {
   constructor(
     name: string,
-    argDecs: {[name: string]: string},
+    argDecs: { [name: string]: string },
     retTyName: string,
     __opcodes: Scope,
   ) {
-    let params = Object.entries(argDecs).map(([name, tyName]) => {
+    const params = Object.entries(argDecs).map(([name, tyName]) => {
       return new FnParam(new NulLP(), name, opcodes().get(tyName));
     });
-    let retTy = __opcodes.get(retTyName);
+    const retTy = __opcodes.get(retTyName);
     if (retTy === null || !(retTy instanceof Type)) {
-      throw new Error()
+      throw new Error();
     }
     super(new NulLP(), __opcodes, name, params, retTy, []);
     __opcodes.put(name, [this]);
@@ -228,7 +234,7 @@ export class OpcodeFn extends Fn {
       assign,
       ty,
       this.name,
-      args.map(ref => ref.ammName),
+      args.map((ref) => ref.ammName),
     );
   }
 }
