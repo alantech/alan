@@ -4,7 +4,7 @@ use lazy_static::lazy_static;
 use trust_dns_resolver::config::{ResolverConfig, ResolverOpts};
 use trust_dns_resolver::TokioAsyncResolver;
 
-use crate::daemon::daemon::{DaemonResult, ALAN_TECH_ENV};
+use crate::daemon::daemon::DaemonResult;
 
 lazy_static! {
   static ref LOCAL_VM_METADATA: Vec<VMMetadata> = vec![VMMetadata {
@@ -87,8 +87,8 @@ impl DNS {
     })
   }
 
-  pub async fn get_vms(&self, cluster_id: &str) -> DaemonResult<Vec<VMMetadata>> {
-    if ALAN_TECH_ENV.as_str() == "local" {
+  pub async fn get_vms(&self, cluster_id: &str, is_local: bool) -> DaemonResult<Vec<VMMetadata>> {
+    if is_local {
       return Ok(LOCAL_VM_METADATA.to_vec());
     };
     let name = format!("{}.{}", cluster_id, self.domain);
