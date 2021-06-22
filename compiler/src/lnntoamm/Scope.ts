@@ -5,81 +5,83 @@ import Operator from './Operator';
 import Ty from './Types';
 
 // Scope instead of a Module
-type Boxish = Scope | Const | Event | Fn[] | Operator[] | Ty
+type Boxish = Scope | Const | Event | Fn[] | Operator[] | Ty;
 
 export const isFunctions = (boxish: Boxish): boxish is Fn[] => {
-  return boxish instanceof Array && (boxish.length === 0 || boxish[0] instanceof Fn);
-}
+  return (
+    boxish instanceof Array && (boxish.length === 0 || boxish[0] instanceof Fn)
+  );
+};
 
 type BoxSet = {
-  [K: string]: Boxish
-}
+  [K: string]: Boxish;
+};
 
 class Scope {
-  vals: BoxSet
-  par: Scope | null
-  secondaryPar: Scope | null
+  vals: BoxSet;
+  par: Scope | null;
+  secondaryPar: Scope | null;
 
   constructor(par?: Scope) {
-    this.vals = {}
-    this.par = par ? par : null
-    this.secondaryPar = null
+    this.vals = {};
+    this.par = par ? par : null;
+    this.secondaryPar = null;
   }
 
   get(name: string) {
     if (this.vals.hasOwnProperty(name)) {
-      return this.vals[name]
+      return this.vals[name];
     }
-    if (!!this.par) {
-      const val = this.par.get(name)
+    if (this.par) {
+      const val = this.par.get(name);
       if (!val && !!this.secondaryPar) {
-        return this.secondaryPar.get(name)
+        return this.secondaryPar.get(name);
       } else {
-        return val
+        return val;
       }
     }
-    return null
+    return null;
   }
 
   shallowGet(name: string) {
     if (this.vals.hasOwnProperty(name)) {
-      return this.vals[name]
+      return this.vals[name];
     }
-    return null
+    return null;
   }
 
   deepGet(fullName: string) {
-    const fullVar = fullName.trim().split(".")
-    let boxedVar: Boxish
+    const fullVar = fullName.trim().split('.');
+    let boxedVar: Boxish;
     for (let i = 0; i < fullVar.length; i++) {
       if (i === 0) {
-        boxedVar = this.get(fullVar[i])
+        boxedVar = this.get(fullVar[i]);
       } else if (!boxedVar) {
-        return null
+        return null;
       } else {
         if (boxedVar instanceof Scope) {
-          boxedVar = boxedVar.get(fullVar[i])
+          boxedVar = boxedVar.get(fullVar[i]);
         } else {
-          return null
+          return null;
         }
       }
     }
-    return boxedVar
+    return boxedVar;
   }
 
   has(name: string) {
     if (this.vals.hasOwnProperty(name)) {
-      return true
+      return true;
     }
-    if (!!this.par) {
-      return this.par.has(name)
+    if (this.par) {
+      return this.par.has(name);
     }
-    return false
+    return false;
   }
 
   put(name: string, val: Boxish) {
-    this.vals[name.trim()] = val
+    this.vals[name.trim()] = val;
   }
 }
 
-export default Scope
+export default Scope;

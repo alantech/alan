@@ -2,68 +2,73 @@ import { LPNode, NamedAnd, NulLP, ZeroOrMore } from '../lp';
 
 // this is just here for debugging purposes
 const unhandled = (val: any, reason?: string) => {
-  console.error(`========== UNHANDLED: ${reason}`)
-  console.error(val)
-  console.error()
-  throw new Error()
-}
+  console.error(`========== UNHANDLED: ${reason}`);
+  console.error(val);
+  console.error();
+  throw new Error();
+};
 
 export class DepGraph {
   /**
    * Goes by order of the statements in the AMM input. Note that this ordering
    * is not preserved in the AGA output, so this can't be used for AGA dependencies.
    */
-  byOrder: DepNode[]
+  byOrder: DepNode[];
   /**
    * The keys are the AMM variable name. Multiple nodes can be assigned to a given key,
    * since a variable can be assigned to or mutated multiple times. Note that I said
    * "mutated" - all mutations are inserted into the array, with the initial declaration
    * (or in-scope assignment/mutation) being the first value in the list.
    */
-  byVar: {[varname: string]: DepNode[]}
+  byVar: { [varname: string]: DepNode[] };
   /**
    * Uses the `LPNode` as the key to a `DepNode`. Note that this does not act
    * recursively - it'll only work for the top-level nodes of the current handler
    * or function.
    */
-  byLP: Map<LPNode, DepNode>
-  outerGraph?: DepGraph
-  outerDeps: DepNode[]
-  outerMuts: string[]
-  params?: {[varname: string]: DepNode}
+  byLP: Map<LPNode, DepNode>;
+  outerGraph?: DepGraph;
+  outerDeps: DepNode[];
+  outerMuts: string[];
+  params?: { [varname: string]: DepNode };
 
   get isNop(): boolean {
-    return (this.byOrder.length === 0) || this.byOrder.every(n => n.closure != null && n.closure.isNop)
+    return (
+      this.byOrder.length === 0 ||
+      this.byOrder.every((n) => n.closure != null && n.closure.isNop)
+    );
   }
 
   constructor(fn?: LPNode, outer?: DepGraph) {
-    this.byOrder = []
-    this.byVar = {}
-    this.byLP = new Map()
-    this.outerGraph = outer || null
-    this.outerDeps = []
-    this.outerMuts = []
-    this.params = null
+    this.byOrder = [];
+    this.byVar = {};
+    this.byLP = new Map();
+    this.outerGraph = outer || null;
+    this.outerDeps = [];
+    this.outerMuts = [];
+    this.params = null;
 
     if (fn !== null && fn !== undefined) {
-      fn = fn.get('functions')
+      fn = fn.get('functions');
 
-      if (fn.has('args')) this.buildParams([...fn.get('args').getAll()])
+      if (fn.has('args')) this.buildParams([...fn.get('args').getAll()]);
 
-      let stmts = fn.get('functionbody')
-        .get('statements').getAll()
-        .filter(s => !s.has('whitespace'))
-      this.build(stmts)
+      const stmts = fn
+        .get('functionbody')
+        .get('statements')
+        .getAll()
+        .filter((s) => !s.has('whitespace'));
+      this.build(stmts);
     }
   }
 
   private buildParams(params: LPNode[]) {
-    this.params = {}
+    this.params = {};
     while (params.length > 0) {
-      let param = params.shift()
+      let param = params.shift();
       if (param instanceof NamedAnd) {
         if (param.has('arg')) {
-          param = param.get('arg')
+          param = param.get('arg');
         }
 
         if (param.has('variable') && param.get('variable').t.trim() !== '') {
@@ -71,139 +76,154 @@ export class DepGraph {
           // the whole constructor, since this node is just a param declaration
           // and doesn't need to go through the whole shebang. We just need it
           // for when we're generating the dependencies of the aga output
-          this.params[param.get('variable').t.trim()] = new DepNode(param, this, true)
+          this.params[param.get('variable').t.trim()] = new DepNode(
+            param,
+            this,
+            true,
+          );
         } else {
-          unhandled(param, 'unknown param ast')
+          unhandled(param, 'unknown param ast');
         }
       } else if (param instanceof ZeroOrMore) {
-        params.unshift(...param.getAll())
+        params.unshift(...param.getAll());
       } else if (!(param instanceof NulLP)) {
-        unhandled(param, 'unknown ast type for function parameters')
+        unhandled(param, 'unknown ast type for function parameters');
       }
     }
   }
 
   build(stmts: LPNode[]) {
-    for (let stmt of stmts) {
-      let node = new DepNode(stmt, this)
+    for (const stmt of stmts) {
+      const node = new DepNode(stmt, this);
       // console.log(`mutates:`)
       // console.log(node.mutates)
-      for (let mutated of node.mutates) {
-        if (this.outerGraph !== null && this.outerGraph.getLastMutationFor(mutated) !== null) {
-          this.outerMuts.push(mutated)
+      for (const mutated of node.mutates) {
+        if (
+          this.outerGraph !== null &&
+          this.outerGraph.getLastMutationFor(mutated) !== null
+        ) {
+          this.outerMuts.push(mutated);
         }
 
         if (this.byVar[mutated] === null || this.byVar[mutated] === undefined) {
-          this.byVar[mutated] = []
+          this.byVar[mutated] = [];
         }
-        this.byVar[mutated].push(node)
+        this.byVar[mutated].push(node);
       }
-      this.byOrder.push(node)
-      this.byLP.set(stmt, node)
+      this.byOrder.push(node);
+      this.byLP.set(stmt, node);
     }
-    this.outerDeps = [ ...new Set(this.outerDeps) ]
+    this.outerDeps = [...new Set(this.outerDeps)];
   }
 
   getLastMutationFor(varName: string): DepNode {
-    let nodes = this.byVar[varName]
+    const nodes = this.byVar[varName];
     // console.log(`------- ${varName}`)
     // console.log('nodes:')
     // console.log(nodes)
-    if ((nodes !== null && nodes !== undefined) && nodes.length !== 0) {
-      return nodes[nodes.length - 1]
+    if (nodes !== null && nodes !== undefined && nodes.length !== 0) {
+      return nodes[nodes.length - 1];
     }
 
     // if there's no mutation, check to see if it's a variable first
-    if (this.params !== null && this.params[varName] !== null && this.params[varName] !== undefined) {
+    if (
+      this.params !== null &&
+      this.params[varName] !== null &&
+      this.params[varName] !== undefined
+    ) {
       // don't even make up a node for it, it's just dependent on the param
       // which is always guaranteed to be satisfied
-      return this.params[varName]
+      return this.params[varName];
     }
 
     // console.log('og:')
     // console.log(this.outerGraph)
     if (this.outerGraph !== null) {
-      let outer = this.outerGraph.getLastMutationFor(varName)
+      const outer = this.outerGraph.getLastMutationFor(varName);
       if (outer !== null) {
         // console.log(`found outer for ${varName}`)
-        this.outerDeps.push(outer)
-        return outer
+        this.outerDeps.push(outer);
+        return outer;
       }
     }
 
-    return null
+    return null;
   }
 
   toJSON(): object {
     return {
-      byOrder: this.byOrder.map(n => n.toJSON()),
+      byOrder: this.byOrder.map((n) => n.toJSON()),
       byVar: Object.keys(this.byVar),
       byLP: this.byLP.size,
       outerGraph: this.outerGraph !== null,
-      outerDeps: this.outerDeps.map(n => n.toJSON()),
+      outerDeps: this.outerDeps.map((n) => n.toJSON()),
       outerMuts: this.outerMuts,
-    }
+    };
   }
 }
 
 export class DepNode {
-  stmt: string
-  upstream: DepNode[]
-  downstream: DepNode[]
-  closure?: DepGraph
-  mutates: string[]
-  graph: DepGraph
-  isParam: boolean
+  stmt: string;
+  upstream: DepNode[];
+  downstream: DepNode[];
+  closure?: DepGraph;
+  mutates: string[];
+  graph: DepGraph;
+  isParam: boolean;
 
   constructor(stmt: LPNode, graph: DepGraph, isParam?: boolean) {
-    this.stmt = stmt.t.trim()
-    this.upstream = []
-    this.downstream = []
-    this.closure = null
-    this.mutates = []
-    this.graph = graph
-    this.isParam = isParam || false // if `isParam` is `true`, retains it. Otherwise, always at least `false`
+    this.stmt = stmt.t.trim();
+    this.upstream = [];
+    this.downstream = [];
+    this.closure = null;
+    this.mutates = [];
+    this.graph = graph;
+    this.isParam = isParam || false; // if `isParam` is `true`, retains it. Otherwise, always at least `false`
 
     // if this node is a parameter declaration, don't do extra work
     if (this.isParam) {
-      return
+      return;
     }
 
     if (stmt.has('declarations')) {
-      let dec = stmt.get('declarations')
+      let dec = stmt.get('declarations');
       if (dec.has('constdeclaration')) {
-        dec = dec.get('constdeclaration')
+        dec = dec.get('constdeclaration');
       } else if (dec.has('letdeclaration')) {
-        dec = dec.get('letdeclaration')
+        dec = dec.get('letdeclaration');
       } else {
-        unhandled(dec, 'dec kind')
+        unhandled(dec, 'dec kind');
       }
-      this.fromAssignment(dec)
+      this.fromAssignment(dec);
     } else if (stmt.has('assignments')) {
-      this.fromAssignment(stmt.get('assignments'))
+      this.fromAssignment(stmt.get('assignments'));
     } else if (stmt.has('calls')) {
-      this.fromCall(stmt.get('calls'))
+      this.fromCall(stmt.get('calls'));
     } else if (stmt.has('emits')) {
-      let upstream = graph.getLastMutationFor(stmt.get('emits').get('value').t.trim())
+      const upstream = graph.getLastMutationFor(
+        stmt.get('emits').get('value').t.trim(),
+      );
       if (upstream !== null) {
-        this.upstream.push(upstream)
-        upstream.downstream.push(this)
+        this.upstream.push(upstream);
+        upstream.downstream.push(this);
       }
     } else if (stmt.has('exits')) {
-      this.fromExit(stmt.get('exits'))
+      this.fromExit(stmt.get('exits'));
     } else {
-      unhandled(stmt, 'node top-level')
+      unhandled(stmt, 'node top-level');
     }
-    this.upstream = [ ...new Set(this.upstream) ]
-    this.mutates = [ ...new Set(this.mutates) ]
+    this.upstream = [...new Set(this.upstream)];
+    this.mutates = [...new Set(this.mutates)];
   }
 
   fromExit(assign: LPNode) {
     if (assign.has('variable')) {
-      let upstream = this.graph.getLastMutationFor(assign.get('variable').t.trim())
+      const upstream = this.graph.getLastMutationFor(
+        assign.get('variable').t.trim(),
+      );
       if (upstream !== null) {
-        this.upstream.push(upstream)
-        upstream.downstream.push(this)
+        this.upstream.push(upstream);
+        upstream.downstream.push(this);
       }
     }
   }
@@ -211,52 +231,55 @@ export class DepNode {
   fromAssignment(assign: LPNode) {
     // console.log(assign)
     if (!assign.has('assignables')) {
-      unhandled(assign, 'non-assignment assignment?')
+      unhandled(assign, 'non-assignment assignment?');
     }
 
-    let decname = assign.get('decname').t.trim()
+    const decname = assign.get('decname').t.trim();
     // console.log(`decname: ${decname}`)
-    let prev = this.graph.getLastMutationFor(decname)
+    const prev = this.graph.getLastMutationFor(decname);
     if (prev !== null) {
-      this.upstream.push(prev)
+      this.upstream.push(prev);
     }
 
-    this.mutates.push(decname)
+    this.mutates.push(decname);
     if (assign.get('fulltypename').t.trim() === 'function') {
-      this.closure = new DepGraph(assign.get('assignables'), this.graph)
+      this.closure = new DepGraph(assign.get('assignables'), this.graph);
       // for closures, only add upstream since the closure isn't actually
       // evaluated until its called. this just makes it so that the actual
       // use-site of the closure can inherit the upstream dependencies.
-      this.upstream.push(...this.closure.outerDeps)
-      this.mutates.push(...this.closure.outerMuts)
+      this.upstream.push(...this.closure.outerDeps);
+      this.mutates.push(...this.closure.outerMuts);
     } else if (assign.has('assignables')) {
       if (prev !== null) {
-        prev.downstream.push(this)
+        prev.downstream.push(this);
       }
-      assign = assign.get('assignables')
+      assign = assign.get('assignables');
       if (assign.has('calls')) {
-        this.fromCall(assign.get('calls'))
+        this.fromCall(assign.get('calls'));
       } else if (assign.has('value')) {
         // do nothing
       } else {
-        unhandled(assign, 'assignable')
+        unhandled(assign, 'assignable');
       }
     } else {
-      unhandled(assign, 'non-assignable... assignable... ?')
+      unhandled(assign, 'non-assignable... assignable... ?');
     }
   }
 
   fromCall(call: LPNode) {
-    let opcodeName = call.get('variable').t.trim()
-    let args = call.get('calllist').getAll().map(c => c.get('variable'))
-    let mutated = []
-    let opMutability = opcodeParamMutabilities[opcodeName]
+    const opcodeName = call.get('variable').t.trim();
+    const args = call
+      .get('calllist')
+      .getAll()
+      .map((c) => c.get('variable'));
+    const mutated = [];
+    const opMutability = opcodeParamMutabilities[opcodeName];
     if (opMutability === undefined || opMutability === null) {
-      unhandled(opMutability, 'opcode ' + opcodeName)
+      unhandled(opMutability, 'opcode ' + opcodeName);
     }
     for (let ii = 0; ii < opMutability.length; ii++) {
       if (opMutability[ii] === true) {
-        mutated.push(args[ii].t.trim())
+        mutated.push(args[ii].t.trim());
       } else if (opMutability[ii] === null) {
         // null indicates that the parameter expects a closure,
         // so the mutability of the overall call depends on the
@@ -265,33 +288,36 @@ export class DepNode {
         // and use its mutabilities instead
 
         // the closure def will be the first node in the list
-        let closure = this.graph.getLastMutationFor(args[ii].t.trim())
+        const closure = this.graph.getLastMutationFor(args[ii].t.trim());
         if (closure.closure) {
           if (closure === null || closure === undefined) {
-            unhandled(this.graph.byVar, `no nodes declared for ${args[ii].t.trim()}`)
+            unhandled(
+              this.graph.byVar,
+              `no nodes declared for ${args[ii].t.trim()}`,
+            );
           }
-          mutated.push(...closure.mutates)
+          mutated.push(...closure.mutates);
         } else if (closure.isParam) {
-          mutated.push(closure)
+          mutated.push(closure);
         } else {
-          unhandled(closure, 'expected to inherit mutations')
+          unhandled(closure, 'expected to inherit mutations');
         }
       }
     }
-    this.mutates.push(...mutated)
+    this.mutates.push(...mutated);
     // console.log('---')
     // console.log(this.stmt)
-    for (let arg of args) {
+    for (const arg of args) {
       // console.log(arg)
-      let upstream = this.graph.getLastMutationFor(arg.t.trim())
+      const upstream = this.graph.getLastMutationFor(arg.t.trim());
       // console.log(upstream)
       if (upstream !== null) {
         if (upstream.closure !== null) {
           // if it's a closure, inherit the upstreams
-          this.upstream.push(...upstream.upstream)
+          this.upstream.push(...upstream.upstream);
         } else {
-          this.upstream.push(upstream)
-          upstream.downstream.push(this)
+          this.upstream.push(upstream);
+          upstream.downstream.push(this);
         }
       }
     }
@@ -299,14 +325,14 @@ export class DepNode {
 
   toJSON(): object {
     let closure = null;
-    if (this.closure) closure = this.closure.toJSON()
+    if (this.closure) closure = this.closure.toJSON();
     return {
       stmt: this.stmt.replace(/\n/g, '\\n'),
       upstream: this.upstream.length,
       downstream: this.downstream.length,
       closure: this.closure,
       mutates: this.mutates,
-    }
+    };
   }
 }
 
@@ -655,4 +681,4 @@ export const opcodeParamMutabilities = {
   selfrec: [false, false], // FIXME: there should be a way to handle recursive dependencies, but this works for now.
   seqrec: [false, null],
   tcptun: [false],
-}
+};

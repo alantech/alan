@@ -3,15 +3,11 @@ import Scope from './Scope';
 import Type from './Types';
 
 export default class Const {
-  name: string
-  ty: Type
-  assignablesAst: LPNode
+  name: string;
+  ty: Type;
+  assignablesAst: LPNode;
 
-  constructor(
-    name: string,
-    ty: Type | null,
-    assignablesAst: LPNode,
-  ) {
+  constructor(name: string, ty: Type | null, assignablesAst: LPNode) {
     this.name = name;
     this.ty = ty !== null ? ty : Type.generate();
     this.assignablesAst = assignablesAst;

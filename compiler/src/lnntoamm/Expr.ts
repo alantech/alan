@@ -9,20 +9,21 @@ import Type from './Types';
 import { isFnArray, isOpArray, TODO } from './util';
 
 export default abstract class Expr {
-  ast: LPNode
+  ast: LPNode;
   abstract get ty(): Type;
 
-  constructor(
-    ast: LPNode,
-  ) {
+  constructor(ast: LPNode) {
     this.ast = ast;
   }
 
   abstract inline(amm: Output, kind: AssignKind, name: string, ty: Type): void;
 
-  private static fromBaseassignablelist(ast: LPNode, metadata: MetaData): [Stmt[], Expr] {
-    let asts = ast.getAll().map(a => a.get('baseassignable'));
-    let generated: Stmt[] = [];
+  private static fromBaseassignablelist(
+    ast: LPNode,
+    metadata: MetaData,
+  ): [Stmt[], Expr] {
+    const asts = ast.getAll().map((a) => a.get('baseassignable'));
+    const generated: Stmt[] = [];
     let expr: Expr = null;
     for (let ii = 0; ii < asts.length; ii++) {
       const skipDotIfNext = () => {
@@ -37,7 +38,10 @@ export default abstract class Expr {
         }
         work = work.get('objectliterals');
         if (work.has('typeliteral')) {
-          let [stmts, newVal] = New.fromTypeLiteral(work.get('typeliteral'), metadata);
+          const [stmts, newVal] = New.fromTypeLiteral(
+            work.get('typeliteral'),
+            metadata,
+          );
           generated.push(...stmts);
           expr = newVal;
         } else {
@@ -52,8 +56,10 @@ export default abstract class Expr {
           // it's a function call
           // TODO: this is broken because operators don't pass their AST yet
           // let text = `${expr !== null ? expr.ast.t.trim() + '.' : ''}${varName}${next.get('fncall').t.trim()}`;
-          let text = `${expr !== null ? expr.ast.get('variable').t + '.' : ''}${varName}${next.get('fncall').t.trim()}`;
-          let and: any = {
+          const text = `${
+            expr !== null ? expr.ast.get('variable').t + '.' : ''
+          }${varName}${next.get('fncall').t.trim()}`;
+          const and: any = {
             fnname: work.get('variable'),
             fncall: next.get('fncall'),
           };
@@ -62,7 +68,7 @@ export default abstract class Expr {
           if (expr !== null) {
             and.fnaccess = expr.ast;
             if (!(expr instanceof Ref)) {
-              let dec = Dec.gen(expr, metadata);
+              const dec = Dec.gen(expr, metadata);
               generated.push(dec);
               accessed = dec.ref();
             } else {
@@ -70,14 +76,14 @@ export default abstract class Expr {
             }
             expr = null;
           }
-          let callAst = new NamedAnd(
+          const callAst = new NamedAnd(
             text,
             and,
             (work as NamedOr).filename,
             work.line,
             work.char,
           );
-          let [intermediates, call] = Call.fromCallAst(
+          const [intermediates, call] = Call.fromCallAst(
             callAst,
             varName,
             accessed,
@@ -95,10 +101,12 @@ export default abstract class Expr {
             expr = dec.ref();
           }
           // ensure that the value has the field
-          let fieldTy = Type.generate();
+          const fieldTy = Type.generate();
           const hasField = Type.hasField(varName, fieldTy);
           if (!expr.ty.compatibleWithConstraint(hasField, metadata.scope)) {
-            throw new Error(`cannot access ${varName} on type ${expr.ty.name} because it doesn't have that field`);
+            throw new Error(
+              `cannot access ${varName} on type ${expr.ty.name} because it doesn't have that field`,
+            );
           }
           expr.ty.constrain(hasField, metadata.scope);
           // TODO: better ast - currently only gives the ast for the field name
@@ -119,25 +127,37 @@ export default abstract class Expr {
         if (expr !== null) {
           throw new Error(`unexpected constant found`);
         }
-        let [int, constant] = Const.fromConstantsAst(work, metadata);
+        const [int, constant] = Const.fromConstantsAst(work, metadata);
         generated.push(...int);
         expr = constant;
         skipDotIfNext();
       } else if (work.has('fncall')) {
         work = work.get('fncall');
         if (expr === null) {
-          let assignableList = work.get('assignablelist');
-          if (!assignableList.has('assignables') || assignableList.get('cdr').has(0)) {
-            console.log(assignableList, assignableList.has('assignables'), assignableList.get('cdr').has(0));
-            throw new Error(`unexpected token: found ${work.t.trim()} but it's not applied to a function`);
+          const assignableList = work.get('assignablelist');
+          if (
+            !assignableList.has('assignables') ||
+            assignableList.get('cdr').has(0)
+          ) {
+            console.log(
+              assignableList,
+              assignableList.has('assignables'),
+              assignableList.get('cdr').has(0),
+            );
+            throw new Error(
+              `unexpected token: found ${work.t.trim()} but it's not applied to a function`,
+            );
           }
-          const [intermediates, res] = Expr.fromAssignablesAst(assignableList.get('assignables'), metadata);
+          const [intermediates, res] = Expr.fromAssignablesAst(
+            assignableList.get('assignables'),
+            metadata,
+          );
           generated.push(...intermediates);
           expr = res;
           skipDotIfNext();
         } else {
           // it's probably an HOF
-          let text = `${expr.ast.t.trim()}${work.t.trim()}`;
+          const text = `${expr.ast.t.trim()}${work.t.trim()}`;
           const and = {
             fnaccess: expr.ast,
             fncall: work,
@@ -153,7 +173,9 @@ export default abstract class Expr {
         }
       } else {
         console.error(asts);
-        throw new Error(`unexpected token: expected variable or value, found ${work.t.trim()}`);
+        throw new Error(
+          `unexpected token: expected variable or value, found ${work.t.trim()}`,
+        );
       }
     }
     return [generated, expr];
@@ -162,16 +184,19 @@ export default abstract class Expr {
   static fromAssignablesAst(ast: LPNode, metadata: MetaData): [Stmt[], Expr] {
     const asts = ast.getAll();
     // break it up so that we're only working on one base assignable list or operator at a time.
-    let operated: Array<[Stmt[], Expr] | Operator[]> = asts.map(work => {
+    const operated: Array<[Stmt[], Expr] | Operator[]> = asts.map((work) => {
       work = work.get('withoperators');
       if (work.has('baseassignablelist')) {
-        return Expr.fromBaseassignablelist(work.get('baseassignablelist'), metadata);
+        return Expr.fromBaseassignablelist(
+          work.get('baseassignablelist'),
+          metadata,
+        );
       } else if (work.has('operators')) {
         // TODO: this won't work with operators associated with interfaces.
         // Will have to iterate through all of the interfaces in-scope and collect
         // the applicable types as well
         const op = work.get('operators').t.trim();
-        let operators = metadata.scope.get(op) as Operator[];
+        const operators = metadata.scope.get(op) as Operator[];
         if (operators === null) {
           throw new Error(`can't find operator ${op}`);
         } else if (!isOpArray(operators)) {
@@ -200,32 +225,38 @@ export default abstract class Expr {
     // immediately following an expression must be infix, while all others must be
     // a prefix
     // TODO: make sure errors match lntoamm
-    let stmts: Stmt[] = [];
+    const stmts: Stmt[] = [];
     let infixPosition = false;
-    let operation = operated.map(op => {
+    const operation = operated.map((op) => {
       if (!isOpArray(op)) {
         if (infixPosition) {
-          throw new Error(`invalid expression: expected operator, found ${op[1].ast.t.trim()}`);
+          throw new Error(
+            `invalid expression: expected operator, found ${op[1].ast.t.trim()}`,
+          );
         }
         infixPosition = true;
         stmts.push(...op[0]);
         return op[1];
       } else if (infixPosition) {
         infixPosition = false;
-        return op.filter(op => !op.isPrefix);
+        return op.filter((op) => !op.isPrefix);
       } else {
-        return op.filter(op => op.isPrefix);
+        return op.filter((op) => op.isPrefix);
       }
     });
 
     // Now we build the precedence table for this application
-    const precedences = operation.map(opOrRef => {
+    const precedences = operation.map((opOrRef) => {
       if (opOrRef instanceof Expr) {
         return opOrRef;
       } else {
         // return opOrRef.reduce((prec, op) => prec.add(op.precedence), new Set<number>());
         // TODO: do i need this?
-        return opOrRef.reduce((prec, op) => prec.set(op.precedence, [...(prec.get(op.precedence) || []), op]), new Map<number, Operator[]>());
+        return opOrRef.reduce(
+          (prec, op) =>
+            prec.set(op.precedence, [...(prec.get(op.precedence) || []), op]),
+          new Map<number, Operator[]>(),
+        );
       }
     });
 
@@ -240,13 +271,13 @@ export default abstract class Expr {
       let prec = -1;
       let idxs: number[] = precedences.reduce((idxs, opOrRef, ii) => {
         if (opOrRef instanceof Expr) return idxs;
-        let precs = Array.from(opOrRef.keys());
+        const precs = Array.from(opOrRef.keys());
         if (precs.length > 1) {
           // TODO: this is just a stop for future cases. might have
           // to revisit this whole loop, but just to remind myself
           TODO('figure out multiple precedences?');
         }
-        let maxPrec = precs.sort().pop();
+        const maxPrec = precs.sort().pop();
         if (maxPrec > prec) {
           prec = maxPrec;
           return [ii];
@@ -263,19 +294,17 @@ export default abstract class Expr {
       // all of the selected operators should be the same infix/prefix mode
       // if the result is null, that means they're not - idk if that's
       // ever a case so just TODO it
-      const prefixModeOf = (vals: Operator[]) => vals.reduce(
-        (mode, op) => {
+      const prefixModeOf = (vals: Operator[]) =>
+        vals.reduce((mode, op) => {
           if (mode === null) return mode;
           return mode === op.isPrefix ? mode : null;
-        },
-        vals[0].isPrefix
-      );
+        }, vals[0].isPrefix);
 
-      idxs.forEach(idx => {
+      idxs.forEach((idx) => {
         const val = precedences[idx];
         // heat-death-of-the-universe check
         if (val instanceof Expr) {
-          throw new Error(`uh, how?`)
+          throw new Error(`uh, how?`);
         }
         // ensure that none of the operators disagree on fixity
         const mode = prefixModeOf(val.get(prec));
@@ -290,29 +319,35 @@ export default abstract class Expr {
       // TODO: this can be iterated through in reverse, but it's a quick
       // refactor during PR review so do that later
       for (let jj = 0; jj < idxs.length; jj++) {
-        let idx = idxs[jj];
-        let item = precedences[idx] as Map<number, Operator[]>;
-        let operators = [...item.get(prec)];
+        const idx = idxs[jj];
+        const item = precedences[idx] as Map<number, Operator[]>;
+        const operators = [...item.get(prec)];
         const isPrefix = prefixModeOf(operators);
         if (!isPrefix) continue;
         // prefix operators are right-associated, so we have to go ahead
         // in the indices to ensure that the right-most is handled first
-        let applyIdx = precedences.slice(idx).findIndex(val => val instanceof Expr);
+        const applyIdx = precedences
+          .slice(idx)
+          .findIndex((val) => val instanceof Expr);
         // make sure all of the operators between are prefix operators
         // with the same precedence
         precedences.slice(idx + 1, applyIdx).forEach((opOrExpr, idx) => {
           if (opOrExpr instanceof Expr) {
             throw new Error(`this error should not be thrown`);
           } else if (!idxs.includes(idx)) {
-            throw new Error(`unable to resolve operators - operator precedence ambiguity`);
+            throw new Error(
+              `unable to resolve operators - operator precedence ambiguity`,
+            );
           } else if (prefixModeOf(opOrExpr.get(prec)) !== true) {
             throw new Error(`unable to resolve operators - operator ambiguity`);
           }
         });
         // slice copies the array, so this is ok :)
-        for (let op of precedences.slice(idx, applyIdx).reverse()) {
+        for (const op of precedences.slice(idx, applyIdx).reverse()) {
           if (op instanceof Expr) {
-            throw new Error(`unexpected expression during computation? this error should never happen`);
+            throw new Error(
+              `unexpected expression during computation? this error should never happen`,
+            );
           }
           if (!(precedences[applyIdx] instanceof Ref)) {
             const dec = Dec.gen(precedences[applyIdx] as Expr, metadata);
@@ -320,11 +355,20 @@ export default abstract class Expr {
             precedences[applyIdx] = dec.ref();
           }
           const applyTo = precedences[applyIdx] as Ref;
-          let fns = operators.reduce((fns, op) => [...fns, ...op.select(metadata.scope, applyTo.ty)], new Array<Fn>());
-          precedences[applyIdx] = new Call(new NulLP(), fns, null, [applyTo], metadata.scope);
-          let rm = precedences.splice(idx, applyIdx);
+          const fns = operators.reduce(
+            (fns, op) => [...fns, ...op.select(metadata.scope, applyTo.ty)],
+            new Array<Fn>(),
+          );
+          precedences[applyIdx] = new Call(
+            new NulLP(),
+            fns,
+            null,
+            [applyTo],
+            metadata.scope,
+          );
+          const rm = precedences.splice(idx, applyIdx);
           // update indices
-          idxs = idxs.map((idx, kk) => kk > jj ? idx - rm.length : kk);
+          idxs = idxs.map((idx, kk) => (kk > jj ? idx - rm.length : kk));
           // remove the operators we used so they aren't looked at later
           idxs.splice(jj, rm.length);
           jj -= 1;
@@ -332,8 +376,8 @@ export default abstract class Expr {
       }
       // now suffix operators
       for (let jj = 0; jj < idxs.length; jj++) {
-        let idx = idxs[jj];
-        let item = precedences[idx];
+        const idx = idxs[jj];
+        const item = precedences[idx];
         // heat-death-of-the-universe check
         if (item instanceof Expr) {
           console.log('-> prec', prec);
@@ -342,13 +386,15 @@ export default abstract class Expr {
           throw new Error(`uh, how?`);
         }
         // prefer the last-defined operators, so we must pop()
-        let ops = [...item.get(prec)];
+        const ops = [...item.get(prec)];
         if (prefixModeOf(ops) === true) {
-          throw new Error(`prefix operators at precedence level ${prec} should've already been handled`);
+          throw new Error(
+            `prefix operators at precedence level ${prec} should've already been handled`,
+          );
         }
         // since infix operators are left-associated, and we iterate
         // left->right anyways, this impl is easy
-        let fns = [];
+        const fns = [];
         let left = precedences[idx - 1] as Ref;
         let right = precedences[idx + 1] as Ref;
         if (!left || !right) {
@@ -380,7 +426,7 @@ export default abstract class Expr {
         );
         precedences[idx - 1] = call;
         precedences.splice(idx, 2);
-        idxs = idxs.map((idx, kk) => kk > jj ? idx - 2 : kk);
+        idxs = idxs.map((idx, kk) => (kk > jj ? idx - 2 : kk));
       }
     }
 
@@ -392,20 +438,15 @@ export default abstract class Expr {
 }
 
 class AccessField extends Expr {
-  struct: Ref
-  fieldName: string
-  fieldTy: Type
+  struct: Ref;
+  fieldName: string;
+  fieldTy: Type;
 
   get ty(): Type {
     return this.fieldTy;
   }
 
-  constructor(
-    ast: LPNode,
-    struct: Ref,
-    fieldName: string,
-    fieldTy: Type,
-  ) {
+  constructor(ast: LPNode, struct: Ref, fieldName: string, fieldTy: Type) {
     super(ast);
     this.struct = struct;
     this.fieldName = fieldName;
@@ -415,19 +456,19 @@ class AccessField extends Expr {
   inline(amm: Output, kind: AssignKind, name: string, ty: Type): void {
     const fieldIndices = this.struct.ty.fieldIndices();
     const index = fieldIndices[this.fieldName];
-    const indexVal = amm.global('const', opcodes().get('int64'), `${index}`)
+    const indexVal = amm.global('const', opcodes().get('int64'), `${index}`);
     amm.assign(kind, name, ty, 'register', [this.struct.ammName, indexVal]);
   }
 }
 
 class Call extends Expr {
-  fns: Fn[]
-  maybeClosure: VarDef | null
-  args: Ref[]
-  retTy: Type
+  fns: Fn[];
+  maybeClosure: VarDef | null;
+  args: Ref[];
+  retTy: Type;
   // FIXME: once the matrix as below is implemented, get rid of this field
   // and just pass it into the selection phase
-  scope: Scope
+  scope: Scope;
 
   get ty(): Type {
     return this.retTy;
@@ -448,7 +489,7 @@ class Call extends Expr {
     this.fns = fns;
     this.maybeClosure = maybeClosure;
     this.args = args;
-    this.retTy = Type.oneOf(Array.from(new Set(fns.map(fn => fn.retTy))));
+    this.retTy = Type.oneOf(Array.from(new Set(fns.map((fn) => fn.retTy))));
     this.scope = scope;
   }
 
@@ -458,34 +499,41 @@ class Call extends Expr {
     accessed: Ref | null,
     metadata: MetaData,
   ): [Stmt[], Expr] {
-    let stmts = [];
-    let argAst = ast.get('fncall').get('assignablelist');
-    let argAsts: LPNode[] = [];
+    const stmts = [];
+    const argAst = ast.get('fncall').get('assignablelist');
+    const argAsts: LPNode[] = [];
     if (argAst.has('assignables')) {
       argAsts.push(argAst.get('assignables'));
       if (argAst.has('cdr')) {
-        argAsts.push(...argAst.get('cdr').getAll().map(a => a.get('assignables')));
+        argAsts.push(
+          ...argAst
+            .get('cdr')
+            .getAll()
+            .map((a) => a.get('assignables')),
+        );
       }
     }
-    let args: Ref[] = [];
+    const args: Ref[] = [];
     if (accessed !== null) {
       args.push(accessed);
     }
-    args.push(...argAsts.map(a => {
-      let [generated, argExpr] = Expr.fromAssignablesAst(a, metadata);
-      stmts.push(...generated);
-      let arg: Ref;
-      if (argExpr instanceof Ref) {
-        arg = argExpr;
-      } else {
-        const dec = Dec.gen(argExpr, metadata);
-        stmts.push(dec);
-        arg = dec.ref();
-      }
-      return arg;
-    }));
+    args.push(
+      ...argAsts.map((a) => {
+        const [generated, argExpr] = Expr.fromAssignablesAst(a, metadata);
+        stmts.push(...generated);
+        let arg: Ref;
+        if (argExpr instanceof Ref) {
+          arg = argExpr;
+        } else {
+          const dec = Dec.gen(argExpr, metadata);
+          stmts.push(dec);
+          arg = dec.ref();
+        }
+        return arg;
+      }),
+    );
     let fns = metadata.scope.deepGet(fnName);
-    let closure = metadata.get(fnName);
+    const closure = metadata.get(fnName);
     if ((fns === null || !isFnArray(fns)) && closure === null) {
       throw new Error(`no functions found for ${fnName}`);
     }
@@ -493,7 +541,7 @@ class Call extends Expr {
       fns = [] as Fn[];
     }
     // first reduction
-    let argTys = args.map(arg => arg.ty);
+    const argTys = args.map((arg) => arg.ty);
     fns = Fn.select(fns, argTys, metadata.scope);
     // now, constrain all of the args to their possible types
     // makes it so that the type of the parameters in each position are in their own list
@@ -503,7 +551,7 @@ class Call extends Expr {
     // for some reason TS thinks that `fns` is `Boxish` but *only* in the lambda here,
     // which is why I have to specify `fns: Fn[]`...
     argTys.forEach((ty, ii) => {
-      let paramTys = (fns as Fn[]).map(fn => fn.params[ii].ty);
+      const paramTys = (fns as Fn[]).map((fn) => fn.params[ii].ty);
       // console.log('constraining', ty, 'to', paramTys);
       ty.constrain(Type.oneOf(paramTys), metadata.scope);
       // console.log('constrained:', ty);
@@ -545,13 +593,13 @@ class Call extends Expr {
   This should also happen in the unimplemented "solidification" phase.
   */
   inline(amm: Output, kind: AssignKind, name: string, ty: Type) {
-    const argTys = this.args.map(arg => arg.ty.instance());
+    const argTys = this.args.map((arg) => arg.ty.instance());
     const selected = Fn.select(this.fns, argTys, this.scope) || [];
     // console.log('!!!!!!!!!!', this.ast.t.trim(), selected);
     if (selected.length === 0) {
       // TODO: to get better error reporting, we need to pass an ast when using
       // operators. i'm not worried about error reporting yet, though :)
-      console.log('~~~ ERROR')
+      console.log('~~~ ERROR');
       console.log('selection pool:', this.fns);
       console.log('args:', this.args);
       console.log('kind:', kind);
@@ -564,27 +612,20 @@ class Call extends Expr {
 }
 
 class Const extends Expr {
-  val: string
-  private detectedTy: Type
+  val: string;
+  private detectedTy: Type;
 
   get ty(): Type {
     return this.detectedTy;
   }
 
-  constructor(
-    ast: LPNode,
-    val: string,
-    detectedTy: Type,
-  ) {
+  constructor(ast: LPNode, val: string, detectedTy: Type) {
     super(ast);
     this.val = val;
     this.detectedTy = detectedTy;
   }
 
-  static fromConstantsAst(
-    ast: LPNode,
-    _metadata: MetaData,
-  ): [Stmt[], Expr] {
+  static fromConstantsAst(ast: LPNode, _metadata: MetaData): [Stmt[], Expr] {
     let val = ast.t.trim();
     let detectedTy = null;
     if (ast.has('bool')) {
@@ -595,24 +636,20 @@ class Const extends Expr {
       // don't need to for double-quoted strings, since the string output
       // is double-quoted
       if (val.startsWith("'")) {
-        let sanitized = val.substring(1, val.length - 1).replace(/'/g, "\\'");
+        const sanitized = val.substring(1, val.length - 1).replace(/'/g, "\\'");
         val = `"${sanitized.replace(/"/g, '\\"')}"`;
       }
     } else if (ast.has('num')) {
       if (val.indexOf('.') !== -1) {
-        detectedTy = Type.oneOf([
-          'float32',
-          'float64',
-        ].map(t => opcodes().get(t)));
+        detectedTy = Type.oneOf(
+          ['float32', 'float64'].map((t) => opcodes().get(t)),
+        );
       } else {
-        detectedTy = Type.oneOf([
-          'float32',
-          'float64',
-          'int8',
-          'int16',
-          'int32',
-          'int64',
-        ].map(t => opcodes().get(t)));
+        detectedTy = Type.oneOf(
+          ['float32', 'float64', 'int8', 'int16', 'int32', 'int64'].map((t) =>
+            opcodes().get(t),
+          ),
+        );
       }
     } else {
       throw new Error(`unrecognized constants node: ${ast}`);
@@ -645,8 +682,8 @@ class Const extends Expr {
 }
 
 class New extends Expr {
-  valTy: Type
-  fields: {[name: string]: Ref}
+  valTy: Type;
+  fields: { [name: string]: Ref };
 
   get ty(): Type {
     return this.valTy;
@@ -658,40 +695,33 @@ class New extends Expr {
    * validated the fields (fromTypeLiteral does this
    * already).
    */
-  constructor(
-    ast: LPNode,
-    valTy: Type,
-    fields: {[name: string]: Ref},
-  ) {
+  constructor(ast: LPNode, valTy: Type, fields: { [name: string]: Ref }) {
     super(ast);
     this.valTy = valTy;
     this.fields = fields;
   }
 
-  static fromTypeLiteral(
-    ast: LPNode,
-    metadata: MetaData,
-  ): [Stmt[], New] {
-    let stmts: Stmt[] = [];
+  static fromTypeLiteral(ast: LPNode, metadata: MetaData): [Stmt[], New] {
+    const stmts: Stmt[] = [];
 
     // get the constructed type
-    let typename = ast.get('literaldec').get('fulltypename');
-    let valTy = Type.getFromTypename(typename, metadata.scope);
+    const typename = ast.get('literaldec').get('fulltypename');
+    const valTy = Type.getFromTypename(typename, metadata.scope);
 
-    let fieldsAst = ast.get('typebase').get('typeassignlist');
-    let fieldAsts: LPNode[] = [
-      fieldsAst,
-      ...fieldsAst.get('cdr').getAll(),
-    ];
-    let fields: {[name: string]: Ref} = {};
+    const fieldsAst = ast.get('typebase').get('typeassignlist');
+    const fieldAsts: LPNode[] = [fieldsAst, ...fieldsAst.get('cdr').getAll()];
+    const fields: { [name: string]: Ref } = {};
     // type that we're generating to make sure that the constructed object
     // has the appropriate fields.
-    let fieldCheck = Type.generate();
+    const fieldCheck = Type.generate();
 
-    for (let fieldAst of fieldAsts) {
+    for (const fieldAst of fieldAsts) {
       const fieldName = fieldAst.get('variable').t.trim();
       // assign the value of the field to a variable
-      let [newStmts, fieldVal] = Expr.fromAssignablesAst(fieldAst.get('assignables'), metadata);
+      let [newStmts, fieldVal] = Expr.fromAssignablesAst(
+        fieldAst.get('assignables'),
+        metadata,
+      );
       stmts.push(...newStmts);
       if (!(fieldVal instanceof Ref)) {
         const fieldDef = Dec.gen(fieldVal, metadata);
@@ -701,7 +731,10 @@ class New extends Expr {
       // assign the field to our pseudo-object
       fields[fieldName] = fieldVal as Ref;
       // add the field to our generated type
-      fieldCheck.constrain(Type.hasField(fieldName, fieldVal.ty), metadata.scope);
+      fieldCheck.constrain(
+        Type.hasField(fieldName, fieldVal.ty),
+        metadata.scope,
+      );
     }
 
     // ensure that the type we just constructed matches the type intended
@@ -712,9 +745,13 @@ class New extends Expr {
     // TODO: MUCH better error handling. Ideally without exposing the
     // internal details of the `Type`.
     if (!fieldCheck.compatibleWithConstraint(valTy, metadata.scope)) {
-      throw new Error(`Constructed value doesn't have all of the fields in type ${valTy.name}`);
+      throw new Error(
+        `Constructed value doesn't have all of the fields in type ${valTy.name}`,
+      );
     } else if (!valTy.compatibleWithConstraint(fieldCheck, metadata.scope)) {
-      throw new Error(`Constructed value has fields that don't exist in ${valTy.name}`);
+      throw new Error(
+        `Constructed value has fields that don't exist in ${valTy.name}`,
+      );
     }
 
     // *new* new
@@ -725,7 +762,7 @@ class New extends Expr {
     const int64 = opcodes().get('int64');
     const size = amm.global('const', int64, this.ty.size().toString());
     amm.assign(kind, name, ty, 'newarr', [size]);
-    for (let field in this.fields) {
+    for (const field in this.fields) {
       const fieldTy = this.fields[field].ty.instance();
       const sizeHint = amm.global('const', int64, `${fieldTy.size()}`);
       const pushCall = fieldTy.isFixed() ? 'pushf' : 'pushv';
@@ -735,7 +772,7 @@ class New extends Expr {
 }
 
 export class Ref extends Expr {
-  def: VarDef
+  def: VarDef;
 
   get ammName(): string {
     return this.def.ammName;
@@ -745,9 +782,7 @@ export class Ref extends Expr {
     return this.def.ty;
   }
 
-  constructor(
-    def: VarDef,
-  ) {
+  constructor(def: VarDef) {
     super(def.ast);
     this.def = def;
   }

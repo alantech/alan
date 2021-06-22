@@ -1,8 +1,8 @@
-import * as fs from 'fs'
-import * as path from 'path'
+import * as fs from 'fs';
+import * as path from 'path';
 
-import { LP, LPNode, LPError, NamedAnd } from '../lp'
-import * as ln from '../ln'
+import { LP, LPNode, LPError, NamedAnd } from '../lp';
+import * as ln from '../ln';
 
 const resolve = (path: string) => {
   try {
@@ -10,7 +10,7 @@ const resolve = (path: string) => {
   } catch (e) {
     return null;
   }
-}
+};
 
 export const fromString = (str: string): NamedAnd => {
   const lp = LP.fromText(str);
@@ -22,19 +22,24 @@ export const fromString = (str: string): NamedAnd => {
     lp2.advance(ast.t.length);
     const body = ast.get('body').getAll();
     const last = body[body.length - 1];
-    throw new Error(`AST Parse error, cannot continue due to syntax error between line ${last.line}:${last.char} - ${lp2.line}:${lp2.char}`);
+    throw new Error(
+      `AST Parse error, cannot continue due to syntax error between line ${last.line}:${last.char} - ${lp2.line}:${lp2.char}`,
+    );
   }
 
   return ast;
-}
+};
 
 export const fromFile = (filename: string): NamedAnd => {
-  const ast = fromString(fs.readFileSync(filename, { encoding: 'utf8', }));
+  const ast = fromString(fs.readFileSync(filename, { encoding: 'utf8' }));
   ast.filename = filename;
   return ast;
-}
+};
 
-export const resolveDependency = (modulePath: string, dependency: LPNode): string => {
+export const resolveDependency = (
+  modulePath: string,
+  dependency: LPNode,
+): string => {
   // Special case path for the standard library importing itself
   if (modulePath.substring(0, 4) === '@std') return dependency.t.trim();
   // For everything else...
@@ -43,27 +48,37 @@ export const resolveDependency = (modulePath: string, dependency: LPNode): strin
   // what is being imported. It's either the relative path to a file with the language
   // extension, or the relative path to a directory containing an "index.ln" file
   if (dependency.has('localdependency')) {
-    const dirPath = resolve(path.join(
-      path.dirname(modulePath),
-      dependency.get('localdependency').t,
-      "index.lnn",
-    ));
-    const filePath = resolve(path.join(
-      path.dirname(modulePath),
-      dependency.get('localdependency').t + ".lnn"
-    ));
+    const dirPath = resolve(
+      path.join(
+        path.dirname(modulePath),
+        dependency.get('localdependency').t,
+        'index.lnn',
+      ),
+    );
+    const filePath = resolve(
+      path.join(
+        path.dirname(modulePath),
+        dependency.get('localdependency').t + '.lnn',
+      ),
+    );
     // It's possible for both to exist. Prefer the directory-based one, but warn the user
-    if (typeof dirPath === "string" && typeof filePath === "string") {
-      console.error(dirPath + " and " + filePath + " both exist. Using " + dirPath);
+    if (typeof dirPath === 'string' && typeof filePath === 'string') {
+      console.error(
+        dirPath + ' and ' + filePath + ' both exist. Using ' + dirPath,
+      );
     }
-    if (typeof filePath === "string") {
+    if (typeof filePath === 'string') {
       importPath = filePath;
     }
-    if (typeof dirPath === "string") {
+    if (typeof dirPath === 'string') {
       importPath = dirPath;
     }
     if (importPath === null) {
-      throw new Error(`The dependency ${dependency.get('localdependency').t} could not be found.`);
+      throw new Error(
+        `The dependency ${
+          dependency.get('localdependency').t
+        } could not be found.`,
+      );
     }
   }
   // If the dependency is a global dependency, there's a more complicated resolution to find it.
@@ -107,15 +122,17 @@ export const resolveDependency = (modulePath: string, dependency: LPNode): strin
   // else. At least things like `modules/logger`, `modules/config`, etc should belong there.
   if (dependency.has('globaldependency')) {
     // Get the two potential dependency types, file and directory-style.
-    const fileModule = dependency.get('globaldependency').t.substring(1) + ".lnn";
-    const dirModule = dependency.get('globaldependency').t.substring(1) + "/index.lnn";
+    const fileModule =
+      dependency.get('globaldependency').t.substring(1) + '.lnn';
+    const dirModule =
+      dependency.get('globaldependency').t.substring(1) + '/index.lnn';
     // Get the initial root to check
     let pathRoot = path.dirname(modulePath);
     // Search the recursively up the directory structure in the `modules` directories for the
     // specified dependency, and if found, return it.
     while (pathRoot != null) {
-      const dirPath = resolve(path.join(pathRoot, "modules", dirModule));
-      const filePath = resolve(path.join(pathRoot, "modules", fileModule));
+      const dirPath = resolve(path.join(pathRoot, 'modules', dirModule));
+      const filePath = resolve(path.join(pathRoot, 'modules', fileModule));
       // It's possible for a module to accidentally resolve to itself when the module wraps the
       // actual dependency it is named for.
       if (dirPath === modulePath || filePath === modulePath) {
@@ -123,18 +140,20 @@ export const resolveDependency = (modulePath: string, dependency: LPNode): strin
         continue;
       }
       // It's possible for both to exist. Prefer the directory-based one, but warn the user
-      if (typeof dirPath === "string" && typeof filePath === "string") {
-        console.error(dirPath + " and " + filePath + " both exist. Using " + dirPath);
+      if (typeof dirPath === 'string' && typeof filePath === 'string') {
+        console.error(
+          dirPath + ' and ' + filePath + ' both exist. Using ' + dirPath,
+        );
       }
-      if (typeof filePath === "string") {
+      if (typeof filePath === 'string') {
         importPath = filePath;
         break;
       }
-      if (typeof dirPath === "string") {
+      if (typeof dirPath === 'string') {
         importPath = dirPath;
         break;
       }
-      if (pathRoot === "/" || /[A-Z]:\\/.test(pathRoot)) {
+      if (pathRoot === '/' || /[A-Z]:\\/.test(pathRoot)) {
         pathRoot = null;
       } else {
         pathRoot = path.dirname(pathRoot);
@@ -143,28 +162,34 @@ export const resolveDependency = (modulePath: string, dependency: LPNode): strin
     if (importPath == null) {
       // If we can't find it defined in a `modules` directory, check if it's an `@std/...`
       // module and abort here so the built-in standard library is used.
-      if (dependency.get('globaldependency').t.substring(0, 5) === "@std/") {
+      if (dependency.get('globaldependency').t.substring(0, 5) === '@std/') {
         // Not a valid path (starting with '@') to be used as signal to use built-in library)
         importPath = dependency.get('globaldependency').t;
       } else {
         // Go back to the original point and search up the tree for `dependencies` directories
         pathRoot = path.dirname(modulePath);
         while (pathRoot != null) {
-          const dirPath = resolve(path.join(pathRoot, "dependencies", dirModule));
-          const filePath = resolve(path.join(pathRoot, "dependencies", fileModule));
+          const dirPath = resolve(
+            path.join(pathRoot, 'dependencies', dirModule),
+          );
+          const filePath = resolve(
+            path.join(pathRoot, 'dependencies', fileModule),
+          );
           // It's possible for both to exist. Prefer the directory-based one, but warn the user
-          if (typeof dirPath === "string" && typeof filePath === "string") {
-            console.error(dirPath + " and " + filePath + " both exist. Using " + dirPath);
+          if (typeof dirPath === 'string' && typeof filePath === 'string') {
+            console.error(
+              dirPath + ' and ' + filePath + ' both exist. Using ' + dirPath,
+            );
           }
-          if (typeof filePath === "string") {
+          if (typeof filePath === 'string') {
             importPath = filePath;
             break;
           }
-          if (typeof dirPath === "string") {
+          if (typeof dirPath === 'string') {
             importPath = dirPath;
             break;
           }
-          if (pathRoot === "/" || /[A-Z]:\\/.test(pathRoot)) {
+          if (pathRoot === '/' || /[A-Z]:\\/.test(pathRoot)) {
             pathRoot = null;
           } else {
             pathRoot = path.dirname(pathRoot);
@@ -172,16 +197,20 @@ export const resolveDependency = (modulePath: string, dependency: LPNode): strin
         }
       }
       if (importPath == null) {
-        throw new Error(`The dependency ${dependency.get('globaldependency').t} could not be found.`);
+        throw new Error(
+          `The dependency ${
+            dependency.get('globaldependency').t
+          } could not be found.`,
+        );
       }
     }
   }
   return importPath;
-}
+};
 
 export const resolveImports = (modulePath: string, ast: LPNode): string[] => {
-  let resolvedImports = [];
-  let imports = ast.get('imports').getAll();
+  const resolvedImports = [];
+  const imports = ast.get('imports').getAll();
   for (let i = 0; i < imports.length; i++) {
     let dependency = null;
 
@@ -193,13 +222,15 @@ export const resolveImports = (modulePath: string, ast: LPNode): string[] => {
     }
     if (!dependency) {
       // Should I do anything else here?
-      throw new Error('Malformed AST, import statement without an import definition?');
+      throw new Error(
+        'Malformed AST, import statement without an import definition?',
+      );
     }
     const importPath = resolveDependency(modulePath, dependency);
     resolvedImports.push(importPath);
   }
   return resolvedImports;
-}
+};
 
 export const functionAstFromString = (fn: string) => {
   const lp = LP.fromText(fn);
@@ -209,11 +240,13 @@ export const functionAstFromString = (fn: string) => {
   } else if (ast.t.length !== fn.length) {
     const lp2 = lp.clone();
     lp2.advance(ast.t.length);
-    throw new Error(`AST Parse error, cannot continue due to syntax error ending at line ${lp2.line}:${lp2.char}`);
+    throw new Error(
+      `AST Parse error, cannot continue due to syntax error ending at line ${lp2.line}:${lp2.char}`,
+    );
   }
 
   return ast;
-}
+};
 
 export const statementAstFromString = (s: string) => {
   const lp = LP.fromText(s);
@@ -223,11 +256,13 @@ export const statementAstFromString = (s: string) => {
   } else if (ast.t.length !== s.length) {
     const lp2 = lp.clone();
     lp2.advance(ast.t.length);
-    throw new Error(`AST Parse error, cannot continue due to syntax error ending at line ${lp2.line}:${lp2.char}`);
+    throw new Error(
+      `AST Parse error, cannot continue due to syntax error ending at line ${lp2.line}:${lp2.char}`,
+    );
   }
 
   return ast;
-}
+};
 
 export const fulltypenameAstFromString = (s: string) => {
   const lp = LP.fromText(s);
@@ -237,11 +272,13 @@ export const fulltypenameAstFromString = (s: string) => {
   } else if (ast.t.length !== s.length) {
     const lp2 = lp.clone();
     lp2.advance(ast.t.length);
-    throw new Error(`AST Parse error, cannot continue due to syntax error ending at line ${lp2.line}:${lp2.char}`);
+    throw new Error(
+      `AST Parse error, cannot continue due to syntax error ending at line ${lp2.line}:${lp2.char}`,
+    );
   }
 
   return ast;
-}
+};
 
 export const assignablesAstFromString = (s: string) => {
   const lp = LP.fromText(s);
@@ -251,8 +288,10 @@ export const assignablesAstFromString = (s: string) => {
   } else if (ast.t.length !== s.length) {
     const lp2 = lp.clone();
     lp2.advance(ast.t.length);
-    throw new Error(`AST Parse error, cannot continue due to syntax error ending at line ${lp2.line}:${lp2.char}`);
+    throw new Error(
+      `AST Parse error, cannot continue due to syntax error ending at line ${lp2.line}:${lp2.char}`,
+    );
   }
 
   return ast;
-}
+};

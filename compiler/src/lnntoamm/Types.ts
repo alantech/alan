@@ -4,32 +4,35 @@ import Operator from './Operator';
 import Scope from './Scope';
 import { Equalable, genName, isFnArray, isOpArray, TODO } from './util';
 
-type Fields = {[name: string]: Type | null};
-export type FieldIndices = {[name: string]: number};
-type GenericArgs = {[name: string]: Type | null};
+type Fields = { [name: string]: Type | null };
+export type FieldIndices = { [name: string]: number };
+type GenericArgs = { [name: string]: Type | null };
 type TypeName = [string, TypeName[]];
 
 const parseFulltypename = (node: LPNode): TypeName => {
   const name = node.get('typename').t.trim();
-  let genericTys: TypeName[] = [];
+  const genericTys: TypeName[] = [];
   if (node.has('opttypegenerics')) {
     const generics = node.get('opttypegenerics');
     genericTys.push(parseFulltypename(generics.get('fulltypename')));
-    genericTys.push(...generics.get('cdr').getAll().map(n => n.get('fulltypename')).map(parseFulltypename));
+    genericTys.push(
+      ...generics
+        .get('cdr')
+        .getAll()
+        .map((n) => n.get('fulltypename'))
+        .map(parseFulltypename),
+    );
   }
   return [name, genericTys];
 };
 
 // TODO: figure out type aliases (i think it actually makes sense to make a new type?)
 export default abstract class Type implements Equalable {
-  name: string
-  ast: LPNode | null
+  name: string;
+  ast: LPNode | null;
   abstract get ammName(): string;
 
-  constructor(
-    name: string,
-    ast: LPNode = null,
-  ) {
+  constructor(name: string, ast: LPNode = null) {
     this.name = name;
     this.ast = ast;
   }
@@ -84,7 +87,12 @@ export default abstract class Type implements Equalable {
     return new HasMethod(name, null, params, ret);
   }
 
-  static hasOperator(name: string, params: Type[], ret: Type, isPrefix: boolean): Type {
+  static hasOperator(
+    name: string,
+    params: Type[],
+    ret: Type,
+    isPrefix: boolean,
+  ): Type {
     return new HasOperator(name, null, params, ret, isPrefix);
   }
 
@@ -116,9 +124,7 @@ class Builtin extends Type {
     return this.name;
   }
 
-  constructor(
-    name: string,
-  ) {
+  constructor(name: string) {
     super(name);
   }
 
@@ -135,27 +141,43 @@ class Builtin extends Type {
       return TODO('add field support for builtins');
     } else if (ty instanceof Interface) {
       // FIXME: once builtins can have fields
-      return ty.fields.length === 0 &&
-            ty.methods.every(m => this.compatibleWithConstraint(m, scope)) &&
-            ty.operators.every(o => this.compatibleWithConstraint(o, scope));
+      return (
+        ty.fields.length === 0 &&
+        ty.methods.every((m) => this.compatibleWithConstraint(m, scope)) &&
+        ty.operators.every((o) => this.compatibleWithConstraint(o, scope))
+      );
     } else {
       TODO('other types constraining to builtin types');
     }
   }
 
   constrain(ty: Type, scope: Scope) {
-    if (ty instanceof OneOf || ty instanceof Generated || ty instanceof Interface) {
+    if (
+      ty instanceof OneOf ||
+      ty instanceof Generated ||
+      ty instanceof Interface
+    ) {
       ty.constrain(this, scope);
     } else if (ty instanceof HasOperator) {
       if (Has.operator(ty, scope, this).length === 0) {
         throw new Error(`type ${this.name} does not have operator ${ty.name}`);
       }
-    } else if (ty instanceof HasMethod && Has.method(ty, scope, this).length === 0) {
-      throw new Error(`type ${this.name} does not have method ${ty.name}(${ty.params.map(p => p === null ? this : p).map(ty => ty.name).join(', ')})`);
+    } else if (
+      ty instanceof HasMethod &&
+      Has.method(ty, scope, this).length === 0
+    ) {
+      throw new Error(
+        `type ${this.name} does not have method ${ty.name}(${ty.params
+          .map((p) => (p === null ? this : p))
+          .map((ty) => ty.name)
+          .join(', ')})`,
+      );
     } else if (ty instanceof HasField) {
       throw new Error(`type ${this.name} does not have field ${ty.name}`);
     } else if (!this.compatibleWithConstraint(ty, scope)) {
-      throw new Error(`type ${this.name} could not be constrained to ${ty.name}`);
+      throw new Error(
+        `type ${this.name} could not be constrained to ${ty.name}`,
+      );
     }
   }
 
@@ -221,9 +243,9 @@ class Builtin extends Type {
 }
 
 class Struct extends Type {
-  args: GenericArgs
-  fields: Fields
-  order: FieldIndices
+  args: GenericArgs;
+  fields: Fields;
+  order: FieldIndices;
 
   get ammName(): string {
     return this.name;
@@ -240,7 +262,7 @@ class Struct extends Type {
     this.fields = fields;
     this.order = {};
     let sizeTracker = 0;
-    for (let fieldName in this.fields) {
+    for (const fieldName in this.fields) {
       this.order[fieldName] = sizeTracker;
       sizeTracker += this.fields[fieldName].size();
     }
@@ -249,22 +271,27 @@ class Struct extends Type {
   static fromAst(ast: LPNode, scope: Scope): Type {
     let work = ast;
     const names = parseFulltypename(work.get('fulltypename'));
-    if (names[1].some(ty => ty[1].length !== 0)) {
-      throw new Error(`Generic type variables can't have generic type arguments`);
+    if (names[1].some((ty) => ty[1].length !== 0)) {
+      throw new Error(
+        `Generic type variables can't have generic type arguments`,
+      );
     }
     const typeName = names[0];
-    let genericArgs: GenericArgs = {};
-    names[1].forEach(n => genericArgs[n[0]] = null);
+    const genericArgs: GenericArgs = {};
+    names[1].forEach((n) => (genericArgs[n[0]] = null));
 
     work = ast.get('typedef');
     if (work.has('typebody')) {
       work = work.get('typebody').get('typelist');
       const lines = [
         work.get('typeline'),
-        ...work.get('cdr').getAll().map(n => n.get('typeline')),
+        ...work
+          .get('cdr')
+          .getAll()
+          .map((n) => n.get('typeline')),
       ];
-      let fields: Fields = {};
-      lines.forEach(line => {
+      const fields: Fields = {};
+      lines.forEach((line) => {
         const fieldName = line.get('variable').t;
         const fieldTy = Type.getFromTypename(line.get('fulltypename'), scope);
         if (fieldTy instanceof Interface) {
@@ -283,9 +310,14 @@ class Struct extends Type {
     if (ty instanceof Struct) {
       return this.eq(ty);
     } else if (ty instanceof HasField) {
-      return this.fields.hasOwnProperty(ty.name) && this.fields[ty.name].compatibleWithConstraint(ty.ty, scope);
+      return (
+        this.fields.hasOwnProperty(ty.name) &&
+        this.fields[ty.name].compatibleWithConstraint(ty.ty, scope)
+      );
     } else if (ty instanceof HasMethod) {
-      TODO('get methods and operators for types? (probably during fn selection fix?)');
+      TODO(
+        'get methods and operators for types? (probably during fn selection fix?)',
+      );
     } else if (ty instanceof Interface || ty instanceof OneOf) {
       return ty.compatibleWithConstraint(this, scope);
     } else {
@@ -295,7 +327,9 @@ class Struct extends Type {
 
   constrain(to: Type, scope: Scope) {
     if (!this.compatibleWithConstraint(to, scope)) {
-      throw new Error(`incompatible types: ${this.name} is not compatible with ${to.name}`);
+      throw new Error(
+        `incompatible types: ${this.name} is not compatible with ${to.name}`,
+      );
     }
     if (to instanceof HasField) {
       to.ty.constrain(this.fields[to.name], scope);
@@ -327,19 +361,20 @@ class Struct extends Type {
   size(): number {
     // by lazily calculating, should be able to avoid having `OneOf` select
     // issues in ducked types
-    return Object.values(this.fields).map(ty => ty.size()).reduce((l, r) => l + r);
+    return Object.values(this.fields)
+      .map((ty) => ty.size())
+      .reduce((l, r) => l + r);
   }
 }
 
 abstract class Has extends Type {
   get ammName(): string {
-    throw new Error('None of the `Has` constraints should have their ammName requested...');
+    throw new Error(
+      'None of the `Has` constraints should have their ammName requested...',
+    );
   }
 
-  constructor(
-    name: string,
-    ast: LPNode | null,
-  ) {
+  constructor(name: string, ast: LPNode | null) {
     super(name, ast);
   }
 
@@ -349,11 +384,15 @@ abstract class Has extends Type {
   }
 
   static method(method: HasMethod, scope: Scope, ty: Type): Fn[] {
-    let fns = scope.get(method.name);
+    const fns = scope.get(method.name);
     if (!isFnArray(fns)) {
       return [];
     }
-    return Fn.select(fns, method.params.map(p => p === null ? ty : p), scope);
+    return Fn.select(
+      fns,
+      method.params.map((p) => (p === null ? ty : p)),
+      scope,
+    );
   }
 
   static operator(operator: HasOperator, scope: Scope, ty: Type): Operator[] {
@@ -363,11 +402,20 @@ abstract class Has extends Type {
       return [];
     }
     // filter out ops that aren't the same fixity
-    ops = ops.filter(op => op.isPrefix === operator.isPrefix);
+    ops = ops.filter((op) => op.isPrefix === operator.isPrefix);
     if (operator.isPrefix) {
-      return ops.filter(op => op.select(scope, operator.params[0] || ty) !== []);
+      return ops.filter(
+        (op) => op.select(scope, operator.params[0] || ty) !== [],
+      );
     } else {
-      return ops.filter(op => op.select(scope, operator.params[0] || ty, operator.params[1] || ty) !== []);
+      return ops.filter(
+        (op) =>
+          op.select(
+            scope,
+            operator.params[0] || ty,
+            operator.params[1] || ty,
+          ) !== [],
+      );
     }
   }
 
@@ -386,32 +434,36 @@ abstract class Has extends Type {
   }
 
   instance(): Type {
-    throw new Error(`cannot get instance of Has constraint (this error should never be thrown)`);
+    throw new Error(
+      `cannot get instance of Has constraint (this error should never be thrown)`,
+    );
   }
 
   // there should never be a case where `Type.hasX(...).tempConstrain(...)`
   tempConstrain(_t: Type) {
-    throw new Error(`cannot temporarily constrain a Has constraint (this error should never be thrown)`);
+    throw new Error(
+      `cannot temporarily constrain a Has constraint (this error should never be thrown)`,
+    );
   }
 
   // there can never be temp constraints
   resetTemp() {
-    throw new Error(`Has constraints cannot have temporary constraints (this error should never be thrown)`);
+    throw new Error(
+      `Has constraints cannot have temporary constraints (this error should never be thrown)`,
+    );
   }
 
   size(): number {
-    throw new Error(`Has constraints do not have a size (this error should never be thrown)`);
+    throw new Error(
+      `Has constraints do not have a size (this error should never be thrown)`,
+    );
   }
 }
 
 class HasField extends Has {
-  ty: Type
+  ty: Type;
 
-  constructor(
-    name: string,
-    ast: LPNode | null,
-    ty: Type,
-  ) {
+  constructor(name: string, ast: LPNode | null, ty: Type) {
     super(name, ast);
     this.ty = ty;
   }
@@ -419,11 +471,7 @@ class HasField extends Has {
   static fromPropertyTypeLine(ast: LPNode, scope: Scope): HasField {
     const name = ast.get('variable').t.trim();
     const ty = Type.getFromTypename(ast.get('fulltypename'), scope);
-    return new HasField(
-      name,
-      ast,
-      ty,
-    );
+    return new HasField(name, ast, ty);
   }
 
   eq(that: Equalable): boolean {
@@ -434,8 +482,8 @@ class HasField extends Has {
 class HasMethod extends Has {
   // null if it refers to the implementor's type. Only used when
   // working on interfaces
-  params: (Type | null)[]
-  ret: Type | null
+  params: (Type | null)[];
+  ret: Type | null;
 
   constructor(
     name: string,
@@ -448,27 +496,50 @@ class HasMethod extends Has {
     this.ret = ret;
   }
 
-  static fromFunctionTypeLine(ast: LPNode, scope: Scope, ifaceName: string): HasMethod {
+  static fromFunctionTypeLine(
+    ast: LPNode,
+    scope: Scope,
+    ifaceName: string,
+  ): HasMethod {
     const name = ast.get('variable').t.trim();
-    let work = ast.get('functiontype');
-    let params: (Type | null)[] = [
+    const work = ast.get('functiontype');
+    const params: (Type | null)[] = [
       work.get('fulltypename'),
-      ...work.get('cdr').getAll().map(cdr => cdr.get('fulltypename')),
-    ].map(tyNameAst => tyNameAst.t.trim() === ifaceName ? null : Type.getFromTypename(tyNameAst, scope));
-    let ret = work.get('returntype').t.trim() === ifaceName ? null : Type.getFromTypename(work.get('returntype'), scope);
+      ...work
+        .get('cdr')
+        .getAll()
+        .map((cdr) => cdr.get('fulltypename')),
+    ].map((tyNameAst) =>
+      tyNameAst.t.trim() === ifaceName
+        ? null
+        : Type.getFromTypename(tyNameAst, scope),
+    );
+    const ret =
+      work.get('returntype').t.trim() === ifaceName
+        ? null
+        : Type.getFromTypename(work.get('returntype'), scope);
     return new HasMethod(name, ast, params, ret);
   }
 
   eq(that: Equalable): boolean {
-    return super.eq(that) &&
+    return (
+      super.eq(that) &&
       that instanceof HasMethod &&
-      this.params.reduce((eq, param, ii) => eq && (param === null ? that.params[ii] === null : param.eq(that.params[ii])), true) &&
-      this.ret.eq(that.ret);
+      this.params.reduce(
+        (eq, param, ii) =>
+          eq &&
+          (param === null
+            ? that.params[ii] === null
+            : param.eq(that.params[ii])),
+        true,
+      ) &&
+      this.ret.eq(that.ret)
+    );
   }
 }
 
 class HasOperator extends HasMethod {
-  isPrefix: boolean
+  isPrefix: boolean;
 
   constructor(
     name: string,
@@ -481,43 +552,54 @@ class HasOperator extends HasMethod {
     this.isPrefix = isPrefix;
   }
 
-  static fromOperatorTypeLine(ast: LPNode, scope: Scope, ifaceName: string): HasOperator {
+  static fromOperatorTypeLine(
+    ast: LPNode,
+    scope: Scope,
+    ifaceName: string,
+  ): HasOperator {
     let isPrefix = true;
-    let params: (Type | null)[] = [];
+    const params: (Type | null)[] = [];
     if (ast.get('optleftarg').has()) {
-      let leftTypename = ast.get('optleftarg').get('leftarg');
-      let leftTy = leftTypename.t.trim() === ifaceName ? null : Type.getFromTypename(leftTypename, scope);
+      const leftTypename = ast.get('optleftarg').get('leftarg');
+      const leftTy =
+        leftTypename.t.trim() === ifaceName
+          ? null
+          : Type.getFromTypename(leftTypename, scope);
       params.push(leftTy);
       isPrefix = false;
     }
     const op = ast.get('operators').t.trim();
-    let rightTypename = ast.get('rightarg');
-    let rightTy = rightTypename.t.trim() === ifaceName ? null : Type.getFromTypename(rightTypename, scope);
+    const rightTypename = ast.get('rightarg');
+    const rightTy =
+      rightTypename.t.trim() === ifaceName
+        ? null
+        : Type.getFromTypename(rightTypename, scope);
     params.push(rightTy);
-    let retTypename = ast.get('fulltypename');
-    let retTy = retTypename.t.trim() === ifaceName ? null : Type.getFromTypename(retTypename, scope);
-    return new HasOperator(
-      op,
-      ast,
-      params,
-      retTy,
-      isPrefix,
-    );
+    const retTypename = ast.get('fulltypename');
+    const retTy =
+      retTypename.t.trim() === ifaceName
+        ? null
+        : Type.getFromTypename(retTypename, scope);
+    return new HasOperator(op, ast, params, retTy, isPrefix);
   }
 
   eq(that: Equalable): boolean {
-    return super.eq(that) && that instanceof HasOperator && this.isPrefix === that.isPrefix;
+    return (
+      super.eq(that) &&
+      that instanceof HasOperator &&
+      this.isPrefix === that.isPrefix
+    );
   }
 }
 
 class Interface extends Type {
   // TODO: it's more optimal to have fields, methods, and operators in
   // maps so we can cut down searching and such.
-  fields: HasField[]
-  methods: HasMethod[]
-  operators: HasOperator[]
-  tempDelegate: Type | null
-  private isDuped: boolean
+  fields: HasField[];
+  methods: HasMethod[];
+  operators: HasOperator[];
+  tempDelegate: Type | null;
+  private isDuped: boolean;
 
   get ammName(): string {
     if (this.tempDelegate) {
@@ -549,31 +631,42 @@ class Interface extends Type {
       work = work.get('interfacebody').get('interfacelist');
       const lines = [
         work.get('interfaceline'),
-        ...work.get('cdr').getAll().map(cdr => cdr.get('interfaceline')),
+        ...work
+          .get('cdr')
+          .getAll()
+          .map((cdr) => cdr.get('interfaceline')),
       ];
-      let fields: HasField[] = [];
-      let methods: HasMethod[] = [];
-      let operators: HasOperator[] = [];
-      lines.forEach(line => {
+      const fields: HasField[] = [];
+      const methods: HasMethod[] = [];
+      const operators: HasOperator[] = [];
+      lines.forEach((line) => {
         if (line.has('propertytypeline')) {
-          fields.push(HasField.fromPropertyTypeLine(line.get('propertytypeline'), scope));
+          fields.push(
+            HasField.fromPropertyTypeLine(line.get('propertytypeline'), scope),
+          );
         } else if (line.has('functiontypeline')) {
-          methods.push(HasMethod.fromFunctionTypeLine(line.get('functiontypeline'), scope, name));
+          methods.push(
+            HasMethod.fromFunctionTypeLine(
+              line.get('functiontypeline'),
+              scope,
+              name,
+            ),
+          );
         } else if (line.has('operatortypeline')) {
-          operators.push(HasOperator.fromOperatorTypeLine(line.get('operatortypeline'), scope, name));
+          operators.push(
+            HasOperator.fromOperatorTypeLine(
+              line.get('operatortypeline'),
+              scope,
+              name,
+            ),
+          );
         } else {
           throw new Error(`invalid ast: ${work}`);
         }
       });
-      return new Interface(
-        name,
-        ast,
-        fields,
-        methods,
-        operators,
-      );
+      return new Interface(name, ast, fields, methods, operators);
     } else if (work.has('interfacealias')) {
-      TODO('interface aliases')
+      TODO('interface aliases');
     } else {
       throw new Error(`invalid ast: ${work}`);
     }
@@ -595,51 +688,70 @@ class Interface extends Type {
         // if (!this.fields.every(field => ty.fields[field.name] && ty.fields[field.name].eq(field.ty))) {
         //   return false;
         // }
-        if (!this.fields.every(field => Has.field(field, ty))) {
+        if (!this.fields.every((field) => Has.field(field, ty))) {
           return false;
         }
       }
 
       // check methods
-      return this.methods.every(m => Has.method(m, scope, ty)) &&
-        this.operators.every(o => Has.operator(o, scope, ty));
+      return (
+        this.methods.every((m) => Has.method(m, scope, ty)) &&
+        this.operators.every((o) => Has.operator(o, scope, ty))
+      );
       // check operators
     } else if (ty instanceof Interface) {
       // ensure `ty ⊆ this`
-      return ty.fields.every(field => this.fields.find(f => f.eq(field))) &&
-        ty.methods.every(method => this.methods.find(m => m.eq(method))) &&
-        ty.operators.every(operator => this.operators.find(o => o.eq(operator)));
+      return (
+        ty.fields.every((field) => this.fields.find((f) => f.eq(field))) &&
+        ty.methods.every((method) => this.methods.find((m) => m.eq(method))) &&
+        ty.operators.every((operator) =>
+          this.operators.find((o) => o.eq(operator)),
+        )
+      );
     } else if (ty instanceof HasField) {
-      return this.fields.some(field => field.eq(ty));
+      return this.fields.some((field) => field.eq(ty));
     } else if (ty instanceof HasOperator) {
-      return this.operators.some(operator => operator.eq(ty));
+      return this.operators.some((operator) => operator.eq(ty));
     } else if (ty instanceof HasMethod) {
-      return this.methods.some(method => method.eq(ty));
+      return this.methods.some((method) => method.eq(ty));
     } else if (ty instanceof Generated || ty instanceof OneOf) {
       return ty.compatibleWithConstraint(this, scope);
     } else {
-      throw new Error(`unsure of what type the constraint is - this error should never be thrown!`);
+      throw new Error(
+        `unsure of what type the constraint is - this error should never be thrown!`,
+      );
     }
   }
 
   constrain(ty: Type, scope: Scope) {
     const baseErrorString = `type ${ty.name} was constrained to interface ${this.name} but doesn't have`;
-    this.fields.forEach(f => {
+    this.fields.forEach((f) => {
       if (!ty.compatibleWithConstraint(f, scope)) {
         throw new Error(`${baseErrorString} field ${f.name} with type ${f.ty}`);
       }
     });
-    this.methods.forEach(m => {
+    this.methods.forEach((m) => {
       if (!Has.method(m, scope, ty)) {
-        throw new Error(`${baseErrorString} method ${m.name}(${m.params.map(p => p === null ? ty : p).map(t => t.name).join(', ')})`);
+        throw new Error(
+          `${baseErrorString} method ${m.name}(${m.params
+            .map((p) => (p === null ? ty : p))
+            .map((t) => t.name)
+            .join(', ')})`,
+        );
       }
     });
-    this.operators.forEach(o => {
+    this.operators.forEach((o) => {
       if (Has.operator(o, scope, ty)) return;
       if (o.isPrefix) {
-        throw new Error(`${baseErrorString} prefix operator \`${o.name} ${ty.name}\``);
+        throw new Error(
+          `${baseErrorString} prefix operator \`${o.name} ${ty.name}\``,
+        );
       } else {
-        throw new Error(`${baseErrorString} infix operator \`${o.params[0] || ty.name} ${o.name} ${o.params[1] || ty.name}\``);
+        throw new Error(
+          `${baseErrorString} infix operator \`${o.params[0] || ty.name} ${
+            o.name
+          } ${o.params[1] || ty.name}\``,
+        );
       }
     });
   }
@@ -670,7 +782,7 @@ class Interface extends Type {
 
   tempConstrain(to: Type, _scope: Scope) {
     if (this === to) {
-      throw new Error('huh?')
+      throw new Error('huh?');
     }
     if (this.tempDelegate !== null && !this.tempDelegate.eq(to)) {
       throw new Error('interface type is already constrained');
@@ -684,7 +796,7 @@ class Interface extends Type {
 
   dupIfNotLocalInterface(): Type | null {
     if (this.isDuped) return null;
-    let dup = new Interface(
+    const dup = new Interface(
       this.name,
       this.ast,
       [...this.fields],
@@ -699,7 +811,9 @@ class Interface extends Type {
     if (this.tempDelegate) {
       return this.tempDelegate.size();
     } else {
-      TODO(`figure out how Interface should return from size() if there's not tempDelegate`);
+      TODO(
+        `figure out how Interface should return from size() if there's not tempDelegate`,
+      );
     }
   }
 }
@@ -708,7 +822,7 @@ class Interface extends Type {
 // the interface through type constraints instead of through explicit requirements.
 // this'll make untyped fn parameters easier once they're implemented.
 class Generated extends Interface {
-  delegate: Type | null
+  delegate: Type | null;
 
   get ammName(): string {
     if (this.delegate) {
@@ -731,7 +845,7 @@ class Generated extends Interface {
   // 3. ???
   compatibleWithConstraint(ty: Type, scope: Scope): boolean {
     if (this.delegate && super.tempDelegate) {
-      throw new Error('ugh')
+      throw new Error('ugh');
     }
     if (this.delegate !== null) {
       return this.delegate.compatibleWithConstraint(ty, scope);
@@ -749,7 +863,9 @@ class Generated extends Interface {
     // then this check should be at the end of this method and pass the
     // removed `tempDelegate` to the new permanent delegate's `tempConstrain`
     if (this.tempDelegate) {
-      throw new Error(`cannot process temporary type constraints before permanent type constraints`);
+      throw new Error(
+        `cannot process temporary type constraints before permanent type constraints`,
+      );
     }
 
     if (this.delegate !== null) {
@@ -775,7 +891,11 @@ class Generated extends Interface {
 
   eq(that: Equalable): boolean {
     if (that instanceof Generated) {
-      return this.delegate !== null && that.delegate !== null && this.delegate.eq(that.delegate);
+      return (
+        this.delegate !== null &&
+        that.delegate !== null &&
+        this.delegate.eq(that.delegate)
+      );
     } else if (that instanceof Interface) {
       if (that.tempDelegate !== null) {
         if (this.delegate !== null) {
@@ -829,24 +949,23 @@ class Generated extends Interface {
     } else if (this.tempDelegate) {
       return this.tempDelegate.size();
     } else {
-      TODO(`figure out how Generated should return from size() if there's not tempDelegate`);
+      TODO(
+        `figure out how Generated should return from size() if there's not tempDelegate`,
+      );
     }
   }
 }
 
 class OneOf extends Type {
-  selection: Type[]
-  tempSelect: Type[] | null
+  selection: Type[];
+  tempSelect: Type[] | null;
   private selected: Type | null;
 
   get ammName(): string {
     return this.select().ammName;
   }
 
-  constructor(
-    selection: Type[],
-    tempSelect: Type[] = null,
-  ) {
+  constructor(selection: Type[], tempSelect: Type[] = null) {
     super(genName());
     this.selection = selection;
     this.tempSelect = tempSelect;
@@ -875,15 +994,23 @@ class OneOf extends Type {
   }
 
   compatibleWithConstraint(constraint: Type, scope: Scope): boolean {
-    return this.selection.some(ty => ty.compatibleWithConstraint(constraint, scope));
+    return this.selection.some((ty) =>
+      ty.compatibleWithConstraint(constraint, scope),
+    );
   }
 
   constrain(constraint: Type, scope: Scope) {
-    this.selection = this.selection.filter(ty => ty.compatibleWithConstraint(constraint, scope));
+    this.selection = this.selection.filter((ty) =>
+      ty.compatibleWithConstraint(constraint, scope),
+    );
   }
 
   eq(that: Equalable): boolean {
-    return that instanceof OneOf && this.selection.length === that.selection.length && this.selection.every((ty, ii) => ty.eq(that.selection[ii]));
+    return (
+      that instanceof OneOf &&
+      this.selection.length === that.selection.length &&
+      this.selection.every((ty, ii) => ty.eq(that.selection[ii]))
+    );
   }
 
   instance(): Type {
@@ -895,7 +1022,9 @@ class OneOf extends Type {
   }
 
   tempConstrain(to: Type, scope: Scope) {
-    this.tempSelect = this.selection.filter(ty => ty.compatibleWithConstraint(to, scope));
+    this.tempSelect = this.selection.filter((ty) =>
+      ty.compatibleWithConstraint(to, scope),
+    );
   }
 
   resetTemp() {
