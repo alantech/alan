@@ -5,6 +5,7 @@ import Scope from './Scope';
 import { Equalable, genName, isFnArray, isOpArray, TODO } from './util';
 
 type Fields = {[name: string]: Type | null};
+export type FieldIndices = {[name: string]: number};
 type GenericArgs = {[name: string]: Type | null};
 type TypeName = [string, TypeName[]];
 
@@ -23,6 +24,7 @@ const parseFulltypename = (node: LPNode): TypeName => {
 export default abstract class Type implements Equalable {
   name: string
   ast: LPNode | null
+  abstract get ammName(): string;
 
   constructor(
     name: string,
@@ -32,13 +34,13 @@ export default abstract class Type implements Equalable {
     this.ast = ast;
   }
 
-  abstract breakdown(): Builtin;
   abstract compatibleWithConstraint(ty: Type, scope: Scope): boolean;
   abstract constrain(to: Type, scope: Scope): void;
   abstract eq(that: Equalable): boolean;
   abstract instance(): Type;
   abstract tempConstrain(to: Type, scope: Scope): void;
   abstract resetTemp(): void;
+  abstract size(): number;
 
   static getFromTypename(name: LPNode | string, scope: Scope): Type {
     // TODO: change this to use parseFulltypename
@@ -89,9 +91,27 @@ export default abstract class Type implements Equalable {
   dupIfNotLocalInterface(): Type | null {
     return null;
   }
+
+  fieldIndices(): FieldIndices {
+    let name: string;
+    try {
+      name = this.instance().name;
+    } catch (e) {
+      name = this.name;
+    }
+    if (name !== '') {
+      name = ` ${name}`;
+    }
+    throw new Error(`Type${name} does not have fields`);
+  }
+
+  isFixed(): boolean {
+    // only a handful of builtin types are fixed
+    return false;
+  }
 }
 
-export class Builtin extends Type {
+class Builtin extends Type {
   get ammName(): string {
     return this.name;
   }
@@ -100,10 +120,6 @@ export class Builtin extends Type {
     name: string,
   ) {
     super(name);
-  }
-
-  breakdown(): Builtin {
-    return this;
   }
 
   compatibleWithConstraint(ty: Type, scope: Scope): boolean {
@@ -145,7 +161,7 @@ export class Builtin extends Type {
 
   eq(that: Equalable): boolean {
     if (that instanceof Builtin) {
-      return this.ammName === that.ammName;
+      return this === that;
     } else if (that instanceof Interface) {
       if (that instanceof Generated && that.delegate !== null) {
         return this.eq(that.delegate);
@@ -156,8 +172,28 @@ export class Builtin extends Type {
     }
   }
 
+  fieldIndices(): FieldIndices {
+    return TODO("determine if it's even worth keeping the Builtin class");
+  }
+
   instance(): Type {
     return this;
+  }
+
+  isFixed(): boolean {
+    switch (this.name) {
+      case 'int64':
+      case 'int32':
+      case 'int16':
+      case 'int8':
+      case 'float64':
+      case 'float32':
+      case 'bool':
+      case 'void':
+        return true;
+      default:
+        return false;
+    }
   }
 
   tempConstrain(ty: Type, scope: Scope) {
@@ -167,11 +203,31 @@ export class Builtin extends Type {
   resetTemp() {
     // do nothing
   }
+
+  size(): number {
+    // TODO: should probably figure out non-opaque types but we'll see
+    // what happens with this class first (after fn selection fix)
+    switch (this.name) {
+      case 'void':
+        return 0;
+      default:
+        // FIXME: currently the AVM encodes every value (including 8-bit values)
+        // in 8 bytes, so we have to enforce that behavior here by assuming that
+        // the size is in factors of 8 bytes. Eventually, we'll have to fix this.
+        // Or we just pretend 64-bits is sufficient for everything and don't.
+        return 1;
+    }
+  }
 }
 
 class Struct extends Type {
   args: GenericArgs
   fields: Fields
+  order: FieldIndices
+
+  get ammName(): string {
+    return this.name;
+  }
 
   constructor(
     name: string,
@@ -182,6 +238,12 @@ class Struct extends Type {
     super(name, ast);
     this.args = args;
     this.fields = fields;
+    this.order = {};
+    let sizeTracker = 0;
+    for (let fieldName in this.fields) {
+      this.order[fieldName] = sizeTracker;
+      sizeTracker += this.fields[fieldName].size();
+    }
   }
 
   static fromAst(ast: LPNode, scope: Scope): Type {
@@ -217,21 +279,17 @@ class Struct extends Type {
     }
   }
 
-  breakdown(): Builtin {
-    return TODO('breakdown structs');
-  }
-
   compatibleWithConstraint(ty: Type, scope: Scope): boolean {
     if (ty instanceof Struct) {
       return this.eq(ty);
     } else if (ty instanceof HasField) {
-      TODO('struct types')
+      return this.fields.hasOwnProperty(ty.name) && this.fields[ty.name].compatibleWithConstraint(ty.ty, scope);
     } else if (ty instanceof HasMethod) {
-      TODO('get methods and operators for types');
-    } else if (ty instanceof Interface) {
+      TODO('get methods and operators for types? (probably during fn selection fix?)');
+    } else if (ty instanceof Interface || ty instanceof OneOf) {
       return ty.compatibleWithConstraint(this, scope);
     } else {
-      TODO('constraints with other types for structs');
+      return false;
     }
   }
 
@@ -239,11 +297,18 @@ class Struct extends Type {
     if (!this.compatibleWithConstraint(to, scope)) {
       throw new Error(`incompatible types: ${this.name} is not compatible with ${to.name}`);
     }
+    if (to instanceof HasField) {
+      to.ty.constrain(this.fields[to.name], scope);
+    }
   }
 
   eq(that: Equalable): boolean {
     // TODO: more generic && more complex structs
     return that instanceof Struct && this === that;
+  }
+
+  fieldIndices(): FieldIndices {
+    return this.order;
   }
 
   instance(): Type {
@@ -258,9 +323,19 @@ class Struct extends Type {
   resetTemp() {
     // TODO: can structs have temp constraints?
   }
+
+  size(): number {
+    // by lazily calculating, should be able to avoid having `OneOf` select
+    // issues in ducked types
+    return Object.values(this.fields).map(ty => ty.size()).reduce((l, r) => l + r);
+  }
 }
 
 abstract class Has extends Type {
+  get ammName(): string {
+    throw new Error('None of the `Has` constraints should have their ammName requested...');
+  }
+
   constructor(
     name: string,
     ast: LPNode | null,
@@ -296,10 +371,6 @@ abstract class Has extends Type {
     }
   }
 
-  breakdown(): Builtin {
-    throw new Error(`cannot breakdown a Has constraint (this error should never be thrown)`);
-  }
-
   // convenience for `Type.hasX(...).compatibleWithConstraint(ty)`
   compatibleWithConstraint(ty: Type, scope: Scope): boolean {
     return ty.compatibleWithConstraint(this, scope);
@@ -326,6 +397,10 @@ abstract class Has extends Type {
   // there can never be temp constraints
   resetTemp() {
     throw new Error(`Has constraints cannot have temporary constraints (this error should never be thrown)`);
+  }
+
+  size(): number {
+    throw new Error(`Has constraints do not have a size (this error should never be thrown)`);
   }
 }
 
@@ -444,6 +519,14 @@ class Interface extends Type {
   tempDelegate: Type | null
   private isDuped: boolean
 
+  get ammName(): string {
+    if (this.tempDelegate) {
+      return this.tempDelegate.ammName;
+    } else {
+      throw new Error(`Interfaces should not have their ammName requested`);
+    }
+  }
+
   constructor(
     name: string,
     ast: LPNode | null,
@@ -494,13 +577,6 @@ class Interface extends Type {
     } else {
       throw new Error(`invalid ast: ${work}`);
     }
-  }
-
-  breakdown(): Builtin {
-    if (this.tempDelegate !== null) {
-      return this.tempDelegate.breakdown();
-    }
-    throw new Error(`interfaces cannot be broken down, and no concrete type was specified`);
   }
 
   compatibleWithConstraint(ty: Type, scope: Scope): boolean {
@@ -618,6 +694,14 @@ class Interface extends Type {
     dup.isDuped = true;
     return dup;
   }
+
+  size(): number {
+    if (this.tempDelegate) {
+      return this.tempDelegate.size();
+    } else {
+      TODO(`figure out how Interface should return from size() if there's not tempDelegate`);
+    }
+  }
 }
 
 // technically, generated types are a kind of interface - we just get to build up
@@ -626,19 +710,19 @@ class Interface extends Type {
 class Generated extends Interface {
   delegate: Type | null
 
+  get ammName(): string {
+    if (this.delegate) {
+      return this.delegate.ammName;
+    } else if (this.tempDelegate) {
+      return this.tempDelegate.ammName;
+    } else {
+      throw new Error(`Could not determine ammName for Generated type`);
+    }
+  }
+
   constructor() {
     super(genName(), new NulLP(), [], [], []);
     this.delegate = null;
-  }
-
-  breakdown(): Builtin {
-    if (this.delegate !== null) {
-      return this.delegate.breakdown();
-    } else try { // try? more like DRY amiright
-      return super.breakdown();
-    } catch (e) {
-      throw new Error(`Couldn't resolve generated type`);
-    }
   }
 
   // TODO: ok so i have to do a couple of things
@@ -665,7 +749,7 @@ class Generated extends Interface {
     // then this check should be at the end of this method and pass the
     // removed `tempDelegate` to the new permanent delegate's `tempConstrain`
     if (this.tempDelegate) {
-      throw new Error(`cannot process temporary type constraints after permanent type constraints`);
+      throw new Error(`cannot process temporary type constraints before permanent type constraints`);
     }
 
     if (this.delegate !== null) {
@@ -680,6 +764,9 @@ class Generated extends Interface {
       this.fields.push(...to.fields);
       this.methods.push(...to.methods);
       this.operators.push(...to.operators);
+      if (to instanceof Generated && to.delegate !== null) {
+        this.delegate = to.delegate;
+      }
     } else {
       this.delegate = to;
       this.constrain(this.delegate, scope);
@@ -712,7 +799,7 @@ class Generated extends Interface {
     } else if (this.tempDelegate !== null) {
       return this.tempDelegate.instance();
     } else {
-      return new Generated();
+      throw new Error(`could not resolve Generated type`);
     }
   }
 
@@ -735,11 +822,26 @@ class Generated extends Interface {
       this.tempDelegate.resetTemp();
     }
   }
+
+  size(): number {
+    if (this.delegate) {
+      return this.delegate.size();
+    } else if (this.tempDelegate) {
+      return this.tempDelegate.size();
+    } else {
+      TODO(`figure out how Generated should return from size() if there's not tempDelegate`);
+    }
+  }
 }
 
 class OneOf extends Type {
   selection: Type[]
   tempSelect: Type[] | null
+  private selected: Type | null;
+
+  get ammName(): string {
+    return this.select().ammName;
+  }
 
   constructor(
     selection: Type[],
@@ -748,23 +850,28 @@ class OneOf extends Type {
     super(genName());
     this.selection = selection;
     this.tempSelect = tempSelect;
+    this.selected = null;
   }
 
   private select(): Type {
+    let selected: Type;
     if (this.tempSelect !== null) {
       if (this.tempSelect.length === 0) {
         throw new Error();
       }
-      return this.tempSelect[this.tempSelect.length - 1];
+      selected = this.tempSelect[this.tempSelect.length - 1];
     } else if (this.selection.length > 0) {
-      return this.selection[this.selection.length - 1];
+      selected = this.selection[this.selection.length - 1];
     } else {
       throw new Error(`type selection impossible - no possible types left`);
     }
-  }
-
-  breakdown(): Builtin {
-    return this.select().breakdown();
+    if (this.selected === null) {
+      this.selected = selected;
+    } else if (this.selected !== selected) {
+      // this should never happen, but let's make sure of that :)
+      TODO('uh somehow selected different types - check on this');
+    }
+    return selected;
   }
 
   compatibleWithConstraint(constraint: Type, scope: Scope): boolean {
@@ -780,7 +887,11 @@ class OneOf extends Type {
   }
 
   instance(): Type {
-    return this.select().instance();
+    const selected = this.select();
+    if (selected === undefined) {
+      throw new Error('uh whaaaaat');
+    }
+    return selected.instance();
   }
 
   tempConstrain(to: Type, scope: Scope) {
@@ -789,5 +900,9 @@ class OneOf extends Type {
 
   resetTemp() {
     this.tempSelect = [];
+  }
+
+  size(): number {
+    return this.select().size();
   }
 }

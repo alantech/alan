@@ -2708,6 +2708,15 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     }
     Ok(())
   });
+  cpu!(pushv => fn(args, hand_mem) {
+    hand_mem.push_register(args[0], args[1])?;
+    Ok(())
+  });
+  cpu!(pushf => fn(args, hand_mem) {
+    let val = hand_mem.read_fixed(args[1])?;
+    hand_mem.push_fixed(args[0], val)?;
+    Ok(())
+  });
   cpu!(poparr => fn(args, hand_mem) {
     let last = hand_mem.pop(args[0]);
     hand_mem.init_fractal(args[2])?;

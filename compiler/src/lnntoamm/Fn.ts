@@ -4,7 +4,7 @@ import Expr, { Ref } from './Expr';
 import opcodes from './opcodes';
 import Scope from './Scope';
 import Stmt, { Dec, Exit, FnParam, MetaData } from './Stmt';
-import Type, { Builtin } from './Types';
+import Type from './Types';
 import { TODO } from './util';
 
 export default class Fn {
@@ -54,6 +54,12 @@ export default class Fn {
       if (retTy === null) {
         throw new Error(`Type not in scope: ${name.t.trim()}`);
       }
+      if (retTy.dupIfNotLocalInterface() !== null) {
+        // TODO: figure out how to prevent type erasure while allowing
+        // eg the generic identity function. Or just wait until generic
+        // fn type parameters.
+        throw new Error(`type erasure is illegal`);
+      }
     } else {
       retTy = Type.oneOf([
         Type.generate(),
@@ -65,10 +71,15 @@ export default class Fn {
     let metadata = new MetaData(scope, retTy);
 
     const name = ast.get('optname').has() ? ast.get('optname').get().t : null;
-    let params = [
-      ast.get('optargs').get('arglist'),
-      ...ast.get('optargs').get('arglist').get('cdr').getAll(),
-    ].map(paramAst => FnParam.fromArgAst(paramAst, metadata));
+    let p: LPNode[] = [];
+    const arglist = ast.get('optargs').get('arglist');
+    if (arglist.has()) {
+      p.push(arglist);
+      if (arglist.get('cdr').has()) {
+        p.push(...arglist.get('cdr').getAll());
+      }
+    }
+    const params = p.map(paramAst => FnParam.fromArgAst(paramAst, metadata));
 
     let body = [];
     let bodyAsts: LPNode | LPNode[] = ast.get('fullfunctionbody');
@@ -131,9 +142,9 @@ export default class Fn {
   asHandler(amm: Output, event: string) {
     let handlerParams = [];
     for (let param of this.params) {
-      handlerParams.push([param.ammName, param.ty.breakdown()]);
+      handlerParams.push([param.ammName, param.ty]);
     }
-    amm.addHandler(event, handlerParams, this.retTy.breakdown());
+    amm.addHandler(event, handlerParams, this.retTy);
     let isReturned = false;
     for (let ii = 0; ii < this.body.length; ii++) {
       const stmt = this.body[ii];
@@ -164,7 +175,7 @@ export default class Fn {
   // FIXME: a 3rd option is to make amm itself only SSA and perform the the "register
   // selection" in the ammtox stage. This might be the best solution, since it's the most
   // flexible regardless of the backend, and amm is where that diverges.
-  inline(amm: Output, args: Ref[], kind: AssignKind, name: string, ty: Builtin) {
+  inline(amm: Output, args: Ref[], kind: AssignKind, name: string, ty: Type) {
     if (args.length !== this.params.length) {
       throw new Error(`function call argument mismatch`);
     }
@@ -175,14 +186,10 @@ export default class Fn {
         if (ii !== this.body.length - 1) {
           throw new Error(`got a return at a bad time (should've been caught already?)`);
         }
-        let refCall = 'refv';
-        const fixedTypes = ['int8', 'int16', 'int32', 'int64', 'float32', 'float64', 'bool'];
         if (ty.eq(opcodes().get('void'))) {
           break;
         }
-        if (fixedTypes.some(fixedTypeName => ty.eq(opcodes().get(fixedTypeName)))) {
-          refCall = 'reff';
-        }
+        const refCall = ty.isFixed() ? 'reff' : 'refv';
         amm.assign(kind, name, ty, refCall, [stmt.ret.ammName]);
         break;
       }
@@ -215,7 +222,7 @@ export class OpcodeFn extends Fn {
     TODO('opcodes as event listener???');
   }
 
-  inline(amm: Output, args: Ref[], kind: AssignKind, assign: string, ty: Builtin) {
+  inline(amm: Output, args: Ref[], kind: AssignKind, assign: string, ty: Type) {
     amm.assign(
       kind,
       assign,

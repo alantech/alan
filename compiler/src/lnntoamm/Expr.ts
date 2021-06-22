@@ -5,7 +5,7 @@ import opcodes from './opcodes';
 import Operator from './Operator';
 import Scope from './Scope';
 import Stmt, { Dec, MetaData, VarDef } from './Stmt';
-import Type, { Builtin } from './Types';
+import Type from './Types';
 import { isFnArray, isOpArray, TODO } from './util';
 
 export default abstract class Expr {
@@ -18,11 +18,11 @@ export default abstract class Expr {
     this.ast = ast;
   }
 
-  abstract inline(amm: Output, kind: AssignKind, name: string, ty: Builtin): void;
+  abstract inline(amm: Output, kind: AssignKind, name: string, ty: Type): void;
 
   private static fromBaseassignablelist(ast: LPNode, metadata: MetaData): [Stmt[], Expr] {
     let asts = ast.getAll().map(a => a.get('baseassignable'));
-    let generated = [];
+    let generated: Stmt[] = [];
     let expr: Expr = null;
     for (let ii = 0; ii < asts.length; ii++) {
       const skipDotIfNext = () => {
@@ -32,21 +32,24 @@ export default abstract class Expr {
       };
       let work = asts[ii];
       if (work.has('objectliterals')) {
-        TODO('object literals');
+        if (expr !== null) {
+          throw new Error(`unexpected object literal following an expression`);
+        }
+        work = work.get('objectliterals');
+        if (work.has('typeliteral')) {
+          let [stmts, newVal] = New.fromTypeLiteral(work.get('typeliteral'), metadata);
+          generated.push(...stmts);
+          expr = newVal;
+        } else {
+          TODO('arrays');
+        }
       } else if (work.has('functions')) {
         TODO('functions in functions');
       } else if (work.has('variable')) {
         const varName = work.get('variable').t;
-        if (ii === asts.length - 1) {
-          let dec = metadata.get(varName);
-          if (dec === null) {
-            throw new Error(`${varName} not defined`);
-          }
-          expr = dec.ref();
-          break;
-        }
-        const next = asts[ii + 1];
+        const next = asts[ii + 1] || new NulLP();
         if (next.has('fncall')) {
+          // it's a function call
           // TODO: this is broken because operators don't pass their AST yet
           // let text = `${expr !== null ? expr.ast.t.trim() + '.' : ''}${varName}${next.get('fncall').t.trim()}`;
           let text = `${expr !== null ? expr.ast.get('variable').t + '.' : ''}${varName}${next.get('fncall').t.trim()}`;
@@ -84,15 +87,32 @@ export default abstract class Expr {
           expr = call;
           ii += 1;
           skipDotIfNext();
-        } else if (next.has('methodsep')) {
+        } else if (expr !== null) {
+          // it's a field access
+          if (!(expr instanceof Ref)) {
+            const dec = Dec.gen(expr, metadata);
+            generated.push(dec);
+            expr = dec.ref();
+          }
+          // ensure that the value has the field
+          let fieldTy = Type.generate();
+          const hasField = Type.hasField(varName, fieldTy);
+          if (!expr.ty.compatibleWithConstraint(hasField, metadata.scope)) {
+            throw new Error(`cannot access ${varName} on type ${expr.ty.name} because it doesn't have that field`);
+          }
+          expr.ty.constrain(hasField, metadata.scope);
+          // TODO: better ast - currently only gives the ast for the field name
+          // (instead of giving the way the struct is accessed as well)
+          expr = new AccessField(asts[ii], expr as Ref, varName, fieldTy);
+          skipDotIfNext();
+        } else {
+          // it's a variable reference
           const val = metadata.get(varName);
           if (!val) {
             throw new Error(`${varName} not defined`);
           }
           expr = val.ref();
           ii += 1;
-        } else {
-          throw new Error(`unexpected token: expected dot or call, found ${next.t.trim()}`);
         }
       } else if (work.has('constants')) {
         work = work.get('constants');
@@ -371,6 +391,35 @@ export default abstract class Expr {
   }
 }
 
+class AccessField extends Expr {
+  struct: Ref
+  fieldName: string
+  fieldTy: Type
+
+  get ty(): Type {
+    return this.fieldTy;
+  }
+
+  constructor(
+    ast: LPNode,
+    struct: Ref,
+    fieldName: string,
+    fieldTy: Type,
+  ) {
+    super(ast);
+    this.struct = struct;
+    this.fieldName = fieldName;
+    this.fieldTy = fieldTy;
+  }
+
+  inline(amm: Output, kind: AssignKind, name: string, ty: Type): void {
+    const fieldIndices = this.struct.ty.fieldIndices();
+    const index = fieldIndices[this.fieldName];
+    const indexVal = amm.global('const', opcodes().get('int64'), `${index}`)
+    amm.assign(kind, name, ty, 'register', [this.struct.ammName, indexVal]);
+  }
+}
+
 class Call extends Expr {
   fns: Fn[]
   maybeClosure: VarDef | null
@@ -495,7 +544,7 @@ class Call extends Expr {
 
   This should also happen in the unimplemented "solidification" phase.
   */
-  inline(amm: Output, kind: AssignKind, name: string, ty: Builtin) {
+  inline(amm: Output, kind: AssignKind, name: string, ty: Type) {
     const argTys = this.args.map(arg => arg.ty.instance());
     const selected = Fn.select(this.fns, argTys, this.scope) || [];
     // console.log('!!!!!!!!!!', this.ast.t.trim(), selected);
@@ -516,7 +565,7 @@ class Call extends Expr {
 
 class Const extends Expr {
   val: string
-  private detectedTy: Builtin
+  private detectedTy: Type
 
   get ty(): Type {
     return this.detectedTy;
@@ -525,7 +574,7 @@ class Const extends Expr {
   constructor(
     ast: LPNode,
     val: string,
-    detectedTy: Builtin,
+    detectedTy: Type,
   ) {
     super(ast);
     this.val = val;
@@ -571,7 +620,7 @@ class Const extends Expr {
     return [[], new Const(ast, val, detectedTy)];
   }
 
-  inline(amm: Output, kind: AssignKind, name: string, ty: Builtin) {
+  inline(amm: Output, kind: AssignKind, name: string, ty: Type) {
     const suffixes = {
       int8: 'i8',
       int16: 'i16',
@@ -595,6 +644,96 @@ class Const extends Expr {
   }
 }
 
+class New extends Expr {
+  valTy: Type
+  fields: {[name: string]: Ref}
+
+  get ty(): Type {
+    return this.valTy;
+  }
+
+  /**
+   * NOTE: does NOT check to make sure that the fields
+   * are valid. Ensure that the caller has already done
+   * validated the fields (fromTypeLiteral does this
+   * already).
+   */
+  constructor(
+    ast: LPNode,
+    valTy: Type,
+    fields: {[name: string]: Ref},
+  ) {
+    super(ast);
+    this.valTy = valTy;
+    this.fields = fields;
+  }
+
+  static fromTypeLiteral(
+    ast: LPNode,
+    metadata: MetaData,
+  ): [Stmt[], New] {
+    let stmts: Stmt[] = [];
+
+    // get the constructed type
+    let typename = ast.get('literaldec').get('fulltypename');
+    let valTy = Type.getFromTypename(typename, metadata.scope);
+
+    let fieldsAst = ast.get('typebase').get('typeassignlist');
+    let fieldAsts: LPNode[] = [
+      fieldsAst,
+      ...fieldsAst.get('cdr').getAll(),
+    ];
+    let fields: {[name: string]: Ref} = {};
+    // type that we're generating to make sure that the constructed object
+    // has the appropriate fields.
+    let fieldCheck = Type.generate();
+
+    for (let fieldAst of fieldAsts) {
+      const fieldName = fieldAst.get('variable').t.trim();
+      // assign the value of the field to a variable
+      let [newStmts, fieldVal] = Expr.fromAssignablesAst(fieldAst.get('assignables'), metadata);
+      stmts.push(...newStmts);
+      if (!(fieldVal instanceof Ref)) {
+        const fieldDef = Dec.gen(fieldVal, metadata);
+        stmts.push(fieldDef);
+        fieldVal = fieldDef.ref();
+      }
+      // assign the field to our pseudo-object
+      fields[fieldName] = fieldVal as Ref;
+      // add the field to our generated type
+      fieldCheck.constrain(Type.hasField(fieldName, fieldVal.ty), metadata.scope);
+    }
+
+    // ensure that the type we just constructed matches the type intended
+    // to be constructed. if our generated type isn't compatible with the
+    // intended type, then that means we don't have all of its fields. If
+    // the intended type isn't compatible with our generated type, that
+    // means we have some unexpected fields
+    // TODO: MUCH better error handling. Ideally without exposing the
+    // internal details of the `Type`.
+    if (!fieldCheck.compatibleWithConstraint(valTy, metadata.scope)) {
+      throw new Error(`Constructed value doesn't have all of the fields in type ${valTy.name}`);
+    } else if (!valTy.compatibleWithConstraint(fieldCheck, metadata.scope)) {
+      throw new Error(`Constructed value has fields that don't exist in ${valTy.name}`);
+    }
+
+    // *new* new
+    return [stmts, new New(ast, valTy, fields)];
+  }
+
+  inline(amm: Output, kind: AssignKind, name: string, ty: Type): void {
+    const int64 = opcodes().get('int64');
+    const size = amm.global('const', int64, this.ty.size().toString());
+    amm.assign(kind, name, ty, 'newarr', [size]);
+    for (let field in this.fields) {
+      const fieldTy = this.fields[field].ty.instance();
+      const sizeHint = amm.global('const', int64, `${fieldTy.size()}`);
+      const pushCall = fieldTy.isFixed() ? 'pushf' : 'pushv';
+      amm.call(pushCall, [name, this.fields[field].ammName, sizeHint]);
+    }
+  }
+}
+
 export class Ref extends Expr {
   def: VarDef
 
@@ -613,7 +752,7 @@ export class Ref extends Expr {
     this.def = def;
   }
 
-  inline(_amm: Output, _kind: AssignKind, _name: string, _ty: Builtin) {
+  inline(_amm: Output, _kind: AssignKind, _name: string, _ty: Type) {
     throw new Error(`did not expect to inline a variable reference`);
   }
 }

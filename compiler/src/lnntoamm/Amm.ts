@@ -1,4 +1,4 @@
-import { Builtin } from './Types';
+import Type from './Types';
 import { genName } from './util';
 
 const INDENT = '  ';
@@ -12,8 +12,8 @@ export type AssignKind = '' | 'const' | 'let';
 // 2. return a generated name that is guaranteed not in-scope
 // 3. perform "register selection" - reassign variables based on usage and references
 export default class Output {
-  private constants: Map<Builtin, {[val: string]: string}>
-  private events: {[name: string]: Builtin}
+  private constants: Map<Type, {[val: string]: string}>
+  private events: {[name: string]: Type}
   private handlers: string[]
   private indent: string
 
@@ -41,7 +41,7 @@ export default class Output {
 
   global(
     kind: 'const' | 'event',
-    ty: Builtin,
+    ty: Type,
     val: string,
   ): string {
     if (kind === 'const') {
@@ -64,8 +64,8 @@ export default class Output {
 
   addHandler(
     event: string,
-    args: [string, Builtin][],
-    retTy?: Builtin,
+    args: [string, Type][],
+    retTy?: Type,
   ) {
     let line = 'on '.concat(event, ' fn (');
     for (let ii = 0; ii < args.length; ii++) {
@@ -84,11 +84,11 @@ export default class Output {
   assign(
     kind: '' | 'const' | 'let',
     name: string,
-    ty: Builtin,
+    ty: Type,
     assign: string,
     args: string[] | null = null,
   ) {
-    let line = this.indent
+    let line = this.indent;
     if (kind === '') {
       line = line.concat(name, ' = ');
     } else {
@@ -110,6 +110,15 @@ export default class Output {
     } else {
       line = line.concat(assign);
     }
+    DEBUG_MODE_PRINTING && console.log(line);
+    this.handlers[0] = this.handlers[0].concat(line.concat('\n'));
+  }
+
+  call(
+    opcodeName: string,
+    args: string[],
+  ) {
+    const line = `${this.indent}${opcodeName}(${args.join(', ')})`;
     DEBUG_MODE_PRINTING && console.log(line);
     this.handlers[0] = this.handlers[0].concat(line.concat('\n'));
   }

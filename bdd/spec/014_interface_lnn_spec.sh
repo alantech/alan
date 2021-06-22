@@ -294,13 +294,13 @@ Describe "Interfaces"
     AfterAll after
 
     It "runs js"
-      Pending structs
+      Pending generics-and-arrays
       When run test_js
       The output should eq "2020-7-2@12:7:30-8:0"
     End
 
     It "runs agc"
-      Pending structs
+      Pending generics-and-arrays
       When run test_agc
       The output should eq "2020-7-2@12:7:30-8:0"
     End
