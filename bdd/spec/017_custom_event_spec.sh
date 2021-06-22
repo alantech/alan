@@ -112,6 +112,10 @@ baz"
 
         on aString fn(str: string) {
           print('I also got a string! ' + str);
+        }
+
+        on aString fn(ignore: string) {
+          wait(100);
           emit exit 0;
         }
 
