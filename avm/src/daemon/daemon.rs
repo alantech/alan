@@ -208,7 +208,7 @@ async fn get_files_b64(is_local_anycloud_app: bool) -> HashMap<String, String> {
 
 async fn generate_token() -> String {
   let body = json!({
-    "deployConfig": deploy::get_config().await,
+    "deployConfig": deploy::get_config("", false).await,
   });
   post_v1("localDaemonToken", body).await
 }

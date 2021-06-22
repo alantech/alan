@@ -1,4 +1,5 @@
 use std::env;
+use std::future::Future;
 
 use clap::{crate_name, crate_version, App, AppSettings, SubCommand};
 
@@ -17,16 +18,25 @@ pub async fn main() {
     .subcommand(SubCommand::with_name("new")
       .about("Deploys your repository to a new App with a Deploy Config from anycloud.json")
       .arg_from_usage("-e, --env-file=[ENV_FILE] 'Specifies an optional environment file'")
+      .arg_from_usage("[NON_INTERACTIVE] -n, --non-interactive 'Enables non-interactive CLI mode useful for scripting.'")
+      .arg_from_usage("-a, --app-name=[APP_NAME] 'Specifies an optional app name.'")
+      .arg_from_usage("-c, --config-name=[CONFIG_NAME] 'Specifies a config name, required only in non-interactive mode.'")
     )
     .subcommand(SubCommand::with_name("list")
       .about("Displays all the Apps deployed with the Deploy Configs from anycloud.json")
     )
     .subcommand(SubCommand::with_name("terminate")
       .about("Terminate an App hosted in one of the Deploy Configs from anycloud.json")
+      .arg_from_usage("[NON_INTERACTIVE] -n, --non-interactive 'Enables non-interactive CLI mode useful for scripting.'")
+      .arg_from_usage("-a, --app-name=[APP_NAME] 'Specifies an optional app name.'")
+      .arg_from_usage("-c, --config-name=[CONFIG_NAME] 'Specifies a config name, required only in non-interactive mode.'")
     )
     .subcommand(SubCommand::with_name("upgrade")
       .about("Deploys your repository to an existing App hosted in one of the Deploy Configs from anycloud.json")
       .arg_from_usage("-e, --env-file=[ENV_FILE] 'Specifies an optional environment file relative path'")
+      .arg_from_usage("[NON_INTERACTIVE] -n, --non-interactive 'Enables non-interactive CLI mode useful for scripting.'")
+      .arg_from_usage("-a, --app-name=[APP_NAME] 'Specifies an optional app name.'")
+      .arg_from_usage("-c, --config-name=[CONFIG_NAME] 'Specifies a config name, required only in non-interactive mode.'")
     )
     .subcommand(SubCommand::with_name("config")
       .about("Manage Deploy Configs used by Apps from the anycloud.json in the current directory")
@@ -61,40 +71,67 @@ pub async fn main() {
       )
     );
 
-  authenticate().await;
   let matches = app.get_matches();
   match matches.subcommand() {
     ("new", Some(matches)) => {
-      let dockerfile_b64 = get_dockerfile_b64().await;
-      let app_tar_gz_b64 = get_app_tar_gz_b64(true).await;
-      let env_b64 = match matches.value_of("env-file") {
-        Some(env_file) => Some(get_env_file_b64(env_file.to_string()).await),
-        None => None,
-      };
-      deploy::new(
+      let non_interactive: bool = matches.values_of("NON_INTERACTIVE").is_some();
+      authenticate(non_interactive).await;
+      new_or_upgrade(
         anycloud_agz,
-        Some((dockerfile_b64, app_tar_gz_b64)),
-        env_b64,
+        matches.value_of("env-file"),
+        matches.value_of("app-name"),
+        matches.value_of("config-name"),
+        non_interactive,
+        |anycloud_agz, anycloud_params, env_b64, app_name, config_name, non_interactive| async move {
+          deploy::new(
+            anycloud_agz,
+            anycloud_params,
+            env_b64,
+            app_name,
+            config_name,
+            non_interactive,
+          )
+          .await
+        },
       )
       .await;
     }
-    ("terminate", _) => deploy::terminate().await,
+    ("terminate", Some(matches)) => {
+      let non_interactive: bool = matches.values_of("NON_INTERACTIVE").is_some();
+      authenticate(non_interactive).await;
+      let app_name = matches.value_of("app-name").map(String::from);
+      let config_name = matches.value_of("config-name").map(String::from);
+      deploy::terminate(app_name, config_name, non_interactive).await
+    }
     ("upgrade", Some(matches)) => {
-      let dockerfile_b64 = get_dockerfile_b64().await;
-      let app_tar_gz_b64 = get_app_tar_gz_b64(true).await;
-      let env_b64 = match matches.value_of("env-file") {
-        Some(env_file) => Some(get_env_file_b64(env_file.to_string()).await),
-        None => None,
-      };
-      deploy::upgrade(
+      let non_interactive: bool = matches.values_of("NON_INTERACTIVE").is_some();
+      authenticate(non_interactive).await;
+      new_or_upgrade(
         anycloud_agz,
-        Some((dockerfile_b64, app_tar_gz_b64)),
-        env_b64,
+        matches.value_of("env-file"),
+        matches.value_of("app-name"),
+        matches.value_of("config-name"),
+        non_interactive,
+        |anycloud_agz, anycloud_params, env_b64, app_name, config_name, non_interactive| async move {
+          deploy::upgrade(
+            anycloud_agz,
+            anycloud_params,
+            env_b64,
+            app_name,
+            config_name,
+            non_interactive,
+          )
+          .await
+        },
       )
       .await;
     }
-    ("list", _) => deploy::info().await,
+    ("list", _) => {
+      authenticate(false).await;
+      deploy::info().await
+    }
     ("credentials", Some(sub_matches)) => {
+      authenticate(false).await;
       match sub_matches.subcommand() {
         ("new", _) => {
           deploy::add_cred(None).await;
@@ -107,6 +144,7 @@ pub async fn main() {
       }
     }
     ("config", Some(sub_matches)) => {
+      authenticate(false).await;
       match sub_matches.subcommand() {
         ("new", _) => deploy::add_deploy_config().await,
         ("list", _) => deploy::list_deploy_configs().await,
@@ -117,6 +155,45 @@ pub async fn main() {
       }
     }
     // rely on AppSettings::SubcommandRequiredElseHelp
-    _ => {}
+    _ => {
+      authenticate(false).await;
+    }
   }
+}
+
+async fn new_or_upgrade<Callback, CallbackFut>(
+  anycloud_agz: String,
+  env_file: Option<&str>,
+  app_name: Option<&str>,
+  config_name: Option<&str>,
+  non_interactive: bool,
+  deploy_fn: Callback,
+) where
+  Callback: Fn(
+    String,
+    Option<(String, String)>,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+    bool,
+  ) -> CallbackFut,
+  CallbackFut: Future<Output = ()>,
+{
+  let dockerfile_b64 = get_dockerfile_b64().await;
+  let app_tar_gz_b64 = get_app_tar_gz_b64(true).await;
+  let env_b64 = match env_file {
+    Some(env_file) => Some(get_env_file_b64(env_file.to_string()).await),
+    None => None,
+  };
+  let app_name = app_name.map(String::from);
+  let config_name = config_name.map(String::from);
+  deploy_fn(
+    anycloud_agz,
+    Some((dockerfile_b64, app_tar_gz_b64)),
+    env_b64,
+    app_name,
+    config_name,
+    non_interactive,
+  )
+  .await
 }
