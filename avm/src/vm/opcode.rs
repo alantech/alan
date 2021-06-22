@@ -3724,17 +3724,12 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       // If it exists locally, remove it here, too
       let removed_locally = DS.remove(&nskey).is_some();
       let ctrl_port = CONTROL_PORT_CHANNEL.get();
-      let ctrl_port = match ctrl_port {
-        Some(ctrl_port) => Some(ctrl_port.borrow().clone()), // TODO: Use thread-local storage
-        None => None,
-      };
       let removed = match ctrl_port {
-        Some(ref ctrl_port) => {
+        Some(ctrl_port) => {
+          let ctrl_port = ctrl_port.borrow().clone(); // TODO: Use thread-local storage
           ctrl_port.dsdel(&nskey).await || removed_locally
         },
-        None => {
-          removed_locally
-        },
+        None => removed_locally,
       };
       hand_mem.write_fixed(args[2], if removed { 1i64 } else { 0i64 })?;
       Ok(hand_mem)
