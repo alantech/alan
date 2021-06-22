@@ -13,7 +13,7 @@
     "clean": "rm -f bundle.js && rm -rf dist",
     "test-server": "nohup static-server -p 8080 >/dev/null 2>/dev/null </dev/null &",
     "stop-test-server": "pkill -f static-server >/dev/null 2>/dev/null &",
-    "style": "yarn eslint . --ext .ts && yarn prettier --check",
+    "style": "yarn eslint . --ext .ts && yarn prettier --check .",
     "fmt": "yarn prettier --write . && yarn eslint . --ext .ts --fix"
   },
   "main": "./dist/index.js",
