@@ -2,6 +2,12 @@ import { LP, LPNode, LPError, NamedAnd } from './lp';
 
 import aga from './aga';
 
+type EventLookup = {
+  [name: string]: {
+    eventId: bigint;
+  };
+};
+
 // This project depends on BigNum and associated support in Node's Buffer, so must be >= Node 10.20
 // and does not work in the browser. It would be possible to implement a browser-compatible version
 // but there is no need for it and it would make it harder to work with.
@@ -74,7 +80,10 @@ const loadGlobalMem = (globalMemAst: LPNode): bigint[] => {
   return globalMem;
 };
 
-const loadEventDecs = (eventAst: LPNode, eventLookup: Object): bigint[] => {
+const loadEventDecs = (
+  eventAst: LPNode,
+  eventLookup: EventLookup,
+): bigint[] => {
   const eventLines = eventAst.get('eventLines');
   let customEventIdOffset = BigInt(0);
   const eventMem = [];
@@ -99,7 +108,10 @@ const fill8 = (name: string) => {
   return buf.readBigUInt64LE(0);
 };
 
-const loadStatements = (statements: LPNode, eventLookup: Object): bigint[] => {
+const loadStatements = (
+  statements: LPNode,
+  eventLookup: EventLookup,
+): bigint[] => {
   const vec = [];
   for (const statementAst of statements.getAll()) {
     const statement = statementAst.get('statement');
@@ -143,7 +155,10 @@ const loadStatements = (statements: LPNode, eventLookup: Object): bigint[] => {
   return vec;
 };
 
-const loadHandlers = (handlersAst: LPNode, eventLookup: Object): bigint[] => {
+const loadHandlers = (
+  handlersAst: LPNode,
+  eventLookup: EventLookup,
+): bigint[] => {
   const handlers = handlersAst.getAll();
   const vec = [];
   for (let i = 0; i < handlers.length; i++) {

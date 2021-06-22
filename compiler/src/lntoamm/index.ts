@@ -14,8 +14,8 @@ import { LPNode } from '../lp';
 
 const hoistConst = (
   microstatements: Array<Microstatement>,
-  constantDedupeLookup: object,
-  constantDuplicateLookup: object,
+  constantDedupeLookup: Record<string, Microstatement>,
+  constantDuplicateLookup: Record<string, string>,
   constants: Set<Microstatement>,
   eventTypes: Set<Type>,
 ) => {
@@ -61,7 +61,7 @@ const hoistConst = (
 
 const finalDedupe = (
   microstatements: Array<Microstatement>,
-  constantDuplicateLookup: object,
+  constantDuplicateLookup: Record<string, string>,
 ) => {
   for (let i = 0; i < microstatements.length; i++) {
     const m = microstatements[i];

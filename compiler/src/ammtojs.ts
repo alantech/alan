@@ -96,7 +96,7 @@ const assignableToJsText = (
           outText += 'n';
         }
       }
-    } catch (e) {}
+    } catch (e) {} // eslint-disable-line no-empty
   }
   return outText;
 };

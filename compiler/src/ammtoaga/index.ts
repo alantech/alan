@@ -4,6 +4,20 @@ import amm from '../amm';
 import { DepGraph } from './depgraph';
 import { Block, Statement } from './aga';
 
+type AddressMap = {
+  [name: string]: bigint | number;
+};
+type EventDecs = {
+  [name: string]: number;
+};
+type MemoryMap = {
+  [name: string]: number;
+};
+type HandlerMem = {
+  memSize: number;
+  addressMap: MemoryMap;
+};
+
 // This project depends on BigNum and associated support in Node's Buffer, so must be >= Node 10.20
 // and does not work in the browser. It would be possible to implement a browser-compatible version
 // but there is no need for it and it would make it harder to work with.
@@ -11,9 +25,9 @@ const ceil8 = (n: number) => Math.ceil(n / 8) * 8;
 const CLOSURE_ARG_MEM_START = BigInt(Math.pow(-2, 63));
 
 // special closure that does nothing
-const NOP_CLOSURE = '-9223372036854775808';
+const NOP_CLOSURE = BigInt('-9223372036854775808');
 
-const loadGlobalMem = (globalMemAst: LPNode[], addressMap: object) => {
+const loadGlobalMem = (globalMemAst: LPNode[], addressMap: AddressMap) => {
   const suffixes = {
     int64: 'i64',
     int32: 'i32',
@@ -158,9 +172,9 @@ const getHandlersMem = (handlers: LPNode[]) =>
 
 const closuresFromDeclaration = (
   declaration: LPNode,
-  closureMem: object,
-  eventDecs: object,
-  addressMap: object,
+  closureMem: HandlerMem,
+  eventDecs: EventDecs,
+  addressMap: AddressMap,
   // For each scope branch, determine a unique argument rereference so nested scopes can access
   // parent scope arguments
   argRerefOffset: number,
@@ -273,9 +287,9 @@ const closuresFromDeclaration = (
 
 const extractClosures = (
   handlers: LPNode[],
-  handlerMem: object,
-  eventDecs: object,
-  addressMap: object,
+  handlerMem: HandlerMem[],
+  eventDecs: EventDecs,
+  addressMap: AddressMap,
   depGraphs: DepGraph[],
 ) => {
   let closures = {};
@@ -320,8 +334,8 @@ const extractClosures = (
 
 const loadStatements = (
   statements: LPNode[],
-  localMem: object,
-  globalMem: object,
+  localMem: MemoryMap,
+  globalMem: MemoryMap,
   fn: LPNode,
   fnName: string,
   isClosure: boolean,
@@ -663,8 +677,8 @@ const loadStatements = (
 
 const loadHandlers = (
   handlers: LPNode[],
-  handlerMem: object,
-  globalMem: object,
+  handlerMem: HandlerMem[],
+  globalMem: MemoryMap,
   depGraphs: DepGraph[],
 ) => {
   const vec = [];
@@ -695,7 +709,7 @@ const loadHandlers = (
   return vec;
 };
 
-const loadClosures = (closures: any[], globalMem: object) => {
+const loadClosures = (closures: any[], globalMem: MemoryMap) => {
   const vec = [];
   for (let i = 0; i < closures.length; i++) {
     const closure = closures[i];

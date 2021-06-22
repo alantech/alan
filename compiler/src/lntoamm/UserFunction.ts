@@ -581,7 +581,7 @@ ${statements[i].statementAst.t.trim()} on line ${
         // a specific call
         const str = s.statementAst.t;
         const corrected = str.replace(
-          /new ([^<]+)<([^{\[]+)> *([{\[])/g,
+          /new ([^<]+)<([^{[]+)> *([{[])/g,
           (
             _: any,
             basetypestr: string,
@@ -628,7 +628,7 @@ ${statements[i].statementAst.t.trim()} on line ${
         );
         // TODO: Get rid of these regex-based type corrections
         const secondCorrection = corrected.replace(
-          /: (?!new )([^:<,]+)<([^{\)]+)>( *[,{\)])/g,
+          /: (?!new )([^:<,]+)<([^{)]+)>( *[,{)])/g,
           (
             _: any,
             basetypestr: string,

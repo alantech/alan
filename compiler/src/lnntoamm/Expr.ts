@@ -266,6 +266,7 @@ export default abstract class Expr {
     // that acts as a permutation over the different possible operator expansions
     // (it can be done after eliminating operators that aren't compatible with
     // the provided types)
+    // eslint-disable-next-line no-constant-condition
     while (true) {
       // find the highest-precedence operations
       let prec = -1;
@@ -718,6 +719,8 @@ class New extends Expr {
     for (const fieldAst of fieldAsts) {
       const fieldName = fieldAst.get('variable').t.trim();
       // assign the value of the field to a variable
+      // can't use const here but eslint doesn't like the newStmts isn't const
+      // eslint-disable-next-line prefer-const
       let [newStmts, fieldVal] = Expr.fromAssignablesAst(
         fieldAst.get('assignables'),
         metadata,

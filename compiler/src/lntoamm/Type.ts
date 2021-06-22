@@ -51,13 +51,13 @@ export class Interface {
   interfacename: string;
   functionTypes: Array<FunctionType>;
   operatorTypes: Array<OperatorType>;
-  requiredProperties: object;
+  requiredProperties: Properties;
 
   constructor(
     interfacename: string,
     functionTypes: Array<FunctionType> = [],
     operatorTypes: Array<OperatorType> = [],
-    requiredProperties: object = {},
+    requiredProperties: Properties = {},
   ) {
     this.interfacename = interfacename;
     this.functionTypes = functionTypes;

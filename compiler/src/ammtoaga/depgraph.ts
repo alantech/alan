@@ -150,7 +150,7 @@ export class DepGraph {
     return null;
   }
 
-  toJSON(): object {
+  toJSON(): Record<string, unknown> {
     return {
       byOrder: this.byOrder.map((n) => n.toJSON()),
       byVar: Object.keys(this.byVar),
@@ -323,14 +323,14 @@ export class DepNode {
     }
   }
 
-  toJSON(): object {
+  toJSON(): Record<string, unknown> {
     let closure = null;
     if (this.closure) closure = this.closure.toJSON();
     return {
       stmt: this.stmt.replace(/\n/g, '\\n'),
       upstream: this.upstream.length,
       downstream: this.downstream.length,
-      closure: this.closure,
+      closure,
       mutates: this.mutates,
     };
   }

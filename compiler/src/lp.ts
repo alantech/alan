@@ -374,7 +374,7 @@ export class ZeroOrMore implements LPNode {
       }
       t += t2;
       zeroOrMore.push(z);
-    } while (true);
+    } while (true); // eslint-disable-line no-constant-condition
   }
 }
 
@@ -457,7 +457,7 @@ export class OneOrMore implements LPNode {
       }
       t += t2;
       oneOrMore.push(o);
-    } while (true);
+    } while (true); // eslint-disable-line no-constant-condition
   }
 }
 

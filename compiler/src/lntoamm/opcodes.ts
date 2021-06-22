@@ -118,7 +118,12 @@ opcodeScope.put(
 const t = (str: string) => opcodeScope.get(str);
 
 // opcode declarations
-const addopcodes = (opcodes: object) => {
+const addopcodes = (
+  opcodes: Record<
+    string,
+    [Record<string, Type>, Type] | [Record<string, Type>]
+  >,
+) => {
   const opcodeNames = Object.keys(opcodes);
   opcodeNames.forEach((opcodeName) => {
     const opcodeDef = opcodes[opcodeName];

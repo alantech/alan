@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
 import { v4 as uuid } from 'uuid';
 
 import * as Ast from './Ast';
@@ -10,7 +11,7 @@ import StatementType from './StatementType';
 import Type from './Type';
 import UserFunction from './UserFunction';
 import { Args, Fn } from './Function';
-import { LPNode, ZeroOrMore } from '../lp';
+import { LPNode } from '../lp';
 
 const FIXED_TYPES = [
   'int64',
