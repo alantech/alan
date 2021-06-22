@@ -3722,19 +3722,14 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1])?)?;
       let nskey = format!("{}:{}", ns, key);
       // If it exists locally, remove it here, too
-      let removed = DS.remove(&nskey).is_some();
+      let removed_locally = DS.remove(&nskey).is_some();
       let ctrl_port = CONTROL_PORT_CHANNEL.get();
-      let ctrl_port = match ctrl_port {
-        Some(ctrl_port) => Some(ctrl_port.borrow().clone()), // TODO: Use thread-local storage
-        None => None,
-      };
       let removed = match ctrl_port {
-        Some(ref ctrl_port) => {
-          ctrl_port.dsdel(&nskey).await
+        Some(ctrl_port) => {
+          let ctrl_port = ctrl_port.borrow().clone(); // TODO: Use thread-local storage
+          ctrl_port.dsdel(&nskey).await || removed_locally
         },
-        None => {
-          removed
-        },
+        None => removed_locally,
       };
       hand_mem.write_fixed(args[2], if removed { 1i64 } else { 0i64 })?;
       Ok(hand_mem)
