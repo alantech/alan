@@ -12,7 +12,9 @@
     "bundle": "node ./browser/genstdlibs.js > ./browser/stdlibs.json && browserify -r alan-js-runtime -r ./browser/runtime.js:alan-runtime -r ./dist/index.js:alan-compiler > bundle.js",
     "clean": "rm -f bundle.js && rm -rf dist",
     "test-server": "nohup static-server -p 8080 >/dev/null 2>/dev/null </dev/null &",
-    "stop-test-server": "pkill -f static-server >/dev/null 2>/dev/null &"
+    "stop-test-server": "pkill -f static-server >/dev/null 2>/dev/null &",
+    "style": "yarn eslint . --ext .js,.ts && yarn prettier --check",
+    "fmt": "yarn prettier --write ."
   },
   "main": "./dist/index.js",
   "bin": {
@@ -40,8 +42,14 @@
     "uuid": "^8.0.0"
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^4.28.0",
+    "@typescript-eslint/parser": "^4.28.0",
     "browserify": "^16.5.1",
     "cypress": "^4.10.0",
+    "eslint": "^7.29.0",
+    "eslint-config-prettier": "^8.3.0",
+    "prettier": "^2.3.1",
+    "prettier-eslint": "^12.0.0",
     "static-server": "^2.2.1",
     "typescript": "^3.9.3"
   },
