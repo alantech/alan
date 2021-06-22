@@ -214,6 +214,7 @@ correct"
           print(firstMessage);
           const secondMessage = res.body('Second Message').send();
           print(secondMessage);
+          wait(100);
           emit exit 0;
         }
       "
