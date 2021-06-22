@@ -21,6 +21,16 @@ use crate::CLUSTER_ID;
 
 mod anycloud_dialoguer;
 
+macro_rules! warn_and_exit {
+  ($exitCode:expr, $errCode:ident, $($message:tt)+) => {async{
+    warn!(
+      $errCode,
+      $($message)+
+    );
+    std::process::exit($exitCode);
+  }};
+}
+
 pub const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const REQUEST_TIMEOUT: &str =
   "Operation is still in progress. It might take a few more minutes for \
@@ -216,7 +226,7 @@ fn get_aws_cli_creds() -> Result<AWSCLICredentialsFile, String> {
 }
 
 pub async fn add_cred(cred_name: Option<&str>) -> String {
-  let mut credentials = get_creds().await;
+  let mut credentials = get_creds(false).await;
   let clouds = vec!["AWS".to_string(), "GCP".to_string(), "Azure".to_string()];
   let selection = anycloud_dialoguer::select_with_default(
     "Pick cloud provider for the new Credential",
@@ -269,11 +279,12 @@ pub async fn add_cred(cred_name: Option<&str>) -> String {
       let project_id: String = anycloud_dialoguer::input("GCP Project ID");
       let client_email: String = anycloud_dialoguer::input("GCP Client Email");
       let private_key: String = anycloud_dialoguer::input("GCP Private Key");
+      let clean_private_key = private_key.replace("\\n", "\n");
       credentials.insert(
         cred_name,
         Credentials {
           credentials: CloudCredentials::GCP(GCPCredentials {
-            privateKey: private_key,
+            privateKey: clean_private_key,
             clientEmail: client_email,
             projectId: project_id,
           }),
@@ -318,11 +329,14 @@ async fn update_cred_file(credentials: HashMap<String, Credentials>) {
     .open(file_name);
   let writer = BufWriter::new(file.unwrap());
   if let Err(err) = serde_json::to_writer_pretty(writer, &credentials) {
-    warn!(
+    warn_and_exit!(
+      1,
       InvalidCredentialsFile,
-      "Failed to write to {}. Error: {}", CREDENTIALS_FILE, err
-    );
-    std::process::exit(1);
+      "Failed to write to {}. Error: {}",
+      CREDENTIALS_FILE,
+      err
+    )
+    .await
   }
 }
 
@@ -338,16 +352,19 @@ async fn update_anycloud_file(deploy_configs: HashMap<String, Vec<DeployConfig>>
     .open(file_name);
   let writer = BufWriter::new(file.unwrap());
   if let Err(err) = serde_json::to_writer_pretty(writer, &deploy_configs) {
-    warn!(
+    warn_and_exit!(
+      1,
       InvalidAnycloudFile,
-      "Failed to write to {}. Error: {}", ANYCLOUD_FILE, err
-    );
-    std::process::exit(1);
+      "Failed to write to {}. Error: {}",
+      ANYCLOUD_FILE,
+      err
+    )
+    .await
   }
 }
 
 pub async fn edit_cred() {
-  let mut credentials = get_creds().await;
+  let mut credentials = get_creds(false).await;
   let cred_options = credentials.keys().cloned().collect::<Vec<String>>();
   if cred_options.len() == 0 {
     prompt_add_cred(true, None).await;
@@ -472,7 +489,7 @@ pub async fn prompt_add_config() {
 }
 
 pub async fn remove_cred() {
-  let mut creds = get_creds().await;
+  let mut creds = get_creds(false).await;
   let cred_options = creds.keys().cloned().collect::<Vec<String>>();
   if cred_options.len() == 0 {
     prompt_add_cred(true, None).await;
@@ -489,7 +506,7 @@ pub async fn remove_cred() {
 }
 
 pub async fn list_creds() {
-  let credentials = get_creds().await;
+  let credentials = get_creds(false).await;
   if credentials.len() > 0 {
     for (cred_name, cred) in credentials.into_iter() {
       println!("\n{}", cred_name);
@@ -519,7 +536,7 @@ pub async fn list_creds() {
 
 pub async fn add_deploy_config() {
   let mut deploy_configs = get_deploy_configs().await;
-  let creds = get_creds().await;
+  let creds = get_creds(false).await;
   let default = "staging".to_string();
   let prompt = "Name for new Deploy Config";
   let validator = |input: &String| -> Result<(), &str> {
@@ -628,7 +645,7 @@ pub async fn edit_deploy_config() {
   let selection =
     anycloud_dialoguer::select_with_default("Pick Deploy Config to edit", &config_names, 0);
   let config_name = config_names[selection].to_string();
-  let creds = get_creds().await;
+  let creds = get_creds(false).await;
   let cloud_configs: &Vec<DeployConfig> = deploy_configs.get(&config_name).unwrap();
   let mut new_cloud_configs = Vec::new();
   let cred_options = creds.keys().cloned().collect::<Vec<String>>();
@@ -804,7 +821,91 @@ pub async fn list_deploy_configs() {
   }
 }
 
-async fn get_creds() -> HashMap<String, Credentials> {
+async fn get_creds(non_interactive: bool) -> HashMap<String, Credentials> {
+  if non_interactive {
+    let mut credentials = HashMap::new();
+    let cred_name = match std::env::var("CREDENTIALS_NAME") {
+      Ok(name) => name,
+      Err(_) => warn_and_exit!(1, InvalidEnvVar, "No CREDENTIALS_NAME defined").await,
+    };
+    match std::env::var("CLOUD_NAME") {
+      Ok(cloud) => match cloud.as_str() {
+        "AWS" => {
+          let access_key: String = std::env::var("AWS_ACCESS_KEY").unwrap_or("".to_string());
+          let secret: String = std::env::var("AWS_SECRET").unwrap_or("".to_string());
+          if access_key.is_empty() || secret.is_empty() {
+            warn_and_exit!(
+              1,
+              InvalidEnvVar,
+              "No AWS environment variables defined (AWS_ACCESS_KEY, AWS_SECRET)."
+            )
+            .await
+          }
+          credentials.insert(
+            cred_name,
+            Credentials {
+              credentials: CloudCredentials::AWS(AWSCredentials {
+                accessKeyId: access_key,
+                secretAccessKey: secret,
+              }),
+              cloudProvider: "AWS".to_owned(),
+            },
+          );
+        }
+        "GCP" => {
+          let project_id: String = std::env::var("GCP_PROJECT_ID").unwrap_or("".to_string());
+          let client_email: String = std::env::var("GCP_CLIENT_EMAIL").unwrap_or("".to_string());
+          let private_key: String = std::env::var("GCP_PRIVATE_KEY").unwrap_or("".to_string());
+          if project_id.is_empty() || client_email.is_empty() || private_key.is_empty() {
+            warn_and_exit!(1, InvalidEnvVar, "No GCP environment variables defined (GCP_PROJECT_ID, GCP_CLIENT_EMAIL, GCP_PRIVATE_KEY).").await
+          }
+          let clean_private_key = private_key.replace("\\n", "\n");
+          credentials.insert(
+            cred_name,
+            Credentials {
+              credentials: CloudCredentials::GCP(GCPCredentials {
+                privateKey: clean_private_key,
+                clientEmail: client_email,
+                projectId: project_id,
+              }),
+              cloudProvider: "GCP".to_owned(),
+            },
+          );
+        }
+        "Azure" => {
+          let application_id: String = std::env::var("AZ_APP_ID").unwrap_or("".to_string());
+          let directory_id: String = std::env::var("AZ_DIRECTORY_ID").unwrap_or("".to_string());
+          let subscription_id: String =
+            std::env::var("AZ_SUBSCRIPTION_ID").unwrap_or("".to_string());
+          let secret: String = std::env::var("AZ_SECRET").unwrap_or("".to_string());
+          if application_id.is_empty()
+            || directory_id.is_empty()
+            || subscription_id.is_empty()
+            || secret.is_empty()
+          {
+            warn_and_exit!(1, InvalidEnvVar, "No Azure environment variables defined (AZ_APP_ID, AZ_DIRECTORY_ID, AZ_SUBSCRIPTION_ID, AZ_SECRET).").await
+          }
+          credentials.insert(
+            cred_name,
+            Credentials {
+              credentials: CloudCredentials::Azure(AzureCredentials {
+                applicationId: application_id,
+                subscriptionId: subscription_id,
+                directoryId: directory_id,
+                secret: secret,
+              }),
+              cloudProvider: "Azure".to_owned(),
+            },
+          );
+        }
+        _ => {}
+      },
+      Err(_) => {
+        warn_and_exit!(1, InvalidCredentialsFile, "No CLOUD_NAME defined").await;
+      }
+    }
+    return credentials;
+  }
   let home = std::env::var("HOME").unwrap();
   let file_name = &format!("{}/{}", home, CREDENTIALS_FILE);
   let file = OpenOptions::new().read(true).open(file_name);
@@ -814,13 +915,17 @@ async fn get_creds() -> HashMap<String, Credentials> {
   let reader = BufReader::new(file.unwrap());
   let creds = serde_json::from_reader(reader);
   if let Err(err) = creds {
-    warn!(
+    warn_and_exit!(
+      1,
       InvalidCredentialsFile,
-      "Failed to read from {}. Error: {}", CREDENTIALS_FILE, err
-    );
-    std::process::exit(1);
+      "Failed to read from {}. Error: {}",
+      CREDENTIALS_FILE,
+      err
+    )
+    .await
+  } else {
+    creds.unwrap()
   }
-  creds.unwrap()
 }
 
 async fn get_deploy_configs() -> HashMap<String, Vec<DeployConfig>> {
@@ -833,13 +938,17 @@ async fn get_deploy_configs() -> HashMap<String, Vec<DeployConfig>> {
   let reader = BufReader::new(file.unwrap());
   let config = serde_json::from_reader(reader);
   if let Err(err) = config {
-    warn!(
+    warn_and_exit!(
+      1,
       InvalidAnycloudFile,
-      "Failed to read from {}. Error: {}", ANYCLOUD_FILE, err
-    );
-    std::process::exit(1);
+      "Failed to read from {}. Error: {}",
+      ANYCLOUD_FILE,
+      err
+    )
+    .await
+  } else {
+    config.unwrap()
   }
-  config.unwrap()
 }
 
 // This method can be called as a binary by the end user in the CLI or as a library by the Alan daemon
@@ -854,14 +963,18 @@ fn get_url() -> &'static str {
   }
 }
 
-pub async fn get_config() -> HashMap<String, Vec<Config>> {
+pub async fn get_config(config_name: &str, non_interactive: bool) -> HashMap<String, Vec<Config>> {
   let anycloud_prof = get_deploy_configs().await;
-  let mut creds = get_creds().await;
-  if creds.len() == 0 {
+  let mut creds = get_creds(non_interactive).await;
+  if creds.len() == 0 && !non_interactive {
     prompt_add_cred(true, None).await;
+  } else if creds.len() == 0 && non_interactive {
+    warn_and_exit!(1, NoCredentials, "No credentials defined").await
   }
-  if anycloud_prof.len() == 0 {
+  if anycloud_prof.len() == 0 && !non_interactive {
     prompt_add_config().await;
+  } else if anycloud_prof.len() == 0 && non_interactive {
+    warn_and_exit!(1, NoDeployConfig, "No configuration defined").await
   }
   let mut all_configs = HashMap::new();
   for (deploy_name, deploy_configs) in anycloud_prof.into_iter() {
@@ -871,10 +984,29 @@ pub async fn get_config() -> HashMap<String, Vec<Config>> {
       let cred = match creds.get(cred_name) {
         Some(cred) => cred,
         None => {
+          if config_name.is_empty() && non_interactive {
+            // Case when is non interactive and there is no config name specified.
+            // Should be caught earlier but in case we arrive here we are not interested in ask for credentials.
+            continue;
+          } else if !config_name.is_empty() {
+            if non_interactive && &deploy_name != config_name {
+              // If it is not the one we are interested in, continue.
+              continue;
+            } else if non_interactive && &deploy_name == config_name {
+              // If no credentials found for the config specified in non interactive mode we warn and exit.
+              warn_and_exit!(
+                1,
+                NoCredentials,
+                "Non interactive mode. No credentials defined for desired config {}",
+                config_name
+              )
+              .await;
+            }
+          };
           let cred: &Credentials;
           loop {
             prompt_add_cred(false, Some(cred_name)).await;
-            creds = get_creds().await;
+            creds = get_creds(false).await;
             cred = match creds.get(cred_name) {
               Some(cred) => cred,
               None => continue,
@@ -950,18 +1082,55 @@ pub async fn client_error(err_code: ErrorType, message: &str, level: &str) {
   let _resp = post_v1("clientError", body).await;
 }
 
-pub async fn terminate() {
+pub async fn terminate(
+  app_name: Option<String>,
+  config_name: Option<String>,
+  non_interactive: bool,
+) {
+  let interactive = !non_interactive;
+  let app_name = if let Some(app_name) = app_name {
+    app_name
+  } else {
+    "".to_string()
+  };
+  let config_name = if let Some(config_name) = config_name {
+    config_name
+  } else {
+    "".to_string()
+  };
   let mut sp = ProgressBar::new_spinner();
   sp.enable_steady_tick(10);
   sp.set_message("Gathering information about Apps deployed");
-  let apps = get_apps(false).await;
+  let apps = get_apps(false, &config_name, non_interactive).await;
   sp.finish_and_clear();
   if apps.len() == 0 {
     println!("No Apps deployed");
     std::process::exit(0);
   }
   let ids = apps.into_iter().map(|a| a.id).collect::<Vec<String>>();
-  let selection = anycloud_dialoguer::select_with_default("Pick App to terminate", &ids, 0);
+  let selection: usize = if app_name.is_empty() && interactive {
+    anycloud_dialoguer::select_with_default("Pick App to terminate", &ids, 0)
+  } else if app_name.is_empty() && non_interactive {
+    warn_and_exit!(
+      1,
+      NoAppNameDefined,
+      "Non interactive mode. No app name provided to terminate."
+    )
+    .await
+  } else {
+    match ids.iter().position(|id| &app_name == id) {
+      Some(pos) => pos,
+      None => {
+        warn_and_exit!(
+          1,
+          NoAppNameDefined,
+          "No app name found with name {}.",
+          app_name
+        )
+        .await
+      }
+    }
+  };
   let cluster_id = &ids[selection];
   CLUSTER_ID.set(cluster_id.to_string()).unwrap();
   let styled_cluster_id = style(cluster_id).bold();
@@ -969,14 +1138,14 @@ pub async fn terminate() {
   sp.enable_steady_tick(10);
   sp.set_message(&format!("Terminating App {}", styled_cluster_id));
   let body = json!({
-    "deployConfig": get_config().await,
+    "deployConfig": get_config(&config_name, non_interactive).await,
     "clusterId": cluster_id,
   });
   let resp = post_v1("terminate", body).await;
   let res = match resp {
     Ok(_) => {
       poll(&sp, || async {
-        get_apps(false)
+        get_apps(false, &config_name, non_interactive)
           .await
           .into_iter()
           .find(|app| &app.id == cluster_id)
@@ -1008,17 +1177,97 @@ pub async fn new(
   agz_b64: String,
   anycloud_params: Option<(String, String)>,
   env_b64: Option<String>,
+  app_name: Option<String>,
+  config_name: Option<String>,
+  non_interactive: bool,
 ) {
-  let config = get_config().await;
+  let interactive = !non_interactive;
+  let app_name = if let Some(app_name) = app_name {
+    app_name
+  } else {
+    "".to_string()
+  };
+  let config_name = if let Some(config_name) = config_name {
+    config_name
+  } else {
+    "".to_string()
+  };
+  if !app_name.is_empty() {
+    // Check if app exists
+    let apps = get_apps(false, &config_name, non_interactive).await;
+    let ids = apps.into_iter().map(|a| a.id).collect::<Vec<String>>();
+    let app_exists: bool = match ids.iter().position(|id| &app_name == id) {
+      Some(_) => true,
+      None => false,
+    };
+    if app_exists {
+      println!("App name {} already exists. Upgrading app...", app_name);
+      upgrade(
+        agz_b64,
+        anycloud_params,
+        env_b64,
+        if app_name.is_empty() {
+          None
+        } else {
+          Some(app_name.to_string())
+        },
+        if config_name.is_empty() {
+          None
+        } else {
+          Some(config_name.to_string())
+        },
+        non_interactive,
+      )
+      .await;
+      return;
+    }
+  };
+  let config = get_config(&config_name, non_interactive).await;
   let config_names = config.keys().cloned().collect::<Vec<String>>();
-  if config_names.len() == 0 {
+  if config_names.len() == 0 && interactive {
     prompt_add_config().await;
+  } else if config_names.len() == 0 && non_interactive {
+    warn_and_exit!(
+      1,
+      NoDeployConfig,
+      "Non interactive mode. No deploy configuration found."
+    )
+    .await
   }
-  let selection =
-    anycloud_dialoguer::select_with_default("Pick Deploy Config for App", &config_names, 0);
+  let selection: usize = if config_name.is_empty() && interactive {
+    anycloud_dialoguer::select_with_default("Pick Deploy Config for App", &config_names, 0)
+  } else if config_name.is_empty() && non_interactive {
+    warn_and_exit!(
+      1,
+      NoDeployConfig,
+      "Non interactive mode. No deploy configuration selected."
+    )
+    .await
+  } else {
+    match config_names.iter().position(|n| &config_name == n) {
+      Some(pos) => pos,
+      None => {
+        warn_and_exit!(
+          1,
+          NoDeployConfig,
+          "No deploy configuration found with name {}.",
+          config_name
+        )
+        .await
+      }
+    }
+  };
   let deploy_config = &config_names[selection];
-  let app_id: std::io::Result<String> =
-    anycloud_dialoguer::input_with_allow_empty_as_result("Optional App name", true);
+  let app_id: std::io::Result<String> = if app_name.is_empty() && interactive {
+    anycloud_dialoguer::input_with_allow_empty_as_result("Optional App name", true)
+  } else if app_name.is_empty() && non_interactive {
+    Err(std::io::Error::new(
+      std::io::ErrorKind::NotFound,
+      "Non interactive mode. No app name defined",
+    ))
+  } else {
+    Ok(app_name)
+  };
   let sp = ProgressBar::new_spinner();
   sp.enable_steady_tick(10);
   sp.set_message("Creating new App");
@@ -1044,7 +1293,7 @@ pub async fn new(
       // idc if it's been set before, I'm setting it now!!!
       let _ = CLUSTER_ID.set(res.to_string());
       poll(&sp, || async {
-        get_apps(true)
+        get_apps(true, &config_name, non_interactive)
           .await
           .into_iter()
           .find(|app| &app.id == res)
@@ -1071,22 +1320,58 @@ pub async fn upgrade(
   agz_b64: String,
   anycloud_params: Option<(String, String)>,
   env_b64: Option<String>,
+  app_name: Option<String>,
+  config_name: Option<String>,
+  non_interactive: bool,
 ) {
+  let interactive = !non_interactive;
+  let app_name = if let Some(app_name) = app_name {
+    app_name
+  } else {
+    "".to_string()
+  };
+  let config_name = if let Some(config_name) = config_name {
+    config_name
+  } else {
+    "".to_string()
+  };
   let mut sp = ProgressBar::new_spinner();
   sp.enable_steady_tick(10);
   sp.set_message("Gathering information about Apps deployed");
-  let apps = get_apps(false).await;
+  let apps = get_apps(false, &config_name, non_interactive).await;
   sp.finish_and_clear();
   if apps.len() == 0 {
     println!("No Apps deployed");
     std::process::exit(0);
   }
   let (ids, sizes): (Vec<String>, Vec<usize>) = apps.into_iter().map(|a| (a.id, a.size)).unzip();
-  let selection = anycloud_dialoguer::select_with_default("Pick App to upgrade", &ids, 0);
+  let selection: usize = if app_name.is_empty() && interactive {
+    anycloud_dialoguer::select_with_default("Pick App to upgrade", &ids, 0)
+  } else if app_name.is_empty() && non_interactive {
+    warn_and_exit!(
+      1,
+      NoAppNameDefined,
+      "Non interactive mode. No app name provided to upgrade."
+    )
+    .await
+  } else {
+    match ids.iter().position(|id| &app_name == id) {
+      Some(pos) => pos,
+      None => {
+        warn_and_exit!(
+          1,
+          NoAppNameDefined,
+          "No app name found with name {}.",
+          app_name
+        )
+        .await
+      }
+    }
+  };
   let cluster_id = &ids[selection];
   CLUSTER_ID.set(cluster_id.to_string()).unwrap();
   let styled_cluster_id = style(cluster_id).bold();
-  let config = get_config().await;
+  let config = get_config(&config_name, non_interactive).await;
   sp = ProgressBar::new_spinner();
   sp.enable_steady_tick(10);
   sp.set_message(&format!("Upgrading App {}", styled_cluster_id));
@@ -1109,7 +1394,7 @@ pub async fn upgrade(
       // Check every 10s over 5 min if app already start upgrading
       let mut counter: u8 = 0;
       while counter < 30 {
-        let is_upgrading = get_apps(true)
+        let is_upgrading = get_apps(true, &config_name, non_interactive)
           .await
           .into_iter()
           .find(|app| &app.id == cluster_id)
@@ -1128,7 +1413,7 @@ pub async fn upgrade(
         )
       } else {
         poll(&sp, || async {
-          get_apps(false)
+          get_apps(false, &config_name, non_interactive)
             .await
             .into_iter()
             .find(|app| &app.id == cluster_id)
@@ -1152,8 +1437,8 @@ pub async fn upgrade(
   sp.finish_with_message(&res);
 }
 
-async fn get_apps(status: bool) -> Vec<App> {
-  let config = get_config().await;
+async fn get_apps(status: bool, config_name: &str, non_interactive: bool) -> Vec<App> {
+  let config = get_config(config_name, non_interactive).await;
   let body = json!({
     "deployConfig": config,
     "status": status,
@@ -1193,7 +1478,7 @@ pub async fn info() {
   let sp = ProgressBar::new_spinner();
   sp.enable_steady_tick(10);
   sp.set_message("Gathering information about Apps deployed");
-  let mut apps = get_apps(true).await;
+  let mut apps = get_apps(true, "", false).await;
   sp.finish_and_clear();
   if apps.len() == 0 {
     println!("No Apps deployed");

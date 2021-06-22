@@ -61,6 +61,9 @@ fn main() {
       .subcommand(SubCommand::with_name("new")
         .about("Deploys an .agz file to a new app with one of the Deploy Configs from anycloud.json")
         .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'")
+        .arg_from_usage("[NON_INTERACTIVE] -n, --non-interactive 'Enables non-interactive CLI mode useful for scripting.'")
+        .arg_from_usage("-a, --app-name=[APP_NAME] 'Specifies an optional app name.'")
+        .arg_from_usage("-c, --config-name=[CONFIG_NAME] 'Specifies a config name, required only in non-interactive mode.'")
       )
       .subcommand(SubCommand::with_name("list")
         .about("Displays all the Apps deployed with the Deploy Configs from anycloud.json")
@@ -71,6 +74,9 @@ fn main() {
       .subcommand(SubCommand::with_name("upgrade")
         .about("Deploys your repository to an existing App hosted in one of the Deploy Configs from anycloud.json")
         .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'")
+        .arg_from_usage("[NON_INTERACTIVE] -n, --non-interactive 'Enables non-interactive CLI mode useful for scripting.'")
+        .arg_from_usage("-a, --app-name=[APP_NAME] 'Specifies an optional app name.'")
+        .arg_from_usage("-c, --config-name=[CONFIG_NAME] 'Specifies a config name, required only in non-interactive mode.'")
       )
       .subcommand(SubCommand::with_name("config")
         .about("Manage Deploy Configs used by Apps from the anycloud.json in the current directory")
@@ -154,19 +160,52 @@ fn main() {
         }
       }
       ("deploy", Some(sub_matches)) => {
-        authenticate().await;
         match sub_matches.subcommand() {
           ("new", Some(matches)) => {
+            let non_interactive: bool = matches.values_of("NON_INTERACTIVE").is_some();
+            authenticate(non_interactive).await;
             let agz_file = matches.value_of("AGZ_FILE").unwrap();
-            deploy::new(get_agz_b64(agz_file), None, None).await;
+            let app_name = matches.value_of("app-name").map(String::from);
+            let config_name = matches.value_of("config-name").map(String::from);
+            deploy::new(
+              get_agz_b64(agz_file),
+              None,
+              None,
+              app_name,
+              config_name,
+              non_interactive,
+            )
+            .await;
           }
-          ("terminate", _) => deploy::terminate().await,
+          ("terminate", Some(matches)) => {
+            let non_interactive: bool = matches.values_of("NON_INTERACTIVE").is_some();
+            authenticate(non_interactive).await;
+            let app_name = matches.value_of("app-name").map(String::from);
+            let config_name = matches.value_of("config-name").map(String::from);
+            deploy::terminate(app_name, config_name, non_interactive).await
+          }
           ("upgrade", Some(matches)) => {
+            let non_interactive: bool = matches.values_of("NON_INTERACTIVE").is_some();
+            authenticate(non_interactive).await;
             let agz_file = matches.value_of("AGZ_FILE").unwrap();
-            deploy::upgrade(get_agz_b64(agz_file), None, None).await;
+            let app_name = matches.value_of("app-name").map(String::from);
+            let config_name = matches.value_of("config-name").map(String::from);
+            deploy::upgrade(
+              get_agz_b64(agz_file),
+              None,
+              None,
+              app_name,
+              config_name,
+              non_interactive,
+            )
+            .await;
           }
-          ("list", _) => deploy::info().await,
+          ("list", _) => {
+            authenticate(false).await;
+            deploy::info().await
+          }
           ("credentials", Some(sub_matches)) => {
+            authenticate(false).await;
             match sub_matches.subcommand() {
               ("new", _) => {
                 deploy::add_cred(None).await;
@@ -179,6 +218,7 @@ fn main() {
             }
           }
           ("config", Some(sub_matches)) => {
+            authenticate(false).await;
             match sub_matches.subcommand() {
               ("new", _) => deploy::add_deploy_config().await,
               ("list", _) => deploy::list_deploy_configs().await,
@@ -189,7 +229,9 @@ fn main() {
             }
           }
           // rely on AppSettings::SubcommandRequiredElseHelp
-          _ => {}
+          _ => {
+            authenticate(false).await;
+          }
         }
       }
       ("daemon", Some(matches)) => {
