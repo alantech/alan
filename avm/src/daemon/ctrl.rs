@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use std::str;
 use std::sync::Arc;
 
-use anycloud::error;
+use anycloud::{error, warn};
 use futures::future::join_all;
 use hyper::{
   body,
@@ -658,11 +658,10 @@ impl ControlPort {
       .filter(|vm| vm.private_ip_addr == self_ip)
       .collect();
     if self_vm_vec.len() == 0 {
-      error!(
+      warn!(
         NoDnsPrivateIp,
-        "Failed to find self in cluster. Maybe I am being shut down?"
-      )
-      .await;
+        "Failed to find self in cluster. Maybe I am being initialize?"
+      );
       // TODO: Should this error propagate up to the stats loop or no?
       return;
     } else if self_vm_vec.len() > 1 {
