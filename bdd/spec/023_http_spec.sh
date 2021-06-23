@@ -214,7 +214,7 @@ correct"
           print(firstMessage);
           const secondMessage = res.body('Second Message').send();
           print(secondMessage);
-          wait(100);
+          wait(1000);
           emit exit 0;
         }
       "
@@ -242,7 +242,7 @@ connection not found"
     End
 
     It "runs agc"
-      sleep 1
+      sleep 2
       alan run test_$$/temp.agc 1>./out.txt 2>/dev/null &
       sleep 1
       When run curl -s localhost:8000
