@@ -72,7 +72,7 @@ async fn post_v1(endpoint: &str, body: Value) -> String {
     Ok(res) => res,
     Err(err) => {
       let err = format!("{:?}", err);
-      error!(PostFailed, "{:?}", err).await;
+      error!(PostFailed, "Endpoint: {} - Error: {:?}", endpoint, err).await;
       err
     }
   }
@@ -336,7 +336,11 @@ pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
               if let Ok(stats_factor) = stats_factor {
                 factor = stats_factor;
               } else if let Err(err) = stats_factor {
-                error!(PostFailed, "Failed sending stats: {}", err).await;
+                error!(
+                  PostFailed,
+                  "Failed sending stats for cluster {}: {}", &cluster_id, err
+                )
+                .await;
               }
               println!(
                 "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
