@@ -6,7 +6,7 @@ use std::io::Read;
 
 use anycloud::common::{file_exist, get_app_tar_gz_b64, get_dockerfile_b64};
 use anycloud::deploy;
-use anycloud::{error, CLUSTER_ID};
+use anycloud::{error, warn, CLUSTER_ID};
 use base64;
 use byteorder::{LittleEndian, ReadBytesExt};
 use flate2::read::GzDecoder;
@@ -292,7 +292,7 @@ pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
           let vms = match dns.get_vms(&cluster_id, is_local).await {
             Ok(vms) => Some(vms),
             Err(err) => {
-              error!(NoDnsVms, "{}", err).await;
+              warn!(NoDnsVms, "{}", err);
               None
             }
           };
