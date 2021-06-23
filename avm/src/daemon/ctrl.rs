@@ -660,7 +660,7 @@ impl ControlPort {
     if self_vm_vec.len() == 0 {
       warn!(
         NoDnsPrivateIp,
-        "Failed to find self in cluster. Maybe I am being initialize?"
+        "Failed to find self in cluster. Maybe I am being shut down or initialize?"
       );
       // TODO: Should this error propagate up to the stats loop or no?
       return;
