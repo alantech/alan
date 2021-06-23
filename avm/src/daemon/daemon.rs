@@ -335,7 +335,7 @@ pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
               if let Ok(stats_factor) = stats_factor {
                 factor = stats_factor;
               } else if let Err(err) = stats_factor {
-                error!(PostFailed, "{}", err).await;
+                error!(PostFailed, "Failed sending stats: {}", err).await;
               }
               println!(
                 "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
