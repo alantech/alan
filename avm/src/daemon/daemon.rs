@@ -292,6 +292,7 @@ pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
           let vms = match dns.get_vms(&cluster_id, is_local).await {
             Ok(vms) => Some(vms),
             Err(err) => {
+              // We do not retry on failure here since every minute we are updating the vms list
               warn!(NoDnsVms, "{}", err);
               None
             }
