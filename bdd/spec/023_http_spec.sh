@@ -242,6 +242,7 @@ connection not found"
     End
 
     It "runs agc"
+      sleep 1
       alan run test_$$/temp.agc 1>./out.txt 2>/dev/null &
       sleep 1
       When run curl -s localhost:8000
