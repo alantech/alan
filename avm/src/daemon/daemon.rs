@@ -6,7 +6,7 @@ use std::io::Read;
 
 use anycloud::common::{file_exist, get_app_tar_gz_b64, get_dockerfile_b64};
 use anycloud::deploy;
-use anycloud::{error, CLUSTER_ID};
+use anycloud::{error, warn, CLUSTER_ID};
 use base64;
 use byteorder::{LittleEndian, ReadBytesExt};
 use flate2::read::GzDecoder;
@@ -72,7 +72,7 @@ async fn post_v1(endpoint: &str, body: Value) -> String {
     Ok(res) => res,
     Err(err) => {
       let err = format!("{:?}", err);
-      error!(PostFailed, "{:?}", err).await;
+      error!(PostFailed, "Endpoint: {} - Error: {:?}", endpoint, err).await;
       err
     }
   }
@@ -292,7 +292,8 @@ pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
           let vms = match dns.get_vms(&cluster_id, is_local).await {
             Ok(vms) => Some(vms),
             Err(err) => {
-              error!(NoDnsVms, "{}", err).await;
+              // We do not retry on failure here since every minute we are updating the vms list
+              warn!(NoDnsVms, "{}", err);
               None
             }
           };
@@ -335,7 +336,11 @@ pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
               if let Ok(stats_factor) = stats_factor {
                 factor = stats_factor;
               } else if let Err(err) = stats_factor {
-                error!(PostFailed, "{}", err).await;
+                error!(
+                  PostFailed,
+                  "Failed sending stats for cluster {}: {}", &cluster_id, err
+                )
+                .await;
               }
               println!(
                 "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
