@@ -54,7 +54,7 @@ export default class Fn {
       }
       if (retTy.dupIfNotLocalInterface() !== null) {
         // TODO: figure out how to prevent type erasure while allowing
-        // eg the generic identity function. Or just wait until generic
+        // eg thdupIfGeneralizablection. Or just wait until generic
         // fn type parameters.
         throw new Error(`type erasure is illegal`);
       }

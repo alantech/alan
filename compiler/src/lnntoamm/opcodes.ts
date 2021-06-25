@@ -15,6 +15,7 @@ export default opcodes;
 const load = (): void => {
   __opcodes = new Scope();
 
+  // Opaque types
   Object.entries({
     void: [],
     int8: [],
@@ -26,9 +27,10 @@ const load = (): void => {
     bool: [],
     string: [],
   }).forEach(([name, generics]: [string, string[]]) => {
-    __opcodes.put(name, Type.newBuiltin(name, generics));
+    __opcodes.put(name, Type.opaque(name, generics));
   });
 
+  // Builtin events
   Object.entries({
     start: 'void',
   }).forEach(([name, tyName]: [string, string]) => {
@@ -51,6 +53,7 @@ const load = (): void => {
     __opcodes.put(name, event);
   });
 
+  // opcodes
   Object.entries({
     i8f64: [{ a: 'int8' }, 'float64'],
     i16f64: [{ a: 'int16' }, 'float64'],

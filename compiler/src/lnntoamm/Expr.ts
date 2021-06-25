@@ -768,6 +768,7 @@ class New extends Expr {
     for (const field in this.fields) {
       const fieldTy = this.fields[field].ty.instance();
       const sizeHint = amm.global('const', int64, `${fieldTy.size()}`);
+      console.log('construction', fieldTy, fieldTy.isFixed());
       const pushCall = fieldTy.isFixed() ? 'pushf' : 'pushv';
       amm.call(pushCall, [name, this.fields[field].ammName, sizeHint]);
     }
