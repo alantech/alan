@@ -70,19 +70,6 @@ export default abstract class Type implements Equalable {
     return new Opaque(name, generics);
   }
 
-  // static newBuiltin(name: string, generics: string[]): Type {
-  //   return new Builtin(name);
-    // TODO: this maybe?
-    // let genericArgs: GenericArgs = {};
-    // generics.forEach(arg => genericArgs[arg] = null);
-    // return new Struct(
-    //   name,
-    //   null,
-    //   genericArgs,
-    //   {},
-    // );
-  // }
-
   static hasField(name: string, ty: Type): Type {
     return new HasField(name, null, ty);
   }
