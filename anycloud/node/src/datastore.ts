@@ -14,7 +14,7 @@ class Datastore {
     this.clusterSecret = process.env.CLUSTER_SECRET;
     this.isLocal = !this.clusterSecret;
     this.headers = this.clusterSecret ? { [this.clusterSecret]: 'true' } : null;
-    this.ctrlPortUrl = 'https://localhost:4142/app/';
+    this.ctrlPortUrl = 'https://host.docker.internal:4142/app/';
     // To avoid failure due to self signed certs
     this.ctrlPortAgent = new https.Agent({
       rejectUnauthorized: false,
