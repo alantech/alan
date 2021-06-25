@@ -30,6 +30,8 @@ pub enum ErrorType {
   NoDeployConfig = 137,
   NoAppNameDefined = 138,
   UnexpectedError = 139,
+  // 140 reserved for anycloud.ln docker error
+  NoTmpDir = 141,
 }
 
 #[macro_export]
