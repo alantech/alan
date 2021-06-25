@@ -1,4 +1,5 @@
 import { LPNode, NulLP } from '../lp';
+import { fulltypenameAstFromString } from './Ast';
 import Fn from './Fn';
 import Operator from './Operator';
 import Scope from './Scope';
@@ -8,6 +9,15 @@ type Fields = { [name: string]: Type | null };
 export type FieldIndices = { [name: string]: number };
 type GenericArgs = { [name: string]: Type | null };
 type TypeName = [string, TypeName[]];
+
+interface Generalizable {
+  generics: GenericArgs;
+  solidify(types: Type[]): Type;
+}
+
+const generalizable = (ty: any): ty is Generalizable => {
+  return typeof ty === 'object' && 'generics' in ty && typeof ty.generics === 'object' && 'solidify' in ty && typeof ty.solidify === 'function';
+};
 
 const parseFulltypename = (node: LPNode): TypeName => {
   const name = node.get('typename').t.trim();
@@ -46,8 +56,33 @@ export default abstract class Type implements Equalable {
   abstract size(): number;
 
   static getFromTypename(name: LPNode | string, scope: Scope): Type {
-    // TODO: change this to use parseFulltypename
-    return scope.get(name.toString().trim());
+    const construct = (parsed: TypeName): Type => {
+      const inScope = scope.get(parsed[0]);
+      if (inScope === null) {
+        throw new Error(`Type ${parsed[0]} is not defined!`);
+      } else if (!(inScope instanceof Type)) {
+        throw new Error(`${parsed[0]} is not a type!`);
+      } else if (generalizable(inScope)) {
+        if (Object.values(inScope.generics).length === parsed[1].length) {
+          if (parsed[1].length === 0) {
+            return inScope;
+          } else {
+            return inScope.solidify(parsed[1].map(construct));
+          }
+        } else {
+          throw new Error(`oof`);
+        }
+      } else if (parsed[1].length !== 0) {
+        throw new Error(`${parsed[0]} isn't a generic type, but generic type arguments were provided`);
+      } else {
+        return inScope;
+      }
+    }
+    if (typeof name === 'string') {
+      name = fulltypenameAstFromString(name);
+    }
+    const parsed = parseFulltypename(name);
+    return construct(parsed);
   }
 
   static fromInterfacesAst(ast: LPNode, scope: Scope): Type {
@@ -87,6 +122,8 @@ export default abstract class Type implements Equalable {
     return new HasOperator(name, null, params, ret, isPrefix);
   }
 
+  // TODO: if/when a syntax for generic type parameters in fns
+  // is decided on, get rid of this method.
   dupIfNotLocalInterface(): Type | null {
     return null;
   }
@@ -110,8 +147,8 @@ export default abstract class Type implements Equalable {
   }
 }
 
-class Opaque extends Type {
-  generics: { [name: string]: Type | null };
+class Opaque extends Type implements Generalizable {
+  generics: GenericArgs;
 
   get ammName(): string {
     let name = this.name;
@@ -174,21 +211,6 @@ class Opaque extends Type {
     if (!this.compatibleWithConstraint(ty, scope)) {
       throw new Error(`cannot constrain opaque type ${this.ammName} to ${ty.ammName}`);
     }
-    // if (to instanceof Struct) {
-    //   throw new Error(
-    //     `Opaque type ${this.ammName} cannot be constrained to a struct type!`,
-    //   );
-    // } else if (to instanceof HasField) {
-    //   throw new Error(`Opaque type ${this.ammName} does not have any fields!`);
-    // } else if (
-    //   to instanceof Generated ||
-    //   to instanceof Interface ||
-    //   to instanceof OneOf
-    // ) {
-    //   to.constrain(this, scope);
-    // } else if (!this.compatibleWithConstraint(to, scope)) {
-    //   throw new Error(`Could not constrain ${this.ammName} to ${to.ammName}`);
-    // }
   }
 
   eq(that: Equalable): boolean {
@@ -278,6 +300,14 @@ class Opaque extends Type {
       default:
         return false;
     }
+  }
+
+  solidify(types: Type[]): Type {
+    let solidified = new Opaque(this.name, Object.keys(this.generics));
+    Object.keys(solidified.generics).forEach((name, ii) => {
+      solidified.generics[name] = types[ii];
+    });
+    return solidified;
   }
 }
 
