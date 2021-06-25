@@ -159,6 +159,6 @@ fn sendDaemonError(url: string, message: string, alanVersion: string) {
     print("all good");
   } else {
     print("something happen");
-    print(res.getErr(error("Invalid access")).toString());
+    print(res.getErr(error("Could not print error")).toString());
   }
 }
