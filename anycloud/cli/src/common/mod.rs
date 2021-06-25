@@ -78,7 +78,6 @@ pub async fn get_app_tar_gz_b64(is_temporal: bool) -> String {
       }
     }
   }
-
   let file_path = match tmp_dir_path {
     Some(tmp_dir) => format!("{}/{}", tmp_dir, file_name),
     None => file_name.to_string()
