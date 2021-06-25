@@ -11,6 +11,7 @@ export bool
 export string
 // TODO: other builtin types
 
+export any
 export interface Stringifiable {
   toString(Stringifiable): string,
 }
@@ -89,6 +90,48 @@ export fn toString(n: float32): string = f32str(n);
 export fn toString(n: float64): string = f64str(n);
 export fn toString(n: string): string = n;
 export fn toString(n: bool): string = boolstr(n);
+
+export fn ok(val: any): Result<any> = okR(val, 0);
+export fn ok(val: int8): Result<int8> = okR(val, 8);
+export fn ok(val: int16): Result<int16> = okR(val, 8);
+export fn ok(val: int32): Result<int32> = okR(val, 8);
+export fn ok(val: int64): Result<int64> = okR(val, 8);
+export fn ok(val: float32): Result<float32> = okR(val, 8);
+export fn ok(val: float64): Result<float64> = okR(val, 8);
+export fn ok(val: bool): Result<bool> = okR(val, 8);
+export err // opcode with signature `fn err(string): Result<any>`
+export error // opcode with signature `fn error(string): Error`
+export noerr // opcode with signature `fn noerr(): Error`
+export isOk // opcode with signature `fn isOk(Result<any>): bool`
+export isErr // opcode with signature `fn isErr(Result<any>): bool`
+export fn getOr(result: Result<any>, default: any): any = getOrR(result, default);
+export getErr // opcode with signature `fn getErr(Result<any>, Error): Error`
+export fn getErr(result: Result<any>, default: string): Error = getErr(result, err)
+
+export fn add(a: int8, b: int8): Result<int8> = addi8(ok(a), ok(b));
+export fn add(a: Result<int8>, b: int8): Result<int8> = addi8(a, ok(b));
+export fn add(a: int8, b: Result<int8>): Result<int8> = addi8(ok(a), b);
+export fn add(a: Result<int8>, b: Result<int8>): Result<int8> = addi8(a, b);
+export fn add(a: int16, b: int16): Result<int16> = addi16(ok(a), ok(b));
+export fn add(a: Result<int16>, b: int16): Result<int16> = addi16(a, ok(b));
+export fn add(a: int16, b: Result<int16>): Result<int16> = addi16(ok(a), b);
+export fn add(a: Result<int16>, b: Result<int16>): Result<int16> = addi16(a, b);
+export fn add(a: int32, b: int32): Result<int32> = addi32(ok(a), ok(b));
+export fn add(a: Result<int32>, b: int32): Result<int32> = addi32(a, ok(b));
+export fn add(a: int32, b: Result<int32>): Result<int32> = addi32(ok(a), b);
+export fn add(a: Result<int32>, b: Result<int32>): Result<int32> = addi32(a, b);
+export fn add(a: int64, b: int64): Result<int64> = addi64(ok(a), ok(b));
+export fn add(a: Result<int64>, b: int64): Result<int64> = addi64(a, ok(b));
+export fn add(a: int64, b: Result<int64>): Result<int64> = addi64(ok(a), b);
+export fn add(a: Result<int64>, b: Result<int64>): Result<int64> = addi64(a, b);
+export fn add(a: float32, b: float32): Result<float32> = addf32(ok(a), ok(b));
+export fn add(a: Result<float32>, b: float32): Result<float32> = addf32(a, ok(b));
+export fn add(a: float32, b: Result<float32>): Result<float32> = addf32(ok(a), b);
+export fn add(a: Result<float32>, b: Result<float32>): Result<float32> = addf32(a, b);
+export fn add(a: float64, b: float64): Result<float64> = addf64(ok(a), ok(b));
+export fn add(a: Result<float64>, b: float64): Result<float64> = addf64(a, ok(b));
+export fn add(a: float64, b: Result<float64>): Result<float64> = addf64(ok(a), b);
+export fn add(a: Result<float64>, b: Result<float64>): Result<float64> = addf64(a, b);
 
 export fn eq(a: int8, b: int8): bool = eqi8(a, b);
 export fn eq(a: int16, b: int16): bool = eqi16(a, b);

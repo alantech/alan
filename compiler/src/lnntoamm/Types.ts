@@ -23,15 +23,17 @@ const parseFulltypename = (node: LPNode): TypeName => {
   const name = node.get('typename').t.trim();
   const genericTys: TypeName[] = [];
   if (node.has('opttypegenerics')) {
-    const generics = node.get('opttypegenerics');
+    const generics = node.get('opttypegenerics').get('generics');
     genericTys.push(parseFulltypename(generics.get('fulltypename')));
-    genericTys.push(
-      ...generics
-        .get('cdr')
-        .getAll()
-        .map((n) => n.get('fulltypename'))
-        .map(parseFulltypename),
-    );
+    if (generics.has('cdr')) {
+      genericTys.push(
+        ...generics
+          .get('cdr')
+          .getAll()
+          .map((n) => n.get('fulltypename'))
+          .map(parseFulltypename),
+      );
+    }
   }
   return [name, genericTys];
 };
@@ -661,7 +663,8 @@ class HasOperator extends HasMethod {
   }
 }
 
-class Interface extends Type {
+// FIXME: remove export when there are function type params.
+export class Interface extends Type {
   // TODO: it's more optimal to have fields, methods, and operators in
   // maps so we can cut down searching and such.
   fields: HasField[];

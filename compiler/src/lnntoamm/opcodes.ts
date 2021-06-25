@@ -1,7 +1,8 @@
+import { NulLP } from '../lp';
 import Event from './Event';
 import { OpcodeFn } from './Fn';
 import Scope from './Scope';
-import Type from './Types';
+import Type, { Interface } from './Types';
 
 let __opcodes: Scope = null;
 
@@ -26,9 +27,23 @@ const load = (): void => {
     float64: [],
     bool: [],
     string: [],
+    Error: [],
+    Result: ['T'],
   }).forEach(([name, generics]: [string, string[]]) => {
     __opcodes.put(name, Type.opaque(name, generics));
   });
+
+  // FIXME: this is only a workaround since there aren't any
+  // fn type parameters yet. If/when those are implemented, we
+  // can move this back to `root.lnn`
+  const any = new Interface(
+    'any',
+    new NulLP(),
+    [],
+    [],
+    [],
+  );
+  __opcodes.put('any', any);
 
   // Builtin events
   Object.entries({
@@ -55,6 +70,11 @@ const load = (): void => {
 
   // opcodes
   Object.entries({
+    okR: [{ a: 'any', size: 'int64' }, 'Result<any>'],
+    err: [{ a: 'string', }, 'Result<any>'],
+    error: [{ a: 'string', }, 'Error'],
+    noerr: [{}, 'Error'],
+
     i8f64: [{ a: 'int8' }, 'float64'],
     i16f64: [{ a: 'int16' }, 'float64'],
     i32f64: [{ a: 'int32' }, 'float64'],
@@ -118,6 +138,12 @@ const load = (): void => {
     f32str: [{ a: 'float32' }, 'string'],
     f64str: [{ a: 'float64' }, 'string'],
     boolstr: [{ a: 'bool' }, 'string'],
+    errorstr: [{ a: 'Error' }, 'string'],
+
+    addi8: [{ a: 'Result<int8>', b: 'Result<int8>' }, 'Result<int8>'],
+    addi16: [{ a: 'Result<int16>', b: 'Result<int16>' }, 'Result<int16>'],
+    addi32: [{ a: 'Result<int32>', b: 'Result<int32>' }, 'Result<int32>'],
+    addi64: [{ a: 'Result<int64>', b: 'Result<int64>' }, 'Result<int64>'],
 
     eqi8: [{ a: 'int8', b: 'int8' }, 'bool'],
     eqi16: [{ a: 'int16', b: 'int16' }, 'bool'],
@@ -176,6 +202,12 @@ const load = (): void => {
     xorbool: [{ a: 'bool', b: 'bool' }, 'bool'],
     norbool: [{ a: 'bool', b: 'bool' }, 'bool'],
     xnorboo: [{ a: 'bool', b: 'bool' }, 'bool'],
+
+    isOk: [{ a: 'Result<any>' }, 'bool'],
+    isErr: [{ a: 'Result<any>' }, 'bool'],
+    getR: [{ result: 'Result<any>', default: 'any' }, 'any'],
+    getOrR: [{ result: 'Result<any>', default: 'string' }, 'any'],
+    getErr: [{ result: 'Result<any>', err: 'Error' }, 'Error'],
 
     waitop: [{ t: 'int64' }, 'void'],
 

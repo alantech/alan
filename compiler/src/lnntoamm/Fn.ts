@@ -52,12 +52,12 @@ export default class Fn {
       if (retTy === null) {
         throw new Error(`Type not in scope: ${name.t.trim()}`);
       }
-      if (retTy.dupIfNotLocalInterface() !== null) {
-        // TODO: figure out how to prevent type erasure while allowing
-        // eg thdupIfGeneralizablection. Or just wait until generic
-        // fn type parameters.
-        throw new Error(`type erasure is illegal`);
-      }
+      // FIXME: either re-enable this when there's fn type params
+      // or figure out how to do this without preventing like half
+      // of the opcodes
+      // if (retTy.dupIfNotLocalInterface() !== null) {
+      //   throw new Error(`type erasure is illegal`);
+      // }
     } else {
       retTy = Type.oneOf([Type.generate(), opcodes().get('void')]);
     }
@@ -214,11 +214,11 @@ export class OpcodeFn extends Fn {
     __opcodes: Scope,
   ) {
     const params = Object.entries(argDecs).map(([name, tyName]) => {
-      return new FnParam(new NulLP(), name, opcodes().get(tyName));
+      return new FnParam(new NulLP(), name, Type.getFromTypename(tyName, opcodes()));
     });
-    const retTy = __opcodes.get(retTyName);
+    const retTy = Type.getFromTypename(retTyName, opcodes());
     if (retTy === null || !(retTy instanceof Type)) {
-      throw new Error();
+      throw new Error('errr');
     }
     super(new NulLP(), __opcodes, name, params, retTy, []);
     __opcodes.put(name, [this]);
