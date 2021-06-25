@@ -64,12 +64,12 @@ pub async fn get_agz_file_b64(agz_file_path: String) -> String {
   }
 }
 
-pub async fn get_app_tar_gz_b64(is_temporal: bool) -> String {
+pub async fn get_app_tar_gz_b64(is_temporary: bool) -> String {
   git_status().await;
   let file_name = "app.tar.gz";
   let tmp_dir = TempDir::new("anycloud");
   let mut tmp_dir_path: Option<&str> = None;
-  if is_temporal {
+  if is_temporary {
     tmp_dir_path = match &tmp_dir {
       Ok(dir) => dir.path().to_str(),
       Err(e) => {
