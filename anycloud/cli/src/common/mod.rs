@@ -6,18 +6,10 @@ use tempdir::TempDir;
 
 async fn get_file(file_name: &str, file_path: Option<&str>) -> Result<Vec<u8>, String> {
   match file_path {
-    Some(file_path) => {
-      println!("{}", format!("{}/{}", file_path, file_name));
-      let output = Command::new("ls")
-        .arg(format!("{}/{}", file_path, file_name))
-        .output()
-        .unwrap();
-      println!("{:?}", output);
-      match read(format!("{}/{}", file_path, file_name)) {
-        Ok(file) => Ok(file),
-        Err(_) => Err(format!("No {} at {}", file_name, file_path).into()),
-      }
-    }
+    Some(file_path) => match read(format!("{}/{}", file_path, file_name)) {
+      Ok(file) => Ok(file),
+      Err(_) => Err(format!("No {} at {}", file_name, file_path).into()),
+    },
     None => {
       let pwd = env::current_dir();
       match pwd {
