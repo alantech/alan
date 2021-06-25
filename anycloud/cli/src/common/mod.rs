@@ -80,7 +80,7 @@ pub async fn get_app_tar_gz_b64(is_temporal: bool) -> String {
   }
   let file_path = match tmp_dir_path {
     Some(tmp_dir) => format!("{}/{}", tmp_dir, file_name),
-    None => file_name.to_string()
+    None => file_name.to_string(),
   };
   git_archive_app_tar(&file_path).await;
   let app_tar_gz = match get_file(file_name, tmp_dir_path).await {
