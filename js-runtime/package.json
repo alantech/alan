@@ -1,6 +1,6 @@
 {
   "name": "alan-js-runtime",
-  "version": "0.1.42",
+  "version": "0.1.43-beta1",
   "description": "The runtime component for alan-js. Separately licensed from the compiler.",
   "main": "index.js",
   "scripts": {
