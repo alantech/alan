@@ -32,12 +32,9 @@ on start {
   }
   const alanTechEnv = alanTechEnvExec.stdout;
 
-  const serviceUrl = alanTechEnv == 'local' ? 
-    'http://localhost:8080/v1' : 
-    (alanTechEnv == 'staging' ? 
-      'https://deploy-staging.alantechnologies.com/v1' : 
-      'https://deploy.alantechnologies.com/v1'
-    );
+  const serviceUrl = (alanTechEnv == 'local' || alanTechEnv == 'staging') ? 
+    'https://deploy-staging.alantechnologies.com/v1' : 
+    'https://deploy.alantechnologies.com/v1';
   const errorEndpoint = '/daemonError';
   const url = serviceUrl + errorEndpoint;
 
@@ -152,10 +149,16 @@ fn sendDaemonError(url: string, message: string, alanVersion: string) {
   }.toString();
   const headers = newHashMap('Content-Length', bodyStr.length().toString());
   headers.set('Content-type', 'application/json');
-  fetch(new Request {
+  const res = fetch(new Request {
     method: 'POST',
     url: url,
     headers: headers,
     body: bodyStr,
   });
+  if res.isOk() {
+    print("all good");
+  } else {
+    print("something happen");
+    print(res.getErr(error("Invalid access")).toString());
+  }
 }
