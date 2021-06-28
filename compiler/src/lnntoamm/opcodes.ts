@@ -144,6 +144,8 @@ const load = (): void => {
     addi16: [{ a: 'Result<int16>', b: 'Result<int16>' }, 'Result<int16>'],
     addi32: [{ a: 'Result<int32>', b: 'Result<int32>' }, 'Result<int32>'],
     addi64: [{ a: 'Result<int64>', b: 'Result<int64>' }, 'Result<int64>'],
+    addf32: [{ a: 'Result<float32>', b: 'Result<float32>' }, 'Result<float32>'],
+    addf64: [{ a: 'Result<float64>', b: 'Result<float64>' }, 'Result<float64>'],
 
     eqi8: [{ a: 'int8', b: 'int8' }, 'bool'],
     eqi16: [{ a: 'int16', b: 'int16' }, 'bool'],

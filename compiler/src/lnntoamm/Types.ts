@@ -211,7 +211,8 @@ class Opaque extends Type implements Generalizable {
 
   constrain(ty: Type, scope: Scope) {
     if (!this.compatibleWithConstraint(ty, scope)) {
-      throw new Error(`cannot constrain opaque type ${this.ammName} to ${ty.ammName}`);
+      // console.log(this, ty);
+      throw new Error(`cannot constrain opaque type ${this.name} to ${ty.name}`);
     }
   }
 

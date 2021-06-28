@@ -544,6 +544,9 @@ class Call extends Expr {
     // first reduction
     const argTys = args.map((arg) => arg.ty);
     fns = Fn.select(fns, argTys, metadata.scope);
+    if (fns.length === 0) {
+      throw new Error(`Could not select functions for ${ast.t.trim()}`);
+    }
     // now, constrain all of the args to their possible types
     // makes it so that the type of the parameters in each position are in their own list
     // ie, given `do(int8, int16)` and `do(int8, int8)`, will result in this 2D array:
