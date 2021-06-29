@@ -109,7 +109,16 @@ export default class Fn {
       .get('statements')
       .getAll()
       .map((s) => s.get('statement'))
-      .forEach((ast) => body.push(...Stmt.fromAst(ast, metadata)));
+      .forEach((ast) => {
+        try {
+        body.push(...Stmt.fromAst(ast, metadata))
+        } catch (e) {
+          console.log('------------------');
+          console.log('while parsing', ast);
+          console.log('body is', body);
+          throw e;
+        }
+      });
     return new Fn(
       ast,
       scope,
@@ -124,15 +133,29 @@ export default class Fn {
 
   // FIXME: this should implement the matrix that i mentioned in the FIXME comment
   // for Expr#inline
-  static select(fns: Fn[], argTys: Type[], scope: Scope): Fn[] {
+  static select(fns: Fn[], args: Array<Type | Ref>, scope: Scope): [Fn, Type][] {
     return fns.filter((fn) => {
       const params = Object.values(fn.params);
       return (
-        params.length === argTys.length &&
-        params.every((param, ii) =>
-          argTys[ii].compatibleWithConstraint(param.ty, scope),
-        )
+        params.length === args.length &&
+        params.every((param, ii) => {
+          const arg = args[ii];
+          let ty = arg instanceof Ref ? arg.ty : arg;
+          return ty.compatibleWithConstraint(param.ty, scope);
+        })
       );
+    }).map((fn) => {
+      fn.params.forEach((param, ii) => {
+        const arg = args[ii];
+        if (arg instanceof Ref) {
+          param.assign(arg, scope);
+        } else {
+          param.ty.tempConstrain(arg, scope);
+        }
+      });
+      const ty = fn.retTy.instance();
+      fn.params.forEach((param) => param.unassign());
+      return [fn, ty];
     });
   }
 

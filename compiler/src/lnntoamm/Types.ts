@@ -455,7 +455,7 @@ abstract class Has extends Type {
     return false;
   }
 
-  static method(method: HasMethod, scope: Scope, ty: Type): Fn[] {
+  static method(method: HasMethod, scope: Scope, ty: Type): [Fn, Type][] {
     const fns = scope.get(method.name);
     if (!isFnArray(fns)) {
       return [];
@@ -827,6 +827,7 @@ export class Interface extends Type {
         );
       }
     });
+    this.tempDelegate = ty;
   }
 
   eq(that: Equalable): boolean {

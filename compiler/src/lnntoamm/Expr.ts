@@ -356,16 +356,17 @@ export default abstract class Expr {
             precedences[applyIdx] = dec.ref();
           }
           const applyTo = precedences[applyIdx] as Ref;
-          const fns = operators.reduce(
-            (fns, op) => [...fns, ...op.select(metadata.scope, applyTo.ty)],
-            new Array<Fn>(),
+          const selection = operators.reduce(
+            (fns, op) => [...fns, ...op.select(metadata.scope, applyTo)],
+            new Array<[Fn, Type]>(),
           );
           precedences[applyIdx] = new Call(
             new NulLP(),
-            fns,
+            selection.map((s) => s[0]),
             null,
             [applyTo],
             metadata.scope,
+            Type.oneOf(selection.map((s) => s[1])),
           );
           const rm = precedences.splice(idx, applyIdx);
           // update indices
@@ -396,6 +397,7 @@ export default abstract class Expr {
         // since infix operators are left-associated, and we iterate
         // left->right anyways, this impl is easy
         const fns = [];
+        const retTyPossibilities = new Array<Type>();
         let left = precedences[idx - 1] as Ref;
         let right = precedences[idx + 1] as Ref;
         if (!left || !right) {
@@ -415,8 +417,9 @@ export default abstract class Expr {
         }
         while (ops.length > 0) {
           const op = ops.pop();
-          const selected = op.select(metadata.scope, left.ty, right.ty);
-          fns.push(...selected);
+          const selected = op.select(metadata.scope, left, right);
+          fns.push(...selected.map((s) => s[0]));
+          retTyPossibilities.push(...selected.map((s) => s[1]));
         }
         const call = new Call(
           new NulLP(),
@@ -424,6 +427,7 @@ export default abstract class Expr {
           null,
           [left, right],
           metadata.scope,
+          Type.oneOf(retTyPossibilities),
         );
         precedences[idx - 1] = call;
         precedences.splice(idx, 2);
@@ -481,6 +485,7 @@ class Call extends Expr {
     maybeClosure: VarDef | null,
     args: Ref[],
     scope: Scope,
+    retTy: Type,
   ) {
     // console.log('~~~ generating call ', ast, fns, maybeClosure, args, scope);
     super(ast);
@@ -490,8 +495,8 @@ class Call extends Expr {
     this.fns = fns;
     this.maybeClosure = maybeClosure;
     this.args = args;
-    this.retTy = Type.oneOf(Array.from(new Set(fns.map((fn) => fn.retTy))));
     this.scope = scope;
+    this.retTy = retTy;
   }
 
   static fromCallAst(
@@ -543,7 +548,10 @@ class Call extends Expr {
     }
     // first reduction
     const argTys = args.map((arg) => arg.ty);
-    fns = Fn.select(fns, argTys, metadata.scope);
+    console.log('selecting from', fns);
+    const selection = Fn.select(fns, args, metadata.scope);
+    fns = selection.map((s) => s[0]);
+    const retTy = Type.oneOf(selection.map((s) => s[1]));
     if (fns.length === 0) {
       throw new Error(`Could not select functions for ${ast.t.trim()}`);
     }
@@ -563,7 +571,7 @@ class Call extends Expr {
     if (closure !== null) {
       TODO('closures');
     }
-    return [stmts, new Call(ast, fns, closure, args, metadata.scope)];
+    return [stmts, new Call(ast, fns, closure, args, metadata.scope, retTy)];
   }
 
   /*
@@ -597,8 +605,7 @@ class Call extends Expr {
   This should also happen in the unimplemented "solidification" phase.
   */
   inline(amm: Output, kind: AssignKind, name: string, ty: Type) {
-    const argTys = this.args.map((arg) => arg.ty.instance());
-    const selected = Fn.select(this.fns, argTys, this.scope) || [];
+    const selected = Fn.select(this.fns, this.args, this.scope) || [];
     // console.log('!!!!!!!!!!', this.ast.t.trim(), selected);
     if (selected.length === 0) {
       // TODO: to get better error reporting, we need to pass an ast when using
@@ -611,7 +618,7 @@ class Call extends Expr {
       throw new Error(`no function selected`);
     }
     const fn = selected.pop();
-    fn.inline(amm, this.args, kind, name, ty);
+    fn[0].inline(amm, this.args, kind, name, ty);
   }
 }
 
