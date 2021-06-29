@@ -45,25 +45,8 @@ export default class Fn {
 
   static fromFunctionsAst(ast: LPNode, scope: Scope): Fn {
     scope = new Scope(scope);
-    let retTy: Type;
-    if (ast.get('optreturntype').has()) {
-      const name = ast.get('optreturntype').get('fulltypename');
-      retTy = Type.getFromTypename(name, scope);
-      if (retTy === null) {
-        throw new Error(`Type not in scope: ${name.t.trim()}`);
-      }
-      // FIXME: either re-enable this when there's fn type params
-      // or figure out how to do this without preventing like half
-      // of the opcodes
-      // if (retTy.dupIfNotLocalInterface() !== null) {
-      //   throw new Error(`type erasure is illegal`);
-      // }
-    } else {
-      retTy = Type.oneOf([Type.generate(), opcodes().get('void')]);
-    }
 
-    // TODO: inheritance
-    const metadata = new MetaData(scope, retTy);
+    const metadata = new MetaData(scope, Type.generate());
 
     const name = ast.get('optname').has() ? ast.get('optname').get().t : null;
     const p: LPNode[] = [];
@@ -75,6 +58,29 @@ export default class Fn {
       }
     }
     const params = p.map((paramAst) => FnParam.fromArgAst(paramAst, metadata));
+
+    // get the return type after initializing the function parameters
+    // so that we can both catch type erasure while ensuring that, if
+    // the return type contains an interface, and that interface is
+    // used in the params, the interface type will already exist in scope
+    // and we won't have to duplicate.
+    let retTy: Type;
+    if (ast.get('optreturntype').has()) {
+      const name = ast.get('optreturntype').get('fulltypename');
+      retTy = Type.getFromTypename(name, scope);
+      if (retTy === null) {
+        throw new Error(`Type not in scope: ${name.t.trim()}`);
+      }
+      if (retTy.dupIfNotLocalInterface() !== null) {
+        throw new Error(`type erasure is illegal`);
+      }
+    } else {
+      retTy = Type.oneOf([Type.generate(), opcodes().get('void')]);
+    }
+    metadata.retTy.constrain(retTy, metadata.scope);
+    console.log('~~~~~~~~~~~~~~~~~');
+    console.log('returning', metadata.retTy);
+    console.log('params', params);
 
     let body = [];
     let bodyAsts: LPNode | LPNode[] = ast.get('fullfunctionbody');
@@ -237,7 +243,13 @@ export class OpcodeFn extends Fn {
     __opcodes: Scope,
   ) {
     const params = Object.entries(argDecs).map(([name, tyName]) => {
-      return new FnParam(new NulLP(), name, Type.getFromTypename(tyName, opcodes()));
+      let paramTy = Type.getFromTypename(tyName, opcodes());
+      const duped = paramTy.dupIfNotLocalInterface();
+      if (duped !== null) {
+        paramTy = duped;
+        __opcodes.put()
+      }
+      return new FnParam(new NulLP(), name, paramTy);
     });
     const retTy = Type.getFromTypename(retTyName, opcodes());
     if (retTy === null || !(retTy instanceof Type)) {

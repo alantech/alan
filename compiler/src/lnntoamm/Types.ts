@@ -856,6 +856,7 @@ export class Interface extends Type {
 
   tempConstrain(to: Type, _scope: Scope) {
     if (this === to) {
+      console.log(this);
       throw new Error('huh?');
     }
     if (this.tempDelegate !== null && !this.tempDelegate.eq(to)) {

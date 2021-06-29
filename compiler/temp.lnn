@@ -1,0 +1,6 @@
+from @std/app import start, print, exit
+
+on start {
+  print('hello, world!');
+  emit exit 0;
+}
