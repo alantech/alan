@@ -1,10 +1,10 @@
-import { LPNode, NulLP } from '../lp';
+import { LPNode, NamedAnd, NulLP, Token } from '../lp';
 import Output, { AssignKind } from './Amm';
 import Expr, { Ref } from './Expr';
 import opcodes from './opcodes';
 import Scope from './Scope';
 import Stmt, { Dec, Exit, FnParam, MetaData } from './Stmt';
-import Type from './Types';
+import Type, { FunctionType } from './Types';
 import { TODO } from './util';
 
 export default class Fn {
@@ -19,6 +19,7 @@ export default class Fn {
   exprFn: Expr;
   // not used by this class, but used by Statements
   metadata: MetaData;
+  ty: FunctionType
 
   get argNames(): string[] {
     return Object.keys(this.params);
@@ -42,6 +43,29 @@ export default class Fn {
     this.metadata =
       metadata !== null ? metadata : new MetaData(scope, this.retTy);
     while (this.body.reduce((carry, stmt) => carry && stmt.cleanup(), false));
+    this.ty = new FunctionType(
+      ((fnAst: LPNode) => {
+        if (fnAst instanceof NulLP) {
+          // assume it's for an opcode
+          const compilerDefinition = '<compiler definition>';
+          const makeToken = (tok: string) => new Token(tok, compilerDefinition, -1, -1);
+          return new NamedAnd(
+            `opcode ${this.name}`,
+            {
+              opcode: makeToken('opcode'),
+              _whitespace: makeToken(' '),
+              opcodeName: makeToken(this.name),
+            },
+            compilerDefinition,
+            -1,
+            -1,
+          );
+        }
+        return null;
+      })(this.ast),
+      this.params.map((param) => param.ty),
+      this.retTy,
+    );
   }
 
   static fromFunctionsAst(ast: LPNode, scope: Scope): Fn {

@@ -136,7 +136,7 @@ class Builtin extends Type {
     } else if (ty instanceof HasOperator) {
       return Has.operator(ty, scope, this).length !== 0;
     } else if (ty instanceof HasMethod) {
-      return Has.method(ty, scope, this).length !== 0;
+      return Has.method(ty, scope, this)[0].length !== 0;
     } else if (ty instanceof HasField) {
       return TODO('add field support for builtins');
     } else if (ty instanceof Interface) {
@@ -164,7 +164,7 @@ class Builtin extends Type {
       }
     } else if (
       ty instanceof HasMethod &&
-      Has.method(ty, scope, this).length === 0
+      Has.method(ty, scope, this)[0].length === 0
     ) {
       throw new Error(
         `type ${this.name} does not have method ${ty.name}(${ty.params
@@ -239,6 +239,76 @@ class Builtin extends Type {
         // Or we just pretend 64-bits is sufficient for everything and don't.
         return 1;
     }
+  }
+}
+
+export class FunctionType extends Type {
+  params: Type[]
+  retTy: Type
+
+  get ammName(): string {
+    throw new Error('Method not implemented.');
+  }
+
+  constructor(ast: LPNode, params: Type[], retTy: Type) {
+    super('<function>', ast);
+    this.params = params;
+    this.retTy = retTy;
+  }
+
+  static matrixSelect(fns: Fn[], args: Type[], scope: Scope): [Fn, Type][] {
+    const callTy = new FunctionType(new NulLP(), args, Type.generate());
+    fns = fns.filter((fn) => fn.ty.compatibleWithConstraint(callTy, scope));
+    // and now to generate the matrix
+    return []
+  }
+
+  compatibleWithConstraint(ty: Type, scope: Scope): boolean {
+    if (ty instanceof FunctionType) {
+      return this.params.length === ty.params.length &&
+        this.params.every((param, ii) => param.compatibleWithConstraint(ty.params[ii], scope)) &&
+        this.retTy.compatibleWithConstraint(ty.retTy, scope);
+    } else if (ty instanceof OneOf || ty instanceof Generated) {
+      return ty.compatibleWithConstraint(this, scope);
+    } else {
+      return false;
+    }
+  }
+
+  constrain(to: Type, scope: Scope): void {
+    console.log(to);
+    TODO('figure out what it means to constrain a function type');
+  }
+
+  eq(that: Equalable): boolean {
+    if (that instanceof FunctionType) {
+      return this.params.length === that.params.length && this.params.every((param, ii) => param.eq(that.params[ii])) && this.retTy.eq(that.retTy);
+    } else if (that instanceof Generated || that instanceof OneOf) {
+      return that.eq(this);
+    } else {
+      return false;
+    }
+  }
+
+  instance(): Type {
+    return new FunctionType(
+      this.ast,
+      this.params.map((param) => param.instance()),
+      this.retTy.instance(),
+    );
+  }
+
+  tempConstrain(to: Type, scope: Scope): void {
+    console.log(to);
+    TODO('temp constraints on a function type?');
+  }
+
+  resetTemp(): void {
+    TODO('temp constraints on a function type?');
+  }
+
+  size(): number {
+    throw new Error('Size should not be requested for function types...');
   }
 }
 
@@ -383,10 +453,10 @@ abstract class Has extends Type {
     return false;
   }
 
-  static method(method: HasMethod, scope: Scope, ty: Type): Fn[] {
+  static method(method: HasMethod, scope: Scope, ty: Type): [Fn[], Type[]] {
     const fns = scope.get(method.name);
     if (!isFnArray(fns)) {
-      return [];
+      return [[], []];
     }
     return Fn.select(
       fns,
