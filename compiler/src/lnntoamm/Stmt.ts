@@ -44,6 +44,7 @@ export default abstract class Stmt {
     this.ast = ast;
   }
 
+  abstract cleanup(): boolean;
   abstract inline(amm: Output): void;
 
   static fromAst(ast: LPNode, metadata: MetaData): Stmt[] {
@@ -96,6 +97,10 @@ export class Assign extends Stmt {
     return stmts;
   }
 
+  cleanup(): boolean {
+    return this.expr.cleanup();
+  }
+
   inline(amm: Output) {
     this.expr.inline(
       amm,
@@ -109,6 +114,10 @@ export class Assign extends Stmt {
 class Cond extends Stmt {
   static fromConditionals(_ast: LPNode, _metadata: MetaData): Stmt[] {
     return TODO('conditionals');
+  }
+
+  cleanup(): boolean {
+    return false;
   }
 
   inline(_amm: Output) {
@@ -196,6 +205,10 @@ export class Dec extends VarDef {
     return dec;
   }
 
+  cleanup(): boolean {
+    return this.expr.cleanup();
+  }
+
   inline(amm: Output) {
     // refs don't escape the current scope and this only happens 1x/scope,
     // so this is fine
@@ -255,6 +268,10 @@ export class FnParam extends VarDef {
     this.ty.tempConstrain(to.ty, scope);
   }
 
+  cleanup(): boolean {
+    return false;
+  }
+
   inline(_amm: Output) {
     throw new Error(`function parameters shouldn't be inlined`);
   }
@@ -308,6 +325,10 @@ class Emit extends Stmt {
     return stmts;
   }
 
+  cleanup(): boolean {
+    return false;
+  }
+
   inline(amm: Output) {
     if (!this.event.eventTy.eq(opcodes().get('void'))) {
       amm.emit(this.event.ammName, this.emitVal.ammName);
@@ -338,6 +359,10 @@ export class Exit extends Stmt {
       metadata.retTy.constrain(opcodes().get('void'), metadata.scope);
     }
     return stmts;
+  }
+
+  cleanup(): boolean {
+    return false;
   }
 
   inline(amm: Output) {

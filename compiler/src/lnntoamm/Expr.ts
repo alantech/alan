@@ -356,16 +356,23 @@ export default abstract class Expr {
             precedences[applyIdx] = dec.ref();
           }
           const applyTo = precedences[applyIdx] as Ref;
-          const fns = operators.reduce(
-            (fns, op) => [...fns, ...op.select(metadata.scope, applyTo.ty)],
-            new Array<Fn>(),
+          const [fns, retTys] = operators.reduce(
+            ([fns, retTys], op) => {
+              const [selFns, selTys] = op.select(metadata.scope, applyTo.ty);
+              fns = [...fns, ...selFns];
+              retTys = [...retTys, ...selTys];
+              return [fns, retTys];
+            },
+            [new Array<Fn>(), new Array<Type>()] as [Fn[], Type[]],
           );
+          const retTy = Type.oneOf(retTys);
           precedences[applyIdx] = new Call(
             new NulLP(),
             fns,
             null,
             [applyTo],
             metadata.scope,
+            retTy,
           );
           const rm = precedences.splice(idx, applyIdx);
           // update indices
@@ -413,17 +420,21 @@ export default abstract class Expr {
           stmts.push(dec);
           right = dec.ref();
         }
+        let retTys: Type[] = [];
         while (ops.length > 0) {
           const op = ops.pop();
           const selected = op.select(metadata.scope, left.ty, right.ty);
-          fns.push(...selected);
+          fns.push(...selected[0]);
+          retTys.push(...selected[1]);
         }
+        const retTy = Type.oneOf(retTys);
         const call = new Call(
           new NulLP(),
           fns,
           null,
           [left, right],
           metadata.scope,
+          retTy,
         );
         precedences[idx - 1] = call;
         precedences.splice(idx, 2);
@@ -435,6 +446,13 @@ export default abstract class Expr {
       throw new Error(`couldn't resolve operators`);
     }
     return [stmts, precedences.pop() as Ref];
+  }
+
+  cleanup(): boolean {
+    // most implementing Exprs don't have anything they need to do.
+    // I just didn't want to expose any of the Expr classes except
+    // for Ref to prevent split handling of the classes.
+    return false;
   }
 }
 
@@ -481,6 +499,7 @@ class Call extends Expr {
     maybeClosure: VarDef | null,
     args: Ref[],
     scope: Scope,
+    retTy: Type,
   ) {
     // console.log('~~~ generating call ', ast, fns, maybeClosure, args, scope);
     super(ast);
@@ -490,7 +509,7 @@ class Call extends Expr {
     this.fns = fns;
     this.maybeClosure = maybeClosure;
     this.args = args;
-    this.retTy = Type.oneOf(Array.from(new Set(fns.map((fn) => fn.retTy))));
+    this.retTy = retTy;
     this.scope = scope;
   }
 
@@ -543,7 +562,9 @@ class Call extends Expr {
     }
     // first reduction
     const argTys = args.map((arg) => arg.ty);
-    fns = Fn.select(fns, argTys, metadata.scope);
+    const [selFns, retTys] = Fn.select(fns, argTys, metadata.scope);
+    fns = selFns;
+    const retTy = Type.oneOf(retTys);
     // now, constrain all of the args to their possible types
     // makes it so that the type of the parameters in each position are in their own list
     // ie, given `do(int8, int16)` and `do(int8, int8)`, will result in this 2D array:
@@ -560,7 +581,19 @@ class Call extends Expr {
     if (closure !== null) {
       TODO('closures');
     }
-    return [stmts, new Call(ast, fns, closure, args, metadata.scope)];
+    return [stmts, new Call(ast, fns, closure, args, metadata.scope, retTy)];
+  }
+
+  private fnSelect(): [Fn[], Type[]] {
+    return Fn.select(this.fns, this.args.map(a => a.ty), this.scope);
+  }
+
+  cleanup() {
+    const [fns, tys] = this.fnSelect();
+    const isChanged = this.fns.length === fns.length;
+    this.fns = fns;
+    this.retTy.constrain(Type.oneOf(tys), this.scope);
+    return isChanged;
   }
 
   /*
@@ -594,10 +627,11 @@ class Call extends Expr {
   This should also happen in the unimplemented "solidification" phase.
   */
   inline(amm: Output, kind: AssignKind, name: string, ty: Type) {
-    const argTys = this.args.map((arg) => arg.ty.instance());
-    const selected = Fn.select(this.fns, argTys, this.scope) || [];
-    // console.log('!!!!!!!!!!', this.ast.t.trim(), selected);
-    if (selected.length === 0) {
+    // ignore selTys because if there's a mismatch between `ty`
+    // and the return type of the selected function, there will
+    // be an error when we inline
+    const [selFns, _selTys] = this.fnSelect();
+    if (selFns.length === 0) {
       // TODO: to get better error reporting, we need to pass an ast when using
       // operators. i'm not worried about error reporting yet, though :)
       console.log('~~~ ERROR');
@@ -607,7 +641,9 @@ class Call extends Expr {
       console.log('expected output type:', ty);
       throw new Error(`no function selected`);
     }
-    const fn = selected.pop();
+    // Fn.select should implement the matrix so that the most reasonable
+    // choice is last in the fn array.
+    const fn = selFns.pop();
     fn.inline(amm, this.args, kind, name, ty);
   }
 }

@@ -41,6 +41,7 @@ export default class Fn {
     this.body = body;
     this.metadata =
       metadata !== null ? metadata : new MetaData(scope, this.retTy);
+    while (this.body.reduce((carry, stmt) => carry && stmt.cleanup(), false));
   }
 
   static fromFunctionsAst(ast: LPNode, scope: Scope): Fn {
@@ -124,16 +125,17 @@ export default class Fn {
 
   // FIXME: this should implement the matrix that i mentioned in the FIXME comment
   // for Expr#inline
-  static select(fns: Fn[], argTys: Type[], scope: Scope): Fn[] {
-    return fns.filter((fn) => {
-      const params = Object.values(fn.params);
-      return (
-        params.length === argTys.length &&
-        params.every((param, ii) =>
-          argTys[ii].compatibleWithConstraint(param.ty, scope),
-        )
-      );
-    });
+  static select(fns: Fn[], argTys: Type[], scope: Scope): [Fn[], Type[]] {
+    return null;
+    // return fns.filter((fn) => {
+    //   const params = Object.values(fn.params);
+    //   return (
+    //     params.length === argTys.length &&
+    //     params.every((param, ii) =>
+    //       argTys[ii].compatibleWithConstraint(param.ty, scope),
+    //     )
+    //   );
+    // });
   }
 
   asHandler(amm: Output, event: string) {
