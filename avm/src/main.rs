@@ -170,7 +170,7 @@ fn main() {
             let agz_file = matches.value_of("AGZ_FILE").unwrap();
             let app_name = matches.value_of("app-name").map(String::from);
             let config_name = matches.value_of("config-name").map(String::from);
-            let files = matches.value_of("COMMA_SEPARATED_NAMES");
+            let files = matches.value_of("files");
             let mut files_b64 = HashMap::new();
             if let Some(files) = files {
               let names = files.split(",");
@@ -178,6 +178,7 @@ fn main() {
                 files_b64.insert(name.to_string(), get_agz_file_b64(name.to_string()).await);
               }
             }
+            eprintln!("loaded files {:?}", files_b64);
             deploy::new(
               get_agz_b64(agz_file),
               files_b64,
@@ -200,7 +201,7 @@ fn main() {
             let agz_file = matches.value_of("AGZ_FILE").unwrap();
             let app_name = matches.value_of("app-name").map(String::from);
             let config_name = matches.value_of("config-name").map(String::from);
-            let files = matches.value_of("COMMA_SEPARATED_NAMES");
+            let files = matches.value_of("files");
             let mut files_b64 = HashMap::new();
             if let Some(files) = files {
               let names = files.split(",");
