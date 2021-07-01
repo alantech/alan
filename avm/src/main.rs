@@ -178,7 +178,6 @@ fn main() {
                 files_b64.insert(name.to_string(), get_agz_file_b64(name.to_string()).await);
               }
             }
-            eprintln!("loaded files {:?}", files_b64);
             deploy::new(
               get_agz_b64(agz_file),
               files_b64,
