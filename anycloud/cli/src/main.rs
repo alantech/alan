@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::env;
 use std::future::Future;
 
@@ -82,11 +83,10 @@ pub async fn main() {
         matches.value_of("app-name"),
         matches.value_of("config-name"),
         non_interactive,
-        |anycloud_agz, anycloud_params, env_b64, app_name, config_name, non_interactive| async move {
+        |anycloud_agz, files_b64, app_name, config_name, non_interactive| async move {
           deploy::new(
             anycloud_agz,
-            anycloud_params,
-            env_b64,
+            files_b64,
             app_name,
             config_name,
             non_interactive,
@@ -112,11 +112,10 @@ pub async fn main() {
         matches.value_of("app-name"),
         matches.value_of("config-name"),
         non_interactive,
-        |anycloud_agz, anycloud_params, env_b64, app_name, config_name, non_interactive| async move {
+        |anycloud_agz, files_b64, app_name, config_name, non_interactive| async move {
           deploy::upgrade(
             anycloud_agz,
-            anycloud_params,
-            env_b64,
+            files_b64,
             app_name,
             config_name,
             non_interactive,
@@ -169,28 +168,24 @@ async fn new_or_upgrade<Callback, CallbackFut>(
   non_interactive: bool,
   deploy_fn: Callback,
 ) where
-  Callback: Fn(
-    String,
-    Option<(String, String)>,
-    Option<String>,
-    Option<String>,
-    Option<String>,
-    bool,
-  ) -> CallbackFut,
+  Callback:
+    Fn(String, HashMap<String, String>, Option<String>, Option<String>, bool) -> CallbackFut,
   CallbackFut: Future<Output = ()>,
 {
-  let dockerfile_b64 = get_dockerfile_b64().await;
-  let app_tar_gz_b64 = get_app_tar_gz_b64(true).await;
-  let env_b64 = match env_file {
-    Some(env_file) => Some(get_env_file_b64(env_file.to_string()).await),
-    None => None,
-  };
+  let mut files_b64 = HashMap::new();
+  files_b64.insert("Dockerfile".to_string(), get_dockerfile_b64().await);
+  files_b64.insert("app.tar.gz".to_string(), get_app_tar_gz_b64(true).await);
+  if let Some(env_file) = env_file {
+    files_b64.insert(
+      "anycloud.env".to_string(),
+      get_env_file_b64(env_file.to_string()).await,
+    );
+  }
   let app_name = app_name.map(String::from);
   let config_name = config_name.map(String::from);
   deploy_fn(
     anycloud_agz,
-    Some((dockerfile_b64, app_tar_gz_b64)),
-    env_b64,
+    files_b64,
     app_name,
     config_name,
     non_interactive,

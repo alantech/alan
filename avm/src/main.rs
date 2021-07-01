@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::env;
 use std::fs::read;
 use std::path::Path;
@@ -64,6 +65,7 @@ fn main() {
         .arg_from_usage("[NON_INTERACTIVE] -n, --non-interactive 'Enables non-interactive CLI mode useful for scripting.'")
         .arg_from_usage("-a, --app-name=[APP_NAME] 'Specifies an optional app name.'")
         .arg_from_usage("-c, --config-name=[CONFIG_NAME] 'Specifies a config name, required only in non-interactive mode.'")
+        .arg_from_usage("-f, --files=[COMMA_SEPARATED_NAMES] 'Specifies a set of files to include in the same working directory as your app'")
       )
       .subcommand(SubCommand::with_name("list")
         .about("Displays all the Apps deployed with the Deploy Configs from anycloud.json")
@@ -77,6 +79,7 @@ fn main() {
         .arg_from_usage("[NON_INTERACTIVE] -n, --non-interactive 'Enables non-interactive CLI mode useful for scripting.'")
         .arg_from_usage("-a, --app-name=[APP_NAME] 'Specifies an optional app name.'")
         .arg_from_usage("-c, --config-name=[CONFIG_NAME] 'Specifies a config name, required only in non-interactive mode.'")
+        .arg_from_usage("-f, --files=[COMMA_SEPARATED_NAMES] 'Specifies a set of files to include in the same working directory as your app'")
       )
       .subcommand(SubCommand::with_name("config")
         .about("Manage Deploy Configs used by Apps from the anycloud.json in the current directory")
@@ -167,10 +170,17 @@ fn main() {
             let agz_file = matches.value_of("AGZ_FILE").unwrap();
             let app_name = matches.value_of("app-name").map(String::from);
             let config_name = matches.value_of("config-name").map(String::from);
+            let files = matches.value_of("COMMA_SEPARATED_NAMES");
+            let mut files_b64 = HashMap::new();
+            if let Some(files) = files {
+              let names = files.split(",");
+              for name in names {
+                files_b64.insert(name.to_string(), get_agz_file_b64(name.to_string()).await);
+              }
+            }
             deploy::new(
               get_agz_b64(agz_file),
-              None,
-              None,
+              files_b64,
               app_name,
               config_name,
               non_interactive,
@@ -190,10 +200,17 @@ fn main() {
             let agz_file = matches.value_of("AGZ_FILE").unwrap();
             let app_name = matches.value_of("app-name").map(String::from);
             let config_name = matches.value_of("config-name").map(String::from);
+            let files = matches.value_of("COMMA_SEPARATED_NAMES");
+            let mut files_b64 = HashMap::new();
+            if let Some(files) = files {
+              let names = files.split(",");
+              for name in names {
+                files_b64.insert(name.to_string(), get_agz_file_b64(name.to_string()).await);
+              }
+            }
             deploy::upgrade(
               get_agz_b64(agz_file),
-              None,
-              None,
+              files_b64,
               app_name,
               config_name,
               non_interactive,
