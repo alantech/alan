@@ -1175,8 +1175,7 @@ pub async fn terminate(
 
 pub async fn new(
   agz_b64: String,
-  anycloud_params: Option<(String, String)>,
-  env_b64: Option<String>,
+  files_b64: HashMap<String, String>,
   app_name: Option<String>,
   config_name: Option<String>,
   non_interactive: bool,
@@ -1204,8 +1203,7 @@ pub async fn new(
       println!("App name {} already exists. Upgrading app...", app_name);
       upgrade(
         agz_b64,
-        anycloud_params,
-        env_b64,
+        files_b64,
         if app_name.is_empty() {
           None
         } else {
@@ -1258,35 +1256,29 @@ pub async fn new(
     }
   };
   let deploy_config = &config_names[selection];
-  let app_id: std::io::Result<String> = if app_name.is_empty() && interactive {
-    anycloud_dialoguer::input_with_allow_empty_as_result("Optional App name", true)
-  } else if app_name.is_empty() && non_interactive {
-    Err(std::io::Error::new(
-      std::io::ErrorKind::NotFound,
-      "Non interactive mode. No app name defined",
-    ))
+  if app_name.is_empty() && non_interactive {
+    warn_and_exit!(
+      1,
+      NoAppNameDefined,
+      "Non interactive mode. No app name provided to upgrade."
+    )
+    .await;
+  }
+  let app_id = if app_name.is_empty() && interactive {
+    anycloud_dialoguer::input_with_allow_empty_as_result("Optional App name", true).unwrap()
   } else {
-    Ok(app_name)
+    app_name
   };
   let sp = ProgressBar::new_spinner();
   sp.enable_steady_tick(10);
   sp.set_message("Creating new App");
-  let mut body = json!({
-    "deployName": deploy_config,
-    "deployConfig": config,
+  let body = json!({
     "agzB64": agz_b64,
+    "appId": app_id,
+    "deployConfig": config,
+    "deployName": deploy_config,
+    "filesB64": files_b64,
   });
-  let mut_body = body.as_object_mut().unwrap();
-  if let Ok(app_id) = app_id {
-    mut_body.insert(format!("appId"), json!(app_id));
-  }
-  if let Some(anycloud_params) = anycloud_params {
-    mut_body.insert(format!("DockerfileB64"), json!(anycloud_params.0));
-    mut_body.insert(format!("appTarGzB64"), json!(anycloud_params.1));
-  }
-  if let Some(env_b64) = env_b64 {
-    mut_body.insert(format!("envB64"), json!(env_b64));
-  }
   let resp = post_v1("new", body).await;
   let res = match &resp {
     Ok(res) => {
@@ -1318,8 +1310,7 @@ pub async fn new(
 
 pub async fn upgrade(
   agz_b64: String,
-  anycloud_params: Option<(String, String)>,
-  env_b64: Option<String>,
+  files_b64: HashMap<String, String>,
   app_name: Option<String>,
   config_name: Option<String>,
   non_interactive: bool,
@@ -1375,19 +1366,12 @@ pub async fn upgrade(
   sp = ProgressBar::new_spinner();
   sp.enable_steady_tick(10);
   sp.set_message(&format!("Upgrading App {}", styled_cluster_id));
-  let mut body = json!({
+  let body = json!({
+    "agzB64": agz_b64,
     "clusterId": cluster_id,
     "deployConfig": config,
-    "agzB64": agz_b64,
+    "filesB64": files_b64,
   });
-  let mut_body = body.as_object_mut().unwrap();
-  if let Some(anycloud_params) = anycloud_params {
-    mut_body.insert(format!("DockerfileB64"), json!(anycloud_params.0));
-    mut_body.insert(format!("appTarGzB64"), json!(anycloud_params.1));
-  }
-  if let Some(env_b64) = env_b64 {
-    mut_body.insert(format!("envB64"), json!(env_b64));
-  }
   let resp = post_v1("upgrade", body).await;
   let res = match resp {
     Ok(_) => {
