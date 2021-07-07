@@ -39,7 +39,7 @@ This would be a minor update if we were post-1.0 as it should have zero breaking
 
 When Alan has user-defined code passed into a built-in opcode, such as the `Array<T>`'s `map`, the inner function is compiled into AGA as a `closure for <uuid>` that temporarily takes over the outer scope's `HandlerMemory` and executes the inner function with the relevant arguments passed in on each run, then the output is placed into the `HandlerMemory` and it continues on. If `mapLin` was used, it runs sequentially and the inner function can mutate values in the outer scope safely (and is allowed to do so).
 
-There is no theoretical reason why `map` must do its work on the same machine in the cluster. It could copy the `HandlerMemory` to any other node, do its work there, and then copy it back at the end. This simply doesn't make any sense from a performance perspective since you must spend the time to serialize, transmit, deserialize, compute, serialize, transmit, and finally deserialize, while staying on the same machine only requires creating a special child `HanlderMemory` associated with the original one, almost no overhead versus the compute step.
+There is no theoretical reason why `map` must do its work on the same machine in the cluster. It could copy the `HandlerMemory` to any other node, do its work there, and then copy it back at the end. This simply doesn't make any sense from a performance perspective since you must spend the time to serialize, transmit, deserialize, compute, serialize, transmit, and finally deserialize, while staying on the same machine only requires creating a special child `HandlerMemory` associated with the original one, almost no overhead versus the compute step.
 
 Keeping the data local reduces overhead and makes a lot of sense. But some data needs to be shared so decisions are consistent regardless of where it is asked to be computed. In that case, a set of fetch, serialize, deserialize, and compute are performed on each piece of data that needs to be brought from one node to another, with the reverse happening if the computation needs to be stored again. But if the end-result data after the computation is much smaller than the input data, then a lot of the data transmission overhead can be eliminated if the compute is moved to where the data is stored and only the result is transmitted back.
 
@@ -199,4 +199,3 @@ This will mostly affect the standard library and runtimes, with a little bit of 
 ## Expected Timeline
 
 This should probably only take about a week. :D
-
