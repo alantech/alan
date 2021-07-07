@@ -79,7 +79,7 @@ const baz = ns('someNamespace').ref('foo').closure(fn (foo: string) {
 
 ```ln
 const bar = 'bar';
-const baz = ns('someNamespace').ref('foo').with(bar).run(fn (bar: string, foo: string) = #bar + #foo);
+const baz = ns('someNamespace').ref('foo').with(bar).run(fn (foo: string, bar: string) = #bar + #foo);
 ```
 
 ```ln
@@ -100,7 +100,7 @@ const baz = ns('someNamespace').mut('foo').closure(fn (foo: string) {
 
 ```ln
 const bar = 'bar';
-const baz = ns('someNamespace').mut('foo').with(bar).run(fn (bar: string, foo: string) {
+const baz = ns('someNamespace').mut('foo').with(bar).run(fn (foo: string, bar: string) {
   foo = foo * #bar;
   return foo.length();
 });
@@ -114,7 +114,7 @@ ns('someNamespace').mut('foo').mutOnly(fn (foo: string) {
 
 ```ln
 const bar = 'bar';
-ns('someNamespace').mut('foo').with(bar).mutOnly(fn (bar: string, foo: string) {
+ns('someNamespace').mut('foo').with(bar).mutOnly(fn (foo: string, bar: string) {
   foo = foo + bar;
 });
 ```
@@ -134,7 +134,7 @@ fn createQueue(queueName: string) {
 }
 
 fn enqueue(queueName: string, payload: any) {
-  ns('queue').mut(queueName).with(payload).mutOnly(fn (payload: any, queue: Array<any>) {
+  ns('queue').mut(queueName).with(payload).mutOnly(fn (queue: Array<any>, payload: any) {
     queue = [payload] + queue;
   });
 }
@@ -142,7 +142,7 @@ fn enqueue(queueName: string, payload: any) {
 fn dequeue(queueName: string, default: any): any = ns('queue')
   .mut(queueName)
   .with(default)
-  .run(fn (default: any, queue: Array<any>): any = queue.pop() || default) || default;
+  .run(fn (queue: Array<any>, default: any): any = queue.pop() || default) || default;
 ```
 
 If enqueuing performance isn't a problem, you could also merge the `createQueue` function into the `enqueue` function behind a conditional on the datastore `has` method.
