@@ -1,5 +1,0 @@
-root: ./anycloud/docs/
-
-structure:
-  readme: ./about.md
-  summary: summary.md

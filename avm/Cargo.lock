@@ -26,14 +26,15 @@ dependencies = [
 
 [[package]]
 name = "alan"
-version = "0.1.43-beta2"
+version = "0.1.43-beta3"
 dependencies = [
- "anycloud",
+ "ascii_table",
  "async-stream",
  "base64",
  "byteorder",
  "clap",
  "dashmap",
+ "dialoguer",
  "flate2",
  "futures",
  "futures-util",
@@ -44,6 +45,7 @@ dependencies = [
  "hyper",
  "hyper-openssl",
  "hyper-rustls",
+ "indicatif",
  "lazy_static",
  "num_cpus",
  "once_cell",
@@ -55,11 +57,14 @@ dependencies = [
  "regex",
  "rustls",
  "serde",
+ "serde_ini",
  "serde_json",
+ "tempdir",
  "tokio",
  "tokio-rustls",
  "trust-dns-resolver",
  "twox-hash",
+ "webbrowser",
 ]
 
 [[package]]
@@ -69,26 +74,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee49baf6cb617b853aa8d93bf420db2383fab46d314482ca2803b40d5fde979b"
 dependencies = [
  "winapi",
-]
-
-[[package]]
-name = "anycloud"
-version = "0.1.43-beta2"
-dependencies = [
- "ascii_table",
- "base64",
- "clap",
- "dialoguer",
- "hyper",
- "hyper-tls",
- "indicatif",
- "once_cell",
- "serde",
- "serde_ini",
- "serde_json",
- "tempdir",
- "tokio",
- "webbrowser",
 ]
 
 [[package]]
@@ -808,19 +793,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hyper-tls"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6183ddfa99b85da61a140bea0efc93fdf56ceaa041b37d553518030827f9905"
-dependencies = [
- "bytes",
- "hyper",
- "native-tls",
- "tokio",
- "tokio-native-tls",
-]
-
-[[package]]
 name = "idna"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1012,24 +984,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9f1c5b025cda876f66ef43a113f91ebc9f4ccef34843000e0adf6ebbab84e21"
 dependencies = [
  "winapi",
-]
-
-[[package]]
-name = "native-tls"
-version = "0.2.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8d96b2e1c8da3957d58100b09f102c6d9cfdfced01b7ec5a8974044bb09dbd4"
-dependencies = [
- "lazy_static",
- "libc",
- "log",
- "openssl",
- "openssl-probe",
- "openssl-sys",
- "schannel",
- "security-framework",
- "security-framework-sys",
- "tempfile",
 ]
 
 [[package]]
@@ -1809,16 +1763,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "tokio-native-tls"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7d995660bd2b7f8c1568414c1126076c13fbb725c40112dc0120b78eb9b717b"
-dependencies = [
- "native-tls",
- "tokio",
 ]
 
 [[package]]

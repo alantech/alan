@@ -30,36 +30,36 @@ pub enum ErrorType {
   NoDeployConfig = 137,
   NoAppNameDefined = 138,
   UnexpectedError = 139,
-  // 140 reserved for anycloud.ln docker error
+  ApplicationError = 140,
   NoTmpDir = 141,
 }
 
 #[macro_export]
 macro_rules! error {
   ($errCode:ident, $($message:tt)+) => {async{
-    let err_type = $crate::logger::ErrorType::$errCode;
+    let err_type = $crate::cloud::logger::ErrorType::$errCode;
     eprintln!($($message)+);
-    $crate::deploy::client_error(err_type, &format!($($message)+), "error").await;
+    $crate::cloud::deploy::client_error(err_type, &format!($($message)+), "error").await;
   }};
   (metadata: $metadata:tt, $errCode:ident, $($message:tt)+) => {async{
-    let err_type = $crate::logger::ErrorType::$errCode;
+    let err_type = $crate::cloud::logger::ErrorType::$errCode;
     let value = json!($metadata);
     eprintln!($($message)+);
-    $crate::deploy::client_error(err_type, &format!($($message)+), "error").await;
+    $crate::cloud::deploy::client_error(err_type, &format!($($message)+), "error").await;
   }}
 }
 
 #[macro_export]
 macro_rules! warn {
   ($errCode:ident, $($message:tt)+) => {
-    let err_type = $crate::logger::ErrorType::$errCode;
+    let err_type = $crate::cloud::logger::ErrorType::$errCode;
     eprintln!($($message)+);
-    $crate::deploy::client_error(err_type, &format!($($message)+), "warn").await;
+    $crate::cloud::deploy::client_error(err_type, &format!($($message)+), "warn").await;
   };
   (metadata: $metadata:tt, $errCode:ident, $($message:tt)+) => {
-    let err_type = $crate::logger::ErrorType::$errCode;
+    let err_type = $crate::cloud::logger::ErrorType::$errCode;
     let value = json!($metadata);
     eprintln!($($message)+);
-    $crate::deploy::client_error(err_type, &format!($($message)+), "warn").await;
+    $crate::cloud::deploy::client_error(err_type, &format!($($message)+), "warn").await;
   };
 }

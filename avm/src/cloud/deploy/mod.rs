@@ -14,12 +14,12 @@ use std::time::Duration;
 
 use ascii_table::{AsciiTable, Column};
 
-use crate::http::CLIENT;
-use crate::logger::ErrorType;
-use crate::oauth::{clear_token, get_token};
-use crate::CLUSTER_ID;
+use crate::cloud::http::CLIENT;
+use crate::cloud::logger::ErrorType;
+use crate::cloud::oauth::{clear_token, get_token};
+use crate::cloud::CLUSTER_ID;
 
-mod anycloud_dialoguer;
+mod deploy_dialoguer;
 
 macro_rules! warn_and_exit {
   ($exitCode:expr, $errCode:ident, $($message:tt)+) => {async{
@@ -37,7 +37,7 @@ const REQUEST_TIMEOUT: &str =
   the cloud provider to finish up.";
 const FORBIDDEN_OPERATION: &str =
   "Please review your credentials. Make sure you have follow all the \
-  configuration steps: https://docs.anycloudapp.com/";
+  configuration steps: https://docs.anycloudapp.com/"; // TODO: Fix this URL
 const NAME_CONFLICT: &str = "Another application with same App ID already exists.";
 const UNAUTHORIZED_OPERATION: &str =
   "Invalid AnyCloud authentication credentials. Please retry and you will be asked to reauthenticate.";
@@ -208,8 +208,8 @@ pub enum PostV1Error {
   Other(String),
 }
 
-const ANYCLOUD_FILE: &str = "anycloud.json";
-const CREDENTIALS_FILE: &str = ".anycloud/credentials.json";
+const ALANDEPLOY_FILE: &str = "alandeploy.json";
+const CREDENTIALS_FILE: &str = ".alan/credentials.json";
 
 fn get_aws_cli_creds() -> Result<AWSCLICredentialsFile, String> {
   let home = std::env::var("HOME").unwrap();
@@ -228,11 +228,8 @@ fn get_aws_cli_creds() -> Result<AWSCLICredentialsFile, String> {
 pub async fn add_cred(cred_name: Option<&str>) -> String {
   let mut credentials = get_creds(false).await;
   let clouds = vec!["AWS".to_string(), "GCP".to_string(), "Azure".to_string()];
-  let selection = anycloud_dialoguer::select_with_default(
-    "Pick cloud provider for the new Credential",
-    &clouds,
-    0,
-  );
+  let selection =
+    deploy_dialoguer::select_with_default("Pick cloud provider for the new Credential", &clouds, 0);
   let cloud = &clouds[selection];
   let default = cred_name.unwrap_or(&cloud.to_lowercase()).to_string();
   let prompt = "Name for new Credential";
@@ -244,24 +241,24 @@ pub async fn add_cred(cred_name: Option<&str>) -> String {
     }
   };
   let cred_name = if credentials.contains_key(&default) {
-    anycloud_dialoguer::input_with_validation(prompt, validator)
+    deploy_dialoguer::input_with_validation(prompt, validator)
   } else {
-    anycloud_dialoguer::input_with_default_and_validation(prompt, default, validator)
+    deploy_dialoguer::input_with_default_and_validation(prompt, default, validator)
   };
   let name = cred_name.to_string();
   match cloud.as_str() {
     "AWS" => {
       let aws_cli_creds = get_aws_cli_creds();
       let (access_key, secret) = if aws_cli_creds.is_ok()
-        && anycloud_dialoguer::confirm_with_default(
+        && deploy_dialoguer::confirm_with_default(
           "Default AWS CLI credentials found. Do you wish to use those?",
           true,
         ) {
         let creds = aws_cli_creds.unwrap().default;
         (creds.aws_access_key_id, creds.aws_secret_access_key)
       } else {
-        let access_key: String = anycloud_dialoguer::input("AWS Access Key ID");
-        let secret: String = anycloud_dialoguer::input("AWS Secret Access Key");
+        let access_key: String = deploy_dialoguer::input("AWS Access Key ID");
+        let secret: String = deploy_dialoguer::input("AWS Secret Access Key");
         (access_key, secret)
       };
       credentials.insert(
@@ -276,9 +273,9 @@ pub async fn add_cred(cred_name: Option<&str>) -> String {
       );
     }
     "GCP" => {
-      let project_id: String = anycloud_dialoguer::input("GCP Project ID");
-      let client_email: String = anycloud_dialoguer::input("GCP Client Email");
-      let private_key: String = anycloud_dialoguer::input("GCP Private Key");
+      let project_id: String = deploy_dialoguer::input("GCP Project ID");
+      let client_email: String = deploy_dialoguer::input("GCP Client Email");
+      let private_key: String = deploy_dialoguer::input("GCP Private Key");
       let clean_private_key = private_key.replace("\\n", "\n");
       credentials.insert(
         cred_name,
@@ -293,10 +290,10 @@ pub async fn add_cred(cred_name: Option<&str>) -> String {
       );
     }
     "Azure" => {
-      let application_id: String = anycloud_dialoguer::input("Azure Application ID");
-      let directory_id: String = anycloud_dialoguer::input("Azure Directory ID");
-      let subscription_id: String = anycloud_dialoguer::input("Azure Subscription ID");
-      let secret: String = anycloud_dialoguer::input("Azure Secret");
+      let application_id: String = deploy_dialoguer::input("Azure Application ID");
+      let directory_id: String = deploy_dialoguer::input("Azure Directory ID");
+      let subscription_id: String = deploy_dialoguer::input("Azure Subscription ID");
+      let secret: String = deploy_dialoguer::input("Azure Secret");
       credentials.insert(
         cred_name,
         Credentials {
@@ -340,9 +337,9 @@ async fn update_cred_file(credentials: HashMap<String, Credentials>) {
   }
 }
 
-async fn update_anycloud_file(deploy_configs: HashMap<String, Vec<DeployConfig>>) {
+async fn update_alandeploy_file(deploy_configs: HashMap<String, Vec<DeployConfig>>) {
   let home = std::env::var("PWD").unwrap();
-  let file_name = &format!("{}/{}", home, ANYCLOUD_FILE);
+  let file_name = &format!("{}/{}", home, ALANDEPLOY_FILE);
   // Sets the option to create a new file, or open it if it already exists.
   // Sets the option for truncating a previous file.
   let file = OpenOptions::new()
@@ -356,7 +353,7 @@ async fn update_anycloud_file(deploy_configs: HashMap<String, Vec<DeployConfig>>
       1,
       InvalidAnycloudFile,
       "Failed to write to {}. Error: {}",
-      ANYCLOUD_FILE,
+      ALANDEPLOY_FILE,
       err
     )
     .await
@@ -370,17 +367,17 @@ pub async fn edit_cred() {
     prompt_add_cred(true, None).await;
   }
   let selection =
-    anycloud_dialoguer::select_with_default("Pick Credentials to edit", &cred_options, 0);
+    deploy_dialoguer::select_with_default("Pick Credentials to edit", &cred_options, 0);
   let name = &cred_options[selection];
   let cred = credentials.get(name).unwrap();
   let cred_name = name.to_string();
   match &cred.credentials {
     CloudCredentials::AWS(cred) => {
-      let access_key: String = anycloud_dialoguer::input_with_initial_text(
+      let access_key: String = deploy_dialoguer::input_with_initial_text(
         "AWS Access Key ID",
         cred.accessKeyId.to_string(),
       );
-      let secret: String = anycloud_dialoguer::input_with_initial_text(
+      let secret: String = deploy_dialoguer::input_with_initial_text(
         "AWS Secret Access Key",
         cred.secretAccessKey.to_string(),
       );
@@ -396,14 +393,12 @@ pub async fn edit_cred() {
       );
     }
     CloudCredentials::GCP(cred) => {
-      let client_email: String = anycloud_dialoguer::input_with_initial_text(
-        "GCP Client Email",
-        cred.clientEmail.to_string(),
-      );
+      let client_email: String =
+        deploy_dialoguer::input_with_initial_text("GCP Client Email", cred.clientEmail.to_string());
       let project_id: String =
-        anycloud_dialoguer::input_with_initial_text("GCP Project ID", cred.projectId.to_string());
+        deploy_dialoguer::input_with_initial_text("GCP Project ID", cred.projectId.to_string());
       let private_key: String =
-        anycloud_dialoguer::input_with_initial_text("GCP Private Key", cred.privateKey.to_string());
+        deploy_dialoguer::input_with_initial_text("GCP Private Key", cred.privateKey.to_string());
       credentials.insert(
         cred_name,
         Credentials {
@@ -417,20 +412,20 @@ pub async fn edit_cred() {
       );
     }
     CloudCredentials::Azure(cred) => {
-      let application_id: String = anycloud_dialoguer::input_with_initial_text(
+      let application_id: String = deploy_dialoguer::input_with_initial_text(
         "Azure Application ID",
         cred.applicationId.to_string(),
       );
-      let directory_id: String = anycloud_dialoguer::input_with_initial_text(
+      let directory_id: String = deploy_dialoguer::input_with_initial_text(
         "Azure Directory ID",
         cred.directoryId.to_owned(),
       );
-      let subscription_id: String = anycloud_dialoguer::input_with_initial_text(
+      let subscription_id: String = deploy_dialoguer::input_with_initial_text(
         "Azure Subscription ID",
         cred.subscriptionId.to_string(),
       );
       let secret: String =
-        anycloud_dialoguer::input_with_initial_text("Azure Secret", cred.secret.to_string());
+        deploy_dialoguer::input_with_initial_text("Azure Secret", cred.secret.to_string());
       credentials.insert(
         cred_name,
         Credentials {
@@ -458,7 +453,7 @@ pub async fn prompt_add_cred(exit_on_done: bool, cred_name: Option<&str>) -> Str
         "No Credentials found with name {}. Let's create it?",
         cred_name
       );
-      if anycloud_dialoguer::confirm_with_default(&prompt, true) {
+      if deploy_dialoguer::confirm_with_default(&prompt, true) {
         add_cred(Some(cred_name)).await
       } else {
         std::process::exit(0);
@@ -466,7 +461,7 @@ pub async fn prompt_add_cred(exit_on_done: bool, cred_name: Option<&str>) -> Str
     }
     None => {
       let prompt = "No Credentials have been created. Let's create one?";
-      if anycloud_dialoguer::confirm_with_default(prompt, true) {
+      if deploy_dialoguer::confirm_with_default(prompt, true) {
         add_cred(None).await
       } else {
         std::process::exit(0);
@@ -482,7 +477,7 @@ pub async fn prompt_add_cred(exit_on_done: bool, cred_name: Option<&str>) -> Str
 // prompt the user to create a deploy config if none exists
 pub async fn prompt_add_config() {
   let prompt = "No Deploy Configs have been created. Let's create one?";
-  if anycloud_dialoguer::confirm_with_default(prompt, true) {
+  if deploy_dialoguer::confirm_with_default(prompt, true) {
     add_deploy_config().await;
   }
   std::process::exit(0);
@@ -495,7 +490,7 @@ pub async fn remove_cred() {
     prompt_add_cred(true, None).await;
   };
   let selection =
-    anycloud_dialoguer::select_with_default("Pick Credentials to remove", &cred_options, 0);
+    deploy_dialoguer::select_with_default("Pick Credentials to remove", &cred_options, 0);
   let cred_name = &cred_options[selection];
   creds.remove(cred_name).unwrap();
   update_cred_file(creds).await;
@@ -547,9 +542,9 @@ pub async fn add_deploy_config() {
     }
   };
   let name = if deploy_configs.contains_key(&default) {
-    anycloud_dialoguer::input_with_validation(prompt, validator)
+    deploy_dialoguer::input_with_validation(prompt, validator)
   } else {
-    anycloud_dialoguer::input_with_default_and_validation(prompt, default, validator)
+    deploy_dialoguer::input_with_default_and_validation(prompt, default, validator)
   };
   let mut cloud_configs = Vec::new();
   if creds.len() == 0 {
@@ -559,7 +554,7 @@ pub async fn add_deploy_config() {
   let new_cred_idx = options.len();
   options.push("Create new Credentials".to_string());
   loop {
-    let selection = anycloud_dialoguer::select_with_default("Pick Credentials to use", &options, 0);
+    let selection = deploy_dialoguer::select_with_default("Pick Credentials to use", &options, 0);
     let cred = if selection == new_cred_idx {
       add_cred(None).await
     } else {
@@ -567,15 +562,15 @@ pub async fn add_deploy_config() {
     };
     // TODO validate these fields?
     let mut region = None;
-    if anycloud_dialoguer::confirm_with_default(
+    if deploy_dialoguer::confirm_with_default(
       "Do you want to choose a specific region for this Deploy Config?",
       false,
     ) {
-      let input_region: String = anycloud_dialoguer::input("Region name");
+      let input_region: String = deploy_dialoguer::input("Region name");
       region = Some(input_region);
     };
     let mut vm_type = None;
-    if anycloud_dialoguer::confirm_with_default(
+    if deploy_dialoguer::confirm_with_default(
       "Do you want to select which virtual machine type to use for this Deploy Config?",
       false,
     ) {
@@ -593,7 +588,7 @@ pub async fn add_deploy_config() {
     } else {
       "Do you want to add another region to this Deploy Config?"
     };
-    if !anycloud_dialoguer::confirm_with_default(prompt, false) {
+    if !deploy_dialoguer::confirm_with_default(prompt, false) {
       break;
     }
   }
@@ -602,20 +597,20 @@ pub async fn add_deploy_config() {
   } else {
     "Minimum number of VMs per region"
   };
-  let replicas: String = anycloud_dialoguer::input_with_default(prompt, "1".to_string());
+  let replicas: String = deploy_dialoguer::input_with_default(prompt, "1".to_string());
   let min_replicas: Option<u32> = Some(replicas.parse::<u32>().unwrap_or_else(|_| {
     eprintln!("{} is not a valid number of VMs", replicas);
     std::process::exit(1);
   }));
   let mut max_replicas = None;
   let prompt = "Would you like to define a maximum number of VMs?";
-  if anycloud_dialoguer::confirm_with_default(prompt, false) {
+  if deploy_dialoguer::confirm_with_default(prompt, false) {
     let prompt = if creds.len() > 1 {
       "Maximum number of VMs per region or cloud"
     } else {
       "Maximum number of VMs per region"
     };
-    let replicas: String = anycloud_dialoguer::input(prompt);
+    let replicas: String = deploy_dialoguer::input(prompt);
     if let Ok(replicas) = replicas.parse::<u32>() {
       max_replicas = Some(replicas);
     } else {
@@ -632,7 +627,7 @@ pub async fn add_deploy_config() {
     })
     .collect();
   deploy_configs.insert(name.to_string(), cloud_configs);
-  update_anycloud_file(deploy_configs).await;
+  update_alandeploy_file(deploy_configs).await;
   println!("Successfully created {} Deploy Config.", style(name).bold());
 }
 
@@ -643,7 +638,7 @@ pub async fn edit_deploy_config() {
     prompt_add_config().await;
   }
   let selection =
-    anycloud_dialoguer::select_with_default("Pick Deploy Config to edit", &config_names, 0);
+    deploy_dialoguer::select_with_default("Pick Deploy Config to edit", &config_names, 0);
   let config_name = config_names[selection].to_string();
   let creds = get_creds(false).await;
   let cloud_configs: &Vec<DeployConfig> = deploy_configs.get(&config_name).unwrap();
@@ -655,31 +650,31 @@ pub async fn edit_deploy_config() {
       .position(|r| r == &config.credentialsName)
       .unwrap();
     let selection =
-      anycloud_dialoguer::select_with_default("Pick Credentials to use", &cred_options, index);
+      deploy_dialoguer::select_with_default("Pick Credentials to use", &cred_options, index);
     let cred = cred_options[selection].to_string();
     let mut region = None;
     let mut vm_type = None;
     if let Some(reg) = &config.region {
-      if anycloud_dialoguer::confirm_with_default(
+      if deploy_dialoguer::confirm_with_default(
         "Do you want to edit the region to use for this Deploy Config?",
         true,
       ) {
-        let input_region: String = anycloud_dialoguer::input("Region name");
+        let input_region: String = deploy_dialoguer::input("Region name");
         region = Some(input_region);
       } else {
         region = Some(reg.to_string());
       }
     } else {
-      if anycloud_dialoguer::confirm_with_default(
+      if deploy_dialoguer::confirm_with_default(
         "Do you want to choose a specific region for this Deploy Config?",
         false,
       ) {
-        let input_region: String = anycloud_dialoguer::input("Region name");
+        let input_region: String = deploy_dialoguer::input("Region name");
         region = Some(input_region);
       };
     }
     if let Some(vm_t) = &config.vmType {
-      if anycloud_dialoguer::confirm_with_default(
+      if deploy_dialoguer::confirm_with_default(
         "Do you want to edit the virtual machine type for this Deploy Config?",
         true,
       ) {
@@ -688,7 +683,7 @@ pub async fn edit_deploy_config() {
         vm_type = Some(vm_t.to_string());
       }
     } else {
-      if anycloud_dialoguer::confirm_with_default(
+      if deploy_dialoguer::confirm_with_default(
         "Do you want to select which virtual machine type to use for this Deploy Config?",
         false,
       ) {
@@ -708,20 +703,20 @@ pub async fn edit_deploy_config() {
   } else {
     "Minimum number of VMs per region"
   };
-  let replicas: String = anycloud_dialoguer::input_with_default(prompt, "1".to_string());
+  let replicas: String = deploy_dialoguer::input_with_default(prompt, "1".to_string());
   let min_replicas: Option<u32> = Some(replicas.parse::<u32>().unwrap_or_else(|_| {
     eprintln!("{} is not a valid number of VMs", replicas);
     std::process::exit(1);
   }));
   let mut max_replicas = None;
   let prompt = "Would you like to define a maximum number of VMs?";
-  if anycloud_dialoguer::confirm_with_default(prompt, false) {
+  if deploy_dialoguer::confirm_with_default(prompt, false) {
     let prompt = if creds.len() > 1 {
       "Maximum number of VMs per region or cloud"
     } else {
       "Maximum number of VMs per region"
     };
-    let replicas: String = anycloud_dialoguer::input(prompt);
+    let replicas: String = deploy_dialoguer::input(prompt);
     if let Ok(replicas) = replicas.parse::<u32>() {
       max_replicas = Some(replicas);
     } else {
@@ -738,7 +733,7 @@ pub async fn edit_deploy_config() {
     })
     .collect();
   deploy_configs.insert(config_name.to_string(), new_cloud_configs);
-  update_anycloud_file(deploy_configs).await;
+  update_alandeploy_file(deploy_configs).await;
   println!(
     "Successfully edited {} Deploy Config.",
     style(config_name).bold()
@@ -752,10 +747,10 @@ pub async fn remove_deploy_config() {
     prompt_add_config().await;
   }
   let selection =
-    anycloud_dialoguer::select_with_default("Pick Deploy Config to remove", &config_names, 0);
+    deploy_dialoguer::select_with_default("Pick Deploy Config to remove", &config_names, 0);
   let config_name = config_names[selection].to_string();
   deploy_configs.remove(&config_name);
-  update_anycloud_file(deploy_configs).await;
+  update_alandeploy_file(deploy_configs).await;
   println!(
     "Successfully removed {} Deploy Config.",
     style(config_name).bold()
@@ -817,7 +812,7 @@ pub async fn list_deploy_configs() {
     println!("\nDeployment configurations:\n");
     table.print(data);
   } else {
-    println!("No Deploy Configs to display from anycloud.json.")
+    println!("No Deploy Configs to display from alandeploy.json.")
   }
 }
 
@@ -930,7 +925,7 @@ async fn get_creds(non_interactive: bool) -> HashMap<String, Credentials> {
 
 async fn get_deploy_configs() -> HashMap<String, Vec<DeployConfig>> {
   let home = std::env::var("PWD").unwrap();
-  let file_name = &format!("{}/{}", home, ANYCLOUD_FILE);
+  let file_name = &format!("{}/{}", home, ALANDEPLOY_FILE);
   let file = OpenOptions::new().read(true).open(file_name);
   if let Err(_) = file {
     return HashMap::new();
@@ -942,7 +937,7 @@ async fn get_deploy_configs() -> HashMap<String, Vec<DeployConfig>> {
       1,
       InvalidAnycloudFile,
       "Failed to read from {}. Error: {}",
-      ANYCLOUD_FILE,
+      ALANDEPLOY_FILE,
       err
     )
     .await
@@ -964,20 +959,20 @@ fn get_url() -> &'static str {
 }
 
 pub async fn get_config(config_name: &str, non_interactive: bool) -> HashMap<String, Vec<Config>> {
-  let anycloud_prof = get_deploy_configs().await;
+  let alandeploy_prof = get_deploy_configs().await;
   let mut creds = get_creds(non_interactive).await;
   if creds.len() == 0 && !non_interactive {
     prompt_add_cred(true, None).await;
   } else if creds.len() == 0 && non_interactive {
     warn_and_exit!(1, NoCredentials, "No credentials defined").await
   }
-  if anycloud_prof.len() == 0 && !non_interactive {
+  if alandeploy_prof.len() == 0 && !non_interactive {
     prompt_add_config().await;
-  } else if anycloud_prof.len() == 0 && non_interactive {
+  } else if alandeploy_prof.len() == 0 && non_interactive {
     warn_and_exit!(1, NoDeployConfig, "No configuration defined").await
   }
   let mut all_configs = HashMap::new();
-  for (deploy_name, deploy_configs) in anycloud_prof.into_iter() {
+  for (deploy_name, deploy_configs) in alandeploy_prof.into_iter() {
     let mut configs = Vec::new();
     for deploy_config in deploy_configs {
       let cred_name = &deploy_config.credentialsName;
@@ -1109,7 +1104,7 @@ pub async fn terminate(
   }
   let ids = apps.into_iter().map(|a| a.id).collect::<Vec<String>>();
   let selection: usize = if app_name.is_empty() && interactive {
-    anycloud_dialoguer::select_with_default("Pick App to terminate", &ids, 0)
+    deploy_dialoguer::select_with_default("Pick App to terminate", &ids, 0)
   } else if app_name.is_empty() && non_interactive {
     warn_and_exit!(
       1,
@@ -1233,7 +1228,7 @@ pub async fn new(
     .await
   }
   let selection: usize = if config_name.is_empty() && interactive {
-    anycloud_dialoguer::select_with_default("Pick Deploy Config for App", &config_names, 0)
+    deploy_dialoguer::select_with_default("Pick Deploy Config for App", &config_names, 0)
   } else if config_name.is_empty() && non_interactive {
     warn_and_exit!(
       1,
@@ -1265,7 +1260,7 @@ pub async fn new(
     .await;
   }
   let app_id = if app_name.is_empty() && interactive {
-    anycloud_dialoguer::input_with_allow_empty_as_result("Optional App name", true).unwrap()
+    deploy_dialoguer::input_with_allow_empty_as_result("Optional App name", true).unwrap()
   } else {
     app_name
   };
@@ -1337,7 +1332,7 @@ pub async fn upgrade(
   }
   let (ids, sizes): (Vec<String>, Vec<usize>) = apps.into_iter().map(|a| (a.id, a.size)).unzip();
   let selection: usize = if app_name.is_empty() && interactive {
-    anycloud_dialoguer::select_with_default("Pick App to upgrade", &ids, 0)
+    deploy_dialoguer::select_with_default("Pick App to upgrade", &ids, 0)
   } else if app_name.is_empty() && non_interactive {
     warn_and_exit!(
       1,
@@ -1659,10 +1654,10 @@ fn print_small_vm_warn() -> () {
 
 fn get_some_vm_type_input() -> Option<String> {
   loop {
-    let input_vm_type: String = anycloud_dialoguer::input("Virtual machine type");
+    let input_vm_type: String = deploy_dialoguer::input("Virtual machine type");
     if is_burstable(&input_vm_type) || is_small(&input_vm_type) {
       print_vm_type_warns(&input_vm_type);
-      if anycloud_dialoguer::confirm_with_default(
+      if deploy_dialoguer::confirm_with_default(
         "Are you sure you want to continue with the selected virtual machine type?",
         false,
       ) {
