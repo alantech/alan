@@ -9,7 +9,7 @@ use serde_json::{json, Value};
 use tokio::time::{sleep, Duration};
 use webbrowser;
 
-use crate::deploy::http::CLIENT;
+use crate::cloud::http::CLIENT;
 
 const CODE_URL: &'static str = "https://github.com/login/device/code";
 const CLIENT_ID: &'static str = "f6e1ede88556627925d6";

@@ -7,17 +7,17 @@ use base64;
 use clap::{crate_name, crate_version, App, AppSettings, SubCommand};
 use tokio::runtime::Builder;
 
+use crate::cloud::common::get_agz_file_b64;
+use crate::cloud::deploy;
+use crate::cloud::oauth::authenticate;
 use crate::compile::compile::compile;
 use crate::daemon::daemon::{start, CLUSTER_SECRET};
-use crate::deploy::common::get_agz_file_b64;
-use crate::deploy::deploy as inner_deploy;
-use crate::deploy::oauth::authenticate;
 use crate::vm::run::run_file;
 use crate::vm::telemetry;
 
+mod cloud;
 mod compile;
 mod daemon;
-mod deploy;
 mod vm;
 
 fn get_agz_b64(agz_file: &str) -> String {
@@ -179,7 +179,7 @@ fn main() {
                 files_b64.insert(name.to_string(), get_agz_file_b64(name.to_string()).await);
               }
             }
-            inner_deploy::new(
+            deploy::new(
               get_agz_b64(agz_file),
               files_b64,
               app_name,
@@ -193,7 +193,7 @@ fn main() {
             authenticate(non_interactive).await;
             let app_name = matches.value_of("app-name").map(String::from);
             let config_name = matches.value_of("config-name").map(String::from);
-            inner_deploy::terminate(app_name, config_name, non_interactive).await
+            deploy::terminate(app_name, config_name, non_interactive).await
           }
           ("upgrade", Some(matches)) => {
             let non_interactive: bool = matches.values_of("NON_INTERACTIVE").is_some();
@@ -209,7 +209,7 @@ fn main() {
                 files_b64.insert(name.to_string(), get_agz_file_b64(name.to_string()).await);
               }
             }
-            inner_deploy::upgrade(
+            deploy::upgrade(
               get_agz_b64(agz_file),
               files_b64,
               app_name,
@@ -220,17 +220,17 @@ fn main() {
           }
           ("list", _) => {
             authenticate(false).await;
-            inner_deploy::info().await
+            deploy::info().await
           }
           ("credentials", Some(sub_matches)) => {
             authenticate(false).await;
             match sub_matches.subcommand() {
               ("new", _) => {
-                inner_deploy::add_cred(None).await;
+                deploy::add_cred(None).await;
               }
-              ("edit", _) => inner_deploy::edit_cred().await,
-              ("list", _) => inner_deploy::list_creds().await,
-              ("remove", _) => inner_deploy::remove_cred().await,
+              ("edit", _) => deploy::edit_cred().await,
+              ("list", _) => deploy::list_creds().await,
+              ("remove", _) => deploy::remove_cred().await,
               // rely on AppSettings::SubcommandRequiredElseHelp
               _ => {}
             }
@@ -238,10 +238,10 @@ fn main() {
           ("config", Some(sub_matches)) => {
             authenticate(false).await;
             match sub_matches.subcommand() {
-              ("new", _) => inner_deploy::add_deploy_config().await,
-              ("list", _) => inner_deploy::list_deploy_configs().await,
-              ("edit", _) => inner_deploy::edit_deploy_config().await,
-              ("remove", _) => inner_deploy::remove_deploy_config().await,
+              ("new", _) => deploy::add_deploy_config().await,
+              ("list", _) => deploy::list_deploy_configs().await,
+              ("edit", _) => deploy::edit_deploy_config().await,
+              ("remove", _) => deploy::remove_deploy_config().await,
               // rely on AppSettings::SubcommandRequiredElseHelp
               _ => {}
             }

@@ -14,10 +14,10 @@ use std::time::Duration;
 
 use ascii_table::{AsciiTable, Column};
 
-use crate::deploy::http::CLIENT;
-use crate::deploy::logger::ErrorType;
-use crate::deploy::oauth::{clear_token, get_token};
-use crate::deploy::CLUSTER_ID;
+use crate::cloud::http::CLIENT;
+use crate::cloud::logger::ErrorType;
+use crate::cloud::oauth::{clear_token, get_token};
+use crate::cloud::CLUSTER_ID;
 
 mod deploy_dialoguer;
 

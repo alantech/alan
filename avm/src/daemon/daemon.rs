@@ -14,11 +14,11 @@ use tokio::sync::watch::{self, Receiver};
 use tokio::task;
 use tokio::time::{sleep, Duration};
 
+use crate::cloud::common::{file_exist, get_app_tar_gz_b64, get_dockerfile_b64};
+use crate::cloud::{deploy, CLUSTER_ID};
 use crate::daemon::ctrl::ControlPort;
 use crate::daemon::dns::DNS;
 use crate::daemon::stats::{get_v1_stats, VMStatsV1};
-use crate::deploy::common::{file_exist, get_app_tar_gz_b64, get_dockerfile_b64};
-use crate::deploy::{deploy, CLUSTER_ID};
 use crate::vm::http::{HttpType, HttpsConfig};
 use crate::vm::run::run;
 use crate::{error, warn};
