@@ -9,7 +9,7 @@ use serde_json::{json, Value};
 use tokio::time::{sleep, Duration};
 use webbrowser;
 
-use crate::http::CLIENT;
+use crate::deploy::http::CLIENT;
 
 const CODE_URL: &'static str = "https://github.com/login/device/code";
 const CLIENT_ID: &'static str = "f6e1ede88556627925d6";
@@ -20,8 +20,8 @@ const CODE_BODY: &'static str = "{\
 }";
 const POLL_URL: &'static str = "https://github.com/login/oauth/access_token";
 const ERR: &'static str = "Failed to perform OAuth 2.0 authentication with GitHub";
-const ANYCLOUD_DIR: &str = ".anycloud";
-const TOKEN_FILE: &str = ".anycloud/.token";
+const ALAN_DIR: &str = ".alan";
+const TOKEN_FILE: &str = ".alan/.token";
 static TOKEN: OnceCell<String> = OnceCell::new();
 
 // Get saved token
@@ -132,7 +132,7 @@ async fn generate_token() {
     let json: Value = serde_json::from_str(&data_str).expect(ERR);
     if let Some(token) = json["access_token"].as_str() {
       let home = std::env::var("HOME").unwrap();
-      let dir_name = &format!("{}/{}", home, ANYCLOUD_DIR);
+      let dir_name = &format!("{}/{}", home, ALAN_DIR);
       let path = Path::new(dir_name);
       if !path.exists() {
         create_dir(path).expect(ERR);

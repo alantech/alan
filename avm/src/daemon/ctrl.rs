@@ -10,7 +10,6 @@ use std::path::{Path, PathBuf};
 use std::str;
 use std::sync::Arc;
 
-use anycloud::{error, warn};
 use futures::future::join_all;
 use hyper::{
   body,
@@ -40,6 +39,7 @@ use crate::vm::opcode::{DS, REGION_VMS};
 use crate::vm::protos;
 use crate::vm::run::EVENT_TX;
 use crate::vm::{VMError, VMResult};
+use crate::{error, warn};
 
 pub static NAIVE_CLIENT: OnceCell<Client<HttpsConnector<HttpConnector>>> = OnceCell::new();
 pub static CONTROL_PORT_EXTENSIONS: OnceCell<bool> = OnceCell::new();

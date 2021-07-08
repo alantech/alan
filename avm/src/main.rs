@@ -3,20 +3,21 @@ use std::env;
 use std::fs::read;
 use std::path::Path;
 
-use anycloud::common::get_agz_file_b64;
-use anycloud::deploy;
-use anycloud::oauth::authenticate;
 use base64;
 use clap::{crate_name, crate_version, App, AppSettings, SubCommand};
 use tokio::runtime::Builder;
 
 use crate::compile::compile::compile;
 use crate::daemon::daemon::{start, CLUSTER_SECRET};
+use crate::deploy::common::get_agz_file_b64;
+use crate::deploy::deploy as inner_deploy;
+use crate::deploy::oauth::authenticate;
 use crate::vm::run::run_file;
 use crate::vm::telemetry;
 
 mod compile;
 mod daemon;
+mod deploy;
 mod vm;
 
 fn get_agz_b64(agz_file: &str) -> String {
@@ -57,10 +58,10 @@ fn main() {
       .about("Install '/dependencies' from '.dependencies.ln'")
     )
     .subcommand(SubCommand::with_name("deploy")
-      .about("Deploy .agz files to one of the Deploy Configs from anycloud.json")
+      .about("Deploy .agz files to one of the Deploy Configs from alandeploy.json")
       .setting(AppSettings::SubcommandRequiredElseHelp)
       .subcommand(SubCommand::with_name("new")
-        .about("Deploys an .agz file to a new app with one of the Deploy Configs from anycloud.json")
+        .about("Deploys an .agz file to a new app with one of the Deploy Configs from alandeploy.json")
         .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'")
         .arg_from_usage("[NON_INTERACTIVE] -n, --non-interactive 'Enables non-interactive CLI mode useful for scripting.'")
         .arg_from_usage("-a, --app-name=[APP_NAME] 'Specifies an optional app name.'")
@@ -68,13 +69,13 @@ fn main() {
         .arg_from_usage("-f, --files=[COMMA_SEPARATED_NAMES] 'Specifies a set of files to include in the same working directory as your app'")
       )
       .subcommand(SubCommand::with_name("list")
-        .about("Displays all the Apps deployed with the Deploy Configs from anycloud.json")
+        .about("Displays all the Apps deployed with the Deploy Configs from alandeploy.json")
       )
       .subcommand(SubCommand::with_name("terminate")
-        .about("Terminate an App hosted in one of the Deploy Configs from anycloud.json")
+        .about("Terminate an App hosted in one of the Deploy Configs from alandeploy.json")
       )
       .subcommand(SubCommand::with_name("upgrade")
-        .about("Deploys your repository to an existing App hosted in one of the Deploy Configs from anycloud.json")
+        .about("Deploys your repository to an existing App hosted in one of the Deploy Configs from alandeploy.json")
         .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'")
         .arg_from_usage("[NON_INTERACTIVE] -n, --non-interactive 'Enables non-interactive CLI mode useful for scripting.'")
         .arg_from_usage("-a, --app-name=[APP_NAME] 'Specifies an optional app name.'")
@@ -82,23 +83,23 @@ fn main() {
         .arg_from_usage("-f, --files=[COMMA_SEPARATED_NAMES] 'Specifies a set of files to include in the same working directory as your app'")
       )
       .subcommand(SubCommand::with_name("config")
-        .about("Manage Deploy Configs used by Apps from the anycloud.json in the current directory")
+        .about("Manage Deploy Configs used by Apps from the alandeploy.json in the current directory")
         .setting(AppSettings::SubcommandRequiredElseHelp)
         .subcommand(SubCommand::with_name("new")
-          .about("Add a new Deploy Config to the anycloud.json in the current directory and creates the file if it doesn't exist.")
+          .about("Add a new Deploy Config to the alandeploy.json in the current directory and creates the file if it doesn't exist.")
         )
         .subcommand(SubCommand::with_name("list")
-          .about("List all the Deploy Configs from the anycloud.json in the current directory")
+          .about("List all the Deploy Configs from the alandeploy.json in the current directory")
         )
         .subcommand(SubCommand::with_name("edit")
-          .about("Edit an existing Deploy Config from the anycloud.json in the current directory")
+          .about("Edit an existing Deploy Config from the alandeploy.json in the current directory")
         )
         .subcommand(SubCommand::with_name("remove")
-          .about("Remove an existing Deploy Config from the anycloud.json in the current directory")
+          .about("Remove an existing Deploy Config from the alandeploy.json in the current directory")
         )
       )
       .subcommand(SubCommand::with_name("credentials")
-        .about("Manage all Credentials used by Deploy Configs from the credentials file at ~/.anycloud/credentials.json")
+        .about("Manage all Credentials used by Deploy Configs from the credentials file at ~/.alan/credentials.json")
         .setting(AppSettings::SubcommandRequiredElseHelp)
         .subcommand(SubCommand::with_name("new")
           .about("Add a new Credentials")
@@ -118,7 +119,7 @@ fn main() {
       .about("Run an .agz file in daemon mode. Used on deploy within cloud provider VMs.")
       .arg_from_usage("<CLUSTER_SECRET> -s, --cluster-secret=<CLUSTER_SECRET> 'A secret string to constrain access to the control port'")
       .arg_from_usage("-f, --agz-file=[AGZ_FILE] 'Specifies an optional agz file relative path for local usage'")
-      .arg_from_usage("[ANYCLOUD_APP] -a, --anycloud-app 'Specifies an optional AnyCloud app flag for local usage'")
+      .arg_from_usage("[ANYCLOUD_APP] -a, --anycloud-app 'Specifies an optional AnyCloud app flag for local usage'") // TODO: Eliminate this
     )
     .arg_from_usage("[SOURCE] 'Specifies a source ln file to compile and run'");
 
@@ -178,7 +179,7 @@ fn main() {
                 files_b64.insert(name.to_string(), get_agz_file_b64(name.to_string()).await);
               }
             }
-            deploy::new(
+            inner_deploy::new(
               get_agz_b64(agz_file),
               files_b64,
               app_name,
@@ -192,7 +193,7 @@ fn main() {
             authenticate(non_interactive).await;
             let app_name = matches.value_of("app-name").map(String::from);
             let config_name = matches.value_of("config-name").map(String::from);
-            deploy::terminate(app_name, config_name, non_interactive).await
+            inner_deploy::terminate(app_name, config_name, non_interactive).await
           }
           ("upgrade", Some(matches)) => {
             let non_interactive: bool = matches.values_of("NON_INTERACTIVE").is_some();
@@ -208,7 +209,7 @@ fn main() {
                 files_b64.insert(name.to_string(), get_agz_file_b64(name.to_string()).await);
               }
             }
-            deploy::upgrade(
+            inner_deploy::upgrade(
               get_agz_b64(agz_file),
               files_b64,
               app_name,
@@ -219,17 +220,17 @@ fn main() {
           }
           ("list", _) => {
             authenticate(false).await;
-            deploy::info().await
+            inner_deploy::info().await
           }
           ("credentials", Some(sub_matches)) => {
             authenticate(false).await;
             match sub_matches.subcommand() {
               ("new", _) => {
-                deploy::add_cred(None).await;
+                inner_deploy::add_cred(None).await;
               }
-              ("edit", _) => deploy::edit_cred().await,
-              ("list", _) => deploy::list_creds().await,
-              ("remove", _) => deploy::remove_cred().await,
+              ("edit", _) => inner_deploy::edit_cred().await,
+              ("list", _) => inner_deploy::list_creds().await,
+              ("remove", _) => inner_deploy::remove_cred().await,
               // rely on AppSettings::SubcommandRequiredElseHelp
               _ => {}
             }
@@ -237,10 +238,10 @@ fn main() {
           ("config", Some(sub_matches)) => {
             authenticate(false).await;
             match sub_matches.subcommand() {
-              ("new", _) => deploy::add_deploy_config().await,
-              ("list", _) => deploy::list_deploy_configs().await,
-              ("edit", _) => deploy::edit_deploy_config().await,
-              ("remove", _) => deploy::remove_deploy_config().await,
+              ("new", _) => inner_deploy::add_deploy_config().await,
+              ("list", _) => inner_deploy::list_deploy_configs().await,
+              ("edit", _) => inner_deploy::edit_deploy_config().await,
+              ("remove", _) => inner_deploy::remove_deploy_config().await,
               // rely on AppSettings::SubcommandRequiredElseHelp
               _ => {}
             }

@@ -1,7 +1,7 @@
 SHELL = /bin/bash
 
 .PHONY: build
-build: env-check avm/target/release/alan build-js-runtime anycloud/cli/target/release/anycloud
+build: env-check avm/target/release/alan build-js-runtime
 	@echo Done
 
 .PHONY: env-check
@@ -15,10 +15,6 @@ avm-style:
 .PHONY: avm-unit
 avm-unit: compiler/alan-compile
 	cd avm && cargo test
-
-.PHONY: anycloud-style
-anycloud-style:
-	cd anycloud/cli && cargo fmt -- --check
 
 .PHONY: compiler-browser-check
 compiler-browser-check:
@@ -36,10 +32,6 @@ compiler-style:
 ./avm/target/release/alan: compiler/alan-compile
 	cd avm && cargo build --release
 	cd avm && cargo fmt
-
-./anycloud/cli/target/release/anycloud: compiler/alan-compile
-	cd anycloud/cli && cargo fmt
-	cd anycloud/cli && cargo build --release
 
 .PHONY: build-js-runtime
 build-js-runtime:
@@ -61,14 +53,12 @@ clean:
 	git clean -ffdxe .vscode
 
 .PHONY: install
-install: avm/target/release/alan anycloud/cli/target/release/anycloud
+install: avm/target/release/alan
 	cp ./avm/target/release/alan /usr/local/bin/alan
-	cp ./anycloud/cli/target/release/anycloud /usr/local/bin/anycloud
 
 .PHONY: uninstall
 uninstall:
 	rm /usr/local/bin/alan
-	rm /usr/local/bin/anycloud
 
 .PHONY: version
 version:

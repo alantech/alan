@@ -1,1 +1,0 @@
-Please view our documentation at https://docs.anycloudapp.com

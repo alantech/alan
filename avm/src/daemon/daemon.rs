@@ -4,9 +4,6 @@ use std::error::Error;
 use std::fs::read;
 use std::io::Read;
 
-use anycloud::common::{file_exist, get_app_tar_gz_b64, get_dockerfile_b64};
-use anycloud::deploy;
-use anycloud::{error, warn, CLUSTER_ID};
 use base64;
 use byteorder::{LittleEndian, ReadBytesExt};
 use flate2::read::GzDecoder;
@@ -20,8 +17,11 @@ use tokio::time::{sleep, Duration};
 use crate::daemon::ctrl::ControlPort;
 use crate::daemon::dns::DNS;
 use crate::daemon::stats::{get_v1_stats, VMStatsV1};
+use crate::deploy::common::{file_exist, get_app_tar_gz_b64, get_dockerfile_b64};
+use crate::deploy::{deploy, CLUSTER_ID};
 use crate::vm::http::{HttpType, HttpsConfig};
 use crate::vm::run::run;
+use crate::{error, warn};
 
 pub type DaemonResult<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -88,6 +88,7 @@ async fn post_v1_scale(
   let pwd = env::current_dir();
   match pwd {
     Ok(pwd) => {
+      // TODO: Make this generic, not hardwired for Anycloud-related files
       let dockerfile = read(format!("{}/Dockerfile", pwd.display()));
       let app_tar_gz = read(format!("{}/app.tar.gz", pwd.display()));
       let env_file = read(format!("{}/anycloud.env", pwd.display()));
@@ -191,6 +192,7 @@ async fn run_agz_b64(agz_b64: &str) -> DaemonResult<()> {
 }
 
 async fn get_files_b64(is_local_anycloud_app: bool) -> HashMap<String, String> {
+  // TODO: Eliminate this
   let mut files_b64 = HashMap::new();
   // Check for AnyCloud files
   if is_local_anycloud_app {
@@ -225,7 +227,7 @@ async fn set_local_daemon_props(is_local_anycloud_app: bool, local_agz_b64: Opti
 fn maybe_create_certs() {
   if !file_exist("key.pem") && !file_exist("certificate.pem") {
     // Self signed certs for local dev
-    // openssl req -newkey rsa:2048 -nodes -keyout key.pem -x509 -days 365 -out certificate.pem -subj "/C=US/ST=California/O=Alan Technologies, Inc/CN=*.anycloudapp.com"
+    // openssl req -newkey rsa:2048 -nodes -keyout key.pem -x509 -days 365 -out certificate.pem -subj "/C=US/ST=California/O=Alan Technologies, Inc/CN=*.alandeploy.com"
     let mut open_ssl = std::process::Command::new("openssl")
       .stdout(std::process::Stdio::null())
       .stderr(std::process::Stdio::null())
@@ -241,7 +243,7 @@ fn maybe_create_certs() {
       .arg("-out")
       .arg("certificate.pem")
       .arg("-subj")
-      .arg("/C=US/ST=California/O=Alan Technologies, Inc/CN=*.anycloudapp.com")
+      .arg("/C=US/ST=California/O=Alan Technologies, Inc/CN=*.alandeploy.com")
       .spawn()
       .expect("Error generating self signed certificate");
     open_ssl.wait().expect("Failed to wait on child");
@@ -249,7 +251,7 @@ fn maybe_create_certs() {
 }
 
 async fn get_daemon_props(
-  is_local_anycloud_app: bool,
+  is_local_anycloud_app: bool, // TODO: Eliminate this
   local_agz_b64: Option<String>,
 ) -> Option<&'static DaemonProperties> {
   if local_agz_b64.is_some() {
