@@ -334,7 +334,7 @@ pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
                 "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
                 cluster_id, cluster_size, stats_factor
               );
-              if stats_factor != "1" {
+              if &stats_factor != "1" {
                 post_v1_scale(&cluster_id, &agz_b64, &deploy_token, &stats_factor).await;
               }
             }
