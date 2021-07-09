@@ -1,8 +1,0 @@
-node_modules/
-yarn.lock
-bin/
-src/
-*config*
-dist/*spec*
-.*
-*.map
