@@ -10,13 +10,13 @@ use tokio::time::{sleep, Duration};
 use crate::daemon::daemon::DaemonResult;
 
 #[derive(Debug, Clone, Serialize)]
-pub struct CPUSample {
+struct CPUSample {
   avg_cpu_core_util: f64,
   max_proc_cpu_usage: f64,
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct CPURates {
+struct CPURates {
   avg_cpu_core_util: &'static f64,
   max_proc_cpu_usage: &'static f64,
 }
