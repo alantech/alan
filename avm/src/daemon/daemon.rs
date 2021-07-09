@@ -19,7 +19,7 @@ use tokio::time::{sleep, Duration};
 
 use crate::daemon::ctrl::ControlPort;
 use crate::daemon::dns::DNS;
-use crate::daemon::stats::{get_v1_stats, VMStatsV1};
+use crate::daemon::stats::{get_stats_factor, get_v1_stats};
 use crate::vm::http::{HttpType, HttpsConfig};
 use crate::vm::run::run;
 
@@ -124,10 +124,7 @@ async fn post_v1_scale(
 }
 
 // acknowledge deploy service to refresh secret
-async fn post_v1_ack(
-  cluster_id: &str,
-  deploy_token: &str,
-) -> DaemonResult<String> {
+async fn post_v1_ack(cluster_id: &str, deploy_token: &str) -> DaemonResult<String> {
   let mut ack_body = json!({
     "deployToken": deploy_token,
     "clusterId": cluster_id,
@@ -328,24 +325,15 @@ pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
               );
             }
             if stats.len() >= 4 {
-              let mut factor = String::from("1");
-              post_v1_ack(&cluster_id, &deploy_token).await;
+              let _ack = post_v1_ack(&cluster_id, &deploy_token).await;
+              let stats_factor = get_stats_factor(&stats);
               stats = Vec::new();
-              // if let Ok(stats_factor) = stats_factor {
-              //   factor = stats_factor;
-              // } else if let Err(err) = stats_factor {
-              //   error!(
-              //     PostFailed,
-              //     "Failed sending stats for cluster {}: {}", &cluster_id, err
-              //   )
-              //   .await;
-              // }
               println!(
                 "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
-                cluster_id, cluster_size, factor
+                cluster_id, cluster_size, stats_factor
               );
-              if factor != "1" {
-                post_v1_scale(&cluster_id, &agz_b64, &deploy_token, &factor).await;
+              if stats_factor != "1" {
+                post_v1_scale(&cluster_id, &agz_b64, &deploy_token, &stats_factor).await;
               }
             }
           }

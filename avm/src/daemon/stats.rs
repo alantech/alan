@@ -9,6 +9,18 @@ use tokio::time::{sleep, Duration};
 
 use crate::daemon::daemon::DaemonResult;
 
+#[derive(Debug, Clone, Serialize)]
+pub struct CPUSample {
+  avg_cpu_core_util: f64,
+  max_proc_cpu_usage: f64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CPURates {
+  avg_cpu_core_util: &'static f64,
+  max_proc_cpu_usage: &'static f64,
+}
+
 #[allow(non_snake_case)]
 #[derive(Debug, Clone, Serialize)]
 pub struct CPUSecsV1 {
@@ -204,5 +216,95 @@ pub async fn get_v1_stats() -> DaemonResult<VMStatsV1> {
     }),
     (Err(_err_memory), _) => return Err("Failed to get system memory information".into()),
     (_, Err(_err_swap)) => return Err("Failed to get swap information".into()),
+  }
+}
+
+pub fn get_stats_factor(stats: &Vec<VMStatsV1>) -> String {
+  let samples = get_cpu_procs_samples(stats).unwrap_or(Vec::new());
+  // take avg of samples
+  let avg_util = get_avg_cpu_util(&samples);
+  let max_proc_cpu_usage = get_max_proc_cpu_usage(&samples);
+  // single threaded processes like node and python are bounced around cores and
+  // they use cpu time across all cores that are available so we use the average
+  // cpu utilization across all cores which also works for multithreaded processes
+  if avg_util < 0.3 && max_proc_cpu_usage < 0.3 {
+    return String::from("0.5");
+  } else if avg_util > 0.8 || max_proc_cpu_usage > 0.8 {
+    return String::from("2");
+  } else {
+    return String::from("1");
+  }
+}
+
+fn get_cpu_procs_samples(stats: &Vec<VMStatsV1>) -> DaemonResult<Vec<CPUSample>> {
+  Ok(
+    stats
+      .iter()
+      .map(|s| CPUSample {
+        avg_cpu_core_util: get_avg_cpu_core_util(s),
+        max_proc_cpu_usage: get_max_procs_usage(s),
+      })
+      .collect(),
+  )
+}
+
+fn get_avg_cpu_core_util(stat: &VMStatsV1) -> f64 {
+  let acc = stat
+    .cpuSecs
+    .iter()
+    .map(|t| {
+      let idle = t.idle + t.ioWait;
+      // TODO ignore t.steal for now, but once we have basic clustering
+      // we want to remove nodes with a high steal cpu time
+      let total = total(t) - t.steal;
+      let active = total - idle;
+      return active / total;
+    })
+    .reduce(|a, b| a + b);
+  match acc {
+    Some(acc) => acc,
+    None => (0 as f64),
+  }
+}
+
+fn total(cpu_secs: &CPUSecsV1) -> f64 {
+  return cpu_secs.user
+    + cpu_secs.system
+    + cpu_secs.softIrq
+    + cpu_secs.irq
+    + cpu_secs.softIrq
+    + cpu_secs.nice
+    + cpu_secs.ioWait
+    + cpu_secs.idle;
+}
+
+fn get_max_procs_usage(stat: &VMStatsV1) -> f64 {
+  let mut sorted_procs_cpu_usage = stat.procsCpuUsage.clone();
+  sorted_procs_cpu_usage.sort_by(|a, b| a.partial_cmp(b).unwrap());
+  match sorted_procs_cpu_usage.last() {
+    Some(value) => *value,
+    None => 0 as f64,
+  }
+}
+
+fn get_avg_cpu_util(samples: &Vec<CPUSample>) -> f64 {
+  match samples
+    .iter()
+    .map(|s| s.avg_cpu_core_util)
+    .reduce(|a, b| a + b)
+  {
+    Some(acc) => acc / samples.len() as f64,
+    None => 0 as f64,
+  }
+}
+
+fn get_max_proc_cpu_usage(samples: &Vec<CPUSample>) -> f64 {
+  match samples
+    .iter()
+    .map(|s| s.max_proc_cpu_usage)
+    .reduce(|a, b| a + b)
+  {
+    Some(acc) => acc / samples.len() as f64,
+    None => 0 as f64,
   }
 }
