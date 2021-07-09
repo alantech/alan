@@ -64,6 +64,7 @@ fn main() {
         .about("Deploys an .agz file to a new app with one of the Deploy Configs from alandeploy.json")
         .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'")
         .arg_from_usage("[NON_INTERACTIVE] -n, --non-interactive 'Enables non-interactive CLI mode useful for scripting.'")
+        .arg_from_usage("[NON_HTTP] -h, --non-http 'Enables non-http server deployments.'")
         .arg_from_usage("-a, --app-name=[APP_NAME] 'Specifies an optional app name.'")
         .arg_from_usage("-c, --config-name=[CONFIG_NAME] 'Specifies a config name, required only in non-interactive mode.'")
         .arg_from_usage("-f, --files=[COMMA_SEPARATED_NAMES] 'Specifies a set of files to include in the same working directory as your app'")
@@ -78,6 +79,7 @@ fn main() {
         .about("Deploys your repository to an existing App hosted in one of the Deploy Configs from alandeploy.json")
         .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'")
         .arg_from_usage("[NON_INTERACTIVE] -n, --non-interactive 'Enables non-interactive CLI mode useful for scripting.'")
+        .arg_from_usage("[NON_HTTP] -h, --non-http 'Enables non-http server deployments.'")
         .arg_from_usage("-a, --app-name=[APP_NAME] 'Specifies an optional app name.'")
         .arg_from_usage("-c, --config-name=[CONFIG_NAME] 'Specifies a config name, required only in non-interactive mode.'")
         .arg_from_usage("-f, --files=[COMMA_SEPARATED_NAMES] 'Specifies a set of files to include in the same working directory as your app'")
@@ -167,6 +169,7 @@ fn main() {
         match sub_matches.subcommand() {
           ("new", Some(matches)) => {
             let non_interactive: bool = matches.values_of("NON_INTERACTIVE").is_some();
+            let non_http: bool = matches.values_of("NON_HTTP").is_some();
             authenticate(non_interactive).await;
             let agz_file = matches.value_of("AGZ_FILE").unwrap();
             let app_name = matches.value_of("app-name").map(String::from);
@@ -185,6 +188,7 @@ fn main() {
               app_name,
               config_name,
               non_interactive,
+              non_http,
             )
             .await;
           }
@@ -197,6 +201,7 @@ fn main() {
           }
           ("upgrade", Some(matches)) => {
             let non_interactive: bool = matches.values_of("NON_INTERACTIVE").is_some();
+            let non_http: bool = matches.values_of("NON_HTTP").is_some();
             authenticate(non_interactive).await;
             let agz_file = matches.value_of("AGZ_FILE").unwrap();
             let app_name = matches.value_of("app-name").map(String::from);
@@ -215,6 +220,7 @@ fn main() {
               app_name,
               config_name,
               non_interactive,
+              non_http,
             )
             .await;
           }
