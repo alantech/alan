@@ -381,6 +381,11 @@ pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
     if let Err(err) = run_agz_b64(&agz_b64).await {
       error!(RunAgzFailed, "{:?}", err).await;
       std::process::exit(1);
+    } else {
+      // TODO: Send terminate cluster request?
+      // TODO:   If so, how to wait for all nodes before terminating?
+      // Keep cluster running forever
+      loop {}
     }
   } else {
     let msg = "No daemon properties defined";
