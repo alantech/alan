@@ -3602,7 +3602,11 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   io!(tcptun => fn(args, mut hand_mem) {
     Box::pin(async move {
       let port = hand_mem.read_fixed(args[0])? as i16;
-      let connected = make_tunnel!(&Program::global().http_config, port);
+      let connected = if let Some(http_config) =  &Program::global().http_config {
+        make_tunnel!(http_config, port)
+      } else {
+        false
+      };
       hand_mem.write_fixed(args[2], if connected { 1 } else { 0 })?;
       return Ok(hand_mem);
     })
@@ -3620,7 +3624,9 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
           }
         }
       }
-      make_server!(&Program::global().http_config, listen);
+      if let Some(http_config) = &Program::global().http_config {
+        make_server!(http_config, listen);
+      };
       return Ok(hand_mem);
     })
   });

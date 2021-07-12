@@ -150,40 +150,51 @@ async fn post_v1_stats(
 
 async fn run_agz_b64(agz_b64: &str) -> DaemonResult<()> {
   let bytes = base64::decode(agz_b64);
+  let non_http = NON_HTTP.get().unwrap_or(&false);
   if let Ok(bytes) = bytes {
-    let pwd = env::current_dir();
-    match pwd {
-      Ok(pwd) => {
-        let priv_key = read(format!("{}/key.pem", pwd.display()));
-        let cert = read(format!("{}/certificate.pem", pwd.display()));
-        if let (Ok(priv_key), Ok(cert)) = (priv_key, cert) {
-          let agz = GzDecoder::new(bytes.as_slice());
-          let count = agz.bytes().count();
-          let mut bytecode = vec![0; count / 8];
-          let mut gz = GzDecoder::new(bytes.as_slice());
-          let gz_read_i64 = gz.read_i64_into::<LittleEndian>(&mut bytecode);
-          if gz_read_i64.is_ok() {
-            if let Err(err) = run(
-              bytecode,
-              HttpType::HTTPS(HttpsConfig {
-                port: 443,
-                priv_key: String::from_utf8(priv_key).unwrap(),
-                cert: String::from_utf8(cert).unwrap(),
-              }),
-            )
-            .await
-            {
-              return Err(format!("Run server has failed. {}", err).into());
+    let agz = GzDecoder::new(bytes.as_slice());
+    let count = agz.bytes().count();
+    let mut bytecode = vec![0; count / 8];
+    let mut gz = GzDecoder::new(bytes.as_slice());
+    let gz_read_i64 = gz.read_i64_into::<LittleEndian>(&mut bytecode);
+    if *non_http {
+      if gz_read_i64.is_ok() {
+        if let Err(err) = run(bytecode, None).await {
+          return Err(format!("Run server has failed. {}", err).into());
+        }
+      } else {
+        return Err("AGZ file appears to be corrupt.".into());
+      }
+    } else {
+      let pwd = env::current_dir();
+      match pwd {
+        Ok(pwd) => {
+          let priv_key = read(format!("{}/key.pem", pwd.display()));
+          let cert = read(format!("{}/certificate.pem", pwd.display()));
+          if let (Ok(priv_key), Ok(cert)) = (priv_key, cert) {
+            if gz_read_i64.is_ok() {
+              if let Err(err) = run(
+                bytecode,
+                Some(HttpType::HTTPS(HttpsConfig {
+                  port: 443,
+                  priv_key: String::from_utf8(priv_key).unwrap(),
+                  cert: String::from_utf8(cert).unwrap(),
+                })),
+              )
+              .await
+              {
+                return Err(format!("Run server has failed. {}", err).into());
+              }
+            } else {
+              return Err("AGZ file appears to be corrupt.".into());
             }
           } else {
-            return Err("AGZ file appears to be corrupt.".into());
+            return Err("No self-signed certificate".into());
           }
-        } else {
-          return Err("No self-signed certificate".into());
         }
-      }
-      Err(err) => {
-        return Err(format!("{:?}", err).into());
+        Err(err) => {
+          return Err(format!("{:?}", err).into());
+        }
       }
     }
   } else {
