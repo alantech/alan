@@ -93,11 +93,13 @@ async fn post_v1_scale(
       let dockerfile = read(format!("{}/Dockerfile", pwd.display()));
       let app_tar_gz = read(format!("{}/app.tar.gz", pwd.display()));
       let env_file = read(format!("{}/anycloud.env", pwd.display()));
+      let non_http = NON_HTTP.get().unwrap_or(&false);
       let mut scale_body = json!({
         "clusterId": cluster_id,
         "agzB64": agz_b64,
         "deployToken": deploy_token,
         "clusterFactor": factor,
+        "nonHttp": *non_http,
       });
       if let (Ok(dockerfile), Ok(app_tar_gz)) = (dockerfile, app_tar_gz) {
         scale_body

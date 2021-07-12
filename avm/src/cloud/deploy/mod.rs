@@ -1275,7 +1275,7 @@ pub async fn new(
     "deployConfig": config,
     "deployName": deploy_config,
     "filesB64": files_b64,
-    "isHttp": !non_http,
+    "nonHttp": non_http,
   });
   let resp = post_v1("new", body).await;
   let res = match &resp {
@@ -1370,7 +1370,7 @@ pub async fn upgrade(
     "clusterId": cluster_id,
     "deployConfig": config,
     "filesB64": files_b64,
-    "isHttp": !non_http,
+    "nonHttp": non_http,
   });
   let resp = post_v1("upgrade", body).await;
   let res = match resp {
