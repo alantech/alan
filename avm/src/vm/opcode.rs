@@ -3993,7 +3993,12 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   cpu!(exitop => fn(args, hand_mem) {
     io::stdout().flush().map_err(VMError::IOError)?;
     io::stderr().flush().map_err(VMError::IOError)?;
-    std::process::exit(hand_mem.read_fixed(args[0])? as i32);
+    let exit_code = hand_mem.read_fixed(args[0])? as i32;
+    // Using 3 as custom exit code when program exited successfuly but still want to keep the cluster running
+    if exit_code != 3 {
+      std::process::exit(exit_code);
+    }
+    Ok(())
   });
   cpu!(stdoutp => fn(args, hand_mem) {
     let out_str = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0])?)?;
