@@ -43,6 +43,9 @@ const addBuiltIn = (name: string) => {
   'TcpChannel',
   'TcpContext',
   'Chunk',
+  'NsRef',
+  'NsMut',
+  'With',
 ].map(addBuiltIn);
 Type.builtinTypes['Array'].solidify(['string'], opcodeScope);
 opcodeScope.put(
@@ -94,6 +97,8 @@ Type.builtinTypes.Result.solidify(['string'], opcodeScope);
 Type.builtinTypes.Result.solidify(['InternalResponse'], opcodeScope);
 Type.builtinTypes.Either.solidify(['any', 'anythingElse'], opcodeScope);
 Type.builtinTypes.InitialReduce.solidify(['any', 'anythingElse'], opcodeScope);
+Type.builtinTypes.With.solidify(['NsRef', 'any'], opcodeScope);
+Type.builtinTypes.With.solidify(['NsMut', 'any'], opcodeScope);
 opcodeScope.put('start', new Event('_start', Type.builtinTypes.void, true));
 opcodeScope.put(
   '__conn',
@@ -1310,6 +1315,14 @@ addopcodes({
   dsdel: [{ ns: t('string'), key: t('string') }, t('bool')],
   dsgetf: [{ ns: t('string'), key: t('string') }, t('Result<any>')],
   dsgetv: [{ ns: t('string'), key: t('string') }, t('Result<any>')],
+  dsrrun: [{ nskey: t('NsRef'), func: t('function') }, t('Result<any>')],
+  dsmrun: [{ nskey: t('NsMut'), func: t('function') }, t('Result<any>')],
+  dsrwith: [{ 'with': t('With<NsRef, any>'), func: t('function') }, t('Result<any>')],
+  dsmwith: [{ 'with': t('With<NsMut, any>'), func: t('function') }, t('Result<any>')],
+  dsmonly: [{ nskey: t('NsMut'), func: t('function') }, t('void')],
+  dswonly: [{ 'with': t('With<NsMut, any>'), func: t('function') }, t('void')],
+  dsrclos: [{ nskey: t('NsRef'), func: t('function') }, t('Result<any>')],
+  dsmclos: [{ nskey: t('NsMut'), func: t('function') }, t('Result<any>')],
   getcs: [{}, t('Maybe<string>')],
   newseq: [{ limit: t('int64') }, t('Seq')],
   seqnext: [{ seq: t('Seq') }, t('Result<int64>')],

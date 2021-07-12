@@ -1051,6 +1051,52 @@ module.exports = {
       return [ false, 'namespace-key pair not found', ]
     }
   },
+  dsrrun: (nskey, func) => {
+    const val = ds[`${nskey[0]}:${nskey[1]}`];
+    return func(val);
+  },
+  dsmrun: (nskey, func) => {
+    let val = ds[`${nskey[0]}:${nskey[1]}`];
+    const out = func(val);
+    ds[`${nskey[0]}:${nskey[1]}`] = val;
+    return out;
+  },
+  dsrwith: (wth, func) => {
+    const nskey = wth[0];
+    const a = wth[1];
+    const b = ds[`${nskey[0]}:${nskey[1]}`];
+    return func(a, b);
+  },
+  dsmwith: (wth, func) => {
+    const nskey = wth[0];
+    const a = wth[1];
+    let b = ds[`${nskey[0]}:${nskey[1]}`];
+    const out = func(a, b);
+    ds[`${nskey[0]}:${nskey[1]}`] = b;
+    return out;
+  },
+  dsmonly: (nskey, func) => {
+    let val = ds[`${nskey[0]}:${nskey[1]}`];
+    func(val);
+    ds[`${nskey[0]}:${nskey[1]}`] = val;
+  },
+  dswonly: (wth, func) => {
+    const nskey = wth[0];
+    const a = wth[1];
+    const b = ds[`${nskey[0]}:${nskey[1]}`];
+    func(a, b);
+    ds[`${nskey[0]}:${nskey[1]}`] = b;
+  },
+  dsrclos: (nskey, func) => {
+    const val = ds[`${nskey[0]}:${nskey[1]}`];
+    return func(val);
+  },
+  dsmclos: (nskey, func) => {
+    let val = ds[`${nskey[0]}:${nskey[1]}`];
+    const out = func(val);
+    ds[`${nskey[0]}:${nskey[1]}`] = val;
+    return out;
+  },
   getcs:  () => [false],
   newseq:  (limit) => [0n, limit],
   seqnext: (seq) => {
