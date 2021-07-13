@@ -219,6 +219,10 @@ pub async fn get_v1_stats() -> DaemonResult<VMStatsV1> {
   }
 }
 
+// returns the suggested scaling factor for the cluster
+// 2 prescribes doubling the cluster size
+// 1 prescribes leaving the cluster as-is
+// 0.5 prescribes halving the cluster size
 pub fn get_stats_factor(stats: &Vec<VMStatsV1>) -> String {
   let samples = get_cpu_procs_samples(stats).unwrap_or(Vec::new());
   // take avg of samples
