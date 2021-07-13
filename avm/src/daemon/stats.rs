@@ -227,13 +227,13 @@ pub fn get_stats_factor(stats: &Vec<VMStatsV1>) -> String {
   let samples = get_cpu_procs_samples(stats).unwrap_or(Vec::new());
   // take avg of samples
   let avg_util = get_avg_cpu_util(&samples);
-  let max_proc_cpu_usage = get_max_proc_cpu_usage(&samples);
+  let avg_max_proc_cpu_usage = get_avg_max_proc_cpu_usage(&samples);
   // single threaded processes like node and python are bounced around cores and
   // they use cpu time across all cores that are available so we use the average
   // cpu utilization across all cores which also works for multithreaded processes
-  if avg_util < 0.3 && max_proc_cpu_usage < 0.3 {
+  if avg_util < 0.3 && avg_max_proc_cpu_usage < 0.3 {
     return String::from("0.5");
-  } else if avg_util > 0.8 || max_proc_cpu_usage > 0.8 {
+  } else if avg_util > 0.8 || avg_max_proc_cpu_usage > 0.8 {
     return String::from("2");
   } else {
     return String::from("1");
@@ -302,7 +302,7 @@ fn get_avg_cpu_util(samples: &Vec<CPUSample>) -> f64 {
   }
 }
 
-fn get_max_proc_cpu_usage(samples: &Vec<CPUSample>) -> f64 {
+fn get_avg_max_proc_cpu_usage(samples: &Vec<CPUSample>) -> f64 {
   match samples
     .iter()
     .map(|s| s.max_proc_cpu_usage)
