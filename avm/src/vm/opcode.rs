@@ -18,13 +18,14 @@ use hyper::{client::ResponseFuture, Body, Request, Response, StatusCode};
 use once_cell::sync::Lazy;
 use rand::{thread_rng, Rng};
 use regex::Regex;
+use serde_json::json;
 use tokio::process::Command;
 use tokio::sync::oneshot::{self, Receiver, Sender};
 use tokio::time::sleep;
 use twox_hash::XxHash64;
 
 use crate::daemon::ctrl::NAIVE_CLIENT;
-use crate::daemon::daemon::{CLUSTER_SECRET, CONTROL_PORT_CHANNEL};
+use crate::daemon::daemon::{post_v1, CLUSTER_SECRET, CONTROL_PORT_CHANNEL, DAEMON_PROPS};
 use crate::vm::event::{BuiltInEvents, EventEmit, HandlerFragment, NOP_ID};
 use crate::vm::http::HTTP_CLIENT;
 use crate::vm::memory::{FractalMemory, HandlerMemory, CLOSURE_ARG_MEM_START};
@@ -3990,15 +3991,20 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
 
   // "Special" opcodes
-  cpu!(exitop => fn(args, hand_mem) {
-    io::stdout().flush().map_err(VMError::IOError)?;
-    io::stderr().flush().map_err(VMError::IOError)?;
-    let exit_code = hand_mem.read_fixed(args[0])? as i32;
-    // Using 3 as custom exit code when program exited successfuly but still want to keep the cluster running
-    if exit_code != 3 {
-      std::process::exit(exit_code);
-    }
-    Ok(())
+  io!(exitop => fn(args, hand_mem) {
+    Box::pin(async move {
+      io::stdout().flush().map_err(VMError::IOError)?;
+      io::stderr().flush().map_err(VMError::IOError)?;
+      if let Some(props) = DAEMON_PROPS.get() {
+        let terminate_body = json!({
+          "clusterId": props.clusterId,
+          "deployToken": props.deployToken,
+          "daemonMode": true,
+        });
+        post_v1("terminate", terminate_body).await;
+      };
+      std::process::exit(hand_mem.read_fixed(args[0])? as i32);
+    })
   });
   cpu!(stdoutp => fn(args, hand_mem) {
     let out_str = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0])?)?;
