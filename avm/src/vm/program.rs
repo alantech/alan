@@ -68,7 +68,7 @@ pub struct Program {
   /// Memory of the program for global variables and string literals
   pub(crate) gmem: Vec<(usize, i64)>,
   /// The port the http server should use
-  pub(crate) http_config: HttpType,
+  pub(crate) http_config: Option<HttpType>,
 }
 
 pub static PROGRAM: OnceCell<Program> = OnceCell::new();
@@ -101,7 +101,7 @@ impl Program {
   }
 
   // Parses and safely initializes the alan graph code program as static, global data
-  pub fn load(bytecode: Vec<i64>, http_config: HttpType) -> Program {
+  pub fn load(bytecode: Vec<i64>, http_config: Option<HttpType>) -> Program {
     let mut parser = BytecodeParser { pc: 0, bytecode };
     let mut program = Program {
       event_handlers: HashMap::new(),

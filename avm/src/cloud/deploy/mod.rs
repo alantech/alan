@@ -1174,6 +1174,7 @@ pub async fn new(
   app_name: Option<String>,
   config_name: Option<String>,
   non_interactive: bool,
+  non_http: bool,
 ) {
   let interactive = !non_interactive;
   let app_name = if let Some(app_name) = app_name {
@@ -1210,6 +1211,7 @@ pub async fn new(
           Some(config_name.to_string())
         },
         non_interactive,
+        non_http,
       )
       .await;
       return;
@@ -1273,6 +1275,7 @@ pub async fn new(
     "deployConfig": config,
     "deployName": deploy_config,
     "filesB64": files_b64,
+    "nonHttp": non_http,
   });
   let resp = post_v1("new", body).await;
   let res = match &resp {
@@ -1309,6 +1312,7 @@ pub async fn upgrade(
   app_name: Option<String>,
   config_name: Option<String>,
   non_interactive: bool,
+  non_http: bool,
 ) {
   let interactive = !non_interactive;
   let app_name = if let Some(app_name) = app_name {
@@ -1366,6 +1370,7 @@ pub async fn upgrade(
     "clusterId": cluster_id,
     "deployConfig": config,
     "filesB64": files_b64,
+    "nonHttp": non_http,
   });
   let resp = post_v1("upgrade", body).await;
   let res = match resp {

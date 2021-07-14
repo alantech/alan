@@ -11,7 +11,7 @@ use crate::cloud::common::get_agz_file_b64;
 use crate::cloud::deploy;
 use crate::cloud::oauth::authenticate;
 use crate::compile::compile::compile;
-use crate::daemon::daemon::{start, CLUSTER_SECRET};
+use crate::daemon::daemon::{start, CLUSTER_SECRET, NON_HTTP};
 use crate::vm::run::run_file;
 use crate::vm::telemetry;
 
@@ -64,6 +64,7 @@ fn main() {
         .about("Deploys an .agz file to a new app with one of the Deploy Configs from alandeploy.json")
         .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'")
         .arg_from_usage("[NON_INTERACTIVE] -n, --non-interactive 'Enables non-interactive CLI mode useful for scripting.'")
+        .arg_from_usage("[NON_HTTP] -h, --non-http 'Enables non-http server deployments.'")
         .arg_from_usage("-a, --app-name=[APP_NAME] 'Specifies an optional app name.'")
         .arg_from_usage("-c, --config-name=[CONFIG_NAME] 'Specifies a config name, required only in non-interactive mode.'")
         .arg_from_usage("-f, --files=[COMMA_SEPARATED_NAMES] 'Specifies a set of files to include in the same working directory as your app'")
@@ -78,6 +79,7 @@ fn main() {
         .about("Deploys your repository to an existing App hosted in one of the Deploy Configs from alandeploy.json")
         .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'")
         .arg_from_usage("[NON_INTERACTIVE] -n, --non-interactive 'Enables non-interactive CLI mode useful for scripting.'")
+        .arg_from_usage("[NON_HTTP] -h, --non-http 'Enables non-http server deployments.'")
         .arg_from_usage("-a, --app-name=[APP_NAME] 'Specifies an optional app name.'")
         .arg_from_usage("-c, --config-name=[CONFIG_NAME] 'Specifies a config name, required only in non-interactive mode.'")
         .arg_from_usage("-f, --files=[COMMA_SEPARATED_NAMES] 'Specifies a set of files to include in the same working directory as your app'")
@@ -119,6 +121,7 @@ fn main() {
       .about("Run an .agz file in daemon mode. Used on deploy within cloud provider VMs.")
       .arg_from_usage("<CLUSTER_SECRET> -s, --cluster-secret=<CLUSTER_SECRET> 'A secret string to constrain access to the control port'")
       .arg_from_usage("-f, --agz-file=[AGZ_FILE] 'Specifies an optional agz file relative path for local usage'")
+      .arg_from_usage("[NON_HTTP] -h, --non-http 'Specifies non-http agz execution.'")
       .arg_from_usage("[ANYCLOUD_APP] -a, --anycloud-app 'Specifies an optional AnyCloud app flag for local usage'") // TODO: Eliminate this
     )
     .arg_from_usage("[SOURCE] 'Specifies a source ln file to compile and run'");
@@ -167,6 +170,7 @@ fn main() {
         match sub_matches.subcommand() {
           ("new", Some(matches)) => {
             let non_interactive: bool = matches.values_of("NON_INTERACTIVE").is_some();
+            let non_http: bool = matches.values_of("NON_HTTP").is_some();
             authenticate(non_interactive).await;
             let agz_file = matches.value_of("AGZ_FILE").unwrap();
             let app_name = matches.value_of("app-name").map(String::from);
@@ -185,6 +189,7 @@ fn main() {
               app_name,
               config_name,
               non_interactive,
+              non_http,
             )
             .await;
           }
@@ -197,6 +202,7 @@ fn main() {
           }
           ("upgrade", Some(matches)) => {
             let non_interactive: bool = matches.values_of("NON_INTERACTIVE").is_some();
+            let non_http: bool = matches.values_of("NON_HTTP").is_some();
             authenticate(non_interactive).await;
             let agz_file = matches.value_of("AGZ_FILE").unwrap();
             let app_name = matches.value_of("app-name").map(String::from);
@@ -215,6 +221,7 @@ fn main() {
               app_name,
               config_name,
               non_interactive,
+              non_http,
             )
             .await;
           }
@@ -253,15 +260,14 @@ fn main() {
         }
       }
       ("daemon", Some(matches)) => {
+        let non_http: bool = matches.values_of("NON_HTTP").is_some();
         let cluster_secret = matches.value_of("CLUSTER_SECRET").unwrap();
         let local_agz_b64 = match matches.value_of("agz-file") {
           Some(agz_file_path) => Some(get_agz_file_b64(agz_file_path.to_string()).await),
           None => None,
         };
-        let is_local_anycloud_app: bool = match matches.values_of("ANYCLOUD_APP") {
-          Some(_) => true,
-          None => false,
-        };
+        let is_local_anycloud_app: bool = matches.values_of("ANYCLOUD_APP").is_some();
+        NON_HTTP.set(non_http).unwrap();
         CLUSTER_SECRET
           .set(Some(cluster_secret.to_string()))
           .unwrap();
