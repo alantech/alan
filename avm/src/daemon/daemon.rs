@@ -84,47 +84,18 @@ async fn post_v1_scale(
   agz_b64: &str,
   deploy_token: &str,
   factor: &str,
+  files_b64: &HashMap<String, String>,
 ) -> String {
-  // transmit the Dockerfile and app.tar.gz if both are available
-  let pwd = env::current_dir();
-  match pwd {
-    Ok(pwd) => {
-      // TODO: Make this generic, not hardwired for Anycloud-related files
-      let dockerfile = read(format!("{}/Dockerfile", pwd.display()));
-      let app_tar_gz = read(format!("{}/app.tar.gz", pwd.display()));
-      let env_file = read(format!("{}/anycloud.env", pwd.display()));
-      let non_http = NON_HTTP.get().unwrap_or(&false);
-      let mut scale_body = json!({
-        "clusterId": cluster_id,
-        "agzB64": agz_b64,
-        "deployToken": deploy_token,
-        "clusterFactor": factor,
-        "nonHttp": *non_http,
-      });
-      if let (Ok(dockerfile), Ok(app_tar_gz)) = (dockerfile, app_tar_gz) {
-        scale_body
-          .as_object_mut()
-          .unwrap()
-          .insert(format!("DockerfileB64"), json!(base64::encode(dockerfile)));
-        scale_body
-          .as_object_mut()
-          .unwrap()
-          .insert(format!("appTarGzB64"), json!(base64::encode(app_tar_gz)));
-      }
-      if let Ok(env_file) = env_file {
-        scale_body
-          .as_object_mut()
-          .unwrap()
-          .insert(format!("envB64"), json!(base64::encode(env_file)));
-      };
-      post_v1("scale", scale_body).await
-    }
-    Err(err) => {
-      let err = format!("{:?}", err);
-      error!(ScaleFailed, "{:?}", err).await;
-      err
-    }
-  }
+  let non_http = NON_HTTP.get().unwrap_or(&false);
+  let scale_body = json!({
+    "clusterId": cluster_id,
+    "agzB64": agz_b64,
+    "deployToken": deploy_token,
+    "clusterFactor": factor,
+    "nonHttp": *non_http,
+    "filesB64": files_b64,
+  });
+  post_v1("scale", scale_body).await
 }
 
 // acknowledge deploy service to refresh secret
@@ -289,6 +260,7 @@ pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
   if let Some(daemon_props) = get_daemon_props(is_local_anycloud_app, local_agz_b64).await {
     let agz_b64 = &daemon_props.agzB64;
     let cluster_id = &daemon_props.clusterId;
+    let files_b64 = &daemon_props.filesB64;
     CLUSTER_ID.set(String::from(cluster_id)).unwrap();
     let domain = &daemon_props.domain;
     let deploy_token = &daemon_props.deployToken;
@@ -349,7 +321,14 @@ pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
                 cluster_id, cluster_size, stats_factor
               );
               if &stats_factor != "1" {
-                post_v1_scale(&cluster_id, &agz_b64, &deploy_token, &stats_factor).await;
+                post_v1_scale(
+                  &cluster_id,
+                  &agz_b64,
+                  &deploy_token,
+                  &stats_factor,
+                  &files_b64,
+                )
+                .await;
               }
             }
           }
