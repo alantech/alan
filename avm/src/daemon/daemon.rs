@@ -18,7 +18,7 @@ use crate::cloud::common::{file_exist, get_app_tar_gz_b64, get_dockerfile_b64};
 use crate::cloud::{deploy, CLUSTER_ID};
 use crate::daemon::ctrl::ControlPort;
 use crate::daemon::dns::DNS;
-use crate::daemon::stats::{get_v1_stats, VMStatsV1};
+use crate::daemon::stats::{get_stats_factor, get_v1_stats};
 use crate::vm::http::{HttpType, HttpsConfig};
 use crate::vm::run::run;
 use crate::{error, warn};
@@ -124,27 +124,22 @@ async fn post_v1_scale(
   }
 }
 
-// returns cluster delta
-async fn post_v1_stats(
-  vm_stats: Vec<VMStatsV1>,
-  cluster_id: &str,
-  deploy_token: &str,
-) -> DaemonResult<String> {
-  let mut stats_body = json!({
+// acknowledge deploy service to refresh secret
+async fn post_v1_ack(cluster_id: &str, deploy_token: &str) -> DaemonResult<String> {
+  let mut ack_body = json!({
     "deployToken": deploy_token,
-    "vmStats": vm_stats,
     "clusterId": cluster_id,
   });
   let cluster_secret = CLUSTER_SECRET.get().unwrap();
   if let Some(cluster_secret) = cluster_secret.as_ref() {
-    stats_body
+    ack_body
       .as_object_mut()
       .unwrap()
       .insert("clusterSecret".to_string(), json!(cluster_secret));
   } else {
     error!(NoClusterSecret, "No cluster secret found.").await;
   }
-  Ok(post_v1("stats", stats_body).await)
+  Ok(post_v1("ack", ack_body).await)
 }
 
 async fn run_agz_b64(agz_b64: &str) -> DaemonResult<()> {
@@ -332,24 +327,15 @@ pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
               );
             }
             if stats.len() >= 4 {
-              let mut factor = String::from("1");
-              let stats_factor = post_v1_stats(stats.to_owned(), &cluster_id, &deploy_token).await;
+              let _ack = post_v1_ack(&cluster_id, &deploy_token).await;
+              let stats_factor = get_stats_factor(&stats);
               stats = Vec::new();
-              if let Ok(stats_factor) = stats_factor {
-                factor = stats_factor;
-              } else if let Err(err) = stats_factor {
-                error!(
-                  PostFailed,
-                  "Failed sending stats for cluster {}: {}", &cluster_id, err
-                )
-                .await;
-              }
               println!(
                 "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
-                cluster_id, cluster_size, factor
+                cluster_id, cluster_size, stats_factor
               );
-              if factor != "1" {
-                post_v1_scale(&cluster_id, &agz_b64, &deploy_token, &factor).await;
+              if &stats_factor != "1" {
+                post_v1_scale(&cluster_id, &agz_b64, &deploy_token, &stats_factor).await;
               }
             }
           }
