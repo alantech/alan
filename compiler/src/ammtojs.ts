@@ -24,7 +24,7 @@ type ArgMutationDirective = [string[], boolean | undefined];
 
 const functionbodyToJsText = (
   fnbody: LPNode,
-  indent: string, 
+  indent: string,
   mutationDirective: ArgMutationDirective,
 ) => {
   let outText = '';
@@ -135,9 +135,15 @@ const findFuncsToAlsoReturnArg = (amm: LPNode) => {
   };
   const inspectCall = (call: LPNode) => {
     const opcode = call.get('variable').t;
-    if (['dsmrun', 'dsmwith', 'dsmonly', 'dswonly', 'dsmclos'].includes(opcode)) {
-      const fnname = call.has('calllist') ?
-        call.get('calllist').getAll().map((r) => r.get('variable').t)[1] : 'WAT';
+    if (
+      ['dsmrun', 'dsmwith', 'dsmonly', 'dswonly', 'dsmclos'].includes(opcode)
+    ) {
+      const fnname = call.has('calllist')
+        ? call
+            .get('calllist')
+            .getAll()
+            .map((r) => r.get('variable').t)[1]
+        : 'WAT';
       funcsToAlsoReturnArg[fnname] = insertExit[opcode];
     }
   };
@@ -169,7 +175,7 @@ const findFuncsToAlsoReturnArg = (amm: LPNode) => {
       }
     }
   }
-}
+};
 
 const ammToJsText = (amm: LPNode) => {
   // Preprocess the tree to find the functions that need an argument also returned and identify
@@ -209,7 +215,7 @@ const ammToJsText = (amm: LPNode) => {
     outFile += functionbodyToJsText(
       rec.get('functions').get('functionbody'),
       '',
-      [[],undefined],
+      [[], undefined],
     );
     outFile += '})\n'; // End this handler
   }

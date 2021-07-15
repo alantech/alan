@@ -928,7 +928,7 @@ export class Type {
       false,
       {
         nskey: new Type('N', true, true),
-        'with': new Type('T', true, true),
+        with: new Type('T', true, true),
       },
       {
         N: 0,
