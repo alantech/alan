@@ -537,6 +537,35 @@ const addopcodes = (
                         : returnType;
                       return newReturnType;
                     }
+                  } else if ([
+                    'dsrrun',
+                    'dsmrun',
+                    'dsrwith',
+                    'dsmwith',
+                    'dsrclos',
+                    'dsmclos',
+                  ].includes(opcodeName)) {
+                    // TODO: Make datastore typesafe. We can't currently do proper dispatch
+                    // on these opcodes, so we have to bail out if the list of potential
+                    // functions for the second argument is more than 1.
+                    if (inputs[1].fns.length !== 1) {
+                      throw new Error(`${opcodeName} does not currently support multiple dispatch`);
+                    }
+                    const fn = inputs[1].fns[0];
+                    const idx = microstatements.indexOf(inputs[1]);
+                    const m = microstatements.slice(0, idx);
+                    Microstatement.closureFromUserFunction(
+                      fn,
+                      fn.scope || scope,
+                      m,
+                      interfaceMap,
+                    );
+                    const closure = m[m.length - 1];
+                    microstatements.splice(idx, 0, closure);
+                    realArgNames[1] = closure.outputName;
+                    const retType = fn.getReturnType();
+                    return (scope.deepGet('Result') as Type)
+                      .solidify([retType.typename], scope);
                   } else if (['find', 'findl'].includes(opcodeName)) {
                     const arrayInnerType = scope.deepGet(
                       inputTypes[0].typename.replace(/^Array<(.*)>$/, '$1'),
@@ -866,6 +895,14 @@ const addopcodes = (
                       } else if (['selfrec'].includes(opcodeName)) {
                         // TODO: Is this even reachable?
                         fn = inputs[0].inputNames[1].fns[0];
+                      } else if (['dsmonly', 'dswonly',].includes(opcodeName)) {
+                        // TODO: Make datastore typesafe. We can't currently do proper dispatch
+                        // on these opcodes, so we have to bail out if the list of potential
+                        // functions for the second argument is more than 1.
+                        if (inputs[1].fns.length !== 1) {
+                          throw new Error(`${opcodeName} does not currently support multiple dispatch`);
+                        }
+                        fn = inputs[1].fns[0];
                       } else {
                         fn = UserFunction.dispatchFn(inputs[i].fns, [], scope);
                       }

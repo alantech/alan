@@ -632,7 +632,7 @@ ${objectLiteralsAst.t} on line ${objectLiteralsAst.line}:${
     for (const [name, type] of args) {
       if (name !== '' && type.typename != '') {
         microstatements.push(
-          new Microstatement(StatementType.CONSTDEC, scope, true, name, type),
+          new Microstatement(StatementType.LETDEC, scope, true, name, type),
         );
       }
     }
@@ -828,6 +828,9 @@ ${emitsAst.t} on line ${emitsAst.line}:${emitsAst.char}`);
 ${assignmentsAst.t} on line ${assignmentsAst.line}:${assignmentsAst.char}`);
         }
       }
+      if (microstatement.outputName === letName) {
+        original = microstatement;
+      }
     }
     if (!original) {
       throw new Error(`Attempting to reassign to an undeclared variable
@@ -862,6 +865,9 @@ ${assignmentsAst.t} on line ${assignmentsAst.line}:${assignmentsAst.char}`);
             throw new Error(`Attempting to reassign a non-let variable.
 ${letName} on line ${assignmentsAst.line}:${assignmentsAst.char}`);
           }
+        }
+        if (microstatement.outputName === letName) {
+          actualLetName = letName;
         }
       }
       Microstatement.fromAssignablesAst(

@@ -1051,51 +1051,52 @@ module.exports = {
       return [ false, 'namespace-key pair not found', ]
     }
   },
-  dsrrun: (nskey, func) => {
+  dsrrun: async (nskey, func) => {
     const val = ds[`${nskey[0]}:${nskey[1]}`];
-    return func(val);
+    return [true, await func(val)];
   },
-  dsmrun: (nskey, func) => {
+  dsmrun: async (nskey, func) => {
     let val = ds[`${nskey[0]}:${nskey[1]}`];
-    const out = func(val);
-    ds[`${nskey[0]}:${nskey[1]}`] = val;
-    return out;
+    const [out, newval] = await func(val);
+    ds[`${nskey[0]}:${nskey[1]}`] = newval;
+    return [true, out];
   },
-  dsrwith: (wth, func) => {
+  dsrwith: async (wth, func) => {
     const nskey = wth[0];
     const a = wth[1];
     const b = ds[`${nskey[0]}:${nskey[1]}`];
-    return func(a, b);
+    return [true, await func(a, b)];
   },
-  dsmwith: (wth, func) => {
+  dsmwith: async (wth, func) => {
     const nskey = wth[0];
     const a = wth[1];
     let b = ds[`${nskey[0]}:${nskey[1]}`];
-    const out = func(a, b);
-    ds[`${nskey[0]}:${nskey[1]}`] = b;
-    return out;
+    // Get out, newb!
+    const [out, newb] = await func(a, b);
+    ds[`${nskey[0]}:${nskey[1]}`] = newb;
+    return [true, out];
   },
-  dsmonly: (nskey, func) => {
+  dsmonly: async (nskey, func) => {
     let val = ds[`${nskey[0]}:${nskey[1]}`];
-    func(val);
-    ds[`${nskey[0]}:${nskey[1]}`] = val;
+    const newval = await func(val);
+    ds[`${nskey[0]}:${nskey[1]}`] = newval;
   },
-  dswonly: (wth, func) => {
+  dswonly: async (wth, func) => {
     const nskey = wth[0];
     const a = wth[1];
     const b = ds[`${nskey[0]}:${nskey[1]}`];
-    func(a, b);
-    ds[`${nskey[0]}:${nskey[1]}`] = b;
+    const newb = await func(a, b);
+    ds[`${nskey[0]}:${nskey[1]}`] = newb;
   },
-  dsrclos: (nskey, func) => {
+  dsrclos: async (nskey, func) => {
     const val = ds[`${nskey[0]}:${nskey[1]}`];
-    return func(val);
+    return [true, await func(val)];
   },
-  dsmclos: (nskey, func) => {
+  dsmclos: async (nskey, func) => {
     let val = ds[`${nskey[0]}:${nskey[1]}`];
-    const out = func(val);
-    ds[`${nskey[0]}:${nskey[1]}`] = val;
-    return out;
+    const [out, newval] = await func(val);
+    ds[`${nskey[0]}:${nskey[1]}`] = newval;
+    return [true, out];
   },
   getcs:  () => [false],
   newseq:  (limit) => [0n, limit],
