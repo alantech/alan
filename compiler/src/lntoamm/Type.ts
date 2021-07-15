@@ -914,6 +914,27 @@ export class Type {
       },
     ),
     Chunk: new Type('Chunk', true),
+    NsRef: new Type('NsRef', true, false, {
+      ns: new Type('string', true),
+      key: new Type('string', true),
+    }),
+    NsMut: new Type('NsMut', true, false, {
+      ns: new Type('string', true),
+      key: new Type('string', true),
+    }),
+    With: new Type(
+      'With',
+      false,
+      false,
+      {
+        nskey: new Type('N', true, true),
+        with: new Type('T', true, true),
+      },
+      {
+        N: 0,
+        T: 1,
+      },
+    ),
     function: new Type('function', true),
     operator: new Type('operator', true),
     Event: new Type(

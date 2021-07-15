@@ -46,3 +46,55 @@ export fn getOr(ns: string, key: string, default: float64) {
 export fn getOr(ns: string, key: string, default: bool) {
   return dsgetf(ns, key).getOr(default);
 }
+
+// Distributed compute types. NsRef represents a read-only reference to remote data, NsMut is a
+// mutable reference to remote data, and With is a generic type that allows a singular value to be
+// transmitted with the remote function execution as an explicit performance optimization. (It may
+// be eliminated if/when non-greedy closures within the AVM are implemented.)
+export type NsRef {
+  ns: string,
+  key: string,
+}
+export type NsMut {
+  ns: string,
+  key: string,
+}
+export type With<N, T> {
+  nskey: N,
+  with: T,
+}
+
+// The helper functions to generate the types above in a fluent manner.
+export fn ref(ns: string, key: string): NsRef = new NsRef {
+  ns: ns,
+  key: key,
+};
+export fn mut(ns: string, key: string): NsMut = new NsMut {
+  ns: ns,
+  key: key,
+};
+export fn with(nskey: NsRef, val: any): With<NsRef, any> = new With<NsRef, any> {
+  nskey: nskey,
+  with: val,
+};
+export fn with(nskey: NsMut, val: any): With<NsMut, any> = new With<NsMut, any> {
+  nskey: nskey,
+  with: val,
+};
+
+// The eight ways to execute remote functions (it would be ten, but a fully-greedy closure and the
+// with functionality don't make any sense together). In all cases, the `func` function has a type
+// like `fn(A): B` where `A` is the type of the namespace-key pair and `B` is the output type which
+// the opcodes wrap in a `Result<T>` in case the remote data doesn't exist or execution failed as
+// the remote node died during execution (and we don't have retry logic for that, yet), etc. Except
+// for the `mutOnly` which are "fire-and-forget" opcodes that never return back to the user, in a
+// Mongo-is-webscale fashion. ;)
+export fn run(nskey: NsRef, func: function): Result<any> = dsrrun(nskey, func);
+export fn run(nskey: NsMut, func: function): Result<any> = dsmrun(nskey, func);
+export fn run(with: With<NsRef, any>, func: function): Result<any> = dsrwith(with, func);
+export fn run(with: With<NsMut, any>, func: function): Result<any> = dsmwith(with, func);
+export fn mutOnly(nskey: NsMut, func: function): void = dsmonly(nskey, func);
+export fn mutOnly(with: With<NsMut, any>, func: function): void = dswonly(with, func);
+export fn closure(nskey: NsRef, func: function): Result<any> = dsrclos(nskey, func);
+export fn closure(nskey: NsMut, func: function): Result<any> = dsmclos(nskey, func);
+
