@@ -117,6 +117,10 @@ export default abstract class Type implements Equalable {
     // only a handful of builtin types are fixed
     return false;
   }
+
+  fnselectOptions(): Type[] {
+    return [this];
+  }
 }
 
 class Builtin extends Type {
@@ -257,10 +261,73 @@ export class FunctionType extends Type {
   }
 
   static matrixSelect(fns: Fn[], args: Type[], scope: Scope): [Fn, Type][] {
+    // remove any fns that shouldn't apply
     const callTy = new FunctionType(new NulLP(), args, Type.generate());
     fns = fns.filter((fn) => fn.ty.compatibleWithConstraint(callTy, scope));
+    // if it's 0-arity then all we have to do is grab the retTy of the fn
+    if (args.length === 0) {
+      return fns.reduce(
+        (fns, fn) => [...fns, [fn, fn.retTy.instance()]],
+        new Array<[Fn, Type]>(),
+      );
+    }
     // and now to generate the matrix
-    return []
+    // every argument is a dimension within the matrix, but we're
+    // representing each dimension _d_ as an index in the matrix
+	  let matrix: Array<Type[]> = args.map((arg) => arg.fnselectOptions());
+    // TODO: this weight system feels like it can be inaccurate
+    // the weight of a particular function is computed by the sum
+    // of the indices in each dimension, with the highest sum
+    // having the greatest preference
+    let fnsByWeight = new Map<number, [Fn, Type][]>();
+    let indices = matrix.map(() => 0);
+    while (true) {
+      const weight = indices.reduce((w, c) => w + c);
+      const argTys = matrix.map((options, ii) => options[indices[ii]]);
+      let alreadyInWeightMap = fnsByWeight.get(weight) || [];
+      alreadyInWeightMap.push(
+        ...fns.reduce(
+          (fns, fn) => {
+            const retTy = fn.resultTyFor(argTys, scope);
+            if (retTy === null) {
+              return fns;
+            } else {
+              return [
+                ...fns,
+                [fn, retTy] as [Fn, Type],
+              ];
+            }
+          },
+          new Array<[Fn, Type]>(),
+        ),
+      );
+      if (indices.every((idxInDim, dimIdx) => idxInDim === (matrix[dimIdx].length - 1))) {
+        break;
+      }
+      // now change the indices. This mostly works like binary addition,
+      // except each digit `i` is in base `j` where `j = matrix[i].length`
+      // so if `matrix[1].length === 1` then the carry for `indices[1]`
+      // is just passed to `matrix[0]`
+      indices.reduceRight(
+        (carry, _matIdx, idx) => {
+          indices[idx] += carry;
+          if (indices[idx] === matrix[idx].length) {
+            indices[idx] = 0;
+            return 1;
+          } else {
+            return 0;
+          }
+        },
+        1
+      )
+    }
+    const weights = Array.from(fnsByWeight.keys()).sort();
+    // weights is ordered lowest->highest so it's just a matter of
+    // appending the tuple at each weight to a list
+    return weights.reduce(
+      (fns, weight) => [...fns, ...fnsByWeight.get(weight)],
+      new Array<[Fn, Type]>(),
+    );
   }
 
   compatibleWithConstraint(ty: Type, scope: Scope): boolean {
@@ -503,30 +570,31 @@ abstract class Has extends Type {
     return that instanceof Has && that.name === this.name;
   }
 
+  // it returns `any` to make the type system happy
+  private nope(msg: string): any {
+    throw new Error(`Has constraints ${msg} (this error should never be thrown)`);
+  }
+
   instance(): Type {
-    throw new Error(
-      `cannot get instance of Has constraint (this error should never be thrown)`,
-    );
+    return this.nope('cannot represent a compilable type');
   }
 
   // there should never be a case where `Type.hasX(...).tempConstrain(...)`
   tempConstrain(_t: Type) {
-    throw new Error(
-      `cannot temporarily constrain a Has constraint (this error should never be thrown)`,
-    );
+    this.nope('cannot be temporarily constrained');
   }
 
   // there can never be temp constraints
   resetTemp() {
-    throw new Error(
-      `Has constraints cannot have temporary constraints (this error should never be thrown)`,
-    );
+    this.nope('cannot have temporary constraints');
   }
 
   size(): number {
-    throw new Error(
-      `Has constraints do not have a size (this error should never be thrown)`,
-    );
+    return this.nope('do not have a size');
+  }
+
+  fnselectOptions(): Type[] {
+    return this.nope('should not be used as a Type when computing function selection');
   }
 }
 
@@ -886,6 +954,10 @@ class Interface extends Type {
       );
     }
   }
+
+  fnselectOptions(): Type[] {
+    return TODO('figure out how interfaces comply with fn selection options');
+  }
 }
 
 // technically, generated types are a kind of interface - we just get to build up
@@ -1024,6 +1096,14 @@ class Generated extends Interface {
       );
     }
   }
+
+  fnselectOptions(): Type[] {
+    if (this.delegate) {
+      return this.delegate.fnselectOptions();
+    } else {
+      return super.fnselectOptions();
+    }
+  }
 }
 
 class OneOf extends Type {
@@ -1103,5 +1183,25 @@ class OneOf extends Type {
 
   size(): number {
     return this.select().size();
+  }
+
+  fnselectOptions(): Type[] {
+    // this still maintains preference order: say that this OneOf is somehow:
+    // [string, OneOf(int64, float64), bool]
+    // after the reduce, the result should be:
+    // [string, int64, float64, bool]
+    // which makes sense - highest preference no matter what should be `bool`,
+    // but the 2nd-level preference locally is either `int64` or `float64`.
+    // However, the nested `OneOf` prefers `float64`, so it wins the tie-breaker.
+    //
+    // An optimization step for `FunctionType.matrixSelect` *could* be to ensure
+    // that this list does not contain types that `.eq` each other (eliminating
+    // the element that is earlier in the list) but we'd need to perform
+    // profiling to see if that doesn't drastically reduce performance in the
+    // common case
+    return this.selection.reduce(
+      (options, ty) => [...options, ...ty.fnselectOptions()],
+      new Array<Type>(),
+    );
   }
 }

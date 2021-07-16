@@ -229,6 +229,20 @@ export default class Fn {
     }
     this.params.forEach((param) => param.unassign());
   }
+
+  resultTyFor(argTys: Type[], scope: Scope): Type | null {
+    let res: Type | null = null;
+    try {
+      this.params.forEach((param, ii) => param.ty.tempConstrain(argTys[ii], scope));
+      res = this.retTy.instance();
+    } catch (_e) {
+      // do nothing: the args aren't applicable to the params so
+      // we return null (`res` is already `null`) and we need to
+      // ensure the param tys have `resetTemp` called on them.
+    }
+    this.params.forEach((param) => param.ty.resetTemp());
+    return res;
+  }
 }
 
 // circular dependency issue when this is defined in opcodes.ts :(
