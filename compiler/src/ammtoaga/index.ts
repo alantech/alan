@@ -494,7 +494,7 @@ const loadStatements = (
       const asgn = statement.get('assignments');
       const asgnName = asgn.get('decname').t.trim();
       let resultAddress;
-      if (localMem[asgnName]) {
+      if (localMem.hasOwnProperty(asgnName)) {
         resultAddress = localMem[asgnName];
       } else if (hasClosureArgs && fnArgs.indexOf(asgnName) > -1) {
         resultAddress = globalMem[asgnName + fnName];
