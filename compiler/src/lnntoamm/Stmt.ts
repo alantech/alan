@@ -185,11 +185,12 @@ export class Dec extends VarDef {
       const found = Type.getFromTypename(tyName, metadata.scope);
       // if the type hint is an interface, then all we have to do
       // is ensure that the expr's ty matches the interface
-      if (found.dupIfNotLocalInterface() === null) {
+      const duped = found.dupIfNotLocalInterface();
+      if (duped === null) {
         ty = found;
         ty.constrain(expr.ty, metadata.scope);
       } else {
-        found.constrain(ty, metadata.scope);
+        ty.constrain(duped, metadata.scope);
       }
     }
     const dec = new Dec(ast, immutable, name, ty, expr);
