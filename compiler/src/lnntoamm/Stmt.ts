@@ -182,9 +182,16 @@ export class Dec extends VarDef {
     let ty: Type = expr.ty;
     if (work.has('typedec')) {
       const tyName = work.get('typedec').get('fulltypename');
-      ty = Type.getFromTypename(tyName, metadata.scope);
+      const found = Type.getFromTypename(tyName, metadata.scope);
+      // if the type hint is an interface, then all we have to do
+      // is ensure that the expr's ty matches the interface
+      if (found.dupIfNotLocalInterface() === null) {
+        ty = found;
+        ty.constrain(expr.ty, metadata.scope);
+      } else {
+        found.constrain(ty, metadata.scope);
+      }
     }
-    ty.constrain(expr.ty, metadata.scope);
     const dec = new Dec(ast, immutable, name, ty, expr);
     stmts.push(...generated, dec);
     metadata.define(dec);
