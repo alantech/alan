@@ -1178,7 +1178,7 @@ ${letdeclarationAst.t} on line ${letdeclarationAst.line}:${
           val.outputType,
           [val.outputName],
           copystr,
-        )
+        ),
       );
       microstatements.push(
         new Microstatement(
