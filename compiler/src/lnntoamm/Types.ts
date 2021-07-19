@@ -274,13 +274,16 @@ export class FunctionType extends Type {
     // and now to generate the matrix
     // every argument is a dimension within the matrix, but we're
     // representing each dimension _d_ as an index in the matrix
-	  let matrix: Array<Type[]> = args.map((arg) => arg.fnselectOptions());
+	  let matrix: Array<Type[]> = args.map((arg) => {
+      return arg.fnselectOptions()
+    });
     // TODO: this weight system feels like it can be inaccurate
     // the weight of a particular function is computed by the sum
     // of the indices in each dimension, with the highest sum
     // having the greatest preference
     let fnsByWeight = new Map<number, [Fn, Type][]>();
     let indices = matrix.map(() => 0);
+    // keep it as for instead of while for debugging reasons
     for (let i = 0;; i++) {
       const weight = indices.reduce((w, c) => w + c);
       const argTys = matrix.map((options, ii) => options[indices[ii]]);
@@ -957,7 +960,7 @@ class Interface extends Type {
   }
 
   fnselectOptions(): Type[] {
-    return TODO('figure out how interfaces comply with fn selection options');
+    return [this];
   }
 }
 
