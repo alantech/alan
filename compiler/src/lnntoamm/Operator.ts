@@ -1,7 +1,7 @@
 import { LPNode } from '../lp';
 import Fn from './Fn';
 import Scope from './Scope';
-import Type from './Types';
+import Type, { FunctionType } from './Types';
 import { isFnArray } from './util';
 
 class Operator {
@@ -62,7 +62,12 @@ class Operator {
       throw new Error(`nope`);
     }
     const tys = [arg1, ...(arg2 ? [arg2] : [])];
-    return Fn.select(this.fns, tys, scope);
+    return FunctionType
+      .matrixSelect(this.fns, tys, scope)
+      .reduce(
+        ([fns, tys], [fn, ty]) => [[...fns, fn], [...tys, ty]],
+        [new Array<Fn>(), new Array<Type>()],
+      );
   }
 }
 

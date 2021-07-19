@@ -5,7 +5,7 @@ import opcodes from './opcodes';
 import Operator from './Operator';
 import Scope from './Scope';
 import Stmt, { Dec, MetaData, VarDef } from './Stmt';
-import Type from './Types';
+import Type, { FunctionType } from './Types';
 import { isFnArray, isOpArray, TODO } from './util';
 
 export default abstract class Expr {
@@ -562,9 +562,9 @@ class Call extends Expr {
     }
     // first reduction
     const argTys = args.map((arg) => arg.ty);
-    const [selFns, retTys] = Fn.select(fns, argTys, metadata.scope);
-    fns = selFns;
-    const retTy = Type.oneOf(retTys);
+    const selFns = FunctionType.matrixSelect(fns, argTys, metadata.scope);
+    fns = selFns.map(([fn, _ty]) => fn);
+    const retTy = Type.oneOf(selFns.map(([_fn, ty]) => ty));
     // now, constrain all of the args to their possible types
     // makes it so that the type of the parameters in each position are in their own list
     // ie, given `do(int8, int16)` and `do(int8, int8)`, will result in this 2D array:
@@ -585,7 +585,12 @@ class Call extends Expr {
   }
 
   private fnSelect(): [Fn[], Type[]] {
-    return Fn.select(this.fns, this.args.map(a => a.ty), this.scope);
+    return FunctionType
+      .matrixSelect(this.fns, this.args.map(a => a.ty), this.scope)
+      .reduce(
+        ([fns, tys], [fn, ty]) => [[...fns, fn], [...tys, ty]],
+        [new Array<Fn>(), new Array<Type>()],
+      );
   }
 
   cleanup() {

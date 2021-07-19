@@ -43,26 +43,27 @@ export default class Fn {
     this.metadata =
       metadata !== null ? metadata : new MetaData(scope, this.retTy);
     while (this.body.reduce((carry, stmt) => carry && stmt.cleanup(), false));
+    const tyAst = ((fnAst: LPNode) => {
+      if (fnAst instanceof NulLP) {
+        // assume it's for an opcode
+        const compilerDefinition = '<compiler definition>';
+        const makeToken = (tok: string) => new Token(tok, compilerDefinition, -1, -1);
+        return new NamedAnd(
+          `opcode ${this.name}`,
+          {
+            opcode: makeToken('opcode'),
+            _whitespace: makeToken(' '),
+            opcodeName: makeToken(this.name),
+          },
+          compilerDefinition,
+          -1,
+          -1,
+        );
+      }
+      return null;
+    })(this.ast);
     this.ty = new FunctionType(
-      ((fnAst: LPNode) => {
-        if (fnAst instanceof NulLP) {
-          // assume it's for an opcode
-          const compilerDefinition = '<compiler definition>';
-          const makeToken = (tok: string) => new Token(tok, compilerDefinition, -1, -1);
-          return new NamedAnd(
-            `opcode ${this.name}`,
-            {
-              opcode: makeToken('opcode'),
-              _whitespace: makeToken(' '),
-              opcodeName: makeToken(this.name),
-            },
-            compilerDefinition,
-            -1,
-            -1,
-          );
-        }
-        return null;
-      })(this.ast),
+      tyAst,
       this.params.map((param) => param.ty),
       this.retTy,
     );
@@ -145,21 +146,6 @@ export default class Fn {
       body,
       metadata,
     );
-  }
-
-  // FIXME: this should implement the matrix that i mentioned in the FIXME comment
-  // for Expr#inline
-  static select(fns: Fn[], argTys: Type[], scope: Scope): [Fn[], Type[]] {
-    return null;
-    // return fns.filter((fn) => {
-    //   const params = Object.values(fn.params);
-    //   return (
-    //     params.length === argTys.length &&
-    //     params.every((param, ii) =>
-    //       argTys[ii].compatibleWithConstraint(param.ty, scope),
-    //     )
-    //   );
-    // });
   }
 
   asHandler(amm: Output, event: string) {

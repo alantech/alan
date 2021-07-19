@@ -140,7 +140,7 @@ class Builtin extends Type {
     } else if (ty instanceof HasOperator) {
       return Has.operator(ty, scope, this).length !== 0;
     } else if (ty instanceof HasMethod) {
-      return Has.method(ty, scope, this)[0].length !== 0;
+      return Has.method(ty, scope, this).length !== 0;
     } else if (ty instanceof HasField) {
       return TODO('add field support for builtins');
     } else if (ty instanceof Interface) {
@@ -168,7 +168,7 @@ class Builtin extends Type {
       }
     } else if (
       ty instanceof HasMethod &&
-      Has.method(ty, scope, this)[0].length === 0
+      Has.method(ty, scope, this).length === 0
     ) {
       throw new Error(
         `type ${this.name} does not have method ${ty.name}(${ty.params
@@ -520,12 +520,12 @@ abstract class Has extends Type {
     return false;
   }
 
-  static method(method: HasMethod, scope: Scope, ty: Type): [Fn[], Type[]] {
+  static method(method: HasMethod, scope: Scope, ty: Type): [Fn, Type][] {
     const fns = scope.get(method.name);
     if (!isFnArray(fns)) {
-      return [[], []];
+      return [];
     }
-    return Fn.select(
+    return FunctionType.matrixSelect(
       fns,
       method.params.map((p) => (p === null ? ty : p)),
       scope,
