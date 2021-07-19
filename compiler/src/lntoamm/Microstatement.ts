@@ -1165,19 +1165,48 @@ ${letdeclarationAst.t} on line ${letdeclarationAst.line}:${
     if (val.statementType === StatementType.REREF) {
       val = Microstatement.fromVarName(val.alias, scope, microstatements);
     }
-    val.statementType = StatementType.LETDEC;
-    microstatements.push(
-      new Microstatement(
-        StatementType.REREF,
-        scope,
-        true,
-        val.outputName,
-        val.outputType,
-        [],
-        [],
-        letAlias,
-      ),
-    );
+    if (val.outputType === Type.builtinTypes.string) {
+      // Special logic just for strings because hoisting them later is hard
+      const opcodes = require('./opcodes').default;
+      const copystr = opcodes.exportScope.get('copystr');
+      microstatements.push(
+        new Microstatement(
+          StatementType.LETDEC,
+          scope,
+          true,
+          val.outputName + 'n', // TODO: Generate a new UUID here?
+          val.outputType,
+          [val.outputName],
+          copystr,
+        )
+      );
+      microstatements.push(
+        new Microstatement(
+          StatementType.REREF,
+          scope,
+          true,
+          val.outputName + 'n',
+          val.outputType,
+          [],
+          [],
+          letAlias,
+        ),
+      );
+    } else {
+      val.statementType = StatementType.LETDEC;
+      microstatements.push(
+        new Microstatement(
+          StatementType.REREF,
+          scope,
+          true,
+          val.outputName,
+          val.outputType,
+          [],
+          [],
+          letAlias,
+        ),
+      );
+    }
   }
 
   static fromConstdeclarationAst(

@@ -1065,14 +1065,14 @@ module.exports = {
     const nskey = wth[0];
     const a = wth[1];
     const b = ds[`${nskey[0]}:${nskey[1]}`];
-    return [true, await func(a, b)];
+    return [true, await func(b, a)];
   },
   dsmwith: async (wth, func) => {
     const nskey = wth[0];
     const a = wth[1];
     let b = ds[`${nskey[0]}:${nskey[1]}`];
     // Get out, newb!
-    const [out, newb] = await func(a, b);
+    const [out, newb] = await func(b, a);
     ds[`${nskey[0]}:${nskey[1]}`] = newb;
     return [true, out];
   },
@@ -1085,7 +1085,7 @@ module.exports = {
     const nskey = wth[0];
     const a = wth[1];
     const b = ds[`${nskey[0]}:${nskey[1]}`];
-    const newb = await func(a, b);
+    const newb = await func(b, a);
     ds[`${nskey[0]}:${nskey[1]}`] = newb;
   },
   dsrclos: async (nskey, func) => {

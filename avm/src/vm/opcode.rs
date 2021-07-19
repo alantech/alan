@@ -3656,7 +3656,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
   });
 
   // Datastore opcodes
-  io!(dssetf => fn(args, hand_mem) {
+  unpred_cpu!(dssetf => fn(args, hand_mem) {
     Box::pin(async move {
       let val = hand_mem.read_fixed(args[2])?;
       let mut hm = HandlerMemory::new(None, 1)?;
@@ -3680,7 +3680,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       Ok(hand_mem)
     })
   });
-  io!(dssetv => fn(args, hand_mem) {
+  unpred_cpu!(dssetv => fn(args, hand_mem) {
     Box::pin(async move {
       let mut hm = HandlerMemory::new(None, 1)?;
       HandlerMemory::transfer(&hand_mem, args[2], &mut hm, 0)?;
@@ -3703,7 +3703,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       Ok(hand_mem)
     })
   });
-  io!(dshas => fn(args, mut hand_mem) {
+  unpred_cpu!(dshas => fn(args, mut hand_mem) {
     Box::pin(async move {
       let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0])?)?;
       let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1])?)?;
@@ -3725,7 +3725,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       Ok(hand_mem)
     })
   });
-  io!(dsdel => fn(args, mut hand_mem) {
+  unpred_cpu!(dsdel => fn(args, mut hand_mem) {
     Box::pin(async move {
       let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0])?)?;
       let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1])?)?;
@@ -3744,7 +3744,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       Ok(hand_mem)
     })
   });
-  io!(dsgetf => fn(args, mut hand_mem) {
+  unpred_cpu!(dsgetf => fn(args, mut hand_mem) {
     Box::pin(async move {
       let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0])?)?;
       let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1])?)?;
@@ -3787,7 +3787,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       Ok(hand_mem)
     })
   });
-  io!(dsgetv => fn(args, mut hand_mem) {
+  unpred_cpu!(dsgetv => fn(args, mut hand_mem) {
     Box::pin(async move {
       let ns = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[0])?)?;
       let key = HandlerMemory::fractal_to_string(hand_mem.read_fractal(args[1])?)?;
@@ -3827,6 +3827,339 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
             hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("namespace-key pair not found"))?;
           },
         }
+      }
+      Ok(hand_mem)
+    })
+  });
+  unpred_cpu!(dsrrun => fn(args, mut hand_mem) {
+    Box::pin(async move {
+      let nsref = hand_mem.read_fractal(args[0])?;
+      let ns = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&nsref, 0).0)?;
+      let key = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&nsref, 1).0)?;
+      let nskey = format!("{}:{}", ns, key);
+      let ctrl_port = CONTROL_PORT_CHANNEL.get();
+      let ctrl_port = match ctrl_port {
+        Some(ctrl_port) => Some(ctrl_port.borrow().clone()), // TODO: Use thread-local storage
+        None => None,
+      };
+      let is_key_owner = match ctrl_port {
+        Some(ref ctrl_port) => ctrl_port.is_key_owner(&nskey),
+        None => true,
+      };
+      if is_key_owner {
+        hand_mem.init_fractal(args[2])?;
+        let maybe_hm = DS.get(&nskey);
+        match maybe_hm {
+          Some(ds) => {
+            let mut hm = HandlerMemory::fork(hand_mem.clone())?;
+            HandlerMemory::transfer(&ds, 0, &mut hm, CLOSURE_ARG_MEM_START + 1)?;
+            let subhandler = HandlerFragment::new(args[1], 0);
+            let hm = subhandler.run(hm).await?;
+            let hm = hm.drop_parent()?;
+            HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START, &mut hand_mem, CLOSURE_ARG_MEM_START)?;
+            hand_mem.push_fixed(args[2], 1i64)?;
+            hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START)?;
+          },
+          None => {
+            hand_mem.push_fixed(args[2], 0i64)?;
+            hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("namespace-key pair not found"))?;
+          },
+        }
+      } else {
+        // TODO
+      }
+      Ok(hand_mem)
+    })
+  });
+  unpred_cpu!(dsmrun => fn(args, mut hand_mem) {
+    Box::pin(async move {
+      let nsref = hand_mem.read_fractal(args[0])?;
+      let ns = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&nsref, 0).0)?;
+      let key = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&nsref, 1).0)?;
+      let nskey = format!("{}:{}", ns, key);
+      let ctrl_port = CONTROL_PORT_CHANNEL.get();
+      let ctrl_port = match ctrl_port {
+        Some(ctrl_port) => Some(ctrl_port.borrow().clone()), // TODO: Use thread-local storage
+        None => None,
+      };
+      let is_key_owner = match ctrl_port {
+        Some(ref ctrl_port) => ctrl_port.is_key_owner(&nskey),
+        None => true,
+      };
+      if is_key_owner {
+        hand_mem.init_fractal(args[2])?;
+        let maybe_hm = DS.get(&nskey);
+        match maybe_hm {
+          Some(ds) => {
+            let mut hm = HandlerMemory::fork(hand_mem.clone())?;
+            HandlerMemory::transfer(&ds, 0, &mut hm, CLOSURE_ARG_MEM_START + 1)?;
+            let subhandler = HandlerFragment::new(args[1], 0);
+            let hm = subhandler.run(hm).await?;
+            let hm = hm.drop_parent()?;
+            HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START, &mut hand_mem, CLOSURE_ARG_MEM_START)?;
+            hand_mem.push_fixed(args[2], 1i64)?;
+            hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START)?;
+            // Also grab the mutation to the datastore value and re-insert it
+            let mut newds = HandlerMemory::new(None, 1)?;
+            HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START + 1, &mut newds, 0)?;
+            drop(ds);
+            DS.insert(nskey, newds);
+          },
+          None => {
+            hand_mem.push_fixed(args[2], 0i64)?;
+            hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("namespace-key pair not found"))?;
+          },
+        }
+      } else {
+        // TODO
+      }
+      Ok(hand_mem)
+    })
+  });
+  unpred_cpu!(dsrwith => fn(args, mut hand_mem) {
+    Box::pin(async move {
+      let with = hand_mem.read_fractal(args[0])?;
+      let nsref = hand_mem.read_from_fractal(&with, 0).0;
+      let ns = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&nsref, 0).0)?;
+      let key = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&nsref, 1).0)?;
+      let nskey = format!("{}:{}", ns, key);
+      hand_mem.register_out(args[0], 1, CLOSURE_ARG_MEM_START + 2)?;
+      let ctrl_port = CONTROL_PORT_CHANNEL.get();
+      let ctrl_port = match ctrl_port {
+        Some(ctrl_port) => Some(ctrl_port.borrow().clone()), // TODO: Use thread-local storage
+        None => None,
+      };
+      let is_key_owner = match ctrl_port {
+        Some(ref ctrl_port) => ctrl_port.is_key_owner(&nskey),
+        None => true,
+      };
+      if is_key_owner {
+        hand_mem.init_fractal(args[2])?;
+        let maybe_hm = DS.get(&nskey);
+        match maybe_hm {
+          Some(ds) => {
+            let mut hm = HandlerMemory::fork(hand_mem.clone())?;
+            HandlerMemory::transfer(&ds, 0, &mut hm, CLOSURE_ARG_MEM_START + 1)?;
+            hm.register_out(args[0], 1, CLOSURE_ARG_MEM_START + 2)?;
+            let subhandler = HandlerFragment::new(args[1], 0);
+            let hm = subhandler.run(hm).await?;
+            let hm = hm.drop_parent()?;
+            HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START, &mut hand_mem, CLOSURE_ARG_MEM_START)?;
+            hand_mem.push_fixed(args[2], 1i64)?;
+            hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START)?;
+          },
+          None => {
+            hand_mem.push_fixed(args[2], 0i64)?;
+            hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("namespace-key pair not found"))?;
+          },
+        }
+      } else {
+        // TODO
+      }
+      Ok(hand_mem)
+    })
+  });
+  unpred_cpu!(dsmwith => fn(args, mut hand_mem) {
+    Box::pin(async move {
+      let with = hand_mem.read_fractal(args[0])?;
+      let nsref = hand_mem.read_from_fractal(&with, 0).0;
+      let ns = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&nsref, 0).0)?;
+      let key = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&nsref, 1).0)?;
+      let nskey = format!("{}:{}", ns, key);
+      hand_mem.register_out(args[0], 1, CLOSURE_ARG_MEM_START + 2)?;
+      let ctrl_port = CONTROL_PORT_CHANNEL.get();
+      let ctrl_port = match ctrl_port {
+        Some(ctrl_port) => Some(ctrl_port.borrow().clone()), // TODO: Use thread-local storage
+        None => None,
+      };
+      let is_key_owner = match ctrl_port {
+        Some(ref ctrl_port) => ctrl_port.is_key_owner(&nskey),
+        None => true,
+      };
+      if is_key_owner {
+        hand_mem.init_fractal(args[2])?;
+        let maybe_hm = DS.get(&nskey);
+        match maybe_hm {
+          Some(ds) => {
+            let mut hm = HandlerMemory::fork(hand_mem.clone())?;
+            HandlerMemory::transfer(&ds, 0, &mut hm, CLOSURE_ARG_MEM_START + 1)?;
+            hm.register_out(args[0], 1, CLOSURE_ARG_MEM_START + 2)?;
+            let subhandler = HandlerFragment::new(args[1], 0);
+            let hm = subhandler.run(hm).await?;
+            let hm = hm.drop_parent()?;
+            HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START, &mut hand_mem, CLOSURE_ARG_MEM_START)?;
+            hand_mem.push_fixed(args[2], 1i64)?;
+            hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START)?;
+            // Also grab the mutation to the datastore value and re-insert it
+            let mut newds = HandlerMemory::new(None, 1)?;
+            HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START + 1, &mut newds, 0)?;
+            drop(ds);
+            DS.insert(nskey, newds);
+          },
+          None => {
+            hand_mem.push_fixed(args[2], 0i64)?;
+            hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("namespace-key pair not found"))?;
+          },
+        }
+      } else {
+        // TODO
+      }
+      Ok(hand_mem)
+    })
+  });
+  unpred_cpu!(dsmonly => fn(args, hand_mem) {
+    Box::pin(async move {
+      let nsref = hand_mem.read_fractal(args[0])?;
+      let ns = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&nsref, 0).0)?;
+      let key = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&nsref, 1).0)?;
+      let nskey = format!("{}:{}", ns, key);
+      let ctrl_port = CONTROL_PORT_CHANNEL.get();
+      let ctrl_port = match ctrl_port {
+        Some(ctrl_port) => Some(ctrl_port.borrow().clone()), // TODO: Use thread-local storage
+        None => None,
+      };
+      let is_key_owner = match ctrl_port {
+        Some(ref ctrl_port) => ctrl_port.is_key_owner(&nskey),
+        None => true,
+      };
+      if is_key_owner {
+        let maybe_hm = DS.get(&nskey);
+        if let Some(ds) = maybe_hm {
+          let mut hm = HandlerMemory::fork(hand_mem.clone())?;
+          HandlerMemory::transfer(&ds, 0, &mut hm, CLOSURE_ARG_MEM_START + 1)?;
+          let subhandler = HandlerFragment::new(args[1], 0);
+          let hm = subhandler.run(hm).await?;
+          let hm = hm.drop_parent()?;
+          // Grab the mutation to the datastore value and re-insert it
+          let mut newds = HandlerMemory::new(None, 1)?;
+          HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START + 1, &mut newds, 0)?;
+          drop(ds);
+          DS.insert(nskey, newds);
+        }
+      } else {
+        // TODO
+      }
+      Ok(hand_mem)
+    })
+  });
+  unpred_cpu!(dswonly => fn(args, hand_mem) {
+    Box::pin(async move {
+      let with = hand_mem.read_fractal(args[0])?;
+      let nsref = hand_mem.read_from_fractal(&with, 0).0;
+      let ns = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&nsref, 0).0)?;
+      let key = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&nsref, 1).0)?;
+      let nskey = format!("{}:{}", ns, key);
+      let ctrl_port = CONTROL_PORT_CHANNEL.get();
+      let ctrl_port = match ctrl_port {
+        Some(ctrl_port) => Some(ctrl_port.borrow().clone()), // TODO: Use thread-local storage
+        None => None,
+      };
+      let is_key_owner = match ctrl_port {
+        Some(ref ctrl_port) => ctrl_port.is_key_owner(&nskey),
+        None => true,
+      };
+      if is_key_owner {
+        let maybe_hm = DS.get(&nskey);
+        if let Some(ds) = maybe_hm {
+          let mut hm = HandlerMemory::fork(hand_mem.clone())?;
+          HandlerMemory::transfer(&ds, 0, &mut hm, CLOSURE_ARG_MEM_START + 1)?;
+          hm.register_out(args[0], 1, CLOSURE_ARG_MEM_START + 2)?;
+          let subhandler = HandlerFragment::new(args[1], 0);
+          let hm = subhandler.run(hm).await?;
+          let hm = hm.drop_parent()?;
+          // Grab the mutation to the datastore value and re-insert it
+          let mut newds = HandlerMemory::new(None, 1)?;
+          HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START + 1, &mut newds, 0)?;
+          drop(ds);
+          DS.insert(nskey, newds);
+        }
+      } else {
+        // TODO
+      }
+      Ok(hand_mem)
+    })
+  });
+  unpred_cpu!(dsrclos => fn(args, mut hand_mem) {
+    Box::pin(async move {
+      let nsref = hand_mem.read_fractal(args[0])?;
+      let ns = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&nsref, 0).0)?;
+      let key = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&nsref, 1).0)?;
+      let nskey = format!("{}:{}", ns, key);
+      let ctrl_port = CONTROL_PORT_CHANNEL.get();
+      let ctrl_port = match ctrl_port {
+        Some(ctrl_port) => Some(ctrl_port.borrow().clone()), // TODO: Use thread-local storage
+        None => None,
+      };
+      let is_key_owner = match ctrl_port {
+        Some(ref ctrl_port) => ctrl_port.is_key_owner(&nskey),
+        None => true,
+      };
+      if is_key_owner {
+        hand_mem.init_fractal(args[2])?;
+        let maybe_hm = DS.get(&nskey);
+        match maybe_hm {
+          Some(ds) => {
+            let mut hm = HandlerMemory::fork(hand_mem.clone())?;
+            HandlerMemory::transfer(&ds, 0, &mut hm, CLOSURE_ARG_MEM_START + 1)?;
+            let subhandler = HandlerFragment::new(args[1], 0);
+            let hm = subhandler.run(hm).await?;
+            let hm = hm.drop_parent()?;
+            hand_mem.join(hm)?;
+            hand_mem.push_fixed(args[2], 1i64)?;
+            hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START)?;
+          },
+          None => {
+            hand_mem.push_fixed(args[2], 0i64)?;
+            hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("namespace-key pair not found"))?;
+          },
+        }
+      } else {
+        // TODO
+      }
+      Ok(hand_mem)
+    })
+  });
+  unpred_cpu!(dsmclos => fn(args, mut hand_mem) {
+    Box::pin(async move {
+      let nsref = hand_mem.read_fractal(args[0])?;
+      let ns = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&nsref, 0).0)?;
+      let key = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&nsref, 1).0)?;
+      let nskey = format!("{}:{}", ns, key);
+      let ctrl_port = CONTROL_PORT_CHANNEL.get();
+      let ctrl_port = match ctrl_port {
+        Some(ctrl_port) => Some(ctrl_port.borrow().clone()), // TODO: Use thread-local storage
+        None => None,
+      };
+      let is_key_owner = match ctrl_port {
+        Some(ref ctrl_port) => ctrl_port.is_key_owner(&nskey),
+        None => true,
+      };
+      if is_key_owner {
+        hand_mem.init_fractal(args[2])?;
+        let maybe_hm = DS.get(&nskey);
+        match maybe_hm {
+          Some(ds) => {
+            let mut hm = HandlerMemory::fork(hand_mem.clone())?;
+            HandlerMemory::transfer(&ds, 0, &mut hm, CLOSURE_ARG_MEM_START + 1)?;
+            let subhandler = HandlerFragment::new(args[1], 0);
+            let hm = subhandler.run(hm).await?;
+            // Also grab the mutation to the datastore value and re-insert it
+            let mut newds = HandlerMemory::new(None, 1)?;
+            HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START + 1, &mut newds, 0)?;
+            drop(ds);
+            DS.insert(nskey, newds);
+            let hm = hm.drop_parent()?;
+            hand_mem.join(hm)?;
+            hand_mem.push_fixed(args[2], 1i64)?;
+            hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START)?;
+          },
+          None => {
+            hand_mem.push_fixed(args[2], 0i64)?;
+            hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("namespace-key pair not found"))?;
+          },
+        }
+      } else {
+        // TODO
       }
       Ok(hand_mem)
     })
@@ -4038,7 +4371,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
     Ok(())
   });
   cpu!(setestr => fn(args, hand_mem) {
-    let empty_str = FractalMemory::new(vec![(0, 0)]);
+    let empty_str = FractalMemory::new(vec![(usize::MAX, 0)]);
     hand_mem.write_fractal(args[2], &empty_str)?;
     Ok(())
   });
