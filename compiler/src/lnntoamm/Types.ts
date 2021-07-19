@@ -281,11 +281,11 @@ export class FunctionType extends Type {
     // having the greatest preference
     let fnsByWeight = new Map<number, [Fn, Type][]>();
     let indices = matrix.map(() => 0);
-    while (true) {
+    for (let i = 0;; i++) {
       const weight = indices.reduce((w, c) => w + c);
       const argTys = matrix.map((options, ii) => options[indices[ii]]);
-      let alreadyInWeightMap = fnsByWeight.get(weight) || [];
-      alreadyInWeightMap.push(
+      let fnsForWeight = fnsByWeight.get(weight) || [];
+      fnsForWeight.push(
         ...fns.reduce(
           (fns, fn) => {
             const retTy = fn.resultTyFor(argTys, scope);
@@ -301,6 +301,7 @@ export class FunctionType extends Type {
           new Array<[Fn, Type]>(),
         ),
       );
+      fnsByWeight.set(weight, fnsForWeight);
       if (indices.every((idxInDim, dimIdx) => idxInDim === (matrix[dimIdx].length - 1))) {
         break;
       }
