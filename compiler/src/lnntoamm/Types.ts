@@ -330,13 +330,18 @@ export class FunctionType extends Type {
     // weights is ordered lowest->highest so it's just a matter of
     // appending the tuple at each weight to a list
     const ret = weights.reduce(
-      (fns, weight) => [...fns, ...fnsByWeight.get(weight)],
+      (fns, weight) => {
+        let weightFns = fnsByWeight.get(weight);
+        weightFns = weightFns.filter(([weightedFn, _retTy]) => fns.findIndex(([fn, _retTy]) => fn === weightedFn) === -1);
+        return [...fns, ...weightFns];
+      },
       new Array<[Fn, Type]>(),
     );
     if (ret.length > originalLength) {
       console.log('~~~ ERROR');
       console.log('original:', originalLength);
       console.log('retLengt:', ret.length);
+      console.log('args:    ', args);
       console.log('matrix:  ', matrix);
       console.log('byweight:', fnsByWeight);
       console.log('indices: ', indices);
