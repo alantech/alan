@@ -44,7 +44,10 @@ export default abstract class Stmt {
     this.ast = ast;
   }
 
-  abstract cleanup(): boolean;
+  /**
+   * @returns true if more cleanup might be required
+   */
+  abstract cleanup(scope: Scope): boolean;
   abstract inline(amm: Output): void;
 
   static fromAst(ast: LPNode, metadata: MetaData): Stmt[] {
@@ -97,8 +100,10 @@ export class Assign extends Stmt {
     return stmts;
   }
 
-  cleanup(): boolean {
-    return this.expr.cleanup();
+  cleanup(scope: Scope): boolean {
+    const didWork = this.expr.cleanup();
+    this.upstream.ty.constrain(this.expr.ty, scope);
+    return didWork;
   }
 
   inline(amm: Output) {
@@ -117,7 +122,7 @@ class Cond extends Stmt {
   }
 
   cleanup(): boolean {
-    return false;
+    return TODO('conditionals');
   }
 
   inline(_amm: Output) {
@@ -213,8 +218,10 @@ export class Dec extends VarDef {
     return dec;
   }
 
-  cleanup(): boolean {
-    return this.expr.cleanup();
+  cleanup(scope: Scope): boolean {
+    const didWork = this.expr.cleanup();
+    this.ty.constrain(this.expr.ty, scope);
+    return didWork;
   }
 
   inline(amm: Output) {
@@ -328,12 +335,15 @@ class Emit extends Stmt {
     }
     stmts.push(new Emit(ast, event, emitRef));
     if (!event.eventTy.compatibleWithConstraint(emitRef.ty, metadata.scope)) {
-      throw new Error(``);
+      throw new Error(`cannot emit value of type ${emitRef.ty.name} to event ${event.name} because it requires ${event.eventTy.name}`);
     }
     return stmts;
   }
 
-  cleanup(): boolean {
+  cleanup(scope: Scope): boolean {
+    if (!this.event.eventTy.compatibleWithConstraint(this.emitVal.ty, scope)) {
+      throw new Error(`cannot emit value of type ${this.emitVal.ty.name} to event ${this.event.name} because it requires ${this.event.eventTy.name}`);
+    }
     return false;
   }
 
@@ -348,10 +358,12 @@ class Emit extends Stmt {
 
 export class Exit extends Stmt {
   ret: Ref | null;
+  fnRetTy: Type;
 
-  constructor(ast: LPNode, ret: Ref | null) {
+  constructor(ast: LPNode, ret: Ref | null, fnRetTy: Type) {
     super(ast);
     this.ret = ret;
+    this.fnRetTy = fnRetTy;
   }
 
   static fromExits(ast: LPNode, metadata: MetaData): Stmt[] {
@@ -360,16 +372,17 @@ export class Exit extends Stmt {
       const exitValAst = ast.get('retval').get('assignables');
       const [generated, expr] = Expr.fromAssignablesAst(exitValAst, metadata);
       const retVal = Dec.gen(expr, metadata);
-      stmts.push(...generated, retVal, new Exit(ast, retVal.ref()));
+      stmts.push(...generated, retVal, new Exit(ast, retVal.ref(), metadata.retTy));
       metadata.retTy.constrain(expr.ty, metadata.scope);
     } else {
-      stmts.push(new Exit(ast, null));
+      stmts.push(new Exit(ast, null, opcodes().get('void')));
       metadata.retTy.constrain(opcodes().get('void'), metadata.scope);
     }
     return stmts;
   }
 
-  cleanup(): boolean {
+  cleanup(scope: Scope): boolean {
+    this.fnRetTy.constrain(this.ret.ty, scope);
     return false;
   }
 
