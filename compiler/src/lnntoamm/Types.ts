@@ -971,7 +971,11 @@ class Interface extends Type {
   }
 
   fnselectOptions(): Type[] {
-    return [this];
+    if (this.tempDelegate !== null) {
+      return this.tempDelegate.fnselectOptions()
+    } else {
+      return [this];
+    }
   }
 }
 

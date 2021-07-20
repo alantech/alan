@@ -5,7 +5,7 @@ import opcodes from './opcodes';
 import Scope from './Scope';
 import Stmt, { Dec, Exit, FnParam, MetaData } from './Stmt';
 import Type, { FunctionType } from './Types';
-import { DBG, TODO } from './util';
+import { TODO } from './util';
 
 export default class Fn {
   // null if it's an anonymous fn
