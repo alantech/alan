@@ -14,6 +14,25 @@ export const isOpArray = (val: any): val is Array<Operator> => {
   );
 };
 
+/**
+ * Assumes valOrMsg is a message if more than 1 argument passed. TS should prevent that though
+ * @param valOrMsg the value to debug print or the message to print alongside other values
+ * @param vals the values to print after a message
+ * @returns the first value passed
+ */
+export const DBG = function<T>(
+  valOrMsg: T | string,
+  ...vals: T[]
+): T {
+  if (vals.length > 0) {
+    console.log('->', valOrMsg, ...vals);
+    return vals[0];
+  } else {
+    console.log('~~', valOrMsg);
+    return valOrMsg as T;
+  }
+}
+
 export const TODO = (task?: string) => {
   throw new Error(`TODO${task !== undefined ? ': ' + task : ''}`);
 };
