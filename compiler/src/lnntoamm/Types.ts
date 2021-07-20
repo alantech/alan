@@ -247,8 +247,8 @@ class Builtin extends Type {
 }
 
 export class FunctionType extends Type {
-  params: Type[]
-  retTy: Type
+  params: Type[];
+  retTy: Type;
 
   get ammName(): string {
     throw new Error('Method not implemented.');
@@ -275,68 +275,63 @@ export class FunctionType extends Type {
     // and now to generate the matrix
     // every argument is a dimension within the matrix, but we're
     // representing each dimension _d_ as an index in the matrix
-	  let matrix: Array<Type[]> = args.map((arg) => {
-      return arg.fnselectOptions()
+    const matrix: Array<Type[]> = args.map((arg) => {
+      return arg.fnselectOptions();
     });
     // TODO: this weight system feels like it can be inaccurate
     // the weight of a particular function is computed by the sum
     // of the indices in each dimension, with the highest sum
     // having the greatest preference
-    let fnsByWeight = new Map<number, [Fn, Type][]>();
-    let indices = matrix.map(() => 0);
+    const fnsByWeight = new Map<number, [Fn, Type][]>();
+    const indices = matrix.map(() => 0);
     // keep it as for instead of while for debugging reasons
-    for (let i = 0;; i++) {
+    for (let i = 0; ; i++) {
       const weight = indices.reduce((w, c) => w + c);
       const argTys = matrix.map((options, ii) => options[indices[ii]]);
-      let fnsForWeight = fnsByWeight.get(weight) || [];
+      const fnsForWeight = fnsByWeight.get(weight) || [];
       fnsForWeight.push(
-        ...fns.reduce(
-          (fns, fn) => {
-            const retTy = fn.resultTyFor(argTys, scope);
-            if (retTy === null) {
-              return fns;
-            } else {
-              return [
-                ...fns,
-                [fn, retTy] as [Fn, Type],
-              ];
-            }
-          },
-          new Array<[Fn, Type]>(),
-        ),
+        ...fns.reduce((fns, fn) => {
+          const retTy = fn.resultTyFor(argTys, scope);
+          if (retTy === null) {
+            return fns;
+          } else {
+            return [...fns, [fn, retTy] as [Fn, Type]];
+          }
+        }, new Array<[Fn, Type]>()),
       );
       fnsByWeight.set(weight, fnsForWeight);
-      if (indices.every((idxInDim, dimIdx) => idxInDim === (matrix[dimIdx].length - 1))) {
+      if (
+        indices.every(
+          (idxInDim, dimIdx) => idxInDim === matrix[dimIdx].length - 1,
+        )
+      ) {
         break;
       }
       // now change the indices. This mostly works like binary addition,
       // except each digit `i` is in base `j` where `j = matrix[i].length`
       // so if `matrix[1].length === 1` then the carry for `indices[1]`
       // is just passed to `matrix[0]`
-      indices.reduceRight(
-        (carry, _matIdx, idx) => {
-          indices[idx] += carry;
-          if (indices[idx] === matrix[idx].length) {
-            indices[idx] = 0;
-            return 1;
-          } else {
-            return 0;
-          }
-        },
-        1
-      )
+      indices.reduceRight((carry, _matIdx, idx) => {
+        indices[idx] += carry;
+        if (indices[idx] === matrix[idx].length) {
+          indices[idx] = 0;
+          return 1;
+        } else {
+          return 0;
+        }
+      }, 1);
     }
     const weights = Array.from(fnsByWeight.keys()).sort();
     // weights is ordered lowest->highest so it's just a matter of
     // appending the tuple at each weight to a list
-    const ret = weights.reduce(
-      (fns, weight) => {
-        let weightFns = fnsByWeight.get(weight);
-        weightFns = weightFns.filter(([weightedFn, _retTy]) => fns.findIndex(([fn, _retTy]) => fn === weightedFn) === -1);
-        return [...fns, ...weightFns];
-      },
-      new Array<[Fn, Type]>(),
-    );
+    const ret = weights.reduce((fns, weight) => {
+      let weightFns = fnsByWeight.get(weight);
+      weightFns = weightFns.filter(
+        ([weightedFn, _retTy]) =>
+          fns.findIndex(([fn, _retTy]) => fn === weightedFn) === -1,
+      );
+      return [...fns, ...weightFns];
+    }, new Array<[Fn, Type]>());
     if (ret.length > originalLength) {
       console.log('~~~ ERROR');
       console.log('original:', originalLength);
@@ -352,9 +347,13 @@ export class FunctionType extends Type {
 
   compatibleWithConstraint(ty: Type, scope: Scope): boolean {
     if (ty instanceof FunctionType) {
-      return this.params.length === ty.params.length &&
-        this.params.every((param, ii) => param.compatibleWithConstraint(ty.params[ii], scope)) &&
-        this.retTy.compatibleWithConstraint(ty.retTy, scope);
+      return (
+        this.params.length === ty.params.length &&
+        this.params.every((param, ii) =>
+          param.compatibleWithConstraint(ty.params[ii], scope),
+        ) &&
+        this.retTy.compatibleWithConstraint(ty.retTy, scope)
+      );
     } else if (ty instanceof OneOf || ty instanceof Generated) {
       return ty.compatibleWithConstraint(this, scope);
     } else {
@@ -369,7 +368,11 @@ export class FunctionType extends Type {
 
   eq(that: Equalable): boolean {
     if (that instanceof FunctionType) {
-      return this.params.length === that.params.length && this.params.every((param, ii) => param.eq(that.params[ii])) && this.retTy.eq(that.retTy);
+      return (
+        this.params.length === that.params.length &&
+        this.params.every((param, ii) => param.eq(that.params[ii])) &&
+        this.retTy.eq(that.retTy)
+      );
     } else if (that instanceof Generated || that instanceof OneOf) {
       return that.eq(this);
     } else {
@@ -592,7 +595,9 @@ abstract class Has extends Type {
 
   // it returns `any` to make the type system happy
   private nope(msg: string): any {
-    throw new Error(`Has constraints ${msg} (this error should never be thrown)`);
+    throw new Error(
+      `Has constraints ${msg} (this error should never be thrown)`,
+    );
   }
 
   instance(): Type {
@@ -614,7 +619,9 @@ abstract class Has extends Type {
   }
 
   fnselectOptions(): Type[] {
-    return this.nope('should not be used as a Type when computing function selection');
+    return this.nope(
+      'should not be used as a Type when computing function selection',
+    );
   }
 }
 
@@ -977,7 +984,7 @@ class Interface extends Type {
 
   fnselectOptions(): Type[] {
     if (this.tempDelegate !== null) {
-      return this.tempDelegate.fnselectOptions()
+      return this.tempDelegate.fnselectOptions();
     } else {
       return [this];
     }
@@ -1145,9 +1152,9 @@ class OneOf extends Type {
     // in matrix selection. Since no other values are added to the list,
     // there's no need to do this any time later.
     selection = selection.reduce(
-      (sel, fn) => sel.some((selFn) => selFn.eq(fn)) ? sel : [...sel, fn],
+      (sel, fn) => (sel.some((selFn) => selFn.eq(fn)) ? sel : [...sel, fn]),
       new Array<Type>(),
-    )
+    );
     this.selection = selection;
     this.tempSelect = tempSelect;
     this.selected = null;

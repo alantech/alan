@@ -420,7 +420,7 @@ export default abstract class Expr {
           stmts.push(dec);
           right = dec.ref();
         }
-        let retTys: Type[] = [];
+        const retTys: Type[] = [];
         while (ops.length > 0) {
           const op = ops.pop();
           const selected = op.select(metadata.scope, left.ty, right.ty);
@@ -588,12 +588,17 @@ class Call extends Expr {
   }
 
   private fnSelect(): [Fn[], Type[]] {
-    return FunctionType
-      .matrixSelect(this.fns, this.args.map(a => a.ty), this.scope)
-      .reduce(
-        ([fns, tys], [fn, ty]) => [[...fns, fn], [...tys, ty]],
-        [new Array<Fn>(), new Array<Type>()],
-      );
+    return FunctionType.matrixSelect(
+      this.fns,
+      this.args.map((a) => a.ty),
+      this.scope,
+    ).reduce(
+      ([fns, tys], [fn, ty]) => [
+        [...fns, fn],
+        [...tys, ty],
+      ],
+      [new Array<Fn>(), new Array<Type>()],
+    );
   }
 
   cleanup() {

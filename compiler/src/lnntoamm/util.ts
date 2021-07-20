@@ -20,10 +20,7 @@ export const isOpArray = (val: any): val is Array<Operator> => {
  * @param vals the values to print after a message
  * @returns the first value passed
  */
-export const DBG = function<T>(
-  valOrMsg: T | string,
-  ...vals: T[]
-): T {
+export const DBG = function <T>(valOrMsg: T | string, ...vals: T[]): T {
   if (vals.length > 0) {
     console.log('->', valOrMsg, ...vals);
     return vals[0];
@@ -31,7 +28,7 @@ export const DBG = function<T>(
     console.log('~~', valOrMsg);
     return valOrMsg as T;
   }
-}
+};
 
 export const TODO = (task?: string) => {
   throw new Error(`TODO${task !== undefined ? ': ' + task : ''}`);

@@ -19,7 +19,7 @@ export default class Fn {
   exprFn: Expr;
   // not used by this class, but used by Statements
   metadata: MetaData;
-  ty: FunctionType
+  ty: FunctionType;
 
   get argNames(): string[] {
     return Object.keys(this.params);
@@ -42,12 +42,18 @@ export default class Fn {
     this.body = body;
     this.metadata =
       metadata !== null ? metadata : new MetaData(scope, this.retTy);
-    while (this.body.reduce((carry, stmt) => stmt.cleanup(this.scope) || carry, false));
+    while (
+      this.body.reduce(
+        (carry, stmt) => stmt.cleanup(this.scope) || carry,
+        false,
+      )
+    );
     const tyAst = ((fnAst: LPNode) => {
       if (fnAst instanceof NulLP) {
         // assume it's for an opcode
         const compilerDefinition = '<compiler definition>';
-        const makeToken = (tok: string) => new Token(tok, compilerDefinition, -1, -1);
+        const makeToken = (tok: string) =>
+          new Token(tok, compilerDefinition, -1, -1);
         return new NamedAnd(
           `opcode ${this.name}`,
           {
@@ -219,7 +225,9 @@ export default class Fn {
   resultTyFor(argTys: Type[], scope: Scope): Type | null {
     let res: Type | null = null;
     try {
-      this.params.forEach((param, ii) => param.ty.tempConstrain(argTys[ii], scope));
+      this.params.forEach((param, ii) =>
+        param.ty.tempConstrain(argTys[ii], scope),
+      );
       res = this.retTy.instance();
     } catch (_e) {
       // do nothing: the args aren't applicable to the params so

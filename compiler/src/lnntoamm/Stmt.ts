@@ -335,14 +335,18 @@ class Emit extends Stmt {
     }
     stmts.push(new Emit(ast, event, emitRef));
     if (!event.eventTy.compatibleWithConstraint(emitRef.ty, metadata.scope)) {
-      throw new Error(`cannot emit value of type ${emitRef.ty.name} to event ${event.name} because it requires ${event.eventTy.name}`);
+      throw new Error(
+        `cannot emit value of type ${emitRef.ty.name} to event ${event.name} because it requires ${event.eventTy.name}`,
+      );
     }
     return stmts;
   }
 
   cleanup(scope: Scope): boolean {
     if (!this.event.eventTy.compatibleWithConstraint(this.emitVal.ty, scope)) {
-      throw new Error(`cannot emit value of type ${this.emitVal.ty.name} to event ${this.event.name} because it requires ${this.event.eventTy.name}`);
+      throw new Error(
+        `cannot emit value of type ${this.emitVal.ty.name} to event ${this.event.name} because it requires ${this.event.eventTy.name}`,
+      );
     }
     return false;
   }
@@ -372,7 +376,11 @@ export class Exit extends Stmt {
       const exitValAst = ast.get('retval').get('assignables');
       const [generated, expr] = Expr.fromAssignablesAst(exitValAst, metadata);
       const retVal = Dec.gen(expr, metadata);
-      stmts.push(...generated, retVal, new Exit(ast, retVal.ref(), metadata.retTy));
+      stmts.push(
+        ...generated,
+        retVal,
+        new Exit(ast, retVal.ref(), metadata.retTy),
+      );
       metadata.retTy.constrain(expr.ty, metadata.scope);
     } else {
       stmts.push(new Exit(ast, null, opcodes().get('void')));
