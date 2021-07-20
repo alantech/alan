@@ -5,7 +5,7 @@ import opcodes from './opcodes';
 import Scope from './Scope';
 import Stmt, { Dec, Exit, FnParam, MetaData } from './Stmt';
 import Type, { FunctionType } from './Types';
-import { TODO } from './util';
+import { DBG, TODO } from './util';
 
 export default class Fn {
   // null if it's an anonymous fn
@@ -42,7 +42,7 @@ export default class Fn {
     this.body = body;
     this.metadata =
       metadata !== null ? metadata : new MetaData(scope, this.retTy);
-    while (this.body.reduce((carry, stmt) => carry && stmt.cleanup(), false));
+    while (this.body.reduce((carry, stmt) => stmt.cleanup(this.scope) || carry, false));
     const tyAst = ((fnAst: LPNode) => {
       if (fnAst instanceof NulLP) {
         // assume it's for an opcode
@@ -116,11 +116,11 @@ export default class Fn {
       let exitVal: Expr;
       [body, exitVal] = Expr.fromAssignablesAst(bodyAsts, metadata);
       if (exitVal instanceof Ref) {
-        body.push(new Exit(bodyAsts, exitVal));
+        body.push(new Exit(bodyAsts, exitVal, retTy));
       } else {
         const retVal = Dec.gen(exitVal, metadata);
         body.push(retVal);
-        body.push(new Exit(bodyAsts, retVal.ref()));
+        body.push(new Exit(bodyAsts, retVal.ref(), retTy));
       }
     }
 
