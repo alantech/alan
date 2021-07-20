@@ -261,6 +261,7 @@ export class FunctionType extends Type {
   }
 
   static matrixSelect(fns: Fn[], args: Type[], scope: Scope): [Fn, Type][] {
+    const originalLength = fns.length;
     // remove any fns that shouldn't apply
     const callTy = new FunctionType(new NulLP(), args, Type.generate());
     fns = fns.filter((fn) => fn.ty.compatibleWithConstraint(callTy, scope));
@@ -328,10 +329,20 @@ export class FunctionType extends Type {
     const weights = Array.from(fnsByWeight.keys()).sort();
     // weights is ordered lowest->highest so it's just a matter of
     // appending the tuple at each weight to a list
-    return weights.reduce(
+    const ret = weights.reduce(
       (fns, weight) => [...fns, ...fnsByWeight.get(weight)],
       new Array<[Fn, Type]>(),
     );
+    if (ret.length > originalLength) {
+      console.log('~~~ ERROR');
+      console.log('original:', originalLength);
+      console.log('retLengt:', ret.length);
+      console.log('matrix:  ', matrix);
+      console.log('byweight:', fnsByWeight);
+      console.log('indices: ', indices);
+      throw new Error('somehow got more options when fn selecting');
+    }
+    return ret;
   }
 
   compatibleWithConstraint(ty: Type, scope: Scope): boolean {
@@ -1121,6 +1132,13 @@ class OneOf extends Type {
 
   constructor(selection: Type[], tempSelect: Type[] = null) {
     super(genName());
+    // ensure there's no duplicates. This fixes an issue with duplicates
+    // in matrix selection. Since no other values are added to the list,
+    // there's no need to do this any time later.
+    selection = selection.reduce(
+      (sel, fn) => sel.some((selFn) => selFn.eq(fn)) ? sel : [...sel, fn],
+      new Array<Type>(),
+    )
     this.selection = selection;
     this.tempSelect = tempSelect;
     this.selected = null;
