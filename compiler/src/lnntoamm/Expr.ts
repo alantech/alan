@@ -363,7 +363,7 @@ export default abstract class Expr {
               retTys = [...retTys, ...selTys];
               return [fns, retTys];
             },
-            [new Array<Fn>(), new Array<Type>()] as [Fn[], Type[]],
+            [new Array<Fn>(), new Array<Type>()],
           );
           const retTy = Type.oneOf(retTys);
           precedences[applyIdx] = new Call(
@@ -566,7 +566,7 @@ class Call extends Expr {
     // first reduction
     const argTys = args.map((arg) => arg.ty);
     const selFns = FunctionType.matrixSelect(fns, argTys, metadata.scope);
-    fns = selFns.map(([fn, _ty]) => fn);
+    fns = selFns.map((selFn) => selFn[0]);
     const retTy = Type.oneOf(selFns.map(([_fn, ty]) => ty));
     // now, constrain all of the args to their possible types
     // makes it so that the type of the parameters in each position are in their own list
@@ -654,8 +654,12 @@ class Call extends Expr {
       console.log('expected output type:', ty);
       throw new Error(`no function selected`);
     }
-    // Fn.select should implement the matrix so that the most reasonable
-    // choice is last in the fn array.
+    // FunctionType.matrixSelect implements the matrix so that the most
+    // reasonable choice is last in the fn array. "Reasonableness" is computed
+    // with 2 factors: 1st is alignment with given OneOf types. If `add(1, 0)`
+    // is called, the literal types should prefer `int64` to `int32` etc. The
+    // other factor is order of declaration - Alan should always prefer using
+    // functions that are defined last.
     const fn = selFns.pop();
     fn.inline(amm, this.args, kind, name, ty);
   }

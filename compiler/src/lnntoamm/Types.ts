@@ -334,12 +334,12 @@ export class FunctionType extends Type {
     }, new Array<[Fn, Type]>());
     if (ret.length > originalLength) {
       console.log('~~~ ERROR');
-      console.log('original:', originalLength);
-      console.log('retLengt:', ret.length);
-      console.log('args:    ', args);
-      console.log('matrix:  ', matrix);
-      console.log('byweight:', fnsByWeight);
-      console.log('indices: ', indices);
+      console.log('original: ', originalLength);
+      console.log('retLength:', ret.length);
+      console.log('args:     ', args);
+      console.log('matrix:   ', matrix);
+      console.log('byweight: ', fnsByWeight);
+      console.log('indices:  ', indices);
       throw new Error('somehow got more options when fn selecting');
     }
     return ret;
