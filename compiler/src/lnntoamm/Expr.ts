@@ -448,6 +448,9 @@ export default abstract class Expr {
     return [stmts, precedences.pop() as Ref];
   }
 
+  /**
+   * @returns true if more cleanup might be required
+   */
   cleanup(): boolean {
     // most implementing Exprs don't have anything they need to do.
     // I just didn't want to expose any of the Expr classes except
@@ -595,7 +598,7 @@ class Call extends Expr {
 
   cleanup() {
     const [fns, tys] = this.fnSelect();
-    const isChanged = this.fns.length === fns.length;
+    const isChanged = this.fns.length !== fns.length;
     this.fns = fns;
     this.retTy.constrain(Type.oneOf(tys), this.scope);
     return isChanged;
