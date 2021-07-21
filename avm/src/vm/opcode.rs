@@ -3253,7 +3253,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let output = if cfg!(target_os = "windows") {
         Command::new("cmd").arg("/C").arg(cmd).output().await
       } else {
-        Command::new("sh").arg("-c").arg(cmd).output().await
+        Command::new("bash").arg("-c").arg(cmd).output().await
       };
       hand_mem.init_fractal(args[2])?;
       match output {
