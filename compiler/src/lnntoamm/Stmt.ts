@@ -44,6 +44,10 @@ export default abstract class Stmt {
     this.ast = ast;
   }
 
+  /**
+   * @returns true if more cleanup might be required
+   */
+  abstract cleanup(scope: Scope): boolean;
   abstract inline(amm: Output): void;
 
   static fromAst(ast: LPNode, metadata: MetaData): Stmt[] {
@@ -96,6 +100,12 @@ export class Assign extends Stmt {
     return stmts;
   }
 
+  cleanup(scope: Scope): boolean {
+    const didWork = this.expr.cleanup();
+    this.upstream.ty.constrain(this.expr.ty, scope);
+    return didWork;
+  }
+
   inline(amm: Output) {
     this.expr.inline(
       amm,
@@ -108,6 +118,10 @@ export class Assign extends Stmt {
 
 class Cond extends Stmt {
   static fromConditionals(_ast: LPNode, _metadata: MetaData): Stmt[] {
+    return TODO('conditionals');
+  }
+
+  cleanup(): boolean {
     return TODO('conditionals');
   }
 
@@ -173,9 +187,17 @@ export class Dec extends VarDef {
     let ty: Type = expr.ty;
     if (work.has('typedec')) {
       const tyName = work.get('typedec').get('fulltypename');
-      ty = Type.getFromTypename(tyName, metadata.scope);
+      const found = Type.getFromTypename(tyName, metadata.scope);
+      // if the type hint is an interface, then all we have to do
+      // is ensure that the expr's ty matches the interface
+      const duped = found.dupIfNotLocalInterface();
+      if (duped === null) {
+        ty = found;
+        ty.constrain(expr.ty, metadata.scope);
+      } else {
+        ty.constrain(duped, metadata.scope);
+      }
     }
-    ty.constrain(expr.ty, metadata.scope);
     const dec = new Dec(ast, immutable, name, ty, expr);
     stmts.push(...generated, dec);
     metadata.define(dec);
@@ -194,6 +216,12 @@ export class Dec extends VarDef {
     );
     metadata.define(dec);
     return dec;
+  }
+
+  cleanup(scope: Scope): boolean {
+    const didWork = this.expr.cleanup();
+    this.ty.constrain(this.expr.ty, scope);
+    return didWork;
   }
 
   inline(amm: Output) {
@@ -255,6 +283,10 @@ export class FnParam extends VarDef {
     this.ty.tempConstrain(to.ty, scope);
   }
 
+  cleanup(): boolean {
+    return false;
+  }
+
   inline(_amm: Output) {
     throw new Error(`function parameters shouldn't be inlined`);
   }
@@ -303,9 +335,20 @@ class Emit extends Stmt {
     }
     stmts.push(new Emit(ast, event, emitRef));
     if (!event.eventTy.compatibleWithConstraint(emitRef.ty, metadata.scope)) {
-      throw new Error(``);
+      throw new Error(
+        `cannot emit value of type ${emitRef.ty.name} to event ${event.name} because it requires ${event.eventTy.name}`,
+      );
     }
     return stmts;
+  }
+
+  cleanup(scope: Scope): boolean {
+    if (!this.event.eventTy.compatibleWithConstraint(this.emitVal.ty, scope)) {
+      throw new Error(
+        `cannot emit value of type ${this.emitVal.ty.name} to event ${this.event.name} because it requires ${this.event.eventTy.name}`,
+      );
+    }
+    return false;
   }
 
   inline(amm: Output) {
@@ -319,10 +362,12 @@ class Emit extends Stmt {
 
 export class Exit extends Stmt {
   ret: Ref | null;
+  fnRetTy: Type;
 
-  constructor(ast: LPNode, ret: Ref | null) {
+  constructor(ast: LPNode, ret: Ref | null, fnRetTy: Type) {
     super(ast);
     this.ret = ret;
+    this.fnRetTy = fnRetTy;
   }
 
   static fromExits(ast: LPNode, metadata: MetaData): Stmt[] {
@@ -331,13 +376,22 @@ export class Exit extends Stmt {
       const exitValAst = ast.get('retval').get('assignables');
       const [generated, expr] = Expr.fromAssignablesAst(exitValAst, metadata);
       const retVal = Dec.gen(expr, metadata);
-      stmts.push(...generated, retVal, new Exit(ast, retVal.ref()));
+      stmts.push(
+        ...generated,
+        retVal,
+        new Exit(ast, retVal.ref(), metadata.retTy),
+      );
       metadata.retTy.constrain(expr.ty, metadata.scope);
     } else {
-      stmts.push(new Exit(ast, null));
+      stmts.push(new Exit(ast, null, opcodes().get('void')));
       metadata.retTy.constrain(opcodes().get('void'), metadata.scope);
     }
     return stmts;
+  }
+
+  cleanup(scope: Scope): boolean {
+    this.fnRetTy.constrain(this.ret.ty, scope);
+    return false;
   }
 
   inline(amm: Output) {
