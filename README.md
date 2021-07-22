@@ -11,13 +11,13 @@
 [![Website](https://img.shields.io/badge/website-alan--lang.org-blue)](https://alan-lang.org)
 -->
 
-**🔭 Predictable runtime for all computations** - *A program is represented as DAG(s) where the running time for all computations can be predicted because there is no unbounded recursion or iteration.*
+**🔭 Predictable runtime for all computations** - A program is represented as DAG(s) where the running time for all computations can be predicted because there is no unbounded recursion or iteration.
 
-**⛓ Automatic IO concurrency and parallelism across events and arrays** - *Alan exploits opportunities for IO concurrency or CPU parallelization across machines in a cluster via arrays and a static event loop without threads, channels, promises, futures, locks, etc.*
+**⛓ Automatic IO concurrency and parallelism across events and arrays** - Alan exploits opportunities for IO concurrency or CPU parallelization across machines in a cluster via arrays and a static event loop without threads, channels, promises, futures, locks, etc.
 
-**✅ Almost no runtime errors** - *No deadlocks, livelocks, undefined variables, divide-by-zero, integer under/overflow, array out-of-bounds access, etc.*
+**✅ Almost no runtime errors** - No deadlocks, livelocks, undefined variables, divide-by-zero, integer under/overflow, array out-of-bounds access, etc.
 
-**⚡️ No GC pauses** - *Alan’s runtime manages memory allocation, access, and deallocation for you like Java, Python, or Javascript. However, Alan’s static event system and [automatic event-oriented memory model](https://alan-lang.org/alan_overview.html#memory-management) does so without garbage collector pauses.*
+**⚡️ No GC pauses** - Alan’s runtime manages memory allocation, access, and deallocation for you like Java, Python, or Javascript. However, Alan’s static event system and [automatic event-oriented memory model](https://alan-lang.org/alan_overview.html#memory-management) does so without garbage collector pauses.
 
 ---------------------------------
 <br/>
