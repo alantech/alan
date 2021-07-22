@@ -31,7 +31,7 @@ To learn more about Alan, take a look at [runnable examples](https://docs.alan-l
 
 For MacOS it is recommended to install Alan via the [Homebrew](https://brew.sh) package manager.
 
-**MacOS:**
+**MacOS**
 
 ```bash
 brew install alantech/homebrew-core/alan
@@ -39,7 +39,7 @@ brew install alantech/homebrew-core/alan
 
 For Linux and Windows it is recommended to install Alan via the [published artifacts](https://github.com/alantech/alan/releases). Simply download the zip or tar.gz file for your operating system, and extract the `alan` executable to somewhere in your `$PATH`, make sure it's marked executable (if not on Windows), and you're ready to roll.
 
-**Linux:**
+**Linux**
 
 ```bash
 wget https://github.com/alantech/alan/releases/latest/download/alan-ubuntu.tar.gz
@@ -47,7 +47,7 @@ tar -xzf alan-ubuntu.tar.gz
 sudo mv alan /usr/local/bin/alan
 ```
 
-**Windows:**
+**Windows**
 
 ```ps1
 Invoke-WebRequest -OutFile alan-windows.zip -Uri https://github.com/alantech/alan/releases/latest/download/alan-windows.zip
