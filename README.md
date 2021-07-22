@@ -11,12 +11,11 @@
 [![Website](https://img.shields.io/badge/website-alan--lang.org-blue)](https://alan-lang.org)
 -->
 
-**⛓ Implicitly parallel across events, arrays, and IO** - *Alan recognizes and exploits opportunities for parallelization without parallel programming (threads, channels, futures, locks, etc.)*
+**🔭 Predictable runtime for all computations** - *A program is represented as DAG(s) where the running time for all computations can be predicted because there is no unbounded recursion or iteration.*
 
-**✅ Almost no runtime errors** - *Null references, deadlocks, livelocks, undefined variables, divide-by-zero, integer under/overflow, array out-of-bounds access, etc, are not possible in Alan.*
+**⛓ Automatic IO concurrency and parallelism across events and arrays** - *Alan exploits opportunities for IO concurrency or CPU parallelization across machines in a cluster via arrays and a static event loop without threads, channels, promises, futures, locks, etc.*
 
-**🔒 Granular third party permissions** - *Alan's module resolution mechanism allows you to prevent third-party dependencies from having access to standard libraries that they should not have access to.*
-
+**✅ Almost no runtime errors** - *No deadlocks, livelocks, undefined variables, divide-by-zero, integer under/overflow, array out-of-bounds access, etc.*
 
 ---------------------------------
 <br/>
@@ -28,22 +27,21 @@ To learn more about Alan, take a look at [runnable examples](https://docs.alan-l
 <h2 align="center">Installation</h2>
 <br/>
 
-It is recommended to install Alan via the [published artifacts](https://github.com/alantech/alan/releases). Simply download the zip or tar.gz file for your operating system, and extract the `alan` executable to somewhere in your `$PATH`, make sure it's marked executable (if not on Windows), and you're ready to roll.
+For MacOS it is recommended to install Alan via the [Homebrew](https://brew.sh) package manager.
+
+**MacOS:**
+
+```bash
+brew install alantech/homebrew-core/alan
+```
+
+For Linux and Windows it is recommended to install Alan via the [published artifacts](https://github.com/alantech/alan/releases). Simply download the zip or tar.gz file for your operating system, and extract the `alan` executable to somewhere in your `$PATH`, make sure it's marked executable (if not on Windows), and you're ready to roll.
 
 **Linux:**
 
 ```bash
 wget https://github.com/alantech/alan/releases/latest/download/alan-ubuntu.tar.gz
 tar -xzf alan-ubuntu.tar.gz
-sudo mv alan /usr/local/bin/alan
-```
-
-**MacOS:**
-
-```bash
-curl -OL https://github.com/alantech/alan/releases/latest/download/alan-macos.tar.gz
-tar -xzf alan-macos.tar.gz
-# sudo mkdir -p /usr/local/bin if the folder does not exist
 sudo mv alan /usr/local/bin/alan
 ```
 
@@ -76,7 +74,7 @@ You can also [transpile Alan to Javascript](https://docs.alan-lang.org/transpile
 Note: To better understand if we are building something people want to use we currently [log an event](https://github.com/alantech/alan/blob/main/avm/src/vm/telemetry.rs) when running an Alan command. Feel free to turn this off by setting the `ALAN_TELEMETRY_OFF` environment variable to `true`, but if you do please let us know how you are using Alan and how often!
 
 <br/>
-<h2 align="center">Contributing</h2>
+<h2 align="center">Contribution</h2>
 <br/>
 
 **Source Installation:**
@@ -124,7 +122,6 @@ The Alan Programming Language is made up of multiple sub-projects housed within 
   * bdd
   * js-runtime
   * std
-  * anycloud
 * AGPL 3.0
   * compiler
   * avm
