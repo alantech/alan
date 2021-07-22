@@ -17,6 +17,8 @@
 
 **✅ Almost no runtime errors** - *No deadlocks, livelocks, undefined variables, divide-by-zero, integer under/overflow, array out-of-bounds access, etc.*
 
+**⚡️ No GC pauses** - *Alan’s runtime manages memory allocation, access, and deallocation for you like Java, Python, or Javascript. However, Alan’s static event system and [automatic event-oriented memory model](https://alan-lang.org/alan_overview.html#memory-management) does so without garbage collector pauses.*
+
 ---------------------------------
 <br/>
 
