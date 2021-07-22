@@ -9,6 +9,10 @@ export type FieldIndices = { [name: string]: number };
 type GenericArgs = { [name: string]: Type | null };
 type TypeName = [string, TypeName[]];
 
+interface Generalizable {
+  generics: GenericArgs;
+}
+
 const parseFulltypename = (node: LPNode): TypeName => {
   const name = node.get('typename').t.trim();
   const genericTys: TypeName[] = [];
@@ -66,17 +70,8 @@ export default abstract class Type implements Equalable {
     return new OneOf(tys);
   }
 
-  static newBuiltin(name: string, generics: string[]): Type {
-    return new Builtin(name);
-    // TODO: this maybe?
-    // let genericArgs: GenericArgs = {};
-    // generics.forEach(arg => genericArgs[arg] = null);
-    // return new Struct(
-    //   name,
-    //   null,
-    //   genericArgs,
-    //   {},
-    // );
+  static opaque(name: string, generics: string[]): Type {
+    return new Opaque(name, generics);
   }
 
   static hasField(name: string, ty: Type): Type {
@@ -123,83 +118,89 @@ export default abstract class Type implements Equalable {
   }
 }
 
-class Builtin extends Type {
+class Opaque extends Type {
+  generics: GenericArgs
+
   get ammName(): string {
-    return this.name;
+    let generics = '';
+    if (Object.keys(this.generics).length !== 0) {
+      let genNames: string[] = [];
+      for (let [tyVar, ty] of Object.entries(this.generics)) {
+        if (ty === null) {
+          genNames.push(tyVar);
+        } else {
+          genNames.push(ty.ammName);
+        }
+      }
+      generics = '<' + genNames.join(', ') + '>';
+    }
+    return this.name + generics;
   }
 
-  constructor(name: string) {
+  constructor(
+    name: string,
+    generics: string[],
+  ) {
     super(name);
+    this.generics = {};
+    generics.forEach((g) => this.generics[g] = null);
   }
 
-  compatibleWithConstraint(ty: Type, scope: Scope): boolean {
-    if (ty instanceof Builtin) {
-      return this.eq(ty);
-    } else if (ty instanceof OneOf || ty instanceof Generated) {
-      return ty.compatibleWithConstraint(this, scope);
-    } else if (ty instanceof HasOperator) {
-      return Has.operator(ty, scope, this).length !== 0;
-    } else if (ty instanceof HasMethod) {
-      return Has.method(ty, scope, this).length !== 0;
-    } else if (ty instanceof HasField) {
-      return TODO('add field support for builtins');
-    } else if (ty instanceof Interface) {
-      // FIXME: once builtins can have fields
-      return (
-        ty.fields.length === 0 &&
-        ty.methods.every((m) => this.compatibleWithConstraint(m, scope)) &&
-        ty.operators.every((o) => this.compatibleWithConstraint(o, scope))
-      );
+  compatibleWithConstraint(that: Type, scope: Scope): boolean {
+    if (that instanceof Opaque) {
+      const thisGenerics = Object.values(this.generics);
+      const thatGenerics = Object.values(that.generics);
+      if (this.name !== that.name || thisGenerics.length !== thatGenerics.length) {
+        return false;
+      }
+      for (let ii = 0; ii < thisGenerics.length; ii++) {
+        const thisTy = thisGenerics[ii];
+        const thatTy = thatGenerics[ii];
+        if (thisTy === null || thatTy === null) {
+          continue;
+        } else if (!thisTy.compatibleWithConstraint(thatTy, scope)) {
+          return false;
+        }
+      }
+      return true;
+    } else if (
+      that instanceof Generated ||
+      that instanceof Interface ||
+      that instanceof OneOf
+    ) {
+      return that.compatibleWithConstraint(this, scope);
+    } else if (that instanceof HasField) {
+      return false;
+    } else if (that instanceof HasOperator) {
+      return Has.operator(that, scope, this).length !== 0;
+    } else if (that instanceof HasMethod) {
+      return Has.method(that, scope, this).length !== 0;
     } else {
-      TODO('other types constraining to builtin types');
+      TODO('Opaque constraint compatibility with other types');
     }
   }
 
-  constrain(ty: Type, scope: Scope) {
-    if (
-      ty instanceof OneOf ||
-      ty instanceof Generated ||
-      ty instanceof Interface
-    ) {
-      ty.constrain(this, scope);
-    } else if (ty instanceof HasOperator) {
-      if (Has.operator(ty, scope, this).length === 0) {
-        throw new Error(`type ${this.name} does not have operator ${ty.name}`);
-      }
-    } else if (
-      ty instanceof HasMethod &&
-      Has.method(ty, scope, this).length === 0
-    ) {
-      throw new Error(
-        `type ${this.name} does not have method ${ty.name}(${ty.params
-          .map((p) => (p === null ? this : p))
-          .map((ty) => ty.name)
-          .join(', ')})`,
-      );
-    } else if (ty instanceof HasField) {
-      throw new Error(`type ${this.name} does not have field ${ty.name}`);
-    } else if (!this.compatibleWithConstraint(ty, scope)) {
-      throw new Error(
-        `type ${this.name} could not be constrained to ${ty.name}`,
-      );
+  constrain(that: Type, scope: Scope): void {
+    if (!this.compatibleWithConstraint(that, scope)) {
+      throw new Error(`Cannot constraint type ${this.ammName} to ${that.ammName}`);
     }
   }
 
   eq(that: Equalable): boolean {
-    if (that instanceof Builtin) {
-      return this === that;
-    } else if (that instanceof Interface) {
-      if (that instanceof Generated && that.delegate !== null) {
-        return this.eq(that.delegate);
-      }
-      return that.tempDelegate !== null && this.eq(that.tempDelegate);
-    } else {
+    if (!(that instanceof Opaque) || this.name !== that.name) {
       return false;
     }
-  }
-
-  fieldIndices(): FieldIndices {
-    return TODO("determine if it's even worth keeping the Builtin class");
+    const thisGenerics = Object.values(this.generics);
+    const thatGenerics = Object.values(that.generics);
+    return thisGenerics.length === thatGenerics.length &&
+      thisGenerics.every((thisGen, ii) => {
+        const thatGen = thatGenerics[ii];
+        if (thisGen === null || thatGen === null) {
+          return false;
+        } else {
+          return thisGen.eq(thatGen);
+        }
+      });
   }
 
   instance(): Type {
@@ -208,39 +209,26 @@ class Builtin extends Type {
 
   isFixed(): boolean {
     switch (this.name) {
-      case 'int64':
-      case 'int32':
-      case 'int16':
-      case 'int8':
-      case 'float64':
-      case 'float32':
-      case 'bool':
-      case 'void':
-        return true;
-      default:
+      case 'string':
         return false;
+      default:
+        return true;
     }
   }
 
-  tempConstrain(ty: Type, scope: Scope) {
-    this.constrain(ty, scope);
+  tempConstrain(that: Type, scope: Scope): void {
+    if (!this.compatibleWithConstraint(that, scope)) {
+      throw new Error(`Cannot temporarily constrain type ${this.ammName} to ${that.ammName}`);
+    }
   }
 
-  resetTemp() {
-    // do nothing
-  }
+  resetTemp(): void {}
 
   size(): number {
-    // TODO: should probably figure out non-opaque types but we'll see
-    // what happens with this class first (after fn selection fix)
     switch (this.name) {
       case 'void':
         return 0;
       default:
-        // FIXME: currently the AVM encodes every value (including 8-bit values)
-        // in 8 bytes, so we have to enforce that behavior here by assuming that
-        // the size is in factors of 8 bytes. Eventually, we'll have to fix this.
-        // Or we just pretend 64-bits is sufficient for everything and don't.
         return 1;
     }
   }
@@ -841,8 +829,8 @@ class Interface extends Type {
     if (this.tempDelegate !== null) {
       return this.tempDelegate.compatibleWithConstraint(ty, scope);
     }
-    if (ty instanceof Builtin || ty instanceof Struct) {
-      if (ty instanceof Builtin && this.fields.length !== 0) {
+    if (ty instanceof Opaque || ty instanceof Struct) {
+      if (ty instanceof Opaque && this.fields.length !== 0) {
         // if ty is a Builtin and there are field requirements,
         // then this interface doesn't apply.
         // TODO: this might change depending on the opaque types
