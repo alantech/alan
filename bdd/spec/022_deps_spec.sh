@@ -39,6 +39,23 @@ Describe "@std/deps"
     test -f "./dependencies/alantech/hellodep/index.ln"
   }
 
+  has_nested_dependencies() {
+    test -d "./dependencies/alantech/hellodep/dependencies"
+  }
+
+  has_nested_alantech() {
+    test -d "./dependencies/alantech/hellodep/dependencies/alantech"
+  }
+
+  has_nested_hellodep() {
+    test -d "./dependencies/alantech/hellodep/dependencies/alantech/nestedhellodep"
+  }
+
+  has_nested_index() {
+    test -f "./dependencies/alantech/hellodep/dependencies/alantech/nestedhellodep/index.ln"
+  }
+
+
   run_js() {
     node test_$$/temp.js | head -1
   }
@@ -54,6 +71,10 @@ Describe "@std/deps"
     Assert has_alantech
     Assert has_hellodep
     Assert has_index
+    Assert has_nested_dependencies
+    Assert has_nested_alantech
+    Assert has_nested_hellodep
+    Assert has_nested_index
   End
 
   It "runs agc"
@@ -63,5 +84,9 @@ Describe "@std/deps"
     Assert has_alantech
     Assert has_hellodep
     Assert has_index
+    Assert has_nested_dependencies
+    Assert has_nested_alantech
+    Assert has_nested_hellodep
+    Assert has_nested_index
   End
 End

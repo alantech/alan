@@ -14,11 +14,12 @@ export fn add(remote: string) {
   const parts = remote.split('/');
   const repo = parts[length(parts) - 1] || '';
   const group = parts[parts.length() - 2] || '';
-  const dest = '/dependencies/' + group + '/' + repo;
-  const rm = exec('rm -rf .' + dest);
-  const git = exec('git clone ' + remote + ' .' + dest);
+  const dest = 'dependencies/' + group + '/' + repo;
+  const rm = exec('rm -rf ./' + dest);
+  const git = exec('git clone ' + remote + ' ./' + dest);
   print(git.stderr);
-  const rm2 = exec('rm -rf .' + dest + '/.git');
+  const rm2 = exec('rm -rf ./' + dest + '/.git');
+  const maybeRecurse = exec('cd ' + dest + ' && alan install');
 }
 
 // The `commit` function takes no arguments. Currently just causes the application to quit, but
