@@ -1,4 +1,5 @@
 import { LPNode, NulLP } from '../lp';
+import { fulltypenameAstFromString } from './Ast';
 import Fn from './Fn';
 import Operator from './Operator';
 import Scope from './Scope';
@@ -11,6 +12,11 @@ type TypeName = [string, TypeName[]];
 
 interface Generalizable {
   generics: GenericArgs;
+  solidify(types: Type[]): Type;
+}
+
+const generalizable = (val: Type): val is Type & Generalizable => {
+  return 'generics' in val;
 }
 
 const parseFulltypename = (node: LPNode): TypeName => {
@@ -50,8 +56,41 @@ export default abstract class Type implements Equalable {
   abstract size(): number;
 
   static getFromTypename(name: LPNode | string, scope: Scope): Type {
-    // TODO: change this to use parseFulltypename
-    return scope.get(name.toString().trim());
+    if (typeof name === 'string') {
+      name = fulltypenameAstFromString(name);
+    }
+    const parsed = parseFulltypename(name);
+    const solidify = ([name, generics]: TypeName): Type => {
+      const ty = scope.get(name);
+      if (ty === null) {
+        throw new Error(`Could not find type ${name}`);
+      } else if (!(ty instanceof Type)) {
+        throw new Error(`${name} is not a type`);
+      }
+      if (generalizable(ty)) {
+        const genericArgLen = Object.keys(ty.generics).length;
+        if (genericArgLen !== generics.length) {
+          throw new Error(`Bad typename: type ${name} expects ${genericArgLen} type arguments, but ${generics.length} were provided`);
+        }
+        let solidifiedTypeArgs = generics.map(solidify);
+        // interfaces can't have generic type params so no need to call
+        // dupIfNotLocalInterface
+        return ty.solidify(solidifiedTypeArgs);
+      } else if (generics.length !== 0) {
+        throw new Error(`Bad typename: type ${name} doesn't expect any type arguments, but ${generics.length} were provided`);
+      } else {
+        const duped = ty.dupIfNotLocalInterface();
+        if (duped === null) {
+          return ty;
+        } else {
+          // note: if scope isn't *only* for the function's arguments,
+          // this'll override the module scope and that would be bad.
+          scope.put(name, duped);
+          return duped;
+        }
+      }
+    }
+    return solidify(parsed);
   }
 
   static fromInterfacesAst(ast: LPNode, scope: Scope): Type {
@@ -231,6 +270,31 @@ class Opaque extends Type {
       default:
         return 1;
     }
+  }
+
+  solidify(types: Type[]): Type {
+    if (Object.values(this.generics).some((g) => g !== null)) {
+      throw new Error(`Trying to solidify already-solidified type`);
+    }
+    const genNames = Object.keys(this.generics);
+    if (genNames.length === 0) {
+      return this;
+    } else if (genNames.length !== types.length) {
+      let multiplesAware: string;
+      if (types.length === 0) {
+        multiplesAware = 'none were';
+      } else if (types.length === 1) {
+        multiplesAware = '1 was';
+      } else {
+        multiplesAware = `${types.length} were`;
+      }
+      throw new Error(`${this.ammName} expected ${genNames.length} type argument${genNames.length > 1 ? 's' : ''}, but ${multiplesAware} provided`);
+    }
+    const cloned = new Opaque(this.name, genNames);
+    for (let ii = 0; ii < genNames.length; ii++) {
+      cloned.generics[genNames[ii]] = types[ii];
+    }
+    return cloned;
   }
 }
 
