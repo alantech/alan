@@ -90,6 +90,13 @@ export fn toString(n: float64): string = f64str(n);
 export fn toString(n: string): string = n;
 export fn toString(n: bool): string = boolstr(n);
 
+export fn ok(val: any): Result<any> = okR(val, 0);
+export fn ok(val: int8): Result<int8> = okR(val, 8);
+export fn getOr(res: Result<any>, default: any): any = getOrR(res, default);
+
+export fn add(a: Result<int8>, b: Result<int8>): Result<int8> = addi8(a, b);
+export fn add(a: int8, b: int8): Result<int8> = add(ok(a), ok(b));
+
 export fn eq(a: int8, b: int8): bool = eqi8(a, b);
 export fn eq(a: int16, b: int16): bool = eqi16(a, b);
 export fn eq(a: int32, b: int32): bool = eqi32(a, b);

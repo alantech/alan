@@ -1,0 +1,8 @@
+from @std/app import start, print, exit
+
+on start {
+  const a: int8 = 0;
+  const b: int8 = 1;
+  add(a, b).getOr(0).print();
+  emit exit a;
+}

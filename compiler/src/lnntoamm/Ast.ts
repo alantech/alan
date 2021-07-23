@@ -31,9 +31,24 @@ export const fromString = (str: string): NamedAnd => {
 };
 
 export const fromFile = (filename: string): NamedAnd => {
-  const ast = fromString(fs.readFileSync(filename, { encoding: 'utf8' }));
-  ast.filename = filename;
+  const lp = new LP(filename);
+  const ast = ln.ln.apply(lp);
+  if (ast instanceof LPError) {
+    throw new Error(ast.msg);
+  } else if (ast.t.length !== fs.statSync(filename).size) {
+    const lp2 = lp.clone();
+    lp2.advance(ast.t.length);
+    const body = ast.get('body').getAll();
+    const last = body[body.length - 1];
+    throw new Error(
+      `AST Parse error, cannot continue due to syntax error between line ${last.line}:${last.char} - ${lp2.line}:${lp2.char}`,
+    );
+  }
+
   return ast;
+  // const ast = fromString(fs.readFileSync(filename, { encoding: 'utf8' }));
+  // ast.filename = filename;
+  // return ast;
 };
 
 export const resolveDependency = (

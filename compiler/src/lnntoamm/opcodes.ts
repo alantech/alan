@@ -30,6 +30,8 @@ const load = (): void => {
     __opcodes.put(name, Type.opaque(name, generics));
   });
 
+  __opcodes.put('any', Type.interface('any'));
+
   Object.entries({
     start: 'void',
   }).forEach(([name, tyName]: [string, string]) => {
@@ -176,6 +178,9 @@ const load = (): void => {
     xnorboo: [{ a: 'bool', b: 'bool' }, 'bool'],
 
     addi8: [{ a: 'Result<int8>', b: 'Result<int8>' }, 'Result<int8>'],
+
+    okR: [{ a: 'any', s: 'int64' }, 'Result<any>'],
+    getOrR: [{ a: 'Result<any>', d: 'any' }, 'any'],
 
     waitop: [{ t: 'int64' }, 'void'],
 

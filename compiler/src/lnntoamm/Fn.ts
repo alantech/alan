@@ -5,7 +5,7 @@ import opcodes from './opcodes';
 import Scope from './Scope';
 import Stmt, { Dec, Exit, FnParam, MetaData } from './Stmt';
 import Type, { FunctionType } from './Types';
-import { TODO } from './util';
+import { DBG, TODO } from './util';
 
 export default class Fn {
   // null if it's an anonymous fn
@@ -125,7 +125,12 @@ export default class Fn {
     } else {
       bodyAsts = bodyAsts.get('assignfunction').get('assignables');
       let exitVal: Expr;
-      [body, exitVal] = Expr.fromAssignablesAst(bodyAsts, metadata);
+      try {
+        [body, exitVal] = Expr.fromAssignablesAst(bodyAsts, metadata);
+      } catch (e) {
+        console.log('body is', bodyAsts);
+        throw e;
+      }
       if (exitVal instanceof Ref) {
         body.push(new Exit(bodyAsts, exitVal, retTy));
       } else {

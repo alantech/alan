@@ -558,6 +558,7 @@ class Call extends Expr {
     let fns = metadata.scope.deepGet(fnName);
     const closure = metadata.get(fnName);
     if ((fns === null || !isFnArray(fns)) && closure === null) {
+      console.log(metadata.scope);
       throw new Error(`no functions found for ${fnName}`);
     }
     if (fns === null || !isFnArray(fns)) {

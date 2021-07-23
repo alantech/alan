@@ -108,6 +108,10 @@ export default abstract class Type implements Equalable {
     return new Generated();
   }
 
+  static interface(name: string): Type {
+    return new Interface(name, new NulLP(), [], [], []);
+  }
+
   static oneOf(tys: Type[]): OneOf {
     return new OneOf(tys);
   }
@@ -226,6 +230,24 @@ class Opaque extends Type {
     if (!this.compatibleWithConstraint(that, scope)) {
       throw new Error(`Cannot constraint type ${this.ammName} to ${that.ammName}`);
     }
+    if (that instanceof Opaque) {
+      const thisGens = Object.keys(this.generics);
+      const thatGens = Object.keys(that.generics);
+      for (let ii = 0; ii < thisGens.length; ii++) {
+        if (this.generics[thisGens[ii]] === null) {
+          this.generics[thisGens[ii]] = that.generics[thatGens[ii]];
+        } else {
+          this.generics[thisGens[ii]].constrain(that.generics[thatGens[ii]], scope);
+        }
+      }
+    } else if (that instanceof OneOf) {
+      that.constrain(this, scope);
+    } else if (that instanceof Interface) {
+      // do nothing
+    } else {
+      console.log(this);
+      console.log(that);
+    }
   }
 
   eq(that: Equalable): boolean {
@@ -262,9 +284,28 @@ class Opaque extends Type {
     if (!this.compatibleWithConstraint(that, scope)) {
       throw new Error(`Cannot temporarily constrain type ${this.ammName} to ${that.ammName}`);
     }
+    if (that instanceof Opaque) {
+      const thisGens = Object.keys(this.generics);
+      const thatGens = Object.keys(that.generics);
+      for (let ii = 0; ii < thisGens.length; ii++) {
+        if (this.generics[thisGens[ii]] === null) {
+          throw new Error(`tempConstrain to generic that isn't assigned to anything?`);
+        } else {
+          this.generics[thisGens[ii]].tempConstrain(that.generics[thatGens[ii]], scope);
+        }
+      }
+    } else {
+      console.log(this);
+      console.log(that);
+      TODO('figure out tempConstraining with Opaque types');
+    }
   }
 
-  resetTemp(): void {}
+  resetTemp(): void {
+    for (let generic in this.generics) {
+      this.generics[generic].resetTemp();
+    }
+  }
 
   size(): number {
     switch (this.name) {
@@ -387,7 +428,7 @@ export class FunctionType extends Type {
       );
       return [...fns, ...weightFns];
     }, new Array<[Fn, Type]>());
-    if (ret.length > originalLength) {
+    if (ret.length > originalLength || ret.length === 0) {
       console.log('~~~ ERROR');
       console.log('original: ', originalLength);
       console.log('retLength:', ret.length);
@@ -825,7 +866,7 @@ class Interface extends Type {
     if (this.tempDelegate) {
       return this.tempDelegate.ammName;
     } else {
-      throw new Error(`Interfaces should not have their ammName requested`);
+      return this.name;
     }
   }
 
@@ -1193,6 +1234,7 @@ class Generated extends Interface {
 }
 
 class OneOf extends Type {
+  private __original: Type[];
   selection: Type[];
   tempSelect: Type[] | null;
   private selected: Type | null;
@@ -1213,6 +1255,9 @@ class OneOf extends Type {
     this.selection = selection;
     this.tempSelect = tempSelect;
     this.selected = null;
+    if (this.selection.length === 0) {
+      throw new Error('cannot have one of 0 types');
+    }
   }
 
   private select(): Type {
