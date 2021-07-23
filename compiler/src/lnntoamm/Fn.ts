@@ -94,8 +94,8 @@ export default class Fn {
       retTy = Type.oneOf([Type.generate(), opcodes().get('void')]);
     }
 
-    // TODO: inheritance
-    const metadata = new MetaData(scope, retTy);
+    // use scope.par since it contains interface implementation fns
+    const metadata = new MetaData(scope.par, retTy);
 
     const name = ast.get('optname').has() ? ast.get('optname').get().t : null;
     const p: LPNode[] = [];
@@ -136,7 +136,8 @@ export default class Fn {
   static fromFunctionbody(ast: LPNode, scope: Scope): Fn {
     scope = new Scope(scope);
     const body = [];
-    const metadata = new MetaData(scope, opcodes().get('void'));
+    // use scope.par since it contains interface implementation fns
+    const metadata = new MetaData(scope.par, opcodes().get('void'));
     ast
       .get('statements')
       .getAll()
