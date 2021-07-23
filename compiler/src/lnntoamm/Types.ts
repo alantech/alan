@@ -23,15 +23,17 @@ const parseFulltypename = (node: LPNode): TypeName => {
   const name = node.get('typename').t.trim();
   const genericTys: TypeName[] = [];
   if (node.has('opttypegenerics')) {
-    const generics = node.get('opttypegenerics');
+    const generics = node.get('opttypegenerics').get('generics');
     genericTys.push(parseFulltypename(generics.get('fulltypename')));
-    genericTys.push(
-      ...generics
-        .get('cdr')
-        .getAll()
-        .map((n) => n.get('fulltypename'))
-        .map(parseFulltypename),
-    );
+    if (generics.has('cdr')) {
+      genericTys.push(
+        ...generics
+          .get('cdr')
+          .getAll()
+          .map((n) => n.get('fulltypename'))
+          .map(parseFulltypename),
+      );
+    }
   }
   return [name, genericTys];
 };
@@ -70,6 +72,7 @@ export default abstract class Type implements Equalable {
       if (generalizable(ty)) {
         const genericArgLen = Object.keys(ty.generics).length;
         if (genericArgLen !== generics.length) {
+          console.log([name, generics]);
           throw new Error(`Bad typename: type ${name} expects ${genericArgLen} type arguments, but ${generics.length} were provided`);
         }
         let solidifiedTypeArgs = generics.map(solidify);

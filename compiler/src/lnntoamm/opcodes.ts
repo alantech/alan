@@ -25,6 +25,7 @@ const load = (): void => {
     float64: [],
     bool: [],
     string: [],
+    Result: ['T'],
   }).forEach(([name, generics]: [string, string[]]) => {
     __opcodes.put(name, Type.opaque(name, generics));
   });
@@ -173,6 +174,8 @@ const load = (): void => {
     xorbool: [{ a: 'bool', b: 'bool' }, 'bool'],
     norbool: [{ a: 'bool', b: 'bool' }, 'bool'],
     xnorboo: [{ a: 'bool', b: 'bool' }, 'bool'],
+
+    addi8: [{ a: 'Result<int8>', b: 'Result<int8>' }, 'Result<int8>'],
 
     waitop: [{ t: 'int64' }, 'void'],
 

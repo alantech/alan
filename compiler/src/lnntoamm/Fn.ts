@@ -77,25 +77,11 @@ export default class Fn {
 
   static fromFunctionsAst(ast: LPNode, scope: Scope): Fn {
     scope = new Scope(scope);
-    let retTy: Type;
-    if (ast.get('optreturntype').has()) {
-      const name = ast.get('optreturntype').get('fulltypename');
-      retTy = Type.getFromTypename(name, scope);
-      if (retTy === null) {
-        throw new Error(`Type not in scope: ${name.t.trim()}`);
-      }
-      if (retTy.dupIfNotLocalInterface() !== null) {
-        // TODO: figure out how to prevent type erasure while allowing
-        // eg the generic identity function. Or just wait until generic
-        // fn type parameters.
-        throw new Error(`type erasure is illegal`);
-      }
-    } else {
-      retTy = Type.oneOf([Type.generate(), opcodes().get('void')]);
-    }
 
-    // use scope.par since it contains interface implementation fns
-    const metadata = new MetaData(scope.par, retTy);
+    const retTy = Type.generate();
+    // use the new scope for now so that the fn params can insert interfaces
+    // as needed
+    const metadata = new MetaData(scope, retTy);
 
     const name = ast.get('optname').has() ? ast.get('optname').get().t : null;
     const p: LPNode[] = [];
@@ -107,6 +93,25 @@ export default class Fn {
       }
     }
     const params = p.map((paramAst) => FnParam.fromArgAst(paramAst, metadata));
+
+    let actualRetTy: Type;
+    if (ast.get('optreturntype').has()) {
+      const name = ast.get('optreturntype').get('fulltypename');
+      actualRetTy = Type.getFromTypename(name, scope);
+      if (actualRetTy === null) {
+        throw new Error(`Type not in scope: ${name.t.trim()}`);
+      }
+      if (actualRetTy.dupIfNotLocalInterface() !== null) {
+        throw new Error(`type erasure is illegal`);
+      }
+    } else {
+      actualRetTy = Type.oneOf([Type.generate(), opcodes().get('void')]);
+    }
+    // use the new scope still since it also contains the duplicated types
+    retTy.constrain(actualRetTy, scope);
+
+    // use scope.par since it contains interface implementation fns
+    metadata.scope = scope.par;
 
     let body = [];
     let bodyAsts: LPNode | LPNode[] = ast.get('fullfunctionbody');
@@ -134,10 +139,9 @@ export default class Fn {
   }
 
   static fromFunctionbody(ast: LPNode, scope: Scope): Fn {
-    scope = new Scope(scope);
     const body = [];
     // use scope.par since it contains interface implementation fns
-    const metadata = new MetaData(scope.par, opcodes().get('void'));
+    const metadata = new MetaData(scope, opcodes().get('void'));
     ast
       .get('statements')
       .getAll()
@@ -248,13 +252,17 @@ export class OpcodeFn extends Fn {
     retTyName: string,
     __opcodes: Scope,
   ) {
+    const scopeForOpcode = new Scope(__opcodes);
     const params = Object.entries(argDecs).map(([name, tyName]) => {
-      return new FnParam(new NulLP(), name, opcodes().get(tyName));
+      return new FnParam(new NulLP(), name, Type.getFromTypename(tyName, scopeForOpcode));
     });
-    const retTy = __opcodes.get(retTyName);
-    if (retTy === null || !(retTy instanceof Type)) {
-      throw new Error();
+    const retTy = Type.getFromTypename(retTyName, scopeForOpcode);
+    if (retTy === null) {
+      throw new Error('a');
+    } else if (retTy.dupIfNotLocalInterface()) {
+      throw new Error(`please don't make an opcode with type erasure...`);
     }
+    // don't use scopeForOpcode so it gets GC'd, it's not necessary
     super(new NulLP(), __opcodes, name, params, retTy, []);
     __opcodes.put(name, [this]);
   }
