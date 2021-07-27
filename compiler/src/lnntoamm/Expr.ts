@@ -607,6 +607,8 @@ class Call extends Expr {
     const isChanged = this.fns.length !== fns.length;
     this.fns = fns;
     this.retTy.constrain(Type.oneOf(tys), this.scope);
+    console.log('after cleanup,', this.ast.t.trim(), 'returns');
+    console.dir(this.retTy, { depth: 4 });
     return isChanged;
   }
 

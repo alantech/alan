@@ -185,7 +185,6 @@ export class Dec extends VarDef {
       metadata,
     );
     let ty: Type = expr.ty;
-    console.log('~~~~~~~~~~~~~~~', ast);
     if (work.has('typedec')) {
       const tyName = work.get('typedec').get('fulltypename');
       const found = Type.getFromTypename(tyName, metadata.scope);
@@ -194,13 +193,9 @@ export class Dec extends VarDef {
       const duped = found.dupIfNotLocalInterface();
       if (duped === null) {
         ty = found;
-        console.log('---');
         ty.constrain(expr.ty, metadata.scope);
-        console.log('---');
       } else {
-        console.log('~~~');
         ty.constrain(duped, metadata.scope);
-        console.log('~~~');
       }
     }
     const dec = new Dec(ast, immutable, name, ty, expr);

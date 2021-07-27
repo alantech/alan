@@ -243,6 +243,7 @@ export default class Fn {
       // do nothing: the args aren't applicable to the params so
       // we return null (`res` is already `null`) and we need to
       // ensure the param tys have `resetTemp` called on them.
+      // console.log('~~ GOT ERROR getting result ty for ' + this.name + ':', _e);
     }
     this.params.forEach((param) => param.ty.resetTemp());
     return res;

@@ -247,6 +247,7 @@ class Opaque extends Type {
     } else {
       console.log(this);
       console.log(that);
+      throw 'uh';
     }
   }
 
@@ -273,10 +274,17 @@ class Opaque extends Type {
 
   isFixed(): boolean {
     switch (this.name) {
-      case 'string':
-        return false;
-      default:
+      case 'bool':
+      case 'int8':
+      case 'int16':
+      case 'int32':
+      case 'int64':
+      case 'float32':
+      case 'float64':
+      case 'void':
         return true;
+      default:
+        return false;
     }
   }
 
@@ -294,10 +302,16 @@ class Opaque extends Type {
           this.generics[thisGens[ii]].tempConstrain(that.generics[thatGens[ii]], scope);
         }
       }
+    } else if (that instanceof Interface) {
+      if (!this.compatibleWithConstraint(that, scope)) {
+        throw new Error(`type ${this.ammName} doesn't `);
+      }
+    } else if (that instanceof OneOf) {
+      that.tempConstrain(this, scope);
     } else {
-      console.log(this);
-      console.log(that);
-      TODO('figure out tempConstraining with Opaque types');
+      console.log('this:', this);
+      console.log('that:', that);
+      TODO('tempConstraining Opaque type');
     }
   }
 
@@ -311,6 +325,17 @@ class Opaque extends Type {
     switch (this.name) {
       case 'void':
         return 0;
+      case 'Result':
+        const containedTypes = Object.values(this.generics);
+        return containedTypes
+          .map(t => {
+            if (t === null) {
+              throw new Error(`cannot compute size of ${this.ammName}`);
+            } else {
+              return t.size();
+            }
+          })
+          .reduce((s1, s2) => s1 + s2, 1);
       default:
         return 1;
     }
@@ -1036,23 +1061,58 @@ class Interface extends Type {
   instance(): Type {
     if (this.tempDelegate !== null) {
       return this.tempDelegate.instance();
+    } else if (this.isDuped) {
+      // if it's duped, allow the instance to be `this` since
+      // it needs to be tempConstrain-ed in order to have the
+      // resulting instance type
+      return this;
     } else {
       throw new Error(`Could not resolve interface type`);
     }
   }
 
-  tempConstrain(to: Type, _scope: Scope) {
-    if (this === to) {
-      throw new Error('huh?');
+  tempConstrain(that: Type, scope: Scope) {
+    if (this === that || this.eq(that)) {
+      return;
+    } else if (
+      that instanceof Interface &&
+      this.fields.every(f => that.compatibleWithConstraint(f, scope)) &&
+      this.methods.every(m => that.compatibleWithConstraint(m, scope)) &&
+      this.operators.every(o => that.compatibleWithConstraint(o, scope))
+    ) {
+      // compatibleWithConstraint returned true if `that ⊆ this`
+      // but when tempConstraining, it's valid for `this ⊆ that`
+      if (this.tempDelegate !== null) {
+        this.tempDelegate.tempConstrain(
+          that.tempDelegate ?? that,
+          scope,
+        );
+      } else {
+        this.tempDelegate = that;
+      }
+    } else if (this.compatibleWithConstraint(that, scope)) {
+      if (this.tempDelegate !== null) {
+        this.tempDelegate.tempConstrain(that, scope);
+      } else {
+        this.tempDelegate = that;
+      }
     }
-    if (this.tempDelegate !== null && !this.tempDelegate.eq(to)) {
-      throw new Error('interface type is already constrained');
-    }
-    this.tempDelegate = to;
+    // if (this.tempDelegate !== null && !this.tempDelegate.eq(that)) {
+    //   console.log('~~~~~~~~');
+    //   console.log(((this as unknown) as {stack: string}).stack);
+    //   console.log('this:', this, '(already', this.tempDelegate, ')');
+    //   console.log('that:', that);
+    //   throw new Error('interface type is already constrained');
+    // }
+    // Error.captureStackTrace(this);
+    // this.tempDelegate = that;
   }
 
   resetTemp() {
-    this.tempDelegate = null;
+    if (this.tempDelegate !== null) {
+      this.tempDelegate.resetTemp();
+      this.tempDelegate = null;
+    }
   }
 
   dupIfNotLocalInterface(): Type | null {
@@ -1276,6 +1336,10 @@ class OneOf extends Type {
       this.selected = selected;
     } else if (this.selected !== selected) {
       // this should never happen, but let's make sure of that :)
+      console.log('-------------');
+      console.log('before:', this.selected);
+      console.log('after:', selected);
+      console.log('this:', this);
       TODO('uh somehow selected different types - check on this');
     }
     return selected;
@@ -1313,10 +1377,12 @@ class OneOf extends Type {
     this.tempSelect = this.selection.filter((ty) =>
       ty.compatibleWithConstraint(to, scope),
     );
+    this.selected = null;
   }
 
   resetTemp() {
     this.tempSelect = [];
+    this.selected = null;
   }
 
   size(): number {
