@@ -3838,35 +3838,32 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let key = HandlerMemory::fractal_to_string(hand_mem.read_from_fractal(&nsref, 1).0)?;
       let nskey = format!("{}:{}", ns, key);
       let ctrl_port = CONTROL_PORT_CHANNEL.get();
-      let ctrl_port = match ctrl_port {
-        Some(ctrl_port) => Some(ctrl_port.borrow().clone()), // TODO: Use thread-local storage
-        None => None,
-      };
-      let is_key_owner = match ctrl_port {
-        Some(ref ctrl_port) => ctrl_port.is_key_owner(&nskey),
-        None => true,
-      };
-      if is_key_owner {
-        hand_mem.init_fractal(args[2])?;
-        let maybe_hm = DS.get(&nskey);
-        match maybe_hm {
-          Some(ds) => {
-            let mut hm = HandlerMemory::fork(hand_mem.clone())?;
-            HandlerMemory::transfer(&ds, 0, &mut hm, CLOSURE_ARG_MEM_START + 1)?;
-            let subhandler = HandlerFragment::new(args[1], 0);
-            let hm = subhandler.run(hm).await?;
-            let hm = hm.drop_parent()?;
-            HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START, &mut hand_mem, CLOSURE_ARG_MEM_START)?;
-            hand_mem.push_fixed(args[2], 1i64)?;
-            hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START)?;
-          },
-          None => {
-            hand_mem.push_fixed(args[2], 0i64)?;
-            hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("namespace-key pair not found"))?;
-          },
-        }
-      } else {
-        // TODO
+      match ctrl_port {
+        Some(ctrl_port) => {
+          let ctrl_port = ctrl_port.borrow().clone();
+          let res_hm = ctrl_port.dsrrun(&nskey, args[1], &hand_mem).await;
+          HandlerMemory::transfer(&res_hm, 0, &mut hand_mem, args[2])?;
+        },
+        None => {
+          hand_mem.init_fractal(args[2])?;
+          let maybe_hm = DS.get(&nskey);
+          match maybe_hm {
+            Some(ds) => {
+              let mut hm = HandlerMemory::fork(hand_mem.clone())?; // TODO: This clone is terrible
+              HandlerMemory::transfer(&ds, 0, &mut hm, CLOSURE_ARG_MEM_START + 1)?;
+              let subhandler = HandlerFragment::new(args[1], 0);
+              let hm = subhandler.run(hm).await?;
+              let hm = hm.drop_parent()?;
+              HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START, &mut hand_mem, CLOSURE_ARG_MEM_START)?;
+              hand_mem.push_fixed(args[2], 1i64)?;
+              hand_mem.push_register(args[2], CLOSURE_ARG_MEM_START)?;
+            },
+            None => {
+              hand_mem.push_fixed(args[2], 0i64)?;
+              hand_mem.push_fractal(args[2], HandlerMemory::str_to_fractal("namespace-key pair not found"))?;
+            },
+          }
+        },
       }
       Ok(hand_mem)
     })
