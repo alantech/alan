@@ -570,7 +570,9 @@ async fn dsrrun_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
   let headers = req.headers();
   let nskey = headers.get("nskey").map_or("N/A", |v| v.to_str().unwrap());
   let maybe_hm = DS.get(nskey);
-  let subhandler_id = headers.get("subhandler_id").map_or(0, |v| v.to_str().unwrap().parse().unwrap());
+  let subhandler_id = headers
+    .get("subhandler_id")
+    .map_or(0, |v| v.to_str().unwrap().parse().unwrap());
   let subhandler = HandlerFragment::new(subhandler_id, 0);
   let bytes = body::to_bytes(req.into_body()).await?;
   let pb = protos::HandlerMemory::HandlerMemory::parse_from_bytes(&bytes)?;
@@ -582,16 +584,21 @@ async fn dsrrun_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
       HandlerMemory::transfer(&ds, 0, &mut hm, CLOSURE_ARG_MEM_START + 1)?;
       let hm = subhandler.run(hm).await?;
       res_hm.push_fixed(0, 1);
-      HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START, &mut res_hm, CLOSURE_ARG_MEM_START);
+      HandlerMemory::transfer(
+        &hm,
+        CLOSURE_ARG_MEM_START,
+        &mut res_hm,
+        CLOSURE_ARG_MEM_START,
+      );
       res_hm.push_register(0, CLOSURE_ARG_MEM_START)?;
-    },
+    }
     None => {
       res_hm.push_fixed(0, 0);
       res_hm.push_fractal(
         0,
         HandlerMemory::str_to_fractal("namespace-key pair not found"),
       )?;
-    },
+    }
   }
   Ok(res_hm)
 }
@@ -1038,7 +1045,7 @@ impl ControlPort {
     self: &ControlPort,
     nskey: &str,
     subhandler_id: i64,
-    hand_mem: &Arc<HandlerMemory>
+    hand_mem: &Arc<HandlerMemory>,
   ) -> Arc<HandlerMemory> {
     let vm = self.get_vm_for_key(nskey);
     // TODO: Use private ip if possible
@@ -1047,9 +1054,14 @@ impl ControlPort {
       Ok(hm) => hm,
       Err(_) => {
         let mut err_hm = HandlerMemory::new(None, 1).expect("what");
-        err_hm.write_fractal(CLOSURE_ARG_MEM_START, &HandlerMemory::str_to_fractal("ERROR TODO")).expect("what");
         err_hm
-      },
+          .write_fractal(
+            CLOSURE_ARG_MEM_START,
+            &HandlerMemory::str_to_fractal("ERROR TODO"),
+          )
+          .expect("what");
+        err_hm
+      }
     }
   }
 
