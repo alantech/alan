@@ -1292,8 +1292,8 @@ impl ControlPort {
     let req = req.header("subhandler_id", format!("{}", subhandler_id));
     let mut hand_mem = hand_mem.clone(); // TODO: We need two of them!?
     hand_mem.register_out(with_addr, 1, CLOSURE_ARG_MEM_START)?;
-    let orphan_hm = HandlerMemory::fork(hand_mem.clone())?; // TODO: This clone is a terrible idea
-    let mut orphan_hm = orphan_hm.drop_parent()?;
+    let mut orphan_hm = HandlerMemory::fork(hand_mem.clone())?; // TODO: This clone is a terrible idea
+    //let mut orphan_hm = orphan_hm.drop_parent()?;
     HandlerMemory::transfer(
       &hand_mem,
       CLOSURE_ARG_MEM_START,
