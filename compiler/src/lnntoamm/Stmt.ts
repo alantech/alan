@@ -185,7 +185,7 @@ export class Dec extends VarDef {
       metadata,
     );
     let ty: Type = expr.ty;
-    if (work.has('typedec')) {
+    if (work.get('typedec').has()) {
       const tyName = work.get('typedec').get('fulltypename');
       const found = Type.getFromTypename(tyName, metadata.scope);
       // if the type hint is an interface, then all we have to do
@@ -205,13 +205,11 @@ export class Dec extends VarDef {
   }
 
   static gen(expr: Expr, metadata: MetaData): Dec {
-    const ty = Type.generate();
-    ty.constrain(expr.ty, metadata.scope);
     const dec = new Dec(
       expr.ast,
       false, // default to mutable in case of eg builder pattern
       genName(),
-      ty,
+      expr.ty,
       expr,
     );
     metadata.define(dec);

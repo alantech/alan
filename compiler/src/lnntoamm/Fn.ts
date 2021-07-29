@@ -78,10 +78,9 @@ export default class Fn {
   static fromFunctionsAst(ast: LPNode, scope: Scope): Fn {
     scope = new Scope(scope);
 
-    const retTy = Type.generate();
     // use the new scope for now so that the fn params can insert interfaces
-    // as needed
-    const metadata = new MetaData(scope, retTy);
+    // as needed. return type can be null since `FnParam`s don't use it
+    const metadata = new MetaData(scope, null);
 
     const name = ast.get('optname').has() ? ast.get('optname').get().t : null;
     const p: LPNode[] = [];
@@ -94,21 +93,20 @@ export default class Fn {
     }
     const params = p.map((paramAst) => FnParam.fromArgAst(paramAst, metadata));
 
-    let actualRetTy: Type;
+    let retTy: Type;
     if (ast.get('optreturntype').has()) {
       const name = ast.get('optreturntype').get('fulltypename');
-      actualRetTy = Type.getFromTypename(name, scope);
-      if (actualRetTy === null) {
+      retTy = Type.getFromTypename(name, scope);
+      if (retTy === null) {
         throw new Error(`Type not in scope: ${name.t.trim()}`);
       }
-      if (actualRetTy.dupIfNotLocalInterface() !== null) {
+      if (retTy.dupIfNotLocalInterface() !== null) {
         throw new Error(`type erasure is illegal`);
       }
     } else {
-      actualRetTy = Type.oneOf([Type.generate(), opcodes().get('void')]);
+      retTy = Type.oneOf([Type.generate(), opcodes().get('void')]);
     }
-    // use the new scope still since it also contains the duplicated types
-    retTy.constrain(actualRetTy, scope);
+    metadata.retTy = retTy;
 
     // use scope.par since it contains interface implementation fns
     metadata.scope = scope.par;
@@ -232,18 +230,23 @@ export default class Fn {
     this.params.forEach((param) => param.unassign());
   }
 
-  resultTyFor(argTys: Type[], scope: Scope): Type | null {
-    let res: Type | null = null;
+  signatureFor(argTys: Type[], scope: Scope): [Type[], Type] | null {
+    let res: [Type[], Type] | null = null;
     try {
       this.params.forEach((param, ii) =>
         param.ty.tempConstrain(argTys[ii], scope),
       );
-      res = this.retTy.instance();
+      res = [
+        this.params.map(p => p.ty.instance()),
+        this.retTy.instance(),
+      ];
     } catch (_e) {
       // do nothing: the args aren't applicable to the params so
       // we return null (`res` is already `null`) and we need to
       // ensure the param tys have `resetTemp` called on them.
       // console.log('~~ GOT ERROR getting result ty for ' + this.name + ':', _e);
+      // console.log('-> arg tys:');
+      // console.dir(argTys, { depth: 6 });
     }
     this.params.forEach((param) => param.ty.resetTemp());
     return res;

@@ -568,7 +568,7 @@ class Call extends Expr {
     const argTys = args.map((arg) => arg.ty);
     const selFns = FunctionType.matrixSelect(fns, argTys, metadata.scope);
     fns = selFns.map((selFn) => selFn[0]);
-    const retTy = Type.oneOf(selFns.map(([_fn, ty]) => ty));
+    const retTy = Type.oneOf(selFns.map(([_fn, [_pTys, ty]]) => ty));
     // now, constrain all of the args to their possible types
     // makes it so that the type of the parameters in each position are in their own list
     // ie, given `do(int8, int16)` and `do(int8, int8)`, will result in this 2D array:
@@ -588,27 +588,68 @@ class Call extends Expr {
     return [stmts, new Call(ast, fns, closure, args, metadata.scope, retTy)];
   }
 
-  private fnSelect(): [Fn[], Type[]] {
-    return FunctionType.matrixSelect(
+  private fnSelect(): [Fn[], [Type[], Type][]] {
+    const selected = FunctionType.matrixSelect(
       this.fns,
       this.args.map((a) => a.ty),
       this.scope,
-    ).reduce(
-      ([fns, tys], [fn, ty]) => [
-        [...fns, fn],
-        [...tys, ty],
-      ],
-      [new Array<Fn>(), new Array<Type>()],
     );
+    // if (this.ast.t.indexOf('ok') !== -1) {
+    //   console.log('--> selectedult for', this.ast.t.trim());
+    //   const printable = selected.map(([fn, retTy]) => {
+    //     const printableFn = {...fn};
+    //     delete printableFn.metadata;
+    //     delete printableFn.scope;
+    //     return [printableFn, retTy];
+    //   });
+    //   console.dir(printable, { depth: 5 });
+    // }
+    const res: [Fn[], [Type[], Type][]] = selected.reduce(
+      ([fns, tys], [fn, ty]) => {
+        if (this.retTy.compatibleWithConstraint(ty[1], this.scope)) {
+          return [
+            [...fns, fn],
+            [...tys, ty],
+          ];
+        } else {
+          // if the type isn't compatible with the return type of this
+          // expression, that means that the type was previously considered
+          // but has been removed from other constraints being processed.
+          // might as well remove the function from consideration.
+          return [fns, tys];
+        }
+      },
+      [new Array<Fn>(), new Array<[Type[], Type]>()],
+    );
+    return res;
   }
 
   cleanup() {
     const [fns, tys] = this.fnSelect();
     const isChanged = this.fns.length !== fns.length;
     this.fns = fns;
-    this.retTy.constrain(Type.oneOf(tys), this.scope);
-    console.log('after cleanup,', this.ast.t.trim(), 'returns');
-    console.dir(this.retTy, { depth: 4 });
+    this.retTy.constrain(
+      Type.oneOf(tys.map(([_pTys, retTy]) => retTy)),
+      this.scope,
+    );
+    // now to update the args that are passed in. first get the type of
+    // the parameter at each position in all of the new fns
+    const argsPossibilities = new Array<Type[]>();
+    tys.forEach(([pTys, _retTy]) => {
+      for (let ii = 0; ii < this.args.length; ii++) {
+        const argPossibilities = argsPossibilities[ii] || [];
+        argPossibilities.push(pTys[ii]);
+        argsPossibilities[ii] = argPossibilities;
+      }
+    });
+    // now constrain all of the args to the types of the parameters
+    // at the same position of the new functions
+    argsPossibilities.forEach(
+      (possibilities, ii) => this.args[ii].ty.constrain(
+        Type.oneOf(possibilities),
+        this.scope,
+      ),
+    );
     return isChanged;
   }
 

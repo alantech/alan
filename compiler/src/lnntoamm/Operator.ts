@@ -65,7 +65,8 @@ class Operator {
     return FunctionType.matrixSelect(this.fns, tys, scope).reduce(
       ([fns, tys], [fn, ty]) => [
         [...fns, fn],
-        [...tys, ty],
+        // TODO: just fix the fn signature and related code in Expr.ts
+        [...tys, ty[1]],
       ],
       [new Array<Fn>(), new Array<Type>()],
     );

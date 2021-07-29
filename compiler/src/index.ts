@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+Error.stackTraceLimit = Infinity
+
 import * as fs from 'fs';
 
 import commander = require('commander');

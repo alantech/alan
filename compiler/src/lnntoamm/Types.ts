@@ -269,7 +269,17 @@ class Opaque extends Type {
   }
 
   instance(): Type {
-    return this;
+    const genNames = Object.keys(this.generics);
+    if (genNames.length === 0) {
+      // minor optimization: if there's no generics then we
+      // keep the same JS object to reduce the number of allocs
+      return this;
+    }
+    const instance = new Opaque(this.name, genNames);
+    for (let name of genNames) {
+      instance.generics[name] = this.generics[name].instance();
+    }
+    return instance;
   }
 
   isFixed(): boolean {
@@ -381,7 +391,7 @@ export class FunctionType extends Type {
     this.retTy = retTy;
   }
 
-  static matrixSelect(fns: Fn[], args: Type[], scope: Scope): [Fn, Type][] {
+  static matrixSelect(fns: Fn[], args: Type[], scope: Scope): [Fn, [Type[], Type]][] {
     const originalLength = fns.length;
     // remove any fns that shouldn't apply
     const callTy = new FunctionType(new NulLP(), args, Type.generate());
@@ -389,8 +399,14 @@ export class FunctionType extends Type {
     // if it's 0-arity then all we have to do is grab the retTy of the fn
     if (args.length === 0) {
       return fns.reduce(
-        (fns, fn) => [...fns, [fn, fn.retTy.instance()]],
-        new Array<[Fn, Type]>(),
+        (fns, fn) => [
+          ...fns,
+          [fn, [
+            fn.params.map(p => p.ty.instance()),
+            fn.retTy.instance(),
+          ]],
+        ],
+        new Array<[Fn, [Type[], Type]]>(),
       );
     }
     // and now to generate the matrix
@@ -403,7 +419,7 @@ export class FunctionType extends Type {
     // the weight of a particular function is computed by the sum
     // of the indices in each dimension, with the highest sum
     // having the greatest preference
-    const fnsByWeight = new Map<number, [Fn, Type][]>();
+    const fnsByWeight = new Map<number, [Fn, [Type[], Type]][]>();
     const indices = matrix.map(() => 0);
     // keep it as for instead of while for debugging reasons
     for (let i = 0; ; i++) {
@@ -412,13 +428,13 @@ export class FunctionType extends Type {
       const fnsForWeight = fnsByWeight.get(weight) || [];
       fnsForWeight.push(
         ...fns.reduce((fns, fn) => {
-          const retTy = fn.resultTyFor(argTys, scope);
+          const retTy = fn.signatureFor(argTys, scope);
           if (retTy === null) {
             return fns;
           } else {
-            return [...fns, [fn, retTy] as [Fn, Type]];
+            return [...fns, [fn, retTy] as [Fn, [Type[], Type]]];
           }
-        }, new Array<[Fn, Type]>()),
+        }, new Array<[Fn, [Type[], Type]]>()),
       );
       fnsByWeight.set(weight, fnsForWeight);
       if (
@@ -452,7 +468,7 @@ export class FunctionType extends Type {
           fns.findIndex(([fn, _retTy]) => fn === weightedFn) === -1,
       );
       return [...fns, ...weightFns];
-    }, new Array<[Fn, Type]>());
+    }, new Array<[Fn, [Type[], Type]]>());
     if (ret.length > originalLength || ret.length === 0) {
       console.log('~~~ ERROR');
       console.log('original: ', originalLength);
@@ -664,7 +680,7 @@ abstract class Has extends Type {
     return false;
   }
 
-  static method(method: HasMethod, scope: Scope, ty: Type): [Fn, Type][] {
+  static method(method: HasMethod, scope: Scope, ty: Type): [Fn, [Type[], Type]][] {
     const fns = scope.get(method.name);
     if (!isFnArray(fns)) {
       return [];
@@ -885,7 +901,7 @@ class Interface extends Type {
   methods: HasMethod[];
   operators: HasOperator[];
   tempDelegate: Type | null;
-  private isDuped: boolean;
+  isDuped: boolean;
 
   get ammName(): string {
     if (this.tempDelegate) {
@@ -1073,7 +1089,7 @@ class Interface extends Type {
 
   tempConstrain(that: Type, scope: Scope) {
     if (this === that || this.eq(that)) {
-      return;
+      // do nothing
     } else if (
       that instanceof Interface &&
       this.fields.every(f => that.compatibleWithConstraint(f, scope)) &&
@@ -1092,20 +1108,17 @@ class Interface extends Type {
       }
     } else if (this.compatibleWithConstraint(that, scope)) {
       if (this.tempDelegate !== null) {
-        this.tempDelegate.tempConstrain(that, scope);
+        if (this.tempDelegate instanceof Interface && !(this.tempDelegate instanceof Generated)) {
+          this.tempDelegate.tempConstrain(that, scope);
+        } else {
+          this.tempDelegate.constrain(that, scope);
+        }
       } else {
         this.tempDelegate = that;
       }
+    } else {
+      throw new Error(`type ${this.ammName} is not compatible with ${that.ammName}`);
     }
-    // if (this.tempDelegate !== null && !this.tempDelegate.eq(that)) {
-    //   console.log('~~~~~~~~');
-    //   console.log(((this as unknown) as {stack: string}).stack);
-    //   console.log('this:', this, '(already', this.tempDelegate, ')');
-    //   console.log('that:', that);
-    //   throw new Error('interface type is already constrained');
-    // }
-    // Error.captureStackTrace(this);
-    // this.tempDelegate = that;
   }
 
   resetTemp() {
@@ -1206,11 +1219,15 @@ class Generated extends Interface {
     } else if (to instanceof HasField) {
       this.fields.push(to);
     } else if (to instanceof Interface) {
-      this.fields.push(...to.fields);
-      this.methods.push(...to.methods);
-      this.operators.push(...to.operators);
-      if (to instanceof Generated && to.delegate !== null) {
-        this.delegate = to.delegate;
+      if (to.isDuped) {
+        this.delegate = to;
+      } else {
+        this.fields.push(...to.fields);
+        this.methods.push(...to.methods);
+        this.operators.push(...to.operators);
+        if (to instanceof Generated && to.delegate !== null) {
+          this.delegate = to.delegate;
+        }
       }
     } else {
       this.delegate = to;
