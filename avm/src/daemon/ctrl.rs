@@ -650,6 +650,8 @@ async fn dsmrun_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
       // Also grab the mutation to the datastore value and re-insert it
       let mut newds = HandlerMemory::new(None, 1)?;
       HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START + 1, &mut newds, 0)?;
+      eprintln!("ds: {:?}", ds.clone());
+      eprintln!("newds: {:?}", newds);
       drop(ds);
       DS.insert(nskey, newds);
     }
