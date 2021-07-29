@@ -1294,7 +1294,13 @@ impl ControlPort {
     hand_mem.register_out(with_addr, 1, CLOSURE_ARG_MEM_START)?;
     let orphan_hm = HandlerMemory::fork(hand_mem.clone())?; // TODO: This clone is a terrible idea
     let mut orphan_hm = orphan_hm.drop_parent()?;
-    HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut orphan_hm, CLOSURE_ARG_MEM_START + 2)?;
+    HandlerMemory::transfer(
+      &hand_mem,
+      CLOSURE_ARG_MEM_START,
+      &mut orphan_hm,
+      CLOSURE_ARG_MEM_START + 2,
+    )?;
+    eprintln!("orphan_hm {:?}", orphan_hm);
     let mut out = vec![];
     orphan_hm.to_pb().write_to_vec(&mut out).unwrap();
     let req_obj = req.body(Body::from(out))?;
