@@ -1259,7 +1259,10 @@ impl ControlPort {
     let vm = self.get_vm_for_key(nskey);
     // TODO: Use private ip if possible
     let url = format!("https://{}:4142/datastore/dsrwith", vm.public_ip_addr);
-    match self.dsrwith_inner(url, nskey, with_addr, subhandler_id, hand_mem).await {
+    match self
+      .dsrwith_inner(url, nskey, with_addr, subhandler_id, hand_mem)
+      .await
+    {
       Ok(hm) => hm,
       Err(_) => {
         let mut err_hm = HandlerMemory::new(None, 1).expect("what");
@@ -1287,9 +1290,11 @@ impl ControlPort {
     let req = req.header(cluster_secret.as_str(), "true");
     let req = req.header("nskey", nskey);
     let req = req.header("subhandler_id", format!("{}", subhandler_id));
-    let mut orphan_hm = HandlerMemory::fork(hand_mem.clone())?; // TODO: This clone is a terrible idea
-    orphan_hm.register_out(with_addr, 1, CLOSURE_ARG_MEM_START + 2)?;
-    //let orphan_hm = orphan_hm.drop_parent()?;
+    let mut hand_mem = hand_mem.clone(); // TODO: We need two of them!?
+    hand_mem.register_out(with_addr, 1, CLOSURE_ARG_MEM_START)?;
+    let orphan_hm = HandlerMemory::fork(hand_mem.clone())?; // TODO: This clone is a terrible idea
+    let mut orphan_hm = orphan_hm.drop_parent()?;
+    HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START, &mut orphan_hm, CLOSURE_ARG_MEM_START + 2)?;
     let mut out = vec![];
     orphan_hm.to_pb().write_to_vec(&mut out).unwrap();
     let req_obj = req.body(Body::from(out))?;
