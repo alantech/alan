@@ -172,6 +172,7 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
     "/datastore/keys" => handle_keys(),
     "/datastore/dsrrun" => handle_dsrrun(req).await,
     "/datastore/dsmrun" => handle_dsmrun(req).await,
+    "/datastore/dsrwith" => handle_dsrwith(req).await,
     path => {
       if *CONTROL_PORT_EXTENSIONS.get().unwrap() && path.starts_with("/app/") {
         handle_extensions(req).await
@@ -652,6 +653,58 @@ async fn dsmrun_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
       HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START + 1, &mut newds, 0)?;
       drop(ds);
       DS.insert(nskey, newds);
+    }
+    None => {
+      res_hm.push_fixed(0, 0);
+      res_hm.push_fractal(
+        0,
+        HandlerMemory::str_to_fractal("namespace-key pair not found"),
+      )?;
+    }
+  }
+  Ok(res_hm)
+}
+
+async fn handle_dsrwith(req: Request<Body>) -> Result<Response<Body>, Infallible> {
+  match dsrwith_inner(req).await {
+    Ok(hand_mem) => {
+      let mut out = vec![];
+      hand_mem.to_pb().write_to_vec(&mut out).unwrap();
+      Ok(Response::builder().status(200).body(out.into()).unwrap())
+    }
+    Err(err) => {
+      // TODO: What error message here? Also should this also be a valid HM out of here?
+      eprintln!("{:?}", err);
+      Ok(Response::builder().status(500).body("fail".into()).unwrap())
+    }
+  }
+}
+
+async fn dsrwith_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
+  let headers = req.headers();
+  let nskey = headers.get("nskey").map_or("N/A", |v| v.to_str().unwrap());
+  let maybe_hm = DS.get(nskey);
+  let subhandler_id = headers
+    .get("subhandler_id")
+    .map_or(0, |v| v.to_str().unwrap().parse().unwrap());
+  let subhandler = HandlerFragment::new(subhandler_id, 0);
+  let bytes = body::to_bytes(req.into_body()).await?;
+  let pb = protos::HandlerMemory::HandlerMemory::parse_from_bytes(&bytes)?;
+  let mut hm = HandlerMemory::from_pb(&pb)?;
+  let mut res_hm = HandlerMemory::new(None, 1)?;
+  res_hm.init_fractal(0)?;
+  match maybe_hm {
+    Some(ds) => {
+      HandlerMemory::transfer(&ds, 0, &mut hm, CLOSURE_ARG_MEM_START + 1)?;
+      let hm = subhandler.run(hm).await?;
+      res_hm.push_fixed(0, 1);
+      HandlerMemory::transfer(
+        &hm,
+        CLOSURE_ARG_MEM_START,
+        &mut res_hm,
+        CLOSURE_ARG_MEM_START,
+      );
+      res_hm.push_register(0, CLOSURE_ARG_MEM_START)?;
     }
     None => {
       res_hm.push_fixed(0, 0);
@@ -1187,6 +1240,56 @@ impl ControlPort {
     let req = req.header("subhandler_id", format!("{}", subhandler_id));
     let orphan_hm = HandlerMemory::fork(hand_mem.clone())?; // TODO: This clone is a terrible idea
     let orphan_hm = orphan_hm.drop_parent()?;
+    let mut out = vec![];
+    orphan_hm.to_pb().write_to_vec(&mut out).unwrap();
+    let req_obj = req.body(Body::from(out))?;
+    let mut res = self.client.request(req_obj).await?;
+    let bytes = hyper::body::to_bytes(res.body_mut()).await?;
+    let pb = protos::HandlerMemory::HandlerMemory::parse_from_bytes(&bytes)?;
+    Ok(HandlerMemory::from_pb(&pb)?)
+  }
+
+  pub async fn dsrwith(
+    self: &ControlPort,
+    nskey: &str,
+    with_addr: i64,
+    subhandler_id: i64,
+    hand_mem: &Arc<HandlerMemory>,
+  ) -> Arc<HandlerMemory> {
+    let vm = self.get_vm_for_key(nskey);
+    // TODO: Use private ip if possible
+    let url = format!("https://{}:4142/datastore/dsrwith", vm.public_ip_addr);
+    match self.dsrwith_inner(url, nskey, with_addr, subhandler_id, hand_mem).await {
+      Ok(hm) => hm,
+      Err(_) => {
+        let mut err_hm = HandlerMemory::new(None, 1).expect("what");
+        err_hm
+          .write_fractal(
+            CLOSURE_ARG_MEM_START,
+            &HandlerMemory::str_to_fractal("ERROR TODO"),
+          )
+          .expect("what");
+        err_hm
+      }
+    }
+  }
+
+  async fn dsrwith_inner(
+    self: &ControlPort,
+    url: String,
+    nskey: &str,
+    with_addr: i64,
+    subhandler_id: i64,
+    hand_mem: &Arc<HandlerMemory>,
+  ) -> DaemonResult<Arc<HandlerMemory>> {
+    let req = Request::builder().method("POST").uri(url);
+    let cluster_secret = CLUSTER_SECRET.get().unwrap().clone().unwrap();
+    let req = req.header(cluster_secret.as_str(), "true");
+    let req = req.header("nskey", nskey);
+    let req = req.header("subhandler_id", format!("{}", subhandler_id));
+    let mut orphan_hm = HandlerMemory::fork(hand_mem.clone())?; // TODO: This clone is a terrible idea
+    orphan_hm.register_out(with_addr, 1, CLOSURE_ARG_MEM_START + 2)?;
+    //let orphan_hm = orphan_hm.drop_parent()?;
     let mut out = vec![];
     orphan_hm.to_pb().write_to_vec(&mut out).unwrap();
     let req_obj = req.body(Body::from(out))?;
