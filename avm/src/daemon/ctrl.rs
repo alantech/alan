@@ -691,6 +691,7 @@ async fn dsrwith_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
   let bytes = body::to_bytes(req.into_body()).await?;
   let pb = protos::HandlerMemory::HandlerMemory::parse_from_bytes(&bytes)?;
   let mut hm = HandlerMemory::from_pb(&pb)?;
+  eprintln!("hm {:?}", hm);
   let mut res_hm = HandlerMemory::new(None, 1)?;
   res_hm.init_fractal(0)?;
   match maybe_hm {
