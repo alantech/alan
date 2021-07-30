@@ -1341,7 +1341,7 @@ class OneOf extends Type {
     let selected: Type;
     if (this.tempSelect !== null) {
       if (this.tempSelect.length === 0) {
-        throw new Error();
+        throw new Error('tempSelect length is 0');
       }
       selected = this.tempSelect[this.tempSelect.length - 1];
     } else if (this.selection.length > 0) {
@@ -1398,7 +1398,7 @@ class OneOf extends Type {
   }
 
   resetTemp() {
-    this.tempSelect = [];
+    this.tempSelect = null;
     this.selected = null;
   }
 

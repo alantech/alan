@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 
-Error.stackTraceLimit = Infinity
-
 import * as fs from 'fs';
 
 import commander = require('commander');
@@ -94,7 +92,7 @@ if (
     const end = Date.now();
     console.log(`Done in ${formatTime(end - start)}`);
   } catch (e) {
-    console.error(e);
+    console.error(e.message);
     process.exit(1);
   }
 } else {
