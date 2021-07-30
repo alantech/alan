@@ -1292,17 +1292,16 @@ impl ControlPort {
     let req = req.header("subhandler_id", format!("{}", subhandler_id));
     let mut hand_mem = hand_mem.clone(); // TODO: We need two of them!?
     hand_mem.register_out(with_addr, 1, CLOSURE_ARG_MEM_START)?;
-    let mut orphan_hm = HandlerMemory::fork(hand_mem.clone())?; // TODO: This clone is a terrible idea
-    //let mut orphan_hm = orphan_hm.drop_parent()?;
+    let mut out_hm = HandlerMemory::new(None, 2)?;
     HandlerMemory::transfer(
       &hand_mem,
       CLOSURE_ARG_MEM_START,
-      &mut orphan_hm,
+      &mut out_hm,
       CLOSURE_ARG_MEM_START + 2,
     )?;
-    eprintln!("orphan_hm {:?}", orphan_hm);
+    eprintln!("out_hm {:?}", out_hm);
     let mut out = vec![];
-    orphan_hm.to_pb().write_to_vec(&mut out).unwrap();
+    out_hm.to_pb().write_to_vec(&mut out).unwrap();
     let req_obj = req.body(Body::from(out))?;
     let mut res = self.client.request(req_obj).await?;
     let bytes = hyper::body::to_bytes(res.body_mut()).await?;
