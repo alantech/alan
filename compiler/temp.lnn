@@ -1,8 +1,16 @@
 from @std/app import start, print, exit
 
+// TODO: overridable interfaces?
+// interface Stringifiable {
+//   toString(Stringifiable): string
+// }
+
+fn quoteAndPrint(toQuote: Stringifiable) {
+  print("'" + toString(toQuote) + "'");
+}
+
 on start {
-  const a: int8 = 0;
-  const b: int8 = 1;
-  add(a, b).getOr(0).print();
-  emit exit a;
+  quoteAndPrint('Hello, World');
+  quoteAndPrint(5);
+  emit exit 0;
 }

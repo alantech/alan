@@ -251,6 +251,18 @@ class Opaque extends Type {
     }
   }
 
+  dupIfNotLocalInterface(): Type {
+    const genNames = Object.keys(this.generics);
+    if (genNames.length === 0) {
+      return this;
+    }
+    const duped = new Opaque(this.name, genNames);
+    for (let name of genNames) {
+      duped.generics[name] = (this.generics[name] ?? Type.generate()).dupIfNotLocalInterface();
+    }
+    return duped;
+  }
+
   eq(that: Equalable): boolean {
     if (!(that instanceof Opaque) || this.name !== that.name) {
       return false;

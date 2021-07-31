@@ -90,12 +90,241 @@ export fn toString(n: float64): string = f64str(n);
 export fn toString(n: string): string = n;
 export fn toString(n: bool): string = boolstr(n);
 
+export err // opcode with signature `fn err(string): Result<any>`
+export error // opcode with signature `fn error(string): Error`
+export getErr // opcode with signature `fn getErr(Result<any>, Error): Error`
+export fn getErr(result: Result<any>, default: string) = getErr(result, error(default));
+export isOk // opcode with signature `fn isOk(Result<any>): bool`
+export isErr // opcode with signature `fn isErr(Result<any>): bool`
+export noerr // opcode with signature `fn noerr(): Error`
 export fn ok(val: any): Result<any> = okR(val, 0);
 export fn ok(val: int8): Result<int8> = okR(val, 8);
+export fn ok(val: int16): Result<int16> = okR(val, 8);
+export fn ok(val: int32): Result<int32> = okR(val, 8);
+export fn ok(val: int64): Result<int64> = okR(val, 8);
+export fn ok(val: float32): Result<float32> = okR(val, 8);
+export fn ok(val: float64): Result<float64> = okR(val, 8);
 export fn getOr(res: Result<any>, default: any): any = getOrR(res, default);
+// TODO: impl `toString` and `getOrExit` once conditionals are possible
+
+export isSome // opcode with signature `fn isSome(Maybe<any>): bool`
+export isNone // opcode with signature `fn isNone(Maybe<any>): bool`
+export fn none(): Result<any> = noneM();
+export fn some(val: any): Result<any> = someM(val, 0);
+export fn some(val: int8): Result<int8> = someM(val, 8);
+export fn some(val: int16): Result<int16> = someM(val, 8);
+export fn some(val: int32): Result<int32> = someM(val, 8);
+export fn some(val: int64): Result<int64> = someM(val, 8);
+export fn some(val: float32): Result<float32> = someM(val, 8);
+export fn some(val: float64): Result<float64> = someM(val, 8);
+
+export fn abs(a: Result<int8>): Result<int8> = absi8(a);
+export fn abs(a: int8): Result<int8> = absi8(ok(a));
+export fn abs(a: Result<int16>): Result<int16> = absi16(a);
+export fn abs(a: int16): Result<int16> = absi16(ok(a));
+export fn abs(a: Result<int32>): Result<int32> = absi32(a);
+export fn abs(a: int32): Result<int32> = absi32(ok(a));
+export fn abs(a: Result<int64>): Result<int64> = absi64(a);
+export fn abs(a: int64): Result<int64> = absi64(ok(a));
+export fn abs(a: Result<float32>): Result<float32> = absf32(a);
+export fn abs(a: float32): Result<float32> = absf32(ok(a));
+export fn abs(a: Result<float64>): Result<float64> = absf64(a);
+export fn abs(a: float64): Result<float64> = absf64(ok(a));
+
+export fn neg(a: Result<int8>): Result<int8> = negi8(a);
+export fn neg(a: int8): Result<int8> = negi8(ok(a));
+export fn neg(a: Result<int16>): Result<int16> = negi16(a);
+export fn neg(a: int16): Result<int16> = negi16(ok(a));
+export fn neg(a: Result<int32>): Result<int32> = negi32(a);
+export fn neg(a: int32): Result<int32> = negi32(ok(a));
+export fn neg(a: Result<int64>): Result<int64> = negi64(a);
+export fn neg(a: int64): Result<int64> = negi64(ok(a));
+export fn neg(a: Result<float32>): Result<float32> = negf32(a);
+export fn neg(a: float32): Result<float32> = negf32(ok(a));
+export fn neg(a: Result<float64>): Result<float64> = negf64(a);
+export fn neg(a: float64): Result<float64> = negf64(ok(a));
 
 export fn add(a: Result<int8>, b: Result<int8>): Result<int8> = addi8(a, b);
-export fn add(a: int8, b: int8): Result<int8> = add(ok(a), ok(b));
+export fn add(a: Result<int8>, b: int8): Result<int8> = addi8(a, ok(b));
+export fn add(a: int8, b: Result<int8>): Result<int8> = addi8(ok(a), b);
+export fn add(a: int8, b: int8): Result<int8> = addi8(ok(a), ok(b));
+export fn add(a: Result<int16>, b: Result<int16>): Result<int16> = addi16(a, b);
+export fn add(a: Result<int16>, b: int16): Result<int16> = addi16(a, ok(b));
+export fn add(a: int16, b: Result<int16>): Result<int16> = addi16(ok(a), b);
+export fn add(a: int16, b: int16): Result<int16> = addi16(ok(a), ok(b));
+export fn add(a: Result<int32>, b: Result<int32>): Result<int32> = addi32(a, b);
+export fn add(a: Result<int32>, b: int32): Result<int32> = addi32(a, ok(b));
+export fn add(a: int32, b: Result<int32>): Result<int32> = addi32(ok(a), b);
+export fn add(a: int32, b: int32): Result<int32> = addi32(ok(a), ok(b));
+export fn add(a: Result<int64>, b: Result<int64>): Result<int64> = addi64(a, b);
+export fn add(a: Result<int64>, b: int64): Result<int64> = addi64(a, ok(b));
+export fn add(a: int64, b: Result<int64>): Result<int64> = addi64(ok(a), b);
+export fn add(a: int64, b: int64): Result<int64> = addi64(ok(a), ok(b));
+export fn add(a: Result<float32>, b: Result<float32>): Result<float32> = addf32(a, b);
+export fn add(a: Result<float32>, b: float32): Result<float32> = addf32(a, ok(b));
+export fn add(a: float32, b: Result<float32>): Result<float32> = addf32(ok(a), b);
+export fn add(a: float32, b: float32): Result<float32> = addf32(ok(a), ok(b));
+export fn add(a: Result<float64>, b: Result<float64>): Result<float64> = addf64(a, b);
+export fn add(a: Result<float64>, b: float64): Result<float64> = addf64(a, ok(b));
+export fn add(a: float64, b: Result<float64>): Result<float64> = addf64(ok(a), b);
+export fn add(a: float64, b: float64): Result<float64> = addf64(ok(a), ok(b));
+
+export fn sub(a: Result<int8>, b: Result<int8>): Result<int8> = subi8(a, b);
+export fn sub(a: Result<int8>, b: int8): Result<int8> = subi8(a, ok(b));
+export fn sub(a: int8, b: Result<int8>): Result<int8> = subi8(ok(a), b);
+export fn sub(a: int8, b: int8): Result<int8> = subi8(ok(a), ok(b));
+export fn sub(a: Result<int16>, b: Result<int16>): Result<int16> = subi16(a, b);
+export fn sub(a: Result<int16>, b: int16): Result<int16> = subi16(a, ok(b));
+export fn sub(a: int16, b: Result<int16>): Result<int16> = subi16(ok(a), b);
+export fn sub(a: int16, b: int16): Result<int16> = subi16(ok(a), ok(b));
+export fn sub(a: Result<int32>, b: Result<int32>): Result<int32> = subi32(a, b);
+export fn sub(a: Result<int32>, b: int32): Result<int32> = subi32(a, ok(b));
+export fn sub(a: int32, b: Result<int32>): Result<int32> = subi32(ok(a), b);
+export fn sub(a: int32, b: int32): Result<int32> = subi32(ok(a), ok(b));
+export fn sub(a: Result<int64>, b: Result<int64>): Result<int64> = subi64(a, b);
+export fn sub(a: Result<int64>, b: int64): Result<int64> = subi64(a, ok(b));
+export fn sub(a: int64, b: Result<int64>): Result<int64> = subi64(ok(a), b);
+export fn sub(a: int64, b: int64): Result<int64> = subi64(ok(a), ok(b));
+export fn sub(a: Result<float32>, b: Result<float32>): Result<float32> = subf32(a, b);
+export fn sub(a: Result<float32>, b: float32): Result<float32> = subf32(a, ok(b));
+export fn sub(a: float32, b: Result<float32>): Result<float32> = subf32(ok(a), b);
+export fn sub(a: float32, b: float32): Result<float32> = subf32(ok(a), ok(b));
+export fn sub(a: Result<float64>, b: Result<float64>): Result<float64> = subf64(a, b);
+export fn sub(a: Result<float64>, b: float64): Result<float64> = subf64(a, ok(b));
+export fn sub(a: float64, b: Result<float64>): Result<float64> = subf64(ok(a), b);
+export fn sub(a: float64, b: float64): Result<float64> = subf64(ok(a), ok(b));
+
+export fn mul(a: Result<int8>, b: Result<int8>): Result<int8> = muli8(a, b);
+export fn mul(a: Result<int8>, b: int8): Result<int8> = muli8(a, ok(b));
+export fn mul(a: int8, b: Result<int8>): Result<int8> = muli8(ok(a), b);
+export fn mul(a: int8, b: int8): Result<int8> = muli8(ok(a), ok(b));
+export fn mul(a: Result<int16>, b: Result<int16>): Result<int16> = muli16(a, b);
+export fn mul(a: Result<int16>, b: int16): Result<int16> = muli16(a, ok(b));
+export fn mul(a: int16, b: Result<int16>): Result<int16> = muli16(ok(a), b);
+export fn mul(a: int16, b: int16): Result<int16> = muli16(ok(a), ok(b));
+export fn mul(a: Result<int32>, b: Result<int32>): Result<int32> = muli32(a, b);
+export fn mul(a: Result<int32>, b: int32): Result<int32> = muli32(a, ok(b));
+export fn mul(a: int32, b: Result<int32>): Result<int32> = muli32(ok(a), b);
+export fn mul(a: int32, b: int32): Result<int32> = muli32(ok(a), ok(b));
+export fn mul(a: Result<int64>, b: Result<int64>): Result<int64> = muli64(a, b);
+export fn mul(a: Result<int64>, b: int64): Result<int64> = muli64(a, ok(b));
+export fn mul(a: int64, b: Result<int64>): Result<int64> = muli64(ok(a), b);
+export fn mul(a: int64, b: int64): Result<int64> = muli64(ok(a), ok(b));
+export fn mul(a: Result<float32>, b: Result<float32>): Result<float32> = mulf32(a, b);
+export fn mul(a: Result<float32>, b: float32): Result<float32> = mulf32(a, ok(b));
+export fn mul(a: float32, b: Result<float32>): Result<float32> = mulf32(ok(a), b);
+export fn mul(a: float32, b: float32): Result<float32> = mulf32(ok(a), ok(b));
+export fn mul(a: Result<float64>, b: Result<float64>): Result<float64> = mulf64(a, b);
+export fn mul(a: Result<float64>, b: float64): Result<float64> = mulf64(a, ok(b));
+export fn mul(a: float64, b: Result<float64>): Result<float64> = mulf64(ok(a), b);
+export fn mul(a: float64, b: float64): Result<float64> = mulf64(ok(a), ok(b));
+
+export fn div(a: Result<int8>, b: Result<int8>): Result<int8> = divi8(a, b);
+export fn div(a: Result<int8>, b: int8): Result<int8> = divi8(a, ok(b));
+export fn div(a: int8, b: Result<int8>): Result<int8> = divi8(ok(a), b);
+export fn div(a: int8, b: int8): Result<int8> = divi8(ok(a), ok(b));
+export fn div(a: Result<int16>, b: Result<int16>): Result<int16> = divi16(a, b);
+export fn div(a: Result<int16>, b: int16): Result<int16> = divi16(a, ok(b));
+export fn div(a: int16, b: Result<int16>): Result<int16> = divi16(ok(a), b);
+export fn div(a: int16, b: int16): Result<int16> = divi16(ok(a), ok(b));
+export fn div(a: Result<int32>, b: Result<int32>): Result<int32> = divi32(a, b);
+export fn div(a: Result<int32>, b: int32): Result<int32> = divi32(a, ok(b));
+export fn div(a: int32, b: Result<int32>): Result<int32> = divi32(ok(a), b);
+export fn div(a: int32, b: int32): Result<int32> = divi32(ok(a), ok(b));
+export fn div(a: Result<int64>, b: Result<int64>): Result<int64> = divi64(a, b);
+export fn div(a: Result<int64>, b: int64): Result<int64> = divi64(a, ok(b));
+export fn div(a: int64, b: Result<int64>): Result<int64> = divi64(ok(a), b);
+export fn div(a: int64, b: int64): Result<int64> = divi64(ok(a), ok(b));
+export fn div(a: Result<float32>, b: Result<float32>): Result<float32> = divf32(a, b);
+export fn div(a: Result<float32>, b: float32): Result<float32> = divf32(a, ok(b));
+export fn div(a: float32, b: Result<float32>): Result<float32> = divf32(ok(a), b);
+export fn div(a: float32, b: float32): Result<float32> = divf32(ok(a), ok(b));
+export fn div(a: Result<float64>, b: Result<float64>): Result<float64> = divf64(a, b);
+export fn div(a: Result<float64>, b: float64): Result<float64> = divf64(a, ok(b));
+export fn div(a: float64, b: Result<float64>): Result<float64> = divf64(ok(a), b);
+export fn div(a: float64, b: float64): Result<float64> = divf64(ok(a), ok(b));
+
+// TODO: enable Result-wrapped params when conditionals are enabled
+export fn mod(a: int8, b: int8): int8 = modi8(ok(a));
+export fn mod(a: int16, b: int16): int16 = modi16(ok(a));
+export fn mod(a: int32, b: int32): int32 = modi32(ok(a));
+export fn mod(a: int64, b: int64): int64 = modi64(ok(a));
+export fn mod(a: float32, b: float32): float32 = modf32(ok(a));
+export fn mod(a: float64, b: float64): float64 = modf64(ok(a));
+
+export fn pow(a: Result<int8>, b: Result<int8>): Result<int8> = powi8(a, b);
+export fn pow(a: Result<int8>, b: int8): Result<int8> = powi8(a, ok(b));
+export fn pow(a: int8, b: Result<int8>): Result<int8> = powi8(ok(a), b);
+export fn pow(a: int8, b: int8): Result<int8> = powi8(ok(a), ok(b));
+export fn pow(a: Result<int16>, b: Result<int16>): Result<int16> = powi16(a, b);
+export fn pow(a: Result<int16>, b: int16): Result<int16> = powi16(a, ok(b));
+export fn pow(a: int16, b: Result<int16>): Result<int16> = powi16(ok(a), b);
+export fn pow(a: int16, b: int16): Result<int16> = powi16(ok(a), ok(b));
+export fn pow(a: Result<int32>, b: Result<int32>): Result<int32> = powi32(a, b);
+export fn pow(a: Result<int32>, b: int32): Result<int32> = powi32(a, ok(b));
+export fn pow(a: int32, b: Result<int32>): Result<int32> = powi32(ok(a), b);
+export fn pow(a: int32, b: int32): Result<int32> = powi32(ok(a), ok(b));
+export fn pow(a: Result<int64>, b: Result<int64>): Result<int64> = powi64(a, b);
+export fn pow(a: Result<int64>, b: int64): Result<int64> = powi64(a, ok(b));
+export fn pow(a: int64, b: Result<int64>): Result<int64> = powi64(ok(a), b);
+export fn pow(a: int64, b: int64): Result<int64> = powi64(ok(a), ok(b));
+export fn pow(a: Result<float32>, b: Result<float32>): Result<float32> = powf32(a, b);
+export fn pow(a: Result<float32>, b: float32): Result<float32> = powf32(a, ok(b));
+export fn pow(a: float32, b: Result<float32>): Result<float32> = powf32(ok(a), b);
+export fn pow(a: float32, b: float32): Result<float32> = powf32(ok(a), ok(b));
+export fn pow(a: Result<float64>, b: Result<float64>): Result<float64> = powf64(a, b);
+export fn pow(a: Result<float64>, b: float64): Result<float64> = powf64(a, ok(b));
+export fn pow(a: float64, b: Result<float64>): Result<float64> = powf64(ok(a), b);
+export fn pow(a: float64, b: float64): Result<float64> = powf64(ok(a), ok(b));
+
+export fn sqrt(a: Result<float32>, b: Result<float32>): Result<float32> = sqrtf32(a, b);
+export fn sqrt(a: Result<float32>, b: float32): Result<float32> = sqrtf32(a, ok(b));
+export fn sqrt(a: float32, b: Result<float32>): Result<float32> = sqrtf32(ok(a), b);
+export fn sqrt(a: float32, b: float32): Result<float32> = sqrtf32(ok(a), ok(b));
+export fn sqrt(a: Result<float64>, b: Result<float64>): Result<float64> = sqrtf64(a, b);
+export fn sqrt(a: Result<float64>, b: float64): Result<float64> = sqrtf64(a, ok(b));
+export fn sqrt(a: float64, b: Result<float64>): Result<float64> = sqrtf64(ok(a), b);
+export fn sqrt(a: float64, b: float64): Result<float64> = sqrtf64(ok(a), ok(b));
+
+// TODO: enable Result-wrapped params when conditionals are enabled
+export fn add(a: int8, b: int8): int8 = addi8(ok(a));
+export fn add(a: int16, b: int16): int16 = addi16(ok(a));
+export fn add(a: int32, b: int32): int32 = addi32(ok(a));
+export fn add(a: int64, b: int64): int64 = addi64(ok(a));
+export fn add(a: float32, b: float32): float32 = addf32(ok(a));
+export fn add(a: float64, b: float64): float64 = addf64(ok(a));
+
+// TODO: enable Result-wrapped params when conditionals are enabled
+export fn sub(a: int8, b: int8): int8 = subi8(ok(a));
+export fn sub(a: int16, b: int16): int16 = subi16(ok(a));
+export fn sub(a: int32, b: int32): int32 = subi32(ok(a));
+export fn sub(a: int64, b: int64): int64 = subi64(ok(a));
+export fn sub(a: float32, b: float32): float32 = subf32(ok(a));
+export fn sub(a: float64, b: float64): float64 = subf64(ok(a));
+
+// TODO: enable Result-wrapped params when conditionals are enabled
+export fn mul(a: int8, b: int8): int8 = muli8(ok(a));
+export fn mul(a: int16, b: int16): int16 = muli16(ok(a));
+export fn mul(a: int32, b: int32): int32 = muli32(ok(a));
+export fn mul(a: int64, b: int64): int64 = muli64(ok(a));
+export fn mul(a: float32, b: float32): float32 = mulf32(ok(a));
+export fn mul(a: float64, b: float64): float64 = mulf64(ok(a));
+
+// TODO: enable Result-wrapped params when conditionals are enabled
+export fn div(a: int8, b: int8): int8 = divi8(ok(a));
+export fn div(a: int16, b: int16): int16 = divi16(ok(a));
+export fn div(a: int32, b: int32): int32 = divi32(ok(a));
+export fn div(a: int64, b: int64): int64 = divi64(ok(a));
+export fn div(a: float32, b: float32): float32 = divf32(ok(a));
+export fn div(a: float64, b: float64): float64 = divf64(ok(a));
+
+// TODO: enable Result-wrapped params when conditionals are enabled
+export fn pow(a: int8, b: int8): int8 = powi8(ok(a));
+export fn pow(a: int16, b: int16): int16 = powi16(ok(a));
+export fn pow(a: int32, b: int32): int32 = powi32(ok(a));
+export fn pow(a: int64, b: int64): int64 = powi64(ok(a));
+export fn pow(a: float32, b: float32): float32 = powf32(ok(a));
+export fn pow(a: float64, b: float64): float64 = powf64(ok(a));
 
 export fn eq(a: int8, b: int8): bool = eqi8(a, b);
 export fn eq(a: int16, b: int16): bool = eqi16(a, b);

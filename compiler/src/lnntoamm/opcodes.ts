@@ -25,12 +25,16 @@ const load = (): void => {
     float64: [],
     bool: [],
     string: [],
+    // Array: ['T'],
+    Error: [],
+    Maybe: ['T'],
     Result: ['T'],
   }).forEach(([name, generics]: [string, string[]]) => {
     __opcodes.put(name, Type.opaque(name, generics));
   });
 
   __opcodes.put('any', Type.interface('any'));
+  __opcodes.put('anythingElse', Type.interface('anythingElse'));
 
   Object.entries({
     start: 'void',
@@ -177,14 +181,122 @@ const load = (): void => {
     norbool: [{ a: 'bool', b: 'bool' }, 'bool'],
     xnorboo: [{ a: 'bool', b: 'bool' }, 'bool'],
 
+    absi8: [{ a: 'Result<int8>' }, 'Result<int8>'],
+    absi16: [{ a: 'Result<int16>' }, 'Result<int16>'],
+    absi32: [{ a: 'Result<int32>' }, 'Result<int32>'],
+    absi64: [{ a: 'Result<int64>' }, 'Result<int64>'],
+    absf32: [{ a: 'Result<float32>' }, 'Result<float32>'],
+    absf64: [{ a: 'Result<float64>' }, 'Result<float64>'],
+
+    negi8: [{ a: 'Result<int8>' }, 'Result<int8>'],
+    negi16: [{ a: 'Result<int16>' }, 'Result<int16>'],
+    negi32: [{ a: 'Result<int32>' }, 'Result<int32>'],
+    negi64: [{ a: 'Result<int64>' }, 'Result<int64>'],
+    negf32: [{ a: 'Result<float32>' }, 'Result<float32>'],
+    negf64: [{ a: 'Result<float64>' }, 'Result<float64>'],
+
     addi8: [{ a: 'Result<int8>', b: 'Result<int8>' }, 'Result<int8>'],
+    addi16: [{ a: 'Result<int16>', b: 'Result<int16>' }, 'Result<int16>'],
+    addi32: [{ a: 'Result<int32>', b: 'Result<int32>' }, 'Result<int32>'],
+    addi64: [{ a: 'Result<int64>', b: 'Result<int64>' }, 'Result<int64>'],
+    addf32: [{ a: 'Result<float32>', b: 'Result<float32>' }, 'Result<float32>'],
+    addf64: [{ a: 'Result<float64>', b: 'Result<float64>' }, 'Result<float64>'],
+
+    subi8: [{ a: 'Result<int8>', b: 'Result<int8>' }, 'Result<int8>'],
+    subi16: [{ a: 'Result<int16>', b: 'Result<int16>' }, 'Result<int16>'],
+    subi32: [{ a: 'Result<int32>', b: 'Result<int32>' }, 'Result<int32>'],
+    subi64: [{ a: 'Result<int64>', b: 'Result<int64>' }, 'Result<int64>'],
+    subf32: [{ a: 'Result<float32>', b: 'Result<float32>' }, 'Result<float32>'],
+    subf64: [{ a: 'Result<float64>', b: 'Result<float64>' }, 'Result<float64>'],
+
+    muli8: [{ a: 'Result<int8>', b: 'Result<int8>' }, 'Result<int8>'],
+    muli16: [{ a: 'Result<int16>', b: 'Result<int16>' }, 'Result<int16>'],
+    muli32: [{ a: 'Result<int32>', b: 'Result<int32>' }, 'Result<int32>'],
+    muli64: [{ a: 'Result<int64>', b: 'Result<int64>' }, 'Result<int64>'],
+    mulf32: [{ a: 'Result<float32>', b: 'Result<float32>' }, 'Result<float32>'],
+    mulf64: [{ a: 'Result<float64>', b: 'Result<float64>' }, 'Result<float64>'],
+
+    divi8: [{ a: 'Result<int8>', b: 'Result<int8>' }, 'Result<int8>'],
+    divi16: [{ a: 'Result<int16>', b: 'Result<int16>' }, 'Result<int16>'],
+    divi32: [{ a: 'Result<int32>', b: 'Result<int32>' }, 'Result<int32>'],
+    divi64: [{ a: 'Result<int64>', b: 'Result<int64>' }, 'Result<int64>'],
+    divf32: [{ a: 'Result<float32>', b: 'Result<float32>' }, 'Result<float32>'],
+    divf64: [{ a: 'Result<float64>', b: 'Result<float64>' }, 'Result<float64>'],
+
+    modi8: [{ a: 'int8', b: 'int8' }, 'int8'],
+    modi16: [{ a: 'int16', b: 'int16' }, 'int16'],
+    modi32: [{ a: 'int32', b: 'int32' }, 'int32'],
+    modi64: [{ a: 'int64', b: 'int64' }, 'int64'],
+    modf32: [{ a: 'float32', b: 'float32' }, 'float32'],
+    modf64: [{ a: 'float64', b: 'float64' }, 'float64'],
+
+    powi8: [{ a: 'Result<int8>', b: 'Result<int8>' }, 'Result<int8>'],
+    powi16: [{ a: 'Result<int16>', b: 'Result<int16>' }, 'Result<int16>'],
+    powi32: [{ a: 'Result<int32>', b: 'Result<int32>' }, 'Result<int32>'],
+    powi64: [{ a: 'Result<int64>', b: 'Result<int64>' }, 'Result<int64>'],
+    powf32: [{ a: 'Result<float32>', b: 'Result<float32>' }, 'Result<float32>'],
+    powf64: [{ a: 'Result<float64>', b: 'Result<float64>' }, 'Result<float64>'],
+
+    sqrtf32: [{ a: 'Result<float32>', b: 'Result<float32>' }, 'Result<float32>'],
+    sqrtf64: [{ a: 'Result<float64>', b: 'Result<float64>' }, 'Result<float64>'],
+
+    saddi8: [{ a: 'int8', b: 'int8' }, 'int8'],
+    saddi16: [{ a: 'int16', b: 'int16' }, 'int16'],
+    saddi32: [{ a: 'int32', b: 'int32' }, 'int32'],
+    saddi64: [{ a: 'int64', b: 'int64' }, 'int64'],
+    saddf32: [{ a: 'float32', b: 'float32' }, 'float32'],
+    saddf64: [{ a: 'float64', b: 'float64' }, 'float64'],
+
+    ssubi8: [{ a: 'int8', b: 'int8' }, 'int8'],
+    ssubi16: [{ a: 'int16', b: 'int16' }, 'int16'],
+    ssubi32: [{ a: 'int32', b: 'int32' }, 'int32'],
+    ssubi64: [{ a: 'int64', b: 'int64' }, 'int64'],
+    ssubf32: [{ a: 'float32', b: 'float32' }, 'float32'],
+    ssubf64: [{ a: 'float64', b: 'float64' }, 'float64'],
+
+    smuli8: [{ a: 'int8', b: 'int8' }, 'int8'],
+    smuli16: [{ a: 'int16', b: 'int16' }, 'int16'],
+    smuli32: [{ a: 'int32', b: 'int32' }, 'int32'],
+    smuli64: [{ a: 'int64', b: 'int64' }, 'int64'],
+    smulf32: [{ a: 'float32', b: 'float32' }, 'float32'],
+    smulf64: [{ a: 'float64', b: 'float64' }, 'float64'],
+
+    sdivi8: [{ a: 'int8', b: 'int8' }, 'int8'],
+    sdivi16: [{ a: 'int16', b: 'int16' }, 'int16'],
+    sdivi32: [{ a: 'int32', b: 'int32' }, 'int32'],
+    sdivi64: [{ a: 'int64', b: 'int64' }, 'int64'],
+    sdivf32: [{ a: 'float32', b: 'float32' }, 'float32'],
+    sdivf64: [{ a: 'float64', b: 'float64' }, 'float64'],
+
+    spowi8: [{ a: 'int8', b: 'int8' }, 'int8'],
+    spowi16: [{ a: 'int16', b: 'int16' }, 'int16'],
+    spowi32: [{ a: 'int32', b: 'int32' }, 'int32'],
+    spowi64: [{ a: 'int64', b: 'int64' }, 'int64'],
+    spowf32: [{ a: 'float32', b: 'float32' }, 'float32'],
+    spowf64: [{ a: 'float64', b: 'float64' }, 'float64'],
+
+    someM: [{ a: 'any', s: 'int64' }, 'Maybe<any>'],
+    noneM: [{}, 'Maybe<any>'],
+    isSome: [{ a: 'Maybe<any>' }, 'bool'],
+    isNone: [{ a: 'Maybe<any>' }, 'bool'],
+    getOrM: [{ a: 'Maybe<any>', d: 'any' }, 'any'],
+    getMaybe: [{ a: 'Maybe<any>' }, 'any'],
 
     okR: [{ a: 'any', s: 'int64' }, 'Result<any>'],
+    err: [{ a: 'string' }, 'Result<any>'],
+    error: [{ a: 'string' }, 'Error'],
+    isOk: [{ a: 'Result<any>' }, 'bool'],
+    isErr: [{ a: 'Result<any>' }, 'bool'],
     getOrR: [{ a: 'Result<any>', d: 'any' }, 'any'],
+    getR: [{ a: 'Result<any>' }, 'any'],
+    getErr: [{ a: 'Result<any>', b: 'Error' }, 'Error'],
+    noerr: [{}, 'Error'],
+    errstr: [{ a: 'Error' }, 'string'],
 
     waitop: [{ t: 'int64' }, 'void'],
 
     catstr: [{ a: 'string', b: 'string' }, 'string'],
+    indstr: [{ a: 'string', b: 'string' }, 'Result<int64>'],
     repstr: [{ s: 'string', n: 'int64' }, 'string'],
     matches: [{ a: 'string', b: 'string' }, 'bool'],
     lenstr: [{ s: 'string' }, 'int64'],
