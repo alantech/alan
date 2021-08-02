@@ -268,8 +268,8 @@ export class OpcodeFn extends Fn {
     const retTy = Type.getFromTypename(retTyName, scopeForOpcode);
     if (retTy === null) {
       throw new Error('a');
-    } else if (retTy.dupIfNotLocalInterface()) {
-      throw new Error(`please don't make an opcode with type erasure...`);
+    } else if (retTy.dupIfNotLocalInterface() !== null) {
+      throw new Error(`please don't make an opcode with type erasure (like ${name})...`);
     }
     // don't use scopeForOpcode so it gets GC'd, it's not necessary
     super(new NulLP(), __opcodes, name, params, retTy, []);

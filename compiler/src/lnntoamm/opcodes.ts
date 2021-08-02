@@ -276,14 +276,14 @@ const load = (): void => {
     spowf64: [{ a: 'float64', b: 'float64' }, 'float64'],
 
     someM: [{ a: 'any', s: 'int64' }, 'Maybe<any>'],
-    noneM: [{}, 'Maybe<any>'],
+    // noneM: [{}, 'Maybe<any>'],
     isSome: [{ a: 'Maybe<any>' }, 'bool'],
     isNone: [{ a: 'Maybe<any>' }, 'bool'],
     getOrM: [{ a: 'Maybe<any>', d: 'any' }, 'any'],
     getMaybe: [{ a: 'Maybe<any>' }, 'any'],
 
     okR: [{ a: 'any', s: 'int64' }, 'Result<any>'],
-    err: [{ a: 'string' }, 'Result<any>'],
+    // err: [{ a: 'string' }, 'Result<any>'],
     error: [{ a: 'string' }, 'Error'],
     isOk: [{ a: 'Result<any>' }, 'bool'],
     isErr: [{ a: 'Result<any>' }, 'bool'],
@@ -296,7 +296,7 @@ const load = (): void => {
     waitop: [{ t: 'int64' }, 'void'],
 
     catstr: [{ a: 'string', b: 'string' }, 'string'],
-    indstr: [{ a: 'string', b: 'string' }, 'Result<int64>'],
+    indstr: [{ a: 'string', b: 'string' }, 'Maybe<int64>'],
     repstr: [{ s: 'string', n: 'int64' }, 'string'],
     matches: [{ a: 'string', b: 'string' }, 'bool'],
     lenstr: [{ s: 'string' }, 'int64'],

@@ -1,48 +1,17 @@
-const _f51c7f84_b2ca_472f_8d59_67e78108154e: string = "Hello, World"
-const _79d54d8a_3459_4d92_9bb8_9719c0ded51e: string = "'"
-const _d5278f90_cb14_44a9_af25_c2fe245cd9b9: string = "\n"
-const _064f4274_e3c7_4502_b7bd_65cbdd8c95ff: float32 = 5
-const _dfb0a260_479f_428f_a162_cf989504e193: int8 = 0
+const _6f35883a_35c2_49bf_89ca_3b231918c9f4: int8 = 0
 event stdout: string
 event exit: int8
 event stderr: string
 on stderr fn (err: string): void {
-  let _ee9cc881_e6cb_4877_b1f4_8239832a2559: void = stderrp(err)
+  let _2b2c254b_c435_4a3e_a390_69c21224c741: void = stderrp(err)
 }
 on exit fn (status: int8): void {
-  let _fb2e8a34_bc08_4abf_a8d1_ef80d688c483: void = exitop(status)
+  let _cdce24f7_ea62_46f9_a64c_96e18e2e6800: void = exitop(status)
 }
 on stdout fn (out: string): void {
-  let _bcfd545b_f583_4e61_98a3_c35daad6a22a: void = stdoutp(out)
+  let _fc22c6f7_5599_4d64_b8dd_dda97764f8dc: void = stdoutp(out)
 }
 on _start fn (): void {
-  let _ecfa1ce7_9866_46c7_9943_48b4475dedc0: string = copystr(_f51c7f84_b2ca_472f_8d59_67e78108154e)
-  let _f994ec41_2251_43b0_a055_b27378dddf49: string = copystr(_79d54d8a_3459_4d92_9bb8_9719c0ded51e)
-  let _4500077a_fb9c_4272_895f_8c664a2849a6: string = refv(_ecfa1ce7_9866_46c7_9943_48b4475dedc0)
-  let _a0835e47_f24a_405c_b855_1ae48ac4281f: string = catstr(_f994ec41_2251_43b0_a055_b27378dddf49, _4500077a_fb9c_4272_895f_8c664a2849a6)
-  let _14cd5a1b_0fb7_4bc4_a74c_ed9d13399fec: string = refv(_a0835e47_f24a_405c_b855_1ae48ac4281f)
-  let _0643b99a_369e_4a18_9d71_aa3b67262b70: string = copystr(_79d54d8a_3459_4d92_9bb8_9719c0ded51e)
-  let _6584666f_cc71_465e_9e39_cf547d9b1f6e: string = catstr(_14cd5a1b_0fb7_4bc4_a74c_ed9d13399fec, _0643b99a_369e_4a18_9d71_aa3b67262b70)
-  let _4cd5d762_fb92_4e41_929d_ce19a0b8bfc6: string = refv(_6584666f_cc71_465e_9e39_cf547d9b1f6e)
-  let _f884324c_1271_4f86_aff1_470db1bdea87: string = refv(_4cd5d762_fb92_4e41_929d_ce19a0b8bfc6)
-  let _2ef0d6e3_8911_4de5_94d5_ce48bbe479bd: string = copystr(_d5278f90_cb14_44a9_af25_c2fe245cd9b9)
-  let _b627fb0e_987b_43ae_8ad6_46945abcfa10: string = catstr(_f884324c_1271_4f86_aff1_470db1bdea87, _2ef0d6e3_8911_4de5_94d5_ce48bbe479bd)
-  let _9fedee5d_3139_41eb_a19b_418477b2e2e4: string = refv(_b627fb0e_987b_43ae_8ad6_46945abcfa10)
-  let _ddd138f1_fc88_4ae0_a7ee_9147eef7f0be: void = stdoutp(_9fedee5d_3139_41eb_a19b_418477b2e2e4)
-  let _d2cdcea4_7dc0_473e_a762_98b9a06eba6f: float32 = copyf32(_064f4274_e3c7_4502_b7bd_65cbdd8c95ff)
-  let _bd839434_4e1b_42b1_8cc1_a9a767dcc967: string = copystr(_79d54d8a_3459_4d92_9bb8_9719c0ded51e)
-  let _0999c734_5956_4cd8_9795_8a91219ba04e: string = f32str(_d2cdcea4_7dc0_473e_a762_98b9a06eba6f)
-  let _40fee3bc_86d6_4057_b595_59a8894440ab: string = refv(_0999c734_5956_4cd8_9795_8a91219ba04e)
-  let _d0b6f9a7_b05e_4ca5_b836_95aa205ea52c: string = catstr(_bd839434_4e1b_42b1_8cc1_a9a767dcc967, _40fee3bc_86d6_4057_b595_59a8894440ab)
-  let _5bbc051b_cbaf_48d0_832d_7d44f82b4f42: string = refv(_d0b6f9a7_b05e_4ca5_b836_95aa205ea52c)
-  let _4e3e025c_51cb_4235_b3ab_39b127597db9: string = copystr(_79d54d8a_3459_4d92_9bb8_9719c0ded51e)
-  let _e36a93c6_aa26_4e84_98fb_3401f1804894: string = catstr(_5bbc051b_cbaf_48d0_832d_7d44f82b4f42, _4e3e025c_51cb_4235_b3ab_39b127597db9)
-  let _a49ad8fc_4d07_4bdb_a76f_424b508e4bae: string = refv(_e36a93c6_aa26_4e84_98fb_3401f1804894)
-  let _78ef11c0_3661_401f_8e68_712de6647b44: string = refv(_a49ad8fc_4d07_4bdb_a76f_424b508e4bae)
-  let _3bfa1849_928e_4c60_b962_6a9a330b815e: string = copystr(_d5278f90_cb14_44a9_af25_c2fe245cd9b9)
-  let _0d786bfa_1dda_485c_8376_fdb4df499056: string = catstr(_78ef11c0_3661_401f_8e68_712de6647b44, _3bfa1849_928e_4c60_b962_6a9a330b815e)
-  let _bfcd7ae5_1d0b_484c_b47b_a251b1f64e53: string = refv(_0d786bfa_1dda_485c_8376_fdb4df499056)
-  let _0627e5de_e203_41f0_b77c_fcfdd2094516: void = stdoutp(_bfcd7ae5_1d0b_484c_b47b_a251b1f64e53)
-  let _17f9cae0_4e97_4d49_bc75_d04936f3b100: int8 = copyi8(_dfb0a260_479f_428f_a162_cf989504e193)
-  emit exit _17f9cae0_4e97_4d49_bc75_d04936f3b100
+  let _2780960f_eca1_4a40_ac25_252d2f6ac29c: int8 = copyi8(_6f35883a_35c2_49bf_89ca_3b231918c9f4)
+  emit exit _2780960f_eca1_4a40_ac25_252d2f6ac29c
 }

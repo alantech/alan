@@ -254,11 +254,27 @@ class Opaque extends Type {
   dupIfNotLocalInterface(): Type {
     const genNames = Object.keys(this.generics);
     if (genNames.length === 0) {
-      return this;
+      return null;
     }
     const duped = new Opaque(this.name, genNames);
+    let isNothingNew = true;
     for (let name of genNames) {
-      duped.generics[name] = (this.generics[name] ?? Type.generate()).dupIfNotLocalInterface();
+      let tyVal: Type = null;
+      if (this.generics[name] !== null) {
+        const duped = this.generics[name].dupIfNotLocalInterface();
+        if (duped === null) {
+          tyVal = this.generics[name];
+        } else {
+          tyVal = duped;
+          isNothingNew = false;
+        }
+      } else {
+        tyVal = Type.generate();
+      }
+      duped.generics[name] = tyVal;
+    }
+    if (isNothingNew) {
+      return null;
     }
     return duped;
   }

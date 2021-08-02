@@ -90,7 +90,7 @@ export fn toString(n: float64): string = f64str(n);
 export fn toString(n: string): string = n;
 export fn toString(n: bool): string = boolstr(n);
 
-export err // opcode with signature `fn err(string): Result<any>`
+// export err // opcode with signature `fn err(string): Result<any>`
 export error // opcode with signature `fn error(string): Error`
 export getErr // opcode with signature `fn getErr(Result<any>, Error): Error`
 export fn getErr(result: Result<any>, default: string) = getErr(result, error(default));
@@ -109,14 +109,14 @@ export fn getOr(res: Result<any>, default: any): any = getOrR(res, default);
 
 export isSome // opcode with signature `fn isSome(Maybe<any>): bool`
 export isNone // opcode with signature `fn isNone(Maybe<any>): bool`
-export fn none(): Result<any> = noneM();
-export fn some(val: any): Result<any> = someM(val, 0);
-export fn some(val: int8): Result<int8> = someM(val, 8);
-export fn some(val: int16): Result<int16> = someM(val, 8);
-export fn some(val: int32): Result<int32> = someM(val, 8);
-export fn some(val: int64): Result<int64> = someM(val, 8);
-export fn some(val: float32): Result<float32> = someM(val, 8);
-export fn some(val: float64): Result<float64> = someM(val, 8);
+// export fn none(): Maybe<any> = noneM();
+export fn some(val: any): Maybe<any> = someM(val, 0);
+export fn some(val: int8): Maybe<int8> = someM(val, 8);
+export fn some(val: int16): Maybe<int16> = someM(val, 8);
+export fn some(val: int32): Maybe<int32> = someM(val, 8);
+export fn some(val: int64): Maybe<int64> = someM(val, 8);
+export fn some(val: float32): Maybe<float32> = someM(val, 8);
+export fn some(val: float64): Maybe<float64> = someM(val, 8);
 
 export fn abs(a: Result<int8>): Result<int8> = absi8(a);
 export fn abs(a: int8): Result<int8> = absi8(ok(a));
@@ -245,12 +245,12 @@ export fn div(a: float64, b: Result<float64>): Result<float64> = divf64(ok(a), b
 export fn div(a: float64, b: float64): Result<float64> = divf64(ok(a), ok(b));
 
 // TODO: enable Result-wrapped params when conditionals are enabled
-export fn mod(a: int8, b: int8): int8 = modi8(ok(a));
-export fn mod(a: int16, b: int16): int16 = modi16(ok(a));
-export fn mod(a: int32, b: int32): int32 = modi32(ok(a));
-export fn mod(a: int64, b: int64): int64 = modi64(ok(a));
-export fn mod(a: float32, b: float32): float32 = modf32(ok(a));
-export fn mod(a: float64, b: float64): float64 = modf64(ok(a));
+export fn mod(a: int8, b: int8): int8 = modi8(a, b);
+export fn mod(a: int16, b: int16): int16 = modi16(a, b);
+export fn mod(a: int32, b: int32): int32 = modi32(a, b);
+export fn mod(a: int64, b: int64): int64 = modi64(a, b);
+export fn mod(a: float32, b: float32): float32 = modf32(a, b);
+export fn mod(a: float64, b: float64): float64 = modf64(a, b);
 
 export fn pow(a: Result<int8>, b: Result<int8>): Result<int8> = powi8(a, b);
 export fn pow(a: Result<int8>, b: int8): Result<int8> = powi8(a, ok(b));
@@ -285,46 +285,6 @@ export fn sqrt(a: Result<float64>, b: Result<float64>): Result<float64> = sqrtf6
 export fn sqrt(a: Result<float64>, b: float64): Result<float64> = sqrtf64(a, ok(b));
 export fn sqrt(a: float64, b: Result<float64>): Result<float64> = sqrtf64(ok(a), b);
 export fn sqrt(a: float64, b: float64): Result<float64> = sqrtf64(ok(a), ok(b));
-
-// TODO: enable Result-wrapped params when conditionals are enabled
-export fn add(a: int8, b: int8): int8 = addi8(ok(a));
-export fn add(a: int16, b: int16): int16 = addi16(ok(a));
-export fn add(a: int32, b: int32): int32 = addi32(ok(a));
-export fn add(a: int64, b: int64): int64 = addi64(ok(a));
-export fn add(a: float32, b: float32): float32 = addf32(ok(a));
-export fn add(a: float64, b: float64): float64 = addf64(ok(a));
-
-// TODO: enable Result-wrapped params when conditionals are enabled
-export fn sub(a: int8, b: int8): int8 = subi8(ok(a));
-export fn sub(a: int16, b: int16): int16 = subi16(ok(a));
-export fn sub(a: int32, b: int32): int32 = subi32(ok(a));
-export fn sub(a: int64, b: int64): int64 = subi64(ok(a));
-export fn sub(a: float32, b: float32): float32 = subf32(ok(a));
-export fn sub(a: float64, b: float64): float64 = subf64(ok(a));
-
-// TODO: enable Result-wrapped params when conditionals are enabled
-export fn mul(a: int8, b: int8): int8 = muli8(ok(a));
-export fn mul(a: int16, b: int16): int16 = muli16(ok(a));
-export fn mul(a: int32, b: int32): int32 = muli32(ok(a));
-export fn mul(a: int64, b: int64): int64 = muli64(ok(a));
-export fn mul(a: float32, b: float32): float32 = mulf32(ok(a));
-export fn mul(a: float64, b: float64): float64 = mulf64(ok(a));
-
-// TODO: enable Result-wrapped params when conditionals are enabled
-export fn div(a: int8, b: int8): int8 = divi8(ok(a));
-export fn div(a: int16, b: int16): int16 = divi16(ok(a));
-export fn div(a: int32, b: int32): int32 = divi32(ok(a));
-export fn div(a: int64, b: int64): int64 = divi64(ok(a));
-export fn div(a: float32, b: float32): float32 = divf32(ok(a));
-export fn div(a: float64, b: float64): float64 = divf64(ok(a));
-
-// TODO: enable Result-wrapped params when conditionals are enabled
-export fn pow(a: int8, b: int8): int8 = powi8(ok(a));
-export fn pow(a: int16, b: int16): int16 = powi16(ok(a));
-export fn pow(a: int32, b: int32): int32 = powi32(ok(a));
-export fn pow(a: int64, b: int64): int64 = powi64(ok(a));
-export fn pow(a: float32, b: float32): float32 = powf32(ok(a));
-export fn pow(a: float64, b: float64): float64 = powf64(ok(a));
 
 export fn eq(a: int8, b: int8): bool = eqi8(a, b);
 export fn eq(a: int16, b: int16): bool = eqi16(a, b);

@@ -5,12 +5,12 @@ from @std/app import start, print, exit
 //   toString(Stringifiable): string
 // }
 
-fn quoteAndPrint(toQuote: Stringifiable) {
-  print("'" + toString(toQuote) + "'");
-}
+// fn quoteAndPrint(toQuote: Stringifiable) {
+//   print("'" + toString(toQuote) + "'");
+// }
 
 on start {
-  quoteAndPrint('Hello, World');
-  quoteAndPrint(5);
+  // quoteAndPrint('Hello, World');
+  // quoteAndPrint(5);
   emit exit 0;
 }
