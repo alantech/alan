@@ -91,7 +91,7 @@ Describe "Events"
       event aNumber: int64
 
       on aNumber fn(num: int64) {
-        ('I got a number! ' + num.toString()).print();
+        print('I got a number! ' + num.toString());
         emit exit 0;
       }
 
