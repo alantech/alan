@@ -1,7 +1,6 @@
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
-use std::os::unix::prelude::PermissionsExt;
 use std::process::{id, Command, Stdio};
 
 use tempdir::TempDir;
@@ -22,7 +21,10 @@ pub fn compile(source_file: &str, dest_file: &str, silent: bool) -> i32 {
   f.write_all(COMPILER).unwrap();
   // on unix systems we also have to set the permissions for the file
   // to mark it as executable
-  if cfg!(unix) {
+  #[cfg(unix)]
+  {
+    use std::os::unix::prelude::PermissionsExt;
+
     let metadata = f.metadata().unwrap();
     let mut permissions = metadata.permissions();
     permissions.set_mode(0o744);
