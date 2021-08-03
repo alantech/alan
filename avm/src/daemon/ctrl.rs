@@ -1269,6 +1269,7 @@ impl ControlPort {
     let vm = self.get_vm_for_key(nskey);
     // TODO: Use private ip if possible
     let url = format!("https://{}:4142/datastore/dsrwith", vm.public_ip_addr);
+    println!("Calling {}", url);
     match self
       .dsrwith_inner(url, nskey, with_addr, subhandler_id, hand_mem)
       .await
@@ -1295,14 +1296,23 @@ impl ControlPort {
     subhandler_id: i64,
     hand_mem: &Arc<HandlerMemory>,
   ) -> DaemonResult<Arc<HandlerMemory>> {
+    println!("a");
     let req = Request::builder().method("POST").uri(url);
+    println!("b");
     let cluster_secret = CLUSTER_SECRET.get().unwrap().clone().unwrap();
+    println!("c");
     let req = req.header(cluster_secret.as_str(), "true");
+    println!("d");
     let req = req.header("nskey", nskey);
+    println!("e");
     let req = req.header("subhandler_id", format!("{}", subhandler_id));
+    println!("f");
     let mut hand_mem = hand_mem.clone(); // TODO: We need two of them!?
+    println!("g");
     hand_mem.register_out(with_addr, 1, CLOSURE_ARG_MEM_START)?;
+    println!("h");
     let mut out_hm = HandlerMemory::new(None, 2)?;
+    println!("i");
     HandlerMemory::transfer(
       &hand_mem,
       CLOSURE_ARG_MEM_START,
@@ -1312,10 +1322,15 @@ impl ControlPort {
     println!("out_hm {:?}", out_hm);
     let mut out = vec![];
     out_hm.to_pb().write_to_vec(&mut out).unwrap();
+    println!("j");
     let req_obj = req.body(Body::from(out))?;
+    println!("k");
     let mut res = self.client.request(req_obj).await?;
+    println!("l");
     let bytes = hyper::body::to_bytes(res.body_mut()).await?;
+    println!("m");
     let pb = protos::HandlerMemory::HandlerMemory::parse_from_bytes(&bytes)?;
+    println!("n");
     Ok(HandlerMemory::from_pb(&pb)?)
   }
 
