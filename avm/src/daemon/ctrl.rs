@@ -681,26 +681,16 @@ async fn handle_dsrwith(req: Request<Body>) -> Result<Response<Body>, Infallible
 }
 
 async fn dsrwith_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
-  println!("1");
   let headers = req.headers();
-  println!("2");
   let nskey = headers.get("nskey").map_or("N/A", |v| v.to_str().unwrap());
-  println!("3");
   let maybe_hm = DS.get(nskey);
-  println!("4");
   let subhandler_id = headers
     .get("subhandler_id")
     .map_or(0, |v| v.to_str().unwrap().parse().unwrap());
-  println!("5");
   let subhandler = HandlerFragment::new(subhandler_id, 0);
-  println!("6");
   let bytes = body::to_bytes(req.into_body()).await?;
-  println!("7");
   let pb = protos::HandlerMemory::HandlerMemory::parse_from_bytes(&bytes)?;
-  println!("8");
   let mut hm = HandlerMemory::from_pb(&pb)?;
-  println!("9");
-  println!("hm {:?}", hm);
   let mut res_hm = HandlerMemory::new(None, 1)?;
   res_hm.init_fractal(0)?;
   match maybe_hm {
@@ -1275,8 +1265,7 @@ impl ControlPort {
       .await
     {
       Ok(hm) => hm,
-      Err(e) => {
-        eprintln!("err: {:?}", e);
+      Err(_) => {
         let mut err_hm = HandlerMemory::new(None, 1).expect("what");
         err_hm
           .write_fractal(
@@ -1297,41 +1286,26 @@ impl ControlPort {
     subhandler_id: i64,
     hand_mem: &Arc<HandlerMemory>,
   ) -> DaemonResult<Arc<HandlerMemory>> {
-    println!("a");
     let req = Request::builder().method("POST").uri(url);
-    println!("b");
     let cluster_secret = CLUSTER_SECRET.get().unwrap().clone().unwrap();
-    println!("c");
     let req = req.header(cluster_secret.as_str(), "true");
-    println!("d");
     let req = req.header("nskey", nskey);
-    println!("e");
     let req = req.header("subhandler_id", format!("{}", subhandler_id));
-    println!("f");
     let mut hand_mem = HandlerMemory::fork(hand_mem.clone())?; // TODO: We need two of them!?
-    println!("g");
     hand_mem.register_out(with_addr, 1, CLOSURE_ARG_MEM_START)?;
-    println!("h");
     let mut out_hm = HandlerMemory::new(None, 2)?;
-    println!("i");
     HandlerMemory::transfer(
       &hand_mem,
       CLOSURE_ARG_MEM_START,
       &mut out_hm,
       CLOSURE_ARG_MEM_START + 2,
     )?;
-    println!("out_hm {:?}", out_hm);
     let mut out = vec![];
     out_hm.to_pb().write_to_vec(&mut out).unwrap();
-    println!("j");
     let req_obj = req.body(Body::from(out))?;
-    println!("k");
     let mut res = self.client.request(req_obj).await?;
-    println!("l");
     let bytes = hyper::body::to_bytes(res.body_mut()).await?;
-    println!("m");
     let pb = protos::HandlerMemory::HandlerMemory::parse_from_bytes(&bytes)?;
-    println!("n");
     Ok(HandlerMemory::from_pb(&pb)?)
   }
 

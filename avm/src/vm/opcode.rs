@@ -3920,11 +3920,8 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       let ctrl_port = CONTROL_PORT_CHANNEL.get();
       match ctrl_port {
         Some(ctrl_port) => {
-          println!("Hi control port!");
           let ctrl_port = ctrl_port.borrow().clone();
-          println!("Going to call dsrwith!");
           let res_hm = ctrl_port.dsrwith(&nskey, args[0], args[1], &hand_mem).await;
-          println!("I'm done!");
           HandlerMemory::transfer(&res_hm, 0, &mut hand_mem, args[2])?;
         },
         None => {
