@@ -681,16 +681,25 @@ async fn handle_dsrwith(req: Request<Body>) -> Result<Response<Body>, Infallible
 }
 
 async fn dsrwith_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
+  eprintln!("1");
   let headers = req.headers();
+  eprintln!("2");
   let nskey = headers.get("nskey").map_or("N/A", |v| v.to_str().unwrap());
+  eprintln!("3");
   let maybe_hm = DS.get(nskey);
+  eprintln!("4");
   let subhandler_id = headers
     .get("subhandler_id")
     .map_or(0, |v| v.to_str().unwrap().parse().unwrap());
+  eprintln!("5");
   let subhandler = HandlerFragment::new(subhandler_id, 0);
+  eprintln!("6");
   let bytes = body::to_bytes(req.into_body()).await?;
+  eprintln!("7");
   let pb = protos::HandlerMemory::HandlerMemory::parse_from_bytes(&bytes)?;
+  eprintln!("8");
   let mut hm = HandlerMemory::from_pb(&pb)?;
+  eprintln!("9");
   eprintln!("hm {:?}", hm);
   let mut res_hm = HandlerMemory::new(None, 1)?;
   res_hm.init_fractal(0)?;
