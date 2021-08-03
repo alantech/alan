@@ -1275,7 +1275,8 @@ impl ControlPort {
       .await
     {
       Ok(hm) => hm,
-      Err(_) => {
+      Err(e) => {
+        eprintln!("err: {:?}", e);
         let mut err_hm = HandlerMemory::new(None, 1).expect("what");
         err_hm
           .write_fractal(
