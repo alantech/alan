@@ -10,7 +10,7 @@ use tokio::runtime::Builder;
 use crate::cloud::common::get_agz_file_b64;
 use crate::cloud::deploy;
 use crate::cloud::oauth::authenticate;
-use crate::compile::compile::compile;
+use crate::compile::compile;
 use crate::daemon::daemon::{start, CLUSTER_SECRET, NON_HTTP};
 use crate::vm::run::run_file;
 use crate::vm::telemetry;
