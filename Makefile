@@ -24,11 +24,15 @@ compiler-browser-check:
 compiler-style:
 	cd compiler && yarn && yarn style
 
-./compiler/alan-compile:
+# rerun if any of the source files in compiler/ changes
+COMPILER_FILES=$(wildcard compiler/src/*.ts) $(wildcard compiler/src/*/*.ts)
+./compiler/alan-compile: $(COMPILER_FILES)
 	cd compiler && yarn
 	yarn add pkg
 	cd compiler && ../node_modules/.bin/pkg --targets host .
 
+# allow cargo to determine when it's necessary to rebuild
+.PHONY: ./avm/target/release/alan
 ./avm/target/release/alan: compiler/alan-compile
 	cd avm && cargo build --release
 	cd avm && cargo fmt
