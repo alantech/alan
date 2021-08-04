@@ -756,7 +756,7 @@ async fn dsmwith_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
   eprintln!("8");
   let mut hm = HandlerMemory::from_pb(&pb)?;
   eprintln!("9");
-  let mut res_hm = HandlerMemory::new(None, 1)?;
+  let mut res_hm = HandlerMemory::fork(HandlerMemory::new(None, 1)?)?;
   eprintln!("10");
   res_hm.init_fractal(0)?;
   eprintln!("11");
