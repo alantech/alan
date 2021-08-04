@@ -276,7 +276,7 @@ const load = (): void => {
     spowf64: [{ a: 'float64', b: 'float64' }, 'float64'],
 
     someM: [{ a: 'any', s: 'int64' }, 'Maybe<any>'],
-    // noneM: [{}, 'Maybe<any>'],
+    noneM: [{}, 'Maybe<any>'],
     isSome: [{ a: 'Maybe<any>' }, 'bool'],
     isNone: [{ a: 'Maybe<any>' }, 'bool'],
     getOrM: [{ a: 'Maybe<any>', d: 'any' }, 'any'],

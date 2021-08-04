@@ -1,17 +1,17 @@
-const _6f35883a_35c2_49bf_89ca_3b231918c9f4: int8 = 0
+const _b773e679_bb19_4ddc_a65f_9d67a705c412: int8 = 0
 event stdout: string
 event exit: int8
 event stderr: string
 on stderr fn (err: string): void {
-  let _2b2c254b_c435_4a3e_a390_69c21224c741: void = stderrp(err)
+  let _156031f1_0220_4929_9136_42181ced23cb: void = stderrp(err)
 }
 on exit fn (status: int8): void {
-  let _cdce24f7_ea62_46f9_a64c_96e18e2e6800: void = exitop(status)
+  let _a73f6d0e_95f3_43bf_b9b7_4690acf3c01a: void = exitop(status)
 }
 on stdout fn (out: string): void {
-  let _fc22c6f7_5599_4d64_b8dd_dda97764f8dc: void = stdoutp(out)
+  let _931d1bd4_8fd3_4175_a074_01d800abbe60: void = stdoutp(out)
 }
 on _start fn (): void {
-  let _2780960f_eca1_4a40_ac25_252d2f6ac29c: int8 = copyi8(_6f35883a_35c2_49bf_89ca_3b231918c9f4)
-  emit exit _2780960f_eca1_4a40_ac25_252d2f6ac29c
+  let _2badeb72_66f1_4df4_9ecd_b0d40586e051: int8 = copyi8(_b773e679_bb19_4ddc_a65f_9d67a705c412)
+  emit exit _2badeb72_66f1_4df4_9ecd_b0d40586e051
 }

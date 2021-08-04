@@ -109,7 +109,7 @@ export fn getOr(res: Result<any>, default: any): any = getOrR(res, default);
 
 export isSome // opcode with signature `fn isSome(Maybe<any>): bool`
 export isNone // opcode with signature `fn isNone(Maybe<any>): bool`
-// export fn none(): Maybe<any> = noneM();
+export fn none(): Maybe<any> = noneM();
 export fn some(val: any): Maybe<any> = someM(val, 0);
 export fn some(val: int8): Maybe<int8> = someM(val, 8);
 export fn some(val: int16): Maybe<int16> = someM(val, 8);
