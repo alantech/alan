@@ -769,7 +769,9 @@ async fn dsmwith_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
       eprintln!("14");
       res_hm.push_fixed(0, 1);
       eprintln!("15");
-      HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START, &mut res_hm, 1);
+      if hm.addr_to_idxs_opt(CLOSURE_ARG_MEM_START).is_some() { // Guard against void functions
+        HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START, &mut res_hm, 1);
+      }
       eprintln!("16");
       res_hm.push_register(0, 1)?;
       eprintln!("17");
