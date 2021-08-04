@@ -735,7 +735,10 @@ async fn handle_dsmwith(req: Request<Body>) -> Result<Response<Body>, Infallible
 
 async fn dsmwith_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
   let headers = req.headers();
-  let nskey = headers.get("nskey").map_or("N/A", |v| v.to_str().unwrap()).to_string();
+  let nskey = headers
+    .get("nskey")
+    .map_or("N/A", |v| v.to_str().unwrap())
+    .to_string();
   let maybe_hm = DS.get(&nskey);
   let subhandler_id = headers
     .get("subhandler_id")
