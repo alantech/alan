@@ -734,38 +734,59 @@ async fn handle_dsmwith(req: Request<Body>) -> Result<Response<Body>, Infallible
 }
 
 async fn dsmwith_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
+  eprintln!("1");
   let headers = req.headers();
+  eprintln!("2");
   let nskey = headers
     .get("nskey")
     .map_or("N/A", |v| v.to_str().unwrap())
     .to_string();
+  eprintln!("3");
   let maybe_hm = DS.get(&nskey);
+  eprintln!("4");
   let subhandler_id = headers
     .get("subhandler_id")
     .map_or(0, |v| v.to_str().unwrap().parse().unwrap());
+  eprintln!("5");
   let subhandler = HandlerFragment::new(subhandler_id, 0);
+  eprintln!("6");
   let bytes = body::to_bytes(req.into_body()).await?;
+  eprintln!("7");
   let pb = protos::HandlerMemory::HandlerMemory::parse_from_bytes(&bytes)?;
+  eprintln!("8");
   let mut hm = HandlerMemory::from_pb(&pb)?;
+  eprintln!("9");
   let mut res_hm = HandlerMemory::new(None, 1)?;
+  eprintln!("10");
   res_hm.init_fractal(0)?;
+  eprintln!("11");
   match maybe_hm {
     Some(ds) => {
+      eprintln!("12");
       HandlerMemory::transfer(&ds, 0, &mut hm, CLOSURE_ARG_MEM_START + 1)?;
+      eprintln!("13");
       let hm = subhandler.run(hm).await?;
+      eprintln!("14");
       res_hm.push_fixed(0, 1);
+      eprintln!("15");
       HandlerMemory::transfer(
         &hm,
         CLOSURE_ARG_MEM_START,
         &mut res_hm,
         CLOSURE_ARG_MEM_START,
       );
+      eprintln!("16");
       res_hm.push_register(0, CLOSURE_ARG_MEM_START)?;
+      eprintln!("17");
       // Also grab the mutation to the datastore value and re-insert it
       let mut newds = HandlerMemory::new(None, 1)?;
+      eprintln!("18");
       HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START + 1, &mut newds, 0)?;
+      eprintln!("19");
       drop(ds);
+      eprintln!("20");
       DS.insert(nskey, newds);
+      eprintln!("21");
     }
     None => {
       res_hm.push_fixed(0, 0);
