@@ -26,7 +26,10 @@ compiler-style:
 
 # rerun if any of the source files in compiler/ changes
 COMPILER_FILES=$(wildcard compiler/src/*.ts) $(wildcard compiler/src/*/*.ts)
-./compiler/alan-compile: $(COMPILER_FILES)
+# also consider alan's std files.
+# TODO: delete the lnn part once lnn replaces the current first-stage
+ALAN_STD_FILES=$(wildcard std/*.ln) $(wildcard std/*.lnn)
+./compiler/alan-compile: $(COMPILER_FILES) $(ALAN_STD_FILES)
 	cd compiler && yarn
 	yarn add pkg
 	cd compiler && ../node_modules/.bin/pkg --targets host .
