@@ -94,7 +94,7 @@ export class Assign extends Stmt {
     const stmts: Stmt[] = [];
     const name = ast.get('varn').t;
     const upstream = metadata.get(name);
-    const [generated, expr] = Expr.fromAssignablesAst(ast, metadata);
+    const [generated, expr] = Expr.fromAssignablesAst(ast.get('assignables'), metadata);
     upstream.ty.constrain(expr.ty, metadata.scope);
     stmts.push(...generated, new Assign(ast, upstream, expr));
     return stmts;
