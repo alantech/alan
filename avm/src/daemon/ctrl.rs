@@ -756,7 +756,7 @@ async fn dsmwith_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
   eprintln!("8");
   let mut hm = HandlerMemory::from_pb(&pb)?;
   eprintln!("9");
-  let mut res_hm = HandlerMemory::fork(HandlerMemory::new(None, 1)?)?;
+  let mut res_hm = HandlerMemory::new(None, 2)?;
   eprintln!("10");
   res_hm.init_fractal(0)?;
   eprintln!("11");
@@ -769,14 +769,9 @@ async fn dsmwith_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
       eprintln!("14");
       res_hm.push_fixed(0, 1);
       eprintln!("15");
-      HandlerMemory::transfer(
-        &hm,
-        CLOSURE_ARG_MEM_START,
-        &mut res_hm,
-        CLOSURE_ARG_MEM_START,
-      );
+      HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START, &mut res_hm, 1);
       eprintln!("16");
-      res_hm.push_register(0, CLOSURE_ARG_MEM_START)?;
+      res_hm.push_register(0, 1)?;
       eprintln!("17");
       // Also grab the mutation to the datastore value and re-insert it
       let mut newds = HandlerMemory::new(None, 1)?;
