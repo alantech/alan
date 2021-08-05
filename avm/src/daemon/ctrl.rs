@@ -1488,7 +1488,7 @@ impl ControlPort {
   ) -> Arc<HandlerMemory> {
     let vm = self.get_vm_for_key(nskey);
     // TODO: Use private ip if possible
-    let url = format!("https://{}:4142/datastore/dsmwith", vm.public_ip_addr);
+    let url = format!("https://{}:4142/datastore/dsmonly", vm.public_ip_addr);
     let req = Request::builder().method("POST").uri(url);
     let cluster_secret = CLUSTER_SECRET.get().unwrap().clone().unwrap();
     let req = req.header(cluster_secret.as_str(), "true");
