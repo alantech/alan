@@ -774,10 +774,8 @@ async fn dsmwith_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
 
 async fn handle_dsmonly(req: Request<Body>) -> Result<Response<Body>, Infallible> {
   match dsmonly_inner(req).await {
-    Ok(hand_mem) => {
-      let mut out = vec![];
-      hand_mem.to_pb().write_to_vec(&mut out).unwrap();
-      Ok(Response::builder().status(200).body(out.into()).unwrap())
+    Ok(_) => {
+      Ok(Response::builder().status(200).body("ok".into()).unwrap())
     }
     Err(err) => {
       // TODO: What error message here? Also should this also be a valid HM out of here?
@@ -787,7 +785,7 @@ async fn handle_dsmonly(req: Request<Body>) -> Result<Response<Body>, Infallible
   }
 }
 
-async fn dsmonly_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
+async fn dsmonly_inner(req: Request<Body>) -> DaemonResult<()> {
   let headers = req.headers();
   let nskey = headers
     .get("nskey")
@@ -801,18 +799,10 @@ async fn dsmonly_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
   let bytes = body::to_bytes(req.into_body()).await?;
   let pb = protos::HandlerMemory::HandlerMemory::parse_from_bytes(&bytes)?;
   let mut hm = HandlerMemory::from_pb(&pb)?;
-  let mut res_hm = HandlerMemory::new(None, 2)?;
-  res_hm.init_fractal(0)?;
   match maybe_hm {
     Some(ds) => {
       HandlerMemory::transfer(&ds, 0, &mut hm, CLOSURE_ARG_MEM_START + 1)?;
       let hm = subhandler.run(hm).await?;
-      res_hm.push_fixed(0, 1);
-      if hm.addr_to_idxs_opt(CLOSURE_ARG_MEM_START).is_some() {
-        // Guard against void functions
-        HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START, &mut res_hm, 1);
-        res_hm.push_register(0, 1)?;
-      }
       // Also grab the mutation to the datastore value and re-insert it
       let mut newds = HandlerMemory::new(None, 1)?;
       HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START + 1, &mut newds, 0)?;
@@ -820,14 +810,10 @@ async fn dsmonly_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
       DS.insert(nskey, newds);
     }
     None => {
-      res_hm.push_fixed(0, 0);
-      res_hm.push_fractal(
-        0,
-        HandlerMemory::str_to_fractal("namespace-key pair not found"),
-      )?;
+      // Do nothing
     }
   }
-  Ok(res_hm)
+  Ok(())
 }
 
 // TODO: Revive once rustls supports IP addresses
