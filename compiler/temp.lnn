@@ -1,0 +1,8 @@
+from @std/app import start, print, exit
+
+on start {
+  const x = 0;
+  x.print();
+  print('hello, world!');
+  emit exit x;
+}

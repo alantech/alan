@@ -1,0 +1,24 @@
+const _6b9996b2_b0eb_491f_aff4_03a552536889: int8 = 0
+const _302b63bf_cfc5_4e04_96b4_5aa3047e1a6f: string = "\n"
+event stdout: string
+event exit: int8
+event stderr: string
+on stderr fn (err: string): void {
+  let _5777f915_ae42_45e3_8790_f2e3fd648e5b: void = stderrp(err)
+}
+on exit fn (status: int8): void {
+  let _7e6d95a7_660a_4b09_a1d4_d1e6bd1d6db3: void = exitop(status)
+}
+on stdout fn (out: string): void {
+  let _8804d153_841a_40da_8e7e_630b6f7d565b: void = stdoutp(out)
+}
+on _start fn (): void {
+  const _967c942d_25ad_4b75_8ad6_a26416fd8678: int8 = copyi8(_6b9996b2_b0eb_491f_aff4_03a552536889)
+  let _a0b1d36d_8cb9_48fc_b4ef_89c8be1ba73b: string = i8str(_967c942d_25ad_4b75_8ad6_a26416fd8678)
+  let _b8e20e6f_9438_4128_a134_228fc750cab3: string = refv(_a0b1d36d_8cb9_48fc_b4ef_89c8be1ba73b)
+  let _49ffc07b_0a36_4fe8_9766_20c2f8335bae: string = copystr(_302b63bf_cfc5_4e04_96b4_5aa3047e1a6f)
+  let _e83e88e2_2b32_40d1_9384_28af50ccdb05: string = catstr(_b8e20e6f_9438_4128_a134_228fc750cab3, _49ffc07b_0a36_4fe8_9766_20c2f8335bae)
+  let _5286cfdf_e344_4b1b_ac16_b2db9768e7c4: string = refv(_e83e88e2_2b32_40d1_9384_28af50ccdb05)
+  let _0a12c3b9_ff1f_4c64_b8c8_6786dc586892: void = stdoutp(_5286cfdf_e344_4b1b_ac16_b2db9768e7c4)
+  emit exit _967c942d_25ad_4b75_8ad6_a26416fd8678
+}

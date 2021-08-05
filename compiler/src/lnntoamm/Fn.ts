@@ -5,7 +5,7 @@ import opcodes from './opcodes';
 import Scope from './Scope';
 import Stmt, { Dec, Exit, FnParam, MetaData } from './Stmt';
 import Type, { FunctionType } from './Types';
-import { TODO } from './util';
+import { DBG, TODO } from './util';
 
 export default class Fn {
   // null if it's an anonymous fn
@@ -223,11 +223,13 @@ export default class Fn {
   }
 
   resultTyFor(argTys: Type[], scope: Scope): Type | null {
+    const dbg = (msg: any, ...vals: any[]) => this.name === 'print' && DBG(msg, vals);
+
     let res: Type | null = null;
     try {
-      this.params.forEach((param, ii) =>
-        param.ty.tempConstrain(argTys[ii], scope),
-      );
+      this.params.forEach((param, ii) => {
+        return param.ty.tempConstrain(argTys[ii], scope);
+      });
       res = this.retTy.instance();
     } catch (_e) {
       // do nothing: the args aren't applicable to the params so

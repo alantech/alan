@@ -261,23 +261,29 @@ export class FunctionType extends Type {
   }
 
   static matrixSelect(fns: Fn[], args: Type[], scope: Scope): [Fn, Type][] {
+    console.log('MATRIXSELECT START');
     const originalLength = fns.length;
     // remove any fns that shouldn't apply
     const callTy = new FunctionType(new NulLP(), args, Type.generate());
+    console.log('callTy gotten');
     fns = fns.filter((fn) => fn.ty.compatibleWithConstraint(callTy, scope));
+    console.log('filtered');
     // if it's 0-arity then all we have to do is grab the retTy of the fn
     if (args.length === 0) {
+      console.log('nothin');
       return fns.reduce(
         (fns, fn) => [...fns, [fn, fn.retTy.instance()]],
         new Array<[Fn, Type]>(),
       );
     }
+    console.log('matrixing', fns);
     // and now to generate the matrix
     // every argument is a dimension within the matrix, but we're
     // representing each dimension _d_ as an index in the matrix
     const matrix: Array<Type[]> = args.map((arg) => {
       return arg.fnselectOptions();
     });
+    console.log('matrix:', matrix);
     // TODO: this weight system feels like it can be inaccurate
     // the weight of a particular function is computed by the sum
     // of the indices in each dimension, with the highest sum
@@ -287,11 +293,16 @@ export class FunctionType extends Type {
     // keep it as for instead of while for debugging reasons
     for (let i = 0; ; i++) {
       const weight = indices.reduce((w, c) => w + c);
+      console.log('weight', weight);
       const argTys = matrix.map((options, ii) => options[indices[ii]]);
+      console.log('argtys', argTys);
       const fnsForWeight = fnsByWeight.get(weight) || [];
+      console.log('for weight', fnsForWeight);
       fnsForWeight.push(
         ...fns.reduce((fns, fn) => {
+          console.log('getting result ty')
           const retTy = fn.resultTyFor(argTys, scope);
+          console.log('is', retTy);
           if (retTy === null) {
             return fns;
           } else {
@@ -299,12 +310,14 @@ export class FunctionType extends Type {
           }
         }, new Array<[Fn, Type]>()),
       );
+      console.log('for weight now', fnsForWeight);
       fnsByWeight.set(weight, fnsForWeight);
       if (
         indices.every(
           (idxInDim, dimIdx) => idxInDim === matrix[dimIdx].length - 1,
         )
       ) {
+        console.log('done! :)');
         break;
       }
       // now change the indices. This mostly works like binary addition,
@@ -326,10 +339,12 @@ export class FunctionType extends Type {
     // appending the tuple at each weight to a list
     const ret = weights.reduce((fns, weight) => {
       let weightFns = fnsByWeight.get(weight);
+      console.log('at weight', weight, 'fns are', weightFns);
       weightFns = weightFns.filter(
         ([weightedFn, _retTy]) =>
           fns.findIndex(([fn, _retTy]) => fn === weightedFn) === -1,
       );
+      console.log('filtered:', weightFns);
       return [...fns, ...weightFns];
     }, new Array<[Fn, Type]>());
     if (ret.length > originalLength) {
@@ -342,16 +357,19 @@ export class FunctionType extends Type {
       console.log('indices:  ', indices);
       throw new Error('somehow got more options when fn selecting');
     }
+    console.log('returning:', ret);
     return ret;
   }
 
   compatibleWithConstraint(ty: Type, scope: Scope): boolean {
+    console.log('fn.compat', this, ty);
     if (ty instanceof FunctionType) {
       return (
         this.params.length === ty.params.length &&
-        this.params.every((param, ii) =>
-          param.compatibleWithConstraint(ty.params[ii], scope),
-        ) &&
+        this.params.every((param, ii) => {
+          console.log('comparing my param', param, 'to', ty.params[ii]);
+          return param.compatibleWithConstraint(ty.params[ii], scope);
+        }) &&
         this.retTy.compatibleWithConstraint(ty.retTy, scope)
       );
     } else if (ty instanceof OneOf || ty instanceof Generated) {
@@ -763,15 +781,26 @@ class Interface extends Type {
   fields: HasField[];
   methods: HasMethod[];
   operators: HasOperator[];
+  delegate: Type | null;
   tempDelegate: Type | null;
-  private isDuped: boolean;
+  private __isDuped: boolean;
+
+  // Used for debug purposes, mostly (much easier to read than uuids)
+  private static dupId = 0;
+  protected static nameWithPrefix = (name: string) => `${name}${Interface.dupId++}`;
 
   get ammName(): string {
-    if (this.tempDelegate) {
+    if (this.delegate !== null) {
+      return this.delegate.ammName;
+    } else if (this.tempDelegate !== null) {
       return this.tempDelegate.ammName;
     } else {
-      throw new Error(`Interfaces should not have their ammName requested`);
+      throw new Error(`Could not determine ammName for ${this.name}`);
     }
+  }
+
+  get isDuped(): boolean {
+    return this.__isDuped;
   }
 
   constructor(
@@ -785,8 +814,9 @@ class Interface extends Type {
     this.fields = fields;
     this.methods = methods;
     this.operators = operators;
+    this.delegate = null;
     this.tempDelegate = null;
-    this.isDuped = false;
+    this.__isDuped = false;
   }
 
   static fromAst(ast: LPNode, scope: Scope): Interface {
@@ -838,87 +868,108 @@ class Interface extends Type {
   }
 
   compatibleWithConstraint(ty: Type, scope: Scope): boolean {
-    if (this.tempDelegate !== null) {
-      return this.tempDelegate.compatibleWithConstraint(ty, scope);
-    }
-    if (ty instanceof Builtin || ty instanceof Struct) {
-      if (ty instanceof Builtin && this.fields.length !== 0) {
-        // if ty is a Builtin and there are field requirements,
-        // then this interface doesn't apply.
-        // TODO: this might change depending on the opaque types
-        // we introduce
-        return false;
-      } else if (ty instanceof Struct) {
-        // ty is a Struct, ensure it has the same fields
-        // if (!this.fields.every(field => ty.fields[field.name] && ty.fields[field.name].eq(field.ty))) {
-        //   return false;
-        // }
-        if (!this.fields.every((field) => Has.field(field, ty))) {
-          return false;
+    if (ty instanceof Has) {
+      if (this.isDuped) {
+        const checkFor = this.delegate ?? this.tempDelegate;
+        if (checkFor !== null) {
+          return checkFor.compatibleWithConstraint(ty, scope);
+        } else {
+          // assume true for now, let later constraints give
+          return true;
+        }
+      } else {
+        if (ty instanceof HasField) {
+          return Has.field(ty, this);
+        } else if (ty instanceof HasOperator) {
+          return Has.operator(ty, scope, this).length !== 0;
+        } else if (ty instanceof HasMethod) {
+          return Has.method(ty, scope, this).length !== 0;
+        } else {
+          throw new Error(`unrecognized Has`);
         }
       }
+    }
+    // always check all interface constraints first
+    if (!(
+      this.fields.every((f) => Has.field(f, ty))
+      && this.methods.every((f) => Has.method(f, scope, ty).length !== 0)
+      && this.operators.every((f) => Has.operator(f, scope, ty).length !== 0)
+    )) {
+      return false;
+    }
 
-      // check methods
-      return (
-        this.methods.every((m) => Has.method(m, scope, ty)) &&
-        this.operators.every((o) => Has.operator(o, scope, ty))
-      );
-      // check operators
-    } else if (ty instanceof Interface) {
-      // ensure `ty ⊆ this`
-      return (
-        ty.fields.every((field) => this.fields.find((f) => f.eq(field))) &&
-        ty.methods.every((method) => this.methods.find((m) => m.eq(method))) &&
-        ty.operators.every((operator) =>
-          this.operators.find((o) => o.eq(operator)),
-        )
-      );
-    } else if (ty instanceof HasField) {
-      return this.fields.some((field) => field.eq(ty));
-    } else if (ty instanceof HasOperator) {
-      return this.operators.some((operator) => operator.eq(ty));
-    } else if (ty instanceof HasMethod) {
-      return this.methods.some((method) => method.eq(ty));
-    } else if (ty instanceof Generated || ty instanceof OneOf) {
-      return ty.compatibleWithConstraint(this, scope);
+    if (this.delegate !== null) {
+      return this.delegate.compatibleWithConstraint(ty, scope);
+    } else if (this.tempDelegate !== null) {
+      return this.tempDelegate.compatibleWithConstraint(ty, scope);
     } else {
-      throw new Error(
-        `unsure of what type the constraint is - this error should never be thrown!`,
-      );
+      return true;
     }
   }
 
-  constrain(ty: Type, scope: Scope) {
-    const baseErrorString = `type ${ty.name} was constrained to interface ${this.name} but doesn't have`;
+  constrain(that: Type, scope: Scope) {
+    // if it's a `Has`, it's easy enough to process. Generated types should
+    // handle the `Has` first before calling this method
+    if (that instanceof Has) {
+      const toCheck = this.delegate ?? this.tempDelegate ?? this;
+      const errorBase = `${toCheck.ammName} doesn't have`;
+      if (that instanceof HasField && !Has.field(that, toCheck)) {
+        throw new Error(`${errorBase} field ${that.name}`);
+      } else if (that instanceof HasOperator && Has.operator(that, scope, toCheck).length !== 0) {
+        const opString = that.params.length === 1 ?
+          `${that.name} ${that.params[0].ammName}`
+          : `${that.params[0].ammName} ${that.name} ${that.params[1].ammName}`;
+        throw new Error(`${errorBase} operator \`${opString}\``);
+      } else if (that instanceof HasMethod && Has.method(that, scope, toCheck).length !== 0) {
+        const paramsString = `(${that.params.map((p) => p.ammName).join(', ')})`;
+        throw new Error(`${errorBase} method \`${that.name}${paramsString}\``)
+      }
+      // none of the other checks apply
+      return;
+    }
+
+    const baseErrorString = `type ${that.name} was constrained to interface ${this.name} but doesn't have`;
     this.fields.forEach((f) => {
-      if (!ty.compatibleWithConstraint(f, scope)) {
+      if (!that.compatibleWithConstraint(f, scope)) {
         throw new Error(`${baseErrorString} field ${f.name} with type ${f.ty}`);
       }
     });
     this.methods.forEach((m) => {
-      if (!Has.method(m, scope, ty)) {
+      if (!Has.method(m, scope, that)) {
         throw new Error(
           `${baseErrorString} method ${m.name}(${m.params
-            .map((p) => (p === null ? ty : p))
+            .map((p) => (p === null ? that : p))
             .map((t) => t.name)
             .join(', ')})`,
         );
       }
     });
     this.operators.forEach((o) => {
-      if (Has.operator(o, scope, ty)) return;
+      if (Has.operator(o, scope, that)) return;
       if (o.isPrefix) {
         throw new Error(
-          `${baseErrorString} prefix operator \`${o.name} ${ty.name}\``,
+          `${baseErrorString} prefix operator \`${o.name} ${that.name}\``,
         );
       } else {
         throw new Error(
-          `${baseErrorString} infix operator \`${o.params[0] || ty.name} ${
+          `${baseErrorString} infix operator \`${o.params[0] || that.name} ${
             o.name
-          } ${o.params[1] || ty.name}\``,
+          } ${o.params[1] || that.name}\``,
         );
       }
     });
+
+    if (this.delegate !== null) {
+      this.delegate.constrain(that, scope);
+    } else if (this.isDuped) {
+      this.delegate = that;
+      if (this.tempDelegate !== null) {
+        this.delegate.tempConstrain(this.tempDelegate, scope);
+        this.tempDelegate = null;
+      }
+    }
+    // if not duped, then don't set delegate - the interface was just being
+    // used to ensure that the type of the `that` matches this interface
   }
 
   eq(that: Equalable): boolean {
@@ -930,7 +981,9 @@ class Interface extends Type {
       // on `eq` returning this. Ideally, we would be checking to
       // make sure all of the constraints match
       return this === that;
-    } else if (this.tempDelegate) {
+    } else if (this.delegate !== null) {
+      return this.delegate.eq(that);
+    } else if (this.tempDelegate !== null) {
       return this.tempDelegate.eq(that);
     } else {
       return false;
@@ -938,53 +991,72 @@ class Interface extends Type {
   }
 
   instance(): Type {
-    if (this.tempDelegate !== null) {
+    if (this.delegate !== null) {
+      return this.delegate.instance();
+    } else if (this.tempDelegate !== null) {
       return this.tempDelegate.instance();
     } else {
-      throw new Error(`Could not resolve interface type`);
+      throw new Error(`Could not resolve type ${this.name}`);
     }
   }
 
-  tempConstrain(to: Type, _scope: Scope) {
-    if (this === to) {
+  tempConstrain(that: Type, scope: Scope) {
+    if (this === that) {
       throw new Error('huh?');
+    } else if (this.delegate !== null) {
+      this.delegate.tempConstrain(that, scope);
+    } else if (this.tempDelegate !== null) {
+      if (!this.tempDelegate.eq(that)) {
+        console.log('---------------');
+        console.dir(this, {depth: 4});
+        console.dir(that, {depth: 4});
+        TODO('re-tempConstrain Interface');
+      }
+    } else {
+      this.tempDelegate = that;
     }
-    if (this.tempDelegate !== null && !this.tempDelegate.eq(to)) {
-      throw new Error('interface type is already constrained');
-    }
-    this.tempDelegate = to;
   }
 
   resetTemp() {
-    this.tempDelegate = null;
+    if (this.delegate !== null) {
+      this.delegate.resetTemp();
+      if (this.tempDelegate !== null) {
+        throw new Error(`somehow, tempDelegate and delegate are both set`);
+      }
+    } else {
+      this.tempDelegate = null;
+    }
   }
 
   dupIfNotLocalInterface(): Type | null {
     if (this.isDuped) return null;
     const dup = new Interface(
-      this.name,
+      // name isn't really used for anything in Interfaces
+      // (not used for ammName, not used for equality check, etc)
+      Interface.nameWithPrefix(`${this.name}-instance`),
       this.ast,
       [...this.fields],
       [...this.methods],
       [...this.operators],
     );
-    dup.isDuped = true;
+    dup.__isDuped = true;
     return dup;
   }
 
   size(): number {
-    if (this.tempDelegate) {
+    if (this.delegate !== null) {
+      return this.delegate.size();
+    } else if (this.tempDelegate !== null) {
       return this.tempDelegate.size();
     } else {
-      TODO(
-        `figure out how Interface should return from size() if there's not tempDelegate`,
-      );
+      throw new Error(`Non-concrete interface types can't have a size`);
     }
   }
 
   fnselectOptions(): Type[] {
-    if (this.tempDelegate !== null) {
-      return this.tempDelegate.fnselectOptions();
+    const del = this.delegate ?? this.tempDelegate;
+    if (del !== null) {
+      return del.fnselectOptions();
     } else {
       return [this];
     }
@@ -995,70 +1067,121 @@ class Interface extends Type {
 // the interface through type constraints instead of through explicit requirements.
 // this'll make untyped fn parameters easier once they're implemented.
 class Generated extends Interface {
-  delegate: Type | null;
-
-  get ammName(): string {
-    if (this.delegate) {
-      return this.delegate.ammName;
-    } else if (this.tempDelegate) {
-      return this.tempDelegate.ammName;
-    } else {
-      throw new Error(`Could not determine ammName for Generated type`);
-    }
-  }
-
-  constructor() {
-    super(genName(), new NulLP(), [], [], []);
-    this.delegate = null;
-  }
-
-  // TODO: ok so i have to do a couple of things
-  // 1. move tempDelegate to the interface type
-  // 2. delegate to super if delegate isn't set
-  // 3. ???
-  compatibleWithConstraint(ty: Type, scope: Scope): boolean {
-    if (this.delegate && super.tempDelegate) {
-      throw new Error('ugh');
-    }
-    if (this.delegate !== null) {
-      return this.delegate.compatibleWithConstraint(ty, scope);
-    }
-    if (this.tempDelegate !== null) {
-      return this.tempDelegate.compatibleWithConstraint(ty, scope);
-    }
+  // don't override `get ammName` since its Error output is unique but generic
+  // over both Generated and Interface types
+  get isDuped(): boolean {
     return true;
   }
 
-  constrain(to: Type, scope: Scope) {
-    // if `super.tempDelegate` is set, something is *very* wrong because
+  constructor() {
+    // Generated types are just Interface types that are more
+    // lenient when handling `Has` constraints
+    super(
+      Interface.nameWithPrefix('Generated'),
+      new NulLP(),
+      [],
+      [],
+      [],
+    );
+  }
+
+  compatibleWithConstraint(that: Type, scope: Scope): boolean {
+    if (that instanceof Has) {
+      // if it's a field, make sure there's no other field by the
+      // HasField's name, otherwise there's no conflict since
+      // functions and operators can have the same symbol but be
+      // selected by params and return type
+      if (that instanceof HasField) {
+        return !this.fields.some((field) => {
+          if (field.name !== that.name) return false;
+          if (field.eq(that)) return false;
+          field.name === that.name && !field.eq(that)
+        });
+      } else {
+        return true;
+      }
+    }
+    // we already handled the case where `that` is a `Has`, so it's
+    // safe to use super's implementation
+    return super.compatibleWithConstraint(that, scope);
+  }
+
+  constrain(that: Type, scope: Scope) {
+    // if `tempDelegate` is set, something is *very* wrong because
     // all permanent constraints should already be processed...
     // if we need to allow `tempConstrain`s to get processed `constrain`s,
     // then this check should be at the end of this method and pass the
     // removed `tempDelegate` to the new permanent delegate's `tempConstrain`
-    if (this.tempDelegate) {
+    if (this.tempDelegate !== null) {
       throw new Error(
         `cannot process temporary type constraints before permanent type constraints`,
       );
-    }
-
-    if (this.delegate !== null) {
-      this.delegate.constrain(to, scope);
-    } else if (to instanceof HasOperator) {
-      this.operators.push(to);
-    } else if (to instanceof HasMethod) {
-      this.methods.push(to);
-    } else if (to instanceof HasField) {
-      this.fields.push(to);
-    } else if (to instanceof Interface) {
-      this.fields.push(...to.fields);
-      this.methods.push(...to.methods);
-      this.operators.push(...to.operators);
-      if (to instanceof Generated && to.delegate !== null) {
-        this.delegate = to.delegate;
+    } else if (that instanceof Interface) {
+      if (this.delegate ?? this.tempDelegate ?? that.delegate ?? that.tempDelegate === null) {
+        const oFields = [...this.fields];
+        const oMethods = [...this.methods];
+        const oOperators = [...this.operators];
+        this.fields.push(...that.fields);
+        this.methods.push(...that.methods);
+        this.operators.push(...that.operators);
+        if (that.isDuped) {
+          that.fields.push(...oFields);
+          that.methods.push(...oMethods);
+          that.operators.push(...oOperators);
+        }
+      } else if (this.tempDelegate ?? that.tempDelegate !== null) {
+        console.log('-------------');
+        console.dir(this, { depth: 4 });
+        console.dir(that, { depth: 4 });
+        TODO('figure out what to do here');
+      } else if (this.delegate !== null) {
+        if (that.delegate === null) {
+          that.delegate = this.delegate;
+        } else if (that.isDuped) {
+          this.delegate.constrain(that.delegate, scope);
+        }
+        that.fields.forEach((f) => this.delegate.constrain(f, scope));
+        that.methods.forEach((m) => this.delegate.constrain(m, scope));
+        that.operators.forEach((o) => this.delegate.constrain(o, scope));
+      } else if (that.delegate !== null) {
+        this.delegate = that.delegate;
+        this.fields.forEach((f) => this.delegate.constrain(f, scope));
+        this.methods.forEach((m) => this.delegate.constrain(m, scope));
+        this.operators.forEach((o) => this.delegate.constrain(o, scope));
+      } else {
+        console.log('-------------');
+        console.dir(this, { depth: 4 });
+        console.dir(that, { depth: 4 });
+        TODO('i thought i covered all the branches here?');
       }
+    } else if (that instanceof Has) {
+      if (this.delegate !== null) {
+        this.delegate.constrain(that, scope);
+      } else if (that instanceof HasField) {
+        const already = this.fields.find((field) => field.name === that.name) ?? null;
+        if (already !== null) {
+          if (!already.eq(that) && !already.ty.compatibleWithConstraint(that.ty, scope)) {
+            throw new Error(`generated type ${this.name} already has a field called`)
+          }
+        } else {
+          this.fields.push(that);
+        }
+      } else if (that instanceof HasOperator) {
+        if (!this.operators.some((o) => o.eq(that))) {
+          this.operators.push(that);
+        }
+      } else if (that instanceof HasMethod) {
+        if (!this.methods.some((m) => m.eq(that))) {
+          this.methods.push(that);
+        }
+      }
+    } else if (this.delegate !== null) {
+      this.delegate.constrain(that, scope);
     } else {
-      this.delegate = to;
-      this.constrain(this.delegate, scope);
+      this.delegate = that;
+      this.fields.forEach((f) => that.constrain(f, scope));
+      this.methods.forEach((m) => that.constrain(m, scope));
+      this.operators.forEach((o) => that.constrain(o, scope));
     }
   }
 
@@ -1070,29 +1193,15 @@ class Generated extends Interface {
         this.delegate.eq(that.delegate)
       );
     } else if (that instanceof Interface) {
-      if (that.tempDelegate !== null) {
-        if (this.delegate !== null) {
-          return this.delegate.eq(that.tempDelegate);
-        } else if (this.tempDelegate !== null) {
-          return this.tempDelegate.eq(that.tempDelegate);
-        } else {
-          return false;
-        }
+      const mine = this.delegate ?? this.tempDelegate;
+      const other = that.delegate ?? that.tempDelegate;
+      if (mine === null || other === null) {
+        return mine === other;
       } else {
-        return this.delegate === null && this.tempDelegate === null;
+        return mine.eq(other);
       }
     } else {
       return this.delegate !== null && this.delegate.eq(that);
-    }
-  }
-
-  instance(): Type {
-    if (this.delegate !== null) {
-      return this.delegate.instance();
-    } else if (this.tempDelegate !== null) {
-      return this.tempDelegate.instance();
-    } else {
-      throw new Error(`could not resolve Generated type`);
     }
   }
 
@@ -1105,34 +1214,6 @@ class Generated extends Interface {
       TODO("i'm not sure");
     } else {
       this.tempDelegate = to;
-    }
-  }
-
-  resetTemp() {
-    if (super.tempDelegate !== null) {
-      this.tempDelegate = null;
-    } else if (this.delegate !== null) {
-      this.tempDelegate.resetTemp();
-    }
-  }
-
-  size(): number {
-    if (this.delegate) {
-      return this.delegate.size();
-    } else if (this.tempDelegate) {
-      return this.tempDelegate.size();
-    } else {
-      TODO(
-        `figure out how Generated should return from size() if there's not tempDelegate`,
-      );
-    }
-  }
-
-  fnselectOptions(): Type[] {
-    if (this.delegate) {
-      return this.delegate.fnselectOptions();
-    } else {
-      return super.fnselectOptions();
     }
   }
 }

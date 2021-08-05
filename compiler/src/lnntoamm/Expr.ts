@@ -6,7 +6,7 @@ import Operator from './Operator';
 import Scope from './Scope';
 import Stmt, { Dec, MetaData, VarDef } from './Stmt';
 import Type, { FunctionType } from './Types';
-import { isFnArray, isOpArray, TODO } from './util';
+import { DBG, isFnArray, isOpArray, TODO } from './util';
 
 export default abstract class Expr {
   ast: LPNode;
@@ -522,6 +522,8 @@ class Call extends Expr {
     accessed: Ref | null,
     metadata: MetaData,
   ): [Stmt[], Expr] {
+    const dbg = (msg: any, ...others: any[]) => fnName === 'print' && DBG(msg, ...others);
+
     const stmts = [];
     const argAst = ast.get('fncall').get('assignablelist');
     const argAsts: LPNode[] = [];
@@ -556,6 +558,7 @@ class Call extends Expr {
       }),
     );
     let fns = metadata.scope.deepGet(fnName);
+    dbg('functions', fns);
     const closure = metadata.get(fnName);
     if ((fns === null || !isFnArray(fns)) && closure === null) {
       throw new Error(`no functions found for ${fnName}`);
@@ -565,7 +568,9 @@ class Call extends Expr {
     }
     // first reduction
     const argTys = args.map((arg) => arg.ty);
+    dbg('args', args);
     const selFns = FunctionType.matrixSelect(fns, argTys, metadata.scope);
+    dbg('sel', selFns);
     fns = selFns.map((selFn) => selFn[0]);
     const retTy = Type.oneOf(selFns.map(([_fn, ty]) => ty));
     // now, constrain all of the args to their possible types
