@@ -66,11 +66,21 @@ fn add(url: string) = new Dependency {
   fullBlock: [],
 };
 
-fn add() = new Dependency {
-  url: '',
-  block: [],
-  fullBlock: [],
-};
+fn block(block: string): Dependency {
+  return new Dependency {
+    url: '',
+    block: [block],
+    fullBlock: [],
+  };
+}
+
+fn block(block: Array<string>): Dependency {
+  return new Dependency {
+    url: '',
+    block: block,
+    fullBlock: [],
+  };
+}
 
 fn block(dep: Dependency, block: string): Dependency {
   dep.block.push(block);
@@ -80,6 +90,22 @@ fn block(dep: Dependency, block: string): Dependency {
 fn block(dep: Dependency, block: Array<string>): Dependency {
   dep.block = dep.block + block;
   return dep;
+}
+
+fn fullBlock(block: string): Dependency {
+  return new Dependency {
+    url: '',
+    block: [],
+    fullBlock: [block],
+  };
+}
+
+fn fullBlock(block: Array<string>): Dependency {
+  return new Dependency {
+    url: '',
+    block: [],
+    fullBlock: block,
+  };
 }
 
 fn fullBlock(dep: Dependency, block: string): Dependency {
