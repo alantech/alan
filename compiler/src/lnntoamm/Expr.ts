@@ -356,15 +356,19 @@ export default abstract class Expr {
             precedences[applyIdx] = dec.ref();
           }
           const applyTo = precedences[applyIdx] as Ref;
-          const [fns, retTys] = operators.reduce(
-            ([fns, retTys], op) => {
-              const [selFns, selTys] = op.select(metadata.scope, applyTo.ty);
+          const [fns, paramTys, retTys] = operators.reduce(
+            ([fns, paramTys, retTys], op) => {
+              const [selFns, selPTys, selRTys] = op.select(metadata.scope, applyTo.ty);
               fns = [...fns, ...selFns];
-              retTys = [...retTys, ...selTys];
-              return [fns, retTys];
+              // assume that `selPTys[i].length === 1`
+              paramTys = [...paramTys, ...selPTys.map((pTys) => pTys[0])];
+              retTys = [...retTys, ...selRTys];
+              return [fns, paramTys, retTys];
             },
-            [new Array<Fn>(), new Array<Type>()],
+            [new Array<Fn>(), new Array<Type>(), new Array<Type>()],
           );
+          const argConstraint = Type.oneOf(paramTys);
+          applyTo.ty.constrain(argConstraint, metadata.scope);
           const retTy = Type.oneOf(retTys);
           precedences[applyIdx] = new Call(
             new NulLP(),
@@ -420,12 +424,18 @@ export default abstract class Expr {
           stmts.push(dec);
           right = dec.ref();
         }
+        const argTys: [Type[], Type[]] = [[], []];
         const retTys: Type[] = [];
         while (ops.length > 0) {
           const op = ops.pop();
           const selected = op.select(metadata.scope, left.ty, right.ty);
           fns.push(...selected[0]);
-          retTys.push(...selected[1]);
+          // assume `selected[1].length === 2`
+          selected[1].forEach((pTys) => {
+            argTys[0].push(pTys[0]);
+            argTys[1].push(pTys[1]);
+          });
+          retTys.push(...selected[2]);
         }
         const retTy = Type.oneOf(retTys);
         const call = new Call(
@@ -522,8 +532,6 @@ class Call extends Expr {
     accessed: Ref | null,
     metadata: MetaData,
   ): [Stmt[], Expr] {
-    const dbg = (msg: any, ...others: any[]) => fnName === 'print' && DBG(msg, ...others);
-
     const stmts = [];
     const argAst = ast.get('fncall').get('assignablelist');
     const argAsts: LPNode[] = [];
@@ -558,7 +566,6 @@ class Call extends Expr {
       }),
     );
     let fns = metadata.scope.deepGet(fnName);
-    dbg('functions', fns);
     const closure = metadata.get(fnName);
     if ((fns === null || !isFnArray(fns)) && closure === null) {
       throw new Error(`no functions found for ${fnName}`);
@@ -568,11 +575,20 @@ class Call extends Expr {
     }
     // first reduction
     const argTys = args.map((arg) => arg.ty);
-    dbg('args', args);
     const selFns = FunctionType.matrixSelect(fns, argTys, metadata.scope);
-    dbg('sel', selFns);
     fns = selFns.map((selFn) => selFn[0]);
-    const retTy = Type.oneOf(selFns.map(([_fn, ty]) => ty));
+    const [pTys, retTys] = selFns.reduce(
+      ([pTys, retTys], [_fn, fnPTys, fnRetTy]) => {
+        pTys = pTys.map((paramTysAtIndex, ii) => [
+          ...paramTysAtIndex,
+          fnPTys[ii],
+        ]);
+        retTys.push(fnRetTy);
+        return [pTys, retTys];
+      },
+      [new Array<Type[]>(), new Array<Type>()],
+    );
+    const retTy = Type.oneOf(retTys);
     // now, constrain all of the args to their possible types
     // makes it so that the type of the parameters in each position are in their own list
     // ie, given `do(int8, int16)` and `do(int8, int8)`, will result in this 2D array:
@@ -580,37 +596,54 @@ class Call extends Expr {
     //   [int16, int8] ]
     // for some reason TS thinks that `fns` is `Boxish` but *only* in the lambda here,
     // which is why I have to specify `fns: Fn[]`...
-    argTys.forEach((ty, ii) => {
-      const paramTys = (fns as Fn[]).map((fn) => fn.params[ii].ty);
-      // console.log('constraining', ty, 'to', paramTys);
-      ty.constrain(Type.oneOf(paramTys), metadata.scope);
-      // console.log('constrained:', ty);
-    });
+    // argTys.forEach((ty, ii) => {
+    //   const paramTys = (fns as Fn[]).map((fn) => fn.params[ii].ty);
+    //   // console.log('constraining', ty, 'to', paramTys);
+    //   ty.constrain(Type.oneOf(paramTys), metadata.scope);
+    //   // console.log('constrained:', ty);
+    // });
     if (closure !== null) {
       TODO('closures');
     }
     return [stmts, new Call(ast, fns, closure, args, metadata.scope, retTy)];
   }
 
-  private fnSelect(): [Fn[], Type[]] {
+  private fnSelect(): [Fn[], Type[][], Type[]] {
+          // pTys[i][j] where i is the parameter index, j is the fn index
+          // const [fns, pTys, retTys] = operators.reduce(
+          //   ([fns, pTys, retTys], op) => {
+          //     // selPTys[i][j] where i is the fn index, j is the parameter index
+          //     const [selFns, selPTys, selRTys] = op.select(metadata.scope, applyTo.ty);
+          //     fns = [...fns, ...selFns];
+          //     pTys = pTys.map((paramsAtIndex, ii) => [
+          //       ...paramsAtIndex,
+          //       ...selPTys.map((fnParamTys) => fnParamTys[ii]),
+          //     ]);
+          //     retTys = [...retTys, ...selRTys];
+          //     return [fns, pTys, retTys];
+          //   },
+          //   [new Array<Fn>(), new Array<Type[]>(), new Array<Type>()],
+          // );
     return FunctionType.matrixSelect(
       this.fns,
       this.args.map((a) => a.ty),
       this.scope,
     ).reduce(
-      ([fns, tys], [fn, ty]) => [
+      ([fns, pTys, retTys], [fn, fnPTys, ty]) => [
         [...fns, fn],
-        [...tys, ty],
+        fnPTys.map((fnPTy, ii) => [...(pTys[ii] || []), fnPTy]),
+        [...retTys, ty],
       ],
-      [new Array<Fn>(), new Array<Type>()],
+      [new Array<Fn>(), new Array<Type[]>(), new Array<Type>()],
     );
   }
 
   cleanup() {
-    const [fns, tys] = this.fnSelect();
+    const [fns, pTys, retTys] = this.fnSelect();
     const isChanged = this.fns.length !== fns.length;
     this.fns = fns;
-    this.retTy.constrain(Type.oneOf(tys), this.scope);
+    this.args.forEach((arg, ii) => arg.ty.constrain(Type.oneOf(pTys[ii]), this.scope));
+    this.retTy.constrain(Type.oneOf(retTys), this.scope);
     return isChanged;
   }
 

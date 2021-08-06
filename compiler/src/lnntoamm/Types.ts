@@ -223,7 +223,13 @@ class Builtin extends Type {
   }
 
   tempConstrain(ty: Type, scope: Scope) {
-    this.constrain(ty, scope);
+    if (ty instanceof OneOf || ty instanceof Interface) {
+      if (!ty.compatibleWithConstraint(this, scope)) {
+        throw new Error(`cannot tempConstrain type ${ty.name} to ${this.name}`);
+      }
+    } else {
+      this.constrain(ty, scope);
+    }
   }
 
   resetTemp() {
@@ -260,20 +266,20 @@ export class FunctionType extends Type {
     this.retTy = retTy;
   }
 
-  static matrixSelect(fns: Fn[], args: Type[], scope: Scope): [Fn, Type][] {
+  static matrixSelect(fns: Fn[], args: Type[], scope: Scope): [Fn, Type[], Type][] {
     console.log('MATRIXSELECT START');
     const originalLength = fns.length;
     // remove any fns that shouldn't apply
     const callTy = new FunctionType(new NulLP(), args, Type.generate());
-    console.log('callTy gotten');
+    // console.log('callTy gotten');
     fns = fns.filter((fn) => fn.ty.compatibleWithConstraint(callTy, scope));
-    console.log('filtered');
+    // console.log('filtered');
     // if it's 0-arity then all we have to do is grab the retTy of the fn
     if (args.length === 0) {
       console.log('nothin');
       return fns.reduce(
-        (fns, fn) => [...fns, [fn, fn.retTy.instance()]],
-        new Array<[Fn, Type]>(),
+        (fns, fn) => [...fns, [fn, fn.params.map((p) => p.ty.instance()), fn.retTy.instance()]],
+        new Array<[Fn, Type[], Type]>(),
       );
     }
     console.log('matrixing', fns);
@@ -288,7 +294,7 @@ export class FunctionType extends Type {
     // the weight of a particular function is computed by the sum
     // of the indices in each dimension, with the highest sum
     // having the greatest preference
-    const fnsByWeight = new Map<number, [Fn, Type][]>();
+    const fnsByWeight = new Map<number, [Fn, Type[], Type][]>();
     const indices = matrix.map(() => 0);
     // keep it as for instead of while for debugging reasons
     for (let i = 0; ; i++) {
@@ -301,14 +307,14 @@ export class FunctionType extends Type {
       fnsForWeight.push(
         ...fns.reduce((fns, fn) => {
           console.log('getting result ty')
-          const retTy = fn.resultTyFor(argTys, scope);
-          console.log('is', retTy);
-          if (retTy === null) {
+          const tys = fn.resultTyFor(argTys, scope);
+          console.log('is', tys);
+          if (tys === null) {
             return fns;
           } else {
-            return [...fns, [fn, retTy] as [Fn, Type]];
+            return [...fns, [fn, ...tys] as [Fn, Type[], Type]];
           }
-        }, new Array<[Fn, Type]>()),
+        }, new Array<[Fn, Type[], Type]>()),
       );
       console.log('for weight now', fnsForWeight);
       fnsByWeight.set(weight, fnsForWeight);
@@ -317,7 +323,7 @@ export class FunctionType extends Type {
           (idxInDim, dimIdx) => idxInDim === matrix[dimIdx].length - 1,
         )
       ) {
-        console.log('done! :)');
+        // console.log('done! :)');
         break;
       }
       // now change the indices. This mostly works like binary addition,
@@ -344,10 +350,10 @@ export class FunctionType extends Type {
         ([weightedFn, _retTy]) =>
           fns.findIndex(([fn, _retTy]) => fn === weightedFn) === -1,
       );
-      console.log('filtered:', weightFns);
+      // console.log('filtered:', weightFns);
       return [...fns, ...weightFns];
-    }, new Array<[Fn, Type]>());
-    if (ret.length > originalLength) {
+    }, new Array<[Fn, Type[], Type]>());
+    if (ret.length > originalLength || ret.length === 0) {
       console.log('~~~ ERROR');
       console.log('original: ', originalLength);
       console.log('retLength:', ret.length);
@@ -355,19 +361,23 @@ export class FunctionType extends Type {
       console.log('matrix:   ', matrix);
       console.log('byweight: ', fnsByWeight);
       console.log('indices:  ', indices);
-      throw new Error('somehow got more options when fn selecting');
+      if (ret.length === 0) {
+        throw new Error('no more functions left');
+      } else {
+        throw new Error('somehow got more options when fn selecting');
+      }
     }
     console.log('returning:', ret);
     return ret;
   }
 
   compatibleWithConstraint(ty: Type, scope: Scope): boolean {
-    console.log('fn.compat', this, ty);
+    // console.log('fn.compat', this, ty);
     if (ty instanceof FunctionType) {
       return (
         this.params.length === ty.params.length &&
         this.params.every((param, ii) => {
-          console.log('comparing my param', param, 'to', ty.params[ii]);
+          // console.log('comparing my param', param, 'to', ty.params[ii]);
           return param.compatibleWithConstraint(ty.params[ii], scope);
         }) &&
         this.retTy.compatibleWithConstraint(ty.retTy, scope)
@@ -561,7 +571,7 @@ abstract class Has extends Type {
     return false;
   }
 
-  static method(method: HasMethod, scope: Scope, ty: Type): [Fn, Type][] {
+  static method(method: HasMethod, scope: Scope, ty: Type): [Fn, Type[], Type][] {
     const fns = scope.get(method.name);
     if (!isFnArray(fns)) {
       return [];
@@ -962,6 +972,9 @@ class Interface extends Type {
     if (this.delegate !== null) {
       this.delegate.constrain(that, scope);
     } else if (this.isDuped) {
+      const getStack = { stack: undefined };
+      Error.captureStackTrace(getStack);
+      // console.log('->', this.name, 'set delegate at', getStack.stack);
       this.delegate = that;
       if (this.tempDelegate !== null) {
         this.delegate.tempConstrain(this.tempDelegate, scope);
@@ -1013,6 +1026,9 @@ class Interface extends Type {
         TODO('re-tempConstrain Interface');
       }
     } else {
+      const getTrace = {stack: undefined};
+      Error.captureStackTrace(getTrace)
+      console.log('-> setting', this.name, 'tempDelegate to', that, 'at', getTrace.stack);
       this.tempDelegate = that;
     }
   }

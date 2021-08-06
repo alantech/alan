@@ -222,15 +222,13 @@ export default class Fn {
     this.params.forEach((param) => param.unassign());
   }
 
-  resultTyFor(argTys: Type[], scope: Scope): Type | null {
-    const dbg = (msg: any, ...vals: any[]) => this.name === 'print' && DBG(msg, vals);
-
-    let res: Type | null = null;
+  resultTyFor(argTys: Type[], scope: Scope): [Type[], Type] | null {
+    let res: [Type[], Type] | null = null;
     try {
       this.params.forEach((param, ii) => {
         return param.ty.tempConstrain(argTys[ii], scope);
       });
-      res = this.retTy.instance();
+      res = [this.params.map((param) => param.ty.instance()), this.retTy.instance()];
     } catch (_e) {
       // do nothing: the args aren't applicable to the params so
       // we return null (`res` is already `null`) and we need to
