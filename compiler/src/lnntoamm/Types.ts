@@ -1,4 +1,5 @@
 import { LPNode, NulLP } from '../lp';
+import { fulltypenameAstFromString } from './Ast';
 import Fn from './Fn';
 import Operator from './Operator';
 import Scope from './Scope';
@@ -8,6 +9,11 @@ type Fields = { [name: string]: Type | null };
 export type FieldIndices = { [name: string]: number };
 type GenericArgs = { [name: string]: Type | null };
 type TypeName = [string, TypeName[]];
+interface Generalizable {
+  generics: GenericArgs;
+  solidify(types: Type[]): Type;
+}
+const generalizable = (val: Type): val is Type & Generalizable => 'generics' in val;
 
 const parseFulltypename = (node: LPNode): TypeName => {
   const name = node.get('typename').t.trim();
@@ -46,8 +52,42 @@ export default abstract class Type implements Equalable {
   abstract size(): number;
 
   static getFromTypename(name: LPNode | string, scope: Scope): Type {
-    // TODO: change this to use parseFulltypename
-    return scope.get(name.toString().trim());
+    if (typeof name === 'string') {
+      name = fulltypenameAstFromString(name);
+    }
+    const parsed = parseFulltypename(name);
+    const solidify = ([name, generics]: TypeName): Type => {
+      const ty = scope.get(name);
+      if (ty === null) {
+        throw new Error(`Could not find type ${name}`);
+      } else if (!(ty instanceof Type)) {
+        throw new Error(`${name} is not a type`);
+      }
+      if (generalizable(ty)) {
+        const genericArgLen = Object.keys(ty.generics).length;
+        if (genericArgLen !== generics.length) {
+          console.log([name, generics]);
+          throw new Error(`Bad typename: type ${name} expects ${genericArgLen} type arguments, but ${generics.length} were provided`);
+        }
+        let solidifiedTypeArgs = generics.map(solidify);
+        // interfaces can't have generic type params so no need to call
+        // dupIfNotLocalInterface
+        return ty.solidify(solidifiedTypeArgs);
+      } else if (generics.length !== 0) {
+        throw new Error(`Bad typename: type ${name} doesn't expect any type arguments, but ${generics.length} were provided`);
+      } else {
+        const duped = ty.dupIfNotLocalInterface();
+        if (duped === null) {
+          return ty;
+        } else {
+          // note: if scope isn't *only* for the function's arguments,
+          // this'll override the module scope and that would be bad.
+          scope.put(name, duped);
+          return duped;
+        }
+      }
+    }
+    return solidify(parsed);
   }
 
   static fromInterfacesAst(ast: LPNode, scope: Scope): Type {
@@ -120,6 +160,53 @@ export default abstract class Type implements Equalable {
 
   fnselectOptions(): Type[] {
     return [this];
+  }
+}
+
+class Opaque extends Type {
+  get ammName(): string {
+    return this.name;
+  }
+
+  constructor(name: string) {
+    super(name);
+  }
+
+  compatibleWithConstraint(that: Type, scope: Scope): boolean {
+    return false;
+  }
+
+  constrain(that: Type, scope: Scope) {
+  }
+
+  dupIfNotLocalInterface(): Type {
+    return null;
+  }
+
+  eq(that: Equalable): boolean {
+    return false;
+  }
+
+  fnselectOptions(): Type[] {
+    return [this];
+  }
+
+  instance(): Type {
+    return null;
+  }
+
+  isFixed(): boolean {
+    return false;
+  }
+
+  size(): number {
+    return 0;
+  }
+
+  tempConstrain(that: Type, scope: Scope) {
+  }
+
+  resetTemp() {
   }
 }
 
