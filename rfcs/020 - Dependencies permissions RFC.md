@@ -51,21 +51,70 @@ This is the basic case when we want to use `new_dep_A` in our project but we do 
 
 ![Block at library level](./lib-lvl-v1.png)
 
+The `@std/deps` will have the following API:
+
+```ts
+type Dependency {
+  url: string, // Empty string or ignore it for global blocks at application level
+  block: Array<string>,
+  fullBlock: Array<string>,  // fullBlock, deepBlock, extensiveBlock, exhaustiveBlock?
+}
+
+fn add(url: string) = new Dependency {
+  url: url,
+  block: [],
+  fullBlock: [],
+};
+
+fn add() = new Dependency {
+  url: '',
+  block: [],
+  fullBlock: [],
+};
+
+fn block(dep: Dependency, block: string): Dependency {
+  dep.block.push(block);
+  return dep;
+}
+
+fn block(dep: Dependency, block: Array<string>): Dependency {
+  dep.block = dep.block + block;
+  return dep;
+}
+
+fn fullBlock(dep: Dependency, block: string): Dependency {
+  dep.fullBlock.push(fullBlock);
+  return dep;
+}
+
+fn fullBlock(dep: Dependency, block: Array<string>): Dependency {
+  dep.fullBlock = dep.fullBlock + block;
+  return dep;
+}
+
+fn commit(dependencies: Array<Dependency>) {
+  // Download and install each dep
+  // Apply blocks defined for each dependency
+}
+fn commit(dependencies: Array<Dependency>, global: Array<Dependency>) {
+  // Download and install each dep
+  // Apply blocks defined for each dependency
+  // Block/Enable (based on what we finally decide) depenencies at application level, meaning that mocks will exists at /dependencies/modules/
+}
+```
+
 The `.dependencies.ln` file could look something like:
 
-Block `@std/cmd` but do not override if any mock exists:
-```ln
-add('https://github.com/org/new_dep_A', some(['cmd']), false);
-```
-
-Block `@std/cmd` and override mocks if any:
-```ln
-add('https://github.com/org/new_dep_A', some(['cmd']), true);
-```
-
-Do not block any standrad library:
-```ln
-add('https://github.com/org/new_dep_A', none(), false);
+```ts
+const dependencies = [
+  // Block `@std/cmd` but do not override if any mock exists:
+  add('https://github.com/org/new_dep_A').block('@std/cmd'),
+  // Block `@std/cmd` and override mocks if any:
+  add('https://github.com/org/new_dep_B').fullBlock('@std/cmd'),
+  // Do not block any standrad library:
+  add('https://github.com/org/new_dep_C'),
+];
+commit(dependencies);
 ```
 
 ### Block at application level
@@ -74,17 +123,20 @@ We might want to block any standard library we decide for every third party depe
 
 ![Block at app level](./app-lvl-v1.png)
 
+Using the same `@std/deps` defined above, the `.dependencies.ln` file could look something like:
 
-The `.dependencies.ln` file could look something like:
-
-Block `@std/cmd` but do not override if any mock exists:
-```ln
-block('cmd', false);
-```
-
-Block `@std/cmd` and override mocks if any:
-```ln
-block('cmd', true);
+```ts
+const dependencies = [
+  // Do not block any standard library:
+  add('https://github.com/org/new_dep_A'),
+];
+const globalDependencies = [
+  // Block `@std/cmd` but do not override if any mock exists:
+  add().block('@std/cmd'),
+  // Block `@std/cmd` and override mocks if any:
+  add().fullBlock('@std/tcp'),
+];
+commit(dependencies, globalDependencies);
 ```
 
 ### Alternatives Considered
