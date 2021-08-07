@@ -176,6 +176,7 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
     "/datastore/dsrwith" => handle_dsrwith(req).await,
     "/datastore/dsmwith" => handle_dsmwith(req).await,
     "/datastore/dsmonly" => handle_dsmonly(req).await,
+    "/datastore/dswonly" => handle_dswonly(req).await,
     path => {
       if *CONTROL_PORT_EXTENSIONS.get().unwrap() && path.starts_with("/app/") {
         handle_extensions(req).await
@@ -784,6 +785,48 @@ async fn handle_dsmonly(req: Request<Body>) -> Result<Response<Body>, Infallible
 }
 
 async fn dsmonly_inner(req: Request<Body>) -> DaemonResult<()> {
+  let headers = req.headers();
+  let nskey = headers
+    .get("nskey")
+    .map_or("N/A", |v| v.to_str().unwrap())
+    .to_string();
+  let maybe_hm = DS.get(&nskey);
+  let subhandler_id = headers
+    .get("subhandler_id")
+    .map_or(0, |v| v.to_str().unwrap().parse().unwrap());
+  let subhandler = HandlerFragment::new(subhandler_id, 0);
+  let bytes = body::to_bytes(req.into_body()).await?;
+  let pb = protos::HandlerMemory::HandlerMemory::parse_from_bytes(&bytes)?;
+  let mut hm = HandlerMemory::from_pb(&pb)?;
+  match maybe_hm {
+    Some(ds) => {
+      HandlerMemory::transfer(&ds, 0, &mut hm, CLOSURE_ARG_MEM_START + 1)?;
+      let hm = subhandler.run(hm).await?;
+      // Also grab the mutation to the datastore value and re-insert it
+      let mut newds = HandlerMemory::new(None, 1)?;
+      HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START + 1, &mut newds, 0)?;
+      drop(ds);
+      DS.insert(nskey, newds);
+    }
+    None => {
+      // Do nothing
+    }
+  }
+  Ok(())
+}
+
+async fn handle_dswonly(req: Request<Body>) -> Result<Response<Body>, Infallible> {
+  match dswonly_inner(req).await {
+    Ok(_) => Ok(Response::builder().status(200).body("ok".into()).unwrap()),
+    Err(err) => {
+      // TODO: What error message here? Also should this also be a valid HM out of here?
+      eprintln!("{:?}", err);
+      Ok(Response::builder().status(500).body("fail".into()).unwrap())
+    }
+  }
+}
+
+async fn dswonly_inner(req: Request<Body>) -> DaemonResult<()> {
   let headers = req.headers();
   let nskey = headers
     .get("nskey")
@@ -1482,6 +1525,42 @@ impl ControlPort {
     let orphan_hm = orphan_hm.drop_parent().expect("what");
     let mut out = vec![];
     orphan_hm.to_pb().write_to_vec(&mut out).unwrap();
+    let req_obj = req.body(Body::from(out)).expect("what");
+    let client = self.client.clone();
+    task::spawn(async move {
+      client.request(req_obj).await;
+    });
+  }
+
+  pub fn dswonly(
+    self: &ControlPort,
+    nskey: &str,
+    with_addr: i64,
+    subhandler_id: i64,
+    hand_mem: &Arc<HandlerMemory>,
+  ) {
+    let vm = self.get_vm_for_key(nskey);
+    // TODO: Use private ip if possible
+    let url = format!("https://{}:4142/datastore/dsmonly", vm.public_ip_addr);
+    let req = Request::builder().method("POST").uri(url);
+    let cluster_secret = CLUSTER_SECRET.get().unwrap().clone().unwrap();
+    let req = req.header(cluster_secret.as_str(), "true");
+    let req = req.header("nskey", nskey);
+    let req = req.header("subhandler_id", format!("{}", subhandler_id));
+    let mut hand_mem = HandlerMemory::fork(hand_mem.clone()).expect("what"); // TODO: We need two of them!?
+    hand_mem
+      .register_out(with_addr, 1, CLOSURE_ARG_MEM_START)
+      .expect("what");
+    let mut out_hm = HandlerMemory::new(None, 2).expect("what");
+    HandlerMemory::transfer(
+      &hand_mem,
+      CLOSURE_ARG_MEM_START,
+      &mut out_hm,
+      CLOSURE_ARG_MEM_START + 2,
+    )
+    .expect("what");
+    let mut out = vec![];
+    out_hm.to_pb().write_to_vec(&mut out).unwrap();
     let req_obj = req.body(Body::from(out)).expect("what");
     let client = self.client.clone();
     task::spawn(async move {
