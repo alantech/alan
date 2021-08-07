@@ -178,6 +178,7 @@ async fn control_port(req: Request<Body>) -> Result<Response<Body>, Infallible> 
     "/datastore/dsmonly" => handle_dsmonly(req).await,
     "/datastore/dswonly" => handle_dswonly(req).await,
     "/datastore/dsrclos" => handle_dsrclos(req).await,
+    "/datastore/dsmclos" => handle_dsmclos(req).await,
     path => {
       if *CONTROL_PORT_EXTENSIONS.get().unwrap() && path.starts_with("/app/") {
         handle_extensions(req).await
@@ -893,6 +894,65 @@ async fn dsrclos_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
       let mut hm = HandlerMemory::fork(hand_mem.clone())?; // TODO: This clone is terrible
       HandlerMemory::transfer(&ds, 0, &mut hm, CLOSURE_ARG_MEM_START + 1)?;
       let hm = subhandler.run(hm).await?;
+      let hm = hm.drop_parent()?;
+      hand_mem.join(hm)?;
+      hand_mem.push_fixed(ret_addr, 1i64)?;
+      hand_mem.push_register(ret_addr, CLOSURE_ARG_MEM_START)?;
+    }
+    None => {
+      hand_mem.push_fixed(ret_addr, 0)?;
+      hand_mem.push_fractal(
+        ret_addr,
+        HandlerMemory::str_to_fractal("namespace-key pair not found"),
+      )?;
+    }
+  }
+  Ok(hand_mem)
+}
+
+async fn handle_dsmclos(req: Request<Body>) -> Result<Response<Body>, Infallible> {
+  match dsmclos_inner(req).await {
+    Ok(hand_mem) => {
+      let mut out = vec![];
+      hand_mem.to_pb().write_to_vec(&mut out).unwrap();
+      Ok(Response::builder().status(200).body(out.into()).unwrap())
+    }
+    Err(err) => {
+      // TODO: What error message here? Also should this also be a valid HM out of here?
+      eprintln!("{:?}", err);
+      Ok(Response::builder().status(500).body("fail".into()).unwrap())
+    }
+  }
+}
+
+async fn dsmclos_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
+  let headers = req.headers();
+  let nskey = headers
+    .get("nskey")
+    .map_or("N/A", |v| v.to_str().unwrap())
+    .to_string();
+  let maybe_hm = DS.get(&nskey);
+  let subhandler_id = headers
+    .get("subhandler_id")
+    .map_or(0, |v| v.to_str().unwrap().parse().unwrap());
+  let ret_addr = headers
+    .get("ret_addr")
+    .map_or(0, |v| v.to_str().unwrap().parse().unwrap());
+  let subhandler = HandlerFragment::new(subhandler_id, 0);
+  let bytes = body::to_bytes(req.into_body()).await?;
+  let pb = protos::HandlerMemory::HandlerMemory::parse_from_bytes(&bytes)?;
+  let mut hand_mem = HandlerMemory::from_pb(&pb)?;
+  hand_mem.init_fractal(ret_addr)?;
+  match maybe_hm {
+    Some(ds) => {
+      let mut hm = HandlerMemory::fork(hand_mem.clone())?; // TODO: This clone is terrible
+      HandlerMemory::transfer(&ds, 0, &mut hm, CLOSURE_ARG_MEM_START + 1)?;
+      let hm = subhandler.run(hm).await?;
+      // Also grab the mutation to the datastore value and re-insert it
+      let mut newds = HandlerMemory::new(None, 1)?;
+      HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START + 1, &mut newds, 0)?;
+      drop(ds);
+      DS.insert(nskey, newds);
       let hm = hm.drop_parent()?;
       hand_mem.join(hm)?;
       hand_mem.push_fixed(ret_addr, 1i64)?;
@@ -1649,6 +1709,57 @@ impl ControlPort {
   }
 
   async fn dsrclos_inner(
+    self: &ControlPort,
+    url: String,
+    nskey: &str,
+    subhandler_id: i64,
+    ret_addr: i64,
+    hand_mem: &Arc<HandlerMemory>,
+  ) -> DaemonResult<Arc<HandlerMemory>> {
+    let req = Request::builder().method("POST").uri(url);
+    let cluster_secret = CLUSTER_SECRET.get().unwrap().clone().unwrap();
+    let req = req.header(cluster_secret.as_str(), "true");
+    let req = req.header("nskey", nskey);
+    let req = req.header("subhandler_id", format!("{}", subhandler_id));
+    let req = req.header("ret_addr", format!("{}", ret_addr));
+    let mut out = vec![];
+    hand_mem.to_pb().write_to_vec(&mut out).unwrap();
+    let req_obj = req.body(Body::from(out))?;
+    let mut res = self.client.request(req_obj).await?;
+    let bytes = hyper::body::to_bytes(res.body_mut()).await?;
+    let pb = protos::HandlerMemory::HandlerMemory::parse_from_bytes(&bytes)?;
+    Ok(HandlerMemory::from_pb(&pb)?)
+  }
+
+  pub async fn dsmclos(
+    self: &ControlPort,
+    nskey: &str,
+    subhandler_id: i64,
+    ret_addr: i64,
+    hand_mem: &Arc<HandlerMemory>,
+  ) -> Arc<HandlerMemory> {
+    let vm = self.get_vm_for_key(nskey);
+    // TODO: Use private ip if possible
+    let url = format!("https://{}:4142/datastore/dsmclos", vm.public_ip_addr);
+    match self
+      .dsmclos_inner(url, nskey, subhandler_id, ret_addr, hand_mem)
+      .await
+    {
+      Ok(hm) => hm,
+      Err(_) => {
+        let mut err_hm = HandlerMemory::new(None, 1).expect("what");
+        err_hm
+          .write_fractal(
+            CLOSURE_ARG_MEM_START,
+            &HandlerMemory::str_to_fractal("ERROR TODO"),
+          )
+          .expect("what");
+        err_hm
+      }
+    }
+  }
+
+  async fn dsmclos_inner(
     self: &ControlPort,
     url: String,
     nskey: &str,
