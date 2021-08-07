@@ -774,9 +774,7 @@ async fn dsmwith_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
 
 async fn handle_dsmonly(req: Request<Body>) -> Result<Response<Body>, Infallible> {
   match dsmonly_inner(req).await {
-    Ok(_) => {
-      Ok(Response::builder().status(200).body("ok".into()).unwrap())
-    }
+    Ok(_) => Ok(Response::builder().status(200).body("ok".into()).unwrap()),
     Err(err) => {
       // TODO: What error message here? Also should this also be a valid HM out of here?
       eprintln!("{:?}", err);
@@ -1471,7 +1469,7 @@ impl ControlPort {
     nskey: &str,
     subhandler_id: i64,
     hand_mem: &Arc<HandlerMemory>,
-  ) -> Arc<HandlerMemory> {
+  ) {
     let vm = self.get_vm_for_key(nskey);
     // TODO: Use private ip if possible
     let url = format!("https://{}:4142/datastore/dsmonly", vm.public_ip_addr);
@@ -1480,7 +1478,6 @@ impl ControlPort {
     let req = req.header(cluster_secret.as_str(), "true");
     let req = req.header("nskey", nskey);
     let req = req.header("subhandler_id", format!("{}", subhandler_id));
-    let hm = hand_mem.clone();
     let orphan_hm = HandlerMemory::fork(hand_mem.clone()).expect("what"); // TODO: This clone is a terrible idea
     let orphan_hm = orphan_hm.drop_parent().expect("what");
     let mut out = vec![];
@@ -1490,7 +1487,6 @@ impl ControlPort {
     task::spawn(async move {
       client.request(req_obj).await;
     });
-    hm
   }
 
   fn get_all_vms_by_ip(self: &ControlPort) -> Vec<String> {

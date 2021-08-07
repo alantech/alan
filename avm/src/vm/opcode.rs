@@ -4003,8 +4003,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       match ctrl_port {
         Some(ctrl_port) => {
           let ctrl_port = ctrl_port.borrow().clone();
-          let res_hm = ctrl_port.dsmonly(&nskey, args[1], &hand_mem);
-          HandlerMemory::transfer(&res_hm, 0, &mut hand_mem, args[2])?;
+          ctrl_port.dsmonly(&nskey, args[1], &hand_mem);
         },
         None => {
           hand_mem.init_fractal(args[2])?;
