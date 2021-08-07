@@ -946,17 +946,28 @@ async fn dsmclos_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
   match maybe_hm {
     Some(ds) => {
       let mut hm = HandlerMemory::fork(hand_mem.clone())?; // TODO: This clone is terrible
+      eprintln!("a");
       HandlerMemory::transfer(&ds, 0, &mut hm, CLOSURE_ARG_MEM_START + 1)?;
+      eprintln!("b");
       let hm = subhandler.run(hm).await?;
+      eprintln!("c");
       // Also grab the mutation to the datastore value and re-insert it
       let mut newds = HandlerMemory::new(None, 1)?;
+      eprintln!("d");
       HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START + 1, &mut newds, 0)?;
+      eprintln!("e");
       drop(ds);
+      eprintln!("f");
       DS.insert(nskey, newds);
+      eprintln!("g");
       let hm = hm.drop_parent()?;
+      eprintln!("h");
       hand_mem.join(hm)?;
+      eprintln!("i");
       hand_mem.push_fixed(ret_addr, 1i64)?;
+      eprintln!("j");
       hand_mem.push_register(ret_addr, CLOSURE_ARG_MEM_START)?;
+      eprintln!("k");
     }
     None => {
       hand_mem.push_fixed(ret_addr, 0)?;
