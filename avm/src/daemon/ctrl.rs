@@ -880,24 +880,32 @@ async fn dsrclos_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
   let subhandler_id = headers
     .get("subhandler_id")
     .map_or(0, |v| v.to_str().unwrap().parse().unwrap());
+  let ret_addr = headers
+    .get("ret_addr")
+    .map_or(0, |v| v.to_str().unwrap().parse().unwrap());
   let subhandler = HandlerFragment::new(subhandler_id, 0);
   let bytes = body::to_bytes(req.into_body()).await?;
   let pb = protos::HandlerMemory::HandlerMemory::parse_from_bytes(&bytes)?;
-  let mut hm = HandlerMemory::from_pb(&pb)?;
+  let mut hand_mem = HandlerMemory::from_pb(&pb)?;
   match maybe_hm {
     Some(ds) => {
+      let mut hm = HandlerMemory::fork(hand_mem.clone())?; // TODO: This clone is terrible
       HandlerMemory::transfer(&ds, 0, &mut hm, CLOSURE_ARG_MEM_START + 1)?;
-      hm = subhandler.run(hm).await?;
+      let hm = subhandler.run(hm).await?;
+      let hm = hm.drop_parent()?;
+      hand_mem.join(hm)?;
+      hand_mem.push_fixed(ret_addr, 1i64)?;
+      hand_mem.push_register(ret_addr, CLOSURE_ARG_MEM_START)?;
     }
     None => {
-      hm.push_fixed(0, 0);
-      hm.push_fractal(
-        0,
+      hand_mem.push_fixed(ret_addr, 0)?;
+      hand_mem.push_fractal(
+        ret_addr,
         HandlerMemory::str_to_fractal("namespace-key pair not found"),
       )?;
     }
   }
-  Ok(hm)
+  Ok(hand_mem)
 }
 
 // TODO: Revive once rustls supports IP addresses
@@ -1615,12 +1623,16 @@ impl ControlPort {
     self: &ControlPort,
     nskey: &str,
     subhandler_id: i64,
+    ret_addr: i64,
     hand_mem: &Arc<HandlerMemory>,
   ) -> Arc<HandlerMemory> {
     let vm = self.get_vm_for_key(nskey);
     // TODO: Use private ip if possible
     let url = format!("https://{}:4142/datastore/dsrclos", vm.public_ip_addr);
-    match self.dsrclos_inner(url, nskey, subhandler_id, hand_mem).await {
+    match self
+      .dsrclos_inner(url, nskey, subhandler_id, ret_addr, hand_mem)
+      .await
+    {
       Ok(hm) => hm,
       Err(_) => {
         let mut err_hm = HandlerMemory::new(None, 1).expect("what");
@@ -1640,6 +1652,7 @@ impl ControlPort {
     url: String,
     nskey: &str,
     subhandler_id: i64,
+    ret_addr: i64,
     hand_mem: &Arc<HandlerMemory>,
   ) -> DaemonResult<Arc<HandlerMemory>> {
     let req = Request::builder().method("POST").uri(url);
@@ -1647,6 +1660,7 @@ impl ControlPort {
     let req = req.header(cluster_secret.as_str(), "true");
     let req = req.header("nskey", nskey);
     let req = req.header("subhandler_id", format!("{}", subhandler_id));
+    let req = req.header("ret_addr", format!("{}", ret_addr));
     let mut out = vec![];
     hand_mem.to_pb().write_to_vec(&mut out).unwrap();
     let req_obj = req.body(Body::from(out))?;

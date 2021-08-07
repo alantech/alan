@@ -4081,7 +4081,7 @@ pub static OPCODES: Lazy<HashMap<i64, ByteOpcode>> = Lazy::new(|| {
       match ctrl_port {
         Some(ctrl_port) => {
           let ctrl_port = ctrl_port.borrow().clone();
-          hand_mem = ctrl_port.dsrclos(&nskey, args[1], &hand_mem).await;
+          hand_mem = ctrl_port.dsrclos(&nskey, args[1], args[2], &hand_mem).await;
         },
         None => {
           hand_mem.init_fractal(args[2])?;
