@@ -887,6 +887,7 @@ async fn dsrclos_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
   let bytes = body::to_bytes(req.into_body()).await?;
   let pb = protos::HandlerMemory::HandlerMemory::parse_from_bytes(&bytes)?;
   let mut hand_mem = HandlerMemory::from_pb(&pb)?;
+  hand_mem.init_fractal(ret_addr)?;
   match maybe_hm {
     Some(ds) => {
       let mut hm = HandlerMemory::fork(hand_mem.clone())?; // TODO: This clone is terrible
