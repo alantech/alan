@@ -926,65 +926,43 @@ async fn handle_dsmclos(req: Request<Body>) -> Result<Response<Body>, Infallible
 }
 
 async fn dsmclos_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
-  eprintln!("dmclos_inner");
   let headers = req.headers();
-  eprintln!("1");
   let nskey = headers
     .get("nskey")
     .map_or("N/A", |v| v.to_str().unwrap())
     .to_string();
-  eprintln!("2");
   let maybe_hm = DS.get(&nskey);
-  eprintln!("3");
   let subhandler_id = headers
     .get("subhandler_id")
     .map_or(0, |v| v.to_str().unwrap().parse().unwrap());
-  eprintln!("4");
   let ret_addr = headers
     .get("ret_addr")
     .map_or(0, |v| v.to_str().unwrap().parse().unwrap());
-  eprintln!("5");
   let subhandler = HandlerFragment::new(subhandler_id, 0);
-  eprintln!("6");
   let bytes = body::to_bytes(req.into_body()).await?;
-  eprintln!("7");
   let pb = protos::HandlerMemory::HandlerMemory::parse_from_bytes(&bytes)?;
-  eprintln!("8");
   let mut hand_mem = HandlerMemory::from_pb(&pb)?;
-  eprintln!("9");
   hand_mem.init_fractal(ret_addr)?;
-  eprintln!("10");
   match maybe_hm {
     Some(ds) => {
       let mut hm = HandlerMemory::fork(hand_mem.clone())?; // TODO: This clone is terrible
-      eprintln!("a");
       HandlerMemory::transfer(&ds, 0, &mut hm, CLOSURE_ARG_MEM_START + 1)?;
-      eprintln!("b");
       let hm = subhandler.run(hm).await?;
-      eprintln!("c");
       // Also grab the mutation to the datastore value and re-insert it
       let mut newds = HandlerMemory::new(None, 1)?;
-      eprintln!("d");
       HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START + 1, &mut newds, 0)?;
-      eprintln!("e");
+      eprintln!("newds {:?}", newds);
       drop(ds);
-      eprintln!("f");
       DS.insert(nskey, newds);
-      eprintln!("g");
       let hm = hm.drop_parent()?;
-      eprintln!("h");
       hand_mem.join(hm)?;
-      eprintln!("i");
       hand_mem.push_fixed(ret_addr, 1i64)?;
-      eprintln!("j");
       if hand_mem.addr_to_idxs_opt(CLOSURE_ARG_MEM_START).is_some() {
         // Guard against void functions
         hand_mem.push_register(ret_addr, CLOSURE_ARG_MEM_START)?;
       }
-      eprintln!("k");
     }
     None => {
-      eprintln!("hwat...");
       hand_mem.push_fixed(ret_addr, 0)?;
       hand_mem.push_fractal(
         ret_addr,
