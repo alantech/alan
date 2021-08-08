@@ -951,7 +951,6 @@ async fn dsmclos_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
       // Also grab the mutation to the datastore value and re-insert it
       let mut newds = HandlerMemory::new(None, 1)?;
       HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START + 1, &mut newds, 0)?;
-      eprintln!("newds {:?}", newds);
       drop(ds);
       DS.insert(nskey, newds);
       let hm = hm.drop_parent()?;
@@ -1779,6 +1778,10 @@ impl ControlPort {
     let req = req.header("ret_addr", format!("{}", ret_addr));
     let mut out = vec![];
     hand_mem.to_pb().write_to_vec(&mut out).unwrap();
+    let pb = protos::HandlerMemory::HandlerMemory::parse_from_bytes(&out)?;
+    let hand_mem_2 = HandlerMemory::from_pb(&pb)?;
+    eprintln!("hand_mem {:?}", hand_mem);
+    eprintln!("hand_mem_2 {:?}", hand_mem_2);
     let req_obj = req.body(Body::from(out))?;
     let mut res = self.client.request(req_obj).await?;
     let bytes = hyper::body::to_bytes(res.body_mut()).await?;
