@@ -977,7 +977,10 @@ async fn dsmclos_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
       eprintln!("i");
       hand_mem.push_fixed(ret_addr, 1i64)?;
       eprintln!("j");
-      hand_mem.push_register(ret_addr, CLOSURE_ARG_MEM_START)?;
+      if hand_mem.addr_to_idxs_opt(CLOSURE_ARG_MEM_START).is_some() {
+        // Guard against void functions
+        hand_mem.push_register(ret_addr, CLOSURE_ARG_MEM_START)?;
+      }
       eprintln!("k");
     }
     None => {
