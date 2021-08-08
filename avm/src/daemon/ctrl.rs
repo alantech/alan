@@ -926,23 +926,34 @@ async fn handle_dsmclos(req: Request<Body>) -> Result<Response<Body>, Infallible
 }
 
 async fn dsmclos_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
+  eprintln!("dmclos_inner");
   let headers = req.headers();
+  eprintln!("1");
   let nskey = headers
     .get("nskey")
     .map_or("N/A", |v| v.to_str().unwrap())
     .to_string();
+  eprintln!("2");
   let maybe_hm = DS.get(&nskey);
+  eprintln!("3");
   let subhandler_id = headers
     .get("subhandler_id")
     .map_or(0, |v| v.to_str().unwrap().parse().unwrap());
+  eprintln!("4");
   let ret_addr = headers
     .get("ret_addr")
     .map_or(0, |v| v.to_str().unwrap().parse().unwrap());
+  eprintln!("5");
   let subhandler = HandlerFragment::new(subhandler_id, 0);
+  eprintln!("6");
   let bytes = body::to_bytes(req.into_body()).await?;
+  eprintln!("7");
   let pb = protos::HandlerMemory::HandlerMemory::parse_from_bytes(&bytes)?;
+  eprintln!("8");
   let mut hand_mem = HandlerMemory::from_pb(&pb)?;
+  eprintln!("9");
   hand_mem.init_fractal(ret_addr)?;
+  eprintln!("10");
   match maybe_hm {
     Some(ds) => {
       let mut hm = HandlerMemory::fork(hand_mem.clone())?; // TODO: This clone is terrible
@@ -970,6 +981,7 @@ async fn dsmclos_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
       eprintln!("k");
     }
     None => {
+      eprintln!("hwat...");
       hand_mem.push_fixed(ret_addr, 0)?;
       hand_mem.push_fractal(
         ret_addr,
