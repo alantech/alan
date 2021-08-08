@@ -26,7 +26,7 @@ dependencies = [
 
 [[package]]
 name = "alan"
-version = "0.1.44-beta41"
+version = "0.1.44-beta42"
 dependencies = [
  "ascii_table",
  "async-stream",
