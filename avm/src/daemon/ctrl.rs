@@ -630,7 +630,7 @@ async fn dsmrun_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
     .get("nskey")
     .map_or("N/A", |v| v.to_str().unwrap())
     .to_string();
-  let maybe_hm = DS.get(&nskey);
+  let maybe_hm = DS.get_mut(&nskey);
   let subhandler_id = headers
     .get("subhandler_id")
     .map_or(0, |v| v.to_str().unwrap().parse().unwrap());
@@ -641,7 +641,7 @@ async fn dsmrun_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
   let mut res_hm = HandlerMemory::new(None, 1)?;
   res_hm.init_fractal(0)?;
   match maybe_hm {
-    Some(ds) => {
+    Some(mut ds) => {
       HandlerMemory::transfer(&ds, 0, &mut hm, CLOSURE_ARG_MEM_START + 1)?;
       let hm = subhandler.run(hm).await?;
       res_hm.push_fixed(0, 1);
@@ -651,10 +651,7 @@ async fn dsmrun_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
         res_hm.push_register(0, 1)?;
       }
       // Also grab the mutation to the datastore value and re-insert it
-      let mut newds = HandlerMemory::new(None, 1)?;
-      HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START + 1, &mut newds, 0)?;
-      drop(ds);
-      DS.insert(nskey, newds);
+      HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START + 1, &mut ds, 0)?;
     }
     None => {
       res_hm.push_fixed(0, 0);
@@ -738,7 +735,7 @@ async fn dsmwith_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
     .get("nskey")
     .map_or("N/A", |v| v.to_str().unwrap())
     .to_string();
-  let maybe_hm = DS.get(&nskey);
+  let maybe_hm = DS.get_mut(&nskey);
   let subhandler_id = headers
     .get("subhandler_id")
     .map_or(0, |v| v.to_str().unwrap().parse().unwrap());
@@ -749,7 +746,7 @@ async fn dsmwith_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
   let mut res_hm = HandlerMemory::new(None, 2)?;
   res_hm.init_fractal(0)?;
   match maybe_hm {
-    Some(ds) => {
+    Some(mut ds) => {
       HandlerMemory::transfer(&ds, 0, &mut hm, CLOSURE_ARG_MEM_START + 1)?;
       let hm = subhandler.run(hm).await?;
       res_hm.push_fixed(0, 1);
@@ -759,10 +756,7 @@ async fn dsmwith_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
         res_hm.push_register(0, 1)?;
       }
       // Also grab the mutation to the datastore value and re-insert it
-      let mut newds = HandlerMemory::new(None, 1)?;
-      HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START + 1, &mut newds, 0)?;
-      drop(ds);
-      DS.insert(nskey, newds);
+      HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START + 1, &mut ds, 0)?;
     }
     None => {
       res_hm.push_fixed(0, 0);
@@ -792,7 +786,7 @@ async fn dsmonly_inner(req: Request<Body>) -> DaemonResult<()> {
     .get("nskey")
     .map_or("N/A", |v| v.to_str().unwrap())
     .to_string();
-  let maybe_hm = DS.get(&nskey);
+  let maybe_hm = DS.get_mut(&nskey);
   let subhandler_id = headers
     .get("subhandler_id")
     .map_or(0, |v| v.to_str().unwrap().parse().unwrap());
@@ -801,14 +795,11 @@ async fn dsmonly_inner(req: Request<Body>) -> DaemonResult<()> {
   let pb = protos::HandlerMemory::HandlerMemory::parse_from_bytes(&bytes)?;
   let mut hm = HandlerMemory::from_pb(&pb)?;
   match maybe_hm {
-    Some(ds) => {
+    Some(mut ds) => {
       HandlerMemory::transfer(&ds, 0, &mut hm, CLOSURE_ARG_MEM_START + 1)?;
       let hm = subhandler.run(hm).await?;
       // Also grab the mutation to the datastore value and re-insert it
-      let mut newds = HandlerMemory::new(None, 1)?;
-      HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START + 1, &mut newds, 0)?;
-      drop(ds);
-      DS.insert(nskey, newds);
+      HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START + 1, &mut ds, 0)?;
     }
     None => {
       // Do nothing
@@ -834,7 +825,7 @@ async fn dswonly_inner(req: Request<Body>) -> DaemonResult<()> {
     .get("nskey")
     .map_or("N/A", |v| v.to_str().unwrap())
     .to_string();
-  let maybe_hm = DS.get(&nskey);
+  let maybe_hm = DS.get_mut(&nskey);
   let subhandler_id = headers
     .get("subhandler_id")
     .map_or(0, |v| v.to_str().unwrap().parse().unwrap());
@@ -843,14 +834,11 @@ async fn dswonly_inner(req: Request<Body>) -> DaemonResult<()> {
   let pb = protos::HandlerMemory::HandlerMemory::parse_from_bytes(&bytes)?;
   let mut hm = HandlerMemory::from_pb(&pb)?;
   match maybe_hm {
-    Some(ds) => {
+    Some(mut ds) => {
       HandlerMemory::transfer(&ds, 0, &mut hm, CLOSURE_ARG_MEM_START + 1)?;
       let hm = subhandler.run(hm).await?;
       // Also grab the mutation to the datastore value and re-insert it
-      let mut newds = HandlerMemory::new(None, 1)?;
-      HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START + 1, &mut newds, 0)?;
-      drop(ds);
-      DS.insert(nskey, newds);
+      HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START + 1, &mut ds, 0)?;
     }
     None => {
       // Do nothing
@@ -928,7 +916,7 @@ async fn dsmclos_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
     .get("nskey")
     .map_or("N/A", |v| v.to_str().unwrap())
     .to_string();
-  let maybe_hm = DS.get(&nskey);
+  let maybe_hm = DS.get_mut(&nskey);
   let subhandler_id = headers
     .get("subhandler_id")
     .map_or(0, |v| v.to_str().unwrap().parse().unwrap());
@@ -941,14 +929,11 @@ async fn dsmclos_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
   let mut hand_mem = HandlerMemory::from_pb(&pb)?;
   hand_mem.init_fractal(ret_addr)?;
   match maybe_hm {
-    Some(ds) => {
+    Some(mut ds) => {
       HandlerMemory::transfer(&ds, 0, &mut hand_mem, CLOSURE_ARG_MEM_START + 1)?;
       hand_mem = subhandler.run(hand_mem).await?;
       // Also grab the mutation to the datastore value and re-insert it
-      let mut newds = HandlerMemory::new(None, 1)?;
-      HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START + 1, &mut newds, 0)?;
-      drop(ds);
-      DS.insert(nskey, newds);
+      HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START + 1, &mut ds, 0)?;
       hand_mem.push_fixed(ret_addr, 1i64)?;
       if hand_mem.addr_to_idxs_opt(CLOSURE_ARG_MEM_START).is_some() {
         // Guard against void functions
