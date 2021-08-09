@@ -891,11 +891,8 @@ async fn dsrclos_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
   hand_mem.init_fractal(ret_addr)?;
   match maybe_hm {
     Some(ds) => {
-      let mut hm = HandlerMemory::fork(hand_mem.clone())?; // TODO: This clone is terrible
-      HandlerMemory::transfer(&ds, 0, &mut hm, CLOSURE_ARG_MEM_START + 1)?;
-      let hm = subhandler.run(hm).await?;
-      let hm = hm.drop_parent()?;
-      hand_mem.join(hm)?;
+      HandlerMemory::transfer(&ds, 0, &mut hand_mem, CLOSURE_ARG_MEM_START + 1)?;
+      hand_mem = subhandler.run(hand_mem).await?;
       hand_mem.push_fixed(ret_addr, 1i64)?;
       hand_mem.push_register(ret_addr, CLOSURE_ARG_MEM_START)?;
     }
@@ -945,7 +942,6 @@ async fn dsmclos_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
   hand_mem.init_fractal(ret_addr)?;
   match maybe_hm {
     Some(ds) => {
-      //let mut hm = HandlerMemory::fork(hand_mem.clone())?; // TODO: This clone is terrible
       HandlerMemory::transfer(&ds, 0, &mut hand_mem, CLOSURE_ARG_MEM_START + 1)?;
       hand_mem = subhandler.run(hand_mem).await?;
       // Also grab the mutation to the datastore value and re-insert it
@@ -953,8 +949,6 @@ async fn dsmclos_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
       HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START + 1, &mut newds, 0)?;
       drop(ds);
       DS.insert(nskey, newds);
-      //let hm = hm.drop_parent()?;
-      //hand_mem.join(hm)?;
       hand_mem.push_fixed(ret_addr, 1i64)?;
       if hand_mem.addr_to_idxs_opt(CLOSURE_ARG_MEM_START).is_some() {
         // Guard against void functions
