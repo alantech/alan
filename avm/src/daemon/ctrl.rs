@@ -652,6 +652,7 @@ async fn dsmrun_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
       }
       // Also grab the mutation to the datastore value and re-insert it
       HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START + 1, &mut ds, 0)?;
+      drop(ds);
     }
     None => {
       res_hm.push_fixed(0, 0);
@@ -757,6 +758,7 @@ async fn dsmwith_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
       }
       // Also grab the mutation to the datastore value and re-insert it
       HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START + 1, &mut ds, 0)?;
+      drop(ds);
     }
     None => {
       res_hm.push_fixed(0, 0);
@@ -800,6 +802,7 @@ async fn dsmonly_inner(req: Request<Body>) -> DaemonResult<()> {
       let hm = subhandler.run(hm).await?;
       // Also grab the mutation to the datastore value and re-insert it
       HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START + 1, &mut ds, 0)?;
+      drop(ds);
     }
     None => {
       // Do nothing
@@ -839,6 +842,7 @@ async fn dswonly_inner(req: Request<Body>) -> DaemonResult<()> {
       let hm = subhandler.run(hm).await?;
       // Also grab the mutation to the datastore value and re-insert it
       HandlerMemory::transfer(&hm, CLOSURE_ARG_MEM_START + 1, &mut ds, 0)?;
+      drop(ds);
     }
     None => {
       // Do nothing
@@ -934,6 +938,7 @@ async fn dsmclos_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
       hand_mem = subhandler.run(hand_mem).await?;
       // Also grab the mutation to the datastore value and re-insert it
       HandlerMemory::transfer(&hand_mem, CLOSURE_ARG_MEM_START + 1, &mut ds, 0)?;
+      drop(ds);
       hand_mem.push_fixed(ret_addr, 1i64)?;
       if hand_mem.addr_to_idxs_opt(CLOSURE_ARG_MEM_START).is_some() {
         // Guard against void functions
