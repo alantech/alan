@@ -3,7 +3,7 @@ import { fulltypenameAstFromString } from './Ast';
 import Fn from './Fn';
 import Operator from './Operator';
 import Scope from './Scope';
-import { Equalable, genName, isFnArray, isOpArray, TODO } from './util';
+import { DBG, Equalable, genName, isFnArray, isOpArray, TODO } from './util';
 
 type Fields = { [name: string]: Type | null };
 export type FieldIndices = { [name: string]: number };
@@ -14,6 +14,12 @@ interface Generalizable {
   solidify(types: Type[]): Type;
 }
 const generalizable = (val: Type): val is Type & Generalizable => 'generics' in val;
+
+// note: if more opt types are used, use `InterfaceDupOpts & OtherDupOpts`
+export type DupOpts = InterfaceDupOpts;
+interface InterfaceDupOpts {
+  isTyVar?: boolean;
+}
 
 const parseFulltypename = (node: LPNode): TypeName => {
   const name = node.get('typename').t.trim();
@@ -51,7 +57,7 @@ export default abstract class Type implements Equalable {
   abstract resetTemp(): void;
   abstract size(): number;
 
-  static getFromTypename(name: LPNode | string, scope: Scope): Type {
+  static getFromTypename(name: LPNode | string, scope: Scope, dupOpts?: DupOpts): Type {
     if (typeof name === 'string') {
       name = fulltypenameAstFromString(name);
     }
@@ -76,7 +82,7 @@ export default abstract class Type implements Equalable {
       } else if (generics.length !== 0) {
         throw new Error(`Bad typename: type ${name} doesn't expect any type arguments, but ${generics.length} were provided`);
       } else {
-        const duped = ty.dupIfNotLocalInterface();
+        const duped = ty.dup(dupOpts);
         if (duped === null) {
           return ty;
         } else {
@@ -136,7 +142,7 @@ export default abstract class Type implements Equalable {
     return new HasOperator(name, null, params, ret, isPrefix);
   }
 
-  dupIfNotLocalInterface(): Type | null {
+  dup(opts?: DupOpts): Type | null {
     return null;
   }
 
@@ -179,7 +185,7 @@ class Opaque extends Type {
   constrain(that: Type, scope: Scope) {
   }
 
-  dupIfNotLocalInterface(): Type {
+  dup(): Type {
     return null;
   }
 
@@ -245,7 +251,6 @@ class Builtin extends Type {
   constrain(ty: Type, scope: Scope) {
     if (
       ty instanceof OneOf ||
-      ty instanceof Generated ||
       ty instanceof Interface
     ) {
       ty.constrain(this, scope);
@@ -354,8 +359,8 @@ export class FunctionType extends Type {
   }
 
   static matrixSelect(fns: Fn[], args: Type[], scope: Scope): [Fn, Type[], Type][] {
-    console.log('MATRIXSELECT START');
-    const originalLength = fns.length;
+    // console.log('MATRIXSELECT START');
+    const original = [...fns];
     // remove any fns that shouldn't apply
     const callTy = new FunctionType(new NulLP(), args, Type.generate());
     // console.log('callTy gotten');
@@ -363,20 +368,20 @@ export class FunctionType extends Type {
     // console.log('filtered');
     // if it's 0-arity then all we have to do is grab the retTy of the fn
     if (args.length === 0) {
-      console.log('nothin');
+      // console.log('nothin');
       return fns.reduce(
         (fns, fn) => [...fns, [fn, fn.params.map((p) => p.ty.instance()), fn.retTy.instance()]],
         new Array<[Fn, Type[], Type]>(),
       );
     }
-    console.log('matrixing', fns);
+    // console.log('matrixing', fns);
     // and now to generate the matrix
     // every argument is a dimension within the matrix, but we're
     // representing each dimension _d_ as an index in the matrix
     const matrix: Array<Type[]> = args.map((arg) => {
       return arg.fnselectOptions();
     });
-    console.log('matrix:', matrix);
+    // console.log('matrix:', matrix);
     // TODO: this weight system feels like it can be inaccurate
     // the weight of a particular function is computed by the sum
     // of the indices in each dimension, with the highest sum
@@ -386,16 +391,16 @@ export class FunctionType extends Type {
     // keep it as for instead of while for debugging reasons
     for (let i = 0; ; i++) {
       const weight = indices.reduce((w, c) => w + c);
-      console.log('weight', weight);
+      // console.log('weight', weight);
       const argTys = matrix.map((options, ii) => options[indices[ii]]);
-      console.log('argtys', argTys);
+      // console.log('argtys', argTys);
       const fnsForWeight = fnsByWeight.get(weight) || [];
-      console.log('for weight', fnsForWeight);
+      // console.log('for weight', fnsForWeight);
       fnsForWeight.push(
         ...fns.reduce((fns, fn) => {
-          console.log('getting result ty')
+          // console.log('getting result ty')
           const tys = fn.resultTyFor(argTys, scope);
-          console.log('is', tys);
+          // console.log('is', tys);
           if (tys === null) {
             return fns;
           } else {
@@ -403,7 +408,7 @@ export class FunctionType extends Type {
           }
         }, new Array<[Fn, Type[], Type]>()),
       );
-      console.log('for weight now', fnsForWeight);
+      // console.log('for weight now', fnsForWeight);
       fnsByWeight.set(weight, fnsForWeight);
       if (
         indices.every(
@@ -432,7 +437,7 @@ export class FunctionType extends Type {
     // appending the tuple at each weight to a list
     const ret = weights.reduce((fns, weight) => {
       let weightFns = fnsByWeight.get(weight);
-      console.log('at weight', weight, 'fns are', weightFns);
+      // console.log('at weight', weight, 'fns are', weightFns);
       weightFns = weightFns.filter(
         ([weightedFn, _retTy]) =>
           fns.findIndex(([fn, _retTy]) => fn === weightedFn) === -1,
@@ -440,9 +445,9 @@ export class FunctionType extends Type {
       // console.log('filtered:', weightFns);
       return [...fns, ...weightFns];
     }, new Array<[Fn, Type[], Type]>());
-    if (ret.length > originalLength || ret.length === 0) {
+    if (ret.length > original.length || ret.length === 0) {
       console.log('~~~ ERROR');
-      console.log('original: ', originalLength);
+      console.log('original: ', original);
       console.log('retLength:', ret.length);
       console.log('args:     ', args);
       console.log('matrix:   ', matrix);
@@ -454,7 +459,7 @@ export class FunctionType extends Type {
         throw new Error('somehow got more options when fn selecting');
       }
     }
-    console.log('returning:', ret);
+    // console.log('returning:', ret);
     return ret;
   }
 
@@ -880,7 +885,7 @@ class Interface extends Type {
   operators: HasOperator[];
   delegate: Type | null;
   tempDelegate: Type | null;
-  private __isDuped: boolean;
+  private __isDuped: DupOpts;
 
   // Used for debug purposes, mostly (much easier to read than uuids)
   private static dupId = 0;
@@ -897,7 +902,7 @@ class Interface extends Type {
   }
 
   get isDuped(): boolean {
-    return this.__isDuped;
+    return this.__isDuped !== null;
   }
 
   constructor(
@@ -913,7 +918,7 @@ class Interface extends Type {
     this.operators = operators;
     this.delegate = null;
     this.tempDelegate = null;
-    this.__isDuped = false;
+    this.__isDuped = null;
   }
 
   static fromAst(ast: LPNode, scope: Scope): Interface {
@@ -1058,7 +1063,7 @@ class Interface extends Type {
 
     if (this.delegate !== null) {
       this.delegate.constrain(that, scope);
-    } else if (this.isDuped) {
+    } else if (this.isDuped && !this.__isDuped.isTyVar) {
       const getStack = { stack: undefined };
       Error.captureStackTrace(getStack);
       // console.log('->', this.name, 'set delegate at', getStack.stack);
@@ -1115,7 +1120,7 @@ class Interface extends Type {
     } else {
       const getTrace = {stack: undefined};
       Error.captureStackTrace(getTrace)
-      console.log('-> setting', this.name, 'tempDelegate to', that, 'at', getTrace.stack);
+      // console.log('-> setting', this.name, 'tempDelegate to', that, 'at', getTrace.stack);
       this.tempDelegate = that;
     }
   }
@@ -1131,7 +1136,7 @@ class Interface extends Type {
     }
   }
 
-  dupIfNotLocalInterface(): Type | null {
+  dup(dupOpts: DupOpts = {}): Type | null {
     if (this.isDuped) return null;
     const dup = new Interface(
       // name isn't really used for anything in Interfaces
@@ -1142,7 +1147,7 @@ class Interface extends Type {
       [...this.methods],
       [...this.operators],
     );
-    dup.__isDuped = true;
+    dup.__isDuped = dupOpts;
     return dup;
   }
 
@@ -1170,6 +1175,8 @@ class Interface extends Type {
 // the interface through type constraints instead of through explicit requirements.
 // this'll make untyped fn parameters easier once they're implemented.
 class Generated extends Interface {
+  private dbg = (msg: any, ...others: any[]) => this.name === 'Generated440' && DBG(msg, ...others);
+
   // don't override `get ammName` since its Error output is unique but generic
   // over both Generated and Interface types
   get isDuped(): boolean {
@@ -1186,6 +1193,9 @@ class Generated extends Interface {
       [],
       [],
     );
+    const getStack = { stack: '' };
+    Error.captureStackTrace(getStack);
+    this.dbg('created at', getStack.stack);
   }
 
   compatibleWithConstraint(that: Type, scope: Scope): boolean {

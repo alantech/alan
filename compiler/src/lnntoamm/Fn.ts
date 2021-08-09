@@ -76,25 +76,25 @@ export default class Fn {
   }
 
   static fromFunctionsAst(ast: LPNode, scope: Scope): Fn {
-    scope = new Scope(scope);
+    const fnSigScope = new Scope(scope);
+
     let retTy: Type;
     if (ast.get('optreturntype').has()) {
       const name = ast.get('optreturntype').get('fulltypename');
-      retTy = Type.getFromTypename(name, scope);
+      retTy = Type.getFromTypename(name, fnSigScope, { isTyVar: true });
       if (retTy === null) {
         throw new Error(`Type not in scope: ${name.t.trim()}`);
       }
-      if (retTy.dupIfNotLocalInterface() !== null) {
-        // TODO: figure out how to prevent type erasure while allowing
-        // eg the generic identity function. Or just wait until generic
-        // fn type parameters.
-        throw new Error(`type erasure is illegal`);
-      }
+      // if (retTy.dup() !== null) {
+      //   // TODO: figure out how to prevent type erasure while allowing
+      //   // eg the generic identity function. Or just wait until generic
+      //   // fn type parameters.
+      //   throw new Error(`type erasure is illegal`);
+      // }
     } else {
       retTy = Type.oneOf([Type.generate(), opcodes().get('void')]);
     }
 
-    // TODO: inheritance
     const metadata = new MetaData(scope, retTy);
 
     const name = ast.get('optname').has() ? ast.get('optname').get().t : null;
@@ -106,7 +106,7 @@ export default class Fn {
         p.push(...arglist.get('cdr').getAll());
       }
     }
-    const params = p.map((paramAst) => FnParam.fromArgAst(paramAst, metadata));
+    const params = p.map((paramAst) => FnParam.fromArgAst(paramAst, metadata, fnSigScope));
 
     let body = [];
     let bodyAsts: LPNode | LPNode[] = ast.get('fullfunctionbody');

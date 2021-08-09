@@ -190,7 +190,7 @@ export class Dec extends VarDef {
       const found = Type.getFromTypename(tyName, metadata.scope);
       // if the type hint is an interface, then all we have to do
       // is ensure that the expr's ty matches the interface
-      const duped = found.dupIfNotLocalInterface();
+      const duped = found.dup();
       if (duped === null) {
         ty = found;
         ty.constrain(expr.ty, metadata.scope);
@@ -258,20 +258,15 @@ export class FnParam extends VarDef {
     this.__assigned = null;
   }
 
-  static fromArgAst(ast: LPNode, metadata: MetaData): FnParam {
+  static fromArgAst(ast: LPNode, metadata: MetaData, fnSigScope: Scope): FnParam {
     const name = ast.get('variable').t;
     const typename = ast.get('fulltypename');
-    let paramTy = Type.getFromTypename(typename, metadata.scope);
+    let paramTy = Type.getFromTypename(typename, fnSigScope, { isTyVar: true });
     if (paramTy === null) {
       paramTy = Type.generate();
       TODO('args with implicit types are not supported yet');
     } else if (!(paramTy instanceof Type)) {
       throw new Error(`Function parameter is not a valid type: ${typename.t}`);
-    }
-    const duped = paramTy.dupIfNotLocalInterface();
-    if (duped !== null) {
-      metadata.scope.put(duped.name, duped);
-      paramTy = duped;
     }
     const param = new FnParam(ast, name, paramTy);
     metadata.define(param);
