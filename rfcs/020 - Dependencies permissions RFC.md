@@ -60,40 +60,59 @@ The API will handle the following actions:
 The `@std/deps` will have the following API:
 
 ```ts
+type Package {
+  std: Array<string>,
+  dependencies: Array<Dependency>,
+  block: Array<string>,
+  fullBlock: Array<string>,
+}
+
 type Dependency {
   url: string, // Empty string or ignore it for global blocks at application level
   block: Array<string>,
   fullBlock: Array<string>,  // fullBlock, deepBlock, extensiveBlock, exhaustiveBlock?
+  package: Package,
 }
 
-type StdDependency { 
-  name: string,
-}
+event install: Package
 
-fn use(std: string) = new StdDependency {
-  name: std,
-};
-
-fn add(url: string) = new Dependency {
-  url: url,
-  block: [],
-  fullBlock: [],
-};
-
-fn block(block: string): Dependency {
-  return new Dependency {
-    url: '',
-    block: [block],
+fn package(): Package {
+  return new Package {
+    std: [],
+    dependencies: [],
+    block: [],
     fullBlock: [],
   };
 }
 
-fn block(block: Array<string>): Dependency {
+fn use(pkg: Package, std: [string]): Package {
+  pkg.std = std;
+  return pkg;
+}
+
+fn dependency(pkg: Package, url: string): Dependency {
   return new Dependency {
-    url: '',
-    block: block,
+    url: url,
+    block: [],
     fullBlock: [],
+    package: pkg,
   };
+}
+
+fn add(dep: Depenency): Package {
+  const pkg = dep.pkg;
+  pkg.dependencies.push(dep);
+  return pkg;
+}
+
+fn block(pkg: Package, block: string): Package {
+  pkg.block.push(block);
+  return pkg;
+}
+
+fn block(pkg: Package, block: Array<string>): Package {
+  pkg.block = pkg.block + block;
+  return pkg;
 }
 
 fn block(dep: Dependency, block: string): Dependency {
@@ -106,6 +125,16 @@ fn block(dep: Dependency, block: Array<string>): Dependency {
   return dep;
 }
 
+fn fullBlock(pkg: Package, block: string): Package {
+  pkg.fullBlock.push(block);
+  return pkg;
+}
+
+fn fullBlock(pkg: Package, block: Array<string>): Package {
+  pkg.fullBlock = pkg.fullBlock + block;
+  return pkg;
+}
+
 fn fullBlock(dep: Dependency, block: string): Dependency {
   dep.fullBlock.push(fullBlock);
   return dep;
@@ -116,37 +145,33 @@ fn fullBlock(dep: Dependency, block: Array<string>): Dependency {
   return dep;
 }
 
-fn commit(using: Array<StdDependency>, dependencies: Array<Dependency>) {
-  // Remove std dep from blacklist
-  // Download and install each dep
-  // Apply blocks defined for each dependency
-}
-fn commit(using: Array<StdDependency>, dependencies: Array<Dependency>, global: Array<Dependency>) {
+fn commit(pkg: Package) {
   // Remove std dep from blacklist
   // Download and install each dep
   // Apply blocks defined for each dependency
   // Block/Enable (based on what we finally decide) depenencies at application level, meaning that mocks will exists at /dependencies/modules/
 }
 ```
+
 The `.dependencies.ln` file could look something like:
 
 ```ts
-const using = [
-  use('@std/tcp');
-];
-const dependencies = [
+on install fn (pkg: Package) = pkg
+  .use(['@std/tcp'])
   // Block `@std/cmd` but do not override if any mock exists:
-  add('https://github.com/org/new_dep_A').block('@std/cmd'),
+  .dependency('https://github.com/org/new_dep_A')
+    .block('@std/cmd')
+    .add()
   // Block `@std/cmd` and override mocks if any:
-  add('https://github.com/org/new_dep_B').fullBlock('@std/cmd'),
+  .dependency('https://github.com/org/new_dep_B')
+    .fullBlock('@std/cmd')
+    .add()
   // Do not block any standrad library:
-  add('https://github.com/org/new_dep_C'),
-];
-const globalDepsBlock = [
-  block('@std/fs'),
-  fullBlock('@std/exec'),
-];
-commit(using, dependencies, globalDepsBlock);
+  .dependency('https://github.com/org/new_dep_C')
+    .add()
+  .block('@std/fs')
+  .fullBlock(['@std/exec'])
+  .commit();
 ```
 
 We should take into account that right now this safeguard will exist if the `.dependencies.ln` file exist.
