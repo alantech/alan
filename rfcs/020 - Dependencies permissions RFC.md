@@ -149,6 +149,8 @@ const globalDepsBlock = [
 commit(using, dependencies, globalDepsBlock);
 ```
 
+We should take into account that right now this safeguard will exist if the `.dependencies.ln` file exist.
+
 ### Alternatives Considered
 
 - The fisrt option is leave it as is and do not provide any built-in feature, letting users do it manually. This is painful.
