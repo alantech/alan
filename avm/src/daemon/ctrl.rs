@@ -655,6 +655,7 @@ async fn dsmrun_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
       drop(ds);
     }
     None => {
+      drop(maybe_hm);
       res_hm.push_fixed(0, 0);
       res_hm.push_fractal(
         0,
@@ -761,6 +762,7 @@ async fn dsmwith_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
       drop(ds);
     }
     None => {
+      drop(maybe_hm);
       res_hm.push_fixed(0, 0);
       res_hm.push_fractal(
         0,
@@ -806,6 +808,7 @@ async fn dsmonly_inner(req: Request<Body>) -> DaemonResult<()> {
     }
     None => {
       // Do nothing
+      drop(maybe_hm);
     }
   }
   Ok(())
@@ -846,6 +849,7 @@ async fn dswonly_inner(req: Request<Body>) -> DaemonResult<()> {
     }
     None => {
       // Do nothing
+      drop(maybe_hm);
     }
   }
   Ok(())
@@ -946,6 +950,7 @@ async fn dsmclos_inner(req: Request<Body>) -> DaemonResult<Arc<HandlerMemory>> {
       }
     }
     None => {
+      drop(maybe_hm);
       hand_mem.push_fixed(ret_addr, 0)?;
       hand_mem.push_fractal(
         ret_addr,
