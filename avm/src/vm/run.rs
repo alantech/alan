@@ -108,10 +108,10 @@ pub async fn run_file(fp: &str, delete_after_load: bool) -> VMResult<()> {
   if delete_after_load {
     std::fs::remove_file(Path::new(fp)).map_err(VMError::IOError)?;
   }
-  run(bytecode, HttpType::HTTP(HttpConfig { port: 8000 })).await
+  run(bytecode, Some(HttpType::HTTP(HttpConfig { port: 8000 }))).await
 }
 
-pub async fn run(bytecode: Vec<i64>, http_config: HttpType) -> VMResult<()> {
+pub async fn run(bytecode: Vec<i64>, http_config: Option<HttpType>) -> VMResult<()> {
   let program = Program::load(bytecode, http_config);
   PROGRAM
     .set(program)

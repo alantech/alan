@@ -18,7 +18,7 @@ use crate::cloud::common::{file_exist, get_app_tar_gz_b64, get_dockerfile_b64};
 use crate::cloud::{deploy, CLUSTER_ID};
 use crate::daemon::ctrl::ControlPort;
 use crate::daemon::dns::DNS;
-use crate::daemon::stats::{get_v1_stats, VMStatsV1};
+use crate::daemon::stats::{get_stats_factor, get_v1_stats};
 use crate::vm::http::{HttpType, HttpsConfig};
 use crate::vm::run::run;
 use crate::{error, warn};
@@ -26,6 +26,7 @@ use crate::{error, warn};
 pub type DaemonResult<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 pub static CLUSTER_SECRET: OnceCell<Option<String>> = OnceCell::new();
+pub static NON_HTTP: OnceCell<bool> = OnceCell::new();
 pub static DAEMON_PROPS: OnceCell<DaemonProperties> = OnceCell::new();
 pub static CONTROL_PORT_CHANNEL: OnceCell<Receiver<ControlPort>> = OnceCell::new();
 
@@ -66,7 +67,7 @@ async fn get_private_ip(is_local: bool) -> DaemonResult<String> {
   }
 }
 
-async fn post_v1(endpoint: &str, body: Value) -> String {
+pub async fn post_v1(endpoint: &str, body: Value) -> String {
   let resp = deploy::post_v1(endpoint, body).await;
   match resp {
     Ok(res) => res,
@@ -83,106 +84,85 @@ async fn post_v1_scale(
   agz_b64: &str,
   deploy_token: &str,
   factor: &str,
+  files_b64: &HashMap<String, String>,
 ) -> String {
-  // transmit the Dockerfile and app.tar.gz if both are available
-  let pwd = env::current_dir();
-  match pwd {
-    Ok(pwd) => {
-      // TODO: Make this generic, not hardwired for Anycloud-related files
-      let dockerfile = read(format!("{}/Dockerfile", pwd.display()));
-      let app_tar_gz = read(format!("{}/app.tar.gz", pwd.display()));
-      let env_file = read(format!("{}/anycloud.env", pwd.display()));
-      let mut scale_body = json!({
-        "clusterId": cluster_id,
-        "agzB64": agz_b64,
-        "deployToken": deploy_token,
-        "clusterFactor": factor,
-      });
-      if let (Ok(dockerfile), Ok(app_tar_gz)) = (dockerfile, app_tar_gz) {
-        scale_body
-          .as_object_mut()
-          .unwrap()
-          .insert(format!("DockerfileB64"), json!(base64::encode(dockerfile)));
-        scale_body
-          .as_object_mut()
-          .unwrap()
-          .insert(format!("appTarGzB64"), json!(base64::encode(app_tar_gz)));
-      }
-      if let Ok(env_file) = env_file {
-        scale_body
-          .as_object_mut()
-          .unwrap()
-          .insert(format!("envB64"), json!(base64::encode(env_file)));
-      };
-      post_v1("scale", scale_body).await
-    }
-    Err(err) => {
-      let err = format!("{:?}", err);
-      error!(ScaleFailed, "{:?}", err).await;
-      err
-    }
-  }
+  let non_http = NON_HTTP.get().unwrap_or(&false);
+  let scale_body = json!({
+    "clusterId": cluster_id,
+    "agzB64": agz_b64,
+    "deployToken": deploy_token,
+    "clusterFactor": factor,
+    "nonHttp": *non_http,
+    "filesB64": files_b64,
+  });
+  post_v1("scale", scale_body).await
 }
 
-// returns cluster delta
-async fn post_v1_stats(
-  vm_stats: Vec<VMStatsV1>,
-  cluster_id: &str,
-  deploy_token: &str,
-) -> DaemonResult<String> {
-  let mut stats_body = json!({
+// acknowledge deploy service to refresh secret
+async fn post_v1_ack(cluster_id: &str, deploy_token: &str) -> DaemonResult<String> {
+  let mut ack_body = json!({
     "deployToken": deploy_token,
-    "vmStats": vm_stats,
     "clusterId": cluster_id,
   });
   let cluster_secret = CLUSTER_SECRET.get().unwrap();
   if let Some(cluster_secret) = cluster_secret.as_ref() {
-    stats_body
+    ack_body
       .as_object_mut()
       .unwrap()
       .insert("clusterSecret".to_string(), json!(cluster_secret));
   } else {
     error!(NoClusterSecret, "No cluster secret found.").await;
   }
-  Ok(post_v1("stats", stats_body).await)
+  Ok(post_v1("ack", ack_body).await)
 }
 
 async fn run_agz_b64(agz_b64: &str) -> DaemonResult<()> {
   let bytes = base64::decode(agz_b64);
+  let non_http = NON_HTTP.get().unwrap_or(&false);
   if let Ok(bytes) = bytes {
-    let pwd = env::current_dir();
-    match pwd {
-      Ok(pwd) => {
-        let priv_key = read(format!("{}/key.pem", pwd.display()));
-        let cert = read(format!("{}/certificate.pem", pwd.display()));
-        if let (Ok(priv_key), Ok(cert)) = (priv_key, cert) {
-          let agz = GzDecoder::new(bytes.as_slice());
-          let count = agz.bytes().count();
-          let mut bytecode = vec![0; count / 8];
-          let mut gz = GzDecoder::new(bytes.as_slice());
-          let gz_read_i64 = gz.read_i64_into::<LittleEndian>(&mut bytecode);
-          if gz_read_i64.is_ok() {
-            if let Err(err) = run(
-              bytecode,
-              HttpType::HTTPS(HttpsConfig {
-                port: 443,
-                priv_key: String::from_utf8(priv_key).unwrap(),
-                cert: String::from_utf8(cert).unwrap(),
-              }),
-            )
-            .await
-            {
-              return Err(format!("Run server has failed. {}", err).into());
+    let agz = GzDecoder::new(bytes.as_slice());
+    let count = agz.bytes().count();
+    let mut bytecode = vec![0; count / 8];
+    let mut gz = GzDecoder::new(bytes.as_slice());
+    let gz_read_i64 = gz.read_i64_into::<LittleEndian>(&mut bytecode);
+    if *non_http {
+      if gz_read_i64.is_ok() {
+        if let Err(err) = run(bytecode, None).await {
+          return Err(format!("Run server has failed. {}", err).into());
+        }
+      } else {
+        return Err("AGZ file appears to be corrupt.".into());
+      }
+    } else {
+      let pwd = env::current_dir();
+      match pwd {
+        Ok(pwd) => {
+          let priv_key = read(format!("{}/key.pem", pwd.display()));
+          let cert = read(format!("{}/certificate.pem", pwd.display()));
+          if let (Ok(priv_key), Ok(cert)) = (priv_key, cert) {
+            if gz_read_i64.is_ok() {
+              if let Err(err) = run(
+                bytecode,
+                Some(HttpType::HTTPS(HttpsConfig {
+                  port: 443,
+                  priv_key: String::from_utf8(priv_key).unwrap(),
+                  cert: String::from_utf8(cert).unwrap(),
+                })),
+              )
+              .await
+              {
+                return Err(format!("Run server has failed. {}", err).into());
+              }
+            } else {
+              return Err("AGZ file appears to be corrupt.".into());
             }
           } else {
-            return Err("AGZ file appears to be corrupt.".into());
+            return Err("No self-signed certificate".into());
           }
-        } else {
-          return Err("No self-signed certificate".into());
         }
-      }
-      Err(err) => {
-        return Err(format!("{:?}", err).into());
+        Err(err) => {
+          return Err(format!("{:?}", err).into());
+        }
       }
     }
   } else {
@@ -280,6 +260,7 @@ pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
   if let Some(daemon_props) = get_daemon_props(is_local_anycloud_app, local_agz_b64).await {
     let agz_b64 = &daemon_props.agzB64;
     let cluster_id = &daemon_props.clusterId;
+    let files_b64 = &daemon_props.filesB64;
     CLUSTER_ID.set(String::from(cluster_id)).unwrap();
     let domain = &daemon_props.domain;
     let deploy_token = &daemon_props.deployToken;
@@ -332,24 +313,22 @@ pub async fn start(is_local_anycloud_app: bool, local_agz_b64: Option<String>) {
               );
             }
             if stats.len() >= 4 {
-              let mut factor = String::from("1");
-              let stats_factor = post_v1_stats(stats.to_owned(), &cluster_id, &deploy_token).await;
+              let _ack = post_v1_ack(&cluster_id, &deploy_token).await;
+              let stats_factor = get_stats_factor(&stats);
               stats = Vec::new();
-              if let Ok(stats_factor) = stats_factor {
-                factor = stats_factor;
-              } else if let Err(err) = stats_factor {
-                error!(
-                  PostFailed,
-                  "Failed sending stats for cluster {}: {}", &cluster_id, err
-                )
-                .await;
-              }
               println!(
                 "VM stats sent for cluster {} of size {}. Cluster factor: {}.",
-                cluster_id, cluster_size, factor
+                cluster_id, cluster_size, stats_factor
               );
-              if factor != "1" {
-                post_v1_scale(&cluster_id, &agz_b64, &deploy_token, &factor).await;
+              if &stats_factor != "1" {
+                post_v1_scale(
+                  &cluster_id,
+                  &agz_b64,
+                  &deploy_token,
+                  &stats_factor,
+                  &files_b64,
+                )
+                .await;
               }
             }
           }

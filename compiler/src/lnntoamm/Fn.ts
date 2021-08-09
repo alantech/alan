@@ -1,10 +1,10 @@
-import { LPNode, NulLP } from '../lp';
+import { LPNode, NamedAnd, NulLP, Token } from '../lp';
 import Output, { AssignKind } from './Amm';
 import Expr, { Ref } from './Expr';
 import opcodes from './opcodes';
 import Scope from './Scope';
 import Stmt, { Dec, Exit, FnParam, MetaData } from './Stmt';
-import Type from './Types';
+import Type, { FunctionType } from './Types';
 import { TODO } from './util';
 
 export default class Fn {
@@ -19,6 +19,7 @@ export default class Fn {
   exprFn: Expr;
   // not used by this class, but used by Statements
   metadata: MetaData;
+  ty: FunctionType;
 
   get argNames(): string[] {
     return Object.keys(this.params);
@@ -41,6 +42,37 @@ export default class Fn {
     this.body = body;
     this.metadata =
       metadata !== null ? metadata : new MetaData(scope, this.retTy);
+    while (
+      this.body.reduce(
+        (carry, stmt) => stmt.cleanup(this.scope) || carry,
+        false,
+      )
+    );
+    const tyAst = ((fnAst: LPNode) => {
+      if (fnAst instanceof NulLP) {
+        // assume it's for an opcode
+        const compilerDefinition = '<compiler definition>';
+        const makeToken = (tok: string) =>
+          new Token(tok, compilerDefinition, -1, -1);
+        return new NamedAnd(
+          `opcode ${this.name}`,
+          {
+            opcode: makeToken('opcode'),
+            _whitespace: makeToken(' '),
+            opcodeName: makeToken(this.name),
+          },
+          compilerDefinition,
+          -1,
+          -1,
+        );
+      }
+      return null;
+    })(this.ast);
+    this.ty = new FunctionType(
+      tyAst,
+      this.params.map((param) => param.ty),
+      this.retTy,
+    );
   }
 
   static fromFunctionsAst(ast: LPNode, scope: Scope): Fn {
@@ -90,11 +122,11 @@ export default class Fn {
       let exitVal: Expr;
       [body, exitVal] = Expr.fromAssignablesAst(bodyAsts, metadata);
       if (exitVal instanceof Ref) {
-        body.push(new Exit(bodyAsts, exitVal));
+        body.push(new Exit(bodyAsts, exitVal, retTy));
       } else {
         const retVal = Dec.gen(exitVal, metadata);
         body.push(retVal);
-        body.push(new Exit(bodyAsts, retVal.ref()));
+        body.push(new Exit(bodyAsts, retVal.ref(), retTy));
       }
     }
 
@@ -120,20 +152,6 @@ export default class Fn {
       body,
       metadata,
     );
-  }
-
-  // FIXME: this should implement the matrix that i mentioned in the FIXME comment
-  // for Expr#inline
-  static select(fns: Fn[], argTys: Type[], scope: Scope): Fn[] {
-    return fns.filter((fn) => {
-      const params = Object.values(fn.params);
-      return (
-        params.length === argTys.length &&
-        params.every((param, ii) =>
-          argTys[ii].compatibleWithConstraint(param.ty, scope),
-        )
-      );
-    });
   }
 
   asHandler(amm: Output, event: string) {
@@ -202,6 +220,22 @@ export default class Fn {
       stmt.inline(amm);
     }
     this.params.forEach((param) => param.unassign());
+  }
+
+  resultTyFor(argTys: Type[], scope: Scope): Type | null {
+    let res: Type | null = null;
+    try {
+      this.params.forEach((param, ii) =>
+        param.ty.tempConstrain(argTys[ii], scope),
+      );
+      res = this.retTy.instance();
+    } catch (_e) {
+      // do nothing: the args aren't applicable to the params so
+      // we return null (`res` is already `null`) and we need to
+      // ensure the param tys have `resetTemp` called on them.
+    }
+    this.params.forEach((param) => param.ty.resetTemp());
+    return res;
   }
 }
 

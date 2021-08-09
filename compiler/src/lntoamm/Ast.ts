@@ -142,12 +142,12 @@ export const resolveDependency = (modulePath: string, dependency: LPNode) => {
           dirPath + ' and ' + filePath + ' both exist. Using ' + dirPath,
         );
       }
-      if (typeof filePath === 'string') {
-        importPath = filePath;
-        break;
-      }
       if (typeof dirPath === 'string') {
         importPath = dirPath;
+        break;
+      }
+      if (typeof filePath === 'string') {
+        importPath = filePath;
         break;
       }
       if (pathRoot === '/' || /[A-Z]:\\/.test(pathRoot)) {
@@ -178,12 +178,12 @@ export const resolveDependency = (modulePath: string, dependency: LPNode) => {
               dirPath + ' and ' + filePath + ' both exist. Using ' + dirPath,
             );
           }
-          if (typeof filePath === 'string') {
-            importPath = filePath;
-            break;
-          }
           if (typeof dirPath === 'string') {
             importPath = dirPath;
+            break;
+          }
+          if (typeof filePath === 'string') {
+            importPath = filePath;
             break;
           }
           if (pathRoot === '/' || /[A-Z]:\\/.test(pathRoot)) {

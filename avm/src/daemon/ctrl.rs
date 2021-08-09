@@ -30,7 +30,9 @@ use tokio::sync::oneshot::{self, Receiver, Sender};
 use tokio::task;
 use twox_hash::XxHash64;
 
-use crate::daemon::daemon::{DaemonProperties, DaemonResult, CLUSTER_SECRET, DAEMON_PROPS};
+use crate::daemon::daemon::{
+  DaemonProperties, DaemonResult, CLUSTER_SECRET, DAEMON_PROPS, NON_HTTP,
+};
 use crate::daemon::dns::VMMetadata;
 use crate::make_server;
 use crate::vm::event::{BuiltInEvents, EventEmit, HandlerFragment};
@@ -301,19 +303,25 @@ async fn extension_listener(req: Request<Body>) -> VMResult<Response<Body>> {
 }
 
 fn handle_cluster_health() -> Result<Response<Body>, Infallible> {
-  if TcpStream::connect("127.0.0.1:443").is_err() {
-    // If the Alan HTTPS server has not yet started, mark as a failure
-    Ok(Response::builder().status(500).body("fail".into()).unwrap())
-  } else if Path::new("./Dockerfile").exists()
-    && Path::new("./app.tar.gz").exists()
-    && TcpStream::connect("127.0.0.1:8088").is_err()
-  {
-    // If this is an Anycloud deployment and the child process hasn't started, mark as a failure
-    // TODO: Any way to generalize this so we don't have special logic for Anycloud?
-    Ok(Response::builder().status(500).body("fail".into()).unwrap())
-  } else {
-    // Everything passed, send an ok
+  let non_http = NON_HTTP.get().unwrap_or(&false);
+  if *non_http {
+    // Control port is running
     Ok(Response::builder().status(200).body("ok".into()).unwrap())
+  } else {
+    if TcpStream::connect("127.0.0.1:443").is_err() {
+      // If the Alan HTTPS server has not yet started, mark as a failure
+      Ok(Response::builder().status(500).body("fail".into()).unwrap())
+    } else if Path::new("./Dockerfile").exists()
+      && Path::new("./app.tar.gz").exists()
+      && TcpStream::connect("127.0.0.1:8088").is_err()
+    {
+      // If this is an Anycloud deployment and the child process hasn't started, mark as a failure
+      // TODO: Any way to generalize this so we don't have special logic for Anycloud?
+      Ok(Response::builder().status(500).body("fail".into()).unwrap())
+    } else {
+      // Everything passed, send an ok
+      Ok(Response::builder().status(200).body("ok".into()).unwrap())
+    }
   }
 }
 
