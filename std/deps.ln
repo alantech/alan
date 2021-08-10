@@ -13,7 +13,7 @@ type Dependency {
 }
 
 type Package {
-  stdEnable: Array<string>,
+  std: Array<string>,
   dependencies: Array<Dependency>,
   block: Array<string>,
   fullBlock: Array<string>,
@@ -31,7 +31,7 @@ fn package(): Package {
   const emptyArrStr = new Array<string> [];
   const emptyArrDep = new Array<Dependency> [];
   const pkg = new Package {
-    stdEnable: emptyArrStr,
+    std: emptyArrStr,
     dependencies: emptyArrDep,
     block: emptyArrStr,
     fullBlock: emptyArrStr,
@@ -39,8 +39,8 @@ fn package(): Package {
   return pkg;
 }
 
-export fn use(pkg: Package, std: Array<string>): Package {
-  pkg.std = std;
+export fn using(pkg: Package, std: Array<string>): Package {
+  pkg.std = pkg.std + std;
   return pkg;
 }
 
@@ -102,17 +102,27 @@ export fn fullBlock(pkgd: PackageDependency, block: Array<string>): PackageDepen
   return pkgd;
 }
 
-// The `commit` function takes no arguments. Currently just causes the application to quit, but
-// eventually would be the point where the dependencies defined by the calls to `add` could be
-// compared against the currently-installed dependencies, and a faster install would be possible
+// The `commit` function takes the packge as argument.
+// It install all dependencies added and apply necessary blocks.
 export fn commit(pkg: Package) {
   // Remove std dep from blacklist
+  const blackList = getBlacklist(pkg.std);
+  // Create mocks for blacklisted std libs
   // Download and install each dep
   install(pkg.dependencies);
   // Apply blocks defined for each dependency
   // Block/Enable (based on what we finally decide) depenencies at application level, meaning that mocks will exists at /dependencies/modules/
-  
-  // The `add` function takes a string that describes a .git repository and install it in /dependencies
+  emit exit 0;
+}
+
+fn getBlacklist(std: Array<string>): Array<string> {
+  const stdList = [
+    '@std/app', '@std/avmdaemon', '@std/cmd', '@std/datastore', '@std/deps', '@std/http', 
+    '@std/httpcommon', '@std/httpserver', '@std/json', '@std/root', '@std/seq', '@std/tcp',
+    '@std/tcpserver', '@std/trig',
+  ];
+  return stdList.filter(fn (a: string) = !(pkg.std.find(fn (b: string) = eq(a,b)).isOk()));
+}
 
 fn install(dependencies: Array<Dependency>) {
   dependencies.map(fn (dep: Dependency) {
