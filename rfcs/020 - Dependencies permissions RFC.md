@@ -85,7 +85,7 @@ fn package(): Package {
   };
 }
 
-fn use(pkg: Package, std: [string]): Package {
+fn use(pkg: Package, std: Array<string>): Package {
   pkg.std = std;
   return pkg;
 }
@@ -166,9 +166,10 @@ on install fn (pkg: Package) = pkg
   .dependency('https://github.com/org/new_dep_B')
     .fullBlock('@std/cmd')
     .add()
-  // Do not block any standrad library:
+  // Do not block any standard library:
   .dependency('https://github.com/org/new_dep_C')
     .add()
+  // Applying `block` or `fullBlock` at Package level will explicitly block standard library modules for all dependencies
   .block('@std/fs')
   .fullBlock(['@std/exec'])
   .commit();
