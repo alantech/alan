@@ -2,30 +2,127 @@ from @std/app import start, print, exit
 from @std/cmd import exec
 
 /**
- * @std/deps - The entrypoint to install dependencies for an alan program
+ * @std/deps - The entrypoint to install dependencies for an alan program 
+ * and define permissions over libraries
  */
 
-// The `install` event
-export event install: void
+type Dependency {
+  url: string,
+  block: Array<string>,
+  fullBlock: Array<string>,
+}
 
-// The `add` function takes a string that describes a .git repository and install it in /dependencies
-export fn add(remote: string) {
-  // TODO implement proper error handling
-  const parts = remote.split('/');
-  const repo = parts[length(parts) - 1] || '';
-  const group = parts[parts.length() - 2] || '';
-  const dest = 'dependencies/' + group + '/' + repo;
-  const rm = exec('rm -rf ./' + dest);
-  const git = exec('git clone ' + remote + ' ./' + dest);
-  print(git.stderr);
-  const rm2 = exec('rm -rf ./' + dest + '/.git');
-  const maybeRecurse = exec('cd ' + dest + ' && alan install');
+type Package {
+  stdEnable: Array<string>,
+  dependencies: Array<Dependency>,
+  block: Array<string>,
+  fullBlock: Array<string>,
+}
+
+type PackageDependency {
+  pkg: Package,
+  dep: Dependency,
+}
+
+// The `install` event
+export event install: Package
+
+fn package(): Package {
+  const emptyArrStr = new Array<string> [];
+  const emptyArrDep = new Array<Dependency> [];
+  const pkg = new Package {
+    stdEnable: emptyArrStr,
+    dependencies: emptyArrDep,
+    block: emptyArrStr,
+    fullBlock: emptyArrStr,
+  };
+  return pkg;
+}
+
+export fn use(pkg: Package, std: Array<string>): Package {
+  pkg.std = std;
+  return pkg;
+}
+
+export fn dependency(pkg: Package, url: string): PackageDependency {
+  const emptyArrStr = new Array<string> [];
+  const dep = new Dependency {
+    url: url,
+    block: emptyArrStr,
+    fullBlock: emptyArrStr,
+  };
+  return new PackageDependency {
+    pkg: pkg,
+    dep: dep,
+  };
+}
+
+export fn add(pkgd: PackageDependency): Package {
+  pkgd.pkg.dependencies.push(pkgd.dep);
+  return pkgd.pkg;
+}
+  
+export fn block(pkg: Package, block: string): Package {
+  pkg.block.push(block);
+  return pkg;
+}
+
+export fn block(pkg: Package, block: Array<string>): Package {
+  pkg.block = pkg.block + block;
+  return pkg;
+}
+
+export fn block(pkgd: PackageDependency, block: string): PackageDependency {
+  pkgd.dep.block.push(block);
+  return pkgd;
+}
+
+export fn block(pkgd: PackageDependency, block: Array<string>): PackageDependency {
+  pkgd.dep.block = pkgd.dep.block + block;
+  return pkgd;
+}
+
+export fn fullBlock(pkg: Package, block: string): Package {
+  pkg.fullBlock.push(block);
+  return pkg;
+}
+
+export fn fullBlock(pkg: Package, block: Array<string>): Package {
+  pkg.fullBlock = pkg.fullBlock + block;
+  return pkg;
+}
+
+export fn fullBlock(pkgd: PackageDependency, block: string): PackageDependency {
+  pkgd.dep.fullBlock.push(fullBlock);
+  return pkgd;
+}
+
+export fn fullBlock(pkgd: PackageDependency, block: Array<string>): PackageDependency {
+  pkgd.dep.fullBlock = pkgd.dep.fullBlock + block;
+  return pkgd;
 }
 
 // The `commit` function takes no arguments. Currently just causes the application to quit, but
 // eventually would be the point where the dependencies defined by the calls to `add` could be
 // compared against the currently-installed dependencies, and a faster install would be possible
-export fn commit() {
+export fn commit(pkg: Package) {
+  // Remove std dep from blacklist
+  // Download and install each dep
+  // Apply blocks defined for each dependency
+  // Block/Enable (based on what we finally decide) depenencies at application level, meaning that mocks will exists at /dependencies/modules/
+  
+  // The `add` function takes a string that describes a .git repository and install it in /dependencies
+
+  // // TODO implement proper error handling
+  // const parts = remote.split('/');
+  // const repo = parts[length(parts) - 1] || '';
+  // const group = parts[parts.length() - 2] || '';
+  // const dest = 'dependencies/' + group + '/' + repo;
+  // const rm = exec('rm -rf ./' + dest);
+  // const git = exec('git clone ' + remote + ' ./' + dest);
+  // print(git.stderr);
+  // const rm2 = exec('rm -rf ./' + dest + '/.git');
+  // const maybeRecurse = exec('cd ' + dest + ' && alan install');
   emit exit 0;
 }
 
@@ -37,5 +134,5 @@ on start {
   // of dependencies at the end are removed.
   exec('rm -rf dependencies');
   exec('mkdir dependencies');
-  emit install;
+  emit install package();
 }
