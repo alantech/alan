@@ -108,22 +108,26 @@ export fn fullBlock(pkgd: PackageDependency, block: Array<string>): PackageDepen
 export fn commit(pkg: Package) {
   // Remove std dep from blacklist
   // Download and install each dep
+  install(pkg.dependencies);
   // Apply blocks defined for each dependency
   // Block/Enable (based on what we finally decide) depenencies at application level, meaning that mocks will exists at /dependencies/modules/
   
   // The `add` function takes a string that describes a .git repository and install it in /dependencies
 
-  // // TODO implement proper error handling
-  // const parts = remote.split('/');
-  // const repo = parts[length(parts) - 1] || '';
-  // const group = parts[parts.length() - 2] || '';
-  // const dest = 'dependencies/' + group + '/' + repo;
-  // const rm = exec('rm -rf ./' + dest);
-  // const git = exec('git clone ' + remote + ' ./' + dest);
-  // print(git.stderr);
-  // const rm2 = exec('rm -rf ./' + dest + '/.git');
-  // const maybeRecurse = exec('cd ' + dest + ' && alan install');
-  emit exit 0;
+fn install(dependencies: Array<Dependency>) {
+  dependencies.map(fn (dep: Dependency) {
+    // TODO implement proper error handling
+    const remote = dep.url;
+    const parts = remote.split('/');
+    const repo = parts[length(parts) - 1] || '';
+    const group = parts[parts.length() - 2] || '';
+    const dest = 'dependencies/' + group + '/' + repo;
+    const rm = exec('rm -rf ./' + dest);
+    const git = exec('git clone ' + remote + ' ./' + dest);
+    print(git.stderr);
+    const rm2 = exec('rm -rf ./' + dest + '/.git');
+    const maybeRecurse = exec('cd ' + dest + ' && alan install');
+  });
 }
 
 // Emit the `install` event on app `start`
