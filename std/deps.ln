@@ -146,7 +146,11 @@ on start {
   // that are already installed so calls by the user to install them again (assuming the version is identical)
   // are skipped, calls to upgrade or install new dependencies are performed, and then the remaining list
   // of dependencies at the end are removed.
-  exec('rm -rf dependencies');
-  exec('mkdir dependencies');
-  emit install package();
+  
+  
+  // TODO: restore after testing
+  // exec('rm -rf dependencies');
+  // exec('mkdir dependencies');
+  // emit install package();
+  package().using(['@std/app']).commit();
 }
