@@ -447,7 +447,7 @@ export class FunctionType extends Type {
     }, new Array<[Fn, Type[], Type]>());
     if (ret.length > original.length || ret.length === 0) {
       console.log('~~~ ERROR');
-      console.log('original: ', original);
+      console.log('original: ', original[0].body);
       console.log('retLength:', ret.length);
       console.log('args:     ', args);
       console.log('matrix:   ', matrix);
@@ -990,6 +990,8 @@ class Interface extends Type {
           throw new Error(`unrecognized Has`);
         }
       }
+    } else if (ty instanceof Generated) {
+      return ty.compatibleWithConstraint(this, scope);
     }
     // always check all interface constraints first
     if (!(
@@ -1064,8 +1066,8 @@ class Interface extends Type {
     if (this.delegate !== null) {
       this.delegate.constrain(that, scope);
     } else if (this.isDuped && !this.__isDuped.isTyVar) {
-      const getStack = { stack: undefined };
-      Error.captureStackTrace(getStack);
+      // const getStack = { stack: undefined };
+      // Error.captureStackTrace(getStack);
       // console.log('->', this.name, 'set delegate at', getStack.stack);
       this.delegate = that;
       if (this.tempDelegate !== null) {
@@ -1214,9 +1216,13 @@ class Generated extends Interface {
         return true;
       }
     }
-    // we already handled the case where `that` is a `Has`, so it's
-    // safe to use super's implementation
-    return super.compatibleWithConstraint(that, scope);
+    if (this.delegate !== null) {
+      return this.delegate.compatibleWithConstraint(that, scope);
+    } else if (this.tempDelegate !== null) {
+      return this.tempDelegate.compatibleWithConstraint(that, scope);
+    } else {
+      return true;
+    }
   }
 
   constrain(that: Type, scope: Scope) {

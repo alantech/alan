@@ -205,13 +205,11 @@ export class Dec extends VarDef {
   }
 
   static gen(expr: Expr, metadata: MetaData): Dec {
-    const ty = Type.generate();
-    ty.constrain(expr.ty, metadata.scope);
     const dec = new Dec(
       expr.ast,
       false, // default to mutable in case of eg builder pattern
       genName(),
-      ty,
+      expr.ty,
       expr,
     );
     metadata.define(dec);
