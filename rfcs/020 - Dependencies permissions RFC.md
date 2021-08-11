@@ -8,7 +8,7 @@
 
 ### Accepted
 
-YYYY-MM-DD
+2021-08-11
 
 #### Approvers
 
