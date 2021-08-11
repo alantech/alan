@@ -174,29 +174,33 @@ fn applyDependencyBlock(name: string, group: string, blocks: Array<string>) {
   const dependenciesDir = 'dependencies';
   const modulesDir = 'modules';
   if blocks.length() > 0 {
-    let dirExist = exec('stat ' + [dependenciesDir, group, name, dependenciesDir].join('/'));
-    if dirExist.exitCode != 0 {
-      exec('mkdir ' + [dependenciesDir, group, name, dependenciesDir].join('/'));
-    }
-    dirExist = exec('stat ' + [dependenciesDir, group, name, dependenciesDir, modulesDir].join('/'));
-    if dirExist.exitCode != 0 {
-      exec('mkdir ' + [dependenciesDir, group, name, dependenciesDir, modulesDir].join('/'));
+    const innerDependenciesModulesPath = [dependenciesDir, group, name, modulesDir].join('/');
+    if !dirExist(innerDependenciesModulesPath) {
+      mkDir(innerDependenciesModulesPath);
     }
     blocks.map(fn (lib: string) {
       const cleanedLib = cleanLib(lib);
       const libSplit = cleanedLib.split('/');
       const innerGroup = libSplit[0].getOr('');
       const innerName = libSplit[1].getOr('');
-      dirExist = exec('stat ' + [dependenciesDir, group, name, dependenciesDir, modulesDir, innerGroup].join('/'));
-      if dirExist.exitCode != 0 {
-        exec('mkdir ' + [dependenciesDir, group, name, dependenciesDir, modulesDir, innerGroup].join('/'));
+      const innerGroupPath = [dependenciesDir, group, name, modulesDir, innerGroup].join('/');
+      if !dirExist(innerGroupPath) {
+        mkDir(innerGroupPath);
       }
-      dirExist = exec('stat ' + [dependenciesDir, group, name, dependenciesDir, modulesDir, innerGroup, innerName].join('/'));
-      if dirExist.exitCode != 0 {
-        exec('mkdir ' + [dependenciesDir, group, name, dependenciesDir, modulesDir, innerGroup, innerName].join('/'));
+      const innerNamePath = [dependenciesDir, group, name, modulesDir, innerGroup, innerName].join('/');
+      if !dirExist(innerNamePath) {
+        mkDir(innerNamePath);
       }
     });
   }
+}
+
+fn dirExist(path: string): bool {
+  return exec('stat ' + path).exitCode == 0;
+}
+
+fn mkDir(path: string) {
+  exec('mkdir ' + path);
 }
 
 fn cleanLib(lib: string): string {
