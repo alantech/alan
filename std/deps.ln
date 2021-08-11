@@ -10,6 +10,8 @@ type Dependency {
   url: string,
   block: Array<string>,
   fullBlock: Array<string>,
+  group: string,
+  name: string,
 }
 
 type Package {
@@ -46,10 +48,15 @@ export fn using(pkg: Package, std: Array<string>): Package {
 
 export fn dependency(pkg: Package, url: string): PackageDependency {
   const emptyArrStr = new Array<string> [];
+  const parts = url.split('/');
+  const repo = parts[length(parts) - 1] || '';
+  const group = parts[parts.length() - 2] || '';
   const dep = new Dependency {
     url: url,
     block: emptyArrStr,
     fullBlock: emptyArrStr,
+    group: group,
+    name: repo,
   };
   return new PackageDependency {
     pkg: pkg,
@@ -110,8 +117,9 @@ export fn commit(pkg: Package) {
   // Create mocks for blacklisted std libs
   blockStd(blacklist);
   // Download and install each dep
-  download(pkg.dependencies);
+  downloadDependencies(pkg.dependencies);
   // Apply blocks defined for each dependency
+  applyDependencyBlocks(pkg.dependencies);
   // Block/Enable (based on what we finally decide) depenencies at application level, meaning that mocks will exists at /dependencies/modules/
   emit exit 0;
 }
@@ -140,13 +148,12 @@ fn blockStd(blacklist: Array<string>) {
   });
 }
 
-fn download(dependencies: Array<Dependency>) {
+fn downloadDependencies(dependencies: Array<Dependency>) {
   dependencies.map(fn (dep: Dependency) {
     // TODO implement proper error handling
     const remote = dep.url;
-    const parts = remote.split('/');
-    const repo = parts[length(parts) - 1] || '';
-    const group = parts[parts.length() - 2] || '';
+    const repo = dep.name;
+    const group = dep.group;
     const dest = 'dependencies/' + group + '/' + repo;
     const rm = exec('rm -rf ./' + dest);
     const git = exec('git clone ' + remote + ' ./' + dest);
@@ -154,6 +161,52 @@ fn download(dependencies: Array<Dependency>) {
     const rm2 = exec('rm -rf ./' + dest + '/.git');
     const maybeRecurse = exec('cd ' + dest + ' && alan install');
   });
+}
+
+fn applyDependencyBlocks(dependencies: Array<Dependency>) {
+  dependencies.map(fn (dep: Dependency) {
+    applyDependencyBlock(dep.name, dep.group, dep.block);
+    // applyDependencyFullBlock(dep.name, dep.group, dep.fullBlock);
+  });
+}
+
+fn applyDependencyBlock(name: string, group: string, blocks: Array<string>) {
+  const dependenciesDir = 'dependencies';
+  const modulesDir = 'modules';
+  if blocks.length() > 0 {
+    let dirExist = exec('stat ' + [dependenciesDir, group, name, dependenciesDir].join('/'));
+    if dirExist.exitCode != 0 {
+      exec('mkdir ' + [dependenciesDir, group, name, dependenciesDir].join('/'));
+    }
+    dirExist = exec('stat ' + [dependenciesDir, group, name, dependenciesDir, modulesDir].join('/'));
+    if dirExist.exitCode != 0 {
+      exec('mkdir ' + [dependenciesDir, group, name, dependenciesDir, modulesDir].join('/'));
+    }
+    blocks.map(fn (lib: string) {
+      const cleanedLib = cleanLib(lib);
+      const libSplit = cleanedLib.split('/');
+      const innerGroup = libSplit[0].getOr('');
+      const innerName = libSplit[1].getOr('');
+      dirExist = exec('stat ' + [dependenciesDir, group, name, dependenciesDir, modulesDir, innerGroup].join('/'));
+      if dirExist.exitCode != 0 {
+        exec('mkdir ' + [dependenciesDir, group, name, dependenciesDir, modulesDir, innerGroup].join('/'));
+      }
+      dirExist = exec('stat ' + [dependenciesDir, group, name, dependenciesDir, modulesDir, innerGroup, innerName].join('/'));
+      if dirExist.exitCode != 0 {
+        exec('mkdir ' + [dependenciesDir, group, name, dependenciesDir, modulesDir, innerGroup, innerName].join('/'));
+      }
+    });
+  }
+}
+
+fn cleanLib(lib: string): string {
+  if lib.matches('@') && lib.index('@') == 0 {
+    const libSplit = lib.split('');
+    libSplit.delete(1);
+    return libSplit.join(''); 
+  } else {
+    return lib;
+  }
 }
 
 // Emit the `install` event on app `start`
@@ -168,5 +221,5 @@ on start {
   exec('rm -rf dependencies');
   exec('mkdir dependencies');
   // emit install package();
-  package().using(['@std/app']).commit();
+  package().using(['@std/app']).dependency('https://github.com/alantech/hellodep').block('@std/cmd').add().commit();
 }
