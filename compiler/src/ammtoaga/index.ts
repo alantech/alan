@@ -10,18 +10,15 @@ type AddressMap = {
 type EventDecs = {
   [name: string]: number;
 };
-type MemoryMap = {
-  [name: string]: number;
-};
 type HandlerMem = {
   memSize: number;
-  addressMap: MemoryMap;
+  addressMap: AddressMap;
 };
 
 // This project depends on BigNum and associated support in Node's Buffer, so must be >= Node 10.20
 // and does not work in the browser. It would be possible to implement a browser-compatible version
 // but there is no need for it and it would make it harder to work with.
-const ceil8 = (n: number) => Math.ceil(n / 8) * 8;
+const ceil8 = (n: number) => BigInt(Math.ceil(n / 8) * 8);
 const CLOSURE_ARG_MEM_START = BigInt(Math.pow(-2, 63));
 
 // special closure that does nothing
@@ -38,11 +35,11 @@ const loadGlobalMem = (globalMemAst: LPNode[], addressMap: AddressMap) => {
   };
 
   const globalMem = {};
-  let currentOffset = -1;
+  let currentOffset = -1n;
   for (const globalConst of globalMemAst) {
     const rec = globalConst.get();
     if (!(rec instanceof NamedAnd)) continue;
-    let offset = 8;
+    let offset = 8n;
     let val = rec.get('assignables').t.trim();
     const typename = rec.get('fulltypename').t.trim();
     if (typename === 'string') {
@@ -54,7 +51,7 @@ const loadGlobalMem = (globalMemAst: LPNode[], addressMap: AddressMap) => {
         // Hackery to get these strings to work
         str = JSON.stringify(val.replace(/^["']/, '').replace(/["']$/, ''));
       }
-      offset = ceil8(str.length) + 8;
+      offset = ceil8(str.length) + 8n;
     } else if (suffixes.hasOwnProperty(typename)) {
       val += suffixes[typename];
     } else if (typename !== 'bool') {
@@ -334,8 +331,8 @@ const extractClosures = (
 
 const loadStatements = (
   statements: LPNode[],
-  localMem: MemoryMap,
-  globalMem: MemoryMap,
+  localMem: AddressMap,
+  globalMem: AddressMap,
   fn: LPNode,
   fnName: string,
   isClosure: boolean,
@@ -363,8 +360,10 @@ const loadStatements = (
     );
     fnArgs = fnArgs.filter((t) => t !== '');
   }
+  const mutatedArgs = {};
   fnArgs.forEach((arg, i) => {
     if (globalMem.hasOwnProperty(arg + fnName)) {
+      mutatedArgs[arg + fnName] = false;
       const resultAddress = globalMem[arg + fnName];
       const val = CLOSURE_ARG_MEM_START + BigInt(1) + BigInt(i);
       const s = new Statement(
@@ -493,8 +492,17 @@ const loadStatements = (
       }
     } else if (statement.has('assignments')) {
       const asgn = statement.get('assignments');
-      const resultAddress = localMem[asgn.get('decname').t.trim()];
-      localMemToLine[resultAddress] = line;
+      const asgnName = asgn.get('decname').t.trim();
+      let resultAddress;
+      if (localMem.hasOwnProperty(asgnName)) {
+        resultAddress = localMem[asgnName];
+      } else if (hasClosureArgs && fnArgs.indexOf(asgnName) > -1) {
+        resultAddress = globalMem[asgnName + fnName];
+        mutatedArgs[asgnName + fnName] = true;
+      } else {
+        throw new Error(`Could not find variable ${asgnName}.`);
+      }
+      localMemToLine[resultAddress.toString()] = line;
       const assignables = asgn.get('assignables');
       if (assignables.has('functions')) {
         throw new Error("This shouldn't be possible!");
@@ -672,13 +680,29 @@ const loadStatements = (
     vec.push(s);
     line += 1;
   }
+  fnArgs.forEach((arg, i) => {
+    if (globalMem.hasOwnProperty(arg + fnName) && mutatedArgs[arg + fnName]) {
+      const resultAddress = globalMem[arg + fnName];
+      const val = CLOSURE_ARG_MEM_START + BigInt(1) + BigInt(i);
+      const s = new Statement(
+        'refv',
+        [`@${resultAddress}`, '@0'],
+        `@${val}`,
+        line,
+        [],
+        depGraph.params[arg] || null,
+      );
+      vec.push(s);
+      line += 1;
+    }
+  });
   return vec;
 };
 
 const loadHandlers = (
   handlers: LPNode[],
   handlerMem: HandlerMem[],
-  globalMem: MemoryMap,
+  globalMem: AddressMap,
   depGraphs: DepGraph[],
 ) => {
   const vec = [];
@@ -709,7 +733,7 @@ const loadHandlers = (
   return vec;
 };
 
-const loadClosures = (closures: any[], globalMem: MemoryMap) => {
+const loadClosures = (closures: any[], globalMem: AddressMap) => {
   const vec = [];
   for (let i = 0; i < closures.length; i++) {
     const closure = closures[i];

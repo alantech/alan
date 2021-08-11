@@ -215,7 +215,7 @@ impl HandlerFragment {
         .iter()
         .map(|i| {
           if let OpcodeFn::Cpu(func) = i.opcode.fun {
-            //eprintln!("{} {} {} {}", i.opcode._name, i.args[0], i.args[1], i.args[2]);
+            //eprintln!("{} {:?}", i.opcode._name, i.args);
             func(i.args.as_slice(), &mut hand_mem)?;
             Ok(())
           } else {

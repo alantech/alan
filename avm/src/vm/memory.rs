@@ -243,7 +243,7 @@ impl HandlerMemory {
   /// Reads an array of data from the given address.
   pub fn read_fractal(self: &Arc<HandlerMemory>, addr: i64) -> VMResult<FractalMemory> {
     let ((a, b), hm_opt) = self.addr_to_idxs(addr)?;
-    // eprintln!("addr: {}, self?: {}, (a,b): ({},{})", addr, hm_opt.is_none(), a, b);
+    //eprintln!("addr: {}, self?: {}, (a,b): ({},{})", addr, hm_opt.is_none(), a, b);
     let hm = hm_opt.as_ref().unwrap_or(self);
     // Special behavior to read strings out of global memory
     let start = if addr_type(addr) == GMEM_ADDR { b } else { 0 };
