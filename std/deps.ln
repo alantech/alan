@@ -1,4 +1,4 @@
-from @std/app import start, print, exit
+from @std/app import start, print, eprint, exit
 from @std/cmd import exec
 
 /**
@@ -106,10 +106,11 @@ export fn fullBlock(pkgd: PackageDependency, block: Array<string>): PackageDepen
 // It install all dependencies added and apply necessary blocks.
 export fn commit(pkg: Package) {
   // Remove std dep from blacklist
-  const blackList = getBlacklist(pkg.std);
+  const blacklist = getBlacklist(pkg.std);
   // Create mocks for blacklisted std libs
+  blockStd(blacklist);
   // Download and install each dep
-  install(pkg.dependencies);
+  download(pkg.dependencies);
   // Apply blocks defined for each dependency
   // Block/Enable (based on what we finally decide) depenencies at application level, meaning that mocks will exists at /dependencies/modules/
   emit exit 0;
@@ -124,7 +125,23 @@ fn getBlacklist(std: Array<string>): Array<string> {
   return stdList.filter(fn (a: string) = !(pkg.std.find(fn (b: string) = eq(a,b)).isOk()));
 }
 
-fn install(dependencies: Array<Dependency>) {
+fn blockStd(blacklist: Array<string>) {
+  const modules = 'modules/';
+  exec('mkdir ' + modules);
+  const std = 'std/';
+  exec('mkdir ' + modules + std);
+  blacklist.map(fn (lib: string) {
+    const libSplit = lib.split('');
+    libSplit.delete(1);
+    const lib = libSplit.join('');
+    const mock = exec('mkdir ' + modules + lib);
+    if mock.exitCode != 0 {
+      eprint(mock.stderr);
+    }
+  });
+}
+
+fn download(dependencies: Array<Dependency>) {
   dependencies.map(fn (dep: Dependency) {
     // TODO implement proper error handling
     const remote = dep.url;
