@@ -165,12 +165,12 @@ fn downloadDependencies(dependencies: Array<Dependency>) {
 
 fn applyDependencyBlocks(dependencies: Array<Dependency>) {
   dependencies.map(fn (dep: Dependency) {
-    applyDependencyBlock(dep.name, dep.group, dep.block);
-    // applyDependencyFullBlock(dep.name, dep.group, dep.fullBlock);
+    applyDependencyBlock(dep.name, dep.group, dep.block, false);
+    applyDependencyBlock(dep.name, dep.group, dep.block, true);
   });
 }
 
-fn applyDependencyBlock(name: string, group: string, blocks: Array<string>) {
+fn applyDependencyBlock(name: string, group: string, blocks: Array<string>, isFullBlock: bool) {
   const dependenciesDir = 'dependencies';
   const modulesDir = 'modules';
   if blocks.length() > 0 {
@@ -190,6 +190,14 @@ fn applyDependencyBlock(name: string, group: string, blocks: Array<string>) {
       const innerNamePath = [dependenciesDir, group, name, modulesDir, innerGroup, innerName].join('/');
       if !dirExist(innerNamePath) {
         mkDir(innerNamePath);
+      } else {
+        if isFullBlock {
+          let mockFile = innerNamePath + '/index.ln';
+          if removeFile(mockFile) {
+            mockFile = innerNamePath + '/' + name + '.ln';
+            removeFile(mockFile);
+          }
+        }
       }
     });
   }
@@ -201,6 +209,10 @@ fn dirExist(path: string): bool {
 
 fn mkDir(path: string) {
   exec('mkdir ' + path);
+}
+
+fn removeFile(path: string): bool {
+  return exec('rm ' + path).exitCode == 0;
 }
 
 fn cleanLib(lib: string): string {
