@@ -126,18 +126,17 @@ fn getBlacklist(std: Array<string>): Array<string> {
 }
 
 fn blockStd(blacklist: Array<string>) {
+  const dependencies = 'dependencies/';
+  exec('mkdir ' + dependencies);
   const modules = 'modules/';
-  exec('mkdir ' + modules);
+  exec('mkdir ' + dependencies + modules);
   const std = 'std/';
-  exec('mkdir ' + modules + std);
+  exec('mkdir ' + dependencies + modules + std);
   blacklist.map(fn (lib: string) {
     const libSplit = lib.split('');
     libSplit.delete(1);
     const lib = libSplit.join('');
-    const mock = exec('mkdir ' + modules + lib);
-    if mock.exitCode != 0 {
-      eprint(mock.stderr);
-    }
+    exec('mkdir ' + dependencies + modules + lib);
   });
 }
 
@@ -166,8 +165,8 @@ on start {
   
   
   // TODO: restore after testing
-  // exec('rm -rf dependencies');
-  // exec('mkdir dependencies');
+  exec('rm -rf dependencies');
+  exec('mkdir dependencies');
   // emit install package();
   package().using(['@std/app']).commit();
 }
