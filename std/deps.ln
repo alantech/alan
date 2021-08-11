@@ -120,7 +120,7 @@ export fn commit(pkg: Package) {
   downloadDependencies(pkg.dependencies);
   // Apply blocks defined for each dependency
   applyDependencyBlocks(pkg.dependencies);
-  // Block/Enable (based on what we finally decide) depenencies at application level, meaning that mocks will exists at /dependencies/modules/
+  // TODO: Block/Enable (based on what we finally decide) depenencies at application level, meaning that mocks will exists at /dependencies/modules/
   emit exit 0;
 }
 
