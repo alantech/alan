@@ -1,4 +1,4 @@
-from @std/app import start, print, eprint, exit
+from @std/app import start, print, exit
 from @std/cmd import exec
 
 /**
