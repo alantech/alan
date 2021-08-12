@@ -228,11 +228,23 @@ export default class Fn {
       this.params.forEach((param, ii) => {
         return param.ty.tempConstrain(argTys[ii], scope);
       });
-      res = [this.params.map((param) => param.ty.instance()), this.retTy.instance()];
-    } catch (_e) {
+      res = [
+        this.params.map((param) => param.ty.instance({ interfaceOk: true })),
+        this.retTy.instance({ interfaceOk: true }),
+      ];
+    } catch (e) {
       // do nothing: the args aren't applicable to the params so
       // we return null (`res` is already `null`) and we need to
       // ensure the param tys have `resetTemp` called on them.
+      // However, if the Error message starts with `TODO`, then
+      // print the error since it's for debugging purposes
+      let msg = e.message as string;
+      if (msg.startsWith('TODO')) {
+        console.log('warning: came across TODO from Types.ts when getting result ty for a function:');
+        console.group();
+        console.log(msg);
+        console.groupEnd();
+      }
     }
     this.params.forEach((param) => param.ty.resetTemp());
     return res;
@@ -247,12 +259,13 @@ export class OpcodeFn extends Fn {
     retTyName: string,
     __opcodes: Scope,
   ) {
+    const tyScope = new Scope(__opcodes);
     const params = Object.entries(argDecs).map(([name, tyName]) => {
-      return new FnParam(new NulLP(), name, opcodes().get(tyName));
+      return new FnParam(new NulLP(), name, Type.getFromTypename(tyName, tyScope, { isTyVar: true }));
     });
-    const retTy = __opcodes.get(retTyName);
+    const retTy = Type.getFromTypename(retTyName, tyScope, { isTyVar: true });
     if (retTy === null || !(retTy instanceof Type)) {
-      throw new Error();
+      throw new Error('not a type');
     }
     super(new NulLP(), __opcodes, name, params, retTy, []);
     __opcodes.put(name, [this]);

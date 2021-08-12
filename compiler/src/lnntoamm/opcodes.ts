@@ -25,9 +25,22 @@ const load = (): void => {
     float64: [],
     bool: [],
     string: [],
+
+    Result: ['T'],
   }).forEach(([name, generics]: [string, string[]]) => {
     __opcodes.put(name, Type.opaque(name, generics));
   });
+
+  const anyIface = {
+    fields: [],
+    methods: [],
+    operators: [],
+  };
+  Object.entries({
+    any: anyIface,
+  }).forEach(([name, { fields, methods, operators }]) => {
+    __opcodes.put(name, Type.builtinInterface(name, fields, methods, operators));
+  })
 
   Object.entries({
     start: 'void',
@@ -173,6 +186,8 @@ const load = (): void => {
     xorbool: [{ a: 'bool', b: 'bool' }, 'bool'],
     norbool: [{ a: 'bool', b: 'bool' }, 'bool'],
     xnorboo: [{ a: 'bool', b: 'bool' }, 'bool'],
+
+    okR: [{ a: 'any' }, 'Result<any>'],
 
     waitop: [{ t: 'int64' }, 'void'],
 

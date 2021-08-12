@@ -21,11 +21,16 @@ interface InterfaceDupOpts {
   isTyVar?: boolean;
 }
 
+export type InstanceOpts = InterfaceInstanceOpts;
+interface InterfaceInstanceOpts {
+  interfaceOk?: boolean;
+}
+
 const parseFulltypename = (node: LPNode): TypeName => {
   const name = node.get('typename').t.trim();
   const genericTys: TypeName[] = [];
-  if (node.has('opttypegenerics')) {
-    const generics = node.get('opttypegenerics');
+  if (node.get('opttypegenerics').has()) {
+    const generics = node.get('opttypegenerics').get('generics');
     genericTys.push(parseFulltypename(generics.get('fulltypename')));
     genericTys.push(
       ...generics
@@ -52,7 +57,7 @@ export default abstract class Type implements Equalable {
   abstract compatibleWithConstraint(ty: Type, scope: Scope): boolean;
   abstract constrain(to: Type, scope: Scope): void;
   abstract eq(that: Equalable): boolean;
-  abstract instance(): Type;
+  abstract instance(opts?: InstanceOpts): Type;
   abstract tempConstrain(to: Type, scope: Scope): void;
   abstract resetTemp(): void;
   abstract size(): number;
@@ -94,6 +99,21 @@ export default abstract class Type implements Equalable {
       }
     }
     return solidify(parsed);
+  }
+
+  static builtinInterface(
+    name: string,
+    fields: HasField[],
+    methods: HasMethod[],
+    operators: HasOperator[],
+  ) {
+    return new Interface(
+      name,
+      new NulLP(),
+      fields,
+      methods,
+      operators,
+    );
   }
 
   static fromInterfacesAst(ast: LPNode, scope: Scope): Type {
@@ -307,7 +327,7 @@ class Opaque extends Type implements Generalizable {
     return opts;
   }
 
-  instance(): Type {
+  instance(opts?: InstanceOpts): Type {
     const genNames = Object.keys(this.generics);
     if (genNames.length === 0) {
       // minor optimization: if there's no generics then we keep the same JS
@@ -322,7 +342,7 @@ class Opaque extends Type implements Generalizable {
           `Cannot get an instance of a generic Opaque type that hasn't been solidified`,
         );
       }
-      instance.generics[name] = thisGen.instance();
+      instance.generics[name] = thisGen.instance(opts);
     }
     return instance;
   }
@@ -549,11 +569,11 @@ export class FunctionType extends Type {
     }
   }
 
-  instance(): Type {
+  instance(opts?: InstanceOpts): Type {
     return new FunctionType(
       this.ast,
-      this.params.map((param) => param.instance()),
-      this.retTy.instance(),
+      this.params.map((param) => param.instance(opts)),
+      this.retTy.instance(opts),
     );
   }
 
@@ -1146,11 +1166,13 @@ class Interface extends Type {
     }
   }
 
-  instance(): Type {
+  instance(opts?: InstanceOpts): Type {
     if (this.delegate !== null) {
-      return this.delegate.instance();
+      return this.delegate.instance(opts);
     } else if (this.tempDelegate !== null) {
-      return this.tempDelegate.instance();
+      return this.tempDelegate.instance(opts);
+    } else if (opts && opts.interfaceOk) {
+      return this;
     } else {
       throw new Error(`Could not resolve type ${this.name}`);
     }
@@ -1450,12 +1472,12 @@ class OneOf extends Type {
     );
   }
 
-  instance(): Type {
+  instance(opts?: InstanceOpts): Type {
     const selected = this.select();
     if (selected === undefined) {
       throw new Error('uh whaaaaat');
     }
-    return selected.instance();
+    return selected.instance(opts);
   }
 
   tempConstrain(to: Type, scope: Scope) {

@@ -14,6 +14,7 @@ on thing fn (t: Thing) {
 }
 
 on start {
+  const x = ok(4);
   emit thing new Thing {
     foo: 1,
     bar: 'baz'

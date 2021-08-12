@@ -1,0 +1,48 @@
+const _91154359_f64f_4b50_8c36_c145cee54aee: float32 = 4
+const _5f6a3f3b_9ff8_4876_b3c1_af90e93e7e70: int64 = 0
+const _9d7236ff_fa53_4608_8519_6b09d9604d72: int64 = 1
+const _ffdca2b1_5bfa_4538_802d_db8e63a9982e: int64 = 2
+const _a592fdb8_ae56_48b6_a9f4_f05d480f8b8f: string = "baz"
+const _4044a10e_3d95_4eae_8382_a4dd238caf54: string = "\n"
+const _b1a863ed_d622_4318_9571_082a57c30c4b: int8 = 0
+event stdout: string
+event exit: int8
+event stderr: string
+event thing: Thing
+on thing fn (t: Thing): void {
+  let _18914270_3457_42f7_96dd_8cb301dbc5ee: int64 = register(t, _5f6a3f3b_9ff8_4876_b3c1_af90e93e7e70)
+  let _93737517_7cf8_4a7e_919a_203ddce66256: string = i64str(_18914270_3457_42f7_96dd_8cb301dbc5ee)
+  let _b0839a5b_3ec3_43bd_bdb8_28d4964daa02: string = refv(_93737517_7cf8_4a7e_919a_203ddce66256)
+  let _71ff63dc_daca_42c0_b789_95d313941b58: string = copystr(_4044a10e_3d95_4eae_8382_a4dd238caf54)
+  let _6aa7ca2a_1dd6_45e8_b729_d0c16f6c1e85: string = catstr(_b0839a5b_3ec3_43bd_bdb8_28d4964daa02, _71ff63dc_daca_42c0_b789_95d313941b58)
+  let _a1254128_b8cd_4eec_b1d5_56daba11f815: string = refv(_6aa7ca2a_1dd6_45e8_b729_d0c16f6c1e85)
+  let _2515a5ab_8910_4cdb_8942_cac8010afec5: void = stdoutp(_a1254128_b8cd_4eec_b1d5_56daba11f815)
+  let _6a38b741_e45c_4e06_82c8_f4aa522c37c7: string = register(t, _9d7236ff_fa53_4608_8519_6b09d9604d72)
+  let _8a845fd7_aa24_4c9a_bb38_8f721504bb33: string = refv(_6a38b741_e45c_4e06_82c8_f4aa522c37c7)
+  let _ae97644c_a1a9_45e7_8f82_6ce05cb0a1c5: string = copystr(_4044a10e_3d95_4eae_8382_a4dd238caf54)
+  let _0e1668f1_f452_4bb5_b9bd_cbe1d2c62499: string = catstr(_8a845fd7_aa24_4c9a_bb38_8f721504bb33, _ae97644c_a1a9_45e7_8f82_6ce05cb0a1c5)
+  let _6e1d746a_7f03_4cc9_85d6_e7e77668b922: string = refv(_0e1668f1_f452_4bb5_b9bd_cbe1d2c62499)
+  let _70ea2d51_c6f4_4019_8a08_de9787b9ed1f: void = stdoutp(_6e1d746a_7f03_4cc9_85d6_e7e77668b922)
+  let _9246757b_f5b2_4354_a6ca_06a1741e4e76: int8 = copyi8(_b1a863ed_d622_4318_9571_082a57c30c4b)
+  emit exit _9246757b_f5b2_4354_a6ca_06a1741e4e76
+}
+on stderr fn (err: string): void {
+  let _8e54838f_cee3_40eb_86e2_0f9b29201a96: void = stderrp(err)
+}
+on exit fn (status: int8): void {
+  let _565e0206_41cf_4ad6_afdd_9f538ea5b7a7: void = exitop(status)
+}
+on stdout fn (out: string): void {
+  let _27d57630_509b_4c88_8a5f_78954c3d83d6: void = stdoutp(out)
+}
+on _start fn (): void {
+  let _8dc09ef9_9aca_492f_a34c_0d7baf4e911a: float32 = copyf32(_91154359_f64f_4b50_8c36_c145cee54aee)
+  let _532a58fc_5d47_4e99_9249_d7f677ec96d9: Result<float32> = okR(_8dc09ef9_9aca_492f_a34c_0d7baf4e911a)
+  const _cebf743e_457b_4884_a882_7db302848c7e: Result<float32> = reff(_532a58fc_5d47_4e99_9249_d7f677ec96d9)
+  let _24c6f9b6_5acb_4164_950e_57e3d9c79816: int64 = copyi64(_9d7236ff_fa53_4608_8519_6b09d9604d72)
+  let _b5068bc9_0dba_4a19_a5a6_3fdfe597d4c1: string = copystr(_a592fdb8_ae56_48b6_a9f4_f05d480f8b8f)
+  let _08ebe2e2_e2fc_4f3b_9035_95f9fa09f26e: Thing = newarr(_ffdca2b1_5bfa_4538_802d_db8e63a9982e)
+  pushf(_08ebe2e2_e2fc_4f3b_9035_95f9fa09f26e, _24c6f9b6_5acb_4164_950e_57e3d9c79816, _9d7236ff_fa53_4608_8519_6b09d9604d72)
+  pushv(_08ebe2e2_e2fc_4f3b_9035_95f9fa09f26e, _b5068bc9_0dba_4a19_a5a6_3fdfe597d4c1, _9d7236ff_fa53_4608_8519_6b09d9604d72)
+  emit thing _08ebe2e2_e2fc_4f3b_9035_95f9fa09f26e
+}
