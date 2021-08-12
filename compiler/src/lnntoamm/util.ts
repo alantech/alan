@@ -38,6 +38,23 @@ export interface Equalable {
   eq(other: Equalable): boolean;
 }
 
+export const matrixIndices = function*(matrix: Array<Array<any>>) {
+  const indices = matrix.map(() => 0);
+  yield indices;
+  while (!indices.every((index, ii) => index === matrix[ii].length - 1)) {
+    indices.reduceRight((carry, _matIdx, idx) => {
+      indices[idx] += carry;
+      if (indices[idx] === matrix[idx].length) {
+        indices[idx] = 0;
+        return 1;
+      } else {
+        return 0;
+      }
+    }, 1);
+    yield indices;
+  }
+}
+
 // TODO: is this necessary?
 // export class MapButBetter<K extends Equalable, V> {
 //   private __keys: K[]

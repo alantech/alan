@@ -3,7 +3,7 @@ import { fulltypenameAstFromString } from './Ast';
 import Fn from './Fn';
 import Operator from './Operator';
 import Scope from './Scope';
-import { DBG, Equalable, genName, isFnArray, isOpArray, TODO } from './util';
+import { DBG, Equalable, genName, isFnArray, isOpArray, matrixIndices, TODO } from './util';
 
 type Fields = { [name: string]: Type | null };
 export type FieldIndices = { [name: string]: number };
@@ -112,17 +112,8 @@ export default abstract class Type implements Equalable {
     return new OneOf(tys);
   }
 
-  static newBuiltin(name: string, generics: string[]): Type {
-    return new Builtin(name);
-    // TODO: this maybe?
-    // let genericArgs: GenericArgs = {};
-    // generics.forEach(arg => genericArgs[arg] = null);
-    // return new Struct(
-    //   name,
-    //   null,
-    //   genericArgs,
-    //   {},
-    // );
+  static opaque(name: string, generics: string[]): Type {
+    return new Opaque(name, generics);
   }
 
   static hasField(name: string, ty: Type): Type {
@@ -169,177 +160,253 @@ export default abstract class Type implements Equalable {
   }
 }
 
-class Opaque extends Type {
+class Opaque extends Type implements Generalizable {
+  // if any values are `null` that means that this isn't an instantiable type
+  // and should be treated like the type needs to be duped
+  generics: GenericArgs;
+
   get ammName(): string {
-    return this.name;
+    let generics = '';
+    if (Object.keys(this.generics).length !== 0) {
+      let genNames = new Array<string>();
+      for (let [tyVar, ty] of Object.entries(this.generics)) {
+        if (ty === null) {
+          genNames.push(tyVar);
+        } else {
+          genNames.push(ty.ammName);
+        }
+      }
+      generics = '<' + genNames.join(', ') + '>';
+    }
+    return this.name + generics;
   }
 
-  constructor(name: string) {
+  constructor(name: string, generics: string[]) {
     super(name);
+    this.generics = {};
+    generics.forEach((g) => this.generics[g] = null);
   }
 
   compatibleWithConstraint(that: Type, scope: Scope): boolean {
-    return false;
+    if (that instanceof Opaque) {
+      const thisGens = Object.values(this.generics);
+      const thatGens = Object.values(that.generics);
+      if (this.name !== that.name || thisGens.length !== thatGens.length) {
+        return false;
+      }
+      return (
+        this.name === that.name
+        && thisGens.length === thatGens.length
+        && thisGens.every((thisGen, ii) => {
+          const thatGen = thatGens[ii]
+          if (thisGen === null || thatGen === null) {
+            return true;
+          } else {
+            return thisGen.compatibleWithConstraint(thatGen, scope);
+          }
+        })
+      );
+    } else if (that instanceof Interface || that instanceof OneOf) {
+      return that.compatibleWithConstraint(this, scope);
+    } else if (that instanceof HasField) {
+      return false;
+    } else if (that instanceof HasOperator) {
+      return Has.operator(that, scope, this).length !== 0;
+    } else if (that instanceof HasMethod) {
+      return Has.method(that, scope, this).length !== 0;
+    } else {
+      TODO('Opaque constraint compatibility with other types');
+    }
   }
 
   constrain(that: Type, scope: Scope) {
+    if (!this.compatibleWithConstraint(that, scope)) {
+      throw new Error(`Cannot constrain type ${this.ammName} to ${that.ammName}`);
+    }
+    if (that instanceof Opaque) {
+      if (
+        Object.values(this.generics).some((g) => g === null)
+        || Object.values(that.generics).some((g) => g === null)
+      ) {
+        // if any values are null values, that means that we just have to check
+        // for constraint compatibilities which was already checked so we're good
+        return;
+      }
+      const thisGens = Object.keys(this.generics);
+      const thatGens = Object.keys(that.generics);
+      thisGens.forEach((genName, ii) =>
+        this.generics[genName].constrain(that.generics[thatGens[ii]], scope),
+      );
+    } else if (that instanceof Interface || that instanceof OneOf) {
+      that.constrain(this, scope);
+    } else {
+      console.log(this);
+      console.log(that);
+      throw 'uh';
+    }
   }
 
-  dup(): Type {
-    return null;
+  dup(): Type | null {
+    const genKeys = Object.keys(this.generics);
+    if (genKeys.length === 0) {
+      return null;
+    }
+    const duped = new Opaque(this.name, genKeys);
+    let isNothingNew = true;
+    genKeys.forEach((genName) => {
+      const thisGen = this.generics[genName];
+      let tyVal: Type;
+      if (thisGen === null) {
+        tyVal = Type.generate();
+      } else {
+        const duped = thisGen.dup();
+        if (duped === null) {
+          tyVal = thisGen;
+        } else {
+          tyVal = duped;
+          isNothingNew = false;
+        }
+      }
+      duped.generics[genName] = tyVal;
+    });
+    return duped;
   }
 
   eq(that: Equalable): boolean {
-    return false;
+    if (!(that instanceof Opaque) || this.name !== that.name) {
+      return false;
+    }
+    const thisGens = Object.values(this.generics);
+    const thatGens = Object.values(that.generics);
+    return (
+      thisGens.length === thatGens.length
+      && thisGens.every((thisGen, ii) => {
+        const thatGen = thatGens[ii];
+        if (thisGen === null || thatGen === null) {
+          return thisGen === thatGen;
+        } else {
+          return thisGen.eq(thatGen);
+        }
+      })
+    );
   }
 
   fnselectOptions(): Type[] {
-    return [this];
+    const genOptions = Object
+      .values(this.generics)
+      .map((g) => g === null ? [g] : g.fnselectOptions());
+    const opts = new Array<Type>();
+    const getIndices = matrixIndices(genOptions);
+    const toSolidify = new Opaque(this.name, Object.keys(this.generics));
+    for (let indicesRes = getIndices.next(); !indicesRes.done; indicesRes = getIndices.next()) {
+      let indices = indicesRes.value as number[];
+      opts.push(toSolidify.solidify(
+        indices.map((optIdx, tyVarIdx) => genOptions[tyVarIdx][optIdx]),
+      ));
+    }
+    return opts;
   }
 
   instance(): Type {
-    return null;
-  }
-
-  isFixed(): boolean {
-    return false;
-  }
-
-  size(): number {
-    return 0;
-  }
-
-  tempConstrain(that: Type, scope: Scope) {
-  }
-
-  resetTemp() {
-  }
-}
-
-class Builtin extends Type {
-  get ammName(): string {
-    return this.name;
-  }
-
-  constructor(name: string) {
-    super(name);
-  }
-
-  compatibleWithConstraint(ty: Type, scope: Scope): boolean {
-    if (ty instanceof Builtin) {
-      return this.eq(ty);
-    } else if (ty instanceof OneOf || ty instanceof Generated) {
-      return ty.compatibleWithConstraint(this, scope);
-    } else if (ty instanceof HasOperator) {
-      return Has.operator(ty, scope, this).length !== 0;
-    } else if (ty instanceof HasMethod) {
-      return Has.method(ty, scope, this).length !== 0;
-    } else if (ty instanceof HasField) {
-      return TODO('add field support for builtins');
-    } else if (ty instanceof Interface) {
-      // FIXME: once builtins can have fields
-      return (
-        ty.fields.length === 0 &&
-        ty.methods.every((m) => this.compatibleWithConstraint(m, scope)) &&
-        ty.operators.every((o) => this.compatibleWithConstraint(o, scope))
-      );
-    } else {
-      TODO('other types constraining to builtin types');
+    const genNames = Object.keys(this.generics);
+    if (genNames.length === 0) {
+      // minor optimization: if there's no generics then we keep the same JS
+      // object to reduce the number of allocs
+      return this;
     }
-  }
-
-  constrain(ty: Type, scope: Scope) {
-    if (
-      ty instanceof OneOf ||
-      ty instanceof Interface
-    ) {
-      ty.constrain(this, scope);
-    } else if (ty instanceof HasOperator) {
-      if (Has.operator(ty, scope, this).length === 0) {
-        throw new Error(`type ${this.name} does not have operator ${ty.name}`);
+    const instance = new Opaque(this.name, genNames);
+    for (let name of genNames) {
+      const thisGen = this.generics[name];
+      if (thisGen === null) {
+        throw new Error(
+          `Cannot get an instance of a generic Opaque type that hasn't been solidified`,
+        );
       }
-    } else if (
-      ty instanceof HasMethod &&
-      Has.method(ty, scope, this).length === 0
-    ) {
-      throw new Error(
-        `type ${this.name} does not have method ${ty.name}(${ty.params
-          .map((p) => (p === null ? this : p))
-          .map((ty) => ty.name)
-          .join(', ')})`,
-      );
-    } else if (ty instanceof HasField) {
-      throw new Error(`type ${this.name} does not have field ${ty.name}`);
-    } else if (!this.compatibleWithConstraint(ty, scope)) {
-      throw new Error(
-        `type ${this.name} could not be constrained to ${ty.name}`,
-      );
+      instance.generics[name] = thisGen.instance();
     }
-  }
-
-  eq(that: Equalable): boolean {
-    if (that instanceof Builtin) {
-      return this === that;
-    } else if (that instanceof Interface) {
-      if (that instanceof Generated && that.delegate !== null) {
-        return this.eq(that.delegate);
-      }
-      return that.tempDelegate !== null && this.eq(that.tempDelegate);
-    } else {
-      return false;
-    }
-  }
-
-  fieldIndices(): FieldIndices {
-    return TODO("determine if it's even worth keeping the Builtin class");
-  }
-
-  instance(): Type {
-    return this;
+    return instance;
   }
 
   isFixed(): boolean {
     switch (this.name) {
-      case 'int64':
-      case 'int32':
-      case 'int16':
-      case 'int8':
-      case 'float64':
-      case 'float32':
-      case 'bool':
-      case 'void':
-        return true;
-      default:
+      case 'string':
         return false;
+      default:
+        return true;
     }
-  }
-
-  tempConstrain(ty: Type, scope: Scope) {
-    if (ty instanceof OneOf || ty instanceof Interface) {
-      if (!ty.compatibleWithConstraint(this, scope)) {
-        throw new Error(`cannot tempConstrain type ${ty.name} to ${this.name}`);
-      }
-    } else {
-      this.constrain(ty, scope);
-    }
-  }
-
-  resetTemp() {
-    // do nothing
   }
 
   size(): number {
-    // TODO: should probably figure out non-opaque types but we'll see
-    // what happens with this class first (after fn selection fix)
     switch (this.name) {
       case 'void':
         return 0;
+      case 'Result':
+        const containedTypes = Object.values(this.generics);
+        return containedTypes
+          .map(t => {
+            if (t === null) {
+              throw new Error(`cannot compute size of ${this.ammName}`);
+            } else {
+              return t.size();
+            }
+          })
+          .reduce((s1, s2) => s1 + s2, 1);
       default:
-        // FIXME: currently the AVM encodes every value (including 8-bit values)
-        // in 8 bytes, so we have to enforce that behavior here by assuming that
-        // the size is in factors of 8 bytes. Eventually, we'll have to fix this.
-        // Or we just pretend 64-bits is sufficient for everything and don't.
         return 1;
+    }
+  }
+
+  solidify(tys: Type[]): Type {
+    const genNames = Object.keys(this.generics);
+    if (genNames.length < tys.length) {
+      throw new Error(`Cannot solidify ${this.ammName} - too many type arguments were provided`);
+    } else if (genNames.length > tys.length) {
+      throw new Error(`Cannot solidify ${this.ammName} - not enough type arguments were provided`);
+    } else if (genNames.length === 0) {
+      return this;
+    } else {
+      const duped = new Opaque(this.name, genNames);
+      genNames.forEach((name, ii) => duped.generics[name] = tys[ii]);
+      return duped;
+    }
+  }
+
+  tempConstrain(that: Type, scope: Scope) {
+    if (!this.compatibleWithConstraint(that, scope)) {
+      throw new Error(`Cannot temporarily constrain type ${this.ammName} to ${that.ammName}`);
+    }
+    if (that instanceof Opaque) {
+      const thisGens = Object.keys(this.generics);
+      const thatGens = Object.keys(that.generics);
+      thisGens.forEach((thisGenName, ii) => {
+        const thisGen = this.generics[thisGenName];
+        const thatGen = that.generics[thatGens[ii]];
+        if (thisGen === null || thatGen === null) {
+          throw new Error(`Can't tempConstrain non-solidified Opaque types`);
+        } else {
+          thisGen.tempConstrain(thatGen, scope);
+        }
+      });
+    } else if (that instanceof Interface) {
+      const tcTo = that.delegate ?? that.tempDelegate;
+      if (tcTo !== null) {
+        this.tempConstrain(tcTo, scope);
+      }
+    } else if (that instanceof OneOf) {
+      // we're happy, no need to tempConstrain
+    } else {
+      console.log(this);
+      console.log(that);
+      throw 'uh';
+    }
+  }
+
+  resetTemp() {
+    for (let generic in this.generics) {
+      if (this.generics[generic] === null) {
+        return;
+      }
+      this.generics[generic].resetTemp();
     }
   }
 }
@@ -387,9 +454,12 @@ export class FunctionType extends Type {
     // of the indices in each dimension, with the highest sum
     // having the greatest preference
     const fnsByWeight = new Map<number, [Fn, Type[], Type][]>();
-    const indices = matrix.map(() => 0);
+    const getIndices = matrixIndices(matrix);
     // keep it as for instead of while for debugging reasons
-    for (let i = 0; ; i++) {
+    for (let indicesRes = getIndices.next(); !indicesRes.done; indicesRes = getIndices.next()) {
+      // TS 3.6 should be able to know that indicesRes isn't `void`??? wat???
+      // https://www.typescriptlang.org/docs/handbook/release-notes/typescript-3-6.html
+      let indices = indicesRes.value as number[];
       const weight = indices.reduce((w, c) => w + c);
       // console.log('weight', weight);
       const argTys = matrix.map((options, ii) => options[indices[ii]]);
@@ -410,27 +480,6 @@ export class FunctionType extends Type {
       );
       // console.log('for weight now', fnsForWeight);
       fnsByWeight.set(weight, fnsForWeight);
-      if (
-        indices.every(
-          (idxInDim, dimIdx) => idxInDim === matrix[dimIdx].length - 1,
-        )
-      ) {
-        // console.log('done! :)');
-        break;
-      }
-      // now change the indices. This mostly works like binary addition,
-      // except each digit `i` is in base `j` where `j = matrix[i].length`
-      // so if `matrix[1].length === 1` then the carry for `indices[1]`
-      // is just passed to `matrix[0]`
-      indices.reduceRight((carry, _matIdx, idx) => {
-        indices[idx] += carry;
-        if (indices[idx] === matrix[idx].length) {
-          indices[idx] = 0;
-          return 1;
-        } else {
-          return 0;
-        }
-      }, 1);
     }
     const weights = Array.from(fnsByWeight.keys()).sort();
     // weights is ordered lowest->highest so it's just a matter of
@@ -447,12 +496,12 @@ export class FunctionType extends Type {
     }, new Array<[Fn, Type[], Type]>());
     if (ret.length > original.length || ret.length === 0) {
       console.log('~~~ ERROR');
-      console.log('original: ', original[0].body);
+      console.log('original: ', original);
+      console.log('ret:      ', ret);
       console.log('retLength:', ret.length);
       console.log('args:     ', args);
       console.log('matrix:   ', matrix);
       console.log('byweight: ', fnsByWeight);
-      console.log('indices:  ', indices);
       if (ret.length === 0) {
         throw new Error('no more functions left');
       } else {
@@ -1197,7 +1246,7 @@ class Generated extends Interface {
     );
     const getStack = { stack: '' };
     Error.captureStackTrace(getStack);
-    this.dbg('created at', getStack.stack);
+    // this.dbg('created at', getStack.stack);
   }
 
   compatibleWithConstraint(that: Type, scope: Scope): boolean {

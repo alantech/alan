@@ -26,7 +26,7 @@ const load = (): void => {
     bool: [],
     string: [],
   }).forEach(([name, generics]: [string, string[]]) => {
-    __opcodes.put(name, Type.newBuiltin(name, generics));
+    __opcodes.put(name, Type.opaque(name, generics));
   });
 
   Object.entries({
