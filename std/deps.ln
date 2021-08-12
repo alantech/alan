@@ -14,25 +14,28 @@ type Dependency {
   name: string,
 }
 
-export type Package {
+type RawPackage {
   std: Array<string>,
   dependencies: Array<Dependency>,
   block: Array<string>,
   fullBlock: Array<string>,
 }
 
+// Exporting type as alias since I could not export the type and used it in this file at the same time
+export type Package = RawPackage
+
 type PackageDependency {
-  pkg: Package,
+  pkg: RawPackage,
   dep: Dependency,
 }
 
 // The `install` event
-export event install: Package
+export event install: RawPackage
 
-fn package(): Package {
+fn package(): RawPackage {
   const emptyArrStr = new Array<string> [];
   const emptyArrDep = new Array<Dependency> [];
-  const pkg = new Package {
+  const pkg = new RawPackage {
     std: emptyArrStr,
     dependencies: emptyArrDep,
     block: emptyArrStr,
@@ -41,12 +44,12 @@ fn package(): Package {
   return pkg;
 }
 
-export fn using(pkg: Package, std: Array<string>): Package {
+export fn using(pkg: RawPackage, std: Array<string>): RawPackage {
   pkg.std = pkg.std + std;
   return pkg;
 }
 
-export fn dependency(pkg: Package, url: string): PackageDependency {
+export fn dependency(pkg: RawPackage, url: string): PackageDependency {
   const emptyArrStr = new Array<string> [];
   const parts = url.split('/');
   const repo = parts[length(parts) - 1] || '';
@@ -64,17 +67,17 @@ export fn dependency(pkg: Package, url: string): PackageDependency {
   };
 }
 
-export fn add(pkgd: PackageDependency): Package {
+export fn add(pkgd: PackageDependency): RawPackage {
   pkgd.pkg.dependencies.push(pkgd.dep);
   return pkgd.pkg;
 }
   
-export fn block(pkg: Package, block: string): Package {
+export fn block(pkg: RawPackage, block: string): RawPackage {
   pkg.block.push(block);
   return pkg;
 }
 
-export fn block(pkg: Package, block: Array<string>): Package {
+export fn block(pkg: RawPackage, block: Array<string>): RawPackage {
   pkg.block = pkg.block + block;
   return pkg;
 }
@@ -89,12 +92,12 @@ export fn block(pkgd: PackageDependency, block: Array<string>): PackageDependenc
   return pkgd;
 }
 
-export fn fullBlock(pkg: Package, block: string): Package {
+export fn fullBlock(pkg: RawPackage, block: string): RawPackage {
   pkg.fullBlock.push(block);
   return pkg;
 }
 
-export fn fullBlock(pkg: Package, block: Array<string>): Package {
+export fn fullBlock(pkg: RawPackage, block: Array<string>): RawPackage {
   pkg.fullBlock = pkg.fullBlock + block;
   return pkg;
 }
@@ -111,7 +114,7 @@ export fn fullBlock(pkgd: PackageDependency, block: Array<string>): PackageDepen
 
 // The `commit` function takes the packge as argument.
 // It install all dependencies added and apply necessary blocks.
-export fn commit(pkg: Package) {
+export fn commit(pkg: RawPackage) {
   // Remove std dep from blacklist
   const blacklist = getBlacklist(pkg.std);
   // Create mocks for blacklisted std libs
@@ -141,7 +144,7 @@ fn blockStd(blacklist: Array<string>) {
   if !dirExist(modules) {
     mkDir(modules);
   }
-  const stdPath = [modules, 'std'].join('/')
+  const stdPath = [modules, 'std'].join('/');
   if !dirExist(stdPath) {
     mkDir(stdPath);
   }
