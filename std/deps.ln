@@ -121,6 +121,8 @@ export fn commit(pkg: Package) {
   // Apply blocks defined for each dependency
   applyDependencyBlocks(pkg.dependencies);
   // TODO: Block/Enable (based on what we finally decide) depenencies at application level, meaning that mocks will exists at /dependencies/modules/
+  blockForAllDependencies(pkg.block, false);
+  blockForAllDependencies(pkg.fullBlock, true);
   emit exit 0;
 }
 
@@ -216,6 +218,10 @@ fn removeFile(path: string): bool {
   return exec('rm ' + path).exitCode == 0;
 }
 
+fn lsDir(path: string): Array<string> {
+  return exec('ls ' + path).stdout.split("\n");
+}
+
 fn cleanLib(lib: string): string {
   if lib.matches('@') && lib.index('@') == 0 {
     const libSplit = lib.split('');
@@ -224,6 +230,54 @@ fn cleanLib(lib: string): string {
   } else {
     return lib;
   }
+}
+
+fn blockForAllDependencies(blocks: Array<string>, isFullBlock: bool) {
+  const dependenciesDir = 'dependencies';
+  const modulesDir = 'modules';
+  if blocks.length() == 0 {
+    return;
+  }
+  if !dirExist(dependenciesDir) {
+    mkDir(dependenciesDir);
+  }
+  const depenenciesModulesPath = [dependenciesDir, modulesDir].join('/');
+  if !dirExist(depenenciesModulesPath) {
+    mkDir(depenenciesModulesPath);
+  }
+  blocks.map(fn (lib: string) {
+    const cleanedLib = cleanLib(lib);
+    const libSplit = cleanedLib.split('/');
+    const innerGroup = libSplit[0].getOr('');
+    const innerName = libSplit[1].getOr('');
+    const innerGroupPath = [dependenciesDir, modulesDir, innerGroup].join('/');
+    if !dirExist(innerGroupPath) {
+      mkDir(innerGroupPath);
+    }
+    const innerNamePath = [dependenciesDir, modulesDir, innerGroup, innerName].join('/');
+    if !dirExist(innerNamePath) {
+      mkDir(innerNamePath);
+    } else {
+      if isFullBlock {
+        const deps = lsDir(dependenciesDir);
+        deps.map(fn (group: string) {
+          if group != 'modules' {
+            const lsGroup = lsDir([dependenciesDir, group].join('/'));
+            lsGroup.map(fn (name: string) {
+              const path = [dependenciesDir, group, name, modulesDir, innerGroup, innerName].join('/');
+              if dirExist(path) {
+                let mockFile = path + '/index.ln';
+                if !removeFile(mockFile) {
+                  mockFile = path + '/' + innerName + '.ln';
+                  removeFile(mockFile);
+                }
+              }
+            });
+          }
+        });
+      }
+    }
+  });
 }
 
 // Emit the `install` event on app `start`
@@ -238,5 +292,5 @@ on start {
   exec('rm -rf dependencies');
   exec('mkdir dependencies');
   // emit install package();
-  package().using(['@std/app']).dependency('https://github.com/alantech/hellodep').block('@std/cmd').add().commit();
+  package().using(['@std/app']).dependency('https://github.com/alantech/hellodep').block('@std/cmd').add().block('@std/tcp').fullBlock('@std/httpserver').commit();
 }
