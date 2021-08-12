@@ -193,7 +193,7 @@ fn applyDependencyBlock(name: string, group: string, blocks: Array<string>, isFu
       } else {
         if isFullBlock {
           let mockFile = innerNamePath + '/index.ln';
-          if removeFile(mockFile) {
+          if !removeFile(mockFile) {
             mockFile = innerNamePath + '/' + name + '.ln';
             removeFile(mockFile);
           }
