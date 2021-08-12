@@ -120,8 +120,9 @@ export fn commit(pkg: Package) {
   downloadDependencies(pkg.dependencies);
   // Apply blocks defined for each dependency
   applyDependencyBlocks(pkg.dependencies);
-  // TODO: Block/Enable (based on what we finally decide) depenencies at application level, meaning that mocks will exists at /dependencies/modules/
+  // Block lib for all dependencies once.
   blockForAllDependencies(pkg.block, false);
+  // Block lib for all dependencies once. If any dependency is mocking it already remove that behaviour.
   blockForAllDependencies(pkg.fullBlock, true);
   emit exit 0;
 }
@@ -286,11 +287,7 @@ on start {
   // that are already installed so calls by the user to install them again (assuming the version is identical)
   // are skipped, calls to upgrade or install new dependencies are performed, and then the remaining list
   // of dependencies at the end are removed.
-  
-  
-  // TODO: restore after testing
   exec('rm -rf dependencies');
   exec('mkdir dependencies');
-  // emit install package();
-  package().using(['@std/app']).dependency('https://github.com/alantech/hellodep').block('@std/cmd').add().block('@std/tcp').fullBlock('@std/httpserver').commit();
+  emit install package();
 }
