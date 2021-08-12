@@ -173,34 +173,35 @@ fn applyDependencyBlocks(dependencies: Array<Dependency>) {
 fn applyDependencyBlock(name: string, group: string, blocks: Array<string>, isFullBlock: bool) {
   const dependenciesDir = 'dependencies';
   const modulesDir = 'modules';
-  if blocks.length() > 0 {
-    const innerDependenciesModulesPath = [dependenciesDir, group, name, modulesDir].join('/');
-    if !dirExist(innerDependenciesModulesPath) {
-      mkDir(innerDependenciesModulesPath);
+  if blocks.length() == 0 {
+    return;
+  }
+  const innerDependenciesModulesPath = [dependenciesDir, group, name, modulesDir].join('/');
+  if !dirExist(innerDependenciesModulesPath) {
+    mkDir(innerDependenciesModulesPath);
+  }
+  blocks.map(fn (lib: string) {
+    const cleanedLib = cleanLib(lib);
+    const libSplit = cleanedLib.split('/');
+    const innerGroup = libSplit[0].getOr('');
+    const innerName = libSplit[1].getOr('');
+    const innerGroupPath = [dependenciesDir, group, name, modulesDir, innerGroup].join('/');
+    if !dirExist(innerGroupPath) {
+      mkDir(innerGroupPath);
     }
-    blocks.map(fn (lib: string) {
-      const cleanedLib = cleanLib(lib);
-      const libSplit = cleanedLib.split('/');
-      const innerGroup = libSplit[0].getOr('');
-      const innerName = libSplit[1].getOr('');
-      const innerGroupPath = [dependenciesDir, group, name, modulesDir, innerGroup].join('/');
-      if !dirExist(innerGroupPath) {
-        mkDir(innerGroupPath);
-      }
-      const innerNamePath = [dependenciesDir, group, name, modulesDir, innerGroup, innerName].join('/');
-      if !dirExist(innerNamePath) {
-        mkDir(innerNamePath);
-      } else {
-        if isFullBlock {
-          let mockFile = innerNamePath + '/index.ln';
-          if !removeFile(mockFile) {
-            mockFile = innerNamePath + '/' + name + '.ln';
-            removeFile(mockFile);
-          }
+    const innerNamePath = [dependenciesDir, group, name, modulesDir, innerGroup, innerName].join('/');
+    if !dirExist(innerNamePath) {
+      mkDir(innerNamePath);
+    } else {
+      if isFullBlock {
+        let mockFile = innerNamePath + '/index.ln';
+        if !removeFile(mockFile) {
+          mockFile = innerNamePath + '/' + name + '.ln';
+          removeFile(mockFile);
         }
       }
-    });
-  }
+    }
+  });
 }
 
 fn dirExist(path: string): bool {
