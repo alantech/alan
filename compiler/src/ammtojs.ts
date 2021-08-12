@@ -4,6 +4,8 @@ import { LP, LPNode, LPError, NamedAnd, NulLP } from './lp';
 
 import amm from './amm';
 
+const funcsToAlsoReturnArg = {};
+
 const callToJsText = (call: LPNode) => {
   const args = call.has('calllist')
     ? call
@@ -18,7 +20,13 @@ const callToJsText = (call: LPNode) => {
     : `r.${opcode}(${args})`;
 };
 
-const functionbodyToJsText = (fnbody: LPNode, indent: string) => {
+type ArgMutationDirective = [string[], boolean | undefined];
+
+const functionbodyToJsText = (
+  fnbody: LPNode,
+  indent: string,
+  mutationDirective: ArgMutationDirective,
+) => {
   let outText = '';
   for (const statement of fnbody.get('statements').getAll()) {
     outText += indent + '  '; // For legibility of the output
@@ -29,6 +37,7 @@ const functionbodyToJsText = (fnbody: LPNode, indent: string) => {
           dec.get('assignables'),
           dec.get('fulltypename'),
           indent,
+          funcsToAlsoReturnArg[dec.get('decname').t],
         )}\n`;
       } else if (statement.get('declarations').has('letdeclaration')) {
         const dec = statement.get('declarations').get('letdeclaration');
@@ -36,6 +45,7 @@ const functionbodyToJsText = (fnbody: LPNode, indent: string) => {
           dec.get('assignables'),
           dec.get('fulltypename'),
           indent,
+          funcsToAlsoReturnArg[dec.get('decname').t],
         )}\n`;
       }
     } else if (statement.has('assignments')) {
@@ -44,6 +54,7 @@ const functionbodyToJsText = (fnbody: LPNode, indent: string) => {
         assign.get('assignables'),
         assign.get('fulltypename'),
         indent,
+        funcsToAlsoReturnArg[assign.get('decname').t],
       )}\n`;
     } else if (statement.has('calls')) {
       outText += `${callToJsText(statement.get('calls'))}\n`;
@@ -55,8 +66,19 @@ const functionbodyToJsText = (fnbody: LPNode, indent: string) => {
         : 'undefined';
       outText += `r.emit('${name}', ${arg})\n`;
     } else if (statement.has('exits')) {
-      outText += `${statement.get('exits').t.trim()}\n`;
+      if (typeof mutationDirective[1] === 'boolean') {
+        const exit = statement.get('exits');
+        const argName = mutationDirective[0][0];
+        const retVal = exit.get('variable').t;
+        outText += `return [${retVal}, ${argName}]\n`;
+      } else {
+        outText += `${statement.get('exits').t.trim()}\n`;
+      }
     }
+  }
+  if (typeof mutationDirective[1] === 'boolean' && mutationDirective[1]) {
+    const argName = mutationDirective[0][0];
+    outText += `return ${argName}\n`;
   }
   return outText;
 };
@@ -65,6 +87,7 @@ const assignableToJsText = (
   assignable: LPNode,
   fulltypename: LPNode,
   indent: string,
+  mutationDirective?: boolean,
 ) => {
   let outText = '';
   if (assignable.has('functions')) {
@@ -80,6 +103,7 @@ const assignableToJsText = (
     outText += functionbodyToJsText(
       assignable.get('functions').get('functionbody'),
       indent + '  ',
+      [argnames, mutationDirective],
     );
     outText += indent + '  }'; // End this closure
   } else if (assignable.has('calls')) {
@@ -101,7 +125,62 @@ const assignableToJsText = (
   return outText;
 };
 
+const findFuncsToAlsoReturnArg = (amm: LPNode) => {
+  const insertExit = {
+    dsmrun: false,
+    dsmwith: false,
+    dsmonly: true,
+    dswonly: true,
+    dsmclos: false,
+  };
+  const inspectCall = (call: LPNode) => {
+    const opcode = call.get('variable').t;
+    if (
+      ['dsmrun', 'dsmwith', 'dsmonly', 'dswonly', 'dsmclos'].includes(opcode)
+    ) {
+      const fnname = call.has('calllist')
+        ? call
+            .get('calllist')
+            .getAll()
+            .map((r) => r.get('variable').t)[1]
+        : 'WAT';
+      funcsToAlsoReturnArg[fnname] = insertExit[opcode];
+    }
+  };
+  for (const handler of amm.get('handlers').getAll()) {
+    const functionbody = handler.get().get('functions').get('functionbody');
+    for (const statement of functionbody.get('statements').getAll()) {
+      if (statement.has('declarations')) {
+        if (statement.get('declarations').has('constdeclaration')) {
+          const dec = statement.get('declarations').get('constdeclaration');
+          const assignable = dec.get('assignables');
+          if (assignable.has('calls')) {
+            inspectCall(assignable.get('calls'));
+          }
+        } else if (statement.get('declarations').has('letdeclaration')) {
+          const dec = statement.get('declarations').get('letdeclaration');
+          const assignable = dec.get('assignables');
+          if (assignable.has('calls')) {
+            inspectCall(assignable.get('calls'));
+          }
+        }
+      } else if (statement.has('assignments')) {
+        const assign = statement.get('assignments');
+        const assignable = assign.get('assignables');
+        if (assignable.has('calls')) {
+          inspectCall(assignable.get('calls'));
+        }
+      } else if (statement.has('calls')) {
+        inspectCall(statement.get('calls'));
+      }
+    }
+  }
+};
+
 const ammToJsText = (amm: LPNode) => {
+  // Preprocess the tree to find the functions that need an argument also returned and identify
+  // which argument, as well
+  findFuncsToAlsoReturnArg(amm);
   let outFile = "const r = require('alan-js-runtime')\n";
   // Where we're going we don't need types, so skipping that entire section
   // First convert all of the global constants to javascript
@@ -136,6 +215,7 @@ const ammToJsText = (amm: LPNode) => {
     outFile += functionbodyToJsText(
       rec.get('functions').get('functionbody'),
       '',
+      [[], undefined],
     );
     outFile += '})\n'; // End this handler
   }

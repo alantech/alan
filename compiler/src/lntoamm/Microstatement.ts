@@ -632,7 +632,7 @@ ${objectLiteralsAst.t} on line ${objectLiteralsAst.line}:${
     for (const [name, type] of args) {
       if (name !== '' && type.typename != '') {
         microstatements.push(
-          new Microstatement(StatementType.CONSTDEC, scope, true, name, type),
+          new Microstatement(StatementType.LETDEC, scope, true, name, type),
         );
       }
     }
@@ -828,6 +828,9 @@ ${emitsAst.t} on line ${emitsAst.line}:${emitsAst.char}`);
 ${assignmentsAst.t} on line ${assignmentsAst.line}:${assignmentsAst.char}`);
         }
       }
+      if (microstatement.outputName === letName) {
+        original = microstatement;
+      }
     }
     if (!original) {
       throw new Error(`Attempting to reassign to an undeclared variable
@@ -862,6 +865,9 @@ ${assignmentsAst.t} on line ${assignmentsAst.line}:${assignmentsAst.char}`);
             throw new Error(`Attempting to reassign a non-let variable.
 ${letName} on line ${assignmentsAst.line}:${assignmentsAst.char}`);
           }
+        }
+        if (microstatement.outputName === letName) {
+          actualLetName = letName;
         }
       }
       Microstatement.fromAssignablesAst(
@@ -1159,19 +1165,48 @@ ${letdeclarationAst.t} on line ${letdeclarationAst.line}:${
     if (val.statementType === StatementType.REREF) {
       val = Microstatement.fromVarName(val.alias, scope, microstatements);
     }
-    val.statementType = StatementType.LETDEC;
-    microstatements.push(
-      new Microstatement(
-        StatementType.REREF,
-        scope,
-        true,
-        val.outputName,
-        val.outputType,
-        [],
-        [],
-        letAlias,
-      ),
-    );
+    if (val.outputType === Type.builtinTypes.string) {
+      // Special logic just for strings because hoisting them later is hard
+      const opcodes = require('./opcodes').default;
+      const copystr = opcodes.exportScope.get('copystr');
+      microstatements.push(
+        new Microstatement(
+          StatementType.LETDEC,
+          scope,
+          true,
+          val.outputName + 'n', // TODO: Generate a new UUID here?
+          val.outputType,
+          [val.outputName],
+          copystr,
+        ),
+      );
+      microstatements.push(
+        new Microstatement(
+          StatementType.REREF,
+          scope,
+          true,
+          val.outputName + 'n',
+          val.outputType,
+          [],
+          [],
+          letAlias,
+        ),
+      );
+    } else {
+      val.statementType = StatementType.LETDEC;
+      microstatements.push(
+        new Microstatement(
+          StatementType.REREF,
+          scope,
+          true,
+          val.outputName,
+          val.outputType,
+          [],
+          [],
+          letAlias,
+        ),
+      );
+    }
   }
 
   static fromConstdeclarationAst(
