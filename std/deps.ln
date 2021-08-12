@@ -1,4 +1,4 @@
-from @std/app import start, print, exit
+from @std/app import start, print, exit, eprint
 from @std/cmd import exec
 
 /**
@@ -12,6 +12,8 @@ type Dependency {
   fullBlock: Array<string>,
   group: string,
   name: string,
+  rev: string,
+  remote: string,
 }
 
 type RawPackage {
@@ -51,15 +53,23 @@ export fn using(pkg: RawPackage, std: Array<string>): RawPackage {
 
 export fn dependency(pkg: RawPackage, url: string): PackageDependency {
   const emptyArrStr = new Array<string> [];
-  const parts = url.split('/');
-  const repo = parts[length(parts) - 1] || '';
-  const group = parts[parts.length() - 2] || '';
+  // The dependency url have to follow the git URLs standard https://git-scm.com/docs/git-clone#_git_urls
+  // The revisions (branches, tags or SHAs) will be delimited using a # (as npm or other package managers)
+  const parts = url.split('#');
+  const remote = parts[0] || '';
+  const rev = parts[1] || '';
+  const remoteParts = remote.split('/');
+  const gitRepo = remoteParts[remoteParts.length() - 1] || '';
+  const repo = gitRepo.split('.')[0] || '';
+  const group = remoteParts[remoteParts.length() - 2] || '';
   const dep = new Dependency {
     url: url,
     block: emptyArrStr,
     fullBlock: emptyArrStr,
     group: group,
     name: repo,
+    rev: rev,
+    remote: remote,
   };
   return new PackageDependency {
     pkg: pkg,
@@ -157,13 +167,26 @@ fn blockStd(blacklist: Array<string>) {
 fn downloadDependencies(dependencies: Array<Dependency>) {
   dependencies.map(fn (dep: Dependency) {
     // TODO implement proper error handling
-    const remote = dep.url;
+    const remote = dep.remote;
     const repo = dep.name;
     const group = dep.group;
+    const rev = dep.rev;
     const dest = 'dependencies/' + group + '/' + repo;
     const rm = exec('rm -rf ./' + dest);
-    const git = exec('git clone ' + remote + ' ./' + dest);
-    print(git.stderr);
+    const cloneCmd = 'git clone ' + remote + ' ./' + dest;
+    const gitClone = exec(cloneCmd + (rev != '' ? (&& ) : ''));
+    if gitClone.exitCode != 0 {
+      eprint(gitClone.stderr);
+    }
+    if rev != '' {
+      const gitReset = exec('cd ' + dest + ' && git reset --hard ' + rev);
+      if gitReset.exitCode != 0 {
+        const gitReset = exec('cd ' + dest + ' && git reset --hard origin/' + rev);
+        if gitReset.exitCode != 0 {
+          eprint(gitReset.stderr);
+        }
+      }
+    }
     const rm2 = exec('rm -rf ./' + dest + '/.git');
     const maybeRecurse = exec('cd ' + dest + ' && alan install');
   });
@@ -292,5 +315,10 @@ on start {
   // of dependencies at the end are removed.
   exec('rm -rf dependencies');
   exec('mkdir dependencies');
+  // package().dependency('https://github.com/alantech/nestedhellodep.git#v0.1').add().commit();
+  // package().dependency('git@github.com:alantech/nestedhellodep.git').add().commit();
+  // package().dependency('git@github.com:alantech/nestedhellodep.git#deps-perm').add().commit();
+  // package().dependency('git@github.com:alantech/nestedhellodep.git#v0.1').add().commit();e6e9934307076e5fde9864ffe03ab1c8da8e6836
+  // package().dependency('git@github.com:alantech/nestedhellodep.git#e6e9934307076e5fde9864ffe03ab1c8da8e6836').add().commit();
   emit install package();
 }
