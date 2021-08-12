@@ -136,17 +136,17 @@ fn getBlacklist(std: Array<string>): Array<string> {
 }
 
 fn blockStd(blacklist: Array<string>) {
-  const dependencies = 'dependencies/';
-  exec('mkdir ' + dependencies);
-  const modules = 'modules/';
-  exec('mkdir ' + dependencies + modules);
-  const std = 'std/';
-  exec('mkdir ' + dependencies + modules + std);
+  const modules = 'modules';
+  if !dirExist(modules) {
+    mkDir(modules);
+  }
+  const stdPath = [modules, 'std'].join('/')
+  if !dirExist(stdPath) {
+    mkDir(stdPath);
+  }
   blacklist.map(fn (lib: string) {
-    const libSplit = lib.split('');
-    libSplit.delete(1);
-    const lib = libSplit.join('');
-    exec('mkdir ' + dependencies + modules + lib);
+    const cleanedLib = cleanLib(lib);
+    mkDir(modules + '/' + cleanedLib);
   });
 }
 
