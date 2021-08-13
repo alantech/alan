@@ -47,8 +47,12 @@ fn package(): RawPackage {
 }
 
 export fn using(pkg: RawPackage, std: Array<string>): RawPackage {
-  pkg.std = pkg.std + std;
-  return pkg;
+  return new RawPackage {
+    std: pkg.std + std,
+    dependencies: pkg.dependencies,
+    block: pkg.block,
+    fullBlock: pkg.fullBlock,
+  };
 }
 
 export fn dependency(pkg: RawPackage, url: string): PackageDependency {
