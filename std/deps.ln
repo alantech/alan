@@ -47,6 +47,7 @@ fn package(): RawPackage {
 }
 
 export fn using(pkg: RawPackage, std: Array<string>): RawPackage {
+  // Since alan is blocking the re-asignation of pkg.std we create a new object as a work around
   return new RawPackage {
     std: pkg.std + std,
     dependencies: pkg.dependencies,
