@@ -2,6 +2,7 @@ Include build_tools.sh
 
 Describe "@std/deps"
   before() {
+    # TODO: Add bdd tests for using, block and fullBlocks
     sourceToAll "
       from @std/deps import Package, install, add, commit, dependency
 
