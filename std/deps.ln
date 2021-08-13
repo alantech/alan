@@ -336,5 +336,7 @@ on start {
   // package().dependency('git@github.com:alantech/nestedhellodep.git#deps-perm').add().commit();
   // package().dependency('git@github.com:alantech/nestedhellodep.git#v0.1').add().commit();e6e9934307076e5fde9864ffe03ab1c8da8e6836
   // package().dependency('git@github.com:alantech/nestedhellodep.git#e6e9934307076e5fde9864ffe03ab1c8da8e6836').add().commit();
+  // package().using(['@std/app', '@std/cmd', '@std/root']).commit();
   emit install package();
+  // emit exit 0;
 }
