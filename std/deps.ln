@@ -150,17 +150,22 @@ fn getBlacklist(std: Array<string>): Array<string> {
 }
 
 fn blockStd(blacklist: Array<string>) {
-  const modules = 'modules';
-  if !dirExist(modules) {
-    mkDir(modules);
+  const dependencies = 'dependencies';
+  if !dirExist(dependencies) {
+    mkDir(dependencies);
   }
-  const stdPath = [modules, 'std'].join('/');
+  const modulesPath = [dependencies, 'modules'].join('/');
+  if !dirExist(modulesPath) {
+    mkDir(modulesPath);
+  }
+  const stdPath = [modulesPath, 'std'].join('/');
   if !dirExist(stdPath) {
     mkDir(stdPath);
   }
   blacklist.map(fn (lib: string) {
     const cleanedLib = cleanLib(lib);
-    mkDir(modules + '/' + cleanedLib);
+    mkDir(modulesPath + '/' + cleanedLib);
+    addMockFile(modulesPath + '/' + cleanedLib + '/index.ln');
   });
 }
 
@@ -247,6 +252,10 @@ fn removeFile(path: string): bool {
 
 fn lsDir(path: string): Array<string> {
   return exec('ls ' + path).stdout.split("\n");
+}
+
+fn addMockFile(path: string) {
+  exec('echo "export const mock = true;" > ' + path);
 }
 
 fn cleanLib(lib: string): string {
