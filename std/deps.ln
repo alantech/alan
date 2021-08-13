@@ -35,9 +35,9 @@ type PackageDependency {
 export event install: RawPackage
 
 fn package(): RawPackage {
-  const emptyArrStr = new Array<string> [];
-  const emptyArrDep = new Array<Dependency> [];
-  const pkg = new RawPackage {
+  let emptyArrStr = new Array<string> [];
+  let emptyArrDep = new Array<Dependency> [];
+  let pkg = new RawPackage {
     std: emptyArrStr,
     dependencies: emptyArrDep,
     block: emptyArrStr,
