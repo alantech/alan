@@ -3,12 +3,12 @@ Include build_tools.sh
 Describe "@std/deps"
   before() {
     sourceToAll "
-      from @std/deps import install, add, commit
+      from @std/deps import Package, install, add, commit, dependency
 
-      on install {
-        add('https://github.com/alantech/hellodep');
-        commit();
-      }
+      on install fn (package: Package) = package
+        .dependency('https://github.com/alantech/hellodep#deps-perm')
+          .add()
+        commit()
     "
   }
   BeforeAll before
