@@ -155,6 +155,7 @@ export default class Fn {
   }
 
   asHandler(amm: Output, event: string) {
+    // console.dir(this.body, { depth: 6 });
     const handlerParams = [];
     for (const param of this.params) {
       handlerParams.push([param.ammName, param.ty]);

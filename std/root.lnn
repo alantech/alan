@@ -151,6 +151,9 @@ export fn xnor(a: bool, b: bool): bool = xnorboo(a, b);
 export fn booland(a: bool, b: bool): bool = and(a, b);
 export fn boolor(a: bool, b: bool): bool = or(a, b);
 
+// Result functions
+export fn ok(a: any): Result<any> = okR(a);
+
 // Wait functions
 export fn wait(n: int8): void = waitop(i8i64(n));
 export fn wait(n: int16): void = waitop(i16i64(n));

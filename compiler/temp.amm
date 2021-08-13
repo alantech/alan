@@ -1,48 +1,48 @@
-const _91154359_f64f_4b50_8c36_c145cee54aee: float32 = 4
-const _5f6a3f3b_9ff8_4876_b3c1_af90e93e7e70: int64 = 0
-const _9d7236ff_fa53_4608_8519_6b09d9604d72: int64 = 1
-const _ffdca2b1_5bfa_4538_802d_db8e63a9982e: int64 = 2
-const _a592fdb8_ae56_48b6_a9f4_f05d480f8b8f: string = "baz"
-const _4044a10e_3d95_4eae_8382_a4dd238caf54: string = "\n"
-const _b1a863ed_d622_4318_9571_082a57c30c4b: int8 = 0
+const _468f9cd1_823e_4a1d_99db_7600d487d66f: float32 = 4
+const _d6943ca5_a827_4c84_9701_786e49bcb841: int64 = 0
+const _aa448fcb_f2e1_4e92_9cd6_30c090f7d5fb: int64 = 1
+const _9521e7b4_ce1f_45d9_bafe_b1ca8e621ea1: int64 = 2
+const _701e4a58_cf45_47e7_8b46_202a5e8616d7: string = "baz"
+const _2df039bb_b0e3_4fbf_b8d8_3ca7caac335a: string = "\n"
+const _06edb265_2141_41a3_ab38_f8e2eb98ed4c: int8 = 0
 event stdout: string
 event exit: int8
 event stderr: string
 event thing: Thing
 on thing fn (t: Thing): void {
-  let _18914270_3457_42f7_96dd_8cb301dbc5ee: int64 = register(t, _5f6a3f3b_9ff8_4876_b3c1_af90e93e7e70)
-  let _93737517_7cf8_4a7e_919a_203ddce66256: string = i64str(_18914270_3457_42f7_96dd_8cb301dbc5ee)
-  let _b0839a5b_3ec3_43bd_bdb8_28d4964daa02: string = refv(_93737517_7cf8_4a7e_919a_203ddce66256)
-  let _71ff63dc_daca_42c0_b789_95d313941b58: string = copystr(_4044a10e_3d95_4eae_8382_a4dd238caf54)
-  let _6aa7ca2a_1dd6_45e8_b729_d0c16f6c1e85: string = catstr(_b0839a5b_3ec3_43bd_bdb8_28d4964daa02, _71ff63dc_daca_42c0_b789_95d313941b58)
-  let _a1254128_b8cd_4eec_b1d5_56daba11f815: string = refv(_6aa7ca2a_1dd6_45e8_b729_d0c16f6c1e85)
-  let _2515a5ab_8910_4cdb_8942_cac8010afec5: void = stdoutp(_a1254128_b8cd_4eec_b1d5_56daba11f815)
-  let _6a38b741_e45c_4e06_82c8_f4aa522c37c7: string = register(t, _9d7236ff_fa53_4608_8519_6b09d9604d72)
-  let _8a845fd7_aa24_4c9a_bb38_8f721504bb33: string = refv(_6a38b741_e45c_4e06_82c8_f4aa522c37c7)
-  let _ae97644c_a1a9_45e7_8f82_6ce05cb0a1c5: string = copystr(_4044a10e_3d95_4eae_8382_a4dd238caf54)
-  let _0e1668f1_f452_4bb5_b9bd_cbe1d2c62499: string = catstr(_8a845fd7_aa24_4c9a_bb38_8f721504bb33, _ae97644c_a1a9_45e7_8f82_6ce05cb0a1c5)
-  let _6e1d746a_7f03_4cc9_85d6_e7e77668b922: string = refv(_0e1668f1_f452_4bb5_b9bd_cbe1d2c62499)
-  let _70ea2d51_c6f4_4019_8a08_de9787b9ed1f: void = stdoutp(_6e1d746a_7f03_4cc9_85d6_e7e77668b922)
-  let _9246757b_f5b2_4354_a6ca_06a1741e4e76: int8 = copyi8(_b1a863ed_d622_4318_9571_082a57c30c4b)
-  emit exit _9246757b_f5b2_4354_a6ca_06a1741e4e76
+  let _39cc5b9f_c692_4591_8901_df86af18b15b: int64 = register(t, _d6943ca5_a827_4c84_9701_786e49bcb841)
+  let _cb938295_1808_4798_8393_4cfe40ed392a: string = i64str(_39cc5b9f_c692_4591_8901_df86af18b15b)
+  let _3d2b831e_d759_448f_b869_75ebcbe5415d: string = refv(_cb938295_1808_4798_8393_4cfe40ed392a)
+  let _a3e2a82d_c14b_4408_a1cb_8595adb678b6: string = copystr(_2df039bb_b0e3_4fbf_b8d8_3ca7caac335a)
+  let _b5231306_7a0b_496f_9eb0_cbff00f053ba: string = catstr(_3d2b831e_d759_448f_b869_75ebcbe5415d, _a3e2a82d_c14b_4408_a1cb_8595adb678b6)
+  let _3e787fe2_8b33_4c35_b73a_06b33a7770fe: string = refv(_b5231306_7a0b_496f_9eb0_cbff00f053ba)
+  let _5dd36b28_5bed_49a6_bf8b_359417e92db2: void = stdoutp(_3e787fe2_8b33_4c35_b73a_06b33a7770fe)
+  let _af0bfeff_515b_4e57_902e_2ab890f47687: string = register(t, _aa448fcb_f2e1_4e92_9cd6_30c090f7d5fb)
+  let _e53304a7_38eb_442d_8295_ff1e26a87311: string = refv(_af0bfeff_515b_4e57_902e_2ab890f47687)
+  let _7f1b78ab_01ad_4266_8d24_3f5f3688f6cf: string = copystr(_2df039bb_b0e3_4fbf_b8d8_3ca7caac335a)
+  let _afb0bec5_2905_411e_aefe_5e112679d401: string = catstr(_e53304a7_38eb_442d_8295_ff1e26a87311, _7f1b78ab_01ad_4266_8d24_3f5f3688f6cf)
+  let _99c4cd5f_d8bd_4e43_9655_722bfa2024ef: string = refv(_afb0bec5_2905_411e_aefe_5e112679d401)
+  let _ea229a00_015d_4c90_a525_7e0a2fa92087: void = stdoutp(_99c4cd5f_d8bd_4e43_9655_722bfa2024ef)
+  let _20c35e89_2261_4692_9f1a_a22905ee4bcc: int8 = copyi8(_06edb265_2141_41a3_ab38_f8e2eb98ed4c)
+  emit exit _20c35e89_2261_4692_9f1a_a22905ee4bcc
 }
 on stderr fn (err: string): void {
-  let _8e54838f_cee3_40eb_86e2_0f9b29201a96: void = stderrp(err)
+  let _201e0706_bb47_4a38_beb8_b5eada4e8790: void = stderrp(err)
 }
 on exit fn (status: int8): void {
-  let _565e0206_41cf_4ad6_afdd_9f538ea5b7a7: void = exitop(status)
+  let _271c0960_57ac_43de_bd63_a798961bd9af: void = exitop(status)
 }
 on stdout fn (out: string): void {
-  let _27d57630_509b_4c88_8a5f_78954c3d83d6: void = stdoutp(out)
+  let _1f2e82c6_a000_4a02_852d_4c5942b2f4e1: void = stdoutp(out)
 }
 on _start fn (): void {
-  let _8dc09ef9_9aca_492f_a34c_0d7baf4e911a: float32 = copyf32(_91154359_f64f_4b50_8c36_c145cee54aee)
-  let _532a58fc_5d47_4e99_9249_d7f677ec96d9: Result<float32> = okR(_8dc09ef9_9aca_492f_a34c_0d7baf4e911a)
-  const _cebf743e_457b_4884_a882_7db302848c7e: Result<float32> = reff(_532a58fc_5d47_4e99_9249_d7f677ec96d9)
-  let _24c6f9b6_5acb_4164_950e_57e3d9c79816: int64 = copyi64(_9d7236ff_fa53_4608_8519_6b09d9604d72)
-  let _b5068bc9_0dba_4a19_a5a6_3fdfe597d4c1: string = copystr(_a592fdb8_ae56_48b6_a9f4_f05d480f8b8f)
-  let _08ebe2e2_e2fc_4f3b_9035_95f9fa09f26e: Thing = newarr(_ffdca2b1_5bfa_4538_802d_db8e63a9982e)
-  pushf(_08ebe2e2_e2fc_4f3b_9035_95f9fa09f26e, _24c6f9b6_5acb_4164_950e_57e3d9c79816, _9d7236ff_fa53_4608_8519_6b09d9604d72)
-  pushv(_08ebe2e2_e2fc_4f3b_9035_95f9fa09f26e, _b5068bc9_0dba_4a19_a5a6_3fdfe597d4c1, _9d7236ff_fa53_4608_8519_6b09d9604d72)
-  emit thing _08ebe2e2_e2fc_4f3b_9035_95f9fa09f26e
+  let _27a67026_f5bc_4756_8135_d16b186c2752: float32 = copyf32(_468f9cd1_823e_4a1d_99db_7600d487d66f)
+  let _15f6913c_35b4_4e76_bd2c_a1fe4e8a4374: Result<float32> = okR(_27a67026_f5bc_4756_8135_d16b186c2752)
+  const _7222fb20_fa24_4a5e_b09c_0a8f025c2e99: Result<float32> = reff(_15f6913c_35b4_4e76_bd2c_a1fe4e8a4374)
+  let _0890ee49_715b_4859_bad4_73366e3079a5: int64 = copyi64(_aa448fcb_f2e1_4e92_9cd6_30c090f7d5fb)
+  let _056b5fef_0f4e_44b9_af50_9e733e281a03: string = copystr(_701e4a58_cf45_47e7_8b46_202a5e8616d7)
+  let _3d7c49ed_f48d_4da8_99e9_3a51a84447dd: Thing = newarr(_9521e7b4_ce1f_45d9_bafe_b1ca8e621ea1)
+  pushf(_3d7c49ed_f48d_4da8_99e9_3a51a84447dd, _0890ee49_715b_4859_bad4_73366e3079a5, _aa448fcb_f2e1_4e92_9cd6_30c090f7d5fb)
+  pushv(_3d7c49ed_f48d_4da8_99e9_3a51a84447dd, _056b5fef_0f4e_44b9_af50_9e733e281a03, _aa448fcb_f2e1_4e92_9cd6_30c090f7d5fb)
+  emit thing _3d7c49ed_f48d_4da8_99e9_3a51a84447dd
 }

@@ -1,22 +1,7 @@
 from @std/app import start, print, exit
 
-type Thing {
-  foo: int64,
-  bar: string
-}
-
-event thing: Thing
-
-on thing fn (t: Thing) {
-  print(t.foo);
-  print(t.bar);
-  emit exit 0;
-}
-
 on start {
-  const x = ok(4);
-  emit thing new Thing {
-    foo: 1,
-    bar: 'baz'
-  };
+  const x = 4;
+  const y = ok(x);
+  emit exit x;
 }

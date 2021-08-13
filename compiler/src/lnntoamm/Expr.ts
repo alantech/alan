@@ -494,6 +494,8 @@ class AccessField extends Expr {
 }
 
 class Call extends Expr {
+  private dbg = () => this.ast.t.includes('ok');
+
   fns: Fn[];
   maybeClosure: VarDef | null;
   args: Ref[];
@@ -514,11 +516,16 @@ class Call extends Expr {
     scope: Scope,
     retTy: Type,
   ) {
-    // console.log('~~~ generating call ', ast, fns, maybeClosure, args, scope);
     super(ast);
     if (fns.length === 0 && maybeClosure === null) {
       throw new Error(`no function possibilities provided for ${ast}`);
     }
+    // if (this.dbg()) {
+    //   console.dir('-> created', this.ast.t.trim());
+    //   console.dir(fns, { depth: 4 });
+    //   console.dir(args, { depth: 4 });
+    //   console.dir(retTy, { depth: 4 });
+    // }
     this.fns = fns;
     this.maybeClosure = maybeClosure;
     this.args = args;
@@ -577,18 +584,25 @@ class Call extends Expr {
     const argTys = args.map((arg) => arg.ty);
     const selFns = FunctionType.matrixSelect(fns, argTys, metadata.scope);
     fns = selFns.map((selFn) => selFn[0]);
+    // FIXME: ???
     const [pTys, retTys] = selFns.reduce(
       ([pTys, retTys], [_fn, fnPTys, fnRetTy]) => {
-        pTys = pTys.map((paramTysAtIndex, ii) => [
-          ...paramTysAtIndex,
-          fnPTys[ii],
+        pTys = fnPTys.map((fnPTy, ii) => [
+          ...(pTys[ii] || []),
+          fnPTy,
         ]);
         retTys.push(fnRetTy);
         return [pTys, retTys];
       },
       [new Array<Type[]>(), new Array<Type>()],
     );
+    args.forEach((arg, ii) => arg.ty.constrain(Type.oneOf(pTys[ii]), metadata.scope));
     const retTy = Type.oneOf(retTys);
+    // FIXME:
+    // if (ast.t.includes('ok')) {
+    //   console.log('RETURN TYPE IS:');
+    //   console.dir(retTy, { depth: 4 });
+    // }
     // now, constrain all of the args to their possible types
     // makes it so that the type of the parameters in each position are in their own list
     // ie, given `do(int8, int16)` and `do(int8, int8)`, will result in this 2D array:
@@ -641,9 +655,27 @@ class Call extends Expr {
   cleanup() {
     const [fns, pTys, retTys] = this.fnSelect();
     const isChanged = this.fns.length !== fns.length;
+    // if (this.dbg()) {
+    //   console.log('cleaning up', this.ast.t.trim());
+    //   console.dir(fns, { depth: 4 });
+    //   console.dir(pTys, { depth: 4 });
+    //   console.dir(retTys, { depth: 4 });
+    // }
     this.fns = fns;
+    // if (this.ast.t.includes('ok')) {
+    //   console.log('constraining arg ty:', this.args[0].ty);
+    // }
     this.args.forEach((arg, ii) => arg.ty.constrain(Type.oneOf(pTys[ii]), this.scope));
+    // if (this.ast.t.includes('ok')) {
+    //   console.log('now:', this.args[0].ty);
+    //   console.log('constraining ret ty:');
+    //   console.dir(this.retTy, { depth: 4 });
+    // }
     this.retTy.constrain(Type.oneOf(retTys), this.scope);
+    // if (this.ast.t.includes('ok')) {
+    //   console.log('now:');
+    //   console.dir(this.retTy, { depth: 4 });
+    // }
     return isChanged;
   }
 
