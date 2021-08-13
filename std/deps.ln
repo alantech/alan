@@ -205,7 +205,7 @@ fn downloadDependencies(dependencies: Array<Dependency>) {
 fn applyDependencyBlocks(dependencies: Array<Dependency>) {
   dependencies.map(fn (dep: Dependency) {
     applyDependencyBlock(dep.name, dep.group, dep.block, false);
-    applyDependencyBlock(dep.name, dep.group, dep.block, true);
+    applyDependencyBlock(dep.name, dep.group, dep.fullBlock, true);
   });
 }
 
