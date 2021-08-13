@@ -226,6 +226,7 @@ fn applyDependencyBlock(name: string, group: string, blocks: Array<string>, isFu
     const innerNamePath = [dependenciesDir, group, name, modulesDir, innerGroup, innerName].join('/');
     if !dirExist(innerNamePath) {
       mkDir(innerNamePath);
+      addMockFile(innerNamePath + '/index.ln');
     } else {
       if isFullBlock {
         let mockFile = innerNamePath + '/index.ln';
@@ -233,6 +234,7 @@ fn applyDependencyBlock(name: string, group: string, blocks: Array<string>, isFu
           mockFile = innerNamePath + '/' + name + '.ln';
           removeFile(mockFile);
         }
+        addMockFile(mockFile);
       }
     }
   });
