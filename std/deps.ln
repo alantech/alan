@@ -293,13 +293,15 @@ fn blockForAllDependencies(blocks: Array<string>, isFullBlock: bool) {
     const libSplit = cleanedLib.split('/');
     const innerGroup = libSplit[0].getOr('');
     const innerName = libSplit[1].getOr('');
-    const innerGroupPath = [dependenciesDir, modulesDir, innerGroup].join('/');
+    const innerGroupPath = [depenenciesModulesPath, innerGroup].join('/');
     if !dirExist(innerGroupPath) {
       mkDir(innerGroupPath);
     }
-    const innerNamePath = [dependenciesDir, modulesDir, innerGroup, innerName].join('/');
+    const innerNamePath = [innerGroupPath, innerName].join('/');
     if !dirExist(innerNamePath) {
       mkDir(innerNamePath);
+      const mockFile = innerNamePath + '/index.ln';
+      addMockFile(mockFile);
     } else {
       if isFullBlock {
         const deps = lsDir(dependenciesDir);
@@ -314,6 +316,7 @@ fn blockForAllDependencies(blocks: Array<string>, isFullBlock: bool) {
                   mockFile = path + '/' + innerName + '.ln';
                   removeFile(mockFile);
                 }
+                addMockFile(mockFile);
               }
             });
           }
