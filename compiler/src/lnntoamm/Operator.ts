@@ -62,14 +62,7 @@ class Operator {
       throw new Error(`nope`);
     }
     const tys = [arg1, ...(arg2 ? [arg2] : [])];
-    return FunctionType.matrixSelect(this.fns, tys, scope).reduce(
-      ([fns, pTys, rTys], [fn, fnPTys, fnRTy]) => [
-        [...fns, fn],
-        [...pTys, fnPTys],
-        [...rTys, fnRTy],
-      ],
-      [new Array<Fn>(), new Array<Type[]>(), new Array<Type>()],
-    );
+    return FunctionType.matrixSelect(this.fns, tys, scope);
   }
 }
 

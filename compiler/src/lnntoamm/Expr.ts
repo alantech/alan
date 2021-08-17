@@ -582,22 +582,10 @@ class Call extends Expr {
     }
     // first reduction
     const argTys = args.map((arg) => arg.ty);
-    const selFns = FunctionType.matrixSelect(fns, argTys, metadata.scope);
-    fns = selFns.map((selFn) => selFn[0]);
-    // FIXME: ???
-    const [pTys, retTys] = selFns.reduce(
-      ([pTys, retTys], [_fn, fnPTys, fnRetTy]) => {
-        pTys = fnPTys.map((fnPTy, ii) => [
-          ...(pTys[ii] || []),
-          fnPTy,
-        ]);
-        retTys.push(fnRetTy);
-        return [pTys, retTys];
-      },
-      [new Array<Type[]>(), new Array<Type>()],
-    );
-    args.forEach((arg, ii) => arg.ty.constrain(Type.oneOf(pTys[ii]), metadata.scope));
-    const retTy = Type.oneOf(retTys);
+    const [selFns, selPTys, selRetTys] = FunctionType.matrixSelect(fns, argTys, metadata.scope);
+    fns = selFns;
+    args.forEach((arg, ii) => arg.ty.constrain(Type.oneOf(selPTys[ii]), metadata.scope));
+    const retTy = Type.oneOf(selRetTys);
     // FIXME:
     // if (ast.t.includes('ok')) {
     //   console.log('RETURN TYPE IS:');
@@ -623,32 +611,10 @@ class Call extends Expr {
   }
 
   private fnSelect(): [Fn[], Type[][], Type[]] {
-          // pTys[i][j] where i is the parameter index, j is the fn index
-          // const [fns, pTys, retTys] = operators.reduce(
-          //   ([fns, pTys, retTys], op) => {
-          //     // selPTys[i][j] where i is the fn index, j is the parameter index
-          //     const [selFns, selPTys, selRTys] = op.select(metadata.scope, applyTo.ty);
-          //     fns = [...fns, ...selFns];
-          //     pTys = pTys.map((paramsAtIndex, ii) => [
-          //       ...paramsAtIndex,
-          //       ...selPTys.map((fnParamTys) => fnParamTys[ii]),
-          //     ]);
-          //     retTys = [...retTys, ...selRTys];
-          //     return [fns, pTys, retTys];
-          //   },
-          //   [new Array<Fn>(), new Array<Type[]>(), new Array<Type>()],
-          // );
     return FunctionType.matrixSelect(
       this.fns,
       this.args.map((a) => a.ty),
       this.scope,
-    ).reduce(
-      ([fns, pTys, retTys], [fn, fnPTys, ty]) => [
-        [...fns, fn],
-        fnPTys.map((fnPTy, ii) => [...(pTys[ii] || []), fnPTy]),
-        [...retTys, ty],
-      ],
-      [new Array<Fn>(), new Array<Type[]>(), new Array<Type>()],
     );
   }
 
@@ -679,36 +645,6 @@ class Call extends Expr {
     return isChanged;
   }
 
-  /*
-  FIXME:
-  Currently, this only works because of the way `root.lnn` is structured -
-  functions that accept f32s are defined first and i64s are defined last.
-  However, we can't rely on function declaration order to impact type checking
-  or type inferrence, since that could unpredictably break users' code. Instead,
-  if we have `OneOf` types, we should prefer the types in its list in ascending
-  order. I think that the solution is to create a matrix of all of the possible
-  types to each other, insert functions matching the types in each dimension,
-  and pick the function furthest from the all-0 index. For example, given
-  `1 + 2`, the matrix would be:
-  |         |  float32   |  float64   |   int8   |   int16    |   int32    |   int64    |
-  | float32 |add(f32,f32)|            |          |            |            |            |
-  | float64 |            |add(f64,f64)|          |            |            |            |
-  |  int8   |            |            |add(i8,i8)|            |            |            |
-  |  int16  |            |            |          |add(i16,i16)|            |            |
-  |  int32  |            |            |          |            |add(i32,i32)|            |
-  |  int64  |            |            |          |            |            |add(i64,i64)|
-  in this case, it would prefer `add(int64,int64)`. Note that constraining the
-  type will impact this: given the code `const x: int8 = 0; const y = x + 1;`,
-  the matrix would be:
-  |         | float32 | float64 |    int8    | int16 | int32 | int64 |
-  |  int8   |         |         | add(i8,i8) |       |       |       |
-  where the columns represent the type of the constant `1`. There's only 1
-  possibility, but we'd still have to check `int8,int64`, `int8,int32`, and
-  `int8,int16` until it finds `int8,int8`.
-
-
-  This should also happen in the unimplemented "solidification" phase.
-  */
   inline(amm: Output, kind: AssignKind, name: string, ty: Type) {
     // ignore selTys because if there's a mismatch between `ty`
     // and the return type of the selected function, there will

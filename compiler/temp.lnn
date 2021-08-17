@@ -2,6 +2,6 @@ from @std/app import start, print, exit
 
 on start {
   const x = 4;
-  const y = ok(x);
+  const y = ok(4.0);
   emit exit x;
 }
