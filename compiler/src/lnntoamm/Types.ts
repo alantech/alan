@@ -493,7 +493,7 @@ export class FunctionType extends Type {
             return [
               [...fns, fn],
               _pTys,
-              [...retTys, fn.retTy.instance()],
+              [...retTys, fn.retTy.instance({ interfaceOk: true })],
             ];
           } else {
             return [fns, _pTys, retTys];
@@ -1236,9 +1236,10 @@ class Interface extends Type {
       return this.delegate.instance(opts);
     } else if (this.tempDelegate !== null) {
       return this.tempDelegate.instance(opts);
-    } else if (opts && opts.interfaceOk) {
+    } else if (opts && opts.interfaceOk && this.__isDuped && this.__isDuped.isTyVar) {
       return this;
     } else {
+      console.log(this);
       throw new Error(`Could not resolve type ${this.name}`);
     }
   }
