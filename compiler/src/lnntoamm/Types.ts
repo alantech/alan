@@ -1,3 +1,4 @@
+import { stdout } from 'process';
 import { LPNode, NulLP } from '../lp';
 import { fulltypenameAstFromString } from './Ast';
 import Fn from './Fn';
@@ -233,7 +234,7 @@ class Opaque extends Type implements Generalizable {
     } else if (that instanceof HasOperator) {
       return Has.operator(that, scope, this).length !== 0;
     } else if (that instanceof HasMethod) {
-      return Has.method(that, scope, this).length !== 0;
+      return Has.method(that, scope, this)[0].length !== 0;
     } else {
       TODO('Opaque constraint compatibility with other types');
     }
@@ -445,21 +446,33 @@ export class FunctionType extends Type {
     this.retTy = retTy;
   }
 
-  static matrixSelect(fns: Fn[], args: Type[], scope: Scope): [Fn, Type[], Type][] {
-    // const isDbg = fns.some((fn) => fn.name.includes('ok'));
-    // isDbg && console.log('STARTING', fns);
+  static matrixSelect(fns: Fn[], args: Type[], scope: Scope): [Fn[], Type[][], Type[]] {
+    const isDbg = fns.some((fn) => fn.name == 'ok');
+    isDbg && console.log('STARTING', fns);
     const original = [...fns];
     // remove any fns that shouldn't apply
     const callTy = new FunctionType(new NulLP(), args, Type.generate());
-    // isDbg && console.log('callTy:', callTy);
+    isDbg && stdout.write('callTy: ') && console.dir(callTy, { depth: 4 });
     fns = fns.filter((fn) => fn.ty.compatibleWithConstraint(callTy, scope));
-    // isDbg && console.log('filtered:', fns);
+    isDbg && console.log('filtered:', fns);
     // if it's 0-arity then all we have to do is grab the retTy of the fn
     if (args.length === 0) {
-      // isDbg && console.log('nothin');
+      isDbg && console.log('nothin');
       return fns.reduce(
-        (fns, fn) => [...fns, [fn, fn.params.map((p) => p.ty.instance()), fn.retTy.instance()]],
-        new Array<[Fn, Type[], Type]>(),
+        // ([fns, _pTys, retTys], fn) => [[]...fns, [fn, fn.params.map((p) => p.ty.instance()), fn.retTy.instance()]],
+        ([fns, _pTys, retTys], fn) => {
+          const alreadyFn = fns.findIndex(alreadyFn => alreadyFn === fn);
+          if (alreadyFn === -1) {
+            return [
+              [...fns, fn],
+              _pTys,
+              [...retTys, fn.retTy.instance()],
+            ];
+          } else {
+            return [fns, _pTys, retTys];
+          }
+        },
+        [new Array<Fn>(), new Array<Type[]>(), new Array<Type>()],
       );
     }
     // and now to generate the matrix
@@ -468,7 +481,7 @@ export class FunctionType extends Type {
     const matrix: Array<Type[]> = args.map((arg) => {
       return arg.fnselectOptions();
     });
-    // isDbg && console.log('matrix:', matrix);
+    isDbg && console.log('matrix:', matrix);
     // TODO: this weight system feels like it can be inaccurate
     // the weight of a particular function is computed by the sum
     // of the indices in each dimension, with the highest sum
@@ -481,16 +494,16 @@ export class FunctionType extends Type {
       // https://www.typescriptlang.org/docs/handbook/release-notes/typescript-3-6.html
       let indices = indicesRes.value as number[];
       const weight = indices.reduce((w, c) => w + c);
-      // isDbg && console.log('weight', weight);
+      isDbg && console.log('weight', weight);
       const argTys = matrix.map((options, ii) => options[indices[ii]]);
-      // isDbg && console.log('argtys', argTys);
+      isDbg && console.log('argtys', argTys);
       const fnsForWeight = fnsByWeight.get(weight) || [];
-      // isDbg && console.log('for weight', fnsForWeight);
+      isDbg && console.log('for weight', fnsForWeight);
       fnsForWeight.push(
         ...fns.reduce((fns, fn) => {
-          // isDbg && console.log('getting result ty')
+          isDbg && console.log('getting result ty')
           const tys = fn.resultTyFor(argTys, scope);
-          // isDbg && console.dir(tys, { depth: 4 });
+          isDbg && console.dir(tys, { depth: 4 });
           if (tys === null) {
             return fns;
           } else {
@@ -498,31 +511,51 @@ export class FunctionType extends Type {
           }
         }, new Array<[Fn, Type[], Type]>()),
       );
-      // isDbg && console.log('for weight now', fnsForWeight);
+      isDbg && console.log('for weight now', fnsForWeight);
       fnsByWeight.set(weight, fnsForWeight);
     }
     const weights = Array.from(fnsByWeight.keys()).sort();
     // weights is ordered lowest->highest so it's just a matter of
     // appending the tuple at each weight to a list
-    const ret = weights.reduce((fns, weight) => {
-      let weightFns = fnsByWeight.get(weight);
+    // const ret = weights.reduce((fns, weight) => {
+      // let weightFns = fnsByWeight.get(weight);
       // isDbg && console.log('at weight', weight, 'fns are', weightFns);
-      weightFns = weightFns.filter(
-        ([weightedFn, _retTy]) =>
-          fns.findIndex(([fn, _retTy]) => fn === weightedFn) === -1,
-      );
+      // weightFns.forEach(([fn, pTys, retTy]) => {
+      //   let foundIdx = fns.findIndex(([maybeSame, _p, _r]) => maybeSame === fn);
+      //   if (foundIdx !== -1) {
+      //     const [[_sameFn, samePTys, sameRetTys]] = fns.splice(foundIdx, 1);
+      //   } else {
+      //     fns.push([fn, pTys, retTy]);
+      //   }
+      // });
+      // weightFns = weightFns.filter(
+      //   ([weightedFn, _retTy]) =>
+      //     fns.findIndex(([fn, _retTy]) => fn === weightedFn) === -1,
+      // );
       // isDbg && console.log('filtered:', weightFns);
-      return [...fns, ...weightFns];
-    }, new Array<[Fn, Type[], Type]>());
-    if (ret.length > original.length || ret.length === 0) {
+      // return [...fns, ...weightFns];
+    const ret: [Fn[], Type[][], Type[]] = weights.reduce(([fns, pTys, retTys], weight) => {
+      fnsByWeight.get(weight).forEach(([weightedFn, weightedPTys, weightedRetTy]) => {
+        const alreadyIdx = fns.findIndex(fn => fn === weightedFn);
+        if (alreadyIdx === -1) {
+          fns.push(weightedFn);
+        } else {
+          fns.push(fns.splice(alreadyIdx, 1)[0]);
+        }
+        pTys = pTys.map((tysForPIdx, ii) => [...tysForPIdx, weightedPTys[ii]]);
+        retTys.push(weightedRetTy);
+      });
+      return [fns, pTys, retTys];
+    }, [new Array<Fn>(), new Array<Type[]>(), new Array<Type>()] as [Fn[], Type[][], Type[]]);
+    if (ret[0].length > original.length || ret[0].length === 0) {
       console.log('~~~ ERROR');
       console.log('original: ', original);
       console.log('ret:      ', ret);
-      console.log('retLength:', ret.length);
+      console.log('retLength:', ret[0].length);
       console.log('args:     ', args);
       console.log('matrix:   ', matrix);
       console.log('byweight: ', fnsByWeight);
-      if (ret.length === 0) {
+      if (ret[0].length === 0) {
         throw new Error('no more functions left');
       } else {
         throw new Error('somehow got more options when fn selecting');
@@ -530,10 +563,10 @@ export class FunctionType extends Type {
     }
     // const getStack = { stack: '' };
     // Error.captureStackTrace(getStack);
-    // isDbg && (() => {
+    isDbg && (() => {
     //   console.log('returning from', getStack.stack);
-    //   console.dir(ret, { depth: 4 });
-    // })();
+      console.dir(ret, { depth: 4 });
+    })();
     return ret;
   }
 
@@ -737,10 +770,10 @@ abstract class Has extends Type {
     return false;
   }
 
-  static method(method: HasMethod, scope: Scope, ty: Type): [Fn, Type[], Type][] {
+  static method(method: HasMethod, scope: Scope, ty: Type): [Fn[], Type[][], Type[]] {
     const fns = scope.get(method.name);
     if (!isFnArray(fns)) {
-      return [];
+      return [[], [], []];
     }
     return FunctionType.matrixSelect(
       fns,
@@ -1059,7 +1092,7 @@ class Interface extends Type {
         } else if (ty instanceof HasOperator) {
           return Has.operator(ty, scope, this).length !== 0;
         } else if (ty instanceof HasMethod) {
-          return Has.method(ty, scope, this).length !== 0;
+          return Has.method(ty, scope, this)[0].length !== 0;
         } else {
           throw new Error(`unrecognized Has`);
         }
@@ -1070,7 +1103,7 @@ class Interface extends Type {
     // always check all interface constraints first
     if (!(
       this.fields.every((f) => Has.field(f, ty))
-      && this.methods.every((f) => Has.method(f, scope, ty).length !== 0)
+      && this.methods.every((f) => Has.method(f, scope, ty)[0].length !== 0)
       && this.operators.every((f) => Has.operator(f, scope, ty).length !== 0)
     )) {
       return false;
@@ -1098,7 +1131,7 @@ class Interface extends Type {
           `${that.name} ${that.params[0].ammName}`
           : `${that.params[0].ammName} ${that.name} ${that.params[1].ammName}`;
         throw new Error(`${errorBase} operator \`${opString}\``);
-      } else if (that instanceof HasMethod && Has.method(that, scope, toCheck).length !== 0) {
+      } else if (that instanceof HasMethod && Has.method(that, scope, toCheck)[0].length !== 0) {
         const paramsString = `(${that.params.map((p) => p.ammName).join(', ')})`;
         throw new Error(`${errorBase} method \`${that.name}${paramsString}\``)
       }
