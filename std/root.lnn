@@ -153,6 +153,7 @@ export fn boolor(a: bool, b: bool): bool = or(a, b);
 
 // Result functions
 export fn ok(a: any): Result<any> = okR(a);
+export fn none(): Result<any> = noneM();
 
 // Wait functions
 export fn wait(n: int8): void = waitop(i8i64(n));

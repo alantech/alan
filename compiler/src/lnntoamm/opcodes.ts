@@ -188,6 +188,7 @@ const load = (): void => {
     xnorboo: [{ a: 'bool', b: 'bool' }, 'bool'],
 
     okR: [{ a: 'any' }, 'Result<any>'],
+    noneM: [{}, 'Result<any>'],
 
     waitop: [{ t: 'int64' }, 'void'],
 

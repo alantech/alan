@@ -356,9 +356,10 @@ export default abstract class Expr {
             precedences[applyIdx] = dec.ref();
           }
           const applyTo = precedences[applyIdx] as Ref;
+          const retTy = Type.generate();
           const [fns, paramTys, retTys] = operators.reduce(
             ([fns, paramTys, retTys], op) => {
-              const [selFns, selPTys, selRTys] = op.select(metadata.scope, applyTo.ty);
+              const [selFns, selPTys, selRTys] = op.select(metadata.scope, retTy, applyTo.ty);
               fns = [...fns, ...selFns];
               // assume that `selPTys[i].length === 1`
               paramTys = [...paramTys, ...selPTys.map((pTys) => pTys[0])];
@@ -369,7 +370,7 @@ export default abstract class Expr {
           );
           const argConstraint = Type.oneOf(paramTys);
           applyTo.ty.constrain(argConstraint, metadata.scope);
-          const retTy = Type.oneOf(retTys);
+          retTy.constrain(Type.oneOf(retTys), metadata.scope);
           precedences[applyIdx] = new Call(
             new NulLP(),
             fns,
@@ -428,14 +429,16 @@ export default abstract class Expr {
         const retTys: Type[] = [];
         while (ops.length > 0) {
           const op = ops.pop();
-          const selected = op.select(metadata.scope, left.ty, right.ty);
+          const retTy = Type.generate();
+          const selected = op.select(metadata.scope, retTy, left.ty, right.ty);
           fns.push(...selected[0]);
           // assume `selected[1].length === 2`
           selected[1].forEach((pTys) => {
             argTys[0].push(pTys[0]);
             argTys[1].push(pTys[1]);
           });
-          retTys.push(...selected[2]);
+          retTy.constrain(Type.oneOf(selected[2]), metadata.scope);
+          retTys.push(retTy);
         }
         const retTy = Type.oneOf(retTys);
         const call = new Call(
@@ -461,7 +464,7 @@ export default abstract class Expr {
   /**
    * @returns true if more cleanup might be required
    */
-  cleanup(): boolean {
+  cleanup(expectResTy: Type): boolean {
     // most implementing Exprs don't have anything they need to do.
     // I just didn't want to expose any of the Expr classes except
     // for Ref to prevent split handling of the classes.
@@ -582,10 +585,16 @@ class Call extends Expr {
     }
     // first reduction
     const argTys = args.map((arg) => arg.ty);
-    const [selFns, selPTys, selRetTys] = FunctionType.matrixSelect(fns, argTys, metadata.scope);
+    const retTy = Type.generate();
+    const [selFns, selPTys, selRetTys] = FunctionType.matrixSelect(
+      fns,
+      argTys,
+      retTy,
+      metadata.scope,
+    );
     fns = selFns;
     args.forEach((arg, ii) => arg.ty.constrain(Type.oneOf(selPTys[ii]), metadata.scope));
-    const retTy = Type.oneOf(selRetTys);
+    retTy.constrain(Type.oneOf(selRetTys), metadata.scope);
     // FIXME:
     // if (ast.t.includes('ok')) {
     //   console.log('RETURN TYPE IS:');
@@ -614,6 +623,7 @@ class Call extends Expr {
     return FunctionType.matrixSelect(
       this.fns,
       this.args.map((a) => a.ty),
+      this.retTy,
       this.scope,
     );
   }
@@ -667,7 +677,7 @@ class Call extends Expr {
     // other factor is order of declaration - Alan should always prefer using
     // functions that are defined last.
     const fn = selFns.pop();
-    fn.inline(amm, this.args, kind, name, ty);
+    fn.inline(amm, this.args, kind, name, ty, this.scope);
   }
 }
 

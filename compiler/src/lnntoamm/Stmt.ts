@@ -101,8 +101,9 @@ export class Assign extends Stmt {
   }
 
   cleanup(scope: Scope): boolean {
-    const didWork = this.expr.cleanup();
-    this.upstream.ty.constrain(this.expr.ty, scope);
+    const upTy = this.upstream.ty;
+    const didWork = this.expr.cleanup(upTy);
+    upTy.constrain(this.expr.ty, scope);
     return didWork;
   }
 
@@ -217,7 +218,7 @@ export class Dec extends VarDef {
   }
 
   cleanup(scope: Scope): boolean {
-    const didWork = this.expr.cleanup();
+    const didWork = this.expr.cleanup(this.ty);
     this.ty.constrain(this.expr.ty, scope);
     return didWork;
   }

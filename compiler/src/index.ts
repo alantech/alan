@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+Error.stackTraceLimit = Infinity
 
 import * as fs from 'fs';
 
@@ -92,7 +93,7 @@ if (
     const end = Date.now();
     console.log(`Done in ${formatTime(end - start)}`);
   } catch (e) {
-    console.error(e.message);
+    console.error(e);
     process.exit(1);
   }
 } else {

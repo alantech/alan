@@ -3,7 +3,7 @@ import { genName } from './util';
 
 const INDENT = '  ';
 // keep this since this compiler is WIP - once it's finished we shouldn't need it anymore, and in fact it'll hurt performance (barely? i think?)
-const DEBUG_MODE_PRINTING = false;
+const DEBUG_MODE_PRINTING = true;
 
 export type AssignKind = '' | 'const' | 'let';
 

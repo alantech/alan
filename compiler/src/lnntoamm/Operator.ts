@@ -51,7 +51,7 @@ class Operator {
     );
   }
 
-  select(scope: Scope, arg1: Type, arg2?: Type): [Fn[], Type[][], Type[]] {
+  select(scope: Scope, expectResTy: Type, arg1: Type, arg2?: Type): [Fn[], Type[][], Type[]] {
     if ((this.isPrefix && arg2) || (!this.isPrefix && !arg2)) {
       console.log('~~~ ERROR');
       console.log('for operator:', this);
@@ -62,7 +62,7 @@ class Operator {
       throw new Error(`nope`);
     }
     const tys = [arg1, ...(arg2 ? [arg2] : [])];
-    return FunctionType.matrixSelect(this.fns, tys, scope);
+    return FunctionType.matrixSelect(this.fns, tys, expectResTy, scope);
   }
 }
 

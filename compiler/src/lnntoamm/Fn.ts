@@ -1,3 +1,4 @@
+import { stdout } from 'process';
 import { LPNode, NamedAnd, NulLP, Token } from '../lp';
 import Output, { AssignKind } from './Amm';
 import Expr, { Ref } from './Expr';
@@ -108,9 +109,27 @@ export default class Fn {
     }
     const params = p.map((paramAst) => FnParam.fromArgAst(paramAst, metadata, fnSigScope));
 
+    const dbg = (prefix: string, obj?: any) => {
+      if (true) {
+        stdout.write(prefix);
+        if (obj) {
+          stdout.write(': ');
+          if (typeof obj === 'string') {
+            console.log(obj);
+          } else {
+            console.dir(obj, { depth: 9 });
+          }
+        } else {
+          console.log();
+        }
+      }
+    }
+
+    dbg('~~~~~~~~~~~ creating', name);
     let body = [];
     let bodyAsts: LPNode | LPNode[] = ast.get('fullfunctionbody');
     if (bodyAsts.has('functionbody')) {
+      dbg('it is a body');
       bodyAsts = bodyAsts
         .get('functionbody')
         .get('statements')
@@ -118,17 +137,34 @@ export default class Fn {
         .map((s) => s.get('statement'));
       bodyAsts.forEach((ast) => body.push(...Stmt.fromAst(ast, metadata)));
     } else {
+      dbg('single expression');
       bodyAsts = bodyAsts.get('assignfunction').get('assignables');
       let exitVal: Expr;
       [body, exitVal] = Expr.fromAssignablesAst(bodyAsts, metadata);
       if (exitVal instanceof Ref) {
+        dbg('just a ref', exitVal);
         body.push(new Exit(bodyAsts, exitVal, retTy));
+        retTy.constrain(exitVal.ty, scope);
       } else {
         const retVal = Dec.gen(exitVal, metadata);
+        dbg('retval ty is', retVal.ty);
         body.push(retVal);
         body.push(new Exit(bodyAsts, retVal.ref(), retTy));
+        dbg('constraining retTy', retTy)
+        retTy.constrain(retVal.ty, scope);
+        dbg('constrained', retTy);
       }
     }
+
+    // if (name === 'none') {
+    //   console.log('~~~~~~~~ created', name);
+    //   stdout.write('params: ');
+    //   console.dir(params, { depth: 4 });
+    //   stdout.write('retTy: ');
+    //   console.dir(retTy, { depth: 4 });
+    //   stdout.write('body: ');
+    //   console.dir(body, { depth: 4 });
+    // }
 
     return new Fn(ast, new Scope(scope), name, params, retTy, body);
   }
@@ -198,11 +234,16 @@ export default class Fn {
   // FIXME: a 3rd option is to make amm itself only SSA and perform the the "register
   // selection" in the ammtox stage. This might be the best solution, since it's the most
   // flexible regardless of the backend, and amm is where that diverges.
-  inline(amm: Output, args: Ref[], kind: AssignKind, name: string, ty: Type) {
+  inline(amm: Output, args: Ref[], kind: AssignKind, name: string, ty: Type, callScope: Scope) {
     if (args.length !== this.params.length) {
       throw new Error(`function call argument mismatch`);
     }
     this.params.forEach((param, ii) => param.assign(args[ii], this.scope));
+    this.retTy.tempConstrain(ty, callScope);
+    // console.log('----- inlining', this.name);
+    // stdout.write('rty: ');
+    // console.dir(this.retTy, { depth: 4 });
+    // console.dir(this.body, { depth: 8 });
     for (let ii = 0; ii < this.body.length; ii++) {
       const stmt = this.body[ii];
       if (stmt instanceof Exit) {
@@ -220,15 +261,17 @@ export default class Fn {
       }
       stmt.inline(amm);
     }
+    this.retTy.resetTemp();
     this.params.forEach((param) => param.unassign());
   }
 
-  resultTyFor(argTys: Type[], scope: Scope): [Type[], Type] | null {
+  resultTyFor(argTys: Type[], expectResTy: Type, scope: Scope): [Type[], Type] | null {
     let res: [Type[], Type] | null = null;
     try {
       this.params.forEach((param, ii) => {
         return param.ty.tempConstrain(argTys[ii], scope);
       });
+      this.retTy.tempConstrain(expectResTy, scope);
       res = [
         this.params.map((param) => param.ty.instance({ interfaceOk: true })),
         this.retTy.instance({ interfaceOk: true }),
@@ -248,6 +291,7 @@ export default class Fn {
       }
     }
     this.params.forEach((param) => param.ty.resetTemp());
+    this.retTy.resetTemp();
     return res;
   }
 }
@@ -276,7 +320,8 @@ export class OpcodeFn extends Fn {
     TODO('opcodes as event listener???');
   }
 
-  inline(amm: Output, args: Ref[], kind: AssignKind, assign: string, ty: Type) {
+  inline(amm: Output, args: Ref[], kind: AssignKind, assign: string, ty: Type, callScope: Scope) {
+    this.retTy.tempConstrain(ty, callScope);
     amm.assign(
       kind,
       assign,
@@ -284,5 +329,6 @@ export class OpcodeFn extends Fn {
       this.name,
       args.map((ref) => ref.ammName),
     );
+    this.retTy.resetTemp();
   }
 }
