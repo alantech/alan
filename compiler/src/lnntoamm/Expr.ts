@@ -1,3 +1,4 @@
+import { stdout } from 'process';
 import { LPNode, NamedAnd, NamedOr, NulLP } from '../lp';
 import Output, { AssignKind } from './Amm';
 import Fn from './Fn';
@@ -595,11 +596,6 @@ class Call extends Expr {
     fns = selFns;
     args.forEach((arg, ii) => arg.ty.constrain(Type.oneOf(selPTys[ii]), metadata.scope));
     retTy.constrain(Type.oneOf(selRetTys), metadata.scope);
-    // FIXME:
-    // if (ast.t.includes('ok')) {
-    //   console.log('RETURN TYPE IS:');
-    //   console.dir(retTy, { depth: 4 });
-    // }
     // now, constrain all of the args to their possible types
     // makes it so that the type of the parameters in each position are in their own list
     // ie, given `do(int8, int16)` and `do(int8, int8)`, will result in this 2D array:
@@ -620,38 +616,21 @@ class Call extends Expr {
   }
 
   private fnSelect(): [Fn[], Type[][], Type[]] {
-    return FunctionType.matrixSelect(
+    const ret = FunctionType.matrixSelect(
       this.fns,
       this.args.map((a) => a.ty),
       this.retTy,
       this.scope,
     );
+    return ret;
   }
 
   cleanup() {
     const [fns, pTys, retTys] = this.fnSelect();
     const isChanged = this.fns.length !== fns.length;
-    // if (this.dbg()) {
-    //   console.log('cleaning up', this.ast.t.trim());
-    //   console.dir(fns, { depth: 4 });
-    //   console.dir(pTys, { depth: 4 });
-    //   console.dir(retTys, { depth: 4 });
-    // }
     this.fns = fns;
-    // if (this.ast.t.includes('ok')) {
-    //   console.log('constraining arg ty:', this.args[0].ty);
-    // }
     this.args.forEach((arg, ii) => arg.ty.constrain(Type.oneOf(pTys[ii]), this.scope));
-    // if (this.ast.t.includes('ok')) {
-    //   console.log('now:', this.args[0].ty);
-    //   console.log('constraining ret ty:');
-    //   console.dir(this.retTy, { depth: 4 });
-    // }
     this.retTy.constrain(Type.oneOf(retTys), this.scope);
-    // if (this.ast.t.includes('ok')) {
-    //   console.log('now:');
-    //   console.dir(this.retTy, { depth: 4 });
-    // }
     return isChanged;
   }
 

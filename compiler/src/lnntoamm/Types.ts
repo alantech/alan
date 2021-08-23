@@ -1567,7 +1567,7 @@ class OneOf extends Type {
     let selected: Type;
     if (this.tempSelect !== null) {
       if (this.tempSelect.length === 0) {
-        throw new Error();
+        throw new Error(`expected to select from tempSelect, but it's empty`);
       }
       selected = this.tempSelect[this.tempSelect.length - 1];
     } else if (this.selection.length > 0) {
@@ -1644,6 +1644,7 @@ class OneOf extends Type {
   }
 
   fnselectOptions(): Type[] {
+    let selFrom = this.tempSelect === null ? this.selection : this.tempSelect;
     // this still maintains preference order: say that this OneOf is somehow:
     // [string, OneOf(int64, float64), bool]
     // after the reduce, the result should be:
@@ -1657,7 +1658,7 @@ class OneOf extends Type {
     // the element that is earlier in the list) but we'd need to perform
     // profiling to see if that doesn't drastically reduce performance in the
     // common case
-    return this.selection.reduce(
+    return selFrom.reduce(
       (options, ty) => [...options, ...ty.fnselectOptions()],
       new Array<Type>(),
     );
