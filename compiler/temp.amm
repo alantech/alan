@@ -1,21 +1,21 @@
-const _7c55e813_caf5_4fcc_887b_bdafbd6ba309: int8 = 4
-const _465cea17_d801_4f8c_b84c_f3d98edfea73: float64 = 4.0
+const _7f5b3320_865a_4411_8bc7_5b386c9fe696: int8 = 4
 event stdout: string
 event exit: int8
 event stderr: string
 on stderr fn (err: string): void {
-  let _55515501_653b_4ba0_99df_7b5a758954fc: void = stderrp(err)
+  let _d6d6f86c_0645_46d7_b584_31e450cda2d0: void = stderrp(err)
 }
 on exit fn (status: int8): void {
-  let _ee4f702e_ad43_436f_a48a_b56760fc4376: void = exitop(status)
+  let _ef47b122_29d9_4277_bb75_2c624459fe89: void = exitop(status)
 }
 on stdout fn (out: string): void {
-  let _2162e759_0920_4507_9566_724ef6100bc6: void = stdoutp(out)
+  let _ef08e184_d9c8_4cfa_a1da_b0d7dd35c29f: void = stdoutp(out)
 }
 on _start fn (): void {
-  const _51e77ed7_4d17_4ff5_adfc_57d908e2aebe: int8 = copyi8(_7c55e813_caf5_4fcc_887b_bdafbd6ba309)
-  let _bf2c73c5_76ab_4173_a4dc_dc9bfde6a435: float64 = copyf64(_465cea17_d801_4f8c_b84c_f3d98edfea73)
-  let _73874966_6bcd_452c_b16e_5dc135c1111d: Result<float64> = okR(_bf2c73c5_76ab_4173_a4dc_dc9bfde6a435)
-  const _61fb5f63_b6e8_4bfc_ac22_7a786cff46ab: Result<float64> = reff(_73874966_6bcd_452c_b16e_5dc135c1111d)
-  emit exit _51e77ed7_4d17_4ff5_adfc_57d908e2aebe
+  const _1b41f1e9_d0bb_40ea_8d1c_972acc0baf6f: int8 = copyi8(_7f5b3320_865a_4411_8bc7_5b386c9fe696)
+  let _63b46f88_51aa_4927_85c0_1ca785b2bf2c: Result<int8> = okR(_1b41f1e9_d0bb_40ea_8d1c_972acc0baf6f)
+  let _9bbf2f41_a11b_4859_bae5_a00d652c7b47: Result<int8> = reff(_63b46f88_51aa_4927_85c0_1ca785b2bf2c)
+  let _15a0d840_e4f7_4bf0_9967_7e1269e5fd9e: Result<int8> = noneM()
+  _9bbf2f41_a11b_4859_bae5_a00d652c7b47 = reff(_15a0d840_e4f7_4bf0_9967_7e1269e5fd9e)
+  emit exit _1b41f1e9_d0bb_40ea_8d1c_972acc0baf6f
 }

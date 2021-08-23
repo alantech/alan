@@ -99,6 +99,7 @@ export default class Fn {
     const metadata = new MetaData(scope, retTy);
 
     const name = ast.get('optname').has() ? ast.get('optname').get().t : null;
+    console.log('-> function', name);
     const p: LPNode[] = [];
     const arglist = ast.get('optargs').get('arglist');
     if (arglist.has()) {

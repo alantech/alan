@@ -57,6 +57,7 @@ export default abstract class Type implements Equalable {
 
   abstract compatibleWithConstraint(ty: Type, scope: Scope): boolean;
   abstract constrain(to: Type, scope: Scope): void;
+  abstract contains(ty: Type): boolean;
   abstract eq(that: Equalable): boolean;
   abstract instance(opts?: InstanceOpts): Type;
   abstract tempConstrain(to: Type, scope: Scope): void;
@@ -271,6 +272,10 @@ class Opaque extends Type implements Generalizable {
       console.log(that);
       throw 'uh';
     }
+  }
+
+  contains(that: Type): boolean {
+    return this.eq(that);
   }
 
   dup(): Type | null {
@@ -631,6 +636,10 @@ export class FunctionType extends Type {
     TODO('figure out what it means to constrain a function type');
   }
 
+  contains(that: Type): boolean {
+    return this.eq(that);
+  }
+
   eq(that: Equalable): boolean {
     if (that instanceof FunctionType) {
       return (
@@ -754,6 +763,12 @@ class Struct extends Type {
   }
 
   constrain(that: Type, scope: Scope) {
+    // for every type T, when constraining with some `OneOf` U, T just needs
+    // to ensure that T⊆U
+    if (that instanceof OneOf) {
+      that.constrain(this, scope);
+      return;
+    }
     if (this.eq(that)) {
       return;
     }
@@ -765,6 +780,10 @@ class Struct extends Type {
     if (that instanceof HasField) {
       that.ty.constrain(this.fields[that.name], scope);
     }
+  }
+
+  contains(that: Type): boolean {
+    return this.eq(that);
   }
 
   eq(that: Equalable): boolean {
@@ -863,6 +882,10 @@ abstract class Has extends Type {
       return;
     }
     that.constrain(this, scope);
+  }
+
+  contains(that: Type): boolean {
+    return false;
   }
 
   eq(that: Equalable): boolean {
@@ -1065,6 +1088,12 @@ class Interface extends Type {
     operators: HasOperator[],
   ) {
     super(name, ast);
+    if (this.name === 'any-n869') {
+      console.log('~~~ creating', this.name);
+      const getStack = { stack: '' };
+      Error.captureStackTrace(getStack);
+      console.log('at: ', getStack.stack);
+    }
     this.fields = fields;
     this.methods = methods;
     this.operators = operators;
@@ -1167,13 +1196,16 @@ class Interface extends Type {
   }
 
   constrain(that: Type, scope: Scope) {
-    if (this.eq(that)) {
+    if (this.name === 'any-n1') {
+      Error.captureStackTrace(this);
+    }
+    if (this.eq(that) || that.contains(this)) {
       return;
     }
     // if it's a `Has`, it's easy enough to process. Generated types should
     // handle the `Has` first before calling this method
     if (that instanceof Has) {
-      const toCheck = this.delegate ?? this.tempDelegate ?? this;
+      const toCheck = this.delegate ?? this;
       const errorBase = `${toCheck.ammName} doesn't have`;
       if (that instanceof HasField && !Has.field(that, toCheck)) {
         throw new Error(`${errorBase} field ${that.name}`);
@@ -1224,10 +1256,22 @@ class Interface extends Type {
     if (this.delegate !== null) {
       this.delegate.constrain(that, scope);
     } else if (this.isDuped) {
+      if (this.name === 'any-n869') {
+        console.log('~~~ delegating', this.name);
+        stdout.write('to: ');
+        console.dir(that, { depth: 4 });
+        const getStack = { stack: '' };
+        Error.captureStackTrace(getStack);
+        console.log('at: ', getStack.stack);
+      }
+      if (that.contains(this)) {
+        that.constrain(this, scope);
+      } else {
+        this.delegate = that;
+      }
       // const getStack = { stack: undefined };
       // Error.captureStackTrace(getStack);
       // console.log('->', this.name, 'set delegate at', getStack.stack);
-      this.delegate = that;
       if (this.tempDelegate !== null) {
         this.delegate.constrain(this.tempDelegate, scope);
         this.tempDelegate = null;
@@ -1235,6 +1279,18 @@ class Interface extends Type {
     }
     // if not duped, then don't set delegate - the interface was just being
     // used to ensure that the type of the `that` matches this interface
+  }
+
+  contains(that: Type): boolean {
+    if (this.eq(that)) {
+      return true;
+    } else if (this.delegate !== null) {
+      return this.delegate.contains(that);
+    } else {
+      // i don't think tempDelegate needs to be checked since theoretically
+      // no other constraints happen
+      return false;
+    }
   }
 
   eq(that: Equalable): boolean {
@@ -1263,6 +1319,10 @@ class Interface extends Type {
     } else if (opts && opts.interfaceOk && this.__isDuped && this.__isDuped.isTyVar) {
       return this;
     } else {
+      if (this.name === 'any-n1') {
+        console.log('~~>')
+        console.log((this as unknown as {stack: string}).stack);
+      }
       console.log(this);
       throw new Error(`Could not resolve type ${this.name}`);
     }
@@ -1398,7 +1458,7 @@ class Generated extends Interface {
         `cannot process temporary type constraints before permanent type constraints`,
       );
     } else if (that instanceof Interface) {
-      if (this.delegate ?? this.tempDelegate ?? that.delegate ?? that.tempDelegate === null) {
+      if (this.delegate ?? that.delegate === null) {
         const oFields = [...this.fields];
         const oMethods = [...this.methods];
         const oOperators = [...this.operators];
@@ -1510,6 +1570,14 @@ class OneOf extends Type {
 
   constructor(selection: Type[], tempSelect: Type[] = null) {
     super(genName('OneOf'));
+    if (this.name === 'OneOf-n872') {
+      console.log('~~~ creating', this.name);
+      stdout.write('selection: ');
+      console.dir(selection, { depth: 4 });
+      const getStack = { stack: '' };
+      Error.captureStackTrace(getStack);
+      console.log('at: ', getStack.stack);
+    }
     // ensure there's no duplicates. This fixes an issue with duplicates
     // in matrix selection. Since no other values are added to the list,
     // there's no need to do this any time later.
@@ -1537,6 +1605,10 @@ class OneOf extends Type {
     if (this.selected === null) {
       this.selected = selected;
     } else if (this.selected !== selected) {
+      console.log('==============================')
+      console.log(this);
+      console.log(selected);
+      return selected;
       // this should never happen, but let's make sure of that :)
       TODO('uh somehow selected different types - check on this');
     }
@@ -1559,9 +1631,17 @@ class OneOf extends Type {
     this.selection = this.selection.filter((ty) =>
       ty.compatibleWithConstraint(that, scope),
     );
+    this.selection.forEach((ty) => ty.constrain(that, scope));
     // if (this.selection.length === 0) {
     //   throw new Error(`No more Types left! Oh no!`);
     // }
+  }
+
+  contains(that: Type): boolean {
+    if (this === that) {
+      return true;
+    }
+    return this.selection.some(s => s.contains(that));
   }
 
   eq(that: Equalable): boolean {
