@@ -99,7 +99,6 @@ export default class Fn {
     const metadata = new MetaData(scope, retTy);
 
     const name = ast.get('optname').has() ? ast.get('optname').get().t : null;
-    console.log('-> function', name);
     const p: LPNode[] = [];
     const arglist = ast.get('optargs').get('arglist');
     if (arglist.has()) {
@@ -110,27 +109,9 @@ export default class Fn {
     }
     const params = p.map((paramAst) => FnParam.fromArgAst(paramAst, metadata, fnSigScope));
 
-    const dbg = (prefix: string, obj?: any) => {
-      if (true) {
-        stdout.write(prefix);
-        if (obj) {
-          stdout.write(': ');
-          if (typeof obj === 'string') {
-            console.log(obj);
-          } else {
-            console.dir(obj, { depth: 9 });
-          }
-        } else {
-          console.log();
-        }
-      }
-    }
-
-    dbg('~~~~~~~~~~~ creating', name);
     let body = [];
     let bodyAsts: LPNode | LPNode[] = ast.get('fullfunctionbody');
     if (bodyAsts.has('functionbody')) {
-      dbg('it is a body');
       bodyAsts = bodyAsts
         .get('functionbody')
         .get('statements')
@@ -138,22 +119,17 @@ export default class Fn {
         .map((s) => s.get('statement'));
       bodyAsts.forEach((ast) => body.push(...Stmt.fromAst(ast, metadata)));
     } else {
-      dbg('single expression');
       bodyAsts = bodyAsts.get('assignfunction').get('assignables');
       let exitVal: Expr;
       [body, exitVal] = Expr.fromAssignablesAst(bodyAsts, metadata);
       if (exitVal instanceof Ref) {
-        dbg('just a ref', exitVal);
         body.push(new Exit(bodyAsts, exitVal, retTy));
         retTy.constrain(exitVal.ty, scope);
       } else {
         const retVal = Dec.gen(exitVal, metadata);
-        dbg('retval ty is', retVal.ty);
         body.push(retVal);
         body.push(new Exit(bodyAsts, retVal.ref(), retTy));
-        dbg('constraining retTy', retTy)
         retTy.constrain(retVal.ty, scope);
-        dbg('constrained', retTy);
       }
     }
 

@@ -485,6 +485,7 @@ export class FunctionType extends Type {
   `int8,int16` until it finds `int8,int8`.
   */
   static matrixSelect(fns: Fn[], args: Type[], expectResTy: Type, scope: Scope): [Fn[], Type[][], Type[]] {
+    // super useful when debugging matrix selection
     const isDbg = false;
     isDbg && console.log('STARTING', fns);
     const original = [...fns];
@@ -1088,12 +1089,6 @@ class Interface extends Type {
     operators: HasOperator[],
   ) {
     super(name, ast);
-    if (this.name === 'any-n869') {
-      console.log('~~~ creating', this.name);
-      const getStack = { stack: '' };
-      Error.captureStackTrace(getStack);
-      console.log('at: ', getStack.stack);
-    }
     this.fields = fields;
     this.methods = methods;
     this.operators = operators;
@@ -1256,14 +1251,6 @@ class Interface extends Type {
     if (this.delegate !== null) {
       this.delegate.constrain(that, scope);
     } else if (this.isDuped) {
-      if (this.name === 'any-n869') {
-        console.log('~~~ delegating', this.name);
-        stdout.write('to: ');
-        console.dir(that, { depth: 4 });
-        const getStack = { stack: '' };
-        Error.captureStackTrace(getStack);
-        console.log('at: ', getStack.stack);
-      }
       if (that.contains(this)) {
         that.constrain(this, scope);
       } else {
@@ -1319,10 +1306,6 @@ class Interface extends Type {
     } else if (opts && opts.interfaceOk && this.__isDuped && this.__isDuped.isTyVar) {
       return this;
     } else {
-      if (this.name === 'any-n1') {
-        console.log('~~>')
-        console.log((this as unknown as {stack: string}).stack);
-      }
       console.log(this);
       throw new Error(`Could not resolve type ${this.name}`);
     }
@@ -1562,7 +1545,6 @@ class Generated extends Interface {
 class OneOf extends Type {
   selection: Type[];
   tempSelect: Type[] | null;
-  private selected: Type | null;
 
   get ammName(): string {
     return this.select().ammName;
@@ -1570,14 +1552,6 @@ class OneOf extends Type {
 
   constructor(selection: Type[], tempSelect: Type[] = null) {
     super(genName('OneOf'));
-    if (this.name === 'OneOf-n872') {
-      console.log('~~~ creating', this.name);
-      stdout.write('selection: ');
-      console.dir(selection, { depth: 4 });
-      const getStack = { stack: '' };
-      Error.captureStackTrace(getStack);
-      console.log('at: ', getStack.stack);
-    }
     // ensure there's no duplicates. This fixes an issue with duplicates
     // in matrix selection. Since no other values are added to the list,
     // there's no need to do this any time later.
@@ -1587,7 +1561,6 @@ class OneOf extends Type {
     );
     this.selection = selection;
     this.tempSelect = tempSelect;
-    this.selected = null;
   }
 
   private select(): Type {
@@ -1601,16 +1574,6 @@ class OneOf extends Type {
       selected = this.selection[this.selection.length - 1];
     } else {
       throw new Error(`type selection impossible - no possible types left`);
-    }
-    if (this.selected === null) {
-      this.selected = selected;
-    } else if (this.selected !== selected) {
-      console.log('==============================')
-      console.log(this);
-      console.log(selected);
-      return selected;
-      // this should never happen, but let's make sure of that :)
-      TODO('uh somehow selected different types - check on this');
     }
     return selected;
   }
@@ -1668,10 +1631,12 @@ class OneOf extends Type {
     this.tempSelect = this.selection.filter((ty) =>
       ty.compatibleWithConstraint(to, scope),
     );
+    this.tempSelect.forEach((ty) => ty.tempConstrain(to, scope));
   }
 
   resetTemp() {
-    this.tempSelect = [];
+    this.selection.forEach((ty) => ty.resetTemp());
+    this.tempSelect = null;
   }
 
   size(): number {

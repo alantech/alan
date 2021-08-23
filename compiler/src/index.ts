@@ -93,7 +93,7 @@ if (
     const end = Date.now();
     console.log(`Done in ${formatTime(end - start)}`);
   } catch (e) {
-    console.error(e);
+    console.error(e.message);
     process.exit(1);
   }
 } else {
