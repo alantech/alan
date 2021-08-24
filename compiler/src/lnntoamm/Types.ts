@@ -341,14 +341,8 @@ class Opaque extends Type implements Generalizable {
       g === null ? [g] : g.fnselectOptions(),
     );
     const opts = new Array<Type>();
-    const getIndices = matrixIndices(genOptions);
     const toSolidify = new Opaque(this.name, Object.keys(this.generics));
-    for (
-      let indicesRes = getIndices.next();
-      !indicesRes.done;
-      indicesRes = getIndices.next()
-    ) {
-      const indices = indicesRes.value as number[];
+    for (const indices of matrixIndices(genOptions)) {
       opts.push(
         toSolidify.solidify(
           indices.map((optIdx, tyVarIdx) => genOptions[tyVarIdx][optIdx]),
@@ -541,7 +535,6 @@ export class FunctionType extends Type {
     if (args.length === 0) {
       isDbg && console.log('nothin');
       return fns.reduce(
-        // ([fns, _pTys, retTys], fn) => [[]...fns, [fn, fn.params.map((p) => p.ty.instance()), fn.retTy.instance()]],
         ([fns, _pTys, retTys], fn) => {
           const alreadyFn = fns.findIndex((alreadyFn) => alreadyFn === fn);
           if (alreadyFn === -1) {
@@ -569,16 +562,8 @@ export class FunctionType extends Type {
     // of the indices in each dimension, with the highest sum
     // having the greatest preference
     const fnsByWeight = new Map<number, [Fn, Type[], Type][]>();
-    const getIndices = matrixIndices(matrix);
     // keep it as for instead of while for debugging reasons
-    for (
-      let indicesRes = getIndices.next();
-      !indicesRes.done;
-      indicesRes = getIndices.next()
-    ) {
-      // TS 3.6 should be able to know that indicesRes isn't `void`??? wat???
-      // https://www.typescriptlang.org/docs/handbook/release-notes/typescript-3-6.html
-      const indices = indicesRes.value as number[];
+    for (const indices of matrixIndices(matrix)) {
       const weight = indices.reduce((w, c) => w + c);
       isDbg && console.log('weight', weight);
       const argTys = matrix.map((options, ii) => options[indices[ii]]);
@@ -601,25 +586,7 @@ export class FunctionType extends Type {
       fnsByWeight.set(weight, fnsForWeight);
     }
     const weights = Array.from(fnsByWeight.keys()).sort();
-    // weights is ordered lowest->highest so it's just a matter of
-    // appending the tuple at each weight to a list
-    // const ret = weights.reduce((fns, weight) => {
-    // let weightFns = fnsByWeight.get(weight);
-    // isDbg && console.log('at weight', weight, 'fns are', weightFns);
-    // weightFns.forEach(([fn, pTys, retTy]) => {
-    //   let foundIdx = fns.findIndex(([maybeSame, _p, _r]) => maybeSame === fn);
-    //   if (foundIdx !== -1) {
-    //     const [[_sameFn, samePTys, sameRetTys]] = fns.splice(foundIdx, 1);
-    //   } else {
-    //     fns.push([fn, pTys, retTy]);
-    //   }
-    // });
-    // weightFns = weightFns.filter(
-    //   ([weightedFn, _retTy]) =>
-    //     fns.findIndex(([fn, _retTy]) => fn === weightedFn) === -1,
-    // );
-    // isDbg && console.log('filtered:', weightFns);
-    // return [...fns, ...weightFns];
+    // weights is ordered lowest->highest
     const ret: [Fn[], Type[][], Type[]] = weights.reduce(
       ([fns, pTys, retTys], weight) => {
         fnsByWeight
@@ -627,10 +594,10 @@ export class FunctionType extends Type {
           .forEach(([weightedFn, weightedPTys, weightedRetTy]) => {
             const alreadyIdx = fns.findIndex((fn) => fn === weightedFn);
             if (alreadyIdx === -1) {
-              // push to the end of the fns since technically the weight for the function
-              // is indeed higher than what it was before
               fns.push(weightedFn);
             } else {
+              // push to the end of the fns since technically the weight for the function
+              // is indeed higher than what it was before
               fns.push(fns.splice(alreadyIdx, 1)[0]);
             }
             pTys = weightedPTys.map((pTy, ii) => [...(pTys[ii] || []), pTy]);

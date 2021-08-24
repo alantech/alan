@@ -1,4 +1,3 @@
-import { stdout } from 'process';
 import { LPNode, NamedAnd, NamedOr, NulLP } from '../lp';
 import Output, { AssignKind } from './Amm';
 import Fn from './Fn';
@@ -7,7 +6,7 @@ import Operator from './Operator';
 import Scope from './Scope';
 import Stmt, { Dec, MetaData, VarDef } from './Stmt';
 import Type, { FunctionType } from './Types';
-import { DBG, isFnArray, isOpArray, TODO } from './util';
+import { isFnArray, isOpArray, TODO } from './util';
 
 export default abstract class Expr {
   ast: LPNode;
@@ -528,12 +527,6 @@ class Call extends Expr {
     if (fns.length === 0 && maybeClosure === null) {
       throw new Error(`no function possibilities provided for ${ast}`);
     }
-    // if (this.dbg()) {
-    //   console.dir('-> created', this.ast.t.trim());
-    //   console.dir(fns, { depth: 4 });
-    //   console.dir(args, { depth: 4 });
-    //   console.dir(retTy, { depth: 4 });
-    // }
     this.fns = fns;
     this.maybeClosure = maybeClosure;
     this.args = args;
@@ -601,23 +594,11 @@ class Call extends Expr {
     // console.log('initial select for', ast.t.trim(), '->', fns);
     // stdout.write('-> args ');
     // console.dir(args, { depth: 4 });
-    args.forEach((arg, ii) =>
-      arg.ty.constrain(Type.oneOf(selPTys[ii]), metadata.scope),
+    // now, constrain all of the args to their possible types
+    argTys.forEach((ty, ii) =>
+      ty.constrain(Type.oneOf(selPTys[ii]), metadata.scope),
     );
     retTy.constrain(Type.oneOf(selRetTys), metadata.scope);
-    // now, constrain all of the args to their possible types
-    // makes it so that the type of the parameters in each position are in their own list
-    // ie, given `do(int8, int16)` and `do(int8, int8)`, will result in this 2D array:
-    // [ [int8, int8],
-    //   [int16, int8] ]
-    // for some reason TS thinks that `fns` is `Boxish` but *only* in the lambda here,
-    // which is why I have to specify `fns: Fn[]`...
-    // argTys.forEach((ty, ii) => {
-    //   const paramTys = (fns as Fn[]).map((fn) => fn.params[ii].ty);
-    //   // console.log('constraining', ty, 'to', paramTys);
-    //   ty.constrain(Type.oneOf(paramTys), metadata.scope);
-    //   // console.log('constrained:', ty);
-    // });
     if (closure !== null) {
       TODO('closures');
     }

@@ -1,4 +1,3 @@
-import { stdout } from 'process';
 import { LPNode, NamedAnd, NulLP, Token } from '../lp';
 import Output, { AssignKind } from './Amm';
 import Expr, { Ref } from './Expr';
@@ -135,16 +134,6 @@ export default class Fn {
       }
     }
 
-    // if (name === 'none') {
-    //   console.log('~~~~~~~~ created', name);
-    //   stdout.write('params: ');
-    //   console.dir(params, { depth: 4 });
-    //   stdout.write('retTy: ');
-    //   console.dir(retTy, { depth: 4 });
-    //   stdout.write('body: ');
-    //   console.dir(body, { depth: 4 });
-    // }
-
     return new Fn(ast, new Scope(scope), name, params, retTy, body);
   }
 
@@ -170,7 +159,6 @@ export default class Fn {
   }
 
   asHandler(amm: Output, event: string) {
-    // console.dir(this.body, { depth: 6 });
     const handlerParams = [];
     for (const param of this.params) {
       handlerParams.push([param.ammName, param.ty]);
@@ -258,9 +246,9 @@ export default class Fn {
   ): [Type[], Type] | null {
     let res: [Type[], Type] | null = null;
     try {
-      this.params.forEach((param, ii) => {
-        return param.ty.tempConstrain(argTys[ii], scope);
-      });
+      this.params.forEach((param, ii) =>
+        param.ty.tempConstrain(argTys[ii], scope),
+      );
       this.retTy.tempConstrain(expectResTy, scope);
       res = [
         this.params.map((param) => param.ty.instance({ interfaceOk: true })),

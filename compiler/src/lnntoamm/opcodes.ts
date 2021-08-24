@@ -199,7 +199,10 @@ const load = (): void => {
     isMain: [{ e: 'Either<any, anythingElse>' }, 'bool'],
     isAlt: [{ e: 'Either<any, anythingElse>' }, 'bool'],
     mainOr: [{ e: 'Either<any, anythingElse>', d: 'any' }, 'any'],
-    altOr: [{ e: 'Either<any, anythingElse>', d: 'anythingElse' }, 'anythingElse'],
+    altOr: [
+      { e: 'Either<any, anythingElse>', d: 'anythingElse' },
+      'anythingElse',
+    ],
 
     someM: [{ v: 'any', s: 'int64' }, 'Maybe<any>'],
     noneM: [{}, 'Maybe<any>'],
