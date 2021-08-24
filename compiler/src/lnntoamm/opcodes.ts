@@ -39,8 +39,11 @@ const load = (): void => {
   Object.entries({
     any: anyIface,
   }).forEach(([name, { fields, methods, operators }]) => {
-    __opcodes.put(name, Type.builtinInterface(name, fields, methods, operators));
-  })
+    __opcodes.put(
+      name,
+      Type.builtinInterface(name, fields, methods, operators),
+    );
+  });
 
   Object.entries({
     start: 'void',

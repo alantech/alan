@@ -94,7 +94,10 @@ export class Assign extends Stmt {
     const stmts: Stmt[] = [];
     const name = ast.get('varn').t;
     const upstream = metadata.get(name);
-    const [generated, expr] = Expr.fromAssignablesAst(ast.get('assignables'), metadata);
+    const [generated, expr] = Expr.fromAssignablesAst(
+      ast.get('assignables'),
+      metadata,
+    );
     upstream.ty.constrain(expr.ty, metadata.scope);
     stmts.push(...generated, new Assign(ast, upstream, expr));
     return stmts;
@@ -257,7 +260,11 @@ export class FnParam extends VarDef {
     this.__assigned = null;
   }
 
-  static fromArgAst(ast: LPNode, metadata: MetaData, fnSigScope: Scope): FnParam {
+  static fromArgAst(
+    ast: LPNode,
+    metadata: MetaData,
+    fnSigScope: Scope,
+  ): FnParam {
     const name = ast.get('variable').t;
     const typename = ast.get('fulltypename');
     let paramTy = Type.getFromTypename(typename, fnSigScope, { isTyVar: true });

@@ -2,10 +2,9 @@ import { v4 as uuid } from 'uuid';
 import Fn from './Fn';
 import Operator from './Operator';
 
-var counter = 0;
-export const genName = (name?: string) => name ?
-  `${name}-n${counter++}`
-  : '_' + uuid().replace(/-/g, '_');
+let counter = 0;
+export const genName = (name?: string) =>
+  name ? `${name}-n${counter++}` : '_' + uuid().replace(/-/g, '_');
 
 export const isFnArray = (val: any): val is Array<Fn> => {
   return val instanceof Array && (val.length === 0 || val[0] instanceof Fn);
@@ -41,7 +40,7 @@ export interface Equalable {
   eq(other: Equalable): boolean;
 }
 
-export const matrixIndices = function*(matrix: Array<Array<any>>) {
+export const matrixIndices = function* (matrix: Array<Array<any>>) {
   const indices = matrix.map(() => 0);
   yield indices;
   while (!indices.every((index, ii) => index === matrix[ii].length - 1)) {
@@ -56,7 +55,7 @@ export const matrixIndices = function*(matrix: Array<Array<any>>) {
     }, 1);
     yield indices;
   }
-}
+};
 
 // TODO: is this necessary?
 // export class MapButBetter<K extends Equalable, V> {

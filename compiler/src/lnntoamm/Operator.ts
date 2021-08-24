@@ -51,7 +51,12 @@ class Operator {
     );
   }
 
-  select(scope: Scope, expectResTy: Type, arg1: Type, arg2?: Type): [Fn[], Type[][], Type[]] {
+  select(
+    scope: Scope,
+    expectResTy: Type,
+    arg1: Type,
+    arg2?: Type,
+  ): [Fn[], Type[][], Type[]] {
     if ((this.isPrefix && arg2) || (!this.isPrefix && !arg2)) {
       console.log('~~~ ERROR');
       console.log('for operator:', this);

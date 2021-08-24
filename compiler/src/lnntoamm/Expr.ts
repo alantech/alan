@@ -360,7 +360,11 @@ export default abstract class Expr {
           const retTy = Type.generate();
           const [fns, paramTys, retTys] = operators.reduce(
             ([fns, paramTys, retTys], op) => {
-              const [selFns, selPTys, selRTys] = op.select(metadata.scope, retTy, applyTo.ty);
+              const [selFns, selPTys, selRTys] = op.select(
+                metadata.scope,
+                retTy,
+                applyTo.ty,
+              );
               fns = [...fns, ...selFns];
               // assume that `selPTys[i].length === 1`
               paramTys = [...paramTys, ...selPTys.map((pTys) => pTys[0])];
@@ -597,7 +601,9 @@ class Call extends Expr {
     // console.log('initial select for', ast.t.trim(), '->', fns);
     // stdout.write('-> args ');
     // console.dir(args, { depth: 4 });
-    args.forEach((arg, ii) => arg.ty.constrain(Type.oneOf(selPTys[ii]), metadata.scope));
+    args.forEach((arg, ii) =>
+      arg.ty.constrain(Type.oneOf(selPTys[ii]), metadata.scope),
+    );
     retTy.constrain(Type.oneOf(selRetTys), metadata.scope);
     // now, constrain all of the args to their possible types
     // makes it so that the type of the parameters in each position are in their own list
@@ -633,7 +639,9 @@ class Call extends Expr {
     const [fns, pTys, retTys] = this.fnSelect();
     const isChanged = this.fns.length !== fns.length;
     this.fns = fns;
-    this.args.forEach((arg, ii) => arg.ty.constrain(Type.oneOf(pTys[ii]), this.scope));
+    this.args.forEach((arg, ii) =>
+      arg.ty.constrain(Type.oneOf(pTys[ii]), this.scope),
+    );
     this.retTy.constrain(Type.oneOf(retTys), this.scope);
     return isChanged;
   }

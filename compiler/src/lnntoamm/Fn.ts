@@ -107,7 +107,9 @@ export default class Fn {
         p.push(...arglist.get('cdr').getAll());
       }
     }
-    const params = p.map((paramAst) => FnParam.fromArgAst(paramAst, metadata, fnSigScope));
+    const params = p.map((paramAst) =>
+      FnParam.fromArgAst(paramAst, metadata, fnSigScope),
+    );
 
     let body = [];
     let bodyAsts: LPNode | LPNode[] = ast.get('fullfunctionbody');
@@ -211,7 +213,14 @@ export default class Fn {
   // FIXME: a 3rd option is to make amm itself only SSA and perform the the "register
   // selection" in the ammtox stage. This might be the best solution, since it's the most
   // flexible regardless of the backend, and amm is where that diverges.
-  inline(amm: Output, args: Ref[], kind: AssignKind, name: string, ty: Type, callScope: Scope) {
+  inline(
+    amm: Output,
+    args: Ref[],
+    kind: AssignKind,
+    name: string,
+    ty: Type,
+    callScope: Scope,
+  ) {
     if (args.length !== this.params.length) {
       throw new Error(`function call argument mismatch`);
     }
@@ -242,7 +251,11 @@ export default class Fn {
     this.params.forEach((param) => param.unassign());
   }
 
-  resultTyFor(argTys: Type[], expectResTy: Type, scope: Scope): [Type[], Type] | null {
+  resultTyFor(
+    argTys: Type[],
+    expectResTy: Type,
+    scope: Scope,
+  ): [Type[], Type] | null {
     let res: [Type[], Type] | null = null;
     try {
       this.params.forEach((param, ii) => {
@@ -259,9 +272,11 @@ export default class Fn {
       // ensure the param tys have `resetTemp` called on them.
       // However, if the Error message starts with `TODO`, then
       // print the error since it's for debugging purposes
-      let msg = e.message as string;
+      const msg = e.message as string;
       if (msg.startsWith('TODO')) {
-        console.log('warning: came across TODO from Types.ts when getting result ty for a function:');
+        console.log(
+          'warning: came across TODO from Types.ts when getting result ty for a function:',
+        );
         console.group();
         console.log(msg);
         console.groupEnd();
@@ -283,7 +298,11 @@ export class OpcodeFn extends Fn {
   ) {
     const tyScope = new Scope(__opcodes);
     const params = Object.entries(argDecs).map(([name, tyName]) => {
-      return new FnParam(new NulLP(), name, Type.getFromTypename(tyName, tyScope, { isTyVar: true }));
+      return new FnParam(
+        new NulLP(),
+        name,
+        Type.getFromTypename(tyName, tyScope, { isTyVar: true }),
+      );
     });
     const retTy = Type.getFromTypename(retTyName, tyScope, { isTyVar: true });
     if (retTy === null || !(retTy instanceof Type)) {
@@ -297,7 +316,14 @@ export class OpcodeFn extends Fn {
     TODO('opcodes as event listener???');
   }
 
-  inline(amm: Output, args: Ref[], kind: AssignKind, assign: string, ty: Type, callScope: Scope) {
+  inline(
+    amm: Output,
+    args: Ref[],
+    kind: AssignKind,
+    assign: string,
+    ty: Type,
+    callScope: Scope,
+  ) {
     this.retTy.tempConstrain(ty, callScope);
     amm.assign(
       kind,

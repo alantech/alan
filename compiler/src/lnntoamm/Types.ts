@@ -4,7 +4,15 @@ import { fulltypenameAstFromString } from './Ast';
 import Fn from './Fn';
 import Operator from './Operator';
 import Scope from './Scope';
-import { DBG, Equalable, genName, isFnArray, isOpArray, matrixIndices, TODO } from './util';
+import {
+  DBG,
+  Equalable,
+  genName,
+  isFnArray,
+  isOpArray,
+  matrixIndices,
+  TODO,
+} from './util';
 
 type Fields = { [name: string]: Type | null };
 export type FieldIndices = { [name: string]: number };
@@ -14,7 +22,8 @@ interface Generalizable {
   generics: GenericArgs;
   solidify(types: Type[]): Type;
 }
-const generalizable = (val: Type): val is Type & Generalizable => 'generics' in val;
+const generalizable = (val: Type): val is Type & Generalizable =>
+  'generics' in val;
 
 // note: if more opt types are used, use `InterfaceDupOpts & OtherDupOpts`
 export type DupOpts = InterfaceDupOpts;
@@ -64,7 +73,11 @@ export default abstract class Type implements Equalable {
   abstract resetTemp(): void;
   abstract size(): number;
 
-  static getFromTypename(name: LPNode | string, scope: Scope, dupOpts?: DupOpts): Type {
+  static getFromTypename(
+    name: LPNode | string,
+    scope: Scope,
+    dupOpts?: DupOpts,
+  ): Type {
     if (typeof name === 'string') {
       name = fulltypenameAstFromString(name);
     }
@@ -80,14 +93,18 @@ export default abstract class Type implements Equalable {
         const genericArgLen = Object.keys(ty.generics).length;
         if (genericArgLen !== generics.length) {
           console.log([name, generics]);
-          throw new Error(`Bad typename: type ${name} expects ${genericArgLen} type arguments, but ${generics.length} were provided`);
+          throw new Error(
+            `Bad typename: type ${name} expects ${genericArgLen} type arguments, but ${generics.length} were provided`,
+          );
         }
-        let solidifiedTypeArgs = generics.map(solidify);
+        const solidifiedTypeArgs = generics.map(solidify);
         // interfaces can't have generic type params so no need to call
         // dupIfNotLocalInterface
         return ty.solidify(solidifiedTypeArgs);
       } else if (generics.length !== 0) {
-        throw new Error(`Bad typename: type ${name} doesn't expect any type arguments, but ${generics.length} were provided`);
+        throw new Error(
+          `Bad typename: type ${name} doesn't expect any type arguments, but ${generics.length} were provided`,
+        );
       } else {
         const duped = ty.dup(dupOpts);
         if (duped === null) {
@@ -99,7 +116,7 @@ export default abstract class Type implements Equalable {
           return duped;
         }
       }
-    }
+    };
     return solidify(parsed);
   }
 
@@ -109,13 +126,7 @@ export default abstract class Type implements Equalable {
     methods: HasMethod[],
     operators: HasOperator[],
   ) {
-    return new Interface(
-      name,
-      new NulLP(),
-      fields,
-      methods,
-      operators,
-    );
+    return new Interface(name, new NulLP(), fields, methods, operators);
   }
 
   static fromInterfacesAst(ast: LPNode, scope: Scope): Type {
@@ -190,8 +201,8 @@ class Opaque extends Type implements Generalizable {
   get ammName(): string {
     let generics = '';
     if (Object.keys(this.generics).length !== 0) {
-      let genNames = new Array<string>();
-      for (let [tyVar, ty] of Object.entries(this.generics)) {
+      const genNames = new Array<string>();
+      for (const [tyVar, ty] of Object.entries(this.generics)) {
         if (ty === null) {
           genNames.push(tyVar);
         } else {
@@ -206,7 +217,7 @@ class Opaque extends Type implements Generalizable {
   constructor(name: string, generics: string[]) {
     super(name);
     this.generics = {};
-    generics.forEach((g) => this.generics[g] = null);
+    generics.forEach((g) => (this.generics[g] = null));
   }
 
   compatibleWithConstraint(that: Type, scope: Scope): boolean {
@@ -220,10 +231,10 @@ class Opaque extends Type implements Generalizable {
         return false;
       }
       return (
-        this.name === that.name
-        && thisGens.length === thatGens.length
-        && thisGens.every((thisGen, ii) => {
-          const thatGen = thatGens[ii]
+        this.name === that.name &&
+        thisGens.length === thatGens.length &&
+        thisGens.every((thisGen, ii) => {
+          const thatGen = thatGens[ii];
           if (thisGen === null || thatGen === null) {
             return true;
           } else {
@@ -249,12 +260,14 @@ class Opaque extends Type implements Generalizable {
       return;
     }
     if (!this.compatibleWithConstraint(that, scope)) {
-      throw new Error(`Cannot constrain type ${this.ammName} to ${that.ammName}`);
+      throw new Error(
+        `Cannot constrain type ${this.ammName} to ${that.ammName}`,
+      );
     }
     if (that instanceof Opaque) {
       if (
-        Object.values(this.generics).some((g) => g === null)
-        || Object.values(that.generics).some((g) => g === null)
+        Object.values(this.generics).some((g) => g === null) ||
+        Object.values(that.generics).some((g) => g === null)
       ) {
         // if any values are null values, that means that we just have to check
         // for constraint compatibilities which was already checked so we're good
@@ -311,8 +324,8 @@ class Opaque extends Type implements Generalizable {
     const thisGens = Object.values(this.generics);
     const thatGens = Object.values(that.generics);
     return (
-      thisGens.length === thatGens.length
-      && thisGens.every((thisGen, ii) => {
+      thisGens.length === thatGens.length &&
+      thisGens.every((thisGen, ii) => {
         const thatGen = thatGens[ii];
         if (thisGen === null || thatGen === null) {
           return thisGen === thatGen;
@@ -324,17 +337,23 @@ class Opaque extends Type implements Generalizable {
   }
 
   fnselectOptions(): Type[] {
-    const genOptions = Object
-      .values(this.generics)
-      .map((g) => g === null ? [g] : g.fnselectOptions());
+    const genOptions = Object.values(this.generics).map((g) =>
+      g === null ? [g] : g.fnselectOptions(),
+    );
     const opts = new Array<Type>();
     const getIndices = matrixIndices(genOptions);
     const toSolidify = new Opaque(this.name, Object.keys(this.generics));
-    for (let indicesRes = getIndices.next(); !indicesRes.done; indicesRes = getIndices.next()) {
-      let indices = indicesRes.value as number[];
-      opts.push(toSolidify.solidify(
-        indices.map((optIdx, tyVarIdx) => genOptions[tyVarIdx][optIdx]),
-      ));
+    for (
+      let indicesRes = getIndices.next();
+      !indicesRes.done;
+      indicesRes = getIndices.next()
+    ) {
+      const indices = indicesRes.value as number[];
+      opts.push(
+        toSolidify.solidify(
+          indices.map((optIdx, tyVarIdx) => genOptions[tyVarIdx][optIdx]),
+        ),
+      );
     }
     return opts;
   }
@@ -347,7 +366,7 @@ class Opaque extends Type implements Generalizable {
       return this;
     }
     const instance = new Opaque(this.name, genNames);
-    for (let name of genNames) {
+    for (const name of genNames) {
       const thisGen = this.generics[name];
       if (thisGen === null) {
         throw new Error(
@@ -375,7 +394,7 @@ class Opaque extends Type implements Generalizable {
       case 'Result':
         const containedTypes = Object.values(this.generics);
         return containedTypes
-          .map(t => {
+          .map((t) => {
             if (t === null) {
               throw new Error(`cannot compute size of ${this.ammName}`);
             } else {
@@ -391,21 +410,27 @@ class Opaque extends Type implements Generalizable {
   solidify(tys: Type[]): Type {
     const genNames = Object.keys(this.generics);
     if (genNames.length < tys.length) {
-      throw new Error(`Cannot solidify ${this.ammName} - too many type arguments were provided`);
+      throw new Error(
+        `Cannot solidify ${this.ammName} - too many type arguments were provided`,
+      );
     } else if (genNames.length > tys.length) {
-      throw new Error(`Cannot solidify ${this.ammName} - not enough type arguments were provided`);
+      throw new Error(
+        `Cannot solidify ${this.ammName} - not enough type arguments were provided`,
+      );
     } else if (genNames.length === 0) {
       return this;
     } else {
       const duped = new Opaque(this.name, genNames);
-      genNames.forEach((name, ii) => duped.generics[name] = tys[ii]);
+      genNames.forEach((name, ii) => (duped.generics[name] = tys[ii]));
       return duped;
     }
   }
 
   tempConstrain(that: Type, scope: Scope) {
     if (!this.compatibleWithConstraint(that, scope)) {
-      throw new Error(`Cannot temporarily constrain type ${this.ammName} to ${that.ammName}`);
+      throw new Error(
+        `Cannot temporarily constrain type ${this.ammName} to ${that.ammName}`,
+      );
     }
     if (that instanceof Opaque) {
       const thisGens = Object.keys(this.generics);
@@ -434,7 +459,7 @@ class Opaque extends Type implements Generalizable {
   }
 
   resetTemp() {
-    for (let generic in this.generics) {
+    for (const generic in this.generics) {
       if (this.generics[generic] === null) {
         return;
       }
@@ -484,7 +509,12 @@ export class FunctionType extends Type {
   possibility, but we'd still have to check `int8,int64`, `int8,int32`, and
   `int8,int16` until it finds `int8,int8`.
   */
-  static matrixSelect(fns: Fn[], args: Type[], expectResTy: Type, scope: Scope): [Fn[], Type[][], Type[]] {
+  static matrixSelect(
+    fns: Fn[],
+    args: Type[],
+    expectResTy: Type,
+    scope: Scope,
+  ): [Fn[], Type[][], Type[]] {
     // super useful when debugging matrix selection
     const isDbg = false;
     isDbg && console.log('STARTING', fns);
@@ -500,7 +530,7 @@ export class FunctionType extends Type {
       return fns.reduce(
         // ([fns, _pTys, retTys], fn) => [[]...fns, [fn, fn.params.map((p) => p.ty.instance()), fn.retTy.instance()]],
         ([fns, _pTys, retTys], fn) => {
-          const alreadyFn = fns.findIndex(alreadyFn => alreadyFn === fn);
+          const alreadyFn = fns.findIndex((alreadyFn) => alreadyFn === fn);
           if (alreadyFn === -1) {
             return [
               [...fns, fn],
@@ -528,10 +558,14 @@ export class FunctionType extends Type {
     const fnsByWeight = new Map<number, [Fn, Type[], Type][]>();
     const getIndices = matrixIndices(matrix);
     // keep it as for instead of while for debugging reasons
-    for (let indicesRes = getIndices.next(); !indicesRes.done; indicesRes = getIndices.next()) {
+    for (
+      let indicesRes = getIndices.next();
+      !indicesRes.done;
+      indicesRes = getIndices.next()
+    ) {
       // TS 3.6 should be able to know that indicesRes isn't `void`??? wat???
       // https://www.typescriptlang.org/docs/handbook/release-notes/typescript-3-6.html
-      let indices = indicesRes.value as number[];
+      const indices = indicesRes.value as number[];
       const weight = indices.reduce((w, c) => w + c);
       isDbg && console.log('weight', weight);
       const argTys = matrix.map((options, ii) => options[indices[ii]]);
@@ -540,7 +574,7 @@ export class FunctionType extends Type {
       isDbg && console.log('for weight', fnsForWeight);
       fnsForWeight.push(
         ...fns.reduce((fns, fn) => {
-          isDbg && console.log('getting result ty')
+          isDbg && console.log('getting result ty');
           const tys = fn.resultTyFor(argTys, expectResTy, scope);
           isDbg && console.dir(tys, { depth: 4 });
           if (tys === null) {
@@ -557,37 +591,46 @@ export class FunctionType extends Type {
     // weights is ordered lowest->highest so it's just a matter of
     // appending the tuple at each weight to a list
     // const ret = weights.reduce((fns, weight) => {
-      // let weightFns = fnsByWeight.get(weight);
-      // isDbg && console.log('at weight', weight, 'fns are', weightFns);
-      // weightFns.forEach(([fn, pTys, retTy]) => {
-      //   let foundIdx = fns.findIndex(([maybeSame, _p, _r]) => maybeSame === fn);
-      //   if (foundIdx !== -1) {
-      //     const [[_sameFn, samePTys, sameRetTys]] = fns.splice(foundIdx, 1);
-      //   } else {
-      //     fns.push([fn, pTys, retTy]);
-      //   }
-      // });
-      // weightFns = weightFns.filter(
-      //   ([weightedFn, _retTy]) =>
-      //     fns.findIndex(([fn, _retTy]) => fn === weightedFn) === -1,
-      // );
-      // isDbg && console.log('filtered:', weightFns);
-      // return [...fns, ...weightFns];
-    const ret: [Fn[], Type[][], Type[]] = weights.reduce(([fns, pTys, retTys], weight) => {
-      fnsByWeight.get(weight).forEach(([weightedFn, weightedPTys, weightedRetTy]) => {
-        const alreadyIdx = fns.findIndex(fn => fn === weightedFn);
-        if (alreadyIdx === -1) {
-          // push to the end of the fns since technically the weight for the function
-          // is indeed higher than what it was before
-          fns.push(weightedFn);
-        } else {
-          fns.push(fns.splice(alreadyIdx, 1)[0]);
-        }
-        pTys = weightedPTys.map((pTy, ii) => [...(pTys[ii] || []), pTy]);
-        retTys.push(weightedRetTy);
-      });
-      return [fns, pTys, retTys];
-    }, [new Array<Fn>(), new Array<Type[]>(), new Array<Type>()] as [Fn[], Type[][], Type[]]);
+    // let weightFns = fnsByWeight.get(weight);
+    // isDbg && console.log('at weight', weight, 'fns are', weightFns);
+    // weightFns.forEach(([fn, pTys, retTy]) => {
+    //   let foundIdx = fns.findIndex(([maybeSame, _p, _r]) => maybeSame === fn);
+    //   if (foundIdx !== -1) {
+    //     const [[_sameFn, samePTys, sameRetTys]] = fns.splice(foundIdx, 1);
+    //   } else {
+    //     fns.push([fn, pTys, retTy]);
+    //   }
+    // });
+    // weightFns = weightFns.filter(
+    //   ([weightedFn, _retTy]) =>
+    //     fns.findIndex(([fn, _retTy]) => fn === weightedFn) === -1,
+    // );
+    // isDbg && console.log('filtered:', weightFns);
+    // return [...fns, ...weightFns];
+    const ret: [Fn[], Type[][], Type[]] = weights.reduce(
+      ([fns, pTys, retTys], weight) => {
+        fnsByWeight
+          .get(weight)
+          .forEach(([weightedFn, weightedPTys, weightedRetTy]) => {
+            const alreadyIdx = fns.findIndex((fn) => fn === weightedFn);
+            if (alreadyIdx === -1) {
+              // push to the end of the fns since technically the weight for the function
+              // is indeed higher than what it was before
+              fns.push(weightedFn);
+            } else {
+              fns.push(fns.splice(alreadyIdx, 1)[0]);
+            }
+            pTys = weightedPTys.map((pTy, ii) => [...(pTys[ii] || []), pTy]);
+            retTys.push(weightedRetTy);
+          });
+        return [fns, pTys, retTys];
+      },
+      [new Array<Fn>(), new Array<Type[]>(), new Array<Type>()] as [
+        Fn[],
+        Type[][],
+        Type[],
+      ],
+    );
     if (ret[0].length > original.length || ret[0].length === 0) {
       console.log('~~~ ERROR');
       console.log('original: ', original);
@@ -604,10 +647,11 @@ export class FunctionType extends Type {
     }
     // const getStack = { stack: '' };
     // Error.captureStackTrace(getStack);
-    isDbg && (() => {
-    //   console.log('returning from', getStack.stack);
-      console.dir(ret, { depth: 4 });
-    })();
+    isDbg &&
+      (() => {
+        //   console.log('returning from', getStack.stack);
+        console.dir(ret, { depth: 4 });
+      })();
     return ret;
   }
 
@@ -834,7 +878,11 @@ abstract class Has extends Type {
     return false;
   }
 
-  static method(method: HasMethod, scope: Scope, ty: Type): [Fn[], Type[][], Type[]] {
+  static method(
+    method: HasMethod,
+    scope: Scope,
+    ty: Type,
+  ): [Fn[], Type[][], Type[]] {
     const fns = scope.get(method.name);
     if (!isFnArray(fns)) {
       return [[], [], []];
@@ -857,7 +905,8 @@ abstract class Has extends Type {
     ops = ops.filter((op) => op.isPrefix === operator.isPrefix);
     if (operator.isPrefix) {
       return ops.filter(
-        (op) => op.select(scope, Type.generate(), operator.params[0] || ty) !== [],
+        (op) =>
+          op.select(scope, Type.generate(), operator.params[0] || ty) !== [],
       );
     } else {
       return ops.filter(
@@ -1173,11 +1222,13 @@ class Interface extends Type {
       return that.compatibleWithConstraint(this, scope);
     }
     // always check all interface constraints first
-    if (!(
-      this.fields.every((f) => Has.field(f, that))
-      && this.methods.every((f) => Has.method(f, scope, that)[0].length !== 0)
-      && this.operators.every((f) => Has.operator(f, scope, that).length !== 0)
-    )) {
+    if (
+      !(
+        this.fields.every((f) => Has.field(f, that)) &&
+        this.methods.every((f) => Has.method(f, scope, that)[0].length !== 0) &&
+        this.operators.every((f) => Has.operator(f, scope, that).length !== 0)
+      )
+    ) {
       return false;
     }
 
@@ -1204,14 +1255,23 @@ class Interface extends Type {
       const errorBase = `${toCheck.ammName} doesn't have`;
       if (that instanceof HasField && !Has.field(that, toCheck)) {
         throw new Error(`${errorBase} field ${that.name}`);
-      } else if (that instanceof HasOperator && Has.operator(that, scope, toCheck).length !== 0) {
-        const opString = that.params.length === 1 ?
-          `${that.name} ${that.params[0].ammName}`
-          : `${that.params[0].ammName} ${that.name} ${that.params[1].ammName}`;
+      } else if (
+        that instanceof HasOperator &&
+        Has.operator(that, scope, toCheck).length !== 0
+      ) {
+        const opString =
+          that.params.length === 1
+            ? `${that.name} ${that.params[0].ammName}`
+            : `${that.params[0].ammName} ${that.name} ${that.params[1].ammName}`;
         throw new Error(`${errorBase} operator \`${opString}\``);
-      } else if (that instanceof HasMethod && Has.method(that, scope, toCheck)[0].length !== 0) {
-        const paramsString = `(${that.params.map((p) => p.ammName).join(', ')})`;
-        throw new Error(`${errorBase} method \`${that.name}${paramsString}\``)
+      } else if (
+        that instanceof HasMethod &&
+        Has.method(that, scope, toCheck)[0].length !== 0
+      ) {
+        const paramsString = `(${that.params
+          .map((p) => p.ammName)
+          .join(', ')})`;
+        throw new Error(`${errorBase} method \`${that.name}${paramsString}\``);
       }
       // none of the other checks apply
       return;
@@ -1303,7 +1363,12 @@ class Interface extends Type {
       return this.delegate.instance(opts);
     } else if (this.tempDelegate !== null) {
       return this.tempDelegate.instance(opts);
-    } else if (opts && opts.interfaceOk && this.__isDuped && this.__isDuped.isTyVar) {
+    } else if (
+      opts &&
+      opts.interfaceOk &&
+      this.__isDuped &&
+      this.__isDuped.isTyVar
+    ) {
       return this;
     } else {
       console.log(this);
@@ -1319,13 +1384,13 @@ class Interface extends Type {
     } else if (this.tempDelegate !== null) {
       if (!this.tempDelegate.eq(that)) {
         console.log('---------------');
-        console.dir(this, {depth: 4});
-        console.dir(that, {depth: 4});
+        console.dir(this, { depth: 4 });
+        console.dir(that, { depth: 4 });
         TODO('re-tempConstrain Interface');
       }
     } else {
-      const getTrace = {stack: undefined};
-      Error.captureStackTrace(getTrace)
+      const getTrace = { stack: undefined };
+      Error.captureStackTrace(getTrace);
       // console.log('-> setting', this.name, 'tempDelegate to', that, 'at', getTrace.stack);
       this.tempDelegate = that;
     }
@@ -1390,13 +1455,7 @@ class Generated extends Interface {
   constructor() {
     // Generated types are just Interface types that are more
     // lenient when handling `Has` constraints
-    super(
-      genName('Generated'),
-      new NulLP(),
-      [],
-      [],
-      [],
-    );
+    super(genName('Generated'), new NulLP(), [], [], []);
   }
 
   compatibleWithConstraint(that: Type, scope: Scope): boolean {
@@ -1412,7 +1471,7 @@ class Generated extends Interface {
         return !this.fields.some((field) => {
           if (field.name !== that.name) return false;
           if (field.eq(that)) return false;
-          field.name === that.name && !field.eq(that)
+          field.name === that.name && !field.eq(that);
         });
       } else {
         return true;
@@ -1482,10 +1541,16 @@ class Generated extends Interface {
       if (this.delegate !== null) {
         this.delegate.constrain(that, scope);
       } else if (that instanceof HasField) {
-        const already = this.fields.find((field) => field.name === that.name) ?? null;
+        const already =
+          this.fields.find((field) => field.name === that.name) ?? null;
         if (already !== null) {
-          if (!already.eq(that) && !already.ty.compatibleWithConstraint(that.ty, scope)) {
-            throw new Error(`generated type ${this.name} already has a field called`)
+          if (
+            !already.eq(that) &&
+            !already.ty.compatibleWithConstraint(that.ty, scope)
+          ) {
+            throw new Error(
+              `generated type ${this.name} already has a field called`,
+            );
           }
         } else {
           this.fields.push(that);
@@ -1618,17 +1683,15 @@ class OneOf extends Type {
     if (this === that) {
       return true;
     }
-    return this.selection.some(s => s.contains(that));
+    return this.selection.some((s) => s.contains(that));
   }
 
   eq(that: Equalable): boolean {
     return (
-      (
-        that instanceof OneOf &&
+      (that instanceof OneOf &&
         this.selection.length === that.selection.length &&
-        this.selection.every((ty, ii) => ty.eq(that.selection[ii]))
-      )
-      || this.select().eq(that)
+        this.selection.every((ty, ii) => ty.eq(that.selection[ii]))) ||
+      this.select().eq(that)
     );
   }
 
@@ -1637,7 +1700,7 @@ class OneOf extends Type {
     if (selected === undefined) {
       throw new Error('uh whaaaaat');
     }
-    let res = selected.instance(opts);
+    const res = selected.instance(opts);
     return res;
   }
 
@@ -1665,7 +1728,7 @@ class OneOf extends Type {
   }
 
   fnselectOptions(): Type[] {
-    let selFrom = this.tempSelect === null ? this.selection : this.tempSelect;
+    const selFrom = this.tempSelect === null ? this.selection : this.tempSelect;
     // this still maintains preference order: say that this OneOf is somehow:
     // [string, OneOf(int64, float64), bool]
     // after the reduce, the result should be:
