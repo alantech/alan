@@ -380,10 +380,17 @@ class Opaque extends Type implements Generalizable {
 
   isFixed(): boolean {
     switch (this.name) {
-      case 'string':
-        return false;
-      default:
+      case 'bool':
+      case 'float32':
+      case 'float64':
+      case 'int8':
+      case 'int16':
+      case 'int32':
+      case 'int64':
+      case 'void':
         return true;
+      default:
+        return false;
     }
   }
 
@@ -391,7 +398,15 @@ class Opaque extends Type implements Generalizable {
     switch (this.name) {
       case 'void':
         return 0;
-      case 'Result':
+      case 'bool':
+      case 'float32':
+      case 'float64':
+      case 'int8':
+      case 'int16':
+      case 'int32':
+      case 'int64':
+        return 1;
+      default:
         const containedTypes = Object.values(this.generics);
         return containedTypes
           .map((t) => {
@@ -402,8 +417,6 @@ class Opaque extends Type implements Generalizable {
             }
           })
           .reduce((s1, s2) => s1 + s2, 1);
-      default:
-        return 1;
     }
   }
 

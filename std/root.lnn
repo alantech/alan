@@ -1,5 +1,6 @@
 // note: most-recently-defined wins as tie-breaker
 
+// opaque types
 export void
 export int8
 export int16
@@ -9,7 +10,13 @@ export float32
 export float64
 export bool
 export string
-// TODO: other builtin types
+export Either
+export Error
+export Maybe
+export Result
+// interfaces
+export any
+export anythingElse
 
 export interface Stringifiable {
   toString(Stringifiable): string,
@@ -151,9 +158,59 @@ export fn xnor(a: bool, b: bool): bool = xnorboo(a, b);
 export fn booland(a: bool, b: bool): bool = and(a, b);
 export fn boolor(a: bool, b: bool): bool = or(a, b);
 
+// Either functions
+export fn main(val: any): Either<any, anythingElse> = mainE(val, 0);
+export fn main(val: int8): Either<int8, any> = mainE(val, 8);
+export fn main(val: int16): Either<int16, any> = mainE(val, 8);
+export fn main(val: int32): Either<int32, any> = mainE(val, 8);
+export fn main(val: int64): Either<int64, any> = mainE(val, 8);
+export fn main(val: float32): Either<float32, any> = mainE(val, 8);
+export fn main(val: float64): Either<float64, any> = mainE(val, 8);
+export fn main(val: bool): Either<bool, any> = mainE(val, 8);
+export fn alt(val: any): Either<anythingElse, any> = altE(val, 0);
+export fn alt(val: int8): Either<any, int8> = altE(val, 8);
+export fn alt(val: int16): Either<any, int16> = altE(val, 8);
+export fn alt(val: int32): Either<any, int32> = altE(val, 8);
+export fn alt(val: int64): Either<any, int64> = altE(val, 8);
+export fn alt(val: float32): Either<any, float32> = altE(val, 8);
+export fn alt(val: float64): Either<any, float64> = altE(val, 8);
+export fn alt(val: bool): Either<any, bool> = altE(val, 8);
+export isMain // opcode with signature `fn isMain(Either<any, anythingElse>): bool`
+export isAlt // opcode with signature `fn isAlt(Either<any, anythingElse>): bool`
+export fn getMainOr(either: Either<any, anythingElse>, default: any): any = mainOr(either, default);
+export fn getAltOr(either: Either<any, anythingElse>, default: anythingElse): anythingElse = altOr(either, default);
+
+// Maybe functions
+export fn some(val: any): Maybe<any> = someM(val, 0);
+export fn some(val: int8): Maybe<int8> = someM(val, 8);
+export fn some(val: int16): Maybe<int16> = someM(val, 8);
+export fn some(val: int32): Maybe<int32> = someM(val, 8);
+export fn some(val: int64): Maybe<int64> = someM(val, 8);
+export fn some(val: float32): Maybe<float32> = someM(val, 8);
+export fn some(val: float64): Maybe<float64> = someM(val, 8);
+export fn some(val: bool): Maybe<bool> = someM(val, 8);
+export fn none(): Maybe<any> = noneM();
+export isSome // opcode with signature `fn isSome(Maybe<any>): bool`
+export isNone // opcode with signature `fn isNone(Maybe<any>): bool`
+export fn getOr(maybe: Maybe<any>, default: any): any = getOrM(maybe, default);
+
 // Result functions
-export fn ok(a: any): Result<any> = okR(a);
-export fn none(): Result<any> = noneM();
+export fn ok(val: any): Result<any> = okR(val, 0);
+export fn ok(val: int8): Result<int8> = okR(val, 8);
+export fn ok(val: int16): Result<int16> = okR(val, 8);
+export fn ok(val: int32): Result<int32> = okR(val, 8);
+export fn ok(val: int64): Result<int64> = okR(val, 8);
+export fn ok(val: float32): Result<float32> = okR(val, 8);
+export fn ok(val: float64): Result<float64> = okR(val, 8);
+export fn ok(val: bool): Result<bool> = okR(val, 8);
+export err // opcode with signature `fn err(string): Result<any>`
+export error // opcode with signature `fn error(string): Error`
+export noerr // opcode with signature `fn noerr(): Error`
+export isOk // opcode with signature `fn isOk(Result<any>): bool`
+export isErr // opcode with signature `fn isErr(Result<any>): bool`
+export fn getOr(result: Result<any>, default: any): any = getOrR(result, default);
+export getErr // opcode with signature `fn getErr(Result<any>, Error): Error`
+export fn getErr(result: Result<any>, default: string): Error = getErr(result, error(default));
 
 // Wait functions
 export fn wait(n: int8): void = waitop(i8i64(n));

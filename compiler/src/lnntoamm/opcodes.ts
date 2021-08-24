@@ -26,6 +26,9 @@ const load = (): void => {
     bool: [],
     string: [],
 
+    Either: ['T', 'U'],
+    Error: [],
+    Maybe: ['T'],
     Result: ['T'],
   }).forEach(([name, generics]: [string, string[]]) => {
     __opcodes.put(name, Type.opaque(name, generics));
@@ -38,6 +41,7 @@ const load = (): void => {
   };
   Object.entries({
     any: anyIface,
+    anythingElse: anyIface,
   }).forEach(([name, { fields, methods, operators }]) => {
     __opcodes.put(
       name,
@@ -190,8 +194,26 @@ const load = (): void => {
     norbool: [{ a: 'bool', b: 'bool' }, 'bool'],
     xnorboo: [{ a: 'bool', b: 'bool' }, 'bool'],
 
-    okR: [{ a: 'any' }, 'Result<any>'],
-    noneM: [{}, 'Result<any>'],
+    mainE: [{ v: 'any', s: 'int64' }, 'Either<any, anythingElse>'],
+    altE: [{ v: 'any', s: 'int64' }, 'Either<anythingElse, any>'],
+    isMain: [{ e: 'Either<any, anythingElse>' }, 'bool'],
+    isAlt: [{ e: 'Either<any, anythingElse>' }, 'bool'],
+    mainOr: [{ e: 'Either<any, anythingElse>', d: 'any' }, 'any'],
+    altOr: [{ e: 'Either<any, anythingElse>', d: 'anythingElse' }, 'anythingElse'],
+
+    someM: [{ v: 'any', s: 'int64' }, 'Maybe<any>'],
+    noneM: [{}, 'Maybe<any>'],
+    isSome: [{ m: 'Maybe<any>' }, 'bool'],
+    isNone: [{ m: 'Maybe<any>' }, 'bool'],
+    getOrM: [{ m: 'Maybe<any>', d: 'any' }, 'any'],
+
+    okR: [{ a: 'any', s: 'int64' }, 'Result<any>'],
+    err: [{ s: 'string' }, 'Result<any>'],
+    error: [{ s: 'string' }, 'Error'],
+    noerr: [{}, 'Error'],
+    isOk: [{ r: 'Result<any>' }, 'bool'],
+    isErr: [{ r: 'Result<any>' }, 'bool'],
+    getOrR: [{ r: 'Result<any>', d: 'any' }, 'any'],
 
     waitop: [{ t: 'int64' }, 'void'],
 
