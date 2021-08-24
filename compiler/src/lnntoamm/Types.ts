@@ -337,9 +337,7 @@ class Opaque extends Type implements Generalizable {
   }
 
   fnselectOptions(): Type[] {
-    const genOptions = Object.values(this.generics).map((g) =>
-      g === null ? [g] : g.fnselectOptions(),
-    );
+    const genOptions = Object.values(this.generics).map((g) => g?.fnselectOptions() ?? [g]);
     const opts = new Array<Type>();
     const toSolidify = new Opaque(this.name, Object.keys(this.generics));
     for (const indices of matrixIndices(genOptions)) {

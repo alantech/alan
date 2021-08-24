@@ -85,12 +85,31 @@ export default class Fn {
       if (retTy === null) {
         throw new Error(`Type not in scope: ${name.t.trim()}`);
       }
-      // if (retTy.dup() !== null) {
-      //   // TODO: figure out how to prevent type erasure while allowing
-      //   // eg the generic identity function. Or just wait until generic
-      //   // fn type parameters.
-      //   throw new Error(`type erasure is illegal`);
-      // }
+      // TODO: I had to re-enable type erasure - previously it was done with
+      // `if (retTy.dup() !== null) throw new Error(...)` but this doesn't
+      // work for `fn none(): Maybe<any> = noneM();` since the `any` in the
+      // return part *does* cause `dup` to return a non-null Type. Type
+      // erasure *may* be detected by seeing if the return type strictly
+      // represents the superset of the type returned from the internal
+      // `return` statement, ie given:
+      // ```ln
+      // fn foo(): any = true;
+      // ```
+      // the `any` in the return part of the signature is strictly a
+      // superset of the `bool` type, so it definitely is type erasure,
+      // while the `any` in the return part of the signature for `fn none`
+      // is strictly equal to the `any` part returned by opcode `noneM`.
+      // More investigation is necessary to determine if this is the
+      // right way to detect that.
+      //
+      // If the syntax does evolve to require type parameters in functions,
+      // then this can be solved: simply check to make sure that the type
+      // doesn't `dup()` because the type variable shouldn't require a dup.
+      // For example, using an imaginary Alan syntax for generic functions,
+      // `fn foo<T>(): Maybe<T>` obviously doesn't contain type erasure:
+      // the type `T` gets assigned from the caller's point of view. Meanwhile,
+      // `fn foo(): Maybe<any>` would obviously type-erased because the
+      // caller doesn't influence the type returned by `foo`.
     } else {
       retTy = Type.oneOf([Type.generate(), opcodes().get('void')]);
     }
