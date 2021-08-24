@@ -594,6 +594,9 @@ class Call extends Expr {
       metadata.scope,
     );
     fns = selFns;
+    // console.log('initial select for', ast.t.trim(), '->', fns);
+    // stdout.write('-> args ');
+    // console.dir(args, { depth: 4 });
     args.forEach((arg, ii) => arg.ty.constrain(Type.oneOf(selPTys[ii]), metadata.scope));
     retTy.constrain(Type.oneOf(selRetTys), metadata.scope);
     // now, constrain all of the args to their possible types
@@ -622,6 +625,7 @@ class Call extends Expr {
       this.retTy,
       this.scope,
     );
+    // console.log('fnSelect for', this.ast.t.trim(), '->', ret[0]);
     return ret;
   }
 

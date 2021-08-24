@@ -1588,13 +1588,27 @@ class OneOf extends Type {
   }
 
   constrain(that: Type, scope: Scope) {
+    // console.log('constraining for', this.name, 'with', this.selection, 'to', that);
     if (this.eq(that)) {
       return;
     }
     this.selection = this.selection.filter((ty) =>
       ty.compatibleWithConstraint(that, scope),
     );
-    this.selection.forEach((ty) => ty.constrain(that, scope));
+    if (that instanceof OneOf) {
+      that.selection = that.selection.filter((ty) =>
+        ty.compatibleWithConstraint(this, scope),
+      );
+    } else {
+      this.selection.forEach((ty) => ty.constrain(that, scope));
+      if (that instanceof Interface) {
+        if (that.delegate === null) {
+          that.delegate = this;
+        } else {
+          that.delegate.constrain(this, scope);
+        }
+      }
+    }
     // if (this.selection.length === 0) {
     //   throw new Error(`No more Types left! Oh no!`);
     // }

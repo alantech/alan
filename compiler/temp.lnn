@@ -1,8 +1,33 @@
 from @std/app import start, print, exit
 
 on start {
-  const x = 4;
-  let y = ok(x);
-  y = none();
-  emit exit x;
+  // concat('Hello, ', "World!").print();
+  // print('Hello, ' + 'World!');
+
+  // repeat('hi ', 5).print();
+  // print('hey ' * 5);
+
+  // matches('foobar', 'fo.*').print();
+  // print('foobar' ~ 'fo.*');
+
+  // index('foobar', 'ba').print();
+  // print('foobar' @ 'ra');
+
+  // length('foobar').print();
+  // print(#'foo');
+
+  // trim('   hi  ').print();
+  // print(`' hey   ');
+
+  // split('Hello, World!', ', ')[0].print();
+  // print(('Hello, World!' / ', ')[1]);
+
+  // const res = split('Hello, World!', ', ');
+  // res[0].print();
+
+  // const res2 = 'Hello, World!' / ', ';
+  // print(res2[1]);
+
+  wait(1000);
+  emit exit 0;
 }
