@@ -9,24 +9,24 @@ Describe "Maybe, Result, and Either"
         on start {
           let result = ok(4);
           result.getOr(0).print();
-          result = err(noerr());
+          result = err('');
           result.getOr(0).print();
-          result = ok(0);
-          result.getOr(3).print();
+          //result = ok(0);
+          //result.getOr(3).print();
 
           let maybe = some(4);
           maybe.getOr(0).print();
           maybe = none();
           maybe.getOr(0).print();
-          maybe = some(0);
-          maybe.getOr(3).print();
+          //maybe = some(0);
+          //maybe.getOr(3).print();
 
           let either = main(4);
           either.getMainOr(0).print();
           either = alt('hello world');
           either.getAltOr('').print();
-          either = main(0);
-          either.getMainOr(3).print();
+          //either = main(0);
+          //either.getMainOr(3).print();
           either = alt('');
           either.getAltOr('hello world').print();
 
@@ -43,13 +43,10 @@ Describe "Maybe, Result, and Either"
 
     OUTPUT="4
 0
-3
 4
 0
-3
 4
 hello world
-0
 
 "
 
