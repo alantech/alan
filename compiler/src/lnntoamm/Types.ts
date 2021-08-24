@@ -337,7 +337,9 @@ class Opaque extends Type implements Generalizable {
   }
 
   fnselectOptions(): Type[] {
-    const genOptions = Object.values(this.generics).map((g) => g?.fnselectOptions() ?? [g]);
+    const genOptions = Object.values(this.generics).map(
+      (g) => g?.fnselectOptions() ?? [g],
+    );
     const opts = new Array<Type>();
     const toSolidify = new Opaque(this.name, Object.keys(this.generics));
     for (const indices of matrixIndices(genOptions)) {
@@ -1361,10 +1363,8 @@ class Interface extends Type {
       this.delegate.tempConstrain(that, scope);
     } else if (this.tempDelegate !== null) {
       if (!this.tempDelegate.eq(that)) {
-        console.log('---------------');
-        console.dir(this, { depth: 4 });
-        console.dir(that, { depth: 4 });
-        TODO('re-tempConstrain Interface');
+        // they must be equal
+        that.constrain(this.tempDelegate, scope);
       }
     } else {
       const getTrace = { stack: undefined };

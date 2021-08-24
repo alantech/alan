@@ -217,6 +217,7 @@ const load = (): void => {
     isOk: [{ r: 'Result<any>' }, 'bool'],
     isErr: [{ r: 'Result<any>' }, 'bool'],
     getOrR: [{ r: 'Result<any>', d: 'any' }, 'any'],
+    getErr: [{ r: 'Result<any>', e: 'Error' }, 'Error'],
 
     waitop: [{ t: 'int64' }, 'void'],
 
