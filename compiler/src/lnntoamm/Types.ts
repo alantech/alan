@@ -1642,10 +1642,17 @@ class OneOf extends Type {
   }
 
   tempConstrain(to: Type, scope: Scope) {
-    this.tempSelect = this.selection.filter((ty) =>
-      ty.compatibleWithConstraint(to, scope),
-    );
-    this.tempSelect.forEach((ty) => ty.tempConstrain(to, scope));
+    if (to instanceof OneOf) {
+      // TODO: do i also need to filter `to`'s selection?
+      this.tempSelect = (to.tempSelect ?? to.selection).filter((ty) =>
+        ty.compatibleWithConstraint(this, scope),
+      );
+    } else {
+      this.tempSelect = this.selection.filter((ty) =>
+        ty.compatibleWithConstraint(to, scope),
+      );
+      this.tempSelect.forEach((ty) => ty.tempConstrain(to, scope));
+    }
   }
 
   resetTemp() {
