@@ -360,11 +360,29 @@ export default abstract class Expr {
           const retTy = Type.generate();
           const [fns, paramTys, retTys] = operators.reduce(
             ([fns, paramTys, retTys], op) => {
-              const [selFns, selPTys, selRTys] = op.select(
-                metadata.scope,
-                retTy,
-                applyTo.ty,
-              );
+              let selFns: Fn[];
+              let selPTys: Type[][];
+              let selRTys: Type[];
+              try {
+                [selFns, selPTys, selRTys] = op.select(
+                  metadata.scope,
+                  retTy,
+                  applyTo.ty,
+                );
+              } catch (e) {
+                // this try-catch isn't great, but JS doesn't give us great
+                // tools for error handling that allow me to quickly implement
+                // a better fix. Might be better to define custom error types?
+                // This is here because there might be multiple Operators by the
+                // same name. For example, in `root.lnn` the `+` operator is
+                // assigned to both `add` and `concat` - `op.select` above will
+                // throw an error when trying to do eg `"hi" + "\n"`. This
+                // shouldn't cause an error, because it's possible that there's
+                // no `fn add(string, string): string`, but as long as there's
+                // a `fn concat(string, string): string`, then there's no issue.
+                // this still gets caught later on.
+                return [fns, paramTys, retTys];
+              }
               fns = [...fns, ...selFns];
               // assume that `selPTys[i].length === 1`
               paramTys = [...paramTys, ...selPTys.map((pTys) => pTys[0])];
@@ -435,7 +453,23 @@ export default abstract class Expr {
         while (ops.length > 0) {
           const op = ops.pop();
           const retTy = Type.generate();
-          const selected = op.select(metadata.scope, retTy, left.ty, right.ty);
+          let selected: [Fn[], Type[][], Type[]];
+          try {
+            selected = op.select(metadata.scope, retTy, left.ty, right.ty);
+          } catch (e) {
+            // this try-catch isn't great, but JS doesn't give us great
+            // tools for error handling that allow me to quickly implement
+            // a better fix. Might be better to define custom error types?
+            // This is here because there might be multiple Operators by the
+            // same name. For example, in `root.lnn` the `+` operator is
+            // assigned to both `add` and `concat` - `op.select` above will
+            // throw an error when trying to do eg `"hi" + "\n"`. This
+            // shouldn't cause an error, because it's possible that there's
+            // no `fn add(string, string): string`, but as long as there's
+            // a `fn concat(string, string): string`, then there's no issue.
+            // this still gets caught later on.
+            continue;
+          }
           fns.push(...selected[0]);
           // assume `selected[1].length === 2`
           selected[1].forEach((pTys) => {

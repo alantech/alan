@@ -621,13 +621,14 @@ export class FunctionType extends Type {
       ],
     );
     if (ret[0].length > original.length || ret[0].length === 0) {
-      console.log('~~~ ERROR');
-      console.log('original: ', original);
-      console.log('ret:      ', ret);
-      console.log('retLength:', ret[0].length);
-      console.log('args:     ', args);
-      console.log('matrix:   ', matrix);
-      console.log('byweight: ', fnsByWeight);
+      // these make debugging easier :)
+      // console.log('~~~ ERROR');
+      // console.log('original: ', original);
+      // console.log('ret:      ', ret);
+      // console.log('retLength:', ret[0].length);
+      // console.log('args:     ', args);
+      // console.log('matrix:   ', matrix);
+      // console.log('byweight: ', fnsByWeight);
       if (ret[0].length === 0) {
         throw new Error('no more functions left');
       } else {

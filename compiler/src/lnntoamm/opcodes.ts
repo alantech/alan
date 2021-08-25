@@ -194,10 +194,10 @@ const load = (): void => {
     norbool: [{ a: 'bool', b: 'bool' }, 'bool'],
     xnorboo: [{ a: 'bool', b: 'bool' }, 'bool'],
 
-    modi8: [{ a: 'int8' }, 'int8'],
-    modi16: [{ a: 'int16' }, 'int16'],
-    modi32: [{ a: 'int32' }, 'int32'],
-    modi64: [{ a: 'int64' }, 'int64'],
+    modi8: [{ a: 'int8', b: 'int8' }, 'int8'],
+    modi16: [{ a: 'int16', b: 'int16' }, 'int16'],
+    modi32: [{ a: 'int32', b: 'int32' }, 'int32'],
+    modi64: [{ a: 'int64', c: 'int64' }, 'int64'],
 
     sqrtf32: [{ a: 'float32' }, 'float32'],
     sqrtf64: [{ a: 'float64' }, 'float64'],
