@@ -74,7 +74,11 @@ export default abstract class Type implements Equalable {
   abstract contains(ty: Type): boolean;
   abstract eq(that: Equalable): boolean;
   abstract instance(opts?: InstanceOpts): Type;
-  abstract tempConstrain(to: Type, scope: Scope, opts?: TempConstrainOpts): void;
+  abstract tempConstrain(
+    to: Type,
+    scope: Scope,
+    opts?: TempConstrainOpts,
+  ): void;
   abstract resetTemp(): void;
   abstract size(): number;
 
@@ -1606,10 +1610,13 @@ class OneOf extends Type {
     // there's no need to do this any time later. Ensure that the
     // precedence is order is maintained though - if there is a duplicate,
     // keep the one that's later in the list.
-    selection = selection.reverse().reduce(
-      (sel, fn) => (sel.some((selFn) => selFn.eq(fn)) ? sel : [...sel, fn]),
-      new Array<Type>(),
-    ).reverse();
+    selection = selection
+      .reverse()
+      .reduce(
+        (sel, fn) => (sel.some((selFn) => selFn.eq(fn)) ? sel : [...sel, fn]),
+        new Array<Type>(),
+      )
+      .reverse();
     this.selection = selection;
     this.tempSelect = tempSelect;
   }
@@ -1692,12 +1699,11 @@ class OneOf extends Type {
   tempConstrain(to: Type, scope: Scope, opts?: TempConstrainOpts) {
     const toOpts = to.fnselectOptions();
     this.tempSelect = toOpts.reduce((tempSel, toOpt) => {
-      const myApplies = this.selection.filter((ty) => ty.compatibleWithConstraint(toOpt, scope));
-      return [
-        ...tempSel.filter(ty => myApplies.includes(ty)),
-        ...myApplies,
-      ];
-    }, new Array<Type>())
+      const myApplies = this.selection.filter((ty) =>
+        ty.compatibleWithConstraint(toOpt, scope),
+      );
+      return [...tempSel.filter((ty) => myApplies.includes(ty)), ...myApplies];
+    }, new Array<Type>());
   }
 
   resetTemp() {
