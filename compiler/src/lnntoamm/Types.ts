@@ -1232,9 +1232,6 @@ class Interface extends Type {
   }
 
   constrain(that: Type, scope: Scope) {
-    if (this.name === 'any-n1') {
-      Error.captureStackTrace(this);
-    }
     if (this.eq(that) || that.contains(this)) {
       return;
     }
@@ -1377,8 +1374,8 @@ class Interface extends Type {
         that.constrain(this.tempDelegate, scope);
       }
     } else {
-      const getTrace = { stack: undefined };
-      Error.captureStackTrace(getTrace);
+      // const getTrace = { stack: undefined };
+      // Error.captureStackTrace(getTrace);
       // console.log('-> setting', this.name, 'tempDelegate to', that, 'at', getTrace.stack);
       this.tempDelegate = that;
     }
@@ -1610,13 +1607,10 @@ class OneOf extends Type {
     // there's no need to do this any time later. Ensure that the
     // precedence is order is maintained though - if there is a duplicate,
     // keep the one that's later in the list.
-    selection = selection
-      .reverse()
-      .reduce(
-        (sel, fn) => (sel.some((selFn) => selFn.eq(fn)) ? sel : [...sel, fn]),
-        new Array<Type>(),
-      )
-      .reverse();
+    selection = selection.reduceRight(
+      (sel, fn) => (sel.some((selFn) => selFn.eq(fn)) ? sel : [fn, ...sel]),
+      new Array<Type>(),
+    );
     this.selection = selection;
     this.tempSelect = tempSelect;
   }
