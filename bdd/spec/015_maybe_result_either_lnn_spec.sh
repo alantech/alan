@@ -11,25 +11,26 @@ Describe "Maybe, Result, and Either"
           result.getOr(0).print();
           result = err('');
           result.getOr(0).print();
-          //result = ok(0);
-          //result.getOr(3).print();
+          result = ok(0);
+          result.getOr(3).print();
 
           let maybe = some(4);
           maybe.getOr(0).print();
           maybe = none();
           maybe.getOr(0).print();
-          //maybe = some(0);
-          //maybe.getOr(3).print();
+          maybe = some(0);
+          maybe.getOr(3).print();
 
           let either = main(4);
           either.getMainOr(0).print();
           either = alt('hello world');
           either.getAltOr('').print();
-          //either = main(0);
-          //either.getMainOr(3).print();
+          either = main(0);
+          either.getMainOr(3).print();
           either = alt('');
           either.getAltOr('hello world').print();
 
+          print('done');
           emit exit 0;
         }
       "
@@ -43,12 +44,15 @@ Describe "Maybe, Result, and Either"
 
     OUTPUT="4
 0
+0
 4
+0
 0
 4
 hello world
+0
 
-"
+done"
 
     It "runs js"
       When run test_js

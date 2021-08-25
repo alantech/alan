@@ -36,6 +36,11 @@ interface InterfaceInstanceOpts {
   interfaceOk?: boolean;
 }
 
+export type TempConstrainOpts = InterfaceTempConstrainOpts;
+interface InterfaceTempConstrainOpts {
+  isTest?: boolean;
+}
+
 const parseFulltypename = (node: LPNode): TypeName => {
   const name = node.get('typename').t.trim();
   const genericTys: TypeName[] = [];
@@ -69,7 +74,7 @@ export default abstract class Type implements Equalable {
   abstract contains(ty: Type): boolean;
   abstract eq(that: Equalable): boolean;
   abstract instance(opts?: InstanceOpts): Type;
-  abstract tempConstrain(to: Type, scope: Scope): void;
+  abstract tempConstrain(to: Type, scope: Scope, opts?: TempConstrainOpts): void;
   abstract resetTemp(): void;
   abstract size(): number;
 
@@ -433,7 +438,7 @@ class Opaque extends Type implements Generalizable {
     }
   }
 
-  tempConstrain(that: Type, scope: Scope) {
+  tempConstrain(that: Type, scope: Scope, opts?: TempConstrainOpts) {
     if (!this.compatibleWithConstraint(that, scope)) {
       throw new Error(
         `Cannot temporarily constrain type ${this.ammName} to ${that.ammName}`,
@@ -448,13 +453,13 @@ class Opaque extends Type implements Generalizable {
         if (thisGen === null || thatGen === null) {
           throw new Error(`Can't tempConstrain non-solidified Opaque types`);
         } else {
-          thisGen.tempConstrain(thatGen, scope);
+          thisGen.tempConstrain(thatGen, scope, opts);
         }
       });
     } else if (that instanceof Interface) {
       const tcTo = that.delegate ?? that.tempDelegate;
       if (tcTo !== null) {
-        this.tempConstrain(tcTo, scope);
+        this.tempConstrain(tcTo, scope, opts);
       }
     } else if (that instanceof OneOf) {
       // we're happy, no need to tempConstrain
@@ -687,7 +692,7 @@ export class FunctionType extends Type {
     );
   }
 
-  tempConstrain(to: Type, scope: Scope): void {
+  tempConstrain(to: Type, scope: Scope, opts?: TempConstrainOpts): void {
     console.log(to);
     TODO('temp constraints on a function type?');
   }
@@ -824,8 +829,9 @@ class Struct extends Type {
     return this; // TODO: this right?
   }
 
-  tempConstrain(to: Type, scope: Scope) {
+  tempConstrain(to: Type, scope: Scope, opts?: TempConstrainOpts) {
     // TODO: can structs have temp constraints?
+    // TODO: should be separate implementation when generics are implemented, pass opts
     this.constrain(to, scope);
   }
 
@@ -1356,13 +1362,13 @@ class Interface extends Type {
     }
   }
 
-  tempConstrain(that: Type, scope: Scope) {
+  tempConstrain(that: Type, scope: Scope, opts?: TempConstrainOpts) {
     if (this === that) {
       throw new Error('huh?');
     } else if (this.delegate !== null) {
       this.delegate.tempConstrain(that, scope);
     } else if (this.tempDelegate !== null) {
-      if (!this.tempDelegate.eq(that)) {
+      if (!this.tempDelegate.eq(that) && (!opts || !opts.isTest)) {
         // they must be equal
         that.constrain(this.tempDelegate, scope);
       }
@@ -1572,9 +1578,9 @@ class Generated extends Interface {
     }
   }
 
-  tempConstrain(to: Type, scope: Scope) {
+  tempConstrain(to: Type, scope: Scope, opts?: TempConstrainOpts) {
     if (this.delegate !== null) {
-      this.delegate.tempConstrain(to, scope);
+      this.delegate.tempConstrain(to, scope, opts);
     } else if (this.tempDelegate !== null) {
       TODO('temp constraints to a temporary constraint???');
     } else if (to instanceof Has) {
@@ -1597,11 +1603,13 @@ class OneOf extends Type {
     super(genName('OneOf'));
     // ensure there's no duplicates. This fixes an issue with duplicates
     // in matrix selection. Since no other values are added to the list,
-    // there's no need to do this any time later.
-    selection = selection.reduce(
+    // there's no need to do this any time later. Ensure that the
+    // precedence is order is maintained though - if there is a duplicate,
+    // keep the one that's later in the list.
+    selection = selection.reverse().reduce(
       (sel, fn) => (sel.some((selFn) => selFn.eq(fn)) ? sel : [...sel, fn]),
       new Array<Type>(),
-    );
+    ).reverse();
     this.selection = selection;
     this.tempSelect = tempSelect;
   }
@@ -1631,7 +1639,6 @@ class OneOf extends Type {
   }
 
   constrain(that: Type, scope: Scope) {
-    // console.log('constraining for', this.name, 'with', this.selection, 'to', that);
     if (this.eq(that)) {
       return;
     }
@@ -1682,18 +1689,15 @@ class OneOf extends Type {
     return res;
   }
 
-  tempConstrain(to: Type, scope: Scope) {
-    if (to instanceof OneOf) {
-      // TODO: do i also need to filter `to`'s selection?
-      this.tempSelect = (to.tempSelect ?? to.selection).filter((ty) =>
-        ty.compatibleWithConstraint(this, scope),
-      );
-    } else {
-      this.tempSelect = this.selection.filter((ty) =>
-        ty.compatibleWithConstraint(to, scope),
-      );
-      this.tempSelect.forEach((ty) => ty.tempConstrain(to, scope));
-    }
+  tempConstrain(to: Type, scope: Scope, opts?: TempConstrainOpts) {
+    const toOpts = to.fnselectOptions();
+    this.tempSelect = toOpts.reduce((tempSel, toOpt) => {
+      const myApplies = this.selection.filter((ty) => ty.compatibleWithConstraint(toOpt, scope));
+      return [
+        ...tempSel.filter(ty => myApplies.includes(ty)),
+        ...myApplies,
+      ];
+    }, new Array<Type>())
   }
 
   resetTemp() {

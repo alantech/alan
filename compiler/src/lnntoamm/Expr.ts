@@ -1,3 +1,4 @@
+import { stdout } from 'process';
 import { LPNode, NamedAnd, NamedOr, NulLP } from '../lp';
 import Output, { AssignKind } from './Amm';
 import Fn from './Fn';
@@ -591,9 +592,6 @@ class Call extends Expr {
       metadata.scope,
     );
     fns = selFns;
-    // console.log('initial select for', ast.t.trim(), '->', fns);
-    // stdout.write('-> args ');
-    // console.dir(args, { depth: 4 });
     // now, constrain all of the args to their possible types
     argTys.forEach((ty, ii) =>
       ty.constrain(Type.oneOf(selPTys[ii]), metadata.scope),

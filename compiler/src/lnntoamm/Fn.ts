@@ -1,3 +1,4 @@
+import { stdout } from 'process';
 import { LPNode, NamedAnd, NulLP, Token } from '../lp';
 import Output, { AssignKind } from './Amm';
 import Expr, { Ref } from './Expr';
@@ -266,9 +267,9 @@ export default class Fn {
     let res: [Type[], Type] | null = null;
     try {
       this.params.forEach((param, ii) =>
-        param.ty.tempConstrain(argTys[ii], scope),
+        param.ty.tempConstrain(argTys[ii], scope, { isTest: true }),
       );
-      this.retTy.tempConstrain(expectResTy, scope);
+      this.retTy.tempConstrain(expectResTy, scope, { isTest: true });
       res = [
         this.params.map((param) => param.ty.instance({ interfaceOk: true })),
         this.retTy.instance({ interfaceOk: true }),
