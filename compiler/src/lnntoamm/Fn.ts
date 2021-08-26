@@ -47,8 +47,8 @@ export default class Fn {
     while (
       this.body.reduce(
         (carry, stmt) => stmt.cleanup(this.scope) || carry,
-        false,
-      ) || ensureOnce
+        ensureOnce,
+      )
     ) ensureOnce = false;
     const tyAst = ((fnAst: LPNode) => {
       if (fnAst instanceof NulLP) {
@@ -272,9 +272,10 @@ export default class Fn {
         param.ty.tempConstrain(argTys[ii], scope, tcOpts),
       );
       this.retTy.tempConstrain(expectResTy, scope, tcOpts);
+      const instanceOpts = { interfaceOk: true, forSameDupIface: [] };
       res = [
-        this.params.map((param) => param.ty.instance({ interfaceOk: true })),
-        this.retTy.instance({ interfaceOk: true }),
+        this.params.map((param) => param.ty.instance(instanceOpts)),
+        this.retTy.instance(instanceOpts),
       ];
     } catch (e) {
       // do nothing: the args aren't applicable to the params so

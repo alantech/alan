@@ -230,12 +230,17 @@ export class Dec extends VarDef {
     // refs don't escape the current scope and this only happens 1x/scope,
     // so this is fine
     this.__ammName = genName();
+    try {
     this.expr.inline(
       amm,
       this.immutable ? 'const' : 'let',
       this.ammName,
       this.ty.instance(),
     );
+    } catch (e) {
+      console.dir(this, { depth: 6 });
+      throw e;
+    }
   }
 }
 

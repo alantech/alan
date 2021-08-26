@@ -39,6 +39,7 @@ interface InterfaceDupOpts {
 export type InstanceOpts = InterfaceInstanceOpts;
 interface InterfaceInstanceOpts {
   interfaceOk?: boolean;
+  forSameDupIface?: [Type, Type][];
 }
 
 export type TempConstrainOpts = InterfaceTempConstrainOpts;
@@ -184,18 +185,28 @@ export default abstract class Type implements Equalable {
   static flatten(tys: Type[]): Type {
     tys = tys.reduce((allTys, ty) => [...allTys, ...ty.fnselectOptions()], []);
     let outerType: Type = null;
+    let isSquishy = true;
     const innerTys = tys.reduce((genTys, ty) => {
       // shallow equality (eg Result<int64> and Result<string> will match here)
       if (outerType === null) {
         outerType = ty;
       }
-      if (ty instanceof Opaque && ty.name === outerType.name) {
-        return Object.values(ty.generics).map((genTy, ii) => [...(genTys[ii] || []), genTy]);
+      if (generalizable(ty)) {
+        if (ty.name !== outerType.name) {
+          isSquishy = false;
+        } else {
+          return Object.values(ty.generics).map((genTy, ii) => [...(genTys[ii] || []), genTy]);
+        }
       } else {
-        throw new Error(`Cannot flatten types: ${outerType.name} and ${ty.name}`);
+        isSquishy = false;
       }
     }, new Array<Type[]>());
-    return (outerType as Opaque).solidify(innerTys.map(Type.oneOf));
+
+    if (isSquishy) {
+      return (outerType as Opaque).solidify(innerTys.map(Type.oneOf));
+    } else {
+      return null;
+    }
   }
 
   dup(opts?: DupOpts): Type | null {
@@ -575,7 +586,7 @@ export class FunctionType extends Type {
             return [
               [...fns, fn],
               _pTys,
-              [...retTys, fn.retTy.instance({ interfaceOk: true })],
+              [...retTys, fn.retTy.instance({ interfaceOk: true, forSameDupIface: [] })],
             ];
           } else {
             return [fns, _pTys, retTys];
@@ -661,13 +672,12 @@ export class FunctionType extends Type {
         throw new Error('somehow got more options when fn selecting');
       }
     }
-    // const getStack = { stack: '' };
-    // Error.captureStackTrace(getStack);
-    isDbg &&
-      (() => {
-        //   console.log('returning from', getStack.stack);
-        console.dir(ret, { depth: 4 });
-      })();
+    if (isDbg) {
+      // const getStack = { stack: '' };
+      // Error.captureStackTrace(getStack);
+      // console.log('returning from', getStack.stack);
+      console.dir(ret, { depth: 4 });
+    }
     return ret;
   }
 
@@ -1381,11 +1391,26 @@ class Interface extends Type {
       opts &&
       opts.interfaceOk &&
       this.__isDuped &&
-      this.__isDuped.isTyVar
+      this.__isDuped.isTyVar &&
+      opts.forSameDupIface
+    ) {
+      const already = opts.forSameDupIface
+        .find(([iface, _duped]) => iface === this);
+      if (already) {
+        return already[1];
+      } else {
+        const duped = this.dup();
+        opts.forSameDupIface.push([this, duped]);
+        return duped;
+      }
+    } else if (
+      opts &&
+      opts.interfaceOk &&
+      this.__isDuped
     ) {
       return this;
     } else {
-      console.log(this);
+      // console.log(this);
       throw new Error(`Could not resolve type ${this.name}`);
     }
   }
@@ -1427,7 +1452,9 @@ class Interface extends Type {
   }
 
   dup(dupOpts: DupOpts = {}): Type | null {
-    if (this.isDuped) return null;
+    if (this.isDuped && (!this.__isDuped.isTyVar || dupOpts.isTyVar)) {
+      return null;
+    }
     const dup = new Interface(
       // name isn't really used for anything in Interfaces
       // (not used for ammName, not used for equality check, etc)
@@ -1676,11 +1703,16 @@ class OneOf extends Type {
   }
 
   constrain(that: Type, scope: Scope, opts?: ConstrainOpts) {
+    if (this.name === 'OneOf-n4413') {
+      stdout.write('~~> constraining ' + this.name + ' to:');
+      console.dir(that, { depth: 4 });
+    }
     if (this.eq(that)) {
       return;
     } else if (opts && opts.stopAt === this) {
       return;
     }
+    const original = [...this.selection];
     const thatOpts = that.fnselectOptions();
     // ok so it's easy enough to implement a Set intersection (which is what
     // this method does). However, since there *is* an order of preference,
@@ -1698,15 +1730,41 @@ class OneOf extends Type {
       // preference order, so remove any elements from `sel` that apply
       // at the current "preference level" (ie, the index of `thatOpts`
       // that is `thatOpt`)
-      return [...sel.filter((ty) => myApplies.includes(ty)), ...myApplies];
+      return [...sel.filter((ty) => !myApplies.includes(ty)), ...myApplies];
     }, new Array<Type>());
-    this.selection.forEach((sel) => {
-      const optsThatApply = thatOpts.filter((opt) =>
-        opt.compatibleWithConstraint(sel, scope),
-      );
-      // const oneOfApply = new OneOf(optsThatApply);
-      sel.constrain(Type.flatten(optsThatApply), scope, opts);
-    });
+    /*
+    squishy:
+    [Result<int8>, Result<int16>]
+    [Result<any>, Result<int8>]
+    [Result<void>, Result<int8>]
+
+    not-squishy:
+    [any, Result<int8>]
+    [void, bool]
+    [int8, int16]
+    */
+    if (thatOpts.length > 1) {
+      this.selection.forEach((sel) => {
+        const optsThatApply = thatOpts.filter((opt) =>
+          opt.compatibleWithConstraint(sel, scope),
+        );
+        // const oneOfApply = new OneOf(optsThatApply);
+        // try {
+        const flattened = Type.flatten(optsThatApply);
+        if (flattened !== null) {
+          sel.constrain(flattened, scope, opts);
+        }
+        // } catch (e) {
+        //   console.log('original sel:', original);
+        //   console.log('now:', this.selection);
+        //   console.log('during:', sel);
+        //   stdout.write('that: ');
+        //   console.dir(that, { depth: 4 });
+        //   console.log('opts:', thatOpts);
+        //   throw e;
+        // }
+      });
+    }
     if (!opts || opts.stopAt === undefined) {
       opts = { stopAt: this };
     }

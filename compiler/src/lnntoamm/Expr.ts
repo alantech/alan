@@ -636,6 +636,7 @@ class Call extends Expr {
   }
 
   private fnSelect(): [Fn[], Type[][], Type[]] {
+    // try {
     const ret = FunctionType.matrixSelect(
       this.fns,
       this.args.map((a) => a.ty),
@@ -644,6 +645,11 @@ class Call extends Expr {
     );
     // console.log('fnSelect for', this.ast.t.trim(), '->', ret[0]);
     return ret;
+    // } catch (e) {
+    //   console.log('for', this.ast.t.trim());
+    //   console.dir(this.args.map(a => a.ty), { depth: 4 });
+    //   throw e;
+    // }
   }
 
   cleanup() {
