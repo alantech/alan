@@ -5,7 +5,7 @@ import Expr, { Ref } from './Expr';
 import opcodes from './opcodes';
 import Scope from './Scope';
 import Stmt, { Dec, Exit, FnParam, MetaData } from './Stmt';
-import Type, { FunctionType } from './Types';
+import Type, { FunctionType, TempConstrainOpts } from './Types';
 import { DBG, TODO } from './util';
 
 export default class Fn {
@@ -43,12 +43,13 @@ export default class Fn {
     this.body = body;
     this.metadata =
       metadata !== null ? metadata : new MetaData(scope, this.retTy);
+    let ensureOnce = true;
     while (
       this.body.reduce(
         (carry, stmt) => stmt.cleanup(this.scope) || carry,
         false,
-      )
-    );
+      ) || ensureOnce
+    ) ensureOnce = false;
     const tyAst = ((fnAst: LPNode) => {
       if (fnAst instanceof NulLP) {
         // assume it's for an opcode
@@ -263,13 +264,14 @@ export default class Fn {
     argTys: Type[],
     expectResTy: Type,
     scope: Scope,
+    tcOpts?: TempConstrainOpts,
   ): [Type[], Type] | null {
     let res: [Type[], Type] | null = null;
     try {
       this.params.forEach((param, ii) =>
-        param.ty.tempConstrain(argTys[ii], scope, { isTest: true }),
+        param.ty.tempConstrain(argTys[ii], scope, tcOpts),
       );
-      this.retTy.tempConstrain(expectResTy, scope, { isTest: true });
+      this.retTy.tempConstrain(expectResTy, scope, tcOpts);
       res = [
         this.params.map((param) => param.ty.instance({ interfaceOk: true })),
         this.retTy.instance({ interfaceOk: true }),

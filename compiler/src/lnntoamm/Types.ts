@@ -26,6 +26,11 @@ const generalizable = (val: Type): val is Type & Generalizable =>
   'generics' in val;
 
 // note: if more opt types are used, use `InterfaceDupOpts & OtherDupOpts`
+export type ConstrainOpts = OneOfConstrainOpts;
+interface OneOfConstrainOpts {
+  stopAt?: Type;
+}
+
 export type DupOpts = InterfaceDupOpts;
 interface InterfaceDupOpts {
   isTyVar?: boolean;
@@ -70,7 +75,7 @@ export default abstract class Type implements Equalable {
   }
 
   abstract compatibleWithConstraint(ty: Type, scope: Scope): boolean;
-  abstract constrain(to: Type, scope: Scope): void;
+  abstract constrain(to: Type, scope: Scope, opts?: ConstrainOpts): void;
   abstract contains(ty: Type): boolean;
   abstract eq(that: Equalable): boolean;
   abstract instance(opts?: InstanceOpts): Type;
@@ -175,6 +180,24 @@ export default abstract class Type implements Equalable {
     return new HasOperator(name, null, params, ret, isPrefix);
   }
 
+  // TODO: generalize for struct and any other generalizable type
+  static flatten(tys: Type[]): Type {
+    tys = tys.reduce((allTys, ty) => [...allTys, ...ty.fnselectOptions()], []);
+    let outerType: Type = null;
+    const innerTys = tys.reduce((genTys, ty) => {
+      // shallow equality (eg Result<int64> and Result<string> will match here)
+      if (outerType === null) {
+        outerType = ty;
+      }
+      if (ty instanceof Opaque && ty.name === outerType.name) {
+        return Object.values(ty.generics).map((genTy, ii) => [...(genTys[ii] || []), genTy]);
+      } else {
+        throw new Error(`Cannot flatten types: ${outerType.name} and ${ty.name}`);
+      }
+    }, new Array<Type[]>());
+    return (outerType as Opaque).solidify(innerTys.map(Type.oneOf));
+  }
+
   dup(opts?: DupOpts): Type | null {
     return null;
   }
@@ -264,7 +287,7 @@ class Opaque extends Type implements Generalizable {
     }
   }
 
-  constrain(that: Type, scope: Scope) {
+  constrain(that: Type, scope: Scope, opts?: ConstrainOpts) {
     if (this.eq(that)) {
       return;
     }
@@ -285,10 +308,12 @@ class Opaque extends Type implements Generalizable {
       const thisGens = Object.keys(this.generics);
       const thatGens = Object.keys(that.generics);
       thisGens.forEach((genName, ii) =>
-        this.generics[genName].constrain(that.generics[thatGens[ii]], scope),
+        this.generics[genName].constrain(that.generics[thatGens[ii]], scope, opts),
       );
     } else if (that instanceof Interface || that instanceof OneOf) {
-      that.constrain(this, scope);
+      that.constrain(this, scope, opts);
+    } else if (that instanceof Struct) {
+      throw new Error(`Cannot constrain Opaque type to Struct type`);
     } else {
       console.log(this);
       console.log(that);
@@ -536,8 +561,8 @@ export class FunctionType extends Type {
     isDbg && console.log('STARTING', fns);
     const original = [...fns];
     // remove any fns that shouldn't apply
-    const callTy = new FunctionType(new NulLP(), args, Type.generate());
-    isDbg && stdout.write('callTy: ') && console.dir(callTy, { depth: 4 });
+    const callTy = new FunctionType(new NulLP(), args, expectResTy);
+    isDbg && stdout.write('callTy: ') && console.dir(callTy, { depth: 6 });
     fns = fns.filter((fn) => fn.ty.compatibleWithConstraint(callTy, scope));
     isDbg && console.log('filtered:', fns);
     // if it's 0-arity then all we have to do is grab the retTy of the fn
@@ -582,7 +607,7 @@ export class FunctionType extends Type {
       fnsForWeight.push(
         ...fns.reduce((fns, fn) => {
           isDbg && console.log('getting result ty');
-          const tys = fn.resultTyFor(argTys, expectResTy, scope);
+          const tys = fn.resultTyFor(argTys, expectResTy, scope, { isTest: true });
           isDbg && console.dir(tys, { depth: 4 });
           if (tys === null) {
             return fns;
@@ -591,10 +616,11 @@ export class FunctionType extends Type {
           }
         }, new Array<[Fn, Type[], Type]>()),
       );
-      isDbg && console.log('for weight now', fnsForWeight);
+      isDbg && console.log('for weight', weight, 'now', fnsForWeight);
       fnsByWeight.set(weight, fnsForWeight);
     }
-    const weights = Array.from(fnsByWeight.keys()).sort();
+    const weights = Array.from(fnsByWeight.keys()).sort((a, b) => a - b);
+    isDbg && console.log('assigned weights:', weights);
     // weights is ordered lowest->highest
     const ret: [Fn[], Type[][], Type[]] = weights.reduce(
       ([fns, pTys, retTys], weight) => {
@@ -666,7 +692,7 @@ export class FunctionType extends Type {
     }
   }
 
-  constrain(to: Type, scope: Scope): void {
+  constrain(to: Type, scope: Scope, opts?: ConstrainOpts): void {
     console.log(to);
     TODO('figure out what it means to constrain a function type');
   }
@@ -797,11 +823,11 @@ class Struct extends Type {
     }
   }
 
-  constrain(that: Type, scope: Scope) {
+  constrain(that: Type, scope: Scope, opts?: ConstrainOpts) {
     // for every type T, when constraining with some `OneOf` U, T just needs
     // to ensure that T⊆U
     if (that instanceof OneOf) {
-      that.constrain(this, scope);
+      that.constrain(this, scope, opts);
       return;
     }
     if (this.eq(that)) {
@@ -813,7 +839,7 @@ class Struct extends Type {
       );
     }
     if (that instanceof HasField) {
-      that.ty.constrain(this.fields[that.name], scope);
+      that.ty.constrain(this.fields[that.name], scope, opts);
     }
   }
 
@@ -918,7 +944,7 @@ abstract class Has extends Type {
   }
 
   // convenience for `Type.hasX(...).constrain(ty)`
-  constrain(that: Type, scope: Scope) {
+  constrain(that: Type, scope: Scope, opts?: ConstrainOpts) {
     if (this.eq(that)) {
       return;
     }
@@ -1232,7 +1258,7 @@ class Interface extends Type {
     }
   }
 
-  constrain(that: Type, scope: Scope) {
+  constrain(that: Type, scope: Scope, opts?: ConstrainOpts) {
     if (this.eq(that) || that.contains(this)) {
       return;
     }
@@ -1297,10 +1323,10 @@ class Interface extends Type {
     });
 
     if (this.delegate !== null) {
-      this.delegate.constrain(that, scope);
+      this.delegate.constrain(that, scope, opts);
     } else if (this.isDuped) {
       if (that.contains(this)) {
-        that.constrain(this, scope);
+        that.constrain(this, scope, opts);
       } else {
         this.delegate = that;
       }
@@ -1308,7 +1334,7 @@ class Interface extends Type {
       // Error.captureStackTrace(getStack);
       // console.log('->', this.name, 'set delegate at', getStack.stack);
       if (this.tempDelegate !== null) {
-        this.delegate.constrain(this.tempDelegate, scope);
+        this.delegate.constrain(this.tempDelegate, scope, opts);
         this.tempDelegate = null;
       }
     }
@@ -1370,14 +1396,21 @@ class Interface extends Type {
     } else if (this.delegate !== null) {
       this.delegate.tempConstrain(that, scope);
     } else if (this.tempDelegate !== null) {
-      if (!this.tempDelegate.eq(that) && (!opts || !opts.isTest)) {
-        // they must be equal
-        that.constrain(this.tempDelegate, scope);
+      // ensure that `this.tempDelegate` is equal to `that`
+      if (!this.tempDelegate.eq(that)) {
+        if (opts && opts.isTest) {
+          if (!this.tempDelegate.compatibleWithConstraint(that, scope)) {
+            throw new Error(
+              `${this.tempDelegate.ammName} is not compatible with ${that.ammName}`,
+            );
+          }
+        } else {
+          // TODO: if more ConstrainOpts are added, make TempConstrainOpts
+          // be `& ConstrainOpts` and pass the opts through
+          that.constrain(this.tempDelegate, scope);
+        }
       }
     } else {
-      // const getTrace = { stack: undefined };
-      // Error.captureStackTrace(getTrace);
-      // console.log('-> setting', this.name, 'tempDelegate to', that, 'at', getTrace.stack);
       this.tempDelegate = that;
     }
   }
@@ -1472,7 +1505,7 @@ class Generated extends Interface {
     }
   }
 
-  constrain(that: Type, scope: Scope) {
+  constrain(that: Type, scope: Scope, opts?: ConstrainOpts) {
     if (this.eq(that)) {
       return;
     }
@@ -1498,6 +1531,7 @@ class Generated extends Interface {
           that.methods.push(...oMethods);
           that.operators.push(...oOperators);
         }
+        this.delegate = that;
       } else if (this.tempDelegate ?? that.tempDelegate !== null) {
         console.log('-------------');
         console.dir(this, { depth: 4 });
@@ -1505,18 +1539,19 @@ class Generated extends Interface {
         TODO('figure out what to do here');
       } else if (this.delegate !== null) {
         if (that.delegate === null) {
-          that.delegate = this.delegate;
+          that.delegate = this;
         } else if (that.isDuped) {
-          this.delegate.constrain(that.delegate, scope);
+          this.delegate.constrain(that.delegate, scope, opts);
+        } else {
+          that.fields.forEach((f) => this.delegate.constrain(f, scope, opts));
+          that.methods.forEach((m) => this.delegate.constrain(m, scope, opts));
+          that.operators.forEach((o) => this.delegate.constrain(o, scope, opts));
         }
-        that.fields.forEach((f) => this.delegate.constrain(f, scope));
-        that.methods.forEach((m) => this.delegate.constrain(m, scope));
-        that.operators.forEach((o) => this.delegate.constrain(o, scope));
       } else if (that.delegate !== null) {
         this.delegate = that.delegate;
-        this.fields.forEach((f) => this.delegate.constrain(f, scope));
-        this.methods.forEach((m) => this.delegate.constrain(m, scope));
-        this.operators.forEach((o) => this.delegate.constrain(o, scope));
+        this.fields.forEach((f) => this.delegate.constrain(f, scope, opts));
+        this.methods.forEach((m) => this.delegate.constrain(m, scope, opts));
+        this.operators.forEach((o) => this.delegate.constrain(o, scope, opts));
       } else {
         console.log('-------------');
         console.dir(this, { depth: 4 });
@@ -1525,7 +1560,7 @@ class Generated extends Interface {
       }
     } else if (that instanceof Has) {
       if (this.delegate !== null) {
-        this.delegate.constrain(that, scope);
+        this.delegate.constrain(that, scope, opts);
       } else if (that instanceof HasField) {
         const already =
           this.fields.find((field) => field.name === that.name) ?? null;
@@ -1551,12 +1586,12 @@ class Generated extends Interface {
         }
       }
     } else if (this.delegate !== null) {
-      this.delegate.constrain(that, scope);
+      this.delegate.constrain(that, scope, opts);
     } else {
       this.delegate = that;
-      this.fields.forEach((f) => that.constrain(f, scope));
-      this.methods.forEach((m) => that.constrain(m, scope));
-      this.operators.forEach((o) => that.constrain(o, scope));
+      this.fields.forEach((f) => that.constrain(f, scope, opts));
+      this.methods.forEach((m) => that.constrain(m, scope, opts));
+      this.operators.forEach((o) => that.constrain(o, scope, opts));
     }
   }
 
@@ -1640,30 +1675,42 @@ class OneOf extends Type {
     );
   }
 
-  constrain(that: Type, scope: Scope) {
+  constrain(that: Type, scope: Scope, opts?: ConstrainOpts) {
     if (this.eq(that)) {
       return;
+    } else if (opts && opts.stopAt === this) {
+      return;
     }
-    this.selection = this.selection.filter((ty) =>
-      ty.compatibleWithConstraint(that, scope),
-    );
-    if (that instanceof OneOf) {
-      that.selection = that.selection.filter((ty) =>
-        ty.compatibleWithConstraint(this, scope),
+    const thatOpts = that.fnselectOptions();
+    // ok so it's easy enough to implement a Set intersection (which is what
+    // this method does). However, since there *is* an order of preference,
+    // we have to somehow unify that, which is harder to determine. We
+    // could do an averaging system, but that takes a *lot* of work that
+    // this module is not ready to implement. Right now, this algorithm
+    // just assumes that the first `OneOf` (`this` in this context) will
+    // assume the ordering of the RHS (if necessary) - in this context,
+    // it's `that`.
+    this.selection = thatOpts.reduce((sel, thatOpt) => {
+      const myApplies = this.selection.filter((ty) =>
+        ty.compatibleWithConstraint(thatOpt, scope),
       );
-    } else {
-      this.selection.forEach((ty) => ty.constrain(that, scope));
-      if (that instanceof Interface) {
-        if (that.delegate === null) {
-          that.delegate = this;
-        } else {
-          that.delegate.constrain(this, scope);
-        }
-      }
+      // the filter is to prevent duping elements. we must maintain
+      // preference order, so remove any elements from `sel` that apply
+      // at the current "preference level" (ie, the index of `thatOpts`
+      // that is `thatOpt`)
+      return [...sel.filter((ty) => myApplies.includes(ty)), ...myApplies];
+    }, new Array<Type>());
+    this.selection.forEach((sel) => {
+      const optsThatApply = thatOpts.filter((opt) =>
+        opt.compatibleWithConstraint(sel, scope),
+      );
+      // const oneOfApply = new OneOf(optsThatApply);
+      sel.constrain(Type.flatten(optsThatApply), scope, opts);
+    });
+    if (!opts || opts.stopAt === undefined) {
+      opts = { stopAt: this };
     }
-    // if (this.selection.length === 0) {
-    //   throw new Error(`No more Types left! Oh no!`);
-    // }
+    that.constrain(this, scope, opts)
   }
 
   contains(that: Type): boolean {

@@ -251,8 +251,6 @@ export default abstract class Expr {
       if (opOrRef instanceof Expr) {
         return opOrRef;
       } else {
-        // return opOrRef.reduce((prec, op) => prec.add(op.precedence), new Set<number>());
-        // TODO: do i need this?
         return opOrRef.reduce(
           (prec, op) =>
             prec.set(op.precedence, [...(prec.get(op.precedence) || []), op]),
@@ -279,7 +277,7 @@ export default abstract class Expr {
           // to revisit this whole loop, but just to remind myself
           TODO('figure out multiple precedences?');
         }
-        const maxPrec = precs.sort().pop();
+        const maxPrec = precs.sort((a, b) => a - b).pop();
         if (maxPrec > prec) {
           prec = maxPrec;
           return [ii];
