@@ -219,7 +219,7 @@ Describe "Basic Math"
         lnn_sourceToAll "
           from @std/app import start, print, exit
           on start {
-            print(add(1.toInt16(), 2));
+            print(add(1.toInt16(), 2).getOr(0));
             emit exit 0;
           }
         "
@@ -247,7 +247,7 @@ Describe "Basic Math"
         lnn_sourceToAll "
           from @std/app import start, print, exit
           on start {
-            print(sub(2.toInt16(), 1));
+            print(sub(2.toInt16(), 1).getOr(0));
             emit exit 0;
           }
         "
@@ -275,7 +275,7 @@ Describe "Basic Math"
         lnn_sourceToAll "
           from @std/app import start, print, exit
           on start {
-            print(mul(2.toInt16(), 1));
+            print(mul(2.toInt16(), 1).getOr(0));
             emit exit 0;
           }
         "
@@ -303,7 +303,7 @@ Describe "Basic Math"
         lnn_sourceToAll "
           from @std/app import start, print, exit
           on start {
-            print(div(6.toInt16(), 2));
+            print(div(6.toInt16(), 2).getOr(0));
             emit exit 0;
           }
         "
@@ -359,7 +359,7 @@ Describe "Basic Math"
         lnn_sourceToAll "
           from @std/app import start, print, exit
           on start {
-            print(pow(6.toInt16(), 2));
+            print(pow(6.toInt16(), 2).getOr(0));
             emit exit 0;
           }
         "
@@ -449,7 +449,7 @@ Describe "Basic Math"
         lnn_sourceToAll "
           from @std/app import start, print, exit
           on start {
-            add(1.toInt32(), 2).print();
+            add(1.toInt32(), 2).getOr(0).print();
             emit exit 0;
           }
         "
@@ -477,7 +477,7 @@ Describe "Basic Math"
         lnn_sourceToAll "
           from @std/app import start, print, exit
           on start {
-            sub(2.toInt32(), 1).print();
+            sub(2.toInt32(), 1).getOr(0).print();
             emit exit 0;
           }
         "
@@ -505,7 +505,7 @@ Describe "Basic Math"
         lnn_sourceToAll "
           from @std/app import start, print, exit
           on start {
-            mul(2.toInt32(), 1).print();
+            mul(2.toInt32(), 1).getOr(0).print();
             emit exit 0;
           }
         "
@@ -533,7 +533,7 @@ Describe "Basic Math"
         lnn_sourceToAll "
           from @std/app import start, print, exit
           on start {
-            div(6.toInt32(), 2).print();
+            div(6.toInt32(), 2).getOr(0).print();
             emit exit 0;
           }
         "
@@ -589,7 +589,7 @@ Describe "Basic Math"
         lnn_sourceToAll "
           from @std/app import start, print, exit
           on start {
-            pow(6.toInt32(), 2).print();
+            pow(6.toInt32(), 2).getOr(0).print();
             emit exit 0;
           }
         "
