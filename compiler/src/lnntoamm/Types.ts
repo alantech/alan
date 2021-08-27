@@ -25,7 +25,13 @@ interface Generalizable {
 const generalizable = (val: Type): val is Type & Generalizable =>
   'generics' in val;
 
-// note: if more opt types are used, use `InterfaceDupOpts & OtherDupOpts`
+/*
+Ugh, these *Opts types are nasty. I don't like them one bit. There are some
+ways to avoid some of them, as mentioned below.
+
+If other TS classes need a variant of `Opts`, they can be extended with eg:
+export type ConstrainOpts = OneOfConstrainOpts & GeneratedOpts
+*/
 export type ConstrainOpts = OneOfConstrainOpts;
 interface OneOfConstrainOpts {
   stopAt?: Type;
@@ -38,7 +44,13 @@ interface InterfaceDupOpts {
 
 export type InstanceOpts = InterfaceInstanceOpts;
 interface InterfaceInstanceOpts {
+  /**
+   * If this is `true`, also set `forSameDupIface` to an array.
+   */
   interfaceOk?: boolean;
+  /**
+   * If `interfaceOk` is `true`, this needs to be assigned.
+   */
   forSameDupIface?: [Type, Type][];
 }
 
@@ -64,7 +76,32 @@ const parseFulltypename = (node: LPNode): TypeName => {
   return [name, genericTys];
 };
 
-// TODO: figure out type aliases (i think it actually makes sense to make a new type?)
+/*
+An idea that I've had:
+
+TypeConxn
+---------
+
+A type that represents a connection between two types. Right now, there
+is some data loss during certain implementations. For example, consider
+these two functions:
+```
+fn foo(x: int64, y: int64): int64 = ...;
+fn foo(x: int8, y: int8): int8 = ...;
+```
+Right now, the selection matrix is able to solve this by filtering out
+the 2nd function if either of the values passed to `foo` is an `int64`,
+or if the return type is expected to be `int64`. However, this results
+in a *lot* of allocations (as there's roughly `n` `Type.oneOf` calls
+per type in the function signature, including the return type) and
+doesn't provide great error messages. Additionally, this doesn't signify
+"if the value passed to x is an int64, then y is an int64 and the return
+type is an int64", as well as the other combinations that can be generated
+from the above example. TypeConxn should be able to represent this
+relationship between the types of those values, which should make the
+type inferrence even more accurate, as well as the other benefits listed
+above.
+*/
 export default abstract class Type implements Equalable {
   name: string;
   ast: LPNode | null;
@@ -75,17 +112,78 @@ export default abstract class Type implements Equalable {
     this.ast = ast;
   }
 
+  /**
+   * Checks if two types/constraints are compatible with each other.
+   * Returns `true` if they can immediately be `constrain`ed and there
+   * won't be an error.
+   *
+   * @param ty the type to check compatibility with
+   * @param scope the scope where the type checking should take place
+   */
   abstract compatibleWithConstraint(ty: Type, scope: Scope): boolean;
+
+  /**
+   * Sets 2 types equal to each other (if both are usable types). If
+   * `to` is a constraint, then verifies that the constraint is valid
+   * for this type.
+   *
+   * @param to the type to set equality to
+   * @param scope the scope where the constraining should take place
+   * @param opts options that might be pertinent to various classes.
+   * Check `ConstrainOpts` for more details.
+   */
   abstract constrain(to: Type, scope: Scope, opts?: ConstrainOpts): void;
+
+  /**
+   * Sees if this type contains `ty` anywhere within itself. Necessary
+   * to avoid circular references.
+   *
+   * @param ty type to look for
+   */
   abstract contains(ty: Type): boolean;
+
+  /**
+   * Determines if two types are *effectively* equal.
+   *
+   * @param that type to check equality with
+   */
   abstract eq(that: Equalable): boolean;
+
+  /**
+   * "Resolves" a type - aka, provides a Type representing this Type
+   * most concretely. The level of concreteness might need to be
+   * determined by options set in `opts`.
+   *
+   * @param opts options that might be pertinent to various classes.
+   * Check `InstanceOpts` for more details.
+   */
   abstract instance(opts?: InstanceOpts): Type;
+
+  /**
+   * Temporarily sets 2 types equal to each other.
+   *
+   * @param to the type to set temporary equality to
+   * @param scope the scope where the temporary constraining should take place
+   * @param opts options that might be pertinent to various classes.
+   * Check `TempConstrainOpts` for more details.
+   */
   abstract tempConstrain(
     to: Type,
     scope: Scope,
     opts?: TempConstrainOpts,
   ): void;
+
+  /**
+   * Resets this Type's temporary constraints. Should not reset any other
+   * Type's temporary constraints (I think).
+   */
   abstract resetTemp(): void;
+
+  /**
+   * The size of the given type in multiples of 8.
+   *
+   * eg: int64 is size 1, * int8 is size 1, int128 is size 2
+   */
   abstract size(): number;
 
   static getFromTypename(
@@ -182,9 +280,28 @@ export default abstract class Type implements Equalable {
   }
 
   // TODO: generalize for struct and any other generalizable type
+  // This function can probably be done better, but I'm not entirely sure how.
+  // It might not even be necessary, but that might need some of the classes
+  // described above.
+  //
+  // David and I worked on this together - it works by eg flattening
+  // OneOf(Result<string>, Result<int64>) into Result<OneOf(string, int64)>.
   static flatten(tys: Type[]): Type {
     tys = tys.reduce((allTys, ty) => [...allTys, ...ty.fnselectOptions()], []);
     let outerType: Type = null;
+    /*
+    squishy means it can be flattened, lol
+
+    squishy:
+    [Result<int8>, Result<int16>]
+    [Result<any>, Result<int8>]
+    [Result<void>, Result<int8>]
+
+    not-squishy:
+    [any, Result<int8>]
+    [void, bool]
+    [int8, int16]
+    */
     let isSquishy = true;
     const innerTys = tys.reduce((genTys, ty) => {
       // shallow equality (eg Result<int64> and Result<string> will match here)
@@ -212,10 +329,42 @@ export default abstract class Type implements Equalable {
     }
   }
 
+  /**
+   * Duplicates a Type so that it's ready to receive constraints. This is to
+   * work around Interface-typed values - constraining an Interface that hasn't
+   * been duped would result in eg all Stringifiables being int64, which would
+   * be bad and wrong.
+   *
+   * @param opts options that might be pertinent to various classes.
+   * See DupOpts for more details.
+   * @returns the duplicated type
+   */
   dup(opts?: DupOpts): Type | null {
     return null;
   }
 
+  /**
+   * @returns a map of field names to alignment from the start of a type's memory
+   * location. Eg, given the following struct:
+   *
+   * ```
+   * type Foo {
+   *  bar: string,
+   *  quux: int8,
+   *  baz: int64,
+   * }
+   * ```
+   *
+   * the result of this method would be:
+   *
+   * ```
+   * {
+   *  bar: 0,
+   *  quux: 1,
+   *  bax: 2,
+   * }
+   * ```
+   */
   fieldIndices(): FieldIndices {
     let name: string;
     try {
@@ -229,16 +378,27 @@ export default abstract class Type implements Equalable {
     throw new Error(`Type${name} does not have fields`);
   }
 
+  /**
+   * @returns whether this type is variably sized or not.
+   */
   isFixed(): boolean {
     // only a handful of builtin types are fixed
     return false;
   }
 
+  /**
+   * @returns all possible types that this Type could represent.
+   */
   fnselectOptions(): Type[] {
     return [this];
   }
 }
 
+/*
+Opaque types by definition cannot have their internal memory inspected.
+This is great for primitive types, but it also allows for other types
+that the language does not want users to be able to inspect.
+*/
 class Opaque extends Type implements Generalizable {
   // if any values are `null` that means that this isn't an instantiable type
   // and should be treated like the type needs to be duped
@@ -339,6 +499,7 @@ class Opaque extends Type implements Generalizable {
     }
   }
 
+  // FIXME: bug here - should check to see if `this.generics` contains `that`.
   contains(that: Type): boolean {
     return this.eq(that);
   }
@@ -366,6 +527,7 @@ class Opaque extends Type implements Generalizable {
       }
       duped.generics[genName] = tyVal;
     });
+    // FIXME: if (isNothingNew) return this;
     return duped;
   }
 
@@ -424,6 +586,7 @@ class Opaque extends Type implements Generalizable {
     return instance;
   }
 
+  // This is the only Type that overrides this method.
   isFixed(): boolean {
     switch (this.name) {
       case 'bool':
@@ -440,6 +603,7 @@ class Opaque extends Type implements Generalizable {
     }
   }
 
+  // This is the only Type that overrides this method.
   size(): number {
     switch (this.name) {
       case 'void':
@@ -527,6 +691,16 @@ class Opaque extends Type implements Generalizable {
   }
 }
 
+/*
+This type is mostly unimplemented. Right now, the only thing it provides
+that's useful is `matrixSelect`. I've sent a photo in the internal Discord
+channel with a page from TAPL that is very useful for this class. That can
+be used for all of the constraining, and the other methods should be
+fairly easy to figure out.
+
+TODO: implement the rest of this class, as well as a static function for
+parsing an Alan Function typename.
+*/
 export class FunctionType extends Type {
   params: Type[];
   retTy: Type;
@@ -764,6 +938,14 @@ export class FunctionType extends Type {
   }
 }
 
+/*
+Types with fields.
+
+TODO: still needs generics support. This can be done similarly to how
+generics are done in Opaque, except all uses of the type variable should
+be used in the fields as necessary. This might require custom duping
+logic.
+*/
 class Struct extends Type {
   args: GenericArgs;
   fields: Fields;
@@ -906,6 +1088,14 @@ class Struct extends Type {
   }
 }
 
+/**
+ * The `Has` classes are *only* for constraining types. I've thought a lot about
+ * this - there should probably be more uses of these constraints. For example,
+ * whenever a function is called, there should be a `FnType` that's generic
+ * enough to apply to interfaces that gets inserted into a `HasMethod`, and then
+ * pass that constraint. This would vastly improve type checking beyond just
+ * "matrixSelect ran out of functions".
+ */
 abstract class Has extends Type {
   get ammName(): string {
     throw new Error(
@@ -1150,6 +1340,18 @@ class HasOperator extends HasMethod {
   }
 }
 
+/*
+I realized a bit too late that `Interface`s in Alan are just ways of
+declaring subtypes. I'm not too familiar with the theory on subtypes
+since I didn't have the realization until it was too late, but there
+is some literature available that can improve this class.
+
+This class is a bit too much and should probably be broken up into a
+few classes. For example, there can be a `class TyVar extends Type`
+that is used for function signatures (and possibly Generics in other
+Types) that can remove the necessity for some of the Opts types used
+within. Likewise, it'd probably simplify some of the logic within.
+*/
 class Interface extends Type {
   // TODO: it's more optimal to have fields, methods, and operators in
   // maps so we can cut down searching and such.
@@ -1286,20 +1488,7 @@ class Interface extends Type {
   }
 
   constrain(that: Type, scope: Scope, opts?: ConstrainOpts) {
-    // const isDbg = this.name === 'any-n18-n4296';
     const isDbg = false;
-    if (isDbg) {
-      const getStack = { stack: '' };
-      Error.captureStackTrace(getStack);
-      console.log(
-        '~~> constraining',
-        this.name,
-        'to',
-        that,
-        'at',
-        getStack.stack,
-      );
-    }
     if (this.eq(that) || that.contains(this)) {
       isDbg && console.log('quitting early');
       return;
@@ -1381,9 +1570,6 @@ class Interface extends Type {
         isDbg && console.log('setting delegate');
         this.delegate = that;
       }
-      // const getStack = { stack: undefined };
-      // Error.captureStackTrace(getStack);
-      // console.log('->', this.name, 'set delegate at', getStack.stack);
       if (this.tempDelegate !== null) {
         this.delegate.constrain(this.tempDelegate, scope, opts);
         this.tempDelegate = null;
@@ -1533,6 +1719,8 @@ class Interface extends Type {
 // technically, generated types are a kind of interface - we just get to build up
 // the interface through type constraints instead of through explicit requirements.
 // this'll make untyped fn parameters easier once they're implemented.
+// If Interface is broken up, this class might be better free-standing. It's just
+// got too much in common right now to do otherwise.
 class Generated extends Interface {
   // don't override `get ammName` since its Error output is unique but generic
   // over both Generated and Interface types
@@ -1574,6 +1762,13 @@ class Generated extends Interface {
     }
   }
 
+  // FIXME: I'm not entirely sure this method is correct. I haven't seen
+  // any problems in all the time I've spend testing, but it's not entirely
+  // clear if that's by coincidence or if the rest of the logic in this
+  // compiler is dependent on the behavior here.
+  // It's also quite large, which makes me feel like it's doing too much,
+  // it doesn't need to be tackled right away but it's a possibility to
+  // consider if problems arise.
   constrain(that: Type, scope: Scope, opts?: ConstrainOpts) {
     if (this.eq(that)) {
       return;
@@ -1699,6 +1894,13 @@ class Generated extends Interface {
   }
 }
 
+/*
+Represents a Set of types that could work given the initial context.
+Further constraining should reduce the number of possibilities, always
+resulting in an intersection to whatever it's being constrained to.
+
+It's a mathematical set - operations should be based on such.
+*/
 class OneOf extends Type {
   selection: Type[];
   tempSelect: Type[] | null;
@@ -1784,23 +1986,10 @@ class OneOf extends Type {
       // that is `thatOpt`)
       return [...sel.filter((ty) => !myApplies.includes(ty)), ...myApplies];
     }, new Array<Type>());
-    /*
-    squishy:
-    [Result<int8>, Result<int16>]
-    [Result<any>, Result<int8>]
-    [Result<void>, Result<int8>]
-
-    not-squishy:
-    [any, Result<int8>]
-    [void, bool]
-    [int8, int16]
-    */
     this.selection.forEach((sel) => {
       const optsThatApply = thatOpts.filter((opt) =>
         opt.compatibleWithConstraint(sel, scope),
       );
-      // const oneOfApply = new OneOf(optsThatApply);
-      // try {
       const flattened = Type.flatten(optsThatApply);
       if (flattened !== null) {
         if (sel.name === 'any-n18-n4296') {
@@ -1811,15 +2000,6 @@ class OneOf extends Type {
         isDbg && console.dir(flattened, { depth: 4 });
         sel.constrain(flattened, scope, opts);
       } else if (isDbg) console.log('not squishy:', optsThatApply);
-      // } catch (e) {
-      //   console.log('original sel:', original);
-      //   console.log('now:', this.selection);
-      //   console.log('during:', sel);
-      //   stdout.write('that: ');
-      //   console.dir(that, { depth: 4 });
-      //   console.log('opts:', thatOpts);
-      //   throw e;
-      // }
     });
     if (!opts || opts.stopAt === undefined) {
       isDbg && console.log('stopping here');

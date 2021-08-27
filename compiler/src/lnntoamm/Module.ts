@@ -4,7 +4,7 @@ import Const from './Const';
 import Event from './Event';
 import Fn from './Fn';
 import Operator from './Operator';
-import Scope, { isFunctions } from './Scope';
+import Scope from './Scope';
 import Type from './Types';
 import { isFnArray } from './util';
 
@@ -94,11 +94,11 @@ class Module {
               throw new Error(
                 `couldn't import ${exportName}: not defined in ${resolvedDep}`,
               );
-            } else if (isFunctions(thing)) {
+            } else if (isFnArray(thing)) {
               const otherthing = module.moduleScope.deepGet(importName);
               if (otherthing === null) {
                 module.moduleScope.put(importName, [...thing]);
-              } else if (isFunctions(otherthing)) {
+              } else if (isFnArray(otherthing)) {
                 // note: this was `...thing, ...otherthing` before, but that
                 // breaks preference for more-recently-defined things
                 module.moduleScope.put(importName, [...otherthing, ...thing]);
