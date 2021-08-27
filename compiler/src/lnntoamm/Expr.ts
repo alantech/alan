@@ -625,8 +625,9 @@ class Call extends Expr {
     );
     fns = selFns;
     // now, constrain all of the args to their possible types
+    const constrainArgs = selPTys.map((selPTys) => selPTys.length === 1 ? selPTys[0] : Type.oneOf(selPTys));
     argTys.forEach((ty, ii) =>
-      ty.constrain(Type.oneOf(selPTys[ii]), metadata.scope),
+      ty.constrain(constrainArgs[ii], metadata.scope),
     );
     retTy.constrain(Type.oneOf(selRetTys), metadata.scope);
     if (closure !== null) {

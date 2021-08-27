@@ -267,11 +267,21 @@ export default class Fn {
     tcOpts?: TempConstrainOpts,
   ): [Type[], Type] | null {
     let res: [Type[], Type] | null = null;
+    const isDbg = false;
     try {
-      this.params.forEach((param, ii) =>
-        param.ty.tempConstrain(argTys[ii], scope, tcOpts),
-      );
+      this.params.forEach((param, ii) => {
+        isDbg && stdout.write('==> constraining param ty ');
+        isDbg && console.dir(param.ty, { depth: 4 });
+        isDbg && stdout.write('to ');
+        isDbg && console.dir(argTys[ii], { depth: 4 });
+        param.ty.tempConstrain(argTys[ii], scope, tcOpts);
+        isDbg && stdout.write('now: ');
+        isDbg && console.dir(param.ty, { depth: 4 });
+      });
+      isDbg && console.log('constraining ret ty', this.retTy, 'to', expectResTy);
       this.retTy.tempConstrain(expectResTy, scope, tcOpts);
+      isDbg && console.log('now:', this.retTy);
+      isDbg && console.log('oh and expected is now', expectResTy);
       const instanceOpts = { interfaceOk: true, forSameDupIface: [] };
       res = [
         this.params.map((param) => param.ty.instance(instanceOpts)),
@@ -295,6 +305,8 @@ export default class Fn {
     }
     this.params.forEach((param) => param.ty.resetTemp());
     this.retTy.resetTemp();
+    argTys.map((ty) => ty.resetTemp());
+    expectResTy.resetTemp();
     return res;
   }
 }

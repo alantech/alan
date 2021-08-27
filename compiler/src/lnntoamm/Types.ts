@@ -601,7 +601,8 @@ export class FunctionType extends Type {
     const matrix: Array<Type[]> = args.map((arg) => {
       return arg.fnselectOptions();
     });
-    isDbg && console.log('matrix:', matrix);
+    isDbg && stdout.write('matrix: ');
+    isDbg && console.dir(matrix, { depth: 4 });
     // TODO: this weight system feels like it can be inaccurate
     // the weight of a particular function is computed by the sum
     // of the indices in each dimension, with the highest sum
@@ -619,6 +620,7 @@ export class FunctionType extends Type {
         ...fns.reduce((fns, fn) => {
           isDbg && console.log('getting result ty');
           const tys = fn.resultTyFor(argTys, expectResTy, scope, { isTest: true });
+          isDbg && stdout.write('signature is: ');
           isDbg && console.dir(tys, { depth: 4 });
           if (tys === null) {
             return fns;
@@ -659,13 +661,16 @@ export class FunctionType extends Type {
     );
     if (ret[0].length > original.length || ret[0].length === 0) {
       // these make debugging easier :)
-      // console.log('~~~ ERROR');
-      // console.log('original: ', original);
-      // console.log('ret:      ', ret);
-      // console.log('retLength:', ret[0].length);
-      // console.log('args:     ', args);
-      // console.log('matrix:   ', matrix);
-      // console.log('byweight: ', fnsByWeight);
+      if (isDbg) {
+        console.log('~~~ ERROR');
+        console.log('original: ', original);
+        console.log('ret:      ', ret);
+        console.log('retLength:', ret[0].length);
+        console.log('args:     ', args);
+        stdout.write('matrix:   ');
+        console.dir(matrix, { depth: 4 });
+        console.log('byweight: ', fnsByWeight);
+      }
       if (ret[0].length === 0) {
         throw new Error('no more functions left');
       } else {
@@ -1269,7 +1274,15 @@ class Interface extends Type {
   }
 
   constrain(that: Type, scope: Scope, opts?: ConstrainOpts) {
+    // const isDbg = this.name === 'any-n18-n4296';
+    const isDbg = false;
+    if (isDbg) {
+      const getStack = {stack:''};
+      Error.captureStackTrace(getStack);
+      console.log('~~> constraining', this.name, 'to', that, 'at', getStack.stack);
+    }
     if (this.eq(that) || that.contains(this)) {
+      isDbg && console.log('quitting early');
       return;
     }
     // if it's a `Has`, it's easy enough to process. Generated types should
@@ -1332,12 +1345,18 @@ class Interface extends Type {
       }
     });
 
+    if (this.__isDuped.isTyVar && !(that instanceof Interface || that instanceof OneOf)) {
+      return;
+    }
     if (this.delegate !== null) {
+      isDbg && console.log('delegating to', this.delegate);
       this.delegate.constrain(that, scope, opts);
     } else if (this.isDuped) {
       if (that.contains(this)) {
+        isDbg && console.log('constraining that to this');
         that.constrain(this, scope, opts);
       } else {
+        isDbg && console.log('setting delegate');
         this.delegate = that;
       }
       // const getStack = { stack: undefined };
@@ -1357,6 +1376,8 @@ class Interface extends Type {
       return true;
     } else if (this.delegate !== null) {
       return this.delegate.contains(that);
+    } else if (this.tempDelegate !== null) {
+      return this.tempDelegate.contains(that);
     } else {
       // i don't think tempDelegate needs to be checked since theoretically
       // no other constraints happen
@@ -1419,23 +1440,24 @@ class Interface extends Type {
     if (this === that) {
       throw new Error('huh?');
     } else if (this.delegate !== null) {
-      this.delegate.tempConstrain(that, scope);
+      this.delegate.tempConstrain(that, scope, opts);
     } else if (this.tempDelegate !== null) {
       // ensure that `this.tempDelegate` is equal to `that`
       if (!this.tempDelegate.eq(that)) {
-        if (opts && opts.isTest) {
+        if (opts?.isTest) {
           if (!this.tempDelegate.compatibleWithConstraint(that, scope)) {
             throw new Error(
               `${this.tempDelegate.ammName} is not compatible with ${that.ammName}`,
             );
           }
+          this.tempDelegate.tempConstrain(that, scope, opts);
         } else {
           // TODO: if more ConstrainOpts are added, make TempConstrainOpts
           // be `& ConstrainOpts` and pass the opts through
-          that.constrain(this.tempDelegate, scope);
+          that.tempConstrain(this.tempDelegate, scope, opts);
         }
       }
-    } else {
+    } else if (!that.contains(this)) {
       this.tempDelegate = that;
     }
   }
@@ -1446,7 +1468,8 @@ class Interface extends Type {
       if (this.tempDelegate !== null) {
         throw new Error(`somehow, tempDelegate and delegate are both set`);
       }
-    } else {
+    } else if (this.tempDelegate !== null) {
+      // this.tempDelegate.resetTemp();
       this.tempDelegate = null;
     }
   }
@@ -1703,16 +1726,21 @@ class OneOf extends Type {
   }
 
   constrain(that: Type, scope: Scope, opts?: ConstrainOpts) {
-    if (this.name === 'OneOf-n4413') {
-      stdout.write('~~> constraining ' + this.name + ' to:');
-      console.dir(that, { depth: 4 });
+    // const isDbg = this.name === 'OneOf-n4310' || this.name === 'OneOf-n4311' || this.name === 'OneOf-n4303';
+    const isDbg = false;
+    if (isDbg) {
+      stdout.write('~~> constraining ' + this.name + ' to: ');
+      console.dir(that, { depth: 6 });
+      stdout.write('- this selection is ');
+      console.dir(this.selection, { depth: 4 });
     }
     if (this.eq(that)) {
+      isDbg && console.log('we are the same');
       return;
     } else if (opts && opts.stopAt === this) {
+      isDbg && console.log('stopping');
       return;
     }
-    const original = [...this.selection];
     const thatOpts = that.fnselectOptions();
     // ok so it's easy enough to implement a Set intersection (which is what
     // this method does). However, since there *is* an order of preference,
@@ -1726,6 +1754,9 @@ class OneOf extends Type {
       const myApplies = this.selection.filter((ty) =>
         ty.compatibleWithConstraint(thatOpt, scope),
       );
+      if (isDbg) {
+        console.log('applicable to', thatOpt, '->', myApplies);
+      }
       // the filter is to prevent duping elements. we must maintain
       // preference order, so remove any elements from `sel` that apply
       // at the current "preference level" (ie, the index of `thatOpts`
@@ -1743,29 +1774,34 @@ class OneOf extends Type {
     [void, bool]
     [int8, int16]
     */
-    if (thatOpts.length > 1) {
-      this.selection.forEach((sel) => {
-        const optsThatApply = thatOpts.filter((opt) =>
-          opt.compatibleWithConstraint(sel, scope),
-        );
-        // const oneOfApply = new OneOf(optsThatApply);
-        // try {
-        const flattened = Type.flatten(optsThatApply);
-        if (flattened !== null) {
-          sel.constrain(flattened, scope, opts);
+    this.selection.forEach((sel) => {
+      const optsThatApply = thatOpts.filter((opt) =>
+        opt.compatibleWithConstraint(sel, scope),
+      );
+      // const oneOfApply = new OneOf(optsThatApply);
+      // try {
+      const flattened = Type.flatten(optsThatApply);
+      if (flattened !== null) {
+        if (sel.name === 'any-n18-n4296') {
+          console.log('FOUND IT', this.name);
         }
-        // } catch (e) {
-        //   console.log('original sel:', original);
-        //   console.log('now:', this.selection);
-        //   console.log('during:', sel);
-        //   stdout.write('that: ');
-        //   console.dir(that, { depth: 4 });
-        //   console.log('opts:', thatOpts);
-        //   throw e;
-        // }
-      });
-    }
+        // console.log('flattened is', flattened.name, 'for', this.name);
+        isDbg && stdout.write('squishy:');
+        isDbg && console.dir(flattened, { depth: 4 });
+        sel.constrain(flattened, scope, opts);
+      } else if (isDbg) console.log('not squishy:', optsThatApply);
+      // } catch (e) {
+      //   console.log('original sel:', original);
+      //   console.log('now:', this.selection);
+      //   console.log('during:', sel);
+      //   stdout.write('that: ');
+      //   console.dir(that, { depth: 4 });
+      //   console.log('opts:', thatOpts);
+      //   throw e;
+      // }
+    });
     if (!opts || opts.stopAt === undefined) {
+      isDbg && console.log('stopping here');
       opts = { stopAt: this };
     }
     that.constrain(this, scope, opts)
