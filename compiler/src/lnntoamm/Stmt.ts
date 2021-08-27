@@ -94,15 +94,19 @@ export class Assign extends Stmt {
     const stmts: Stmt[] = [];
     const name = ast.get('varn').t;
     const upstream = metadata.get(name);
-    const [generated, expr] = Expr.fromAssignablesAst(ast, metadata);
+    const [generated, expr] = Expr.fromAssignablesAst(
+      ast.get('assignables'),
+      metadata,
+    );
     upstream.ty.constrain(expr.ty, metadata.scope);
     stmts.push(...generated, new Assign(ast, upstream, expr));
     return stmts;
   }
 
   cleanup(scope: Scope): boolean {
-    const didWork = this.expr.cleanup();
-    this.upstream.ty.constrain(this.expr.ty, scope);
+    const upTy = this.upstream.ty;
+    const didWork = this.expr.cleanup(upTy);
+    upTy.constrain(this.expr.ty, scope);
     return didWork;
   }
 
@@ -190,7 +194,7 @@ export class Dec extends VarDef {
       const found = Type.getFromTypename(tyName, metadata.scope);
       // if the type hint is an interface, then all we have to do
       // is ensure that the expr's ty matches the interface
-      const duped = found.dupIfNotLocalInterface();
+      const duped = found.dup();
       if (duped === null) {
         ty = found;
         ty.constrain(expr.ty, metadata.scope);
@@ -205,13 +209,11 @@ export class Dec extends VarDef {
   }
 
   static gen(expr: Expr, metadata: MetaData): Dec {
-    const ty = Type.generate();
-    ty.constrain(expr.ty, metadata.scope);
     const dec = new Dec(
       expr.ast,
       false, // default to mutable in case of eg builder pattern
       genName(),
-      ty,
+      expr.ty,
       expr,
     );
     metadata.define(dec);
@@ -219,7 +221,7 @@ export class Dec extends VarDef {
   }
 
   cleanup(scope: Scope): boolean {
-    const didWork = this.expr.cleanup();
+    const didWork = this.expr.cleanup(this.ty);
     this.ty.constrain(this.expr.ty, scope);
     return didWork;
   }
@@ -228,12 +230,17 @@ export class Dec extends VarDef {
     // refs don't escape the current scope and this only happens 1x/scope,
     // so this is fine
     this.__ammName = genName();
-    this.expr.inline(
-      amm,
-      this.immutable ? 'const' : 'let',
-      this.ammName,
-      this.ty.instance(),
-    );
+    try {
+      this.expr.inline(
+        amm,
+        this.immutable ? 'const' : 'let',
+        this.ammName,
+        this.ty.instance(),
+      );
+    } catch (e) {
+      console.dir(this, { depth: 6 });
+      throw e;
+    }
   }
 }
 
@@ -258,20 +265,19 @@ export class FnParam extends VarDef {
     this.__assigned = null;
   }
 
-  static fromArgAst(ast: LPNode, metadata: MetaData): FnParam {
+  static fromArgAst(
+    ast: LPNode,
+    metadata: MetaData,
+    fnSigScope: Scope,
+  ): FnParam {
     const name = ast.get('variable').t;
     const typename = ast.get('fulltypename');
-    let paramTy = Type.getFromTypename(typename, metadata.scope);
+    let paramTy = Type.getFromTypename(typename, fnSigScope, { isTyVar: true });
     if (paramTy === null) {
       paramTy = Type.generate();
       TODO('args with implicit types are not supported yet');
     } else if (!(paramTy instanceof Type)) {
       throw new Error(`Function parameter is not a valid type: ${typename.t}`);
-    }
-    const duped = paramTy.dupIfNotLocalInterface();
-    if (duped !== null) {
-      metadata.scope.put(duped.name, duped);
-      paramTy = duped;
     }
     const param = new FnParam(ast, name, paramTy);
     metadata.define(param);

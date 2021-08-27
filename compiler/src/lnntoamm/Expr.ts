@@ -1,3 +1,4 @@
+import { stdout } from 'process';
 import { LPNode, NamedAnd, NamedOr, NulLP } from '../lp';
 import Output, { AssignKind } from './Amm';
 import Fn from './Fn';
@@ -250,8 +251,6 @@ export default abstract class Expr {
       if (opOrRef instanceof Expr) {
         return opOrRef;
       } else {
-        // return opOrRef.reduce((prec, op) => prec.add(op.precedence), new Set<number>());
-        // TODO: do i need this?
         return opOrRef.reduce(
           (prec, op) =>
             prec.set(op.precedence, [...(prec.get(op.precedence) || []), op]),
@@ -278,7 +277,7 @@ export default abstract class Expr {
           // to revisit this whole loop, but just to remind myself
           TODO('figure out multiple precedences?');
         }
-        const maxPrec = precs.sort().pop();
+        const maxPrec = precs.sort((a, b) => a - b).pop();
         if (maxPrec > prec) {
           prec = maxPrec;
           return [ii];
@@ -356,16 +355,43 @@ export default abstract class Expr {
             precedences[applyIdx] = dec.ref();
           }
           const applyTo = precedences[applyIdx] as Ref;
-          const [fns, retTys] = operators.reduce(
-            ([fns, retTys], op) => {
-              const [selFns, selTys] = op.select(metadata.scope, applyTo.ty);
+          const retTy = Type.generate();
+          const [fns, paramTys, retTys] = operators.reduce(
+            ([fns, paramTys, retTys], op) => {
+              let selFns: Fn[];
+              let selPTys: Type[][];
+              let selRTys: Type[];
+              try {
+                [selFns, selPTys, selRTys] = op.select(
+                  metadata.scope,
+                  retTy,
+                  applyTo.ty,
+                );
+              } catch (e) {
+                // this try-catch isn't great, but JS doesn't give us great
+                // tools for error handling that allow me to quickly implement
+                // a better fix. Might be better to define custom error types?
+                // This is here because there might be multiple Operators by the
+                // same name. For example, in `root.lnn` the `+` operator is
+                // assigned to both `add` and `concat` - `op.select` above will
+                // throw an error when trying to do eg `"hi" + "\n"`. This
+                // shouldn't cause an error, because it's possible that there's
+                // no `fn add(string, string): string`, but as long as there's
+                // a `fn concat(string, string): string`, then there's no issue.
+                // this still gets caught later on.
+                return [fns, paramTys, retTys];
+              }
               fns = [...fns, ...selFns];
-              retTys = [...retTys, ...selTys];
-              return [fns, retTys];
+              // assume that `selPTys[i].length === 1`
+              paramTys = [...paramTys, ...selPTys.map((pTys) => pTys[0])];
+              retTys = [...retTys, ...selRTys];
+              return [fns, paramTys, retTys];
             },
-            [new Array<Fn>(), new Array<Type>()],
+            [new Array<Fn>(), new Array<Type>(), new Array<Type>()],
           );
-          const retTy = Type.oneOf(retTys);
+          const argConstraint = Type.oneOf(paramTys);
+          applyTo.ty.constrain(argConstraint, metadata.scope);
+          retTy.constrain(Type.oneOf(retTys), metadata.scope);
           precedences[applyIdx] = new Call(
             new NulLP(),
             fns,
@@ -420,12 +446,36 @@ export default abstract class Expr {
           stmts.push(dec);
           right = dec.ref();
         }
+        const argTys: [Type[], Type[]] = [[], []];
         const retTys: Type[] = [];
         while (ops.length > 0) {
           const op = ops.pop();
-          const selected = op.select(metadata.scope, left.ty, right.ty);
+          const retTy = Type.generate();
+          let selected: [Fn[], Type[][], Type[]];
+          try {
+            selected = op.select(metadata.scope, retTy, left.ty, right.ty);
+          } catch (e) {
+            // this try-catch isn't great, but JS doesn't give us great
+            // tools for error handling that allow me to quickly implement
+            // a better fix. Might be better to define custom error types?
+            // This is here because there might be multiple Operators by the
+            // same name. For example, in `root.lnn` the `+` operator is
+            // assigned to both `add` and `concat` - `op.select` above will
+            // throw an error when trying to do eg `"hi" + "\n"`. This
+            // shouldn't cause an error, because it's possible that there's
+            // no `fn add(string, string): string`, but as long as there's
+            // a `fn concat(string, string): string`, then there's no issue.
+            // this still gets caught later on.
+            continue;
+          }
           fns.push(...selected[0]);
-          retTys.push(...selected[1]);
+          // assume `selected[1].length === 2`
+          selected[1].forEach((pTys) => {
+            argTys[0].push(pTys[0]);
+            argTys[1].push(pTys[1]);
+          });
+          retTy.constrain(Type.oneOf(selected[2]), metadata.scope);
+          retTys.push(retTy);
         }
         const retTy = Type.oneOf(retTys);
         const call = new Call(
@@ -451,7 +501,7 @@ export default abstract class Expr {
   /**
    * @returns true if more cleanup might be required
    */
-  cleanup(): boolean {
+  cleanup(expectResTy: Type): boolean {
     // most implementing Exprs don't have anything they need to do.
     // I just didn't want to expose any of the Expr classes except
     // for Ref to prevent split handling of the classes.
@@ -484,6 +534,8 @@ class AccessField extends Expr {
 }
 
 class Call extends Expr {
+  private dbg = () => this.ast.t.includes('ok');
+
   fns: Fn[];
   maybeClosure: VarDef | null;
   args: Ref[];
@@ -504,7 +556,6 @@ class Call extends Expr {
     scope: Scope,
     retTy: Type,
   ) {
-    // console.log('~~~ generating call ', ast, fns, maybeClosure, args, scope);
     super(ast);
     if (fns.length === 0 && maybeClosure === null) {
       throw new Error(`no function possibilities provided for ${ast}`);
@@ -565,80 +616,54 @@ class Call extends Expr {
     }
     // first reduction
     const argTys = args.map((arg) => arg.ty);
-    const selFns = FunctionType.matrixSelect(fns, argTys, metadata.scope);
-    fns = selFns.map((selFn) => selFn[0]);
-    const retTy = Type.oneOf(selFns.map(([_fn, ty]) => ty));
+    const retTy = Type.generate();
+    const [selFns, selPTys, selRetTys] = FunctionType.matrixSelect(
+      fns,
+      argTys,
+      retTy,
+      metadata.scope,
+    );
+    fns = selFns;
     // now, constrain all of the args to their possible types
-    // makes it so that the type of the parameters in each position are in their own list
-    // ie, given `do(int8, int16)` and `do(int8, int8)`, will result in this 2D array:
-    // [ [int8, int8],
-    //   [int16, int8] ]
-    // for some reason TS thinks that `fns` is `Boxish` but *only* in the lambda here,
-    // which is why I have to specify `fns: Fn[]`...
-    argTys.forEach((ty, ii) => {
-      const paramTys = (fns as Fn[]).map((fn) => fn.params[ii].ty);
-      // console.log('constraining', ty, 'to', paramTys);
-      ty.constrain(Type.oneOf(paramTys), metadata.scope);
-      // console.log('constrained:', ty);
-    });
+    const constrainArgs = selPTys.map((selPTys) =>
+      selPTys.length === 1 ? selPTys[0] : Type.oneOf(selPTys),
+    );
+    argTys.forEach((ty, ii) => ty.constrain(constrainArgs[ii], metadata.scope));
+    retTy.constrain(Type.oneOf(selRetTys), metadata.scope);
     if (closure !== null) {
       TODO('closures');
     }
     return [stmts, new Call(ast, fns, closure, args, metadata.scope, retTy)];
   }
 
-  private fnSelect(): [Fn[], Type[]] {
-    return FunctionType.matrixSelect(
+  private fnSelect(): [Fn[], Type[][], Type[]] {
+    // try {
+    const ret = FunctionType.matrixSelect(
       this.fns,
       this.args.map((a) => a.ty),
+      this.retTy,
       this.scope,
-    ).reduce(
-      ([fns, tys], [fn, ty]) => [
-        [...fns, fn],
-        [...tys, ty],
-      ],
-      [new Array<Fn>(), new Array<Type>()],
     );
+    // console.log('fnSelect for', this.ast.t.trim(), '->', ret[0]);
+    return ret;
+    // } catch (e) {
+    //   console.log('for', this.ast.t.trim());
+    //   console.dir(this.args.map(a => a.ty), { depth: 4 });
+    //   throw e;
+    // }
   }
 
   cleanup() {
-    const [fns, tys] = this.fnSelect();
+    const [fns, pTys, retTys] = this.fnSelect();
     const isChanged = this.fns.length !== fns.length;
     this.fns = fns;
-    this.retTy.constrain(Type.oneOf(tys), this.scope);
+    this.args.forEach((arg, ii) =>
+      arg.ty.constrain(Type.oneOf(pTys[ii]), this.scope),
+    );
+    this.retTy.constrain(Type.oneOf(retTys), this.scope);
     return isChanged;
   }
 
-  /*
-  FIXME:
-  Currently, this only works because of the way `root.lnn` is structured -
-  functions that accept f32s are defined first and i64s are defined last.
-  However, we can't rely on function declaration order to impact type checking
-  or type inferrence, since that could unpredictably break users' code. Instead,
-  if we have `OneOf` types, we should prefer the types in its list in ascending
-  order. I think that the solution is to create a matrix of all of the possible
-  types to each other, insert functions matching the types in each dimension,
-  and pick the function furthest from the all-0 index. For example, given
-  `1 + 2`, the matrix would be:
-  |         |  float32   |  float64   |   int8   |   int16    |   int32    |   int64    |
-  | float32 |add(f32,f32)|            |          |            |            |            |
-  | float64 |            |add(f64,f64)|          |            |            |            |
-  |  int8   |            |            |add(i8,i8)|            |            |            |
-  |  int16  |            |            |          |add(i16,i16)|            |            |
-  |  int32  |            |            |          |            |add(i32,i32)|            |
-  |  int64  |            |            |          |            |            |add(i64,i64)|
-  in this case, it would prefer `add(int64,int64)`. Note that constraining the
-  type will impact this: given the code `const x: int8 = 0; const y = x + 1;`,
-  the matrix would be:
-  |         | float32 | float64 |    int8    | int16 | int32 | int64 |
-  |  int8   |         |         | add(i8,i8) |       |       |       |
-  where the columns represent the type of the constant `1`. There's only 1
-  possibility, but we'd still have to check `int8,int64`, `int8,int32`, and
-  `int8,int16` until it finds `int8,int8`.
-
-
-  This should also happen in the unimplemented "solidification" phase.
-  */
   inline(amm: Output, kind: AssignKind, name: string, ty: Type) {
     // ignore selTys because if there's a mismatch between `ty`
     // and the return type of the selected function, there will
@@ -661,7 +686,7 @@ class Call extends Expr {
     // other factor is order of declaration - Alan should always prefer using
     // functions that are defined last.
     const fn = selFns.pop();
-    fn.inline(amm, this.args, kind, name, ty);
+    fn.inline(amm, this.args, kind, name, ty, this.scope);
   }
 }
 

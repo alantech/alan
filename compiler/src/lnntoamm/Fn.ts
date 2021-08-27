@@ -1,11 +1,12 @@
+import { stdout } from 'process';
 import { LPNode, NamedAnd, NulLP, Token } from '../lp';
 import Output, { AssignKind } from './Amm';
 import Expr, { Ref } from './Expr';
 import opcodes from './opcodes';
 import Scope from './Scope';
 import Stmt, { Dec, Exit, FnParam, MetaData } from './Stmt';
-import Type, { FunctionType } from './Types';
-import { TODO } from './util';
+import Type, { FunctionType, TempConstrainOpts } from './Types';
+import { DBG, TODO } from './util';
 
 export default class Fn {
   // null if it's an anonymous fn
@@ -42,12 +43,14 @@ export default class Fn {
     this.body = body;
     this.metadata =
       metadata !== null ? metadata : new MetaData(scope, this.retTy);
+    let ensureOnce = true;
     while (
       this.body.reduce(
         (carry, stmt) => stmt.cleanup(this.scope) || carry,
-        false,
+        ensureOnce,
       )
-    );
+    )
+      ensureOnce = false;
     const tyAst = ((fnAst: LPNode) => {
       if (fnAst instanceof NulLP) {
         // assume it's for an opcode
@@ -76,25 +79,44 @@ export default class Fn {
   }
 
   static fromFunctionsAst(ast: LPNode, scope: Scope): Fn {
-    scope = new Scope(scope);
+    const fnSigScope = new Scope(scope);
+
     let retTy: Type;
     if (ast.get('optreturntype').has()) {
       const name = ast.get('optreturntype').get('fulltypename');
-      retTy = Type.getFromTypename(name, scope);
+      retTy = Type.getFromTypename(name, fnSigScope, { isTyVar: true });
       if (retTy === null) {
         throw new Error(`Type not in scope: ${name.t.trim()}`);
       }
-      if (retTy.dupIfNotLocalInterface() !== null) {
-        // TODO: figure out how to prevent type erasure while allowing
-        // eg the generic identity function. Or just wait until generic
-        // fn type parameters.
-        throw new Error(`type erasure is illegal`);
-      }
+      // TODO: I had to re-enable type erasure - previously it was done with
+      // `if (retTy.dup() !== null) throw new Error(...)` but this doesn't
+      // work for `fn none(): Maybe<any> = noneM();` since the `any` in the
+      // return part *does* cause `dup` to return a non-null Type. Type
+      // erasure *may* be detected by seeing if the return type strictly
+      // represents the superset of the type returned from the internal
+      // `return` statement, ie given:
+      // ```ln
+      // fn foo(): any = true;
+      // ```
+      // the `any` in the return part of the signature is strictly a
+      // superset of the `bool` type, so it definitely is type erasure,
+      // while the `any` in the return part of the signature for `fn none`
+      // is strictly equal to the `any` part returned by opcode `noneM`.
+      // More investigation is necessary to determine if this is the
+      // right way to detect that.
+      //
+      // If the syntax does evolve to require type parameters in functions,
+      // then this can be solved: simply check to make sure that the type
+      // doesn't `dup()` because the type variable shouldn't require a dup.
+      // For example, using an imaginary Alan syntax for generic functions,
+      // `fn foo<T>(): Maybe<T>` obviously doesn't contain type erasure:
+      // the type `T` gets assigned from the caller's point of view. Meanwhile,
+      // `fn foo(): Maybe<any>` would obviously type-erased because the
+      // caller doesn't influence the type returned by `foo`.
     } else {
       retTy = Type.oneOf([Type.generate(), opcodes().get('void')]);
     }
 
-    // TODO: inheritance
     const metadata = new MetaData(scope, retTy);
 
     const name = ast.get('optname').has() ? ast.get('optname').get().t : null;
@@ -106,7 +128,9 @@ export default class Fn {
         p.push(...arglist.get('cdr').getAll());
       }
     }
-    const params = p.map((paramAst) => FnParam.fromArgAst(paramAst, metadata));
+    const params = p.map((paramAst) =>
+      FnParam.fromArgAst(paramAst, metadata, fnSigScope),
+    );
 
     let body = [];
     let bodyAsts: LPNode | LPNode[] = ast.get('fullfunctionbody');
@@ -123,10 +147,12 @@ export default class Fn {
       [body, exitVal] = Expr.fromAssignablesAst(bodyAsts, metadata);
       if (exitVal instanceof Ref) {
         body.push(new Exit(bodyAsts, exitVal, retTy));
+        retTy.constrain(exitVal.ty, scope);
       } else {
         const retVal = Dec.gen(exitVal, metadata);
         body.push(retVal);
         body.push(new Exit(bodyAsts, retVal.ref(), retTy));
+        retTy.constrain(retVal.ty, scope);
       }
     }
 
@@ -197,11 +223,23 @@ export default class Fn {
   // FIXME: a 3rd option is to make amm itself only SSA and perform the the "register
   // selection" in the ammtox stage. This might be the best solution, since it's the most
   // flexible regardless of the backend, and amm is where that diverges.
-  inline(amm: Output, args: Ref[], kind: AssignKind, name: string, ty: Type) {
+  inline(
+    amm: Output,
+    args: Ref[],
+    kind: AssignKind,
+    name: string,
+    ty: Type,
+    callScope: Scope,
+  ) {
     if (args.length !== this.params.length) {
       throw new Error(`function call argument mismatch`);
     }
     this.params.forEach((param, ii) => param.assign(args[ii], this.scope));
+    this.retTy.tempConstrain(ty, callScope);
+    // console.log('----- inlining', this.name);
+    // stdout.write('rty: ');
+    // console.dir(this.retTy, { depth: 4 });
+    // console.dir(this.body, { depth: 8 });
     for (let ii = 0; ii < this.body.length; ii++) {
       const stmt = this.body[ii];
       if (stmt instanceof Exit) {
@@ -219,22 +257,58 @@ export default class Fn {
       }
       stmt.inline(amm);
     }
+    this.retTy.resetTemp();
     this.params.forEach((param) => param.unassign());
   }
 
-  resultTyFor(argTys: Type[], scope: Scope): Type | null {
-    let res: Type | null = null;
+  resultTyFor(
+    argTys: Type[],
+    expectResTy: Type,
+    scope: Scope,
+    tcOpts?: TempConstrainOpts,
+  ): [Type[], Type] | null {
+    let res: [Type[], Type] | null = null;
+    const isDbg = false;
     try {
-      this.params.forEach((param, ii) =>
-        param.ty.tempConstrain(argTys[ii], scope),
-      );
-      res = this.retTy.instance();
-    } catch (_e) {
+      this.params.forEach((param, ii) => {
+        isDbg && stdout.write('==> constraining param ty ');
+        isDbg && console.dir(param.ty, { depth: 4 });
+        isDbg && stdout.write('to ');
+        isDbg && console.dir(argTys[ii], { depth: 4 });
+        param.ty.tempConstrain(argTys[ii], scope, tcOpts);
+        isDbg && stdout.write('now: ');
+        isDbg && console.dir(param.ty, { depth: 4 });
+      });
+      isDbg &&
+        console.log('constraining ret ty', this.retTy, 'to', expectResTy);
+      this.retTy.tempConstrain(expectResTy, scope, tcOpts);
+      isDbg && console.log('now:', this.retTy);
+      isDbg && console.log('oh and expected is now', expectResTy);
+      const instanceOpts = { interfaceOk: true, forSameDupIface: [] };
+      res = [
+        this.params.map((param) => param.ty.instance(instanceOpts)),
+        this.retTy.instance(instanceOpts),
+      ];
+    } catch (e) {
       // do nothing: the args aren't applicable to the params so
       // we return null (`res` is already `null`) and we need to
       // ensure the param tys have `resetTemp` called on them.
+      // However, if the Error message starts with `TODO`, then
+      // print the error since it's for debugging purposes
+      const msg = e.message as string;
+      if (msg.startsWith('TODO')) {
+        console.log(
+          'warning: came across TODO from Types.ts when getting result ty for a function:',
+        );
+        console.group();
+        console.log(msg);
+        console.groupEnd();
+      }
     }
     this.params.forEach((param) => param.ty.resetTemp());
+    this.retTy.resetTemp();
+    argTys.map((ty) => ty.resetTemp());
+    expectResTy.resetTemp();
     return res;
   }
 }
@@ -247,12 +321,17 @@ export class OpcodeFn extends Fn {
     retTyName: string,
     __opcodes: Scope,
   ) {
+    const tyScope = new Scope(__opcodes);
     const params = Object.entries(argDecs).map(([name, tyName]) => {
-      return new FnParam(new NulLP(), name, opcodes().get(tyName));
+      return new FnParam(
+        new NulLP(),
+        name,
+        Type.getFromTypename(tyName, tyScope, { isTyVar: true }),
+      );
     });
-    const retTy = __opcodes.get(retTyName);
+    const retTy = Type.getFromTypename(retTyName, tyScope, { isTyVar: true });
     if (retTy === null || !(retTy instanceof Type)) {
-      throw new Error();
+      throw new Error('not a type');
     }
     super(new NulLP(), __opcodes, name, params, retTy, []);
     __opcodes.put(name, [this]);
@@ -262,7 +341,15 @@ export class OpcodeFn extends Fn {
     TODO('opcodes as event listener???');
   }
 
-  inline(amm: Output, args: Ref[], kind: AssignKind, assign: string, ty: Type) {
+  inline(
+    amm: Output,
+    args: Ref[],
+    kind: AssignKind,
+    assign: string,
+    ty: Type,
+    callScope: Scope,
+  ) {
+    this.retTy.tempConstrain(ty, callScope);
     amm.assign(
       kind,
       assign,
@@ -270,5 +357,6 @@ export class OpcodeFn extends Fn {
       this.name,
       args.map((ref) => ref.ammName),
     );
+    this.retTy.resetTemp();
   }
 }
