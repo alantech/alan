@@ -231,12 +231,12 @@ export class Dec extends VarDef {
     // so this is fine
     this.__ammName = genName();
     try {
-    this.expr.inline(
-      amm,
-      this.immutable ? 'const' : 'let',
-      this.ammName,
-      this.ty.instance(),
-    );
+      this.expr.inline(
+        amm,
+        this.immutable ? 'const' : 'let',
+        this.ammName,
+        this.ty.instance(),
+      );
     } catch (e) {
       console.dir(this, { depth: 6 });
       throw e;

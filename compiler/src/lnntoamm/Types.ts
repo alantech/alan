@@ -195,7 +195,10 @@ export default abstract class Type implements Equalable {
         if (ty.name !== outerType.name) {
           isSquishy = false;
         } else {
-          return Object.values(ty.generics).map((genTy, ii) => [...(genTys[ii] || []), genTy]);
+          return Object.values(ty.generics).map((genTy, ii) => [
+            ...(genTys[ii] || []),
+            genTy,
+          ]);
         }
       } else {
         isSquishy = false;
@@ -319,7 +322,11 @@ class Opaque extends Type implements Generalizable {
       const thisGens = Object.keys(this.generics);
       const thatGens = Object.keys(that.generics);
       thisGens.forEach((genName, ii) =>
-        this.generics[genName].constrain(that.generics[thatGens[ii]], scope, opts),
+        this.generics[genName].constrain(
+          that.generics[thatGens[ii]],
+          scope,
+          opts,
+        ),
       );
     } else if (that instanceof Interface || that instanceof OneOf) {
       that.constrain(this, scope, opts);
@@ -586,7 +593,10 @@ export class FunctionType extends Type {
             return [
               [...fns, fn],
               _pTys,
-              [...retTys, fn.retTy.instance({ interfaceOk: true, forSameDupIface: [] })],
+              [
+                ...retTys,
+                fn.retTy.instance({ interfaceOk: true, forSameDupIface: [] }),
+              ],
             ];
           } else {
             return [fns, _pTys, retTys];
@@ -619,7 +629,9 @@ export class FunctionType extends Type {
       fnsForWeight.push(
         ...fns.reduce((fns, fn) => {
           isDbg && console.log('getting result ty');
-          const tys = fn.resultTyFor(argTys, expectResTy, scope, { isTest: true });
+          const tys = fn.resultTyFor(argTys, expectResTy, scope, {
+            isTest: true,
+          });
           isDbg && stdout.write('signature is: ');
           isDbg && console.dir(tys, { depth: 4 });
           if (tys === null) {
@@ -1277,9 +1289,16 @@ class Interface extends Type {
     // const isDbg = this.name === 'any-n18-n4296';
     const isDbg = false;
     if (isDbg) {
-      const getStack = {stack:''};
+      const getStack = { stack: '' };
       Error.captureStackTrace(getStack);
-      console.log('~~> constraining', this.name, 'to', that, 'at', getStack.stack);
+      console.log(
+        '~~> constraining',
+        this.name,
+        'to',
+        that,
+        'at',
+        getStack.stack,
+      );
     }
     if (this.eq(that) || that.contains(this)) {
       isDbg && console.log('quitting early');
@@ -1345,7 +1364,10 @@ class Interface extends Type {
       }
     });
 
-    if (this.__isDuped.isTyVar && !(that instanceof Interface || that instanceof OneOf)) {
+    if (
+      this.__isDuped.isTyVar &&
+      !(that instanceof Interface || that instanceof OneOf)
+    ) {
       return;
     }
     if (this.delegate !== null) {
@@ -1415,8 +1437,9 @@ class Interface extends Type {
       this.__isDuped.isTyVar &&
       opts.forSameDupIface
     ) {
-      const already = opts.forSameDupIface
-        .find(([iface, _duped]) => iface === this);
+      const already = opts.forSameDupIface.find(
+        ([iface, _duped]) => iface === this,
+      );
       if (already) {
         return already[1];
       } else {
@@ -1424,11 +1447,7 @@ class Interface extends Type {
         opts.forSameDupIface.push([this, duped]);
         return duped;
       }
-    } else if (
-      opts &&
-      opts.interfaceOk &&
-      this.__isDuped
-    ) {
+    } else if (opts && opts.interfaceOk && this.__isDuped) {
       return this;
     } else {
       // console.log(this);
@@ -1595,7 +1614,9 @@ class Generated extends Interface {
         } else {
           that.fields.forEach((f) => this.delegate.constrain(f, scope, opts));
           that.methods.forEach((m) => this.delegate.constrain(m, scope, opts));
-          that.operators.forEach((o) => this.delegate.constrain(o, scope, opts));
+          that.operators.forEach((o) =>
+            this.delegate.constrain(o, scope, opts),
+          );
         }
       } else if (that.delegate !== null) {
         this.delegate = that.delegate;
@@ -1804,7 +1825,7 @@ class OneOf extends Type {
       isDbg && console.log('stopping here');
       opts = { stopAt: this };
     }
-    that.constrain(this, scope, opts)
+    that.constrain(this, scope, opts);
   }
 
   contains(that: Type): boolean {

@@ -49,7 +49,8 @@ export default class Fn {
         (carry, stmt) => stmt.cleanup(this.scope) || carry,
         ensureOnce,
       )
-    ) ensureOnce = false;
+    )
+      ensureOnce = false;
     const tyAst = ((fnAst: LPNode) => {
       if (fnAst instanceof NulLP) {
         // assume it's for an opcode
@@ -278,7 +279,8 @@ export default class Fn {
         isDbg && stdout.write('now: ');
         isDbg && console.dir(param.ty, { depth: 4 });
       });
-      isDbg && console.log('constraining ret ty', this.retTy, 'to', expectResTy);
+      isDbg &&
+        console.log('constraining ret ty', this.retTy, 'to', expectResTy);
       this.retTy.tempConstrain(expectResTy, scope, tcOpts);
       isDbg && console.log('now:', this.retTy);
       isDbg && console.log('oh and expected is now', expectResTy);
