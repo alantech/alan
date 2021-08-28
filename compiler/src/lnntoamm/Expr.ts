@@ -9,6 +9,23 @@ import Stmt, { Dec, MetaData, VarDef } from './Stmt';
 import Type, { FunctionType } from './Types';
 import { isFnArray, isOpArray, TODO } from './util';
 
+/*
+This file is pretty big. The idea is that this handles anything that
+represents a value. I broke this up into a few different concepts:
+- AccessField: represents accessing a field of another value.
+- Call: calling a function, either by name or by reference.
+- Const: literal values, eg numbers, strings, or bools.
+- New: creating an instance of a structural type.
+- Ref: a reference to a value defined at another location.
+
+Every `assignable` (as the terminology is in the parsing module) is
+broken up into its individual Exprs. These Exprs are referenced in
+other Exprs through Refs. I don't believe there's any scenario when
+an Expr should maintain a reference (as in, JS/TS reference) to
+any other Expr than a Ref. There is a possibility that it can help
+with inlining functions, but I'm not entirely convinced and in the
+end this model is simpler.
+*/
 export default abstract class Expr {
   ast: LPNode;
   abstract get ty(): Type;
@@ -17,8 +34,30 @@ export default abstract class Expr {
     this.ast = ast;
   }
 
+  /**
+   * Inlines this Expr, creating the relevant statement in the AMM output.
+   *
+   * @param amm the AMM generator object for the output program
+   * @param kind the kind of assignment that the Expr should be assigned to
+   * in the AMM output
+   * @param name the name that this Expr is expected to be referrable as in
+   * the AMM output
+   * @param ty the expected type of the Expr output. Should only be Opaque types
+   */
   abstract inline(amm: Output, kind: AssignKind, name: string, ty: Type): void;
 
+  /**
+   * TODO: this still needs to support:
+   * - constructing arrays (delegate to appropriate class)
+   * - closures and calling HOFs
+   *
+   * @param ast the ast, expected to be a `baseassignablelist`
+   * @param metadata the metadata for the current context. See more documentation
+   * in Stmt.ts
+   * @returns a tuple where the first element is all of the generated Stmts that
+   * are contained within the baseassignablelist; the second element is the Expr
+   * that represents the entire baseassignablelist
+   */
   private static fromBaseassignablelist(
     ast: LPNode,
     metadata: MetaData,
@@ -182,6 +221,22 @@ export default abstract class Expr {
     return [generated, expr];
   }
 
+  /**
+   * This function is a little messy, particularly with regard to operator
+   * handling. I believe it works for the most part, but it currently doesn't
+   * work when 2 operators with the same symbol and same fixity don't have the
+   * same precedence. The best way I can think of to implement this is to
+   * create a new `class OpCall extends Expr` that'll create a permutation of
+   * each possible call order. This would require some changes to Types.ts
+   * first, though. The primary requirement would be the implementation of
+   * some `class TypeConxn extends Type` that would change other Types if some Type is
+   * inferred to be a specific type. See more info in Types.ts.
+   *
+   * @param ast the ast to load, expected to be an `assignables`
+   * @param metadata the metadata of the current context
+   * @returns a tuple containing generated intermediary statements and the
+   * Expr representing the entire AST
+   */
   static fromAssignablesAst(ast: LPNode, metadata: MetaData): [Stmt[], Expr] {
     const asts = ast.getAll();
     // break it up so that we're only working on one base assignable list or operator at a time.
@@ -225,7 +280,6 @@ export default abstract class Expr {
     // since there are no suffix operators, this is relatively easy - operators
     // immediately following an expression must be infix, while all others must be
     // a prefix
-    // TODO: make sure errors match lntoamm
     const stmts: Stmt[] = [];
     let infixPosition = false;
     const operation = operated.map((op) => {
@@ -260,11 +314,11 @@ export default abstract class Expr {
     });
 
     // now to try to solve operators.
-    // TODO: this might not work if there are multiple operator precedences for
-    // the same symbol. If that's the case, then we'll have to create an Expr
-    // that acts as a permutation over the different possible operator expansions
-    // (it can be done after eliminating operators that aren't compatible with
-    // the provided types)
+    // TODO: this does not work if there are multiple operator precedences for
+    // the same symbol. To support this, we'll have to create an Expr that acts
+    // as a permutation over the different possible operator expansions (it can
+    // be done after eliminating operators that aren't compatible with the
+    // provided types)
     // eslint-disable-next-line no-constant-condition
     while (true) {
       // find the highest-precedence operations
@@ -293,7 +347,8 @@ export default abstract class Expr {
 
       // all of the selected operators should be the same infix/prefix mode
       // if the result is null, that means they're not - idk if that's
-      // ever a case so just TODO it
+      // ever a case so just TODO it. it can probably be done with the
+      // permutation class I mentioned above.
       const prefixModeOf = (vals: Operator[]) =>
         vals.reduce((mode, op) => {
           if (mode === null) return mode;
@@ -316,8 +371,6 @@ export default abstract class Expr {
       // do prefix operators first to ensure that there's no operator
       // ambiguity. If there's a prefix before an infix operator (not an
       // expression), this still gets caught below.
-      // TODO: this can be iterated through in reverse, but it's a quick
-      // refactor during PR review so do that later
       for (let jj = 0; jj < idxs.length; jj++) {
         const idx = idxs[jj];
         const item = precedences[idx] as Map<number, Operator[]>;
@@ -509,6 +562,12 @@ export default abstract class Expr {
   }
 }
 
+/*
+Meant to represent accessing the field of a type. This can be refactored
+to support accessing indices of an Array, but the inlining logic is
+probably best left separate (fields of types are accessed by a name literal,
+but indices of Arrays are accessed by numeric variables)
+*/
 class AccessField extends Expr {
   struct: Ref;
   fieldName: string;
@@ -533,15 +592,25 @@ class AccessField extends Expr {
   }
 }
 
+/*
+Represents a Call to a function. Right now the type constraining logic
+results in a *lot* of malloc calls, but this is unavoidable without
+relatively significant work to Types.ts. Primarily, the `TypeConxn` class
+mentioned above (and defined with more detail in Types.ts) would be very
+beneficial for this use case. It would `OneOf` a list of connections that
+connect the arguments provided to the called function to each other and
+to the return type of the fn call.
+*/
 class Call extends Expr {
-  private dbg = () => this.ast.t.includes('ok');
-
+  // the list of functions in scope that apply
   fns: Fn[];
+  // a reference to a declaration assigned to *some* value. type constraint
+  // compatibility checking can be done to ensure that this is in fact a fn.
+  // When function selecting, the fn's type should *also* be passed to the
+  // matrix selection (once matrix selection is changed to use types only).
   maybeClosure: VarDef | null;
   args: Ref[];
   retTy: Type;
-  // FIXME: once the matrix as below is implemented, get rid of this field
-  // and just pass it into the selection phase
   scope: Scope;
 
   get ty(): Type {
@@ -631,26 +700,19 @@ class Call extends Expr {
     argTys.forEach((ty, ii) => ty.constrain(constrainArgs[ii], metadata.scope));
     retTy.constrain(Type.oneOf(selRetTys), metadata.scope);
     if (closure !== null) {
-      TODO('closures');
+      TODO('closures should also be passed into matrix selection');
     }
     return [stmts, new Call(ast, fns, closure, args, metadata.scope, retTy)];
   }
 
   private fnSelect(): [Fn[], Type[][], Type[]] {
-    // try {
     const ret = FunctionType.matrixSelect(
       this.fns,
       this.args.map((a) => a.ty),
       this.retTy,
       this.scope,
     );
-    // console.log('fnSelect for', this.ast.t.trim(), '->', ret[0]);
     return ret;
-    // } catch (e) {
-    //   console.log('for', this.ast.t.trim());
-    //   console.dir(this.args.map(a => a.ty), { depth: 4 });
-    //   throw e;
-    // }
   }
 
   cleanup() {
@@ -671,7 +733,7 @@ class Call extends Expr {
     const [selFns, _selTys] = this.fnSelect();
     if (selFns.length === 0) {
       // TODO: to get better error reporting, we need to pass an ast when using
-      // operators. i'm not worried about error reporting yet, though :)
+      // operators
       console.log('~~~ ERROR');
       console.log('selection pool:', this.fns);
       console.log('args:', this.args);
@@ -690,6 +752,10 @@ class Call extends Expr {
   }
 }
 
+/*
+Value literals. Should be able to at least provide a `OneOf` of types that
+work in any given context.
+*/
 class Const extends Expr {
   val: string;
   private detectedTy: Type;
@@ -760,6 +826,10 @@ class Const extends Expr {
   }
 }
 
+/*
+Just like `AccessField`, this type should probably only apply to constructing
+Structs, which implies renaming this class.
+*/
 class New extends Expr {
   valTy: Type;
   fields: { [name: string]: Ref };
@@ -769,10 +839,9 @@ class New extends Expr {
   }
 
   /**
-   * NOTE: does NOT check to make sure that the fields
-   * are valid. Ensure that the caller has already done
-   * validated the fields (fromTypeLiteral does this
-   * already).
+   * NOTE: this constructor does NOT check to make sure that the fields are
+   * valid. Ensure that the caller has already done validated the fields
+   * (fromTypeLiteral does this already).
    */
   constructor(ast: LPNode, valTy: Type, fields: { [name: string]: Ref }) {
     super(ast);
@@ -852,6 +921,10 @@ class New extends Expr {
   }
 }
 
+/*
+Just an Expr that points to some `VarDef`. It might be possible to avoid
+making the new `ConstRef` that's mentioned in `Const.ts`
+*/
 export class Ref extends Expr {
   def: VarDef;
 

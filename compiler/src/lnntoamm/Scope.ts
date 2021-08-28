@@ -7,12 +7,6 @@ import Ty from './Types';
 // Scope instead of a Module
 type Boxish = Scope | Const | Event | Fn[] | Operator[] | Ty;
 
-export const isFunctions = (boxish: Boxish): boxish is Fn[] => {
-  return (
-    boxish instanceof Array && (boxish.length === 0 || boxish[0] instanceof Fn)
-  );
-};
-
 type BoxSet = {
   [K: string]: Boxish;
 };

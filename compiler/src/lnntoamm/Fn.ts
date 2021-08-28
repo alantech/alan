@@ -8,6 +8,12 @@ import Stmt, { Dec, Exit, FnParam, MetaData } from './Stmt';
 import Type, { FunctionType, TempConstrainOpts } from './Types';
 import { DBG, TODO } from './util';
 
+/*
+This class should probably be used for constructing closures, and
+inherit the `Metadata` of the containing function (if any). I think
+a thin `Expr` wrapper is necessary, but otherwise it's pretty
+straightforward and generic enough.
+*/
 export default class Fn {
   // null if it's an anonymous fn
   name: string | null;
@@ -43,14 +49,20 @@ export default class Fn {
     this.body = body;
     this.metadata =
       metadata !== null ? metadata : new MetaData(scope, this.retTy);
-    let ensureOnce = true;
-    while (
+
+    // sometimes a type isn't selected from a OneOf until later constraints
+    // are passed. This means we have to call `cleanup` *at least* twice,
+    // however `cleanup` tells us if more rounds are necessary so just use
+    // this loop
+    for (
+      let ensureOnce = true;
       this.body.reduce(
         (carry, stmt) => stmt.cleanup(this.scope) || carry,
         ensureOnce,
-      )
-    )
-      ensureOnce = false;
+      );
+      ensureOnce = false
+    );
+
     const tyAst = ((fnAst: LPNode) => {
       if (fnAst instanceof NulLP) {
         // assume it's for an opcode
@@ -173,7 +185,9 @@ export default class Fn {
       scope,
       null,
       [],
-      // TODO: if expressions will mean that it's not necessarily void...
+      // TODO: should probably just be `Type.generate()`. That'll allow
+      // eg `fn foo = 3;` to correctly assert that it's a function that
+      // returns a number.
       opcodes().get('void'),
       body,
       metadata,
@@ -223,6 +237,8 @@ export default class Fn {
   // FIXME: a 3rd option is to make amm itself only SSA and perform the the "register
   // selection" in the ammtox stage. This might be the best solution, since it's the most
   // flexible regardless of the backend, and amm is where that diverges.
+  // FIXME: this can also all probably be done by revamping AMM generation to use a visitor
+  // pattern, followed by a `cleanup` phase (as is done here and in Stmt.ts and Expr.ts).
   inline(
     amm: Output,
     args: Ref[],
@@ -261,6 +277,7 @@ export default class Fn {
     this.params.forEach((param) => param.unassign());
   }
 
+  // TODO: this can be done with just FnType in Types.ts - just a refactor away :)
   resultTyFor(
     argTys: Type[],
     expectResTy: Type,
@@ -297,6 +314,8 @@ export default class Fn {
       // print the error since it's for debugging purposes
       const msg = e.message as string;
       if (msg.startsWith('TODO')) {
+        // users should be encouraged to report these. Also probably
+        // best to just make a custom Error type for TODOs
         console.log(
           'warning: came across TODO from Types.ts when getting result ty for a function:',
         );
@@ -338,6 +357,7 @@ export class OpcodeFn extends Fn {
   }
 
   asHandler(_amm: Output, _event: string) {
+    // should this be allowed?
     TODO('opcodes as event listener???');
   }
 
