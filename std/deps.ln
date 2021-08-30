@@ -148,7 +148,7 @@ export fn commit(pkg: RawPackage) {
 fn getBlacklist(std: Array<string>): Array<string> {
   const stdList = [
     '@std/app', '@std/avmdaemon', '@std/cmd', '@std/datastore', '@std/deps', '@std/http', 
-    '@std/httpcommon', '@std/httpserver', '@std/json', '@std/root', '@std/seq', '@std/tcp',
+    '@std/httpcommon', '@std/httpserver', '@std/json', '@std/seq', '@std/tcp',
     '@std/tcpserver', '@std/trig',
   ];
   return stdList.filter(fn (a: string) = !(pkg.std.find(fn (b: string) = eq(a,b)).isOk()));
