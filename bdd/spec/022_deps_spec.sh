@@ -10,7 +10,7 @@ Describe "@std/deps"
         on install fn (package: Package) = package
           .dependency('https://github.com/alantech/hellodep#deps-perm')
             .add()
-          commit()
+          .commit()
       "
     }
     BeforeAll before
@@ -100,7 +100,7 @@ Describe "@std/deps"
 
         on install fn (package: Package) = package
           .using('@std/cmd')
-          commit()
+          .commit()
       "
     }
     BeforeAll before
