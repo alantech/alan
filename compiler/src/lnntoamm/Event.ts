@@ -7,6 +7,16 @@ import { genName, TODO } from './util';
 
 const allEvents: Event[] = [];
 
+/*
+Notes:
+This just represents the events. Right now, since event declarations
+are so basic, there's no need to do much related to Types here.
+
+TODO: the syntax for `on someEvent someFnName` doesn't currently work.
+This is pretty simple to accomplish once FnType is done: just find the
+last-defined fn that corresponds to `Function<T, void>` where T is the
+type of the event.
+*/
 export default class Event {
   ammName: string;
   name: string;

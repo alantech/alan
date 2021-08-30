@@ -7,6 +7,13 @@ import Scope from './Scope';
 import Type from './Types';
 import { genName, TODO } from './util';
 
+/**
+ * Metadata for the current statement's context. This allows it to
+ * get references to other Stmts that are defined in the same scope
+ * or in outer scopes, the containing scope, and the return type of
+ * the containing function. This makes accessing other Stmts an O(1)
+ * operation instead of O(n).
+ */
 export class MetaData {
   scope: Scope;
   variables: { [name: string]: VarDef };
@@ -75,6 +82,14 @@ export default abstract class Stmt {
   }
 }
 
+/*
+Reassignment. Honestly, this can all be moved into `Dec` - I thought there
+would be some utility in keeping them separate but I don't see it. Just make
+sure that if it's a reassignment then it needs *the same Type reference* as the
+upstream `Dec`'s (ie `this.type = upstream.type`)
+
+I recommend keeping the `Assign` class name
+*/
 export class Assign extends Stmt {
   upstream: VarDef;
   expr: Expr;
@@ -94,15 +109,19 @@ export class Assign extends Stmt {
     const stmts: Stmt[] = [];
     const name = ast.get('varn').t;
     const upstream = metadata.get(name);
-    const [generated, expr] = Expr.fromAssignablesAst(ast, metadata);
+    const [generated, expr] = Expr.fromAssignablesAst(
+      ast.get('assignables'),
+      metadata,
+    );
     upstream.ty.constrain(expr.ty, metadata.scope);
     stmts.push(...generated, new Assign(ast, upstream, expr));
     return stmts;
   }
 
   cleanup(scope: Scope): boolean {
-    const didWork = this.expr.cleanup();
-    this.upstream.ty.constrain(this.expr.ty, scope);
+    const upTy = this.upstream.ty;
+    const didWork = this.expr.cleanup(upTy);
+    upTy.constrain(this.expr.ty, scope);
     return didWork;
   }
 
@@ -116,6 +135,77 @@ export class Assign extends Stmt {
   }
 }
 
+/*
+A thought, before going into it: this would be a lot easier if conditionals
+were expressions instead of statements. The design I made is inspired by how
+they're done in FP langs, but it's difficult to achieve perfectly and has
+resulted in some hacky behavior that should be investigated before attempting
+to use in any AVM-based FP langs.
+
+TODO: the implementation of this will be much less hacky if amm generation
+was converted to the visitor pattern
+
+Conditionals require a bit of work. Here, a few things need to happen:
+
+1. Create a table that matches conditions to functions/closures to execute.
+```
+if foo { closure 1 }
+else if bar { closure 2 }
+else { closure 3 }
+// above gets transformed into:
+[
+  [foo, closure 1],
+  [bar, closure 2],
+  [true, closure 3],
+]
+```
+
+2. The functions for each branch must have 0 parameters and all return the
+same type, which is equal to their internal type wrapped in a `Maybe`.
+```
+fn foo() {
+  if bar() {
+    // closure 1
+    return 0;
+  } else if baz() {
+    // closure 2
+    return 1;
+  } else {
+    // closure 3
+    'hello world'.print();
+  }
+  return 2;
+}
+// closure 1 gets transformed into:
+fn { return some(0); }
+// closure 2 gets transformed into:
+fn { return some(1); }
+// closure 3 gets transformed into:
+fn {
+  'hello world'.print();
+  return none();
+}
+```
+
+3. Create an instance of an Opaque `CondTable` type (I created the
+`condtable` opcode while working on this, which I recommend doing).
+
+4. For each branch, insert the opcode `condfn` with the first argument
+being the CondTable. The second argument should be the condition being
+used to determine if the branch gets executed. The third argument is
+the closure to execute.
+
+5. Insert the opcode `execcond` after all branches have been passed,
+with the only argument being the CondTable. The return type is the
+return type of all the branches.
+
+6. If the surrounding function guarantees a returned value, then unwrap
+the returned Maybe.
+
+---
+On the opcode implementation side, `condfn` should insert the closure
+into the CondTable if the condition is true and the CondTable is empty.
+*/
 class Cond extends Stmt {
   static fromConditionals(_ast: LPNode, _metadata: MetaData): Stmt[] {
     return TODO('conditionals');
@@ -131,6 +221,7 @@ class Cond extends Stmt {
 }
 
 export abstract class VarDef extends Stmt {
+  // this name results in double negatives :)
   immutable: boolean;
   name: string;
   ty: Type;
@@ -149,6 +240,14 @@ export abstract class VarDef extends Stmt {
   }
 }
 
+/*
+Variable declaration. In order to do the intended mutation tracking,
+we might actually have to associate it with the `Dec`'s type like in
+Rust. This can be done, but might be fairly complex to achieve.
+
+This class has to do a lot of constraining to make sure that everything
+agrees on types for various variables.
+*/
 export class Dec extends VarDef {
   private __ammName = '<UNSET>';
   expr: Expr;
@@ -190,7 +289,7 @@ export class Dec extends VarDef {
       const found = Type.getFromTypename(tyName, metadata.scope);
       // if the type hint is an interface, then all we have to do
       // is ensure that the expr's ty matches the interface
-      const duped = found.dupIfNotLocalInterface();
+      const duped = found.dup();
       if (duped === null) {
         ty = found;
         ty.constrain(expr.ty, metadata.scope);
@@ -205,13 +304,11 @@ export class Dec extends VarDef {
   }
 
   static gen(expr: Expr, metadata: MetaData): Dec {
-    const ty = Type.generate();
-    ty.constrain(expr.ty, metadata.scope);
     const dec = new Dec(
       expr.ast,
       false, // default to mutable in case of eg builder pattern
       genName(),
-      ty,
+      expr.ty,
       expr,
     );
     metadata.define(dec);
@@ -219,7 +316,7 @@ export class Dec extends VarDef {
   }
 
   cleanup(scope: Scope): boolean {
-    const didWork = this.expr.cleanup();
+    const didWork = this.expr.cleanup(this.ty);
     this.ty.constrain(this.expr.ty, scope);
     return didWork;
   }
@@ -228,15 +325,26 @@ export class Dec extends VarDef {
     // refs don't escape the current scope and this only happens 1x/scope,
     // so this is fine
     this.__ammName = genName();
-    this.expr.inline(
-      amm,
-      this.immutable ? 'const' : 'let',
-      this.ammName,
-      this.ty.instance(),
-    );
+    try {
+      this.expr.inline(
+        amm,
+        this.immutable ? 'const' : 'let',
+        this.ammName,
+        this.ty.instance(),
+      );
+    } catch (e) {
+      console.dir(this, { depth: 6 });
+      throw e;
+    }
   }
 }
 
+/*
+FnParams aren't syntactic statements, so it's kinda weird to think
+of this class as being a subclass of Stmt. Despite not actually being
+included in amm output (with a couple exceptions, of course), there
+are enough similarities that it's convenient to keep it here.
+*/
 export class FnParam extends VarDef {
   private __assigned: Ref | null;
 
@@ -258,20 +366,19 @@ export class FnParam extends VarDef {
     this.__assigned = null;
   }
 
-  static fromArgAst(ast: LPNode, metadata: MetaData): FnParam {
+  static fromArgAst(
+    ast: LPNode,
+    metadata: MetaData,
+    fnSigScope: Scope,
+  ): FnParam {
     const name = ast.get('variable').t;
     const typename = ast.get('fulltypename');
-    let paramTy = Type.getFromTypename(typename, metadata.scope);
+    let paramTy = Type.getFromTypename(typename, fnSigScope, { isTyVar: true });
     if (paramTy === null) {
       paramTy = Type.generate();
       TODO('args with implicit types are not supported yet');
     } else if (!(paramTy instanceof Type)) {
       throw new Error(`Function parameter is not a valid type: ${typename.t}`);
-    }
-    const duped = paramTy.dupIfNotLocalInterface();
-    if (duped !== null) {
-      metadata.scope.put(duped.name, duped);
-      paramTy = duped;
     }
     const param = new FnParam(ast, name, paramTy);
     metadata.define(param);
@@ -297,6 +404,11 @@ export class FnParam extends VarDef {
   }
 }
 
+/*
+This class just has to make sure that a variable's type matches
+the emitted event's type. If the event is `void`, then there won't
+be a variable to emit.
+*/
 class Emit extends Stmt {
   event: Event;
   emitVal: Ref | null;
@@ -360,6 +472,10 @@ class Emit extends Stmt {
   }
 }
 
+/*
+This statement ensures that the given variable's type matches the type
+of the containing function.
+*/
 export class Exit extends Stmt {
   ret: Ref | null;
   fnRetTy: Type;
