@@ -93,13 +93,13 @@ Describe "@std/deps"
     End
   End
 
-  Describe "package `using` as single string"
+  Describe "package `using`"
     before() {
       sourceToAll "
         from @std/deps import Package, install, add, commit, dependency, using
 
         on install fn (package: Package) = package
-          .using('@std/cmd')
+          .using(['@std/cmd'])
           .commit()
       "
     }
