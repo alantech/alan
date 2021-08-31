@@ -188,6 +188,8 @@ fn downloadDependencies(dependencies: Array<Dependency>) {
     if gitClone.exitCode != 0 {
       eprint(gitClone.stderr);
     }
+    // Print clone result
+    print(gitClone.stderr);
     if rev != '' {
       const gitReset = exec('cd ' + dest + ' && git reset --hard ' + rev);
       if gitReset.exitCode != 0 {
