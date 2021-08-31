@@ -93,7 +93,7 @@ Describe "@std/deps"
     End
   End
 
-  Describe "package `using`"
+  Describe "package using"
     before() {
       sourceToAll "
         from @std/deps import Package, install, add, commit, dependency, using
