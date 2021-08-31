@@ -68,7 +68,7 @@ Describe "@std/deps"
 
     It "runs js"
       When run run_js
-      The output should eq "Cloning into './dependencies/alantech/hellodep'..."
+      The error should eq "Cloning into './dependencies/alantech/hellodep'..."
       Assert has_dependencies
       Assert has_alantech
       Assert has_hellodep
@@ -81,7 +81,7 @@ Describe "@std/deps"
 
     It "runs agc"
       When run run_agc
-      The output should eq "Cloning into './dependencies/alantech/hellodep'..."
+      The error should eq "Cloning into './dependencies/alantech/hellodep'..."
       Assert has_dependencies
       Assert has_alantech
       Assert has_hellodep
@@ -96,11 +96,16 @@ Describe "@std/deps"
   Describe "package using"
     before() {
       sourceToAll "
+        from @std/app import print
+        from @std/cmd import exec
         from @std/deps import Package, install, add, commit, dependency, using
 
         on install fn (package: Package) = package
-          .using(['@std/cmd'])
+          .using(['@std/app', '@std/cmd'])
           .commit()
+        
+        const lsRes = exec('ls');
+        print(lsRes.stdout);
       "
     }
     BeforeAll before
