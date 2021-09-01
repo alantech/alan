@@ -83,7 +83,6 @@ Describe "@std/deps"
     It "runs agc"
       When run run_agc
       The output should eq "Cloning into './dependencies/alantech/hellodep'..."
-      The error should eq "Cloning into './dependencies/alantech/hellodep'..."
       Assert has_dependencies
       Assert has_alantech
       Assert has_hellodep
