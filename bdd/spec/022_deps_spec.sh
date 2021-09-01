@@ -26,6 +26,7 @@ Describe "@std/deps"
     After after_each
 
     has_dependencies() {
+      echo "Check if dependencies exists"
       test -d "./dependencies"
     }
 
