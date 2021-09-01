@@ -8,7 +8,7 @@ Describe "@std/deps"
         from @std/deps import Package, install, add, commit, dependency
 
         on install fn (package: Package) = package
-          .dependency('https://github.com/alantech/hellodep#deps-perm')
+          .dependency('git@github.com:alantech/hellodep.git#deps-perm')
             .add()
           .commit()
       "
@@ -29,25 +29,41 @@ Describe "@std/deps"
       echo "--------"
       ls
       ls -la dependencies
-      ls -la dependencies/alantech
-      ls -la dependencies/alantech/hellodep
-      ls -la dependencies/alantech/hellodep/dependencies
       test -d "./dependencies"
     }
 
     has_alantech() {
+      echo "--------"
+      ls
+      ls -la dependencies
+      ls -la dependencies/alantech
       test -d "./dependencies/alantech"
     }
 
     has_hellodep() {
+      echo "--------"
+      ls
+      ls -la dependencies
+      ls -la dependencies/alantech
+      ls -la dependencies/alantech/hellodep
       test -d "./dependencies/alantech/hellodep"
     }
 
     has_index() {
+      echo "--------"
+      ls
+      ls -la dependencies
+      ls -la dependencies/alantech
+      ls -la dependencies/alantech/hellodep
       test -f "./dependencies/alantech/hellodep/index.ln"
     }
 
     has_nested_dependencies() {
+      ls
+      ls -la dependencies
+      ls -la dependencies/alantech
+      ls -la dependencies/alantech/hellodep
+      ls -la dependencies/alantech/hellodep/dependencies
       test -d "./dependencies/alantech/hellodep/dependencies"
     }
 
