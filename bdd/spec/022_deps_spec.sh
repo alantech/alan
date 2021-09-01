@@ -74,6 +74,7 @@ Describe "@std/deps"
 
     It "runs js"
       When run run_js
+      sleep 1
       The output should eq "Cloning into './dependencies/alantech/hellodep'..."
       The error should eq "Cloning into './dependencies/alantech/hellodep'..."
       Assert has_dependencies
@@ -88,6 +89,7 @@ Describe "@std/deps"
 
     It "runs agc"
       When run run_agc
+      sleep 1
       The output should eq "Cloning into './dependencies/alantech/hellodep'..."
       Assert has_dependencies
       Assert has_alantech
