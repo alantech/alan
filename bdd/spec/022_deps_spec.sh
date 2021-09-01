@@ -8,7 +8,7 @@ Describe "@std/deps"
         from @std/deps import Package, install, add, commit, dependency
 
         on install fn (package: Package) = package
-          .dependency('git@github.com:alantech/hellodep.git#deps-perm')
+          .dependency('https://github.com/alantech/hellodep.git#deps-perm')
             .add()
           .commit()
       "
