@@ -97,10 +97,10 @@ Describe "@std/deps"
       Assert has_alantech
       Assert has_hellodep
       Assert has_index
-      # Assert has_nested_dependencies
-      # Assert has_nested_alantech
-      # Assert has_nested_hellodep
-      # Assert has_nested_index
+      Assert has_nested_dependencies
+      Assert has_nested_alantech
+      Assert has_nested_hellodep
+      Assert has_nested_index
     End
 
     It "runs agc"
@@ -111,10 +111,10 @@ Describe "@std/deps"
       Assert has_alantech
       Assert has_hellodep
       Assert has_index
-      # Assert has_nested_dependencies
-      # Assert has_nested_alantech
-      # Assert has_nested_hellodep
-      # Assert has_nested_index
+      Assert has_nested_dependencies
+      Assert has_nested_alantech
+      Assert has_nested_hellodep
+      Assert has_nested_index
     End
   End
 
