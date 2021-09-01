@@ -76,11 +76,11 @@ Describe "@std/deps"
 
     It "runs js"
       When run run_js
-      sleep 1
       The output should eq "Cloning into './dependencies/alantech/hellodep'..."
       Assert has_dependencies
       Assert has_alantech
       Assert has_hellodep
+      echo "js has index"
       Assert has_index
       Assert has_nested_dependencies
       Assert has_nested_alantech
@@ -90,11 +90,11 @@ Describe "@std/deps"
 
     It "runs agc"
       When run run_agc
-      sleep 1
       The output should eq "Cloning into './dependencies/alantech/hellodep'..."
       Assert has_dependencies
       Assert has_alantech
       Assert has_hellodep
+      echo "agc has index"
       Assert has_index
       Assert has_nested_dependencies
       Assert has_nested_alantech
