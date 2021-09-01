@@ -68,6 +68,7 @@ Describe "@std/deps"
 
     It "runs js"
       When run run_js
+      The output should eq "Cloning into './dependencies/alantech/hellodep'..."
       The error should eq "Cloning into './dependencies/alantech/hellodep'..."
       Assert has_dependencies
       Assert has_alantech
@@ -81,6 +82,7 @@ Describe "@std/deps"
 
     It "runs agc"
       When run run_agc
+      The output should eq "Cloning into './dependencies/alantech/hellodep'..."
       The error should eq "Cloning into './dependencies/alantech/hellodep'..."
       Assert has_dependencies
       Assert has_alantech
@@ -116,6 +118,8 @@ Describe "@std/deps"
     AfterAll after
 
     after_each() {
+      ls
+      ls -la ./dependencies
       rm -r ./dependencies
     }
     After after_each
