@@ -67,7 +67,7 @@ export fn dependency(pkg: RawPackage, url: string): PackageDependency {
   const gitRepo = remoteParts[remoteParts.length() - 1] || '';
   const repo = gitRepo.split('.')[0] || '';
   const possibleSSH = remoteParts[remoteParts.length() - 2] || '';
-  const possibleSSHParts = url.split(':');
+  const possibleSSHParts = possibleSSH.split(':');
   const group = possibleSSHParts[possibleSSHParts.length() - 1] || '';
   const dep = new Dependency {
     url: url,
