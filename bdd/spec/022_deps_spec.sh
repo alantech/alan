@@ -26,39 +26,25 @@ Describe "@std/deps"
     After after_each
 
     has_dependencies() {
-      echo "--------"
-      ls
-      ls -la dependencies
       test -d "./dependencies"
     }
 
     has_alantech() {
-      echo "--------"
-      ls
-      ls -la dependencies
-      ls -la dependencies/alantech
       test -d "./dependencies/alantech"
     }
 
     has_hellodep() {
-      echo "--------"
-      ls
-      ls -la dependencies
-      ls -la dependencies/alantech
-      ls -la dependencies/alantech/hellodep
       test -d "./dependencies/alantech/hellodep"
     }
 
     has_index() {
-      echo "--------"
-      ls
-      ls -la dependencies
-      ls -la dependencies/alantech
+      echo "----index check----"
       ls -la dependencies/alantech/hellodep
       test -f "./dependencies/alantech/hellodep/index.ln"
     }
 
     has_nested_dependencies() {
+      echo "----nested dependencies----"
       ls
       ls -la dependencies
       ls -la dependencies/alantech
@@ -92,7 +78,6 @@ Describe "@std/deps"
       When run run_js
       sleep 1
       The output should eq "Cloning into './dependencies/alantech/hellodep'..."
-      The error should eq "Cloning into './dependencies/alantech/hellodep'..."
       Assert has_dependencies
       Assert has_alantech
       Assert has_hellodep
