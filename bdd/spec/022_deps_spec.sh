@@ -95,79 +95,69 @@ Describe "@std/deps"
     End
   End
 
-  # Describe "package using"
-  #   before() {
-  #     sourceToAll "
-  #       from @std/app import print
-  #       from @std/cmd import exec
-  #       from @std/deps import Package, install, add, commit, dependency, using
+  Describe "package using"
+    before() {
+      sourceToAll "
+        from @std/deps import Package, install, add, commit, dependency, using
 
-  #       on install fn (package: Package) = package
-  #         .using(['@std/app', '@std/cmd'])
-  #         .commit()
-        
-  #       const lsRes = exec('ls');
-  #       print(lsRes.stdout);
-  #     "
-  #   }
-  #   BeforeAll before
+        on install fn (package: Package) = package
+          .using(['@std/app', '@std/cmd'])
+          .commit()
+      "
+    }
+    BeforeAll before
 
-  #   after() {
-  #     cleanTemp
-  #   }
-  #   AfterAll after
+    after() {
+      cleanTemp
+    }
+    AfterAll after
 
-  #   after_each() {
-  #     ls
-  #     ls -la ./dependencies
-  #     rm -r ./dependencies
-  #   }
-  #   After after_each
+    after_each() {
+      rm -r ./dependencies
+    }
+    After after_each
 
-  #   has_dependencies() {
-  #     test -d "./dependencies"
-  #   }
+    has_dependencies() {
+      test -d "./dependencies"
+    }
 
-  #   has_modules() {
-  #     test -d "./dependencies/modules"
-  #   }
+    has_modules() {
+      test -d "./dependencies/modules"
+    }
 
-  #   has_std() {
-  #     test -d "./dependencies/modules/std"
-  #   }
+    has_std() {
+      test -d "./dependencies/modules/std"
+    }
 
-  #   has_cmd() {
-  #     test -d "./dependencies/modules/std/cmd"
-  #   }
+    not_has_cmd() {
+      if [ -d ./dependencies/modules/std/cmd ]; then
+        return 1
+      fi
+      return 0
+    }
 
-  #   has_index() {
-  #     test -f "./dependencies/modules/std/cmd/index.ln"
-  #   }
+    run_js() {
+      node test_$$/temp.js | head -1
+    }
 
-  #   run_js() {
-  #     node test_$$/temp.js | head -1
-  #   }
+    run_agc() {
+      alan run test_$$/temp.agc | head -1
+    }
 
-  #   run_agc() {
-  #     alan run test_$$/temp.agc | head -1
-  #   }
+    It "runs js"
+      When run run_js
+      Assert has_dependencies
+      Assert has_modules
+      Assert has_std
+      Assert not_has_cmd
+    End
 
-  #   It "runs js"
-  #     When run run_js
-  #     Assert has_dependencies
-  #     Assert has_modules
-  #     Assert has_std
-  #     Assert has_cmd
-  #     Assert has_index
-  #   End
-
-  #   It "runs agc"
-  #     When run run_agc
-  #     Assert has_dependencies
-  #     Assert has_modules
-  #     Assert has_std
-  #     Assert has_cmd
-  #     Assert has_index
-  #   End
-  # End
+    It "runs agc"
+      When run run_agc
+      Assert has_dependencies
+      Assert has_modules
+      Assert has_std
+      Assert not_has_cmd
+    End
+  End
 End
