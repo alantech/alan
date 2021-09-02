@@ -35,13 +35,15 @@ type PackageDependency {
 export event install: RawPackage
 
 fn package(): RawPackage {
-  let emptyArrStr = new Array<string> [];
-  let emptyArrDep = new Array<Dependency> [];
+  let emptyStd = new Array<string> [];
+  let emptyBlock = new Array<string> [];
+  let emptyFullBlock = new Array<string> [];
+  let emptyDep = new Array<Dependency> [];
   let pkg = new RawPackage {
-    std: emptyArrStr,
-    dependencies: emptyArrDep,
-    block: emptyArrStr,
-    fullBlock: emptyArrStr,
+    std: emptyStd,
+    dependencies: emptyDep,
+    block: emptyBlock,
+    fullBlock: emptyFullBlock,
   };
   return pkg;
 }
@@ -57,7 +59,8 @@ export fn using(pkg: RawPackage, std: Array<string>): RawPackage {
 }
 
 export fn dependency(pkg: RawPackage, url: string): PackageDependency {
-  const emptyArrStr = new Array<string> [];
+  const emptyBlock = new Array<string> [];
+  const emptyFullBlock = new Array<string> [];
   // The dependency url have to follow the git URLs standard https://git-scm.com/docs/git-clone#_git_urls
   // The revisions (branches, tags or SHAs) will be delimited using a # (as npm or other package managers)
   const parts = url.split('#');
@@ -71,8 +74,8 @@ export fn dependency(pkg: RawPackage, url: string): PackageDependency {
   const group = possibleSSHParts[possibleSSHParts.length() - 1] || '';
   const dep = new Dependency {
     url: url,
-    block: emptyArrStr,
-    fullBlock: emptyArrStr,
+    block: emptyBlock,
+    fullBlock: emptyFullBlock,
     group: group,
     name: repo,
     rev: rev,
