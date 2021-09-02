@@ -151,6 +151,7 @@ export fn commit(pkg: RawPackage) {
 }
 
 fn getBlacklist(std: Array<string>): Array<string> {
+  // TODO: add @std/deps  to this list and handle it on bdd tests
   const stdList = [
     '@std/app', '@std/avmdaemon', '@std/cmd', '@std/datastore', '@std/http', 
     '@std/httpcommon', '@std/httpserver', '@std/json', '@std/seq', '@std/tcp',
