@@ -16,30 +16,29 @@ type Dependency {
   remote: string,
 }
 
-type RawPackage {
+type Package {
   std: Array<string>,
   dependencies: Array<Dependency>,
   block: Array<string>,
   fullBlock: Array<string>,
 }
 
+export Package
+
 type PackageDependency {
-  pkg: RawPackage,
+  pkg: Package,
   dep: Dependency,
 }
 
-// Exporting type as alias since could not export the type and used it in this file at the same time
-export type Package = RawPackage
-
 // The `install` event
-export event install: RawPackage
+export event install: Package
 
-fn package(): RawPackage {
+fn package(): Package {
   let emptyStd = new Array<string> [];
   let emptyBlock = new Array<string> [];
   let emptyFullBlock = new Array<string> [];
   let emptyDep = new Array<Dependency> [];
-  let pkg = new RawPackage {
+  let pkg = new Package {
     std: emptyStd,
     dependencies: emptyDep,
     block: emptyBlock,
@@ -48,9 +47,9 @@ fn package(): RawPackage {
   return pkg;
 }
 
-export fn using(pkg: RawPackage, std: Array<string>): RawPackage {
+export fn using(pkg: Package, std: Array<string>): Package {
   // Since alan is blocking the re-asignation of pkg.std we create a new object as a work around
-  return new RawPackage {
+  return new Package {
     std: pkg.std + std,
     dependencies: pkg.dependencies,
     block: pkg.block,
@@ -58,7 +57,7 @@ export fn using(pkg: RawPackage, std: Array<string>): RawPackage {
   };
 }
 
-export fn dependency(pkg: RawPackage, url: string): PackageDependency {
+export fn dependency(pkg: Package, url: string): PackageDependency {
   const emptyBlock = new Array<string> [];
   const emptyFullBlock = new Array<string> [];
   // The dependency url have to follow the git URLs standard https://git-scm.com/docs/git-clone#_git_urls
@@ -87,17 +86,17 @@ export fn dependency(pkg: RawPackage, url: string): PackageDependency {
   };
 }
 
-export fn add(pkgd: PackageDependency): RawPackage {
+export fn add(pkgd: PackageDependency): Package {
   pkgd.pkg.dependencies.push(pkgd.dep);
   return pkgd.pkg;
 }
   
-export fn block(pkg: RawPackage, block: string): RawPackage {
+export fn block(pkg: Package, block: string): Package {
   pkg.block.push(block);
   return pkg;
 }
 
-export fn block(pkg: RawPackage, block: Array<string>): RawPackage {
+export fn block(pkg: Package, block: Array<string>): Package {
   pkg.block = pkg.block + block;
   return pkg;
 }
@@ -112,12 +111,12 @@ export fn block(pkgd: PackageDependency, block: Array<string>): PackageDependenc
   return pkgd;
 }
 
-export fn fullBlock(pkg: RawPackage, block: string): RawPackage {
+export fn fullBlock(pkg: Package, block: string): Package {
   pkg.fullBlock.push(block);
   return pkg;
 }
 
-export fn fullBlock(pkg: RawPackage, block: Array<string>): RawPackage {
+export fn fullBlock(pkg: Package, block: Array<string>): Package {
   pkg.fullBlock = pkg.fullBlock + block;
   return pkg;
 }
@@ -134,7 +133,7 @@ export fn fullBlock(pkgd: PackageDependency, block: Array<string>): PackageDepen
 
 // The `commit` function takes the packge as argument.
 // It install all dependencies added and apply necessary blocks.
-export fn commit(pkg: RawPackage) {
+export fn commit(pkg: Package) {
   // Remove std dep from blacklist
   const blacklist = getBlacklist(pkg.std);
   // Create mocks for blacklisted std libs
