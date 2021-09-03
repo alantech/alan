@@ -254,7 +254,7 @@ fn applyDependencyBlock(name: string, group: string, blocks: Array<string>, isFu
 }
 
 fn dirExist(path: string): bool {
-  return exec('stat ' + path).exitCode == 0;
+  return exec('stat ' + path).stderr.length() == 0;
 }
 
 fn mkDir(path: string) {
@@ -262,7 +262,7 @@ fn mkDir(path: string) {
 }
 
 fn removeFile(path: string): bool {
-  return exec('rm ' + path).exitCode == 0;
+  return exec('rm ' + path).stderr.length() == 0;
 }
 
 fn lsDir(path: string): Array<string> {
