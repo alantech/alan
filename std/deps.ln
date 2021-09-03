@@ -313,17 +313,19 @@ fn blockForAllDependencies(blocks: Array<string>, isFullBlock: bool) {
       if isFullBlock {
         const deps = lsDir(dependenciesDir);
         deps.map(fn (group: string) {
-          if group != 'modules' {
+          if group != 'modules' && group != '' {
             const lsGroup = lsDir([dependenciesDir, group].join('/'));
             lsGroup.map(fn (name: string) {
-              const path = [dependenciesDir, group, name, modulesDir, innerGroup, innerName].join('/');
-              if dirExist(path) {
-                let mockFile = path + '/index.ln';
-                if !removeFile(mockFile) {
-                  mockFile = path + '/' + innerName + '.ln';
-                  removeFile(mockFile);
+              if name != '' {
+                const path = [dependenciesDir, group, name, modulesDir, innerGroup, innerName].join('/');
+                if dirExist(path) {
+                  let mockFile = path + '/index.ln';
+                  if !removeFile(mockFile) {
+                    mockFile = path + '/' + innerName + '.ln';
+                    removeFile(mockFile);
+                  }
+                  addMockFile(mockFile);
                 }
-                addMockFile(mockFile);
               }
             });
           }
