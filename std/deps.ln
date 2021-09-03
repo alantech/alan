@@ -23,13 +23,13 @@ type RawPackage {
   fullBlock: Array<string>,
 }
 
-// Exporting type as alias since could not export the type and used it in this file at the same time
-export type Package = RawPackage
-
 type PackageDependency {
   pkg: RawPackage,
   dep: Dependency,
 }
+
+// Exporting type as alias since could not export the type and used it in this file at the same time
+export type Package = RawPackage
 
 // The `install` event
 export event install: RawPackage
