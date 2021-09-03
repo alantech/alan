@@ -144,9 +144,9 @@ export fn commit(pkg: RawPackage) {
   // Apply blocks defined for each dependency
   applyDependencyBlocks(pkg.dependencies);
   // Block lib for all dependencies once.
-  blockForAllDependencies(pkg.block, false);
+  applyBlock(pkg.block, false, none(), none());
   // Block lib for all dependencies once. If any dependency is mocking it already remove that behaviour.
-  blockForAllDependencies(pkg.fullBlock, true);
+  applyBlock(pkg.fullBlock, true, none(), none());
   emit exit 0;
 }
 
@@ -212,66 +212,42 @@ fn downloadDependencies(dependencies: Array<Dependency>) {
 
 fn applyDependencyBlocks(dependencies: Array<Dependency>) {
   dependencies.map(fn (dep: Dependency) {
-    applyDependencyBlock(dep.name, dep.group, dep.block, false);
-    applyDependencyBlock(dep.name, dep.group, dep.fullBlock, true);
+    applyBlock(dep.block, false, some(dep.name), some(dep.group));
+    applyBlock(dep.fullBlock, true, some(dep.name), some(dep.group));
   });
 }
 
-fn applyDependencyBlock(name: string, group: string, blocks: Array<string>, isFullBlock: bool) {
+fn applyBlock(blocks: Array<string>, isFullBlock: bool, name: Maybe<any>, group: Maybe<any>) {
   const dependencies = 'dependencies';
   const modules = 'modules';
   if blocks.length() == 0 {
     return;
   }
-  const dependenciesDepModulesPath = [dependencies, group, name, modules].join('/');
-  if !directoryExists(dependenciesDepModulesPath) {
-    makeDirectory(dependenciesDepModulesPath);
+  if name.isSome() && group.isSome() {
+    const dependenciesDepModulesPath = [dependencies, group.getOr(''), name.getOr(''), modules].join('/');
+    if !directoryExists(dependenciesDepModulesPath) {
+      makeDirectory(dependenciesDepModulesPath);
+    }
+    applyBlockForEach(dependenciesDepModulesPath, blocks, isFullBlock, name.isSome() && group.isSome());
+  } else {
+    if !directoryExists(dependencies) {
+      makeDirectory(dependencies);
+    }
+    const depenenciesModulesPath = [dependencies, modules].join('/');
+    if !directoryExists(depenenciesModulesPath) {
+      makeDirectory(depenenciesModulesPath);
+    }
+    applyBlockForEach(depenenciesModulesPath, blocks, isFullBlock, name.isNone() && group.isNone());
   }
-  blocks.map(fn (lib: string) {
-    const cleanedLib = cleanLib(lib);
-    const libSplit = cleanedLib.split('/');
-    const innerGroup = libSplit[0].getOr('');
-    const innerName = libSplit[1].getOr('');
-    const innerGroupPath = [dependencies, group, name, modules, innerGroup].join('/');
-    if !directoryExists(innerGroupPath) {
-      makeDirectory(innerGroupPath);
-    }
-    const innerNamePath = [innerGroupPath, innerName].join('/');
-    if !directoryExists(innerNamePath) {
-      makeDirectory(innerNamePath);
-      addMockFile(innerNamePath + '/index.ln');
-    } else {
-      if isFullBlock {
-        const mockFile = innerNamePath + '/index.ln';
-        if !removeFile(mockFile) {
-          const nameMockFile = innerNamePath + '/' + name + '.ln';
-          removeFile(nameMockFile);
-        }
-        addMockFile(mockFile);
-      }
-    }
-  });
 }
 
-fn blockForAllDependencies(blocks: Array<string>, isFullBlock: bool) {
-  const dependencies = 'dependencies';
-  const modules = 'modules';
-  if blocks.length() == 0 {
-    return;
-  }
-  if !directoryExists(dependencies) {
-    makeDirectory(dependencies);
-  }
-  const depenenciesModulesPath = [dependencies, modules].join('/');
-  if !directoryExists(depenenciesModulesPath) {
-    makeDirectory(depenenciesModulesPath);
-  }
+fn applyBlockForEach(workingPath: string, blocks: Array<string>, isFullBlock: bool, isPkgBlock: bool) {
   blocks.map(fn (lib: string) {
     const cleanedLib = cleanLib(lib);
     const libSplit = cleanedLib.split('/');
     const innerGroup = libSplit[0].getOr('');
     const innerName = libSplit[1].getOr('');
-    const innerGroupPath = [depenenciesModulesPath, innerGroup].join('/');
+    const innerGroupPath = [workingPath, innerGroup].join('/');
     if !directoryExists(innerGroupPath) {
       makeDirectory(innerGroupPath);
     }
@@ -281,27 +257,42 @@ fn blockForAllDependencies(blocks: Array<string>, isFullBlock: bool) {
       const mockFile = innerNamePath + '/index.ln';
       addMockFile(mockFile);
     } else {
-      if isFullBlock {
-        const deps = listDirectories(dependenciesDir);
-        deps.map(fn (group: string) {
-          if group != 'modules' && group != '' {
-            const lsGroup = listDirectories([dependenciesDir, group].join('/'));
-            lsGroup.map(fn (name: string) {
-              if name != '' {
-                const path = [dependenciesDir, group, name, modulesDir, innerGroup, innerName].join('/');
-                if directoryExists(path) {
-                  const mockFile = path + '/index.ln';
-                  if !removeFile(mockFile) {
-                    const nameMockFile = path + '/' + innerName + '.ln';
-                    removeFile(nameMockFile);
-                  }
-                  addMockFile(mockFile);
-                }
-              }
-            });
-          }
-        });
+      if isFullBlock && isPkgBlock {
+        applyPkgFullBlock(innerGroup, innerName);
+      } else if isFullBlock && !isPkgBlock {
+        applyDepFullBlock(innerNamePath, innerName);
       }
+    }
+  });
+}
+
+fn applyDepFullBlock(innerNamePath: string, innerName: string) {
+  const mockFile = innerNamePath + '/index.ln';
+  if !removeFile(mockFile) {
+    const nameMockFile = innerNamePath + '/' + innerName + '.ln';
+    removeFile(nameMockFile);
+  }
+  addMockFile(mockFile);
+}
+
+fn applyPkgFullBlock(innerGroup: string, innerName: string) {
+  const deps = listDirectories('dependencies');
+  deps.map(fn (group: string) {
+    if group != 'modules' && group != '' {
+      const lsGroup = listDirectories(['dependencies', group].join('/'));
+      lsGroup.map(fn (name: string) {
+        if name != '' {
+          const path = ['dependencies', group, name, 'modules', innerGroup, innerName].join('/');
+          if directoryExists(path) {
+            const mockFile = path + '/index.ln';
+            if !removeFile(mockFile) {
+              const nameMockFile = path + '/' + innerName + '.ln';
+              removeFile(nameMockFile);
+            }
+            addMockFile(mockFile);
+          }
+        }
+      });
     }
   });
 }
