@@ -156,22 +156,16 @@ fn getBlacklist(std: Array<string>): Array<string> {
     '@std/httpcommon', '@std/httpserver', '@std/json', '@std/seq', '@std/tcp',
     '@std/tcpserver', '@std/trig',
   ];
-  return stdList.filter(fn (a: string) = !(pkg.std.find(fn (b: string) = eq(a,b)).isOk()));
+  return stdList.filter(fn (a: string) = !pkg.std.find(fn (b: string) = a == b).isOk());
 }
 
 fn blockStd(blacklist: Array<string>) {
   const dependencies = 'dependencies';
-  if !directoryExists(dependencies) {
-    makeDirectory(dependencies);
-  }
+  mkdirp(dependencies);
   const modulesPath = [dependencies, 'modules'].join('/');
-  if !directoryExists(modulesPath) {
-    makeDirectory(modulesPath);
-  }
+  mkdirp(modulesPath);
   const stdPath = [modulesPath, 'std'].join('/');
-  if !directoryExists(stdPath) {
-    makeDirectory(stdPath);
-  }
+  mkdirp(stdPath);
   blacklist.map(fn (lib: string) {
     const cleanedLib = cleanLib(lib);
     makeDirectory(modulesPath + '/' + cleanedLib);
@@ -224,18 +218,12 @@ fn applyBlock(blocks: Array<string>, isFullBlock: bool, name: Maybe<any>, group:
   }
   if name.isSome() && group.isSome() {
     const dependenciesDepModulesPath = [dependencies, group.getOr(''), name.getOr(''), modules].join('/');
-    if !directoryExists(dependenciesDepModulesPath) {
-      makeDirectory(dependenciesDepModulesPath);
-    }
+    mkdirp(dependenciesDepModulesPath);
     applyBlockForEach(dependenciesDepModulesPath, blocks, isFullBlock, name.isSome() && group.isSome());
   } else {
-    if !directoryExists(dependencies) {
-      makeDirectory(dependencies);
-    }
+    mkdirp(dependencies);
     const depenenciesModulesPath = [dependencies, modules].join('/');
-    if !directoryExists(depenenciesModulesPath) {
-      makeDirectory(depenenciesModulesPath);
-    }
+    mkdirp(depenenciesModulesPath);
     applyBlockForEach(depenenciesModulesPath, blocks, isFullBlock, name.isNone() && group.isNone());
   }
 }
@@ -247,9 +235,7 @@ fn applyBlockForEach(workingPath: string, blocks: Array<string>, isFullBlock: bo
     const innerGroup = libSplit[0].getOr('');
     const innerName = libSplit[1].getOr('');
     const innerGroupPath = [workingPath, innerGroup].join('/');
-    if !directoryExists(innerGroupPath) {
-      makeDirectory(innerGroupPath);
-    }
+    mkdirp(innerGroupPath);
     const innerNamePath = [innerGroupPath, innerName].join('/');
     if !directoryExists(innerNamePath) {
       makeDirectory(innerNamePath);
@@ -310,6 +296,12 @@ fn removeFile(path: string): bool {
 
 fn listDirectories(path: string): Array<string> {
   return exec('ls ' + path).stdout.split("\n");
+}
+
+fn mkdirp(path: string) {
+  if !directoryExists(path) {
+    makeDirectory(path);
+  }
 }
 
 fn addMockFile(path: string) {
