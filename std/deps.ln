@@ -218,34 +218,34 @@ fn applyDependencyBlocks(dependencies: Array<Dependency>) {
 }
 
 fn applyDependencyBlock(name: string, group: string, blocks: Array<string>, isFullBlock: bool) {
-  const dependenciesDir = 'dependencies';
-  const modulesDir = 'modules';
+  const dependencies = 'dependencies';
+  const modules = 'modules';
   if blocks.length() == 0 {
     return;
   }
-  const innerDependenciesModulesPath = [dependenciesDir, group, name, modulesDir].join('/');
-  if !directoryExists(innerDependenciesModulesPath) {
-    makeDirectory(innerDependenciesModulesPath);
+  const dependenciesDepModulesPath = [dependencies, group, name, modules].join('/');
+  if !directoryExists(dependenciesDepModulesPath) {
+    makeDirectory(dependenciesDepModulesPath);
   }
   blocks.map(fn (lib: string) {
     const cleanedLib = cleanLib(lib);
     const libSplit = cleanedLib.split('/');
     const innerGroup = libSplit[0].getOr('');
     const innerName = libSplit[1].getOr('');
-    const innerGroupPath = [dependenciesDir, group, name, modulesDir, innerGroup].join('/');
+    const innerGroupPath = [dependencies, group, name, modules, innerGroup].join('/');
     if !directoryExists(innerGroupPath) {
       makeDirectory(innerGroupPath);
     }
-    const innerNamePath = [dependenciesDir, group, name, modulesDir, innerGroup, innerName].join('/');
+    const innerNamePath = [innerGroupPath, innerName].join('/');
     if !directoryExists(innerNamePath) {
       makeDirectory(innerNamePath);
       addMockFile(innerNamePath + '/index.ln');
     } else {
       if isFullBlock {
-        let mockFile = innerNamePath + '/index.ln';
+        const mockFile = innerNamePath + '/index.ln';
         if !removeFile(mockFile) {
-          mockFile = innerNamePath + '/' + name + '.ln';
-          removeFile(mockFile);
+          const nameMockFile = innerNamePath + '/' + name + '.ln';
+          removeFile(nameMockFile);
         }
         addMockFile(mockFile);
       }
@@ -254,15 +254,15 @@ fn applyDependencyBlock(name: string, group: string, blocks: Array<string>, isFu
 }
 
 fn blockForAllDependencies(blocks: Array<string>, isFullBlock: bool) {
-  const dependenciesDir = 'dependencies';
-  const modulesDir = 'modules';
+  const dependencies = 'dependencies';
+  const modules = 'modules';
   if blocks.length() == 0 {
     return;
   }
-  if !directoryExists(dependenciesDir) {
-    makeDirectory(dependenciesDir);
+  if !directoryExists(dependencies) {
+    makeDirectory(dependencies);
   }
-  const depenenciesModulesPath = [dependenciesDir, modulesDir].join('/');
+  const depenenciesModulesPath = [dependencies, modules].join('/');
   if !directoryExists(depenenciesModulesPath) {
     makeDirectory(depenenciesModulesPath);
   }
@@ -290,10 +290,10 @@ fn blockForAllDependencies(blocks: Array<string>, isFullBlock: bool) {
               if name != '' {
                 const path = [dependenciesDir, group, name, modulesDir, innerGroup, innerName].join('/');
                 if directoryExists(path) {
-                  let mockFile = path + '/index.ln';
+                  const mockFile = path + '/index.ln';
                   if !removeFile(mockFile) {
-                    mockFile = path + '/' + innerName + '.ln';
-                    removeFile(mockFile);
+                    const nameMockFile = path + '/' + innerName + '.ln';
+                    removeFile(nameMockFile);
                   }
                   addMockFile(mockFile);
                 }
