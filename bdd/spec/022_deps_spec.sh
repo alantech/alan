@@ -67,6 +67,10 @@ Describe "@std/deps"
       test -d "./dependencies/modules/std"
     }
 
+    has_blacklisted_module() {
+      test -d "./dependencies/modules/std/tcpserver"
+    }
+
     not_has_cmd() {
       if [ -d ./dependencies/modules/std/cmd ]; then
         return 1
@@ -104,6 +108,7 @@ Describe "@std/deps"
       Assert has_nested_index
       Assert has_modules
       Assert has_std
+      Assert has_blacklisted_module
       Assert not_has_cmd
       Assert has_pkg_block
       Assert has_pkg_full_block_applied
@@ -122,6 +127,7 @@ Describe "@std/deps"
       Assert has_nested_index
       Assert has_modules
       Assert has_std
+      Assert has_blacklisted_module
       Assert not_has_cmd
       Assert has_pkg_block
       Assert has_pkg_full_block_applied
