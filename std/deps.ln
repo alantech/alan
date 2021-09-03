@@ -275,9 +275,8 @@ fn addMockFile(path: string) {
 
 fn cleanLib(lib: string): string {
   if lib.matches('@') && lib.index('@') == 0 {
-    const libSplit = lib.split('');
-    libSplit.delete(1);
-    return libSplit.join(''); 
+    const libSplit = lib.split('@');
+    return libSplit[1].getOr('');
   } else {
     return lib;
   }
