@@ -253,35 +253,6 @@ fn applyDependencyBlock(name: string, group: string, blocks: Array<string>, isFu
   });
 }
 
-fn directoryExists(path: string): bool {
-  return exec('stat ' + path).stderr.length() == 0;
-}
-
-fn makeDirectory(path: string) {
-  exec('mkdir ' + path);
-}
-
-fn removeFile(path: string): bool {
-  return exec('rm ' + path).stderr.length() == 0;
-}
-
-fn listDirectories(path: string): Array<string> {
-  return exec('ls ' + path).stdout.split("\n");
-}
-
-fn addMockFile(path: string) {
-  exec('echo "export const mock = true;" > ' + path);
-}
-
-fn cleanLib(lib: string): string {
-  if lib.matches('@') && lib.index('@') == 0 {
-    const libSplit = lib.split('@');
-    return libSplit[1].getOr('');
-  } else {
-    return lib;
-  }
-}
-
 fn blockForAllDependencies(blocks: Array<string>, isFullBlock: bool) {
   const dependenciesDir = 'dependencies';
   const modulesDir = 'modules';
@@ -333,6 +304,35 @@ fn blockForAllDependencies(blocks: Array<string>, isFullBlock: bool) {
       }
     }
   });
+}
+
+fn directoryExists(path: string): bool {
+  return exec('stat ' + path).stderr.length() == 0;
+}
+
+fn makeDirectory(path: string) {
+  exec('mkdir ' + path);
+}
+
+fn removeFile(path: string): bool {
+  return exec('rm ' + path).stderr.length() == 0;
+}
+
+fn listDirectories(path: string): Array<string> {
+  return exec('ls ' + path).stdout.split("\n");
+}
+
+fn addMockFile(path: string) {
+  exec('echo "export const mock = true;" > ' + path);
+}
+
+fn cleanLib(lib: string): string {
+  if lib.matches('@') && lib.index('@') == 0 {
+    const libSplit = lib.split('@');
+    return libSplit[1].getOr('');
+  } else {
+    return lib;
+  }
 }
 
 // Emit the `install` event on app `start`
