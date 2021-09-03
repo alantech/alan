@@ -23,7 +23,7 @@ type RawPackage {
   fullBlock: Array<string>,
 }
 
-// Exporting type as alias since I could not export the type and used it in this file at the same time
+// Exporting type as alias since could not export the type and used it in this file at the same time
 export type Package = RawPackage
 
 type PackageDependency {
@@ -162,20 +162,20 @@ fn getBlacklist(std: Array<string>): Array<string> {
 
 fn blockStd(blacklist: Array<string>) {
   const dependencies = 'dependencies';
-  if !dirExist(dependencies) {
-    mkDir(dependencies);
+  if !directoryExists(dependencies) {
+    makeDirectory(dependencies);
   }
   const modulesPath = [dependencies, 'modules'].join('/');
-  if !dirExist(modulesPath) {
-    mkDir(modulesPath);
+  if !directoryExists(modulesPath) {
+    makeDirectory(modulesPath);
   }
   const stdPath = [modulesPath, 'std'].join('/');
-  if !dirExist(stdPath) {
-    mkDir(stdPath);
+  if !directoryExists(stdPath) {
+    makeDirectory(stdPath);
   }
   blacklist.map(fn (lib: string) {
     const cleanedLib = cleanLib(lib);
-    mkDir(modulesPath + '/' + cleanedLib);
+    makeDirectory(modulesPath + '/' + cleanedLib);
     addMockFile(modulesPath + '/' + cleanedLib + '/index.ln');
   });
 }
@@ -224,8 +224,8 @@ fn applyDependencyBlock(name: string, group: string, blocks: Array<string>, isFu
     return;
   }
   const innerDependenciesModulesPath = [dependenciesDir, group, name, modulesDir].join('/');
-  if !dirExist(innerDependenciesModulesPath) {
-    mkDir(innerDependenciesModulesPath);
+  if !directoryExists(innerDependenciesModulesPath) {
+    makeDirectory(innerDependenciesModulesPath);
   }
   blocks.map(fn (lib: string) {
     const cleanedLib = cleanLib(lib);
@@ -233,12 +233,12 @@ fn applyDependencyBlock(name: string, group: string, blocks: Array<string>, isFu
     const innerGroup = libSplit[0].getOr('');
     const innerName = libSplit[1].getOr('');
     const innerGroupPath = [dependenciesDir, group, name, modulesDir, innerGroup].join('/');
-    if !dirExist(innerGroupPath) {
-      mkDir(innerGroupPath);
+    if !directoryExists(innerGroupPath) {
+      makeDirectory(innerGroupPath);
     }
     const innerNamePath = [dependenciesDir, group, name, modulesDir, innerGroup, innerName].join('/');
-    if !dirExist(innerNamePath) {
-      mkDir(innerNamePath);
+    if !directoryExists(innerNamePath) {
+      makeDirectory(innerNamePath);
       addMockFile(innerNamePath + '/index.ln');
     } else {
       if isFullBlock {
@@ -253,11 +253,11 @@ fn applyDependencyBlock(name: string, group: string, blocks: Array<string>, isFu
   });
 }
 
-fn dirExist(path: string): bool {
+fn directoryExists(path: string): bool {
   return exec('stat ' + path).stderr.length() == 0;
 }
 
-fn mkDir(path: string) {
+fn makeDirectory(path: string) {
   exec('mkdir ' + path);
 }
 
@@ -265,7 +265,7 @@ fn removeFile(path: string): bool {
   return exec('rm ' + path).stderr.length() == 0;
 }
 
-fn lsDir(path: string): Array<string> {
+fn listDirectories(path: string): Array<string> {
   return exec('ls ' + path).stdout.split("\n");
 }
 
@@ -288,12 +288,12 @@ fn blockForAllDependencies(blocks: Array<string>, isFullBlock: bool) {
   if blocks.length() == 0 {
     return;
   }
-  if !dirExist(dependenciesDir) {
-    mkDir(dependenciesDir);
+  if !directoryExists(dependenciesDir) {
+    makeDirectory(dependenciesDir);
   }
   const depenenciesModulesPath = [dependenciesDir, modulesDir].join('/');
-  if !dirExist(depenenciesModulesPath) {
-    mkDir(depenenciesModulesPath);
+  if !directoryExists(depenenciesModulesPath) {
+    makeDirectory(depenenciesModulesPath);
   }
   blocks.map(fn (lib: string) {
     const cleanedLib = cleanLib(lib);
@@ -301,24 +301,24 @@ fn blockForAllDependencies(blocks: Array<string>, isFullBlock: bool) {
     const innerGroup = libSplit[0].getOr('');
     const innerName = libSplit[1].getOr('');
     const innerGroupPath = [depenenciesModulesPath, innerGroup].join('/');
-    if !dirExist(innerGroupPath) {
-      mkDir(innerGroupPath);
+    if !directoryExists(innerGroupPath) {
+      makeDirectory(innerGroupPath);
     }
     const innerNamePath = [innerGroupPath, innerName].join('/');
-    if !dirExist(innerNamePath) {
-      mkDir(innerNamePath);
+    if !directoryExists(innerNamePath) {
+      makeDirectory(innerNamePath);
       const mockFile = innerNamePath + '/index.ln';
       addMockFile(mockFile);
     } else {
       if isFullBlock {
-        const deps = lsDir(dependenciesDir);
+        const deps = listDirectories(dependenciesDir);
         deps.map(fn (group: string) {
           if group != 'modules' && group != '' {
-            const lsGroup = lsDir([dependenciesDir, group].join('/'));
+            const lsGroup = listDirectories([dependenciesDir, group].join('/'));
             lsGroup.map(fn (name: string) {
               if name != '' {
                 const path = [dependenciesDir, group, name, modulesDir, innerGroup, innerName].join('/');
-                if dirExist(path) {
+                if directoryExists(path) {
                   let mockFile = path + '/index.ln';
                   if !removeFile(mockFile) {
                     mockFile = path + '/' + innerName + '.ln';
