@@ -283,14 +283,9 @@ fn applyPkgFullBlock(innerGroup: string, innerName: string) {
 }
 
 fn directoryExists(path: string): bool {
-  const isWindows = exec('echo ${Env:windir}').stdout.length() > 0;
+  const isWindows = exec('echo ${Env:windir}').stdout.length() > 1;
   if isWindows {
     const res = exec('Test-Path -Path ' + path);
-    print('--begin-windows-test--');
-    print(res.stdout);
-    print(res.stderr);
-    print(res.exitCode);
-    print('--end-windows-test--');
     return res.stdout == 'True\n';
   } else {
     return exec('stat ' + path).stderr.length() == 0;
