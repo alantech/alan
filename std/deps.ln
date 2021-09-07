@@ -283,42 +283,51 @@ fn applyPkgFullBlock(innerGroup: string, innerName: string) {
 }
 
 fn directoryExists(path: string): bool {
-  const isWindows = exec('echo ${Env:windir}').stdout.length() > 1;
-  if isWindows {
-    // const res = exec('Test-Path -Path ' + path);
-    const cmdtest = exec('(dir 2>&1 *`|echo CMD);&<# rem #>echo PowerShell');
-    eprint('cmdtest.stdout = ' + cmdtest.stdout);
-    eprint('cmdtest.stderr = ' + cmdtest.stderr);
-    eprint('------------');
-    const statpath = exec('stat ' + path);
-    eprint('statpath.stdout = ' + statpath.stdout);
-    eprint('statpath.stderr = ' + statpath.stderr);
-    eprint('------------');
-    const testpath = exec('Test-Path -Path ' + path);
-    eprint('testpath.stdout = ' + testpath.stdout);
-    eprint('testpath.stderr = ' + testpath.stderr);
-    eprint('------------');
-    const getitem = exec('Get-Item ' + path);
-    eprint('getitem.stdout = ' + getitem.stdout);
-    eprint('getitem.stderr = ' + getitem.stderr);
-    eprint('------------');
-    return false;
-  } else {
-    eprint('DO NOT EXECUTING THIS BRANCH');
-    return exec('stat ' + path).stderr.length() == 0;
-  }
+  // const isWindows = exec('echo ${Env:windir}').stdout.length() > 1;
+  // if isWindows {
+  //   // const res = exec('Test-Path -Path ' + path);
+  //   const cmdtest = exec('(dir 2>&1 *`|echo CMD);&<# rem #>echo PowerShell');
+  //   eprint('cmdtest.stdout = ' + cmdtest.stdout);
+  //   eprint('cmdtest.stderr = ' + cmdtest.stderr);
+  //   eprint('------------');
+  //   const statpath = exec('stat ' + path);
+  //   eprint('statpath.stdout = ' + statpath.stdout);
+  //   eprint('statpath.stderr = ' + statpath.stderr);
+  //   eprint('------------');
+  //   const testpath = exec('Test-Path -Path ' + path);
+  //   eprint('testpath.stdout = ' + testpath.stdout);
+  //   eprint('testpath.stderr = ' + testpath.stderr);
+  //   eprint('------------');
+  //   const getitem = exec('Get-Item ' + path);
+  //   eprint('getitem.stdout = ' + getitem.stdout);
+  //   eprint('getitem.stderr = ' + getitem.stderr);
+  //   eprint('------------');
+  //   return false;
+  // } else {
+  //   eprint('DO NOT EXECUTING THIS BRANCH');
+  //   return exec('stat ' + path).stderr.length() == 0;
+  // }
+  return exec('stat ' + path).stderr.length() == 0;
 }
 
 fn makeDirectory(path: string) {
-  exec('mkdir ' + path);
+  const res = exec('mkdir ' + path);
+  eprint('mkdir res.stdout = ' + res.stdout);
+  eprint('mkdir res.stderr = ' + res.stderr);
 }
 
 fn removeFile(path: string): bool {
-  return exec('rm ' + path).stderr.length() == 0;
+  const res = exec('rm ' + path);
+  eprint('mkdir res.stdout = ' + res.stdout);
+  eprint('mkdir res.stderr = ' + res.stderr);
+  return res.stderr.length() == 0;
 }
 
 fn listDirectories(path: string): Array<string> {
-  return exec('ls ' + path).stdout.split("\n");
+  const res = exec('ls ' + path);
+  eprint('mkdir res.stdout = ' + res.stdout);
+  eprint('mkdir res.stderr = ' + res.stderr);
+  return res.stdout.split("\n");
 }
 
 fn mkdirp(path: string) {
@@ -328,7 +337,9 @@ fn mkdirp(path: string) {
 }
 
 fn addMockFile(path: string) {
-  exec('echo "export const mock = true;" > ' + path);
+  const res = exec('echo "export const mock = true;" > ' + path);
+  eprint('mkdir res.stdout = ' + res.stdout);
+  eprint('mkdir res.stderr = ' + res.stderr);
 }
 
 fn cleanLib(lib: string): string {
