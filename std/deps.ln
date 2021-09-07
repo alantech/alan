@@ -283,13 +283,13 @@ fn applyPkgFullBlock(innerGroup: string, innerName: string) {
 }
 
 fn directoryExists(path: string): bool {
-    // const cmdtest = exec('(dir 2>&1 *`|echo CMD);&<# rem #>echo PowerShell');
-    // eprint('cmdtest.stdout = ' + cmdtest.stdout);
-    // eprint('cmdtest.stderr = ' + cmdtest.stderr);
-    // eprint('------------');
+  // const cmdtest = exec('(dir 2>&1 *`|echo CMD);&<# rem #>echo PowerShell');
+  // eprint('cmdtest.stdout = ' + cmdtest.stdout);
+  // eprint('cmdtest.stderr = ' + cmdtest.stderr);
+  // eprint('------------');
   // const isWindows = exec('echo ${Env:windir}').stdout.length() > 1;
   // if isWindows {
-  //   // const res = exec('Test-Path -Path ' + path);
+  //   const res = exec('Test-Path -Path ' + path);
   //   const statpath = exec('stat ' + path);
   //   eprint('statpath.stdout = ' + statpath.stdout);
   //   eprint('statpath.stderr = ' + statpath.stderr);
@@ -307,13 +307,17 @@ fn directoryExists(path: string): bool {
   //   eprint('DO NOT EXECUTING THIS BRANCH');
   //   return exec('stat ' + path).stderr.length() == 0;
   // }
-  return exec('stat ' + path).stderr.length() == 0;
+  const res = exec('stat ' + path);
+  eprint('stat.stdout = ' + res.stdout);
+  eprint('stat.stderr = ' + res.stderr);
+  eprint('------------');
+  return res.stderr.length() == 0;
 }
 
 fn makeDirectory(path: string) {
   const isWindows = exec('echo ${Env:windir}').stdout.length() > 1;
   if isWindows {
-    const newPath = path.split('/').join('\\');
+    const newPath = path.split('/').join('\ ').split(' ').join('');
     eprint('mkdir new path = ' + newPath);
     const res = exec('mkdir ' + newPath);
     eprint('makeDirectory res.stdout = ' + res.stdout);
@@ -362,6 +366,7 @@ fn cleanLib(lib: string): string {
 
 // Emit the `install` event on app `start`
 on start {
+  makeDirectory('abc/cde');
   // TODO: optimize to parse the existing dependencies tree, if any, to build up a list of dependencies
   // that are already installed so calls by the user to install them again (assuming the version is identical)
   // are skipped, calls to upgrade or install new dependencies are performed, and then the remaining list
