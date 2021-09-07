@@ -133,25 +133,25 @@ jobs:
   #       ALAN_TELEMETRY_OFF: true
   #     run: make bdd
 
-  avm-unit-windows:
-    # The type of runner that the job will run on
-    runs-on: windows-latest
+  # avm-unit-windows:
+  #   # The type of runner that the job will run on
+  #   runs-on: windows-latest
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
-    steps:
-    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-    - uses: actions/checkout@v2
+  #   # Steps represent a sequence of tasks that will be executed as part of the job
+  #   steps:
+  #   # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+  #   - uses: actions/checkout@v2
 
-    # The AVM requires openssl dev files to build now, and apparently the rust openssl code can auto-acquire it through vcpkg, so set that up
-    - name: Set up vcpkg
-      run: |
-        git clone https://github.com/microsoft/vcpkg
-        cd vcpkg && bootstrap-vcpkg.bat && vcpkg integrate install && vcpkg install openssl --triplet x64-windows-static-md
+  #   # The AVM requires openssl dev files to build now, and apparently the rust openssl code can auto-acquire it through vcpkg, so set that up
+  #   - name: Set up vcpkg
+  #     run: |
+  #       git clone https://github.com/microsoft/vcpkg
+  #       cd vcpkg && bootstrap-vcpkg.bat && vcpkg integrate install && vcpkg install openssl --triplet x64-windows-static-md
 
-    # Rust is automatically set up and included by default according to: https://github.com/actions/starter-workflows/blob/master/ci/rust.yml
-    # Run unit tests
-    - name: Run unit tests
-      run: make avm-unit
+  #   # Rust is automatically set up and included by default according to: https://github.com/actions/starter-workflows/blob/master/ci/rust.yml
+  #   # Run unit tests
+  #   - name: Run unit tests
+  #     run: make avm-unit
 
   bdd-windows:
     # The type of runner that the job will run on
