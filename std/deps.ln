@@ -283,13 +283,13 @@ fn applyPkgFullBlock(innerGroup: string, innerName: string) {
 }
 
 fn directoryExists(path: string): bool {
+    // const cmdtest = exec('(dir 2>&1 *`|echo CMD);&<# rem #>echo PowerShell');
+    // eprint('cmdtest.stdout = ' + cmdtest.stdout);
+    // eprint('cmdtest.stderr = ' + cmdtest.stderr);
+    // eprint('------------');
   // const isWindows = exec('echo ${Env:windir}').stdout.length() > 1;
   // if isWindows {
   //   // const res = exec('Test-Path -Path ' + path);
-  //   const cmdtest = exec('(dir 2>&1 *`|echo CMD);&<# rem #>echo PowerShell');
-  //   eprint('cmdtest.stdout = ' + cmdtest.stdout);
-  //   eprint('cmdtest.stderr = ' + cmdtest.stderr);
-  //   eprint('------------');
   //   const statpath = exec('stat ' + path);
   //   eprint('statpath.stdout = ' + statpath.stdout);
   //   eprint('statpath.stderr = ' + statpath.stderr);
@@ -311,9 +311,18 @@ fn directoryExists(path: string): bool {
 }
 
 fn makeDirectory(path: string) {
-  const res = exec('mkdir ' + path);
-  eprint('makeDirectory res.stdout = ' + res.stdout);
-  eprint('makeDirectory res.stderr = ' + res.stderr);
+  const isWindows = exec('echo ${Env:windir}').stdout.length() > 1;
+  if isWindows {
+    const newPath = path.split('/').join('\\');
+    eprint('mkdir new path = ' + newPath);
+    const res = exec('mkdir ' + newPath);
+    eprint('makeDirectory res.stdout = ' + res.stdout);
+    eprint('makeDirectory res.stderr = ' + res.stderr);
+  } else {
+    const res = exec('mkdir ' + path);
+    eprint('makeDirectory res.stdout = ' + res.stdout);
+    eprint('makeDirectory res.stderr = ' + res.stderr);
+  }
 }
 
 fn removeFile(path: string): bool {
