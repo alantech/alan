@@ -312,21 +312,21 @@ fn directoryExists(path: string): bool {
 
 fn makeDirectory(path: string) {
   const res = exec('mkdir ' + path);
-  eprint('mkdir res.stdout = ' + res.stdout);
-  eprint('mkdir res.stderr = ' + res.stderr);
+  eprint('makeDirectory res.stdout = ' + res.stdout);
+  eprint('makeDirectory res.stderr = ' + res.stderr);
 }
 
 fn removeFile(path: string): bool {
   const res = exec('rm ' + path);
-  eprint('mkdir res.stdout = ' + res.stdout);
-  eprint('mkdir res.stderr = ' + res.stderr);
+  eprint('removeFile res.stdout = ' + res.stdout);
+  eprint('removeFile res.stderr = ' + res.stderr);
   return res.stderr.length() == 0;
 }
 
 fn listDirectories(path: string): Array<string> {
   const res = exec('ls ' + path);
-  eprint('mkdir res.stdout = ' + res.stdout);
-  eprint('mkdir res.stderr = ' + res.stderr);
+  eprint('listDirectories res.stdout = ' + res.stdout);
+  eprint('listDirectories res.stderr = ' + res.stderr);
   return res.stdout.split("\n");
 }
 
@@ -338,8 +338,8 @@ fn mkdirp(path: string) {
 
 fn addMockFile(path: string) {
   const res = exec('echo "export const mock = true;" > ' + path);
-  eprint('mkdir res.stdout = ' + res.stdout);
-  eprint('mkdir res.stderr = ' + res.stderr);
+  eprint('addMockFile res.stdout = ' + res.stdout);
+  eprint('addMockFile res.stderr = ' + res.stderr);
 }
 
 fn cleanLib(lib: string): string {
