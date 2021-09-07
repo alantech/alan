@@ -180,4 +180,4 @@ jobs:
     - name: Run BDD tests
       env:
         ALAN_TELEMETRY_OFF: true
-      run: bash -c "make bdd"
+      run: bash -c "make bdd testfile=./bdd/spec/022_deps_spec.sh"
