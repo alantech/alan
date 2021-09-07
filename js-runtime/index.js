@@ -1210,9 +1210,9 @@ module.exports = {
     try {
       const res = await exec(cmd)
       const { stdout, stderr } = res
-      return [ 0, stdout, stderr ]
+      return [ 0n, stdout, stderr ]
     } catch (e) {
-      return [ e.signal, e.stdout, e.stderr ]
+      return [ BigInt(e.code), e.stdout, e.stderr ]
     }
   },
   tcplsn: async () => {
