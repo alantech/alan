@@ -8,7 +8,7 @@ Describe "@std/deps"
 
         on install fn (package: Package) = package
           .using(['@std/app', '@std/cmd'])
-          .dependency('https://github.com/alantech/hellodep.git#deps-perm')
+          .dependency('https://github.com/alantech/hellodep.git')
             .add()
           .block('@std/tcp')
           .fullBlock('@std/httpcommon')
