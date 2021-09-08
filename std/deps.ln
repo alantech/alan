@@ -1,32 +1,329 @@
-from @std/app import start, print, exit
+from @std/app import start, print, exit, eprint
 from @std/cmd import exec
 
 /**
- * @std/deps - The entrypoint to install dependencies for an alan program
+ * @std/deps - The entrypoint to install dependencies for an alan program 
+ * and define permissions over libraries
  */
 
-// The `install` event
-export event install: void
-
-// The `add` function takes a string that describes a .git repository and install it in /dependencies
-export fn add(remote: string) {
-  // TODO implement proper error handling
-  const parts = remote.split('/');
-  const repo = parts[length(parts) - 1] || '';
-  const group = parts[parts.length() - 2] || '';
-  const dest = 'dependencies/' + group + '/' + repo;
-  const rm = exec('rm -rf ./' + dest);
-  const git = exec('git clone ' + remote + ' ./' + dest);
-  print(git.stderr);
-  const rm2 = exec('rm -rf ./' + dest + '/.git');
-  const maybeRecurse = exec('cd ' + dest + ' && alan install');
+type Dependency {
+  url: string,
+  block: Array<string>,
+  fullBlock: Array<string>,
+  group: string,
+  name: string,
+  rev: string,
+  remote: string,
 }
 
-// The `commit` function takes no arguments. Currently just causes the application to quit, but
-// eventually would be the point where the dependencies defined by the calls to `add` could be
-// compared against the currently-installed dependencies, and a faster install would be possible
-export fn commit() {
+type Package {
+  std: Array<string>,
+  dependencies: Array<Dependency>,
+  block: Array<string>,
+  fullBlock: Array<string>,
+}
+
+export Package
+
+type PackageDependency {
+  pkg: Package,
+  dep: Dependency,
+}
+
+// The `install` event
+export event install: Package
+
+fn package(): Package {
+  let emptyStd = new Array<string> [];
+  let emptyBlock = new Array<string> [];
+  let emptyFullBlock = new Array<string> [];
+  let emptyDep = new Array<Dependency> [];
+  let pkg = new Package {
+    std: emptyStd,
+    dependencies: emptyDep,
+    block: emptyBlock,
+    fullBlock: emptyFullBlock,
+  };
+  return pkg;
+}
+
+export fn using(pkg: Package, std: Array<string>): Package {
+  // Since alan is blocking the re-asignation of pkg.std we create a new object as a work around
+  return new Package {
+    std: pkg.std + std,
+    dependencies: pkg.dependencies,
+    block: pkg.block,
+    fullBlock: pkg.fullBlock,
+  };
+}
+
+export fn dependency(pkg: Package, url: string): PackageDependency {
+  const emptyBlock = new Array<string> [];
+  const emptyFullBlock = new Array<string> [];
+  // The dependency url have to follow the git URLs standard https://git-scm.com/docs/git-clone#_git_urls
+  // The revisions (branches, tags or SHAs) will be delimited using a # (as npm or other package managers)
+  const parts = url.split('#');
+  const remote = parts[0] || '';
+  const rev = parts[1] || '';
+  const remoteParts = remote.split('/');
+  const gitRepo = remoteParts[remoteParts.length() - 1] || '';
+  const repo = gitRepo.split('.')[0] || '';
+  const possibleSSH = remoteParts[remoteParts.length() - 2] || '';
+  const possibleSSHParts = possibleSSH.split(':');
+  const group = possibleSSHParts[possibleSSHParts.length() - 1] || '';
+  const dep = new Dependency {
+    url: url,
+    block: emptyBlock,
+    fullBlock: emptyFullBlock,
+    group: group,
+    name: repo,
+    rev: rev,
+    remote: remote,
+  };
+  return new PackageDependency {
+    pkg: pkg,
+    dep: dep,
+  };
+}
+
+export fn add(pkgd: PackageDependency): Package {
+  pkgd.pkg.dependencies.push(pkgd.dep);
+  return pkgd.pkg;
+}
+  
+export fn block(pkg: Package, block: string): Package {
+  pkg.block.push(block);
+  return pkg;
+}
+
+export fn block(pkg: Package, block: Array<string>): Package {
+  pkg.block = pkg.block + block;
+  return pkg;
+}
+
+export fn block(pkgd: PackageDependency, block: string): PackageDependency {
+  pkgd.dep.block.push(block);
+  return pkgd;
+}
+
+export fn block(pkgd: PackageDependency, block: Array<string>): PackageDependency {
+  pkgd.dep.block = pkgd.dep.block + block;
+  return pkgd;
+}
+
+export fn fullBlock(pkg: Package, block: string): Package {
+  pkg.fullBlock.push(block);
+  return pkg;
+}
+
+export fn fullBlock(pkg: Package, block: Array<string>): Package {
+  pkg.fullBlock = pkg.fullBlock + block;
+  return pkg;
+}
+
+export fn fullBlock(pkgd: PackageDependency, block: string): PackageDependency {
+  pkgd.dep.fullBlock.push(block);
+  return pkgd;
+}
+
+export fn fullBlock(pkgd: PackageDependency, block: Array<string>): PackageDependency {
+  pkgd.dep.fullBlock = pkgd.dep.fullBlock + block;
+  return pkgd;
+}
+
+// The `commit` function takes the packge as argument.
+// It install all dependencies added and apply necessary blocks.
+export fn commit(pkg: Package) {
+  // Remove std dep from blacklist
+  const blacklist = getBlacklist(pkg.std);
+  // Create mocks for blacklisted std libs
+  blockStd(blacklist);
+  // Download and install each dep
+  downloadDependencies(pkg.dependencies);
+  // Apply blocks defined for each dependency
+  applyDependencyBlocks(pkg.dependencies);
+  // Block lib for all dependencies once.
+  applyBlock(pkg.block, false, none(), none());
+  // Block lib for all dependencies once. If any dependency is mocking it already remove that behaviour.
+  applyBlock(pkg.fullBlock, true, none(), none());
   emit exit 0;
+}
+
+fn getBlacklist(std: Array<string>): Array<string> {
+  // TODO: add @std/deps  to this list and handle it on bdd tests
+  const stdList = [
+    '@std/app', '@std/avmdaemon', '@std/cmd', '@std/datastore', '@std/http', 
+    '@std/httpcommon', '@std/httpserver', '@std/json', '@std/seq', '@std/tcp',
+    '@std/tcpserver', '@std/trig',
+  ];
+  return stdList.filter(fn (a: string) = !pkg.std.find(fn (b: string) = a == b).isOk());
+}
+
+fn blockStd(blacklist: Array<string>) {
+  const dependencies = 'dependencies';
+  mkdirp(dependencies);
+  const modulesPath = [dependencies, 'modules'].join('/');
+  mkdirp(modulesPath);
+  const stdPath = [modulesPath, 'std'].join('/');
+  mkdirp(stdPath);
+  blacklist.map(fn (lib: string) {
+    const cleanedLib = cleanLib(lib);
+    makeDirectory(modulesPath + '/' + cleanedLib);
+    addMockFile(modulesPath + '/' + cleanedLib + '/index.ln');
+  });
+}
+
+fn downloadDependencies(dependencies: Array<Dependency>) {
+  dependencies.map(fn (dep: Dependency) {
+    // TODO implement proper error handling
+    const remote = dep.remote;
+    const repo = dep.name;
+    const group = dep.group;
+    const rev = dep.rev;
+    const dest = 'dependencies/' + group + '/' + repo;
+    const rm = exec('rm -rf ./' + dest);
+    const cloneCmd = 'git clone ' + remote + ' ./' + dest;
+    const gitClone = exec(cloneCmd + (rev != '' ? (&& ) : ''));
+    if gitClone.exitCode != 0 {
+      eprint(gitClone.stderr);
+    }
+    // Print clone result
+    print(gitClone.stderr);
+    if rev != '' {
+      const gitReset = exec('cd ' + dest + ' && git reset --hard ' + rev);
+      if gitReset.exitCode != 0 {
+        const gitReset = exec('cd ' + dest + ' && git reset --hard origin/' + rev);
+        if gitReset.exitCode != 0 {
+          eprint(gitReset.stderr);
+        }
+      }
+    }
+    const rm2 = exec('rm -rf ./' + dest + '/.git');
+    const maybeRecurse = exec('cd ' + dest + ' && alan install');
+  });
+}
+
+fn applyDependencyBlocks(dependencies: Array<Dependency>) {
+  dependencies.map(fn (dep: Dependency) {
+    applyBlock(dep.block, false, some(dep.name), some(dep.group));
+    applyBlock(dep.fullBlock, true, some(dep.name), some(dep.group));
+  });
+}
+
+fn applyBlock(blocks: Array<string>, isFullBlock: bool, name: Maybe<any>, group: Maybe<any>) {
+  const dependencies = 'dependencies';
+  const modules = 'modules';
+  if blocks.length() == 0 {
+    return;
+  }
+  if name.isSome() && group.isSome() {
+    const dependenciesDepModulesPath = [dependencies, group.getOr(''), name.getOr(''), modules].join('/');
+    mkdirp(dependenciesDepModulesPath);
+    applyBlockForEach(dependenciesDepModulesPath, blocks, isFullBlock, name.isSome() && group.isSome());
+  } else {
+    mkdirp(dependencies);
+    const depenenciesModulesPath = [dependencies, modules].join('/');
+    mkdirp(depenenciesModulesPath);
+    applyBlockForEach(depenenciesModulesPath, blocks, isFullBlock, name.isNone() && group.isNone());
+  }
+}
+
+fn applyBlockForEach(workingPath: string, blocks: Array<string>, isFullBlock: bool, isPkgBlock: bool) {
+  blocks.map(fn (lib: string) {
+    const cleanedLib = cleanLib(lib);
+    const libSplit = cleanedLib.split('/');
+    const innerGroup = libSplit[0].getOr('');
+    const innerName = libSplit[1].getOr('');
+    const innerGroupPath = [workingPath, innerGroup].join('/');
+    mkdirp(innerGroupPath);
+    const innerNamePath = [innerGroupPath, innerName].join('/');
+    if !directoryExists(innerNamePath) {
+      makeDirectory(innerNamePath);
+      const mockFile = innerNamePath + '/index.ln';
+      addMockFile(mockFile);
+    } else {
+      if isFullBlock && isPkgBlock {
+        applyPkgFullBlock(innerGroup, innerName);
+      } else if isFullBlock && !isPkgBlock {
+        applyDepFullBlock(innerNamePath, innerName);
+      }
+    }
+  });
+}
+
+fn applyDepFullBlock(innerNamePath: string, innerName: string) {
+  const mockFile = innerNamePath + '/index.ln';
+  if !removeFile(mockFile) {
+    const nameMockFile = innerNamePath + '/' + innerName + '.ln';
+    removeFile(nameMockFile);
+  }
+  addMockFile(mockFile);
+}
+
+fn applyPkgFullBlock(innerGroup: string, innerName: string) {
+  const deps = listDirectories('dependencies');
+  deps.map(fn (group: string) {
+    if group != 'modules' && group != '' {
+      const lsGroup = listDirectories(['dependencies', group].join('/'));
+      lsGroup.map(fn (name: string) {
+        if name != '' {
+          const path = ['dependencies', group, name, 'modules', innerGroup, innerName].join('/');
+          if directoryExists(path) {
+            const mockFile = path + '/index.ln';
+            if !removeFile(mockFile) {
+              const nameMockFile = path + '/' + innerName + '.ln';
+              removeFile(nameMockFile);
+            }
+            addMockFile(mockFile);
+          }
+        }
+      });
+    }
+  });
+}
+
+fn directoryExists(path: string): bool {
+  return exec('test -d ' + path).exitCode == 0;
+}
+
+fn makeDirectory(path: string) {
+  const isWindows = exec('echo ${Env:windir}').stdout.length() > 1;
+  if isWindows {
+    // TODO: compilation error using .join('\\')
+    const newPath = path.split('/').join('\ ').split(' ').join('');
+    const res = exec('mkdir ' + newPath);
+  } else {
+    const res = exec('mkdir ' + path);
+  }
+}
+
+fn removeFile(path: string): bool {
+  const res = exec('rm ' + path);
+  return res.stderr.length() == 0;
+}
+
+fn listDirectories(path: string): Array<string> {
+  const res = exec('ls ' + path);
+  return res.stdout.split("\n");
+}
+
+fn mkdirp(path: string) {
+  if !directoryExists(path) {
+    makeDirectory(path);
+  }
+}
+
+fn addMockFile(path: string) {
+  const res = exec('echo "export const mock = true;" > ' + path);
+}
+
+fn cleanLib(lib: string): string {
+  if lib.matches('@') && lib.index('@') == 0 {
+    const libSplit = lib.split('@');
+    return libSplit[1].getOr('');
+  } else {
+    return lib;
+  }
 }
 
 // Emit the `install` event on app `start`
@@ -37,5 +334,5 @@ on start {
   // of dependencies at the end are removed.
   exec('rm -rf dependencies');
   exec('mkdir dependencies');
-  emit install;
+  emit install package();
 }
