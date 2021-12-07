@@ -34,6 +34,7 @@ ALAN_STD_FILES=$(wildcard std/*.ln) $(wildcard std/*.lnn)
 	yarn add pkg
 	cd compiler && ../node_modules/.bin/pkg --targets host .
 
+# Issue with `rustc` and `checkinstall` means this cannot be PHONYed
 ./avm/target/release/alan: compiler/alan-compile
 	cd avm && cargo build --release
 	cd avm && cargo fmt
