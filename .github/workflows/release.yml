@@ -33,6 +33,21 @@ jobs:
         file: /tmp/alan-ubuntu.tar.gz
         asset_name: alan-ubuntu.tar.gz
 
+    - name: Generate Alan Debian package
+      run: |
+        apt install checkinstall
+        alanversion=$(echo ${{github.ref}} | sed "s/refs\/tags\///")
+        echo "Alan Programming Language Compiler and Runtime\n\n" | checkinstall --install=no -D --pkgversion=${alanversion} --pkglicense=AGPL --maintainer=hello@alantechnologies.com --pkggroup="Alan Technologies, Inc" --nodoc --deldesc=yes --delspec=yes --backup=no
+        cp ./alan_${alanversion}-1_amd64.deb /tmp/alan_amd64.deb
+
+    - name: Upload Alan Debian package
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        tag: ${{ github.ref }}
+        file: /tmp/alan_amd64.deb
+        asset_name: alan_amd64.deb
+
   windows:
     runs-on: windows-latest
 
