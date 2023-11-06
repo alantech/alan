@@ -16,4 +16,4 @@ In order to have any change from this repo available locally remember to execute
 
 ## License
 
-Apache 2.0
+MIT

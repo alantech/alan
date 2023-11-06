@@ -4,8 +4,6 @@ A compiler for alan to Javascript and Alan Graphcode, the [runtime](https://gith
 
 Caveats: There should be a strict mode that make sure int64s are using [BigInt](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt) despite the performance loss, but the vast majority of the time falling back to regular numbers should work.
 
-This compiler is licensed AGPL 3.0 but the [alan standard library](https://github.com/alantech/alan/tree/master/std) and the [Javascript runtime shim](https://github.com/alantech/alan/tree/master/js-runtime) are licensed Apache 2.0 so you can freely distribute your compiled code.
-
 ## Install
 
 ```sh
@@ -70,20 +68,10 @@ const helloWorld = alanCompile(
 eval(helloWorld); // Execute the generated javascript code
 ```
 
-### Licensing Warning
-
-While the Alan Standard Library and Alan JS Runtime are Apache 2.0 license and therefore freely distributable with your own code, the Alan Compiler is AGPL 3.0 licensed, so embedding the compiler in this way requires the project using it to also be AGPL 3.0 licensed.
-
-Pregenerating the Javascript to run in your own build system from the CLI tool does not cause this licensing escalation. However, this is only a problem in a minority of use-cases as the Javascript source is already transmitted to the users.
-
 ## Development
 
 `alan-compile` is written in relatively standard Node.js+Typescript with the source code in `src`. Run `yarn build` to recompile (or just `tsc` if you have that installed globally).
 
-### Contribution Agreement
-
-To contribute to `alan-compile` you need to sign a Contributor License Agreement, Alan Technologies will retain the right to relicense this code in licenses other than AGPL 3.0 concurrently or in the future to convert to a newer license.
-
 ## License
 
-AGPL 3.0
+MIT
