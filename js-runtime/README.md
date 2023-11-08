@@ -10,4 +10,4 @@ For the web, [browserify](http://browserify.org/) is an easy to use tool for bun
 
 ## License
 
-Apache 2.0
+MIT

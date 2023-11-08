@@ -1,7 +1,7 @@
 [package]
 name = "alan"
 description = "The Alan Compiler and VM"
-license = "AGPL-3.0"
+license = "MIT"
 homepage = "https://alan-lang.org"
 documentation = "https://docs.alan-lang.org"
 repository = "https://github.com/alantech/alan"

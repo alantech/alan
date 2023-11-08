@@ -33,7 +33,7 @@
     "transpiler"
   ],
   "author": "David Ellis <david@alantechnologies.com>",
-  "license": "AGPL-3.0",
+  "license": "MIT",
   "dependencies": {
     "@types/node": "^14.0.5",
     "@types/uuid": "^8.0.0",

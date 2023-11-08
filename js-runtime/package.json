@@ -1,7 +1,7 @@
 {
   "name": "alan-js-runtime",
   "version": "0.1.45-beta3",
-  "description": "The runtime component for alan-js. Separately licensed from the compiler.",
+  "description": "The runtime component for alan-js.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -13,7 +13,7 @@
     "transpiler"
   ],
   "author": "David Ellis <david@alantechnologies.com>",
-  "license": "Apache-2.0",
+  "license": "MIT",
   "dependencies": {
     "cross-fetch": "^3.0.6",
     "xxhashjs": "^0.2.2"

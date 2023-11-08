@@ -25,4 +25,4 @@ With a centralized package management flow this can be enforced because you can'
 
 ## License
 
-Apache 2.0
+MIT

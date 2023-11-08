@@ -118,16 +118,4 @@ make bdd testfile=bdd/spec/001_event_spec.sh:30
 <h2 align="center">License</h2>
 <br/>
 
-The Alan Programming Language is made up of multiple sub-projects housed within this monorepo. Each subdirectory has its own license file and the project as a whole uses two licenses: The Apache 2.0 license and the Affero GPL 3.0 license, with the breakdown as follows:
-
-* Apache 2.0
-  * bdd
-  * js-runtime
-  * std
-* AGPL 3.0
-  * compiler
-  * avm
-
-The Apache 2.0 license is freely combinable with the GPL 3 series of licenses as well as with proprietary software, so the standard library and Javascript runtime library are freely combinable with your own software projects without any requirement to open source it.
-
-The AGPL 3.0 license requires that any changes to the code are published and publicly accessible. This is to make sure that any advancements to the compiler and AVM are available to all. The licensing of these tools does not affect the licensing of the code they compile or run. Similarly, the [GCC compiler collection](https://gcc.gnu.org) is GPL 3.0 licensed, but code compiled by it is not GPL 3.0 licensed.
+MIT
