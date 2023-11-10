@@ -1,11 +1,5 @@
-use futures::stream::StreamExt;
-use heim_common::units::{information::kilobyte, time::second};
-#[cfg(target_os = "linux")]
-use heim_cpu::os::linux::CpuTimeExt;
-#[cfg(target_os = "linux")]
-use heim_memory::os::linux::MemoryExt;
+use sysinfo::{ProcessExt, System, SystemExt};
 use serde::Serialize;
-use tokio::time::{sleep, Duration};
 
 use crate::daemon::daemon::DaemonResult;
 
@@ -51,172 +45,48 @@ pub struct VMStatsV1 {
 
 // calculate the cpu % usage per process using the process'
 // total cpu time delta in a 100ms time window
-#[cfg(not(target_arch = "aarch64"))]
-async fn get_proc_usages() -> Vec<f64> {
-  use futures::future::join_all;
-  use heim_common::units::time::millisecond;
-  let duration = 100.0; // ms
-  let futures = heim_process::processes()
-    .map(|process| async {
-      match process {
-        Ok(proc) => {
-          let cpu_1 = proc.cpu_time().await;
-          sleep(Duration::from_millis(duration as u64)).await;
-          let cpu_2 = proc.cpu_time().await;
-          // account for zombie process
-          if cpu_1.is_err() || cpu_2.is_err() {
-            return 0.0;
-          }
-          let times_1 = cpu_1.unwrap();
-          let times_2 = cpu_2.unwrap();
-          let system =
-            times_2.system().get::<millisecond>() - times_1.system().get::<millisecond>();
-          let user = times_2.user().get::<millisecond>() - times_1.user().get::<millisecond>();
-          (user + system) / duration
-        }
-        Err(_) => 0.0,
-      }
-    })
-    .collect::<Vec<_>>()
-    .await;
-  join_all(futures).await
-}
-#[cfg(target_arch = "aarch64")]
-async fn get_proc_usages() -> Vec<f64> {
-  vec![]
-}
-
-// get total cpu times per core since the VM's uptime
-// while setting linux specific fields to 0
-#[cfg(not(target_os = "linux"))]
-async fn get_cores_total_times() -> Vec<DaemonResult<CPUSecsV1>> {
-  heim_cpu::times()
-    .map(|r| {
-      if let Ok(cpu) = r {
-        Ok(CPUSecsV1 {
-          user: cpu.user().get::<second>(),
-          system: cpu.system().get::<second>(),
-          idle: cpu.idle().get::<second>(),
-          irq: 0.0,
-          nice: 0.0,
-          ioWait: 0.0,
-          softIrq: 0.0,
-          steal: 0.0,
-        })
-      } else {
-        Err("Failed to get CPU times".into())
-      }
-    })
-    .collect()
-    .await
-}
-
-// get total cpu times per core since the VM's uptime
-#[cfg(target_os = "linux")]
-async fn get_cores_total_times() -> Vec<DaemonResult<CPUSecsV1>> {
-  heim_cpu::times()
-    .map(|r| {
-      if let Ok(cpu) = r {
-        Ok(CPUSecsV1 {
-          user: cpu.user().get::<second>(),
-          system: cpu.system().get::<second>(),
-          idle: cpu.idle().get::<second>(),
-          irq: cpu.irq().get::<second>(),
-          nice: cpu.nice().get::<second>(),
-          ioWait: cpu.io_wait().get::<second>(),
-          softIrq: cpu.soft_irq().get::<second>(),
-          steal: cpu.steal().get::<second>(),
-        })
-      } else if let Err(err_cpu) = r {
-        Err(format!("Failed to get CPU times. {:?}", err_cpu).into())
-      } else {
-        Err("Failed to get CPU times".into())
-      }
-    })
-    .collect()
-    .await
+async fn get_proc_usages(sys: &System) -> Vec<f64> {
+  sys.processes().values().map(|process| {
+    process.cpu_usage() as f64
+  }).collect()
 }
 
 // Cpu Times from /proc/stat are for the entire lifetime of the VM
 // so generate it twice with a wait in between to generate a time window
-async fn get_cores_times() -> DaemonResult<Vec<CPUSecsV1>> {
-  let times_1 = get_cores_total_times().await;
-  sleep(Duration::from_millis(100)).await;
-  let times_2 = get_cores_total_times().await;
+async fn get_cores_times(sys: &System) -> DaemonResult<Vec<CPUSecsV1>> {
+  // TODO: Revive or replace this
   let mut time_window = Vec::new();
-  for (idx, t2) in times_2.iter().enumerate() {
-    let t1 = &times_1[idx];
-    if let (Ok(t1), Ok(t2)) = (t1, t2) {
-      time_window.push(CPUSecsV1 {
-        user: t2.user - t1.user,
-        system: t2.system - t1.system,
-        idle: t2.idle - t1.idle,
-        irq: t2.irq - t1.irq,
-        nice: t2.nice - t1.nice,
-        ioWait: t2.ioWait - t1.ioWait,
-        softIrq: t2.softIrq - t1.softIrq,
-        steal: t2.steal - t1.steal,
-      });
-    } else if let Err(err_t1) = t1 {
-      return Err(format!("Failed to get CPU times. {:?}", err_t1).into());
-    } else if let Err(err_t2) = t2 {
-      return Err(format!("Failed to get CPU times. {:?}", err_t2).into());
-    } else {
-      return Err("Failed to get CPU times".into());
-    }
+  for cpu in sys.cpus() {
+    time_window.push(CPUSecsV1 {
+      user: 0.0,
+      system: 0.0,
+      idle: 0.0,
+      irq: 0.0,
+      nice: 0.0,
+      ioWait: 0.0,
+      softIrq: 0.0,
+      steal: 0.0,
+    });
   }
   Ok(time_window)
 }
 
-#[cfg(target_os = "linux")]
 pub async fn get_v1_stats() -> DaemonResult<VMStatsV1> {
-  let memory = heim_memory::memory().await;
-  let swap = heim_memory::swap().await;
-  let core_times = get_cores_times().await?;
-  match (memory, swap) {
-    (Ok(memory), Ok(swap)) => Ok(VMStatsV1 {
-      cpuSecs: core_times,
-      procsCpuUsage: get_proc_usages().await,
-      totalMemoryKb: memory.total().get::<kilobyte>(),
-      availableMemoryKb: memory.available().get::<kilobyte>(),
-      freeMemoryKb: memory.free().get::<kilobyte>(),
-      activeMemoryKb: memory.active().get::<kilobyte>(),
-      usedMemoryKb: memory.used().get::<kilobyte>(),
-      totalSwapKb: swap.total().get::<kilobyte>(),
-      usedSwapKb: swap.used().get::<kilobyte>(),
-      freeSwapKb: swap.free().get::<kilobyte>(),
-    }),
-    (Err(err_memory), _) => {
-      return Err(format!("Failed to get system memory information. {:?}", err_memory).into())
-    }
-    (_, Err(err_swap)) => {
-      return Err(format!("Failed to get swap information. {:?}", err_swap).into())
-    }
-  }
-}
-
-// zero out linux specific stats
-#[cfg(not(target_os = "linux"))]
-pub async fn get_v1_stats() -> DaemonResult<VMStatsV1> {
-  let memory = heim_memory::memory().await;
-  let swap = heim_memory::swap().await;
-  let core_times = get_cores_times().await?;
-  match (memory, swap) {
-    (Ok(memory), Ok(swap)) => Ok(VMStatsV1 {
-      cpuSecs: core_times,
-      procsCpuUsage: get_proc_usages().await,
-      totalMemoryKb: memory.total().get::<kilobyte>(),
-      availableMemoryKb: memory.available().get::<kilobyte>(),
-      freeMemoryKb: memory.free().get::<kilobyte>(),
-      activeMemoryKb: 0,
-      usedMemoryKb: 0,
-      totalSwapKb: swap.total().get::<kilobyte>(),
-      usedSwapKb: swap.used().get::<kilobyte>(),
-      freeSwapKb: swap.free().get::<kilobyte>(),
-    }),
-    (Err(_err_memory), _) => return Err("Failed to get system memory information".into()),
-    (_, Err(_err_swap)) => return Err("Failed to get swap information".into()),
-  }
+  let mut sys = System::new_all();
+  sys.refresh_all();
+  let core_times = get_cores_times(&sys).await?;
+  Ok(VMStatsV1 {
+    cpuSecs: core_times,
+    procsCpuUsage: get_proc_usages(&sys).await,
+    totalMemoryKb: sys.total_memory(),
+    availableMemoryKb: sys.available_memory(),
+    freeMemoryKb: sys.free_memory(),
+    activeMemoryKb: sys.used_memory(), // TODO: Revive this?
+    usedMemoryKb: sys.used_memory(),
+    totalSwapKb: sys.total_swap(),
+    usedSwapKb: sys.used_swap(),
+    freeSwapKb: sys.free_swap(),
+  })
 }
 
 // returns the suggested scaling factor for the cluster
