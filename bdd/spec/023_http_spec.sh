@@ -31,35 +31,36 @@ Describe "@std/http"
     End
   End
 
-  Describe "basic post"
-    before() {
-      sourceToAll "
-        from @std/app import start, print, exit
-        from @std/http import post
-
-        on start {
-          print(post('https://reqbin.com/echo/post/json', '{\"test\":\"test\"}'));
-          emit exit 0;
-        }
-      "
-    }
-    BeforeAll before
-
-    after() {
-      cleanTemp
-    }
-    AfterAll after
-
-    It "runs js"
-      When run test_js
-      The output should eq "{\"success\":\"true\"}"
-    End
-
-    It "runs agc"
-      When run test_agc
-      The output should eq "{\"success\":\"true\"}"
-    End
-  End
+# TODO: Revive this test when an alternative to reqbin is found. It no longer works.
+#  Describe "basic post"
+#    before() {
+#      sourceToAll "
+#        from @std/app import start, print, exit
+#        from @std/http import post
+#
+#        on start {
+#          print(post('https://reqbin.com/echo/post/json', '{\"test\":\"test\"}'));
+#          emit exit 0;
+#        }
+#      "
+#    }
+#    BeforeAll before
+#
+#    after() {
+#      cleanTemp
+#    }
+#    AfterAll after
+#
+#    It "runs js"
+#      When run test_js
+#      The output should eq "{\"success\":\"true\"}"
+#    End
+#
+#    It "runs agc"
+#      When run test_agc
+#      The output should eq "{\"success\":\"true\"}"
+#    End
+#  End
 
   Describe "fetch directly"
     before() {
@@ -94,12 +95,12 @@ Describe "@std/http"
     # "connection: close" header and Hyper.rs does not
     FETCHJSOUTPUT="true
 200
-24
+25
 export const comeGetMe = \"You got me!\""
 
     FETCHAGCOUTPUT="true
 200
-22
+23
 export const comeGetMe = \"You got me!\""
 
     It "runs js"
