@@ -12,13 +12,13 @@ jobs:
         uses: peter-evans/repository-dispatch@v1
         with:
           token: ${{ secrets.AUTOPUBLISH }}
-          repository: alantech/docs
+          repository: alantech/alanlang-docs
           event-type: autopublish
           client-payload: '{}'
       - name: Autopublish Homepage
         uses: peter-evans/repository-dispatch@v1
         with:
           token: ${{ secrets.AUTOPUBLISH }}
-          repository: alantech/homepage
+          repository: alantech/alanlang-homepage
           event-type: autopublish
           client-payload: '{}'
