@@ -46,7 +46,7 @@ tokio = { version = "1.8", features = ["rt-multi-thread", "macros", "process", "
 tokio-rustls = "0.22.0"
 trust-dns-resolver = { version = "0.20.0", features = ["dns-over-rustls"] }
 twox-hash = "1.5.0"
-webbrowser = "0.5.5"
+webbrowser = "0.8.3"
 
 [target.'cfg(not(target_arch = "aarch64"))'.dependencies]
 heim-process = "0.0.11"
