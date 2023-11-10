@@ -1,5 +1,5 @@
-use sysinfo::{ProcessExt, System, SystemExt};
 use serde::Serialize;
+use sysinfo::{ProcessExt, System, SystemExt};
 
 use crate::daemon::daemon::DaemonResult;
 
@@ -46,9 +46,11 @@ pub struct VMStatsV1 {
 // calculate the cpu % usage per process using the process'
 // total cpu time delta in a 100ms time window
 async fn get_proc_usages(sys: &System) -> Vec<f64> {
-  sys.processes().values().map(|process| {
-    process.cpu_usage() as f64
-  }).collect()
+  sys
+    .processes()
+    .values()
+    .map(|process| process.cpu_usage() as f64)
+    .collect()
 }
 
 // Cpu Times from /proc/stat are for the entire lifetime of the VM
