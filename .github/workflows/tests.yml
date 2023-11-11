@@ -46,7 +46,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [14.x, 16.x]
+        node-version: [16.x]
 
     steps:
     - uses: actions/checkout@v2
@@ -75,7 +75,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [14.x, 16.x]
+        node-version: [16.x]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -122,10 +122,10 @@ jobs:
     # Rust is automatically set up and included by default according to: https://github.com/actions/starter-workflows/blob/master/ci/rust.yml
 
     # Set up Node.js
-    - name: Use Node.js 14.x
+    - name: Use Node.js 16.x
       uses: actions/setup-node@v1
       with:
-        node-version: 14.x
+        node-version: 16.x
 
     # Run the BDD tests
     - name: Run BDD tests
@@ -165,10 +165,10 @@ jobs:
 #    # Rust is automatically set up and included by default according to: https://github.com/actions/starter-workflows/blob/master/ci/rust.yml
 #
 #    # Set up Node.js
-#    - name: Use Node.js 14.x
+#    - name: Use Node.js 16.x
 #      uses: actions/setup-node@v1
 #      with:
-#        node-version: 14.x
+#        node-version: 16.x
 #
 #    # The AVM requires openssl dev files to build now, and apparently the rust openssl code can auto-acquire it through vcpkg, so set that up
 #    - name: Set up vcpkg
