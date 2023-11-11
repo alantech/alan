@@ -14,10 +14,10 @@ jobs:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
 
-    - name: Use Node.js 14.x
+    - name: Use Node.js 16.x
       uses: actions/setup-node@v1
       with:
-        node-version: 14.x
+        node-version: 16.x
 
     - name: Build alan app
       run: make
@@ -55,10 +55,10 @@ jobs:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
 
-    - name: Use Node.js 14.x
+    - name: Use Node.js 16.x
       uses: actions/setup-node@v1
       with:
-        node-version: 14.x
+        node-version: 16.x
 
     # The AVM requires openssl dev files to build now, and apparently the rust openssl code can auto-acquire it through vcpkg, so set that up
     - name: Set up vcpkg
@@ -87,10 +87,10 @@ jobs:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
 
-    - name: Use Node.js 14.x
+    - name: Use Node.js 16.x
       uses: actions/setup-node@v1
       with:
-        node-version: 14.x
+        node-version: 16.x
 
     - name: Build alan app
       run: make
