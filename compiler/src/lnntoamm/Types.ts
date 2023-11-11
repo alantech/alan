@@ -1140,7 +1140,8 @@ abstract class Has extends Type {
     if (operator.isPrefix) {
       return ops.filter(
         (op) =>
-          op.select(scope, Type.generate(), operator.params[0] || ty) !== [],
+          op.select(scope, Type.generate(), operator.params[0] || ty).length >
+          0,
       );
     } else {
       return ops.filter(
@@ -1150,7 +1151,7 @@ abstract class Has extends Type {
             Type.generate(),
             operator.params[0] || ty,
             operator.params[1] || ty,
-          ) !== [],
+          ).length > 0,
       );
     }
   }
