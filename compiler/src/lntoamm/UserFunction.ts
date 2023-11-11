@@ -321,8 +321,8 @@ ${statements[i].statementAst.t.trim()} on line ${
   toFnStr() {
     return `
       fn ${this.name || ''} (${Object.keys(this.args)
-      .map((argName) => `${argName}: ${this.args[argName].typename}`)
-      .join(', ')}): ${this.getReturnType().typename} {
+        .map((argName) => `${argName}: ${this.args[argName].typename}`)
+        .join(', ')}): ${this.getReturnType().typename} {
         ${this.statements.map((s) => s.statementAst.t).join('\n')}
       }
     `.trim();
@@ -765,8 +765,8 @@ ${statements[i].statementAst.t.trim()} on line ${
 
       const fnStr = `
         fn ${this.name || ''} (${Object.keys(newArgs)
-        .map((argName) => `${argName}: ${newArgs[argName].typename}`)
-        .join(', ')}): ${newRet.typename} {
+          .map((argName) => `${argName}: ${newArgs[argName].typename}`)
+          .join(', ')}): ${newRet.typename} {
           ${statementAsts.map((s) => s.t).join('\n')}
         }
       `.trim();
@@ -797,8 +797,8 @@ ${statements[i].statementAst.t.trim()} on line ${
         const statementAsts = this.statements.map((s) => s.statementAst);
         const fnStr = `
           fn ${this.name || ''} (${Object.keys(newArgs)
-          .map((argName) => `${argName}: ${newArgs[argName].typename}`)
-          .join(', ')}): ${newRet.typename} {
+            .map((argName) => `${argName}: ${newArgs[argName].typename}`)
+            .join(', ')}): ${newRet.typename} {
             ${statementAsts.map((s) => s.t).join('\n')}
           }
         `.trim();

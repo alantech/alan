@@ -35,24 +35,24 @@
   "author": "David Ellis <david@alantechnologies.com>",
   "license": "MIT",
   "dependencies": {
-    "@types/node": "^14.0.5",
+    "@types/node": "^16",
     "@types/uuid": "^8.0.0",
     "alan-js-runtime": "../js-runtime",
     "commander": "^5.1.0",
     "uuid": "^8.0.0"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^4.28.0",
-    "@typescript-eslint/parser": "^4.28.0",
+    "@typescript-eslint/eslint-plugin": "^6",
+    "@typescript-eslint/parser": "^6",
     "browserify": "^16.5.1",
     "cypress": "^13",
-    "eslint": "^7.29.0",
-    "eslint-config-prettier": "^8.3.0",
-    "eslint-plugin-prettier": "^3.4.0",
+    "eslint": "^8",
+    "eslint-config-prettier": "^9",
+    "eslint-plugin-prettier": "^5",
     "http-server": "^14.1.1",
-    "prettier": "^2.3.1",
-    "prettier-eslint": "^12.0.0",
-    "typescript": "^3.9.3"
+    "prettier": "^3",
+    "prettier-eslint": "^16",
+    "typescript": "^5"
   },
   "resolutions": {
     "lodash": "^4.17.19"
