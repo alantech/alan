@@ -76,11 +76,19 @@ macro_rules! make_server {
         let tls_cfg = {
           // These *should* all have a singular Item in them. Assuming this is the case and blowing
           // up if otherwise
-          let certs = match rustls_pemfile::read_all(&mut https.cert.as_str().as_bytes()).unwrap().pop().unwrap() {
-            rustls_pemfile::Item::X509Certificate(cert) => vec!(rustls::Certificate(cert)),
+          let certs = match rustls_pemfile::read_all(&mut https.cert.as_str().as_bytes())
+            .unwrap()
+            .pop()
+            .unwrap()
+          {
+            rustls_pemfile::Item::X509Certificate(cert) => vec![rustls::Certificate(cert)],
             _ => panic!("Misconfigured HTTPS mode missing certificate"),
           };
-          let key = match rustls_pemfile::read_all(&mut https.priv_key.as_str().as_bytes()).unwrap().pop().unwrap() {
+          let key = match rustls_pemfile::read_all(&mut https.priv_key.as_str().as_bytes())
+            .unwrap()
+            .pop()
+            .unwrap()
+          {
             rustls_pemfile::Item::PKCS8Key(priv_key) => rustls::PrivateKey(priv_key),
             _ => panic!("Misconfigured HTTPS mode missing PKCS8 private key"),
           };
