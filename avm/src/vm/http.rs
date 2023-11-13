@@ -74,19 +74,23 @@ macro_rules! make_server {
         let port_num = https.port;
         let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port_num));
         let tls_cfg = {
-          let certs = rustls::internal::pemfile::certs(&mut std::io::BufReader::new(
-            https.cert.as_str().as_bytes(),
-          ));
-          let certs = certs.expect("Failed to load certificate");
-          let key = {
-            let keys = rustls::internal::pemfile::pkcs8_private_keys(&mut std::io::BufReader::new(
-              https.priv_key.as_str().as_bytes(),
-            ));
-            let keys = keys.expect("Failed to load private key");
-            if keys.len() != 1 {
-              panic!("Expected a single private key");
-            }
-            keys[0].clone()
+          // These *should* all have a singular Item in them. Assuming this is the case and blowing
+          // up if otherwise
+          let certs = match rustls_pemfile::read_all(&mut https.cert.as_str().as_bytes())
+            .unwrap()
+            .pop()
+            .unwrap()
+          {
+            rustls_pemfile::Item::X509Certificate(cert) => vec![rustls::Certificate(cert)],
+            _ => panic!("Misconfigured HTTPS mode missing certificate"),
+          };
+          let key = match rustls_pemfile::read_all(&mut https.priv_key.as_str().as_bytes())
+            .unwrap()
+            .pop()
+            .unwrap()
+          {
+            rustls_pemfile::Item::PKCS8Key(priv_key) => rustls::PrivateKey(priv_key),
+            _ => panic!("Misconfigured HTTPS mode missing PKCS8 private key"),
           };
           let mut cfg = rustls::ServerConfig::new(rustls::NoClientAuth::new());
           cfg.set_single_cert(certs, key).unwrap();
@@ -172,19 +176,15 @@ macro_rules! make_tunnel {
         let port_num = https.port;
         let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port_num));
         let tls_cfg = {
-          let certs = rustls::internal::pemfile::certs(&mut std::io::BufReader::new(
-            https.cert.as_str().as_bytes(),
-          ));
-          let certs = certs.expect("Failed to load certificate");
-          let key = {
-            let keys = rustls::internal::pemfile::pkcs8_private_keys(&mut std::io::BufReader::new(
-              https.priv_key.as_str().as_bytes(),
-            ));
-            let keys = keys.expect("Failed to load private key");
-            if keys.len() != 1 {
-              panic!("Expected a single private key");
-            }
-            keys[0].clone()
+          // These *should* all have a singular Item in them. Assuming this is the case and blowing
+          // up if otherwise
+          let certs = match rustls_pemfile::read_all(&mut https.cert.as_str().as_bytes()).unwrap().pop().unwrap() {
+            rustls_pemfile::Item::X509Certificate(cert) => vec!(rustls::Certificate(cert)),
+            _ => panic!("Misconfigured HTTPS mode missing certificate"),
+          };
+          let key = match rustls_pemfile::read_all(&mut https.priv_key.as_str().as_bytes()).unwrap().pop().unwrap() {
+            rustls_pemfile::Item::PKCS8Key(priv_key) => rustls::PrivateKey(priv_key),
+            _ => panic!("Misconfigured HTTPS mode missing PKCS8 private key"),
           };
           let mut cfg = rustls::ServerConfig::new(rustls::NoClientAuth::new());
           cfg.set_single_cert(certs, key).unwrap();
