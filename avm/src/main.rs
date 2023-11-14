@@ -4,7 +4,7 @@ use std::fs::read;
 use std::path::Path;
 
 use base64;
-use clap::{crate_name, crate_version, App, AppSettings, SubCommand};
+use clap::{arg, command, crate_name, crate_version, Command};
 use tokio::runtime::Builder;
 
 use crate::cloud::common::get_agz_file_b64;
@@ -41,90 +41,90 @@ async fn compile_and_run(source_file: &str) -> i32 {
 }
 
 fn main() {
-  let app = App::new(crate_name!())
+  let app = command!(crate_name!())
     .version(crate_version!())
     .about("Compile, run and deploy Alan")
-    .subcommand(SubCommand::with_name("run")
+    .subcommand(Command::new("run")
       .about("Runs compiled .agc files")
       .version(crate_version!())
-      .arg_from_usage("<FILE> 'Specifies the file to load'")
+      .arg(arg!(<FILE> "Specifies the file to load"))
     )
-    .subcommand(SubCommand::with_name("compile")
+    .subcommand(Command::new("compile")
       .about("Compiles the given source file (.ln, .amm, .aga) to a new output file (.amm, .aga, .agz, .agc, .js)")
-      .arg_from_usage("<INPUT> 'Specifies the input file to load'")
-      .arg_from_usage("<OUTPUT> 'Specifies the output file to generate'")
+      .arg(arg!(<INPUT> "Specifies the input file to load"))
+      .arg(arg!(<OUTPUT> "Specifies the output file to generate"))
     )
-    .subcommand(SubCommand::with_name("install")
+    .subcommand(Command::new("install")
       .about("Install '/dependencies' from '.dependencies.ln'")
     )
-    .subcommand(SubCommand::with_name("deploy")
+    .subcommand(Command::new("deploy")
       .about("Deploy .agz files to one of the Deploy Configs from alandeploy.json")
-      .setting(AppSettings::SubcommandRequiredElseHelp)
-      .subcommand(SubCommand::with_name("new")
+      .subcommand_required(true)
+      .subcommand(Command::new("new")
         .about("Deploys an .agz file to a new app with one of the Deploy Configs from alandeploy.json")
-        .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'")
-        .arg_from_usage("[NON_INTERACTIVE] -n, --non-interactive 'Enables non-interactive CLI mode useful for scripting.'")
-        .arg_from_usage("[NON_HTTP] -h, --non-http 'Enables non-http server deployments.'")
-        .arg_from_usage("-a, --app-name=[APP_NAME] 'Specifies an optional app name.'")
-        .arg_from_usage("-c, --config-name=[CONFIG_NAME] 'Specifies a config name, required only in non-interactive mode.'")
-        .arg_from_usage("-f, --files=[COMMA_SEPARATED_NAMES] 'Specifies a set of files to include in the same working directory as your app'")
+        .arg(arg!(<AGZ_FILE> "Specifies the .agz file to deploy"))
+        .arg(arg!([NON_INTERACTIVE] -n --non-interactive "Enables non-interactive CLI mode useful for scripting."))
+        .arg(arg!([NON_HTTP] -h --non-http "Enables non-http server deployments."))
+        .arg(arg!(-a --app-name [APP_NAME] "Specifies an optional app name."))
+        .arg(arg!(-c --config-name [CONFIG_NAME] "Specifies a config name, required only in non-interactive mode."))
+        .arg(arg!(-f --files [COMMA_SEPARATED_NAMES] "Specifies a set of files to include in the same working directory as your app"))
       )
-      .subcommand(SubCommand::with_name("list")
+      .subcommand(Command::new("list")
         .about("Displays all the Apps deployed with the Deploy Configs from alandeploy.json")
       )
-      .subcommand(SubCommand::with_name("terminate")
+      .subcommand(Command::new("terminate")
         .about("Terminate an App hosted in one of the Deploy Configs from alandeploy.json")
       )
-      .subcommand(SubCommand::with_name("upgrade")
+      .subcommand(Command::new("upgrade")
         .about("Deploys your repository to an existing App hosted in one of the Deploy Configs from alandeploy.json")
-        .arg_from_usage("<AGZ_FILE> 'Specifies the .agz file to deploy'")
-        .arg_from_usage("[NON_INTERACTIVE] -n, --non-interactive 'Enables non-interactive CLI mode useful for scripting.'")
-        .arg_from_usage("[NON_HTTP] -h, --non-http 'Enables non-http server deployments.'")
-        .arg_from_usage("-a, --app-name=[APP_NAME] 'Specifies an optional app name.'")
-        .arg_from_usage("-c, --config-name=[CONFIG_NAME] 'Specifies a config name, required only in non-interactive mode.'")
-        .arg_from_usage("-f, --files=[COMMA_SEPARATED_NAMES] 'Specifies a set of files to include in the same working directory as your app'")
+        .arg(arg!(<AGZ_FILE> "Specifies the .agz file to deploy"))
+        .arg(arg!([NON_INTERACTIVE] -n --non-interactive "Enables non-interactive CLI mode useful for scripting."))
+        .arg(arg!([NON_HTTP] -h --non-http "Enables non-http server deployments."))
+        .arg(arg!(-a --app-name [APP_NAME] "Specifies an optional app name."))
+        .arg(arg!(-c --config-name [CONFIG_NAME] "Specifies a config name, required only in non-interactive mode."))
+        .arg(arg!(-f --files [COMMA_SEPARATED_NAMES] "Specifies a set of files to include in the same working directory as your app"))
       )
-      .subcommand(SubCommand::with_name("config")
+      .subcommand(Command::new("config")
         .about("Manage Deploy Configs used by Apps from the alandeploy.json in the current directory")
-        .setting(AppSettings::SubcommandRequiredElseHelp)
-        .subcommand(SubCommand::with_name("new")
+        .subcommand_required(true)
+        .subcommand(Command::new("new")
           .about("Add a new Deploy Config to the alandeploy.json in the current directory and creates the file if it doesn't exist.")
         )
-        .subcommand(SubCommand::with_name("list")
+        .subcommand(Command::new("list")
           .about("List all the Deploy Configs from the alandeploy.json in the current directory")
         )
-        .subcommand(SubCommand::with_name("edit")
+        .subcommand(Command::new("edit")
           .about("Edit an existing Deploy Config from the alandeploy.json in the current directory")
         )
-        .subcommand(SubCommand::with_name("remove")
+        .subcommand(Command::new("remove")
           .about("Remove an existing Deploy Config from the alandeploy.json in the current directory")
         )
       )
-      .subcommand(SubCommand::with_name("credentials")
+      .subcommand(Command::new("credentials")
         .about("Manage all Credentials used by Deploy Configs from the credentials file at ~/.alan/credentials.json")
-        .setting(AppSettings::SubcommandRequiredElseHelp)
-        .subcommand(SubCommand::with_name("new")
+        .subcommand_required(true)
+        .subcommand(Command::new("new")
           .about("Add a new Credentials")
         )
-        .subcommand(SubCommand::with_name("list")
+        .subcommand(Command::new("list")
           .about("List all the available Credentials")
         )
-        .subcommand(SubCommand::with_name("edit")
+        .subcommand(Command::new("edit")
           .about("Edit an existing Credentials")
         )
-        .subcommand(SubCommand::with_name("remove")
+        .subcommand(Command::new("remove")
           .about("Remove an existing Credentials")
         )
       )
     )
-    .subcommand(SubCommand::with_name("daemon")
+    .subcommand(Command::new("daemon")
       .about("Run an .agz file in daemon mode. Used on deploy within cloud provider VMs.")
-      .arg_from_usage("<CLUSTER_SECRET> -s, --cluster-secret=<CLUSTER_SECRET> 'A secret string to constrain access to the control port'")
-      .arg_from_usage("-f, --agz-file=[AGZ_FILE] 'Specifies an optional agz file relative path for local usage'")
-      .arg_from_usage("[NON_HTTP] -h, --non-http 'Specifies non-http agz execution.'")
-      .arg_from_usage("[ANYCLOUD_APP] -a, --anycloud-app 'Specifies an optional AnyCloud app flag for local usage'") // TODO: Eliminate this
+      .arg(arg!(<CLUSTER_SECRET> -s --cluster-secret <CLUSTER_SECRET> "A secret string to constrain access to the control port"))
+      .arg(arg!(-f --agz-file [AGZ_FILE] "Specifies an optional agz file relative path for local usage"))
+      .arg(arg!([NON_HTTP] -h --non-http "Specifies non-http agz execution."))
+      .arg(arg!([ANYCLOUD_APP] -a --anycloud-app "Specifies an optional AnyCloud app flag for local usage")) // TODO: Eliminate this
     )
-    .arg_from_usage("[SOURCE] 'Specifies a source ln file to compile and run'");
+    .arg(arg!([SOURCE] "Specifies a source ln file to compile and run"));
 
   let matches = app.clone().get_matches();
 
@@ -136,8 +136,8 @@ fn main() {
 
   rt.block_on(async move {
     match matches.subcommand() {
-      ("run", Some(matches)) => {
-        let agc_file = matches.value_of("FILE").unwrap();
+      Some(("run", matches)) => {
+        let agc_file = matches.get_one::<String>("FILE").unwrap();
         let fp = &format!(
           "{:}/{:}",
           env::current_dir().ok().unwrap().to_str().unwrap(),
@@ -149,12 +149,12 @@ fn main() {
           std::process::exit(2);
         };
       }
-      ("compile", Some(matches)) => {
-        let source_file = matches.value_of("INPUT").unwrap();
-        let dest_file = matches.value_of("OUTPUT").unwrap();
+      Some(("compile", matches)) => {
+        let source_file = matches.get_one::<String>("INPUT").unwrap();
+        let dest_file = matches.get_one::<String>("OUTPUT").unwrap();
         std::process::exit(compile(&source_file, &dest_file, false));
       }
-      ("install", _) => {
+      Some(("install", _)) => {
         let source_file = ".dependencies.ln";
         if Path::new(source_file).exists() {
           std::process::exit(compile_and_run(source_file).await);
@@ -166,16 +166,16 @@ fn main() {
           std::process::exit(1);
         }
       }
-      ("deploy", Some(sub_matches)) => {
+      Some(("deploy", sub_matches)) => {
         match sub_matches.subcommand() {
-          ("new", Some(matches)) => {
-            let non_interactive: bool = matches.values_of("NON_INTERACTIVE").is_some();
-            let non_http: bool = matches.values_of("NON_HTTP").is_some();
+          Some(("new", matches)) => {
+            let non_interactive = matches.get_flag("NON_INTERACTIVE");
+            let non_http = matches.get_flag("NON_HTTP");
             authenticate(non_interactive).await;
-            let agz_file = matches.value_of("AGZ_FILE").unwrap();
-            let app_name = matches.value_of("app-name").map(String::from);
-            let config_name = matches.value_of("config-name").map(String::from);
-            let files = matches.value_of("files");
+            let agz_file = matches.get_one::<String>("AGZ_FILE").unwrap();
+            let app_name = matches.get_one::<String>("app-name").map(String::from);
+            let config_name = matches.get_one::<String>("config-name").map(String::from);
+            let files = matches.get_one::<String>("files");
             let mut files_b64 = HashMap::new();
             if let Some(files) = files {
               let names = files.split(",");
@@ -193,21 +193,26 @@ fn main() {
             )
             .await;
           }
-          ("terminate", Some(matches)) => {
-            let non_interactive: bool = matches.values_of("NON_INTERACTIVE").is_some();
+          Some(("terminate", matches)) => {
+            let non_interactive = matches.get_flag("NON_INTERACTIVE");
             authenticate(non_interactive).await;
-            let app_name = matches.value_of("app-name").map(String::from);
-            let config_name = matches.value_of("config-name").map(String::from);
-            deploy::terminate(app_name, config_name, non_interactive).await
+            let app_name = matches.get_one::<String>("app-name").unwrap();
+            let config_name = matches.get_one::<String>("config-name").unwrap();
+            deploy::terminate(
+              Some(app_name.clone()),
+              Some(config_name.clone()),
+              non_interactive,
+            )
+            .await // TODO: Change the signature of this function to use the new types
           }
-          ("upgrade", Some(matches)) => {
-            let non_interactive: bool = matches.values_of("NON_INTERACTIVE").is_some();
-            let non_http: bool = matches.values_of("NON_HTTP").is_some();
+          Some(("upgrade", matches)) => {
+            let non_interactive = matches.get_flag("NON_INTERACTIVE");
+            let non_http = matches.get_flag("NON_HTTP");
             authenticate(non_interactive).await;
-            let agz_file = matches.value_of("AGZ_FILE").unwrap();
-            let app_name = matches.value_of("app-name").map(String::from);
-            let config_name = matches.value_of("config-name").map(String::from);
-            let files = matches.value_of("files");
+            let agz_file = matches.get_one::<String>("AGZ_FILE").unwrap();
+            let app_name = matches.get_one::<String>("app-name").unwrap();
+            let config_name = matches.get_one::<String>("config-name").unwrap();
+            let files = matches.get_one::<String>("files");
             let mut files_b64 = HashMap::new();
             if let Some(files) = files {
               let names = files.split(",");
@@ -218,37 +223,37 @@ fn main() {
             deploy::upgrade(
               get_agz_b64(agz_file),
               files_b64,
-              app_name,
-              config_name,
+              Some(app_name.clone()), // TODO: Change the signature of this function to use the new types
+              Some(config_name.clone()),
               non_interactive,
               non_http,
             )
             .await;
           }
-          ("list", _) => {
+          Some(("list", _)) => {
             authenticate(false).await;
             deploy::info().await
           }
-          ("credentials", Some(sub_matches)) => {
+          Some(("credentials", sub_matches)) => {
             authenticate(false).await;
             match sub_matches.subcommand() {
-              ("new", _) => {
+              Some(("new", _)) => {
                 deploy::add_cred(None).await;
               }
-              ("edit", _) => deploy::edit_cred().await,
-              ("list", _) => deploy::list_creds().await,
-              ("remove", _) => deploy::remove_cred().await,
+              Some(("edit", _)) => deploy::edit_cred().await,
+              Some(("list", _)) => deploy::list_creds().await,
+              Some(("remove", _)) => deploy::remove_cred().await,
               // rely on AppSettings::SubcommandRequiredElseHelp
               _ => {}
             }
           }
-          ("config", Some(sub_matches)) => {
+          Some(("config", sub_matches)) => {
             authenticate(false).await;
             match sub_matches.subcommand() {
-              ("new", _) => deploy::add_deploy_config().await,
-              ("list", _) => deploy::list_deploy_configs().await,
-              ("edit", _) => deploy::edit_deploy_config().await,
-              ("remove", _) => deploy::remove_deploy_config().await,
+              Some(("new", _)) => deploy::add_deploy_config().await,
+              Some(("list", _)) => deploy::list_deploy_configs().await,
+              Some(("edit", _)) => deploy::edit_deploy_config().await,
+              Some(("remove", _)) => deploy::remove_deploy_config().await,
               // rely on AppSettings::SubcommandRequiredElseHelp
               _ => {}
             }
@@ -259,14 +264,14 @@ fn main() {
           }
         }
       }
-      ("daemon", Some(matches)) => {
-        let non_http: bool = matches.values_of("NON_HTTP").is_some();
-        let cluster_secret = matches.value_of("CLUSTER_SECRET").unwrap();
-        let local_agz_b64 = match matches.value_of("agz-file") {
+      Some(("daemon", matches)) => {
+        let non_http = matches.get_flag("NON_HTTP");
+        let cluster_secret = matches.get_one::<String>("CLUSTER_SECRET").unwrap();
+        let local_agz_b64 = match matches.get_one::<String>("agz-file") {
           Some(agz_file_path) => Some(get_agz_file_b64(agz_file_path.to_string()).await),
           None => None,
         };
-        let is_local_anycloud_app: bool = matches.values_of("ANYCLOUD_APP").is_some();
+        let is_local_anycloud_app = matches.get_flag("ANYCLOUD_APP");
         NON_HTTP.set(non_http).unwrap();
         CLUSTER_SECRET
           .set(Some(cluster_secret.to_string()))
@@ -275,10 +280,10 @@ fn main() {
       }
       _ => {
         // AppSettings::SubcommandRequiredElseHelp does not cut it here
-        if let Some(source_file) = matches.value_of("SOURCE") {
+        if let Some(source_file) = matches.get_one::<String>("SOURCE") {
           let path = Path::new(source_file);
           if path.extension().is_some() {
-            std::process::exit(compile_and_run(source_file).await);
+            std::process::exit(compile_and_run(&source_file).await);
           }
         }
         app.clone().print_help().unwrap();
