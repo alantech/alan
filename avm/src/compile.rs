@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::process::{id, Command, Stdio};
 
-use tempdir::TempDir;
+use tempfile::tempdir;
 
 #[cfg(unix)]
 const COMPILER: &'static [u8] = include_bytes!("../../compiler/alan-compile");
@@ -11,11 +11,11 @@ const COMPILER: &'static [u8] = include_bytes!("../../compiler/alan-compile");
 const COMPILER: &'static [u8] = include_bytes!("../../compiler/alan-compile.exe");
 
 pub fn compile(source_file: &str, dest_file: &str, silent: bool) -> i32 {
-  let tempdir = TempDir::new(id().to_string().as_str()).unwrap();
+  let tmpdir = tempdir().unwrap();
   let alan_compile_path = if cfg!(unix) {
-    tempdir.path().join("alan-compile")
+    tmpdir.path().join("alan-compile")
   } else {
-    tempdir.path().join("alan-compile.exe")
+    tmpdir.path().join("alan-compile.exe")
   };
   let mut f = File::create(&alan_compile_path).unwrap();
   f.write_all(COMPILER).unwrap();
