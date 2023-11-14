@@ -4,7 +4,7 @@ use std::fs::read;
 use std::path::Path;
 
 use base64;
-use clap::{arg, crate_name, crate_version, command, Command};
+use clap::{arg, command, crate_name, crate_version, Command};
 use tokio::runtime::Builder;
 
 use crate::cloud::common::get_agz_file_b64;
@@ -198,7 +198,12 @@ fn main() {
             authenticate(non_interactive).await;
             let app_name = matches.get_one::<String>("app-name").unwrap();
             let config_name = matches.get_one::<String>("config-name").unwrap();
-            deploy::terminate(Some(app_name.clone()), Some(config_name.clone()), non_interactive).await // TODO: Change the signature of this function to use the new types
+            deploy::terminate(
+              Some(app_name.clone()),
+              Some(config_name.clone()),
+              non_interactive,
+            )
+            .await // TODO: Change the signature of this function to use the new types
           }
           Some(("upgrade", matches)) => {
             let non_interactive = matches.get_flag("NON_INTERACTIVE");
