@@ -17,7 +17,7 @@ ascii_table = "3.0"
 async-stream = "0.3.0"
 base64 = "0.13"
 byteorder = "1.3.4"
-clap = "2.33.3"
+clap = { version = "4.4.8", features = ["cargo"] }
 dashmap = "3.11.10"
 dialoguer = "0.8.0"
 flate2 = "1.0"
