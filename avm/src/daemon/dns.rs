@@ -80,7 +80,7 @@ impl DNS {
     resolver_opts.validate = true;
     // Get a new resolver with the cloudflare nameservers as the upstream recursive resolvers
     let resolver = ResolverConfig::cloudflare_tls();
-    let resolver = TokioAsyncResolver::tokio(resolver, resolver_opts)?;
+    let resolver = TokioAsyncResolver::tokio(resolver, resolver_opts);
     Ok(DNS {
       domain: domain.to_string(),
       resolver: resolver,
