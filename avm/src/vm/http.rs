@@ -104,9 +104,6 @@ macro_rules! make_server {
             .with_no_client_auth()
             .with_single_cert(certs, key)
             .unwrap();
-          /*let mut cfg = rustls::ServerConfig::new(rustls::server::NoClientAuth::new());
-          cfg.set_single_cert(certs, key).unwrap();
-          cfg.set_protocols(&[b"h2".to_vec(), b"http/1.1".to_vec()]);*/
           std::sync::Arc::new(cfg)
         };
         let tcp = tokio::net::TcpListener::bind(&addr).await;
@@ -202,14 +199,6 @@ macro_rules! make_tunnel {
             .with_safe_defaults()
             .with_no_client_auth()
             .with_single_cert(certs, key).unwrap();
-          /*let mut cfg = rustls::ServerConfig::new(rustls::server::NoClientAuth::new());
-          cfg.set_single_cert(certs, key).unwrap();
-          let alpns: Vec<Vec<u8>> = std::env::var("AVM_ALPN")
-            .unwrap_or("http/1.1".to_string())
-            .split(",")
-            .map(|s| s.to_string().into_bytes())
-            .collect();
-          cfg.set_protocols(alpns.as_slice().as_ref());*/
           std::sync::Arc::new(cfg)
         };
         let tcp = tokio::net::TcpListener::bind(&addr).await;
