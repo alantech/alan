@@ -26,8 +26,13 @@ pub async fn log(event: &str) {
       }
     ]
   });
-  let client =
-    Client::builder().build::<_, Body>(HttpsConnectorBuilder::new().with_native_roots().https_or_http().enable_all_versions().build());
+  let client = Client::builder().build::<_, Body>(
+    HttpsConnectorBuilder::new()
+      .with_native_roots()
+      .https_or_http()
+      .enable_all_versions()
+      .build(),
+  );
   if client
     .request(
       Request::post(AMPLITUDE_URL)

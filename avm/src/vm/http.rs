@@ -46,8 +46,15 @@ impl hyper::server::accept::Accept for HyperAcceptor<'_> {
   }
 }
 
-pub static HTTP_CLIENT: Lazy<Client<HttpsConnector<HttpConnector>>> =
-  Lazy::new(|| Client::builder().build::<_, Body>(HttpsConnectorBuilder::new().with_native_roots().https_or_http().enable_all_versions().build()));
+pub static HTTP_CLIENT: Lazy<Client<HttpsConnector<HttpConnector>>> = Lazy::new(|| {
+  Client::builder().build::<_, Body>(
+    HttpsConnectorBuilder::new()
+      .with_native_roots()
+      .https_or_http()
+      .enable_all_versions()
+      .build(),
+  )
+});
 
 #[macro_export]
 macro_rules! make_server {
@@ -95,7 +102,8 @@ macro_rules! make_server {
           let cfg = rustls::ServerConfig::builder()
             .with_safe_defaults()
             .with_no_client_auth()
-            .with_single_cert(certs, key).unwrap();
+            .with_single_cert(certs, key)
+            .unwrap();
           /*let mut cfg = rustls::ServerConfig::new(rustls::server::NoClientAuth::new());
           cfg.set_single_cert(certs, key).unwrap();
           cfg.set_protocols(&[b"h2".to_vec(), b"http/1.1".to_vec()]);*/
