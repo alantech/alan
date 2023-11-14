@@ -7,7 +7,7 @@ use hyper::{
   client::{Client, HttpConnector},
   Body,
 };
-use hyper_rustls::HttpsConnector;
+use hyper_rustls::{HttpsConnector, HttpsConnectorBuilder};
 use once_cell::sync::Lazy;
 use tokio::net::TcpStream;
 use tokio_rustls::server::TlsStream;
@@ -47,7 +47,7 @@ impl hyper::server::accept::Accept for HyperAcceptor<'_> {
 }
 
 pub static HTTP_CLIENT: Lazy<Client<HttpsConnector<HttpConnector>>> =
-  Lazy::new(|| Client::builder().build::<_, Body>(HttpsConnector::with_native_roots()));
+  Lazy::new(|| Client::builder().build::<_, Body>(HttpsConnectorBuilder::new().with_native_roots().https_or_http().enable_all_versions().build()));
 
 #[macro_export]
 macro_rules! make_server {
@@ -92,9 +92,13 @@ macro_rules! make_server {
             rustls_pemfile::Item::PKCS8Key(priv_key) => rustls::PrivateKey(priv_key),
             _ => panic!("Misconfigured HTTPS mode missing PKCS8 private key"),
           };
-          let mut cfg = rustls::ServerConfig::new(rustls::NoClientAuth::new());
+          let cfg = rustls::ServerConfig::builder()
+            .with_safe_defaults()
+            .with_no_client_auth()
+            .with_single_cert(certs, key).unwrap();
+          /*let mut cfg = rustls::ServerConfig::new(rustls::server::NoClientAuth::new());
           cfg.set_single_cert(certs, key).unwrap();
-          cfg.set_protocols(&[b"h2".to_vec(), b"http/1.1".to_vec()]);
+          cfg.set_protocols(&[b"h2".to_vec(), b"http/1.1".to_vec()]);*/
           std::sync::Arc::new(cfg)
         };
         let tcp = tokio::net::TcpListener::bind(&addr).await;
@@ -105,7 +109,7 @@ macro_rules! make_server {
             let accept = tcp.accept().await;
             if accept.is_err() { continue; }
             let (socket, _) = accept.unwrap();
-            let strm = tls_acceptor.accept(socket).into_failable();
+            let strm = tls_acceptor.accept(socket);
             let strm_val = strm.await;
             if strm_val.is_err() { continue; }
             yield Ok(strm_val.unwrap());
@@ -186,14 +190,18 @@ macro_rules! make_tunnel {
             rustls_pemfile::Item::PKCS8Key(priv_key) => rustls::PrivateKey(priv_key),
             _ => panic!("Misconfigured HTTPS mode missing PKCS8 private key"),
           };
-          let mut cfg = rustls::ServerConfig::new(rustls::NoClientAuth::new());
+          let cfg = rustls::ServerConfig::builder()
+            .with_safe_defaults()
+            .with_no_client_auth()
+            .with_single_cert(certs, key).unwrap();
+          /*let mut cfg = rustls::ServerConfig::new(rustls::server::NoClientAuth::new());
           cfg.set_single_cert(certs, key).unwrap();
           let alpns: Vec<Vec<u8>> = std::env::var("AVM_ALPN")
             .unwrap_or("http/1.1".to_string())
             .split(",")
             .map(|s| s.to_string().into_bytes())
             .collect();
-          cfg.set_protocols(alpns.as_slice().as_ref());
+          cfg.set_protocols(alpns.as_slice().as_ref());*/
           std::sync::Arc::new(cfg)
         };
         let tcp = tokio::net::TcpListener::bind(&addr).await;
@@ -219,7 +227,7 @@ macro_rules! make_tunnel {
                     let region_vms = REGION_VMS.read().unwrap().clone();
                     let source_ip = source_addr.ip().to_string();
                     if region_vms.iter().any(|ip| *ip == source_ip) {
-                      let strm = tls_acceptor.accept(socket).into_failable();
+                      let strm = tls_acceptor.accept(socket);
                       yield Ok(match strm.await {
                         Ok(strm) => strm,
                         Err(_) => continue,
@@ -245,7 +253,7 @@ macro_rules! make_tunnel {
                     });
                     continue;
                   }
-                  let strm = tls_acceptor.accept(socket).into_failable();
+                  let strm = tls_acceptor.accept(socket);
                   yield Ok(match strm.await {
                     Ok(strm) => strm,
                     Err(_) => continue,
