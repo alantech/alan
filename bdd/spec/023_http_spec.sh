@@ -72,7 +72,7 @@ Describe "@std/http"
           const res = fetch(new Request {
             method: 'GET',
             url: 'https://raw.githubusercontent.com/alantech/hellodep/aea1ce817a423d00107577a430a046993e4e6cad/index.ln',
-            headers: newHashMap('Content-Length', '0'),
+            headers: newHashMap('User-Agent', 'Alanlang'),
             body: '',
           });
           print(res.isOk());
