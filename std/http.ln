@@ -61,7 +61,7 @@ export fn getEager(url: string): Result<string> {
   const res = fetchEager(new Request {
     method: 'GET',
     url: url,
-    headers: newHashMap('Content-Length', '0'),
+    headers: newHashMap('User-Agent', 'Alanlang'),
     body: '',
   });
   if res.isOk() {
@@ -79,7 +79,7 @@ export fn get(url: string): Result<string> {
   const res = fetch(new Request {
     method: 'GET',
     url: url,
-    headers: newHashMap('Content-Length', '0'),
+    headers: newHashMap('User-Agent', 'Alanlang'),
     body: '',
   });
   if res.isOk() {
