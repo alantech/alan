@@ -31,36 +31,39 @@ Describe "@std/http"
     End
   End
 
-# TODO: Revive this test when an alternative to reqbin is found. It no longer works.
-#  Describe "basic post"
-#    before() {
-#      sourceToAll "
-#        from @std/app import start, print, exit
-#        from @std/http import post
-#
-#        on start {
-#          print(post('https://reqbin.com/echo/post/json', '{\"test\":\"test\"}'));
-#          emit exit 0;
-#        }
-#      "
-#    }
-#    BeforeAll before
-#
-#    after() {
-#      cleanTemp
-#    }
-#    AfterAll after
-#
-#    It "runs js"
-#      When run test_js
-#      The output should eq "{\"success\":\"true\"}"
-#    End
-#
-#    It "runs agc"
-#      When run test_agc
-#      The output should eq "{\"success\":\"true\"}"
-#    End
-#  End
+Describe "basic post"
+  before() {
+    # All my homies hate CORS...
+    node -e "const http = require('http'); http.createServer((req, res) => { const headers = { 'Access-Control-Allow-Origin': '*','Access-Control-Allow-Methods': 'OPTIONS, POST, GET, PUT','Access-Control-Max-Age': 2592000, 'Access-Control-Allow-Headers': '*', }; if (req.method === 'OPTIONS') { res.writeHead(204, headers); res.end(); return; } res.writeHead(200, headers); req.pipe(res); req.on('end', () => res.end()); }).listen(8765)" &
+    ECHO_PID=$!
+    sourceToAll "
+      from @std/app import start, print, exit
+      from @std/http import post
+
+      on start {
+        print(post('http://localhost:8765', '{\"test\":\"test\"}'));
+        emit exit 0;
+      }
+    "
+  }
+  BeforeAll before
+
+  after() {
+    kill -9 $ECHO_PID
+    cleanTemp
+  }
+  AfterAll after
+
+  It "runs js"
+    When run test_js
+    The output should eq "{\"test\":\"test\"}"
+  End
+
+  It "runs agc"
+    When run test_agc
+    The output should eq "{\"test\":\"test\"}"
+  End
+End
 
   Describe "fetch directly"
     before() {
