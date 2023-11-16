@@ -49,7 +49,7 @@ Describe "basic post"
   BeforeAll before
 
   after() {
-    kill -9 $ECHO_PID || true
+    kill -9 $ECHO_PID 1>/dev/null 2>/dev/null || true
     cleanTemp
   }
   AfterAll after
