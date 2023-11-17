@@ -34,8 +34,9 @@ Describe "@std/http"
 Describe "basic post"
   before() {
     # All my homies hate CORS...
-    node -e "const http = require('http'); http.createServer((req, res) => { const headers = { 'Access-Control-Allow-Origin': '*','Access-Control-Allow-Methods': 'OPTIONS, POST, GET, PUT','Access-Control-Max-Age': 2592000, 'Access-Control-Allow-Headers': '*', }; if (req.method === 'OPTIONS') { res.writeHead(204, headers); res.end(); return; } res.writeHead(200, headers); req.pipe(res); req.on('end', () => res.end()); }).listen(8765)" &
+    node -e "const http = require('http'); http.createServer((req, res) => { const headers = { 'Access-Control-Allow-Origin': '*','Access-Control-Allow-Methods': 'OPTIONS, POST, GET, PUT','Access-Control-Max-Age': 2592000, 'Access-Control-Allow-Headers': '*', }; if (req.method === 'OPTIONS') { res.writeHead(204, headers); res.end(); return; } res.writeHead(200, headers); req.pipe(res); req.on('end', () => res.end()); }).listen(8765)" 1>/dev/null 2>/dev/null &
     ECHO_PID=$!
+    disown $ECHO_PID
     sourceToAll "
       from @std/app import start, print, exit
       from @std/http import post
