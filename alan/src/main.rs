@@ -1,4 +1,9 @@
+use std::fs::read_to_string;
+
 use clap::{Parser, Subcommand};
+use parse::ln;
+
+mod parse;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, propagate_version=true)]
@@ -24,7 +29,12 @@ enum Commands {
   },
 }
 
-fn main() {
+fn main() -> Result<(), clap::error::Error> {
     let args = Cli::parse();
     println!("{:?}", args);
+    if let Some(file) = args.file {
+        let ln_file = read_to_string(file)?;
+        println!("{:?}", ln(&ln_file));
+    }
+    Ok(())
 }
