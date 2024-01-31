@@ -1,12 +1,12 @@
 use nom::{
-  branch::alt,
-  bytes::complete::{tag, is_not, take_while},
-  combinator::{consumed, opt, recognize},
-  error::{Error, ErrorKind},
-  multi::{many0, many1, separated_list1},
-  sequence::{delimited, tuple},
-  IResult,
-  Err,
+    branch::alt,
+    bytes::complete::{tag, take},
+    character::complete::satisfy,
+    combinator::{all_consuming, opt, recognize},
+    error::{Error, ErrorKind},
+    multi::{many0, many1, separated_list0, separated_list1},
+    sequence::{delimited, tuple},
+    IResult,
 };
 
 /// Macros to make building nom functions nicer (for me). For now they always make everything
@@ -14,44 +14,60 @@ use nom::{
 
 /// The `build` macro provides the function wrapper and naming for the function in question
 macro_rules! build {
-  ( $name:ident, $body:expr $(,)? ) => {
-    pub fn $name(input: &str) -> IResult<&str, &str> {
-      $body(input)
-    }
-  };
-  ( $name:ident: $ret:ty, $body:expr $(,)? ) => {
-    pub fn $name(input: &str) -> IResult<&str, $ret> {
-      $body(input)
-    }
-  }
+    ( $name:ident, $body:expr $(,)? ) => {
+        pub fn $name(input: &str) -> IResult<&str, &str> {
+            $body(input)
+        }
+    };
+    ( $name:ident: $ret:ty, $body:expr $(,)? ) => {
+        pub fn $name(input: &str) -> IResult<&str, $ret> {
+            $body(input)
+        }
+    };
 }
 
 /// The `token` macro matches an exact string
 macro_rules! token {
-  ( $str:expr ) => {tag($str)}
+    ( $str:expr ) => {
+        tag($str)
+    };
 }
 
-/// The `not` macro matches anything except the string in question
+/// The `not` macro matches anything except the string in question. It behaves *very differently*
+/// to nom's `is_not` function, which is more like an inverse `charset`
 macro_rules! not {
-  ( $str:expr ) => {is_not($str)}
+    ( $str:expr ) => {
+        (|input| {
+            match tag::<&str, &str, Error<&str>>($str)(input) {
+                Ok(_) => Err(nom::Err::Error(Error::new(input, ErrorKind::Fail))),
+                Err(_) => take($str.len())(input)
+            }
+        })
+    };
 }
 
 /// The `one_or_more` macro matches one or more instances of a given rule, returning the whole
 /// string matched
 macro_rules! one_or_more {
-  ( $rule:expr ) => {recognize(many1($rule))}
+    ( $rule:expr ) => {
+        recognize(many1($rule))
+    };
 }
 
 /// The `zero_or_more` macro matches zero or more instances of a given rule, returning a string,
 /// even if empty
 macro_rules! zero_or_more {
-  ( $rule:expr ) => {recognize(many0($rule))}
+    ( $rule:expr ) => {
+        recognize(many0($rule))
+    };
 }
 
 /// The `zero_or_one` macro matches the given rule zero or one time, returning a string,
 /// potentially empty
 macro_rules! zero_or_one {
-  ( $rule:expr ) => {recognize(opt($rule))}
+    ( $rule:expr ) => {
+        recognize(opt($rule))
+    };
 }
 
 /// The `or` macro matches one of the given rules in a tuple, returning the first match
@@ -65,15 +81,15 @@ macro_rules! and {
   ( $($rule:expr),+ $(,)? ) => {recognize(tuple(($($rule,)+)))}
 }
 
-/// The `charset` macro matches as long as the given character ranges are found. Multiple ranges
+/// The `charset` macro matches a single character in the given character set. Multiple such sets
 /// can be concatenated in the same charset with normal `|` syntax. Eg `'_' | 'a'..='z'`
 macro_rules! charset {
-  ( $ranges:pat ) => {
-    take_while(|c| match c {
-      $ranges => true,
-      _ => false,
-    })
-  }
+    ( $ranges:pat ) => {
+        recognize(satisfy(|c| match c {
+            $ranges => true,
+            _ => false,
+        }))
+    };
 }
 
 /// The `named_and` macro matches all of the given rules just like `and`, but it also defines a
@@ -82,7 +98,7 @@ macro_rules! charset {
 /// implicitly `build`s itself and cannot be wrapped like the other macros can.
 macro_rules! named_and {
   ( $fn_name:ident: $struct_name:ident => $( $field_name:ident: $field_type:ty as $rule:expr ),+ $(,)? ) => {
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub struct $struct_name {
       $($field_name: $field_type,)+
     }
@@ -107,7 +123,7 @@ macro_rules! named_and {
 /// surprised that I can't find something like this in `nom` already?
 macro_rules! named_or {
   ( $fn_name:ident: $enum_name:ident => $( $option_name:ident: $option_type:ty as $rule:expr ),+ $(,)? ) => {
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub enum $enum_name {
       $($option_name($option_type),)+
     }
@@ -117,7 +133,7 @@ macro_rules! named_or {
         return Ok((i, $enum_name::$option_name(val.into())));
       })+
       // Reaching this point is an error. For now, just return a generic one
-      Err(Err::Error(Error::new(input, ErrorKind::Fail)))
+      Err(nom::Err::Error(Error::new(input, ErrorKind::Fail)))
     }
   }
 }
@@ -130,69 +146,192 @@ macro_rules! named_or {
 /// sections just reduces down to checking the left side only so there's no need for such an
 /// operation)
 macro_rules! left_subset {
-  ( $left:expr, $right:expr $(,)? ) => {
-    (|input| {
-      let left_match = consumed($left)(input)?;
-      let right_match = $right(left_match.1.0);
-      if let Ok(_) = right_match {
-        return Ok((left_match.0, left_match.1.1));
-      } else {
-        return right_match;
-      }
-    })
-  }
+    ( $left:expr, $right:expr $(,)? ) => {
+        (|input| {
+            let left_match = $left(input)?;
+            let right_match = $right(left_match.1);
+            if let Ok((i, _)) = right_match {
+                if i.len() == 0 {
+                  return Err(nom::Err::Error(Error::new(input, ErrorKind::Fail)));
+                }
+            }
+            return Ok(left_match);
+        })
+    };
 }
 
 /// `list` didn't exist in the prior code, but there's a nice primitive in `nom` that makes this
 /// easier (and I can avoid complicating the typing of the other primitives for now)
 macro_rules! list {
-  // Special path for Strings because str/String split is annoying
-  ( $fn_name:ident: String => $rule:expr, $sep:expr $(,)? ) => {
-    pub fn $fn_name(input: &str) -> IResult<&str, Vec<String>> {
-      let res = separated_list1($sep, $rule)(input)?;
-      Ok((res.0, res.1.iter().map(|s| s.to_string()).collect()))
-    }
-  };
-  // Normal path
-  ( $fn_name:ident: $type:ty => $rule:expr, $sep:expr $(,)? ) => {
-    pub fn $fn_name(input: &str) -> IResult<&str, Vec<$type>> {
-      separated_list1($sep, $rule)(input)
-    }
-  };
-  // Path for no separators
-  ( $fn_name: ident: $type:ty => $rule:expr $(,)? ) => {
-    pub fn $fn_name(input: &str) -> IResult<&str, Vec<$type>> {
-      many1($rule)(input)
-    }
-  }
+    // Special path for Strings because str/String split is annoying
+    ( $fn_name:ident: String => $rule:expr, $sep:expr $(,)? ) => {
+        pub fn $fn_name(input: &str) -> IResult<&str, Vec<String>> {
+            let res = separated_list1($sep, $rule)(input)?;
+            Ok((res.0, res.1.iter().map(|s| s.to_string()).collect()))
+        }
+    };
+    // Normal path
+    ( $fn_name:ident: $type:ty => $rule:expr, $sep:expr $(,)? ) => {
+        pub fn $fn_name(input: &str) -> IResult<&str, Vec<$type>> {
+            separated_list1($sep, $rule)(input)
+        }
+    };
+    // Path for no separators
+    ( $fn_name: ident: $type:ty => $rule:expr $(,)? ) => {
+        pub fn $fn_name(input: &str) -> IResult<&str, Vec<$type>> {
+            many1($rule)(input)
+        }
+    };
+    // Normal path where an empty vector is fine
+    ( opt $fn_name:ident: $type:ty => $rule:expr, $sep:expr $(,)? ) => {
+        pub fn $fn_name(input: &str) -> IResult<&str, Vec<$type>> {
+            separated_list0($sep, $rule)(input)
+        }
+    };
+    // Path for no separators where an empty vector is fine
+    ( opt $fn_name: ident: $type:ty => $rule:expr $(,)? ) => {
+        pub fn $fn_name(input: &str) -> IResult<&str, Vec<$type>> {
+            many0($rule)(input)
+        }
+    };
 }
 
 /// Because `opt` returns an `Option<&str>` for &str sources, but you can't easily put that inside
 /// of structs and enums, this macro handles that situation
 macro_rules! opt_string {
-  ( $rule:expr ) => {
-    opt(|input| match $rule(input) {
-      Ok((i, o)) => Ok((i, o.to_string())),
-      Err(e) => Err(e),
-    })
+    ( $rule:expr ) => {
+        opt(|input| match $rule(input) {
+            Ok((i, o)) => Ok((i, o.to_string())),
+            Err(e) => Err(e),
+        })
+    };
+}
+
+/// If I'm gonna have in-file unit tests, let's have them as absolutely close as possible to the
+/// relevant functions, yeah? This macro makes a mod and a unit test a single statemnt. The
+/// following macros help make super brief unit tests. Usage:
+/// test!(parser_function =>
+///   fail "input that causes failure",
+///   pass "input that causes success",
+///   pass "another successful input" => "the new input it generates", "the output it generates",
+/// );
+macro_rules! test {
+  ( $rule:ident => $( $type:ident $test_val:expr $(=> $i:expr, $o:expr)? ),+ $(,)? ) => {
+    #[cfg(test)]
+    mod $rule {
+      #[test]
+      fn $rule() {
+        let cmd = |input| super::$rule(input);
+        $( $type!(cmd, $test_val $(, $i, $o)?); )+
+      }
+    }
   }
+}
+#[cfg(test)]
+macro_rules! pass {
+    ( $cmd:ident, $input:expr ) => {
+        match $cmd($input) {
+            Err(_) => panic!("Did not parse {} correctly!", $input),
+            Ok(_) => {}
+        }
+    };
+    ( $cmd:ident, $input:expr, $i:expr, $o:expr) => {
+        match $cmd($input) {
+            Err(_) => panic!("Did not parse {} correctly!", $input),
+            Ok((i, o)) => {
+                assert_eq!(i, $i);
+                assert_eq!(o, $o);
+            }
+        }
+    };
+}
+#[cfg(test)]
+macro_rules! fail {
+    ( $cmd:ident, $input:expr ) => {
+        match $cmd($input) {
+            Ok(_) => panic!("Unexpectedly parsed the input! {}", $input),
+            Err(_) => {}
+        }
+    };
 }
 
 build!(space, token!(" "));
+// There won't be a test case for *every* token function, just validating they work as expected
+test!(space =>
+    fail "",
+    fail "a",
+    pass " " => "", " ",
+    pass "  " => " ", " ",
+    pass "   ",
+);
+// Similarly validating one_or_more behaves as expected here
 build!(blank, one_or_more!(space));
+test!(blank =>
+    fail "",
+    fail "a",
+    pass " " => "", " ",
+    pass "  " => "", "  ",
+    pass "  a" => "a", "  ",
+);
+// And validating zero_or_one here
 build!(optblank, zero_or_one!(blank));
+test!(optblank =>
+    pass "" => "", "",
+    pass "  " => "", "  ",
+    pass "  a" => "a", "  ",
+    pass "a" => "a", "",
+);
+// Validating or
 build!(newline, or!(token!("\n"), token!("\r")));
-build!(notnewline, and!(not!("\n"), not!("\r")));
-build!(singlelinecomment, and!(token!("//"), zero_or_more!(notnewline), newline));
+test!(newline =>
+    fail "",
+    fail " ",
+    pass "\n" => "", "\n",
+    pass "\r" => "", "\r",
+    pass "\r\n" => "\n", "\r",
+);
+// Validating not
+build!(notnewline, not!("\n")); // TODO: Properly support windows newlines here
+test!(notnewline =>
+    fail "\n",
+    pass " " => "", " ",
+    pass "   " => "  ", " ",
+);
+// Validating and
+build!(
+    singlelinecomment,
+    and!(token!("//"), zero_or_more!(notnewline), newline)
+);
+test!(singlelinecomment =>
+    fail "",
+    fail "/",
+    fail "//",
+    pass "//\n",
+    pass "// This is a comment\n" => "", "// This is a comment\n",
+);
 build!(star, token!("*"));
 build!(notstar, not!("*"));
 build!(notslash, not!("/"));
-build!(multilinecomment, and!(
-    token!("/*"),
-    zero_or_more!(or!(notstar, and!(star, notslash))),
-    token!("*/"),
-));
-build!(whitespace, one_or_more!(or!(space, newline, singlelinecomment, multilinecomment)));
+// Adding a test here just because of the complexity
+build!(
+    multilinecomment,
+    and!(
+        token!("/*"),
+        zero_or_more!(or!(notstar, and!(star, notslash))),
+        token!("*/"),
+    )
+);
+test!(multilinecomment =>
+    fail "",
+    pass "/**/" => "", "/**/",
+    pass "/*\n This is a basic multi-line comment.\n*/",
+    pass "/***\n * This is a multi-line comment.\n */",
+    fail "/***\n * This is a multi-line comment with a standard style we don't support.\n **/",
+);
+build!(
+    whitespace,
+    one_or_more!(or!(space, newline, singlelinecomment, multilinecomment))
+);
 build!(optwhitespace, zero_or_one!(whitespace));
 build!(colon, token!(":"));
 build!(under, token!("_"));
@@ -213,43 +352,78 @@ build!(semicolon, token!(";"));
 build!(optsemicolon, zero_or_one!(semicolon));
 build!(at, token!("@"));
 build!(slash, token!("/"));
+// Validating charset
 build!(base10, charset!('0'..='9'));
+test!(base10 =>
+    fail "",
+    fail "a",
+    pass "0" => "", "0",
+    pass "00" => "0", "0",
+);
 build!(natural, one_or_more!(base10));
 build!(integer, and!(zero_or_one!(negate), natural));
-build!(real, and!(integer, zero_or_one!(and!(dot, natural))));
+build!(real, and!(integer, dot, natural));
+// Validating named_or
 named_or!(num: Number => RealNum: String as real, IntNum: String as integer);
+test!(num =>
+    fail "",
+    fail "a",
+    pass "0" => "", super::Number::IntNum("0".to_string()),
+    pass "0.5" => "", super::Number::RealNum("0.5".to_string()),
+    pass "-5" => "", super::Number::IntNum("-5".to_string()),
+    pass "-5.5" => "", super::Number::RealNum("-5.5".to_string()),
+);
 build!(t, token!("true"));
 build!(f, token!("false"));
 build!(booln, or!(t, f));
 build!(lower, charset!('a'..='z'));
 build!(upper, charset!('A'..='Z'));
-build!(variable, left_subset!(
-    and!(one_or_more!(or!(under, lower, upper)), zero_or_more!(or!(under, lower, upper, base10))),
-    booln,
-));
-build!(operators, one_or_more!(or!(
-    token!("+"),
-    token!("-"),
-    token!("/"),
-    token!("\\"),
-    token!("*"),
-    token!("^"),
-    token!("."),
-    token!("~"),
-    token!("`"),
-    token!("!"),
-    token!("@"),
-    token!("#"),
-    token!("$"),
-    token!("%"),
-    token!("&"),
-    token!("|"),
-    token!(":"),
-    token!("<"),
-    token!(">"),
-    token!("?"),
-    token!("="),
-)));
+// Validating left_subset
+build!(
+    variable,
+    left_subset!(
+        and!(
+            one_or_more!(or!(under, lower, upper)),
+            zero_or_more!(or!(under, lower, upper, base10))
+        ),
+        booln,
+    )
+);
+test!(variable =>
+    fail "",
+    fail "123abc",
+    fail "true",
+    fail "false",
+    pass "falsetto",
+    pass "_123abc",
+    pass "variable after_variable" => " after_variable", "variable",
+);
+build!(
+    operators,
+    one_or_more!(or!(
+        token!("+"),
+        token!("-"),
+        token!("/"),
+        token!("\\"),
+        token!("*"),
+        token!("^"),
+        token!("."),
+        token!("~"),
+        token!("`"),
+        token!("!"),
+        token!("@"),
+        token!("#"),
+        token!("$"),
+        token!("%"),
+        token!("&"),
+        token!("|"),
+        token!(":"),
+        token!("<"),
+        token!(">"),
+        token!("?"),
+        token!("="),
+    ))
+);
 build!(interface, token!("interface"));
 build!(new, token!("new"));
 build!(ifn, token!("if"));
@@ -275,12 +449,37 @@ build!(escapequote, token!("\\'"));
 build!(escapedoublequote, token!("\\\""));
 build!(notquote, not!("'"));
 build!(notdoublequote, not!("\""));
+// This is used a lot, so let's test it
 build!(sep, and!(optwhitespace, comma, optwhitespace));
+test!(sep =>
+    fail "",
+    pass ",",
+    pass " ,",
+    pass "  ,",
+    pass " , ",
+    pass "\n,\n",
+    pass ",something" => "something", ",",
+);
 build!(optsep, zero_or_one!(sep));
-build!(strn, or!(
-    and!(quote, zero_or_more!(or!(escapequote, notquote)), quote),
-    and!(doublequote, zero_or_more!(or!(escapedoublequote, notdoublequote)), doublequote),
-));
+// Also complex, let's check it
+build!(
+    strn,
+    or!(
+        and!(quote, zero_or_more!(or!(escapequote, notquote)), quote),
+        and!(
+            doublequote,
+            zero_or_more!(or!(escapedoublequote, notdoublequote)),
+            doublequote
+        ),
+    )
+);
+test!(strn =>
+    fail "bare text",
+    pass "'str'",
+    pass "\"str2\"",
+    pass "'str\\'3'",
+    pass "\"str\\\"4\"",
+);
 build!(arrayaccess: Vec<WithOperators>, delimited(and!(openarr, optwhitespace), assignables, and!(optwhitespace, closearr)));
 named_or!(varsegment: VarSegment =>
     Variable: String as variable,
@@ -289,14 +488,68 @@ named_or!(varsegment: VarSegment =>
 );
 build!(var, one_or_more!(varsegment));
 named_or!(varop: VarOp => Variable: String as variable, Operator: String as operators);
+// Validating named_and
 named_and!(renamed: Renamed =>
     a: String as blank,
     asn: String as asn,
     b: String as blank,
     varop: VarOp as varop,
 );
+test!(renamed =>
+    fail "",
+    fail "as",
+    fail " as ",
+    pass " as foo" => "", super::Renamed{
+        a: " ".to_string(),
+        asn: "as".to_string(),
+        b: " ".to_string(),
+        varop: super::VarOp::Variable("foo".to_string())
+    },
+    pass " as +",
+    pass " as foo bar" => " bar", super::Renamed{
+        a: " ".to_string(),
+        asn: "as".to_string(),
+        b: " ".to_string(),
+        varop: super::VarOp::Variable("foo".to_string())
+    },
+);
+// Validate optional fields
 named_and!(renameablevar: RenameableVar => varop: VarOp as varop, optrenamed: Option<Renamed> as opt(renamed));
+test!(renameablevar =>
+    fail "",
+    pass "foo" => "", super::RenameableVar{
+        varop: super::VarOp::Variable("foo".to_string()),
+        optrenamed: None,
+    },
+    pass "foo as bar" => "", super::RenameableVar{
+        varop: super::VarOp::Variable("foo".to_string()),
+        optrenamed: Some(super::Renamed{
+            a: " ".to_string(),
+            asn: "as".to_string(),
+            b: " ".to_string(),
+            varop: super::VarOp::Variable("bar".to_string())
+        })
+    },
+);
+// Validating list
 list!(varlist: RenameableVar => renameablevar, sep);
+test!(varlist =>
+    fail "",
+    pass "foo" => "", vec![super::RenameableVar{
+        varop: super::VarOp::Variable("foo".to_string()),
+        optrenamed: None,
+    }],
+    pass "foo, bar" => "", vec![
+        super::RenameableVar{
+            varop: super::VarOp::Variable("foo".to_string()),
+            optrenamed: None,
+        },
+        super::RenameableVar{
+            varop: super::VarOp::Variable("bar".to_string()),
+            optrenamed: None,
+        }
+    ],
+);
 list!(depsegments: String => variable, slash);
 named_and!(curdir: CurDir =>
     dot: String as dot,
@@ -313,9 +566,24 @@ named_and!(globaldependency: GlobalDependency =>
     at: String as at,
     depsegments: Vec<String> as depsegments,
 );
+// This one is kinda complex, so let's take a look at it
 named_or!(dependency: Dependency =>
     Local: LocalDependency as localdependency,
     Global: GlobalDependency as globaldependency,
+);
+test!(dependency =>
+    fail "",
+    fail "foo",
+    pass "./foo" => "", super::Dependency::Local(super::LocalDependency::CurDir(super::CurDir{
+        dot: ".".to_string(),
+        slash: "/".to_string(),
+        depsegments: vec!["foo".to_string()],
+    })),
+    pass "./foo/bar",
+    pass "../foo",
+    pass "../foo/bar",
+    pass "@foo",
+    pass "@foo/bar",
 );
 named_and!(standardimport: StandardImport =>
     import: String as import,
@@ -342,7 +610,7 @@ named_or!(importstatement: ImportStatement =>
     Standard: StandardImport as standardimport,
     From: FromImport as fromimport,
 );
-list!(imports: ImportStatement => importstatement);
+list!(opt imports: ImportStatement => importstatement);
 // Function aliases don't seem to exist in Rust, so just redefining this, it's the same as 'var'
 build!(typename, one_or_more!(varsegment));
 named_and!(typegenerics: TypeGenerics =>
@@ -470,7 +738,7 @@ named_and!(arg: Arg =>
     b: String as optblank,
     fulltypename: FullTypename as fulltypename,
 );
-list!(arglist: Arg => arg, sep);
+list!(opt arglist: Arg => arg, sep);
 named_and!(functionbody: FunctionBody =>
     opencurly: String as opencurly,
     statements: Vec<Statement> as statements,
@@ -552,7 +820,7 @@ named_and!(literaldec: LiteralDec =>
     fulltypename: FullTypename as fulltypename,
     b: String as optblank,
 );
-list!(assignablelist: Vec<WithOperators> => assignables, sep);
+list!(opt assignablelist: Vec<WithOperators> => assignables, sep);
 named_and!(arraybase: ArrayBase =>
     openarr: String as openarr,
     a: String as optwhitespace,
@@ -665,7 +933,7 @@ named_and!(operatortypeline: OperatorTypeline =>
     b: String as optwhitespace,
     fulltypename: FullTypename as fulltypename,
 );
-list!(argtypelist: FullTypename => fulltypename, sep);
+list!(opt argtypelist: FullTypename => fulltypename, sep);
 named_and!(functiontype: FunctionType =>
     openparen: String as openparen,
     a: String as optwhitespace,
@@ -688,7 +956,7 @@ named_or!(interfaceline: InterfaceLine =>
     OperatorTypeLine: OperatorTypeline as operatortypeline,
     PropertyTypeLine: PropertyTypeline as propertytypeline,
 );
-list!(interfacelist: InterfaceLine => interfaceline, sep);
+list!(opt interfacelist: InterfaceLine => interfaceline, sep);
 named_and!(interfacebody: InterfaceBody =>
     opencurly: String as opencurly,
     interfacelist: Vec<InterfaceLine> as interfacelist,
@@ -748,9 +1016,54 @@ named_or!(rootelements: RootElements =>
     Events: Events as events,
     Interfaces: Interfaces as interfaces,
 );
-list!(body: RootElements => rootelements);
+list!(opt body: RootElements => rootelements);
 named_and!(ln: Ln =>
     a: String as optwhitespace,
     imports: Vec<ImportStatement> as imports,
     body: Vec<RootElements> as body,
+);
+test!(ln =>
+    pass "",
+    pass " " => "", super::Ln{
+        a: " ".to_string(),
+        imports: Vec::new(),
+        body: Vec::new(),
+    },
+    pass "import ./foo" => "import ./foo", super::Ln{
+        a: "".to_string(),
+        imports: Vec::new(),
+        body: Vec::new(),
+    },
+    pass "import ./foo\n" => "", super::Ln{
+        a: "".to_string(),
+        imports: vec![super::ImportStatement::Standard(super::StandardImport{
+            import: "import".to_string(),
+            a: " ".to_string(),
+            dependency: super::Dependency::Local(super::LocalDependency::CurDir(super::CurDir{
+                dot: ".".to_string(),
+                slash: "/".to_string(),
+                depsegments: vec!["foo".to_string()],
+            })),
+            renamed: None,
+            b: "".to_string(),
+            c: "\n".to_string(),
+            d: "".to_string()
+        })],
+        body: Vec::new(),
+    },
+);
+
+pub fn get_ast(input: &str) -> Result<Ln, nom::Err<nom::error::Error<&str>>> {
+    match all_consuming(ln)(input) {
+        Ok((_, out)) => Ok(out),
+        Err(e) => Err(e),
+    }
+}
+/// TODO: Modify the test macro to allow for functions without nom-like signatures to have
+/// assertions
+test!(get_ast =>
+    pass "",
+    pass " ",
+    fail "import ./foo",
+    pass "import ./foo\n",
 );
