@@ -2,7 +2,7 @@ use nom::{
     branch::alt,
     bytes::complete::{tag, take},
     character::complete::satisfy,
-    combinator::{all_consuming, opt, recognize},
+    combinator::{all_consuming, opt, peek, recognize},
     error::{Error, ErrorKind},
     multi::{many0, many1, separated_list0, separated_list1},
     sequence::{delimited, tuple},
@@ -317,7 +317,7 @@ build!(
     multilinecomment,
     and!(
         token!("/*"),
-        zero_or_more!(or!(notstar, and!(star, notslash))),
+        zero_or_more!(or!(notstar, and!(star, peek(notslash)))),
         token!("*/"),
     )
 );
@@ -326,7 +326,7 @@ test!(multilinecomment =>
     pass "/**/" => "", "/**/",
     pass "/*\n This is a basic multi-line comment.\n*/",
     pass "/***\n * This is a multi-line comment.\n */",
-    fail "/***\n * This is a multi-line comment with a standard style we don't support.\n **/",
+    pass "/***\n * This is a multi-line comment with a standard style we now support.\n **/",
 );
 build!(
     whitespace,
