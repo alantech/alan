@@ -216,13 +216,13 @@ macro_rules! opt_string {
 ///   pass "another successful input" => "the new input it generates", "the output it generates",
 /// );
 macro_rules! test {
-  ( $rule:ident => $( $type:ident $test_val:expr $(=> $i:expr, $o:expr)? ),+ $(,)? ) => {
+  ( $rule:ident => $( $type:ident $test_val:expr $(=> $i:expr $(, $o:expr)?)? );+ $(;)? ) => {
     #[cfg(test)]
     mod $rule {
       #[test]
       fn $rule() {
         let cmd = |input| super::$rule(input);
-        $( $type!(cmd, $test_val $(, $i, $o)?); )+
+        $( $type!(cmd, $test_val $(, $i $(, $o)?)?); )+
       }
     }
   }
@@ -244,6 +244,14 @@ macro_rules! pass {
             }
         }
     };
+    ( $cmd:ident, $input:expr, $i:expr) => {
+        match $cmd($input) {
+            Err(_) => panic!("Did not parse {} correctly!", $input),
+            Ok((i, _)) => {
+                assert_eq!(i, $i);
+            }
+        }
+    };
 }
 #[cfg(test)]
 macro_rules! fail {
@@ -258,44 +266,44 @@ macro_rules! fail {
 build!(space, token!(" "));
 // There won't be a test case for *every* token function, just validating they work as expected
 test!(space =>
-    fail "",
-    fail "a",
-    pass " " => "", " ",
-    pass "  " => " ", " ",
-    pass "   ",
+    fail "";
+    fail "a";
+    pass " " => "", " ";
+    pass "  " => " ", " ";
+    pass "   ";
 );
 // Similarly validating one_or_more behaves as expected here
 build!(blank, one_or_more!(space));
 test!(blank =>
-    fail "",
-    fail "a",
-    pass " " => "", " ",
-    pass "  " => "", "  ",
-    pass "  a" => "a", "  ",
+    fail "";
+    fail "a";
+    pass " " => "", " ";
+    pass "  " => "", "  ";
+    pass "  a" => "a", "  ";
 );
 // And validating zero_or_one here
 build!(optblank, zero_or_one!(blank));
 test!(optblank =>
-    pass "" => "", "",
-    pass "  " => "", "  ",
-    pass "  a" => "a", "  ",
-    pass "a" => "a", "",
+    pass "" => "", "";
+    pass "  " => "", "  ";
+    pass "  a" => "a", "  ";
+    pass "a" => "a", "";
 );
 // Validating or
 build!(newline, or!(token!("\n"), token!("\r")));
 test!(newline =>
-    fail "",
-    fail " ",
-    pass "\n" => "", "\n",
-    pass "\r" => "", "\r",
-    pass "\r\n" => "\n", "\r",
+    fail "";
+    fail " ";
+    pass "\n" => "", "\n";
+    pass "\r" => "", "\r";
+    pass "\r\n" => "\n", "\r";
 );
 // Validating not
 build!(notnewline, not!("\n")); // TODO: Properly support windows newlines here
 test!(notnewline =>
-    fail "\n",
-    pass " " => "", " ",
-    pass "   " => "  ", " ",
+    fail "\n";
+    pass " " => "", " ";
+    pass "   " => "  ", " ";
 );
 // Validating and
 build!(
@@ -303,11 +311,11 @@ build!(
     and!(token!("//"), zero_or_more!(notnewline), newline)
 );
 test!(singlelinecomment =>
-    fail "",
-    fail "/",
-    fail "//",
-    pass "//\n",
-    pass "// This is a comment\n" => "", "// This is a comment\n",
+    fail "";
+    fail "/";
+    fail "//";
+    pass "//\n";
+    pass "// This is a comment\n" => "", "// This is a comment\n";
 );
 build!(star, token!("*"));
 build!(notstar, not!("*"));
@@ -322,11 +330,11 @@ build!(
     )
 );
 test!(multilinecomment =>
-    fail "",
-    pass "/**/" => "", "/**/",
-    pass "/*\n This is a basic multi-line comment.\n*/",
-    pass "/***\n * This is a multi-line comment.\n */",
-    pass "/***\n * This is a multi-line comment with a standard style we now support.\n **/",
+    fail "";
+    pass "/**/" => "", "/**/";
+    pass "/*\n This is a basic multi-line comment.\n*/";
+    pass "/***\n * This is a multi-line comment.\n */";
+    pass "/***\n * This is a multi-line comment with a standard style we now support.\n **/";
 );
 build!(
     whitespace,
@@ -348,7 +356,6 @@ build!(closecaret, token!(">"));
 build!(openarr, token!("["));
 build!(closearr, token!("]"));
 build!(comma, token!(","));
-build!(optcomma, zero_or_one!(comma));
 build!(semicolon, token!(";"));
 build!(optsemicolon, zero_or_one!(semicolon));
 build!(at, token!("@"));
@@ -356,10 +363,10 @@ build!(slash, token!("/"));
 // Validating charset
 build!(base10, charset!('0'..='9'));
 test!(base10 =>
-    fail "",
-    fail "a",
-    pass "0" => "", "0",
-    pass "00" => "0", "0",
+    fail "";
+    fail "a";
+    pass "0" => "", "0";
+    pass "00" => "0", "0";
 );
 build!(natural, one_or_more!(base10));
 build!(integer, and!(zero_or_one!(negate), natural));
@@ -367,12 +374,12 @@ build!(real, and!(integer, dot, natural));
 // Validating named_or
 named_or!(num: Number => RealNum: String as real, IntNum: String as integer);
 test!(num =>
-    fail "",
-    fail "a",
-    pass "0" => "", super::Number::IntNum("0".to_string()),
-    pass "0.5" => "", super::Number::RealNum("0.5".to_string()),
-    pass "-5" => "", super::Number::IntNum("-5".to_string()),
-    pass "-5.5" => "", super::Number::RealNum("-5.5".to_string()),
+    fail "";
+    fail "a";
+    pass "0" => "", super::Number::IntNum("0".to_string());
+    pass "0.5" => "", super::Number::RealNum("0.5".to_string());
+    pass "-5" => "", super::Number::IntNum("-5".to_string());
+    pass "-5.5" => "", super::Number::RealNum("-5.5".to_string());
 );
 build!(t, token!("true"));
 build!(f, token!("false"));
@@ -391,13 +398,13 @@ build!(
     )
 );
 test!(variable =>
-    fail "",
-    fail "123abc",
-    fail "true",
-    fail "false",
-    pass "falsetto",
-    pass "_123abc",
-    pass "variable after_variable" => " after_variable", "variable",
+    fail "";
+    fail "123abc";
+    fail "true";
+    fail "false";
+    pass "falsetto";
+    pass "_123abc";
+    pass "variable after_variable" => " after_variable", "variable";
 );
 build!(
     operators,
@@ -433,7 +440,7 @@ build!(precedence, token!("precedence"));
 build!(infix, token!("infix"));
 build!(prefix, token!("prefix"));
 build!(asn, token!("as"));
-build!(exit, token!("exit"));
+build!(exit, token!("return")); // Why did I do this before?
 build!(emit, token!("emit"));
 build!(letn, token!("let"));
 build!(constn, token!("const"));
@@ -453,13 +460,13 @@ build!(notdoublequote, not!("\""));
 // This is used a lot, so let's test it
 build!(sep, and!(optwhitespace, comma, optwhitespace));
 test!(sep =>
-    fail "",
-    pass ",",
-    pass " ,",
-    pass "  ,",
-    pass " , ",
-    pass "\n,\n",
-    pass ",something" => "something", ",",
+    fail "";
+    pass ",";
+    pass " ,";
+    pass "  ,";
+    pass " , ";
+    pass "\n,\n";
+    pass ",something" => "something", ",";
 );
 build!(optsep, zero_or_one!(sep));
 // Also complex, let's check it
@@ -475,11 +482,11 @@ build!(
     )
 );
 test!(strn =>
-    fail "bare text",
-    pass "'str'",
-    pass "\"str2\"",
-    pass "'str\\'3'",
-    pass "\"str\\\"4\"",
+    fail "bare text";
+    pass "'str'";
+    pass "\"str2\"";
+    pass "'str\\'3'";
+    pass "\"str\\\"4\"";
 );
 build!(arrayaccess: Vec<WithOperators>, delimited(and!(openarr, optwhitespace), assignables, and!(optwhitespace, closearr)));
 named_or!(varsegment: VarSegment =>
@@ -488,6 +495,9 @@ named_or!(varsegment: VarSegment =>
     ArrayAccess: Vec<WithOperators> as arrayaccess,
 );
 build!(var, one_or_more!(varsegment));
+test!(var =>
+    pass "hm.lookup";
+);
 named_or!(varop: VarOp => Variable: String as variable, Operator: String as operators);
 // Validating named_and
 named_and!(renamed: Renamed =>
@@ -497,31 +507,31 @@ named_and!(renamed: Renamed =>
     varop: VarOp as varop,
 );
 test!(renamed =>
-    fail "",
-    fail "as",
-    fail " as ",
+    fail "";
+    fail "as";
+    fail " as ";
     pass " as foo" => "", super::Renamed{
         a: " ".to_string(),
         asn: "as".to_string(),
         b: " ".to_string(),
         varop: super::VarOp::Variable("foo".to_string())
-    },
-    pass " as +",
+    };
+    pass " as +";
     pass " as foo bar" => " bar", super::Renamed{
         a: " ".to_string(),
         asn: "as".to_string(),
         b: " ".to_string(),
         varop: super::VarOp::Variable("foo".to_string())
-    },
+    };
 );
 // Validate optional fields
 named_and!(renameablevar: RenameableVar => varop: VarOp as varop, optrenamed: Option<Renamed> as opt(renamed));
 test!(renameablevar =>
-    fail "",
+    fail "";
     pass "foo" => "", super::RenameableVar{
         varop: super::VarOp::Variable("foo".to_string()),
         optrenamed: None,
-    },
+    };
     pass "foo as bar" => "", super::RenameableVar{
         varop: super::VarOp::Variable("foo".to_string()),
         optrenamed: Some(super::Renamed{
@@ -530,16 +540,16 @@ test!(renameablevar =>
             b: " ".to_string(),
             varop: super::VarOp::Variable("bar".to_string())
         })
-    },
+    };
 );
 // Validating list
 list!(varlist: RenameableVar => renameablevar, sep);
 test!(varlist =>
-    fail "",
+    fail "";
     pass "foo" => "", vec![super::RenameableVar{
         varop: super::VarOp::Variable("foo".to_string()),
         optrenamed: None,
-    }],
+    }];
     pass "foo, bar" => "", vec![
         super::RenameableVar{
             varop: super::VarOp::Variable("foo".to_string()),
@@ -549,7 +559,7 @@ test!(varlist =>
             varop: super::VarOp::Variable("bar".to_string()),
             optrenamed: None,
         }
-    ],
+    ];
 );
 list!(depsegments: String => variable, slash);
 named_and!(curdir: CurDir =>
@@ -573,18 +583,18 @@ named_or!(dependency: Dependency =>
     Global: GlobalDependency as globaldependency,
 );
 test!(dependency =>
-    fail "",
-    fail "foo",
+    fail "";
+    fail "foo";
     pass "./foo" => "", super::Dependency::Local(super::LocalDependency::CurDir(super::CurDir{
         dot: ".".to_string(),
         slash: "/".to_string(),
         depsegments: vec!["foo".to_string()],
-    })),
-    pass "./foo/bar",
-    pass "../foo",
-    pass "../foo/bar",
-    pass "@foo",
-    pass "@foo/bar",
+    }));
+    pass "./foo/bar";
+    pass "../foo";
+    pass "../foo/bar";
+    pass "@foo";
+    pass "@foo/bar";
 );
 named_and!(standardimport: StandardImport =>
     import: String as import,
@@ -625,6 +635,9 @@ named_and!(fulltypename: FullTypename =>
     typename: String as typename, // TODO: Maybe we want to keep this in a tree form in the future?
     opttypegenerics: Option<TypeGenerics> as opt(typegenerics)
 );
+test!(fulltypename =>
+    pass "Array<Array<int64>>" => "";
+);
 list!(generics: FullTypename => fulltypename, sep);
 named_and!(typeline: Typeline =>
     variable: String as variable,
@@ -638,8 +651,12 @@ named_and!(typebody: TypeBody =>
     a: String as opencurly,
     b: String as optwhitespace,
     typelist: Vec<Typeline> as typelist,
-    c: String as optwhitespace,
-    d: String as closecurly,
+    c: String as optsep,
+    d: String as optwhitespace,
+    e: String as closecurly,
+);
+test!(typebody =>
+    pass "{\n  arr: Array<T>,\n  initial: U,\n}";
 );
 named_and!(typealias: TypeAlias =>
     a: String as eq,
@@ -667,12 +684,100 @@ named_or!(baseassignable: BaseAssignable =>
     Constants: Constants as constants,
     MethodSep: String as and!(optwhitespace, dot, optwhitespace),
 );
+test!(baseassignable =>
+    pass "new Foo{}" => "", super::BaseAssignable::ObjectLiterals(super::ObjectLiterals::TypeLiteral(super::TypeLiteral{
+      literaldec: super::LiteralDec{
+        new: "new".to_string(),
+        a: " ".to_string(),
+        fulltypename: super::FullTypename{
+          typename: "Foo".to_string(),
+          opttypegenerics: None,
+        },
+        b: "".to_string(),
+      },
+      typebase: super::TypeBase{
+        opencurly: "{".to_string(),
+        a: "".to_string(),
+        typeassignlist: Vec::new(),
+        b: "".to_string(),
+        c: "".to_string(),
+        closecurly: "}".to_string(),
+      }
+    }));
+);
 list!(baseassignablelist: BaseAssignable => baseassignable);
+test!(baseassignablelist =>
+    pass "new Foo{}" => "", vec![super::BaseAssignable::ObjectLiterals(super::ObjectLiterals::TypeLiteral(super::TypeLiteral{
+      literaldec: super::LiteralDec{
+        new: "new".to_string(),
+        a: " ".to_string(),
+        fulltypename: super::FullTypename{
+          typename: "Foo".to_string(),
+          opttypegenerics: None,
+        },
+        b: "".to_string(),
+      },
+      typebase: super::TypeBase{
+        opencurly: "{".to_string(),
+        a: "".to_string(),
+        typeassignlist: Vec::new(),
+        b: "".to_string(),
+        c: "".to_string(),
+        closecurly: "}".to_string(),
+      }
+    }))];
+);
 named_or!(withoperators: WithOperators =>
     BaseAssignableList: Vec<BaseAssignable> as baseassignablelist,
     Operators: String as and!(optwhitespace, operators, optwhitespace),
 );
+test!(withoperators =>
+    pass "new Foo{}" => "", super::WithOperators::BaseAssignableList(vec![super::BaseAssignable::ObjectLiterals(super::ObjectLiterals::TypeLiteral(super::TypeLiteral{
+      literaldec: super::LiteralDec{
+        new: "new".to_string(),
+        a: " ".to_string(),
+        fulltypename: super::FullTypename{
+          typename: "Foo".to_string(),
+          opttypegenerics: None,
+        },
+        b: "".to_string(),
+      },
+      typebase: super::TypeBase{
+        opencurly: "{".to_string(),
+        a: "".to_string(),
+        typeassignlist: Vec::new(),
+        b: "".to_string(),
+        c: "".to_string(),
+        closecurly: "}".to_string(),
+      }
+    }))]);
+    pass "new Array<Array<int64>> [ new Array<int64> [], ] * lookupLen;" => " * lookupLen;";
+);
 list!(assignables: WithOperators => withoperators);
+test!(assignables =>
+    pass "maybe.isSome()";
+    pass "new Foo{}" => "", vec![super::WithOperators::BaseAssignableList(vec![super::BaseAssignable::ObjectLiterals(super::ObjectLiterals::TypeLiteral(super::TypeLiteral{
+      literaldec: super::LiteralDec{
+        new: "new".to_string(),
+        a: " ".to_string(),
+        fulltypename: super::FullTypename{
+          typename: "Foo".to_string(),
+          opttypegenerics: None,
+        },
+        b: "".to_string(),
+      },
+      typebase: super::TypeBase{
+        opencurly: "{".to_string(),
+        a: "".to_string(),
+        typeassignlist: Vec::new(),
+        b: "".to_string(),
+        c: "".to_string(),
+        closecurly: "}".to_string(),
+      }
+    }))])];
+    pass "new InitialReduce<any, anythingElse> {\n    arr: arr,\n    initial: initial,\n  }";
+    pass "new Array<Array<int64>> [ new Array<int64> [], ] * lookupLen;" => ";";
+);
 named_and!(typedec: TypeDec =>
     colon: String as colon,
     a: String as optwhitespace,
@@ -684,18 +789,23 @@ named_and!(constdeclaration: ConstDeclaration =>
     whitespace: String as whitespace,
     variable: String as variable,
     a: String as optwhitespace,
-    typedec: TypeDec as typedec,
-    eq: String as eq,
+    typedec: Option<TypeDec> as opt(typedec),
     b: String as optwhitespace,
+    eq: String as eq,
+    c: String as optwhitespace,
     assignables: Vec<WithOperators> as assignables,
     semicolon: String as semicolon,
+);
+test!(constdeclaration =>
+    pass "const args = new Foo{};";
+    pass "const args = new InitialReduce<any, anythingElse> {\n    arr: arr,\n    initial: initial,\n  };";
 );
 named_and!(letdeclaration: LetDeclaration =>
     letn: String as letn,
     whitespace: String as whitespace,
     variable: String as variable,
     a: String as optwhitespace,
-    typedec: TypeDec as typedec,
+    typedec: Option<TypeDec> as opt(typedec),
     eq: String as eq,
     b: String as optwhitespace,
     assignables: Vec<WithOperators> as assignables,
@@ -713,6 +823,9 @@ named_and!(assignments: Assignments =>
     assignables: Vec<WithOperators> as assignables,
     semicolon: String as semicolon,
 );
+test!(assignments =>
+    pass "hm.lookup = new Array<Array<int64>> [ new Array<int64> [], ] * lookupLen;" => "";
+);
 named_and!(retval: RetVal =>
     assignables: Vec<WithOperators> as assignables,
     a: String as optwhitespace,
@@ -723,6 +836,9 @@ named_and!(exits: Exits =>
     a: String as optwhitespace,
     retval: Option<RetVal> as optretval,
     semicolon: String as semicolon,
+);
+test!(exits =>
+    pass "return maybe.getMaybe().toString();";
 );
 named_and!(emits: Emits =>
     emit: String as emit,
@@ -742,9 +858,15 @@ named_and!(arg: Arg =>
 list!(opt arglist: Arg => arg, sep);
 named_and!(functionbody: FunctionBody =>
     opencurly: String as opencurly,
-    statements: Vec<Statement> as statements,
     a: String as optwhitespace,
+    statements: Vec<Statement> as statements,
+    b: String as optwhitespace,
     closecurly:String as closecurly,
+);
+test!(functionbody =>
+    pass "{  if maybe.isSome() {\n    return maybe.getMaybe().toString();\n  } else {\n    return 'none';\n  } }";
+    pass "{  const args = new InitialReduce<any, anythingElse> {\n    arr: arr,\n    initial: initial,\n  };\n  return foldl(args, cb);\n}";
+    pass "{ // TODO: Rust-like fn::<typeA, typeB> syntax?\n  let hm = new HashMap<Hashable, any> {\n    keyVal: new Array<KeyVal<Hashable, any>> [],\n    lookup: new Array<Array<int64>> [ new Array<int64> [] ] * 128, // 1KB of space\n  };\n  return hm.set(firstKey, firstVal);\n}" => "";
 );
 named_and!(assignfunction: AssignFunction =>
     eq: String as eq,
@@ -779,6 +901,9 @@ named_and!(functions: Functions =>
     optreturntype: Option<ReturnType> as opt(returntype),
     fullfunctionbody: FullFunctionBody as fullfunctionbody,
 );
+test!(functions =>
+    pass "fn newHashMap(firstKey: Hashable, firstVal: any): HashMap<Hashable, any> { // TODO: Rust-like fn::<typeA, typeB> syntax?\n  let hm = new HashMap<Hashable, any> {\n    keyVal: new Array<KeyVal<Hashable, any>> [],\n    lookup: new Array<Array<int64>> [ new Array<int64> [] ] * 128, // 1KB of space\n  };\n  return hm.set(firstKey, firstVal);\n}" => "";
+);
 named_or!(blocklike: Blocklike =>
     Functions: Functions as functions,
     FunctionBody: FunctionBody as functionbody,
@@ -802,6 +927,9 @@ named_and!(conditional: Conditional =>
     blocklike: Blocklike as blocklike,
     optelsebranch: Option<ElseBranch> as opt(elsebranch),
 );
+test!(conditional =>
+    pass "if maybe.isSome() {\n    return maybe.getMaybe().toString();\n  } else {\n    return 'none';\n  }";
+);
 named_and!(assignablestatement: AssignableStatement =>
     assignables: Vec<WithOperators> as assignables,
     semicolon: String as semicolon,
@@ -813,20 +941,42 @@ named_or!(statement: Statement =>
     Assignments: Assignments as assignments,
     Conditional: Conditional as conditional,
     Assignables: AssignableStatement as assignablestatement,
+    A: String as whitespace,
 );
-list!(statements: Statement => statement, optwhitespace);
+test!(statement =>
+    pass "return maybe.getMaybe().toString();";
+    pass "if maybe.isSome() {\n    return maybe.getMaybe().toString();\n  } else {\n    return 'none';\n  }";
+);
+list!(statements: Statement => statement);
+test!(statements =>
+    pass "return maybe.getMaybe().toString();";
+    pass "if maybe.isSome() {\n    return maybe.getMaybe().toString();\n  } else {\n    return 'none';\n  }";
+    pass "let hm = new HashMap<Hashable, any> {\n    keyVal: new Array<KeyVal<Hashable, any>> [],\n    lookup: new Array<Array<int64>> [ new Array<int64> [] ] * 128, // 1KB of space\n  };\n  return hm.set(firstKey, firstVal);" => "";
+);
 named_and!(literaldec: LiteralDec =>
     new: String as new,
     a: String as blank,
     fulltypename: FullTypename as fulltypename,
     b: String as optblank,
 );
+test!(literaldec =>
+    pass "new Foo" => "", super::LiteralDec{
+      new: "new".to_string(),
+      a: " ".to_string(),
+      fulltypename: super::FullTypename{
+        typename: "Foo".to_string(),
+        opttypegenerics: None,
+      },
+      b: "".to_string(),
+    };
+);
 list!(opt assignablelist: Vec<WithOperators> => assignables, sep);
 named_and!(arraybase: ArrayBase =>
     openarr: String as openarr,
     a: String as optwhitespace,
     assignablelist: Vec<Vec<WithOperators>> as assignablelist,
-    b: String as optwhitespace,
+    b: String as optsep,
+    c: String as optwhitespace,
     closearr: String as closearr,
 );
 named_and!(fullarrayliteral: FullArrayLiteral =>
@@ -845,21 +995,65 @@ named_and!(typeassign: TypeAssign =>
     assignables: Vec<WithOperators> as assignables,
     c: String as optwhitespace
 );
-list!(typeassignlist: TypeAssign => typeassign, sep);
+list!(opt typeassignlist: TypeAssign => typeassign, sep);
 named_and!(typebase: TypeBase =>
     opencurly: String as opencurly,
     a: String as optwhitespace,
     typeassignlist: Vec<TypeAssign> as typeassignlist,
-    b: String as optwhitespace,
+    b: String as optsep,
+    c: String as optwhitespace,
     closecurly: String as closecurly,
 );
 named_and!(typeliteral: TypeLiteral =>
     literaldec: LiteralDec as literaldec,
     typebase: TypeBase as typebase,
 );
+test!(typeliteral =>
+    pass "new Foo{}" => "", super::TypeLiteral{
+      literaldec: super::LiteralDec{
+        new: "new".to_string(),
+        a: " ".to_string(),
+        fulltypename: super::FullTypename{
+          typename: "Foo".to_string(),
+          opttypegenerics: None,
+        },
+        b: "".to_string(),
+      },
+      typebase: super::TypeBase{
+        opencurly: "{".to_string(),
+        a: "".to_string(),
+        typeassignlist: Vec::new(),
+        b: "".to_string(),
+        c: "".to_string(),
+        closecurly: "}".to_string(),
+      }
+    };
+);
 named_or!(objectliterals: ObjectLiterals =>
     ArrayLiteral: ArrayLiteral as arrayliteral,
     TypeLiteral: TypeLiteral as typeliteral,
+);
+test!(objectliterals =>
+    pass "new Foo{}" => "", super::ObjectLiterals::TypeLiteral(super::TypeLiteral{
+      literaldec: super::LiteralDec{
+        new: "new".to_string(),
+        a: " ".to_string(),
+        fulltypename: super::FullTypename{
+          typename: "Foo".to_string(),
+          opttypegenerics: None,
+        },
+        b: "".to_string(),
+      },
+      typebase: super::TypeBase{
+        opencurly: "{".to_string(),
+        a: "".to_string(),
+        typeassignlist: Vec::new(),
+        b: "".to_string(),
+        c: "".to_string(),
+        closecurly: "}".to_string(),
+      }
+    });
+    pass "new Array<Array<int64>> [ new Array<int64> [], ]" => "";
 );
 named_and!(fncall: FnCall =>
     openparen: String as openparen,
@@ -936,18 +1130,18 @@ named_and!(operatortypeline: OperatorTypeline =>
 );
 list!(opt argtypelist: FullTypename => fulltypename, sep);
 test!(argtypelist =>
-    pass "" => "", Vec::new(),
+    pass "" => "", Vec::new();
     pass "foo" => "", vec![super::FullTypename{
       typename: "foo".to_string(),
       opttypegenerics: None,
-    }],
+    }];
     pass "foo, bar" => "", vec![super::FullTypename{
       typename: "foo".to_string(),
       opttypegenerics: None,
     }, super::FullTypename{
       typename: "bar".to_string(),
       opttypegenerics: None,
-    }],
+    }];
 );
 named_and!(functiontype: FunctionType =>
     openparen: String as openparen,
@@ -962,10 +1156,10 @@ named_and!(functiontype: FunctionType =>
     returntype: FullTypename as fulltypename,
 );
 test!(functiontype =>
-    fail "()",
-    pass "():void",
-    pass "(Foo): Bar",
-    pass "(Foo, Bar): Baz",
+    fail "()";
+    pass "():void";
+    pass "(Foo): Bar";
+    pass "(Foo, Bar): Baz";
 );
 named_and!(functiontypeline: FunctionTypeline =>
     variable: String as variable,
@@ -994,7 +1188,7 @@ test!(functiontypeline =>
           opttypegenerics: None,
         }
       }
-    },
+    };
 );
 named_or!(interfaceline: InterfaceLine =>
     FunctionTypeline: FunctionTypeline as functiontypeline,
@@ -1023,7 +1217,7 @@ test!(interfaceline =>
           opttypegenerics: None,
         }
       }
-    }),
+    });
 );
 list!(opt interfacelist: InterfaceLine => interfaceline, sep);
 test!(interfacelist =>
@@ -1048,7 +1242,7 @@ test!(interfacelist =>
           opttypegenerics: None,
         }
       }
-    })],
+    })];
 );
 named_and!(interfacebody: InterfaceBody =>
     opencurly: String as opencurly,
@@ -1075,9 +1269,9 @@ named_and!(interfaces: Interfaces =>
     interfacedef: InterfaceDef as interfacedef,
 );
 test!(interfaces =>
-    pass "interface any {}",
-    pass "interface anythingElse = any",
-    pass "interface Stringifiable {\ntoString(Stringifiable): string,\n}",
+    pass "interface any {}";
+    pass "interface anythingElse = any";
+    pass "interface Stringifiable {\ntoString(Stringifiable): string,\n}";
 );
 named_or!(exportable: Exportable =>
     Functions: Functions as functions,
@@ -1092,6 +1286,9 @@ named_and!(exports: Exports =>
     export: String as export,
     a: String as blank,
     exportable: Exportable as exportable,
+);
+test!(exports =>
+    pass "export fn newHashMap(firstKey: Hashable, firstVal: any): HashMap<Hashable, any> { // TODO: Rust-like fn::<typeA, typeB> syntax?\n  let hm = new HashMap<Hashable, any> {\n    keyVal: new Array<KeyVal<Hashable, any>> [],\n    lookup: new Array<Array<int64>> [ new Array<int64> [] ] * 128, // 1KB of space\n  };\n  return hm.set(firstKey, firstVal);\n}" => "";
 );
 named_or!(handler: Handler =>
     Functions: Functions as functions,
@@ -1123,17 +1320,17 @@ named_and!(ln: Ln =>
     body: Vec<RootElements> as body,
 );
 test!(ln =>
-    pass "",
+    pass "";
     pass " " => "", super::Ln{
         a: " ".to_string(),
         imports: Vec::new(),
         body: Vec::new(),
-    },
+    };
     pass "import ./foo" => "import ./foo", super::Ln{
         a: "".to_string(),
         imports: Vec::new(),
         body: Vec::new(),
-    },
+    };
     pass "import ./foo\n" => "", super::Ln{
         a: "".to_string(),
         imports: vec![super::ImportStatement::Standard(super::StandardImport{
@@ -1150,7 +1347,7 @@ test!(ln =>
             d: "".to_string()
         })],
         body: Vec::new(),
-    },
+    };
 );
 
 pub fn get_ast(input: &str) -> Result<Ln, nom::Err<nom::error::Error<&str>>> {
@@ -1159,11 +1356,11 @@ pub fn get_ast(input: &str) -> Result<Ln, nom::Err<nom::error::Error<&str>>> {
         Err(e) => Err(e),
     }
 }
-/// TODO: Modify the test macro to allow for functions without nom-like signatures to have
-/// assertions
+// TODO: Modify the test macro to allow for functions without nom-like signatures to have
+// assertions
 test!(get_ast =>
-    pass "",
-    pass " ",
-    fail "import ./foo",
-    pass "import ./foo\n",
+    pass "";
+    pass " ";
+    fail "import ./foo";
+    pass "import ./foo\n";
 );
