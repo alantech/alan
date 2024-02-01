@@ -1,7 +1,7 @@
 use std::fs::read_to_string;
 
 use clap::{Parser, Subcommand};
-use parse::ln;
+use parse::get_ast;
 
 mod parse;
 
@@ -42,7 +42,7 @@ fn main() -> Result<(), clap::error::Error> {
     println!("{:?}", args);
     if let Some(file) = args.file {
         let ln_file = read_to_string(file)?;
-        println!("{:?}", ln(&ln_file));
+        println!("{:?}", get_ast(&ln_file));
     }
     Ok(())
 }
