@@ -37,11 +37,9 @@ macro_rules! token {
 /// to nom's `is_not` function, which is more like an inverse `charset`
 macro_rules! not {
     ( $str:expr ) => {
-        (|input| {
-            match tag::<&str, &str, Error<&str>>($str)(input) {
-                Ok(_) => Err(nom::Err::Error(Error::new(input, ErrorKind::Fail))),
-                Err(_) => take($str.len())(input)
-            }
+        (|input| match tag::<&str, &str, Error<&str>>($str)(input) {
+            Ok(_) => Err(nom::Err::Error(Error::new(input, ErrorKind::Fail))),
+            Err(_) => take($str.len())(input),
         })
     };
 }
@@ -98,9 +96,9 @@ macro_rules! charset {
 /// implicitly `build`s itself and cannot be wrapped like the other macros can.
 macro_rules! named_and {
   ( $fn_name:ident: $struct_name:ident => $( $field_name:ident: $field_type:ty as $rule:expr ),+ $(,)? ) => {
-    #[derive(Debug, PartialEq)]
+    #[derive(Debug, PartialEq, Clone)]
     pub struct $struct_name {
-      $($field_name: $field_type,)+
+      $(pub $field_name: $field_type,)+
     }
 
     pub fn $fn_name(input: &str) -> IResult<&str, $struct_name> {
@@ -123,7 +121,7 @@ macro_rules! named_and {
 /// surprised that I can't find something like this in `nom` already?
 macro_rules! named_or {
   ( $fn_name:ident: $enum_name:ident => $( $option_name:ident: $option_type:ty as $rule:expr ),+ $(,)? ) => {
-    #[derive(Debug, PartialEq)]
+    #[derive(Debug, PartialEq, Clone)]
     pub enum $enum_name {
       $($option_name($option_type),)+
     }
@@ -152,7 +150,7 @@ macro_rules! left_subset {
             let right_match = $right(left_match.1);
             if let Ok((i, _)) = right_match {
                 if i.len() == 0 {
-                  return Err(nom::Err::Error(Error::new(input, ErrorKind::Fail)));
+                    return Err(nom::Err::Error(Error::new(input, ErrorKind::Fail)));
                 }
             }
             return Ok(left_match);
@@ -638,6 +636,26 @@ named_and!(fulltypename: FullTypename =>
 test!(fulltypename =>
     pass "Array<Array<int64>>" => "";
 );
+impl FullTypename {
+    pub fn to_string(&self) -> String {
+        format!(
+            "{}{}",
+            self.typename,
+            match &self.opttypegenerics {
+                None => "".to_string(),
+                Some(g) => format!(
+                    "<{}>",
+                    g.generics
+                        .iter()
+                        .map(|gen| gen.to_string())
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                ),
+            }
+        )
+        .to_string()
+    }
+}
 list!(generics: FullTypename => fulltypename, sep);
 named_and!(typeline: Typeline =>
     variable: String as variable,

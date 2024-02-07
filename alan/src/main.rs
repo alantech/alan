@@ -2,8 +2,10 @@ use std::fs::read_to_string;
 
 use clap::{Parser, Subcommand};
 use parse::get_ast;
+use program::Program;
 
 mod parse;
+mod program;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, propagate_version = true)]
@@ -37,12 +39,12 @@ enum Commands {
     },
 }
 
-fn main() -> Result<(), clap::error::Error> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Cli::parse();
     println!("{:?}", args);
     if let Some(file) = args.file {
-        let ln_file = read_to_string(file)?;
-        println!("{:?}", get_ast(&ln_file));
+        let program = Program::new(file)?;
+        println!("{:?}", program);
     }
     Ok(())
 }
