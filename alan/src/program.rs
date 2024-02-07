@@ -112,6 +112,9 @@ struct Const {
 #[derive(Debug)]
 struct Function {
     name: String,
+    args: Vec<(String, String)>,
+    rettype: Option<String>,
+    statements: Vec<parse::Statement>, // TODO: Do we need to wrap this, or is the AST fine here?
 }
 
 impl Function {
@@ -126,7 +129,44 @@ impl Function {
                 return Err("Top-level function without a name!".into());
             }
         };
-        let function = Function { name };
+        Function::from_ast_with_name(scope, function_ast, name)
+    }
+
+    fn from_ast_with_name(
+        scope: &mut Scope,
+        function_ast: &parse::Functions,
+        name: String,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let args = match &function_ast.optargs {
+            None => Vec::new(),
+            Some(arglist) => {
+                // TODO: Make the arg types optional
+                arglist
+                    .arglist
+                    .iter()
+                    .map(|arg| (arg.variable.clone(), arg.fulltypename.to_string()))
+                    .collect()
+            }
+        };
+        let rettype = match &function_ast.optreturntype {
+            None => None,
+            Some(returntype) => Some(returntype.fulltypename.to_string()),
+        };
+        let statements = match &function_ast.fullfunctionbody {
+            parse::FullFunctionBody::FunctionBody(body) => body.statements.clone(),
+            parse::FullFunctionBody::AssignFunction(assign) => {
+                vec![parse::Statement::Assignables(parse::AssignableStatement {
+                    assignables: assign.assignables.clone(),
+                    semicolon: ";".to_string(),
+                })]
+            }
+        };
+        let function = Function {
+            name,
+            args,
+            rettype,
+            statements,
+        };
         scope.functions.insert(function.name.clone(), function);
         Ok(())
     }
@@ -151,14 +191,22 @@ impl Handler {
                     Some(name) => name.clone(),
                     None => format!(":::on:::{}", &handler_ast.eventname).to_string(), // Impossible for users to write, so no collisions ever
                 };
-                let function = Function { name: name.clone() }; // TODO: Proper function loading, particularly if not properly named, since that's legal for event functions
-                scope.functions.insert(name.clone(), function);
+                let _ = Function::from_ast_with_name(scope, function, name.clone());
                 name
             }
             parse::Handler::FnName(name) => name.clone(),
-            parse::Handler::FunctionBody(_) => {
+            // This is the *only* place where a function body can just be passed in without the
+            // "proper" `fn` declaration prior (at least right now), so just keeping the weird
+            // Function object initialization in here instead of as a new method on the Function
+            // type.
+            parse::Handler::FunctionBody(body) => {
                 let name = format!(":::on:::{}", &handler_ast.eventname).to_string();
-                let function = Function { name: name.clone() }; // TODO: Proper function loading
+                let function = Function {
+                    name: name.clone(),
+                    args: Vec::new(),
+                    rettype: None,
+                    statements: body.statements.clone(),
+                };
                 scope.functions.insert(name.clone(), function);
                 name
             }
