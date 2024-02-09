@@ -1,7 +1,4 @@
-use std::fs::read_to_string;
-
 use clap::{Parser, Subcommand};
-use parse::get_ast;
 use program::Program;
 
 mod parse;

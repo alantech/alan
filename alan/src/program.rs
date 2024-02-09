@@ -1,4 +1,5 @@
 use std::fs::read_to_string;
+use std::pin::Pin;
 
 use crate::parse;
 
@@ -7,71 +8,132 @@ use ordered_hash_map::OrderedHashMap;
 #[derive(Debug)]
 pub struct Program {
     entry_file: String,
-    files: OrderedHashMap<String, String>,
-    scopes_by_file: OrderedHashMap<String, Scope>,
+    scopes_by_file: OrderedHashMap<String, (Pin<Box<String>>, parse::Ln, Scope)>,
 }
 
 impl Program {
     pub fn new(entry_file: String) -> Result<Program, Box<dyn std::error::Error>> {
         let mut p = Program {
-            entry_file,
-            files: OrderedHashMap::new(),
+            entry_file: entry_file.clone(),
             scopes_by_file: OrderedHashMap::new(),
         };
-        match p.load(p.entry_file.clone()) {
-            Ok(_) => {}
+        p = match p.load(entry_file) {
+            Ok(p) => p,
             Err(_) => {
                 return Err("Failed to load entry file".into());
             }
-        }
+        };
         Ok(p)
     }
 
-    pub fn load(&mut self, entry_file: String) -> Result<(), Box<dyn std::error::Error + '_>> {
-        let ln_file = read_to_string(&entry_file)?;
-        self.files.insert(entry_file.clone(), ln_file);
-        let ln_ast = parse::get_ast(&self.files.get(&entry_file).unwrap())?;
-        let scope = Scope::from_ast(ln_ast)?;
-        self.scopes_by_file.insert(entry_file.clone(), scope);
-        Ok(())
+    pub fn load(self, path: String) -> Result<Program, Box<dyn std::error::Error>> {
+        let ln_src = read_to_string(&path)?;
+        let (mut p, tuple) = Scope::from_src(self, &path, ln_src)?;
+        p.scopes_by_file.insert(path, tuple);
+        Ok(p)
     }
 }
 
 #[derive(Debug)]
 struct Scope {
+    imports: OrderedHashMap<String, Import>,
     types: OrderedHashMap<String, Type>,
     consts: OrderedHashMap<String, Const>,
     functions: OrderedHashMap<String, Function>,
     handlers: OrderedHashMap<String, Handler>,
     // TODO: Implement these other concepts
-    // operatormappings: Vec<OperatorMapping>,
-    // events: Vec<Event>,
-    // interfaces: Vec<Interface>,
-    // imported: Vec<Scope>, TODO: Will need a wrapper type to indicate which things are imported,
-    // whether the imported scope is given a name wrapping the imports or if fields are imported
-    // directly, and if any of the imported fields are renamed
-    // exported: Scope,
+    // operatormappings: OrderedHashMap<String, OperatorMapping>,
+    // events: OrderedHashMap<String, Event>,
+    // interfaces: OrderedHashMap<String, Interface>,
+    // exports: Scope,
     // Should we include something for documentation? Maybe testing?
 }
 
 impl Scope {
-    fn from_ast(ast: parse::Ln) -> Result<Scope, Box<dyn std::error::Error>> {
-        // TODO: Implement imports
+    fn from_src(
+        program: Program,
+        path: &String,
+        src: String,
+    ) -> Result<(Program, (Pin<Box<String>>, parse::Ln, Scope)), Box<dyn std::error::Error>> {
+        let txt = Box::pin(src);
+        let txt_ptr: *const str = &**txt;
+        // *How* would this move, anyways? But TODO: See if there's a way to handle this safely
+        let ast = unsafe { parse::get_ast(&*txt_ptr)? };
         let mut s = Scope {
+            imports: OrderedHashMap::new(),
             types: OrderedHashMap::new(),
             consts: OrderedHashMap::new(),
             functions: OrderedHashMap::new(),
             handlers: OrderedHashMap::new(),
         };
+        let mut p = program;
+        for i in ast.imports.iter() {
+            p = Import::from_ast(p, path.clone(), &mut s, i)?;
+        }
         for element in ast.body.iter() {
             match element {
                 parse::RootElements::Types(t) => Type::from_ast(&mut s, t)?,
                 parse::RootElements::Handlers(h) => Handler::from_ast(&mut s, h)?,
                 parse::RootElements::Functions(f) => Function::from_ast(&mut s, f)?,
+                parse::RootElements::ConstDeclaration(c) => Const::from_ast(&mut s, c)?,
                 _ => println!("TODO"),
             }
         }
-        Ok(s)
+        //program.scopes_by_file.insert(path, (txt, ast, s));
+        Ok((p, (txt, ast, s)))
+        //Ok(())
+    }
+}
+
+// import ./foo
+// import ./foo as bar
+// from ./foo import bar
+// from ./foo import bar as baz
+
+#[derive(Debug)]
+enum ImportType {
+    Standard(String),
+    Fields(Vec<(String, String)>),
+}
+
+#[derive(Debug)]
+struct Import {
+    source_scope_name: String,
+    import_type: ImportType,
+}
+
+impl Import {
+    fn from_ast(
+        program: Program,
+        path: String,
+        scope: &mut Scope,
+        import_ast: &parse::ImportStatement,
+    ) -> Result<Program, Box<dyn std::error::Error>> {
+        match &import_ast {
+            parse::ImportStatement::Standard(s) => {
+                // First, get the path for the code
+                let ln_file = s.dependency.resolve(path)?;
+                let exists = match &program.scopes_by_file.get(&ln_file) {
+                    Some(_) => true,
+                    None => false,
+                };
+                let mut p = program;
+                if !exists {
+                    // Need to load this file into the program first
+                    p = p.load(ln_file.clone())?;
+                }
+                let i = Import {
+                    source_scope_name: ln_file.clone(),
+                    import_type: ImportType::Standard(ln_file.clone()),
+                };
+                scope.imports.insert(ln_file, i);
+                Ok(p)
+            }
+            parse::ImportStatement::From(f) => {
+                // TODO
+                Ok(program)
+            }
+        }
     }
 }
 
@@ -106,13 +168,36 @@ impl Type {
 
 #[derive(Debug)]
 struct Const {
-    todo: String,
+    name: String,
+    typename: Option<String>,
+    assignables: Vec<parse::WithOperators>,
+}
+
+impl Const {
+    fn from_ast(
+        scope: &mut Scope,
+        const_ast: &parse::ConstDeclaration,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let name = const_ast.variable.clone();
+        let typename = match &const_ast.typedec {
+            Some(typedec) => Some(typedec.fulltypename.to_string()),
+            None => None,
+        };
+        let assignables = const_ast.assignables.clone();
+        let c = Const {
+            name,
+            typename,
+            assignables,
+        };
+        scope.consts.insert(c.name.clone(), c);
+        Ok(())
+    }
 }
 
 #[derive(Debug)]
 struct Function {
     name: String,
-    args: Vec<(String, String)>,
+    args: Vec<(String, String)>, // Making everything Stringly-typed kinda sucks, but no good way to give an error message in the parser for unknown types otherwise
     rettype: Option<String>,
     statements: Vec<parse::Statement>, // TODO: Do we need to wrap this, or is the AST fine here?
 }

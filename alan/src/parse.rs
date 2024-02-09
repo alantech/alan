@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use nom::{
     branch::alt,
     bytes::complete::{tag, take},
@@ -565,16 +567,39 @@ named_and!(curdir: CurDir =>
     slash: String as slash,
     depsegments: Vec<String> as depsegments,
 );
+impl CurDir {
+    fn to_string(&self) -> String {
+        format!("./{}", self.depsegments.join("/"))
+    }
+}
 named_and!(pardir: ParDir =>
     par: String as par,
     slash: String as slash,
     depsegments: Vec<String> as depsegments,
 );
+impl ParDir {
+    fn to_string(&self) -> String {
+        format!("../{}", self.depsegments.join("/"))
+    }
+}
 named_or!(localdependency: LocalDependency => CurDir: CurDir as curdir, ParDir: ParDir as pardir);
+impl LocalDependency {
+    fn to_string(&self) -> String {
+        match &self {
+            LocalDependency::CurDir(c) => c.to_string(),
+            LocalDependency::ParDir(p) => p.to_string(),
+        }
+    }
+}
 named_and!(globaldependency: GlobalDependency =>
     at: String as at,
     depsegments: Vec<String> as depsegments,
 );
+impl GlobalDependency {
+    fn to_string(&self) -> String {
+        format!("@{}", self.depsegments.join("/"))
+    }
+}
 // This one is kinda complex, so let's take a look at it
 named_or!(dependency: Dependency =>
     Local: LocalDependency as localdependency,
@@ -594,6 +619,45 @@ test!(dependency =>
     pass "@foo";
     pass "@foo/bar";
 );
+impl Dependency {
+    pub fn resolve(&self, curr_file: String) -> Result<String, Box<dyn std::error::Error>> {
+        match &self {
+            Dependency::Local(l) => {
+                let path = PathBuf::from(curr_file)
+                    .parent()
+                    .unwrap()
+                    .join(l.to_string())
+                    .canonicalize()?;
+                Ok(path.to_string_lossy().to_string())
+            }
+            Dependency::Global(g) => {
+                let path = PathBuf::from("./dependencies")
+                    .join(g.depsegments.join("/"))
+                    .canonicalize()?;
+                Ok(path.to_string_lossy().to_string())
+            }
+        }
+    }
+
+    pub fn varname(&self) -> Result<String, Box<dyn std::error::Error>> {
+        match &self {
+            Dependency::Local(l) => match PathBuf::from(l.to_string()).file_stem() {
+                Some(pb) => Ok(pb.to_string_lossy().to_string()),
+                None => Err("Invalid path".into()),
+            },
+            Dependency::Global(g) => {
+                match PathBuf::from("./dependencies")
+                    .join(g.depsegments.join("/"))
+                    .canonicalize()?
+                    .file_stem()
+                {
+                    Some(pb) => Ok(pb.to_string_lossy().to_string()),
+                    None => Err("Invalid path".into()),
+                }
+            }
+        }
+    }
+}
 named_and!(standardimport: StandardImport =>
     import: String as import,
     a: String as blank,
