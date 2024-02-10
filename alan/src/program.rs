@@ -5,10 +5,13 @@ use crate::parse;
 
 use ordered_hash_map::OrderedHashMap;
 
+// This data structure should allow file-level reloading, which we can probably use as a rough
+// approximation for iterative recompliation and language server support, and since Rust is fast,
+// this might just be "good enough" assuming non-insane source file sizes.
 #[derive(Debug)]
 pub struct Program {
-    entry_file: String,
-    scopes_by_file: OrderedHashMap<String, (Pin<Box<String>>, parse::Ln, Scope)>,
+    pub entry_file: String,
+    pub scopes_by_file: OrderedHashMap<String, (Pin<Box<String>>, parse::Ln, Scope)>,
 }
 
 impl Program {
@@ -35,12 +38,12 @@ impl Program {
 }
 
 #[derive(Debug)]
-struct Scope {
-    imports: OrderedHashMap<String, Import>,
-    types: OrderedHashMap<String, Type>,
-    consts: OrderedHashMap<String, Const>,
-    functions: OrderedHashMap<String, Function>,
-    handlers: OrderedHashMap<String, Handler>,
+pub struct Scope {
+    pub imports: OrderedHashMap<String, Import>,
+    pub types: OrderedHashMap<String, Type>,
+    pub consts: OrderedHashMap<String, Const>,
+    pub functions: OrderedHashMap<String, Function>,
+    pub handlers: OrderedHashMap<String, Handler>,
     // TODO: Implement these other concepts
     // operatormappings: OrderedHashMap<String, OperatorMapping>,
     // events: OrderedHashMap<String, Event>,
@@ -76,6 +79,7 @@ impl Scope {
                 parse::RootElements::Handlers(h) => Handler::from_ast(&mut s, h)?,
                 parse::RootElements::Functions(f) => Function::from_ast(&mut s, f)?,
                 parse::RootElements::ConstDeclaration(c) => Const::from_ast(&mut s, c)?,
+                parse::RootElements::Whitespace(_) => { /* Do nothing */ },
                 _ => println!("TODO"),
             }
         }
@@ -91,15 +95,15 @@ impl Scope {
 // from ./foo import bar as baz
 
 #[derive(Debug)]
-enum ImportType {
+pub enum ImportType {
     Standard(String),
     Fields(Vec<(String, String)>),
 }
 
 #[derive(Debug)]
-struct Import {
-    source_scope_name: String,
-    import_type: ImportType,
+pub struct Import {
+    pub source_scope_name: String,
+    pub import_type: ImportType,
 }
 
 impl Import {
@@ -129,7 +133,7 @@ impl Import {
                 scope.imports.insert(ln_file, i);
                 Ok(p)
             }
-            parse::ImportStatement::From(f) => {
+            parse::ImportStatement::From(_f) => {
                 // TODO
                 Ok(program)
             }
@@ -138,15 +142,15 @@ impl Import {
 }
 
 #[derive(Debug)]
-enum TypeType {
+pub enum TypeType {
     Structlike(parse::TypeBody),
     Alias(parse::FullTypename),
 }
 
 #[derive(Debug)]
-struct Type {
-    typename: parse::FullTypename,
-    typetype: TypeType,
+pub struct Type {
+    pub typename: parse::FullTypename,
+    pub typetype: TypeType,
 }
 
 impl Type {
@@ -167,10 +171,10 @@ impl Type {
 }
 
 #[derive(Debug)]
-struct Const {
-    name: String,
-    typename: Option<String>,
-    assignables: Vec<parse::WithOperators>,
+pub struct Const {
+    pub name: String,
+    pub typename: Option<String>,
+    pub assignables: Vec<parse::WithOperators>,
 }
 
 impl Const {
@@ -195,11 +199,11 @@ impl Const {
 }
 
 #[derive(Debug)]
-struct Function {
-    name: String,
-    args: Vec<(String, String)>, // Making everything Stringly-typed kinda sucks, but no good way to give an error message in the parser for unknown types otherwise
-    rettype: Option<String>,
-    statements: Vec<parse::Statement>, // TODO: Do we need to wrap this, or is the AST fine here?
+pub struct Function {
+    pub name: String,
+    pub args: Vec<(String, String)>, // Making everything Stringly-typed kinda sucks, but no good way to give an error message in the parser for unknown types otherwise
+    pub rettype: Option<String>,
+    pub statements: Vec<parse::Statement>, // TODO: Do we need to wrap this, or is the AST fine here?
 }
 
 impl Function {
@@ -258,9 +262,9 @@ impl Function {
 }
 
 #[derive(Debug)]
-struct Handler {
-    eventname: String,
-    functionname: String,
+pub struct Handler {
+    pub eventname: String,
+    pub functionname: String,
 }
 
 impl Handler {

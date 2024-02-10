@@ -1,6 +1,8 @@
 use clap::{Parser, Subcommand};
 use program::Program;
+use lntors::lntors;
 
+mod lntors;
 mod parse;
 mod program;
 
@@ -20,7 +22,7 @@ enum Commands {
     Compile {
         #[arg(
             value_name = "LN_FILE",
-            help = ".ln source file to compile. ./index.ln if not specified",
+            help = ".ln source file to compile.",
             default_value = "./index.ln"
         )]
         file: String,
@@ -29,7 +31,7 @@ enum Commands {
     Install {
         #[arg(
             value_name = "DEP_FILE",
-            help = "The .ln install script to run and install the necessary dependencies into /dependences. ./.dependencies.ln if not specified",
+            help = "The .ln install script to run and install the necessary dependencies into /dependences",
             default_value = "./.dependencies.ln"
         )]
         file: String,
@@ -38,10 +40,18 @@ enum Commands {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Cli::parse();
-    println!("{:?}", args);
     if let Some(file) = args.file {
         let program = Program::new(file)?;
         println!("{:?}", program);
+    } else {
+        match &args.commands {
+            Some(Commands::Compile { file }) => {
+                println!("{}", lntors(file.to_string())?);
+            },
+            _ => {
+                return Err("Command not yet supported".into());
+            }
+        }
     }
     Ok(())
 }
