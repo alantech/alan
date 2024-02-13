@@ -1,7 +1,8 @@
 use clap::{Parser, Subcommand};
 use program::Program;
-use lntors::lntors;
+use compile::compile;
 
+mod compile;
 mod lntors;
 mod parse;
 mod program;
@@ -43,15 +44,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(file) = args.file {
         let program = Program::new(file)?;
         println!("{:?}", program);
+        Ok(())
     } else {
         match &args.commands {
-            Some(Commands::Compile { file }) => {
-                println!("{}", lntors(file.to_string())?);
-            },
-            _ => {
-                return Err("Command not yet supported".into());
-            }
+            Some(Commands::Compile { file }) => Ok(compile(file.to_string())?),
+            _ => Err("Command not yet supported".into()),
         }
     }
-    Ok(())
 }
