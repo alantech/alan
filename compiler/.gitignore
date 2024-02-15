@@ -1,7 +1,0 @@
-node_modules/
-bundle.js
-browser/stdlibs.json
-.idea
-std/
-dist/
-out.*
