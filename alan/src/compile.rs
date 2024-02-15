@@ -28,3 +28,25 @@ pub fn compile(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
     remove_file(tmp_file)?;
     Ok(())
 }
+
+#[cfg(test)]
+mod test_compile {
+    #[test]
+    fn hello_world() -> Result<(), Box<dyn std::error::Error>> {
+        // Simple Hello, World app test
+        // TODO: Switch to proposed fully-qualified function export instead of event-based start
+        super::write("./hello.ln", r#"
+            on start {
+                print("Hello, World!");
+            }
+        "#)?;
+        assert_eq!((), super::compile("./hello.ln".to_string())?);
+        // Confirm the generated binary does what it should
+        let hello_world = String::from_utf8(super::Command::new("./hello").output()?.stdout)?;
+        // Drop the generated files first just in case
+        super::remove_file("./hello.ln")?;
+        super::remove_file("./hello")?;
+        assert_eq!("Hello, World!\n", &hello_world);
+        Ok(())
+    }
+}
