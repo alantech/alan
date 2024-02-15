@@ -980,7 +980,7 @@ named_and!(assignfunction: AssignFunction =>
 named_and!(bindfunction: BindFunction =>
     binds: String as binds,
     a: String as blank,
-    rustfunc: String as variable, // TODO: Support methods for a particular type somehow?
+    rustfunc: String as and!(variable, opt(token!("!"))), // TODO: Support methods for a particular type somehow?
     b: String as optsemicolon,
 );
 named_or!(fullfunctionbody: FullFunctionBody =>
@@ -1014,6 +1014,7 @@ named_and!(functions: Functions =>
 test!(functions =>
     pass "fn newHashMap(firstKey: Hashable, firstVal: any): HashMap<Hashable, any> { // TODO: Rust-like fn::<typeA, typeB> syntax?\n  let hm = new HashMap<Hashable, any> {\n    keyVal: new Array<KeyVal<Hashable, any>> [],\n    lookup: new Array<Array<int64>> [ new Array<int64> [] ] * 128, // 1KB of space\n  };\n  return hm.set(firstKey, firstVal);\n}" => "";
     pass "fn foo binds foo;" => "";
+    pass "fn print(val: String) binds println!;" => "";
 );
 named_or!(blocklike: Blocklike =>
     Functions: Functions as functions,
