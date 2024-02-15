@@ -1,5 +1,5 @@
 .idea
-alan/target/
+target/
 shellspec/
 bdd/node_modules/
 bdd/temp.*
