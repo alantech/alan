@@ -145,6 +145,7 @@ impl Import {
 pub enum TypeType {
     Structlike(parse::TypeBody),
     Alias(parse::FullTypename),
+    Bind(parse::FullTypename),
 }
 
 #[derive(Debug)]
@@ -163,6 +164,7 @@ impl Type {
             typetype: match &type_ast.typedef {
                 parse::TypeDef::TypeBody(body) => TypeType::Structlike(body.clone()),
                 parse::TypeDef::TypeAlias(alias) => TypeType::Alias(alias.fulltypename.clone()),
+                parse::TypeDef::TypeBind(bind) => TypeType::Bind(bind.rusttypename.clone()),
             },
         };
         scope.types.insert(t.typename.to_string(), t);
@@ -204,6 +206,7 @@ pub struct Function {
     pub args: Vec<(String, String)>, // Making everything Stringly-typed kinda sucks, but no good way to give an error message in the parser for unknown types otherwise
     pub rettype: Option<String>,
     pub statements: Vec<parse::Statement>, // TODO: Do we need to wrap this, or is the AST fine here?
+    pub bind: Option<String>,
 }
 
 impl Function {
@@ -248,13 +251,19 @@ impl Function {
                     assignables: assign.assignables.clone(),
                     semicolon: ";".to_string(),
                 })]
-            }
+            },
+            parse::FullFunctionBody::BindFunction(_) => Vec::new(),
+        };
+        let bind = match &function_ast.fullfunctionbody {
+            parse::FullFunctionBody::BindFunction(b) => Some(b.rustfunc.clone()),
+            _ => None,
         };
         let function = Function {
             name,
             args,
             rettype,
             statements,
+            bind,
         };
         scope.functions.insert(function.name.clone(), function);
         Ok(())
@@ -295,10 +304,12 @@ impl Handler {
                     args: Vec::new(),
                     rettype: None,
                     statements: body.statements.clone(),
+                    bind: None,
                 };
                 scope.functions.insert(name.clone(), function);
                 name
-            }
+            },
+            // TODO: Should you be allowed to bind a Rust function as a handler directly?
         };
         let h = Handler {
             eventname: handler_ast.eventname.clone(),

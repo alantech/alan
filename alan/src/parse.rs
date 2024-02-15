@@ -35,8 +35,9 @@ macro_rules! token {
     };
 }
 
-/// The `not` macro matches anything except the string in question. It behaves *very differently*
-/// to nom's `is_not` function, which is more like an inverse `charset`
+/// The `not` macro matches anything except the string in question for the same length as the
+/// string. It behaves *very differently* to nom's `is_not` function, which is more like an
+/// inverse `charset`
 macro_rules! not {
     ( $str:expr ) => {
         (|input| match tag::<&str, &str, Error<&str>>($str)(input) {
@@ -208,7 +209,7 @@ macro_rules! opt_string {
 }
 
 /// If I'm gonna have in-file unit tests, let's have them as absolutely close as possible to the
-/// relevant functions, yeah? This macro makes a mod and a unit test a single statemnt. The
+/// relevant functions, yeah? This macro makes a mod and a unit test a single statement. The
 /// following macros help make super brief unit tests. Usage:
 /// test!(parser_function =>
 ///   fail "input that causes failure",
@@ -262,6 +263,11 @@ macro_rules! fail {
         }
     };
 }
+
+// Begin defining the nom functions to parse Alan code. This is pretty dense code. If you read it
+// top-to-bottom, it mostly follows a leaf-to-root ordering of nodes (but some cycles exist in this
+// grammar, so it's not just a simple DAG). You may want to scroll to the bottom of the file and
+// start from the `get_ast` function to see how it all comes together conceptually.
 
 build!(space, token!(" "));
 // There won't be a test case for *every* token function, just validating they work as expected
@@ -451,6 +457,7 @@ build!(typen, token!("type"));
 build!(import, token!("import"));
 build!(from, token!("from"));
 build!(fnn, token!("fn"));
+build!(binds, token!("binds"));
 build!(quote, token!("'"));
 build!(doublequote, token!("\""));
 build!(escapequote, token!("\\'"));
@@ -745,13 +752,27 @@ named_and!(typealias: TypeAlias =>
     b: String as blank,
     fulltypename: FullTypename as fulltypename,
 );
-named_or!(typedef: TypeDef => TypeBody: TypeBody as typebody, TypeAlias: TypeAlias as typealias);
+named_and!(typebind: TypeBind =>
+    binds: String as binds,
+    a: String as blank,
+    rusttypename: FullTypename as fulltypename, // TODO: 100% correct Rust type declaration
+);
+named_or!(typedef: TypeDef =>
+    TypeBody: TypeBody as typebody,
+    TypeAlias: TypeAlias as typealias,
+    TypeBind: TypeBind as typebind,
+);
 named_and!(types: Types =>
     a: String as typen,
     b: String as blank,
     fulltypename: FullTypename as fulltypename,
     c: String as optwhitespace,
     typedef: TypeDef as typedef,
+);
+test!(types =>
+    pass "type Foo {\n  bar: String,\n}";
+    pass "type Foo = Bar";
+    pass "type Result<T, Error> binds Result<T, Error>";
 );
 named_or!(constants: Constants =>
     Bool: String as booln,
@@ -956,9 +977,16 @@ named_and!(assignfunction: AssignFunction =>
     assignables: Vec<WithOperators> as assignables,
     b: String as optsemicolon,
 );
+named_and!(bindfunction: BindFunction =>
+    binds: String as binds,
+    a: String as blank,
+    rustfunc: String as variable, // TODO: Support methods for a particular type somehow?
+    b: String as optsemicolon,
+);
 named_or!(fullfunctionbody: FullFunctionBody =>
     FunctionBody: FunctionBody as functionbody,
     AssignFunction: AssignFunction as assignfunction,
+    BindFunction: BindFunction as bindfunction,
 );
 named_and!(args: Args =>
     openparen: String as openparen,
@@ -985,6 +1013,7 @@ named_and!(functions: Functions =>
 );
 test!(functions =>
     pass "fn newHashMap(firstKey: Hashable, firstVal: any): HashMap<Hashable, any> { // TODO: Rust-like fn::<typeA, typeB> syntax?\n  let hm = new HashMap<Hashable, any> {\n    keyVal: new Array<KeyVal<Hashable, any>> [],\n    lookup: new Array<Array<int64>> [ new Array<int64> [] ] * 128, // 1KB of space\n  };\n  return hm.set(firstKey, firstVal);\n}" => "";
+    pass "fn foo binds foo;" => "";
 );
 named_or!(blocklike: Blocklike =>
     Functions: Functions as functions,
@@ -1433,6 +1462,10 @@ test!(ln =>
 );
 
 pub fn get_ast(input: &str) -> Result<Ln, nom::Err<nom::error::Error<&str>>> {
+    // We wrap the `ln` root parser in `all_consuming` to cause an error if there's unexpected
+    // cruft at the end of the input, which we consider a syntax error at compile time. An LSP
+    // would probably use `ln` directly, instead, so new lines/functions/etc the user is currently
+    // writing don't trip things up.
     match all_consuming(ln)(input) {
         Ok((_, out)) => Ok(out),
         Err(e) => Err(e),
@@ -1445,4 +1478,5 @@ test!(get_ast =>
     pass " ";
     fail "import ./foo";
     pass "import ./foo\n";
+    pass "export fn main {\n  print('Hello, World!');\n}";
 );
