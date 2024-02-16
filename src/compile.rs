@@ -1779,3 +1779,70 @@ length test
 "#;
 );
 */
+
+// Generics
+
+test!(generics => r#"
+    from @std/app import start, print, exit
+
+    type box<V> {
+      set: bool,
+      val: V
+    }
+
+    on start fn {
+      let int8Box = new box<int8> {
+        val: 8.toInt8(),
+        set: true
+      };
+      print(int8Box.val);
+      print(int8Box.set);
+
+      let stringBox = new box<string> {
+        val: 'hello, generics!',
+        set: true
+      };
+      print(stringBox.val);
+      print(stringBox.set);
+
+      const stringBoxBox = new box<box<string>> {
+        val: new box<string> {
+          val: 'hello, nested generics!',
+          set: true
+        },
+        set: true
+      };
+      stringBoxBox.set.print();
+      stringBoxBox.val.set.print();
+      print(stringBoxBox.val.val);
+
+      emit exit 0;
+    }"#;
+    stdout r#"8
+true
+hello, generics!
+true
+true
+true
+hello, nested generics!
+"#;
+);
+test!(invalid_generics => r#"
+    from @std/app import start, print, exit
+
+    type box<V> {
+      set: bool,
+      val: V
+    }
+
+    on start fn {
+      let stringBox = new box<string> {
+        set: true,
+        val: 'str'
+      };
+      stringBox.val = 8;
+
+      emit exit 0;
+    }"#;
+    stderr "stringBox.val is of type string but assigned a value of type int64\n"
+);
