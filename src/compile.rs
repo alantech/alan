@@ -1163,3 +1163,116 @@ to barto bar3
 10
 "#;
 );
+
+// Conditionals
+
+test!(basic_conditionals => r#"
+    from @std/app import start, print, exit
+
+    fn bar() {
+      print('bar!');
+    }
+
+    fn baz() {
+      print('baz!');
+    }
+
+    on start {
+      if 1 == 0 {
+        print('What!?');
+      } else {
+        print('Math is sane...');
+      }
+
+      if 1 == 0 {
+        print('Not this again...');
+      } else if 1 == 2 {
+        print('Still wrong...');
+      } else {
+        print('Math is still sane, for now...');
+      }
+
+      const foo: bool = true == true;
+      if foo bar else baz
+
+      const isTrue = true == true;
+      cond(isTrue, fn {
+        print(\"It's true!\");
+      });
+      cond(!isTrue, fn {
+        print('This should not have run');
+      });
+
+      emit exit 0;
+    }"#;
+    stdout r#"Math is sane...
+Math is still sane, for now...
+bar!
+It's true!
+"#;
+);
+test!(nested_conditionals => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      if true {
+        print(1);
+        if 1 == 2 {
+          print('What?');
+        } else {
+          print(2);
+          if 2 == 1 {
+            print('Uhh...');
+          } else if 2 == 2 {
+            print(3);
+          } else {
+            print('Nope');
+          }
+        }
+      } else {
+        print('Hmm');
+      }
+      emit exit 0;
+    }"#;
+    stdout "1\n2\n3\n";
+);
+test!(early_return => r#"
+    from @std/app import start, print, exit
+
+    fn nearOrFar(distance: float64): string {
+      if distance < 5.0 {
+        return 'Near!';
+      } else {
+        return 'Far!';
+      }
+    }
+
+    on start {
+      print(nearOrFar(3.14));
+      print(nearOrFar(6.28));
+
+      emit exit 0;
+    }"#;
+    stdout "Near!\nFar!\n";
+);
+/* Dropping the ternary operators since either they behave consistently with other operators and
+ * are therefore unexpected for end users, or they are inconsistent and a whole lot of pain is
+ * needed to support them. */
+test!(conditional_let_assignment => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      let a = 0;
+      let b = 1;
+      let c = 2;
+
+      if true {
+        a = b;
+      } else {
+        a = c;
+      }
+      print(a);
+      emit exit 0;
+    }"#;
+    stdout "1\n";
+);
