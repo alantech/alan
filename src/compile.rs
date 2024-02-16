@@ -2280,3 +2280,192 @@ string
 2
 "#;
 );
+
+// Types
+
+test!(user_types_and_generics => r#"
+    from @std/app import start, print, exit
+
+    type foo<A, B> {
+      bar: A,
+      baz: B
+    }
+
+    type foo2 = foo<int64, float64>
+
+    on start fn {
+      let a = new foo<string, int64> {
+        bar: 'bar',
+        baz: 0
+      };
+      let b = new foo<int64, bool> {
+        bar: 0,
+        baz: true
+      };
+      let c = new foo2 {
+        bar: 0,
+        baz: 1.23
+      };
+      let d = new foo<int64, float64> {
+        bar: 1,
+        baz: 3.14
+      };
+      print(a.bar);
+      print(b.bar);
+      print(c.bar);
+      print(d.bar);
+
+      emit exit 0;
+    }"#;
+    stdout "bar\n0\n0\n1\n";
+);
+/* Pending multi-file support
+ *
+  Describe "using non-imported type returned by imported function"
+    before() {
+      sourceToTemp "
+        from @std/app import start, exit
+        from @std/http import fetch, Request
+
+        on start {
+          arghFn('{\"test\":\"test\"}');
+          emit exit 0;
+        }
+
+        fn arghFn(arghStr: string) {
+          fetch(new Request {
+              method: 'POST',
+              url: 'https://reqbin.com/echo/post/json',
+              headers: newHashMap('Content-Length', arghStr.length().toString()),
+              body: arghStr,
+            });
+        }
+      "
+      sourceToFile test_server.js "
+        const http = require('http');
+
+        http.createServer((req, res) => {
+          console.log('received');
+          res.end('Hello, world!');
+        }).listen(8088);
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    afterEach() {
+      kill $PID1
+      wait $PID1 2>/dev/null
+      # kill $PID2
+      # wait $PID2 2>/dev/null
+      return 0
+    }
+    After afterEach
+
+    It "runs js"
+      Pending unimported-types-returned-by-imported-functions
+      node test_$$/test_server.js 1>test_$$/test_server.js.out 2>/dev/null &
+      PID1=$!
+      # node test_$$/temp.js 1>/dev/null &
+      # PID2=$!
+      sleep 1
+      When run cat test_$$/test_server.js.out
+      The output should eq "received"
+    End
+
+    It "runs agc"
+      Pending unimported-types-returned-by-imported-functions
+      node test_$$/test_server.js 1>test_$$/test_server.agc.out 2>/dev/null &
+      PID1=$!
+      # alan run test_$$/temp.agc 1>/dev/null 2>/dev/null  &
+      # PID2=$!
+      sleep 1
+      When run cat test_$$/test_server.agc.out
+      The output should eq "received"
+    End
+  End
+*/
+
+// Custom Events
+
+test!(custom_event_loop => r#"
+    from @std/app import start, print, exit
+
+    event loop: int64
+
+    on loop fn looper(val: int64) {
+      print(val);
+      if val >= 10 {
+        emit exit 0;
+      } else {
+        emit loop val + 1 || 0;
+      }
+    }
+
+    on start {
+      emit loop 0;
+    }"#;
+    stdout r#"0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+"#;
+);
+test!(user_defined_type_event => r#"
+    from @std/app import start, print, exit
+
+    type Thing {
+      foo: int64,
+      bar: string
+    }
+
+    event thing: Thing
+
+    on thing fn (t: Thing) {
+      print(t.foo);
+      print(t.bar);
+      emit exit 0;
+    }
+
+    on start {
+      emit thing new Thing {
+        foo: 1,
+        bar: 'baz'
+      };
+    }"#;
+    stdout "1\nbaz\n";
+);
+test!(multiple_event_handlers => r#"
+    from @std/app import start, print, exit
+
+    event aString: string
+
+    on aString fn(str: string) {
+      print('hey I got a string! ' + str);
+    }
+
+    on aString fn(str: string) {
+      print('I also got a string! ' + str);
+    }
+
+    on aString fn(ignore: string) {
+      wait(100);
+      emit exit 0;
+    }
+
+    on start {
+      emit aString 'hi';
+    }"#;
+    stdout "hey I got a string! hi\nI also got a string! hi\n"; // TODO: The order is not guaranteed, support that
+);
