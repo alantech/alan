@@ -1394,3 +1394,249 @@ test!(map_support => r#"
     stdout "1\n0\nbaz\n";
 );
 */
+
+// Arrays
+
+test!(array_accessor_and_length => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      print('Testing...');
+      const test = '1,2,3'.split(',');
+      print(test.length());
+      print(test[0]);
+      print(test[1]);
+      print(test[2]);
+      emit exit 0;
+    }"#;
+    stdout r#"Testing...
+3
+1
+2
+3
+"#;
+);
+
+test!(array_literal_syntax => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      print('Testing...');
+      const test = new Array<int64> [ 1, 2, 3 ];
+      print(test[0]);
+      print(test[1]);
+      print(test[2]);
+      const test2 = [ 4, 5, 6 ];
+      print(test2[0]);
+      print(test2[1]);
+      print(test2[2]);
+      emit exit 0;
+    }"#;
+    stdout r#"Testing...
+1
+2
+3
+4
+5
+6
+"#;
+);
+test!(array_mutable_push_pop => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      print('Testing...');
+      let test = new Array<int64> [];
+      test.push(1);
+      test.push(2);
+      test.push(3);
+      print(test[0]);
+      print(test[1]);
+      print(test[2]);
+      print(test.pop());
+      print(test.pop());
+      print(test.pop());
+      print(test.pop()); // Should print error message
+      emit exit 0;
+    }"#;
+    stdout r#"Testing...
+1
+2
+3
+3
+2
+1
+cannot pop empty array
+"#;
+);
+test!(array_length_index_has_join => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      const test = new Array<int64> [ 1, 1, 2, 3, 5, 8 ];
+      const test2 = new Array<string> [ 'Hello', 'World!' ];
+      print('has test');
+      print(test.has(3));
+      print(test.has(4));
+
+      print('length test');
+      test.length().print();
+      print(#test);
+
+      print('index test');
+      test.index(5).print();
+      print(test2 @ 'Hello');
+
+      print('join test');
+      test2.join(', ').print();
+
+      emit exit 0;
+    }"#;
+    stdout r#"has test
+true
+false
+length test
+6
+6
+index test
+4
+0
+join test
+Hello, World!
+"#;
+);
+/* Without the ternary syntax, there is no ternary abuse possible. But a syntax kinda like this
+ * doesn't seem so bad? (Eg `1:2:3` produces an array of [1, 2, 3]. It almost feels like a
+ * replacement for the array literal syntax. */
+test!(array_map => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      const count = [1, 2, 3, 4, 5]; // Ah, ah, ahh!
+      const byTwos = count.map(fn (n: int64): Result<int64> = n * 2);
+      count.map(fn (n: int64) = toString(n)).join(', ').print();
+      byTwos.map(fn (n: Result<int64>) = toString(n)).join(', ').print();
+      emit exit 0;
+    }"#;
+    stdout "1, 2, 3, 4, 5\n2, 4, 6, 8, 10\n";
+);
+test!(array_repeat_and_map_lin => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      const arr = [1, 2, 3] * 3;
+      const out = arr.mapLin(fn (x: int64): string = x.toString()).join(', ');
+      print(out);
+      emit exit 0;
+    }"#;
+    stdout "1, 2, 3, 1, 2, 3, 1, 2, 3\n";
+);
+test!(array_each_and_find => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      const test = [ 1, 1, 2, 3, 5, 8 ];
+      test.find(fn (val: int64): bool = val % 2 == 1).getOr(0).print();
+      test.each(fn (val: int64) = print('=' * val));
+      emit exit 0;
+    }"#;
+    stdout r#"1
+=
+=
+==
+===
+=====
+========
+"#;
+);
+test!(array_every_some_del => r#"
+    from @std/app import start, print, exit
+
+    fn isOdd (val: int64): bool = val % 2 == 1;
+
+    on start {
+      const test = [ 1, 1, 2, 3, 5, 8 ];
+      test.every(isOdd).print();
+      test.some(isOdd).print();
+      print(test.length());
+      print(test.delete(1));
+      print(test.delete(4));
+      print(test.delete(10));
+      emit exit 0;
+    }"#;
+    stdout r#"false
+true
+6
+1
+8
+cannot remove idx 10 from array with length 4
+"#;
+);
+test!(array_reduce_filter_concat => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      const test = [ 1, 1, 2, 3, 5, 8 ];
+      const test2 = [ 4, 5, 6 ];
+      print('reduce test');
+      test.reduce(fn (a: int, b: int): int = a + b || 0).print();
+      test.reduce(min).print();
+      test.reduce(max).print();
+
+      print('filter test');
+      test.filter(fn (val: int64): bool {
+        return val % 2 == 1;
+      }).map(fn (val: int64): string {
+        return toString(val);
+      }).join(', ').print();
+
+      print('concat test');
+      test.concat(test2).map(fn (val: int64): string {
+        return toString(val);
+      }).join(', ').print();
+      (test + test2).map(fn (val: int64): string {
+        return toString(val);
+      }).join(', ').print();
+
+      print('reduce as filter and concat test');
+      // TODO: Lots of improvements needed for closures passed directly to opcodes. This one-liner is ridiculous
+      test.reduce(fn (acc: string, i: int): string = ((acc == '') && (i % 2 == 1)) ? i.toString() : (i % 2 == 1 ? (acc + ', ' + i.toString()) : acc), '').print();
+      // TODO: Even more ridiculous when you want to allow parallelism
+      test.reducePar(fn (acc: string, i: int): string = ((acc == '') && (i % 2 == 1)) ? i.toString() : (i % 2 == 1 ? (acc + ', ' + i.toString()) : acc), fn (acc: string, cur: string): string = ((acc != '') && (cur != '')) ? (acc + ', ' + cur) : (acc != '' ? acc : cur), '').print();
+
+      emit exit 0;
+    }"#;
+    stdout r#"reduce test
+20
+1
+8
+filter test
+1, 1, 3, 5
+concat test
+1, 1, 2, 3, 5, 8, 4, 5, 6
+1, 1, 2, 3, 5, 8, 4, 5, 6
+reduce as filter and concat test
+1, 1, 3, 5
+1, 1, 3, 5
+"#;
+);
+test!(array_custom_types => r#"
+    from @std/app import start, print, exit
+
+    type Foo {
+      foo: string,
+      bar: bool
+    }
+
+    on start {
+      const five = [1, 2, 3, 4, 5];
+      five.map(fn (n: int64): Foo {
+        return new Foo {
+          foo: n.toString(),
+          bar: n % 2 == 0,
+        };
+      }).filter(fn (f: Foo): bool = f.bar).map(fn (f: Foo): string = f.foo).join(', ').print();
+      emit exit 0;
+    }"#;
+    stdout "2, 4\n";
+);
