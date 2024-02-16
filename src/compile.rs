@@ -1276,3 +1276,121 @@ test!(conditional_let_assignment => r#"
     }"#;
     stdout "1\n";
 );
+
+// Object Literals
+
+test!(object_literal_compiler_checks => r#"
+    from @std/app import start, print, exit
+
+    type Foo {
+      bar: string,
+      baz: bool,
+    }
+
+    on start {
+      const foo = new Foo {
+        bay: 1.23,
+      };
+      emit exit 0;
+    }"#;
+    stderr r#"Foo object literal improperly defined
+Missing fields: bar, baz
+Extra fields: bay
+new Foo {
+            bay: 1.23,
+          } on line 2:24
+"#;
+);
+test!(array_literals => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      const test3 = new Array<int64> [ 1, 2, 4, 8, 16, 32, 64 ];
+      print(test3[0]);
+      print(test3[1]);
+      print(test3[2]);
+
+      emit exit 0;
+    }"#;
+    stdout "1\n2\n4\n";
+);
+test!(object_literals => r#"
+    from @std/app import start, print, exit
+
+    type MyType {
+      foo: string,
+      bar: bool,
+    }
+
+    on start {
+      const test = new MyType {
+        foo: 'foo!',
+        bar: true,
+      };
+      print(test.foo);
+      print(test.bar);
+
+      emit exit 0;
+    }"#;
+    stdout "foo!\ntrue\n";
+);
+test!(object_and_array_reassignment => r#"
+    from @std/app import start, print, exit
+
+    type Foo {
+      bar: bool
+    }
+
+    on start {
+      let test = new Array<int64> [ 1, 2, 3 ];
+      print(test[0]);
+      test.set(0, 0);
+      print(test[0]);
+
+      let test2 = new Array<Foo> [
+        new Foo {
+          bar: true
+        },
+        new Foo {
+          bar: false
+        }
+      ];
+      let test3 = test2[0] || new Foo {
+        bar: false
+      };
+      print(test3.bar);
+      test3.bar = false;
+      test2.set(0, test3); // TODO: is the a better way to do nested updates?
+      const test4 = test2[0] || new Foo {
+        bar: true
+      };
+      print(test4.bar);
+
+      emit exit 0;
+    }"#;
+    stdout "1\n0\ntrue\nfalse\n";
+);
+/* Pending
+test!(map_support => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      const test5 = new Map<bool, int64> {
+        true: 1
+        false: 0
+      }
+
+      print(test5[true])
+      print(test5[false])
+
+      let test6 = new Map<string, string> {
+        'foo': 'bar'
+      }
+      test6['foo'] = 'baz'
+      print(test6['foo'])
+
+      emit exit 0
+    }"#;
+    stdout "1\n0\nbaz\n";
+);
+*/
