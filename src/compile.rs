@@ -1110,3 +1110,56 @@ test!(type_coercion_aliases => r#"
     }"#;
     stdout "true\ntrue\n";
 );
+
+// Functions and Custom Operators
+
+test!(functions_and_custom_operators => r#"
+    from @std/app import start, print, exit
+
+    fn foo() {
+      print('foo');
+    }
+
+    fn bar(str: string, a: int64, b: int64): string {
+      return str * a + b.toString();
+    }
+
+    fn baz(pre: string, body: string): void {
+      print(pre + bar(body, 1, 2));
+    }
+
+    // 'int' is an alias for 'int64'
+    fn double(a: int) = a * 2;
+
+    prefix double as ## precedence 10
+
+    /**
+     * It should be possible to write 'doublesum' as:
+     *
+     * fn doublesum(a: int64, b: int64) = ##a + ##b
+     *
+     * but the function definitions are all parsed before the first operator mapping is done.
+     */
+    fn doublesum(a: int64, b: int64) = a.double() + b.double();
+
+    infix doublesum as #+# precedence 11
+
+    on start fn (): void {
+      foo();
+      'to bar'.bar(2, 3).print();
+      '>> '.baz('text here');
+      4.double().print();
+      print(##3);
+      4.doublesum(1).print();
+      print(2 #+# 3);
+      emit exit 0;
+    }"#;
+    stdout r#"foo
+to barto bar3
+>> text here2
+8
+6
+10
+10
+"#;
+);
