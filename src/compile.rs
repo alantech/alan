@@ -3645,3 +3645,32 @@ test!(stderr_event => r#"
     }"#;
     stderr "This is an error";
 );
+
+// @std/cmd
+
+test!(cmd_exec => r#"
+    import @std/app
+    import @std/cmd
+
+    on app.start {
+      const executionResult: cmd.ExecRes = cmd.exec('echo 1');
+      app.print(executionResult.stdout);
+      emit app.exit 0;
+    }"#;
+    stdout "1\n";
+);
+test!(cmd_sequential => r#"
+    from @std/app import start, print, exit
+    from @std/cmd import exec
+
+    on start {
+      exec('touch test.txt');
+      exec('echo foo >> test.txt');
+      exec('echo bar >> test.txt');
+      exec('cat test.txt').stdout.print();
+      exec('rm test.txt');
+
+      emit exit 0;
+    }"#;
+    stdout "foobar\n";
+);
