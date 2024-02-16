@@ -2618,3 +2618,33 @@ new Piece {
     End
   End
 */
+
+// Module-level constants
+
+test!(module_level_constant => r#"
+    import @std/app
+
+    const helloWorld = 'Hello, World!';
+
+    on app.start {
+      app.print(helloWorld);
+      emit app.exit 0;
+    }"#;
+    stdout "Hello, World!\n";
+);
+test!(module_level_constant_from_function_call => r#"
+    from @std/app import start, print, exit
+
+    const three = add(1, 2);
+
+    fn fiver() = 5;
+
+    const five = fiver();
+
+    on start {
+      print(three);
+      print(five);
+      emit exit 0;
+    }"#;
+    stdout "3\n5\n";
+);
