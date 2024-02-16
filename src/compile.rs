@@ -624,3 +624,91 @@ test!(int64_bitwise => r#"
     }"#;
     stdout "0\n3\n6\n-1\n-1\n-4\n-7\n";
 );
+
+test!(boolean_logic => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      print(true);
+      print(false);
+      print(toBool(1));
+      print(toBool(0));
+      print(toBool(15));
+      print(toBool(-1));
+      print(toBool(0.0));
+      print(toBool(1.2));
+      print(toBool(''));
+      print(toBool('hi'));
+
+      print(true && true);
+      print(and(true, false));
+      print(false & true);
+      print(false.and(false));
+
+      print(true || true);
+      print(or(true, false));
+      print(false | true);
+      print(false.or(false));
+
+      print(true ^ true);
+      print(xor(true, false));
+      print(false ^ true);
+      print(false.xor(false));
+
+      print(!true);
+      print(not(false));
+
+      print(true !& true);
+      print(nand(true, false));
+      print(false !& true);
+      false.nand(false).print();
+
+      print(true !| true);
+      print(nor(true, false));
+      print(false !| true);
+      false.nor(false).print();
+
+      print(true !^ true);
+      print(xnor(true, false));
+      print(false !^ true);
+      false.xnor(false).print();
+
+      emit exit 0;
+    }"#;
+    stdout r#"true
+false
+true
+false
+true
+true
+false
+true
+false
+false
+true
+false
+false
+false
+true
+true
+true
+false
+false
+true
+true
+false
+false
+true
+false
+true
+true
+true
+false
+false
+false
+true
+true
+false
+false
+true"#;
+);
