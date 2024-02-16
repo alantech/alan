@@ -154,3 +154,404 @@ test!(stdout_event => r#"
     }"#;
     stdout "Hello, World";
 );
+
+// Basic Math Tests
+
+test!(int8_add => r#"
+    from @std/app import start, exit
+    on start { emit exit add(toInt8(1), toInt8(2)).getOrExit(); }"#;
+    status 3;
+);
+test!(int8_sub => r#"
+    from @std/app import start, exit
+    on start { emit exit sub(toInt8(2), toInt8(1)).getOrExit(); }"#;
+    status 1;
+);
+test!(int8_mul => r#"
+    from @std/app import start, exit
+    on start { emit exit mul(toInt8(2), toInt8(1)).getOrExit(); }"#;
+    status 2;
+);
+test!(int8_div => r#"
+    from @std/app import start, exit
+    on start { emit exit div(toInt8(6), toInt8(2)).getOrExit(); }"#;
+    status 3;
+);
+test!(int8_mod => r#"
+    from @std/app import start, exit
+    on start { emit exit mod(toInt8(6), toInt8(4)); }"#;
+    status 2;
+);
+test!(int8_pow => r#"
+    from @std/app import start, exit
+    on start { emit exit pow(toInt8(6), toInt8(2)).getOrExit(); }"#;
+    status 36;
+);
+test!(int8_min => r#"
+    from @std/app import start, print, exit
+    on start {
+      min(3.toInt8(), 5.toInt8()).print();
+      emit exit 0;
+    }"#;
+    status 3;
+);
+test!(int8_max => r#"
+    from @std/app import start, print, exit
+    on start {
+      max(3.toInt8(), 5.toInt8()).print();
+      emit exit 0;
+    }"#;
+    status 5;
+);
+
+test!(int16_add => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(add(toInt16(1), toInt16(2)));
+      emit exit 0;
+    }"#;
+    stdout "3\n";
+);
+test!(int16_sub => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(sub(toInt16(2), toInt16(1)));
+      emit exit 0;
+    }"#;
+    stdout "1\n";
+);
+test!(int16_mul => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(mul(toInt16(2), toInt16(1)));
+      emit exit 0;
+    }"#;
+    stdout "2\n";
+);
+test!(int16_div => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(div(toInt16(6), toInt16(2)));
+      emit exit 0;
+    }"#;
+    stdout "3\n";
+);
+test!(int16_mod => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(mod(toInt16(6), toInt16(4)));
+      emit exit 0;
+    }"#;
+    stdout "2\n";
+);
+test!(int16_pow => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(pow(toInt16(6), toInt16(2)));
+      emit exit 0;
+    }"#;
+    stdout "36\n";
+);
+test!(int16_min => r#"
+    from @std/app import start, print, exit
+    on start {
+      min(3.toInt16(), 5.toInt16()).print();
+      emit exit 0;
+    }"#;
+    stdout "3\n";
+);
+test!(int16_max => r#"
+    from @std/app import start, print, exit
+    on start {
+      max(3.toInt16(), 5.toInt16()).print();
+      emit exit 0;
+    }"#;
+    stdout "5\n";
+);
+
+test!(int32_add => r#"
+    from @std/app import start, print, exit
+    on start {
+      add(1.toInt32(), 2.toInt32()).print();
+      emit exit 0;
+    }"#;
+    stdout "3\n";
+);
+test!(int32_sub => r#"
+    from @std/app import start, print, exit
+    on start {
+      sub(2.toInt32(), 1.toInt32()).print();
+      emit exit 0;
+    }"#;
+    stdout "1\n";
+);
+test!(int32_mul => r#"
+    from @std/app import start, print, exit
+    on start {
+      mul(2.toInt32(), 1.toInt32()).print();
+      emit exit 0;
+    }"#;
+    stdout "2\n";
+);
+test!(int32_div => r#"
+    from @std/app import start, print, exit
+    on start {
+      div(6.toInt32(), 2.toInt32()).print();
+      emit exit 0;
+    }"#;
+    stdout "3\n";
+);
+test!(int32_mod => r#"
+    from @std/app import start, print, exit
+    on start {
+      mod(6.toInt32(), 4.toInt32()).print();
+      emit exit 0;
+    }"#;
+    stdout "2\n";
+);
+test!(int32_pow => r#"
+    from @std/app import start, print, exit
+    on start {
+      pow(6.toInt32(), 2.toInt32()).print();
+      emit exit 0;
+    }"#;
+    stdout "36\n";
+);
+test!(int32_min => r#"
+    from @std/app import start, print, exit
+    on start {
+      min(3.toInt32(), 5.toInt32()).print();
+      emit exit 0;
+    }"#;
+    stdout "3\n";
+);
+test!(int32_max => r#"
+    from @std/app import start, print, exit
+    on start {
+      max(3.toInt32(), 5.toInt32()).print();
+      emit exit 0;
+    }"#;
+    stdout "5\n";
+);
+
+test!(int64_add => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(1 + 2);
+      emit exit 0;
+    }"#;
+    stdout "3\n";
+);
+test!(int64_sub => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(2 - 1);
+      emit exit 0;
+    }"#;
+    stdout "1\n";
+);
+test!(int64_mul => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(2 * 1);
+      emit exit 0;
+    }"#;
+    stdout "2\n";
+);
+test!(int64_div => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(6 / 2);
+      emit exit 0;
+    }"#;
+    stdout "3\n";
+);
+test!(int64_mod => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(6 % 4);
+      emit exit 0;
+    }"#;
+    stdout "2\n";
+);
+test!(int64_pow => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(6 ** 2);
+      emit exit 0;
+    }"#;
+    stdout "36\n";
+);
+test!(int64_min => r#"
+    from @std/app import start, print, exit
+    on start {
+      min(3, 5).print();
+      emit exit 0;
+    }"#;
+    stdout "3\n";
+);
+test!(int64_max => r#"
+    from @std/app import start, print, exit
+    on start {
+      max(3.toInt64(), 5.toInt64()).print();
+      emit exit 0;
+    }"#;
+    stdout "5\n";
+);
+
+test!(float32_add => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(toFloat32(1) + toFloat32(2));
+      emit exit 0;
+    }"#;
+    stdout "3\n";
+);
+test!(float32_sub => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(toFloat32(2) - toFloat32(1));
+      emit exit 0;
+    }"#;
+    stdout "1\n";
+);
+test!(float32_mul => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(toFloat32(2) * toFloat32(1));
+      emit exit 0;
+    }"#;
+    stdout "2\n";
+);
+test!(float32_div => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(toFloat32(6) / toFloat32(2));
+      emit exit 0;
+    }"#;
+    stdout "3\n";
+);
+test!(float32_sqrt => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(sqrt(toFloat32(36)));
+      emit exit 0;
+    }"#;
+    stdout "6\n";
+);
+test!(float32_pow => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(toFloat32(6) ** toFloat32(2));
+      emit exit 0;
+    }"#;
+    stdout "36\n";
+);
+test!(float32_min => r#"
+    from @std/app import start, print, exit
+    on start {
+      min(3.toFloat32(), 5.toFloat32()).print();
+      emit exit 0;
+    }"#;
+    stdout "3\n";
+);
+test!(float32_max => r#"
+    from @std/app import start, print, exit
+    on start {
+      max(3.toFloat32(), 5.toFloat32()).print();
+      emit exit 0;
+    }"#;
+    stdout "5\n";
+);
+
+test!(float64_add => r#"
+    from @std/app import start, print, exit
+    on start {
+      (1.0 + 2.0).print();
+      emit exit 0;
+    }"#;
+    stdout "3\n";
+);
+test!(float64_sub => r#"
+    from @std/app import start, print, exit
+    on start {
+      (2.0 - 1.0).print();
+      emit exit 0;
+    }"#;
+    stdout "1\n";
+);
+test!(float64_mul => r#"
+    from @std/app import start, print, exit
+    on start {
+      (2.0 * 1.0).print();
+      emit exit 0;
+    }"#;
+    stdout "2\n";
+);
+test!(float64_div => r#"
+    from @std/app import start, print, exit
+    on start {
+      (6.0 / 2.0).print();
+      emit exit 0;
+    }"#;
+    stdout "3\n";
+);
+test!(float64_sqrt => r#"
+    from @std/app import start, print, exit
+    on start {
+      sqrt(36.0).print();
+      emit exit 0;
+    }"#;
+    stdout "6\n";
+);
+test!(float64_pow => r#"
+    from @std/app import start, print, exit
+    on start {
+      (6.0 ** 2.0).print();
+      emit exit 0;
+    }"#;
+    stdout "36\n";
+);
+test!(float64_min => r#"
+    from @std/app import start, print, exit
+    on start {
+      min(3.toFloat64(), 5.toFloat64()).print();
+      emit exit 0;
+    }"#;
+    stdout "3\n";
+);
+test!(float64_max => r#"
+    from @std/app import start, print, exit
+    on start {
+      max(3.toFloat64(), 5.toFloat64()).print();
+      emit exit 0;
+    }"#;
+    stdout "5\n";
+);
+
+test!(grouping => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(2 / (3));
+      print(3 / (1 + 2));
+      emit exit 0;
+    }"#;
+    stdout "0\n1\n";
+);
+
+test!(string_min => r#"
+    from @std/app import start, print, exit
+    on start {
+      min(3.toString(), 5.toString()).print();
+      emit exit 0;
+    }"#;
+    stdout "3\n";
+);
+test!(string_max => r#"
+    from @std/app import start, print, exit
+    on start {
+      max(3.toString(), 5.toString()).print();
+      emit exit 0;
+    }"#;
+    stdout "5\n";
+);
