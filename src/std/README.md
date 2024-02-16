@@ -4,7 +4,7 @@ The alan standard library defined in alan.
 
 ## Usage
 
-This project is not structured like a normal alan library because it is not meant to be installed like external libraries. It is meant to be consumed by the alan [compiler](https://github.com/alantech/alan/tree/master/compiler) to target the appropriate opcodes in the alan runtimes.
+This project is not structured like a normal alan library because it is not meant to be installed like external libraries. It is meant to be consumed by the alan [compiler](https://github.com/alantech/alan/tree/main/src) to target the appropriate opcodes in the alan runtimes.
 
 ## How it works
 
@@ -12,7 +12,7 @@ These `.ln` files are not quite the same as others. The compiler loads these fil
 
 ## Development
 
-In order to have any change from this repo available locally remember to execute `make clean` before building.
+In order to have any change from this directory available locally you must rebuild the `alan` executable as these files are hardwired into the binary.
 
 ## License
 
