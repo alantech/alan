@@ -3725,3 +3725,43 @@ False"
   End
 End
 */
+
+// JSON
+
+test!(json_construction_printing => r#"
+    from @std/app import start, print, exit
+    from @std/json import JSON, toJSON, toString, JSONBase, JSONNode, IsObject, Null
+
+    on start {
+      1.0.toJSON().print();
+      true.toJSON().print();
+      'Hello, JSON!'.toJSON().print();
+      [1.0, 2.0, 5.0].toJSON().print();
+      toJSON().print();
+
+      emit exit 0;
+    }"#;
+    stdout r#"1
+true
+"Hello, JSON!"
+[1, 2, 5]
+null
+"#;
+);
+test!(json_complex_construction => r#"
+    from @std/app import start, print, exit
+    from @std/json import JSON, toString, JSONBase, JSONNode, IsObject, Null, newJSONObject, newJSONArray, addKeyVal, push
+
+    on start {
+      newJSONObject()
+        .addKeyVal('mixed', 'values')
+        .addKeyVal('work', true)
+        .addKeyVal('even', newJSONArray()
+          .push(4.0)
+          .push('arrays'))
+        .print();
+
+      emit exit 0;
+    }"#;
+    stdout r#"{"mixed": "values", "work": true, "even": [4, "arrays"]}""#;
+);
