@@ -819,18 +819,6 @@ test!(string_templating => r#"
 
 // Comparators
 
-test!(cross_type_comparisons => r#"
-    from @std/app import start, print, exit
-
-    on start {
-      print(true == 1);
-      emit exit 0;
-    }"#;
-    stderr r#"Cannot resolve operators with remaining statement
-true == 1
-<bool> == <int64>
-"#;
-);
 test!(equality => r#"
     from @std/app import start, print, exit
 
@@ -2517,3 +2505,116 @@ test!(inlined_closure_with_arg => r#"
     }"#;
     stdout "argh\n";
 );
+
+// Compiler Errors
+
+test!(cross_type_comparisons => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      print(true == 1);
+      emit exit 0;
+    }"#;
+    stderr r#"Cannot resolve operators with remaining statement
+true == 1
+<bool> == <int64>
+"#;
+);
+test!(unreachable_code => r#"
+    from @std/app import start, print, exit
+
+    fn unreachable() {
+      return 'blah';
+      print('unreachable!');
+    }
+
+    on start {
+      unreachable();
+      emit exit 0;
+    }"#;
+    stderr r#"Unreachable code in function 'unreachable' after:
+return 'blah'; on line 4:12
+"#;
+);
+test!(recursive_functions => r#"
+    from @std/app import start, print, exit
+
+    fn fibonacci(n: int64) {
+      if n < 2 {
+        return 1;
+      } else {
+        return fibonacci(n - 1 || 0) + fibonacci(n - 2 || 0);
+      }
+    }
+
+    on start {
+      print(fibonacci(0));
+      print(fibonacci(1));
+      print(fibonacci(2));
+      print(fibonacci(3));
+      print(fibonacci(4));
+      emit exit 0;
+    }"#;
+    stderr "Recursive callstack detected: fibonacci -> fibonacci. Aborting.\n";
+);
+test!(undefined_function_call => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      print(i64str(5)); // Illegal direct opcode usage
+      emit exit 0;
+    }"#;
+    stderr "i64str is not a function but used as one.\ni64str on line 4:18\n";
+);
+test!(totally_broken_statement => r#"
+    import @std/app
+
+    on app.start {
+      app.oops
+    }"#;
+    stderr "TODO";
+);
+/* Pending
+  Describe "Importing unexported values"
+    before() {
+      sourceToFile piece.ln "
+        type Piece {
+          owner: bool
+        }
+      "
+      sourceToTemp "
+        from @std/app import start, print, exit
+        from ./piece import Piece
+
+        on start {
+          const piece = new Piece {
+            owner: false
+          };
+          print('Hello World');
+          if piece.owner == true {
+            print('OK');
+          } else {
+            print('False');
+          }
+          emit exit 0;
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanFile piece.ln
+      cleanTemp
+    }
+    AfterAll after
+
+    It "doesn't work"
+      When run alan compile test_$$/temp.ln test_$$/temp.amm
+      The status should not eq "0"
+      The error should eq "Piece is not a type
+new Piece {
+            owner: false
+          } on line 2:26"
+    End
+  End
+*/
