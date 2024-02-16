@@ -3881,3 +3881,231 @@ Describe "@std/tcp"
   End
 End
 */
+
+// Saturating Math
+
+test!(int8_sadd => r#"
+    from @std/app import start, exit
+    on start { emit exit sadd(toInt8(1), toInt8(2)); }"#;
+    status 3;
+);
+test!(int8_ssub => r#"
+    from @std/app import start, exit
+    on start { emit exit ssub(toInt8(2), toInt8(1)); }"#;
+    status 1;
+);
+test!(int8_smul => r#"
+    from @std/app import start, exit
+    on start { emit exit smul(toInt8(2), toInt8(1)); }"#;
+    status 2;
+);
+test!(int8_sdiv => r#"
+    from @std/app import start, exit
+    on start { emit exit sdiv(toInt8(6), toInt8(0)); }"#;
+    status 127;
+);
+test!(int8_spow => r#"
+    from @std/app import start, exit
+    on start { emit exit spow(toInt8(6), toInt8(2)); }"#;
+    status 36;
+);
+test!(int16_sadd => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(sadd(toInt16(1), toInt16(2)));
+      emit exit 0;
+    }"#;
+    stdout "3\n";
+);
+test!(int16_ssub => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(ssub(toInt16(2), toInt16(1)));
+      emit exit 0;
+    }"#;
+    stdout "1\n";
+);
+test!(int16_smul => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(smul(toInt16(2), toInt16(1)));
+      emit exit 0;
+    }"#;
+    stdout "2\n";
+);
+test!(int16_sdiv => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(sdiv(toInt16(6), toInt16(2)));
+      emit exit 0;
+    }"#;
+    stdout "3\n";
+);
+test!(int16_spow => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(spow(toInt16(6), toInt16(2)));
+      emit exit 0;
+    }"#;
+    stdout "36\n";
+);
+test!(int32_sadd => r#"
+    from @std/app import start, print, exit
+    on start {
+      sadd(1.toInt32(), 2.toInt32()).print();
+      emit exit 0;
+    }"#;
+    stdout "3\n";
+);
+test!(int32_ssub => r#"
+    from @std/app import start, print, exit
+    on start {
+      ssub(2.toInt32(), 1.toInt32()).print();
+      emit exit 0;
+    }"#;
+    stdout "1\n";
+);
+test!(int32_smul => r#"
+    from @std/app import start, print, exit
+    on start {
+      smul(2.toInt32(), 1.toInt32()).print();
+      emit exit 0;
+    }"#;
+    stdout "2\n";
+);
+test!(int32_sdiv => r#"
+    from @std/app import start, print, exit
+    on start {
+      sdiv(6.toInt32(), 2.toInt32()).print();
+      emit exit 0;
+    }"#;
+    stdout "3\n";
+);
+test!(int32_spow => r#"
+    from @std/app import start, print, exit
+    on start {
+      spow(6.toInt32(), 2.toInt32()).print();
+      emit exit 0;
+    }"#;
+    stdout "36\n";
+);
+test!(int64_sadd => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(1 +. 2);
+      emit exit 0;
+    }"#;
+    stdout "3\n";
+);
+test!(int64_ssub => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(2 -. 1);
+      emit exit 0;
+    }"#;
+    stdout "1\n";
+);
+test!(int64_smul => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(2 *. 1);
+      emit exit 0;
+    }"#;
+    stdout "2\n";
+);
+test!(int64_sdiv => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(6 /. 2);
+      emit exit 0;
+    }"#;
+    stdout "3\n";
+);
+test!(int64_spow => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(6 **. 2);
+      emit exit 0;
+    }"#;
+    stdout "36\n";
+);
+test!(float32_sadd => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(toFloat32(1) +. toFloat32(2));
+      emit exit 0;
+    }"#;
+    stdout "3\n";
+);
+test!(float32_ssub => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(toFloat32(2) -. toFloat32(1));
+      emit exit 0;
+    }"#;
+    stdout "1\n";
+);
+test!(float32_smul => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(toFloat32(2) *. toFloat32(1));
+      emit exit 0;
+    }"#;
+    stdout "2\n";
+);
+test!(float32_sdiv => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(toFloat32(6) /. toFloat32(2));
+      emit exit 0;
+    }"#;
+    stdout "3\n";
+);
+test!(float32_spow => r#"
+    from @std/app import start, print, exit
+    on start {
+      print(toFloat32(6) **. toFloat32(2));
+      emit exit 0;
+    }"#;
+    stdout "36\n";
+);
+test!(float64_sadd => r#"
+    from @std/app import start, print, exit
+    on start {
+      (1.0 +. 2.0).print();
+      emit exit 0;
+    }"#;
+    stdout "3\n";
+);
+test!(float64_ssub => r#"
+    from @std/app import start, print, exit
+    on start {
+      (2.0 -. 1.0).print();
+      emit exit 0;
+    }"#;
+    stdout "1\n";
+);
+test!(float64_smul => r#"
+    from @std/app import start, print, exit
+    on start {
+      (2.0 *. 1.0).print();
+      emit exit 0;
+    }"#;
+    stdout "2\n";
+);
+test!(float64_sdiv => r#"
+    from @std/app import start, print, exit
+    on start {
+      (6.0 /. 2.0).print();
+      emit exit 0;
+    }"#;
+    stdout "3\n";
+);
+test!(float64_spow => r#"
+    from @std/app import start, print, exit
+    on start {
+      (6.0 **. 2.0).print();
+      emit exit 0;
+    }"#;
+    stdout "36\n";
+);
