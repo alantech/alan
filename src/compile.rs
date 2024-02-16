@@ -3625,3 +3625,23 @@ test!(subtree_and_nested_tree_construction => r#"
     }"#;
     stdout "foo\nbaz\n";
 );
+
+// Error printing
+
+test!(eprint => r#"
+    from @std/app import start, eprint, exit
+    on start {
+      eprint('This is an error');
+      emit exit 0;
+    }"#;
+    stderr "This is an error\n";
+);
+test!(stderr_event => r#"
+    from @std/app import start, stderr, exit
+    on start {
+      emit stderr 'This is an error';
+      wait(10);
+      emit exit 0;
+    }"#;
+    stderr "This is an error";
+);
