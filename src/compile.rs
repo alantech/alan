@@ -710,5 +710,105 @@ true
 true
 false
 false
-true"#;
+true
+"#;
 );
+
+test!(string_ops => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      concat('Hello, ', 'World!').print();
+      print('Hello, ' + 'World!');
+
+      repeat('hi ', 5).print();
+      print('hi ' * 5);
+
+      matches('foobar', 'fo.*').print();
+      print('foobar' ~ 'fo.*');
+
+      index('foobar', 'ba').print();
+      print('foobar' @ 'ba');
+
+      length('foobar').print();
+      print(#'foobar');
+
+      trim('   hi   ').print();
+      print(\`'   hi   ');
+
+      split('Hello, World!', ', ')[0].print();
+      print(('Hello, World!' / ', ')[1]);
+
+      const res = split('Hello, World!', ', ');
+      res[0].print();
+
+      const res2 = 'Hello, World!' / ', ';
+      print(res2[1]);
+
+      emit exit 0;
+    }"#;
+    stdout r#"Hello, World!
+Hello, World!
+hi hi hi hi hi 
+hi hi hi hi hi 
+true
+true
+3
+3
+6
+6
+hi
+hi
+Hello
+World!
+Hello
+World!
+"#;
+);
+test!(string_global_local_equality => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      const foo = 'foo';
+      print(foo.trim() == foo);
+      emit exit 0;
+    }"#;
+    stdout "true\n";
+);
+test!(string_char_array => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      const fooCharArray = 'foo'.toCharArray();
+      print(#fooCharArray);
+      print(fooCharArray[0]);
+      print(fooCharArray[1]);
+      print(fooCharArray[2]);
+
+      emit exit 0;
+    }"#;
+    stdout r#"3
+f
+o
+o
+"#;
+);
+/* Pending
+test!(string_templating => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      template('\${greet}, \${name}!', new Map<string, string> {
+        'greet': 'Hello'
+        'name': 'World'
+      }).print()
+      print('\${greet}, \${name}!' % new Map<string, string> {
+        'greet': 'Good-bye'
+        'name': 'World'
+      })
+
+      emit exit 0
+    }"#;
+    stdout "Hello, World!\nGood-bye, World!\n";
+);
+*/
