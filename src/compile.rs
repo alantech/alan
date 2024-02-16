@@ -3392,3 +3392,131 @@ barbarbarbarbarbarbarbarbarbarbarbarbarbarbarbarbarbarbarbarbarbarbarbarbarbarba
 
 End
 */
+
+// @std/seq
+
+test!(seq_and_next => r#"
+    from @std/app import start, print, exit
+    from @std/seq import seq, next
+
+    on start {
+      let s = seq(2);
+      print(s.next());
+      print(s.next());
+      print(s.next());
+      emit exit 0;
+    }"#;
+    stdout "0\n1\nerror: sequence out-of-bounds\n";
+);
+test!(seq_each => r#"
+    from @std/app import start, print, exit
+    from @std/seq import seq, each
+
+    on start {
+      let s = seq(3);
+      s.each(fn (i: int64) = print(i));
+      emit exit 0;
+    }"#;
+    stdout "0\n1\n2\n";
+);
+test!(seq_while => r#"
+    from @std/app import start, print, exit
+    from @std/seq import seq, while
+
+    on start {
+      let s = seq(100);
+      let sum = 0;
+      s.while(fn = sum < 10, fn {
+        sum = sum + 1 || 0;
+      });
+      print(sum);
+      emit exit 0;
+    }"#;
+    stdout "10\n";
+);
+test!(seq_do_while => r#"
+    from @std/app import start, print, exit
+    from @std/seq import seq, doWhile
+
+    on start {
+      let s = seq(100);
+      let sum = 0;
+      // TODO: Get automatic type inference working on anonymous multi-line functions
+      s.doWhile(fn (): bool {
+        sum = sum + 1 || 0;
+        return sum < 10;
+      });
+      print(sum);
+      emit exit 0;
+    }"#;
+    stdout "10\n";
+);
+test!(seq_recurse => r#"
+    from @std/app import start, print, exit
+    from @std/seq import seq, Self, recurse
+
+    on start {
+      print(seq(100).recurse(fn fibonacci(self: Self, i: int64): Result<int64> {
+        if i < 2 {
+          return ok(1);
+        } else {
+          const prev = self.recurse(i - 1 || 0);
+          const prevPrev = self.recurse(i - 2 || 0);
+          if prev.isErr() {
+            return prev;
+          }
+          if prevPrev.isErr() {
+            return prevPrev;
+          }
+          // TODO: Get type inference inside of recurse working so we don't need to unwrap these
+          return (prev || 0) + (prevPrev || 0);
+        }
+      }, 8));
+      emit exit 0;
+    }"#;
+    stdout "34\n";
+);
+test!(seq_no_op_one_liner_regression_test => r#"
+    import @std/app
+    from @std/seq import seq, Self, recurse
+
+    fn doNothing(x: int) : int = x;
+
+    fn doNothingRec(x: int) : int = seq(x).recurse(fn (self: Self, x: int) : Result<int> {
+        return ok(x);
+    }, x) || 0;
+
+    on app.start {
+        const x = 5;
+        app.print(doNothing(x)); // 5
+        app.print(doNothingRec(x)); // 5
+
+        const xs = [1, 2, 3];
+        app.print(xs.map(doNothing).map(toString).join(' ')); // 1 2 3
+        app.print(xs.map(doNothingRec).map(toString).join(' ')); // 1 2 3
+
+        emit app.exit 0;
+    }"#;
+    stdout "5\n5\n1 2 3\n1 2 3\n"; // TODO: Do we keep a regression test for a prior iteration?
+);
+test!(seq_recurse_decrement_regression_test => r#"
+    import @std/app
+    from @std/seq import seq, Self, recurse
+
+    fn triangularRec(x: int) : int = seq(x + 1 || 0).recurse(fn (self: Self, x: int) : Result<int> {
+      if x == 0 {
+        return ok(x);
+      } else {
+        // TODO: Get type inference inside of recurse working so we don't need to unwrap these
+        return x + (self.recurse(x - 1 || 0) || 0);
+      }
+    }, x) || 0
+
+    on app.start {
+      const xs = [1, 2, 3];
+      app.print(xs.map(triangularRec).map(toString).join(' ')); // 1 3 6
+
+      emit app.exit 0;
+    }"#;
+    stdout "1 3 6\n"; // TODO: Same concern, do regression tests matter for a different codebase?
+);
