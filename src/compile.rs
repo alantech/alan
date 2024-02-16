@@ -93,3 +93,44 @@ test!(hello_world => r#"
     stdout "Hello, World!\n";
     status 0;
 );
+
+// Event Tests
+
+test!(normal_exit_code => r#"
+    from @std/app import start, exit
+
+    on start { emit exit 0; }"#;
+    status 0;
+);
+test!(error_exit_code => r#"
+    from @std/app import start, exit
+
+    on start { emit exit 1; }"#;
+    status 1;
+);
+test!(non_global_memory_exit_code => r#"
+    import @std/app
+
+    on app.start {
+      let x: int64 = 0;
+      emit app.exit x;
+    }"#;
+    status 0;
+);
+test!(passing_ints_from_global_memory => r#"
+    from @std/app import start, print, exit
+
+    event aNumber: int64;
+
+    on aNumber fn(num: int64) {
+      print('I got a number! ' + num.toString());
+      emit exit 0;
+    }
+
+    on start {
+      emit aNumber 5;
+    }"#;
+    stdout "I got a number! 5\n";
+    status 0;
+);
+
