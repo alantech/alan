@@ -2781,3 +2781,428 @@ Inverse Hyperbolic Trig functions
 1.8849425394276085
 "#;
 );
+
+/* TODO: Convert the @std/dep (maybe, dep management will likely change quite a bit with the new
+ * import syntax) and @std/http tests some time in the future. For now they are included below
+ * as-is:
+ *
+Describe "@std/deps"
+  Describe "package dependency add"
+    before() {
+      sourceToAll "
+        from @std/deps import Package, install, add, commit, dependency, using, block, fullBlock
+
+        on install fn (package: Package) = package
+          .using(['@std/app', '@std/cmd'])
+          .dependency('https://github.com/alantech/hellodep.git')
+            .add()
+          .block('@std/tcp')
+          .fullBlock('@std/httpcommon')
+          .commit()
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    after_each() {
+      rm -r ./dependencies
+    }
+    After after_each
+
+    has_dependencies() {
+      test -d "./dependencies"
+    }
+
+    has_alantech() {
+      test -d "./dependencies/alantech"
+    }
+
+    has_hellodep() {
+      test -d "./dependencies/alantech/hellodep"
+    }
+
+    has_index() {
+      test -f "./dependencies/alantech/hellodep/index.ln"
+    }
+
+    has_nested_dependencies() {
+      test -d "./dependencies/alantech/hellodep/dependencies"
+    }
+
+    has_nested_alantech() {
+      test -d "./dependencies/alantech/hellodep/dependencies/alantech"
+    }
+
+    has_nested_hellodep() {
+      test -d "./dependencies/alantech/hellodep/dependencies/alantech/nestedhellodep"
+    }
+
+    has_nested_index() {
+      test -f "./dependencies/alantech/hellodep/dependencies/alantech/nestedhellodep/index.ln"
+    }
+
+    has_modules() {
+      test -d "./dependencies/modules"
+    }
+
+    has_std() {
+      test -d "./dependencies/modules/std"
+    }
+
+    has_blacklisted_module() {
+      test -d "./dependencies/modules/std/tcpserver"
+    }
+
+    not_has_cmd() {
+      if [ -d ./dependencies/modules/std/cmd ]; then
+        return 1
+      fi
+      return 0
+    }
+
+    has_pkg_block() {
+      test -d "./dependencies/modules/std/tcp"
+    }
+
+    has_pkg_full_block_applied() {
+      test -d "./dependencies/alantech/hellodep/modules/std/httpcommon" && grep -R -q "export const mock = true" "./dependencies/alantech/hellodep/modules/std/httpcommon/index.ln"
+    }
+
+    run_js() {
+      node test_$$/temp.js | head -1
+    }
+
+    run_agc() {
+      alan run test_$$/temp.agc | head -1
+    }
+
+    It "runs js"
+      When run run_js
+      The output should eq "Cloning into './dependencies/alantech/hellodep'..."
+      Assert has_dependencies
+      Assert has_alantech
+      Assert has_hellodep
+      Assert has_index
+      Assert has_nested_dependencies
+      Assert has_nested_alantech
+      Assert has_nested_hellodep
+      Assert has_nested_index
+      Assert has_modules
+      Assert has_std
+      Assert has_blacklisted_module
+      Assert not_has_cmd
+      Assert has_pkg_block
+      Assert has_pkg_full_block_applied
+    End
+
+    It "runs agc"
+      When run run_agc
+      The output should eq "Cloning into './dependencies/alantech/hellodep'..."
+      Assert has_dependencies
+      Assert has_alantech
+      Assert has_hellodep
+      Assert has_index
+      Assert has_nested_dependencies
+      Assert has_nested_alantech
+      Assert has_nested_hellodep
+      Assert has_nested_index
+      Assert has_modules
+      Assert has_std
+      Assert has_blacklisted_module
+      Assert not_has_cmd
+      Assert has_pkg_block
+      Assert has_pkg_full_block_applied
+    End
+  End
+End
+
+Describe "@std/http"
+  Describe "basic get"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+        from @std/http import get
+
+        on start {
+          print(get('https://raw.githubusercontent.com/alantech/hellodep/aea1ce817a423d00107577a430a046993e4e6cad/index.ln'));
+          emit exit 0;
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    It "runs js"
+      When run test_js
+      The output should eq "export const comeGetMe = \"You got me!\""
+    End
+
+    It "runs agc"
+      When run test_agc
+      The output should eq "export const comeGetMe = \"You got me!\""
+    End
+  End
+
+Describe "basic post"
+  before() {
+    # All my homies hate CORS...
+    node -e "const http = require('http'); http.createServer((req, res) => { const headers = { 'Access-Control-Allow-Origin': '*','Access-Control-Allow-Methods': 'OPTIONS, POST, GET, PUT','Access-Control-Max-Age': 2592000, 'Access-Control-Allow-Headers': '*', }; if (req.method === 'OPTIONS') { res.writeHead(204, headers); res.end(); return; } res.writeHead(200, headers); req.pipe(res); req.on('end', () => res.end()); }).listen(8765)" 1>/dev/null 2>/dev/null &
+    ECHO_PID=$!
+    disown $ECHO_PID
+    sourceToAll "
+      from @std/app import start, print, exit
+      from @std/http import post
+
+      on start {
+        print(post('http://localhost:8765', '{\"test\":\"test\"}'));
+        emit exit 0;
+      }
+    "
+  }
+  BeforeAll before
+
+  after() {
+    kill -9 $ECHO_PID 1>/dev/null 2>/dev/null || true
+    cleanTemp
+  }
+  AfterAll after
+
+  It "runs js"
+    When run test_js
+    The output should eq "{\"test\":\"test\"}"
+  End
+
+  It "runs agc"
+    When run test_agc
+    The output should eq "{\"test\":\"test\"}"
+  End
+End
+
+  Describe "fetch directly"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+        from @std/http import fetch, Request, Response
+
+        on start {
+          const res = fetch(new Request {
+            method: 'GET',
+            url: 'https://raw.githubusercontent.com/alantech/hellodep/aea1ce817a423d00107577a430a046993e4e6cad/index.ln',
+            headers: newHashMap('User-Agent', 'Alanlang'),
+            body: '',
+          });
+          print(res.isOk());
+          const r = res.getOrExit();
+          print(r.status);
+          print(r.headers.length());
+          print(r.body);
+          emit exit 0;
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    # The number of headers returned in the two runtimes is slightly different. Node includes the
+    # "connection: close" header and Hyper.rs does not
+    FETCHJSOUTPUT="true
+200
+25
+export const comeGetMe = \"You got me!\""
+
+    FETCHAGCOUTPUT="true
+200
+23
+export const comeGetMe = \"You got me!\""
+
+    It "runs js"
+      When run test_js
+      The output should eq "$FETCHJSOUTPUT"
+    End
+
+    It "runs agc"
+      When run test_agc
+      The output should eq "$FETCHAGCOUTPUT"
+    End
+  End
+
+  Describe "Hello World webserver"
+    before() {
+      sourceToAll "
+        from @std/app import start, exit
+        from @std/httpserver import connection, body, send, Connection
+
+        on connection fn (conn: Connection) {
+          const req = conn.req;
+          const res = conn.res;
+          set(res.headers, 'Content-Type', 'text/plain');
+          if req.method == 'GET' {
+            res.body('Hello, World!').send();
+          } else {
+            res.body('Hello, Failure!').send();
+          }
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    afterEach() {
+      kill $PID
+      wait $PID 2>/dev/null
+      return 0
+    }
+    After afterEach
+
+    It "runs js"
+      node test_$$/temp.js 1>/dev/null 2>/dev/null &
+      PID=$!
+      sleep 1
+      When run curl -s localhost:8000
+      The output should eq "Hello, World!"
+    End
+
+    It "runs agc"
+      alan run test_$$/temp.agc 1>/dev/null 2>/dev/null &
+      PID=$!
+      sleep 1
+      When run curl -s localhost:8000
+      The output should eq "Hello, World!"
+    End
+  End
+
+  Describe "importing http get doesn't break hashmap get"
+    before() {
+      sourceToAll "
+        from @std/app import start, print, exit
+        from @std/http import get
+
+        on start {
+          const str = get('https://raw.githubusercontent.com/alantech/hellodep/aea1ce817a423d00107577a430a046993e4e6cad/index.ln').getOr('');
+          const kv = str.split(' = ');
+          const key = kv[0] || 'bad';
+          const val = kv[1] || 'bad';
+          const hm = newHashMap(key, val);
+          hm.get(key).getOr('failed').print();
+          hm.get('something else').getOr('correct').print();
+          emit exit 0;
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    GETGETOUTPUT="\"You got me!\"
+
+correct"
+
+    It "runs js"
+      When run test_js
+      The output should eq "${GETGETOUTPUT}"
+    End
+
+    It "runs agc"
+      When run test_agc
+      The output should eq "${GETGETOUTPUT}"
+    End
+  End
+
+  Describe "Double-send in a single connection doesn't crash"
+    before() {
+      sourceToAll "
+        from @std/app import print, exit
+        from @std/httpserver import connection, Connection, body, send
+
+        on connection fn (conn: Connection) {
+          const res = conn.res;
+          const firstMessage = res.body('First Message').send();
+          print(firstMessage);
+          const secondMessage = res.body('Second Message').send();
+          print(secondMessage);
+          wait(1000);
+          emit exit 0;
+        }
+      "
+    }
+    BeforeAll before
+
+    after() {
+      cleanTemp
+    }
+    AfterAll after
+
+    It "runs js"
+      node test_$$/temp.js 1>./out.txt 2>/dev/null &
+      sleep 1
+      When run curl -s localhost:8000
+      The output should eq "First Message"
+    End
+
+    It "response from js"
+      When run cat ./out.txt
+      The output should eq "HTTP server listening on port 8000
+ok
+connection not found"
+      rm out.txt
+    End
+
+    It "runs agc"
+      sleep 2
+      alan run test_$$/temp.agc 1>./out.txt 2>/dev/null &
+      sleep 1
+      When run curl -s localhost:8000
+      The output should eq "First Message"
+    End
+
+    It "response from agc"
+      When run cat ./out.txt
+      The output should eq "HTTP server listening on port 8000
+ok
+cannot call send twice for the same connection"
+      rm out.txt
+    End
+  End
+
+End
+*/
+
+// Clone
+
+test!(clone => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      let a = 3;
+      let b = a.clone();
+      a = 4;
+      print(a);
+      print(b);
+      let c = [1, 2, 3];
+      let d = c.clone();
+      d.set(0, 2);
+      c.map(fn (val: int): string = val.toString()).join(', ').print();
+      d.map(fn (val: int): string = val.toString()).join(', ').print();
+      emit exit 0;
+    }"#;
+    stdout "4\n3\n1, 2, 3\n2, 2, 3\n";
+);
