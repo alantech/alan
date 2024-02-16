@@ -3206,3 +3206,22 @@ test!(clone => r#"
     }"#;
     stdout "4\n3\n1, 2, 3\n2, 2, 3\n";
 );
+
+// Runtime Error
+
+test!(get_or_exit => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      const xs = [0, 1, 2, 5];
+      const x1 = xs[1].getOrExit();
+      print(x1);
+      const x2 = xs[2].getOrExit();
+      print(x2);
+      const x5 = xs[5].getOrExit();
+      print(x5);
+
+      emit exit 0;
+    }"#;
+    status 1;
+);
