@@ -2469,3 +2469,51 @@ test!(multiple_event_handlers => r#"
     }"#;
     stdout "hey I got a string! hi\nI also got a string! hi\n"; // TODO: The order is not guaranteed, support that
 );
+
+// Closures
+
+test!(closure_creation_and_usage => r#"
+    from @std/app import start, print, exit
+
+    fn closure(): function {
+      let num = 0;
+      return fn (): int64 {
+        num = num + 1 || 0;
+        return num;
+      };
+    }
+
+    on start fn (): void {
+      const counter1 = closure();
+      const counter2 = closure();
+      print(counter1());
+      print(counter1());
+      print(counter2());
+      emit exit 0;
+    }"#;
+    stdout "1\n2\n1\n";
+);
+test!(closure_by_name => r#"
+    from @std/app import start, print, exit
+
+    fn double(x: int64): int64 = x * 2 || 0;
+
+    on start {
+      const numbers = [1, 2, 3, 4, 5];
+      numbers.map(double).map(toString).join(', ').print();
+      emit exit 0;
+    }"#;
+    stdout "2, 4, 6, 8, 10\n";
+);
+test!(inlined_closure_with_arg => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      const arghFn = fn(argh: string) {
+        print(argh);
+      };
+      arghFn('argh');
+      emit exit 0;
+    }"#;
+    stdout "argh\n";
+);
