@@ -1,4 +1,5 @@
 .idea
+target/
 shellspec/
 bdd/node_modules/
 bdd/temp.*
