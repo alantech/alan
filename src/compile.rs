@@ -134,3 +134,23 @@ test!(passing_ints_from_global_memory => r#"
     status 0;
 );
 
+// Printing Tests
+
+// This one will replace the hello_world test above once the syntax is updated
+test!(print_function => r#"
+    from @std/app import start, print, exit
+    on start {
+      print('Hello, World');
+      emit exit 0;
+    }"#;
+    stdout "Hello, World\n";
+);
+test!(stdout_event => r#"
+    from @std/app import start, stdout, exit
+    on start {
+      emit stdout 'Hello, World';
+      wait(10);
+      emit exit 0;
+    }"#;
+    stdout "Hello, World";
+);
