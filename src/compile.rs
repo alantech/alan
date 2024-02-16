@@ -625,6 +625,8 @@ test!(int64_bitwise => r#"
     stdout "0\n3\n6\n-1\n-1\n-4\n-7\n";
 );
 
+// Boolean Logic
+
 test!(boolean_logic => r#"
     from @std/app import start, print, exit
 
@@ -713,6 +715,8 @@ false
 true
 "#;
 );
+
+// String Manipulation
 
 test!(string_ops => r#"
     from @std/app import start, print, exit
@@ -812,3 +816,297 @@ test!(string_templating => r#"
     stdout "Hello, World!\nGood-bye, World!\n";
 );
 */
+
+// Comparators
+
+test!(cross_type_comparisons => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      print(true == 1);
+      emit exit 0;
+    }"#;
+    stderr r#"Cannot resolve operators with remaining statement
+true == 1
+<bool> == <int64>
+"#;
+);
+test!(equality => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      print(toInt8(0) == toInt8(0));
+      print(toInt8(1).eq(toInt8(0)));
+
+      print(toInt16(0) == toInt16(0));
+      print(toInt16(1).eq(toInt16(0)));
+
+      print(toInt32(0) == toInt32(0));
+      print(toInt32(1).eq(toInt32(0)));
+
+      print(0 == 0);
+      print(1.eq(0));
+
+      print(toFloat32(0.0) == toFloat32(0.0));
+      print(toFloat32(1.2).eq(toFloat32(0.0)));
+
+      print(0.0 == 0.0);
+      print(1.2.eq(0.0));
+
+      print(true == true);
+      print(true.eq(false));
+
+      print('hello' == 'hello');
+      print('hello'.eq('world'));
+
+      emit exit 0;
+    }"#;
+    stdout r#"true
+false
+true
+false
+true
+false
+true
+false
+true
+false
+true
+false
+true
+false
+true
+false
+"#;
+);
+test!(not_equals => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      print(toInt8(0) != toInt8(0));
+      print(toInt8(1).neq(toInt8(0)));
+
+      print(toInt16(0) != toInt16(0));
+      print(toInt16(1).neq(toInt16(0)));
+
+      print(toInt32(0) != toInt32(0));
+      print(toInt32(1).neq(toInt32(0)));
+
+      print(0 != 0);
+      print(1.neq(0));
+
+      print(toFloat32(0.0) != toFloat32(0.0));
+      print(toFloat32(1.2).neq(toFloat32(0.0)));
+
+      print(0.0 != 0.0);
+      print(1.2.neq(0.0));
+
+      print(true != true);
+      print(true.neq(false));
+
+      print('hello' != 'hello');
+      print('hello'.neq('world'));
+
+      emit exit 0;
+    }"#;
+    stdout r#"false
+true
+false
+true
+false
+true
+false
+true
+false
+true
+false
+true
+false
+true
+false
+true
+"#;
+);
+test!(less_than => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      print(toInt8(0) < toInt8(1));
+      print(toInt8(1).lt(toInt8(0)));
+
+      print(toInt16(0) < toInt16(1));
+      print(toInt16(1).lt(toInt16(0)));
+
+      print(toInt32(0) < toInt32(1));
+      print(toInt32(1).lt(toInt32(0)));
+
+      print(0 < 1);
+      print(1.lt(0));
+
+      print(toFloat32(0.0) < toFloat32(1.0));
+      print(toFloat32(1.2).lt(toFloat32(0.0)));
+
+      print(0.0 < 1.0);
+      print(1.2.lt(0.0));
+
+      print('hello' < 'hello');
+      print('hello'.lt('world'));
+
+      emit exit 0;
+    }"#;
+    stdout r#"true
+false
+true
+false
+true
+false
+true
+false
+true
+false
+true
+false
+false
+true
+"#;
+);
+test!(less_than_or_equal => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      print(toInt8(0) <= toInt8(1));
+      print(toInt8(1).lte(toInt8(0)));
+
+      print(toInt16(0) <= toInt16(1));
+      print(toInt16(1).lte(toInt16(0)));
+
+      print(toInt32(0) <= toInt32(1));
+      print(toInt32(1).lte(toInt32(0)));
+
+      print(0 <= 1);
+      print(1.lte(0));
+
+      print(toFloat32(0.0) <= toFloat32(1.0));
+      print(toFloat32(1.2).lte(toFloat32(0.0)));
+
+      print(0.0 <= 1.0);
+      print(1.2.lte(0.0));
+
+      print('hello' <= 'hello');
+      print('hello'.lte('world'));
+
+      emit exit 0;
+    }"#;
+    stdout r#"true
+false
+true
+false
+true
+false
+true
+false
+true
+false
+true
+false
+true
+true
+"#;
+);
+test!(greater_than => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      print(toInt8(0) > toInt8(1));
+      print(toInt8(1).gt(toInt8(0)));
+
+      print(toInt16(0) > toInt16(1));
+      print(toInt16(1).gt(toInt16(0)));
+
+      print(toInt32(0) > toInt32(1));
+      print(toInt32(1).gt(toInt32(0)));
+
+      print(0 > 1);
+      print(1.gt(0));
+
+      print(toFloat32(0.0) > toFloat32(1.0));
+      print(toFloat32(1.2).gt(toFloat32(0.0)));
+
+      print(0.0 > 1.0);
+      print(1.2.gt(0.0));
+
+      print('hello' > 'hello');
+      print('hello'.gt('world'));
+
+      emit exit 0;
+    }"#;
+    stdout r#"false
+true
+false
+true
+false
+true
+false
+true
+false
+true
+false
+true
+false
+false
+"#;
+);
+test!(greater_than_or_equal => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      print(toInt8(0) >= toInt8(1));
+      print(toInt8(1).gte(toInt8(0)));
+
+      print(toInt16(0) >= toInt16(1));
+      print(toInt16(1).gte(toInt16(0)));
+
+      print(toInt32(0) >= toInt32(1));
+      print(toInt32(1).gte(toInt32(0)));
+
+      print(0 >= 1);
+      print(1.gte(0));
+
+      print(toFloat32(0.0) >= toFloat32(1.0));
+      print(toFloat32(1.2).gte(toFloat32(0.0)));
+
+      print(0.0 >= 1.0);
+      print(1.2.gte(0.0));
+
+      print('hello' >= 'hello');
+      print('hello'.gte('world'));
+
+      emit exit 0;
+    }"#;
+    stdout r#"false
+true
+false
+true
+false
+true
+false
+true
+false
+true
+false
+true
+true
+false
+"#;
+);
+test!(type_coercion_aliases => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      print(toInt(0) == toInt64(0));
+      print(toFloat(0.0) == toFloat(0.0));
+
+      emit exit 0;
+    }"#;
+    stdout "true\ntrue\n";
+);
