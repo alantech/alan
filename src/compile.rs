@@ -1640,3 +1640,142 @@ test!(array_custom_types => r#"
     }"#;
     stdout "2, 4\n";
 );
+
+// Hashing
+// TODO: I have no idea how I'm going to make this work in pure Rust, but damnit I'm gonna try.
+// This was super useful for a whole host of things.
+
+test!(to_hash => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      print(toHash(1));
+      print(toHash(3.14159));
+      print(toHash(true));
+      print(toHash('false'));
+      print(toHash([1, 2, 5, 3]));
+      emit exit 0;
+    }"#;
+    stdout r#"-1058942856030168491
+-5016367128657347516
+-1058942856030168491
+6288867289231076425
+-1521185239552941064
+"#;
+);
+test!(basic_hashmap => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      const test = newHashMap('foo', 1);
+      test.set('bar', 2);
+      test.set('baz', 99);
+      print(test.keyVal().map(fn (n: KeyVal<string, int64>): string {
+        return 'key: ' + n.key + \"\\nval: \" + toString(n.val);
+      }).join(\"\\n\"));
+      print(test.keys().join(', '));
+      print(test.vals().map(fn (n: int64): string = n.toString()).join(', '));
+      print(test.length());
+      print(test.get('foo'));
+      emit exit 0;
+    }"#;
+    stdout r#"key: foo
+val: 1
+key: bar
+val: 2
+key: baz
+val: 99
+foo, bar, baz
+1, 2, 99
+3
+1
+"#;
+);
+test!(keyval_to_hashmap => r#"
+    from @std/app import start, print, exit
+
+    fn kv(k: any, v: anythingElse) = new KeyVal<any, anythingElse> {
+      key: k,
+      val: v
+    }
+
+    on start {
+      const kva = [ kv(1, 'foo'), kv(2, 'bar'), kv(3, 'baz') ];
+      const hm = kva.toHashMap();
+      print(hm.keyVal().map(fn (n: KeyVal<int64, string>): string {
+        return 'key: ' + toString(n.key) + \"\\nval: \" + n.val;
+      }).join(\"\\n\"));
+      print(hm.get(1));
+      emit exit 0;
+    }"#;
+    stdout r#"key: 1
+val: foo
+key: 2
+val: bar
+key: 3
+val: baz
+foo
+"#;
+);
+test!(hashmap_double_set => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      let test = newHashMap('foo', 'bar');
+      test.get('foo').print();
+      test.set('foo', 'baz');
+      print(test.get('foo'));
+      emit exit 0;
+    }"#;
+    stdout "bar\nbaz\n";
+);
+/* Pending
+test!(hashmap_ops => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      const test = new Map<string, int64> {
+        'foo': 1
+        'bar': 2
+        'baz': 99
+      }
+
+      print('keyVal test')
+      test.keyVal().each(fn (n: KeyVal<string, int64>) {
+        print('key: ' + n.key)
+        print('val: ' + n.value.toString())
+      })
+
+      print('keys test')
+      test.keys().each(print)
+
+      print('values test')
+      test.values().each(print)
+
+      print('length test')
+      test.length().print()
+      print(#test)
+
+      emit exit 0
+    }"#;
+    stdout r#"keyVal test
+key: bar
+val: 2
+key: foo
+val: 1
+key: baz
+val: 99
+keys test
+bar
+foo
+baz
+values test
+2
+1
+99
+length test
+3
+3
+"#;
+);
+*/
