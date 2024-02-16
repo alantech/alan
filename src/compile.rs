@@ -555,3 +555,72 @@ test!(string_max => r#"
     }"#;
     stdout "5\n";
 );
+
+// Bitwise Math
+
+test!(int8_bitwise => r#"
+    from @std/app import start, print, exit
+
+    prefix toInt8 as ~ precedence 10
+
+    on start {
+      print(~1 & ~2);
+      print(~1 | ~3);
+      print(~5 ^ ~3);
+      print(! ~0);
+      print(~1 !& ~2);
+      print(~1 !| ~2);
+      print(~5 !^ ~3);
+      emit exit 0;
+    }"#;
+    stdout "0\n3\n6\n-1\n-1\n-4\n-7\n";
+);
+test!(int16_bitwise => r#"
+    from @std/app import start, print, exit
+
+    prefix toInt16 as ~ precedence 10
+
+    on start {
+      print(~1 & ~2);
+      print(~1 | ~3);
+      print(~5 ^ ~3);
+      print(! ~0);
+      print(~1 !& ~2);
+      print(~1 !| ~2);
+      print(~5 !^ ~3);
+      emit exit 0;
+    }"#;
+    stdout "0\n3\n6\n-1\n-1\n-4\n-7\n";
+);
+test!(int32_bitwise => r#"
+    from @std/app import start, print, exit
+
+    prefix toInt32 as ~ precedence 10
+
+    on start {
+      print(~1 & ~2);
+      print(~1 | ~3);
+      print(~5 ^ ~3);
+      print(! ~0);
+      print(~1 !& ~2);
+      print(~1 !| ~2);
+      print(~5 !^ ~3);
+      emit exit 0;
+    }"#;
+    stdout "0\n3\n6\n-1\n-1\n-4\n-7\n";
+);
+test!(int64_bitwise => r#"
+    from @std/app import start, print, exit
+
+    on start {
+      print(1 & 2);
+      print(1 | 3);
+      print(5 ^ 3);
+      print(!0);
+      print(1 !& 2);
+      print(1 !| 2);
+      print(5 !^ 3);
+      emit exit 0;
+    }"#;
+    stdout "0\n3\n6\n-1\n-1\n-4\n-7\n";
+);
