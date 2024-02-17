@@ -3,7 +3,7 @@
   <h2>The Alan Programming Language</h2>
 </div>
 
-[![CI](https://github.com/alantech/alan/actions/workflows/tests.yml/badge.svg)](https://github.com/alantech/alan/actions/workflows/tests.yml)
+[![CI](https://github.com/alantech/alan/actions/workflows/rust.yml/badge.svg)](https://github.com/alantech/alan/actions/workflows/rust.yml)
 [![Docs](https://img.shields.io/badge/docs-mdbook-blue)](https://docs.alan-lang.org)
 [![Discord](https://img.shields.io/badge/discord-alanlang-purple)](https://discord.gg/XatB9we)
 [![Reddit](https://img.shields.io/badge/reddit-alanlang-red)](https://www.reddit.com/r/alanlang)
