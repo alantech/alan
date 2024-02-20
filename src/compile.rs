@@ -68,26 +68,26 @@ macro_rules! stdout {
     ( $test_val:expr, $real_val:expr ) => {
         let std_out = String::from_utf8($real_val.stdout.clone())?;
         assert_eq!($test_val, &std_out);
-    }
+    };
 }
 #[cfg(test)]
 macro_rules! stderr {
     ( $test_val:expr, $real_val:expr ) => {
         let std_err = String::from_utf8($real_val.stderr.clone())?;
         assert_eq!($test_val, &std_err);
-    }
+    };
 }
 #[cfg(test)]
 macro_rules! status {
     ( $test_val:expr, $real_val:expr ) => {
         let status = $real_val.status.code().unwrap();
         assert_eq!($test_val, status);
-    }
+    };
 }
 
 // The only test that works for now
 test!(hello_world => r#"
-    on start {
+    export fn main {
         print("Hello, World!");
     }"#;
     stdout "Hello, World!\n";
@@ -3688,7 +3688,7 @@ Describe "Module imports"
       sourceToAll "
         from @std/app import start, print, exit
         // Intentionally put an extra space after the import
-        from ./piece import Piece 
+        from ./piece import Piece
 
         on start {
           const piece = new Piece {

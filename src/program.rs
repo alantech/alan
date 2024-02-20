@@ -48,7 +48,7 @@ pub struct Scope {
     // operatormappings: OrderedHashMap<String, OperatorMapping>,
     // events: OrderedHashMap<String, Event>,
     // interfaces: OrderedHashMap<String, Interface>,
-    // exports: Scope,
+    pub exports: OrderedHashMap<String, Export>,
     // Should we include something for documentation? Maybe testing?
 }
 
@@ -68,6 +68,7 @@ impl Scope {
             consts: OrderedHashMap::new(),
             functions: OrderedHashMap::new(),
             handlers: OrderedHashMap::new(),
+            exports: OrderedHashMap::new(),
         };
         let mut p = program;
         for i in ast.imports.iter() {
@@ -75,11 +76,17 @@ impl Scope {
         }
         for element in ast.body.iter() {
             match element {
-                parse::RootElements::Types(t) => Type::from_ast(&mut s, t)?,
                 parse::RootElements::Handlers(h) => Handler::from_ast(&mut s, h)?,
-                parse::RootElements::Functions(f) => Function::from_ast(&mut s, f)?,
-                parse::RootElements::ConstDeclaration(c) => Const::from_ast(&mut s, c)?,
-                parse::RootElements::Whitespace(_) => { /* Do nothing */ },
+                parse::RootElements::Types(t) => Type::from_ast(&mut s, t, false)?,
+                parse::RootElements::Functions(f) => Function::from_ast(&mut s, f, false)?,
+                parse::RootElements::ConstDeclaration(c) => Const::from_ast(&mut s, c, false)?,
+                parse::RootElements::Exports(e) => match &e.exportable {
+                    parse::Exportable::Functions(f) => Function::from_ast(&mut s, f, true)?,
+                    parse::Exportable::ConstDeclaration(c) => Const::from_ast(&mut s, c, true)?,
+                    parse::Exportable::Types(t) => Type::from_ast(&mut s, t, true)?,
+                    _ => println!("TODO"),
+                },
+                parse::RootElements::Whitespace(_) => { /* Do nothing */ }
                 _ => println!("TODO"),
             }
         }
@@ -158,7 +165,9 @@ impl Type {
     fn from_ast(
         scope: &mut Scope,
         type_ast: &parse::Types,
+        is_export: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
+        let name = type_ast.fulltypename.to_string();
         let t = Type {
             typename: type_ast.fulltypename.clone(),
             typetype: match &type_ast.typedef {
@@ -167,7 +176,10 @@ impl Type {
                 parse::TypeDef::TypeBind(bind) => TypeType::Bind(bind.rusttypename.clone()),
             },
         };
-        scope.types.insert(t.typename.to_string(), t);
+        if is_export {
+            scope.exports.insert(name.clone(), Export::Type);
+        }
+        scope.types.insert(name, t);
         Ok(())
     }
 }
@@ -183,6 +195,7 @@ impl Const {
     fn from_ast(
         scope: &mut Scope,
         const_ast: &parse::ConstDeclaration,
+        is_export: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let name = const_ast.variable.clone();
         let typename = match &const_ast.typedec {
@@ -195,6 +208,9 @@ impl Const {
             typename,
             assignables,
         };
+        if is_export {
+            scope.exports.insert(c.name.clone(), Export::Const);
+        }
         scope.consts.insert(c.name.clone(), c);
         Ok(())
     }
@@ -213,6 +229,7 @@ impl Function {
     fn from_ast(
         scope: &mut Scope,
         function_ast: &parse::Functions,
+        is_export: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
         // In the top-level of a file, all functions *must* be named
         let name = match &function_ast.optname {
@@ -221,12 +238,13 @@ impl Function {
                 return Err("Top-level function without a name!".into());
             }
         };
-        Function::from_ast_with_name(scope, function_ast, name)
+        Function::from_ast_with_name(scope, function_ast, is_export, name)
     }
 
     fn from_ast_with_name(
         scope: &mut Scope,
         function_ast: &parse::Functions,
+        is_export: bool,
         name: String,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let args = match &function_ast.optargs {
@@ -251,7 +269,7 @@ impl Function {
                     assignables: assign.assignables.clone(),
                     semicolon: ";".to_string(),
                 })]
-            },
+            }
             parse::FullFunctionBody::BindFunction(_) => Vec::new(),
         };
         let bind = match &function_ast.fullfunctionbody {
@@ -265,9 +283,22 @@ impl Function {
             statements,
             bind,
         };
+        if is_export {
+            scope
+                .exports
+                .insert(function.name.clone(), Export::Function);
+        }
         scope.functions.insert(function.name.clone(), function);
         Ok(())
     }
+}
+
+#[derive(Debug)]
+pub enum Export {
+    // TODO: Add other export types over time
+    Function,
+    Const,
+    Type,
 }
 
 #[derive(Debug)]
@@ -289,7 +320,7 @@ impl Handler {
                     Some(name) => name.clone(),
                     None => format!(":::on:::{}", &handler_ast.eventname).to_string(), // Impossible for users to write, so no collisions ever
                 };
-                let _ = Function::from_ast_with_name(scope, function, name.clone());
+                let _ = Function::from_ast_with_name(scope, function, false, name.clone());
                 name
             }
             parse::Handler::FnName(name) => name.clone(),
@@ -308,7 +339,7 @@ impl Handler {
                 };
                 scope.functions.insert(name.clone(), function);
                 name
-            },
+            }
             // TODO: Should you be allowed to bind a Rust function as a handler directly?
         };
         let h = Handler {
