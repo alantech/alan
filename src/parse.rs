@@ -638,10 +638,17 @@ impl Dependency {
                 Ok(path.to_string_lossy().to_string())
             }
             Dependency::Global(g) => {
-                let path = PathBuf::from("./dependencies")
-                    .join(g.depsegments.join("/"))
-                    .canonicalize()?;
-                Ok(path.to_string_lossy().to_string())
+                if g.depsegments[0] == "std" {
+                    // Keep the `@std/...` imports as-is for the Program level to know it should
+                    // pull from the embedded strings
+                    Ok(g.to_string())
+                } else {
+                    // For everything else, let's assume it's in the `./dependencies` directory
+                    let path = PathBuf::from("./dependencies")
+                        .join(g.depsegments.join("/"))
+                        .canonicalize()?;
+                    Ok(path.to_string_lossy().to_string())
+                }
             }
         }
     }

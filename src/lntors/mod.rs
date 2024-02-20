@@ -20,8 +20,8 @@ pub fn lntors(entry_file: String) -> Result<String, Box<dyn std::error::Error>> 
     };
     // Without support for building shared libs yet, assume there is an `export fn main` in the
     // entry file or fail otherwise
-    let main_export = match scope.exports.get("main") {
-        Some(h) => h,
+    match scope.exports.get("main") {
+        Some(_) => {},
         None => {
             return Err(
                 "Entry file has no `main` function exported. This is not yet supported.".into(),

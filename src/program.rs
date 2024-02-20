@@ -20,6 +20,10 @@ impl Program {
             entry_file: entry_file.clone(),
             scopes_by_file: OrderedHashMap::new(),
         };
+        // Add the root scope that will always be checked as if part of the current scope before
+        // failure to resolve
+        p = p.load("@root".to_string())?;
+        // Load the entry file
         p = match p.load(entry_file) {
             Ok(p) => p,
             Err(_) => {
@@ -30,7 +34,17 @@ impl Program {
     }
 
     pub fn load(self, path: String) -> Result<Program, Box<dyn std::error::Error>> {
-        let ln_src = read_to_string(&path)?;
+        let ln_src = if path.starts_with("@") {
+            match path.as_str() {
+                "@root" => include_str!("./std/root.ln").to_string(),
+                "@std/app" => include_str!("./std/app.ln").to_string(),
+                _ => {
+                    return Err(format!("Unknown standard library named {}", &path).into());
+                },
+            }
+        } else {
+            read_to_string(&path)?
+        };
         let (mut p, tuple) = Scope::from_src(self, &path, ln_src)?;
         p.scopes_by_file.insert(path, tuple);
         Ok(p)
@@ -44,11 +58,11 @@ pub struct Scope {
     pub consts: OrderedHashMap<String, Const>,
     pub functions: OrderedHashMap<String, Function>,
     pub handlers: OrderedHashMap<String, Handler>,
+    pub exports: OrderedHashMap<String, Export>,
     // TODO: Implement these other concepts
     // operatormappings: OrderedHashMap<String, OperatorMapping>,
     // events: OrderedHashMap<String, Event>,
     // interfaces: OrderedHashMap<String, Interface>,
-    pub exports: OrderedHashMap<String, Export>,
     // Should we include something for documentation? Maybe testing?
 }
 
