@@ -40,7 +40,7 @@ impl Program {
                 "@std/app" => include_str!("./std/app.ln").to_string(),
                 _ => {
                     return Err(format!("Unknown standard library named {}", &path).into());
-                },
+                }
             }
         } else {
             read_to_string(&path)?
@@ -50,7 +50,11 @@ impl Program {
         Ok(p)
     }
 
-    pub fn resolve_type<'a>(self: &'a Self, scope: &'a Scope, typename: &String) -> Option<(&Type, &Scope)> {
+    pub fn resolve_type<'a>(
+        self: &'a Self,
+        scope: &'a Scope,
+        typename: &String,
+    ) -> Option<(&Type, &Scope)> {
         // Tries to find the specified type within the portion of the program accessible from the
         // current scope (so first checking the current scope, then all imports, then the root
         // scope) Returns a reference to the type and the scope it came from.
@@ -69,7 +73,11 @@ impl Program {
         }
     }
 
-    pub fn resolve_function<'a>(self: &'a Self, scope: &'a Scope, function: &String) -> Option<(&Function, &Scope)> {
+    pub fn resolve_function<'a>(
+        self: &'a Self,
+        scope: &'a Scope,
+        function: &String,
+    ) -> Option<(&Function, &Scope)> {
         // Tries to find the specified function within the portion of the program accessible from
         // the current scope (so first checking the current scope, then all imports, then the root
         // scope) Returns a reference to the function and the scope it came from.
@@ -391,8 +399,7 @@ impl Handler {
                 };
                 scope.functions.insert(name.clone(), function);
                 name
-            }
-            // TODO: Should you be allowed to bind a Rust function as a handler directly?
+            } // TODO: Should you be allowed to bind a Rust function as a handler directly?
         };
         let h = Handler {
             eventname: handler_ast.eventname.clone(),

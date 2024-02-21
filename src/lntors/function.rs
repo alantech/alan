@@ -1,11 +1,15 @@
 // Builds a function and everything it needs, recursively. Given a read-only handle on it's own
 // scope and the program in case it needs to generate required text from somewhere else.
 
-use crate::parse::{BaseAssignable, Constants, Statement, WithOperators};
-use crate::program::{Program, Function, Scope};
 use crate::lntors::typen;
+use crate::parse::{BaseAssignable, Constants, Statement, WithOperators};
+use crate::program::{Function, Program, Scope};
 
-pub fn from_statement(statement: &Statement, scope: &Scope, program: &Program) -> Result<Option<String>, Box<dyn std::error::Error>> {
+pub fn from_statement(
+    statement: &Statement,
+    scope: &Scope,
+    program: &Program,
+) -> Result<Option<String>, Box<dyn std::error::Error>> {
     // TODO: Need a proper root scope to define these mappings better, and a statement to
     // "microstatement" function to encapsulate all of the logic (and dynamic precedence logic
     // to construct a tree to depth-first traverse) For now, we're gonna wing it to have
@@ -37,24 +41,21 @@ pub fn from_statement(statement: &Statement, scope: &Scope, program: &Program) -
                                                         var
                                                     )
                                                     .into());
-                                                },
-                                                Some((f, s)) => {
-                                                    match &f.bind {
-                                                        None => {
-                                                            return Err("Inlining user-defined functions not yet supported".into());
-                                                        },
-                                                        Some(rustname) => {
-                                                            stmt = format!("{}{}", stmt, rustname).to_string();
-                                                        }
-                                                    }
                                                 }
+                                                Some((f, s)) => match &f.bind {
+                                                    None => {
+                                                        return Err("Inlining user-defined functions not yet supported".into());
+                                                    }
+                                                    Some(rustname) => {
+                                                        stmt = format!("{}{}", stmt, rustname)
+                                                            .to_string();
+                                                    }
+                                                },
                                             }
                                         } else {
-                                            return Err(format!(
-                                                "Invalid syntax after {}",
-                                                var
-                                            )
-                                            .into());
+                                            return Err(
+                                                format!("Invalid syntax after {}", var).into()
+                                            );
                                         }
                                     } else {
                                         // It's just a variable, return it as-is
@@ -70,9 +71,7 @@ pub fn from_statement(statement: &Statement, scope: &Scope, program: &Program) -
                                             BaseAssignable::Constants(c) => match c {
                                                 Constants::Strn(s) => s,
                                                 _ => {
-                                                    return Err(
-                                                        "Unsupported constant type".into()
-                                                    );
+                                                    return Err("Unsupported constant type".into());
                                                 }
                                             },
                                             _ => {
@@ -87,23 +86,26 @@ pub fn from_statement(statement: &Statement, scope: &Scope, program: &Program) -
                                 }
                                 _ => {
                                     return Err("Unsupported assignable type".into());
-                                },
+                                }
                             }
                         }
-                    },
+                    }
                     _ => {
                         return Err("Operators currently unsupported".into());
                     }
                 }
             }
             Ok(Some(stmt))
-        },
+        }
         _ => Err("Unsupported statement".into()),
     }
 }
 
-
-pub fn generate(function: &Function, scope: &Scope, program: &Program) -> Result<String, Box<dyn std::error::Error>> {
+pub fn generate(
+    function: &Function,
+    scope: &Scope,
+    program: &Program,
+) -> Result<String, Box<dyn std::error::Error>> {
     let mut out = "".to_string();
     // First make sure all of the function argument types are defined
     for arg in &function.args {
@@ -111,17 +113,17 @@ pub fn generate(function: &Function, scope: &Scope, program: &Program) -> Result
             None => continue,
             Some((t, s)) => {
                 out = format!("{}{}", out, typen::generate(t, s, program)?);
-            },
+            }
         }
     }
     match &function.rettype {
         Some(rettype) => match program.resolve_type(scope, rettype) {
-            None => {},
+            None => {}
             Some((t, s)) => {
                 out = format!("{}{}", out, typen::generate(t, s, program)?);
-            },
+            }
         },
-        None => {},
+        None => {}
     }
     // Start generating the function output. We can do this eagerly like this because, at least for
     // now, we inline all other function calls within an "entry" function (the main function, or
@@ -140,14 +142,15 @@ pub fn generate(function: &Function, scope: &Scope, program: &Program) -> Result
             .collect::<Vec<String>>()
             .join(", "),
         match &function.rettype {
-          Some(rettype) => format!(" -> {}", rettype).to_string(),
-          None => "".to_string(),
+            Some(rettype) => format!(" -> {}", rettype).to_string(),
+            None => "".to_string(),
         },
-    ).to_string();
+    )
+    .to_string();
     for statement in &function.statements {
         let stmt = from_statement(statement, scope, program)?;
         if let Some(s) = stmt {
-          out = format!("{}  {};\n", out, s);
+            out = format!("{}  {};\n", out, s);
         }
     }
     out = format!("{}}}", out);

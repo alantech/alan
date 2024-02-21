@@ -4,8 +4,8 @@
 // lntoamm and just generate a crap-ton of simple statements with auto-generated variable names and
 // let LLVM optimize it all away.
 
-use crate::program::Program;
 use crate::lntors::function::generate;
+use crate::program::Program;
 
 mod function;
 mod typen;
@@ -22,7 +22,7 @@ pub fn lntors(entry_file: String) -> Result<String, Box<dyn std::error::Error>> 
     // Without support for building shared libs yet, assume there is an `export fn main` in the
     // entry file or fail otherwise
     match scope.exports.get("main") {
-        Some(_) => {},
+        Some(_) => {}
         None => {
             return Err(
                 "Entry file has no `main` function exported. This is not yet supported.".into(),
