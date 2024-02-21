@@ -31,6 +31,22 @@ pub fn compile(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+/// The `tors` function is an even thinner wrapper on top of `lntors` that shoves the output into a
+/// `.rs` file.
+pub fn to_rs(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
+    // Generate the rust code to compile
+    let rs_str = lntors(source_file.clone())?;
+    // Shove it into a temp file for rustc
+    let out_file = match PathBuf::from(source_file).file_stem() {
+        Some(pb) => format!("{}.rs", pb.to_string_lossy().to_string()),
+        None => {
+            return Err("Invalid path".into());
+        }
+    };
+    write(&out_file, rs_str)?;
+    Ok(())
+}
+
 /// The majority of this file is dedicated to a comprehensive test suite, converted from the prior
 /// test suite using macros to make it a bit more dense than it would have been otherwise.
 /// The macro here is composed of three parts: The test program source, the expected exit code
