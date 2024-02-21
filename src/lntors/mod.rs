@@ -8,6 +8,7 @@ use crate::program::Program;
 use crate::lntors::function::generate;
 
 mod function;
+mod typen;
 
 pub fn lntors(entry_file: String) -> Result<String, Box<dyn std::error::Error>> {
     let program = Program::new(entry_file)?;

@@ -49,6 +49,44 @@ impl Program {
         p.scopes_by_file.insert(path, tuple);
         Ok(p)
     }
+
+    pub fn resolve_type<'a>(self: &'a Self, scope: &'a Scope, typename: &String) -> Option<(&Type, &Scope)> {
+        // Tries to find the specified type within the portion of the program accessible from the
+        // current scope (so first checking the current scope, then all imports, then the root
+        // scope) Returns a reference to the type and the scope it came from.
+        // TODO: Refactor this into a general function for all exportable elements? It should be
+        // very similar between them all.
+        match scope.types.get(typename) {
+            Some(t) => Some((t, scope)),
+            None => {
+                // TODO: Loop over imports looking for the type
+                let (_, _, root_scope) = self.scopes_by_file.get("@root").unwrap();
+                match &root_scope.types.get(typename) {
+                    Some(t) => Some((&t, &root_scope)),
+                    None => None,
+                }
+            }
+        }
+    }
+
+    pub fn resolve_function<'a>(self: &'a Self, scope: &'a Scope, function: &String) -> Option<(&Function, &Scope)> {
+        // Tries to find the specified function within the portion of the program accessible from
+        // the current scope (so first checking the current scope, then all imports, then the root
+        // scope) Returns a reference to the function and the scope it came from.
+        // TODO: Refactor this into a general function for all exportable elements? It should be
+        // very similar between them all.
+        match scope.functions.get(function) {
+            Some(f) => Some((f, scope)),
+            None => {
+                // TODO: Loop over imports looking for the function
+                let (_, _, root_scope) = self.scopes_by_file.get("@root").unwrap();
+                match &root_scope.functions.get(function) {
+                    Some(f) => Some((&f, &root_scope)),
+                    None => None,
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
