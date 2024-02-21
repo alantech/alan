@@ -58,8 +58,14 @@ impl Program {
         // Tries to find the specified type within the portion of the program accessible from the
         // current scope (so first checking the current scope, then all imports, then the root
         // scope) Returns a reference to the type and the scope it came from.
-        // TODO: Refactor this into a general function for all exportable elements? It should be
-        // very similar between them all.
+        // TODO: Generics and Interfaces complicates this. If given a name that is a concrete
+        // version of a generic, it should try to create said generic in the calling scope and then
+        // return that if it can't find it already created. This means we need mutable access,
+        // which complicated this function's call signature. Further, if the name provided is an
+        // interface, we should instead return an array of types that could potentially fit the
+        // bill. If the provided typename is a generic type with one of the type parameters being
+        // an interface, we may need to provide all possible realized types for all types that
+        // match the interface?
         match scope.types.get(typename) {
             Some(t) => Some((t, scope)),
             None => {
@@ -81,8 +87,13 @@ impl Program {
         // Tries to find the specified function within the portion of the program accessible from
         // the current scope (so first checking the current scope, then all imports, then the root
         // scope) Returns a reference to the function and the scope it came from.
-        // TODO: Refactor this into a general function for all exportable elements? It should be
-        // very similar between them all.
+        // TODO: Currently similar to the type resolution, but this really should be quite
+        // different. 1) Alan allows multiple functions with the same name to coexist as long as
+        // the type signature is different. 2) We should be passing in types or interfaces for the
+        // function arguments and/or return type that we know in order to better narrow down the
+        // results. Or 3) We should be returning an array of possibilities for a given name and
+        // then allow the other side to determine which of the options provided, if any, fit the
+        // bill.
         match scope.functions.get(function) {
             Some(f) => Some((f, scope)),
             None => {
