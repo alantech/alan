@@ -26,7 +26,8 @@ impl Program {
         // Load the entry file
         p = match p.load(entry_file) {
             Ok(p) => p,
-            Err(_) => {
+            Err(e) => {
+                println!("{:?}", e);
                 return Err("Failed to load entry file".into());
             }
         };
@@ -190,16 +191,9 @@ impl Scope {
                 _ => println!("TODO"),
             }
         }
-        //program.scopes_by_file.insert(path, (txt, ast, s));
         Ok((p, (txt, ast, s)))
-        //Ok(())
     }
 }
-
-// import ./foo
-// import ./foo as bar
-// from ./foo import bar
-// from ./foo import bar as baz
 
 #[derive(Debug)]
 pub enum ImportType {
@@ -316,12 +310,144 @@ impl Const {
     }
 }
 
+/// Microstatements are a reduced syntax that doesn't have operators, methods, or reassigning to
+/// the same variable. (We'll rely on LLVM to dedupe variables that are never used again.) This
+/// syntax reduction will make generating the final output easier and also simplifies the work
+/// needed to determine the actual types of a function's arguments and return type.
+#[derive(Debug)]
+pub enum Microstatement {
+    Assignment {
+        name: String,
+        value: Box<Microstatement>,
+    },
+    FnCall {
+        function: String, // TODO: It would be nice to make this a vector of pointers to function objects so we can narrow down the exact implementation sooner
+        args: Vec<Microstatement>,
+    },
+    Value {
+        typen: String, // TODO: Do better on this, too.
+        representation: String, // TODO: Can we do better here?
+    }
+    // TODO: Conditionals, Emits, and Returns
+}
+
+fn baseassignablelist_to_microstatements(baseassignablelist: &Vec<parse::BaseAssignable>) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
+    let mut microstatements = Vec::new();
+    for (i, baseassignable) in baseassignablelist.iter().enumerate() {
+        match baseassignable {
+            parse::BaseAssignable::Variable(var) => {
+                // The behavior of a variable depends on if there's
+                // anything following after it. Many things following are
+                // invalid syntax, but `FnCall` and `MethodSep` are valid
+                let next = baseassignablelist.get(i + 1);
+                if let Some(otherbase) = next {
+                    match otherbase {
+                        parse::BaseAssignable::FnCall(call) => {
+                            // First generate the microstatements to compute the values to pass to the
+                            // function that will be called, and populate an array of arg
+                            // microstatements for the eventual function call
+                            let mut args = Vec::new();
+                            for arg in &call.assignablelist {
+                                let mut argmicrostatements = withoperatorslist_to_microstatement(arg)?;
+                                let lastmicrostatement = argmicrostatements.pop().unwrap();
+                                match lastmicrostatement {
+                                    Microstatement::Assignment{ ref name, .. } => {
+                                        // If the last microstatement is an assignment, we need to
+                                        // reference it as a value and push it back onto the array
+                                        args.push(Microstatement::Value {
+                                            typen: "".to_string(), // TODO: Populate this
+                                            representation: name.clone(),
+                                        });
+                                        argmicrostatements.push(lastmicrostatement);
+                                    },
+                                    _ => {
+                                        // For everything else, we can just put the statement inside of
+                                        // the function call as one of its args directly
+                                        args.push(lastmicrostatement);
+                                    }
+                                }
+                                // Append the arg microstatements to the microstatements array now, so
+                                // they are evaluated before the function is called
+                                microstatements.append(&mut argmicrostatements);
+                            }
+                            microstatements.push(Microstatement::FnCall {
+                                function: var.to_string(),
+                                args,
+                            });
+                        },
+                        _ => {
+                            return Err(
+                                format!("Invalid syntax after {}", var).into()
+                            );
+                        }
+                    }
+                } else {
+                    microstatements.push(Microstatement::Value {
+                        typen: "".to_string(), // TODO: Figure out how to look up the type data
+                        representation: var.to_string(),
+                    });
+                }
+            }
+            parse::BaseAssignable::FnCall(_) => {
+                // This path doesn't do anything, as the `variable` path should have handled it.
+            }
+            parse::BaseAssignable::Constants(c) => {
+                microstatements.push(Microstatement::Value {
+                    typen: "".to_string(), // TODO: Figure out how to determine the kind of number we're dealing with
+                    representation: match c {
+                        parse::Constants::Bool(b) => b.clone(),
+                        parse::Constants::Strn(s) => s.clone(),
+                        parse::Constants::Num(n) => match n {
+                            parse::Number::RealNum(r) => r.clone(),
+                            parse::Number::IntNum(i) => i.clone(),
+                        }
+                    }
+                });
+            }
+            _ => {
+                return Err("Unsupported assignable type".into());
+            }
+        }
+    }
+    Ok(microstatements)
+}
+
+fn withoperatorslist_to_microstatement(withoperatorslist: &Vec<parse::WithOperators>) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
+    let mut microstatements = Vec::new();
+    for assignable_or_operator in withoperatorslist.iter() {
+        match assignable_or_operator {
+            parse::WithOperators::BaseAssignableList(baseassignablelist) => microstatements.append(&mut baseassignablelist_to_microstatements(baseassignablelist)?),
+            _ => {
+                return Err("Operators currently unsupported".into());
+            }
+        }
+    }
+    Ok(microstatements)
+}
+
+fn assignablestatement_to_microstatements(assignable: &parse::AssignableStatement) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
+    let mut microstatements = Vec::new();
+    microstatements.append(&mut withoperatorslist_to_microstatement(&assignable.assignables)?);
+    Ok(microstatements)
+}
+
+fn statement_to_microstatements(statement: &parse::Statement) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
+    let mut microstatements = Vec::new();
+    match statement {
+        parse::Statement::A(_) => {},
+        parse::Statement::Assignables(assignable) => microstatements.append(&mut assignablestatement_to_microstatements(assignable)?),
+        _ => {},
+    }
+    Ok(microstatements)
+}
+
 #[derive(Debug)]
 pub struct Function {
     pub name: String,
     pub args: Vec<(String, String)>, // Making everything Stringly-typed kinda sucks, but no good way to give an error message in the parser for unknown types otherwise
     pub rettype: Option<String>,
-    pub statements: Vec<parse::Statement>, // TODO: Do we need to wrap this, or is the AST fine here?
+    pub statements: Vec<parse::Statement>,
+    pub microstatements: Vec<Microstatement>,
     pub bind: Option<String>,
 }
 
@@ -372,6 +498,13 @@ impl Function {
             }
             parse::FullFunctionBody::BindFunction(_) => Vec::new(),
         };
+        let microstatements = {
+            let mut ms = Vec::new();
+            for statement in &statements {
+                ms.append(&mut statement_to_microstatements(statement)?);
+            }
+            ms
+        };
         let bind = match &function_ast.fullfunctionbody {
             parse::FullFunctionBody::BindFunction(b) => Some(b.rustfunc.clone()),
             _ => None,
@@ -381,6 +514,7 @@ impl Function {
             args,
             rettype,
             statements,
+            microstatements,
             bind,
         };
         if is_export {
@@ -442,6 +576,13 @@ impl Handler {
                     args: Vec::new(),
                     rettype: None,
                     statements: body.statements.clone(),
+                    microstatements: {
+                        let mut ms = Vec::new();
+                        for statement in &body.statements {
+                            ms.append(&mut statement_to_microstatements(statement)?);
+                        }
+                        ms
+                    },
                     bind: None,
                 };
                 if scope.functions.contains_key(&name) {

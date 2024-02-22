@@ -2,110 +2,48 @@
 // scope and the program in case it needs to generate required text from somewhere else.
 
 use crate::lntors::typen;
-use crate::parse::{BaseAssignable, Constants, Statement, WithOperators};
-use crate::program::{Function, Program, Scope};
+use crate::program::{Function, Program, Scope, Microstatement};
 
-pub fn from_statement(
-    statement: &Statement,
+pub fn from_microstatement(
+    microstatement: &Microstatement,
     scope: &Scope,
     program: &Program,
-) -> Result<Option<String>, Box<dyn std::error::Error>> {
-    // TODO: Need a proper root scope to define these mappings better, and a statement to
-    // "microstatement" function to encapsulate all of the logic (and dynamic precedence logic
-    // to construct a tree to depth-first traverse) For now, we're gonna wing it to have
-    // something here.
-    let mut stmt = "".to_string();
-    match statement {
-        Statement::A(_) => Ok(None),
-        Statement::Assignables(assignable) => {
-            for assignable_or_operator in assignable.assignables.iter() {
-                match assignable_or_operator {
-                    WithOperators::BaseAssignableList(baseassignablelist) => {
-                        for (i, baseassignable) in baseassignablelist.iter().enumerate() {
-                            match baseassignable {
-                                BaseAssignable::Variable(var) => {
-                                    // The behavior of a variable depends on if there's
-                                    // anything following after it. Many things following are
-                                    // invalid syntax, but `FnCall` and `MethodSep` are valid
-                                    let next = baseassignablelist.get(i + 1);
-                                    if let Some(otherbase) = next {
-                                        if match otherbase {
-                                            BaseAssignable::FnCall(_) => true,
-                                            BaseAssignable::MethodSep(_) => false, // TODO
-                                            _ => false,
-                                        } {
-                                            // TODO: Add logic to (recursively) get the type for
-                                            // the argument(s). For the sake of keeping the hello
-                                            // world test working for now, adding some magic
-                                            // knowledge that should not be hardcoded
-                                            match program.resolve_function(
-                                                scope,
-                                                var,
-                                                &vec!["String".to_string()],
-                                            ) {
-                                                None => {
-                                                    return Err(format!(
-                                                        "Function {} not found",
-                                                        var
-                                                    )
-                                                    .into());
-                                                }
-                                                Some((f, s)) => match &f.bind {
-                                                    None => {
-                                                        return Err("Inlining user-defined functions not yet supported".into());
-                                                    }
-                                                    Some(rustname) => {
-                                                        stmt = format!("{}{}", stmt, rustname)
-                                                            .to_string();
-                                                    }
-                                                },
-                                            }
-                                        } else {
-                                            return Err(
-                                                format!("Invalid syntax after {}", var).into()
-                                            );
-                                        }
-                                    } else {
-                                        // It's just a variable, return it as-is
-                                        stmt = format!("{}{}", stmt, var);
-                                    }
-                                }
-                                BaseAssignable::FnCall(call) => {
-                                    // TODO: This should be properly recursive, just going to
-                                    // hardwire grabbing the constant from within it for now
-                                    let arg = &call.assignablelist[0][0];
-                                    let txt = match arg {
-                                        WithOperators::BaseAssignableList(l) => match &l[0] {
-                                            BaseAssignable::Constants(c) => match c {
-                                                Constants::Strn(s) => s,
-                                                _ => {
-                                                    return Err("Unsupported constant type".into());
-                                                }
-                                            },
-                                            _ => {
-                                                return Err("Unsupported argument type".into());
-                                            }
-                                        },
-                                        _ => {
-                                            return Err("Unsupported argument type".into());
-                                        }
-                                    };
-                                    stmt = format!("{}({})", stmt, txt);
-                                }
-                                _ => {
-                                    return Err("Unsupported assignable type".into());
-                                }
-                            }
+) -> Result<String, Box<dyn std::error::Error>> {
+    match microstatement {
+        Microstatement::Assignment { name, value } => {
+            Ok(format!("let {} = {}", name, from_microstatement(value, scope, program)?).to_string())
+        },
+        Microstatement::Value { representation, .. } => {
+            Ok(representation.clone())
+        },
+        Microstatement::FnCall { function, args } => {
+            // TODO: Add logic to get the type from the args array of microstatements. For the sake
+            // of keeping the hello world test working for now, adding some magic knowledge that
+            // should not be hardcoded until the microstatement generation adds the type
+            // information needed.
+            match program.resolve_function(
+                scope,
+                function,
+                &vec!["String".to_string()],
+            ) {
+                None => Err(format!(
+                    "Function {} not found",
+                    function
+                )
+                .into()),
+                Some((f, _s)) => match &f.bind {
+                    None => Err("Inlining user-defined functions not yet supported".into()),
+                    Some(rustname) => {
+                        let mut argstrs = Vec::new();
+                        for arg in args {
+                            let a = from_microstatement(arg, scope, program)?;
+                            argstrs.push(a);
                         }
+                        Ok(format!("{}({})", rustname, argstrs.join(", ")).to_string())
                     }
-                    _ => {
-                        return Err("Operators currently unsupported".into());
-                    }
-                }
+                },
             }
-            Ok(Some(stmt))
         }
-        _ => Err("Unsupported statement".into()),
     }
 }
 
@@ -155,11 +93,9 @@ pub fn generate(
         },
     )
     .to_string();
-    for statement in &function.statements {
-        let stmt = from_statement(statement, scope, program)?;
-        if let Some(s) = stmt {
-            out = format!("{}  {};\n", out, s);
-        }
+    for microstatement in &function.microstatements {
+        let stmt = from_microstatement(microstatement, scope, program)?;
+        out = format!("{}    {};\n", out, stmt);
     }
     out = format!("{}}}", out);
     Ok(out)
