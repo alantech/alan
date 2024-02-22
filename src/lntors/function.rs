@@ -2,7 +2,7 @@
 // scope and the program in case it needs to generate required text from somewhere else.
 
 use crate::lntors::typen;
-use crate::program::{Function, Program, Scope, Microstatement};
+use crate::program::{Function, Microstatement, Program, Scope};
 
 pub fn from_microstatement(
     microstatement: &Microstatement,
@@ -10,27 +10,20 @@ pub fn from_microstatement(
     program: &Program,
 ) -> Result<String, Box<dyn std::error::Error>> {
     match microstatement {
-        Microstatement::Assignment { name, value } => {
-            Ok(format!("let {} = {}", name, from_microstatement(value, scope, program)?).to_string())
-        },
-        Microstatement::Value { representation, .. } => {
-            Ok(representation.clone())
-        },
+        Microstatement::Assignment { name, value } => Ok(format!(
+            "let {} = {}",
+            name,
+            from_microstatement(value, scope, program)?
+        )
+        .to_string()),
+        Microstatement::Value { representation, .. } => Ok(representation.clone()),
         Microstatement::FnCall { function, args } => {
             // TODO: Add logic to get the type from the args array of microstatements. For the sake
             // of keeping the hello world test working for now, adding some magic knowledge that
             // should not be hardcoded until the microstatement generation adds the type
             // information needed.
-            match program.resolve_function(
-                scope,
-                function,
-                &vec!["String".to_string()],
-            ) {
-                None => Err(format!(
-                    "Function {} not found",
-                    function
-                )
-                .into()),
+            match program.resolve_function(scope, function, &vec!["String".to_string()]) {
+                None => Err(format!("Function {} not found", function).into()),
                 Some((f, _s)) => match &f.bind {
                     None => Err("Inlining user-defined functions not yet supported".into()),
                     Some(rustname) => {

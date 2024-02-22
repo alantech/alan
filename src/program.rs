@@ -325,13 +325,14 @@ pub enum Microstatement {
         args: Vec<Microstatement>,
     },
     Value {
-        typen: String, // TODO: Do better on this, too.
+        typen: String,          // TODO: Do better on this, too.
         representation: String, // TODO: Can we do better here?
-    }
-    // TODO: Conditionals, Emits, and Returns
+    }, // TODO: Conditionals, Emits, and Returns
 }
 
-fn baseassignablelist_to_microstatements(baseassignablelist: &Vec<parse::BaseAssignable>) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
+fn baseassignablelist_to_microstatements(
+    baseassignablelist: &Vec<parse::BaseAssignable>,
+) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
     let mut microstatements = Vec::new();
     for (i, baseassignable) in baseassignablelist.iter().enumerate() {
         match baseassignable {
@@ -348,10 +349,11 @@ fn baseassignablelist_to_microstatements(baseassignablelist: &Vec<parse::BaseAss
                             // microstatements for the eventual function call
                             let mut args = Vec::new();
                             for arg in &call.assignablelist {
-                                let mut argmicrostatements = withoperatorslist_to_microstatement(arg)?;
+                                let mut argmicrostatements =
+                                    withoperatorslist_to_microstatement(arg)?;
                                 let lastmicrostatement = argmicrostatements.pop().unwrap();
                                 match lastmicrostatement {
-                                    Microstatement::Assignment{ ref name, .. } => {
+                                    Microstatement::Assignment { ref name, .. } => {
                                         // If the last microstatement is an assignment, we need to
                                         // reference it as a value and push it back onto the array
                                         args.push(Microstatement::Value {
@@ -359,7 +361,7 @@ fn baseassignablelist_to_microstatements(baseassignablelist: &Vec<parse::BaseAss
                                             representation: name.clone(),
                                         });
                                         argmicrostatements.push(lastmicrostatement);
-                                    },
+                                    }
                                     _ => {
                                         // For everything else, we can just put the statement inside of
                                         // the function call as one of its args directly
@@ -374,11 +376,9 @@ fn baseassignablelist_to_microstatements(baseassignablelist: &Vec<parse::BaseAss
                                 function: var.to_string(),
                                 args,
                             });
-                        },
+                        }
                         _ => {
-                            return Err(
-                                format!("Invalid syntax after {}", var).into()
-                            );
+                            return Err(format!("Invalid syntax after {}", var).into());
                         }
                     }
                 } else {
@@ -400,8 +400,8 @@ fn baseassignablelist_to_microstatements(baseassignablelist: &Vec<parse::BaseAss
                         parse::Constants::Num(n) => match n {
                             parse::Number::RealNum(r) => r.clone(),
                             parse::Number::IntNum(i) => i.clone(),
-                        }
-                    }
+                        },
+                    },
                 });
             }
             _ => {
@@ -412,11 +412,15 @@ fn baseassignablelist_to_microstatements(baseassignablelist: &Vec<parse::BaseAss
     Ok(microstatements)
 }
 
-fn withoperatorslist_to_microstatement(withoperatorslist: &Vec<parse::WithOperators>) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
+fn withoperatorslist_to_microstatement(
+    withoperatorslist: &Vec<parse::WithOperators>,
+) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
     let mut microstatements = Vec::new();
     for assignable_or_operator in withoperatorslist.iter() {
         match assignable_or_operator {
-            parse::WithOperators::BaseAssignableList(baseassignablelist) => microstatements.append(&mut baseassignablelist_to_microstatements(baseassignablelist)?),
+            parse::WithOperators::BaseAssignableList(baseassignablelist) => microstatements.append(
+                &mut baseassignablelist_to_microstatements(baseassignablelist)?,
+            ),
             _ => {
                 return Err("Operators currently unsupported".into());
             }
@@ -425,18 +429,26 @@ fn withoperatorslist_to_microstatement(withoperatorslist: &Vec<parse::WithOperat
     Ok(microstatements)
 }
 
-fn assignablestatement_to_microstatements(assignable: &parse::AssignableStatement) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
+fn assignablestatement_to_microstatements(
+    assignable: &parse::AssignableStatement,
+) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
     let mut microstatements = Vec::new();
-    microstatements.append(&mut withoperatorslist_to_microstatement(&assignable.assignables)?);
+    microstatements.append(&mut withoperatorslist_to_microstatement(
+        &assignable.assignables,
+    )?);
     Ok(microstatements)
 }
 
-fn statement_to_microstatements(statement: &parse::Statement) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
+fn statement_to_microstatements(
+    statement: &parse::Statement,
+) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
     let mut microstatements = Vec::new();
     match statement {
-        parse::Statement::A(_) => {},
-        parse::Statement::Assignables(assignable) => microstatements.append(&mut assignablestatement_to_microstatements(assignable)?),
-        _ => {},
+        parse::Statement::A(_) => {}
+        parse::Statement::Assignables(assignable) => {
+            microstatements.append(&mut assignablestatement_to_microstatements(assignable)?)
+        }
+        _ => {}
     }
     Ok(microstatements)
 }
