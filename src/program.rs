@@ -392,7 +392,9 @@ impl Function {
             let func_vec = scope.functions.get_mut(&function.name).unwrap();
             func_vec.push(function);
         } else {
-            scope.functions.insert(function.name.clone(), vec![function]);
+            scope
+                .functions
+                .insert(function.name.clone(), vec![function]);
         }
         Ok(())
     }
