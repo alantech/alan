@@ -1,4 +1,3 @@
-// TODO: Figure out how to integrate `rustc` into the `alan` binary.
 use std::fs::{remove_file, write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -28,6 +27,22 @@ pub fn compile(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
         .output()?;
     // Drop the temp file
     remove_file(tmp_file)?;
+    Ok(())
+}
+
+/// The `tors` function is an even thinner wrapper on top of `lntors` that shoves the output into a
+/// `.rs` file.
+pub fn to_rs(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
+    // Generate the rust code to compile
+    let rs_str = lntors(source_file.clone())?;
+    // Shove it into a temp file for rustc
+    let out_file = match PathBuf::from(source_file).file_stem() {
+        Some(pb) => format!("{}.rs", pb.to_string_lossy().to_string()),
+        None => {
+            return Err("Invalid path".into());
+        }
+    };
+    write(&out_file, rs_str)?;
     Ok(())
 }
 
@@ -68,26 +83,26 @@ macro_rules! stdout {
     ( $test_val:expr, $real_val:expr ) => {
         let std_out = String::from_utf8($real_val.stdout.clone())?;
         assert_eq!($test_val, &std_out);
-    }
+    };
 }
 #[cfg(test)]
 macro_rules! stderr {
     ( $test_val:expr, $real_val:expr ) => {
         let std_err = String::from_utf8($real_val.stderr.clone())?;
         assert_eq!($test_val, &std_err);
-    }
+    };
 }
 #[cfg(test)]
 macro_rules! status {
     ( $test_val:expr, $real_val:expr ) => {
         let status = $real_val.status.code().unwrap();
         assert_eq!($test_val, status);
-    }
+    };
 }
 
 // The only test that works for now
 test!(hello_world => r#"
-    on start {
+    export fn main {
         print("Hello, World!");
     }"#;
     stdout "Hello, World!\n";
@@ -3688,7 +3703,7 @@ Describe "Module imports"
       sourceToAll "
         from @std/app import start, print, exit
         // Intentionally put an extra space after the import
-        from ./piece import Piece 
+        from ./piece import Piece
 
         on start {
           const piece = new Piece {

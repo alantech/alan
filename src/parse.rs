@@ -446,7 +446,7 @@ build!(precedence, token!("precedence"));
 build!(infix, token!("infix"));
 build!(prefix, token!("prefix"));
 build!(asn, token!("as"));
-build!(exit, token!("return")); // Why did I do this before?
+build!(returnn, token!("return"));
 build!(emit, token!("emit"));
 build!(letn, token!("let"));
 build!(constn, token!("const"));
@@ -638,10 +638,17 @@ impl Dependency {
                 Ok(path.to_string_lossy().to_string())
             }
             Dependency::Global(g) => {
-                let path = PathBuf::from("./dependencies")
-                    .join(g.depsegments.join("/"))
-                    .canonicalize()?;
-                Ok(path.to_string_lossy().to_string())
+                if g.depsegments[0] == "std" {
+                    // Keep the `@std/...` imports as-is for the Program level to know it should
+                    // pull from the embedded strings
+                    Ok(g.to_string())
+                } else {
+                    // For everything else, let's assume it's in the `./dependencies` directory
+                    let path = PathBuf::from("./dependencies")
+                        .join(g.depsegments.join("/"))
+                        .canonicalize()?;
+                    Ok(path.to_string_lossy().to_string())
+                }
             }
         }
     }
@@ -934,13 +941,13 @@ named_and!(retval: RetVal =>
     a: String as optwhitespace,
 );
 build!(optretval: Option<RetVal>, opt(retval));
-named_and!(exits: Exits =>
-    exit: String as exit,
+named_and!(returns: Returns =>
+    returnn: String as returnn,
     a: String as optwhitespace,
     retval: Option<RetVal> as optretval,
     semicolon: String as semicolon,
 );
-test!(exits =>
+test!(returns =>
     pass "return maybe.getMaybe().toString();";
 );
 named_and!(emits: Emits =>
@@ -1048,7 +1055,7 @@ named_and!(assignablestatement: AssignableStatement =>
 );
 named_or!(statement: Statement =>
     Declarations: Declarations as declarations,
-    Exits: Exits as exits,
+    Returns: Returns as returns,
     Emits: Emits as emits,
     Assignments: Assignments as assignments,
     Conditional: Conditional as conditional,
