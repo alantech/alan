@@ -1,9 +1,3 @@
-// TODO: Use the Program type to load up the code and all of the relevant data structures, then
-// start manipulating them to produce Rust code. Because of the borrow checker, making
-// idiomatic-looking Rust from Alan may be tough, so let's start off with something like the old
-// lntoamm and just generate a crap-ton of simple statements with auto-generated variable names and
-// let LLVM optimize it all away.
-
 use crate::lntors::function::generate;
 use crate::program::Program;
 

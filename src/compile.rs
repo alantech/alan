@@ -1,4 +1,3 @@
-// TODO: Figure out how to integrate `rustc` into the `alan` binary.
 use std::fs::{remove_file, write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
