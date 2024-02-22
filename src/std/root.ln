@@ -1,1 +1,1 @@
-export fn print binds println!;
+export fn print(str: String) binds println!;

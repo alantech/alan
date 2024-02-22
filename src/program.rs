@@ -83,24 +83,53 @@ impl Program {
         self: &'a Self,
         scope: &'a Scope,
         function: &String,
+        args: &Vec<String>,
     ) -> Option<(&Function, &Scope)> {
         // Tries to find the specified function within the portion of the program accessible from
         // the current scope (so first checking the current scope, then all imports, then the root
-        // scope) Returns a reference to the function and the scope it came from.
-        // TODO: Currently similar to the type resolution, but this really should be quite
-        // different. 1) Alan allows multiple functions with the same name to coexist as long as
-        // the type signature is different. 2) We should be passing in types or interfaces for the
-        // function arguments and/or return type that we know in order to better narrow down the
-        // results. Or 3) We should be returning an array of possibilities for a given name and
-        // then allow the other side to determine which of the options provided, if any, fit the
-        // bill.
+        // scope). It checks against the args array to find a match. TODO: Go beyond exact matching
+        // Returns a reference to the function and the scope it came from.
         match scope.functions.get(function) {
-            Some(f) => Some((f, scope)),
+            Some(fs) => {
+                for f in fs {
+                    if args.len() != f.args.len() {
+                        continue;
+                    }
+                    let mut args_match = true;
+                    for (i, arg) in args.iter().enumerate() {
+                        if &f.args[i].1 != arg {
+                            args_match = false;
+                            break;
+                        }
+                    }
+                    if args_match {
+                        return Some((f, scope));
+                    }
+                }
+                None
+            }
             None => {
                 // TODO: Loop over imports looking for the function
                 let (_, _, root_scope) = self.scopes_by_file.get("@root").unwrap();
-                match &root_scope.functions.get(function) {
-                    Some(f) => Some((&f, &root_scope)),
+                match root_scope.functions.get(function) {
+                    Some(fs) => {
+                        for f in fs {
+                            if args.len() != f.args.len() {
+                                continue;
+                            }
+                            let mut args_match = true;
+                            for (i, arg) in args.iter().enumerate() {
+                                if &f.args[i].1 != arg {
+                                    args_match = false;
+                                    break;
+                                }
+                            }
+                            if args_match {
+                                return Some((f, &root_scope));
+                            }
+                        }
+                        None
+                    }
                     None => None,
                 }
             }
@@ -113,7 +142,7 @@ pub struct Scope {
     pub imports: OrderedHashMap<String, Import>,
     pub types: OrderedHashMap<String, Type>,
     pub consts: OrderedHashMap<String, Const>,
-    pub functions: OrderedHashMap<String, Function>,
+    pub functions: OrderedHashMap<String, Vec<Function>>,
     pub handlers: OrderedHashMap<String, Handler>,
     pub exports: OrderedHashMap<String, Export>,
     // TODO: Implement these other concepts
@@ -359,7 +388,12 @@ impl Function {
                 .exports
                 .insert(function.name.clone(), Export::Function);
         }
-        scope.functions.insert(function.name.clone(), function);
+        if scope.functions.contains_key(&function.name) {
+            let func_vec = scope.functions.get_mut(&function.name).unwrap();
+            func_vec.push(function);
+        } else {
+            scope.functions.insert(function.name.clone(), vec![function]);
+        }
         Ok(())
     }
 }
@@ -408,7 +442,12 @@ impl Handler {
                     statements: body.statements.clone(),
                     bind: None,
                 };
-                scope.functions.insert(name.clone(), function);
+                if scope.functions.contains_key(&name) {
+                    let func_vec = scope.functions.get_mut(&name).unwrap();
+                    func_vec.push(function);
+                } else {
+                    scope.functions.insert(name.clone(), vec![function]);
+                }
                 name
             } // TODO: Should you be allowed to bind a Rust function as a handler directly?
         };

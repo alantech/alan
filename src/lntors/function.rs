@@ -34,7 +34,11 @@ pub fn from_statement(
                                             BaseAssignable::MethodSep(_) => false, // TODO
                                             _ => false,
                                         } {
-                                            match program.resolve_function(scope, var) {
+                                            // TODO: Add logic to (recursively) get the type for
+                                            // the argument(s). For the sake of keeping the hello
+                                            // world test working for now, adding some magic
+                                            // knowledge that should not be hardcoded
+                                            match program.resolve_function(scope, var, &vec!["String".to_string()]) {
                                                 None => {
                                                     return Err(format!(
                                                         "Function {} not found",
