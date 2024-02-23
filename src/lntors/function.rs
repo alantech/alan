@@ -37,6 +37,12 @@ pub fn from_microstatement(
                 },
             }
         }
+        Microstatement::Return { value } => match value {
+            Some(val) => {
+                Ok(format!("return {}", from_microstatement(val, scope, program)?).to_string())
+            }
+            None => Ok("return".to_string()),
+        },
     }
 }
 
