@@ -327,7 +327,10 @@ pub enum Microstatement {
     Value {
         typen: String,          // TODO: Do better on this, too.
         representation: String, // TODO: Can we do better here?
-    }, // TODO: Conditionals, Emits, and Returns
+    }, // TODO: Conditionals and Emits
+    Return {
+        value: Option<Box<Microstatement>>,
+    },
 }
 
 fn baseassignablelist_to_microstatements(
@@ -350,7 +353,7 @@ fn baseassignablelist_to_microstatements(
                             let mut args = Vec::new();
                             for arg in &call.assignablelist {
                                 let mut argmicrostatements =
-                                    withoperatorslist_to_microstatement(arg)?;
+                                    withoperatorslist_to_microstatements(arg)?;
                                 let lastmicrostatement = argmicrostatements.pop().unwrap();
                                 match lastmicrostatement {
                                     Microstatement::Assignment { ref name, .. } => {
@@ -412,7 +415,7 @@ fn baseassignablelist_to_microstatements(
     Ok(microstatements)
 }
 
-fn withoperatorslist_to_microstatement(
+fn withoperatorslist_to_microstatements(
     withoperatorslist: &Vec<parse::WithOperators>,
 ) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
     let mut microstatements = Vec::new();
@@ -433,7 +436,7 @@ fn assignablestatement_to_microstatements(
     assignable: &parse::AssignableStatement,
 ) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
     let mut microstatements = Vec::new();
-    microstatements.append(&mut withoperatorslist_to_microstatement(
+    microstatements.append(&mut withoperatorslist_to_microstatements(
         &assignable.assignables,
     )?);
     Ok(microstatements)
@@ -446,7 +449,26 @@ fn statement_to_microstatements(
     match statement {
         parse::Statement::A(_) => {}
         parse::Statement::Assignables(assignable) => {
-            microstatements.append(&mut assignablestatement_to_microstatements(assignable)?)
+            microstatements.append(&mut assignablestatement_to_microstatements(assignable)?);
+        }
+        parse::Statement::Returns(returns) => {
+            if let Some(retval) = &returns.retval {
+                // We get all of the microstatements involved in the return statement, then we pop
+                // off the last one, if any exists, to get the final return value. Then we shove
+                // the other microstatements into the array and the new Return microstatement with
+                // that last value attached to it.
+                let mut retval_microstatements = withoperatorslist_to_microstatements(&retval.assignables)?;
+                let value = match retval_microstatements.pop() {
+                    None => None,
+                    Some(v) => Some(Box::new(v)),
+                };
+                if retval_microstatements.len() > 0 {
+                    microstatements.append(&mut retval_microstatements);
+                }
+                microstatements.push(Microstatement::Return { value });
+            } else {
+                microstatements.push(Microstatement::Return { value: None });
+            }
         }
         _ => {}
     }
