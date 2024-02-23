@@ -457,7 +457,8 @@ fn statement_to_microstatements(
                 // off the last one, if any exists, to get the final return value. Then we shove
                 // the other microstatements into the array and the new Return microstatement with
                 // that last value attached to it.
-                let mut retval_microstatements = withoperatorslist_to_microstatements(&retval.assignables)?;
+                let mut retval_microstatements =
+                    withoperatorslist_to_microstatements(&retval.assignables)?;
                 let value = match retval_microstatements.pop() {
                     None => None,
                     Some(v) => Some(Box::new(v)),
