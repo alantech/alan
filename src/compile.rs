@@ -112,15 +112,15 @@ test!(hello_world => r#"
 // Event Tests
 
 test!(normal_exit_code => r#"
-    from @std/app import start, exit
-
-    on start { emit exit 0; }"#;
+    export fn main(): ExitCode {
+        return toExitCode(0);
+    }"#;
     status 0;
 );
 test!(error_exit_code => r#"
-    from @std/app import start, exit
-
-    on start { emit exit 1; }"#;
+    export fn main(): ExitCode {
+        return toExitCode(1);
+    }"#;
     status 1;
 );
 test!(non_global_memory_exit_code => r#"

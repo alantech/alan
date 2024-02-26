@@ -1,1 +1,3 @@
+export type ExitCode binds std::process::ExitCode;
+export fn toExitCode(e: i64): ExitCode binds to_exit_code;
 export fn print(str: String) binds println!;

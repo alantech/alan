@@ -18,11 +18,8 @@ pub fn from_microstatement(
         .to_string()),
         Microstatement::Value { representation, .. } => Ok(representation.clone()),
         Microstatement::FnCall { function, args } => {
-            // TODO: Add logic to get the type from the args array of microstatements. For the sake
-            // of keeping the hello world test working for now, adding some magic knowledge that
-            // should not be hardcoded until the microstatement generation adds the type
-            // information needed.
-            match program.resolve_function(scope, function, &vec!["String".to_string()]) {
+            let arg_types = args.iter().map(|arg| arg.get_type(scope, program)).collect();
+            match program.resolve_function(scope, function, &arg_types) {
                 None => Err(format!("Function {} not found", function).into()),
                 Some((f, _s)) => match &f.bind {
                     None => Err("Inlining user-defined functions not yet supported".into()),
@@ -53,23 +50,28 @@ pub fn generate(
 ) -> Result<String, Box<dyn std::error::Error>> {
     let mut out = "".to_string();
     // First make sure all of the function argument types are defined
+    let mut arg_strs = Vec::new();
     for arg in &function.args {
-        match program.resolve_type(scope, &arg.1) {
-            None => continue,
-            Some((t, s)) => {
-                out = format!("{}{}", out, typen::generate(t, s, program)?);
+        if let Some((t, s)) = program.resolve_type(scope, &arg.1) {
+            if let Ok(t_str) = typen::generate(t, s, program) {
+                arg_strs.push(t_str);
+            } else {
+                return Err(format!("Failed to convert Alan type {} to Rust", &arg.1).into());
+            }
+        } else {
+            return Err(format!("Could not find type {}", &arg.1).into());
+        }
+    };
+    let opt_ret_str = match &function.rettype {
+        Some(rettype) => match program.resolve_type(scope, rettype) {
+            None => None,
+            Some((t, s)) => match typen::generate(t, s, program) {
+                Ok(t) => Some(t),
+                Err(e) => return Err(e),
             }
         }
-    }
-    match &function.rettype {
-        Some(rettype) => match program.resolve_type(scope, rettype) {
-            None => {}
-            Some((t, s)) => {
-                out = format!("{}{}", out, typen::generate(t, s, program)?);
-            }
-        },
-        None => {}
-    }
+        None => None,
+    };
     // Start generating the function output. We can do this eagerly like this because, at least for
     // now, we inline all other function calls within an "entry" function (the main function, or
     // any function that's attached to an event, or any function that's part of an exported set in
@@ -80,13 +82,8 @@ pub fn generate(
         "{}fn {}({}){} {{\n",
         out,
         function.name.clone(),
-        function
-            .args
-            .iter()
-            .map(|(argname, argtype)| format!("{}: {}", argname, argtype).to_string()) // TODO: Don't assume Rust and Alan types exactly match syntax
-            .collect::<Vec<String>>()
-            .join(", "),
-        match &function.rettype {
+        arg_strs.join(", "),
+        match opt_ret_str {
             Some(rettype) => format!(" -> {}", rettype).to_string(),
             None => "".to_string(),
         },
