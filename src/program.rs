@@ -572,9 +572,14 @@ impl Function {
         let statements = match &function_ast.fullfunctionbody {
             parse::FullFunctionBody::FunctionBody(body) => body.statements.clone(),
             parse::FullFunctionBody::AssignFunction(assign) => {
-                vec![parse::Statement::Assignables(parse::AssignableStatement {
-                    assignables: assign.assignables.clone(),
-                    semicolon: ";".to_string(),
+                vec![parse::Statement::Returns(parse::Returns {
+                  returnn: "return".to_string(),
+                  a: " ".to_string(),
+                  retval: Some(parse::RetVal {
+                      assignables: assign.assignables.clone(),
+                      a: "".to_string(),
+                  }),
+                  semicolon: ";".to_string(),
                 })]
             }
             parse::FullFunctionBody::BindFunction(_) => Vec::new(),

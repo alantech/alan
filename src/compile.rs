@@ -118,9 +118,7 @@ test!(normal_exit_code => r#"
     status 0;
 );
 test!(error_exit_code => r#"
-    export fn main(): ExitCode {
-        return toExitCode(1);
-    }"#;
+    export fn main(): ExitCode = toExitCode(1);"#;
     status 1;
 );
 test!(non_global_memory_exit_code => r#"
