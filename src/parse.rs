@@ -707,6 +707,18 @@ named_and!(typegenerics: TypeGenerics =>
     c: String as optwhitespace,
     d: String as closecaret,
 );
+impl TypeGenerics {
+    pub fn to_string(&self) -> String {
+        format!(
+            "<{}>",
+            self.generics
+                .iter()
+                .map(|gen| gen.to_string())
+                .collect::<Vec<String>>()
+                .join(", ")
+        )
+    }
+}
 named_and!(fulltypename: FullTypename =>
     typename: String as typename, // TODO: Maybe we want to keep this in a tree form in the future?
     opttypegenerics: Option<TypeGenerics> as opt(typegenerics)
@@ -721,14 +733,7 @@ impl FullTypename {
             self.typename,
             match &self.opttypegenerics {
                 None => "".to_string(),
-                Some(g) => format!(
-                    "<{}>",
-                    g.generics
-                        .iter()
-                        .map(|gen| gen.to_string())
-                        .collect::<Vec<String>>()
-                        .join(", ")
-                ),
+                Some(g) => g.to_string(),
             }
         )
         .to_string()
@@ -759,10 +764,12 @@ named_and!(typealias: TypeAlias =>
     b: String as blank,
     fulltypename: FullTypename as fulltypename,
 );
+list!(rustpath: String => variable, token!("::"));
 named_and!(typebind: TypeBind =>
     binds: String as binds,
     a: String as blank,
-    rusttypename: FullTypename as fulltypename, // TODO: 100% correct Rust type declaration
+    rustpath: Vec<String> as rustpath,
+    opttypegenerics: Option<TypeGenerics> as opt(typegenerics)
 );
 named_or!(typedef: TypeDef =>
     TypeBody: TypeBody as typebody,
@@ -775,11 +782,13 @@ named_and!(types: Types =>
     fulltypename: FullTypename as fulltypename,
     c: String as optwhitespace,
     typedef: TypeDef as typedef,
+    optsemicolon: String as optsemicolon,
 );
 test!(types =>
     pass "type Foo {\n  bar: String,\n}";
     pass "type Foo = Bar";
     pass "type Result<T, Error> binds Result<T, Error>";
+    pass "type ExitCode binds std::process::ExitCode;";
 );
 named_or!(constants: Constants =>
     Bool: String as booln,

@@ -1,11 +1,15 @@
-// TODO: Everything in here
+// TODO: Generics/Interfaces resolution
 
-use crate::program::{Program, Scope, Type};
+use crate::program::{Program, Scope, Type, TypeType};
 
 pub fn generate(
     typen: &Type,
     scope: &Scope,
     program: &Program,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    Ok("".to_string())
+    match &typen.typetype {
+        TypeType::Bind(s) => Ok(s.clone()),
+        TypeType::Alias(a) => Ok(a.to_string()),
+        TypeType::Structlike(_) => Ok(typen.typename.to_string()),
+    }
 }

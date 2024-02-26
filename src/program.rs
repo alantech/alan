@@ -246,7 +246,7 @@ impl Import {
 pub enum TypeType {
     Structlike(parse::TypeBody),
     Alias(parse::FullTypename),
-    Bind(parse::FullTypename),
+    Bind(String),
 }
 
 #[derive(Debug)]
@@ -267,7 +267,17 @@ impl Type {
             typetype: match &type_ast.typedef {
                 parse::TypeDef::TypeBody(body) => TypeType::Structlike(body.clone()),
                 parse::TypeDef::TypeAlias(alias) => TypeType::Alias(alias.fulltypename.clone()),
-                parse::TypeDef::TypeBind(bind) => TypeType::Bind(bind.rusttypename.clone()),
+                parse::TypeDef::TypeBind(bind) => TypeType::Bind(
+                    format!(
+                        "{}{}",
+                        bind.rustpath.join("::"),
+                        match &bind.opttypegenerics {
+                            None => "".to_string(),
+                            Some(generics) => generics.to_string(),
+                        }
+                    )
+                    .to_string(),
+                ),
             },
         };
         if is_export {
@@ -333,6 +343,28 @@ pub enum Microstatement {
     },
 }
 
+impl Microstatement {
+    pub fn get_type (&self, scope: &Scope, program: &Program) -> String {
+        match self {
+            Self::Value { typen, .. } => typen.clone(),
+            Self::Assignment { value, .. } => value.get_type(scope, program),
+            Self::Return { value } => match value {
+                Some(v) => v.get_type(scope, program),
+                None => "".to_string(),
+            },
+            Self::FnCall { function, args } => {
+                match program.resolve_function(scope, function, &args.iter().map(|arg| arg.get_type(scope, program)).collect()) {
+                    Some((function_object, _s)) => match &function_object.rettype { // TODO: Handle implied return types better
+                        None => "".to_string(),
+                        Some(v) => v.clone(),
+                    }
+                    None => "".to_string(), // TODO: Handle resolution errors here better
+                }
+            },
+        }
+    }
+}
+
 fn baseassignablelist_to_microstatements(
     baseassignablelist: &Vec<parse::BaseAssignable>,
 ) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
@@ -360,7 +392,7 @@ fn baseassignablelist_to_microstatements(
                                         // If the last microstatement is an assignment, we need to
                                         // reference it as a value and push it back onto the array
                                         args.push(Microstatement::Value {
-                                            typen: "".to_string(), // TODO: Populate this
+                                            typen: "String".to_string(), // TODO: Populate this
                                             representation: name.clone(),
                                         });
                                         argmicrostatements.push(lastmicrostatement);
@@ -386,7 +418,7 @@ fn baseassignablelist_to_microstatements(
                     }
                 } else {
                     microstatements.push(Microstatement::Value {
-                        typen: "".to_string(), // TODO: Figure out how to look up the type data
+                        typen: "String".to_string(), // TODO: Figure out how to look up the type data
                         representation: var.to_string(),
                     });
                 }
@@ -395,17 +427,31 @@ fn baseassignablelist_to_microstatements(
                 // This path doesn't do anything, as the `variable` path should have handled it.
             }
             parse::BaseAssignable::Constants(c) => {
-                microstatements.push(Microstatement::Value {
-                    typen: "".to_string(), // TODO: Figure out how to determine the kind of number we're dealing with
-                    representation: match c {
-                        parse::Constants::Bool(b) => b.clone(),
-                        parse::Constants::Strn(s) => s.clone(),
-                        parse::Constants::Num(n) => match n {
-                            parse::Number::RealNum(r) => r.clone(),
-                            parse::Number::IntNum(i) => i.clone(),
-                        },
-                    },
-                });
+                match c {
+                    parse::Constants::Bool(b) => microstatements.push(Microstatement::Value {
+                        typen: "bool".to_string(),
+                        representation: b.clone(),
+                    }),
+                    parse::Constants::Strn(s) => microstatements.push(Microstatement::Value {
+                        typen: "String".to_string(), // TODO: Make this lower case?
+                        representation: if s.starts_with('"') {
+                            s.clone()
+                        } else {
+                            // TODO: Is there a cheaper way to do this conversion?
+                            s.replace("\"", "\\\"").replace("\\'", "\\\\\"").replace("'", "\"").replace("\\\\\"", "'")
+                        }
+                    }),
+                    parse::Constants::Num(n) => match n {
+                        parse::Number::RealNum(r) => microstatements.push(Microstatement::Value {
+                            typen: "f64".to_string(), // TODO: Something more intelligent here?
+                            representation: r.clone(),
+                        }),
+                        parse::Number::IntNum(i) => microstatements.push(Microstatement::Value {
+                            typen: "i64".to_string(), // TODO: Same here. This feels dumb
+                            representation: i.clone(),
+                        }),
+                    }
+                }
             }
             _ => {
                 return Err("Unsupported assignable type".into());
@@ -526,9 +572,14 @@ impl Function {
         let statements = match &function_ast.fullfunctionbody {
             parse::FullFunctionBody::FunctionBody(body) => body.statements.clone(),
             parse::FullFunctionBody::AssignFunction(assign) => {
-                vec![parse::Statement::Assignables(parse::AssignableStatement {
-                    assignables: assign.assignables.clone(),
-                    semicolon: ";".to_string(),
+                vec![parse::Statement::Returns(parse::Returns {
+                  returnn: "return".to_string(),
+                  a: " ".to_string(),
+                  retval: Some(parse::RetVal {
+                      assignables: assign.assignables.clone(),
+                      a: "".to_string(),
+                  }),
+                  semicolon: ";".to_string(),
                 })]
             }
             parse::FullFunctionBody::BindFunction(_) => Vec::new(),
