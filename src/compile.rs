@@ -149,12 +149,12 @@ test!(passing_ints_from_global_memory => r#"
 
 // This one will replace the hello_world test above once the syntax is updated
 test!(print_function => r#"
-    from @std/app import start, print, exit
-    on start {
+    export fn main(): ExitCode {
       print('Hello, World');
-      emit exit 0;
+      return toExitCode(0);
     }"#;
     stdout "Hello, World\n";
+    status 0;
 );
 test!(stdout_event => r#"
     from @std/app import start, stdout, exit
@@ -169,50 +169,40 @@ test!(stdout_event => r#"
 // Basic Math Tests
 
 test!(int8_add => r#"
-    from @std/app import start, exit
-    on start { emit exit add(toInt8(1), toInt8(2)).getOrExit(); }"#;
+    export fn main(): ExitCode = toExitCode(getOrExit(add(toI8(1), toI8(2))));"#;
     status 3;
 );
 test!(int8_sub => r#"
-    from @std/app import start, exit
-    on start { emit exit sub(toInt8(2), toInt8(1)).getOrExit(); }"#;
+    export fn main(): ExitCode = toExitCode(getOrExit(sub(toI8(2), toI8(1))));"#;
     status 1;
 );
 test!(int8_mul => r#"
-    from @std/app import start, exit
-    on start { emit exit mul(toInt8(2), toInt8(1)).getOrExit(); }"#;
+    export fn main(): ExitCode = toExitCode(getOrExit(mul(toI8(2), toI8(1))));"#;
     status 2;
 );
 test!(int8_div => r#"
-    from @std/app import start, exit
-    on start { emit exit div(toInt8(6), toInt8(2)).getOrExit(); }"#;
+    export fn main(): ExitCode = toExitCode(getOrExit(div(toI8(6), toI8(2))));"#;
     status 3;
 );
 test!(int8_mod => r#"
-    from @std/app import start, exit
-    on start { emit exit mod(toInt8(6), toInt8(4)); }"#;
+    export fn main(): ExitCode = toExitCode(getOrExit(mod(toI8(6), toI8(4))));"#;
     status 2;
 );
 test!(int8_pow => r#"
-    from @std/app import start, exit
-    on start { emit exit pow(toInt8(6), toInt8(2)).getOrExit(); }"#;
+    export fn main(): ExitCode = toExitCode(getOrExit(pow(toI8(6), toI8(2))));"#;
     status 36;
 );
 test!(int8_min => r#"
-    from @std/app import start, print, exit
-    on start {
-      min(3.toInt8(), 5.toInt8()).print();
-      emit exit 0;
+    export fn main() {
+      print(min(toI8(3), toI8(5)));
     }"#;
-    status 3;
+    stdout "3\n";
 );
 test!(int8_max => r#"
-    from @std/app import start, print, exit
-    on start {
-      max(3.toInt8(), 5.toInt8()).print();
-      emit exit 0;
+    export fn main() {
+      print(max(toI8(3), toI8(5)));
     }"#;
-    status 5;
+    stdout "5\n";
 );
 
 test!(int16_add => r#"
