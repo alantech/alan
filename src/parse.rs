@@ -501,7 +501,16 @@ named_or!(varsegment: VarSegment =>
     MethodSep: String as and!(optwhitespace, dot, optwhitespace),
     ArrayAccess: Vec<WithOperators> as arrayaccess,
 );
-build!(var, one_or_more!(varsegment));
+impl VarSegment {
+    pub fn to_string(&self) -> String {
+        match self {
+            Self::Variable(v) => v.clone(),
+            Self::MethodSep(_) => ".".to_string(),
+            Self::ArrayAccess(_) => "[ TODO ]".to_string(),
+        }
+    }
+}
+list!(var: VarSegment => varsegment);
 test!(var =>
     pass "hm.lookup";
 );
@@ -799,9 +808,8 @@ named_or!(baseassignable: BaseAssignable =>
     ObjectLiterals: ObjectLiterals as objectliterals,
     Functions: Functions as functions,
     FnCall: FnCall as fncall,
-    Variable: String as variable,
+    Variable: Vec<VarSegment> as var,
     Constants: Constants as constants,
-    MethodSep: String as and!(optwhitespace, dot, optwhitespace),
 );
 test!(baseassignable =>
     pass "new Foo{}" => "", super::BaseAssignable::ObjectLiterals(super::ObjectLiterals::TypeLiteral(super::TypeLiteral{
@@ -935,7 +943,7 @@ named_or!(declarations: Declarations =>
     Let: LetDeclaration as letdeclaration,
 );
 named_and!(assignments: Assignments =>
-    var: String as var,
+    var: Vec<VarSegment> as var,
     a: String as optwhitespace,
     eq: String as eq,
     b: String as optwhitespace,
@@ -962,7 +970,7 @@ test!(returns =>
 named_and!(emits: Emits =>
     emit: String as emit,
     a: String as optwhitespace,
-    eventname: String as var,
+    eventname: Vec<VarSegment> as var,
     b: String as optwhitespace,
     retval: Option<RetVal> as optretval,
     semicolon: String as semicolon,
@@ -1035,7 +1043,7 @@ test!(functions =>
 named_or!(blocklike: Blocklike =>
     Functions: Functions as functions,
     FunctionBody: FunctionBody as functionbody,
-    FnName: String as var,
+    FnName: Vec<VarSegment> as var,
 );
 named_or!(condorblock: CondOrBlock =>
     Conditional: Conditional as conditional,
@@ -1426,7 +1434,7 @@ named_or!(handler: Handler =>
 named_and!(handlers: Handlers =>
     on: String as on,
     a: String as whitespace,
-    eventname: String as var,
+    eventname: Vec<VarSegment> as var,
     b: String as whitespace,
     handler: Handler as handler,
 );
