@@ -422,17 +422,19 @@ fn baseassignablelist_to_microstatements(
                                 }
                             }
                             microstatements.push(Microstatement::FnCall {
-                                function: var.to_string(),
+                                function: var.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join("").to_string(), // TODO: Support method/property/array access eventually
                                 args,
                             });
                         }
                         _ => {
-                            return Err(format!("Invalid syntax after {}", var).into());
+                            // TODO: Properly support method/property/array access eventually
+                            return Err(format!("Invalid syntax after {}", var.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join("").to_string()).into());
                         }
                     }
                 } else {
                     let typen = match microstatements.iter().find(|m| match m {
-                        Microstatement::Assignment { name, .. } => var == name,
+                        // TODO: Properly support method/property/array access eventually
+                        Microstatement::Assignment { name, .. } => &var.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join("") == name,
                         _ => false,
                     }) {
                         // Reaching the `Some` path requires it to be of type
@@ -444,11 +446,12 @@ fn baseassignablelist_to_microstatements(
                             }
                             _ => unreachable!(),
                         }),
-                        None => Err(format!("Couldn't find variable {}", var)),
+                        None => Err(format!("Couldn't find variable {}", var.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join(""))),
                     }?;
                     microstatements.push(Microstatement::Value {
                         typen,
-                        representation: var.to_string(),
+                        // TODO: Properly support method/property/array access eventually
+                        representation: var.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join("").to_string(),
                     });
                 }
             }
@@ -485,8 +488,11 @@ fn baseassignablelist_to_microstatements(
                     },
                 }
             }
-            _ => {
-                return Err("Unsupported assignable type".into());
+            parse::BaseAssignable::ObjectLiterals(o) => {
+                todo!("Implement me");
+            }
+            parse::BaseAssignable::Functions(f) => {
+                todo!("Implement me");
             }
         }
     }
@@ -725,7 +731,8 @@ impl Handler {
                 // function list for this scope, otherwise
                 let name = match &function.optname {
                     Some(name) => name.clone(),
-                    None => format!(":::on:::{}", &handler_ast.eventname).to_string(), // Impossible for users to write, so no collisions ever
+                    // TODO: Properly support method/property/array access eventually
+                    None => format!(":::on:::{}", &handler_ast.eventname.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join("")).to_string(), // Impossible for users to write, so no collisions ever
                 };
                 let _ = Function::from_ast_with_name(scope, program, function, false, name.clone());
                 name
@@ -736,7 +743,8 @@ impl Handler {
             // Function object initialization in here instead of as a new method on the Function
             // type.
             parse::Handler::FunctionBody(body) => {
-                let name = format!(":::on:::{}", &handler_ast.eventname).to_string();
+                // TODO: Properly support method/property/array access eventually
+                let name = format!(":::on:::{}", &handler_ast.eventname.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join("")).to_string();
                 let function = Function {
                     name: name.clone(),
                     args: Vec::new(),
@@ -761,7 +769,7 @@ impl Handler {
             } // TODO: Should you be allowed to bind a Rust function as a handler directly?
         };
         let h = Handler {
-            eventname: handler_ast.eventname.clone(),
+            eventname: handler_ast.eventname.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join("").to_string(),
             functionname,
         };
         scope.handlers.insert(h.eventname.clone(), h);
