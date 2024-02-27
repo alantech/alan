@@ -18,7 +18,10 @@ pub fn from_microstatement(
         .to_string()),
         Microstatement::Value { representation, .. } => Ok(representation.clone()),
         Microstatement::FnCall { function, args } => {
-            let arg_types = args.iter().map(|arg| arg.get_type(scope, program)).collect();
+            let arg_types = args
+                .iter()
+                .map(|arg| arg.get_type(scope, program))
+                .collect();
             match program.resolve_function(scope, function, &arg_types) {
                 None => Err(format!("Function {} not found", function).into()),
                 Some((f, _s)) => match &f.bind {
@@ -61,15 +64,15 @@ pub fn generate(
         } else {
             return Err(format!("Could not find type {}", &arg.1).into());
         }
-    };
+    }
     let opt_ret_str = match &function.rettype {
         Some(rettype) => match program.resolve_type(scope, rettype) {
             None => None,
             Some((t, s)) => match typen::generate(t, s, program) {
                 Ok(t) => Some(t),
                 Err(e) => return Err(e),
-            }
-        }
+            },
+        },
         None => None,
     };
     // Start generating the function output. We can do this eagerly like this because, at least for

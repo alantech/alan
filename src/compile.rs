@@ -122,11 +122,9 @@ test!(error_exit_code => r#"
     status 1;
 );
 test!(non_global_memory_exit_code => r#"
-    import @std/app
-
-    on app.start {
-      let x: int64 = 0;
-      emit app.exit x;
+    export fn main(): ExitCode {
+      let x: i64 = 0;
+      return toExitCode(x);
     }"#;
     status 0;
 );
