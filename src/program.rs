@@ -177,12 +177,12 @@ impl Scope {
         }
         for element in ast.body.iter() {
             match element {
-                parse::RootElements::Handlers(h) => Handler::from_ast(&mut s, h)?,
+                parse::RootElements::Handlers(h) => Handler::from_ast(&mut s, &p, h)?,
                 parse::RootElements::Types(t) => Type::from_ast(&mut s, t, false)?,
-                parse::RootElements::Functions(f) => Function::from_ast(&mut s, f, false)?,
+                parse::RootElements::Functions(f) => Function::from_ast(&mut s, &p, f, false)?,
                 parse::RootElements::ConstDeclaration(c) => Const::from_ast(&mut s, c, false)?,
                 parse::RootElements::Exports(e) => match &e.exportable {
-                    parse::Exportable::Functions(f) => Function::from_ast(&mut s, f, true)?,
+                    parse::Exportable::Functions(f) => Function::from_ast(&mut s, &p, f, true)?,
                     parse::Exportable::ConstDeclaration(c) => Const::from_ast(&mut s, c, true)?,
                     parse::Exportable::Types(t) => Type::from_ast(&mut s, t, true)?,
                     _ => println!("TODO"),
@@ -344,7 +344,7 @@ pub enum Microstatement {
 }
 
 impl Microstatement {
-    pub fn get_type (&self, scope: &Scope, program: &Program) -> String {
+    pub fn get_type(&self, scope: &Scope, program: &Program) -> String {
         match self {
             Self::Value { typen, .. } => typen.clone(),
             Self::Assignment { value, .. } => value.get_type(scope, program),
@@ -353,22 +353,32 @@ impl Microstatement {
                 None => "".to_string(),
             },
             Self::FnCall { function, args } => {
-                match program.resolve_function(scope, function, &args.iter().map(|arg| arg.get_type(scope, program)).collect()) {
-                    Some((function_object, _s)) => match &function_object.rettype { // TODO: Handle implied return types better
+                match program.resolve_function(
+                    scope,
+                    function,
+                    &args
+                        .iter()
+                        .map(|arg| arg.get_type(scope, program))
+                        .collect(),
+                ) {
+                    Some((function_object, _s)) => match &function_object.rettype {
+                        // TODO: Handle implied return types better
                         None => "".to_string(),
                         Some(v) => v.clone(),
-                    }
+                    },
                     None => "".to_string(), // TODO: Handle resolution errors here better
                 }
-            },
+            }
         }
     }
 }
 
 fn baseassignablelist_to_microstatements(
     baseassignablelist: &Vec<parse::BaseAssignable>,
+    scope: &Scope,
+    program: &Program,
+    mut microstatements: Vec<Microstatement>,
 ) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
-    let mut microstatements = Vec::new();
     for (i, baseassignable) in baseassignablelist.iter().enumerate() {
         match baseassignable {
             parse::BaseAssignable::Variable(var) => {
@@ -384,18 +394,25 @@ fn baseassignablelist_to_microstatements(
                             // microstatements for the eventual function call
                             let mut args = Vec::new();
                             for arg in &call.assignablelist {
-                                let mut argmicrostatements =
-                                    withoperatorslist_to_microstatements(arg)?;
-                                let lastmicrostatement = argmicrostatements.pop().unwrap();
+                                microstatements = withoperatorslist_to_microstatements(
+                                    arg,
+                                    scope,
+                                    program,
+                                    microstatements,
+                                )?;
+                                let lastmicrostatement = microstatements.pop().unwrap();
                                 match lastmicrostatement {
-                                    Microstatement::Assignment { ref name, .. } => {
+                                    Microstatement::Assignment {
+                                        ref name,
+                                        ref value,
+                                    } => {
                                         // If the last microstatement is an assignment, we need to
                                         // reference it as a value and push it back onto the array
                                         args.push(Microstatement::Value {
-                                            typen: "String".to_string(), // TODO: Populate this
+                                            typen: value.get_type(scope, program),
                                             representation: name.clone(),
                                         });
-                                        argmicrostatements.push(lastmicrostatement);
+                                        microstatements.push(lastmicrostatement);
                                     }
                                     _ => {
                                         // For everything else, we can just put the statement inside of
@@ -403,9 +420,6 @@ fn baseassignablelist_to_microstatements(
                                         args.push(lastmicrostatement);
                                     }
                                 }
-                                // Append the arg microstatements to the microstatements array now, so
-                                // they are evaluated before the function is called
-                                microstatements.append(&mut argmicrostatements);
                             }
                             microstatements.push(Microstatement::FnCall {
                                 function: var.to_string(),
@@ -417,8 +431,23 @@ fn baseassignablelist_to_microstatements(
                         }
                     }
                 } else {
+                    let typen = match microstatements.iter().find(|m| match m {
+                        Microstatement::Assignment { name, .. } => var == name,
+                        _ => false,
+                    }) {
+                        // Reaching the `Some` path requires it to be of type
+                        // Microstatment::Assignment, but Rust doesn't seem to know that, so force
+                        // it.
+                        Some(m) => Ok(match m {
+                            Microstatement::Assignment { value, .. } => {
+                                value.get_type(scope, program)
+                            }
+                            _ => unreachable!(),
+                        }),
+                        None => Err(format!("Couldn't find variable {}", var)),
+                    }?;
                     microstatements.push(Microstatement::Value {
-                        typen: "String".to_string(), // TODO: Figure out how to look up the type data
+                        typen,
                         representation: var.to_string(),
                     });
                 }
@@ -438,8 +467,11 @@ fn baseassignablelist_to_microstatements(
                             s.clone()
                         } else {
                             // TODO: Is there a cheaper way to do this conversion?
-                            s.replace("\"", "\\\"").replace("\\'", "\\\\\"").replace("'", "\"").replace("\\\\\"", "'")
-                        }
+                            s.replace("\"", "\\\"")
+                                .replace("\\'", "\\\\\"")
+                                .replace("'", "\"")
+                                .replace("\\\\\"", "'")
+                        },
                     }),
                     parse::Constants::Num(n) => match n {
                         parse::Number::RealNum(r) => microstatements.push(Microstatement::Value {
@@ -450,7 +482,7 @@ fn baseassignablelist_to_microstatements(
                             typen: "i64".to_string(), // TODO: Same here. This feels dumb
                             representation: i.clone(),
                         }),
-                    }
+                    },
                 }
             }
             _ => {
@@ -463,13 +495,20 @@ fn baseassignablelist_to_microstatements(
 
 fn withoperatorslist_to_microstatements(
     withoperatorslist: &Vec<parse::WithOperators>,
+    scope: &Scope,
+    program: &Program,
+    mut microstatements: Vec<Microstatement>,
 ) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
-    let mut microstatements = Vec::new();
     for assignable_or_operator in withoperatorslist.iter() {
         match assignable_or_operator {
-            parse::WithOperators::BaseAssignableList(baseassignablelist) => microstatements.append(
-                &mut baseassignablelist_to_microstatements(baseassignablelist)?,
-            ),
+            parse::WithOperators::BaseAssignableList(baseassignablelist) => {
+                microstatements = baseassignablelist_to_microstatements(
+                    baseassignablelist,
+                    scope,
+                    program,
+                    microstatements,
+                )?
+            }
             _ => {
                 return Err("Operators currently unsupported".into());
             }
@@ -480,22 +519,34 @@ fn withoperatorslist_to_microstatements(
 
 fn assignablestatement_to_microstatements(
     assignable: &parse::AssignableStatement,
+    scope: &Scope,
+    program: &Program,
+    mut microstatements: Vec<Microstatement>,
 ) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
-    let mut microstatements = Vec::new();
-    microstatements.append(&mut withoperatorslist_to_microstatements(
+    microstatements = withoperatorslist_to_microstatements(
         &assignable.assignables,
-    )?);
+        scope,
+        program,
+        microstatements,
+    )?;
     Ok(microstatements)
 }
 
 fn statement_to_microstatements(
     statement: &parse::Statement,
+    scope: &Scope,
+    program: &Program,
+    mut microstatements: Vec<Microstatement>,
 ) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
-    let mut microstatements = Vec::new();
     match statement {
         parse::Statement::A(_) => {}
         parse::Statement::Assignables(assignable) => {
-            microstatements.append(&mut assignablestatement_to_microstatements(assignable)?);
+            microstatements = assignablestatement_to_microstatements(
+                assignable,
+                scope,
+                program,
+                microstatements,
+            )?;
         }
         parse::Statement::Returns(returns) => {
             if let Some(retval) = &returns.retval {
@@ -503,21 +554,47 @@ fn statement_to_microstatements(
                 // off the last one, if any exists, to get the final return value. Then we shove
                 // the other microstatements into the array and the new Return microstatement with
                 // that last value attached to it.
-                let mut retval_microstatements =
-                    withoperatorslist_to_microstatements(&retval.assignables)?;
-                let value = match retval_microstatements.pop() {
+                microstatements = withoperatorslist_to_microstatements(
+                    &retval.assignables,
+                    scope,
+                    program,
+                    microstatements,
+                )?;
+                let value = match microstatements.pop() {
                     None => None,
                     Some(v) => Some(Box::new(v)),
                 };
-                if retval_microstatements.len() > 0 {
-                    microstatements.append(&mut retval_microstatements);
-                }
                 microstatements.push(Microstatement::Return { value });
             } else {
                 microstatements.push(Microstatement::Return { value: None });
             }
         }
-        _ => {}
+        parse::Statement::Declarations(dec) => {
+            // We don't care about const vs let in the microstatement world, everything is
+            // immutable and we just create a crap-ton of variables. TODO: We might have
+            // user-provided type declaration data we should look into, at least as a sanity check?
+            let (name, assignables) = match &dec {
+                parse::Declarations::Const(c) => (c.variable.clone(), &c.assignables),
+                parse::Declarations::Let(l) => (l.variable.clone(), &l.assignables),
+            };
+            // Get all of the assignable microstatements generated
+            microstatements =
+                withoperatorslist_to_microstatements(assignables, scope, program, microstatements)?;
+            let value = match microstatements.pop() {
+                None => Err("An assignment without a value should be impossible."),
+                Some(v) => Ok(Box::new(v)),
+            }?;
+            microstatements.push(Microstatement::Assignment { name, value });
+        }
+        parse::Statement::Emits(emit) => {
+            todo!("Implement me");
+        }
+        parse::Statement::Assignments(assign) => {
+            todo!("Implement me");
+        }
+        parse::Statement::Conditional(cond) => {
+            todo!("Implement me");
+        }
     }
     Ok(microstatements)
 }
@@ -535,6 +612,7 @@ pub struct Function {
 impl Function {
     fn from_ast(
         scope: &mut Scope,
+        program: &Program,
         function_ast: &parse::Functions,
         is_export: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
@@ -545,11 +623,12 @@ impl Function {
                 return Err("Top-level function without a name!".into());
             }
         };
-        Function::from_ast_with_name(scope, function_ast, is_export, name)
+        Function::from_ast_with_name(scope, program, function_ast, is_export, name)
     }
 
     fn from_ast_with_name(
         scope: &mut Scope,
+        program: &Program,
         function_ast: &parse::Functions,
         is_export: bool,
         name: String,
@@ -573,13 +652,13 @@ impl Function {
             parse::FullFunctionBody::FunctionBody(body) => body.statements.clone(),
             parse::FullFunctionBody::AssignFunction(assign) => {
                 vec![parse::Statement::Returns(parse::Returns {
-                  returnn: "return".to_string(),
-                  a: " ".to_string(),
-                  retval: Some(parse::RetVal {
-                      assignables: assign.assignables.clone(),
-                      a: "".to_string(),
-                  }),
-                  semicolon: ";".to_string(),
+                    returnn: "return".to_string(),
+                    a: " ".to_string(),
+                    retval: Some(parse::RetVal {
+                        assignables: assign.assignables.clone(),
+                        a: "".to_string(),
+                    }),
+                    semicolon: ";".to_string(),
                 })]
             }
             parse::FullFunctionBody::BindFunction(_) => Vec::new(),
@@ -587,7 +666,7 @@ impl Function {
         let microstatements = {
             let mut ms = Vec::new();
             for statement in &statements {
-                ms.append(&mut statement_to_microstatements(statement)?);
+                ms = statement_to_microstatements(statement, scope, program, ms)?;
             }
             ms
         };
@@ -637,6 +716,7 @@ pub struct Handler {
 impl Handler {
     fn from_ast(
         scope: &mut Scope,
+        program: &Program,
         handler_ast: &parse::Handlers,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let functionname = match &handler_ast.handler {
@@ -647,7 +727,7 @@ impl Handler {
                     Some(name) => name.clone(),
                     None => format!(":::on:::{}", &handler_ast.eventname).to_string(), // Impossible for users to write, so no collisions ever
                 };
-                let _ = Function::from_ast_with_name(scope, function, false, name.clone());
+                let _ = Function::from_ast_with_name(scope, program, function, false, name.clone());
                 name
             }
             parse::Handler::FnName(name) => name.clone(),
@@ -665,7 +745,7 @@ impl Handler {
                     microstatements: {
                         let mut ms = Vec::new();
                         for statement in &body.statements {
-                            ms.append(&mut statement_to_microstatements(statement)?);
+                            ms = statement_to_microstatements(statement, scope, program, ms)?;
                         }
                         ms
                     },
