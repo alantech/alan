@@ -16,8 +16,8 @@ export fn max(a: i8, b: i8): i8 binds maxi8;
 
 // Process exit-related bindings
 export type ExitCode binds std::process::ExitCode;
-export fn toExitCode(e: i64): ExitCode binds to_exit_code_i64;
-export fn toExitCode(e: i8): ExitCode binds to_exit_code_i8;
+export fn ExitCode(e: i64): ExitCode binds to_exit_code_i64;
+export fn ExitCode(e: i8): ExitCode binds to_exit_code_i8;
 export fn getOrExit(a: Result<i8>): i8 binds get_or_exit; // TODO: Support real generics
 
 // Stdout/stderr-related bindings

@@ -113,18 +113,18 @@ test!(hello_world => r#"
 
 test!(normal_exit_code => r#"
     export fn main(): ExitCode {
-        return toExitCode(0);
+        return ExitCode(0);
     }"#;
     status 0;
 );
 test!(error_exit_code => r#"
-    export fn main(): ExitCode = toExitCode(1);"#;
+    export fn main(): ExitCode = ExitCode(1);"#;
     status 1;
 );
 test!(non_global_memory_exit_code => r#"
     export fn main(): ExitCode {
       let x: i64 = 0;
-      return toExitCode(x);
+      return ExitCode(x);
     }"#;
     status 0;
 );
@@ -151,7 +151,7 @@ test!(passing_ints_from_global_memory => r#"
 test!(print_function => r#"
     export fn main(): ExitCode {
       print('Hello, World');
-      return toExitCode(0);
+      return ExitCode(0);
     }"#;
     stdout "Hello, World\n";
     status 0;
@@ -169,27 +169,27 @@ test!(stdout_event => r#"
 // Basic Math Tests
 
 test!(int8_add => r#"
-    export fn main(): ExitCode = toExitCode(getOrExit(add(toI8(1), toI8(2))));"#;
+    export fn main(): ExitCode = ExitCode(getOrExit(add(toI8(1), toI8(2))));"#;
     status 3;
 );
 test!(int8_sub => r#"
-    export fn main(): ExitCode = toExitCode(getOrExit(sub(toI8(2), toI8(1))));"#;
+    export fn main(): ExitCode = ExitCode(getOrExit(sub(toI8(2), toI8(1))));"#;
     status 1;
 );
 test!(int8_mul => r#"
-    export fn main(): ExitCode = toExitCode(getOrExit(mul(toI8(2), toI8(1))));"#;
+    export fn main(): ExitCode = ExitCode(getOrExit(mul(toI8(2), toI8(1))));"#;
     status 2;
 );
 test!(int8_div => r#"
-    export fn main(): ExitCode = toExitCode(getOrExit(div(toI8(6), toI8(2))));"#;
+    export fn main(): ExitCode = ExitCode(getOrExit(div(toI8(6), toI8(2))));"#;
     status 3;
 );
 test!(int8_mod => r#"
-    export fn main(): ExitCode = toExitCode(getOrExit(mod(toI8(6), toI8(4))));"#;
+    export fn main(): ExitCode = ExitCode(getOrExit(mod(toI8(6), toI8(4))));"#;
     status 2;
 );
 test!(int8_pow => r#"
-    export fn main(): ExitCode = toExitCode(getOrExit(pow(toI8(6), toI8(2))));"#;
+    export fn main(): ExitCode = ExitCode(getOrExit(pow(toI8(6), toI8(2))));"#;
     status 36;
 );
 test!(int8_min => r#"
