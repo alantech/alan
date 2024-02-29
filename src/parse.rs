@@ -379,6 +379,14 @@ build!(integer, and!(zero_or_one!(negate), natural));
 build!(real, and!(integer, dot, natural));
 // Validating named_or
 named_or!(num: Number => RealNum: String as real, IntNum: String as integer);
+impl Number {
+    pub fn to_string(&self) -> String {
+        match self {
+            Number::RealNum(r) => r.clone(),
+            Number::IntNum(i) => i.clone(),
+        }
+    }
+}
 test!(num =>
     fail "";
     fail "a";
@@ -804,6 +812,15 @@ named_or!(constants: Constants =>
     Num: Number as num,
     Strn: String as strn,
 );
+impl Constants {
+    pub fn to_string(&self) -> String {
+        match self {
+            Constants::Bool(b) => b.clone(),
+            Constants::Num(n) => n.to_string(),
+            Constants::Strn(s) => s.clone(),
+        }
+    }
+}
 named_or!(baseassignable: BaseAssignable =>
     ObjectLiterals: ObjectLiterals as objectliterals,
     Functions: Functions as functions,
@@ -811,6 +828,17 @@ named_or!(baseassignable: BaseAssignable =>
     Variable: Vec<VarSegment> as var,
     Constants: Constants as constants,
 );
+impl BaseAssignable {
+    pub fn to_string(&self) -> String {
+        match self {
+            BaseAssignable::ObjectLiterals(ol) => "todo".to_string(),
+            BaseAssignable::Functions(f) => "todo".to_string(),
+            BaseAssignable::FnCall(fc) => "todo".to_string(),
+            BaseAssignable::Variable(v) => v.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join(""),
+            BaseAssignable::Constants(c) => c.to_string(),
+        }
+    }
+}
 test!(baseassignable =>
     pass "new Foo{}" => "", super::BaseAssignable::ObjectLiterals(super::ObjectLiterals::TypeLiteral(super::TypeLiteral{
       literaldec: super::LiteralDec{

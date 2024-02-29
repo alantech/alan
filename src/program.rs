@@ -379,7 +379,38 @@ fn baseassignablelist_to_microstatements(
     program: &Program,
     mut microstatements: Vec<Microstatement>,
 ) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
-    for (i, baseassignable) in baseassignablelist.iter().enumerate() {
+    // Because sometimes we need to consume ahead in the loop sometimes, I wish Rust had a C-style
+    // for loop available, but since it doesn't, I'm creating one with a while loop and a mutable
+    // index.
+    let mut i = 0;
+    while i < baseassignablelist.len() {
+        let baseassignable = &baseassignablelist[i];
+        // BaseAssignables are made up of the following 5 parts: ObjectLiterals, Functions, FnCall,
+        // Variable, and Constants. Most of the time, there's only one of these in an array, but
+        // sometimes there can legitimately be multiple of them. If there are multiple, they're
+        // only valid in the following transitions:
+        // Variable -> FnCall (for calling a function by name, or through method syntax where the
+        // function is treated as a property of the base variable)
+        // FnCall -> Variable (for accessing a property off of the result of a function call, which
+        // itself could become another function call in method chaining)
+        // ObjectLiterals -> Variable (for accessing a property, which is kinda nonsensical but
+        // possible, or calling a function as a method of the newly constructed object)
+        // Functions -> Variable (there are no properties to functions in Alan, but if the first
+        // argument to another function is a function type, then this can kinda make sense, but
+        // does look weird to me)
+        // Functions -> FnCall (an IIFE, immediately-invoked function expression. This is can only
+        // be useful in complex object literal instantiation where you have multiple statements
+        // within a property assignment that you don't want to hoist above the actual object
+        // literal definition.
+        // Constants -> Variable (constants don't have properties in Alan, either, but method
+        // syntax off of a constant can work)
+        // All other transitions are a syntax error if placed right next to each other without an
+        // operator in between them.
+        // BTW, FnCall does double-duty. If it is the first item in the list, it is actually a
+        // parenthetical grouping like in math, eg 2 * (5 + 3) == 16. You can still do a property
+        // access after that, but is not necessary except if you are encasing operators within. In
+        // that situation, the inner "arguments" list *must* be exactly one WithOperators long, or
+        // it's a syntax error.
         match baseassignable {
             parse::BaseAssignable::Variable(var) => {
                 // The behavior of a variable depends on if there's
@@ -425,10 +456,15 @@ fn baseassignablelist_to_microstatements(
                                 function: var.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join("").to_string(), // TODO: Support method/property/array access eventually
                                 args,
                             });
+                            // Increment `i` an extra time to skip this entry on the main loop
+                            i = i + 1;
                         }
                         _ => {
-                            // TODO: Properly support method/property/array access eventually
-                            return Err(format!("Invalid syntax after {}", var.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join("").to_string()).into());
+                            return Err(format!(
+                                "Invalid syntax. {} cannot be followed by {}. Perhaps you are missing an operator or a semicolon?",
+                                var.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join("").to_string(),
+                                otherbase.to_string(),
+                            ).into());
                         }
                     }
                 } else {
@@ -456,7 +492,13 @@ fn baseassignablelist_to_microstatements(
                 }
             }
             parse::BaseAssignable::FnCall(_) => {
-                // This path doesn't do anything, as the `variable` path should have handled it.
+                // If we hit this path, it wasn't consumed by a `variable` path. This is valid only
+                // if it's the first base assignable, in which case it should be treated like
+                // parens for grouping and have only one "argument". All other situations are
+                // invalid syntax.
+                if i != 0 {
+                    return Err(format!("Unexpected grouping {} following {}", baseassignable.to_string(), baseassignablelist[i - 1].to_string()).into());
+                }
             }
             parse::BaseAssignable::Constants(c) => {
                 match c {
@@ -495,6 +537,7 @@ fn baseassignablelist_to_microstatements(
                 todo!("Implement me");
             }
         }
+        i = i + 1;
     }
     Ok(microstatements)
 }
