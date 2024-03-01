@@ -4,8 +4,8 @@ use crate::program::{Program, Scope, Type, TypeType};
 
 pub fn generate(
     typen: &Type,
-    scope: &Scope,
-    program: &Program,
+    _scope: &Scope,
+    _program: &Program,
 ) -> Result<String, Box<dyn std::error::Error>> {
     match &typen.typetype {
         TypeType::Bind(s) => Ok(s.clone()),

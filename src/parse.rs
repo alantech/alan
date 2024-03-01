@@ -523,6 +523,14 @@ test!(var =>
     pass "hm.lookup";
 );
 named_or!(varop: VarOp => Variable: String as variable, Operator: String as operators);
+impl VarOp {
+    pub fn to_string(&self) -> String {
+        match self {
+            VarOp::Variable(v) => v.clone(),
+            VarOp::Operator(o) => o.clone(),
+        }
+    }
+}
 // Validating named_and
 named_and!(renamed: Renamed =>
     a: String as blank,
@@ -665,25 +673,6 @@ impl Dependency {
                         .join(g.depsegments.join("/"))
                         .canonicalize()?;
                     Ok(path.to_string_lossy().to_string())
-                }
-            }
-        }
-    }
-
-    pub fn varname(&self) -> Result<String, Box<dyn std::error::Error>> {
-        match &self {
-            Dependency::Local(l) => match PathBuf::from(l.to_string()).file_stem() {
-                Some(pb) => Ok(pb.to_string_lossy().to_string()),
-                None => Err("Invalid path".into()),
-            },
-            Dependency::Global(g) => {
-                match PathBuf::from("./dependencies")
-                    .join(g.depsegments.join("/"))
-                    .canonicalize()?
-                    .file_stem()
-                {
-                    Some(pb) => Ok(pb.to_string_lossy().to_string()),
-                    None => Err("Invalid path".into()),
                 }
             }
         }
@@ -831,9 +820,9 @@ named_or!(baseassignable: BaseAssignable =>
 impl BaseAssignable {
     pub fn to_string(&self) -> String {
         match self {
-            BaseAssignable::ObjectLiterals(ol) => "todo".to_string(),
-            BaseAssignable::Functions(f) => "todo".to_string(),
-            BaseAssignable::FnCall(fc) => "todo".to_string(),
+            BaseAssignable::ObjectLiterals(_ol) => "todo".to_string(),
+            BaseAssignable::Functions(_f) => "todo".to_string(),
+            BaseAssignable::FnCall(_fc) => "todo".to_string(),
             BaseAssignable::Variable(v) => v.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join(""),
             BaseAssignable::Constants(c) => c.to_string(),
         }
