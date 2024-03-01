@@ -18,10 +18,11 @@ pub fn from_microstatement(
         .to_string()),
         Microstatement::Value { representation, .. } => Ok(representation.clone()),
         Microstatement::FnCall { function, args } => {
-            let arg_types = args
-                .iter()
-                .map(|arg| arg.get_type(scope, program))
-                .collect();
+            let mut arg_types = Vec::new();
+            for arg in args {
+                let arg_type = arg.get_type(scope, program)?;
+                arg_types.push(arg_type);
+            }
             match program.resolve_function(scope, function, &arg_types) {
                 None => Err(format!("Function {} not found", function).into()),
                 Some((f, _s)) => match &f.bind {

@@ -371,29 +371,31 @@ pub enum Microstatement {
 }
 
 impl Microstatement {
-    pub fn get_type(&self, scope: &Scope, program: &Program) -> String {
+    pub fn get_type(&self, scope: &Scope, program: &Program) -> Result<String, Box<dyn std::error::Error>> {
         match self {
-            Self::Value { typen, .. } => typen.clone(),
+            Self::Value { typen, .. } => Ok(typen.clone()),
             Self::Assignment { value, .. } => value.get_type(scope, program),
             Self::Return { value } => match value {
                 Some(v) => v.get_type(scope, program),
-                None => "".to_string(),
+                None => Ok("void".to_string()),
             },
             Self::FnCall { function, args } => {
+                let mut arg_types = Vec::new();
+                for arg in args {
+                    let arg_type = arg.get_type(scope, program)?;
+                    arg_types.push(arg_type);
+                }
                 match program.resolve_function(
                     scope,
                     function,
-                    &args
-                        .iter()
-                        .map(|arg| arg.get_type(scope, program))
-                        .collect(),
+                    &arg_types,
                 ) {
                     Some((function_object, _s)) => match &function_object.rettype {
                         // TODO: Handle implied return types better
-                        None => "".to_string(),
-                        Some(v) => v.clone(),
+                        None => Ok("void".to_string()),
+                        Some(v) => Ok(v.clone()),
                     },
-                    None => "".to_string(), // TODO: Handle resolution errors here better
+                    None => Err(format!("Could not find function {}", function).into()),
                 }
             }
         }
@@ -467,7 +469,7 @@ fn baseassignablelist_to_microstatements(
                                         // If the last microstatement is an assignment, we need to
                                         // reference it as a value and push it back onto the array
                                         args.push(Microstatement::Value {
-                                            typen: value.get_type(scope, program),
+                                            typen: value.get_type(scope, program)?,
                                             representation: name.clone(),
                                         });
                                         microstatements.push(lastmicrostatement);
@@ -510,7 +512,7 @@ fn baseassignablelist_to_microstatements(
                             _ => unreachable!(),
                         }),
                         None => Err(format!("Couldn't find variable {}", var.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join(""))),
-                    }?;
+                    }??;
                     microstatements.push(Microstatement::Value {
                         typen,
                         // TODO: Properly support method/property/array access eventually
