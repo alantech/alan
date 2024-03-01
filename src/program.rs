@@ -197,7 +197,10 @@ impl Scope {
 
 #[derive(Debug)]
 pub enum ImportType {
-    Standard(String),
+    // For both of these, the first string is the original name, and the second is the rename.
+    // To simplify later logic, there's always a rename even if the user didn't rename anything, it
+    // will just make a copy of the module or field name in those cases
+    Standard((String, String)),
     Fields(Vec<(String, String)>),
 }
 
@@ -227,16 +230,40 @@ impl Import {
                     // Need to load this file into the program first
                     p = p.load(ln_file.clone())?;
                 }
+                let import_name = if let Some(rename) = &s.renamed {
+                    rename.varop.to_string()
+                } else {
+                    ln_file.clone()
+                };
                 let i = Import {
                     source_scope_name: ln_file.clone(),
-                    import_type: ImportType::Standard(ln_file.clone()),
+                    import_type: ImportType::Standard((ln_file.clone(), import_name)),
                 };
                 scope.imports.insert(ln_file, i);
                 Ok(p)
             }
-            parse::ImportStatement::From(_f) => {
-                // TODO
-                Ok(program)
+            parse::ImportStatement::From(f) => {
+                let ln_file = f.dependency.resolve(path)?;
+                let exists = match &program.scopes_by_file.get(&ln_file) {
+                    Some(_) => true,
+                    None => false,
+                };
+                let mut p = program;
+                if !exists {
+                    // Need to load this file into the program first
+                    p = p.load(ln_file.clone())?;
+                }
+                let field_vec = f.varlist.iter().map(|v| if let Some(rename) = &v.optrenamed {
+                    (v.varop.to_string(), rename.varop.to_string())
+                } else {
+                    (v.varop.to_string(), v.varop.to_string())
+                }).collect::<Vec<(String, String)>>();
+                let i = Import {
+                    source_scope_name: ln_file.clone(),
+                    import_type: ImportType::Fields(field_vec),
+                };
+                scope.imports.insert(ln_file, i);
+                Ok(p)
             }
         }
     }
@@ -530,10 +557,10 @@ fn baseassignablelist_to_microstatements(
                     },
                 }
             }
-            parse::BaseAssignable::ObjectLiterals(o) => {
+            parse::BaseAssignable::ObjectLiterals(_o) => {
                 todo!("Implement me");
             }
-            parse::BaseAssignable::Functions(f) => {
+            parse::BaseAssignable::Functions(_f) => {
                 todo!("Implement me");
             }
         }
@@ -581,71 +608,96 @@ fn assignablestatement_to_microstatements(
     Ok(microstatements)
 }
 
+fn returns_to_microstatements(
+    returns: &parse::Returns,
+    scope: &Scope,
+    program: &Program,
+    mut microstatements: Vec<Microstatement>
+) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
+    if let Some(retval) = &returns.retval {
+        // We get all of the microstatements involved in the return statement, then we pop
+        // off the last one, if any exists, to get the final return value. Then we shove
+        // the other microstatements into the array and the new Return microstatement with
+        // that last value attached to it.
+        microstatements = withoperatorslist_to_microstatements(
+            &retval.assignables,
+            scope,
+            program,
+            microstatements,
+        )?;
+        let value = match microstatements.pop() {
+            None => None,
+            Some(v) => Some(Box::new(v)),
+        };
+        microstatements.push(Microstatement::Return { value });
+    } else {
+        microstatements.push(Microstatement::Return { value: None });
+    }
+    Ok(microstatements)
+}
+
+fn declarations_to_microstatements(
+    declarations: &parse::Declarations,
+    scope: &Scope,
+    program: &Program,
+    mut microstatements: Vec<Microstatement>
+) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
+    // We don't care about const vs let in the microstatement world, everything is
+    // immutable and we just create a crap-ton of variables. TODO: We might have
+    // user-provided type declaration data we should look into, at least as a sanity check?
+    let (name, assignables) = match &declarations {
+        parse::Declarations::Const(c) => (c.variable.clone(), &c.assignables),
+        parse::Declarations::Let(l) => (l.variable.clone(), &l.assignables),
+    };
+    // Get all of the assignable microstatements generated
+    microstatements =
+        withoperatorslist_to_microstatements(assignables, scope, program, microstatements)?;
+    let value = match microstatements.pop() {
+        None => Err("An assignment without a value should be impossible."),
+        Some(v) => Ok(Box::new(v)),
+    }?;
+    microstatements.push(Microstatement::Assignment { name, value });
+    Ok(microstatements)
+}
+    
+
 fn statement_to_microstatements(
     statement: &parse::Statement,
     scope: &Scope,
     program: &Program,
-    mut microstatements: Vec<Microstatement>,
+    microstatements: Vec<Microstatement>,
 ) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
-    match statement {
-        parse::Statement::A(_) => {}
-        parse::Statement::Assignables(assignable) => {
-            microstatements = assignablestatement_to_microstatements(
-                assignable,
-                scope,
-                program,
-                microstatements,
-            )?;
-        }
-        parse::Statement::Returns(returns) => {
-            if let Some(retval) = &returns.retval {
-                // We get all of the microstatements involved in the return statement, then we pop
-                // off the last one, if any exists, to get the final return value. Then we shove
-                // the other microstatements into the array and the new Return microstatement with
-                // that last value attached to it.
-                microstatements = withoperatorslist_to_microstatements(
-                    &retval.assignables,
-                    scope,
-                    program,
-                    microstatements,
-                )?;
-                let value = match microstatements.pop() {
-                    None => None,
-                    Some(v) => Some(Box::new(v)),
-                };
-                microstatements.push(Microstatement::Return { value });
-            } else {
-                microstatements.push(Microstatement::Return { value: None });
-            }
-        }
-        parse::Statement::Declarations(dec) => {
-            // We don't care about const vs let in the microstatement world, everything is
-            // immutable and we just create a crap-ton of variables. TODO: We might have
-            // user-provided type declaration data we should look into, at least as a sanity check?
-            let (name, assignables) = match &dec {
-                parse::Declarations::Const(c) => (c.variable.clone(), &c.assignables),
-                parse::Declarations::Let(l) => (l.variable.clone(), &l.assignables),
-            };
-            // Get all of the assignable microstatements generated
-            microstatements =
-                withoperatorslist_to_microstatements(assignables, scope, program, microstatements)?;
-            let value = match microstatements.pop() {
-                None => Err("An assignment without a value should be impossible."),
-                Some(v) => Ok(Box::new(v)),
-            }?;
-            microstatements.push(Microstatement::Assignment { name, value });
-        }
-        parse::Statement::Emits(emit) => {
+    Ok(match statement {
+        // This is just whitespace, so we do nothing here
+        parse::Statement::A(_) => microstatements,
+        parse::Statement::Assignables(assignable) => assignablestatement_to_microstatements(
+            assignable,
+            scope,
+            program,
+            microstatements,
+        )?,
+        parse::Statement::Returns(returns) => returns_to_microstatements(
+            returns,
+            scope,
+            program,
+            microstatements,
+        )?,
+        parse::Statement::Declarations(declarations) => declarations_to_microstatements(
+            declarations,
+            scope,
+            program,
+            microstatements,
+        )?,
+        parse::Statement::Emits(_emits) => {
             todo!("Implement me");
         }
-        parse::Statement::Assignments(assign) => {
+        parse::Statement::Assignments(_assignments) => {
             todo!("Implement me");
         }
-        parse::Statement::Conditional(cond) => {
+        parse::Statement::Conditional(_condtitional) => {
             todo!("Implement me");
         }
-    }
-    Ok(microstatements)
+    })
 }
 
 #[derive(Debug)]
