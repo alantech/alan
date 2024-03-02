@@ -103,7 +103,7 @@ macro_rules! status {
 // The only test that works for now
 test!(hello_world => r#"
     export fn main {
-        print("Hello, World!");
+        print('Hello, World!');
     }"#;
     stdout "Hello, World!\n";
     status 0;
@@ -157,11 +157,10 @@ test!(print_function => r#"
     status 0;
 );
 test!(stdout_event => r#"
-    from @std/app import start, stdout, exit
-    on start {
+    export fn main(): ExitCode {
       emit stdout 'Hello, World';
-      wait(10);
-      emit exit 0;
+      wait(10); // Because emits run on another thread, we need to wait to be sure it actually runs
+      return ExitCode(0);
     }"#;
     stdout "Hello, World";
 );
@@ -169,38 +168,38 @@ test!(stdout_event => r#"
 // Basic Math Tests
 
 test!(int8_add => r#"
-    export fn main(): ExitCode = ExitCode(getOrExit(add(toI8(1), toI8(2))));"#;
+    export fn main(): ExitCode = ExitCode(getOrExit(add(i8(1), i8(2))));"#;
     status 3;
 );
 test!(int8_sub => r#"
-    export fn main(): ExitCode = ExitCode(getOrExit(sub(toI8(2), toI8(1))));"#;
+    export fn main(): ExitCode = ExitCode(getOrExit(sub(i8(2), i8(1))));"#;
     status 1;
 );
 test!(int8_mul => r#"
-    export fn main(): ExitCode = ExitCode(getOrExit(mul(toI8(2), toI8(1))));"#;
+    export fn main(): ExitCode = ExitCode(getOrExit(mul(i8(2), i8(1))));"#;
     status 2;
 );
 test!(int8_div => r#"
-    export fn main(): ExitCode = ExitCode(getOrExit(div(toI8(6), toI8(2))));"#;
+    export fn main(): ExitCode = ExitCode(getOrExit(div(i8(6), i8(2))));"#;
     status 3;
 );
 test!(int8_mod => r#"
-    export fn main(): ExitCode = ExitCode(getOrExit(mod(toI8(6), toI8(4))));"#;
+    export fn main(): ExitCode = ExitCode(getOrExit(mod(i8(6), i8(4))));"#;
     status 2;
 );
 test!(int8_pow => r#"
-    export fn main(): ExitCode = ExitCode(getOrExit(pow(toI8(6), toI8(2))));"#;
+    export fn main(): ExitCode = ExitCode(getOrExit(pow(i8(6), i8(2))));"#;
     status 36;
 );
 test!(int8_min => r#"
     export fn main() {
-      print(min(toI8(3), toI8(5)));
+      print(min(i8(3), i8(5)));
     }"#;
     stdout "3\n";
 );
 test!(int8_max => r#"
     export fn main() {
-      print(max(toI8(3), toI8(5)));
+      print(max(i8(3), i8(5)));
     }"#;
     stdout "5\n";
 );

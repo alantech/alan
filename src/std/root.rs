@@ -81,7 +81,17 @@ fn get_or_exit<A>(a: Result<A, Box<dyn std::error::Error>>) -> A {
     a.unwrap()
 }
 
-/// `print` is a simple function that prints basically anything other than String
-fn print<A: std::fmt::Display>(a: A) {
+/// `println` is a simple function that prints basically anything
+fn println<A: std::fmt::Display>(a: A) {
     println!("{}", a);
+}
+
+/// `stdout` is a simple function that prints basically anything without a newline attached
+fn stdout<A: std::fmt::Display>(a: A) {
+    print!("{}", a);
+}
+
+/// `wait` is a function that sleeps the current thread for the specified number of milliseconds
+fn wait(t: i64) {
+    std::thread::sleep(std::time::Duration::from_millis(t as u64));
 }

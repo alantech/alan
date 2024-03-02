@@ -1259,6 +1259,7 @@ named_and!(events: Events =>
     colon: String as colon,
     c: String as optwhitespace,
     fulltypename: FullTypename as fulltypename,
+    optsemicolon: String as optsemicolon,
 );
 named_and!(propertytypeline: PropertyTypeline =>
     variable: String as variable,
@@ -1454,6 +1455,7 @@ named_and!(handlers: Handlers =>
     eventname: Vec<VarSegment> as var,
     b: String as whitespace,
     handler: Handler as handler,
+    optsemicolon: String as optsemicolon,
 );
 named_or!(rootelements: RootElements =>
     Whitespace: String as whitespace,

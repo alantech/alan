@@ -145,10 +145,10 @@ pub struct Scope {
     pub consts: OrderedHashMap<String, Const>,
     pub functions: OrderedHashMap<String, Vec<Function>>,
     pub handlers: OrderedHashMap<String, Handler>,
+    pub events: OrderedHashMap<String, Event>,
     pub exports: OrderedHashMap<String, Export>,
     // TODO: Implement these other concepts
     // operatormappings: OrderedHashMap<String, OperatorMapping>,
-    // events: OrderedHashMap<String, Event>,
     // interfaces: OrderedHashMap<String, Interface>,
     // Should we include something for documentation? Maybe testing?
 }
@@ -169,6 +169,7 @@ impl Scope {
             consts: OrderedHashMap::new(),
             functions: OrderedHashMap::new(),
             handlers: OrderedHashMap::new(),
+            events: OrderedHashMap::new(),
             exports: OrderedHashMap::new(),
         };
         let mut p = program;
@@ -178,10 +179,12 @@ impl Scope {
         for element in ast.body.iter() {
             match element {
                 parse::RootElements::Handlers(h) => Handler::from_ast(&mut s, &p, h)?,
+                parse::RootElements::Events(e) => Event::from_ast(&mut s, &p, e, false)?,
                 parse::RootElements::Types(t) => Type::from_ast(&mut s, t, false)?,
                 parse::RootElements::Functions(f) => Function::from_ast(&mut s, &p, f, false)?,
                 parse::RootElements::ConstDeclaration(c) => Const::from_ast(&mut s, c, false)?,
                 parse::RootElements::Exports(e) => match &e.exportable {
+                    parse::Exportable::Events(e) => Event::from_ast(&mut s, &p, e, true)?,
                     parse::Exportable::Functions(f) => Function::from_ast(&mut s, &p, f, true)?,
                     parse::Exportable::ConstDeclaration(c) => Const::from_ast(&mut s, c, true)?,
                     parse::Exportable::Types(t) => Type::from_ast(&mut s, t, true)?,
@@ -357,6 +360,10 @@ pub enum Microstatement {
         name: String,
         value: Box<Microstatement>,
     },
+    Arg {
+        name: String,
+        typen: String,
+    },
     FnCall {
         function: String, // TODO: It would be nice to make this a vector of pointers to function objects so we can narrow down the exact implementation sooner
         args: Vec<Microstatement>,
@@ -364,16 +371,21 @@ pub enum Microstatement {
     Value {
         typen: String,          // TODO: Do better on this, too.
         representation: String, // TODO: Can we do better here?
-    }, // TODO: Conditionals and Emits
+    },
     Return {
         value: Option<Box<Microstatement>>,
     },
+    Emit {
+        event: String,
+        value: Option<Box<Microstatement>>,
+    }, // TODO: Conditionals
 }
 
 impl Microstatement {
     pub fn get_type(&self, scope: &Scope, program: &Program) -> Result<String, Box<dyn std::error::Error>> {
         match self {
             Self::Value { typen, .. } => Ok(typen.clone()),
+            Self::Arg { typen, .. } => Ok(typen.clone()),
             Self::Assignment { value, .. } => value.get_type(scope, program),
             Self::Return { value } => match value {
                 Some(v) => v.get_type(scope, program),
@@ -398,6 +410,7 @@ impl Microstatement {
                     None => Err(format!("Could not find function {}", function).into()),
                 }
             }
+            Self::Emit { .. } => Ok("void".to_string()), // Emit statements never return anything
         }
     }
 }
@@ -500,6 +513,7 @@ fn baseassignablelist_to_microstatements(
                     let typen = match microstatements.iter().find(|m| match m {
                         // TODO: Properly support method/property/array access eventually
                         Microstatement::Assignment { name, .. } => &var.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join("") == name,
+                        Microstatement::Arg { name, .. } => &var.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join("") == name,
                         _ => false,
                     }) {
                         // Reaching the `Some` path requires it to be of type
@@ -508,7 +522,8 @@ fn baseassignablelist_to_microstatements(
                         Some(m) => Ok(match m {
                             Microstatement::Assignment { value, .. } => {
                                 value.get_type(scope, program)
-                            }
+                            },
+                            Microstatement::Arg { typen, .. } => Ok(typen.clone()),
                             _ => unreachable!(),
                         }),
                         None => Err(format!("Couldn't find variable {}", var.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join(""))),
@@ -661,7 +676,42 @@ fn declarations_to_microstatements(
     microstatements.push(Microstatement::Assignment { name, value });
     Ok(microstatements)
 }
-    
+
+fn emits_to_microstatements(
+    emits: &parse::Emits,
+    scope: &Scope,
+    program: &Program,
+    mut microstatements: Vec<Microstatement>,
+) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
+    if let Some(retval) = &emits.retval {
+        // We get all of the microstatements involved in the emit statement, then we pop
+        // off the last one, if any exists, to get the final return value. Then we shove
+        // the other microstatements into the array and the new Return microstatement with
+        // that last value attached to it.
+        microstatements = withoperatorslist_to_microstatements(
+            &retval.assignables,
+            scope,
+            program,
+            microstatements,
+        )?;
+        let value = match microstatements.pop() {
+            None => None,
+            Some(v) => Some(Box::new(v)),
+        };
+        microstatements.push(Microstatement::Emit {
+          // TODO: Figure out the correct event instead of just stringifying the resolution path
+          event: emits.eventname.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join(""),
+          value,
+        });
+    } else {
+        microstatements.push(Microstatement::Emit {
+          // TODO: Figure out the correct event instead of just stringifying the resolution path
+          event: emits.eventname.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join(""),
+          value: None
+        });
+    }
+    Ok(microstatements)
+}
 
 fn statement_to_microstatements(
     statement: &parse::Statement,
@@ -690,9 +740,12 @@ fn statement_to_microstatements(
             program,
             microstatements,
         )?,
-        parse::Statement::Emits(_emits) => {
-            todo!("Implement me");
-        }
+        parse::Statement::Emits(emits) => emits_to_microstatements(
+            emits,
+            scope,
+            program,
+            microstatements,
+        )?,
         parse::Statement::Assignments(_assignments) => {
             todo!("Implement me");
         }
@@ -768,6 +821,12 @@ impl Function {
         };
         let microstatements = {
             let mut ms = Vec::new();
+            for (name, typen) in &args {
+                ms.push(Microstatement::Arg {
+                    name: name.clone(),
+                    typen: typen.clone(),
+                });
+            }
             for statement in &statements {
                 ms = statement_to_microstatements(statement, scope, program, ms)?;
             }
@@ -808,6 +867,45 @@ pub enum Export {
     Function,
     Const,
     Type,
+    Event,
+}
+
+#[derive(Debug)]
+pub struct Event {
+    pub name: String,
+    pub typename: String,
+}
+
+impl Event {
+    fn from_ast(
+        scope: &mut Scope,
+        program: &Program,
+        event_ast: &parse::Events,
+        is_export: bool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let typename = if program.scopes_by_file.len() == 0 {
+            // Special handling for events defined in the root scope itself, that can't use
+            // `resolve_type`. We're just going to assume we're awesome and don't make mistakes for
+            // now. TODO: We're not, do this better.
+            Ok(event_ast.fulltypename.to_string())
+        } else {
+            match program.resolve_type(scope, &event_ast.fulltypename.to_string()) {
+                Some((t, _)) => Ok(t.typename.to_string()),
+                None => Err(format!("Invalid type {} for event {}", event_ast.fulltypename.to_string(), event_ast.variable)),
+            }
+        }?;
+        let e = Event {
+            name: event_ast.variable.clone(),
+            typename, 
+        };
+        if is_export {
+            scope
+                .exports
+                .insert(e.name.clone(), Export::Event);
+        }
+        scope.events.insert(e.name.clone(), e);
+        Ok(())
+    }
 }
 
 #[derive(Debug)]
