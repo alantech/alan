@@ -109,11 +109,9 @@ test!(hello_world => r#"
     status 0;
 );
 test!(multi_line_hello_world => r#"
-    export fn main() {
-      print(
+export fn main = print(
 "Hello,
-World!");
-    }"#;
+World!");"#;
     stdout r#"Hello,
 World!
 "#;
