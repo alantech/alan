@@ -188,10 +188,10 @@ impl Scope {
                     parse::Exportable::Functions(f) => Function::from_ast(&mut s, &p, f, true)?,
                     parse::Exportable::ConstDeclaration(c) => Const::from_ast(&mut s, c, true)?,
                     parse::Exportable::Types(t) => Type::from_ast(&mut s, t, true)?,
-                    _ => println!("TODO"),
+                    _ => println!("TODO: Not yet supported export syntax"),
                 },
                 parse::RootElements::Whitespace(_) => { /* Do nothing */ }
-                _ => println!("TODO"),
+                _ => println!("TODO: Not yet supported top-level module syntax"),
             }
         }
         Ok((p, (txt, ast, s)))

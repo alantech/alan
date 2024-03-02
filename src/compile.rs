@@ -100,12 +100,21 @@ macro_rules! status {
     };
 }
 
-// The only test that works for now
+// The gold standard test. If you can't do this, are you even a language at all? :P
 test!(hello_world => r#"
     export fn main {
         print('Hello, World!');
     }"#;
     stdout "Hello, World!\n";
+    status 0;
+);
+test!(multi_line_hello_world => r#"
+export fn main = print(
+"Hello,
+World!");"#;
+    stdout r#"Hello,
+World!
+"#;
     status 0;
 );
 
