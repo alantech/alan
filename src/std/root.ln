@@ -4,7 +4,7 @@
  **/
 
 // Integer-related bindings
-export fn toI8(i: i64): i8 binds i64toi8;
+export fn i8(i: i64): i8 binds i64toi8;
 export fn add(a: i8, b: i8): Result<i8> binds addi8;
 export fn sub(a: i8, b: i8): Result<i8> binds subi8;
 export fn mul(a: i8, b: i8): Result<i8> binds muli8;
@@ -16,11 +16,19 @@ export fn max(a: i8, b: i8): i8 binds maxi8;
 
 // Process exit-related bindings
 export type ExitCode binds std::process::ExitCode;
-export fn ExitCode(e: i64): ExitCode binds to_exit_code_i64;
 export fn ExitCode(e: i8): ExitCode binds to_exit_code_i8;
+export fn ExitCode(e: i64): ExitCode binds to_exit_code_i64;
+// export fn ExitCode(e: i64): ExitCode = ExitCode(i8(e));
 export fn getOrExit(a: Result<i8>): i8 binds get_or_exit; // TODO: Support real generics
 
 // Stdout/stderr-related bindings
-export fn print(str: String) binds println!;
-export fn print(i: i8) binds print;
-export fn print(i: i64) binds print;
+export fn print(str: String) binds println;
+export fn print(i: i8) binds println;
+export fn print(i: i64) binds println;
+
+export event stdout: String;
+fn toStdout(strn: String) binds stdout;
+on stdout toStdout;
+
+// Thread-related bindings
+export fn wait(t: i64) binds wait;

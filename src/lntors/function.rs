@@ -10,13 +10,17 @@ pub fn from_microstatement(
     program: &Program,
 ) -> Result<String, Box<dyn std::error::Error>> {
     match microstatement {
+        Microstatement::Arg { .. } => Ok("".to_string()), // Skip arg microstatements that are just used for discovery during generation
         Microstatement::Assignment { name, value } => Ok(format!(
             "let {} = {}",
             name,
             from_microstatement(value, scope, program)?
         )
         .to_string()),
-        Microstatement::Value { representation, .. } => Ok(representation.clone()),
+        Microstatement::Value { typen, representation} => match typen.as_str() {
+            "String" => Ok(format!("{}.to_string()", representation).to_string()),
+            _ => Ok(representation.clone())
+        },
         Microstatement::FnCall { function, args } => {
             let mut arg_types = Vec::new();
             for arg in args {
@@ -43,6 +47,14 @@ pub fn from_microstatement(
                 Ok(format!("return {}", from_microstatement(val, scope, program)?).to_string())
             }
             None => Ok("return".to_string()),
+        },
+        Microstatement::Emit { event, value } => match value {
+            Some(val) => {
+                Ok(format!("event::{}({})", event, from_microstatement(val, scope, program)?).to_string())
+            }
+            None => {
+                Ok(format!("event::{}()", event).to_string())
+            }
         },
     }
 }
