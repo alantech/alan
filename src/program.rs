@@ -455,6 +455,15 @@ fn baseassignablelist_to_microstatements(
         // it's a syntax error.
         match baseassignable {
             parse::BaseAssignable::Variable(var) => {
+                // If this is not the first portion of the baseassignablelist, then this is either
+                // a property access or a method call. So we need a reference to last
+                // microstatement in that case
+                let prior_value = if let parse::VarSegment::MethodSep(_) = var[0] {
+                    // TODO: Also support array access
+                    microstatements.pop()
+                } else {
+                    None
+                };
                 // The behavior of a variable depends on if there's
                 // anything following after it. Many things following are
                 // invalid syntax, but `FnCall` and `MethodSep` are valid
@@ -466,6 +475,10 @@ fn baseassignablelist_to_microstatements(
                             // function that will be called, and populate an array of arg
                             // microstatements for the eventual function call
                             let mut args = Vec::new();
+                            // If this is a method call, grab the prior value and shove it in first
+                            if let Some(prior_val) = prior_value {
+                                args.push(prior_val);
+                            }
                             for arg in &call.assignablelist {
                                 microstatements = withoperatorslist_to_microstatements(
                                     arg,
@@ -494,8 +507,20 @@ fn baseassignablelist_to_microstatements(
                                     }
                                 }
                             }
+                            // TODO: Support more than direct method access in the future, probably
+                            // with a separate resolving function
+                            let fn_name = if let parse::VarSegment::MethodSep(_) = var[0] {
+                                let mut out = "".to_string();
+                                for (i, segment) in var.iter().enumerate() {
+                                    if i == 0 { continue; }
+                                    out = format!("{}{}", out, segment.to_string()).to_string();
+                                }
+                                out
+                            } else {
+                                var.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join("").to_string() // TODO: Support method/property/array access eventually
+                                                                                                                                    };
                             microstatements.push(Microstatement::FnCall {
-                                function: var.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join("").to_string(), // TODO: Support method/property/array access eventually
+                                function: fn_name,
                                 args,
                             });
                             // Increment `i` an extra time to skip this entry on the main loop
@@ -535,7 +560,7 @@ fn baseassignablelist_to_microstatements(
                     });
                 }
             }
-            parse::BaseAssignable::FnCall(_) => {
+            parse::BaseAssignable::FnCall(g) => {
                 // If we hit this path, it wasn't consumed by a `variable` path. This is valid only
                 // if it's the first base assignable, in which case it should be treated like
                 // parens for grouping and have only one "argument". All other situations are
@@ -543,6 +568,16 @@ fn baseassignablelist_to_microstatements(
                 if i != 0 {
                     return Err(format!("Unexpected grouping {} following {}", baseassignable.to_string(), baseassignablelist[i - 1].to_string()).into());
                 }
+                if g.assignablelist.len() != 1 {
+                    return Err(format!("Multiple statements found in {}. Perhaps you should remove that comma?", baseassignable.to_string()).into());
+                }
+                // Happy path, let's get the microstatements from this assignable list
+                microstatements = withoperatorslist_to_microstatements(
+                    &g.assignablelist[0],
+                    scope,
+                    program,
+                    microstatements,
+                )?;
             }
             parse::BaseAssignable::Constants(c) => {
                 match c {

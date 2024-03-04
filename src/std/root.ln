@@ -13,6 +13,15 @@ export fn mod(a: i8, b: i8): Result<i8> binds modi8;
 export fn pow(a: i8, b: i8): Result<i8> binds powi8;
 export fn min(a: i8, b: i8): i8 binds mini8;
 export fn max(a: i8, b: i8): i8 binds maxi8;
+export fn i16(i: i64): i16 binds i64toi16;
+export fn add(a: i16, b: i16): Result<i16> binds addi16;
+export fn sub(a: i16, b: i16): Result<i16> binds subi16;
+export fn mul(a: i16, b: i16): Result<i16> binds muli16;
+export fn div(a: i16, b: i16): Result<i16> binds divi16;
+export fn mod(a: i16, b: i16): Result<i16> binds modi16;
+export fn pow(a: i16, b: i16): Result<i16> binds powi16;
+export fn min(a: i16, b: i16): i16 binds mini16;
+export fn max(a: i16, b: i16): i16 binds maxi16;
 
 // Process exit-related bindings
 export type ExitCode binds std::process::ExitCode;
@@ -24,6 +33,8 @@ export fn getOrExit(a: Result<i8>): i8 binds get_or_exit; // TODO: Support real 
 // Stdout/stderr-related bindings
 export fn print(str: String) binds println;
 export fn print(i: i8) binds println;
+export fn print(i: i16) binds println;
+export fn print(i: Result<i16>) binds println_result;
 export fn print(i: i64) binds println;
 
 export event stdout: String;
