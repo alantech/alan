@@ -30,8 +30,8 @@ pub fn compile(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-/// The `tors` function is an even thinner wrapper on top of `lntors` that shoves the output into a
-/// `.rs` file.
+/// The `to_rs` function is an even thinner wrapper on top of `lntors` that shoves the output into
+/// a `.rs` file.
 pub fn to_rs(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
     // Generate the rust code to compile
     let rs_str = lntors(source_file.clone())?;
@@ -214,66 +214,50 @@ test!(int8_max => r#"
 );
 
 test!(int16_add => r#"
-    from @std/app import start, print, exit
-    on start {
-      print(add(toInt16(1), toInt16(2)));
-      emit exit 0;
+    export fn main {
+      print(add(i16(1), i16(2)));
     }"#;
     stdout "3\n";
 );
 test!(int16_sub => r#"
-    from @std/app import start, print, exit
-    on start {
-      print(sub(toInt16(2), toInt16(1)));
-      emit exit 0;
+    export fn main {
+      print(sub(i16(2), i16(1)));
     }"#;
     stdout "1\n";
 );
 test!(int16_mul => r#"
-    from @std/app import start, print, exit
-    on start {
-      print(mul(toInt16(2), toInt16(1)));
-      emit exit 0;
+    export fn main {
+      print(mul(i16(2), i16(1)));
     }"#;
     stdout "2\n";
 );
 test!(int16_div => r#"
-    from @std/app import start, print, exit
-    on start {
-      print(div(toInt16(6), toInt16(2)));
-      emit exit 0;
+    export fn main {
+      print(div(i16(6), i16(2)));
     }"#;
     stdout "3\n";
 );
 test!(int16_mod => r#"
-    from @std/app import start, print, exit
-    on start {
-      print(mod(toInt16(6), toInt16(4)));
-      emit exit 0;
+    export fn main{
+      print(mod(i16(6), i16(4)));
     }"#;
     stdout "2\n";
 );
 test!(int16_pow => r#"
-    from @std/app import start, print, exit
-    on start {
-      print(pow(toInt16(6), toInt16(2)));
-      emit exit 0;
+    export fn main {
+      print(pow(i16(6), i16(2)));
     }"#;
     stdout "36\n";
 );
 test!(int16_min => r#"
-    from @std/app import start, print, exit
-    on start {
-      min(3.toInt16(), 5.toInt16()).print();
-      emit exit 0;
+    export fn main {
+      min(3.i16(), 5.i16()).print();
     }"#;
     stdout "3\n";
 );
 test!(int16_max => r#"
-    from @std/app import start, print, exit
-    on start {
-      max(3.toInt16(), 5.toInt16()).print();
-      emit exit 0;
+    export fn main {
+      max(3.i16(), 5.i16()).print();
     }"#;
     stdout "5\n";
 );
