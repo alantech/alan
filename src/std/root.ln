@@ -22,6 +22,24 @@ export fn mod(a: i16, b: i16): Result<i16> binds modi16;
 export fn pow(a: i16, b: i16): Result<i16> binds powi16;
 export fn min(a: i16, b: i16): i16 binds mini16;
 export fn max(a: i16, b: i16): i16 binds maxi16;
+export fn i32(i: i64): i32 binds i64toi32;
+export fn add(a: i32, b: i32): Result<i32> binds addi32;
+export fn sub(a: i32, b: i32): Result<i32> binds subi32;
+export fn mul(a: i32, b: i32): Result<i32> binds muli32;
+export fn div(a: i32, b: i32): Result<i32> binds divi32;
+export fn mod(a: i32, b: i32): Result<i32> binds modi32;
+export fn pow(a: i32, b: i32): Result<i32> binds powi32;
+export fn min(a: i32, b: i32): i32 binds mini32;
+export fn max(a: i32, b: i32): i32 binds maxi32;
+export fn i64(i: i64): i64 = i;
+export fn add(a: i64, b: i64): Result<i64> binds addi64;
+export fn sub(a: i64, b: i64): Result<i64> binds subi64;
+export fn mul(a: i64, b: i64): Result<i64> binds muli64;
+export fn div(a: i64, b: i64): Result<i64> binds divi64;
+export fn mod(a: i64, b: i64): Result<i64> binds modi64;
+export fn pow(a: i64, b: i64): Result<i64> binds powi64;
+export fn min(a: i64, b: i64): i64 binds mini64;
+export fn max(a: i64, b: i64): i64 binds maxi64;
 
 // Process exit-related bindings
 export type ExitCode binds std::process::ExitCode;
@@ -35,7 +53,10 @@ export fn print(str: String) binds println;
 export fn print(i: i8) binds println;
 export fn print(i: i16) binds println;
 export fn print(i: Result<i16>) binds println_result;
+export fn print(i: i32) binds println;
+export fn print(i: Result<i32>) binds println_result;
 export fn print(i: i64) binds println;
+export fn print(i: Result<i64>) binds println_result;
 
 export event stdout: String;
 fn toStdout(strn: String) binds stdout;
@@ -43,3 +64,16 @@ on stdout toStdout;
 
 // Thread-related bindings
 export fn wait(t: i64) binds wait;
+
+// Built-in operator definitions
+export infix add as + precedence 2;
+// export infix concat as + precedence 2;
+export infix sub as - precedence 2;
+// export prefix negate as - precedence 1;
+export infix mul as * precedence 3;
+// export infix repeat as * precedence 3;
+export infix div as / precedence 3;
+// export infix split as / precedence 3;
+export infix mod as % precedence 3;
+// export infix template as % precedence 3;
+export infix pow as ** precedence 4;
