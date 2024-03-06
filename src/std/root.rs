@@ -140,6 +140,129 @@ fn maxi16(a: i16, b: i16) -> i16 {
     if a > b { a } else { b }
 }
 
+/// `i64toi32` casts an i64 to an i32.
+fn i64toi32(i: i64) -> i32 {
+    i as i32
+}
+
+/// `addi32` safely adds two i32s together, returning a Result-wrapped i32 (or an error on overflow)
+fn addi32(a: i32, b: i32) -> Result<i32, Box<dyn std::error::Error>> {
+    match a.checked_add(b) {
+        Some(c) => Ok(c),
+        None => Err("Overflow".into()),
+    }
+}
+
+/// `subi32` safely subtracts two i32s, returning a Result-wrapped i32 (or an error on underflow)
+fn subi32(a: i32, b: i32) -> Result<i32, Box<dyn std::error::Error>> {
+    match a.checked_sub(b) {
+        Some(c) => Ok(c),
+        None => Err("Underflow".into()),
+    }
+}
+
+/// `muli32` safely multiplies two i32s, returning a Result-wrapped i32 (or an error on under/overflow)
+fn muli32(a: i32, b: i32) -> Result<i32, Box<dyn std::error::Error>> {
+    match a.checked_mul(b) {
+        Some(c) => Ok(c),
+        None => Err("Underflow or Overflow".into()),
+    }
+}
+
+/// `divi32` safely divides two i32s, returning a Result-wrapped i32 (or an error on divide-by-zero)
+fn divi32(a: i32, b: i32) -> Result<i32, Box<dyn std::error::Error>> {
+    match a.checked_div(b) {
+        Some(c) => Ok(c),
+        None => Err("Divide-by-zero".into()),
+    }
+}
+
+/// `modi32` safely divides two i32s, returning a Result-wrapped remainder in i32 (or an error on divide-by-zero)
+fn modi32(a: i32, b: i32) -> Result<i32, Box<dyn std::error::Error>> {
+    match a.checked_rem(b) {
+        Some(c) => Ok(c),
+        None => Err("Divide-by-zero".into()),
+    }
+}
+
+/// `powi32` safely raises the first i32 to the second i32, returning a Result-wrapped i32 (or an error on under/overflow)
+fn powi32(a: i32, b: i32) -> Result<i32, Box<dyn std::error::Error>> {
+    // TODO: Support b being negative correctly
+    match a.checked_pow(b as u32) {
+        Some(c) => Ok(c),
+        None => Err("Underflow or Overflow".into()),
+    }
+}
+
+/// `mini32` returns the smaller of the two i32 values
+fn mini32(a: i32, b: i32) -> i32 {
+    if a < b { a } else { b }
+}
+
+/// `maxi32` returns the larger of the two i32 values
+fn maxi32(a: i32, b: i32) -> i32 {
+    if a > b { a } else { b }
+}
+
+/// `addi64` safely adds two i64s together, returning a Result-wrapped i64 (or an error on overflow)
+fn addi64(a: i64, b: i64) -> Result<i64, Box<dyn std::error::Error>> {
+    match a.checked_add(b) {
+        Some(c) => Ok(c),
+        None => Err("Overflow".into()),
+    }
+}
+
+/// `subi64` safely subtracts two i64s, returning a Result-wrapped i64 (or an error on underflow)
+fn subi64(a: i64, b: i64) -> Result<i64, Box<dyn std::error::Error>> {
+    match a.checked_sub(b) {
+        Some(c) => Ok(c),
+        None => Err("Underflow".into()),
+    }
+}
+
+/// `muli64` safely multiplies two i64s, returning a Result-wrapped i64 (or an error on under/overflow)
+fn muli64(a: i64, b: i64) -> Result<i64, Box<dyn std::error::Error>> {
+    match a.checked_mul(b) {
+        Some(c) => Ok(c),
+        None => Err("Underflow or Overflow".into()),
+    }
+}
+
+/// `divi64` safely divides two i64s, returning a Result-wrapped i64 (or an error on divide-by-zero)
+fn divi64(a: i64, b: i64) -> Result<i64, Box<dyn std::error::Error>> {
+    match a.checked_div(b) {
+        Some(c) => Ok(c),
+        None => Err("Divide-by-zero".into()),
+    }
+}
+
+/// `modi64` safely divides two i64s, returning a Result-wrapped remainder in i64 (or an error on divide-by-zero)
+fn modi64(a: i64, b: i64) -> Result<i64, Box<dyn std::error::Error>> {
+    match a.checked_rem(b) {
+        Some(c) => Ok(c),
+        None => Err("Divide-by-zero".into()),
+    }
+}
+
+/// `powi64` safely raises the first i64 to the second i64, returning a Result-wrapped i64 (or an error on under/overflow)
+fn powi64(a: i64, b: i64) -> Result<i64, Box<dyn std::error::Error>> {
+    // TODO: Support b being negative correctly
+    match a.checked_pow(b as u32) {
+        Some(c) => Ok(c),
+        None => Err("Underflow or Overflow".into()),
+    }
+}
+
+/// `mini64` returns the smaller of the two i64 values
+fn mini64(a: i64, b: i64) -> i64 {
+    if a < b { a } else { b }
+}
+
+/// `maxi64` returns the larger of the two i64 values
+fn maxi64(a: i64, b: i64) -> i64 {
+    if a > b { a } else { b }
+}
+
 /// `get_or_exit` is basically an alias to `unwrap`, but as a function instead of a method
 fn get_or_exit<A>(a: Result<A, Box<dyn std::error::Error>>) -> A {
     a.unwrap()

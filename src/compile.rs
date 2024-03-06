@@ -263,132 +263,84 @@ test!(int16_max => r#"
 );
 
 test!(int32_add => r#"
-    from @std/app import start, print, exit
-    on start {
-      add(1.toInt32(), 2.toInt32()).print();
-      emit exit 0;
+    export fn main {
+      add(1.i32(), 2.i32()).print();
     }"#;
     stdout "3\n";
 );
 test!(int32_sub => r#"
-    from @std/app import start, print, exit
-    on start {
-      sub(2.toInt32(), 1.toInt32()).print();
-      emit exit 0;
+    export fn main {
+      sub(2.i32(), 1.i32()).print();
     }"#;
     stdout "1\n";
 );
 test!(int32_mul => r#"
-    from @std/app import start, print, exit
-    on start {
-      mul(2.toInt32(), 1.toInt32()).print();
-      emit exit 0;
+    export fn main {
+      mul(2.i32(), 1.i32()).print();
     }"#;
     stdout "2\n";
 );
 test!(int32_div => r#"
-    from @std/app import start, print, exit
-    on start {
-      div(6.toInt32(), 2.toInt32()).print();
-      emit exit 0;
+    export fn main {
+      div(6.i32(), 2.i32()).print();
     }"#;
     stdout "3\n";
 );
 test!(int32_mod => r#"
-    from @std/app import start, print, exit
-    on start {
-      mod(6.toInt32(), 4.toInt32()).print();
-      emit exit 0;
+    export fn main {
+      mod(6.i32(), 4.i32()).print();
     }"#;
     stdout "2\n";
 );
 test!(int32_pow => r#"
-    from @std/app import start, print, exit
-    on start {
-      pow(6.toInt32(), 2.toInt32()).print();
-      emit exit 0;
+    export fn main {
+      pow(6.i32(), 2.i32()).print();
     }"#;
     stdout "36\n";
 );
 test!(int32_min => r#"
-    from @std/app import start, print, exit
-    on start {
-      min(3.toInt32(), 5.toInt32()).print();
-      emit exit 0;
+    export fn main {
+      min(3.i32(), 5.i32()).print();
     }"#;
     stdout "3\n";
 );
 test!(int32_max => r#"
-    from @std/app import start, print, exit
-    on start {
-      max(3.toInt32(), 5.toInt32()).print();
-      emit exit 0;
+    export fn main {
+      max(3.i32(), 5.i32()).print();
     }"#;
     stdout "5\n";
 );
 
 test!(int64_add => r#"
-    from @std/app import start, print, exit
-    on start {
-      print(1 + 2);
-      emit exit 0;
-    }"#;
+    export fn main = print(1 + 2);"#;
     stdout "3\n";
 );
 test!(int64_sub => r#"
-    from @std/app import start, print, exit
-    on start {
-      print(2 - 1);
-      emit exit 0;
-    }"#;
+    export fn main = print(2 - 1);"#;
     stdout "1\n";
 );
 test!(int64_mul => r#"
-    from @std/app import start, print, exit
-    on start {
-      print(2 * 1);
-      emit exit 0;
-    }"#;
+    export fn main = print(2 * 1);"#;
     stdout "2\n";
 );
 test!(int64_div => r#"
-    from @std/app import start, print, exit
-    on start {
-      print(6 / 2);
-      emit exit 0;
-    }"#;
+    export fn main = print(6 / 2);"#;
     stdout "3\n";
 );
 test!(int64_mod => r#"
-    from @std/app import start, print, exit
-    on start {
-      print(6 % 4);
-      emit exit 0;
-    }"#;
+    export fn main = print(6 % 4);"#;
     stdout "2\n";
 );
 test!(int64_pow => r#"
-    from @std/app import start, print, exit
-    on start {
-      print(6 ** 2);
-      emit exit 0;
-    }"#;
+    export fn main = print(6 ** 2);"#;
     stdout "36\n";
 );
 test!(int64_min => r#"
-    from @std/app import start, print, exit
-    on start {
-      min(3, 5).print();
-      emit exit 0;
-    }"#;
+    export fn main = min(3, 5).print();"#;
     stdout "3\n";
 );
 test!(int64_max => r#"
-    from @std/app import start, print, exit
-    on start {
-      max(3.toInt64(), 5.toInt64()).print();
-      emit exit 0;
-    }"#;
+    export fn main = max(3.i64(), 5.i64()).print();"#;
     stdout "5\n";
 );
 

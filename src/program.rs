@@ -80,6 +80,28 @@ impl Program {
         }
     }
 
+    pub fn resolve_operator<'a>(
+        self: &'a Self,
+        scope: &'a Scope,
+        operatorname: &String,
+    ) -> Option<(&OperatorMapping, &Scope)> {
+        // Tries to find the specified operator within the portion of the program accessible from the
+        // current scope (so first checking the current scope, then all imports, then the root
+        // scope) Returns a reference to the type and the scope it came from.
+        // TODO: type ambiguity, infix/prefix ambiguity, etc
+        match scope.operatormappings.get(operatorname) {
+            Some(o) => Some((o, scope)),
+            None => {
+                // TODO: Loop over imports looking for the type
+                let (_, _, root_scope) = self.scopes_by_file.get("@root").unwrap();
+                match &root_scope.operatormappings.get(operatorname) {
+                    Some(o) => Some((&o, &root_scope)),
+                    None => None,
+                }
+            }
+        }
+    }
+
     pub fn resolve_function<'a>(
         self: &'a Self,
         scope: &'a Scope,
@@ -146,9 +168,9 @@ pub struct Scope {
     pub functions: OrderedHashMap<String, Vec<Function>>,
     pub handlers: OrderedHashMap<String, Handler>,
     pub events: OrderedHashMap<String, Event>,
+    pub operatormappings: OrderedHashMap<String, OperatorMapping>,
     pub exports: OrderedHashMap<String, Export>,
     // TODO: Implement these other concepts
-    // operatormappings: OrderedHashMap<String, OperatorMapping>,
     // interfaces: OrderedHashMap<String, Interface>,
     // Should we include something for documentation? Maybe testing?
 }
@@ -170,6 +192,7 @@ impl Scope {
             functions: OrderedHashMap::new(),
             handlers: OrderedHashMap::new(),
             events: OrderedHashMap::new(),
+            operatormappings: OrderedHashMap::new(),
             exports: OrderedHashMap::new(),
         };
         let mut p = program;
@@ -183,12 +206,18 @@ impl Scope {
                 parse::RootElements::Types(t) => Type::from_ast(&mut s, t, false)?,
                 parse::RootElements::Functions(f) => Function::from_ast(&mut s, &p, f, false)?,
                 parse::RootElements::ConstDeclaration(c) => Const::from_ast(&mut s, c, false)?,
+                parse::RootElements::OperatorMapping(o) => {
+                    OperatorMapping::from_ast(&mut s, o, false)?
+                }
                 parse::RootElements::Exports(e) => match &e.exportable {
                     parse::Exportable::Events(e) => Event::from_ast(&mut s, &p, e, true)?,
                     parse::Exportable::Functions(f) => Function::from_ast(&mut s, &p, f, true)?,
                     parse::Exportable::ConstDeclaration(c) => Const::from_ast(&mut s, c, true)?,
+                    parse::Exportable::OperatorMapping(o) => {
+                        OperatorMapping::from_ast(&mut s, o, true)?
+                    }
                     parse::Exportable::Types(t) => Type::from_ast(&mut s, t, true)?,
-                    _ => println!("TODO: Not yet supported export syntax"),
+                    e => println!("TODO: Not yet supported export syntax: {:?}", e),
                 },
                 parse::RootElements::Whitespace(_) => { /* Do nothing */ }
                 _ => println!("TODO: Not yet supported top-level module syntax"),
@@ -256,11 +285,17 @@ impl Import {
                     // Need to load this file into the program first
                     p = p.load(ln_file.clone())?;
                 }
-                let field_vec = f.varlist.iter().map(|v| if let Some(rename) = &v.optrenamed {
-                    (v.varop.to_string(), rename.varop.to_string())
-                } else {
-                    (v.varop.to_string(), v.varop.to_string())
-                }).collect::<Vec<(String, String)>>();
+                let field_vec = f
+                    .varlist
+                    .iter()
+                    .map(|v| {
+                        if let Some(rename) = &v.optrenamed {
+                            (v.varop.to_string(), rename.varop.to_string())
+                        } else {
+                            (v.varop.to_string(), v.varop.to_string())
+                        }
+                    })
+                    .collect::<Vec<(String, String)>>();
                 let i = Import {
                     source_scope_name: ln_file.clone(),
                     import_type: ImportType::Fields(field_vec),
@@ -382,7 +417,11 @@ pub enum Microstatement {
 }
 
 impl Microstatement {
-    pub fn get_type(&self, scope: &Scope, program: &Program) -> Result<String, Box<dyn std::error::Error>> {
+    pub fn get_type(
+        &self,
+        scope: &Scope,
+        program: &Program,
+    ) -> Result<String, Box<dyn std::error::Error>> {
         match self {
             Self::Value { typen, .. } => Ok(typen.clone()),
             Self::Arg { typen, .. } => Ok(typen.clone()),
@@ -397,11 +436,7 @@ impl Microstatement {
                     let arg_type = arg.get_type(scope, program)?;
                     arg_types.push(arg_type);
                 }
-                match program.resolve_function(
-                    scope,
-                    function,
-                    &arg_types,
-                ) {
+                match program.resolve_function(scope, function, &arg_types) {
                     Some((function_object, _s)) => match &function_object.rettype {
                         // TODO: Handle implied return types better
                         None => Ok("void".to_string()),
@@ -512,13 +547,19 @@ fn baseassignablelist_to_microstatements(
                             let fn_name = if let parse::VarSegment::MethodSep(_) = var[0] {
                                 let mut out = "".to_string();
                                 for (i, segment) in var.iter().enumerate() {
-                                    if i == 0 { continue; }
+                                    if i == 0 {
+                                        continue;
+                                    }
                                     out = format!("{}{}", out, segment.to_string()).to_string();
                                 }
                                 out
                             } else {
-                                var.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join("").to_string() // TODO: Support method/property/array access eventually
-                                                                                                                                    };
+                                var.iter()
+                                    .map(|segment| segment.to_string())
+                                    .collect::<Vec<String>>()
+                                    .join("")
+                                    .to_string() // TODO: Support method/property/array access eventually
+                            };
                             microstatements.push(Microstatement::FnCall {
                                 function: fn_name,
                                 args,
@@ -537,8 +578,20 @@ fn baseassignablelist_to_microstatements(
                 } else {
                     let typen = match microstatements.iter().find(|m| match m {
                         // TODO: Properly support method/property/array access eventually
-                        Microstatement::Assignment { name, .. } => &var.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join("") == name,
-                        Microstatement::Arg { name, .. } => &var.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join("") == name,
+                        Microstatement::Assignment { name, .. } => {
+                            &var.iter()
+                                .map(|segment| segment.to_string())
+                                .collect::<Vec<String>>()
+                                .join("")
+                                == name
+                        }
+                        Microstatement::Arg { name, .. } => {
+                            &var.iter()
+                                .map(|segment| segment.to_string())
+                                .collect::<Vec<String>>()
+                                .join("")
+                                == name
+                        }
                         _ => false,
                     }) {
                         // Reaching the `Some` path requires it to be of type
@@ -547,16 +600,27 @@ fn baseassignablelist_to_microstatements(
                         Some(m) => Ok(match m {
                             Microstatement::Assignment { value, .. } => {
                                 value.get_type(scope, program)
-                            },
+                            }
                             Microstatement::Arg { typen, .. } => Ok(typen.clone()),
                             _ => unreachable!(),
                         }),
-                        None => Err(format!("Couldn't find variable {}", var.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join(""))),
+                        None => Err(format!(
+                            "Couldn't find variable {}",
+                            var.iter()
+                                .map(|segment| segment.to_string())
+                                .collect::<Vec<String>>()
+                                .join("")
+                        )),
                     }??;
                     microstatements.push(Microstatement::Value {
                         typen,
                         // TODO: Properly support method/property/array access eventually
-                        representation: var.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join("").to_string(),
+                        representation: var
+                            .iter()
+                            .map(|segment| segment.to_string())
+                            .collect::<Vec<String>>()
+                            .join("")
+                            .to_string(),
                     });
                 }
             }
@@ -566,10 +630,19 @@ fn baseassignablelist_to_microstatements(
                 // parens for grouping and have only one "argument". All other situations are
                 // invalid syntax.
                 if i != 0 {
-                    return Err(format!("Unexpected grouping {} following {}", baseassignable.to_string(), baseassignablelist[i - 1].to_string()).into());
+                    return Err(format!(
+                        "Unexpected grouping {} following {}",
+                        baseassignable.to_string(),
+                        baseassignablelist[i - 1].to_string()
+                    )
+                    .into());
                 }
                 if g.assignablelist.len() != 1 {
-                    return Err(format!("Multiple statements found in {}. Perhaps you should remove that comma?", baseassignable.to_string()).into());
+                    return Err(format!(
+                        "Multiple statements found in {}. Perhaps you should remove that comma?",
+                        baseassignable.to_string()
+                    )
+                    .into());
                 }
                 // Happy path, let's get the microstatements from this assignable list
                 microstatements = withoperatorslist_to_microstatements(
@@ -627,19 +700,175 @@ fn withoperatorslist_to_microstatements(
     program: &Program,
     mut microstatements: Vec<Microstatement>,
 ) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
-    for assignable_or_operator in withoperatorslist.iter() {
-        match assignable_or_operator {
-            parse::WithOperators::BaseAssignableList(baseassignablelist) => {
-                microstatements = baseassignablelist_to_microstatements(
-                    baseassignablelist,
-                    scope,
-                    program,
-                    microstatements,
-                )?
+    // To properly linearize the operations here, we need to scan through all of the operators,
+    // determine which is the highest precedence, whether it is infix or prefix (or maybe postfix
+    // in the future?) and then process them and whichever of the baseassignables surrounding them
+    // are associated, then put those results in the same "slot" as before and check again. Because
+    // users can define these operators, that makes it theoretically possible for the same operator
+    // to be used in both an infix or prefix manner, or with different precedence levels, depending
+    // on the types of the data involved, which makes things *really* complicated here. TODO:
+    // Actually implement that complexity, for now, just pretend operators have only one binding.
+    let mut queue = withoperatorslist.clone();
+    while queue.len() > 0 {
+        let mut largest_operator_level: i8 = -1;
+        let mut largest_operator_index: i64 = -1;
+        for (i, assignable_or_operator) in queue.iter().enumerate() {
+            match assignable_or_operator {
+                parse::WithOperators::Operators(o) => {
+                    let operatorname = o.trim();
+                    let (operator, _) =
+                        match program.resolve_operator(scope, &operatorname.to_string()) {
+                            Some(o) => Ok(o),
+                            None => Err(format!("Operator {} not found", operatorname)),
+                        }?;
+                    let level = match &operator {
+                        OperatorMapping::Prefix { level, .. } => level,
+                        OperatorMapping::Infix { level, .. } => level,
+                    };
+                    if level > &largest_operator_level {
+                        largest_operator_level = *level;
+                        largest_operator_index = i as i64;
+                    }
+                }
+                _ => {}
             }
-            _ => {
-                return Err("Operators currently unsupported".into());
+        }
+        if largest_operator_index > -1 {
+            // We have at least one operator, and this is the one to dig into
+            let operatorname = match &queue[largest_operator_index as usize] {
+                parse::WithOperators::Operators(o) => o.trim(),
+                _ => unreachable!(),
+            };
+            let (operator, _) = match program.resolve_operator(scope, &operatorname.to_string()) {
+                Some(o) => Ok(o),
+                None => Err(format!("Operator {} not found", operatorname)),
+            }?;
+            let functionname = match operator {
+                OperatorMapping::Prefix { functionname, .. } => functionname.clone(),
+                OperatorMapping::Infix { functionname, .. } => functionname.clone(),
+            };
+            let is_infix = match operator {
+                OperatorMapping::Prefix { .. } => false,
+                OperatorMapping::Infix { .. } => true,
+            };
+            if is_infix {
+                // Confirm that we have records before and after the operator and that they are
+                // baseassignables.
+                let first_arg = match match queue.get(largest_operator_index as usize - 1) {
+                    Some(val) => Ok(val),
+                    None => Err(format!(
+                        "Operator {} is an infix operator but missing a left-hand side value",
+                        operatorname
+                    )),
+                }? {
+                    parse::WithOperators::BaseAssignableList(baseassignablelist) => {
+                        Ok(baseassignablelist)
+                    }
+                    parse::WithOperators::Operators(o) => Err(format!(
+                        "Operator {} is an infix operator but preceded by another operator {}",
+                        operatorname, o
+                    )),
+                }?;
+                let second_arg = match match queue.get(largest_operator_index as usize + 1) {
+                    Some(val) => Ok(val),
+                    None => Err(format!("Operator {} is an infix operator but missing a right-hand side value", operatorname)),
+                }? {
+                    parse::WithOperators::BaseAssignableList(baseassignablelist) => Ok(baseassignablelist),
+                    parse::WithOperators::Operators(o) => Err(format!("Operator{} is an infix operator but followed by a lower precedence operator {}", operatorname, o)),
+                }?;
+                // We're gonna rewrite the operator and base assignables into a function call, eg
+                // we take `a + b` and turn it into `add(a, b)`
+                let rewrite = parse::WithOperators::BaseAssignableList(vec![
+                    parse::BaseAssignable::Variable(vec![parse::VarSegment::Variable(
+                        functionname,
+                    )]),
+                    parse::BaseAssignable::FnCall(parse::FnCall {
+                        openparen: "(".to_string(),
+                        a: "".to_string(),
+                        assignablelist: vec![
+                            vec![parse::WithOperators::BaseAssignableList(first_arg.to_vec())],
+                            vec![parse::WithOperators::BaseAssignableList(
+                                second_arg.to_vec(),
+                            )],
+                        ],
+                        b: "".to_string(),
+                        closeparen: ")".to_string(),
+                    }),
+                ]);
+                // Splice the new record into the processing queue
+                let _: Vec<parse::WithOperators> = queue
+                    .splice(
+                        (largest_operator_index as usize - 1)
+                            ..(largest_operator_index as usize + 2),
+                        vec![rewrite],
+                    )
+                    .collect();
+            } else {
+                // Confirm that we have a record after the operator and that it's a baseassignables
+                let arg = match match queue.get(largest_operator_index as usize + 1) {
+                    Some(val) => Ok(val),
+                    None => Err(format!(
+                        "Operator {} is a prefix operator but missing a right-hand side value",
+                        operatorname
+                    )),
+                }? {
+                    parse::WithOperators::BaseAssignableList(baseassignablelist) => {
+                        Ok(baseassignablelist)
+                    }
+                    parse::WithOperators::Operators(o) => Err(format!(
+                        "Operator {} is an prefix operator but followed by another operator {}",
+                        operatorname, o
+                    )),
+                }?;
+                // We're gonna rewrite the operator and base assignables into a function call, eg
+                // we take `#array` and turn it into `len(array)`
+                let rewrite = parse::WithOperators::BaseAssignableList(vec![
+                    parse::BaseAssignable::Variable(vec![parse::VarSegment::Variable(
+                        functionname,
+                    )]),
+                    parse::BaseAssignable::FnCall(parse::FnCall {
+                        openparen: "(".to_string(),
+                        a: "".to_string(),
+                        assignablelist: vec![vec![parse::WithOperators::BaseAssignableList(
+                            arg.to_vec(),
+                        )]],
+                        b: "".to_string(),
+                        closeparen: ")".to_string(),
+                    }),
+                ]);
+                // Splice the new record into the processing queue
+                let _: Vec<parse::WithOperators> = queue
+                    .splice(
+                        (largest_operator_index as usize)..(largest_operator_index as usize + 2),
+                        vec![rewrite],
+                    )
+                    .collect();
             }
+        } else {
+            // We have no more operators, there should only be one reworked baseassignablelist now
+            if queue.len() != 1 {
+                // No idea how such a wonky thing could occur. TODO: Improve error message
+                return Err(format!("Invalid syntax: {:?}", withoperatorslist).into());
+            }
+            let baseassignablelist = match match queue.pop() {
+                Some(v) => Ok(v),
+                None => Err(format!(
+                    "Somehow we collapsed the statement into nothing? {:?}",
+                    withoperatorslist
+                )),
+            }? {
+                parse::WithOperators::BaseAssignableList(b) => Ok(b),
+                _ => Err(format!(
+                    "Somehow we collapse the statement into a solitary operator? {:?}",
+                    withoperatorslist
+                )),
+            }?;
+            microstatements = baseassignablelist_to_microstatements(
+                &baseassignablelist,
+                scope,
+                program,
+                microstatements,
+            )?;
         }
     }
     Ok(microstatements)
@@ -664,7 +893,7 @@ fn returns_to_microstatements(
     returns: &parse::Returns,
     scope: &Scope,
     program: &Program,
-    mut microstatements: Vec<Microstatement>
+    mut microstatements: Vec<Microstatement>,
 ) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
     if let Some(retval) = &returns.retval {
         // We get all of the microstatements involved in the return statement, then we pop
@@ -692,7 +921,7 @@ fn declarations_to_microstatements(
     declarations: &parse::Declarations,
     scope: &Scope,
     program: &Program,
-    mut microstatements: Vec<Microstatement>
+    mut microstatements: Vec<Microstatement>,
 ) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
     // We don't care about const vs let in the microstatement world, everything is
     // immutable and we just create a crap-ton of variables. TODO: We might have
@@ -734,15 +963,25 @@ fn emits_to_microstatements(
             Some(v) => Some(Box::new(v)),
         };
         microstatements.push(Microstatement::Emit {
-          // TODO: Figure out the correct event instead of just stringifying the resolution path
-          event: emits.eventname.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join(""),
-          value,
+            // TODO: Figure out the correct event instead of just stringifying the resolution path
+            event: emits
+                .eventname
+                .iter()
+                .map(|segment| segment.to_string())
+                .collect::<Vec<String>>()
+                .join(""),
+            value,
         });
     } else {
         microstatements.push(Microstatement::Emit {
-          // TODO: Figure out the correct event instead of just stringifying the resolution path
-          event: emits.eventname.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join(""),
-          value: None
+            // TODO: Figure out the correct event instead of just stringifying the resolution path
+            event: emits
+                .eventname
+                .iter()
+                .map(|segment| segment.to_string())
+                .collect::<Vec<String>>()
+                .join(""),
+            value: None,
         });
     }
     Ok(microstatements)
@@ -757,30 +996,18 @@ fn statement_to_microstatements(
     Ok(match statement {
         // This is just whitespace, so we do nothing here
         parse::Statement::A(_) => microstatements,
-        parse::Statement::Assignables(assignable) => assignablestatement_to_microstatements(
-            assignable,
-            scope,
-            program,
-            microstatements,
-        )?,
-        parse::Statement::Returns(returns) => returns_to_microstatements(
-            returns,
-            scope,
-            program,
-            microstatements,
-        )?,
-        parse::Statement::Declarations(declarations) => declarations_to_microstatements(
-            declarations,
-            scope,
-            program,
-            microstatements,
-        )?,
-        parse::Statement::Emits(emits) => emits_to_microstatements(
-            emits,
-            scope,
-            program,
-            microstatements,
-        )?,
+        parse::Statement::Assignables(assignable) => {
+            assignablestatement_to_microstatements(assignable, scope, program, microstatements)?
+        }
+        parse::Statement::Returns(returns) => {
+            returns_to_microstatements(returns, scope, program, microstatements)?
+        }
+        parse::Statement::Declarations(declarations) => {
+            declarations_to_microstatements(declarations, scope, program, microstatements)?
+        }
+        parse::Statement::Emits(emits) => {
+            emits_to_microstatements(emits, scope, program, microstatements)?
+        }
         parse::Statement::Assignments(_assignments) => {
             todo!("Implement me");
         }
@@ -903,6 +1130,7 @@ pub enum Export {
     Const,
     Type,
     Event,
+    OpMap,
 }
 
 #[derive(Debug)]
@@ -926,19 +1154,73 @@ impl Event {
         } else {
             match program.resolve_type(scope, &event_ast.fulltypename.to_string()) {
                 Some((t, _)) => Ok(t.typename.to_string()),
-                None => Err(format!("Invalid type {} for event {}", event_ast.fulltypename.to_string(), event_ast.variable)),
+                None => Err(format!(
+                    "Invalid type {} for event {}",
+                    event_ast.fulltypename.to_string(),
+                    event_ast.variable
+                )),
             }
         }?;
         let e = Event {
             name: event_ast.variable.clone(),
-            typename, 
+            typename,
         };
         if is_export {
-            scope
-                .exports
-                .insert(e.name.clone(), Export::Event);
+            scope.exports.insert(e.name.clone(), Export::Event);
         }
         scope.events.insert(e.name.clone(), e);
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub enum OperatorMapping {
+    Prefix {
+        level: i8,
+        functionname: String,
+        operatorname: String,
+    },
+    Infix {
+        level: i8,
+        functionname: String,
+        operatorname: String,
+    },
+}
+
+impl OperatorMapping {
+    fn from_ast(
+        scope: &mut Scope,
+        operatormapping_ast: &parse::OperatorMapping,
+        is_export: bool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let opmap = match operatormapping_ast.fix {
+            parse::Fix::Prefix(_) => OperatorMapping::Prefix {
+                level: operatormapping_ast
+                    .opmap
+                    .get_opprecedence()
+                    .num
+                    .parse::<i8>()?,
+                functionname: operatormapping_ast.opmap.get_fntoop().fnname.clone(),
+                operatorname: operatormapping_ast.opmap.get_fntoop().operator.clone(),
+            },
+            parse::Fix::Infix(_) => OperatorMapping::Infix {
+                level: operatormapping_ast
+                    .opmap
+                    .get_opprecedence()
+                    .num
+                    .parse::<i8>()?,
+                functionname: operatormapping_ast.opmap.get_fntoop().fnname.clone(),
+                operatorname: operatormapping_ast.opmap.get_fntoop().operator.clone(),
+            },
+        };
+        let name = match &opmap {
+            OperatorMapping::Prefix { operatorname, .. } => operatorname.clone(),
+            OperatorMapping::Infix { operatorname, .. } => operatorname.clone(),
+        };
+        if is_export {
+            scope.exports.insert(name.clone(), Export::OpMap);
+        }
+        scope.operatormappings.insert(name, opmap);
         Ok(())
     }
 }
@@ -962,7 +1244,16 @@ impl Handler {
                 let name = match &function.optname {
                     Some(name) => name.clone(),
                     // TODO: Properly support method/property/array access eventually
-                    None => format!(":::on:::{}", &handler_ast.eventname.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join("")).to_string(), // Impossible for users to write, so no collisions ever
+                    None => format!(
+                        ":::on:::{}",
+                        &handler_ast
+                            .eventname
+                            .iter()
+                            .map(|segment| segment.to_string())
+                            .collect::<Vec<String>>()
+                            .join("")
+                    )
+                    .to_string(), // Impossible for users to write, so no collisions ever
                 };
                 let _ = Function::from_ast_with_name(scope, program, function, false, name.clone());
                 name
@@ -974,7 +1265,16 @@ impl Handler {
             // type.
             parse::Handler::FunctionBody(body) => {
                 // TODO: Properly support method/property/array access eventually
-                let name = format!(":::on:::{}", &handler_ast.eventname.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join("")).to_string();
+                let name = format!(
+                    ":::on:::{}",
+                    &handler_ast
+                        .eventname
+                        .iter()
+                        .map(|segment| segment.to_string())
+                        .collect::<Vec<String>>()
+                        .join("")
+                )
+                .to_string();
                 let function = Function {
                     name: name.clone(),
                     args: Vec::new(),
@@ -999,7 +1299,13 @@ impl Handler {
             } // TODO: Should you be allowed to bind a Rust function as a handler directly?
         };
         let h = Handler {
-            eventname: handler_ast.eventname.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join("").to_string(),
+            eventname: handler_ast
+                .eventname
+                .iter()
+                .map(|segment| segment.to_string())
+                .collect::<Vec<String>>()
+                .join("")
+                .to_string(),
             functionname,
         };
         scope.handlers.insert(h.eventname.clone(), h);

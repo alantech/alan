@@ -17,9 +17,12 @@ pub fn from_microstatement(
             from_microstatement(value, scope, program)?
         )
         .to_string()),
-        Microstatement::Value { typen, representation} => match typen.as_str() {
+        Microstatement::Value {
+            typen,
+            representation,
+        } => match typen.as_str() {
             "String" => Ok(format!("{}.to_string()", representation).to_string()),
-            _ => Ok(representation.clone())
+            _ => Ok(representation.clone()),
         },
         Microstatement::FnCall { function, args } => {
             let mut arg_types = Vec::new();
@@ -49,12 +52,13 @@ pub fn from_microstatement(
             None => Ok("return".to_string()),
         },
         Microstatement::Emit { event, value } => match value {
-            Some(val) => {
-                Ok(format!("event::{}({})", event, from_microstatement(val, scope, program)?).to_string())
-            }
-            None => {
-                Ok(format!("event::{}()", event).to_string())
-            }
+            Some(val) => Ok(format!(
+                "event::{}({})",
+                event,
+                from_microstatement(val, scope, program)?
+            )
+            .to_string()),
+            None => Ok(format!("event::{}()", event).to_string()),
         },
     }
 }

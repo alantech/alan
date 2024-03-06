@@ -823,7 +823,11 @@ impl BaseAssignable {
             BaseAssignable::ObjectLiterals(_ol) => "todo".to_string(),
             BaseAssignable::Functions(_f) => "todo".to_string(),
             BaseAssignable::FnCall(_fc) => "todo".to_string(),
-            BaseAssignable::Variable(v) => v.iter().map(|segment| segment.to_string()).collect::<Vec<String>>().join(""),
+            BaseAssignable::Variable(v) => v
+                .iter()
+                .map(|segment| segment.to_string())
+                .collect::<Vec<String>>()
+                .join(""),
             BaseAssignable::Constants(c) => c.to_string(),
         }
     }
@@ -1220,7 +1224,7 @@ named_and!(fntoop: FnToOp =>
     a: String as blank,
     asn: String as asn,
     b: String as blank,
-    operators: String as operators,
+    operator: String as operators,
 );
 named_and!(opprecedence: OpPrecedence =>
     precedence: String as precedence,
@@ -1246,10 +1250,25 @@ named_or!(opmap: OpMap =>
     FnOpPrecedence: FnOpPrecedence as fnopprecedence,
     PrecedenceFnOp: PrecedenceFnOp as precedencefnop,
 );
+impl OpMap {
+    pub fn get_fntoop(&self) -> &FnToOp {
+        match self {
+            OpMap::FnOpPrecedence(fop) => &fop.fntoop,
+            OpMap::PrecedenceFnOp(pfo) => &pfo.fntoop,
+        }
+    }
+    pub fn get_opprecedence(&self) -> &OpPrecedence {
+        match self {
+            OpMap::FnOpPrecedence(fop) => &fop.opprecedence,
+            OpMap::PrecedenceFnOp(pfo) => &pfo.opprecedence,
+        }
+    }
+}
 named_and!(operatormapping: OperatorMapping =>
     fix: Fix as fix,
     blank: String as blank,
     opmap: OpMap as opmap,
+    optsemicolon: String as optsemicolon,
 );
 named_and!(events: Events =>
     event: String as event,
