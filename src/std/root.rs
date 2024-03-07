@@ -268,6 +268,11 @@ fn get_or_exit<A>(a: Result<A, Box<dyn std::error::Error>>) -> A {
     a.unwrap()
 }
 
+/// `string_concat` is a simple function that concatenates two strings
+fn string_concat(a: String, b: String) -> String {
+    format!("{}{}", a, b).to_string()
+}
+
 /// `println` is a simple function that prints basically anything
 fn println<A: std::fmt::Display>(a: A) {
     println!("{}", a);
