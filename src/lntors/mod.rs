@@ -51,5 +51,11 @@ pub fn lntors(entry_file: String) -> Result<String, Box<dyn std::error::Error>> 
     assert_eq!(func[0].args.len(), 0);
     // Assertion proven, start emitting the Rust `main` function
     fns = fn_generate("main".to_string(), &func[0], &scope, &program, fns)?;
-    Ok(format!("{}\n{}\n{}", preamble, event_fns, fns.into_values().collect::<Vec<String>>().join("\n")).to_string())
+    Ok(format!(
+        "{}\n{}\n{}",
+        preamble,
+        event_fns,
+        fns.into_values().collect::<Vec<String>>().join("\n")
+    )
+    .to_string())
 }

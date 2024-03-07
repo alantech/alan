@@ -5,7 +5,10 @@ use ordered_hash_map::OrderedHashMap;
 use crate::lntors::function::from_microstatement;
 use crate::program::{Function, Microstatement, Program};
 
-pub fn generate(program: &Program, mut normal_fns: OrderedHashMap<String, String>) -> Result<(String, OrderedHashMap<String, String>), Box<dyn std::error::Error>> {
+pub fn generate(
+    program: &Program,
+    mut normal_fns: OrderedHashMap<String, String>,
+) -> Result<(String, OrderedHashMap<String, String>), Box<dyn std::error::Error>> {
     // The events will all go into an `event` sub-module with every function marked public. These
     // event functions are what the `emit <eventName> <optionalValue>;` statements will call, so
     // something like:
@@ -105,8 +108,12 @@ pub fn generate(program: &Program, mut normal_fns: OrderedHashMap<String, String
                         } else {
                             // Inline the microstatements if it's an Alan function
                             for microstatement in &handler_fn.microstatements {
-                                let (stmt, f) =
-                                    from_microstatement(microstatement, handlerscope, program, normal_fns)?;
+                                let (stmt, f) = from_microstatement(
+                                    microstatement,
+                                    handlerscope,
+                                    program,
+                                    normal_fns,
+                                )?;
                                 normal_fns = f;
                                 if stmt != "" {
                                     out = format!("{}            {};\n", out, stmt);

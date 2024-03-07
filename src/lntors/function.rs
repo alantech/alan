@@ -14,16 +14,11 @@ pub fn from_microstatement(
     match microstatement {
         Microstatement::Arg { .. } => Ok(("".to_string(), out)), // Skip arg microstatements that are just used for discovery during generation
         Microstatement::Assignment { name, value } => {
-          let (val, o) = from_microstatement(value, scope, program, out)?;
-          // I wish I didn't have to write the following line because you can't re-assign a
-          // variable in a let destructuring, afaict
-          out = o;
-          Ok((format!(
-              "let {} = {}",
-              name,
-              val,
-          )
-          .to_string(), out))
+            let (val, o) = from_microstatement(value, scope, program, out)?;
+            // I wish I didn't have to write the following line because you can't re-assign a
+            // variable in a let destructuring, afaict
+            out = o;
+            Ok((format!("let {} = {}", name, val,).to_string(), out))
         }
         Microstatement::Value {
             typen,
@@ -54,8 +49,11 @@ pub fn from_microstatement(
                             out = o;
                             argstrs.push(a);
                         }
-                        Ok((format!("{}({})", rustname, argstrs.join(", ")).to_string(), out))
-                    },
+                        Ok((
+                            format!("{}({})", rustname, argstrs.join(", ")).to_string(),
+                            out,
+                        ))
+                    }
                     Some(rustname) => {
                         let mut argstrs = Vec::new();
                         for arg in args {
@@ -63,7 +61,10 @@ pub fn from_microstatement(
                             out = o;
                             argstrs.push(a);
                         }
-                        Ok((format!("{}({})", rustname, argstrs.join(", ")).to_string(), out))
+                        Ok((
+                            format!("{}({})", rustname, argstrs.join(", ")).to_string(),
+                            out,
+                        ))
                     }
                 },
             }
@@ -80,13 +81,8 @@ pub fn from_microstatement(
             Some(val) => {
                 let (emitval, o) = from_microstatement(val, scope, program, out)?;
                 out = o;
-                Ok((format!(
-                  "event::{}({})",
-                  event,
-                  emitval,
-              )
-              .to_string(), out))
-            },
+                Ok((format!("event::{}({})", event, emitval,).to_string(), out))
+            }
             None => Ok((format!("event::{}()", event).to_string(), out)),
         },
     }
