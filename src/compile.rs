@@ -1045,6 +1045,19 @@ test!(type_coercion_aliases => r#"
 );
 
 // Functions and Custom Operators
+test!(basic_function_usage => r#"
+    fn foo() = print('foo');
+
+    fn bar(s: String): String = concat(s, "bar"); // TODO: method syntax here
+
+    export fn main {
+      foo();
+      'foo'.bar().print();
+    }"#;
+    stdout r#"foo
+foobar
+"#;
+);
 
 test!(functions_and_custom_operators => r#"
     from @std/app import start, print, exit
