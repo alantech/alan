@@ -133,7 +133,7 @@ test!(error_exit_code => r#"
 test!(non_global_memory_exit_code => r#"
     export fn main(): ExitCode {
       let x: i64 = 0;
-      return ExitCode(x);
+      return x.ExitCode();
     }"#;
     status 0;
 );

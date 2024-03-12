@@ -544,7 +544,9 @@ fn baseassignablelist_to_microstatements(
                             }
                             // TODO: Support more than direct method access in the future, probably
                             // with a separate resolving function
-                            let fn_name = if let parse::VarSegment::MethodSep(_) = var[0] {
+                            let fn_name = if var.len() == 1 {
+                              var[0].to_string()
+                            } else if let parse::VarSegment::MethodSep(_) = var[0] {
                                 let mut out = "".to_string();
                                 for (i, segment) in var.iter().enumerate() {
                                     if i == 0 {
@@ -553,6 +555,50 @@ fn baseassignablelist_to_microstatements(
                                     out = format!("{}{}", out, segment.to_string()).to_string();
                                 }
                                 out
+                            } else if let parse::VarSegment::MethodSep(_) = var[1] {
+                                if var.len() != 3 {
+                                    var.iter()
+                                        .map(|segment| segment.to_string())
+                                        .collect::<Vec<String>>()
+                                        .join("")
+                                        .to_string() // TODO: Support method/property/array access eventually
+                                } else {
+                                    let first_var = match &var[0] {
+                                        parse::VarSegment::Variable(v) => v.clone(),
+                                        _ => unreachable!(),
+                                    };
+                                    // Scan microstatements backwards for an Assignment or Arg with the
+                                    // same name, early exiting with that record.
+                                    let mut first_microstatement = None;
+                                    for microstatement in microstatements.iter().rev() {
+                                        match &microstatement {
+                                            Microstatement::Assignment { name, value } if name == &first_var.to_string() => {
+                                                first_microstatement = Some(Microstatement::Value {
+                                                    typen: value.get_type(scope, program)?,
+                                                    representation: first_var.to_string(),
+                                                });
+                                                break;
+                                            },
+                                            Microstatement::Arg { name, typen } if name == &first_var.to_string() => {
+                                                first_microstatement = Some(Microstatement::Value {
+                                                    typen: typen.clone(),
+                                                    representation: first_var.to_string(),
+                                                });
+                                                break;
+                                            },
+                                            _ => continue,
+                                        }
+                                    }
+                                    // Put this argument at the beginning
+                                    if let Some(ms) = first_microstatement {
+                                        args.insert(0, ms);
+                                    }
+                                    // TODO Currently assuming it's only something.else()
+                                    match &var[2] {
+                                        parse::VarSegment::Variable(v) => v.clone(),
+                                        _ => unreachable!(),
+                                    }
+                                }
                             } else {
                                 var.iter()
                                     .map(|segment| segment.to_string())

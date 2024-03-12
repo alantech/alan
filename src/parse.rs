@@ -503,11 +503,11 @@ test!(strn =>
     pass "'str\\'3'";
     pass "\"str\\\"4\"";
 );
-build!(arrayaccess: Vec<WithOperators>, delimited(and!(openarr, optwhitespace), assignables, and!(optwhitespace, closearr)));
+build!(arrayaccess: Vec<Vec<WithOperators>>, delimited(and!(openarr, optwhitespace), assignablelist, and!(optwhitespace, closearr)));
 named_or!(varsegment: VarSegment =>
     Variable: String as variable,
     MethodSep: String as and!(optwhitespace, dot, optwhitespace),
-    ArrayAccess: Vec<WithOperators> as arrayaccess,
+    ArrayAccess: Vec<Vec<WithOperators>> as arrayaccess,
 );
 impl VarSegment {
     pub fn to_string(&self) -> String {
