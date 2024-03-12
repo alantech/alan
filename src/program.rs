@@ -392,6 +392,7 @@ impl Const {
 #[derive(Debug)]
 pub enum Microstatement {
     Assignment {
+        mutable: bool,
         name: String,
         value: Box<Microstatement>,
     },
@@ -526,6 +527,7 @@ fn baseassignablelist_to_microstatements(
                                     Microstatement::Assignment {
                                         ref name,
                                         ref value,
+                                        ..
                                     } => {
                                         // If the last microstatement is an assignment, we need to
                                         // reference it as a value and push it back onto the array
@@ -572,7 +574,7 @@ fn baseassignablelist_to_microstatements(
                                     let mut first_microstatement = None;
                                     for microstatement in microstatements.iter().rev() {
                                         match &microstatement {
-                                            Microstatement::Assignment { name, value } if name == &first_var.to_string() => {
+                                            Microstatement::Assignment { name, value, .. } if name == &first_var.to_string() => {
                                                 first_microstatement = Some(Microstatement::Value {
                                                     typen: value.get_type(scope, program)?,
                                                     representation: first_var.to_string(),
@@ -969,12 +971,9 @@ fn declarations_to_microstatements(
     program: &Program,
     mut microstatements: Vec<Microstatement>,
 ) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
-    // We don't care about const vs let in the microstatement world, everything is
-    // immutable and we just create a crap-ton of variables. TODO: We might have
-    // user-provided type declaration data we should look into, at least as a sanity check?
-    let (name, assignables) = match &declarations {
-        parse::Declarations::Const(c) => (c.variable.clone(), &c.assignables),
-        parse::Declarations::Let(l) => (l.variable.clone(), &l.assignables),
+    let (name, assignables, mutable) = match &declarations {
+        parse::Declarations::Const(c) => (c.variable.clone(), &c.assignables, false),
+        parse::Declarations::Let(l) => (l.variable.clone(), &l.assignables, true),
     };
     // Get all of the assignable microstatements generated
     microstatements =
@@ -983,7 +982,7 @@ fn declarations_to_microstatements(
         None => Err("An assignment without a value should be impossible."),
         Some(v) => Ok(Box::new(v)),
     }?;
-    microstatements.push(Microstatement::Assignment { name, value });
+    microstatements.push(Microstatement::Assignment { name, value, mutable });
     Ok(microstatements)
 }
 
