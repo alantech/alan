@@ -13,12 +13,12 @@ pub fn from_microstatement(
 ) -> Result<(String, OrderedHashMap<String, String>), Box<dyn std::error::Error>> {
     match microstatement {
         Microstatement::Arg { .. } => Ok(("".to_string(), out)), // Skip arg microstatements that are just used for discovery during generation
-        Microstatement::Assignment { name, value } => {
+        Microstatement::Assignment { name, value, mutable } => {
             let (val, o) = from_microstatement(value, scope, program, out)?;
             // I wish I didn't have to write the following line because you can't re-assign a
             // variable in a let destructuring, afaict
             out = o;
-            Ok((format!("let {} = {}", name, val,).to_string(), out))
+            Ok((format!("let {} {} = {}", if *mutable { "mut" } else { "" }, name, val,).to_string(), out))
         }
         Microstatement::Value {
             typen,
