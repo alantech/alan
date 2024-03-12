@@ -35,22 +35,52 @@ export fn pow(a: i32, b: i32): Result<i32> binds powi32;
 export fn min(a: i32, b: i32): i32 binds mini32;
 export fn max(a: i32, b: i32): i32 binds maxi32;
 export type i64 binds i64;
+export type Result<i64> binds Result_i64;
+export fn ok(i: i64): Result<i64> binds Ok;
 export fn i64(i: i64): i64 = i;
 export fn add(a: i64, b: i64): Result<i64> binds addi64;
+export fn add(a: Result<i64>, b: Result<i64>): Result<i64> binds addi64_result;
+export fn add(a: i64, b: Result<i64>): Result<i64> = add(a.ok(), b);
+export fn add(a: Result<i64>, b: i64): Result<i64> = add(a, b.ok());
 export fn sub(a: i64, b: i64): Result<i64> binds subi64;
+export fn sub(a: Result<i64>, b: Result<i64>): Result<i64> binds subi64_result;
+export fn sub(a: i64, b: Result<i64>): Result<i64> = sub(a.ok(), b);
+export fn sub(a: Result<i64>, b: i64): Result<i64> = sub(a, b.ok());
 export fn mul(a: i64, b: i64): Result<i64> binds muli64;
+export fn mul(a: Result<i64>, b: Result<i64>): Result<i64> binds muli64_result;
+export fn mul(a: i64, b: Result<i64>): Result<i64> = mul(a.ok(), b);
+export fn mul(a: Result<i64>, b: i64): Result<i64> = mul(a, b.ok());
 export fn div(a: i64, b: i64): Result<i64> binds divi64;
+export fn div(a: Result<i64>, b: Result<i64>): Result<i64> binds divi64_result;
+export fn div(a: i64, b: Result<i64>): Result<i64> = div(a.ok(), b);
+export fn div(a: Result<i64>, b: i64): Result<i64> = div(a, b.ok());
 export fn mod(a: i64, b: i64): Result<i64> binds modi64;
+export fn mod(a: Result<i64>, b: Result<i64>): Result<i64> binds modi64_result;
+export fn mod(a: i64, b: Result<i64>): Result<i64> = mod(a.ok(), b);
+export fn mod(a: Result<i64>, b: i64): Result<i64> = mod(a, b.ok());
 export fn pow(a: i64, b: i64): Result<i64> binds powi64;
+export fn pow(a: Result<i64>, b: Result<i64>): Result<i64> binds powi64_result;
+export fn pow(a: i64, b: Result<i64>): Result<i64> = pow(a.ok(), b);
+export fn pow(a: Result<i64>, b: i64): Result<i64> = pow(a, b.ok());
 export fn min(a: i64, b: i64): i64 binds mini64;
+export fn min(a: Result<i64>, b: Result<i64>): Result<i64> binds mini64_result;
+export fn min(a: i64, b: Result<i64>): Result<i64> = min(a.ok(), b);
+export fn min(a: Result<i64>, b: i64): Result<i64> = min(a, b.ok());
 export fn max(a: i64, b: i64): i64 binds maxi64;
+export fn max(a: Result<i64>, b: Result<i64>): Result<i64> binds maxi64_result;
+export fn max(a: i64, b: Result<i64>): Result<i64> = max(a.ok(), b);
+export fn max(a: Result<i64>, b: i64): Result<i64> = max(a, b.ok());
 
 // Process exit-related bindings
 export type ExitCode binds std::process::ExitCode;
 export fn ExitCode(e: i8): ExitCode binds to_exit_code_i8;
-export fn ExitCode(e: i64): ExitCode binds to_exit_code_i64;
-// export fn ExitCode(e: i64): ExitCode = ExitCode(i8(e));
+export fn ExitCode(e: i16): ExitCode = ExitCode(e.i8());
+export fn ExitCode(e: i32): ExitCode = ExitCode(e.i8());
+export fn ExitCode(e: i64): ExitCode = ExitCode(e.i8());
 export fn getOrExit(a: Result<i8>): i8 binds get_or_exit; // TODO: Support real generics
+export fn getOrExit(a: Result<i16>): i16 binds get_or_exit; // TODO: Support real generics
+export fn getOrExit(a: Result<i32>): i32 binds get_or_exit; // TODO: Support real generics
+export fn getOrExit(a: Result<i64>): i64 binds get_or_exit; // TODO: Support real generics
 
 // Stdout/stderr-related bindings
 export type String binds String;

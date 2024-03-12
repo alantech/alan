@@ -475,11 +475,9 @@ test!(float64_max => r#"
 );
 
 test!(grouping => r#"
-    from @std/app import start, print, exit
-    on start {
+    export fn main {
       print(2 / (3));
       print(3 / (1 + 2));
-      emit exit 0;
     }"#;
     stdout "0\n1\n";
 );

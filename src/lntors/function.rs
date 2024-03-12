@@ -39,7 +39,7 @@ pub fn from_microstatement(
                     None => {
                         // Come up with a function name that is unique so Rust doesn't choke on
                         // duplicate function names that are allowed in Alan
-                        let rustname = format!("{}_{}", f.name, f.args.iter().map(|(_, typename)| { typename.clone() /* TODO: Handle generic types better, also type inference */ }).collect::<Vec<String>>().join("_")).to_string();
+                        let rustname = format!("{}_{}", f.name, f.args.iter().map(|(_, typename)| { typename.clone().replace("<", "_").replace(">", "_") /* TODO: Handle generic types better, also type inference */ }).collect::<Vec<String>>().join("_")).to_string();
                         // Make the function we need, but with the name we're
                         out = generate(rustname.clone(), &f, scope, program, out)?;
                         // Now call this function
