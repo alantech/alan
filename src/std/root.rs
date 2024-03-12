@@ -1,11 +1,5 @@
 /// Rust functions that the root scope binds.
 
-/// `to_exit_code_i64` converts a 64-bit integer into an exit code, for convenience since `i64` is the
-/// default integer type in Alan.
-fn to_exit_code_i64(i: i64) -> std::process::ExitCode {
-    (i as u8).into()
-}
-
 /// `to_exit_code_i8` converts a 64-bit integer into an exit code, for convenience since `i64` is the
 /// default integer type in Alan.
 fn to_exit_code_i8(i: i8) -> std::process::ExitCode {
@@ -204,52 +198,140 @@ fn maxi32(a: i32, b: i32) -> i32 {
     if a > b { a } else { b }
 }
 
+/// `Result_i64` is a type alias for Result<i64, Box<dyn std::error::Error>>
+type Result_i64 = Result<i64, Box<dyn std::error::Error>>;
+
 /// `addi64` safely adds two i64s together, returning a Result-wrapped i64 (or an error on overflow)
-fn addi64(a: i64, b: i64) -> Result<i64, Box<dyn std::error::Error>> {
+fn addi64(a: i64, b: i64) -> Result_i64 {
     match a.checked_add(b) {
         Some(c) => Ok(c),
         None => Err("Overflow".into()),
     }
 }
 
+/// `addi64_result` safely adds two Result_i64s together, returning a Result-wrapped i64 (or an error on overflow)
+fn addi64_result(a: Result_i64, b: Result_i64) -> Result_i64 {
+    match a {
+        Err(e) => Err(e),
+        Ok(a) => match b {
+            Err(e) => Err(e),
+            Ok(b) => match a.checked_add(b) {
+                Some(c) => Ok(c),
+                None => Err("Overflow".into()),
+            }
+        }
+    }
+}
+
 /// `subi64` safely subtracts two i64s, returning a Result-wrapped i64 (or an error on underflow)
-fn subi64(a: i64, b: i64) -> Result<i64, Box<dyn std::error::Error>> {
+fn subi64(a: i64, b: i64) -> Result_i64 {
     match a.checked_sub(b) {
         Some(c) => Ok(c),
         None => Err("Underflow".into()),
     }
 }
 
+/// `subi64_result` safely subtracts two Result_i64s, returning a Result-wrapped i64 (or an error on underflow)
+fn subi64_result(a: Result_i64, b: Result_i64) -> Result_i64 {
+    match a {
+        Err(e) => Err(e),
+        Ok(a) => match b {
+            Err(e) => Err(e),
+            Ok(b) => match a.checked_sub(b) {
+                Some(c) => Ok(c),
+                None => Err("Underflow".into()),
+            }
+        }
+    }
+}
+
 /// `muli64` safely multiplies two i64s, returning a Result-wrapped i64 (or an error on under/overflow)
-fn muli64(a: i64, b: i64) -> Result<i64, Box<dyn std::error::Error>> {
+fn muli64(a: i64, b: i64) -> Result_i64 {
     match a.checked_mul(b) {
         Some(c) => Ok(c),
         None => Err("Underflow or Overflow".into()),
     }
 }
 
+/// `muli64_result` safely multiplies two Result_i64s, returning a Result-wrapped i64 (or an error on under/overflow)
+fn muli64_result(a: Result_i64, b: Result_i64) -> Result_i64 {
+    match a {
+        Err(e) => Err(e),
+        Ok(a) => match b {
+            Err(e) => Err(e),
+            Ok(b) => match a.checked_mul(b) {
+                Some(c) => Ok(c),
+                None => Err("Underflow or Overflow".into()),
+            }
+        }
+    }
+}
+
 /// `divi64` safely divides two i64s, returning a Result-wrapped i64 (or an error on divide-by-zero)
-fn divi64(a: i64, b: i64) -> Result<i64, Box<dyn std::error::Error>> {
+fn divi64(a: i64, b: i64) -> Result_i64 {
     match a.checked_div(b) {
         Some(c) => Ok(c),
         None => Err("Divide-by-zero".into()),
     }
 }
 
+/// `divi64_result` safely divides two Resul_i64s, returning a Result-wrapped i64 (or an error on divide-by-zero)
+fn divi64_result(a: Result_i64, b: Result_i64) -> Result_i64 {
+    match a {
+        Err(e) => Err(e),
+        Ok(a) => match b {
+            Err(e) => Err(e),
+            Ok(b) => match a.checked_div(b) {
+                Some(c) => Ok(c),
+                None => Err("Divide-by-zero".into()),
+            }
+        }
+    }
+}
+
 /// `modi64` safely divides two i64s, returning a Result-wrapped remainder in i64 (or an error on divide-by-zero)
-fn modi64(a: i64, b: i64) -> Result<i64, Box<dyn std::error::Error>> {
+fn modi64(a: i64, b: i64) -> Result_i64 {
     match a.checked_rem(b) {
         Some(c) => Ok(c),
         None => Err("Divide-by-zero".into()),
     }
 }
 
+/// `modi64_result` safely divides two Result_i64s, returning a Result-wrapped remainder in i64 (or an error on divide-by-zero)
+fn modi64_result(a: Result_i64, b: Result_i64) -> Result_i64 {
+    match a {
+        Err(e) => Err(e),
+        Ok(a) => match b {
+            Err(e) => Err(e),
+            Ok(b) => match a.checked_rem(b) {
+                Some(c) => Ok(c),
+                None => Err("Divide-by-zero".into()),
+            }
+        }
+    }
+}
+
 /// `powi64` safely raises the first i64 to the second i64, returning a Result-wrapped i64 (or an error on under/overflow)
-fn powi64(a: i64, b: i64) -> Result<i64, Box<dyn std::error::Error>> {
+fn powi64(a: i64, b: i64) -> Result_i64 {
     // TODO: Support b being negative correctly
     match a.checked_pow(b as u32) {
         Some(c) => Ok(c),
         None => Err("Underflow or Overflow".into()),
+    }
+}
+
+/// `powi64_result` safely raises the first Result_i64 to the second Result_i64, returning a Result-wrapped i64 (or an error on under/overflow)
+fn powi64_result(a: Result_i64, b: Result_i64) -> Result_i64 {
+    // TODO: Support b being negative correctly
+    match a {
+        Err(e) => Err(e),
+        Ok(a) => match b {
+            Err(e) => Err(e),
+            Ok(b) => match a.checked_pow(b as u32) {
+                Some(c) => Ok(c),
+                None => Err("Underflow or Overflow".into()),
+            }
+        }
     }
 }
 
@@ -258,9 +340,31 @@ fn mini64(a: i64, b: i64) -> i64 {
     if a < b { a } else { b }
 }
 
+/// `mini64_result` returns the smaller of the two Result_i64 values
+fn mini64_result(a: Result_i64, b: Result_i64) -> Result_i64 {
+    match a {
+        Err(e) => Err(e),
+        Ok(a) => match b {
+            Err(e) => Err(e),
+            Ok(b) => if a < b { Ok(a) } else { Ok(b) }
+        }
+    }
+}
+
 /// `maxi64` returns the larger of the two i64 values
 fn maxi64(a: i64, b: i64) -> i64 {
     if a > b { a } else { b }
+}
+
+/// `maxi64_result` returns the larger of the two Result_i64 values
+fn maxi64_result(a: Result_i64, b: Result_i64) -> Result_i64 {
+    match a {
+        Err(e) => Err(e),
+        Ok(a) => match b {
+            Err(e) => Err(e),
+            Ok(b) => if a > b { Ok(a) } else { Ok(b) }
+        }
+    }
 }
 
 /// `get_or_exit` is basically an alias to `unwrap`, but as a function instead of a method
