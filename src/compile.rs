@@ -86,6 +86,13 @@ macro_rules! stdout {
     };
 }
 #[cfg(test)]
+macro_rules! stdout_contains {
+    ( $test_val:expr, $real_val:expr ) => {
+        let std_out = String::from_utf8($real_val.stdout.clone())?;
+        assert_eq!(std_out.contains($test_val), true);
+    };
+}
+#[cfg(test)]
 macro_rules! stderr {
     ( $test_val:expr, $real_val:expr ) => {
         let std_err = String::from_utf8($real_val.stderr.clone())?;
@@ -172,6 +179,15 @@ test!(stdout_event => r#"
       return ExitCode(0);
     }"#;
     stdout "Hello, World";
+);
+test!(duration_print => r#"
+    export fn main() {
+        const i = now();
+        wait(10);
+        const d = i.elapsed();
+        print(d);
+    }"#;
+    stdout_contains "0.01";
 );
 
 // Basic Math Tests
@@ -1046,7 +1062,7 @@ test!(type_coercion_aliases => r#"
 test!(basic_function_usage => r#"
     fn foo() = print('foo');
 
-    fn bar(s: String): String = concat(s, "bar"); // TODO: method syntax here
+    fn bar(s: String): String = s.concat("bar");
 
     export fn main {
       foo();
@@ -2411,7 +2427,8 @@ test!(multiple_event_handlers => r#"
     on start {
       emit aString 'hi';
     }"#;
-    stdout "hey I got a string! hi\nI also got a string! hi\n"; // TODO: The order is not guaranteed, support that
+    stdout_contains "hey I got a string! hi";
+    stdout_contains "I also got a string! hi";
 );
 
 // Closures

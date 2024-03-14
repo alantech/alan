@@ -127,6 +127,13 @@ on stdout toStdout;
 // Thread-related bindings
 export fn wait(t: i64) binds wait;
 
+// Time-related bindings
+export type Instant binds std::time::Instant;
+export fn now(): Instant binds now;
+export type Duration binds std::time::Duration;
+export fn elapsed(i: Instant): Duration binds elapsed;
+export fn print(d: Duration) binds print_duration;
+
 // Built-in operator definitions
 export infix add as + precedence 2;
 // export infix concat as + precedence 2;
