@@ -7,6 +7,7 @@
 export type i8 binds i8;
 export type Result<i8> binds Result_i8;
 export fn ok(i: i8): Result<i8> binds Ok;
+export fn getOr(r: Result<i8>, default: i8): i8 binds get_or_i8;
 export fn i8(i: i64): i8 binds i64toi8;
 export fn add(a: i8, b: i8): Result<i8> binds addi8;
 export fn add(a: Result<i8>, b: Result<i8>): Result<i8> binds addi8_result;
@@ -63,6 +64,7 @@ export fn max(a: i32, b: i32): i32 binds maxi32;
 export type i64 binds i64;
 export type Result<i64> binds Result_i64;
 export fn ok(i: i64): Result<i64> binds Ok;
+export fn getOr(r: Result<i64>, default: i64): i64 binds get_or_i64;
 export fn i64(i: i64): i64 = i;
 export fn add(a: i64, b: i64): Result<i64> binds addi64;
 export fn add(a: Result<i64>, b: Result<i64>): Result<i64> binds addi64_result;
@@ -133,6 +135,13 @@ export fn now(): Instant binds now;
 export type Duration binds std::time::Duration;
 export fn elapsed(i: Instant): Duration binds elapsed;
 export fn print(d: Duration) binds print_duration;
+
+// Vector-related bindings
+export type Vec<i64> binds Vec<i64>;
+export type Vec<Result<i64>> binds Vec<Result_i64>;
+export fn filled(i: i64, l: i64): Vec<i64> binds filled;
+export fn filled(r: Result<i64>, l: i64): Vec<Result<i64>> binds filled;
+export fn print(v: Vec<i64>) binds print_vec;
 
 // Built-in operator definitions
 export infix add as + precedence 2;
