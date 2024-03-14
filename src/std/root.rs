@@ -14,6 +14,11 @@ fn i64toi8(i: i64) -> i8 {
 /// `Result_i8` is a type alias for Result<i8, Box<dyn std::error::Error>>
 type Result_i8 = Result<i8, Box<dyn std::error::Error>>;
 
+/// `get_or_i8` unwraps a Result_i8 with the default value if it is an error
+fn get_or_i8(r: Result_i8, default: i8) -> i8 {
+    r.unwrap_or(default)
+}
+
 /// `addi8` safely adds two i8s together, returning a Result-wrapped i8 (or an error on overflow)
 fn addi8(a: i8, b: i8) -> Result_i8 {
     match a.checked_add(b) {
@@ -311,6 +316,11 @@ fn maxi32(a: i32, b: i32) -> i32 {
 /// `Result_i64` is a type alias for Result<i64, Box<dyn std::error::Error>>
 type Result_i64 = Result<i64, Box<dyn std::error::Error>>;
 
+/// `get_or_i64` unwraps a Result_i64 with the default value if it is an error
+fn get_or_i64(r: Result_i64, default: i64) -> i64 {
+    r.unwrap_or(default)
+}
+
 /// `addi64` safely adds two i64s together, returning a Result-wrapped i64 (or an error on overflow)
 fn addi64(a: i64, b: i64) -> Result_i64 {
     match a.checked_add(b) {
@@ -523,4 +533,14 @@ fn elapsed(i: std::time::Instant) -> std::time::Duration {
 /// `print_duration` pretty-prints a duration value. TODO: Move this into Alan code and out of here
 fn print_duration(d: std::time::Duration) {
     println!("{}.{:0>9}", d.as_secs(), d.subsec_nanos()); // TODO: Figure out which subsec to use
+}
+
+/// `filled` returns a filled Vec<V> of the provided value for the provided size
+fn filled<V: std::clone::Clone>(i: V, l: i64) -> Vec<V> {
+    vec![i; l as usize]
+}
+
+/// `print_vec` pretty prints a vector assuming the input type can be displayed
+fn print_vec<A: std::fmt::Display>(vs: Vec<A>) {
+    println!("[{}]", vs.iter().map(|v| format!("{}", v)).collect::<Vec<String>>().join(", "));
 }

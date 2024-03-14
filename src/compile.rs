@@ -1261,6 +1261,16 @@ new Foo {
           } on line 2:24
 "#;
 );
+// TODO: Temporary tests for temporary vector support. These tests are short-lived
+test!(vec_construction => r#"
+    export fn main {
+      const five = filled(5, 5);
+      const three = filled((1 + 2).getOr(0), 3);
+      print(five);
+      print(three);
+    }"#;
+    stdout "[5, 5, 5, 5, 5]\n[3, 3, 3]\n";
+);
 test!(array_literals => r#"
     from @std/app import start, print, exit
 
