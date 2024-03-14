@@ -544,3 +544,29 @@ fn filled<V: std::clone::Clone>(i: V, l: i64) -> Vec<V> {
 fn print_vec<A: std::fmt::Display>(vs: Vec<A>) {
     println!("[{}]", vs.iter().map(|v| format!("{}", v)).collect::<Vec<String>>().join(", "));
 }
+
+/// `print_vec_result` pretty prints a vector of result values assuming the input can be displayed
+fn print_vec_result<A: std::fmt::Display>(vs: Vec<Result<A, Box<dyn std::error::Error>>>) {
+    println!("[{}]", vs.iter().map(|v| match v {
+        Err(e) => format!("{:?}", e),
+        Ok(a) => format!("{}", a)
+    }).collect::<Vec<String>>().join(", "));
+}
+
+/// `map_onearg` runs the provided single-argument function on each element of the vector,
+/// returning a new vector TODO: Don't require cloning
+fn map_onearg<A: std::clone::Clone, B>(v: Vec<A>, m: fn(A) -> B) -> Vec<B> {
+    v.iter().map(|val| m(val.clone())).collect::<Vec<B>>()
+}
+
+/// `map_twoarg` runs the provided two-argument (value, index) function on each element of the
+/// vector, returning a new vector
+fn map_twoarg<A, B>(v: Vec<A>, m: fn(&A, usize) -> B) -> Vec<B> {
+    v.iter().enumerate().map(|(i, val)| m(val, i)).collect::<Vec<B>>()
+}
+
+/// `map_threearg` runs the provided three-argument (value, index, vec_ref) function on each
+/// element of the vector, returning a new vector
+fn map_threearg<A, B>(v: Vec<A>, m: fn(&A, usize, &Vec<A>) -> B) -> Vec<B> {
+    v.iter().enumerate().map(|(i, val)| m(val, i, &v)).collect::<Vec<B>>()
+}

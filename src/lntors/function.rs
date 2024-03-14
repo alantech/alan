@@ -13,18 +13,62 @@ pub fn from_microstatement(
 ) -> Result<(String, OrderedHashMap<String, String>), Box<dyn std::error::Error>> {
     match microstatement {
         Microstatement::Arg { .. } => Ok(("".to_string(), out)), // Skip arg microstatements that are just used for discovery during generation
-        Microstatement::Assignment { name, value, mutable } => {
+        Microstatement::Assignment {
+            name,
+            value,
+            mutable,
+        } => {
             let (val, o) = from_microstatement(value, scope, program, out)?;
             // I wish I didn't have to write the following line because you can't re-assign a
             // variable in a let destructuring, afaict
             out = o;
-            Ok((format!("let {} {} = {}", if *mutable { "mut" } else { "" }, name, val,).to_string(), out))
+            Ok((
+                format!(
+                    "let {} {} = {}",
+                    if *mutable { "mut" } else { "" },
+                    name,
+                    val,
+                )
+                .to_string(),
+                out,
+            ))
         }
         Microstatement::Value {
             typen,
             representation,
         } => match typen.as_str() {
             "String" => Ok((format!("{}.to_string()", representation).to_string(), out)),
+            "function" => {
+                // We need to make sure this function we're referencing exists
+                match scope.functions.get(representation) {
+                    Some(fns) => {
+                        let f = &fns[0]; // TODO: Proper implementation selection
+                                         // Come up with a function name that is unique so Rust doesn't choke on
+                                         // duplicate function names that are allowed in Alan
+                        let rustname = format!(
+                            "{}_{}",
+                            f.name,
+                            f.args
+                                .iter()
+                                .map(|(_, typename)| {
+                                    typename.clone().replace("<", "_").replace(">", "_")
+                                    /* TODO: Handle generic types better, also type inference */
+                                })
+                                .collect::<Vec<String>>()
+                                .join("_")
+                        )
+                        .to_string();
+                        // Make the function we need, but with the name we're
+                        out = generate(rustname.clone(), &f, scope, program, out)?;
+                        Ok((rustname, out))
+                    }
+                    None => Err(format!(
+                        "Somehow can't find a definition for function {}",
+                        representation
+                    )
+                    .into()),
+                }
+            }
             _ => Ok((representation.clone(), out)),
         },
         Microstatement::FnCall { function, args } => {
@@ -39,7 +83,19 @@ pub fn from_microstatement(
                     None => {
                         // Come up with a function name that is unique so Rust doesn't choke on
                         // duplicate function names that are allowed in Alan
-                        let rustname = format!("{}_{}", f.name, f.args.iter().map(|(_, typename)| { typename.clone().replace("<", "_").replace(">", "_") /* TODO: Handle generic types better, also type inference */ }).collect::<Vec<String>>().join("_")).to_string();
+                        let rustname = format!(
+                            "{}_{}",
+                            f.name,
+                            f.args
+                                .iter()
+                                .map(|(_, typename)| {
+                                    typename.clone().replace("<", "_").replace(">", "_")
+                                    /* TODO: Handle generic types better, also type inference */
+                                })
+                                .collect::<Vec<String>>()
+                                .join("_")
+                        )
+                        .to_string();
                         // Make the function we need, but with the name we're
                         out = generate(rustname.clone(), &f, scope, program, out)?;
                         // Now call this function
