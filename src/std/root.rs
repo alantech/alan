@@ -509,3 +509,18 @@ fn stdout<A: std::fmt::Display>(a: A) {
 fn wait(t: i64) {
     std::thread::sleep(std::time::Duration::from_millis(t as u64));
 }
+
+/// `now` is a function that returns std::time::Instant for right now
+fn now() -> std::time::Instant {
+    std::time::Instant::now()
+}
+
+/// `elapsed` gets the duration since the instant was created TODO: Borrow these values instead
+fn elapsed(i: std::time::Instant) -> std::time::Duration {
+    i.elapsed()
+}
+
+/// `print_duration` pretty-prints a duration value. TODO: Move this into Alan code and out of here
+fn print_duration(d: std::time::Duration) {
+    println!("{}.{:0>9}", d.as_secs(), d.subsec_nanos()); // TODO: Figure out which subsec to use
+}
