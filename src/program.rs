@@ -547,7 +547,7 @@ fn baseassignablelist_to_microstatements(
                             // TODO: Support more than direct method access in the future, probably
                             // with a separate resolving function
                             let fn_name = if var.len() == 1 {
-                              var[0].to_string()
+                                var[0].to_string()
                             } else if let parse::VarSegment::MethodSep(_) = var[0] {
                                 let mut out = "".to_string();
                                 for (i, segment) in var.iter().enumerate() {
@@ -574,20 +574,26 @@ fn baseassignablelist_to_microstatements(
                                     let mut first_microstatement = None;
                                     for microstatement in microstatements.iter().rev() {
                                         match &microstatement {
-                                            Microstatement::Assignment { name, value, .. } if name == &first_var.to_string() => {
-                                                first_microstatement = Some(Microstatement::Value {
-                                                    typen: value.get_type(scope, program)?,
-                                                    representation: first_var.to_string(),
-                                                });
+                                            Microstatement::Assignment { name, value, .. }
+                                                if name == &first_var.to_string() =>
+                                            {
+                                                first_microstatement =
+                                                    Some(Microstatement::Value {
+                                                        typen: value.get_type(scope, program)?,
+                                                        representation: first_var.to_string(),
+                                                    });
                                                 break;
-                                            },
-                                            Microstatement::Arg { name, typen } if name == &first_var.to_string() => {
-                                                first_microstatement = Some(Microstatement::Value {
-                                                    typen: typen.clone(),
-                                                    representation: first_var.to_string(),
-                                                });
+                                            }
+                                            Microstatement::Arg { name, typen }
+                                                if name == &first_var.to_string() =>
+                                            {
+                                                first_microstatement =
+                                                    Some(Microstatement::Value {
+                                                        typen: typen.clone(),
+                                                        representation: first_var.to_string(),
+                                                    });
                                                 break;
-                                            },
+                                            }
                                             _ => continue,
                                         }
                                     }
@@ -652,13 +658,28 @@ fn baseassignablelist_to_microstatements(
                             Microstatement::Arg { typen, .. } => Ok(typen.clone()),
                             _ => unreachable!(),
                         }),
-                        None => Err(format!(
-                            "Couldn't find variable {}",
-                            var.iter()
+                        None => {
+                            // It could be a function
+                            let name = var
+                                .iter()
                                 .map(|segment| segment.to_string())
                                 .collect::<Vec<String>>()
-                                .join("")
-                        )),
+                                .join("");
+                            Ok::<
+                                Result<std::string::String, Box<dyn std::error::Error>>,
+                                Box<dyn std::error::Error>,
+                            >(match scope.functions.get(&name) {
+                                Some(_) => Ok("function".to_string()), // TODO: Do better
+                                None => Err(format!(
+                                    "Couldn't find variable {}",
+                                    var.iter()
+                                        .map(|segment| segment.to_string())
+                                        .collect::<Vec<String>>()
+                                        .join("")
+                                )
+                                .into()),
+                            })
+                        }
                     }??;
                     microstatements.push(Microstatement::Value {
                         typen,
@@ -982,7 +1003,11 @@ fn declarations_to_microstatements(
         None => Err("An assignment without a value should be impossible."),
         Some(v) => Ok(Box::new(v)),
     }?;
-    microstatements.push(Microstatement::Assignment { name, value, mutable });
+    microstatements.push(Microstatement::Assignment {
+        name,
+        value,
+        mutable,
+    });
     Ok(microstatements)
 }
 

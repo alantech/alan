@@ -1271,6 +1271,13 @@ test!(vec_construction => r#"
     }"#;
     stdout "[5, 5, 5, 5, 5]\n[3, 3, 3]\n";
 );
+test!(vec_map => r#"
+    fn double(x: i64): Result<i64> = x * 2;
+    export fn main {
+      filled(5, 5).map(double).print();
+    }"#;
+    stdout "[10, 10, 10, 10, 10]\n";
+);
 test!(array_literals => r#"
     from @std/app import start, print, exit
 

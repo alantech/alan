@@ -142,6 +142,8 @@ export type Vec<Result<i64>> binds Vec<Result_i64>;
 export fn filled(i: i64, l: i64): Vec<i64> binds filled;
 export fn filled(r: Result<i64>, l: i64): Vec<Result<i64>> binds filled;
 export fn print(v: Vec<i64>) binds print_vec;
+export fn print(v: Vec<Result<i64>>) binds print_vec_result;
+export fn map(v: Vec<i64>, m: function): Vec<Result<i64>> binds map_onearg; // TODO: This is terrible
 
 // Built-in operator definitions
 export infix add as + precedence 2;
