@@ -11,52 +11,140 @@ fn i64toi8(i: i64) -> i8 {
     i as i8
 }
 
+/// `Result_i8` is a type alias for Result<i8, Box<dyn std::error::Error>>
+type Result_i8 = Result<i8, Box<dyn std::error::Error>>;
+
 /// `addi8` safely adds two i8s together, returning a Result-wrapped i8 (or an error on overflow)
-fn addi8(a: i8, b: i8) -> Result<i8, Box<dyn std::error::Error>> {
+fn addi8(a: i8, b: i8) -> Result_i8 {
     match a.checked_add(b) {
         Some(c) => Ok(c),
         None => Err("Overflow".into()),
     }
 }
 
+/// `addi8_result` safely adds two Result_i8s together, returning a Result-wrapped i8 (or an error on overflow)
+fn addi8_result(a: Result_i8, b: Result_i8) -> Result_i8 {
+    match a {
+        Err(e) => Err(e),
+        Ok(a) => match b {
+            Err(e) => Err(e),
+            Ok(b) => match a.checked_add(b) {
+                Some(c) => Ok(c),
+                None => Err("Overflow".into()),
+            }
+        }
+    }
+}
+
 /// `subi8` safely subtracts two i8s, returning a Result-wrapped i8 (or an error on underflow)
-fn subi8(a: i8, b: i8) -> Result<i8, Box<dyn std::error::Error>> {
+fn subi8(a: i8, b: i8) -> Result_i8 {
     match a.checked_sub(b) {
         Some(c) => Ok(c),
         None => Err("Underflow".into()),
     }
 }
 
+/// `subi8_result` safely subtracts two i8s, returning a Result-wrapped i8 (or an error on underflow)
+fn subi8_result(a: Result_i8, b: Result_i8) -> Result_i8 {
+    match a {
+        Err(e) => Err(e),
+        Ok(a) => match b {
+            Err(e) => Err(e),
+            Ok(b) => match a.checked_sub(b) {
+                Some(c) => Ok(c),
+                None => Err("Underflow".into()),
+            }
+        }
+    }
+}
+
 /// `muli8` safely multiplies two i8s, returning a Result-wrapped i8 (or an error on under/overflow)
-fn muli8(a: i8, b: i8) -> Result<i8, Box<dyn std::error::Error>> {
+fn muli8(a: i8, b: i8) -> Result_i8 {
     match a.checked_mul(b) {
         Some(c) => Ok(c),
         None => Err("Underflow or Overflow".into()),
     }
 }
 
+/// `muli8_result` safely multiplies two Result_i8s, returning a Result-wrapped i8 (or an error on under/overflow)
+fn muli8_result(a: Result_i8, b: Result_i8) -> Result_i8 {
+    match a {
+        Err(e) => Err(e),
+        Ok(a) => match b {
+            Err(e) => Err(e),
+            Ok(b) => match a.checked_mul(b) {
+                Some(c) => Ok(c),
+                None => Err("Underflow or Overflow".into()),
+            }
+        }
+    }
+}
+
 /// `divi8` safely divides two i8s, returning a Result-wrapped i8 (or an error on divide-by-zero)
-fn divi8(a: i8, b: i8) -> Result<i8, Box<dyn std::error::Error>> {
+fn divi8(a: i8, b: i8) -> Result_i8 {
     match a.checked_div(b) {
         Some(c) => Ok(c),
         None => Err("Divide-by-zero".into()),
     }
 }
 
+/// `divi8_result` safely divides two Result_i8s, returning a Result-wrapped i8 (or an error on divide-by-zero)
+fn divi8_result(a: Result_i8, b: Result_i8) -> Result_i8 {
+    match a {
+        Err(e) => Err(e),
+        Ok(a) => match b {
+            Err(e) => Err(e),
+            Ok(b) => match a.checked_div(b) {
+                Some(c) => Ok(c),
+                None => Err("Divide-by-zero".into()),
+            }
+        }
+    }
+}
+
 /// `modi8` safely divides two i8s, returning a Result-wrapped remainder in i8 (or an error on divide-by-zero)
-fn modi8(a: i8, b: i8) -> Result<i8, Box<dyn std::error::Error>> {
+fn modi8(a: i8, b: i8) -> Result_i8 {
     match a.checked_rem(b) {
         Some(c) => Ok(c),
         None => Err("Divide-by-zero".into()),
     }
 }
 
+/// `modi8_result` safely divides two Result_i8s, returning a Result-wrapped remainder in i8 (or an error on divide-by-zero)
+fn modi8_result(a: Result_i8, b: Result_i8) -> Result_i8 {
+    match a {
+        Err(e) => Err(e),
+        Ok(a) => match b {
+            Err(e) => Err(e),
+            Ok(b) => match a.checked_rem(b) {
+                Some(c) => Ok(c),
+                None => Err("Divide-by-zero".into()),
+            }
+        }
+    }
+}
+
 /// `powi8` safely raises the first i8 to the second i8, returning a Result-wrapped i8 (or an error on under/overflow)
-fn powi8(a: i8, b: i8) -> Result<i8, Box<dyn std::error::Error>> {
+fn powi8(a: i8, b: i8) -> Result_i8 {
     // TODO: Support b being negative correctly
     match a.checked_pow(b as u32) {
         Some(c) => Ok(c),
         None => Err("Underflow or Overflow".into()),
+    }
+}
+
+/// `powi8_result` safely raises the first Result_i8 to the second Result_i8, returning a Result-wrapped i8 (or an error on under/overflow)
+fn powi8_result(a: Result_i8, b: Result_i8) -> Result_i8 {
+    // TODO: Support b being negative correctly
+    match a {
+        Err(e) => Err(e),
+        Ok(a) => match b {
+            Err(e) => Err(e),
+            Ok(b) => match a.checked_pow(b as u32) {
+                Some(c) => Ok(c),
+                None => Err("Underflow or Overflow".into()),
+            }
+        }
     }
 }
 
@@ -65,9 +153,31 @@ fn mini8(a: i8, b: i8) -> i8 {
     if a < b { a } else { b }
 }
 
+/// `mini8_result` returns the smaller of the two Result_i8 values
+fn mini8_result(a: Result_i8, b: Result_i8) -> Result_i8 {
+    match a {
+        Err(e) => Err(e),
+        Ok(a) => match b {
+            Err(e) => Err(e),
+            Ok(b) => if a < b { Ok(a) } else { Ok(b) }
+        }
+    }
+}
+
 /// `maxi8` returns the larger of the two i8 values
 fn maxi8(a: i8, b: i8) -> i8 {
     if a > b { a } else { b }
+}
+
+/// `maxi8_result` returns the larger of the two Result_i8 values
+fn maxi8_result(a: Result_i8, b: Result_i8) -> Result_i8 {
+    match a {
+        Err(e) => Err(e),
+        Ok(a) => match b {
+            Err(e) => Err(e),
+            Ok(b) => if a > b { Ok(a) } else { Ok(b) }
+        }
+    }
 }
 
 /// `i64toi16` casts an i64 to an i16.
