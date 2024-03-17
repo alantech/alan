@@ -12,7 +12,14 @@ pub fn from_microstatement(
     mut out: OrderedHashMap<String, String>,
 ) -> Result<(String, OrderedHashMap<String, String>), Box<dyn std::error::Error>> {
     match microstatement {
-        Microstatement::Arg { .. } => Ok(("".to_string(), out)), // Skip arg microstatements that are just used for discovery during generation
+        Microstatement::Arg { name, .. } => {
+            // TODO: Update the serialization logic to understand values vs references so we can
+            // eliminate this useless (and harmful for mutable references) clone
+            Ok((
+                format!("let {} = {}.clone()", name, name).to_string(),
+                out,
+            ))
+        }
         Microstatement::Assignment {
             name,
             value,
@@ -24,8 +31,8 @@ pub fn from_microstatement(
             out = o;
             Ok((
                 format!(
-                    "let {} {} = {}",
-                    if *mutable { "mut" } else { "" },
+                    "let {}{} = {}",
+                    if *mutable { "mut " } else { "" },
                     name,
                     val,
                 )
@@ -103,7 +110,15 @@ pub fn from_microstatement(
                         for arg in args {
                             let (a, o) = from_microstatement(arg, scope, program, out)?;
                             out = o;
-                            argstrs.push(a);
+                            // If the argument is itself a function, this is the only place in Rust
+                            // where you can't pass by reference, so we check the type and change
+                            // the argument output accordingly.
+                            let arg_type = arg.get_type(scope, program)?;
+                            if arg_type.as_str() == "function" {
+                                argstrs.push(format!("{}", a));
+                            } else {
+                                argstrs.push(format!("&{}", a));
+                            }
                         }
                         Ok((
                             format!("{}({})", rustname, argstrs.join(", ")).to_string(),
@@ -115,7 +130,15 @@ pub fn from_microstatement(
                         for arg in args {
                             let (a, o) = from_microstatement(arg, scope, program, out)?;
                             out = o;
-                            argstrs.push(a);
+                            // If the argument is itself a function, this is the only place in Rust
+                            // where you can't pass by reference, so we check the type and change
+                            // the argument output accordingly.
+                            let arg_type = arg.get_type(scope, program)?;
+                            if arg_type.as_str() == "function" {
+                                argstrs.push(format!("{}", a));
+                            } else {
+                                argstrs.push(format!("&{}", a));
+                            }
                         }
                         Ok((
                             format!("{}({})", rustname, argstrs.join(", ")).to_string(),
@@ -157,7 +180,7 @@ pub fn generate(
     for arg in &function.args {
         if let Some((t, s)) = program.resolve_type(scope, &arg.1) {
             if let Ok(t_str) = typen::generate(t, s, program) {
-                arg_strs.push(format!("{}: {}", arg.0, t_str).to_string());
+                arg_strs.push(format!("{}: &{}", arg.0, t_str).to_string());
             } else {
                 return Err(format!("Failed to convert Alan type {} to Rust", &arg.1).into());
             }

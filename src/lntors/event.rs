@@ -101,7 +101,7 @@ pub fn generate(
                             // If it's a bound function, just call it with the argument, if there
                             // is one
                             let arg_str = match &handler_fn.microstatements[0] {
-                                Microstatement::Arg { name, .. } => name.clone(),
+                                Microstatement::Arg { name, .. } => format!("&{}", name).to_string(),
                                 _ => "".to_string(),
                             };
                             out = format!("{}            super::{}({});\n", out, b, arg_str);
