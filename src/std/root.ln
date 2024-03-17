@@ -6,7 +6,7 @@
 // Integer-related bindings
 export type i8 binds i8;
 export type Result<i8> binds Result_i8;
-export fn ok(i: i8): Result<i8> binds Ok;
+export fn ok(i: i8): Result<i8> binds alan_ok;
 export fn getOr(r: Result<i8>, default: i8): i8 binds get_or_i8;
 export fn i8(i: i64): i8 binds i64toi8;
 export fn add(a: i8, b: i8): Result<i8> binds addi8;
@@ -63,7 +63,7 @@ export fn min(a: i32, b: i32): i32 binds mini32;
 export fn max(a: i32, b: i32): i32 binds maxi32;
 export type i64 binds i64;
 export type Result<i64> binds Result_i64;
-export fn ok(i: i64): Result<i64> binds Ok;
+export fn ok(i: i64): Result<i64> binds alan_ok;
 export fn getOr(r: Result<i64>, default: i64): i64 binds get_or_i64;
 export fn i64(i: i64): i64 = i;
 export fn add(a: i64, b: i64): Result<i64> binds addi64;
