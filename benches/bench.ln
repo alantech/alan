@@ -1,0 +1,95 @@
+// The benchmark in this directory is based on this file. That version unfortunately includes the
+// time it takes for `filled` to run, so the effective performance of `parmap` is underestimated
+fn double(x: i64): Result<i64> = x * 2;
+
+export fn main {
+  print('1:');
+  let v = filled(2, 1);
+  let t1 = now();
+  v.map(double);
+  t1.elapsed().print();
+  let t2 = now();
+  v.parmap(double);
+  t2.elapsed().print();
+
+  print('10:');
+  let v = filled(2, 10);
+  let t1 = now();
+  v.map(double);
+  t1.elapsed().print();
+  let t2 = now();
+  v.parmap(double);
+  t2.elapsed().print();
+
+  print('100:');
+  let v = filled(2, 100);
+  let t1 = now();
+  v.map(double);
+  t1.elapsed().print();
+  let t2 = now();
+  v.parmap(double);
+  t2.elapsed().print();
+
+  print('1,000:');
+  let v = filled(2, 1000);
+  let t1 = now();
+  v.map(double);
+  t1.elapsed().print();
+  let t2 = now();
+  v.parmap(double);
+  t2.elapsed().print();
+
+  print('10,000:');
+  let v = filled(2, 10000);
+  let t1 = now();
+  v.map(double);
+  t1.elapsed().print();
+  let t2 = now();
+  v.parmap(double);
+  t2.elapsed().print();
+
+  print('100,000:');
+  let v = filled(2, 100000);
+  let t1 = now();
+  v.map(double);
+  t1.elapsed().print();
+  let t2 = now();
+  v.parmap(double);
+  t2.elapsed().print();
+
+  print('1,000,000:');
+  let v = filled(2, 1000000);
+  let t1 = now();
+  v.map(double);
+  t1.elapsed().print();
+  let t2 = now();
+  v.parmap(double);
+  t2.elapsed().print();
+
+  print('10,000,000:');
+  let v = filled(2, 10000000);
+  let t1 = now();
+  v.map(double);
+  t1.elapsed().print();
+  let t2 = now();
+  v.parmap(double);
+  t2.elapsed().print();
+
+  print('100,000,000:');
+  let v = filled(2, 100000000);
+  let t1 = now();
+  v.map(double);
+  t1.elapsed().print();
+  let t2 = now();
+  v.parmap(double);
+  t2.elapsed().print();
+
+  print('1,000,000,000:');
+  let v = filled(2, 1000000000);
+  let t1 = now();
+  v.map(double);
+  t1.elapsed().print();
+  let t2 = now();
+  v.parmap(double);
+  t2.elapsed().print();
+}

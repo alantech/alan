@@ -608,20 +608,6 @@ fn map_onearg<A, B>(v: &Vec<A>, m: fn(&A) -> B) -> Vec<B> {
     v.iter().map(|val| m(val)).collect::<Vec<B>>()
 }
 
-/// `ptrmap_onearg` runs the provided single-argument function on each element of the specified
-/// pointer, from the first offset to just before the last (like a range) and then returns a new
-/// vector. I wanted to do this in a "safe" way but I couldn't find the tools to do so.
-fn ptrmap_onearg<A, B>(p: *const A, s: isize, e: isize, m: fn(&A) -> B) -> Vec<B> {
-    let mut out = Vec::new();
-    for i in s..e {
-        unsafe {
-            let val = p.offset(i).as_ref().unwrap();
-            out.push(m(val));
-        }
-    }
-    out
-}
-
 /// `map_twoarg` runs the provided two-argument (value, index) function on each element of the
 /// vector, returning a new vector
 fn map_twoarg<A, B>(v: &Vec<A>, m: fn(&A, usize) -> B) -> Vec<B> {
@@ -645,17 +631,20 @@ fn parmap_onearg<A: std::marker::Sync + 'static, B: std::marker::Send + std::clo
             let l = v.len();
             let slice_len: isize = (l / p).try_into().unwrap();
             let mut out = Vec::new();
+            out.reserve_exact(l);
             if slice_len == 0 {
                 // We have more CPU cores than values to parallelize, let's assume the user knows
                 // what they're doing and parallelize anyway
-                let mut handles: Vec<std::thread::JoinHandle<B>> = Vec::new();
+                let mut handles: Vec<std::thread::JoinHandle<()>> = Vec::new();
                 handles.reserve_exact(l);
                 for i in 0..l {
                     let v_ptr = v.as_ptr() as usize;
+                    let o_ptr = out.as_ptr() as usize;
                     handles.push(std::thread::spawn(move || {
                         unsafe {
                             let val = (v_ptr as *const A).offset(i as isize).as_ref().unwrap();
-                            m(val)
+                            let mut out = (o_ptr as *mut B).offset(i as isize);
+                            out.write(m(val));
                         }
                     }));
                 }
@@ -663,31 +652,43 @@ fn parmap_onearg<A: std::marker::Sync + 'static, B: std::marker::Send + std::clo
                     let res = handle.join();
                     match res {
                         Err(e) => panic!("{:?}", e),
-                        Ok(v) => out.push(v),
+                        Ok(_) => {},
                     }
                 }
             } else {
                 // We have more values than CPU cores, so let's divvy this up in batches per core
-                let mut handles: Vec<std::thread::JoinHandle<Vec<B>>> = Vec::new();
+                let mut handles: Vec<std::thread::JoinHandle<()>> = Vec::new();
                 handles.reserve_exact(p.into());
                 for i in 0..p.into() {
                     // I wanted to do this with slices, but their size varies at compile time so
                     // I'm just going with pointers instead
                     let v_ptr = v.as_ptr() as usize;
+                    let o_ptr = out.as_ptr() as usize;
                     let s: isize = (i*(slice_len as usize)).try_into().unwrap();
                     let e: isize = if i == p.get() - 1 { l.try_into().unwrap() } else { ((i+1)*(slice_len as usize)).try_into().unwrap() };
                     handles.push(std::thread::spawn(move || {
                         let v_ptr = v_ptr as *const A;
-                        ptrmap_onearg(v_ptr, s, e, m)
+                        let o_ptr = o_ptr as *mut B;
+                        for i in s..e {
+                            unsafe {
+                                let val = v_ptr.offset(i).as_ref().unwrap();
+                                let mut out = o_ptr.offset(i);
+                                out.write(m(val));
+                            }
+                        }
                     }));
                 }
                 for handle in handles {
                     let res = handle.join();
                     match res {
                         Err(e) => panic!("{:?}", e),
-                        Ok(mut v) => out.append(&mut v),
+                        Ok(_) => {},
                     }
                 }
+            }
+            // We need to tweak the len, the values are there but the Vec doesn't know that
+            unsafe {
+                out.set_len(l);
             }
             out
         }
