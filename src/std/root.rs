@@ -603,9 +603,23 @@ fn print_vec_result<A: std::fmt::Display>(vs: &Vec<Result<A, AlanError>>) {
 }
 
 /// `map_onearg` runs the provided single-argument function on each element of the vector,
-/// returning a new vector TODO: Don't require cloning
+/// returning a new vector
 fn map_onearg<A, B>(v: &Vec<A>, m: fn(&A) -> B) -> Vec<B> {
     v.iter().map(|val| m(val)).collect::<Vec<B>>()
+}
+
+/// `ptrmap_onearg` runs the provided single-argument function on each element of the specified
+/// pointer, from the first offset to just before the last (like a range) and then returns a new
+/// vector. I wanted to do this in a "safe" way but I couldn't find the tools to do so.
+fn ptrmap_onearg<A, B>(p: *const A, s: isize, e: isize, m: fn(&A) -> B) -> Vec<B> {
+    let mut out = Vec::new();
+    for i in s..e {
+        unsafe {
+            let val = p.offset(i).as_ref().unwrap();
+            out.push(m(val));
+        }
+    }
+    out
 }
 
 /// `map_twoarg` runs the provided two-argument (value, index) function on each element of the
@@ -618,4 +632,69 @@ fn map_twoarg<A, B>(v: &Vec<A>, m: fn(&A, usize) -> B) -> Vec<B> {
 /// element of the vector, returning a new vector
 fn map_threearg<A, B>(v: &Vec<A>, m: fn(&A, usize, &Vec<A>) -> B) -> Vec<B> {
     v.iter().enumerate().map(|(i, val)| m(val, i, &v)).collect::<Vec<B>>()
+}
+
+/// `parmap_onearg` runs the provided single-argument function on each element of the vector, with
+/// a different subset of the vector run in parallel across all threads.
+fn parmap_onearg<A: std::marker::Sync + 'static, B: std::marker::Send + std::clone::Clone + 'static>(v: &Vec<A>, m: fn(&A) -> B) -> Vec<B> {
+    let par = std::thread::available_parallelism();
+    match par {
+        Err(_) => map_onearg(v, m), // Fall back to sequential if there's no available parallelism
+        Ok(p) if p.get() == 1 => map_onearg(v, m), // Same here
+        Ok(p) => {
+            let l = v.len();
+            let slice_len: isize = (l / p).try_into().unwrap();
+            let mut out = Vec::new();
+            if slice_len == 0 {
+                // We have more CPU cores than values to parallelize, let's assume the user knows
+                // what they're doing and parallelize anyway
+                let mut handles: Vec<std::thread::JoinHandle<B>> = Vec::new();
+                handles.reserve_exact(l);
+                for i in 0..l {
+                    let v_ptr = v.as_ptr() as usize;
+                    handles.push(std::thread::spawn(move || {
+                        unsafe {
+                            let val = (v_ptr as *const A).offset(i as isize).as_ref().unwrap();
+                            m(val)
+                        }
+                    }));
+                }
+                for handle in handles {
+                    let res = handle.join();
+                    match res {
+                        Err(e) => panic!("{:?}", e),
+                        Ok(v) => out.push(v),
+                    }
+                }
+            } else {
+                // We have more values than CPU cores, so let's divvy this up in batches per core
+                let mut handles: Vec<std::thread::JoinHandle<Vec<B>>> = Vec::new();
+                handles.reserve_exact(p.into());
+                for i in 0..p.into() {
+                    // I wanted to do this with slices, but their size varies at compile time so
+                    // I'm just going with pointers instead
+                    let v_ptr = v.as_ptr() as usize;
+                    let s: isize = (i*(slice_len as usize)).try_into().unwrap();
+                    let e: isize = if i == p.get() - 1 { l.try_into().unwrap() } else { ((i+1)*(slice_len as usize)).try_into().unwrap() };
+                    handles.push(std::thread::spawn(move || {
+                        let v_ptr = v_ptr as *const A;
+                        ptrmap_onearg(v_ptr, s, e, m)
+                    }));
+                }
+                for handle in handles {
+                    let res = handle.join();
+                    match res {
+                        Err(e) => panic!("{:?}", e),
+                        Ok(mut v) => out.append(&mut v),
+                    }
+                }
+            }
+            out
+        }
+    }
+}
+
+/// `push` pushes an element into a vector
+fn push<A: std::clone::Clone>(v: &mut Vec<A>, a: &A) {
+    v.push(a.clone());
 }

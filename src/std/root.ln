@@ -144,6 +144,8 @@ export fn filled(r: Result<i64>, l: i64): Vec<Result<i64>> binds filled;
 export fn print(v: Vec<i64>) binds print_vec;
 export fn print(v: Vec<Result<i64>>) binds print_vec_result;
 export fn map(v: Vec<i64>, m: function): Vec<Result<i64>> binds map_onearg; // TODO: This is terrible
+export fn parmap(v: Vec<i64>, m: function): Vec<Result<i64>> binds parmap_onearg; // TODO: This is terrible
+export fn push(v: Vec<i64>, a: i64) binds push;
 
 // Built-in operator definitions
 export infix add as + precedence 2;
