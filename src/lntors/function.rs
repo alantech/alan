@@ -16,7 +16,7 @@ pub fn from_microstatement(
             // TODO: Update the serialization logic to understand values vs references so we can
             // eliminate this useless (and harmful for mutable references) clone
             Ok((
-                format!("let {} = {}.clone()", name, name).to_string(),
+                format!("let mut {} = {}.clone()", name, name).to_string(), // TODO: not always mutable
                 out,
             ))
         }
@@ -32,7 +32,7 @@ pub fn from_microstatement(
             Ok((
                 format!(
                     "let {}{} = {}",
-                    if *mutable { "mut " } else { "" },
+                    if *mutable { "mut " } else { "mut " /* TODO: shouldn't be mut */ },
                     name,
                     val,
                 )
@@ -117,7 +117,7 @@ pub fn from_microstatement(
                             if arg_type.as_str() == "function" {
                                 argstrs.push(format!("{}", a));
                             } else {
-                                argstrs.push(format!("&{}", a));
+                                argstrs.push(format!("&mut {}", a));
                             }
                         }
                         Ok((
@@ -137,7 +137,7 @@ pub fn from_microstatement(
                             if arg_type.as_str() == "function" {
                                 argstrs.push(format!("{}", a));
                             } else {
-                                argstrs.push(format!("&{}", a));
+                                argstrs.push(format!("&mut {}", a));
                             }
                         }
                         Ok((

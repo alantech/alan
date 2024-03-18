@@ -21,6 +21,8 @@ pub fn compile(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
     write(&tmp_file, rs_str)?;
     // Build the executable
     Command::new("rustc")
+        .arg("--edition")
+        .arg("2021")
         .arg(&tmp_file)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -1277,6 +1279,19 @@ test!(vec_map => r#"
       filled(5, 5).map(double).print();
     }"#;
     stdout "[10, 10, 10, 10, 10]\n";
+);
+test!(vec_parmap => r#"
+    fn double(x: i64): Result<i64> = x * 2;
+    export fn main {
+      let v = filled(0, 0);
+      v.push(1);
+      v.push(2);
+      v.push(3);
+      v.push(4);
+      v.push(5);
+      v.parmap(double).print();
+    }"#;
+    stdout "[2, 4, 6, 8, 10]\n";
 );
 test!(array_literals => r#"
     from @std/app import start, print, exit
