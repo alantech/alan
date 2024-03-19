@@ -23,6 +23,8 @@ pub fn compile(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
     Command::new("rustc")
         .arg("--edition")
         .arg("2021")
+        .arg("-C")
+        .arg("opt-level=3")
         .arg(&tmp_file)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
