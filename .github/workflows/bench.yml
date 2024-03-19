@@ -1,0 +1,26 @@
+name: Benchmarks
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build Alan
+      run: cargo build --verbose
+    - name: Rust-managed Benchmarks
+      run: cargo bench
+    - name: Build Alan-managed Benchmarks
+      run: cargo run -- compile benches/bench.ln
+    - name: Alan-managed Benchmarks
+      run: ./bench
