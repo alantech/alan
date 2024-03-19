@@ -84,6 +84,8 @@ export fn main {
   v.parmap(double);
   t2.elapsed().print();
 
+// Github CI doesn't have enough RAM for this level
+/*
   print('1,000,000,000:');
   let v = filled(2, 1000000000);
   let t1 = now();
@@ -92,4 +94,5 @@ export fn main {
   let t2 = now();
   v.parmap(double);
   t2.elapsed().print();
+*/
 }
