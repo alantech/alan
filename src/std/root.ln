@@ -147,6 +147,11 @@ export fn map(v: Vec<i64>, m: function): Vec<Result<i64>> binds map_onearg; // T
 export fn parmap(v: Vec<i64>, m: function): Vec<Result<i64>> binds parmap_onearg; // TODO: This is terrible
 export fn push(v: Vec<i64>, a: i64) binds push;
 
+// GPU-related bindings
+export type GPU binds GPU;
+export fn GPU(): GPU binds GPU_new;
+export fn print(g: GPU) binds print_GPU;
+
 // Built-in operator definitions
 export infix add as + precedence 2;
 // export infix concat as + precedence 2;

@@ -112,6 +112,7 @@ name = "alan_generated_bin"
 edition = "2021"
 
 [dependencies]
+futures = "0.3.30"
 wgpu = "0.19.3""#;
         let cargo_path = {
             let mut c = project_dir.clone();
@@ -740,6 +741,13 @@ test!(string_max => r#"
       emit exit 0;
     }"#;
     stdout "5\n";
+);
+
+// GPGPU
+
+test!(hello_gpu => r#"
+    export fn main = GPU().print();"#;
+    stdout_contains "GPU {";
 );
 
 // Bitwise Math
