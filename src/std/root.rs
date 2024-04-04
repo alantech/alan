@@ -699,3 +699,42 @@ fn parmap_onearg<A: std::marker::Sync + 'static, B: std::marker::Send + std::clo
 fn push<A: std::clone::Clone>(v: &mut Vec<A>, a: &A) {
     v.push(a.clone());
 }
+
+#[derive(Debug)]
+struct GPU {
+    pub instance: wgpu::Instance,
+    pub adapter: wgpu::Adapter,
+    pub device: wgpu::Device,
+    pub queue: wgpu::Queue,
+}
+
+impl GPU {
+    pub fn new() -> Result<GPU, Box<dyn std::error::Error>> {
+        let instance = wgpu::Instance::default();
+        let adapter_future = instance.request_adapter(&wgpu::RequestAdapterOptions::default());
+        let adapter = match futures::executor::block_on(adapter_future) {
+            Some(a) => Ok(a),
+            None => Err("Unable to acquire an adapter"),
+        }?;
+        let device_future = adapter.request_device(&wgpu::DeviceDescriptor::default(), None);
+        let (device, queue) = futures::executor::block_on(device_future)?;
+        Ok(GPU {
+            instance,
+            adapter,
+            device,
+            queue,
+        })
+    }
+}
+
+fn GPU_new() -> GPU {
+    // TODO: Make this safer
+    match GPU::new() {
+        Ok(g) => g,
+        Err(_) => unreachable!(),
+    }
+}
+
+fn print_GPU(g: &GPU) {
+    println!("{:?}", g);
+}
