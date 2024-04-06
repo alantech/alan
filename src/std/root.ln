@@ -99,6 +99,9 @@ export fn max(a: Result<i64>, b: Result<i64>): Result<i64> binds maxi64_result;
 export fn max(a: i64, b: Result<i64>): Result<i64> = max(a.ok(), b);
 export fn max(a: Result<i64>, b: i64): Result<i64> = max(a, b.ok());
 
+// Boolean related bindings
+type bool binds bool;
+
 // Process exit-related bindings
 export type ExitCode binds std::process::ExitCode;
 export fn ExitCode(e: i8): ExitCode binds to_exit_code_i8;
@@ -114,6 +117,7 @@ export fn getOrExit(a: Result<i64>): i64 binds get_or_exit; // TODO: Support rea
 export type String binds String;
 export fn concat(a: String, b: String): String binds string_concat;
 export fn print(str: String) binds println;
+export fn print(b: bool) binds println;
 export fn print(i: i8) binds println;
 export fn print(i: i16) binds println;
 export fn print(i: Result<i16>) binds println_result;

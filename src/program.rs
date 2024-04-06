@@ -408,6 +408,14 @@ pub enum Microstatement {
         typen: String,          // TODO: Do better on this, too.
         representation: String, // TODO: Can we do better here?
     },
+    Type {
+        typen: String, // TODO: Do better on this
+        keyvals: OrderedHashMap<String, Microstatement>,
+    },
+    Array {
+        typen: String, // TODO: Do better on this
+        vals: Vec<Microstatement>,
+    },
     Return {
         value: Option<Box<Microstatement>>,
     },
@@ -425,6 +433,8 @@ impl Microstatement {
     ) -> Result<String, Box<dyn std::error::Error>> {
         match self {
             Self::Value { typen, .. } => Ok(typen.clone()),
+            Self::Array { typen, .. } => Ok(typen.clone()),
+            Self::Type { typen, .. } => Ok(typen.clone()),
             Self::Arg { typen, .. } => Ok(typen.clone()),
             Self::Assignment { value, .. } => value.get_type(scope, program),
             Self::Return { value } => match value {
@@ -651,36 +661,63 @@ fn baseassignablelist_to_microstatements(
                         // Reaching the `Some` path requires it to be of type
                         // Microstatment::Assignment, but Rust doesn't seem to know that, so force
                         // it.
-                        Some(m) => Ok(match m {
+                        Some(m) => match m {
                             Microstatement::Assignment { value, .. } => {
                                 value.get_type(scope, program)
                             }
                             Microstatement::Arg { typen, .. } => Ok(typen.clone()),
                             _ => unreachable!(),
-                        }),
+                        },
                         None => {
-                            // It could be a function
-                            let name = var
-                                .iter()
-                                .map(|segment| segment.to_string())
-                                .collect::<Vec<String>>()
-                                .join("");
-                            Ok::<
-                                Result<std::string::String, Box<dyn std::error::Error>>,
-                                Box<dyn std::error::Error>,
-                            >(match scope.functions.get(&name) {
-                                Some(_) => Ok("function".to_string()), // TODO: Do better
-                                None => Err(format!(
-                                    "Couldn't find variable {}",
-                                    var.iter()
-                                        .map(|segment| segment.to_string())
-                                        .collect::<Vec<String>>()
-                                        .join("")
-                                )
-                                .into()),
-                            })
+                            // TODO: This whole section really needs to be cleaned up, but let's
+                            // just pile a bit more on to keep the scope of this change smaller.
+                            if var.len() == 3 && var[1].to_string() == "." { // It's property-like
+                                let maybe_obj = microstatements.iter().find(|m| match m {
+                                    Microstatement::Assignment { name, .. } => &var[0].to_string() == name,
+                                    Microstatement::Arg { name, .. } => &var[0].to_string() == name,
+                                    _ => false,
+                                });
+                                let mut out_type = "".to_string();
+                                if let Some(obj) = maybe_obj {
+                                    let parent_type_name = obj.get_type(scope, program)?;
+                                    let parent_type = match program.resolve_type(scope, &parent_type_name) {
+                                        None => Err(format!("Type {} not found somehow", parent_type_name)),
+                                        Some((t, _)) => Ok(t),
+                                    }?;
+                                    match &parent_type.typetype {
+                                        TypeType::Structlike(s) => {
+                                            for typeline in &s.typelist {
+                                                if typeline.variable == var[2].to_string() {
+                                                    out_type = typeline.fulltypename.to_string();
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        _ => unreachable!(),
+                                    }
+                                }
+                                Ok(out_type)
+                            } else {
+                                // It could be a function
+                                let name = var
+                                    .iter()
+                                    .map(|segment| segment.to_string())
+                                    .collect::<Vec<String>>()
+                                    .join("");
+                                match scope.functions.get(&name) {
+                                    Some(_) => Ok("function".to_string()), // TODO: Do better
+                                    None => Err(format!(
+                                        "Couldn't find variable {}",
+                                        var.iter()
+                                            .map(|segment| segment.to_string())
+                                            .collect::<Vec<String>>()
+                                            .join("")
+                                    )
+                                    .into()),
+                                }
+                            }
                         }
-                    }??;
+                    }?;
                     microstatements.push(Microstatement::Value {
                         typen,
                         // TODO: Properly support method/property/array access eventually
@@ -751,9 +788,64 @@ fn baseassignablelist_to_microstatements(
                     },
                 }
             }
-            parse::BaseAssignable::ObjectLiterals(_o) => {
-                todo!("Implement me");
-            }
+            parse::BaseAssignable::ObjectLiterals(o) => match o {
+                parse::ObjectLiterals::ArrayLiteral(a) => match a {
+                    parse::ArrayLiteral::ArrayBase(b) => {
+                        let mut array_microstatements = Vec::new();
+                        for withoperators in &b.assignablelist {
+                            microstatements = withoperatorslist_to_microstatements(
+                                withoperators,
+                                scope,
+                                program,
+                                microstatements,
+                            )?;
+                            array_microstatements.push(microstatements.pop().unwrap());
+                        }
+                        // TODO: Currently assuming the type of the first element of the array
+                        // matches all of them. Should confirm that in the future
+                        microstatements.push(Microstatement::Array {
+                            typen: format!("Array<{}>", array_microstatements[0].get_type(scope, program)?).to_string(),
+                            vals: array_microstatements,
+                        });
+                    },
+                    parse::ArrayLiteral::FullArrayLiteral(f) => {
+                        let mut array_microstatements = Vec::new();
+                        for withoperators in &f.arraybase.assignablelist {
+                            microstatements = withoperatorslist_to_microstatements(
+                                withoperators,
+                                scope,
+                                program,
+                                microstatements,
+                            )?;
+                            array_microstatements.push(microstatements.pop().unwrap());
+                        }
+                        // TODO: Currently assuming the type of the array *is* the type specified.
+                        // Should confirm that in the future
+                        microstatements.push(Microstatement::Array {
+                            typen: f.literaldec.fulltypename.to_string(),
+                            vals: array_microstatements,
+                        });
+                    },
+                },
+                parse::ObjectLiterals::TypeLiteral(t) => {
+                    let mut struct_microstatements = OrderedHashMap::new();
+                    for typeassign in &t.typebase.typeassignlist {
+                        microstatements = withoperatorslist_to_microstatements(
+                            &typeassign.assignables,
+                            scope,
+                            program,
+                            microstatements,
+                        )?;
+                        struct_microstatements.insert(typeassign.variable.clone(), microstatements.pop().unwrap());
+                    }
+                    // TODO: Currently assuming that the specified type matches the properties
+                    // provided. Should confirm that in the future
+                    microstatements.push(Microstatement::Type {
+                        typen: t.literaldec.fulltypename.to_string(),
+                        keyvals: struct_microstatements,
+                    });
+                },
+            },
             parse::BaseAssignable::Functions(_f) => {
                 todo!("Implement me");
             }
