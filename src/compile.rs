@@ -1540,22 +1540,18 @@ test!(array_literals => r#"
     stdout "1\n2\n4\n";
 );
 test!(object_literals => r#"
-    from @std/app import start, print, exit
-
     type MyType {
-      foo: string,
+      foo: String,
       bar: bool,
     }
 
-    on start {
+    export fn main {
       const test = new MyType {
         foo: 'foo!',
         bar: true,
       };
       print(test.foo);
       print(test.bar);
-
-      emit exit 0;
     }"#;
     stdout "foo!\ntrue\n";
 );
