@@ -700,7 +700,6 @@ fn push<A: std::clone::Clone>(v: &mut Vec<A>, a: &A) {
     v.push(a.clone());
 }
 
-#[derive(Debug)]
 struct GPU {
     pub instance: wgpu::Instance,
     pub adapter: wgpu::Adapter,
@@ -735,6 +734,141 @@ fn GPU_new() -> GPU {
     }
 }
 
-fn print_GPU(g: &GPU) {
-    println!("{:?}", g);
+fn create_buffer_init(g: &mut GPU, usage: &mut wgpu::BufferUsages, vals: &mut Vec<i32>) -> wgpu::Buffer {
+    let val_slice = &vals[..];
+    let val_ptr = val_slice.as_ptr();
+    let val_u8_len = vals.len() * 4;
+    let val_u8: &[u8] = unsafe {
+        std::slice::from_raw_parts(val_ptr as *const u8, val_u8_len)
+    };
+    wgpu::util::DeviceExt::create_buffer_init(&g.device, &wgpu::util::BufferInitDescriptor {
+        label: None, // TODO: Add a label for easier debugging?
+        contents: val_u8,
+        usage: *usage,
+    })
+}
+
+fn create_empty_buffer(g: &mut GPU, usage: &mut wgpu::BufferUsages, size: &mut i64) -> wgpu::Buffer {
+    g.device.create_buffer(&wgpu::BufferDescriptor {
+        label: None, // TODO: Add a label for easier debugging?
+        size: *size as u64,
+        usage: *usage,
+        mapped_at_creation: false, // TODO: With `create_buffer_init` does this make any sense?
+    })
+}
+
+// TODO: Either add the ability to bind to const values, or come up with a better solution. For
+// now, just hardwire a few buffer usage types in these functions
+fn map_read_buffer_type() -> wgpu::BufferUsages {
+    wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST
+}
+
+fn storage_buffer_type() -> wgpu::BufferUsages {
+    wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC
+}
+
+type Vec_Buffer<'a> = Vec<&'a wgpu::Buffer>;
+type Vec_Vec_Buffer<'a> = Vec<Vec<&'a wgpu::Buffer>>;
+
+fn Vec_Buffer_new<'a>() -> Vec_Buffer<'a> {
+  Vec::new()
+}
+
+fn Vec_Vec_Buffer_new<'a>() -> Vec_Vec_Buffer<'a> {
+  Vec::new()
+}
+
+struct GPGPU<'a> {
+    pub source: String,
+    pub entrypoint: String,
+    pub buffers: Vec_Vec_Buffer<'a>,
+}
+
+impl GPGPU<'_> {
+    fn new<'a>(source: String, buffers: Vec_Vec_Buffer<'a>) -> GPGPU<'a> {
+        GPGPU {
+            source,
+            entrypoint: "main".to_string(),
+            buffers,
+        }
+    }
+}
+
+fn GPGPU_new<'a>(source: &mut String, buffers: &'a mut Vec_Vec_Buffer) -> GPGPU<'a> {
+    GPGPU::new(source.clone(), buffers.clone())
+}
+
+fn GPGPU_new_easy<'a>(source: &mut String, buffer: &'a mut wgpu::Buffer) -> GPGPU<'a> {
+    GPGPU::new(source.clone(), vec!(vec!(buffer)))
+}
+
+fn gpu_run(g: &mut GPU, gg: &mut GPGPU) {
+    let module = g.device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: None,
+        source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(&gg.source)),
+    });
+    let compute_pipeline = g.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+        label: None,
+        layout: None,
+        module: &module,
+        entry_point: &gg.entrypoint,
+    });
+    let mut bind_groups = Vec::new();
+    let mut encoder =
+        g.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+    {
+        let mut cpass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+            label: None,
+            timestamp_writes: None,
+        });
+        cpass.set_pipeline(&compute_pipeline);
+        for i in 0..gg.buffers.len() {
+            let bind_group_layout = compute_pipeline.get_bind_group_layout(i.try_into().unwrap());
+            let bind_group_buffers = &gg.buffers[i];
+            let mut bind_group_entries = Vec::new();
+            for j in 0..bind_group_buffers.len() {
+                bind_group_entries.push(wgpu::BindGroupEntry {
+                    binding: j.try_into().unwrap(),
+                    resource: bind_group_buffers[j].as_entire_binding(),
+                });
+            }
+            let bind_group = g.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: None,
+                layout: &bind_group_layout,
+                entries: &bind_group_entries[..],
+            });
+            bind_groups.push(bind_group);
+        }
+        for i in 0..gg.buffers.len() { // The Rust borrow checker is forcing my hand here
+            cpass.set_bind_group(i.try_into().unwrap(), &bind_groups[i], &[]);
+        }
+        cpass.dispatch_workgroups(1, 1, 1); // TODO: Add support for workgroups during execution
+    }
+    g.queue.submit(Some(encoder.finish()));
+}
+
+fn read_buffer(g: &mut GPU, b: &mut wgpu::Buffer) -> Vec<i32> { // TODO: Support other value types
+    let temp_buffer = create_empty_buffer(g, &mut map_read_buffer_type(), &mut b.size().try_into().unwrap());
+    let mut encoder =
+        g.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+    encoder.copy_buffer_to_buffer(b, 0, &temp_buffer, 0, b.size());
+    g.queue.submit(Some(encoder.finish()));
+    let temp_slice = temp_buffer.slice(..);
+    let (sender, receiver) = flume::bounded(1);
+    temp_slice.map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
+    g.device.poll(wgpu::Maintain::wait()).panic_on_timeout();
+    if let Ok(Ok(())) = receiver.recv() {
+        let data = temp_slice.get_mapped_range();
+        let data_ptr = data.as_ptr();
+        let data_len = data.len() / 4; // From u8 to i32
+        let data_i32: &[i32] = unsafe {
+            std::slice::from_raw_parts(data_ptr as *const i32, data_len)
+        };
+        let result = data_i32.to_vec();
+        drop(data);
+        temp_buffer.unmap();
+        result
+    } else {
+        panic!("failed to run compute on gpu!")
+    }
 }
