@@ -112,6 +112,7 @@ name = "alan_generated_bin"
 edition = "2021"
 
 [dependencies]
+flume = "0.11.0"
 futures = "0.3.30"
 wgpu = "0.19.3""#;
         let cargo_path = {
@@ -746,8 +747,24 @@ test!(string_max => r#"
 // GPGPU
 
 test!(hello_gpu => r#"
-    export fn main = GPU().print();"#;
-    stdout_contains "GPU {";
+    export fn main {
+      let g = GPU();
+      let b = g.createBuffer(storageBuffer(), filled(2.i32(), 4));
+      let plan = GPGPU("
+        @group(0)
+        @binding(0)
+        var<storage, read_write> vals: array<i32>;
+
+        @compute
+        @workgroup_size(4)
+        fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+          vals[id.x] = vals[id.x] * bitcast<i32>(id.x);
+        }
+      ", b);
+      g.run(plan);
+      g.read(b).print();
+    }"#;
+    stdout "[0, 2, 4, 6]\n";
 );
 
 // Bitwise Math
