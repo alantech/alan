@@ -602,6 +602,11 @@ fn print_vec_result<A: std::fmt::Display>(vs: &Vec<Result<A, AlanError>>) {
     }).collect::<Vec<String>>().join(", "));
 }
 
+/// `vec_len` returns the length of a vector
+fn vec_len<A>(v: &Vec<A>) -> i64 {
+    v.len() as i64
+}
+
 /// `map_onearg` runs the provided single-argument function on each element of the vector,
 /// returning a new vector
 fn map_onearg<A, B>(v: &Vec<A>, m: fn(&A) -> B) -> Vec<B> {
@@ -715,7 +720,14 @@ impl GPU {
             Some(a) => Ok(a),
             None => Err("Unable to acquire an adapter"),
         }?;
-        let device_future = adapter.request_device(&wgpu::DeviceDescriptor::default(), None);
+        // Let's ask the adapter for everything it can do
+        let features = adapter.features();
+        let limits = adapter.limits();
+        let device_future = adapter.request_device(&wgpu::DeviceDescriptor {
+            label: None,
+            required_features: features,
+            required_limits: limits,
+        }, None);
         let (device, queue) = futures::executor::block_on(device_future)?;
         Ok(GPU {
             instance,
@@ -782,24 +794,51 @@ struct GPGPU<'a> {
     pub source: String,
     pub entrypoint: String,
     pub buffers: Vec_Vec_Buffer<'a>,
+    pub workgroup_sizes: [i64; 3],
 }
 
 impl GPGPU<'_> {
-    fn new<'a>(source: String, buffers: Vec_Vec_Buffer<'a>) -> GPGPU<'a> {
+    fn new<'a>(source: String, buffers: Vec_Vec_Buffer<'a>, workgroup_sizes: [i64; 3]) -> GPGPU<'a> {
         GPGPU {
             source,
             entrypoint: "main".to_string(),
             buffers,
+            workgroup_sizes,
         }
     }
 }
 
 fn GPGPU_new<'a>(source: &mut String, buffers: &'a mut Vec_Vec_Buffer) -> GPGPU<'a> {
-    GPGPU::new(source.clone(), buffers.clone())
+    GPGPU::new(source.clone(), buffers.clone(), [1, 1, 1]) // TODO: Expose this
 }
 
 fn GPGPU_new_easy<'a>(source: &mut String, buffer: &'a mut wgpu::Buffer) -> GPGPU<'a> {
-    GPGPU::new(source.clone(), vec!(vec!(buffer)))
+    // In order to support larger arrays, we need to split the buffer length across them. Each of
+    // indices is allowed to be up to 65535 (yes, a 16-bit integer) leading to a maximum length of
+    // 65535^3, or about 2.815x10^14 elements (about 281 trillion elements). Not quite up to the
+    // 64-bit address space limit 2^64 or about 1.845x10^19 or about 18 quintillion elements, but
+    // enough for exactly 1PB of 32-bit numbers in an array, so we should be good.
+    // For now, the 65535 limit should be hardcoded by the shader author and an early exit
+    // conditional check if the shader is operating on a nonexistent array index. This may change
+    // in the future if the performance penalty of the bounds check is considered too high.
+    //
+    // Explaining the equation itself, the array length, L, needs to be split into X, Y, and Z
+    // parts where L = X + A*Y + B*Z, with X, Y, and Z bound between 0 and 65534 (inclusive) while
+    // A is 65535 and B is 65535^2 or 4294836225. Computing each dimension is to take the original
+    // length of the array (which is the buffer size divided by 4 because we're only supporting
+    // 32-bit numbers for now) and then getting the division and remainder first by the B constant,
+    // and the Z limit becomes the division + 1, while the remainder is executed division and
+    // remainder on the A constant, division + 1, and this remainder becomes the X limit (plus 1).
+    // Including this big explanation in case I've made an off-by-one error here ;)
+    let l: i64 = (buffer.size() / 4).try_into().unwrap();
+    let z_div = l / 4294836225;
+    let z = z_div + 1;
+    let z_rem = l.wrapping_rem(4294836225);
+    let y_div = z_rem / 65535;
+    let y = y_div + 1;
+    let y_rem = z_rem.wrapping_rem(65535);
+    let x = y_rem + 1;
+    GPGPU::new(source.clone(), vec!(vec!(buffer)), [x, y, z])
 }
 
 fn gpu_run(g: &mut GPU, gg: &mut GPGPU) {
@@ -842,7 +881,7 @@ fn gpu_run(g: &mut GPU, gg: &mut GPGPU) {
         for i in 0..gg.buffers.len() { // The Rust borrow checker is forcing my hand here
             cpass.set_bind_group(i.try_into().unwrap(), &bind_groups[i], &[]);
         }
-        cpass.dispatch_workgroups(1, 1, 1); // TODO: Add support for workgroups during execution
+        cpass.dispatch_workgroups(gg.workgroup_sizes[0].try_into().unwrap(), gg.workgroup_sizes[1].try_into().unwrap(), gg.workgroup_sizes[2].try_into().unwrap());
     }
     g.queue.submit(Some(encoder.finish()));
 }

@@ -1,95 +1,99 @@
 // The benchmark in this directory is based on this file. That version unfortunately includes the
 // time it takes for `filled` to run, so the effective performance of `parmap` is underestimated
-fn double(x: i64): Result<i64> = x * 2;
+fn double(x: i32): Result<i32> = x * 2.i32();
+
+fn bench(l: i64) {
+  let v = filled(2.i32(), l);
+  v.length().print();
+  let t1 = now();
+  v.map(double);
+  t1.elapsed().print();
+  let t2 = now();
+  v.parmap(double);
+  t2.elapsed().print();
+  let t3 = now();
+  let g = GPU();
+  let b = g.createBuffer(storageBuffer(), v);
+  let plan = GPGPU("
+    @group(0)
+    @binding(0)
+    var<storage, read_write> vals: array<i32>;
+
+    @compute
+    @workgroup_size(1)
+    fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+      let i = id.x + 65535 * id.y + 4294836225 * id.z;
+      let l = arrayLength(&vals);
+      if i > l { return; }
+      vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
+    }
+  ", b);
+  g.run(plan);
+  g.read(b);
+  t3.elapsed().print();
+}
+
+// Until I have conditionals working, I need to do this kind of tomfoolery
+fn bench_billion {
+  let v = filled(2.i32(), 1000000000);
+  v.length().print();
+  let t1 = now();
+  v.map(double);
+  t1.elapsed().print();
+  let t2 = now();
+  v.parmap(double);
+  t2.elapsed().print();
+  let v2 = filled(2.i32(), 500000000);
+  let t3 = now();
+  let g = GPU();
+  let b = g.createBuffer(storageBuffer(), v2);
+  let plan = GPGPU("
+    @group(0)
+    @binding(0)
+    var<storage, read_write> vals: array<i32>;
+
+    @compute
+    @workgroup_size(1)
+    fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+      let i = id.x + 65535 * id.y + 4294836225 * id.z;
+      let l = arrayLength(&vals);
+      if i > l { return; }
+      vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
+    }
+  ", b);
+  g.run(plan);
+  g.read(b);
+  let b = g.createBuffer(storageBuffer(), v2);
+  let plan = GPGPU("
+    @group(0)
+    @binding(0)
+    var<storage, read_write> vals: array<i32>;
+
+    @compute
+    @workgroup_size(1)
+    fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+      let i = id.x + 65535 * id.y + 4294836225 * id.z;
+      let l = arrayLength(&vals);
+      if i > l { return; }
+      vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
+    }
+  ", b);
+  g.run(plan);
+  g.read(b);
+  t3.elapsed().print();
+}
 
 export fn main {
-  print('1:');
-  let v = filled(2, 1);
-  let t1 = now();
-  v.map(double);
-  t1.elapsed().print();
-  let t2 = now();
-  v.parmap(double);
-  t2.elapsed().print();
-
-  print('10:');
-  let v = filled(2, 10);
-  let t1 = now();
-  v.map(double);
-  t1.elapsed().print();
-  let t2 = now();
-  v.parmap(double);
-  t2.elapsed().print();
-
-  print('100:');
-  let v = filled(2, 100);
-  let t1 = now();
-  v.map(double);
-  t1.elapsed().print();
-  let t2 = now();
-  v.parmap(double);
-  t2.elapsed().print();
-
-  print('1,000:');
-  let v = filled(2, 1000);
-  let t1 = now();
-  v.map(double);
-  t1.elapsed().print();
-  let t2 = now();
-  v.parmap(double);
-  t2.elapsed().print();
-
-  print('10,000:');
-  let v = filled(2, 10000);
-  let t1 = now();
-  v.map(double);
-  t1.elapsed().print();
-  let t2 = now();
-  v.parmap(double);
-  t2.elapsed().print();
-
-  print('100,000:');
-  let v = filled(2, 100000);
-  let t1 = now();
-  v.map(double);
-  t1.elapsed().print();
-  let t2 = now();
-  v.parmap(double);
-  t2.elapsed().print();
-
-  print('1,000,000:');
-  let v = filled(2, 1000000);
-  let t1 = now();
-  v.map(double);
-  t1.elapsed().print();
-  let t2 = now();
-  v.parmap(double);
-  t2.elapsed().print();
-
-  print('10,000,000:');
-  let v = filled(2, 10000000);
-  let t1 = now();
-  v.map(double);
-  t1.elapsed().print();
-  let t2 = now();
-  v.parmap(double);
-  t2.elapsed().print();
-
-  print('100,000,000:');
-  let v = filled(2, 100000000);
-  let t1 = now();
-  v.map(double);
-  t1.elapsed().print();
-  let t2 = now();
-  v.parmap(double);
-  t2.elapsed().print();
-
-  print('1,000,000,000:');
-  let v = filled(2, 1000000000);
-  let t1 = now();
-  v.map(double);
-  t1.elapsed().print();
-  let t2 = now();
-  v.parmap(double);
-  t2.elapsed().print();
+  bench(1);
+  bench(10);
+  bench(100);
+  bench(1000);
+  bench(10000);
+  bench(100000);
+  bench(1000000);
+  bench(10000000);
+  bench(100000000);
+  // Commented out because it crashes on my laptop GPU. Try swapping which is commented on your's!
+  // bench(1000000000);
+  bench_billion();
 }

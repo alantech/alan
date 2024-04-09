@@ -52,6 +52,7 @@ export fn pow(a: i16, b: i16): Result<i16> binds powi16;
 export fn min(a: i16, b: i16): i16 binds mini16;
 export fn max(a: i16, b: i16): i16 binds maxi16;
 export type i32 binds i32;
+export type Result<i32> binds Result_i32;
 export fn i32(i: i64): i32 binds i64toi32;
 export fn add(a: i32, b: i32): Result<i32> binds addi32;
 export fn sub(a: i32, b: i32): Result<i32> binds subi32;
@@ -149,7 +150,11 @@ export fn print(v: Vec<i64>) binds print_vec;
 export fn print(v: Vec<Result<i64>>) binds print_vec_result;
 export fn map(v: Vec<i64>, m: function): Vec<Result<i64>> binds map_onearg; // TODO: This is terrible
 export fn parmap(v: Vec<i64>, m: function): Vec<Result<i64>> binds parmap_onearg; // TODO: This is terrible
+export fn map(v: Vec<i32>, m: function): Vec<Result<i32>> binds map_onearg; // TODO: This is terrible
+export fn parmap(v: Vec<i32>, m: function): Vec<Result<i32>> binds parmap_onearg; // TODO: This is terrible
 export fn push(v: Vec<i64>, a: i64) binds push;
+export fn length(v: Vec<i64>): i64 binds vec_len;
+export fn length(v: Vec<i32>): i64 binds vec_len;
 
 // GPU-related bindings
 export type GPU binds GPU;

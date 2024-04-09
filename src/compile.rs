@@ -756,7 +756,7 @@ test!(hello_gpu => r#"
         var<storage, read_write> vals: array<i32>;
 
         @compute
-        @workgroup_size(4)
+        @workgroup_size(1)
         fn main(@builtin(global_invocation_id) id: vec3<u32>) {
           vals[id.x] = vals[id.x] * bitcast<i32>(id.x);
         }
