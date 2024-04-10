@@ -54,6 +54,19 @@ pub fn compile(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
         r.push("release");
         r
     };
+    let cargo_str = r#"[package]
+name = "alan_generated_bin"
+edition = "2021"
+
+[dependencies]
+flume = "0.11.0"
+futures = "0.3.30"
+wgpu = "0.19.3""#;
+    let cargo_path = {
+        let mut c = project_dir.clone();
+        c.push("Cargo.toml");
+        c
+    };
     if alan_config.exists() {
         if lockfile.exists() {
             let mut count = 0;
@@ -107,20 +120,7 @@ pub fn compile(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
                 Err(e)
             }
         }?;
-        let cargo_str = r#"[package]
-name = "alan_generated_bin"
-edition = "2021"
-
-[dependencies]
-flume = "0.11.0"
-futures = "0.3.30"
-wgpu = "0.19.3""#;
-        let cargo_path = {
-            let mut c = project_dir.clone();
-            c.push("Cargo.toml");
-            c
-        };
-        match write(cargo_path, cargo_str) {
+        match write(cargo_path.clone(), cargo_str) {
             Ok(a) => Ok(a),
             Err(e) => {
                 remove_file(lockfile.clone())?;
@@ -192,6 +192,30 @@ wgpu = "0.19.3""#;
             }
         }?;
     }
+    // Always write the `Cargo.toml` file, in case the cache is out-of-date from a prior version of
+    // the Alan compiler is still present.
+    match write(cargo_path, cargo_str) {
+        Ok(a) => Ok(a),
+        Err(e) => {
+            remove_file(lockfile.clone())?;
+            Err(e)
+        }
+    }?;
+    // We need to remove the prior binary, if it exists, to prevent a prior successful compilation
+    // from accidentally being treated as the output of an unsuccessful compilation.
+    match Command::new("rm")
+        .current_dir(release_path.clone())
+        .arg("-f")
+        .arg("alan_generated_bin")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output() {
+        Ok(a) => Ok(a),
+        Err(e) => {
+            remove_file(lockfile.clone())?;
+            Err(e)
+        }
+    }?;
     // Once we're here, the base hello world app we use as a build cache definitely exists, so
     // let's get to work! We can't use the `?` operator directly here, because we need to make sure
     // we remove the lockfile on any failure.
