@@ -246,7 +246,19 @@ Some other changes that I want to make:
 
 functions, types, types of types (interfaces), generic functions, generic types, full type inference, function dispatch by name + arg types, method syntax by function dispatch, type dispatch, conditional types, conditional compilation
 
-TBD
+type functions having three kinds of argument types, integers, booleans, and interfaces
+
+Could we detect literal-only operations and swap to a compile-time execution of them? Eg `const foo = 1 + 2;` and spot that `1` and `2` are literals and swap to the `Add<A, B>` type function to spit out `const foo = 3;`? This also means that you could write `const foo = Add<1, 2>` and it would need to do the compile-time work here. That's *probably* fine. `Add<1, 2>` could be treated as a memoized compile-time function call with the memo value substituted in place. But non-type outputs need to be a thing for that to work, then, instead of just being an input. That will complicate the syntax validation, since you could conceivably have these in places other than type declarations.
+
+Do I go full Zig and just have the `<>` syntax indicate compile-time execution of any function? Probably not. Too many things would then be expected at compile time (and compile times would go crazy). But a special syntax for all *literal types* to be run at compile time makes sense to me to also act as a kind of macro system. So compile-time tools for string manipulation also come into play. Probably eventually including things like including a file as a string at compile time and also allowing you to *manipulate* the contents of said string at compile time to produce what you want.
+
+The big question I have now, is: do functions count as a "literal" to be manipulated at compile-time? Generic functions as mostly a templating system were all I was planning, but I'm not sure, now. Rust has a macro system, but it's so far removed from the regular language that it really sticks out like a sore thumb. But how much does Alan need a macro system like that with argument-based function dispatch, generic functions, and interface functions? What exactly can't be expressed cleanly right now? I'm gonna sleep on this, but my current inclination is that interface-powered functions *are* the macro system.
+
+If I make `let varname` and `const varname` be things that create variables, then I can turn `let varname = 3` into `set(let varname, 3)`, so `=` is just an ordinary operator. And when there's a top-level const doing the same, it could be done with a `Set<const varname, 3>` at that level during compile-time. But on top of that I make `let varname` and `const varname` be invalid syntax if not included within a function call. This makes the intermediate syntax just function calls everywhere, even for type definition since, yup, `type foo = i32, bool` should be turned into `Set<foo, Concat<i32, bool>>`. Then `Set<>` is the compile-time operation and `set()` is the runtime version. Conditional compilation indicators like `type<Windows> foo = i32, bool` would be an even earlier processing step to find and keep or remove the relevant pieces dependent on the evaluation of the boolean within the brackets.
+
+Defining new functions could be done that way with something like `Set<fn foo, i32 -> bool, { ... }>` perhaps breaking down the statements into some sort of `Array<Statement<statement args>>`? This regularity could help or hurt. It may just be a distraction when the output code is then just immediately re-consumed to populate the data structures needed for compilation and I cannot think of anything that would consume the intermediate repressentation that wouldn't be better served by working with the program.rs data structures. But it could potentially make the next stage simpler and therefore reduce the chance for bugs. And being an intermediate format that could also be serialized to something human-readable, it could help debugging those bugs.
+
+Perhaps move towards that over time, but for now, constrain to just `type` and leave `fn` alone and still parsing the same way it is right now.
 
 ## Affected Components
 
