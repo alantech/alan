@@ -754,7 +754,7 @@ fn baseassignablelist_to_microstatements(
                         representation: b.clone(),
                     }),
                     parse::Constants::Strn(s) => microstatements.push(Microstatement::Value {
-                        typen: "String".to_string(), // TODO: Make this lower case?
+                        typen: "string".to_string(),
                         representation: if s.starts_with('"') {
                             s.clone()
                         } else {

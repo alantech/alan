@@ -115,9 +115,9 @@ export fn getOrExit(a: Result<i32>): i32 binds get_or_exit; // TODO: Support rea
 export fn getOrExit(a: Result<i64>): i64 binds get_or_exit; // TODO: Support real generics
 
 // Stdout/stderr-related bindings
-export type String binds String;
-export fn concat(a: String, b: String): String binds string_concat;
-export fn print(str: String) binds println;
+export type string binds String;
+export fn concat(a: string, b: string): string binds string_concat;
+export fn print(str: string) binds println;
 export fn print(b: bool) binds println;
 export fn print(i: i8) binds println;
 export fn print(i: i16) binds println;
@@ -171,8 +171,8 @@ export fn createBuffer(g: GPU, usage: BufferUsages, size: i64): Buffer binds cre
 export fn mapReadBuffer(): BufferUsages binds map_read_buffer_type;
 export fn storageBuffer(): BufferUsages binds storage_buffer_type;
 export type GPGPU binds GPGPU;
-export fn GPGPU(source: String, buffers: Vec<Vec<Buffer>>): GPGPU binds GPGPU_new;
-export fn GPGPU(source: String, buffer: Buffer): GPGPU binds GPGPU_new_easy;
+export fn GPGPU(source: string, buffers: Vec<Vec<Buffer>>): GPGPU binds GPGPU_new;
+export fn GPGPU(source: string, buffer: Buffer): GPGPU binds GPGPU_new_easy;
 export fn run(g: GPU, gg: GPGPU) binds gpu_run;
 export fn read(g: GPU, b: Buffer): Vec<i32> binds read_buffer; // TODO: Support other output types
 

@@ -44,7 +44,7 @@ pub fn from_microstatement(
             typen,
             representation,
         } => match typen.as_str() {
-            "String" => Ok((format!("{}.to_string()", representation).to_string(), out)),
+            "string" => Ok((format!("{}.to_string()", representation).to_string(), out)),
             "function" => {
                 // We need to make sure this function we're referencing exists
                 match scope.functions.get(representation) {
