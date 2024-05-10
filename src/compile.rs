@@ -2538,12 +2538,12 @@ test!(undefined_function_call => r#"
     }"#;
     stderr "i64str is not a function but used as one.\ni64str on line 4:18\n";
 );
-/*test!(totally_broken_statement => r#"
+test!(totally_broken_statement => r#"
     on app.start {
       app.oops
     }"#;
     stderr "TODO";
-); // TODO: It's so broken it crashes the parser. Get the parser more resilient and revive this */
+);
 /* Pending
   Describe "Importing unexported values"
     before() {

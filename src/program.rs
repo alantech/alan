@@ -26,8 +26,9 @@ impl Program {
         // Load the entry file
         p = match p.load(entry_file) {
             Ok(p) => p,
-            Err(e) => {
-                println!("{:?}", e);
+            Err(_) => {
+                // Somehow, trying to print this error can crash Rust!? Really not good.
+                // Will need to figure out how to make these errors clearer to users.
                 return Err("Failed to load entry file".into());
             }
         };
