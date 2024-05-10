@@ -166,13 +166,11 @@ pub struct Scope {
     pub types: OrderedHashMap<String, Type>,
     pub consts: OrderedHashMap<String, Const>,
     pub functions: OrderedHashMap<String, Vec<Function>>,
-    pub handlers: OrderedHashMap<String, Handler>,
-    pub events: OrderedHashMap<String, Event>,
     pub operatormappings: OrderedHashMap<String, OperatorMapping>,
     pub exports: OrderedHashMap<String, Export>,
     // TODO: Implement these other concepts
     // interfaces: OrderedHashMap<String, Interface>,
-    // Should we include something for documentation? Maybe testing?
+    // Should we include something for documentation?
 }
 
 impl Scope {
@@ -190,8 +188,6 @@ impl Scope {
             types: OrderedHashMap::new(),
             consts: OrderedHashMap::new(),
             functions: OrderedHashMap::new(),
-            handlers: OrderedHashMap::new(),
-            events: OrderedHashMap::new(),
             operatormappings: OrderedHashMap::new(),
             exports: OrderedHashMap::new(),
         };
@@ -201,8 +197,6 @@ impl Scope {
         }
         for element in ast.body.iter() {
             match element {
-                parse::RootElements::Handlers(h) => Handler::from_ast(&mut s, &p, h)?,
-                parse::RootElements::Events(e) => Event::from_ast(&mut s, &p, e, false)?,
                 parse::RootElements::Types(t) => Type::from_ast(&mut s, t, false)?,
                 parse::RootElements::Functions(f) => Function::from_ast(&mut s, &p, f, false)?,
                 parse::RootElements::ConstDeclaration(c) => Const::from_ast(&mut s, c, false)?,
@@ -210,7 +204,6 @@ impl Scope {
                     OperatorMapping::from_ast(&mut s, o, false)?
                 }
                 parse::RootElements::Exports(e) => match &e.exportable {
-                    parse::Exportable::Events(e) => Event::from_ast(&mut s, &p, e, true)?,
                     parse::Exportable::Functions(f) => Function::from_ast(&mut s, &p, f, true)?,
                     parse::Exportable::ConstDeclaration(c) => Const::from_ast(&mut s, c, true)?,
                     parse::Exportable::OperatorMapping(o) => {
@@ -418,10 +411,6 @@ pub enum Microstatement {
     },
     Return {
         value: Option<Box<Microstatement>>,
-    },
-    Emit {
-        event: String,
-        value: Option<Box<Microstatement>>,
     }, // TODO: Conditionals
 }
 
@@ -456,7 +445,6 @@ impl Microstatement {
                     None => Err(format!("Could not find function {}", function).into()),
                 }
             }
-            Self::Emit { .. } => Ok("void".to_string()), // Emit statements never return anything
         }
     }
 }
@@ -847,7 +835,7 @@ fn baseassignablelist_to_microstatements(
                 },
             },
             parse::BaseAssignable::Functions(_f) => {
-                todo!("Implement me");
+                return Err("Implement me".into());
             }
         }
         i = i + 1;
@@ -885,6 +873,7 @@ fn withoperatorslist_to_microstatements(
                     let level = match &operator {
                         OperatorMapping::Prefix { level, .. } => level,
                         OperatorMapping::Infix { level, .. } => level,
+                        OperatorMapping::Postfix { level, .. } => level,
                     };
                     if level > &largest_operator_level {
                         largest_operator_level = *level;
@@ -907,10 +896,17 @@ fn withoperatorslist_to_microstatements(
             let functionname = match operator {
                 OperatorMapping::Prefix { functionname, .. } => functionname.clone(),
                 OperatorMapping::Infix { functionname, .. } => functionname.clone(),
+                OperatorMapping::Postfix { functionname, .. } => functionname.clone(),
             };
             let is_infix = match operator {
                 OperatorMapping::Prefix { .. } => false,
+                OperatorMapping::Postfix { .. } => false,
                 OperatorMapping::Infix { .. } => true,
+            };
+            let is_prefix = match operator {
+                OperatorMapping::Prefix { .. } => true,
+                OperatorMapping::Postfix { .. } => false,
+                OperatorMapping::Infix { .. } => false,
             };
             if is_infix {
                 // Confirm that we have records before and after the operator and that they are
@@ -964,7 +960,7 @@ fn withoperatorslist_to_microstatements(
                         vec![rewrite],
                     )
                     .collect();
-            } else {
+            } else if is_prefix {
                 // Confirm that we have a record after the operator and that it's a baseassignables
                 let arg = match match queue.get(largest_operator_index as usize + 1) {
                     Some(val) => Ok(val),
@@ -1004,6 +1000,8 @@ fn withoperatorslist_to_microstatements(
                         vec![rewrite],
                     )
                     .collect();
+            } else {
+              // TODO: Add postfix operator support here
             }
         } else {
             // We have no more operators, there should only be one reworked baseassignablelist now
@@ -1103,80 +1101,31 @@ fn declarations_to_microstatements(
     Ok(microstatements)
 }
 
-fn emits_to_microstatements(
-    emits: &parse::Emits,
-    scope: &Scope,
-    program: &Program,
-    mut microstatements: Vec<Microstatement>,
-) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
-    if let Some(retval) = &emits.retval {
-        // We get all of the microstatements involved in the emit statement, then we pop
-        // off the last one, if any exists, to get the final return value. Then we shove
-        // the other microstatements into the array and the new Return microstatement with
-        // that last value attached to it.
-        microstatements = withoperatorslist_to_microstatements(
-            &retval.assignables,
-            scope,
-            program,
-            microstatements,
-        )?;
-        let value = match microstatements.pop() {
-            None => None,
-            Some(v) => Some(Box::new(v)),
-        };
-        microstatements.push(Microstatement::Emit {
-            // TODO: Figure out the correct event instead of just stringifying the resolution path
-            event: emits
-                .eventname
-                .iter()
-                .map(|segment| segment.to_string())
-                .collect::<Vec<String>>()
-                .join(""),
-            value,
-        });
-    } else {
-        microstatements.push(Microstatement::Emit {
-            // TODO: Figure out the correct event instead of just stringifying the resolution path
-            event: emits
-                .eventname
-                .iter()
-                .map(|segment| segment.to_string())
-                .collect::<Vec<String>>()
-                .join(""),
-            value: None,
-        });
-    }
-    Ok(microstatements)
-}
-
 fn statement_to_microstatements(
     statement: &parse::Statement,
     scope: &Scope,
     program: &Program,
     microstatements: Vec<Microstatement>,
 ) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
-    Ok(match statement {
+    match statement {
         // This is just whitespace, so we do nothing here
-        parse::Statement::A(_) => microstatements,
+        parse::Statement::A(_) => Ok(microstatements),
         parse::Statement::Assignables(assignable) => {
-            assignablestatement_to_microstatements(assignable, scope, program, microstatements)?
+            Ok(assignablestatement_to_microstatements(assignable, scope, program, microstatements)?)
         }
         parse::Statement::Returns(returns) => {
-            returns_to_microstatements(returns, scope, program, microstatements)?
+            Ok(returns_to_microstatements(returns, scope, program, microstatements)?)
         }
         parse::Statement::Declarations(declarations) => {
-            declarations_to_microstatements(declarations, scope, program, microstatements)?
-        }
-        parse::Statement::Emits(emits) => {
-            emits_to_microstatements(emits, scope, program, microstatements)?
+            Ok(declarations_to_microstatements(declarations, scope, program, microstatements)?)
         }
         parse::Statement::Assignments(_assignments) => {
-            todo!("Implement me");
+            Err("Implement me".into())
         }
         parse::Statement::Conditional(_condtitional) => {
-            todo!("Implement me");
+            Err("Implement me".into())
         }
-    })
+    }
 }
 
 #[derive(Debug)]
@@ -1291,48 +1240,7 @@ pub enum Export {
     Function,
     Const,
     Type,
-    Event,
     OpMap,
-}
-
-#[derive(Debug)]
-pub struct Event {
-    pub name: String,
-    pub typename: String,
-}
-
-impl Event {
-    fn from_ast(
-        scope: &mut Scope,
-        program: &Program,
-        event_ast: &parse::Events,
-        is_export: bool,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let typename = if program.scopes_by_file.len() == 0 {
-            // Special handling for events defined in the root scope itself, that can't use
-            // `resolve_type`. We're just going to assume we're awesome and don't make mistakes for
-            // now. TODO: We're not, do this better.
-            Ok(event_ast.fulltypename.to_string())
-        } else {
-            match program.resolve_type(scope, &event_ast.fulltypename.to_string()) {
-                Some((t, _)) => Ok(t.typename.to_string()),
-                None => Err(format!(
-                    "Invalid type {} for event {}",
-                    event_ast.fulltypename.to_string(),
-                    event_ast.variable
-                )),
-            }
-        }?;
-        let e = Event {
-            name: event_ast.variable.clone(),
-            typename,
-        };
-        if is_export {
-            scope.exports.insert(e.name.clone(), Export::Event);
-        }
-        scope.events.insert(e.name.clone(), e);
-        Ok(())
-    }
 }
 
 #[derive(Debug)]
@@ -1343,6 +1251,11 @@ pub enum OperatorMapping {
         operatorname: String,
     },
     Infix {
+        level: i8,
+        functionname: String,
+        operatorname: String,
+    },
+    Postfix {
         level: i8,
         functionname: String,
         operatorname: String,
@@ -1374,103 +1287,25 @@ impl OperatorMapping {
                 functionname: operatormapping_ast.opmap.get_fntoop().fnname.clone(),
                 operatorname: operatormapping_ast.opmap.get_fntoop().operator.clone(),
             },
+            parse::Fix::Postfix(_) => OperatorMapping::Postfix {
+                level: operatormapping_ast
+                    .opmap
+                    .get_opprecedence()
+                    .num
+                    .parse::<i8>()?,
+                functionname: operatormapping_ast.opmap.get_fntoop().fnname.clone(),
+                operatorname: operatormapping_ast.opmap.get_fntoop().operator.clone(),
+            },
         };
         let name = match &opmap {
             OperatorMapping::Prefix { operatorname, .. } => operatorname.clone(),
             OperatorMapping::Infix { operatorname, .. } => operatorname.clone(),
+            OperatorMapping::Postfix { operatorname, .. } => operatorname.clone(),
         };
         if is_export {
             scope.exports.insert(name.clone(), Export::OpMap);
         }
         scope.operatormappings.insert(name, opmap);
-        Ok(())
-    }
-}
-
-#[derive(Debug)]
-pub struct Handler {
-    pub eventname: String,
-    pub functionname: String,
-}
-
-impl Handler {
-    fn from_ast(
-        scope: &mut Scope,
-        program: &Program,
-        handler_ast: &parse::Handlers,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let functionname = match &handler_ast.handler {
-            parse::Handler::Functions(function) => {
-                // Inline defined function possibly with a name, grab the name and shove it into the
-                // function list for this scope, otherwise
-                let name = match &function.optname {
-                    Some(name) => name.clone(),
-                    // TODO: Properly support method/property/array access eventually
-                    None => format!(
-                        ":::on:::{}",
-                        &handler_ast
-                            .eventname
-                            .iter()
-                            .map(|segment| segment.to_string())
-                            .collect::<Vec<String>>()
-                            .join("")
-                    )
-                    .to_string(), // Impossible for users to write, so no collisions ever
-                };
-                let _ = Function::from_ast_with_name(scope, program, function, false, name.clone());
-                name
-            }
-            parse::Handler::FnName(name) => name.clone(),
-            // This is the *only* place where a function body can just be passed in without the
-            // "proper" `fn` declaration prior (at least right now), so just keeping the weird
-            // Function object initialization in here instead of as a new method on the Function
-            // type.
-            parse::Handler::FunctionBody(body) => {
-                // TODO: Properly support method/property/array access eventually
-                let name = format!(
-                    ":::on:::{}",
-                    &handler_ast
-                        .eventname
-                        .iter()
-                        .map(|segment| segment.to_string())
-                        .collect::<Vec<String>>()
-                        .join("")
-                )
-                .to_string();
-                let function = Function {
-                    name: name.clone(),
-                    args: Vec::new(),
-                    rettype: None,
-                    statements: body.statements.clone(),
-                    microstatements: {
-                        let mut ms = Vec::new();
-                        for statement in &body.statements {
-                            ms = statement_to_microstatements(statement, scope, program, ms)?;
-                        }
-                        ms
-                    },
-                    bind: None,
-                };
-                if scope.functions.contains_key(&name) {
-                    let func_vec = scope.functions.get_mut(&name).unwrap();
-                    func_vec.push(function);
-                } else {
-                    scope.functions.insert(name.clone(), vec![function]);
-                }
-                name
-            } // TODO: Should you be allowed to bind a Rust function as a handler directly?
-        };
-        let h = Handler {
-            eventname: handler_ast
-                .eventname
-                .iter()
-                .map(|segment| segment.to_string())
-                .collect::<Vec<String>>()
-                .join("")
-                .to_string(),
-            functionname,
-        };
-        scope.handlers.insert(h.eventname.clone(), h);
         Ok(())
     }
 }

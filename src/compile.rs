@@ -398,17 +398,12 @@ test!(non_global_memory_exit_code => r#"
     status 0;
 );
 test!(passing_ints_from_global_memory => r#"
-    from @std/app import start, print, exit
-
-    event aNumber: int64;
-
-    on aNumber fn(num: int64) {
+    fn aNumber(num: int64) {
       print('I got a number! ' + num.toString());
-      emit exit 0;
     }
 
-    on start {
-      emit aNumber 5;
+    export fn main {
+      aNumber(5);
     }"#;
     stdout "I got a number! 5\n";
     status 0;
@@ -424,14 +419,6 @@ test!(print_function => r#"
     }"#;
     stdout "Hello, World\n";
     status 0;
-);
-test!(stdout_event => r#"
-    export fn main(): ExitCode {
-      emit stdout 'Hello, World';
-      wait(10); // Because emits run on another thread, we need to wait to be sure it actually runs
-      return ExitCode(0);
-    }"#;
-    stdout "Hello, World";
 );
 test!(duration_print => r#"
     export fn main() {
@@ -614,131 +601,99 @@ test!(int64_max => r#"
 );
 
 test!(float32_add => r#"
-    from @std/app import start, print, exit
-    on start {
-      print(toFloat32(1) + toFloat32(2));
-      emit exit 0;
+    export fn main {
+      print(f32(1) + f32(2));
     }"#;
     stdout "3\n";
 );
 test!(float32_sub => r#"
-    from @std/app import start, print, exit
-    on start {
-      print(toFloat32(2) - toFloat32(1));
-      emit exit 0;
+    export fn main {
+      print(f32(2) - f32(1));
     }"#;
     stdout "1\n";
 );
 test!(float32_mul => r#"
-    from @std/app import start, print, exit
-    on start {
-      print(toFloat32(2) * toFloat32(1));
-      emit exit 0;
+    export fn main {
+      print(f32(2) * f32(1));
     }"#;
     stdout "2\n";
 );
 test!(float32_div => r#"
-    from @std/app import start, print, exit
-    on start {
-      print(toFloat32(6) / toFloat32(2));
-      emit exit 0;
+    export fn main {
+      print(f32(6) / f32(2));
     }"#;
     stdout "3\n";
 );
 test!(float32_sqrt => r#"
-    from @std/app import start, print, exit
-    on start {
-      print(sqrt(toFloat32(36)));
-      emit exit 0;
+    export fn main {
+      print(sqrt(f32(36)));
     }"#;
     stdout "6\n";
 );
 test!(float32_pow => r#"
-    from @std/app import start, print, exit
-    on start {
-      print(toFloat32(6) ** toFloat32(2));
-      emit exit 0;
+    export fn main {
+      print(f32(6) ** f32(2));
     }"#;
     stdout "36\n";
 );
 test!(float32_min => r#"
-    from @std/app import start, print, exit
-    on start {
-      min(3.toFloat32(), 5.toFloat32()).print();
-      emit exit 0;
+    export fn main {
+      min(3.f32(), 5.f32()).print();
     }"#;
     stdout "3\n";
 );
 test!(float32_max => r#"
-    from @std/app import start, print, exit
-    on start {
-      max(3.toFloat32(), 5.toFloat32()).print();
-      emit exit 0;
+    export fn main {
+      max(3.f32(), 5.f32()).print();
     }"#;
     stdout "5\n";
 );
 
 test!(float64_add => r#"
-    from @std/app import start, print, exit
-    on start {
+    export fn main {
       (1.0 + 2.0).print();
-      emit exit 0;
     }"#;
     stdout "3\n";
 );
 test!(float64_sub => r#"
-    from @std/app import start, print, exit
-    on start {
+    export fn main {
       (2.0 - 1.0).print();
-      emit exit 0;
     }"#;
     stdout "1\n";
 );
 test!(float64_mul => r#"
-    from @std/app import start, print, exit
-    on start {
+    export fn main {
       (2.0 * 1.0).print();
-      emit exit 0;
     }"#;
     stdout "2\n";
 );
 test!(float64_div => r#"
-    from @std/app import start, print, exit
-    on start {
+    export fn main {
       (6.0 / 2.0).print();
-      emit exit 0;
     }"#;
     stdout "3\n";
 );
 test!(float64_sqrt => r#"
-    from @std/app import start, print, exit
-    on start {
+    export fn main {
       sqrt(36.0).print();
-      emit exit 0;
     }"#;
     stdout "6\n";
 );
 test!(float64_pow => r#"
-    from @std/app import start, print, exit
-    on start {
+    export fn main {
       (6.0 ** 2.0).print();
-      emit exit 0;
     }"#;
     stdout "36\n";
 );
 test!(float64_min => r#"
-    from @std/app import start, print, exit
-    on start {
-      min(3.toFloat64(), 5.toFloat64()).print();
-      emit exit 0;
+    export fn main {
+      min(3.f64(), 5.f64()).print();
     }"#;
     stdout "3\n";
 );
 test!(float64_max => r#"
-    from @std/app import start, print, exit
-    on start {
-      max(3.toFloat64(), 5.toFloat64()).print();
-      emit exit 0;
+    export fn main {
+      max(3.f64(), 5.f64()).print();
     }"#;
     stdout "5\n";
 );
@@ -752,18 +707,14 @@ test!(grouping => r#"
 );
 
 test!(string_min => r#"
-    from @std/app import start, print, exit
-    on start {
+    export fn main {
       min(3.toString(), 5.toString()).print();
-      emit exit 0;
     }"#;
     stdout "3\n";
 );
 test!(string_max => r#"
-    from @std/app import start, print, exit
-    on start {
+    export fn main {
       max(3.toString(), 5.toString()).print();
-      emit exit 0;
     }"#;
     stdout "5\n";
 );
@@ -794,11 +745,9 @@ test!(hello_gpu => r#"
 // Bitwise Math
 
 test!(int8_bitwise => r#"
-    from @std/app import start, print, exit
+    prefix i8 as ~ precedence 10
 
-    prefix toInt8 as ~ precedence 10
-
-    on start {
+    export fn main {
       print(~1 & ~2);
       print(~1 | ~3);
       print(~5 ^ ~3);
@@ -806,16 +755,13 @@ test!(int8_bitwise => r#"
       print(~1 !& ~2);
       print(~1 !| ~2);
       print(~5 !^ ~3);
-      emit exit 0;
     }"#;
     stdout "0\n3\n6\n-1\n-1\n-4\n-7\n";
 );
 test!(int16_bitwise => r#"
-    from @std/app import start, print, exit
+    prefix i16 as ~ precedence 10
 
-    prefix toInt16 as ~ precedence 10
-
-    on start {
+    export fn main {
       print(~1 & ~2);
       print(~1 | ~3);
       print(~5 ^ ~3);
@@ -823,16 +769,13 @@ test!(int16_bitwise => r#"
       print(~1 !& ~2);
       print(~1 !| ~2);
       print(~5 !^ ~3);
-      emit exit 0;
     }"#;
     stdout "0\n3\n6\n-1\n-1\n-4\n-7\n";
 );
 test!(int32_bitwise => r#"
-    from @std/app import start, print, exit
+    prefix i32 as ~ precedence 10
 
-    prefix toInt32 as ~ precedence 10
-
-    on start {
+    export fn main {
       print(~1 & ~2);
       print(~1 | ~3);
       print(~5 ^ ~3);
@@ -840,14 +783,11 @@ test!(int32_bitwise => r#"
       print(~1 !& ~2);
       print(~1 !| ~2);
       print(~5 !^ ~3);
-      emit exit 0;
     }"#;
     stdout "0\n3\n6\n-1\n-1\n-4\n-7\n";
 );
 test!(int64_bitwise => r#"
-    from @std/app import start, print, exit
-
-    on start {
+    export fn main {
       print(1 & 2);
       print(1 | 3);
       print(5 ^ 3);
@@ -855,7 +795,6 @@ test!(int64_bitwise => r#"
       print(1 !& 2);
       print(1 !| 2);
       print(5 !^ 3);
-      emit exit 0;
     }"#;
     stdout "0\n3\n6\n-1\n-1\n-4\n-7\n";
 );
@@ -863,19 +802,17 @@ test!(int64_bitwise => r#"
 // Boolean Logic
 
 test!(boolean_logic => r#"
-    from @std/app import start, print, exit
-
-    on start {
+    export fn main {
       print(true);
       print(false);
-      print(toBool(1));
-      print(toBool(0));
-      print(toBool(15));
-      print(toBool(-1));
-      print(toBool(0.0));
-      print(toBool(1.2));
-      print(toBool(''));
-      print(toBool('hi'));
+      print(bool(1));
+      print(bool(0));
+      print(bool(15));
+      print(bool(-1));
+      print(bool(0.0));
+      print(bool(1.2));
+      print(bool(''));
+      print(bool('hi'));
 
       print(true && true);
       print(and(true, false));
@@ -909,8 +846,6 @@ test!(boolean_logic => r#"
       print(xnor(true, false));
       print(false !^ true);
       false.xnor(false).print();
-
-      emit exit 0;
     }"#;
     stdout r#"true
 false
@@ -954,9 +889,7 @@ true
 // String Manipulation
 
 test!(string_ops => r#"
-    from @std/app import start, print, exit
-
-    on start {
+    export fn main {
       concat('Hello, ', 'World!').print();
       print('Hello, ' + 'World!');
 
@@ -983,8 +916,6 @@ test!(string_ops => r#"
 
       const res2 = 'Hello, World!' / ', ';
       print(res2[1]);
-
-      emit exit 0;
     }"#;
     stdout r#"Hello, World!
 Hello, World!
@@ -1005,26 +936,19 @@ World!
 "#;
 );
 test!(string_global_local_equality => r#"
-    from @std/app import start, print, exit
-
-    on start {
+    export fn main {
       const foo = 'foo';
       print(foo.trim() == foo);
-      emit exit 0;
     }"#;
     stdout "true\n";
 );
 test!(string_char_array => r#"
-    from @std/app import start, print, exit
-
-    on start {
+    export fn main {
       const fooCharArray = 'foo'.toCharArray();
       print(#fooCharArray);
       print(fooCharArray[0]);
       print(fooCharArray[1]);
       print(fooCharArray[2]);
-
-      emit exit 0;
     }"#;
     stdout r#"3
 f
@@ -1055,23 +979,21 @@ test!(string_templating => r#"
 // Comparators
 
 test!(equality => r#"
-    from @std/app import start, print, exit
+    export fn main {
+      print(i8(0) == i8(0));
+      print(i8(1).eq(i8(0)));
 
-    on start {
-      print(toInt8(0) == toInt8(0));
-      print(toInt8(1).eq(toInt8(0)));
+      print(i16(0) == i16(0));
+      print(i16(1).eq(i16(0)));
 
-      print(toInt16(0) == toInt16(0));
-      print(toInt16(1).eq(toInt16(0)));
-
-      print(toInt32(0) == toInt32(0));
-      print(toInt32(1).eq(toInt32(0)));
+      print(i32(0) == i32(0));
+      print(i32(1).eq(i32(0)));
 
       print(0 == 0);
       print(1.eq(0));
 
-      print(toFloat32(0.0) == toFloat32(0.0));
-      print(toFloat32(1.2).eq(toFloat32(0.0)));
+      print(f32(0.0) == f32(0.0));
+      print(f32(1.2).eq(f32(0.0)));
 
       print(0.0 == 0.0);
       print(1.2.eq(0.0));
@@ -1081,8 +1003,6 @@ test!(equality => r#"
 
       print('hello' == 'hello');
       print('hello'.eq('world'));
-
-      emit exit 0;
     }"#;
     stdout r#"true
 false
@@ -1103,23 +1023,21 @@ false
 "#;
 );
 test!(not_equals => r#"
-    from @std/app import start, print, exit
+    export fn main {
+      print(i8(0) != i8(0));
+      print(i8(1).neq(i8(0)));
 
-    on start {
-      print(toInt8(0) != toInt8(0));
-      print(toInt8(1).neq(toInt8(0)));
+      print(i16(0) != i16(0));
+      print(i16(1).neq(i16(0)));
 
-      print(toInt16(0) != toInt16(0));
-      print(toInt16(1).neq(toInt16(0)));
-
-      print(toInt32(0) != toInt32(0));
-      print(toInt32(1).neq(toInt32(0)));
+      print(i32(0) != i32(0));
+      print(i32(1).neq(i32(0)));
 
       print(0 != 0);
       print(1.neq(0));
 
-      print(toFloat32(0.0) != toFloat32(0.0));
-      print(toFloat32(1.2).neq(toFloat32(0.0)));
+      print(f32(0.0) != f32(0.0));
+      print(f32(1.2).neq(f32(0.0)));
 
       print(0.0 != 0.0);
       print(1.2.neq(0.0));
@@ -1129,8 +1047,6 @@ test!(not_equals => r#"
 
       print('hello' != 'hello');
       print('hello'.neq('world'));
-
-      emit exit 0;
     }"#;
     stdout r#"false
 true
@@ -1151,31 +1067,27 @@ true
 "#;
 );
 test!(less_than => r#"
-    from @std/app import start, print, exit
+    export fn main {
+      print(i8(0) < i8(1));
+      print(i8(1).lt(i8(0)));
 
-    on start {
-      print(toInt8(0) < toInt8(1));
-      print(toInt8(1).lt(toInt8(0)));
+      print(i16(0) < i16(1));
+      print(i16(1).lt(i16(0)));
 
-      print(toInt16(0) < toInt16(1));
-      print(toInt16(1).lt(toInt16(0)));
-
-      print(toInt32(0) < toInt32(1));
-      print(toInt32(1).lt(toInt32(0)));
+      print(i32(0) < i32(1));
+      print(i32(1).lt(i32(0)));
 
       print(0 < 1);
       print(1.lt(0));
 
-      print(toFloat32(0.0) < toFloat32(1.0));
-      print(toFloat32(1.2).lt(toFloat32(0.0)));
+      print(f32(0.0) < f32(1.0));
+      print(f32(1.2).lt(f32(0.0)));
 
       print(0.0 < 1.0);
       print(1.2.lt(0.0));
 
       print('hello' < 'hello');
       print('hello'.lt('world'));
-
-      emit exit 0;
     }"#;
     stdout r#"true
 false
@@ -1194,31 +1106,27 @@ true
 "#;
 );
 test!(less_than_or_equal => r#"
-    from @std/app import start, print, exit
+    export fn main {
+      print(i8(0) <= i8(1));
+      print(i8(1).lte(i8(0)));
 
-    on start {
-      print(toInt8(0) <= toInt8(1));
-      print(toInt8(1).lte(toInt8(0)));
+      print(i16(0) <= i16(1));
+      print(i16(1).lte(i16(0)));
 
-      print(toInt16(0) <= toInt16(1));
-      print(toInt16(1).lte(toInt16(0)));
-
-      print(toInt32(0) <= toInt32(1));
-      print(toInt32(1).lte(toInt32(0)));
+      print(i32(0) <= i32(1));
+      print(i32(1).lte(i32(0)));
 
       print(0 <= 1);
       print(1.lte(0));
 
-      print(toFloat32(0.0) <= toFloat32(1.0));
-      print(toFloat32(1.2).lte(toFloat32(0.0)));
+      print(f32(0.0) <= f32(1.0));
+      print(f32(1.2).lte(f32(0.0)));
 
       print(0.0 <= 1.0);
       print(1.2.lte(0.0));
 
       print('hello' <= 'hello');
       print('hello'.lte('world'));
-
-      emit exit 0;
     }"#;
     stdout r#"true
 false
@@ -1237,31 +1145,27 @@ true
 "#;
 );
 test!(greater_than => r#"
-    from @std/app import start, print, exit
+    export fn main {
+      print(i8(0) > i8(1));
+      print(i8(1).gt(i8(0)));
 
-    on start {
-      print(toInt8(0) > toInt8(1));
-      print(toInt8(1).gt(toInt8(0)));
+      print(i16(0) > i16(1));
+      print(i16(1).gt(i16(0)));
 
-      print(toInt16(0) > toInt16(1));
-      print(toInt16(1).gt(toInt16(0)));
-
-      print(toInt32(0) > toInt32(1));
-      print(toInt32(1).gt(toInt32(0)));
+      print(i32(0) > i32(1));
+      print(i32(1).gt(i32(0)));
 
       print(0 > 1);
       print(1.gt(0));
 
-      print(toFloat32(0.0) > toFloat32(1.0));
-      print(toFloat32(1.2).gt(toFloat32(0.0)));
+      print(f32(0.0) > f32(1.0));
+      print(f32(1.2).gt(f32(0.0)));
 
       print(0.0 > 1.0);
       print(1.2.gt(0.0));
 
       print('hello' > 'hello');
       print('hello'.gt('world'));
-
-      emit exit 0;
     }"#;
     stdout r#"false
 true
@@ -1280,31 +1184,27 @@ false
 "#;
 );
 test!(greater_than_or_equal => r#"
-    from @std/app import start, print, exit
+    export fn main {
+      print(i8(0) >= i8(1));
+      print(i8(1).gte(i8(0)));
 
-    on start {
-      print(toInt8(0) >= toInt8(1));
-      print(toInt8(1).gte(toInt8(0)));
+      print(i16(0) >= i16(1));
+      print(i16(1).gte(i16(0)));
 
-      print(toInt16(0) >= toInt16(1));
-      print(toInt16(1).gte(toInt16(0)));
-
-      print(toInt32(0) >= toInt32(1));
-      print(toInt32(1).gte(toInt32(0)));
+      print(i32(0) >= i32(1));
+      print(i32(1).gte(i32(0)));
 
       print(0 >= 1);
       print(1.gte(0));
 
-      print(toFloat32(0.0) >= toFloat32(1.0));
-      print(toFloat32(1.2).gte(toFloat32(0.0)));
+      print(f32(0.0) >= f32(1.0));
+      print(f32(1.2).gte(f32(0.0)));
 
       print(0.0 >= 1.0);
       print(1.2.gte(0.0));
 
       print('hello' >= 'hello');
       print('hello'.gte('world'));
-
-      emit exit 0;
     }"#;
     stdout r#"false
 true
@@ -1323,13 +1223,9 @@ false
 "#;
 );
 test!(type_coercion_aliases => r#"
-    from @std/app import start, print, exit
-
-    on start {
-      print(toInt(0) == toInt64(0));
-      print(toFloat(0.0) == toFloat(0.0));
-
-      emit exit 0;
+    export fn main {
+      print(int(0) == i64(0));
+      print(float(0.0) == f64(0.0));
     }"#;
     stdout "true\ntrue\n";
 );
@@ -1350,8 +1246,6 @@ foobar
 );
 
 test!(functions_and_custom_operators => r#"
-    from @std/app import start, print, exit
-
     fn foo() {
       print('foo');
     }
@@ -1380,7 +1274,7 @@ test!(functions_and_custom_operators => r#"
 
     infix doublesum as #+# precedence 11
 
-    on start fn (): void {
+    export fn main {
       foo();
       'to bar'.bar(2, 3).print();
       '>> '.baz('text here');
@@ -1388,7 +1282,6 @@ test!(functions_and_custom_operators => r#"
       print(##3);
       4.doublesum(1).print();
       print(2 #+# 3);
-      emit exit 0;
     }"#;
     stdout r#"foo
 to barto bar3
@@ -1403,8 +1296,6 @@ to barto bar3
 // Conditionals
 
 test!(basic_conditionals => r#"
-    from @std/app import start, print, exit
-
     fn bar() {
       print('bar!');
     }
@@ -1413,7 +1304,7 @@ test!(basic_conditionals => r#"
       print('baz!');
     }
 
-    on start {
+    export fn main {
       if 1 == 0 {
         print('What!?');
       } else {
@@ -1438,8 +1329,6 @@ test!(basic_conditionals => r#"
       cond(!isTrue, fn {
         print('This should not have run');
       });
-
-      emit exit 0;
     }"#;
     stdout r#"Math is sane...
 Math is still sane, for now...
@@ -1448,9 +1337,7 @@ It's true!
 "#;
 );
 test!(nested_conditionals => r#"
-    from @std/app import start, print, exit
-
-    on start {
+    export fn main {
       if true {
         print(1);
         if 1 == 2 {
@@ -1468,13 +1355,10 @@ test!(nested_conditionals => r#"
       } else {
         print('Hmm');
       }
-      emit exit 0;
     }"#;
     stdout "1\n2\n3\n";
 );
 test!(early_return => r#"
-    from @std/app import start, print, exit
-
     fn nearOrFar(distance: float64): string {
       if distance < 5.0 {
         return 'Near!';
@@ -1483,11 +1367,9 @@ test!(early_return => r#"
       }
     }
 
-    on start {
+    export fn main {
       print(nearOrFar(3.14));
       print(nearOrFar(6.28));
-
-      emit exit 0;
     }"#;
     stdout "Near!\nFar!\n";
 );
@@ -1495,9 +1377,7 @@ test!(early_return => r#"
  * are therefore unexpected for end users, or they are inconsistent and a whole lot of pain is
  * needed to support them. */
 test!(conditional_let_assignment => r#"
-    from @std/app import start, print, exit
-
-    on start {
+    export fn main {
       let a = 0;
       let b = 1;
       let c = 2;
@@ -1508,7 +1388,6 @@ test!(conditional_let_assignment => r#"
         a = c;
       }
       print(a);
-      emit exit 0;
     }"#;
     stdout "1\n";
 );
@@ -1516,18 +1395,15 @@ test!(conditional_let_assignment => r#"
 // Object Literals
 
 test!(object_literal_compiler_checks => r#"
-    from @std/app import start, print, exit
-
     type Foo {
       bar: string,
       baz: bool,
     }
 
-    on start {
+    export fn main {
       const foo = new Foo {
         bay: 1.23,
       };
-      emit exit 0;
     }"#;
     stderr r#"Foo object literal improperly defined
 Missing fields: bar, baz
@@ -1568,15 +1444,11 @@ test!(vec_parmap => r#"
     stdout "[2, 4, 6, 8, 10]\n";
 );
 test!(array_literals => r#"
-    from @std/app import start, print, exit
-
-    on start {
+    export fn main {
       const test3 = new Array<int64> [ 1, 2, 4, 8, 16, 32, 64 ];
       print(test3[0]);
       print(test3[1]);
       print(test3[2]);
-
-      emit exit 0;
     }"#;
     stdout "1\n2\n4\n";
 );
@@ -1597,13 +1469,11 @@ test!(object_literals => r#"
     stdout "foo!\ntrue\n";
 );
 test!(object_and_array_reassignment => r#"
-    from @std/app import start, print, exit
-
     type Foo {
       bar: bool
     }
 
-    on start {
+    export fn main {
       let test = new Array<int64> [ 1, 2, 3 ];
       print(test[0]);
       test.set(0, 0);
@@ -1627,8 +1497,6 @@ test!(object_and_array_reassignment => r#"
         bar: true
       };
       print(test4.bar);
-
-      emit exit 0;
     }"#;
     stdout "1\n0\ntrue\nfalse\n";
 );
@@ -1660,16 +1528,13 @@ test!(map_support => r#"
 // Arrays
 
 test!(array_accessor_and_length => r#"
-    from @std/app import start, print, exit
-
-    on start {
+    export fn main {
       print('Testing...');
       const test = '1,2,3'.split(',');
       print(test.length());
       print(test[0]);
       print(test[1]);
       print(test[2]);
-      emit exit 0;
     }"#;
     stdout r#"Testing...
 3
@@ -1680,9 +1545,7 @@ test!(array_accessor_and_length => r#"
 );
 
 test!(array_literal_syntax => r#"
-    from @std/app import start, print, exit
-
-    on start {
+    export fn main {
       print('Testing...');
       const test = new Array<int64> [ 1, 2, 3 ];
       print(test[0]);
@@ -1692,7 +1555,6 @@ test!(array_literal_syntax => r#"
       print(test2[0]);
       print(test2[1]);
       print(test2[2]);
-      emit exit 0;
     }"#;
     stdout r#"Testing...
 1
@@ -1704,9 +1566,7 @@ test!(array_literal_syntax => r#"
 "#;
 );
 test!(array_mutable_push_pop => r#"
-    from @std/app import start, print, exit
-
-    on start {
+    export fn main {
       print('Testing...');
       let test = new Array<int64> [];
       test.push(1);
@@ -1719,7 +1579,6 @@ test!(array_mutable_push_pop => r#"
       print(test.pop());
       print(test.pop());
       print(test.pop()); // Should print error message
-      emit exit 0;
     }"#;
     stdout r#"Testing...
 1
@@ -1732,9 +1591,7 @@ cannot pop empty array
 "#;
 );
 test!(array_length_index_has_join => r#"
-    from @std/app import start, print, exit
-
-    on start {
+    export fn main {
       const test = new Array<int64> [ 1, 1, 2, 3, 5, 8 ];
       const test2 = new Array<string> [ 'Hello', 'World!' ];
       print('has test');
@@ -1751,8 +1608,6 @@ test!(array_length_index_has_join => r#"
 
       print('join test');
       test2.join(', ').print();
-
-      emit exit 0;
     }"#;
     stdout r#"has test
 true
@@ -1771,36 +1626,27 @@ Hello, World!
  * doesn't seem so bad? (Eg `1:2:3` produces an array of [1, 2, 3]. It almost feels like a
  * replacement for the array literal syntax. */
 test!(array_map => r#"
-    from @std/app import start, print, exit
-
-    on start {
+    export fn main {
       const count = [1, 2, 3, 4, 5]; // Ah, ah, ahh!
       const byTwos = count.map(fn (n: int64): Result<int64> = n * 2);
       count.map(fn (n: int64) = toString(n)).join(', ').print();
       byTwos.map(fn (n: Result<int64>) = toString(n)).join(', ').print();
-      emit exit 0;
     }"#;
     stdout "1, 2, 3, 4, 5\n2, 4, 6, 8, 10\n";
 );
 test!(array_repeat_and_map_lin => r#"
-    from @std/app import start, print, exit
-
-    on start {
+    export fn main {
       const arr = [1, 2, 3] * 3;
       const out = arr.mapLin(fn (x: int64): string = x.toString()).join(', ');
       print(out);
-      emit exit 0;
     }"#;
     stdout "1, 2, 3, 1, 2, 3, 1, 2, 3\n";
 );
 test!(array_each_and_find => r#"
-    from @std/app import start, print, exit
-
-    on start {
+    export fn main {
       const test = [ 1, 1, 2, 3, 5, 8 ];
       test.find(fn (val: int64): bool = val % 2 == 1).getOr(0).print();
       test.each(fn (val: int64) = print('=' * val));
-      emit exit 0;
     }"#;
     stdout r#"1
 =
@@ -1812,11 +1658,9 @@ test!(array_each_and_find => r#"
 "#;
 );
 test!(array_every_some_del => r#"
-    from @std/app import start, print, exit
-
     fn isOdd (val: int64): bool = val % 2 == 1;
 
-    on start {
+    export fn main {
       const test = [ 1, 1, 2, 3, 5, 8 ];
       test.every(isOdd).print();
       test.some(isOdd).print();
@@ -1824,7 +1668,6 @@ test!(array_every_some_del => r#"
       print(test.delete(1));
       print(test.delete(4));
       print(test.delete(10));
-      emit exit 0;
     }"#;
     stdout r#"false
 true
@@ -1835,9 +1678,7 @@ cannot remove idx 10 from array with length 4
 "#;
 );
 test!(array_reduce_filter_concat => r#"
-    from @std/app import start, print, exit
-
-    on start {
+    export fn main {
       const test = [ 1, 1, 2, 3, 5, 8 ];
       const test2 = [ 4, 5, 6 ];
       print('reduce test');
@@ -1865,8 +1706,6 @@ test!(array_reduce_filter_concat => r#"
       test.reduce(fn (acc: string, i: int): string = ((acc == '') && (i % 2 == 1)) ? i.toString() : (i % 2 == 1 ? (acc + ', ' + i.toString()) : acc), '').print();
       // TODO: Even more ridiculous when you want to allow parallelism
       test.reducePar(fn (acc: string, i: int): string = ((acc == '') && (i % 2 == 1)) ? i.toString() : (i % 2 == 1 ? (acc + ', ' + i.toString()) : acc), fn (acc: string, cur: string): string = ((acc != '') && (cur != '')) ? (acc + ', ' + cur) : (acc != '' ? acc : cur), '').print();
-
-      emit exit 0;
     }"#;
     stdout r#"reduce test
 20
@@ -1883,14 +1722,12 @@ reduce as filter and concat test
 "#;
 );
 test!(array_custom_types => r#"
-    from @std/app import start, print, exit
-
     type Foo {
       foo: string,
       bar: bool
     }
 
-    on start {
+    export fn main {
       const five = [1, 2, 3, 4, 5];
       five.map(fn (n: int64): Foo {
         return new Foo {
@@ -1898,7 +1735,6 @@ test!(array_custom_types => r#"
           bar: n % 2 == 0,
         };
       }).filter(fn (f: Foo): bool = f.bar).map(fn (f: Foo): string = f.foo).join(', ').print();
-      emit exit 0;
     }"#;
     stdout "2, 4\n";
 );
@@ -1908,15 +1744,12 @@ test!(array_custom_types => r#"
 // This was super useful for a whole host of things.
 
 test!(to_hash => r#"
-    from @std/app import start, print, exit
-
-    on start {
+    export fn main {
       print(toHash(1));
       print(toHash(3.14159));
       print(toHash(true));
       print(toHash('false'));
       print(toHash([1, 2, 5, 3]));
-      emit exit 0;
     }"#;
     stdout r#"-1058942856030168491
 -5016367128657347516
@@ -1926,9 +1759,7 @@ test!(to_hash => r#"
 "#;
 );
 test!(basic_hashmap => r#"
-    from @std/app import start, print, exit
-
-    on start {
+    export fn main {
       const test = newHashMap('foo', 1);
       test.set('bar', 2);
       test.set('baz', 99);
@@ -1939,7 +1770,6 @@ test!(basic_hashmap => r#"
       print(test.vals().map(fn (n: int64): string = n.toString()).join(', '));
       print(test.length());
       print(test.get('foo'));
-      emit exit 0;
     }"#;
     stdout r#"key: foo
 val: 1
@@ -1954,21 +1784,18 @@ foo, bar, baz
 "#;
 );
 test!(keyval_to_hashmap => r#"
-    from @std/app import start, print, exit
-
     fn kv(k: any, v: anythingElse) = new KeyVal<any, anythingElse> {
       key: k,
       val: v
     }
 
-    on start {
+    export fn main {
       const kva = [ kv(1, 'foo'), kv(2, 'bar'), kv(3, 'baz') ];
       const hm = kva.toHashMap();
       print(hm.keyVal().map(fn (n: KeyVal<int64, string>): string {
         return 'key: ' + toString(n.key) + \"\\nval: \" + n.val;
       }).join(\"\\n\"));
       print(hm.get(1));
-      emit exit 0;
     }"#;
     stdout r#"key: 1
 val: foo
@@ -1980,14 +1807,11 @@ foo
 "#;
 );
 test!(hashmap_double_set => r#"
-    from @std/app import start, print, exit
-
-    on start {
+    export fn main {
       let test = newHashMap('foo', 'bar');
       test.get('foo').print();
       test.set('foo', 'baz');
       print(test.get('foo'));
-      emit exit 0;
     }"#;
     stdout "bar\nbaz\n";
 );
@@ -2045,14 +1869,12 @@ length test
 // Generics
 
 test!(generics => r#"
-    from @std/app import start, print, exit
-
     type box<V> {
       set: bool,
       val: V
     }
 
-    on start fn {
+    export fn main {
       let int8Box = new box<int8> {
         val: 8.toInt8(),
         set: true
@@ -2077,8 +1899,6 @@ test!(generics => r#"
       stringBoxBox.set.print();
       stringBoxBox.val.set.print();
       print(stringBoxBox.val.val);
-
-      emit exit 0;
     }"#;
     stdout r#"8
 true
@@ -2090,21 +1910,17 @@ hello, nested generics!
 "#;
 );
 test!(invalid_generics => r#"
-    from @std/app import start, print, exit
-
     type box<V> {
       set: bool,
       val: V
     }
 
-    on start fn {
+    export fn main {
       let stringBox = new box<string> {
         set: true,
         val: 'str'
       };
       stringBox.val = 8;
-
-      emit exit 0;
     }"#;
     stderr "stringBox.val is of type string but assigned a value of type int64\n"
 );
@@ -2112,8 +1928,6 @@ test!(invalid_generics => r#"
 // Interfaces
 
 test!(basic_interfaces => r#"
-    from @std/app import start, print, exit
-
     interface Stringifiable {
       toString(Stringifiable): string
     }
@@ -2122,10 +1936,9 @@ test!(basic_interfaces => r#"
       print(\"'\" + toString(toQuote) + \"'\");
     }
 
-    on start {
+    export fn main {
       quoteAndPrint('Hello, World');
       quoteAndPrint(5);
-      emit exit 0;
     }"#;
     stdout "'Hello, World!'\n'5'\n";
 );
@@ -2399,8 +2212,6 @@ test!(basic_interfaces => r#"
 // Maybe, Result, and Either
 
 test!(maybe => r#"
-    from @std/app import start, print, exit
-
     fn fiver(val: float64) {
       if val.toInt64() == 5 {
         return some(5);
@@ -2409,7 +2220,7 @@ test!(maybe => r#"
       }
     }
 
-    on start {
+    export fn main {
       const maybe5 = fiver(5.5);
       if maybe5.isSome() {
         print(maybe5.getOr(0));
@@ -2438,8 +2249,6 @@ test!(maybe => r#"
 
       maybe5.toString().print();
       maybeNot5.toString().print();
-
-      emit exit 0;
     }"#;
     stdout r#"5
 Correctly received nothing!
@@ -2450,8 +2259,6 @@ none
 "#;
 );
 test!(result => r#"
-    from @std/app import start, print, exit
-
     fn reciprocal(val: float64) {
       if val == 0.0 {
         return err('Divide by zero error!');
@@ -2460,7 +2267,7 @@ test!(result => r#"
       }
     }
 
-    on start {
+    export fn main {
       const oneFifth = reciprocal(5.0);
       if oneFifth.isOk() {
         print(oneFifth.getOr(0.0));
@@ -2493,8 +2300,6 @@ test!(result => r#"
 
       const res = ok('foo');
       print(res.getErr('there is no error'));
-
-      emit exit 0;
     }"#;
     stdout r#"0.2
 Divide by zero error!
@@ -2506,9 +2311,7 @@ there is no error
 "#;
 );
 test!(either => r#"
-    from @std/app import start, print, exit
-
-    on start {
+    export fn main {
       const strOrNum = getMainOrAlt(true);
       if strOrNum.isMain() {
         print(strOrNum.getMainOr(''));
@@ -2525,8 +2328,6 @@ test!(either => r#"
 
       strOrNum.toString().print();
       strOrNum2.toString().print();
-
-      emit exit 0;
     }
 
     fn getMainOrAlt(isMain: bool) {
@@ -2546,8 +2347,6 @@ string
 // Types
 
 test!(user_types_and_generics => r#"
-    from @std/app import start, print, exit
-
     type foo<A, B> {
       bar: A,
       baz: B
@@ -2555,7 +2354,7 @@ test!(user_types_and_generics => r#"
 
     type foo2 = foo<int64, float64>
 
-    on start fn {
+    export fn main {
       let a = new foo<string, int64> {
         bar: 'bar',
         baz: 0
@@ -2576,8 +2375,6 @@ test!(user_types_and_generics => r#"
       print(b.bar);
       print(c.bar);
       print(d.bar);
-
-      emit exit 0;
     }"#;
     stdout "bar\n0\n0\n1\n";
 );
@@ -2652,92 +2449,9 @@ test!(user_types_and_generics => r#"
   End
 */
 
-// Custom Events
-
-test!(custom_event_loop => r#"
-    from @std/app import start, print, exit
-
-    event loop: int64
-
-    on loop fn looper(val: int64) {
-      print(val);
-      if val >= 10 {
-        emit exit 0;
-      } else {
-        emit loop val + 1 || 0;
-      }
-    }
-
-    on start {
-      emit loop 0;
-    }"#;
-    stdout r#"0
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-"#;
-);
-test!(user_defined_type_event => r#"
-    from @std/app import start, print, exit
-
-    type Thing {
-      foo: int64,
-      bar: string
-    }
-
-    event thing: Thing
-
-    on thing fn (t: Thing) {
-      print(t.foo);
-      print(t.bar);
-      emit exit 0;
-    }
-
-    on start {
-      emit thing new Thing {
-        foo: 1,
-        bar: 'baz'
-      };
-    }"#;
-    stdout "1\nbaz\n";
-);
-test!(multiple_event_handlers => r#"
-    from @std/app import start, print, exit
-
-    event aString: string
-
-    on aString fn(str: string) {
-      print('hey I got a string! ' + str);
-    }
-
-    on aString fn(str: string) {
-      print('I also got a string! ' + str);
-    }
-
-    on aString fn(ignore: string) {
-      wait(100);
-      emit exit 0;
-    }
-
-    on start {
-      emit aString 'hi';
-    }"#;
-    stdout_contains "hey I got a string! hi";
-    stdout_contains "I also got a string! hi";
-);
-
 // Closures
 
 test!(closure_creation_and_usage => r#"
-    from @std/app import start, print, exit
-
     fn closure(): function {
       let num = 0;
       return fn (): int64 {
@@ -2746,32 +2460,26 @@ test!(closure_creation_and_usage => r#"
       };
     }
 
-    on start fn (): void {
+    export fn main {
       const counter1 = closure();
       const counter2 = closure();
       print(counter1());
       print(counter1());
       print(counter2());
-      emit exit 0;
     }"#;
     stdout "1\n2\n1\n";
 );
 test!(closure_by_name => r#"
-    from @std/app import start, print, exit
-
     fn double(x: int64): int64 = x * 2 || 0;
 
-    on start {
+    export fn main {
       const numbers = [1, 2, 3, 4, 5];
       numbers.map(double).map(toString).join(', ').print();
-      emit exit 0;
     }"#;
     stdout "2, 4, 6, 8, 10\n";
 );
 test!(inlined_closure_with_arg => r#"
-    from @std/app import start, print, exit
-
-    on start {
+    export fn main {
       const arghFn = fn(argh: string) {
         print(argh);
       };
@@ -2784,9 +2492,7 @@ test!(inlined_closure_with_arg => r#"
 // Compiler Errors
 
 test!(cross_type_comparisons => r#"
-    from @std/app import start, print, exit
-
-    on start {
+    export fn main {
       print(true == 1);
       emit exit 0;
     }"#;
@@ -2796,24 +2502,19 @@ true == 1
 "#;
 );
 test!(unreachable_code => r#"
-    from @std/app import start, print, exit
-
     fn unreachable() {
       return 'blah';
       print('unreachable!');
     }
 
-    on start {
+    export fn main {
       unreachable();
-      emit exit 0;
     }"#;
     stderr r#"Unreachable code in function 'unreachable' after:
 return 'blah'; on line 4:12
 "#;
 );
 test!(recursive_functions => r#"
-    from @std/app import start, print, exit
-
     fn fibonacci(n: int64) {
       if n < 2 {
         return 1;
@@ -2822,33 +2523,27 @@ test!(recursive_functions => r#"
       }
     }
 
-    on start {
+    export fn main {
       print(fibonacci(0));
       print(fibonacci(1));
       print(fibonacci(2));
       print(fibonacci(3));
       print(fibonacci(4));
-      emit exit 0;
     }"#;
     stderr "Recursive callstack detected: fibonacci -> fibonacci. Aborting.\n";
 );
 test!(undefined_function_call => r#"
-    from @std/app import start, print, exit
-
-    on start {
+    export fn main {
       print(i64str(5)); // Illegal direct opcode usage
-      emit exit 0;
     }"#;
     stderr "i64str is not a function but used as one.\ni64str on line 4:18\n";
 );
-test!(totally_broken_statement => r#"
-    import @std/app
-
+/*test!(totally_broken_statement => r#"
     on app.start {
       app.oops
     }"#;
     stderr "TODO";
-);
+); // TODO: It's so broken it crashes the parser. Get the parser more resilient and revive this */
 /* Pending
   Describe "Importing unexported values"
     before() {
@@ -2897,29 +2592,23 @@ new Piece {
 // Module-level constants
 
 test!(module_level_constant => r#"
-    import @std/app
-
     const helloWorld = 'Hello, World!';
 
-    on app.start {
-      app.print(helloWorld);
-      emit app.exit 0;
+    export fn main {
+      print(helloWorld);
     }"#;
     stdout "Hello, World!\n";
 );
 test!(module_level_constant_from_function_call => r#"
-    from @std/app import start, print, exit
-
     const three = add(1, 2);
 
     fn fiver() = 5;
 
     const five = fiver();
 
-    on start {
+    export fn main {
       print(three);
       print(five);
-      emit exit 0;
     }"#;
     stdout "3\n5\n";
 );
@@ -2927,12 +2616,11 @@ test!(module_level_constant_from_function_call => r#"
 // @std/trig
 
 test!(std_trig => r#"
-    from @std/app import start, print, exit
     import @std/trig
     from @std/trig import e, pi, tau
     // shouldn't be necessary, but compiler issue makes it so
 
-    on start {
+    export fn main {
       'Logarithms and e^x'.print();
       print(trig.exp(e));
       print(trig.ln(e));
@@ -2995,8 +2683,6 @@ test!(std_trig => r#"
       print(trig.hyperbolicArcsecant(0.5));
       print(trig.hyperbolicArccosecant(tau / 6.0));
       print(trig.hyperbolicArccotangent(tau / 6.0));
-
-      emit exit 0;
     }"#;
     stdout r#"Logarithms and e^x
 15.154262241479259
@@ -3464,9 +3150,7 @@ End
 // Clone
 
 test!(clone => r#"
-    from @std/app import start, print, exit
-
-    on start {
+    export fn main {
       let a = 3;
       let b = a.clone();
       a = 4;
@@ -3477,7 +3161,6 @@ test!(clone => r#"
       d.set(0, 2);
       c.map(fn (val: int): string = val.toString()).join(', ').print();
       d.map(fn (val: int): string = val.toString()).join(', ').print();
-      emit exit 0;
     }"#;
     stdout "4\n3\n1, 2, 3\n2, 2, 3\n";
 );
@@ -3485,9 +3168,7 @@ test!(clone => r#"
 // Runtime Error
 
 test!(get_or_exit => r#"
-    from @std/app import start, print, exit
-
-    on start {
+    export fn main {
       const xs = [0, 1, 2, 5];
       const x1 = xs[1].getOrExit();
       print(x1);
@@ -3495,8 +3176,6 @@ test!(get_or_exit => r#"
       print(x2);
       const x5 = xs[5].getOrExit();
       print(x5);
-
-      emit exit 0;
     }"#;
     status 1;
 );
@@ -3671,49 +3350,42 @@ End
 // @std/seq
 
 test!(seq_and_next => r#"
-    from @std/app import start, print, exit
     from @std/seq import seq, next
 
-    on start {
+    export fn main {
       let s = seq(2);
       print(s.next());
       print(s.next());
       print(s.next());
-      emit exit 0;
     }"#;
     stdout "0\n1\nerror: sequence out-of-bounds\n";
 );
 test!(seq_each => r#"
-    from @std/app import start, print, exit
     from @std/seq import seq, each
 
-    on start {
+    export fn main {
       let s = seq(3);
       s.each(fn (i: int64) = print(i));
-      emit exit 0;
     }"#;
     stdout "0\n1\n2\n";
 );
 test!(seq_while => r#"
-    from @std/app import start, print, exit
     from @std/seq import seq, while
 
-    on start {
+    export fn main {
       let s = seq(100);
       let sum = 0;
       s.while(fn = sum < 10, fn {
         sum = sum + 1 || 0;
       });
       print(sum);
-      emit exit 0;
     }"#;
     stdout "10\n";
 );
 test!(seq_do_while => r#"
-    from @std/app import start, print, exit
     from @std/seq import seq, doWhile
 
-    on start {
+    export fn main {
       let s = seq(100);
       let sum = 0;
       // TODO: Get automatic type inference working on anonymous multi-line functions
@@ -3722,15 +3394,13 @@ test!(seq_do_while => r#"
         return sum < 10;
       });
       print(sum);
-      emit exit 0;
     }"#;
     stdout "10\n";
 );
 test!(seq_recurse => r#"
-    from @std/app import start, print, exit
     from @std/seq import seq, Self, recurse
 
-    on start {
+    export fn main {
       print(seq(100).recurse(fn fibonacci(self: Self, i: int64): Result<int64> {
         if i < 2 {
           return ok(1);
@@ -3747,12 +3417,10 @@ test!(seq_recurse => r#"
           return (prev || 0) + (prevPrev || 0);
         }
       }, 8));
-      emit exit 0;
     }"#;
     stdout "34\n";
 );
 test!(seq_no_op_one_liner_regression_test => r#"
-    import @std/app
     from @std/seq import seq, Self, recurse
 
     fn doNothing(x: int) : int = x;
@@ -3761,21 +3429,18 @@ test!(seq_no_op_one_liner_regression_test => r#"
         return ok(x);
     }, x) || 0;
 
-    on app.start {
+    export fn main {
         const x = 5;
-        app.print(doNothing(x)); // 5
-        app.print(doNothingRec(x)); // 5
+        print(doNothing(x)); // 5
+        print(doNothingRec(x)); // 5
 
         const xs = [1, 2, 3];
-        app.print(xs.map(doNothing).map(toString).join(' ')); // 1 2 3
-        app.print(xs.map(doNothingRec).map(toString).join(' ')); // 1 2 3
-
-        emit app.exit 0;
+        print(xs.map(doNothing).map(toString).join(' ')); // 1 2 3
+        print(xs.map(doNothingRec).map(toString).join(' ')); // 1 2 3
     }"#;
     stdout "5\n5\n1 2 3\n1 2 3\n"; // TODO: Do we keep a regression test for a prior iteration?
 );
 test!(seq_recurse_decrement_regression_test => r#"
-    import @std/app
     from @std/seq import seq, Self, recurse
 
     fn triangularRec(x: int) : int = seq(x + 1 || 0).recurse(fn (self: Self, x: int) : Result<int> {
@@ -3787,11 +3452,9 @@ test!(seq_recurse_decrement_regression_test => r#"
       }
     }, x) || 0
 
-    on app.start {
+    export fn main {
       const xs = [1, 2, 3];
-      app.print(xs.map(triangularRec).map(toString).join(' ')); // 1 3 6
-
-      emit app.exit 0;
+      print(xs.map(triangularRec).map(toString).join(' ')); // 1 3 6
     }"#;
     stdout "1 3 6\n"; // TODO: Same concern, do regression tests matter for a different codebase?
 );
@@ -3799,9 +3462,7 @@ test!(seq_recurse_decrement_regression_test => r#"
 // Tree
 
 test!(tree_construction_and_access => r#"
-    from @std/app import start, print, exit
-
-    on start {
+    export fn main {
       const myTree = newTree('foo');
       const barNode = myTree.addChild('bar');
       const bazNode = myTree.addChild('baz');
@@ -3810,20 +3471,16 @@ test!(tree_construction_and_access => r#"
       print(myTree.getRootNode() || 'wrong');
       print(bayNode.getParent() || 'wrong');
       print(myTree.getChildren().map(fn (c: Node<string>): string = c || 'wrong').join(', '));
-
-      emit exit 0;
     }"#;
     stdout "foo\nbar\nbar, baz\n";
 );
 test!(tree_user_defined_types => r#"
-    from @std/app import start, print, exit
-
     type Foo {
       foo: string,
       bar: bool,
     }
 
-    on start {
+    export fn main {
       const myTree = newTree(new Foo {
         foo: 'myFoo',
         bar: false,
@@ -3834,14 +3491,11 @@ test!(tree_user_defined_types => r#"
       };
       const myFoo = myTree.getRootNode() || wrongFoo;
       print(myFoo.foo);
-      emit exit 0;
     }"#;
     stdout "myFoo\n";
 );
 test!(tree_every_find_some_reduce_prune => r#"
-    from @std/app import start, print, exit
-
-    on start {
+    export fn main {
       const myTree = newTree('foo');
       const barNode = myTree.addChild('bar');
       const bazNode = myTree.addChild('baz');
@@ -3863,7 +3517,6 @@ test!(tree_every_find_some_reduce_prune => r#"
       print(myTree.length());
 
       myTree.reduce(fn (acc: int, i: Node<string>): int = (i || 'wrong').length() + acc || 0, 0).print();
-      emit exit 0;
     }"#;
     stdout r#"true
 false
@@ -3876,9 +3529,7 @@ baz
 "#;
 );
 test!(subtree_and_nested_tree_construction => r#"
-    from @std/app import start, print, exit
-
-    on start {
+    export fn main {
       const bigNestedTree = newTree('foo')
         .addChild('bar')
         .getTree()
@@ -3895,8 +3546,6 @@ test!(subtree_and_nested_tree_construction => r#"
 
       print(bigNestedTree.getRootNode() || 'wrong');
       print(mySubtree.getRootNode() || 'wrong');
-
-      emit exit 0;
     }"#;
     stdout "foo\nbaz\n";
 );
@@ -3904,48 +3553,32 @@ test!(subtree_and_nested_tree_construction => r#"
 // Error printing
 
 test!(eprint => r#"
-    from @std/app import start, eprint, exit
-    on start {
+    export fn main {
       eprint('This is an error');
-      emit exit 0;
     }"#;
     stderr "This is an error\n";
-);
-test!(stderr_event => r#"
-    from @std/app import start, stderr, exit
-    on start {
-      emit stderr 'This is an error';
-      wait(10);
-      emit exit 0;
-    }"#;
-    stderr "This is an error";
 );
 
 // @std/cmd
 
 test!(cmd_exec => r#"
-    import @std/app
     import @std/cmd
 
-    on app.start {
+    export fn main {
       const executionResult: cmd.ExecRes = cmd.exec('echo 1');
-      app.print(executionResult.stdout);
-      emit app.exit 0;
+      print(executionResult.stdout);
     }"#;
     stdout "1\n";
 );
 test!(cmd_sequential => r#"
-    from @std/app import start, print, exit
     from @std/cmd import exec
 
-    on start {
+    export fn main {
       exec('touch test.txt');
       exec('echo foo >> test.txt');
       exec('echo bar >> test.txt');
       exec('cat test.txt').stdout.print();
       exec('rm test.txt');
-
-      emit exit 0;
     }"#;
     stdout "foobar\n";
 );
@@ -4004,17 +3637,14 @@ End
 // JSON
 
 test!(json_construction_printing => r#"
-    from @std/app import start, print, exit
     from @std/json import JSON, toJSON, toString, JSONBase, JSONNode, IsObject, Null
 
-    on start {
+    export fn main {
       1.0.toJSON().print();
       true.toJSON().print();
       'Hello, JSON!'.toJSON().print();
       [1.0, 2.0, 5.0].toJSON().print();
       toJSON().print();
-
-      emit exit 0;
     }"#;
     stdout r#"1
 true
@@ -4024,10 +3654,9 @@ null
 "#;
 );
 test!(json_complex_construction => r#"
-    from @std/app import start, print, exit
     from @std/json import JSON, toString, JSONBase, JSONNode, IsObject, Null, newJSONObject, newJSONArray, addKeyVal, push
 
-    on start {
+    export fn main {
       newJSONObject()
         .addKeyVal('mixed', 'values')
         .addKeyVal('work', true)
@@ -4035,8 +3664,6 @@ test!(json_complex_construction => r#"
           .push(4.0)
           .push('arrays'))
         .print();
-
-      emit exit 0;
     }"#;
     stdout r#"{"mixed": "values", "work": true, "even": [4, "arrays"]}""#;
 );
@@ -4160,227 +3787,172 @@ End
 // Saturating Math
 
 test!(int8_sadd => r#"
-    from @std/app import start, exit
-    on start { emit exit sadd(toInt8(1), toInt8(2)); }"#;
+    export fn main { return sadd(i8(1), i8(2)); }"#;
     status 3;
 );
 test!(int8_ssub => r#"
-    from @std/app import start, exit
-    on start { emit exit ssub(toInt8(2), toInt8(1)); }"#;
+    export fn main { return ssub(i8(2), i8(1)); }"#;
     status 1;
 );
 test!(int8_smul => r#"
-    from @std/app import start, exit
-    on start { emit exit smul(toInt8(2), toInt8(1)); }"#;
+    export fn main { return smul(i8(2), i8(1)); }"#;
     status 2;
 );
 test!(int8_sdiv => r#"
-    from @std/app import start, exit
-    on start { emit exit sdiv(toInt8(6), toInt8(0)); }"#;
+    export fn main { return sdiv(i8(6), i8(0)); }"#;
     status 127;
 );
 test!(int8_spow => r#"
-    from @std/app import start, exit
-    on start { emit exit spow(toInt8(6), toInt8(2)); }"#;
+    export fn main { return spow(i8(6), i8(2)); }"#;
     status 36;
 );
 test!(int16_sadd => r#"
-    from @std/app import start, print, exit
-    on start {
-      print(sadd(toInt16(1), toInt16(2)));
-      emit exit 0;
+    export fn main {
+      print(sadd(i16(1), i16(2)));
     }"#;
     stdout "3\n";
 );
 test!(int16_ssub => r#"
-    from @std/app import start, print, exit
-    on start {
-      print(ssub(toInt16(2), toInt16(1)));
-      emit exit 0;
+    export fn main {
+      print(ssub(i16(2), i16(1)));
     }"#;
     stdout "1\n";
 );
 test!(int16_smul => r#"
-    from @std/app import start, print, exit
-    on start {
-      print(smul(toInt16(2), toInt16(1)));
-      emit exit 0;
+    export fn main {
+      print(smul(i16(2), i16(1)));
     }"#;
     stdout "2\n";
 );
 test!(int16_sdiv => r#"
-    from @std/app import start, print, exit
-    on start {
-      print(sdiv(toInt16(6), toInt16(2)));
-      emit exit 0;
+    export fn main {
+      print(sdiv(i16(6), i16(2)));
     }"#;
     stdout "3\n";
 );
 test!(int16_spow => r#"
-    from @std/app import start, print, exit
-    on start {
-      print(spow(toInt16(6), toInt16(2)));
-      emit exit 0;
+    export fn main {
+      print(spow(i16(6), i16(2)));
     }"#;
     stdout "36\n";
 );
 test!(int32_sadd => r#"
-    from @std/app import start, print, exit
-    on start {
-      sadd(1.toInt32(), 2.toInt32()).print();
-      emit exit 0;
+    export fn main {
+      sadd(1.i32(), 2.i32()).print();
     }"#;
     stdout "3\n";
 );
 test!(int32_ssub => r#"
-    from @std/app import start, print, exit
-    on start {
-      ssub(2.toInt32(), 1.toInt32()).print();
-      emit exit 0;
+    export fn main {
+      ssub(2.i32(), 1.i32()).print();
     }"#;
     stdout "1\n";
 );
 test!(int32_smul => r#"
-    from @std/app import start, print, exit
-    on start {
-      smul(2.toInt32(), 1.toInt32()).print();
-      emit exit 0;
+    export fn main {
+      smul(2.i32(), 1.i32()).print();
     }"#;
     stdout "2\n";
 );
 test!(int32_sdiv => r#"
-    from @std/app import start, print, exit
-    on start {
-      sdiv(6.toInt32(), 2.toInt32()).print();
-      emit exit 0;
+    export fn main {
+      sdiv(6.i32(), 2.i32()).print();
     }"#;
     stdout "3\n";
 );
 test!(int32_spow => r#"
-    from @std/app import start, print, exit
-    on start {
-      spow(6.toInt32(), 2.toInt32()).print();
-      emit exit 0;
+    export fn main {
+      spow(6.i32(), 2.i32()).print();
     }"#;
     stdout "36\n";
 );
 test!(int64_sadd => r#"
-    from @std/app import start, print, exit
-    on start {
+    export fn main {
       print(1 +. 2);
-      emit exit 0;
     }"#;
     stdout "3\n";
 );
 test!(int64_ssub => r#"
-    from @std/app import start, print, exit
-    on start {
+    export fn main {
       print(2 -. 1);
-      emit exit 0;
     }"#;
     stdout "1\n";
 );
 test!(int64_smul => r#"
-    from @std/app import start, print, exit
-    on start {
+    export fn main {
       print(2 *. 1);
-      emit exit 0;
     }"#;
     stdout "2\n";
 );
 test!(int64_sdiv => r#"
-    from @std/app import start, print, exit
-    on start {
+    export fn main {
       print(6 /. 2);
-      emit exit 0;
     }"#;
     stdout "3\n";
 );
 test!(int64_spow => r#"
-    from @std/app import start, print, exit
-    on start {
+    export fn main {
       print(6 **. 2);
-      emit exit 0;
     }"#;
     stdout "36\n";
 );
 test!(float32_sadd => r#"
-    from @std/app import start, print, exit
-    on start {
-      print(toFloat32(1) +. toFloat32(2));
-      emit exit 0;
+    export fn main {
+      print(f32(1) +. f32(2));
     }"#;
     stdout "3\n";
 );
 test!(float32_ssub => r#"
-    from @std/app import start, print, exit
-    on start {
-      print(toFloat32(2) -. toFloat32(1));
-      emit exit 0;
+    export fn main {
+      print(f32(2) -. f32(1));
     }"#;
     stdout "1\n";
 );
 test!(float32_smul => r#"
-    from @std/app import start, print, exit
-    on start {
-      print(toFloat32(2) *. toFloat32(1));
-      emit exit 0;
+    export fn main {
+      print(f32(2) *. f32(1));
     }"#;
     stdout "2\n";
 );
 test!(float32_sdiv => r#"
-    from @std/app import start, print, exit
-    on start {
-      print(toFloat32(6) /. toFloat32(2));
-      emit exit 0;
+    export fn main {
+      print(f32(6) /. f32(2));
     }"#;
     stdout "3\n";
 );
 test!(float32_spow => r#"
-    from @std/app import start, print, exit
-    on start {
-      print(toFloat32(6) **. toFloat32(2));
-      emit exit 0;
+    export fn main {
+      print(f32(6) **. f32(2));
     }"#;
     stdout "36\n";
 );
 test!(float64_sadd => r#"
-    from @std/app import start, print, exit
-    on start {
+    export fn main {
       (1.0 +. 2.0).print();
-      emit exit 0;
     }"#;
     stdout "3\n";
 );
 test!(float64_ssub => r#"
-    from @std/app import start, print, exit
-    on start {
+    export fn main {
       (2.0 -. 1.0).print();
-      emit exit 0;
     }"#;
     stdout "1\n";
 );
 test!(float64_smul => r#"
-    from @std/app import start, print, exit
-    on start {
+    export fn main {
       (2.0 *. 1.0).print();
-      emit exit 0;
     }"#;
     stdout "2\n";
 );
 test!(float64_sdiv => r#"
-    from @std/app import start, print, exit
-    on start {
+    export fn main {
       (6.0 /. 2.0).print();
-      emit exit 0;
     }"#;
     stdout "3\n";
 );
 test!(float64_spow => r#"
-    from @std/app import start, print, exit
-    on start {
+    export fn main {
       (6.0 **. 2.0).print();
-      emit exit 0;
     }"#;
     stdout "36\n";
 );
