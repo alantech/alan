@@ -127,10 +127,6 @@ export fn print(i: Result<i32>) binds println_result;
 export fn print(i: i64) binds println;
 export fn print(i: Result<i64>) binds println_result;
 
-export event stdout: String;
-fn toStdout(strn: String) binds stdout;
-on stdout toStdout;
-
 // Thread-related bindings
 export fn wait(t: i64) binds wait;
 

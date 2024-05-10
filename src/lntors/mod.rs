@@ -1,10 +1,8 @@
 use ordered_hash_map::OrderedHashMap;
 
-use crate::lntors::event::generate as evt_generate;
 use crate::lntors::function::generate as fn_generate;
 use crate::program::Program;
 
-mod event;
 mod function;
 mod typen;
 
@@ -12,11 +10,6 @@ pub fn lntors(entry_file: String) -> Result<String, Box<dyn std::error::Error>> 
     // TODO: Figure out a better way to include custom Rust functions that we may then bind
     let preamble = include_str!("../std/root.rs").to_string();
     let program = Program::new(entry_file)?;
-    // Generate all of the events and their handlers defined across all scopes
-    // TODO: Pruning unused events should be pursued eventually
-    let mut fns = OrderedHashMap::new();
-    let (event_fns, f) = evt_generate(&program, fns)?;
-    fns = f;
     // Getting the entry scope, where the `main` function is expected
     let scope = match program.scopes_by_file.get(&program.entry_file.clone()) {
         Some((_, _, s)) => s,
@@ -50,11 +43,10 @@ pub fn lntors(entry_file: String) -> Result<String, Box<dyn std::error::Error>> 
     assert_eq!(func.len(), 1);
     assert_eq!(func[0].args.len(), 0);
     // Assertion proven, start emitting the Rust `main` function
-    fns = fn_generate("main".to_string(), &func[0], &scope, &program, fns)?;
+    let fns = fn_generate("main".to_string(), &func[0], &scope, &program, OrderedHashMap::new())?;
     Ok(format!(
-        "{}\n{}\n{}",
+        "{}\n{}",
         preamble,
-        event_fns,
         fns.into_values().collect::<Vec<String>>().join("\n")
     )
     .to_string())

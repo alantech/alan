@@ -453,13 +453,11 @@ build!(elsen, token!("else"));
 build!(precedence, token!("precedence"));
 build!(infix, token!("infix"));
 build!(prefix, token!("prefix"));
+build!(postfix, token!("postfix"));
 build!(asn, token!("as"));
 build!(returnn, token!("return"));
-build!(emit, token!("emit"));
 build!(letn, token!("let"));
 build!(constn, token!("const"));
-build!(on, token!("on"));
-build!(event, token!("event"));
 build!(export, token!("export"));
 build!(typen, token!("type"));
 build!(import, token!("import"));
@@ -593,6 +591,34 @@ test!(varlist =>
         }
     ];
 );
+// Function aliases don't seem to exist in Rust, so just redefining this, it's the same as 'var'
+build!(typename, one_or_more!(varsegment));
+named_and!(typegenerics: TypeGenerics =>
+    a: String as opencaret,
+    b: String as optwhitespace,
+    generics: Vec<FullTypename> as generics,
+    c: String as optwhitespace,
+    d: String as closecaret,
+);
+impl TypeGenerics {
+    pub fn to_string(&self) -> String {
+        format!(
+            "<{}>",
+            self.generics
+                .iter()
+                .map(|gen| gen.to_string())
+                .collect::<Vec<String>>()
+                .join(", ")
+        )
+    }
+}
+named_and!(fulltypename: FullTypename =>
+    typename: String as typename, // TODO: Maybe we want to keep this in a tree form in the future?
+    opttypegenerics: Option<TypeGenerics> as opt(typegenerics)
+);
+test!(fulltypename =>
+    pass "Array<Array<int64>>" => "";
+);
 list!(depsegments: String => variable, slash);
 named_and!(curdir: CurDir =>
     dot: String as dot,
@@ -680,58 +706,34 @@ impl Dependency {
 }
 named_and!(standardimport: StandardImport =>
     import: String as import,
-    a: String as blank,
+    a: String as optblank,
+    opttypegenerics: Option<TypeGenerics> as opt(typegenerics),
+    b: String as optblank,
     dependency: Dependency as dependency,
     renamed: Option<Renamed> as opt(renamed),
-    b: String as optblank,
-    c: String as newline,
-    d: String as optwhitespace,
+    c: String as optblank,
+    d: String as newline,
+    e: String as optwhitespace,
 );
 named_and!(fromimport: FromImport =>
     from: String as from,
-    a: String as blank,
+    a: String as optblank,
+    opttypegenerics: Option<TypeGenerics> as opt(typegenerics),
+    b: String as optblank,
     dependency: Dependency as dependency,
-    b: String as blank,
-    import: String as import,
     c: String as blank,
+    import: String as import,
+    d: String as blank,
     varlist: Vec<RenameableVar> as varlist,
-    d: String as optblank,
-    e: String as newline,
-    f: String as optwhitespace,
+    e: String as optblank,
+    f: String as newline,
+    g: String as optwhitespace,
 );
 named_or!(importstatement: ImportStatement =>
     Standard: StandardImport as standardimport,
     From: FromImport as fromimport,
 );
 list!(opt imports: ImportStatement => importstatement);
-// Function aliases don't seem to exist in Rust, so just redefining this, it's the same as 'var'
-build!(typename, one_or_more!(varsegment));
-named_and!(typegenerics: TypeGenerics =>
-    a: String as opencaret,
-    b: String as optwhitespace,
-    generics: Vec<FullTypename> as generics,
-    c: String as optwhitespace,
-    d: String as closecaret,
-);
-impl TypeGenerics {
-    pub fn to_string(&self) -> String {
-        format!(
-            "<{}>",
-            self.generics
-                .iter()
-                .map(|gen| gen.to_string())
-                .collect::<Vec<String>>()
-                .join(", ")
-        )
-    }
-}
-named_and!(fulltypename: FullTypename =>
-    typename: String as typename, // TODO: Maybe we want to keep this in a tree form in the future?
-    opttypegenerics: Option<TypeGenerics> as opt(typegenerics)
-);
-test!(fulltypename =>
-    pass "Array<Array<int64>>" => "";
-);
 impl FullTypename {
     pub fn to_string(&self) -> String {
         format!(
@@ -783,18 +785,21 @@ named_or!(typedef: TypeDef =>
     TypeBind: TypeBind as typebind,
 );
 named_and!(types: Types =>
-    a: String as typen,
-    b: String as blank,
+    typen: String as typen,
+    a: String as optblank,
+    opttypegenerics: Option<TypeGenerics> as opt(typegenerics),
+    b: String as optblank,
     fulltypename: FullTypename as fulltypename,
     c: String as optwhitespace,
     typedef: TypeDef as typedef,
     optsemicolon: String as optsemicolon,
 );
 test!(types =>
-    pass "type Foo {\n  bar: String,\n}";
+    pass "type Foo {\n  bar: string,\n}";
     pass "type Foo = Bar";
     pass "type Result<T, Error> binds Result<T, Error>";
     pass "type ExitCode binds std::process::ExitCode;";
+    pass "type<Windows> Path {\n driveLetter: string, pathsegments: Array<string>, \n}";
 );
 named_or!(constants: Constants =>
     Bool: String as booln,
@@ -934,28 +939,33 @@ named_and!(typedec: TypeDec =>
 );
 named_and!(constdeclaration: ConstDeclaration =>
     constn: String as constn,
-    whitespace: String as whitespace,
+    a: String as optblank,
+    opttypegenerics: Option<TypeGenerics> as opt(typegenerics),
+    whitespace: String as optwhitespace,
     variable: String as variable,
-    a: String as optwhitespace,
-    typedec: Option<TypeDec> as opt(typedec),
     b: String as optwhitespace,
-    eq: String as eq,
+    typedec: Option<TypeDec> as opt(typedec),
     c: String as optwhitespace,
+    eq: String as eq,
+    d: String as optwhitespace,
     assignables: Vec<WithOperators> as assignables,
     semicolon: String as semicolon,
 );
 test!(constdeclaration =>
     pass "const args = new Foo{};";
     pass "const args = new InitialReduce<any, anythingElse> {\n    arr: arr,\n    initial: initial,\n  };";
+    pass "const<Test> args = 'test val';";
 );
 named_and!(letdeclaration: LetDeclaration =>
     letn: String as letn,
-    whitespace: String as whitespace,
+    a: String as optblank,
+    opttypegenerics: Option<TypeGenerics> as opt(typegenerics),
+    whitespace: String as optwhitespace,
     variable: String as variable,
-    a: String as optwhitespace,
+    b: String as optwhitespace,
     typedec: Option<TypeDec> as opt(typedec),
     eq: String as eq,
-    b: String as optwhitespace,
+    c: String as optwhitespace,
     assignables: Vec<WithOperators> as assignables,
     semicolon: String as semicolon,
 );
@@ -987,14 +997,6 @@ named_and!(returns: Returns =>
 );
 test!(returns =>
     pass "return maybe.getMaybe().toString();";
-);
-named_and!(emits: Emits =>
-    emit: String as emit,
-    a: String as optwhitespace,
-    eventname: Vec<VarSegment> as var,
-    b: String as optwhitespace,
-    retval: Option<RetVal> as optretval,
-    semicolon: String as semicolon,
 );
 named_and!(arg: Arg =>
     variable: String as variable,
@@ -1050,8 +1052,10 @@ named_and!(returntype: ReturnType =>
 named_and!(functions: Functions =>
     fnn: String as fnn,
     a: String as optwhitespace,
-    optname: Option<String> as opt_string!(variable),
+    opttypegenerics: Option<TypeGenerics> as opt(typegenerics),
     b: String as optwhitespace,
+    optname: Option<String> as opt_string!(variable),
+    c: String as optwhitespace,
     optargs: Option<Args> as opt(args),
     optreturntype: Option<ReturnType> as opt(returntype),
     fullfunctionbody: FullFunctionBody as fullfunctionbody,
@@ -1060,6 +1064,7 @@ test!(functions =>
     pass "fn newHashMap(firstKey: Hashable, firstVal: any): HashMap<Hashable, any> { // TODO: Rust-like fn::<typeA, typeB> syntax?\n  let hm = new HashMap<Hashable, any> {\n    keyVal: new Array<KeyVal<Hashable, any>> [],\n    lookup: new Array<Array<int64>> [ new Array<int64> [] ] * 128, // 1KB of space\n  };\n  return hm.set(firstKey, firstVal);\n}" => "";
     pass "fn foo binds foo;" => "";
     pass "fn print(val: String) binds println!;" => "";
+    pass "fn<Test> foo binds foo_test;" => "";
 );
 named_or!(blocklike: Blocklike =>
     Functions: Functions as functions,
@@ -1094,7 +1099,6 @@ named_and!(assignablestatement: AssignableStatement =>
 named_or!(statement: Statement =>
     Declarations: Declarations as declarations,
     Returns: Returns as returns,
-    Emits: Emits as emits,
     Assignments: Assignments as assignments,
     Conditional: Conditional as conditional,
     Assignables: AssignableStatement as assignablestatement,
@@ -1234,6 +1238,7 @@ named_and!(opprecedence: OpPrecedence =>
 named_or!(fix: Fix =>
     Prefix: String as prefix,
     Infix: String as infix,
+    Postfix: String as postfix,
 );
 named_and!(fnopprecedence: FnOpPrecedence =>
     fntoop: FnToOp as fntoop,
@@ -1266,18 +1271,10 @@ impl OpMap {
 }
 named_and!(operatormapping: OperatorMapping =>
     fix: Fix as fix,
-    blank: String as blank,
+    a: String as optblank,
+    opttypegenerics: Option<TypeGenerics> as opt(typegenerics),
+    blank: String as optblank,
     opmap: OpMap as opmap,
-    optsemicolon: String as optsemicolon,
-);
-named_and!(events: Events =>
-    event: String as event,
-    a: String as whitespace,
-    variable: String as variable,
-    b: String as optwhitespace,
-    colon: String as colon,
-    c: String as optwhitespace,
-    fulltypename: FullTypename as fulltypename,
     optsemicolon: String as optsemicolon,
 );
 named_and!(propertytypeline: PropertyTypeline =>
@@ -1437,8 +1434,10 @@ named_or!(interfacedef: InterfaceDef =>
 named_and!(interfaces: Interfaces =>
     interface: String as interface,
     a: String as optblank,
-    variable: String as variable,
+    opttypegenerics: Option<TypeGenerics> as opt(typegenerics),
     b: String as optblank,
+    variable: String as variable,
+    c: String as optblank,
     interfacedef: InterfaceDef as interfacedef,
 );
 test!(interfaces =>
@@ -1452,39 +1451,26 @@ named_or!(exportable: Exportable =>
     Types: Types as types,
     Intefaces: Interfaces as interfaces,
     OperatorMapping: OperatorMapping as operatormapping,
-    Events: Events as events,
     Ref: String as variable,
 );
 named_and!(exports: Exports =>
     export: String as export,
-    a: String as blank,
+    a: String as optblank,
+    opttypegenerics: Option<TypeGenerics> as opt(typegenerics),
+    b: String as optblank,
     exportable: Exportable as exportable,
 );
 test!(exports =>
     pass "export fn newHashMap(firstKey: Hashable, firstVal: any): HashMap<Hashable, any> { // TODO: Rust-like fn::<typeA, typeB> syntax?\n  let hm = new HashMap<Hashable, any> {\n    keyVal: new Array<KeyVal<Hashable, any>> [],\n    lookup: new Array<Array<int64>> [ new Array<int64> [] ] * 128, // 1KB of space\n  };\n  return hm.set(firstKey, firstVal);\n}" => "";
-);
-named_or!(handler: Handler =>
-    Functions: Functions as functions,
-    FunctionBody: FunctionBody as functionbody,
-    FnName: String as variable,
-);
-named_and!(handlers: Handlers =>
-    on: String as on,
-    a: String as whitespace,
-    eventname: Vec<VarSegment> as var,
-    b: String as whitespace,
-    handler: Handler as handler,
-    optsemicolon: String as optsemicolon,
+    pass "export<Test> fn main() { // TODO: Add tests\n }" => "";
 );
 named_or!(rootelements: RootElements =>
     Whitespace: String as whitespace,
     Exports: Exports as exports,
-    Handlers: Handlers as handlers,
     Functions: Functions as functions,
     Types: Types as types,
     ConstDeclaration: ConstDeclaration as constdeclaration,
     OperatorMapping: OperatorMapping as operatormapping,
-    Events: Events as events,
     Interfaces: Interfaces as interfaces,
 );
 list!(opt body: RootElements => rootelements);
@@ -1510,15 +1496,17 @@ test!(ln =>
         imports: vec![super::ImportStatement::Standard(super::StandardImport{
             import: "import".to_string(),
             a: " ".to_string(),
+            opttypegenerics: None,
+            b: "".to_string(),
             dependency: super::Dependency::Local(super::LocalDependency::CurDir(super::CurDir{
                 dot: ".".to_string(),
                 slash: "/".to_string(),
                 depsegments: vec!["foo".to_string()],
             })),
             renamed: None,
-            b: "".to_string(),
-            c: "\n".to_string(),
-            d: "".to_string()
+            c: "".to_string(),
+            d: "\n".to_string(),
+            e: "".to_string()
         })],
         body: Vec::new(),
     };

@@ -184,14 +184,6 @@ pub fn from_microstatement(
             }
             None => Ok(("return".to_string(), out)),
         },
-        Microstatement::Emit { event, value } => match value {
-            Some(val) => {
-                let (emitval, o) = from_microstatement(val, scope, program, out)?;
-                out = o;
-                Ok((format!("event::{}({})", event, emitval,).to_string(), out))
-            }
-            None => Ok((format!("event::{}()", event).to_string(), out)),
-        },
     }
 }
 
