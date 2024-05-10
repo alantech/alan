@@ -399,7 +399,7 @@ test!(non_global_memory_exit_code => r#"
 );
 test!(passing_ints_from_global_memory => r#"
     fn aNumber(num: int64) {
-      print('I got a number! ' + num.toString());
+      print('I got a number! ' + num.string());
     }
 
     export fn main {
@@ -708,13 +708,13 @@ test!(grouping => r#"
 
 test!(string_min => r#"
     export fn main {
-      min(3.toString(), 5.toString()).print();
+      min(3.string(), 5.string()).print();
     }"#;
     stdout "3\n";
 );
 test!(string_max => r#"
     export fn main {
-      max(3.toString(), 5.toString()).print();
+      max(3.string(), 5.string()).print();
     }"#;
     stdout "5\n";
 );
@@ -1234,7 +1234,7 @@ test!(type_coercion_aliases => r#"
 test!(basic_function_usage => r#"
     fn foo() = print('foo');
 
-    fn bar(s: String): String = s.concat("bar");
+    fn bar(s: string): string = s.concat("bar");
 
     export fn main {
       foo();
@@ -1251,7 +1251,7 @@ test!(functions_and_custom_operators => r#"
     }
 
     fn bar(str: string, a: int64, b: int64): string {
-      return str * a + b.toString();
+      return str * a + b.string();
     }
 
     fn baz(pre: string, body: string): void {
@@ -1454,7 +1454,7 @@ test!(array_literals => r#"
 );
 test!(object_literals => r#"
     type MyType {
-      foo: String,
+      foo: string,
       bar: bool,
     }
 
@@ -1629,15 +1629,15 @@ test!(array_map => r#"
     export fn main {
       const count = [1, 2, 3, 4, 5]; // Ah, ah, ahh!
       const byTwos = count.map(fn (n: int64): Result<int64> = n * 2);
-      count.map(fn (n: int64) = toString(n)).join(', ').print();
-      byTwos.map(fn (n: Result<int64>) = toString(n)).join(', ').print();
+      count.map(fn (n: int64) = string(n)).join(', ').print();
+      byTwos.map(fn (n: Result<int64>) = string(n)).join(', ').print();
     }"#;
     stdout "1, 2, 3, 4, 5\n2, 4, 6, 8, 10\n";
 );
 test!(array_repeat_and_map_lin => r#"
     export fn main {
       const arr = [1, 2, 3] * 3;
-      const out = arr.mapLin(fn (x: int64): string = x.toString()).join(', ');
+      const out = arr.mapLin(fn (x: int64): string = x.string()).join(', ');
       print(out);
     }"#;
     stdout "1, 2, 3, 1, 2, 3, 1, 2, 3\n";
@@ -1690,22 +1690,22 @@ test!(array_reduce_filter_concat => r#"
       test.filter(fn (val: int64): bool {
         return val % 2 == 1;
       }).map(fn (val: int64): string {
-        return toString(val);
+        return string(val);
       }).join(', ').print();
 
       print('concat test');
       test.concat(test2).map(fn (val: int64): string {
-        return toString(val);
+        return string(val);
       }).join(', ').print();
       (test + test2).map(fn (val: int64): string {
-        return toString(val);
+        return string(val);
       }).join(', ').print();
 
       print('reduce as filter and concat test');
       // TODO: Lots of improvements needed for closures passed directly to opcodes. This one-liner is ridiculous
-      test.reduce(fn (acc: string, i: int): string = ((acc == '') && (i % 2 == 1)) ? i.toString() : (i % 2 == 1 ? (acc + ', ' + i.toString()) : acc), '').print();
+      test.reduce(fn (acc: string, i: int): string = ((acc == '') && (i % 2 == 1)) ? i.string() : (i % 2 == 1 ? (acc + ', ' + i.string()) : acc), '').print();
       // TODO: Even more ridiculous when you want to allow parallelism
-      test.reducePar(fn (acc: string, i: int): string = ((acc == '') && (i % 2 == 1)) ? i.toString() : (i % 2 == 1 ? (acc + ', ' + i.toString()) : acc), fn (acc: string, cur: string): string = ((acc != '') && (cur != '')) ? (acc + ', ' + cur) : (acc != '' ? acc : cur), '').print();
+      test.reducePar(fn (acc: string, i: int): string = ((acc == '') && (i % 2 == 1)) ? i.string() : (i % 2 == 1 ? (acc + ', ' + i.string()) : acc), fn (acc: string, cur: string): string = ((acc != '') && (cur != '')) ? (acc + ', ' + cur) : (acc != '' ? acc : cur), '').print();
     }"#;
     stdout r#"reduce test
 20
@@ -1731,7 +1731,7 @@ test!(array_custom_types => r#"
       const five = [1, 2, 3, 4, 5];
       five.map(fn (n: int64): Foo {
         return new Foo {
-          foo: n.toString(),
+          foo: n.string(),
           bar: n % 2 == 0,
         };
       }).filter(fn (f: Foo): bool = f.bar).map(fn (f: Foo): string = f.foo).join(', ').print();
@@ -1764,10 +1764,10 @@ test!(basic_hashmap => r#"
       test.set('bar', 2);
       test.set('baz', 99);
       print(test.keyVal().map(fn (n: KeyVal<string, int64>): string {
-        return 'key: ' + n.key + \"\\nval: \" + toString(n.val);
+        return 'key: ' + n.key + \"\\nval: \" + string(n.val);
       }).join(\"\\n\"));
       print(test.keys().join(', '));
-      print(test.vals().map(fn (n: int64): string = n.toString()).join(', '));
+      print(test.vals().map(fn (n: int64): string = n.string()).join(', '));
       print(test.length());
       print(test.get('foo'));
     }"#;
@@ -1793,7 +1793,7 @@ test!(keyval_to_hashmap => r#"
       const kva = [ kv(1, 'foo'), kv(2, 'bar'), kv(3, 'baz') ];
       const hm = kva.toHashMap();
       print(hm.keyVal().map(fn (n: KeyVal<int64, string>): string {
-        return 'key: ' + toString(n.key) + \"\\nval: \" + n.val;
+        return 'key: ' + string(n.key) + \"\\nval: \" + n.val;
       }).join(\"\\n\"));
       print(hm.get(1));
     }"#;
@@ -1829,7 +1829,7 @@ test!(hashmap_ops => r#"
       print('keyVal test')
       test.keyVal().each(fn (n: KeyVal<string, int64>) {
         print('key: ' + n.key)
-        print('val: ' + n.value.toString())
+        print('val: ' + n.value.string())
       })
 
       print('keys test')
@@ -1929,11 +1929,11 @@ test!(invalid_generics => r#"
 
 test!(basic_interfaces => r#"
     interface Stringifiable {
-      toString(Stringifiable): string
+      string(Stringifiable): string
     }
 
     fn quoteAndPrint(toQuote: Stringifiable) {
-      print(\"'\" + toString(toQuote) + \"'\");
+      print(\"'\" + string(toQuote) + \"'\");
     }
 
     export fn main {
@@ -2149,9 +2149,9 @@ test!(basic_interfaces => r#"
           // TODO: Work on formatting stuff
           const timezoneOffsetSymbol = dt.timezone.hour < toInt8(0) ? \"-\" : \"+\";
           let str = (new Array<string> [
-            toString(dt.date.year), \"-\", toString(dt.date.month), \"-\", toString(dt.date.day), \"@\",
-            toString(dt.time.hour), \":\", toString(dt.time.minute), \":\", toString(dt.time.second),
-            timezoneOffsetSymbol, sabs(dt.timezone.hour).toString(), \":\", toString(dt.timezone.minute)
+            string(dt.date.year), \"-\", string(dt.date.month), \"-\", string(dt.date.day), \"@\",
+            string(dt.time.hour), \":\", string(dt.time.minute), \":\", string(dt.time.second),
+            timezoneOffsetSymbol, sabs(dt.timezone.hour).string(), \":\", string(dt.timezone.minute)
           ]).join('');
           print(str);
         }
@@ -2247,8 +2247,8 @@ test!(maybe => r#"
         print('uhhh');
       }
 
-      maybe5.toString().print();
-      maybeNot5.toString().print();
+      maybe5.string().print();
+      maybeNot5.string().print();
     }"#;
     stdout r#"5
 Correctly received nothing!
@@ -2295,8 +2295,8 @@ test!(result => r#"
         print('uhhh');
       }
 
-      oneFifth.toString().print();
-      oneZeroth.toString().print();
+      oneFifth.string().print();
+      oneZeroth.string().print();
 
       const res = ok('foo');
       print(res.getErr('there is no error'));
@@ -2326,8 +2326,8 @@ test!(either => r#"
         print('uhhh');
       }
 
-      strOrNum.toString().print();
-      strOrNum2.toString().print();
+      strOrNum.string().print();
+      strOrNum2.ntring().print();
     }
 
     fn getMainOrAlt(isMain: bool) {
@@ -2395,7 +2395,7 @@ test!(user_types_and_generics => r#"
           fetch(new Request {
               method: 'POST',
               url: 'https://reqbin.com/echo/post/json',
-              headers: newHashMap('Content-Length', arghStr.length().toString()),
+              headers: newHashMap('Content-Length', arghStr.length().string()),
               body: arghStr,
             });
         }
@@ -2474,7 +2474,7 @@ test!(closure_by_name => r#"
 
     export fn main {
       const numbers = [1, 2, 3, 4, 5];
-      numbers.map(double).map(toString).join(', ').print();
+      numbers.map(double).map(string).join(', ').print();
     }"#;
     stdout "2, 4, 6, 8, 10\n";
 );
@@ -3159,8 +3159,8 @@ test!(clone => r#"
       let c = [1, 2, 3];
       let d = c.clone();
       d.set(0, 2);
-      c.map(fn (val: int): string = val.toString()).join(', ').print();
-      d.map(fn (val: int): string = val.toString()).join(', ').print();
+      c.map(fn (val: int): string = val.string()).join(', ').print();
+      d.map(fn (val: int): string = val.string()).join(', ').print();
     }"#;
     stdout "4\n3\n1, 2, 3\n2, 2, 3\n";
 );
@@ -3435,8 +3435,8 @@ test!(seq_no_op_one_liner_regression_test => r#"
         print(doNothingRec(x)); // 5
 
         const xs = [1, 2, 3];
-        print(xs.map(doNothing).map(toString).join(' ')); // 1 2 3
-        print(xs.map(doNothingRec).map(toString).join(' ')); // 1 2 3
+        print(xs.map(doNothing).map(string).join(' ')); // 1 2 3
+        print(xs.map(doNothingRec).map(string).join(' ')); // 1 2 3
     }"#;
     stdout "5\n5\n1 2 3\n1 2 3\n"; // TODO: Do we keep a regression test for a prior iteration?
 );
@@ -3454,7 +3454,7 @@ test!(seq_recurse_decrement_regression_test => r#"
 
     export fn main {
       const xs = [1, 2, 3];
-      print(xs.map(triangularRec).map(toString).join(' ')); // 1 3 6
+      print(xs.map(triangularRec).map(string).join(' ')); // 1 3 6
     }"#;
     stdout "1 3 6\n"; // TODO: Same concern, do regression tests matter for a different codebase?
 );
@@ -3637,7 +3637,7 @@ End
 // JSON
 
 test!(json_construction_printing => r#"
-    from @std/json import JSON, toJSON, toString, JSONBase, JSONNode, IsObject, Null
+    from @std/json import JSON, toJSON, string, JSONBase, JSONNode, IsObject, Null
 
     export fn main {
       1.0.toJSON().print();
@@ -3654,7 +3654,7 @@ null
 "#;
 );
 test!(json_complex_construction => r#"
-    from @std/json import JSON, toString, JSONBase, JSONNode, IsObject, Null, newJSONObject, newJSONArray, addKeyVal, push
+    from @std/json import JSON, string, JSONBase, JSONNode, IsObject, Null, newJSONObject, newJSONArray, addKeyVal, push
 
     export fn main {
       newJSONObject()
