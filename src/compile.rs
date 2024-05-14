@@ -1,7 +1,7 @@
 use std::env::current_dir;
 use std::fs::{create_dir_all, read_to_string, remove_file, write};
 use std::path::PathBuf;
-use std::process::{Command, Stdio, id};
+use std::process::{id, Command, Stdio};
 use std::thread::sleep;
 use std::time::Duration;
 
@@ -33,7 +33,8 @@ pub fn compile(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
         Some(c) => Ok(c),
         None => Err("Somehow no configuration directory exists on this operating system"),
     }?;
-    let alan_config = { // All this because `push` is not chainable :/
+    let alan_config = {
+        // All this because `push` is not chainable :/
         let mut a = config_dir.clone();
         a.push("alan");
         a
@@ -73,10 +74,11 @@ wgpu = "0.19.3""#;
             while lockfile.exists() && count < 300 {
                 // Check if the pid in the lockfile is still running
                 match read_to_string(lockfile.clone()) {
-                    Err(_) => { // Probably being deleted while we were trying to read, we'll check next time
+                    Err(_) => {
+                        // Probably being deleted while we were trying to read, we'll check next time
                         sleep(Duration::from_secs(1));
                         count = count + 1;
-                    }, 
+                    }
                     Ok(pid) => {
                         let pid = pid.parse::<u32>().unwrap();
                         let sys = System::new_all();
@@ -101,7 +103,9 @@ wgpu = "0.19.3""#;
                 }
             }
             if count == 300 {
-                panic!("Build initialization failed. Please retry with an active internet connection");
+                panic!(
+                    "Build initialization failed. Please retry with an active internet connection"
+                );
             }
             // If we got here, the lockfile shouldn't exist, so let's acquire it
             write(lockfile.clone(), format!("{}", id()))?;
@@ -184,7 +188,8 @@ wgpu = "0.19.3""#;
             .arg("--release")
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .output() {
+            .output()
+        {
             Ok(a) => Ok(a),
             Err(e) => {
                 remove_file(lockfile.clone())?;
@@ -209,7 +214,8 @@ wgpu = "0.19.3""#;
         .arg("alan_generated_bin")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .output() {
+        .output()
+    {
         Ok(a) => Ok(a),
         Err(e) => {
             remove_file(lockfile.clone())?;
@@ -220,9 +226,9 @@ wgpu = "0.19.3""#;
     // let's get to work! We can't use the `?` operator directly here, because we need to make sure
     // we remove the lockfile on any failure.
     let src_dir = {
-      let mut s = project_dir.clone();
-      s.push("src");
-      s
+        let mut s = project_dir.clone();
+        s.push("src");
+        s
     };
     // Generate the rust code to compile
     let rs_str = match lntors(source_file.clone()) {
@@ -252,7 +258,8 @@ wgpu = "0.19.3""#;
         .arg("--release")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .output() {
+        .output()
+    {
         Ok(a) => Ok(a),
         Err(e) => {
             remove_file(lockfile.clone())?;
@@ -268,10 +275,15 @@ wgpu = "0.19.3""#;
     match Command::new("cp")
         .current_dir(release_path)
         .arg("alan_generated_bin")
-        .arg(format!("{}/{}", current_dir()?.to_string_lossy(), project_name_str))
+        .arg(format!(
+            "{}/{}",
+            current_dir()?.to_string_lossy(),
+            project_name_str
+        ))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .output() {
+        .output()
+    {
         Ok(a) => Ok(a),
         Err(e) => {
             remove_file(lockfile.clone())?;

@@ -43,7 +43,13 @@ pub fn lntors(entry_file: String) -> Result<String, Box<dyn std::error::Error>> 
     assert_eq!(func.len(), 1);
     assert_eq!(func[0].args.len(), 0);
     // Assertion proven, start emitting the Rust `main` function
-    let fns = fn_generate("main".to_string(), &func[0], &scope, &program, OrderedHashMap::new())?;
+    let fns = fn_generate(
+        "main".to_string(),
+        &func[0],
+        &scope,
+        &program,
+        OrderedHashMap::new(),
+    )?;
     Ok(format!(
         "{}\n{}",
         preamble,

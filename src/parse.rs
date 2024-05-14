@@ -808,7 +808,19 @@ impl BaseAssignable {
         match self {
             BaseAssignable::ObjectLiterals(_ol) => "todo".to_string(),
             BaseAssignable::Functions(_f) => "todo".to_string(),
-            BaseAssignable::FnCall(fc) => format!("({})", fc.assignablelist.iter().map(|bal| bal.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).collect::<Vec<String>>().join(", ")).to_string(),
+            BaseAssignable::FnCall(fc) => format!(
+                "({})",
+                fc.assignablelist
+                    .iter()
+                    .map(|bal| bal
+                        .iter()
+                        .map(|ba| ba.to_string())
+                        .collect::<Vec<String>>()
+                        .join(""))
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            )
+            .to_string(),
             BaseAssignable::Variable(v) => v.clone(),
             BaseAssignable::MethodSep(_) => ".".to_string(),
             BaseAssignable::Constants(c) => c.to_string(),
@@ -865,7 +877,12 @@ named_or!(withoperators: WithOperators =>
 impl WithOperators {
     pub fn to_string(&self) -> String {
         match self {
-            WithOperators::BaseAssignableList(bal) => bal.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("").to_string(),
+            WithOperators::BaseAssignableList(bal) => bal
+                .iter()
+                .map(|ba| ba.to_string())
+                .collect::<Vec<String>>()
+                .join("")
+                .to_string(),
             WithOperators::Operators(o) => o.clone(),
         }
     }
