@@ -8,7 +8,7 @@ macro_rules! build {
         let filename = format!("{}.ln", stringify!($name));
         write(&filename, $code)?;
         compile(filename.to_string())?;
-    }
+    };
 }
 
 macro_rules! run {
@@ -17,7 +17,7 @@ macro_rules! run {
         fn $name() -> Result<Output, std::io::Error> {
             Command::new(format!("./{}", stringify!($name))).output()
         }
-    }
+    };
 }
 
 macro_rules! clean {
@@ -26,7 +26,7 @@ macro_rules! clean {
         let executable = format!("{}", stringify!($name));
         remove_file(&sourcefile)?;
         remove_file(&executable)?;
-    }
+    };
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

@@ -32,7 +32,11 @@ pub fn from_microstatement(
             Ok((
                 format!(
                     "let {}{} = {}",
-                    if *mutable { "mut " } else { "mut " /* TODO: shouldn't be mut */ },
+                    if *mutable {
+                        "mut "
+                    } else {
+                        "mut " /* TODO: shouldn't be mut */
+                    },
                     name,
                     val,
                 )
@@ -81,17 +85,20 @@ pub fn from_microstatement(
         Microstatement::Array { vals, .. } => {
             let mut val_representations = Vec::new();
             for val in vals {
-               let (rep, o) = from_microstatement(val, scope, program, out)?;
-               val_representations.push(rep);
-               out = o;
+                let (rep, o) = from_microstatement(val, scope, program, out)?;
+                val_representations.push(rep);
+                out = o;
             }
-            Ok((format!("vec!({})", val_representations.join(", ")).to_string(), out))
-        },
+            Ok((
+                format!("vec!({})", val_representations.join(", ")).to_string(),
+                out,
+            ))
+        }
         Microstatement::Type { typen, keyvals } => {
             // Need to make sure the struct is defined, first
             let t = match program.resolve_type(scope, typen) {
-              None => Err("Somehow can't find the type at this layer of the compilation"),
-              Some((t, _)) => Ok(t),
+                None => Err("Somehow can't find the type at this layer of the compilation"),
+                Some((t, _)) => Ok(t),
             }?;
             let (_, o) = typen::generate(t, scope, program, out)?;
             out = o;
@@ -102,10 +109,18 @@ pub fn from_microstatement(
                 keyval_representations.push(format!("{}: {},", key, rep));
                 out = o;
             }
-            Ok((format!(r#"{} {{
+            Ok((
+                format!(
+                    r#"{} {{
     {}
-}}"#, typen, keyval_representations.join("\n")).to_string(), out))
-        },
+}}"#,
+                    typen,
+                    keyval_representations.join("\n")
+                )
+                .to_string(),
+                out,
+            ))
+        }
         Microstatement::FnCall { function, args } => {
             let mut arg_types = Vec::new();
             for arg in args {
@@ -113,7 +128,9 @@ pub fn from_microstatement(
                 arg_types.push(arg_type);
             }
             match program.resolve_function(scope, function, &arg_types) {
-                None => Err(format!("Function {}({}) not found", function, arg_types.join(", ")).into()),
+                None => {
+                    Err(format!("Function {}({}) not found", function, arg_types.join(", ")).into())
+                }
                 Some((f, _s)) => match &f.bind {
                     None => {
                         // Come up with a function name that is unique so Rust doesn't choke on
@@ -213,7 +230,7 @@ pub fn generate(
                 let (t_str, o) = typen::generate(t, s, program, out)?;
                 out = o;
                 Some(t_str)
-            },
+            }
         },
         None => None,
     };

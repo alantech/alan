@@ -460,32 +460,74 @@ fn baseassignablelist_to_microstatements(
     let mut prior_value = None;
     while i < baseassignablelist.len() {
         let baseassignable = &baseassignablelist[i];
-        let nextassignable = baseassignablelist.get(i+1);
+        let nextassignable = baseassignablelist.get(i + 1);
         match baseassignable {
             parse::BaseAssignable::MethodSep(_) => {
                 // The `MethodSep` symbol doesn't do anything on its own, it only validates that
                 // the syntax before and after it is sane
                 if prior_value.is_none() {
-                    return Err(format!("Cannot start a statement with a property access: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
+                    return Err(format!(
+                        "Cannot start a statement with a property access: {}",
+                        baseassignablelist
+                            .iter()
+                            .map(|ba| ba.to_string())
+                            .collect::<Vec<String>>()
+                            .join("")
+                    )
+                    .into());
                 }
                 match nextassignable {
                     None => {
-                        return Err(format!("Cannot end a statement with a property access: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
+                        return Err(format!(
+                            "Cannot end a statement with a property access: {}",
+                            baseassignablelist
+                                .iter()
+                                .map(|ba| ba.to_string())
+                                .collect::<Vec<String>>()
+                                .join("")
+                        )
+                        .into());
                     }
-                    Some(next) => match next {
-                        parse::BaseAssignable::FnCall(_) => {
-                            return Err(format!("A function call or parenthetical grouping is not a property: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
+                    Some(next) => {
+                        match next {
+                            parse::BaseAssignable::FnCall(_) => {
+                                return Err(format!("A function call or parenthetical grouping is not a property: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
+                            }
+                            parse::BaseAssignable::ObjectLiterals(_) => {
+                                return Err(format!(
+                                    "An object creation is not a property: {}",
+                                    baseassignablelist
+                                        .iter()
+                                        .map(|ba| ba.to_string())
+                                        .collect::<Vec<String>>()
+                                        .join("")
+                                )
+                                .into());
+                            }
+                            parse::BaseAssignable::Functions(_) => {
+                                return Err(format!(
+                                    "A function definition is not a property: {}",
+                                    baseassignablelist
+                                        .iter()
+                                        .map(|ba| ba.to_string())
+                                        .collect::<Vec<String>>()
+                                        .join("")
+                                )
+                                .into());
+                            }
+                            parse::BaseAssignable::MethodSep(_) => {
+                                return Err(format!(
+                                    "Too many `.` symbols for the method access: {}",
+                                    baseassignablelist
+                                        .iter()
+                                        .map(|ba| ba.to_string())
+                                        .collect::<Vec<String>>()
+                                        .join("")
+                                )
+                                .into());
+                            }
+                            _ => {}
                         }
-                        parse::BaseAssignable::ObjectLiterals(_) => {
-                            return Err(format!("An object creation is not a property: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
-                        }
-                        parse::BaseAssignable::Functions(_) => {
-                            return Err(format!("A function definition is not a property: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
-                        }
-                        parse::BaseAssignable::MethodSep(_) => {
-                            return Err(format!("Too many `.` symbols for the method access: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into()); 
-                        }
-                        _ => {}
                     }
                 }
             }
@@ -507,10 +549,26 @@ fn baseassignablelist_to_microstatements(
                             return Err(format!("A constant cannot be directly before a parenthetical grouping without an operator between them: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
                         }
                         parse::BaseAssignable::ObjectLiterals(_) => {
-                            return Err(format!("A constant cannot be directly before an object definition: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
+                            return Err(format!(
+                                "A constant cannot be directly before an object definition: {}",
+                                baseassignablelist
+                                    .iter()
+                                    .map(|ba| ba.to_string())
+                                    .collect::<Vec<String>>()
+                                    .join("")
+                            )
+                            .into());
                         }
                         parse::BaseAssignable::Functions(_) => {
-                            return Err(format!("A constant cannot be directly before a function definition: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
+                            return Err(format!(
+                                "A constant cannot be directly before a function definition: {}",
+                                baseassignablelist
+                                    .iter()
+                                    .map(|ba| ba.to_string())
+                                    .collect::<Vec<String>>()
+                                    .join("")
+                            )
+                            .into());
                         }
                         parse::BaseAssignable::Constants(_) => {
                             return Err(format!("A constant cannot be directly before another constant without an operator between them: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
@@ -520,35 +578,44 @@ fn baseassignablelist_to_microstatements(
                 }
                 if prior_value.is_none() {
                     match c {
-                        parse::Constants::Bool(b) => prior_value = Some(Microstatement::Value {
-                            typen: "bool".to_string(),
-                            representation: b.clone(),
-                        }),
-                        parse::Constants::Strn(s) => prior_value = Some(Microstatement::Value {
-                            typen: "string".to_string(),
-                            representation: if s.starts_with('"') {
-                                s.clone()
-                            } else {
-                                // TODO: Is there a cheaper way to do this conversion?
-                                s.replace("\"", "\\\"")
-                                    .replace("\\'", "\\\\\"")
-                                    .replace("'", "\"")
-                                    .replace("\\\\\"", "'")
-                            },
-                        }),
+                        parse::Constants::Bool(b) => {
+                            prior_value = Some(Microstatement::Value {
+                                typen: "bool".to_string(),
+                                representation: b.clone(),
+                            })
+                        }
+                        parse::Constants::Strn(s) => {
+                            prior_value = Some(Microstatement::Value {
+                                typen: "string".to_string(),
+                                representation: if s.starts_with('"') {
+                                    s.clone()
+                                } else {
+                                    // TODO: Is there a cheaper way to do this conversion?
+                                    s.replace("\"", "\\\"")
+                                        .replace("\\'", "\\\\\"")
+                                        .replace("'", "\"")
+                                        .replace("\\\\\"", "'")
+                                },
+                            })
+                        }
                         parse::Constants::Num(n) => match n {
-                            parse::Number::RealNum(r) => prior_value = Some(Microstatement::Value {
-                                typen: "f64".to_string(), // TODO: Something more intelligent here?
-                                representation: r.clone(),
-                            }),
-                            parse::Number::IntNum(i) => prior_value = Some(Microstatement::Value {
-                                typen: "i64".to_string(), // TODO: Same here. This feels dumb
-                                representation: i.clone(),
-                            }),
+                            parse::Number::RealNum(r) => {
+                                prior_value = Some(Microstatement::Value {
+                                    typen: "f64".to_string(), // TODO: Something more intelligent here?
+                                    representation: r.clone(),
+                                })
+                            }
+                            parse::Number::IntNum(i) => {
+                                prior_value = Some(Microstatement::Value {
+                                    typen: "i64".to_string(), // TODO: Same here. This feels dumb
+                                    representation: i.clone(),
+                                })
+                            }
                         },
                     }
-                } else { // There's only one case where a prior value is allowed, when the constant
-                         // is an integer
+                } else {
+                    // There's only one case where a prior value is allowed, when the constant
+                    // is an integer
                     match c {
                         parse::Constants::Bool(_) => {
                             return Err(format!("A boolean cannot follow another value without an operator between them: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
@@ -565,13 +632,16 @@ fn baseassignablelist_to_microstatements(
                                 let prior = prior_value.unwrap();
                                 prior_value = Some(Microstatement::FnCall {
                                     function: "get".to_string(),
-                                    args: vec![prior, Microstatement::Value {
-                                        typen: "i64".to_string(),
-                                        representation: i.clone(),
-                                    }],
+                                    args: vec![
+                                        prior,
+                                        Microstatement::Value {
+                                            typen: "i64".to_string(),
+                                            representation: i.clone(),
+                                        },
+                                    ],
                                 });
                             }
-                        }
+                        },
                     }
                 }
             }
@@ -582,12 +652,28 @@ fn baseassignablelist_to_microstatements(
                 // a value, mutate it, but then finally assign it as an immutable constant outside
                 // of that scope.
                 if let Some(_) = prior_value {
-                    return Err(format!("A function definition cannot follow another value: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
+                    return Err(format!(
+                        "A function definition cannot follow another value: {}",
+                        baseassignablelist
+                            .iter()
+                            .map(|ba| ba.to_string())
+                            .collect::<Vec<String>>()
+                            .join("")
+                    )
+                    .into());
                 }
                 if let Some(next) = nextassignable {
                     match next {
                         parse::BaseAssignable::Variable(_) => {
-                            return Err(format!("A variable cannot follow a closure function definition: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
+                            return Err(format!(
+                                "A variable cannot follow a closure function definition: {}",
+                                baseassignablelist
+                                    .iter()
+                                    .map(|ba| ba.to_string())
+                                    .collect::<Vec<String>>()
+                                    .join("")
+                            )
+                            .into());
                         }
                         parse::BaseAssignable::ObjectLiterals(_) => {
                             return Err(format!("An object definition cannot follow a closure function definition: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
@@ -600,7 +686,7 @@ fn baseassignablelist_to_microstatements(
                         }
                         parse::BaseAssignable::MethodSep(_) => {
                             // TODO: Potentially reconsider for method syntax for higher-order
-                            // functions? 
+                            // functions?
                             return Err(format!("A closure function definition does not have any properties to access: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
                         }
                         parse::BaseAssignable::FnCall(_) => {} // Allowed for IIFEs
@@ -618,29 +704,40 @@ fn baseassignablelist_to_microstatements(
                 // becoming the args passed to the `get` function.
                 if let Some(prior) = prior_value {
                     match ol {
-                        parse::ObjectLiterals::ArrayLiteral(a) => match a {
-                            parse::ArrayLiteral::ArrayBase(b) => {
-                                let mut array_accessor_microstatements = vec![prior];
-                                for withoperators in &b.assignablelist {
-                                    microstatements = withoperatorslist_to_microstatements(
-                                        withoperators,
-                                        scope,
-                                        program,
-                                        microstatements,
-                                    )?;
-                                    array_accessor_microstatements.push(microstatements.pop().unwrap());
+                        parse::ObjectLiterals::ArrayLiteral(a) => {
+                            match a {
+                                parse::ArrayLiteral::ArrayBase(b) => {
+                                    let mut array_accessor_microstatements = vec![prior];
+                                    for withoperators in &b.assignablelist {
+                                        microstatements = withoperatorslist_to_microstatements(
+                                            withoperators,
+                                            scope,
+                                            program,
+                                            microstatements,
+                                        )?;
+                                        array_accessor_microstatements
+                                            .push(microstatements.pop().unwrap());
+                                    }
+                                    prior_value = Some(Microstatement::FnCall {
+                                        function: "get".to_string(),
+                                        args: array_accessor_microstatements,
+                                    });
                                 }
-                                prior_value = Some(Microstatement::FnCall {
-                                    function: "get".to_string(),
-                                    args: array_accessor_microstatements,
-                                });
-                            }
-                            parse::ArrayLiteral::FullArrayLiteral(_) => {
-                                return Err(format!("An array definition cannot directly follow another value: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
+                                parse::ArrayLiteral::FullArrayLiteral(_) => {
+                                    return Err(format!("An array definition cannot directly follow another value: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
+                                }
                             }
                         }
                         parse::ObjectLiterals::TypeLiteral(_) => {
-                            return Err(format!("An object definition cannot directly follow another value: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
+                            return Err(format!(
+                                "An object definition cannot directly follow another value: {}",
+                                baseassignablelist
+                                    .iter()
+                                    .map(|ba| ba.to_string())
+                                    .collect::<Vec<String>>()
+                                    .join("")
+                            )
+                            .into());
                         }
                     }
                 } else {
@@ -660,7 +757,11 @@ fn baseassignablelist_to_microstatements(
                                 // TODO: Currently assuming the type of the first element of the array
                                 // matches all of them. Should confirm that in the future
                                 prior_value = Some(Microstatement::Array {
-                                    typen: format!("Array<{}>", array_microstatements[0].get_type(scope, program)?).to_string(),
+                                    typen: format!(
+                                        "Array<{}>",
+                                        array_microstatements[0].get_type(scope, program)?
+                                    )
+                                    .to_string(),
                                     vals: array_microstatements,
                                 });
                             }
@@ -682,7 +783,7 @@ fn baseassignablelist_to_microstatements(
                                     vals: array_microstatements,
                                 });
                             }
-                        }
+                        },
                         parse::ObjectLiterals::TypeLiteral(t) => {
                             let mut struct_microstatements = OrderedHashMap::new();
                             for typeassign in &t.typebase.typeassignlist {
@@ -692,7 +793,10 @@ fn baseassignablelist_to_microstatements(
                                     program,
                                     microstatements,
                                 )?;
-                                struct_microstatements.insert(typeassign.variable.clone(), microstatements.pop().unwrap());
+                                struct_microstatements.insert(
+                                    typeassign.variable.clone(),
+                                    microstatements.pop().unwrap(),
+                                );
                             }
                             // TODO: Currently assuming that the specified type matches the properties
                             // provided. Should confirm that in the future
@@ -725,9 +829,7 @@ fn baseassignablelist_to_microstatements(
                     // Microstatment::Assignment, but Rust doesn't seem to know that, so force
                     // it.
                     Some(m) => match m {
-                        Microstatement::Assignment { value, .. } => {
-                            value.get_type(scope, program)
-                        }
+                        Microstatement::Assignment { value, .. } => value.get_type(scope, program),
                         Microstatement::Arg { typen, .. } => Ok(typen.clone()),
                         _ => unreachable!(),
                     },
@@ -739,27 +841,22 @@ fn baseassignablelist_to_microstatements(
                             Some(_) => Ok("function".to_string()), // TODO: Do better
                             None => {
                                 // Check the root scope, too
-                                match program.scopes_by_file.get("@root"){
+                                match program.scopes_by_file.get("@root") {
                                     Some((_, _, s)) => match s.functions.get(var) {
                                         Some(_) => Ok("function".to_string()), // TODO: Do better
-                                        None => Err(format!(
-                                            "Couldn't find variable {}",
-                                            var
-                                        )
-                                        .into()),
-                                    }
-                                    None => Err(format!(
-                                        "Couldn't find variable {}",
-                                        var
-                                    )
-                                    .into()),
+                                        None => {
+                                            Err(format!("Couldn't find variable {}", var).into())
+                                        }
+                                    },
+                                    None => Err(format!("Couldn't find variable {}", var).into()),
                                 }
                             }
                         }
                     }
                 }?;
                 if let Some(prior) = prior_value {
-                    if typen == "function" { // TODO: Do better on function dispatch
+                    if typen == "function" {
+                        // TODO: Do better on function dispatch
                         // If this is a method call we need to pull in the rest of the arguments
                         // (if there are any) from the next assignable and then skip over it.
                         // Otherwise either generate the function call as-is or return an error if
@@ -771,7 +868,9 @@ fn baseassignablelist_to_microstatements(
                                 }
                                 parse::BaseAssignable::ObjectLiterals(_) => {
                                     // TODO: Support array access after a method call
-                                    return Err("TODO: Support array access after a method call".into());
+                                    return Err(
+                                        "TODO: Support array access after a method call".into()
+                                    );
                                 }
                                 parse::BaseAssignable::Functions(_) => {
                                     return Err(format!("A closure function cannot directly follow another value: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
@@ -782,7 +881,10 @@ fn baseassignablelist_to_microstatements(
                                 parse::BaseAssignable::MethodSep(_) => {
                                     // Call the function with a singular value
                                     match &prior {
-                                        Microstatement::Value { typen, representation } => {
+                                        Microstatement::Value {
+                                            typen,
+                                            representation,
+                                        } => {
                                             if typen == "function" {
                                                 prior_value = Some(Microstatement::FnCall {
                                                     function: representation.clone(),
@@ -871,7 +973,15 @@ fn baseassignablelist_to_microstatements(
                         }
                     } else {
                         // TODO: Properly support property access eventually
-                        return Err(format!("TODO: Implement property access: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
+                        return Err(format!(
+                            "TODO: Implement property access: {}",
+                            baseassignablelist
+                                .iter()
+                                .map(|ba| ba.to_string())
+                                .collect::<Vec<String>>()
+                                .join("")
+                        )
+                        .into());
                     }
                 } else {
                     prior_value = Some(Microstatement::Value {
@@ -971,7 +1081,7 @@ fn baseassignablelist_to_microstatements(
     }
     // Push the generated statement that *probably* exists into the microstatements array
     if let Some(prior) = prior_value {
-      microstatements.push(prior);
+        microstatements.push(prior);
     }
     Ok(microstatements)
 }
@@ -1130,7 +1240,7 @@ fn withoperatorslist_to_microstatements(
                     )
                     .collect();
             } else {
-              // TODO: Add postfix operator support here
+                // TODO: Add postfix operator support here
             }
         } else {
             // We have no more operators, there should only be one reworked baseassignablelist now
@@ -1239,21 +1349,26 @@ fn statement_to_microstatements(
     match statement {
         // This is just whitespace, so we do nothing here
         parse::Statement::A(_) => Ok(microstatements),
-        parse::Statement::Assignables(assignable) => {
-            Ok(assignablestatement_to_microstatements(assignable, scope, program, microstatements)?)
-        }
-        parse::Statement::Returns(returns) => {
-            Ok(returns_to_microstatements(returns, scope, program, microstatements)?)
-        }
-        parse::Statement::Declarations(declarations) => {
-            Ok(declarations_to_microstatements(declarations, scope, program, microstatements)?)
-        }
-        parse::Statement::Assignments(_assignments) => {
-            Err("Implement me".into())
-        }
-        parse::Statement::Conditional(_condtitional) => {
-            Err("Implement me".into())
-        }
+        parse::Statement::Assignables(assignable) => Ok(assignablestatement_to_microstatements(
+            assignable,
+            scope,
+            program,
+            microstatements,
+        )?),
+        parse::Statement::Returns(returns) => Ok(returns_to_microstatements(
+            returns,
+            scope,
+            program,
+            microstatements,
+        )?),
+        parse::Statement::Declarations(declarations) => Ok(declarations_to_microstatements(
+            declarations,
+            scope,
+            program,
+            microstatements,
+        )?),
+        parse::Statement::Assignments(_assignments) => Err("Implement me".into()),
+        parse::Statement::Conditional(_condtitional) => Err("Implement me".into()),
     }
 }
 
