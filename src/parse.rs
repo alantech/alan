@@ -7,7 +7,7 @@ use nom::{
     combinator::{all_consuming, opt, peek, recognize},
     error::{Error, ErrorKind},
     multi::{many0, many1, separated_list0, separated_list1},
-    sequence::{delimited, tuple},
+    sequence::tuple,
     IResult,
 };
 
@@ -501,25 +501,6 @@ test!(strn =>
     pass "'str\\'3'";
     pass "\"str\\\"4\"";
 );
-build!(arrayaccess: Vec<Vec<WithOperators>>, delimited(and!(openarr, optwhitespace), assignablelist, and!(optwhitespace, closearr)));
-named_or!(varsegment: VarSegment =>
-    Variable: String as variable,
-    MethodSep: String as and!(optwhitespace, dot, optwhitespace),
-    ArrayAccess: Vec<Vec<WithOperators>> as arrayaccess,
-);
-impl VarSegment {
-    pub fn to_string(&self) -> String {
-        match self {
-            Self::Variable(v) => v.clone(),
-            Self::MethodSep(_) => ".".to_string(),
-            Self::ArrayAccess(_) => "[ TODO ]".to_string(),
-        }
-    }
-}
-list!(var: VarSegment => varsegment);
-test!(var =>
-    pass "hm.lookup";
-);
 named_or!(varop: VarOp => Variable: String as variable, Operator: String as operators);
 impl VarOp {
     pub fn to_string(&self) -> String {
@@ -591,8 +572,6 @@ test!(varlist =>
         }
     ];
 );
-// Function aliases don't seem to exist in Rust, so just redefining this, it's the same as 'var'
-build!(typename, one_or_more!(varsegment));
 named_and!(typegenerics: TypeGenerics =>
     a: String as opencaret,
     b: String as optwhitespace,
@@ -613,7 +592,8 @@ impl TypeGenerics {
     }
 }
 named_and!(fulltypename: FullTypename =>
-    typename: String as typename, // TODO: Maybe we want to keep this in a tree form in the future?
+    typename: String as variable, // TODO: Add support for method syntax on type names (for
+                                  // imported types)
     opttypegenerics: Option<TypeGenerics> as opt(typegenerics)
 );
 test!(fulltypename =>
@@ -819,7 +799,8 @@ named_or!(baseassignable: BaseAssignable =>
     ObjectLiterals: ObjectLiterals as objectliterals,
     Functions: Functions as functions,
     FnCall: FnCall as fncall,
-    Variable: Vec<VarSegment> as var,
+    Variable: String as variable,
+    MethodSep: String as and!(optwhitespace, dot, optwhitespace),
     Constants: Constants as constants,
 );
 impl BaseAssignable {
@@ -827,12 +808,9 @@ impl BaseAssignable {
         match self {
             BaseAssignable::ObjectLiterals(_ol) => "todo".to_string(),
             BaseAssignable::Functions(_f) => "todo".to_string(),
-            BaseAssignable::FnCall(_fc) => "todo".to_string(),
-            BaseAssignable::Variable(v) => v
-                .iter()
-                .map(|segment| segment.to_string())
-                .collect::<Vec<String>>()
-                .join(""),
+            BaseAssignable::FnCall(fc) => format!("({})", fc.assignablelist.iter().map(|bal| bal.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).collect::<Vec<String>>().join(", ")).to_string(),
+            BaseAssignable::Variable(v) => v.clone(),
+            BaseAssignable::MethodSep(_) => ".".to_string(),
             BaseAssignable::Constants(c) => c.to_string(),
         }
     }
@@ -884,6 +862,14 @@ named_or!(withoperators: WithOperators =>
     BaseAssignableList: Vec<BaseAssignable> as baseassignablelist,
     Operators: String as and!(optwhitespace, operators, optwhitespace),
 );
+impl WithOperators {
+    pub fn to_string(&self) -> String {
+        match self {
+            WithOperators::BaseAssignableList(bal) => bal.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("").to_string(),
+            WithOperators::Operators(o) => o.clone(),
+        }
+    }
+}
 test!(withoperators =>
     pass "new Foo{}" => "", super::WithOperators::BaseAssignableList(vec![super::BaseAssignable::ObjectLiterals(super::ObjectLiterals::TypeLiteral(super::TypeLiteral{
       literaldec: super::LiteralDec{
@@ -974,7 +960,7 @@ named_or!(declarations: Declarations =>
     Let: LetDeclaration as letdeclaration,
 );
 named_and!(assignments: Assignments =>
-    var: Vec<VarSegment> as var,
+    var: Vec<BaseAssignable> as baseassignablelist,
     a: String as optwhitespace,
     eq: String as eq,
     b: String as optwhitespace,
@@ -1069,7 +1055,6 @@ test!(functions =>
 named_or!(blocklike: Blocklike =>
     Functions: Functions as functions,
     FunctionBody: FunctionBody as functionbody,
-    FnName: Vec<VarSegment> as var,
 );
 named_or!(condorblock: CondOrBlock =>
     Conditional: Conditional as conditional,
@@ -1462,7 +1447,7 @@ named_and!(exports: Exports =>
 );
 test!(exports =>
     pass "export fn newHashMap(firstKey: Hashable, firstVal: any): HashMap<Hashable, any> { // TODO: Rust-like fn::<typeA, typeB> syntax?\n  let hm = new HashMap<Hashable, any> {\n    keyVal: new Array<KeyVal<Hashable, any>> [],\n    lookup: new Array<Array<int64>> [ new Array<int64> [] ] * 128, // 1KB of space\n  };\n  return hm.set(firstKey, firstVal);\n}" => "";
-    pass "export<Test> fn main() { // TODO: Add tests\n }" => "";
+    pass "export<Test> fn main() { let foo = 'bar'; // TODO: Add tests\n }" => "";
 );
 named_or!(rootelements: RootElements =>
     Whitespace: String as whitespace,
