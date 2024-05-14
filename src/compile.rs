@@ -405,13 +405,13 @@ test!(error_exit_code => r#"
 test!(non_global_memory_exit_code => r#"
     export fn main(): ExitCode {
       let x: i64 = 0;
-      return x.ExitCode();
+      return x.ExitCode;
     }"#;
     status 0;
 );
 test!(passing_ints_from_global_memory => r#"
     fn aNumber(num: int64) {
-      print('I got a number! ' + num.string());
+      print('I got a number! ' + num.string);
     }
 
     export fn main {
@@ -436,7 +436,7 @@ test!(duration_print => r#"
     export fn main() {
         const i = now();
         wait(10);
-        const d = i.elapsed();
+        const d = i.elapsed;
         print(d);
     }"#;
     stdout_contains "0.01";
@@ -519,13 +519,13 @@ test!(int16_pow => r#"
 );
 test!(int16_min => r#"
     export fn main {
-      min(3.i16(), 5.i16()).print();
+      min(3.i16, 5.i16).print;
     }"#;
     stdout "3\n";
 );
 test!(int16_max => r#"
     export fn main {
-      max(3.i16(), 5.i16()).print();
+      max(3.i16, 5.i16).print;
     }"#;
     stdout "5\n";
 );
@@ -538,13 +538,13 @@ test!(int32_add => r#"
 );
 test!(int32_sub => r#"
     export fn main {
-      sub(2.i32(), 1.i32()).print();
+      sub(2.i32, 1.i32).print;
     }"#;
     stdout "1\n";
 );
 test!(int32_mul => r#"
     export fn main {
-      mul(2.i32(), 1.i32()).print();
+      mul(2.i32, 1.i32).print;
     }"#;
     stdout "2\n";
 );
@@ -556,7 +556,7 @@ test!(int32_div => r#"
 );
 test!(int32_mod => r#"
     export fn main {
-      mod(6.i32(), 4.i32()).print();
+      mod(6.i32, 4.i32).print;
     }"#;
     stdout "2\n";
 );
@@ -568,7 +568,7 @@ test!(int32_pow => r#"
 );
 test!(int32_min => r#"
     export fn main {
-      min(3.i32(), 5.i32()).print();
+      min(3.i32, 5.i32).print;
     }"#;
     stdout "3\n";
 );
@@ -604,11 +604,11 @@ test!(int64_pow => r#"
     stdout "36\n";
 );
 test!(int64_min => r#"
-    export fn main = min(3, 5).print();"#;
+    export fn main = min(3, 5).print;"#;
     stdout "3\n";
 );
 test!(int64_max => r#"
-    export fn main = max(3.i64(), 5.i64()).print();"#;
+    export fn main = max(3.i64, 5.i64).print;"#;
     stdout "5\n";
 );
 
@@ -650,62 +650,62 @@ test!(float32_pow => r#"
 );
 test!(float32_min => r#"
     export fn main {
-      min(3.f32(), 5.f32()).print();
+      min(3.f32, 5.f32).print;
     }"#;
     stdout "3\n";
 );
 test!(float32_max => r#"
     export fn main {
-      max(3.f32(), 5.f32()).print();
+      max(3.f32, 5.f32).print;
     }"#;
     stdout "5\n";
 );
 
 test!(float64_add => r#"
     export fn main {
-      (1.0 + 2.0).print();
+      (1.0 + 2.0).print;
     }"#;
     stdout "3\n";
 );
 test!(float64_sub => r#"
     export fn main {
-      (2.0 - 1.0).print();
+      (2.0 - 1.0).print;
     }"#;
     stdout "1\n";
 );
 test!(float64_mul => r#"
     export fn main {
-      (2.0 * 1.0).print();
+      (2.0 * 1.0).print;
     }"#;
     stdout "2\n";
 );
 test!(float64_div => r#"
     export fn main {
-      (6.0 / 2.0).print();
+      (6.0 / 2.0).print;
     }"#;
     stdout "3\n";
 );
 test!(float64_sqrt => r#"
     export fn main {
-      sqrt(36.0).print();
+      sqrt(36.0).print;
     }"#;
     stdout "6\n";
 );
 test!(float64_pow => r#"
     export fn main {
-      (6.0 ** 2.0).print();
+      (6.0 ** 2.0).print;
     }"#;
     stdout "36\n";
 );
 test!(float64_min => r#"
     export fn main {
-      min(3.f64(), 5.f64()).print();
+      min(3.f64, 5.f64).print;
     }"#;
     stdout "3\n";
 );
 test!(float64_max => r#"
     export fn main {
-      max(3.f64(), 5.f64()).print();
+      max(3.f64, 5.f64).print;
     }"#;
     stdout "5\n";
 );
@@ -720,13 +720,13 @@ test!(grouping => r#"
 
 test!(string_min => r#"
     export fn main {
-      min(3.string(), 5.string()).print();
+      min(3.string, 5.string).print;
     }"#;
     stdout "3\n";
 );
 test!(string_max => r#"
     export fn main {
-      max(3.string(), 5.string()).print();
+      max(3.string, 5.string).print;
     }"#;
     stdout "5\n";
 );
@@ -736,7 +736,7 @@ test!(string_max => r#"
 test!(hello_gpu => r#"
     export fn main {
       let g = GPU();
-      let b = g.createBuffer(storageBuffer(), filled(2.i32(), 4));
+      let b = g.createBuffer(storageBuffer(), filled(2.i32, 4));
       let plan = GPGPU("
         @group(0)
         @binding(0)
@@ -749,7 +749,7 @@ test!(hello_gpu => r#"
         }
       ", b);
       g.run(plan);
-      g.read(b).print();
+      g.read(b).print;
     }"#;
     stdout "[0, 2, 4, 6]\n";
 );
@@ -847,17 +847,17 @@ test!(boolean_logic => r#"
       print(true !& true);
       print(nand(true, false));
       print(false !& true);
-      false.nand(false).print();
+      false.nand(false).print;
 
       print(true !| true);
       print(nor(true, false));
       print(false !| true);
-      false.nor(false).print();
+      false.nor(false).print;
 
       print(true !^ true);
       print(xnor(true, false));
       print(false !^ true);
-      false.xnor(false).print();
+      false.xnor(false).print;
     }"#;
     stdout r#"true
 false
@@ -902,29 +902,29 @@ true
 
 test!(string_ops => r#"
     export fn main {
-      concat('Hello, ', 'World!').print();
+      concat('Hello, ', 'World!').print;
       print('Hello, ' + 'World!');
 
-      repeat('hi ', 5).print();
+      repeat('hi ', 5).print;
       print('hi ' * 5);
 
-      matches('foobar', 'fo.*').print();
+      matches('foobar', 'fo.*').print;
       print('foobar' ~ 'fo.*');
 
-      index('foobar', 'ba').print();
+      index('foobar', 'ba').print;
       print('foobar' @ 'ba');
 
-      length('foobar').print();
+      length('foobar').print;
       print(#'foobar');
 
-      trim('   hi   ').print();
+      trim('   hi   ').print;
       print(\`'   hi   ');
 
-      split('Hello, World!', ', ')[0].print();
+      split('Hello, World!', ', ')[0].print;
       print(('Hello, World!' / ', ')[1]);
 
       const res = split('Hello, World!', ', ');
-      res[0].print();
+      res[0].print;
 
       const res2 = 'Hello, World!' / ', ';
       print(res2[1]);
@@ -950,13 +950,13 @@ World!
 test!(string_global_local_equality => r#"
     export fn main {
       const foo = 'foo';
-      print(foo.trim() == foo);
+      print(foo.trim == foo);
     }"#;
     stdout "true\n";
 );
 test!(string_char_array => r#"
     export fn main {
-      const fooCharArray = 'foo'.toCharArray();
+      const fooCharArray = 'foo'.toCharArray;
       print(#fooCharArray);
       print(fooCharArray[0]);
       print(fooCharArray[1]);
@@ -976,7 +976,7 @@ test!(string_templating => r#"
       template('\${greet}, \${name}!', new Map<string, string> {
         'greet': 'Hello'
         'name': 'World'
-      }).print()
+      }).print
       print('\${greet}, \${name}!' % new Map<string, string> {
         'greet': 'Good-bye'
         'name': 'World'
@@ -1250,7 +1250,7 @@ test!(basic_function_usage => r#"
 
     export fn main {
       foo();
-      'foo'.bar().print();
+      'foo'.bar.print;
     }"#;
     stdout r#"foo
 foobar
@@ -1263,7 +1263,7 @@ test!(functions_and_custom_operators => r#"
     }
 
     fn bar(str: string, a: int64, b: int64): string {
-      return str * a + b.string();
+      return str * a + b.string;
     }
 
     fn baz(pre: string, body: string): void {
@@ -1282,17 +1282,17 @@ test!(functions_and_custom_operators => r#"
      *
      * but the function definitions are all parsed before the first operator mapping is done.
      */
-    fn doublesum(a: int64, b: int64) = a.double() + b.double();
+    fn doublesum(a: int64, b: int64) = a.double + b.double;
 
     infix doublesum as #+# precedence 11
 
     export fn main {
       foo();
-      'to bar'.bar(2, 3).print();
+      'to bar'.bar(2, 3).print;
       '>> '.baz('text here');
-      4.double().print();
+      4.double.print;
       print(##3);
-      4.doublesum(1).print();
+      4.doublesum(1).print;
       print(2 #+# 3);
     }"#;
     stdout r#"foo
@@ -1438,7 +1438,7 @@ test!(vec_construction => r#"
 test!(vec_map => r#"
     fn double(x: i64): Result<i64> = x * 2;
     export fn main {
-      filled(5, 5).map(double).print();
+      filled(5, 5).map(double).print;
     }"#;
     stdout "[10, 10, 10, 10, 10]\n";
 );
@@ -1451,7 +1451,7 @@ test!(vec_parmap => r#"
       v.push(3);
       v.push(4);
       v.push(5);
-      v.parmap(double).print();
+      v.parmap(double).print;
     }"#;
     stdout "[2, 4, 6, 8, 10]\n";
 );
@@ -1543,7 +1543,7 @@ test!(array_accessor_and_length => r#"
     export fn main {
       print('Testing...');
       const test = '1,2,3'.split(',');
-      print(test.length());
+      print(test.length);
       print(test[0]);
       print(test[1]);
       print(test[2]);
@@ -1587,10 +1587,10 @@ test!(array_mutable_push_pop => r#"
       print(test[0]);
       print(test[1]);
       print(test[2]);
-      print(test.pop());
-      print(test.pop());
-      print(test.pop());
-      print(test.pop()); // Should print error message
+      print(test.pop);
+      print(test.pop);
+      print(test.pop);
+      print(test.pop); // Should print error message
     }"#;
     stdout r#"Testing...
 1
@@ -1611,15 +1611,15 @@ test!(array_length_index_has_join => r#"
       print(test.has(4));
 
       print('length test');
-      test.length().print();
+      test.length.print;
       print(#test);
 
       print('index test');
-      test.index(5).print();
+      test.index(5).print;
       print(test2 @ 'Hello');
 
       print('join test');
-      test2.join(', ').print();
+      test2.join(', ').print;
     }"#;
     stdout r#"has test
 true
@@ -1641,15 +1641,15 @@ test!(array_map => r#"
     export fn main {
       const count = [1, 2, 3, 4, 5]; // Ah, ah, ahh!
       const byTwos = count.map(fn (n: int64): Result<int64> = n * 2);
-      count.map(fn (n: int64) = string(n)).join(', ').print();
-      byTwos.map(fn (n: Result<int64>) = string(n)).join(', ').print();
+      count.map(fn (n: int64) = string(n)).join(', ').print;
+      byTwos.map(fn (n: Result<int64>) = string(n)).join(', ').print;
     }"#;
     stdout "1, 2, 3, 4, 5\n2, 4, 6, 8, 10\n";
 );
 test!(array_repeat_and_map_lin => r#"
     export fn main {
       const arr = [1, 2, 3] * 3;
-      const out = arr.mapLin(fn (x: int64): string = x.string()).join(', ');
+      const out = arr.mapLin(fn (x: int64): string = x.string).join(', ');
       print(out);
     }"#;
     stdout "1, 2, 3, 1, 2, 3, 1, 2, 3\n";
@@ -1657,7 +1657,7 @@ test!(array_repeat_and_map_lin => r#"
 test!(array_each_and_find => r#"
     export fn main {
       const test = [ 1, 1, 2, 3, 5, 8 ];
-      test.find(fn (val: int64): bool = val % 2 == 1).getOr(0).print();
+      test.find(fn (val: int64): bool = val % 2 == 1).getOr(0).print;
       test.each(fn (val: int64) = print('=' * val));
     }"#;
     stdout r#"1
@@ -1674,9 +1674,9 @@ test!(array_every_some_del => r#"
 
     export fn main {
       const test = [ 1, 1, 2, 3, 5, 8 ];
-      test.every(isOdd).print();
-      test.some(isOdd).print();
-      print(test.length());
+      test.every(isOdd).print;
+      test.some(isOdd).print;
+      print(test.length);
       print(test.delete(1));
       print(test.delete(4));
       print(test.delete(10));
@@ -1694,30 +1694,30 @@ test!(array_reduce_filter_concat => r#"
       const test = [ 1, 1, 2, 3, 5, 8 ];
       const test2 = [ 4, 5, 6 ];
       print('reduce test');
-      test.reduce(fn (a: int, b: int): int = a + b || 0).print();
-      test.reduce(min).print();
-      test.reduce(max).print();
+      test.reduce(fn (a: int, b: int): int = a + b || 0).print;
+      test.reduce(min).print;
+      test.reduce(max).print;
 
       print('filter test');
       test.filter(fn (val: int64): bool {
         return val % 2 == 1;
       }).map(fn (val: int64): string {
         return string(val);
-      }).join(', ').print();
+      }).join(', ').print;
 
       print('concat test');
       test.concat(test2).map(fn (val: int64): string {
         return string(val);
-      }).join(', ').print();
+      }).join(', ').print;
       (test + test2).map(fn (val: int64): string {
         return string(val);
-      }).join(', ').print();
+      }).join(', ').print;
 
       print('reduce as filter and concat test');
       // TODO: Lots of improvements needed for closures passed directly to opcodes. This one-liner is ridiculous
-      test.reduce(fn (acc: string, i: int): string = ((acc == '') && (i % 2 == 1)) ? i.string() : (i % 2 == 1 ? (acc + ', ' + i.string()) : acc), '').print();
+      test.reduce(fn (acc: string, i: int): string = ((acc == '') && (i % 2 == 1)) ? i.string : (i % 2 == 1 ? (acc + ', ' + i.string) : acc), '').print;
       // TODO: Even more ridiculous when you want to allow parallelism
-      test.reducePar(fn (acc: string, i: int): string = ((acc == '') && (i % 2 == 1)) ? i.string() : (i % 2 == 1 ? (acc + ', ' + i.string()) : acc), fn (acc: string, cur: string): string = ((acc != '') && (cur != '')) ? (acc + ', ' + cur) : (acc != '' ? acc : cur), '').print();
+      test.reducePar(fn (acc: string, i: int): string = ((acc == '') && (i % 2 == 1)) ? i.string : (i % 2 == 1 ? (acc + ', ' + i.string) : acc), fn (acc: string, cur: string): string = ((acc != '') && (cur != '')) ? (acc + ', ' + cur) : (acc != '' ? acc : cur), '').print;
     }"#;
     stdout r#"reduce test
 20
@@ -1743,10 +1743,10 @@ test!(array_custom_types => r#"
       const five = [1, 2, 3, 4, 5];
       five.map(fn (n: int64): Foo {
         return new Foo {
-          foo: n.string(),
+          foo: n.string,
           bar: n % 2 == 0,
         };
-      }).filter(fn (f: Foo): bool = f.bar).map(fn (f: Foo): string = f.foo).join(', ').print();
+      }).filter(fn (f: Foo): bool = f.bar).map(fn (f: Foo): string = f.foo).join(', ').print;
     }"#;
     stdout "2, 4\n";
 );
@@ -1775,12 +1775,12 @@ test!(basic_hashmap => r#"
       const test = newHashMap('foo', 1);
       test.set('bar', 2);
       test.set('baz', 99);
-      print(test.keyVal().map(fn (n: KeyVal<string, int64>): string {
+      print(test.keyVal.map(fn (n: KeyVal<string, int64>): string {
         return 'key: ' + n.key + \"\\nval: \" + string(n.val);
       }).join(\"\\n\"));
-      print(test.keys().join(', '));
-      print(test.vals().map(fn (n: int64): string = n.string()).join(', '));
-      print(test.length());
+      print(test.keys.join(', '));
+      print(test.vals.map(fn (n: int64): string = n.string).join(', '));
+      print(test.length);
       print(test.get('foo'));
     }"#;
     stdout r#"key: foo
@@ -1803,8 +1803,8 @@ test!(keyval_to_hashmap => r#"
 
     export fn main {
       const kva = [ kv(1, 'foo'), kv(2, 'bar'), kv(3, 'baz') ];
-      const hm = kva.toHashMap();
-      print(hm.keyVal().map(fn (n: KeyVal<int64, string>): string {
+      const hm = kva.toHashMap;
+      print(hm.keyVal.map(fn (n: KeyVal<int64, string>): string {
         return 'key: ' + string(n.key) + \"\\nval: \" + n.val;
       }).join(\"\\n\"));
       print(hm.get(1));
@@ -1821,7 +1821,7 @@ foo
 test!(hashmap_double_set => r#"
     export fn main {
       let test = newHashMap('foo', 'bar');
-      test.get('foo').print();
+      test.get('foo').print;
       test.set('foo', 'baz');
       print(test.get('foo'));
     }"#;
@@ -1839,19 +1839,19 @@ test!(hashmap_ops => r#"
       }
 
       print('keyVal test')
-      test.keyVal().each(fn (n: KeyVal<string, int64>) {
+      test.keyVal.each(fn (n: KeyVal<string, int64>) {
         print('key: ' + n.key)
-        print('val: ' + n.value.string())
+        print('val: ' + n.value.string)
       })
 
       print('keys test')
-      test.keys().each(print)
+      test.keys.each(print)
 
       print('values test')
-      test.values().each(print)
+      test.values.each(print)
 
       print('length test')
-      test.length().print()
+      test.length.print
       print(#test)
 
       emit exit 0
@@ -1888,7 +1888,7 @@ test!(generics => r#"
 
     export fn main {
       let int8Box = new box<int8> {
-        val: 8.toInt8(),
+        val: 8.i8,
         set: true
       };
       print(int8Box.val);
@@ -1908,8 +1908,8 @@ test!(generics => r#"
         },
         set: true
       };
-      stringBoxBox.set.print();
-      stringBoxBox.val.set.print();
+      stringBoxBox.set.print;
+      stringBoxBox.val.set.print;
       print(stringBoxBox.val.val);
     }"#;
     stdout r#"8
@@ -2094,9 +2094,9 @@ test!(basic_interfaces => r#"
 
         export fn makeTime(hm: Array<int64>, second: int64): Time {
           return new Time {
-            hour: hm[0].toInt8(),
-            minute: hm[1].toInt8(),
-            second: second.toFloat64()
+            hour: hm[0].i8,
+            minute: hm[1].i8,
+            second: second.f64
           };
         }
 
@@ -2129,8 +2129,8 @@ test!(basic_interfaces => r#"
             date: dt.date,
             time: dt.time,
             timezone: new HourMinute {
-              hour: timezone[0].toInt8(),
-              minute: timezone[1].toInt8(),
+              hour: timezone[0].i8,
+              minute: timezone[1].i8,
             }
           };
         }
@@ -2140,7 +2140,7 @@ test!(basic_interfaces => r#"
             date: dt.date,
             time: dt.time,
             timezone: new HourMinute {
-              hour: timezone.hour.snegate(),
+              hour: timezone.hour.snegate,
               minute: timezone.minute
             }
           };
@@ -2151,7 +2151,7 @@ test!(basic_interfaces => r#"
             date: dt.date,
             time: dt.time,
             timezone: new HourMinute {
-              hour: toInt8(timezone[0]).snegate(),
+              hour: toInt8(timezone[0]).snegate,
               minute: toInt8(timezone[1])
             }
           };
@@ -2163,7 +2163,7 @@ test!(basic_interfaces => r#"
           let str = (new Array<string> [
             string(dt.date.year), \"-\", string(dt.date.month), \"-\", string(dt.date.day), \"@\",
             string(dt.time.hour), \":\", string(dt.time.minute), \":\", string(dt.time.second),
-            timezoneOffsetSymbol, sabs(dt.timezone.hour).string(), \":\", string(dt.timezone.minute)
+            timezoneOffsetSymbol, sabs(dt.timezone.hour).string, \":\", string(dt.timezone.minute)
           ]).join('');
           print(str);
         }
@@ -2196,7 +2196,7 @@ test!(basic_interfaces => r#"
 
         on start {
           const dt = #2020 - 07 - 02@12:07:30 - 08:00;
-          dt.print();
+          dt.print;
           emit exit 0;
         }
       "
@@ -2225,42 +2225,42 @@ test!(basic_interfaces => r#"
 
 test!(maybe => r#"
     fn fiver(val: float64) {
-      if val.toInt64() == 5 {
+      if val.i64 == 5 {
         return some(5);
       } else {
-        return none();
+        return none;
       }
     }
 
     export fn main {
       const maybe5 = fiver(5.5);
-      if maybe5.isSome() {
+      if maybe5.isSome {
         print(maybe5.getOr(0));
       } else {
         print('what?');
       }
 
       const maybeNot5 = fiver(4.4);
-      if maybeNot5.isNone() {
+      if maybeNot5.isNone {
         print('Correctly received nothing!');
       } else {
         print('uhhh');
       }
 
-      if maybe5.isSome() {
+      if maybe5.isSome {
         print(maybe5 || 0);
       } else {
         print('what?');
       }
 
-      if maybeNot5.isNone() {
+      if maybeNot5.isNone {
         print('Correctly received nothing!');
       } else {
         print('uhhh');
       }
 
-      maybe5.string().print();
-      maybeNot5.string().print();
+      maybe5.string.print;
+      maybeNot5.string.print;
     }"#;
     stdout r#"5
 Correctly received nothing!
@@ -2281,34 +2281,34 @@ test!(result => r#"
 
     export fn main {
       const oneFifth = reciprocal(5.0);
-      if oneFifth.isOk() {
+      if oneFifth.isOk {
         print(oneFifth.getOr(0.0));
       } else {
         print('what?');
       }
 
       const oneZeroth = reciprocal(0.0);
-      if oneZeroth.isErr() {
+      if oneZeroth.isErr {
         const error = oneZeroth.getErr(noerr());
         print(error);
       } else {
         print('uhhh');
       }
 
-      if oneFifth.isOk() {
+      if oneFifth.isOk {
         print(oneFifth || 0.0);
       } else {
         print('what?');
       }
 
-      if oneZeroth.isErr() {
+      if oneZeroth.isErr {
         print(oneZeroth || 1.2345);
       } else {
         print('uhhh');
       }
 
-      oneFifth.string().print();
-      oneZeroth.string().print();
+      oneFifth.string.print;
+      oneZeroth.string.print;
 
       const res = ok('foo');
       print(res.getErr('there is no error'));
@@ -2325,21 +2325,21 @@ there is no error
 test!(either => r#"
     export fn main {
       const strOrNum = getMainOrAlt(true);
-      if strOrNum.isMain() {
+      if strOrNum.isMain {
         print(strOrNum.getMainOr(''));
       } else {
         print('what?');
       }
 
       const strOrNum2 = getMainOrAlt(false);
-      if strOrNum2.isAlt() {
+      if strOrNum2.isAlt {
         print(strOrNum2.getAltOr(0));
       } else {
         print('uhhh');
       }
 
-      strOrNum.string().print();
-      strOrNum2.ntring().print();
+      strOrNum.string.print;
+      strOrNum2.ntring.print;
     }
 
     fn getMainOrAlt(isMain: bool) {
@@ -2407,7 +2407,7 @@ test!(user_types_and_generics => r#"
           fetch(new Request {
               method: 'POST',
               url: 'https://reqbin.com/echo/post/json',
-              headers: newHashMap('Content-Length', arghStr.length().string()),
+              headers: newHashMap('Content-Length', arghStr.length.string),
               body: arghStr,
             });
         }
@@ -2486,7 +2486,7 @@ test!(closure_by_name => r#"
 
     export fn main {
       const numbers = [1, 2, 3, 4, 5];
-      numbers.map(double).map(string).join(', ').print();
+      numbers.map(double).map(string).join(', ').print;
     }"#;
     stdout "2, 4, 6, 8, 10\n";
 );
@@ -2633,12 +2633,12 @@ test!(std_trig => r#"
     // shouldn't be necessary, but compiler issue makes it so
 
     export fn main {
-      'Logarithms and e^x'.print();
+      'Logarithms and e^x'.print;
       print(trig.exp(e));
       print(trig.ln(e));
       print(trig.log(e));
 
-      'Basic Trig functions'.print();
+      'Basic Trig functions'.print;
       print(trig.sin(tau / 6.0));
       print(trig.cos(tau / 6.0));
       print(trig.tan(tau / 6.0));
@@ -2646,7 +2646,7 @@ test!(std_trig => r#"
       print(trig.csc(tau / 6.0));
       print(trig.cot(tau / 6.0));
 
-      'Inverse Trig functions'.print();
+      'Inverse Trig functions'.print;
       print(trig.arcsine(0.0));
       print(trig.arccosine(1.0));
       print(trig.arctangent(0.0));
@@ -2654,7 +2654,7 @@ test!(std_trig => r#"
       print(trig.arccosecant(tau / 6.0));
       print(trig.arccotangent(tau / 6.0));
 
-      'Historic Trig functions (useful for navigation and as a teaching aid: https://en.wikipedia.org/wiki/File:Circle-trig6.svg )'.print();
+      'Historic Trig functions (useful for navigation and as a teaching aid: https://en.wikipedia.org/wiki/File:Circle-trig6.svg )'.print;
       print(trig.versine(pi / 3.0));
       print(trig.vercosine(pi / 3.0));
       print(trig.coversine(pi / 3.0));
@@ -2667,7 +2667,7 @@ test!(std_trig => r#"
       print(trig.excosecant(pi / 3.0));
       print(trig.chord(pi / 3.0));
 
-      'Historic Inverse Trig functions'.print();
+      'Historic Inverse Trig functions'.print;
       print(trig.aver(0.0));
       print(trig.avcs(0.5));
       print(trig.acvs(1.0));
@@ -2680,7 +2680,7 @@ test!(std_trig => r#"
       print(trig.aexc(0.5));
       print(trig.acrd(0.5));
 
-      'Hyperbolic Trig functions'.print();
+      'Hyperbolic Trig functions'.print;
       print(trig.sinh(tau / 6.0));
       print(trig.cosh(tau / 6.0));
       print(trig.tanh(tau / 6.0));
@@ -2688,7 +2688,7 @@ test!(std_trig => r#"
       print(trig.csch(tau / 6.0));
       print(trig.coth(tau / 6.0));
 
-      'Inverse Hyperbolic Trig functions'.print();
+      'Inverse Hyperbolic Trig functions'.print;
       print(trig.hyperbolicArcsine(tau / 6.0));
       print(trig.hyperbolicArccosine(tau / 6.0));
       print(trig.hyperbolicArctangent(tau / 6.0));
@@ -2768,10 +2768,10 @@ Describe "@std/deps"
         on install fn (package: Package) = package
           .using(['@std/app', '@std/cmd'])
           .dependency('https://github.com/alantech/hellodep.git')
-            .add()
+            .add
           .block('@std/tcp')
           .fullBlock('@std/httpcommon')
-          .commit()
+          .commit
       "
     }
     BeforeAll before
@@ -2972,10 +2972,10 @@ End
             headers: newHashMap('User-Agent', 'Alanlang'),
             body: '',
           });
-          print(res.isOk());
-          const r = res.getOrExit();
+          print(res.isOk);
+          const r = res.getOrExit;
           print(r.status);
-          print(r.headers.length());
+          print(r.headers.length);
           print(r.body);
           emit exit 0;
         }
@@ -3022,9 +3022,9 @@ export const comeGetMe = \"You got me!\""
           const res = conn.res;
           set(res.headers, 'Content-Type', 'text/plain');
           if req.method == 'GET' {
-            res.body('Hello, World!').send();
+            res.body('Hello, World!').send;
           } else {
-            res.body('Hello, Failure!').send();
+            res.body('Hello, Failure!').send;
           }
         }
       "
@@ -3072,8 +3072,8 @@ export const comeGetMe = \"You got me!\""
           const key = kv[0] || 'bad';
           const val = kv[1] || 'bad';
           const hm = newHashMap(key, val);
-          hm.get(key).getOr('failed').print();
-          hm.get('something else').getOr('correct').print();
+          hm.get(key).getOr('failed').print;
+          hm.get('something else').getOr('correct').print;
           emit exit 0;
         }
       "
@@ -3108,9 +3108,9 @@ correct"
 
         on connection fn (conn: Connection) {
           const res = conn.res;
-          const firstMessage = res.body('First Message').send();
+          const firstMessage = res.body('First Message').send;
           print(firstMessage);
-          const secondMessage = res.body('Second Message').send();
+          const secondMessage = res.body('Second Message').send;
           print(secondMessage);
           wait(1000);
           emit exit 0;
@@ -3164,15 +3164,15 @@ End
 test!(clone => r#"
     export fn main {
       let a = 3;
-      let b = a.clone();
+      let b = a.clone;
       a = 4;
       print(a);
       print(b);
       let c = [1, 2, 3];
-      let d = c.clone();
+      let d = c.clone;
       d.set(0, 2);
-      c.map(fn (val: int): string = val.string()).join(', ').print();
-      d.map(fn (val: int): string = val.string()).join(', ').print();
+      c.map(fn (val: int): string = val.string).join(', ').print;
+      d.map(fn (val: int): string = val.string).join(', ').print;
     }"#;
     stdout "4\n3\n1, 2, 3\n2, 2, 3\n";
 );
@@ -3182,11 +3182,11 @@ test!(clone => r#"
 test!(get_or_exit => r#"
     export fn main {
       const xs = [0, 1, 2, 5];
-      const x1 = xs[1].getOrExit();
+      const x1 = xs[1].getOrExit;
       print(x1);
-      const x2 = xs[2].getOrExit();
+      const x2 = xs[2].getOrExit;
       print(x2);
-      const x5 = xs[5].getOrExit();
+      const x5 = xs[5].getOrExit;
       print(x5);
     }"#;
     status 1;
@@ -3272,14 +3272,14 @@ false
           ns.set('foo', 'bar');
 
           // Basic remote execution
-          const baz = ns.ref('foo').run(fn (foo: string) = foo.length());
+          const baz = ns.ref('foo').run(fn (foo: string) = foo.length);
           print(baz);
 
           // Closure-based remote execution
           let bar = 'bar';
           const bay = ns.ref('foo').closure(fn (foo: string): int64 {
             bar = 'foobar: ' + foo + bar;
-            return foo.length();
+            return foo.length;
           });
           print(bay);
           print(bar);
@@ -3291,15 +3291,15 @@ false
           // Mutable closure
           const baw = ns.mut('foo').run(fn (foo: string): int64 {
             foo = foo + 'bar';
-            return foo.length();
+            return foo.length;
           });
           print(baw);
 
           // Mutable closure that affects the foo variable
           const bav = ns.mut('foo').closure(fn (foo: string): int64 {
             foo = foo + 'bar';
-            bar = bar * foo.length();
-            return bar.length();
+            bar = bar * foo.length;
+            return bar.length;
           });
           print(bav);
           print(bar);
@@ -3307,7 +3307,7 @@ false
           // Constrained mutable closure that affects the foo variable
           const bau = ns.mut('foo').with(bar).run(fn (foo: string, bar: string): int64 {
             foo = foo * #bar;
-            return foo.length();
+            return foo.length;
           });
           print(bau);
 
@@ -3366,9 +3366,9 @@ test!(seq_and_next => r#"
 
     export fn main {
       let s = seq(2);
-      print(s.next());
-      print(s.next());
-      print(s.next());
+      print(s.next);
+      print(s.next);
+      print(s.next);
     }"#;
     stdout "0\n1\nerror: sequence out-of-bounds\n";
 );
@@ -3419,10 +3419,10 @@ test!(seq_recurse => r#"
         } else {
           const prev = self.recurse(i - 1 || 0);
           const prevPrev = self.recurse(i - 2 || 0);
-          if prev.isErr() {
+          if prev.isErr {
             return prev;
           }
-          if prevPrev.isErr() {
+          if prevPrev.isErr {
             return prevPrev;
           }
           // TODO: Get type inference inside of recurse working so we don't need to unwrap these
@@ -3480,9 +3480,9 @@ test!(tree_construction_and_access => r#"
       const bazNode = myTree.addChild('baz');
       const bayNode = barNode.addChild('bay');
 
-      print(myTree.getRootNode() || 'wrong');
-      print(bayNode.getParent() || 'wrong');
-      print(myTree.getChildren().map(fn (c: Node<string>): string = c || 'wrong').join(', '));
+      print(myTree.getRootNode || 'wrong');
+      print(bayNode.getParent || 'wrong');
+      print(myTree.getChildren.map(fn (c: Node<string>): string = c || 'wrong').join(', '));
     }"#;
     stdout "foo\nbar\nbar, baz\n";
 );
@@ -3501,7 +3501,7 @@ test!(tree_user_defined_types => r#"
         foo: 'wrongFoo',
         bar: false,
       };
-      const myFoo = myTree.getRootNode() || wrongFoo;
+      const myFoo = myTree.getRootNode || wrongFoo;
       print(myFoo.foo);
     }"#;
     stdout "myFoo\n";
@@ -3513,22 +3513,22 @@ test!(tree_every_find_some_reduce_prune => r#"
       const bazNode = myTree.addChild('baz');
       const bayNode = barNode.addChild('bay');
 
-      print(myTree.every(fn (c: Node<string>): bool = (c || 'wrong').length() == 3));
-      print(myTree.some(fn (c: Node<string>): bool = (c || 'wrong').length() == 1));
+      print(myTree.every(fn (c: Node<string>): bool = (c || 'wrong').length == 3));
+      print(myTree.some(fn (c: Node<string>): bool = (c || 'wrong').length == 1));
       print(myTree.find(fn (c: Node<string>): bool = (c || 'wrong') == 'bay').getOr('wrong'));
       print(myTree.find(fn (c: Node<string>): bool = (c || 'wrong') == 'asf').getOr('wrong'));
 
-      print(myTree.length());
-      myTree.getChildren().eachLin(fn (c: Node<string>) {
+      print(myTree.length);
+      myTree.getChildren.eachLin(fn (c: Node<string>) {
         const n = c || 'wrong';
         if n == 'bar' {
-          c.prune();
+          c.prune;
         }
       });
-      print(myTree.getChildren().map(fn (c: Node<string>): string = c || 'wrong').join(', '));
-      print(myTree.length());
+      print(myTree.getChildren.map(fn (c: Node<string>): string = c || 'wrong').join(', '));
+      print(myTree.length);
 
-      myTree.reduce(fn (acc: int, i: Node<string>): int = (i || 'wrong').length() + acc || 0, 0).print();
+      myTree.reduce(fn (acc: int, i: Node<string>): int = (i || 'wrong').length + acc || 0, 0).print;
     }"#;
     stdout r#"true
 false
@@ -3544,20 +3544,20 @@ test!(subtree_and_nested_tree_construction => r#"
     export fn main {
       const bigNestedTree = newTree('foo')
         .addChild('bar')
-        .getTree()
+        .getTree
         .addChild(newTree('baz')
           .addChild('quux')
-          .getTree()
-        ).getTree();
+          .getTree
+        ).getTree;
 
       const mySubtree = bigNestedTree
-        .getRootNode()
-        .getChildren()[1]
-        .getOr(newTree('what').getRootNode())
-        .toSubtree();
+        .getRootNode
+        .getChildren[1]
+        .getOr(newTree('what').getRootNode)
+        .toSubtree;
 
-      print(bigNestedTree.getRootNode() || 'wrong');
-      print(mySubtree.getRootNode() || 'wrong');
+      print(bigNestedTree.getRootNode || 'wrong');
+      print(mySubtree.getRootNode || 'wrong');
     }"#;
     stdout "foo\nbaz\n";
 );
@@ -3589,7 +3589,7 @@ test!(cmd_sequential => r#"
       exec('touch test.txt');
       exec('echo foo >> test.txt');
       exec('echo bar >> test.txt');
-      exec('cat test.txt').stdout.print();
+      exec('cat test.txt').stdout.print;
       exec('rm test.txt');
     }"#;
     stdout "foobar\n";
@@ -3652,11 +3652,11 @@ test!(json_construction_printing => r#"
     from @std/json import JSON, toJSON, string, JSONBase, JSONNode, IsObject, Null
 
     export fn main {
-      1.0.toJSON().print();
-      true.toJSON().print();
-      'Hello, JSON!'.toJSON().print();
-      [1.0, 2.0, 5.0].toJSON().print();
-      toJSON().print();
+      1.0.toJSON.print;
+      true.toJSON.print;
+      'Hello, JSON!'.toJSON.print;
+      [1.0, 2.0, 5.0].toJSON.print;
+      toJSON.print;
     }"#;
     stdout r#"1
 true
@@ -3675,7 +3675,7 @@ test!(json_complex_construction => r#"
         .addKeyVal('even', newJSONArray()
           .push(4.0)
           .push('arrays'))
-        .print();
+        .print;
     }"#;
     stdout r#"{"mixed": "values", "work": true, "even": [4, "arrays"]}""#;
 );
@@ -3693,16 +3693,16 @@ Describe "@std/tcp"
           const tunnel = connect('localhost', 8088);
           channel.addContext(tunnel);
           tunnel.addContext(channel);
-          channel.ready();
-          tunnel.ready();
+          channel.ready;
+          tunnel.ready;
         }
 
         on chunk fn (ctx: TcpContext<TcpChannel>) {
-          ctx.context.write(ctx.channel.read());
+          ctx.context.write(ctx.channel.read);
         }
 
         on tcpClose fn (ctx: TcpContext<TcpChannel>) {
-          ctx.context.close();
+          ctx.context.close;
         }
       "
       tempToAmm

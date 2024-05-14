@@ -881,28 +881,17 @@ fn baseassignablelist_to_microstatements(
                                 parse::BaseAssignable::MethodSep(_) => {
                                     // Call the function with a singular value
                                     match &prior {
-                                        Microstatement::Value {
-                                            typen,
-                                            representation,
-                                        } => {
-                                            if typen == "function" {
-                                                prior_value = Some(Microstatement::FnCall {
-                                                    function: representation.clone(),
-                                                    args: vec![prior.clone()],
-                                                });
-                                            } else {
-                                                return Err(format!("{} is not a function so it cannot be called as one: {}", representation, baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
-                                            }
+                                        Microstatement::Value { .. } => {
+                                            prior_value = Some(Microstatement::FnCall {
+                                                function: var.clone(),
+                                                args: vec![prior.clone()],
+                                            });
                                         }
-                                        Microstatement::Arg { typen, name } => {
-                                            if typen == "function" {
-                                                prior_value = Some(Microstatement::FnCall {
-                                                    function: name.clone(),
-                                                    args: vec![prior.clone()],
-                                                });
-                                            } else {
-                                                return Err(format!("{} is not a function so it cannot be called as one: {}", name, baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
-                                            }
+                                        Microstatement::Arg { .. } => {
+                                            prior_value = Some(Microstatement::FnCall {
+                                                function: var.clone(),
+                                                args: vec![prior.clone()],
+                                            });
                                         }
                                         Microstatement::Assignment { name, .. } => {
                                             return Err(format!("{} is not a function so it cannot be called as one: {}", name, baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
