@@ -1,6 +1,6 @@
 use crate::compile::{compile, to_rs};
 use crate::program::Program;
-use clap::{Parser, Subcommand};
+use clap::{Subcommand, Parser};
 
 mod compile;
 mod lntors;
