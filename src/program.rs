@@ -214,7 +214,30 @@ impl Scope {
                     e => println!("TODO: Not yet supported export syntax: {:?}", e),
                 },
                 parse::RootElements::Whitespace(_) => { /* Do nothing */ }
-                _ => println!("TODO: Not yet supported top-level module syntax"),
+                parse::RootElements::Interfaces(_) => {
+                    return Err("Interfaces not yet implemented".into());
+                }
+                parse::RootElements::CTypes(c) => {
+                    // For now this is just declaring in the Alan source code the compile-time
+                    // types that can be used, and is simply a special kind of documentation.
+                    // *Only* the root scope is allowed to use this syntax, and I cannot imagine
+                    // any other way, since the compiler needs to exactly match what is declared.
+                    // So we return an error if they're encountered outside of the root scope and
+                    // simply verify that each `ctype` we encounter is one of a set the compiler
+                    // expects to exist. Later when `cfn` is implemented these will be loaded up
+                    // for verification of the meta-typing of the compile-time functions.
+                    if path == "@root" {
+                        match c.name.as_str() {
+                            "Type" | "Int" | "Float" | "Bool" | "String" => { /* Do nothing */ }
+                            unknown => {
+                                println!("What!? {}", unknown);
+                                return Err(format!("Unknown ctype {} defined in root scope. There's something wrong with the compiler.", unknown).into());
+                            }
+                        }
+                    } else {
+                        return Err("ctypes can only be defined in the compiler internals".into());
+                    }
+                }
             }
         }
         Ok((p, (txt, ast, s)))
