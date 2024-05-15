@@ -3,6 +3,15 @@
  * library, or are defined in the sibling root.rs file
  **/
 
+/// Type system setup
+
+// Declaration of the types the compiler-time type system is built on
+ctype Type;
+ctype Int;
+ctype Float;
+ctype Bool;
+ctype String;
+
 /// Integer-related bindings
 
 export type i8 binds i8;
@@ -164,10 +173,12 @@ export fn max(a: Result<i64>, b: Result<i64>): Result<i64> binds maxi64_result;
 export fn max(a: i64, b: Result<i64>): Result<i64> = max(a.ok, b);
 export fn max(a: Result<i64>, b: i64): Result<i64> = max(a, b.ok);
 
-// Boolean related bindings
+/// Boolean related bindings
+
 type bool binds bool;
 
-// Process exit-related bindings
+/// Process exit-related bindings
+
 export type ExitCode binds std::process::ExitCode;
 export fn ExitCode(e: i8): ExitCode binds to_exit_code_i8;
 export fn ExitCode(e: i16): ExitCode = ExitCode(e.i8);
@@ -178,7 +189,8 @@ export fn getOrExit(a: Result<i16>): i16 binds get_or_exit; // TODO: Support rea
 export fn getOrExit(a: Result<i32>): i32 binds get_or_exit; // TODO: Support real generics
 export fn getOrExit(a: Result<i64>): i64 binds get_or_exit; // TODO: Support real generics
 
-// Stdout/stderr-related bindings
+/// Stdout/stderr-related bindings
+
 export type string binds String;
 export fn concat(a: string, b: string): string binds string_concat;
 export fn print(str: string) binds println;
@@ -191,17 +203,20 @@ export fn print(i: Result<i32>) binds println_result;
 export fn print(i: i64) binds println;
 export fn print(i: Result<i64>) binds println_result;
 
-// Thread-related bindings
+/// Thread-related bindings
+
 export fn wait(t: i64) binds wait;
 
-// Time-related bindings
+/// Time-related bindings
+
 export type Instant binds std::time::Instant;
 export fn now(): Instant binds now;
 export type Duration binds std::time::Duration;
 export fn elapsed(i: Instant): Duration binds elapsed;
 export fn print(d: Duration) binds print_duration;
 
-// Vector-related bindings
+/// Vector-related bindings
+
 export type Vec<i64> binds Vec<i64>;
 export type Vec<Result<i64>> binds Vec<Result_i64>;
 export fn filled(i: i64, l: i64): Vec<i64> binds filled;
@@ -216,7 +231,8 @@ export fn push(v: Vec<i64>, a: i64) binds push;
 export fn length(v: Vec<i64>): i64 binds vec_len;
 export fn length(v: Vec<i32>): i64 binds vec_len;
 
-// GPU-related bindings
+/// GPU-related bindings
+
 export type GPU binds GPU;
 export fn GPU(): GPU binds GPU_new;
 export type BufferUsages binds wgpu::BufferUsages;
@@ -240,7 +256,8 @@ export fn GPGPU(source: string, buffer: Buffer): GPGPU binds GPGPU_new_easy;
 export fn run(g: GPU, gg: GPGPU) binds gpu_run;
 export fn read(g: GPU, b: Buffer): Vec<i32> binds read_buffer; // TODO: Support other output types
 
-// Built-in operator definitions
+/// Built-in operator definitions
+
 export infix add as + precedence 2;
 // export infix concat as + precedence 2;
 export infix sub as - precedence 2;

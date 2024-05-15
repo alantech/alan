@@ -430,6 +430,8 @@ build!(
         token!("*"),
         token!("^"),
         token!("."),
+        // token!(","), TODO: Enable this after tuples are added to the language and used for
+        // function arguments
         token!("~"),
         token!("`"),
         token!("!"),
@@ -459,10 +461,12 @@ build!(returnn, token!("return"));
 build!(letn, token!("let"));
 build!(constn, token!("const"));
 build!(export, token!("export"));
+build!(ctype, token!("ctype"));
 build!(typen, token!("type"));
 build!(import, token!("import"));
 build!(from, token!("from"));
 build!(fnn, token!("fn"));
+build!(cfn, token!("cfn"));
 build!(binds, token!("binds"));
 build!(quote, token!("'"));
 build!(doublequote, token!("\""));
@@ -780,6 +784,13 @@ test!(types =>
     pass "type Result<T, Error> binds Result<T, Error>";
     pass "type ExitCode binds std::process::ExitCode;";
     pass "type<Windows> Path {\n driveLetter: string, pathsegments: Array<string>, \n}";
+);
+named_and!(ctypes: CTypes =>
+    ctype: String as ctype,
+    a: String as blank,
+    name: String as variable,
+    b: String as optblank,
+    optsemicolon: String as optsemicolon,
 );
 named_or!(constants: Constants =>
     Bool: String as booln,
@@ -1470,6 +1481,7 @@ named_or!(rootelements: RootElements =>
     Whitespace: String as whitespace,
     Exports: Exports as exports,
     Functions: Functions as functions,
+    CTypes: CTypes as ctypes,
     Types: Types as types,
     ConstDeclaration: ConstDeclaration as constdeclaration,
     OperatorMapping: OperatorMapping as operatormapping,
