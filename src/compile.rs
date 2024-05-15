@@ -544,13 +544,13 @@ test!(int32_sub => r#"
 );
 test!(int32_mul => r#"
     export fn main {
-      mul(2.i32, 1.i32).print;
+      (2.i32 * 1.i32).print;
     }"#;
     stdout "2\n";
 );
 test!(int32_div => r#"
     export fn main {
-      div(6.i32(), 2.i32()).print();
+      (6.i32() / 2.i32()).print();
     }"#;
     stdout "3\n";
 );
