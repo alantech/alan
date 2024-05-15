@@ -45,6 +45,16 @@ fn i64toi8(i: &i64) -> i8 {
     *i as i8
 }
 
+/// `i32toi8` casts an i32 to an i8.
+fn i32toi8(i: &i32) -> i8 {
+    *i as i8
+}
+
+/// `i16toi8` casts an i16 to an i8.
+fn i16toi8(i: &i16) -> i8 {
+    *i as i8
+}
+
 /// `Result_i8` is a type alias for Result<i8, AlanError>
 type Result_i8 = Result<i8, AlanError>;
 
@@ -227,6 +237,16 @@ fn i64toi16(i: &i64) -> i16 {
     *i as i16
 }
 
+/// `i32toi16` casts an i32 to an i16.
+fn i32toi16(i: &i32) -> i16 {
+    *i as i16
+}
+
+/// `i8toi16` casts an i8 to an i16.
+fn i8toi16(i: &i8) -> i16 {
+    *i as i16
+}
+
 /// `Result_i16` is a type alias for Result<i16, AlanError>
 type Result_i16 = Result<i16, AlanError>;
 
@@ -238,11 +258,39 @@ fn addi16(a: &i16, b: &i16) -> Result_i16 {
     }
 }
 
+/// `addi16_result` safely adds two Result_i16s together, returning a Result-wrapped i16 (or an error on overflow)
+fn addi16_result(a: &Result_i16, b: &Result_i16) -> Result_i16 {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => match b {
+            Err(e) => Err(e.clone()),
+            Ok(b) => match a.checked_add(*b) {
+                Some(c) => Ok(c),
+                None => Err("Overflow".into()),
+            }
+        }
+    }
+}
+
 /// `subi16` safely subtracts two i16s, returning a Result-wrapped i16 (or an error on underflow)
 fn subi16(a: &i16, b: &i16) -> Result_i16 {
     match a.checked_sub(*b) {
         Some(c) => Ok(c),
         None => Err("Underflow".into()),
+    }
+}
+
+/// `subi16_result` safely subtracts two i16s, returning a Result-wrapped i16 (or an error on underflow)
+fn subi16_result(a: &Result_i16, b: &Result_i16) -> Result_i16 {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => match b {
+            Err(e) => Err(e.clone()),
+            Ok(b) => match a.checked_sub(*b) {
+                Some(c) => Ok(c),
+                None => Err("Underflow".into()),
+            }
+        }
     }
 }
 
@@ -254,6 +302,20 @@ fn muli16(a: &i16, b: &i16) -> Result_i16 {
     }
 }
 
+/// `muli16_result` safely multiplies two Result_i16s, returning a Result-wrapped i16 (or an error on under/overflow)
+fn muli16_result(a: &Result_i16, b: &Result_i16) -> Result_i16 {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => match b {
+            Err(e) => Err(e.clone()),
+            Ok(b) => match a.checked_mul(*b) {
+                Some(c) => Ok(c),
+                None => Err("Underflow or Overflow".into()),
+            }
+        }
+    }
+}
+
 /// `divi16` safely divides two i16s, returning a Result-wrapped i16 (or an error on divide-by-zero)
 fn divi16(a: &i16, b: &i16) -> Result_i16 {
     match a.checked_div(*b) {
@@ -262,11 +324,39 @@ fn divi16(a: &i16, b: &i16) -> Result_i16 {
     }
 }
 
+/// `divi16_result` safely divides two Result_i16s, returning a Result-wrapped i16 (or an error on divide-by-zero)
+fn divi16_result(a: &Result_i16, b: &Result_i16) -> Result_i16 {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => match b {
+            Err(e) => Err(e.clone()),
+            Ok(b) => match a.checked_div(*b) {
+                Some(c) => Ok(c),
+                None => Err("Divide-by-zero".into()),
+            }
+        }
+    }
+}
+
 /// `modi16` safely divides two i16s, returning a Result-wrapped remainder in i16 (or an error on divide-by-zero)
 fn modi16(a: &i16, b: &i16) -> Result_i16 {
     match a.checked_rem(*b) {
         Some(c) => Ok(c),
         None => Err("Divide-by-zero".into()),
+    }
+}
+
+/// `modi16_result` safely divides two Result_i16s, returning a Result-wrapped remainder in i16 (or an error on divide-by-zero)
+fn modi16_result(a: &Result_i16, b: &Result_i16) -> Result_i16 {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => match b {
+            Err(e) => Err(e.clone()),
+            Ok(b) => match a.checked_rem(*b) {
+                Some(c) => Ok(c),
+                None => Err("Divide-by-zero".into()),
+            }
+        }
     }
 }
 
@@ -279,9 +369,35 @@ fn powi16(a: &i16, b: &i16) -> Result_i16 {
     }
 }
 
+/// `powi16_result` safely raises the first Result_i16 to the second Result_i16, returning a Result-wrapped i16 (or an error on under/overflow)
+fn powi16_result(a: &Result_i16, b: &Result_i16) -> Result_i16 {
+    // TODO: Support b being negative correctly
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => match b {
+            Err(e) => Err(e.clone()),
+            Ok(b) => match a.checked_pow(*b as u32) {
+                Some(c) => Ok(c),
+                None => Err("Underflow or Overflow".into()),
+            }
+        }
+    }
+}
+
 /// `mini16` returns the smaller of the two i16 values
 fn mini16(a: &i16, b: &i16) -> i16 {
     if a < b { *a } else { *b }
+}
+
+/// `mini16_result` returns the smaller of the two Result_i16 values
+fn mini16_result(a: &Result_i16, b: &Result_i16) -> Result_i16 {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => match b {
+            Err(e) => Err(e.clone()),
+            Ok(b) => if a < b { Ok(*a) } else { Ok(*b) }
+        }
+    }
 }
 
 /// `maxi16` returns the larger of the two i16 values
@@ -289,11 +405,32 @@ fn maxi16(a: &i16, b: &i16) -> i16 {
     if a > b { *a } else { *b }
 }
 
+/// `maxi16_result` returns the larger of the two Result_i16 values
+fn maxi16_result(a: &Result_i16, b: &Result_i16) -> Result_i16 {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => match b {
+            Err(e) => Err(e.clone()),
+            Ok(b) => if a > b { Ok(*a) } else { Ok(*b) }
+        }
+    }
+}
+
 /// `Result_i32` is a type alias for Result<i32, AlanError>
 type Result_i32 = Result<i32, AlanError>;
 
 /// `i64toi32` casts an i64 to an i32.
 fn i64toi32(i: &i64) -> i32 {
+    *i as i32
+}
+
+/// `i16toi32` casts an i16 to an i32.
+fn i16toi32(i: &i16) -> i32 {
+    *i as i32
+}
+
+/// `i8toi32` casts an i8 to an i32.
+fn i8toi32(i: &i8) -> i32 {
     *i as i32
 }
 
@@ -305,11 +442,39 @@ fn addi32(a: &i32, b: &i32) -> Result_i32 {
     }
 }
 
+/// `addi32_result` safely adds two Result_i32s together, returning a Result-wrapped i32 (or an error on overflow)
+fn addi32_result(a: &Result_i32, b: &Result_i32) -> Result_i32 {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => match b {
+            Err(e) => Err(e.clone()),
+            Ok(b) => match a.checked_add(*b) {
+                Some(c) => Ok(c),
+                None => Err("Overflow".into()),
+            }
+        }
+    }
+}
+
 /// `subi32` safely subtracts two i32s, returning a Result-wrapped i32 (or an error on underflow)
 fn subi32(a: &i32, b: &i32) -> Result_i32 {
     match a.checked_sub(*b) {
         Some(c) => Ok(c),
         None => Err("Underflow".into()),
+    }
+}
+
+/// `subi32_result` safely subtracts two i32s, returning a Result-wrapped i32 (or an error on underflow)
+fn subi32_result(a: &Result_i32, b: &Result_i32) -> Result_i32 {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => match b {
+            Err(e) => Err(e.clone()),
+            Ok(b) => match a.checked_sub(*b) {
+                Some(c) => Ok(c),
+                None => Err("Underflow".into()),
+            }
+        }
     }
 }
 
@@ -321,6 +486,20 @@ fn muli32(a: &i32, b: &i32) -> Result_i32 {
     }
 }
 
+/// `muli32_result` safely multiplies two Result_i32s, returning a Result-wrapped i32 (or an error on under/overflow)
+fn muli32_result(a: &Result_i32, b: &Result_i32) -> Result_i32 {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => match b {
+            Err(e) => Err(e.clone()),
+            Ok(b) => match a.checked_mul(*b) {
+                Some(c) => Ok(c),
+                None => Err("Underflow or Overflow".into()),
+            }
+        }
+    }
+}
+
 /// `divi32` safely divides two i32s, returning a Result-wrapped i32 (or an error on divide-by-zero)
 fn divi32(a: &i32, b: &i32) -> Result_i32 {
     match a.checked_div(*b) {
@@ -329,11 +508,39 @@ fn divi32(a: &i32, b: &i32) -> Result_i32 {
     }
 }
 
+/// `divi32_result` safely divides two Result_i32s, returning a Result-wrapped i32 (or an error on divide-by-zero)
+fn divi32_result(a: &Result_i32, b: &Result_i32) -> Result_i32 {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => match b {
+            Err(e) => Err(e.clone()),
+            Ok(b) => match a.checked_div(*b) {
+                Some(c) => Ok(c),
+                None => Err("Divide-by-zero".into()),
+            }
+        }
+    }
+}
+
 /// `modi32` safely divides two i32s, returning a Result-wrapped remainder in i32 (or an error on divide-by-zero)
 fn modi32(a: &i32, b: &i32) -> Result_i32 {
     match a.checked_rem(*b) {
         Some(c) => Ok(c),
         None => Err("Divide-by-zero".into()),
+    }
+}
+
+/// `modi32_result` safely divides two Result_i32s, returning a Result-wrapped remainder in i32 (or an error on divide-by-zero)
+fn modi32_result(a: &Result_i32, b: &Result_i32) -> Result_i32 {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => match b {
+            Err(e) => Err(e.clone()),
+            Ok(b) => match a.checked_rem(*b) {
+                Some(c) => Ok(c),
+                None => Err("Divide-by-zero".into()),
+            }
+        }
     }
 }
 
@@ -346,14 +553,66 @@ fn powi32(a: &i32, b: &i32) -> Result_i32 {
     }
 }
 
+/// `powi32_result` safely raises the first Result_i32 to the second Result_i32, returning a Result-wrapped i32 (or an error on under/overflow)
+fn powi32_result(a: &Result_i32, b: &Result_i32) -> Result_i32 {
+    // TODO: Support b being negative correctly
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => match b {
+            Err(e) => Err(e.clone()),
+            Ok(b) => match a.checked_pow(*b as u32) {
+                Some(c) => Ok(c),
+                None => Err("Underflow or Overflow".into()),
+            }
+        }
+    }
+}
+
 /// `mini32` returns the smaller of the two i32 values
 fn mini32(a: &i32, b: &i32) -> i32 {
     if a < b { *a } else { *b }
 }
 
+/// `mini32_result` returns the smaller of the two Result_i32 values
+fn mini32_result(a: &Result_i32, b: &Result_i32) -> Result_i32 {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => match b {
+            Err(e) => Err(e.clone()),
+            Ok(b) => if a < b { Ok(*a) } else { Ok(*b) }
+        }
+    }
+}
+
 /// `maxi32` returns the larger of the two i32 values
 fn maxi32(a: &i32, b: &i32) -> i32 {
     if a > b { *a } else { *b }
+}
+
+/// `maxi32_result` returns the larger of the two Result_i32 values
+fn maxi32_result(a: &Result_i32, b: &Result_i32) -> Result_i32 {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => match b {
+            Err(e) => Err(e.clone()),
+            Ok(b) => if a > b { Ok(*a) } else { Ok(*b) }
+        }
+    }
+}
+
+/// `i8toi64` casts an i8 to an i64.
+fn i8toi64(i: &i8) -> i64 {
+    *i as i64
+}
+
+/// `i16toi64` casts an i16 to an i64.
+fn i16toi64(i: &i16) -> i64 {
+    *i as i64
+}
+
+/// `i32toi64` casts an i32 to an i64.
+fn i32toi64(i: &i32) -> i64 {
+    *i as i64
 }
 
 /// `Result_i64` is a type alias for Result<i64, AlanError>
