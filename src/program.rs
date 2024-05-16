@@ -72,10 +72,14 @@ impl Program {
             Some(t) => Some((t, scope)),
             None => {
                 // TODO: Loop over imports looking for the type
-                let (_, _, root_scope) = self.scopes_by_file.get("@root").unwrap();
-                match &root_scope.types.get(typename) {
-                    Some(t) => Some((&t, &root_scope)),
+                match self.scopes_by_file.get("@root") {
                     None => None,
+                    Some((_, _, root_scope)) => {
+                        match &root_scope.types.get(typename) {
+                            Some(t) => Some((&t, &root_scope)),
+                            None => None,
+                        }
+                    }
                 }
             }
         }
@@ -94,10 +98,14 @@ impl Program {
             Some(o) => Some((o, scope)),
             None => {
                 // TODO: Loop over imports looking for the type
-                let (_, _, root_scope) = self.scopes_by_file.get("@root").unwrap();
-                match &root_scope.operatormappings.get(operatorname) {
-                    Some(o) => Some((&o, &root_scope)),
+                match self.scopes_by_file.get("@root") {
                     None => None,
+                    Some((_, _, root_scope)) => {
+                        match &root_scope.operatormappings.get(operatorname) {
+                            Some(o) => Some((&o, &root_scope)),
+                            None => None,
+                        }
+                    }
                 }
             }
         }
@@ -134,27 +142,31 @@ impl Program {
             }
             None => {
                 // TODO: Loop over imports looking for the function
-                let (_, _, root_scope) = self.scopes_by_file.get("@root").unwrap();
-                match root_scope.functions.get(function) {
-                    Some(fs) => {
-                        for f in fs {
-                            if args.len() != f.args.len() {
-                                continue;
-                            }
-                            let mut args_match = true;
-                            for (i, arg) in args.iter().enumerate() {
-                                if &f.args[i].1 != arg {
-                                    args_match = false;
-                                    break;
-                                }
-                            }
-                            if args_match {
-                                return Some((f, &root_scope));
-                            }
-                        }
-                        None
-                    }
+                match self.scopes_by_file.get("@root") {
                     None => None,
+                    Some((_, _, root_scope)) => {
+                        match root_scope.functions.get(function) {
+                            Some(fs) => {
+                                for f in fs {
+                                    if args.len() != f.args.len() {
+                                        continue;
+                                    }
+                                    let mut args_match = true;
+                                    for (i, arg) in args.iter().enumerate() {
+                                        if &f.args[i].1 != arg {
+                                            args_match = false;
+                                            break;
+                                        }
+                                    }
+                                    if args_match {
+                                        return Some((f, &root_scope));
+                                    }
+                                }
+                                None
+                            }
+                            None => None,
+                        }
+                    }
                 }
             }
         }
@@ -168,6 +180,7 @@ pub struct Scope {
     pub consts: OrderedHashMap<String, Const>,
     pub functions: OrderedHashMap<String, Vec<Function>>,
     pub operatormappings: OrderedHashMap<String, OperatorMapping>,
+    pub typeoperatormappings: OrderedHashMap<String, TypeOperatorMapping>,
     pub exports: OrderedHashMap<String, Export>,
     // TODO: Implement these other concepts
     // interfaces: OrderedHashMap<String, Interface>,
@@ -190,6 +203,7 @@ impl Scope {
             consts: OrderedHashMap::new(),
             functions: OrderedHashMap::new(),
             operatormappings: OrderedHashMap::new(),
+            typeoperatormappings: OrderedHashMap::new(),
             exports: OrderedHashMap::new(),
         };
         let mut p = program;
@@ -204,39 +218,47 @@ impl Scope {
                 parse::RootElements::OperatorMapping(o) => {
                     OperatorMapping::from_ast(&mut s, o, false)?
                 }
+                parse::RootElements::TypeOperatorMapping(o) => {
+                    TypeOperatorMapping::from_ast(&mut s, o, false)?
+                }
                 parse::RootElements::Exports(e) => match &e.exportable {
                     parse::Exportable::Functions(f) => Function::from_ast(&mut s, &p, f, true)?,
                     parse::Exportable::ConstDeclaration(c) => Const::from_ast(&mut s, c, true)?,
                     parse::Exportable::OperatorMapping(o) => {
                         OperatorMapping::from_ast(&mut s, o, true)?
                     }
+                    parse::Exportable::TypeOperatorMapping(o) => {
+                        TypeOperatorMapping::from_ast(&mut s, o, true)?
+                    }
                     parse::Exportable::Types(t) => Type::from_ast(&mut s, t, true)?,
+                    parse::Exportable::CTypes(c) => {
+                        // For now this is just declaring in the Alan source code the compile-time
+                        // types that can be used, and is simply a special kind of documentation.
+                        // *Only* the root scope is allowed to use this syntax, and I cannot imagine
+                        // any other way, since the compiler needs to exactly match what is declared.
+                        // So we return an error if they're encountered outside of the root scope and
+                        // simply verify that each `ctype` we encounter is one of a set the compiler
+                        // expects to exist. Later when `cfn` is implemented these will be loaded up
+                        // for verification of the meta-typing of the compile-time functions.
+                        // This is also an exception in that it is *only* allowed to be exported
+                        // (from the root scope) and can't be hidden, as all code will need these
+                        // to construct their own types.
+                        if path == "@root" {
+                            match c.name.as_str() {
+                                "Type" | "Int" | "Float" | "Bool" | "String" | "Function" | "Tuple" | "Label" | "Field" => { /* Do nothing */ }
+                                unknown => {
+                                    return Err(format!("Unknown ctype {} defined in root scope. There's something wrong with the compiler.", unknown).into());
+                                }
+                            }
+                        } else {
+                            return Err("ctypes can only be defined in the compiler internals".into());
+                        }
+                    }
                     e => println!("TODO: Not yet supported export syntax: {:?}", e),
                 },
                 parse::RootElements::Whitespace(_) => { /* Do nothing */ }
                 parse::RootElements::Interfaces(_) => {
                     return Err("Interfaces not yet implemented".into());
-                }
-                parse::RootElements::CTypes(c) => {
-                    // For now this is just declaring in the Alan source code the compile-time
-                    // types that can be used, and is simply a special kind of documentation.
-                    // *Only* the root scope is allowed to use this syntax, and I cannot imagine
-                    // any other way, since the compiler needs to exactly match what is declared.
-                    // So we return an error if they're encountered outside of the root scope and
-                    // simply verify that each `ctype` we encounter is one of a set the compiler
-                    // expects to exist. Later when `cfn` is implemented these will be loaded up
-                    // for verification of the meta-typing of the compile-time functions.
-                    if path == "@root" {
-                        match c.name.as_str() {
-                            "Type" | "Int" | "Float" | "Bool" | "String" => { /* Do nothing */ }
-                            unknown => {
-                                println!("What!? {}", unknown);
-                                return Err(format!("Unknown ctype {} defined in root scope. There's something wrong with the compiler.", unknown).into());
-                            }
-                        }
-                    } else {
-                        return Err("ctypes can only be defined in the compiler internals".into());
-                    }
                 }
             }
         }
@@ -1497,6 +1519,7 @@ pub enum Export {
     Const,
     Type,
     OpMap,
+    TypeOpMap,
 }
 
 #[derive(Debug)]
@@ -1562,6 +1585,73 @@ impl OperatorMapping {
             scope.exports.insert(name.clone(), Export::OpMap);
         }
         scope.operatormappings.insert(name, opmap);
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub enum TypeOperatorMapping {
+    Prefix {
+        level: i8,
+        functionname: String,
+        operatorname: String,
+    },
+    Infix {
+        level: i8,
+        functionname: String,
+        operatorname: String,
+    },
+    Postfix {
+        level: i8,
+        functionname: String,
+        operatorname: String,
+    },
+}
+
+impl TypeOperatorMapping {
+    fn from_ast(
+        scope: &mut Scope,
+        typeoperatormapping_ast: &parse::TypeOperatorMapping,
+        is_export: bool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let opmap = match typeoperatormapping_ast.fix {
+            parse::Fix::Prefix(_) => TypeOperatorMapping::Prefix {
+                level: typeoperatormapping_ast
+                    .opmap
+                    .get_opprecedence()
+                    .num
+                    .parse::<i8>()?,
+                functionname: typeoperatormapping_ast.opmap.get_fntoop().fnname.clone(),
+                operatorname: typeoperatormapping_ast.opmap.get_fntoop().operator.clone(),
+            },
+            parse::Fix::Infix(_) => TypeOperatorMapping::Infix {
+                level: typeoperatormapping_ast
+                    .opmap
+                    .get_opprecedence()
+                    .num
+                    .parse::<i8>()?,
+                functionname: typeoperatormapping_ast.opmap.get_fntoop().fnname.clone(),
+                operatorname: typeoperatormapping_ast.opmap.get_fntoop().operator.clone(),
+            },
+            parse::Fix::Postfix(_) => TypeOperatorMapping::Postfix {
+                level: typeoperatormapping_ast
+                    .opmap
+                    .get_opprecedence()
+                    .num
+                    .parse::<i8>()?,
+                functionname: typeoperatormapping_ast.opmap.get_fntoop().fnname.clone(),
+                operatorname: typeoperatormapping_ast.opmap.get_fntoop().operator.clone(),
+            },
+        };
+        let name = match &opmap {
+            TypeOperatorMapping::Prefix { operatorname, .. } => operatorname.clone(),
+            TypeOperatorMapping::Infix { operatorname, .. } => operatorname.clone(),
+            TypeOperatorMapping::Postfix { operatorname, .. } => operatorname.clone(),
+        };
+        if is_export {
+            scope.exports.insert(name.clone(), Export::TypeOpMap);
+        }
+        scope.typeoperatormappings.insert(name, opmap);
         Ok(())
     }
 }
