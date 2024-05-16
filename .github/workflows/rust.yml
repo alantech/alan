@@ -22,7 +22,7 @@ jobs:
       run: cargo build --verbose
     - if: ${{ github.ref_name == 'main' }}
       name: Run tests
-      run: cargo test --verbose -- --ignored
+      run: cargo test --verbose -- --include-ignored
     - if: ${{ github.ref_name != 'main' }}
       name: Run tests
       run: cargo test --verbose
