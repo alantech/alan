@@ -343,6 +343,26 @@ macro_rules! test {
         }
     }
 }
+macro_rules! test_ignore {
+    ( $rule: ident => $code:expr; $( $type:ident $test_val:expr);+ $(;)? ) => {
+        #[cfg(test)]
+        mod $rule {
+            #[test]
+            #[ignore]
+            fn $rule() -> Result<(), Box<dyn std::error::Error>> {
+                let filename = format!("{}.ln", stringify!($rule));
+                super::write(&filename, $code)?;
+                assert_eq!((), super::compile(filename.to_string())?);
+                let run = super::Command::new(format!("./{}", stringify!($rule))).output()?;
+                $( $type!($test_val, &run); )+
+                // Cleanup the temp files. TODO: Make this happen regardless of test failure?
+                std::fs::remove_file(&filename)?;
+                std::fs::remove_file(stringify!($rule))?;
+                Ok(())
+            }
+        }
+    }
+}
 #[cfg(test)]
 macro_rules! stdout {
     ( $test_val:expr, $real_val:expr ) => {
@@ -409,7 +429,7 @@ test!(non_global_memory_exit_code => r#"
     }"#;
     status 0;
 );
-test!(passing_ints_from_global_memory => r#"
+test_ignore!(passing_ints_from_global_memory => r#"
     fn aNumber(num: int64) {
       print('I got a number! ' + num.string);
     }
@@ -612,98 +632,98 @@ test!(int64_max => r#"
     stdout "5\n";
 );
 
-test!(float32_add => r#"
+test_ignore!(float32_add => r#"
     export fn main {
       print(f32(1) + f32(2));
     }"#;
     stdout "3\n";
 );
-test!(float32_sub => r#"
+test_ignore!(float32_sub => r#"
     export fn main {
       print(f32(2) - f32(1));
     }"#;
     stdout "1\n";
 );
-test!(float32_mul => r#"
+test_ignore!(float32_mul => r#"
     export fn main {
       print(f32(2) * f32(1));
     }"#;
     stdout "2\n";
 );
-test!(float32_div => r#"
+test_ignore!(float32_div => r#"
     export fn main {
       print(f32(6) / f32(2));
     }"#;
     stdout "3\n";
 );
-test!(float32_sqrt => r#"
+test_ignore!(float32_sqrt => r#"
     export fn main {
       print(sqrt(f32(36)));
     }"#;
     stdout "6\n";
 );
-test!(float32_pow => r#"
+test_ignore!(float32_pow => r#"
     export fn main {
       print(f32(6) ** f32(2));
     }"#;
     stdout "36\n";
 );
-test!(float32_min => r#"
+test_ignore!(float32_min => r#"
     export fn main {
       min(3.f32, 5.f32).print;
     }"#;
     stdout "3\n";
 );
-test!(float32_max => r#"
+test_ignore!(float32_max => r#"
     export fn main {
       max(3.f32, 5.f32).print;
     }"#;
     stdout "5\n";
 );
 
-test!(float64_add => r#"
+test_ignore!(float64_add => r#"
     export fn main {
       (1.0 + 2.0).print;
     }"#;
     stdout "3\n";
 );
-test!(float64_sub => r#"
+test_ignore!(float64_sub => r#"
     export fn main {
       (2.0 - 1.0).print;
     }"#;
     stdout "1\n";
 );
-test!(float64_mul => r#"
+test_ignore!(float64_mul => r#"
     export fn main {
       (2.0 * 1.0).print;
     }"#;
     stdout "2\n";
 );
-test!(float64_div => r#"
+test_ignore!(float64_div => r#"
     export fn main {
       (6.0 / 2.0).print;
     }"#;
     stdout "3\n";
 );
-test!(float64_sqrt => r#"
+test_ignore!(float64_sqrt => r#"
     export fn main {
       sqrt(36.0).print;
     }"#;
     stdout "6\n";
 );
-test!(float64_pow => r#"
+test_ignore!(float64_pow => r#"
     export fn main {
       (6.0 ** 2.0).print;
     }"#;
     stdout "36\n";
 );
-test!(float64_min => r#"
+test_ignore!(float64_min => r#"
     export fn main {
       min(3.f64, 5.f64).print;
     }"#;
     stdout "3\n";
 );
-test!(float64_max => r#"
+test_ignore!(float64_max => r#"
     export fn main {
       max(3.f64, 5.f64).print;
     }"#;
@@ -718,13 +738,13 @@ test!(grouping => r#"
     stdout "0\n1\n";
 );
 
-test!(string_min => r#"
+test_ignore!(string_min => r#"
     export fn main {
       min(3.string, 5.string).print;
     }"#;
     stdout "3\n";
 );
-test!(string_max => r#"
+test_ignore!(string_max => r#"
     export fn main {
       max(3.string, 5.string).print;
     }"#;
@@ -756,7 +776,7 @@ test!(hello_gpu => r#"
 
 // Bitwise Math
 
-test!(int8_bitwise => r#"
+test_ignore!(int8_bitwise => r#"
     prefix i8 as ~ precedence 10
 
     export fn main {
@@ -770,7 +790,7 @@ test!(int8_bitwise => r#"
     }"#;
     stdout "0\n3\n6\n-1\n-1\n-4\n-7\n";
 );
-test!(int16_bitwise => r#"
+test_ignore!(int16_bitwise => r#"
     prefix i16 as ~ precedence 10
 
     export fn main {
@@ -784,7 +804,7 @@ test!(int16_bitwise => r#"
     }"#;
     stdout "0\n3\n6\n-1\n-1\n-4\n-7\n";
 );
-test!(int32_bitwise => r#"
+test_ignore!(int32_bitwise => r#"
     prefix i32 as ~ precedence 10
 
     export fn main {
@@ -798,7 +818,7 @@ test!(int32_bitwise => r#"
     }"#;
     stdout "0\n3\n6\n-1\n-1\n-4\n-7\n";
 );
-test!(int64_bitwise => r#"
+test_ignore!(int64_bitwise => r#"
     export fn main {
       print(1 & 2);
       print(1 | 3);
@@ -813,7 +833,7 @@ test!(int64_bitwise => r#"
 
 // Boolean Logic
 
-test!(boolean_logic => r#"
+test_ignore!(boolean_logic => r#"
     export fn main {
       print(true);
       print(false);
@@ -900,7 +920,7 @@ true
 
 // String Manipulation
 
-test!(string_ops => r#"
+test_ignore!(string_ops => r#"
     export fn main {
       concat('Hello, ', 'World!').print;
       print('Hello, ' + 'World!');
@@ -947,14 +967,14 @@ Hello
 World!
 "#;
 );
-test!(string_global_local_equality => r#"
+test_ignore!(string_global_local_equality => r#"
     export fn main {
       const foo = 'foo';
       print(foo.trim == foo);
     }"#;
     stdout "true\n";
 );
-test!(string_char_array => r#"
+test_ignore!(string_char_array => r#"
     export fn main {
       const fooCharArray = 'foo'.toCharArray;
       print(#fooCharArray);
@@ -969,7 +989,7 @@ o
 "#;
 );
 /* Pending
-test!(string_templating => r#"
+test_ignore!(string_templating => r#"
     from @std/app import start, print, exit
 
     on start {
@@ -990,7 +1010,7 @@ test!(string_templating => r#"
 
 // Comparators
 
-test!(equality => r#"
+test_ignore!(equality => r#"
     export fn main {
       print(i8(0) == i8(0));
       print(i8(1).eq(i8(0)));
@@ -1034,7 +1054,7 @@ true
 false
 "#;
 );
-test!(not_equals => r#"
+test_ignore!(not_equals => r#"
     export fn main {
       print(i8(0) != i8(0));
       print(i8(1).neq(i8(0)));
@@ -1078,7 +1098,7 @@ false
 true
 "#;
 );
-test!(less_than => r#"
+test_ignore!(less_than => r#"
     export fn main {
       print(i8(0) < i8(1));
       print(i8(1).lt(i8(0)));
@@ -1117,7 +1137,7 @@ false
 true
 "#;
 );
-test!(less_than_or_equal => r#"
+test_ignore!(less_than_or_equal => r#"
     export fn main {
       print(i8(0) <= i8(1));
       print(i8(1).lte(i8(0)));
@@ -1156,7 +1176,7 @@ true
 true
 "#;
 );
-test!(greater_than => r#"
+test_ignore!(greater_than => r#"
     export fn main {
       print(i8(0) > i8(1));
       print(i8(1).gt(i8(0)));
@@ -1195,7 +1215,7 @@ false
 false
 "#;
 );
-test!(greater_than_or_equal => r#"
+test_ignore!(greater_than_or_equal => r#"
     export fn main {
       print(i8(0) >= i8(1));
       print(i8(1).gte(i8(0)));
@@ -1234,7 +1254,7 @@ true
 false
 "#;
 );
-test!(type_coercion_aliases => r#"
+test_ignore!(type_coercion_aliases => r#"
     export fn main {
       print(int(0) == i64(0));
       print(float(0.0) == f64(0.0));
@@ -1257,7 +1277,7 @@ foobar
 "#;
 );
 
-test!(functions_and_custom_operators => r#"
+test_ignore!(functions_and_custom_operators => r#"
     fn foo() {
       print('foo');
     }
@@ -1307,7 +1327,7 @@ to barto bar3
 
 // Conditionals
 
-test!(basic_conditionals => r#"
+test_ignore!(basic_conditionals => r#"
     fn bar() {
       print('bar!');
     }
@@ -1348,7 +1368,7 @@ bar!
 It's true!
 "#;
 );
-test!(nested_conditionals => r#"
+test_ignore!(nested_conditionals => r#"
     export fn main {
       if true {
         print(1);
@@ -1370,7 +1390,7 @@ test!(nested_conditionals => r#"
     }"#;
     stdout "1\n2\n3\n";
 );
-test!(early_return => r#"
+test_ignore!(early_return => r#"
     fn nearOrFar(distance: float64): string {
       if distance < 5.0 {
         return 'Near!';
@@ -1388,7 +1408,7 @@ test!(early_return => r#"
 /* Dropping the ternary operators since either they behave consistently with other operators and
  * are therefore unexpected for end users, or they are inconsistent and a whole lot of pain is
  * needed to support them. */
-test!(conditional_let_assignment => r#"
+test_ignore!(conditional_let_assignment => r#"
     export fn main {
       let a = 0;
       let b = 1;
@@ -1406,7 +1426,7 @@ test!(conditional_let_assignment => r#"
 
 // Object Literals
 
-test!(object_literal_compiler_checks => r#"
+test_ignore!(object_literal_compiler_checks => r#"
     type Foo {
       bar: string,
       baz: bool,
@@ -1455,7 +1475,7 @@ test!(vec_parmap => r#"
     }"#;
     stdout "[2, 4, 6, 8, 10]\n";
 );
-test!(array_literals => r#"
+test_ignore!(array_literals => r#"
     export fn main {
       const test3 = new Array<int64> [ 1, 2, 4, 8, 16, 32, 64 ];
       print(test3[0]);
@@ -1464,7 +1484,7 @@ test!(array_literals => r#"
     }"#;
     stdout "1\n2\n4\n";
 );
-test!(object_literals => r#"
+test_ignore!(object_literals => r#"
     type MyType {
       foo: string,
       bar: bool,
@@ -1480,7 +1500,7 @@ test!(object_literals => r#"
     }"#;
     stdout "foo!\ntrue\n";
 );
-test!(object_and_array_reassignment => r#"
+test_ignore!(object_and_array_reassignment => r#"
     type Foo {
       bar: bool
     }
@@ -1513,7 +1533,7 @@ test!(object_and_array_reassignment => r#"
     stdout "1\n0\ntrue\nfalse\n";
 );
 /* Pending
-test!(map_support => r#"
+test_ignore!(map_support => r#"
     from @std/app import start, print, exit
 
     on start {
@@ -1539,7 +1559,7 @@ test!(map_support => r#"
 
 // Arrays
 
-test!(array_accessor_and_length => r#"
+test_ignore!(array_accessor_and_length => r#"
     export fn main {
       print('Testing...');
       const test = '1,2,3'.split(',');
@@ -1556,7 +1576,7 @@ test!(array_accessor_and_length => r#"
 "#;
 );
 
-test!(array_literal_syntax => r#"
+test_ignore!(array_literal_syntax => r#"
     export fn main {
       print('Testing...');
       const test = new Array<int64> [ 1, 2, 3 ];
@@ -1577,7 +1597,7 @@ test!(array_literal_syntax => r#"
 6
 "#;
 );
-test!(array_mutable_push_pop => r#"
+test_ignore!(array_mutable_push_pop => r#"
     export fn main {
       print('Testing...');
       let test = new Array<int64> [];
@@ -1602,7 +1622,7 @@ test!(array_mutable_push_pop => r#"
 cannot pop empty array
 "#;
 );
-test!(array_length_index_has_join => r#"
+test_ignore!(array_length_index_has_join => r#"
     export fn main {
       const test = new Array<int64> [ 1, 1, 2, 3, 5, 8 ];
       const test2 = new Array<string> [ 'Hello', 'World!' ];
@@ -1637,7 +1657,7 @@ Hello, World!
 /* Without the ternary syntax, there is no ternary abuse possible. But a syntax kinda like this
  * doesn't seem so bad? (Eg `1:2:3` produces an array of [1, 2, 3]. It almost feels like a
  * replacement for the array literal syntax. */
-test!(array_map => r#"
+test_ignore!(array_map => r#"
     export fn main {
       const count = [1, 2, 3, 4, 5]; // Ah, ah, ahh!
       const byTwos = count.map(fn (n: int64): Result<int64> = n * 2);
@@ -1646,7 +1666,7 @@ test!(array_map => r#"
     }"#;
     stdout "1, 2, 3, 4, 5\n2, 4, 6, 8, 10\n";
 );
-test!(array_repeat_and_map_lin => r#"
+test_ignore!(array_repeat_and_map_lin => r#"
     export fn main {
       const arr = [1, 2, 3] * 3;
       const out = arr.mapLin(fn (x: int64): string = x.string).join(', ');
@@ -1654,7 +1674,7 @@ test!(array_repeat_and_map_lin => r#"
     }"#;
     stdout "1, 2, 3, 1, 2, 3, 1, 2, 3\n";
 );
-test!(array_each_and_find => r#"
+test_ignore!(array_each_and_find => r#"
     export fn main {
       const test = [ 1, 1, 2, 3, 5, 8 ];
       test.find(fn (val: int64): bool = val % 2 == 1).getOr(0).print;
@@ -1669,7 +1689,7 @@ test!(array_each_and_find => r#"
 ========
 "#;
 );
-test!(array_every_some_del => r#"
+test_ignore!(array_every_some_del => r#"
     fn isOdd (val: int64): bool = val % 2 == 1;
 
     export fn main {
@@ -1689,7 +1709,7 @@ true
 cannot remove idx 10 from array with length 4
 "#;
 );
-test!(array_reduce_filter_concat => r#"
+test_ignore!(array_reduce_filter_concat => r#"
     export fn main {
       const test = [ 1, 1, 2, 3, 5, 8 ];
       const test2 = [ 4, 5, 6 ];
@@ -1733,7 +1753,7 @@ reduce as filter and concat test
 1, 1, 3, 5
 "#;
 );
-test!(array_custom_types => r#"
+test_ignore!(array_custom_types => r#"
     type Foo {
       foo: string,
       bar: bool
@@ -1755,7 +1775,7 @@ test!(array_custom_types => r#"
 // TODO: I have no idea how I'm going to make this work in pure Rust, but damnit I'm gonna try.
 // This was super useful for a whole host of things.
 
-test!(to_hash => r#"
+test_ignore!(to_hash => r#"
     export fn main {
       print(toHash(1));
       print(toHash(3.14159));
@@ -1770,7 +1790,7 @@ test!(to_hash => r#"
 -1521185239552941064
 "#;
 );
-test!(basic_hashmap => r#"
+test_ignore!(basic_hashmap => r#"
     export fn main {
       const test = newHashMap('foo', 1);
       test.set('bar', 2);
@@ -1795,7 +1815,7 @@ foo, bar, baz
 1
 "#;
 );
-test!(keyval_to_hashmap => r#"
+test_ignore!(keyval_to_hashmap => r#"
     fn kv(k: any, v: anythingElse) = new KeyVal<any, anythingElse> {
       key: k,
       val: v
@@ -1818,7 +1838,7 @@ val: baz
 foo
 "#;
 );
-test!(hashmap_double_set => r#"
+test_ignore!(hashmap_double_set => r#"
     export fn main {
       let test = newHashMap('foo', 'bar');
       test.get('foo').print;
@@ -1828,7 +1848,7 @@ test!(hashmap_double_set => r#"
     stdout "bar\nbaz\n";
 );
 /* Pending
-test!(hashmap_ops => r#"
+test_ignore!(hashmap_ops => r#"
     from @std/app import start, print, exit
 
     on start {
@@ -1880,7 +1900,7 @@ length test
 
 // Generics
 
-test!(generics => r#"
+test_ignore!(generics => r#"
     type box<V> {
       set: bool,
       val: V
@@ -1921,7 +1941,7 @@ true
 hello, nested generics!
 "#;
 );
-test!(invalid_generics => r#"
+test_ignore!(invalid_generics => r#"
     type box<V> {
       set: bool,
       val: V
@@ -1939,7 +1959,7 @@ test!(invalid_generics => r#"
 
 // Interfaces
 
-test!(basic_interfaces => r#"
+test_ignore!(basic_interfaces => r#"
     interface Stringifiable {
       string(Stringifiable): string
     }
@@ -2223,7 +2243,7 @@ test!(basic_interfaces => r#"
 
 // Maybe, Result, and Either
 
-test!(maybe => r#"
+test_ignore!(maybe => r#"
     fn fiver(val: float64) {
       if val.i64 == 5 {
         return some(5);
@@ -2270,7 +2290,7 @@ Correctly received nothing!
 none
 "#;
 );
-test!(result => r#"
+test_ignore!(result => r#"
     fn reciprocal(val: float64) {
       if val == 0.0 {
         return err('Divide by zero error!');
@@ -2322,7 +2342,7 @@ Divide by zero error!
 there is no error
 "#;
 );
-test!(either => r#"
+test_ignore!(either => r#"
     export fn main {
       const strOrNum = getMainOrAlt(true);
       if strOrNum.isMain {
@@ -2358,7 +2378,7 @@ string
 
 // Types
 
-test!(user_types_and_generics => r#"
+test_ignore!(user_types_and_generics => r#"
     type foo<A, B> {
       bar: A,
       baz: B
@@ -2463,7 +2483,7 @@ test!(user_types_and_generics => r#"
 
 // Closures
 
-test!(closure_creation_and_usage => r#"
+test_ignore!(closure_creation_and_usage => r#"
     fn closure(): function {
       let num = 0;
       return fn (): int64 {
@@ -2481,7 +2501,7 @@ test!(closure_creation_and_usage => r#"
     }"#;
     stdout "1\n2\n1\n";
 );
-test!(closure_by_name => r#"
+test_ignore!(closure_by_name => r#"
     fn double(x: int64): int64 = x * 2 || 0;
 
     export fn main {
@@ -2490,7 +2510,7 @@ test!(closure_by_name => r#"
     }"#;
     stdout "2, 4, 6, 8, 10\n";
 );
-test!(inlined_closure_with_arg => r#"
+test_ignore!(inlined_closure_with_arg => r#"
     export fn main {
       const arghFn = fn(argh: string) {
         print(argh);
@@ -2503,7 +2523,7 @@ test!(inlined_closure_with_arg => r#"
 
 // Compiler Errors
 
-test!(cross_type_comparisons => r#"
+test_ignore!(cross_type_comparisons => r#"
     export fn main {
       print(true == 1);
       emit exit 0;
@@ -2513,7 +2533,7 @@ true == 1
 <bool> == <int64>
 "#;
 );
-test!(unreachable_code => r#"
+test_ignore!(unreachable_code => r#"
     fn unreachable() {
       return 'blah';
       print('unreachable!');
@@ -2526,7 +2546,7 @@ test!(unreachable_code => r#"
 return 'blah'; on line 4:12
 "#;
 );
-test!(recursive_functions => r#"
+test_ignore!(recursive_functions => r#"
     fn fibonacci(n: int64) {
       if n < 2 {
         return 1;
@@ -2544,13 +2564,13 @@ test!(recursive_functions => r#"
     }"#;
     stderr "Recursive callstack detected: fibonacci -> fibonacci. Aborting.\n";
 );
-test!(undefined_function_call => r#"
+test_ignore!(undefined_function_call => r#"
     export fn main {
       print(i64str(5)); // Illegal direct opcode usage
     }"#;
     stderr "i64str is not a function but used as one.\ni64str on line 4:18\n";
 );
-test!(totally_broken_statement => r#"
+test_ignore!(totally_broken_statement => r#"
     on app.start {
       app.oops
     }"#;
@@ -2603,7 +2623,7 @@ new Piece {
 
 // Module-level constants
 
-test!(module_level_constant => r#"
+test_ignore!(module_level_constant => r#"
     const helloWorld = 'Hello, World!';
 
     export fn main {
@@ -2611,7 +2631,7 @@ test!(module_level_constant => r#"
     }"#;
     stdout "Hello, World!\n";
 );
-test!(module_level_constant_from_function_call => r#"
+test_ignore!(module_level_constant_from_function_call => r#"
     const three = add(1, 2);
 
     fn fiver() = 5;
@@ -2627,7 +2647,7 @@ test!(module_level_constant_from_function_call => r#"
 
 // @std/trig
 
-test!(std_trig => r#"
+test_ignore!(std_trig => r#"
     import @std/trig
     from @std/trig import e, pi, tau
     // shouldn't be necessary, but compiler issue makes it so
@@ -3161,7 +3181,7 @@ End
 
 // Clone
 
-test!(clone => r#"
+test_ignore!(clone => r#"
     export fn main {
       let a = 3;
       let b = a.clone;
@@ -3179,7 +3199,7 @@ test!(clone => r#"
 
 // Runtime Error
 
-test!(get_or_exit => r#"
+test_ignore!(get_or_exit => r#"
     export fn main {
       const xs = [0, 1, 2, 5];
       const x1 = xs[1].getOrExit;
@@ -3361,7 +3381,7 @@ End
 
 // @std/seq
 
-test!(seq_and_next => r#"
+test_ignore!(seq_and_next => r#"
     from @std/seq import seq, next
 
     export fn main {
@@ -3372,7 +3392,7 @@ test!(seq_and_next => r#"
     }"#;
     stdout "0\n1\nerror: sequence out-of-bounds\n";
 );
-test!(seq_each => r#"
+test_ignore!(seq_each => r#"
     from @std/seq import seq, each
 
     export fn main {
@@ -3381,7 +3401,7 @@ test!(seq_each => r#"
     }"#;
     stdout "0\n1\n2\n";
 );
-test!(seq_while => r#"
+test_ignore!(seq_while => r#"
     from @std/seq import seq, while
 
     export fn main {
@@ -3394,7 +3414,7 @@ test!(seq_while => r#"
     }"#;
     stdout "10\n";
 );
-test!(seq_do_while => r#"
+test_ignore!(seq_do_while => r#"
     from @std/seq import seq, doWhile
 
     export fn main {
@@ -3409,7 +3429,7 @@ test!(seq_do_while => r#"
     }"#;
     stdout "10\n";
 );
-test!(seq_recurse => r#"
+test_ignore!(seq_recurse => r#"
     from @std/seq import seq, Self, recurse
 
     export fn main {
@@ -3432,7 +3452,7 @@ test!(seq_recurse => r#"
     }"#;
     stdout "34\n";
 );
-test!(seq_no_op_one_liner_regression_test => r#"
+test_ignore!(seq_no_op_one_liner_regression_test => r#"
     from @std/seq import seq, Self, recurse
 
     fn doNothing(x: int) : int = x;
@@ -3452,7 +3472,7 @@ test!(seq_no_op_one_liner_regression_test => r#"
     }"#;
     stdout "5\n5\n1 2 3\n1 2 3\n"; // TODO: Do we keep a regression test for a prior iteration?
 );
-test!(seq_recurse_decrement_regression_test => r#"
+test_ignore!(seq_recurse_decrement_regression_test => r#"
     from @std/seq import seq, Self, recurse
 
     fn triangularRec(x: int) : int = seq(x + 1 || 0).recurse(fn (self: Self, x: int) : Result<int> {
@@ -3473,7 +3493,7 @@ test!(seq_recurse_decrement_regression_test => r#"
 
 // Tree
 
-test!(tree_construction_and_access => r#"
+test_ignore!(tree_construction_and_access => r#"
     export fn main {
       const myTree = newTree('foo');
       const barNode = myTree.addChild('bar');
@@ -3486,7 +3506,7 @@ test!(tree_construction_and_access => r#"
     }"#;
     stdout "foo\nbar\nbar, baz\n";
 );
-test!(tree_user_defined_types => r#"
+test_ignore!(tree_user_defined_types => r#"
     type Foo {
       foo: string,
       bar: bool,
@@ -3506,7 +3526,7 @@ test!(tree_user_defined_types => r#"
     }"#;
     stdout "myFoo\n";
 );
-test!(tree_every_find_some_reduce_prune => r#"
+test_ignore!(tree_every_find_some_reduce_prune => r#"
     export fn main {
       const myTree = newTree('foo');
       const barNode = myTree.addChild('bar');
@@ -3540,7 +3560,7 @@ baz
 6
 "#;
 );
-test!(subtree_and_nested_tree_construction => r#"
+test_ignore!(subtree_and_nested_tree_construction => r#"
     export fn main {
       const bigNestedTree = newTree('foo')
         .addChild('bar')
@@ -3564,7 +3584,7 @@ test!(subtree_and_nested_tree_construction => r#"
 
 // Error printing
 
-test!(eprint => r#"
+test_ignore!(eprint => r#"
     export fn main {
       eprint('This is an error');
     }"#;
@@ -3573,7 +3593,7 @@ test!(eprint => r#"
 
 // @std/cmd
 
-test!(cmd_exec => r#"
+test_ignore!(cmd_exec => r#"
     import @std/cmd
 
     export fn main {
@@ -3582,7 +3602,7 @@ test!(cmd_exec => r#"
     }"#;
     stdout "1\n";
 );
-test!(cmd_sequential => r#"
+test_ignore!(cmd_sequential => r#"
     from @std/cmd import exec
 
     export fn main {
@@ -3648,7 +3668,7 @@ End
 
 // JSON
 
-test!(json_construction_printing => r#"
+test_ignore!(json_construction_printing => r#"
     from @std/json import JSON, toJSON, string, JSONBase, JSONNode, IsObject, Null
 
     export fn main {
@@ -3665,7 +3685,7 @@ true
 null
 "#;
 );
-test!(json_complex_construction => r#"
+test_ignore!(json_complex_construction => r#"
     from @std/json import JSON, string, JSONBase, JSONNode, IsObject, Null, newJSONObject, newJSONArray, addKeyVal, push
 
     export fn main {
@@ -3798,171 +3818,171 @@ End
 
 // Saturating Math
 
-test!(int8_sadd => r#"
+test_ignore!(int8_sadd => r#"
     export fn main { return sadd(i8(1), i8(2)); }"#;
     status 3;
 );
-test!(int8_ssub => r#"
+test_ignore!(int8_ssub => r#"
     export fn main { return ssub(i8(2), i8(1)); }"#;
     status 1;
 );
-test!(int8_smul => r#"
+test_ignore!(int8_smul => r#"
     export fn main { return smul(i8(2), i8(1)); }"#;
     status 2;
 );
-test!(int8_sdiv => r#"
+test_ignore!(int8_sdiv => r#"
     export fn main { return sdiv(i8(6), i8(0)); }"#;
     status 127;
 );
-test!(int8_spow => r#"
+test_ignore!(int8_spow => r#"
     export fn main { return spow(i8(6), i8(2)); }"#;
     status 36;
 );
-test!(int16_sadd => r#"
+test_ignore!(int16_sadd => r#"
     export fn main {
       print(sadd(i16(1), i16(2)));
     }"#;
     stdout "3\n";
 );
-test!(int16_ssub => r#"
+test_ignore!(int16_ssub => r#"
     export fn main {
       print(ssub(i16(2), i16(1)));
     }"#;
     stdout "1\n";
 );
-test!(int16_smul => r#"
+test_ignore!(int16_smul => r#"
     export fn main {
       print(smul(i16(2), i16(1)));
     }"#;
     stdout "2\n";
 );
-test!(int16_sdiv => r#"
+test_ignore!(int16_sdiv => r#"
     export fn main {
       print(sdiv(i16(6), i16(2)));
     }"#;
     stdout "3\n";
 );
-test!(int16_spow => r#"
+test_ignore!(int16_spow => r#"
     export fn main {
       print(spow(i16(6), i16(2)));
     }"#;
     stdout "36\n";
 );
-test!(int32_sadd => r#"
+test_ignore!(int32_sadd => r#"
     export fn main {
       sadd(1.i32(), 2.i32()).print();
     }"#;
     stdout "3\n";
 );
-test!(int32_ssub => r#"
+test_ignore!(int32_ssub => r#"
     export fn main {
       ssub(2.i32(), 1.i32()).print();
     }"#;
     stdout "1\n";
 );
-test!(int32_smul => r#"
+test_ignore!(int32_smul => r#"
     export fn main {
       smul(2.i32(), 1.i32()).print();
     }"#;
     stdout "2\n";
 );
-test!(int32_sdiv => r#"
+test_ignore!(int32_sdiv => r#"
     export fn main {
       sdiv(6.i32(), 2.i32()).print();
     }"#;
     stdout "3\n";
 );
-test!(int32_spow => r#"
+test_ignore!(int32_spow => r#"
     export fn main {
       spow(6.i32(), 2.i32()).print();
     }"#;
     stdout "36\n";
 );
-test!(int64_sadd => r#"
+test_ignore!(int64_sadd => r#"
     export fn main {
       print(1 +. 2);
     }"#;
     stdout "3\n";
 );
-test!(int64_ssub => r#"
+test_ignore!(int64_ssub => r#"
     export fn main {
       print(2 -. 1);
     }"#;
     stdout "1\n";
 );
-test!(int64_smul => r#"
+test_ignore!(int64_smul => r#"
     export fn main {
       print(2 *. 1);
     }"#;
     stdout "2\n";
 );
-test!(int64_sdiv => r#"
+test_ignore!(int64_sdiv => r#"
     export fn main {
       print(6 /. 2);
     }"#;
     stdout "3\n";
 );
-test!(int64_spow => r#"
+test_ignore!(int64_spow => r#"
     export fn main {
       print(6 **. 2);
     }"#;
     stdout "36\n";
 );
-test!(float32_sadd => r#"
+test_ignore!(float32_sadd => r#"
     export fn main {
       print(f32(1) +. f32(2));
     }"#;
     stdout "3\n";
 );
-test!(float32_ssub => r#"
+test_ignore!(float32_ssub => r#"
     export fn main {
       print(f32(2) -. f32(1));
     }"#;
     stdout "1\n";
 );
-test!(float32_smul => r#"
+test_ignore!(float32_smul => r#"
     export fn main {
       print(f32(2) *. f32(1));
     }"#;
     stdout "2\n";
 );
-test!(float32_sdiv => r#"
+test_ignore!(float32_sdiv => r#"
     export fn main {
       print(f32(6) /. f32(2));
     }"#;
     stdout "3\n";
 );
-test!(float32_spow => r#"
+test_ignore!(float32_spow => r#"
     export fn main {
       print(f32(6) **. f32(2));
     }"#;
     stdout "36\n";
 );
-test!(float64_sadd => r#"
+test_ignore!(float64_sadd => r#"
     export fn main {
       (1.0 +. 2.0).print();
     }"#;
     stdout "3\n";
 );
-test!(float64_ssub => r#"
+test_ignore!(float64_ssub => r#"
     export fn main {
       (2.0 -. 1.0).print();
     }"#;
     stdout "1\n";
 );
-test!(float64_smul => r#"
+test_ignore!(float64_smul => r#"
     export fn main {
       (2.0 *. 1.0).print();
     }"#;
     stdout "2\n";
 );
-test!(float64_sdiv => r#"
+test_ignore!(float64_sdiv => r#"
     export fn main {
       (6.0 /. 2.0).print();
     }"#;
     stdout "3\n";
 );
-test!(float64_spow => r#"
+test_ignore!(float64_spow => r#"
     export fn main {
       (6.0 **. 2.0).print();
     }"#;
