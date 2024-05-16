@@ -6,6 +6,7 @@ use std::thread::sleep;
 use std::time::Duration;
 
 use dirs::config_dir;
+use rand::Rng;
 use sysinfo::System;
 
 use crate::lntors::lntors;
@@ -68,7 +69,11 @@ wgpu = "0.19.3""#;
         c.push("Cargo.toml");
         c
     };
+    // Add some jitter before starting these checks to prevent collisions from parallel calls
+    let mut rng = rand::thread_rng();
+    sleep(Duration::from_millis(rng.gen_range(0..10)));
     if alan_config.exists() {
+        sleep(Duration::from_millis(rng.gen_range(0..10)));
         if lockfile.exists() {
             let mut count = 0;
             while lockfile.exists() && count < 300 {
@@ -76,7 +81,7 @@ wgpu = "0.19.3""#;
                 match read_to_string(lockfile.clone()) {
                     Err(_) => {
                         // Probably being deleted while we were trying to read, we'll check next time
-                        sleep(Duration::from_secs(1));
+                        sleep(Duration::from_millis(rng.gen_range(900..1100)));
                         count = count + 1;
                     }
                     Ok(pid) => {
@@ -91,12 +96,12 @@ wgpu = "0.19.3""#;
                         }
                         if found {
                             // The process is still running, let's wait
-                            sleep(Duration::from_secs(1));
+                            sleep(Duration::from_millis(rng.gen_range(900..1100)));
                             count = count + 1;
                         } else {
                             // The process exited without removing the lockfile, we're taking over
                             remove_file(lockfile.clone())?;
-                            sleep(Duration::from_secs(1));
+                            sleep(Duration::from_millis(rng.gen_range(900..1100)));
                             return compile(source_file);
                         }
                     }
