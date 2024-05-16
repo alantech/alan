@@ -790,6 +790,8 @@ named_and!(ctypes: CTypes =>
     a: String as blank,
     name: String as variable,
     b: String as optblank,
+    opttypegenerics: Option<TypeGenerics> as opt(typegenerics),
+    c: String as optblank,
     optsemicolon: String as optsemicolon,
 );
 named_or!(constants: Constants =>
@@ -1290,6 +1292,15 @@ named_and!(operatormapping: OperatorMapping =>
     opmap: OpMap as opmap,
     optsemicolon: String as optsemicolon,
 );
+named_and!(typeoperatormapping: TypeOperatorMapping =>
+    typen: String as typen,
+    fix: Fix as fix,
+    a: String as optblank,
+    opttypegenerics: Option<TypeGenerics> as opt(typegenerics),
+    blank: String as optblank,
+    opmap: OpMap as opmap,
+    optsemicolon: String as optsemicolon,
+);
 named_and!(propertytypeline: PropertyTypeline =>
     variable: String as variable,
     a: String as blank,
@@ -1462,8 +1473,10 @@ named_or!(exportable: Exportable =>
     Functions: Functions as functions,
     ConstDeclaration: ConstDeclaration as constdeclaration,
     Types: Types as types,
+    CTypes: CTypes as ctypes,
     Intefaces: Interfaces as interfaces,
     OperatorMapping: OperatorMapping as operatormapping,
+    TypeOperatorMapping: TypeOperatorMapping as typeoperatormapping,
     Ref: String as variable,
 );
 named_and!(exports: Exports =>
@@ -1481,10 +1494,10 @@ named_or!(rootelements: RootElements =>
     Whitespace: String as whitespace,
     Exports: Exports as exports,
     Functions: Functions as functions,
-    CTypes: CTypes as ctypes,
     Types: Types as types,
     ConstDeclaration: ConstDeclaration as constdeclaration,
     OperatorMapping: OperatorMapping as operatormapping,
+    TypeOperatorMapping: TypeOperatorMapping as typeoperatormapping,
     Interfaces: Interfaces as interfaces,
 );
 list!(opt body: RootElements => rootelements);
