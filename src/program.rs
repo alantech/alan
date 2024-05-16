@@ -74,12 +74,10 @@ impl Program {
                 // TODO: Loop over imports looking for the type
                 match self.scopes_by_file.get("@root") {
                     None => None,
-                    Some((_, _, root_scope)) => {
-                        match &root_scope.types.get(typename) {
-                            Some(t) => Some((&t, &root_scope)),
-                            None => None,
-                        }
-                    }
+                    Some((_, _, root_scope)) => match &root_scope.types.get(typename) {
+                        Some(t) => Some((&t, &root_scope)),
+                        None => None,
+                    },
                 }
             }
         }
@@ -144,29 +142,27 @@ impl Program {
                 // TODO: Loop over imports looking for the function
                 match self.scopes_by_file.get("@root") {
                     None => None,
-                    Some((_, _, root_scope)) => {
-                        match root_scope.functions.get(function) {
-                            Some(fs) => {
-                                for f in fs {
-                                    if args.len() != f.args.len() {
-                                        continue;
-                                    }
-                                    let mut args_match = true;
-                                    for (i, arg) in args.iter().enumerate() {
-                                        if &f.args[i].1 != arg {
-                                            args_match = false;
-                                            break;
-                                        }
-                                    }
-                                    if args_match {
-                                        return Some((f, &root_scope));
+                    Some((_, _, root_scope)) => match root_scope.functions.get(function) {
+                        Some(fs) => {
+                            for f in fs {
+                                if args.len() != f.args.len() {
+                                    continue;
+                                }
+                                let mut args_match = true;
+                                for (i, arg) in args.iter().enumerate() {
+                                    if &f.args[i].1 != arg {
+                                        args_match = false;
+                                        break;
                                     }
                                 }
-                                None
+                                if args_match {
+                                    return Some((f, &root_scope));
+                                }
                             }
-                            None => None,
+                            None
                         }
-                    }
+                        None => None,
+                    },
                 }
             }
         }
@@ -245,13 +241,16 @@ impl Scope {
                         // to construct their own types.
                         if path == "@root" {
                             match c.name.as_str() {
-                                "Type" | "Int" | "Float" | "Bool" | "String" | "Function" | "Tuple" | "Label" | "Field" => { /* Do nothing */ }
+                                "Type" | "Int" | "Float" | "Bool" | "String" | "Function"
+                                | "Tuple" | "Label" | "Field" => { /* Do nothing */ }
                                 unknown => {
                                     return Err(format!("Unknown ctype {} defined in root scope. There's something wrong with the compiler.", unknown).into());
                                 }
                             }
                         } else {
-                            return Err("ctypes can only be defined in the compiler internals".into());
+                            return Err(
+                                "ctypes can only be defined in the compiler internals".into()
+                            );
                         }
                     }
                     e => println!("TODO: Not yet supported export syntax: {:?}", e),
