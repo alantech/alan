@@ -20,9 +20,9 @@ jobs:
       run: cargo fmt --check
     - name: Build
       run: cargo build --verbose
-    - if: {{ github.ref == 'ref/head/main' }}
+    - if: ${{ github.ref == 'ref/head/main' }}
       name: Run tests
       run: cargo test --verbose -- --ignored
-    - if: {{ github.ref != 'ref/head/main' }}
+    - if: ${{ github.ref != 'ref/head/main' }}
       name: Run tests
       run: cargo test --verbose
