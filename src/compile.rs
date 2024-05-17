@@ -435,7 +435,7 @@ test!(non_global_memory_exit_code => r#"
     status 0;
 );
 test_ignore!(passing_ints_from_global_memory => r#"
-    fn aNumber(num: int64) {
+    fn aNumber(num: i64) {
       print('I got a number! ' + num.string);
     }
 
@@ -838,7 +838,7 @@ test_ignore!(int64_bitwise => r#"
 
 // Boolean Logic
 
-test_ignore!(boolean_logic => r#"
+test!(boolean_logic => r#"
     export fn main {
       print(true);
       print(false);
