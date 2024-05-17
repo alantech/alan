@@ -889,8 +889,11 @@ fn addf32(a: &f32, b: &f32) -> Result_f32 {
     match a + b {
         f32::MAX => Err("Overflow".into()),
         f32::MIN => Err("Underflow".into()),
-        f32::NAN => Err("Not a Number".into()),
-        o => Ok(o),
+        o => if o.is_nan() {
+          Err("Not a Number".into())
+        } else {
+          Ok(o)
+        }
     }
 }
 
@@ -903,8 +906,11 @@ fn addf32_result(a: &Result_f32, b: &Result_f32) -> Result_f32 {
             Ok(b) => match a + b {
                 f32::MAX => Err("Overflow".into()),
                 f32::MIN => Err("Underflow".into()),
-                f32::NAN => Err("Not a Number".into()),
-                o => Ok(o),
+                o => if o.is_nan() {
+                  Err("Not a Number".into())
+                } else {
+                  Ok(o)
+                }
             }
         }
     }
@@ -915,8 +921,11 @@ fn subf32(a: &f32, b: &f32) -> Result_f32 {
     match a - b {
         f32::MAX => Err("Overflow".into()),
         f32::MIN => Err("Underflow".into()),
-        f32::NAN => Err("Not a Number".into()),
-        o => Ok(o),
+        o => if o.is_nan() {
+          Err("Not a Number".into())
+        } else {
+          Ok(o)
+        }
     }
 }
 
@@ -929,8 +938,11 @@ fn subf32_result(a: &Result_f32, b: &Result_f32) -> Result_f32 {
             Ok(b) => match a - b {
                 f32::MAX => Err("Overflow".into()),
                 f32::MIN => Err("Underflow".into()),
-                f32::NAN => Err("Not a Number".into()),
-                o => Ok(o),
+                o => if o.is_nan() {
+                  Err("Not a Number".into())
+                } else {
+                  Ok(o)
+                }
             }
         }
     }
@@ -941,8 +953,11 @@ fn mulf32(a: &f32, b: &f32) -> Result_f32 {
     match a * b {
         f32::MAX => Err("Overflow".into()),
         f32::MIN => Err("Underflow".into()),
-        f32::NAN => Err("Not a Number".into()),
-        o => Ok(o),
+        o => if o.is_nan() {
+          Err("Not a Number".into())
+        } else {
+          Ok(o)
+        }
     }
 }
 
@@ -955,8 +970,11 @@ fn mulf32_result(a: &Result_f32, b: &Result_f32) -> Result_f32 {
             Ok(b) => match a * b {
                 f32::MAX => Err("Overflow".into()),
                 f32::MIN => Err("Underflow".into()),
-                f32::NAN => Err("Not a Number".into()),
-                o => Ok(o),
+                o => if o.is_nan() {
+                  Err("Not a Number".into())
+                } else {
+                  Ok(o)
+                }
             }
         }
     }
@@ -967,8 +985,11 @@ fn divf32(a: &f32, b: &f32) -> Result_f32 {
     match a / b {
         f32::MAX => Err("Overflow".into()),
         f32::MIN => Err("Underflow".into()),
-        f32::NAN => Err("Not a Number".into()),
-        o => Ok(o),
+        o => if o.is_nan() {
+          Err("Not a Number".into())
+        } else {
+          Ok(o)
+        }
     }
 }
 
@@ -981,8 +1002,11 @@ fn divf32_result(a: &Result_f32, b: &Result_f32) -> Result_f32 {
             Ok(b) => match a / b {
                 f32::MAX => Err("Overflow".into()),
                 f32::MIN => Err("Underflow".into()),
-                f32::NAN => Err("Not a Number".into()),
-                o => Ok(o),
+                o => if o.is_nan() {
+                  Err("Not a Number".into())
+                } else {
+                  Ok(o)
+                }
             }
         }
     }
@@ -1006,8 +1030,11 @@ fn powf32(a: &f32, b: &f32) -> Result_f32 {
     match a.powf(*b) {
         f32::MAX => Err("Overflow".into()),
         f32::MIN => Err("Underflow".into()),
-        f32::NAN => Err("Not a Number".into()),
-        o => Ok(o),
+        o => if o.is_nan() {
+          Err("Not a Number".into())
+        } else {
+          Ok(o)
+        }
     }
 }
 
@@ -1020,8 +1047,11 @@ fn powf32_result(a: &Result_f32, b: &Result_f32) -> Result_f32 {
             Ok(b) => match a.powf(*b) {
                 f32::MAX => Err("Overflow".into()),
                 f32::MIN => Err("Underflow".into()),
-                f32::NAN => Err("Not a Number".into()),
-                o => Ok(o),
+                o => if o.is_nan() {
+                  Err("Not a Number".into())
+                } else {
+                  Ok(o)
+                }
             }
         }
     }
@@ -1100,8 +1130,11 @@ fn addf64(a: &f64, b: &f64) -> Result_f64 {
     match a + b {
         f64::MAX => Err("Overflow".into()),
         f64::MIN => Err("Underflow".into()),
-        f64::NAN => Err("Not a Number".into()),
-        o => Ok(o),
+        o => if o.is_nan() {
+          Err("Not a Number".into())
+        } else {
+          Ok(o)
+        }
     }
 }
 
@@ -1114,8 +1147,11 @@ fn addf64_result(a: &Result_f64, b: &Result_f64) -> Result_f64 {
             Ok(b) => match a + b {
                 f64::MAX => Err("Overflow".into()),
                 f64::MIN => Err("Underflow".into()),
-                f64::NAN => Err("Not a Number".into()),
-                o => Ok(o),
+                o => if o.is_nan() {
+                  Err("Not a Number".into())
+                } else {
+                  Ok(o)
+                }
             }
         }
     }
@@ -1126,8 +1162,11 @@ fn subf64(a: &f64, b: &f64) -> Result_f64 {
     match a - b {
         f64::MAX => Err("Overflow".into()),
         f64::MIN => Err("Underflow".into()),
-        f64::NAN => Err("Not a Number".into()),
-        o => Ok(o),
+        o => if o.is_nan() {
+          Err("Not a Number".into())
+        } else {
+          Ok(o)
+        }
     }
 }
 
@@ -1140,8 +1179,11 @@ fn subf64_result(a: &Result_f64, b: &Result_f64) -> Result_f64 {
             Ok(b) => match a - b {
                 f64::MAX => Err("Overflow".into()),
                 f64::MIN => Err("Underflow".into()),
-                f64::NAN => Err("Not a Number".into()),
-                o => Ok(o),
+                o => if o.is_nan() {
+                  Err("Not a Number".into())
+                } else {
+                  Ok(o)
+                }
             }
         }
     }
@@ -1152,8 +1194,11 @@ fn mulf64(a: &f64, b: &f64) -> Result_f64 {
     match a * b {
         f64::MAX => Err("Overflow".into()),
         f64::MIN => Err("Underflow".into()),
-        f64::NAN => Err("Not a Number".into()),
-        o => Ok(o),
+        o => if o.is_nan() {
+          Err("Not a Number".into())
+        } else {
+          Ok(o)
+        }
     }
 }
 
@@ -1166,8 +1211,11 @@ fn mulf64_result(a: &Result_f64, b: &Result_f64) -> Result_f64 {
             Ok(b) => match a * b {
                 f64::MAX => Err("Overflow".into()),
                 f64::MIN => Err("Underflow".into()),
-                f64::NAN => Err("Not a Number".into()),
-                o => Ok(o),
+                o => if o.is_nan() {
+                  Err("Not a Number".into())
+                } else {
+                  Ok(o)
+                }
             }
         }
     }
@@ -1178,8 +1226,11 @@ fn divf64(a: &f64, b: &f64) -> Result_f64 {
     match a / b {
         f64::MAX => Err("Overflow".into()),
         f64::MIN => Err("Underflow".into()),
-        f64::NAN => Err("Not a Number".into()),
-        o => Ok(o),
+        o => if o.is_nan() {
+          Err("Not a Number".into())
+        } else {
+          Ok(o)
+        }
     }
 }
 
@@ -1192,8 +1243,11 @@ fn divf64_result(a: &Result_f64, b: &Result_f64) -> Result_f64 {
             Ok(b) => match a / b {
                 f64::MAX => Err("Overflow".into()),
                 f64::MIN => Err("Underflow".into()),
-                f64::NAN => Err("Not a Number".into()),
-                o => Ok(o),
+                o => if o.is_nan() {
+                  Err("Not a Number".into())
+                } else {
+                  Ok(o)
+                }
             }
         }
     }
@@ -1217,8 +1271,11 @@ fn powf64(a: &f64, b: &f64) -> Result_f64 {
     match a.powf(*b) {
         f64::MAX => Err("Overflow".into()),
         f64::MIN => Err("Underflow".into()),
-        f64::NAN => Err("Not a Number".into()),
-        o => Ok(o),
+        o => if o.is_nan() {
+          Err("Not a Number".into())
+        } else {
+          Ok(o)
+        }
     }
 }
 
@@ -1231,8 +1288,11 @@ fn powf64_result(a: &Result_f64, b: &Result_f64) -> Result_f64 {
             Ok(b) => match a.powf(*b) {
                 f64::MAX => Err("Overflow".into()),
                 f64::MIN => Err("Underflow".into()),
-                f64::NAN => Err("Not a Number".into()),
-                o => Ok(o),
+                o => if o.is_nan() {
+                  Err("Not a Number".into())
+                } else {
+                  Ok(o)
+                }
             }
         }
     }
