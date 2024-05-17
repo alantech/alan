@@ -418,17 +418,17 @@ World!
 // Event Tests
 
 test!(normal_exit_code => r#"
-    export fn main(): ExitCode {
+    export fn main() -> ExitCode {
         return ExitCode(0);
     }"#;
     status 0;
 );
 test!(error_exit_code => r#"
-    export fn main(): ExitCode = ExitCode(1);"#;
+    export fn main() -> ExitCode = ExitCode(1);"#;
     status 1;
 );
 test!(non_global_memory_exit_code => r#"
-    export fn main(): ExitCode {
+    export fn main() -> ExitCode {
       let x: i64 = 0;
       return x.ExitCode;
     }"#;
@@ -450,7 +450,7 @@ test_ignore!(passing_ints_from_global_memory => r#"
 
 // This one will replace the hello_world test above once the syntax is updated
 test!(print_function => r#"
-    export fn main(): ExitCode {
+    export fn main() -> ExitCode {
       print('Hello, World');
       return ExitCode(0);
     }"#;
@@ -470,27 +470,27 @@ test!(duration_print => r#"
 // Basic Math Tests
 
 test!(int8_add => r#"
-    export fn main(): ExitCode = ExitCode(getOrExit(add(i8(1), i8(2))));"#;
+    export fn main() -> ExitCode = ExitCode(getOrExit(add(i8(1), i8(2))));"#;
     status 3;
 );
 test!(int8_sub => r#"
-    export fn main(): ExitCode = ExitCode(getOrExit(sub(i8(2), i8(1))));"#;
+    export fn main() -> ExitCode = ExitCode(getOrExit(sub(i8(2), i8(1))));"#;
     status 1;
 );
 test!(int8_mul => r#"
-    export fn main(): ExitCode = ExitCode(getOrExit(mul(i8(2), i8(1))));"#;
+    export fn main() -> ExitCode = ExitCode(getOrExit(mul(i8(2), i8(1))));"#;
     status 2;
 );
 test!(int8_div => r#"
-    export fn main(): ExitCode = ExitCode(getOrExit(div(i8(6), i8(2))));"#;
+    export fn main() -> ExitCode = ExitCode(getOrExit(div(i8(6), i8(2))));"#;
     status 3;
 );
 test!(int8_mod => r#"
-    export fn main(): ExitCode = ExitCode(getOrExit(mod(i8(6), i8(4))));"#;
+    export fn main() -> ExitCode = ExitCode(getOrExit(mod(i8(6), i8(4))));"#;
     status 2;
 );
 test!(int8_pow => r#"
-    export fn main(): ExitCode = ExitCode(getOrExit(pow(i8(6), i8(2))));"#;
+    export fn main() -> ExitCode = ExitCode(getOrExit(pow(i8(6), i8(2))));"#;
     status 36;
 );
 test!(int8_min => r#"
@@ -1271,7 +1271,7 @@ test_ignore!(type_coercion_aliases => r#"
 test!(basic_function_usage => r#"
     fn foo() = print('foo');
 
-    fn bar(s: string): string = s.concat("bar");
+    fn bar(s: string) -> string = s.concat("bar");
 
     export fn main {
       foo();
@@ -1287,11 +1287,11 @@ test_ignore!(functions_and_custom_operators => r#"
       print('foo');
     }
 
-    fn bar(str: string, a: int64, b: int64): string {
+    fn bar(str: string, a: int64, b: int64) -> string {
       return str * a + b.string;
     }
 
-    fn baz(pre: string, body: string): void {
+    fn baz(pre: string, body: string) -> void {
       print(pre + bar(body, 1, 2));
     }
 
@@ -1396,7 +1396,7 @@ test_ignore!(nested_conditionals => r#"
     stdout "1\n2\n3\n";
 );
 test_ignore!(early_return => r#"
-    fn nearOrFar(distance: float64): string {
+    fn nearOrFar(distance: float64) -> string {
       if distance < 5.0 {
         return 'Near!';
       } else {
@@ -1461,14 +1461,14 @@ test!(vec_construction => r#"
     stdout "[5, 5, 5, 5, 5]\n[3, 3, 3]\n";
 );
 test!(vec_map => r#"
-    fn double(x: i64): Result<i64> = x * 2;
+    fn double(x: i64) -> Result<i64> = x * 2;
     export fn main {
       filled(5, 5).map(double).print;
     }"#;
     stdout "[10, 10, 10, 10, 10]\n";
 );
 test!(vec_parmap => r#"
-    fn double(x: i64): Result<i64> = x * 2;
+    fn double(x: i64) -> Result<i64> = x * 2;
     export fn main {
       let v = filled(0, 0);
       v.push(1);
@@ -1665,7 +1665,7 @@ Hello, World!
 test_ignore!(array_map => r#"
     export fn main {
       const count = [1, 2, 3, 4, 5]; // Ah, ah, ahh!
-      const byTwos = count.map(fn (n: int64): Result<int64> = n * 2);
+      const byTwos = count.map(fn (n: int64) -> Result<int64> = n * 2);
       count.map(fn (n: int64) = string(n)).join(', ').print;
       byTwos.map(fn (n: Result<int64>) = string(n)).join(', ').print;
     }"#;
@@ -1674,7 +1674,7 @@ test_ignore!(array_map => r#"
 test_ignore!(array_repeat_and_map_lin => r#"
     export fn main {
       const arr = [1, 2, 3] * 3;
-      const out = arr.mapLin(fn (x: int64): string = x.string).join(', ');
+      const out = arr.mapLin(fn (x: int64) -> string = x.string).join(', ');
       print(out);
     }"#;
     stdout "1, 2, 3, 1, 2, 3, 1, 2, 3\n";
@@ -1682,7 +1682,7 @@ test_ignore!(array_repeat_and_map_lin => r#"
 test_ignore!(array_each_and_find => r#"
     export fn main {
       const test = [ 1, 1, 2, 3, 5, 8 ];
-      test.find(fn (val: int64): bool = val % 2 == 1).getOr(0).print;
+      test.find(fn (val: int64) -> bool = val % 2 == 1).getOr(0).print;
       test.each(fn (val: int64) = print('=' * val));
     }"#;
     stdout r#"1
@@ -1695,7 +1695,7 @@ test_ignore!(array_each_and_find => r#"
 "#;
 );
 test_ignore!(array_every_some_del => r#"
-    fn isOdd (val: int64): bool = val % 2 == 1;
+    fn isOdd (val: int64) -> bool = val % 2 == 1;
 
     export fn main {
       const test = [ 1, 1, 2, 3, 5, 8 ];
@@ -1719,30 +1719,30 @@ test_ignore!(array_reduce_filter_concat => r#"
       const test = [ 1, 1, 2, 3, 5, 8 ];
       const test2 = [ 4, 5, 6 ];
       print('reduce test');
-      test.reduce(fn (a: int, b: int): int = a + b || 0).print;
+      test.reduce(fn (a: int, b: int) -> int = a + b || 0).print;
       test.reduce(min).print;
       test.reduce(max).print;
 
       print('filter test');
-      test.filter(fn (val: int64): bool {
+      test.filter(fn (val: int64) -> bool {
         return val % 2 == 1;
-      }).map(fn (val: int64): string {
+      }).map(fn (val: int64) -> string {
         return string(val);
       }).join(', ').print;
 
       print('concat test');
-      test.concat(test2).map(fn (val: int64): string {
+      test.concat(test2).map(fn (val: int64) -> string {
         return string(val);
       }).join(', ').print;
-      (test + test2).map(fn (val: int64): string {
+      (test + test2).map(fn (val: int64) -> string {
         return string(val);
       }).join(', ').print;
 
       print('reduce as filter and concat test');
       // TODO: Lots of improvements needed for closures passed directly to opcodes. This one-liner is ridiculous
-      test.reduce(fn (acc: string, i: int): string = ((acc == '') && (i % 2 == 1)) ? i.string : (i % 2 == 1 ? (acc + ', ' + i.string) : acc), '').print;
+      test.reduce(fn (acc: string, i: int) -> string = ((acc == '') && (i % 2 == 1)) ? i.string : (i % 2 == 1 ? (acc + ', ' + i.string) : acc), '').print;
       // TODO: Even more ridiculous when you want to allow parallelism
-      test.reducePar(fn (acc: string, i: int): string = ((acc == '') && (i % 2 == 1)) ? i.string : (i % 2 == 1 ? (acc + ', ' + i.string) : acc), fn (acc: string, cur: string): string = ((acc != '') && (cur != '')) ? (acc + ', ' + cur) : (acc != '' ? acc : cur), '').print;
+      test.reducePar(fn (acc: string, i: int) -> string = ((acc == '') && (i % 2 == 1)) ? i.string : (i % 2 == 1 ? (acc + ', ' + i.string) : acc), fn (acc: string, cur: string) -> string = ((acc != '') && (cur != '')) ? (acc + ', ' + cur) : (acc != '' ? acc : cur), '').print;
     }"#;
     stdout r#"reduce test
 20
@@ -1766,12 +1766,12 @@ test_ignore!(array_custom_types => r#"
 
     export fn main {
       const five = [1, 2, 3, 4, 5];
-      five.map(fn (n: int64): Foo {
+      five.map(fn (n: int64) -> Foo {
         return new Foo {
           foo: n.string,
           bar: n % 2 == 0,
         };
-      }).filter(fn (f: Foo): bool = f.bar).map(fn (f: Foo): string = f.foo).join(', ').print;
+      }).filter(fn (f: Foo) -> bool = f.bar).map(fn (f: Foo) -> string = f.foo).join(', ').print;
     }"#;
     stdout "2, 4\n";
 );
@@ -1800,11 +1800,11 @@ test_ignore!(basic_hashmap => r#"
       const test = newHashMap('foo', 1);
       test.set('bar', 2);
       test.set('baz', 99);
-      print(test.keyVal.map(fn (n: KeyVal<string, int64>): string {
+      print(test.keyVal.map(fn (n: KeyVal<string, int64>) -> string {
         return 'key: ' + n.key + \"\\nval: \" + string(n.val);
       }).join(\"\\n\"));
       print(test.keys.join(', '));
-      print(test.vals.map(fn (n: int64): string = n.string).join(', '));
+      print(test.vals.map(fn (n: int64) -> string = n.string).join(', '));
       print(test.length);
       print(test.get('foo'));
     }"#;
@@ -1829,7 +1829,7 @@ test_ignore!(keyval_to_hashmap => r#"
     export fn main {
       const kva = [ kv(1, 'foo'), kv(2, 'bar'), kv(3, 'baz') ];
       const hm = kva.toHashMap;
-      print(hm.keyVal.map(fn (n: KeyVal<int64, string>): string {
+      print(hm.keyVal.map(fn (n: KeyVal<int64, string>) -> string {
         return 'key: ' + string(n.key) + \"\\nval: \" + n.val;
       }).join(\"\\n\"));
       print(hm.get(1));
@@ -1966,7 +1966,7 @@ test_ignore!(invalid_generics => r#"
 
 test_ignore!(basic_interfaces => r#"
     interface Stringifiable {
-      string(Stringifiable): string
+      string(Stringifiable) -> string
     }
 
     fn quoteAndPrint(toQuote: Stringifiable) {
@@ -2024,33 +2024,33 @@ test_ignore!(basic_interfaces => r#"
           timezone: HourMinute
         }
 
-        export fn makeYear(year: int32): Year {
+        export fn makeYear(year: int32) -> Year {
           return new Year {
             year: year
           };
         }
 
-        export fn makeYear(year: int64): Year {
+        export fn makeYear(year: int64) -> Year {
           return new Year {
             year: toInt32(year)
           };
         }
 
-        export fn makeYearMonth(year: int32, month: int8): YearMonth {
+        export fn makeYearMonth(year: int32, month: int8) -> YearMonth {
           return new YearMonth {
             year: year,
             month: month
           };
         }
 
-        export fn makeYearMonth(y: Year, month: int64): YearMonth {
+        export fn makeYearMonth(y: Year, month: int64) -> YearMonth {
           return new YearMonth {
             year: y.year,
             month: toInt8(month),
           };
         }
 
-        export fn makeDate(year: int32, month: int8, day: int8): Date {
+        export fn makeDate(year: int32, month: int8, day: int8) -> Date {
           return new Date {
             year: year,
             month: month,
@@ -2058,7 +2058,7 @@ test_ignore!(basic_interfaces => r#"
           };
         }
 
-        export fn makeDate(ym: YearMonth, day: int64): Date {
+        export fn makeDate(ym: YearMonth, day: int64) -> Date {
           return new Date {
             year: ym.year,
             month: ym.month,
@@ -2066,34 +2066,34 @@ test_ignore!(basic_interfaces => r#"
           };
         }
 
-        export fn makeHour(hour: int8): Hour {
+        export fn makeHour(hour: int8) -> Hour {
           return new Hour {
             hour: hour
           };
         }
 
-        export fn makeHourMinute(hour: int8, minute: int8): HourMinute {
+        export fn makeHourMinute(hour: int8, minute: int8) -> HourMinute {
           return new HourMinute {
             hour: hour,
             minute: minute
           };
         }
 
-        export fn makeHourMinute(hour: int64, minute: int64): HourMinute {
+        export fn makeHourMinute(hour: int64, minute: int64) -> HourMinute {
           return new HourMinute {
             hour: toInt8(hour),
             minute: toInt8(minute)
           };
         }
 
-        export fn makeHourMinute(h: Hour, minute: int8): HourMinute {
+        export fn makeHourMinute(h: Hour, minute: int8) -> HourMinute {
           return new HourMinute {
             hour: h.hour,
             minute: minute
           };
         }
 
-        export fn makeTime(hour: int8, minute: int8, second: float64): Time {
+        export fn makeTime(hour: int8, minute: int8, second: float64) -> Time {
           return new Time {
             hour: hour,
             minute: minute,
@@ -2101,7 +2101,7 @@ test_ignore!(basic_interfaces => r#"
           };
         }
 
-        export fn makeTime(hm: HourMinute, second: float64): Time {
+        export fn makeTime(hm: HourMinute, second: float64) -> Time {
           return new Time {
             hour: hm.hour,
             minute: hm.minute,
@@ -2109,7 +2109,7 @@ test_ignore!(basic_interfaces => r#"
           };
         }
 
-        export fn makeTime(hm: HourMinute, second: int64): Time {
+        export fn makeTime(hm: HourMinute, second: int64) -> Time {
           return new Time {
             hour: hm.hour,
             minute: hm.minute,
@@ -2117,7 +2117,7 @@ test_ignore!(basic_interfaces => r#"
           };
         }
 
-        export fn makeTime(hm: Array<int64>, second: int64): Time {
+        export fn makeTime(hm: Array<int64>, second: int64) -> Time {
           return new Time {
             hour: hm[0].i8,
             minute: hm[1].i8,
@@ -2125,7 +2125,7 @@ test_ignore!(basic_interfaces => r#"
           };
         }
 
-        export fn makeDateTime(date: Date, time: Time, timezone: HourMinute): DateTime {
+        export fn makeDateTime(date: Date, time: Time, timezone: HourMinute) -> DateTime {
           return new DateTime {
             date: date,
             time: time,
@@ -2133,7 +2133,7 @@ test_ignore!(basic_interfaces => r#"
           };
         }
 
-        export fn makeDateTime(date: Date, time: Time): DateTime {
+        export fn makeDateTime(date: Date, time: Time) -> DateTime {
           return new DateTime {
             date: date,
             time: time,
@@ -2141,7 +2141,7 @@ test_ignore!(basic_interfaces => r#"
           };
         }
 
-        export fn makeDateTimeTimezone(dt: DateTime, timezone: HourMinute): DateTime {
+        export fn makeDateTimeTimezone(dt: DateTime, timezone: HourMinute) -> DateTime {
           return new DateTime {
             date: dt.date,
             time: dt.time,
@@ -2149,7 +2149,7 @@ test_ignore!(basic_interfaces => r#"
           };
         }
 
-        export fn makeDateTimeTimezone(dt: DateTime, timezone: Array<int64>): DateTime {
+        export fn makeDateTimeTimezone(dt: DateTime, timezone: Array<int64>) -> DateTime {
           return new DateTime {
             date: dt.date,
             time: dt.time,
@@ -2160,7 +2160,7 @@ test_ignore!(basic_interfaces => r#"
           };
         }
 
-        export fn makeDateTimeTimezoneRev(dt: DateTime, timezone: HourMinute): DateTime {
+        export fn makeDateTimeTimezoneRev(dt: DateTime, timezone: HourMinute) -> DateTime {
           return new DateTime {
             date: dt.date,
             time: dt.time,
@@ -2171,7 +2171,7 @@ test_ignore!(basic_interfaces => r#"
           };
         }
 
-        export fn makeDateTimeTimezoneRev(dt: DateTime, timezone: Array<int64>): DateTime {
+        export fn makeDateTimeTimezoneRev(dt: DateTime, timezone: Array<int64>) -> DateTime {
           return new Datetime {
             date: dt.date,
             time: dt.time,
@@ -2211,7 +2211,7 @@ test_ignore!(basic_interfaces => r#"
           Date @ Time: DateTime,
           DateTime + HourMinute: DateTime,
           DateTime - HourMinute: DateTime,
-          print(DateTime): void,
+          print(DateTime) -> void,
         }
       "
 
@@ -2489,9 +2489,9 @@ test_ignore!(user_types_and_generics => r#"
 // Closures
 
 test_ignore!(closure_creation_and_usage => r#"
-    fn closure(): function {
+    fn closure() -> function {
       let num = 0;
-      return fn (): int64 {
+      return fn () -> int64 {
         num = num + 1 || 0;
         return num;
       };
@@ -2507,7 +2507,7 @@ test_ignore!(closure_creation_and_usage => r#"
     stdout "1\n2\n1\n";
 );
 test_ignore!(closure_by_name => r#"
-    fn double(x: int64): int64 = x * 2 || 0;
+    fn double(x: int64) -> int64 = x * 2 || 0;
 
     export fn main {
       const numbers = [1, 2, 3, 4, 5];
@@ -3196,8 +3196,8 @@ test_ignore!(clone => r#"
       let c = [1, 2, 3];
       let d = c.clone;
       d.set(0, 2);
-      c.map(fn (val: int): string = val.string).join(', ').print;
-      d.map(fn (val: int): string = val.string).join(', ').print;
+      c.map(fn (val: int) -> string = val.string).join(', ').print;
+      d.map(fn (val: int) -> string = val.string).join(', ').print;
     }"#;
     stdout "4\n3\n1, 2, 3\n2, 2, 3\n";
 );
@@ -3302,7 +3302,7 @@ false
 
           // Closure-based remote execution
           let bar = 'bar';
-          const bay = ns.ref('foo').closure(fn (foo: string): int64 {
+          const bay = ns.ref('foo').closure(fn (foo: string) -> int64 {
             bar = 'foobar: ' + foo + bar;
             return foo.length;
           });
@@ -3310,18 +3310,18 @@ false
           print(bar);
 
           // Constrained-closure that only gets the 'with' variable
-          const bax = ns.ref('foo').with(bar).run(fn (foo: string, bar: string): int64 = #foo +. #bar);
+          const bax = ns.ref('foo').with(bar).run(fn (foo: string, bar: string) -> int64 = #foo +. #bar);
           print(bax);
 
           // Mutable closure
-          const baw = ns.mut('foo').run(fn (foo: string): int64 {
+          const baw = ns.mut('foo').run(fn (foo: string) -> int64 {
             foo = foo + 'bar';
             return foo.length;
           });
           print(baw);
 
           // Mutable closure that affects the foo variable
-          const bav = ns.mut('foo').closure(fn (foo: string): int64 {
+          const bav = ns.mut('foo').closure(fn (foo: string) -> int64 {
             foo = foo + 'bar';
             bar = bar * foo.length;
             return bar.length;
@@ -3330,7 +3330,7 @@ false
           print(bar);
 
           // Constrained mutable closure that affects the foo variable
-          const bau = ns.mut('foo').with(bar).run(fn (foo: string, bar: string): int64 {
+          const bau = ns.mut('foo').with(bar).run(fn (foo: string, bar: string) -> int64 {
             foo = foo * #bar;
             return foo.length;
           });
@@ -3426,7 +3426,7 @@ test_ignore!(seq_do_while => r#"
       let s = seq(100);
       let sum = 0;
       // TODO: Get automatic type inference working on anonymous multi-line functions
-      s.doWhile(fn (): bool {
+      s.doWhile(fn () -> bool {
         sum = sum + 1 || 0;
         return sum < 10;
       });
@@ -3438,7 +3438,7 @@ test_ignore!(seq_recurse => r#"
     from @std/seq import seq, Self, recurse
 
     export fn main {
-      print(seq(100).recurse(fn fibonacci(self: Self, i: int64): Result<int64> {
+      print(seq(100).recurse(fn fibonacci(self: Self, i: int64) -> Result<int64> {
         if i < 2 {
           return ok(1);
         } else {
@@ -3507,7 +3507,7 @@ test_ignore!(tree_construction_and_access => r#"
 
       print(myTree.getRootNode || 'wrong');
       print(bayNode.getParent || 'wrong');
-      print(myTree.getChildren.map(fn (c: Node<string>): string = c || 'wrong').join(', '));
+      print(myTree.getChildren.map(fn (c: Node<string>) -> string = c || 'wrong').join(', '));
     }"#;
     stdout "foo\nbar\nbar, baz\n";
 );
@@ -3538,10 +3538,10 @@ test_ignore!(tree_every_find_some_reduce_prune => r#"
       const bazNode = myTree.addChild('baz');
       const bayNode = barNode.addChild('bay');
 
-      print(myTree.every(fn (c: Node<string>): bool = (c || 'wrong').length == 3));
-      print(myTree.some(fn (c: Node<string>): bool = (c || 'wrong').length == 1));
-      print(myTree.find(fn (c: Node<string>): bool = (c || 'wrong') == 'bay').getOr('wrong'));
-      print(myTree.find(fn (c: Node<string>): bool = (c || 'wrong') == 'asf').getOr('wrong'));
+      print(myTree.every(fn (c: Node<string>) -> bool = (c || 'wrong').length == 3));
+      print(myTree.some(fn (c: Node<string>) -> bool = (c || 'wrong').length == 1));
+      print(myTree.find(fn (c: Node<string>) -> bool = (c || 'wrong') == 'bay').getOr('wrong'));
+      print(myTree.find(fn (c: Node<string>) -> bool = (c || 'wrong') == 'asf').getOr('wrong'));
 
       print(myTree.length);
       myTree.getChildren.eachLin(fn (c: Node<string>) {
@@ -3550,10 +3550,10 @@ test_ignore!(tree_every_find_some_reduce_prune => r#"
           c.prune;
         }
       });
-      print(myTree.getChildren.map(fn (c: Node<string>): string = c || 'wrong').join(', '));
+      print(myTree.getChildren.map(fn (c: Node<string>) -> string = c || 'wrong').join(', '));
       print(myTree.length);
 
-      myTree.reduce(fn (acc: int, i: Node<string>): int = (i || 'wrong').length + acc || 0, 0).print;
+      myTree.reduce(fn (acc: int, i: Node<string>) -> int = (i || 'wrong').length + acc || 0, 0).print;
     }"#;
     stdout r#"true
 false

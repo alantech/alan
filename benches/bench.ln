@@ -1,16 +1,16 @@
 // The benchmark in this directory is based on this file. That version unfortunately includes the
 // time it takes for `filled` to run, so the effective performance of `parmap` is underestimated
-fn double(x: i32): Result<i32> = x * 2.i32();
+fn double(x: i32) -> Result<i32> = x * 2.i32;
 
 fn bench(l: i64) {
-  let v = filled(2.i32(), l);
-  v.length().print();
+  let v = filled(2.i32, l);
+  v.length.print;
   let t1 = now();
   v.map(double);
-  t1.elapsed().print();
+  t1.elapsed.print;
   let t2 = now();
   v.parmap(double);
-  t2.elapsed().print();
+  t2.elapsed.print;
   let t3 = now();
   let g = GPU();
   let b = g.createBuffer(storageBuffer(), v);
@@ -30,20 +30,20 @@ fn bench(l: i64) {
   ", b);
   g.run(plan);
   g.read(b);
-  t3.elapsed().print();
+  t3.elapsed.print;
 }
 
 // Until I have conditionals working, I need to do this kind of tomfoolery
 fn bench_billion {
-  let v = filled(2.i32(), 1000000000);
-  v.length().print();
+  let v = filled(2.i32, 1000000000);
+  v.length.print;
   let t1 = now();
   v.map(double);
-  t1.elapsed().print();
+  t1.elapsed.print;
   let t2 = now();
   v.parmap(double);
-  t2.elapsed().print();
-  let v2 = filled(2.i32(), 500000000);
+  t2.elapsed.print;
+  let v2 = filled(2.i32, 500000000);
   let t3 = now();
   let g = GPU();
   let b = g.createBuffer(storageBuffer(), v2);
@@ -80,7 +80,7 @@ fn bench_billion {
   ", b);
   g.run(plan);
   g.read(b);
-  t3.elapsed().print();
+  t3.elapsed.print;
 }
 
 export fn main {
