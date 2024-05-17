@@ -348,6 +348,7 @@ build!(
 );
 build!(optwhitespace, zero_or_one!(whitespace));
 build!(colon, token!(":"));
+build!(arrow, token!("->")); // TODO: Temporary to make the syntax closer before being generalized
 build!(under, token!("_"));
 build!(negate, token!("-"));
 build!(dot, token!("."));
@@ -1060,7 +1061,7 @@ named_and!(args: Args =>
     c: String as optwhitespace,
 );
 named_and!(returntype: ReturnType =>
-    colon: String as colon,
+    arrow: String as arrow,
     a: String as optwhitespace,
     fulltypename: FullTypename as fulltypename,
     b: String as optwhitespace,
@@ -1077,7 +1078,7 @@ named_and!(functions: Functions =>
     fullfunctionbody: FullFunctionBody as fullfunctionbody,
 );
 test!(functions =>
-    pass "fn newHashMap(firstKey: Hashable, firstVal: any): HashMap<Hashable, any> { // TODO: Rust-like fn::<typeA, typeB> syntax?\n  let hm = new HashMap<Hashable, any> {\n    keyVal: new Array<KeyVal<Hashable, any>> [],\n    lookup: new Array<Array<int64>> [ new Array<int64> [] ] * 128, // 1KB of space\n  };\n  return hm.set(firstKey, firstVal);\n}" => "";
+    pass "fn newHashMap(firstKey: Hashable, firstVal: any) -> HashMap<Hashable, any> { // TODO: Rust-like fn::<typeA, typeB> syntax?\n  let hm = new HashMap<Hashable, any> {\n    keyVal: new Array<KeyVal<Hashable, any>> [],\n    lookup: new Array<Array<int64>> [ new Array<int64> [] ] * 128, // 1KB of space\n  };\n  return hm.set(firstKey, firstVal);\n}" => "";
     pass "fn foo binds foo;" => "";
     pass "fn print(val: String) binds println!;" => "";
     pass "fn<Test> foo binds foo_test;" => "";
@@ -1345,15 +1346,15 @@ named_and!(functiontype: FunctionType =>
     b: String as optwhitespace,
     closeparen: String as closeparen,
     c: String as optwhitespace,
-    colon: String as colon,
+    arrow: String as arrow,
     d: String as optwhitespace,
     returntype: FullTypename as fulltypename,
 );
 test!(functiontype =>
     fail "()";
-    pass "():void";
-    pass "(Foo): Bar";
-    pass "(Foo, Bar): Baz";
+    pass "() -> void";
+    pass "(Foo) -> Bar";
+    pass "(Foo, Bar) -> Baz";
 );
 named_and!(functiontypeline: FunctionTypeline =>
     variable: String as variable,
@@ -1361,7 +1362,7 @@ named_and!(functiontypeline: FunctionTypeline =>
     functiontype: FunctionType as functiontype,
 );
 test!(functiontypeline =>
-    pass "toString(Stringifiable): string," => ",", super::FunctionTypeline{
+    pass "toString(Stringifiable) -> string," => ",", super::FunctionTypeline{
       variable: "toString".to_string(),
       a: "".to_string(),
       functiontype: super::FunctionType{
@@ -1374,8 +1375,8 @@ test!(functiontypeline =>
         optsep: "".to_string(),
         b: "".to_string(),
         closeparen: ")".to_string(),
-        c: "".to_string(),
-        colon: ":".to_string(),
+        c: " ".to_string(),
+        arrow: "->".to_string(),
         d: " ".to_string(),
         returntype: super::FullTypename{
           typename: "string".to_string(),
@@ -1390,7 +1391,7 @@ named_or!(interfaceline: InterfaceLine =>
     PropertyTypeline: PropertyTypeline as propertytypeline,
 );
 test!(interfaceline =>
-    pass "toString(Stringifiable): string," => ",", super::InterfaceLine::FunctionTypeline(super::FunctionTypeline{
+    pass "toString(Stringifiable) -> string," => ",", super::InterfaceLine::FunctionTypeline(super::FunctionTypeline{
       variable: "toString".to_string(),
       a: "".to_string(),
       functiontype: super::FunctionType{
@@ -1403,8 +1404,8 @@ test!(interfaceline =>
         optsep: "".to_string(),
         b: "".to_string(),
         closeparen: ")".to_string(),
-        c: "".to_string(),
-        colon: ":".to_string(),
+        c: " ".to_string(),
+        arrow: "->".to_string(),
         d: " ".to_string(),
         returntype: super::FullTypename{
           typename: "string".to_string(),
@@ -1415,7 +1416,7 @@ test!(interfaceline =>
 );
 list!(opt interfacelist: InterfaceLine => interfaceline, sep);
 test!(interfacelist =>
-    pass "toString(Stringifiable): string," => ",", vec![super::InterfaceLine::FunctionTypeline(super::FunctionTypeline{
+    pass "toString(Stringifiable) -> string," => ",", vec![super::InterfaceLine::FunctionTypeline(super::FunctionTypeline{
       variable: "toString".to_string(),
       a: "".to_string(),
       functiontype: super::FunctionType{
@@ -1428,8 +1429,8 @@ test!(interfacelist =>
         optsep: "".to_string(),
         b: "".to_string(),
         closeparen: ")".to_string(),
-        c: "".to_string(),
-        colon: ":".to_string(),
+        c: " ".to_string(),
+        arrow: "->".to_string(),
         d: " ".to_string(),
         returntype: super::FullTypename{
           typename: "string".to_string(),
@@ -1467,7 +1468,7 @@ named_and!(interfaces: Interfaces =>
 test!(interfaces =>
     pass "interface any {}";
     pass "interface anythingElse = any";
-    pass "interface Stringifiable {\ntoString(Stringifiable): string,\n}";
+    pass "interface Stringifiable {\ntoString(Stringifiable) -> string,\n}";
 );
 named_or!(exportable: Exportable =>
     Functions: Functions as functions,
@@ -1487,7 +1488,7 @@ named_and!(exports: Exports =>
     exportable: Exportable as exportable,
 );
 test!(exports =>
-    pass "export fn newHashMap(firstKey: Hashable, firstVal: any): HashMap<Hashable, any> { // TODO: Rust-like fn::<typeA, typeB> syntax?\n  let hm = new HashMap<Hashable, any> {\n    keyVal: new Array<KeyVal<Hashable, any>> [],\n    lookup: new Array<Array<int64>> [ new Array<int64> [] ] * 128, // 1KB of space\n  };\n  return hm.set(firstKey, firstVal);\n}" => "";
+    pass "export fn newHashMap(firstKey: Hashable, firstVal: any) -> HashMap<Hashable, any> { // TODO: Rust-like fn::<typeA, typeB> syntax?\n  let hm = new HashMap<Hashable, any> {\n    keyVal: new Array<KeyVal<Hashable, any>> [],\n    lookup: new Array<Array<int64>> [ new Array<int64> [] ] * 128, // 1KB of space\n  };\n  return hm.set(firstKey, firstVal);\n}" => "";
     pass "export<Test> fn main() { let foo = 'bar'; // TODO: Add tests\n }" => "";
 );
 named_or!(rootelements: RootElements =>
