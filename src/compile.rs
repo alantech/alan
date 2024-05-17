@@ -637,98 +637,98 @@ test!(int64_max => r#"
     stdout "5\n";
 );
 
-test_ignore!(float32_add => r#"
+test!(float32_add => r#"
     export fn main {
       print(f32(1) + f32(2));
     }"#;
     stdout "3\n";
 );
-test_ignore!(float32_sub => r#"
+test!(float32_sub => r#"
     export fn main {
       print(f32(2) - f32(1));
     }"#;
     stdout "1\n";
 );
-test_ignore!(float32_mul => r#"
+test!(float32_mul => r#"
     export fn main {
       print(f32(2) * f32(1));
     }"#;
     stdout "2\n";
 );
-test_ignore!(float32_div => r#"
+test!(float32_div => r#"
     export fn main {
       print(f32(6) / f32(2));
     }"#;
     stdout "3\n";
 );
-test_ignore!(float32_sqrt => r#"
+test!(float32_sqrt => r#"
     export fn main {
       print(sqrt(f32(36)));
     }"#;
     stdout "6\n";
 );
-test_ignore!(float32_pow => r#"
+test!(float32_pow => r#"
     export fn main {
       print(f32(6) ** f32(2));
     }"#;
     stdout "36\n";
 );
-test_ignore!(float32_min => r#"
+test!(float32_min => r#"
     export fn main {
       min(3.f32, 5.f32).print;
     }"#;
     stdout "3\n";
 );
-test_ignore!(float32_max => r#"
+test!(float32_max => r#"
     export fn main {
       max(3.f32, 5.f32).print;
     }"#;
     stdout "5\n";
 );
 
-test_ignore!(float64_add => r#"
+test!(float64_add => r#"
     export fn main {
       (1.0 + 2.0).print;
     }"#;
     stdout "3\n";
 );
-test_ignore!(float64_sub => r#"
+test!(float64_sub => r#"
     export fn main {
       (2.0 - 1.0).print;
     }"#;
     stdout "1\n";
 );
-test_ignore!(float64_mul => r#"
+test!(float64_mul => r#"
     export fn main {
       (2.0 * 1.0).print;
     }"#;
     stdout "2\n";
 );
-test_ignore!(float64_div => r#"
+test!(float64_div => r#"
     export fn main {
       (6.0 / 2.0).print;
     }"#;
     stdout "3\n";
 );
-test_ignore!(float64_sqrt => r#"
+test!(float64_sqrt => r#"
     export fn main {
       sqrt(36.0).print;
     }"#;
     stdout "6\n";
 );
-test_ignore!(float64_pow => r#"
+test!(float64_pow => r#"
     export fn main {
       (6.0 ** 2.0).print;
     }"#;
     stdout "36\n";
 );
-test_ignore!(float64_min => r#"
+test!(float64_min => r#"
     export fn main {
       min(3.f64, 5.f64).print;
     }"#;
     stdout "3\n";
 );
-test_ignore!(float64_max => r#"
+test!(float64_max => r#"
     export fn main {
       max(3.f64, 5.f64).print;
     }"#;
