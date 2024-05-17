@@ -1295,8 +1295,9 @@ named_and!(operatormapping: OperatorMapping =>
 );
 named_and!(typeoperatormapping: TypeOperatorMapping =>
     typen: String as typen,
+    a: String as blank,
     fix: Fix as fix,
-    a: String as optblank,
+    b: String as optblank,
     opttypegenerics: Option<TypeGenerics> as opt(typegenerics),
     blank: String as optblank,
     opmap: OpMap as opmap,
