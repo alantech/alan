@@ -1343,6 +1343,77 @@ fn string_concat(a: &String, b: &String) -> String {
     format!("{}{}", a, b).to_string()
 }
 
+/// `i8tobool` converts an integer into a boolean
+fn i8tobool(a: &i8) -> bool {
+    *a != 0
+}
+
+/// `i16tobool` converts an integer into a boolean
+fn i16tobool(a: &i16) -> bool {
+    *a != 0
+}
+
+/// `i32tobool` converts an integer into a boolean
+fn i32tobool(a: &i32) -> bool {
+    *a != 0
+}
+
+/// `i64tobool` converts an integer into a boolean
+fn i64tobool(a: &i64) -> bool {
+    *a != 0
+}
+
+/// `f32tobool` converts an integer into a boolean
+fn f32tobool(a: &f32) -> bool {
+    *a != 0.0
+}
+
+/// `f64tobool` converts an integer into a boolean
+fn f64tobool(a: &f64) -> bool {
+    *a != 0.0
+}
+
+/// `stringtobool` converts a string into a boolean. "true" is true and everything else is false
+fn stringtobool(a: &String) -> bool {
+    a.as_str() == "true"
+}
+
+/// `and` performs a boolean `and`
+fn and(a: &bool, b: &bool) -> bool {
+    *a && *b
+}
+
+/// `or` performs a boolean `or`
+fn or(a: &bool, b: &bool) -> bool {
+    *a || *b
+}
+
+/// `xor` performs a boolean `xor`
+fn xor(a: &bool, b: &bool) -> bool {
+    *a ^ *b
+}
+
+/// `not` performs a boolean `not`
+fn not(a: &bool) -> bool {
+    !*a
+}
+
+/// `nand` performs a boolean `nand` (considering how computers are built, why is this not a
+/// built-in operator?)
+fn nand(a: &bool, b: &bool) -> bool {
+    !(*a && *b)
+}
+
+/// `nor` performs a boolean `nor`
+fn nor(a: &bool, b: &bool) -> bool {
+    !(*a || *b)
+}
+
+/// `xnor` performs a boolean `xnor` (aka `eq`)
+fn xnor(a: &bool, b: &bool) -> bool {
+    *a == *b
+}
+
 /// `println` is a simple function that prints basically anything
 fn println<A: std::fmt::Display>(a: &A) {
     println!("{}", a);

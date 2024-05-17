@@ -277,9 +277,31 @@ export fn max(a: Result<f64>, b: Result<f64>) -> Result<f64> binds maxf64_result
 export fn max(a: f64, b: Result<f64>) -> Result<f64> = max(a.ok, b);
 export fn max(a: Result<f64>, b: f64) -> Result<f64> = max(a, b.ok);
 
+/// String related bindings
+
+export type string binds String;
+
+export fn concat(a: string, b: string) -> string binds string_concat;
+
 /// Boolean related bindings
 
-type bool binds bool;
+export type bool binds bool;
+
+export fn bool(i: i8) -> bool binds i8tobool;
+export fn bool(i: i16) -> bool binds i16tobool;
+export fn bool(i: i32) -> bool binds i32tobool;
+export fn bool(i: i64) -> bool binds i64tobool;
+export fn bool(f: f32) -> bool binds f32tobool;
+export fn bool(f: f64) -> bool binds f64tobool;
+export fn bool(s: string) -> bool binds stringtobool;
+export fn bool(b: bool) -> bool = b;
+export fn and(a: bool, b: bool) -> bool binds and;
+export fn or(a: bool, b: bool) -> bool binds or;
+export fn xor(a: bool, b: bool) -> bool binds xor;
+export fn not(a: bool) -> bool binds not;
+export fn nand(a: bool, b: bool) -> bool binds nand;
+export fn nor(a: bool, b: bool) -> bool binds nor;
+export fn xnor(a: bool, b: bool) -> bool binds xnor;
 
 /// Process exit-related bindings
 
@@ -295,8 +317,6 @@ export fn getOrExit(a: Result<i64>) -> i64 binds get_or_exit; // TODO: Support r
 
 /// Stdout/stderr-related bindings
 
-export type string binds String;
-export fn concat(a: string, b: string) -> string binds string_concat;
 export fn print(str: string) binds println;
 export fn print(b: bool) binds println;
 export fn print(i: i8) binds println;
@@ -377,3 +397,12 @@ export infix div as / precedence 3;
 export infix mod as % precedence 3;
 // export infix template as % precedence 3;
 export infix pow as ** precedence 4;
+export infix and as & precedence 3;
+export infix and as && precedence 3;
+export infix or as | precedence 2;
+export infix or as || precedence 2;
+export infix xor as ^ precedence 2;
+export prefix not as ! precedence 4;
+export infix nand as !& precedence 3;
+export infix nor as !| precedence 2;
+export infix xnor as !^ precedence 2;
