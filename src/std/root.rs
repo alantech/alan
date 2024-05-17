@@ -40,6 +40,16 @@ fn to_exit_code_i8(i: &i8) -> std::process::ExitCode {
     (*i as u8).into()
 }
 
+/// `f64toi8` casts an f64 to an i8.
+fn f64toi8(f: &f64) -> i8 {
+    *f as i8
+}
+
+/// `f32toi8` casts an f32 to an i8.
+fn f32toi8(f: &f32) -> i8 {
+    *f as i8
+}
+
 /// `i64toi8` casts an i64 to an i8.
 fn i64toi8(i: &i64) -> i8 {
     *i as i8
@@ -232,6 +242,16 @@ fn maxi8_result(a: &Result_i8, b: &Result_i8) -> Result_i8 {
     }
 }
 
+/// `f64toi16` casts an f64 to an i16.
+fn f64toi16(f: &f64) -> i16 {
+    *f as i16
+}
+
+/// `f32toi16` casts an f32 to an i16.
+fn f32toi16(f: &f32) -> i16 {
+    *f as i16
+}
+
 /// `i64toi16` casts an i64 to an i16.
 fn i64toi16(i: &i64) -> i16 {
     *i as i16
@@ -249,6 +269,14 @@ fn i8toi16(i: &i8) -> i16 {
 
 /// `Result_i16` is a type alias for Result<i16, AlanError>
 type Result_i16 = Result<i16, AlanError>;
+
+/// `get_or_i16` unwraps a Result_i16 with the default value if it is an error
+fn get_or_i16(r: &Result_i16, default: &i16) -> i16 {
+    match r {
+        Ok(v) => *v,
+        Err(_) => *default,
+    }
+}
 
 /// `addi16` safely adds two i16s together, returning a Result-wrapped i16 (or an error on overflow)
 fn addi16(a: &i16, b: &i16) -> Result_i16 {
@@ -418,6 +446,24 @@ fn maxi16_result(a: &Result_i16, b: &Result_i16) -> Result_i16 {
 
 /// `Result_i32` is a type alias for Result<i32, AlanError>
 type Result_i32 = Result<i32, AlanError>;
+
+/// `get_or_i32` unwraps a Result_i32 with the default value if it is an error
+fn get_or_i32(r: &Result_i32, default: &i32) -> i32 {
+    match r {
+        Ok(v) => *v,
+        Err(_) => *default,
+    }
+}
+
+/// `f64toi32` casts an f64 to an i32.
+fn f64toi32(f: &f64) -> i32 {
+    *f as i32
+}
+
+/// `f32toi32` casts an f32 to an i32.
+fn f32toi32(f: &f32) -> i32 {
+    *f as i32
+}
 
 /// `i64toi32` casts an i64 to an i32.
 fn i64toi32(i: &i64) -> i32 {
@@ -598,6 +644,16 @@ fn maxi32_result(a: &Result_i32, b: &Result_i32) -> Result_i32 {
             Ok(b) => if a > b { Ok(*a) } else { Ok(*b) }
         }
     }
+}
+
+/// `f64toi64` casts an f64 to an i64.
+fn f64toi64(f: &f64) -> i64 {
+    *f as i64
+}
+
+/// `f32toi64` casts an f32 to an i64.
+fn f32toi64(f: &f32) -> i64 {
+    *f as i64
 }
 
 /// `i8toi64` casts an i8 to an i64.
@@ -783,6 +839,488 @@ fn maxi64(a: &i64, b: &i64) -> i64 {
 
 /// `maxi64_result` returns the larger of the two Result_i64 values
 fn maxi64_result(a: &Result_i64, b: &Result_i64) -> Result_i64 {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => match b {
+            Err(e) => Err(e.clone()),
+            Ok(b) => if a > b { Ok(*a) } else { Ok(*b) }
+        }
+    }
+}
+
+/// `Result_f32` is a type alias for Result<f32, AlanError>
+type Result_f32 = Result<f32, AlanError>;
+
+/// `get_or_f32` unwraps a Result_f32 with the default value if it is an error
+fn get_or_f32(r: &Result_f32, default: &f32) -> f32 {
+    match r {
+        Ok(v) => *v,
+        Err(_) => *default,
+    }
+}
+
+/// `f64tof32` casts an f64 to an f32.
+fn f64tof32(f: &f64) -> f32 {
+    *f as f32
+}
+
+/// `i64tof32` casts an i64 to an f32.
+fn i64tof32(i: &i64) -> f32 {
+    *i as f32
+}
+
+/// `i32tof32` casts an i32 to an f32.
+fn i32tof32(i: &i32) -> f32 {
+    *i as f32
+}
+
+/// `i16tof32` casts an i16 to an f32.
+fn i16tof32(i: &i16) -> f32 {
+    *i as f32
+}
+
+/// `i8tof32` casts an i8 to an f32.
+fn i8tof32(i: &i8) -> f32 {
+    *i as f32
+}
+
+/// `addf32` safely adds two f32s together, returning a Result-wrapped f32 (or an error on overflow)
+fn addf32(a: &f32, b: &f32) -> Result_f32 {
+    match a + b {
+        f32::MAX => Err("Overflow".into()),
+        f32::MIN => Err("Underflow".into()),
+        o => if o.is_nan() {
+          Err("Not a Number".into())
+        } else {
+          Ok(o)
+        }
+    }
+}
+
+/// `addf32_result` safely adds two Result_f32s together, returning a Result-wrapped f32 (or an error on overflow)
+fn addf32_result(a: &Result_f32, b: &Result_f32) -> Result_f32 {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => match b {
+            Err(e) => Err(e.clone()),
+            Ok(b) => match a + b {
+                f32::MAX => Err("Overflow".into()),
+                f32::MIN => Err("Underflow".into()),
+                o => if o.is_nan() {
+                  Err("Not a Number".into())
+                } else {
+                  Ok(o)
+                }
+            }
+        }
+    }
+}
+
+/// `subf32` safely subtracts two f32s, returning a Result-wrapped f32 (or an error on underflow)
+fn subf32(a: &f32, b: &f32) -> Result_f32 {
+    match a - b {
+        f32::MAX => Err("Overflow".into()),
+        f32::MIN => Err("Underflow".into()),
+        o => if o.is_nan() {
+          Err("Not a Number".into())
+        } else {
+          Ok(o)
+        }
+    }
+}
+
+/// `subf32_result` safely subtracts two f32s, returning a Result-wrapped f32 (or an error on underflow)
+fn subf32_result(a: &Result_f32, b: &Result_f32) -> Result_f32 {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => match b {
+            Err(e) => Err(e.clone()),
+            Ok(b) => match a - b {
+                f32::MAX => Err("Overflow".into()),
+                f32::MIN => Err("Underflow".into()),
+                o => if o.is_nan() {
+                  Err("Not a Number".into())
+                } else {
+                  Ok(o)
+                }
+            }
+        }
+    }
+}
+
+/// `mulf32` safely multiplies two f32s, returning a Result-wrapped f32 (or an error on under/overflow)
+fn mulf32(a: &f32, b: &f32) -> Result_f32 {
+    match a * b {
+        f32::MAX => Err("Overflow".into()),
+        f32::MIN => Err("Underflow".into()),
+        o => if o.is_nan() {
+          Err("Not a Number".into())
+        } else {
+          Ok(o)
+        }
+    }
+}
+
+/// `mulf32_result` safely multiplies two Result_f32s, returning a Result-wrapped f32 (or an error on under/overflow)
+fn mulf32_result(a: &Result_f32, b: &Result_f32) -> Result_f32 {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => match b {
+            Err(e) => Err(e.clone()),
+            Ok(b) => match a * b {
+                f32::MAX => Err("Overflow".into()),
+                f32::MIN => Err("Underflow".into()),
+                o => if o.is_nan() {
+                  Err("Not a Number".into())
+                } else {
+                  Ok(o)
+                }
+            }
+        }
+    }
+}
+
+/// `divf32` safely divides two f32s, returning a Result-wrapped f32 (or an error on divide-by-zero)
+fn divf32(a: &f32, b: &f32) -> Result_f32 {
+    match a / b {
+        f32::MAX => Err("Overflow".into()),
+        f32::MIN => Err("Underflow".into()),
+        o => if o.is_nan() {
+          Err("Not a Number".into())
+        } else {
+          Ok(o)
+        }
+    }
+}
+
+/// `divf32_result` safely divides two Result_f32s, returning a Result-wrapped f32 (or an error on divide-by-zero)
+fn divf32_result(a: &Result_f32, b: &Result_f32) -> Result_f32 {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => match b {
+            Err(e) => Err(e.clone()),
+            Ok(b) => match a / b {
+                f32::MAX => Err("Overflow".into()),
+                f32::MIN => Err("Underflow".into()),
+                o => if o.is_nan() {
+                  Err("Not a Number".into())
+                } else {
+                  Ok(o)
+                }
+            }
+        }
+    }
+}
+
+/// `sqrtf32` takes the square root of an f32, returning an f32
+fn sqrtf32(f: &f32) -> f32 {
+    f.sqrt()
+}
+
+/// `sqrtf32_result` takes the square root of a Result_f32, returning a Result_f32
+fn sqrtf32_result(f: &Result_f32) -> Result_f32 {
+    match f {
+      Err(e) => Err(e.clone()),
+      Ok(v) => Ok(v.sqrt()),
+    }
+}
+
+/// `powf32` safely raises the first f32 to the second f32, returning a Result-wrapped f32 (or an error on under/overflow)
+fn powf32(a: &f32, b: &f32) -> Result_f32 {
+    match a.powf(*b) {
+        f32::MAX => Err("Overflow".into()),
+        f32::MIN => Err("Underflow".into()),
+        o => if o.is_nan() {
+          Err("Not a Number".into())
+        } else {
+          Ok(o)
+        }
+    }
+}
+
+/// `powf32_result` safely raises the first Result_f32 to the second Result_f32, returning a Result-wrapped f32 (or an error on under/overflow)
+fn powf32_result(a: &Result_f32, b: &Result_f32) -> Result_f32 {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => match b {
+            Err(e) => Err(e.clone()),
+            Ok(b) => match a.powf(*b) {
+                f32::MAX => Err("Overflow".into()),
+                f32::MIN => Err("Underflow".into()),
+                o => if o.is_nan() {
+                  Err("Not a Number".into())
+                } else {
+                  Ok(o)
+                }
+            }
+        }
+    }
+}
+
+/// `minf32` returns the smaller of the two f32 values
+fn minf32(a: &f32, b: &f32) -> f32 {
+    if a < b { *a } else { *b }
+}
+
+/// `minf32_result` returns the smaller of the two Result_f32 values
+fn minf32_result(a: &Result_f32, b: &Result_f32) -> Result_f32 {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => match b {
+            Err(e) => Err(e.clone()),
+            Ok(b) => if a < b { Ok(*a) } else { Ok(*b) }
+        }
+    }
+}
+
+/// `maxf32` returns the larger of the two f32 values
+fn maxf32(a: &f32, b: &f32) -> f32 {
+    if a > b { *a } else { *b }
+}
+
+/// `maxf32_result` returns the larger of the two Result_f32 values
+fn maxf32_result(a: &Result_f32, b: &Result_f32) -> Result_f32 {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => match b {
+            Err(e) => Err(e.clone()),
+            Ok(b) => if a > b { Ok(*a) } else { Ok(*b) }
+        }
+    }
+}
+
+/// `f32tof64` casts an f32 to an f64.
+fn f32tof64(f: &f32) -> f64 {
+    *f as f64
+}
+
+/// `i8tof64` casts an i8 to an f64.
+fn i8tof64(i: &i8) -> f64 {
+    *i as f64
+}
+
+/// `i16tof64` casts an i16 to an f64.
+fn i16tof64(i: &i16) -> f64 {
+    *i as f64
+}
+
+/// `i32tof64` casts an i32 to an f64.
+fn i32tof64(i: &i32) -> f64 {
+    *i as f64
+}
+
+/// `i64tof64` casts an i64 to an f64.
+fn i64tof64(i: &i64) -> f64 {
+    *i as f64
+}
+
+/// `Result_f64` is a type alias for Result<f64, AlanError>
+type Result_f64 = Result<f64, AlanError>;
+
+/// `get_or_f64` unwraps a Result_f64 with the default value if it is an error
+fn get_or_f64(r: &Result_f64, default: &f64) -> f64 {
+    match r {
+        Ok(v) => *v,
+        Err(_) => *default,
+    }
+}
+
+/// `addf64` safely adds two f64s together, returning a Result-wrapped f64 (or an error on overflow)
+fn addf64(a: &f64, b: &f64) -> Result_f64 {
+    match a + b {
+        f64::MAX => Err("Overflow".into()),
+        f64::MIN => Err("Underflow".into()),
+        o => if o.is_nan() {
+          Err("Not a Number".into())
+        } else {
+          Ok(o)
+        }
+    }
+}
+
+/// `addf64_result` safely adds two Result_f64s together, returning a Result-wrapped f64 (or an error on overflow)
+fn addf64_result(a: &Result_f64, b: &Result_f64) -> Result_f64 {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => match b {
+            Err(e) => Err(e.clone()),
+            Ok(b) => match a + b {
+                f64::MAX => Err("Overflow".into()),
+                f64::MIN => Err("Underflow".into()),
+                o => if o.is_nan() {
+                  Err("Not a Number".into())
+                } else {
+                  Ok(o)
+                }
+            }
+        }
+    }
+}
+
+/// `subf64` safely subtracts two f64s, returning a Result-wrapped f64 (or an error on underflow)
+fn subf64(a: &f64, b: &f64) -> Result_f64 {
+    match a - b {
+        f64::MAX => Err("Overflow".into()),
+        f64::MIN => Err("Underflow".into()),
+        o => if o.is_nan() {
+          Err("Not a Number".into())
+        } else {
+          Ok(o)
+        }
+    }
+}
+
+/// `subf64_result` safely subtracts two Result_f64s, returning a Result-wrapped f64 (or an error on underflow)
+fn subf64_result(a: &Result_f64, b: &Result_f64) -> Result_f64 {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => match b {
+            Err(e) => Err(e.clone()),
+            Ok(b) => match a - b {
+                f64::MAX => Err("Overflow".into()),
+                f64::MIN => Err("Underflow".into()),
+                o => if o.is_nan() {
+                  Err("Not a Number".into())
+                } else {
+                  Ok(o)
+                }
+            }
+        }
+    }
+}
+
+/// `mulf64` safely multiplies two f64s, returning a Result-wrapped f64 (or an error on under/overflow)
+fn mulf64(a: &f64, b: &f64) -> Result_f64 {
+    match a * b {
+        f64::MAX => Err("Overflow".into()),
+        f64::MIN => Err("Underflow".into()),
+        o => if o.is_nan() {
+          Err("Not a Number".into())
+        } else {
+          Ok(o)
+        }
+    }
+}
+
+/// `mulf64_result` safely multiplies two Result_f64s, returning a Result-wrapped f64 (or an error on under/overflow)
+fn mulf64_result(a: &Result_f64, b: &Result_f64) -> Result_f64 {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => match b {
+            Err(e) => Err(e.clone()),
+            Ok(b) => match a * b {
+                f64::MAX => Err("Overflow".into()),
+                f64::MIN => Err("Underflow".into()),
+                o => if o.is_nan() {
+                  Err("Not a Number".into())
+                } else {
+                  Ok(o)
+                }
+            }
+        }
+    }
+}
+
+/// `divf64` safely divides two f64s, returning a Result-wrapped f64 (or an error on divide-by-zero)
+fn divf64(a: &f64, b: &f64) -> Result_f64 {
+    match a / b {
+        f64::MAX => Err("Overflow".into()),
+        f64::MIN => Err("Underflow".into()),
+        o => if o.is_nan() {
+          Err("Not a Number".into())
+        } else {
+          Ok(o)
+        }
+    }
+}
+
+/// `divf64_result` safely divides two Resul_f64s, returning a Result-wrapped f64 (or an error on divide-by-zero)
+fn divf64_result(a: &Result_f64, b: &Result_f64) -> Result_f64 {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => match b {
+            Err(e) => Err(e.clone()),
+            Ok(b) => match a / b {
+                f64::MAX => Err("Overflow".into()),
+                f64::MIN => Err("Underflow".into()),
+                o => if o.is_nan() {
+                  Err("Not a Number".into())
+                } else {
+                  Ok(o)
+                }
+            }
+        }
+    }
+}
+
+/// `sqrtf64` takes the square root of an f64, returning an f64
+fn sqrtf64(f: &f64) -> f64 {
+    f.sqrt()
+}
+
+/// `sqrtf64_result` takes the square root of a Result_f64, returning a Result_f64
+fn sqrtf64_result(f: &Result_f64) -> Result_f64 {
+    match f {
+      Err(e) => Err(e.clone()),
+      Ok(v) => Ok(v.sqrt()),
+    }
+}
+
+/// `powf64` safely raises the first f64 to the second f64, returning a Result-wrapped f64 (or an error on under/overflow)
+fn powf64(a: &f64, b: &f64) -> Result_f64 {
+    match a.powf(*b) {
+        f64::MAX => Err("Overflow".into()),
+        f64::MIN => Err("Underflow".into()),
+        o => if o.is_nan() {
+          Err("Not a Number".into())
+        } else {
+          Ok(o)
+        }
+    }
+}
+
+/// `powf64_result` safely raises the first Result_f64 to the second Result_f64, returning a Result-wrapped f64 (or an error on under/overflow)
+fn powf64_result(a: &Result_f64, b: &Result_f64) -> Result_f64 {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => match b {
+            Err(e) => Err(e.clone()),
+            Ok(b) => match a.powf(*b) {
+                f64::MAX => Err("Overflow".into()),
+                f64::MIN => Err("Underflow".into()),
+                o => if o.is_nan() {
+                  Err("Not a Number".into())
+                } else {
+                  Ok(o)
+                }
+            }
+        }
+    }
+}
+
+/// `minf64` returns the smaller of the two f64 values
+fn minf64(a: &f64, b: &f64) -> f64 {
+    if a < b { *a } else { *b }
+}
+
+/// `minf64_result` returns the smaller of the two Result_f64 values
+fn minf64_result(a: &Result_f64, b: &Result_f64) -> Result_f64 {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => match b {
+            Err(e) => Err(e.clone()),
+            Ok(b) => if a < b { Ok(*a) } else { Ok(*b) }
+        }
+    }
+}
+
+/// `maxf64` returns the larger of the two f64 values
+fn maxf64(a: &f64, b: &f64) -> f64 {
+    if a > b { *a } else { *b }
+}
+
+/// `maxf64_result` returns the larger of the two Result_f64 values
+fn maxf64_result(a: &Result_f64, b: &Result_f64) -> Result_f64 {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
