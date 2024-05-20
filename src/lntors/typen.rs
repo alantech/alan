@@ -26,20 +26,20 @@ struct {} {{
             );
             // TODO: Redo all of this to use the built-in function types concept
             /*for typeline in &s.typelist {
-                let typename = typeline.fulltypename.to_string();
-                let (subtypen, subtypescope) = match program.resolve_type(scope, &typename) {
-                    None => Err(format!("Type {} not found", typename)),
-                    Some((t, s)) => Ok((t, s)),
-                }?;
-                let res = generate(subtypen, subtypescope, program, out)?;
-                let subtypename = res.0;
-                out = res.1;
-                typestring = format!(
-                    r#"{}
-    pub {}: {},"#,
-                    typestring, typeline.variable, subtypename
-                );
-            }*/
+                        let typename = typeline.fulltypename.to_string();
+                        let (subtypen, subtypescope) = match program.resolve_type(scope, &typename) {
+                            None => Err(format!("Type {} not found", typename)),
+                            Some((t, s)) => Ok((t, s)),
+                        }?;
+                        let res = generate(subtypen, subtypescope, program, out)?;
+                        let subtypename = res.0;
+                        out = res.1;
+                        typestring = format!(
+                            r#"{}
+            pub {}: {},"#,
+                            typestring, typeline.variable, subtypename
+                        );
+                    }*/
             typestring = format!(
                 r#"{}
 }}"#,
