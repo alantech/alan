@@ -5,8 +5,8 @@ use crate::program::{Program, Scope, Type, TypeType};
 
 pub fn generate(
     typen: &Type,
-    scope: &Scope,
-    program: &Program,
+    _scope: &Scope,
+    _program: &Program,
     mut out: OrderedHashMap<String, String>,
 ) -> Result<(String, OrderedHashMap<String, String>), Box<dyn std::error::Error>> {
     match &typen.typetype {
@@ -17,14 +17,15 @@ pub fn generate(
         // into the source definition, potentially inserting inner types as needed
         TypeType::Bind(s) => Ok((s.clone(), out)),
         TypeType::Alias(a) => Ok((a.to_string(), out)),
-        TypeType::Structlike(s) => {
+        TypeType::Structlike(_s) => {
             let mut typestring = format!(
                 r#"#[derive(Debug)]
 struct {} {{
 "#,
                 typen.typename.to_string()
             );
-            for typeline in &s.typelist {
+            // TODO: Redo all of this to use the built-in function types concept
+            /*for typeline in &s.typelist {
                 let typename = typeline.fulltypename.to_string();
                 let (subtypen, subtypescope) = match program.resolve_type(scope, &typename) {
                     None => Err(format!("Type {} not found", typename)),
@@ -38,7 +39,7 @@ struct {} {{
     pub {}: {},"#,
                     typestring, typeline.variable, subtypename
                 );
-            }
+            }*/
             typestring = format!(
                 r#"{}
 }}"#,

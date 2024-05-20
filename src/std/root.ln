@@ -17,7 +17,7 @@ export ctype Label;
 export ctype Field<Label, V>; // TODO: Add constraint logic to typegenerics so I can call this `L: Label` instead
 
 export type infix Function as -> precedence 1;
-export type infix Tuple as & precedence 2; // TODO: Switch to `,` after I rewrite the current function generation logic
+export type infix Tuple as , precedence 2;
 export type infix Field as : precedence 3;
 
 /// Integer-related bindings
