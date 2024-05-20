@@ -420,6 +420,32 @@ test!(variable =>
     pass "falsetto";
     pass "_123abc";
     pass "variable after_variable" => " after_variable", "variable";
+    pass "T";
+);
+build!(
+    typeoperators,
+    one_or_more!(or!(
+        token!("+"),
+        token!("-"),
+        token!("/"),
+        token!("\\"),
+        token!("*"),
+        token!("^"),
+        token!("."),
+        token!(","),
+        token!("~"),
+        token!("`"),
+        token!("!"),
+        token!("@"),
+        token!("#"),
+        token!("$"),
+        token!("%"),
+        token!("&"),
+        token!("|"),
+        token!(":"),
+        token!("?"),
+        token!("="),
+    ))
 );
 build!(
     operators,
@@ -733,19 +759,122 @@ impl FullTypename {
     }
 }
 list!(generics: FullTypename => fulltypename, sep);
-named_and!(typeline: Typeline =>
-    variable: String as variable,
-    a: String as optwhitespace,
-    colon: String as colon,
-    b: String as optwhitespace,
-    fulltypename: FullTypename as fulltypename,
+named_or!(withtypeoperators: WithTypeOperators =>
+    TypeBaseList: Vec<TypeBase> as typebaselist,
+    Operators: String as and!(optwhitespace, typeoperators, optwhitespace),
 );
-list!(typelist: Typeline => typeline, sep);
+impl WithTypeOperators {
+    pub fn to_string(&self) -> String {
+        match self {
+            WithTypeOperators::TypeBaseList(tbl) => tbl
+                .iter()
+                .map(|tb| tb.to_string())
+                .collect::<Vec<String>>()
+                .join("")
+                .to_string(),
+            WithTypeOperators::Operators(o) => o.clone(),
+        }
+    }
+}
+test!(withtypeoperators =>
+    pass ":";
+);
+list!(typeassignables: WithTypeOperators => withtypeoperators);
+test!(typeassignables =>
+    pass "(foo: Foo) -> Bar";
+);
+list!(typecalllist: Vec<WithTypeOperators> => typeassignables, sep);
+test!(typecalllist =>
+    pass "(foo: Foo) -> Bar";
+    pass "T";
+    pass "T, U";
+);
+named_and!(gncall: GnCall =>
+    opencaret: String as opencaret,
+    a: String as optwhitespace,
+    typecalllist: Vec<WithTypeOperators> as typeassignables,
+    b: String as optwhitespace,
+    closecaret: String as closecaret,
+);
+test!(gncall =>
+    pass "<T>" => "", super::GnCall{
+        opencaret: "<".to_string(),
+        a: "".to_string(),
+        typecalllist: vec![super::WithTypeOperators::TypeBaseList(vec![super::TypeBase::Variable("T".to_string())])],
+        b: "".to_string(),
+        closecaret: ">".to_string(),
+    };
+);
+named_and!(typegroup: TypeGroup =>
+    openparen: String as openparen,
+    a: String as optwhitespace,
+    typeassignables: Vec<WithTypeOperators> as typeassignables,
+    b: String as optwhitespace,
+    closeparen: String as closeparen,
+);
+test!(typegroup =>
+    pass "(T)" => "", super::TypeGroup{
+        openparen: "(".to_string(),
+        a: "".to_string(),
+        typeassignables: vec![super::WithTypeOperators::TypeBaseList(vec![super::TypeBase::Variable("T".to_string())])],
+        b: "".to_string(),
+        closeparen: ")".to_string(),
+    };
+);
+named_or!(typebase: TypeBase =>
+    GnCall: GnCall as gncall,
+    TypeGroup: TypeGroup as typegroup,
+    Constants: Constants as constants,
+    MethodSep: String as and!(optwhitespace, dot, optwhitespace),
+    Variable: String as variable,
+);
+impl TypeBase {
+    pub fn to_string(&self) -> String {
+        match self {
+            TypeBase::GnCall(gc) => format!(
+                "<{}>",
+                gc.typecalllist
+                    .iter()
+                    .map(|ta| ta.to_string())
+                    .collect::<Vec<String>>()
+                    .join("")
+            )
+            .to_string(),
+            TypeBase::TypeGroup(tg) => format!(
+                "<{}>",
+                tg.typeassignables
+                    .iter()
+                    .map(|ta| ta.to_string())
+                    .collect::<Vec<String>>()
+                    .join("")
+            )
+            .to_string(),
+            TypeBase::Variable(v) => v.clone(),
+            TypeBase::MethodSep(_) => ".".to_string(),
+            TypeBase::Constants(c) => c.to_string(),
+        }
+    }
+}
+test!(typebase =>
+    pass "Foo" => "", super::TypeBase::Variable("Foo".to_string());
+);
+list!(typebaselist: TypeBase => typebase);
+test!(typebaselist =>
+    pass "Foo<T>" => "", vec![
+        super::TypeBase::Variable("Foo".to_string()),
+        super::TypeBase::GnCall(super::GnCall{
+            opencaret: "<".to_string(),
+            a: "".to_string(),
+            typecalllist: vec![super::WithTypeOperators::TypeBaseList(vec![super::TypeBase::Variable("T".to_string())])],
+            b: "".to_string(),
+            closecaret: ">".to_string(),
+        }),
+    ];
+);
 named_and!(typebody: TypeBody =>
     a: String as opencurly,
     b: String as optwhitespace,
-    typelist: Vec<Typeline> as typelist,
-    c: String as optsep,
+    typecalllist: Vec<Vec<WithTypeOperators>> as typecalllist,
     d: String as optwhitespace,
     e: String as closecurly,
 );
@@ -852,7 +981,7 @@ test!(baseassignable =>
         },
         b: "".to_string(),
       },
-      typebase: super::TypeBase{
+      typebase: super::TypeBaseDef{
         opencurly: "{".to_string(),
         a: "".to_string(),
         typeassignlist: Vec::new(),
@@ -874,7 +1003,7 @@ test!(baseassignablelist =>
         },
         b: "".to_string(),
       },
-      typebase: super::TypeBase{
+      typebase: super::TypeBaseDef{
         opencurly: "{".to_string(),
         a: "".to_string(),
         typeassignlist: Vec::new(),
@@ -912,7 +1041,7 @@ test!(withoperators =>
         },
         b: "".to_string(),
       },
-      typebase: super::TypeBase{
+      typebase: super::TypeBaseDef{
         opencurly: "{".to_string(),
         a: "".to_string(),
         typeassignlist: Vec::new(),
@@ -936,7 +1065,7 @@ test!(assignables =>
         },
         b: "".to_string(),
       },
-      typebase: super::TypeBase{
+      typebase: super::TypeBaseDef{
         opencurly: "{".to_string(),
         a: "".to_string(),
         typeassignlist: Vec::new(),
@@ -1173,7 +1302,7 @@ named_and!(typeassign: TypeAssign =>
     c: String as optwhitespace
 );
 list!(opt typeassignlist: TypeAssign => typeassign, sep);
-named_and!(typebase: TypeBase =>
+named_and!(typebasedef: TypeBaseDef =>
     opencurly: String as opencurly,
     a: String as optwhitespace,
     typeassignlist: Vec<TypeAssign> as typeassignlist,
@@ -1183,7 +1312,7 @@ named_and!(typebase: TypeBase =>
 );
 named_and!(typeliteral: TypeLiteral =>
     literaldec: LiteralDec as literaldec,
-    typebase: TypeBase as typebase,
+    typebase: TypeBaseDef as typebasedef,
 );
 test!(typeliteral =>
     pass "new Foo{}" => "", super::TypeLiteral{
@@ -1196,7 +1325,7 @@ test!(typeliteral =>
         },
         b: "".to_string(),
       },
-      typebase: super::TypeBase{
+      typebase: super::TypeBaseDef{
         opencurly: "{".to_string(),
         a: "".to_string(),
         typeassignlist: Vec::new(),
@@ -1221,7 +1350,7 @@ test!(objectliterals =>
         },
         b: "".to_string(),
       },
-      typebase: super::TypeBase{
+      typebase: super::TypeBaseDef{
         opencurly: "{".to_string(),
         a: "".to_string(),
         typeassignlist: Vec::new(),
@@ -1285,6 +1414,41 @@ impl OpMap {
         }
     }
 }
+named_and!(typefntoop: TypeFnToOp =>
+    fnname: String as variable,
+    a: String as blank,
+    asn: String as asn,
+    b: String as blank,
+    operator: String as typeoperators,
+);
+named_and!(typefnopprecedence: TypeFnOpPrecedence =>
+    fntoop: TypeFnToOp as typefntoop,
+    blank: String as blank,
+    opprecedence: OpPrecedence as opprecedence,
+);
+named_and!(typeprecedencefnop: TypePrecedenceFnOp =>
+    opprecedence: OpPrecedence as opprecedence,
+    blank: String as blank,
+    fntoop: TypeFnToOp as typefntoop,
+);
+named_or!(typeopmap: TypeOpMap =>
+    FnOpPrecedence: TypeFnOpPrecedence as typefnopprecedence,
+    PrecedenceFnOp: TypePrecedenceFnOp as typeprecedencefnop,
+);
+impl TypeOpMap {
+    pub fn get_fntoop(&self) -> &TypeFnToOp {
+        match self {
+            TypeOpMap::FnOpPrecedence(fop) => &fop.fntoop,
+            TypeOpMap::PrecedenceFnOp(pfo) => &pfo.fntoop,
+        }
+    }
+    pub fn get_opprecedence(&self) -> &OpPrecedence {
+        match self {
+            TypeOpMap::FnOpPrecedence(fop) => &fop.opprecedence,
+            TypeOpMap::PrecedenceFnOp(pfo) => &pfo.opprecedence,
+        }
+    }
+}
 named_and!(operatormapping: OperatorMapping =>
     fix: Fix as fix,
     a: String as optblank,
@@ -1300,7 +1464,7 @@ named_and!(typeoperatormapping: TypeOperatorMapping =>
     b: String as optblank,
     opttypegenerics: Option<TypeGenerics> as opt(typegenerics),
     blank: String as optblank,
-    opmap: OpMap as opmap,
+    opmap: TypeOpMap as typeopmap,
     optsemicolon: String as optsemicolon,
 );
 named_and!(propertytypeline: PropertyTypeline =>
