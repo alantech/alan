@@ -1439,21 +1439,62 @@ impl Function {
         is_export: bool,
         name: String,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let args = match &function_ast.optargs {
-            None => Vec::new(),
-            Some(arglist) => {
-                // TODO: Make the arg types optional
-                arglist
-                    .arglist
-                    .iter()
-                    .map(|arg| (arg.variable.clone(), arg.fulltypename.to_string()))
-                    .collect()
+        // TODO: Add code to properly convert the typeassignable vec into a CType tree and use it.
+        // For now, just hardwire the parsing as before.
+        let (args, rettype) = match &function_ast.opttype {
+            None => Ok((Vec::new(), None)),
+            Some(typeassignable) => {
+                // Hardwired logic: the typeassignable vector can only be 1 or 3 elements in size
+                // for now. Fail if it doesn't match one of those conditions. In either of those
+                // two cases, the args are inside of the first part.
+                if typeassignable.len() == 0 {
+                    Ok((Vec::new(), None))
+                } else if typeassignable.len() == 1 || typeassignable.len() == 3 {
+                    let arggroup = &typeassignable[0];
+                    let rettype = match typeassignable.get(2) {
+                        None => None,
+                        Some(r) => match r {
+                            parse::WithTypeOperators::TypeBaseList(tb) => {
+                                Some(tb.iter().map(|b| b.to_string()).collect::<Vec<String>>().join(""))
+                            }
+                            _ => None
+                        }
+                    };
+                    match arggroup {
+                        parse::WithTypeOperators::TypeBaseList(ag) => {
+                            if ag.len() == 1 {
+                                if let parse::TypeBase::TypeGroup(g) = &ag[0] {
+                                    let arglist = &g.typeassignables;
+                                    // TODO: Make the arg types optional
+                                    // Currently assuming that the arg list in the form: 
+                                    // `VARIABLE: VARIABLE, ...` with the last comma being optional.
+                                    // So this is ABSOLUTELY GARBAGE TEST CODE until I get ctypes
+                                    // and type operator precedence working to get a tree to walk,
+                                    // instead
+                                    let argstr = arglist.iter().map(|a| a.to_string()).collect::<Vec<String>>().join("");
+                                    if argstr.trim() == "" {
+                                        Ok((Vec::new(), rettype))
+                                    } else {
+                                        let args = argstr.split(",").map(|a| {
+                                            let mut at = a.split(":");
+                                            (at.next().expect("var").trim().to_string(), at.next().expect("type").trim().to_string())
+                                        }).collect::<Vec<(String, String)>>();
+                                        Ok((args, rettype))
+                                    }
+                                } else {
+                                    Err(format!("Unsupported function type {}", typeassignable.iter().map(|a| a.to_string()).collect::<Vec<String>>().join("")))
+                                }
+                            } else {
+                                Err(format!("Unsupported function type {}", typeassignable.iter().map(|a| a.to_string()).collect::<Vec<String>>().join("")))
+                            }
+                        }
+                        _ => Err(format!("Unsupported function type {}", typeassignable.iter().map(|a| a.to_string()).collect::<Vec<String>>().join("")))
+                    }
+                } else {
+                    Err(format!("Unsupported function type {}", typeassignable.iter().map(|a| a.to_string()).collect::<Vec<String>>().join("")))
+                }
             }
-        };
-        let rettype = match &function_ast.optreturntype {
-            None => None,
-            Some(returntype) => Some(returntype.fulltypename.to_string()),
-        };
+        }?;
         let statements = match &function_ast.fullfunctionbody {
             parse::FullFunctionBody::FunctionBody(body) => body.statements.clone(),
             parse::FullFunctionBody::AssignFunction(assign) => {
