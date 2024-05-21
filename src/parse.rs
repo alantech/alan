@@ -409,7 +409,7 @@ build!(
             one_or_more!(or!(under, lower, upper)),
             zero_or_more!(or!(under, lower, upper, base10))
         ),
-        booln,
+        or!(booln, binds),
     )
 );
 test!(variable =>
@@ -424,54 +424,58 @@ test!(variable =>
 );
 build!(
     typeoperators,
-    and!(
-        one_or_more!(or!(
-            token!("+"),
-            token!("-"),
-            token!("/"),
-            token!("\\"),
-            token!("*"),
-            token!("^"),
-            token!("."),
-            token!(","),
-            token!("~"),
-            token!("`"),
-            token!("!"),
-            token!("@"),
-            token!("#"),
-            token!("$"),
-            token!("%"),
-            token!("&"),
-            token!("|"),
-            token!(":"),
-            token!("?"),
-            token!("="),
-        )),
-        zero_or_more!(or!(
-            // Allow > symbol if it's not the first symbol in the operator
-            token!("+"),
-            token!("-"),
-            token!("/"),
-            token!("\\"),
-            token!("*"),
-            token!("^"),
-            token!("."),
-            token!(","),
-            token!("~"),
-            token!("`"),
-            token!("!"),
-            token!("@"),
-            token!("#"),
-            token!("$"),
-            token!("%"),
-            token!("&"),
-            token!("|"),
-            token!(">"),
-            token!(":"),
-            token!("?"),
-            token!("="),
-        )),
-    )
+    or!(
+        and!(
+            one_or_more!(or!(
+                token!("+"),
+                token!("-"),
+                token!("/"),
+                token!("\\"),
+                token!("*"),
+                token!("^"),
+                token!("."),
+                token!(","),
+                token!("~"),
+                token!("`"),
+                token!("!"),
+                token!("@"),
+                token!("#"),
+                token!("$"),
+                token!("%"),
+                token!("&"),
+                token!("|"),
+                token!(":"),
+                token!("?"),
+            )),
+            zero_or_more!(or!(
+                // Allow `>` or `=` symbol if it's not the first symbol in the operator
+                token!("+"),
+                token!("-"),
+                token!("/"),
+                token!("\\"),
+                token!("*"),
+                token!("^"),
+                token!("."),
+                token!(","),
+                token!("~"),
+                token!("`"),
+                token!("!"),
+                token!("@"),
+                token!("#"),
+                token!("$"),
+                token!("%"),
+                token!("&"),
+                token!("|"),
+                token!(">"),
+                token!(":"),
+                token!("?"),
+                token!("="),
+            )),
+        ),
+        // TODO: Do this more generally, but for now, also allow the following whitelisted symbols
+        token!("=="),
+        token!(">="),
+    ),
 );
 build!(
     operators,
@@ -805,9 +809,12 @@ impl WithTypeOperators {
 test!(withtypeoperators =>
     pass ":";
 );
-list!(typeassignables: WithTypeOperators => withtypeoperators);
+list!(opt typeassignables: WithTypeOperators => withtypeoperators);
 test!(typeassignables =>
     pass "(foo: Foo) -> Bar";
+    pass "(i: i8) -> Result<i8>";
+    pass "(firstKey: Hashable, firstVal: any) -> HashMap<Hashable, any>";
+    pass "() -> void";
 );
 list!(typecalllist: Vec<WithTypeOperators> => typeassignables, sep);
 test!(typecalllist =>
@@ -867,7 +874,7 @@ impl TypeBase {
             )
             .to_string(),
             TypeBase::TypeGroup(tg) => format!(
-                "<{}>",
+                "({})",
                 tg.typeassignables
                     .iter()
                     .map(|ta| ta.to_string())
@@ -1170,14 +1177,6 @@ named_and!(returns: Returns =>
 test!(returns =>
     pass "return maybe.getMaybe().toString();";
 );
-named_and!(arg: Arg =>
-    variable: String as variable,
-    a: String as optblank,
-    colon: String as colon,
-    b: String as optblank,
-    fulltypename: FullTypename as fulltypename,
-);
-list!(opt arglist: Arg => arg, sep);
 named_and!(functionbody: FunctionBody =>
     opencurly: String as opencurly,
     a: String as optwhitespace,
@@ -1207,20 +1206,6 @@ named_or!(fullfunctionbody: FullFunctionBody =>
     AssignFunction: AssignFunction as assignfunction,
     BindFunction: BindFunction as bindfunction,
 );
-named_and!(args: Args =>
-    openparen: String as openparen,
-    a: String as optwhitespace,
-    arglist: Vec<Arg> as arglist,
-    b: String as optwhitespace,
-    closeparen: String as closeparen,
-    c: String as optwhitespace,
-);
-named_and!(returntype: ReturnType =>
-    arrow: String as arrow,
-    a: String as optwhitespace,
-    fulltypename: FullTypename as fulltypename,
-    b: String as optwhitespace,
-);
 named_and!(functions: Functions =>
     fnn: String as fnn,
     a: String as optwhitespace,
@@ -1228,15 +1213,15 @@ named_and!(functions: Functions =>
     b: String as optwhitespace,
     optname: Option<String> as opt_string!(variable),
     c: String as optwhitespace,
-    optargs: Option<Args> as opt(args),
-    optreturntype: Option<ReturnType> as opt(returntype),
+    opttype: Option<Vec<WithTypeOperators>> as opt(typeassignables),
+    d: String as optwhitespace,
     fullfunctionbody: FullFunctionBody as fullfunctionbody,
 );
 test!(functions =>
-    pass "fn newHashMap(firstKey: Hashable, firstVal: any) -> HashMap<Hashable, any> { // TODO: Rust-like fn::<typeA, typeB> syntax?\n  let hm = new HashMap<Hashable, any> {\n    keyVal: new Array<KeyVal<Hashable, any>> [],\n    lookup: new Array<Array<int64>> [ new Array<int64> [] ] * 128, // 1KB of space\n  };\n  return hm.set(firstKey, firstVal);\n}" => "";
     pass "fn foo binds foo;" => "";
     pass "fn print(val: String) binds println!;" => "";
     pass "fn<Test> foo binds foo_test;" => "";
+    pass "fn newHashMap(firstKey: Hashable, firstVal: any) -> HashMap<Hashable, any> { // TODO: Rust-like fn::<typeA, typeB> syntax?\n  let hm = new HashMap<Hashable, any> {\n    keyVal: new Array<KeyVal<Hashable, any>> [],\n    lookup: new Array<Array<int64>> [ new Array<int64> [] ] * 128, // 1KB of space\n  };\n  return hm.set(firstKey, firstVal);\n}" => "";
 );
 named_or!(blocklike: Blocklike =>
     Functions: Functions as functions,
