@@ -1454,11 +1454,14 @@ impl Function {
                     let rettype = match typeassignable.get(2) {
                         None => None,
                         Some(r) => match r {
-                            parse::WithTypeOperators::TypeBaseList(tb) => {
-                                Some(tb.iter().map(|b| b.to_string()).collect::<Vec<String>>().join(""))
-                            }
-                            _ => None
-                        }
+                            parse::WithTypeOperators::TypeBaseList(tb) => Some(
+                                tb.iter()
+                                    .map(|b| b.to_string())
+                                    .collect::<Vec<String>>()
+                                    .join(""),
+                            ),
+                            _ => None,
+                        },
                     };
                     match arggroup {
                         parse::WithTypeOperators::TypeBaseList(ag) => {
@@ -1466,32 +1469,70 @@ impl Function {
                                 if let parse::TypeBase::TypeGroup(g) = &ag[0] {
                                     let arglist = &g.typeassignables;
                                     // TODO: Make the arg types optional
-                                    // Currently assuming that the arg list in the form: 
+                                    // Currently assuming that the arg list in the form:
                                     // `VARIABLE: VARIABLE, ...` with the last comma being optional.
                                     // So this is ABSOLUTELY GARBAGE TEST CODE until I get ctypes
                                     // and type operator precedence working to get a tree to walk,
                                     // instead
-                                    let argstr = arglist.iter().map(|a| a.to_string()).collect::<Vec<String>>().join("");
+                                    let argstr = arglist
+                                        .iter()
+                                        .map(|a| a.to_string())
+                                        .collect::<Vec<String>>()
+                                        .join("");
                                     if argstr.trim() == "" {
                                         Ok((Vec::new(), rettype))
                                     } else {
-                                        let args = argstr.split(",").map(|a| {
-                                            let mut at = a.split(":");
-                                            (at.next().expect("var").trim().to_string(), at.next().expect("type").trim().to_string())
-                                        }).collect::<Vec<(String, String)>>();
+                                        let args = argstr
+                                            .split(",")
+                                            .map(|a| {
+                                                let mut at = a.split(":");
+                                                (
+                                                    at.next().expect("var").trim().to_string(),
+                                                    at.next().expect("type").trim().to_string(),
+                                                )
+                                            })
+                                            .collect::<Vec<(String, String)>>();
                                         Ok((args, rettype))
                                     }
                                 } else {
-                                    Err(format!("Unsupported function type {}", typeassignable.iter().map(|a| a.to_string()).collect::<Vec<String>>().join("")))
+                                    Err(format!(
+                                        "Unsupported function type {}",
+                                        typeassignable
+                                            .iter()
+                                            .map(|a| a.to_string())
+                                            .collect::<Vec<String>>()
+                                            .join("")
+                                    ))
                                 }
                             } else {
-                                Err(format!("Unsupported function type {}", typeassignable.iter().map(|a| a.to_string()).collect::<Vec<String>>().join("")))
+                                Err(format!(
+                                    "Unsupported function type {}",
+                                    typeassignable
+                                        .iter()
+                                        .map(|a| a.to_string())
+                                        .collect::<Vec<String>>()
+                                        .join("")
+                                ))
                             }
                         }
-                        _ => Err(format!("Unsupported function type {}", typeassignable.iter().map(|a| a.to_string()).collect::<Vec<String>>().join("")))
+                        _ => Err(format!(
+                            "Unsupported function type {}",
+                            typeassignable
+                                .iter()
+                                .map(|a| a.to_string())
+                                .collect::<Vec<String>>()
+                                .join("")
+                        )),
                     }
                 } else {
-                    Err(format!("Unsupported function type {}", typeassignable.iter().map(|a| a.to_string()).collect::<Vec<String>>().join("")))
+                    Err(format!(
+                        "Unsupported function type {}",
+                        typeassignable
+                            .iter()
+                            .map(|a| a.to_string())
+                            .collect::<Vec<String>>()
+                            .join("")
+                    ))
                 }
             }
         }?;
