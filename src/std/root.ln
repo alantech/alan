@@ -15,10 +15,12 @@ export ctype Function<I, O>;
 export ctype Tuple<A, B>;
 export ctype Label;
 export ctype Field<Label, V>; // TODO: Add constraint logic to typegenerics so I can call this `L: Label` instead
+export ctype Either<A, B>;
 
 export type infix Function as -> precedence 1;
 export type infix Tuple as , precedence 2;
 export type infix Field as : precedence 3;
+export type infix Either as | precedence 1;
 
 /// Integer-related bindings
 

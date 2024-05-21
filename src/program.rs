@@ -242,7 +242,7 @@ impl Scope {
                         if path == "@root" {
                             match c.name.as_str() {
                                 "Type" | "Int" | "Float" | "Bool" | "String" | "Function"
-                                | "Tuple" | "Label" | "Field" => { /* Do nothing */ }
+                                | "Tuple" | "Label" | "Field" | "Either" => { /* Do nothing */ }
                                 unknown => {
                                     return Err(format!("Unknown ctype {} defined in root scope. There's something wrong with the compiler.", unknown).into());
                                 }
