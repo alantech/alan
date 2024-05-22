@@ -816,12 +816,6 @@ test!(typeassignables =>
     pass "(firstKey: Hashable, firstVal: any) -> HashMap<Hashable, any>";
     pass "() -> void";
 );
-list!(typecalllist: Vec<WithTypeOperators> => typeassignables, sep);
-test!(typecalllist =>
-    pass "(foo: Foo) -> Bar";
-    pass "T";
-    pass "T, U";
-);
 named_and!(gncall: GnCall =>
     opencaret: String as opencaret,
     a: String as optwhitespace,
@@ -904,20 +898,10 @@ test!(typebaselist =>
         }),
     ];
 );
-named_and!(typebody: TypeBody =>
-    a: String as opencurly,
-    b: String as optwhitespace,
-    typecalllist: Vec<Vec<WithTypeOperators>> as typecalllist,
-    d: String as optwhitespace,
-    e: String as closecurly,
-);
-test!(typebody =>
-    pass "{\n  arr: Array<T>,\n  initial: U,\n}";
-);
-named_and!(typealias: TypeAlias =>
+named_and!(typecreate: TypeCreate =>
     a: String as eq,
     b: String as blank,
-    fulltypename: FullTypename as fulltypename,
+    typeassignables: Vec<WithTypeOperators> as typeassignables,
 );
 list!(rustpath: String => variable, token!("::"));
 named_and!(typebind: TypeBind =>
@@ -927,8 +911,7 @@ named_and!(typebind: TypeBind =>
     opttypegenerics: Option<TypeGenerics> as opt(typegenerics)
 );
 named_or!(typedef: TypeDef =>
-    TypeBody: TypeBody as typebody,
-    TypeAlias: TypeAlias as typealias,
+    TypeCreate: TypeCreate as typecreate,
     TypeBind: TypeBind as typebind,
 );
 named_and!(types: Types =>
@@ -942,11 +925,11 @@ named_and!(types: Types =>
     optsemicolon: String as optsemicolon,
 );
 test!(types =>
-    pass "type Foo {\n  bar: string,\n}";
+    pass "type Foo = bar: string;";
     pass "type Foo = Bar";
     pass "type Result<T, Error> binds Result<T, Error>";
     pass "type ExitCode binds std::process::ExitCode;";
-    pass "type<Windows> Path {\n driveLetter: string, pathsegments: Array<string>, \n}";
+    pass "type<Windows> Path = driveLetter: string, pathsegments: Array<string>;";
 );
 named_and!(ctypes: CTypes =>
     ctype: String as ctype,

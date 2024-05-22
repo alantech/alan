@@ -347,8 +347,7 @@ impl Import {
 
 #[derive(Debug)]
 pub enum TypeType {
-    Structlike(parse::TypeBody),
-    Alias(parse::FullTypename),
+    Create(String), // TODO: Redo this entirely
     Bind(String),
 }
 
@@ -368,8 +367,14 @@ impl Type {
         let t = Type {
             typename: type_ast.fulltypename.clone(),
             typetype: match &type_ast.typedef {
-                parse::TypeDef::TypeBody(body) => TypeType::Structlike(body.clone()),
-                parse::TypeDef::TypeAlias(alias) => TypeType::Alias(alias.fulltypename.clone()),
+                parse::TypeDef::TypeCreate(create) => TypeType::Create(
+                    create
+                        .typeassignables
+                        .iter()
+                        .map(|ta| ta.to_string())
+                        .collect::<Vec<String>>()
+                        .join(""),
+                ), // TODO: Redo this
                 parse::TypeDef::TypeBind(bind) => TypeType::Bind(
                     format!(
                         "{}{}",
