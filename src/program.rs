@@ -367,7 +367,14 @@ impl Type {
         let t = Type {
             typename: type_ast.fulltypename.clone(),
             typetype: match &type_ast.typedef {
-                parse::TypeDef::TypeCreate(create) => TypeType::Create(create.typeassignables.iter().map(|ta| ta.to_string()).collect::<Vec<String>>().join("")), // TODO: Redo this
+                parse::TypeDef::TypeCreate(create) => TypeType::Create(
+                    create
+                        .typeassignables
+                        .iter()
+                        .map(|ta| ta.to_string())
+                        .collect::<Vec<String>>()
+                        .join(""),
+                ), // TODO: Redo this
                 parse::TypeDef::TypeBind(bind) => TypeType::Bind(
                     format!(
                         "{}{}",
