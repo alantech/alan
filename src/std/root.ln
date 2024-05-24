@@ -81,21 +81,38 @@ export type infix Lte as <= precedence 1;
 export type infix Gt as > precedence 1;
 export type infix Gte as >= precedence 1;
 
-/// Integer-related bindings
-
+// Binding the integer types
 export type i8 binds i8;
-export type Result{i8} binds Result_i8;
+export type Result{i8} binds Result<i8, AlanError>; // TODO: Just define `export type Result{T} binds Result{T, AlanError};` and have that work instead of this redundant definition
 export type i16 binds i16;
-export type Result{i16} binds Result_i16;
+export type Result{i16} binds Result<i16, AlanError>;
 export type i32 binds i32;
-export type Result{i32} binds Result_i32;
+export type Result{i32} binds Result<i32, AlanError>;
 export type i64 binds i64;
-export type Result{i64} binds Result_i64;
-export type f32 binds f32;
-export type Result{f32} binds Result_f32;
-export type f64 binds f64;
-export type Result{f64} binds Result_f64;
+export type Result{i64} binds Result<i64, AlanError>;
 
+// Binding the float types
+export type f32 binds f32;
+export type Result{f32} binds Result<f32, AlanError>;
+export type f64 binds f64;
+export type Result{f64} binds Result<f64, AlanError>;
+
+// Binding the string types
+export type string binds String;
+export type Result{string} binds Result<String, AlanError>;
+
+// Binding the boolean types
+export type bool binds bool;
+export type Result{bool} binds Result<bool, AlanError>;
+
+// Binding the exit code type
+export type ExitCode binds std::process::ExitCode;
+
+// Binding the time types
+export type Instant binds std::time::Instant;
+export type Duration binds std::time::Duration;
+
+/// Integer-related functions and function bindings
 export fn ok(i: i8) -> Result{i8} binds alan_ok;
 export fn getOr(r: Result{i8}, default: i8) -> i8 binds get_or_i8;
 export fn i8(i: i8) -> i8 = i;
@@ -260,6 +277,7 @@ export fn max(a: Result{i64}, b: Result{i64}) -> Result{i64} binds maxi64_result
 export fn max(a: i64, b: Result{i64}) -> Result{i64} = max(a.ok, b);
 export fn max(a: Result{i64}, b: i64) -> Result{i64} = max(a, b.ok);
 
+/// Float-related functions and function bindings
 export fn ok(i: f32) -> Result{f32} binds alan_ok;
 export fn getOr(r: Result{f32}, default: f32) -> f32 binds get_or_f32;
 export fn f32(i: i8) -> f32 binds i8tof32;
@@ -339,15 +357,9 @@ export fn max(a: f64, b: Result{f64}) -> Result{f64} = max(a.ok, b);
 export fn max(a: Result{f64}, b: f64) -> Result{f64} = max(a, b.ok);
 
 /// String related bindings
-
-export type string binds String;
-
 export fn concat(a: string, b: string) -> string binds string_concat;
 
 /// Boolean related bindings
-
-export type bool binds bool;
-
 export fn bool(i: i8) -> bool binds i8tobool;
 export fn bool(i: i16) -> bool binds i16tobool;
 export fn bool(i: i32) -> bool binds i32tobool;
@@ -365,8 +377,6 @@ export fn nor(a: bool, b: bool) -> bool binds nor;
 export fn xnor(a: bool, b: bool) -> bool binds xnor;
 
 /// Process exit-related bindings
-
-export type ExitCode binds std::process::ExitCode;
 export fn ExitCode(e: i8) -> ExitCode binds to_exit_code_i8;
 export fn ExitCode(e: i16) -> ExitCode = ExitCode(e.i8);
 export fn ExitCode(e: i32) -> ExitCode = ExitCode(e.i8);
@@ -377,10 +387,12 @@ export fn getOrExit(a: Result{i32}) -> i32 binds get_or_exit; // TODO: Support r
 export fn getOrExit(a: Result{i64}) -> i64 binds get_or_exit; // TODO: Support real generics
 
 /// Stdout/stderr-related bindings
-
 export fn print(str: string) binds println;
+export fn print(str: Result{string}) binds println_result;
 export fn print(b: bool) binds println;
+export fn print(b: Result{bool}) binds println_result;
 export fn print(i: i8) binds println;
+export fn print(i: Result{i8}) binds println_result;
 export fn print(i: i16) binds println;
 export fn print(i: Result{i16}) binds println_result;
 export fn print(i: i32) binds println;
@@ -393,19 +405,14 @@ export fn print(f: f64) binds println;
 export fn print(f: Result{f64}) binds println_result;
 
 /// Thread-related bindings
-
 export fn wait(t: i64) binds wait;
 
 /// Time-related bindings
-
-export type Instant binds std::time::Instant;
 export fn now() -> Instant binds now;
-export type Duration binds std::time::Duration;
 export fn elapsed(i: Instant) -> Duration binds elapsed;
 export fn print(d: Duration) binds print_duration;
 
-/// Vector-related bindings
-
+/// Vector-related bindings TODO: Kill all of this once arrays work
 export type Vec{i64} binds Vec<i64>;
 export type Vec{Result{i64}} binds Vec<Result_i64>;
 export fn filled(i: i64, l: i64) -> Vec{i64} binds filled;
@@ -421,7 +428,6 @@ export fn length(v: Vec{i64}) -> i64 binds vec_len;
 export fn length(v: Vec{i32}) -> i64 binds vec_len;
 
 /// GPU-related bindings
-
 export type GPU binds GPU;
 export fn GPU() -> GPU binds GPU_new;
 export type BufferUsages binds wgpu::BufferUsages;
@@ -446,7 +452,6 @@ export fn run(g: GPU, gg: GPGPU) binds gpu_run;
 export fn read(g: GPU, b: Buffer) -> Vec{i32} binds read_buffer; // TODO: Support other output types
 
 /// Built-in operator definitions
-
 export infix add as + precedence 2;
 // export infix concat as + precedence 2;
 export infix sub as - precedence 2;

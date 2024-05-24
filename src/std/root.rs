@@ -65,11 +65,8 @@ fn i16toi8(i: &i16) -> i8 {
     *i as i8
 }
 
-/// `Result_i8` is a type alias for Result<i8, AlanError>
-type Result_i8 = Result<i8, AlanError>;
-
-/// `get_or_i8` unwraps a Result_i8 with the default value if it is an error
-fn get_or_i8(r: &Result_i8, default: &i8) -> i8 {
+/// `get_or_i8` unwraps a Result<i8, AlanError> with the default value if it is an error
+fn get_or_i8(r: &Result<i8, AlanError>, default: &i8) -> i8 {
     match r {
         Ok(v) => *v,
         Err(_) => *default,
@@ -77,15 +74,15 @@ fn get_or_i8(r: &Result_i8, default: &i8) -> i8 {
 }
 
 /// `addi8` safely adds two i8s together, returning a Result-wrapped i8 (or an error on overflow)
-fn addi8(a: &i8, b: &i8) -> Result_i8 {
+fn addi8(a: &i8, b: &i8) -> Result<i8, AlanError> {
     match a.checked_add(*b) {
         Some(c) => Ok(c),
         None => Err("Overflow".into()),
     }
 }
 
-/// `addi8_result` safely adds two Result_i8s together, returning a Result-wrapped i8 (or an error on overflow)
-fn addi8_result(a: &Result_i8, b: &Result_i8) -> Result_i8 {
+/// `addi8_result` safely adds two Result<i8, AlanError>s together, returning a Result-wrapped i8 (or an error on overflow)
+fn addi8_result(a: &Result<i8, AlanError>, b: &Result<i8, AlanError>) -> Result<i8, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -99,7 +96,7 @@ fn addi8_result(a: &Result_i8, b: &Result_i8) -> Result_i8 {
 }
 
 /// `subi8` safely subtracts two i8s, returning a Result-wrapped i8 (or an error on underflow)
-fn subi8(a: &i8, b: &i8) -> Result_i8 {
+fn subi8(a: &i8, b: &i8) -> Result<i8, AlanError> {
     match a.checked_sub(*b) {
         Some(c) => Ok(c),
         None => Err("Underflow".into()),
@@ -107,7 +104,7 @@ fn subi8(a: &i8, b: &i8) -> Result_i8 {
 }
 
 /// `subi8_result` safely subtracts two i8s, returning a Result-wrapped i8 (or an error on underflow)
-fn subi8_result(a: &Result_i8, b: &Result_i8) -> Result_i8 {
+fn subi8_result(a: &Result<i8, AlanError>, b: &Result<i8, AlanError>) -> Result<i8, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -121,15 +118,15 @@ fn subi8_result(a: &Result_i8, b: &Result_i8) -> Result_i8 {
 }
 
 /// `muli8` safely multiplies two i8s, returning a Result-wrapped i8 (or an error on under/overflow)
-fn muli8(a: &i8, b: &i8) -> Result_i8 {
+fn muli8(a: &i8, b: &i8) -> Result<i8, AlanError> {
     match a.checked_mul(*b) {
         Some(c) => Ok(c),
         None => Err("Underflow or Overflow".into()),
     }
 }
 
-/// `muli8_result` safely multiplies two Result_i8s, returning a Result-wrapped i8 (or an error on under/overflow)
-fn muli8_result(a: &Result_i8, b: &Result_i8) -> Result_i8 {
+/// `muli8_result` safely multiplies two Result<i8, AlanError>s, returning a Result-wrapped i8 (or an error on under/overflow)
+fn muli8_result(a: &Result<i8, AlanError>, b: &Result<i8, AlanError>) -> Result<i8, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -143,15 +140,15 @@ fn muli8_result(a: &Result_i8, b: &Result_i8) -> Result_i8 {
 }
 
 /// `divi8` safely divides two i8s, returning a Result-wrapped i8 (or an error on divide-by-zero)
-fn divi8(a: &i8, b: &i8) -> Result_i8 {
+fn divi8(a: &i8, b: &i8) -> Result<i8, AlanError> {
     match a.checked_div(*b) {
         Some(c) => Ok(c),
         None => Err("Divide-by-zero".into()),
     }
 }
 
-/// `divi8_result` safely divides two Result_i8s, returning a Result-wrapped i8 (or an error on divide-by-zero)
-fn divi8_result(a: &Result_i8, b: &Result_i8) -> Result_i8 {
+/// `divi8_result` safely divides two Result<i8, AlanError>s, returning a Result-wrapped i8 (or an error on divide-by-zero)
+fn divi8_result(a: &Result<i8, AlanError>, b: &Result<i8, AlanError>) -> Result<i8, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -165,15 +162,15 @@ fn divi8_result(a: &Result_i8, b: &Result_i8) -> Result_i8 {
 }
 
 /// `modi8` safely divides two i8s, returning a Result-wrapped remainder in i8 (or an error on divide-by-zero)
-fn modi8(a: &i8, b: &i8) -> Result_i8 {
+fn modi8(a: &i8, b: &i8) -> Result<i8, AlanError> {
     match a.checked_rem(*b) {
         Some(c) => Ok(c),
         None => Err("Divide-by-zero".into()),
     }
 }
 
-/// `modi8_result` safely divides two Result_i8s, returning a Result-wrapped remainder in i8 (or an error on divide-by-zero)
-fn modi8_result(a: &Result_i8, b: &Result_i8) -> Result_i8 {
+/// `modi8_result` safely divides two Result<i8, AlanError>s, returning a Result-wrapped remainder in i8 (or an error on divide-by-zero)
+fn modi8_result(a: &Result<i8, AlanError>, b: &Result<i8, AlanError>) -> Result<i8, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -187,7 +184,7 @@ fn modi8_result(a: &Result_i8, b: &Result_i8) -> Result_i8 {
 }
 
 /// `powi8` safely raises the first i8 to the second i8, returning a Result-wrapped i8 (or an error on under/overflow)
-fn powi8(a: &i8, b: &i8) -> Result_i8 {
+fn powi8(a: &i8, b: &i8) -> Result<i8, AlanError> {
     // TODO: Support b being negative correctly
     match a.checked_pow(*b as u32) {
         Some(c) => Ok(c),
@@ -195,8 +192,8 @@ fn powi8(a: &i8, b: &i8) -> Result_i8 {
     }
 }
 
-/// `powi8_result` safely raises the first Result_i8 to the second Result_i8, returning a Result-wrapped i8 (or an error on under/overflow)
-fn powi8_result(a: &Result_i8, b: &Result_i8) -> Result_i8 {
+/// `powi8_result` safely raises the first Result<i8, AlanError> to the second Result<i8, AlanError>, returning a Result-wrapped i8 (or an error on under/overflow)
+fn powi8_result(a: &Result<i8, AlanError>, b: &Result<i8, AlanError>) -> Result<i8, AlanError> {
     // TODO: Support b being negative correctly
     match a {
         Err(e) => Err(e.clone()),
@@ -215,8 +212,8 @@ fn mini8(a: &i8, b: &i8) -> i8 {
     if a < b { *a } else { *b }
 }
 
-/// `mini8_result` returns the smaller of the two Result_i8 values
-fn mini8_result(a: &Result_i8, b: &Result_i8) -> Result_i8 {
+/// `mini8_result` returns the smaller of the two Result<i8, AlanError> values
+fn mini8_result(a: &Result<i8, AlanError>, b: &Result<i8, AlanError>) -> Result<i8, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -231,8 +228,8 @@ fn maxi8(a: &i8, b: &i8) -> i8 {
     if a > b { *a } else { *b }
 }
 
-/// `maxi8_result` returns the larger of the two Result_i8 values
-fn maxi8_result(a: &Result_i8, b: &Result_i8) -> Result_i8 {
+/// `maxi8_result` returns the larger of the two Result<i8, AlanError> values
+fn maxi8_result(a: &Result<i8, AlanError>, b: &Result<i8, AlanError>) -> Result<i8, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -267,11 +264,8 @@ fn i8toi16(i: &i8) -> i16 {
     *i as i16
 }
 
-/// `Result_i16` is a type alias for Result<i16, AlanError>
-type Result_i16 = Result<i16, AlanError>;
-
-/// `get_or_i16` unwraps a Result_i16 with the default value if it is an error
-fn get_or_i16(r: &Result_i16, default: &i16) -> i16 {
+/// `get_or_i16` unwraps a Result<i16, AlanError> with the default value if it is an error
+fn get_or_i16(r: &Result<i16, AlanError>, default: &i16) -> i16 {
     match r {
         Ok(v) => *v,
         Err(_) => *default,
@@ -279,15 +273,15 @@ fn get_or_i16(r: &Result_i16, default: &i16) -> i16 {
 }
 
 /// `addi16` safely adds two i16s together, returning a Result-wrapped i16 (or an error on overflow)
-fn addi16(a: &i16, b: &i16) -> Result_i16 {
+fn addi16(a: &i16, b: &i16) -> Result<i16, AlanError> {
     match a.checked_add(*b) {
         Some(c) => Ok(c),
         None => Err("Overflow".into()),
     }
 }
 
-/// `addi16_result` safely adds two Result_i16s together, returning a Result-wrapped i16 (or an error on overflow)
-fn addi16_result(a: &Result_i16, b: &Result_i16) -> Result_i16 {
+/// `addi16_result` safely adds two Result<i16, AlanError>s together, returning a Result-wrapped i16 (or an error on overflow)
+fn addi16_result(a: &Result<i16, AlanError>, b: &Result<i16, AlanError>) -> Result<i16, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -301,7 +295,7 @@ fn addi16_result(a: &Result_i16, b: &Result_i16) -> Result_i16 {
 }
 
 /// `subi16` safely subtracts two i16s, returning a Result-wrapped i16 (or an error on underflow)
-fn subi16(a: &i16, b: &i16) -> Result_i16 {
+fn subi16(a: &i16, b: &i16) -> Result<i16, AlanError> {
     match a.checked_sub(*b) {
         Some(c) => Ok(c),
         None => Err("Underflow".into()),
@@ -309,7 +303,7 @@ fn subi16(a: &i16, b: &i16) -> Result_i16 {
 }
 
 /// `subi16_result` safely subtracts two i16s, returning a Result-wrapped i16 (or an error on underflow)
-fn subi16_result(a: &Result_i16, b: &Result_i16) -> Result_i16 {
+fn subi16_result(a: &Result<i16, AlanError>, b: &Result<i16, AlanError>) -> Result<i16, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -323,15 +317,15 @@ fn subi16_result(a: &Result_i16, b: &Result_i16) -> Result_i16 {
 }
 
 /// `muli16` safely multiplies two i16s, returning a Result-wrapped i16 (or an error on under/overflow)
-fn muli16(a: &i16, b: &i16) -> Result_i16 {
+fn muli16(a: &i16, b: &i16) -> Result<i16, AlanError> {
     match a.checked_mul(*b) {
         Some(c) => Ok(c),
         None => Err("Underflow or Overflow".into()),
     }
 }
 
-/// `muli16_result` safely multiplies two Result_i16s, returning a Result-wrapped i16 (or an error on under/overflow)
-fn muli16_result(a: &Result_i16, b: &Result_i16) -> Result_i16 {
+/// `muli16_result` safely multiplies two Result<i16, AlanError>s, returning a Result-wrapped i16 (or an error on under/overflow)
+fn muli16_result(a: &Result<i16, AlanError>, b: &Result<i16, AlanError>) -> Result<i16, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -345,15 +339,15 @@ fn muli16_result(a: &Result_i16, b: &Result_i16) -> Result_i16 {
 }
 
 /// `divi16` safely divides two i16s, returning a Result-wrapped i16 (or an error on divide-by-zero)
-fn divi16(a: &i16, b: &i16) -> Result_i16 {
+fn divi16(a: &i16, b: &i16) -> Result<i16, AlanError> {
     match a.checked_div(*b) {
         Some(c) => Ok(c),
         None => Err("Divide-by-zero".into()),
     }
 }
 
-/// `divi16_result` safely divides two Result_i16s, returning a Result-wrapped i16 (or an error on divide-by-zero)
-fn divi16_result(a: &Result_i16, b: &Result_i16) -> Result_i16 {
+/// `divi16_result` safely divides two Result<i16, AlanError>s, returning a Result-wrapped i16 (or an error on divide-by-zero)
+fn divi16_result(a: &Result<i16, AlanError>, b: &Result<i16, AlanError>) -> Result<i16, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -367,15 +361,15 @@ fn divi16_result(a: &Result_i16, b: &Result_i16) -> Result_i16 {
 }
 
 /// `modi16` safely divides two i16s, returning a Result-wrapped remainder in i16 (or an error on divide-by-zero)
-fn modi16(a: &i16, b: &i16) -> Result_i16 {
+fn modi16(a: &i16, b: &i16) -> Result<i16, AlanError> {
     match a.checked_rem(*b) {
         Some(c) => Ok(c),
         None => Err("Divide-by-zero".into()),
     }
 }
 
-/// `modi16_result` safely divides two Result_i16s, returning a Result-wrapped remainder in i16 (or an error on divide-by-zero)
-fn modi16_result(a: &Result_i16, b: &Result_i16) -> Result_i16 {
+/// `modi16_result` safely divides two Result<i16, AlanError>s, returning a Result-wrapped remainder in i16 (or an error on divide-by-zero)
+fn modi16_result(a: &Result<i16, AlanError>, b: &Result<i16, AlanError>) -> Result<i16, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -389,7 +383,7 @@ fn modi16_result(a: &Result_i16, b: &Result_i16) -> Result_i16 {
 }
 
 /// `powi16` safely raises the first i16 to the second i16, returning a Result-wrapped i16 (or an error on under/overflow)
-fn powi16(a: &i16, b: &i16) -> Result_i16 {
+fn powi16(a: &i16, b: &i16) -> Result<i16, AlanError> {
     // TODO: Support b being negative correctly
     match a.checked_pow(*b as u32) {
         Some(c) => Ok(c),
@@ -397,8 +391,8 @@ fn powi16(a: &i16, b: &i16) -> Result_i16 {
     }
 }
 
-/// `powi16_result` safely raises the first Result_i16 to the second Result_i16, returning a Result-wrapped i16 (or an error on under/overflow)
-fn powi16_result(a: &Result_i16, b: &Result_i16) -> Result_i16 {
+/// `powi16_result` safely raises the first Result<i16, AlanError> to the second Result<i16, AlanError>, returning a Result-wrapped i16 (or an error on under/overflow)
+fn powi16_result(a: &Result<i16, AlanError>, b: &Result<i16, AlanError>) -> Result<i16, AlanError> {
     // TODO: Support b being negative correctly
     match a {
         Err(e) => Err(e.clone()),
@@ -417,8 +411,8 @@ fn mini16(a: &i16, b: &i16) -> i16 {
     if a < b { *a } else { *b }
 }
 
-/// `mini16_result` returns the smaller of the two Result_i16 values
-fn mini16_result(a: &Result_i16, b: &Result_i16) -> Result_i16 {
+/// `mini16_result` returns the smaller of the two Result<i16, AlanError> values
+fn mini16_result(a: &Result<i16, AlanError>, b: &Result<i16, AlanError>) -> Result<i16, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -433,8 +427,8 @@ fn maxi16(a: &i16, b: &i16) -> i16 {
     if a > b { *a } else { *b }
 }
 
-/// `maxi16_result` returns the larger of the two Result_i16 values
-fn maxi16_result(a: &Result_i16, b: &Result_i16) -> Result_i16 {
+/// `maxi16_result` returns the larger of the two Result<i16, AlanError> values
+fn maxi16_result(a: &Result<i16, AlanError>, b: &Result<i16, AlanError>) -> Result<i16, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -444,11 +438,8 @@ fn maxi16_result(a: &Result_i16, b: &Result_i16) -> Result_i16 {
     }
 }
 
-/// `Result_i32` is a type alias for Result<i32, AlanError>
-type Result_i32 = Result<i32, AlanError>;
-
-/// `get_or_i32` unwraps a Result_i32 with the default value if it is an error
-fn get_or_i32(r: &Result_i32, default: &i32) -> i32 {
+/// `get_or_i32` unwraps a Result<i32, AlanError> with the default value if it is an error
+fn get_or_i32(r: &Result<i32, AlanError>, default: &i32) -> i32 {
     match r {
         Ok(v) => *v,
         Err(_) => *default,
@@ -481,15 +472,15 @@ fn i8toi32(i: &i8) -> i32 {
 }
 
 /// `addi32` safely adds two i32s together, returning a Result-wrapped i32 (or an error on overflow)
-fn addi32(a: &i32, b: &i32) -> Result_i32 {
+fn addi32(a: &i32, b: &i32) -> Result<i32, AlanError> {
     match a.checked_add(*b) {
         Some(c) => Ok(c),
         None => Err("Overflow".into()),
     }
 }
 
-/// `addi32_result` safely adds two Result_i32s together, returning a Result-wrapped i32 (or an error on overflow)
-fn addi32_result(a: &Result_i32, b: &Result_i32) -> Result_i32 {
+/// `addi32_result` safely adds two Result<i32, AlanError>s together, returning a Result-wrapped i32 (or an error on overflow)
+fn addi32_result(a: &Result<i32, AlanError>, b: &Result<i32, AlanError>) -> Result<i32, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -503,7 +494,7 @@ fn addi32_result(a: &Result_i32, b: &Result_i32) -> Result_i32 {
 }
 
 /// `subi32` safely subtracts two i32s, returning a Result-wrapped i32 (or an error on underflow)
-fn subi32(a: &i32, b: &i32) -> Result_i32 {
+fn subi32(a: &i32, b: &i32) -> Result<i32, AlanError> {
     match a.checked_sub(*b) {
         Some(c) => Ok(c),
         None => Err("Underflow".into()),
@@ -511,7 +502,7 @@ fn subi32(a: &i32, b: &i32) -> Result_i32 {
 }
 
 /// `subi32_result` safely subtracts two i32s, returning a Result-wrapped i32 (or an error on underflow)
-fn subi32_result(a: &Result_i32, b: &Result_i32) -> Result_i32 {
+fn subi32_result(a: &Result<i32, AlanError>, b: &Result<i32, AlanError>) -> Result<i32, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -525,15 +516,15 @@ fn subi32_result(a: &Result_i32, b: &Result_i32) -> Result_i32 {
 }
 
 /// `muli32` safely multiplies two i32s, returning a Result-wrapped i32 (or an error on under/overflow)
-fn muli32(a: &i32, b: &i32) -> Result_i32 {
+fn muli32(a: &i32, b: &i32) -> Result<i32, AlanError> {
     match a.checked_mul(*b) {
         Some(c) => Ok(c),
         None => Err("Underflow or Overflow".into()),
     }
 }
 
-/// `muli32_result` safely multiplies two Result_i32s, returning a Result-wrapped i32 (or an error on under/overflow)
-fn muli32_result(a: &Result_i32, b: &Result_i32) -> Result_i32 {
+/// `muli32_result` safely multiplies two Result<i32, AlanError>s, returning a Result-wrapped i32 (or an error on under/overflow)
+fn muli32_result(a: &Result<i32, AlanError>, b: &Result<i32, AlanError>) -> Result<i32, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -547,15 +538,15 @@ fn muli32_result(a: &Result_i32, b: &Result_i32) -> Result_i32 {
 }
 
 /// `divi32` safely divides two i32s, returning a Result-wrapped i32 (or an error on divide-by-zero)
-fn divi32(a: &i32, b: &i32) -> Result_i32 {
+fn divi32(a: &i32, b: &i32) -> Result<i32, AlanError> {
     match a.checked_div(*b) {
         Some(c) => Ok(c),
         None => Err("Divide-by-zero".into()),
     }
 }
 
-/// `divi32_result` safely divides two Result_i32s, returning a Result-wrapped i32 (or an error on divide-by-zero)
-fn divi32_result(a: &Result_i32, b: &Result_i32) -> Result_i32 {
+/// `divi32_result` safely divides two Result<i32, AlanError>s, returning a Result-wrapped i32 (or an error on divide-by-zero)
+fn divi32_result(a: &Result<i32, AlanError>, b: &Result<i32, AlanError>) -> Result<i32, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -569,15 +560,15 @@ fn divi32_result(a: &Result_i32, b: &Result_i32) -> Result_i32 {
 }
 
 /// `modi32` safely divides two i32s, returning a Result-wrapped remainder in i32 (or an error on divide-by-zero)
-fn modi32(a: &i32, b: &i32) -> Result_i32 {
+fn modi32(a: &i32, b: &i32) -> Result<i32, AlanError> {
     match a.checked_rem(*b) {
         Some(c) => Ok(c),
         None => Err("Divide-by-zero".into()),
     }
 }
 
-/// `modi32_result` safely divides two Result_i32s, returning a Result-wrapped remainder in i32 (or an error on divide-by-zero)
-fn modi32_result(a: &Result_i32, b: &Result_i32) -> Result_i32 {
+/// `modi32_result` safely divides two Result<i32, AlanError>s, returning a Result-wrapped remainder in i32 (or an error on divide-by-zero)
+fn modi32_result(a: &Result<i32, AlanError>, b: &Result<i32, AlanError>) -> Result<i32, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -591,7 +582,7 @@ fn modi32_result(a: &Result_i32, b: &Result_i32) -> Result_i32 {
 }
 
 /// `powi32` safely raises the first i32 to the second i32, returning a Result-wrapped i32 (or an error on under/overflow)
-fn powi32(a: &i32, b: &i32) -> Result_i32 {
+fn powi32(a: &i32, b: &i32) -> Result<i32, AlanError> {
     // TODO: Support b being negative correctly
     match a.checked_pow(*b as u32) {
         Some(c) => Ok(c),
@@ -599,8 +590,8 @@ fn powi32(a: &i32, b: &i32) -> Result_i32 {
     }
 }
 
-/// `powi32_result` safely raises the first Result_i32 to the second Result_i32, returning a Result-wrapped i32 (or an error on under/overflow)
-fn powi32_result(a: &Result_i32, b: &Result_i32) -> Result_i32 {
+/// `powi32_result` safely raises the first Result<i32, AlanError> to the second Result<i32, AlanError>, returning a Result-wrapped i32 (or an error on under/overflow)
+fn powi32_result(a: &Result<i32, AlanError>, b: &Result<i32, AlanError>) -> Result<i32, AlanError> {
     // TODO: Support b being negative correctly
     match a {
         Err(e) => Err(e.clone()),
@@ -619,8 +610,8 @@ fn mini32(a: &i32, b: &i32) -> i32 {
     if a < b { *a } else { *b }
 }
 
-/// `mini32_result` returns the smaller of the two Result_i32 values
-fn mini32_result(a: &Result_i32, b: &Result_i32) -> Result_i32 {
+/// `mini32_result` returns the smaller of the two Result<i32, AlanError> values
+fn mini32_result(a: &Result<i32, AlanError>, b: &Result<i32, AlanError>) -> Result<i32, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -635,8 +626,8 @@ fn maxi32(a: &i32, b: &i32) -> i32 {
     if a > b { *a } else { *b }
 }
 
-/// `maxi32_result` returns the larger of the two Result_i32 values
-fn maxi32_result(a: &Result_i32, b: &Result_i32) -> Result_i32 {
+/// `maxi32_result` returns the larger of the two Result<i32, AlanError> values
+fn maxi32_result(a: &Result<i32, AlanError>, b: &Result<i32, AlanError>) -> Result<i32, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -671,11 +662,8 @@ fn i32toi64(i: &i32) -> i64 {
     *i as i64
 }
 
-/// `Result_i64` is a type alias for Result<i64, AlanError>
-type Result_i64 = Result<i64, AlanError>;
-
-/// `get_or_i64` unwraps a Result_i64 with the default value if it is an error
-fn get_or_i64(r: &Result_i64, default: &i64) -> i64 {
+/// `get_or_i64` unwraps a Result<i64, AlanError> with the default value if it is an error
+fn get_or_i64(r: &Result<i64, AlanError>, default: &i64) -> i64 {
     match r {
         Ok(v) => *v,
         Err(_) => *default,
@@ -683,15 +671,15 @@ fn get_or_i64(r: &Result_i64, default: &i64) -> i64 {
 }
 
 /// `addi64` safely adds two i64s together, returning a Result-wrapped i64 (or an error on overflow)
-fn addi64(a: &i64, b: &i64) -> Result_i64 {
+fn addi64(a: &i64, b: &i64) -> Result<i64, AlanError> {
     match a.checked_add(*b) {
         Some(c) => Ok(c),
         None => Err("Overflow".into()),
     }
 }
 
-/// `addi64_result` safely adds two Result_i64s together, returning a Result-wrapped i64 (or an error on overflow)
-fn addi64_result(a: &Result_i64, b: &Result_i64) -> Result_i64 {
+/// `addi64_result` safely adds two Result<i64, AlanError>s together, returning a Result-wrapped i64 (or an error on overflow)
+fn addi64_result(a: &Result<i64, AlanError>, b: &Result<i64, AlanError>) -> Result<i64, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -705,15 +693,15 @@ fn addi64_result(a: &Result_i64, b: &Result_i64) -> Result_i64 {
 }
 
 /// `subi64` safely subtracts two i64s, returning a Result-wrapped i64 (or an error on underflow)
-fn subi64(a: &i64, b: &i64) -> Result_i64 {
+fn subi64(a: &i64, b: &i64) -> Result<i64, AlanError> {
     match a.checked_sub(*b) {
         Some(c) => Ok(c),
         None => Err("Underflow".into()),
     }
 }
 
-/// `subi64_result` safely subtracts two Result_i64s, returning a Result-wrapped i64 (or an error on underflow)
-fn subi64_result(a: &Result_i64, b: &Result_i64) -> Result_i64 {
+/// `subi64_result` safely subtracts two Result<i64, AlanError>s, returning a Result-wrapped i64 (or an error on underflow)
+fn subi64_result(a: &Result<i64, AlanError>, b: &Result<i64, AlanError>) -> Result<i64, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -727,15 +715,15 @@ fn subi64_result(a: &Result_i64, b: &Result_i64) -> Result_i64 {
 }
 
 /// `muli64` safely multiplies two i64s, returning a Result-wrapped i64 (or an error on under/overflow)
-fn muli64(a: &i64, b: &i64) -> Result_i64 {
+fn muli64(a: &i64, b: &i64) -> Result<i64, AlanError> {
     match a.checked_mul(*b) {
         Some(c) => Ok(c),
         None => Err("Underflow or Overflow".into()),
     }
 }
 
-/// `muli64_result` safely multiplies two Result_i64s, returning a Result-wrapped i64 (or an error on under/overflow)
-fn muli64_result(a: &Result_i64, b: &Result_i64) -> Result_i64 {
+/// `muli64_result` safely multiplies two Result<i64, AlanError>s, returning a Result-wrapped i64 (or an error on under/overflow)
+fn muli64_result(a: &Result<i64, AlanError>, b: &Result<i64, AlanError>) -> Result<i64, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -749,7 +737,7 @@ fn muli64_result(a: &Result_i64, b: &Result_i64) -> Result_i64 {
 }
 
 /// `divi64` safely divides two i64s, returning a Result-wrapped i64 (or an error on divide-by-zero)
-fn divi64(a: &i64, b: &i64) -> Result_i64 {
+fn divi64(a: &i64, b: &i64) -> Result<i64, AlanError> {
     match a.checked_div(*b) {
         Some(c) => Ok(c),
         None => Err("Divide-by-zero".into()),
@@ -757,7 +745,7 @@ fn divi64(a: &i64, b: &i64) -> Result_i64 {
 }
 
 /// `divi64_result` safely divides two Resul_i64s, returning a Result-wrapped i64 (or an error on divide-by-zero)
-fn divi64_result(a: &Result_i64, b: &Result_i64) -> Result_i64 {
+fn divi64_result(a: &Result<i64, AlanError>, b: &Result<i64, AlanError>) -> Result<i64, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -771,15 +759,15 @@ fn divi64_result(a: &Result_i64, b: &Result_i64) -> Result_i64 {
 }
 
 /// `modi64` safely divides two i64s, returning a Result-wrapped remainder in i64 (or an error on divide-by-zero)
-fn modi64(a: &i64, b: &i64) -> Result_i64 {
+fn modi64(a: &i64, b: &i64) -> Result<i64, AlanError> {
     match a.checked_rem(*b) {
         Some(c) => Ok(c),
         None => Err("Divide-by-zero".into()),
     }
 }
 
-/// `modi64_result` safely divides two Result_i64s, returning a Result-wrapped remainder in i64 (or an error on divide-by-zero)
-fn modi64_result(a: &Result_i64, b: &Result_i64) -> Result_i64 {
+/// `modi64_result` safely divides two Result<i64, AlanError>s, returning a Result-wrapped remainder in i64 (or an error on divide-by-zero)
+fn modi64_result(a: &Result<i64, AlanError>, b: &Result<i64, AlanError>) -> Result<i64, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -793,7 +781,7 @@ fn modi64_result(a: &Result_i64, b: &Result_i64) -> Result_i64 {
 }
 
 /// `powi64` safely raises the first i64 to the second i64, returning a Result-wrapped i64 (or an error on under/overflow)
-fn powi64(a: &i64, b: &i64) -> Result_i64 {
+fn powi64(a: &i64, b: &i64) -> Result<i64, AlanError> {
     // TODO: Support b being negative correctly
     match a.checked_pow(*b as u32) {
         Some(c) => Ok(c),
@@ -801,8 +789,8 @@ fn powi64(a: &i64, b: &i64) -> Result_i64 {
     }
 }
 
-/// `powi64_result` safely raises the first Result_i64 to the second Result_i64, returning a Result-wrapped i64 (or an error on under/overflow)
-fn powi64_result(a: &Result_i64, b: &Result_i64) -> Result_i64 {
+/// `powi64_result` safely raises the first Result<i64, AlanError> to the second Result<i64, AlanError>, returning a Result-wrapped i64 (or an error on under/overflow)
+fn powi64_result(a: &Result<i64, AlanError>, b: &Result<i64, AlanError>) -> Result<i64, AlanError> {
     // TODO: Support b being negative correctly
     match a {
         Err(e) => Err(e.clone()),
@@ -821,8 +809,8 @@ fn mini64(a: &i64, b: &i64) -> i64 {
     if a < b { *a } else { *b }
 }
 
-/// `mini64_result` returns the smaller of the two Result_i64 values
-fn mini64_result(a: &Result_i64, b: &Result_i64) -> Result_i64 {
+/// `mini64_result` returns the smaller of the two Result<i64, AlanError> values
+fn mini64_result(a: &Result<i64, AlanError>, b: &Result<i64, AlanError>) -> Result<i64, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -837,8 +825,8 @@ fn maxi64(a: &i64, b: &i64) -> i64 {
     if a > b { *a } else { *b }
 }
 
-/// `maxi64_result` returns the larger of the two Result_i64 values
-fn maxi64_result(a: &Result_i64, b: &Result_i64) -> Result_i64 {
+/// `maxi64_result` returns the larger of the two Result<i64, AlanError> values
+fn maxi64_result(a: &Result<i64, AlanError>, b: &Result<i64, AlanError>) -> Result<i64, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -848,11 +836,8 @@ fn maxi64_result(a: &Result_i64, b: &Result_i64) -> Result_i64 {
     }
 }
 
-/// `Result_f32` is a type alias for Result<f32, AlanError>
-type Result_f32 = Result<f32, AlanError>;
-
-/// `get_or_f32` unwraps a Result_f32 with the default value if it is an error
-fn get_or_f32(r: &Result_f32, default: &f32) -> f32 {
+/// `get_or_f32` unwraps a Result<f32, AlanError> with the default value if it is an error
+fn get_or_f32(r: &Result<f32, AlanError>, default: &f32) -> f32 {
     match r {
         Ok(v) => *v,
         Err(_) => *default,
@@ -885,7 +870,7 @@ fn i8tof32(i: &i8) -> f32 {
 }
 
 /// `addf32` safely adds two f32s together, returning a Result-wrapped f32 (or an error on overflow)
-fn addf32(a: &f32, b: &f32) -> Result_f32 {
+fn addf32(a: &f32, b: &f32) -> Result<f32, AlanError> {
     match a + b {
         f32::MAX => Err("Overflow".into()),
         f32::MIN => Err("Underflow".into()),
@@ -897,8 +882,8 @@ fn addf32(a: &f32, b: &f32) -> Result_f32 {
     }
 }
 
-/// `addf32_result` safely adds two Result_f32s together, returning a Result-wrapped f32 (or an error on overflow)
-fn addf32_result(a: &Result_f32, b: &Result_f32) -> Result_f32 {
+/// `addf32_result` safely adds two Result<f32, AlanError>s together, returning a Result-wrapped f32 (or an error on overflow)
+fn addf32_result(a: &Result<f32, AlanError>, b: &Result<f32, AlanError>) -> Result<f32, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -917,7 +902,7 @@ fn addf32_result(a: &Result_f32, b: &Result_f32) -> Result_f32 {
 }
 
 /// `subf32` safely subtracts two f32s, returning a Result-wrapped f32 (or an error on underflow)
-fn subf32(a: &f32, b: &f32) -> Result_f32 {
+fn subf32(a: &f32, b: &f32) -> Result<f32, AlanError> {
     match a - b {
         f32::MAX => Err("Overflow".into()),
         f32::MIN => Err("Underflow".into()),
@@ -930,7 +915,7 @@ fn subf32(a: &f32, b: &f32) -> Result_f32 {
 }
 
 /// `subf32_result` safely subtracts two f32s, returning a Result-wrapped f32 (or an error on underflow)
-fn subf32_result(a: &Result_f32, b: &Result_f32) -> Result_f32 {
+fn subf32_result(a: &Result<f32, AlanError>, b: &Result<f32, AlanError>) -> Result<f32, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -949,7 +934,7 @@ fn subf32_result(a: &Result_f32, b: &Result_f32) -> Result_f32 {
 }
 
 /// `mulf32` safely multiplies two f32s, returning a Result-wrapped f32 (or an error on under/overflow)
-fn mulf32(a: &f32, b: &f32) -> Result_f32 {
+fn mulf32(a: &f32, b: &f32) -> Result<f32, AlanError> {
     match a * b {
         f32::MAX => Err("Overflow".into()),
         f32::MIN => Err("Underflow".into()),
@@ -961,8 +946,8 @@ fn mulf32(a: &f32, b: &f32) -> Result_f32 {
     }
 }
 
-/// `mulf32_result` safely multiplies two Result_f32s, returning a Result-wrapped f32 (or an error on under/overflow)
-fn mulf32_result(a: &Result_f32, b: &Result_f32) -> Result_f32 {
+/// `mulf32_result` safely multiplies two Result<f32, AlanError>s, returning a Result-wrapped f32 (or an error on under/overflow)
+fn mulf32_result(a: &Result<f32, AlanError>, b: &Result<f32, AlanError>) -> Result<f32, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -981,7 +966,7 @@ fn mulf32_result(a: &Result_f32, b: &Result_f32) -> Result_f32 {
 }
 
 /// `divf32` safely divides two f32s, returning a Result-wrapped f32 (or an error on divide-by-zero)
-fn divf32(a: &f32, b: &f32) -> Result_f32 {
+fn divf32(a: &f32, b: &f32) -> Result<f32, AlanError> {
     match a / b {
         f32::MAX => Err("Overflow".into()),
         f32::MIN => Err("Underflow".into()),
@@ -993,8 +978,8 @@ fn divf32(a: &f32, b: &f32) -> Result_f32 {
     }
 }
 
-/// `divf32_result` safely divides two Result_f32s, returning a Result-wrapped f32 (or an error on divide-by-zero)
-fn divf32_result(a: &Result_f32, b: &Result_f32) -> Result_f32 {
+/// `divf32_result` safely divides two Result<f32, AlanError>s, returning a Result-wrapped f32 (or an error on divide-by-zero)
+fn divf32_result(a: &Result<f32, AlanError>, b: &Result<f32, AlanError>) -> Result<f32, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -1017,8 +1002,8 @@ fn sqrtf32(f: &f32) -> f32 {
     f.sqrt()
 }
 
-/// `sqrtf32_result` takes the square root of a Result_f32, returning a Result_f32
-fn sqrtf32_result(f: &Result_f32) -> Result_f32 {
+/// `sqrtf32_result` takes the square root of a Result<f32, AlanError>, returning a Result<f32, AlanError>
+fn sqrtf32_result(f: &Result<f32, AlanError>) -> Result<f32, AlanError> {
     match f {
       Err(e) => Err(e.clone()),
       Ok(v) => Ok(v.sqrt()),
@@ -1026,7 +1011,7 @@ fn sqrtf32_result(f: &Result_f32) -> Result_f32 {
 }
 
 /// `powf32` safely raises the first f32 to the second f32, returning a Result-wrapped f32 (or an error on under/overflow)
-fn powf32(a: &f32, b: &f32) -> Result_f32 {
+fn powf32(a: &f32, b: &f32) -> Result<f32, AlanError> {
     match a.powf(*b) {
         f32::MAX => Err("Overflow".into()),
         f32::MIN => Err("Underflow".into()),
@@ -1038,8 +1023,8 @@ fn powf32(a: &f32, b: &f32) -> Result_f32 {
     }
 }
 
-/// `powf32_result` safely raises the first Result_f32 to the second Result_f32, returning a Result-wrapped f32 (or an error on under/overflow)
-fn powf32_result(a: &Result_f32, b: &Result_f32) -> Result_f32 {
+/// `powf32_result` safely raises the first Result<f32, AlanError> to the second Result<f32, AlanError>, returning a Result-wrapped f32 (or an error on under/overflow)
+fn powf32_result(a: &Result<f32, AlanError>, b: &Result<f32, AlanError>) -> Result<f32, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -1062,8 +1047,8 @@ fn minf32(a: &f32, b: &f32) -> f32 {
     if a < b { *a } else { *b }
 }
 
-/// `minf32_result` returns the smaller of the two Result_f32 values
-fn minf32_result(a: &Result_f32, b: &Result_f32) -> Result_f32 {
+/// `minf32_result` returns the smaller of the two Result<f32, AlanError> values
+fn minf32_result(a: &Result<f32, AlanError>, b: &Result<f32, AlanError>) -> Result<f32, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -1078,8 +1063,8 @@ fn maxf32(a: &f32, b: &f32) -> f32 {
     if a > b { *a } else { *b }
 }
 
-/// `maxf32_result` returns the larger of the two Result_f32 values
-fn maxf32_result(a: &Result_f32, b: &Result_f32) -> Result_f32 {
+/// `maxf32_result` returns the larger of the two Result<f32, AlanError> values
+fn maxf32_result(a: &Result<f32, AlanError>, b: &Result<f32, AlanError>) -> Result<f32, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -1114,11 +1099,8 @@ fn i64tof64(i: &i64) -> f64 {
     *i as f64
 }
 
-/// `Result_f64` is a type alias for Result<f64, AlanError>
-type Result_f64 = Result<f64, AlanError>;
-
-/// `get_or_f64` unwraps a Result_f64 with the default value if it is an error
-fn get_or_f64(r: &Result_f64, default: &f64) -> f64 {
+/// `get_or_f64` unwraps a Result<f64, AlanError> with the default value if it is an error
+fn get_or_f64(r: &Result<f64, AlanError>, default: &f64) -> f64 {
     match r {
         Ok(v) => *v,
         Err(_) => *default,
@@ -1126,7 +1108,7 @@ fn get_or_f64(r: &Result_f64, default: &f64) -> f64 {
 }
 
 /// `addf64` safely adds two f64s together, returning a Result-wrapped f64 (or an error on overflow)
-fn addf64(a: &f64, b: &f64) -> Result_f64 {
+fn addf64(a: &f64, b: &f64) -> Result<f64, AlanError> {
     match a + b {
         f64::MAX => Err("Overflow".into()),
         f64::MIN => Err("Underflow".into()),
@@ -1138,8 +1120,8 @@ fn addf64(a: &f64, b: &f64) -> Result_f64 {
     }
 }
 
-/// `addf64_result` safely adds two Result_f64s together, returning a Result-wrapped f64 (or an error on overflow)
-fn addf64_result(a: &Result_f64, b: &Result_f64) -> Result_f64 {
+/// `addf64_result` safely adds two Result<f64, AlanError>s together, returning a Result-wrapped f64 (or an error on overflow)
+fn addf64_result(a: &Result<f64, AlanError>, b: &Result<f64, AlanError>) -> Result<f64, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -1158,7 +1140,7 @@ fn addf64_result(a: &Result_f64, b: &Result_f64) -> Result_f64 {
 }
 
 /// `subf64` safely subtracts two f64s, returning a Result-wrapped f64 (or an error on underflow)
-fn subf64(a: &f64, b: &f64) -> Result_f64 {
+fn subf64(a: &f64, b: &f64) -> Result<f64, AlanError> {
     match a - b {
         f64::MAX => Err("Overflow".into()),
         f64::MIN => Err("Underflow".into()),
@@ -1170,8 +1152,8 @@ fn subf64(a: &f64, b: &f64) -> Result_f64 {
     }
 }
 
-/// `subf64_result` safely subtracts two Result_f64s, returning a Result-wrapped f64 (or an error on underflow)
-fn subf64_result(a: &Result_f64, b: &Result_f64) -> Result_f64 {
+/// `subf64_result` safely subtracts two Result<f64, AlanError>s, returning a Result-wrapped f64 (or an error on underflow)
+fn subf64_result(a: &Result<f64, AlanError>, b: &Result<f64, AlanError>) -> Result<f64, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -1190,7 +1172,7 @@ fn subf64_result(a: &Result_f64, b: &Result_f64) -> Result_f64 {
 }
 
 /// `mulf64` safely multiplies two f64s, returning a Result-wrapped f64 (or an error on under/overflow)
-fn mulf64(a: &f64, b: &f64) -> Result_f64 {
+fn mulf64(a: &f64, b: &f64) -> Result<f64, AlanError> {
     match a * b {
         f64::MAX => Err("Overflow".into()),
         f64::MIN => Err("Underflow".into()),
@@ -1202,8 +1184,8 @@ fn mulf64(a: &f64, b: &f64) -> Result_f64 {
     }
 }
 
-/// `mulf64_result` safely multiplies two Result_f64s, returning a Result-wrapped f64 (or an error on under/overflow)
-fn mulf64_result(a: &Result_f64, b: &Result_f64) -> Result_f64 {
+/// `mulf64_result` safely multiplies two Result<f64, AlanError>s, returning a Result-wrapped f64 (or an error on under/overflow)
+fn mulf64_result(a: &Result<f64, AlanError>, b: &Result<f64, AlanError>) -> Result<f64, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -1222,7 +1204,7 @@ fn mulf64_result(a: &Result_f64, b: &Result_f64) -> Result_f64 {
 }
 
 /// `divf64` safely divides two f64s, returning a Result-wrapped f64 (or an error on divide-by-zero)
-fn divf64(a: &f64, b: &f64) -> Result_f64 {
+fn divf64(a: &f64, b: &f64) -> Result<f64, AlanError> {
     match a / b {
         f64::MAX => Err("Overflow".into()),
         f64::MIN => Err("Underflow".into()),
@@ -1235,7 +1217,7 @@ fn divf64(a: &f64, b: &f64) -> Result_f64 {
 }
 
 /// `divf64_result` safely divides two Resul_f64s, returning a Result-wrapped f64 (or an error on divide-by-zero)
-fn divf64_result(a: &Result_f64, b: &Result_f64) -> Result_f64 {
+fn divf64_result(a: &Result<f64, AlanError>, b: &Result<f64, AlanError>) -> Result<f64, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -1258,8 +1240,8 @@ fn sqrtf64(f: &f64) -> f64 {
     f.sqrt()
 }
 
-/// `sqrtf64_result` takes the square root of a Result_f64, returning a Result_f64
-fn sqrtf64_result(f: &Result_f64) -> Result_f64 {
+/// `sqrtf64_result` takes the square root of a Result<f64, AlanError>, returning a Result<f64, AlanError>
+fn sqrtf64_result(f: &Result<f64, AlanError>) -> Result<f64, AlanError> {
     match f {
       Err(e) => Err(e.clone()),
       Ok(v) => Ok(v.sqrt()),
@@ -1267,7 +1249,7 @@ fn sqrtf64_result(f: &Result_f64) -> Result_f64 {
 }
 
 /// `powf64` safely raises the first f64 to the second f64, returning a Result-wrapped f64 (or an error on under/overflow)
-fn powf64(a: &f64, b: &f64) -> Result_f64 {
+fn powf64(a: &f64, b: &f64) -> Result<f64, AlanError> {
     match a.powf(*b) {
         f64::MAX => Err("Overflow".into()),
         f64::MIN => Err("Underflow".into()),
@@ -1279,8 +1261,8 @@ fn powf64(a: &f64, b: &f64) -> Result_f64 {
     }
 }
 
-/// `powf64_result` safely raises the first Result_f64 to the second Result_f64, returning a Result-wrapped f64 (or an error on under/overflow)
-fn powf64_result(a: &Result_f64, b: &Result_f64) -> Result_f64 {
+/// `powf64_result` safely raises the first Result<f64, AlanError> to the second Result<f64, AlanError>, returning a Result-wrapped f64 (or an error on under/overflow)
+fn powf64_result(a: &Result<f64, AlanError>, b: &Result<f64, AlanError>) -> Result<f64, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -1303,8 +1285,8 @@ fn minf64(a: &f64, b: &f64) -> f64 {
     if a < b { *a } else { *b }
 }
 
-/// `minf64_result` returns the smaller of the two Result_f64 values
-fn minf64_result(a: &Result_f64, b: &Result_f64) -> Result_f64 {
+/// `minf64_result` returns the smaller of the two Result<f64, AlanError> values
+fn minf64_result(a: &Result<f64, AlanError>, b: &Result<f64, AlanError>) -> Result<f64, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
@@ -1319,8 +1301,8 @@ fn maxf64(a: &f64, b: &f64) -> f64 {
     if a > b { *a } else { *b }
 }
 
-/// `maxf64_result` returns the larger of the two Result_f64 values
-fn maxf64_result(a: &Result_f64, b: &Result_f64) -> Result_f64 {
+/// `maxf64_result` returns the larger of the two Result<f64, AlanError> values
+fn maxf64_result(a: &Result<f64, AlanError>, b: &Result<f64, AlanError>) -> Result<f64, AlanError> {
     match a {
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
