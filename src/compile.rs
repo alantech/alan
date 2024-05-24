@@ -1015,7 +1015,7 @@ test_ignore!(string_templating => r#"
 
 // Comparators
 
-test_ignore!(equality => r#"
+test!(equality => r#"
     export fn main {
       print(i8(0) == i8(0));
       print(i8(1).eq(i8(0)));
@@ -1059,7 +1059,7 @@ true
 false
 "#;
 );
-test_ignore!(not_equals => r#"
+test!(not_equals => r#"
     export fn main {
       print(i8(0) != i8(0));
       print(i8(1).neq(i8(0)));
@@ -1103,7 +1103,7 @@ false
 true
 "#;
 );
-test_ignore!(less_than => r#"
+test!(less_than => r#"
     export fn main {
       print(i8(0) < i8(1));
       print(i8(1).lt(i8(0)));
@@ -1142,7 +1142,7 @@ false
 true
 "#;
 );
-test_ignore!(less_than_or_equal => r#"
+test!(less_than_or_equal => r#"
     export fn main {
       print(i8(0) <= i8(1));
       print(i8(1).lte(i8(0)));
@@ -1181,7 +1181,7 @@ true
 true
 "#;
 );
-test_ignore!(greater_than => r#"
+test!(greater_than => r#"
     export fn main {
       print(i8(0) > i8(1));
       print(i8(1).gt(i8(0)));
@@ -1220,7 +1220,7 @@ false
 false
 "#;
 );
-test_ignore!(greater_than_or_equal => r#"
+test!(greater_than_or_equal => r#"
     export fn main {
       print(i8(0) >= i8(1));
       print(i8(1).gte(i8(0)));
