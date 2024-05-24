@@ -31,75 +31,75 @@ macro_rules! clean {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     build!(map_1 => r#"
-        fn double(x: i64) -> Result<i64> = x * 2;
+        fn double(x: i64) -> Result{i64} = x * 2;
         export fn main { filled(2, 1).map(double); }
     "#);
     build!(map_10 => r#"
-        fn double(x: i64) -> Result<i64> = x * 2;
+        fn double(x: i64) -> Result{i64} = x * 2;
         export fn main { filled(2, 10).map(double); }
     "#);
     build!(map_100 => r#"
-        fn double(x: i64) -> Result<i64> = x * 2;
+        fn double(x: i64) -> Result{i64} = x * 2;
         export fn main { filled(2, 100).map(double); }
     "#);
     build!(map_1000 => r#"
-        fn double(x: i64) -> Result<i64> = x * 2;
+        fn double(x: i64) -> Result{i64} = x * 2;
         export fn main { filled(2, 1000).map(double); }
     "#);
     build!(map_10000 => r#"
-        fn double(x: i64) -> Result<i64> = x * 2;
+        fn double(x: i64) -> Result{i64} = x * 2;
         export fn main { filled(2, 10000).map(double); }
     "#);
     build!(map_100000 => r#"
-        fn double(x: i64) -> Result<i64> = x * 2;
+        fn double(x: i64) -> Result{i64} = x * 2;
         export fn main { filled(2, 100000).map(double); }
     "#);
     build!(map_1000000 => r#"
-        fn double(x: i64) -> Result<i64> = x * 2;
+        fn double(x: i64) -> Result{i64} = x * 2;
         export fn main { filled(2, 1000000).map(double); }
     "#);
     build!(map_10000000 => r#"
-        fn double(x: i64) -> Result<i64> = x * 2;
+        fn double(x: i64) -> Result{i64} = x * 2;
         export fn main { filled(2, 10000000).map(double); }
     "#);
     build!(map_100000000 => r#"
-        fn double(x: i64) -> Result<i64> = x * 2;
+        fn double(x: i64) -> Result{i64} = x * 2;
         export fn main { filled(2, 100000000).map(double); }
     "#);
     build!(parmap_1 => r#"
-        fn double(x: i64) -> Result<i64> = x * 2;
+        fn double(x: i64) -> Result{i64} = x * 2;
         export fn main { filled(2, 1).parmap(double); }
     "#);
     build!(parmap_10 => r#"
-        fn double(x: i64) -> Result<i64> = x * 2;
+        fn double(x: i64) -> Result{i64} = x * 2;
         export fn main { filled(2, 10).parmap(double); }
     "#);
     build!(parmap_100 => r#"
-        fn double(x: i64) -> Result<i64> = x * 2;
+        fn double(x: i64) -> Result{i64} = x * 2;
         export fn main { filled(2, 100).parmap(double); }
     "#);
     build!(parmap_1000 => r#"
-        fn double(x: i64) -> Result<i64> = x * 2;
+        fn double(x: i64) -> Result{i64} = x * 2;
         export fn main { filled(2, 1000).parmap(double); }
     "#);
     build!(parmap_10000 => r#"
-        fn double(x: i64) -> Result<i64> = x * 2;
+        fn double(x: i64) -> Result{i64} = x * 2;
         export fn main { filled(2, 10000).parmap(double); }
     "#);
     build!(parmap_100000 => r#"
-        fn double(x: i64) -> Result<i64> = x * 2;
+        fn double(x: i64) -> Result{i64} = x * 2;
         export fn main { filled(2, 100000).parmap(double); }
     "#);
     build!(parmap_1000000 => r#"
-        fn double(x: i64) -> Result<i64> = x * 2;
+        fn double(x: i64) -> Result{i64} = x * 2;
         export fn main { filled(2, 1000000).parmap(double); }
     "#);
     build!(parmap_10000000 => r#"
-        fn double(x: i64) -> Result<i64> = x * 2;
+        fn double(x: i64) -> Result{i64} = x * 2;
         export fn main { filled(2, 10000000).parmap(double); }
     "#);
     build!(parmap_100000000 => r#"
-        fn double(x: i64) -> Result<i64> = x * 2;
+        fn double(x: i64) -> Result{i64} = x * 2;
         export fn main { filled(2, 100000000).parmap(double); }
     "#);
     build!(gpgpu_1 => r#"

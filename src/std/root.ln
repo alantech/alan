@@ -6,278 +6,337 @@
 /// Type system setup
 
 // Declaration of the types the compiler-time type system is built on
-export ctype Type;
-export ctype Int;
-export ctype Float;
-export ctype Bool;
-export ctype String;
-export ctype Function<I, O>;
-export ctype Tuple<A, B>;
-export ctype Label;
-export ctype Field<Label, V>; // TODO: Add constraint logic to typegenerics so I can call this `L: Label` instead
-export ctype Either<A, B>;
+export ctype Type; // Any kind of concrete type
+export ctype Generic; // Any type that is a generic type (not yet realized into a concrete type)
+export ctype Bound; // A direct reference into the platform language's type system equivalent to a concrete type
+export ctype BoundGeneric; // A direct reference into the platform language's generic type system
+export ctype Int; // An integer used *to define a type*, like the length of a fixed array
+export ctype Float; // A float used to define a type. I have no idea why you'd want this, yet
+export ctype Bool; // A bool used to define a type. Heavily used for conditional compilation
+export ctype String; // A string used to define a type. Useful for conditional inclusion of files/code
+export ctype Group{G}; // A grouping of type statements `()`. Useful to allow for tuples of tuples
+export ctype Function{I, O}; // A function type, indicating the input and output of the function
+export ctype Tuple{A, B}; // A tuple of two (or more) types in a single compound type
+export ctype Field{L, V}; // Labeling a type with a property name. Useful to turn tuples into structs
+export ctype Either{A, B}; // An either type, allowing the value to be from *one* of the specified types, kinda like Rust enums
+export ctype Buffer{T, S}; // A buffer type, a pre-allocated, fixed-length array of the specified type the specified amount
+export ctype Array{T}; // An array type, a variable-length array of the specified type the specified amount. This would usually be an stdlib type built in the language itself, but we're just going to re-use the one in the platform language
 
-export type infix Function as -> precedence 1;
-export type infix Tuple as , precedence 2;
-export type infix Field as : precedence 3;
-export type infix Either as | precedence 1;
+// The following `ctype`s don't represent data but instead represent transforms that convert into one of the many ctypes above. (I did not expect to need so many of them.) I was originally thinking of making these `cfn` functions, but I don't think the distinction is useful or something users need to worry about, especially as the latter half of the above ctypes are "function-like" so these are marked as `ctype`s, too
+export ctype Fail{M}; // A special type that if ever encountered at compile time causes the compilation to fail with the specified error message. Useful with conditional types
+export ctype Add{A, B}; // Combines the Int or Float types together at compile time into a new Int or Float. Fails if an Int and Float are mixed.
+export ctype Sub{A, B}; // Same, but subtracts them
+export ctype Mul{A, B}; // Multiplication
+export ctype Div{A, B}; // Division
+export ctype Mod{A, B}; // Modulus (remainder)
+export ctype Pow{A, B}; // Exponentiation/Power
+export ctype Len{A}; // Returns the length of the input type in terms of the number of elements it contains, which is most useful for Buffers, Tuples, and Either, causes a compiler failure for Arrays, and returns 1 for everything else
+export ctype Size{T}; // Returns the size in bytes of the type in question, if possible, causing a compiler failure otherwise.
+export ctype FileStr{F}; // Read a file and return a string constant, useful for including large strings from a separate, nearby file, or fails if it doesn't exist
+export ctype Env{K}; // Read an environment variable at compile time and return a string of the value. Returns an empty string if the key doesn't exist. Intended to be used with...
+export ctype EnvExists{K}; // Returns a boolean if the environment variable key exists at compile time, and...
+export ctype If{C, A, B}; // A conditional type, if C is true, resolves to A, otherwise to B. There's also a simpler version...
+export ctype If{C, T}; // That expects a two-type tuple and extracts the first tuple type for true and the second for false, which can be bound to symbolic syntax
+export ctype Env{K, D}; // Finally, since the majority of the time this is what you'd want, this variant of `Env` takes a default value to use when the key does not exist, making this another conditional type
+export ctype And{A, B}; // Performs a boolean or bitwise AND on the inputs, depending on type
+export ctype Or{A, B}; // Performs a boolean or bitwise OR on the inputs
+export ctype Xor{A, B}; // Performs a boolean or bitwise XOR on the inputs
+export ctype Not{B}; // Inverts the boolean provided
+export ctype Nand{A, B}; // Performs a boolean or bitwise NAND on the inputs
+export ctype Nor{A, B}; // Performs a boolean or bitwise NOR on the inputs
+export ctype Xnor{A, B}; // Performs a boolean or bitwise XNOR on the inputs (same as EQ for booleans)
+export ctype Eq{A, B}; // Returns true if the two types are the same (or are the same int, float, bool, or string), false otherwise
+export ctype Neq{A, B}; // Returns true if the two types are difference
+export ctype Lt{A, B}; // Returns true if A is less than B (and are an int or float)
+export ctype Lte{A, B}; // Returns true if A is less than or equal to B
+export ctype Gt{A, B}; // Returns true if A is greater than B
+export ctype Gte{A, B}; // Returns true if A is greater than or equal to B
+
+// Defining the operators in the type system
+export type infix Function as -> precedence 1; // I -> O, where I is the input and O is the output. With Tuples and Fields you can reconstruct arguments for functions.
+export type infix Tuple as , precedence 2; // A, B, C, ... The tuple type combines with other tuple types to become a larger tuple type. To have a tuple of tuples, you need to `Group` the inner tuple, eg `(a, b), c`
+export type infix Field as : precedence 3; // Foo: Bar, let's you specify a property access label for the type, useful for syntactic sugar on a tuple type and the Either type (eventually).
+export type infix Either as | precedence 1; // A | B, the type has a singular value from only one of the types at once. `Result` is just `Either{T, Error}` and `Option` is just `Either{T, ()}` (or `Either{T, void}`, however we want to represent it, also might go with `Fallible` and `Maybe` instead of `Result` and `Option` as those feel more descriptive of what they are.
+export type infix Buffer as [ precedence 4; // Technically allows `Foo[3` by itself to be valid syntax, but...
+export type postfix Group as ] precedence 4; // Technically not necessary, but allows for `Foo[3]` to do the "right thing" and become a buffer of size 3, with a singular useless Group being wrapped around it (and then unwrapped on type generation). The only "bad" thing here is `Group` gets special behavior, matching the `(...)` syntax, so there's two ways to invoke a Group via symbols.
+export type postfix Array as [] precedence 4; // Allows `Foo[]` to do the right thing
+export type infix Add as + precedence 2;
+export type infix Sub as - precedence 2;
+export type infix Mul as * precedence 3;
+export type infix Div as / precedence 3;
+export type infix Mod as % precedence 3;
+export type infix Pow as ** precedence 4;
+export type infix If as ?? precedence 1; // C puts this kind of thing as a very high precedence. I'm not sure if I want to follow it. I feel like that would force grouping parens everywhere.
+export type infix And as & precedence 3;
+export type infix Or as | precedence 2;
+export type infix Xor as ^ precedence 2;
+export type prefix Not as ! precedence 4; // TODO: Do we want `!` to mean `Not` or `Result` depending on where it's placed syntactically? Seems easily ambiguous
+export type infix Nand as !& precedence 3;
+export type infix Nor as !| precedence 2;
+export type infix Xnor as !^ precedence 2;
+export type infix Eq as == precedence 1;
+export type infix Neq as != precedence 1;
+export type infix Lt as < precedence 1;
+export type infix Lte as <= precedence 1;
+export type infix Gt as > precedence 1;
+export type infix Gte as >= precedence 1;
 
 /// Integer-related bindings
 
 export type i8 binds i8;
-export type Result<i8> binds Result_i8;
+export type Result{i8} binds Result_i8;
 export type i16 binds i16;
-export type Result<i16> binds Result_i16;
+export type Result{i16} binds Result_i16;
 export type i32 binds i32;
-export type Result<i32> binds Result_i32;
+export type Result{i32} binds Result_i32;
 export type i64 binds i64;
-export type Result<i64> binds Result_i64;
+export type Result{i64} binds Result_i64;
 export type f32 binds f32;
-export type Result<f32> binds Result_f32;
+export type Result{f32} binds Result_f32;
 export type f64 binds f64;
-export type Result<f64> binds Result_f64;
+export type Result{f64} binds Result_f64;
 
-export fn ok(i: i8) -> Result<i8> binds alan_ok;
-export fn getOr(r: Result<i8>, default: i8) -> i8 binds get_or_i8;
+export fn ok(i: i8) -> Result{i8} binds alan_ok;
+export fn getOr(r: Result{i8}, default: i8) -> i8 binds get_or_i8;
 export fn i8(i: i8) -> i8 = i;
 export fn i8(i: i16) -> i8 binds i16toi8;
 export fn i8(i: i32) -> i8 binds i32toi8;
 export fn i8(i: i64) -> i8 binds i64toi8;
 export fn i8(f: f32) -> i8 binds f32toi8;
 export fn i8(f: f64) -> i8 binds f64toi8;
-export fn add(a: i8, b: i8) -> Result<i8> binds addi8;
-export fn add(a: Result<i8>, b: Result<i8>) -> Result<i8> binds addi8_result;
-export fn add(a: i8, b: Result<i8>) -> Result<i8> = add(a.ok, b);
-export fn add(a: Result<i8>, b: i8) -> Result<i8> = add(a, b.ok);
-export fn sub(a: i8, b: i8) -> Result<i8> binds subi8;
-export fn sub(a: Result<i8>, b: Result<i8>) -> Result<i8> binds subi8_result;
-export fn sub(a: i8, b: Result<i8>) -> Result<i8> = sub(a.ok, b);
-export fn sub(a: Result<i8>, b: i8) -> Result<i8> = sub(a, b.ok);
-export fn mul(a: i8, b: i8) -> Result<i8> binds muli8;
-export fn mul(a: Result<i8>, b: Result<i8>) -> Result<i8> binds muli8_result;
-export fn mul(a: i8, b: Result<i8>) -> Result<i8> = mul(a.ok, b);
-export fn mul(a: Result<i8>, b: i8) -> Result<i8> = mul(a, b.ok);
-export fn div(a: i8, b: i8) -> Result<i8> binds divi8;
-export fn div(a: Result<i8>, b: Result<i8>) -> Result<i8> binds divi8_result;
-export fn div(a: i8, b: Result<i8>) -> Result<i8> = div(a.ok, b);
-export fn div(a: Result<i8>, b: i8) -> Result<i8> = div(a, b.ok);
-export fn mod(a: i8, b: i8) -> Result<i8> binds modi8;
-export fn mod(a: Result<i8>, b: Result<i8>) -> Result<i8> binds modi8_result;
-export fn mod(a: i8, b: Result<i8>) -> Result<i8> = mod(a.ok, b);
-export fn mod(a: Result<i8>, b: i8) -> Result<i8> = mod(a, b.ok);
-export fn pow(a: i8, b: i8) -> Result<i8> binds powi8;
-export fn pow(a: Result<i8>, b: Result<i8>) -> Result<i8> binds powi8_result;
-export fn pow(a: i8, b: Result<i8>) -> Result<i8> = pow(a.ok, b);
-export fn pow(a: Result<i8>, b: i8) -> Result<i8> = pow(a, b.ok);
+export fn add(a: i8, b: i8) -> Result{i8} binds addi8;
+export fn add(a: Result{i8}, b: Result{i8}) -> Result{i8} binds addi8_result;
+export fn add(a: i8, b: Result{i8}) -> Result{i8} = add(a.ok, b);
+export fn add(a: Result{i8}, b: i8) -> Result{i8} = add(a, b.ok);
+export fn sub(a: i8, b: i8) -> Result{i8} binds subi8;
+export fn sub(a: Result{i8}, b: Result{i8}) -> Result{i8} binds subi8_result;
+export fn sub(a: i8, b: Result{i8}) -> Result{i8} = sub(a.ok, b);
+export fn sub(a: Result{i8}, b: i8) -> Result{i8} = sub(a, b.ok);
+export fn mul(a: i8, b: i8) -> Result{i8} binds muli8;
+export fn mul(a: Result{i8}, b: Result{i8}) -> Result{i8} binds muli8_result;
+export fn mul(a: i8, b: Result{i8}) -> Result{i8} = mul(a.ok, b);
+export fn mul(a: Result{i8}, b: i8) -> Result{i8} = mul(a, b.ok);
+export fn div(a: i8, b: i8) -> Result{i8} binds divi8;
+export fn div(a: Result{i8}, b: Result{i8}) -> Result{i8} binds divi8_result;
+export fn div(a: i8, b: Result{i8}) -> Result{i8} = div(a.ok, b);
+export fn div(a: Result{i8}, b: i8) -> Result{i8} = div(a, b.ok);
+export fn mod(a: i8, b: i8) -> Result{i8} binds modi8;
+export fn mod(a: Result{i8}, b: Result{i8}) -> Result{i8} binds modi8_result;
+export fn mod(a: i8, b: Result{i8}) -> Result{i8} = mod(a.ok, b);
+export fn mod(a: Result{i8}, b: i8) -> Result{i8} = mod(a, b.ok);
+export fn pow(a: i8, b: i8) -> Result{i8} binds powi8;
+export fn pow(a: Result{i8}, b: Result{i8}) -> Result{i8} binds powi8_result;
+export fn pow(a: i8, b: Result{i8}) -> Result{i8} = pow(a.ok, b);
+export fn pow(a: Result{i8}, b: i8) -> Result{i8} = pow(a, b.ok);
 export fn min(a: i8, b: i8) -> i8 binds mini8;
-export fn min(a: Result<i8>, b: Result<i8>) -> Result<i8> binds mini8_result;
-export fn min(a: i8, b: Result<i8>) -> Result<i8> = min(a.ok, b);
-export fn min(a: Result<i8>, b: i8) -> Result<i8> = min(a, b.ok);
+export fn min(a: Result{i8}, b: Result{i8}) -> Result{i8} binds mini8_result;
+export fn min(a: i8, b: Result{i8}) -> Result{i8} = min(a.ok, b);
+export fn min(a: Result{i8}, b: i8) -> Result{i8} = min(a, b.ok);
 export fn max(a: i8, b: i8) -> i8 binds maxi8;
-export fn max(a: Result<i8>, b: Result<i8>) -> Result<i8> binds maxi8_result;
-export fn max(a: i8, b: Result<i8>) -> Result<i8> = max(a.ok, b);
-export fn max(a: Result<i8>, b: i8) -> Result<i8> = max(a, b.ok);
+export fn max(a: Result{i8}, b: Result{i8}) -> Result{i8} binds maxi8_result;
+export fn max(a: i8, b: Result{i8}) -> Result{i8} = max(a.ok, b);
+export fn max(a: Result{i8}, b: i8) -> Result{i8} = max(a, b.ok);
 
-export fn ok(i: i16) -> Result<i16> binds alan_ok;
-export fn getOr(r: Result<i16>, default: i16) -> i16 binds get_or_i16;
+export fn ok(i: i16) -> Result{i16} binds alan_ok;
+export fn getOr(r: Result{i16}, default: i16) -> i16 binds get_or_i16;
 export fn i16(i: i8) -> i16 binds i8toi16;
 export fn i16(i: i16) -> i16 = i;
 export fn i16(i: i32) -> i16 binds i32toi16;
 export fn i16(i: i64) -> i16 binds i64toi16;
 export fn i16(f: f32) -> i16 binds f32toi16;
 export fn i16(f: f64) -> i16 binds f64toi16;
-export fn add(a: i16, b: i16) -> Result<i16> binds addi16;
-export fn add(a: Result<i16>, b: Result<i16>) -> Result<i16> binds addi16_result;
-export fn add(a: i16, b: Result<i16>) -> Result<i16> = add(a.ok, b);
-export fn add(a: Result<i16>, b: i16) -> Result<i16> = add(a, b.ok);
-export fn sub(a: i16, b: i16) -> Result<i16> binds subi16;
-export fn sub(a: Result<i16>, b: Result<i16>) -> Result<i16> binds subi16_result;
-export fn sub(a: i16, b: Result<i16>) -> Result<i16> = sub(a.ok, b);
-export fn sub(a: Result<i16>, b: i16) -> Result<i16> = sub(a, b.ok);
-export fn mul(a: i16, b: i16) -> Result<i16> binds muli16;
-export fn mul(a: Result<i16>, b: Result<i16>) -> Result<i16> binds muli16_result;
-export fn mul(a: i16, b: Result<i16>) -> Result<i16> = mul(a.ok, b);
-export fn mul(a: Result<i16>, b: i16) -> Result<i16> = mul(a, b.ok);
-export fn div(a: i16, b: i16) -> Result<i16> binds divi16;
-export fn div(a: Result<i16>, b: Result<i16>) -> Result<i16> binds divi16_result;
-export fn div(a: i16, b: Result<i16>) -> Result<i16> = div(a.ok, b);
-export fn div(a: Result<i16>, b: i16) -> Result<i16> = div(a, b.ok);
-export fn mod(a: i16, b: i16) -> Result<i16> binds modi16;
-export fn mod(a: Result<i16>, b: Result<i16>) -> Result<i16> binds modi16_result;
-export fn mod(a: i16, b: Result<i16>) -> Result<i16> = mod(a.ok, b);
-export fn mod(a: Result<i16>, b: i16) -> Result<i16> = mod(a, b.ok);
-export fn pow(a: i16, b: i16) -> Result<i16> binds powi16;
-export fn pow(a: Result<i16>, b: Result<i16>) -> Result<i16> binds powi16_result;
-export fn pow(a: i16, b: Result<i16>) -> Result<i16> = pow(a.ok, b);
-export fn pow(a: Result<i16>, b: i16) -> Result<i16> = pow(a, b.ok);
+export fn add(a: i16, b: i16) -> Result{i16} binds addi16;
+export fn add(a: Result{i16}, b: Result{i16}) -> Result{i16} binds addi16_result;
+export fn add(a: i16, b: Result{i16}) -> Result{i16} = add(a.ok, b);
+export fn add(a: Result{i16}, b: i16) -> Result{i16} = add(a, b.ok);
+export fn sub(a: i16, b: i16) -> Result{i16} binds subi16;
+export fn sub(a: Result{i16}, b: Result{i16}) -> Result{i16} binds subi16_result;
+export fn sub(a: i16, b: Result{i16}) -> Result{i16} = sub(a.ok, b);
+export fn sub(a: Result{i16}, b: i16) -> Result{i16} = sub(a, b.ok);
+export fn mul(a: i16, b: i16) -> Result{i16} binds muli16;
+export fn mul(a: Result{i16}, b: Result{i16}) -> Result{i16} binds muli16_result;
+export fn mul(a: i16, b: Result{i16}) -> Result{i16} = mul(a.ok, b);
+export fn mul(a: Result{i16}, b: i16) -> Result{i16} = mul(a, b.ok);
+export fn div(a: i16, b: i16) -> Result{i16} binds divi16;
+export fn div(a: Result{i16}, b: Result{i16}) -> Result{i16} binds divi16_result;
+export fn div(a: i16, b: Result{i16}) -> Result{i16} = div(a.ok, b);
+export fn div(a: Result{i16}, b: i16) -> Result{i16} = div(a, b.ok);
+export fn mod(a: i16, b: i16) -> Result{i16} binds modi16;
+export fn mod(a: Result{i16}, b: Result{i16}) -> Result{i16} binds modi16_result;
+export fn mod(a: i16, b: Result{i16}) -> Result{i16} = mod(a.ok, b);
+export fn mod(a: Result{i16}, b: i16) -> Result{i16} = mod(a, b.ok);
+export fn pow(a: i16, b: i16) -> Result{i16} binds powi16;
+export fn pow(a: Result{i16}, b: Result{i16}) -> Result{i16} binds powi16_result;
+export fn pow(a: i16, b: Result{i16}) -> Result{i16} = pow(a.ok, b);
+export fn pow(a: Result{i16}, b: i16) -> Result{i16} = pow(a, b.ok);
 export fn min(a: i16, b: i16) -> i16 binds mini16;
-export fn min(a: Result<i16>, b: Result<i16>) -> Result<i16> binds mini16_result;
-export fn min(a: i16, b: Result<i16>) -> Result<i16> = min(a.ok, b);
-export fn min(a: Result<i16>, b: i16) -> Result<i16> = min(a, b.ok);
+export fn min(a: Result{i16}, b: Result{i16}) -> Result{i16} binds mini16_result;
+export fn min(a: i16, b: Result{i16}) -> Result{i16} = min(a.ok, b);
+export fn min(a: Result{i16}, b: i16) -> Result{i16} = min(a, b.ok);
 export fn max(a: i16, b: i16) -> i16 binds maxi16;
-export fn max(a: Result<i16>, b: Result<i16>) -> Result<i16> binds maxi16_result;
-export fn max(a: i16, b: Result<i16>) -> Result<i16> = max(a.ok, b);
-export fn max(a: Result<i16>, b: i16) -> Result<i16> = max(a, b.ok);
+export fn max(a: Result{i16}, b: Result{i16}) -> Result{i16} binds maxi16_result;
+export fn max(a: i16, b: Result{i16}) -> Result{i16} = max(a.ok, b);
+export fn max(a: Result{i16}, b: i16) -> Result{i16} = max(a, b.ok);
 
-export fn ok(i: i32) -> Result<i32> binds alan_ok;
-export fn getOr(r: Result<i32>, default: i32) -> i32 binds get_or_i32;
+export fn ok(i: i32) -> Result{i32} binds alan_ok;
+export fn getOr(r: Result{i32}, default: i32) -> i32 binds get_or_i32;
 export fn i32(i: i8) -> i32 binds i8toi32;
 export fn i32(i: i16) -> i32 binds i16toi32;
 export fn i32(i: i32) -> i32 = i;
 export fn i32(i: i64) -> i32 binds i64toi32;
 export fn i32(f: f32) -> i32 binds f32toi32;
 export fn i32(f: f64) -> i32 binds f64toi32;
-export fn add(a: i32, b: i32) -> Result<i32> binds addi32;
-export fn add(a: Result<i32>, b: Result<i32>) -> Result<i32> binds addi32_result;
-export fn add(a: i32, b: Result<i32>) -> Result<i32> = add(a.ok, b);
-export fn add(a: Result<i32>, b: i32) -> Result<i32> = add(a, b.ok);
-export fn sub(a: i32, b: i32) -> Result<i32> binds subi32;
-export fn sub(a: Result<i32>, b: Result<i32>) -> Result<i32> binds subi32_result;
-export fn sub(a: i32, b: Result<i32>) -> Result<i32> = sub(a.ok, b);
-export fn sub(a: Result<i32>, b: i32) -> Result<i32> = sub(a, b.ok);
-export fn mul(a: i32, b: i32) -> Result<i32> binds muli32;
-export fn mul(a: Result<i32>, b: Result<i32>) -> Result<i32> binds muli32_result;
-export fn mul(a: i32, b: Result<i32>) -> Result<i32> = mul(a.ok, b);
-export fn mul(a: Result<i32>, b: i32) -> Result<i32> = mul(a, b.ok);
-export fn div(a: i32, b: i32) -> Result<i32> binds divi32;
-export fn div(a: Result<i32>, b: Result<i32>) -> Result<i32> binds divi32_result;
-export fn div(a: i32, b: Result<i32>) -> Result<i32> = div(a.ok, b);
-export fn div(a: Result<i32>, b: i32) -> Result<i32> = div(a, b.ok);
-export fn mod(a: i32, b: i32) -> Result<i32> binds modi32;
-export fn mod(a: Result<i32>, b: Result<i32>) -> Result<i32> binds modi32_result;
-export fn mod(a: i32, b: Result<i32>) -> Result<i32> = mod(a.ok, b);
-export fn mod(a: Result<i32>, b: i32) -> Result<i32> = mod(a, b.ok);
-export fn pow(a: i32, b: i32) -> Result<i32> binds powi32;
-export fn pow(a: Result<i32>, b: Result<i32>) -> Result<i32> binds powi32_result;
-export fn pow(a: i32, b: Result<i32>) -> Result<i32> = pow(a.ok, b);
-export fn pow(a: Result<i32>, b: i32) -> Result<i32> = pow(a, b.ok);
+export fn add(a: i32, b: i32) -> Result{i32} binds addi32;
+export fn add(a: Result{i32}, b: Result{i32}) -> Result{i32} binds addi32_result;
+export fn add(a: i32, b: Result{i32}) -> Result{i32} = add(a.ok, b);
+export fn add(a: Result{i32}, b: i32) -> Result{i32} = add(a, b.ok);
+export fn sub(a: i32, b: i32) -> Result{i32} binds subi32;
+export fn sub(a: Result{i32}, b: Result{i32}) -> Result{i32} binds subi32_result;
+export fn sub(a: i32, b: Result{i32}) -> Result{i32} = sub(a.ok, b);
+export fn sub(a: Result{i32}, b: i32) -> Result{i32} = sub(a, b.ok);
+export fn mul(a: i32, b: i32) -> Result{i32} binds muli32;
+export fn mul(a: Result{i32}, b: Result{i32}) -> Result{i32} binds muli32_result;
+export fn mul(a: i32, b: Result{i32}) -> Result{i32} = mul(a.ok, b);
+export fn mul(a: Result{i32}, b: i32) -> Result{i32} = mul(a, b.ok);
+export fn div(a: i32, b: i32) -> Result{i32} binds divi32;
+export fn div(a: Result{i32}, b: Result{i32}) -> Result{i32} binds divi32_result;
+export fn div(a: i32, b: Result{i32}) -> Result{i32} = div(a.ok, b);
+export fn div(a: Result{i32}, b: i32) -> Result{i32} = div(a, b.ok);
+export fn mod(a: i32, b: i32) -> Result{i32} binds modi32;
+export fn mod(a: Result{i32}, b: Result{i32}) -> Result{i32} binds modi32_result;
+export fn mod(a: i32, b: Result{i32}) -> Result{i32} = mod(a.ok, b);
+export fn mod(a: Result{i32}, b: i32) -> Result{i32} = mod(a, b.ok);
+export fn pow(a: i32, b: i32) -> Result{i32} binds powi32;
+export fn pow(a: Result{i32}, b: Result{i32}) -> Result{i32} binds powi32_result;
+export fn pow(a: i32, b: Result{i32}) -> Result{i32} = pow(a.ok, b);
+export fn pow(a: Result{i32}, b: i32) -> Result{i32} = pow(a, b.ok);
 export fn min(a: i32, b: i32) -> i32 binds mini32;
-export fn min(a: Result<i32>, b: Result<i32>) -> Result<i32> binds mini32_result;
-export fn min(a: i32, b: Result<i32>) -> Result<i32> = min(a.ok, b);
-export fn min(a: Result<i32>, b: i32) -> Result<i32> = min(a, b.ok);
+export fn min(a: Result{i32}, b: Result{i32}) -> Result{i32} binds mini32_result;
+export fn min(a: i32, b: Result{i32}) -> Result{i32} = min(a.ok, b);
+export fn min(a: Result{i32}, b: i32) -> Result{i32} = min(a, b.ok);
 export fn max(a: i32, b: i32) -> i32 binds maxi32;
-export fn max(a: Result<i32>, b: Result<i32>) -> Result<i32> binds maxi32_result;
-export fn max(a: i32, b: Result<i32>) -> Result<i32> = max(a.ok, b);
-export fn max(a: Result<i32>, b: i32) -> Result<i32> = max(a, b.ok);
+export fn max(a: Result{i32}, b: Result{i32}) -> Result{i32} binds maxi32_result;
+export fn max(a: i32, b: Result{i32}) -> Result{i32} = max(a.ok, b);
+export fn max(a: Result{i32}, b: i32) -> Result{i32} = max(a, b.ok);
 
-export fn ok(i: i64) -> Result<i64> binds alan_ok;
-export fn getOr(r: Result<i64>, default: i64) -> i64 binds get_or_i64;
+export fn ok(i: i64) -> Result{i64} binds alan_ok;
+export fn getOr(r: Result{i64}, default: i64) -> i64 binds get_or_i64;
 export fn i64(i: i8) -> i64 binds i8toi64;
 export fn i64(i: i16) -> i64 binds i16toi64;
 export fn i64(i: i32) -> i64 binds i32toi64;
 export fn i64(i: i64) -> i64 = i;
 export fn i64(f: f32) -> i64 binds f32toi64;
 export fn i64(f: f64) -> i64 binds f64toi64;
-export fn add(a: i64, b: i64) -> Result<i64> binds addi64;
-export fn add(a: Result<i64>, b: Result<i64>) -> Result<i64> binds addi64_result;
-export fn add(a: i64, b: Result<i64>) -> Result<i64> = add(a.ok, b);
-export fn add(a: Result<i64>, b: i64) -> Result<i64> = add(a, b.ok);
-export fn sub(a: i64, b: i64) -> Result<i64> binds subi64;
-export fn sub(a: Result<i64>, b: Result<i64>) -> Result<i64> binds subi64_result;
-export fn sub(a: i64, b: Result<i64>) -> Result<i64> = sub(a.ok, b);
-export fn sub(a: Result<i64>, b: i64) -> Result<i64> = sub(a, b.ok);
-export fn mul(a: i64, b: i64) -> Result<i64> binds muli64;
-export fn mul(a: Result<i64>, b: Result<i64>) -> Result<i64> binds muli64_result;
-export fn mul(a: i64, b: Result<i64>) -> Result<i64> = mul(a.ok, b);
-export fn mul(a: Result<i64>, b: i64) -> Result<i64> = mul(a, b.ok);
-export fn div(a: i64, b: i64) -> Result<i64> binds divi64;
-export fn div(a: Result<i64>, b: Result<i64>) -> Result<i64> binds divi64_result;
-export fn div(a: i64, b: Result<i64>) -> Result<i64> = div(a.ok, b);
-export fn div(a: Result<i64>, b: i64) -> Result<i64> = div(a, b.ok);
-export fn mod(a: i64, b: i64) -> Result<i64> binds modi64;
-export fn mod(a: Result<i64>, b: Result<i64>) -> Result<i64> binds modi64_result;
-export fn mod(a: i64, b: Result<i64>) -> Result<i64> = mod(a.ok, b);
-export fn mod(a: Result<i64>, b: i64) -> Result<i64> = mod(a, b.ok);
-export fn pow(a: i64, b: i64) -> Result<i64> binds powi64;
-export fn pow(a: Result<i64>, b: Result<i64>) -> Result<i64> binds powi64_result;
-export fn pow(a: i64, b: Result<i64>) -> Result<i64> = pow(a.ok, b);
-export fn pow(a: Result<i64>, b: i64) -> Result<i64> = pow(a, b.ok);
+export fn add(a: i64, b: i64) -> Result{i64} binds addi64;
+export fn add(a: Result{i64}, b: Result{i64}) -> Result{i64} binds addi64_result;
+export fn add(a: i64, b: Result{i64}) -> Result{i64} = add(a.ok, b);
+export fn add(a: Result{i64}, b: i64) -> Result{i64} = add(a, b.ok);
+export fn sub(a: i64, b: i64) -> Result{i64} binds subi64;
+export fn sub(a: Result{i64}, b: Result{i64}) -> Result{i64} binds subi64_result;
+export fn sub(a: i64, b: Result{i64}) -> Result{i64} = sub(a.ok, b);
+export fn sub(a: Result{i64}, b: i64) -> Result{i64} = sub(a, b.ok);
+export fn mul(a: i64, b: i64) -> Result{i64} binds muli64;
+export fn mul(a: Result{i64}, b: Result{i64}) -> Result{i64} binds muli64_result;
+export fn mul(a: i64, b: Result{i64}) -> Result{i64} = mul(a.ok, b);
+export fn mul(a: Result{i64}, b: i64) -> Result{i64} = mul(a, b.ok);
+export fn div(a: i64, b: i64) -> Result{i64} binds divi64;
+export fn div(a: Result{i64}, b: Result{i64}) -> Result{i64} binds divi64_result;
+export fn div(a: i64, b: Result{i64}) -> Result{i64} = div(a.ok, b);
+export fn div(a: Result{i64}, b: i64) -> Result{i64} = div(a, b.ok);
+export fn mod(a: i64, b: i64) -> Result{i64} binds modi64;
+export fn mod(a: Result{i64}, b: Result{i64}) -> Result{i64} binds modi64_result;
+export fn mod(a: i64, b: Result{i64}) -> Result{i64} = mod(a.ok, b);
+export fn mod(a: Result{i64}, b: i64) -> Result{i64} = mod(a, b.ok);
+export fn pow(a: i64, b: i64) -> Result{i64} binds powi64;
+export fn pow(a: Result{i64}, b: Result{i64}) -> Result{i64} binds powi64_result;
+export fn pow(a: i64, b: Result{i64}) -> Result{i64} = pow(a.ok, b);
+export fn pow(a: Result{i64}, b: i64) -> Result{i64} = pow(a, b.ok);
 export fn min(a: i64, b: i64) -> i64 binds mini64;
-export fn min(a: Result<i64>, b: Result<i64>) -> Result<i64> binds mini64_result;
-export fn min(a: i64, b: Result<i64>) -> Result<i64> = min(a.ok, b);
-export fn min(a: Result<i64>, b: i64) -> Result<i64> = min(a, b.ok);
+export fn min(a: Result{i64}, b: Result{i64}) -> Result{i64} binds mini64_result;
+export fn min(a: i64, b: Result{i64}) -> Result{i64} = min(a.ok, b);
+export fn min(a: Result{i64}, b: i64) -> Result{i64} = min(a, b.ok);
 export fn max(a: i64, b: i64) -> i64 binds maxi64;
-export fn max(a: Result<i64>, b: Result<i64>) -> Result<i64> binds maxi64_result;
-export fn max(a: i64, b: Result<i64>) -> Result<i64> = max(a.ok, b);
-export fn max(a: Result<i64>, b: i64) -> Result<i64> = max(a, b.ok);
+export fn max(a: Result{i64}, b: Result{i64}) -> Result{i64} binds maxi64_result;
+export fn max(a: i64, b: Result{i64}) -> Result{i64} = max(a.ok, b);
+export fn max(a: Result{i64}, b: i64) -> Result{i64} = max(a, b.ok);
 
-export fn ok(i: f32) -> Result<f32> binds alan_ok;
-export fn getOr(r: Result<f32>, default: f32) -> f32 binds get_or_f32;
+export fn ok(i: f32) -> Result{f32} binds alan_ok;
+export fn getOr(r: Result{f32}, default: f32) -> f32 binds get_or_f32;
 export fn f32(i: i8) -> f32 binds i8tof32;
 export fn f32(i: i16) -> f32 binds i16tof32;
 export fn f32(i: i32) -> f32 binds i32tof32;
 export fn f32(i: i64) -> f32 binds i64tof32;
 export fn f32(f: f32) -> f32 = f;
 export fn f32(f: f64) -> f32 binds f64tof32;
-export fn add(a: f32, b: f32) -> Result<f32> binds addf32;
-export fn add(a: Result<f32>, b: Result<f32>) -> Result<f32> binds addf32_result;
-export fn add(a: f32, b: Result<f32>) -> Result<f32> = add(a.ok, b);
-export fn add(a: Result<f32>, b: f32) -> Result<f32> = add(a, b.ok);
-export fn sub(a: f32, b: f32) -> Result<f32> binds subf32;
-export fn sub(a: Result<f32>, b: Result<f32>) -> Result<f32> binds subf32_result;
-export fn sub(a: f32, b: Result<f32>) -> Result<f32> = sub(a.ok, b);
-export fn sub(a: Result<f32>, b: f32) -> Result<f32> = sub(a, b.ok);
-export fn mul(a: f32, b: f32) -> Result<f32> binds mulf32;
-export fn mul(a: Result<f32>, b: Result<f32>) -> Result<f32> binds mulf32_result;
-export fn mul(a: f32, b: Result<f32>) -> Result<f32> = mul(a.ok, b);
-export fn mul(a: Result<f32>, b: f32) -> Result<f32> = mul(a, b.ok);
-export fn div(a: f32, b: f32) -> Result<f32> binds divf32;
-export fn div(a: Result<f32>, b: Result<f32>) -> Result<f32> binds divf32_result;
-export fn div(a: f32, b: Result<f32>) -> Result<f32> = div(a.ok, b);
-export fn div(a: Result<f32>, b: f32) -> Result<f32> = div(a, b.ok);
+export fn add(a: f32, b: f32) -> Result{f32} binds addf32;
+export fn add(a: Result{f32}, b: Result{f32}) -> Result{f32} binds addf32_result;
+export fn add(a: f32, b: Result{f32}) -> Result{f32} = add(a.ok, b);
+export fn add(a: Result{f32}, b: f32) -> Result{f32} = add(a, b.ok);
+export fn sub(a: f32, b: f32) -> Result{f32} binds subf32;
+export fn sub(a: Result{f32}, b: Result{f32}) -> Result{f32} binds subf32_result;
+export fn sub(a: f32, b: Result{f32}) -> Result{f32} = sub(a.ok, b);
+export fn sub(a: Result{f32}, b: f32) -> Result{f32} = sub(a, b.ok);
+export fn mul(a: f32, b: f32) -> Result{f32} binds mulf32;
+export fn mul(a: Result{f32}, b: Result{f32}) -> Result{f32} binds mulf32_result;
+export fn mul(a: f32, b: Result{f32}) -> Result{f32} = mul(a.ok, b);
+export fn mul(a: Result{f32}, b: f32) -> Result{f32} = mul(a, b.ok);
+export fn div(a: f32, b: f32) -> Result{f32} binds divf32;
+export fn div(a: Result{f32}, b: Result{f32}) -> Result{f32} binds divf32_result;
+export fn div(a: f32, b: Result{f32}) -> Result{f32} = div(a.ok, b);
+export fn div(a: Result{f32}, b: f32) -> Result{f32} = div(a, b.ok);
 export fn sqrt(f: f32) -> f32 binds sqrtf32;
-export fn sqrt(f: Result<f32>) -> Result<f32> binds sqrtf32_result;
-export fn pow(a: f32, b: f32) -> Result<f32> binds powf32;
-export fn pow(a: Result<f32>, b: Result<f32>) -> Result<f32> binds powf32_result;
-export fn pow(a: f32, b: Result<f32>) -> Result<f32> = pow(a.ok, b);
-export fn pow(a: Result<f32>, b: f32) -> Result<f32> = pow(a, b.ok);
+export fn sqrt(f: Result{f32}) -> Result{f32} binds sqrtf32_result;
+export fn pow(a: f32, b: f32) -> Result{f32} binds powf32;
+export fn pow(a: Result{f32}, b: Result{f32}) -> Result{f32} binds powf32_result;
+export fn pow(a: f32, b: Result{f32}) -> Result{f32} = pow(a.ok, b);
+export fn pow(a: Result{f32}, b: f32) -> Result{f32} = pow(a, b.ok);
 export fn min(a: f32, b: f32) -> f32 binds minf32;
-export fn min(a: Result<f32>, b: Result<f32>) -> Result<f32> binds minf32_result;
-export fn min(a: f32, b: Result<f32>) -> Result<f32> = min(a.ok, b);
-export fn min(a: Result<f32>, b: f32) -> Result<f32> = min(a, b.ok);
+export fn min(a: Result{f32}, b: Result{f32}) -> Result{f32} binds minf32_result;
+export fn min(a: f32, b: Result{f32}) -> Result{f32} = min(a.ok, b);
+export fn min(a: Result{f32}, b: f32) -> Result{f32} = min(a, b.ok);
 export fn max(a: f32, b: f32) -> f32 binds maxf32;
-export fn max(a: Result<f32>, b: Result<f32>) -> Result<f32> binds maxf32_result;
-export fn max(a: f32, b: Result<f32>) -> Result<f32> = max(a.ok, b);
-export fn max(a: Result<f32>, b: f32) -> Result<f32> = max(a, b.ok);
+export fn max(a: Result{f32}, b: Result{f32}) -> Result{f32} binds maxf32_result;
+export fn max(a: f32, b: Result{f32}) -> Result{f32} = max(a.ok, b);
+export fn max(a: Result{f32}, b: f32) -> Result{f32} = max(a, b.ok);
 
-export fn ok(i: f64) -> Result<f64> binds alan_ok;
-export fn getOr(r: Result<f64>, default: f64) -> f64 binds get_or_f64;
+export fn ok(i: f64) -> Result{f64} binds alan_ok;
+export fn getOr(r: Result{f64}, default: f64) -> f64 binds get_or_f64;
 export fn f64(i: i8) -> f64 binds i8tof64;
 export fn f64(i: i16) -> f64 binds i16tof64;
 export fn f64(i: i32) -> f64 binds i32tof64;
 export fn f64(i: i64) -> f64 binds i64tof64;
 export fn f64(f: f32) -> f64 binds f32tof64;
 export fn f64(f: f64) -> f64 = f;
-export fn add(a: f64, b: f64) -> Result<f64> binds addf64;
-export fn add(a: Result<f64>, b: Result<f64>) -> Result<f64> binds addf64_result;
-export fn add(a: f64, b: Result<f64>) -> Result<f64> = add(a.ok, b);
-export fn add(a: Result<f64>, b: f64) -> Result<f64> = add(a, b.ok);
-export fn sub(a: f64, b: f64) -> Result<f64> binds subf64;
-export fn sub(a: Result<f64>, b: Result<f64>) -> Result<f64> binds subf64_result;
-export fn sub(a: f64, b: Result<f64>) -> Result<f64> = sub(a.ok, b);
-export fn sub(a: Result<f64>, b: f64) -> Result<f64> = sub(a, b.ok);
-export fn mul(a: f64, b: f64) -> Result<f64> binds mulf64;
-export fn mul(a: Result<f64>, b: Result<f64>) -> Result<f64> binds mulf64_result;
-export fn mul(a: f64, b: Result<f64>) -> Result<f64> = mul(a.ok, b);
-export fn mul(a: Result<f64>, b: f64) -> Result<f64> = mul(a, b.ok);
-export fn div(a: f64, b: f64) -> Result<f64> binds divf64;
-export fn div(a: Result<f64>, b: Result<f64>) -> Result<f64> binds divf64_result;
-export fn div(a: f64, b: Result<f64>) -> Result<f64> = div(a.ok, b);
-export fn div(a: Result<f64>, b: f64) -> Result<f64> = div(a, b.ok);
+export fn add(a: f64, b: f64) -> Result{f64} binds addf64;
+export fn add(a: Result{f64}, b: Result{f64}) -> Result{f64} binds addf64_result;
+export fn add(a: f64, b: Result{f64}) -> Result{f64} = add(a.ok, b);
+export fn add(a: Result{f64}, b: f64) -> Result{f64} = add(a, b.ok);
+export fn sub(a: f64, b: f64) -> Result{f64} binds subf64;
+export fn sub(a: Result{f64}, b: Result{f64}) -> Result{f64} binds subf64_result;
+export fn sub(a: f64, b: Result{f64}) -> Result{f64} = sub(a.ok, b);
+export fn sub(a: Result{f64}, b: f64) -> Result{f64} = sub(a, b.ok);
+export fn mul(a: f64, b: f64) -> Result{f64} binds mulf64;
+export fn mul(a: Result{f64}, b: Result{f64}) -> Result{f64} binds mulf64_result;
+export fn mul(a: f64, b: Result{f64}) -> Result{f64} = mul(a.ok, b);
+export fn mul(a: Result{f64}, b: f64) -> Result{f64} = mul(a, b.ok);
+export fn div(a: f64, b: f64) -> Result{f64} binds divf64;
+export fn div(a: Result{f64}, b: Result{f64}) -> Result{f64} binds divf64_result;
+export fn div(a: f64, b: Result{f64}) -> Result{f64} = div(a.ok, b);
+export fn div(a: Result{f64}, b: f64) -> Result{f64} = div(a, b.ok);
 export fn sqrt(f: f64) -> f64 binds sqrtf64;
-export fn sqrt(f: Result<f64>) -> Result<f64> binds sqrtf64_result;
-export fn pow(a: f64, b: f64) -> Result<f64> binds powf64;
-export fn pow(a: Result<f64>, b: Result<f64>) -> Result<f64> binds powf64_result;
-export fn pow(a: f64, b: Result<f64>) -> Result<f64> = pow(a.ok, b);
-export fn pow(a: Result<f64>, b: f64) -> Result<f64> = pow(a, b.ok);
+export fn sqrt(f: Result{f64}) -> Result{f64} binds sqrtf64_result;
+export fn pow(a: f64, b: f64) -> Result{f64} binds powf64;
+export fn pow(a: Result{f64}, b: Result{f64}) -> Result{f64} binds powf64_result;
+export fn pow(a: f64, b: Result{f64}) -> Result{f64} = pow(a.ok, b);
+export fn pow(a: Result{f64}, b: f64) -> Result{f64} = pow(a, b.ok);
 export fn min(a: f64, b: f64) -> f64 binds minf64;
-export fn min(a: Result<f64>, b: Result<f64>) -> Result<f64> binds minf64_result;
-export fn min(a: f64, b: Result<f64>) -> Result<f64> = min(a.ok, b);
-export fn min(a: Result<f64>, b: f64) -> Result<f64> = min(a, b.ok);
+export fn min(a: Result{f64}, b: Result{f64}) -> Result{f64} binds minf64_result;
+export fn min(a: f64, b: Result{f64}) -> Result{f64} = min(a.ok, b);
+export fn min(a: Result{f64}, b: f64) -> Result{f64} = min(a, b.ok);
 export fn max(a: f64, b: f64) -> f64 binds maxf64;
-export fn max(a: Result<f64>, b: Result<f64>) -> Result<f64> binds maxf64_result;
-export fn max(a: f64, b: Result<f64>) -> Result<f64> = max(a.ok, b);
-export fn max(a: Result<f64>, b: f64) -> Result<f64> = max(a, b.ok);
+export fn max(a: Result{f64}, b: Result{f64}) -> Result{f64} binds maxf64_result;
+export fn max(a: f64, b: Result{f64}) -> Result{f64} = max(a.ok, b);
+export fn max(a: Result{f64}, b: f64) -> Result{f64} = max(a, b.ok);
 
 /// String related bindings
 
@@ -312,10 +371,10 @@ export fn ExitCode(e: i8) -> ExitCode binds to_exit_code_i8;
 export fn ExitCode(e: i16) -> ExitCode = ExitCode(e.i8);
 export fn ExitCode(e: i32) -> ExitCode = ExitCode(e.i8);
 export fn ExitCode(e: i64) -> ExitCode = ExitCode(e.i8);
-export fn getOrExit(a: Result<i8>) -> i8 binds get_or_exit; // TODO: Support real generics
-export fn getOrExit(a: Result<i16>) -> i16 binds get_or_exit; // TODO: Support real generics
-export fn getOrExit(a: Result<i32>) -> i32 binds get_or_exit; // TODO: Support real generics
-export fn getOrExit(a: Result<i64>) -> i64 binds get_or_exit; // TODO: Support real generics
+export fn getOrExit(a: Result{i8}) -> i8 binds get_or_exit; // TODO: Support real generics
+export fn getOrExit(a: Result{i16}) -> i16 binds get_or_exit; // TODO: Support real generics
+export fn getOrExit(a: Result{i32}) -> i32 binds get_or_exit; // TODO: Support real generics
+export fn getOrExit(a: Result{i64}) -> i64 binds get_or_exit; // TODO: Support real generics
 
 /// Stdout/stderr-related bindings
 
@@ -323,15 +382,15 @@ export fn print(str: string) binds println;
 export fn print(b: bool) binds println;
 export fn print(i: i8) binds println;
 export fn print(i: i16) binds println;
-export fn print(i: Result<i16>) binds println_result;
+export fn print(i: Result{i16}) binds println_result;
 export fn print(i: i32) binds println;
-export fn print(i: Result<i32>) binds println_result;
+export fn print(i: Result{i32}) binds println_result;
 export fn print(i: i64) binds println;
-export fn print(i: Result<i64>) binds println_result;
+export fn print(i: Result{i64}) binds println_result;
 export fn print(f: f32) binds println;
-export fn print(f: Result<f32>) binds println_result;
+export fn print(f: Result{f32}) binds println_result;
 export fn print(f: f64) binds println;
-export fn print(f: Result<f64>) binds println_result;
+export fn print(f: Result{f64}) binds println_result;
 
 /// Thread-related bindings
 
@@ -347,44 +406,44 @@ export fn print(d: Duration) binds print_duration;
 
 /// Vector-related bindings
 
-export type Vec<i64> binds Vec<i64>;
-export type Vec<Result<i64>> binds Vec<Result_i64>;
-export fn filled(i: i64, l: i64) -> Vec<i64> binds filled;
-export fn filled(r: Result<i64>, l: i64) -> Vec<Result<i64>> binds filled;
-export fn print(v: Vec<i64>) binds print_vec;
-export fn print(v: Vec<Result<i64>>) binds print_vec_result;
-export fn map(v: Vec<i64>, m: function) -> Vec<Result<i64>> binds map_onearg; // TODO: This is terrible
-export fn parmap(v: Vec<i64>, m: function) -> Vec<Result<i64>> binds parmap_onearg; // TODO: This is terrible
-export fn map(v: Vec<i32>, m: function) -> Vec<Result<i32>> binds map_onearg; // TODO: This is terrible
-export fn parmap(v: Vec<i32>, m: function) -> Vec<Result<i32>> binds parmap_onearg; // TODO: This is terrible
-export fn push(v: Vec<i64>, a: i64) binds push;
-export fn length(v: Vec<i64>) -> i64 binds vec_len;
-export fn length(v: Vec<i32>) -> i64 binds vec_len;
+export type Vec{i64} binds Vec<i64>;
+export type Vec{Result{i64}} binds Vec<Result_i64>;
+export fn filled(i: i64, l: i64) -> Vec{i64} binds filled;
+export fn filled(r: Result{i64}, l: i64) -> Vec{Result{i64}} binds filled;
+export fn print(v: Vec{i64}) binds print_vec;
+export fn print(v: Vec{Result{i64}}) binds print_vec_result;
+export fn map(v: Vec{i64}, m: function) -> Vec{Result{i64}} binds map_onearg; // TODO: This is terrible
+export fn parmap(v: Vec{i64}, m: function) -> Vec{Result{i64}} binds parmap_onearg; // TODO: This is terrible
+export fn map(v: Vec{i32}, m: function) -> Vec{Result{i32}} binds map_onearg; // TODO: This is terrible
+export fn parmap(v: Vec{i32}, m: function) -> Vec{Result{i32}} binds parmap_onearg; // TODO: This is terrible
+export fn push(v: Vec{i64}, a: i64) binds push;
+export fn length(v: Vec{i64}) -> i64 binds vec_len;
+export fn length(v: Vec{i32}) -> i64 binds vec_len;
 
 /// GPU-related bindings
 
 export type GPU binds GPU;
 export fn GPU() -> GPU binds GPU_new;
 export type BufferUsages binds wgpu::BufferUsages;
-export type Vec<i32> binds Vec<i32>;
+export type Vec{i32} binds Vec{i32};
 export type Buffer binds wgpu::Buffer;
-export type Vec<Buffer> binds Vec_Buffer;
-export type Vec<Vec<Buffer>> binds Vec_Vec_Buffer;
-export fn newVecBuffer() -> Vec<Buffer> binds Vec_Buffer_new;
-export fn newVecVecBuffer() -> Vec<Vec<Buffer>> binds Vec_Vec_Buffer_new;
-export fn push(v: Vec<Buffer>, a: Buffer) binds push;
-export fn push(v: Vec<Vec<Buffer>>, a: Vec<Buffer>) binds push;
-export fn filled(i: i32, l: i64) -> Vec<i32> binds filled;
-export fn print(v: Vec<i32>) binds print_vec;
-export fn createBuffer(g: GPU, usage: BufferUsages, vals: Vec<i32>) -> Buffer binds create_buffer_init;
+export type Vec{Buffer} binds Vec_Buffer;
+export type Vec{Vec{Buffer}} binds Vec_Vec_Buffer;
+export fn newVecBuffer() -> Vec{Buffer} binds Vec_Buffer_new;
+export fn newVecVecBuffer() -> Vec{Vec{Buffer}} binds Vec_Vec_Buffer_new;
+export fn push(v: Vec{Buffer}, a: Buffer) binds push;
+export fn push(v: Vec{Vec{Buffer}}, a: Vec{Buffer}) binds push;
+export fn filled(i: i32, l: i64) -> Vec{i32} binds filled;
+export fn print(v: Vec{i32}) binds print_vec;
+export fn createBuffer(g: GPU, usage: BufferUsages, vals: Vec{i32}) -> Buffer binds create_buffer_init;
 export fn createBuffer(g: GPU, usage: BufferUsages, size: i64) -> Buffer binds create_empty_buffer;
 export fn mapReadBuffer() -> BufferUsages binds map_read_buffer_type;
 export fn storageBuffer() -> BufferUsages binds storage_buffer_type;
 export type GPGPU binds GPGPU;
-export fn GPGPU(source: string, buffers: Vec<Vec<Buffer>>) -> GPGPU binds GPGPU_new;
+export fn GPGPU(source: string, buffers: Vec{Vec{Buffer}}) -> GPGPU binds GPGPU_new;
 export fn GPGPU(source: string, buffer: Buffer) -> GPGPU binds GPGPU_new_easy;
 export fn run(g: GPU, gg: GPGPU) binds gpu_run;
-export fn read(g: GPU, b: Buffer) -> Vec<i32> binds read_buffer; // TODO: Support other output types
+export fn read(g: GPU, b: Buffer) -> Vec{i32} binds read_buffer; // TODO: Support other output types
 
 /// Built-in operator definitions
 
@@ -400,9 +459,7 @@ export infix mod as % precedence 3;
 // export infix template as % precedence 3;
 export infix pow as ** precedence 4;
 export infix and as & precedence 3;
-export infix and as && precedence 3;
 export infix or as | precedence 2;
-export infix or as || precedence 2;
 export infix xor as ^ precedence 2;
 export prefix not as ! precedence 4;
 export infix nand as !& precedence 3;

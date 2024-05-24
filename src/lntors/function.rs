@@ -62,7 +62,7 @@ pub fn from_microstatement(
                             f.args
                                 .iter()
                                 .map(|(_, typename)| {
-                                    typename.clone().replace("<", "_").replace(">", "_")
+                                    typename.clone().replace("{", "_").replace("}", "_")
                                     /* TODO: Handle generic types better, also type inference */
                                 })
                                 .collect::<Vec<String>>()
@@ -141,7 +141,7 @@ pub fn from_microstatement(
                             f.args
                                 .iter()
                                 .map(|(_, typename)| {
-                                    typename.clone().replace("<", "_").replace(">", "_")
+                                    typename.clone().replace("{", "_").replace("}", "_")
                                     /* TODO: Handle generic types better, also type inference */
                                 })
                                 .collect::<Vec<String>>()

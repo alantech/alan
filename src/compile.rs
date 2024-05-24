@@ -851,12 +851,12 @@ test!(boolean_logic => r#"
       print(bool(''));
       print(bool('hi'));
 
-      print(true && true);
+      print(true & true);
       print(and(true, false));
       print(false & true);
       print(false.and(false));
 
-      print(true || true);
+      print(true | true);
       print(or(true, false));
       print(false | true);
       print(false.or(false));
@@ -1461,14 +1461,14 @@ test!(vec_construction => r#"
     stdout "[5, 5, 5, 5, 5]\n[3, 3, 3]\n";
 );
 test!(vec_map => r#"
-    fn double(x: i64) -> Result<i64> = x * 2;
+    fn double(x: i64) -> Result{i64} = x * 2;
     export fn main {
       filled(5, 5).map(double).print;
     }"#;
     stdout "[10, 10, 10, 10, 10]\n";
 );
 test!(vec_parmap => r#"
-    fn double(x: i64) -> Result<i64> = x * 2;
+    fn double(x: i64) -> Result{i64} = x * 2;
     export fn main {
       let v = filled(0, 0);
       v.push(1);
@@ -1482,7 +1482,7 @@ test!(vec_parmap => r#"
 );
 test_ignore!(array_literals => r#"
     export fn main {
-      const test3 = new Array<int64> [ 1, 2, 4, 8, 16, 32, 64 ];
+      const test3 = new Array{int64} [ 1, 2, 4, 8, 16, 32, 64 ];
       print(test3[0]);
       print(test3[1]);
       print(test3[2]);
@@ -1511,12 +1511,12 @@ test_ignore!(object_and_array_reassignment => r#"
     }
 
     export fn main {
-      let test = new Array<int64> [ 1, 2, 3 ];
+      let test = new Array{int64} [ 1, 2, 3 ];
       print(test[0]);
       test.set(0, 0);
       print(test[0]);
 
-      let test2 = new Array<Foo> [
+      let test2 = new Array{Foo} [
         new Foo {
           bar: true
         },
@@ -1584,7 +1584,7 @@ test_ignore!(array_accessor_and_length => r#"
 test_ignore!(array_literal_syntax => r#"
     export fn main {
       print('Testing...');
-      const test = new Array<int64> [ 1, 2, 3 ];
+      const test = new Array{int64} [ 1, 2, 3 ];
       print(test[0]);
       print(test[1]);
       print(test[2]);
@@ -1605,7 +1605,7 @@ test_ignore!(array_literal_syntax => r#"
 test_ignore!(array_mutable_push_pop => r#"
     export fn main {
       print('Testing...');
-      let test = new Array<int64> [];
+      let test = new Array{int64} [];
       test.push(1);
       test.push(2);
       test.push(3);
@@ -1629,8 +1629,8 @@ cannot pop empty array
 );
 test_ignore!(array_length_index_has_join => r#"
     export fn main {
-      const test = new Array<int64> [ 1, 1, 2, 3, 5, 8 ];
-      const test2 = new Array<string> [ 'Hello', 'World!' ];
+      const test = new Array{int64} [ 1, 1, 2, 3, 5, 8 ];
+      const test2 = new Array{string} [ 'Hello', 'World!' ];
       print('has test');
       print(test.has(3));
       print(test.has(4));
@@ -1665,9 +1665,9 @@ Hello, World!
 test_ignore!(array_map => r#"
     export fn main {
       const count = [1, 2, 3, 4, 5]; // Ah, ah, ahh!
-      const byTwos = count.map(fn (n: int64) -> Result<int64> = n * 2);
+      const byTwos = count.map(fn (n: int64) -> Result{int64} = n * 2);
       count.map(fn (n: int64) = string(n)).join(', ').print;
-      byTwos.map(fn (n: Result<int64>) = string(n)).join(', ').print;
+      byTwos.map(fn (n: Result{int64}) = string(n)).join(', ').print;
     }"#;
     stdout "1, 2, 3, 4, 5\n2, 4, 6, 8, 10\n";
 );
@@ -1800,7 +1800,7 @@ test_ignore!(basic_hashmap => r#"
       const test = newHashMap('foo', 1);
       test.set('bar', 2);
       test.set('baz', 99);
-      print(test.keyVal.map(fn (n: KeyVal<string, int64>) -> string {
+      print(test.keyVal.map(fn (n: KeyVal{string, int64}) -> string {
         return 'key: ' + n.key + \"\\nval: \" + string(n.val);
       }).join(\"\\n\"));
       print(test.keys.join(', '));
@@ -1821,7 +1821,7 @@ foo, bar, baz
 "#;
 );
 test_ignore!(keyval_to_hashmap => r#"
-    fn kv(k: any, v: anythingElse) = new KeyVal<any, anythingElse> {
+    fn kv(k: any, v: anythingElse) = new KeyVal{any, anythingElse} {
       key: k,
       val: v
     }
@@ -1829,7 +1829,7 @@ test_ignore!(keyval_to_hashmap => r#"
     export fn main {
       const kva = [ kv(1, 'foo'), kv(2, 'bar'), kv(3, 'baz') ];
       const hm = kva.toHashMap;
-      print(hm.keyVal.map(fn (n: KeyVal<int64, string>) -> string {
+      print(hm.keyVal.map(fn (n: KeyVal{int64, string}) -> string {
         return 'key: ' + string(n.key) + \"\\nval: \" + n.val;
       }).join(\"\\n\"));
       print(hm.get(1));
@@ -1857,14 +1857,14 @@ test_ignore!(hashmap_ops => r#"
     from @std/app import start, print, exit
 
     on start {
-      const test = new Map<string, int64> {
+      const test = new Map{string, int64} {
         'foo': 1
         'bar': 2
         'baz': 99
       }
 
       print('keyVal test')
-      test.keyVal.each(fn (n: KeyVal<string, int64>) {
+      test.keyVal.each(fn (n: KeyVal{string, int64}) {
         print('key: ' + n.key)
         print('val: ' + n.value.string)
       })
@@ -1906,28 +1906,28 @@ length test
 // Generics
 
 test_ignore!(generics => r#"
-    type box<V> {
+    type box{V} {
       set: bool,
       val: V
     }
 
     export fn main {
-      let int8Box = new box<int8> {
+      let int8Box = new box{int8} {
         val: 8.i8,
         set: true
       };
       print(int8Box.val);
       print(int8Box.set);
 
-      let stringBox = new box<string> {
+      let stringBox = new box{string} {
         val: 'hello, generics!',
         set: true
       };
       print(stringBox.val);
       print(stringBox.set);
 
-      const stringBoxBox = new box<box<string>> {
-        val: new box<string> {
+      const stringBoxBox = new box{box{string}} {
+        val: new box{string} {
           val: 'hello, nested generics!',
           set: true
         },
@@ -1947,13 +1947,13 @@ hello, nested generics!
 "#;
 );
 test_ignore!(invalid_generics => r#"
-    type box<V> {
+    type box{V} {
       set: bool,
       val: V
     }
 
     export fn main {
-      let stringBox = new box<string> {
+      let stringBox = new box{string} {
         set: true,
         val: 'str'
       };
@@ -2117,7 +2117,7 @@ test_ignore!(basic_interfaces => r#"
           };
         }
 
-        export fn makeTime(hm: Array<int64>, second: int64) -> Time {
+        export fn makeTime(hm: Array{int64}, second: int64) -> Time {
           return new Time {
             hour: hm[0].i8,
             minute: hm[1].i8,
@@ -2149,7 +2149,7 @@ test_ignore!(basic_interfaces => r#"
           };
         }
 
-        export fn makeDateTimeTimezone(dt: DateTime, timezone: Array<int64>) -> DateTime {
+        export fn makeDateTimeTimezone(dt: DateTime, timezone: Array{int64}) -> DateTime {
           return new DateTime {
             date: dt.date,
             time: dt.time,
@@ -2171,7 +2171,7 @@ test_ignore!(basic_interfaces => r#"
           };
         }
 
-        export fn makeDateTimeTimezoneRev(dt: DateTime, timezone: Array<int64>) -> DateTime {
+        export fn makeDateTimeTimezoneRev(dt: DateTime, timezone: Array{int64}) -> DateTime {
           return new Datetime {
             date: dt.date,
             time: dt.time,
@@ -2185,7 +2185,7 @@ test_ignore!(basic_interfaces => r#"
         export fn print(dt: DateTime) {
           // TODO: Work on formatting stuff
           const timezoneOffsetSymbol = dt.timezone.hour < toInt8(0) ? \"-\" : \"+\";
-          let str = (new Array<string> [
+          let str = (new Array{string} [
             string(dt.date.year), \"-\", string(dt.date.month), \"-\", string(dt.date.day), \"@\",
             string(dt.time.hour), \":\", string(dt.time.minute), \":\", string(dt.time.second),
             timezoneOffsetSymbol, sabs(dt.timezone.hour).string, \":\", string(dt.timezone.minute)
@@ -2384,19 +2384,19 @@ string
 // Types
 
 test_ignore!(user_types_and_generics => r#"
-    type foo<A, B> {
+    type foo{A, B} {
       bar: A,
       baz: B
     }
 
-    type foo2 = foo<int64, float64>
+    type foo2 = foo{int64, float64}
 
     export fn main {
-      let a = new foo<string, int64> {
+      let a = new foo{string, int64} {
         bar: 'bar',
         baz: 0
       };
-      let b = new foo<int64, bool> {
+      let b = new foo{int64, bool} {
         bar: 0,
         baz: true
       };
@@ -2404,7 +2404,7 @@ test_ignore!(user_types_and_generics => r#"
         bar: 0,
         baz: 1.23
       };
-      let d = new foo<int64, float64> {
+      let d = new foo{int64, float64} {
         bar: 1,
         baz: 3.14
       };
@@ -2535,7 +2535,7 @@ test_ignore!(cross_type_comparisons => r#"
     }"#;
     stderr r#"Cannot resolve operators with remaining statement
 true == 1
-<bool> == <int64>
+{bool} == {int64}
 "#;
 );
 test_ignore!(unreachable_code => r#"
@@ -3438,7 +3438,7 @@ test_ignore!(seq_recurse => r#"
     from @std/seq import seq, Self, recurse
 
     export fn main {
-      print(seq(100).recurse(fn fibonacci(self: Self, i: int64) -> Result<int64> {
+      print(seq(100).recurse(fn fibonacci(self: Self, i: int64) -> Result{int64} {
         if i < 2 {
           return ok(1);
         } else {
@@ -3462,7 +3462,7 @@ test_ignore!(seq_no_op_one_liner_regression_test => r#"
 
     fn doNothing(x: int) : int = x;
 
-    fn doNothingRec(x: int) : int = seq(x).recurse(fn (self: Self, x: int) : Result<int> {
+    fn doNothingRec(x: int) : int = seq(x).recurse(fn (self: Self, x: int) : Result{int} {
         return ok(x);
     }, x) || 0;
 
@@ -3480,7 +3480,7 @@ test_ignore!(seq_no_op_one_liner_regression_test => r#"
 test_ignore!(seq_recurse_decrement_regression_test => r#"
     from @std/seq import seq, Self, recurse
 
-    fn triangularRec(x: int) : int = seq(x + 1 || 0).recurse(fn (self: Self, x: int) : Result<int> {
+    fn triangularRec(x: int) : int = seq(x + 1 || 0).recurse(fn (self: Self, x: int) : Result{int} {
       if x == 0 {
         return ok(x);
       } else {
@@ -3507,7 +3507,7 @@ test_ignore!(tree_construction_and_access => r#"
 
       print(myTree.getRootNode || 'wrong');
       print(bayNode.getParent || 'wrong');
-      print(myTree.getChildren.map(fn (c: Node<string>) -> string = c || 'wrong').join(', '));
+      print(myTree.getChildren.map(fn (c: Node{string}) -> string = c || 'wrong').join(', '));
     }"#;
     stdout "foo\nbar\nbar, baz\n";
 );
@@ -3538,22 +3538,22 @@ test_ignore!(tree_every_find_some_reduce_prune => r#"
       const bazNode = myTree.addChild('baz');
       const bayNode = barNode.addChild('bay');
 
-      print(myTree.every(fn (c: Node<string>) -> bool = (c || 'wrong').length == 3));
-      print(myTree.some(fn (c: Node<string>) -> bool = (c || 'wrong').length == 1));
-      print(myTree.find(fn (c: Node<string>) -> bool = (c || 'wrong') == 'bay').getOr('wrong'));
-      print(myTree.find(fn (c: Node<string>) -> bool = (c || 'wrong') == 'asf').getOr('wrong'));
+      print(myTree.every(fn (c: Node{string}) -> bool = (c || 'wrong').length == 3));
+      print(myTree.some(fn (c: Node{string}) -> bool = (c || 'wrong').length == 1));
+      print(myTree.find(fn (c: Node{string}) -> bool = (c || 'wrong') == 'bay').getOr('wrong'));
+      print(myTree.find(fn (c: Node{string}) -> bool = (c || 'wrong') == 'asf').getOr('wrong'));
 
       print(myTree.length);
-      myTree.getChildren.eachLin(fn (c: Node<string>) {
+      myTree.getChildren.eachLin(fn (c: Node{string}) {
         const n = c || 'wrong';
         if n == 'bar' {
           c.prune;
         }
       });
-      print(myTree.getChildren.map(fn (c: Node<string>) -> string = c || 'wrong').join(', '));
+      print(myTree.getChildren.map(fn (c: Node{string}) -> string = c || 'wrong').join(', '));
       print(myTree.length);
 
-      myTree.reduce(fn (acc: int, i: Node<string>) -> int = (i || 'wrong').length + acc || 0, 0).print;
+      myTree.reduce(fn (acc: int, i: Node{string}) -> int = (i || 'wrong').length + acc || 0, 0).print;
     }"#;
     stdout r#"true
 false
@@ -3722,11 +3722,11 @@ Describe "@std/tcp"
           tunnel.ready;
         }
 
-        on chunk fn (ctx: TcpContext<TcpChannel>) {
+        on chunk fn (ctx: TcpContext{TcpChannel}) {
           ctx.context.write(ctx.channel.read);
         }
 
-        on tcpClose fn (ctx: TcpContext<TcpChannel>) {
+        on tcpClose fn (ctx: TcpContext{TcpChannel}) {
           ctx.context.close;
         }
       "
