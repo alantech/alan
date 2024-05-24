@@ -153,6 +153,12 @@ export fn max(a: i8, b: i8) -> i8 binds maxi8;
 export fn max(a: Result{i8}, b: Result{i8}) -> Result{i8} binds maxi8_result;
 export fn max(a: i8, b: Result{i8}) -> Result{i8} = max(a.ok, b);
 export fn max(a: Result{i8}, b: i8) -> Result{i8} = max(a, b.ok);
+export fn eq(a: i8, b: i8) -> bool binds eqi8;
+export fn neq(a: i8, b: i8) -> bool binds neqi8;
+export fn lt(a: i8, b: i8) -> bool binds lti8;
+export fn lte(a: i8, b: i8) -> bool binds ltei8;
+export fn gt(a: i8, b: i8) -> bool binds gti8;
+export fn gte(a: i8, b: i8) -> bool binds gtei8;
 
 export fn ok(i: i16) -> Result{i16} binds alan_ok;
 export fn getOr(r: Result{i16}, default: i16) -> i16 binds get_or_i16;
@@ -194,6 +200,12 @@ export fn max(a: i16, b: i16) -> i16 binds maxi16;
 export fn max(a: Result{i16}, b: Result{i16}) -> Result{i16} binds maxi16_result;
 export fn max(a: i16, b: Result{i16}) -> Result{i16} = max(a.ok, b);
 export fn max(a: Result{i16}, b: i16) -> Result{i16} = max(a, b.ok);
+export fn eq(a: i16, b: i16) -> bool binds eqi16;
+export fn neq(a: i16, b: i16) -> bool binds neqi16;
+export fn lt(a: i16, b: i16) -> bool binds lti16;
+export fn lte(a: i16, b: i16) -> bool binds ltei16;
+export fn gt(a: i16, b: i16) -> bool binds gti16;
+export fn gte(a: i16, b: i16) -> bool binds gtei16;
 
 export fn ok(i: i32) -> Result{i32} binds alan_ok;
 export fn getOr(r: Result{i32}, default: i32) -> i32 binds get_or_i32;
@@ -235,6 +247,12 @@ export fn max(a: i32, b: i32) -> i32 binds maxi32;
 export fn max(a: Result{i32}, b: Result{i32}) -> Result{i32} binds maxi32_result;
 export fn max(a: i32, b: Result{i32}) -> Result{i32} = max(a.ok, b);
 export fn max(a: Result{i32}, b: i32) -> Result{i32} = max(a, b.ok);
+export fn eq(a: i32, b: i32) -> bool binds eqi32;
+export fn neq(a: i32, b: i32) -> bool binds neqi32;
+export fn lt(a: i32, b: i32) -> bool binds lti32;
+export fn lte(a: i32, b: i32) -> bool binds ltei32;
+export fn gt(a: i32, b: i32) -> bool binds gti32;
+export fn gte(a: i32, b: i32) -> bool binds gtei32;
 
 export fn ok(i: i64) -> Result{i64} binds alan_ok;
 export fn getOr(r: Result{i64}, default: i64) -> i64 binds get_or_i64;
@@ -276,6 +294,12 @@ export fn max(a: i64, b: i64) -> i64 binds maxi64;
 export fn max(a: Result{i64}, b: Result{i64}) -> Result{i64} binds maxi64_result;
 export fn max(a: i64, b: Result{i64}) -> Result{i64} = max(a.ok, b);
 export fn max(a: Result{i64}, b: i64) -> Result{i64} = max(a, b.ok);
+export fn eq(a: i64, b: i64) -> bool binds eqi64;
+export fn neq(a: i64, b: i64) -> bool binds neqi64;
+export fn lt(a: i64, b: i64) -> bool binds lti64;
+export fn lte(a: i64, b: i64) -> bool binds ltei64;
+export fn gt(a: i64, b: i64) -> bool binds gti64;
+export fn gte(a: i64, b: i64) -> bool binds gtei64;
 
 /// Float-related functions and function bindings
 export fn ok(i: f32) -> Result{f32} binds alan_ok;
@@ -316,6 +340,12 @@ export fn max(a: f32, b: f32) -> f32 binds maxf32;
 export fn max(a: Result{f32}, b: Result{f32}) -> Result{f32} binds maxf32_result;
 export fn max(a: f32, b: Result{f32}) -> Result{f32} = max(a.ok, b);
 export fn max(a: Result{f32}, b: f32) -> Result{f32} = max(a, b.ok);
+export fn eq(a: f32, b: f32) -> bool binds eqf32;
+export fn neq(a: f32, b: f32) -> bool binds neqf32;
+export fn lt(a: f32, b: f32) -> bool binds ltf32;
+export fn lte(a: f32, b: f32) -> bool binds ltef32;
+export fn gt(a: f32, b: f32) -> bool binds gtf32;
+export fn gte(a: f32, b: f32) -> bool binds gtef32;
 
 export fn ok(i: f64) -> Result{f64} binds alan_ok;
 export fn getOr(r: Result{f64}, default: f64) -> f64 binds get_or_f64;
@@ -355,9 +385,21 @@ export fn max(a: f64, b: f64) -> f64 binds maxf64;
 export fn max(a: Result{f64}, b: Result{f64}) -> Result{f64} binds maxf64_result;
 export fn max(a: f64, b: Result{f64}) -> Result{f64} = max(a.ok, b);
 export fn max(a: Result{f64}, b: f64) -> Result{f64} = max(a, b.ok);
+export fn eq(a: f64, b: f64) -> bool binds eqf64;
+export fn neq(a: f64, b: f64) -> bool binds neqf64;
+export fn lt(a: f64, b: f64) -> bool binds ltf64;
+export fn lte(a: f64, b: f64) -> bool binds ltef64;
+export fn gt(a: f64, b: f64) -> bool binds gtf64;
+export fn gte(a: f64, b: f64) -> bool binds gtef64;
 
 /// String related bindings
 export fn concat(a: string, b: string) -> string binds string_concat;
+export fn eq(a: string, b: string) -> bool binds eqstring;
+export fn neq(a: string, b: string) -> bool binds neqstring;
+export fn lt(a: string, b: string) -> bool binds ltstring;
+export fn lte(a: string, b: string) -> bool binds ltestring;
+export fn gt(a: string, b: string) -> bool binds gtstring;
+export fn gte(a: string, b: string) -> bool binds gtestring;
 
 /// Boolean related bindings
 export fn bool(i: i8) -> bool binds i8tobool;
@@ -375,6 +417,8 @@ export fn not(a: bool) -> bool binds not;
 export fn nand(a: bool, b: bool) -> bool binds nand;
 export fn nor(a: bool, b: bool) -> bool binds nor;
 export fn xnor(a: bool, b: bool) -> bool binds xnor;
+export fn eq(a: bool, b: bool) -> bool binds eqbool;
+export fn neq(a: bool, b: bool) -> bool binds neqbool;
 
 /// Process exit-related bindings
 export fn ExitCode(e: i8) -> ExitCode binds to_exit_code_i8;
@@ -470,3 +514,9 @@ export prefix not as ! precedence 4;
 export infix nand as !& precedence 3;
 export infix nor as !| precedence 2;
 export infix xnor as !^ precedence 2;
+export infix eq as == precedence 1;
+export infix neq as != precedence 1;
+export infix lt as < precedence 1;
+export infix lte as <= precedence 1;
+export infix gt as > precedence 1;
+export infix gte as >= precedence 1;

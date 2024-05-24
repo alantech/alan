@@ -239,6 +239,36 @@ fn maxi8_result(a: &Result<i8, AlanError>, b: &Result<i8, AlanError>) -> Result<
     }
 }
 
+/// `eqi8` compares two i8s and returns if they are equal
+fn eqi8(a: &i8, b: &i8) -> bool {
+  *a == *b
+}
+
+/// `neqi8` compares two i8s and returns if they are not equal
+fn neqi8(a: &i8, b: &i8) -> bool {
+  *a != *b
+}
+
+/// `lti8` compares two i8s and returns if the first is smaller than the second
+fn lti8(a: &i8, b: &i8) -> bool {
+  *a < *b
+}
+
+/// `ltei8` compares two i8s and returns if the first is smaller than or equal to the second
+fn ltei8(a: &i8, b: &i8) -> bool {
+  *a <= *b
+}
+
+/// `gti8` compares two i8s and returns if the first is larger than the second
+fn gti8(a: &i8, b: &i8) -> bool {
+  *a > *b
+}
+
+/// `gtei8` compares two i8s and returns if the first is larger than or equal to the second
+fn gtei8(a: &i8, b: &i8) -> bool {
+  *a >= *b
+}
+
 /// `f64toi16` casts an f64 to an i16.
 fn f64toi16(f: &f64) -> i16 {
     *f as i16
@@ -436,6 +466,36 @@ fn maxi16_result(a: &Result<i16, AlanError>, b: &Result<i16, AlanError>) -> Resu
             Ok(b) => if a > b { Ok(*a) } else { Ok(*b) }
         }
     }
+}
+
+/// `eqi16` compares two i16s and returns if they are equal
+fn eqi16(a: &i16, b: &i16) -> bool {
+ *a == *b
+}
+
+/// `neqi16` compares two i16s and returns if they are not equal
+fn neqi16(a: &i16, b: &i16) -> bool {
+ *a != *b
+}
+
+/// `lti16` compares two i16s and returns if the first is smaller than the second
+fn lti16(a: &i16, b: &i16) -> bool {
+  *a < *b
+}
+
+/// `ltei16` compares two i16s and returns if the first is smaller than or equal to the second
+fn ltei16(a: &i16, b: &i16) -> bool {
+  *a <= *b
+}
+
+/// `gti16` compares two i16s and returns if the first is larger than the second
+fn gti16(a: &i16, b: &i16) -> bool {
+  *a > *b
+}
+
+/// `gtei16` compares two i16s and returns if the first is larger than or equal to the second
+fn gtei16(a: &i16, b: &i16) -> bool {
+  *a >= *b
 }
 
 /// `get_or_i32` unwraps a Result<i32, AlanError> with the default value if it is an error
@@ -637,6 +697,36 @@ fn maxi32_result(a: &Result<i32, AlanError>, b: &Result<i32, AlanError>) -> Resu
     }
 }
 
+/// `eqi32` compares two i32s and returns if they are equal
+fn eqi32(a: &i32, b: &i32) -> bool {
+  *a == *b
+}
+
+/// `neqi32` compares two i32s and returns if they are not equal
+fn neqi32(a: &i32, b: &i32) -> bool {
+  *a != *b
+}
+
+/// `lti32` compares two i32s and returns if the first is smaller than the second
+fn lti32(a: &i32, b: &i32) -> bool {
+  *a < *b
+}
+
+/// `ltei32` compares two i32s and returns if the first is smaller than or equal to the second
+fn ltei32(a: &i32, b: &i32) -> bool {
+  *a <= *b
+}
+
+/// `gti32` compares two i32s and returns if the first is larger than the second
+fn gti32(a: &i32, b: &i32) -> bool {
+  *a > *b
+}
+
+/// `gtei32` compares two i32s and returns if the first is larger than or equal to the second
+fn gtei32(a: &i32, b: &i32) -> bool {
+  *a >= *b
+}
+
 /// `f64toi64` casts an f64 to an i64.
 fn f64toi64(f: &f64) -> i64 {
     *f as i64
@@ -834,6 +924,36 @@ fn maxi64_result(a: &Result<i64, AlanError>, b: &Result<i64, AlanError>) -> Resu
             Ok(b) => if a > b { Ok(*a) } else { Ok(*b) }
         }
     }
+}
+
+/// `eqi64` compares two i64s and returns if they are equal
+fn eqi64(a: &i64, b: &i64) -> bool {
+  *a == *b
+}
+
+/// `neqi64` compares two i64s and returns if they are not equal
+fn neqi64(a: &i64, b: &i64) -> bool {
+  *a != *b
+}
+
+/// `lti64` compares two i64s and returns if the first is smaller than the second
+fn lti64(a: &i64, b: &i64) -> bool {
+  *a < *b
+}
+
+/// `ltei64` compares two i64s and returns if the first is smaller than or equal to the second
+fn ltei64(a: &i64, b: &i64) -> bool {
+  *a <= *b
+}
+
+/// `gti64` compares two i64s and returns if the first is larger than the second
+fn gti64(a: &i64, b: &i64) -> bool {
+  *a > *b
+}
+
+/// `gtei64` compares two i64s and returns if the first is larger than or equal to the second
+fn gtei64(a: &i64, b: &i64) -> bool {
+  *a >= *b
 }
 
 /// `get_or_f32` unwraps a Result<f32, AlanError> with the default value if it is an error
@@ -1074,6 +1194,36 @@ fn maxf32_result(a: &Result<f32, AlanError>, b: &Result<f32, AlanError>) -> Resu
     }
 }
 
+/// `eqf32` compares two f32s and returns if they are equal
+fn eqf32(a: &f32, b: &f32) -> bool {
+  *a == *b
+}
+
+/// `neqf32` compares two f32s and returns if they are not equal
+fn neqf32(a: &f32, b: &f32) -> bool {
+  *a != *b
+}
+
+/// `ltf32` compares two f32s and returns if the first is smaller than the second
+fn ltf32(a: &f32, b: &f32) -> bool {
+  *a < *b
+}
+
+/// `ltef32` compares two f32s and returns if the first is smaller than or equal to the second
+fn ltef32(a: &f32, b: &f32) -> bool {
+  *a <= *b
+}
+
+/// `gtf32` compares two f32s and returns if the first is larger than the second
+fn gtf32(a: &f32, b: &f32) -> bool {
+  *a > *b
+}
+
+/// `gtef32` compares two f32s and returns if the first is larger than or equal to the second
+fn gtef32(a: &f32, b: &f32) -> bool {
+  *a >= *b
+}
+
 /// `f32tof64` casts an f32 to an f64.
 fn f32tof64(f: &f32) -> f64 {
     *f as f64
@@ -1312,6 +1462,36 @@ fn maxf64_result(a: &Result<f64, AlanError>, b: &Result<f64, AlanError>) -> Resu
     }
 }
 
+/// `eqf64` compares two f64s and returns if they are equal
+fn eqf64(a: &f64, b: &f64) -> bool {
+  *a == *b
+}
+
+/// `neqf64` compares two f64s and returns if they are not equal
+fn neqf64(a: &f64, b: &f64) -> bool {
+  *a != *b
+}
+
+/// `ltf64` compares two f64s and returns if the first is smaller than the second
+fn ltf64(a: &f64, b: &f64) -> bool {
+  *a < *b
+}
+
+/// `ltef64` compares two f64s and returns if the first is smaller than or equal to the second
+fn ltef64(a: &f64, b: &f64) -> bool {
+  *a <= *b
+}
+
+/// `gtf64` compares two f64s and returns if the first is larger than the second
+fn gtf64(a: &f64, b: &f64) -> bool {
+  *a > *b
+}
+
+/// `gtef64` compares two f64s and returns if the first is larger than or equal to the second
+fn gtef64(a: &f64, b: &f64) -> bool {
+  *a >= *b
+}
+
 /// `get_or_exit` is basically an alias to `unwrap`, but as a function instead of a method
 fn get_or_exit<A: Clone>(a: &Result<A, AlanError>) -> A {
     match a {
@@ -1323,6 +1503,36 @@ fn get_or_exit<A: Clone>(a: &Result<A, AlanError>) -> A {
 /// `string_concat` is a simple function that concatenates two strings
 fn string_concat(a: &String, b: &String) -> String {
     format!("{}{}", a, b).to_string()
+}
+
+/// `eqstring` compares two string and returns if they are equal
+fn eqstring(a: &String, b: &String) -> bool {
+  *a == *b
+}
+
+/// `neqstring` compares two string and returns if they are not equal
+fn neqstring(a: &String, b: &String) -> bool {
+  *a != *b
+}
+
+/// `ltstring` compares two strings and returns if the first is smaller than the second
+fn ltstring(a: &String, b: &String) -> bool {
+  *a < *b
+}
+
+/// `ltestring` compares two strings and returns if the first is smaller than or equal to the second
+fn ltestring(a: &String, b: &String) -> bool {
+  *a <= *b
+}
+
+/// `gtstring` compares two strings and returns if the first is larger than the second
+fn gtstring(a: &String, b: &String) -> bool {
+  *a > *b
+}
+
+/// `gtestring` compares two strings and returns if the first is larger than or equal to the second
+fn gtestring(a: &String, b: &String) -> bool {
+  *a >= *b
 }
 
 /// `i8tobool` converts an integer into a boolean
@@ -1394,6 +1604,16 @@ fn nor(a: &bool, b: &bool) -> bool {
 /// `xnor` performs a boolean `xnor` (aka `eq`)
 fn xnor(a: &bool, b: &bool) -> bool {
     *a == *b
+}
+
+/// `eqbool` compares two bools and returns if they are equal
+fn eqbool(a: &bool, b: &bool) -> bool {
+  *a == *b
+}
+
+/// `neqbool` compares two bools and returns if they are not equal
+fn neqbool(a: &bool, b: &bool) -> bool {
+  *a != *b
 }
 
 /// `println` is a simple function that prints basically anything
