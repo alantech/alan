@@ -206,7 +206,7 @@ impl Scope {
         for i in ast.imports.iter() {
             p = Import::from_ast(p, path.clone(), &mut s, i)?;
         }
-        for element in ast.body.iter() {
+        for (i, element) in ast.body.iter().enumerate() {
             match element {
                 parse::RootElements::Types(t) => Type::from_ast(&mut s, t, false)?,
                 parse::RootElements::Functions(f) => Function::from_ast(&mut s, &p, f, false)?,
@@ -241,8 +241,11 @@ impl Scope {
                         // to construct their own types.
                         if path == "@root" {
                             match c.name.as_str() {
-                                "Type" | "Int" | "Float" | "Bool" | "String" | "Function"
-                                | "Tuple" | "Label" | "Field" | "Either" => { /* Do nothing */ }
+                                "Type" | "Generic" | "Bound" | "BoundGeneric" | "Int" | "Float"
+                                | "Bool" | "String" | "Group" | "Function" | "Tuple" | "Field"
+                                | "Either" | "Buffer" | "Array" | "Fail" | "Add" | "Sub" | "Mul" | "Div" | "Mod"
+                                | "Pow" | "Len" | "Size" | "FileStr" | "Env" | "EnvExists" | "If" | "And" | "Or" | "Xor" | "Not"
+                                | "Nand" | "Nor" | "Xnor" | "Eq" | "Neq" | "Lt" | "Lte" | "Gt" | "Gte" => { /* Do nothing */ }
                                 unknown => {
                                     return Err(format!("Unknown ctype {} defined in root scope. There's something wrong with the compiler.", unknown).into());
                                 }
@@ -253,7 +256,7 @@ impl Scope {
                             );
                         }
                     }
-                    e => println!("TODO: Not yet supported export syntax: {:?}", e),
+                    e => println!("TODO: Not yet supported export syntax: {:?}\nLast good parsed lines:\n{:?}\n{:?}", e, ast.body[i - 2], ast.body[i - 1]),
                 },
                 parse::RootElements::Whitespace(_) => { /* Do nothing */ }
                 parse::RootElements::Interfaces(_) => {
@@ -266,11 +269,30 @@ impl Scope {
 }
 
 #[derive(Debug)]
+pub enum CType {
+    Type(String, Box<CType>),
+    Generic(String, Vec<String>, Vec<parse::WithTypeOperators>),
+    Bound(String, String),
+    BoundGeneric(String, Vec<String>, String),
+    Int(i128),
+    Float(f64),
+    Bool(bool),
+    TString(String),
+    Group(Box<CType>),
+    Function(Box<CType>, Box<CType>),
+    Tuple(Vec<CType>),
+    Field(String, Box<CType>),
+    Either(Vec<CType>),
+    Buffer(Box<CType>, usize),
+    Array(Box<CType>),
+}
+
+#[derive(Debug)]
 pub enum ImportType {
     // For both of these, the first string is the original name, and the second is the rename.
     // To simplify later logic, there's always a rename even if the user didn't rename anything, it
     // will just make a copy of the module or field name in those cases
-    Standard((String, String)),
+    Standard(String, String),
     Fields(Vec<(String, String)>),
 }
 
@@ -307,7 +329,7 @@ impl Import {
                 };
                 let i = Import {
                     source_scope_name: ln_file.clone(),
-                    import_type: ImportType::Standard((ln_file.clone(), import_name)),
+                    import_type: ImportType::Standard(ln_file.clone(), import_name),
                 };
                 scope.imports.insert(ln_file, i);
                 Ok(p)
@@ -376,15 +398,7 @@ impl Type {
                         .join(""),
                 ), // TODO: Redo this
                 parse::TypeDef::TypeBind(bind) => TypeType::Bind(
-                    format!(
-                        "{}{}",
-                        bind.rustpath.join("::"),
-                        match &bind.opttypegenerics {
-                            None => "".to_string(),
-                            Some(generics) => generics.to_string(),
-                        }
-                    )
-                    .to_string(),
+                    bind.othertype.clone(),
                 ),
             },
         };

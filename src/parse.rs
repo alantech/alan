@@ -358,8 +358,6 @@ build!(openparen, token!("("));
 build!(closeparen, token!(")"));
 build!(opencurly, token!("{"));
 build!(closecurly, token!("}"));
-build!(opencaret, token!("<"));
-build!(closecaret, token!(">"));
 build!(openarr, token!("["));
 build!(closearr, token!("]"));
 build!(comma, token!(","));
@@ -427,54 +425,40 @@ build!(
     or!(
         and!(
             one_or_more!(or!(
-                token!("+"),
-                token!("-"),
-                token!("/"),
-                token!("\\"),
-                token!("*"),
-                token!("^"),
-                token!("."),
-                token!(","),
-                token!("~"),
-                token!("`"),
-                token!("!"),
-                token!("@"),
-                token!("#"),
-                token!("$"),
-                token!("%"),
-                token!("&"),
-                token!("|"),
-                token!(":"),
-                token!("?"),
+                // You can't have too many args here because nom's type shenanigans explode, so
+                // breaking this up into two blocks
+                or!(
+                    token!("+"),
+                    token!("-"),
+                    token!("/"),
+                    token!("\\"),
+                    token!("*"),
+                    token!("^"),
+                    token!("."),
+                    token!(","),
+                    token!("~"),
+                    token!("`"),
+                    token!("!"),
+                    token!("@"),
+                ),
+                or!(
+                    token!("#"),
+                    token!("$"),
+                    token!("%"),
+                    token!("&"),
+                    token!("|"),
+                    token!(":"),
+                    token!("?"),
+                    token!("["),
+                    token!("]"),
+                    token!("<"),
+                    token!(">"),
+                ),
             )),
-            zero_or_more!(or!(
-                // Allow `>` or `=` symbol if it's not the first symbol in the operator
-                token!("+"),
-                token!("-"),
-                token!("/"),
-                token!("\\"),
-                token!("*"),
-                token!("^"),
-                token!("."),
-                token!(","),
-                token!("~"),
-                token!("`"),
-                token!("!"),
-                token!("@"),
-                token!("#"),
-                token!("$"),
-                token!("%"),
-                token!("&"),
-                token!("|"),
-                token!(">"),
-                token!(":"),
-                token!("?"),
-                token!("="),
-            )),
+            zero_or_more!(token!("=")),
         ),
         // TODO: Do this more generally, but for now, also allow the following whitelisted symbols
         token!("=="),
-        token!(">="),
     ),
 );
 build!(
@@ -523,7 +507,6 @@ build!(typen, token!("type"));
 build!(import, token!("import"));
 build!(from, token!("from"));
 build!(fnn, token!("fn"));
-build!(cfn, token!("cfn"));
 build!(binds, token!("binds"));
 build!(quote, token!("'"));
 build!(doublequote, token!("\""));
@@ -634,16 +617,16 @@ test!(varlist =>
     ];
 );
 named_and!(typegenerics: TypeGenerics =>
-    a: String as opencaret,
+    a: String as opencurly,
     b: String as optwhitespace,
     generics: Vec<FullTypename> as generics,
     c: String as optwhitespace,
-    d: String as closecaret,
+    d: String as closecurly,
 );
 impl TypeGenerics {
     pub fn to_string(&self) -> String {
         format!(
-            "<{}>",
+            "{{{}}}",
             self.generics
                 .iter()
                 .map(|gen| gen.to_string())
@@ -658,7 +641,7 @@ named_and!(fulltypename: FullTypename =>
     opttypegenerics: Option<TypeGenerics> as opt(typegenerics)
 );
 test!(fulltypename =>
-    pass "Array<Array<int64>>" => "";
+    pass "Array{Array{int64}}" => "";
 );
 list!(depsegments: String => variable, slash);
 named_and!(curdir: CurDir =>
@@ -812,24 +795,24 @@ test!(withtypeoperators =>
 list!(opt typeassignables: WithTypeOperators => withtypeoperators);
 test!(typeassignables =>
     pass "(foo: Foo) -> Bar";
-    pass "(i: i8) -> Result<i8>";
-    pass "(firstKey: Hashable, firstVal: any) -> HashMap<Hashable, any>";
+    pass "(i: i8) -> Result{i8}";
+    pass "(firstKey: Hashable, firstVal: any) -> HashMap{Hashable, any}";
     pass "() -> void";
 );
 named_and!(gncall: GnCall =>
-    opencaret: String as opencaret,
+    opencurly: String as opencurly,
     a: String as optwhitespace,
     typecalllist: Vec<WithTypeOperators> as typeassignables,
     b: String as optwhitespace,
-    closecaret: String as closecaret,
+    closecurly: String as closecurly,
 );
 test!(gncall =>
-    pass "<T>" => "", super::GnCall{
-        opencaret: "<".to_string(),
+    pass "{T}" => "", super::GnCall{
+        opencurly: "{".to_string(),
         a: "".to_string(),
         typecalllist: vec![super::WithTypeOperators::TypeBaseList(vec![super::TypeBase::Variable("T".to_string())])],
         b: "".to_string(),
-        closecaret: ">".to_string(),
+        closecurly: "}".to_string(),
     };
 );
 named_and!(typegroup: TypeGroup =>
@@ -859,7 +842,7 @@ impl TypeBase {
     pub fn to_string(&self) -> String {
         match self {
             TypeBase::GnCall(gc) => format!(
-                "<{}>",
+                "{{{}}}",
                 gc.typecalllist
                     .iter()
                     .map(|ta| ta.to_string())
@@ -887,14 +870,14 @@ test!(typebase =>
 );
 list!(typebaselist: TypeBase => typebase);
 test!(typebaselist =>
-    pass "Foo<T>" => "", vec![
+    pass "Foo{T}" => "", vec![
         super::TypeBase::Variable("Foo".to_string()),
         super::TypeBase::GnCall(super::GnCall{
-            opencaret: "<".to_string(),
+            opencurly: "{".to_string(),
             a: "".to_string(),
             typecalllist: vec![super::WithTypeOperators::TypeBaseList(vec![super::TypeBase::Variable("T".to_string())])],
             b: "".to_string(),
-            closecaret: ">".to_string(),
+            closecurly: "}".to_string(),
         }),
     ];
 );
@@ -903,12 +886,11 @@ named_and!(typecreate: TypeCreate =>
     b: String as blank,
     typeassignables: Vec<WithTypeOperators> as typeassignables,
 );
-list!(rustpath: String => variable, token!("::"));
 named_and!(typebind: TypeBind =>
     binds: String as binds,
     a: String as blank,
-    rustpath: Vec<String> as rustpath,
-    opttypegenerics: Option<TypeGenerics> as opt(typegenerics)
+    othertype: String as one_or_more!(not!(";")),
+    semicolon: String as semicolon,
 );
 named_or!(typedef: TypeDef =>
     TypeCreate: TypeCreate as typecreate,
@@ -927,9 +909,9 @@ named_and!(types: Types =>
 test!(types =>
     pass "type Foo = bar: string;";
     pass "type Foo = Bar";
-    pass "type Result<T, Error> binds Result<T, Error>";
+    pass "type Result{T, Error} binds Result<T, Error>;";
     pass "type ExitCode binds std::process::ExitCode;";
-    pass "type<Windows> Path = driveLetter: string, pathsegments: Array<string>;";
+    pass "type{Windows} Path = driveLetter: string, pathsegments: Array{string};";
 );
 named_and!(ctypes: CTypes =>
     ctype: String as ctype,
@@ -1066,7 +1048,7 @@ test!(withoperators =>
         closecurly: "}".to_string(),
       }
     }))]);
-    pass "new Array<Array<int64>> [ new Array<int64> [], ] * lookupLen;" => " * lookupLen;";
+    pass "new Array{Array{int64}} [ new Array{int64} [], ] * lookupLen;" => " * lookupLen;";
 );
 list!(assignables: WithOperators => withoperators);
 test!(assignables =>
@@ -1090,8 +1072,8 @@ test!(assignables =>
         closecurly: "}".to_string(),
       }
     }))])];
-    pass "new InitialReduce<any, anythingElse> {\n    arr: arr,\n    initial: initial,\n  }";
-    pass "new Array<Array<int64>> [ new Array<int64> [], ] * lookupLen;" => ";";
+    pass "new InitialReduce{any, anythingElse} {\n    arr: arr,\n    initial: initial,\n  }";
+    pass "new Array{Array{int64}} [ new Array{int64} [], ] * lookupLen;" => ";";
 );
 named_and!(typedec: TypeDec =>
     colon: String as colon,
@@ -1115,8 +1097,8 @@ named_and!(constdeclaration: ConstDeclaration =>
 );
 test!(constdeclaration =>
     pass "const args = new Foo{};";
-    pass "const args = new InitialReduce<any, anythingElse> {\n    arr: arr,\n    initial: initial,\n  };";
-    pass "const<Test> args = 'test val';";
+    pass "const args = new InitialReduce{any, anythingElse} {\n    arr: arr,\n    initial: initial,\n  };";
+    pass "const{Test} args = 'test val';";
 );
 named_and!(letdeclaration: LetDeclaration =>
     letn: String as letn,
@@ -1144,7 +1126,7 @@ named_and!(assignments: Assignments =>
     semicolon: String as semicolon,
 );
 test!(assignments =>
-    pass "hm.lookup = new Array<Array<int64>> [ new Array<int64> [], ] * lookupLen;" => "";
+    pass "hm.lookup = new Array{Array{int64}} [ new Array{int64} [], ] * lookupLen;" => "";
 );
 named_and!(retval: RetVal =>
     assignables: Vec<WithOperators> as assignables,
@@ -1169,8 +1151,8 @@ named_and!(functionbody: FunctionBody =>
 );
 test!(functionbody =>
     pass "{  if maybe.isSome() {\n    return maybe.getMaybe().toString();\n  } else {\n    return 'none';\n  } }";
-    pass "{  const args = new InitialReduce<any, anythingElse> {\n    arr: arr,\n    initial: initial,\n  };\n  return foldl(args, cb);\n}";
-    pass "{ // TODO: Rust-like fn::<typeA, typeB> syntax?\n  let hm = new HashMap<Hashable, any> {\n    keyVal: new Array<KeyVal<Hashable, any>> [],\n    lookup: new Array<Array<int64>> [ new Array<int64> [] ] * 128, // 1KB of space\n  };\n  return hm.set(firstKey, firstVal);\n}" => "";
+    pass "{  const args = new InitialReduce{any, anythingElse} {\n    arr: arr,\n    initial: initial,\n  };\n  return foldl(args, cb);\n}";
+    pass "{ // TODO: Rust-like fn::<typeA, typeB> syntax?\n  let hm = new HashMap{Hashable, any} {\n    keyVal: new Array{KeyVal{Hashable, any}} [],\n    lookup: new Array{Array{int64}} [ new Array{int64} [] ] * 128, // 1KB of space\n  };\n  return hm.set(firstKey, firstVal);\n}" => "";
 );
 named_and!(assignfunction: AssignFunction =>
     eq: String as eq,
@@ -1203,8 +1185,8 @@ named_and!(functions: Functions =>
 test!(functions =>
     pass "fn foo binds foo;" => "";
     pass "fn print(val: String) binds println!;" => "";
-    pass "fn<Test> foo binds foo_test;" => "";
-    pass "fn newHashMap(firstKey: Hashable, firstVal: any) -> HashMap<Hashable, any> { // TODO: Rust-like fn::<typeA, typeB> syntax?\n  let hm = new HashMap<Hashable, any> {\n    keyVal: new Array<KeyVal<Hashable, any>> [],\n    lookup: new Array<Array<int64>> [ new Array<int64> [] ] * 128, // 1KB of space\n  };\n  return hm.set(firstKey, firstVal);\n}" => "";
+    pass "fn{Test} foo binds foo_test;" => "";
+    pass "fn newHashMap(firstKey: Hashable, firstVal: any) -> HashMap{Hashable, any} { // TODO: Rust-like fn::<typeA, typeB> syntax?\n  let hm = new HashMap{Hashable, any} {\n    keyVal: new Array{KeyVal{Hashable, any}} [],\n    lookup: new Array{Array{int64}} [ new Array{int64} [] ] * 128, // 1KB of space\n  };\n  return hm.set(firstKey, firstVal);\n}" => "";
 );
 named_or!(blocklike: Blocklike =>
     Functions: Functions as functions,
@@ -1251,7 +1233,7 @@ list!(statements: Statement => statement);
 test!(statements =>
     pass "return maybe.getMaybe().toString();";
     pass "if maybe.isSome() {\n    return maybe.getMaybe().toString();\n  } else {\n    return 'none';\n  }";
-    pass "let hm = new HashMap<Hashable, any> {\n    keyVal: new Array<KeyVal<Hashable, any>> [],\n    lookup: new Array<Array<int64>> [ new Array<int64> [] ] * 128, // 1KB of space\n  };\n  return hm.set(firstKey, firstVal);" => "";
+    pass "let hm = new HashMap{Hashable, any} {\n    keyVal: new Array{KeyVal{Hashable, any}} [],\n    lookup: new Array{Array{int64}} [ new Array{int64} [] ] * 128, // 1KB of space\n  };\n  return hm.set(firstKey, firstVal);" => "";
 );
 named_and!(literaldec: LiteralDec =>
     new: String as new,
@@ -1353,7 +1335,7 @@ test!(objectliterals =>
         closecurly: "}".to_string(),
       }
     });
-    pass "new Array<Array<int64>> [ new Array<int64> [], ]" => "";
+    pass "new Array{Array{int64}} [ new Array{int64} [], ]" => "";
 );
 named_and!(fncall: FnCall =>
     openparen: String as openparen,
@@ -1647,8 +1629,8 @@ named_and!(exports: Exports =>
     exportable: Exportable as exportable,
 );
 test!(exports =>
-    pass "export fn newHashMap(firstKey: Hashable, firstVal: any) -> HashMap<Hashable, any> { // TODO: Rust-like fn::<typeA, typeB> syntax?\n  let hm = new HashMap<Hashable, any> {\n    keyVal: new Array<KeyVal<Hashable, any>> [],\n    lookup: new Array<Array<int64>> [ new Array<int64> [] ] * 128, // 1KB of space\n  };\n  return hm.set(firstKey, firstVal);\n}" => "";
-    pass "export<Test> fn main() { let foo = 'bar'; // TODO: Add tests\n }" => "";
+    pass "export fn newHashMap(firstKey: Hashable, firstVal: any) -> HashMap{Hashable, any} { // TODO: Rust-like fn::<typeA, typeB> syntax?\n  let hm = new HashMap{Hashable, any} {\n    keyVal: new Array{KeyVal{Hashable, any}} [],\n    lookup: new Array{Array{int64}} [ new Array{int64} [] ] * 128, // 1KB of space\n  };\n  return hm.set(firstKey, firstVal);\n}" => "";
+    pass "export{Test} fn main() { let foo = 'bar'; // TODO: Add tests\n }" => "";
 );
 named_or!(rootelements: RootElements =>
     Whitespace: String as whitespace,
