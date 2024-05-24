@@ -397,9 +397,7 @@ impl Type {
                         .collect::<Vec<String>>()
                         .join(""),
                 ), // TODO: Redo this
-                parse::TypeDef::TypeBind(bind) => TypeType::Bind(
-                    bind.othertype.clone(),
-                ),
+                parse::TypeDef::TypeBind(bind) => TypeType::Bind(bind.othertype.clone()),
             },
         };
         if is_export {
