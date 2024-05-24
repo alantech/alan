@@ -268,8 +268,7 @@ impl Scope {
     }
 }
 
-#[derive(Clone)]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum CType {
     Type(String, Box<CType>),
     Generic(String, Vec<String>, Vec<parse::WithTypeOperators>),
@@ -291,7 +290,7 @@ pub enum CType {
 impl CType {
     // Implementation of the ctypes that aren't storage but compute into another CType
     fn fail(message: &str) -> ! {
-        // TODO: Include more information on where this compiler exit is coming from 
+        // TODO: Include more information on where this compiler exit is coming from
         eprintln!("{}", message);
         std::process::exit(1);
     }
@@ -299,28 +298,36 @@ impl CType {
         match (a, b) {
             (&CType::Int(a), &CType::Int(b)) => CType::Int(a + b),
             (&CType::Float(a), &CType::Float(b)) => CType::Float(a + b),
-            _ => CType::fail("Attempting to add non-integer or non-float types together at compile time"),
+            _ => CType::fail(
+                "Attempting to add non-integer or non-float types together at compile time",
+            ),
         }
     }
     fn sub(a: &CType, b: &CType) -> CType {
         match (a, b) {
             (&CType::Int(a), &CType::Int(b)) => CType::Int(a - b),
             (&CType::Float(a), &CType::Float(b)) => CType::Float(a - b),
-            _ => CType::fail("Attempting to subtract non-integer or non-float types together at compile time"),
+            _ => CType::fail(
+                "Attempting to subtract non-integer or non-float types together at compile time",
+            ),
         }
     }
     fn mul(a: &CType, b: &CType) -> CType {
         match (a, b) {
             (&CType::Int(a), &CType::Int(b)) => CType::Int(a * b),
             (&CType::Float(a), &CType::Float(b)) => CType::Float(a * b),
-            _ => CType::fail("Attempting to multiply non-integer or non-float types together at compile time"),
+            _ => CType::fail(
+                "Attempting to multiply non-integer or non-float types together at compile time",
+            ),
         }
     }
     fn div(a: &CType, b: &CType) -> CType {
         match (a, b) {
             (&CType::Int(a), &CType::Int(b)) => CType::Int(a / b),
             (&CType::Float(a), &CType::Float(b)) => CType::Float(a / b),
-            _ => CType::fail("Attempting to divide non-integer or non-float types together at compile time"),
+            _ => CType::fail(
+                "Attempting to divide non-integer or non-float types together at compile time",
+            ),
         }
     }
     fn cmod(a: &CType, b: &CType) -> CType {
@@ -336,7 +343,9 @@ impl CType {
                 None => CType::fail("Compile time exponentiation too large"),
             }),
             (&CType::Float(a), &CType::Float(b)) => CType::Float(a.powf(b)),
-            _ => CType::fail("Attempting to divide non-integer or non-float types together at compile time"),
+            _ => CType::fail(
+                "Attempting to divide non-integer or non-float types together at compile time",
+            ),
         }
     }
     fn len(t: &CType) -> CType {
@@ -344,7 +353,9 @@ impl CType {
             CType::Tuple(tup) => CType::Int(tup.len() as i128),
             CType::Buffer(_, l) => CType::Int(*l as i128),
             CType::Either(eit) => CType::Int(eit.len() as i128),
-            CType::Array(_) => CType::fail("Cannot get a compile time length for a variable-length array"),
+            CType::Array(_) => {
+                CType::fail("Cannot get a compile time length for a variable-length array")
+            }
             _ => CType::Int(1),
         }
     }
@@ -369,7 +380,10 @@ impl CType {
     fn env(k: &CType) -> CType {
         match k {
             CType::TString(s) => match std::env::var(s) {
-                Err(e) => CType::fail(&format!("Failed to load environment variable {}: {:?}", s, e)),
+                Err(e) => CType::fail(&format!(
+                    "Failed to load environment variable {}: {:?}",
+                    s, e
+                )),
                 Ok(s) => CType::TString(s),
             },
             _ => CType::fail("Env{K} must be given a key as a string to load"),
@@ -389,26 +403,30 @@ impl CType {
             CType::Bool(cond) => match cond {
                 true => a.clone(),
                 false => b.clone(),
-            }
+            },
             _ => CType::fail("If{C, A, B} must be given a boolean value as the condition"),
         }
     }
     fn tupleif(c: &CType, t: &CType) -> CType {
         match c {
-            CType::Bool(cond) => match t {
-                CType::Tuple(tup) => {
-                    if tup.len() == 2 {
-                        match cond {
-                            true => tup[0].clone(),
-                            false => tup[1].clone(),
+            CType::Bool(cond) => {
+                match t {
+                    CType::Tuple(tup) => {
+                        if tup.len() == 2 {
+                            match cond {
+                                true => tup[0].clone(),
+                                false => tup[1].clone(),
+                            }
+                        } else {
+                            CType::fail("The tuple type provided to If{C, T} must have exactly two elements")
                         }
-                    } else {
-                        CType::fail("The tuple type provided to If{C, T} must have exactly two elements")
                     }
-                },
-                _ => CType::fail("The second type provided to If{C, T} must be a tuple of two types")
-            },
-            _ => CType::fail("The first type provided to If{C, T} must be a boolean type")
+                    _ => CType::fail(
+                        "The second type provided to If{C, T} must be a tuple of two types",
+                    ),
+                }
+            }
+            _ => CType::fail("The first type provided to If{C, T} must be a boolean type"),
         }
     }
     fn envdefault(k: &CType, d: &CType) -> CType {
@@ -416,35 +434,41 @@ impl CType {
             (CType::TString(s), CType::TString(def)) => match std::env::var(s) {
                 Err(_) => CType::TString(def.clone()),
                 Ok(v) => CType::TString(v),
-            }
-            _ => CType::fail("Env{K, D} must be provided a string for each type")
+            },
+            _ => CType::fail("Env{K, D} must be provided a string for each type"),
         }
     }
     fn and(a: &CType, b: &CType) -> CType {
         match (a, b) {
             (CType::Int(a), CType::Int(b)) => CType::Int(*a & *b),
             (CType::Bool(a), CType::Bool(b)) => CType::Bool(*a && *b),
-            _ => CType::fail("And{A, B} must be provided two values of the same type, either integer or boolean")
+            _ => CType::fail(
+                "And{A, B} must be provided two values of the same type, either integer or boolean",
+            ),
         }
     }
     fn or(a: &CType, b: &CType) -> CType {
         match (a, b) {
             (CType::Int(a), CType::Int(b)) => CType::Int(*a | *b),
             (CType::Bool(a), CType::Bool(b)) => CType::Bool(*a || *b),
-            _ => CType::fail("Or{A, B} must be provided two values of the same type, either integer or boolean")
+            _ => CType::fail(
+                "Or{A, B} must be provided two values of the same type, either integer or boolean",
+            ),
         }
     }
     fn xor(a: &CType, b: &CType) -> CType {
         match (a, b) {
             (CType::Int(a), CType::Int(b)) => CType::Int(*a ^ *b),
             (CType::Bool(a), CType::Bool(b)) => CType::Bool(*a ^ *b),
-            _ => CType::fail("Or{A, B} must be provided two values of the same type, either integer or boolean")
+            _ => CType::fail(
+                "Or{A, B} must be provided two values of the same type, either integer or boolean",
+            ),
         }
     }
     fn not(b: &CType) -> CType {
         match b {
             CType::Bool(b) => CType::Bool(!*b),
-            _ => CType::fail("Not{B} must be provided a boolean type to invert")
+            _ => CType::fail("Not{B} must be provided a boolean type to invert"),
         }
     }
     fn nand(a: &CType, b: &CType) -> CType {
@@ -458,7 +482,9 @@ impl CType {
         match (a, b) {
             (CType::Int(a), CType::Int(b)) => CType::Int(!(*a | *b)),
             (CType::Bool(a), CType::Bool(b)) => CType::Bool(!(*a || *b)),
-            _ => CType::fail("Nor{A, B} must be provided two values of the same type, either integer or boolean")
+            _ => CType::fail(
+                "Nor{A, B} must be provided two values of the same type, either integer or boolean",
+            ),
         }
     }
     fn xnor(a: &CType, b: &CType) -> CType {
