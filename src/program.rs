@@ -52,6 +52,32 @@ impl Program {
         Ok(p)
     }
 
+    pub fn resolve_typeoperator<'a>(
+        self: &'a Self,
+        scope: &'a Scope,
+        typeoperatorname: &String,
+    ) -> Option<(&TypeOperatorMapping, &Scope)> {
+        // Tries to find the specified operator within the portion of the program accessible from the
+        // current scope (so first checking the current scope, then all imports, then the root
+        // scope) Returns a reference to the type and the scope it came from.
+        // TODO: type ambiguity, infix/prefix ambiguity, etc
+        match scope.typeoperatormappings.get(typeoperatorname) {
+            Some(o) => Some((o, scope)),
+            None => {
+                // TODO: Loop over imports looking for the type
+                match self.scopes_by_file.get("@root") {
+                    None => None,
+                    Some((_, _, root_scope)) => {
+                        match &root_scope.typeoperatormappings.get(typeoperatorname) {
+                            Some(o) => Some((&o, &root_scope)),
+                            None => None,
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     pub fn resolve_type<'a>(
         self: &'a Self,
         scope: &'a Scope,
@@ -169,7 +195,7 @@ impl Program {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Scope {
     pub imports: OrderedHashMap<String, Import>,
     pub types: OrderedHashMap<String, Type>,
@@ -208,7 +234,7 @@ impl Scope {
         }
         for (i, element) in ast.body.iter().enumerate() {
             match element {
-                parse::RootElements::Types(t) => Type::from_ast(&mut s, t, false)?,
+                parse::RootElements::Types(t) => Type::from_ast(&mut s, &mut p, t, false)?,
                 parse::RootElements::Functions(f) => Function::from_ast(&mut s, &p, f, false)?,
                 parse::RootElements::ConstDeclaration(c) => Const::from_ast(&mut s, c, false)?,
                 parse::RootElements::OperatorMapping(o) => {
@@ -226,7 +252,7 @@ impl Scope {
                     parse::Exportable::TypeOperatorMapping(o) => {
                         TypeOperatorMapping::from_ast(&mut s, o, true)?
                     }
-                    parse::Exportable::Types(t) => Type::from_ast(&mut s, t, true)?,
+                    parse::Exportable::Types(t) => Type::from_ast(&mut s, &mut p, t, true)?,
                     parse::Exportable::CTypes(c) => {
                         // For now this is just declaring in the Alan source code the compile-time
                         // types that can be used, and is simply a special kind of documentation.
@@ -243,9 +269,12 @@ impl Scope {
                             match c.name.as_str() {
                                 "Type" | "Generic" | "Bound" | "BoundGeneric" | "Int" | "Float"
                                 | "Bool" | "String" | "Group" | "Function" | "Tuple" | "Field"
-                                | "Either" | "Buffer" | "Array" | "Fail" | "Add" | "Sub" | "Mul" | "Div" | "Mod"
-                                | "Pow" | "Len" | "Size" | "FileStr" | "Env" | "EnvExists" | "If" | "And" | "Or" | "Xor" | "Not"
-                                | "Nand" | "Nor" | "Xnor" | "Eq" | "Neq" | "Lt" | "Lte" | "Gt" | "Gte" => { /* Do nothing */ }
+                                | "Either" | "Buffer" | "Array" => { /* Do nothing for the 'structural' types */ }
+                                g @ ("Fail" | "Len" | "Size" | "FileStr" | "Env" | "EnvExists" | "Not") => Type::from_generic(&mut s, g, 1),
+                                g @ ("Add" | "Sub" | "Mul" | "Div" | "Mod" | "Pow" | "If" | "And" | "Or" | "Xor"
+                                | "Nand" | "Nor" | "Xnor" | "Eq" | "Neq" | "Lt" | "Lte" | "Gt" | "Gte") => Type::from_generic(&mut s, g, 2),
+                                // TODO: Also add support for three arg `If` and `Env` with a
+                                // default property via overloading types
                                 unknown => {
                                     return Err(format!("Unknown ctype {} defined in root scope. There's something wrong with the compiler.", unknown).into());
                                 }
@@ -274,6 +303,7 @@ pub enum CType {
     Generic(String, Vec<String>, Vec<parse::WithTypeOperators>),
     Bound(String, String),
     BoundGeneric(String, Vec<String>, String),
+    IntrinsicGeneric(String, usize),
     Int(i128),
     Float(f64),
     Bool(bool),
@@ -293,6 +323,68 @@ impl CType {
         // TODO: Include more information on where this compiler exit is coming from
         eprintln!("{}", message);
         std::process::exit(1);
+    }
+    fn cfail(message: &CType) -> ! {
+        match message {
+            CType::TString(s) => CType::fail(&s),
+            _ => CType::fail("Fail passed a type that does not resolve into a message string"),
+        }
+    }
+    fn len(t: &CType) -> CType {
+        match t {
+            CType::Tuple(tup) => CType::Int(tup.len() as i128),
+            CType::Buffer(_, l) => CType::Int(*l as i128),
+            CType::Either(eit) => CType::Int(eit.len() as i128),
+            CType::Array(_) => {
+                CType::fail("Cannot get a compile time length for a variable-length array")
+            }
+            _ => CType::Int(1),
+        }
+    }
+    fn size(_t: &CType) -> CType {
+        // TODO: Implementing this might require all types be made C-style structs under the hood,
+        // and probably some weird hackery to find out the size including padding on aligned
+        // architectures, so I might take it back out before its actually implemented, but I can
+        // think of several places where knowing the actual size of the type could be useful,
+        // particularly for writing to disk or interfacing with network protocols, etc, so I'd
+        // prefer to keep it and have some compile-time guarantees we don't normally see.
+        CType::fail("TODO: Implement Size{T}!")
+    }
+    fn filestr(f: &CType) -> CType {
+        match f {
+            CType::TString(s) => match std::fs::read_to_string(s) {
+                Err(e) => CType::fail(&format!("Failed to read {}: {:?}", s, e)),
+                Ok(s) => CType::TString(s),
+            },
+            _ => CType::fail("FileStr{F} must be given a string path to load"),
+        }
+    }
+    fn env(k: &CType) -> CType {
+        match k {
+            CType::TString(s) => match std::env::var(s) {
+                Err(e) => CType::fail(&format!(
+                    "Failed to load environment variable {}: {:?}",
+                    s, e
+                )),
+                Ok(s) => CType::TString(s),
+            },
+            _ => CType::fail("Env{K} must be given a key as a string to load"),
+        }
+    }
+    fn envexists(k: &CType) -> CType {
+        match k {
+            CType::TString(s) => match std::env::var(s) {
+                Err(_) => CType::Bool(false),
+                Ok(_) => CType::Bool(true),
+            },
+            _ => CType::fail("EnvExists{K} must be given a key as a string to check"),
+        }
+    }
+    fn not(b: &CType) -> CType {
+        match b {
+            CType::Bool(b) => CType::Bool(!*b),
+            _ => CType::fail("Not{B} must be provided a boolean type to invert"),
+        }
     }
     fn add(a: &CType, b: &CType) -> CType {
         match (a, b) {
@@ -346,56 +438,6 @@ impl CType {
             _ => CType::fail(
                 "Attempting to divide non-integer or non-float types together at compile time",
             ),
-        }
-    }
-    fn len(t: &CType) -> CType {
-        match t {
-            CType::Tuple(tup) => CType::Int(tup.len() as i128),
-            CType::Buffer(_, l) => CType::Int(*l as i128),
-            CType::Either(eit) => CType::Int(eit.len() as i128),
-            CType::Array(_) => {
-                CType::fail("Cannot get a compile time length for a variable-length array")
-            }
-            _ => CType::Int(1),
-        }
-    }
-    fn size(_t: &CType) -> CType {
-        // TODO: Implementing this might require all types be made C-style structs under the hood,
-        // and probably some weird hackery to find out the size including padding on aligned
-        // architectures, so I might take it back out before its actually implemented, but I can
-        // think of several places where knowing the actual size of the type could be useful,
-        // particularly for writing to disk or interfacing with network protocols, etc, so I'd
-        // prefer to keep it and have some compile-time guarantees we don't normally see.
-        CType::fail("TODO: Implement Size{T}!")
-    }
-    fn filestr(f: &CType) -> CType {
-        match f {
-            CType::TString(s) => match std::fs::read_to_string(s) {
-                Err(e) => CType::fail(&format!("Failed to read {}: {:?}", s, e)),
-                Ok(s) => CType::TString(s),
-            },
-            _ => CType::fail("FileStr{F} must be given a string path to load"),
-        }
-    }
-    fn env(k: &CType) -> CType {
-        match k {
-            CType::TString(s) => match std::env::var(s) {
-                Err(e) => CType::fail(&format!(
-                    "Failed to load environment variable {}: {:?}",
-                    s, e
-                )),
-                Ok(s) => CType::TString(s),
-            },
-            _ => CType::fail("Env{K} must be given a key as a string to load"),
-        }
-    }
-    fn envexists(k: &CType) -> CType {
-        match k {
-            CType::TString(s) => match std::env::var(s) {
-                Err(_) => CType::Bool(false),
-                Ok(_) => CType::Bool(true),
-            },
-            _ => CType::fail("EnvExists{K} must be given a key as a string to check"),
         }
     }
     fn cif(c: &CType, a: &CType, b: &CType) -> CType {
@@ -463,12 +505,6 @@ impl CType {
             _ => CType::fail(
                 "Or{A, B} must be provided two values of the same type, either integer or boolean",
             ),
-        }
-    }
-    fn not(b: &CType) -> CType {
-        match b {
-            CType::Bool(b) => CType::Bool(!*b),
-            _ => CType::fail("Not{B} must be provided a boolean type to invert"),
         }
     }
     fn nand(a: &CType, b: &CType) -> CType {
@@ -546,7 +582,7 @@ impl CType {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum ImportType {
     // For both of these, the first string is the original name, and the second is the rename.
     // To simplify later logic, there's always a rename even if the user didn't rename anything, it
@@ -555,7 +591,7 @@ pub enum ImportType {
     Fields(Vec<(String, String)>),
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Import {
     pub source_scope_name: String,
     pub import_type: ImportType,
@@ -626,13 +662,13 @@ impl Import {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum TypeType {
-    Create(String), // TODO: Redo this entirely
+    Create(CType),
     Bind(String),
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Type {
     pub typename: parse::FullTypename,
     pub typetype: TypeType,
@@ -641,6 +677,7 @@ pub struct Type {
 impl Type {
     fn from_ast(
         scope: &mut Scope,
+        program: &mut Program,
         type_ast: &parse::Types,
         is_export: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
@@ -649,13 +686,8 @@ impl Type {
             typename: type_ast.fulltypename.clone(),
             typetype: match &type_ast.typedef {
                 parse::TypeDef::TypeCreate(create) => TypeType::Create(
-                    create
-                        .typeassignables
-                        .iter()
-                        .map(|ta| ta.to_string())
-                        .collect::<Vec<String>>()
-                        .join(""),
-                ), // TODO: Redo this
+                    withtypeoperatorslist_to_ctype(&create.typeassignables, &scope, &program)?,
+                ),
                 parse::TypeDef::TypeBind(bind) => TypeType::Bind(bind.othertype.clone()),
             },
         };
@@ -665,9 +697,29 @@ impl Type {
         scope.types.insert(name, t);
         Ok(())
     }
+
+    fn from_ctype(scope: &mut Scope, name: String, ctype: CType) {
+        let t = Type {
+            typename: parse::FullTypename {
+                typename: name.clone(),
+                opttypegenerics: None,
+            },
+            typetype: TypeType::Create(ctype),
+        };
+        scope.exports.insert(name.clone(), Export::Type);
+        scope.types.insert(name, t);
+    }
+
+    fn from_generic(scope: &mut Scope, name: &str, arglen: usize) {
+        Type::from_ctype(
+            scope,
+            name.to_string(),
+            CType::IntrinsicGeneric(name.to_string(), arglen),
+        )
+    }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Const {
     pub name: String,
     pub typename: Option<String>,
@@ -1395,6 +1447,554 @@ fn baseassignablelist_to_microstatements(
     Ok(microstatements)
 }
 
+// TODO: I really hoped these two would share more code. Figure out how to DRY this out later, if
+// possible
+fn withtypeoperatorslist_to_ctype(
+    withtypeoperatorslist: &Vec<parse::WithTypeOperators>,
+    scope: &Scope,
+    program: &Program,
+) -> Result<CType, Box<dyn std::error::Error>> {
+    // To properly linearize the operations here, we need to scan through all of the operators,
+    // determine which is the highest precedence, whether it is infix or prefix (or maybe postfix
+    // in the future?) and then process them and whichever of the baseassignables surrounding them
+    // are associated, then put those results in the same "slot" as before and check again. Because
+    // users can define these operators, that makes it theoretically possible for the same operator
+    // to be used in both an infix or prefix manner, or with different precedence levels, depending
+    // on the types of the data involved, which makes things *really* complicated here. TODO:
+    // Actually implement that complexity, for now, just pretend operators have only one binding.
+    let mut queue = withtypeoperatorslist.clone();
+    let mut out_ctype = None;
+    while queue.len() > 0 {
+        let mut largest_operator_level: i8 = -1;
+        let mut largest_operator_index: i64 = -1;
+        for (i, assignable_or_operator) in queue.iter().enumerate() {
+            match assignable_or_operator {
+                parse::WithTypeOperators::Operators(o) => {
+                    let operatorname = o.trim();
+                    let (operator, _) =
+                        match program.resolve_typeoperator(scope, &operatorname.to_string()) {
+                            Some(o) => Ok(o),
+                            None => Err(format!("Operator {} not found", operatorname)),
+                        }?;
+                    let level = match &operator {
+                        TypeOperatorMapping::Prefix { level, .. } => level,
+                        TypeOperatorMapping::Infix { level, .. } => level,
+                        TypeOperatorMapping::Postfix { level, .. } => level,
+                    };
+                    if level > &largest_operator_level {
+                        largest_operator_level = *level;
+                        largest_operator_index = i as i64;
+                    }
+                }
+                _ => {}
+            }
+        }
+        if largest_operator_index > -1 {
+            // We have at least one operator, and this is the one to dig into
+            let operatorname = match &queue[largest_operator_index as usize] {
+                parse::WithTypeOperators::Operators(o) => o.trim(),
+                _ => unreachable!(),
+            };
+            let (operator, _) = match program.resolve_typeoperator(scope, &operatorname.to_string())
+            {
+                Some(o) => Ok(o),
+                None => Err(format!("Operator {} not found", operatorname)),
+            }?;
+            let functionname = match operator {
+                TypeOperatorMapping::Prefix { functionname, .. } => functionname.clone(),
+                TypeOperatorMapping::Infix { functionname, .. } => functionname.clone(),
+                TypeOperatorMapping::Postfix { functionname, .. } => functionname.clone(),
+            };
+            let is_infix = match operator {
+                TypeOperatorMapping::Prefix { .. } => false,
+                TypeOperatorMapping::Postfix { .. } => false,
+                TypeOperatorMapping::Infix { .. } => true,
+            };
+            let is_prefix = match operator {
+                TypeOperatorMapping::Prefix { .. } => true,
+                TypeOperatorMapping::Postfix { .. } => false,
+                TypeOperatorMapping::Infix { .. } => false,
+            };
+            if is_infix {
+                // Confirm that we have records before and after the operator and that they are
+                // baseassignables.
+                let first_arg = match match queue.get(largest_operator_index as usize - 1) {
+                    Some(val) => Ok(val),
+                    None => Err(format!(
+                        "Operator {} is an infix operator but missing a left-hand side value",
+                        operatorname
+                    )),
+                }? {
+                    parse::WithTypeOperators::TypeBaseList(typebaselist) => Ok(typebaselist),
+                    parse::WithTypeOperators::Operators(o) => Err(format!(
+                        "Operator {} is an infix operator but preceded by another operator {}",
+                        operatorname, o
+                    )),
+                }?;
+                let second_arg = match match queue.get(largest_operator_index as usize + 1) {
+                    Some(val) => Ok(val),
+                    None => Err(format!("Operator {} is an infix operator but missing a right-hand side value", operatorname)),
+                }? {
+                    parse::WithTypeOperators::TypeBaseList(typebaselist) => Ok(typebaselist),
+                    parse::WithTypeOperators::Operators(o) => Err(format!("Operator{} is an infix operator but followed by a lower precedence operator {}", operatorname, o)),
+                }?;
+                // We're gonna rewrite the operator and base assignables into a function call, eg
+                // we take `a + b` and turn it into `add(a, b)`
+                let rewrite = parse::WithTypeOperators::TypeBaseList(vec![
+                    parse::TypeBase::Variable(functionname),
+                    parse::TypeBase::GnCall(parse::GnCall {
+                        opencurly: "{".to_string(),
+                        a: "".to_string(),
+                        typecalllist: vec![
+                            parse::WithTypeOperators::TypeBaseList(first_arg.to_vec()),
+                            parse::WithTypeOperators::TypeBaseList(second_arg.to_vec()),
+                        ],
+                        b: "".to_string(),
+                        closecurly: "}".to_string(),
+                    }),
+                ]);
+                // Splice the new record into the processing queue
+                let _: Vec<parse::WithTypeOperators> = queue
+                    .splice(
+                        (largest_operator_index as usize - 1)
+                            ..(largest_operator_index as usize + 2),
+                        vec![rewrite],
+                    )
+                    .collect();
+            } else if is_prefix {
+                // Confirm that we have a record after the operator and that it's a baseassignables
+                let arg = match match queue.get(largest_operator_index as usize + 1) {
+                    Some(val) => Ok(val),
+                    None => Err(format!(
+                        "Operator {} is a prefix operator but missing a right-hand side value",
+                        operatorname
+                    )),
+                }? {
+                    parse::WithTypeOperators::TypeBaseList(typebaselist) => Ok(typebaselist),
+                    parse::WithTypeOperators::Operators(o) => Err(format!(
+                        "Operator {} is an prefix operator but followed by another operator {}",
+                        operatorname, o
+                    )),
+                }?;
+                // We're gonna rewrite the operator and base assignables into a function call, eg
+                // we take `#array` and turn it into `len(array)`
+                let rewrite = parse::WithTypeOperators::TypeBaseList(vec![
+                    parse::TypeBase::Variable(functionname),
+                    parse::TypeBase::GnCall(parse::GnCall {
+                        opencurly: "{".to_string(),
+                        a: "".to_string(),
+                        typecalllist: vec![parse::WithTypeOperators::TypeBaseList(arg.to_vec())],
+                        b: "".to_string(),
+                        closecurly: "}".to_string(),
+                    }),
+                ]);
+                // Splice the new record into the processing queue
+                let _: Vec<parse::WithTypeOperators> = queue
+                    .splice(
+                        (largest_operator_index as usize)..(largest_operator_index as usize + 2),
+                        vec![rewrite],
+                    )
+                    .collect();
+            } else {
+                // TODO: Add postfix operator support here
+            }
+        } else {
+            // We have no more typeoperators, there should only be one reworked typebaselist now
+            if queue.len() != 1 {
+                // No idea how such a wonky thing could occur. TODO: Improve error message
+                return Err(format!("Invalid syntax: {:?}", withtypeoperatorslist).into());
+            }
+            let typebaselist = match match queue.pop() {
+                Some(v) => Ok(v),
+                None => Err(format!(
+                    "Somehow we collapsed the statement into nothing? {:?}",
+                    withtypeoperatorslist
+                )),
+            }? {
+                parse::WithTypeOperators::TypeBaseList(b) => Ok(b),
+                _ => Err(format!(
+                    "Somehow we collapse the statement into a solitary operator? {:?}",
+                    withtypeoperatorslist
+                )),
+            }?;
+            out_ctype = Some(typebaselist_to_ctype(&typebaselist, scope, program)?);
+        }
+    }
+    match out_ctype {
+        Some(ctype) => Ok(ctype),
+        None => Err(format!("Never resolved a type from {:?}", withtypeoperatorslist).into()),
+    }
+}
+
+// TODO: This similarly shares a lot of structure with baseassignablelist_to_microstatements, see
+// if there is any way to DRY this up, or is it just doomed to be like this?
+fn typebaselist_to_ctype(
+    typebaselist: &Vec<parse::TypeBase>,
+    scope: &Scope,
+    program: &Program,
+) -> Result<CType, Box<dyn std::error::Error>> {
+    let mut i = 0;
+    let mut prior_value = None;
+    while i < typebaselist.len() {
+        let typebase = &typebaselist[i];
+        let nexttypebase = typebaselist.get(i + 1);
+        match typebase {
+            parse::TypeBase::MethodSep(_) => {
+                // The `MethodSep` symbol doesn't do anything on its own, it only validates that
+                // the syntax before and after it is sane
+                if prior_value.is_none() {
+                    return Err(format!(
+                        "Cannot start a statement with a property access: {}",
+                        typebaselist
+                            .iter()
+                            .map(|tb| tb.to_string())
+                            .collect::<Vec<String>>()
+                            .join("")
+                    )
+                    .into());
+                }
+                match nexttypebase {
+                    None => {
+                        return Err(format!(
+                            "Cannot end a statement with a property access: {}",
+                            typebaselist
+                                .iter()
+                                .map(|tb| tb.to_string())
+                                .collect::<Vec<String>>()
+                                .join("")
+                        )
+                        .into());
+                    }
+                    Some(next) => match next {
+                        parse::TypeBase::GnCall(_) => {
+                            return Err(format!(
+                                "A generic function call is not a property: {}",
+                                typebaselist
+                                    .iter()
+                                    .map(|tb| tb.to_string())
+                                    .collect::<Vec<String>>()
+                                    .join("")
+                            )
+                            .into());
+                        }
+                        parse::TypeBase::TypeGroup(_) => {
+                            return Err(format!(
+                                "A parenthetical grouping is not a property: {}",
+                                typebaselist
+                                    .iter()
+                                    .map(|tb| tb.to_string())
+                                    .collect::<Vec<String>>()
+                                    .join("")
+                            )
+                            .into());
+                        }
+                        parse::TypeBase::MethodSep(_) => {
+                            return Err(format!(
+                                "Too many `.` symbols for the method access: {}",
+                                typebaselist
+                                    .iter()
+                                    .map(|tb| tb.to_string())
+                                    .collect::<Vec<String>>()
+                                    .join("")
+                            )
+                            .into());
+                        }
+                        _ => {}
+                    },
+                }
+            }
+            parse::TypeBase::Constants(c) => {
+                // With constants, there are a few situations where they are allowed:
+                // 1) When they're used within a `GnCall` as the sole value passed in
+                // 2) When they're used as the property of a type, but only in certain scenarios.
+                // 2a) If it's an integer indexing into a tuple type or an either type, it returns
+                // the type of that element in the tuple or either.
+                // 2b) If it's a string indexing into a labeled tuple type (aka a struct), it
+                // returns the type of that element in the tuple.
+                // 2c) If it's a string that is specifically "input" or "output" indexing on a
+                // function type, it returns the input or output type (function types could
+                // internally have been a struct-like type with two fields, but they're special for
+                // now)
+                // Similarly, the only thing that can follow a constant value is a `MethodSep` to
+                // be used for a method-syntax function call and all others are errors. The
+                // "default" path is for a typebaselist with a length of one containing only the
+                // constant.
+                if let Some(next) = nexttypebase {
+                    match next {
+                        parse::TypeBase::Variable(_) => {
+                            return Err(format!("A constant cannot be directly before a variable without an operator between them: {}", typebaselist.iter().map(|tb| tb.to_string()).collect::<Vec<String>>().join("")).into());
+                        }
+                        parse::TypeBase::GnCall(_) => {
+                            return Err(format!("A constant cannot be directly before a generic function call without an operator and type name between them: {}", typebaselist.iter().map(|tb| tb.to_string()).collect::<Vec<String>>().join("")).into());
+                        }
+                        parse::TypeBase::TypeGroup(_) => {
+                            return Err(format!("A constant cannot be directly before a parenthetical grouping without an operator between them: {}", typebaselist.iter().map(|tb| tb.to_string()).collect::<Vec<String>>().join("")).into());
+                        }
+                        parse::TypeBase::Constants(_) => {
+                            return Err(format!("A constant cannot be directly before another constant without an operator between them: {}", typebaselist.iter().map(|tb| tb.to_string()).collect::<Vec<String>>().join("")).into());
+                        }
+                        parse::TypeBase::MethodSep(_) => {} // The only allowed follow-up
+                    }
+                }
+                if prior_value.is_none() {
+                    match c {
+                        parse::Constants::Bool(b) => {
+                            prior_value = Some(CType::Bool(match b.as_str() {
+                                "true" => true,
+                                _ => false,
+                            }))
+                        }
+                        parse::Constants::Strn(s) => {
+                            prior_value = Some(CType::TString(if s.starts_with('"') {
+                                s.clone()
+                            } else {
+                                // TODO: Is there a cheaper way to do this conversion?
+                                s.replace("\"", "\\\"")
+                                    .replace("\\'", "\\\\\"")
+                                    .replace("'", "\"")
+                                    .replace("\\\\\"", "'")
+                            }))
+                        }
+                        parse::Constants::Num(n) => match n {
+                            parse::Number::RealNum(r) => {
+                                prior_value = Some(CType::Float(
+                                    r.parse::<f64>().unwrap(), // This should never fail if the
+                                                               // parser says it's a float
+                                ))
+                            }
+                            parse::Number::IntNum(i) => {
+                                prior_value = Some(CType::Int(
+                                    i.parse::<i128>().unwrap(), // Same deal here
+                                ))
+                            }
+                        },
+                    }
+                } else {
+                    // There are broadly two cases where this can be reasonable: tuple-like access
+                    // with integers and struct-like access with strings
+                    match c {
+                        parse::Constants::Bool(_) => {
+                            return Err(format!("A boolean cannot follow another value without an operator between them: {}", typebaselist.iter().map(|tb| tb.to_string()).collect::<Vec<String>>().join("")).into());
+                        }
+                        parse::Constants::Strn(s) => {
+                            prior_value = Some(match prior_value.unwrap() {
+                                CType::Tuple(ts) => {
+                                    let mut out = None;
+                                    for t in &ts {
+                                        match t {
+                                            CType::Field(f, c) => {
+                                                if f.as_str() == s.as_str() {
+                                                    out = Some(*c.clone());
+                                                }
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+                                    match out {
+                                        Some(o) => o,
+                                        None => CType::fail(&format!("{:?} does not have a property named {}", ts, s)),
+                                    }
+                                }
+                                CType::Function(i, o) => match s.as_str() {
+                                    "input" => *i.clone(),
+                                    "output" => *o.clone(),
+                                    _ => CType::fail("Function types only have \"input\" and \"output\" properties"),
+                                }
+                                other => CType::fail(&format!("String properties are not allowed on {:?}", other)),
+                            });
+                        }
+                        parse::Constants::Num(n) => {
+                            match n {
+                                parse::Number::RealNum(_) => {
+                                    return Err(format!("A floating point number cannot follow another value without an operator between them: {}", typebaselist.iter().map(|tb| tb.to_string()).collect::<Vec<String>>().join("")).into());
+                                }
+                                parse::Number::IntNum(i) => {
+                                    let idx = match i.parse::<usize>() {
+                                    Ok(idx) => idx,
+                                    Err(_) => CType::fail("Indexing into a type must be done with positive integers"),
+                                };
+                                    prior_value = Some(match prior_value.unwrap() {
+                                        CType::Tuple(ts) => match ts.get(idx) {
+                                            Some(t) => t.clone(),
+                                            None => CType::fail(&format!(
+                                                "{} is larger than the size of {:?}",
+                                                idx, ts
+                                            )),
+                                        },
+                                        CType::Either(ts) => match ts.get(idx) {
+                                            Some(t) => t.clone(),
+                                            None => CType::fail(&format!(
+                                                "{} is larger than the size of {:?}",
+                                                idx, ts
+                                            )),
+                                        },
+                                        other => CType::fail(&format!(
+                                            "{:?} cannot be indexed by an integer",
+                                            other
+                                        )),
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            parse::TypeBase::Variable(var) => {
+                // Variables can be used to access sub-types in a type, or used as method-style
+                // execution of a prior value. For method access, if the function takes only one
+                // argument, it should still work even if the follow-on curly braces are not
+                // written, so there's a little bit of extra logic added here for that situation,
+                // otherwise it's handled by the GnCall path. When it's a property access, it
+                // replaces the prior CType with the sub-type of the prior value.
+                // For the simpler case when it's *just* a reference to a prior variable, it just
+                // becomes a `Type` CType providing an alias for the named type.
+                prior_value = Some(match prior_value {
+                    None => match program.resolve_type(scope, var) {
+                        Some((t, _)) => match &t.typetype {
+                            TypeType::Bind(n) => CType::Bound(var.clone(), n.clone()),
+                            TypeType::Create(c) => c.clone(),
+                        },
+                        None => CType::fail(&format!("Type {} not found", var)),
+                    },
+                    Some(val) => {
+                        // TODO: Do we add special behavior for tuple and function types so you can
+                        // also use method syntax as a property access? It would be more consistent
+                        // with the regular statements but damn is it ugly
+                        match program.resolve_type(scope, var) {
+                            Some((t, _)) => {
+                                let mut args = vec![val.clone()];
+                                match nexttypebase {
+                                    None => {},
+                                    Some(next) => match next {
+                                        parse::TypeBase::GnCall(g) => {
+                                            // Unfortunately ambiguous, but commas behave
+                                            // differently in here, so we're gonna chunk this,
+                                            // split by commas, then iterate on those chunks
+                                            let mut temp_args = Vec::new();
+                                            let mut arg = Vec::new();
+                                            for ta in &g.typecalllist {
+                                                match ta {
+                                                    parse::WithTypeOperators::Operators(s) if s.trim() == "," => {
+                                                        temp_args.push(arg.clone());
+                                                        arg.clear();
+                                                    }
+                                                    _ => {
+                                                      arg.push(ta.clone());
+                                                    }
+                                                }
+                                            }
+                                            for arg in temp_args {
+                                                args.push(withtypeoperatorslist_to_ctype(&arg, scope, program)?);
+                                            }
+                                        }
+                                        parse::TypeBase::MethodSep(_) => {},
+                                        _ => CType::fail("Cannot follow method style syntax without an operator in between"),
+                                    }
+                                }
+                                // Now, we need to validate that the resolved type *is* a generic
+                                // type that can be called, and that we have the correct number of
+                                // arguments for it, then we can call it and return the resulting
+                                // type
+                                match &t.typetype {
+                                    TypeType::Bind(_) => {
+                                        CType::fail("Bound generics not yet implemented!")
+                                    } // TODO
+                                    TypeType::Create(c) => match c {
+                                        CType::Generic(_name, params, withtypeoperatorslist) => {
+                                            if params.len() != args.len() {
+                                                CType::fail(&format!("Generic type {} takes {} arguments but {} given", var, params.len(), args.len()))
+                                            } else {
+                                                // We use a temporary scope to resolve the
+                                                // arguments to the generic function as the
+                                                // specified names
+                                                let mut temp_scope = scope.clone();
+                                                for i in 0..params.len() {
+                                                    Type::from_ctype(
+                                                        &mut temp_scope,
+                                                        params[i].clone(),
+                                                        args[i].clone(),
+                                                    );
+                                                }
+                                                // Now we return the type we resolve within this
+                                                // scope
+                                                withtypeoperatorslist_to_ctype(
+                                                    withtypeoperatorslist,
+                                                    &temp_scope,
+                                                    program,
+                                                )?
+                                            }
+                                        }
+                                        CType::IntrinsicGeneric(name, len) => {
+                                            if args.len() != *len {
+                                                CType::fail(&format!("Generic type {} takes {} arguments but {} given", var, len, args.len()))
+                                            } else {
+                                                // TODO: Is there a better way to do this?
+                                                match name.as_str() {
+                                                    "Fail" => CType::cfail(&args[0]),
+                                                    "Len" => CType::len(&args[0]),
+                                                    "Size" => CType::size(&args[0]),
+                                                    "FileStr" => CType::filestr(&args[0]),
+                                                    "Env" => CType::env(&args[0]),
+                                                    "EnvExists" => CType::envexists(&args[0]),
+                                                    "Not" => CType::not(&args[0]),
+                                                    "Add" => CType::add(&args[0], &args[1]),
+                                                    "Sub" => CType::sub(&args[0], &args[1]),
+                                                    "Mul" => CType::mul(&args[0], &args[1]),
+                                                    "Div" => CType::div(&args[0], &args[1]),
+                                                    "Mod" => CType::cmod(&args[0], &args[1]),
+                                                    "Pow" => CType::pow(&args[0], &args[1]),
+                                                    "If" => CType::tupleif(&args[0], &args[1]),
+                                                    "And" => CType::and(&args[0], &args[1]),
+                                                    "Or" => CType::or(&args[0], &args[1]),
+                                                    "Xor" => CType::xor(&args[0], &args[1]),
+                                                    "Nand" => CType::nand(&args[0], &args[1]),
+                                                    "Nor" => CType::nor(&args[0], &args[1]),
+                                                    "Xnor" => CType::xnor(&args[0], &args[1]),
+                                                    "Eq" => CType::eq(&args[0], &args[1]),
+                                                    "Neq" => CType::neq(&args[0], &args[1]),
+                                                    "Lt" => CType::lt(&args[0], &args[1]),
+                                                    "Lte" => CType::lte(&args[0], &args[1]),
+                                                    "Gt" => CType::gt(&args[0], &args[1]),
+                                                    "Gte" => CType::gte(&args[0], &args[1]),
+                                                    unknown => CType::fail(&format!("Unknown ctype {} accessed. How did this happen?", unknown)),
+                                                }
+                                            }
+                                        }
+                                        CType::BoundGeneric(..) => {
+                                            CType::fail("Bound generic types not yet implemented")
+                                        }
+                                        _ => CType::fail(&format!(
+                                            "{} is used as a generic type but is not one",
+                                            var
+                                        )),
+                                    },
+                                }
+                            }
+                            None => {
+                                CType::fail(&format!("{} is not a valid generic type name", var))
+                            }
+                        }
+                    }
+                })
+            }
+            parse::TypeBase::GnCall(_) => { /* We always process GnCall in the Variable path */ }
+            parse::TypeBase::TypeGroup(g) => {
+                // Simply wrap the returned type in a `CType::Group`
+                prior_value = Some(CType::Group(Box::new(withtypeoperatorslist_to_ctype(
+                    &g.typeassignables,
+                    scope,
+                    program,
+                )?)));
+            }
+        };
+        i = i + 1;
+    }
+    match prior_value {
+        Some(p) => Ok(p),
+        None => Err("Somehow did not resolve the type definition into anything".into()),
+    }
+}
+
 fn withoperatorslist_to_microstatements(
     withoperatorslist: &Vec<parse::WithOperators>,
     scope: &Scope,
@@ -1681,7 +2281,7 @@ fn statement_to_microstatements(
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Function {
     pub name: String,
     pub args: Vec<(String, String)>, // Making everything Stringly-typed kinda sucks, but no good way to give an error message in the parser for unknown types otherwise
@@ -1869,7 +2469,7 @@ impl Function {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Export {
     // TODO: Add other export types over time
     Function,
@@ -1879,7 +2479,7 @@ pub enum Export {
     TypeOpMap,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum OperatorMapping {
     Prefix {
         level: i8,
@@ -1946,7 +2546,7 @@ impl OperatorMapping {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum TypeOperatorMapping {
     Prefix {
         level: i8,
