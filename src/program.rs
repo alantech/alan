@@ -82,7 +82,7 @@ impl Program {
         self: &'a Self,
         scope: &'a Scope,
         typename: &String,
-    ) -> Option<(&Type, &Scope)> {
+    ) -> Option<(&CType, &Scope)> {
         // Tries to find the specified type within the portion of the program accessible from the
         // current scope (so first checking the current scope, then all imports, then the root
         // scope) Returns a reference to the type and the scope it came from.
@@ -198,7 +198,7 @@ impl Program {
 #[derive(Clone, Debug)]
 pub struct Scope {
     pub imports: OrderedHashMap<String, Import>,
-    pub types: OrderedHashMap<String, Type>,
+    pub types: OrderedHashMap<String, CType>,
     pub consts: OrderedHashMap<String, Const>,
     pub functions: OrderedHashMap<String, Vec<Function>>,
     pub operatormappings: OrderedHashMap<String, OperatorMapping>,
@@ -234,7 +234,7 @@ impl Scope {
         }
         for (i, element) in ast.body.iter().enumerate() {
             match element {
-                parse::RootElements::Types(t) => Type::from_ast(&mut s, &mut p, t, false)?,
+                parse::RootElements::Types(t) => CType::from_ast(&mut s, &mut p, t, false)?,
                 parse::RootElements::Functions(f) => Function::from_ast(&mut s, &p, f, false)?,
                 parse::RootElements::ConstDeclaration(c) => Const::from_ast(&mut s, c, false)?,
                 parse::RootElements::OperatorMapping(o) => {
@@ -252,7 +252,7 @@ impl Scope {
                     parse::Exportable::TypeOperatorMapping(o) => {
                         TypeOperatorMapping::from_ast(&mut s, o, true)?
                     }
-                    parse::Exportable::Types(t) => Type::from_ast(&mut s, &mut p, t, true)?,
+                    parse::Exportable::Types(t) => CType::from_ast(&mut s, &mut p, t, true)?,
                     parse::Exportable::CTypes(c) => {
                         // For now this is just declaring in the Alan source code the compile-time
                         // types that can be used, and is simply a special kind of documentation.
@@ -270,9 +270,9 @@ impl Scope {
                                 "Type" | "Generic" | "Bound" | "BoundGeneric" | "Int" | "Float"
                                 | "Bool" | "String" | "Group" | "Function" | "Tuple" | "Field"
                                 | "Either" | "Buffer" | "Array" => { /* Do nothing for the 'structural' types */ }
-                                g @ ("Fail" | "Len" | "Size" | "FileStr" | "Env" | "EnvExists" | "Not") => Type::from_generic(&mut s, g, 1),
+                                g @ ("Fail" | "Len" | "Size" | "FileStr" | "Env" | "EnvExists" | "Not") => CType::from_generic(&mut s, g, 1),
                                 g @ ("Add" | "Sub" | "Mul" | "Div" | "Mod" | "Pow" | "If" | "And" | "Or" | "Xor"
-                                | "Nand" | "Nor" | "Xnor" | "Eq" | "Neq" | "Lt" | "Lte" | "Gt" | "Gte") => Type::from_generic(&mut s, g, 2),
+                                | "Nand" | "Nor" | "Xnor" | "Eq" | "Neq" | "Lt" | "Lte" | "Gt" | "Gte") => CType::from_generic(&mut s, g, 2),
                                 // TODO: Also add support for three arg `If` and `Env` with a
                                 // default property via overloading types
                                 unknown => {
@@ -318,6 +318,43 @@ pub enum CType {
 }
 
 impl CType {
+    fn from_ast(
+        scope: &mut Scope,
+        program: &mut Program,
+        type_ast: &parse::Types,
+        is_export: bool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let name = type_ast.fulltypename.to_string();
+        let t = match &type_ast.typedef {
+            parse::TypeDef::TypeCreate(create) => CType::Type(
+                name.clone(),
+                Box::new(withtypeoperatorslist_to_ctype(
+                    &create.typeassignables,
+                    &scope,
+                    &program,
+                )?),
+            ),
+            parse::TypeDef::TypeBind(bind) => CType::Bound(name.clone(), bind.othertype.clone()),
+        };
+        if is_export {
+            scope.exports.insert(name.clone(), Export::Type);
+        }
+        scope.types.insert(name, t);
+        Ok(())
+    }
+
+    fn from_ctype(scope: &mut Scope, name: String, ctype: CType) {
+        scope.exports.insert(name.clone(), Export::Type);
+        scope.types.insert(name, ctype);
+    }
+
+    fn from_generic(scope: &mut Scope, name: &str, arglen: usize) {
+        CType::from_ctype(
+            scope,
+            name.to_string(),
+            CType::IntrinsicGeneric(name.to_string(), arglen),
+        )
+    }
     // Implementation of the ctypes that aren't storage but compute into another CType
     fn fail(message: &str) -> ! {
         // TODO: Include more information on where this compiler exit is coming from
@@ -659,63 +696,6 @@ impl Import {
                 Ok(p)
             }
         }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub enum TypeType {
-    Create(CType),
-    Bind(String),
-}
-
-#[derive(Clone, Debug)]
-pub struct Type {
-    pub typename: parse::FullTypename,
-    pub typetype: TypeType,
-}
-
-impl Type {
-    fn from_ast(
-        scope: &mut Scope,
-        program: &mut Program,
-        type_ast: &parse::Types,
-        is_export: bool,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let name = type_ast.fulltypename.to_string();
-        let t = Type {
-            typename: type_ast.fulltypename.clone(),
-            typetype: match &type_ast.typedef {
-                parse::TypeDef::TypeCreate(create) => TypeType::Create(
-                    withtypeoperatorslist_to_ctype(&create.typeassignables, &scope, &program)?,
-                ),
-                parse::TypeDef::TypeBind(bind) => TypeType::Bind(bind.othertype.clone()),
-            },
-        };
-        if is_export {
-            scope.exports.insert(name.clone(), Export::Type);
-        }
-        scope.types.insert(name, t);
-        Ok(())
-    }
-
-    fn from_ctype(scope: &mut Scope, name: String, ctype: CType) {
-        let t = Type {
-            typename: parse::FullTypename {
-                typename: name.clone(),
-                opttypegenerics: None,
-            },
-            typetype: TypeType::Create(ctype),
-        };
-        scope.exports.insert(name.clone(), Export::Type);
-        scope.types.insert(name, t);
-    }
-
-    fn from_generic(scope: &mut Scope, name: &str, arglen: usize) {
-        Type::from_ctype(
-            scope,
-            name.to_string(),
-            CType::IntrinsicGeneric(name.to_string(), arglen),
-        )
     }
 }
 
@@ -1850,10 +1830,7 @@ fn typebaselist_to_ctype(
                 // becomes a `Type` CType providing an alias for the named type.
                 prior_value = Some(match prior_value {
                     None => match program.resolve_type(scope, var) {
-                        Some((t, _)) => match &t.typetype {
-                            TypeType::Bind(n) => CType::Bound(var.clone(), n.clone()),
-                            TypeType::Create(c) => c.clone(),
-                        },
+                        Some((t, _)) => t.clone(),
                         None => CType::fail(&format!("Type {} not found", var)),
                     },
                     Some(val) => {
@@ -1895,79 +1872,86 @@ fn typebaselist_to_ctype(
                                 // type that can be called, and that we have the correct number of
                                 // arguments for it, then we can call it and return the resulting
                                 // type
-                                match &t.typetype {
-                                    TypeType::Bind(_) => {
-                                        CType::fail("Bound generics not yet implemented!")
-                                    } // TODO
-                                    TypeType::Create(c) => match c {
-                                        CType::Generic(_name, params, withtypeoperatorslist) => {
-                                            if params.len() != args.len() {
-                                                CType::fail(&format!("Generic type {} takes {} arguments but {} given", var, params.len(), args.len()))
-                                            } else {
-                                                // We use a temporary scope to resolve the
-                                                // arguments to the generic function as the
-                                                // specified names
-                                                let mut temp_scope = scope.clone();
-                                                for i in 0..params.len() {
-                                                    Type::from_ctype(
-                                                        &mut temp_scope,
-                                                        params[i].clone(),
-                                                        args[i].clone(),
-                                                    );
-                                                }
-                                                // Now we return the type we resolve within this
-                                                // scope
-                                                withtypeoperatorslist_to_ctype(
-                                                    withtypeoperatorslist,
-                                                    &temp_scope,
-                                                    program,
-                                                )?
+                                match &t {
+                                    CType::Generic(_name, params, withtypeoperatorslist) => {
+                                        if params.len() != args.len() {
+                                            CType::fail(&format!(
+                                                "Generic type {} takes {} arguments but {} given",
+                                                var,
+                                                params.len(),
+                                                args.len()
+                                            ))
+                                        } else {
+                                            // We use a temporary scope to resolve the
+                                            // arguments to the generic function as the
+                                            // specified names
+                                            let mut temp_scope = scope.clone();
+                                            for i in 0..params.len() {
+                                                CType::from_ctype(
+                                                    &mut temp_scope,
+                                                    params[i].clone(),
+                                                    args[i].clone(),
+                                                );
+                                            }
+                                            // Now we return the type we resolve within this
+                                            // scope
+                                            withtypeoperatorslist_to_ctype(
+                                                withtypeoperatorslist,
+                                                &temp_scope,
+                                                program,
+                                            )?
+                                        }
+                                    }
+                                    CType::IntrinsicGeneric(name, len) => {
+                                        if args.len() != *len {
+                                            CType::fail(&format!(
+                                                "Generic type {} takes {} arguments but {} given",
+                                                var,
+                                                len,
+                                                args.len()
+                                            ))
+                                        } else {
+                                            // TODO: Is there a better way to do this?
+                                            match name.as_str() {
+                                                "Fail" => CType::cfail(&args[0]),
+                                                "Len" => CType::len(&args[0]),
+                                                "Size" => CType::size(&args[0]),
+                                                "FileStr" => CType::filestr(&args[0]),
+                                                "Env" => CType::env(&args[0]),
+                                                "EnvExists" => CType::envexists(&args[0]),
+                                                "Not" => CType::not(&args[0]),
+                                                "Add" => CType::add(&args[0], &args[1]),
+                                                "Sub" => CType::sub(&args[0], &args[1]),
+                                                "Mul" => CType::mul(&args[0], &args[1]),
+                                                "Div" => CType::div(&args[0], &args[1]),
+                                                "Mod" => CType::cmod(&args[0], &args[1]),
+                                                "Pow" => CType::pow(&args[0], &args[1]),
+                                                "If" => CType::tupleif(&args[0], &args[1]),
+                                                "And" => CType::and(&args[0], &args[1]),
+                                                "Or" => CType::or(&args[0], &args[1]),
+                                                "Xor" => CType::xor(&args[0], &args[1]),
+                                                "Nand" => CType::nand(&args[0], &args[1]),
+                                                "Nor" => CType::nor(&args[0], &args[1]),
+                                                "Xnor" => CType::xnor(&args[0], &args[1]),
+                                                "Eq" => CType::eq(&args[0], &args[1]),
+                                                "Neq" => CType::neq(&args[0], &args[1]),
+                                                "Lt" => CType::lt(&args[0], &args[1]),
+                                                "Lte" => CType::lte(&args[0], &args[1]),
+                                                "Gt" => CType::gt(&args[0], &args[1]),
+                                                "Gte" => CType::gte(&args[0], &args[1]),
+                                                unknown => CType::fail(&format!("Unknown ctype {} accessed. How did this happen?", unknown)),
                                             }
                                         }
-                                        CType::IntrinsicGeneric(name, len) => {
-                                            if args.len() != *len {
-                                                CType::fail(&format!("Generic type {} takes {} arguments but {} given", var, len, args.len()))
-                                            } else {
-                                                // TODO: Is there a better way to do this?
-                                                match name.as_str() {
-                                                    "Fail" => CType::cfail(&args[0]),
-                                                    "Len" => CType::len(&args[0]),
-                                                    "Size" => CType::size(&args[0]),
-                                                    "FileStr" => CType::filestr(&args[0]),
-                                                    "Env" => CType::env(&args[0]),
-                                                    "EnvExists" => CType::envexists(&args[0]),
-                                                    "Not" => CType::not(&args[0]),
-                                                    "Add" => CType::add(&args[0], &args[1]),
-                                                    "Sub" => CType::sub(&args[0], &args[1]),
-                                                    "Mul" => CType::mul(&args[0], &args[1]),
-                                                    "Div" => CType::div(&args[0], &args[1]),
-                                                    "Mod" => CType::cmod(&args[0], &args[1]),
-                                                    "Pow" => CType::pow(&args[0], &args[1]),
-                                                    "If" => CType::tupleif(&args[0], &args[1]),
-                                                    "And" => CType::and(&args[0], &args[1]),
-                                                    "Or" => CType::or(&args[0], &args[1]),
-                                                    "Xor" => CType::xor(&args[0], &args[1]),
-                                                    "Nand" => CType::nand(&args[0], &args[1]),
-                                                    "Nor" => CType::nor(&args[0], &args[1]),
-                                                    "Xnor" => CType::xnor(&args[0], &args[1]),
-                                                    "Eq" => CType::eq(&args[0], &args[1]),
-                                                    "Neq" => CType::neq(&args[0], &args[1]),
-                                                    "Lt" => CType::lt(&args[0], &args[1]),
-                                                    "Lte" => CType::lte(&args[0], &args[1]),
-                                                    "Gt" => CType::gt(&args[0], &args[1]),
-                                                    "Gte" => CType::gte(&args[0], &args[1]),
-                                                    unknown => CType::fail(&format!("Unknown ctype {} accessed. How did this happen?", unknown)),
-                                                }
-                                            }
-                                        }
-                                        CType::BoundGeneric(..) => {
-                                            CType::fail("Bound generic types not yet implemented")
-                                        }
-                                        _ => CType::fail(&format!(
-                                            "{} is used as a generic type but is not one",
-                                            var
-                                        )),
-                                    },
+                                    }
+                                    CType::BoundGeneric(..) => {
+                                        CType::fail("Bound generic types not yet implemented")
+                                    }
+                                    // TODO: Auto-unwrap if it's a `Group` that contains one of the
+                                    // Generic types?
+                                    _ => CType::fail(&format!(
+                                        "{} is used as a generic type but is not one",
+                                        var
+                                    )),
                                 }
                             }
                             None => {

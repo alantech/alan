@@ -1,7 +1,7 @@
 // TODO: Generics/Interfaces resolution
 use ordered_hash_map::OrderedHashMap;
 
-use crate::program::{CType, Program, Scope, Type, TypeType};
+use crate::program::{CType, Program, Scope};
 
 fn ctype_to_rtype(
     ctype: &CType,
@@ -61,33 +61,29 @@ fn ctype_to_rtype(
 }
 
 pub fn generate(
-    typen: &Type,
+    typen: &CType,
     scope: &Scope,
     program: &Program,
     mut out: OrderedHashMap<String, String>,
 ) -> Result<(String, OrderedHashMap<String, String>), Box<dyn std::error::Error>> {
-    match &typen.typetype {
+    match &typen {
         // The first value is the identifier, and the second is the generated source. For the
         // `Bind` and `Alias` types, these already exist in the Rust environment (or should exist,
         // assuming no bugs in the standard library) so they do not alter the generated source
         // output, while the `Structlike` type requires a new struct to be created and inserted
         // into the source definition, potentially inserting inner types as needed
-        TypeType::Bind(s) => Ok((s.clone(), out)),
-        // TODO: The "alias" type is just the normal type assignment path, now, no distinction so
-        // this needs to be more capable going forward
-        TypeType::Create(a) => match a {
-            CType::Type(name, ctype) => {
-                out.insert(
+        CType::Bound(_name, rtype) => Ok((rtype.clone(), out)),
+        CType::Type(name, ctype) => {
+            out.insert(
+                name.clone(),
+                format!(
+                    "type {} = {};\n",
                     name.clone(),
-                    format!(
-                        "type {} = {};\n",
-                        name.clone(),
-                        ctype_to_rtype(ctype, scope, program, false)?
-                    ),
-                );
-                Ok((name.clone(), out))
-            }
-            _ => Ok(("".to_string(), out)), // Ignore all other types at the top-level for now?
-        },
+                    ctype_to_rtype(ctype, scope, program, false)?
+                ),
+            );
+            Ok((name.clone(), out))
+        }
+        _ => Ok(("".to_string(), out)), // Ignore all other types at the top-level for now?
     }
 }
