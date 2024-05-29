@@ -355,6 +355,67 @@ impl CType {
             CType::IntrinsicGeneric(name.to_string(), arglen),
         )
     }
+    // Special implementation for the tuple and either types since they *are* CTypes, but if one of
+    // the provided input types *is* the same kind of CType, it should produce a merged version.
+    fn tuple(args: Vec<CType>) -> CType {
+        let mut out_vec = Vec::new();
+        for arg in args {
+            match arg {
+                CType::Tuple(ts) => {
+                    for t in ts {
+                        out_vec.push(t.clone());
+                    }
+                }
+                other => out_vec.push(other),
+            }
+        }
+        CType::Tuple(out_vec)
+    }
+    fn either(args: Vec<CType>) -> CType {
+        let mut out_vec = Vec::new();
+        for arg in args {
+            match arg {
+                CType::Either(ts) => {
+                    for t in ts {
+                        out_vec.push(t.clone());
+                    }
+                }
+                other => out_vec.push(other),
+            }
+        }
+        CType::Either(out_vec)
+    }
+    // Special implementation for the field type, too. Right now for easier parsing the key needs
+    // to be quoted. TODO: remove this restriction
+    fn field(mut args: Vec<CType>) -> CType {
+        if args.len() != 2 {
+            CType::fail("Field{K, V} only accepts two sub-types")
+        } else {
+            let arg1 = args.pop().unwrap();
+            let arg0 = args.pop().unwrap();
+            match (arg0, arg1) {
+                (CType::TString(key), anything) => {
+                    CType::Field(key.clone(), Box::new(anything.clone()))
+                }
+                _ => CType::fail("The field key must be a quoted string at this time"),
+            }
+        }
+    }
+    // Some validation for buffer creation, too
+    fn buffer(mut args: Vec<CType>) -> CType {
+        if args.len() != 2 {
+            CType::fail("Buffer{T, S} only accepts two sub-types")
+        } else {
+            let arg1 = args.pop().unwrap();
+            let arg0 = args.pop().unwrap();
+            match (arg0, arg1) {
+                (anything, CType::Int(size)) => {
+                    CType::Buffer(Box::new(anything.clone()), size as usize)
+                }
+                _ => CType::fail("The buffer size must be a positive integer"),
+            }
+        }
+    }
     // Implementation of the ctypes that aren't storage but compute into another CType
     fn fail(message: &str) -> ! {
         // TODO: Include more information on where this compiler exit is coming from
@@ -1913,6 +1974,15 @@ fn typebaselist_to_ctype(
                                         } else {
                                             // TODO: Is there a better way to do this?
                                             match name.as_str() {
+                                                "Group" => CType::Group(Box::new(args[0].clone())),
+                                                "Function" => CType::Function(Box::new(args[0].clone()), Box::new(args[1].clone())),
+                                                "Tuple" => CType::tuple(args.clone()),
+                                                // TODO: Field should ideally not require string
+                                                // quoting
+                                                "Field" => CType::field(args.clone()),
+                                                "Either" => CType::either(args.clone()),
+                                                "Buffer" => CType::buffer(args.clone()),
+                                                "Array" => CType::Array(Box::new(args[0].clone())),
                                                 "Fail" => CType::cfail(&args[0]),
                                                 "Len" => CType::len(&args[0]),
                                                 "Size" => CType::size(&args[0]),
