@@ -10,6 +10,7 @@ fn ctype_to_rtype(
     in_function_type: bool,
 ) -> Result<String, Box<dyn std::error::Error>> {
     match ctype {
+        CType::Void => Ok("()".to_string()),
         CType::Type(name, _) => Ok(name.clone()), // TODO: Do we need to handle this recursively,
         // or will the syntax ordering save us here?
         CType::Generic(name, ..) => Ok(name.clone()),

@@ -413,7 +413,7 @@ macro_rules! status {
 
 // The gold standard test. If you can't do this, are you even a language at all? :P
 test!(hello_world => r#"
-    export fn main {
+    export fn main() -> () {
         print('Hello, World!');
     }"#;
     stdout "Hello, World!\n";
@@ -472,7 +472,7 @@ test!(print_function => r#"
     status 0;
 );
 test!(duration_print => r#"
-    export fn main() {
+    export fn main() -> void {
         const i = now();
         wait(10);
         const d = i.elapsed;
