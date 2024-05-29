@@ -757,13 +757,13 @@ test!(grouping => r#"
     stdout "0\n1\n";
 );
 
-test_ignore!(string_min => r#"
+test!(string_min => r#"
     export fn main {
       min(3.string, 5.string).print;
     }"#;
     stdout "3\n";
 );
-test_ignore!(string_max => r#"
+test!(string_max => r#"
     export fn main {
       max(3.string, 5.string).print;
     }"#;
