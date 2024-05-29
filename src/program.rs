@@ -326,7 +326,14 @@ impl CType {
     ) -> Result<(), Box<dyn std::error::Error>> {
         let name = type_ast.fulltypename.to_string();
         let t = match &type_ast.typedef {
-            parse::TypeDef::TypeCreate(create) => CType::Type(name.clone(), Box::new(withtypeoperatorslist_to_ctype(&create.typeassignables, &scope, &program)?)),
+            parse::TypeDef::TypeCreate(create) => CType::Type(
+                name.clone(),
+                Box::new(withtypeoperatorslist_to_ctype(
+                    &create.typeassignables,
+                    &scope,
+                    &program,
+                )?),
+            ),
             parse::TypeDef::TypeBind(bind) => CType::Bound(name.clone(), bind.othertype.clone()),
         };
         if is_export {
@@ -1868,7 +1875,12 @@ fn typebaselist_to_ctype(
                                 match &t {
                                     CType::Generic(_name, params, withtypeoperatorslist) => {
                                         if params.len() != args.len() {
-                                            CType::fail(&format!("Generic type {} takes {} arguments but {} given", var, params.len(), args.len()))
+                                            CType::fail(&format!(
+                                                "Generic type {} takes {} arguments but {} given",
+                                                var,
+                                                params.len(),
+                                                args.len()
+                                            ))
                                         } else {
                                             // We use a temporary scope to resolve the
                                             // arguments to the generic function as the
@@ -1892,7 +1904,12 @@ fn typebaselist_to_ctype(
                                     }
                                     CType::IntrinsicGeneric(name, len) => {
                                         if args.len() != *len {
-                                            CType::fail(&format!("Generic type {} takes {} arguments but {} given", var, len, args.len()))
+                                            CType::fail(&format!(
+                                                "Generic type {} takes {} arguments but {} given",
+                                                var,
+                                                len,
+                                                args.len()
+                                            ))
                                         } else {
                                             // TODO: Is there a better way to do this?
                                             match name.as_str() {
