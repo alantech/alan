@@ -16,6 +16,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: Check lockfile is up to date
+      run: cargo update --locked
     - name: Check formatting
       run: cargo fmt --check
     - name: Build
