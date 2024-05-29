@@ -795,7 +795,7 @@ test!(hello_gpu => r#"
 
 // Bitwise Math
 
-test_ignore!(int8_bitwise => r#"
+test!(int8_bitwise => r#"
     prefix i8 as ~ precedence 10
 
     export fn main {
@@ -809,7 +809,7 @@ test_ignore!(int8_bitwise => r#"
     }"#;
     stdout "0\n3\n6\n-1\n-1\n-4\n-7\n";
 );
-test_ignore!(int16_bitwise => r#"
+test!(int16_bitwise => r#"
     prefix i16 as ~ precedence 10
 
     export fn main {
@@ -823,7 +823,7 @@ test_ignore!(int16_bitwise => r#"
     }"#;
     stdout "0\n3\n6\n-1\n-1\n-4\n-7\n";
 );
-test_ignore!(int32_bitwise => r#"
+test!(int32_bitwise => r#"
     prefix i32 as ~ precedence 10
 
     export fn main {
@@ -837,7 +837,7 @@ test_ignore!(int32_bitwise => r#"
     }"#;
     stdout "0\n3\n6\n-1\n-1\n-4\n-7\n";
 );
-test_ignore!(int64_bitwise => r#"
+test!(int64_bitwise => r#"
     export fn main {
       print(1 & 2);
       print(1 | 3);
