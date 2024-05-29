@@ -256,6 +256,20 @@ wgpu = "0.19.3""#;
             Err(e)
         }
     }?;
+    // Update the cargo lockfile, if necessary
+    match Command::new("cargo")
+        .current_dir(project_dir.clone())
+        .arg("update")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+    {
+        Ok(a) => Ok(a),
+        Err(e) => {
+            remove_file(lockfile.clone())?;
+            Err(e)
+        }
+    }?;
     // Build the executable
     match Command::new("cargo")
         .current_dir(project_dir.clone())
