@@ -81,6 +81,8 @@ export type infix Lte as <= precedence 1;
 export type infix Gt as > precedence 1;
 export type infix Gte as >= precedence 1;
 
+export type void = ();
+
 // Binding the integer types
 export type i8 binds i8;
 export type Result{i8} binds Result<i8, AlanError>; // TODO: Just define `export type Result{T} binds Result{T, AlanError};` and have that work instead of this redundant definition

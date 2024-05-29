@@ -299,6 +299,7 @@ impl Scope {
 
 #[derive(Clone, Debug)]
 pub enum CType {
+    Void,
     Type(String, Box<CType>),
     Generic(String, Vec<String>, Vec<parse::WithTypeOperators>),
     Bound(String, String),
@@ -2033,12 +2034,17 @@ fn typebaselist_to_ctype(
             }
             parse::TypeBase::GnCall(_) => { /* We always process GnCall in the Variable path */ }
             parse::TypeBase::TypeGroup(g) => {
-                // Simply wrap the returned type in a `CType::Group`
-                prior_value = Some(CType::Group(Box::new(withtypeoperatorslist_to_ctype(
-                    &g.typeassignables,
-                    scope,
-                    program,
-                )?)));
+                if g.typeassignables.len() == 0 {
+                    // It's a void type!
+                    prior_value = Some(CType::Group(Box::new(CType::Void)));
+                } else {
+                    // Simply wrap the returned type in a `CType::Group`
+                    prior_value = Some(CType::Group(Box::new(withtypeoperatorslist_to_ctype(
+                        &g.typeassignables,
+                        scope,
+                        program,
+                    )?)));
+                }
             }
         };
         i = i + 1;
