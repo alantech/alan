@@ -263,6 +263,49 @@ fn maxi8_result(a: &Result<i8, AlanError>, b: &Result<i8, AlanError>) -> Result<
     }
 }
 
+/// `andi8` performs a bitwise `and`
+#[inline(always)]
+fn andi8(a: &i8, b: &i8) -> i8 {
+    *a & *b
+}
+
+/// `ori8` performs a bitwise `or`
+#[inline(always)]
+fn ori8(a: &i8, b: &i8) -> i8 {
+    *a | *b
+}
+
+/// `xori8` performs a bitwise `xor`
+#[inline(always)]
+fn xori8(a: &i8, b: &i8) -> i8 {
+    *a ^ *b
+}
+
+/// `noti8` performs a bitwise `not`
+#[inline(always)]
+fn noti8(a: &i8) -> i8 {
+    !*a
+}
+
+/// `nandi8` performs a bitwise `nand` (considering how computers are built, why is this not a
+/// built-in operator?)
+#[inline(always)]
+fn nandi8(a: &i8, b: &i8) -> i8 {
+    !(*a & *b)
+}
+
+/// `nori8` performs a bitwise `nor`
+#[inline(always)]
+fn nori8(a: &i8, b: &i8) -> i8 {
+    !(*a | *b)
+}
+
+/// `xnori8` performs a bitwise `xnor`
+#[inline(always)]
+fn xnori8(a: &i8, b: &i8) -> i8 {
+    !(*a ^ *b)
+}
+
 /// `eqi8` compares two i8s and returns if they are equal
 #[inline(always)]
 fn eqi8(a: &i8, b: &i8) -> bool {
@@ -518,6 +561,49 @@ fn maxi16_result(a: &Result<i16, AlanError>, b: &Result<i16, AlanError>) -> Resu
             Ok(b) => if a > b { Ok(*a) } else { Ok(*b) }
         }
     }
+}
+
+/// `andi16` performs a bitwise `and`
+#[inline(always)]
+fn andi16(a: &i16, b: &i16) -> i16 {
+    *a & *b
+}
+
+/// `ori16` performs a bitwise `or`
+#[inline(always)]
+fn ori16(a: &i16, b: &i16) -> i16 {
+    *a | *b
+}
+
+/// `xori16` performs a bitwise `xor`
+#[inline(always)]
+fn xori16(a: &i16, b: &i16) -> i16 {
+    *a ^ *b
+}
+
+/// `noti16` performs a bitwise `not`
+#[inline(always)]
+fn noti16(a: &i16) -> i16 {
+    !*a
+}
+
+/// `nandi16` performs a bitwise `nand` (considering how computers are built, why is this not a
+/// built-in operator?)
+#[inline(always)]
+fn nandi16(a: &i16, b: &i16) -> i16 {
+    !(*a & *b)
+}
+
+/// `nori16` performs a bitwise `nor`
+#[inline(always)]
+fn nori16(a: &i16, b: &i16) -> i16 {
+    !(*a | *b)
+}
+
+/// `xnori16` performs a bitwise `xnor`
+#[inline(always)]
+fn xnori16(a: &i16, b: &i16) -> i16 {
+    !(*a ^ *b)
 }
 
 /// `eqi16` compares two i16s and returns if they are equal
@@ -777,6 +863,49 @@ fn maxi32_result(a: &Result<i32, AlanError>, b: &Result<i32, AlanError>) -> Resu
     }
 }
 
+/// `andi32` performs a bitwise `and`
+#[inline(always)]
+fn andi32(a: &i32, b: &i32) -> i32 {
+    *a & *b
+}
+
+/// `ori32` performs a bitwise `or`
+#[inline(always)]
+fn ori32(a: &i32, b: &i32) -> i32 {
+    *a | *b
+}
+
+/// `xori32` performs a bitwise `xor`
+#[inline(always)]
+fn xori32(a: &i32, b: &i32) -> i32 {
+    *a ^ *b
+}
+
+/// `noti32` performs a bitwise `not`
+#[inline(always)]
+fn noti32(a: &i32) -> i32 {
+    !*a
+}
+
+/// `nandi32` performs a bitwise `nand` (considering how computers are built, why is this not a
+/// built-in operator?)
+#[inline(always)]
+fn nandi32(a: &i32, b: &i32) -> i32 {
+    !(*a & *b)
+}
+
+/// `nori32` performs a bitwise `nor`
+#[inline(always)]
+fn nori32(a: &i32, b: &i32) -> i32 {
+    !(*a | *b)
+}
+
+/// `xnori32` performs a bitwise `xnor`
+#[inline(always)]
+fn xnori32(a: &i32, b: &i32) -> i32 {
+    !(*a ^ *b)
+}
+
 /// `eqi32` compares two i32s and returns if they are equal
 #[inline(always)]
 fn eqi32(a: &i32, b: &i32) -> bool {
@@ -1032,6 +1161,49 @@ fn maxi64_result(a: &Result<i64, AlanError>, b: &Result<i64, AlanError>) -> Resu
             Ok(b) => if a > b { Ok(*a) } else { Ok(*b) }
         }
     }
+}
+
+/// `andi64` performs a bitwise `and`
+#[inline(always)]
+fn andi64(a: &i64, b: &i64) -> i64 {
+    *a & *b
+}
+
+/// `ori64` performs a bitwise `or`
+#[inline(always)]
+fn ori64(a: &i64, b: &i64) -> i64 {
+    *a | *b
+}
+
+/// `xori64` performs a bitwise `xor`
+#[inline(always)]
+fn xori64(a: &i64, b: &i64) -> i64 {
+    *a ^ *b
+}
+
+/// `noti64` performs a bitwise `not`
+#[inline(always)]
+fn noti64(a: &i64) -> i64 {
+    !*a
+}
+
+/// `nandi64` performs a bitwise `nand` (considering how computers are built, why is this not a
+/// built-in operator?)
+#[inline(always)]
+fn nandi64(a: &i64, b: &i64) -> i64 {
+    !(*a & *b)
+}
+
+/// `nori64` performs a bitwise `nor`
+#[inline(always)]
+fn nori64(a: &i64, b: &i64) -> i64 {
+    !(*a | *b)
+}
+
+/// `xnori64` performs a bitwise `xnor`
+#[inline(always)]
+fn xnori64(a: &i64, b: &i64) -> i64 {
+    !(*a ^ *b)
 }
 
 /// `eqi64` compares two i64s and returns if they are equal
@@ -1755,46 +1927,46 @@ fn stringtobool(a: &String) -> bool {
     a.as_str() == "true"
 }
 
-/// `and` performs a boolean `and`
+/// `andbool` performs a boolean `and`
 #[inline(always)]
-fn and(a: &bool, b: &bool) -> bool {
+fn andbool(a: &bool, b: &bool) -> bool {
     *a && *b
 }
 
-/// `or` performs a boolean `or`
+/// `orbool` performs a boolean `or`
 #[inline(always)]
-fn or(a: &bool, b: &bool) -> bool {
+fn orbool(a: &bool, b: &bool) -> bool {
     *a || *b
 }
 
-/// `xor` performs a boolean `xor`
+/// `xorbool` performs a boolean `xor`
 #[inline(always)]
-fn xor(a: &bool, b: &bool) -> bool {
+fn xorbool(a: &bool, b: &bool) -> bool {
     *a ^ *b
 }
 
-/// `not` performs a boolean `not`
+/// `notbool` performs a boolean `not`
 #[inline(always)]
-fn not(a: &bool) -> bool {
+fn notbool(a: &bool) -> bool {
     !*a
 }
 
-/// `nand` performs a boolean `nand` (considering how computers are built, why is this not a
+/// `nandbool` performs a boolean `nand` (considering how computers are built, why is this not a
 /// built-in operator?)
 #[inline(always)]
-fn nand(a: &bool, b: &bool) -> bool {
+fn nandbool(a: &bool, b: &bool) -> bool {
     !(*a && *b)
 }
 
-/// `nor` performs a boolean `nor`
+/// `norbool` performs a boolean `nor`
 #[inline(always)]
-fn nor(a: &bool, b: &bool) -> bool {
+fn norbool(a: &bool, b: &bool) -> bool {
     !(*a || *b)
 }
 
-/// `xnor` performs a boolean `xnor` (aka `eq`)
+/// `xnorbool` performs a boolean `xnor` (aka `eq`)
 #[inline(always)]
-fn xnor(a: &bool, b: &bool) -> bool {
+fn xnorbool(a: &bool, b: &bool) -> bool {
     *a == *b
 }
 
