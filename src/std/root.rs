@@ -42,6 +42,15 @@ fn to_exit_code_i8(i: &i8) -> std::process::ExitCode {
     (*i as u8).into()
 }
 
+/// `stringtoi8` tries to convert a string into an i8
+#[inline(always)]
+fn stringtoi8(s: &String) -> Result<i8, AlanError> {
+    match s.parse() {
+        Ok(v) => Ok(v),
+        Err(_) => Err("Not a Number".into()),
+    }
+}
+
 /// `f64toi8` casts an f64 to an i8.
 #[inline(always)]
 fn f64toi8(f: &f64) -> i8 {
@@ -340,6 +349,15 @@ fn gti8(a: &i8, b: &i8) -> bool {
 #[inline(always)]
 fn gtei8(a: &i8, b: &i8) -> bool {
   *a >= *b
+}
+
+/// `stringtoi16` tries to convert a string into an i16
+#[inline(always)]
+fn stringtoi16(s: &String) -> Result<i16, AlanError> {
+    match s.parse() {
+        Ok(v) => Ok(v),
+        Err(_) => Err("Not a Number".into()),
+    }
 }
 
 /// `f64toi16` casts an f64 to an i16.
@@ -651,6 +669,15 @@ fn get_or_i32(r: &Result<i32, AlanError>, default: &i32) -> i32 {
     }
 }
 
+/// `stringtoi32` tries to convert a string into an i32
+#[inline(always)]
+fn stringtoi32(s: &String) -> Result<i32, AlanError> {
+    match s.parse() {
+        Ok(v) => Ok(v),
+        Err(_) => Err("Not a Number".into()),
+    }
+}
+
 /// `f64toi32` casts an f64 to an i32.
 #[inline(always)]
 fn f64toi32(f: &f64) -> i32 {
@@ -940,6 +967,15 @@ fn gti32(a: &i32, b: &i32) -> bool {
 #[inline(always)]
 fn gtei32(a: &i32, b: &i32) -> bool {
   *a >= *b
+}
+
+/// `stringtoi64` tries to convert a string into an i64
+#[inline(always)]
+fn stringtoi64(s: &String) -> Result<i64, AlanError> {
+    match s.parse() {
+        Ok(v) => Ok(v),
+        Err(_) => Err("Not a Number".into()),
+    }
 }
 
 /// `f64toi64` casts an f64 to an i64.
@@ -1251,6 +1287,15 @@ fn get_or_f32(r: &Result<f32, AlanError>, default: &f32) -> f32 {
     }
 }
 
+/// `stringtof32` tries to convert a string into an f32
+#[inline(always)]
+fn stringtof32(s: &String) -> Result<f32, AlanError> {
+    match s.parse() {
+        Ok(v) => Ok(v),
+        Err(_) => Err("Not a Number".into()),
+    }
+}
+
 /// `f64tof32` casts an f64 to an f32.
 #[inline(always)]
 fn f64tof32(f: &f64) -> f32 {
@@ -1536,6 +1581,15 @@ fn gtf32(a: &f32, b: &f32) -> bool {
 #[inline(always)]
 fn gtef32(a: &f32, b: &f32) -> bool {
   *a >= *b
+}
+
+/// `stringtof64` tries to convert a string into an f64
+#[inline(always)]
+fn stringtof64(s: &String) -> Result<f64, AlanError> {
+    match s.parse() {
+        Ok(v) => Ok(v),
+        Err(_) => Err("Not a Number".into()),
+    }
 }
 
 /// `f32tof64` casts an f32 to an f64.
@@ -1843,10 +1897,75 @@ fn get_or_exit<A: Clone>(a: &Result<A, AlanError>) -> A {
     }
 }
 
-/// `string_concat` is a simple function that concatenates two strings
+/// `i8tostring` converts an i8 into a simple string representation
 #[inline(always)]
-fn string_concat(a: &String, b: &String) -> String {
+fn i8tostring(a: &i8) -> String {
+    format!("{}", a)
+}
+
+/// `i16tostring` converts an i16 into a simple string representation
+#[inline(always)]
+fn i16tostring(a: &i16) -> String {
+    format!("{}", a)
+}
+
+/// `i32tostring` converts an i32 into a simple string representation
+#[inline(always)]
+fn i32tostring(a: &i32) -> String {
+    format!("{}", a)
+}
+
+/// `i64tostring` converts an i64 into a simple string representation
+#[inline(always)]
+fn i64tostring(a: &i64) -> String {
+    format!("{}", a)
+}
+
+/// `f32tostring` converts an f32 into a simple string representation
+#[inline(always)]
+fn f32tostring(a: &f32) -> String {
+    format!("{}", a)
+}
+
+/// `f64tostring` converts an f64 into a simple string representation
+#[inline(always)]
+fn f64tostring(a: &f64) -> String {
+    format!("{}", a)
+}
+
+/// `booltostring` converts a bool into a simple string representation
+#[inline(always)]
+fn booltostring(a: &bool) -> String {
+    match a {
+        true => "true".to_string(),
+        false => "false".to_string(),
+    }
+}
+
+/// `concatstring` is a simple function that concatenates two strings
+#[inline(always)]
+fn concatstring(a: &String, b: &String) -> String {
     format!("{}{}", a, b).to_string()
+}
+
+/// `minstring` compares two string and returns the "earlier" string (by byte ordering)
+#[inline(always)]
+fn minstring(a: &String, b: &String) -> String {
+    if *a < *b {
+        a.clone()
+    } else {
+        b.clone()
+    }
+}
+
+/// `maxstring` compares two string and returns the "later" string (by byte ordering)
+#[inline(always)]
+fn maxstring(a: &String, b: &String) -> String {
+    if *a > *b {
+        a.clone()
+    } else {
+        b.clone()
+    }
 }
 
 /// `eqstring` compares two string and returns if they are equal
