@@ -269,9 +269,12 @@ impl Scope {
                             match c.name.as_str() {
                                 "Type" | "Generic" | "Bound" | "BoundGeneric" | "Int" | "Float"
                                 | "Bool" | "String" => { /* Do nothing for the 'structural' types */ }
-                                g @ ("Group" | "Array" | "Fail" | "Len" | "Size" | "FileStr" | "Env" | "EnvExists" | "Not") => CType::from_generic(&mut s, g, 1),
-                                g @ ("Function" | "Tuple" | "Field" | "Either" | "Buffer" | "Add" | "Sub" | "Mul" | "Div" | "Mod" | "Pow" | "If" | "And" | "Or" | "Xor"
-                                | "Nand" | "Nor" | "Xnor" | "Eq" | "Neq" | "Lt" | "Lte" | "Gt" | "Gte") => CType::from_generic(&mut s, g, 2),
+                                g @ ("Group" | "Array" | "Fail" | "Len" | "Size" | "FileStr"
+                                | "Env" | "EnvExists" | "Not") => CType::from_generic(&mut s, g, 1),
+                                g @ ("Function" | "Tuple" | "Field" | "Either" | "Buffer" | "Add"
+                                | "Sub" | "Mul" | "Div" | "Mod" | "Pow" | "If" | "And" | "Or"
+                                | "Xor" | "Nand" | "Nor" | "Xnor" | "Eq" | "Neq" | "Lt" | "Lte"
+                                | "Gt" | "Gte") => CType::from_generic(&mut s, g, 2),
                                 // TODO: Also add support for three arg `If` and `Env` with a
                                 // default property via overloading types
                                 unknown => {
