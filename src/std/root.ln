@@ -52,6 +52,12 @@ export ctype Lte{A, B}; // Returns true if A is less than or equal to B
 export ctype Gt{A, B}; // Returns true if A is greater than B
 export ctype Gte{A, B}; // Returns true if A is greater than or equal to B
 
+// Defining derived types
+export type void = ();
+export type Error binds AlanError;
+export type Fallible{T} = Either{T, Error};
+export type Maybe{T} = Either{T, ()};
+
 // Defining the operators in the type system
 export type infix Function as -> precedence 1; // I -> O, where I is the input and O is the output. With Tuples and Fields you can reconstruct arguments for functions.
 export type infix Tuple as , precedence 2; // A, B, C, ... The tuple type combines with other tuple types to become a larger tuple type. To have a tuple of tuples, you need to `Group` the inner tuple, eg `(a, b), c`
@@ -60,6 +66,8 @@ export type infix Either as | precedence 1; // A | B, the type has a singular va
 export type infix Buffer as [ precedence 4; // Technically allows `Foo[3` by itself to be valid syntax, but...
 export type postfix Group as ] precedence 4; // Technically not necessary, but allows for `Foo[3]` to do the "right thing" and become a buffer of size 3, with a singular useless Group being wrapped around it (and then unwrapped on type generation). The only "bad" thing here is `Group` gets special behavior, matching the `(...)` syntax, so there's two ways to invoke a Group via symbols.
 export type postfix Array as [] precedence 4; // Allows `Foo[]` to do the right thing
+export type postfix Maybe as ? precedence 4; // Allows `Foo?` for nullable types. Should this have a precedence of 5?
+export type postfix Fallible as ! precedence 4; // Allows `Foo!` for fallible types. Same question on the precedence.
 export type infix Add as + precedence 2;
 export type infix Sub as - precedence 2;
 export type infix Mul as * precedence 3;
@@ -80,8 +88,6 @@ export type infix Lt as < precedence 1;
 export type infix Lte as <= precedence 1;
 export type infix Gt as > precedence 1;
 export type infix Gte as >= precedence 1;
-
-export type void = ();
 
 // Binding the integer types
 export type i8 binds i8;
