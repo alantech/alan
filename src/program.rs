@@ -26,8 +26,7 @@ impl Program {
         // Load the entry file
         p = match p.load(entry_file) {
             Ok(p) => p,
-            Err(e) => {
-                panic!("{}", e);
+            Err(_) => {
                 // Somehow, trying to print this error can crash Rust!? Really not good.
                 // Will need to figure out how to make these errors clearer to users.
                 return Err("Failed to load entry file".into());
@@ -2542,7 +2541,7 @@ fn statement_to_microstatements(
 #[derive(Clone, Debug)]
 pub struct Function {
     pub name: String,
-    pub args: Vec<(String, CType)>, // Making everything Stringly-typed kinda sucks, but no good way to give an error message in the parser for unknown types otherwise
+    pub args: Vec<(String, CType)>,
     pub rettype: CType,
     pub statements: Vec<parse::Statement>,
     pub microstatements: Vec<Microstatement>,
