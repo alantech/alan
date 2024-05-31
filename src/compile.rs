@@ -1503,17 +1503,13 @@ test_ignore!(array_literals => r#"
     }"#;
     stdout "1\n2\n4\n";
 );
-test_ignore!(object_literals => r#"
-    type MyType {
+test!(object_literals => r#"
+    type MyType =
       foo: string,
-      bar: bool,
-    }
+      bar: bool;
 
     export fn main {
-      const test = new MyType {
-        foo: 'foo!',
-        bar: true,
-      };
+      const test = MyType('foo!', true);
       print(test.foo);
       print(test.bar);
     }"#;

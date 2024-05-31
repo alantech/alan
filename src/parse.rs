@@ -883,12 +883,12 @@ test!(typebaselist =>
 );
 named_and!(typecreate: TypeCreate =>
     a: String as eq,
-    b: String as blank,
+    b: String as whitespace,
     typeassignables: Vec<WithTypeOperators> as typeassignables,
 );
 named_and!(typebind: TypeBind =>
     binds: String as binds,
-    a: String as blank,
+    a: String as whitespace,
     othertype: String as one_or_more!(not!(";")),
     semicolon: String as semicolon,
 );
@@ -898,9 +898,9 @@ named_or!(typedef: TypeDef =>
 );
 named_and!(types: Types =>
     typen: String as typen,
-    a: String as optblank,
+    a: String as optwhitespace,
     opttypegenerics: Option<TypeGenerics> as opt(typegenerics),
-    b: String as optblank,
+    b: String as optwhitespace,
     fulltypename: FullTypename as fulltypename,
     c: String as optwhitespace,
     typedef: TypeDef as typedef,
