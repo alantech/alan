@@ -3,7 +3,7 @@ use ordered_hash_map::OrderedHashMap;
 
 use crate::program::{CType, Program, Scope};
 
-fn ctype_to_rtype(
+pub fn ctype_to_rtype(
     ctype: &CType,
     scope: &Scope,
     program: &Program,
@@ -13,9 +13,21 @@ fn ctype_to_rtype(
         CType::Void => Ok("()".to_string()),
         CType::Type(name, _) => Ok(name.clone()), // TODO: Do we need to handle this recursively,
         // or will the syntax ordering save us here?
-        CType::Generic(name, ..) => Ok(name.clone()),
-        CType::Bound(name, _) => Ok(name.clone()),
-        CType::BoundGeneric(name, ..) => Ok(name.clone()),
+        CType::Generic(name, args, _) => Ok(format!("{}<{}>", name, args.join(", "))),
+        CType::Bound(name, _) => Ok(name.clone()), // This is probably wrong
+        CType::BoundGeneric(name, args, _) => Ok(format!("{}<{}>", name, args.join(", "))),
+        CType::ResolvedBoundGeneric(_name, argstrs, args, binding) => {
+            let mut args_rtype = Vec::new();
+            for arg in args {
+                args_rtype.push(ctype_to_rtype(&arg, scope, program, in_function_type)?);
+            }
+            // TODO: Get a real Rust type parser and do this better
+            let mut out_str = binding.clone();
+            for i in 0..argstrs.len() {
+                out_str = out_str.replace(&argstrs[i], &args_rtype[i]);
+            }
+            Ok(out_str.to_string())
+        }
         CType::IntrinsicGeneric(name, _) => Ok(name.clone()), // How would this even be reached?
         CType::Int(i) => Ok(i.to_string()),
         CType::Float(f) => Ok(f.to_string()),
@@ -85,6 +97,10 @@ pub fn generate(
             );
             Ok((name.clone(), out))
         }
-        _ => Ok(("".to_string(), out)), // Ignore all other types at the top-level for now?
+        CType::Void => Ok(("()".to_string(), out)),
+        otherwise => {
+            let out_str = ctype_to_rtype(&otherwise, scope, program, false)?;
+            Ok((out_str, out)) // TODO: Put something into out?
+        }
     }
 }
