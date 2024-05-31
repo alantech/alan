@@ -59,8 +59,8 @@ export type Fallible{T} = Either{T, Error};
 export type Maybe{T} = Either{T, ()};
 
 // Defining the operators in the type system
-export type infix Function as -> precedence 1; // I -> O, where I is the input and O is the output. With Tuples and Fields you can reconstruct arguments for functions.
-export type infix Tuple as , precedence 2; // A, B, C, ... The tuple type combines with other tuple types to become a larger tuple type. To have a tuple of tuples, you need to `Group` the inner tuple, eg `(a, b), c`
+export type infix Function as -> precedence 2; // I -> O, where I is the input and O is the output. With Tuples and Fields you can reconstruct arguments for functions.
+export type infix Tuple as , precedence 1; // A, B, C, ... The tuple type combines with other tuple types to become a larger tuple type. To have a tuple of tuples, you need to `Group` the inner tuple, eg `(a, b), c`
 export type infix Field as : precedence 3; // Foo: Bar, let's you specify a property access label for the type, useful for syntactic sugar on a tuple type and the Either type (eventually).
 export type infix Either as | precedence 1; // A | B, the type has a singular value from only one of the types at once. `Result` is just `Either{T, Error}` and `Option` is just `Either{T, ()}` (or `Either{T, void}`, however we want to represent it, also might go with `Fallible` and `Maybe` instead of `Result` and `Option` as those feel more descriptive of what they are.
 export type infix Buffer as [ precedence 4; // Technically allows `Foo[3` by itself to be valid syntax, but...
@@ -89,29 +89,23 @@ export type infix Lte as <= precedence 1;
 export type infix Gt as > precedence 1;
 export type infix Gte as >= precedence 1;
 
+export type Result{T} binds Result<T, AlanError>; // TODO: Replace `Result` with `Fallible`
+
 // Binding the integer types
 export type i8 binds i8;
-export type Result{i8} binds Result<i8, AlanError>; // TODO: Just define `export type Result{T} binds Result{T, AlanError};` and have that work instead of this redundant definition
 export type i16 binds i16;
-export type Result{i16} binds Result<i16, AlanError>;
 export type i32 binds i32;
-export type Result{i32} binds Result<i32, AlanError>;
 export type i64 binds i64;
-export type Result{i64} binds Result<i64, AlanError>;
 
 // Binding the float types
 export type f32 binds f32;
-export type Result{f32} binds Result<f32, AlanError>;
 export type f64 binds f64;
-export type Result{f64} binds Result<f64, AlanError>;
 
 // Binding the string types
 export type string binds String;
-export type Result{string} binds Result<String, AlanError>;
 
 // Binding the boolean types
 export type bool binds bool;
-export type Result{bool} binds Result<bool, AlanError>;
 
 // Binding the exit code type
 export type ExitCode binds std::process::ExitCode;
@@ -509,16 +503,15 @@ export fn elapsed(i: Instant) -> Duration binds elapsed;
 export fn print(d: Duration) binds print_duration;
 
 /// Vector-related bindings TODO: Kill all of this once arrays work
-export type Vec{i64} binds Vec<i64>;
-export type Vec{Result{i64}} binds Vec<Result_i64>;
+export type Vec{T} binds Vec<T>;
 export fn filled(i: i64, l: i64) -> Vec{i64} binds filled;
 export fn filled(r: Result{i64}, l: i64) -> Vec{Result{i64}} binds filled;
 export fn print(v: Vec{i64}) binds print_vec;
 export fn print(v: Vec{Result{i64}}) binds print_vec_result;
-export fn map(v: Vec{i64}, m: function) -> Vec{Result{i64}} binds map_onearg; // TODO: This is terrible
-export fn parmap(v: Vec{i64}, m: function) -> Vec{Result{i64}} binds parmap_onearg; // TODO: This is terrible
-export fn map(v: Vec{i32}, m: function) -> Vec{Result{i32}} binds map_onearg; // TODO: This is terrible
-export fn parmap(v: Vec{i32}, m: function) -> Vec{Result{i32}} binds parmap_onearg; // TODO: This is terrible
+export fn map(v: Vec{i64}, m: i64 -> Result{i64}) -> Vec{Result{i64}} binds map_onearg; // TODO: This is terrible
+export fn parmap(v: Vec{i64}, m: i64 -> Result{i64}) -> Vec{Result{i64}} binds parmap_onearg; // TODO: This is terrible
+export fn map(v: Vec{i32}, m: i32 -> Result{i32}) -> Vec{Result{i32}} binds map_onearg; // TODO: This is terrible
+export fn parmap(v: Vec{i32}, m: i32 -> Result{i32}) -> Vec{Result{i32}} binds parmap_onearg; // TODO: This is terrible
 export fn push(v: Vec{i64}, a: i64) binds push;
 export fn length(v: Vec{i64}) -> i64 binds vec_len;
 export fn length(v: Vec{i32}) -> i64 binds vec_len;
@@ -527,25 +520,22 @@ export fn length(v: Vec{i32}) -> i64 binds vec_len;
 export type GPU binds GPU;
 export fn GPU() -> GPU binds GPU_new;
 export type BufferUsages binds wgpu::BufferUsages;
-export type Vec{i32} binds Vec{i32};
-export type Buffer binds wgpu::Buffer;
-export type Vec{Buffer} binds Vec_Buffer;
-export type Vec{Vec{Buffer}} binds Vec_Vec_Buffer;
-export fn newVecBuffer() -> Vec{Buffer} binds Vec_Buffer_new;
-export fn newVecVecBuffer() -> Vec{Vec{Buffer}} binds Vec_Vec_Buffer_new;
-export fn push(v: Vec{Buffer}, a: Buffer) binds push;
-export fn push(v: Vec{Vec{Buffer}}, a: Vec{Buffer}) binds push;
+export type GBuffer binds wgpu::Buffer;
+export fn newVecBuffer() -> Vec{GBuffer} binds Vec_Buffer_new;
+export fn newVecVecBuffer() -> Vec{Vec{GBuffer}} binds Vec_Vec_Buffer_new;
+export fn push(v: Vec{GBuffer}, a: GBuffer) binds push;
+export fn push(v: Vec{Vec{GBuffer}}, a: Vec{GBuffer}) binds push;
 export fn filled(i: i32, l: i64) -> Vec{i32} binds filled;
 export fn print(v: Vec{i32}) binds print_vec;
-export fn createBuffer(g: GPU, usage: BufferUsages, vals: Vec{i32}) -> Buffer binds create_buffer_init;
-export fn createBuffer(g: GPU, usage: BufferUsages, size: i64) -> Buffer binds create_empty_buffer;
+export fn createBuffer(g: GPU, usage: BufferUsages, vals: Vec{i32}) -> GBuffer binds create_buffer_init;
+export fn createBuffer(g: GPU, usage: BufferUsages, size: i64) -> GBuffer binds create_empty_buffer;
 export fn mapReadBuffer() -> BufferUsages binds map_read_buffer_type;
 export fn storageBuffer() -> BufferUsages binds storage_buffer_type;
 export type GPGPU binds GPGPU;
-export fn GPGPU(source: string, buffers: Vec{Vec{Buffer}}) -> GPGPU binds GPGPU_new;
-export fn GPGPU(source: string, buffer: Buffer) -> GPGPU binds GPGPU_new_easy;
+export fn GPGPU(source: string, buffers: Vec{Vec{GBuffer}}) -> GPGPU binds GPGPU_new;
+export fn GPGPU(source: string, buffer: GBuffer) -> GPGPU binds GPGPU_new_easy;
 export fn run(g: GPU, gg: GPGPU) binds gpu_run;
-export fn read(g: GPU, b: Buffer) -> Vec{i32} binds read_buffer; // TODO: Support other output types
+export fn read(g: GPU, b: GBuffer) -> Vec{i32} binds read_buffer; // TODO: Support other output types
 
 /// Built-in operator definitions
 export infix add as + precedence 2;

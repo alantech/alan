@@ -3,7 +3,7 @@
 use ordered_hash_map::OrderedHashMap;
 
 use crate::lntors::typen;
-use crate::program::{Function, Microstatement, Program, Scope};
+use crate::program::{CType, Function, Microstatement, Program, Scope};
 
 pub fn from_microstatement(
     microstatement: &Microstatement,
@@ -47,28 +47,34 @@ pub fn from_microstatement(
         Microstatement::Value {
             typen,
             representation,
-        } => match typen.as_str() {
-            "string" => Ok((format!("{}.to_string()", representation).to_string(), out)),
-            "function" => {
+        } => match &typen {
+            CType::Bound(a, _) if a == "string" => {
+                Ok((format!("{}.to_string()", representation).to_string(), out))
+            }
+            CType::Function(..) => {
                 // We need to make sure this function we're referencing exists
                 match scope.functions.get(representation) {
                     Some(fns) => {
                         let f = &fns[0]; // TODO: Proper implementation selection
-                                         // Come up with a function name that is unique so Rust doesn't choke on
-                                         // duplicate function names that are allowed in Alan
-                        let rustname = format!(
-                            "{}_{}",
-                            f.name,
-                            f.args
-                                .iter()
-                                .map(|(_, typename)| {
-                                    typename.clone().replace("{", "_").replace("}", "_")
+                        let mut arg_strs = Vec::new();
+                        for arg in &f.args {
+                            match typen::ctype_to_rtype(&arg.1, scope, program, false) {
+                                Err(e) => Err(e),
+                                Ok(s) => {
+                                    arg_strs.push(
+                                        s.replace("<", "_")
+                                            .replace(">", "_")
+                                            .replace(",", "_")
+                                            .replace(" ", ""),
+                                    );
                                     /* TODO: Handle generic types better, also type inference */
-                                })
-                                .collect::<Vec<String>>()
-                                .join("_")
-                        )
-                        .to_string();
+                                    Ok(())
+                                }
+                            }?;
+                        }
+                        // Come up with a function name that is unique so Rust doesn't choke on
+                        // duplicate function names that are allowed in Alan
+                        let rustname = format!("{}_{}", f.name, arg_strs.join("_")).to_string();
                         // Make the function we need, but with the name we're
                         out = generate(rustname.clone(), &f, scope, program, out)?;
                         Ok((rustname, out))
@@ -96,11 +102,7 @@ pub fn from_microstatement(
         }
         Microstatement::Type { typen, keyvals } => {
             // Need to make sure the struct is defined, first
-            let t = match program.resolve_type(scope, typen) {
-                None => Err("Somehow can't find the type at this layer of the compilation"),
-                Some((t, _)) => Ok(t),
-            }?;
-            let (_, o) = typen::generate(t, scope, program, out)?;
+            let (_, o) = typen::generate(typen, scope, program, out)?;
             out = o;
             // Now generating the representation
             let mut keyval_representations = Vec::new();
@@ -114,7 +116,7 @@ pub fn from_microstatement(
                     r#"{} {{
     {}
 }}"#,
-                    typen,
+                    typen::ctype_to_rtype(&typen, scope, program, false)?,
                     keyval_representations.join("\n")
                 )
                 .to_string(),
@@ -123,31 +125,46 @@ pub fn from_microstatement(
         }
         Microstatement::FnCall { function, args } => {
             let mut arg_types = Vec::new();
+            let mut arg_type_strs = Vec::new();
             for arg in args {
                 let arg_type = arg.get_type(scope, program)?;
-                arg_types.push(arg_type);
+                arg_types.push(arg_type.clone());
+                match typen::ctype_to_rtype(&arg_type, scope, program, false) {
+                    Err(e) => Err(e),
+                    Ok(s) => {
+                        arg_type_strs.push(s);
+                        Ok(())
+                    }
+                }?
             }
             match program.resolve_function(scope, function, &arg_types) {
-                None => {
-                    Err(format!("Function {}({}) not found", function, arg_types.join(", ")).into())
-                }
+                None => Err(format!(
+                    "Function {}({}) not found",
+                    function,
+                    arg_type_strs.join(", ")
+                )
+                .into()),
                 Some((f, _s)) => match &f.bind {
                     None => {
+                        let mut arg_strs = Vec::new();
+                        for arg in &f.args {
+                            match typen::ctype_to_rtype(&arg.1, scope, program, false) {
+                                Err(e) => Err(e),
+                                Ok(s) => {
+                                    arg_strs.push(
+                                        s.replace("<", "_")
+                                            .replace(">", "_")
+                                            .replace(",", "_")
+                                            .replace(" ", ""),
+                                    );
+                                    /* TODO: Handle generic types better, also type inference */
+                                    Ok(())
+                                }
+                            }?;
+                        }
                         // Come up with a function name that is unique so Rust doesn't choke on
                         // duplicate function names that are allowed in Alan
-                        let rustname = format!(
-                            "{}_{}",
-                            f.name,
-                            f.args
-                                .iter()
-                                .map(|(_, typename)| {
-                                    typename.clone().replace("{", "_").replace("}", "_")
-                                    /* TODO: Handle generic types better, also type inference */
-                                })
-                                .collect::<Vec<String>>()
-                                .join("_")
-                        )
-                        .to_string();
+                        let rustname = format!("{}_{}", f.name, arg_strs.join("_")).to_string();
                         // Make the function we need, but with the name we're
                         out = generate(rustname.clone(), &f, scope, program, out)?;
                         // Now call this function
@@ -159,10 +176,9 @@ pub fn from_microstatement(
                             // where you can't pass by reference, so we check the type and change
                             // the argument output accordingly.
                             let arg_type = arg.get_type(scope, program)?;
-                            if arg_type.as_str() == "function" {
-                                argstrs.push(format!("{}", a));
-                            } else {
-                                argstrs.push(format!("&mut {}", a));
+                            match arg_type {
+                                CType::Function(..) => argstrs.push(format!("{}", a)),
+                                _ => argstrs.push(format!("&mut {}", a)),
                             }
                         }
                         Ok((
@@ -179,10 +195,9 @@ pub fn from_microstatement(
                             // where you can't pass by reference, so we check the type and change
                             // the argument output accordingly.
                             let arg_type = arg.get_type(scope, program)?;
-                            if arg_type.as_str() == "function" {
-                                argstrs.push(format!("{}", a));
-                            } else {
-                                argstrs.push(format!("&mut {}", a));
+                            match arg_type {
+                                CType::Function(..) => argstrs.push(format!("{}", a)),
+                                _ => argstrs.push(format!("&mut {}", a)),
                             }
                         }
                         Ok((
@@ -215,24 +230,18 @@ pub fn generate(
     // First make sure all of the function argument types are defined
     let mut arg_strs = Vec::new();
     for arg in &function.args {
-        if let Some((t, s)) = program.resolve_type(scope, &arg.1) {
-            let (t_str, o) = typen::generate(t, s, program, out)?;
-            out = o;
-            arg_strs.push(format!("{}: &{}", arg.0, t_str).to_string());
-        } else {
-            return Err(format!("Could not find type {}", &arg.1).into());
-        }
+        let (l, t) = arg;
+        let (t_str, o) = typen::generate(t, scope, program, out)?;
+        out = o;
+        arg_strs.push(format!("{}: &{}", l, t_str).to_string());
     }
     let opt_ret_str = match &function.rettype {
-        Some(rettype) => match program.resolve_type(scope, rettype) {
-            None => None,
-            Some((t, s)) => {
-                let (t_str, o) = typen::generate(t, s, program, out)?;
-                out = o;
-                Some(t_str)
-            }
-        },
-        None => None,
+        CType::Void => None,
+        otherwise => {
+            let (t_str, o) = typen::generate(otherwise, scope, program, out)?;
+            out = o;
+            Some(t_str)
+        }
     };
     // Start generating the function output. We can do this eagerly like this because, at least for
     // now, we inline all other function calls within an "entry" function (the main function, or

@@ -26,7 +26,8 @@ impl Program {
         // Load the entry file
         p = match p.load(entry_file) {
             Ok(p) => p,
-            Err(_) => {
+            Err(e) => {
+                panic!("{}", e);
                 // Somehow, trying to print this error can crash Rust!? Really not good.
                 // Will need to figure out how to make these errors clearer to users.
                 return Err("Failed to load entry file".into());
@@ -139,7 +140,7 @@ impl Program {
         self: &'a Self,
         scope: &'a Scope,
         function: &String,
-        args: &Vec<String>,
+        args: &Vec<CType>,
     ) -> Option<(&Function, &Scope)> {
         // Tries to find the specified function within the portion of the program accessible from
         // the current scope (so first checking the current scope, then all imports, then the root
@@ -153,7 +154,10 @@ impl Program {
                     }
                     let mut args_match = true;
                     for (i, arg) in args.iter().enumerate() {
-                        if &f.args[i].1 != arg {
+                        // This is pretty cheap, but for now, a "non-strict" string representation
+                        // of the CTypes is how we'll match the args against each other. TODO: Do
+                        // this without constructing a string to compare against each other.
+                        if f.args[i].1.to_strict_string(false) != arg.to_strict_string(false) {
                             args_match = false;
                             break;
                         }
@@ -176,7 +180,12 @@ impl Program {
                                 }
                                 let mut args_match = true;
                                 for (i, arg) in args.iter().enumerate() {
-                                    if &f.args[i].1 != arg {
+                                    // This is pretty cheap, but for now, a "non-strict" string representation
+                                    // of the CTypes is how we'll match the args against each other. TODO: Do
+                                    // this without constructing a string to compare against each other.
+                                    if f.args[i].1.to_strict_string(false)
+                                        != arg.to_strict_string(false)
+                                    {
                                         args_match = false;
                                         break;
                                     }
@@ -299,13 +308,14 @@ impl Scope {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum CType {
     Void,
     Type(String, Box<CType>),
     Generic(String, Vec<String>, Vec<parse::WithTypeOperators>),
     Bound(String, String),
     BoundGeneric(String, Vec<String>, String),
+    ResolvedBoundGeneric(String, Vec<String>, Vec<CType>, String),
     IntrinsicGeneric(String, usize),
     Int(i128),
     Float(f64),
@@ -321,23 +331,111 @@ pub enum CType {
 }
 
 impl CType {
+    fn to_string(&self) -> String {
+        self.to_strict_string(true)
+    }
+    fn to_strict_string(&self, strict: bool) -> String {
+        match self {
+            CType::Void => "()".to_string(),
+            CType::Type(s, _) => format!("{}", s),
+            CType::Generic(n, a, _) => format!("{}{{{}}}", n, a.join(", ")),
+            CType::Bound(s, _) => format!("{}", s),
+            CType::BoundGeneric(s, a, _) => format!("{}{{{}}}", s, a.join(", ")),
+            CType::ResolvedBoundGeneric(s, _, a, _) => format!(
+                "{}{{{}}}",
+                s,
+                a.iter()
+                    .map(|b| b.to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ),
+            CType::IntrinsicGeneric(s, l) => format!(
+                "{}{{{}}}",
+                s,
+                (0..*l)
+                    .map(|b| format!("arg{}", b))
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ),
+            CType::Int(i) => format!("{}", i),
+            CType::Float(f) => format!("{}", f),
+            CType::Bool(b) => match b {
+                true => "true".to_string(),
+                false => "false".to_string(),
+            },
+            CType::TString(s) => s.clone(),
+            CType::Group(t) => match strict {
+                true => format!("({})", t.to_strict_string(strict)),
+                false => t.to_strict_string(strict),
+            },
+            CType::Function(i, o) => format!(
+                "{} -> {}",
+                i.to_strict_string(strict),
+                o.to_strict_string(strict)
+            ),
+            CType::Tuple(ts) => ts
+                .iter()
+                .map(|t| t.to_strict_string(strict))
+                .collect::<Vec<String>>()
+                .join(", "),
+            CType::Field(l, t) => match strict {
+                true => format!("{}: {}", l, t.to_strict_string(strict)),
+                false => t.to_strict_string(strict),
+            },
+            CType::Either(ts) => ts
+                .iter()
+                .map(|t| t.to_strict_string(strict))
+                .collect::<Vec<String>>()
+                .join(" | "),
+            CType::Buffer(t, s) => format!("{}[{}]", t.to_strict_string(strict), s),
+            CType::Array(t) => format!("{}[]", t.to_strict_string(strict)),
+        }
+    }
     fn from_ast(
         scope: &mut Scope,
         program: &mut Program,
         type_ast: &parse::Types,
         is_export: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let name = type_ast.fulltypename.to_string();
-        let t = match &type_ast.typedef {
-            parse::TypeDef::TypeCreate(create) => CType::Type(
-                name.clone(),
-                Box::new(withtypeoperatorslist_to_ctype(
-                    &create.typeassignables,
-                    &scope,
-                    &program,
-                )?),
-            ),
-            parse::TypeDef::TypeBind(bind) => CType::Bound(name.clone(), bind.othertype.clone()),
+        let name = type_ast.fulltypename.typename.clone();
+        let t = match &type_ast.fulltypename.opttypegenerics {
+            None => {
+                // This is a "normal" type
+                match &type_ast.typedef {
+                    parse::TypeDef::TypeCreate(create) => CType::Type(
+                        name.clone(),
+                        Box::new(withtypeoperatorslist_to_ctype(
+                            &create.typeassignables,
+                            &scope,
+                            &program,
+                        )?),
+                    ),
+                    parse::TypeDef::TypeBind(bind) => {
+                        CType::Bound(name.clone(), bind.othertype.clone())
+                    }
+                }
+            }
+            Some(g) => {
+                // This is a "generic" type
+                match &type_ast.typedef {
+                    parse::TypeDef::TypeCreate(create) => CType::Generic(
+                        name.clone(),
+                        g.generics
+                            .iter()
+                            .map(|ftn| ftn.to_string())
+                            .collect::<Vec<String>>(),
+                        create.typeassignables.clone(),
+                    ),
+                    parse::TypeDef::TypeBind(bind) => CType::BoundGeneric(
+                        name.clone(),
+                        g.generics
+                            .iter()
+                            .map(|ftn| ftn.to_string())
+                            .collect::<Vec<String>>(),
+                        bind.othertype.clone(),
+                    ),
+                }
+            }
         };
         if is_export {
             scope.exports.insert(name.clone(), Export::Type);
@@ -808,22 +906,22 @@ pub enum Microstatement {
     },
     Arg {
         name: String,
-        typen: String,
+        typen: CType,
     },
     FnCall {
         function: String, // TODO: It would be nice to make this a vector of pointers to function objects so we can narrow down the exact implementation sooner
         args: Vec<Microstatement>,
     },
     Value {
-        typen: String,          // TODO: Do better on this, too.
+        typen: CType,
         representation: String, // TODO: Can we do better here?
     },
     Type {
-        typen: String, // TODO: Do better on this
+        typen: CType,
         keyvals: OrderedHashMap<String, Microstatement>,
     },
     Array {
-        typen: String, // TODO: Do better on this
+        typen: CType,
         vals: Vec<Microstatement>,
     },
     Return {
@@ -836,7 +934,7 @@ impl Microstatement {
         &self,
         scope: &Scope,
         program: &Program,
-    ) -> Result<String, Box<dyn std::error::Error>> {
+    ) -> Result<CType, Box<dyn std::error::Error>> {
         match self {
             Self::Value { typen, .. } => Ok(typen.clone()),
             Self::Array { typen, .. } => Ok(typen.clone()),
@@ -845,7 +943,7 @@ impl Microstatement {
             Self::Assignment { value, .. } => value.get_type(scope, program),
             Self::Return { value } => match value {
                 Some(v) => v.get_type(scope, program),
-                None => Ok("void".to_string()),
+                None => Ok(CType::Void),
             },
             Self::FnCall { function, args } => {
                 let mut arg_types = Vec::new();
@@ -854,11 +952,7 @@ impl Microstatement {
                     arg_types.push(arg_type);
                 }
                 match program.resolve_function(scope, function, &arg_types) {
-                    Some((function_object, _s)) => match &function_object.rettype {
-                        // TODO: Handle implied return types better
-                        None => Ok("void".to_string()),
-                        Some(v) => Ok(v.clone()),
-                    },
+                    Some((function_object, _s)) => Ok(function_object.rettype.clone()),
                     None => Err(format!("Could not find function {}", function).into()),
                 }
             }
@@ -996,13 +1090,13 @@ fn baseassignablelist_to_microstatements(
                     match c {
                         parse::Constants::Bool(b) => {
                             prior_value = Some(Microstatement::Value {
-                                typen: "bool".to_string(),
+                                typen: CType::Bound("bool".to_string(), "bool".to_string()),
                                 representation: b.clone(),
                             })
                         }
                         parse::Constants::Strn(s) => {
                             prior_value = Some(Microstatement::Value {
-                                typen: "string".to_string(),
+                                typen: CType::Bound("string".to_string(), "String".to_string()),
                                 representation: if s.starts_with('"') {
                                     s.clone()
                                 } else {
@@ -1017,13 +1111,17 @@ fn baseassignablelist_to_microstatements(
                         parse::Constants::Num(n) => match n {
                             parse::Number::RealNum(r) => {
                                 prior_value = Some(Microstatement::Value {
-                                    typen: "f64".to_string(), // TODO: Something more intelligent here?
+                                    // TODO: Something more intelligent here?
+                                    typen: CType::Bound("f64".to_string(), "f64".to_string()),
                                     representation: r.clone(),
                                 })
                             }
                             parse::Number::IntNum(i) => {
                                 prior_value = Some(Microstatement::Value {
-                                    typen: "i64".to_string(), // TODO: Same here. This feels dumb
+                                    // TODO: Same. Maybe it should be the `CType::Int` type and
+                                    // then there's special logic to convert on-the-fly to the
+                                    // right integer type later?
+                                    typen: CType::Bound("i64".to_string(), "i64".to_string()),
                                     representation: i.clone(),
                                 })
                             }
@@ -1051,7 +1149,10 @@ fn baseassignablelist_to_microstatements(
                                     args: vec![
                                         prior,
                                         Microstatement::Value {
-                                            typen: "i64".to_string(),
+                                            typen: CType::Bound(
+                                                "i64".to_string(),
+                                                "i64".to_string(),
+                                            ),
                                             representation: i.clone(),
                                         },
                                     ],
@@ -1173,11 +1274,9 @@ fn baseassignablelist_to_microstatements(
                                 // TODO: Currently assuming the type of the first element of the array
                                 // matches all of them. Should confirm that in the future
                                 prior_value = Some(Microstatement::Array {
-                                    typen: format!(
-                                        "Array<{}>",
-                                        array_microstatements[0].get_type(scope, program)?
-                                    )
-                                    .to_string(),
+                                    typen: CType::Array(Box::new(
+                                        array_microstatements[0].get_type(scope, program)?,
+                                    )),
                                     vals: array_microstatements,
                                 });
                             }
@@ -1195,7 +1294,18 @@ fn baseassignablelist_to_microstatements(
                                 // TODO: Currently assuming the type of the array *is* the type specified.
                                 // Should confirm that in the future
                                 prior_value = Some(Microstatement::Array {
-                                    typen: f.literaldec.fulltypename.to_string(),
+                                    typen: match program
+                                        .resolve_type(scope, &f.literaldec.fulltypename.to_string())
+                                    {
+                                        Some((t, _)) => {
+                                            Ok::<CType, Box<dyn std::error::Error>>(t.clone())
+                                        }
+                                        None => Err(format!(
+                                            "Could not resolve type {}",
+                                            f.literaldec.fulltypename.to_string()
+                                        )
+                                        .into()),
+                                    }?,
                                     vals: array_microstatements,
                                 });
                             }
@@ -1217,7 +1327,18 @@ fn baseassignablelist_to_microstatements(
                             // TODO: Currently assuming that the specified type matches the properties
                             // provided. Should confirm that in the future
                             prior_value = Some(Microstatement::Type {
-                                typen: t.literaldec.fulltypename.to_string(),
+                                typen: match program
+                                    .resolve_type(scope, &t.literaldec.fulltypename.to_string())
+                                {
+                                    Some((t, _)) => {
+                                        Ok::<CType, Box<dyn std::error::Error>>(t.clone())
+                                    }
+                                    None => Err(format!(
+                                        "Could not resolve type {}",
+                                        t.literaldec.fulltypename.to_string()
+                                    )
+                                    .into()),
+                                }?,
                                 keyvals: struct_microstatements,
                             });
                         }
@@ -1254,12 +1375,47 @@ fn baseassignablelist_to_microstatements(
                         // type safety. This requires getting the types of all of the involved
                         // arguments
                         match scope.functions.get(var) {
-                            Some(_) => Ok("function".to_string()), // TODO: Do better
+                            // TODO: the specific function chosen may be wrong, need to use
+                            // `program.resolve_function` here
+                            Some(f) => Ok(CType::Function(
+                                Box::new(if f[0].args.len() == 0 {
+                                    CType::Void
+                                } else {
+                                    CType::Tuple(
+                                        f[0].args
+                                            .iter()
+                                            .map(|(l, t)| {
+                                                CType::Field(l.clone(), Box::new(t.clone()))
+                                            })
+                                            .collect::<Vec<CType>>(),
+                                    )
+                                }),
+                                Box::new(f[0].rettype.clone()),
+                            )), // TODO: Convert the Function class to use a
+                            // function type directly
                             None => {
                                 // Check the root scope, too
                                 match program.scopes_by_file.get("@root") {
                                     Some((_, _, s)) => match s.functions.get(var) {
-                                        Some(_) => Ok("function".to_string()), // TODO: Do better
+                                        Some(f) => Ok(CType::Function(
+                                            Box::new(if f[0].args.len() == 0 {
+                                                CType::Void
+                                            } else {
+                                                CType::Tuple(
+                                                    f[0].args
+                                                        .iter()
+                                                        .map(|(l, t)| {
+                                                            CType::Field(
+                                                                l.clone(),
+                                                                Box::new(t.clone()),
+                                                            )
+                                                        })
+                                                        .collect::<Vec<CType>>(),
+                                                )
+                                            }),
+                                            Box::new(f[0].rettype.clone()),
+                                        )), // TODO: Convert the Function class to use a
+                                        // function type directly
                                         None => {
                                             Err(format!("Couldn't find variable {}", var).into())
                                         }
@@ -1271,122 +1427,125 @@ fn baseassignablelist_to_microstatements(
                     }
                 }?;
                 if let Some(prior) = prior_value {
-                    if typen == "function" {
-                        // TODO: Do better on function dispatch
-                        // If this is a method call we need to pull in the rest of the arguments
-                        // (if there are any) from the next assignable and then skip over it.
-                        // Otherwise either generate the function call as-is or return an error if
-                        // the follow-on assignable can't follow this one.
-                        if let Some(next) = nextassignable {
-                            match next {
-                                parse::BaseAssignable::Variable(v) => {
-                                    return Err(format!("A variable ({}) cannot directly follow another value without an operator: {}", v, baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
-                                }
-                                parse::BaseAssignable::ObjectLiterals(_) => {
-                                    // TODO: Support array access after a method call
-                                    return Err(
-                                        "TODO: Support array access after a method call".into()
-                                    );
-                                }
-                                parse::BaseAssignable::Functions(_) => {
-                                    return Err(format!("A closure function cannot directly follow another value: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
-                                }
-                                parse::BaseAssignable::Constants(c) => {
-                                    return Err(format!("A constant ({}) cannot directly follow another value without an operator: {}", c.to_string(), baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
-                                }
-                                parse::BaseAssignable::MethodSep(_) => {
-                                    // Call the function with a singular value
-                                    match &prior {
-                                        Microstatement::Value { .. } => {
-                                            prior_value = Some(Microstatement::FnCall {
-                                                function: var.clone(),
-                                                args: vec![prior.clone()],
-                                            });
-                                        }
-                                        Microstatement::Arg { .. } => {
-                                            prior_value = Some(Microstatement::FnCall {
-                                                function: var.clone(),
-                                                args: vec![prior.clone()],
-                                            });
-                                        }
-                                        Microstatement::Assignment { name, .. } => {
-                                            return Err(format!("{} is not a function so it cannot be called as one: {}", name, baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
-                                        }
-                                        Microstatement::FnCall { .. } => {
-                                            // TODO: Support function calls on functions that return functions
-                                            return Err("Function calls on functions that return functions not yet implemented".into());
-                                        }
-                                        Microstatement::Type { typen, .. } => {
-                                            return Err(format!("{} is not a function so it cannot be called as one: {}", typen, baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
-                                        }
-                                        Microstatement::Array { typen, .. } => {
-                                            return Err(format!("{} is not a function so it cannot be called as one: {}", typen, baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
-                                        }
-                                        Microstatement::Return { .. } => {
-                                            return Err(format!("You can't call a return statement as a function. How did you even do this, anyway?: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
-                                        }
+                    match &typen {
+                        CType::Function(..) => {
+                            // TODO: Do better on function dispatch
+                            // If this is a method call we need to pull in the rest of the arguments
+                            // (if there are any) from the next assignable and then skip over it.
+                            // Otherwise either generate the function call as-is or return an error if
+                            // the follow-on assignable can't follow this one.
+                            if let Some(next) = nextassignable {
+                                match next {
+                                    parse::BaseAssignable::Variable(v) => {
+                                        return Err(format!("A variable ({}) cannot directly follow another value without an operator: {}", v, baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
                                     }
-                                }
-                                parse::BaseAssignable::FnCall(fc) => {
-                                    // In this path, we grab the arguments from the function call
-                                    // and combine it with the value we're keying off of, then we
-                                    // skip the next step by incrementing `i` an extra time
-                                    // TODO: Support closure functions
-                                    let mut args = vec![prior.clone()];
-                                    for arg in &fc.assignablelist {
-                                        microstatements = withoperatorslist_to_microstatements(
-                                            arg,
-                                            scope,
-                                            program,
-                                            microstatements,
-                                        )?;
-                                        let lastmicrostatement = microstatements.pop().unwrap();
-                                        match lastmicrostatement {
-                                            Microstatement::Assignment {
-                                                ref name,
-                                                ref value,
-                                                ..
-                                            } => {
-                                                // If the last microstatement is an assignment, we need to
-                                                // reference it as a value and push it back onto the array
-                                                args.push(Microstatement::Value {
-                                                    typen: value.get_type(scope, program)?,
-                                                    representation: name.clone(),
+                                    parse::BaseAssignable::ObjectLiterals(_) => {
+                                        // TODO: Support array access after a method call
+                                        return Err(
+                                            "TODO: Support array access after a method call".into(),
+                                        );
+                                    }
+                                    parse::BaseAssignable::Functions(_) => {
+                                        return Err(format!("A closure function cannot directly follow another value: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
+                                    }
+                                    parse::BaseAssignable::Constants(c) => {
+                                        return Err(format!("A constant ({}) cannot directly follow another value without an operator: {}", c.to_string(), baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
+                                    }
+                                    parse::BaseAssignable::MethodSep(_) => {
+                                        // Call the function with a singular value
+                                        match &prior {
+                                            Microstatement::Value { .. } => {
+                                                prior_value = Some(Microstatement::FnCall {
+                                                    function: var.clone(),
+                                                    args: vec![prior.clone()],
                                                 });
-                                                microstatements.push(lastmicrostatement);
                                             }
-                                            _ => {
-                                                // For everything else, we can just put the statement inside of
-                                                // the function call as one of its args directly
-                                                args.push(lastmicrostatement);
+                                            Microstatement::Arg { .. } => {
+                                                prior_value = Some(Microstatement::FnCall {
+                                                    function: var.clone(),
+                                                    args: vec![prior.clone()],
+                                                });
+                                            }
+                                            Microstatement::Assignment { name, .. } => {
+                                                return Err(format!("{} is not a function so it cannot be called as one: {}", name, baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
+                                            }
+                                            Microstatement::FnCall { .. } => {
+                                                // TODO: Support function calls on functions that return functions
+                                                return Err("Function calls on functions that return functions not yet implemented".into());
+                                            }
+                                            Microstatement::Type { typen, .. } => {
+                                                return Err(format!("{:?} is not a function so it cannot be called as one: {}", typen, baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
+                                            }
+                                            Microstatement::Array { typen, .. } => {
+                                                return Err(format!("{:?} is not a function so it cannot be called as one: {}", typen, baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
+                                            }
+                                            Microstatement::Return { .. } => {
+                                                return Err(format!("You can't call a return statement as a function. How did you even do this, anyway?: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
                                             }
                                         }
                                     }
-                                    prior_value = Some(Microstatement::FnCall {
-                                        function: var.clone(),
-                                        args,
-                                    });
-                                    i = i + 1;
+                                    parse::BaseAssignable::FnCall(fc) => {
+                                        // In this path, we grab the arguments from the function call
+                                        // and combine it with the value we're keying off of, then we
+                                        // skip the next step by incrementing `i` an extra time
+                                        // TODO: Support closure functions
+                                        let mut args = vec![prior.clone()];
+                                        for arg in &fc.assignablelist {
+                                            microstatements = withoperatorslist_to_microstatements(
+                                                arg,
+                                                scope,
+                                                program,
+                                                microstatements,
+                                            )?;
+                                            let lastmicrostatement = microstatements.pop().unwrap();
+                                            match lastmicrostatement {
+                                                Microstatement::Assignment {
+                                                    ref name,
+                                                    ref value,
+                                                    ..
+                                                } => {
+                                                    // If the last microstatement is an assignment, we need to
+                                                    // reference it as a value and push it back onto the array
+                                                    args.push(Microstatement::Value {
+                                                        typen: value.get_type(scope, program)?,
+                                                        representation: name.clone(),
+                                                    });
+                                                    microstatements.push(lastmicrostatement);
+                                                }
+                                                _ => {
+                                                    // For everything else, we can just put the statement inside of
+                                                    // the function call as one of its args directly
+                                                    args.push(lastmicrostatement);
+                                                }
+                                            }
+                                        }
+                                        prior_value = Some(Microstatement::FnCall {
+                                            function: var.clone(),
+                                            args,
+                                        });
+                                        i = i + 1;
+                                    }
                                 }
+                            } else {
+                                // This path is a simple function call with a single argument
+                                prior_value = Some(Microstatement::FnCall {
+                                    function: var.clone(),
+                                    args: vec![prior.clone()],
+                                });
                             }
-                        } else {
-                            // This path is a simple function call with a single argument
-                            prior_value = Some(Microstatement::FnCall {
-                                function: var.clone(),
-                                args: vec![prior.clone()],
-                            });
                         }
-                    } else {
-                        // TODO: Properly support property access eventually
-                        return Err(format!(
-                            "TODO: Implement property access: {}",
-                            baseassignablelist
-                                .iter()
-                                .map(|ba| ba.to_string())
-                                .collect::<Vec<String>>()
-                                .join("")
-                        )
-                        .into());
+                        _ => {
+                            // TODO: Properly support property access eventually
+                            return Err(format!(
+                                "TODO: Implement property access: {}",
+                                baseassignablelist
+                                    .iter()
+                                    .map(|ba| ba.to_string())
+                                    .collect::<Vec<String>>()
+                                    .join("")
+                            )
+                            .into());
+                        }
                     }
                 } else {
                     prior_value = Some(Microstatement::Value {
@@ -1409,18 +1568,18 @@ fn baseassignablelist_to_microstatements(
                     let fn_name = match prior {
                         Microstatement::Assignment { .. } => Err(format!("You can't call an assignment statement as a function: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join(""))),
                         Microstatement::Arg { name, typen } => {
-                            if typen == "function" { // TODO: Better typing for functions
-                                Ok(name)
-                            } else {
-                                Err(format!("{} is not a function: {}", name, baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")))
+                            match &typen {
+                                CType::Function(..) => Ok(name), // TODO: Validate that it's the
+                                                                 // *right* fn
+                                _ => Err(format!("{} is not a function: {}", name, baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")))
                             }
                         },
                         Microstatement::FnCall { .. } => Err(format!("TODO: Support calling a function immediately from a function: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join(""))),
                         Microstatement::Value { representation, typen } => {
-                            if typen == "function" { // TODO: Better typing for functions
-                                Ok(representation)
-                            } else {
-                                Err(format!("{} is not a function: {}", representation, baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")))
+                            match &typen {
+                                CType::Function(..) => Ok(representation), // TODO: Validate that
+                                                                          // it's the *right* fn
+                                _ => Err(format!("{} is not a function: {}", representation, baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")))
                             }
                         },
                         Microstatement::Type { .. } => Err(format!("You can't call an object as a function: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join(""))),
@@ -1892,18 +2051,38 @@ fn typebaselist_to_ctype(
                 // replaces the prior CType with the sub-type of the prior value.
                 // For the simpler case when it's *just* a reference to a prior variable, it just
                 // becomes a `Type` CType providing an alias for the named type.
-                prior_value = Some(match prior_value {
-                    None => match program.resolve_type(scope, var) {
-                        Some((t, _)) => t.clone(),
-                        None => CType::fail(&format!("Type {} not found", var)),
-                    },
-                    Some(val) => {
-                        // TODO: Do we add special behavior for tuple and function types so you can
-                        // also use method syntax as a property access? It would be more consistent
-                        // with the regular statements but damn is it ugly
-                        match program.resolve_type(scope, var) {
-                            Some((t, _)) => {
-                                let mut args = vec![val.clone()];
+                let mut args = Vec::new();
+                match &prior_value {
+                    Some(val) => args.push(val.clone()),
+                    None => {}
+                };
+                prior_value = Some(match program.resolve_type(scope, var) {
+                    Some((t, _)) => {
+                        // TODO: Once interfaces are a thing, there needs to be a built-in
+                        // interface called `Label` that we can use here to mark the first argument
+                        // to `Field` as a `Label` and turn this logic into something regularized
+                        // For now, we're just special-casing the `Field` built-in generic type.
+                        match &t {
+                            CType::IntrinsicGeneric(f, 2) if f == "Field" => {
+                                match nexttypebase {
+                                    None => {},
+                                    Some(next) => match next {
+                                        parse::TypeBase::GnCall(g) => {
+                                            // There should be only two args, the first arg is
+                                            // coerced from a variable to a string, the second arg
+                                            // is treated like normal
+                                            if g.typecalllist.len() != 2 {
+                                                CType::fail("The Field generic type accepts only two parameters");
+                                            }
+                                            args.push(CType::TString(g.typecalllist[0].to_string()));
+                                            args.push(withtypeoperatorslist_to_ctype(&vec![g.typecalllist[1].clone()], scope, program)?);
+                                        }
+                                        parse::TypeBase::MethodSep(_) => {},
+                                        _ => CType::fail("Cannot follow method style syntax without an operator in between"),
+                                    }
+                                }
+                            }
+                            _ => {
                                 match nexttypebase {
                                     None => {},
                                     Some(next) => match next {
@@ -1912,9 +2091,9 @@ fn typebaselist_to_ctype(
                                             // differently in here, so we're gonna chunk this,
                                             // split by commas, then iterate on those chunks
                                             let mut temp_args = Vec::new();
-                                            let mut arg = Vec::new();
                                             for ta in &g.typecalllist {
-                                                match ta {
+                                                temp_args.push(ta.clone());
+                                                /*match ta {
                                                     parse::WithTypeOperators::Operators(s) if s.trim() == "," => {
                                                         temp_args.push(arg.clone());
                                                         arg.clear();
@@ -1922,116 +2101,133 @@ fn typebaselist_to_ctype(
                                                     _ => {
                                                       arg.push(ta.clone());
                                                     }
-                                                }
+                                                }*/
                                             }
                                             for arg in temp_args {
-                                                args.push(withtypeoperatorslist_to_ctype(&arg, scope, program)?);
+                                                args.push(withtypeoperatorslist_to_ctype(&vec![arg], scope, program)?);
                                             }
                                         }
                                         parse::TypeBase::MethodSep(_) => {},
                                         _ => CType::fail("Cannot follow method style syntax without an operator in between"),
                                     }
                                 }
-                                // Now, we need to validate that the resolved type *is* a generic
-                                // type that can be called, and that we have the correct number of
-                                // arguments for it, then we can call it and return the resulting
-                                // type
-                                match &t {
-                                    CType::Generic(_name, params, withtypeoperatorslist) => {
-                                        if params.len() != args.len() {
-                                            CType::fail(&format!(
-                                                "Generic type {} takes {} arguments but {} given",
-                                                var,
-                                                params.len(),
-                                                args.len()
-                                            ))
-                                        } else {
-                                            // We use a temporary scope to resolve the
-                                            // arguments to the generic function as the
-                                            // specified names
-                                            let mut temp_scope = scope.clone();
-                                            for i in 0..params.len() {
-                                                CType::from_ctype(
-                                                    &mut temp_scope,
-                                                    params[i].clone(),
-                                                    args[i].clone(),
-                                                );
-                                            }
-                                            // Now we return the type we resolve within this
-                                            // scope
-                                            withtypeoperatorslist_to_ctype(
-                                                withtypeoperatorslist,
-                                                &temp_scope,
-                                                program,
-                                            )?
-                                        }
+                            }
+                        }
+                        // Now, we need to validate that the resolved type *is* a generic
+                        // type that can be called, and that we have the correct number of
+                        // arguments for it, then we can call it and return the resulting
+                        // type
+                        match t {
+                            CType::Generic(_name, params, withtypeoperatorslist) => {
+                                if params.len() != args.len() {
+                                    CType::fail(&format!(
+                                        "Generic type {} takes {} arguments but {} given",
+                                        var,
+                                        params.len(),
+                                        args.len()
+                                    ))
+                                } else {
+                                    // We use a temporary scope to resolve the
+                                    // arguments to the generic function as the
+                                    // specified names
+                                    let mut temp_scope = scope.clone();
+                                    for i in 0..params.len() {
+                                        CType::from_ctype(
+                                            &mut temp_scope,
+                                            params[i].clone(),
+                                            args[i].clone(),
+                                        );
                                     }
-                                    CType::IntrinsicGeneric(name, len) => {
-                                        if args.len() != *len {
-                                            CType::fail(&format!(
-                                                "Generic type {} takes {} arguments but {} given",
-                                                var,
-                                                len,
-                                                args.len()
-                                            ))
-                                        } else {
-                                            // TODO: Is there a better way to do this?
-                                            match name.as_str() {
-                                                "Group" => CType::Group(Box::new(args[0].clone())),
-                                                "Function" => CType::Function(Box::new(args[0].clone()), Box::new(args[1].clone())),
-                                                "Tuple" => CType::tuple(args.clone()),
-                                                // TODO: Field should ideally not require string
-                                                // quoting
-                                                "Field" => CType::field(args.clone()),
-                                                "Either" => CType::either(args.clone()),
-                                                "Buffer" => CType::buffer(args.clone()),
-                                                "Array" => CType::Array(Box::new(args[0].clone())),
-                                                "Fail" => CType::cfail(&args[0]),
-                                                "Len" => CType::len(&args[0]),
-                                                "Size" => CType::size(&args[0]),
-                                                "FileStr" => CType::filestr(&args[0]),
-                                                "Env" => CType::env(&args[0]),
-                                                "EnvExists" => CType::envexists(&args[0]),
-                                                "Not" => CType::not(&args[0]),
-                                                "Add" => CType::add(&args[0], &args[1]),
-                                                "Sub" => CType::sub(&args[0], &args[1]),
-                                                "Mul" => CType::mul(&args[0], &args[1]),
-                                                "Div" => CType::div(&args[0], &args[1]),
-                                                "Mod" => CType::cmod(&args[0], &args[1]),
-                                                "Pow" => CType::pow(&args[0], &args[1]),
-                                                "If" => CType::tupleif(&args[0], &args[1]),
-                                                "And" => CType::and(&args[0], &args[1]),
-                                                "Or" => CType::or(&args[0], &args[1]),
-                                                "Xor" => CType::xor(&args[0], &args[1]),
-                                                "Nand" => CType::nand(&args[0], &args[1]),
-                                                "Nor" => CType::nor(&args[0], &args[1]),
-                                                "Xnor" => CType::xnor(&args[0], &args[1]),
-                                                "Eq" => CType::eq(&args[0], &args[1]),
-                                                "Neq" => CType::neq(&args[0], &args[1]),
-                                                "Lt" => CType::lt(&args[0], &args[1]),
-                                                "Lte" => CType::lte(&args[0], &args[1]),
-                                                "Gt" => CType::gt(&args[0], &args[1]),
-                                                "Gte" => CType::gte(&args[0], &args[1]),
-                                                unknown => CType::fail(&format!("Unknown ctype {} accessed. How did this happen?", unknown)),
-                                            }
-                                        }
-                                    }
-                                    CType::BoundGeneric(..) => {
-                                        CType::fail("Bound generic types not yet implemented")
-                                    }
-                                    // TODO: Auto-unwrap if it's a `Group` that contains one of the
-                                    // Generic types?
-                                    _ => CType::fail(&format!(
-                                        "{} is used as a generic type but is not one",
-                                        var
-                                    )),
+                                    // Now we return the type we resolve within this
+                                    // scope
+                                    withtypeoperatorslist_to_ctype(
+                                        withtypeoperatorslist,
+                                        &temp_scope,
+                                        program,
+                                    )?
                                 }
                             }
-                            None => {
-                                CType::fail(&format!("{} is not a valid generic type name", var))
+                            CType::IntrinsicGeneric(name, len) => {
+                                if args.len() != *len {
+                                    CType::fail(&format!(
+                                        "Generic type {} takes {} arguments but {} given",
+                                        var,
+                                        len,
+                                        args.len()
+                                    ))
+                                } else {
+                                    // TODO: Is there a better way to do this?
+                                    match name.as_str() {
+                                        "Group" => CType::Group(Box::new(args[0].clone())),
+                                        "Function" => CType::Function(
+                                            Box::new(args[0].clone()),
+                                            Box::new(args[1].clone()),
+                                        ),
+                                        "Tuple" => CType::tuple(args.clone()),
+                                        // TODO: Field should ideally not require string
+                                        // quoting
+                                        "Field" => CType::field(args.clone()),
+                                        "Either" => CType::either(args.clone()),
+                                        "Buffer" => CType::buffer(args.clone()),
+                                        "Array" => CType::Array(Box::new(args[0].clone())),
+                                        "Fail" => CType::cfail(&args[0]),
+                                        "Len" => CType::len(&args[0]),
+                                        "Size" => CType::size(&args[0]),
+                                        "FileStr" => CType::filestr(&args[0]),
+                                        "Env" => CType::env(&args[0]),
+                                        "EnvExists" => CType::envexists(&args[0]),
+                                        "Not" => CType::not(&args[0]),
+                                        "Add" => CType::add(&args[0], &args[1]),
+                                        "Sub" => CType::sub(&args[0], &args[1]),
+                                        "Mul" => CType::mul(&args[0], &args[1]),
+                                        "Div" => CType::div(&args[0], &args[1]),
+                                        "Mod" => CType::cmod(&args[0], &args[1]),
+                                        "Pow" => CType::pow(&args[0], &args[1]),
+                                        "If" => CType::tupleif(&args[0], &args[1]),
+                                        "And" => CType::and(&args[0], &args[1]),
+                                        "Or" => CType::or(&args[0], &args[1]),
+                                        "Xor" => CType::xor(&args[0], &args[1]),
+                                        "Nand" => CType::nand(&args[0], &args[1]),
+                                        "Nor" => CType::nor(&args[0], &args[1]),
+                                        "Xnor" => CType::xnor(&args[0], &args[1]),
+                                        "Eq" => CType::eq(&args[0], &args[1]),
+                                        "Neq" => CType::neq(&args[0], &args[1]),
+                                        "Lt" => CType::lt(&args[0], &args[1]),
+                                        "Lte" => CType::lte(&args[0], &args[1]),
+                                        "Gt" => CType::gt(&args[0], &args[1]),
+                                        "Gte" => CType::gte(&args[0], &args[1]),
+                                        unknown => CType::fail(&format!(
+                                            "Unknown ctype {} accessed. How did this happen?",
+                                            unknown
+                                        )),
+                                    }
+                                }
+                            }
+                            CType::BoundGeneric(name, argstrs, binding) => {
+                                // We turn this into a `ResolvedBoundGeneric` for the lower layer
+                                // of the compiler to make sense of
+                                CType::ResolvedBoundGeneric(
+                                    name.clone(),
+                                    argstrs.clone(),
+                                    args,
+                                    binding.clone(),
+                                )
+                            }
+                            others => {
+                                // If we hit this branch, then the `args` vector needs to have a
+                                // length of zero, and then we just bubble up the type as-is
+                                if args.len() == 0 {
+                                    others.clone()
+                                } else {
+                                    CType::fail(&format!(
+                                        "{} is used as a generic type but is not one: {:?}, {:?}",
+                                        var, others, prior_value,
+                                    ))
+                                }
                             }
                         }
                     }
+                    None => CType::fail(&format!("{} is not a valid generic type name", var)),
                 })
             }
             parse::TypeBase::GnCall(_) => { /* We always process GnCall in the Variable path */ }
@@ -2346,8 +2542,8 @@ fn statement_to_microstatements(
 #[derive(Clone, Debug)]
 pub struct Function {
     pub name: String,
-    pub args: Vec<(String, String)>, // Making everything Stringly-typed kinda sucks, but no good way to give an error message in the parser for unknown types otherwise
-    pub rettype: Option<String>,
+    pub args: Vec<(String, CType)>, // Making everything Stringly-typed kinda sucks, but no good way to give an error message in the parser for unknown types otherwise
+    pub rettype: CType,
     pub statements: Vec<parse::Statement>,
     pub microstatements: Vec<Microstatement>,
     pub bind: Option<String>,
@@ -2380,98 +2576,46 @@ impl Function {
         // TODO: Add code to properly convert the typeassignable vec into a CType tree and use it.
         // For now, just hardwire the parsing as before.
         let (args, rettype) = match &function_ast.opttype {
-            None => Ok((Vec::new(), None)),
+            None => Ok::<(Vec<(String, CType)>, CType), Box<dyn std::error::Error>>((
+                Vec::new(),
+                CType::Void,
+            )), // TODO: Does this path *ever* trigger?
+            Some(typeassignable) if typeassignable.len() == 0 => Ok((Vec::new(), CType::Void)),
             Some(typeassignable) => {
-                // Hardwired logic: the typeassignable vector can only be 1 or 3 elements in size
-                // for now. Fail if it doesn't match one of those conditions. In either of those
-                // two cases, the args are inside of the first part.
-                if typeassignable.len() == 0 {
-                    Ok((Vec::new(), None))
-                } else if typeassignable.len() == 1 || typeassignable.len() == 3 {
-                    let arggroup = &typeassignable[0];
-                    let rettype = match typeassignable.get(2) {
-                        None => None,
-                        Some(r) => match r {
-                            parse::WithTypeOperators::TypeBaseList(tb) => Some(
-                                tb.iter()
-                                    .map(|b| b.to_string())
-                                    .collect::<Vec<String>>()
-                                    .join(""),
-                            ),
-                            _ => None,
-                        },
-                    };
-                    match arggroup {
-                        parse::WithTypeOperators::TypeBaseList(ag) => {
-                            if ag.len() == 1 {
-                                if let parse::TypeBase::TypeGroup(g) = &ag[0] {
-                                    let arglist = &g.typeassignables;
-                                    // TODO: Make the arg types optional
-                                    // Currently assuming that the arg list in the form:
-                                    // `VARIABLE: VARIABLE, ...` with the last comma being optional.
-                                    // So this is ABSOLUTELY GARBAGE TEST CODE until I get ctypes
-                                    // and type operator precedence working to get a tree to walk,
-                                    // instead
-                                    let argstr = arglist
-                                        .iter()
-                                        .map(|a| a.to_string())
-                                        .collect::<Vec<String>>()
-                                        .join("");
-                                    if argstr.trim() == "" {
-                                        Ok((Vec::new(), rettype))
-                                    } else {
-                                        let args = argstr
-                                            .split(",")
-                                            .map(|a| {
-                                                let mut at = a.split(":");
-                                                (
-                                                    at.next().expect("var").trim().to_string(),
-                                                    at.next().expect("type").trim().to_string(),
-                                                )
-                                            })
-                                            .collect::<Vec<(String, String)>>();
-                                        Ok((args, rettype))
-                                    }
-                                } else {
-                                    Err(format!(
-                                        "Unsupported function type {}",
-                                        typeassignable
-                                            .iter()
-                                            .map(|a| a.to_string())
-                                            .collect::<Vec<String>>()
-                                            .join("")
-                                    ))
-                                }
-                            } else {
-                                Err(format!(
-                                    "Unsupported function type {}",
-                                    typeassignable
-                                        .iter()
-                                        .map(|a| a.to_string())
-                                        .collect::<Vec<String>>()
-                                        .join("")
-                                ))
-                            }
+                let ctype = withtypeoperatorslist_to_ctype(&typeassignable, scope, program)?;
+                // If the `ctype` is a Function type, we have both the input and output defined. If
+                // it's any other type, we presume it's only the input type defined
+                let (input_type, output_type) = match ctype {
+                    CType::Function(i, o) => (*i.clone(), *o.clone()),
+                    otherwise => (otherwise.clone(), CType::Void), // TODO: Type inference signaling?
+                };
+                // The input type will be interpreted in many different ways:
+                // If it's a Group, unwrap it and continue. Ideally after that it's a Tuple
+                // type containing Field types, that's a "conventional" function
+                // definition, where the label becomes an argument name and the type is the
+                // type. If the tuple doesn't have Fields inside of it, we auto-generate
+                // argument names, eg `arg0`, `arg1`, etc. If it is not a Tuple type but is
+                // a Field type, we have a single argument function with a specified
+                // variable name. If it's any other type, we just label it `arg0`
+                let degrouped_input = match input_type {
+                    CType::Group(c) => *c.clone(),
+                    otherwise => otherwise.clone(),
+                };
+                let mut out_args = Vec::new();
+                match degrouped_input {
+                    CType::Tuple(ts) => {
+                        for i in 0..ts.len() {
+                            out_args.push(match &ts[i] {
+                                CType::Field(argname, t) => (argname.clone(), *t.clone()),
+                                otherwise => (format!("arg{}", i), otherwise.clone()),
+                            });
                         }
-                        _ => Err(format!(
-                            "Unsupported function type {}",
-                            typeassignable
-                                .iter()
-                                .map(|a| a.to_string())
-                                .collect::<Vec<String>>()
-                                .join("")
-                        )),
                     }
-                } else {
-                    Err(format!(
-                        "Unsupported function type {}",
-                        typeassignable
-                            .iter()
-                            .map(|a| a.to_string())
-                            .collect::<Vec<String>>()
-                            .join("")
-                    ))
+                    CType::Field(argname, t) => out_args.push((argname.clone(), *t.clone())),
+                    CType::Void => {} // Do nothing so an empty set is properly
+                    otherwise => out_args.push(("arg0".to_string(), otherwise.clone())),
                 }
+                Ok((out_args, output_type.clone()))
             }
         }?;
         let statements = match &function_ast.fullfunctionbody {
