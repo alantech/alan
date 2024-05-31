@@ -1,3 +1,4 @@
+use std::collections::{HashMap, HashSet};
 use std::fs::read_to_string;
 use std::pin::Pin;
 
@@ -330,10 +331,10 @@ pub enum CType {
 }
 
 impl CType {
-    fn to_string(&self) -> String {
+    pub fn to_string(&self) -> String {
         self.to_strict_string(true)
     }
-    fn to_strict_string(&self, strict: bool) -> String {
+    pub fn to_strict_string(&self, strict: bool) -> String {
         match self {
             CType::Void => "()".to_string(),
             CType::Type(s, _) => format!("{}", s),
@@ -397,49 +398,250 @@ impl CType {
         is_export: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let name = type_ast.fulltypename.typename.clone();
-        let t = match &type_ast.fulltypename.opttypegenerics {
+        let (t, fs) = match &type_ast.fulltypename.opttypegenerics {
             None => {
                 // This is a "normal" type
                 match &type_ast.typedef {
-                    parse::TypeDef::TypeCreate(create) => CType::Type(
-                        name.clone(),
-                        Box::new(withtypeoperatorslist_to_ctype(
+                    parse::TypeDef::TypeCreate(create) => {
+                        // When creating a "normal" type, we also create constructor and optionally
+                        // accessor functions. This is not done for bound types nor done for
+                        // generics until the generic type has been constructed. We create a set of
+                        // `derived` Function objects and add it to the scope that a later stage of
+                        // the compiler is responsible for actually creating. All of the types get
+                        // one or more constructor functions, while struct-like Tuples and Either
+                        // get accessor functions to dig into the sub-types.
+                        let mut inner_type = withtypeoperatorslist_to_ctype(
                             &create.typeassignables,
                             &scope,
                             &program,
-                        )?),
-                    ),
-                    parse::TypeDef::TypeBind(bind) => {
-                        CType::Bound(name.clone(), bind.othertype.clone())
+                        )?;
+                        // Unwrap a Group type, if any exists, we don't want it here.
+                        while match &inner_type {
+                            CType::Group(_) => true,
+                            _ => false,
+                        } {
+                            inner_type = match inner_type {
+                                CType::Group(t) => *t,
+                                t => t,
+                            };
+                        }
+                        let t = CType::Type(name.clone(), Box::new(inner_type.clone()));
+                        let mut fs = Vec::new();
+                        let constructor_fn_name = type_ast.fulltypename.typename.clone();
+                        match &inner_type {
+                            CType::Type(n, _) => {
+                                // This is just an alias
+                                fs.push(Function {
+                                    name: constructor_fn_name.clone(),
+                                    args: vec![(n.clone(), inner_type.clone())],
+                                    rettype: t.clone(),
+                                    microstatements: Vec::new(),
+                                    kind: FnKind::Derived,
+                                });
+                            }
+                            CType::Bound(n, _) => {
+                                // Also just an alias
+                                fs.push(Function {
+                                    name: constructor_fn_name.clone(),
+                                    args: vec![(n.clone(), inner_type.clone())],
+                                    rettype: t.clone(),
+                                    microstatements: Vec::new(),
+                                    kind: FnKind::Derived,
+                                });
+                            }
+                            CType::Tuple(ts) => {
+                                // The constructor function needs to grab the types from all
+                                // arguments to construct the desired product type. For any type
+                                // that is marked as a field, we also want to create an accessor
+                                // function for it to simulate structs better.
+                                let mut args = Vec::new();
+                                for i in 0..ts.len() {
+                                    let ti = &ts[i];
+                                    match ti {
+                                        CType::Field(n, f) => {
+                                            // Create an accessor function
+                                            fs.push(Function {
+                                                name: n.clone(),
+                                                args: vec![("arg0".to_string(), t.clone())],
+                                                rettype: *f.clone(),
+                                                microstatements: Vec::new(),
+                                                kind: FnKind::Derived,
+                                            });
+                                            // Add a copy of this arg to the args array with the
+                                            // name
+                                            args.push((n.clone(), *f.clone()));
+                                        }
+                                        otherwise => {
+                                            // Just copy this arg to the args array with a fake
+                                            // name
+                                            args.push((format!("arg{}", i), otherwise.clone()));
+                                        }
+                                    }
+                                }
+                                // Define the constructor function
+                                fs.push(Function {
+                                    name: constructor_fn_name.clone(),
+                                    args,
+                                    rettype: t.clone(),
+                                    microstatements: Vec::new(),
+                                    kind: FnKind::Derived,
+                                });
+                            }
+                            CType::Either(ts) => {
+                                // There are an equal number of constructor functions and accessor
+                                // functions, one for each inner type of the sum type.
+                                for e in ts {
+                                    // Create a constructor fn
+                                    fs.push(Function {
+                                        name: constructor_fn_name.clone(),
+                                        args: vec![("arg0".to_string(), e.clone())],
+                                        rettype: t.clone(),
+                                        microstatements: Vec::new(),
+                                        kind: FnKind::Derived,
+                                    });
+                                    // Create the accessor function, the name of the function will
+                                    // depend on the kind of type this is
+                                    match e {
+                                        CType::Field(n, i) => fs.push(Function {
+                                            name: n.clone(),
+                                            args: vec![("arg0".to_string(), t.clone())],
+                                            rettype: *i.clone(),
+                                            microstatements: Vec::new(),
+                                            kind: FnKind::Derived,
+                                        }),
+                                        CType::Type(n, _) => fs.push(Function {
+                                            name: n.clone(),
+                                            args: vec![("arg0".to_string(), t.clone())],
+                                            rettype: e.clone(),
+                                            microstatements: Vec::new(),
+                                            kind: FnKind::Derived,
+                                        }),
+                                        CType::Bound(n, _) => fs.push(Function {
+                                            name: n.clone(),
+                                            args: vec![("arg0".to_string(), t.clone())],
+                                            rettype: e.clone(),
+                                            microstatements: Vec::new(),
+                                            kind: FnKind::Derived,
+                                        }),
+                                        CType::ResolvedBoundGeneric(n, ..) => fs.push(Function {
+                                            name: n.clone(),
+                                            args: vec![("arg0".to_string(), t.clone())],
+                                            rettype: e.clone(),
+                                            microstatements: Vec::new(),
+                                            kind: FnKind::Derived,
+                                        }),
+                                        _ => {} // We can't make names for other types
+                                    }
+                                }
+                            }
+                            CType::Buffer(b, s) => {
+                                // For Buffers we can create up to two types, one that takes a
+                                // single value to fill in for all records in the buffer, and one
+                                // that takes a distinct value for each possible value in the
+                                // buffer. If the buffer size is just one element, we only
+                                // implement one of these
+                                fs.push(Function {
+                                    name: constructor_fn_name.clone(),
+                                    args: vec![("arg0".to_string(), *b.clone())],
+                                    rettype: t.clone(),
+                                    microstatements: Vec::new(),
+                                    kind: FnKind::Derived,
+                                });
+                                if *s > 1 {
+                                    fs.push(Function {
+                                        name: constructor_fn_name.clone(),
+                                        args: {
+                                            let mut v = Vec::new();
+                                            for i in 0..*s {
+                                                v.push((format!("arg{}", i), *b.clone()));
+                                            }
+                                            v
+                                        },
+                                        rettype: t.clone(),
+                                        microstatements: Vec::new(),
+                                        kind: FnKind::Derived,
+                                    });
+                                }
+                            }
+                            CType::Array(a) => {
+                                // For Arrays we create only one kind of array, one that takes any
+                                // number of the input type. Until there's better support in the
+                                // language for variadic functions, this is faked with a special
+                                // DerivedVariadic function type that repeats the first and only
+                                // arg for all input arguments
+                                fs.push(Function {
+                                    name: constructor_fn_name.clone(),
+                                    args: vec![("arg0".to_string(), *a.clone())],
+                                    rettype: t.clone(),
+                                    microstatements: Vec::new(),
+                                    kind: FnKind::DerivedVariadic,
+                                });
+                            }
+                            _ => {} // Don't do anything for other types
+                        }
+                        (t, fs)
                     }
+                    parse::TypeDef::TypeBind(bind) => (
+                        CType::Bound(name.clone(), bind.othertype.clone()),
+                        Vec::new(),
+                    ),
                 }
             }
             Some(g) => {
                 // This is a "generic" type
                 match &type_ast.typedef {
-                    parse::TypeDef::TypeCreate(create) => CType::Generic(
-                        name.clone(),
-                        g.generics
-                            .iter()
-                            .map(|ftn| ftn.to_string())
-                            .collect::<Vec<String>>(),
-                        create.typeassignables.clone(),
+                    parse::TypeDef::TypeCreate(create) => (
+                        CType::Generic(
+                            name.clone(),
+                            g.generics
+                                .iter()
+                                .map(|ftn| ftn.to_string())
+                                .collect::<Vec<String>>(),
+                            create.typeassignables.clone(),
+                        ),
+                        Vec::new(),
                     ),
-                    parse::TypeDef::TypeBind(bind) => CType::BoundGeneric(
-                        name.clone(),
-                        g.generics
-                            .iter()
-                            .map(|ftn| ftn.to_string())
-                            .collect::<Vec<String>>(),
-                        bind.othertype.clone(),
+                    parse::TypeDef::TypeBind(bind) => (
+                        CType::BoundGeneric(
+                            name.clone(),
+                            g.generics
+                                .iter()
+                                .map(|ftn| ftn.to_string())
+                                .collect::<Vec<String>>(),
+                            bind.othertype.clone(),
+                        ),
+                        Vec::new(),
                     ),
                 }
             }
         };
         if is_export {
             scope.exports.insert(name.clone(), Export::Type);
+            if fs.len() > 0 {
+                let mut names = HashSet::new();
+                for f in &fs {
+                    names.insert(f.name.clone());
+                }
+                for name in names {
+                    scope.exports.insert(name.clone(), Export::Function);
+                }
+            }
         }
         scope.types.insert(name, t);
+        if fs.len() > 0 {
+            let mut name_fn_pairs = HashMap::new();
+            for f in fs {
+                if name_fn_pairs.contains_key(&f.name) {
+                    let v: &mut Vec<Function> = name_fn_pairs.get_mut(&f.name).unwrap();
+                    v.push(f.clone());
+                } else {
+                    name_fn_pairs.insert(f.name.clone(), vec![f.clone()]);
+                }
+            }
+            for (name, fns) in name_fn_pairs.drain() {
+                scope.functions.insert(name, fns);
+            }
+        }
         Ok(())
     }
 
@@ -2543,9 +2745,16 @@ pub struct Function {
     pub name: String,
     pub args: Vec<(String, CType)>,
     pub rettype: CType,
-    pub statements: Vec<parse::Statement>,
     pub microstatements: Vec<Microstatement>,
-    pub bind: Option<String>,
+    pub kind: FnKind,
+}
+
+#[derive(Clone, Debug)]
+pub enum FnKind {
+    Normal(Vec<parse::Statement>),
+    Bind(String),
+    Derived,
+    DerivedVariadic,
 }
 
 impl Function {
@@ -2645,17 +2854,16 @@ impl Function {
             }
             ms
         };
-        let bind = match &function_ast.fullfunctionbody {
-            parse::FullFunctionBody::BindFunction(b) => Some(b.rustfunc.clone()),
-            _ => None,
+        let kind = match &function_ast.fullfunctionbody {
+            parse::FullFunctionBody::BindFunction(b) => FnKind::Bind(b.rustfunc.clone()),
+            _ => FnKind::Normal(statements),
         };
         let function = Function {
             name,
             args,
             rettype,
-            statements,
             microstatements,
-            bind,
+            kind,
         };
         if is_export {
             scope
