@@ -11,10 +11,37 @@ pub fn ctype_to_rtype(
 ) -> Result<String, Box<dyn std::error::Error>> {
     match ctype {
         CType::Void => Ok("()".to_string()),
-        CType::Type(name, _) => Ok(name.clone()), // TODO: Do we need to handle this recursively,
-        // or will the syntax ordering save us here?
+        CType::Type(name, t) => {
+            match &**t {
+                CType::Either(ts) => {
+                    let mut enum_type_strs = Vec::new();
+                    for t in ts {
+                        match t {
+                            CType::Field(k, v) => {
+                                enum_type_strs.push(format!(
+                                    "{}({})",
+                                    k,
+                                    ctype_to_rtype(&v, scope, program, in_function_type)?
+                                ));
+                            }
+                            CType::Type(n, _) | CType::ResolvedBoundGeneric(n, ..) => {
+                                enum_type_strs.push(format!("{}({})", n, n));
+                            }
+                            CType::Bound(n, r) => {
+                                enum_type_strs.push(format!("{}({})", n, r));
+                            }
+                            otherwise => {
+                                return Err(format!("TODO: What is this? {:?}", otherwise).into());
+                            }
+                        }
+                    }
+                    Ok(format!("enum {} {{ {} }}", name, enum_type_strs.join(", ")))
+                }
+                _ => Ok("".to_string()), // TODO: Is this correct?
+            }
+        }
         CType::Generic(name, args, _) => Ok(format!("{}<{}>", name, args.join(", "))),
-        CType::Bound(name, _) => Ok(name.clone()), // This is probably wrong
+        CType::Bound(_, name) => Ok(name.clone()),
         CType::BoundGeneric(name, args, _) => Ok(format!("{}<{}>", name, args.join(", "))),
         CType::ResolvedBoundGeneric(_name, argstrs, args, binding) => {
             let mut args_rtype = Vec::new();
@@ -60,7 +87,7 @@ pub fn ctype_to_rtype(
                 ))
             }
         }
-        CType::Either(_ts) => Err("TODO: Implement either-to-enum logic".into()),
+        CType::Either(_) => Ok("".to_string()), // What to do in this case?
         CType::Buffer(t, s) => Ok(format!(
             "[{};{}]",
             ctype_to_rtype(t, scope, program, in_function_type)?,
@@ -86,15 +113,8 @@ pub fn generate(
         // output, while the `Structlike` type requires a new struct to be created and inserted
         // into the source definition, potentially inserting inner types as needed
         CType::Bound(_name, rtype) => Ok((rtype.clone(), out)),
-        CType::Type(name, ctype) => {
-            out.insert(
-                name.clone(),
-                format!(
-                    "type {} = {};\n",
-                    name.clone(),
-                    ctype_to_rtype(ctype, scope, program, false)?
-                ),
-            );
+        CType::Type(name, _) => {
+            out.insert(name.clone(), ctype_to_rtype(typen, scope, program, false)?);
             Ok((name.clone(), out))
         }
         CType::Void => Ok(("()".to_string(), out)),
