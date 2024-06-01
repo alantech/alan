@@ -76,7 +76,7 @@ export type infix Mod as % precedence 3;
 export type infix Pow as ** precedence 4;
 export type infix If as ?? precedence 1; // C puts this kind of thing as a very high precedence. I'm not sure if I want to follow it. I feel like that would force grouping parens everywhere.
 export type infix And as & precedence 3;
-export type infix Or as | precedence 2;
+export type infix Or as || precedence 2; // TODO: Which should get `||` and which should get `|`?
 export type infix Xor as ^ precedence 2;
 export type prefix Not as ! precedence 4; // TODO: Do we want `!` to mean `Not` or `Result` depending on where it's placed syntactically? Seems easily ambiguous
 export type infix Nand as !& precedence 3;
@@ -493,6 +493,8 @@ export fn print(f: f32) binds println;
 export fn print(f: Result{f32}) binds println_result;
 export fn print(f: f64) binds println;
 export fn print(f: Result{f64}) binds println_result;
+export fn print(o: Maybe{string}) binds println_maybe; // TODO: Do this with real generics
+export fn print(o: Maybe{i64}) binds println_maybe;
 
 /// Thread-related bindings
 export fn wait(t: i64) binds wait;

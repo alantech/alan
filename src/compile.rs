@@ -2357,37 +2357,21 @@ Divide by zero error!
 there is no error
 "#;
 );
-test_ignore!(either => r#"
+test!(either => r#"
+    type strOrI64 = string | i64;
     export fn main {
-      const strOrNum = getMainOrAlt(true);
-      if strOrNum.isMain {
-        print(strOrNum.getMainOr(''));
-      } else {
-        print('what?');
-      }
+      const someStr = strOrI64('string');
+      print(someStr.string);
+      print(someStr.i64);
 
-      const strOrNum2 = getMainOrAlt(false);
-      if strOrNum2.isAlt {
-        print(strOrNum2.getAltOr(0));
-      } else {
-        print('uhhh');
-      }
-
-      strOrNum.string.print;
-      strOrNum2.ntring.print;
-    }
-
-    fn getMainOrAlt(isMain: bool) {
-      if isMain {
-        return main('string');
-      } else {
-        return alt(2);
-      }
+      const someI64 = strOrI64(3);
+      print(someI64.string);
+      print(someI64.i64);
     }"#;
     stdout r#"string
-2
-string
-2
+void
+void
+3
 "#;
 );
 

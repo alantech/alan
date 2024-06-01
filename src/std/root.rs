@@ -2116,6 +2116,15 @@ fn println_result<A: std::fmt::Display>(a: &Result<A, AlanError>) {
     };
 }
 
+/// `println_maybe` is a small wrapper function that makes printing Option types easy
+#[inline(always)]
+fn println_maybe<A: std::fmt::Display>(a: &Option<A>) {
+    match a {
+        Some(o) => println!("{}", o),
+        None => println!("void"),
+    };
+}
+
 /// `stdout` is a simple function that prints basically anything without a newline attached
 #[inline(always)]
 fn stdout<A: std::fmt::Display>(a: &A) {

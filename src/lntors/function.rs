@@ -128,6 +128,8 @@ pub fn from_microstatement(
             let mut arg_type_strs = Vec::new();
             for arg in args {
                 let arg_type = arg.get_type(scope, program)?;
+                let (_, o) = typen::generate(&arg_type, scope, program, out)?;
+                out = o;
                 arg_types.push(arg_type.clone());
                 match typen::ctype_to_rtype(&arg_type, scope, program, false) {
                     Err(e) => Err(e),
@@ -146,6 +148,8 @@ pub fn from_microstatement(
                 .into()),
                 Some((f, _s)) => match &f.kind {
                     FnKind::Normal(_) => {
+                        let (_, o) = typen::generate(&f.rettype, scope, program, out)?;
+                        out = o;
                         let mut arg_strs = Vec::new();
                         for arg in &f.args {
                             match typen::ctype_to_rtype(&arg.1, scope, program, false) {
@@ -208,6 +212,8 @@ pub fn from_microstatement(
                     FnKind::Derived | FnKind::DerivedVariadic => {
                         // The initial work to get the values to construct the type is the same as
                         // with bound functions, though.
+                        let (_, o) = typen::generate(&f.rettype, scope, program, out)?;
+                        out = o;
                         let mut argstrs = Vec::new();
                         for arg in args {
                             let (a, o) = from_microstatement(arg, scope, program, out)?;
@@ -404,7 +410,10 @@ pub fn from_microstatement(
                                                 return Ok((
                                                     format!(
                                                         "{}::{}({})",
-                                                        f.name, enum_name, argstrs[0]
+                                                        f.name, enum_name, match argstrs[0].strip_prefix("&mut ") {
+                                                            Some(s) => s,
+                                                            None => &argstrs[0],
+                                                        },
                                                     ),
                                                     out,
                                                 ));
@@ -413,7 +422,10 @@ pub fn from_microstatement(
                                                 return Ok((
                                                     format!(
                                                         "{}::{}({})",
-                                                        f.name, enum_name, argstrs[0]
+                                                        f.name, enum_name, match argstrs[0].strip_prefix("&mut ") {
+                                                            Some(s) => s,
+                                                            None => &argstrs[0],
+                                                        },
                                                     ),
                                                     out,
                                                 ));
@@ -422,7 +434,10 @@ pub fn from_microstatement(
                                                 return Ok((
                                                     format!(
                                                         "{}::{}({})",
-                                                        f.name, enum_name, argstrs[0]
+                                                        f.name, enum_name, match argstrs[0].strip_prefix("&mut ") {
+                                                            Some(s) => s,
+                                                            None => &argstrs[0],
+                                                        },
                                                     ),
                                                     out,
                                                 ));
@@ -433,7 +448,10 @@ pub fn from_microstatement(
                                                 return Ok((
                                                     format!(
                                                         "{}::{}({})",
-                                                        f.name, enum_name, argstrs[0]
+                                                        f.name, enum_name, match argstrs[0].strip_prefix("&mut ") {
+                                                            Some(s) => s,
+                                                            None => &argstrs[0],
+                                                        },
                                                     ),
                                                     out,
                                                 ));

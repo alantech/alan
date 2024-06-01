@@ -505,28 +505,28 @@ impl CType {
                                         CType::Field(n, i) => fs.push(Function {
                                             name: n.clone(),
                                             args: vec![("arg0".to_string(), t.clone())],
-                                            rettype: *i.clone(),
+                                            rettype: CType::Either(vec![*i.clone(), CType::Void]),
                                             microstatements: Vec::new(),
                                             kind: FnKind::Derived,
                                         }),
                                         CType::Type(n, _) => fs.push(Function {
                                             name: n.clone(),
                                             args: vec![("arg0".to_string(), t.clone())],
-                                            rettype: e.clone(),
+                                            rettype: CType::Either(vec![e.clone(), CType::Void]),
                                             microstatements: Vec::new(),
                                             kind: FnKind::Derived,
                                         }),
                                         CType::Bound(n, _) => fs.push(Function {
                                             name: n.clone(),
                                             args: vec![("arg0".to_string(), t.clone())],
-                                            rettype: e.clone(),
+                                            rettype: CType::Either(vec![e.clone(), CType::Void]),
                                             microstatements: Vec::new(),
                                             kind: FnKind::Derived,
                                         }),
                                         CType::ResolvedBoundGeneric(n, ..) => fs.push(Function {
                                             name: n.clone(),
                                             args: vec![("arg0".to_string(), t.clone())],
-                                            rettype: e.clone(),
+                                            rettype: CType::Either(vec![e.clone(), CType::Void]),
                                             microstatements: Vec::new(),
                                             kind: FnKind::Derived,
                                         }),
@@ -615,6 +615,9 @@ impl CType {
                 }
             }
         };
+        if &name == "void" {
+            println!("type {} is defined as {:?}", name, t);
+        }
         if is_export {
             scope.exports.insert(name.clone(), Export::Type);
             if fs.len() > 0 {
@@ -1867,6 +1870,7 @@ fn withtypeoperatorslist_to_ctype(
     // on the types of the data involved, which makes things *really* complicated here. TODO:
     // Actually implement that complexity, for now, just pretend operators have only one binding.
     let mut queue = withtypeoperatorslist.clone();
+    println!("queue {:?}", queue);
     let mut out_ctype = None;
     while queue.len() > 0 {
         let mut largest_operator_level: i8 = -1;
@@ -2305,6 +2309,11 @@ fn typebaselist_to_ctype(
                                                 }*/
                                             }
                                             for arg in temp_args {
+                                                if let parse::WithTypeOperators::Operators(a) = &arg {
+                                                    if a.trim() == "," {
+                                                        continue;
+                                                    }
+                                                }
                                                 args.push(withtypeoperatorslist_to_ctype(&vec![arg], scope, program)?);
                                             }
                                         }
