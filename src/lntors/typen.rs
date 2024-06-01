@@ -18,7 +18,11 @@ pub fn ctype_to_rtype(
                     for t in ts {
                         match t {
                             CType::Field(k, v) => {
-                                enum_type_strs.push(format!("{}({})", k, ctype_to_rtype(&v, scope, program, in_function_type)?));
+                                enum_type_strs.push(format!(
+                                    "{}({})",
+                                    k,
+                                    ctype_to_rtype(&v, scope, program, in_function_type)?
+                                ));
                             }
                             CType::Type(n, _) | CType::ResolvedBoundGeneric(n, ..) => {
                                 enum_type_strs.push(format!("{}({})", n, n));
@@ -110,10 +114,7 @@ pub fn generate(
         // into the source definition, potentially inserting inner types as needed
         CType::Bound(_name, rtype) => Ok((rtype.clone(), out)),
         CType::Type(name, _) => {
-            out.insert(
-                name.clone(),
-                ctype_to_rtype(typen, scope, program, false)?
-            );
+            out.insert(name.clone(), ctype_to_rtype(typen, scope, program, false)?);
             Ok((name.clone(), out))
         }
         CType::Void => Ok(("()".to_string(), out)),

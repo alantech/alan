@@ -410,7 +410,9 @@ pub fn from_microstatement(
                                                 return Ok((
                                                     format!(
                                                         "{}::{}({})",
-                                                        f.name, enum_name, match argstrs[0].strip_prefix("&mut ") {
+                                                        f.name,
+                                                        enum_name,
+                                                        match argstrs[0].strip_prefix("&mut ") {
                                                             Some(s) => s,
                                                             None => &argstrs[0],
                                                         },
@@ -422,7 +424,9 @@ pub fn from_microstatement(
                                                 return Ok((
                                                     format!(
                                                         "{}::{}({})",
-                                                        f.name, enum_name, match argstrs[0].strip_prefix("&mut ") {
+                                                        f.name,
+                                                        enum_name,
+                                                        match argstrs[0].strip_prefix("&mut ") {
                                                             Some(s) => s,
                                                             None => &argstrs[0],
                                                         },
@@ -434,7 +438,9 @@ pub fn from_microstatement(
                                                 return Ok((
                                                     format!(
                                                         "{}::{}({})",
-                                                        f.name, enum_name, match argstrs[0].strip_prefix("&mut ") {
+                                                        f.name,
+                                                        enum_name,
+                                                        match argstrs[0].strip_prefix("&mut ") {
                                                             Some(s) => s,
                                                             None => &argstrs[0],
                                                         },
@@ -448,7 +454,9 @@ pub fn from_microstatement(
                                                 return Ok((
                                                     format!(
                                                         "{}::{}({})",
-                                                        f.name, enum_name, match argstrs[0].strip_prefix("&mut ") {
+                                                        f.name,
+                                                        enum_name,
+                                                        match argstrs[0].strip_prefix("&mut ") {
                                                             Some(s) => s,
                                                             None => &argstrs[0],
                                                         },
