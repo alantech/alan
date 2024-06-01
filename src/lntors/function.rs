@@ -523,6 +523,7 @@ pub fn generate(
     }
     let opt_ret_str = match &function.rettype {
         CType::Void => None,
+        CType::Type(n, _) if n == "void" => None,
         otherwise => {
             let (t_str, o) = typen::generate(otherwise, scope, program, out)?;
             out = o;

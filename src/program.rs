@@ -615,9 +615,6 @@ impl CType {
                 }
             }
         };
-        if &name == "void" {
-            println!("type {} is defined as {:?}", name, t);
-        }
         if is_export {
             scope.exports.insert(name.clone(), Export::Type);
             if fs.len() > 0 {
@@ -1870,7 +1867,6 @@ fn withtypeoperatorslist_to_ctype(
     // on the types of the data involved, which makes things *really* complicated here. TODO:
     // Actually implement that complexity, for now, just pretend operators have only one binding.
     let mut queue = withtypeoperatorslist.clone();
-    println!("queue {:?}", queue);
     let mut out_ctype = None;
     while queue.len() > 0 {
         let mut largest_operator_level: i8 = -1;

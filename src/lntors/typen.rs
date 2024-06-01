@@ -37,7 +37,7 @@ pub fn ctype_to_rtype(
                     }
                     Ok(format!("enum {} {{ {} }}", name, enum_type_strs.join(", ")))
                 }
-                _ => Ok(name.clone()), // TODO: Any others?
+                _ => Ok("".to_string()), // TODO: Is this correct?
             }
         }
         CType::Generic(name, args, _) => Ok(format!("{}<{}>", name, args.join(", "))),
