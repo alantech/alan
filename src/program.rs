@@ -244,7 +244,7 @@ impl Scope {
         for (i, element) in ast.body.iter().enumerate() {
             match element {
                 parse::RootElements::Types(t) => CType::from_ast(&mut s, &mut p, t, false)?,
-                parse::RootElements::Functions(f) => Function::from_ast(&mut s, &p, f, false)?,
+                parse::RootElements::Functions(f) => Function::from_ast(&mut s, &mut p, f, false)?,
                 parse::RootElements::ConstDeclaration(c) => Const::from_ast(&mut s, c, false)?,
                 parse::RootElements::OperatorMapping(o) => {
                     OperatorMapping::from_ast(&mut s, o, false)?
@@ -253,7 +253,7 @@ impl Scope {
                     TypeOperatorMapping::from_ast(&mut s, o, false)?
                 }
                 parse::RootElements::Exports(e) => match &e.exportable {
-                    parse::Exportable::Functions(f) => Function::from_ast(&mut s, &p, f, true)?,
+                    parse::Exportable::Functions(f) => Function::from_ast(&mut s, &mut p, f, true)?,
                     parse::Exportable::ConstDeclaration(c) => Const::from_ast(&mut s, c, true)?,
                     parse::Exportable::OperatorMapping(o) => {
                         OperatorMapping::from_ast(&mut s, o, true)?
@@ -593,9 +593,14 @@ impl CType {
                     parse::TypeDef::TypeCreate(create) => (
                         CType::Generic(
                             name.clone(),
-                            g.generics
+                            // TODO: Stronger checking on the usage here
+                            g.typecalllist
                                 .iter()
-                                .map(|ftn| ftn.to_string())
+                                .map(|tc| tc.to_string())
+                                .collect::<Vec<String>>()
+                                .join("")
+                                .split(",")
+                                .map(|r| r.trim().to_string())
                                 .collect::<Vec<String>>(),
                             create.typeassignables.clone(),
                         ),
@@ -604,9 +609,14 @@ impl CType {
                     parse::TypeDef::TypeBind(bind) => (
                         CType::BoundGeneric(
                             name.clone(),
-                            g.generics
+                            // TODO: Stronger checking on the usage here
+                            g.typecalllist
                                 .iter()
-                                .map(|ftn| ftn.to_string())
+                                .map(|tc| tc.to_string())
+                                .collect::<Vec<String>>()
+                                .join("")
+                                .split(",")
+                                .map(|r| r.trim().to_string())
                                 .collect::<Vec<String>>(),
                             bind.othertype.clone(),
                         ),
@@ -639,7 +649,14 @@ impl CType {
                 }
             }
             for (name, fns) in name_fn_pairs.drain() {
-                scope.functions.insert(name, fns);
+                if scope.functions.contains_key(&name) {
+                    let func_vec = scope.functions.get_mut(&name).unwrap();
+                    for f in fns {
+                        func_vec.push(f);
+                    }
+                } else {
+                    scope.functions.insert(name, fns);
+                }
             }
         }
         Ok(())
@@ -1117,10 +1134,6 @@ pub enum Microstatement {
         typen: CType,
         representation: String, // TODO: Can we do better here?
     },
-    Type {
-        typen: CType,
-        keyvals: OrderedHashMap<String, Microstatement>,
-    },
     Array {
         typen: CType,
         vals: Vec<Microstatement>,
@@ -1139,7 +1152,6 @@ impl Microstatement {
         match self {
             Self::Value { typen, .. } => Ok(typen.clone()),
             Self::Array { typen, .. } => Ok(typen.clone()),
-            Self::Type { typen, .. } => Ok(typen.clone()),
             Self::Arg { typen, .. } => Ok(typen.clone()),
             Self::Assignment { value, .. } => value.get_type(scope, program),
             Self::Return { value } => match value {
@@ -1161,406 +1173,264 @@ impl Microstatement {
     }
 }
 
+#[derive(Clone, Debug)]
+enum BaseChunk<'a> {
+    IIGE(
+        &'a Option<Microstatement>,
+        &'a parse::Functions,
+        &'a parse::GnCall,
+        Option<&'a parse::FnCall>,
+    ),
+    GFuncCall(
+        &'a Option<Microstatement>,
+        &'a String,
+        &'a parse::GnCall,
+        Option<&'a parse::FnCall>,
+    ),
+    IIFE(
+        &'a Option<Microstatement>,
+        &'a parse::Functions,
+        Option<&'a parse::FnCall>,
+    ),
+    FuncCall(
+        &'a Option<Microstatement>,
+        &'a String,
+        Option<&'a parse::FnCall>,
+    ),
+    TypeCall(
+        &'a Option<Microstatement>,
+        &'a parse::GnCall,
+        Option<&'a parse::FnCall>,
+    ),
+    ConstantAccessor(&'a parse::Constants),
+    ArrayAccessor(&'a parse::ArrayBase),
+    Function(&'a parse::Functions),
+    Group(&'a parse::FnCall),
+    Array(&'a parse::ArrayBase),
+    Variable(&'a String),
+    Constant(&'a parse::Constants),
+}
+
 fn baseassignablelist_to_microstatements(
-    baseassignablelist: &Vec<parse::BaseAssignable>,
-    scope: &Scope,
-    program: &Program,
+    bal: &Vec<parse::BaseAssignable>,
+    scope: &mut Scope,
+    program: &mut Program,
     mut microstatements: Vec<Microstatement>,
 ) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
     let mut i = 0;
-    let mut prior_value = None;
-    while i < baseassignablelist.len() {
-        let baseassignable = &baseassignablelist[i];
-        let nextassignable = baseassignablelist.get(i + 1);
-        match baseassignable {
-            parse::BaseAssignable::MethodSep(_) => {
-                // The `MethodSep` symbol doesn't do anything on its own, it only validates that
-                // the syntax before and after it is sane
-                if prior_value.is_none() {
-                    return Err(format!(
-                        "Cannot start a statement with a property access: {}",
-                        baseassignablelist
-                            .iter()
-                            .map(|ba| ba.to_string())
-                            .collect::<Vec<String>>()
-                            .join("")
-                    )
-                    .into());
-                }
-                match nextassignable {
-                    None => {
-                        return Err(format!(
-                            "Cannot end a statement with a property access: {}",
-                            baseassignablelist
-                                .iter()
-                                .map(|ba| ba.to_string())
-                                .collect::<Vec<String>>()
-                                .join("")
-                        )
-                        .into());
-                    }
-                    Some(next) => {
-                        match next {
-                            parse::BaseAssignable::FnCall(_) => {
-                                return Err(format!("A function call or parenthetical grouping is not a property: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
-                            }
-                            parse::BaseAssignable::ObjectLiterals(_) => {
-                                return Err(format!(
-                                    "An object creation is not a property: {}",
-                                    baseassignablelist
-                                        .iter()
-                                        .map(|ba| ba.to_string())
-                                        .collect::<Vec<String>>()
-                                        .join("")
-                                )
-                                .into());
-                            }
-                            parse::BaseAssignable::Functions(_) => {
-                                return Err(format!(
-                                    "A function definition is not a property: {}",
-                                    baseassignablelist
-                                        .iter()
-                                        .map(|ba| ba.to_string())
-                                        .collect::<Vec<String>>()
-                                        .join("")
-                                )
-                                .into());
-                            }
-                            parse::BaseAssignable::MethodSep(_) => {
-                                return Err(format!(
-                                    "Too many `.` symbols for the method access: {}",
-                                    baseassignablelist
-                                        .iter()
-                                        .map(|ba| ba.to_string())
-                                        .collect::<Vec<String>>()
-                                        .join("")
-                                )
-                                .into());
-                            }
-                            _ => {}
-                        }
-                    }
-                }
+    let mut prior_value: Option<Microstatement> = None;
+    let l = bal.len();
+    while i < l {
+        // First find a chunk of the baseassignable list that we can work with and then perform the
+        // operation afterwards. Fail with an error message if no valid path forward can be found.
+        // I recognize that this could be done with `nom` at a higher level, but I don't think it
+        // will buy me much for this little bit of parsing logic, and I am still not satisfied with
+        // the lack of metadata tracking with my usage of `nom`.
+        let mut chunk = None;
+        // Check the longest potential match, where there's a method syntax call for a
+        // fully-qualified IIGE or GFuncCall
+        if prior_value.is_some() && l - i >= 4 {
+            match (&bal[i], &bal[i + 1], &bal[i + 2], &bal[i + 3]) {
+                (
+                    parse::BaseAssignable::MethodSep(_),
+                    parse::BaseAssignable::Functions(f),
+                    parse::BaseAssignable::GnCall(g),
+                    parse::BaseAssignable::FnCall(h),
+                ) => chunk = Some(BaseChunk::IIGE(&prior_value, f, g, Some(h))),
+                (
+                    parse::BaseAssignable::MethodSep(_),
+                    parse::BaseAssignable::Variable(f),
+                    parse::BaseAssignable::GnCall(g),
+                    parse::BaseAssignable::FnCall(h),
+                ) => chunk = Some(BaseChunk::GFuncCall(&prior_value, f, g, Some(h))),
+                _ => {} // Skip
             }
-            parse::BaseAssignable::Constants(c) => {
-                // With constants, it's relatively simple. *Only* if the constant in question is an
-                // integer is it legitimate to have a constant follow a dot notation, for
-                // tuple/fixed-array accesses. It becomes syntactic sugar for `get(prior_value, 0)`
-                // (or whatever the number is). In all other cases, a prior value is an error.
-                // Similarly, the only thing that can follow a constant value is a `MethodSep` to
-                // be used for a method-syntax function call and all others are errors. The
-                // "default" path is for a baseassignablelist with a length of one containing only
-                // the constant.
-                if let Some(next) = nextassignable {
-                    match next {
-                        parse::BaseAssignable::Variable(_) => {
-                            return Err(format!("A constant cannot be directly before a variable without an operator between them: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
-                        }
-                        parse::BaseAssignable::FnCall(_) => {
-                            return Err(format!("A constant cannot be directly before a parenthetical grouping without an operator between them: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
-                        }
-                        parse::BaseAssignable::ObjectLiterals(_) => {
-                            return Err(format!(
-                                "A constant cannot be directly before an object definition: {}",
-                                baseassignablelist
-                                    .iter()
-                                    .map(|ba| ba.to_string())
-                                    .collect::<Vec<String>>()
-                                    .join("")
-                            )
-                            .into());
-                        }
-                        parse::BaseAssignable::Functions(_) => {
-                            return Err(format!(
-                                "A constant cannot be directly before a function definition: {}",
-                                baseassignablelist
-                                    .iter()
-                                    .map(|ba| ba.to_string())
-                                    .collect::<Vec<String>>()
-                                    .join("")
-                            )
-                            .into());
-                        }
-                        parse::BaseAssignable::Constants(_) => {
-                            return Err(format!("A constant cannot be directly before another constant without an operator between them: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
-                        }
-                        parse::BaseAssignable::MethodSep(_) => {} // The only allowed follow-up
-                    }
+            if chunk.is_some() {
+                i = i + 4;
+            }
+        } else if prior_value.is_none() && l - i >= 3 {
+            // Checking the longest potential match when starting the list: fully-qualified IIGE or
+            // GFuncCall
+            match (&bal[i], &bal[i + 1], &bal[i + 2]) {
+                (
+                    parse::BaseAssignable::Functions(f),
+                    parse::BaseAssignable::GnCall(g),
+                    parse::BaseAssignable::FnCall(h),
+                ) => chunk = Some(BaseChunk::IIGE(&prior_value, f, g, Some(h))),
+                (
+                    parse::BaseAssignable::Variable(f),
+                    parse::BaseAssignable::GnCall(g),
+                    parse::BaseAssignable::FnCall(h),
+                ) => chunk = Some(BaseChunk::GFuncCall(&prior_value, f, g, Some(h))),
+                _ => {} // Skip
+            }
+            if chunk.is_some() {
+                i = i + 3;
+            }
+        }
+        if chunk.is_none() && prior_value.is_some() && l - i >= 3 {
+            // Checking the potential matches with method syntax: partially-qualified IIGE and
+            // GFuncCall, and fully-qualified IIFE, FuncCall, and TypeCall
+            match (&bal[i], &bal[i + 1], &bal[i + 2]) {
+                (
+                    parse::BaseAssignable::MethodSep(_),
+                    parse::BaseAssignable::Functions(f),
+                    parse::BaseAssignable::GnCall(g),
+                ) => chunk = Some(BaseChunk::IIGE(&prior_value, f, g, None)),
+                (
+                    parse::BaseAssignable::MethodSep(_),
+                    parse::BaseAssignable::Variable(f),
+                    parse::BaseAssignable::GnCall(g),
+                ) => chunk = Some(BaseChunk::GFuncCall(&prior_value, f, g, None)),
+                (
+                    parse::BaseAssignable::MethodSep(_),
+                    parse::BaseAssignable::Functions(f),
+                    parse::BaseAssignable::FnCall(g),
+                ) => chunk = Some(BaseChunk::IIFE(&prior_value, f, Some(g))),
+                (
+                    parse::BaseAssignable::MethodSep(_),
+                    parse::BaseAssignable::Variable(f),
+                    parse::BaseAssignable::FnCall(g),
+                ) => chunk = Some(BaseChunk::FuncCall(&prior_value, f, Some(g))),
+                (
+                    parse::BaseAssignable::MethodSep(_),
+                    parse::BaseAssignable::GnCall(t),
+                    parse::BaseAssignable::FnCall(g),
+                ) => chunk = Some(BaseChunk::TypeCall(&prior_value, t, Some(g))),
+                _ => {} // Skip
+            }
+            if chunk.is_some() {
+                i = i + 3;
+            }
+        } else if chunk.is_none() && prior_value.is_none() && l - i >= 2 {
+            // Checking the potential matches when starting the list: fully-qualified IIFE,
+            // FuncCall, and TypeCall
+            match (&bal[i], &bal[i + 1]) {
+                (parse::BaseAssignable::Functions(f), parse::BaseAssignable::FnCall(g)) => {
+                    chunk = Some(BaseChunk::IIFE(&prior_value, f, Some(g)))
                 }
-                if prior_value.is_none() {
-                    match c {
-                        parse::Constants::Bool(b) => {
+                (parse::BaseAssignable::Variable(f), parse::BaseAssignable::FnCall(g)) => {
+                    chunk = Some(BaseChunk::FuncCall(&prior_value, f, Some(g)))
+                }
+                (parse::BaseAssignable::GnCall(t), parse::BaseAssignable::FnCall(g)) => {
+                    chunk = Some(BaseChunk::TypeCall(&prior_value, t, Some(g)))
+                }
+                _ => {} // Skip
+            }
+            if chunk.is_some() {
+                i = i + 2;
+            }
+        }
+        if chunk.is_none() && prior_value.is_some() && l - i >= 2 {
+            // Checking the potential matches with method syntax: partially-qualified IIFE,
+            // FuncCall, and TypeCall, and fully-qualified ConstantAccessor
+            match (&bal[i], &bal[i + 1]) {
+                (parse::BaseAssignable::MethodSep(_), parse::BaseAssignable::Functions(f)) => {
+                    chunk = Some(BaseChunk::IIFE(&prior_value, f, None))
+                }
+                (parse::BaseAssignable::MethodSep(_), parse::BaseAssignable::Variable(f)) => {
+                    chunk = Some(BaseChunk::FuncCall(&prior_value, f, None))
+                }
+                (parse::BaseAssignable::MethodSep(_), parse::BaseAssignable::GnCall(t)) => {
+                    chunk = Some(BaseChunk::TypeCall(&prior_value, t, None))
+                }
+                (parse::BaseAssignable::MethodSep(_), parse::BaseAssignable::Constants(c)) => {
+                    chunk = Some(BaseChunk::ConstantAccessor(c))
+                }
+                _ => {} // Skip
+            }
+            if chunk.is_some() {
+                i = i + 2;
+            }
+        } else if chunk.is_none() && prior_value.is_none() && l - i >= 1 {
+            // Checking the potential matches when starting the list: Function, Group, Array,
+            // Variable, Constant
+            match &bal[i] {
+                parse::BaseAssignable::Functions(f) => chunk = Some(BaseChunk::Function(f)),
+                parse::BaseAssignable::FnCall(g) => chunk = Some(BaseChunk::Group(g)),
+                parse::BaseAssignable::Array(a) => chunk = Some(BaseChunk::Array(a)),
+                parse::BaseAssignable::Variable(v) => chunk = Some(BaseChunk::Variable(v)),
+                parse::BaseAssignable::Constants(c) => chunk = Some(BaseChunk::Constant(c)),
+                _ => {} // Skip
+            }
+            if chunk.is_some() {
+                i = i + 1;
+            }
+        }
+        if chunk.is_none() && prior_value.is_some() && l - i >= 1 {
+            // Checking the potential matches with accessor syntax: ArrayAccessor
+            match &bal[i] {
+                parse::BaseAssignable::Array(a) => chunk = Some(BaseChunk::ArrayAccessor(a)),
+                _ => {}
+            }
+            if chunk.is_some() {
+                i = i + 1;
+            }
+        }
+        // If we got here and there's no chunk, we hit invalid syntax
+        if chunk.is_none() {
+            return Err(format!(
+                "Invalid syntax: {}\n Cannot parse after {}, l - i = {}",
+                bal.iter()
+                    .map(|ba| ba.to_string())
+                    .collect::<Vec<String>>()
+                    .join(""),
+                bal[i - 1].to_string(),
+                l - i,
+            )
+            .into());
+        }
+        // Now we just operate on our chunk and create a new prior_value to replace the old one, if
+        // any exists. We'll start from the easier ones first and work our way up to the
+        // complicated ones
+        match chunk.unwrap() {
+            // We know it has to be defined because we blew up earlier if not
+            BaseChunk::Constant(c) => {
+                match c {
+                    parse::Constants::Bool(b) => {
+                        prior_value = Some(Microstatement::Value {
+                            typen: CType::Bound("bool".to_string(), "bool".to_string()),
+                            representation: b.clone(),
+                        });
+                    }
+                    parse::Constants::Strn(s) => {
+                        prior_value = Some(Microstatement::Value {
+                            typen: CType::Bound("string".to_string(), "String".to_string()),
+                            representation: if s.starts_with('"') {
+                                s.clone()
+                            } else {
+                                // TODO: Is there a cheaper way to do this conversion?
+                                s.replace("\"", "\\\"")
+                                    .replace("\\'", "\\\\\"")
+                                    .replace("'", "\"")
+                                    .replace("\\\\\"", "'")
+                            },
+                        });
+                    }
+                    parse::Constants::Num(n) => match n {
+                        parse::Number::RealNum(r) => {
                             prior_value = Some(Microstatement::Value {
-                                typen: CType::Bound("bool".to_string(), "bool".to_string()),
-                                representation: b.clone(),
-                            })
-                        }
-                        parse::Constants::Strn(s) => {
-                            prior_value = Some(Microstatement::Value {
-                                typen: CType::Bound("string".to_string(), "String".to_string()),
-                                representation: if s.starts_with('"') {
-                                    s.clone()
-                                } else {
-                                    // TODO: Is there a cheaper way to do this conversion?
-                                    s.replace("\"", "\\\"")
-                                        .replace("\\'", "\\\\\"")
-                                        .replace("'", "\"")
-                                        .replace("\\\\\"", "'")
-                                },
-                            })
-                        }
-                        parse::Constants::Num(n) => match n {
-                            parse::Number::RealNum(r) => {
-                                prior_value = Some(Microstatement::Value {
-                                    // TODO: Something more intelligent here?
-                                    typen: CType::Bound("f64".to_string(), "f64".to_string()),
-                                    representation: r.clone(),
-                                })
-                            }
-                            parse::Number::IntNum(i) => {
-                                prior_value = Some(Microstatement::Value {
-                                    // TODO: Same. Maybe it should be the `CType::Int` type and
-                                    // then there's special logic to convert on-the-fly to the
-                                    // right integer type later?
-                                    typen: CType::Bound("i64".to_string(), "i64".to_string()),
-                                    representation: i.clone(),
-                                })
-                            }
-                        },
-                    }
-                } else {
-                    // There's only one case where a prior value is allowed, when the constant
-                    // is an integer
-                    match c {
-                        parse::Constants::Bool(_) => {
-                            return Err(format!("A boolean cannot follow another value without an operator between them: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
-                        }
-                        parse::Constants::Strn(_) => {
-                            return Err(format!("A string cannot follow another value without an operator between them: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
-                        }
-                        parse::Constants::Num(n) => match n {
-                            parse::Number::RealNum(_) => {
-                                return Err(format!("A floating point number cannot follow another value without an operator between them: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
-                            }
-                            parse::Number::IntNum(i) => {
-                                // Convert the prior value and the new integer into `get(prior, i)`
-                                let prior = prior_value.unwrap();
-                                prior_value = Some(Microstatement::FnCall {
-                                    function: "get".to_string(),
-                                    args: vec![
-                                        prior,
-                                        Microstatement::Value {
-                                            typen: CType::Bound(
-                                                "i64".to_string(),
-                                                "i64".to_string(),
-                                            ),
-                                            representation: i.clone(),
-                                        },
-                                    ],
-                                });
-                            }
-                        },
-                    }
-                }
-            }
-            parse::BaseAssignable::Functions(_f) => {
-                // Function declaration is very simple. If there's any prior value, it's an error.
-                // It can only be followed by nothing or by a function call for an IIFE, which is
-                // generally not useful, but could be used similar to Rust's block syntax to create
-                // a value, mutate it, but then finally assign it as an immutable constant outside
-                // of that scope.
-                if let Some(_) = prior_value {
-                    return Err(format!(
-                        "A function definition cannot follow another value: {}",
-                        baseassignablelist
-                            .iter()
-                            .map(|ba| ba.to_string())
-                            .collect::<Vec<String>>()
-                            .join("")
-                    )
-                    .into());
-                }
-                if let Some(next) = nextassignable {
-                    match next {
-                        parse::BaseAssignable::Variable(_) => {
-                            return Err(format!(
-                                "A variable cannot follow a closure function definition: {}",
-                                baseassignablelist
-                                    .iter()
-                                    .map(|ba| ba.to_string())
-                                    .collect::<Vec<String>>()
-                                    .join("")
-                            )
-                            .into());
-                        }
-                        parse::BaseAssignable::ObjectLiterals(_) => {
-                            return Err(format!("An object definition cannot follow a closure function definition: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
-                        }
-                        parse::BaseAssignable::Functions(_) => {
-                            return Err(format!("A closure function definition cannot immediately follow another closure function definition: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
-                        }
-                        parse::BaseAssignable::Constants(_) => {
-                            return Err(format!("A constant cannot immediately follow a closure function definition: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
-                        }
-                        parse::BaseAssignable::MethodSep(_) => {
-                            // TODO: Potentially reconsider for method syntax for higher-order
-                            // functions?
-                            return Err(format!("A closure function definition does not have any properties to access: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
-                        }
-                        parse::BaseAssignable::FnCall(_) => {} // Allowed for IIFEs
-                    }
-                }
-                // Now we can create the closure function, but first we need to update the
-                // Microstatement type to define closure functions as a thing
-                return Err("TODO: Implement closure functions in Microstatement syntax".into());
-            }
-            parse::BaseAssignable::ObjectLiterals(ol) => {
-                // When an object literal has nothing before it, it constructs the object in
-                // question. When there is a value before it, it can only be an array literal
-                // syntax and is instead operating as the array accessor syntax, which is syntactic
-                // sugar for `get(prior_value, i, ...)` with the contents of the array syntax
-                // becoming the args passed to the `get` function.
-                if let Some(prior) = prior_value {
-                    match ol {
-                        parse::ObjectLiterals::ArrayLiteral(a) => {
-                            match a {
-                                parse::ArrayLiteral::ArrayBase(b) => {
-                                    let mut array_accessor_microstatements = vec![prior];
-                                    for withoperators in &b.assignablelist {
-                                        microstatements = withoperatorslist_to_microstatements(
-                                            withoperators,
-                                            scope,
-                                            program,
-                                            microstatements,
-                                        )?;
-                                        array_accessor_microstatements
-                                            .push(microstatements.pop().unwrap());
-                                    }
-                                    prior_value = Some(Microstatement::FnCall {
-                                        function: "get".to_string(),
-                                        args: array_accessor_microstatements,
-                                    });
-                                }
-                                parse::ArrayLiteral::FullArrayLiteral(_) => {
-                                    return Err(format!("An array definition cannot directly follow another value: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
-                                }
-                            }
-                        }
-                        parse::ObjectLiterals::TypeLiteral(_) => {
-                            return Err(format!(
-                                "An object definition cannot directly follow another value: {}",
-                                baseassignablelist
-                                    .iter()
-                                    .map(|ba| ba.to_string())
-                                    .collect::<Vec<String>>()
-                                    .join("")
-                            )
-                            .into());
-                        }
-                    }
-                } else {
-                    match ol {
-                        parse::ObjectLiterals::ArrayLiteral(a) => match a {
-                            parse::ArrayLiteral::ArrayBase(b) => {
-                                let mut array_microstatements = Vec::new();
-                                for withoperators in &b.assignablelist {
-                                    microstatements = withoperatorslist_to_microstatements(
-                                        withoperators,
-                                        scope,
-                                        program,
-                                        microstatements,
-                                    )?;
-                                    array_microstatements.push(microstatements.pop().unwrap());
-                                }
-                                // TODO: Currently assuming the type of the first element of the array
-                                // matches all of them. Should confirm that in the future
-                                prior_value = Some(Microstatement::Array {
-                                    typen: CType::Array(Box::new(
-                                        array_microstatements[0].get_type(scope, program)?,
-                                    )),
-                                    vals: array_microstatements,
-                                });
-                            }
-                            parse::ArrayLiteral::FullArrayLiteral(f) => {
-                                let mut array_microstatements = Vec::new();
-                                for withoperators in &f.arraybase.assignablelist {
-                                    microstatements = withoperatorslist_to_microstatements(
-                                        withoperators,
-                                        scope,
-                                        program,
-                                        microstatements,
-                                    )?;
-                                    array_microstatements.push(microstatements.pop().unwrap());
-                                }
-                                // TODO: Currently assuming the type of the array *is* the type specified.
-                                // Should confirm that in the future
-                                prior_value = Some(Microstatement::Array {
-                                    typen: match program
-                                        .resolve_type(scope, &f.literaldec.fulltypename.to_string())
-                                    {
-                                        Some((t, _)) => {
-                                            Ok::<CType, Box<dyn std::error::Error>>(t.clone())
-                                        }
-                                        None => Err(format!(
-                                            "Could not resolve type {}",
-                                            f.literaldec.fulltypename.to_string()
-                                        )
-                                        .into()),
-                                    }?,
-                                    vals: array_microstatements,
-                                });
-                            }
-                        },
-                        parse::ObjectLiterals::TypeLiteral(t) => {
-                            let mut struct_microstatements = OrderedHashMap::new();
-                            for typeassign in &t.typebase.typeassignlist {
-                                microstatements = withoperatorslist_to_microstatements(
-                                    &typeassign.assignables,
-                                    scope,
-                                    program,
-                                    microstatements,
-                                )?;
-                                struct_microstatements.insert(
-                                    typeassign.variable.clone(),
-                                    microstatements.pop().unwrap(),
-                                );
-                            }
-                            // TODO: Currently assuming that the specified type matches the properties
-                            // provided. Should confirm that in the future
-                            prior_value = Some(Microstatement::Type {
-                                typen: match program
-                                    .resolve_type(scope, &t.literaldec.fulltypename.to_string())
-                                {
-                                    Some((t, _)) => {
-                                        Ok::<CType, Box<dyn std::error::Error>>(t.clone())
-                                    }
-                                    None => Err(format!(
-                                        "Could not resolve type {}",
-                                        t.literaldec.fulltypename.to_string()
-                                    )
-                                    .into()),
-                                }?,
-                                keyvals: struct_microstatements,
+                                // TODO: Replace this with the `CType::Float` and have built-ins
+                                // that accept them
+                                typen: CType::Bound("f64".to_string(), "f64".to_string()),
+                                representation: r.clone(),
                             });
                         }
-                    }
+                        parse::Number::IntNum(i) => {
+                            prior_value = Some(Microstatement::Value {
+                                // TODO: Replace this with `CType::Int` and have built-ins that
+                                // accept them
+                                typen: CType::Bound("i64".to_string(), "i64".to_string()),
+                                representation: i.clone(),
+                            });
+                        }
+                    },
                 }
             }
-            parse::BaseAssignable::Variable(var) => {
-                // Variables can be used as property or method accesses on the prior value. For
-                // method access, if the function takes only one argument, it should still work
-                // even if the follow-on parenthesis are not written, so there's a little bit of
-                // extra logic added here for that situation, otherwise it's handled by the FnCall
-                // path. When it's a property access, it replaces the prior Microstatement with a
-                // `Value` statement operating on the prior value. Sometimes this requires pushing
-                // it into the `microstatements` array, sometimes modifying it, sometimes needing
-                // to put it into an `Assignment` before pushing it to the `microstatements` array
-                // to reference it.
-                // For the simpler case when it's *just* a reference to a prior variable, it just
-                // becomes a `Value` microstatement.
+            BaseChunk::Variable(v) => {
                 let typen = match microstatements.iter().find(|m| match m {
-                    Microstatement::Assignment { name, .. } => var == name,
-                    Microstatement::Arg { name, .. } => var == name,
+                    Microstatement::Assignment { name, .. } => v == name,
+                    Microstatement::Arg { name, .. } => v == name,
                     _ => false,
                 }) {
                     // Reaching the `Some` path requires it to be of type
@@ -1575,7 +1445,7 @@ fn baseassignablelist_to_microstatements(
                         // It could be a function. TODO: Use `program.resolve_function` for better
                         // type safety. This requires getting the types of all of the involved
                         // arguments
-                        match scope.functions.get(var) {
+                        match scope.functions.get(v) {
                             // TODO: the specific function chosen may be wrong, need to use
                             // `program.resolve_function` here
                             Some(f) => Ok(CType::Function(
@@ -1597,7 +1467,7 @@ fn baseassignablelist_to_microstatements(
                             None => {
                                 // Check the root scope, too
                                 match program.scopes_by_file.get("@root") {
-                                    Some((_, _, s)) => match s.functions.get(var) {
+                                    Some((_, _, s)) => match s.functions.get(v) {
                                         Some(f) => Ok(CType::Function(
                                             Box::new(if f[0].args.len() == 0 {
                                                 CType::Void
@@ -1617,232 +1487,302 @@ fn baseassignablelist_to_microstatements(
                                             Box::new(f[0].rettype.clone()),
                                         )), // TODO: Convert the Function class to use a
                                         // function type directly
-                                        None => {
-                                            Err(format!("Couldn't find variable {}", var).into())
-                                        }
+                                        None => Err(format!("Couldn't find variable {}", v).into()),
                                     },
-                                    None => Err(format!("Couldn't find variable {}", var).into()),
+                                    None => Err(format!("Couldn't find variable {}", v).into()),
                                 }
                             }
                         }
                     }
                 }?;
-                if let Some(prior) = prior_value {
-                    match &typen {
-                        CType::Function(..) => {
-                            // TODO: Do better on function dispatch
-                            // If this is a method call we need to pull in the rest of the arguments
-                            // (if there are any) from the next assignable and then skip over it.
-                            // Otherwise either generate the function call as-is or return an error if
-                            // the follow-on assignable can't follow this one.
-                            if let Some(next) = nextassignable {
-                                match next {
-                                    parse::BaseAssignable::Variable(v) => {
-                                        return Err(format!("A variable ({}) cannot directly follow another value without an operator: {}", v, baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
-                                    }
-                                    parse::BaseAssignable::ObjectLiterals(_) => {
-                                        // TODO: Support array access after a method call
-                                        return Err(
-                                            "TODO: Support array access after a method call".into(),
-                                        );
-                                    }
-                                    parse::BaseAssignable::Functions(_) => {
-                                        return Err(format!("A closure function cannot directly follow another value: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
-                                    }
-                                    parse::BaseAssignable::Constants(c) => {
-                                        return Err(format!("A constant ({}) cannot directly follow another value without an operator: {}", c.to_string(), baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
-                                    }
-                                    parse::BaseAssignable::MethodSep(_) => {
-                                        // Call the function with a singular value
-                                        match &prior {
-                                            Microstatement::Value { .. } => {
-                                                prior_value = Some(Microstatement::FnCall {
-                                                    function: var.clone(),
-                                                    args: vec![prior.clone()],
-                                                });
-                                            }
-                                            Microstatement::Arg { .. } => {
-                                                prior_value = Some(Microstatement::FnCall {
-                                                    function: var.clone(),
-                                                    args: vec![prior.clone()],
-                                                });
-                                            }
-                                            Microstatement::Assignment { name, .. } => {
-                                                return Err(format!("{} is not a function so it cannot be called as one: {}", name, baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
-                                            }
-                                            Microstatement::FnCall { .. } => {
-                                                // TODO: Support function calls on functions that return functions
-                                                return Err("Function calls on functions that return functions not yet implemented".into());
-                                            }
-                                            Microstatement::Type { typen, .. } => {
-                                                return Err(format!("{:?} is not a function so it cannot be called as one: {}", typen, baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
-                                            }
-                                            Microstatement::Array { typen, .. } => {
-                                                return Err(format!("{:?} is not a function so it cannot be called as one: {}", typen, baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
-                                            }
-                                            Microstatement::Return { .. } => {
-                                                return Err(format!("You can't call a return statement as a function. How did you even do this, anyway?: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")).into());
-                                            }
-                                        }
-                                    }
-                                    parse::BaseAssignable::FnCall(fc) => {
-                                        // In this path, we grab the arguments from the function call
-                                        // and combine it with the value we're keying off of, then we
-                                        // skip the next step by incrementing `i` an extra time
-                                        // TODO: Support closure functions
-                                        let mut args = vec![prior.clone()];
-                                        for arg in &fc.assignablelist {
-                                            microstatements = withoperatorslist_to_microstatements(
-                                                arg,
-                                                scope,
-                                                program,
-                                                microstatements,
-                                            )?;
-                                            let lastmicrostatement = microstatements.pop().unwrap();
-                                            match lastmicrostatement {
-                                                Microstatement::Assignment {
-                                                    ref name,
-                                                    ref value,
-                                                    ..
-                                                } => {
-                                                    // If the last microstatement is an assignment, we need to
-                                                    // reference it as a value and push it back onto the array
-                                                    args.push(Microstatement::Value {
-                                                        typen: value.get_type(scope, program)?,
-                                                        representation: name.clone(),
-                                                    });
-                                                    microstatements.push(lastmicrostatement);
-                                                }
-                                                _ => {
-                                                    // For everything else, we can just put the statement inside of
-                                                    // the function call as one of its args directly
-                                                    args.push(lastmicrostatement);
-                                                }
-                                            }
-                                        }
-                                        prior_value = Some(Microstatement::FnCall {
-                                            function: var.clone(),
-                                            args,
-                                        });
-                                        i = i + 1;
-                                    }
-                                }
-                            } else {
-                                // This path is a simple function call with a single argument
-                                prior_value = Some(Microstatement::FnCall {
-                                    function: var.clone(),
-                                    args: vec![prior.clone()],
-                                });
-                            }
-                        }
-                        _ => {
-                            // TODO: Properly support property access eventually
-                            return Err(format!(
-                                "TODO: Implement property access: {}",
-                                baseassignablelist
-                                    .iter()
-                                    .map(|ba| ba.to_string())
-                                    .collect::<Vec<String>>()
-                                    .join("")
-                            )
-                            .into());
-                        }
-                    }
-                } else {
-                    prior_value = Some(Microstatement::Value {
-                        typen,
-                        representation: var.clone(),
-                    });
-                }
+                prior_value = Some(Microstatement::Value {
+                    typen,
+                    representation: v.to_string(),
+                });
             }
-            parse::BaseAssignable::FnCall(fc) => {
-                // FnCall syntax works in a few ways: if it's the first base assignable or
-                // completely by itself, it's actually a parenthetical grouping of the values
-                // within it and is evaluated that way. If its following something, it is a
-                // function call, but it can only follow a variable that represents a function, an
-                // actual closure function definition, or an array accessor that returned a closure
-                // function (so for both of those paths, it needs to be a closure function
-                // microstatement, which doesn't exist yet).
-                // However, the method syntax has already been handled by the `Variable` path, so
-                // we don't deal with it.
-                if let Some(prior) = prior_value {
-                    let fn_name = match prior {
-                        Microstatement::Assignment { .. } => Err(format!("You can't call an assignment statement as a function: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join(""))),
-                        Microstatement::Arg { name, typen } => {
-                            match &typen {
-                                CType::Function(..) => Ok(name), // TODO: Validate that it's the
-                                                                 // *right* fn
-                                _ => Err(format!("{} is not a function: {}", name, baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")))
-                            }
-                        },
-                        Microstatement::FnCall { .. } => Err(format!("TODO: Support calling a function immediately from a function: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join(""))),
-                        Microstatement::Value { representation, typen } => {
-                            match &typen {
-                                CType::Function(..) => Ok(representation), // TODO: Validate that
-                                                                          // it's the *right* fn
-                                _ => Err(format!("{} is not a function: {}", representation, baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join("")))
-                            }
-                        },
-                        Microstatement::Type { .. } => Err(format!("You can't call an object as a function: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join(""))),
-                        Microstatement::Array { .. } => Err(format!("You can't call an array as a function: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join(""))),
-                        Microstatement::Return { .. } => Err(format!("You can't call a return statement as a function. How did you even do that?: {}", baseassignablelist.iter().map(|ba| ba.to_string()).collect::<Vec<String>>().join(""))),
-                    }?;
-                    let mut args = Vec::new();
-                    for arg in &fc.assignablelist {
+            BaseChunk::Array(a) => {
+                // We don't allow `[]` syntax, so blow up if the assignablelist is empty
+                if a.assignablelist.len() == 0 {
+                    return Err("Cannot create an empty array with bracket syntax, use `Array{MyType}()` syntax instead".into());
+                }
+                let mut array_vals = Vec::new();
+                for wol in &a.assignablelist {
+                    microstatements =
+                        withoperatorslist_to_microstatements(wol, scope, program, microstatements)?;
+                    array_vals.push(microstatements.pop().unwrap());
+                }
+                // TODO: Currently assuming all array values are the same type, should check that
+                // better
+                let inner_type = array_vals[0].get_type(scope, program)?;
+                let array_type = CType::Array(Box::new(inner_type));
+                prior_value = Some(Microstatement::Array {
+                    typen: array_type,
+                    vals: array_vals,
+                });
+            }
+            BaseChunk::Group(g) => {
+                // TODO: Add support for anonymous tuples with this syntax, for now break if the
+                // group's inner length is greater that one record
+                if g.assignablelist.len() != 1 {
+                    return Err("Anonymous tuple support not yet implemented".into());
+                }
+                microstatements = withoperatorslist_to_microstatements(
+                    &g.assignablelist[0],
+                    scope,
+                    program,
+                    microstatements,
+                )?;
+                prior_value = microstatements.pop();
+            }
+            BaseChunk::Function(_f) => {
+                return Err("TODO: Implement closure functions in Microstatement syntax".into());
+            }
+            BaseChunk::ArrayAccessor(a) => {
+                if let Some(prior) = &prior_value {
+                    let mut array_accessor_microstatements = vec![prior.clone()];
+                    for wol in &a.assignablelist {
                         microstatements = withoperatorslist_to_microstatements(
-                            arg,
+                            wol,
                             scope,
                             program,
                             microstatements,
                         )?;
-                        let lastmicrostatement = microstatements.pop().unwrap();
-                        match lastmicrostatement {
-                            Microstatement::Assignment {
-                                ref name,
-                                ref value,
-                                ..
-                            } => {
-                                // If the last microstatement is an assignment, we need to
-                                // reference it as a value and push it back onto the array
-                                args.push(Microstatement::Value {
-                                    typen: value.get_type(scope, program)?,
-                                    representation: name.clone(),
-                                });
-                                microstatements.push(lastmicrostatement);
-                            }
-                            _ => {
-                                // For everything else, we can just put the statement inside of
-                                // the function call as one of its args directly
-                                args.push(lastmicrostatement);
-                            }
-                        }
+                        array_accessor_microstatements.push(microstatements.pop().unwrap());
                     }
+                    // TODO: Check that this function actually exists with the arguments being provided
                     prior_value = Some(Microstatement::FnCall {
-                        function: fn_name.clone(),
-                        args,
+                        function: "get".to_string(),
+                        args: array_accessor_microstatements,
                     });
                 } else {
-                    // TODO: Allow tuple syntax eventually. For now just keeping the old check
-                    // around
-                    if fc.assignablelist.len() != 1 {
-                        return Err(format!(
-                            "Multiple statements found in {}. Perhaps you should remove that comma?",
-                            baseassignable.to_string()
-                        )
-                        .into());
-                    }
-                    // Happy path, let's get the microstatements from this assignable list
-                    microstatements = withoperatorslist_to_microstatements(
-                        &fc.assignablelist[0],
+                    // This is impossible, but I'm having a hard time convincing Rust of that
+                    panic!("Impossible to reach the ArrayAccessor path without a prior value");
+                }
+            }
+            BaseChunk::ConstantAccessor(c) => {
+                if let Some(prior) = &prior_value {
+                    let mut constant_accessor_microstatements = vec![prior.clone()];
+                    microstatements = baseassignablelist_to_microstatements(
+                        &vec![parse::BaseAssignable::Constants(c.clone())],
                         scope,
                         program,
                         microstatements,
                     )?;
-                    prior_value = microstatements.pop();
+                    constant_accessor_microstatements.push(microstatements.pop().unwrap());
+                    // TODO: Check that this function actually exists with the argument being provided
+                    prior_value = Some(Microstatement::FnCall {
+                        function: "get".to_string(),
+                        args: constant_accessor_microstatements,
+                    });
+                } else {
+                    // This is impossible, but I'm having a hard time convincing Rust of that
+                    panic!("Impossible to reach the ConstantAccessor path without a prior value");
                 }
             }
+            BaseChunk::TypeCall(prior, g, f) => {
+                // Get all of the arguments for the function into an array. If there's a prior
+                // value it becomes the first argument.
+                let mut arg_microstatements = match prior {
+                    Some(p) => vec![p.clone()],
+                    None => Vec::new(),
+                };
+                match f {
+                    None => {}
+                    Some(fncall) => {
+                        for arg in &fncall.assignablelist {
+                            microstatements = withoperatorslist_to_microstatements(
+                                &arg,
+                                scope,
+                                program,
+                                microstatements,
+                            )?;
+                            arg_microstatements.push(microstatements.pop().unwrap());
+                        }
+                    }
+                }
+                let mut arg_types = Vec::new();
+                for arg in &arg_microstatements {
+                    arg_types.push(arg.get_type(scope, program)?);
+                }
+                // We create a type on-the-fly from the contents the GnCall block. It's given a
+                // name based on the CType tree with all non-`a-zA-Z0-9_` chars replaced with `-`
+                // TODO: Eliminate the duplication of CType generation logic by abstracting out the
+                // automatic function creation into a reusable component
+                let ctype = withtypeoperatorslist_to_ctype(&g.typecalllist, scope, program)?;
+                // TODO: Be more complete here
+                let name = ctype
+                    .to_string()
+                    .replace(" ", "_")
+                    .replace(",", "_")
+                    .replace(":", "_")
+                    .replace("{", "_")
+                    .replace("}", "_")
+                    .replace("|", "_");
+                let parse_type = parse::Types {
+                    typen: "type".to_string(),
+                    a: "".to_string(),
+                    opttypegenerics: None,
+                    b: "".to_string(),
+                    fulltypename: parse::FullTypename {
+                        typename: name.clone(),
+                        opttypegenerics: None,
+                    },
+                    c: "".to_string(),
+                    typedef: parse::TypeDef::TypeCreate(parse::TypeCreate {
+                        a: "=".to_string(),
+                        b: "".to_string(),
+                        typeassignables: g.typecalllist.clone(),
+                    }),
+                    optsemicolon: ";".to_string(),
+                };
+                CType::from_ast(scope, program, &parse_type, false)?;
+                // Now we are sure the type and function exist, and we know the name for the
+                // function. It would be best if we could just pass it to ourselves and run the
+                // `FuncCall` logic below, but it's easier at the moment to duplicate :( TODO
+                prior_value = Some(Microstatement::FnCall {
+                    function: name,
+                    args: arg_microstatements,
+                });
+            }
+            BaseChunk::FuncCall(prior, f, g) => {
+                // Get all of the arguments for the function into an array. If there's a prior
+                // value it becomes the first argument.
+                let mut arg_microstatements = match prior {
+                    Some(p) => vec![p.clone()],
+                    None => Vec::new(),
+                };
+                match g {
+                    None => {}
+                    Some(fncall) => {
+                        for arg in &fncall.assignablelist {
+                            microstatements = withoperatorslist_to_microstatements(
+                                &arg,
+                                scope,
+                                program,
+                                microstatements,
+                            )?;
+                            arg_microstatements.push(microstatements.pop().unwrap());
+                        }
+                    }
+                }
+                let mut arg_types = Vec::new();
+                for arg in &arg_microstatements {
+                    arg_types.push(arg.get_type(scope, program)?);
+                }
+                // Now confirm that there's actually a function with this name that takes these
+                // types
+                let func = program.resolve_function(scope, f, &arg_types);
+                match func {
+                    Some(..) => {
+                        // Success! Let's emit this
+                        prior_value = Some(Microstatement::FnCall {
+                            function: f.to_string(),
+                            args: arg_microstatements,
+                        });
+                    }
+                    None => {
+                        return Err(format!(
+                            "Could not find a function {} that takes args {}",
+                            f,
+                            arg_types
+                                .iter()
+                                .map(|a| a.to_string())
+                                .collect::<Vec<String>>()
+                                .join(", ")
+                        )
+                        .into());
+                    }
+                }
+            }
+            BaseChunk::IIFE(_prior, _f, _g) => {
+                // TODO: This may just be some simple microstatement generation here compared to
+                // actual closure creation
+                return Err("TODO: Implement IIFE support".into());
+            }
+            BaseChunk::GFuncCall(prior, f, g, h) => {
+                // TODO: Actually implement generic functions, for now this is just another way to
+                // do a `TypeCall`
+                // Get all of the arguments for the function into an array. If there's a prior
+                // value it becomes the first argument.
+                let mut arg_microstatements = match prior {
+                    Some(p) => vec![p.clone()],
+                    None => Vec::new(),
+                };
+                match h {
+                    None => {}
+                    Some(fncall) => {
+                        for arg in &fncall.assignablelist {
+                            microstatements = withoperatorslist_to_microstatements(
+                                &arg,
+                                scope,
+                                program,
+                                microstatements,
+                            )?;
+                            arg_microstatements.push(microstatements.pop().unwrap());
+                        }
+                    }
+                }
+                let mut arg_types = Vec::new();
+                for arg in &arg_microstatements {
+                    arg_types.push(arg.get_type(scope, program)?);
+                }
+                match program.resolve_type(scope, f) {
+                    None => {
+                        return Err("Generic functions not yet implemented".into());
+                    }
+                    Some(_) => {
+                        // Confirmed that this type exists, we now need to generate a realized
+                        // generic type for this specified type and shove it into the non-exported
+                        // scope, then we can be sure we can call it.
+                        let name = format!(
+                            "{}{}",
+                            f,
+                            g.to_string()
+                                .replace(" ", "_")
+                                .replace(",", "_")
+                                .replace(":", "_")
+                                .replace("{", "_")
+                                .replace("}", "_")
+                        )
+                        .replace("|", "_");
+                        let parse_type = parse::Types {
+                            typen: "type".to_string(),
+                            a: "".to_string(),
+                            opttypegenerics: None,
+                            b: "".to_string(),
+                            fulltypename: parse::FullTypename {
+                                typename: name.clone(),
+                                opttypegenerics: None,
+                            },
+                            c: "".to_string(),
+                            typedef: parse::TypeDef::TypeCreate(parse::TypeCreate {
+                                a: "=".to_string(),
+                                b: "".to_string(),
+                                typeassignables: vec![parse::WithTypeOperators::TypeBaseList(
+                                    vec![
+                                        parse::TypeBase::Variable(f.to_string()),
+                                        parse::TypeBase::GnCall(g.clone()),
+                                    ],
+                                )],
+                            }),
+                            optsemicolon: ";".to_string(),
+                        };
+                        CType::from_ast(scope, program, &parse_type, false)?;
+                        // Now we are sure the type and function exist, and we know the name for the
+                        // function. It would be best if we could just pass it to ourselves and run the
+                        // `FuncCall` logic below, but it's easier at the moment to duplicate :( TODO
+                        prior_value = Some(Microstatement::FnCall {
+                            function: name,
+                            args: arg_microstatements,
+                        });
+                    }
+                }
+            }
+            BaseChunk::IIGE(_prior, _f, _g, _h) => {
+                // TODO: This may similarly be just some simple microstatement generation here
+                return Err("TODO: Implement IIGE support".into());
+            }
         }
-        i = i + 1;
     }
     // Push the generated statement that *probably* exists into the microstatements array
     if let Some(prior) = prior_value {
@@ -2461,8 +2401,8 @@ fn typebaselist_to_ctype(
 
 fn withoperatorslist_to_microstatements(
     withoperatorslist: &Vec<parse::WithOperators>,
-    scope: &Scope,
-    program: &Program,
+    scope: &mut Scope,
+    program: &mut Program,
     mut microstatements: Vec<Microstatement>,
 ) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
     // To properly linearize the operations here, we need to scan through all of the operators,
@@ -2647,8 +2587,8 @@ fn withoperatorslist_to_microstatements(
 
 fn assignablestatement_to_microstatements(
     assignable: &parse::AssignableStatement,
-    scope: &Scope,
-    program: &Program,
+    scope: &mut Scope,
+    program: &mut Program,
     mut microstatements: Vec<Microstatement>,
 ) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
     microstatements = withoperatorslist_to_microstatements(
@@ -2662,8 +2602,8 @@ fn assignablestatement_to_microstatements(
 
 fn returns_to_microstatements(
     returns: &parse::Returns,
-    scope: &Scope,
-    program: &Program,
+    scope: &mut Scope,
+    program: &mut Program,
     mut microstatements: Vec<Microstatement>,
 ) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
     if let Some(retval) = &returns.retval {
@@ -2690,8 +2630,8 @@ fn returns_to_microstatements(
 
 fn declarations_to_microstatements(
     declarations: &parse::Declarations,
-    scope: &Scope,
-    program: &Program,
+    scope: &mut Scope,
+    program: &mut Program,
     mut microstatements: Vec<Microstatement>,
 ) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
     let (name, assignables, mutable) = match &declarations {
@@ -2715,8 +2655,8 @@ fn declarations_to_microstatements(
 
 fn statement_to_microstatements(
     statement: &parse::Statement,
-    scope: &Scope,
-    program: &Program,
+    scope: &mut Scope,
+    program: &mut Program,
     microstatements: Vec<Microstatement>,
 ) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
     match statement {
@@ -2765,7 +2705,7 @@ pub enum FnKind {
 impl Function {
     fn from_ast(
         scope: &mut Scope,
-        program: &Program,
+        program: &mut Program,
         function_ast: &parse::Functions,
         is_export: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
@@ -2781,7 +2721,7 @@ impl Function {
 
     fn from_ast_with_name(
         scope: &mut Scope,
-        program: &Program,
+        program: &mut Program,
         function_ast: &parse::Functions,
         is_export: bool,
         name: String,

@@ -2101,6 +2101,15 @@ fn neqbool(a: &bool, b: &bool) -> bool {
   *a != *b
 }
 
+/// `getarray` returns a value from an array at the location specified
+#[inline(always)]
+fn getarray<T: Clone>(a: &Vec<T>, i: &i64) -> Option<T> {
+    match a.get(*i as usize) {
+        Some(v) => Some(v.clone()),
+        None => None,
+    }
+}
+
 /// `println` is a simple function that prints basically anything
 #[inline(always)]
 fn println<A: std::fmt::Display>(a: &A) {

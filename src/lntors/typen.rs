@@ -117,7 +117,19 @@ pub fn generate(
             out.insert(name.clone(), ctype_to_rtype(typen, scope, program, false)?);
             Ok((name.clone(), out))
         }
-        CType::Void => Ok(("()".to_string(), out)),
+        CType::Void => {
+            out.insert("void".to_string(), "type void = ();".to_string());
+            Ok(("()".to_string(), out))
+        }
+        CType::Either(ts) => {
+            // Make sure every sub-type exists
+            for t in ts {
+                let res = generate(t, scope, program, out)?;
+                out = res.1;
+            }
+            let out_str = ctype_to_rtype(&typen, scope, program, false)?;
+            Ok((out_str, out)) // TODO: Put something into out?
+        }
         otherwise => {
             let out_str = ctype_to_rtype(&otherwise, scope, program, false)?;
             Ok((out_str, out)) // TODO: Put something into out?

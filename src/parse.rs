@@ -490,7 +490,6 @@ build!(
     ))
 );
 build!(interface, token!("interface"));
-build!(new, token!("new"));
 build!(ifn, token!("if"));
 build!(elsen, token!("else"));
 build!(precedence, token!("precedence"));
@@ -616,29 +615,10 @@ test!(varlist =>
         }
     ];
 );
-named_and!(typegenerics: TypeGenerics =>
-    a: String as opencurly,
-    b: String as optwhitespace,
-    generics: Vec<FullTypename> as generics,
-    c: String as optwhitespace,
-    d: String as closecurly,
-);
-impl TypeGenerics {
-    pub fn to_string(&self) -> String {
-        format!(
-            "{{{}}}",
-            self.generics
-                .iter()
-                .map(|gen| gen.to_string())
-                .collect::<Vec<String>>()
-                .join(", ")
-        )
-    }
-}
 named_and!(fulltypename: FullTypename =>
     typename: String as variable, // TODO: Add support for method syntax on type names (for
                                   // imported types)
-    opttypegenerics: Option<TypeGenerics> as opt(typegenerics)
+    opttypegenerics: Option<GnCall> as opt(gncall)
 );
 test!(fulltypename =>
     pass "Array{Array{int64}}" => "";
@@ -731,7 +711,7 @@ impl Dependency {
 named_and!(standardimport: StandardImport =>
     import: String as import,
     a: String as optblank,
-    opttypegenerics: Option<TypeGenerics> as opt(typegenerics),
+    opttypegenerics: Option<GnCall> as opt(gncall),
     b: String as optblank,
     dependency: Dependency as dependency,
     renamed: Option<Renamed> as opt(renamed),
@@ -742,7 +722,7 @@ named_and!(standardimport: StandardImport =>
 named_and!(fromimport: FromImport =>
     from: String as from,
     a: String as optblank,
-    opttypegenerics: Option<TypeGenerics> as opt(typegenerics),
+    opttypegenerics: Option<GnCall> as opt(gncall),
     b: String as optblank,
     dependency: Dependency as dependency,
     c: String as blank,
@@ -771,7 +751,6 @@ impl FullTypename {
         .to_string()
     }
 }
-list!(generics: FullTypename => fulltypename, sep);
 named_or!(withtypeoperators: WithTypeOperators =>
     TypeBaseList: Vec<TypeBase> as typebaselist,
     Operators: String as and!(optwhitespace, typeoperators, optwhitespace),
@@ -806,6 +785,19 @@ named_and!(gncall: GnCall =>
     b: String as optwhitespace,
     closecurly: String as closecurly,
 );
+impl GnCall {
+    pub fn to_string(&self) -> String {
+        format!(
+            "{{{}}}",
+            self.typecalllist
+                .iter()
+                .map(|ta| ta.to_string())
+                .collect::<Vec<String>>()
+                .join("")
+        )
+        .to_string()
+    }
+}
 test!(gncall =>
     pass "{T}" => "", super::GnCall{
         opencurly: "{".to_string(),
@@ -841,15 +833,7 @@ named_or!(typebase: TypeBase =>
 impl TypeBase {
     pub fn to_string(&self) -> String {
         match self {
-            TypeBase::GnCall(gc) => format!(
-                "{{{}}}",
-                gc.typecalllist
-                    .iter()
-                    .map(|ta| ta.to_string())
-                    .collect::<Vec<String>>()
-                    .join("")
-            )
-            .to_string(),
+            TypeBase::GnCall(gc) => gc.to_string(),
             TypeBase::TypeGroup(tg) => format!(
                 "({})",
                 tg.typeassignables
@@ -899,7 +883,7 @@ named_or!(typedef: TypeDef =>
 named_and!(types: Types =>
     typen: String as typen,
     a: String as optwhitespace,
-    opttypegenerics: Option<TypeGenerics> as opt(typegenerics),
+    opttypegenerics: Option<GnCall> as opt(gncall),
     b: String as optwhitespace,
     fulltypename: FullTypename as fulltypename,
     c: String as optwhitespace,
@@ -918,7 +902,7 @@ named_and!(ctypes: CTypes =>
     a: String as blank,
     name: String as variable,
     b: String as optblank,
-    opttypegenerics: Option<TypeGenerics> as opt(typegenerics),
+    opttypegenerics: Option<GnCall> as opt(gncall),
     c: String as optblank,
     optsemicolon: String as optsemicolon,
 );
@@ -937,9 +921,10 @@ impl Constants {
     }
 }
 named_or!(baseassignable: BaseAssignable =>
-    ObjectLiterals: ObjectLiterals as objectliterals,
     Functions: Functions as functions,
     FnCall: FnCall as fncall,
+    GnCall: GnCall as gncall,
+    Array: ArrayBase as arraybase,
     Variable: String as variable,
     MethodSep: String as and!(optwhitespace, dot, optwhitespace),
     Constants: Constants as constants,
@@ -947,8 +932,20 @@ named_or!(baseassignable: BaseAssignable =>
 impl BaseAssignable {
     pub fn to_string(&self) -> String {
         match self {
-            BaseAssignable::ObjectLiterals(_ol) => "todo".to_string(),
             BaseAssignable::Functions(_f) => "todo".to_string(),
+            BaseAssignable::Array(a) => format!(
+                "[{}]",
+                a.assignablelist
+                    .iter()
+                    .map(|bal| bal
+                        .iter()
+                        .map(|ba| ba.to_string())
+                        .collect::<Vec<String>>()
+                        .join(""))
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            )
+            .to_string(),
             BaseAssignable::FnCall(fc) => format!(
                 "({})",
                 fc.assignablelist
@@ -962,6 +959,15 @@ impl BaseAssignable {
                     .join(", ")
             )
             .to_string(),
+            BaseAssignable::GnCall(gc) => format!(
+                "{{{}}}",
+                gc.typecalllist
+                    .iter()
+                    .map(|ta| ta.to_string())
+                    .collect::<Vec<String>>()
+                    .join("")
+            )
+            .to_string(),
             BaseAssignable::Variable(v) => v.clone(),
             BaseAssignable::MethodSep(_) => ".".to_string(),
             BaseAssignable::Constants(c) => c.to_string(),
@@ -969,47 +975,17 @@ impl BaseAssignable {
     }
 }
 test!(baseassignable =>
-    pass "new Foo{}" => "", super::BaseAssignable::ObjectLiterals(super::ObjectLiterals::TypeLiteral(super::TypeLiteral{
-      literaldec: super::LiteralDec{
-        new: "new".to_string(),
-        a: " ".to_string(),
-        fulltypename: super::FullTypename{
-          typename: "Foo".to_string(),
-          opttypegenerics: None,
-        },
-        b: "".to_string(),
-      },
-      typebase: super::TypeBaseDef{
-        opencurly: "{".to_string(),
-        a: "".to_string(),
-        typeassignlist: Vec::new(),
-        b: "".to_string(),
-        c: "".to_string(),
-        closecurly: "}".to_string(),
-      }
-    }));
+    pass "Foo" => "", super::BaseAssignable::Variable("Foo".to_string());
 );
 list!(baseassignablelist: BaseAssignable => baseassignable);
 test!(baseassignablelist =>
-    pass "new Foo{}" => "", vec![super::BaseAssignable::ObjectLiterals(super::ObjectLiterals::TypeLiteral(super::TypeLiteral{
-      literaldec: super::LiteralDec{
-        new: "new".to_string(),
-        a: " ".to_string(),
-        fulltypename: super::FullTypename{
-          typename: "Foo".to_string(),
-          opttypegenerics: None,
-        },
-        b: "".to_string(),
-      },
-      typebase: super::TypeBaseDef{
-        opencurly: "{".to_string(),
+    pass "Foo()" => "", vec![super::BaseAssignable::Variable("Foo".to_string()), super::BaseAssignable::FnCall(super::FnCall{
+        openparen: "(".to_string(),
         a: "".to_string(),
-        typeassignlist: Vec::new(),
+        assignablelist: Vec::new(),
         b: "".to_string(),
-        c: "".to_string(),
-        closecurly: "}".to_string(),
-      }
-    }))];
+        closeparen: ")".to_string(),
+    })];
 );
 named_or!(withoperators: WithOperators =>
     BaseAssignableList: Vec<BaseAssignable> as baseassignablelist,
@@ -1029,51 +1005,20 @@ impl WithOperators {
     }
 }
 test!(withoperators =>
-    pass "new Foo{}" => "", super::WithOperators::BaseAssignableList(vec![super::BaseAssignable::ObjectLiterals(super::ObjectLiterals::TypeLiteral(super::TypeLiteral{
-      literaldec: super::LiteralDec{
-        new: "new".to_string(),
-        a: " ".to_string(),
-        fulltypename: super::FullTypename{
-          typename: "Foo".to_string(),
-          opttypegenerics: None,
-        },
-        b: "".to_string(),
-      },
-      typebase: super::TypeBaseDef{
-        opencurly: "{".to_string(),
+    pass "Foo()" => "", super::WithOperators::BaseAssignableList(vec![super::BaseAssignable::Variable("Foo".to_string()), super::BaseAssignable::FnCall(super::FnCall{
+        openparen: "(".to_string(),
         a: "".to_string(),
-        typeassignlist: Vec::new(),
+        assignablelist: Vec::new(),
         b: "".to_string(),
-        c: "".to_string(),
-        closecurly: "}".to_string(),
-      }
-    }))]);
-    pass "new Array{Array{int64}} [ new Array{int64} [], ] * lookupLen;" => " * lookupLen;";
+        closeparen: ")".to_string(),
+    })]);
+    pass "Array{Array{int64}}(Array{int64}()) * lookupLen;" => " * lookupLen;";
 );
 list!(assignables: WithOperators => withoperators);
 test!(assignables =>
     pass "maybe.isSome()";
-    pass "new Foo{}" => "", vec![super::WithOperators::BaseAssignableList(vec![super::BaseAssignable::ObjectLiterals(super::ObjectLiterals::TypeLiteral(super::TypeLiteral{
-      literaldec: super::LiteralDec{
-        new: "new".to_string(),
-        a: " ".to_string(),
-        fulltypename: super::FullTypename{
-          typename: "Foo".to_string(),
-          opttypegenerics: None,
-        },
-        b: "".to_string(),
-      },
-      typebase: super::TypeBaseDef{
-        opencurly: "{".to_string(),
-        a: "".to_string(),
-        typeassignlist: Vec::new(),
-        b: "".to_string(),
-        c: "".to_string(),
-        closecurly: "}".to_string(),
-      }
-    }))])];
-    pass "new InitialReduce{any, anythingElse} {\n    arr: arr,\n    initial: initial,\n  }";
-    pass "new Array{Array{int64}} [ new Array{int64} [], ] * lookupLen;" => ";";
+    pass "InitialReduce{any, anythingElse}(arr, initial)";
+    pass "Array{Array{int64}}(Array{int64}()) * lookupLen;" => ";";
 );
 named_and!(typedec: TypeDec =>
     colon: String as colon,
@@ -1084,7 +1029,7 @@ named_and!(typedec: TypeDec =>
 named_and!(constdeclaration: ConstDeclaration =>
     constn: String as constn,
     a: String as optblank,
-    opttypegenerics: Option<TypeGenerics> as opt(typegenerics),
+    opttypegenerics: Option<GnCall> as opt(gncall),
     whitespace: String as optwhitespace,
     variable: String as variable,
     b: String as optwhitespace,
@@ -1096,14 +1041,14 @@ named_and!(constdeclaration: ConstDeclaration =>
     semicolon: String as semicolon,
 );
 test!(constdeclaration =>
-    pass "const args = new Foo{};";
-    pass "const args = new InitialReduce{any, anythingElse} {\n    arr: arr,\n    initial: initial,\n  };";
+    pass "const args = Foo();";
+    pass "const args = InitialReduce{any, anythingElse}(arr, initial);";
     pass "const{Test} args = 'test val';";
 );
 named_and!(letdeclaration: LetDeclaration =>
     letn: String as letn,
     a: String as optblank,
-    opttypegenerics: Option<TypeGenerics> as opt(typegenerics),
+    opttypegenerics: Option<GnCall> as opt(gncall),
     whitespace: String as optwhitespace,
     variable: String as variable,
     b: String as optwhitespace,
@@ -1126,7 +1071,7 @@ named_and!(assignments: Assignments =>
     semicolon: String as semicolon,
 );
 test!(assignments =>
-    pass "hm.lookup = new Array{Array{int64}} [ new Array{int64} [], ] * lookupLen;" => "";
+    pass "hm.lookup = Array{Array{int64}}(Array{int64}()) * lookupLen;" => "";
 );
 named_and!(retval: RetVal =>
     assignables: Vec<WithOperators> as assignables,
@@ -1151,8 +1096,8 @@ named_and!(functionbody: FunctionBody =>
 );
 test!(functionbody =>
     pass "{  if maybe.isSome() {\n    return maybe.getMaybe().toString();\n  } else {\n    return 'none';\n  } }";
-    pass "{  const args = new InitialReduce{any, anythingElse} {\n    arr: arr,\n    initial: initial,\n  };\n  return foldl(args, cb);\n}";
-    pass "{ // TODO: Rust-like fn::<typeA, typeB> syntax?\n  let hm = new HashMap{Hashable, any} {\n    keyVal: new Array{KeyVal{Hashable, any}} [],\n    lookup: new Array{Array{int64}} [ new Array{int64} [] ] * 128, // 1KB of space\n  };\n  return hm.set(firstKey, firstVal);\n}" => "";
+    pass "{  const args = InitialReduce{any, anythingElse}(arr, initial);\n  return foldl(args, cb);\n}";
+    pass "{ // TODO: Rust-like fn::<typeA, typeB> syntax?\n  let hm = HashMap{Hashable, any}(Array{KeyVal{Hashable, any}}(), Array{Array{int64}}(Array{int64}()) * 128 // 1KB of space\n  );\n  return hm.set(firstKey, firstVal);\n}" => "";
 );
 named_and!(assignfunction: AssignFunction =>
     eq: String as eq,
@@ -1174,7 +1119,7 @@ named_or!(fullfunctionbody: FullFunctionBody =>
 named_and!(functions: Functions =>
     fnn: String as fnn,
     a: String as optwhitespace,
-    opttypegenerics: Option<TypeGenerics> as opt(typegenerics),
+    opttypegenerics: Option<GnCall> as opt(gncall),
     b: String as optwhitespace,
     optname: Option<String> as opt_string!(variable),
     c: String as optwhitespace,
@@ -1186,7 +1131,7 @@ test!(functions =>
     pass "fn foo binds foo;" => "";
     pass "fn print(val: String) binds println!;" => "";
     pass "fn{Test} foo binds foo_test;" => "";
-    pass "fn newHashMap(firstKey: Hashable, firstVal: any) -> HashMap{Hashable, any} { // TODO: Rust-like fn::<typeA, typeB> syntax?\n  let hm = new HashMap{Hashable, any} {\n    keyVal: new Array{KeyVal{Hashable, any}} [],\n    lookup: new Array{Array{int64}} [ new Array{int64} [] ] * 128, // 1KB of space\n  };\n  return hm.set(firstKey, firstVal);\n}" => "";
+    pass "fn newHashMap(firstKey: Hashable, firstVal: any) -> HashMap{Hashable, any} { // TODO: Rust-like fn::<typeA, typeB> syntax?\n  let hm = HashMap{Hashable, any}(Array{KeyVal{Hashable, any}}(), Array{Array{int64}}(Array{int64}()) * 128 // 1KB of space\n);\n  return hm.set(firstKey, firstVal);\n}" => "";
 );
 named_or!(blocklike: Blocklike =>
     Functions: Functions as functions,
@@ -1233,24 +1178,7 @@ list!(statements: Statement => statement);
 test!(statements =>
     pass "return maybe.getMaybe().toString();";
     pass "if maybe.isSome() {\n    return maybe.getMaybe().toString();\n  } else {\n    return 'none';\n  }";
-    pass "let hm = new HashMap{Hashable, any} {\n    keyVal: new Array{KeyVal{Hashable, any}} [],\n    lookup: new Array{Array{int64}} [ new Array{int64} [] ] * 128, // 1KB of space\n  };\n  return hm.set(firstKey, firstVal);" => "";
-);
-named_and!(literaldec: LiteralDec =>
-    new: String as new,
-    a: String as blank,
-    fulltypename: FullTypename as fulltypename,
-    b: String as optblank,
-);
-test!(literaldec =>
-    pass "new Foo" => "", super::LiteralDec{
-      new: "new".to_string(),
-      a: " ".to_string(),
-      fulltypename: super::FullTypename{
-        typename: "Foo".to_string(),
-        opttypegenerics: None,
-      },
-      b: "".to_string(),
-    };
+    pass "let hm = HashMap{Hashable, any}(Array{KeyVal{Hashable, any}}(), Array{Array{int64}}(Array{int64}()) * 128 // 1KB of space\n  );\n  return hm.set(firstKey, firstVal);" => "";
 );
 list!(opt assignablelist: Vec<WithOperators> => assignables, sep);
 named_and!(arraybase: ArrayBase =>
@@ -1260,82 +1188,6 @@ named_and!(arraybase: ArrayBase =>
     b: String as optsep,
     c: String as optwhitespace,
     closearr: String as closearr,
-);
-named_and!(fullarrayliteral: FullArrayLiteral =>
-    literaldec: LiteralDec as literaldec,
-    arraybase: ArrayBase as arraybase,
-);
-named_or!(arrayliteral: ArrayLiteral =>
-    ArrayBase: ArrayBase as arraybase,
-    FullArrayLiteral: FullArrayLiteral as fullarrayliteral,
-);
-named_and!(typeassign: TypeAssign =>
-    variable: String as variable,
-    a: String as optwhitespace,
-    colon: String as colon,
-    b: String as optwhitespace,
-    assignables: Vec<WithOperators> as assignables,
-    c: String as optwhitespace
-);
-list!(opt typeassignlist: TypeAssign => typeassign, sep);
-named_and!(typebasedef: TypeBaseDef =>
-    opencurly: String as opencurly,
-    a: String as optwhitespace,
-    typeassignlist: Vec<TypeAssign> as typeassignlist,
-    b: String as optsep,
-    c: String as optwhitespace,
-    closecurly: String as closecurly,
-);
-named_and!(typeliteral: TypeLiteral =>
-    literaldec: LiteralDec as literaldec,
-    typebase: TypeBaseDef as typebasedef,
-);
-test!(typeliteral =>
-    pass "new Foo{}" => "", super::TypeLiteral{
-      literaldec: super::LiteralDec{
-        new: "new".to_string(),
-        a: " ".to_string(),
-        fulltypename: super::FullTypename{
-          typename: "Foo".to_string(),
-          opttypegenerics: None,
-        },
-        b: "".to_string(),
-      },
-      typebase: super::TypeBaseDef{
-        opencurly: "{".to_string(),
-        a: "".to_string(),
-        typeassignlist: Vec::new(),
-        b: "".to_string(),
-        c: "".to_string(),
-        closecurly: "}".to_string(),
-      }
-    };
-);
-named_or!(objectliterals: ObjectLiterals =>
-    ArrayLiteral: ArrayLiteral as arrayliteral,
-    TypeLiteral: TypeLiteral as typeliteral,
-);
-test!(objectliterals =>
-    pass "new Foo{}" => "", super::ObjectLiterals::TypeLiteral(super::TypeLiteral{
-      literaldec: super::LiteralDec{
-        new: "new".to_string(),
-        a: " ".to_string(),
-        fulltypename: super::FullTypename{
-          typename: "Foo".to_string(),
-          opttypegenerics: None,
-        },
-        b: "".to_string(),
-      },
-      typebase: super::TypeBaseDef{
-        opencurly: "{".to_string(),
-        a: "".to_string(),
-        typeassignlist: Vec::new(),
-        b: "".to_string(),
-        c: "".to_string(),
-        closecurly: "}".to_string(),
-      }
-    });
-    pass "new Array{Array{int64}} [ new Array{int64} [], ]" => "";
 );
 named_and!(fncall: FnCall =>
     openparen: String as openparen,
@@ -1428,7 +1280,7 @@ impl TypeOpMap {
 named_and!(operatormapping: OperatorMapping =>
     fix: Fix as fix,
     a: String as optblank,
-    opttypegenerics: Option<TypeGenerics> as opt(typegenerics),
+    opttypegenerics: Option<GnCall> as opt(gncall),
     blank: String as optblank,
     opmap: OpMap as opmap,
     optsemicolon: String as optsemicolon,
@@ -1438,7 +1290,7 @@ named_and!(typeoperatormapping: TypeOperatorMapping =>
     a: String as blank,
     fix: Fix as fix,
     b: String as optblank,
-    opttypegenerics: Option<TypeGenerics> as opt(typegenerics),
+    opttypegenerics: Option<GnCall> as opt(gncall),
     blank: String as optblank,
     opmap: TypeOpMap as typeopmap,
     optsemicolon: String as optsemicolon,
@@ -1600,7 +1452,7 @@ named_or!(interfacedef: InterfaceDef =>
 named_and!(interfaces: Interfaces =>
     interface: String as interface,
     a: String as optblank,
-    opttypegenerics: Option<TypeGenerics> as opt(typegenerics),
+    opttypegenerics: Option<GnCall> as opt(gncall),
     b: String as optblank,
     variable: String as variable,
     c: String as optblank,
@@ -1624,12 +1476,12 @@ named_or!(exportable: Exportable =>
 named_and!(exports: Exports =>
     export: String as export,
     a: String as optblank,
-    opttypegenerics: Option<TypeGenerics> as opt(typegenerics),
+    opttypegenerics: Option<GnCall> as opt(gncall),
     b: String as optblank,
     exportable: Exportable as exportable,
 );
 test!(exports =>
-    pass "export fn newHashMap(firstKey: Hashable, firstVal: any) -> HashMap{Hashable, any} { // TODO: Rust-like fn::<typeA, typeB> syntax?\n  let hm = new HashMap{Hashable, any} {\n    keyVal: new Array{KeyVal{Hashable, any}} [],\n    lookup: new Array{Array{int64}} [ new Array{int64} [] ] * 128, // 1KB of space\n  };\n  return hm.set(firstKey, firstVal);\n}" => "";
+    pass "export fn newHashMap(firstKey: Hashable, firstVal: any) -> HashMap{Hashable, any} { // TODO: Rust-like fn::<typeA, typeB> syntax?\n  let hm = HashMap{Hashable, any}(Array{KeyVal{Hashable, any}}(), Array{Array{int64}}(Array{int64}()) * 128 // 1KB of space\n  );\n  return hm.set(firstKey, firstVal);\n}" => "";
     pass "export{Test} fn main() { let foo = 'bar'; // TODO: Add tests\n }" => "";
 );
 named_or!(rootelements: RootElements =>
