@@ -149,17 +149,30 @@ impl Program {
         match scope.functions.get(function) {
             Some(fs) => {
                 for f in fs {
-                    if args.len() != f.args.len() {
-                        continue;
-                    }
+                    // TODO: Handle this more generically, and in a way that allows users to write
+                    // variadic functions
                     let mut args_match = true;
-                    for (i, arg) in args.iter().enumerate() {
-                        // This is pretty cheap, but for now, a "non-strict" string representation
-                        // of the CTypes is how we'll match the args against each other. TODO: Do
-                        // this without constructing a string to compare against each other.
-                        if f.args[i].1.to_strict_string(false) != arg.to_strict_string(false) {
-                            args_match = false;
-                            break;
+                    if let FnKind::DerivedVariadic = f.kind {
+                        // The special path where the length doesn't matter as long as all of the
+                        // actual args are the same type as the function's arg.
+                        for arg in args.iter() {
+                            if f.args[0].1.to_strict_string(false) != arg.to_strict_string(false) {
+                                args_match = false;
+                                break;
+                            }
+                        }
+                    } else {
+                        if args.len() != f.args.len() {
+                            continue;
+                        }
+                        for (i, arg) in args.iter().enumerate() {
+                            // This is pretty cheap, but for now, a "non-strict" string representation
+                            // of the CTypes is how we'll match the args against each other. TODO: Do
+                            // this without constructing a string to compare against each other.
+                            if f.args[i].1.to_strict_string(false) != arg.to_strict_string(false) {
+                                args_match = false;
+                                break;
+                            }
                         }
                     }
                     if args_match {
@@ -337,7 +350,10 @@ impl CType {
     pub fn to_strict_string(&self, strict: bool) -> String {
         match self {
             CType::Void => "()".to_string(),
-            CType::Type(s, _) => format!("{}", s),
+            CType::Type(n, t) => match strict {
+                true => format!("{}", n),
+                false => t.to_strict_string(strict),
+            },
             CType::Generic(n, a, _) => format!("{}{{{}}}", n, a.join(", ")),
             CType::Bound(s, _) => format!("{}", s),
             CType::BoundGeneric(s, a, _) => format!("{}{{{}}}", s, a.join(", ")),
@@ -568,7 +584,9 @@ impl CType {
                                 // number of the input type. Until there's better support in the
                                 // language for variadic functions, this is faked with a special
                                 // DerivedVariadic function type that repeats the first and only
-                                // arg for all input arguments
+                                // arg for all input arguments. We also need to create `get` and
+                                // `set` functions for this type (TODO: This is probably true for
+                                // other types, too.
                                 fs.push(Function {
                                     name: constructor_fn_name.clone(),
                                     args: vec![("arg0".to_string(), *a.clone())],
@@ -576,6 +594,27 @@ impl CType {
                                     microstatements: Vec::new(),
                                     kind: FnKind::DerivedVariadic,
                                 });
+                                fs.push(Function {
+                                    name: "get".to_string(),
+                                    args: vec![
+                                        ("arg0".to_string(), t.clone()),
+                                        (
+                                            "arg1".to_string(),
+                                            CType::Bound("i64".to_string(), "i64".to_string()),
+                                        ),
+                                    ],
+                                    rettype: CType::Type(
+                                        format!("Maybe_{}_", a.to_string()),
+                                        Box::new(CType::Either(vec![
+                                            *a.clone(),
+                                            CType::Group(Box::new(CType::Void)), // TODO: Do I need
+                                                                                 // this?
+                                        ])),
+                                    ),
+                                    microstatements: Vec::new(),
+                                    kind: FnKind::Derived,
+                                });
+                                // TODO: Add 'set' function
                             }
                             _ => {} // Don't do anything for other types
                         }

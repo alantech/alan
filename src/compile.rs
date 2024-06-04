@@ -1591,10 +1591,10 @@ test_ignore!(array_accessor_and_length => r#"
 "#;
 );
 
-test_ignore!(array_literal_syntax => r#"
+test!(array_literal_syntax => r#"
     export fn main {
       print('Testing...');
-      const test = new Array{int64} [ 1, 2, 3 ];
+      const test = Array{i64}(1, 2, 3);
       print(test[0]);
       print(test[1]);
       print(test[2]);

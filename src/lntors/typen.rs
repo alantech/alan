@@ -10,7 +10,7 @@ pub fn ctype_to_rtype(
     in_function_type: bool,
 ) -> Result<String, Box<dyn std::error::Error>> {
     match ctype {
-        CType::Void => Ok("()".to_string()),
+        CType::Void => Ok("void".to_string()),
         CType::Type(name, t) => {
             match &**t {
                 CType::Either(ts) => {
@@ -29,6 +29,14 @@ pub fn ctype_to_rtype(
                             }
                             CType::Bound(n, r) => {
                                 enum_type_strs.push(format!("{}({})", n, r));
+                            }
+                            CType::Group(g) => {
+                                enum_type_strs.push(ctype_to_rtype(
+                                    g,
+                                    scope,
+                                    program,
+                                    in_function_type,
+                                )?);
                             }
                             otherwise => {
                                 return Err(format!("TODO: What is this? {:?}", otherwise).into());
@@ -113,7 +121,9 @@ pub fn generate(
         // output, while the `Structlike` type requires a new struct to be created and inserted
         // into the source definition, potentially inserting inner types as needed
         CType::Bound(_name, rtype) => Ok((rtype.clone(), out)),
-        CType::Type(name, _) => {
+        CType::Type(name, t) => {
+            let res = generate(t, scope, program, out)?;
+            out = res.1;
             out.insert(name.clone(), ctype_to_rtype(typen, scope, program, false)?);
             Ok((name.clone(), out))
         }
@@ -129,6 +139,11 @@ pub fn generate(
             }
             let out_str = ctype_to_rtype(&typen, scope, program, false)?;
             Ok((out_str, out)) // TODO: Put something into out?
+        }
+        CType::Group(g) => {
+            let res = generate(g, scope, program, out)?;
+            out = res.1;
+            Ok(("".to_string(), out))
         }
         otherwise => {
             let out_str = ctype_to_rtype(&otherwise, scope, program, false)?;
