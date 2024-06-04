@@ -353,7 +353,7 @@ impl CType {
             CType::Type(n, t) => match strict {
                 true => format!("{}", n),
                 false => t.to_strict_string(strict),
-            }
+            },
             CType::Generic(n, a, _) => format!("{}{{{}}}", n, a.join(", ")),
             CType::Bound(s, _) => format!("{}", s),
             CType::BoundGeneric(s, a, _) => format!("{}{{{}}}", s, a.join(", ")),
@@ -598,13 +598,19 @@ impl CType {
                                     name: "get".to_string(),
                                     args: vec![
                                         ("arg0".to_string(), t.clone()),
-                                        ("arg1".to_string(), CType::Bound("i64".to_string(), "i64".to_string())),
+                                        (
+                                            "arg1".to_string(),
+                                            CType::Bound("i64".to_string(), "i64".to_string()),
+                                        ),
                                     ],
-                                    rettype: CType::Type(format!("Maybe_{}_", a.to_string()), Box::new(CType::Either(vec![
-                                        *a.clone(),
-                                        CType::Group(Box::new(CType::Void)), // TODO: Do I need
-                                                                             // this?
-                                    ]))),
+                                    rettype: CType::Type(
+                                        format!("Maybe_{}_", a.to_string()),
+                                        Box::new(CType::Either(vec![
+                                            *a.clone(),
+                                            CType::Group(Box::new(CType::Void)), // TODO: Do I need
+                                                                                 // this?
+                                        ])),
+                                    ),
                                     microstatements: Vec::new(),
                                     kind: FnKind::Derived,
                                 });

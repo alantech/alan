@@ -31,7 +31,12 @@ pub fn ctype_to_rtype(
                                 enum_type_strs.push(format!("{}({})", n, r));
                             }
                             CType::Group(g) => {
-                                enum_type_strs.push(ctype_to_rtype(g, scope, program, in_function_type)?);
+                                enum_type_strs.push(ctype_to_rtype(
+                                    g,
+                                    scope,
+                                    program,
+                                    in_function_type,
+                                )?);
                             }
                             otherwise => {
                                 return Err(format!("TODO: What is this? {:?}", otherwise).into());

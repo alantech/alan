@@ -244,21 +244,30 @@ pub fn from_microstatement(
                             let first_type = &f.args[0].1;
                             let second_type = &f.args[1].1;
                             match (first_type, second_type, &f.rettype) {
-                                (CType::Type(_, a), CType::Bound(i, _), CType::Type(_, r)) if i == "i64" => {
+                                (CType::Type(_, a), CType::Bound(i, _), CType::Type(_, r))
+                                    if i == "i64" =>
+                                {
                                     match (*a.clone(), *r.clone()) {
                                         (CType::Array(_), CType::Either(ts)) if ts.len() == 2 => {
-                                            return Ok((format!("{}.get({})", argstrs[0], match argstrs[1].strip_prefix("&mut ") {
-                                                Some(s) => s,
-                                                None => &argstrs[1],
-                                            }), out))
+                                            return Ok((
+                                                format!(
+                                                    "{}.get({})",
+                                                    argstrs[0],
+                                                    match argstrs[1].strip_prefix("&mut ") {
+                                                        Some(s) => s,
+                                                        None => &argstrs[1],
+                                                    }
+                                                ),
+                                                out,
+                                            ));
                                             // TODO: Someday revive something like this, but for
                                             // now we are using Option, so it's much simpler
                                             // return Ok((format!("match {}.get({}) {{ Some(v) => {}::{}(v), None => {}::void }}", argstrs[0], argstrs[1], n, ts[0].to_string(), n), out));
                                         }
-                                        _ => {}, // Just fall through
+                                        _ => {} // Just fall through
                                     }
                                 }
-                                _ => {}, // Just fall through
+                                _ => {} // Just fall through
                             }
                         }
                         if f.args.len() == 1 {
@@ -373,10 +382,20 @@ pub fn from_microstatement(
                                     }
                                 }
                                 CType::Array(_) => {
-                                    return Ok((format!("vec![{}]", argstrs.iter().map(|a| match a.strip_prefix("&mut ") {
-                                        Some(v) => v.to_string(),
-                                        None => a.clone(),
-                                    }).collect::<Vec<String>>().join(", ")), out));
+                                    return Ok((
+                                        format!(
+                                            "vec![{}]",
+                                            argstrs
+                                                .iter()
+                                                .map(|a| match a.strip_prefix("&mut ") {
+                                                    Some(v) => v.to_string(),
+                                                    None => a.clone(),
+                                                })
+                                                .collect::<Vec<String>>()
+                                                .join(", ")
+                                        ),
+                                        out,
+                                    ));
                                 }
                                 CType::Either(ts) => {
                                     if argstrs.len() != 1 {
@@ -537,7 +556,7 @@ pub fn generate(
                 out = o;
                 Some(t_str)
             }
-        }
+        },
         otherwise => {
             let (t_str, o) = typen::generate(otherwise, scope, program, out)?;
             out = o;
