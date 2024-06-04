@@ -96,30 +96,7 @@ pub fn from_microstatement(
                 out = o;
             }
             Ok((
-                format!("vec!({})", val_representations.join(", ")).to_string(),
-                out,
-            ))
-        }
-        Microstatement::Type { typen, keyvals } => {
-            // Need to make sure the struct is defined, first
-            let (_, o) = typen::generate(typen, scope, program, out)?;
-            out = o;
-            // Now generating the representation
-            let mut keyval_representations = Vec::new();
-            for (key, val) in keyvals.iter() {
-                let (rep, o) = from_microstatement(val, scope, program, out)?;
-                keyval_representations.push(format!("{}: {},", key, rep));
-                out = o;
-            }
-            Ok((
-                format!(
-                    r#"{} {{
-    {}
-}}"#,
-                    typen::ctype_to_rtype(&typen, scope, program, false)?,
-                    keyval_representations.join("\n")
-                )
-                .to_string(),
+                format!("vec![{}]", val_representations.join(", ")).to_string(),
                 out,
             ))
         }

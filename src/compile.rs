@@ -1494,9 +1494,9 @@ test!(vec_parmap => r#"
     }"#;
     stdout "[2, 4, 6, 8, 10]\n";
 );
-test_ignore!(array_literals => r#"
+test!(array_literals => r#"
     export fn main {
-      const test3 = new Array{int64} [ 1, 2, 4, 8, 16, 32, 64 ];
+      const test3 = [ 1, 2, 4, 8, 16, 32, 64 ];
       print(test3[0]);
       print(test3[1]);
       print(test3[2]);
@@ -2377,37 +2377,26 @@ void
 
 // Types
 
-test_ignore!(user_types_and_generics => r#"
-    type foo{A, B} {
+test!(user_types_and_generics => r#"
+    type foo{A, B} =
       bar: A,
-      baz: B
-    }
+      baz: B;
 
-    type foo2 = foo{int64, float64}
+    type foo2 = foo{i64, f64};
 
     export fn main {
-      let a = new foo{string, int64} {
-        bar: 'bar',
-        baz: 0
-      };
-      let b = new foo{int64, bool} {
-        bar: 0,
-        baz: true
-      };
-      let c = new foo2 {
-        bar: 0,
-        baz: 1.23
-      };
-      let d = new foo{int64, float64} {
-        bar: 1,
-        baz: 3.14
-      };
+      let a = foo{string, i64}('bar', 0);
+      let b = foo{i64, bool}(0, true);
+      let c = foo2(0, 1.23);
+      let d = foo{i64, f64}(1, 3.14);
+      let e = {i64 | void}(2); // TODO: Implement postfix operators to change this to {i64?}
       print(a.bar);
       print(b.bar);
       print(c.bar);
       print(d.bar);
+      print(e.i64);
     }"#;
-    stdout "bar\n0\n0\n1\n";
+    stdout "bar\n0\n0\n1\n2\n";
 );
 /* Pending multi-file support
  *

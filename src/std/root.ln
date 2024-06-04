@@ -466,6 +466,9 @@ export fn xnor(a: bool, b: bool) -> bool binds xnorbool;
 export fn eq(a: bool, b: bool) -> bool binds eqbool;
 export fn neq(a: bool, b: bool) -> bool binds neqbool;
 
+/// Array related bindings
+export fn get(a: Array{i64}, i: i64) -> Maybe{i64} binds getarray; // TODO: Real generics
+
 /// Process exit-related bindings
 export fn ExitCode(e: i8) -> ExitCode binds to_exit_code_i8;
 export fn ExitCode(e: i16) -> ExitCode = ExitCode(e.i8);
