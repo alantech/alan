@@ -1915,34 +1915,24 @@ length test
 
 // Generics
 
-test_ignore!(generics => r#"
-    type box{V} {
-      set: bool,
-      val: V
-    }
+test!(generics => r#"
+    type box{V} =
+      val: V,
+      set: bool;
 
     export fn main {
-      let int8Box = new box{int8} {
-        val: 8.i8,
-        set: true
-      };
+      let int8Box = box{i8}(8.i8, true);
       print(int8Box.val);
       print(int8Box.set);
 
-      let stringBox = new box{string} {
-        val: 'hello, generics!',
-        set: true
-      };
+      let stringBox = box{string}('hello, generics!', true);
       print(stringBox.val);
       print(stringBox.set);
 
-      const stringBoxBox = new box{box{string}} {
-        val: new box{string} {
-          val: 'hello, nested generics!',
-          set: true
-        },
-        set: true
-      };
+      const stringBoxBox = box{box{string}}(
+        box{string}('hello, nested generics!', true),
+        true
+      );
       stringBoxBox.set.print;
       stringBoxBox.val.set.print;
       print(stringBoxBox.val.val);
@@ -2389,7 +2379,7 @@ test!(user_types_and_generics => r#"
       let b = foo{i64, bool}(0, true);
       let c = foo2(0, 1.23);
       let d = foo{i64, f64}(1, 3.14);
-      let e = {i64 | void}(2); // TODO: Implement postfix operators to change this to {i64?}
+      let e = {i64?}(2);
       print(a.bar);
       print(b.bar);
       print(c.bar);

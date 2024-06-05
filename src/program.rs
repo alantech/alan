@@ -309,7 +309,7 @@ impl Scope {
                             );
                         }
                     }
-                    e => println!("TODO: Not yet supported export syntax: {:?}\nLast good parsed lines:\n{:?}\n{:?}", e, ast.body[i - 2], ast.body[i - 1]),
+                    e => eprintln!("TODO: Not yet supported export syntax: {:?}\nLast good parsed lines:\n{:?}\n{:?}", e, ast.body[i - 2], ast.body[i - 1]),
                 },
                 parse::RootElements::Whitespace(_) => { /* Do nothing */ }
                 parse::RootElements::Interfaces(_) => {
@@ -605,11 +605,7 @@ impl CType {
                                     ],
                                     rettype: CType::Type(
                                         format!("Maybe_{}_", a.to_string()),
-                                        Box::new(CType::Either(vec![
-                                            *a.clone(),
-                                            CType::Group(Box::new(CType::Void)), // TODO: Do I need
-                                                                                 // this?
-                                        ])),
+                                        Box::new(CType::Either(vec![*a.clone(), CType::Void])),
                                     ),
                                     microstatements: Vec::new(),
                                     kind: FnKind::Derived,
@@ -1265,164 +1261,157 @@ fn baseassignablelist_to_microstatements(
         // I recognize that this could be done with `nom` at a higher level, but I don't think it
         // will buy me much for this little bit of parsing logic, and I am still not satisfied with
         // the lack of metadata tracking with my usage of `nom`.
-        let mut chunk = None;
-        // Check the longest potential match, where there's a method syntax call for a
-        // fully-qualified IIGE or GFuncCall
-        if prior_value.is_some() && l - i >= 4 {
-            match (&bal[i], &bal[i + 1], &bal[i + 2], &bal[i + 3]) {
-                (
-                    parse::BaseAssignable::MethodSep(_),
-                    parse::BaseAssignable::Functions(f),
-                    parse::BaseAssignable::GnCall(g),
-                    parse::BaseAssignable::FnCall(h),
-                ) => chunk = Some(BaseChunk::IIGE(&prior_value, f, g, Some(h))),
-                (
-                    parse::BaseAssignable::MethodSep(_),
-                    parse::BaseAssignable::Variable(f),
-                    parse::BaseAssignable::GnCall(g),
-                    parse::BaseAssignable::FnCall(h),
-                ) => chunk = Some(BaseChunk::GFuncCall(&prior_value, f, g, Some(h))),
-                _ => {} // Skip
+        let (chunk, inc) = match (
+            prior_value.clone(),
+            bal.get(i),
+            bal.get(i + 1),
+            bal.get(i + 2),
+            bal.get(i + 3),
+        ) {
+            (
+                Some(_),
+                Some(parse::BaseAssignable::MethodSep(_)),
+                Some(parse::BaseAssignable::Functions(f)),
+                Some(parse::BaseAssignable::GnCall(g)),
+                Some(parse::BaseAssignable::FnCall(h)),
+            ) => (BaseChunk::IIGE(&prior_value, f, g, Some(h)), 4),
+            (
+                Some(_),
+                Some(parse::BaseAssignable::MethodSep(_)),
+                Some(parse::BaseAssignable::Variable(f)),
+                Some(parse::BaseAssignable::GnCall(g)),
+                Some(parse::BaseAssignable::FnCall(h)),
+            ) => (BaseChunk::GFuncCall(&prior_value, f, g, Some(h)), 4),
+            (
+                None,
+                Some(parse::BaseAssignable::Functions(f)),
+                Some(parse::BaseAssignable::GnCall(g)),
+                Some(parse::BaseAssignable::FnCall(h)),
+                _,
+            ) => (BaseChunk::IIGE(&prior_value, f, g, Some(h)), 3),
+            (
+                None,
+                Some(parse::BaseAssignable::Variable(f)),
+                Some(parse::BaseAssignable::GnCall(g)),
+                Some(parse::BaseAssignable::FnCall(h)),
+                _,
+            ) => (BaseChunk::GFuncCall(&prior_value, f, g, Some(h)), 3),
+            (
+                Some(_),
+                Some(parse::BaseAssignable::MethodSep(_)),
+                Some(parse::BaseAssignable::Functions(f)),
+                Some(parse::BaseAssignable::GnCall(g)),
+                _,
+            ) => (BaseChunk::IIGE(&prior_value, f, g, None), 3),
+            (
+                Some(_),
+                Some(parse::BaseAssignable::MethodSep(_)),
+                Some(parse::BaseAssignable::Variable(f)),
+                Some(parse::BaseAssignable::GnCall(g)),
+                _,
+            ) => (BaseChunk::GFuncCall(&prior_value, f, g, None), 3),
+            (
+                Some(_),
+                Some(parse::BaseAssignable::MethodSep(_)),
+                Some(parse::BaseAssignable::Functions(f)),
+                Some(parse::BaseAssignable::FnCall(g)),
+                _,
+            ) => (BaseChunk::IIFE(&prior_value, f, Some(g)), 3),
+            (
+                Some(_),
+                Some(parse::BaseAssignable::MethodSep(_)),
+                Some(parse::BaseAssignable::Variable(f)),
+                Some(parse::BaseAssignable::FnCall(g)),
+                _,
+            ) => (BaseChunk::FuncCall(&prior_value, f, Some(g)), 3),
+            (
+                Some(_),
+                Some(parse::BaseAssignable::MethodSep(_)),
+                Some(parse::BaseAssignable::GnCall(t)),
+                Some(parse::BaseAssignable::FnCall(g)),
+                _,
+            ) => (BaseChunk::TypeCall(&prior_value, t, Some(g)), 3),
+            (
+                None,
+                Some(parse::BaseAssignable::Functions(f)),
+                Some(parse::BaseAssignable::FnCall(g)),
+                _,
+                _,
+            ) => (BaseChunk::IIFE(&prior_value, f, Some(g)), 2),
+            (
+                None,
+                Some(parse::BaseAssignable::Variable(f)),
+                Some(parse::BaseAssignable::FnCall(g)),
+                _,
+                _,
+            ) => (BaseChunk::FuncCall(&prior_value, f, Some(g)), 2),
+            (
+                None,
+                Some(parse::BaseAssignable::GnCall(t)),
+                Some(parse::BaseAssignable::FnCall(g)),
+                _,
+                _,
+            ) => (BaseChunk::TypeCall(&prior_value, t, Some(g)), 2),
+            (
+                Some(_),
+                Some(parse::BaseAssignable::MethodSep(_)),
+                Some(parse::BaseAssignable::Functions(f)),
+                _,
+                _,
+            ) => (BaseChunk::IIFE(&prior_value, f, None), 2),
+            (
+                Some(_),
+                Some(parse::BaseAssignable::MethodSep(_)),
+                Some(parse::BaseAssignable::Variable(f)),
+                _,
+                _,
+            ) => (BaseChunk::FuncCall(&prior_value, f, None), 2),
+            (
+                Some(_),
+                Some(parse::BaseAssignable::MethodSep(_)),
+                Some(parse::BaseAssignable::GnCall(t)),
+                _,
+                _,
+            ) => (BaseChunk::TypeCall(&prior_value, t, None), 2),
+            (
+                Some(_),
+                Some(parse::BaseAssignable::MethodSep(_)),
+                Some(parse::BaseAssignable::Constants(c)),
+                _,
+                _,
+            ) => (BaseChunk::ConstantAccessor(c), 2),
+            (None, Some(parse::BaseAssignable::Functions(f)), _, _, _) => {
+                (BaseChunk::Function(f), 1)
             }
-            if chunk.is_some() {
-                i = i + 4;
+            (None, Some(parse::BaseAssignable::FnCall(g)), _, _, _) => (BaseChunk::Group(g), 1),
+            (None, Some(parse::BaseAssignable::Array(a)), _, _, _) => (BaseChunk::Array(a), 1),
+            (None, Some(parse::BaseAssignable::Variable(v)), _, _, _) => {
+                (BaseChunk::Variable(v), 1)
             }
-        } else if prior_value.is_none() && l - i >= 3 {
-            // Checking the longest potential match when starting the list: fully-qualified IIGE or
-            // GFuncCall
-            match (&bal[i], &bal[i + 1], &bal[i + 2]) {
-                (
-                    parse::BaseAssignable::Functions(f),
-                    parse::BaseAssignable::GnCall(g),
-                    parse::BaseAssignable::FnCall(h),
-                ) => chunk = Some(BaseChunk::IIGE(&prior_value, f, g, Some(h))),
-                (
-                    parse::BaseAssignable::Variable(f),
-                    parse::BaseAssignable::GnCall(g),
-                    parse::BaseAssignable::FnCall(h),
-                ) => chunk = Some(BaseChunk::GFuncCall(&prior_value, f, g, Some(h))),
-                _ => {} // Skip
+            (None, Some(parse::BaseAssignable::Constants(c)), _, _, _) => {
+                (BaseChunk::Constant(c), 1)
             }
-            if chunk.is_some() {
-                i = i + 3;
+            (Some(_), Some(parse::BaseAssignable::Array(a)), _, _, _) => {
+                (BaseChunk::ArrayAccessor(a), 1)
             }
-        }
-        if chunk.is_none() && prior_value.is_some() && l - i >= 3 {
-            // Checking the potential matches with method syntax: partially-qualified IIGE and
-            // GFuncCall, and fully-qualified IIFE, FuncCall, and TypeCall
-            match (&bal[i], &bal[i + 1], &bal[i + 2]) {
-                (
-                    parse::BaseAssignable::MethodSep(_),
-                    parse::BaseAssignable::Functions(f),
-                    parse::BaseAssignable::GnCall(g),
-                ) => chunk = Some(BaseChunk::IIGE(&prior_value, f, g, None)),
-                (
-                    parse::BaseAssignable::MethodSep(_),
-                    parse::BaseAssignable::Variable(f),
-                    parse::BaseAssignable::GnCall(g),
-                ) => chunk = Some(BaseChunk::GFuncCall(&prior_value, f, g, None)),
-                (
-                    parse::BaseAssignable::MethodSep(_),
-                    parse::BaseAssignable::Functions(f),
-                    parse::BaseAssignable::FnCall(g),
-                ) => chunk = Some(BaseChunk::IIFE(&prior_value, f, Some(g))),
-                (
-                    parse::BaseAssignable::MethodSep(_),
-                    parse::BaseAssignable::Variable(f),
-                    parse::BaseAssignable::FnCall(g),
-                ) => chunk = Some(BaseChunk::FuncCall(&prior_value, f, Some(g))),
-                (
-                    parse::BaseAssignable::MethodSep(_),
-                    parse::BaseAssignable::GnCall(t),
-                    parse::BaseAssignable::FnCall(g),
-                ) => chunk = Some(BaseChunk::TypeCall(&prior_value, t, Some(g))),
-                _ => {} // Skip
+            _ => {
+                return Err(format!(
+                    "Invalid syntax: {}\n Cannot parse after {}, l - i = {}",
+                    bal.iter()
+                        .map(|ba| ba.to_string())
+                        .collect::<Vec<String>>()
+                        .join(""),
+                    bal[i - 1].to_string(),
+                    l - i,
+                )
+                .into());
             }
-            if chunk.is_some() {
-                i = i + 3;
-            }
-        } else if chunk.is_none() && prior_value.is_none() && l - i >= 2 {
-            // Checking the potential matches when starting the list: fully-qualified IIFE,
-            // FuncCall, and TypeCall
-            match (&bal[i], &bal[i + 1]) {
-                (parse::BaseAssignable::Functions(f), parse::BaseAssignable::FnCall(g)) => {
-                    chunk = Some(BaseChunk::IIFE(&prior_value, f, Some(g)))
-                }
-                (parse::BaseAssignable::Variable(f), parse::BaseAssignable::FnCall(g)) => {
-                    chunk = Some(BaseChunk::FuncCall(&prior_value, f, Some(g)))
-                }
-                (parse::BaseAssignable::GnCall(t), parse::BaseAssignable::FnCall(g)) => {
-                    chunk = Some(BaseChunk::TypeCall(&prior_value, t, Some(g)))
-                }
-                _ => {} // Skip
-            }
-            if chunk.is_some() {
-                i = i + 2;
-            }
-        }
-        if chunk.is_none() && prior_value.is_some() && l - i >= 2 {
-            // Checking the potential matches with method syntax: partially-qualified IIFE,
-            // FuncCall, and TypeCall, and fully-qualified ConstantAccessor
-            match (&bal[i], &bal[i + 1]) {
-                (parse::BaseAssignable::MethodSep(_), parse::BaseAssignable::Functions(f)) => {
-                    chunk = Some(BaseChunk::IIFE(&prior_value, f, None))
-                }
-                (parse::BaseAssignable::MethodSep(_), parse::BaseAssignable::Variable(f)) => {
-                    chunk = Some(BaseChunk::FuncCall(&prior_value, f, None))
-                }
-                (parse::BaseAssignable::MethodSep(_), parse::BaseAssignable::GnCall(t)) => {
-                    chunk = Some(BaseChunk::TypeCall(&prior_value, t, None))
-                }
-                (parse::BaseAssignable::MethodSep(_), parse::BaseAssignable::Constants(c)) => {
-                    chunk = Some(BaseChunk::ConstantAccessor(c))
-                }
-                _ => {} // Skip
-            }
-            if chunk.is_some() {
-                i = i + 2;
-            }
-        } else if chunk.is_none() && prior_value.is_none() && l - i >= 1 {
-            // Checking the potential matches when starting the list: Function, Group, Array,
-            // Variable, Constant
-            match &bal[i] {
-                parse::BaseAssignable::Functions(f) => chunk = Some(BaseChunk::Function(f)),
-                parse::BaseAssignable::FnCall(g) => chunk = Some(BaseChunk::Group(g)),
-                parse::BaseAssignable::Array(a) => chunk = Some(BaseChunk::Array(a)),
-                parse::BaseAssignable::Variable(v) => chunk = Some(BaseChunk::Variable(v)),
-                parse::BaseAssignable::Constants(c) => chunk = Some(BaseChunk::Constant(c)),
-                _ => {} // Skip
-            }
-            if chunk.is_some() {
-                i = i + 1;
-            }
-        }
-        if chunk.is_none() && prior_value.is_some() && l - i >= 1 {
-            // Checking the potential matches with accessor syntax: ArrayAccessor
-            match &bal[i] {
-                parse::BaseAssignable::Array(a) => chunk = Some(BaseChunk::ArrayAccessor(a)),
-                _ => {}
-            }
-            if chunk.is_some() {
-                i = i + 1;
-            }
-        }
-        // If we got here and there's no chunk, we hit invalid syntax
-        if chunk.is_none() {
-            return Err(format!(
-                "Invalid syntax: {}\n Cannot parse after {}, l - i = {}",
-                bal.iter()
-                    .map(|ba| ba.to_string())
-                    .collect::<Vec<String>>()
-                    .join(""),
-                bal[i - 1].to_string(),
-                l - i,
-            )
-            .into());
-        }
+        };
+        i = i + inc;
         // Now we just operate on our chunk and create a new prior_value to replace the old one, if
         // any exists. We'll start from the easier ones first and work our way up to the
         // complicated ones
-        match chunk.unwrap() {
+        match chunk {
             // We know it has to be defined because we blew up earlier if not
             BaseChunk::Constant(c) => {
                 match c {
@@ -1650,13 +1639,14 @@ fn baseassignablelist_to_microstatements(
                 let ctype = withtypeoperatorslist_to_ctype(&g.typecalllist, scope, program)?;
                 // TODO: Be more complete here
                 let name = ctype
-                    .to_string()
+                    .to_strict_string(false)
                     .replace(" ", "_")
                     .replace(",", "_")
                     .replace(":", "_")
                     .replace("{", "_")
                     .replace("}", "_")
-                    .replace("|", "_");
+                    .replace("|", "_")
+                    .replace("()", "void"); // Really bad
                 let parse_type = parse::Types {
                     typen: "type".to_string(),
                     a: "".to_string(),
@@ -1783,7 +1773,8 @@ fn baseassignablelist_to_microstatements(
                                 .replace("{", "_")
                                 .replace("}", "_")
                         )
-                        .replace("|", "_");
+                        .replace("|", "_")
+                        .replace("()", "void"); // Really bad
                         let parse_type = parse::Types {
                             typen: "type".to_string(),
                             a: "".to_string(),
@@ -1979,7 +1970,32 @@ fn withtypeoperatorslist_to_ctype(
                     )
                     .collect();
             } else {
-                // TODO: Add postfix operator support here
+                let arg = match match queue.get(largest_operator_index as usize - 1) {
+                    Some(val) => Ok(val),
+                    None => Err(format!("Operator {} is a postfix operator but missing a left-hand side value", operatorname)),
+                }? {
+                    parse::WithTypeOperators::TypeBaseList(typebaselist) => Ok(typebaselist),
+                    parse::WithTypeOperators::Operators(o) => Err(format!("Operator {} is a postfix operator but preceded by another operator {}", operatorname, o)),
+                }?;
+                // We're gonna rewrite the operator and base assignables into a function call, eg
+                // we take `type?` and turn it into `Maybe{type}`
+                let rewrite = parse::WithTypeOperators::TypeBaseList(vec![
+                    parse::TypeBase::Variable(functionname),
+                    parse::TypeBase::GnCall(parse::GnCall {
+                        opencurly: "{".to_string(),
+                        a: "".to_string(),
+                        typecalllist: vec![parse::WithTypeOperators::TypeBaseList(arg.to_vec())],
+                        b: "".to_string(),
+                        closecurly: "}".to_string(),
+                    }),
+                ]);
+                // Splice the new record into the processing queue
+                let _: Vec<parse::WithTypeOperators> = queue
+                    .splice(
+                        (largest_operator_index as usize - 1)..(largest_operator_index as usize + 1),
+                        vec![rewrite],
+                    )
+                    .collect();
             }
         } else {
             // We have no more typeoperators, there should only be one reworked typebaselist now
