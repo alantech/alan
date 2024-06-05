@@ -38,6 +38,7 @@ pub fn ctype_to_rtype(
                                     in_function_type,
                                 )?);
                             }
+                            CType::Void => enum_type_strs.push("void".to_string()),
                             otherwise => {
                                 return Err(format!("TODO: What is this? {:?}", otherwise).into());
                             }

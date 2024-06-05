@@ -478,10 +478,10 @@ export fn getOrExit(a: Result{i8}) -> i8 binds get_or_exit; // TODO: Support rea
 export fn getOrExit(a: Result{i16}) -> i16 binds get_or_exit; // TODO: Support real generics
 export fn getOrExit(a: Result{i32}) -> i32 binds get_or_exit; // TODO: Support real generics
 export fn getOrExit(a: Result{i64}) -> i64 binds get_or_exit; // TODO: Support real generics
-export fn getOrExit(a: i8 | void) -> i8 binds get_or_maybe_exit; // TODO: Support real generics
-export fn getOrExit(a: i16 | void) -> i16 binds get_or_maybe_exit; // TODO: Support real generics
-export fn getOrExit(a: i32 | void) -> i32 binds get_or_maybe_exit; // TODO: Support real generics
-export fn getOrExit(a: i64 | void) -> i64 binds get_or_maybe_exit; // TODO: Support real generics
+export fn getOrExit(a: i8?) -> i8 binds get_or_maybe_exit; // TODO: Support real generics
+export fn getOrExit(a: i16?) -> i16 binds get_or_maybe_exit; // TODO: Support real generics
+export fn getOrExit(a: i32?) -> i32 binds get_or_maybe_exit; // TODO: Support real generics
+export fn getOrExit(a: i64?) -> i64 binds get_or_maybe_exit; // TODO: Support real generics
 
 /// Stdout/stderr-related bindings
 export fn print(str: string) binds println;
