@@ -1972,10 +1972,16 @@ fn withtypeoperatorslist_to_ctype(
             } else {
                 let arg = match match queue.get(largest_operator_index as usize - 1) {
                     Some(val) => Ok(val),
-                    None => Err(format!("Operator {} is a postfix operator but missing a left-hand side value", operatorname)),
+                    None => Err(format!(
+                        "Operator {} is a postfix operator but missing a left-hand side value",
+                        operatorname
+                    )),
                 }? {
                     parse::WithTypeOperators::TypeBaseList(typebaselist) => Ok(typebaselist),
-                    parse::WithTypeOperators::Operators(o) => Err(format!("Operator {} is a postfix operator but preceded by another operator {}", operatorname, o)),
+                    parse::WithTypeOperators::Operators(o) => Err(format!(
+                        "Operator {} is a postfix operator but preceded by another operator {}",
+                        operatorname, o
+                    )),
                 }?;
                 // We're gonna rewrite the operator and base assignables into a function call, eg
                 // we take `type?` and turn it into `Maybe{type}`
@@ -1992,7 +1998,8 @@ fn withtypeoperatorslist_to_ctype(
                 // Splice the new record into the processing queue
                 let _: Vec<parse::WithTypeOperators> = queue
                     .splice(
-                        (largest_operator_index as usize - 1)..(largest_operator_index as usize + 1),
+                        (largest_operator_index as usize - 1)
+                            ..(largest_operator_index as usize + 1),
                         vec![rewrite],
                     )
                     .collect();
