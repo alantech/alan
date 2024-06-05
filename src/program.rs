@@ -27,10 +27,10 @@ impl Program {
         // Load the entry file
         p = match p.load(entry_file) {
             Ok(p) => p,
-            Err(_) => {
+            Err(e) => {
                 // Somehow, trying to print this error can crash Rust!? Really not good.
                 // Will need to figure out how to make these errors clearer to users.
-                return Err("Failed to load entry file".into());
+                return Err(format!("{}", e).into());
             }
         };
         Ok(p)
@@ -291,10 +291,10 @@ impl Scope {
                             match c.name.as_str() {
                                 "Type" | "Generic" | "Bound" | "BoundGeneric" | "Int" | "Float"
                                 | "Bool" | "String" => { /* Do nothing for the 'structural' types */ }
-                                g @ ("Group" | "Array" | "Fail" | "Len" | "Size" | "FileStr"
+                                g @ ("Group" | "Array" | "Fail" | "Neg" | "Len" | "Size" | "FileStr"
                                 | "Env" | "EnvExists" | "Not") => CType::from_generic(&mut s, g, 1),
                                 g @ ("Function" | "Tuple" | "Field" | "Either" | "Buffer" | "Add"
-                                | "Sub" | "Mul" | "Div" | "Mod" | "Pow" | "If" | "And" | "Or"
+                                | "Sub" | "Mul" | "Div" | "Mod" | "Pow" | "Min" | "Max" | "If" | "And" | "Or"
                                 | "Xor" | "Nand" | "Nor" | "Xnor" | "Eq" | "Neq" | "Lt" | "Lte"
                                 | "Gt" | "Gte") => CType::from_generic(&mut s, g, 2),
                                 // TODO: Also add support for three arg `If` and `Env` with a
@@ -782,6 +782,15 @@ impl CType {
             _ => CType::fail("Fail passed a type that does not resolve into a message string"),
         }
     }
+    fn neg(t: &CType) -> CType {
+        match t {
+            &CType::Int(v) => CType::Int(-v),
+            &CType::Float(v) => CType::Float(-v),
+            _ => CType::fail(
+                "Attempting to add non-integer or non-float types together at compile time",
+            ),
+        }
+    }
     fn len(t: &CType) -> CType {
         match t {
             CType::Tuple(tup) => CType::Int(tup.len() as i128),
@@ -836,6 +845,24 @@ impl CType {
         match b {
             CType::Bool(b) => CType::Bool(!*b),
             _ => CType::fail("Not{B} must be provided a boolean type to invert"),
+        }
+    }
+    fn min(a: &CType, b: &CType) -> CType {
+        match (a, b) {
+            (&CType::Int(a), &CType::Int(b)) => CType::Int(if a < b { a } else { b }),
+            (&CType::Float(a), &CType::Float(b)) => CType::Float(if a < b { a } else { b }),
+            _ => CType::fail(
+                "Attempting to add non-integer or non-float types together at compile time",
+            ),
+        }
+    }
+    fn max(a: &CType, b: &CType) -> CType {
+        match (a, b) {
+            (&CType::Int(a), &CType::Int(b)) => CType::Int(if a > b { a } else { b }),
+            (&CType::Float(a), &CType::Float(b)) => CType::Float(if a > b { a } else { b }),
+            _ => CType::fail(
+                "Attempting to add non-integer or non-float types together at compile time",
+            ),
         }
     }
     fn add(a: &CType, b: &CType) -> CType {
@@ -1201,7 +1228,7 @@ impl Microstatement {
                 }
                 match program.resolve_function(scope, function, &arg_types) {
                     Some((function_object, _s)) => Ok(function_object.rettype.clone()),
-                    None => Err(format!("Could not find function {}", function).into()),
+                    None => Err(format!("Could not find function {}({})", function, arg_types.iter().map(|t| t.to_string()).collect::<Vec<String>>().join(", ")).into()),
                 }
             }
         }
@@ -2379,6 +2406,9 @@ fn typebaselist_to_ctype(
                                         "Buffer" => CType::buffer(args.clone()),
                                         "Array" => CType::Array(Box::new(args[0].clone())),
                                         "Fail" => CType::cfail(&args[0]),
+                                        "Min" => CType::min(&args[0], &args[1]),
+                                        "Max" => CType::max(&args[0], &args[1]),
+                                        "Neg" => CType::neg(&args[0]),
                                         "Len" => CType::len(&args[0]),
                                         "Size" => CType::size(&args[0]),
                                         "FileStr" => CType::filestr(&args[0]),
@@ -2804,6 +2834,58 @@ impl Function {
                     CType::Function(i, o) => (*i.clone(), *o.clone()),
                     otherwise => (otherwise.clone(), CType::Void), // TODO: Type inference signaling?
                 };
+                // TODO: This is getting duplicated in a few different places. The CType creation
+                // should probably centralize creating these type names and constructor functions
+                // for us rather than this hackiness. Only adding the hackery to the output_type
+                // because that's all I need, and the input type would be much more convoluted.
+                if let CType::Void = output_type {
+                    // Skip this
+                } else {
+                    // This particular hackery assumes that the return type is not itself a
+                    // function and that it is using the `->` operator syntax. These are terrible
+                    // assumptions and this hacky code needs to die soon.
+                    let mut lastfnop = None;
+                    for i in 0..typeassignable.len() {
+                        if typeassignable[i].to_string().trim() == "->" {
+                            lastfnop = Some(i);
+                        }
+                    }
+                    if let Some(lastfnop) = lastfnop {
+                        let returntypeassignables = typeassignable[lastfnop+1..typeassignable.len()].to_vec();
+                        // TODO: Be more complete here
+                        let name = output_type
+                            .to_strict_string(false)
+                            .replace(" ", "_")
+                            .replace(",", "_")
+                            .replace(":", "_")
+                            .replace("{", "_")
+                            .replace("}", "_")
+                            .replace("|", "_")
+                            .replace("()", "void"); // Really bad
+                        if let Some(_) = program.resolve_type(scope, &name) {
+                            // Don't recreate the exact same thing. It only causes pain
+                        } else {
+                            let parse_type = parse::Types {
+                                typen: "type".to_string(),
+                                a: "".to_string(),
+                                opttypegenerics: None,
+                                b: "".to_string(),
+                                fulltypename: parse::FullTypename {
+                                    typename: name.clone(),
+                                    opttypegenerics: None,
+                                },
+                                c: "".to_string(),
+                                typedef: parse::TypeDef::TypeCreate(parse::TypeCreate {
+                                    a: "=".to_string(),
+                                    b: "".to_string(),
+                                    typeassignables: returntypeassignables,
+                                }),
+                                optsemicolon: ";".to_string(),
+                            };
+                            CType::from_ast(scope, program, &parse_type, false)?;
+                        }
+                    }
+                }
                 // The input type will be interpreted in many different ways:
                 // If it's a Group, unwrap it and continue. Ideally after that it's a Tuple
                 // type containing Field types, that's a "conventional" function

@@ -30,6 +30,9 @@ export ctype Mul{A, B}; // Multiplication
 export ctype Div{A, B}; // Division
 export ctype Mod{A, B}; // Modulus (remainder)
 export ctype Pow{A, B}; // Exponentiation/Power
+export ctype Min{A, B}; // Minimum value of the two
+export ctype Max{A, B}; // Maximum value of the two
+export ctype Neg{A}; // Negate the value
 export ctype Len{A}; // Returns the length of the input type in terms of the number of elements it contains, which is most useful for Buffers, Tuples, and Either, causes a compiler failure for Arrays, and returns 1 for everything else
 export ctype Size{T}; // Returns the size in bytes of the type in question, if possible, causing a compiler failure otherwise.
 export ctype FileStr{F}; // Read a file and return a string constant, useful for including large strings from a separate, nearby file, or fails if it doesn't exist
@@ -156,6 +159,8 @@ export fn max(a: i8, b: i8) -> i8 binds maxi8;
 export fn max(a: Result{i8}, b: Result{i8}) -> Result{i8} binds maxi8_result;
 export fn max(a: i8, b: Result{i8}) -> Result{i8} = max(a.ok, b);
 export fn max(a: Result{i8}, b: i8) -> Result{i8} = max(a, b.ok);
+export fn neg(a: i8) -> i8 binds negi8;
+export fn neg(a: Result{i8}) -> Result{i8} binds negi8_result;
 export fn and(a: i8, b: i8) -> i8 binds andi8;
 export fn or(a: i8, b: i8) -> i8 binds ori8;
 export fn xor(a: i8, b: i8) -> i8 binds xori8;
@@ -211,6 +216,8 @@ export fn max(a: i16, b: i16) -> i16 binds maxi16;
 export fn max(a: Result{i16}, b: Result{i16}) -> Result{i16} binds maxi16_result;
 export fn max(a: i16, b: Result{i16}) -> Result{i16} = max(a.ok, b);
 export fn max(a: Result{i16}, b: i16) -> Result{i16} = max(a, b.ok);
+export fn neg(a: i16) -> i16 binds negi16;
+export fn neg(a: Result{i16}) -> Result{i16} binds negi16_result;
 export fn and(a: i16, b: i16) -> i16 binds andi16;
 export fn or(a: i16, b: i16) -> i16 binds ori16;
 export fn xor(a: i16, b: i16) -> i16 binds xori16;
@@ -266,6 +273,8 @@ export fn max(a: i32, b: i32) -> i32 binds maxi32;
 export fn max(a: Result{i32}, b: Result{i32}) -> Result{i32} binds maxi32_result;
 export fn max(a: i32, b: Result{i32}) -> Result{i32} = max(a.ok, b);
 export fn max(a: Result{i32}, b: i32) -> Result{i32} = max(a, b.ok);
+export fn neg(a: i32) -> i32 binds negi32;
+export fn neg(a: Result{i32}) -> Result{i32} binds negi32_result;
 export fn and(a: i32, b: i32) -> i32 binds andi32;
 export fn or(a: i32, b: i32) -> i32 binds ori32;
 export fn xor(a: i32, b: i32) -> i32 binds xori32;
@@ -321,6 +330,8 @@ export fn max(a: i64, b: i64) -> i64 binds maxi64;
 export fn max(a: Result{i64}, b: Result{i64}) -> Result{i64} binds maxi64_result;
 export fn max(a: i64, b: Result{i64}) -> Result{i64} = max(a.ok, b);
 export fn max(a: Result{i64}, b: i64) -> Result{i64} = max(a, b.ok);
+export fn neg(a: i64) -> i64 binds negi64;
+export fn neg(a: Result{i64}) -> Result{i64} binds negi64_result;
 export fn and(a: i64, b: i64) -> i64 binds andi64;
 export fn or(a: i64, b: i64) -> i64 binds ori64;
 export fn xor(a: i64, b: i64) -> i64 binds xori64;
@@ -375,6 +386,8 @@ export fn max(a: f32, b: f32) -> f32 binds maxf32;
 export fn max(a: Result{f32}, b: Result{f32}) -> Result{f32} binds maxf32_result;
 export fn max(a: f32, b: Result{f32}) -> Result{f32} = max(a.ok, b);
 export fn max(a: Result{f32}, b: f32) -> Result{f32} = max(a, b.ok);
+export fn neg(a: f32) -> f32 binds negf32;
+export fn neg(a: Result{f32}) -> Result{f32} binds negf32_result;
 export fn eq(a: f32, b: f32) -> bool binds eqf32;
 export fn neq(a: f32, b: f32) -> bool binds neqf32;
 export fn lt(a: f32, b: f32) -> bool binds ltf32;
@@ -421,6 +434,8 @@ export fn max(a: f64, b: f64) -> f64 binds maxf64;
 export fn max(a: Result{f64}, b: Result{f64}) -> Result{f64} binds maxf64_result;
 export fn max(a: f64, b: Result{f64}) -> Result{f64} = max(a.ok, b);
 export fn max(a: Result{f64}, b: f64) -> Result{f64} = max(a, b.ok);
+export fn neg(a: f64) -> f64 binds negf64;
+export fn neg(a: Result{f64}) -> Result{f64} binds negf64_result;
 export fn eq(a: f64, b: f64) -> bool binds eqf64;
 export fn neq(a: f64, b: f64) -> bool binds neqf64;
 export fn lt(a: f64, b: f64) -> bool binds ltf64;
@@ -438,6 +453,14 @@ export fn string(f: f64) -> string binds f64tostring;
 export fn string(b: bool) -> string binds booltostring;
 export fn string(s: string) -> string = s;
 export fn concat(a: string, b: string) -> string binds concatstring;
+export fn add(a: string, b: string) -> string binds concatstring; // To use the '+' operator
+export fn repeat(a: string, n: i64) -> string binds repeatstring;
+export fn mul(a: string, n: i64) -> string binds repeatstring; // To use the '*' operator
+export fn split(a: string, b: string) -> string[] binds splitstring;
+export fn div(a: string, b: string) -> string[] binds splitstring; // To use the '/' operator
+export fn len(a: string) -> i64 binds lenstring;
+export fn trim(a: string) -> string binds trimstring;
+export fn index(a: string, b: string) -> Result{i64} binds indexstring;
 export fn min(a: string, b: string) -> string binds minstring;
 export fn max(a: string, b: string) -> string binds maxstring;
 export fn eq(a: string, b: string) -> bool binds eqstring;
@@ -547,14 +570,16 @@ export fn run(g: GPU, gg: GPGPU) binds gpu_run;
 export fn read(g: GPU, b: GBuffer) -> Vec{i32} binds read_buffer; // TODO: Support other output types
 
 /// Built-in operator definitions
+// TODO: New plan is to make operators only map to one function per symbol and *kind* of operator,
+// so you can have an infix and prefix operator with the same symbol linked to different functions,
+// but you can't have an infix operator of the same symbol linked to multiple functions. This does
+// produce some ambiguity of what kind of operator an operator is, but should still be unambiguous
+// to humans to "read" the symbol as whatever kind of function it represents.
 export infix add as + precedence 2;
-// export infix concat as + precedence 2;
 export infix sub as - precedence 2;
-// export prefix negate as - precedence 1;
+//export prefix neg as - precedence 1; // TODO: Rework operator storage and selection
 export infix mul as * precedence 3;
-// export infix repeat as * precedence 3;
 export infix div as / precedence 3;
-// export infix split as / precedence 3;
 export infix mod as % precedence 3;
 // export infix template as % precedence 3;
 export infix pow as ** precedence 4;
@@ -571,3 +596,5 @@ export infix lt as < precedence 1;
 export infix lte as <= precedence 1;
 export infix gt as > precedence 1;
 export infix gte as >= precedence 1;
+export prefix len as # precedence 1;
+export infix index as @ precedence 1;
