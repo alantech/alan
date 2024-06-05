@@ -1897,6 +1897,16 @@ fn get_or_exit<A: Clone>(a: &Result<A, AlanError>) -> A {
     }
 }
 
+/// `get_or_maybe_exit` is basically an alias to `unwrap`, but as a function instead of a method
+/// and for `Option` instead of `Result`
+#[inline(always)]
+fn get_or_maybe_exit<A: Clone>(a: &Option<A>) -> A {
+    match a {
+        Some(v) => v.clone(),
+        None => panic!("Expected value did not exist"), // TODO: Better error message somehow?
+    }
+}
+
 /// `i8tostring` converts an i8 into a simple string representation
 #[inline(always)]
 fn i8tostring(a: &i8) -> String {

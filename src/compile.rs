@@ -3178,16 +3178,16 @@ test_ignore!(clone => r#"
       print(b);
       let c = [1, 2, 3];
       let d = c.clone;
-      d.set(0, 2);
-      c.map(fn (val: int) -> string = val.string).join(', ').print;
-      d.map(fn (val: int) -> string = val.string).join(', ').print;
+      d[0] = 2;
+      c.map(string).join(', ').print;
+      d.map(string).join(', ').print;
     }"#;
     stdout "4\n3\n1, 2, 3\n2, 2, 3\n";
 );
 
 // Runtime Error
 
-test_ignore!(get_or_exit => r#"
+test!(get_or_exit => r#"
     export fn main {
       const xs = [0, 1, 2, 5];
       const x1 = xs[1].getOrExit;
@@ -3197,7 +3197,7 @@ test_ignore!(get_or_exit => r#"
       const x5 = xs[5].getOrExit;
       print(x5);
     }"#;
-    status 1;
+    status 101;
 );
 
 /* It's not known *if* @std/datastore will be restored or what changes there will be needed with
