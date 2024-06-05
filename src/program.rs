@@ -1228,7 +1228,16 @@ impl Microstatement {
                 }
                 match program.resolve_function(scope, function, &arg_types) {
                     Some((function_object, _s)) => Ok(function_object.rettype.clone()),
-                    None => Err(format!("Could not find function {}({})", function, arg_types.iter().map(|t| t.to_string()).collect::<Vec<String>>().join(", ")).into()),
+                    None => Err(format!(
+                        "Could not find function {}({})",
+                        function,
+                        arg_types
+                            .iter()
+                            .map(|t| t.to_string())
+                            .collect::<Vec<String>>()
+                            .join(", ")
+                    )
+                    .into()),
                 }
             }
         }
@@ -2851,7 +2860,8 @@ impl Function {
                         }
                     }
                     if let Some(lastfnop) = lastfnop {
-                        let returntypeassignables = typeassignable[lastfnop+1..typeassignable.len()].to_vec();
+                        let returntypeassignables =
+                            typeassignable[lastfnop + 1..typeassignable.len()].to_vec();
                         // TODO: Be more complete here
                         let name = output_type
                             .to_strict_string(false)
