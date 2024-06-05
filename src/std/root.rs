@@ -28,6 +28,14 @@ impl From<&str> for AlanError {
     }
 }
 
+impl From<String> for AlanError {
+    fn from(s: String) -> AlanError {
+        AlanError {
+            message: s,
+        }
+    }
+}
+
 /// `alan_ok` is a wrapper function that takes a reference to a value, clones it, and returns it as
 /// a Result-wrapped value. Hopefully this weird function will die soon.
 #[inline(always)]
@@ -269,6 +277,21 @@ fn maxi8_result(a: &Result<i8, AlanError>, b: &Result<i8, AlanError>) -> Result<
             Err(e) => Err(e.clone()),
             Ok(b) => if a > b { Ok(*a) } else { Ok(*b) }
         }
+    }
+}
+
+/// `negi8` negates the `i8` provided
+#[inline(always)]
+fn negi8(a: &i8) -> i8 {
+    -(*a)
+}
+
+/// `negi8_result negates the `Result<i8, AlanError>` provided, if possible
+#[inline(always)]
+fn negi8_result(a: &Result<i8, AlanError>) -> Result<i8, AlanError> {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => Ok(-(*a)),
     }
 }
 
@@ -581,6 +604,21 @@ fn maxi16_result(a: &Result<i16, AlanError>, b: &Result<i16, AlanError>) -> Resu
     }
 }
 
+/// `negi16` negates the `i16` provided
+#[inline(always)]
+fn negi16(a: &i16) -> i16 {
+    -(*a)
+}
+
+/// `negi16_result negates the `Result<i16, AlanError>` provided, if possible
+#[inline(always)]
+fn negi16_result(a: &Result<i16, AlanError>) -> Result<i16, AlanError> {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => Ok(-(*a)),
+    }
+}
+
 /// `andi16` performs a bitwise `and`
 #[inline(always)]
 fn andi16(a: &i16, b: &i16) -> i16 {
@@ -890,6 +928,21 @@ fn maxi32_result(a: &Result<i32, AlanError>, b: &Result<i32, AlanError>) -> Resu
     }
 }
 
+/// `negi32` negates the `i32` provided
+#[inline(always)]
+fn negi32(a: &i32) -> i32 {
+    -(*a)
+}
+
+/// `negi32_result negates the `Result<i32, AlanError>` provided, if possible
+#[inline(always)]
+fn negi32_result(a: &Result<i32, AlanError>) -> Result<i32, AlanError> {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => Ok(-(*a)),
+    }
+}
+
 /// `andi32` performs a bitwise `and`
 #[inline(always)]
 fn andi32(a: &i32, b: &i32) -> i32 {
@@ -1196,6 +1249,21 @@ fn maxi64_result(a: &Result<i64, AlanError>, b: &Result<i64, AlanError>) -> Resu
             Err(e) => Err(e.clone()),
             Ok(b) => if a > b { Ok(*a) } else { Ok(*b) }
         }
+    }
+}
+
+/// `negi64` negates the `i64` provided
+#[inline(always)]
+fn negi64(a: &i64) -> i64 {
+    -(*a)
+}
+
+/// `negi64_result negates the `Result<i64, AlanError>` provided, if possible
+#[inline(always)]
+fn negi64_result(a: &Result<i64, AlanError>) -> Result<i64, AlanError> {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => Ok(-(*a)),
     }
 }
 
@@ -1547,6 +1615,21 @@ fn maxf32_result(a: &Result<f32, AlanError>, b: &Result<f32, AlanError>) -> Resu
     }
 }
 
+/// `negf32` negates the `f32` provided
+#[inline(always)]
+fn negf32(a: &f32) -> f32 {
+    -(*a)
+}
+
+/// `negf32_result negates the `Result<f32, AlanError>` provided, if possible
+#[inline(always)]
+fn negf32_result(a: &Result<f32, AlanError>) -> Result<f32, AlanError> {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => Ok(-(*a)),
+    }
+}
+
 /// `eqf32` compares two f32s and returns if they are equal
 #[inline(always)]
 fn eqf32(a: &f32, b: &f32) -> bool {
@@ -1852,6 +1935,21 @@ fn maxf64_result(a: &Result<f64, AlanError>, b: &Result<f64, AlanError>) -> Resu
     }
 }
 
+/// `negf64` negates the `f64` provided
+#[inline(always)]
+fn negf64(a: &f64) -> f64 {
+    -(*a)
+}
+
+/// `negf64_result negates the `Result<f64, AlanError>` provided, if possible
+#[inline(always)]
+fn negf64_result(a: &Result<f64, AlanError>) -> Result<f64, AlanError> {
+    match a {
+        Err(e) => Err(e.clone()),
+        Ok(a) => Ok(-(*a)),
+    }
+}
+
 /// `eqf64` compares two f64s and returns if they are equal
 #[inline(always)]
 fn eqf64(a: &f64, b: &f64) -> bool {
@@ -1956,6 +2054,39 @@ fn booltostring(a: &bool) -> String {
 #[inline(always)]
 fn concatstring(a: &String, b: &String) -> String {
     format!("{}{}", a, b).to_string()
+}
+
+/// `repeatstring` creates a new string composed of the original string repeated `n` times
+#[inline(always)]
+fn repeatstring(a: &String, n: &i64) -> String {
+    a.repeat(*n as usize).to_string()
+}
+
+/// `splitstring` creates a vector of strings split by the specified separator string
+#[inline(always)]
+fn splitstring(a: &String, b: &String) -> Vec<String> {
+    a.split(b).map(|v| v.to_string()).collect::<Vec<String>>()
+}
+
+/// `lenstring` returns the length of the string
+#[inline(always)]
+fn lenstring(a: &String) -> i64 {
+    a.len() as i64
+}
+
+/// `trimstring` trims the string of whitespace
+#[inline(always)]
+fn trimstring(a: &String) -> String {
+    a.trim().to_string()
+}
+
+/// `indexstring` finds the index where the specified substring starts, if possible
+#[inline(always)]
+fn indexstring(a: &String, b: &String) -> Result<i64, AlanError> {
+    match a.find(b) {
+        Some(v) => Ok(v as i64),
+        None => Err(format!("Could not find {} in {}", b, a).into()),
+    }
 }
 
 /// `minstring` compares two string and returns the "earlier" string (by byte ordering)

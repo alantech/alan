@@ -448,7 +448,7 @@ test!(non_global_memory_exit_code => r#"
     }"#;
     status 0;
 );
-test_ignore!(passing_ints_from_global_memory => r#"
+test!(passing_ints_from_global_memory => r#"
     fn aNumber(num: i64) {
       print('I got a number! ' + num.string);
     }
@@ -519,6 +519,10 @@ test!(int8_max => r#"
     }"#;
     stdout "5\n";
 );
+test!(int8_neg => r#"
+    export fn main = print(neg(i8(3)));"#;
+    stdout "-3\n";
+);
 
 test!(int16_add => r#"
     export fn main {
@@ -567,6 +571,10 @@ test!(int16_max => r#"
       max(3.i16, 5.i16).print;
     }"#;
     stdout "5\n";
+);
+test_ignore!(int16_neg => r#"
+    export fn main = print(-i16(3));"#;
+    stdout "-3\n";
 );
 
 test!(int32_add => r#"
@@ -617,6 +625,10 @@ test!(int32_max => r#"
     }"#;
     stdout "5\n";
 );
+test_ignore!(int32_neg => r#"
+    export fn main = print(- 3.i32);"#; // You wouldn't naturally write this, but should still work
+    stdout "-3\n";
+);
 
 test!(int64_add => r#"
     export fn main = print(1 + 2);"#;
@@ -649,6 +661,10 @@ test!(int64_min => r#"
 test!(int64_max => r#"
     export fn main = max(3.i64, 5.i64).print;"#;
     stdout "5\n";
+);
+test_ignore!(int64_neg => r#"
+    export fn main = print(- 3);"#; // You wouldn't naturally write this, but should still work
+    stdout "-3\n";
 );
 
 test!(float32_add => r#"
@@ -699,6 +715,10 @@ test!(float32_max => r#"
     }"#;
     stdout "5\n";
 );
+test_ignore!(float32_neg => r#"
+    export fn main = print(- 3.f32);"#; // You wouldn't naturally write this, but should still work
+    stdout "-3\n";
+);
 
 test!(float64_add => r#"
     export fn main {
@@ -747,6 +767,10 @@ test!(float64_max => r#"
       max(3.f64, 5.f64).print;
     }"#;
     stdout "5\n";
+);
+test_ignore!(float64_neg => r#"
+    export fn main = print(- 3.f64);"#; // You wouldn't naturally write this, but should still work
+    stdout "-3\n";
 );
 
 test!(grouping => r#"
@@ -939,7 +963,7 @@ true
 
 // String Manipulation
 
-test_ignore!(string_ops => r#"
+test!(string_ops => r#"
     export fn main {
       concat('Hello, ', 'World!').print;
       print('Hello, ' + 'World!');
@@ -947,17 +971,19 @@ test_ignore!(string_ops => r#"
       repeat('hi ', 5).print;
       print('hi ' * 5);
 
-      matches('foobar', 'fo.*').print;
-      print('foobar' ~ 'fo.*');
+      // TODO: Add regex support
+      //matches('foobar', 'fo.*').print;
+      //print('foobar' ~ 'fo.*');
 
       index('foobar', 'ba').print;
       print('foobar' @ 'ba');
 
-      length('foobar').print;
+      len('foobar').print;
       print(#'foobar');
 
       trim('   hi   ').print;
-      print(\`'   hi   ');
+      // TODO: Do we really want this operator?
+      // print(\`'   hi   ');
 
       split('Hello, World!', ', ')[0].print;
       print(('Hello, World!' / ', ')[1]);
@@ -972,13 +998,10 @@ test_ignore!(string_ops => r#"
 Hello, World!
 hi hi hi hi hi 
 hi hi hi hi hi 
-true
-true
 3
 3
 6
 6
-hi
 hi
 Hello
 World!
@@ -2464,7 +2487,7 @@ test!(user_types_and_generics => r#"
 test_ignore!(closure_creation_and_usage => r#"
     fn closure() -> function {
       let num = 0;
-      return fn () -> int64 {
+      return fn () -> i64 {
         num = num + 1 || 0;
         return num;
       };
@@ -2480,7 +2503,7 @@ test_ignore!(closure_creation_and_usage => r#"
     stdout "1\n2\n1\n";
 );
 test_ignore!(closure_by_name => r#"
-    fn double(x: int64) -> int64 = x * 2 || 0;
+    fn double(x: i64) -> i64 = x * 2 || 0;
 
     export fn main {
       const numbers = [1, 2, 3, 4, 5];
