@@ -1597,11 +1597,11 @@ test_ignore!(map_support => r#"
 
 // Arrays
 
-test_ignore!(array_accessor_and_length => r#"
+test!(array_accessor_and_length => r#"
     export fn main {
       print('Testing...');
       const test = '1,2,3'.split(',');
-      print(test.length);
+      print(test.len);
       print(test[0]);
       print(test[1]);
       print(test[2]);
@@ -1635,10 +1635,10 @@ test!(array_literal_syntax => r#"
 6
 "#;
 );
-test_ignore!(array_mutable_push_pop => r#"
+test!(array_mutable_push_pop => r#"
     export fn main {
       print('Testing...');
-      let test = new Array{int64} [];
+      let test = Array{i64}();
       test.push(1);
       test.push(2);
       test.push(3);
@@ -1648,7 +1648,7 @@ test_ignore!(array_mutable_push_pop => r#"
       print(test.pop);
       print(test.pop);
       print(test.pop);
-      print(test.pop); // Should print error message
+      print(test.pop); // Should print void
     }"#;
     stdout r#"Testing...
 1
@@ -1657,7 +1657,7 @@ test_ignore!(array_mutable_push_pop => r#"
 3
 2
 1
-cannot pop empty array
+void
 "#;
 );
 test_ignore!(array_length_index_has_join => r#"

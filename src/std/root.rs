@@ -2251,6 +2251,24 @@ fn getarray<T: Clone>(a: &Vec<T>, i: &i64) -> Option<T> {
     }
 }
 
+/// `lenarray` returns the length of an array
+#[inline(always)]
+fn lenarray<T>(a: &Vec<T>) -> i64 {
+    a.len() as i64
+}
+
+/// `pusharray` pushes a value onto the array
+#[inline(always)]
+fn pusharray<T: Clone>(mut a: &mut Vec<T>, v: &T) {
+    a.push(v.clone());
+}
+
+/// `poparray` pops a value off of the array into an Option<T>
+#[inline(always)]
+fn poparray<T>(mut a: &mut Vec<T>) -> Option<T> {
+    a.pop()
+}
+
 /// `println` is a simple function that prints basically anything
 #[inline(always)]
 fn println<A: std::fmt::Display>(a: &A) {
