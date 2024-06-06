@@ -490,7 +490,12 @@ export fn eq(a: bool, b: bool) -> bool binds eqbool;
 export fn neq(a: bool, b: bool) -> bool binds neqbool;
 
 /// Array related bindings
-export fn get(a: Array{i64}, i: i64) -> Maybe{i64} binds getarray; // TODO: Real generics
+export fn len(a: i64[]) -> i64 binds lenarray; // TODO: Real generics
+export fn len(a: string[]) -> i64 binds lenarray; // TODO: Real generics
+export fn push(a: Array{i64}, v: i64) -> () binds pusharray; // TODO: Real generics
+export fn push(a: Array{string}, v: string) -> () binds pusharray; // TODO: Real generics
+export fn pop(a: i64[]) -> Maybe{i64} binds poparray; // TODO: Real generics, not Option
+export fn pop(a: string[]) -> Maybe{string} binds poparray; // TODO: Real generics, not Option
 
 /// Process exit-related bindings
 export fn ExitCode(e: i8) -> ExitCode binds to_exit_code_i8;
