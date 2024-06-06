@@ -476,6 +476,15 @@ test!(other_integer_syntaxes => r#"
 "#;
     stdout "true\ntrue\ntrue\n";
 );
+test!(scientific_notation => r#"
+    export fn main {
+      print(15.0 == 1.5e1);
+      print(-5.0 == -5e0);
+      print(1e3 == 1000.0);
+    }
+"#;
+    stdout "true\ntrue\ntrue\n";
+);
 
 // Printing Tests
 
