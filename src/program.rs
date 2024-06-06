@@ -2215,13 +2215,13 @@ fn typebaselist_to_ctype(
                         parse::Constants::Num(n) => match n {
                             parse::Number::RealNum(r) => {
                                 prior_value = Some(CType::Float(
-                                    r.parse::<f64>().unwrap(), // This should never fail if the
-                                                               // parser says it's a float
+                                    r.replace("_", "").parse::<f64>().unwrap(), // This should never fail if the
+                                                                                // parser says it's a float
                                 ))
                             }
                             parse::Number::IntNum(i) => {
                                 prior_value = Some(CType::Int(
-                                    i.parse::<i128>().unwrap(), // Same deal here
+                                    i.replace("_", "").parse::<i128>().unwrap(), // Same deal here
                                 ))
                             }
                         },

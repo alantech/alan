@@ -429,7 +429,7 @@ World!
     status 0;
 );
 
-// Event Tests
+// Exit Tests
 
 test!(normal_exit_code => r#"
     export fn main() -> ExitCode {
@@ -448,7 +448,9 @@ test!(non_global_memory_exit_code => r#"
     }"#;
     status 0;
 );
-test!(passing_ints_from_global_memory => r#"
+
+// Unorganized Tests (TODO: Find a better grouping for these)
+test!(passing_ints_to_function => r#"
     fn aNumber(num: i64) {
       print('I got a number! ' + num.string);
     }
@@ -457,6 +459,12 @@ test!(passing_ints_from_global_memory => r#"
       aNumber(5);
     }"#;
     stdout "I got a number! 5\n";
+    status 0;
+);
+test!(underscores_in_numbers => r#"
+    export fn main = print(1_000_000 * 2);
+"#;
+    stdout "2000000\n";
     status 0;
 );
 
