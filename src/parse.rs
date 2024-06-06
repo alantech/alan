@@ -366,6 +366,8 @@ build!(optsemicolon, zero_or_one!(semicolon));
 build!(at, token!("@"));
 build!(slash, token!("/"));
 // Validating charset
+build!(base2, or!(charset!('0'..='1'), under));
+build!(base8, or!(charset!('0'..='7'), under));
 build!(base10, or!(charset!('0'..='9'), under));
 test!(base10 =>
     fail "";
@@ -373,6 +375,15 @@ test!(base10 =>
     pass "0" => "", "0";
     pass "00" => "0", "0";
     pass "_" => "", "_";
+);
+build!(
+    base16,
+    or!(
+        charset!('0'..='9'),
+        charset!('a'..='f'),
+        charset!('A'..='F'),
+        under
+    )
 );
 build!(natural, one_or_more!(base10));
 test!(natural =>
@@ -382,8 +393,33 @@ test!(natural =>
     pass "00" => "", "00";
     pass "1_000_000" => "", "1_000_000";
 );
-build!(integer, and!(zero_or_one!(negate), natural));
-build!(real, and!(integer, dot, natural));
+build!(normalints, and!(zero_or_one!(negate), natural));
+build!(
+    integer,
+    or!(
+        and!(token!("0b"), one_or_more!(base2)),
+        and!(token!("0o"), one_or_more!(base8)),
+        and!(token!("0x"), one_or_more!(base16)),
+        normalints, // Needs to be last or it will parse the leading zero as a zero
+    )
+);
+test!(integer =>
+    pass "0";
+    pass "0b0";
+    pass "0b10";
+    pass "0b2" => "b2", "0"; // It grabs just the leading zero
+    pass "0o34";
+    pass "0o777";
+    pass "0o800" => "o800", "0";
+    pass "0xdeadbeef";
+    pass "0xDAD_B0D";
+    pass "5";
+    pass "-5";
+    pass "-0b1" => "b1", "-0";
+    pass "-0o3" => "o3", "-0";
+    pass "-0xAAA" => "xAAA", "-0";
+);
+build!(real, and!(normalints, dot, natural));
 // Validating named_or
 named_or!(num: Number => RealNum: String as real, IntNum: String as integer);
 impl Number {
