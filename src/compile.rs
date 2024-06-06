@@ -467,6 +467,15 @@ test!(underscores_in_numbers => r#"
     stdout "2000000\n";
     status 0;
 );
+test!(other_integer_syntaxes => r#"
+    export fn main {
+      print(0b10 == 2);
+      print(0o10 == 8);
+      print(0x10 == 16);
+    }
+"#;
+    stdout "true\ntrue\ntrue\n";
+);
 
 // Printing Tests
 
