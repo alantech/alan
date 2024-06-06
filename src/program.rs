@@ -1579,14 +1579,17 @@ fn baseassignablelist_to_microstatements(
                 // better
                 let inner_type = array_vals[0].get_type(scope, program)?;
                 let inner_type_str = inner_type.to_strict_string(false);
-                let array_type_name = format!("Array_{}_", inner_type_str
-                    .replace(" ", "_")
-                    .replace(",", "_")
-                    .replace(":", "_")
-                    .replace("{", "_")
-                    .replace("}", "_")
-                    .replace("|", "_")
-                    .replace("()", "void")); // Really bad
+                let array_type_name = format!(
+                    "Array_{}_",
+                    inner_type_str
+                        .replace(" ", "_")
+                        .replace(",", "_")
+                        .replace(":", "_")
+                        .replace("{", "_")
+                        .replace("}", "_")
+                        .replace("|", "_")
+                        .replace("()", "void")
+                ); // Really bad
                 let array_type = CType::Array(Box::new(inner_type));
                 let type_str = format!("type {} = {}[];", array_type_name, inner_type_str);
                 let parse_type = parse::types(&type_str);
