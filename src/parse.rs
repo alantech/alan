@@ -366,14 +366,22 @@ build!(optsemicolon, zero_or_one!(semicolon));
 build!(at, token!("@"));
 build!(slash, token!("/"));
 // Validating charset
-build!(base10, charset!('0'..='9'));
+build!(base10, or!(charset!('0'..='9'), under));
 test!(base10 =>
     fail "";
     fail "a";
     pass "0" => "", "0";
     pass "00" => "0", "0";
+    pass "_" => "", "_";
 );
 build!(natural, one_or_more!(base10));
+test!(natural =>
+    fail "";
+    fail "a";
+    pass "0" => "", "0";
+    pass "00" => "", "00";
+    pass "1_000_000" => "", "1_000_000";
+);
 build!(integer, and!(zero_or_one!(negate), natural));
 build!(real, and!(integer, dot, natural));
 // Validating named_or

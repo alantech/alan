@@ -42,29 +42,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         fn double(x: i64) -> Result{i64} = x * 2;
         export fn main { filled(2, 100).map(double); }
     "#);
-    build!(map_1000 => r#"
+    build!(map_1_000 => r#"
         fn double(x: i64) -> Result{i64} = x * 2;
-        export fn main { filled(2, 1000).map(double); }
+        export fn main { filled(2, 1_000).map(double); }
     "#);
-    build!(map_10000 => r#"
+    build!(map_10_000 => r#"
         fn double(x: i64) -> Result{i64} = x * 2;
-        export fn main { filled(2, 10000).map(double); }
+        export fn main { filled(2, 10_000).map(double); }
     "#);
-    build!(map_100000 => r#"
+    build!(map_100_000 => r#"
         fn double(x: i64) -> Result{i64} = x * 2;
-        export fn main { filled(2, 100000).map(double); }
+        export fn main { filled(2, 100_000).map(double); }
     "#);
-    build!(map_1000000 => r#"
+    build!(map_1_000_000 => r#"
         fn double(x: i64) -> Result{i64} = x * 2;
-        export fn main { filled(2, 1000000).map(double); }
+        export fn main { filled(2, 1_000_000).map(double); }
     "#);
-    build!(map_10000000 => r#"
+    build!(map_10_000_000 => r#"
         fn double(x: i64) -> Result{i64} = x * 2;
-        export fn main { filled(2, 10000000).map(double); }
+        export fn main { filled(2, 10_000_000).map(double); }
     "#);
-    build!(map_100000000 => r#"
+    build!(map_100_000_000 => r#"
         fn double(x: i64) -> Result{i64} = x * 2;
-        export fn main { filled(2, 100000000).map(double); }
+        export fn main { filled(2, 100_000_000).map(double); }
     "#);
     build!(parmap_1 => r#"
         fn double(x: i64) -> Result{i64} = x * 2;
@@ -78,29 +78,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         fn double(x: i64) -> Result{i64} = x * 2;
         export fn main { filled(2, 100).parmap(double); }
     "#);
-    build!(parmap_1000 => r#"
+    build!(parmap_1_000 => r#"
         fn double(x: i64) -> Result{i64} = x * 2;
-        export fn main { filled(2, 1000).parmap(double); }
+        export fn main { filled(2, 1_000).parmap(double); }
     "#);
-    build!(parmap_10000 => r#"
+    build!(parmap_10_000 => r#"
         fn double(x: i64) -> Result{i64} = x * 2;
-        export fn main { filled(2, 10000).parmap(double); }
+        export fn main { filled(2, 10_000).parmap(double); }
     "#);
-    build!(parmap_100000 => r#"
+    build!(parmap_100_000 => r#"
         fn double(x: i64) -> Result{i64} = x * 2;
-        export fn main { filled(2, 100000).parmap(double); }
+        export fn main { filled(2, 100_000).parmap(double); }
     "#);
-    build!(parmap_1000000 => r#"
+    build!(parmap_1_000_000 => r#"
         fn double(x: i64) -> Result{i64} = x * 2;
-        export fn main { filled(2, 1000000).parmap(double); }
+        export fn main { filled(2, 1_000_000).parmap(double); }
     "#);
-    build!(parmap_10000000 => r#"
+    build!(parmap_10_000_000 => r#"
         fn double(x: i64) -> Result{i64} = x * 2;
-        export fn main { filled(2, 10000000).parmap(double); }
+        export fn main { filled(2, 10_000_000).parmap(double); }
     "#);
-    build!(parmap_100000000 => r#"
+    build!(parmap_100_000_000 => r#"
         fn double(x: i64) -> Result{i64} = x * 2;
-        export fn main { filled(2, 100000000).parmap(double); }
+        export fn main { filled(2, 100_000_000).parmap(double); }
     "#);
     build!(gpgpu_1 => r#"
         export fn main {
@@ -168,10 +168,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
           g.read(b);
         }
     "#);
-    build!(gpgpu_1000 => r#"
+    build!(gpgpu_1_000 => r#"
         export fn main {
           let g = GPU();
-          let b = g.createBuffer(storageBuffer(), filled(2.i32(), 1000));
+          let b = g.createBuffer(storageBuffer(), filled(2.i32(), 1_000));
           let plan = GPGPU("
             @group(0)
             @binding(0)
@@ -190,10 +190,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
           g.read(b);
         }
     "#);
-    build!(gpgpu_10000 => r#"
+    build!(gpgpu_10_000 => r#"
         export fn main {
           let g = GPU();
-          let b = g.createBuffer(storageBuffer(), filled(2.i32(), 10000));
+          let b = g.createBuffer(storageBuffer(), filled(2.i32(), 10_000));
           let plan = GPGPU("
             @group(0)
             @binding(0)
@@ -212,10 +212,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
           g.read(b);
         }
     "#);
-    build!(gpgpu_100000 => r#"
+    build!(gpgpu_100_000 => r#"
         export fn main {
           let g = GPU();
-          let b = g.createBuffer(storageBuffer(), filled(2.i32(), 100000));
+          let b = g.createBuffer(storageBuffer(), filled(2.i32(), 100_000));
           let plan = GPGPU("
             @group(0)
             @binding(0)
@@ -234,10 +234,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
           g.read(b);
         }
     "#);
-    build!(gpgpu_1000000 => r#"
+    build!(gpgpu_1_000_000 => r#"
         export fn main {
           let g = GPU();
-          let b = g.createBuffer(storageBuffer(), filled(2.i32(), 1000000));
+          let b = g.createBuffer(storageBuffer(), filled(2.i32(), 1_000_000));
           let plan = GPGPU("
             @group(0)
             @binding(0)
@@ -256,10 +256,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
           g.read(b);
         }
     "#);
-    build!(gpgpu_10000000 => r#"
+    build!(gpgpu_10_000_000 => r#"
         export fn main {
           let g = GPU();
-          let b = g.createBuffer(storageBuffer(), filled(2.i32(), 10000000));
+          let b = g.createBuffer(storageBuffer(), filled(2.i32(), 10_000_000));
           let plan = GPGPU("
             @group(0)
             @binding(0)
@@ -278,10 +278,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
           g.read(b);
         }
     "#);
-    build!(gpgpu_100000000 => r#"
+    build!(gpgpu_100_000_000 => r#"
         export fn main {
           let g = GPU();
-          let b = g.createBuffer(storageBuffer(), filled(2.i32(), 100000000));
+          let b = g.createBuffer(storageBuffer(), filled(2.i32(), 100_000_000));
           let plan = GPGPU("
             @group(0)
             @binding(0)
@@ -304,57 +304,57 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     clean!(map_1);
     clean!(map_10);
     clean!(map_100);
-    clean!(map_1000);
-    clean!(map_10000);
-    clean!(map_100000);
-    clean!(map_1000000);
-    clean!(map_10000000);
-    clean!(map_100000000);
+    clean!(map_1_000);
+    clean!(map_10_000);
+    clean!(map_100_000);
+    clean!(map_1_000_000);
+    clean!(map_10_000_000);
+    clean!(map_100_000_000);
     clean!(parmap_1);
     clean!(parmap_10);
     clean!(parmap_100);
-    clean!(parmap_1000);
-    clean!(parmap_10000);
-    clean!(parmap_100000);
-    clean!(parmap_1000000);
-    clean!(parmap_10000000);
-    clean!(parmap_100000000);
+    clean!(parmap_1_000);
+    clean!(parmap_10_000);
+    clean!(parmap_100_000);
+    clean!(parmap_1_000_000);
+    clean!(parmap_10_000_000);
+    clean!(parmap_100_000_000);
     clean!(gpgpu_1);
     clean!(gpgpu_10);
     clean!(gpgpu_100);
-    clean!(gpgpu_1000);
-    clean!(gpgpu_10000);
-    clean!(gpgpu_100000);
-    clean!(gpgpu_1000000);
-    clean!(gpgpu_10000000);
-    clean!(gpgpu_100000000);
+    clean!(gpgpu_1_000);
+    clean!(gpgpu_10_000);
+    clean!(gpgpu_100_000);
+    clean!(gpgpu_1_000_000);
+    clean!(gpgpu_10_000_000);
+    clean!(gpgpu_100_000_000);
     Ok(())
 }
 
 run!(map_1);
 run!(map_10);
 run!(map_100);
-run!(map_1000);
-run!(map_10000);
-run!(map_100000);
-run!(map_1000000);
-run!(map_10000000);
-run!(map_100000000);
+run!(map_1_000);
+run!(map_10_000);
+run!(map_100_000);
+run!(map_1_000_000);
+run!(map_10_000_000);
+run!(map_100_000_000);
 run!(parmap_1);
 run!(parmap_10);
 run!(parmap_100);
-run!(parmap_1000);
-run!(parmap_10000);
-run!(parmap_100000);
-run!(parmap_1000000);
-run!(parmap_10000000);
-run!(parmap_100000000);
+run!(parmap_1_000);
+run!(parmap_10_000);
+run!(parmap_100_000);
+run!(parmap_1_000_000);
+run!(parmap_10_000_000);
+run!(parmap_100_000_000);
 run!(gpgpu_1);
 run!(gpgpu_10);
 run!(gpgpu_100);
-run!(gpgpu_1000);
-run!(gpgpu_10000);
-run!(gpgpu_100000);
-run!(gpgpu_1000000);
-run!(gpgpu_10000000);
-run!(gpgpu_100000000);
+run!(gpgpu_1_000);
+run!(gpgpu_10_000);
+run!(gpgpu_100_000);
+run!(gpgpu_1_000_000);
+run!(gpgpu_10_000_000);
+run!(gpgpu_100_000_000);
