@@ -9,14 +9,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Autopublish Docs
-        uses: peter-evans/repository-dispatch@v1
+        uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.AUTOPUBLISH }}
           repository: alantech/alanlang-docs
           event-type: autopublish
           client-payload: '{}'
       - name: Autopublish Homepage
-        uses: peter-evans/repository-dispatch@v1
+        uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.AUTOPUBLISH }}
           repository: alantech/alanlang-homepage
