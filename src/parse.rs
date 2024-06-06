@@ -419,7 +419,25 @@ test!(integer =>
     pass "-0o3" => "o3", "-0";
     pass "-0xAAA" => "xAAA", "-0";
 );
-build!(real, and!(normalints, dot, natural));
+build!(
+    real,
+    or!(
+        and!(
+            normalints,
+            dot,
+            natural,
+            opt(and!(or!(token!("e"), token!("E")), natural))
+        ),
+        and!(normalints, or!(token!("e"), token!("E")), natural),
+    )
+);
+test!(real =>
+    pass "0.0";
+    pass "-1.3";
+    pass "-5.2e15";
+    pass "1.23E456";
+    pass "1e100";
+);
 // Validating named_or
 named_or!(num: Number => RealNum: String as real, IntNum: String as integer);
 impl Number {
