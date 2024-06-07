@@ -1,13 +1,10 @@
 use std::env::current_dir;
-use std::fs::{create_dir_all, read_to_string, remove_file, write};
+use std::fs::{create_dir_all, remove_file, write, File};
 use std::path::PathBuf;
-use std::process::{id, Command, Stdio};
-use std::thread::sleep;
-use std::time::Duration;
+use std::process::{Command, Stdio};
 
 use dirs::config_dir;
-use rand::Rng;
-use sysinfo::System;
+use fs2::FileExt;
 
 use crate::lntors::lntors;
 
@@ -40,7 +37,7 @@ pub fn compile(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
         a.push("alan");
         a
     };
-    let lockfile = {
+    let lockfile_path = {
         let mut l = alan_config.clone();
         l.push(".lockfile");
         l
@@ -69,70 +66,26 @@ wgpu = "0.19.3""#;
         c.push("Cargo.toml");
         c
     };
-    // Add some jitter before starting these checks to prevent collisions from parallel calls
-    let mut rng = rand::thread_rng();
-    sleep(Duration::from_millis(rng.gen_range(0..10)));
-    if alan_config.exists() {
-        sleep(Duration::from_millis(rng.gen_range(0..10)));
-        if lockfile.exists() {
-            let mut count = 0;
-            while lockfile.exists() && count < 300 {
-                // Check if the pid in the lockfile is still running
-                match read_to_string(lockfile.clone()) {
-                    Err(_) => {
-                        // Probably being deleted while we were trying to read, we'll check next time
-                        sleep(Duration::from_millis(rng.gen_range(900..1100)));
-                        count = count + 1;
-                    }
-                    Ok(pid) => {
-                        let pid = pid.parse::<u32>().unwrap();
-                        let sys = System::new_all();
-                        let mut found = false;
-                        for (p, _) in sys.processes() {
-                            if p.as_u32() == pid {
-                                found = true;
-                                break;
-                            }
-                        }
-                        if found {
-                            // The process is still running, let's wait
-                            sleep(Duration::from_millis(rng.gen_range(900..1100)));
-                            count = count + 1;
-                        } else {
-                            // The process exited without removing the lockfile, we're taking over
-                            remove_file(lockfile.clone())?;
-                            sleep(Duration::from_millis(rng.gen_range(900..1100)));
-                            return compile(source_file);
-                        }
-                    }
-                }
-            }
-            if count == 300 {
-                panic!(
-                    "Build initialization failed. Please retry with an active internet connection"
-                );
-            }
-            // If we got here, the lockfile shouldn't exist, so let's acquire it
-            write(lockfile.clone(), format!("{}", id()))?;
-        } else {
-            // We'll assume that this has been created correctly and no other process is running
-            write(lockfile.clone(), format!("{}", id()))?;
-        }
-    } else {
-        // First time initialization of the alan config directory
+    let first_time = !alan_config.exists() || !lockfile_path.exists();
+    if first_time {
         create_dir_all(alan_config.clone())?;
-        write(lockfile.clone(), format!("{}", id()))?;
+        write(lockfile_path.clone(), "Alan Lockfile".as_bytes())?;
+    }
+    let lockfile = File::open(lockfile_path.as_path())?;
+    lockfile.lock_exclusive()?;
+    if first_time {
+        // First time initialization of the alan config directory
         match create_dir_all(project_dir.clone()) {
             Ok(a) => Ok(a),
             Err(e) => {
-                remove_file(lockfile.clone())?;
+                lockfile.unlock()?;
                 Err(e)
             }
         }?;
         match write(cargo_path.clone(), cargo_str) {
             Ok(a) => Ok(a),
             Err(e) => {
-                remove_file(lockfile.clone())?;
+                lockfile.unlock()?;
                 Err(e)
             }
         }?;
@@ -144,7 +97,7 @@ wgpu = "0.19.3""#;
         match create_dir_all(src_path.clone()) {
             Ok(a) => Ok(a),
             Err(e) => {
-                remove_file(lockfile.clone())?;
+                lockfile.unlock()?;
                 Err(e)
             }
         }?;
@@ -157,14 +110,14 @@ wgpu = "0.19.3""#;
         match write(hello_path.clone(), hello_ln) {
             Ok(a) => Ok(a),
             Err(e) => {
-                remove_file(lockfile.clone())?;
+                lockfile.unlock()?;
                 Err(e)
             }
         }?;
         let rs_str = match lntors(hello_path.to_string_lossy().to_string()) {
             Ok(a) => Ok(a),
             Err(e) => {
-                remove_file(lockfile.clone())?;
+                lockfile.unlock()?;
                 Err(e)
             }
         }?;
@@ -176,14 +129,14 @@ wgpu = "0.19.3""#;
         match write(main_path, rs_str) {
             Ok(a) => Ok(a),
             Err(e) => {
-                remove_file(lockfile.clone())?;
+                lockfile.unlock()?;
                 Err(e)
             }
         }?;
         match remove_file(hello_path) {
             Ok(a) => Ok(a),
             Err(e) => {
-                remove_file(lockfile.clone())?;
+                lockfile.unlock()?;
                 Err(e)
             }
         }?;
@@ -197,7 +150,7 @@ wgpu = "0.19.3""#;
         {
             Ok(a) => Ok(a),
             Err(e) => {
-                remove_file(lockfile.clone())?;
+                lockfile.unlock()?;
                 Err(e)
             }
         }?;
@@ -207,7 +160,7 @@ wgpu = "0.19.3""#;
     match write(cargo_path, cargo_str) {
         Ok(a) => Ok(a),
         Err(e) => {
-            remove_file(lockfile.clone())?;
+            lockfile.unlock()?;
             Err(e)
         }
     }?;
@@ -223,7 +176,7 @@ wgpu = "0.19.3""#;
     {
         Ok(a) => Ok(a),
         Err(e) => {
-            remove_file(lockfile.clone())?;
+            lockfile.unlock()?;
             Err(e)
         }
     }?;
@@ -239,7 +192,7 @@ wgpu = "0.19.3""#;
     let rs_str = match lntors(source_file.clone()) {
         Ok(s) => Ok(s),
         Err(e) => {
-            remove_file(lockfile.clone())?;
+            lockfile.unlock()?;
             Err(e)
         }
     }?;
@@ -252,7 +205,7 @@ wgpu = "0.19.3""#;
     match write(rs_path, rs_str) {
         Ok(a) => Ok(a),
         Err(e) => {
-            remove_file(lockfile.clone())?;
+            lockfile.unlock()?;
             Err(e)
         }
     }?;
@@ -266,7 +219,7 @@ wgpu = "0.19.3""#;
     {
         Ok(a) => Ok(a),
         Err(e) => {
-            remove_file(lockfile.clone())?;
+            lockfile.unlock()?;
             Err(e)
         }
     }?;
@@ -281,7 +234,7 @@ wgpu = "0.19.3""#;
     {
         Ok(a) => Ok(a),
         Err(e) => {
-            remove_file(lockfile.clone())?;
+            lockfile.unlock()?;
             Err(e)
         }
     }?;
@@ -305,12 +258,12 @@ wgpu = "0.19.3""#;
     {
         Ok(a) => Ok(a),
         Err(e) => {
-            remove_file(lockfile.clone())?;
+            lockfile.unlock()?;
             Err(e)
         }
     }?;
     // Drop the lockfile
-    remove_file(lockfile)?;
+    lockfile.unlock()?;
     Ok(())
 }
 
