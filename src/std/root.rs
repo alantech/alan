@@ -30,9 +30,7 @@ impl From<&str> for AlanError {
 
 impl From<String> for AlanError {
     fn from(s: String) -> AlanError {
-        AlanError {
-            message: s,
-        }
+        AlanError { message: s }
     }
 }
 
@@ -117,8 +115,8 @@ fn addi8_result(a: &Result<i8, AlanError>, b: &Result<i8, AlanError>) -> Result<
             Ok(b) => match a.checked_add(*b) {
                 Some(c) => Ok(c),
                 None => Err("Overflow".into()),
-            }
-        }
+            },
+        },
     }
 }
 
@@ -141,8 +139,8 @@ fn subi8_result(a: &Result<i8, AlanError>, b: &Result<i8, AlanError>) -> Result<
             Ok(b) => match a.checked_sub(*b) {
                 Some(c) => Ok(c),
                 None => Err("Underflow".into()),
-            }
-        }
+            },
+        },
     }
 }
 
@@ -165,8 +163,8 @@ fn muli8_result(a: &Result<i8, AlanError>, b: &Result<i8, AlanError>) -> Result<
             Ok(b) => match a.checked_mul(*b) {
                 Some(c) => Ok(c),
                 None => Err("Underflow or Overflow".into()),
-            }
-        }
+            },
+        },
     }
 }
 
@@ -189,8 +187,8 @@ fn divi8_result(a: &Result<i8, AlanError>, b: &Result<i8, AlanError>) -> Result<
             Ok(b) => match a.checked_div(*b) {
                 Some(c) => Ok(c),
                 None => Err("Divide-by-zero".into()),
-            }
-        }
+            },
+        },
     }
 }
 
@@ -213,8 +211,8 @@ fn modi8_result(a: &Result<i8, AlanError>, b: &Result<i8, AlanError>) -> Result<
             Ok(b) => match a.checked_rem(*b) {
                 Some(c) => Ok(c),
                 None => Err("Divide-by-zero".into()),
-            }
-        }
+            },
+        },
     }
 }
 
@@ -239,15 +237,19 @@ fn powi8_result(a: &Result<i8, AlanError>, b: &Result<i8, AlanError>) -> Result<
             Ok(b) => match a.checked_pow(*b as u32) {
                 Some(c) => Ok(c),
                 None => Err("Underflow or Overflow".into()),
-            }
-        }
+            },
+        },
     }
 }
 
 /// `mini8` returns the smaller of the two i8 values
 #[inline(always)]
 fn mini8(a: &i8, b: &i8) -> i8 {
-    if a < b { *a } else { *b }
+    if a < b {
+        *a
+    } else {
+        *b
+    }
 }
 
 /// `mini8_result` returns the smaller of the two Result<i8, AlanError> values
@@ -257,15 +259,25 @@ fn mini8_result(a: &Result<i8, AlanError>, b: &Result<i8, AlanError>) -> Result<
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
             Err(e) => Err(e.clone()),
-            Ok(b) => if a < b { Ok(*a) } else { Ok(*b) }
-        }
+            Ok(b) => {
+                if a < b {
+                    Ok(*a)
+                } else {
+                    Ok(*b)
+                }
+            }
+        },
     }
 }
 
 /// `maxi8` returns the larger of the two i8 values
 #[inline(always)]
 fn maxi8(a: &i8, b: &i8) -> i8 {
-    if a > b { *a } else { *b }
+    if a > b {
+        *a
+    } else {
+        *b
+    }
 }
 
 /// `maxi8_result` returns the larger of the two Result<i8, AlanError> values
@@ -275,8 +287,14 @@ fn maxi8_result(a: &Result<i8, AlanError>, b: &Result<i8, AlanError>) -> Result<
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
             Err(e) => Err(e.clone()),
-            Ok(b) => if a > b { Ok(*a) } else { Ok(*b) }
-        }
+            Ok(b) => {
+                if a > b {
+                    Ok(*a)
+                } else {
+                    Ok(*b)
+                }
+            }
+        },
     }
 }
 
@@ -341,37 +359,37 @@ fn xnori8(a: &i8, b: &i8) -> i8 {
 /// `eqi8` compares two i8s and returns if they are equal
 #[inline(always)]
 fn eqi8(a: &i8, b: &i8) -> bool {
-  *a == *b
+    *a == *b
 }
 
 /// `neqi8` compares two i8s and returns if they are not equal
 #[inline(always)]
 fn neqi8(a: &i8, b: &i8) -> bool {
-  *a != *b
+    *a != *b
 }
 
 /// `lti8` compares two i8s and returns if the first is smaller than the second
 #[inline(always)]
 fn lti8(a: &i8, b: &i8) -> bool {
-  *a < *b
+    *a < *b
 }
 
 /// `ltei8` compares two i8s and returns if the first is smaller than or equal to the second
 #[inline(always)]
 fn ltei8(a: &i8, b: &i8) -> bool {
-  *a <= *b
+    *a <= *b
 }
 
 /// `gti8` compares two i8s and returns if the first is larger than the second
 #[inline(always)]
 fn gti8(a: &i8, b: &i8) -> bool {
-  *a > *b
+    *a > *b
 }
 
 /// `gtei8` compares two i8s and returns if the first is larger than or equal to the second
 #[inline(always)]
 fn gtei8(a: &i8, b: &i8) -> bool {
-  *a >= *b
+    *a >= *b
 }
 
 /// `stringtoi16` tries to convert a string into an i16
@@ -441,8 +459,8 @@ fn addi16_result(a: &Result<i16, AlanError>, b: &Result<i16, AlanError>) -> Resu
             Ok(b) => match a.checked_add(*b) {
                 Some(c) => Ok(c),
                 None => Err("Overflow".into()),
-            }
-        }
+            },
+        },
     }
 }
 
@@ -465,8 +483,8 @@ fn subi16_result(a: &Result<i16, AlanError>, b: &Result<i16, AlanError>) -> Resu
             Ok(b) => match a.checked_sub(*b) {
                 Some(c) => Ok(c),
                 None => Err("Underflow".into()),
-            }
-        }
+            },
+        },
     }
 }
 
@@ -489,8 +507,8 @@ fn muli16_result(a: &Result<i16, AlanError>, b: &Result<i16, AlanError>) -> Resu
             Ok(b) => match a.checked_mul(*b) {
                 Some(c) => Ok(c),
                 None => Err("Underflow or Overflow".into()),
-            }
-        }
+            },
+        },
     }
 }
 
@@ -513,8 +531,8 @@ fn divi16_result(a: &Result<i16, AlanError>, b: &Result<i16, AlanError>) -> Resu
             Ok(b) => match a.checked_div(*b) {
                 Some(c) => Ok(c),
                 None => Err("Divide-by-zero".into()),
-            }
-        }
+            },
+        },
     }
 }
 
@@ -537,8 +555,8 @@ fn modi16_result(a: &Result<i16, AlanError>, b: &Result<i16, AlanError>) -> Resu
             Ok(b) => match a.checked_rem(*b) {
                 Some(c) => Ok(c),
                 None => Err("Divide-by-zero".into()),
-            }
-        }
+            },
+        },
     }
 }
 
@@ -563,15 +581,19 @@ fn powi16_result(a: &Result<i16, AlanError>, b: &Result<i16, AlanError>) -> Resu
             Ok(b) => match a.checked_pow(*b as u32) {
                 Some(c) => Ok(c),
                 None => Err("Underflow or Overflow".into()),
-            }
-        }
+            },
+        },
     }
 }
 
 /// `mini16` returns the smaller of the two i16 values
 #[inline(always)]
 fn mini16(a: &i16, b: &i16) -> i16 {
-    if a < b { *a } else { *b }
+    if a < b {
+        *a
+    } else {
+        *b
+    }
 }
 
 /// `mini16_result` returns the smaller of the two Result<i16, AlanError> values
@@ -581,15 +603,25 @@ fn mini16_result(a: &Result<i16, AlanError>, b: &Result<i16, AlanError>) -> Resu
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
             Err(e) => Err(e.clone()),
-            Ok(b) => if a < b { Ok(*a) } else { Ok(*b) }
-        }
+            Ok(b) => {
+                if a < b {
+                    Ok(*a)
+                } else {
+                    Ok(*b)
+                }
+            }
+        },
     }
 }
 
 /// `maxi16` returns the larger of the two i16 values
 #[inline(always)]
 fn maxi16(a: &i16, b: &i16) -> i16 {
-    if a > b { *a } else { *b }
+    if a > b {
+        *a
+    } else {
+        *b
+    }
 }
 
 /// `maxi16_result` returns the larger of the two Result<i16, AlanError> values
@@ -599,8 +631,14 @@ fn maxi16_result(a: &Result<i16, AlanError>, b: &Result<i16, AlanError>) -> Resu
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
             Err(e) => Err(e.clone()),
-            Ok(b) => if a > b { Ok(*a) } else { Ok(*b) }
-        }
+            Ok(b) => {
+                if a > b {
+                    Ok(*a)
+                } else {
+                    Ok(*b)
+                }
+            }
+        },
     }
 }
 
@@ -665,37 +703,37 @@ fn xnori16(a: &i16, b: &i16) -> i16 {
 /// `eqi16` compares two i16s and returns if they are equal
 #[inline(always)]
 fn eqi16(a: &i16, b: &i16) -> bool {
- *a == *b
+    *a == *b
 }
 
 /// `neqi16` compares two i16s and returns if they are not equal
 #[inline(always)]
 fn neqi16(a: &i16, b: &i16) -> bool {
- *a != *b
+    *a != *b
 }
 
 /// `lti16` compares two i16s and returns if the first is smaller than the second
 #[inline(always)]
 fn lti16(a: &i16, b: &i16) -> bool {
-  *a < *b
+    *a < *b
 }
 
 /// `ltei16` compares two i16s and returns if the first is smaller than or equal to the second
 #[inline(always)]
 fn ltei16(a: &i16, b: &i16) -> bool {
-  *a <= *b
+    *a <= *b
 }
 
 /// `gti16` compares two i16s and returns if the first is larger than the second
 #[inline(always)]
 fn gti16(a: &i16, b: &i16) -> bool {
-  *a > *b
+    *a > *b
 }
 
 /// `gtei16` compares two i16s and returns if the first is larger than or equal to the second
 #[inline(always)]
 fn gtei16(a: &i16, b: &i16) -> bool {
-  *a >= *b
+    *a >= *b
 }
 
 /// `get_or_i32` unwraps a Result<i32, AlanError> with the default value if it is an error
@@ -765,8 +803,8 @@ fn addi32_result(a: &Result<i32, AlanError>, b: &Result<i32, AlanError>) -> Resu
             Ok(b) => match a.checked_add(*b) {
                 Some(c) => Ok(c),
                 None => Err("Overflow".into()),
-            }
-        }
+            },
+        },
     }
 }
 
@@ -789,8 +827,8 @@ fn subi32_result(a: &Result<i32, AlanError>, b: &Result<i32, AlanError>) -> Resu
             Ok(b) => match a.checked_sub(*b) {
                 Some(c) => Ok(c),
                 None => Err("Underflow".into()),
-            }
-        }
+            },
+        },
     }
 }
 
@@ -813,8 +851,8 @@ fn muli32_result(a: &Result<i32, AlanError>, b: &Result<i32, AlanError>) -> Resu
             Ok(b) => match a.checked_mul(*b) {
                 Some(c) => Ok(c),
                 None => Err("Underflow or Overflow".into()),
-            }
-        }
+            },
+        },
     }
 }
 
@@ -837,8 +875,8 @@ fn divi32_result(a: &Result<i32, AlanError>, b: &Result<i32, AlanError>) -> Resu
             Ok(b) => match a.checked_div(*b) {
                 Some(c) => Ok(c),
                 None => Err("Divide-by-zero".into()),
-            }
-        }
+            },
+        },
     }
 }
 
@@ -861,8 +899,8 @@ fn modi32_result(a: &Result<i32, AlanError>, b: &Result<i32, AlanError>) -> Resu
             Ok(b) => match a.checked_rem(*b) {
                 Some(c) => Ok(c),
                 None => Err("Divide-by-zero".into()),
-            }
-        }
+            },
+        },
     }
 }
 
@@ -887,15 +925,19 @@ fn powi32_result(a: &Result<i32, AlanError>, b: &Result<i32, AlanError>) -> Resu
             Ok(b) => match a.checked_pow(*b as u32) {
                 Some(c) => Ok(c),
                 None => Err("Underflow or Overflow".into()),
-            }
-        }
+            },
+        },
     }
 }
 
 /// `mini32` returns the smaller of the two i32 values
 #[inline(always)]
 fn mini32(a: &i32, b: &i32) -> i32 {
-    if a < b { *a } else { *b }
+    if a < b {
+        *a
+    } else {
+        *b
+    }
 }
 
 /// `mini32_result` returns the smaller of the two Result<i32, AlanError> values
@@ -905,15 +947,25 @@ fn mini32_result(a: &Result<i32, AlanError>, b: &Result<i32, AlanError>) -> Resu
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
             Err(e) => Err(e.clone()),
-            Ok(b) => if a < b { Ok(*a) } else { Ok(*b) }
-        }
+            Ok(b) => {
+                if a < b {
+                    Ok(*a)
+                } else {
+                    Ok(*b)
+                }
+            }
+        },
     }
 }
 
 /// `maxi32` returns the larger of the two i32 values
 #[inline(always)]
 fn maxi32(a: &i32, b: &i32) -> i32 {
-    if a > b { *a } else { *b }
+    if a > b {
+        *a
+    } else {
+        *b
+    }
 }
 
 /// `maxi32_result` returns the larger of the two Result<i32, AlanError> values
@@ -923,8 +975,14 @@ fn maxi32_result(a: &Result<i32, AlanError>, b: &Result<i32, AlanError>) -> Resu
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
             Err(e) => Err(e.clone()),
-            Ok(b) => if a > b { Ok(*a) } else { Ok(*b) }
-        }
+            Ok(b) => {
+                if a > b {
+                    Ok(*a)
+                } else {
+                    Ok(*b)
+                }
+            }
+        },
     }
 }
 
@@ -989,37 +1047,37 @@ fn xnori32(a: &i32, b: &i32) -> i32 {
 /// `eqi32` compares two i32s and returns if they are equal
 #[inline(always)]
 fn eqi32(a: &i32, b: &i32) -> bool {
-  *a == *b
+    *a == *b
 }
 
 /// `neqi32` compares two i32s and returns if they are not equal
 #[inline(always)]
 fn neqi32(a: &i32, b: &i32) -> bool {
-  *a != *b
+    *a != *b
 }
 
 /// `lti32` compares two i32s and returns if the first is smaller than the second
 #[inline(always)]
 fn lti32(a: &i32, b: &i32) -> bool {
-  *a < *b
+    *a < *b
 }
 
 /// `ltei32` compares two i32s and returns if the first is smaller than or equal to the second
 #[inline(always)]
 fn ltei32(a: &i32, b: &i32) -> bool {
-  *a <= *b
+    *a <= *b
 }
 
 /// `gti32` compares two i32s and returns if the first is larger than the second
 #[inline(always)]
 fn gti32(a: &i32, b: &i32) -> bool {
-  *a > *b
+    *a > *b
 }
 
 /// `gtei32` compares two i32s and returns if the first is larger than or equal to the second
 #[inline(always)]
 fn gtei32(a: &i32, b: &i32) -> bool {
-  *a >= *b
+    *a >= *b
 }
 
 /// `stringtoi64` tries to convert a string into an i64
@@ -1089,8 +1147,8 @@ fn addi64_result(a: &Result<i64, AlanError>, b: &Result<i64, AlanError>) -> Resu
             Ok(b) => match a.checked_add(*b) {
                 Some(c) => Ok(c),
                 None => Err("Overflow".into()),
-            }
-        }
+            },
+        },
     }
 }
 
@@ -1113,8 +1171,8 @@ fn subi64_result(a: &Result<i64, AlanError>, b: &Result<i64, AlanError>) -> Resu
             Ok(b) => match a.checked_sub(*b) {
                 Some(c) => Ok(c),
                 None => Err("Underflow".into()),
-            }
-        }
+            },
+        },
     }
 }
 
@@ -1137,8 +1195,8 @@ fn muli64_result(a: &Result<i64, AlanError>, b: &Result<i64, AlanError>) -> Resu
             Ok(b) => match a.checked_mul(*b) {
                 Some(c) => Ok(c),
                 None => Err("Underflow or Overflow".into()),
-            }
-        }
+            },
+        },
     }
 }
 
@@ -1161,8 +1219,8 @@ fn divi64_result(a: &Result<i64, AlanError>, b: &Result<i64, AlanError>) -> Resu
             Ok(b) => match a.checked_div(*b) {
                 Some(c) => Ok(c),
                 None => Err("Divide-by-zero".into()),
-            }
-        }
+            },
+        },
     }
 }
 
@@ -1185,8 +1243,8 @@ fn modi64_result(a: &Result<i64, AlanError>, b: &Result<i64, AlanError>) -> Resu
             Ok(b) => match a.checked_rem(*b) {
                 Some(c) => Ok(c),
                 None => Err("Divide-by-zero".into()),
-            }
-        }
+            },
+        },
     }
 }
 
@@ -1211,15 +1269,19 @@ fn powi64_result(a: &Result<i64, AlanError>, b: &Result<i64, AlanError>) -> Resu
             Ok(b) => match a.checked_pow(*b as u32) {
                 Some(c) => Ok(c),
                 None => Err("Underflow or Overflow".into()),
-            }
-        }
+            },
+        },
     }
 }
 
 /// `mini64` returns the smaller of the two i64 values
 #[inline(always)]
 fn mini64(a: &i64, b: &i64) -> i64 {
-    if a < b { *a } else { *b }
+    if a < b {
+        *a
+    } else {
+        *b
+    }
 }
 
 /// `mini64_result` returns the smaller of the two Result<i64, AlanError> values
@@ -1229,15 +1291,25 @@ fn mini64_result(a: &Result<i64, AlanError>, b: &Result<i64, AlanError>) -> Resu
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
             Err(e) => Err(e.clone()),
-            Ok(b) => if a < b { Ok(*a) } else { Ok(*b) }
-        }
+            Ok(b) => {
+                if a < b {
+                    Ok(*a)
+                } else {
+                    Ok(*b)
+                }
+            }
+        },
     }
 }
 
 /// `maxi64` returns the larger of the two i64 values
 #[inline(always)]
 fn maxi64(a: &i64, b: &i64) -> i64 {
-    if a > b { *a } else { *b }
+    if a > b {
+        *a
+    } else {
+        *b
+    }
 }
 
 /// `maxi64_result` returns the larger of the two Result<i64, AlanError> values
@@ -1247,8 +1319,14 @@ fn maxi64_result(a: &Result<i64, AlanError>, b: &Result<i64, AlanError>) -> Resu
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
             Err(e) => Err(e.clone()),
-            Ok(b) => if a > b { Ok(*a) } else { Ok(*b) }
-        }
+            Ok(b) => {
+                if a > b {
+                    Ok(*a)
+                } else {
+                    Ok(*b)
+                }
+            }
+        },
     }
 }
 
@@ -1313,37 +1391,37 @@ fn xnori64(a: &i64, b: &i64) -> i64 {
 /// `eqi64` compares two i64s and returns if they are equal
 #[inline(always)]
 fn eqi64(a: &i64, b: &i64) -> bool {
-  *a == *b
+    *a == *b
 }
 
 /// `neqi64` compares two i64s and returns if they are not equal
 #[inline(always)]
 fn neqi64(a: &i64, b: &i64) -> bool {
-  *a != *b
+    *a != *b
 }
 
 /// `lti64` compares two i64s and returns if the first is smaller than the second
 #[inline(always)]
 fn lti64(a: &i64, b: &i64) -> bool {
-  *a < *b
+    *a < *b
 }
 
 /// `ltei64` compares two i64s and returns if the first is smaller than or equal to the second
 #[inline(always)]
 fn ltei64(a: &i64, b: &i64) -> bool {
-  *a <= *b
+    *a <= *b
 }
 
 /// `gti64` compares two i64s and returns if the first is larger than the second
 #[inline(always)]
 fn gti64(a: &i64, b: &i64) -> bool {
-  *a > *b
+    *a > *b
 }
 
 /// `gtei64` compares two i64s and returns if the first is larger than or equal to the second
 #[inline(always)]
 fn gtei64(a: &i64, b: &i64) -> bool {
-  *a >= *b
+    *a >= *b
 }
 
 /// `get_or_f32` unwraps a Result<f32, AlanError> with the default value if it is an error
@@ -1400,10 +1478,12 @@ fn addf32(a: &f32, b: &f32) -> Result<f32, AlanError> {
     match a + b {
         f32::MAX => Err("Overflow".into()),
         f32::MIN => Err("Underflow".into()),
-        o => if o.is_nan() {
-          Err("Not a Number".into())
-        } else {
-          Ok(o)
+        o => {
+            if o.is_nan() {
+                Err("Not a Number".into())
+            } else {
+                Ok(o)
+            }
         }
     }
 }
@@ -1418,13 +1498,15 @@ fn addf32_result(a: &Result<f32, AlanError>, b: &Result<f32, AlanError>) -> Resu
             Ok(b) => match a + b {
                 f32::MAX => Err("Overflow".into()),
                 f32::MIN => Err("Underflow".into()),
-                o => if o.is_nan() {
-                  Err("Not a Number".into())
-                } else {
-                  Ok(o)
+                o => {
+                    if o.is_nan() {
+                        Err("Not a Number".into())
+                    } else {
+                        Ok(o)
+                    }
                 }
-            }
-        }
+            },
+        },
     }
 }
 
@@ -1434,10 +1516,12 @@ fn subf32(a: &f32, b: &f32) -> Result<f32, AlanError> {
     match a - b {
         f32::MAX => Err("Overflow".into()),
         f32::MIN => Err("Underflow".into()),
-        o => if o.is_nan() {
-          Err("Not a Number".into())
-        } else {
-          Ok(o)
+        o => {
+            if o.is_nan() {
+                Err("Not a Number".into())
+            } else {
+                Ok(o)
+            }
         }
     }
 }
@@ -1452,13 +1536,15 @@ fn subf32_result(a: &Result<f32, AlanError>, b: &Result<f32, AlanError>) -> Resu
             Ok(b) => match a - b {
                 f32::MAX => Err("Overflow".into()),
                 f32::MIN => Err("Underflow".into()),
-                o => if o.is_nan() {
-                  Err("Not a Number".into())
-                } else {
-                  Ok(o)
+                o => {
+                    if o.is_nan() {
+                        Err("Not a Number".into())
+                    } else {
+                        Ok(o)
+                    }
                 }
-            }
-        }
+            },
+        },
     }
 }
 
@@ -1468,10 +1554,12 @@ fn mulf32(a: &f32, b: &f32) -> Result<f32, AlanError> {
     match a * b {
         f32::MAX => Err("Overflow".into()),
         f32::MIN => Err("Underflow".into()),
-        o => if o.is_nan() {
-          Err("Not a Number".into())
-        } else {
-          Ok(o)
+        o => {
+            if o.is_nan() {
+                Err("Not a Number".into())
+            } else {
+                Ok(o)
+            }
         }
     }
 }
@@ -1486,13 +1574,15 @@ fn mulf32_result(a: &Result<f32, AlanError>, b: &Result<f32, AlanError>) -> Resu
             Ok(b) => match a * b {
                 f32::MAX => Err("Overflow".into()),
                 f32::MIN => Err("Underflow".into()),
-                o => if o.is_nan() {
-                  Err("Not a Number".into())
-                } else {
-                  Ok(o)
+                o => {
+                    if o.is_nan() {
+                        Err("Not a Number".into())
+                    } else {
+                        Ok(o)
+                    }
                 }
-            }
-        }
+            },
+        },
     }
 }
 
@@ -1502,10 +1592,12 @@ fn divf32(a: &f32, b: &f32) -> Result<f32, AlanError> {
     match a / b {
         f32::MAX => Err("Overflow".into()),
         f32::MIN => Err("Underflow".into()),
-        o => if o.is_nan() {
-          Err("Not a Number".into())
-        } else {
-          Ok(o)
+        o => {
+            if o.is_nan() {
+                Err("Not a Number".into())
+            } else {
+                Ok(o)
+            }
         }
     }
 }
@@ -1520,13 +1612,15 @@ fn divf32_result(a: &Result<f32, AlanError>, b: &Result<f32, AlanError>) -> Resu
             Ok(b) => match a / b {
                 f32::MAX => Err("Overflow".into()),
                 f32::MIN => Err("Underflow".into()),
-                o => if o.is_nan() {
-                  Err("Not a Number".into())
-                } else {
-                  Ok(o)
+                o => {
+                    if o.is_nan() {
+                        Err("Not a Number".into())
+                    } else {
+                        Ok(o)
+                    }
                 }
-            }
-        }
+            },
+        },
     }
 }
 
@@ -1540,8 +1634,8 @@ fn sqrtf32(f: &f32) -> f32 {
 #[inline(always)]
 fn sqrtf32_result(f: &Result<f32, AlanError>) -> Result<f32, AlanError> {
     match f {
-      Err(e) => Err(e.clone()),
-      Ok(v) => Ok(v.sqrt()),
+        Err(e) => Err(e.clone()),
+        Ok(v) => Ok(v.sqrt()),
     }
 }
 
@@ -1551,10 +1645,12 @@ fn powf32(a: &f32, b: &f32) -> Result<f32, AlanError> {
     match a.powf(*b) {
         f32::MAX => Err("Overflow".into()),
         f32::MIN => Err("Underflow".into()),
-        o => if o.is_nan() {
-          Err("Not a Number".into())
-        } else {
-          Ok(o)
+        o => {
+            if o.is_nan() {
+                Err("Not a Number".into())
+            } else {
+                Ok(o)
+            }
         }
     }
 }
@@ -1569,20 +1665,26 @@ fn powf32_result(a: &Result<f32, AlanError>, b: &Result<f32, AlanError>) -> Resu
             Ok(b) => match a.powf(*b) {
                 f32::MAX => Err("Overflow".into()),
                 f32::MIN => Err("Underflow".into()),
-                o => if o.is_nan() {
-                  Err("Not a Number".into())
-                } else {
-                  Ok(o)
+                o => {
+                    if o.is_nan() {
+                        Err("Not a Number".into())
+                    } else {
+                        Ok(o)
+                    }
                 }
-            }
-        }
+            },
+        },
     }
 }
 
 /// `minf32` returns the smaller of the two f32 values
 #[inline(always)]
 fn minf32(a: &f32, b: &f32) -> f32 {
-    if a < b { *a } else { *b }
+    if a < b {
+        *a
+    } else {
+        *b
+    }
 }
 
 /// `minf32_result` returns the smaller of the two Result<f32, AlanError> values
@@ -1592,15 +1694,25 @@ fn minf32_result(a: &Result<f32, AlanError>, b: &Result<f32, AlanError>) -> Resu
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
             Err(e) => Err(e.clone()),
-            Ok(b) => if a < b { Ok(*a) } else { Ok(*b) }
-        }
+            Ok(b) => {
+                if a < b {
+                    Ok(*a)
+                } else {
+                    Ok(*b)
+                }
+            }
+        },
     }
 }
 
 /// `maxf32` returns the larger of the two f32 values
 #[inline(always)]
 fn maxf32(a: &f32, b: &f32) -> f32 {
-    if a > b { *a } else { *b }
+    if a > b {
+        *a
+    } else {
+        *b
+    }
 }
 
 /// `maxf32_result` returns the larger of the two Result<f32, AlanError> values
@@ -1610,8 +1722,14 @@ fn maxf32_result(a: &Result<f32, AlanError>, b: &Result<f32, AlanError>) -> Resu
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
             Err(e) => Err(e.clone()),
-            Ok(b) => if a > b { Ok(*a) } else { Ok(*b) }
-        }
+            Ok(b) => {
+                if a > b {
+                    Ok(*a)
+                } else {
+                    Ok(*b)
+                }
+            }
+        },
     }
 }
 
@@ -1633,37 +1751,37 @@ fn negf32_result(a: &Result<f32, AlanError>) -> Result<f32, AlanError> {
 /// `eqf32` compares two f32s and returns if they are equal
 #[inline(always)]
 fn eqf32(a: &f32, b: &f32) -> bool {
-  *a == *b
+    *a == *b
 }
 
 /// `neqf32` compares two f32s and returns if they are not equal
 #[inline(always)]
 fn neqf32(a: &f32, b: &f32) -> bool {
-  *a != *b
+    *a != *b
 }
 
 /// `ltf32` compares two f32s and returns if the first is smaller than the second
 #[inline(always)]
 fn ltf32(a: &f32, b: &f32) -> bool {
-  *a < *b
+    *a < *b
 }
 
 /// `ltef32` compares two f32s and returns if the first is smaller than or equal to the second
 #[inline(always)]
 fn ltef32(a: &f32, b: &f32) -> bool {
-  *a <= *b
+    *a <= *b
 }
 
 /// `gtf32` compares two f32s and returns if the first is larger than the second
 #[inline(always)]
 fn gtf32(a: &f32, b: &f32) -> bool {
-  *a > *b
+    *a > *b
 }
 
 /// `gtef32` compares two f32s and returns if the first is larger than or equal to the second
 #[inline(always)]
 fn gtef32(a: &f32, b: &f32) -> bool {
-  *a >= *b
+    *a >= *b
 }
 
 /// `stringtof64` tries to convert a string into an f64
@@ -1720,10 +1838,12 @@ fn addf64(a: &f64, b: &f64) -> Result<f64, AlanError> {
     match a + b {
         f64::MAX => Err("Overflow".into()),
         f64::MIN => Err("Underflow".into()),
-        o => if o.is_nan() {
-          Err("Not a Number".into())
-        } else {
-          Ok(o)
+        o => {
+            if o.is_nan() {
+                Err("Not a Number".into())
+            } else {
+                Ok(o)
+            }
         }
     }
 }
@@ -1738,13 +1858,15 @@ fn addf64_result(a: &Result<f64, AlanError>, b: &Result<f64, AlanError>) -> Resu
             Ok(b) => match a + b {
                 f64::MAX => Err("Overflow".into()),
                 f64::MIN => Err("Underflow".into()),
-                o => if o.is_nan() {
-                  Err("Not a Number".into())
-                } else {
-                  Ok(o)
+                o => {
+                    if o.is_nan() {
+                        Err("Not a Number".into())
+                    } else {
+                        Ok(o)
+                    }
                 }
-            }
-        }
+            },
+        },
     }
 }
 
@@ -1754,10 +1876,12 @@ fn subf64(a: &f64, b: &f64) -> Result<f64, AlanError> {
     match a - b {
         f64::MAX => Err("Overflow".into()),
         f64::MIN => Err("Underflow".into()),
-        o => if o.is_nan() {
-          Err("Not a Number".into())
-        } else {
-          Ok(o)
+        o => {
+            if o.is_nan() {
+                Err("Not a Number".into())
+            } else {
+                Ok(o)
+            }
         }
     }
 }
@@ -1772,13 +1896,15 @@ fn subf64_result(a: &Result<f64, AlanError>, b: &Result<f64, AlanError>) -> Resu
             Ok(b) => match a - b {
                 f64::MAX => Err("Overflow".into()),
                 f64::MIN => Err("Underflow".into()),
-                o => if o.is_nan() {
-                  Err("Not a Number".into())
-                } else {
-                  Ok(o)
+                o => {
+                    if o.is_nan() {
+                        Err("Not a Number".into())
+                    } else {
+                        Ok(o)
+                    }
                 }
-            }
-        }
+            },
+        },
     }
 }
 
@@ -1788,10 +1914,12 @@ fn mulf64(a: &f64, b: &f64) -> Result<f64, AlanError> {
     match a * b {
         f64::MAX => Err("Overflow".into()),
         f64::MIN => Err("Underflow".into()),
-        o => if o.is_nan() {
-          Err("Not a Number".into())
-        } else {
-          Ok(o)
+        o => {
+            if o.is_nan() {
+                Err("Not a Number".into())
+            } else {
+                Ok(o)
+            }
         }
     }
 }
@@ -1806,13 +1934,15 @@ fn mulf64_result(a: &Result<f64, AlanError>, b: &Result<f64, AlanError>) -> Resu
             Ok(b) => match a * b {
                 f64::MAX => Err("Overflow".into()),
                 f64::MIN => Err("Underflow".into()),
-                o => if o.is_nan() {
-                  Err("Not a Number".into())
-                } else {
-                  Ok(o)
+                o => {
+                    if o.is_nan() {
+                        Err("Not a Number".into())
+                    } else {
+                        Ok(o)
+                    }
                 }
-            }
-        }
+            },
+        },
     }
 }
 
@@ -1822,10 +1952,12 @@ fn divf64(a: &f64, b: &f64) -> Result<f64, AlanError> {
     match a / b {
         f64::MAX => Err("Overflow".into()),
         f64::MIN => Err("Underflow".into()),
-        o => if o.is_nan() {
-          Err("Not a Number".into())
-        } else {
-          Ok(o)
+        o => {
+            if o.is_nan() {
+                Err("Not a Number".into())
+            } else {
+                Ok(o)
+            }
         }
     }
 }
@@ -1840,13 +1972,15 @@ fn divf64_result(a: &Result<f64, AlanError>, b: &Result<f64, AlanError>) -> Resu
             Ok(b) => match a / b {
                 f64::MAX => Err("Overflow".into()),
                 f64::MIN => Err("Underflow".into()),
-                o => if o.is_nan() {
-                  Err("Not a Number".into())
-                } else {
-                  Ok(o)
+                o => {
+                    if o.is_nan() {
+                        Err("Not a Number".into())
+                    } else {
+                        Ok(o)
+                    }
                 }
-            }
-        }
+            },
+        },
     }
 }
 
@@ -1860,8 +1994,8 @@ fn sqrtf64(f: &f64) -> f64 {
 #[inline(always)]
 fn sqrtf64_result(f: &Result<f64, AlanError>) -> Result<f64, AlanError> {
     match f {
-      Err(e) => Err(e.clone()),
-      Ok(v) => Ok(v.sqrt()),
+        Err(e) => Err(e.clone()),
+        Ok(v) => Ok(v.sqrt()),
     }
 }
 
@@ -1871,10 +2005,12 @@ fn powf64(a: &f64, b: &f64) -> Result<f64, AlanError> {
     match a.powf(*b) {
         f64::MAX => Err("Overflow".into()),
         f64::MIN => Err("Underflow".into()),
-        o => if o.is_nan() {
-          Err("Not a Number".into())
-        } else {
-          Ok(o)
+        o => {
+            if o.is_nan() {
+                Err("Not a Number".into())
+            } else {
+                Ok(o)
+            }
         }
     }
 }
@@ -1889,20 +2025,26 @@ fn powf64_result(a: &Result<f64, AlanError>, b: &Result<f64, AlanError>) -> Resu
             Ok(b) => match a.powf(*b) {
                 f64::MAX => Err("Overflow".into()),
                 f64::MIN => Err("Underflow".into()),
-                o => if o.is_nan() {
-                  Err("Not a Number".into())
-                } else {
-                  Ok(o)
+                o => {
+                    if o.is_nan() {
+                        Err("Not a Number".into())
+                    } else {
+                        Ok(o)
+                    }
                 }
-            }
-        }
+            },
+        },
     }
 }
 
 /// `minf64` returns the smaller of the two f64 values
 #[inline(always)]
 fn minf64(a: &f64, b: &f64) -> f64 {
-    if a < b { *a } else { *b }
+    if a < b {
+        *a
+    } else {
+        *b
+    }
 }
 
 /// `minf64_result` returns the smaller of the two Result<f64, AlanError> values
@@ -1912,15 +2054,25 @@ fn minf64_result(a: &Result<f64, AlanError>, b: &Result<f64, AlanError>) -> Resu
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
             Err(e) => Err(e.clone()),
-            Ok(b) => if a < b { Ok(*a) } else { Ok(*b) }
-        }
+            Ok(b) => {
+                if a < b {
+                    Ok(*a)
+                } else {
+                    Ok(*b)
+                }
+            }
+        },
     }
 }
 
 /// `maxf64` returns the larger of the two f64 values
 #[inline(always)]
 fn maxf64(a: &f64, b: &f64) -> f64 {
-    if a > b { *a } else { *b }
+    if a > b {
+        *a
+    } else {
+        *b
+    }
 }
 
 /// `maxf64_result` returns the larger of the two Result<f64, AlanError> values
@@ -1930,8 +2082,14 @@ fn maxf64_result(a: &Result<f64, AlanError>, b: &Result<f64, AlanError>) -> Resu
         Err(e) => Err(e.clone()),
         Ok(a) => match b {
             Err(e) => Err(e.clone()),
-            Ok(b) => if a > b { Ok(*a) } else { Ok(*b) }
-        }
+            Ok(b) => {
+                if a > b {
+                    Ok(*a)
+                } else {
+                    Ok(*b)
+                }
+            }
+        },
     }
 }
 
@@ -1953,37 +2111,37 @@ fn negf64_result(a: &Result<f64, AlanError>) -> Result<f64, AlanError> {
 /// `eqf64` compares two f64s and returns if they are equal
 #[inline(always)]
 fn eqf64(a: &f64, b: &f64) -> bool {
-  *a == *b
+    *a == *b
 }
 
 /// `neqf64` compares two f64s and returns if they are not equal
 #[inline(always)]
 fn neqf64(a: &f64, b: &f64) -> bool {
-  *a != *b
+    *a != *b
 }
 
 /// `ltf64` compares two f64s and returns if the first is smaller than the second
 #[inline(always)]
 fn ltf64(a: &f64, b: &f64) -> bool {
-  *a < *b
+    *a < *b
 }
 
 /// `ltef64` compares two f64s and returns if the first is smaller than or equal to the second
 #[inline(always)]
 fn ltef64(a: &f64, b: &f64) -> bool {
-  *a <= *b
+    *a <= *b
 }
 
 /// `gtf64` compares two f64s and returns if the first is larger than the second
 #[inline(always)]
 fn gtf64(a: &f64, b: &f64) -> bool {
-  *a > *b
+    *a > *b
 }
 
 /// `gtef64` compares two f64s and returns if the first is larger than or equal to the second
 #[inline(always)]
 fn gtef64(a: &f64, b: &f64) -> bool {
-  *a >= *b
+    *a >= *b
 }
 
 /// `get_or_exit` is basically an alias to `unwrap`, but as a function instead of a method
@@ -2112,37 +2270,37 @@ fn maxstring(a: &String, b: &String) -> String {
 /// `eqstring` compares two string and returns if they are equal
 #[inline(always)]
 fn eqstring(a: &String, b: &String) -> bool {
-  *a == *b
+    *a == *b
 }
 
 /// `neqstring` compares two string and returns if they are not equal
 #[inline(always)]
 fn neqstring(a: &String, b: &String) -> bool {
-  *a != *b
+    *a != *b
 }
 
 /// `ltstring` compares two strings and returns if the first is smaller than the second
 #[inline(always)]
 fn ltstring(a: &String, b: &String) -> bool {
-  *a < *b
+    *a < *b
 }
 
 /// `ltestring` compares two strings and returns if the first is smaller than or equal to the second
 #[inline(always)]
 fn ltestring(a: &String, b: &String) -> bool {
-  *a <= *b
+    *a <= *b
 }
 
 /// `gtstring` compares two strings and returns if the first is larger than the second
 #[inline(always)]
 fn gtstring(a: &String, b: &String) -> bool {
-  *a > *b
+    *a > *b
 }
 
 /// `gtestring` compares two strings and returns if the first is larger than or equal to the second
 #[inline(always)]
 fn gtestring(a: &String, b: &String) -> bool {
-  *a >= *b
+    *a >= *b
 }
 
 /// `i8tobool` converts an integer into a boolean
@@ -2233,13 +2391,13 @@ fn xnorbool(a: &bool, b: &bool) -> bool {
 /// `eqbool` compares two bools and returns if they are equal
 #[inline(always)]
 fn eqbool(a: &bool, b: &bool) -> bool {
-  *a == *b
+    *a == *b
 }
 
 /// `neqbool` compares two bools and returns if they are not equal
 #[inline(always)]
 fn neqbool(a: &bool, b: &bool) -> bool {
-  *a != *b
+    *a != *b
 }
 
 /// `getarray` returns a value from an array at the location specified
@@ -2279,8 +2437,8 @@ fn println<A: std::fmt::Display>(a: &A) {
 #[inline(always)]
 fn println_result<A: std::fmt::Display>(a: &Result<A, AlanError>) {
     match a {
-      Ok(o) => println!("{}", o),
-      Err(e) => println!("{:?}", e),
+        Ok(o) => println!("{}", o),
+        Err(e) => println!("{:?}", e),
     };
 }
 
@@ -2332,16 +2490,28 @@ fn filled<V: std::clone::Clone>(i: &V, l: &i64) -> Vec<V> {
 /// `print_vec` pretty prints a vector assuming the input type can be displayed
 #[inline(always)]
 fn print_vec<A: std::fmt::Display>(vs: &Vec<A>) {
-    println!("[{}]", vs.iter().map(|v| format!("{}", v)).collect::<Vec<String>>().join(", "));
+    println!(
+        "[{}]",
+        vs.iter()
+            .map(|v| format!("{}", v))
+            .collect::<Vec<String>>()
+            .join(", ")
+    );
 }
 
 /// `print_vec_result` pretty prints a vector of result values assuming the input can be displayed
 #[inline(always)]
 fn print_vec_result<A: std::fmt::Display>(vs: &Vec<Result<A, AlanError>>) {
-    println!("[{}]", vs.iter().map(|v| match v {
-        Err(e) => format!("{:?}", e),
-        Ok(a) => format!("{}", a)
-    }).collect::<Vec<String>>().join(", "));
+    println!(
+        "[{}]",
+        vs.iter()
+            .map(|v| match v {
+                Err(e) => format!("{:?}", e),
+                Ok(a) => format!("{}", a),
+            })
+            .collect::<Vec<String>>()
+            .join(", ")
+    );
 }
 
 /// `vec_len` returns the length of a vector
@@ -2361,19 +2531,31 @@ fn map_onearg<A, B>(v: &Vec<A>, m: fn(&A) -> B) -> Vec<B> {
 /// vector, returning a new vector
 #[inline(always)]
 fn map_twoarg<A, B>(v: &Vec<A>, m: fn(&A, usize) -> B) -> Vec<B> {
-    v.iter().enumerate().map(|(i, val)| m(val, i)).collect::<Vec<B>>()
+    v.iter()
+        .enumerate()
+        .map(|(i, val)| m(val, i))
+        .collect::<Vec<B>>()
 }
 
 /// `map_threearg` runs the provided three-argument (value, index, vec_ref) function on each
 /// element of the vector, returning a new vector
 #[inline(always)]
 fn map_threearg<A, B>(v: &Vec<A>, m: fn(&A, usize, &Vec<A>) -> B) -> Vec<B> {
-    v.iter().enumerate().map(|(i, val)| m(val, i, &v)).collect::<Vec<B>>()
+    v.iter()
+        .enumerate()
+        .map(|(i, val)| m(val, i, &v))
+        .collect::<Vec<B>>()
 }
 
 /// `parmap_onearg` runs the provided single-argument function on each element of the vector, with
 /// a different subset of the vector run in parallel across all threads.
-fn parmap_onearg<A: std::marker::Sync + 'static, B: std::marker::Send + std::clone::Clone + 'static>(v: &Vec<A>, m: fn(&A) -> B) -> Vec<B> {
+fn parmap_onearg<
+    A: std::marker::Sync + 'static,
+    B: std::marker::Send + std::clone::Clone + 'static,
+>(
+    v: &Vec<A>,
+    m: fn(&A) -> B,
+) -> Vec<B> {
     let par = std::thread::available_parallelism();
     match par {
         Err(_) => map_onearg(v, m), // Fall back to sequential if there's no available parallelism
@@ -2391,19 +2573,17 @@ fn parmap_onearg<A: std::marker::Sync + 'static, B: std::marker::Send + std::clo
                 for i in 0..l {
                     let v_ptr = v.as_ptr() as usize;
                     let o_ptr = out.as_ptr() as usize;
-                    handles.push(std::thread::spawn(move || {
-                        unsafe {
-                            let val = (v_ptr as *const A).offset(i as isize).as_ref().unwrap();
-                            let mut out = (o_ptr as *mut B).offset(i as isize);
-                            out.write(m(val));
-                        }
+                    handles.push(std::thread::spawn(move || unsafe {
+                        let val = (v_ptr as *const A).offset(i as isize).as_ref().unwrap();
+                        let mut out = (o_ptr as *mut B).offset(i as isize);
+                        out.write(m(val));
                     }));
                 }
                 for handle in handles {
                     let res = handle.join();
                     match res {
                         Err(e) => panic!("{:?}", e),
-                        Ok(_) => {},
+                        Ok(_) => {}
                     }
                 }
             } else {
@@ -2415,8 +2595,12 @@ fn parmap_onearg<A: std::marker::Sync + 'static, B: std::marker::Send + std::clo
                     // I'm just going with pointers instead
                     let v_ptr = v.as_ptr() as usize;
                     let o_ptr = out.as_ptr() as usize;
-                    let s: isize = (i*(slice_len as usize)).try_into().unwrap();
-                    let e: isize = if i == p.get() - 1 { l.try_into().unwrap() } else { ((i+1)*(slice_len as usize)).try_into().unwrap() };
+                    let s: isize = (i * (slice_len as usize)).try_into().unwrap();
+                    let e: isize = if i == p.get() - 1 {
+                        l.try_into().unwrap()
+                    } else {
+                        ((i + 1) * (slice_len as usize)).try_into().unwrap()
+                    };
                     handles.push(std::thread::spawn(move || {
                         let v_ptr = v_ptr as *const A;
                         let o_ptr = o_ptr as *mut B;
@@ -2433,7 +2617,7 @@ fn parmap_onearg<A: std::marker::Sync + 'static, B: std::marker::Send + std::clo
                     let res = handle.join();
                     match res {
                         Err(e) => panic!("{:?}", e),
-                        Ok(_) => {},
+                        Ok(_) => {}
                     }
                 }
             }
@@ -2494,11 +2678,14 @@ impl GPU {
         // Let's ask the adapter for everything it can do
         let features = adapter.features();
         let limits = adapter.limits();
-        let device_future = adapter.request_device(&wgpu::DeviceDescriptor {
-            label: None,
-            required_features: features,
-            required_limits: limits,
-        }, Some(&std::env::current_dir()?));
+        let device_future = adapter.request_device(
+            &wgpu::DeviceDescriptor {
+                label: None,
+                required_features: features,
+                required_limits: limits,
+            },
+            Some(&std::env::current_dir()?),
+        );
         let (device, queue) = futures::executor::block_on(device_future)?;
         Ok(GPU {
             instance,
@@ -2518,21 +2705,30 @@ fn GPU_new() -> GPU {
     }
 }
 
-fn create_buffer_init(g: &mut GPU, usage: &mut wgpu::BufferUsages, vals: &mut Vec<i32>) -> wgpu::Buffer {
+fn create_buffer_init(
+    g: &mut GPU,
+    usage: &mut wgpu::BufferUsages,
+    vals: &mut Vec<i32>,
+) -> wgpu::Buffer {
     let val_slice = &vals[..];
     let val_ptr = val_slice.as_ptr();
     let val_u8_len = vals.len() * 4;
-    let val_u8: &[u8] = unsafe {
-        std::slice::from_raw_parts(val_ptr as *const u8, val_u8_len)
-    };
-    wgpu::util::DeviceExt::create_buffer_init(&g.device, &wgpu::util::BufferInitDescriptor {
-        label: None, // TODO: Add a label for easier debugging?
-        contents: val_u8,
-        usage: *usage,
-    })
+    let val_u8: &[u8] = unsafe { std::slice::from_raw_parts(val_ptr as *const u8, val_u8_len) };
+    wgpu::util::DeviceExt::create_buffer_init(
+        &g.device,
+        &wgpu::util::BufferInitDescriptor {
+            label: None, // TODO: Add a label for easier debugging?
+            contents: val_u8,
+            usage: *usage,
+        },
+    )
 }
 
-fn create_empty_buffer(g: &mut GPU, usage: &mut wgpu::BufferUsages, size: &mut i64) -> wgpu::Buffer {
+fn create_empty_buffer(
+    g: &mut GPU,
+    usage: &mut wgpu::BufferUsages,
+    size: &mut i64,
+) -> wgpu::Buffer {
     g.device.create_buffer(&wgpu::BufferDescriptor {
         label: None, // TODO: Add a label for easier debugging?
         size: *size as u64,
@@ -2558,12 +2754,12 @@ type Vec_Vec_Buffer<'a> = Vec<Vec<&'a wgpu::Buffer>>;
 
 #[inline(always)]
 fn Vec_Buffer_new<'a>() -> Vec_Buffer<'a> {
-  Vec::new()
+    Vec::new()
 }
 
 #[inline(always)]
 fn Vec_Vec_Buffer_new<'a>() -> Vec_Vec_Buffer<'a> {
-  Vec::new()
+    Vec::new()
 }
 
 struct GPGPU<'a> {
@@ -2574,7 +2770,11 @@ struct GPGPU<'a> {
 }
 
 impl GPGPU<'_> {
-    fn new<'a>(source: String, buffers: Vec_Vec_Buffer<'a>, workgroup_sizes: [i64; 3]) -> GPGPU<'a> {
+    fn new<'a>(
+        source: String,
+        buffers: Vec_Vec_Buffer<'a>,
+        workgroup_sizes: [i64; 3],
+    ) -> GPGPU<'a> {
         GPGPU {
             source,
             entrypoint: "main".to_string(),
@@ -2615,7 +2815,7 @@ fn GPGPU_new_easy<'a>(source: &mut String, buffer: &'a mut wgpu::Buffer) -> GPGP
     let y = y_div + 1;
     let y_rem = z_rem.wrapping_rem(65535);
     let x = y_rem + 1;
-    GPGPU::new(source.clone(), vec!(vec!(buffer)), [x, y, z])
+    GPGPU::new(source.clone(), vec![vec![buffer]], [x, y, z])
 }
 
 fn gpu_run(g: &mut GPU, gg: &mut GPGPU) {
@@ -2623,16 +2823,19 @@ fn gpu_run(g: &mut GPU, gg: &mut GPGPU) {
         label: None,
         source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(&gg.source)),
     });
-    let compute_pipeline = g.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-        label: None,
-        layout: None,
-        module: &module,
-        entry_point: &gg.entrypoint,
-        compilation_options: wgpu::PipelineCompilationOptions::default(),
-    });
+    let compute_pipeline = g
+        .device
+        .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: None,
+            layout: None,
+            module: &module,
+            entry_point: &gg.entrypoint,
+            // compilation_options: wgpu::PipelineCompilationOptions::default(),
+        });
     let mut bind_groups = Vec::new();
-    let mut encoder =
-        g.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+    let mut encoder = g
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
     {
         let mut cpass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: None,
@@ -2656,18 +2859,29 @@ fn gpu_run(g: &mut GPU, gg: &mut GPGPU) {
             });
             bind_groups.push(bind_group);
         }
-        for i in 0..gg.buffers.len() { // The Rust borrow checker is forcing my hand here
+        for i in 0..gg.buffers.len() {
+            // The Rust borrow checker is forcing my hand here
             cpass.set_bind_group(i.try_into().unwrap(), &bind_groups[i], &[]);
         }
-        cpass.dispatch_workgroups(gg.workgroup_sizes[0].try_into().unwrap(), gg.workgroup_sizes[1].try_into().unwrap(), gg.workgroup_sizes[2].try_into().unwrap());
+        cpass.dispatch_workgroups(
+            gg.workgroup_sizes[0].try_into().unwrap(),
+            gg.workgroup_sizes[1].try_into().unwrap(),
+            gg.workgroup_sizes[2].try_into().unwrap(),
+        );
     }
     g.queue.submit(Some(encoder.finish()));
 }
 
-fn read_buffer(g: &mut GPU, b: &mut wgpu::Buffer) -> Vec<i32> { // TODO: Support other value types
-    let temp_buffer = create_empty_buffer(g, &mut map_read_buffer_type(), &mut b.size().try_into().unwrap());
-    let mut encoder =
-        g.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+fn read_buffer(g: &mut GPU, b: &mut wgpu::Buffer) -> Vec<i32> {
+    // TODO: Support other value types
+    let temp_buffer = create_empty_buffer(
+        g,
+        &mut map_read_buffer_type(),
+        &mut b.size().try_into().unwrap(),
+    );
+    let mut encoder = g
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
     encoder.copy_buffer_to_buffer(b, 0, &temp_buffer, 0, b.size());
     g.queue.submit(Some(encoder.finish()));
     let temp_slice = temp_buffer.slice(..);
@@ -2678,9 +2892,8 @@ fn read_buffer(g: &mut GPU, b: &mut wgpu::Buffer) -> Vec<i32> { // TODO: Support
         let data = temp_slice.get_mapped_range();
         let data_ptr = data.as_ptr();
         let data_len = data.len() / 4; // From u8 to i32
-        let data_i32: &[i32] = unsafe {
-            std::slice::from_raw_parts(data_ptr as *const i32, data_len)
-        };
+        let data_i32: &[i32] =
+            unsafe { std::slice::from_raw_parts(data_ptr as *const i32, data_len) };
         let result = data_i32.to_vec();
         drop(data);
         temp_buffer.unmap();
