@@ -2462,11 +2462,35 @@ struct GPU {
 impl GPU {
     pub fn new() -> Result<GPU, Box<dyn std::error::Error>> {
         let instance = wgpu::Instance::default();
-        let adapter_future = instance.request_adapter(&wgpu::RequestAdapterOptions::default());
-        let adapter = match futures::executor::block_on(adapter_future) {
-            Some(a) => Ok(a),
-            None => Err("Unable to acquire an adapter"),
-        }?;
+        let mut adapters = instance.enumerate_adapters(wgpu::Backends::all());
+        // We're going to grab the first WebGPU-compliant adapter
+        adapters.reverse();
+        // TODO: This crashes if there are literally zero options
+        let mut adapter = adapters.pop().unwrap();
+        while adapters.len() > 0 {
+            if adapter.get_downlevel_capabilities().is_webgpu_compliant() {
+                break;
+            }
+            adapter = match adapters.pop() {
+                Some(a) => a,
+                None => {
+                    // None of the adapters have the required WebGPU capabilities
+                    // So let's try to request a fallback (software-supported) one
+                    // to at least not crash
+                    let fallback_options = wgpu::RequestAdapterOptions {
+                        power_preference: wgpu::PowerPreference::None,
+                        force_fallback_adapter: true,
+                        compatible_surface: None,
+                    };
+                    let adapter_future = instance.request_adapter(&fallback_options);
+                    match futures::executor::block_on(adapter_future) {
+                        Some(a) => a,
+                        None => panic!("Unable to acquire an adapter"),
+                    }
+                }
+            };
+        }
+        // Temporarily override for software no matter what
         // Let's ask the adapter for everything it can do
         let features = adapter.features();
         let limits = adapter.limits();
@@ -2474,7 +2498,7 @@ impl GPU {
             label: None,
             required_features: features,
             required_limits: limits,
-        }, None);
+        }, Some(&std::env::current_dir()?));
         let (device, queue) = futures::executor::block_on(device_future)?;
         Ok(GPU {
             instance,
@@ -2604,6 +2628,7 @@ fn gpu_run(g: &mut GPU, gg: &mut GPGPU) {
         layout: None,
         module: &module,
         entry_point: &gg.entrypoint,
+        compilation_options: wgpu::PipelineCompilationOptions::default(),
     });
     let mut bind_groups = Vec::new();
     let mut encoder =
