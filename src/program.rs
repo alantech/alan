@@ -1762,7 +1762,7 @@ fn baseassignablelist_to_microstatements(
                     }
                     None => {
                         return Err(format!(
-                            "Could not find a function {} that takes args {}",
+                            "Could not find a function with a call signature of {}({})",
                             f,
                             arg_types
                                 .iter()
