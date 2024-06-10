@@ -60,7 +60,8 @@ edition = "2021"
 [dependencies]
 flume = "0.11.0"
 futures = "0.3.30"
-wgpu = "0.19.3""#;
+wgpu = "0.19.4"
+# wgpu = { version = "0.20.0", features = ["trace"] }"#;
     let cargo_path = {
         let mut c = project_dir.clone();
         c.push("Cargo.toml");
