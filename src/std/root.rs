@@ -2746,10 +2746,7 @@ fn map_read_buffer_type() -> wgpu::BufferUsages {
 
 #[inline(always)]
 fn storage_buffer_type() -> wgpu::BufferUsages {
-    wgpu::BufferUsages::STORAGE
-        //| wgpu::BufferUsages::COPY_DST
-        | wgpu::BufferUsages::COPY_SRC
-        | wgpu::BufferUsages::MAP_WRITE // TODO: Why is this necessary?
+    wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC
 }
 
 type Vec_Buffer<'a> = Vec<&'a wgpu::Buffer>;
