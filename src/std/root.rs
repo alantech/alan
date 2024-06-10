@@ -2746,7 +2746,10 @@ fn map_read_buffer_type() -> wgpu::BufferUsages {
 
 #[inline(always)]
 fn storage_buffer_type() -> wgpu::BufferUsages {
-    wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC
+    wgpu::BufferUsages::STORAGE
+        | wgpu::BufferUsages::COPY_DST
+        | wgpu::BufferUsages::COPY_SRC
+        | wgpu::BufferUsages::MAP_WRITE // TODO: Why is this necessary?
 }
 
 type Vec_Buffer<'a> = Vec<&'a wgpu::Buffer>;
@@ -2830,7 +2833,7 @@ fn gpu_run(g: &mut GPU, gg: &mut GPGPU) {
             layout: None,
             module: &module,
             entry_point: &gg.entrypoint,
-            // compilation_options: wgpu::PipelineCompilationOptions::default(),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
         });
     let mut bind_groups = Vec::new();
     let mut encoder = g
