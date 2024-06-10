@@ -2226,10 +2226,31 @@ fn splitstring(a: &String, b: &String) -> Vec<String> {
     a.split(b).map(|v| v.to_string()).collect::<Vec<String>>()
 }
 
-/// `lenstring` returns the length of the string
+/// `lenstring` returns the length of the string (the number of characters, not bytes
 #[inline(always)]
 fn lenstring(a: &String) -> i64 {
-    a.len() as i64
+    a.chars().collect::<Vec<char>>().len() as i64
+}
+
+/// `getstring` returns the character at the specified index (TODO: What is a "character" in Alan?)
+#[inline(always)]
+fn getstring(a: &String, i: &i64) -> Result<String, AlanError> {
+    match a.chars().nth(*i as usize) {
+        Some(c) => Ok(String::from(c)),
+        None => Err(format!(
+            "Index {} is longer than the string length of {}",
+            i,
+            lenstring(a)
+        )
+        .into()),
+    }
+}
+
+/// `to_char_array` returns an array of the characters of a string (TODO: What is a "character" in
+/// Alan?)
+#[inline(always)]
+fn to_char_array(a: &String) -> Vec<String> {
+    a.chars().map(|c| String::from(c)).collect::<Vec<String>>()
 }
 
 /// `trimstring` trims the string of whitespace

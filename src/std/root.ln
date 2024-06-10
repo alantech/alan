@@ -459,6 +459,8 @@ export fn mul(a: string, n: i64) -> string binds repeatstring; // To use the '*'
 export fn split(a: string, b: string) -> string[] binds splitstring;
 export fn div(a: string, b: string) -> string[] binds splitstring; // To use the '/' operator
 export fn len(a: string) -> i64 binds lenstring;
+export fn get(a: string, i: i64) -> Result{string} binds getstring;
+export fn toCharArray(a: string) -> string[] binds to_char_array;
 export fn trim(a: string) -> string binds trimstring;
 export fn index(a: string, b: string) -> Result{i64} binds indexstring;
 export fn min(a: string, b: string) -> string binds minstring;

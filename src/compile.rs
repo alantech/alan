@@ -335,6 +335,36 @@ macro_rules! test_ignore {
         }
     }
 }
+macro_rules! test_compile_error {
+    ( $rule: ident => $code:expr; error $test_val:expr; ) => {
+        #[cfg(test)]
+        mod $rule {
+            #[test]
+            fn $rule() -> Result<(), Box<dyn std::error::Error>> {
+                let filename = format!("{}.ln", stringify!($rule));
+                super::write(&filename, $code)?;
+                match super::compile(filename.to_string()) {
+                    Ok(_) => Err("Unexpectedly succeeded!".into()),
+                    Err(e) => Ok(assert_eq!(format!("{}", e), $test_val)),
+                }
+            }
+        }
+    };
+    ( $rule: ident => $code:expr; ) => {
+        #[cfg(test)]
+        mod $rule {
+            #[test]
+            fn $rule() -> Result<(), Box<dyn std::error::Error>> {
+                let filename = format!("{}.ln", stringify!($rule));
+                super::write(&filename, $code)?;
+                match super::compile(filename.to_string()) {
+                    Ok(_) => Err("Unexpectedly succeeded!".into()),
+                    Err(_) => Ok(()),
+                }
+            }
+        }
+    };
+}
 #[cfg(test)]
 macro_rules! stdout {
     ( $test_val:expr, $real_val:expr ) => {
@@ -988,14 +1018,14 @@ Hello
 World!
 "#;
 );
-test_ignore!(string_global_local_equality => r#"
+test!(string_const_vs_computed_equality => r#"
     export fn main {
       const foo = 'foo';
       print(foo.trim == foo);
     }"#;
     stdout "true\n";
 );
-test_ignore!(string_char_array => r#"
+test!(string_char_array => r#"
     export fn main {
       const fooCharArray = 'foo'.toCharArray;
       print(#fooCharArray);
@@ -1008,7 +1038,24 @@ f
 o
 o
 "#;
-);
+); // TODO: Do we need `toCharArray` with the following possible in Alan v0.2?
+test!(string_chars_direct => r#"
+    export fn main {
+        const foo = 'foo';
+        print(#foo);
+        print(foo[0]);
+        print(foo[1]);
+        print(foo[2]);
+        print(foo[3]);
+    }"#;
+    stdout r#"3
+f
+o
+o
+AlanError { message: "Index 3 is longer than the string length of 3" }
+"#;
+); // TODO: The error output is terrible
+
 /* Pending
 test_ignore!(string_templating => r#"
     from @std/app import start, print, exit
@@ -1298,12 +1345,13 @@ foobar
 "#;
 );
 
-test_ignore!(functions_and_custom_operators => r#"
+// TODO: I had to change a lot here due to a lack of return type inference, try to restore this
+test!(functions_and_custom_operators => r#"
     fn foo() {
       print('foo');
     }
 
-    fn bar(str: string, a: int64, b: int64) -> string {
+    fn bar(str: string, a: i64, b: i64) -> string {
       return str * a + b.string;
     }
 
@@ -1311,19 +1359,11 @@ test_ignore!(functions_and_custom_operators => r#"
       print(pre + bar(body, 1, 2));
     }
 
-    // 'int' is an alias for 'int64'
-    fn double(a: int) = a * 2;
+    fn double(a: i64) -> Result{i64} = a * 2;
 
     prefix double as ## precedence 10
 
-    /**
-     * It should be possible to write 'doublesum' as:
-     *
-     * fn doublesum(a: int64, b: int64) = ##a + ##b
-     *
-     * but the function definitions are all parsed before the first operator mapping is done.
-     */
-    fn doublesum(a: int64, b: int64) = a.double + b.double;
+    fn doublesum(a: i64, b: i64) -> Result{i64} = ##a + ##b
 
     infix doublesum as #+# precedence 11
 
@@ -1445,26 +1485,17 @@ test_ignore!(conditional_let_assignment => r#"
     stdout "1\n";
 );
 
-// Object Literals
+// Objects
 
-test_ignore!(object_literal_compiler_checks => r#"
-    type Foo {
+test_compile_error!(object_constructor_compiler_checks => r#"
+    type Foo =
       bar: string,
-      baz: bool,
-    }
+      baz: bool;
 
     export fn main {
-      const foo = new Foo {
-        bay: 1.23,
-      };
+      const foo = Foo(1.23);
     }"#;
-    stderr r#"Foo object literal improperly defined
-Missing fields: bar, baz
-Extra fields: bay
-new Foo {
-            bay: 1.23,
-          } on line 2:24
-"#;
+    error "Could not find a function with a call signature of Foo(f64)";
 );
 // TODO: Temporary tests for temporary vector support. These tests are short-lived
 test!(vec_construction => r#"
@@ -2503,15 +2534,11 @@ test_ignore!(inlined_closure_with_arg => r#"
 
 // Compiler Errors
 
-test_ignore!(cross_type_comparisons => r#"
+test_compile_error!(cross_type_comparisons => r#"
     export fn main {
       print(true == 1);
-      emit exit 0;
     }"#;
-    stderr r#"Cannot resolve operators with remaining statement
-true == 1
-{bool} == {int64}
-"#;
+    error "Could not find a function with a call signature of eq(bool, i64)";
 );
 test_ignore!(unreachable_code => r#"
     fn unreachable() {
@@ -2544,18 +2571,19 @@ test_ignore!(recursive_functions => r#"
     }"#;
     stderr "Recursive callstack detected: fibonacci -> fibonacci. Aborting.\n";
 );
-test_ignore!(undefined_function_call => r#"
+test_compile_error!(undefined_function_call => r#"
     export fn main {
       print(i64str(5)); // Illegal direct opcode usage
     }"#;
-    stderr "i64str is not a function but used as one.\ni64str on line 4:18\n";
+    error "Could not find a function with a call signature of i64str(i64)";
 );
 test_ignore!(totally_broken_statement => r#"
     on app.start {
       app.oops
     }"#;
-    stderr "TODO";
-);
+    stderr "what";
+); // TODO: Figure out why this is causing `nom` to panic sometimes
+
 /* Pending
   Describe "Importing unexported values"
     before() {
