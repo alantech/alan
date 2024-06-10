@@ -2830,7 +2830,7 @@ fn gpu_run(g: &mut GPU, gg: &mut GPGPU) {
             layout: None,
             module: &module,
             entry_point: &gg.entrypoint,
-            // compilation_options: wgpu::PipelineCompilationOptions::default(),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
         });
     let mut bind_groups = Vec::new();
     let mut encoder = g
