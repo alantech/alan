@@ -492,186 +492,186 @@ test!(duration_print => r#"
 
 // Basic Math Tests
 
-test!(int8_add => r#"
-    export fn main() -> ExitCode = ExitCode(getOrExit(add(i8(1), i8(2))));"#;
+test!(i8_add => r#"
+    export fn main() -> ExitCode = ExitCode(add(i8(1), i8(2)));"#;
     status 3;
 );
-test!(int8_sub => r#"
-    export fn main() -> ExitCode = ExitCode(getOrExit(sub(i8(2), i8(1))));"#;
+test!(i8_sub => r#"
+    export fn main() -> ExitCode = ExitCode(sub(i8(2), i8(1)));"#;
     status 1;
 );
-test!(int8_mul => r#"
-    export fn main() -> ExitCode = ExitCode(getOrExit(mul(i8(2), i8(1))));"#;
+test!(i8_mul => r#"
+    export fn main() -> ExitCode = ExitCode(mul(i8(2), i8(1)));"#;
     status 2;
 );
-test!(int8_div => r#"
-    export fn main() -> ExitCode = ExitCode(getOrExit(div(i8(6), i8(2))));"#;
+test!(i8_div => r#"
+    export fn main() -> ExitCode = ExitCode(div(i8(6), i8(2)));"#;
     status 3;
 );
-test!(int8_mod => r#"
-    export fn main() -> ExitCode = ExitCode(getOrExit(mod(i8(6), i8(4))));"#;
+test!(i8_mod => r#"
+    export fn main() -> ExitCode = ExitCode(mod(i8(6), i8(4)));"#;
     status 2;
 );
-test!(int8_pow => r#"
-    export fn main() -> ExitCode = ExitCode(getOrExit(pow(i8(6), i8(2))));"#;
+test!(i8_pow => r#"
+    export fn main() -> ExitCode = ExitCode(pow(i8(6), i8(2)));"#;
     status 36;
 );
-test!(int8_min => r#"
+test!(i8_min => r#"
     export fn main() {
       print(min(i8(3), i8(5)));
     }"#;
     stdout "3\n";
 );
-test!(int8_max => r#"
+test!(i8_max => r#"
     export fn main() {
       print(max(i8(3), i8(5)));
     }"#;
     stdout "5\n";
 );
-test!(int8_neg => r#"
+test!(i8_neg => r#"
     export fn main = print(neg(i8(3)));"#;
     stdout "-3\n";
 );
 
-test!(int16_add => r#"
+test!(i16_add => r#"
     export fn main {
       print(add(i16(1), i16(2)));
     }"#;
     stdout "3\n";
 );
-test!(int16_sub => r#"
+test!(i16_sub => r#"
     export fn main {
       print(sub(i16(2), i16(1)));
     }"#;
     stdout "1\n";
 );
-test!(int16_mul => r#"
+test!(i16_mul => r#"
     export fn main {
       print(mul(i16(2), i16(1)));
     }"#;
     stdout "2\n";
 );
-test!(int16_div => r#"
+test!(i16_div => r#"
     export fn main {
       print(div(i16(6), i16(2)));
     }"#;
     stdout "3\n";
 );
-test!(int16_mod => r#"
+test!(i16_mod => r#"
     export fn main{
       print(mod(i16(6), i16(4)));
     }"#;
     stdout "2\n";
 );
-test!(int16_pow => r#"
+test!(i16_pow => r#"
     export fn main {
       print(pow(i16(6), i16(2)));
     }"#;
     stdout "36\n";
 );
-test!(int16_min => r#"
+test!(i16_min => r#"
     export fn main {
       min(3.i16, 5.i16).print;
     }"#;
     stdout "3\n";
 );
-test!(int16_max => r#"
+test!(i16_max => r#"
     export fn main {
       max(3.i16, 5.i16).print;
     }"#;
     stdout "5\n";
 );
-test_ignore!(int16_neg => r#"
+test_ignore!(i16_neg => r#"
     export fn main = print(-i16(3));"#;
     stdout "-3\n";
 );
 
-test!(int32_add => r#"
+test!(i32_add => r#"
     export fn main {
       add(1.i32(), 2.i32()).print();
     }"#;
     stdout "3\n";
 );
-test!(int32_sub => r#"
+test!(i32_sub => r#"
     export fn main {
       sub(2.i32, 1.i32).print;
     }"#;
     stdout "1\n";
 );
-test!(int32_mul => r#"
+test!(i32_mul => r#"
     export fn main {
       (2.i32 * 1.i32).print;
     }"#;
     stdout "2\n";
 );
-test!(int32_div => r#"
+test!(i32_div => r#"
     export fn main {
       (6.i32() / 2.i32()).print();
     }"#;
     stdout "3\n";
 );
-test!(int32_mod => r#"
+test!(i32_mod => r#"
     export fn main {
       mod(6.i32, 4.i32).print;
     }"#;
     stdout "2\n";
 );
-test!(int32_pow => r#"
+test!(i32_pow => r#"
     export fn main {
       pow(6.i32(), 2.i32()).print();
     }"#;
     stdout "36\n";
 );
-test!(int32_min => r#"
+test!(i32_min => r#"
     export fn main {
       min(3.i32, 5.i32).print;
     }"#;
     stdout "3\n";
 );
-test!(int32_max => r#"
+test!(i32_max => r#"
     export fn main {
       max(3.i32(), 5.i32()).print();
     }"#;
     stdout "5\n";
 );
-test_ignore!(int32_neg => r#"
+test_ignore!(i32_neg => r#"
     export fn main = print(- 3.i32);"#; // You wouldn't naturally write this, but should still work
     stdout "-3\n";
 );
 
-test!(int64_add => r#"
+test!(i64_add => r#"
     export fn main = print(1 + 2);"#;
     stdout "3\n";
 );
-test!(int64_sub => r#"
+test!(i64_sub => r#"
     export fn main = print(2 - 1);"#;
     stdout "1\n";
 );
-test!(int64_mul => r#"
+test!(i64_mul => r#"
     export fn main = print(2 * 1);"#;
     stdout "2\n";
 );
-test!(int64_div => r#"
+test!(i64_div => r#"
     export fn main = print(6 / 2);"#;
     stdout "3\n";
 );
-test!(int64_mod => r#"
+test!(i64_mod => r#"
     export fn main = print(6 % 4);"#;
     stdout "2\n";
 );
-test!(int64_pow => r#"
+test!(i64_pow => r#"
     export fn main = print(6 ** 2);"#;
     stdout "36\n";
 );
-test!(int64_min => r#"
+test!(i64_min => r#"
     export fn main = min(3, 5).print;"#;
     stdout "3\n";
 );
-test!(int64_max => r#"
+test!(i64_max => r#"
     export fn main = max(3.i64, 5.i64).print;"#;
     stdout "5\n";
 );
-test_ignore!(int64_neg => r#"
+test_ignore!(i64_neg => r#"
     export fn main = print(- 3);"#; // You wouldn't naturally write this, but should still work
     stdout "-3\n";
 );
@@ -828,7 +828,7 @@ test!(hello_gpu => r#"
 
 // Bitwise Math
 
-test!(int8_bitwise => r#"
+test!(i8_bitwise => r#"
     prefix i8 as ~ precedence 10
 
     export fn main {
@@ -842,7 +842,7 @@ test!(int8_bitwise => r#"
     }"#;
     stdout "0\n3\n6\n-1\n-1\n-4\n-7\n";
 );
-test!(int16_bitwise => r#"
+test!(i16_bitwise => r#"
     prefix i16 as ~ precedence 10
 
     export fn main {
@@ -856,7 +856,7 @@ test!(int16_bitwise => r#"
     }"#;
     stdout "0\n3\n6\n-1\n-1\n-4\n-7\n";
 );
-test!(int32_bitwise => r#"
+test!(i32_bitwise => r#"
     prefix i32 as ~ precedence 10
 
     export fn main {
@@ -870,7 +870,7 @@ test!(int32_bitwise => r#"
     }"#;
     stdout "0\n3\n6\n-1\n-1\n-4\n-7\n";
 );
-test!(int64_bitwise => r#"
+test!(i64_bitwise => r#"
     export fn main {
       print(1 & 2);
       print(1 | 3);
@@ -1954,9 +1954,9 @@ test!(generics => r#"
       set: bool;
 
     export fn main {
-      let int8Box = box{i8}(8.i8, true);
-      print(int8Box.val);
-      print(int8Box.set);
+      let i8Box = box{i8}(8.i8, true);
+      print(i8Box.val);
+      print(i8Box.set);
 
       let stringBox = box{string}('hello, generics!', true);
       print(stringBox.val);
@@ -3823,176 +3823,3 @@ Describe "@std/tcp"
   End
 End
 */
-
-// Saturating Math
-
-test_ignore!(int8_sadd => r#"
-    export fn main { return sadd(i8(1), i8(2)); }"#;
-    status 3;
-);
-test_ignore!(int8_ssub => r#"
-    export fn main { return ssub(i8(2), i8(1)); }"#;
-    status 1;
-);
-test_ignore!(int8_smul => r#"
-    export fn main { return smul(i8(2), i8(1)); }"#;
-    status 2;
-);
-test_ignore!(int8_sdiv => r#"
-    export fn main { return sdiv(i8(6), i8(0)); }"#;
-    status 127;
-);
-test_ignore!(int8_spow => r#"
-    export fn main { return spow(i8(6), i8(2)); }"#;
-    status 36;
-);
-test_ignore!(int16_sadd => r#"
-    export fn main {
-      print(sadd(i16(1), i16(2)));
-    }"#;
-    stdout "3\n";
-);
-test_ignore!(int16_ssub => r#"
-    export fn main {
-      print(ssub(i16(2), i16(1)));
-    }"#;
-    stdout "1\n";
-);
-test_ignore!(int16_smul => r#"
-    export fn main {
-      print(smul(i16(2), i16(1)));
-    }"#;
-    stdout "2\n";
-);
-test_ignore!(int16_sdiv => r#"
-    export fn main {
-      print(sdiv(i16(6), i16(2)));
-    }"#;
-    stdout "3\n";
-);
-test_ignore!(int16_spow => r#"
-    export fn main {
-      print(spow(i16(6), i16(2)));
-    }"#;
-    stdout "36\n";
-);
-test_ignore!(int32_sadd => r#"
-    export fn main {
-      sadd(1.i32(), 2.i32()).print();
-    }"#;
-    stdout "3\n";
-);
-test_ignore!(int32_ssub => r#"
-    export fn main {
-      ssub(2.i32(), 1.i32()).print();
-    }"#;
-    stdout "1\n";
-);
-test_ignore!(int32_smul => r#"
-    export fn main {
-      smul(2.i32(), 1.i32()).print();
-    }"#;
-    stdout "2\n";
-);
-test_ignore!(int32_sdiv => r#"
-    export fn main {
-      sdiv(6.i32(), 2.i32()).print();
-    }"#;
-    stdout "3\n";
-);
-test_ignore!(int32_spow => r#"
-    export fn main {
-      spow(6.i32(), 2.i32()).print();
-    }"#;
-    stdout "36\n";
-);
-test_ignore!(int64_sadd => r#"
-    export fn main {
-      print(1 +. 2);
-    }"#;
-    stdout "3\n";
-);
-test_ignore!(int64_ssub => r#"
-    export fn main {
-      print(2 -. 1);
-    }"#;
-    stdout "1\n";
-);
-test_ignore!(int64_smul => r#"
-    export fn main {
-      print(2 *. 1);
-    }"#;
-    stdout "2\n";
-);
-test_ignore!(int64_sdiv => r#"
-    export fn main {
-      print(6 /. 2);
-    }"#;
-    stdout "3\n";
-);
-test_ignore!(int64_spow => r#"
-    export fn main {
-      print(6 **. 2);
-    }"#;
-    stdout "36\n";
-);
-test_ignore!(float32_sadd => r#"
-    export fn main {
-      print(f32(1) +. f32(2));
-    }"#;
-    stdout "3\n";
-);
-test_ignore!(float32_ssub => r#"
-    export fn main {
-      print(f32(2) -. f32(1));
-    }"#;
-    stdout "1\n";
-);
-test_ignore!(float32_smul => r#"
-    export fn main {
-      print(f32(2) *. f32(1));
-    }"#;
-    stdout "2\n";
-);
-test_ignore!(float32_sdiv => r#"
-    export fn main {
-      print(f32(6) /. f32(2));
-    }"#;
-    stdout "3\n";
-);
-test_ignore!(float32_spow => r#"
-    export fn main {
-      print(f32(6) **. f32(2));
-    }"#;
-    stdout "36\n";
-);
-test_ignore!(float64_sadd => r#"
-    export fn main {
-      (1.0 +. 2.0).print();
-    }"#;
-    stdout "3\n";
-);
-test_ignore!(float64_ssub => r#"
-    export fn main {
-      (2.0 -. 1.0).print();
-    }"#;
-    stdout "1\n";
-);
-test_ignore!(float64_smul => r#"
-    export fn main {
-      (2.0 *. 1.0).print();
-    }"#;
-    stdout "2\n";
-);
-test_ignore!(float64_sdiv => r#"
-    export fn main {
-      (6.0 /. 2.0).print();
-    }"#;
-    stdout "3\n";
-);
-test_ignore!(float64_spow => r#"
-    export fn main {
-      (6.0 **. 2.0).print();
-    }"#;
-    stdout "36\n";
-);
