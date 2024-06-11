@@ -1,6 +1,6 @@
 // The benchmark in this directory is based on this file. That version unfortunately includes the
 // time it takes for `filled` to run, so the effective performance of `parmap` is underestimated
-fn double(x: i32) -> Result{i32} = x * 2.i32;
+fn double(x: i32) -> i32 = x * 2.i32;
 
 fn bench(l: i64) {
   let v = filled(2.i32, l);
