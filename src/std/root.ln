@@ -447,10 +447,10 @@ export fn filled(i: i64, l: i64) -> Vec{i64} binds filled;
 export fn filled(r: Result{i64}, l: i64) -> Vec{Result{i64}} binds filled;
 export fn print(v: Vec{i64}) binds print_vec;
 export fn print(v: Vec{Result{i64}}) binds print_vec_result;
-export fn map(v: Vec{i64}, m: i64 -> Result{i64}) -> Vec{Result{i64}} binds map_onearg; // TODO: This is terrible
-export fn parmap(v: Vec{i64}, m: i64 -> Result{i64}) -> Vec{Result{i64}} binds parmap_onearg; // TODO: This is terrible
-export fn map(v: Vec{i32}, m: i32 -> Result{i32}) -> Vec{Result{i32}} binds map_onearg; // TODO: This is terrible
-export fn parmap(v: Vec{i32}, m: i32 -> Result{i32}) -> Vec{Result{i32}} binds parmap_onearg; // TODO: This is terrible
+export fn map(v: Vec{i64}, m: i64 -> i64) -> Vec{i64} binds map_onearg; // TODO: This is terrible
+export fn parmap(v: Vec{i64}, m: i64 -> i64) -> Vec{i64} binds parmap_onearg; // TODO: This is terrible
+export fn map(v: Vec{i32}, m: i32 -> i32) -> Vec{i32} binds map_onearg; // TODO: This is terrible
+export fn parmap(v: Vec{i32}, m: i32 -> i32) -> Vec{i32} binds parmap_onearg; // TODO: This is terrible
 export fn push(v: Vec{i64}, a: i64) binds push;
 export fn length(v: Vec{i64}) -> i64 binds vec_len;
 export fn length(v: Vec{i32}) -> i64 binds vec_len;

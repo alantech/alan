@@ -1501,7 +1501,7 @@ test_compile_error!(object_constructor_compiler_checks => r#"
 test!(vec_construction => r#"
     export fn main {
       const five = filled(5, 5);
-      const three = filled((1 + 2).getOr(0), 3);
+      const three = filled(1 + 2, 3);
       print(five);
       print(three);
     }"#;
