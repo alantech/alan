@@ -1359,11 +1359,11 @@ test!(functions_and_custom_operators => r#"
       print(pre + bar(body, 1, 2));
     }
 
-    fn double(a: i64) -> Result{i64} = a * 2;
+    fn double(a: i64) -> i64 = a * 2;
 
     prefix double as ## precedence 10
 
-    fn doublesum(a: i64, b: i64) -> Result{i64} = ##a + ##b
+    fn doublesum(a: i64, b: i64) -> i64 = ##a + ##b
 
     infix doublesum as #+# precedence 11
 
@@ -1508,14 +1508,14 @@ test!(vec_construction => r#"
     stdout "[5, 5, 5, 5, 5]\n[3, 3, 3]\n";
 );
 test!(vec_map => r#"
-    fn double(x: i64) -> Result{i64} = x * 2;
+    fn double(x: i64) -> i64 = x * 2;
     export fn main {
       filled(5, 5).map(double).print;
     }"#;
     stdout "[10, 10, 10, 10, 10]\n";
 );
 test!(vec_parmap => r#"
-    fn double(x: i64) -> Result{i64} = x * 2;
+    fn double(x: i64) -> i64 = x * 2;
     export fn main {
       let v = filled(0, 0);
       v.push(1);
