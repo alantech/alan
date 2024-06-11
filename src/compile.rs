@@ -343,7 +343,9 @@ macro_rules! test_compile_error {
             fn $rule() -> Result<(), Box<dyn std::error::Error>> {
                 let filename = format!("{}.ln", stringify!($rule));
                 super::write(&filename, $code)?;
-                match super::compile(filename.to_string()) {
+                let res = super::compile(filename.to_string());
+                std::fs::remove_file(&filename)?;
+                match res {
                     Ok(_) => Err("Unexpectedly succeeded!".into()),
                     Err(e) => Ok(assert_eq!(format!("{}", e), $test_val)),
                 }
@@ -357,7 +359,9 @@ macro_rules! test_compile_error {
             fn $rule() -> Result<(), Box<dyn std::error::Error>> {
                 let filename = format!("{}.ln", stringify!($rule));
                 super::write(&filename, $code)?;
-                match super::compile(filename.to_string()) {
+                let res = super::compile(filename.to_string());
+                std::fs::remove_file(&filename)?;
+                match res {
                     Ok(_) => Err("Unexpectedly succeeded!".into()),
                     Err(_) => Ok(()),
                 }
