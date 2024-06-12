@@ -2219,7 +2219,7 @@ fn GPGPU_new_easy<'a>(source: &mut String, buffer: &'a mut wgpu::Buffer) -> GPGP
     let y_div = z_rem / 65535;
     let y = y_div + 1;
     let y_rem = z_rem.wrapping_rem(65535);
-    let x = y_rem + 1;
+    let x = std::cmp::max(y_rem, 1);
     GPGPU::new(source.clone(), vec![vec![buffer]], [x, y, z])
 }
 
