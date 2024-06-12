@@ -32,75 +32,75 @@ macro_rules! clean {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     build!(map_1 => r#"
         fn double(x: i64) -> i64 = x * 2;
-        export fn main { filled(2, 1).map(double); }
+        export fn main { let v = filled(2, 1).map(double); v[0].print; }
     "#);
     build!(map_10 => r#"
         fn double(x: i64) -> i64 = x * 2;
-        export fn main { filled(2, 10).map(double); }
+        export fn main { let v = filled(2, 10).map(double); v[0].print; }
     "#);
     build!(map_100 => r#"
         fn double(x: i64) -> i64 = x * 2;
-        export fn main { filled(2, 100).map(double); }
+        export fn main { let v = filled(2, 100).map(double); v[0].print; }
     "#);
     build!(map_1_000 => r#"
         fn double(x: i64) -> i64 = x * 2;
-        export fn main { filled(2, 1_000).map(double); }
+        export fn main { let v = filled(2, 1_000).map(double); v[0].print; }
     "#);
     build!(map_10_000 => r#"
         fn double(x: i64) -> i64 = x * 2;
-        export fn main { filled(2, 10_000).map(double); }
+        export fn main { let v = filled(2, 10_000).map(double); v[0].print; }
     "#);
     build!(map_100_000 => r#"
         fn double(x: i64) -> i64 = x * 2;
-        export fn main { filled(2, 100_000).map(double); }
+        export fn main { let v = filled(2, 100_000).map(double); v[0].print; }
     "#);
     build!(map_1_000_000 => r#"
         fn double(x: i64) -> i64 = x * 2;
-        export fn main { filled(2, 1_000_000).map(double); }
+        export fn main { let v = filled(2, 1_000_000).map(double); v[0].print; }
     "#);
     build!(map_10_000_000 => r#"
         fn double(x: i64) -> i64 = x * 2;
-        export fn main { filled(2, 10_000_000).map(double); }
+        export fn main { let v = filled(2, 10_000_000).map(double); v[0].print; }
     "#);
     build!(map_100_000_000 => r#"
         fn double(x: i64) -> i64 = x * 2;
-        export fn main { filled(2, 100_000_000).map(double); }
+        export fn main { let v = filled(2, 100_000_000).map(double); v[0].print; }
     "#);
     build!(parmap_1 => r#"
         fn double(x: i64) -> i64 = x * 2;
-        export fn main { filled(2, 1).parmap(double); }
+        export fn main { let v = filled(2, 1).parmap(double); v[0].print; }
     "#);
     build!(parmap_10 => r#"
         fn double(x: i64) -> i64 = x * 2;
-        export fn main { filled(2, 10).parmap(double); }
+        export fn main { let v = filled(2, 10).parmap(double); v[0].print; }
     "#);
     build!(parmap_100 => r#"
         fn double(x: i64) -> i64 = x * 2;
-        export fn main { filled(2, 100).parmap(double); }
+        export fn main { let v = filled(2, 100).parmap(double); v[0].print; }
     "#);
     build!(parmap_1_000 => r#"
         fn double(x: i64) -> i64 = x * 2;
-        export fn main { filled(2, 1_000).parmap(double); }
+        export fn main { let v = filled(2, 1_000).parmap(double); v[0].print; }
     "#);
     build!(parmap_10_000 => r#"
         fn double(x: i64) -> i64 = x * 2;
-        export fn main { filled(2, 10_000).parmap(double); }
+        export fn main { let v = filled(2, 10_000).parmap(double); v[0].print; }
     "#);
     build!(parmap_100_000 => r#"
         fn double(x: i64) -> i64 = x * 2;
-        export fn main { filled(2, 100_000).parmap(double); }
+        export fn main { let v = filled(2, 100_000).parmap(double); v[0].print; }
     "#);
     build!(parmap_1_000_000 => r#"
         fn double(x: i64) -> i64 = x * 2;
-        export fn main { filled(2, 1_000_000).parmap(double); }
+        export fn main { let v = filled(2, 1_000_000).parmap(double); v[0].print; }
     "#);
     build!(parmap_10_000_000 => r#"
         fn double(x: i64) -> i64 = x * 2;
-        export fn main { filled(2, 10_000_000).parmap(double); }
+        export fn main { let v = filled(2, 10_000_000).parmap(double); v[0].print; }
     "#);
     build!(parmap_100_000_000 => r#"
         fn double(x: i64) -> i64 = x * 2;
-        export fn main { filled(2, 100_000_000).parmap(double); }
+        export fn main { let v = filled(2, 100_000_000).parmap(double); v[0].print; }
     "#);
     build!(gpgpu_1 => r#"
         export fn main {
@@ -121,7 +121,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
           ", b);
           g.run(plan);
-          g.read(b);
+          let v = g.read(b);
+          v[0].print;
         }
     "#);
     build!(gpgpu_10 => r#"
@@ -143,7 +144,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
           ", b);
           g.run(plan);
-          g.read(b);
+          let v = g.read(b);
+          v[0].print;
         }
     "#);
     build!(gpgpu_100 => r#"
@@ -165,7 +167,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
           ", b);
           g.run(plan);
-          g.read(b);
+          let v = g.read(b);
+          v[0].print;
         }
     "#);
     build!(gpgpu_1_000 => r#"
@@ -187,7 +190,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
           ", b);
           g.run(plan);
-          g.read(b);
+          let v = g.read(b);
+          v[0].print;
         }
     "#);
     build!(gpgpu_10_000 => r#"
@@ -209,7 +213,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
           ", b);
           g.run(plan);
-          g.read(b);
+          let v = g.read(b);
+          v[0].print;
         }
     "#);
     build!(gpgpu_100_000 => r#"
@@ -231,7 +236,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
           ", b);
           g.run(plan);
-          g.read(b);
+          let v = g.read(b);
+          v[0].print;
         }
     "#);
     build!(gpgpu_1_000_000 => r#"
@@ -253,7 +259,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
           ", b);
           g.run(plan);
-          g.read(b);
+          let v = g.read(b);
+          v[0].print;
         }
     "#);
     build!(gpgpu_10_000_000 => r#"
@@ -275,7 +282,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
           ", b);
           g.run(plan);
-          g.read(b);
+          let v = g.read(b);
+          v[0].print;
         }
     "#);
     build!(gpgpu_100_000_000 => r#"
@@ -297,7 +305,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
           ", b);
           g.run(plan);
-          g.read(b);
+          let v = g.read(b);
+          v[0].print;
         }
     "#);
     divan::main();
