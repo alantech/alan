@@ -6,10 +6,12 @@ fn bench(l: i64) {
   let v = filled(2.i32, l);
   v.length.print;
   let t1 = now();
-  v.map(double);
+  let v1 = v.map(double);
+  v1.length;
   t1.elapsed.print;
   let t2 = now();
-  v.parmap(double);
+  let v2 = v.parmap(double);
+  v2.length;
   t2.elapsed.print;
   let t3 = now();
   let g = GPU();
@@ -29,7 +31,8 @@ fn bench(l: i64) {
     }
   ", b);
   g.run(plan);
-  g.read(b);
+  let v3 = g.read(b);
+  v3.length;
   t3.elapsed.print;
 }
 
@@ -38,10 +41,12 @@ fn bench_billion {
   let v = filled(2.i32, 1_000_000_000);
   v.length.print;
   let t1 = now();
-  v.map(double);
+  let v1 = v.map(double);
+  v1.length;
   t1.elapsed.print;
   let t2 = now();
-  v.parmap(double);
+  let v2 = v.parmap(double);
+  v2.length;
   t2.elapsed.print;
   let v2 = filled(2.i32, 500_000_000);
   let t3 = now();
@@ -79,7 +84,8 @@ fn bench_billion {
     }
   ", b);
   g.run(plan);
-  g.read(b);
+  let v3 = g.read(b);
+  v3.length;
   t3.elapsed.print;
 }
 

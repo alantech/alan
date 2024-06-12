@@ -396,8 +396,8 @@ export fn len(a: i64[]) -> i64 binds lenarray; // TODO: Real generics
 export fn len(a: string[]) -> i64 binds lenarray; // TODO: Real generics
 export fn push(a: Array{i64}, v: i64) -> () binds pusharray; // TODO: Real generics
 export fn push(a: Array{string}, v: string) -> () binds pusharray; // TODO: Real generics
-export fn pop(a: i64[]) -> Maybe{i64} binds poparray; // TODO: Real generics, not Option
-export fn pop(a: string[]) -> Maybe{string} binds poparray; // TODO: Real generics, not Option
+export fn pop(a: i64[]) -> Maybe{i64} binds poparray; // TODO: Real generics
+export fn pop(a: string[]) -> Maybe{string} binds poparray; // TODO: Real generics
 
 /// Process exit-related bindings
 export fn ExitCode(e: i8) -> ExitCode binds to_exit_code_i8;
@@ -432,6 +432,7 @@ export fn print(f: f64) binds println;
 export fn print(f: Result{f64}) binds println_result;
 export fn print(o: Maybe{string}) binds println_maybe; // TODO: Do this with real generics
 export fn print(o: Maybe{i64}) binds println_maybe;
+export fn print(o: Maybe{i32}) binds println_maybe;
 
 /// Thread-related bindings
 export fn wait(t: i64) binds wait;
@@ -454,6 +455,8 @@ export fn parmap(v: Vec{i32}, m: i32 -> i32) -> Vec{i32} binds parmap_onearg; //
 export fn push(v: Vec{i64}, a: i64) binds push;
 export fn length(v: Vec{i64}) -> i64 binds vec_len;
 export fn length(v: Vec{i32}) -> i64 binds vec_len;
+export fn get(v: Vec{i32}, i: i64) -> Maybe{i32} binds getarray;
+export fn get(v: Vec{i64}, i: i64) -> Maybe{i64} binds getarray;
 
 /// GPU-related bindings
 export type GPU binds GPU;
