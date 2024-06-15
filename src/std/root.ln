@@ -447,6 +447,7 @@ export type Vec{T} binds Vec<T>;
 export fn filled(i: i64, l: i64) -> Vec{i64} binds filled;
 export fn filled(r: Result{i64}, l: i64) -> Vec{Result{i64}} binds filled;
 export fn print(v: Vec{i64}) binds print_vec;
+export fn print(a: Array{i64}) binds print_vec; // TODO: Better generics here
 export fn print(v: Vec{Result{i64}}) binds print_vec_result;
 export fn map(v: Vec{i64}, m: i64 -> i64) -> Vec{i64} binds map_onearg; // TODO: This is terrible
 export fn parmap(v: Vec{i64}, m: i64 -> i64) -> Vec{i64} binds parmap_onearg; // TODO: This is terrible

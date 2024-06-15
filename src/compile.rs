@@ -1,7 +1,9 @@
 use std::env::current_dir;
 use std::fs::{create_dir_all, remove_file, write, File};
+use std::io::Read;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use dirs::config_dir;
 use fs2::FileExt;
@@ -13,6 +15,7 @@ use crate::lntors::lntors;
 /// in the standard library. While this *should* be some configurable thing in the standard library
 /// code instead, the contents of the Cargo.toml are just hardwired in here for now.
 pub fn compile(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
+    let start_time = Instant::now();
     let find_process = if cfg!(windows) { "where" } else { "which" };
     // Fail if rustc is not present TODO: Present a better error to the user
     Command::new(find_process).arg("rustc").output()?;
@@ -70,9 +73,29 @@ wgpu = "0.20.0""#;
     let first_time = !alan_config.exists() || !lockfile_path.exists();
     if first_time {
         create_dir_all(alan_config.clone())?;
-        write(lockfile_path.clone(), "Alan Lockfile".as_bytes())?;
+        write(
+            lockfile_path.clone(),
+            format!(
+                "{}",
+                SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs()
+            )
+            .as_bytes(),
+        )?;
     }
-    let lockfile = File::open(lockfile_path.as_path())?;
+    let mut lockfile = File::open(lockfile_path.as_path())?;
+    let should_rebuild_deps = {
+        let mut b = Vec::new();
+        lockfile.read_to_end(&mut b)?;
+        let t1 = match String::from_utf8(b) {
+            Ok(s) => match s.parse::<u64>() {
+                Ok(n) => n,
+                Err(_) => 0,
+            },
+            Err(_) => 0,
+        };
+        let t2 = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+        t2 > t1 + 24 * 60 * 60
+    };
     lockfile.lock_exclusive()?;
     if first_time {
         // First time initialization of the alan config directory
@@ -211,19 +234,29 @@ wgpu = "0.20.0""#;
         }
     }?;
     // Update the cargo lockfile, if necessary
-    match Command::new("cargo")
-        .current_dir(project_dir.clone())
-        .arg("update")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-    {
-        Ok(a) => Ok(a),
-        Err(e) => {
-            lockfile.unlock()?;
-            Err(e)
-        }
-    }?;
+    if should_rebuild_deps {
+        match Command::new("cargo")
+            .current_dir(project_dir.clone())
+            .arg("update")
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output()
+        {
+            Ok(a) => Ok(a),
+            Err(e) => {
+                lockfile.unlock()?;
+                Err(e)
+            }
+        }?;
+        write(
+            lockfile_path.clone(),
+            format!(
+                "{}",
+                SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs()
+            )
+            .as_bytes(),
+        )?;
+    }
     // Build the executable
     match Command::new("cargo")
         .current_dir(project_dir.clone())
@@ -265,6 +298,7 @@ wgpu = "0.20.0""#;
     }?;
     // Drop the lockfile
     lockfile.unlock()?;
+    println!("Done! Took {:.2}sec", start_time.elapsed().as_secs_f32());
     Ok(())
 }
 
@@ -703,108 +737,108 @@ test_ignore!(i64_neg => r#"
     stdout "-3\n";
 );
 
-test!(float32_add => r#"
+test!(f32_add => r#"
     export fn main {
       print(f32(1) + f32(2));
     }"#;
     stdout "3\n";
 );
-test!(float32_sub => r#"
+test!(f32_sub => r#"
     export fn main {
       print(f32(2) - f32(1));
     }"#;
     stdout "1\n";
 );
-test!(float32_mul => r#"
+test!(f32_mul => r#"
     export fn main {
       print(f32(2) * f32(1));
     }"#;
     stdout "2\n";
 );
-test!(float32_div => r#"
+test!(f32_div => r#"
     export fn main {
       print(f32(6) / f32(2));
     }"#;
     stdout "3\n";
 );
-test!(float32_sqrt => r#"
+test!(f32_sqrt => r#"
     export fn main {
       print(sqrt(f32(36)));
     }"#;
     stdout "6\n";
 );
-test!(float32_pow => r#"
+test!(f32_pow => r#"
     export fn main {
       print(f32(6) ** f32(2));
     }"#;
     stdout "36\n";
 );
-test!(float32_min => r#"
+test!(f32_min => r#"
     export fn main {
       min(3.f32, 5.f32).print;
     }"#;
     stdout "3\n";
 );
-test!(float32_max => r#"
+test!(f32_max => r#"
     export fn main {
       max(3.f32, 5.f32).print;
     }"#;
     stdout "5\n";
 );
-test_ignore!(float32_neg => r#"
+test_ignore!(f32_neg => r#"
     export fn main = print(- 3.f32);"#; // You wouldn't naturally write this, but should still work
     stdout "-3\n";
 );
 
-test!(float64_add => r#"
+test!(f64_add => r#"
     export fn main {
       (1.0 + 2.0).print;
     }"#;
     stdout "3\n";
 );
-test!(float64_sub => r#"
+test!(f64_sub => r#"
     export fn main {
       (2.0 - 1.0).print;
     }"#;
     stdout "1\n";
 );
-test!(float64_mul => r#"
+test!(f64_mul => r#"
     export fn main {
       (2.0 * 1.0).print;
     }"#;
     stdout "2\n";
 );
-test!(float64_div => r#"
+test!(f64_div => r#"
     export fn main {
       (6.0 / 2.0).print;
     }"#;
     stdout "3\n";
 );
-test!(float64_sqrt => r#"
+test!(f64_sqrt => r#"
     export fn main {
       sqrt(36.0).print;
     }"#;
     stdout "6\n";
 );
-test!(float64_pow => r#"
+test!(f64_pow => r#"
     export fn main {
       (6.0 ** 2.0).print;
     }"#;
     stdout "36\n";
 );
-test!(float64_min => r#"
+test!(f64_min => r#"
     export fn main {
       min(3.f64, 5.f64).print;
     }"#;
     stdout "3\n";
 );
-test!(float64_max => r#"
+test!(f64_max => r#"
     export fn main {
       max(3.f64, 5.f64).print;
     }"#;
     stdout "5\n";
 );
-test_ignore!(float64_neg => r#"
+test_ignore!(f64_neg => r#"
     export fn main = print(- 3.f64);"#; // You wouldn't naturally write this, but should still work
     stdout "-3\n";
 );
@@ -2005,6 +2039,16 @@ true
 true
 hello, nested generics!
 "#;
+);
+test!(generic_functions => r#"
+    fn empty{T}() -> Array{T} = Array{T}(); // Pointless, but just for testing
+
+    export fn main {
+      let foo = empty{i64}();
+      print(foo);
+    }
+"#;
+    stdout "[]\n";
 );
 test_ignore!(invalid_generics => r#"
     type box{V} {

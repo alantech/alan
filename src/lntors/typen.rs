@@ -11,7 +11,12 @@ pub fn ctype_to_rtype(
 ) -> Result<String, Box<dyn std::error::Error>> {
     match ctype {
         CType::Void => Ok("void".to_string()),
-        CType::Type(name, t) => {
+        CType::Infer(s) => Err(format!(
+            "Inferred type matching {} was not realized before code generation",
+            s
+        )
+        .into()),
+        CType::Type(_, t) => {
             match &**t {
                 CType::Either(ts) => {
                     let mut enum_type_strs = Vec::new();
@@ -47,6 +52,12 @@ pub fn ctype_to_rtype(
                             }
                         }
                     }
+                    let name = t
+                        .to_functional_string()
+                        .replace(" ", "_")
+                        .replace(",", "_")
+                        .replace("{", "_")
+                        .replace("}", "_");
                     Ok(format!("enum {} {{ {} }}", name, enum_type_strs.join(", ")))
                 }
                 _ => Ok("".to_string()), // TODO: Is this correct?

@@ -19,11 +19,11 @@ pub struct Import {
 
 impl Import {
     pub fn from_ast(
-        program: Program,
+        program: &mut Program,
         path: String,
         scope: &mut Scope,
         import_ast: &parse::ImportStatement,
-    ) -> Result<Program, Box<dyn std::error::Error>> {
+    ) -> Result<(), Box<dyn std::error::Error>> {
         match &import_ast {
             parse::ImportStatement::Standard(s) => {
                 // First, get the path for the code
@@ -32,10 +32,9 @@ impl Import {
                     Some(_) => true,
                     None => false,
                 };
-                let mut p = program;
                 if !exists {
                     // Need to load this file into the program first
-                    p = p.load(ln_file.clone())?;
+                    program.load(ln_file.clone())?;
                 }
                 let import_name = if let Some(rename) = &s.renamed {
                     rename.varop.to_string()
@@ -47,7 +46,7 @@ impl Import {
                     import_type: ImportType::Standard(ln_file.clone(), import_name),
                 };
                 scope.imports.insert(ln_file, i);
-                Ok(p)
+                Ok(())
             }
             parse::ImportStatement::From(f) => {
                 let ln_file = f.dependency.resolve(path)?;
@@ -55,10 +54,9 @@ impl Import {
                     Some(_) => true,
                     None => false,
                 };
-                let mut p = program;
                 if !exists {
                     // Need to load this file into the program first
-                    p = p.load(ln_file.clone())?;
+                    program.load(ln_file.clone())?;
                 }
                 let field_vec = f
                     .varlist
@@ -76,7 +74,7 @@ impl Import {
                     import_type: ImportType::Fields(field_vec),
                 };
                 scope.imports.insert(ln_file, i);
-                Ok(p)
+                Ok(())
             }
         }
     }

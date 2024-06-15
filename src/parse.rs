@@ -1185,8 +1185,10 @@ named_and!(functions: Functions =>
     b: String as optwhitespace,
     optname: Option<String> as opt_string!(variable),
     c: String as optwhitespace,
-    opttype: Option<Vec<WithTypeOperators>> as opt(typeassignables),
+    optgenerics: Option<GnCall> as opt(gncall),
     d: String as optwhitespace,
+    opttype: Option<Vec<WithTypeOperators>> as opt(typeassignables),
+    e: String as optwhitespace,
     fullfunctionbody: FullFunctionBody as fullfunctionbody,
 );
 test!(functions =>
@@ -1194,6 +1196,7 @@ test!(functions =>
     pass "fn print(val: String) binds println!;" => "";
     pass "fn{Test} foo binds foo_test;" => "";
     pass "fn newHashMap(firstKey: Hashable, firstVal: any) -> HashMap{Hashable, any} { // TODO: Rust-like fn::<typeA, typeB> syntax?\n  let hm = HashMap{Hashable, any}(Array{KeyVal{Hashable, any}}(), Array{Array{int64}}(Array{int64}()) * 128 // 1KB of space\n);\n  return hm.set(firstKey, firstVal);\n}" => "";
+    pass "fn cast{T, U}(t: T) -> U = U(t);" => "";
 );
 named_or!(blocklike: Blocklike =>
     Functions: Functions as functions,
