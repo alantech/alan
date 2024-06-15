@@ -13,10 +13,11 @@ use crate::lntors::lntors;
 /// in the standard library. While this *should* be some configurable thing in the standard library
 /// code instead, the contents of the Cargo.toml are just hardwired in here for now.
 pub fn compile(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
+    let find_process = if cfg!(windows) { "where" } else { "which" };
     // Fail if rustc is not present TODO: Present a better error to the user
-    Command::new("which").arg("rustc").output()?;
+    Command::new(find_process).arg("rustc").output()?;
     // Also fail if cargo is not present
-    Command::new("which").arg("cargo").output()?;
+    Command::new(find_process).arg("cargo").output()?;
     // Because all Alan programs use the same Rust dependencies (for now), we can cut down a *lot*
     // of build time by re-using the `./target/release/build` and `./target/release/deps` directory
     // in subsequent builds. Since it takes over 30 seconds to make a release build on my laptop
@@ -305,11 +306,16 @@ macro_rules! test {
                 let filename = format!("{}.ln", stringify!($rule));
                 super::write(&filename, $code)?;
                 assert_eq!((), super::compile(filename.to_string())?);
-                let run = super::Command::new(format!("./{}", stringify!($rule))).output()?;
+                let cmd = if cfg!(windows) {
+                    format!(".\\{}.exe", stringify!($rule))
+                } else {
+                    format!("./{}", stringify!($rule))
+                };
+                let run = super::Command::new(cmd.clone()).output()?;
                 $( $type!($test_val, &run); )+
                 // Cleanup the temp files. TODO: Make this happen regardless of test failure?
                 std::fs::remove_file(&filename)?;
-                std::fs::remove_file(stringify!($rule))?;
+                std::fs::remove_file(&cmd)?;
                 Ok(())
             }
         }
@@ -325,11 +331,16 @@ macro_rules! test_ignore {
                 let filename = format!("{}.ln", stringify!($rule));
                 super::write(&filename, $code)?;
                 assert_eq!((), super::compile(filename.to_string())?);
-                let run = super::Command::new(format!("./{}", stringify!($rule))).output()?;
+                let cmd = if cfg!(windows) {
+                    format!(".\\{}.exe", stringify!($rule))
+                } else {
+                    format!("./{}", stringify!($rule))
+                };
+                let run = super::Command::new(cmd.clone()).output()?;
                 $( $type!($test_val, &run); )+
                 // Cleanup the temp files. TODO: Make this happen regardless of test failure?
                 std::fs::remove_file(&filename)?;
-                std::fs::remove_file(stringify!($rule))?;
+                std::fs::remove_file(&cmd)?;
                 Ok(())
             }
         }
@@ -372,21 +383,33 @@ macro_rules! test_compile_error {
 #[cfg(test)]
 macro_rules! stdout {
     ( $test_val:expr, $real_val:expr ) => {
-        let std_out = String::from_utf8($real_val.stdout.clone())?;
+        let std_out = if cfg!(windows) {
+            String::from_utf8($real_val.stdout.clone())?.replace("\r\n", "\n")
+        } else {
+            String::from_utf8($real_val.stdout.clone())?
+        };
         assert_eq!($test_val, &std_out);
     };
 }
 #[cfg(test)]
 macro_rules! stdout_contains {
     ( $test_val:expr, $real_val:expr ) => {
-        let std_out = String::from_utf8($real_val.stdout.clone())?;
+        let std_out = if cfg!(windows) {
+            String::from_utf8($real_val.stdout.clone())?.replace("\r\n", "\n")
+        } else {
+            String::from_utf8($real_val.stdout.clone())?
+        };
         assert_eq!(std_out.contains($test_val), true);
     };
 }
 #[cfg(test)]
 macro_rules! stderr {
     ( $test_val:expr, $real_val:expr ) => {
-        let std_err = String::from_utf8($real_val.stderr.clone())?;
+        let std_err = if cfg!(windows) {
+            String::from_utf8($real_val.stderr.clone())?.replace("\r\n", "\n")
+        } else {
+            String::from_utf8($real_val.stderr.clone())?
+        };
         assert_eq!($test_val, &std_err);
     };
 }
