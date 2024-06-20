@@ -23,7 +23,11 @@ macro_rules! run {
 macro_rules! clean {
     ( $name:ident ) => {
         let sourcefile = format!("{}.ln", stringify!($name));
-        let executable = format!("{}", stringify!($name));
+        let executable = if cfg!(windows) {
+            format!("{}.exe", stringify!($name))
+        } else {
+            format!("{}", stringify!($name))
+        };
         remove_file(&sourcefile)?;
         remove_file(&executable)?;
     };

@@ -11,15 +11,26 @@ env:
 
 jobs:
   test:
-
-    runs-on: self-hosted
-
+    runs-on: [self-hosted, linux]
     steps:
     - uses: actions/checkout@v4
     - name: Check lockfile is up to date
       run: cargo update --locked
     - name: Check formatting
       run: cargo fmt --check
+    - name: Build
+      run: cargo build --verbose
+    - if: ${{ github.ref_name == 'main' }}
+      name: Run tests
+      run: cargo test --verbose -- --include-ignored
+    - if: ${{ github.ref_name != 'main' }}
+      name: Run tests
+      run: cargo test --verbose
+
+  test-windows:
+    runs-on: [self-hosted, windows]
+    steps:
+    - uses: actions/checkout@v4
     - name: Build
       run: cargo build --verbose
     - if: ${{ github.ref_name == 'main' }}

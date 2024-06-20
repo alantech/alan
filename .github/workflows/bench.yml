@@ -10,10 +10,8 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-
-    runs-on: self-hosted
-
+  bench:
+    runs-on: [self-hosted, linux]
     steps:
     - uses: actions/checkout@v4
     - name: Build Alan
@@ -24,3 +22,12 @@ jobs:
       run: cargo run -- compile benches/bench.ln
     - name: Alan-managed Benchmarks
       run: ./bench
+
+  bench-windows:
+    runs-on: [self-hosted, windows]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build Alan
+      run: cargo build --verbose
+    - name: Rust-managed Benchmarks
+      run: cargo bench
