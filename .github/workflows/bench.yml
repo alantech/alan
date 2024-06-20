@@ -31,3 +31,12 @@ jobs:
       run: cargo build --verbose
     - name: Rust-managed Benchmarks
       run: cargo bench
+
+  bench-macos:
+    runs-on: [self-hosted, macOS]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build Alan
+      run: cargo build --verbose
+    - name: Rust-managed Benchmarks
+      run: cargo bench
