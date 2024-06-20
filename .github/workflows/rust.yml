@@ -39,3 +39,16 @@ jobs:
     - if: ${{ github.ref_name != 'main' }}
       name: Run tests
       run: cargo test --verbose
+
+  test-macos:
+    runs-on: [self-hosted, macOS]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build
+      run: cargo build --verbose
+    - if: ${{ github.ref_name == 'main' }}
+      name: Run tests
+      run: cargo test --verbose -- --include-ignored
+    - if: ${{ github.ref_name != 'main' }}
+      name: Run tests
+      run: cargo test --verbose
