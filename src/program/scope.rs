@@ -1,5 +1,3 @@
-use std::pin::Pin;
-
 use ordered_hash_map::OrderedHashMap;
 
 use super::CType;
@@ -14,6 +12,8 @@ use crate::parse;
 
 #[derive(Clone, Debug)]
 pub struct Scope {
+    pub path: String,           // Now necessary since we reference by path name :/
+    pub parent: Option<String>, // TODO: Figure out lifetimes and make this a real reference
     pub imports: OrderedHashMap<String, Import>,
     pub types: OrderedHashMap<String, CType>,
     pub consts: OrderedHashMap<String, Const>,
@@ -28,15 +28,20 @@ pub struct Scope {
 
 impl Scope {
     pub fn from_src(
-        program: Program,
+        program: &mut Program,
         path: &String,
         src: String,
-    ) -> Result<(Program, (Pin<Box<String>>, parse::Ln, Scope)), Box<dyn std::error::Error>> {
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let txt = Box::pin(src);
         let txt_ptr: *const str = &**txt;
         // *How* would this move, anyways? But TODO: See if there's a way to handle this safely
         let ast = unsafe { parse::get_ast(&*txt_ptr)? };
-        let mut s = Scope {
+        let s = Scope {
+            path: path.clone(),
+            parent: match program.scopes_by_file.get("@root") {
+                None => None,
+                Some(..) => Some("@root".to_string()),
+            },
             imports: OrderedHashMap::new(),
             types: OrderedHashMap::new(),
             consts: OrderedHashMap::new(),
@@ -45,31 +50,44 @@ impl Scope {
             typeoperatormappings: OrderedHashMap::new(),
             exports: OrderedHashMap::new(),
         };
-        let mut p = program;
+        // TODO: Figure out a better way to do this. The compiler is no longer threadsafe this way
+        program.scopes_by_file.insert(path.clone(), (txt, ast, s));
+        let (_, ast, s) = program.scopes_by_file.get_mut(path).unwrap();
+        let ast_ptr: *const parse::Ln = &*ast;
+        let s_ptr: *mut Scope = &mut *s;
+        let ast = unsafe { &*ast_ptr };
+        let mut s = unsafe { &mut *s_ptr };
         for i in ast.imports.iter() {
-            p = Import::from_ast(p, path.clone(), &mut s, i)?;
+            Import::from_ast(program, path.clone(), s, i)?;
         }
         for (i, element) in ast.body.iter().enumerate() {
             match element {
-                parse::RootElements::Types(t) => CType::from_ast(&mut s, &mut p, t, false)?,
-                parse::RootElements::Functions(f) => Function::from_ast(&mut s, &mut p, f, false)?,
-                parse::RootElements::ConstDeclaration(c) => Const::from_ast(&mut s, c, false)?,
+                parse::RootElements::Types(t) => match CType::from_ast(s, program, t, false) {
+                    Err(e) => Err(e),
+                    Ok(_) => Ok(()),
+                }?, // TODO: Make this match the rest?
+
+                parse::RootElements::Functions(f) => Function::from_ast(s, program, f, false)?,
+                parse::RootElements::ConstDeclaration(c) => Const::from_ast(s, c, false)?,
                 parse::RootElements::OperatorMapping(o) => {
-                    OperatorMapping::from_ast(&mut s, o, false)?
+                    OperatorMapping::from_ast(s, o, false)?
                 }
                 parse::RootElements::TypeOperatorMapping(o) => {
-                    TypeOperatorMapping::from_ast(&mut s, o, false)?
+                    TypeOperatorMapping::from_ast(s, o, false)?
                 }
                 parse::RootElements::Exports(e) => match &e.exportable {
-                    parse::Exportable::Functions(f) => Function::from_ast(&mut s, &mut p, f, true)?,
-                    parse::Exportable::ConstDeclaration(c) => Const::from_ast(&mut s, c, true)?,
+                    parse::Exportable::Functions(f) => Function::from_ast(s, program, f, true)?,
+                    parse::Exportable::ConstDeclaration(c) => Const::from_ast(s, c, true)?,
                     parse::Exportable::OperatorMapping(o) => {
-                        OperatorMapping::from_ast(&mut s, o, true)?
+                        OperatorMapping::from_ast(s, o, true)?
                     }
                     parse::Exportable::TypeOperatorMapping(o) => {
-                        TypeOperatorMapping::from_ast(&mut s, o, true)?
+                        TypeOperatorMapping::from_ast(s, o, true)?
                     }
-                    parse::Exportable::Types(t) => CType::from_ast(&mut s, &mut p, t, true)?,
+                    parse::Exportable::Types(t) => match CType::from_ast(s, program, t, true) {
+                        Err(e) => Err(e),
+                        Ok(_) => Ok(()),
+                    }?, // TODO: Make this match the rest?
                     parse::Exportable::CTypes(c) => {
                         // For now this is just declaring in the Alan source code the compile-time
                         // types that can be used, and is simply a special kind of documentation.
@@ -112,6 +130,55 @@ impl Scope {
                 }
             }
         }
-        Ok((p, (txt, ast, s)))
+        Ok(())
+    }
+
+    pub fn temp_child(&self) -> Scope {
+        let path = format!("{}/temp_child", self.path);
+        Scope {
+            path: path,
+            parent: Some(self.path.clone()),
+            imports: OrderedHashMap::new(),
+            types: OrderedHashMap::new(),
+            consts: OrderedHashMap::new(),
+            functions: OrderedHashMap::new(),
+            operatormappings: OrderedHashMap::new(),
+            typeoperatormappings: OrderedHashMap::new(),
+            exports: OrderedHashMap::new(),
+        }
+    }
+
+    pub fn child(&self, program: &mut Program) -> Scope {
+        let path = format!("{}/child", self.path);
+        let s = Scope {
+            path: path.clone(),
+            parent: Some(self.path.clone()),
+            imports: OrderedHashMap::new(),
+            types: OrderedHashMap::new(),
+            consts: OrderedHashMap::new(),
+            functions: OrderedHashMap::new(),
+            operatormappings: OrderedHashMap::new(),
+            typeoperatormappings: OrderedHashMap::new(),
+            exports: OrderedHashMap::new(),
+        };
+        let txt = Box::pin("".to_string());
+        let txt_ptr: *const str = &**txt;
+        // *How* would this move, anyways? But TODO: See if there's a way to handle this safely
+        let ast = unsafe { parse::get_ast(&*txt_ptr).unwrap() };
+        program.scopes_by_file.insert(path, (txt, ast, s.clone()));
+        s
+    }
+
+    pub fn merge_child_functions(&mut self, child: &mut Scope) {
+        for (name, fs) in child.functions.drain() {
+            if self.functions.contains_key(&name) {
+                let func_vec = self.functions.get_mut(&name).unwrap();
+                for f in fs {
+                    func_vec.push(f);
+                }
+            } else {
+                self.functions.insert(name, fs);
+            }
+        }
     }
 }

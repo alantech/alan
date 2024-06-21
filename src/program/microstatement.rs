@@ -58,7 +58,7 @@ impl Microstatement {
                     arg_types.push(arg_type);
                 }
                 match program.resolve_function(scope, function, &arg_types) {
-                    Some((function_object, _s)) => Ok(function_object.rettype.clone()),
+                    Some(function_object) => Ok(function_object.rettype.clone()),
                     None => Err(format!(
                         "Could not find function {}({})",
                         function,
@@ -409,17 +409,14 @@ pub fn baseassignablelist_to_microstatements(
                 // TODO: Currently assuming all array values are the same type, should check that
                 // better
                 let inner_type = array_vals[0].get_type(scope, program)?;
-                let inner_type_str = inner_type.to_strict_string(false);
+                let inner_type_str = inner_type.to_functional_string();
                 let array_type_name = format!(
                     "Array_{}_",
                     inner_type_str
                         .replace(" ", "_")
                         .replace(",", "_")
-                        .replace(":", "_")
                         .replace("{", "_")
                         .replace("}", "_")
-                        .replace("|", "_")
-                        .replace("()", "void")
                 ); // Really bad
                 let array_type = CType::Array(Box::new(inner_type));
                 let type_str = format!("type {} = {}[];", array_type_name, inner_type_str);
@@ -519,16 +516,12 @@ pub fn baseassignablelist_to_microstatements(
                 // TODO: Eliminate the duplication of CType generation logic by abstracting out the
                 // automatic function creation into a reusable component
                 let ctype = withtypeoperatorslist_to_ctype(&g.typecalllist, scope, program)?;
-                // TODO: Be more complete here
                 let name = ctype
-                    .to_strict_string(false)
+                    .to_functional_string()
                     .replace(" ", "_")
                     .replace(",", "_")
-                    .replace(":", "_")
                     .replace("{", "_")
-                    .replace("}", "_")
-                    .replace("|", "_")
-                    .replace("()", "void"); // Really bad
+                    .replace("}", "_");
                 let parse_type = parse::Types {
                     typen: "type".to_string(),
                     a: "".to_string(),
@@ -584,7 +577,7 @@ pub fn baseassignablelist_to_microstatements(
                 // types
                 let func = program.resolve_function(scope, f, &arg_types);
                 match func {
-                    Some(..) => {
+                    Some(_) => {
                         // Success! Let's emit this
                         prior_value = Some(Microstatement::FnCall {
                             function: f.to_string(),
@@ -637,11 +630,50 @@ pub fn baseassignablelist_to_microstatements(
                 for arg in &arg_microstatements {
                     arg_types.push(arg.get_type(scope, program)?);
                 }
-                match program.resolve_type(scope, f) {
-                    None => {
-                        return Err("Generic functions not yet implemented".into());
+                // TODO: Be less sketchy here, this punts validation to later where we may produce
+                // a nonsensical error message
+                let generics = g
+                    .to_string()
+                    .replace("{", "")
+                    .replace("}", "")
+                    .split(",")
+                    .map(|s| s.to_string())
+                    .collect::<Vec<String>>();
+                let mut temp_scope = scope.child(program);
+                let maybe_type = match program.resolve_type(scope, f) {
+                    None => None,
+                    Some(t) => Some(t.clone()), // TODO: Kill the clone
+                };
+                let maybe_generic_function =
+                    program.resolve_generic_function(&mut temp_scope, f, &generics, &arg_types);
+                match (maybe_type, maybe_generic_function) {
+                    (None, None) => {
+                        return Err(format!(
+                            "Generic type or function {}{} not found",
+                            f,
+                            g.to_string()
+                        )
+                        .into());
                     }
-                    Some(_) => {
+                    (Some(_), Some(_)) => {
+                        // If this hits, it matched on the arguments
+                    }
+                    (None, Some(func)) => {
+                        // Grab that realized generic function and shove it into the current scope
+                        if scope.functions.contains_key(&func.name) {
+                            let func_vec = scope.functions.get_mut(&func.name).unwrap();
+                            func_vec.push(func.clone());
+                        } else {
+                            scope
+                                .functions
+                                .insert(func.name.clone(), vec![func.clone()]);
+                        }
+                        prior_value = Some(Microstatement::FnCall {
+                            function: func.name.clone(),
+                            args: arg_microstatements,
+                        });
+                    }
+                    (Some(_), None) => {
                         // Confirmed that this type exists, we now need to generate a realized
                         // generic type for this specified type and shove it into the non-exported
                         // scope, then we can be sure we can call it.
@@ -679,16 +711,23 @@ pub fn baseassignablelist_to_microstatements(
                             }),
                             optsemicolon: ";".to_string(),
                         };
-                        CType::from_ast(scope, program, &parse_type, false)?;
+                        let t = CType::from_ast(scope, program, &parse_type, false)?;
+                        let real_name = t
+                            .to_functional_string()
+                            .replace(" ", "_")
+                            .replace(",", "_")
+                            .replace("{", "_")
+                            .replace("}", "_");
                         // Now we are sure the type and function exist, and we know the name for the
                         // function. It would be best if we could just pass it to ourselves and run the
                         // `FuncCall` logic below, but it's easier at the moment to duplicate :( TODO
                         prior_value = Some(Microstatement::FnCall {
-                            function: name,
+                            function: real_name,
                             args: arg_microstatements,
                         });
                     }
                 }
+                scope.merge_child_functions(&mut temp_scope);
             }
             BaseChunk::IIGE(_prior, _f, _g, _h) => {
                 // TODO: This may similarly be just some simple microstatement generation here
@@ -725,11 +764,11 @@ pub fn withoperatorslist_to_microstatements(
             match assignable_or_operator {
                 parse::WithOperators::Operators(o) => {
                     let operatorname = o.trim();
-                    let (operator, _) =
-                        match program.resolve_operator(scope, &operatorname.to_string()) {
-                            Some(o) => Ok(o),
-                            None => Err(format!("Operator {} not found", operatorname)),
-                        }?;
+                    let operator = match program.resolve_operator(scope, &operatorname.to_string())
+                    {
+                        Some(o) => Ok(o),
+                        None => Err(format!("Operator {} not found", operatorname)),
+                    }?;
                     let level = match &operator {
                         OperatorMapping::Prefix { level, .. } => level,
                         OperatorMapping::Infix { level, .. } => level,
@@ -749,7 +788,7 @@ pub fn withoperatorslist_to_microstatements(
                 parse::WithOperators::Operators(o) => o.trim(),
                 _ => unreachable!(),
             };
-            let (operator, _) = match program.resolve_operator(scope, &operatorname.to_string()) {
+            let operator = match program.resolve_operator(scope, &operatorname.to_string()) {
                 Some(o) => Ok(o),
                 None => Err(format!("Operator {} not found", operatorname)),
             }?;

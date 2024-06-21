@@ -11,6 +11,7 @@ use crate::parse;
 #[derive(Clone, Debug, PartialEq)]
 pub enum CType {
     Void,
+    Infer(String), // TODO: Switch to an Interface here once they exist
     Type(String, Box<CType>),
     Generic(String, Vec<String>, Vec<parse::WithTypeOperators>),
     Bound(String, String),
@@ -37,6 +38,7 @@ impl CType {
     pub fn to_strict_string(&self, strict: bool) -> String {
         match self {
             CType::Void => "()".to_string(),
+            CType::Infer(s) => s.clone(), // TODO: Replace this
             CType::Type(n, t) => match strict {
                 true => format!("{}", n),
                 false => t.to_strict_string(strict),
@@ -94,12 +96,68 @@ impl CType {
             CType::Array(t) => format!("{}[]", t.to_strict_string(strict)),
         }
     }
+    pub fn to_functional_string(&self) -> String {
+        match self {
+            CType::Void => "void".to_string(),
+            CType::Infer(s) => s.clone(), // TODO: What to do here?
+            CType::Type(_, t) => t.to_functional_string(),
+            CType::Generic(n, gs, _) => format!("{}{{{}}}", n, gs.join(", ")),
+            CType::Bound(_, b) => b.clone(),
+            CType::BoundGeneric(_, _, b) => b.clone(),
+            CType::ResolvedBoundGeneric(_, gs, ts, b) => {
+                let mut out = b.clone();
+                for (g, t) in gs.iter().zip(ts.iter()) {
+                    out = out.replace(g, &t.to_functional_string());
+                }
+                out
+            }
+            CType::IntrinsicGeneric(s, u) => format!("{}{{{}}}", s, {
+                let mut out = Vec::new();
+                for i in 0..(*u as u32) {
+                    let a = 'a' as u32;
+                    let c = char::from_u32(a + i).unwrap();
+                    out.push(c.to_string());
+                }
+                out.join(", ")
+            }),
+            CType::Int(i) => format!("{}", i),
+            CType::Float(f) => format!("{}", f),
+            CType::Bool(b) => match b {
+                true => "true".to_string(),
+                false => "false".to_string(),
+            },
+            CType::TString(s) => s.clone(),
+            CType::Group(t) => t.to_functional_string(),
+            CType::Function(i, o) => format!(
+                "Function{{{}, {}}}",
+                i.to_functional_string(),
+                o.to_functional_string()
+            ),
+            CType::Tuple(ts) => format!(
+                "Tuple{{{}}}",
+                ts.iter()
+                    .map(|t| t.to_functional_string())
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ),
+            CType::Field(l, t) => format!("Label{{{}, {}}}", l, t.to_functional_string()),
+            CType::Either(ts) => format!(
+                "Either{{{}}}",
+                ts.iter()
+                    .map(|t| t.to_functional_string())
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ),
+            CType::Buffer(t, s) => format!("Buffer{{{}, {}}}", t.to_functional_string(), s),
+            CType::Array(t) => format!("Array{{{}}}", t.to_functional_string()),
+        }
+    }
     pub fn from_ast(
         scope: &mut Scope,
         program: &mut Program,
         type_ast: &parse::Types,
         is_export: bool,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<CType, Box<dyn std::error::Error>> {
         let name = type_ast.fulltypename.typename.clone();
         let (t, fs) = match &type_ast.fulltypename.opttypegenerics {
             None => {
@@ -130,7 +188,12 @@ impl CType {
                         }
                         let t = CType::Type(name.clone(), Box::new(inner_type.clone()));
                         let mut fs = Vec::new();
-                        let constructor_fn_name = type_ast.fulltypename.typename.clone();
+                        let constructor_fn_name = t
+                            .to_functional_string()
+                            .replace(" ", "_")
+                            .replace(",", "_")
+                            .replace("{", "_")
+                            .replace("}", "_");
                         match &inner_type {
                             CType::Type(n, _) => {
                                 // This is just an alias
@@ -359,7 +422,7 @@ impl CType {
                 }
             }
         }
-        scope.types.insert(name, t);
+        scope.types.insert(name, t.clone());
         if fs.len() > 0 {
             let mut name_fn_pairs = HashMap::new();
             for f in fs {
@@ -381,7 +444,7 @@ impl CType {
                 }
             }
         }
-        Ok(())
+        Ok(t)
     }
 
     pub fn from_ctype(scope: &mut Scope, name: String, ctype: CType) {
@@ -395,6 +458,62 @@ impl CType {
             name.to_string(),
             CType::IntrinsicGeneric(name.to_string(), arglen),
         )
+    }
+    pub fn swap_subtype(self: &Self, old_type: &CType, new_type: &CType) -> CType {
+        // Implemented recursively to be easier to follow. It would be nice to avoid all of the
+        // cloning if the old type is not anywhere in the CType tree, but that would be a lot
+        // harder to detect ahead of time.
+        if self == old_type {
+            return new_type.clone();
+        }
+        match self {
+            CType::Void
+            | CType::Infer(_)
+            | CType::Generic(..)
+            | CType::Bound(..)
+            | CType::BoundGeneric(..)
+            | CType::IntrinsicGeneric(..)
+            | CType::Int(_)
+            | CType::Float(_)
+            | CType::Bool(_)
+            | CType::TString(_) => self.clone(),
+            CType::Type(name, ct) => {
+                CType::Type(name.clone(), Box::new(ct.swap_subtype(old_type, new_type)))
+            }
+            CType::ResolvedBoundGeneric(name, gen_types, gen_type_resolved, bind_str) => {
+                CType::ResolvedBoundGeneric(
+                    name.clone(),
+                    gen_types.clone(),
+                    gen_type_resolved
+                        .iter()
+                        .map(|gtr| gtr.swap_subtype(old_type, new_type))
+                        .collect::<Vec<CType>>(),
+                    bind_str.clone(),
+                )
+            }
+            CType::Group(g) => g.swap_subtype(old_type, new_type),
+            CType::Function(i, o) => CType::Function(
+                Box::new(i.swap_subtype(old_type, new_type)),
+                Box::new(o.swap_subtype(old_type, new_type)),
+            ),
+            CType::Tuple(ts) => CType::Tuple(
+                ts.iter()
+                    .map(|t| t.swap_subtype(old_type, new_type))
+                    .collect::<Vec<CType>>(),
+            ),
+            CType::Field(name, t) => {
+                CType::Field(name.clone(), Box::new(t.swap_subtype(old_type, new_type)))
+            }
+            CType::Either(ts) => CType::Either(
+                ts.iter()
+                    .map(|t| t.swap_subtype(old_type, new_type))
+                    .collect::<Vec<CType>>(),
+            ),
+            CType::Buffer(t, size) => {
+                CType::Buffer(Box::new(t.swap_subtype(old_type, new_type)), *size)
+            }
+            CType::Array(t) => CType::Array(Box::new(t.swap_subtype(old_type, new_type))),
+        }
     }
     // Special implementation for the tuple and either types since they *are* CTypes, but if one of
     // the provided input types *is* the same kind of CType, it should produce a merged version.
@@ -772,7 +891,7 @@ pub fn withtypeoperatorslist_to_ctype(
             match assignable_or_operator {
                 parse::WithTypeOperators::Operators(o) => {
                     let operatorname = o.trim();
-                    let (operator, _) =
+                    let operator =
                         match program.resolve_typeoperator(scope, &operatorname.to_string()) {
                             Some(o) => Ok(o),
                             None => Err(format!("Operator {} not found", operatorname)),
@@ -796,8 +915,7 @@ pub fn withtypeoperatorslist_to_ctype(
                 parse::WithTypeOperators::Operators(o) => o.trim(),
                 _ => unreachable!(),
             };
-            let (operator, _) = match program.resolve_typeoperator(scope, &operatorname.to_string())
-            {
+            let operator = match program.resolve_typeoperator(scope, &operatorname.to_string()) {
                 Some(o) => Ok(o),
                 None => Err(format!("Operator {} not found", operatorname)),
             }?;
@@ -1187,7 +1305,7 @@ pub fn typebaselist_to_ctype(
                     None => {}
                 };
                 prior_value = Some(match program.resolve_type(scope, var) {
-                    Some((t, _)) => {
+                    Some(t) => {
                         // TODO: Once interfaces are a thing, there needs to be a built-in
                         // interface called `Label` that we can use here to mark the first argument
                         // to `Field` as a `Label` and turn this logic into something regularized
@@ -1265,7 +1383,7 @@ pub fn typebaselist_to_ctype(
                                     // We use a temporary scope to resolve the
                                     // arguments to the generic function as the
                                     // specified names
-                                    let mut temp_scope = scope.clone();
+                                    let mut temp_scope = scope.temp_child();
                                     for i in 0..params.len() {
                                         CType::from_ctype(
                                             &mut temp_scope,

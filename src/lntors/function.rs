@@ -123,399 +123,400 @@ pub fn from_microstatement(
                     arg_type_strs.join(", ")
                 )
                 .into()),
-                Some((f, _s)) => match &f.kind {
-                    FnKind::Normal(_) => {
-                        let (_, o) = typen::generate(&f.rettype, scope, program, out)?;
-                        out = o;
-                        let mut arg_strs = Vec::new();
-                        for arg in &f.args {
-                            match typen::ctype_to_rtype(&arg.1, scope, program, false) {
-                                Err(e) => Err(e),
-                                Ok(s) => {
-                                    arg_strs.push(
-                                        s.replace("<", "_")
-                                            .replace(">", "_")
-                                            .replace(",", "_")
-                                            .replace(" ", ""),
-                                    );
-                                    /* TODO: Handle generic types better, also type inference */
-                                    Ok(())
-                                }
-                            }?;
-                        }
-                        // Come up with a function name that is unique so Rust doesn't choke on
-                        // duplicate function names that are allowed in Alan
-                        let rustname = format!("{}_{}", f.name, arg_strs.join("_")).to_string();
-                        // Make the function we need, but with the name we're
-                        out = generate(rustname.clone(), &f, scope, program, out)?;
-                        // Now call this function
-                        let mut argstrs = Vec::new();
-                        for arg in args {
-                            let (a, o) = from_microstatement(arg, scope, program, out)?;
+                Some(f) => {
+                    match &f.kind {
+                        FnKind::Generic(..) | FnKind::BoundGeneric(..) => Err(
+                            "Generic functions should have been resolved before reaching here"
+                                .into(),
+                        ),
+                        FnKind::Normal => {
+                            let (_, o) = typen::generate(&f.rettype, scope, program, out)?;
                             out = o;
-                            // If the argument is itself a function, this is the only place in Rust
-                            // where you can't pass by reference, so we check the type and change
-                            // the argument output accordingly.
-                            let arg_type = arg.get_type(scope, program)?;
-                            match arg_type {
-                                CType::Function(..) => argstrs.push(format!("{}", a)),
-                                _ => argstrs.push(format!("&mut {}", a)),
-                            }
-                        }
-                        Ok((
-                            format!("{}({})", rustname, argstrs.join(", ")).to_string(),
-                            out,
-                        ))
-                    }
-                    FnKind::Bind(rustname) => {
-                        let mut argstrs = Vec::new();
-                        for arg in args {
-                            let (a, o) = from_microstatement(arg, scope, program, out)?;
-                            out = o;
-                            // If the argument is itself a function, this is the only place in Rust
-                            // where you can't pass by reference, so we check the type and change
-                            // the argument output accordingly.
-                            let arg_type = arg.get_type(scope, program)?;
-                            match arg_type {
-                                CType::Function(..) => argstrs.push(format!("{}", a)),
-                                _ => argstrs.push(format!("&mut {}", a)),
-                            }
-                        }
-                        Ok((
-                            format!("{}({})", rustname, argstrs.join(", ")).to_string(),
-                            out,
-                        ))
-                    }
-                    FnKind::Derived | FnKind::DerivedVariadic => {
-                        // The initial work to get the values to construct the type is the same as
-                        // with bound functions, though.
-                        let (_, o) = typen::generate(&f.rettype, scope, program, out)?;
-                        out = o;
-                        let mut argstrs = Vec::new();
-                        for arg in args {
-                            let (a, o) = from_microstatement(arg, scope, program, out)?;
-                            out = o;
-                            // If the argument is itself a function, this is the only place in Rust
-                            // where you can't pass by reference, so we check the type and change
-                            // the argument output accordingly.
-                            let arg_type = arg.get_type(scope, program)?;
-                            match arg_type {
-                                CType::Function(..) => argstrs.push(format!("{}", a)),
-                                _ => argstrs.push(format!("&mut {}", a)),
-                            }
-                        }
-                        // The behavior of the generated code depends on the structure of the
-                        // return type and the input types. We also do some logic based on the name
-                        // of the function.
-                        // 1) If the name of the function matches the name of return type, it's a
-                        //    constructor function, and will interpret the arguments in different
-                        //    ways:
-                        //    a) If the return type is a Buffer, the arg count must be either the
-                        //       size of the buffer with all args having the same type *or* it must
-                        //       be exactly 1, with the arg matching the buffer's primary type that
-                        //       the buffer will be filled with. In case someone creates a
-                        //       one-element buffer, well, those two definitions are the same so it
-                        //       will use the first implementation (as it will be faster).
-                        //    b) If the return type is an Array, any number of values can be
-                        //       provided and it will pre-populate the array with those values.
-                        //    c) If the return type is an Either, it will expect only *one*
-                        //       argument, and fail otherwise. The argument needs to be one of the
-                        //       possibilities, which it will then put into the correct enum. An
-                        //       earlier stage of the compiler should have generated function
-                        //       definitions for each type in the Either.
-                        //    d) If the return type is a tuple type, each argument of the function
-                        //       needs to match, in the same order, the tuple's types. It doesn't
-                        //       matter if the type itself has fields with names, those are ignored
-                        //       and they're all turned into tuples.
-                        //    e) If the return type is a group type or "type" type, it's unwrapped
-                        //       and checked if it is one of the types above.
-                        //    f) If it's any other type, it's a compiler error. There's no way to
-                        //       derive an implementation for them that would be sensical.
-                        // 2) If the input type is a tuple and the name of the function matches the
-                        //    name of a field in the tuple, it's an accessor function.
-                        // 3) If the input type is an either and the name of the function matches
-                        //    the name of a sub-type, it returns a Maybe{T} for the type in
-                        //    question. (This conflicts with (1) so it's checked first.)
-                        // 4) If the name of the function is `get` write a getter function for the
-                        //    first argument type in question.
-                        // 5) If the name of the function is `set` write a setter function for the
-                        //    first argument type in question. TODO: Do this path.
-                        if &f.name == "get" && f.args.len() == 2 {
-                            let first_type = &f.args[0].1;
-                            let second_type = &f.args[1].1;
-                            match (first_type, second_type, &f.rettype) {
-                                (CType::Type(_, a), CType::Bound(i, _), CType::Type(_, r))
-                                    if i == "i64" =>
-                                {
-                                    match (*a.clone(), *r.clone()) {
-                                        (CType::Array(_), CType::Either(ts)) if ts.len() == 2 => {
-                                            return Ok((
-                                                format!(
-                                                    "{}.get({})",
-                                                    argstrs[0],
-                                                    match argstrs[1].strip_prefix("&mut ") {
-                                                        Some(s) => s,
-                                                        None => &argstrs[1],
-                                                    }
-                                                ),
-                                                out,
-                                            ));
-                                            // TODO: Someday revive something like this, but for
-                                            // now we are using Option, so it's much simpler
-                                            // return Ok((format!("match {}.get({}) {{ Some(v) => {}::{}(v), None => {}::void }}", argstrs[0], argstrs[1], n, ts[0].to_string(), n), out));
-                                        }
-                                        _ => {} // Just fall through
+                            let mut arg_strs = Vec::new();
+                            for arg in &f.args {
+                                match typen::ctype_to_rtype(&arg.1, scope, program, false) {
+                                    Err(e) => Err(e),
+                                    Ok(s) => {
+                                        arg_strs.push(
+                                            s.replace("<", "_")
+                                                .replace(">", "_")
+                                                .replace(",", "_")
+                                                .replace(" ", ""),
+                                        );
+                                        /* TODO: Handle generic types better, also type inference */
+                                        Ok(())
                                     }
-                                }
-                                _ => {} // Just fall through
+                                }?;
                             }
+                            // Come up with a function name that is unique so Rust doesn't choke on
+                            // duplicate function names that are allowed in Alan
+                            let rustname = format!("{}_{}", f.name, arg_strs.join("_")).to_string();
+                            // Make the function we need, but with the name we're
+                            out = generate(rustname.clone(), &f, scope, program, out)?;
+                            // Now call this function
+                            let mut argstrs = Vec::new();
+                            for arg in args {
+                                let (a, o) = from_microstatement(arg, scope, program, out)?;
+                                out = o;
+                                // If the argument is itself a function, this is the only place in Rust
+                                // where you can't pass by reference, so we check the type and change
+                                // the argument output accordingly.
+                                let arg_type = arg.get_type(scope, program)?;
+                                match arg_type {
+                                    CType::Function(..) => argstrs.push(format!("{}", a)),
+                                    _ => argstrs.push(format!("&mut {}", a)),
+                                }
+                            }
+                            Ok((
+                                format!("{}({})", rustname, argstrs.join(", ")).to_string(),
+                                out,
+                            ))
                         }
-                        if f.args.len() == 1 {
-                            // This is a wacky unwrapping logic...
-                            let mut input_type = &f.args[0].1;
-                            while match input_type {
-                                CType::Type(..) => true,
+                        FnKind::Bind(rustname) => {
+                            let mut argstrs = Vec::new();
+                            for arg in args {
+                                let (a, o) = from_microstatement(arg, scope, program, out)?;
+                                out = o;
+                                // If the argument is itself a function, this is the only place in Rust
+                                // where you can't pass by reference, so we check the type and change
+                                // the argument output accordingly.
+                                let arg_type = arg.get_type(scope, program)?;
+                                match arg_type {
+                                    CType::Function(..) => argstrs.push(format!("{}", a)),
+                                    _ => argstrs.push(format!("&mut {}", a)),
+                                }
+                            }
+                            Ok((
+                                format!("{}({})", rustname, argstrs.join(", ")).to_string(),
+                                out,
+                            ))
+                        }
+                        FnKind::Derived | FnKind::DerivedVariadic => {
+                            // The initial work to get the values to construct the type is the same as
+                            // with bound functions, though.
+                            let (_, o) = typen::generate(&f.rettype, scope, program, out)?;
+                            out = o;
+                            let mut argstrs = Vec::new();
+                            for arg in args {
+                                let (a, o) = from_microstatement(arg, scope, program, out)?;
+                                out = o;
+                                // If the argument is itself a function, this is the only place in Rust
+                                // where you can't pass by reference, so we check the type and change
+                                // the argument output accordingly.
+                                let arg_type = arg.get_type(scope, program)?;
+                                match arg_type {
+                                    CType::Function(..) => argstrs.push(format!("{}", a)),
+                                    _ => argstrs.push(format!("&mut {}", a)),
+                                }
+                            }
+                            // The behavior of the generated code depends on the structure of the
+                            // return type and the input types. We also do some logic based on the name
+                            // of the function.
+                            // 1) If the name of the function matches the name of return type, it's a
+                            //    constructor function, and will interpret the arguments in different
+                            //    ways:
+                            //    a) If the return type is a Buffer, the arg count must be either the
+                            //       size of the buffer with all args having the same type *or* it must
+                            //       be exactly 1, with the arg matching the buffer's primary type that
+                            //       the buffer will be filled with. In case someone creates a
+                            //       one-element buffer, well, those two definitions are the same so it
+                            //       will use the first implementation (as it will be faster).
+                            //    b) If the return type is an Array, any number of values can be
+                            //       provided and it will pre-populate the array with those values.
+                            //    c) If the return type is an Either, it will expect only *one*
+                            //       argument, and fail otherwise. The argument needs to be one of the
+                            //       possibilities, which it will then put into the correct enum. An
+                            //       earlier stage of the compiler should have generated function
+                            //       definitions for each type in the Either.
+                            //    d) If the return type is a tuple type, each argument of the function
+                            //       needs to match, in the same order, the tuple's types. It doesn't
+                            //       matter if the type itself has fields with names, those are ignored
+                            //       and they're all turned into tuples.
+                            //    e) If the return type is a group type or "type" type, it's unwrapped
+                            //       and checked if it is one of the types above.
+                            //    f) If it's any other type, it's a compiler error. There's no way to
+                            //       derive an implementation for them that would be sensical.
+                            // 2) If the input type is a tuple and the name of the function matches the
+                            //    name of a field in the tuple, it's an accessor function.
+                            // 3) If the input type is an either and the name of the function matches
+                            //    the name of a sub-type, it returns a Maybe{T} for the type in
+                            //    question. (This conflicts with (1) so it's checked first.)
+                            // 4) If the name of the function is `get` write a getter function for the
+                            //    first argument type in question.
+                            // 5) If the name of the function is `set` write a setter function for the
+                            //    first argument type in question. TODO: Do this path.
+                            if &f.name == "get" && f.args.len() == 2 {
+                                let first_type = &f.args[0].1;
+                                let second_type = &f.args[1].1;
+                                match (first_type, second_type, &f.rettype) {
+                                    (CType::Type(_, a), CType::Bound(i, _), CType::Type(_, r))
+                                        if i == "i64" =>
+                                    {
+                                        match (*a.clone(), *r.clone()) {
+                                            (CType::Array(_), CType::Either(ts))
+                                                if ts.len() == 2 =>
+                                            {
+                                                return Ok((
+                                                    format!(
+                                                        "{}.get({})",
+                                                        argstrs[0],
+                                                        match argstrs[1].strip_prefix("&mut ") {
+                                                            Some(s) => s,
+                                                            None => &argstrs[1],
+                                                        }
+                                                    ),
+                                                    out,
+                                                ));
+                                                // TODO: Someday revive something like this, but for
+                                                // now we are using Option, so it's much simpler
+                                                // return Ok((format!("match {}.get({}) {{ Some(v) => {}::{}(v), None => {}::void }}", argstrs[0], argstrs[1], n, ts[0].to_string(), n), out));
+                                            }
+                                            _ => {} // Just fall through
+                                        }
+                                    }
+                                    _ => {} // Just fall through
+                                }
+                            }
+                            if f.args.len() == 1 {
+                                // This is a wacky unwrapping logic...
+                                let mut input_type = &f.args[0].1;
+                                while match input_type {
+                                    CType::Type(..) => true,
+                                    CType::Group(_) => true,
+                                    _ => false,
+                                } {
+                                    input_type = match input_type {
+                                        CType::Type(_, t) => t,
+                                        CType::Group(t) => t,
+                                        t => t,
+                                    };
+                                }
+                                match input_type {
+                                    CType::Tuple(ts) => {
+                                        let accessor_field =
+                                            ts.iter().enumerate().find(|(_, t)| match t {
+                                                CType::Field(n, _) => *n == f.name,
+                                                _ => false,
+                                            });
+                                        match accessor_field {
+                                            Some((i, _)) => {
+                                                return Ok((format!("{}.{}", argstrs[0], i), out));
+                                            }
+                                            None => {} // Fall through main checking logic
+                                        }
+                                    }
+                                    CType::Either(ts) => {
+                                        // The kinds of types allowed here are `Type`, `Bound`, and
+                                        // `ResolvedBoundGeneric`, and `Field`. Other types don't have
+                                        // a string name we can match against the function name
+                                        let accessor_field = ts.iter().find(|t| match t {
+                                            CType::Field(n, _) => *n == f.name,
+                                            CType::Type(n, _) => *n == f.name,
+                                            CType::Bound(n, _) => *n == f.name,
+                                            CType::ResolvedBoundGeneric(n, ..) => *n == f.name,
+                                            _ => false,
+                                        });
+                                        // We're assuming the enum sub-type naming scheme also follows
+                                        // the convention of matching the type name or field name,
+                                        // which works because we're generating all of the code that
+                                        // defines the enums. We also need the name of the enum for
+                                        // this to work, so we're assuming we got it from the first
+                                        // function argument. We blow up here if the first argument is
+                                        // *not* a Type we can get an enum name from (it *shouldn't* be
+                                        // possible, but..)
+                                        let mut enum_type = &f.args[0].1;
+                                        while match enum_type {
+                                            CType::Group(_) => true,
+                                            _ => false,
+                                        } {
+                                            enum_type = match enum_type {
+                                                CType::Group(t) => t,
+                                                t => t,
+                                            };
+                                        }
+                                        let enum_name = enum_type
+                                            .to_functional_string()
+                                            .replace(" ", "_")
+                                            .replace(",", "_")
+                                            .replace("{", "_")
+                                            .replace("}", "_");
+                                        // We pass through to the main path if we can't find a matching
+                                        // name
+                                        if let Some(_) = accessor_field {
+                                            return Ok((format!("(match {} {{ {}::{}(v) => Some(v), _ => None }})", argstrs[0], enum_name, f.name), out));
+                                        }
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            let mut ret_type = &f.rettype;
+                            while match ret_type {
                                 CType::Group(_) => true,
                                 _ => false,
                             } {
-                                input_type = match input_type {
-                                    CType::Type(_, t) => t,
-                                    CType::Group(t) => t,
+                                ret_type = match ret_type {
+                                    CType::Group(t) => &*t,
                                     t => t,
                                 };
                             }
-                            match input_type {
-                                CType::Tuple(ts) => {
-                                    let accessor_field =
-                                        ts.iter().enumerate().find(|(_, t)| match t {
-                                            CType::Field(n, _) => *n == f.name,
+                            let ret_name = ret_type
+                                .to_functional_string()
+                                .replace(" ", "_")
+                                .replace(",", "_")
+                                .replace("{", "_")
+                                .replace("}", "_");
+                            if f.name == ret_name {
+                                let inner_ret_type = match ret_type {
+                                    CType::Field(_, t) => *t.clone(),
+                                    CType::Type(_, t) => *t.clone(),
+                                    t => t.clone(),
+                                };
+                                match inner_ret_type {
+                                    CType::Buffer(_, s) => {
+                                        if argstrs.len() == s {
+                                            return Ok((format!("[{}]", argstrs.join(", ")), out));
+                                        } else if argstrs.len() == 1 {
+                                            return Ok((format!("[{};{}]", argstrs[0], s), out));
+                                        } else {
+                                            return Err(format!("Invalid arguments {} provided for Buffer constructor function, must be either 1 element to fill, or the full size of the buffer", argstrs.join(", ")).into());
+                                        }
+                                    }
+                                    CType::Array(_) => {
+                                        return Ok((
+                                            format!(
+                                                "vec![{}]",
+                                                argstrs
+                                                    .iter()
+                                                    .map(|a| match a.strip_prefix("&mut ") {
+                                                        Some(v) => v.to_string(),
+                                                        None => a.clone(),
+                                                    })
+                                                    .collect::<Vec<String>>()
+                                                    .join(", ")
+                                            ),
+                                            out,
+                                        ));
+                                    }
+                                    CType::Either(ts) => {
+                                        if argstrs.len() != 1 {
+                                            return Err(format!("Invalid arguments {} provided for Either constructor function, must be only one argument", argstrs.join(", ")).into());
+                                        }
+                                        let mut enum_type = &f.args[0].1;
+                                        while match enum_type {
+                                            CType::Group(_) => true,
                                             _ => false,
-                                        });
-                                    match accessor_field {
-                                        Some((i, _)) => {
-                                            return Ok((format!("{}.{}", argstrs[0], i), out));
+                                        } {
+                                            enum_type = match enum_type {
+                                                CType::Group(t) => t,
+                                                t => t,
+                                            };
                                         }
-                                        None => {} // Fall through main checking logic
-                                    }
-                                }
-                                CType::Either(ts) => {
-                                    // The kinds of types allowed here are `Type`, `Bound`, and
-                                    // `ResolvedBoundGeneric`, and `Field`. Other types don't have
-                                    // a string name we can match against the function name
-                                    let accessor_field = ts.iter().find(|t| match t {
-                                        CType::Field(n, _) => *n == f.name,
-                                        CType::Type(n, _) => *n == f.name,
-                                        CType::Bound(n, _) => *n == f.name,
-                                        CType::ResolvedBoundGeneric(n, ..) => *n == f.name,
-                                        _ => false,
-                                    });
-                                    // We're assuming the enum sub-type naming scheme also follows
-                                    // the convention of matching the type name or field name,
-                                    // which works because we're generating all of the code that
-                                    // defines the enums. We also need the name of the enum for
-                                    // this to work, so we're assuming we got it from the first
-                                    // function argument. We blow up here if the first argument is
-                                    // *not* a Type we can get an enum name from (it *shouldn't* be
-                                    // possible, but..)
-                                    let mut enum_type = &f.args[0].1;
-                                    while match enum_type {
-                                        CType::Group(_) => true,
-                                        _ => false,
-                                    } {
-                                        enum_type = match enum_type {
-                                            CType::Group(t) => t,
-                                            t => t,
-                                        };
-                                    }
-                                    let enum_name = match enum_type {
-                                        CType::Field(n, _) => Some(n.clone()),
-                                        CType::Type(n, _) => Some(n.clone()),
-                                        CType::Bound(n, _) => Some(n.clone()),
-                                        CType::ResolvedBoundGeneric(n, ..) => Some(n.clone()),
-                                        _ => None,
-                                    };
-                                    // We pass through to the main path if we can't find a matching
-                                    // name
-                                    if let Some(name) = enum_name {
-                                        match accessor_field {
-                                            Some(_) => {
-                                                return Ok((format!("(match {} {{ {}::{}(v) => Some(v), _ => None }})", argstrs[0], name, f.name), out));
-                                            }
-                                            None => {}
-                                        }
-                                    }
-                                }
-                                _ => {}
-                            }
-                        }
-                        let mut ret_type = &f.rettype;
-                        while match ret_type {
-                            CType::Group(_) => true,
-                            _ => false,
-                        } {
-                            ret_type = match ret_type {
-                                CType::Group(t) => &*t,
-                                t => t,
-                            };
-                        }
-                        let ret_name = match &ret_type {
-                            CType::Field(n, _) => Ok(n.clone()),
-                            CType::Type(n, _) => Ok(n.clone()),
-                            CType::Bound(n, _) => Ok(n.clone()),
-                            CType::ResolvedBoundGeneric(n, ..) => Ok(n.clone()),
-                            _ => Err(format!("Requested auto-generated function {} but cannot determine correctness for type {:?}", f.name, ret_type)),
-                        }?;
-                        if f.name == ret_name {
-                            let inner_ret_type = match ret_type {
-                                CType::Field(_, t) => *t.clone(),
-                                CType::Type(_, t) => *t.clone(),
-                                t => t.clone(),
-                            };
-                            match inner_ret_type {
-                                CType::Buffer(_, s) => {
-                                    if argstrs.len() == s {
-                                        return Ok((format!("[{}]", argstrs.join(", ")), out));
-                                    } else if argstrs.len() == 1 {
-                                        return Ok((format!("[{};{}]", argstrs[0], s), out));
-                                    } else {
-                                        return Err(format!("Invalid arguments {} provided for Buffer constructor function, must be either 1 element to fill, or the full size of the buffer", argstrs.join(", ")).into());
-                                    }
-                                }
-                                CType::Array(_) => {
-                                    return Ok((
-                                        format!(
-                                            "vec![{}]",
-                                            argstrs
-                                                .iter()
-                                                .map(|a| match a.strip_prefix("&mut ") {
-                                                    Some(v) => v.to_string(),
-                                                    None => a.clone(),
-                                                })
-                                                .collect::<Vec<String>>()
-                                                .join(", ")
-                                        ),
-                                        out,
-                                    ));
-                                }
-                                CType::Either(ts) => {
-                                    if argstrs.len() != 1 {
-                                        return Err(format!("Invalid arguments {} provided for Either constructor function, must be only one argument", argstrs.join(", ")).into());
-                                    }
-                                    let mut enum_type = &f.args[0].1;
-                                    while match enum_type {
-                                        CType::Group(_) => true,
-                                        _ => false,
-                                    } {
-                                        enum_type = match enum_type {
-                                            CType::Group(t) => t,
-                                            t => t,
-                                        };
-                                    }
-                                    let enum_name = match enum_type {
+                                        let enum_name = match enum_type {
                                         CType::Field(n, _) => Ok(n.clone()),
                                         CType::Type(n, _) => Ok(n.clone()),
                                         CType::Bound(n, _) => Ok(n.clone()),
                                         CType::ResolvedBoundGeneric(n, ..) => Ok(n.clone()),
                                         _ => Err(format!("Cannot generate an constructor function for {} type as the input type has no name?", f.name)),
                                     }?;
-                                    for t in ts {
-                                        let mut inner_type = &t;
-                                        while match t {
-                                            CType::Group(_) => true,
-                                            _ => false,
-                                        } {
-                                            inner_type = match inner_type {
-                                                CType::Group(t) => t,
-                                                t => t,
-                                            };
+                                        for t in ts {
+                                            let mut inner_type = &t;
+                                            while match t {
+                                                CType::Group(_) => true,
+                                                _ => false,
+                                            } {
+                                                inner_type = match inner_type {
+                                                    CType::Group(t) => t,
+                                                    t => t,
+                                                };
+                                            }
+                                            match inner_type {
+                                                CType::Field(n, _) if *n == enum_name => {
+                                                    return Ok((
+                                                        format!(
+                                                            "{}::{}({})",
+                                                            f.name,
+                                                            enum_name,
+                                                            match argstrs[0].strip_prefix("&mut ") {
+                                                                Some(s) => s,
+                                                                None => &argstrs[0],
+                                                            },
+                                                        ),
+                                                        out,
+                                                    ));
+                                                }
+                                                CType::Type(n, _) if *n == enum_name => {
+                                                    return Ok((
+                                                        format!(
+                                                            "{}::{}({})",
+                                                            f.name,
+                                                            enum_name,
+                                                            match argstrs[0].strip_prefix("&mut ") {
+                                                                Some(s) => s,
+                                                                None => &argstrs[0],
+                                                            },
+                                                        ),
+                                                        out,
+                                                    ));
+                                                }
+                                                CType::Bound(n, _) if *n == enum_name => {
+                                                    return Ok((
+                                                        format!(
+                                                            "{}::{}({})",
+                                                            f.name,
+                                                            enum_name,
+                                                            match argstrs[0].strip_prefix("&mut ") {
+                                                                Some(s) => s,
+                                                                None => &argstrs[0],
+                                                            },
+                                                        ),
+                                                        out,
+                                                    ));
+                                                }
+                                                CType::ResolvedBoundGeneric(n, ..)
+                                                    if *n == enum_name =>
+                                                {
+                                                    return Ok((
+                                                        format!(
+                                                            "{}::{}({})",
+                                                            f.name,
+                                                            enum_name,
+                                                            match argstrs[0].strip_prefix("&mut ") {
+                                                                Some(s) => s,
+                                                                None => &argstrs[0],
+                                                            },
+                                                        ),
+                                                        out,
+                                                    ));
+                                                }
+                                                _ => {}
+                                            }
                                         }
-                                        match inner_type {
-                                            CType::Field(n, _) if *n == enum_name => {
-                                                return Ok((
-                                                    format!(
-                                                        "{}::{}({})",
-                                                        f.name,
-                                                        enum_name,
-                                                        match argstrs[0].strip_prefix("&mut ") {
-                                                            Some(s) => s,
-                                                            None => &argstrs[0],
-                                                        },
-                                                    ),
-                                                    out,
-                                                ));
-                                            }
-                                            CType::Type(n, _) if *n == enum_name => {
-                                                return Ok((
-                                                    format!(
-                                                        "{}::{}({})",
-                                                        f.name,
-                                                        enum_name,
-                                                        match argstrs[0].strip_prefix("&mut ") {
-                                                            Some(s) => s,
-                                                            None => &argstrs[0],
-                                                        },
-                                                    ),
-                                                    out,
-                                                ));
-                                            }
-                                            CType::Bound(n, _) if *n == enum_name => {
-                                                return Ok((
-                                                    format!(
-                                                        "{}::{}({})",
-                                                        f.name,
-                                                        enum_name,
-                                                        match argstrs[0].strip_prefix("&mut ") {
-                                                            Some(s) => s,
-                                                            None => &argstrs[0],
-                                                        },
-                                                    ),
-                                                    out,
-                                                ));
-                                            }
-                                            CType::ResolvedBoundGeneric(n, ..)
-                                                if *n == enum_name =>
-                                            {
-                                                return Ok((
-                                                    format!(
-                                                        "{}::{}({})",
-                                                        f.name,
-                                                        enum_name,
-                                                        match argstrs[0].strip_prefix("&mut ") {
-                                                            Some(s) => s,
-                                                            None => &argstrs[0],
-                                                        },
-                                                    ),
-                                                    out,
-                                                ));
-                                            }
-                                            _ => {}
+                                        return Err(format!("Cannot generate a constructor function for {} type as it is not part of the {} type", enum_name, f.name).into());
+                                    }
+                                    CType::Tuple(ts) => {
+                                        // TODO: Better type checking here, but it's *probably* being
+                                        // done at a higher layer
+                                        if argstrs.len() == ts.len() {
+                                            return Ok((format!("({})", argstrs.join(", ")), out));
+                                        } else {
+                                            return Err(format!(
+                                                "{} has {} fields but {} provided",
+                                                f.name,
+                                                ts.len(),
+                                                argstrs.len()
+                                            )
+                                            .into());
                                         }
                                     }
-                                    return Err(format!("Cannot generate a constructor function for {} type as it is not part of the {} type", enum_name, f.name).into());
-                                }
-                                CType::Tuple(ts) => {
-                                    // TODO: Better type checking here, but it's *probably* being
-                                    // done at a higher layer
-                                    if argstrs.len() == ts.len() {
-                                        return Ok((format!("({})", argstrs.join(", ")), out));
-                                    } else {
-                                        return Err(format!(
-                                            "{} has {} fields but {} provided",
-                                            f.name,
-                                            ts.len(),
-                                            argstrs.len()
-                                        )
-                                        .into());
+                                    otherwise => {
+                                        return Err(format!("How did you get here? Trying to create a constructor function for {:?}", otherwise).into());
                                     }
-                                }
-                                otherwise => {
-                                    return Err(format!("How did you get here? Trying to create a constructor function for {:?}", otherwise).into());
                                 }
                             }
+                            Err(format!("Trying to create an automatic function for {} but the return type is {}", f.name, ret_name).into())
                         }
-                        Err(format!("Trying to create an automatic function for {} but the return type is {}", f.name, ret_name).into())
                     }
-                },
+                }
             }
         }
         Microstatement::Return { value } => match value {

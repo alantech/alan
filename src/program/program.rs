@@ -28,9 +28,9 @@ impl Program {
         };
         // Add the root scope that will always be checked as if part of the current scope before
         // failure to resolve
-        p = p.load("@root".to_string())?;
+        p.load("@root".to_string())?;
         // Load the entry file
-        p = match p.load(entry_file) {
+        match p.load(entry_file) {
             Ok(p) => p,
             Err(e) => {
                 // Somehow, trying to print this error can crash Rust!? Really not good.
@@ -41,7 +41,7 @@ impl Program {
         Ok(p)
     }
 
-    pub fn load(self, path: String) -> Result<Program, Box<dyn std::error::Error>> {
+    pub fn load(self: &mut Self, path: String) -> Result<(), Box<dyn std::error::Error>> {
         let ln_src = if path.starts_with("@") {
             match path.as_str() {
                 "@root" => include_str!("../std/root.ln").to_string(),
@@ -53,42 +53,31 @@ impl Program {
         } else {
             read_to_string(&path)?
         };
-        let (mut p, tuple) = Scope::from_src(self, &path, ln_src)?;
-        p.scopes_by_file.insert(path, tuple);
-        Ok(p)
+        Ok(Scope::from_src(self, &path, ln_src)?)
     }
 
     pub fn resolve_typeoperator<'a>(
         self: &'a Self,
         scope: &'a Scope,
         typeoperatorname: &String,
-    ) -> Option<(&TypeOperatorMapping, &Scope)> {
+    ) -> Option<&TypeOperatorMapping> {
         // Tries to find the specified operator within the portion of the program accessible from the
         // current scope (so first checking the current scope, then all imports, then the root
         // scope) Returns a reference to the type and the scope it came from.
         // TODO: type ambiguity, infix/prefix ambiguity, etc
         match scope.typeoperatormappings.get(typeoperatorname) {
-            Some(o) => Some((o, scope)),
-            None => {
-                // TODO: Loop over imports looking for the type
-                match self.scopes_by_file.get("@root") {
+            Some(o) => Some(o),
+            None => match &scope.parent {
+                None => None,
+                Some(p) => match self.scopes_by_file.get(p) {
                     None => None,
-                    Some((_, _, root_scope)) => {
-                        match &root_scope.typeoperatormappings.get(typeoperatorname) {
-                            Some(o) => Some((&o, &root_scope)),
-                            None => None,
-                        }
-                    }
-                }
-            }
+                    Some((_, _, s)) => self.resolve_typeoperator(s, typeoperatorname),
+                },
+            },
         }
     }
 
-    pub fn resolve_type<'a>(
-        self: &'a Self,
-        scope: &'a Scope,
-        typename: &String,
-    ) -> Option<(&CType, &Scope)> {
+    pub fn resolve_type<'a>(self: &'a Self, scope: &'a Scope, typename: &String) -> Option<&CType> {
         // Tries to find the specified type within the portion of the program accessible from the
         // current scope (so first checking the current scope, then all imports, then the root
         // scope) Returns a reference to the type and the scope it came from.
@@ -101,17 +90,14 @@ impl Program {
         // an interface, we may need to provide all possible realized types for all types that
         // match the interface?
         match scope.types.get(typename) {
-            Some(t) => Some((t, scope)),
-            None => {
-                // TODO: Loop over imports looking for the type
-                match self.scopes_by_file.get("@root") {
+            Some(t) => Some(t),
+            None => match &scope.parent {
+                None => None,
+                Some(p) => match self.scopes_by_file.get(p) {
                     None => None,
-                    Some((_, _, root_scope)) => match &root_scope.types.get(typename) {
-                        Some(t) => Some((&t, &root_scope)),
-                        None => None,
-                    },
-                }
-            }
+                    Some((_, _, s)) => self.resolve_type(s, typename),
+                },
+            },
         }
     }
 
@@ -119,26 +105,137 @@ impl Program {
         self: &'a Self,
         scope: &'a Scope,
         operatorname: &String,
-    ) -> Option<(&OperatorMapping, &Scope)> {
+    ) -> Option<&OperatorMapping> {
         // Tries to find the specified operator within the portion of the program accessible from the
         // current scope (so first checking the current scope, then all imports, then the root
         // scope) Returns a reference to the type and the scope it came from.
         // TODO: type ambiguity, infix/prefix ambiguity, etc
         match scope.operatormappings.get(operatorname) {
-            Some(o) => Some((o, scope)),
-            None => {
-                // TODO: Loop over imports looking for the type
-                match self.scopes_by_file.get("@root") {
+            Some(o) => Some(o),
+            None => match &scope.parent {
+                None => None,
+                Some(p) => match self.scopes_by_file.get(p) {
                     None => None,
-                    Some((_, _, root_scope)) => {
-                        match &root_scope.operatormappings.get(operatorname) {
-                            Some(o) => Some((&o, &root_scope)),
-                            None => None,
+                    Some((_, _, s)) => self.resolve_operator(s, operatorname),
+                },
+            },
+        }
+    }
+
+    pub fn resolve_generic_function<'a>(
+        self: &'a mut Self,
+        scope: &'a mut Scope,
+        function: &String,
+        generics: &Vec<String>,
+        args: &Vec<CType>,
+    ) -> Option<&Function> {
+        // Tries to find the specified function within the portion of the program accessible from
+        // the current scope (so first checking the current scope, then all imports, then the root
+        // scope). It checks against the args array to find a match. TODO: Go beyond exact matching
+        // Returns a reference to the function and the scope it came from.
+        let mut scope_to_check: Option<&Scope> = Some(scope);
+        let mut fs = Vec::new();
+        while scope_to_check.is_some() {
+            match scope_to_check {
+                Some(s) => {
+                    match s.functions.get(function) {
+                        Some(funcs) => {
+                            // Why is this okay but cloning funcs and then appending is not?
+                            for f in funcs {
+                                fs.push(f.clone());
+                            }
                         }
+                        None => {}
                     }
+                    scope_to_check = match &s.parent {
+                        Some(p) => match self.scopes_by_file.get(p) {
+                            Some((_, _, s)) => Some(s),
+                            None => None,
+                        },
+                        None => None,
+                    };
+                }
+                None => {}
+            }
+        }
+        let mut generic_types = Vec::new();
+        for g in generics {
+            let t = self.resolve_type(scope, g)?;
+            generic_types.push(t.clone()); // TODO: Drop the cloning
+        }
+        let mut generic_fs = Vec::new();
+        for f in &fs {
+            match &f.kind {
+                FnKind::Normal | FnKind::Bind(_) | FnKind::Derived | FnKind::DerivedVariadic => {
+                    /* Do nothing */
+                }
+                FnKind::Generic(g, _) | FnKind::BoundGeneric(g, _) => {
+                    // TODO: Check interface constraints once interfaces exist
+                    if g.len() != generic_types.len() {
+                        continue;
+                    }
+                    if args.len() != f.args.len() {
+                        continue;
+                    }
+                    // Passes the preliminary check
+                    generic_fs.push(f.clone());
                 }
             }
         }
+        // The following is insanity to deal with the borrow checker. It could have been done
+        // withotu the temporary vector or the child scopes, but using a mutable reference in a
+        // loop is a big no-no.
+        let mut temp_scopes = Vec::new();
+        for _ in &generic_fs {
+            temp_scopes.push(scope.child(self));
+        }
+        let mut realized_fs = Vec::new();
+        for (i, temp_scope) in temp_scopes.iter_mut().enumerate() {
+            let f = generic_fs.get(i).unwrap();
+            let func =
+                match Function::from_generic_function(temp_scope, self, f, generic_types.clone()) {
+                    Err(_) => None,
+                    Ok(f) => Some(f.clone()),
+                }?;
+            realized_fs.push(func);
+        }
+        loop {
+            let temp_scope = temp_scopes.pop();
+            match temp_scope {
+                Some(mut temp_scope) => {
+                    scope.merge_child_functions(&mut temp_scope);
+                }
+                None => break,
+            }
+        }
+        let mut args_match = true;
+        for f in realized_fs {
+            for (i, arg) in args.iter().enumerate() {
+                // This is pretty cheap, but for now, a "non-strict" string representation
+                // of the CTypes is how we'll match the args against each other. TODO: Do
+                // this without constructing a string to compare against each other.
+                if f.args[i].1.to_strict_string(false) != arg.to_strict_string(false) {
+                    args_match = false;
+                    break;
+                }
+            }
+            if args_match {
+                // We want to keep this one around, so we copy this function to the correct
+                // scope
+                if scope.functions.contains_key(&f.name) {
+                    let func_vec = scope.functions.get_mut(&f.name).unwrap();
+                    func_vec.push(f.clone());
+                } else {
+                    scope.functions.insert(f.name.clone(), vec![f.clone()]);
+                }
+                return match scope.functions.get(&f.name) {
+                    None => None,
+                    Some(fs) => fs.last(), // We know it's the last one because we just put
+                                           // it there
+                };
+            }
+        }
+        None
     }
 
     pub fn resolve_function<'a>(
@@ -146,78 +243,96 @@ impl Program {
         scope: &'a Scope,
         function: &String,
         args: &Vec<CType>,
-    ) -> Option<(&Function, &Scope)> {
+    ) -> Option<&Function> {
         // Tries to find the specified function within the portion of the program accessible from
         // the current scope (so first checking the current scope, then all imports, then the root
         // scope). It checks against the args array to find a match. TODO: Go beyond exact matching
         // Returns a reference to the function and the scope it came from.
-        match scope.functions.get(function) {
-            Some(fs) => {
-                for f in fs {
-                    // TODO: Handle this more generically, and in a way that allows users to write
-                    // variadic functions
-                    let mut args_match = true;
-                    if let FnKind::DerivedVariadic = f.kind {
-                        // The special path where the length doesn't matter as long as all of the
-                        // actual args are the same type as the function's arg.
-                        for arg in args.iter() {
-                            if f.args[0].1.to_strict_string(false) != arg.to_strict_string(false) {
-                                args_match = false;
-                                break;
+        let mut scope_to_check: Option<&Scope> = Some(scope);
+        let mut fs = Vec::new();
+        while scope_to_check.is_some() {
+            match scope_to_check {
+                Some(s) => {
+                    match s.functions.get(function) {
+                        Some(funcs) => {
+                            // Why is this okay but cloning funcs and then appending is not?
+                            for f in funcs {
+                                fs.push(f);
                             }
                         }
-                    } else {
-                        if args.len() != f.args.len() {
-                            continue;
-                        }
-                        for (i, arg) in args.iter().enumerate() {
-                            // This is pretty cheap, but for now, a "non-strict" string representation
-                            // of the CTypes is how we'll match the args against each other. TODO: Do
-                            // this without constructing a string to compare against each other.
-                            if f.args[i].1.to_strict_string(false) != arg.to_strict_string(false) {
-                                args_match = false;
-                                break;
-                            }
-                        }
+                        None => {}
                     }
-                    if args_match {
-                        return Some((f, scope));
-                    }
-                }
-                None
-            }
-            None => {
-                // TODO: Loop over imports looking for the function
-                match self.scopes_by_file.get("@root") {
-                    None => None,
-                    Some((_, _, root_scope)) => match root_scope.functions.get(function) {
-                        Some(fs) => {
-                            for f in fs {
-                                if args.len() != f.args.len() {
-                                    continue;
-                                }
-                                let mut args_match = true;
-                                for (i, arg) in args.iter().enumerate() {
-                                    // This is pretty cheap, but for now, a "non-strict" string representation
-                                    // of the CTypes is how we'll match the args against each other. TODO: Do
-                                    // this without constructing a string to compare against each other.
-                                    if f.args[i].1.to_strict_string(false)
-                                        != arg.to_strict_string(false)
-                                    {
-                                        args_match = false;
-                                        break;
+                    // TODO: Types are internally referred to by their structural name, not by the name the
+                    // user gives them, so a type constructor function needs to have a lookup done by type and
+                    // then coerce into the constructor function name and then call it. We *should* just be
+                    // able to use the user's name for the types, but this was undone for generic functions to
+                    // work correctly. We should try to find a better solution than this function resolution
+                    // hackery.
+                    match self.resolve_type(s, function) {
+                        Some(t) => {
+                            let constructor_fn_name = t
+                                .to_functional_string()
+                                .replace(" ", "_")
+                                .replace(",", "_")
+                                .replace("{", "_")
+                                .replace("}", "_");
+                            match s.functions.get(&constructor_fn_name) {
+                                Some(funcs) => {
+                                    for f in funcs {
+                                        fs.push(f);
                                     }
                                 }
-                                if args_match {
-                                    return Some((f, &root_scope));
-                                }
+                                None => { /* Nothing matched, move on */ }
                             }
-                            None
                         }
+                        None => {}
+                    }
+                    scope_to_check = match &s.parent {
+                        Some(p) => match self.scopes_by_file.get(p) {
+                            Some((_, _, s)) => Some(s),
+                            None => None,
+                        },
                         None => None,
-                    },
+                    };
                 }
+                None => {}
             }
         }
+        for f in fs {
+            // TODO: Handle this more generically, and in a way that allows users to write
+            // variadic functions
+            let mut args_match = true;
+            match f.kind {
+                FnKind::DerivedVariadic => {
+                    // The special path where the length doesn't matter as long as all of the
+                    // actual args are the same type as the function's arg.
+                    for arg in args.iter() {
+                        if f.args[0].1.to_strict_string(false) != arg.to_strict_string(false) {
+                            args_match = false;
+                            break;
+                        }
+                    }
+                }
+                FnKind::Normal | FnKind::Bind(_) | FnKind::Derived => {
+                    if args.len() != f.args.len() {
+                        continue;
+                    }
+                    for (i, arg) in args.iter().enumerate() {
+                        // This is pretty cheap, but for now, a "non-strict" string representation
+                        // of the CTypes is how we'll match the args against each other. TODO: Do
+                        // this without constructing a string to compare against each other.
+                        if f.args[i].1.to_strict_string(false) != arg.to_strict_string(false) {
+                            args_match = false;
+                            break;
+                        }
+                    }
+                }
+                FnKind::Generic(..) | FnKind::BoundGeneric(..) => { /* Do nothing */ }
+            }
+            if args_match {
+                return Some(f);
+            }
+        }
+        None
     }
 }

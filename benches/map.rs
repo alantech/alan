@@ -34,79 +34,79 @@ macro_rules! clean {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    build!(map_1 => r#"
+    build!(t01_map_1 => r#"
         fn double(x: i64) -> i64 = x * 2;
         export fn main { let v = filled(2, 1).map(double); v[0].print; }
     "#);
-    build!(map_10 => r#"
+    build!(t02_map_10 => r#"
         fn double(x: i64) -> i64 = x * 2;
         export fn main { let v = filled(2, 10).map(double); v[0].print; }
     "#);
-    build!(map_100 => r#"
+    build!(t03_map_100 => r#"
         fn double(x: i64) -> i64 = x * 2;
         export fn main { let v = filled(2, 100).map(double); v[0].print; }
     "#);
-    build!(map_1_000 => r#"
+    build!(t04_map_1_000 => r#"
         fn double(x: i64) -> i64 = x * 2;
         export fn main { let v = filled(2, 1_000).map(double); v[0].print; }
     "#);
-    build!(map_10_000 => r#"
+    build!(t05_map_10_000 => r#"
         fn double(x: i64) -> i64 = x * 2;
         export fn main { let v = filled(2, 10_000).map(double); v[0].print; }
     "#);
-    build!(map_100_000 => r#"
+    build!(t06_map_100_000 => r#"
         fn double(x: i64) -> i64 = x * 2;
         export fn main { let v = filled(2, 100_000).map(double); v[0].print; }
     "#);
-    build!(map_1_000_000 => r#"
+    build!(t07_map_1_000_000 => r#"
         fn double(x: i64) -> i64 = x * 2;
         export fn main { let v = filled(2, 1_000_000).map(double); v[0].print; }
     "#);
-    build!(map_10_000_000 => r#"
+    build!(t08_map_10_000_000 => r#"
         fn double(x: i64) -> i64 = x * 2;
         export fn main { let v = filled(2, 10_000_000).map(double); v[0].print; }
     "#);
-    build!(map_100_000_000 => r#"
+    build!(t09_map_100_000_000 => r#"
         fn double(x: i64) -> i64 = x * 2;
         export fn main { let v = filled(2, 100_000_000).map(double); v[0].print; }
     "#);
-    build!(parmap_1 => r#"
+    build!(t10_parmap_1 => r#"
         fn double(x: i64) -> i64 = x * 2;
         export fn main { let v = filled(2, 1).parmap(double); v[0].print; }
     "#);
-    build!(parmap_10 => r#"
+    build!(t11_parmap_10 => r#"
         fn double(x: i64) -> i64 = x * 2;
         export fn main { let v = filled(2, 10).parmap(double); v[0].print; }
     "#);
-    build!(parmap_100 => r#"
+    build!(t12_parmap_100 => r#"
         fn double(x: i64) -> i64 = x * 2;
         export fn main { let v = filled(2, 100).parmap(double); v[0].print; }
     "#);
-    build!(parmap_1_000 => r#"
+    build!(t13_parmap_1_000 => r#"
         fn double(x: i64) -> i64 = x * 2;
         export fn main { let v = filled(2, 1_000).parmap(double); v[0].print; }
     "#);
-    build!(parmap_10_000 => r#"
+    build!(t14_parmap_10_000 => r#"
         fn double(x: i64) -> i64 = x * 2;
         export fn main { let v = filled(2, 10_000).parmap(double); v[0].print; }
     "#);
-    build!(parmap_100_000 => r#"
+    build!(t15_parmap_100_000 => r#"
         fn double(x: i64) -> i64 = x * 2;
         export fn main { let v = filled(2, 100_000).parmap(double); v[0].print; }
     "#);
-    build!(parmap_1_000_000 => r#"
+    build!(t16_parmap_1_000_000 => r#"
         fn double(x: i64) -> i64 = x * 2;
         export fn main { let v = filled(2, 1_000_000).parmap(double); v[0].print; }
     "#);
-    build!(parmap_10_000_000 => r#"
+    build!(t17_parmap_10_000_000 => r#"
         fn double(x: i64) -> i64 = x * 2;
         export fn main { let v = filled(2, 10_000_000).parmap(double); v[0].print; }
     "#);
-    build!(parmap_100_000_000 => r#"
+    build!(t18_parmap_100_000_000 => r#"
         fn double(x: i64) -> i64 = x * 2;
         export fn main { let v = filled(2, 100_000_000).parmap(double); v[0].print; }
     "#);
-    build!(gpgpu_1 => r#"
+    build!(t19_gpgpu_1 => r#"
         export fn main {
           let g = GPU();
           let b = g.createBuffer(storageBuffer(), filled(2.i32(), 1));
@@ -129,7 +129,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
           v[0].print;
         }
     "#);
-    build!(gpgpu_10 => r#"
+    build!(t20_gpgpu_10 => r#"
         export fn main {
           let g = GPU();
           let b = g.createBuffer(storageBuffer(), filled(2.i32(), 10));
@@ -152,7 +152,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
           v[0].print;
         }
     "#);
-    build!(gpgpu_100 => r#"
+    build!(t21_gpgpu_100 => r#"
         export fn main {
           let g = GPU();
           let b = g.createBuffer(storageBuffer(), filled(2.i32(), 100));
@@ -175,7 +175,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
           v[0].print;
         }
     "#);
-    build!(gpgpu_1_000 => r#"
+    build!(t22_gpgpu_1_000 => r#"
         export fn main {
           let g = GPU();
           let b = g.createBuffer(storageBuffer(), filled(2.i32(), 1_000));
@@ -198,7 +198,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
           v[0].print;
         }
     "#);
-    build!(gpgpu_10_000 => r#"
+    build!(t23_gpgpu_10_000 => r#"
         export fn main {
           let g = GPU();
           let b = g.createBuffer(storageBuffer(), filled(2.i32(), 10_000));
@@ -221,7 +221,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
           v[0].print;
         }
     "#);
-    build!(gpgpu_100_000 => r#"
+    build!(t24_gpgpu_100_000 => r#"
         export fn main {
           let g = GPU();
           let b = g.createBuffer(storageBuffer(), filled(2.i32(), 100_000));
@@ -244,7 +244,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
           v[0].print;
         }
     "#);
-    build!(gpgpu_1_000_000 => r#"
+    build!(t25_gpgpu_1_000_000 => r#"
         export fn main {
           let g = GPU();
           let b = g.createBuffer(storageBuffer(), filled(2.i32(), 1_000_000));
@@ -267,7 +267,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
           v[0].print;
         }
     "#);
-    build!(gpgpu_10_000_000 => r#"
+    build!(t26_gpgpu_10_000_000 => r#"
         export fn main {
           let g = GPU();
           let b = g.createBuffer(storageBuffer(), filled(2.i32(), 10_000_000));
@@ -290,7 +290,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
           v[0].print;
         }
     "#);
-    build!(gpgpu_100_000_000 => r#"
+    build!(t27_gpgpu_100_000_000 => r#"
         export fn main {
           let g = GPU();
           let b = g.createBuffer(storageBuffer(), filled(2.i32(), 100_000_000));
@@ -314,60 +314,60 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     "#);
     divan::main();
-    clean!(map_1);
-    clean!(map_10);
-    clean!(map_100);
-    clean!(map_1_000);
-    clean!(map_10_000);
-    clean!(map_100_000);
-    clean!(map_1_000_000);
-    clean!(map_10_000_000);
-    clean!(map_100_000_000);
-    clean!(parmap_1);
-    clean!(parmap_10);
-    clean!(parmap_100);
-    clean!(parmap_1_000);
-    clean!(parmap_10_000);
-    clean!(parmap_100_000);
-    clean!(parmap_1_000_000);
-    clean!(parmap_10_000_000);
-    clean!(parmap_100_000_000);
-    clean!(gpgpu_1);
-    clean!(gpgpu_10);
-    clean!(gpgpu_100);
-    clean!(gpgpu_1_000);
-    clean!(gpgpu_10_000);
-    clean!(gpgpu_100_000);
-    clean!(gpgpu_1_000_000);
-    clean!(gpgpu_10_000_000);
-    clean!(gpgpu_100_000_000);
+    clean!(t01_map_1);
+    clean!(t02_map_10);
+    clean!(t03_map_100);
+    clean!(t04_map_1_000);
+    clean!(t05_map_10_000);
+    clean!(t06_map_100_000);
+    clean!(t07_map_1_000_000);
+    clean!(t08_map_10_000_000);
+    clean!(t09_map_100_000_000);
+    clean!(t10_parmap_1);
+    clean!(t11_parmap_10);
+    clean!(t12_parmap_100);
+    clean!(t13_parmap_1_000);
+    clean!(t14_parmap_10_000);
+    clean!(t15_parmap_100_000);
+    clean!(t16_parmap_1_000_000);
+    clean!(t17_parmap_10_000_000);
+    clean!(t18_parmap_100_000_000);
+    clean!(t19_gpgpu_1);
+    clean!(t20_gpgpu_10);
+    clean!(t21_gpgpu_100);
+    clean!(t22_gpgpu_1_000);
+    clean!(t23_gpgpu_10_000);
+    clean!(t24_gpgpu_100_000);
+    clean!(t25_gpgpu_1_000_000);
+    clean!(t26_gpgpu_10_000_000);
+    clean!(t27_gpgpu_100_000_000);
     Ok(())
 }
 
-run!(map_1);
-run!(map_10);
-run!(map_100);
-run!(map_1_000);
-run!(map_10_000);
-run!(map_100_000);
-run!(map_1_000_000);
-run!(map_10_000_000);
-run!(map_100_000_000);
-run!(parmap_1);
-run!(parmap_10);
-run!(parmap_100);
-run!(parmap_1_000);
-run!(parmap_10_000);
-run!(parmap_100_000);
-run!(parmap_1_000_000);
-run!(parmap_10_000_000);
-run!(parmap_100_000_000);
-run!(gpgpu_1);
-run!(gpgpu_10);
-run!(gpgpu_100);
-run!(gpgpu_1_000);
-run!(gpgpu_10_000);
-run!(gpgpu_100_000);
-run!(gpgpu_1_000_000);
-run!(gpgpu_10_000_000);
-run!(gpgpu_100_000_000);
+run!(t01_map_1);
+run!(t02_map_10);
+run!(t03_map_100);
+run!(t04_map_1_000);
+run!(t05_map_10_000);
+run!(t06_map_100_000);
+run!(t07_map_1_000_000);
+run!(t08_map_10_000_000);
+run!(t09_map_100_000_000);
+run!(t10_parmap_1);
+run!(t11_parmap_10);
+run!(t12_parmap_100);
+run!(t13_parmap_1_000);
+run!(t14_parmap_10_000);
+run!(t15_parmap_100_000);
+run!(t16_parmap_1_000_000);
+run!(t17_parmap_10_000_000);
+run!(t18_parmap_100_000_000);
+run!(t19_gpgpu_1);
+run!(t20_gpgpu_10);
+run!(t21_gpgpu_100);
+run!(t22_gpgpu_1_000);
+run!(t23_gpgpu_10_000);
+run!(t24_gpgpu_100_000);
+run!(t25_gpgpu_1_000_000);
+run!(t26_gpgpu_10_000_000);
+run!(t27_gpgpu_100_000_000);
