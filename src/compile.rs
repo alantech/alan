@@ -83,6 +83,28 @@ wgpu = "0.20.0""#;
         )?;
     }
     let mut lockfile = File::open(lockfile_path.as_path())?;
+    if cfg!(windows) {
+        let timeout = std::time::Duration::from_secs(180);
+        let sleep_time = std::time::Duration::from_millis(100);
+        let mut now = std::time::Instant::now();
+        let expiry = now + timeout;
+        let mut locked = false;
+        while now < expiry {
+            match lockfile.lock_exclusive() {
+                Err(_) => std::thread::sleep(sleep_time),
+                Ok(_) => {
+                    locked = true;
+                    break;
+                }
+            }
+            now = std::time::Instant::now();
+        }
+        if !locked {
+            return Err("Could not lock the lockfile".into());
+        }
+    } else {
+        lockfile.lock_exclusive()?;
+    }
     let should_rebuild_deps = {
         let mut b = Vec::new();
         lockfile.read_to_end(&mut b)?;
@@ -96,7 +118,6 @@ wgpu = "0.20.0""#;
         let t2 = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
         t2 > t1 + 24 * 60 * 60
     };
-    lockfile.lock_exclusive()?;
     if first_time {
         // First time initialization of the alan config directory
         match create_dir_all(project_dir.clone()) {
@@ -248,6 +269,7 @@ wgpu = "0.20.0""#;
                 Err(e)
             }
         }?;
+        if cfg!(windows) { lockfile.unlock()?; } // Why is this necessary?
         write(
             lockfile_path.clone(),
             format!(
@@ -256,6 +278,7 @@ wgpu = "0.20.0""#;
             )
             .as_bytes(),
         )?;
+        if cfg!(windows) { lockfile.lock_exclusive()?; }
     }
     // Build the executable
     match Command::new("cargo")
