@@ -11,7 +11,7 @@ env:
 
 jobs:
   test:
-    runs-on: [self-hosted, linux]
+    runs-on: [self-hosted, linux, X64]
     steps:
     - uses: actions/checkout@v4
     - name: Check lockfile is up to date
@@ -42,6 +42,19 @@ jobs:
 
   test-macos:
     runs-on: [self-hosted, macOS]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build
+      run: cargo build --verbose
+    - if: ${{ github.ref_name == 'main' }}
+      name: Run tests
+      run: cargo test --verbose -- --include-ignored
+    - if: ${{ github.ref_name != 'main' }}
+      name: Run tests
+      run: cargo test --verbose
+
+  test-arm-linux:
+    runs-on: [self-hosted, linux, ARM64]
     steps:
     - uses: actions/checkout@v4
     - name: Build
