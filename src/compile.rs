@@ -269,7 +269,9 @@ wgpu = "0.20.0""#;
                 Err(e)
             }
         }?;
-        if cfg!(windows) { lockfile.unlock()?; } // Why is this necessary?
+        if cfg!(windows) {
+            lockfile.unlock()?;
+        } // Why is this necessary?
         write(
             lockfile_path.clone(),
             format!(
@@ -278,7 +280,9 @@ wgpu = "0.20.0""#;
             )
             .as_bytes(),
         )?;
-        if cfg!(windows) { lockfile.lock_exclusive()?; }
+        if cfg!(windows) {
+            lockfile.lock_exclusive()?;
+        }
     }
     // Build the executable
     match Command::new("cargo")
