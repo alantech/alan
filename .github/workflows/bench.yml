@@ -11,7 +11,7 @@ env:
 
 jobs:
   bench:
-    runs-on: [self-hosted, linux]
+    runs-on: [self-hosted, linux, X64]
     steps:
     - uses: actions/checkout@v4
     - name: Build Alan
@@ -34,6 +34,15 @@ jobs:
 
   bench-macos:
     runs-on: [self-hosted, macOS]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build Alan
+      run: cargo build --verbose
+    - name: Rust-managed Benchmarks
+      run: cargo bench
+
+  bench-arm-linux:
+    runs-on: [self-hosted, linux, ARM64]
     steps:
     - uses: actions/checkout@v4
     - name: Build Alan
