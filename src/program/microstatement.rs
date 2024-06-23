@@ -382,9 +382,80 @@ pub fn baseassignablelist_to_microstatements(
                                             Box::new(f[0].rettype.clone()),
                                         )), // TODO: Convert the Function class to use a
                                         // function type directly
-                                        None => Err(format!("Couldn't find variable {}", v).into()),
+                                        None => {
+                                            let maybe_c = match program.resolve_const(scope, v) {
+                                                Some(c) => Some(c.clone()),
+                                                None => None,
+                                            };
+                                            match maybe_c {
+                                                None => {
+                                                    Err(format!("Couldn't find variable {}", v)
+                                                        .into())
+                                                }
+                                                Some(c) => {
+                                                    // TODO: Confirm the specified typename matches the
+                                                    // actual typename of the value
+                                                    let mut temp_scope = scope.temp_child();
+                                                    microstatements =
+                                                        withoperatorslist_to_microstatements(
+                                                            &c.assignables,
+                                                            &mut temp_scope,
+                                                            program,
+                                                            microstatements,
+                                                        )?;
+                                                    let cm = microstatements.pop().unwrap();
+                                                    let typen = match &cm {
+                                                        Microstatement::Value { typen, .. } | Microstatement::Array { typen, .. } => Ok(typen.clone()),
+                                                        Microstatement::FnCall { function: _, args: _ } => Err("TODO: Support global constant function calls"),
+                                                        _ => Err("This should be impossible, a constant has to be a value, array, or fncall"),
+                                                    }?;
+                                                    microstatements.push(
+                                                        Microstatement::Assignment {
+                                                            mutable: false,
+                                                            name: v.clone(),
+                                                            value: Box::new(cm),
+                                                        },
+                                                    );
+                                                    Ok(typen)
+                                                }
+                                            }
+                                        }
                                     },
-                                    None => Err(format!("Couldn't find variable {}", v).into()),
+                                    None => {
+                                        let maybe_c = match program.resolve_const(scope, v) {
+                                            Some(c) => Some(c.clone()),
+                                            None => None,
+                                        };
+                                        match maybe_c {
+                                            None => {
+                                                Err(format!("Couldn't find variable {}", v).into())
+                                            }
+                                            Some(c) => {
+                                                // TODO: Confirm the specified typename matches the
+                                                // actual typename of the value
+                                                let mut temp_scope = scope.temp_child();
+                                                microstatements =
+                                                    withoperatorslist_to_microstatements(
+                                                        &c.assignables,
+                                                        &mut temp_scope,
+                                                        program,
+                                                        microstatements,
+                                                    )?;
+                                                let cm = microstatements.pop().unwrap();
+                                                let typen = match &cm {
+                                                    Microstatement::Value { typen, .. } | Microstatement::Array { typen, .. } => Ok(typen.clone()),
+                                                    Microstatement::FnCall { function: _, args: _ } => Err("TODO: Support global constant function calls"),
+                                                    _ => Err("This should be impossible, a constant has to be a value, array, or fncall"),
+                                                }?;
+                                                microstatements.push(Microstatement::Assignment {
+                                                    mutable: false,
+                                                    name: v.clone(),
+                                                    value: Box::new(cm),
+                                                });
+                                                Ok(typen)
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }

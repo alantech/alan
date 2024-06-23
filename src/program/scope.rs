@@ -68,21 +68,21 @@ impl Scope {
                 }?, // TODO: Make this match the rest?
 
                 parse::RootElements::Functions(f) => Function::from_ast(s, program, f, false)?,
-                parse::RootElements::ConstDeclaration(c) => Const::from_ast(s, c, false)?,
+                parse::RootElements::ConstDeclaration(c) => Const::from_ast(s, program, c, false)?,
                 parse::RootElements::OperatorMapping(o) => {
-                    OperatorMapping::from_ast(s, o, false)?
+                    OperatorMapping::from_ast(s, program, o, false)?
                 }
                 parse::RootElements::TypeOperatorMapping(o) => {
-                    TypeOperatorMapping::from_ast(s, o, false)?
+                    TypeOperatorMapping::from_ast(s, program, o, false)?
                 }
                 parse::RootElements::Exports(e) => match &e.exportable {
                     parse::Exportable::Functions(f) => Function::from_ast(s, program, f, true)?,
-                    parse::Exportable::ConstDeclaration(c) => Const::from_ast(s, c, true)?,
+                    parse::Exportable::ConstDeclaration(c) => Const::from_ast(s, program, c, true)?,
                     parse::Exportable::OperatorMapping(o) => {
-                        OperatorMapping::from_ast(s, o, true)?
+                        OperatorMapping::from_ast(s, program, o, true)?
                     }
                     parse::Exportable::TypeOperatorMapping(o) => {
-                        TypeOperatorMapping::from_ast(s, o, true)?
+                        TypeOperatorMapping::from_ast(s, program, o, true)?
                     }
                     parse::Exportable::Types(t) => match CType::from_ast(s, program, t, true) {
                         Err(e) => Err(e),

@@ -1814,9 +1814,15 @@ fn getarray<T: Clone>(a: &Vec<T>, i: &i64) -> Option<T> {
     }
 }
 
-/// `lenarray` returns the length of an array
+/// `lenarray` returns the length of an array (Rust Vector)
 #[inline(always)]
 fn lenarray<T>(a: &Vec<T>) -> i64 {
+    a.len() as i64
+}
+
+/// `lenbuffer` returns the length of a buffer (Rust array)
+#[inline(always)]
+fn lenbuffer<T>(a: &[T]) -> i64 {
     a.len() as i64
 }
 

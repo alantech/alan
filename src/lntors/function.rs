@@ -376,7 +376,17 @@ pub fn from_microstatement(
                                         if argstrs.len() == s {
                                             return Ok((format!("[{}]", argstrs.join(", ")), out));
                                         } else if argstrs.len() == 1 {
-                                            return Ok((format!("[{};{}]", argstrs[0], s), out));
+                                            return Ok((
+                                                format!(
+                                                    "[{};{}]",
+                                                    match argstrs[0].strip_prefix("&mut ") {
+                                                        Some(v) => v,
+                                                        None => &argstrs[0],
+                                                    },
+                                                    s
+                                                ),
+                                                out,
+                                            ));
                                         } else {
                                             return Err(format!("Invalid arguments {} provided for Buffer constructor function, must be either 1 element to fill, or the full size of the buffer", argstrs.join(", ")).into());
                                         }
@@ -507,6 +517,11 @@ pub fn from_microstatement(
                                             )
                                             .into());
                                         }
+                                    }
+                                    CType::Bound(_, _) => {
+                                        // TODO: Is this the right thing to do for aliases to bound
+                                        // types in all cases?
+                                        return Ok((format!("{}", argstrs.join(", ")), out));
                                     }
                                     otherwise => {
                                         return Err(format!("How did you get here? Trying to create a constructor function for {:?}", otherwise).into());

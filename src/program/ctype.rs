@@ -159,6 +159,30 @@ impl CType {
         is_export: bool,
     ) -> Result<CType, Box<dyn std::error::Error>> {
         let name = type_ast.fulltypename.typename.clone();
+        if let Some(generics) = &type_ast.opttypegenerics {
+            // We are going to conditionally compile this type declaration. If the we get true, we
+            // continue, if we get false, we don't compile and return a Fail type that isn't added
+            // to the scope to cause compilation to crash *if* something tries to use this, and if
+            // we don't get a boolean at all or we get multiple inner values in the generic call,
+            // we bail out immediately because of a syntax error.
+            let generic_call =
+                withtypeoperatorslist_to_ctype(&generics.typecalllist, scope, program)?;
+            match generic_call {
+                CType::Bool(b) => match b {
+                    false => return Ok(CType::Void), // TODO: Have a lazy Fail type
+                    true => { /* Do nothing */ }
+                },
+                _ => {
+                    return Err(format!(
+                    "Invalid conditional compilation for type {}, {} does not resolve to a boolean",
+                    name,
+                    generics.to_string()
+                )
+                    .into())
+                }
+            }
+        }
+
         let (t, fs) = match &type_ast.fulltypename.opttypegenerics {
             None => {
                 // This is a "normal" type
@@ -966,6 +990,7 @@ pub fn withtypeoperatorslist_to_ctype(
                         a: "".to_string(),
                         typecalllist: vec![
                             parse::WithTypeOperators::TypeBaseList(first_arg.to_vec()),
+                            parse::WithTypeOperators::Operators(",".to_string()),
                             parse::WithTypeOperators::TypeBaseList(second_arg.to_vec()),
                         ],
                         b: "".to_string(),
@@ -1319,11 +1344,11 @@ pub fn typebaselist_to_ctype(
                                             // There should be only two args, the first arg is
                                             // coerced from a variable to a string, the second arg
                                             // is treated like normal
-                                            if g.typecalllist.len() != 2 {
+                                            if g.typecalllist.len() != 3 {
                                                 CType::fail("The Field generic type accepts only two parameters");
                                             }
                                             args.push(CType::TString(g.typecalllist[0].to_string()));
-                                            args.push(withtypeoperatorslist_to_ctype(&vec![g.typecalllist[1].clone()], scope, program)?);
+                                            args.push(withtypeoperatorslist_to_ctype(&vec![g.typecalllist[2].clone()], scope, program)?);
                                         }
                                         parse::TypeBase::MethodSep(_) => {},
                                         _ => CType::fail("Cannot follow method style syntax without an operator in between"),
@@ -1341,23 +1366,22 @@ pub fn typebaselist_to_ctype(
                                             let mut temp_args = Vec::new();
                                             for ta in &g.typecalllist {
                                                 temp_args.push(ta.clone());
-                                                /*match ta {
-                                                    parse::WithTypeOperators::Operators(s) if s.trim() == "," => {
-                                                        temp_args.push(arg.clone());
-                                                        arg.clear();
-                                                    }
-                                                    _ => {
-                                                      arg.push(ta.clone());
-                                                    }
-                                                }*/
                                             }
+                                            let mut arg_block = Vec::new();
                                             for arg in temp_args {
                                                 if let parse::WithTypeOperators::Operators(a) = &arg {
                                                     if a.trim() == "," {
+                                                        // Process the arg block that has
+                                                        // accumulated
+                                                        args.push(withtypeoperatorslist_to_ctype(&arg_block, scope, program)?);
+                                                        arg_block.clear();
                                                         continue;
                                                     }
                                                 }
-                                                args.push(withtypeoperatorslist_to_ctype(&vec![arg], scope, program)?);
+                                                arg_block.push(arg);
+                                            }
+                                            if arg_block.len() > 0 {
+                                                args.push(withtypeoperatorslist_to_ctype(&arg_block, scope, program)?);
                                             }
                                         }
                                         parse::TypeBase::MethodSep(_) => {},
