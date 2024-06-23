@@ -1419,6 +1419,7 @@ test_ignore!(type_coercion_aliases => r#"
 );
 
 // Functions and Custom Operators
+
 test!(basic_function_usage => r#"
     fn foo() = print('foo');
 
@@ -1571,6 +1572,35 @@ test_ignore!(conditional_let_assignment => r#"
       print(a);
     }"#;
     stdout "1\n";
+);
+
+test!(conditional_compilation => r#"
+    type{true} foo = string;
+    type{false} foo = i64;
+
+    const{true} var = "Hello, World!";
+    const{false} var = 32;
+
+    infix{true} add as + precedence 5;
+    infix{false} add as + precedence 0;
+
+    type infix{true} Add as + precedence 5;
+    type infix{false} Add as + precedence 0;
+
+    fn{true} bar = print(true);
+    fn{false} bar = print(false);
+
+    type TestBuffer = Buffer{i64, 1 + 2 * 3};
+    // TODO: Have a generic version instead of binding here
+    fn len(t: TestBuffer) -> i64 binds lenbuffer;
+
+    export fn main {
+      print(var.foo); // Should print "Hello, World!"
+      print(1 + 2 * 3); // Should print 9 because + now has a higher precedence
+      print(TestBuffer(0).len); // Should print 9 because the type operator + now has higher precedence
+      bar(); // Should print "true"
+    }"#;
+    stdout "Hello, World!\n9\n9\ntrue\n";
 );
 
 // Objects

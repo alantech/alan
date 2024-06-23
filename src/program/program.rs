@@ -2,6 +2,7 @@ use std::fs::read_to_string;
 use std::pin::Pin;
 
 use super::CType;
+use super::Const;
 use super::FnKind;
 use super::Function;
 use super::OperatorMapping;
@@ -72,6 +73,23 @@ impl Program {
                 Some(p) => match self.scopes_by_file.get(p) {
                     None => None,
                     Some((_, _, s)) => self.resolve_typeoperator(s, typeoperatorname),
+                },
+            },
+        }
+    }
+
+    pub fn resolve_const<'a>(
+        self: &'a Self,
+        scope: &'a Scope,
+        constname: &String,
+    ) -> Option<&Const> {
+        match scope.consts.get(constname) {
+            Some(c) => Some(c),
+            None => match &scope.parent {
+                None => None,
+                Some(p) => match self.scopes_by_file.get(p) {
+                    None => None,
+                    Some((_, _, s)) => self.resolve_const(s, constname),
                 },
             },
         }
