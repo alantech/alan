@@ -967,7 +967,41 @@ pub fn withoperatorslist_to_microstatements(
                     )
                     .collect();
             } else {
-                // TODO: Add postfix operator support here
+                let arg = match match queue.get(largest_operator_index as usize - 1) {
+                    Some(val) => Ok(val),
+                    None => Err(format!(
+                        "Operator {} is a postfix operator but missing a left-hand side value",
+                        operatorname
+                    )),
+                }? {
+                    parse::WithOperators::BaseAssignableList(bal) => Ok(bal),
+                    parse::WithOperators::Operators(o) => Err(format!(
+                        "Operator {} is a postfix operator but preceded by another operator {}",
+                        operatorname, o
+                    )),
+                }?;
+                // We're gonna rewrite the operator and base assignables into a function call, eg
+                // we take `var?` and turn it into `Maybe(var)`
+                let rewrite = parse::WithOperators::BaseAssignableList(vec![
+                    parse::BaseAssignable::Variable(functionname),
+                    parse::BaseAssignable::FnCall(parse::FnCall {
+                        openparen: "(".to_string(),
+                        a: "".to_string(),
+                        assignablelist: vec![vec![parse::WithOperators::BaseAssignableList(
+                            arg.to_vec(),
+                        )]],
+                        b: "".to_string(),
+                        closeparen: ")".to_string(),
+                    }),
+                ]);
+                // Splice the new record into the processing queue
+                let _: Vec<parse::WithOperators> = queue
+                    .splice(
+                        (largest_operator_index as usize - 1)
+                            ..(largest_operator_index as usize + 1),
+                        vec![rewrite],
+                    )
+                    .collect();
             }
         } else {
             // We have no more operators, there should only be one reworked baseassignablelist now

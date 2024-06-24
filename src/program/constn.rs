@@ -32,6 +32,20 @@ impl Const {
                     false => return Ok(()),
                     true => { /* Do nothing */ }
                 },
+                CType::Type(_, c) => match *c {
+                    CType::Bool(b) => match b {
+                        false => return Ok(()),
+                        true => { /* Do nothing */ }
+                    },
+                    _ => {
+                        return Err(format!(
+                        "Invalid conditional compilation for type {}, {} does not resolve to a boolean",
+                        name,
+                        generics.to_string()
+                    )
+                        .into())
+                    }
+                },
                 _ => {
                     return Err(format!(
                     "Invalid conditional compilation for type {}, {} does not resolve to a boolean",

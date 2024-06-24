@@ -1,4 +1,4 @@
-use crate::compile::{compile, to_rs};
+use crate::compile::{compile, test, to_rs};
 use crate::program::Program;
 use clap::{Parser, Subcommand};
 
@@ -37,6 +37,15 @@ enum Commands {
         )]
         file: String,
     },
+    #[command(about = "Test a specified .ln file")]
+    Test {
+        #[arg(
+            value_name = "LN_FILE",
+            help = ".ln source file to compile in test mode.",
+            default_value = "./index.ln"
+        )]
+        file: String,
+    },
     #[command(about = "Install dependencies for your Alan project")]
     Install {
         #[arg(
@@ -57,6 +66,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         match &args.commands {
             Some(Commands::Compile { file }) => Ok(compile(file.to_string())?),
+            Some(Commands::Test { file }) => Ok(test(file.to_string())?),
             Some(Commands::ToRs { file }) => Ok(to_rs(file.to_string())?),
             _ => Err("Command not yet supported".into()),
         }
