@@ -1,4 +1,4 @@
-use std::env::current_dir;
+use std::env::{current_dir, set_var};
 use std::fs::{create_dir_all, remove_file, write, File};
 use std::io::Read;
 use std::path::PathBuf;
@@ -10,12 +10,11 @@ use fs2::FileExt;
 
 use crate::lntors::lntors;
 
-/// The `compile` function creates a temporary directory that is a Cargo project primarily
-/// consisting of a single source file, plus a Cargo.toml file including the 3rd party dependencies
-/// in the standard library. While this *should* be some configurable thing in the standard library
-/// code instead, the contents of the Cargo.toml are just hardwired in here for now.
-pub fn compile(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
-    let start_time = Instant::now();
+/// The `build` function creates a temporary directory that is a Cargo project primarily consisting
+/// of a single source file, plus a Cargo.toml file including the 3rd party dependencies in the
+/// standard library. While this *should* be some configurable thing in the standard library code
+/// instead, the contents of the Cargo.toml are just hardwired in here for now.
+fn build(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
     let find_process = if cfg!(windows) { "where" } else { "which" };
     // Fail if rustc is not present TODO: Present a better error to the user
     Command::new(find_process).arg("rustc").output()?;
@@ -325,13 +324,46 @@ wgpu = "0.20.1""#;
     }?;
     // Drop the lockfile
     lockfile.unlock()?;
+    Ok(project_name_str)
+}
+
+/// The `compile` function is a thin wrapper on top of `build` that builds an executable in release
+/// mode and exits, printing the time it took to run on success.
+pub fn compile(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
+    let start_time = Instant::now();
+    set_var("ALAN_TARGET", "release");
+    build(source_file)?;
     println!("Done! Took {:.2}sec", start_time.elapsed().as_secs_f32());
+    Ok(())
+}
+
+/// The `test` function is a thin wrapper on top of `compile` that compiles the specified file in
+/// test mode, then immediately invokes it, and deletes the binary when done.
+pub fn test(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
+    set_var("ALAN_TARGET", "test");
+    let binary = build(source_file)?;
+    let mut run = Command::new(format!("./{}", binary))
+        .current_dir(current_dir()?)
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .spawn()?;
+    let ecode = run.wait()?;
+    Command::new("rm")
+        .current_dir(current_dir()?)
+        .arg(binary)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()?;
+    if !ecode.success() {
+        std::process::exit(ecode.code().unwrap());
+    }
     Ok(())
 }
 
 /// The `to_rs` function is an thin wrapper on top of `lntors` that shoves the output into a `.rs`
 /// file.
 pub fn to_rs(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
+    set_var("ALAN_TARGET", "release");
     // Generate the rust code to compile
     let rs_str = lntors(source_file.clone())?;
     // Shove it into a temp file for rustc
@@ -366,7 +398,8 @@ macro_rules! test {
             fn $rule() -> Result<(), Box<dyn std::error::Error>> {
                 let filename = format!("{}.ln", stringify!($rule));
                 super::write(&filename, $code)?;
-                assert_eq!((), super::compile(filename.to_string())?);
+                super::set_var("ALAN_TARGET", "test");
+                super::build(filename.to_string())?;
                 let cmd = if cfg!(windows) {
                     format!(".\\{}.exe", stringify!($rule))
                 } else {
@@ -1601,6 +1634,16 @@ test!(conditional_compilation => r#"
       bar(); // Should print "true"
     }"#;
     stdout "Hello, World!\n9\n9\ntrue\n";
+);
+test!(library_testing => r#"
+    export fn add1(a: i64) -> i64 = a + 1;
+    export postfix add1 as ++ precedence 5;
+
+    export fn{Test} main {
+      let a = 1;
+      print(a++);
+    }"#;
+    stdout "2\n";
 );
 
 // Objects

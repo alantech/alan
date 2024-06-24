@@ -60,6 +60,9 @@ export type void = ();
 export type Error binds AlanError;
 export type Fallible{T} = Either{T, Error};
 export type Maybe{T} = Either{T, ()};
+export type Test = Eq{Env{"ALAN_TARGET"}, "test"};
+export type Release = Eq{Env{"ALAN_TARGET"}, "release"};
+export type Debug = Eq{Env{"ALAN_TARGET"}, "debug"};
 
 // Defining the operators in the type system
 export type infix Function as -> precedence 2; // I -> O, where I is the input and O is the output. With Tuples and Fields you can reconstruct arguments for functions.

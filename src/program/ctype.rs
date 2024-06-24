@@ -172,6 +172,20 @@ impl CType {
                     false => return Ok(CType::Void), // TODO: Have a lazy Fail type
                     true => { /* Do nothing */ }
                 },
+                CType::Type(_, c) => match *c {
+                    CType::Bool(b) => match b {
+                        false => return Ok(CType::Void),
+                        true => { /* Do nothing */ }
+                    },
+                    _ => {
+                        return Err(format!(
+                        "Invalid conditional compilation for type {}, {} does not resolve to a boolean",
+                        name,
+                        generics.to_string()
+                    )
+                        .into())
+                    }
+                },
                 _ => {
                     return Err(format!(
                     "Invalid conditional compilation for type {}, {} does not resolve to a boolean",
@@ -652,12 +666,21 @@ impl CType {
     }
     pub fn env(k: &CType) -> CType {
         match k {
-            CType::TString(s) => match std::env::var(s) {
+            CType::TString(s) => match std::env::var(
+                s.trim_start_matches(|c| c == '"' || c == '\'')
+                    .trim_end_matches(|c| c == '"' || c == '\''),
+            ) {
                 Err(e) => CType::fail(&format!(
-                    "Failed to load environment variable {}: {:?}",
-                    s, e
+                    "Failed to load environment variable {}: {:?}\nAll current envvars:\n{}",
+                    s,
+                    e,
+                    std::env::vars()
+                        .map(|(k, v)| format!("{}: {}", k, v))
+                        .collect::<Vec<String>>()
+                        .join("\n")
                 )),
-                Ok(s) => CType::TString(s),
+                // All TStrings are quoted. TODO: Alan supports single-quotes, be less weird here
+                Ok(s) => CType::TString(format!("\"{}\"", s.replace("\"", "\\\""))),
             },
             _ => CType::fail("Env{K} must be given a key as a string to load"),
         }
