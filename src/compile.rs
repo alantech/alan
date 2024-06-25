@@ -1623,7 +1623,8 @@ test!(conditional_compilation => r#"
     fn{true} bar = print(true);
     fn{false} bar = print(false);
 
-    type TestBuffer = Buffer{i64, 1 + 2 * 3};
+    // type TestBuffer = Buffer{i64, 1 + 2 * 3};
+    type TestBuffer = i64[1 + 2 * 3];
     // TODO: Have a generic version instead of binding here
     fn len(t: TestBuffer) -> i64 binds lenbuffer;
 

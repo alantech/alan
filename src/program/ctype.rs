@@ -610,6 +610,10 @@ impl CType {
                 (anything, CType::Int(size)) => {
                     CType::Buffer(Box::new(anything.clone()), size as usize)
                 }
+                (anything, CType::Group(g)) => match *g {
+                    CType::Int(size) => CType::Buffer(Box::new(anything.clone()), size as usize),
+                    _ => CType::fail("The buffer size must be a positive integer"),
+                },
                 _ => CType::fail("The buffer size must be a positive integer"),
             }
         }

@@ -66,11 +66,11 @@ export type Debug = Eq{Env{"ALAN_TARGET"}, "debug"};
 
 // Defining the operators in the type system
 export type infix Function as -> precedence 2; // I -> O, where I is the input and O is the output. With Tuples and Fields you can reconstruct arguments for functions.
-export type infix Tuple as , precedence 1; // A, B, C, ... The tuple type combines with other tuple types to become a larger tuple type. To have a tuple of tuples, you need to `Group` the inner tuple, eg `(a, b), c`
+export type infix Tuple as , precedence 0; // A, B, C, ... The tuple type combines with other tuple types to become a larger tuple type. To have a tuple of tuples, you need to `Group` the inner tuple, eg `(a, b), c`
 export type infix Field as : precedence 3; // Foo: Bar, let's you specify a property access label for the type, useful for syntactic sugar on a tuple type and the Either type (eventually).
-export type infix Either as | precedence 1; // A | B, the type has a singular value from only one of the types at once. `Result` is just `Either{T, Error}` and `Option` is just `Either{T, ()}` (or `Either{T, void}`, however we want to represent it, also might go with `Fallible` and `Maybe` instead of `Result` and `Option` as those feel more descriptive of what they are.
-export type infix Buffer as [ precedence 4; // Technically allows `Foo[3` by itself to be valid syntax, but...
-export type postfix Group as ] precedence 4; // Technically not necessary, but allows for `Foo[3]` to do the "right thing" and become a buffer of size 3, with a singular useless Group being wrapped around it (and then unwrapped on type generation). The only "bad" thing here is `Group` gets special behavior, matching the `(...)` syntax, so there's two ways to invoke a Group via symbols.
+export type infix Either as | precedence 0; // A | B, the type has a singular value from only one of the types at once. `Result` is just `Either{T, Error}` and `Option` is just `Either{T, ()}` (or `Either{T, void}`, however we want to represent it, also might go with `Fallible` and `Maybe` instead of `Result` and `Option` as those feel more descriptive of what they are.
+export type infix Buffer as [ precedence 1; // Technically allows `Foo[3` by itself to be valid syntax, but...
+export type postfix Group as ] precedence 1; // Technically not necessary, but allows for `Foo[3]` to do the "right thing" and become a buffer of size 3, with a singular useless Group being wrapped around it (and then unwrapped on type generation). The only "bad" thing here is `Group` gets special behavior, matching the `(...)` syntax, so there's two ways to invoke a Group via symbols.
 export type postfix Array as [] precedence 4; // Allows `Foo[]` to do the right thing
 export type postfix Maybe as ? precedence 4; // Allows `Foo?` for nullable types. Should this have a precedence of 5?
 export type postfix Fallible as ! precedence 4; // Allows `Foo!` for fallible types. Same question on the precedence.
