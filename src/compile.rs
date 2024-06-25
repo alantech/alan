@@ -1443,6 +1443,45 @@ true
 false
 "#;
 );
+
+// Bitshifting/rotating
+test!(bitshifting => r#"
+    export fn main {
+      print(1.i8 >> 1.i8);
+      print(1.i8 << 1.i8);
+      print(100.i8 >>> 2.i8);
+      print(100.i8 <<< 2.i8);
+      print(shr(1.i16, 1.i16));
+      print(shl(1.i16, 1.i16));
+      print(wrr(100.i16, 2.i16));
+      print(wrl(100.i16, 2.i16));
+      print(1.i32.shr(1.i32));
+      print(1.i32.shl(1.i32));
+      print(100.i32.wrr(2.i32));
+      print(100.i32.wrl(2.i32));
+      print(1 >> 1);
+      print(1 << 1);
+      print(100 >>> 2);
+      print(100 <<< 2);
+    }"#;
+    stdout r#"0
+2
+25
+-111
+0
+2
+25
+400
+0
+2
+25
+400
+0
+2
+25
+400
+"#;
+);
 test_ignore!(type_coercion_aliases => r#"
     export fn main {
       print(int(0) == i64(0));

@@ -238,6 +238,34 @@ fn gtei8(a: &i8, b: &i8) -> bool {
     *a >= *b
 }
 
+/// `shli8` shifts the bits of the i8 to the left and truncates any overage (a cheap way to
+/// accomplish something like `((a as u8 * 2) & 255) as i8`)
+#[inline(always)]
+fn shli8(a: &i8, b: &i8) -> i8 {
+    a.wrapping_shl(*b as u32)
+}
+
+/// `shri8` shifts the bits of the i8 to the right and truncates any overage (a cheap way to
+/// accomplish something like `((a as u8 / 2) & 255) as i8`)
+#[inline(always)]
+fn shri8(a: &i8, b: &i8) -> i8 {
+    a.wrapping_shr(*b as u32)
+}
+
+/// `wrli8` wraps the bits of an i8 to the left (so a wrap of 1 makes the most significant bit the
+/// least significant and increases the significance of all others)
+#[inline(always)]
+fn wrli8(a: &i8, b: &i8) -> i8 {
+    a.rotate_left(*b as u32)
+}
+
+/// `wrri8` wraps the bits of an i8 to the right (so a wrap of 1 makes the least significant bit the
+/// most significant and decreases the significance of all others)
+#[inline(always)]
+fn wrri8(a: &i8, b: &i8) -> i8 {
+    a.rotate_right(*b as u32)
+}
+
 /// `stringtoi16` tries to convert a string into an i16
 #[inline(always)]
 fn stringtoi16(s: &String) -> Result<i16, AlanError> {
@@ -426,6 +454,34 @@ fn gti16(a: &i16, b: &i16) -> bool {
 #[inline(always)]
 fn gtei16(a: &i16, b: &i16) -> bool {
     *a >= *b
+}
+
+/// `shli16` shifts the bits of the i16 to the left and truncates any overage (a cheap way to
+/// accomplish something like `(a as u16 * 2) as i16`)
+#[inline(always)]
+fn shli16(a: &i16, b: &i16) -> i16 {
+    a.wrapping_shl(*b as u32)
+}
+
+/// `shri16` shifts the bits of the i16 to the right and truncates any overage (a cheap way to
+/// accomplish something like `(a as u16 / 2) as i16`)
+#[inline(always)]
+fn shri16(a: &i16, b: &i16) -> i16 {
+    a.wrapping_shr(*b as u32)
+}
+
+/// `wrli16` wraps the bits of an i16 to the left (so a wrap of 1 makes the most significant bit the
+/// least significant and increases the significance of all others)
+#[inline(always)]
+fn wrli16(a: &i16, b: &i16) -> i16 {
+    a.rotate_left(*b as u32)
+}
+
+/// `wrri16` wraps the bits of an i16 to the right (so a wrap of 1 makes the least significant bit the
+/// most significant and decreases the significance of all others)
+#[inline(always)]
+fn wrri16(a: &i16, b: &i16) -> i16 {
+    a.rotate_right(*b as u32)
 }
 
 /// `get_or_i32` unwraps a Result<i32, AlanError> with the default value if it is an error
@@ -618,6 +674,34 @@ fn gtei32(a: &i32, b: &i32) -> bool {
     *a >= *b
 }
 
+/// `shli32` shifts the bits of the i32 to the left and truncates any overage (a cheap way to
+/// accomplish something like `(a as u32 * 2) as i32`)
+#[inline(always)]
+fn shli32(a: &i32, b: &i32) -> i32 {
+    a.wrapping_shl(*b as u32)
+}
+
+/// `shri32` shifts the bits of the i32 to the right and truncates any overage (a cheap way to
+/// accomplish something like `(a as u32 / 2) as i32`)
+#[inline(always)]
+fn shri32(a: &i32, b: &i32) -> i32 {
+    a.wrapping_shr(*b as u32)
+}
+
+/// `wrli32` wraps the bits of an i32 to the left (so a wrap of 1 makes the most significant bit the
+/// least significant and increases the significance of all others)
+#[inline(always)]
+fn wrli32(a: &i32, b: &i32) -> i32 {
+    a.rotate_left(*b as u32)
+}
+
+/// `wrri32` wraps the bits of an i32 to the right (so a wrap of 1 makes the least significant bit the
+/// most significant and decreases the significance of all others)
+#[inline(always)]
+fn wrri32(a: &i32, b: &i32) -> i32 {
+    a.rotate_right(*b as u32)
+}
+
 /// `stringtoi64` tries to convert a string into an i64
 #[inline(always)]
 fn stringtoi64(s: &String) -> Result<i64, AlanError> {
@@ -806,6 +890,34 @@ fn gti64(a: &i64, b: &i64) -> bool {
 #[inline(always)]
 fn gtei64(a: &i64, b: &i64) -> bool {
     *a >= *b
+}
+
+/// `shli64` shifts the bits of the i64 to the left and truncates any overage (a cheap way to
+/// accomplish something like `(a as u64 * 2) as i64`)
+#[inline(always)]
+fn shli64(a: &i64, b: &i64) -> i64 {
+    a.wrapping_shl(*b as u32)
+}
+
+/// `shri64` shifts the bits of the i64 to the right and truncates any overage (a cheap way to
+/// accomplish something like `(a as u64 / 2) as i64`)
+#[inline(always)]
+fn shri64(a: &i64, b: &i64) -> i64 {
+    a.wrapping_shr(*b as u32)
+}
+
+/// `wrli64` wraps the bits of an i64 to the left (so a wrap of 1 makes the most significant bit the
+/// least significant and increases the significance of all others)
+#[inline(always)]
+fn wrli64(a: &i64, b: &i64) -> i64 {
+    a.rotate_left(*b as u32)
+}
+
+/// `wrri64` wraps the bits of an i64 to the right (so a wrap of 1 makes the least significant bit the
+/// most significant and decreases the significance of all others)
+#[inline(always)]
+fn wrri64(a: &i64, b: &i64) -> i64 {
+    a.rotate_right(*b as u32)
 }
 
 /// `get_or_f32` unwraps a Result<f32, AlanError> with the default value if it is an error
