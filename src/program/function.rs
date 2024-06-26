@@ -239,10 +239,7 @@ impl Function {
                     // argument names, eg `arg0`, `arg1`, etc. If it is not a Tuple type but is
                     // a Field type, we have a single argument function with a specified
                     // variable name. If it's any other type, we just label it `arg0`
-                    let degrouped_input = match input_type {
-                        CType::Group(c) => *c.clone(),
-                        otherwise => otherwise.clone(),
-                    };
+                    let degrouped_input = input_type.degroup();
                     let mut out_args = Vec::new();
                     match degrouped_input {
                         CType::Tuple(ts) => {
@@ -321,10 +318,7 @@ impl Function {
                     // argument names, eg `arg0`, `arg1`, etc. If it is not a Tuple type but is
                     // a Field type, we have a single argument function with a specified
                     // variable name. If it's any other type, we just label it `arg0`
-                    let degrouped_input = match input_type {
-                        CType::Group(c) => *c.clone(),
-                        otherwise => otherwise.clone(),
-                    };
+                    let degrouped_input = input_type.degroup();
                     let mut out_args = Vec::new();
                     match degrouped_input {
                         CType::Tuple(ts) => {

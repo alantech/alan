@@ -324,16 +324,7 @@ pub fn from_microstatement(
                                         // function argument. We blow up here if the first argument is
                                         // *not* a Type we can get an enum name from (it *shouldn't* be
                                         // possible, but..)
-                                        let mut enum_type = &f.args[0].1;
-                                        while match enum_type {
-                                            CType::Group(_) => true,
-                                            _ => false,
-                                        } {
-                                            enum_type = match enum_type {
-                                                CType::Group(t) => t,
-                                                t => t,
-                                            };
-                                        }
+                                        let enum_type = f.args[0].1.degroup();
                                         let enum_name = enum_type.to_callable_string();
                                         // We pass through to the main path if we can't find a matching
                                         // name
@@ -344,16 +335,7 @@ pub fn from_microstatement(
                                     _ => {}
                                 }
                             }
-                            let mut ret_type = &f.rettype;
-                            while match ret_type {
-                                CType::Group(_) => true,
-                                _ => false,
-                            } {
-                                ret_type = match ret_type {
-                                    CType::Group(t) => &*t,
-                                    t => t,
-                                };
-                            }
+                            let ret_type = &f.rettype.degroup();
                             let ret_name = ret_type.to_callable_string();
                             if f.name == ret_name {
                                 let inner_ret_type = match ret_type {
@@ -401,16 +383,7 @@ pub fn from_microstatement(
                                         if argstrs.len() != 1 {
                                             return Err(format!("Invalid arguments {} provided for Either constructor function, must be only one argument", argstrs.join(", ")).into());
                                         }
-                                        let mut enum_type = &f.args[0].1;
-                                        while match enum_type {
-                                            CType::Group(_) => true,
-                                            _ => false,
-                                        } {
-                                            enum_type = match enum_type {
-                                                CType::Group(t) => t,
-                                                t => t,
-                                            };
-                                        }
+                                        let enum_type = &f.args[0].1.degroup();
                                         let enum_name = match enum_type {
                                         CType::Field(n, _) => Ok(n.clone()),
                                         CType::Type(n, _) => Ok(n.clone()),
@@ -419,17 +392,8 @@ pub fn from_microstatement(
                                         _ => Err(format!("Cannot generate an constructor function for {} type as the input type has no name?", f.name)),
                                     }?;
                                         for t in ts {
-                                            let mut inner_type = &t;
-                                            while match t {
-                                                CType::Group(_) => true,
-                                                _ => false,
-                                            } {
-                                                inner_type = match inner_type {
-                                                    CType::Group(t) => t,
-                                                    t => t,
-                                                };
-                                            }
-                                            match inner_type {
+                                            let inner_type = t.degroup();
+                                            match &inner_type {
                                                 CType::Field(n, _) if *n == enum_name => {
                                                     return Ok((
                                                         format!(
@@ -551,18 +515,9 @@ pub fn generate(
         out = o;
         arg_strs.push(format!("{}: &{}", l, t_str).to_string());
     }
-    let opt_ret_str = match &function.rettype {
+    let opt_ret_str = match &function.rettype.degroup() {
         CType::Void => None,
         CType::Type(n, _) if n == "void" => None,
-        CType::Group(g) => match &**g {
-            CType::Void => None,
-            CType::Type(n, _) if n == "void" => None,
-            otherwise => {
-                let (t_str, o) = typen::generate(otherwise, scope, program, out)?;
-                out = o;
-                Some(t_str)
-            }
-        },
         otherwise => {
             let (t_str, o) = typen::generate(otherwise, scope, program, out)?;
             out = o;
