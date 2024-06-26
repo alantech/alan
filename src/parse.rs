@@ -348,7 +348,6 @@ build!(
 );
 build!(optwhitespace, zero_or_one!(whitespace));
 build!(colon, token!(":"));
-build!(arrow, token!("->")); // TODO: Temporary to make the syntax closer before being generalized
 build!(under, token!("_"));
 build!(negate, token!("-"));
 build!(dot, token!("."));
@@ -1360,142 +1359,59 @@ named_and!(typeoperatormapping: TypeOperatorMapping =>
     opmap: TypeOpMap as typeopmap,
     optsemicolon: String as optsemicolon,
 );
-named_and!(propertytypeline: PropertyTypeline =>
-    variable: String as variable,
-    a: String as blank,
-    colon: String as colon,
-    b: String as blank,
-    fulltypename: FullTypename as fulltypename,
-);
-named_and!(leftarg: LeftArg =>
-    leftarg: FullTypename as fulltypename,
-    whitespace: String as whitespace,
-);
-named_and!(operatortypeline: OperatorTypeline =>
-    optleftarg: Option<LeftArg> as opt(leftarg),
-    operators: String as operators,
-    whitespace: String as whitespace,
-    rightarg: FullTypename as fulltypename,
-    a: String as optwhitespace,
-    colon: String as colon,
-    b: String as optwhitespace,
-    fulltypename: FullTypename as fulltypename,
-);
-list!(opt argtypelist: FullTypename => fulltypename, sep);
-test!(argtypelist =>
-    pass "" => "", Vec::new();
-    pass "foo" => "", vec![super::FullTypename{
-      typename: "foo".to_string(),
-      opttypegenerics: None,
-    }];
-    pass "foo, bar" => "", vec![super::FullTypename{
-      typename: "foo".to_string(),
-      opttypegenerics: None,
-    }, super::FullTypename{
-      typename: "bar".to_string(),
-      opttypegenerics: None,
-    }];
-);
-named_and!(functiontype: FunctionType =>
-    openparen: String as openparen,
-    a: String as optwhitespace,
-    argtypelist: Vec<FullTypename> as argtypelist,
-    optsep: String as optsep,
-    b: String as optwhitespace,
-    closeparen: String as closeparen,
-    c: String as optwhitespace,
-    arrow: String as arrow,
-    d: String as optwhitespace,
-    returntype: FullTypename as fulltypename,
-);
-test!(functiontype =>
-    fail "()";
-    pass "() -> void";
-    pass "(Foo) -> Bar";
-    pass "(Foo, Bar) -> Baz";
-);
 named_and!(functiontypeline: FunctionTypeline =>
     variable: String as variable,
     a: String as optblank,
-    functiontype: FunctionType as functiontype,
+    functiontype: Vec<WithTypeOperators> as typeassignables,
 );
 test!(functiontypeline =>
-    pass "toString(Stringifiable) -> string," => ",", super::FunctionTypeline{
+    pass "toString(Stringifiable) -> string" => "", super::FunctionTypeline{
       variable: "toString".to_string(),
       a: "".to_string(),
-      functiontype: super::FunctionType{
-        openparen: "(".to_string(),
-        a: "".to_string(),
-        argtypelist: vec![super::FullTypename{
-          typename: "Stringifiable".to_string(),
-          opttypegenerics: None,
-        }],
-        optsep: "".to_string(),
-        b: "".to_string(),
-        closeparen: ")".to_string(),
-        c: " ".to_string(),
-        arrow: "->".to_string(),
-        d: " ".to_string(),
-        returntype: super::FullTypename{
-          typename: "string".to_string(),
-          opttypegenerics: None,
-        }
-      }
-    };
+      functiontype: vec![super::WithTypeOperators::TypeBaseList(vec![super::TypeBase::TypeGroup(super::TypeGroup {
+          openparen: "(".to_string(),
+          a: "".to_string(),
+          typeassignables: vec![super::WithTypeOperators::TypeBaseList(vec![super::TypeBase::Variable("Stringifiable".to_string())])],
+          b: "".to_string(),
+          closeparen: ")".to_string(),
+        })]),
+        super::WithTypeOperators::Operators(" -> ".to_string()),
+        super::WithTypeOperators::TypeBaseList(vec![super::TypeBase::Variable("string".to_string())]),
+      ]};
 );
 named_or!(interfaceline: InterfaceLine =>
     FunctionTypeline: FunctionTypeline as functiontypeline,
-    OperatorTypeline: OperatorTypeline as operatortypeline,
-    PropertyTypeline: PropertyTypeline as propertytypeline,
 );
 test!(interfaceline =>
-    pass "toString(Stringifiable) -> string," => ",", super::InterfaceLine::FunctionTypeline(super::FunctionTypeline{
+    pass "toString(Stringifiable) -> string" => "", super::InterfaceLine::FunctionTypeline(super::FunctionTypeline{
       variable: "toString".to_string(),
       a: "".to_string(),
-      functiontype: super::FunctionType{
-        openparen: "(".to_string(),
-        a: "".to_string(),
-        argtypelist: vec![super::FullTypename{
-          typename: "Stringifiable".to_string(),
-          opttypegenerics: None,
-        }],
-        optsep: "".to_string(),
-        b: "".to_string(),
-        closeparen: ")".to_string(),
-        c: " ".to_string(),
-        arrow: "->".to_string(),
-        d: " ".to_string(),
-        returntype: super::FullTypename{
-          typename: "string".to_string(),
-          opttypegenerics: None,
-        }
-      }
-    });
+      functiontype: vec![super::WithTypeOperators::TypeBaseList(vec![super::TypeBase::TypeGroup(super::TypeGroup {
+          openparen: "(".to_string(),
+          a: "".to_string(),
+          typeassignables: vec![super::WithTypeOperators::TypeBaseList(vec![super::TypeBase::Variable("Stringifiable".to_string())])],
+          b: "".to_string(),
+          closeparen: ")".to_string(),
+        })]),
+        super::WithTypeOperators::Operators(" -> ".to_string()),
+        super::WithTypeOperators::TypeBaseList(vec![super::TypeBase::Variable("string".to_string())]),
+      ]});
 );
-list!(opt interfacelist: InterfaceLine => interfaceline, sep);
+list!(opt interfacelist: InterfaceLine => interfaceline, newline);
 test!(interfacelist =>
-    pass "toString(Stringifiable) -> string," => ",", vec![super::InterfaceLine::FunctionTypeline(super::FunctionTypeline{
+    pass "toString(Stringifiable) -> string" => "", vec![super::InterfaceLine::FunctionTypeline(super::FunctionTypeline{
       variable: "toString".to_string(),
       a: "".to_string(),
-      functiontype: super::FunctionType{
-        openparen: "(".to_string(),
-        a: "".to_string(),
-        argtypelist: vec![super::FullTypename{
-          typename: "Stringifiable".to_string(),
-          opttypegenerics: None,
-        }],
-        optsep: "".to_string(),
-        b: "".to_string(),
-        closeparen: ")".to_string(),
-        c: " ".to_string(),
-        arrow: "->".to_string(),
-        d: " ".to_string(),
-        returntype: super::FullTypename{
-          typename: "string".to_string(),
-          opttypegenerics: None,
-        }
-      }
-    })];
+      functiontype: vec![super::WithTypeOperators::TypeBaseList(vec![super::TypeBase::TypeGroup(super::TypeGroup {
+          openparen: "(".to_string(),
+          a: "".to_string(),
+          typeassignables: vec![super::WithTypeOperators::TypeBaseList(vec![super::TypeBase::Variable("Stringifiable".to_string())])],
+          b: "".to_string(),
+          closeparen: ")".to_string(),
+        })]),
+        super::WithTypeOperators::Operators(" -> ".to_string()),
+        super::WithTypeOperators::TypeBaseList(vec![super::TypeBase::Variable("string".to_string())]),
+      ]})];
 );
 named_and!(interfacebody: InterfaceBody =>
     opencurly: String as opencurly,

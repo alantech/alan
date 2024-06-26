@@ -201,7 +201,7 @@ impl Program {
             }
         }
         // The following is insanity to deal with the borrow checker. It could have been done
-        // withotu the temporary vector or the child scopes, but using a mutable reference in a
+        // without the temporary vector or the child scopes, but using a mutable reference in a
         // loop is a big no-no.
         let mut temp_scopes = Vec::new();
         for _ in &generic_fs {
