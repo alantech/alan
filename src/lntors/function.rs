@@ -334,12 +334,7 @@ pub fn from_microstatement(
                                                 t => t,
                                             };
                                         }
-                                        let enum_name = enum_type
-                                            .to_functional_string()
-                                            .replace(" ", "_")
-                                            .replace(",", "_")
-                                            .replace("{", "_")
-                                            .replace("}", "_");
+                                        let enum_name = enum_type.to_callable_string();
                                         // We pass through to the main path if we can't find a matching
                                         // name
                                         if let Some(_) = accessor_field {
@@ -359,12 +354,7 @@ pub fn from_microstatement(
                                     t => t,
                                 };
                             }
-                            let ret_name = ret_type
-                                .to_functional_string()
-                                .replace(" ", "_")
-                                .replace(",", "_")
-                                .replace("{", "_")
-                                .replace("}", "_");
+                            let ret_name = ret_type.to_callable_string();
                             if f.name == ret_name {
                                 let inner_ret_type = match ret_type {
                                     CType::Field(_, t) => *t.clone(),

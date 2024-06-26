@@ -480,15 +480,8 @@ pub fn baseassignablelist_to_microstatements(
                 // TODO: Currently assuming all array values are the same type, should check that
                 // better
                 let inner_type = array_vals[0].get_type(scope, program)?;
-                let inner_type_str = inner_type.to_functional_string();
-                let array_type_name = format!(
-                    "Array_{}_",
-                    inner_type_str
-                        .replace(" ", "_")
-                        .replace(",", "_")
-                        .replace("{", "_")
-                        .replace("}", "_")
-                ); // Really bad
+                let inner_type_str = inner_type.to_callable_string();
+                let array_type_name = format!("Array_{}_", inner_type_str);
                 let array_type = CType::Array(Box::new(inner_type));
                 let type_str = format!("type {} = {}[];", array_type_name, inner_type_str);
                 let parse_type = parse::types(&type_str);
@@ -587,12 +580,7 @@ pub fn baseassignablelist_to_microstatements(
                 // TODO: Eliminate the duplication of CType generation logic by abstracting out the
                 // automatic function creation into a reusable component
                 let ctype = withtypeoperatorslist_to_ctype(&g.typecalllist, scope, program)?;
-                let name = ctype
-                    .to_functional_string()
-                    .replace(" ", "_")
-                    .replace(",", "_")
-                    .replace("{", "_")
-                    .replace("}", "_");
+                let name = ctype.to_callable_string();
                 let parse_type = parse::Types {
                     typen: "type".to_string(),
                     a: "".to_string(),
@@ -783,12 +771,7 @@ pub fn baseassignablelist_to_microstatements(
                             optsemicolon: ";".to_string(),
                         };
                         let t = CType::from_ast(scope, program, &parse_type, false)?;
-                        let real_name = t
-                            .to_functional_string()
-                            .replace(" ", "_")
-                            .replace(",", "_")
-                            .replace("{", "_")
-                            .replace("}", "_");
+                        let real_name = t.to_callable_string();
                         // Now we are sure the type and function exist, and we know the name for the
                         // function. It would be best if we could just pass it to ourselves and run the
                         // `FuncCall` logic below, but it's easier at the moment to duplicate :( TODO

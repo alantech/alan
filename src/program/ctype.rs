@@ -50,7 +50,7 @@ impl CType {
                 "{}{{{}}}",
                 s,
                 a.iter()
-                    .map(|b| b.to_string())
+                    .map(|b| b.to_strict_string(strict))
                     .collect::<Vec<String>>()
                     .join(", ")
             ),
@@ -152,6 +152,48 @@ impl CType {
             CType::Array(t) => format!("Array{{{}}}", t.to_functional_string()),
         }
     }
+    pub fn to_callable_string(&self) -> String {
+        // TODO: Be more efficient with this later
+        self.to_functional_string()
+            .replace(" ", "_")
+            .replace(",", "_")
+            .replace("{", "_")
+            .replace("}", "_")
+    }
+    pub fn degroup(&self) -> CType {
+        match self {
+            CType::Void => CType::Void,
+            CType::Infer(s) => CType::Infer(s.clone()),
+            CType::Type(n, t) => CType::Type(n.clone(), Box::new((*t).degroup())),
+            CType::Generic(n, gs, wtos) => CType::Generic(n.clone(), gs.clone(), wtos.clone()),
+            CType::Bound(n, b) => CType::Bound(n.clone(), b.clone()),
+            CType::BoundGeneric(n, gs, b) => CType::BoundGeneric(n.clone(), gs.clone(), b.clone()),
+            CType::ResolvedBoundGeneric(n, gs, ts, b) => CType::ResolvedBoundGeneric(
+                n.clone(),
+                gs.clone(),
+                ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>(),
+                b.clone(),
+            ),
+            CType::IntrinsicGeneric(n, s) => CType::IntrinsicGeneric(n.clone(), *s),
+            CType::Int(i) => CType::Int(*i),
+            CType::Float(f) => CType::Float(*f),
+            CType::Bool(b) => CType::Bool(*b),
+            CType::TString(s) => CType::TString(s.clone()),
+            CType::Group(t) => t.degroup(),
+            CType::Function(i, o) => {
+                CType::Function(Box::new((*i).degroup()), Box::new((*o).degroup()))
+            }
+            CType::Tuple(ts) => {
+                CType::Tuple(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>())
+            }
+            CType::Field(l, t) => CType::Field(l.clone(), Box::new((*t).degroup())),
+            CType::Either(ts) => {
+                CType::Either(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>())
+            }
+            CType::Buffer(t, s) => CType::Buffer(Box::new((*t).degroup()), *s),
+            CType::Array(t) => CType::Array(Box::new((*t).degroup())),
+        }
+    }
     pub fn from_ast(
         scope: &mut Scope,
         program: &mut Program,
@@ -226,12 +268,7 @@ impl CType {
                         }
                         let t = CType::Type(name.clone(), Box::new(inner_type.clone()));
                         let mut fs = Vec::new();
-                        let constructor_fn_name = t
-                            .to_functional_string()
-                            .replace(" ", "_")
-                            .replace(",", "_")
-                            .replace("{", "_")
-                            .replace("}", "_");
+                        let constructor_fn_name = t.to_callable_string();
                         match &inner_type {
                             CType::Type(n, _) => {
                                 // This is just an alias
