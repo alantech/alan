@@ -52,12 +52,7 @@ pub fn ctype_to_rtype(
                             }
                         }
                     }
-                    let name = t
-                        .to_functional_string()
-                        .replace(" ", "_")
-                        .replace(",", "_")
-                        .replace("{", "_")
-                        .replace("}", "_");
+                    let name = t.to_callable_string();
                     Ok(format!("enum {} {{ {} }}", name, enum_type_strs.join(", ")))
                 }
                 _ => Ok("".to_string()), // TODO: Is this correct?

@@ -232,7 +232,9 @@ impl Program {
                 // This is pretty cheap, but for now, a "non-strict" string representation
                 // of the CTypes is how we'll match the args against each other. TODO: Do
                 // this without constructing a string to compare against each other.
-                if f.args[i].1.to_strict_string(false) != arg.to_strict_string(false) {
+                if f.args[i].1.degroup().to_strict_string(false)
+                    != arg.degroup().to_strict_string(false)
+                {
                     args_match = false;
                     break;
                 }
@@ -288,12 +290,7 @@ impl Program {
                     // hackery.
                     match self.resolve_type(s, function) {
                         Some(t) => {
-                            let constructor_fn_name = t
-                                .to_functional_string()
-                                .replace(" ", "_")
-                                .replace(",", "_")
-                                .replace("{", "_")
-                                .replace("}", "_");
+                            let constructor_fn_name = t.to_callable_string();
                             match s.functions.get(&constructor_fn_name) {
                                 Some(funcs) => {
                                     for f in funcs {
@@ -325,7 +322,9 @@ impl Program {
                     // The special path where the length doesn't matter as long as all of the
                     // actual args are the same type as the function's arg.
                     for arg in args.iter() {
-                        if f.args[0].1.to_strict_string(false) != arg.to_strict_string(false) {
+                        if f.args[0].1.degroup().to_strict_string(false)
+                            != arg.degroup().to_strict_string(false)
+                        {
                             args_match = false;
                             break;
                         }
@@ -339,7 +338,9 @@ impl Program {
                         // This is pretty cheap, but for now, a "non-strict" string representation
                         // of the CTypes is how we'll match the args against each other. TODO: Do
                         // this without constructing a string to compare against each other.
-                        if f.args[i].1.to_strict_string(false) != arg.to_strict_string(false) {
+                        if f.args[i].1.degroup().to_strict_string(false)
+                            != arg.degroup().to_strict_string(false)
+                        {
                             args_match = false;
                             break;
                         }

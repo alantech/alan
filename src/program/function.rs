@@ -239,10 +239,7 @@ impl Function {
                     // argument names, eg `arg0`, `arg1`, etc. If it is not a Tuple type but is
                     // a Field type, we have a single argument function with a specified
                     // variable name. If it's any other type, we just label it `arg0`
-                    let degrouped_input = match input_type {
-                        CType::Group(c) => *c.clone(),
-                        otherwise => otherwise.clone(),
-                    };
+                    let degrouped_input = input_type.degroup();
                     let mut out_args = Vec::new();
                     match degrouped_input {
                         CType::Tuple(ts) => {
@@ -288,12 +285,7 @@ impl Function {
                             let returntypeassignables =
                                 typeassignable[lastfnop + 1..typeassignable.len()].to_vec();
                             // TODO: Be more complete here
-                            let name = output_type
-                                .to_functional_string()
-                                .replace(" ", "_")
-                                .replace(",", "_")
-                                .replace("{", "_")
-                                .replace("}", "_");
+                            let name = output_type.to_callable_string();
                             if let Some(_) = program.resolve_type(scope, &name) {
                                 // Don't recreate the exact same thing. It only causes pain
                             } else {
@@ -326,10 +318,7 @@ impl Function {
                     // argument names, eg `arg0`, `arg1`, etc. If it is not a Tuple type but is
                     // a Field type, we have a single argument function with a specified
                     // variable name. If it's any other type, we just label it `arg0`
-                    let degrouped_input = match input_type {
-                        CType::Group(c) => *c.clone(),
-                        otherwise => otherwise.clone(),
-                    };
+                    let degrouped_input = input_type.degroup();
                     let mut out_args = Vec::new();
                     match degrouped_input {
                         CType::Tuple(ts) => {
@@ -444,12 +433,7 @@ impl Function {
                     generic_function.name,
                     generic_types
                         .iter()
-                        .map(|t| t
-                            .to_functional_string()
-                            .replace(" ", "_")
-                            .replace(",", "_")
-                            .replace("{", "_")
-                            .replace("}", "_"))
+                        .map(|t| t.to_callable_string())
                         .collect::<Vec<String>>()
                         .join("_")
                 ); // Really bad
@@ -522,12 +506,7 @@ impl Function {
                     generic_function.name,
                     generic_types
                         .iter()
-                        .map(|t| t
-                            .to_functional_string()
-                            .replace(" ", "_")
-                            .replace(",", "_")
-                            .replace("{", "_")
-                            .replace("}", "_"))
+                        .map(|t| t.to_callable_string())
                         .collect::<Vec<String>>()
                         .join("_")
                 ); // Really bad
