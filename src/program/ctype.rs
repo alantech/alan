@@ -337,6 +337,14 @@ impl CType {
                         arg.push(&*g1);
                         input.push(&*g2);
                     }
+                    (Some(CType::Group(g1)), Some(b)) => {
+                        arg.push(&*g1);
+                        input.push(b);
+                    }
+                    (Some(a), Some(CType::Group(g2))) => {
+                        arg.push(a);
+                        input.push(&*g2);
+                    }
                     (Some(CType::Function(i1, o1)), Some(CType::Function(i2, o2))) => {
                         arg.push(&*i1);
                         arg.push(&*o1);
