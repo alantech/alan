@@ -1820,6 +1820,12 @@ fn gtestring(a: &String, b: &String) -> bool {
     *a >= *b
 }
 
+/// `joinstring` joins an array of strings with the separator in-between
+#[inline(always)]
+fn joinstring(a: &Vec<String>, s: &String) -> String {
+    a.join(s)
+}
+
 /// `i8tobool` converts an integer into a boolean
 #[inline(always)]
 fn i8tobool(a: &i8) -> bool {
@@ -1971,6 +1977,30 @@ fn println_maybe<A: std::fmt::Display>(a: &Option<A>) {
     match a {
         Some(o) => println!("{}", o),
         None => println!("void"),
+    };
+}
+
+/// `eprintln` is a simple function that prints basically anything
+#[inline(always)]
+fn eprintln<A: std::fmt::Display>(a: &A) {
+    eprintln!("{}", a);
+}
+
+/// `eprintln_result` is a small wrapper function that makes printing Result types easy
+#[inline(always)]
+fn eprintln_result<A: std::fmt::Display>(a: &Result<A, AlanError>) {
+    match a {
+        Ok(o) => eprintln!("{}", o),
+        Err(e) => eprintln!("{:?}", e),
+    };
+}
+
+/// `eprintln_maybe` is a small wrapper function that makes printing Option types easy
+#[inline(always)]
+fn eprintln_maybe<A: std::fmt::Display>(a: &Option<A>) {
+    match a {
+        Some(o) => eprintln!("{}", o),
+        None => eprintln!("void"),
     };
 }
 

@@ -2344,8 +2344,8 @@ test_ignore!(closure_creation_and_usage => r#"
     }"#;
     stdout "1\n2\n1\n";
 );
-test_ignore!(closure_by_name => r#"
-    fn double(x: i64) -> i64 = x * 2 || 0;
+test!(closure_by_name => r#"
+    fn double(x: i64) -> i64 = x * 2;
 
     export fn main {
       const numbers = [1, 2, 3, 4, 5];
@@ -2463,7 +2463,7 @@ new Piece {
 
 // Module-level constants
 
-test_ignore!(module_level_constant => r#"
+test!(module_level_constant => r#"
     const helloWorld = 'Hello, World!';
 
     export fn main {
@@ -3424,7 +3424,7 @@ test_ignore!(subtree_and_nested_tree_construction => r#"
 
 // Error printing
 
-test_ignore!(eprint => r#"
+test!(eprint => r#"
     export fn main {
       eprint('This is an error');
     }"#;

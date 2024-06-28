@@ -65,9 +65,9 @@ export type Release = Eq{Env{"ALAN_TARGET"}, "release"};
 export type Debug = Eq{Env{"ALAN_TARGET"}, "debug"};
 
 // Defining the operators in the type system
-export type infix Function as -> precedence 2; // I -> O, where I is the input and O is the output. With Tuples and Fields you can reconstruct arguments for functions.
+export type infix Function as -> precedence 3; // I -> O, where I is the input and O is the output. With Tuples and Fields you can reconstruct arguments for functions.
 export type infix Tuple as , precedence 0; // A, B, C, ... The tuple type combines with other tuple types to become a larger tuple type. To have a tuple of tuples, you need to `Group` the inner tuple, eg `(a, b), c`
-export type infix Field as : precedence 3; // Foo: Bar, let's you specify a property access label for the type, useful for syntactic sugar on a tuple type and the Either type (eventually).
+export type infix Field as : precedence 2; // Foo: Bar, let's you specify a property access label for the type, useful for syntactic sugar on a tuple type and the Either type (eventually).
 export type infix Either as | precedence 0; // A | B, the type has a singular value from only one of the types at once. `Result` is just `Either{T, Error}` and `Option` is just `Either{T, ()}` (or `Either{T, void}`, however we want to represent it, also might go with `Fallible` and `Maybe` instead of `Result` and `Option` as those feel more descriptive of what they are.
 export type infix Buffer as [ precedence 1; // Technically allows `Foo[3` by itself to be valid syntax, but...
 export type postfix Group as ] precedence 1; // Technically not necessary, but allows for `Foo[3]` to do the "right thing" and become a buffer of size 3, with a singular useless Group being wrapped around it (and then unwrapped on type generation). The only "bad" thing here is `Group` gets special behavior, matching the `(...)` syntax, so there's two ways to invoke a Group via symbols.
@@ -363,10 +363,10 @@ export fn gt(a: f64, b: f64) -> bool binds gtf64;
 export fn gte(a: f64, b: f64) -> bool binds gtef64;
 
 /// String related bindings
+export fn string(i: i64) -> string binds i64tostring; // TODO: Fix match ordering
 export fn string(i: i8) -> string binds i8tostring;
 export fn string(i: i16) -> string binds i16tostring;
 export fn string(i: i32) -> string binds i32tostring;
-export fn string(i: i64) -> string binds i64tostring;
 export fn string(f: f32) -> string binds f32tostring;
 export fn string(f: f64) -> string binds f64tostring;
 export fn string(b: bool) -> string binds booltostring;
@@ -390,6 +390,7 @@ export fn lt(a: string, b: string) -> bool binds ltstring;
 export fn lte(a: string, b: string) -> bool binds ltestring;
 export fn gt(a: string, b: string) -> bool binds gtstring;
 export fn gte(a: string, b: string) -> bool binds gtestring;
+export fn join(a: Array{string}, s: string) -> string binds joinstring;
 
 /// Boolean related bindings
 export fn bool(i: i8) -> bool binds i8tobool;
@@ -411,12 +412,10 @@ export fn eq(a: bool, b: bool) -> bool binds eqbool;
 export fn neq(a: bool, b: bool) -> bool binds neqbool;
 
 /// Array related bindings
-export fn len(a: i64[]) -> i64 binds lenarray; // TODO: Real generics
-export fn len(a: string[]) -> i64 binds lenarray; // TODO: Real generics
-export fn push(a: Array{i64}, v: i64) -> () binds pusharray; // TODO: Real generics
-export fn push(a: Array{string}, v: string) -> () binds pusharray; // TODO: Real generics
-export fn pop(a: i64[]) -> Maybe{i64} binds poparray; // TODO: Real generics
-export fn pop(a: string[]) -> Maybe{string} binds poparray; // TODO: Real generics
+export fn len{T}(a: T[]) -> i64 binds lenarray;
+export fn push{T}(a: Array{T}, v: T) -> () binds pusharray;
+export fn pop{T}(a: T[]) -> Maybe{T} binds poparray;
+export fn map{T, U}(a: Array{T}, m: T -> U) -> Array{U} binds map_onearg;
 
 /// Process exit-related bindings
 export fn ExitCode(e: i8) -> ExitCode binds to_exit_code_i8;
@@ -431,27 +430,6 @@ export fn getOrExit(a: i8?) -> i8 binds get_or_maybe_exit; // TODO: Support real
 export fn getOrExit(a: i16?) -> i16 binds get_or_maybe_exit; // TODO: Support real generics
 export fn getOrExit(a: i32?) -> i32 binds get_or_maybe_exit; // TODO: Support real generics
 export fn getOrExit(a: i64?) -> i64 binds get_or_maybe_exit; // TODO: Support real generics
-
-/// Stdout/stderr-related bindings
-export fn print(str: string) binds println;
-export fn print(str: Result{string}) binds println_result;
-export fn print(b: bool) binds println;
-export fn print(b: Result{bool}) binds println_result;
-export fn print(i: i8) binds println;
-export fn print(i: Result{i8}) binds println_result;
-export fn print(i: i16) binds println;
-export fn print(i: Result{i16}) binds println_result;
-export fn print(i: i32) binds println;
-export fn print(i: Result{i32}) binds println_result;
-export fn print(i: i64) binds println;
-export fn print(i: Result{i64}) binds println_result;
-export fn print(f: f32) binds println;
-export fn print(f: Result{f32}) binds println_result;
-export fn print(f: f64) binds println;
-export fn print(f: Result{f64}) binds println_result;
-export fn print(o: Maybe{string}) binds println_maybe; // TODO: Do this with real generics
-export fn print(o: Maybe{i64}) binds println_maybe;
-export fn print(o: Maybe{i32}) binds println_maybe;
 
 /// Thread-related bindings
 export fn wait(t: i64) binds wait;
@@ -498,6 +476,14 @@ export fn GPGPU(source: string, buffers: Vec{Vec{GBuffer}}) -> GPGPU binds GPGPU
 export fn GPGPU(source: string, buffer: GBuffer) -> GPGPU binds GPGPU_new_easy;
 export fn run(g: GPU, gg: GPGPU) binds gpu_run;
 export fn read(g: GPU, b: GBuffer) -> Vec{i32} binds read_buffer; // TODO: Support other output types
+
+/// Stdout/stderr-related bindings
+export fn print{T}(v: Result{T}) binds println_result;
+export fn print{T}(v: Maybe{T}) binds println_maybe;
+export fn print{T}(v: T) binds println;
+export fn eprint{T}(v: Result{T}) binds eprintln_result;
+export fn eprint{T}(v: Maybe{T}) binds eprintln_maybe;
+export fn eprint{T}(v: T) binds eprintln;
 
 /// Built-in operator definitions
 // TODO: New plan is to make operators only map to one function per symbol and *kind* of operator,

@@ -112,7 +112,10 @@ impl Function {
                             // TODO: This should be an interface type, instead
                             generics.push((
                                 t1.to_string().trim().to_string(),
-                                CType::Infer(t3.to_string().trim().to_string()),
+                                CType::Infer(
+                                    t1.to_string().trim().to_string(),
+                                    t3.to_string().trim().to_string(),
+                                ),
                             ));
                             i = i + 4;
                         }
@@ -120,7 +123,10 @@ impl Function {
                             // TODO: This should be an interface type, instead
                             generics.push((
                                 t1.to_string().trim().to_string(),
-                                CType::Infer(t3.to_string().trim().to_string()),
+                                CType::Infer(
+                                    t1.to_string().trim().to_string(),
+                                    t3.to_string().trim().to_string(),
+                                ),
                             ));
                             i = i + 3; // This should exit the loop
                         }
@@ -128,7 +134,7 @@ impl Function {
                             // TODO: This should be an interface type, instead
                             generics.push((
                                 t1.to_string().trim().to_string(),
-                                CType::Infer("Any".to_string()),
+                                CType::Infer(t1.to_string().trim().to_string(), "Any".to_string()),
                             ));
                             i = i + 2;
                         }
@@ -136,7 +142,7 @@ impl Function {
                             // TODO: This should be an interface type, instead
                             generics.push((
                                 t1.to_string().trim().to_string(),
-                                CType::Infer("Any".to_string()),
+                                CType::Infer(t1.to_string().trim().to_string(), "Any".to_string()),
                             ));
                             i = i + 1;
                         }
@@ -167,7 +173,10 @@ impl Function {
                             // TODO: This should be an interface type, instead
                             generics.push((
                                 t1.to_string().trim().to_string(),
-                                CType::Infer(t3.to_string().trim().to_string()),
+                                CType::Infer(
+                                    t1.to_string().trim().to_string(),
+                                    t3.to_string().trim().to_string(),
+                                ),
                             ));
                             i = i + 4;
                         }
@@ -175,7 +184,10 @@ impl Function {
                             // TODO: This should be an interface type, instead
                             generics.push((
                                 t1.to_string().trim().to_string(),
-                                CType::Infer(t3.to_string().trim().to_string()),
+                                CType::Infer(
+                                    t1.to_string().trim().to_string(),
+                                    t3.to_string().trim().to_string(),
+                                ),
                             ));
                             i = i + 3; // This should exit the loop
                         }
@@ -183,7 +195,7 @@ impl Function {
                             // TODO: This should be an interface type, instead
                             generics.push((
                                 t1.to_string().trim().to_string(),
-                                CType::Infer("Any".to_string()),
+                                CType::Infer(t1.to_string().trim().to_string(), "Any".to_string()),
                             ));
                             i = i + 2;
                         }
@@ -191,7 +203,7 @@ impl Function {
                             // TODO: This should be an interface type, instead
                             generics.push((
                                 t1.to_string().trim().to_string(),
-                                CType::Infer("Any".to_string()),
+                                CType::Infer(t1.to_string().trim().to_string(), "Any".to_string()),
                             ));
                             i = i + 1;
                         }
