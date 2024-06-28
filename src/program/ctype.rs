@@ -1,4 +1,4 @@
-use ordered_hash_map::{OrderedHashMap, OrderedHashSet};
+use std::collections::{HashMap, HashSet};
 
 use super::Export;
 use super::FnKind;
@@ -219,7 +219,7 @@ impl CType {
             .iter()
             .map(|(_, t)| t.clone())
             .collect::<Vec<CType>>();
-        let mut generic_types = OrderedHashMap::new();
+        let mut generic_types = HashMap::new();
         for (a, i) in call_args.iter().zip(input_types.iter()) {
             let mut arg = vec![a];
             let mut input = vec![i];
@@ -749,7 +749,7 @@ impl CType {
         if is_export {
             scope.exports.insert(name.clone(), Export::Type);
             if fs.len() > 0 {
-                let mut names = OrderedHashSet::new();
+                let mut names = HashSet::new();
                 for f in &fs {
                     names.insert(f.name.clone());
                 }
@@ -760,7 +760,7 @@ impl CType {
         }
         scope.types.insert(name, t.clone());
         if fs.len() > 0 {
-            let mut name_fn_pairs = OrderedHashMap::new();
+            let mut name_fn_pairs = HashMap::new();
             for f in fs {
                 if name_fn_pairs.contains_key(&f.name) {
                     let v: &mut Vec<Function> = name_fn_pairs.get_mut(&f.name).unwrap();
