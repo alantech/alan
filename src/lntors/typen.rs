@@ -11,7 +11,7 @@ pub fn ctype_to_rtype(
 ) -> Result<String, Box<dyn std::error::Error>> {
     match ctype {
         CType::Void => Ok("void".to_string()),
-        CType::Infer(s) => Err(format!(
+        CType::Infer(s, _) => Err(format!(
             "Inferred type matching {} was not realized before code generation",
             s
         )

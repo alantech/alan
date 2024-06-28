@@ -144,7 +144,7 @@ impl Program {
         self: &'a mut Self,
         scope: &'a mut Scope,
         function: &String,
-        generics: &Vec<String>,
+        generic_types: &Vec<CType>,
         args: &Vec<CType>,
     ) -> Option<&Function> {
         // Tries to find the specified function within the portion of the program accessible from
@@ -176,11 +176,6 @@ impl Program {
                 None => {}
             }
         }
-        let mut generic_types = Vec::new();
-        for g in generics {
-            let t = self.resolve_type(scope, g)?;
-            generic_types.push(t.clone()); // TODO: Drop the cloning
-        }
         let mut generic_fs = Vec::new();
         for f in &fs {
             match &f.kind {
@@ -210,12 +205,10 @@ impl Program {
         let mut realized_fs = Vec::new();
         for (i, temp_scope) in temp_scopes.iter_mut().enumerate() {
             let f = generic_fs.get(i).unwrap();
-            let func =
-                match Function::from_generic_function(temp_scope, self, f, generic_types.clone()) {
-                    Err(_) => None,
-                    Ok(f) => Some(f.clone()),
-                }?;
-            realized_fs.push(func);
+            match Function::from_generic_function(temp_scope, self, f, generic_types.clone()) {
+                Err(_) => { /* Do nothing */ }
+                Ok(f) => realized_fs.push(f.clone()),
+            }
         }
         loop {
             let temp_scope = temp_scopes.pop();
@@ -226,8 +219,8 @@ impl Program {
                 None => break,
             }
         }
-        let mut args_match = true;
         for f in realized_fs {
+            let mut args_match = true;
             for (i, arg) in args.iter().enumerate() {
                 // This is pretty cheap, but for now, a "non-strict" string representation
                 // of the CTypes is how we'll match the args against each other. TODO: Do
@@ -259,6 +252,133 @@ impl Program {
     }
 
     pub fn resolve_function<'a>(
+        self: &'a mut Self,
+        scope: &'a mut Scope,
+        function: &String,
+        args: &Vec<CType>,
+    ) -> Option<&Function> {
+        // First we try to get generic arguments for this function, if they exist, we return a
+        // generic function realization, otherwise we return a normal function
+        match self.resolve_function_generic_args(scope, function, args) {
+            Some(gs) => self.resolve_generic_function(scope, function, &gs, args),
+            None => self.resolve_normal_function(scope, function, args),
+        }
+    }
+
+    pub fn resolve_function_generic_args<'a>(
+        self: &'a Self,
+        scope: &'a Scope,
+        function: &String,
+        args: &Vec<CType>,
+    ) -> Option<Vec<CType>> {
+        let mut scope_to_check: Option<&Scope> = Some(scope);
+        let mut fs = Vec::new();
+        while scope_to_check.is_some() {
+            match scope_to_check {
+                Some(s) => {
+                    match s.functions.get(function) {
+                        Some(funcs) => {
+                            // Why is this okay but cloning funcs and then appending is not?
+                            for f in funcs {
+                                fs.push(f);
+                            }
+                        }
+                        None => {}
+                    }
+                    // TODO: Types are internally referred to by their structural name, not by the name the
+                    // user gives them, so a type constructor function needs to have a lookup done by type and
+                    // then coerce into the constructor function name and then call it. We *should* just be
+                    // able to use the user's name for the types, but this was undone for generic functions to
+                    // work correctly. We should try to find a better solution than this function resolution
+                    // hackery.
+                    match self.resolve_type(s, function) {
+                        Some(t) => {
+                            let constructor_fn_name = t.to_callable_string();
+                            match s.functions.get(&constructor_fn_name) {
+                                Some(funcs) => {
+                                    for f in funcs {
+                                        fs.push(f);
+                                    }
+                                }
+                                None => { /* Nothing matched, move on */ }
+                            }
+                        }
+                        None => {}
+                    }
+                    scope_to_check = match &s.parent {
+                        Some(p) => match self.scopes_by_file.get(p) {
+                            Some((_, _, s)) => Some(s),
+                            None => None,
+                        },
+                        None => None,
+                    };
+                }
+                None => {}
+            }
+        }
+        for f in &fs {
+            // TODO: Handle this more generically, and in a way that allows users to write
+            // variadic functions
+            match &f.kind {
+                FnKind::DerivedVariadic => {
+                    // The special path where the length doesn't matter as long as all of the
+                    // actual args are the same type as the function's arg.
+                    let mut args_match = true;
+                    for arg in args.iter() {
+                        if f.args[0].1.degroup().to_strict_string(false)
+                            != arg.degroup().to_strict_string(false)
+                        {
+                            args_match = false;
+                            break;
+                        }
+                    }
+                    // If the args match, then we got a hit for a non-generic function first, so we
+                    // shouldn't return generic args
+                    if args_match {
+                        return None;
+                    }
+                }
+                FnKind::Normal | FnKind::Bind(_) | FnKind::Derived => {
+                    if args.len() != f.args.len() {
+                        continue;
+                    }
+                    let mut args_match = true;
+                    for (i, arg) in args.iter().enumerate() {
+                        // This is pretty cheap, but for now, a "non-strict" string representation
+                        // of the CTypes is how we'll match the args against each other. TODO: Do
+                        // this without constructing a string to compare against each other.
+                        if f.args[i].1.degroup().to_strict_string(false)
+                            != arg.degroup().to_strict_string(false)
+                        {
+                            args_match = false;
+                            break;
+                        }
+                    }
+                    // If the args match, then we got a hit for a non-generic function first, so we
+                    // shouldn't return generic args
+                    if args_match {
+                        return None;
+                    }
+                }
+                FnKind::Generic(g, _) | FnKind::BoundGeneric(g, _) => {
+                    if args.len() != f.args.len() {
+                        continue;
+                    }
+                    match CType::infer_generics(scope, g, &f.args, args) {
+                        Ok(gs) => {
+                            return Some(gs);
+                        }
+                        Err(_) => {
+                            continue;
+                        }
+                    };
+                }
+            }
+        }
+        None
+    }
+
+    pub fn resolve_normal_function<'a>(
         self: &'a Self,
         scope: &'a Scope,
         function: &String,
@@ -313,14 +433,14 @@ impl Program {
                 None => {}
             }
         }
-        for f in fs {
+        for f in &fs {
             // TODO: Handle this more generically, and in a way that allows users to write
             // variadic functions
-            let mut args_match = true;
-            match f.kind {
+            match &f.kind {
                 FnKind::DerivedVariadic => {
                     // The special path where the length doesn't matter as long as all of the
                     // actual args are the same type as the function's arg.
+                    let mut args_match = true;
                     for arg in args.iter() {
                         if f.args[0].1.degroup().to_strict_string(false)
                             != arg.degroup().to_strict_string(false)
@@ -329,11 +449,15 @@ impl Program {
                             break;
                         }
                     }
+                    if args_match {
+                        return Some(f);
+                    }
                 }
                 FnKind::Normal | FnKind::Bind(_) | FnKind::Derived => {
                     if args.len() != f.args.len() {
                         continue;
                     }
+                    let mut args_match = true;
                     for (i, arg) in args.iter().enumerate() {
                         // This is pretty cheap, but for now, a "non-strict" string representation
                         // of the CTypes is how we'll match the args against each other. TODO: Do
@@ -345,11 +469,11 @@ impl Program {
                             break;
                         }
                     }
+                    if args_match {
+                        return Some(f);
+                    }
                 }
-                FnKind::Generic(..) | FnKind::BoundGeneric(..) => { /* Do nothing */ }
-            }
-            if args_match {
-                return Some(f);
+                FnKind::Generic(_, _) | FnKind::BoundGeneric(_, _) => { /* Do nothing */ }
             }
         }
         None

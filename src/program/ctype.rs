@@ -11,7 +11,7 @@ use crate::parse;
 #[derive(Clone, Debug, PartialEq)]
 pub enum CType {
     Void,
-    Infer(String), // TODO: Switch to an Interface here once they exist
+    Infer(String, String), // TODO: Switch to an Interface here once they exist
     Type(String, Box<CType>),
     Generic(String, Vec<String>, Vec<parse::WithTypeOperators>),
     Bound(String, String),
@@ -38,7 +38,7 @@ impl CType {
     pub fn to_strict_string(&self, strict: bool) -> String {
         match self {
             CType::Void => "()".to_string(),
-            CType::Infer(s) => s.clone(), // TODO: Replace this
+            CType::Infer(s, _) => s.clone(), // TODO: Replace this
             CType::Type(n, t) => match strict {
                 true => format!("{}", n),
                 false => t.to_strict_string(strict),
@@ -99,7 +99,7 @@ impl CType {
     pub fn to_functional_string(&self) -> String {
         match self {
             CType::Void => "void".to_string(),
-            CType::Infer(s) => s.clone(), // TODO: What to do here?
+            CType::Infer(s, _) => s.clone(), // TODO: What to do here?
             CType::Type(_, t) => t.to_functional_string(),
             CType::Generic(n, gs, _) => format!("{}{{{}}}", n, gs.join(", ")),
             CType::Bound(_, b) => b.clone(),
@@ -163,7 +163,7 @@ impl CType {
     pub fn degroup(&self) -> CType {
         match self {
             CType::Void => CType::Void,
-            CType::Infer(s) => CType::Infer(s.clone()),
+            CType::Infer(s, i) => CType::Infer(s.clone(), i.clone()),
             CType::Type(n, t) => CType::Type(n.clone(), Box::new((*t).degroup())),
             CType::Generic(n, gs, wtos) => CType::Generic(n.clone(), gs.clone(), wtos.clone()),
             CType::Bound(n, b) => CType::Bound(n.clone(), b.clone()),
@@ -193,6 +193,275 @@ impl CType {
             CType::Buffer(t, s) => CType::Buffer(Box::new((*t).degroup()), *s),
             CType::Array(t) => CType::Array(Box::new((*t).degroup())),
         }
+    }
+    // Given a list of generic type names, a list of argument types provided, and the original type
+    // ast of the function, we can infer the generic type mappings by creating a temporary child
+    // scope, creating `Infer` CTypes for each generic name and parsing the type ast inside of that
+    // scope, then for each input record for the function traverse the tree of the input argument
+    // type *and* the created CType tree of the same argument index and we can either error out if
+    // they don't match, or reach the `Infer` type on the new tree and assign the corresponding
+    // sub-tree of the provided type to the generic in question. If we get a sub-tree for all
+    // generic type names, we succeed, otherwise we have to fail on being unable to resolve
+    // specific generics.
+    pub fn infer_generics(
+        scope: &Scope,
+        generics: &Vec<(String, CType)>,
+        fn_args: &Vec<(String, CType)>,
+        call_args: &Vec<CType>,
+    ) -> Result<Vec<CType>, Box<dyn std::error::Error>> {
+        let mut temp_scope = scope.temp_child();
+        for (generic_name, generic_type) in generics {
+            temp_scope
+                .types
+                .insert(generic_name.clone(), generic_type.clone());
+        }
+        let input_types = fn_args
+            .iter()
+            .map(|(_, t)| t.clone())
+            .collect::<Vec<CType>>();
+        let mut generic_types = HashMap::new();
+        for (a, i) in call_args.iter().zip(input_types.iter()) {
+            let mut arg = vec![a];
+            let mut input = vec![i];
+            while arg.len() > 0 {
+                let a = arg.pop();
+                let i = input.pop();
+                match (a, i) {
+                    (Some(CType::Void), Some(CType::Void)) => { /* Do nothing */ }
+                    (Some(CType::Infer(s, _)), _) => {
+                        return Err(format!(
+                            "While attempting to infer {} but found an inference type for {} somehow",
+                            generics.iter().map(|(n, _)| n.as_str()).collect::<Vec<&str>>().join(", "),
+                            s
+                        )
+                        .into());
+                    }
+                    (Some(CType::Type(_, t1)), Some(CType::Type(_, t2))) => {
+                        arg.push(t1);
+                        input.push(t2);
+                    }
+                    (Some(CType::Type(_, t1)), Some(b)) => {
+                        arg.push(t1);
+                        input.push(b);
+                    }
+                    (Some(a), Some(CType::Type(_, t2))) => {
+                        arg.push(a);
+                        input.push(t2);
+                    }
+                    (Some(CType::Generic(..)), _) => {
+                        return Err(format!(
+                            "Ran into an unresolved generic in the arguments list: {:?}",
+                            arg
+                        )
+                        .into());
+                    }
+                    (Some(CType::Bound(n1, b1)), Some(CType::Bound(n2, b2))) => {
+                        if !(n1 == n2 && b1 == b2) {
+                            return Err(format!(
+                                "Mismatched bound types {} -> {} and {} -> {} during inference",
+                                n1, b1, n2, b2
+                            )
+                            .into());
+                        }
+                    }
+                    (
+                        Some(CType::BoundGeneric(n1, gs1, b1)),
+                        Some(CType::BoundGeneric(n2, gs2, b2)),
+                    ) => {
+                        if !(n1 == n2 && b1 == b2 && gs1.len() == gs2.len()) {
+                            // TODO: Better generic arg matching
+                            return Err(format!("Mismatched bound generic types {}{{{}}} -> {} and {}{{{}}} -> {} during inference", n1, gs1.join(", "), b1, n2, gs2.join(", "), b2).into());
+                        }
+                    }
+                    (
+                        Some(CType::ResolvedBoundGeneric(n1, gs1, ts1, b1)),
+                        Some(CType::ResolvedBoundGeneric(n2, gs2, ts2, b2)),
+                    ) => {
+                        if !(n1 == n2 && b1 == b2 && gs1.len() == gs2.len()) {
+                            // TODO: Better generic arg matching
+                            return Err(format!("Mismatched resolved bound generic types {}{{{}}} -> {} and {}{{{}}} -> {} during inference", n1, gs1.join(", "), b1, n2, gs2.join(", "), b2).into());
+                        }
+                        // Enqueue the bound types for checking purposes
+                        for t1 in ts1 {
+                            arg.push(&t1);
+                        }
+                        for t2 in ts2 {
+                            input.push(&t2);
+                        }
+                    }
+                    (
+                        Some(CType::IntrinsicGeneric(n1, s1)),
+                        Some(CType::IntrinsicGeneric(n2, s2)),
+                    ) => {
+                        if !(n1 == n2 && s1 == s2) {
+                            return Err(format!(
+                                "Mismatched generics {} and {} during inference",
+                                n1, n2
+                            )
+                            .into());
+                        }
+                    }
+                    (Some(CType::Int(i1)), Some(CType::Int(i2))) => {
+                        if i1 != i2 {
+                            return Err(format!(
+                                "Mismatched integers {} and {} during inference",
+                                i1, i2
+                            )
+                            .into());
+                        }
+                    }
+                    (Some(CType::Float(f1)), Some(CType::Float(f2))) => {
+                        if f1 != f2 {
+                            return Err(format!(
+                                "Mismatched floats {} and {} during inference",
+                                f1, f2
+                            )
+                            .into());
+                        }
+                    }
+                    (Some(CType::Bool(b1)), Some(CType::Bool(b2))) => {
+                        if b1 != b2 {
+                            return Err(format!("Mismatched booleans during inference").into());
+                        }
+                    }
+                    (Some(CType::TString(s1)), Some(CType::TString(s2))) => {
+                        if s1 != s2 {
+                            return Err(format!(
+                                "Mismatched strings {} and {} during inference",
+                                s1, s2
+                            )
+                            .into());
+                        }
+                    }
+                    (Some(CType::Group(g1)), Some(CType::Group(g2))) => {
+                        arg.push(&*g1);
+                        input.push(&*g2);
+                    }
+                    (Some(CType::Group(g1)), Some(b)) => {
+                        arg.push(&*g1);
+                        input.push(b);
+                    }
+                    (Some(a), Some(CType::Group(g2))) => {
+                        arg.push(a);
+                        input.push(&*g2);
+                    }
+                    (Some(CType::Function(i1, o1)), Some(CType::Function(i2, o2))) => {
+                        arg.push(&*i1);
+                        arg.push(&*o1);
+                        input.push(&*i2);
+                        input.push(&*o2);
+                    }
+                    (Some(CType::Tuple(ts1)), Some(CType::Tuple(ts2))) => {
+                        if ts1.len() != ts2.len() {
+                            return Err(format!(
+                                "Mismatched tuple types {} and {} found during inference",
+                                a.unwrap().to_string(),
+                                i.unwrap().to_string()
+                            )
+                            .into());
+                        }
+                        // TODO: Allow out-of-order listing based on Field labels
+                        for t1 in ts1 {
+                            arg.push(&*t1);
+                        }
+                        for t2 in ts2 {
+                            input.push(&*t2);
+                        }
+                    }
+                    (Some(CType::Tuple(ts1)), Some(b)) if ts1.len() == 1 => {
+                        arg.push(&ts1[0]);
+                        input.push(b);
+                    }
+                    (Some(a), Some(CType::Tuple(ts2))) if ts2.len() == 1 => {
+                        arg.push(a);
+                        input.push(&ts2[0]);
+                    }
+                    (Some(CType::Field(l1, t1)), Some(CType::Field(l2, t2))) => {
+                        // TODO: Allow out-of-order listing based on Field labels
+                        if l1 != l2 {
+                            return Err(format!(
+                                "Mismatched fields {} and {} during inference",
+                                l1, l2
+                            )
+                            .into());
+                        }
+                        arg.push(&*t1);
+                        input.push(&*t2);
+                    }
+                    (Some(a), Some(CType::Field(_, t2))) => {
+                        arg.push(&a);
+                        input.push(&*t2);
+                    }
+                    (Some(CType::Field(_, t1)), Some(b)) => {
+                        arg.push(&*t1);
+                        input.push(&b);
+                    }
+                    (Some(CType::Either(ts1)), Some(CType::Either(ts2))) => {
+                        if ts1.len() != ts2.len() {
+                            return Err(format!(
+                                "Mismatched either types {} and {} found during inference",
+                                a.unwrap().to_string(),
+                                i.unwrap().to_string()
+                            )
+                            .into());
+                        }
+                        for t1 in ts1 {
+                            arg.push(&*t1);
+                        }
+                        for t2 in ts2 {
+                            input.push(&*t2);
+                        }
+                    }
+                    (Some(CType::Buffer(t1, s1)), Some(CType::Buffer(t2, s2))) => {
+                        if s1 != s2 {
+                            return Err(format!(
+                                "Mismatched buffer lengths {} and {} found during inference",
+                                s1, s2
+                            )
+                            .into());
+                        }
+                        arg.push(&*t1);
+                        input.push(&*t2);
+                    }
+                    (Some(CType::Array(t1)), Some(CType::Array(t2))) => {
+                        arg.push(&*t1);
+                        input.push(&*t2);
+                    }
+                    (Some(a), Some(CType::Infer(g, _))) => {
+                        // Found place to infer!
+                        if generic_types.contains_key(g) {
+                            // Possible found the same thing, already, let's confirm that we aren't
+                            // in an impossible scenario.
+                            let other_type: &CType = generic_types.get(g).unwrap();
+                            if other_type.degroup().to_callable_string()
+                                != a.degroup().to_callable_string()
+                            {
+                                return Err(format!(
+                                    "Generic type {} resolved to both {} and {}",
+                                    g,
+                                    other_type.to_string(),
+                                    a.to_string()
+                                )
+                                .into());
+                            }
+                        } else {
+                            generic_types.insert(g.clone(), a.clone());
+                        }
+                    }
+                    _ => {
+                        return Err(format!("Mismatch between {:?} and {:?}", a, i).into());
+                    }
+                }
+            }
+        }
+        let mut output_types = Vec::new();
+        for (generic_name, _) in generics {
+            output_types.push(match generic_types.get(generic_name) {
+                Some(t) => Ok(t.clone()),
+                None => Err(format!("No inferred type found for {}", generic_name)),
+            }?);
+        }
+        Ok(output_types)
     }
     pub fn from_ast(
         scope: &mut Scope,
@@ -543,7 +812,7 @@ impl CType {
         }
         match self {
             CType::Void
-            | CType::Infer(_)
+            | CType::Infer(..)
             | CType::Generic(..)
             | CType::Bound(..)
             | CType::BoundGeneric(..)

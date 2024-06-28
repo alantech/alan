@@ -1,4 +1,5 @@
 use super::ctype::{withtypeoperatorslist_to_ctype, CType};
+use super::Function;
 use super::OperatorMapping;
 use super::Program;
 use super::Scope;
@@ -20,7 +21,7 @@ pub enum Microstatement {
         typen: CType,
     },
     FnCall {
-        function: String, // TODO: It would be nice to make this a vector of pointers to function objects so we can narrow down the exact implementation sooner
+        function: Function,
         args: Vec<Microstatement>,
     },
     Value {
@@ -57,19 +58,7 @@ impl Microstatement {
                     let arg_type = arg.get_type(scope, program)?;
                     arg_types.push(arg_type);
                 }
-                match program.resolve_function(scope, function, &arg_types) {
-                    Some(function_object) => Ok(function_object.rettype.clone()),
-                    None => Err(format!(
-                        "Could not find function {}({})",
-                        function,
-                        arg_types
-                            .iter()
-                            .map(|t| t.to_string())
-                            .collect::<Vec<String>>()
-                            .join(", ")
-                    )
-                    .into()),
-                }
+                Ok(function.rettype.clone())
             }
         }
     }
@@ -520,11 +509,30 @@ pub fn baseassignablelist_to_microstatements(
                         )?;
                         array_accessor_microstatements.push(microstatements.pop().unwrap());
                     }
-                    // TODO: Check that this function actually exists with the arguments being provided
-                    prior_value = Some(Microstatement::FnCall {
-                        function: "get".to_string(),
-                        args: array_accessor_microstatements,
-                    });
+                    let mut arg_types = Vec::new();
+                    for m in &array_accessor_microstatements {
+                        arg_types.push(m.get_type(scope, program)?);
+                    }
+                    let function = program.resolve_function(scope, &"get".to_string(), &arg_types);
+                    match function {
+                        Some(f) => {
+                            prior_value = Some(Microstatement::FnCall {
+                                function: f.clone(), // TODO: Drop the clone?
+                                args: array_accessor_microstatements,
+                            })
+                        }
+                        None => {
+                            return Err(format!(
+                                "A function with the signature get({}) does not exist",
+                                arg_types
+                                    .iter()
+                                    .map(|a| a.to_string())
+                                    .collect::<Vec<String>>()
+                                    .join(", ")
+                            )
+                            .into());
+                        }
+                    }
                 } else {
                     // This is impossible, but I'm having a hard time convincing Rust of that
                     panic!("Impossible to reach the ArrayAccessor path without a prior value");
@@ -540,11 +548,30 @@ pub fn baseassignablelist_to_microstatements(
                         microstatements,
                     )?;
                     constant_accessor_microstatements.push(microstatements.pop().unwrap());
-                    // TODO: Check that this function actually exists with the argument being provided
-                    prior_value = Some(Microstatement::FnCall {
-                        function: "get".to_string(),
-                        args: constant_accessor_microstatements,
-                    });
+                    let mut arg_types = Vec::new();
+                    for m in &constant_accessor_microstatements {
+                        arg_types.push(m.get_type(scope, program)?);
+                    }
+                    let function = program.resolve_function(scope, &"get".to_string(), &arg_types);
+                    match function {
+                        Some(f) => {
+                            prior_value = Some(Microstatement::FnCall {
+                                function: f.clone(), // TODO: Drop the clone?
+                                args: constant_accessor_microstatements,
+                            })
+                        }
+                        None => {
+                            return Err(format!(
+                                "A function with the signature get({}) does not exist",
+                                arg_types
+                                    .iter()
+                                    .map(|a| a.to_string())
+                                    .collect::<Vec<String>>()
+                                    .join(", ")
+                            )
+                            .into());
+                        }
+                    }
                 } else {
                     // This is impossible, but I'm having a hard time convincing Rust of that
                     panic!("Impossible to reach the ConstantAccessor path without a prior value");
@@ -602,10 +629,27 @@ pub fn baseassignablelist_to_microstatements(
                 // Now we are sure the type and function exist, and we know the name for the
                 // function. It would be best if we could just pass it to ourselves and run the
                 // `FuncCall` logic below, but it's easier at the moment to duplicate :( TODO
-                prior_value = Some(Microstatement::FnCall {
-                    function: name,
-                    args: arg_microstatements,
-                });
+                let function = program.resolve_function(scope, &name, &arg_types);
+                match function {
+                    Some(f) => {
+                        prior_value = Some(Microstatement::FnCall {
+                            function: f.clone(), // TODO: Drop the clone?
+                            args: arg_microstatements,
+                        })
+                    }
+                    None => {
+                        return Err(format!(
+                            "A function with the signature {}({}) does not exist",
+                            name,
+                            arg_types
+                                .iter()
+                                .map(|a| a.to_string())
+                                .collect::<Vec<String>>()
+                                .join(", ")
+                        )
+                        .into());
+                    }
+                }
             }
             BaseChunk::FuncCall(prior, f, g) => {
                 // Get all of the arguments for the function into an array. If there's a prior
@@ -636,10 +680,10 @@ pub fn baseassignablelist_to_microstatements(
                 // types
                 let func = program.resolve_function(scope, f, &arg_types);
                 match func {
-                    Some(_) => {
+                    Some(fun) => {
                         // Success! Let's emit this
                         prior_value = Some(Microstatement::FnCall {
-                            function: f.to_string(),
+                            function: fun.clone(), // TODO: Drop the clone
                             args: arg_microstatements,
                         });
                     }
@@ -689,22 +733,44 @@ pub fn baseassignablelist_to_microstatements(
                 for arg in &arg_microstatements {
                     arg_types.push(arg.get_type(scope, program)?);
                 }
-                // TODO: Be less sketchy here, this punts validation to later where we may produce
-                // a nonsensical error message
-                let generics = g
-                    .to_string()
-                    .replace("{", "")
-                    .replace("}", "")
-                    .split(",")
-                    .map(|s| s.to_string())
-                    .collect::<Vec<String>>();
+                let generics = {
+                    let mut generic_string = g.to_string();
+                    match generic_string.strip_prefix("{") {
+                        Some(s) => generic_string = s.to_string(),
+                        None => { /* Do nothing */ }
+                    }
+                    match generic_string.strip_suffix("}") {
+                        Some(s) => generic_string = s.to_string(),
+                        None => { /* Do nothing */ }
+                    }
+                    // TODO: This is still sketchy, but a bit less so? It will fail with a sub-type
+                    // being a generic with multiple args. Do this the right way, later.
+                    generic_string
+                        .replace("{", "_")
+                        .replace("}", "_")
+                        .split(",")
+                        .map(|s| s.to_string().trim().to_string())
+                        .collect::<Vec<String>>()
+                };
+                let mut generic_types = Vec::new();
+                for g in generics {
+                    let t = match program.resolve_type(scope, &g) {
+                        Some(t) => Ok(t),
+                        None => Err(format!("Could not find type {}", g)),
+                    }?;
+                    generic_types.push(t.clone()); // TODO: Drop the cloning
+                }
                 let mut temp_scope = scope.child(program);
                 let maybe_type = match program.resolve_type(scope, f) {
                     None => None,
                     Some(t) => Some(t.clone()), // TODO: Kill the clone
                 };
-                let maybe_generic_function =
-                    program.resolve_generic_function(&mut temp_scope, f, &generics, &arg_types);
+                let maybe_generic_function = program.resolve_generic_function(
+                    &mut temp_scope,
+                    f,
+                    &generic_types,
+                    &arg_types,
+                );
                 match (maybe_type, maybe_generic_function) {
                     (None, None) => {
                         return Err(format!(
@@ -728,7 +794,7 @@ pub fn baseassignablelist_to_microstatements(
                                 .insert(func.name.clone(), vec![func.clone()]);
                         }
                         prior_value = Some(Microstatement::FnCall {
-                            function: func.name.clone(),
+                            function: func.clone(), // TODO: Drop the clone
                             args: arg_microstatements,
                         });
                     }
@@ -775,10 +841,26 @@ pub fn baseassignablelist_to_microstatements(
                         // Now we are sure the type and function exist, and we know the name for the
                         // function. It would be best if we could just pass it to ourselves and run the
                         // `FuncCall` logic below, but it's easier at the moment to duplicate :( TODO
-                        prior_value = Some(Microstatement::FnCall {
-                            function: real_name,
-                            args: arg_microstatements,
-                        });
+                        let function = program.resolve_function(scope, &real_name, &arg_types);
+                        match function {
+                            Some(f) => {
+                                prior_value = Some(Microstatement::FnCall {
+                                    function: f.clone(), // TODO: Drop the clone?
+                                    args: arg_microstatements,
+                                })
+                            }
+                            None => {
+                                return Err(format!(
+                                    "A function with the signature get({}) does not exist",
+                                    arg_types
+                                        .iter()
+                                        .map(|a| a.to_string())
+                                        .collect::<Vec<String>>()
+                                        .join(", ")
+                                )
+                                .into());
+                            }
+                        }
                     }
                 }
                 scope.merge_child_functions(&mut temp_scope);
