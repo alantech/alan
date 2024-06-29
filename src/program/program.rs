@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs::read_to_string;
 use std::pin::Pin;
 
@@ -231,6 +232,33 @@ impl Program {
                     args_match = false;
                     break;
                 }
+                // In case this function generated any new types, let's make sure the
+                // constructor and helper functions all exist, though we can assume this is
+                // true of the inputs, it's only the return type we need to double-check
+                let fun_name = f.rettype.to_callable_string();
+                let (_, fs) = f.rettype.to_functions(fun_name.clone());
+                scope.types.insert(fun_name, f.rettype.clone());
+                if fs.len() > 0 {
+                    let mut name_fn_pairs = HashMap::new();
+                    for f in fs {
+                        if name_fn_pairs.contains_key(&f.name) {
+                            let v: &mut Vec<Function> = name_fn_pairs.get_mut(&f.name).unwrap();
+                            v.push(f.clone());
+                        } else {
+                            name_fn_pairs.insert(f.name.clone(), vec![f.clone()]);
+                        }
+                    }
+                    for (name, fns) in name_fn_pairs.drain() {
+                        if scope.functions.contains_key(&name) {
+                            let func_vec = scope.functions.get_mut(&name).unwrap();
+                            for f in fns {
+                                func_vec.push(f);
+                            }
+                        } else {
+                            scope.functions.insert(name, fns);
+                        }
+                    }
+                }
             }
             if args_match {
                 // We want to keep this one around, so we copy this function to the correct
@@ -243,8 +271,10 @@ impl Program {
                 }
                 return match scope.functions.get(&f.name) {
                     None => None,
-                    Some(fs) => fs.last(), // We know it's the last one because we just put
-                                           // it there
+                    Some(fs) => {
+                        // We know it's the last one because we just put it there
+                        fs.last()
+                    }
                 };
             }
         }

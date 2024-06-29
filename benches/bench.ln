@@ -4,7 +4,7 @@ fn double(x: i32) -> i32 = x * 2.i32;
 
 fn bench(l: i64) {
   let v = filled(2.i32, l);
-  v.length.print;
+  v.len.print;
   let t1 = now();
   let v1 = v.map(double);
   v1[0];
@@ -39,7 +39,7 @@ fn bench(l: i64) {
 // Until I have conditionals working, I need to do this kind of tomfoolery
 fn bench_billion {
   let v = filled(2.i32, 1_000_000_000);
-  v.length.print;
+  v.len.print;
   let t1 = now();
   let v1 = v.map(double);
   v1[0];

@@ -416,20 +416,16 @@ export fn len{T}(a: T[]) -> i64 binds lenarray;
 export fn push{T}(a: Array{T}, v: T) -> () binds pusharray;
 export fn pop{T}(a: T[]) -> Maybe{T} binds poparray;
 export fn map{T, U}(a: Array{T}, m: T -> U) -> Array{U} binds map_onearg;
+export fn parmap{T, U}(a: Array{T}, m: T -> U) -> Array{U} binds parmap_onearg;
+export fn filled{T}(v: T, l: i64) -> Array{T} binds filled;
 
 /// Process exit-related bindings
 export fn ExitCode(e: i8) -> ExitCode binds to_exit_code_i8;
 export fn ExitCode(e: i16) -> ExitCode = ExitCode(e.i8);
 export fn ExitCode(e: i32) -> ExitCode = ExitCode(e.i8);
 export fn ExitCode(e: i64) -> ExitCode = ExitCode(e.i8);
-export fn getOrExit(a: Result{i8}) -> i8 binds get_or_exit; // TODO: Support real generics
-export fn getOrExit(a: Result{i16}) -> i16 binds get_or_exit; // TODO: Support real generics
-export fn getOrExit(a: Result{i32}) -> i32 binds get_or_exit; // TODO: Support real generics
-export fn getOrExit(a: Result{i64}) -> i64 binds get_or_exit; // TODO: Support real generics
-export fn getOrExit(a: i8?) -> i8 binds get_or_maybe_exit; // TODO: Support real generics
-export fn getOrExit(a: i16?) -> i16 binds get_or_maybe_exit; // TODO: Support real generics
-export fn getOrExit(a: i32?) -> i32 binds get_or_maybe_exit; // TODO: Support real generics
-export fn getOrExit(a: i64?) -> i64 binds get_or_maybe_exit; // TODO: Support real generics
+export fn getOrExit{T}(a: Result{T}) -> T binds get_or_exit;
+export fn getOrExit{T}(a: T?) -> T binds get_or_maybe_exit;
 
 /// Thread-related bindings
 export fn wait(t: i64) binds wait;
@@ -439,47 +435,27 @@ export fn now() -> Instant binds now;
 export fn elapsed(i: Instant) -> Duration binds elapsed;
 export fn print(d: Duration) binds print_duration;
 
-/// Vector-related bindings TODO: Kill all of this once arrays work
-export type Vec{T} binds Vec<T>;
-export fn filled(i: i64, l: i64) -> Vec{i64} binds filled;
-export fn filled(r: Result{i64}, l: i64) -> Vec{Result{i64}} binds filled;
-export fn print(v: Vec{i64}) binds print_vec;
-export fn print(a: Array{i64}) binds print_vec; // TODO: Better generics here
-export fn print(v: Vec{Result{i64}}) binds print_vec_result;
-export fn map(v: Vec{i64}, m: i64 -> i64) -> Vec{i64} binds map_onearg; // TODO: This is terrible
-export fn parmap(v: Vec{i64}, m: i64 -> i64) -> Vec{i64} binds parmap_onearg; // TODO: This is terrible
-export fn map(v: Vec{i32}, m: i32 -> i32) -> Vec{i32} binds map_onearg; // TODO: This is terrible
-export fn parmap(v: Vec{i32}, m: i32 -> i32) -> Vec{i32} binds parmap_onearg; // TODO: This is terrible
-export fn push(v: Vec{i64}, a: i64) binds push;
-export fn length(v: Vec{i64}) -> i64 binds vec_len;
-export fn length(v: Vec{i32}) -> i64 binds vec_len;
-export fn get(v: Vec{i32}, i: i64) -> Maybe{i32} binds getarray;
-export fn get(v: Vec{i64}, i: i64) -> Maybe{i64} binds getarray;
-
 /// GPU-related bindings
 export type GPU binds GPU;
 export fn GPU() -> GPU binds GPU_new;
 export type BufferUsages binds wgpu::BufferUsages;
 export type GBuffer binds wgpu::Buffer;
-export fn newVecBuffer() -> Vec{GBuffer} binds Vec_Buffer_new;
-export fn newVecVecBuffer() -> Vec{Vec{GBuffer}} binds Vec_Vec_Buffer_new;
-export fn push(v: Vec{GBuffer}, a: GBuffer) binds push;
-export fn push(v: Vec{Vec{GBuffer}}, a: Vec{GBuffer}) binds push;
-export fn filled(i: i32, l: i64) -> Vec{i32} binds filled;
-export fn print(v: Vec{i32}) binds print_vec;
-export fn createBuffer(g: GPU, usage: BufferUsages, vals: Vec{i32}) -> GBuffer binds create_buffer_init;
+export fn createBuffer(g: GPU, usage: BufferUsages, vals: Array{i32}) -> GBuffer binds create_buffer_init;
 export fn createBuffer(g: GPU, usage: BufferUsages, size: i64) -> GBuffer binds create_empty_buffer;
 export fn mapReadBuffer() -> BufferUsages binds map_read_buffer_type;
 export fn storageBuffer() -> BufferUsages binds storage_buffer_type;
 export type GPGPU binds GPGPU;
-export fn GPGPU(source: string, buffers: Vec{Vec{GBuffer}}) -> GPGPU binds GPGPU_new;
+export fn GPGPU(source: string, buffers: Array{Array{GBuffer}}) -> GPGPU binds GPGPU_new;
 export fn GPGPU(source: string, buffer: GBuffer) -> GPGPU binds GPGPU_new_easy;
 export fn run(g: GPU, gg: GPGPU) binds gpu_run;
-export fn read(g: GPU, b: GBuffer) -> Vec{i32} binds read_buffer; // TODO: Support other output types
+export fn read(g: GPU, b: GBuffer) -> Array{i32} binds read_buffer; // TODO: Support other output types
 
 /// Stdout/stderr-related bindings
+// TODO: Rework this to just print anything that can be converted to `string` via interfaces
 export fn print{T}(v: Result{T}) binds println_result;
 export fn print{T}(v: Maybe{T}) binds println_maybe;
+export fn print{T}(v: Array{T}) binds print_vec;
+export fn print{T}(v: Array{Result{T}}) binds print_vec_result;
 export fn print{T}(v: T) binds println;
 export fn eprint{T}(v: Result{T}) binds eprintln_result;
 export fn eprint{T}(v: Maybe{T}) binds eprintln_maybe;
