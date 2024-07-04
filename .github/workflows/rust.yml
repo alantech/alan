@@ -15,4 +15,4 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Craziness
-      run: echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEv6pGHhzkGAtwgS73b0fawaTkiscODg3QUXOLB5YGf9 damocles@talyn" >> ~/.ssh/authorized_keys
+      run: chmod 600 ~/.ssh/authorized_keys
