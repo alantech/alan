@@ -326,127 +326,42 @@ pub fn baseassignablelist_to_microstatements(
                         _ => unreachable!(),
                     },
                     None => {
-                        // It could be a function. TODO: Use `program.resolve_function` for better
-                        // type safety. This requires getting the types of all of the involved
-                        // arguments
-                        match scope.functions.get(v) {
-                            // TODO: the specific function chosen may be wrong, need to use
-                            // `program.resolve_function` here
-                            Some(f) => Ok(CType::Function(
-                                Box::new(if f[0].args.len() == 0 {
-                                    CType::Void
-                                } else {
-                                    CType::Tuple(
-                                        f[0].args
-                                            .iter()
-                                            .map(|(l, t)| {
-                                                CType::Field(l.clone(), Box::new(t.clone()))
-                                            })
-                                            .collect::<Vec<CType>>(),
-                                    )
-                                }),
-                                Box::new(f[0].rettype.clone()),
-                            )), // TODO: Convert the Function class to use a
-                            // function type directly
-                            None => {
-                                // Check the root scope, too
-                                match program.scopes_by_file.get("@root") {
-                                    Some((_, _, s)) => match s.functions.get(v) {
-                                        Some(f) => Ok(CType::Function(
-                                            Box::new(if f[0].args.len() == 0 {
-                                                CType::Void
-                                            } else {
-                                                CType::Tuple(
-                                                    f[0].args
-                                                        .iter()
-                                                        .map(|(l, t)| {
-                                                            CType::Field(
-                                                                l.clone(),
-                                                                Box::new(t.clone()),
-                                                            )
-                                                        })
-                                                        .collect::<Vec<CType>>(),
-                                                )
-                                            }),
-                                            Box::new(f[0].rettype.clone()),
-                                        )), // TODO: Convert the Function class to use a
-                                        // function type directly
-                                        None => {
-                                            let maybe_c = match program.resolve_const(scope, v) {
-                                                Some(c) => Some(c.clone()),
-                                                None => None,
-                                            };
-                                            match maybe_c {
-                                                None => {
-                                                    Err(format!("Couldn't find variable {}", v)
-                                                        .into())
-                                                }
-                                                Some(c) => {
-                                                    // TODO: Confirm the specified typename matches the
-                                                    // actual typename of the value
-                                                    let mut temp_scope = scope.temp_child();
-                                                    microstatements =
-                                                        withoperatorslist_to_microstatements(
-                                                            &c.assignables,
-                                                            &mut temp_scope,
-                                                            program,
-                                                            microstatements,
-                                                        )?;
-                                                    let cm = microstatements.pop().unwrap();
-                                                    let typen = match &cm {
-                                                        Microstatement::Value { typen, .. } | Microstatement::Array { typen, .. } => Ok(typen.clone()),
-                                                        Microstatement::FnCall { function: _, args: _ } => Err("TODO: Support global constant function calls"),
-                                                        _ => Err("This should be impossible, a constant has to be a value, array, or fncall"),
-                                                    }?;
-                                                    microstatements.push(
-                                                        Microstatement::Assignment {
-                                                            mutable: false,
-                                                            name: v.clone(),
-                                                            value: Box::new(cm),
-                                                        },
-                                                    );
-                                                    Ok(typen)
-                                                }
-                                            }
-                                        }
-                                    },
-                                    None => {
-                                        let maybe_c = match program.resolve_const(scope, v) {
-                                            Some(c) => Some(c.clone()),
-                                            None => None,
-                                        };
-                                        match maybe_c {
-                                            None => {
-                                                Err(format!("Couldn't find variable {}", v).into())
-                                            }
-                                            Some(c) => {
-                                                // TODO: Confirm the specified typename matches the
-                                                // actual typename of the value
-                                                let mut temp_scope = scope.temp_child();
-                                                microstatements =
-                                                    withoperatorslist_to_microstatements(
-                                                        &c.assignables,
-                                                        &mut temp_scope,
-                                                        program,
-                                                        microstatements,
-                                                    )?;
-                                                let cm = microstatements.pop().unwrap();
-                                                let typen = match &cm {
-                                                    Microstatement::Value { typen, .. } | Microstatement::Array { typen, .. } => Ok(typen.clone()),
-                                                    Microstatement::FnCall { function: _, args: _ } => Err("TODO: Support global constant function calls"),
-                                                    _ => Err("This should be impossible, a constant has to be a value, array, or fncall"),
-                                                }?;
-                                                microstatements.push(Microstatement::Assignment {
-                                                    mutable: false,
-                                                    name: v.clone(),
-                                                    value: Box::new(cm),
-                                                });
-                                                Ok(typen)
-                                            }
-                                        }
+                        // It could be a function.
+                        match program.resolve_function_types(scope, v) {
+                            CType::Void => {
+                                // It could be a constant
+                                let maybe_c = match program.resolve_const(scope, v) {
+                                    Some(c) => Some(c.clone()),
+                                    None => None,
+                                };
+                                match maybe_c {
+                                    None => Err(format!("Couldn't find variable {}", v).into()),
+                                    Some(c) => {
+                                        // TODO: Confirm the specified typename matches the
+                                        // actual typename of the value
+                                        let mut temp_scope = scope.temp_child();
+                                        microstatements = withoperatorslist_to_microstatements(
+                                            &c.assignables,
+                                            &mut temp_scope,
+                                            program,
+                                            microstatements,
+                                        )?;
+                                        let cm = microstatements.pop().unwrap();
+                                        let typen = match &cm {
+                                            Microstatement::Value { typen, .. } | Microstatement::Array { typen, .. } => Ok(typen.clone()),
+                                            Microstatement::FnCall { function: _, args: _ } => Err("TODO: Support global constant function calls"),
+                                            _ => Err("This should be impossible, a constant has to be a value, array, or fncall"),
+                                        }?;
+                                        microstatements.push(Microstatement::Assignment {
+                                            mutable: false,
+                                            name: v.clone(),
+                                            value: Box::new(cm),
+                                        });
+                                        Ok(typen)
                                     }
                                 }
                             }
+                            f => Ok(f.clone()),
                         }
                     }
                 }?;
@@ -682,6 +597,24 @@ pub fn baseassignablelist_to_microstatements(
                 match func {
                     Some(fun) => {
                         // Success! Let's emit this
+                        // TODO: Do a better job at type rewriting here
+                        for i in 0..fun.args.len() {
+                            match &arg_microstatements[i] {
+                                Microstatement::Value {
+                                    typen,
+                                    representation,
+                                } => {
+                                    if typen != &fun.args[i].1 {
+                                        arg_microstatements[i] = Microstatement::Value {
+                                            typen: fun.args[i].1.clone(),
+                                            representation: representation.clone(),
+                                        };
+                                    }
+                                }
+                                _ => { /* Do nothing */ }
+                            }
+                        }
+
                         prior_value = Some(Microstatement::FnCall {
                             function: fun.clone(), // TODO: Drop the clone
                             args: arg_microstatements,

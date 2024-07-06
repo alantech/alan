@@ -13,7 +13,7 @@ pub enum CType {
     Void,
     Infer(String, String), // TODO: Switch to an Interface here once they exist
     Type(String, Box<CType>),
-    Generic(String, Vec<String>, Vec<parse::WithTypeOperators>),
+    Generic(String, Vec<String>, Box<CType>),
     Bound(String, String),
     BoundGeneric(String, Vec<String>, String),
     ResolvedBoundGeneric(String, Vec<String>, Vec<CType>, String),
@@ -27,6 +27,7 @@ pub enum CType {
     Tuple(Vec<CType>),
     Field(String, Box<CType>),
     Either(Vec<CType>),
+    AnyOf(Vec<CType>),
     Buffer(Box<CType>, usize),
     Array(Box<CType>),
 }
@@ -92,6 +93,11 @@ impl CType {
                 .map(|t| t.to_strict_string(strict))
                 .collect::<Vec<String>>()
                 .join(" | "),
+            CType::AnyOf(ts) => ts
+                .iter()
+                .map(|t| t.to_strict_string(strict))
+                .collect::<Vec<String>>()
+                .join(" & "),
             CType::Buffer(t, s) => format!("{}[{}]", t.to_strict_string(strict), s),
             CType::Array(t) => format!("{}[]", t.to_strict_string(strict)),
         }
@@ -148,6 +154,13 @@ impl CType {
                     .collect::<Vec<String>>()
                     .join(", ")
             ),
+            CType::AnyOf(ts) => format!(
+                "AnyOf{{{}}}",
+                ts.iter()
+                    .map(|t| t.to_functional_string())
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ),
             CType::Buffer(t, s) => format!("Buffer{{{}, {}}}", t.to_functional_string(), s),
             CType::Array(t) => format!("Array{{{}}}", t.to_functional_string()),
         }
@@ -189,6 +202,9 @@ impl CType {
             CType::Field(l, t) => CType::Field(l.clone(), Box::new((*t).degroup())),
             CType::Either(ts) => {
                 CType::Either(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>())
+            }
+            CType::AnyOf(ts) => {
+                CType::AnyOf(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>())
             }
             CType::Buffer(t, s) => CType::Buffer(Box::new((*t).degroup()), *s),
             CType::Array(t) => CType::Array(Box::new((*t).degroup())),
@@ -427,25 +443,90 @@ impl CType {
                         arg.push(&*t1);
                         input.push(&*t2);
                     }
+                    (Some(CType::AnyOf(ts)), Some(CType::Infer(g, _))) => {
+                        // Found an interesting inference situation where more than one answer may
+                        // be right. We need to check the existing possible matches (if any) and
+                        // intersect it with this AnyOf set, then store the set. If there is only
+                        // one match in the set, then we store that match directly, instead.
+                        if generic_types.contains_key(g) {
+                            let other_type: &CType = generic_types.get(g).unwrap();
+                            let mut matches = Vec::new();
+                            match other_type {
+                                CType::AnyOf(t2s) => {
+                                    for t1 in ts {
+                                        for t2 in t2s {
+                                            if t1.degroup().to_callable_string()
+                                                == t2.degroup().to_callable_string()
+                                            {
+                                                matches.push(t1.clone());
+                                            }
+                                        }
+                                    }
+                                }
+                                otherwise => {
+                                    for t1 in ts {
+                                        if t1.degroup().to_callable_string()
+                                            == otherwise.degroup().to_callable_string()
+                                        {
+                                            matches.push(t1.clone());
+                                        }
+                                    }
+                                }
+                            }
+                            if matches.len() == 0 {
+                                // Do nothing
+                            } else if matches.len() == 1 {
+                                generic_types
+                                    .insert(g.clone(), matches.into_iter().nth(0).unwrap());
+                            } else {
+                                generic_types.insert(g.clone(), CType::AnyOf(matches));
+                            }
+                        } else {
+                            generic_types.insert(g.clone(), CType::AnyOf(ts.clone()));
+                        }
+                    }
                     (Some(a), Some(CType::Infer(g, _))) => {
-                        // Found place to infer!
+                        // Found the normal path to infer. If there's already a match, check if the
+                        // existing match is an AnyOf and intersect the set, otherwise a simple
+                        // comparison
                         if generic_types.contains_key(g) {
                             // Possible found the same thing, already, let's confirm that we aren't
                             // in an impossible scenario.
                             let other_type: &CType = generic_types.get(g).unwrap();
-                            if other_type.degroup().to_callable_string()
-                                != a.degroup().to_callable_string()
-                            {
-                                return Err(format!(
-                                    "Generic type {} resolved to both {} and {}",
-                                    g,
-                                    other_type.to_string(),
-                                    a.to_string()
-                                )
-                                .into());
+                            let mut matched = false;
+                            match other_type {
+                                CType::AnyOf(ts) => {
+                                    for t1 in ts {
+                                        if t1.degroup().to_callable_string()
+                                            == a.degroup().to_callable_string()
+                                        {
+                                            matched = true;
+                                        }
+                                    }
+                                }
+                                otherwise => {
+                                    if otherwise.degroup().to_callable_string()
+                                        == a.degroup().to_callable_string()
+                                    {
+                                        matched = true;
+                                    }
+                                }
+                            }
+                            if matched {
+                                generic_types.insert(g.clone(), a.clone());
+                            } else {
+                                // Do nothing
                             }
                         } else {
                             generic_types.insert(g.clone(), a.clone());
+                        }
+                    }
+                    (Some(CType::AnyOf(ts)), Some(b)) => {
+                        // Just enqueue all of the sub-types with clones of the b type and let them
+                        // try.
+                        for t in ts {
+                            arg.push(&*t);
+                            input.push(&*b);
                         }
                     }
                     _ => {
@@ -462,6 +543,20 @@ impl CType {
             }?);
         }
         Ok(output_types)
+    }
+    pub fn accepts(&self, arg: &CType) -> bool {
+        match (self, arg) {
+            (a, CType::AnyOf(ts)) => {
+                for t in ts {
+                    if a.accepts(t) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            // TODO: Do this without stringification
+            (a, b) => a.degroup().to_strict_string(false) == b.degroup().to_strict_string(false),
+        }
     }
     pub fn to_functions(&self, name: String) -> (CType, Vec<Function>) {
         let t = CType::Type(name.clone(), Box::new(self.clone()));
@@ -722,22 +817,33 @@ impl CType {
             Some(g) => {
                 // This is a "generic" type
                 match &type_ast.typedef {
-                    parse::TypeDef::TypeCreate(create) => (
-                        CType::Generic(
-                            name.clone(),
-                            // TODO: Stronger checking on the usage here
-                            g.typecalllist
-                                .iter()
-                                .map(|tc| tc.to_string())
-                                .collect::<Vec<String>>()
-                                .join("")
-                                .split(",")
-                                .map(|r| r.trim().to_string())
-                                .collect::<Vec<String>>(),
-                            create.typeassignables.clone(),
-                        ),
-                        Vec::new(),
-                    ),
+                    parse::TypeDef::TypeCreate(create) => {
+                        // TODO: Stronger checking on the usage here
+                        let args = g
+                            .typecalllist
+                            .iter()
+                            .map(|tc| tc.to_string())
+                            .collect::<Vec<String>>()
+                            .join("")
+                            .split(", ")
+                            .map(|r| r.trim().to_string())
+                            .collect::<Vec<String>>();
+                        let mut temp_scope = scope.temp_child();
+                        for arg in &args {
+                            temp_scope
+                                .types
+                                .insert(arg.clone(), CType::Infer(arg.clone(), "Any".to_string()));
+                        }
+                        let generic_call = withtypeoperatorslist_to_ctype(
+                            &create.typeassignables,
+                            &temp_scope,
+                            program,
+                        )?;
+                        (
+                            CType::Generic(name.clone(), args, Box::new(generic_call)),
+                            Vec::new(),
+                        )
+                    }
                     parse::TypeDef::TypeBind(bind) => (
                         CType::BoundGeneric(
                             name.clone(),
@@ -878,6 +984,11 @@ impl CType {
                     .map(|t| t.swap_subtype(old_type, new_type))
                     .collect::<Vec<CType>>(),
             ),
+            CType::AnyOf(ts) => CType::AnyOf(
+                ts.iter()
+                    .map(|t| t.swap_subtype(old_type, new_type))
+                    .collect::<Vec<CType>>(),
+            ),
             CType::Buffer(t, size) => {
                 CType::Buffer(Box::new(t.swap_subtype(old_type, new_type)), *size)
             }
@@ -905,6 +1016,20 @@ impl CType {
         for arg in args {
             match arg {
                 CType::Either(ts) => {
+                    for t in ts {
+                        out_vec.push(t.clone());
+                    }
+                }
+                other => out_vec.push(other),
+            }
+        }
+        CType::Either(out_vec)
+    }
+    pub fn anyof(args: Vec<CType>) -> CType {
+        let mut out_vec = Vec::new();
+        for arg in args {
+            match arg {
+                CType::AnyOf(ts) => {
                     for t in ts {
                         out_vec.push(t.clone());
                     }
@@ -1753,7 +1878,7 @@ pub fn typebaselist_to_ctype(
                         // arguments for it, then we can call it and return the resulting
                         // type
                         match t {
-                            CType::Generic(_name, params, withtypeoperatorslist) => {
+                            CType::Generic(_name, params, generic_type) => {
                                 if params.len() != args.len() {
                                     CType::fail(&format!(
                                         "Generic type {} takes {} arguments but {} given",
@@ -1765,21 +1890,15 @@ pub fn typebaselist_to_ctype(
                                     // We use a temporary scope to resolve the
                                     // arguments to the generic function as the
                                     // specified names
-                                    let mut temp_scope = scope.temp_child();
+                                    let mut out_type = *generic_type.clone();
                                     for i in 0..params.len() {
-                                        CType::from_ctype(
-                                            &mut temp_scope,
-                                            params[i].clone(),
-                                            args[i].clone(),
-                                        );
+                                        let generic_arg =
+                                            CType::Infer(params[i].clone(), "Any".to_string());
+                                        out_type = out_type.swap_subtype(&generic_arg, &args[i]);
                                     }
                                     // Now we return the type we resolve within this
                                     // scope
-                                    withtypeoperatorslist_to_ctype(
-                                        withtypeoperatorslist,
-                                        &temp_scope,
-                                        program,
-                                    )?
+                                    out_type
                                 }
                             }
                             CType::IntrinsicGeneric(name, len) => {
@@ -1803,6 +1922,7 @@ pub fn typebaselist_to_ctype(
                                         // quoting
                                         "Field" => CType::field(args.clone()),
                                         "Either" => CType::either(args.clone()),
+                                        "AnyOf" => CType::anyof(args.clone()),
                                         "Buffer" => CType::buffer(args.clone()),
                                         "Array" => CType::Array(Box::new(args[0].clone())),
                                         "Fail" => CType::cfail(&args[0]),

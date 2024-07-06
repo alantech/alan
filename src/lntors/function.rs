@@ -53,61 +53,49 @@ pub fn from_microstatement(
             }
             CType::Function(..) => {
                 // We need to make sure this function we're referencing exists
-                let mut scope_to_check = Some(scope);
-                while scope_to_check.is_some() {
-                    match scope_to_check.unwrap().functions.get(representation) {
-                        Some(fns) => {
-                            let f = &fns[0]; // TODO: Proper implementation selection
-                            match &f.kind {
-                                FnKind::Normal
-                                | FnKind::Generic(..)
-                                | FnKind::Derived
-                                | FnKind::DerivedVariadic => {
-                                    let mut arg_strs = Vec::new();
-                                    for arg in &f.args {
-                                        match typen::ctype_to_rtype(&arg.1, scope, program, false) {
-                                            Err(e) => Err(e),
-                                            Ok(s) => {
-                                                arg_strs.push(
-                                                    s.replace("<", "_")
-                                                        .replace(">", "_")
-                                                        .replace(",", "_")
-                                                        .replace(" ", ""),
-                                                );
-                                                /* TODO: Handle generic types better, also type inference */
-                                                Ok(())
-                                            }
-                                        }?;
-                                    }
-                                    // Come up with a function name that is unique so Rust doesn't choke on
-                                    // duplicate function names that are allowed in Alan
-                                    let rustname =
-                                        format!("{}_{}", f.name, arg_strs.join("_")).to_string();
-                                    // Make the function we need, but with the name we're
-                                    out = generate(rustname.clone(), &f, scope, program, out)?;
-                                    return Ok((rustname, out));
+                let f = program.resolve_function_by_type(scope, representation, typen);
+                match f {
+                    None => Err(format!(
+                        "Somehow can't find a definition for function {}",
+                        representation
+                    )
+                    .into()),
+                    Some(fun) => {
+                        match &fun.kind {
+                            FnKind::Normal
+                            | FnKind::Generic(..)
+                            | FnKind::Derived
+                            | FnKind::DerivedVariadic => {
+                                let mut arg_strs = Vec::new();
+                                for arg in &fun.args {
+                                    match typen::ctype_to_rtype(&arg.1, scope, program, false) {
+                                        Err(e) => Err(e),
+                                        Ok(s) => {
+                                            arg_strs.push(
+                                                s.replace("<", "_")
+                                                    .replace(">", "_")
+                                                    .replace(",", "_")
+                                                    .replace(" ", ""),
+                                            );
+                                            /* TODO: Handle generic types better, also type inference */
+                                            Ok(())
+                                        }
+                                    }?;
                                 }
-                                FnKind::Bind(rustname) | FnKind::BoundGeneric(_, rustname) => {
-                                    return Ok((rustname.clone(), out));
-                                }
+                                // Come up with a function name that is unique so Rust doesn't choke on
+                                // duplicate function names that are allowed in Alan
+                                let rustname =
+                                    format!("{}_{}", fun.name, arg_strs.join("_")).to_string();
+                                // Make the function we need, but with the name we're
+                                out = generate(rustname.clone(), &fun, scope, program, out)?;
+                                return Ok((rustname, out));
                             }
-                        }
-                        None => {
-                            scope_to_check = match &scope_to_check.unwrap().parent {
-                                Some(p) => match program.scopes_by_file.get(p) {
-                                    Some((_, _, s)) => Some(s),
-                                    None => None,
-                                },
-                                None => None,
-                            };
+                            FnKind::Bind(rustname) | FnKind::BoundGeneric(_, rustname) => {
+                                return Ok((rustname.clone(), out));
+                            }
                         }
                     }
                 }
-                Err(format!(
-                    "Somehow can't find a definition for function {}",
-                    representation
-                )
-                .into())
             }
             _ => Ok((representation.clone(), out)),
         },

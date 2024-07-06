@@ -141,6 +141,125 @@ impl Program {
         }
     }
 
+    pub fn resolve_function_types<'a>(
+        self: &'a Self,
+        scope: &'a Scope,
+        function: &String,
+    ) -> CType {
+        // Gets every function visible from the specified scope with the same name and returns the
+        // possible types in an array. TODO: Have the Function just have this type on the structure
+        // so it doesn't need to be recreated each time.
+        let mut scope_to_check: Option<&Scope> = Some(scope);
+        let mut fs = Vec::new();
+        while scope_to_check.is_some() {
+            match scope_to_check {
+                Some(s) => {
+                    match s.functions.get(function) {
+                        Some(funcs) => {
+                            for f in funcs {
+                                fs.push(f.clone()); // TODO: Drop this clone
+                            }
+                        }
+                        None => {}
+                    }
+                    scope_to_check = match &s.parent {
+                        Some(p) => match self.scopes_by_file.get(p) {
+                            Some((_, _, s)) => Some(s),
+                            None => None,
+                        },
+                        None => None,
+                    };
+                }
+                None => {}
+            }
+        }
+        let out_types = fs
+            .iter()
+            .map(|f| {
+                let generics = match &f.kind {
+                    FnKind::Normal
+                    | FnKind::Bind(_)
+                    | FnKind::Derived
+                    | FnKind::DerivedVariadic => None,
+                    FnKind::Generic(gs, _) | FnKind::BoundGeneric(gs, _) => {
+                        Some(gs.iter().map(|(g, _)| g.clone()).collect::<Vec<String>>())
+                    }
+                };
+                let input = f
+                    .args
+                    .iter()
+                    .map(|(_, arg)| arg.clone())
+                    .collect::<Vec<CType>>();
+                let output = f.rettype.clone();
+                match generics {
+                    None => CType::Function(Box::new(CType::Tuple(input)), Box::new(output)),
+                    Some(gs) => CType::Generic(
+                        f.name.clone(),
+                        gs,
+                        Box::new(CType::Function(
+                            Box::new(CType::Tuple(input)),
+                            Box::new(output),
+                        )),
+                    ),
+                }
+            })
+            .collect::<Vec<CType>>();
+        if out_types.len() == 0 {
+            CType::Void
+        } else if out_types.len() == 1 {
+            out_types.into_iter().nth(0).unwrap()
+        } else {
+            CType::AnyOf(out_types)
+        }
+    }
+
+    pub fn resolve_function_by_type<'a>(
+        self: &'a Self,
+        scope: &'a Scope,
+        function: &String,
+        fn_type: &CType,
+    ) -> Option<&Function> {
+        // Iterates through every function with the same name visible from the provided scope and
+        // returns the one that matches the provided function type, if any
+        let fn_type_str = fn_type.degroup().to_strict_string(false);
+        let mut scope_to_check: Option<&Scope> = Some(scope);
+        while scope_to_check.is_some() {
+            match scope_to_check {
+                Some(s) => {
+                    match s.functions.get(function) {
+                        Some(funcs) => {
+                            for f in funcs {
+                                // TODO: Just have the function type on the Function object
+                                let f_type = CType::Function(
+                                    Box::new(CType::Tuple(
+                                        f.args
+                                            .iter()
+                                            .map(|(_, t)| t.clone())
+                                            .collect::<Vec<CType>>(),
+                                    )),
+                                    Box::new(f.rettype.clone()),
+                                );
+                                if f_type.degroup().to_strict_string(false) == fn_type_str {
+                                    return Some(f);
+                                }
+                            }
+                        }
+                        None => {}
+                    }
+                    scope_to_check = match &s.parent {
+                        Some(p) => match self.scopes_by_file.get(p) {
+                            Some((_, _, s)) => Some(s),
+                            None => None,
+                        },
+                        None => None,
+                    };
+                }
+                None => {}
+            }
+        }
+        None
+    }
+
     pub fn resolve_generic_function<'a>(
         self: &'a mut Self,
         scope: &'a mut Scope,
@@ -226,9 +345,7 @@ impl Program {
                 // This is pretty cheap, but for now, a "non-strict" string representation
                 // of the CTypes is how we'll match the args against each other. TODO: Do
                 // this without constructing a string to compare against each other.
-                if f.args[i].1.degroup().to_strict_string(false)
-                    != arg.degroup().to_strict_string(false)
-                {
+                if !f.args[i].1.accepts(arg) {
                     args_match = false;
                     break;
                 }
@@ -355,9 +472,7 @@ impl Program {
                     // actual args are the same type as the function's arg.
                     let mut args_match = true;
                     for arg in args.iter() {
-                        if f.args[0].1.degroup().to_strict_string(false)
-                            != arg.degroup().to_strict_string(false)
-                        {
+                        if !f.args[0].1.accepts(arg) {
                             args_match = false;
                             break;
                         }
@@ -377,9 +492,7 @@ impl Program {
                         // This is pretty cheap, but for now, a "non-strict" string representation
                         // of the CTypes is how we'll match the args against each other. TODO: Do
                         // this without constructing a string to compare against each other.
-                        if f.args[i].1.degroup().to_strict_string(false)
-                            != arg.degroup().to_strict_string(false)
-                        {
+                        if !f.args[i].1.accepts(arg) {
                             args_match = false;
                             break;
                         }
@@ -398,7 +511,7 @@ impl Program {
                         Ok(gs) => {
                             return Some(gs);
                         }
-                        Err(_) => {
+                        Err(e) => {
                             continue;
                         }
                     };
@@ -472,9 +585,7 @@ impl Program {
                     // actual args are the same type as the function's arg.
                     let mut args_match = true;
                     for arg in args.iter() {
-                        if f.args[0].1.degroup().to_strict_string(false)
-                            != arg.degroup().to_strict_string(false)
-                        {
+                        if !f.args[0].1.accepts(arg) {
                             args_match = false;
                             break;
                         }
@@ -492,9 +603,7 @@ impl Program {
                         // This is pretty cheap, but for now, a "non-strict" string representation
                         // of the CTypes is how we'll match the args against each other. TODO: Do
                         // this without constructing a string to compare against each other.
-                        if f.args[i].1.degroup().to_strict_string(false)
-                            != arg.degroup().to_strict_string(false)
-                        {
+                        if !f.args[i].1.accepts(arg) {
                             args_match = false;
                             break;
                         }

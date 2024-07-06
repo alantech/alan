@@ -1579,6 +1579,33 @@ true
 cannot remove idx 10 from array with length 4
 "#;
 );
+test!(array_reduce_filter_concat_no_closures => r#"
+    // Temporary test until closure functions are implemented
+    fn isOdd(i: i64) -> bool = i % 2 == 1;
+    export fn main {
+      const test = [ 1, 1, 2, 3, 5, 8 ];
+      const test2 = [ 4, 5, 6 ];
+      print('reduce test');
+      test.reduce(add).print;
+      test.reduce(min).print;
+      test.reduce(max).print;
+
+      print('filter test');
+      test.filter(isOdd).map(string).join(', ').print;
+
+      print('concat test');
+      test.concat(test2).map(string).join(', ').print;
+    }"#;
+    stdout r#"reduce test
+20
+1
+8
+filter test
+1, 1, 3, 5
+concat test
+1, 1, 2, 3, 5, 8, 4, 5, 6
+"#;
+);
 test_ignore!(array_reduce_filter_concat => r#"
     export fn main {
       const test = [ 1, 1, 2, 3, 5, 8 ];

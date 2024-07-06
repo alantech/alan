@@ -106,6 +106,7 @@ pub fn ctype_to_rtype(
             }
         }
         CType::Either(_) => Ok("".to_string()), // What to do in this case?
+        CType::AnyOf(_) => Ok("".to_string()),  // Same question. Does this make any sense in Rust?
         CType::Buffer(t, s) => Ok(format!(
             "[{};{}]",
             ctype_to_rtype(t, scope, program, in_function_type)?,

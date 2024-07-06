@@ -2083,10 +2083,10 @@ fn map_onearg<A, B>(v: &Vec<A>, m: fn(&A) -> B) -> Vec<B> {
 /// `map_twoarg` runs the provided two-argument (value, index) function on each element of the
 /// vector, returning a new vector
 #[inline(always)]
-fn map_twoarg<A, B>(v: &Vec<A>, m: fn(&A, usize) -> B) -> Vec<B> {
+fn map_twoarg<A, B>(v: &Vec<A>, m: fn(&A, i64) -> B) -> Vec<B> {
     v.iter()
         .enumerate()
-        .map(|(i, val)| m(val, i))
+        .map(|(i, val)| m(val, i as i64))
         .collect::<Vec<B>>()
 }
 
@@ -2181,6 +2181,72 @@ fn parmap_onearg<
             out
         }
     }
+}
+
+/// `filter_onearg` runs the provided single-argument function on each element of the vector,
+/// returning a new vector
+#[inline(always)]
+fn filter_onearg<A: std::clone::Clone>(v: &Vec<A>, f: fn(&A) -> bool) -> Vec<A> {
+    v.iter()
+        .filter(|val| f(val))
+        .map(|val| val.clone())
+        .collect::<Vec<A>>()
+}
+
+/// `filter_twoarg` runs the provided function each element of the vector plus its index,
+/// returning a new vector
+#[inline(always)]
+fn filter_twoarg<A: std::clone::Clone>(v: &Vec<A>, f: fn(&A, i64) -> bool) -> Vec<A> {
+    v.iter()
+        .enumerate()
+        .filter(|(i, val)| f(val, *i as i64))
+        .map(|(_, val)| val.clone())
+        .collect::<Vec<A>>()
+}
+
+/// `reduce_sametype` runs the provided function to reduce the vector into a singular value
+#[inline(always)]
+fn reduce_sametype<A: std::clone::Clone>(v: &Vec<A>, f: fn(&A, &A) -> A) -> Option<A> {
+    // The built-in iter `reduce` is awkward for our use case
+    if v.len() == 0 {
+        None
+    } else if v.len() == 1 {
+        Some(v[0].clone())
+    } else {
+        let mut out = v[0].clone();
+        for i in 1..v.len() {
+            out = f(&out, &v[i]);
+        }
+        Some(out)
+    }
+}
+
+/// `reduce_difftype` runs the provided function and initial value to reduce the vector into a
+/// singular value. Because an initial value is provided, it always returns at least that value
+#[inline(always)]
+fn reduce_difftype<A: std::clone::Clone, B: std::clone::Clone>(
+    v: &Vec<A>,
+    i: &B,
+    f: fn(&B, &A) -> B,
+) -> B {
+    let mut out = i.clone();
+    for i in 0..v.len() {
+        out = f(&out, &v[i]);
+    }
+    out
+}
+
+/// `concat` returns a new vector combining the two vectors provided
+#[inline(always)]
+fn concat<A: std::clone::Clone>(a: &Vec<A>, b: &Vec<A>) -> Vec<A> {
+    let mut out = Vec::new();
+    for i in 0..a.len() {
+        out.push(a[i].clone());
+    }
+    for i in 0..b.len() {
+        out.push(b[i].clone());
+    }
+    out
 }
 
 /// `push` pushes an element into a vector
