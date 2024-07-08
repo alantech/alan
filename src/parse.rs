@@ -93,6 +93,17 @@ macro_rules! charset {
     };
 }
 
+/// The `not_charset` macro matches the *inverse* of the charset provided. And can also concatenate
+/// multiple characters to avoid with `|`
+macro_rules! not_charset {
+    ( $ranges:pat ) => {
+        recognize(satisfy(|c| match c {
+            $ranges => false,
+            _ => true,
+        }))
+    };
+}
+
 /// The `named_and` macro matches all of the given rules just like `and`, but it also defines a
 /// struct and field names for these matches. For simplicity, the `str`s are copied into `String`s
 /// Because defining a struct needs to happen in the top-level of the source file, this macro
@@ -305,7 +316,7 @@ test!(newline =>
     pass "\r\n" => "\n", "\r";
 );
 // Validating not
-build!(notnewline, not!("\n")); // TODO: Properly support windows newlines here
+build!(notnewline, not_charset!('\r' | '\n'));
 test!(notnewline =>
     fail "\n";
     pass " " => "", " ";
@@ -362,6 +373,7 @@ build!(closearr, token!("]"));
 build!(comma, token!(","));
 build!(semicolon, token!(";"));
 build!(optsemicolon, zero_or_one!(semicolon));
+build!(notsemicolon, one_or_more!(not!(";")));
 build!(at, token!("@"));
 build!(slash, token!("/"));
 // Validating charset
@@ -496,7 +508,6 @@ build!(
                     token!("*"),
                     token!("^"),
                     token!("."),
-                    token!(","),
                     token!("~"),
                     token!("`"),
                     token!("!"),
@@ -518,8 +529,9 @@ build!(
             )),
             zero_or_more!(token!("=")),
         ),
-        // TODO: Do this more generally, but for now, also allow the following whitelisted symbols
+        // Also allow the following whitelisted symbols
         token!("=="),
+        token!(","),
     ),
 );
 build!(
@@ -532,8 +544,6 @@ build!(
         token!("*"),
         token!("^"),
         token!("."),
-        // token!(","), TODO: Enable this after tuples are added to the language and used for
-        // function arguments
         token!("~"),
         token!("`"),
         token!("!"),
@@ -677,8 +687,7 @@ test!(varlist =>
     ];
 );
 named_and!(fulltypename: FullTypename =>
-    typename: String as variable, // TODO: Add support for method syntax on type names (for
-                                  // imported types)
+    typename: String as variable,
     opttypegenerics: Option<GnCall> as opt(gncall)
 );
 test!(fulltypename =>
@@ -1169,7 +1178,7 @@ named_and!(assignfunction: AssignFunction =>
 named_and!(bindfunction: BindFunction =>
     binds: String as binds,
     a: String as blank,
-    rustfunc: String as and!(variable, opt(token!("!"))), // TODO: Support methods for a particular type somehow?
+    rustfunc: String as notsemicolon,
     b: String as optsemicolon,
 );
 named_or!(fullfunctionbody: FullFunctionBody =>
@@ -1524,8 +1533,6 @@ pub fn get_ast(input: &str) -> Result<Ln, nom::Err<nom::error::Error<&str>>> {
         Err(e) => Err(e),
     }
 }
-// TODO: Modify the test macro to allow for functions without nom-like signatures to have
-// assertions
 test!(get_ast =>
     pass "";
     pass " ";

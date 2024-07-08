@@ -18,10 +18,20 @@ mod integration_tests;
 /// instead, the contents of the Cargo.toml are just hardwired in here for now.
 pub fn build(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
     let find_process = if cfg!(windows) { "where" } else { "which" };
-    // Fail if rustc is not present TODO: Present a better error to the user
-    Command::new(find_process).arg("rustc").output()?;
+    // Fail if rustc is not present
+    match Command::new(find_process).arg("rustc").output() {
+        Ok(a) => Ok(a),
+        Err(_) => {
+            Err("rustc not found. Please make sure you have rust installed before using Alan!")
+        }
+    }?;
     // Also fail if cargo is not present
-    Command::new(find_process).arg("cargo").output()?;
+    match Command::new(find_process).arg("cargo").output() {
+        Ok(a) => Ok(a),
+        Err(_) => {
+            Err("cargo not found. Please make sure you have rust installed before using Alan!")
+        }
+    }?;
     // Because all Alan programs use the same Rust dependencies (for now), we can cut down a *lot*
     // of build time by re-using the `./target/release/build` and `./target/release/deps` directory
     // in subsequent builds. Since it takes over 30 seconds to make a release build on my laptop

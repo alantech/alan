@@ -125,7 +125,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
           ", b);
           g.run(plan);
-          let v = g.read(b);
+          let v = g.read{i32}(b);
           v[0].print;
         }
     "#);
@@ -148,7 +148,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
           ", b);
           g.run(plan);
-          let v = g.read(b);
+          let v = g.read{i32}(b);
           v[0].print;
         }
     "#);
@@ -171,7 +171,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
           ", b);
           g.run(plan);
-          let v = g.read(b);
+          let v = g.read{i32}(b);
           v[0].print;
         }
     "#);
@@ -194,7 +194,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
           ", b);
           g.run(plan);
-          let v = g.read(b);
+          let v = g.read{i32}(b);
           v[0].print;
         }
     "#);
@@ -217,7 +217,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
           ", b);
           g.run(plan);
-          let v = g.read(b);
+          let v = g.read{i32}(b);
           v[0].print;
         }
     "#);
@@ -240,7 +240,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
           ", b);
           g.run(plan);
-          let v = g.read(b);
+          let v = g.read{i32}(b);
           v[0].print;
         }
     "#);
@@ -263,7 +263,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
           ", b);
           g.run(plan);
-          let v = g.read(b);
+          let v = g.read{i32}(b);
           v[0].print;
         }
     "#);
@@ -286,7 +286,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
           ", b);
           g.run(plan);
-          let v = g.read(b);
+          let v = g.read{i32}(b);
           v[0].print;
         }
     "#);
@@ -309,7 +309,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
           ", b);
           g.run(plan);
-          let v = g.read(b);
+          let v = g.read{i32}(b);
           v[0].print;
         }
     "#);
