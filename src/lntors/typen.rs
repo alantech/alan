@@ -110,7 +110,12 @@ pub fn ctype_to_rtype(
         CType::Buffer(t, s) => Ok(format!(
             "[{};{}]",
             ctype_to_rtype(t, scope, program, in_function_type)?,
-            s
+            match **s {
+                CType::Int(size) => Ok(size as usize),
+                _ => Err(format!(
+                    "Somehow received a buffer definition with a non-integer size"
+                )),
+            }?
         )),
         CType::Array(t) => Ok(format!(
             "Vec<{}>",

@@ -28,7 +28,7 @@ pub enum CType {
     Field(String, Box<CType>),
     Either(Vec<CType>),
     AnyOf(Vec<CType>),
-    Buffer(Box<CType>, usize),
+    Buffer(Box<CType>, Box<CType>),
     Array(Box<CType>),
 }
 
@@ -98,7 +98,11 @@ impl CType {
                 .map(|t| t.to_strict_string(strict))
                 .collect::<Vec<String>>()
                 .join(" & "),
-            CType::Buffer(t, s) => format!("{}[{}]", t.to_strict_string(strict), s),
+            CType::Buffer(t, s) => format!(
+                "{}[{}]",
+                t.to_strict_string(strict),
+                s.to_strict_string(strict)
+            ),
             CType::Array(t) => format!("{}[]", t.to_strict_string(strict)),
         }
     }
@@ -161,7 +165,11 @@ impl CType {
                     .collect::<Vec<String>>()
                     .join(", ")
             ),
-            CType::Buffer(t, s) => format!("Buffer{{{}, {}}}", t.to_functional_string(), s),
+            CType::Buffer(t, s) => format!(
+                "Buffer{{{}, {}}}",
+                t.to_functional_string(),
+                s.to_functional_string()
+            ),
             CType::Array(t) => format!("Array{{{}}}", t.to_functional_string()),
         }
     }
@@ -206,7 +214,9 @@ impl CType {
             CType::AnyOf(ts) => {
                 CType::AnyOf(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>())
             }
-            CType::Buffer(t, s) => CType::Buffer(Box::new((*t).degroup()), *s),
+            CType::Buffer(t, s) => {
+                CType::Buffer(Box::new((*t).degroup()), Box::new((*s).degroup()))
+            }
             CType::Array(t) => CType::Array(Box::new((*t).degroup())),
         }
     }
@@ -429,15 +439,10 @@ impl CType {
                         }
                     }
                     (Some(CType::Buffer(t1, s1)), Some(CType::Buffer(t2, s2))) => {
-                        if s1 != s2 {
-                            return Err(format!(
-                                "Mismatched buffer lengths {} and {} found during inference",
-                                s1, s2
-                            )
-                            .into());
-                        }
                         arg.push(&*t1);
+                        arg.push(&*s1);
                         input.push(&*t2);
+                        input.push(&*s2);
                     }
                     (Some(CType::Array(t1)), Some(CType::Array(t2))) => {
                         arg.push(&*t1);
@@ -681,12 +686,16 @@ impl CType {
                     microstatements: Vec::new(),
                     kind: FnKind::Derived,
                 });
-                if *s > 1 {
+                let size = match **s {
+                    CType::Int(s) => s as usize,
+                    _ => 0, // TODO: Make this function fallible, instead?
+                };
+                if size > 1 {
                     fs.push(Function {
                         name: constructor_fn_name.clone(),
                         args: {
                             let mut v = Vec::new();
-                            for i in 0..*s {
+                            for i in 0..size {
                                 v.push((format!("arg{}", i), *b.clone()));
                             }
                             v
@@ -989,9 +998,10 @@ impl CType {
                     .map(|t| t.swap_subtype(old_type, new_type))
                     .collect::<Vec<CType>>(),
             ),
-            CType::Buffer(t, size) => {
-                CType::Buffer(Box::new(t.swap_subtype(old_type, new_type)), *size)
-            }
+            CType::Buffer(t, size) => CType::Buffer(
+                Box::new(t.swap_subtype(old_type, new_type)),
+                Box::new(size.swap_subtype(old_type, new_type)),
+            ),
             CType::Array(t) => CType::Array(Box::new(t.swap_subtype(old_type, new_type))),
         }
     }
@@ -1060,16 +1070,20 @@ impl CType {
         if args.len() != 2 {
             CType::fail("Buffer{T, S} only accepts two sub-types")
         } else {
-            let arg1 = args.pop().unwrap();
-            let arg0 = args.pop().unwrap();
+            let arg1 = args.pop().unwrap().degroup();
+            let arg0 = args.pop().unwrap().degroup();
             match (arg0, arg1) {
                 (anything, CType::Int(size)) => {
-                    CType::Buffer(Box::new(anything.clone()), size as usize)
+                    if size < 0 {
+                        CType::fail("The buffer size must be a positive integer")
+                    } else {
+                        CType::Buffer(Box::new(anything.clone()), Box::new(CType::Int(size)))
+                    }
                 }
-                (anything, CType::Group(g)) => match *g {
-                    CType::Int(size) => CType::Buffer(Box::new(anything.clone()), size as usize),
-                    _ => CType::fail("The buffer size must be a positive integer"),
-                },
+                (anything, CType::Infer(n, t)) => CType::Buffer(
+                    Box::new(anything.clone()),
+                    Box::new(CType::Infer(n.clone(), t.clone())),
+                ),
                 _ => CType::fail("The buffer size must be a positive integer"),
             }
         }
@@ -1098,7 +1112,12 @@ impl CType {
     pub fn len(t: &CType) -> CType {
         match t {
             CType::Tuple(tup) => CType::Int(tup.len() as i128),
-            CType::Buffer(_, l) => CType::Int(*l as i128),
+            CType::Buffer(_, l) => match **l {
+                CType::Int(l) => CType::Int(l),
+                _ => {
+                    CType::fail("Cannot get a compile time length for an invalid Buffer definition")
+                }
+            },
             CType::Either(eit) => CType::Int(eit.len() as i128),
             CType::Array(_) => {
                 CType::fail("Cannot get a compile time length for a variable-length array")

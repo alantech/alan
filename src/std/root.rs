@@ -1734,19 +1734,12 @@ fn getstring(a: &String, i: &i64) -> Result<String, AlanError> {
     match a.chars().nth(*i as usize) {
         Some(c) => Ok(String::from(c)),
         None => Err(format!(
-            "Index {} is longer than the string length of {}",
+            "Index {} is out-of-bounds for a string length of {}",
             i,
             lenstring(a)
         )
         .into()),
     }
-}
-
-/// `to_char_array` returns an array of the characters of a string (TODO: What is a "character" in
-/// Alan?)
-#[inline(always)]
-fn to_char_array(a: &String) -> Vec<String> {
-    a.chars().map(|c| String::from(c)).collect::<Vec<String>>()
 }
 
 /// `trimstring` trims the string of whitespace
@@ -1967,7 +1960,7 @@ fn println<A: std::fmt::Display>(a: &A) {
 fn println_result<A: std::fmt::Display>(a: &Result<A, AlanError>) {
     match a {
         Ok(o) => println!("{}", o),
-        Err(e) => println!("{:?}", e),
+        Err(e) => println!("{}", e.to_string()),
     };
 }
 

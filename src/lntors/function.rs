@@ -267,9 +267,6 @@ pub fn from_microstatement(
                                             ),
                                             out,
                                         ));
-                                        // TODO: Someday revive something like this, but for
-                                        // now we are using Option, so it's much simpler
-                                        // return Ok((format!("match {}.get({}) {{ Some(v) => {}::{}(v), None => {}::void }}", argstrs[0], argstrs[1], n, ts[0].to_string(), n), out));
                                     }
                                     _ => {} // Just fall through
                                 }
@@ -350,7 +347,13 @@ pub fn from_microstatement(
                         };
                         match inner_ret_type {
                             CType::Buffer(_, s) => {
-                                if argstrs.len() == s {
+                                let size = match *s {
+                                    CType::Int(s) => Ok(s as usize),
+                                    _ => Err(format!(
+                                        "Somehow received a buffer with a non-integer size"
+                                    )),
+                                }?;
+                                if argstrs.len() == size {
                                     return Ok((format!("[{}]", argstrs.join(", ")), out));
                                 } else if argstrs.len() == 1 {
                                     return Ok((
@@ -360,7 +363,7 @@ pub fn from_microstatement(
                                                 Some(v) => v,
                                                 None => &argstrs[0],
                                             },
-                                            s
+                                            size
                                         ),
                                         out,
                                     ));

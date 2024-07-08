@@ -18,9 +18,20 @@ macro_rules! test {
             #[test]
             fn $rule() -> Result<(), Box<dyn std::error::Error>> {
                 let filename = format!("{}.ln", stringify!($rule));
-                std::fs::write(&filename, $code)?;
+                match std::fs::write(&filename, $code) {
+                    Ok(_) => { /* Do nothing */ }
+                    Err(e) => {
+                        return Err(format!("Unable to write {} to disk. {:?}", filename, e).into());
+                    }
+                };
                 std::env::set_var("ALAN_TARGET", "test");
-                crate::compile::build(filename.to_string())?;
+                match crate::compile::build(filename.to_string()) {
+                    Ok(_) => { /* Do nothing */ }
+                    Err(e) => {
+                        std::fs::remove_file(&filename)?;
+                        return Err(format!("Failed to compile {:?}", e).into());
+                    }
+                };
                 let cmd = if cfg!(windows) {
                     format!(".\\{}.exe", stringify!($rule))
                 } else {
@@ -28,7 +39,6 @@ macro_rules! test {
                 };
                 let run = std::process::Command::new(cmd.clone()).output()?;
                 $( $type!($test_val, &run); )+
-                // Cleanup the temp files. TODO: Make this happen regardless of test failure?
                 std::fs::remove_file(&filename)?;
                 std::fs::remove_file(&cmd)?;
                 Ok(())
@@ -44,8 +54,20 @@ macro_rules! test_ignore {
             #[ignore]
             fn $rule() -> Result<(), Box<dyn std::error::Error>> {
                 let filename = format!("{}.ln", stringify!($rule));
-                std::fs::write(&filename, $code)?;
-                assert_eq!((), crate::compile::compile(filename.to_string())?);
+                match std::fs::write(&filename, $code) {
+                    Ok(_) => { /* Do nothing */ }
+                    Err(e) => {
+                        return Err(format!("Unable to write {} to disk. {:?}", filename, e).into());
+                    }
+                };
+                std::env::set_var("ALAN_TARGET", "test");
+                match crate::compile::build(filename.to_string()) {
+                    Ok(_) => { /* Do nothing */ }
+                    Err(e) => {
+                        std::fs::remove_file(&filename)?;
+                        return Err(format!("Failed to compile {:?}", e).into());
+                    }
+                };
                 let cmd = if cfg!(windows) {
                     format!(".\\{}.exe", stringify!($rule))
                 } else {
@@ -53,7 +75,6 @@ macro_rules! test_ignore {
                 };
                 let run = std::process::Command::new(cmd.clone()).output()?;
                 $( $type!($test_val, &run); )+
-                // Cleanup the temp files. TODO: Make this happen regardless of test failure?
                 std::fs::remove_file(&filename)?;
                 std::fs::remove_file(&cmd)?;
                 Ok(())
@@ -767,20 +788,6 @@ test!(string_const_vs_computed_equality => r#"
     }"#;
     stdout "true\n";
 );
-test!(string_char_array => r#"
-    export fn main {
-      const fooCharArray = 'foo'.toCharArray;
-      print(#fooCharArray);
-      print(fooCharArray[0]);
-      print(fooCharArray[1]);
-      print(fooCharArray[2]);
-    }"#;
-    stdout r#"3
-f
-o
-o
-"#;
-); // TODO: Do we need `toCharArray` with the following possible in Alan v0.2?
 test!(string_chars_direct => r#"
     export fn main {
         const foo = 'foo';
@@ -794,9 +801,9 @@ test!(string_chars_direct => r#"
 f
 o
 o
-AlanError { message: "Index 3 is longer than the string length of 3" }
+Error: Index 3 is out-of-bounds for a string length of 3
 "#;
-); // TODO: The error output is terrible
+);
 
 /* Pending
 test_ignore!(string_templating => r#"
@@ -1286,7 +1293,7 @@ test!(conditional_compilation => r#"
     // type TestBuffer = Buffer{i64, 1 + 2 * 3};
     type TestBuffer = i64[1 + 2 * 3];
     // TODO: Have a generic version instead of binding here
-    fn len(t: TestBuffer) -> i64 binds lenbuffer;
+    // fn len(t: TestBuffer) -> i64 binds lenbuffer;
 
     export fn main {
       print(var.foo); // Should print "Hello, World!"
@@ -1318,36 +1325,6 @@ test_compile_error!(object_constructor_compiler_checks => r#"
       const foo = Foo(1.23);
     }"#;
     error "Could not find a function with a call signature of Foo(f64)";
-);
-// TODO: Temporary tests for temporary vector support. These tests are short-lived
-test!(vec_construction => r#"
-    export fn main {
-      const five = filled(5, 5);
-      const three = filled(1 + 2, 3);
-      print(five);
-      print(three);
-    }"#;
-    stdout "[5, 5, 5, 5, 5]\n[3, 3, 3]\n";
-);
-test!(vec_map => r#"
-    fn double(x: i64) -> i64 = x * 2;
-    export fn main {
-      filled(5, 5).map(double).print;
-    }"#;
-    stdout "[10, 10, 10, 10, 10]\n";
-);
-test!(vec_parmap => r#"
-    fn double(x: i64) -> i64 = x * 2;
-    export fn main {
-      let v = filled(0, 0);
-      v.push(1);
-      v.push(2);
-      v.push(3);
-      v.push(4);
-      v.push(5);
-      v.parmap(double).print;
-    }"#;
-    stdout "[2, 4, 6, 8, 10]\n";
 );
 test!(array_literals => r#"
     export fn main {
@@ -2436,12 +2413,11 @@ test_compile_error!(undefined_function_call => r#"
     }"#;
     error "Could not find a function with a call signature of i64str(i64)";
 );
-test_ignore!(totally_broken_statement => r#"
+test_compile_error!(totally_broken_statement => r#"
     on app.start {
       app.oops
     }"#;
-    stderr "what";
-); // TODO: Figure out why this is causing `nom` to panic sometimes
+);
 
 /* Pending
   Describe "Importing unexported values"
