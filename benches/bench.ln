@@ -31,7 +31,7 @@ fn bench(l: i64) {
     }
   ", b);
   g.run(plan);
-  let v3 = g.read(b);
+  let v3 = g.read{i32}(b);
   v3[0];
   t3.elapsed.print;
 }
@@ -67,7 +67,7 @@ fn bench_billion {
     }
   ", b);
   g.run(plan);
-  g.read(b);
+  g.read{i32}(b);
   let b = g.createBuffer(storageBuffer(), v2);
   let plan = GPGPU("
     @group(0)
@@ -84,7 +84,7 @@ fn bench_billion {
     }
   ", b);
   g.run(plan);
-  let v3 = g.read(b);
+  let v3 = g.read{i32}(b);
   v3[0];
   t3.elapsed.print;
 }

@@ -584,7 +584,7 @@ test!(hello_gpu => r#"
         }
       ", b);
       g.run(plan);
-      g.read(b).print;
+      g.read{i32}(b).print;
     }"#;
     stdout "[0, 2, 4, 6]\n";
 );

@@ -84,7 +84,7 @@ export type infix Mod as % precedence 3;
 export type infix Pow as ** precedence 4;
 export type infix If as ?? precedence 1; // C puts this kind of thing as a very high precedence. I'm not sure if I want to follow it. I feel like that would force grouping parens everywhere.
 export type infix And as && precedence 3;
-export type infix Or as || precedence 2; // TODO: Which should get `||` and which should get `|`?
+export type infix Or as || precedence 2;
 export type infix Xor as ^ precedence 2;
 export type prefix Not as ! precedence 4; // TODO: Do we want `!` to mean `Not` or `Result` depending on where it's placed syntactically? Seems easily ambiguous
 export type infix Nand as !& precedence 3;
@@ -458,7 +458,7 @@ export type GPGPU binds GPGPU;
 export fn GPGPU(source: string, buffers: Array{Array{GBuffer}}) -> GPGPU binds GPGPU_new;
 export fn GPGPU(source: string, buffer: GBuffer) -> GPGPU binds GPGPU_new_easy;
 export fn run(g: GPU, gg: GPGPU) binds gpu_run;
-export fn read(g: GPU, b: GBuffer) -> Array{i32} binds read_buffer; // TODO: Support other output types
+export fn read{T}(g: GPU, b: GBuffer) -> Array{T} binds read_buffer;
 
 /// Stdout/stderr-related bindings
 // TODO: Rework this to just print anything that can be converted to `string` via interfaces
