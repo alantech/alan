@@ -1939,13 +1939,13 @@ fn lenbuffer<T>(a: &[T]) -> i64 {
 
 /// `pusharray` pushes a value onto the array
 #[inline(always)]
-fn pusharray<T: Clone>(mut a: &mut Vec<T>, v: &T) {
+fn pusharray<T: Clone>(a: &mut Vec<T>, v: &T) {
     a.push(v.clone());
 }
 
 /// `poparray` pops a value off of the array into an Option<T>
 #[inline(always)]
-fn poparray<T>(mut a: &mut Vec<T>) -> Option<T> {
+fn poparray<T>(a: &mut Vec<T>) -> Option<T> {
     a.pop()
 }
 
@@ -2060,6 +2060,18 @@ fn print_vec_result<A: std::fmt::Display>(vs: &Vec<Result<A, AlanError>>) {
     );
 }
 
+/// `print_buffer` pretty prints a buffer assuming the input type can be displayed
+#[inline(always)]
+fn print_buffer<A: std::fmt::Display, const N: usize>(vs: &[A; N]) {
+    println!(
+        "[{}]",
+        vs.iter()
+            .map(|v| format!("{}", v))
+            .collect::<Vec<String>>()
+            .join(", ")
+    );
+}
+
 /// `vec_len` returns the length of a vector
 #[inline(always)]
 fn vec_len<A>(v: &Vec<A>) -> i64 {
@@ -2080,16 +2092,6 @@ fn map_twoarg<A, B>(v: &Vec<A>, m: fn(&A, i64) -> B) -> Vec<B> {
     v.iter()
         .enumerate()
         .map(|(i, val)| m(val, i as i64))
-        .collect::<Vec<B>>()
-}
-
-/// `map_threearg` runs the provided three-argument (value, index, vec_ref) function on each
-/// element of the vector, returning a new vector
-#[inline(always)]
-fn map_threearg<A, B>(v: &Vec<A>, m: fn(&A, usize, &Vec<A>) -> B) -> Vec<B> {
-    v.iter()
-        .enumerate()
-        .map(|(i, val)| m(val, i, &v))
         .collect::<Vec<B>>()
 }
 
@@ -2246,6 +2248,31 @@ fn concat<A: std::clone::Clone>(a: &Vec<A>, b: &Vec<A>) -> Vec<A> {
 #[inline(always)]
 fn push<A: std::clone::Clone>(v: &mut Vec<A>, a: &A) {
     v.push(a.clone());
+}
+
+/// `mapbuffer_onearg` runs the provided single-argument function on each element of the buffer,
+/// returning a new buffer
+#[inline(always)]
+fn mapbuffer_onearg<A, const N: usize, B: std::marker::Copy>(v: &[A; N], m: fn(&A) -> B) -> [B; N] {
+    let mut out = [m(&v[0]); N];
+    for i in 1..N {
+        out[i] = m(&v[i]);
+    }
+    out
+}
+
+/// `mapbuffer_twoarg` runs the provided two-argument (value, index) function on each element of the
+/// buffer, returning a new buffer
+#[inline(always)]
+fn mapbuffer_twoarg<A, const N: usize, B: std::marker::Copy>(
+    v: &[A; N],
+    m: fn(&A, &i64) -> B,
+) -> [B; N] {
+    let mut out = [m(&v[0], &0); N];
+    for i in 1..N {
+        out[i] = m(&v[i], &(i as i64));
+    }
+    out
 }
 
 struct GPU {

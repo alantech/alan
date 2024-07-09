@@ -511,9 +511,7 @@ impl Program {
                         Ok(gs) => {
                             return Some(gs);
                         }
-                        Err(_) => {
-                            continue;
-                        }
+                        Err(_) => { /* Do nothing */ }
                     };
                 }
             }

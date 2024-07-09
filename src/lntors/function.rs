@@ -354,7 +354,20 @@ pub fn from_microstatement(
                                     )),
                                 }?;
                                 if argstrs.len() == size {
-                                    return Ok((format!("[{}]", argstrs.join(", ")), out));
+                                    return Ok((
+                                        format!(
+                                            "[{}]",
+                                            argstrs
+                                                .iter()
+                                                .map(|a| match a.strip_prefix("&mut ") {
+                                                    Some(v) => v,
+                                                    None => a,
+                                                })
+                                                .collect::<Vec<&str>>()
+                                                .join(", ")
+                                        ),
+                                        out,
+                                    ));
                                 } else if argstrs.len() == 1 {
                                     return Ok((
                                         format!(

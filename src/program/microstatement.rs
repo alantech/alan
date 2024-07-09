@@ -688,10 +688,28 @@ pub fn baseassignablelist_to_microstatements(
                 let mut generic_types = Vec::new();
                 for g in generics {
                     let t = match program.resolve_type(scope, &g) {
-                        Some(t) => Ok(t),
-                        None => Err(format!("Could not find type {}", g)),
+                        Some(t) => Ok(t.clone()), // TODO: Drop the cloning
+                        None => {
+                            // TODO: This should be inside of `resolve_type`, but that requires it
+                            // to mutate program and scope and *that* is a whole refactoring can of
+                            // worms
+                            match g.parse::<i128>() {
+                                Ok(i) => Ok(CType::Int(i)),
+                                Err(_) => match g.parse::<f64>() {
+                                    Ok(f) => Ok(CType::Float(f)),
+                                    Err(_) => match g.as_str() {
+                                        "true" => Ok(CType::Bool(true)),
+                                        "false" => Ok(CType::Bool(false)),
+                                        _ => {
+                                            // TODO: Add string support
+                                            Err(format!("Could not find type {}", g))
+                                        }
+                                    },
+                                },
+                            }
+                        }
                     }?;
-                    generic_types.push(t.clone()); // TODO: Drop the cloning
+                    generic_types.push(t);
                 }
                 let mut temp_scope = scope.child(program);
                 let maybe_type = match program.resolve_type(scope, f) {
