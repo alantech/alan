@@ -2275,6 +2275,42 @@ fn mapbuffer_twoarg<A, const N: usize, B: std::marker::Copy>(
     out
 }
 
+/// `reducebuffer_sametype` runs the provided function to reduce the buffer into a singular
+/// value
+#[inline(always)]
+fn reducebuffer_sametype<A: std::clone::Clone, const S: usize>(
+    b: &[A; S],
+    f: fn(&A, &A) -> A,
+) -> Option<A> {
+    // The built-in iter `reduce` is awkward for our use case
+    if b.len() == 0 {
+        None
+    } else if b.len() == 1 {
+        Some(b[0].clone())
+    } else {
+        let mut out = b[0].clone();
+        for i in 1..b.len() {
+            out = f(&out, &b[i]);
+        }
+        Some(out)
+    }
+}
+
+/// `reducebuffer_difftype` runs the provided function and initial value to reduce the buffer into a
+/// singular value. Because an initial value is provided, it always returns at least that value
+#[inline(always)]
+fn reducebuffer_difftype<A: std::clone::Clone, const S: usize, B: std::clone::Clone>(
+    b: &[A; S],
+    i: &B,
+    f: fn(&B, &A) -> B,
+) -> B {
+    let mut out = i.clone();
+    for i in 0..b.len() {
+        out = f(&out, &b[i]);
+    }
+    out
+}
+
 struct GPU {
     pub instance: wgpu::Instance,
     pub adapter: wgpu::Adapter,

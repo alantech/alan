@@ -431,6 +431,8 @@ export fn filled{T}(v: T, l: i64) -> Array{T} binds filled;
 export fn len{T, S}(T[S]) -> i64 = {S}();
 export fn map{T, S, U}(a: Buffer{T, S}, m: T -> U) -> Buffer{U, S} binds mapbuffer_onearg;
 export fn map{T, S, U}(a: Buffer{T, S}, m: (T, i64) -> U) -> Buffer{U, S} binds mapbuffer_twoarg;
+export fn reduce{T, S}(a: Buffer{T, S}, f: (T, T) -> T) -> Maybe{T} binds reducebuffer_sametype;
+export fn reduce{T, S, U}(a: Buffer{T, S}, i: U, f: (U, T) -> U) -> U binds reducebuffer_difftype;
 
 /// Process exit-related bindings
 export fn ExitCode(e: i8) -> ExitCode binds to_exit_code_i8;

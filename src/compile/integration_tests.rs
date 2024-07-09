@@ -1658,6 +1658,15 @@ test!(buffer_join => r#"
     }"#;
     stdout "Hello, World!\n";
 );
+test!(buffer_reduce => r#"
+    fn concat(s: string, i: i64) -> string = s.concat(i.string);
+    export fn main {
+        const b = {i64[5]}(1, 2, 3, 4, 5);
+        b.reduce(add).print;
+        b.reduce("0", concat).print;
+    }"#;
+    stdout "15\n012345\n";
+);
 
 // Hashing
 // TODO: I have no idea how I'm going to make this work in pure Rust, but damnit I'm gonna try.
