@@ -392,6 +392,7 @@ export fn lte(a: string, b: string) -> bool binds ltestring;
 export fn gt(a: string, b: string) -> bool binds gtstring;
 export fn gte(a: string, b: string) -> bool binds gtestring;
 export fn join(a: Array{string}, s: string) -> string binds joinstring;
+export fn join{S}(a: Buffer{string, S}, s: string) -> string binds bufferjoinstring;
 
 /// Boolean related bindings
 export fn bool(i: i8) -> bool binds i8tobool;
