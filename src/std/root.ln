@@ -427,6 +427,7 @@ export fn reduce{T, U}(a: Array{T}, i: U, f: (U, T) -> U) -> U binds reduce_diff
 export fn concat{T}(a: Array{T}, b: Array{T}) -> Array{T} binds concat;
 export fn filled{T}(v: T, l: i64) -> Array{T} binds filled;
 export fn has{T}(a: Array{T}, v: T) -> bool binds hasarray;
+export fn has{T}(a: Array{T}, f: (T) -> bool) -> bool binds hasfnarray;
 
 /// Buffer related bindings
 export fn len{T, S}(T[S]) -> i64 = {S}();
@@ -435,6 +436,7 @@ export fn map{T, S, U}(a: Buffer{T, S}, m: (T, i64) -> U) -> Buffer{U, S} binds 
 export fn reduce{T, S}(a: Buffer{T, S}, f: (T, T) -> T) -> Maybe{T} binds reducebuffer_sametype;
 export fn reduce{T, S, U}(a: Buffer{T, S}, i: U, f: (U, T) -> U) -> U binds reducebuffer_difftype;
 export fn has{T, S}(a: Buffer{T, S}, v: T) -> bool binds hasbuffer;
+export fn has{T, S}(a: Buffer{T, S}, f: (T) -> bool) -> bool binds hasfnbuffer;
 
 /// Process exit-related bindings
 export fn ExitCode(e: i8) -> ExitCode binds to_exit_code_i8;

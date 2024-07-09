@@ -1469,12 +1469,16 @@ void
 );
 // TODO: Restore the old test later, or just break this up permanently?
 test!(array_has => r#"
+    fn even(t: i64) -> bool = t % 2 == 0;
+    fn odd(t: i64) -> bool = t % 2 == 1;
     export fn main {
         const test = [ 1, 1, 2, 3, 5, 8 ];
         test.has(3).print;
         test.has(4).print;
+        test.has(even).print;
+        test.has(odd).print;
     }"#;
-    stdout "true\nfalse\n";
+    stdout "true\nfalse\ntrue\ntrue\n";
 );
 test_ignore!(array_length_index_has_join => r#"
     export fn main {
@@ -1677,12 +1681,16 @@ test!(buffer_reduce => r#"
     stdout "15\n012345\n";
 );
 test!(buffer_has => r#"
+    fn even(t: i64) -> bool = t % 2 == 0;
+    fn odd(t: i64) -> bool = t % 2 == 1;
     export fn main {
         const test = {i64[6]}(1, 1, 2, 3, 5, 8);
         test.has(3).print;
         test.has(4).print;
+        test.has(even).print;
+        test.has(odd).print;
     }"#;
-    stdout "true\nfalse\n";
+    stdout "true\nfalse\ntrue\ntrue\n";
 );
 
 // Hashing
