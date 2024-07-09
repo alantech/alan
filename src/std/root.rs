@@ -41,6 +41,25 @@ fn alan_ok<A: std::clone::Clone>(val: &A) -> Result<A, AlanError> {
     Ok(val.clone())
 }
 
+/// `maybe_get_or` gets the Option's value or returns the default if not present.
+#[inline(always)]
+fn maybe_get_or<T: std::clone::Clone>(v: &Option<T>, d: &T) -> T {
+    match v {
+        Some(val) => val.clone(),
+        None => d.clone(),
+    }
+}
+
+/// `fallible_get_or` gets the Fallible (Result with pre-bound error) value or returns the default
+/// if not present.
+#[inline(always)]
+fn fallible_get_or<T: std::clone::Clone>(v: &Result<T, AlanError>, d: &T) -> T {
+    match v {
+        Ok(val) => val.clone(),
+        Err(_) => d.clone(),
+    }
+}
+
 /// `to_exit_code_i8` converts a 64-bit integer into an exit code, for convenience since `i64` is the
 /// default integer type in Alan.
 #[inline(always)]
@@ -2256,6 +2275,17 @@ fn hasarray<T: std::cmp::PartialEq>(a: &Vec<T>, v: &T) -> bool {
     a.contains(v)
 }
 
+/// `findarray` returns the first value from the vector that matches the check function, if any
+#[inline(always)]
+fn findarray<T: std::clone::Clone>(a: &Vec<T>, f: fn(&T) -> bool) -> Option<T> {
+    for v in a {
+        if f(v) {
+            return Some(v.clone());
+        }
+    }
+    return None;
+}
+
 /// `hasfnarray` returns true if the check function returns true for any element of the vector
 #[inline(always)]
 fn hasfnarray<T>(a: &Vec<T>, f: fn(&T) -> bool) -> bool {
@@ -2348,6 +2378,17 @@ fn hasfnbuffer<T, const S: usize>(a: &[T; S], f: fn(&T) -> bool) -> bool {
         }
     }
     return false;
+}
+
+/// `findbuffer` returns the first value from the buffer that matches the check function, if any
+#[inline(always)]
+fn findbuffer<T: std::clone::Clone, const S: usize>(a: &[T; S], f: fn(&T) -> bool) -> Option<T> {
+    for v in a {
+        if f(v) {
+            return Some(v.clone());
+        }
+    }
+    return None;
 }
 
 struct GPU {
