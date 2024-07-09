@@ -75,7 +75,10 @@ pub fn from_microstatement(
                                                 s.replace("<", "_")
                                                     .replace(">", "_")
                                                     .replace(",", "_")
-                                                    .replace(" ", ""),
+                                                    .replace(" ", "")
+                                                    .replace("[", "_")
+                                                    .replace("]", "_")
+                                                    .replace(";", "_"),
                                             );
                                             /* TODO: Handle generic types better, also type inference */
                                             Ok(())
@@ -143,7 +146,10 @@ pub fn from_microstatement(
                                     s.replace("<", "_")
                                         .replace(">", "_")
                                         .replace(",", "_")
-                                        .replace(" ", ""),
+                                        .replace(" ", "")
+                                        .replace("[", "_")
+                                        .replace("]", "_")
+                                        .replace(";", "_"),
                                 );
                                 /* TODO: Handle generic types better, also type inference */
                                 Ok(())
