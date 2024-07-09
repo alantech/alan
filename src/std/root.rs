@@ -106,15 +106,6 @@ fn i16toi8(i: &i16) -> i8 {
     *i as i8
 }
 
-/// `get_or_i8` unwraps a Result<i8, AlanError> with the default value if it is an error
-#[inline(always)]
-fn get_or_i8(r: &Result<i8, AlanError>, default: &i8) -> i8 {
-    match r {
-        Ok(v) => *v,
-        Err(_) => *default,
-    }
-}
-
 /// `addi8` safely adds two i8s together, returning a potentially wrapped i8
 #[inline(always)]
 fn addi8(a: &i8, b: &i8) -> i8 {
@@ -324,15 +315,6 @@ fn i8toi16(i: &i8) -> i16 {
     *i as i16
 }
 
-/// `get_or_i16` unwraps a Result<i16, AlanError> with the default value if it is an error
-#[inline(always)]
-fn get_or_i16(r: &Result<i16, AlanError>, default: &i16) -> i16 {
-    match r {
-        Ok(v) => *v,
-        Err(_) => *default,
-    }
-}
-
 /// `addi16` safely adds two i16s together, returning a potentially wrapped i16
 #[inline(always)]
 fn addi16(a: &i16, b: &i16) -> i16 {
@@ -501,15 +483,6 @@ fn wrli16(a: &i16, b: &i16) -> i16 {
 #[inline(always)]
 fn wrri16(a: &i16, b: &i16) -> i16 {
     a.rotate_right(*b as u32)
-}
-
-/// `get_or_i32` unwraps a Result<i32, AlanError> with the default value if it is an error
-#[inline(always)]
-fn get_or_i32(r: &Result<i32, AlanError>, default: &i32) -> i32 {
-    match r {
-        Ok(v) => *v,
-        Err(_) => *default,
-    }
 }
 
 /// `stringtoi32` tries to convert a string into an i32
@@ -760,15 +733,6 @@ fn i32toi64(i: &i32) -> i64 {
     *i as i64
 }
 
-/// `get_or_i64` unwraps a Result<i64, AlanError> with the default value if it is an error
-#[inline(always)]
-fn get_or_i64(r: &Result<i64, AlanError>, default: &i64) -> i64 {
-    match r {
-        Ok(v) => *v,
-        Err(_) => *default,
-    }
-}
-
 /// `addi64` safely adds two i64s together, returning a potentially wrapped i64
 #[inline(always)]
 fn addi64(a: &i64, b: &i64) -> i64 {
@@ -937,15 +901,6 @@ fn wrli64(a: &i64, b: &i64) -> i64 {
 #[inline(always)]
 fn wrri64(a: &i64, b: &i64) -> i64 {
     a.rotate_right(*b as u32)
-}
-
-/// `get_or_f32` unwraps a Result<f32, AlanError> with the default value if it is an error
-#[inline(always)]
-fn get_or_f32(r: &Result<f32, AlanError>, default: &f32) -> f32 {
-    match r {
-        Ok(v) => *v,
-        Err(_) => *default,
-    }
 }
 
 /// `stringtof32` tries to convert a string into an f32
@@ -1336,15 +1291,6 @@ fn i32tof64(i: &i32) -> f64 {
 #[inline(always)]
 fn i64tof64(i: &i64) -> f64 {
     *i as f64
-}
-
-/// `get_or_f64` unwraps a Result<f64, AlanError> with the default value if it is an error
-#[inline(always)]
-fn get_or_f64(r: &Result<f64, AlanError>, default: &f64) -> f64 {
-    match r {
-        Ok(v) => *v,
-        Err(_) => *default,
-    }
 }
 
 /// `addf64` safely adds two f64s together, returning a Result-wrapped f64 (or an error on overflow)
