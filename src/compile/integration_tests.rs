@@ -1467,6 +1467,15 @@ test!(array_mutable_push_pop => r#"
 void
 "#;
 );
+// TODO: Restore the old test later, or just break this up permanently?
+test!(array_has => r#"
+    export fn main {
+        const test = [ 1, 1, 2, 3, 5, 8 ];
+        test.has(3).print;
+        test.has(4).print;
+    }"#;
+    stdout "true\nfalse\n";
+);
 test_ignore!(array_length_index_has_join => r#"
     export fn main {
       const test = new Array{int64} [ 1, 1, 2, 3, 5, 8 ];
@@ -1666,6 +1675,14 @@ test!(buffer_reduce => r#"
         b.reduce("0", concat).print;
     }"#;
     stdout "15\n012345\n";
+);
+test!(buffer_has => r#"
+    export fn main {
+        const test = {i64[6]}(1, 1, 2, 3, 5, 8);
+        test.has(3).print;
+        test.has(4).print;
+    }"#;
+    stdout "true\nfalse\n";
 );
 
 // Hashing
