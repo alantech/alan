@@ -375,6 +375,7 @@ export fn filled{T}(v: T, l: i64) -> Array{T} binds filled;
 export fn has{T}(a: Array{T}, v: T) -> bool binds hasarray;
 export fn has{T}(a: Array{T}, f: (T) -> bool) -> bool binds hasfnarray;
 export fn find{T}(a: Array{T}, f: (T) -> bool) -> Maybe{T} binds findarray;
+export fn every{T}(a: Array{T}, f: (T) -> bool) -> bool binds everyarray;
 
 /// Buffer related bindings
 export fn len{T, S}(T[S]) -> i64 = {S}();
@@ -385,6 +386,7 @@ export fn reduce{T, S, U}(a: Buffer{T, S}, i: U, f: (U, T) -> U) -> U binds redu
 export fn has{T, S}(a: Buffer{T, S}, v: T) -> bool binds hasbuffer;
 export fn has{T, S}(a: Buffer{T, S}, f: (T) -> bool) -> bool binds hasfnbuffer;
 export fn find{T, S}(a: Buffer{T, S}, f: (T) -> bool) -> Maybe{T} binds findbuffer;
+export fn every{T, S}(a: Buffer{T, S}, f: (T) -> bool) -> bool binds everybuffer;
 
 /// Process exit-related bindings
 export fn ExitCode(e: i8) -> ExitCode binds to_exit_code_i8;

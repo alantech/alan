@@ -1793,6 +1793,17 @@ fn hasarray<T: std::cmp::PartialEq>(a: &Vec<T>, v: &T) -> bool {
     a.contains(v)
 }
 
+/// `hasfnarray` returns true if the check function returns true for any element of the vector
+#[inline(always)]
+fn hasfnarray<T>(a: &Vec<T>, f: fn(&T) -> bool) -> bool {
+    for v in a {
+        if f(v) {
+            return true;
+        }
+    }
+    return false;
+}
+
 /// `findarray` returns the first value from the vector that matches the check function, if any
 #[inline(always)]
 fn findarray<T: std::clone::Clone>(a: &Vec<T>, f: fn(&T) -> bool) -> Option<T> {
@@ -1804,15 +1815,15 @@ fn findarray<T: std::clone::Clone>(a: &Vec<T>, f: fn(&T) -> bool) -> Option<T> {
     return None;
 }
 
-/// `hasfnarray` returns true if the check function returns true for any element of the vector
+/// `everyarray` returns true if every value in the vector matches the check function
 #[inline(always)]
-fn hasfnarray<T>(a: &Vec<T>, f: fn(&T) -> bool) -> bool {
+fn everyarray<T>(a: &Vec<T>, f: fn(&T) -> bool) -> bool {
     for v in a {
-        if f(v) {
-            return true;
+        if !f(v) {
+            return false;
         }
     }
-    return false;
+    return true;
 }
 
 /// `mapbuffer_onearg` runs the provided single-argument function on each element of the buffer,
@@ -1907,6 +1918,17 @@ fn findbuffer<T: std::clone::Clone, const S: usize>(a: &[T; S], f: fn(&T) -> boo
         }
     }
     return None;
+}
+
+/// `everybuffer` returns true if every value in the array matches the check function
+#[inline(always)]
+fn everybuffer<T, const S: usize>(a: &[T; S], f: fn(&T) -> bool) -> bool {
+    for v in a {
+        if !f(v) {
+            return false;
+        }
+    }
+    return true;
 }
 
 struct GPU {
