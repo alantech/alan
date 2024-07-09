@@ -1537,6 +1537,15 @@ test!(array_find => r#"
     }"#;
     stdout "1\n";
 );
+test!(array_every => r#"
+    fn odd(x: i64) -> bool = x % 2 == 1;
+
+    export fn main {
+        const test = [ 1, 1, 2, 3, 5, 8 ];
+        test.every(odd).print;
+    }"#;
+    stdout "false\n";
+);
 test_ignore!(array_every_some_del => r#"
     fn isOdd (val: int64) -> bool = val % 2 == 1;
 
@@ -1692,6 +1701,15 @@ test!(buffer_find => r#"
         test.find(odd).getOr(0).print;
     }"#;
     stdout "1\n";
+);
+test!(buffer_every => r#"
+    fn odd(x: i64) -> bool = x % 2 == 1;
+
+    export fn main {
+        const test = {i64[6]}(1, 1, 2, 3, 5, 8);
+        test.every(odd).print;
+    }"#;
+    stdout "false\n";
 );
 
 // Hashing
