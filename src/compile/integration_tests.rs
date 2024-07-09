@@ -1651,6 +1651,13 @@ test!(buffer_map => r#"
     }"#;
     stdout "[1, 2, 3]\n3\n[2, 4, 6]\n[1, 3, 5]\n";
 );
+test!(buffer_join => r#"
+    export fn main {
+        const b = {string[2]}("Hello", "World!");
+        b.join(", ").print;
+    }"#;
+    stdout "Hello, World!\n";
+);
 
 // Hashing
 // TODO: I have no idea how I'm going to make this work in pure Rust, but damnit I'm gonna try.

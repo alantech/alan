@@ -1819,6 +1819,12 @@ fn joinstring(a: &Vec<String>, s: &String) -> String {
     a.join(s)
 }
 
+/// `bufferjoinstring` joins a buffer of strings with the separator in-between
+#[inline(always)]
+fn bufferjoinstring<const S: usize>(a: &[String; S], s: &String) -> String {
+    a.join(s)
+}
+
 /// `i8tobool` converts an integer into a boolean
 #[inline(always)]
 fn i8tobool(a: &i8) -> bool {
