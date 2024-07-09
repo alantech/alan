@@ -2250,6 +2250,12 @@ fn push<A: std::clone::Clone>(v: &mut Vec<A>, a: &A) {
     v.push(a.clone());
 }
 
+/// `hasarray` returns true if the specified value exists anywhere in the vector
+#[inline(always)]
+fn hasarray<T: std::cmp::PartialEq>(a: &Vec<T>, v: &T) -> bool {
+    a.contains(v)
+}
+
 /// `mapbuffer_onearg` runs the provided single-argument function on each element of the buffer,
 /// returning a new buffer
 #[inline(always)]
@@ -2309,6 +2315,17 @@ fn reducebuffer_difftype<A: std::clone::Clone, const S: usize, B: std::clone::Cl
         out = f(&out, &b[i]);
     }
     out
+}
+
+/// `hasbuffer` returns true if the specified value exists anywhere in the array
+#[inline(always)]
+fn hasbuffer<T: std::cmp::PartialEq, const S: usize>(a: &[T; S], v: &T) -> bool {
+    for val in a {
+        if val == v {
+            return true;
+        }
+    }
+    return false;
 }
 
 struct GPU {
