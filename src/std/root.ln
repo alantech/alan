@@ -428,7 +428,7 @@ export fn concat{T}(a: Array{T}, b: Array{T}) -> Array{T} binds concat;
 export fn filled{T}(v: T, l: i64) -> Array{T} binds filled;
 
 /// Buffer related bindings
-export fn len{T, S}(a: T[S]) -> i64 binds lenbuffer;
+export fn len{T, S}(T[S]) -> i64 = {S}();
 export fn map{T, S, U}(a: Buffer{T, S}, m: T -> U) -> Buffer{U, S} binds mapbuffer_onearg;
 export fn map{T, S, U}(a: Buffer{T, S}, m: (T, i64) -> U) -> Buffer{U, S} binds mapbuffer_twoarg;
 

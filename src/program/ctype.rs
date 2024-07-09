@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use super::Export;
 use super::FnKind;
 use super::Function;
+use super::Microstatement;
 use super::Program;
 use super::Scope;
 use super::TypeOperatorMapping;
@@ -175,11 +176,38 @@ impl CType {
     }
     pub fn to_callable_string(&self) -> String {
         // TODO: Be more efficient with this later
-        self.to_functional_string()
-            .replace(" ", "_")
-            .replace(",", "_")
-            .replace("{", "_")
-            .replace("}", "_")
+        match self {
+            CType::Int(_) | CType::Float(_) => format!(
+                "_{}",
+                self.to_functional_string()
+                    .replace(" ", "_")
+                    .replace(",", "_")
+                    .replace("{", "_")
+                    .replace("}", "_")
+            ),
+            CType::Type(_, t) => match **t {
+                CType::Int(_) | CType::Float(_) => format!(
+                    "_{}",
+                    self.to_functional_string()
+                        .replace(" ", "_")
+                        .replace(",", "_")
+                        .replace("{", "_")
+                        .replace("}", "_")
+                ),
+                _ => self
+                    .to_functional_string()
+                    .replace(" ", "_")
+                    .replace(",", "_")
+                    .replace("{", "_")
+                    .replace("}", "_"),
+            },
+            _ => self
+                .to_functional_string()
+                .replace(" ", "_")
+                .replace(",", "_")
+                .replace("{", "_")
+                .replace("}", "_"),
+        }
     }
     pub fn degroup(&self) -> CType {
         match self {
@@ -798,6 +826,36 @@ impl CType {
                     kind: FnKind::Derived,
                 });
                 // TODO: Add 'set' function
+            }
+            CType::Int(i) => {
+                // TODO: Support construction of other integer types
+                fs.push(Function {
+                    name: constructor_fn_name.clone(),
+                    args: Vec::new(),
+                    rettype: CType::Bound("i64".to_string(), "i64".to_string()),
+                    microstatements: vec![Microstatement::Return {
+                        value: Some(Box::new(Microstatement::Value {
+                            typen: CType::Bound("i64".to_string(), "i64".to_string()),
+                            representation: format!("{}", i),
+                        })),
+                    }],
+                    kind: FnKind::Normal,
+                });
+            }
+            CType::Float(f) => {
+                // TODO: Support construction of other float types
+                fs.push(Function {
+                    name: constructor_fn_name.clone(),
+                    args: Vec::new(),
+                    rettype: CType::Bound("f64".to_string(), "f64".to_string()),
+                    microstatements: vec![Microstatement::Return {
+                        value: Some(Box::new(Microstatement::Value {
+                            typen: CType::Bound("f64".to_string(), "f64".to_string()),
+                            representation: format!("{}", f),
+                        })),
+                    }],
+                    kind: FnKind::Normal,
+                });
             }
             _ => {} // Don't do anything for other types
         }

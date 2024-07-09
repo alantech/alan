@@ -1937,12 +1937,6 @@ fn lenarray<T>(a: &Vec<T>) -> i64 {
     a.len() as i64
 }
 
-/// `lenbuffer` returns the length of a buffer (Rust array)
-#[inline(always)]
-fn lenbuffer<T>(a: &[T]) -> i64 {
-    a.len() as i64
-}
-
 /// `pusharray` pushes a value onto the array
 #[inline(always)]
 fn pusharray<T: Clone>(a: &mut Vec<T>, v: &T) {
