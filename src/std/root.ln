@@ -428,6 +428,8 @@ export fn filled{T}(v: T, l: i64) -> Array{T} binds filled;
 
 /// Buffer related bindings
 export fn len{T, S}(a: T[S]) -> i64 binds lenbuffer;
+export fn map{T, S, U}(a: Buffer{T, S}, m: T -> U) -> Buffer{U, S} binds mapbuffer_onearg;
+export fn map{T, S, U}(a: Buffer{T, S}, m: (T, i64) -> U) -> Buffer{U, S} binds mapbuffer_twoarg;
 
 /// Process exit-related bindings
 export fn ExitCode(e: i8) -> ExitCode binds to_exit_code_i8;
@@ -465,6 +467,7 @@ export fn read{T}(g: GPU, b: GBuffer) -> Array{T} binds read_buffer;
 export fn print{T}(v: Result{T}) binds println_result;
 export fn print{T}(v: Maybe{T}) binds println_maybe;
 export fn print{T}(v: Array{T}) binds print_vec;
+export fn print{T, N}(v: Buffer{T, N}) binds print_buffer;
 export fn print{T}(v: Array{Result{T}}) binds print_vec_result;
 export fn print{T}(v: T) binds println;
 export fn eprint{T}(v: Result{T}) binds eprintln_result;
@@ -486,7 +489,9 @@ export infix mod as % precedence 3;
 // export infix template as % precedence 3;
 export infix pow as ** precedence 4;
 export infix and as & precedence 3;
+export infix and as && precedence 3;
 export infix or as | precedence 2;
+export infix or as || precedence 2;
 export infix xor as ^ precedence 2;
 export prefix not as ! precedence 4;
 export infix nand as !& precedence 3;

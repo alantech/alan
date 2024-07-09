@@ -1499,15 +1499,12 @@ join test
 Hello, World!
 "#;
 );
-/* Without the ternary syntax, there is no ternary abuse possible. But a syntax kinda like this
- * doesn't seem so bad? (Eg `1:2:3` produces an array of [1, 2, 3]. It almost feels like a
- * replacement for the array literal syntax. */
 test_ignore!(array_map => r#"
     export fn main {
       const count = [1, 2, 3, 4, 5]; // Ah, ah, ahh!
-      const byTwos = count.map(fn (n: int64) -> Result{int64} = n * 2);
-      count.map(fn (n: int64) = string(n)).join(', ').print;
-      byTwos.map(fn (n: Result{int64}) = string(n)).join(', ').print;
+      const byTwos = count.map(fn (n: i64) -> i64 = n * 2);
+      count.map(fn (n: i64) = string(n)).join(', ').print;
+      byTwos.map(fn (n: i64) = string(n)).join(', ').print;
     }"#;
     stdout "1, 2, 3, 4, 5\n2, 4, 6, 8, 10\n";
 );
@@ -1641,6 +1638,18 @@ test_ignore!(array_custom_types => r#"
       }).filter(fn (f: Foo) -> bool = f.bar).map(fn (f: Foo) -> string = f.foo).join(', ').print;
     }"#;
     stdout "2, 4\n";
+);
+// Buffers
+test!(buffer_map => r#"
+    fn double(x: i64) -> i64 = x * 2;
+    export fn main {
+        const b = Buffer{i64, 3}(1, 2, 3);
+        b.print;
+        b.len.print;
+        b.map(double).print;
+        b.map(add).print;
+    }"#;
+    stdout "[1, 2, 3]\n3\n[2, 4, 6]\n[1, 3, 5]\n";
 );
 
 // Hashing

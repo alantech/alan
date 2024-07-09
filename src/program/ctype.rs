@@ -229,24 +229,12 @@ impl CType {
     // sub-tree of the provided type to the generic in question. If we get a sub-tree for all
     // generic type names, we succeed, otherwise we have to fail on being unable to resolve
     // specific generics.
-    pub fn infer_generics(
+    pub fn infer_generics_inner_loop(
         scope: &Scope,
-        generics: &Vec<(String, CType)>,
-        fn_args: &Vec<(String, CType)>,
-        call_args: &Vec<CType>,
-    ) -> Result<Vec<CType>, Box<dyn std::error::Error>> {
-        let mut temp_scope = scope.temp_child();
-        for (generic_name, generic_type) in generics {
-            temp_scope
-                .types
-                .insert(generic_name.clone(), generic_type.clone());
-        }
-        let input_types = fn_args
-            .iter()
-            .map(|(_, t)| t.clone())
-            .collect::<Vec<CType>>();
-        let mut generic_types = HashMap::new();
-        for (a, i) in call_args.iter().zip(input_types.iter()) {
+        generic_types: &mut HashMap<String, CType>,
+        arg_type_vec: Vec<(&CType, &CType)>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        for (a, i) in arg_type_vec {
             let mut arg = vec![a];
             let mut input = vec![i];
             while arg.len() > 0 {
@@ -256,8 +244,7 @@ impl CType {
                     (Some(CType::Void), Some(CType::Void)) => { /* Do nothing */ }
                     (Some(CType::Infer(s, _)), _) => {
                         return Err(format!(
-                            "While attempting to infer {} but found an inference type for {} somehow",
-                            generics.iter().map(|(n, _)| n.as_str()).collect::<Vec<&str>>().join(", "),
+                            "While attempting to infer generics found an inference type {} as an input somehow",
                             s
                         )
                         .into());
@@ -520,18 +507,64 @@ impl CType {
                             if matched {
                                 generic_types.insert(g.clone(), a.clone());
                             } else {
-                                // Do nothing
+                                return Err(format!(
+                                    "Generic {} matched both {} and {}",
+                                    g,
+                                    other_type.to_strict_string(false),
+                                    a.to_strict_string(false)
+                                )
+                                .into());
                             }
                         } else {
                             generic_types.insert(g.clone(), a.clone());
                         }
                     }
                     (Some(CType::AnyOf(ts)), Some(b)) => {
-                        // Just enqueue all of the sub-types with clones of the b type and let them
-                        // try.
+                        let mut success = false;
                         for t in ts {
-                            arg.push(&*t);
-                            input.push(&*b);
+                            // We need to check each of these and accept the one that passes, or
+                            // fail if none of them pass. It's expected that most of them will
+                            // fail, so we can't just push them onto the queue, as those mismatches
+                            // will fail out of the function. Instead we clone the hashmap and add
+                            // each of these as a singular element to push through, merging the
+                            // hashmap on success and exiting the loop.
+                            let mut generic_types_inner = generic_types.clone();
+                            if let Ok(_) = CType::infer_generics_inner_loop(
+                                scope,
+                                &mut generic_types_inner,
+                                vec![(&t, &b)],
+                            ) {
+                                // If there's a conflict between the inferred types, we skip
+                                let mut matches = true;
+                                for (k, v) in &generic_types_inner {
+                                    match generic_types.get(k) {
+                                        Some(old_v) => {
+                                            if old_v != v {
+                                                matches = false;
+                                            }
+                                        }
+                                        None => { /* Do nothing */ }
+                                    }
+                                }
+                                if !matches {
+                                    continue;
+                                }
+                                success = true;
+                                for (k, v) in &generic_types_inner {
+                                    generic_types.insert(k.clone(), v.clone());
+                                }
+                            }
+                        }
+                        if !success {
+                            return Err(format!(
+                                "None of {} matches {}",
+                                ts.iter()
+                                    .map(|t| t.to_strict_string(false))
+                                    .collect::<Vec<String>>()
+                                    .join(" & "),
+                                b.to_strict_string(false)
+                            )
+                            .into());
                         }
                     }
                     _ => {
@@ -540,6 +573,33 @@ impl CType {
                 }
             }
         }
+        Ok(())
+    }
+    pub fn infer_generics(
+        scope: &Scope,
+        generics: &Vec<(String, CType)>,
+        fn_args: &Vec<(String, CType)>,
+        call_args: &Vec<CType>,
+    ) -> Result<Vec<CType>, Box<dyn std::error::Error>> {
+        let mut temp_scope = scope.temp_child();
+        for (generic_name, generic_type) in generics {
+            temp_scope
+                .types
+                .insert(generic_name.clone(), generic_type.clone());
+        }
+        let input_types = fn_args
+            .iter()
+            .map(|(_, t)| t.clone())
+            .collect::<Vec<CType>>();
+        let mut generic_types: HashMap<String, CType> = HashMap::new();
+        CType::infer_generics_inner_loop(
+            scope,
+            &mut generic_types,
+            call_args
+                .iter()
+                .zip(input_types.iter())
+                .collect::<Vec<(&CType, &CType)>>(),
+        )?;
         let mut output_types = Vec::new();
         for (generic_name, _) in generics {
             output_types.push(match generic_types.get(generic_name) {
