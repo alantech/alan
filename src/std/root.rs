@@ -2256,6 +2256,17 @@ fn hasarray<T: std::cmp::PartialEq>(a: &Vec<T>, v: &T) -> bool {
     a.contains(v)
 }
 
+/// `hasfnarray` returns true if the check function returns true for any element of the vector
+#[inline(always)]
+fn hasfnarray<T>(a: &Vec<T>, f: fn(&T) -> bool) -> bool {
+    for v in a {
+        if f(v) {
+            return true;
+        }
+    }
+    return false;
+}
+
 /// `mapbuffer_onearg` runs the provided single-argument function on each element of the buffer,
 /// returning a new buffer
 #[inline(always)]
@@ -2322,6 +2333,17 @@ fn reducebuffer_difftype<A: std::clone::Clone, const S: usize, B: std::clone::Cl
 fn hasbuffer<T: std::cmp::PartialEq, const S: usize>(a: &[T; S], v: &T) -> bool {
     for val in a {
         if val == v {
+            return true;
+        }
+    }
+    return false;
+}
+
+/// `hasfnbuffer` returns true if the check function returns true for any element of the array
+#[inline(always)]
+fn hasfnbuffer<T, const S: usize>(a: &[T; S], f: fn(&T) -> bool) -> bool {
+    for v in a {
+        if f(v) {
             return true;
         }
     }
