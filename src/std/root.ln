@@ -122,6 +122,10 @@ export type ExitCode binds std::process::ExitCode;
 export type Instant binds std::time::Instant;
 export type Duration binds std::time::Duration;
 
+/// Fallible and Maybe functions
+export fn getOr{T}(v: Maybe{T}, d: T) -> T binds maybe_get_or;
+export fn getOr{T}(v: Fallible{T}, d: T) -> T binds fallible_get_or;
+
 /// Integer-related functions and function bindings
 export fn ok(i: i8) -> Result{i8} binds alan_ok;
 export fn getOr(r: Result{i8}, default: i8) -> i8 binds get_or_i8;
@@ -428,6 +432,7 @@ export fn concat{T}(a: Array{T}, b: Array{T}) -> Array{T} binds concat;
 export fn filled{T}(v: T, l: i64) -> Array{T} binds filled;
 export fn has{T}(a: Array{T}, v: T) -> bool binds hasarray;
 export fn has{T}(a: Array{T}, f: (T) -> bool) -> bool binds hasfnarray;
+export fn find{T}(a: Array{T}, f: (T) -> bool) -> Maybe{T} binds findarray;
 
 /// Buffer related bindings
 export fn len{T, S}(T[S]) -> i64 = {S}();
@@ -437,6 +442,7 @@ export fn reduce{T, S}(a: Buffer{T, S}, f: (T, T) -> T) -> Maybe{T} binds reduce
 export fn reduce{T, S, U}(a: Buffer{T, S}, i: U, f: (U, T) -> U) -> U binds reducebuffer_difftype;
 export fn has{T, S}(a: Buffer{T, S}, v: T) -> bool binds hasbuffer;
 export fn has{T, S}(a: Buffer{T, S}, f: (T) -> bool) -> bool binds hasfnbuffer;
+export fn find{T, S}(a: Buffer{T, S}, f: (T) -> bool) -> Maybe{T} binds findbuffer;
 
 /// Process exit-related bindings
 export fn ExitCode(e: i8) -> ExitCode binds to_exit_code_i8;

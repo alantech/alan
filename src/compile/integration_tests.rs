@@ -1529,20 +1529,13 @@ test_ignore!(array_repeat_and_map_lin => r#"
     }"#;
     stdout "1, 2, 3, 1, 2, 3, 1, 2, 3\n";
 );
-test_ignore!(array_each_and_find => r#"
+test!(array_find => r#"
+    fn odd(x: i64) -> bool = x % 2 == 1;
     export fn main {
-      const test = [ 1, 1, 2, 3, 5, 8 ];
-      test.find(fn (val: int64) -> bool = val % 2 == 1).getOr(0).print;
-      test.each(fn (val: int64) = print('=' * val));
+        const test = [ 1, 1, 2, 3, 5, 8 ];
+        test.find(odd).getOr(0).print;
     }"#;
-    stdout r#"1
-=
-=
-==
-===
-=====
-========
-"#;
+    stdout "1\n";
 );
 test_ignore!(array_every_some_del => r#"
     fn isOdd (val: int64) -> bool = val % 2 == 1;
@@ -1691,6 +1684,14 @@ test!(buffer_has => r#"
         test.has(odd).print;
     }"#;
     stdout "true\nfalse\ntrue\ntrue\n";
+);
+test!(buffer_find => r#"
+    fn odd(x: i64) -> bool = x % 2 == 1;
+    export fn main {
+        const test = {i64[6]}(1, 1, 2, 3, 5, 8);
+        test.find(odd).getOr(0).print;
+    }"#;
+    stdout "1\n";
 );
 
 // Hashing
