@@ -319,11 +319,8 @@ export fn string(f: f64) -> string binds f64tostring;
 export fn string(b: bool) -> string binds booltostring;
 export fn string(s: string) -> string = s;
 export fn concat(a: string, b: string) -> string binds concatstring;
-export fn add(a: string, b: string) -> string binds concatstring; // To use the '+' operator
 export fn repeat(a: string, n: i64) -> string binds repeatstring;
-export fn mul(a: string, n: i64) -> string binds repeatstring; // To use the '*' operator
 export fn split(a: string, b: string) -> string[] binds splitstring;
-export fn div(a: string, b: string) -> string[] binds splitstring; // To use the '/' operator
 export fn len(a: string) -> i64 binds lenstring;
 export fn get(a: string, i: i64) -> Fallible{string} binds getstring;
 export fn trim(a: string) -> string binds trimstring;
@@ -459,8 +456,7 @@ export infix lt as < precedence 0;
 export infix lte as <= precedence 0;
 export infix gt as > precedence 0;
 export infix gte as >= precedence 0;
-export prefix len as # precedence 0;
-export infix index as @ precedence 0;
+export prefix len as # precedence 0; // TODO: Is this useful?
 export infix shl as << precedence 1;
 export infix shr as >> precedence 1;
 export infix wrl as <<< precedence 1;
