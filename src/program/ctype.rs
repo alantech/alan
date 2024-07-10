@@ -34,6 +34,7 @@ pub enum CType {
 }
 
 impl CType {
+    #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
         self.to_strict_string(true)
     }
@@ -42,11 +43,11 @@ impl CType {
             CType::Void => "()".to_string(),
             CType::Infer(s, _) => s.clone(), // TODO: Replace this
             CType::Type(n, t) => match strict {
-                true => format!("{}", n),
+                true => n.to_string(),
                 false => t.to_strict_string(strict),
             },
             CType::Generic(n, a, _) => format!("{}{{{}}}", n, a.join(", ")),
-            CType::Bound(s, _) => format!("{}", s),
+            CType::Bound(s, _) => s.to_string(),
             CType::BoundGeneric(s, a, _) => format!("{}{{{}}}", s, a.join(", ")),
             CType::ResolvedBoundGeneric(s, _, a, _) => format!(
                 "{}{{{}}}",
@@ -180,33 +181,21 @@ impl CType {
             CType::Int(_) | CType::Float(_) => format!(
                 "_{}",
                 self.to_functional_string()
-                    .replace(" ", "_")
-                    .replace(",", "_")
-                    .replace("{", "_")
-                    .replace("}", "_")
+                    .replace([' ', ',', '{', '}'], "_")
             ),
             CType::Type(_, t) => match **t {
                 CType::Int(_) | CType::Float(_) => format!(
                     "_{}",
                     self.to_functional_string()
-                        .replace(" ", "_")
-                        .replace(",", "_")
-                        .replace("{", "_")
-                        .replace("}", "_")
+                        .replace([' ', ',', '{', '}'], "_")
                 ),
                 _ => self
                     .to_functional_string()
-                    .replace(" ", "_")
-                    .replace(",", "_")
-                    .replace("{", "_")
-                    .replace("}", "_"),
+                    .replace([' ', ',', '{', '}'], "_"),
             },
             _ => self
                 .to_functional_string()
-                .replace(" ", "_")
-                .replace(",", "_")
-                .replace("{", "_")
-                .replace("}", "_"),
+                .replace([' ', ',', '{', '}'], "_"),
         }
     }
     pub fn degroup(&self) -> CType {
@@ -258,14 +247,13 @@ impl CType {
     // generic type names, we succeed, otherwise we have to fail on being unable to resolve
     // specific generics.
     pub fn infer_generics_inner_loop(
-        scope: &Scope,
         generic_types: &mut HashMap<String, CType>,
         arg_type_vec: Vec<(&CType, &CType)>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         for (a, i) in arg_type_vec {
             let mut arg = vec![a];
             let mut input = vec![i];
-            while arg.len() > 0 {
+            while !arg.is_empty() {
                 let a = arg.pop();
                 let i = input.pop();
                 match (a, i) {
@@ -324,10 +312,10 @@ impl CType {
                         }
                         // Enqueue the bound types for checking purposes
                         for t1 in ts1 {
-                            arg.push(&t1);
+                            arg.push(t1);
                         }
                         for t2 in ts2 {
-                            input.push(&t2);
+                            input.push(t2);
                         }
                     }
                     (
@@ -362,7 +350,7 @@ impl CType {
                     }
                     (Some(CType::Bool(b1)), Some(CType::Bool(b2))) => {
                         if b1 != b2 {
-                            return Err(format!("Mismatched booleans during inference").into());
+                            return Err("Mismatched booleans during inference".to_string().into());
                         }
                     }
                     (Some(CType::TString(s1)), Some(CType::TString(s2))) => {
@@ -375,22 +363,22 @@ impl CType {
                         }
                     }
                     (Some(CType::Group(g1)), Some(CType::Group(g2))) => {
-                        arg.push(&*g1);
-                        input.push(&*g2);
+                        arg.push(g1);
+                        input.push(g2);
                     }
                     (Some(CType::Group(g1)), Some(b)) => {
-                        arg.push(&*g1);
+                        arg.push(g1);
                         input.push(b);
                     }
                     (Some(a), Some(CType::Group(g2))) => {
                         arg.push(a);
-                        input.push(&*g2);
+                        input.push(g2);
                     }
                     (Some(CType::Function(i1, o1)), Some(CType::Function(i2, o2))) => {
-                        arg.push(&*i1);
-                        arg.push(&*o1);
-                        input.push(&*i2);
-                        input.push(&*o2);
+                        arg.push(i1);
+                        arg.push(o1);
+                        input.push(i2);
+                        input.push(o2);
                     }
                     (Some(CType::Tuple(ts1)), Some(CType::Tuple(ts2))) => {
                         if ts1.len() != ts2.len() {
@@ -403,10 +391,10 @@ impl CType {
                         }
                         // TODO: Allow out-of-order listing based on Field labels
                         for t1 in ts1 {
-                            arg.push(&*t1);
+                            arg.push(t1);
                         }
                         for t2 in ts2 {
-                            input.push(&*t2);
+                            input.push(t2);
                         }
                     }
                     (Some(CType::Tuple(ts1)), Some(b)) if ts1.len() == 1 => {
@@ -426,16 +414,16 @@ impl CType {
                             )
                             .into());
                         }
-                        arg.push(&*t1);
-                        input.push(&*t2);
+                        arg.push(t1);
+                        input.push(t2);
                     }
                     (Some(a), Some(CType::Field(_, t2))) => {
-                        arg.push(&a);
-                        input.push(&*t2);
+                        arg.push(a);
+                        input.push(t2);
                     }
                     (Some(CType::Field(_, t1)), Some(b)) => {
-                        arg.push(&*t1);
-                        input.push(&b);
+                        arg.push(t1);
+                        input.push(b);
                     }
                     (Some(CType::Either(ts1)), Some(CType::Either(ts2))) => {
                         if ts1.len() != ts2.len() {
@@ -447,21 +435,21 @@ impl CType {
                             .into());
                         }
                         for t1 in ts1 {
-                            arg.push(&*t1);
+                            arg.push(t1);
                         }
                         for t2 in ts2 {
-                            input.push(&*t2);
+                            input.push(t2);
                         }
                     }
                     (Some(CType::Buffer(t1, s1)), Some(CType::Buffer(t2, s2))) => {
-                        arg.push(&*t1);
-                        arg.push(&*s1);
-                        input.push(&*t2);
-                        input.push(&*s2);
+                        arg.push(t1);
+                        arg.push(s1);
+                        input.push(t2);
+                        input.push(s2);
                     }
                     (Some(CType::Array(t1)), Some(CType::Array(t2))) => {
-                        arg.push(&*t1);
-                        input.push(&*t2);
+                        arg.push(t1);
+                        input.push(t2);
                     }
                     (Some(CType::AnyOf(ts)), Some(CType::Infer(g, _))) => {
                         // Found an interesting inference situation where more than one answer may
@@ -493,7 +481,7 @@ impl CType {
                                     }
                                 }
                             }
-                            if matches.len() == 0 {
+                            if matches.is_empty() {
                                 // Do nothing
                             } else if matches.len() == 1 {
                                 generic_types
@@ -557,11 +545,12 @@ impl CType {
                             // each of these as a singular element to push through, merging the
                             // hashmap on success and exiting the loop.
                             let mut generic_types_inner = generic_types.clone();
-                            if let Ok(_) = CType::infer_generics_inner_loop(
-                                scope,
+                            if CType::infer_generics_inner_loop(
                                 &mut generic_types_inner,
-                                vec![(&t, &b)],
-                            ) {
+                                vec![(t, b)],
+                            )
+                            .is_ok()
+                            {
                                 // If there's a conflict between the inferred types, we skip
                                 let mut matches = true;
                                 for (k, v) in &generic_types_inner {
@@ -605,9 +594,9 @@ impl CType {
     }
     pub fn infer_generics(
         scope: &Scope,
-        generics: &Vec<(String, CType)>,
-        fn_args: &Vec<(String, CType)>,
-        call_args: &Vec<CType>,
+        generics: &[(String, CType)],
+        fn_args: &[(String, CType)],
+        call_args: &[CType],
     ) -> Result<Vec<CType>, Box<dyn std::error::Error>> {
         let mut temp_scope = scope.temp_child();
         for (generic_name, generic_type) in generics {
@@ -621,7 +610,6 @@ impl CType {
             .collect::<Vec<CType>>();
         let mut generic_types: HashMap<String, CType> = HashMap::new();
         CType::infer_generics_inner_loop(
-            scope,
             &mut generic_types,
             call_args
                 .iter()
@@ -645,7 +633,7 @@ impl CType {
                         return true;
                     }
                 }
-                return false;
+                false
             }
             // TODO: Do this without stringification
             (a, b) => a.degroup().to_strict_string(false) == b.degroup().to_strict_string(false),
@@ -682,8 +670,7 @@ impl CType {
                 // that is marked as a field, we also want to create an accessor
                 // function for it to simulate structs better.
                 let mut args = Vec::new();
-                for i in 0..ts.len() {
-                    let ti = &ts[i];
+                for (i, ti) in ts.iter().enumerate() {
                     match ti {
                         CType::Field(n, f) => {
                             // Create an accessor function
@@ -920,14 +907,11 @@ impl CType {
                         // get accessor functions to dig into the sub-types.
                         let mut inner_type = withtypeoperatorslist_to_ctype(
                             &create.typeassignables,
-                            &scope,
-                            &program,
+                            scope,
+                            program,
                         )?;
                         // Unwrap a Group type, if any exists, we don't want it here.
-                        while match &inner_type {
-                            CType::Group(_) => true,
-                            _ => false,
-                        } {
+                        while matches!(&inner_type, CType::Group(_)) {
                             inner_type = match inner_type {
                                 CType::Group(t) => *t,
                                 t => t,
@@ -980,7 +964,7 @@ impl CType {
                                 .map(|tc| tc.to_string())
                                 .collect::<Vec<String>>()
                                 .join("")
-                                .split(",")
+                                .split(',')
                                 .map(|r| r.trim().to_string())
                                 .collect::<Vec<String>>(),
                             bind.othertype.clone(),
@@ -992,7 +976,7 @@ impl CType {
         };
         if is_export {
             scope.exports.insert(name.clone(), Export::Type);
-            if fs.len() > 0 {
+            if !fs.is_empty() {
                 let mut names = HashSet::new();
                 for f in &fs {
                     names.insert(f.name.clone());
@@ -1003,7 +987,7 @@ impl CType {
             }
         }
         scope.types.insert(name, t.clone());
-        if fs.len() > 0 {
+        if !fs.is_empty() {
             let mut name_fn_pairs = HashMap::new();
             for f in fs {
                 if name_fn_pairs.contains_key(&f.name) {
@@ -1031,7 +1015,7 @@ impl CType {
         scope.exports.insert(name.clone(), Export::Type);
         let (_, fs) = ctype.to_functions(name.clone());
         scope.types.insert(name, ctype);
-        if fs.len() > 0 {
+        if !fs.is_empty() {
             let mut name_fn_pairs = HashMap::new();
             for f in fs {
                 if name_fn_pairs.contains_key(&f.name) {
@@ -1061,7 +1045,7 @@ impl CType {
             CType::IntrinsicGeneric(name.to_string(), arglen),
         )
     }
-    pub fn swap_subtype(self: &Self, old_type: &CType, new_type: &CType) -> CType {
+    pub fn swap_subtype(&self, old_type: &CType, new_type: &CType) -> CType {
         // Implemented recursively to be easier to follow. It would be nice to avoid all of the
         // cloning if the old type is not anywhere in the CType tree, but that would be a lot
         // harder to detect ahead of time.
@@ -1214,14 +1198,14 @@ impl CType {
     }
     pub fn cfail(message: &CType) -> ! {
         match message {
-            CType::TString(s) => CType::fail(&s),
+            CType::TString(s) => CType::fail(s),
             _ => CType::fail("Fail passed a type that does not resolve into a message string"),
         }
     }
     pub fn neg(t: &CType) -> CType {
-        match t {
-            &CType::Int(v) => CType::Int(-v),
-            &CType::Float(v) => CType::Float(-v),
+        match *t {
+            CType::Int(v) => CType::Int(-v),
+            CType::Float(v) => CType::Float(-v),
             _ => CType::fail(
                 "Attempting to add non-integer or non-float types together at compile time",
             ),
@@ -1277,7 +1261,7 @@ impl CType {
                         .join("\n")
                 )),
                 // All TStrings are quoted. TODO: Alan supports single-quotes, be less weird here
-                Ok(s) => CType::TString(format!("\"{}\"", s.replace("\"", "\\\""))),
+                Ok(s) => CType::TString(format!("\"{}\"", s.replace('"', "\\\""))),
             },
             _ => CType::fail("Env{K} must be given a key as a string to load"),
         }
@@ -1528,29 +1512,26 @@ pub fn withtypeoperatorslist_to_ctype(
     // Actually implement that complexity, for now, just pretend operators have only one binding.
     let mut queue = withtypeoperatorslist.clone();
     let mut out_ctype = None;
-    while queue.len() > 0 {
+    while !queue.is_empty() {
         let mut largest_operator_level: i8 = -1;
         let mut largest_operator_index: i64 = -1;
         for (i, assignable_or_operator) in queue.iter().enumerate() {
-            match assignable_or_operator {
-                parse::WithTypeOperators::Operators(o) => {
-                    let operatorname = o.trim();
-                    let operator =
-                        match program.resolve_typeoperator(scope, &operatorname.to_string()) {
-                            Some(o) => Ok(o),
-                            None => Err(format!("Operator {} not found", operatorname)),
-                        }?;
-                    let level = match &operator {
-                        TypeOperatorMapping::Prefix { level, .. } => level,
-                        TypeOperatorMapping::Infix { level, .. } => level,
-                        TypeOperatorMapping::Postfix { level, .. } => level,
-                    };
-                    if level > &largest_operator_level {
-                        largest_operator_level = *level;
-                        largest_operator_index = i as i64;
-                    }
+            if let parse::WithTypeOperators::Operators(o) = assignable_or_operator {
+                let operatorname = o.trim();
+                let operator = match program.resolve_typeoperator(scope, &operatorname.to_string())
+                {
+                    Some(o) => Ok(o),
+                    None => Err(format!("Operator {} not found", operatorname)),
+                }?;
+                let level = match &operator {
+                    TypeOperatorMapping::Prefix { level, .. } => level,
+                    TypeOperatorMapping::Infix { level, .. } => level,
+                    TypeOperatorMapping::Postfix { level, .. } => level,
+                };
+                if level > &largest_operator_level {
+                    largest_operator_level = *level;
+                    largest_operator_index = i as i64;
                 }
-                _ => {}
             }
         }
         if largest_operator_index > -1 {
@@ -1725,7 +1706,7 @@ pub fn withtypeoperatorslist_to_ctype(
 // TODO: This similarly shares a lot of structure with baseassignablelist_to_microstatements, see
 // if there is any way to DRY this up, or is it just doomed to be like this?
 pub fn typebaselist_to_ctype(
-    typebaselist: &Vec<parse::TypeBase>,
+    typebaselist: &[parse::TypeBase],
     scope: &Scope,
     program: &Program,
 ) -> Result<CType, Box<dyn std::error::Error>> {
@@ -1835,32 +1816,29 @@ pub fn typebaselist_to_ctype(
                 if prior_value.is_none() {
                     match c {
                         parse::Constants::Bool(b) => {
-                            prior_value = Some(CType::Bool(match b.as_str() {
-                                "true" => true,
-                                _ => false,
-                            }))
+                            prior_value = Some(CType::Bool(b.as_str() == "true"))
                         }
                         parse::Constants::Strn(s) => {
                             prior_value = Some(CType::TString(if s.starts_with('"') {
                                 s.clone()
                             } else {
                                 // TODO: Is there a cheaper way to do this conversion?
-                                s.replace("\"", "\\\"")
+                                s.replace('"', "\\\"")
                                     .replace("\\'", "\\\\\"")
-                                    .replace("'", "\"")
+                                    .replace('\'', "\"")
                                     .replace("\\\\\"", "'")
                             }))
                         }
                         parse::Constants::Num(n) => match n {
                             parse::Number::RealNum(r) => {
                                 prior_value = Some(CType::Float(
-                                    r.replace("_", "").parse::<f64>().unwrap(), // This should never fail if the
+                                    r.replace('_', "").parse::<f64>().unwrap(), // This should never fail if the
                                                                                 // parser says it's a float
                                 ))
                             }
                             parse::Number::IntNum(i) => {
                                 prior_value = Some(CType::Int(
-                                    i.replace("_", "").parse::<i128>().unwrap(), // Same deal here
+                                    i.replace('_', "").parse::<i128>().unwrap(), // Same deal here
                                 ))
                             }
                         },
@@ -1877,13 +1855,10 @@ pub fn typebaselist_to_ctype(
                                 CType::Tuple(ts) => {
                                     let mut out = None;
                                     for t in &ts {
-                                        match t {
-                                            CType::Field(f, c) => {
-                                                if f.as_str() == s.as_str() {
-                                                    out = Some(*c.clone());
-                                                }
+                                        if let CType::Field(f, c) = t {
+                                            if f.as_str() == s.as_str() {
+                                                out = Some(*c.clone());
                                             }
-                                            _ => {}
                                         }
                                     }
                                     match out {
@@ -2000,7 +1975,7 @@ pub fn typebaselist_to_ctype(
                                                 }
                                                 arg_block.push(arg);
                                             }
-                                            if arg_block.len() > 0 {
+                                            if !arg_block.is_empty() {
                                                 args.push(withtypeoperatorslist_to_ctype(&arg_block, scope, program)?);
                                             }
                                         }
@@ -2111,7 +2086,7 @@ pub fn typebaselist_to_ctype(
                             others => {
                                 // If we hit this branch, then the `args` vector needs to have a
                                 // length of zero, and then we just bubble up the type as-is
-                                if args.len() == 0 {
+                                if args.is_empty() {
                                     others.clone()
                                 } else {
                                     CType::fail(&format!(
@@ -2127,7 +2102,7 @@ pub fn typebaselist_to_ctype(
             }
             parse::TypeBase::GnCall(_) => { /* We always process GnCall in the Variable path */ }
             parse::TypeBase::TypeGroup(g) => {
-                if g.typeassignables.len() == 0 {
+                if g.typeassignables.is_empty() {
                     // It's a void type!
                     prior_value = Some(CType::Group(Box::new(CType::Void)));
                 } else {
@@ -2140,7 +2115,7 @@ pub fn typebaselist_to_ctype(
                 }
             }
         };
-        i = i + 1;
+        i += 1;
     }
     match prior_value {
         Some(p) => Ok(p),

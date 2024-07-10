@@ -23,7 +23,7 @@ pub fn from_microstatement(
         Microstatement::Assignment {
             name,
             value,
-            mutable,
+            mutable: _,
         } => {
             let (val, o) = from_microstatement(value, scope, program, out)?;
             // I wish I didn't have to write the following line because you can't re-assign a
@@ -32,11 +32,8 @@ pub fn from_microstatement(
             Ok((
                 format!(
                     "let {}{} = {}",
-                    if *mutable {
-                        "mut "
-                    } else {
-                        "mut " /* TODO: shouldn't be mut */
-                    },
+                    // TODO: Shouldn't always be mut
+                    "mut ",
                     name,
                     val,
                 )
@@ -68,17 +65,12 @@ pub fn from_microstatement(
                             | FnKind::DerivedVariadic => {
                                 let mut arg_strs = Vec::new();
                                 for arg in &fun.args {
-                                    match typen::ctype_to_rtype(&arg.1, scope, program, false) {
+                                    match typen::ctype_to_rtype(&arg.1, false) {
                                         Err(e) => Err(e),
                                         Ok(s) => {
                                             arg_strs.push(
-                                                s.replace("<", "_")
-                                                    .replace(">", "_")
-                                                    .replace(",", "_")
-                                                    .replace(" ", "")
-                                                    .replace("[", "_")
-                                                    .replace("]", "_")
-                                                    .replace(";", "_"),
+                                                s.replace(['<', '>', ',', '[', ']', ';'], "_")
+                                                    .replace(' ', ""),
                                             );
                                             /* TODO: Handle generic types better, also type inference */
                                             Ok(())
@@ -90,11 +82,11 @@ pub fn from_microstatement(
                                 let rustname =
                                     format!("{}_{}", fun.name, arg_strs.join("_")).to_string();
                                 // Make the function we need, but with the name we're
-                                out = generate(rustname.clone(), &fun, scope, program, out)?;
-                                return Ok((rustname, out));
+                                out = generate(rustname.clone(), fun, scope, program, out)?;
+                                Ok((rustname, out))
                             }
                             FnKind::Bind(rustname) | FnKind::BoundGeneric(_, rustname) => {
-                                return Ok((rustname.clone(), out));
+                                Ok((rustname.clone(), out))
                             }
                         }
                     }
@@ -118,11 +110,11 @@ pub fn from_microstatement(
             let mut arg_types = Vec::new();
             let mut arg_type_strs = Vec::new();
             for arg in args {
-                let arg_type = arg.get_type(scope, program)?;
-                let (_, o) = typen::generate(&arg_type, scope, program, out)?;
+                let arg_type = arg.get_type()?;
+                let (_, o) = typen::generate(&arg_type, out)?;
                 out = o;
                 arg_types.push(arg_type.clone());
-                match typen::ctype_to_rtype(&arg_type, scope, program, false) {
+                match typen::ctype_to_rtype(&arg_type, false) {
                     Err(e) => Err(e),
                     Ok(s) => {
                         arg_type_strs.push(s);
@@ -135,21 +127,16 @@ pub fn from_microstatement(
                     Err("Generic functions should have been resolved before reaching here".into())
                 }
                 FnKind::Normal => {
-                    let (_, o) = typen::generate(&function.rettype, scope, program, out)?;
+                    let (_, o) = typen::generate(&function.rettype, out)?;
                     out = o;
                     let mut arg_strs = Vec::new();
                     for arg in &function.args {
-                        match typen::ctype_to_rtype(&arg.1, scope, program, false) {
+                        match typen::ctype_to_rtype(&arg.1, false) {
                             Err(e) => Err(e),
                             Ok(s) => {
                                 arg_strs.push(
-                                    s.replace("<", "_")
-                                        .replace(">", "_")
-                                        .replace(",", "_")
-                                        .replace(" ", "")
-                                        .replace("[", "_")
-                                        .replace("]", "_")
-                                        .replace(";", "_"),
+                                    s.replace(['<', '>', ',', '[', ']', ';'], "_")
+                                        .replace(' ', ""),
                                 );
                                 /* TODO: Handle generic types better, also type inference */
                                 Ok(())
@@ -160,7 +147,7 @@ pub fn from_microstatement(
                     // duplicate function names that are allowed in Alan
                     let rustname = format!("{}_{}", function.name, arg_strs.join("_")).to_string();
                     // Make the function we need, but with the name we're
-                    out = generate(rustname.clone(), &function, scope, program, out)?;
+                    out = generate(rustname.clone(), function, scope, program, out)?;
                     // Now call this function
                     let mut argstrs = Vec::new();
                     for arg in args {
@@ -169,9 +156,9 @@ pub fn from_microstatement(
                         // If the argument is itself a function, this is the only place in Rust
                         // where you can't pass by reference, so we check the type and change
                         // the argument output accordingly.
-                        let arg_type = arg.get_type(scope, program)?;
+                        let arg_type = arg.get_type()?;
                         match arg_type {
-                            CType::Function(..) => argstrs.push(format!("{}", a)),
+                            CType::Function(..) => argstrs.push(a.to_string()),
                             _ => argstrs.push(format!("&mut {}", a)),
                         }
                     }
@@ -188,9 +175,9 @@ pub fn from_microstatement(
                         // If the argument is itself a function, this is the only place in Rust
                         // where you can't pass by reference, so we check the type and change
                         // the argument output accordingly.
-                        let arg_type = arg.get_type(scope, program)?;
+                        let arg_type = arg.get_type()?;
                         match arg_type {
-                            CType::Function(..) => argstrs.push(format!("{}", a)),
+                            CType::Function(..) => argstrs.push(a.to_string()),
                             _ => argstrs.push(format!("&mut {}", a)),
                         }
                     }
@@ -202,7 +189,7 @@ pub fn from_microstatement(
                 FnKind::Derived | FnKind::DerivedVariadic => {
                     // The initial work to get the values to construct the type is the same as
                     // with bound functions, though.
-                    let (_, o) = typen::generate(&function.rettype, scope, program, out)?;
+                    let (_, o) = typen::generate(&function.rettype, out)?;
                     out = o;
                     let mut argstrs = Vec::new();
                     for arg in args {
@@ -211,9 +198,9 @@ pub fn from_microstatement(
                         // If the argument is itself a function, this is the only place in Rust
                         // where you can't pass by reference, so we check the type and change
                         // the argument output accordingly.
-                        let arg_type = arg.get_type(scope, program)?;
+                        let arg_type = arg.get_type()?;
                         match arg_type {
-                            CType::Function(..) => argstrs.push(format!("{}", a)),
+                            CType::Function(..) => argstrs.push(a.to_string()),
                             _ => argstrs.push(format!("&mut {}", a)),
                         }
                     }
@@ -283,11 +270,7 @@ pub fn from_microstatement(
                     if function.args.len() == 1 {
                         // This is a wacky unwrapping logic...
                         let mut input_type = &function.args[0].1;
-                        while match input_type {
-                            CType::Type(..) => true,
-                            CType::Group(_) => true,
-                            _ => false,
-                        } {
+                        while matches!(input_type, CType::Type(..) | CType::Group(_)) {
                             input_type = match input_type {
                                 CType::Type(_, t) => t,
                                 CType::Group(t) => t,
@@ -300,11 +283,8 @@ pub fn from_microstatement(
                                     CType::Field(n, _) => *n == function.name,
                                     _ => false,
                                 });
-                                match accessor_field {
-                                    Some((i, _)) => {
-                                        return Ok((format!("{}.{}", argstrs[0], i), out));
-                                    }
-                                    None => {} // Fall through main checking logic
+                                if let Some((i, _)) = accessor_field {
+                                    return Ok((format!("{}.{}", argstrs[0], i), out));
                                 }
                             }
                             CType::Either(ts) => {
@@ -330,7 +310,7 @@ pub fn from_microstatement(
                                 let enum_name = enum_type.to_callable_string();
                                 // We pass through to the main path if we can't find a matching
                                 // name
-                                if let Some(_) = accessor_field {
+                                if accessor_field.is_some() {
                                     return Ok((
                                         format!(
                                             "(match {} {{ {}::{}(v) => Some(v), _ => None }})",
@@ -355,9 +335,8 @@ pub fn from_microstatement(
                             CType::Buffer(_, s) => {
                                 let size = match *s {
                                     CType::Int(s) => Ok(s as usize),
-                                    _ => Err(format!(
-                                        "Somehow received a buffer with a non-integer size"
-                                    )),
+                                    _ => Err("Somehow received a buffer with a non-integer size"
+                                        .to_string()),
                                 }?;
                                 if argstrs.len() == size {
                                     return Ok((
@@ -500,7 +479,7 @@ pub fn from_microstatement(
                             CType::Bound(_, _) => {
                                 // TODO: Is this the right thing to do for aliases to bound
                                 // types in all cases?
-                                return Ok((format!("{}", argstrs.join(", ")), out));
+                                return Ok((argstrs.join(", "), out));
                             }
                             otherwise => {
                                 return Err(format!("How did you get here? Trying to create a constructor function for {:?}", otherwise).into());
@@ -538,7 +517,7 @@ pub fn generate(
     let mut arg_strs = Vec::new();
     for arg in &function.args {
         let (l, t) = arg;
-        let (t_str, o) = typen::generate(t, scope, program, out)?;
+        let (t_str, o) = typen::generate(t, out)?;
         out = o;
         arg_strs.push(format!("{}: &{}", l, t_str).to_string());
     }
@@ -546,7 +525,7 @@ pub fn generate(
         CType::Void => None,
         CType::Type(n, _) if n == "void" => None,
         otherwise => {
-            let (t_str, o) = typen::generate(otherwise, scope, program, out)?;
+            let (t_str, o) = typen::generate(otherwise, out)?;
             out = o;
             Some(t_str)
         }

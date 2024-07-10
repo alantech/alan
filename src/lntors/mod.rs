@@ -46,7 +46,7 @@ pub fn lntors(entry_file: String) -> Result<String, Box<dyn std::error::Error>> 
     let fns = fn_generate(
         "main".to_string(),
         &func[0],
-        &scope,
+        scope,
         &program,
         OrderedHashMap::new(),
     )?;

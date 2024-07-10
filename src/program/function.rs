@@ -117,7 +117,7 @@ impl Function {
                                     t3.to_string().trim().to_string(),
                                 ),
                             ));
-                            i = i + 4;
+                            i += 4;
                         }
                         (Some(t1), Some(t2), Some(t3), None) if t2.to_string().trim() == ":" => {
                             // TODO: This should be an interface type, instead
@@ -128,7 +128,7 @@ impl Function {
                                     t3.to_string().trim().to_string(),
                                 ),
                             ));
-                            i = i + 3; // This should exit the loop
+                            i += 3; // This should exit the loop
                         }
                         (Some(t1), Some(t2), _, _) if t2.to_string().trim() == "," => {
                             // TODO: This should be an interface type, instead
@@ -136,7 +136,7 @@ impl Function {
                                 t1.to_string().trim().to_string(),
                                 CType::Infer(t1.to_string().trim().to_string(), "Any".to_string()),
                             ));
-                            i = i + 2;
+                            i += 2;
                         }
                         (Some(t1), None, None, None) => {
                             // TODO: This should be an interface type, instead
@@ -144,7 +144,7 @@ impl Function {
                                 t1.to_string().trim().to_string(),
                                 CType::Infer(t1.to_string().trim().to_string(), "Any".to_string()),
                             ));
-                            i = i + 1;
+                            i += 1;
                         }
                         (a, b, c, d) => {
                             // Any other patterns are invalid
@@ -178,7 +178,7 @@ impl Function {
                                     t3.to_string().trim().to_string(),
                                 ),
                             ));
-                            i = i + 4;
+                            i += 4;
                         }
                         (Some(t1), Some(t2), Some(t3), None) if t2.to_string().trim() == ":" => {
                             // TODO: This should be an interface type, instead
@@ -189,7 +189,7 @@ impl Function {
                                     t3.to_string().trim().to_string(),
                                 ),
                             ));
-                            i = i + 3; // This should exit the loop
+                            i += 3; // This should exit the loop
                         }
                         (Some(t1), Some(t2), _, _) if t2.to_string().trim() == "," => {
                             // TODO: This should be an interface type, instead
@@ -197,7 +197,7 @@ impl Function {
                                 t1.to_string().trim().to_string(),
                                 CType::Infer(t1.to_string().trim().to_string(), "Any".to_string()),
                             ));
-                            i = i + 2;
+                            i += 2;
                         }
                         (Some(t1), None, None, None) => {
                             // TODO: This should be an interface type, instead
@@ -205,7 +205,7 @@ impl Function {
                                 t1.to_string().trim().to_string(),
                                 CType::Infer(t1.to_string().trim().to_string(), "Any".to_string()),
                             ));
-                            i = i + 1;
+                            i += 1;
                         }
                         (a, b, c, d) => {
                             // Any other patterns are invalid
@@ -224,7 +224,7 @@ impl Function {
                 Vec::new(),
                 CType::Void,
             )), // TODO: Does this path *ever* trigger?
-            Some(typeassignable) if typeassignable.len() == 0 => Ok((Vec::new(), CType::Void)),
+            Some(typeassignable) if typeassignable.is_empty() => Ok((Vec::new(), CType::Void)),
             Some(typeassignable) => match &kind {
                 FnKind::Generic(gs, _) | FnKind::BoundGeneric(gs, _) => {
                     let mut temp_scope = scope.child(program);
@@ -233,7 +233,7 @@ impl Function {
                         CType::from_ctype(&mut temp_scope, g.0.clone(), g.1.clone());
                     }
                     let ctype =
-                        withtypeoperatorslist_to_ctype(&typeassignable, &temp_scope, program)?;
+                        withtypeoperatorslist_to_ctype(typeassignable, &temp_scope, program)?;
                     // If the `ctype` is a Function type, we have both the input and output defined. If
                     // it's any other type, we presume it's only the input type defined
                     let (input_type, output_type) = match ctype {
@@ -255,8 +255,8 @@ impl Function {
                     let mut out_args = Vec::new();
                     match degrouped_input {
                         CType::Tuple(ts) => {
-                            for i in 0..ts.len() {
-                                out_args.push(match &ts[i] {
+                            for (i, t) in ts.iter().enumerate() {
+                                out_args.push(match t {
                                     CType::Field(argname, t) => (argname.clone(), *t.clone()),
                                     otherwise => (format!("arg{}", i), otherwise.clone()),
                                 });
@@ -270,7 +270,7 @@ impl Function {
                 }
                 _ => {
                     // TODO: Figure out how to drop this duplication
-                    let ctype = withtypeoperatorslist_to_ctype(&typeassignable, scope, program)?;
+                    let ctype = withtypeoperatorslist_to_ctype(typeassignable, scope, program)?;
                     // If the `ctype` is a Function type, we have both the input and output defined. If
                     // it's any other type, we presume it's only the input type defined
                     let (input_type, output_type) = match ctype {
@@ -288,8 +288,8 @@ impl Function {
                         // function and that it is using the `->` operator syntax. These are terrible
                         // assumptions and this hacky code needs to die soon.
                         let mut lastfnop = None;
-                        for i in 0..typeassignable.len() {
-                            if typeassignable[i].to_string().trim() == "->" {
+                        for (i, ta) in typeassignable.iter().enumerate() {
+                            if ta.to_string().trim() == "->" {
                                 lastfnop = Some(i);
                             }
                         }
@@ -298,9 +298,8 @@ impl Function {
                                 typeassignable[lastfnop + 1..typeassignable.len()].to_vec();
                             // TODO: Be more complete here
                             let name = output_type.to_callable_string();
-                            if let Some(_) = program.resolve_type(scope, &name) {
-                                // Don't recreate the exact same thing. It only causes pain
-                            } else {
+                            // Don't recreate the exact same thing. It only causes pain
+                            if program.resolve_type(scope, &name).is_none() {
                                 let parse_type = parse::Types {
                                     typen: "type".to_string(),
                                     a: "".to_string(),
@@ -334,8 +333,8 @@ impl Function {
                     let mut out_args = Vec::new();
                     match degrouped_input {
                         CType::Tuple(ts) => {
-                            for i in 0..ts.len() {
-                                out_args.push(match &ts[i] {
+                            for (i, t) in ts.iter().enumerate() {
+                                out_args.push(match t {
                                     CType::Field(argname, t) => (argname.clone(), *t.clone()),
                                     otherwise => (format!("arg{}", i), otherwise.clone()),
                                 });
@@ -359,7 +358,7 @@ impl Function {
             }
             // We can't generate the rest of the microstatements while the generic function is
             // still generic
-            if let None = &function_ast.optgenerics {
+            if function_ast.optgenerics.is_none() {
                 for statement in &statements {
                     ms = statement_to_microstatements(statement, scope, program, ms)?;
                 }

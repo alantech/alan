@@ -38,24 +38,20 @@ pub enum Microstatement {
 }
 
 impl Microstatement {
-    pub fn get_type(
-        &self,
-        scope: &Scope,
-        program: &Program,
-    ) -> Result<CType, Box<dyn std::error::Error>> {
+    pub fn get_type(&self) -> Result<CType, Box<dyn std::error::Error>> {
         match self {
             Self::Value { typen, .. } => Ok(typen.clone()),
             Self::Array { typen, .. } => Ok(typen.clone()),
             Self::Arg { typen, .. } => Ok(typen.clone()),
-            Self::Assignment { value, .. } => value.get_type(scope, program),
+            Self::Assignment { value, .. } => value.get_type(),
             Self::Return { value } => match value {
-                Some(v) => v.get_type(scope, program),
+                Some(v) => v.get_type(),
                 None => Ok(CType::Void),
             },
             Self::FnCall { function, args } => {
                 let mut arg_types = Vec::new();
                 for arg in args {
-                    let arg_type = arg.get_type(scope, program)?;
+                    let arg_type = arg.get_type()?;
                     arg_types.push(arg_type);
                 }
                 Ok(function.rettype.clone())
@@ -66,6 +62,7 @@ impl Microstatement {
 
 #[derive(Clone, Debug)]
 enum BaseChunk<'a> {
+    #[allow(clippy::upper_case_acronyms)]
     IIGE(
         &'a Option<Microstatement>,
         &'a parse::Functions,
@@ -78,6 +75,7 @@ enum BaseChunk<'a> {
         &'a parse::GnCall,
         Option<&'a parse::FnCall>,
     ),
+    #[allow(clippy::upper_case_acronyms)]
     IIFE(
         &'a Option<Microstatement>,
         &'a parse::Functions,
@@ -103,7 +101,7 @@ enum BaseChunk<'a> {
 }
 
 pub fn baseassignablelist_to_microstatements(
-    bal: &Vec<parse::BaseAssignable>,
+    bal: &[parse::BaseAssignable],
     scope: &mut Scope,
     program: &mut Program,
     mut microstatements: Vec<Microstatement>,
@@ -263,7 +261,7 @@ pub fn baseassignablelist_to_microstatements(
                 .into());
             }
         };
-        i = i + inc;
+        i += inc;
         // Now we just operate on our chunk and create a new prior_value to replace the old one, if
         // any exists. We'll start from the easier ones first and work our way up to the
         // complicated ones
@@ -284,9 +282,9 @@ pub fn baseassignablelist_to_microstatements(
                                 s.clone()
                             } else {
                                 // TODO: Is there a cheaper way to do this conversion?
-                                s.replace("\"", "\\\"")
+                                s.replace('\"', "\\\"")
                                     .replace("\\'", "\\\\\"")
-                                    .replace("'", "\"")
+                                    .replace('\'', "\"")
                                     .replace("\\\\\"", "'")
                             },
                         });
@@ -321,7 +319,7 @@ pub fn baseassignablelist_to_microstatements(
                     // Microstatment::Assignment, but Rust doesn't seem to know that, so force
                     // it.
                     Some(m) => match m {
-                        Microstatement::Assignment { value, .. } => value.get_type(scope, program),
+                        Microstatement::Assignment { value, .. } => value.get_type(),
                         Microstatement::Arg { typen, .. } => Ok(typen.clone()),
                         _ => unreachable!(),
                     },
@@ -330,10 +328,7 @@ pub fn baseassignablelist_to_microstatements(
                         match program.resolve_function_types(scope, v) {
                             CType::Void => {
                                 // It could be a constant
-                                let maybe_c = match program.resolve_const(scope, v) {
-                                    Some(c) => Some(c.clone()),
-                                    None => None,
-                                };
+                                let maybe_c = program.resolve_const(scope, v).cloned();
                                 match maybe_c {
                                     None => Err(format!("Couldn't find variable {}", v).into()),
                                     Some(c) => {
@@ -372,7 +367,7 @@ pub fn baseassignablelist_to_microstatements(
             }
             BaseChunk::Array(a) => {
                 // We don't allow `[]` syntax, so blow up if the assignablelist is empty
-                if a.assignablelist.len() == 0 {
+                if a.assignablelist.is_empty() {
                     return Err("Cannot create an empty array with bracket syntax, use `Array{MyType}()` syntax instead".into());
                 }
                 let mut array_vals = Vec::new();
@@ -383,7 +378,7 @@ pub fn baseassignablelist_to_microstatements(
                 }
                 // TODO: Currently assuming all array values are the same type, should check that
                 // better
-                let inner_type = array_vals[0].get_type(scope, program)?;
+                let inner_type = array_vals[0].get_type()?;
                 let inner_type_str = inner_type.to_callable_string();
                 let array_type_name = format!("Array_{}_", inner_type_str);
                 let array_type = CType::Array(Box::new(inner_type));
@@ -426,7 +421,7 @@ pub fn baseassignablelist_to_microstatements(
                     }
                     let mut arg_types = Vec::new();
                     for m in &array_accessor_microstatements {
-                        arg_types.push(m.get_type(scope, program)?);
+                        arg_types.push(m.get_type()?);
                     }
                     let function = program.resolve_function(scope, &"get".to_string(), &arg_types);
                     match function {
@@ -465,7 +460,7 @@ pub fn baseassignablelist_to_microstatements(
                     constant_accessor_microstatements.push(microstatements.pop().unwrap());
                     let mut arg_types = Vec::new();
                     for m in &constant_accessor_microstatements {
-                        arg_types.push(m.get_type(scope, program)?);
+                        arg_types.push(m.get_type()?);
                     }
                     let function = program.resolve_function(scope, &"get".to_string(), &arg_types);
                     match function {
@@ -504,7 +499,7 @@ pub fn baseassignablelist_to_microstatements(
                     Some(fncall) => {
                         for arg in &fncall.assignablelist {
                             microstatements = withoperatorslist_to_microstatements(
-                                &arg,
+                                arg,
                                 scope,
                                 program,
                                 microstatements,
@@ -515,7 +510,7 @@ pub fn baseassignablelist_to_microstatements(
                 }
                 let mut arg_types = Vec::new();
                 for arg in &arg_microstatements {
-                    arg_types.push(arg.get_type(scope, program)?);
+                    arg_types.push(arg.get_type()?);
                 }
                 // We create a type on-the-fly from the contents the GnCall block. It's given a
                 // name based on the CType tree with all non-`a-zA-Z0-9_` chars replaced with `-`
@@ -578,7 +573,7 @@ pub fn baseassignablelist_to_microstatements(
                     Some(fncall) => {
                         for arg in &fncall.assignablelist {
                             microstatements = withoperatorslist_to_microstatements(
-                                &arg,
+                                arg,
                                 scope,
                                 program,
                                 microstatements,
@@ -589,7 +584,7 @@ pub fn baseassignablelist_to_microstatements(
                 }
                 let mut arg_types = Vec::new();
                 for arg in &arg_microstatements {
-                    arg_types.push(arg.get_type(scope, program)?);
+                    arg_types.push(arg.get_type()?);
                 }
                 // Now confirm that there's actually a function with this name that takes these
                 // types
@@ -598,6 +593,7 @@ pub fn baseassignablelist_to_microstatements(
                     Some(fun) => {
                         // Success! Let's emit this
                         // TODO: Do a better job at type rewriting here
+                        #[allow(clippy::needless_range_loop)]
                         for i in 0..fun.args.len() {
                             match &arg_microstatements[i] {
                                 Microstatement::Value {
@@ -653,7 +649,7 @@ pub fn baseassignablelist_to_microstatements(
                     Some(fncall) => {
                         for arg in &fncall.assignablelist {
                             microstatements = withoperatorslist_to_microstatements(
-                                &arg,
+                                arg,
                                 scope,
                                 program,
                                 microstatements,
@@ -664,24 +660,23 @@ pub fn baseassignablelist_to_microstatements(
                 }
                 let mut arg_types = Vec::new();
                 for arg in &arg_microstatements {
-                    arg_types.push(arg.get_type(scope, program)?);
+                    arg_types.push(arg.get_type()?);
                 }
                 let generics = {
                     let mut generic_string = g.to_string();
-                    match generic_string.strip_prefix("{") {
+                    match generic_string.strip_prefix('{') {
                         Some(s) => generic_string = s.to_string(),
                         None => { /* Do nothing */ }
                     }
-                    match generic_string.strip_suffix("}") {
+                    match generic_string.strip_suffix('}') {
                         Some(s) => generic_string = s.to_string(),
                         None => { /* Do nothing */ }
                     }
                     // TODO: This is still sketchy, but a bit less so? It will fail with a sub-type
                     // being a generic with multiple args. Do this the right way, later.
                     generic_string
-                        .replace("{", "_")
-                        .replace("}", "_")
-                        .split(",")
+                        .replace(['{', '}'], "_")
+                        .split(',')
                         .map(|s| s.to_string().trim().to_string())
                         .collect::<Vec<String>>()
                 };
@@ -712,10 +707,8 @@ pub fn baseassignablelist_to_microstatements(
                     generic_types.push(t);
                 }
                 let mut temp_scope = scope.child(program);
-                let maybe_type = match program.resolve_type(scope, f) {
-                    None => None,
-                    Some(t) => Some(t.clone()), // TODO: Kill the clone
-                };
+                // TODO: Kill the clone
+                let maybe_type = program.resolve_type(scope, f).cloned();
                 let maybe_generic_function = program.resolve_generic_function(
                     &mut temp_scope,
                     f,
@@ -756,14 +749,9 @@ pub fn baseassignablelist_to_microstatements(
                         let name = format!(
                             "{}{}",
                             f,
-                            g.to_string()
-                                .replace(" ", "_")
-                                .replace(",", "_")
-                                .replace(":", "_")
-                                .replace("{", "_")
-                                .replace("}", "_")
+                            g.to_string().replace([' ', ',', ':', '{', '}'], "_")
                         )
-                        .replace("|", "_")
+                        .replace('|', "_")
                         .replace("()", "void"); // Really bad
                         let parse_type = parse::Types {
                             typen: "type".to_string(),
@@ -844,29 +832,25 @@ pub fn withoperatorslist_to_microstatements(
     // on the types of the data involved, which makes things *really* complicated here. TODO:
     // Actually implement that complexity, for now, just pretend operators have only one binding.
     let mut queue = withoperatorslist.clone();
-    while queue.len() > 0 {
+    while !queue.is_empty() {
         let mut largest_operator_level: i8 = -1;
         let mut largest_operator_index: i64 = -1;
         for (i, assignable_or_operator) in queue.iter().enumerate() {
-            match assignable_or_operator {
-                parse::WithOperators::Operators(o) => {
-                    let operatorname = o.trim();
-                    let operator = match program.resolve_operator(scope, &operatorname.to_string())
-                    {
-                        Some(o) => Ok(o),
-                        None => Err(format!("Operator {} not found", operatorname)),
-                    }?;
-                    let level = match &operator {
-                        OperatorMapping::Prefix { level, .. } => level,
-                        OperatorMapping::Infix { level, .. } => level,
-                        OperatorMapping::Postfix { level, .. } => level,
-                    };
-                    if level > &largest_operator_level {
-                        largest_operator_level = *level;
-                        largest_operator_index = i as i64;
-                    }
+            if let parse::WithOperators::Operators(o) = assignable_or_operator {
+                let operatorname = o.trim();
+                let operator = match program.resolve_operator(scope, &operatorname.to_string()) {
+                    Some(o) => Ok(o),
+                    None => Err(format!("Operator {} not found", operatorname)),
+                }?;
+                let level = match &operator {
+                    OperatorMapping::Prefix { level, .. } => level,
+                    OperatorMapping::Infix { level, .. } => level,
+                    OperatorMapping::Postfix { level, .. } => level,
+                };
+                if level > &largest_operator_level {
+                    largest_operator_level = *level;
+                    largest_operator_index = i as i64;
                 }
-                _ => {}
             }
         }
         if largest_operator_index > -1 {
@@ -1081,10 +1065,7 @@ pub fn returns_to_microstatements(
             program,
             microstatements,
         )?;
-        let value = match microstatements.pop() {
-            None => None,
-            Some(v) => Some(Box::new(v)),
-        };
+        let value = microstatements.pop().map(Box::new);
         microstatements.push(Microstatement::Return { value });
     } else {
         microstatements.push(Microstatement::Return { value: None });

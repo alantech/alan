@@ -56,10 +56,10 @@ impl Const {
                 }
             }
         }
-        let typename = match &const_ast.typedec {
-            Some(typedec) => Some(typedec.fulltypename.to_string()),
-            None => None,
-        };
+        let typename = const_ast
+            .typedec
+            .as_ref()
+            .map(|td| td.fulltypename.to_string());
         let assignables = const_ast.assignables.clone();
         let c = Const {
             name,
