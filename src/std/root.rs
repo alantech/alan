@@ -34,13 +34,6 @@ impl From<String> for AlanError {
     }
 }
 
-/// `alan_ok` is a wrapper function that takes a reference to a value, clones it, and returns it as
-/// a Result-wrapped value. Hopefully this weird function will die soon.
-#[inline(always)]
-fn alan_ok<A: std::clone::Clone>(val: &A) -> Result<A, AlanError> {
-    Ok(val.clone())
-}
-
 /// `maybe_get_or` gets the Option's value or returns the default if not present.
 #[inline(always)]
 fn maybe_get_or<T: std::clone::Clone>(v: &Option<T>, d: &T) -> T {

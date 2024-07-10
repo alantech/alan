@@ -123,7 +123,6 @@ export type Duration binds std::time::Duration;
 /// Fallible and Maybe functions
 export fn getOr{T}(v: Maybe{T}, d: T) -> T binds maybe_get_or;
 export fn getOr{T}(v: Fallible{T}, d: T) -> T binds fallible_get_or;
-export fn ok{T}(v: T) -> Fallible{T} binds alan_ok;
 
 /// Integer-related functions and function bindings
 export fn i8(i: i8) -> i8 = i;
