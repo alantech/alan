@@ -1127,11 +1127,11 @@ test!(functions_and_custom_operators => r#"
     }
 
     fn bar(str: string, a: i64, b: i64) -> string {
-      return str * a + b.string;
+      return str.repeat(a).concat(b.string);
     }
 
     fn baz(pre: string, body: string) -> void {
-      print(pre + bar(body, 1, 2));
+      print(pre.concat(bar(body, 1, 2)));
     }
 
     fn double(a: i64) -> i64 = a * 2;
