@@ -1,12 +1,10 @@
 // TODO: Generics/Interfaces resolution
 use ordered_hash_map::OrderedHashMap;
 
-use crate::program::{CType, Program, Scope};
+use crate::program::CType;
 
 pub fn ctype_to_rtype(
     ctype: &CType,
-    scope: &Scope,
-    program: &Program,
     in_function_type: bool,
 ) -> Result<String, Box<dyn std::error::Error>> {
     match ctype {
@@ -26,7 +24,7 @@ pub fn ctype_to_rtype(
                                 enum_type_strs.push(format!(
                                     "{}({})",
                                     k,
-                                    ctype_to_rtype(&v, scope, program, in_function_type)?
+                                    ctype_to_rtype(v, in_function_type)?
                                 ));
                             }
                             CType::Type(n, _) | CType::ResolvedBoundGeneric(n, ..) => {
@@ -39,12 +37,7 @@ pub fn ctype_to_rtype(
                                 enum_type_strs.push(format!("{}({})", n, r));
                             }
                             CType::Group(g) => {
-                                enum_type_strs.push(ctype_to_rtype(
-                                    g,
-                                    scope,
-                                    program,
-                                    in_function_type,
-                                )?);
+                                enum_type_strs.push(ctype_to_rtype(g, in_function_type)?);
                             }
                             CType::Void => enum_type_strs.push("void".to_string()),
                             otherwise => {
@@ -64,7 +57,7 @@ pub fn ctype_to_rtype(
         CType::ResolvedBoundGeneric(_name, argstrs, args, binding) => {
             let mut args_rtype = Vec::new();
             for arg in args {
-                args_rtype.push(ctype_to_rtype(&arg, scope, program, in_function_type)?);
+                args_rtype.push(ctype_to_rtype(arg, in_function_type)?);
             }
             // TODO: Get a real Rust type parser and do this better
             let mut out_str = binding.clone();
@@ -78,56 +71,43 @@ pub fn ctype_to_rtype(
         CType::Float(f) => Ok(f.to_string()),
         CType::Bool(b) => Ok(b.to_string()),
         CType::TString(s) => Ok(s.clone()),
-        CType::Group(g) => Ok(format!(
-            "({})",
-            ctype_to_rtype(g, scope, program, in_function_type)?
-        )),
+        CType::Group(g) => Ok(format!("({})", ctype_to_rtype(g, in_function_type)?)),
         CType::Function(i, o) => Ok(format!(
             "fn({}) -> {}",
-            ctype_to_rtype(i, scope, program, true)?,
-            ctype_to_rtype(o, scope, program, true)?
+            ctype_to_rtype(i, true)?,
+            ctype_to_rtype(o, true)?
         )),
         CType::Tuple(ts) => {
             let mut out = Vec::new();
             for t in ts {
-                out.push(ctype_to_rtype(t, scope, program, in_function_type)?);
+                out.push(ctype_to_rtype(t, in_function_type)?);
             }
             Ok(format!("({})", out.join(", ")))
         }
         CType::Field(k, v) => {
             if in_function_type {
-                Ok(ctype_to_rtype(v, scope, program, in_function_type)?)
+                Ok(ctype_to_rtype(v, in_function_type)?)
             } else {
-                Ok(format!(
-                    "{}: {}",
-                    k,
-                    ctype_to_rtype(v, scope, program, in_function_type)?
-                ))
+                Ok(format!("{}: {}", k, ctype_to_rtype(v, in_function_type)?))
             }
         }
         CType::Either(_) => Ok("".to_string()), // What to do in this case?
         CType::AnyOf(_) => Ok("".to_string()),  // Same question. Does this make any sense in Rust?
         CType::Buffer(t, s) => Ok(format!(
             "[{};{}]",
-            ctype_to_rtype(t, scope, program, in_function_type)?,
+            ctype_to_rtype(t, in_function_type)?,
             match **s {
                 CType::Int(size) => Ok(size as usize),
-                _ => Err(format!(
-                    "Somehow received a buffer definition with a non-integer size"
-                )),
+                _ =>
+                    Err("Somehow received a buffer definition with a non-integer size".to_string()),
             }?
         )),
-        CType::Array(t) => Ok(format!(
-            "Vec<{}>",
-            ctype_to_rtype(t, scope, program, in_function_type)?
-        )),
+        CType::Array(t) => Ok(format!("Vec<{}>", ctype_to_rtype(t, in_function_type)?)),
     }
 }
 
 pub fn generate(
     typen: &CType,
-    scope: &Scope,
-    program: &Program,
     mut out: OrderedHashMap<String, String>,
 ) -> Result<(String, OrderedHashMap<String, String>), Box<dyn std::error::Error>> {
     match &typen {
@@ -138,9 +118,9 @@ pub fn generate(
         // into the source definition, potentially inserting inner types as needed
         CType::Bound(_name, rtype) => Ok((rtype.clone(), out)),
         CType::Type(name, t) => {
-            let res = generate(t, scope, program, out)?;
+            let res = generate(t, out)?;
             out = res.1;
-            out.insert(name.clone(), ctype_to_rtype(typen, scope, program, false)?);
+            out.insert(name.clone(), ctype_to_rtype(typen, false)?);
             Ok((name.clone(), out))
         }
         CType::Void => {
@@ -150,19 +130,19 @@ pub fn generate(
         CType::Either(ts) => {
             // Make sure every sub-type exists
             for t in ts {
-                let res = generate(t, scope, program, out)?;
+                let res = generate(t, out)?;
                 out = res.1;
             }
-            let out_str = ctype_to_rtype(&typen, scope, program, false)?;
+            let out_str = ctype_to_rtype(typen, false)?;
             Ok((out_str, out)) // TODO: Put something into out?
         }
         CType::Group(g) => {
-            let res = generate(g, scope, program, out)?;
+            let res = generate(g, out)?;
             out = res.1;
             Ok(("".to_string(), out))
         }
         otherwise => {
-            let out_str = ctype_to_rtype(&otherwise, scope, program, false)?;
+            let out_str = ctype_to_rtype(otherwise, false)?;
             Ok((out_str, out)) // TODO: Put something into out?
         }
     }

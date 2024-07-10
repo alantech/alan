@@ -6,6 +6,7 @@ mod function;
 mod import;
 mod microstatement;
 mod operatormapping;
+#[allow(clippy::module_inception)]
 mod program;
 mod scope;
 mod typeoperatormapping;

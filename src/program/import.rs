@@ -28,10 +28,7 @@ impl Import {
             parse::ImportStatement::Standard(s) => {
                 // First, get the path for the code
                 let ln_file = s.dependency.resolve(path)?;
-                let exists = match &program.scopes_by_file.get(&ln_file) {
-                    Some(_) => true,
-                    None => false,
-                };
+                let exists = program.scopes_by_file.get(&ln_file).is_some();
                 if !exists {
                     // Need to load this file into the program first
                     program.load(ln_file.clone())?;
@@ -50,10 +47,7 @@ impl Import {
             }
             parse::ImportStatement::From(f) => {
                 let ln_file = f.dependency.resolve(path)?;
-                let exists = match &program.scopes_by_file.get(&ln_file) {
-                    Some(_) => true,
-                    None => false,
-                };
+                let exists = program.scopes_by_file.get(&ln_file).is_some();
                 if !exists {
                     // Need to load this file into the program first
                     program.load(ln_file.clone())?;

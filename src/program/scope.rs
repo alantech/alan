@@ -56,7 +56,7 @@ impl Scope {
         let ast_ptr: *const parse::Ln = &*ast;
         let s_ptr: *mut Scope = &mut *s;
         let ast = unsafe { &*ast_ptr };
-        let mut s = unsafe { &mut *s_ptr };
+        let s = unsafe { &mut *s_ptr };
         for i in ast.imports.iter() {
             Import::from_ast(program, path.clone(), s, i)?;
         }
@@ -105,11 +105,11 @@ impl Scope {
                                 "Type" | "Generic" | "Bound" | "BoundGeneric" | "Int" | "Float"
                                 | "Bool" | "String" => { /* Do nothing for the 'structural' types */ }
                                 g @ ("Group" | "Array" | "Fail" | "Neg" | "Len" | "Size" | "FileStr"
-                                | "Env" | "EnvExists" | "Not") => CType::from_generic(&mut s, g, 1),
+                                | "Env" | "EnvExists" | "Not") => CType::from_generic(s, g, 1),
                                 g @ ("Function" | "Tuple" | "Field" | "Either" | "AnyOf" | "Buffer" | "Add"
                                 | "Sub" | "Mul" | "Div" | "Mod" | "Pow" | "Min" | "Max" | "If" | "And" | "Or"
                                 | "Xor" | "Nand" | "Nor" | "Xnor" | "Eq" | "Neq" | "Lt" | "Lte"
-                                | "Gt" | "Gte") => CType::from_generic(&mut s, g, 2),
+                                | "Gt" | "Gte") => CType::from_generic(s, g, 2),
                                 // TODO: Also add support for three arg `If` and `Env` with a
                                 // default property via overloading types
                                 unknown => {
@@ -136,7 +136,7 @@ impl Scope {
     pub fn temp_child(&self) -> Scope {
         let path = format!("{}/temp_child", self.path);
         Scope {
-            path: path,
+            path,
             parent: Some(self.path.clone()),
             imports: OrderedHashMap::new(),
             types: OrderedHashMap::new(),

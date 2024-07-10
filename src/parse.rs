@@ -452,6 +452,7 @@ test!(real =>
 // Validating named_or
 named_or!(num: Number => RealNum: String as real, IntNum: String as integer);
 impl Number {
+    #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
         match self {
             Number::RealNum(r) => r.clone(),
@@ -617,6 +618,7 @@ test!(strn =>
 );
 named_or!(varop: VarOp => Variable: String as variable, Operator: String as operators);
 impl VarOp {
+    #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
         match self {
             VarOp::Variable(v) => v.clone(),
@@ -700,6 +702,7 @@ named_and!(curdir: CurDir =>
     depsegments: Vec<String> as depsegments,
 );
 impl CurDir {
+    #[allow(clippy::inherent_to_string)]
     fn to_string(&self) -> String {
         format!("./{}", self.depsegments.join("/"))
     }
@@ -710,12 +713,14 @@ named_and!(pardir: ParDir =>
     depsegments: Vec<String> as depsegments,
 );
 impl ParDir {
+    #[allow(clippy::inherent_to_string)]
     fn to_string(&self) -> String {
         format!("../{}", self.depsegments.join("/"))
     }
 }
 named_or!(localdependency: LocalDependency => CurDir: CurDir as curdir, ParDir: ParDir as pardir);
 impl LocalDependency {
+    #[allow(clippy::inherent_to_string)]
     fn to_string(&self) -> String {
         match &self {
             LocalDependency::CurDir(c) => c.to_string(),
@@ -728,6 +733,7 @@ named_and!(globaldependency: GlobalDependency =>
     depsegments: Vec<String> as depsegments,
 );
 impl GlobalDependency {
+    #[allow(clippy::inherent_to_string)]
     fn to_string(&self) -> String {
         format!("@{}", self.depsegments.join("/"))
     }
@@ -809,6 +815,7 @@ named_or!(importstatement: ImportStatement =>
 );
 list!(opt imports: ImportStatement => importstatement);
 impl FullTypename {
+    #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
         format!(
             "{}{}",
@@ -826,6 +833,7 @@ named_or!(withtypeoperators: WithTypeOperators =>
     Operators: String as and!(optwhitespace, typeoperators, optwhitespace),
 );
 impl WithTypeOperators {
+    #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
         match self {
             WithTypeOperators::TypeBaseList(tbl) => tbl
@@ -856,6 +864,7 @@ named_and!(gncall: GnCall =>
     closecurly: String as closecurly,
 );
 impl GnCall {
+    #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
         format!(
             "{{{}}}",
@@ -901,6 +910,7 @@ named_or!(typebase: TypeBase =>
     Variable: String as variable,
 );
 impl TypeBase {
+    #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
         match self {
             TypeBase::GnCall(gc) => gc.to_string(),
@@ -982,6 +992,7 @@ named_or!(constants: Constants =>
     Strn: String as strn,
 );
 impl Constants {
+    #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
         match self {
             Constants::Bool(b) => b.clone(),
@@ -1000,6 +1011,7 @@ named_or!(baseassignable: BaseAssignable =>
     Constants: Constants as constants,
 );
 impl BaseAssignable {
+    #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
         match self {
             BaseAssignable::Functions(_f) => "todo".to_string(),
@@ -1062,6 +1074,7 @@ named_or!(withoperators: WithOperators =>
     Operators: String as and!(optwhitespace, operators, optwhitespace),
 );
 impl WithOperators {
+    #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
         match self {
             WithOperators::BaseAssignableList(bal) => bal

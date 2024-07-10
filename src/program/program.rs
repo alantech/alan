@@ -19,6 +19,7 @@ use ordered_hash_map::OrderedHashMap;
 #[derive(Debug)]
 pub struct Program {
     pub entry_file: String,
+    #[allow(clippy::box_collection)]
     pub scopes_by_file: OrderedHashMap<String, (Pin<Box<String>>, parse::Ln, Scope)>,
 }
 
@@ -43,8 +44,8 @@ impl Program {
         Ok(p)
     }
 
-    pub fn load(self: &mut Self, path: String) -> Result<(), Box<dyn std::error::Error>> {
-        let ln_src = if path.starts_with("@") {
+    pub fn load(&mut self, path: String) -> Result<(), Box<dyn std::error::Error>> {
+        let ln_src = if path.starts_with('@') {
             match path.as_str() {
                 "@root" => include_str!("../std/root.ln").to_string(),
                 "@std/app" => include_str!("../std/app.ln").to_string(),
@@ -55,11 +56,11 @@ impl Program {
         } else {
             read_to_string(&path)?
         };
-        Ok(Scope::from_src(self, &path, ln_src)?)
+        Scope::from_src(self, &path, ln_src)
     }
 
     pub fn resolve_typeoperator<'a>(
-        self: &'a Self,
+        &'a self,
         scope: &'a Scope,
         typeoperatorname: &String,
     ) -> Option<&TypeOperatorMapping> {
@@ -79,11 +80,7 @@ impl Program {
         }
     }
 
-    pub fn resolve_const<'a>(
-        self: &'a Self,
-        scope: &'a Scope,
-        constname: &String,
-    ) -> Option<&Const> {
+    pub fn resolve_const<'a>(&'a self, scope: &'a Scope, constname: &String) -> Option<&Const> {
         match scope.consts.get(constname) {
             Some(c) => Some(c),
             None => match &scope.parent {
@@ -96,7 +93,7 @@ impl Program {
         }
     }
 
-    pub fn resolve_type<'a>(self: &'a Self, scope: &'a Scope, typename: &String) -> Option<&CType> {
+    pub fn resolve_type<'a>(&'a self, scope: &'a Scope, typename: &String) -> Option<&CType> {
         // Tries to find the specified type within the portion of the program accessible from the
         // current scope (so first checking the current scope, then all imports, then the root
         // scope) Returns a reference to the type and the scope it came from.
@@ -121,7 +118,7 @@ impl Program {
     }
 
     pub fn resolve_operator<'a>(
-        self: &'a Self,
+        &'a self,
         scope: &'a Scope,
         operatorname: &String,
     ) -> Option<&OperatorMapping> {
@@ -141,36 +138,26 @@ impl Program {
         }
     }
 
-    pub fn resolve_function_types<'a>(
-        self: &'a Self,
-        scope: &'a Scope,
-        function: &String,
-    ) -> CType {
+    pub fn resolve_function_types<'a>(&'a self, scope: &'a Scope, function: &String) -> CType {
         // Gets every function visible from the specified scope with the same name and returns the
         // possible types in an array. TODO: Have the Function just have this type on the structure
         // so it doesn't need to be recreated each time.
         let mut scope_to_check: Option<&Scope> = Some(scope);
         let mut fs = Vec::new();
         while scope_to_check.is_some() {
-            match scope_to_check {
-                Some(s) => {
-                    match s.functions.get(function) {
-                        Some(funcs) => {
-                            for f in funcs {
-                                fs.push(f.clone()); // TODO: Drop this clone
-                            }
-                        }
-                        None => {}
+            if let Some(s) = scope_to_check {
+                if let Some(funcs) = s.functions.get(function) {
+                    for f in funcs {
+                        fs.push(f.clone()); // TODO: Drop this clone
                     }
-                    scope_to_check = match &s.parent {
-                        Some(p) => match self.scopes_by_file.get(p) {
-                            Some((_, _, s)) => Some(s),
-                            None => None,
-                        },
-                        None => None,
-                    };
                 }
-                None => {}
+                scope_to_check = match &s.parent {
+                    Some(p) => match self.scopes_by_file.get(p) {
+                        Some((_, _, s)) => Some(s),
+                        None => None,
+                    },
+                    None => None,
+                };
             }
         }
         let out_types = fs
@@ -204,7 +191,7 @@ impl Program {
                 }
             })
             .collect::<Vec<CType>>();
-        if out_types.len() == 0 {
+        if out_types.is_empty() {
             CType::Void
         } else if out_types.len() == 1 {
             out_types.into_iter().nth(0).unwrap()
@@ -214,7 +201,7 @@ impl Program {
     }
 
     pub fn resolve_function_by_type<'a>(
-        self: &'a Self,
+        &'a self,
         scope: &'a Scope,
         function: &String,
         fn_type: &CType,
@@ -224,48 +211,42 @@ impl Program {
         let fn_type_str = fn_type.degroup().to_strict_string(false);
         let mut scope_to_check: Option<&Scope> = Some(scope);
         while scope_to_check.is_some() {
-            match scope_to_check {
-                Some(s) => {
-                    match s.functions.get(function) {
-                        Some(funcs) => {
-                            for f in funcs {
-                                // TODO: Just have the function type on the Function object
-                                let f_type = CType::Function(
-                                    Box::new(CType::Tuple(
-                                        f.args
-                                            .iter()
-                                            .map(|(_, t)| t.clone())
-                                            .collect::<Vec<CType>>(),
-                                    )),
-                                    Box::new(f.rettype.clone()),
-                                );
-                                if f_type.degroup().to_strict_string(false) == fn_type_str {
-                                    return Some(f);
-                                }
-                            }
+            if let Some(s) = scope_to_check {
+                if let Some(funcs) = s.functions.get(function) {
+                    for f in funcs {
+                        // TODO: Just have the function type on the Function object
+                        let f_type = CType::Function(
+                            Box::new(CType::Tuple(
+                                f.args
+                                    .iter()
+                                    .map(|(_, t)| t.clone())
+                                    .collect::<Vec<CType>>(),
+                            )),
+                            Box::new(f.rettype.clone()),
+                        );
+                        if f_type.degroup().to_strict_string(false) == fn_type_str {
+                            return Some(f);
                         }
-                        None => {}
                     }
-                    scope_to_check = match &s.parent {
-                        Some(p) => match self.scopes_by_file.get(p) {
-                            Some((_, _, s)) => Some(s),
-                            None => None,
-                        },
-                        None => None,
-                    };
                 }
-                None => {}
+                scope_to_check = match &s.parent {
+                    Some(p) => match self.scopes_by_file.get(p) {
+                        Some((_, _, s)) => Some(s),
+                        None => None,
+                    },
+                    None => None,
+                };
             }
         }
         None
     }
 
     pub fn resolve_generic_function<'a>(
-        self: &'a mut Self,
+        &'a mut self,
         scope: &'a mut Scope,
         function: &String,
-        generic_types: &Vec<CType>,
-        args: &Vec<CType>,
+        generic_types: &[CType],
+        args: &[CType],
     ) -> Option<&Function> {
         // Tries to find the specified function within the portion of the program accessible from
         // the current scope (so first checking the current scope, then all imports, then the root
@@ -274,26 +255,20 @@ impl Program {
         let mut scope_to_check: Option<&Scope> = Some(scope);
         let mut fs = Vec::new();
         while scope_to_check.is_some() {
-            match scope_to_check {
-                Some(s) => {
-                    match s.functions.get(function) {
-                        Some(funcs) => {
-                            // Why is this okay but cloning funcs and then appending is not?
-                            for f in funcs {
-                                fs.push(f.clone());
-                            }
-                        }
-                        None => {}
+            if let Some(s) = scope_to_check {
+                if let Some(funcs) = s.functions.get(function) {
+                    // Why is this okay but cloning funcs and then appending is not?
+                    for f in funcs {
+                        fs.push(f.clone());
                     }
-                    scope_to_check = match &s.parent {
-                        Some(p) => match self.scopes_by_file.get(p) {
-                            Some((_, _, s)) => Some(s),
-                            None => None,
-                        },
-                        None => None,
-                    };
                 }
-                None => {}
+                scope_to_check = match &s.parent {
+                    Some(p) => match self.scopes_by_file.get(p) {
+                        Some((_, _, s)) => Some(s),
+                        None => None,
+                    },
+                    None => None,
+                };
             }
         }
         let mut generic_fs = Vec::new();
@@ -325,7 +300,7 @@ impl Program {
         let mut realized_fs = Vec::new();
         for (i, temp_scope) in temp_scopes.iter_mut().enumerate() {
             let f = generic_fs.get(i).unwrap();
-            match Function::from_generic_function(temp_scope, self, f, generic_types.clone()) {
+            match Function::from_generic_function(temp_scope, self, f, generic_types.to_vec()) {
                 Err(_) => { /* Do nothing */ }
                 Ok(f) => realized_fs.push(f.clone()),
             }
@@ -355,7 +330,7 @@ impl Program {
                 let fun_name = f.rettype.to_callable_string();
                 let (_, fs) = f.rettype.to_functions(fun_name.clone());
                 scope.types.insert(fun_name, f.rettype.clone());
-                if fs.len() > 0 {
+                if !fs.is_empty() {
                     let mut name_fn_pairs = HashMap::new();
                     for f in fs {
                         if name_fn_pairs.contains_key(&f.name) {
@@ -399,10 +374,10 @@ impl Program {
     }
 
     pub fn resolve_function<'a>(
-        self: &'a mut Self,
+        &'a mut self,
         scope: &'a mut Scope,
         function: &String,
-        args: &Vec<CType>,
+        args: &[CType],
     ) -> Option<&Function> {
         // First we try to get generic arguments for this function, if they exist, we return a
         // generic function realization, otherwise we return a normal function
@@ -413,54 +388,45 @@ impl Program {
     }
 
     pub fn resolve_function_generic_args<'a>(
-        self: &'a Self,
+        &'a self,
         scope: &'a Scope,
         function: &String,
-        args: &Vec<CType>,
+        args: &[CType],
     ) -> Option<Vec<CType>> {
         let mut scope_to_check: Option<&Scope> = Some(scope);
         let mut fs = Vec::new();
         while scope_to_check.is_some() {
-            match scope_to_check {
-                Some(s) => {
-                    match s.functions.get(function) {
+            if let Some(s) = scope_to_check {
+                if let Some(funcs) = s.functions.get(function) {
+                    // Why is this okay but cloning funcs and then appending is not?
+                    for f in funcs {
+                        fs.push(f);
+                    }
+                }
+                // TODO: Types are internally referred to by their structural name, not by the name the
+                // user gives them, so a type constructor function needs to have a lookup done by type and
+                // then coerce into the constructor function name and then call it. We *should* just be
+                // able to use the user's name for the types, but this was undone for generic functions to
+                // work correctly. We should try to find a better solution than this function resolution
+                // hackery.
+                if let Some(t) = self.resolve_type(s, function) {
+                    let constructor_fn_name = t.to_callable_string();
+                    match s.functions.get(&constructor_fn_name) {
                         Some(funcs) => {
-                            // Why is this okay but cloning funcs and then appending is not?
                             for f in funcs {
                                 fs.push(f);
                             }
                         }
-                        None => {}
+                        None => { /* Nothing matched, move on */ }
                     }
-                    // TODO: Types are internally referred to by their structural name, not by the name the
-                    // user gives them, so a type constructor function needs to have a lookup done by type and
-                    // then coerce into the constructor function name and then call it. We *should* just be
-                    // able to use the user's name for the types, but this was undone for generic functions to
-                    // work correctly. We should try to find a better solution than this function resolution
-                    // hackery.
-                    match self.resolve_type(s, function) {
-                        Some(t) => {
-                            let constructor_fn_name = t.to_callable_string();
-                            match s.functions.get(&constructor_fn_name) {
-                                Some(funcs) => {
-                                    for f in funcs {
-                                        fs.push(f);
-                                    }
-                                }
-                                None => { /* Nothing matched, move on */ }
-                            }
-                        }
-                        None => {}
-                    }
-                    scope_to_check = match &s.parent {
-                        Some(p) => match self.scopes_by_file.get(p) {
-                            Some((_, _, s)) => Some(s),
-                            None => None,
-                        },
-                        None => None,
-                    };
                 }
-                None => {}
+                scope_to_check = match &s.parent {
+                    Some(p) => match self.scopes_by_file.get(p) {
+                        Some((_, _, s)) => Some(s),
+                        None => None,
+                    },
+                    None => None,
+                };
             }
         }
         for f in &fs {
@@ -520,10 +486,10 @@ impl Program {
     }
 
     pub fn resolve_normal_function<'a>(
-        self: &'a Self,
+        &'a self,
         scope: &'a Scope,
         function: &String,
-        args: &Vec<CType>,
+        args: &[CType],
     ) -> Option<&Function> {
         // Tries to find the specified function within the portion of the program accessible from
         // the current scope (so first checking the current scope, then all imports, then the root
@@ -532,46 +498,37 @@ impl Program {
         let mut scope_to_check: Option<&Scope> = Some(scope);
         let mut fs = Vec::new();
         while scope_to_check.is_some() {
-            match scope_to_check {
-                Some(s) => {
-                    match s.functions.get(function) {
+            if let Some(s) = scope_to_check {
+                if let Some(funcs) = s.functions.get(function) {
+                    // Why is this okay but cloning funcs and then appending is not?
+                    for f in funcs {
+                        fs.push(f);
+                    }
+                }
+                // TODO: Types are internally referred to by their structural name, not by the name the
+                // user gives them, so a type constructor function needs to have a lookup done by type and
+                // then coerce into the constructor function name and then call it. We *should* just be
+                // able to use the user's name for the types, but this was undone for generic functions to
+                // work correctly. We should try to find a better solution than this function resolution
+                // hackery.
+                if let Some(t) = self.resolve_type(s, function) {
+                    let constructor_fn_name = t.to_callable_string();
+                    match s.functions.get(&constructor_fn_name) {
                         Some(funcs) => {
-                            // Why is this okay but cloning funcs and then appending is not?
                             for f in funcs {
                                 fs.push(f);
                             }
                         }
-                        None => {}
+                        None => { /* Nothing matched, move on */ }
                     }
-                    // TODO: Types are internally referred to by their structural name, not by the name the
-                    // user gives them, so a type constructor function needs to have a lookup done by type and
-                    // then coerce into the constructor function name and then call it. We *should* just be
-                    // able to use the user's name for the types, but this was undone for generic functions to
-                    // work correctly. We should try to find a better solution than this function resolution
-                    // hackery.
-                    match self.resolve_type(s, function) {
-                        Some(t) => {
-                            let constructor_fn_name = t.to_callable_string();
-                            match s.functions.get(&constructor_fn_name) {
-                                Some(funcs) => {
-                                    for f in funcs {
-                                        fs.push(f);
-                                    }
-                                }
-                                None => { /* Nothing matched, move on */ }
-                            }
-                        }
-                        None => {}
-                    }
-                    scope_to_check = match &s.parent {
-                        Some(p) => match self.scopes_by_file.get(p) {
-                            Some((_, _, s)) => Some(s),
-                            None => None,
-                        },
-                        None => None,
-                    };
                 }
-                None => {}
+                scope_to_check = match &s.parent {
+                    Some(p) => match self.scopes_by_file.get(p) {
+                        Some((_, _, s)) => Some(s),
+                        None => None,
+                    },
+                    None => None,
+                };
             }
         }
         for f in &fs {

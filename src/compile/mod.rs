@@ -120,10 +120,7 @@ wgpu = "0.20.1""#;
         let mut b = Vec::new();
         lockfile.read_to_end(&mut b)?;
         let t1 = match String::from_utf8(b) {
-            Ok(s) => match s.parse::<u64>() {
-                Ok(n) => n,
-                Err(_) => 0,
-            },
+            Ok(s) => s.parse::<u64>().unwrap_or(0),
             Err(_) => 0,
         };
         let t2 = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
@@ -388,11 +385,11 @@ pub fn to_rs(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
     let rs_str = lntors(source_file.clone())?;
     // Shove it into a temp file for rustc
     let out_file = match PathBuf::from(source_file).file_stem() {
-        Some(pb) => format!("{}.rs", pb.to_string_lossy().to_string()),
+        Some(pb) => format!("{}.rs", pb.to_string_lossy()),
         None => {
             return Err("Invalid path".into());
         }
     };
-    write(&out_file, rs_str)?;
+    write(out_file, rs_str)?;
     Ok(())
 }
