@@ -1546,26 +1546,6 @@ test!(array_every => r#"
     }"#;
     stdout "false\n";
 );
-test_ignore!(array_every_some_del => r#"
-    fn isOdd (val: int64) -> bool = val % 2 == 1;
-
-    export fn main {
-      const test = [ 1, 1, 2, 3, 5, 8 ];
-      test.every(isOdd).print;
-      test.some(isOdd).print;
-      print(test.length);
-      print(test.delete(1));
-      print(test.delete(4));
-      print(test.delete(10));
-    }"#;
-    stdout r#"false
-true
-6
-1
-8
-cannot remove idx 10 from array with length 4
-"#;
-);
 test!(array_reduce_filter_concat_no_closures => r#"
     // Temporary test until closure functions are implemented
     fn isOdd(i: i64) -> bool = i % 2 == 1;
@@ -3436,7 +3416,7 @@ test_ignore!(tree_user_defined_types => r#"
     }"#;
     stdout "myFoo\n";
 );
-test_ignore!(tree_every_find_some_reduce_prune => r#"
+test_ignore!(tree_every_find_has_reduce_prune => r#"
     export fn main {
       const myTree = newTree('foo');
       const barNode = myTree.addChild('bar');
@@ -3444,7 +3424,7 @@ test_ignore!(tree_every_find_some_reduce_prune => r#"
       const bayNode = barNode.addChild('bay');
 
       print(myTree.every(fn (c: Node{string}) -> bool = (c || 'wrong').length == 3));
-      print(myTree.some(fn (c: Node{string}) -> bool = (c || 'wrong').length == 1));
+      print(myTree.has(fn (c: Node{string}) -> bool = (c || 'wrong').length == 1));
       print(myTree.find(fn (c: Node{string}) -> bool = (c || 'wrong') == 'bay').getOr('wrong'));
       print(myTree.find(fn (c: Node{string}) -> bool = (c || 'wrong') == 'asf').getOr('wrong'));
 
