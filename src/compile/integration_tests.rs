@@ -198,7 +198,7 @@ test!(non_global_memory_exit_code => r#"
 // Unorganized Tests (TODO: Find a better grouping for these)
 test!(passing_ints_to_function => r#"
     fn aNumber(num: i64) {
-      print('I got a number! ' + num.string);
+      print('I got a number! '.concat(num.string));
     }
 
     export fn main {
@@ -738,47 +738,33 @@ true
 test!(string_ops => r#"
     export fn main {
       concat('Hello, ', 'World!').print;
-      print('Hello, ' + 'World!');
 
       repeat('hi ', 5).print;
-      print('hi ' * 5);
 
       // TODO: Add regex support
       //matches('foobar', 'fo.*').print;
       //print('foobar' ~ 'fo.*');
 
       index('foobar', 'ba').print;
-      print('foobar' @ 'ba');
 
       len('foobar').print;
       print(#'foobar');
 
       trim('   hi   ').print;
-      // TODO: Do we really want this operator?
-      // print(\`'   hi   ');
 
       split('Hello, World!', ', ')[0].print;
-      print(('Hello, World!' / ', ')[1]);
 
-      const res = split('Hello, World!', ', ');
+      const res = "Hello, World!".split(', ');
       res[0].print;
-
-      const res2 = 'Hello, World!' / ', ';
-      print(res2[1]);
     }"#;
     stdout r#"Hello, World!
-Hello, World!
 hi hi hi hi hi 
-hi hi hi hi hi 
-3
 3
 6
 6
 hi
 Hello
-World!
 Hello
-World!
 "#;
 );
 test!(string_const_vs_computed_equality => r#"
@@ -1141,11 +1127,11 @@ test!(functions_and_custom_operators => r#"
     }
 
     fn bar(str: string, a: i64, b: i64) -> string {
-      return str * a + b.string;
+      return str.repeat(a).concat(b.string);
     }
 
     fn baz(pre: string, body: string) -> void {
-      print(pre + bar(body, 1, 2));
+      print(pre.concat(bar(body, 1, 2)));
     }
 
     fn double(a: i64) -> i64 = a * 2;
