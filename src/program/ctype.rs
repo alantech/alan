@@ -114,7 +114,7 @@ impl CType {
             CType::Infer(s, _) => s.clone(), // TODO: What to do here?
             CType::Type(_, t) => t.to_functional_string(),
             CType::Generic(n, gs, _) => format!("{}{{{}}}", n, gs.join(", ")),
-            CType::Bound(_, b) => b.clone(),
+            CType::Bound(n, _) => n.clone(),
             CType::BoundGeneric(_, _, b) => b.clone(),
             CType::ResolvedBoundGeneric(_, gs, ts, b) => {
                 let mut out = b.clone();

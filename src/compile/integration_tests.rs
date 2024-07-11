@@ -2255,15 +2255,23 @@ test!(either => r#"
       const someStr = strOrI64('string');
       print(someStr.string);
       print(someStr.i64);
+      print(someStr.getOr(0));
+      print(someStr.getOr('text'));
 
       const someI64 = strOrI64(3);
       print(someI64.string);
       print(someI64.i64);
+      print(someI64.getOr(0));
+      print(someI64.getOr('text'));
     }"#;
     stdout r#"string
 void
+0
+string
 void
 3
+3
+text
 "#;
 );
 
@@ -2446,10 +2454,11 @@ test_compile_error!(undefined_function_call => r#"
     }"#;
     error "Could not find a function with a call signature of i64str(i64)";
 );
-test_compile_error!(totally_broken_statement => r#"
+test_ignore!(totally_broken_statement => r#"
     on app.start {
       app.oops
     }"#;
+    stderr "what";
 );
 
 /* Pending

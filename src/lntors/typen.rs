@@ -46,7 +46,11 @@ pub fn ctype_to_rtype(
                         }
                     }
                     let name = t.to_callable_string();
-                    Ok(format!("enum {} {{ {} }}", name, enum_type_strs.join(", ")))
+                    Ok(format!(
+                        "#[derive(Clone)]\nenum {} {{ {} }}",
+                        name,
+                        enum_type_strs.join(", ")
+                    ))
                 }
                 _ => Ok("".to_string()), // TODO: Is this correct?
             }
@@ -91,8 +95,8 @@ pub fn ctype_to_rtype(
                 Ok(format!("{}: {}", k, ctype_to_rtype(v, in_function_type)?))
             }
         }
-        CType::Either(_) => Ok("".to_string()), // What to do in this case?
-        CType::AnyOf(_) => Ok("".to_string()),  // Same question. Does this make any sense in Rust?
+        CType::Either(ts) => Ok(CType::Either(ts.clone()).to_callable_string()),
+        CType::AnyOf(_) => Ok("".to_string()), // Does this make any sense in Rust?
         CType::Buffer(t, s) => Ok(format!(
             "[{};{}]",
             ctype_to_rtype(t, in_function_type)?,
