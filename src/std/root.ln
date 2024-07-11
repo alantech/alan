@@ -120,9 +120,10 @@ export type ExitCode binds std::process::ExitCode;
 export type Instant binds std::time::Instant;
 export type Duration binds std::time::Duration;
 
-/// Fallible and Maybe functions
+/// Fallible, Maybe, and Either functions
 export fn getOr{T}(v: Maybe{T}, d: T) -> T binds maybe_get_or;
 export fn getOr{T}(v: Fallible{T}, d: T) -> T binds fallible_get_or;
+export fn getOr{T, U}(v: U, d: T) -> T = {T}(v).getOr(d);
 
 /// Integer-related functions and function bindings
 export fn i8(i: i8) -> i8 = i;

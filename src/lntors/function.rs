@@ -313,7 +313,7 @@ pub fn from_microstatement(
                                 if accessor_field.is_some() {
                                     return Ok((
                                         format!(
-                                            "(match {} {{ {}::{}(v) => Some(v), _ => None }})",
+                                            "(match {} {{ {}::{}(v) => Some(v.clone()), _ => None }})",
                                             argstrs[0], enum_name, function.name
                                         ),
                                         out,
