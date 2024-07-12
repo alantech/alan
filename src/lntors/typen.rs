@@ -28,9 +28,6 @@ pub fn ctype_to_rtype(
                                 ));
                             }
                             CType::Type(n, _) | CType::ResolvedBoundGeneric(n, ..) => {
-                                if n == "string" {
-                                    println!("wtf {:?}", t);
-                                }
                                 enum_type_strs.push(format!("{}({})", n, n));
                             }
                             CType::Bound(n, r) => {

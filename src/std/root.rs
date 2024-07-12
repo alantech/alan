@@ -1,4 +1,5 @@
 /// Rust functions that the root scope binds.
+use std::hash::Hasher;
 
 /// The `AlanError` type is a *cloneable* error that all errors are implemented as within Alan, to
 /// simplify error handling. In the future it will have a stack trace based on the Alan source
@@ -32,6 +33,43 @@ impl From<String> for AlanError {
     fn from(s: String) -> AlanError {
         AlanError { message: s }
     }
+}
+
+/// `clone` clones the input type
+#[inline(always)]
+fn clone<T: std::clone::Clone>(v: &T) -> T {
+    v.clone()
+}
+
+/// `hash` hashes the input type
+#[inline(always)]
+fn hash<T>(v: &T) -> i64 {
+    let mut hasher = std::hash::DefaultHasher::new();
+    let v_len = std::mem::size_of::<T>();
+    let v_raw = unsafe { std::slice::from_raw_parts(v as *const T as usize as *const u8, v_len) };
+    hasher.write(v_raw);
+    hasher.finish() as i64
+}
+
+/// `hasharray` hashes the input array one element at a time
+#[inline(always)]
+fn hasharray<T>(v: &Vec<T>) -> i64 {
+    let mut hasher = std::hash::DefaultHasher::new();
+    let v_len = std::mem::size_of::<T>();
+    for r in v {
+        let v_raw =
+            unsafe { std::slice::from_raw_parts(r as *const T as usize as *const u8, v_len) };
+        hasher.write(v_raw);
+    }
+    hasher.finish() as i64
+}
+
+/// `hashstring` hashes the input string
+#[inline(always)]
+fn hashstring(v: &String) -> i64 {
+    let mut hasher = std::hash::DefaultHasher::new();
+    hasher.write(v.as_str().as_bytes());
+    hasher.finish() as i64
 }
 
 /// `maybe_get_or` gets the Option's value or returns the default if not present.

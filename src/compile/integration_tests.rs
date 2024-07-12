@@ -1612,22 +1612,19 @@ test!(buffer_concat => r#"
 );
 
 // Hashing
-// TODO: I have no idea how I'm going to make this work in pure Rust, but damnit I'm gonna try.
-// This was super useful for a whole host of things.
-
-test_ignore!(to_hash => r#"
+test!(hash => r#"
     export fn main {
-      print(toHash(1));
-      print(toHash(3.14159));
-      print(toHash(true));
-      print(toHash('false'));
-      print(toHash([1, 2, 5, 3]));
+      print(hash(1));
+      print(hash(3.14159));
+      print(hash(true));
+      print(hash('false'));
+      print(hash([1, 2, 5, 3]));
     }"#;
-    stdout r#"-1058942856030168491
--5016367128657347516
--1058942856030168491
-6288867289231076425
--1521185239552941064
+    stdout r#"1742378985846435984
+-3655443395552619065
+4952851536318644461
+-3294960077868127759
+-8231513229892369092
 "#;
 );
 test_ignore!(basic_hashmap => r#"
@@ -2999,20 +2996,22 @@ End
 
 // Clone
 
-test_ignore!(clone => r#"
+test!(clone => r#"
+    // TODO: Implement re-assignment statements
     export fn main {
       let a = 3;
       let b = a.clone;
-      a = 4;
+      // a = 4;
       print(a);
       print(b);
       let c = [1, 2, 3];
       let d = c.clone;
-      d[0] = 2;
+      // d[0] = 2;
       c.map(string).join(', ').print;
       d.map(string).join(', ').print;
     }"#;
-    stdout "4\n3\n1, 2, 3\n2, 2, 3\n";
+    // stdout "4\n3\n1, 2, 3\n2, 2, 3\n";
+    stdout "3\n3\n1, 2, 3\n1, 2, 3\n";
 );
 
 // Runtime Error
