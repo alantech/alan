@@ -1819,15 +1819,24 @@ fn everyarray<T>(a: &Vec<T>, f: fn(&T) -> bool) -> bool {
     return true;
 }
 
+/// `concatarray` returns a new vector composed of the elements of the input vectors
+#[inline(always)]
+fn concatarray<T: std::clone::Clone>(a: &Vec<T>, b: &Vec<T>) -> Vec<T> {
+    let mut out = Vec::new();
+    for v in a {
+        out.push(v.clone());
+    }
+    for v in b {
+        out.push(v.clone());
+    }
+    out
+}
+
 /// `mapbuffer_onearg` runs the provided single-argument function on each element of the buffer,
 /// returning a new buffer
 #[inline(always)]
-fn mapbuffer_onearg<A, const N: usize, B: std::marker::Copy>(v: &[A; N], m: fn(&A) -> B) -> [B; N] {
-    let mut out = [m(&v[0]); N];
-    for i in 1..N {
-        out[i] = m(&v[i]);
-    }
-    out
+fn mapbuffer_onearg<A, const N: usize, B>(v: &[A; N], m: fn(&A) -> B) -> [B; N] {
+    std::array::from_fn(|i| m(&v[i]))
 }
 
 /// `mapbuffer_twoarg` runs the provided two-argument (value, index) function on each element of the
@@ -1922,6 +1931,19 @@ fn everybuffer<T, const S: usize>(a: &[T; S], f: fn(&T) -> bool) -> bool {
         }
     }
     return true;
+}
+
+/// `concatbuffer` mutates the first buffer given with the values of the other two. It depends on
+/// the provided buffer to be the right size to fit the data from both of the other buffers.
+#[inline(always)]
+fn concatbuffer<T: std::clone::Clone, const S: usize, const N: usize, const O: usize>(
+    o: &mut [T; O],
+    a: &[T; S],
+    b: &[T; N],
+) {
+    for (i, v) in a.iter().chain(b).enumerate() {
+        o[i] = v.clone();
+    }
 }
 
 struct GPU {

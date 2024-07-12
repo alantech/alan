@@ -1532,6 +1532,14 @@ test!(array_every => r#"
     }"#;
     stdout "false\n";
 );
+test!(array_concat => r#"
+    export fn main {
+        const test = [ 1, 1, 2, 3, 5, 8 ];
+        const test2 = [ 4, 5, 6 ];
+        test.concat(test2).map(string).join(', ').print;
+    }"#;
+    stdout "1, 1, 2, 3, 5, 8, 4, 5, 6\n";
+);
 test!(array_reduce_filter_concat_no_closures => r#"
     // Temporary test until closure functions are implemented
     fn isOdd(i: i64) -> bool = i % 2 == 1;
@@ -1676,6 +1684,14 @@ test!(buffer_every => r#"
         test.every(odd).print;
     }"#;
     stdout "false\n";
+);
+test!(buffer_concat => r#"
+    export fn main {
+        const test = {i64[6]}(1, 1, 2, 3, 5, 8);
+        const test2 = {i64[3]}(4, 5, 6);
+        test.concat(test2).map(string).join(', ').print;
+    }"#;
+    stdout "1, 1, 2, 3, 5, 8, 4, 5, 6\n";
 );
 
 // Hashing
