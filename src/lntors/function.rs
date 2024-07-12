@@ -248,10 +248,12 @@ pub fn from_microstatement(
                                 if i == "i64" =>
                             {
                                 match (*a.clone(), *r.clone()) {
-                                    (CType::Array(_), CType::Either(ts)) if ts.len() == 2 => {
+                                    (CType::Array(_) | CType::Buffer(..), CType::Either(ts))
+                                        if ts.len() == 2 =>
+                                    {
                                         return Ok((
                                             format!(
-                                                "{}.get({})",
+                                                "{}.get({}).map(|v| v.clone())",
                                                 argstrs[0],
                                                 match argstrs[1].strip_prefix("&mut ") {
                                                     Some(s) => s,
