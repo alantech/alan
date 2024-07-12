@@ -373,7 +373,6 @@ export fn has{T}(a: Array{T}, v: T) -> bool binds hasarray;
 export fn has{T}(a: Array{T}, f: (T) -> bool) -> bool binds hasfnarray;
 export fn find{T}(a: Array{T}, f: (T) -> bool) -> Maybe{T} binds findarray;
 export fn every{T}(a: Array{T}, f: (T) -> bool) -> bool binds everyarray;
-export fn concat{T}(a: Array{T}, b: Array{T}) -> Array{T} binds concatarray;
 
 /// Buffer related bindings
 export fn len{T, S}(T[S]) -> i64 = {S}();
