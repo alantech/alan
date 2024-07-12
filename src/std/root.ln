@@ -120,6 +120,18 @@ export type ExitCode binds std::process::ExitCode;
 export type Instant binds std::time::Instant;
 export type Duration binds std::time::Duration;
 
+/// Functions for (potentially) every type
+export fn clone{T}(v: T) -> T binds clone;
+// TODO: The "proper" way to hash this consistently for all types is to decompose the input type
+// into the various primitive types of Alan and then have hashing rules for each of them, which
+// may themselves decompose, etc. This might be doable in Alan code on top of specialized hashing
+// functions in Rust (as partially implemented here) or it might be better done as a special `hash`
+// function created by the compiler for the specific type *if* ever actually used, walking the
+// CType tree to determine the correct code to run. In either case, this is "good enough" for now.
+export fn hash{T}(v: Array{T}) -> i64 binds hasharray;
+export fn hash(v: string) -> i64 binds hashstring;
+export fn hash{T}(v: T) -> i64 binds hash;
+
 /// Fallible, Maybe, and Either functions
 export fn getOr{T}(v: Maybe{T}, d: T) -> T binds maybe_get_or;
 export fn getOr{T}(v: Fallible{T}, d: T) -> T binds fallible_get_or;
