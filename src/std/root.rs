@@ -1819,19 +1819,6 @@ fn everyarray<T>(a: &Vec<T>, f: fn(&T) -> bool) -> bool {
     return true;
 }
 
-/// `concatarray` returns a new vector composed of the elements of the input vectors
-#[inline(always)]
-fn concatarray<T: std::clone::Clone>(a: &Vec<T>, b: &Vec<T>) -> Vec<T> {
-    let mut out = Vec::new();
-    for v in a {
-        out.push(v.clone());
-    }
-    for v in b {
-        out.push(v.clone());
-    }
-    out
-}
-
 /// `mapbuffer_onearg` runs the provided single-argument function on each element of the buffer,
 /// returning a new buffer
 #[inline(always)]
