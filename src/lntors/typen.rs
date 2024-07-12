@@ -107,7 +107,7 @@ pub fn ctype_to_rtype(
             }?
         )),
         CType::Array(t) => Ok(format!("Vec<{}>", ctype_to_rtype(t, in_function_type)?)),
-        CType::Fail(m) => CType::fail(&m),
+        CType::Fail(m) => CType::fail(m),
         otherwise => CType::fail(&format!("Lower stage of the compiler received unresolved algebraic type {}, cannot deal with it here. Please report this error.", otherwise.to_strict_string(false))),
     }
 }
