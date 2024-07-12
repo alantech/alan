@@ -41,6 +41,27 @@ pub fn from_microstatement(
                 out,
             ))
         }
+        Microstatement::Closure { function } => {
+            let arg_names = function
+                .args
+                .iter()
+                .map(|(n, _)| n.clone())
+                .collect::<Vec<String>>();
+            let mut inner_statements = Vec::new();
+            for ms in &function.microstatements {
+                let (val, o) = from_microstatement(ms, scope, program, out)?;
+                out = o;
+                inner_statements.push(val);
+            }
+            Ok((
+                format!(
+                    "|{}| {{\n        {};\n    }}",
+                    arg_names.join(", "),
+                    inner_statements.join(";\n        ")
+                ),
+                out,
+            ))
+        }
         Microstatement::Value {
             typen,
             representation,
@@ -467,7 +488,20 @@ pub fn from_microstatement(
                                 // TODO: Better type checking here, but it's *probably* being
                                 // done at a higher layer
                                 if argstrs.len() == ts.len() {
-                                    return Ok((format!("({})", argstrs.join(", ")), out));
+                                    return Ok((
+                                        format!(
+                                            "({})",
+                                            argstrs
+                                                .iter()
+                                                .map(|a| match a.strip_prefix("&mut ") {
+                                                    Some(s) => s.to_string(),
+                                                    None => a.to_string(),
+                                                })
+                                                .collect::<Vec<String>>()
+                                                .join(", ")
+                                        ),
+                                        out,
+                                    ));
                                 } else {
                                     return Err(format!(
                                         "{} has {} fields but {} provided",
@@ -500,7 +534,17 @@ pub fn from_microstatement(
             Some(val) => {
                 let (retval, o) = from_microstatement(val, scope, program, out)?;
                 out = o;
-                Ok((format!("return {}", retval).to_string(), out))
+                Ok((
+                    format!(
+                        "return {}",
+                        match retval.strip_prefix("&mut ") {
+                            Some(v) => v,
+                            None => &retval,
+                        }
+                    )
+                    .to_string(),
+                    out,
+                ))
             }
             None => Ok(("return".to_string(), out)),
         },

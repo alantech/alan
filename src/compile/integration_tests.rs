@@ -1453,7 +1453,6 @@ test!(array_mutable_push_pop => r#"
 void
 "#;
 );
-// TODO: Restore the old test later, or just break this up permanently?
 test!(array_has => r#"
     fn even(t: i64) -> bool = t % 2 == 0;
     fn odd(t: i64) -> bool = t % 2 == 1;
@@ -1466,44 +1465,12 @@ test!(array_has => r#"
     }"#;
     stdout "true\nfalse\ntrue\ntrue\n";
 );
-test_ignore!(array_length_index_has_join => r#"
-    export fn main {
-      const test = new Array{int64} [ 1, 1, 2, 3, 5, 8 ];
-      const test2 = new Array{string} [ 'Hello', 'World!' ];
-      print('has test');
-      print(test.has(3));
-      print(test.has(4));
-
-      print('length test');
-      test.length.print;
-      print(#test);
-
-      print('index test');
-      test.index(5).print;
-      print(test2 @ 'Hello');
-
-      print('join test');
-      test2.join(', ').print;
-    }"#;
-    stdout r#"has test
-true
-false
-length test
-6
-6
-index test
-4
-0
-join test
-Hello, World!
-"#;
-);
-test_ignore!(array_map => r#"
+test!(array_map => r#"
     export fn main {
       const count = [1, 2, 3, 4, 5]; // Ah, ah, ahh!
       const byTwos = count.map(fn (n: i64) -> i64 = n * 2);
-      count.map(fn (n: i64) = string(n)).join(', ').print;
-      byTwos.map(fn (n: i64) = string(n)).join(', ').print;
+      count.map(fn (n: i64) -> string = string(n)).join(', ').print;
+      byTwos.map(fn (n: i64) -> string = string(n)).join(', ').print;
     }"#;
     stdout "1, 2, 3, 4, 5\n2, 4, 6, 8, 10\n";
 );
@@ -1540,9 +1507,7 @@ test!(array_concat => r#"
     }"#;
     stdout "1, 1, 2, 3, 5, 8, 4, 5, 6\n";
 );
-test!(array_reduce_filter_concat_no_closures => r#"
-    // Temporary test until closure functions are implemented
-    fn isOdd(i: i64) -> bool = i % 2 == 1;
+test!(array_reduce_filter_concat => r#"
     export fn main {
       const test = [ 1, 1, 2, 3, 5, 8 ];
       const test2 = [ 4, 5, 6 ];
@@ -1552,7 +1517,7 @@ test!(array_reduce_filter_concat_no_closures => r#"
       test.reduce(max).print;
 
       print('filter test');
-      test.filter(isOdd).map(string).join(', ').print;
+      test.filter(fn isOdd(i: i64) -> bool = i % 2 == 1).map(string).join(', ').print;
 
       print('concat test');
       test.concat(test2).map(string).join(', ').print;
@@ -1567,63 +1532,15 @@ concat test
 1, 1, 2, 3, 5, 8, 4, 5, 6
 "#;
 );
-test_ignore!(array_reduce_filter_concat => r#"
-    export fn main {
-      const test = [ 1, 1, 2, 3, 5, 8 ];
-      const test2 = [ 4, 5, 6 ];
-      print('reduce test');
-      test.reduce(fn (a: int, b: int) -> int = a + b || 0).print;
-      test.reduce(min).print;
-      test.reduce(max).print;
-
-      print('filter test');
-      test.filter(fn (val: int64) -> bool {
-        return val % 2 == 1;
-      }).map(fn (val: int64) -> string {
-        return string(val);
-      }).join(', ').print;
-
-      print('concat test');
-      test.concat(test2).map(fn (val: int64) -> string {
-        return string(val);
-      }).join(', ').print;
-      (test + test2).map(fn (val: int64) -> string {
-        return string(val);
-      }).join(', ').print;
-
-      print('reduce as filter and concat test');
-      // TODO: Lots of improvements needed for closures passed directly to opcodes. This one-liner is ridiculous
-      test.reduce(fn (acc: string, i: int) -> string = ((acc == '') && (i % 2 == 1)) ? i.string : (i % 2 == 1 ? (acc + ', ' + i.string) : acc), '').print;
-      // TODO: Even more ridiculous when you want to allow parallelism
-      test.reducePar(fn (acc: string, i: int) -> string = ((acc == '') && (i % 2 == 1)) ? i.string : (i % 2 == 1 ? (acc + ', ' + i.string) : acc), fn (acc: string, cur: string) -> string = ((acc != '') && (cur != '')) ? (acc + ', ' + cur) : (acc != '' ? acc : cur), '').print;
-    }"#;
-    stdout r#"reduce test
-20
-1
-8
-filter test
-1, 1, 3, 5
-concat test
-1, 1, 2, 3, 5, 8, 4, 5, 6
-1, 1, 2, 3, 5, 8, 4, 5, 6
-reduce as filter and concat test
-1, 1, 3, 5
-1, 1, 3, 5
-"#;
-);
-test_ignore!(array_custom_types => r#"
-    type Foo {
+test!(array_custom_types => r#"
+    type Foo =
       foo: string,
-      bar: bool
-    }
+      bar: bool;
 
     export fn main {
       const five = [1, 2, 3, 4, 5];
-      five.map(fn (n: int64) -> Foo {
-        return new Foo {
-          foo: n.string,
-          bar: n % 2 == 0,
-        };
+      five.map(fn (n: i64) -> Foo {
+        return Foo(n.string, n % 2 == 0);
       }).filter(fn (f: Foo) -> bool = f.bar).map(fn (f: Foo) -> string = f.foo).join(', ').print;
     }"#;
     stdout "2, 4\n";

@@ -1,4 +1,5 @@
 use super::ctype::{withtypeoperatorslist_to_ctype, CType};
+use super::FnKind;
 use super::Function;
 use super::OperatorMapping;
 use super::Program;
@@ -24,9 +25,12 @@ pub enum Microstatement {
         function: Function,
         args: Vec<Microstatement>,
     },
+    Closure {
+        function: Function,
+    },
     Value {
         typen: CType,
-        representation: String, // TODO: Can we do better here?
+        representation: String,
     },
     Array {
         typen: CType,
@@ -48,13 +52,19 @@ impl Microstatement {
                 Some(v) => v.get_type(),
                 None => Ok(CType::Void),
             },
-            Self::FnCall { function, args } => {
-                let mut arg_types = Vec::new();
-                for arg in args {
-                    let arg_type = arg.get_type()?;
-                    arg_types.push(arg_type);
-                }
-                Ok(function.rettype.clone())
+            Self::FnCall { function, args: _ } => Ok(function.rettype.clone()),
+            Self::Closure { function } => {
+                // TODO: Just have Function store this
+                let arg_types = function
+                    .args
+                    .iter()
+                    .map(|(_, t)| t.clone())
+                    .collect::<Vec<CType>>();
+                let fn_type = CType::Function(
+                    Box::new(CType::Tuple(arg_types)),
+                    Box::new(function.rettype.clone()),
+                );
+                Ok(fn_type)
             }
         }
     }
@@ -404,8 +414,214 @@ pub fn baseassignablelist_to_microstatements(
                 )?;
                 prior_value = microstatements.pop();
             }
-            BaseChunk::Function(_f) => {
-                return Err("TODO: Implement closure functions in Microstatement syntax".into());
+            BaseChunk::Function(f) => {
+                // TODO: Move a lot of this into `Function`
+                // First, some restrictions on closure function syntax (at least for now)
+                if f.opttypegenerics.is_some() {
+                    return Err(
+                        "Conditional compilation not supported for closure functions".into(),
+                    );
+                }
+                if f.optgenerics.is_some() {
+                    return Err("Generics not supported for closure functions".into());
+                }
+                if let parse::FullFunctionBody::BindFunction(_) = &f.fullfunctionbody {
+                    return Err("'binds' functions not supported as closure functions".into());
+                }
+                // If we got here, we know we're making a "normal" function
+                let kind = FnKind::Normal;
+                let mut inner_scope = scope.temp_child();
+                let original_len = microstatements.len();
+                let statements = match &f.fullfunctionbody {
+                    parse::FullFunctionBody::FunctionBody(body) => body.statements.clone(),
+                    parse::FullFunctionBody::AssignFunction(assign) => {
+                        vec![parse::Statement::Returns(parse::Returns {
+                            returnn: "return".to_string(),
+                            a: " ".to_string(),
+                            retval: Some(parse::RetVal {
+                                assignables: assign.assignables.clone(),
+                                a: "".to_string(),
+                            }),
+                            semicolon: ";".to_string(),
+                        })]
+                    }
+                    parse::FullFunctionBody::BindFunction(_) => Vec::new(),
+                };
+                // TODO: A big blob of crap copied from Function that should really live there
+                // *and* needs refactoring
+                // TODO: Add code to properly convert the typeassignable vec into a CType tree and use it.
+                // For now, just hardwire the parsing as before.
+                let (args, rettype) = match &f.opttype {
+                    None => Ok::<(Vec<(String, CType)>, CType), Box<dyn std::error::Error>>((
+                        Vec::new(),
+                        CType::Void,
+                    )), // TODO: Does this path *ever* trigger?
+                    Some(typeassignable) if typeassignable.is_empty() => {
+                        Ok((Vec::new(), CType::Void))
+                    }
+                    Some(typeassignable) => match &kind {
+                        FnKind::Generic(gs, _) | FnKind::BoundGeneric(gs, _) => {
+                            let mut temp_scope = scope.child(program);
+                            // This lets us partially resolve the function argument and return types
+                            for g in gs {
+                                CType::from_ctype(&mut temp_scope, g.0.clone(), g.1.clone());
+                            }
+                            let ctype = withtypeoperatorslist_to_ctype(
+                                typeassignable,
+                                &temp_scope,
+                                program,
+                            )?;
+                            // If the `ctype` is a Function type, we have both the input and output defined. If
+                            // it's any other type, we presume it's only the input type defined
+                            let (input_type, output_type) = match ctype {
+                                CType::Function(i, o) => (*i.clone(), *o.clone()),
+                                otherwise => (otherwise.clone(), CType::Void), // TODO: Type inference signaling?
+                            };
+                            // In case there were any created functions (eg constructor or accessor
+                            // functions) in that path, we need to merge the child's functions back up
+                            scope.merge_child_functions(&mut temp_scope);
+                            // The input type will be interpreted in many different ways:
+                            // If it's a Group, unwrap it and continue. Ideally after that it's a Tuple
+                            // type containing Field types, that's a "conventional" function
+                            // definition, where the label becomes an argument name and the type is the
+                            // type. If the tuple doesn't have Fields inside of it, we auto-generate
+                            // argument names, eg `arg0`, `arg1`, etc. If it is not a Tuple type but is
+                            // a Field type, we have a single argument function with a specified
+                            // variable name. If it's any other type, we just label it `arg0`
+                            let degrouped_input = input_type.degroup();
+                            let mut out_args = Vec::new();
+                            match degrouped_input {
+                                CType::Tuple(ts) => {
+                                    for (i, t) in ts.iter().enumerate() {
+                                        out_args.push(match t {
+                                            CType::Field(argname, t) => {
+                                                (argname.clone(), *t.clone())
+                                            }
+                                            otherwise => (format!("arg{}", i), otherwise.clone()),
+                                        });
+                                    }
+                                }
+                                CType::Field(argname, t) => {
+                                    out_args.push((argname.clone(), *t.clone()))
+                                }
+                                CType::Void => {} // Do nothing so an empty set is properly
+                                otherwise => out_args.push(("arg0".to_string(), otherwise.clone())),
+                            }
+                            Ok((out_args, output_type.clone()))
+                        }
+                        _ => {
+                            // TODO: Figure out how to drop this duplication
+                            let ctype =
+                                withtypeoperatorslist_to_ctype(typeassignable, scope, program)?;
+                            // If the `ctype` is a Function type, we have both the input and output defined. If
+                            // it's any other type, we presume it's only the input type defined
+                            let (input_type, output_type) = match ctype {
+                                CType::Function(i, o) => (*i.clone(), *o.clone()),
+                                otherwise => (otherwise.clone(), CType::Void), // TODO: Type inference signaling?
+                            };
+                            // TODO: This is getting duplicated in a few different places. The CType creation
+                            // should probably centralize creating these type names and constructor functions
+                            // for us rather than this hackiness. Only adding the hackery to the output_type
+                            // because that's all I need, and the input type would be much more convoluted.
+                            if let CType::Void = output_type {
+                                // Skip this
+                            } else {
+                                // This particular hackery assumes that the return type is not itself a
+                                // function and that it is using the `->` operator syntax. These are terrible
+                                // assumptions and this hacky code needs to die soon.
+                                let mut lastfnop = None;
+                                for (i, ta) in typeassignable.iter().enumerate() {
+                                    if ta.to_string().trim() == "->" {
+                                        lastfnop = Some(i);
+                                    }
+                                }
+                                if let Some(lastfnop) = lastfnop {
+                                    let returntypeassignables =
+                                        typeassignable[lastfnop + 1..typeassignable.len()].to_vec();
+                                    // TODO: Be more complete here
+                                    let name = output_type.to_callable_string();
+                                    // Don't recreate the exact same thing. It only causes pain
+                                    if program.resolve_type(scope, &name).is_none() {
+                                        let parse_type = parse::Types {
+                                            typen: "type".to_string(),
+                                            a: "".to_string(),
+                                            opttypegenerics: None,
+                                            b: "".to_string(),
+                                            fulltypename: parse::FullTypename {
+                                                typename: name.clone(),
+                                                opttypegenerics: None,
+                                            },
+                                            c: "".to_string(),
+                                            typedef: parse::TypeDef::TypeCreate(
+                                                parse::TypeCreate {
+                                                    a: "=".to_string(),
+                                                    b: "".to_string(),
+                                                    typeassignables: returntypeassignables,
+                                                },
+                                            ),
+                                            optsemicolon: ";".to_string(),
+                                        };
+                                        CType::from_ast(scope, program, &parse_type, false)?;
+                                    }
+                                }
+                            }
+                            // The input type will be interpreted in many different ways:
+                            // If it's a Group, unwrap it and continue. Ideally after that it's a Tuple
+                            // type containing Field types, that's a "conventional" function
+                            // definition, where the label becomes an argument name and the type is the
+                            // type. If the tuple doesn't have Fields inside of it, we auto-generate
+                            // argument names, eg `arg0`, `arg1`, etc. If it is not a Tuple type but is
+                            // a Field type, we have a single argument function with a specified
+                            // variable name. If it's any other type, we just label it `arg0`
+                            let degrouped_input = input_type.degroup();
+                            let mut out_args = Vec::new();
+                            match degrouped_input {
+                                CType::Tuple(ts) => {
+                                    for (i, t) in ts.iter().enumerate() {
+                                        out_args.push(match t {
+                                            CType::Field(argname, t) => {
+                                                (argname.clone(), *t.clone())
+                                            }
+                                            otherwise => (format!("arg{}", i), otherwise.clone()),
+                                        });
+                                    }
+                                }
+                                CType::Field(argname, t) => {
+                                    out_args.push((argname.clone(), *t.clone()))
+                                }
+                                CType::Void => {} // Do nothing so an empty set is properly
+                                otherwise => out_args.push(("arg0".to_string(), otherwise.clone())),
+                            }
+                            Ok((out_args, output_type.clone()))
+                        }
+                    },
+                }?;
+                for (name, typen) in &args {
+                    microstatements.push(Microstatement::Arg {
+                        name: name.clone(),
+                        typen: typen.clone(),
+                    });
+                }
+                for statement in &statements {
+                    microstatements = statement_to_microstatements(
+                        statement,
+                        &mut inner_scope,
+                        program,
+                        microstatements,
+                    )?;
+                }
+                let ms = microstatements.split_off(original_len);
+                let function = Function {
+                    name: match &f.optname {
+                        Some(name) => name.clone(),
+                        None => "closure".to_string(),
+                    },
+                    args,
+                    rettype,
+                    microstatements: ms,
+                    kind,
+                };
+                prior_value = Some(Microstatement::Closure { function });
             }
             BaseChunk::ArrayAccessor(a) => {
                 if let Some(prior) = &prior_value {
