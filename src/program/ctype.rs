@@ -1662,12 +1662,12 @@ impl CType {
                 withtypeoperatorslist_to_ctype(&generics.typecalllist, scope, program)?;
             match generic_call {
                 CType::Bool(b) => match b {
-                    false => return Ok(CType::Void), // TODO: Have a lazy Fail type
+                    false => return Ok(CType::Fail(format!("{} is not supposed to be compiled because the conditional compilation generic value is false", name))),
                     true => { /* Do nothing */ }
                 },
-                CType::Type(_, c) => match *c {
+                CType::Type(n, c) => match *c {
                     CType::Bool(b) => match b {
-                        false => return Ok(CType::Void),
+                        false => return Ok(CType::Fail(format!("{} is not supposed to be compiled because {} is false", name, n))),
                         true => { /* Do nothing */ }
                     },
                     _ => {
