@@ -385,6 +385,7 @@ export fn has{T}(a: Array{T}, v: T) -> bool binds hasarray;
 export fn has{T}(a: Array{T}, f: (T) -> bool) -> bool binds hasfnarray;
 export fn find{T}(a: Array{T}, f: (T) -> bool) -> Maybe{T} binds findarray;
 export fn every{T}(a: Array{T}, f: (T) -> bool) -> bool binds everyarray;
+export fn repeat{T}(a: Array{T}, c: i64) -> Array{T} binds repeatarray;
 
 /// Buffer related bindings
 export fn len{T, S}(T[S]) -> i64 = {S}();
@@ -406,6 +407,9 @@ export fn concat{T, S, N}(a: Buffer{T, S}, b: Buffer{T, N}) -> Buffer{T, S + N} 
   concatInner(o, a, b);
   return o;
 }
+// TODO: Be able to resolve explicit integer constant values as the integer type so it can be
+// grabbed by the type inference system. For now, repeat for buffers outputs an array, instead.
+export fn repeat{T, S}(b: Buffer{T, S}, c: i64) -> Array{T} binds repeatbuffertoarray;
 
 /// Process exit-related bindings
 export fn ExitCode(e: i8) -> ExitCode binds to_exit_code_i8;

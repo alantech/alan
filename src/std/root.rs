@@ -1857,6 +1857,18 @@ fn everyarray<T>(a: &Vec<T>, f: fn(&T) -> bool) -> bool {
     return true;
 }
 
+/// `repeatarray` returns a new array with the original array repeated N times
+#[inline(always)]
+fn repeatarray<T: std::clone::Clone>(a: &Vec<T>, c: &i64) -> Vec<T> {
+    let mut out = Vec::new();
+    for _ in 0..*c {
+        for v in a {
+            out.push(v.clone());
+        }
+    }
+    out
+}
+
 /// `mapbuffer_onearg` runs the provided single-argument function on each element of the buffer,
 /// returning a new buffer
 #[inline(always)]
@@ -1969,6 +1981,18 @@ fn concatbuffer<T: std::clone::Clone, const S: usize, const N: usize, const O: u
     for (i, v) in a.iter().chain(b).enumerate() {
         o[i] = v.clone();
     }
+}
+
+/// `repeatbuffertoarray` returns a new array with the original buffer repeated N times
+#[inline(always)]
+fn repeatbuffertoarray<T: std::clone::Clone, const S: usize>(a: &[T; S], c: &i64) -> Vec<T> {
+    let mut out = Vec::new();
+    for _ in 0..*c {
+        for v in a {
+            out.push(v.clone());
+        }
+    }
+    out
 }
 
 struct GPU {
