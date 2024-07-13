@@ -1474,10 +1474,10 @@ test!(array_map => r#"
     }"#;
     stdout "1, 2, 3, 4, 5\n2, 4, 6, 8, 10\n";
 );
-test_ignore!(array_repeat_and_map_lin => r#"
+test!(array_repeat => r#"
     export fn main {
-      const arr = [1, 2, 3] * 3;
-      const out = arr.mapLin(fn (x: int64) -> string = x.string).join(', ');
+      const arr = [1, 2, 3].repeat(3);
+      const out = arr.map(fn (x: i64) -> string = x.string).join(', ');
       print(out);
     }"#;
     stdout "1, 2, 3, 1, 2, 3, 1, 2, 3\n";
@@ -1609,6 +1609,14 @@ test!(buffer_concat => r#"
         test.concat(test2).map(string).join(', ').print;
     }"#;
     stdout "1, 1, 2, 3, 5, 8, 4, 5, 6\n";
+);
+test!(buffer_repeat => r#"
+    export fn main {
+      const buf = {i64[3]}(1, 2, 3).repeat(3);
+      const out = buf.map(string).join(', ');
+      print(out);
+    }"#;
+    stdout "1, 2, 3, 1, 2, 3, 1, 2, 3\n";
 );
 
 // Hashing
