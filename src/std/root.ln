@@ -460,31 +460,32 @@ export fn eprint{T}(v: T) binds eprintln;
 // but you can't have an infix operator of the same symbol linked to multiple functions. This does
 // produce some ambiguity of what kind of operator an operator is, but should still be unambiguous
 // to humans to "read" the symbol as whatever kind of function it represents.
-export infix add as + precedence 2;
-export infix sub as - precedence 2;
-//export prefix neg as - precedence 1; // TODO: Rework operator storage and selection
-export infix mul as * precedence 3;
-export infix div as / precedence 3;
-export infix mod as % precedence 3;
-// export infix template as % precedence 3;
-export infix pow as ** precedence 4;
-export infix and as & precedence 3;
-export infix and as && precedence 3;
-export infix or as | precedence 2;
-export infix or as || precedence 2;
-export infix xor as ^ precedence 2;
-export prefix not as ! precedence 4;
-export infix nand as !& precedence 3;
-export infix nor as !| precedence 2;
-export infix xnor as !^ precedence 2;
-export infix eq as == precedence 0;
-export infix neq as != precedence 0;
-export infix lt as < precedence 0;
-export infix lte as <= precedence 0;
-export infix gt as > precedence 0;
-export infix gte as >= precedence 0;
-export prefix len as # precedence 0; // TODO: Is this useful?
-export infix shl as << precedence 1;
-export infix shr as >> precedence 1;
-export infix wrl as <<< precedence 1;
-export infix wrr as >>> precedence 1;
+export infix add as + precedence 3;
+export infix sub as - precedence 3;
+//export prefix neg as - precedence 2; // TODO: Rework operator storage and selection
+export infix mul as * precedence 4;
+export infix div as / precedence 4;
+export infix mod as % precedence 4;
+// export infix template as % precedence 4;
+export infix pow as ** precedence 5;
+export infix and as & precedence 4;
+export infix and as && precedence 4;
+export infix or as | precedence 3;
+export infix or as || precedence 3;
+export infix xor as ^ precedence 3;
+export prefix not as ! precedence 5;
+export infix nand as !& precedence 4;
+export infix nor as !| precedence 3;
+export infix xnor as !^ precedence 3;
+export infix eq as == precedence 1;
+export infix neq as != precedence 1;
+export infix lt as < precedence 1;
+export infix lte as <= precedence 1;
+export infix gt as > precedence 1;
+export infix gte as >= precedence 1;
+export prefix len as # precedence 1; // TODO: Is this useful?
+export infix shl as << precedence 2;
+export infix shr as >> precedence 2;
+export infix wrl as <<< precedence 2;
+export infix wrr as >>> precedence 2;
+export infix set as = precedence 0

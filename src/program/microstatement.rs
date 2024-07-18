@@ -1323,6 +1323,12 @@ pub fn statement_to_microstatements(
     match statement {
         // This is just whitespace, so we do nothing here
         parse::Statement::A(_) => Ok(microstatements),
+        parse::Statement::Declarations(declarations) => Ok(declarations_to_microstatements(
+            declarations,
+            scope,
+            program,
+            microstatements,
+        )?),
         parse::Statement::Assignables(assignable) => Ok(assignablestatement_to_microstatements(
             assignable,
             scope,
@@ -1335,13 +1341,6 @@ pub fn statement_to_microstatements(
             program,
             microstatements,
         )?),
-        parse::Statement::Declarations(declarations) => Ok(declarations_to_microstatements(
-            declarations,
-            scope,
-            program,
-            microstatements,
-        )?),
-        parse::Statement::Assignments(_assignments) => Err("Implement me".into()),
         parse::Statement::Conditional(_condtitional) => Err("Implement me".into()),
     }
 }

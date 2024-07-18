@@ -1026,8 +1026,7 @@ impl BaseAssignable {
                         .join(""))
                     .collect::<Vec<String>>()
                     .join(", ")
-            )
-            .to_string(),
+            ),
             BaseAssignable::FnCall(fc) => format!(
                 "({})",
                 fc.assignablelist
@@ -1039,8 +1038,7 @@ impl BaseAssignable {
                         .join(""))
                     .collect::<Vec<String>>()
                     .join(", ")
-            )
-            .to_string(),
+            ),
             BaseAssignable::GnCall(gc) => format!(
                 "{{{}}}",
                 gc.typecalllist
@@ -1048,8 +1046,7 @@ impl BaseAssignable {
                     .map(|ta| ta.to_string())
                     .collect::<Vec<String>>()
                     .join("")
-            )
-            .to_string(),
+            ),
             BaseAssignable::Variable(v) => v.clone(),
             BaseAssignable::MethodSep(_) => ".".to_string(),
             BaseAssignable::Constants(c) => c.to_string(),
@@ -1144,17 +1141,6 @@ named_and!(letdeclaration: LetDeclaration =>
 named_or!(declarations: Declarations =>
     Const: ConstDeclaration as constdeclaration,
     Let: LetDeclaration as letdeclaration,
-);
-named_and!(assignments: Assignments =>
-    var: Vec<BaseAssignable> as baseassignablelist,
-    a: String as optwhitespace,
-    eq: String as eq,
-    b: String as optwhitespace,
-    assignables: Vec<WithOperators> as assignables,
-    semicolon: String as semicolon,
-);
-test!(assignments =>
-    pass "hm.lookup = Array{Array{int64}}(Array{int64}()) * lookupLen;" => "";
 );
 named_and!(retval: RetVal =>
     assignables: Vec<WithOperators> as assignables,
@@ -1251,7 +1237,6 @@ named_and!(assignablestatement: AssignableStatement =>
 named_or!(statement: Statement =>
     Declarations: Declarations as declarations,
     Returns: Returns as returns,
-    Assignments: Assignments as assignments,
     Conditional: Conditional as conditional,
     Assignables: AssignableStatement as assignablestatement,
     A: String as whitespace,
