@@ -108,8 +108,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     "#);
     build!(t19_gpgpu_1 => r#"
         export fn main {
-          let g = GPU();
-          let b = g.createBuffer(storageBuffer(), filled(2.i32(), 1));
+          let b = GBuffer(storageBuffer(), filled(2.i32(), 1));
           let plan = GPGPU("
             @group(0)
             @binding(0)
@@ -124,15 +123,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
               vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
             }
           ", b);
-          g.run(plan);
-          let v = g.read{i32}(b);
+          plan.run;
+          let v = b.read{i32};
           v[0].print;
         }
     "#);
     build!(t20_gpgpu_10 => r#"
         export fn main {
-          let g = GPU();
-          let b = g.createBuffer(storageBuffer(), filled(2.i32(), 10));
+          let b = GBuffer(storageBuffer(), filled(2.i32(), 10));
           let plan = GPGPU("
             @group(0)
             @binding(0)
@@ -147,15 +145,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
               vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
             }
           ", b);
-          g.run(plan);
-          let v = g.read{i32}(b);
+          plan.run;
+          let v = b.read{i32};
           v[0].print;
         }
     "#);
     build!(t21_gpgpu_100 => r#"
         export fn main {
-          let g = GPU();
-          let b = g.createBuffer(storageBuffer(), filled(2.i32(), 100));
+          let b = GBuffer(storageBuffer(), filled(2.i32(), 100));
           let plan = GPGPU("
             @group(0)
             @binding(0)
@@ -170,15 +167,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
               vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
             }
           ", b);
-          g.run(plan);
-          let v = g.read{i32}(b);
+          plan.run;
+          let v = b.read{i32};
           v[0].print;
         }
     "#);
     build!(t22_gpgpu_1_000 => r#"
         export fn main {
-          let g = GPU();
-          let b = g.createBuffer(storageBuffer(), filled(2.i32(), 1_000));
+          let b = GBuffer(storageBuffer(), filled(2.i32(), 1_000));
           let plan = GPGPU("
             @group(0)
             @binding(0)
@@ -193,15 +189,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
               vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
             }
           ", b);
-          g.run(plan);
-          let v = g.read{i32}(b);
+          plan.run;
+          let v = b.read{i32};
           v[0].print;
         }
     "#);
     build!(t23_gpgpu_10_000 => r#"
         export fn main {
-          let g = GPU();
-          let b = g.createBuffer(storageBuffer(), filled(2.i32(), 10_000));
+          let b = GBuffer(storageBuffer(), filled(2.i32(), 10_000));
           let plan = GPGPU("
             @group(0)
             @binding(0)
@@ -216,15 +211,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
               vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
             }
           ", b);
-          g.run(plan);
-          let v = g.read{i32}(b);
+          plan.run;
+          let v = b.read{i32};
           v[0].print;
         }
     "#);
     build!(t24_gpgpu_100_000 => r#"
         export fn main {
-          let g = GPU();
-          let b = g.createBuffer(storageBuffer(), filled(2.i32(), 100_000));
+          let b = GBuffer(storageBuffer(), filled(2.i32(), 100_000));
           let plan = GPGPU("
             @group(0)
             @binding(0)
@@ -239,15 +233,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
               vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
             }
           ", b);
-          g.run(plan);
-          let v = g.read{i32}(b);
+          plan.run;
+          let v = b.read{i32};
           v[0].print;
         }
     "#);
     build!(t25_gpgpu_1_000_000 => r#"
         export fn main {
-          let g = GPU();
-          let b = g.createBuffer(storageBuffer(), filled(2.i32(), 1_000_000));
+          let b = GBuffer(storageBuffer(), filled(2.i32(), 1_000_000));
           let plan = GPGPU("
             @group(0)
             @binding(0)
@@ -262,15 +255,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
               vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
             }
           ", b);
-          g.run(plan);
-          let v = g.read{i32}(b);
+          plan.run;
+          let v = b.read{i32};
           v[0].print;
         }
     "#);
     build!(t26_gpgpu_10_000_000 => r#"
         export fn main {
-          let g = GPU();
-          let b = g.createBuffer(storageBuffer(), filled(2.i32(), 10_000_000));
+          let b = GBuffer(storageBuffer(), filled(2.i32(), 10_000_000));
           let plan = GPGPU("
             @group(0)
             @binding(0)
@@ -285,15 +277,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
               vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
             }
           ", b);
-          g.run(plan);
-          let v = g.read{i32}(b);
+          plan.run;
+          let v = b.read{i32};
           v[0].print;
         }
     "#);
     build!(t27_gpgpu_100_000_000 => r#"
         export fn main {
-          let g = GPU();
-          let b = g.createBuffer(storageBuffer(), filled(2.i32(), 100_000_000));
+          let b = GBuffer(storageBuffer(), filled(2.i32(), 100_000_000));
           let plan = GPGPU("
             @group(0)
             @binding(0)
@@ -308,8 +299,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
               vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
             }
           ", b);
-          g.run(plan);
-          let v = g.read{i32}(b);
+          plan.run;
+          let v = b.read{i32};
           v[0].print;
         }
     "#);
