@@ -651,7 +651,7 @@ export fn eprint{T}(v: T) binds eprintln;
 // to humans to "read" the symbol as whatever kind of function it represents.
 export infix add as + precedence 3;
 export infix sub as - precedence 3;
-//export prefix neg as - precedence 2; // TODO: Rework operator storage and selection
+export prefix neg as - precedence 2;
 export infix mul as * precedence 4;
 export infix div as / precedence 4;
 export infix mod as % precedence 4;

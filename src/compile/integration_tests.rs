@@ -344,7 +344,7 @@ test!(i16_max => r#"
     }"#;
     stdout "5\n";
 );
-test_ignore!(i16_neg => r#"
+test!(i16_neg => r#"
     export fn main = print(-i16(3));"#;
     stdout "-3\n";
 );
@@ -397,7 +397,7 @@ test!(i32_max => r#"
     }"#;
     stdout "5\n";
 );
-test_ignore!(i32_neg => r#"
+test!(i32_neg => r#"
     export fn main = print(- 3.i32);"#; // You wouldn't naturally write this, but should still work
     stdout "-3\n";
 );
@@ -434,7 +434,7 @@ test!(i64_max => r#"
     export fn main = max(3.i64, 5.i64).print;"#;
     stdout "5\n";
 );
-test_ignore!(i64_neg => r#"
+test!(i64_neg => r#"
     export fn main = print(- 3);"#; // You wouldn't naturally write this, but should still work
     stdout "-3\n";
 );
@@ -655,7 +655,7 @@ test!(f32_max => r#"
     }"#;
     stdout "5\n";
 );
-test_ignore!(f32_neg => r#"
+test!(f32_neg => r#"
     export fn main = print(- 3.f32);"#; // You wouldn't naturally write this, but should still work
     stdout "-3\n";
 );
@@ -708,7 +708,7 @@ test!(f64_max => r#"
     }"#;
     stdout "5\n";
 );
-test_ignore!(f64_neg => r#"
+test!(f64_neg => r#"
     export fn main = print(- 3.f64);"#; // You wouldn't naturally write this, but should still work
     stdout "-3\n";
 );

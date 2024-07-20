@@ -1051,34 +1051,66 @@ pub fn withoperatorslist_to_microstatements(
     while !queue.is_empty() {
         let mut largest_operator_level: i8 = -1;
         let mut largest_operator_index: i64 = -1;
+        let mut op = None;
         for (i, assignable_or_operator) in queue.iter().enumerate() {
+            // This can sometimes be ambiguous on the symbol, `-` is both an infix subtract and a
+            // prefix negate operation, and they have different precedence levels. If and only if
+            // it might have the highest precedence do we check if it could reasonably resolve in
+            // that way. (For a prefix, there must either be nothing before it or what's before it
+            // needs to be an operator and what's after it must be an assignable, for a postfix
+            // there must be nothing after it or what's after it is an operator and what's before
+            // it is an assignable, and for an infix there must be an assignable before and after
+            // it.) If it doesn't match those criteria we skip over that possibility and move on to
+            // others.
             if let parse::WithOperators::Operators(o) = assignable_or_operator {
                 let operatorname = o.trim();
-                let operator = match program.resolve_operator(scope, &operatorname.to_string()) {
-                    Some(o) => Ok(o),
-                    None => Err(format!("Operator {} not found", operatorname)),
-                }?;
-                let level = match &operator {
-                    OperatorMapping::Prefix { level, .. } => level,
-                    OperatorMapping::Infix { level, .. } => level,
-                    OperatorMapping::Postfix { level, .. } => level,
-                };
-                if level > &largest_operator_level {
-                    largest_operator_level = *level;
+                let prefix_op = program.resolve_operator(scope, &format!("prefix{}", operatorname));
+                let infix_op = program.resolve_operator(scope, &format!("infix{}", operatorname));
+                let postfix_op =
+                    program.resolve_operator(scope, &format!("postfix{}", operatorname));
+                let mut level = -1;
+                let mut operator = None;
+                for local_op in [&prefix_op, &infix_op, &postfix_op] {
+                    let local_level = match local_op {
+                        Some(o) => match o {
+                            OperatorMapping::Prefix { level, .. } => {
+                                match queue.get(i.wrapping_add(1)) {
+                                    Some(parse::WithOperators::BaseAssignableList(_)) => *level,
+                                    _ => -1,
+                                }
+                            }
+                            OperatorMapping::Infix { level, .. } => {
+                                match (queue.get(i.wrapping_sub(1)), queue.get(i.wrapping_add(1))) {
+                                    (
+                                        Some(parse::WithOperators::BaseAssignableList(_)),
+                                        Some(parse::WithOperators::BaseAssignableList(_)),
+                                    ) => *level,
+                                    _ => -1,
+                                }
+                            }
+                            OperatorMapping::Postfix { level, .. } => {
+                                match queue.get(i.wrapping_sub(1)) {
+                                    Some(parse::WithOperators::BaseAssignableList(_)) => *level,
+                                    _ => -1,
+                                }
+                            }
+                        },
+                        _ => -1,
+                    };
+                    if local_level > level {
+                        level = local_level;
+                        operator = *local_op;
+                    }
+                }
+                if level > largest_operator_level {
+                    largest_operator_level = level;
                     largest_operator_index = i as i64;
+                    op = operator;
                 }
             }
         }
         if largest_operator_index > -1 {
-            // We have at least one operator, and this is the one to dig into
-            let operatorname = match &queue[largest_operator_index as usize] {
-                parse::WithOperators::Operators(o) => o.trim(),
-                _ => unreachable!(),
-            };
-            let operator = match program.resolve_operator(scope, &operatorname.to_string()) {
-                Some(o) => Ok(o),
-                None => Err(format!("Operator {} not found", operatorname)),
-            }?;
+            let operator = op.unwrap(); // Should be guaranteed to exist
             let functionname = match operator {
                 OperatorMapping::Prefix { functionname, .. } => functionname.clone(),
                 OperatorMapping::Infix { functionname, .. } => functionname.clone(),
@@ -1101,7 +1133,11 @@ pub fn withoperatorslist_to_microstatements(
                     Some(val) => Ok(val),
                     None => Err(format!(
                         "Operator {} is an infix operator but missing a left-hand side value",
-                        operatorname
+                        match operator {
+                            OperatorMapping::Prefix { operatorname, .. }
+                            | OperatorMapping::Infix { operatorname, .. }
+                            | OperatorMapping::Postfix { operatorname, .. } => operatorname,
+                        }
                     )),
                 }? {
                     parse::WithOperators::BaseAssignableList(baseassignablelist) => {
@@ -1109,15 +1145,30 @@ pub fn withoperatorslist_to_microstatements(
                     }
                     parse::WithOperators::Operators(o) => Err(format!(
                         "Operator {} is an infix operator but preceded by another operator {}",
-                        operatorname, o
+                        match operator {
+                            OperatorMapping::Prefix { operatorname, .. }
+                            | OperatorMapping::Infix { operatorname, .. }
+                            | OperatorMapping::Postfix { operatorname, .. } => operatorname,
+                        },
+                        o
                     )),
                 }?;
                 let second_arg = match match queue.get(largest_operator_index as usize + 1) {
                     Some(val) => Ok(val),
-                    None => Err(format!("Operator {} is an infix operator but missing a right-hand side value", operatorname)),
+                    None => Err(format!("Operator {} is an infix operator but missing a right-hand side value",
+                        match operator {
+                            OperatorMapping::Prefix { operatorname, .. }
+                            | OperatorMapping::Infix { operatorname, .. }
+                            | OperatorMapping::Postfix { operatorname, .. } => operatorname,
+                        })),
                 }? {
                     parse::WithOperators::BaseAssignableList(baseassignablelist) => Ok(baseassignablelist),
-                    parse::WithOperators::Operators(o) => Err(format!("Operator{} is an infix operator but followed by a lower precedence operator {}", operatorname, o)),
+                    parse::WithOperators::Operators(o) => Err(format!("Operator{} is an infix operator but followed by a lower precedence operator {}",
+                        match operator {
+                            OperatorMapping::Prefix { operatorname, .. }
+                            | OperatorMapping::Infix { operatorname, .. }
+                            | OperatorMapping::Postfix { operatorname, .. } => operatorname,
+                        }, o)),
                 }?;
                 // We're gonna rewrite the operator and base assignables into a function call, eg
                 // we take `a + b` and turn it into `add(a, b)`
@@ -1150,7 +1201,11 @@ pub fn withoperatorslist_to_microstatements(
                     Some(val) => Ok(val),
                     None => Err(format!(
                         "Operator {} is a prefix operator but missing a right-hand side value",
-                        operatorname
+                        match operator {
+                            OperatorMapping::Prefix { operatorname, .. }
+                            | OperatorMapping::Infix { operatorname, .. }
+                            | OperatorMapping::Postfix { operatorname, .. } => operatorname,
+                        },
                     )),
                 }? {
                     parse::WithOperators::BaseAssignableList(baseassignablelist) => {
@@ -1158,7 +1213,12 @@ pub fn withoperatorslist_to_microstatements(
                     }
                     parse::WithOperators::Operators(o) => Err(format!(
                         "Operator {} is an prefix operator but followed by another operator {}",
-                        operatorname, o
+                        match operator {
+                            OperatorMapping::Prefix { operatorname, .. }
+                            | OperatorMapping::Infix { operatorname, .. }
+                            | OperatorMapping::Postfix { operatorname, .. } => operatorname,
+                        },
+                        o
                     )),
                 }?;
                 // We're gonna rewrite the operator and base assignables into a function call, eg
@@ -1187,13 +1247,22 @@ pub fn withoperatorslist_to_microstatements(
                     Some(val) => Ok(val),
                     None => Err(format!(
                         "Operator {} is a postfix operator but missing a left-hand side value",
-                        operatorname
+                        match operator {
+                            OperatorMapping::Prefix { operatorname, .. }
+                            | OperatorMapping::Infix { operatorname, .. }
+                            | OperatorMapping::Postfix { operatorname, .. } => operatorname,
+                        },
                     )),
                 }? {
                     parse::WithOperators::BaseAssignableList(bal) => Ok(bal),
                     parse::WithOperators::Operators(o) => Err(format!(
                         "Operator {} is a postfix operator but preceded by another operator {}",
-                        operatorname, o
+                        match operator {
+                            OperatorMapping::Prefix { operatorname, .. }
+                            | OperatorMapping::Infix { operatorname, .. }
+                            | OperatorMapping::Postfix { operatorname, .. } => operatorname,
+                        },
+                        o
                     )),
                 }?;
                 // We're gonna rewrite the operator and base assignables into a function call, eg
