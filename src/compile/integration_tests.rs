@@ -439,6 +439,174 @@ test_ignore!(i64_neg => r#"
     stdout "-3\n";
 );
 
+test!(u8_add => r#"
+    export fn main() -> ExitCode = ExitCode(add(u8(1), u8(2)));"#;
+    status 3;
+);
+test!(u8_sub => r#"
+    export fn main() -> ExitCode = ExitCode(sub(u8(2), u8(1)));"#;
+    status 1;
+);
+test!(u8_mul => r#"
+    export fn main() -> ExitCode = ExitCode(mul(u8(2), u8(1)));"#;
+    status 2;
+);
+test!(u8_div => r#"
+    export fn main() -> ExitCode = ExitCode(div(u8(6), u8(2)));"#;
+    status 3;
+);
+test!(u8_mod => r#"
+    export fn main() -> ExitCode = ExitCode(mod(u8(6), u8(4)));"#;
+    status 2;
+);
+test!(u8_pow => r#"
+    export fn main() -> ExitCode = ExitCode(pow(u8(6), u8(2)));"#;
+    status 36;
+);
+test!(u8_min => r#"
+    export fn main() {
+      print(min(u8(3), u8(5)));
+    }"#;
+    stdout "3\n";
+);
+test!(u8_max => r#"
+    export fn main() {
+      print(max(u8(3), u8(5)));
+    }"#;
+    stdout "5\n";
+);
+
+test!(u16_add => r#"
+    export fn main {
+      print(add(u16(1), u16(2)));
+    }"#;
+    stdout "3\n";
+);
+test!(u16_sub => r#"
+    export fn main {
+      print(sub(u16(2), u16(1)));
+    }"#;
+    stdout "1\n";
+);
+test!(u16_mul => r#"
+    export fn main {
+      print(mul(u16(2), u16(1)));
+    }"#;
+    stdout "2\n";
+);
+test!(u16_div => r#"
+    export fn main {
+      print(div(u16(6), u16(2)));
+    }"#;
+    stdout "3\n";
+);
+test!(u16_mod => r#"
+    export fn main{
+      print(mod(u16(6), u16(4)));
+    }"#;
+    stdout "2\n";
+);
+test!(u16_pow => r#"
+    export fn main {
+      print(pow(u16(6), u16(2)));
+    }"#;
+    stdout "36\n";
+);
+test!(u16_min => r#"
+    export fn main {
+      min(3.u16, 5.u16).print;
+    }"#;
+    stdout "3\n";
+);
+test!(u16_max => r#"
+    export fn main {
+      max(3.u16, 5.u16).print;
+    }"#;
+    stdout "5\n";
+);
+
+test!(u32_add => r#"
+    export fn main {
+      add(1.u32(), 2.u32()).print();
+    }"#;
+    stdout "3\n";
+);
+test!(u32_sub => r#"
+    export fn main {
+      sub(2.u32, 1.u32).print;
+    }"#;
+    stdout "1\n";
+);
+test!(u32_mul => r#"
+    export fn main {
+      (2.u32 * 1.u32).print;
+    }"#;
+    stdout "2\n";
+);
+test!(u32_div => r#"
+    export fn main {
+      (6.u32() / 2.u32()).print();
+    }"#;
+    stdout "3\n";
+);
+test!(u32_mod => r#"
+    export fn main {
+      mod(6.u32, 4.u32).print;
+    }"#;
+    stdout "2\n";
+);
+test!(u32_pow => r#"
+    export fn main {
+      pow(6.u32(), 2.u32()).print();
+    }"#;
+    stdout "36\n";
+);
+test!(u32_min => r#"
+    export fn main {
+      min(3.u32, 5.u32).print;
+    }"#;
+    stdout "3\n";
+);
+test!(u32_max => r#"
+    export fn main {
+      max(3.u32(), 5.u32()).print();
+    }"#;
+    stdout "5\n";
+);
+
+test!(u64_add => r#"
+    export fn main = print(1.u64 + 2.u64);"#;
+    stdout "3\n";
+);
+test!(u64_sub => r#"
+    export fn main = print(2.u64 - 1.u64);"#;
+    stdout "1\n";
+);
+test!(u64_mul => r#"
+    export fn main = print(2.u64 * 1.u64);"#;
+    stdout "2\n";
+);
+test!(u64_div => r#"
+    export fn main = print(6.u64 / 2.u64);"#;
+    stdout "3\n";
+);
+test!(u64_mod => r#"
+    export fn main = print(6.u64 % 4.u64);"#;
+    stdout "2\n";
+);
+test!(u64_pow => r#"
+    export fn main = print(6.u64 ** 2.u64);"#;
+    stdout "36\n";
+);
+test!(u64_min => r#"
+    export fn main = min(3.u64, 5.u64).print;"#;
+    stdout "3\n";
+);
+test!(u64_max => r#"
+    export fn main = max(3.u64, 5.u64).print;"#;
+    stdout "5\n";
+);
+
 test!(f32_add => r#"
     export fn main {
       print(f32(1) + f32(2));
@@ -570,8 +738,7 @@ test!(string_max => r#"
 
 test!(hello_gpu => r#"
     export fn main {
-      let g = GPU();
-      let b = g.createBuffer(storageBuffer(), filled(2.i32, 4));
+      let b = GBuffer(filled(2.i32, 4));
       let plan = GPGPU("
         @group(0)
         @binding(0)
@@ -583,8 +750,8 @@ test!(hello_gpu => r#"
           vals[id.x] = vals[id.x] * bitcast<i32>(id.x);
         }
       ", b);
-      g.run(plan);
-      g.read{i32}(b).print;
+      plan.run;
+      b.read{i32}.print;
     }"#;
     stdout "[0, 2, 4, 6]\n";
 );
@@ -644,6 +811,63 @@ test!(i64_bitwise => r#"
       print(5 !^ 3);
     }"#;
     stdout "0\n3\n6\n-1\n-1\n-4\n-7\n";
+);
+
+test!(u8_bitwise => r#"
+    prefix u8 as ~ precedence 10
+
+    export fn main {
+      print(~1 & ~2);
+      print(~1 | ~3);
+      print(~5 ^ ~3);
+      print(! ~0);
+      print(~1 !& ~2);
+      print(~1 !| ~2);
+      print(~5 !^ ~3);
+    }"#;
+    stdout "0\n3\n6\n255\n255\n252\n249\n";
+);
+test!(u16_bitwise => r#"
+    prefix u16 as ~ precedence 10
+
+    export fn main {
+      print(~1 & ~2);
+      print(~1 | ~3);
+      print(~5 ^ ~3);
+      print(! ~0);
+      print(~1 !& ~2);
+      print(~1 !| ~2);
+      print(~5 !^ ~3);
+    }"#;
+    stdout "0\n3\n6\n65535\n65535\n65532\n65529\n";
+);
+test!(u32_bitwise => r#"
+    prefix u32 as ~ precedence 10
+
+    export fn main {
+      print(~1 & ~2);
+      print(~1 | ~3);
+      print(~5 ^ ~3);
+      print(! ~0);
+      print(~1 !& ~2);
+      print(~1 !| ~2);
+      print(~5 !^ ~3);
+    }"#;
+    stdout "0\n3\n6\n4294967295\n4294967295\n4294967292\n4294967289\n";
+);
+test!(u64_bitwise => r#"
+    prefix u64 as ~ precedence 10
+
+    export fn main {
+      print(~1 & ~2);
+      print(~1 | ~3);
+      print(~5 ^ ~3);
+      print(! ~0);
+      print(~1 !& ~2);
+      print(~1 !| ~2);
+      print(~5 !^ ~3);
+    }"#;
+    stdout "0\n3\n6\n18446744073709551615\n18446744073709551615\n18446744073709551612\n18446744073709551609\n";
 );
 
 // Boolean Logic
@@ -827,6 +1051,18 @@ test!(equality => r#"
       print(0 == 0);
       print(1.eq(0));
 
+      print(u8(0) == u8(0));
+      print(u8(1).eq(u8(0)));
+
+      print(u16(0) == u16(0));
+      print(u16(1).eq(u16(0)));
+
+      print(u32(0) == u32(0));
+      print(u32(1).eq(u32(0)));
+
+      print(0.u64 == 0.u64);
+      print(1.u64.eq(0.u64));
+
       print(f32(0.0) == f32(0.0));
       print(f32(1.2).eq(f32(0.0)));
 
@@ -840,6 +1076,14 @@ test!(equality => r#"
       print('hello'.eq('world'));
     }"#;
     stdout r#"true
+false
+true
+false
+true
+false
+true
+false
+true
 false
 true
 false
@@ -871,6 +1115,18 @@ test!(not_equals => r#"
       print(0 != 0);
       print(1.neq(0));
 
+      print(u8(0) != u8(0));
+      print(u8(1).neq(u8(0)));
+
+      print(u16(0) != u16(0));
+      print(u16(1).neq(u16(0)));
+
+      print(u32(0) != u32(0));
+      print(u32(1).neq(u32(0)));
+
+      print(0.u64 != 0.u64);
+      print(1.u64.neq(0.u64));
+
       print(f32(0.0) != f32(0.0));
       print(f32(1.2).neq(f32(0.0)));
 
@@ -884,6 +1140,14 @@ test!(not_equals => r#"
       print('hello'.neq('world'));
     }"#;
     stdout r#"false
+true
+false
+true
+false
+true
+false
+true
+false
 true
 false
 true
@@ -915,6 +1179,18 @@ test!(less_than => r#"
       print(0 < 1);
       print(1.lt(0));
 
+      print(u8(0) < u8(1));
+      print(u8(1).lt(u8(0)));
+
+      print(u16(0) < u16(1));
+      print(u16(1).lt(u16(0)));
+
+      print(u32(0) < u32(1));
+      print(u32(1).lt(u32(0)));
+
+      print(0.u64 < 1.u64);
+      print(1.u64.lt(0.u64));
+
       print(f32(0.0) < f32(1.0));
       print(f32(1.2).lt(f32(0.0)));
 
@@ -925,6 +1201,14 @@ test!(less_than => r#"
       print('hello'.lt('world'));
     }"#;
     stdout r#"true
+false
+true
+false
+true
+false
+true
+false
+true
 false
 true
 false
@@ -954,6 +1238,18 @@ test!(less_than_or_equal => r#"
       print(0 <= 1);
       print(1.lte(0));
 
+      print(u8(0) <= u8(1));
+      print(u8(1).lte(u8(0)));
+
+      print(u16(0) <= u16(1));
+      print(u16(1).lte(u16(0)));
+
+      print(u32(0) <= u32(1));
+      print(u32(1).lte(u32(0)));
+
+      print(0.u64 <= 1.u64);
+      print(1.u64.lte(0.u64));
+
       print(f32(0.0) <= f32(1.0));
       print(f32(1.2).lte(f32(0.0)));
 
@@ -964,6 +1260,14 @@ test!(less_than_or_equal => r#"
       print('hello'.lte('world'));
     }"#;
     stdout r#"true
+false
+true
+false
+true
+false
+true
+false
+true
 false
 true
 false
@@ -993,6 +1297,18 @@ test!(greater_than => r#"
       print(0 > 1);
       print(1.gt(0));
 
+      print(u8(0) > u8(1));
+      print(u8(1).gt(u8(0)));
+
+      print(u16(0) > u16(1));
+      print(u16(1).gt(u16(0)));
+
+      print(u32(0) > u32(1));
+      print(u32(1).gt(u32(0)));
+
+      print(0.u64 > 1.u64);
+      print(1.u64.gt(0.u64));
+
       print(f32(0.0) > f32(1.0));
       print(f32(1.2).gt(f32(0.0)));
 
@@ -1003,6 +1319,14 @@ test!(greater_than => r#"
       print('hello'.gt('world'));
     }"#;
     stdout r#"false
+true
+false
+true
+false
+true
+false
+true
+false
 true
 false
 true
@@ -1032,6 +1356,18 @@ test!(greater_than_or_equal => r#"
       print(0 >= 1);
       print(1.gte(0));
 
+      print(u8(0) >= u8(1));
+      print(u8(1).gte(u8(0)));
+
+      print(u16(0) >= u16(1));
+      print(u16(1).gte(u16(0)));
+
+      print(u32(0) >= u32(1));
+      print(u32(1).gte(u32(0)));
+
+      print(0.u64 >= 1.u64);
+      print(1.u64.gte(0.u64));
+
       print(f32(0.0) >= f32(1.0));
       print(f32(1.2).gte(f32(0.0)));
 
@@ -1042,6 +1378,14 @@ test!(greater_than_or_equal => r#"
       print('hello'.gte('world'));
     }"#;
     stdout r#"false
+true
+false
+true
+false
+true
+false
+true
+false
 true
 false
 true
@@ -1077,6 +1421,22 @@ test!(bitshifting => r#"
       print(1 << 1);
       print(100 >>> 2);
       print(100 <<< 2);
+      print(1.u8 >> 1.u8);
+      print(1.u8 << 1.u8);
+      print(100.u8 >>> 2.u8);
+      print(100.u8 <<< 2.u8);
+      print(shr(1.u16, 1.u16));
+      print(shl(1.u16, 1.u16));
+      print(wrr(100.u16, 2.u16));
+      print(wrl(100.u16, 2.u16));
+      print(1.u32.shr(1.u32));
+      print(1.u32.shl(1.u32));
+      print(100.u32.wrr(2.u32));
+      print(100.u32.wrl(2.u32));
+      print(1.u64 >> 1.u64);
+      print(1.u64 << 1.u64);
+      print(100.u64 >>> 2.u64);
+      print(100.u64 <<< 2.u64);
     }"#;
     stdout r#"0
 2
@@ -1094,14 +1454,23 @@ test!(bitshifting => r#"
 2
 25
 400
+0
+2
+25
+145
+0
+2
+25
+400
+0
+2
+25
+400
+0
+2
+25
+400
 "#;
-);
-test_ignore!(type_coercion_aliases => r#"
-    export fn main {
-      print(int(0) == i64(0));
-      print(float(0.0) == f64(0.0));
-    }"#;
-    stdout "true\ntrue\n";
 );
 
 // Functions and Custom Operators

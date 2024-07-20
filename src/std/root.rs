@@ -1,5 +1,6 @@
 /// Rust functions that the root scope binds.
 use std::hash::Hasher;
+use std::sync::OnceLock;
 
 /// The `AlanError` type is a *cloneable* error that all errors are implemented as within Alan, to
 /// simplify error handling. In the future it will have a stack trace based on the Alan source
@@ -34,6 +35,8 @@ impl From<String> for AlanError {
         AlanError { message: s }
     }
 }
+
+/// Functions for (potentially) every type
 
 /// `clone` clones the input type
 #[inline(always)]
@@ -72,6 +75,8 @@ fn hashstring(v: &String) -> i64 {
     hasher.finish() as i64
 }
 
+/// Fallible, Maybe, and Either functions
+
 /// `maybe_get_or` gets the Option's value or returns the default if not present.
 #[inline(always)]
 fn maybe_get_or<T: std::clone::Clone>(v: &Option<T>, d: &T) -> T {
@@ -91,12 +96,7 @@ fn fallible_get_or<T: std::clone::Clone>(v: &Result<T, AlanError>, d: &T) -> T {
     }
 }
 
-/// `to_exit_code_i8` converts a 64-bit integer into an exit code, for convenience since `i64` is the
-/// default integer type in Alan.
-#[inline(always)]
-fn to_exit_code_i8(i: &i8) -> std::process::ExitCode {
-    (*i as u8).into()
-}
+/// Signed Integer-related functions
 
 /// `stringtoi8` tries to convert a string into an i8
 #[inline(always)]
@@ -134,6 +134,30 @@ fn i32toi8(i: &i32) -> i8 {
 /// `i16toi8` casts an i16 to an i8.
 #[inline(always)]
 fn i16toi8(i: &i16) -> i8 {
+    *i as i8
+}
+
+/// `u64toi8` casts an u64 to an i8.
+#[inline(always)]
+fn u64toi8(i: &u64) -> i8 {
+    *i as i8
+}
+
+/// `u32toi8` casts an u32 to an i8.
+#[inline(always)]
+fn u32toi8(i: &u32) -> i8 {
+    *i as i8
+}
+
+/// `u16toi8` casts an u16 to an i8.
+#[inline(always)]
+fn u16toi8(i: &u16) -> i8 {
+    *i as i8
+}
+
+/// `u8toi8` casts an u8 to an i8.
+#[inline(always)]
+fn u8toi8(i: &u8) -> i8 {
     *i as i8
 }
 
@@ -346,6 +370,30 @@ fn i8toi16(i: &i8) -> i16 {
     *i as i16
 }
 
+/// `u64toi16` casts an u64 to an i16.
+#[inline(always)]
+fn u64toi16(i: &u64) -> i16 {
+    *i as i16
+}
+
+/// `u32toi16` casts an u32 to an i16.
+#[inline(always)]
+fn u32toi16(i: &u32) -> i16 {
+    *i as i16
+}
+
+/// `u16toi16` casts an u16 to an i16.
+#[inline(always)]
+fn u16toi16(i: &u16) -> i16 {
+    *i as i16
+}
+
+/// `u8toi16` casts an u8 to an i16.
+#[inline(always)]
+fn u8toi16(i: &u8) -> i16 {
+    *i as i16
+}
+
 /// `addi16` safely adds two i16s together, returning a potentially wrapped i16
 #[inline(always)]
 fn addi16(a: &i16, b: &i16) -> i16 {
@@ -552,6 +600,30 @@ fn i16toi32(i: &i16) -> i32 {
 /// `i8toi32` casts an i8 to an i32.
 #[inline(always)]
 fn i8toi32(i: &i8) -> i32 {
+    *i as i32
+}
+
+/// `u64toi32` casts an u64 to an i32.
+#[inline(always)]
+fn u64toi32(i: &u64) -> i32 {
+    *i as i32
+}
+
+/// `u32toi32` casts an u32 to an i32.
+#[inline(always)]
+fn u32toi32(i: &u32) -> i32 {
+    *i as i32
+}
+
+/// `u16toi32` casts an u16 to an i32.
+#[inline(always)]
+fn u16toi32(i: &u16) -> i32 {
+    *i as i32
+}
+
+/// `u8toi32` casts an u8 to an i32.
+#[inline(always)]
+fn u8toi32(i: &u8) -> i32 {
     *i as i32
 }
 
@@ -764,6 +836,30 @@ fn i32toi64(i: &i32) -> i64 {
     *i as i64
 }
 
+/// `u8toi64` casts an u8 to an i64.
+#[inline(always)]
+fn u8toi64(i: &u8) -> i64 {
+    *i as i64
+}
+
+/// `u16toi64` casts an u16 to an i64.
+#[inline(always)]
+fn u16toi64(i: &u16) -> i64 {
+    *i as i64
+}
+
+/// `u32toi64` casts an u32 to an i64.
+#[inline(always)]
+fn u32toi64(i: &u32) -> i64 {
+    *i as i64
+}
+
+/// `u64toi64` casts an u64 to an i64.
+#[inline(always)]
+fn u64toi64(i: &u64) -> i64 {
+    *i as i64
+}
+
 /// `addi64` safely adds two i64s together, returning a potentially wrapped i64
 #[inline(always)]
 fn addi64(a: &i64, b: &i64) -> i64 {
@@ -934,6 +1030,918 @@ fn wrri64(a: &i64, b: &i64) -> i64 {
     a.rotate_right(*b as u32)
 }
 
+/// Unsigned Integer-related functions
+
+/// `stringtou8` tries to convert a string into an u8
+#[inline(always)]
+fn stringtou8(s: &String) -> Result<u8, AlanError> {
+    match s.parse() {
+        Ok(v) => Ok(v),
+        Err(_) => Err("Not a Number".into()),
+    }
+}
+
+/// `f64tou8` casts an f64 to an u8.
+#[inline(always)]
+fn f64tou8(f: &f64) -> u8 {
+    *f as u8
+}
+
+/// `f32tou8` casts an f32 to an u8.
+#[inline(always)]
+fn f32tou8(f: &f32) -> u8 {
+    *f as u8
+}
+
+/// `i64tou8` casts an i64 to an u8.
+#[inline(always)]
+fn i64tou8(i: &i64) -> u8 {
+    *i as u8
+}
+
+/// `i32tou8` casts an i32 to an u8.
+#[inline(always)]
+fn i32tou8(i: &i32) -> u8 {
+    *i as u8
+}
+
+/// `i16tou8` casts an i16 to an u8.
+#[inline(always)]
+fn i16tou8(i: &i16) -> u8 {
+    *i as u8
+}
+
+/// `i8tou8` casts an i8 to an u8.
+#[inline(always)]
+fn i8tou8(i: &i8) -> u8 {
+    *i as u8
+}
+
+/// `u64tou8` casts an u64 to an u8.
+#[inline(always)]
+fn u64tou8(i: &u64) -> u8 {
+    *i as u8
+}
+
+/// `u32tou8` casts an u32 to an u8.
+#[inline(always)]
+fn u32tou8(i: &u32) -> u8 {
+    *i as u8
+}
+
+/// `u16tou8` casts an u16 to an u8.
+#[inline(always)]
+fn u16tou8(i: &u16) -> u8 {
+    *i as u8
+}
+
+/// `addu8` safely adds two u8s together, returning a potentially wrapped u8
+#[inline(always)]
+fn addu8(a: &u8, b: &u8) -> u8 {
+    a.wrapping_add(*b)
+}
+
+/// `subu8` safely subtracts two u8s, returning a potentially wrapped u8
+#[inline(always)]
+fn subu8(a: &u8, b: &u8) -> u8 {
+    a.wrapping_sub(*b)
+}
+
+/// `mulu8` safely multiplies two u8s, returning a potentially wrapped u8
+#[inline(always)]
+fn mulu8(a: &u8, b: &u8) -> u8 {
+    a.wrapping_mul(*b)
+}
+
+/// `divu8` safely divides two u8s, returning a potentially wrapped u8
+#[inline(always)]
+fn divu8(a: &u8, b: &u8) -> u8 {
+    a.wrapping_div(*b)
+}
+
+/// `modu8` safely divides two u8s, returning a potentially wrapped remainder in u8
+#[inline(always)]
+fn modu8(a: &u8, b: &u8) -> u8 {
+    a.wrapping_rem(*b)
+}
+
+/// `powu8` safely raises the first u8 to the second u8, returning a potentially wrapped u8
+#[inline(always)]
+fn powu8(a: &u8, b: &u8) -> u8 {
+    // TODO: Support b being negative correctly
+    a.wrapping_pow(*b as u32)
+}
+
+/// `minu8` returns the smaller of the two u8 values
+#[inline(always)]
+fn minu8(a: &u8, b: &u8) -> u8 {
+    if a < b {
+        *a
+    } else {
+        *b
+    }
+}
+
+/// `maxu8` returns the larger of the two u8 values
+#[inline(always)]
+fn maxu8(a: &u8, b: &u8) -> u8 {
+    if a > b {
+        *a
+    } else {
+        *b
+    }
+}
+
+/// `andu8` performs a bitwise `and`
+#[inline(always)]
+fn andu8(a: &u8, b: &u8) -> u8 {
+    *a & *b
+}
+
+/// `oru8` performs a bitwise `or`
+#[inline(always)]
+fn oru8(a: &u8, b: &u8) -> u8 {
+    *a | *b
+}
+
+/// `xoru8` performs a bitwise `xor`
+#[inline(always)]
+fn xoru8(a: &u8, b: &u8) -> u8 {
+    *a ^ *b
+}
+
+/// `notu8` performs a bitwise `not`
+#[inline(always)]
+fn notu8(a: &u8) -> u8 {
+    !*a
+}
+
+/// `nandu8` performs a bitwise `nand` (considering how computers are built, why is this not a
+/// built-in operator?)
+#[inline(always)]
+fn nandu8(a: &u8, b: &u8) -> u8 {
+    !(*a & *b)
+}
+
+/// `noru8` performs a bitwise `nor`
+#[inline(always)]
+fn noru8(a: &u8, b: &u8) -> u8 {
+    !(*a | *b)
+}
+
+/// `xnoru8` performs a bitwise `xnor`
+#[inline(always)]
+fn xnoru8(a: &u8, b: &u8) -> u8 {
+    !(*a ^ *b)
+}
+
+/// `equ8` compares two u8s and returns if they are equal
+#[inline(always)]
+fn equ8(a: &u8, b: &u8) -> bool {
+    *a == *b
+}
+
+/// `nequ8` compares two u8s and returns if they are not equal
+#[inline(always)]
+fn nequ8(a: &u8, b: &u8) -> bool {
+    *a != *b
+}
+
+/// `ltu8` compares two u8s and returns if the first is smaller than the second
+#[inline(always)]
+fn ltu8(a: &u8, b: &u8) -> bool {
+    *a < *b
+}
+
+/// `lteu8` compares two u8s and returns if the first is smaller than or equal to the second
+#[inline(always)]
+fn lteu8(a: &u8, b: &u8) -> bool {
+    *a <= *b
+}
+
+/// `gtu8` compares two u8s and returns if the first is larger than the second
+#[inline(always)]
+fn gtu8(a: &u8, b: &u8) -> bool {
+    *a > *b
+}
+
+/// `gteu8` compares two u8s and returns if the first is larger than or equal to the second
+#[inline(always)]
+fn gteu8(a: &u8, b: &u8) -> bool {
+    *a >= *b
+}
+
+/// `shlu8` shifts the bits of the u8 to the left and truncates any overage (a cheap way to
+/// accomplish something like `((a as u8 * 2) & 255) as u8`)
+#[inline(always)]
+fn shlu8(a: &u8, b: &u8) -> u8 {
+    a.wrapping_shl(*b as u32)
+}
+
+/// `shru8` shifts the bits of the u8 to the right and truncates any overage (a cheap way to
+/// accomplish something like `((a as u8 / 2) & 255) as u8`)
+#[inline(always)]
+fn shru8(a: &u8, b: &u8) -> u8 {
+    a.wrapping_shr(*b as u32)
+}
+
+/// `wrlu8` wraps the bits of an u8 to the left (so a wrap of 1 makes the most significant bit the
+/// least significant and increases the significance of all others)
+#[inline(always)]
+fn wrlu8(a: &u8, b: &u8) -> u8 {
+    a.rotate_left(*b as u32)
+}
+
+/// `wrru8` wraps the bits of an u8 to the right (so a wrap of 1 makes the least significant bit the
+/// most significant and decreases the significance of all others)
+#[inline(always)]
+fn wrru8(a: &u8, b: &u8) -> u8 {
+    a.rotate_right(*b as u32)
+}
+
+/// `stringtou16` tries to convert a string into an u16
+#[inline(always)]
+fn stringtou16(s: &String) -> Result<u16, AlanError> {
+    match s.parse() {
+        Ok(v) => Ok(v),
+        Err(_) => Err("Not a Number".into()),
+    }
+}
+
+/// `f64tou16` casts an f64 to an u16.
+#[inline(always)]
+fn f64tou16(f: &f64) -> u16 {
+    *f as u16
+}
+
+/// `f32tou16` casts an f32 to an u16.
+#[inline(always)]
+fn f32tou16(f: &f32) -> u16 {
+    *f as u16
+}
+
+/// `i64tou16` casts an i64 to an u16.
+#[inline(always)]
+fn i64tou16(i: &i64) -> u16 {
+    *i as u16
+}
+
+/// `i32tou16` casts an i32 to an u16.
+#[inline(always)]
+fn i32tou16(i: &i32) -> u16 {
+    *i as u16
+}
+
+/// `i16tou16` casts an i16 to an u16.
+#[inline(always)]
+fn i16tou16(i: &i16) -> u16 {
+    *i as u16
+}
+
+/// `i8tou16` casts an i8 to an u16.
+#[inline(always)]
+fn i8tou16(i: &i8) -> u16 {
+    *i as u16
+}
+
+/// `u64tou16` casts an u64 to an u16.
+#[inline(always)]
+fn u64tou16(i: &u64) -> u16 {
+    *i as u16
+}
+
+/// `u32tou16` casts an u32 to an u16.
+#[inline(always)]
+fn u32tou16(i: &u32) -> u16 {
+    *i as u16
+}
+
+/// `u8tou16` casts an u8 to an u16.
+#[inline(always)]
+fn u8tou16(i: &u8) -> u16 {
+    *i as u16
+}
+
+/// `addu16` safely adds two u16s together, returning a potentially wrapped u16
+#[inline(always)]
+fn addu16(a: &u16, b: &u16) -> u16 {
+    a.wrapping_add(*b)
+}
+
+/// `subu16` safely subtracts two u16s, returning a potentially wrapped u16
+#[inline(always)]
+fn subu16(a: &u16, b: &u16) -> u16 {
+    a.wrapping_sub(*b)
+}
+
+/// `mulu16` safely multiplies two u16s, returning a potentially wrapped u16
+#[inline(always)]
+fn mulu16(a: &u16, b: &u16) -> u16 {
+    a.wrapping_mul(*b)
+}
+
+/// `divu16` safely divides two u16s, returning a potentially wrapped u16
+#[inline(always)]
+fn divu16(a: &u16, b: &u16) -> u16 {
+    a.wrapping_div(*b)
+}
+
+/// `modu16` safely divides two u16s, returning a potentially wrapped remainder in u16
+#[inline(always)]
+fn modu16(a: &u16, b: &u16) -> u16 {
+    a.wrapping_rem(*b)
+}
+
+/// `powu16` safely raises the first u16 to the second u16, returning a potentially wrapped u16
+#[inline(always)]
+fn powu16(a: &u16, b: &u16) -> u16 {
+    // TODO: Support b being negative correctly
+    a.wrapping_pow(*b as u32)
+}
+
+/// `minu16` returns the smaller of the two u16 values
+#[inline(always)]
+fn minu16(a: &u16, b: &u16) -> u16 {
+    if a < b {
+        *a
+    } else {
+        *b
+    }
+}
+
+/// `maxu16` returns the larger of the two u16 values
+#[inline(always)]
+fn maxu16(a: &u16, b: &u16) -> u16 {
+    if a > b {
+        *a
+    } else {
+        *b
+    }
+}
+
+/// `andu16` performs a bitwise `and`
+#[inline(always)]
+fn andu16(a: &u16, b: &u16) -> u16 {
+    *a & *b
+}
+
+/// `oru16` performs a bitwise `or`
+#[inline(always)]
+fn oru16(a: &u16, b: &u16) -> u16 {
+    *a | *b
+}
+
+/// `xoru16` performs a bitwise `xor`
+#[inline(always)]
+fn xoru16(a: &u16, b: &u16) -> u16 {
+    *a ^ *b
+}
+
+/// `notu16` performs a bitwise `not`
+#[inline(always)]
+fn notu16(a: &u16) -> u16 {
+    !*a
+}
+
+/// `nandu16` performs a bitwise `nand` (considering how computers are built, why is this not a
+/// built-in operator?)
+#[inline(always)]
+fn nandu16(a: &u16, b: &u16) -> u16 {
+    !(*a & *b)
+}
+
+/// `noru16` performs a bitwise `nor`
+#[inline(always)]
+fn noru16(a: &u16, b: &u16) -> u16 {
+    !(*a | *b)
+}
+
+/// `xnoru16` performs a bitwise `xnor`
+#[inline(always)]
+fn xnoru16(a: &u16, b: &u16) -> u16 {
+    !(*a ^ *b)
+}
+
+/// `equ16` compares two u16s and returns if they are equal
+#[inline(always)]
+fn equ16(a: &u16, b: &u16) -> bool {
+    *a == *b
+}
+
+/// `nequ16` compares two u16s and returns if they are not equal
+#[inline(always)]
+fn nequ16(a: &u16, b: &u16) -> bool {
+    *a != *b
+}
+
+/// `ltu16` compares two u16s and returns if the first is smaller than the second
+#[inline(always)]
+fn ltu16(a: &u16, b: &u16) -> bool {
+    *a < *b
+}
+
+/// `lteu16` compares two u16s and returns if the first is smaller than or equal to the second
+#[inline(always)]
+fn lteu16(a: &u16, b: &u16) -> bool {
+    *a <= *b
+}
+
+/// `gtu16` compares two u16s and returns if the first is larger than the second
+#[inline(always)]
+fn gtu16(a: &u16, b: &u16) -> bool {
+    *a > *b
+}
+
+/// `gteu16` compares two u16s and returns if the first is larger than or equal to the second
+#[inline(always)]
+fn gteu16(a: &u16, b: &u16) -> bool {
+    *a >= *b
+}
+
+/// `shlu16` shifts the bits of the u16 to the left and truncates any overage (a cheap way to
+/// accomplish something like `(a as u16 * 2) as u16`)
+#[inline(always)]
+fn shlu16(a: &u16, b: &u16) -> u16 {
+    a.wrapping_shl(*b as u32)
+}
+
+/// `shru16` shifts the bits of the u16 to the right and truncates any overage (a cheap way to
+/// accomplish something like `(a as u16 / 2) as u16`)
+#[inline(always)]
+fn shru16(a: &u16, b: &u16) -> u16 {
+    a.wrapping_shr(*b as u32)
+}
+
+/// `wrlu16` wraps the bits of an u16 to the left (so a wrap of 1 makes the most significant bit the
+/// least significant and increases the significance of all others)
+#[inline(always)]
+fn wrlu16(a: &u16, b: &u16) -> u16 {
+    a.rotate_left(*b as u32)
+}
+
+/// `wrru16` wraps the bits of an u16 to the right (so a wrap of 1 makes the least significant bit the
+/// most significant and decreases the significance of all others)
+#[inline(always)]
+fn wrru16(a: &u16, b: &u16) -> u16 {
+    a.rotate_right(*b as u32)
+}
+
+/// `stringtou32` tries to convert a string into an u32
+#[inline(always)]
+fn stringtou32(s: &String) -> Result<u32, AlanError> {
+    match s.parse() {
+        Ok(v) => Ok(v),
+        Err(_) => Err("Not a Number".into()),
+    }
+}
+
+/// `f64tou32` casts an f64 to an u32.
+#[inline(always)]
+fn f64tou32(f: &f64) -> u32 {
+    *f as u32
+}
+
+/// `f32tou32` casts an f32 to an u32.
+#[inline(always)]
+fn f32tou32(f: &f32) -> u32 {
+    *f as u32
+}
+
+/// `i64tou32` casts an i64 to an u32.
+#[inline(always)]
+fn i64tou32(i: &i64) -> u32 {
+    *i as u32
+}
+
+/// `i32tou32` casts an i32 to an u32.
+#[inline(always)]
+fn i32tou32(i: &i32) -> u32 {
+    *i as u32
+}
+
+/// `i16tou32` casts an i16 to an u32.
+#[inline(always)]
+fn i16tou32(i: &i16) -> u32 {
+    *i as u32
+}
+
+/// `i8tou32` casts an i8 to an u32.
+#[inline(always)]
+fn i8tou32(i: &i8) -> u32 {
+    *i as u32
+}
+
+/// `u64tou32` casts an u64 to an u32.
+#[inline(always)]
+fn u64tou32(i: &u64) -> u32 {
+    *i as u32
+}
+
+/// `u16tou32` casts an u16 to an u32.
+#[inline(always)]
+fn u16tou32(i: &u16) -> u32 {
+    *i as u32
+}
+
+/// `u8tou32` casts an u8 to an u32.
+#[inline(always)]
+fn u8tou32(i: &u8) -> u32 {
+    *i as u32
+}
+
+/// `addu32` safely adds two u32s together, returning a potentially wrapped u32
+#[inline(always)]
+fn addu32(a: &u32, b: &u32) -> u32 {
+    a.wrapping_add(*b)
+}
+
+/// `subu32` safely subtracts two u32s, returning a potentially wrapped u32
+#[inline(always)]
+fn subu32(a: &u32, b: &u32) -> u32 {
+    a.wrapping_sub(*b)
+}
+
+/// `mulu32` safely multiplies two u32s, returning a potentially wrapped u32
+#[inline(always)]
+fn mulu32(a: &u32, b: &u32) -> u32 {
+    a.wrapping_mul(*b)
+}
+
+/// `divu32` safely divides two u32s, returning a potentially wrapped u32
+#[inline(always)]
+fn divu32(a: &u32, b: &u32) -> u32 {
+    a.wrapping_div(*b)
+}
+
+/// `modu32` safely divides two u32s, returning a potentially wrapped remainder in u32
+#[inline(always)]
+fn modu32(a: &u32, b: &u32) -> u32 {
+    a.wrapping_rem(*b)
+}
+
+/// `powu32` safely raises the first u32 to the second u32, returning a potentially wrapped u32
+#[inline(always)]
+fn powu32(a: &u32, b: &u32) -> u32 {
+    // TODO: Support b being negative correctly
+    a.wrapping_pow(*b as u32)
+}
+
+/// `minu32` returns the smaller of the two u32 values
+#[inline(always)]
+fn minu32(a: &u32, b: &u32) -> u32 {
+    if a < b {
+        *a
+    } else {
+        *b
+    }
+}
+
+/// `maxu32` returns the larger of the two u32 values
+#[inline(always)]
+fn maxu32(a: &u32, b: &u32) -> u32 {
+    if a > b {
+        *a
+    } else {
+        *b
+    }
+}
+
+/// `andu32` performs a bitwise `and`
+#[inline(always)]
+fn andu32(a: &u32, b: &u32) -> u32 {
+    *a & *b
+}
+
+/// `oru32` performs a bitwise `or`
+#[inline(always)]
+fn oru32(a: &u32, b: &u32) -> u32 {
+    *a | *b
+}
+
+/// `xoru32` performs a bitwise `xor`
+#[inline(always)]
+fn xoru32(a: &u32, b: &u32) -> u32 {
+    *a ^ *b
+}
+
+/// `notu32` performs a bitwise `not`
+#[inline(always)]
+fn notu32(a: &u32) -> u32 {
+    !*a
+}
+
+/// `nandu32` performs a bitwise `nand` (considering how computers are built, why is this not a
+/// built-in operator?)
+#[inline(always)]
+fn nandu32(a: &u32, b: &u32) -> u32 {
+    !(*a & *b)
+}
+
+/// `noru32` performs a bitwise `nor`
+#[inline(always)]
+fn noru32(a: &u32, b: &u32) -> u32 {
+    !(*a | *b)
+}
+
+/// `xnoru32` performs a bitwise `xnor`
+#[inline(always)]
+fn xnoru32(a: &u32, b: &u32) -> u32 {
+    !(*a ^ *b)
+}
+
+/// `equ32` compares two u32s and returns if they are equal
+#[inline(always)]
+fn equ32(a: &u32, b: &u32) -> bool {
+    *a == *b
+}
+
+/// `nequ32` compares two u32s and returns if they are not equal
+#[inline(always)]
+fn nequ32(a: &u32, b: &u32) -> bool {
+    *a != *b
+}
+
+/// `ltu32` compares two u32s and returns if the first is smaller than the second
+#[inline(always)]
+fn ltu32(a: &u32, b: &u32) -> bool {
+    *a < *b
+}
+
+/// `lteu32` compares two u32s and returns if the first is smaller than or equal to the second
+#[inline(always)]
+fn lteu32(a: &u32, b: &u32) -> bool {
+    *a <= *b
+}
+
+/// `gtu32` compares two u32s and returns if the first is larger than the second
+#[inline(always)]
+fn gtu32(a: &u32, b: &u32) -> bool {
+    *a > *b
+}
+
+/// `gteu32` compares two u32s and returns if the first is larger than or equal to the second
+#[inline(always)]
+fn gteu32(a: &u32, b: &u32) -> bool {
+    *a >= *b
+}
+
+/// `shlu32` shifts the bits of the u32 to the left and truncates any overage (a cheap way to
+/// accomplish something like `(a as u32 * 2) as u32`)
+#[inline(always)]
+fn shlu32(a: &u32, b: &u32) -> u32 {
+    a.wrapping_shl(*b as u32)
+}
+
+/// `shru32` shifts the bits of the u32 to the right and truncates any overage (a cheap way to
+/// accomplish something like `(a as u32 / 2) as u32`)
+#[inline(always)]
+fn shru32(a: &u32, b: &u32) -> u32 {
+    a.wrapping_shr(*b as u32)
+}
+
+/// `wrlu32` wraps the bits of an u32 to the left (so a wrap of 1 makes the most significant bit the
+/// least significant and increases the significance of all others)
+#[inline(always)]
+fn wrlu32(a: &u32, b: &u32) -> u32 {
+    a.rotate_left(*b as u32)
+}
+
+/// `wrru32` wraps the bits of an u32 to the right (so a wrap of 1 makes the least significant bit the
+/// most significant and decreases the significance of all others)
+#[inline(always)]
+fn wrru32(a: &u32, b: &u32) -> u32 {
+    a.rotate_right(*b as u32)
+}
+
+/// `stringtou64` tries to convert a string into an u64
+#[inline(always)]
+fn stringtou64(s: &String) -> Result<u64, AlanError> {
+    match s.parse() {
+        Ok(v) => Ok(v),
+        Err(_) => Err("Not a Number".into()),
+    }
+}
+
+/// `f64tou64` casts an f64 to an u64.
+#[inline(always)]
+fn f64tou64(f: &f64) -> u64 {
+    *f as u64
+}
+
+/// `f32tou64` casts an f32 to an u64.
+#[inline(always)]
+fn f32tou64(f: &f32) -> u64 {
+    *f as u64
+}
+
+/// `i8tou64` casts an i8 to an u64.
+#[inline(always)]
+fn i8tou64(i: &i8) -> u64 {
+    *i as u64
+}
+
+/// `i16tou64` casts an i16 to an u64.
+#[inline(always)]
+fn i16tou64(i: &i16) -> u64 {
+    *i as u64
+}
+
+/// `i32tou64` casts an i32 to an u64.
+#[inline(always)]
+fn i32tou64(i: &i32) -> u64 {
+    *i as u64
+}
+
+/// `i64tou64` casts an i64 to an u64.
+#[inline(always)]
+fn i64tou64(i: &i64) -> u64 {
+    *i as u64
+}
+
+/// `u8tou64` casts an u8 to an u64.
+#[inline(always)]
+fn u8tou64(i: &u8) -> u64 {
+    *i as u64
+}
+
+/// `u16tou64` casts an u16 to an u64.
+#[inline(always)]
+fn u16tou64(i: &u16) -> u64 {
+    *i as u64
+}
+
+/// `u32tou64` casts an u32 to an u64.
+#[inline(always)]
+fn u32tou64(i: &u32) -> u64 {
+    *i as u64
+}
+
+/// `addu64` safely adds two u64s together, returning a potentially wrapped u64
+#[inline(always)]
+fn addu64(a: &u64, b: &u64) -> u64 {
+    a.wrapping_add(*b)
+}
+
+/// `subu64` safely subtracts two u64s, returning a potentially wrapped u64
+#[inline(always)]
+fn subu64(a: &u64, b: &u64) -> u64 {
+    a.wrapping_sub(*b)
+}
+
+/// `mulu64` safely multiplies two u64s, returning a potentially wrapped u64
+#[inline(always)]
+fn mulu64(a: &u64, b: &u64) -> u64 {
+    a.wrapping_mul(*b)
+}
+
+/// `divu64` safely divides two u64s, returning a potentially wrapped u64
+#[inline(always)]
+fn divu64(a: &u64, b: &u64) -> u64 {
+    a.wrapping_div(*b)
+}
+
+/// `modu64` safely divides two u64s, returning a potentially wrapped remainder in u64
+#[inline(always)]
+fn modu64(a: &u64, b: &u64) -> u64 {
+    a.wrapping_rem(*b)
+}
+
+/// `powu64` safely raises the first u64 to the second u64, returning a potentially wrapped u64
+#[inline(always)]
+fn powu64(a: &u64, b: &u64) -> u64 {
+    // TODO: Support b being negative correctly
+    a.wrapping_pow(*b as u32)
+}
+
+/// `minu64` returns the smaller of the two u64 values
+#[inline(always)]
+fn minu64(a: &u64, b: &u64) -> u64 {
+    if a < b {
+        *a
+    } else {
+        *b
+    }
+}
+
+/// `maxu64` returns the larger of the two u64 values
+#[inline(always)]
+fn maxu64(a: &u64, b: &u64) -> u64 {
+    if a > b {
+        *a
+    } else {
+        *b
+    }
+}
+
+/// `andu64` performs a bitwise `and`
+#[inline(always)]
+fn andu64(a: &u64, b: &u64) -> u64 {
+    *a & *b
+}
+
+/// `oru64` performs a bitwise `or`
+#[inline(always)]
+fn oru64(a: &u64, b: &u64) -> u64 {
+    *a | *b
+}
+
+/// `xoru64` performs a bitwise `xor`
+#[inline(always)]
+fn xoru64(a: &u64, b: &u64) -> u64 {
+    *a ^ *b
+}
+
+/// `notu64` performs a bitwise `not`
+#[inline(always)]
+fn notu64(a: &u64) -> u64 {
+    !*a
+}
+
+/// `nandu64` performs a bitwise `nand` (considering how computers are built, why is this not a
+/// built-in operator?)
+#[inline(always)]
+fn nandu64(a: &u64, b: &u64) -> u64 {
+    !(*a & *b)
+}
+
+/// `noru64` performs a bitwise `nor`
+#[inline(always)]
+fn noru64(a: &u64, b: &u64) -> u64 {
+    !(*a | *b)
+}
+
+/// `xnoru64` performs a bitwise `xnor`
+#[inline(always)]
+fn xnoru64(a: &u64, b: &u64) -> u64 {
+    !(*a ^ *b)
+}
+
+/// `equ64` compares two u64s and returns if they are equal
+#[inline(always)]
+fn equ64(a: &u64, b: &u64) -> bool {
+    *a == *b
+}
+
+/// `nequ64` compares two u64s and returns if they are not equal
+#[inline(always)]
+fn nequ64(a: &u64, b: &u64) -> bool {
+    *a != *b
+}
+
+/// `ltu64` compares two u64s and returns if the first is smaller than the second
+#[inline(always)]
+fn ltu64(a: &u64, b: &u64) -> bool {
+    *a < *b
+}
+
+/// `lteu64` compares two u64s and returns if the first is smaller than or equal to the second
+#[inline(always)]
+fn lteu64(a: &u64, b: &u64) -> bool {
+    *a <= *b
+}
+
+/// `gtu64` compares two u64s and returns if the first is larger than the second
+#[inline(always)]
+fn gtu64(a: &u64, b: &u64) -> bool {
+    *a > *b
+}
+
+/// `gteu64` compares two u64s and returns if the first is larger than or equal to the second
+#[inline(always)]
+fn gteu64(a: &u64, b: &u64) -> bool {
+    *a >= *b
+}
+
+/// `shlu64` shifts the bits of the u64 to the left and truncates any overage (a cheap way to
+/// accomplish something like `(a as u64 * 2) as u64`)
+#[inline(always)]
+fn shlu64(a: &u64, b: &u64) -> u64 {
+    a.wrapping_shl(*b as u32)
+}
+
+/// `shru64` shifts the bits of the u64 to the right and truncates any overage (a cheap way to
+/// accomplish something like `(a as u64 / 2) as u64`)
+#[inline(always)]
+fn shru64(a: &u64, b: &u64) -> u64 {
+    a.wrapping_shr(*b as u32)
+}
+
+/// `wrlu64` wraps the bits of an u64 to the left (so a wrap of 1 makes the most significant bit the
+/// least significant and increases the significance of all others)
+#[inline(always)]
+fn wrlu64(a: &u64, b: &u64) -> u64 {
+    a.rotate_left(*b as u32)
+}
+
+/// `wrru64` wraps the bits of an u64 to the right (so a wrap of 1 makes the least significant bit the
+/// most significant and decreases the significance of all others)
+#[inline(always)]
+fn wrru64(a: &u64, b: &u64) -> u64 {
+    a.rotate_right(*b as u32)
+}
+
+/// Float-related functions
+
 /// `stringtof32` tries to convert a string into an f32
 #[inline(always)]
 fn stringtof32(s: &String) -> Result<f32, AlanError> {
@@ -970,6 +1978,30 @@ fn i16tof32(i: &i16) -> f32 {
 /// `i8tof32` casts an i8 to an f32.
 #[inline(always)]
 fn i8tof32(i: &i8) -> f32 {
+    *i as f32
+}
+
+/// `u64tof32` casts an u64 to an f32.
+#[inline(always)]
+fn u64tof32(i: &u64) -> f32 {
+    *i as f32
+}
+
+/// `u32tof32` casts an u32 to an f32.
+#[inline(always)]
+fn u32tof32(i: &u32) -> f32 {
+    *i as f32
+}
+
+/// `u16tof32` casts an u16 to an f32.
+#[inline(always)]
+fn u16tof32(i: &u16) -> f32 {
+    *i as f32
+}
+
+/// `u8tof32` casts an u8 to an f32.
+#[inline(always)]
+fn u8tof32(i: &u8) -> f32 {
     *i as f32
 }
 
@@ -1110,6 +2142,30 @@ fn i64tof64(i: &i64) -> f64 {
     *i as f64
 }
 
+/// `u8tof64` casts an u8 to an f64.
+#[inline(always)]
+fn u8tof64(i: &u8) -> f64 {
+    *i as f64
+}
+
+/// `u16tof64` casts an u16 to an f64.
+#[inline(always)]
+fn u16tof64(i: &u16) -> f64 {
+    *i as f64
+}
+
+/// `u32tof64` casts an u32 to an f64.
+#[inline(always)]
+fn u32tof64(i: &u32) -> f64 {
+    *i as f64
+}
+
+/// `u64tof64` casts an u64 to an f64.
+#[inline(always)]
+fn u64tof64(i: &u64) -> f64 {
+    *i as f64
+}
+
 /// `addf64` adds two f64s together, returning an f64
 #[inline(always)]
 fn addf64(a: &f64, b: &f64) -> f64 {
@@ -1208,24 +2264,7 @@ fn gtef64(a: &f64, b: &f64) -> bool {
     *a >= *b
 }
 
-/// `get_or_exit` is basically an alias to `unwrap`, but as a function instead of a method
-#[inline(always)]
-fn get_or_exit<A: Clone>(a: &Result<A, AlanError>) -> A {
-    match a {
-        Ok(v) => v.clone(),
-        Err(e) => panic!("{:?}", e),
-    }
-}
-
-/// `get_or_maybe_exit` is basically an alias to `unwrap`, but as a function instead of a method
-/// and for `Option` instead of `Result`
-#[inline(always)]
-fn get_or_maybe_exit<A: Clone>(a: &Option<A>) -> A {
-    match a {
-        Some(v) => v.clone(),
-        None => panic!("Expected value did not exist"), // TODO: Better error message somehow?
-    }
-}
+/// String-related functions
 
 /// `i8tostring` converts an i8 into a simple string representation
 #[inline(always)]
@@ -1248,6 +2287,30 @@ fn i32tostring(a: &i32) -> String {
 /// `i64tostring` converts an i64 into a simple string representation
 #[inline(always)]
 fn i64tostring(a: &i64) -> String {
+    format!("{}", a)
+}
+
+/// `u8tostring` converts an u8 into a simple string representation
+#[inline(always)]
+fn u8tostring(a: &u8) -> String {
+    format!("{}", a)
+}
+
+/// `u16tostring` converts an u16 into a simple string representation
+#[inline(always)]
+fn u16tostring(a: &u16) -> String {
+    format!("{}", a)
+}
+
+/// `u32tostring` converts an u32 into a simple string representation
+#[inline(always)]
+fn u32tostring(a: &u32) -> String {
+    format!("{}", a)
+}
+
+/// `u64tostring` converts an u64 into a simple string representation
+#[inline(always)]
+fn u64tostring(a: &u64) -> String {
     format!("{}", a)
 }
 
@@ -1393,6 +2456,8 @@ fn bufferjoinstring<const S: usize>(a: &[String; S], s: &String) -> String {
     a.join(s)
 }
 
+/// Boolean-related functions
+
 /// `i8tobool` converts an integer into a boolean
 #[inline(always)]
 fn i8tobool(a: &i8) -> bool {
@@ -1414,6 +2479,30 @@ fn i32tobool(a: &i32) -> bool {
 /// `i64tobool` converts an integer into a boolean
 #[inline(always)]
 fn i64tobool(a: &i64) -> bool {
+    *a != 0
+}
+
+/// `u8tobool` converts an integer into a boolean
+#[inline(always)]
+fn u8tobool(a: &u8) -> bool {
+    *a != 0
+}
+
+/// `u16tobool` converts an integer into a boolean
+#[inline(always)]
+fn u16tobool(a: &u16) -> bool {
+    *a != 0
+}
+
+/// `u32tobool` converts an integer into a boolean
+#[inline(always)]
+fn u32tobool(a: &u32) -> bool {
+    *a != 0
+}
+
+/// `u64tobool` converts an integer into a boolean
+#[inline(always)]
+fn u64tobool(a: &u64) -> bool {
     *a != 0
 }
 
@@ -1490,6 +2579,8 @@ fn neqbool(a: &bool, b: &bool) -> bool {
     *a != *b
 }
 
+/// Array-related functions
+
 /// `getarray` returns a value from an array at the location specified
 #[inline(always)]
 fn getarray<T: Clone>(a: &Vec<T>, i: &i64) -> Option<T> {
@@ -1517,127 +2608,10 @@ fn poparray<T>(a: &mut Vec<T>) -> Option<T> {
     a.pop()
 }
 
-/// `println` is a simple function that prints basically anything
-#[inline(always)]
-fn println<A: std::fmt::Display>(a: &A) {
-    println!("{}", a);
-}
-
-/// `println_result` is a small wrapper function that makes printing Result types easy
-#[inline(always)]
-fn println_result<A: std::fmt::Display>(a: &Result<A, AlanError>) {
-    match a {
-        Ok(o) => println!("{}", o),
-        Err(e) => println!("{}", e.to_string()),
-    };
-}
-
-/// `println_maybe` is a small wrapper function that makes printing Option types easy
-#[inline(always)]
-fn println_maybe<A: std::fmt::Display>(a: &Option<A>) {
-    match a {
-        Some(o) => println!("{}", o),
-        None => println!("void"),
-    };
-}
-
-/// `eprintln` is a simple function that prints basically anything
-#[inline(always)]
-fn eprintln<A: std::fmt::Display>(a: &A) {
-    eprintln!("{}", a);
-}
-
-/// `eprintln_result` is a small wrapper function that makes printing Result types easy
-#[inline(always)]
-fn eprintln_result<A: std::fmt::Display>(a: &Result<A, AlanError>) {
-    match a {
-        Ok(o) => eprintln!("{}", o),
-        Err(e) => eprintln!("{:?}", e),
-    };
-}
-
-/// `eprintln_maybe` is a small wrapper function that makes printing Option types easy
-#[inline(always)]
-fn eprintln_maybe<A: std::fmt::Display>(a: &Option<A>) {
-    match a {
-        Some(o) => eprintln!("{}", o),
-        None => eprintln!("void"),
-    };
-}
-
-/// `stdout` is a simple function that prints basically anything without a newline attached
-#[inline(always)]
-fn stdout<A: std::fmt::Display>(a: &A) {
-    print!("{}", a);
-}
-
-/// `wait` is a function that sleeps the current thread for the specified number of milliseconds
-#[inline(always)]
-fn wait(t: &i64) {
-    std::thread::sleep(std::time::Duration::from_millis(*t as u64));
-}
-
-/// `now` is a function that returns std::time::Instant for right now
-#[inline(always)]
-fn now() -> std::time::Instant {
-    std::time::Instant::now()
-}
-
-/// `elapsed` gets the duration since the instant was created TODO: Borrow these values instead
-#[inline(always)]
-fn elapsed(i: &std::time::Instant) -> std::time::Duration {
-    i.elapsed()
-}
-
-/// `print_duration` pretty-prints a duration value. TODO: Move this into Alan code and out of here
-#[inline(always)]
-fn print_duration(d: &std::time::Duration) {
-    println!("{}.{:0>9}", d.as_secs(), d.subsec_nanos()); // TODO: Figure out which subsec to use
-}
-
 /// `filled` returns a filled Vec<V> of the provided value for the provided size
 #[inline(always)]
 fn filled<V: std::clone::Clone>(i: &V, l: &i64) -> Vec<V> {
     vec![i.clone(); *l as usize]
-}
-
-/// `print_vec` pretty prints a vector assuming the input type can be displayed
-#[inline(always)]
-fn print_vec<A: std::fmt::Display>(vs: &Vec<A>) {
-    println!(
-        "[{}]",
-        vs.iter()
-            .map(|v| format!("{}", v))
-            .collect::<Vec<String>>()
-            .join(", ")
-    );
-}
-
-/// `print_vec_result` pretty prints a vector of result values assuming the input can be displayed
-#[inline(always)]
-fn print_vec_result<A: std::fmt::Display>(vs: &Vec<Result<A, AlanError>>) {
-    println!(
-        "[{}]",
-        vs.iter()
-            .map(|v| match v {
-                Err(e) => format!("{:?}", e),
-                Ok(a) => format!("{}", a),
-            })
-            .collect::<Vec<String>>()
-            .join(", ")
-    );
-}
-
-/// `print_buffer` pretty prints a buffer assuming the input type can be displayed
-#[inline(always)]
-fn print_buffer<A: std::fmt::Display, const N: usize>(vs: &[A; N]) {
-    println!(
-        "[{}]",
-        vs.iter()
-            .map(|v| format!("{}", v))
-            .collect::<Vec<String>>()
-            .join(", ")
-    );
 }
 
 /// `vec_len` returns the length of a vector
@@ -1812,12 +2786,6 @@ fn concat<A: std::clone::Clone>(a: &Vec<A>, b: &Vec<A>) -> Vec<A> {
     out
 }
 
-/// `push` pushes an element into a vector
-#[inline(always)]
-fn push<A: std::clone::Clone>(v: &mut Vec<A>, a: &A) {
-    v.push(a.clone());
-}
-
 /// `hasarray` returns true if the specified value exists anywhere in the vector
 #[inline(always)]
 fn hasarray<T: std::cmp::PartialEq>(a: &Vec<T>, v: &T) -> bool {
@@ -1868,6 +2836,8 @@ fn repeatarray<T: std::clone::Clone>(a: &Vec<T>, c: &i64) -> Vec<T> {
     }
     out
 }
+
+/// Buffer-related functions
 
 /// `mapbuffer_onearg` runs the provided single-argument function on each element of the buffer,
 /// returning a new buffer
@@ -1995,80 +2965,116 @@ fn repeatbuffertoarray<T: std::clone::Clone, const S: usize>(a: &[T; S], c: &i64
     out
 }
 
+/// Process exit-related bindings
+
+/// `to_exit_code` converts an u8 into an exit code
+#[inline(always)]
+fn to_exit_code(i: &u8) -> std::process::ExitCode {
+    (*i).into()
+}
+
+/// `get_or_exit` is basically an alias to `unwrap`, but as a function instead of a method
+#[inline(always)]
+fn get_or_exit<A: Clone>(a: &Result<A, AlanError>) -> A {
+    match a {
+        Ok(v) => v.clone(),
+        Err(e) => panic!("{:?}", e),
+    }
+}
+
+/// `get_or_maybe_exit` is basically an alias to `unwrap`, but as a function instead of a method
+/// and for `Option` instead of `Result`
+#[inline(always)]
+fn get_or_maybe_exit<A: Clone>(a: &Option<A>) -> A {
+    match a {
+        Some(v) => v.clone(),
+        None => panic!("Expected value did not exist"), // TODO: Better error message somehow?
+    }
+}
+
+/// Thread-related functions
+
+/// `wait` is a function that sleeps the current thread for the specified number of milliseconds
+#[inline(always)]
+fn wait(t: &i64) {
+    std::thread::sleep(std::time::Duration::from_millis(*t as u64));
+}
+
+/// Time-related functions
+
+/// `now` is a function that returns std::time::Instant for right now
+#[inline(always)]
+fn now() -> std::time::Instant {
+    std::time::Instant::now()
+}
+
+/// `elapsed` gets the duration since the instant was created TODO: Borrow these values instead
+#[inline(always)]
+fn elapsed(i: &std::time::Instant) -> std::time::Duration {
+    i.elapsed()
+}
+
+/// GPU-related functions and types
+
 struct GPU {
-    pub instance: wgpu::Instance,
     pub adapter: wgpu::Adapter,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
 }
 
 impl GPU {
-    pub fn new() -> Result<GPU, Box<dyn std::error::Error>> {
+    pub fn list() -> Vec<wgpu::Adapter> {
         let instance = wgpu::Instance::default();
-        let mut adapters = instance.enumerate_adapters(wgpu::Backends::all());
-        // We're going to grab the first WebGPU-compliant adapter
-        adapters.reverse();
-        // TODO: This crashes if there are literally zero options
-        let mut adapter = adapters.pop().unwrap();
-        while adapters.len() > 0 {
+        let mut out = Vec::new();
+        for adapter in instance.enumerate_adapters(wgpu::Backends::all()) {
             if adapter.get_downlevel_capabilities().is_webgpu_compliant() {
-                break;
+                out.push(adapter);
             }
-            adapter = match adapters.pop() {
-                Some(a) => a,
-                None => {
-                    // None of the adapters have the required WebGPU capabilities
-                    // So let's try to request a fallback (software-supported) one
-                    // to at least not crash
-                    let fallback_options = wgpu::RequestAdapterOptions {
-                        power_preference: wgpu::PowerPreference::None,
-                        force_fallback_adapter: true,
-                        compatible_surface: None,
-                    };
-                    let adapter_future = instance.request_adapter(&fallback_options);
-                    match futures::executor::block_on(adapter_future) {
-                        Some(a) => a,
-                        None => panic!("Unable to acquire an adapter"),
-                    }
+        }
+        out
+    }
+    pub fn init(adapters: Vec<wgpu::Adapter>) -> Vec<GPU> {
+        let mut out = Vec::new();
+        for adapter in adapters {
+            let features = adapter.features();
+            let limits = adapter.limits();
+            let info = adapter.get_info();
+            let device_future = adapter.request_device(
+                &wgpu::DeviceDescriptor {
+                    label: Some(&format!("{} on {}", info.name, info.backend.to_str())),
+                    required_features: features,
+                    required_limits: limits,
+                },
+                None,
+            );
+            match futures::executor::block_on(device_future) {
+                Ok((device, queue)) => {
+                    out.push(GPU {
+                        adapter,
+                        device,
+                        queue,
+                    });
                 }
+                Err(_) => { /* Do nothing */ }
             };
         }
-        // Temporarily override for software no matter what
-        // Let's ask the adapter for everything it can do
-        let features = adapter.features();
-        let limits = adapter.limits();
-        let device_future = adapter.request_device(
-            &wgpu::DeviceDescriptor {
-                label: None,
-                required_features: features,
-                required_limits: limits,
-            },
-            Some(&std::env::current_dir()?),
-        );
-        let (device, queue) = futures::executor::block_on(device_future)?;
-        Ok(GPU {
-            instance,
-            adapter,
-            device,
-            queue,
-        })
+        out
     }
 }
 
-#[inline(always)]
-fn GPU_new() -> GPU {
-    // TODO: Make this safer
-    match GPU::new() {
-        Ok(g) => g,
-        Err(_) => unreachable!(),
+static GPUS: OnceLock<Vec<GPU>> = OnceLock::new();
+
+fn gpu() -> &'static GPU {
+    match GPUS.get_or_init(|| GPU::init(GPU::list())).get(0) {
+        Some(g) => g,
+        None => panic!(
+            "This program requires a GPU but there are no WebGPU-compliant GPUs on this machine"
+        ),
     }
 }
 
-fn create_buffer_init(
-    g: &mut GPU,
-    usage: &mut wgpu::BufferUsages,
-    vals: &mut Vec<i32>,
-) -> wgpu::Buffer {
+fn create_buffer_init(usage: &mut wgpu::BufferUsages, vals: &mut Vec<i32>) -> wgpu::Buffer {
+    let g = gpu();
     let val_slice = &vals[..];
     let val_ptr = val_slice.as_ptr();
     let val_u8_len = vals.len() * 4;
@@ -2083,11 +3089,8 @@ fn create_buffer_init(
     )
 }
 
-fn create_empty_buffer(
-    g: &mut GPU,
-    usage: &mut wgpu::BufferUsages,
-    size: &mut i64,
-) -> wgpu::Buffer {
+fn create_empty_buffer(usage: &mut wgpu::BufferUsages, size: &mut i64) -> wgpu::Buffer {
+    let g = gpu();
     g.device.create_buffer(&wgpu::BufferDescriptor {
         label: None, // TODO: Add a label for easier debugging?
         size: *size as u64,
@@ -2108,30 +3111,17 @@ fn storage_buffer_type() -> wgpu::BufferUsages {
     wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC
 }
 
-type Vec_Buffer<'a> = Vec<&'a wgpu::Buffer>;
-type Vec_Vec_Buffer<'a> = Vec<Vec<&'a wgpu::Buffer>>;
-
-#[inline(always)]
-fn Vec_Buffer_new<'a>() -> Vec_Buffer<'a> {
-    Vec::new()
-}
-
-#[inline(always)]
-fn Vec_Vec_Buffer_new<'a>() -> Vec_Vec_Buffer<'a> {
-    Vec::new()
-}
-
 struct GPGPU<'a> {
     pub source: String,
     pub entrypoint: String,
-    pub buffers: Vec_Vec_Buffer<'a>,
+    pub buffers: Vec<Vec<&'a wgpu::Buffer>>,
     pub workgroup_sizes: [i64; 3],
 }
 
 impl GPGPU<'_> {
     fn new<'a>(
         source: String,
-        buffers: Vec_Vec_Buffer<'a>,
+        buffers: Vec<Vec<&'a wgpu::Buffer>>,
         workgroup_sizes: [i64; 3],
     ) -> GPGPU<'a> {
         GPGPU {
@@ -2144,8 +3134,12 @@ impl GPGPU<'_> {
 }
 
 #[inline(always)]
-fn GPGPU_new<'a>(source: &mut String, buffers: &'a mut Vec_Vec_Buffer) -> GPGPU<'a> {
-    GPGPU::new(source.clone(), buffers.clone(), [1, 1, 1]) // TODO: Expose this
+fn GPGPU_new<'a>(
+    source: &mut String,
+    buffers: &'a mut Vec<Vec<&'a wgpu::Buffer>>,
+    max_global_id: &mut [i64; 3],
+) -> GPGPU<'a> {
+    GPGPU::new(source.clone(), buffers.clone(), *max_global_id)
 }
 
 fn GPGPU_new_easy<'a>(source: &mut String, buffer: &'a mut wgpu::Buffer) -> GPGPU<'a> {
@@ -2177,7 +3171,8 @@ fn GPGPU_new_easy<'a>(source: &mut String, buffer: &'a mut wgpu::Buffer) -> GPGP
     GPGPU::new(source.clone(), vec![vec![buffer]], [x, y, z])
 }
 
-fn gpu_run(g: &mut GPU, gg: &mut GPGPU) {
+fn gpu_run(gg: &mut GPGPU) {
+    let g = gpu();
     let module = g.device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: None,
         source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(&gg.source)),
@@ -2231,10 +3226,10 @@ fn gpu_run(g: &mut GPU, gg: &mut GPGPU) {
     g.queue.submit(Some(encoder.finish()));
 }
 
-fn read_buffer(g: &mut GPU, b: &mut wgpu::Buffer) -> Vec<i32> {
+fn read_buffer(b: &mut wgpu::Buffer) -> Vec<i32> {
     // TODO: Support other value types
+    let g = gpu();
     let temp_buffer = create_empty_buffer(
-        g,
         &mut map_read_buffer_type(),
         &mut b.size().try_into().unwrap(),
     );
@@ -2260,4 +3255,99 @@ fn read_buffer(g: &mut GPU, b: &mut wgpu::Buffer) -> Vec<i32> {
     } else {
         panic!("failed to run compute on gpu!")
     }
+}
+
+/// Stdout/stderr-related functions
+
+/// `println` is a simple function that prints basically anything
+#[inline(always)]
+fn println<A: std::fmt::Display>(a: &A) {
+    println!("{}", a);
+}
+
+/// `println_result` is a small wrapper function that makes printing Result types easy
+#[inline(always)]
+fn println_result<A: std::fmt::Display>(a: &Result<A, AlanError>) {
+    match a {
+        Ok(o) => println!("{}", o),
+        Err(e) => println!("{}", e.to_string()),
+    };
+}
+
+/// `println_maybe` is a small wrapper function that makes printing Option types easy
+#[inline(always)]
+fn println_maybe<A: std::fmt::Display>(a: &Option<A>) {
+    match a {
+        Some(o) => println!("{}", o),
+        None => println!("void"),
+    };
+}
+
+/// `eprintln` is a simple function that prints basically anything
+#[inline(always)]
+fn eprintln<A: std::fmt::Display>(a: &A) {
+    eprintln!("{}", a);
+}
+
+/// `eprintln_result` is a small wrapper function that makes printing Result types easy
+#[inline(always)]
+fn eprintln_result<A: std::fmt::Display>(a: &Result<A, AlanError>) {
+    match a {
+        Ok(o) => eprintln!("{}", o),
+        Err(e) => eprintln!("{:?}", e),
+    };
+}
+
+/// `eprintln_maybe` is a small wrapper function that makes printing Option types easy
+#[inline(always)]
+fn eprintln_maybe<A: std::fmt::Display>(a: &Option<A>) {
+    match a {
+        Some(o) => eprintln!("{}", o),
+        None => eprintln!("void"),
+    };
+}
+
+/// `print_vec` pretty prints a vector assuming the input type can be displayed
+#[inline(always)]
+fn print_vec<A: std::fmt::Display>(vs: &Vec<A>) {
+    println!(
+        "[{}]",
+        vs.iter()
+            .map(|v| format!("{}", v))
+            .collect::<Vec<String>>()
+            .join(", ")
+    );
+}
+
+/// `print_vec_result` pretty prints a vector of result values assuming the input can be displayed
+#[inline(always)]
+fn print_vec_result<A: std::fmt::Display>(vs: &Vec<Result<A, AlanError>>) {
+    println!(
+        "[{}]",
+        vs.iter()
+            .map(|v| match v {
+                Err(e) => format!("{:?}", e),
+                Ok(a) => format!("{}", a),
+            })
+            .collect::<Vec<String>>()
+            .join(", ")
+    );
+}
+
+/// `print_buffer` pretty prints a buffer assuming the input type can be displayed
+#[inline(always)]
+fn print_buffer<A: std::fmt::Display, const N: usize>(vs: &[A; N]) {
+    println!(
+        "[{}]",
+        vs.iter()
+            .map(|v| format!("{}", v))
+            .collect::<Vec<String>>()
+            .join(", ")
+    );
+}
+
+/// `print_duration` pretty-prints a duration value. TODO: Move this into Alan code and out of here
+#[inline(always)]
+fn print_duration(d: &std::time::Duration) {
+    println!("{}.{:0>9}", d.as_secs(), d.subsec_nanos()); // TODO: Figure out which subsec to use
 }

@@ -14,8 +14,7 @@ fn bench(l: i64) {
   v2[0];
   t2.elapsed.print;
   let t3 = now();
-  let g = GPU();
-  let b = g.createBuffer(storageBuffer(), v);
+  let b = GBuffer(storageBuffer(), v);
   let plan = GPGPU("
     @group(0)
     @binding(0)
@@ -30,8 +29,8 @@ fn bench(l: i64) {
       vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
     }
   ", b);
-  g.run(plan);
-  let v3 = g.read{i32}(b);
+  plan.run;
+  let v3 = b.read{i32};
   v3[0];
   t3.elapsed.print;
 }
@@ -50,8 +49,7 @@ fn bench_billion {
   t2.elapsed.print;
   let v2 = filled(2.i32, 500_000_000);
   let t3 = now();
-  let g = GPU();
-  let b = g.createBuffer(storageBuffer(), v2);
+  let b = GBuffer(storageBuffer(), v2);
   let plan = GPGPU("
     @group(0)
     @binding(0)
@@ -66,9 +64,9 @@ fn bench_billion {
       vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
     }
   ", b);
-  g.run(plan);
-  g.read{i32}(b);
-  let b = g.createBuffer(storageBuffer(), v2);
+  plan.run;
+  b.read{i32};
+  let b = GBuffer(storageBuffer(), v2);
   let plan = GPGPU("
     @group(0)
     @binding(0)
@@ -83,8 +81,8 @@ fn bench_billion {
       vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
     }
   ", b);
-  g.run(plan);
-  let v3 = g.read{i32}(b);
+  plan.run;
+  let v3 = b.read{i32};
   v3[0];
   t3.elapsed.print;
 }
