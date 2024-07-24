@@ -16,6 +16,15 @@ pub struct Function {
 }
 
 impl Function {
+    pub fn placeholder(name: String, args: Vec<(String, CType)>, rettype: CType) -> Function {
+        Function {
+            name,
+            args,
+            rettype,
+            microstatements: vec![],
+            kind: FnKind::Normal,
+        }
+    }
     pub fn from_ast(
         scope: &mut Scope,
         program: &mut Program,
@@ -350,17 +359,46 @@ impl Function {
         }?;
         let microstatements = {
             let mut ms = Vec::new();
+            let mut call_scope = scope.child(program);
             for (name, typen) in &args {
                 ms.push(Microstatement::Arg {
                     name: name.clone(),
                     typen: typen.clone(),
                 });
+                if let CType::Function(i, o) = typen {
+                    let args = match &**i {
+                        CType::Tuple(ts) => {
+                            let mut out = vec![];
+                            for (i, t) in ts.iter().enumerate() {
+                                match t {
+                                    CType::Field(n, t) => {
+                                        out.push((n.clone(), *t.clone()));
+                                    }
+                                    other => {
+                                        out.push((format!("arg{}", i), other.clone()));
+                                    }
+                                }
+                            }
+                            out
+                        }
+                        CType::Void => vec![],
+                        other => {
+                            vec![("arg0".to_string(), other.clone())]
+                        }
+                    };
+                    let rettype = *o.clone();
+                    // Allow the argument to be callable within the function
+                    call_scope.functions.insert(
+                        name.clone(),
+                        vec![Function::placeholder(name.clone(), args, rettype)],
+                    );
+                }
             }
             // We can't generate the rest of the microstatements while the generic function is
             // still generic
             if function_ast.optgenerics.is_none() {
                 for statement in &statements {
-                    ms = statement_to_microstatements(statement, scope, program, ms)?;
+                    ms = statement_to_microstatements(statement, &mut call_scope, program, ms)?;
                 }
             }
             ms
@@ -436,6 +474,34 @@ impl Function {
                             name: name.clone(),
                             typen: typen.clone(),
                         });
+                        if let CType::Function(i, o) = typen {
+                            let args = match &**i {
+                                CType::Tuple(ts) => {
+                                    let mut out = vec![];
+                                    for (i, t) in ts.iter().enumerate() {
+                                        match t {
+                                            CType::Field(n, t) => {
+                                                out.push((n.clone(), *t.clone()));
+                                            }
+                                            other => {
+                                                out.push((format!("arg{}", i), other.clone()));
+                                            }
+                                        }
+                                    }
+                                    out
+                                }
+                                CType::Void => vec![],
+                                other => {
+                                    vec![("arg0".to_string(), other.clone())]
+                                }
+                            };
+                            let rettype = *o.clone();
+                            // Allow the argument to be callable within the function
+                            scope.functions.insert(
+                                name.clone(),
+                                vec![Function::placeholder(name.clone(), args, rettype)],
+                            );
+                        }
                     }
                     ms
                 };
@@ -504,7 +570,37 @@ impl Function {
                             name: name.clone(),
                             typen: typen.clone(),
                         });
+                        if let CType::Function(i, o) = typen {
+                            let args = match &**i {
+                                CType::Tuple(ts) => {
+                                    let mut out = vec![];
+                                    for (i, t) in ts.iter().enumerate() {
+                                        match t {
+                                            CType::Field(n, t) => {
+                                                out.push((n.clone(), *t.clone()));
+                                            }
+                                            other => {
+                                                out.push((format!("arg{}", i), other.clone()));
+                                            }
+                                        }
+                                    }
+                                    out
+                                }
+                                CType::Void => vec![],
+                                other => {
+                                    vec![("arg0".to_string(), other.clone())]
+                                }
+                            };
+                            let rettype = *o.clone();
+                            // Allow the argument to be callable within the function
+                            inner_scope.functions.insert(
+                                name.clone(),
+                                vec![Function::placeholder(name.clone(), args, rettype)],
+                            );
+                        }
                     }
+                    // We can't generate the rest of the microstatements while the generic function is
+                    // still generic
                     for statement in statements {
                         ms =
                             statement_to_microstatements(statement, &mut inner_scope, program, ms)?;

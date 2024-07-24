@@ -552,6 +552,8 @@ export fn nor(a: bool, b: bool) -> bool binds norbool;
 export fn xnor(a: bool, b: bool) -> bool binds xnorbool;
 export fn eq(a: bool, b: bool) -> bool binds eqbool;
 export fn neq(a: bool, b: bool) -> bool binds neqbool;
+export fn cond{T}(c: bool, t: () -> T, f: () -> T) -> T binds condbool;
+export fn cond{T}(c: bool, t: () -> T) -> Maybe{T} = cond(c, fn = Maybe{T}(t()), fn = Maybe{T}(void));
 
 /// Array related bindings
 export fn len{T}(a: T[]) -> i64 binds lenarray;
