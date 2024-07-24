@@ -2579,6 +2579,17 @@ fn neqbool(a: &bool, b: &bool) -> bool {
     *a != *b
 }
 
+/// `condbool` executes the true function on true, and the false function on false, returning the
+/// value returned by either function
+#[inline(always)]
+fn condbool<T>(c: &bool, t: fn() -> T, f: fn() -> T) -> T {
+    if *c {
+        t()
+    } else {
+        f()
+    }
+}
+
 /// Array-related functions
 
 /// `getarray` returns a value from an array at the location specified
