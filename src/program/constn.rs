@@ -1,6 +1,5 @@
 use super::ctype::{withtypeoperatorslist_to_ctype, CType};
 use super::Export;
-use super::Program;
 use super::Scope;
 use crate::parse;
 
@@ -14,7 +13,6 @@ pub struct Const {
 impl Const {
     pub fn from_ast(
         scope: &mut Scope,
-        program: &Program,
         const_ast: &parse::ConstDeclaration,
         is_export: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
@@ -25,8 +23,7 @@ impl Const {
             // to the scope to cause compilation to crash *if* something tries to use this, and if
             // we don't get a boolean at all or we get multiple inner values in the generic call,
             // we bail out immediately because of a syntax error.
-            let generic_call =
-                withtypeoperatorslist_to_ctype(&generics.typecalllist, scope, program)?;
+            let generic_call = withtypeoperatorslist_to_ctype(&generics.typecalllist, scope)?;
             match generic_call {
                 CType::Bool(b) => match b {
                     false => return Ok(()),

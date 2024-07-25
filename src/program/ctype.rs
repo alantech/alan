@@ -4,7 +4,6 @@ use super::Export;
 use super::FnKind;
 use super::Function;
 use super::Microstatement;
-use super::Program;
 use super::Scope;
 use super::TypeOperatorMapping;
 use crate::parse;
@@ -1379,7 +1378,7 @@ impl CType {
         fn_args: &[(String, CType)],
         call_args: &[CType],
     ) -> Result<Vec<CType>, Box<dyn std::error::Error>> {
-        let mut temp_scope = scope.temp_child();
+        let mut temp_scope = scope.child();
         for (generic_name, generic_type) in generics {
             temp_scope
                 .types
@@ -1647,7 +1646,6 @@ impl CType {
     }
     pub fn from_ast(
         scope: &mut Scope,
-        program: &mut Program,
         type_ast: &parse::Types,
         is_export: bool,
     ) -> Result<CType, Box<dyn std::error::Error>> {
@@ -1658,8 +1656,7 @@ impl CType {
             // to the scope to cause compilation to crash *if* something tries to use this, and if
             // we don't get a boolean at all or we get multiple inner values in the generic call,
             // we bail out immediately because of a syntax error.
-            let generic_call =
-                withtypeoperatorslist_to_ctype(&generics.typecalllist, scope, program)?;
+            let generic_call = withtypeoperatorslist_to_ctype(&generics.typecalllist, scope)?;
             match generic_call {
                 CType::Bool(b) => match b {
                     false => return Ok(CType::Fail(format!("{} is not supposed to be compiled because the conditional compilation generic value is false", name))),
@@ -1702,11 +1699,8 @@ impl CType {
                         // the compiler is responsible for actually creating. All of the types get
                         // one or more constructor functions, while struct-like Tuples and Either
                         // get accessor functions to dig into the sub-types.
-                        let mut inner_type = withtypeoperatorslist_to_ctype(
-                            &create.typeassignables,
-                            scope,
-                            program,
-                        )?;
+                        let mut inner_type =
+                            withtypeoperatorslist_to_ctype(&create.typeassignables, scope)?;
                         // Unwrap a Group type, if any exists, we don't want it here.
                         while matches!(&inner_type, CType::Group(_)) {
                             inner_type = match inner_type {
@@ -1736,17 +1730,14 @@ impl CType {
                             .split(", ")
                             .map(|r| r.trim().to_string())
                             .collect::<Vec<String>>();
-                        let mut temp_scope = scope.temp_child();
+                        let mut temp_scope = scope.child();
                         for arg in &args {
                             temp_scope
                                 .types
                                 .insert(arg.clone(), CType::Infer(arg.clone(), "Any".to_string()));
                         }
-                        let generic_call = withtypeoperatorslist_to_ctype(
-                            &create.typeassignables,
-                            &temp_scope,
-                            program,
-                        )?;
+                        let generic_call =
+                            withtypeoperatorslist_to_ctype(&create.typeassignables, &temp_scope)?;
                         (
                             CType::Generic(name.clone(), args, Box::new(generic_call)),
                             Vec::new(),
@@ -2566,7 +2557,6 @@ impl CType {
 pub fn withtypeoperatorslist_to_ctype(
     withtypeoperatorslist: &Vec<parse::WithTypeOperators>,
     scope: &Scope,
-    program: &Program,
 ) -> Result<CType, Box<dyn std::error::Error>> {
     // To properly linearize the operations here, we need to scan through all of the operators,
     // determine which is the highest precedence, whether it is infix or prefix (or maybe postfix
@@ -2584,8 +2574,7 @@ pub fn withtypeoperatorslist_to_ctype(
         for (i, assignable_or_operator) in queue.iter().enumerate() {
             if let parse::WithTypeOperators::Operators(o) = assignable_or_operator {
                 let operatorname = o.trim();
-                let operator = match program.resolve_typeoperator(scope, &operatorname.to_string())
-                {
+                let operator = match scope.resolve_typeoperator(&operatorname.to_string()) {
                     Some(o) => Ok(o),
                     None => Err(format!("Operator {} not found", operatorname)),
                 }?;
@@ -2606,7 +2595,7 @@ pub fn withtypeoperatorslist_to_ctype(
                 parse::WithTypeOperators::Operators(o) => o.trim(),
                 _ => unreachable!(),
             };
-            let operator = match program.resolve_typeoperator(scope, &operatorname.to_string()) {
+            let operator = match scope.resolve_typeoperator(&operatorname.to_string()) {
                 Some(o) => Ok(o),
                 None => Err(format!("Operator {} not found", operatorname)),
             }?;
@@ -2760,7 +2749,7 @@ pub fn withtypeoperatorslist_to_ctype(
                     withtypeoperatorslist
                 )),
             }?;
-            out_ctype = Some(typebaselist_to_ctype(&typebaselist, scope, program)?);
+            out_ctype = Some(typebaselist_to_ctype(&typebaselist, scope)?);
         }
     }
     match out_ctype {
@@ -2774,7 +2763,6 @@ pub fn withtypeoperatorslist_to_ctype(
 pub fn typebaselist_to_ctype(
     typebaselist: &[parse::TypeBase],
     scope: &Scope,
-    program: &Program,
 ) -> Result<CType, Box<dyn std::error::Error>> {
     let mut i = 0;
     let mut prior_value = None;
@@ -2990,7 +2978,7 @@ pub fn typebaselist_to_ctype(
                     Some(val) => args.push(val.clone()),
                     None => {}
                 };
-                prior_value = Some(match program.resolve_type(scope, var) {
+                prior_value = Some(match scope.resolve_type(var) {
                     Some(t) => {
                         // TODO: Once interfaces are a thing, there needs to be a built-in
                         // interface called `Label` that we can use here to mark the first argument
@@ -3009,7 +2997,7 @@ pub fn typebaselist_to_ctype(
                                                 CType::fail("The Field generic type accepts only two parameters");
                                             }
                                             args.push(CType::TString(g.typecalllist[0].to_string()));
-                                            args.push(withtypeoperatorslist_to_ctype(&vec![g.typecalllist[2].clone()], scope, program)?);
+                                            args.push(withtypeoperatorslist_to_ctype(&vec![g.typecalllist[2].clone()], scope)?);
                                         }
                                         parse::TypeBase::MethodSep(_) => {},
                                         _ => CType::fail("Cannot follow method style syntax without an operator in between"),
@@ -3034,7 +3022,7 @@ pub fn typebaselist_to_ctype(
                                                     if a.trim() == "," {
                                                         // Process the arg block that has
                                                         // accumulated
-                                                        args.push(withtypeoperatorslist_to_ctype(&arg_block, scope, program)?);
+                                                        args.push(withtypeoperatorslist_to_ctype(&arg_block, scope)?);
                                                         arg_block.clear();
                                                         continue;
                                                     }
@@ -3042,7 +3030,7 @@ pub fn typebaselist_to_ctype(
                                                 arg_block.push(arg);
                                             }
                                             if !arg_block.is_empty() {
-                                                args.push(withtypeoperatorslist_to_ctype(&arg_block, scope, program)?);
+                                                args.push(withtypeoperatorslist_to_ctype(&arg_block, scope)?);
                                             }
                                         }
                                         parse::TypeBase::MethodSep(_) => {},
@@ -3176,7 +3164,6 @@ pub fn typebaselist_to_ctype(
                     prior_value = Some(CType::Group(Box::new(withtypeoperatorslist_to_ctype(
                         &g.typeassignables,
                         scope,
-                        program,
                     )?)));
                 }
             }
