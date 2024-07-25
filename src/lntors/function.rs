@@ -3,12 +3,11 @@
 use ordered_hash_map::OrderedHashMap;
 
 use crate::lntors::typen;
-use crate::program::{CType, FnKind, Function, Microstatement, Program, Scope};
+use crate::program::{CType, FnKind, Function, Microstatement, Scope};
 
 pub fn from_microstatement(
     microstatement: &Microstatement,
     scope: &Scope,
-    program: &Program,
     mut out: OrderedHashMap<String, String>,
 ) -> Result<(String, OrderedHashMap<String, String>), Box<dyn std::error::Error>> {
     match microstatement {
@@ -25,7 +24,7 @@ pub fn from_microstatement(
             value,
             mutable: _,
         } => {
-            let (val, o) = from_microstatement(value, scope, program, out)?;
+            let (val, o) = from_microstatement(value, scope, out)?;
             // I wish I didn't have to write the following line because you can't re-assign a
             // variable in a let destructuring, afaict
             out = o;
@@ -49,7 +48,7 @@ pub fn from_microstatement(
                 .collect::<Vec<String>>();
             let mut inner_statements = Vec::new();
             for ms in &function.microstatements {
-                let (val, o) = from_microstatement(ms, scope, program, out)?;
+                let (val, o) = from_microstatement(ms, scope, out)?;
                 out = o;
                 inner_statements.push(val);
             }
@@ -71,7 +70,7 @@ pub fn from_microstatement(
             }
             CType::Function(..) => {
                 // We need to make sure this function we're referencing exists
-                let f = program.resolve_function_by_type(scope, representation, typen);
+                let f = scope.resolve_function_by_type(representation, typen);
                 match f {
                     None => Err(format!(
                         "Somehow can't find a definition for function {}",
@@ -103,7 +102,7 @@ pub fn from_microstatement(
                                 let rustname =
                                     format!("{}_{}", fun.name, arg_strs.join("_")).to_string();
                                 // Make the function we need, but with the name we're
-                                out = generate(rustname.clone(), fun, scope, program, out)?;
+                                out = generate(rustname.clone(), fun, scope, out)?;
                                 Ok((rustname, out))
                             }
                             FnKind::Bind(rustname) | FnKind::BoundGeneric(_, rustname) => {
@@ -118,7 +117,7 @@ pub fn from_microstatement(
         Microstatement::Array { vals, .. } => {
             let mut val_representations = Vec::new();
             for val in vals {
-                let (rep, o) = from_microstatement(val, scope, program, out)?;
+                let (rep, o) = from_microstatement(val, scope, out)?;
                 val_representations.push(rep);
                 out = o;
             }
@@ -168,11 +167,11 @@ pub fn from_microstatement(
                     // duplicate function names that are allowed in Alan
                     let rustname = format!("{}_{}", function.name, arg_strs.join("_")).to_string();
                     // Make the function we need, but with the name we're
-                    out = generate(rustname.clone(), function, scope, program, out)?;
+                    out = generate(rustname.clone(), function, scope, out)?;
                     // Now call this function
                     let mut argstrs = Vec::new();
                     for arg in args {
-                        let (a, o) = from_microstatement(arg, scope, program, out)?;
+                        let (a, o) = from_microstatement(arg, scope, out)?;
                         out = o;
                         // If the argument is itself a function, this is the only place in Rust
                         // where you can't pass by reference, so we check the type and change
@@ -191,7 +190,7 @@ pub fn from_microstatement(
                 FnKind::Bind(rustname) => {
                     let mut argstrs = Vec::new();
                     for arg in args {
-                        let (a, o) = from_microstatement(arg, scope, program, out)?;
+                        let (a, o) = from_microstatement(arg, scope, out)?;
                         out = o;
                         // If the argument is itself a function, this is the only place in Rust
                         // where you can't pass by reference, so we check the type and change
@@ -214,7 +213,7 @@ pub fn from_microstatement(
                     out = o;
                     let mut argstrs = Vec::new();
                     for arg in args {
-                        let (a, o) = from_microstatement(arg, scope, program, out)?;
+                        let (a, o) = from_microstatement(arg, scope, out)?;
                         out = o;
                         // If the argument is itself a function, this is the only place in Rust
                         // where you can't pass by reference, so we check the type and change
@@ -532,7 +531,7 @@ pub fn from_microstatement(
         }
         Microstatement::Return { value } => match value {
             Some(val) => {
-                let (retval, o) = from_microstatement(val, scope, program, out)?;
+                let (retval, o) = from_microstatement(val, scope, out)?;
                 out = o;
                 Ok((
                     format!(
@@ -555,7 +554,6 @@ pub fn generate(
     rustname: String,
     function: &Function,
     scope: &Scope,
-    program: &Program,
     mut out: OrderedHashMap<String, String>,
 ) -> Result<OrderedHashMap<String, String>, Box<dyn std::error::Error>> {
     let mut fn_string = "".to_string();
@@ -594,7 +592,7 @@ pub fn generate(
     )
     .to_string();
     for microstatement in &function.microstatements {
-        let (stmt, o) = from_microstatement(microstatement, scope, program, out)?;
+        let (stmt, o) = from_microstatement(microstatement, scope, out)?;
         out = o;
         fn_string = format!("{}    {};\n", fn_string, stmt);
     }

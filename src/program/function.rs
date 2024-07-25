@@ -2,7 +2,6 @@ use super::ctype::{withtypeoperatorslist_to_ctype, CType};
 use super::microstatement::{statement_to_microstatements, Microstatement};
 use super::Export;
 use super::FnKind;
-use super::Program;
 use super::Scope;
 use crate::parse;
 
@@ -18,7 +17,6 @@ pub struct Function {
 impl Function {
     pub fn from_ast(
         scope: &mut Scope,
-        program: &mut Program,
         function_ast: &parse::Functions,
         is_export: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
@@ -29,12 +27,11 @@ impl Function {
                 return Err("Top-level function without a name!".into());
             }
         };
-        Function::from_ast_with_name(scope, program, function_ast, is_export, name)
+        Function::from_ast_with_name(scope, function_ast, is_export, name)
     }
 
     pub fn from_ast_with_name(
         scope: &mut Scope,
-        program: &mut Program,
         function_ast: &parse::Functions,
         is_export: bool,
         name: String,
@@ -45,8 +42,7 @@ impl Function {
             // to the scope to cause compilation to crash *if* something tries to use this, and if
             // we don't get a boolean at all or we get multiple inner values in the generic call,
             // we bail out immediately because of a syntax error.
-            let generic_call =
-                withtypeoperatorslist_to_ctype(&generics.typecalllist, scope, program)?;
+            let generic_call = withtypeoperatorslist_to_ctype(&generics.typecalllist, scope)?;
             match generic_call {
                 CType::Bool(b) => match b {
                     false => return Ok(()),
@@ -227,13 +223,12 @@ impl Function {
             Some(typeassignable) if typeassignable.is_empty() => Ok((Vec::new(), CType::Void)),
             Some(typeassignable) => match &kind {
                 FnKind::Generic(gs, _) | FnKind::BoundGeneric(gs, _) => {
-                    let mut temp_scope = scope.child(program);
+                    let mut temp_scope = scope.child();
                     // This lets us partially resolve the function argument and return types
                     for g in gs {
                         CType::from_ctype(&mut temp_scope, g.0.clone(), g.1.clone());
                     }
-                    let ctype =
-                        withtypeoperatorslist_to_ctype(typeassignable, &temp_scope, program)?;
+                    let ctype = withtypeoperatorslist_to_ctype(typeassignable, &temp_scope)?;
                     // If the `ctype` is a Function type, we have both the input and output defined. If
                     // it's any other type, we presume it's only the input type defined
                     let (input_type, output_type) = match ctype {
@@ -242,7 +237,9 @@ impl Function {
                     };
                     // In case there were any created functions (eg constructor or accessor
                     // functions) in that path, we need to merge the child's functions back up
-                    scope.merge_child_functions(&mut temp_scope);
+                    // TODO: Why can't I box this up into a function?
+                    let Scope { functions, .. } = temp_scope;
+                    scope.merge_functions(functions);
                     // The input type will be interpreted in many different ways:
                     // If it's a Group, unwrap it and continue. Ideally after that it's a Tuple
                     // type containing Field types, that's a "conventional" function
@@ -270,7 +267,7 @@ impl Function {
                 }
                 _ => {
                     // TODO: Figure out how to drop this duplication
-                    let ctype = withtypeoperatorslist_to_ctype(typeassignable, scope, program)?;
+                    let ctype = withtypeoperatorslist_to_ctype(typeassignable, scope)?;
                     // If the `ctype` is a Function type, we have both the input and output defined. If
                     // it's any other type, we presume it's only the input type defined
                     let (input_type, output_type) = match ctype {
@@ -299,7 +296,7 @@ impl Function {
                             // TODO: Be more complete here
                             let name = output_type.to_callable_string();
                             // Don't recreate the exact same thing. It only causes pain
-                            if program.resolve_type(scope, &name).is_none() {
+                            if scope.resolve_type(&name).is_none() {
                                 let parse_type = parse::Types {
                                     typen: "type".to_string(),
                                     a: "".to_string(),
@@ -317,7 +314,7 @@ impl Function {
                                     }),
                                     optsemicolon: ";".to_string(),
                                 };
-                                CType::from_ast(scope, program, &parse_type, false)?;
+                                CType::from_ast(scope, &parse_type, false)?;
                             }
                         }
                     }
@@ -360,7 +357,7 @@ impl Function {
             // still generic
             if function_ast.optgenerics.is_none() {
                 for statement in &statements {
-                    ms = statement_to_microstatements(statement, scope, program, ms)?;
+                    ms = statement_to_microstatements(statement, scope, ms)?;
                 }
             }
             ms
@@ -390,7 +387,6 @@ impl Function {
 
     pub fn from_generic_function<'a>(
         scope: &'a mut Scope,
-        program: &mut Program,
         generic_function: &Function,
         generic_types: Vec<CType>,
     ) -> Result<&'a Function, Box<dyn std::error::Error>> {
@@ -491,11 +487,8 @@ impl Function {
                 };
                 // Make the generic names aliases to these types during statement-to-microstatement
                 // generation
-                let mut inner_scope = scope.child(program);
                 for (i, (n, _)) in gen_args.iter().enumerate() {
-                    inner_scope
-                        .types
-                        .insert(n.clone(), generic_types[i].clone());
+                    scope.types.insert(n.clone(), generic_types[i].clone());
                 }
                 let microstatements = {
                     let mut ms = Vec::new();
@@ -506,12 +499,10 @@ impl Function {
                         });
                     }
                     for statement in statements {
-                        ms =
-                            statement_to_microstatements(statement, &mut inner_scope, program, ms)?;
+                        ms = statement_to_microstatements(statement, scope, ms)?;
                     }
                     ms
                 };
-                scope.merge_child_functions(&mut inner_scope);
                 let name = format!(
                     "{}_{}",
                     generic_function.name,
