@@ -16,7 +16,7 @@ use crate::parse;
 #[derive(Clone, Debug)]
 pub struct Scope<'a> {
     pub path: String, // Now necessary since we reference by path name :/
-    pub parent: Option<Box<&'a Scope<'a>>>,
+    pub parent: Option<&'a Scope<'a>>,
     pub imports: OrderedHashMap<String, Import>,
     pub types: OrderedHashMap<String, CType>,
     pub consts: OrderedHashMap<String, Const>,
@@ -127,7 +127,7 @@ impl<'a> Scope<'a> {
         let ast = unsafe { parse::get_ast(&*txt_ptr)? };
         let mut s = Scope {
             path: path.clone(),
-            parent: Some(Box::new(Scope::root())),
+            parent: Some(Scope::root()),
             imports: OrderedHashMap::new(),
             types: OrderedHashMap::new(),
             consts: OrderedHashMap::new(),
@@ -191,7 +191,7 @@ impl<'a> Scope<'a> {
         let path = format!("{}/child", self.path);
         let s = Scope {
             path: path.clone(),
-            parent: Some(Box::new(self)),
+            parent: Some(self),
             imports: OrderedHashMap::new(),
             types: OrderedHashMap::new(),
             consts: OrderedHashMap::new(),
@@ -292,7 +292,7 @@ impl<'a> Scope<'a> {
                     }
                 }
                 scope_to_check = match &s.parent {
-                    Some(p) => Some(**p),
+                    Some(p) => Some(*p),
                     None => None,
                 };
             }
@@ -366,7 +366,7 @@ impl<'a> Scope<'a> {
                     }
                 }
                 scope_to_check = match &s.parent {
-                    Some(p) => Some(**p),
+                    Some(p) => Some(*p),
                     None => None,
                 };
             }
@@ -395,7 +395,7 @@ impl<'a> Scope<'a> {
                     }
                 }
                 scope_to_check = match &s.parent {
-                    Some(p) => Some(**p),
+                    Some(p) => Some(*p),
                     None => None,
                 };
             }
@@ -543,7 +543,7 @@ impl<'a> Scope<'a> {
                     }
                 }
                 scope_to_check = match &s.parent {
-                    Some(p) => Some(**p),
+                    Some(p) => Some(*p),
                     None => None,
                 };
             }
@@ -641,7 +641,7 @@ impl<'a> Scope<'a> {
                     }
                 }
                 scope_to_check = match &s.parent {
-                    Some(p) => Some(**p),
+                    Some(p) => Some(*p),
                     None => None,
                 };
             }
