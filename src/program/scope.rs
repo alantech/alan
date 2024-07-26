@@ -118,7 +118,7 @@ impl<'a> Scope<'a> {
     }
     pub fn from_src(
         program: &'a mut Program,
-        path: &String,
+        path: &str,
         src: String,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let txt = Box::pin(src);
@@ -126,7 +126,7 @@ impl<'a> Scope<'a> {
         // *How* would this move, anyways? But TODO: See if there's a way to handle this safely
         let ast = unsafe { parse::get_ast(&*txt_ptr)? };
         let mut s = Scope {
-            path: path.clone(),
+            path: path.to_string(),
             parent: Some(Scope::root()),
             imports: OrderedHashMap::new(),
             types: OrderedHashMap::new(),
@@ -137,7 +137,7 @@ impl<'a> Scope<'a> {
             exports: OrderedHashMap::new(),
         };
         for i in ast.imports.iter() {
-            Import::from_ast(program, path.clone(), &mut s, i)?;
+            Import::from_ast(program, path.to_string(), &mut s, i)?;
         }
         for (i, element) in ast.body.iter().enumerate() {
             match element {
@@ -180,7 +180,9 @@ impl<'a> Scope<'a> {
                 }
             }
         }
-        program.scopes_by_file.insert(path.clone(), (txt, ast, s));
+        program
+            .scopes_by_file
+            .insert(path.to_string(), (txt, ast, s));
         Ok(())
     }
 
@@ -189,7 +191,7 @@ impl<'a> Scope<'a> {
         'a: 'b,
     {
         let path = format!("{}/child", self.path);
-        let s = Scope {
+        Scope {
             path: path.clone(),
             parent: Some(self),
             imports: OrderedHashMap::new(),
@@ -199,8 +201,7 @@ impl<'a> Scope<'a> {
             operatormappings: OrderedHashMap::new(),
             typeoperatormappings: OrderedHashMap::new(),
             exports: OrderedHashMap::new(),
-        };
-        s
+        }
     }
 
     pub fn merge_functions(&mut self, mut functions: OrderedHashMap<String, Vec<Function>>) {
