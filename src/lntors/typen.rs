@@ -75,10 +75,10 @@ pub fn ctype_to_rtype(
         CType::Group(g) => Ok(format!("({})", ctype_to_rtype(g, in_function_type)?)),
         CType::Function(i, o) => {
             if let CType::Void = **i {
-                Ok(format!("dyn Fn() -> {}", ctype_to_rtype(o, true)?))
+                Ok(format!("impl Fn() -> {}", ctype_to_rtype(o, true)?))
             } else {
                 Ok(format!(
-                    "dyn Fn({}) -> {}",
+                    "impl Fn({}) -> {}",
                     ctype_to_rtype(i, true)?,
                     ctype_to_rtype(o, true)?
                 ))

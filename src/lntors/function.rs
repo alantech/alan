@@ -11,13 +11,17 @@ pub fn from_microstatement(
     mut out: OrderedHashMap<String, String>,
 ) -> Result<(String, OrderedHashMap<String, String>), Box<dyn std::error::Error>> {
     match microstatement {
-        Microstatement::Arg { name, .. } => {
+        Microstatement::Arg { name, typen } => {
             // TODO: Update the serialization logic to understand values vs references so we can
             // eliminate this useless (and harmful for mutable references) clone
-            Ok((
-                format!("let mut {} = {}.clone()", name, name).to_string(), // TODO: not always mutable
-                out,
-            ))
+            if let CType::Function { .. } = typen {
+                Ok(("".to_string(), out))
+            } else {
+                Ok((
+                    format!("let mut {} = {}.clone()", name, name), // TODO: not always mutable
+                    out,
+                ))
+            }
         }
         Microstatement::Assignment {
             name,
@@ -54,7 +58,7 @@ pub fn from_microstatement(
             }
             Ok((
                 format!(
-                    "&|{}| {{\n        {};\n    }}",
+                    "|{}| {{\n        {};\n    }}",
                     arg_names.join(", "),
                     inner_statements.join(";\n        ")
                 ),
@@ -336,6 +340,21 @@ pub fn from_microstatement(
                                 // We pass through to the main path if we can't find a matching
                                 // name
                                 if accessor_field.is_some() {
+                                    // Special-casing for Option and Result mapping. TODO:
+                                    // Make this more centralized
+                                    if ts.len() == 2 {
+                                        if let CType::Void = &ts[1] {
+                                            return Ok((argstrs[0].clone(), out));
+                                        } else if let CType::Bound(name, _) = &ts[1] {
+                                            if name == "Error" {
+                                                if function.name == "Error" {
+                                                    return Ok((format!("(match {} {{ Err(e) => Some(e.clone()), _ => None }})", argstrs[0]), out));
+                                                } else {
+                                                    return Ok((format!("(match {} {{ Ok(v) => Some(v.clone()), _ => None }})", argstrs[0]), out));
+                                                }
+                                            }
+                                        }
+                                    }
                                     return Ok((
                                         format!(
                                             "(match {} {{ {}::{}(v) => Some(v.clone()), _ => None }})",
@@ -790,7 +809,11 @@ pub fn generate(
         let (l, t) = arg;
         let (t_str, o) = typen::generate(t, out)?;
         out = o;
-        arg_strs.push(format!("{}: &{}", l, t_str).to_string());
+        if t_str.starts_with("impl") {
+            arg_strs.push(format!("{}: {}", l, t_str));
+        } else {
+            arg_strs.push(format!("{}: &{}", l, t_str));
+        }
     }
     let opt_ret_str = match &function.rettype.degroup() {
         CType::Void => None,

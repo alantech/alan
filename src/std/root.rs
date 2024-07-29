@@ -2594,7 +2594,7 @@ fn neqbool(a: &bool, b: &bool) -> bool {
 /// `condbool` executes the true function on true, and the false function on false, returning the
 /// value returned by either function
 #[inline(always)]
-fn condbool<T>(c: &bool, t: &dyn Fn() -> T, f: &dyn Fn() -> T) -> T {
+fn condbool<T>(c: &bool, t: impl Fn() -> T, f: impl Fn() -> T) -> T {
     if *c {
         t()
     } else {
