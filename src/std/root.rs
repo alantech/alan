@@ -108,6 +108,12 @@ fn fallible_error<T>(m: &String) -> Result<T, AlanError> {
     Err(m.clone().into())
 }
 
+/// `maybe_exists` returns a boolean on whether or not the Maybe has a value
+#[inline(always)]
+fn maybe_exists<T>(v: &Option<T>) -> bool {
+    v.is_some()
+}
+
 /// Signed Integer-related functions
 
 /// `stringtoi8` tries to convert a string into an i8
@@ -3310,6 +3316,12 @@ fn println_maybe<A: std::fmt::Display>(a: &Option<A>) {
         Some(o) => println!("{}", o),
         None => println!("void"),
     };
+}
+
+/// `println_void` prints "void" if called
+#[inline(always)]
+fn println_void(void: &()) {
+    println!("void");
 }
 
 /// `eprintln` is a simple function that prints basically anything

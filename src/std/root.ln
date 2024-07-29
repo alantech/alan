@@ -135,6 +135,12 @@ export fn clone{T}(v: T) -> T binds clone;
 export fn hash{T}(v: Array{T}) -> i64 binds hasharray;
 export fn hash(v: string) -> i64 binds hashstring;
 export fn hash{T}(v: T) -> i64 binds hash;
+export fn void{T}(v: T) -> void {
+  0; // TODO: Eliminate the need for this
+}
+export fn void {
+  0; // TODO: Eliminate the need for this
+}
 
 /// Fallible, Maybe, and Either functions
 export fn getOr{T}(v: Maybe{T}, d: T) -> T binds maybe_get_or;
@@ -142,6 +148,7 @@ export fn getOr{T}(v: Fallible{T}, d: T) -> T binds fallible_get_or;
 export fn getOr{T, U}(v: U, d: T) -> T = {T}(v).getOr(d);
 export fn none{T}() -> Maybe{T} binds maybe_none;
 export fn error{T}(m: string) -> Fallible{T} binds fallible_error;
+export fn exists{T}(v: Maybe{T}) -> bool binds maybe_exists;
 
 /// Signed Integer-related functions and function bindings
 export fn i8(i: i8) -> i8 = i;
@@ -644,6 +651,7 @@ export fn print{T}(v: Maybe{T}) binds println_maybe;
 export fn print{T}(v: Array{T}) binds print_vec;
 export fn print{T, N}(v: Buffer{T, N}) binds print_buffer;
 export fn print{T}(v: Array{Fallible{T}}) binds print_vec_result;
+export fn print(v: void) binds println_void;
 export fn print{T}(v: T) binds println;
 export fn eprint{T}(v: Fallible{T}) binds eprintln_result;
 export fn eprint{T}(v: Maybe{T}) binds eprintln_maybe;

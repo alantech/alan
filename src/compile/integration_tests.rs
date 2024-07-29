@@ -231,6 +231,14 @@ test!(scientific_notation => r#"
 "#;
     stdout "true\ntrue\ntrue\n";
 );
+test!(void_values => r#"
+    export fn main {
+        5.print;
+        5.void.print;
+        void().print; // TODO: `void.print` should work, too. Figure out why it isn't
+    }"#;
+    stdout "5\nvoid\nvoid\n";
+);
 
 // Printing Tests
 
@@ -2465,6 +2473,17 @@ test_ignore!(basic_interfaces => r#"
 */
 
 // Maybe, Result, and Either
+
+test!(maybe_exists => r#"
+    export fn main {
+        const maybe5 = Maybe{i64}(5);
+        maybe5.exists.print;
+        const intOrStr = {i64 | string}("It's a string!");
+        intOrStr.i64.exists.print;
+        intOrStr.string.exists.print;
+    }"#;
+    stdout "true\nfalse\ntrue\n";
+);
 
 test_ignore!(maybe => r#"
     fn fiver(val: float64) {
