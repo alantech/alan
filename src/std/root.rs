@@ -96,6 +96,18 @@ fn fallible_get_or<T: std::clone::Clone>(v: &Result<T, AlanError>, d: &T) -> T {
     }
 }
 
+/// `maybe_none` creates a None for the given maybe type
+#[inline(always)]
+fn maybe_none<T>() -> Option<T> {
+    None
+}
+
+/// `fallible_error` create an Err for the given fallible type
+#[inline(always)]
+fn fallible_error<T>(m: &String) -> Result<T, AlanError> {
+    Err(m.clone().into())
+}
+
 /// Signed Integer-related functions
 
 /// `stringtoi8` tries to convert a string into an i8
@@ -2582,7 +2594,7 @@ fn neqbool(a: &bool, b: &bool) -> bool {
 /// `condbool` executes the true function on true, and the false function on false, returning the
 /// value returned by either function
 #[inline(always)]
-fn condbool<T>(c: &bool, t: fn() -> T, f: fn() -> T) -> T {
+fn condbool<T>(c: &bool, t: &dyn Fn() -> T, f: &dyn Fn() -> T) -> T {
     if *c {
         t()
     } else {

@@ -54,7 +54,7 @@ pub fn from_microstatement(
             }
             Ok((
                 format!(
-                    "|{}| {{\n        {};\n    }}",
+                    "&|{}| {{\n        {};\n    }}",
                     arg_names.join(", "),
                     inner_statements.join(";\n        ")
                 ),
@@ -89,8 +89,11 @@ pub fn from_microstatement(
                                         Err(e) => Err(e),
                                         Ok(s) => {
                                             arg_strs.push(
-                                                s.replace(['<', '>', ',', '[', ']', ';'], "_")
-                                                    .replace(' ', ""),
+                                                s.replace(
+                                                    ['<', '>', ',', '[', ']', ';', '-', '(', ')'],
+                                                    "_",
+                                                )
+                                                .replace(' ', ""),
                                             );
                                             /* TODO: Handle generic types better, also type inference */
                                             Ok(())
@@ -155,7 +158,7 @@ pub fn from_microstatement(
                             Err(e) => Err(e),
                             Ok(s) => {
                                 arg_strs.push(
-                                    s.replace(['<', '>', ',', '[', ']', ';'], "_")
+                                    s.replace(['<', '>', ',', '[', ']', ';', '-', '(', ')'], "_")
                                         .replace(' ', ""),
                                 );
                                 /* TODO: Handle generic types better, also type inference */
@@ -419,10 +422,62 @@ pub fn from_microstatement(
                                 CType::ResolvedBoundGeneric(n, ..) => Ok(n.clone()),
                                 _ => Err(format!("Cannot generate an constructor function for {} type as the input type has no name?", function.name)),
                             }?;
-                                for t in ts {
+                                for t in &ts {
                                     let inner_type = t.degroup();
                                     match &inner_type {
                                         CType::Field(n, _) if *n == enum_name => {
+                                            // Special-casing for Option and Result mapping. TODO:
+                                            // Make this more centralized
+                                            if ts.len() == 2 {
+                                                if let CType::Void = &ts[1] {
+                                                    if let CType::Void = t {
+                                                        return Ok(("None".to_string(), out));
+                                                    } else {
+                                                        return Ok((
+                                                            format!(
+                                                                "Some({})",
+                                                                match argstrs[0]
+                                                                    .strip_prefix("&mut ")
+                                                                {
+                                                                    Some(s) => s,
+                                                                    None => &argstrs[0],
+                                                                }
+                                                            ),
+                                                            out,
+                                                        ));
+                                                    }
+                                                } else if let CType::Bound(name, _) = &ts[1] {
+                                                    if name == "Error" {
+                                                        if let CType::Bound(..) = t {
+                                                            return Ok((
+                                                                format!(
+                                                                    "Err({})",
+                                                                    match argstrs[0]
+                                                                        .strip_prefix("&mut ")
+                                                                    {
+                                                                        Some(s) => s,
+                                                                        None => &argstrs[0],
+                                                                    }
+                                                                ),
+                                                                out,
+                                                            ));
+                                                        } else {
+                                                            return Ok((
+                                                                format!(
+                                                                    "Ok({})",
+                                                                    match argstrs[0]
+                                                                        .strip_prefix("&mut ")
+                                                                    {
+                                                                        Some(s) => s,
+                                                                        None => &argstrs[0],
+                                                                    }
+                                                                ),
+                                                                out,
+                                                            ));
+                                                        }
+                                                    }
+                                                }
+                                            }
                                             return Ok((
                                                 format!(
                                                     "{}::{}({})",
@@ -437,6 +492,58 @@ pub fn from_microstatement(
                                             ));
                                         }
                                         CType::Type(n, _) if *n == enum_name => {
+                                            // Special-casing for Option and Result mapping. TODO:
+                                            // Make this more centralized
+                                            if ts.len() == 2 {
+                                                if let CType::Void = &ts[1] {
+                                                    if let CType::Void = t {
+                                                        return Ok(("None".to_string(), out));
+                                                    } else {
+                                                        return Ok((
+                                                            format!(
+                                                                "Some({})",
+                                                                match argstrs[0]
+                                                                    .strip_prefix("&mut ")
+                                                                {
+                                                                    Some(s) => s,
+                                                                    None => &argstrs[0],
+                                                                }
+                                                            ),
+                                                            out,
+                                                        ));
+                                                    }
+                                                } else if let CType::Bound(name, _) = &ts[1] {
+                                                    if name == "Error" {
+                                                        if let CType::Bound(..) = t {
+                                                            return Ok((
+                                                                format!(
+                                                                    "Err({})",
+                                                                    match argstrs[0]
+                                                                        .strip_prefix("&mut ")
+                                                                    {
+                                                                        Some(s) => s,
+                                                                        None => &argstrs[0],
+                                                                    }
+                                                                ),
+                                                                out,
+                                                            ));
+                                                        } else {
+                                                            return Ok((
+                                                                format!(
+                                                                    "Ok({})",
+                                                                    match argstrs[0]
+                                                                        .strip_prefix("&mut ")
+                                                                    {
+                                                                        Some(s) => s,
+                                                                        None => &argstrs[0],
+                                                                    }
+                                                                ),
+                                                                out,
+                                                            ));
+                                                        }
+                                                    }
+                                                }
+                                            }
                                             return Ok((
                                                 format!(
                                                     "{}::{}({})",
@@ -451,6 +558,58 @@ pub fn from_microstatement(
                                             ));
                                         }
                                         CType::Bound(n, _) if *n == enum_name => {
+                                            // Special-casing for Option and Result mapping. TODO:
+                                            // Make this more centralized
+                                            if ts.len() == 2 {
+                                                if let CType::Void = &ts[1] {
+                                                    if let CType::Void = t {
+                                                        return Ok(("None".to_string(), out));
+                                                    } else {
+                                                        return Ok((
+                                                            format!(
+                                                                "Some({})",
+                                                                match argstrs[0]
+                                                                    .strip_prefix("&mut ")
+                                                                {
+                                                                    Some(s) => s,
+                                                                    None => &argstrs[0],
+                                                                }
+                                                            ),
+                                                            out,
+                                                        ));
+                                                    }
+                                                } else if let CType::Bound(name, _) = &ts[1] {
+                                                    if name == "Error" {
+                                                        if let CType::Bound(..) = t {
+                                                            return Ok((
+                                                                format!(
+                                                                    "Err({})",
+                                                                    match argstrs[0]
+                                                                        .strip_prefix("&mut ")
+                                                                    {
+                                                                        Some(s) => s,
+                                                                        None => &argstrs[0],
+                                                                    }
+                                                                ),
+                                                                out,
+                                                            ));
+                                                        } else {
+                                                            return Ok((
+                                                                format!(
+                                                                    "Ok({})",
+                                                                    match argstrs[0]
+                                                                        .strip_prefix("&mut ")
+                                                                    {
+                                                                        Some(s) => s,
+                                                                        None => &argstrs[0],
+                                                                    }
+                                                                ),
+                                                                out,
+                                                            ));
+                                                        }
+                                                    }
+                                                }
+                                            }
                                             return Ok((
                                                 format!(
                                                     "{}::{}({})",
@@ -465,6 +624,58 @@ pub fn from_microstatement(
                                             ));
                                         }
                                         CType::ResolvedBoundGeneric(n, ..) if *n == enum_name => {
+                                            // Special-casing for Option and Result mapping. TODO:
+                                            // Make this more centralized
+                                            if ts.len() == 2 {
+                                                if let CType::Void = &ts[1] {
+                                                    if let CType::Void = t {
+                                                        return Ok(("None".to_string(), out));
+                                                    } else {
+                                                        return Ok((
+                                                            format!(
+                                                                "Some({})",
+                                                                match argstrs[0]
+                                                                    .strip_prefix("&mut ")
+                                                                {
+                                                                    Some(s) => s,
+                                                                    None => &argstrs[0],
+                                                                }
+                                                            ),
+                                                            out,
+                                                        ));
+                                                    }
+                                                } else if let CType::Bound(name, _) = &ts[1] {
+                                                    if name == "Error" {
+                                                        if let CType::Bound(..) = t {
+                                                            return Ok((
+                                                                format!(
+                                                                    "Err({})",
+                                                                    match argstrs[0]
+                                                                        .strip_prefix("&mut ")
+                                                                    {
+                                                                        Some(s) => s,
+                                                                        None => &argstrs[0],
+                                                                    }
+                                                                ),
+                                                                out,
+                                                            ));
+                                                        } else {
+                                                            return Ok((
+                                                                format!(
+                                                                    "Ok({})",
+                                                                    match argstrs[0]
+                                                                        .strip_prefix("&mut ")
+                                                                    {
+                                                                        Some(s) => s,
+                                                                        None => &argstrs[0],
+                                                                    }
+                                                                ),
+                                                                out,
+                                                            ));
+                                                        }
+                                                    }
+                                                }
+                                            }
                                             return Ok((
                                                 format!(
                                                     "{}::{}({})",
@@ -528,6 +739,22 @@ pub fn from_microstatement(
                     .into())
                 }
             }
+        }
+        Microstatement::VarCall { name, args, .. } => {
+            let mut argstrs = Vec::new();
+            for arg in args {
+                let (a, o) = from_microstatement(arg, scope, out)?;
+                out = o;
+                // If the argument is itself a function, this is the only place in Rust
+                // where you can't pass by reference, so we check the type and change
+                // the argument output accordingly.
+                let arg_type = arg.get_type()?;
+                match arg_type {
+                    CType::Function(..) => argstrs.push(a.to_string()),
+                    _ => argstrs.push(format!("&mut {}", a)),
+                }
+            }
+            Ok((format!("{}({})", name, argstrs.join(", ")).to_string(), out))
         }
         Microstatement::Return { value } => match value {
             Some(val) => {

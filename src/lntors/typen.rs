@@ -73,11 +73,17 @@ pub fn ctype_to_rtype(
         CType::Bool(b) => Ok(b.to_string()),
         CType::TString(s) => Ok(s.clone()),
         CType::Group(g) => Ok(format!("({})", ctype_to_rtype(g, in_function_type)?)),
-        CType::Function(i, o) => Ok(format!(
-            "fn({}) -> {}",
-            ctype_to_rtype(i, true)?,
-            ctype_to_rtype(o, true)?
-        )),
+        CType::Function(i, o) => {
+            if let CType::Void = **i {
+                Ok(format!("dyn Fn() -> {}", ctype_to_rtype(o, true)?))
+            } else {
+                Ok(format!(
+                    "dyn Fn({}) -> {}",
+                    ctype_to_rtype(i, true)?,
+                    ctype_to_rtype(o, true)?
+                ))
+            }
+        },
         CType::Tuple(ts) => {
             let mut out = Vec::new();
             for t in ts {
@@ -92,7 +98,25 @@ pub fn ctype_to_rtype(
                 Ok(format!("{}: {}", k, ctype_to_rtype(v, in_function_type)?))
             }
         }
-        CType::Either(ts) => Ok(CType::Either(ts.clone()).to_callable_string()),
+        CType::Either(ts) => {
+            // Special handling to convert `Either{T, void}` to `Option<T>` and `Either{T, Error}`
+            // to `Result<T, AlanError>`
+            if ts.len() == 2 {
+                if let CType::Void = &ts[1] {
+                    Ok(format!("Option<{}>", ctype_to_rtype(&ts[0], in_function_type)?))
+                } else if let CType::Bound(name, rustname) = &ts[1] {
+                    if name == "Error" {
+                        Ok(format!("Result<{}, {}>", ctype_to_rtype(&ts[0], in_function_type)?, rustname))
+                    } else {
+                        Ok(CType::Either(ts.clone()).to_callable_string())
+                    }
+                } else {
+                    Ok(CType::Either(ts.clone()).to_callable_string())
+                }
+            } else {
+                Ok(CType::Either(ts.clone()).to_callable_string())
+            }
+        }
         CType::AnyOf(_) => Ok("".to_string()), // Does this make any sense in Rust?
         CType::Buffer(t, s) => Ok(format!(
             "[{};{}]",
@@ -136,6 +160,7 @@ pub fn generate(
                 let res = generate(t, out)?;
                 out = res.1;
             }
+
             let out_str = ctype_to_rtype(typen, false)?;
             Ok((out_str, out)) // TODO: Put something into out?
         }
