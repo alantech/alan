@@ -1541,22 +1541,6 @@ impl CType {
                     microstatements: Vec::new(),
                     kind: FnKind::Derived,
                 });
-                fs.push(Function {
-                    name: "get".to_string(),
-                    args: vec![
-                        ("arg0".to_string(), t.clone()),
-                        (
-                            "arg1".to_string(),
-                            CType::Bound("i64".to_string(), "i64".to_string()),
-                        ),
-                    ],
-                    rettype: CType::Type(
-                        format!("Maybe_{}_", b.to_string()),
-                        Box::new(CType::Either(vec![*b.clone(), CType::Void])),
-                    ),
-                    microstatements: Vec::new(),
-                    kind: FnKind::Derived,
-                });
                 let size = match **s {
                     CType::Int(s) => s as usize,
                     _ => 0, // TODO: Make this function fallible, instead?
@@ -1592,23 +1576,6 @@ impl CType {
                     microstatements: Vec::new(),
                     kind: FnKind::DerivedVariadic,
                 });
-                fs.push(Function {
-                    name: "get".to_string(),
-                    args: vec![
-                        ("arg0".to_string(), t.clone()),
-                        (
-                            "arg1".to_string(),
-                            CType::Bound("i64".to_string(), "i64".to_string()),
-                        ),
-                    ],
-                    rettype: CType::Type(
-                        format!("Maybe_{}_", a.to_string()),
-                        Box::new(CType::Either(vec![*a.clone(), CType::Void])),
-                    ),
-                    microstatements: Vec::new(),
-                    kind: FnKind::Derived,
-                });
-                // TODO: Add 'set' function
             }
             CType::Int(i) => {
                 // TODO: Support construction of other integer types

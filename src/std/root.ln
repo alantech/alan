@@ -140,6 +140,8 @@ export fn hash{T}(v: T) -> i64 binds hash;
 export fn getOr{T}(v: Maybe{T}, d: T) -> T binds maybe_get_or;
 export fn getOr{T}(v: Fallible{T}, d: T) -> T binds fallible_get_or;
 export fn getOr{T, U}(v: U, d: T) -> T = {T}(v).getOr(d);
+export fn none{T}() -> Maybe{T} binds maybe_none;
+export fn error{T}(m: string) -> Fallible{T} binds fallible_error;
 
 /// Signed Integer-related functions and function bindings
 export fn i8(i: i8) -> i8 = i;
@@ -553,9 +555,10 @@ export fn xnor(a: bool, b: bool) -> bool binds xnorbool;
 export fn eq(a: bool, b: bool) -> bool binds eqbool;
 export fn neq(a: bool, b: bool) -> bool binds neqbool;
 export fn cond{T}(c: bool, t: () -> T, f: () -> T) -> T binds condbool;
-export fn cond{T}(c: bool, t: () -> T) -> Maybe{T} = cond(c, fn = Maybe{T}(t()), fn = Maybe{T}(void));
+export fn cond{T}(c: bool, t: () -> T) -> Maybe{T} = cond(c, fn = Maybe{T}(t()), fn = none{T}());
 
 /// Array related bindings
+export fn get{T}(a: T[], i: i64) -> Maybe{T} binds getarray;
 export fn len{T}(a: T[]) -> i64 binds lenarray;
 export fn push{T}(a: Array{T}, v: T) -> () binds pusharray;
 export fn pop{T}(a: T[]) -> Maybe{T} binds poparray;
@@ -575,6 +578,7 @@ export fn every{T}(a: Array{T}, f: (T) -> bool) -> bool binds everyarray;
 export fn repeat{T}(a: Array{T}, c: i64) -> Array{T} binds repeatarray;
 
 /// Buffer related bindings
+export fn get{T, S}(b: T[S], i: i64) -> Maybe{T} binds getbuffer;
 export fn len{T, S}(T[S]) -> i64 = {S}();
 export fn map{T, S, U}(a: Buffer{T, S}, m: T -> U) -> Buffer{U, S} binds mapbuffer_onearg;
 export fn map{T, S, U}(a: Buffer{T, S}, m: (T, i64) -> U) -> Buffer{U, S} binds mapbuffer_twoarg;

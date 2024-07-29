@@ -1535,9 +1535,10 @@ to barto bar3
 test!(cond_fn => r#"
     export fn main {
         cond(1 == 0, fn = print('What!?'), fn = print('Math is sane...'));
-        // cond(1 == 2, fn () -> string = 'Uhh...').print;
+        cond(1 == 2, fn () -> string = 'Uhh...').print;
+        cond(1 == 1, fn () -> string = 'Correct!').print;
     }"#;
-    stdout "Math is sane...\n";
+    stdout "Math is sane...\nvoid\nCorrect!\n";
 );
 
 test_ignore!(basic_conditionals => r#"

@@ -29,6 +29,11 @@ pub enum Microstatement {
     Closure {
         function: Function,
     },
+    VarCall {
+        name: String,
+        typen: CType,
+        args: Vec<Microstatement>,
+    },
     Value {
         typen: CType,
         representation: String,
@@ -71,6 +76,7 @@ impl Microstatement {
                 );
                 Ok(fn_type)
             }
+            Self::VarCall { typen, .. } => Ok(typen.clone()),
         }
     }
 }
@@ -817,48 +823,111 @@ pub fn baseassignablelist_to_microstatements(
                 for arg in &arg_microstatements {
                     arg_types.push(arg.get_type()?);
                 }
-                // Now confirm that there's actually a function with this name that takes these
-                // types
-                let mut temp_scope = scope.child();
-                let func = temp_scope.resolve_function(f, &arg_types);
-                match func {
-                    Some(fun) => {
-                        // Success! Let's emit this
-                        // TODO: Do a better job at type rewriting here
-                        #[allow(clippy::needless_range_loop)]
-                        for i in 0..fun.args.len() {
-                            match &arg_microstatements[i] {
-                                Microstatement::Value {
-                                    typen,
-                                    representation,
-                                } => {
-                                    if typen != &fun.args[i].1 {
-                                        arg_microstatements[i] = Microstatement::Value {
-                                            typen: fun.args[i].1.clone(),
-                                            representation: representation.clone(),
-                                        };
+                // Look for closure functions in the microstatement array first to see if that's
+                // what should be called, scanning in reverse order to find the most recent
+                // definition that matches, if multiple match
+                let mut closure_fn = None;
+                let mut var_fn = None;
+                for ms in microstatements.iter().rev() {
+                    match ms {
+                        Microstatement::Closure { function } => {
+                            if &function.name == f && function.args.len() == arg_types.len() {
+                                let mut works = true;
+                                for ((_, a), b) in function.args.iter().zip(&arg_types) {
+                                    if !a.accepts(b) {
+                                        works = false;
                                     }
                                 }
-                                _ => { /* Do nothing */ }
+                                if works {
+                                    closure_fn = Some(function.clone());
+                                    break;
+                                }
                             }
                         }
-
-                        prior_value = Some(Microstatement::FnCall {
-                            function: fun.clone(), // TODO: Drop the clone
-                            args: arg_microstatements,
-                        });
+                        Microstatement::Arg { name, typen } => {
+                            if name == f {
+                                if let CType::Function(i, o) = typen {
+                                    let mut works = true;
+                                    // TODO: Really need to just have the Function use the Function
+                                    // CType instead of this stuff
+                                    let farg_types = match &**i {
+                                        CType::Void => Vec::new(),
+                                        CType::Tuple(ts) => ts.clone(),
+                                        other => vec![other.clone()],
+                                    };
+                                    for (a, b) in farg_types.iter().zip(&arg_types) {
+                                        if !a.accepts(b) {
+                                            works = false;
+                                        }
+                                    }
+                                    if works {
+                                        var_fn = Some((name.clone(), (**o).clone()));
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        Microstatement::Assignment { .. } => {
+                            // TODO
+                        }
+                        _ => { /* Do nothing */ }
                     }
-                    None => {
-                        return Err(format!(
-                            "Could not find a function with a call signature of {}({})",
-                            f,
-                            arg_types
-                                .iter()
-                                .map(|a| a.to_string())
-                                .collect::<Vec<String>>()
-                                .join(", ")
-                        )
-                        .into());
+                }
+                if let Some(func) = closure_fn {
+                    prior_value = Some(Microstatement::FnCall {
+                        function: func,
+                        args: arg_microstatements,
+                    });
+                } else if let Some((name, typen)) = var_fn {
+                    prior_value = Some(Microstatement::VarCall {
+                        name,
+                        typen,
+                        args: arg_microstatements,
+                    });
+                } else {
+                    // Now confirm that there's actually a function with this name that takes these
+                    // types
+                    let mut temp_scope = scope.child();
+                    let func = temp_scope.resolve_function(f, &arg_types);
+                    match func {
+                        Some(fun) => {
+                            // Success! Let's emit this
+                            // TODO: Do a better job at type rewriting here
+                            #[allow(clippy::needless_range_loop)]
+                            for i in 0..fun.args.len() {
+                                match &arg_microstatements[i] {
+                                    Microstatement::Value {
+                                        typen,
+                                        representation,
+                                    } => {
+                                        if typen != &fun.args[i].1 {
+                                            arg_microstatements[i] = Microstatement::Value {
+                                                typen: fun.args[i].1.clone(),
+                                                representation: representation.clone(),
+                                            };
+                                        }
+                                    }
+                                    _ => { /* Do nothing */ }
+                                }
+                            }
+
+                            prior_value = Some(Microstatement::FnCall {
+                                function: fun.clone(), // TODO: Drop the clone
+                                args: arg_microstatements,
+                            });
+                        }
+                        None => {
+                            return Err(format!(
+                                "Could not find a function with a call signature of {}({})",
+                                f,
+                                arg_types
+                                    .iter()
+                                    .map(|a| a.to_string())
+                                    .collect::<Vec<String>>()
+                                    .join(", ")
+                            )
+                            .into());
+                        }
                     }
                 }
             }
@@ -952,7 +1021,6 @@ pub fn baseassignablelist_to_microstatements(
                     }
                     (Some(_), Some(_)) => {
                         // If this hits, it matched on the argument
-                        println!("what");
                     }
                     (None, Some(func)) => {
                         // TODO: Do we need the merge here? It looks like it will happen later
