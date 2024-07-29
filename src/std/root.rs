@@ -2862,6 +2862,12 @@ fn repeatarray<T: std::clone::Clone>(a: &Vec<T>, c: &i64) -> Vec<T> {
 
 /// Buffer-related functions
 
+/// `getbuffer` returns the value at the given index presuming it exists
+#[inline(always)]
+fn getbuffer<T: std::clone::Clone, const S: usize>(b: &[T; S], i: &i64) -> Option<T> {
+    b.get(*i as usize).cloned()
+}
+
 /// `mapbuffer_onearg` runs the provided single-argument function on each element of the buffer,
 /// returning a new buffer
 #[inline(always)]

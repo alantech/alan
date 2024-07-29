@@ -263,39 +263,6 @@ pub fn from_microstatement(
                     // 3) If the input type is an either and the name of the function matches
                     //    the name of a sub-type, it returns a Maybe{T} for the type in
                     //    question. (This conflicts with (1) so it's checked first.)
-                    // 4) If the name of the function is `get` write a getter function for the
-                    //    first argument type in question.
-                    // 5) If the name of the function is `set` write a setter function for the
-                    //    first argument type in question. TODO: Do this path.
-                    if &function.name == "get" && function.args.len() == 2 {
-                        let first_type = &function.args[0].1;
-                        let second_type = &function.args[1].1;
-                        match (first_type, second_type, &function.rettype) {
-                            (CType::Type(_, a), CType::Bound(i, _), CType::Type(_, r))
-                                if i == "i64" =>
-                            {
-                                match (*a.clone(), *r.clone()) {
-                                    (CType::Array(_) | CType::Buffer(..), CType::Either(ts))
-                                        if ts.len() == 2 =>
-                                    {
-                                        return Ok((
-                                            format!(
-                                                "{}.get({}).map(|v| v.clone())",
-                                                argstrs[0],
-                                                match argstrs[1].strip_prefix("&mut ") {
-                                                    Some(s) => s,
-                                                    None => &argstrs[1],
-                                                }
-                                            ),
-                                            out,
-                                        ));
-                                    }
-                                    _ => {} // Just fall through
-                                }
-                            }
-                            _ => {} // Just fall through
-                        }
-                    }
                     if function.args.len() == 1 {
                         // This is a wacky unwrapping logic...
                         let mut input_type = &function.args[0].1;

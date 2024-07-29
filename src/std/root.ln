@@ -558,6 +558,7 @@ export fn cond{T}(c: bool, t: () -> T, f: () -> T) -> T binds condbool;
 export fn cond{T}(c: bool, t: () -> T) -> Maybe{T} = cond(c, fn = Maybe{T}(t()), fn = none{T}());
 
 /// Array related bindings
+export fn get{T}(a: T[], i: i64) -> Maybe{T} binds getarray;
 export fn len{T}(a: T[]) -> i64 binds lenarray;
 export fn push{T}(a: Array{T}, v: T) -> () binds pusharray;
 export fn pop{T}(a: T[]) -> Maybe{T} binds poparray;
@@ -577,6 +578,7 @@ export fn every{T}(a: Array{T}, f: (T) -> bool) -> bool binds everyarray;
 export fn repeat{T}(a: Array{T}, c: i64) -> Array{T} binds repeatarray;
 
 /// Buffer related bindings
+export fn get{T, S}(b: T[S], i: i64) -> Maybe{T} binds getbuffer;
 export fn len{T, S}(T[S]) -> i64 = {S}();
 export fn map{T, S, U}(a: Buffer{T, S}, m: T -> U) -> Buffer{U, S} binds mapbuffer_onearg;
 export fn map{T, S, U}(a: Buffer{T, S}, m: (T, i64) -> U) -> Buffer{U, S} binds mapbuffer_twoarg;
