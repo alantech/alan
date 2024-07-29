@@ -66,15 +66,14 @@ impl Microstatement {
                     .iter()
                     .map(|(_, t)| t.clone())
                     .collect::<Vec<CType>>();
-                let fn_type = CType::Function(
+                CType::Function(
                     Box::new(if arg_types.is_empty() {
                         CType::Void
                     } else {
                         CType::Tuple(arg_types)
                     }),
                     Box::new(function.rettype.clone()),
-                );
-                fn_type
+                )
             }
             Self::VarCall { typen, .. } => typen.clone(),
         }
