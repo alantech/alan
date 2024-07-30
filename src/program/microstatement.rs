@@ -609,24 +609,6 @@ pub fn baseassignablelist_to_microstatements(
                         typen: typen.clone(),
                     });
                 }
-                // TODO: Figure out *which* captured variables are actually being used, so we don't
-                // make useless `clone`s (though LLVM is probably saving us from this lunacy, based
-                // on the benchmark results)
-                let mut closure_vars = Vec::new();
-                for ms in &microstatements {
-                    match ms {
-                        Microstatement::Assignment { name, .. }
-                        | Microstatement::Arg { name, .. } => {
-                            closure_vars.push(Microstatement::Arg {
-                                name: name.clone(),
-                                typen: ms.get_type(),
-                            });
-                        }
-                        _ => {}
-                    }
-                }
-                microstatements.append(&mut closure_vars);
-
                 for statement in &statements {
                     microstatements =
                         statement_to_microstatements(statement, &mut inner_scope, microstatements)?;

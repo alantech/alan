@@ -2600,7 +2600,7 @@ fn neqbool(a: &bool, b: &bool) -> bool {
 /// `condbool` executes the true function on true, and the false function on false, returning the
 /// value returned by either function
 #[inline(always)]
-fn condbool<T>(c: &bool, t: impl Fn() -> T, f: impl Fn() -> T) -> T {
+fn condbool<T>(c: &bool, mut t: impl FnMut() -> T, mut f: impl FnMut() -> T) -> T {
     if *c {
         t()
     } else {
@@ -2652,14 +2652,14 @@ fn vec_len<A>(v: &Vec<A>) -> i64 {
 /// `map_onearg` runs the provided single-argument function on each element of the vector,
 /// returning a new vector
 #[inline(always)]
-fn map_onearg<A, B>(v: &Vec<A>, m: fn(&A) -> B) -> Vec<B> {
+fn map_onearg<A, B>(v: &Vec<A>, mut m: impl FnMut(&A) -> B) -> Vec<B> {
     v.iter().map(|val| m(val)).collect::<Vec<B>>()
 }
 
 /// `map_twoarg` runs the provided two-argument (value, index) function on each element of the
 /// vector, returning a new vector
 #[inline(always)]
-fn map_twoarg<A, B>(v: &Vec<A>, m: fn(&A, i64) -> B) -> Vec<B> {
+fn map_twoarg<A, B>(v: &Vec<A>, mut m: impl FnMut(&A, i64) -> B) -> Vec<B> {
     v.iter()
         .enumerate()
         .map(|(i, val)| m(val, i as i64))
@@ -2752,7 +2752,7 @@ fn parmap_onearg<
 /// `filter_onearg` runs the provided single-argument function on each element of the vector,
 /// returning a new vector
 #[inline(always)]
-fn filter_onearg<A: std::clone::Clone>(v: &Vec<A>, f: fn(&A) -> bool) -> Vec<A> {
+fn filter_onearg<A: std::clone::Clone>(v: &Vec<A>, mut f: impl FnMut(&A) -> bool) -> Vec<A> {
     v.iter()
         .filter(|val| f(val))
         .map(|val| val.clone())
@@ -2762,7 +2762,7 @@ fn filter_onearg<A: std::clone::Clone>(v: &Vec<A>, f: fn(&A) -> bool) -> Vec<A> 
 /// `filter_twoarg` runs the provided function each element of the vector plus its index,
 /// returning a new vector
 #[inline(always)]
-fn filter_twoarg<A: std::clone::Clone>(v: &Vec<A>, f: fn(&A, i64) -> bool) -> Vec<A> {
+fn filter_twoarg<A: std::clone::Clone>(v: &Vec<A>, mut f: impl FnMut(&A, i64) -> bool) -> Vec<A> {
     v.iter()
         .enumerate()
         .filter(|(i, val)| f(val, *i as i64))
@@ -2772,7 +2772,7 @@ fn filter_twoarg<A: std::clone::Clone>(v: &Vec<A>, f: fn(&A, i64) -> bool) -> Ve
 
 /// `reduce_sametype` runs the provided function to reduce the vector into a singular value
 #[inline(always)]
-fn reduce_sametype<A: std::clone::Clone>(v: &Vec<A>, f: fn(&A, &A) -> A) -> Option<A> {
+fn reduce_sametype<A: std::clone::Clone>(v: &Vec<A>, mut f: impl FnMut(&A, &A) -> A) -> Option<A> {
     // The built-in iter `reduce` is awkward for our use case
     if v.len() == 0 {
         None
@@ -2793,7 +2793,7 @@ fn reduce_sametype<A: std::clone::Clone>(v: &Vec<A>, f: fn(&A, &A) -> A) -> Opti
 fn reduce_difftype<A: std::clone::Clone, B: std::clone::Clone>(
     v: &Vec<A>,
     i: &B,
-    f: fn(&B, &A) -> B,
+    mut f: impl FnMut(&B, &A) -> B,
 ) -> B {
     let mut out = i.clone();
     for i in 0..v.len() {
@@ -2823,7 +2823,7 @@ fn hasarray<T: std::cmp::PartialEq>(a: &Vec<T>, v: &T) -> bool {
 
 /// `hasfnarray` returns true if the check function returns true for any element of the vector
 #[inline(always)]
-fn hasfnarray<T>(a: &Vec<T>, f: fn(&T) -> bool) -> bool {
+fn hasfnarray<T>(a: &Vec<T>, mut f: impl FnMut(&T) -> bool) -> bool {
     for v in a {
         if f(v) {
             return true;
@@ -2834,7 +2834,7 @@ fn hasfnarray<T>(a: &Vec<T>, f: fn(&T) -> bool) -> bool {
 
 /// `findarray` returns the first value from the vector that matches the check function, if any
 #[inline(always)]
-fn findarray<T: std::clone::Clone>(a: &Vec<T>, f: fn(&T) -> bool) -> Option<T> {
+fn findarray<T: std::clone::Clone>(a: &Vec<T>, mut f: impl FnMut(&T) -> bool) -> Option<T> {
     for v in a {
         if f(v) {
             return Some(v.clone());
@@ -2845,7 +2845,7 @@ fn findarray<T: std::clone::Clone>(a: &Vec<T>, f: fn(&T) -> bool) -> Option<T> {
 
 /// `everyarray` returns true if every value in the vector matches the check function
 #[inline(always)]
-fn everyarray<T>(a: &Vec<T>, f: fn(&T) -> bool) -> bool {
+fn everyarray<T>(a: &Vec<T>, mut f: impl FnMut(&T) -> bool) -> bool {
     for v in a {
         if !f(v) {
             return false;
@@ -2877,7 +2877,7 @@ fn getbuffer<T: std::clone::Clone, const S: usize>(b: &[T; S], i: &i64) -> Optio
 /// `mapbuffer_onearg` runs the provided single-argument function on each element of the buffer,
 /// returning a new buffer
 #[inline(always)]
-fn mapbuffer_onearg<A, const N: usize, B>(v: &[A; N], m: fn(&A) -> B) -> [B; N] {
+fn mapbuffer_onearg<A, const N: usize, B>(v: &[A; N], mut m: impl FnMut(&A) -> B) -> [B; N] {
     std::array::from_fn(|i| m(&v[i]))
 }
 
@@ -2886,7 +2886,7 @@ fn mapbuffer_onearg<A, const N: usize, B>(v: &[A; N], m: fn(&A) -> B) -> [B; N] 
 #[inline(always)]
 fn mapbuffer_twoarg<A, const N: usize, B: std::marker::Copy>(
     v: &[A; N],
-    m: fn(&A, &i64) -> B,
+    mut m: impl FnMut(&A, &i64) -> B,
 ) -> [B; N] {
     let mut out = [m(&v[0], &0); N];
     for i in 1..N {
@@ -2900,7 +2900,7 @@ fn mapbuffer_twoarg<A, const N: usize, B: std::marker::Copy>(
 #[inline(always)]
 fn reducebuffer_sametype<A: std::clone::Clone, const S: usize>(
     b: &[A; S],
-    f: fn(&A, &A) -> A,
+    mut f: impl FnMut(&A, &A) -> A,
 ) -> Option<A> {
     // The built-in iter `reduce` is awkward for our use case
     if b.len() == 0 {
@@ -2922,7 +2922,7 @@ fn reducebuffer_sametype<A: std::clone::Clone, const S: usize>(
 fn reducebuffer_difftype<A: std::clone::Clone, const S: usize, B: std::clone::Clone>(
     b: &[A; S],
     i: &B,
-    f: fn(&B, &A) -> B,
+    mut f: impl FnMut(&B, &A) -> B,
 ) -> B {
     let mut out = i.clone();
     for i in 0..b.len() {
@@ -2944,7 +2944,7 @@ fn hasbuffer<T: std::cmp::PartialEq, const S: usize>(a: &[T; S], v: &T) -> bool 
 
 /// `hasfnbuffer` returns true if the check function returns true for any element of the array
 #[inline(always)]
-fn hasfnbuffer<T, const S: usize>(a: &[T; S], f: fn(&T) -> bool) -> bool {
+fn hasfnbuffer<T, const S: usize>(a: &[T; S], mut f: impl FnMut(&T) -> bool) -> bool {
     for v in a {
         if f(v) {
             return true;
@@ -2955,7 +2955,10 @@ fn hasfnbuffer<T, const S: usize>(a: &[T; S], f: fn(&T) -> bool) -> bool {
 
 /// `findbuffer` returns the first value from the buffer that matches the check function, if any
 #[inline(always)]
-fn findbuffer<T: std::clone::Clone, const S: usize>(a: &[T; S], f: fn(&T) -> bool) -> Option<T> {
+fn findbuffer<T: std::clone::Clone, const S: usize>(
+    a: &[T; S],
+    mut f: impl FnMut(&T) -> bool,
+) -> Option<T> {
     for v in a {
         if f(v) {
             return Some(v.clone());
@@ -2966,7 +2969,7 @@ fn findbuffer<T: std::clone::Clone, const S: usize>(a: &[T; S], f: fn(&T) -> boo
 
 /// `everybuffer` returns true if every value in the array matches the check function
 #[inline(always)]
-fn everybuffer<T, const S: usize>(a: &[T; S], f: fn(&T) -> bool) -> bool {
+fn everybuffer<T, const S: usize>(a: &[T; S], mut f: impl FnMut(&T) -> bool) -> bool {
     for v in a {
         if !f(v) {
             return false;

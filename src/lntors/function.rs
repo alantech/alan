@@ -58,7 +58,7 @@ pub fn from_microstatement(
             }
             Ok((
                 format!(
-                    "|{}| {{\n        {};\n    }}",
+                    "move |{}| {{\n        {};\n    }}",
                     arg_names.join(", "),
                     inner_statements.join(";\n        ")
                 ),
