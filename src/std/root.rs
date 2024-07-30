@@ -1,5 +1,6 @@
 /// Rust functions that the root scope binds.
 use std::hash::Hasher;
+use std::rc::Rc;
 use std::sync::OnceLock;
 
 /// The `AlanError` type is a *cloneable* error that all errors are implemented as within Alan, to
@@ -3111,30 +3112,30 @@ fn gpu() -> &'static GPU {
     }
 }
 
-fn create_buffer_init(usage: &mut wgpu::BufferUsages, vals: &mut Vec<i32>) -> wgpu::Buffer {
+fn create_buffer_init(usage: &mut wgpu::BufferUsages, vals: &mut Vec<i32>) -> Rc<wgpu::Buffer> {
     let g = gpu();
     let val_slice = &vals[..];
     let val_ptr = val_slice.as_ptr();
     let val_u8_len = vals.len() * 4;
     let val_u8: &[u8] = unsafe { std::slice::from_raw_parts(val_ptr as *const u8, val_u8_len) };
-    wgpu::util::DeviceExt::create_buffer_init(
+    Rc::new(wgpu::util::DeviceExt::create_buffer_init(
         &g.device,
         &wgpu::util::BufferInitDescriptor {
             label: None, // TODO: Add a label for easier debugging?
             contents: val_u8,
             usage: *usage,
         },
-    )
+    ))
 }
 
-fn create_empty_buffer(usage: &mut wgpu::BufferUsages, size: &mut i64) -> wgpu::Buffer {
+fn create_empty_buffer(usage: &mut wgpu::BufferUsages, size: &mut i64) -> Rc<wgpu::Buffer> {
     let g = gpu();
-    g.device.create_buffer(&wgpu::BufferDescriptor {
+    Rc::new(g.device.create_buffer(&wgpu::BufferDescriptor {
         label: None, // TODO: Add a label for easier debugging?
         size: *size as u64,
         usage: *usage,
         mapped_at_creation: false, // TODO: With `create_buffer_init` does this make any sense?
-    })
+    }))
 }
 
 // TODO: Either add the ability to bind to const values, or come up with a better solution. For
@@ -3149,19 +3150,28 @@ fn storage_buffer_type() -> wgpu::BufferUsages {
     wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC
 }
 
-struct GPGPU<'a> {
+#[inline(always)]
+fn buffer_id(b: &Rc<wgpu::Buffer>) -> String {
+    let mut out = format!("{:?}", b.global_id());
+    out.retain(|c| {
+        ('A'..='Z').contains(&c) || ('a'..='z').contains(&c) || ('0'..='9').contains(&c)
+    });
+    out
+}
+
+struct GPGPU {
     pub source: String,
     pub entrypoint: String,
-    pub buffers: Vec<Vec<&'a wgpu::Buffer>>,
+    pub buffers: Vec<Vec<Rc<wgpu::Buffer>>>,
     pub workgroup_sizes: [i64; 3],
 }
 
-impl GPGPU<'_> {
-    fn new<'a>(
+impl GPGPU {
+    fn new(
         source: String,
-        buffers: Vec<Vec<&'a wgpu::Buffer>>,
+        buffers: Vec<Vec<Rc<wgpu::Buffer>>>,
         workgroup_sizes: [i64; 3],
-    ) -> GPGPU<'a> {
+    ) -> GPGPU {
         GPGPU {
             source,
             entrypoint: "main".to_string(),
@@ -3172,15 +3182,15 @@ impl GPGPU<'_> {
 }
 
 #[inline(always)]
-fn GPGPU_new<'a>(
+fn GPGPU_new(
     source: &mut String,
-    buffers: &'a mut Vec<Vec<&'a wgpu::Buffer>>,
+    buffers: &mut Vec<Vec<Rc<wgpu::Buffer>>>,
     max_global_id: &mut [i64; 3],
-) -> GPGPU<'a> {
+) -> GPGPU {
     GPGPU::new(source.clone(), buffers.clone(), *max_global_id)
 }
 
-fn GPGPU_new_easy<'a>(source: &mut String, buffer: &'a mut wgpu::Buffer) -> GPGPU<'a> {
+fn GPGPU_new_easy(source: &mut String, buffer: &mut Rc<wgpu::Buffer>) -> GPGPU {
     // In order to support larger arrays, we need to split the buffer length across them. Each of
     // indices is allowed to be up to 65535 (yes, a 16-bit integer) leading to a maximum length of
     // 65535^3, or about 2.815x10^14 elements (about 281 trillion elements). Not quite up to the
@@ -3206,7 +3216,7 @@ fn GPGPU_new_easy<'a>(source: &mut String, buffer: &'a mut wgpu::Buffer) -> GPGP
     let y = y_div + 1;
     let y_rem = z_rem.wrapping_rem(65535);
     let x = std::cmp::max(y_rem, 1);
-    GPGPU::new(source.clone(), vec![vec![buffer]], [x, y, z])
+    GPGPU::new(source.clone(), vec![vec![buffer.clone()]], [x, y, z])
 }
 
 fn gpu_run(gg: &mut GPGPU) {
@@ -3264,7 +3274,7 @@ fn gpu_run(gg: &mut GPGPU) {
     g.queue.submit(Some(encoder.finish()));
 }
 
-fn read_buffer(b: &mut wgpu::Buffer) -> Vec<i32> {
+fn read_buffer(b: &mut Rc<wgpu::Buffer>) -> Vec<i32> {
     // TODO: Support other value types
     let g = gpu();
     let temp_buffer = create_empty_buffer(
