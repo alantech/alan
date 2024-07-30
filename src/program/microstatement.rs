@@ -48,17 +48,17 @@ pub enum Microstatement {
 }
 
 impl Microstatement {
-    pub fn get_type(&self) -> Result<CType, Box<dyn std::error::Error>> {
+    pub fn get_type(&self) -> CType {
         match self {
-            Self::Value { typen, .. } => Ok(typen.clone()),
-            Self::Array { typen, .. } => Ok(typen.clone()),
-            Self::Arg { typen, .. } => Ok(typen.clone()),
+            Self::Value { typen, .. } => typen.clone(),
+            Self::Array { typen, .. } => typen.clone(),
+            Self::Arg { typen, .. } => typen.clone(),
             Self::Assignment { value, .. } => value.get_type(),
             Self::Return { value } => match value {
                 Some(v) => v.get_type(),
-                None => Ok(CType::Void),
+                None => CType::Void,
             },
-            Self::FnCall { function, args: _ } => Ok(function.rettype.clone()),
+            Self::FnCall { function, args: _ } => function.rettype.clone(),
             Self::Closure { function } => {
                 // TODO: Just have Function store this
                 let arg_types = function
@@ -66,17 +66,16 @@ impl Microstatement {
                     .iter()
                     .map(|(_, t)| t.clone())
                     .collect::<Vec<CType>>();
-                let fn_type = CType::Function(
+                CType::Function(
                     Box::new(if arg_types.is_empty() {
                         CType::Void
                     } else {
                         CType::Tuple(arg_types)
                     }),
                     Box::new(function.rettype.clone()),
-                );
-                Ok(fn_type)
+                )
             }
-            Self::VarCall { typen, .. } => Ok(typen.clone()),
+            Self::VarCall { typen, .. } => typen.clone(),
         }
     }
 }
@@ -339,7 +338,9 @@ pub fn baseassignablelist_to_microstatements(
                     // Microstatment::Assignment, but Rust doesn't seem to know that, so force
                     // it.
                     Some(m) => match m {
-                        Microstatement::Assignment { value, .. } => value.get_type(),
+                        Microstatement::Assignment { value, .. } => {
+                            Ok::<CType, Box<dyn std::error::Error>>(value.get_type())
+                        }
                         Microstatement::Arg { typen, .. } => Ok(typen.clone()),
                         _ => unreachable!(),
                     },
@@ -398,7 +399,7 @@ pub fn baseassignablelist_to_microstatements(
                 }
                 // TODO: Currently assuming all array values are the same type, should check that
                 // better
-                let inner_type = array_vals[0].get_type()?;
+                let inner_type = array_vals[0].get_type();
                 let inner_type_str = inner_type.to_callable_string();
                 let array_type_name = format!("Array_{}_", inner_type_str);
                 let array_type = CType::Array(Box::new(inner_type));
@@ -639,7 +640,7 @@ pub fn baseassignablelist_to_microstatements(
                     }
                     let mut arg_types = Vec::new();
                     for m in &array_accessor_microstatements {
-                        arg_types.push(m.get_type()?);
+                        arg_types.push(m.get_type());
                     }
                     let function = {
                         let mut temp_scope_2 = temp_scope.child();
@@ -688,7 +689,7 @@ pub fn baseassignablelist_to_microstatements(
                     constant_accessor_microstatements.push(microstatements.pop().unwrap());
                     let mut arg_types = Vec::new();
                     for m in &constant_accessor_microstatements {
-                        arg_types.push(m.get_type()?);
+                        arg_types.push(m.get_type());
                     }
                     let function = {
                         let mut temp_scope_2 = temp_scope.child();
@@ -744,7 +745,7 @@ pub fn baseassignablelist_to_microstatements(
                 }
                 let mut arg_types = Vec::new();
                 for arg in &arg_microstatements {
-                    arg_types.push(arg.get_type()?);
+                    arg_types.push(arg.get_type());
                 }
                 // We create a type on-the-fly from the contents the GnCall block. It's given a
                 // name based on the CType tree with all non-`a-zA-Z0-9_` chars replaced with `-`
@@ -821,7 +822,7 @@ pub fn baseassignablelist_to_microstatements(
                 }
                 let mut arg_types = Vec::new();
                 for arg in &arg_microstatements {
-                    arg_types.push(arg.get_type()?);
+                    arg_types.push(arg.get_type());
                 }
                 // Look for closure functions in the microstatement array first to see if that's
                 // what should be called, scanning in reverse order to find the most recent
@@ -957,7 +958,7 @@ pub fn baseassignablelist_to_microstatements(
                 }
                 let mut arg_types = Vec::new();
                 for arg in &arg_microstatements {
-                    arg_types.push(arg.get_type()?);
+                    arg_types.push(arg.get_type());
                 }
                 let generics = {
                     let mut generic_string = g.to_string();

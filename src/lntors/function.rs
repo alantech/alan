@@ -58,7 +58,7 @@ pub fn from_microstatement(
             }
             Ok((
                 format!(
-                    "|{}| {{\n        {};\n    }}",
+                    "move |{}| {{\n        {};\n    }}",
                     arg_names.join(", "),
                     inner_statements.join(";\n        ")
                 ),
@@ -137,7 +137,7 @@ pub fn from_microstatement(
             let mut arg_types = Vec::new();
             let mut arg_type_strs = Vec::new();
             for arg in args {
-                let arg_type = arg.get_type()?;
+                let arg_type = arg.get_type();
                 let (_, o) = typen::generate(&arg_type, out)?;
                 out = o;
                 arg_types.push(arg_type.clone());
@@ -183,7 +183,7 @@ pub fn from_microstatement(
                         // If the argument is itself a function, this is the only place in Rust
                         // where you can't pass by reference, so we check the type and change
                         // the argument output accordingly.
-                        let arg_type = arg.get_type()?;
+                        let arg_type = arg.get_type();
                         match arg_type {
                             CType::Function(..) => argstrs.push(a.to_string()),
                             _ => argstrs.push(format!("&mut {}", a)),
@@ -202,7 +202,7 @@ pub fn from_microstatement(
                         // If the argument is itself a function, this is the only place in Rust
                         // where you can't pass by reference, so we check the type and change
                         // the argument output accordingly.
-                        let arg_type = arg.get_type()?;
+                        let arg_type = arg.get_type();
                         match arg_type {
                             CType::Function(..) => argstrs.push(a.to_string()),
                             _ => argstrs.push(format!("&mut {}", a)),
@@ -225,7 +225,7 @@ pub fn from_microstatement(
                         // If the argument is itself a function, this is the only place in Rust
                         // where you can't pass by reference, so we check the type and change
                         // the argument output accordingly.
-                        let arg_type = arg.get_type()?;
+                        let arg_type = arg.get_type();
                         match arg_type {
                             CType::Function(..) => argstrs.push(a.to_string()),
                             _ => argstrs.push(format!("&mut {}", a)),
@@ -734,7 +734,7 @@ pub fn from_microstatement(
                 // If the argument is itself a function, this is the only place in Rust
                 // where you can't pass by reference, so we check the type and change
                 // the argument output accordingly.
-                let arg_type = arg.get_type()?;
+                let arg_type = arg.get_type();
                 match arg_type {
                     CType::Function(..) => argstrs.push(a.to_string()),
                     _ => argstrs.push(format!("&mut {}", a)),

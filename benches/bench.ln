@@ -14,76 +14,64 @@ fn bench(l: i64) {
   v2[0];
   t2.elapsed.print;
   let t3 = now();
-  let b = GBuffer(storageBuffer(), v);
-  let plan = GPGPU("
-    @group(0)
-    @binding(0)
-    var<storage, read_write> vals: array<i32>;
+  // My laptop GPU can't handle a billion i32s in a single buffer, so that case is split in two
+  cond(l <= 100_000_000, fn {
+    let b = GBuffer(storageBuffer(), v);
+    let plan = GPGPU("
+      @group(0)
+      @binding(0)
+      var<storage, read_write> vals: array<i32>;
 
-    @compute
-    @workgroup_size(1)
-    fn main(@builtin(global_invocation_id) id: vec3<u32>) {
-      let i = id.x + 65535 * id.y + 4294836225 * id.z;
-      let l = arrayLength(&vals);
-      if i > l { return; }
-      vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
-    }
-  ", b);
-  plan.run;
-  let v3 = b.read{i32};
-  v3[0];
-  t3.elapsed.print;
-}
+      @compute
+      @workgroup_size(1)
+      fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+        let i = id.x + 65535 * id.y + 4294836225 * id.z;
+        let l = arrayLength(&vals);
+        if i > l { return; }
+        vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
+      }
+    ", b);
+    plan.run;
+    let v3 = b.read{i32};
+    v3[0];
+  }, fn {
+    let v2 = filled(2.i32, 500_000_000);
+    let b = GBuffer(storageBuffer(), v2);
+    let plan = GPGPU("
+      @group(0)
+      @binding(0)
+      var<storage, read_write> vals: array<i32>;
 
-// Until I have conditionals working, I need to do this kind of tomfoolery
-fn bench_billion {
-  let v = filled(2.i32, 1_000_000_000);
-  v.len.print;
-  let t1 = now();
-  let v1 = v.map(double);
-  v1[0];
-  t1.elapsed.print;
-  let t2 = now();
-  let v2 = v.parmap(double);
-  v2[0];
-  t2.elapsed.print;
-  let v2 = filled(2.i32, 500_000_000);
-  let t3 = now();
-  let b = GBuffer(storageBuffer(), v2);
-  let plan = GPGPU("
-    @group(0)
-    @binding(0)
-    var<storage, read_write> vals: array<i32>;
+      @compute
+      @workgroup_size(1)
+      fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+        let i = id.x + 65535 * id.y + 4294836225 * id.z;
+        let l = arrayLength(&vals);
+        if i > l { return; }
+        vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
+      }
+    ", b);
+    plan.run;
+    b.read{i32};
+    let b = GBuffer(storageBuffer(), v2);
+    let plan = GPGPU("
+      @group(0)
+      @binding(0)
+      var<storage, read_write> vals: array<i32>;
 
-    @compute
-    @workgroup_size(1)
-    fn main(@builtin(global_invocation_id) id: vec3<u32>) {
-      let i = id.x + 65535 * id.y + 4294836225 * id.z;
-      let l = arrayLength(&vals);
-      if i > l { return; }
-      vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
-    }
-  ", b);
-  plan.run;
-  b.read{i32};
-  let b = GBuffer(storageBuffer(), v2);
-  let plan = GPGPU("
-    @group(0)
-    @binding(0)
-    var<storage, read_write> vals: array<i32>;
-
-    @compute
-    @workgroup_size(1)
-    fn main(@builtin(global_invocation_id) id: vec3<u32>) {
-      let i = id.x + 65535 * id.y + 4294836225 * id.z;
-      let l = arrayLength(&vals);
-      if i > l { return; }
-      vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
-    }
-  ", b);
-  plan.run;
-  let v3 = b.read{i32};
-  v3[0];
+      @compute
+      @workgroup_size(1)
+      fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+        let i = id.x + 65535 * id.y + 4294836225 * id.z;
+        let l = arrayLength(&vals);
+        if i > l { return; }
+        vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
+      }
+    ", b);
+    plan.run;
+    let v3 = b.read{i32};
+    v3[0];
+  });
   t3.elapsed.print;
 }
 
@@ -97,7 +85,5 @@ export fn main {
   bench(1_000_000);
   bench(10_000_000);
   bench(100_000_000);
-  // Commented out because it crashes on my laptop GPU. Try swapping which is commented on your's!
-  // bench(1_000_000_000);
-  bench_billion();
+  bench(1_000_000_000);
 }
