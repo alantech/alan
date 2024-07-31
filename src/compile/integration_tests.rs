@@ -1918,6 +1918,17 @@ concat test
 1, 1, 2, 3, 5, 8, 4, 5, 6
 "#;
 );
+test!(array_store_and_delete => r#"
+    export fn main {
+        const test = [ 1, 2, 5 ];
+        test.store(2, 3);
+        test.store(3, 4);
+        test.print;
+        test.delete(4).print;
+        test.print;
+    }"#;
+    stdout "[1, 2, 3, 4, 5]\n5\n[1, 2, 3, 4]\n";
+);
 test!(array_custom_types => r#"
     type Foo =
       foo: string,
@@ -2003,6 +2014,15 @@ test!(buffer_repeat => r#"
       print(out);
     }"#;
     stdout "1, 2, 3, 1, 2, 3, 1, 2, 3\n";
+);
+test!(buffer_store => r#"
+    export fn main {
+        let buf = {i64[3]}(1, 2, 5);
+        print(buf);
+        buf.store(2, 3).print;
+        print(buf);
+    }"#;
+    stdout "[1, 2, 5]\n5\n[1, 2, 3]\n";
 );
 
 // Hashing
