@@ -691,7 +691,7 @@ pub fn baseassignablelist_to_microstatements(
                     let function = {
                         let mut temp_scope_2 = temp_scope.child();
                         temp_scope_2
-                            .resolve_function(&format!("{}", c.to_string()), &arg_types)
+                            .resolve_function(&c.to_string(), &arg_types)
                             .cloned()
                     };
                     match function {
