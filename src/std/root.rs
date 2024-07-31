@@ -1,7 +1,10 @@
 /// Rust functions that the root scope binds.
+use std::collections::HashSet;
 use std::hash::Hasher;
 use std::rc::Rc;
 use std::sync::OnceLock;
+
+use ordered_hash_map::OrderedHashMap;
 
 /// The `AlanError` type is a *cloneable* error that all errors are implemented as within Alan, to
 /// simplify error handling. In the future it will have a stack trace based on the Alan source
@@ -3004,6 +3007,156 @@ fn repeatbuffertoarray<T: std::clone::Clone, const S: usize>(a: &[T; S], c: &i64
     out
 }
 
+/// Dictionary-related bindings
+
+/// `newdict` creates a new dictionary
+#[inline(always)]
+fn newdict<K: std::hash::Hash + Eq, V>() -> OrderedHashMap<K, V> {
+    OrderedHashMap::new()
+}
+
+/// `storedict` stores the provided key-value pair into the dictionary
+#[inline(always)]
+fn storedict<K: std::clone::Clone + std::hash::Hash + Eq, V: std::clone::Clone>(
+    d: &mut OrderedHashMap<K, V>,
+    k: &K,
+    v: &V,
+) {
+    d.insert(k.clone(), v.clone());
+}
+
+/// `getdict` returns the value for the given key, if it exists
+#[inline(always)]
+fn getdict<K: std::hash::Hash + Eq, V: std::clone::Clone>(
+    d: &OrderedHashMap<K, V>,
+    k: &K,
+) -> Option<V> {
+    d.get(k).cloned()
+}
+
+/// `hasdict` returns whether the specified key is in the dictionary
+#[inline(always)]
+fn hasdict<K: std::hash::Hash + Eq, V>(d: &OrderedHashMap<K, V>, k: &K) -> bool {
+    d.contains_key(k)
+}
+
+/// `lendict` returns the number of key-value pairs in the dictionary
+#[inline(always)]
+fn lendict<K, V>(d: &OrderedHashMap<K, V>) -> i64 {
+    d.len() as i64
+}
+
+/// `keysdict` returns an array of keys from the dictionary
+#[inline(always)]
+fn keysdict<K: std::clone::Clone, V>(d: &OrderedHashMap<K, V>) -> Vec<K> {
+    d.keys().map(|k| k.clone()).collect::<Vec<K>>()
+}
+
+/// `valsdict` returns an array of values from the dictionary
+#[inline(always)]
+fn valsdict<K, V: std::clone::Clone>(d: &OrderedHashMap<K, V>) -> Vec<V> {
+    d.values().map(|v| v.clone()).collect::<Vec<V>>()
+}
+
+/// `arraydict` returns an array of key-value tuples representing the dictionary
+#[inline(always)]
+fn arraydict<K: std::clone::Clone, V: std::clone::Clone>(d: &OrderedHashMap<K, V>) -> Vec<(K, V)> {
+    d.iter()
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect::<Vec<(K, V)>>()
+}
+
+/// Set-related bindings
+
+/// `newset` creates a new set
+#[inline(always)]
+fn newset<V: std::hash::Hash + Eq>() -> HashSet<V> {
+    HashSet::new()
+}
+
+/// `storeset` stores the provided value into the set
+#[inline(always)]
+fn storeset<V: std::clone::Clone + std::hash::Hash + Eq>(s: &mut HashSet<V>, v: &V) {
+    s.insert(v.clone());
+}
+
+/// `hasset` returns whether the specified value is in the set
+#[inline(always)]
+fn hasset<V: std::hash::Hash + Eq>(s: &HashSet<V>, v: &V) -> bool {
+    s.contains(v)
+}
+
+/// `lenset` returns how many values are in the set
+#[inline(always)]
+fn lenset<V>(s: &HashSet<V>) -> i64 {
+    s.len() as i64
+}
+
+/// `arrayset` returns an array of values in the set
+#[inline(always)]
+fn arrayset<V: std::clone::Clone>(s: &HashSet<V>) -> Vec<V> {
+    s.iter().map(|v| v.clone()).collect::<Vec<V>>()
+}
+
+/// `unionset` returns a new set that is the union of the original two sets
+#[inline(always)]
+fn unionset<V: std::clone::Clone + std::hash::Hash + Eq>(
+    a: &HashSet<V>,
+    b: &HashSet<V>,
+) -> HashSet<V> {
+    // Rust's own `union` method returns a specialized `Union` type to eliminate duplication, which
+    // is much more efficient in certain circumstances, but it doesn't appear to implement all of
+    // the functions of a `HashSet`, so I am only using it internally to generate a new `HashSet`
+    // that I can be sure is usable everywhere.
+    a.union(b).map(|v| v.clone()).collect::<HashSet<V>>()
+}
+
+/// `intersectset` returns a new set that is the intersection of the original two sets
+#[inline(always)]
+fn intersectset<V: std::clone::Clone + std::hash::Hash + Eq>(
+    a: &HashSet<V>,
+    b: &HashSet<V>,
+) -> HashSet<V> {
+    a.intersection(b).map(|v| v.clone()).collect::<HashSet<V>>()
+}
+
+/// `differenceset` returns the difference of the original two sets (values in A not in B)
+#[inline(always)]
+fn differenceset<V: std::clone::Clone + std::hash::Hash + Eq>(
+    a: &HashSet<V>,
+    b: &HashSet<V>,
+) -> HashSet<V> {
+    a.difference(b).map(|v| v.clone()).collect::<HashSet<V>>()
+}
+
+/// `symmetric_differenceset` returns the symmetric difference of the original two sets (values in
+/// A not in B *and* values in B not in A)
+#[inline(always)]
+fn symmetric_differenceset<V: std::clone::Clone + std::hash::Hash + Eq>(
+    a: &HashSet<V>,
+    b: &HashSet<V>,
+) -> HashSet<V> {
+    a.symmetric_difference(b)
+        .map(|v| v.clone())
+        .collect::<HashSet<V>>()
+}
+
+/// `productset` returns the product of the original two sets (a set of tuples of all combinations
+/// of values in each set)
+#[inline(always)]
+fn productset<V: std::clone::Clone + std::hash::Hash + Eq>(
+    a: &HashSet<V>,
+    b: &HashSet<V>,
+) -> HashSet<(V, V)> {
+    let mut out = HashSet::new();
+    for va in a.iter() {
+        for vb in b.iter() {
+            out.insert((va.clone(), vb.clone()));
+        }
+    }
+    out
+}
+
 /// Process exit-related bindings
 
 /// `to_exit_code` converts an u8 into an exit code
@@ -3333,7 +3486,7 @@ fn println_maybe<A: std::fmt::Display>(a: &Option<A>) {
 
 /// `println_void` prints "void" if called
 #[inline(always)]
-fn println_void(void: &()) {
+fn println_void(_void: &()) {
     println!("void");
 }
 

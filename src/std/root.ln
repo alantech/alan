@@ -124,6 +124,10 @@ export type ExitCode binds std::process::ExitCode;
 export type Instant binds std::time::Instant;
 export type Duration binds std::time::Duration;
 
+// Binding the Dict and Set types
+export type Dict{K, V} binds OrderedHashMap<K, V>;
+export type Set{V} binds std::collections::HashSet<V>;
+
 /// Functions for (potentially) every type
 export fn clone{T}(v: T) -> T binds clone;
 // TODO: The "proper" way to hash this consistently for all types is to decompose the input type
@@ -605,6 +609,51 @@ export fn concat{T, S, N}(a: Buffer{T, S}, b: Buffer{T, N}) -> Buffer{T, S + N} 
 // grabbed by the type inference system. For now, repeat for buffers outputs an array, instead.
 export fn repeat{T, S}(b: Buffer{T, S}, c: i64) -> Array{T} binds repeatbuffertoarray;
 
+/// Dictionary-related bindings
+export fn Dict{K, V}() -> Dict{K, V} binds newdict;
+export fn Dict{K, V}(k: K, v: V) -> Dict{K, V} {
+  let out = Dict{K, V}();
+  out.store(k, v);
+  return out;
+}
+export fn Dict{K, V}(a: Array{(K, V)}) -> Dict{K, V} = a.reduce(Dict{K, V}(), fn (d: Dict{K, V}, v: (K, V)) -> Dict{K, V} {
+  d.store(v.0, v.1);
+  return d;
+});
+export fn store{K, V}(d: Dict{K, V}, k: K, v: V) -> void binds storedict;
+export fn get{K, V}(d: Dict{K, V}, k: K) -> Maybe{V} binds getdict;
+export fn has{K, V}(d: Dict{K, V}, k: K) -> bool binds hasdict;
+export fn len{K, V}(d: Dict{K, V}) -> i64 binds lendict;
+export fn keys{K, V}(d: Dict{K, V}) -> Array{K} binds keysdict;
+export fn vals{K, V}(d: Dict{K, V}) -> Array{V} binds valsdict;
+export fn Array{K, V}(d: Dict{K, V}) -> Array{(K, V)} binds arraydict;
+
+/// Set-related bindings
+export fn Set{V}() -> Set{V} binds newset;
+export fn Set{V}(a: Array{V}) -> Set{V} = a.reduce(Set{V}(), fn (s: Set{V}, v: V) -> Set{V} {
+  s.store(v);
+  return s;
+});
+export fn Set{V}(v: V) -> Set{V} {
+  let out = Set{V}();
+  out.store(v);
+  return out;
+}
+export fn store{V}(s: Set{V}, v: V) -> void binds storeset;
+export fn has{V}(s: Set{V}, v: V) -> bool binds hasset;
+export fn len{V}(s: Set{V}) -> i64 binds lenset;
+export fn Array{V}(s: Set{V}) -> Array{V} binds arrayset;
+export fn union{V}(a: Set{V}, b: Set{V}) -> Set{V} binds unionset;
+export fn or{V}(a: Set{V}, b: Set{V}) -> Set{V} = union(a, b);
+export fn intersect{V}(a: Set{V}, b: Set{V}) -> Set{V} binds intersectset;
+export fn and{V}(a: Set{V}, b: Set{V}) -> Set{V} = intersect(a, b);
+export fn difference{V}(a: Set{V}, b: Set{V}) -> Set{V} binds differenceset;
+export fn div{V}(a: Set{V}, b: Set{V}) -> Set{V} = difference(a, b);
+export fn symmetricDifference{V}(a: Set{V}, b: Set{V}) -> Set{V} binds symmetric_differenceset;
+export fn xor{V}(a: Set{V}, b: Set{V}) -> Set{V} = symmetricDifference(a, b);
+export fn product{V}(a: Set{V}, b: Set{V}) -> Set{(V, V)} binds productset;
+export fn mul{V}(a: Set{V}, b: Set{V}) -> Set{(V, V)} = product(a, b);
+
 /// Process exit-related bindings
 export fn ExitCode(e: u8) -> ExitCode binds to_exit_code;
 export fn ExitCode(e: u16) -> ExitCode = ExitCode(e.u8);
@@ -639,8 +688,6 @@ export fn GPGPU(source: string, buffers: Array{Array{GBuffer}}, maxGlobalId: i64
 export fn GPGPU(source: string, buffer: GBuffer) -> GPGPU binds GPGPU_new_easy;
 export fn run(gg: GPGPU) binds gpu_run;
 export fn read{T}(b: GBuffer) -> Array{T} binds read_buffer;
-
-
 
 /// Stdout/stderr-related bindings
 // TODO: Rework this to just print anything that can be converted to `string` via interfaces

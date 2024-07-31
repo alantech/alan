@@ -2021,17 +2021,20 @@ test!(hash => r#"
 -8231513229892369092
 "#;
 );
-test_ignore!(basic_hashmap => r#"
+test!(basic_dict => r#"
     export fn main {
-      const test = newHashMap('foo', 1);
-      test.set('bar', 2);
-      test.set('baz', 99);
-      print(test.keyVal.map(fn (n: KeyVal{string, int64}) -> string {
-        return 'key: ' + n.key + \"\\nval: \" + string(n.val);
-      }).join(\"\\n\"));
+      let test = Dict('foo', 1);
+      // Equivalent to:
+      // let test = Dict{string, i64}();
+      // test.store('foo', 1);
+      test.store('bar', 2);
+      test.store('baz', 99);
+      print(test.Array.map(fn (n: (string, i64)) -> string {
+        return 'key: '.concat(n.0).concat("\nval: ").concat(string(n.1));
+      }).join("\n"));
       print(test.keys.join(', '));
-      print(test.vals.map(fn (n: int64) -> string = n.string).join(', '));
-      print(test.length);
+      print(test.vals.map(string).join(', '));
+      print(test.len);
       print(test.get('foo'));
     }"#;
     stdout r#"key: foo
@@ -2046,18 +2049,15 @@ foo, bar, baz
 1
 "#;
 );
-test_ignore!(keyval_to_hashmap => r#"
-    fn kv(k: any, v: anythingElse) = new KeyVal{any, anythingElse} {
-      key: k,
-      val: v
-    }
-
+test!(keyval_array_to_dict => r#"
     export fn main {
-      const kva = [ kv(1, 'foo'), kv(2, 'bar'), kv(3, 'baz') ];
-      const hm = kva.toHashMap;
-      print(hm.keyVal.map(fn (n: KeyVal{int64, string}) -> string {
-        return 'key: ' + string(n.key) + \"\\nval: \" + n.val;
-      }).join(\"\\n\"));
+      // TODO: Improve this with anonymous tuple support
+      // const kva = [ (1, 'foo'), (2, 'bar'), (3, 'baz') ];
+      const kva = [ {(i64, string)}(1, 'foo'), {(i64, string)}(2, 'bar'), {(i64, string)}(3, 'baz') ];
+      const hm = Dict(kva);
+      print(hm.Array.map(fn (n: (i64, string)) -> string {
+        return 'key: '.concat(string(n.0)).concat("\nval: ").concat(n.1);
+      }).join("\n"));
       print(hm.get(1));
     }"#;
     stdout r#"key: 1
@@ -2069,65 +2069,32 @@ val: baz
 foo
 "#;
 );
-test_ignore!(hashmap_double_set => r#"
+test!(dict_double_store => r#"
     export fn main {
-      let test = newHashMap('foo', 'bar');
+      let test = Dict('foo', 'bar');
       test.get('foo').print;
-      test.set('foo', 'baz');
+      test.store('foo', 'baz');
       print(test.get('foo'));
     }"#;
     stdout "bar\nbaz\n";
 );
-/* Pending
-test_ignore!(hashmap_ops => r#"
-    from @std/app import start, print, exit
-
-    on start {
-      const test = new Map{string, int64} {
-        'foo': 1
-        'bar': 2
-        'baz': 99
-      }
-
-      print('keyVal test')
-      test.keyVal.each(fn (n: KeyVal{string, int64}) {
-        print('key: ' + n.key)
-        print('val: ' + n.value.string)
-      })
-
-      print('keys test')
-      test.keys.each(print)
-
-      print('values test')
-      test.values.each(print)
-
-      print('length test')
-      test.length.print
-      print(#test)
-
-      emit exit 0
+test!(basic_set => r#"
+    export fn main {
+        let test = Set(0);
+        test.len.print;
+        test.has(0).print;
+        test.has(1).print;
+        test.store(1);
+        test.len.print;
+        let test2 = Set([1, 2]);
+        test.union(test2).len.print;
+        test.intersect(test2).Array.print;
+        test.difference(test2).Array.print;
+        test.symmetricDifference(test2).len.print;
+        test.product(test2).len.print;
     }"#;
-    stdout r#"keyVal test
-key: bar
-val: 2
-key: foo
-val: 1
-key: baz
-val: 99
-keys test
-bar
-foo
-baz
-values test
-2
-1
-99
-length test
-3
-3
-"#;
+    stdout "1\ntrue\nfalse\n2\n3\n[1]\n[0]\n2\n4\n";
 );
-*/
 
 // Generics
 
@@ -2172,21 +2139,17 @@ test!(generic_functions => r#"
 "#;
     stdout "[]\n";
 );
-test_ignore!(invalid_generics => r#"
-    type box{V} {
+test_compile_error!(invalid_generics => r#"
+    type box{V} =
       set: bool,
-      val: V
-    }
+      val: V;
 
     export fn main {
-      let stringBox = new box{string} {
-        set: true,
-        val: 'str'
-      };
+      let stringBox = box{string}(true, 'str');
       stringBox.val = 8;
     }"#;
-    stderr "stringBox.val is of type string but assigned a value of type int64\n"
-);
+    error "Could not find a function with a call signature of set(string, i64)";
+); // TODO: Make a better error message
 
 // Interfaces
 
