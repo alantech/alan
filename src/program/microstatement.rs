@@ -680,21 +680,18 @@ pub fn baseassignablelist_to_microstatements(
             BaseChunk::ConstantAccessor(c) => {
                 if let Some(prior) = &prior_value {
                     let mut temp_scope = scope.child();
-                    let mut constant_accessor_microstatements = vec![prior.clone()];
-                    microstatements = baseassignablelist_to_microstatements(
-                        &vec![parse::BaseAssignable::Constants(c.clone())],
-                        &mut temp_scope,
-                        microstatements,
-                    )?;
-                    constant_accessor_microstatements.push(microstatements.pop().unwrap());
+                    let constant_accessor_microstatements = vec![prior.clone()];
                     let mut arg_types = Vec::new();
                     for m in &constant_accessor_microstatements {
                         arg_types.push(m.get_type());
+                        // In case the type constructor has not already been created
+                        let t = m.get_type();
+                        CType::from_ctype(&mut temp_scope, t.to_callable_string(), t);
                     }
                     let function = {
                         let mut temp_scope_2 = temp_scope.child();
                         temp_scope_2
-                            .resolve_function(&"get".to_string(), &arg_types)
+                            .resolve_function(&c.to_string(), &arg_types)
                             .cloned()
                     };
                     match function {
@@ -702,7 +699,7 @@ pub fn baseassignablelist_to_microstatements(
                             let Scope { functions, .. } = temp_scope;
                             scope.merge_functions(functions);
                             let mut functions = OrderedHashMap::new();
-                            functions.insert("get".to_string(), vec![f.clone()]);
+                            functions.insert(c.to_string(), vec![f.clone()]);
                             scope.merge_functions(functions);
                             prior_value = Some(Microstatement::FnCall {
                                 function: f,
@@ -711,7 +708,8 @@ pub fn baseassignablelist_to_microstatements(
                         }
                         None => {
                             return Err(format!(
-                                "A function with the signature get({}) does not exist",
+                                "A function with the signature {}({}) does not exist",
+                                c.to_string(),
                                 arg_types
                                     .iter()
                                     .map(|a| a.to_string())
@@ -770,8 +768,8 @@ pub fn baseassignablelist_to_microstatements(
                     }),
                     optsemicolon: ";".to_string(),
                 };
-                let mut temp_scope = scope.child();
-                CType::from_ast(&mut temp_scope, &parse_type, false)?;
+                CType::from_ast(scope, &parse_type, false)?;
+                let temp_scope = scope.child();
                 // Now we are sure the type and function exist, and we know the name for the
                 // function. It would be best if we could just pass it to ourselves and run the
                 // `FuncCall` logic below, but it's easier at the moment to duplicate :( TODO
@@ -1020,10 +1018,7 @@ pub fn baseassignablelist_to_microstatements(
                         )
                         .into());
                     }
-                    (Some(_), Some(_)) => {
-                        // If this hits, it matched on the argument
-                    }
-                    (None, Some(func)) => {
+                    (_, Some(func)) => {
                         // TODO: Do we need the merge here? It looks like it will happen later
                         let mut functions = OrderedHashMap::new();
                         functions.insert(f.clone(), vec![func.clone()]);
@@ -1089,7 +1084,8 @@ pub fn baseassignablelist_to_microstatements(
                             }
                             None => {
                                 return Err(format!(
-                                    "A function with the signature get({}) does not exist",
+                                    "A function with the signature {}({}) does not exist",
+                                    real_name,
                                     arg_types
                                         .iter()
                                         .map(|a| a.to_string())

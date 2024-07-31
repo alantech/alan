@@ -269,14 +269,15 @@ impl CType {
             CType::Type(_, t) => t.to_functional_string(),
             CType::Generic(n, gs, _) => format!("{}{{{}}}", n, gs.join(", ")),
             CType::Bound(n, _) => n.clone(),
-            CType::BoundGeneric(_, _, b) => b.clone(),
-            CType::ResolvedBoundGeneric(_, gs, ts, b) => {
-                let mut out = b.clone();
-                for (g, t) in gs.iter().zip(ts.iter()) {
-                    out = out.replace(g, &t.to_functional_string());
-                }
-                out
-            }
+            CType::BoundGeneric(n, _, _) => n.clone(),
+            CType::ResolvedBoundGeneric(n, _, ts, _) => format!(
+                "{}{{{}}}",
+                n,
+                ts.iter()
+                    .map(|t| t.to_functional_string())
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ),
             CType::IntrinsicGeneric(s, u) => format!("{}{{{}}}", s, {
                 let mut out = Vec::new();
                 for i in 0..(*u as u32) {
@@ -1466,8 +1467,15 @@ impl CType {
                             args.push((n.clone(), *f.clone()));
                         }
                         otherwise => {
-                            // Just copy this arg to the args array with a fake
-                            // name
+                            // Create an `<N>` function accepting the tuple by field number
+                            fs.push(Function {
+                                name: format!("{}", i),
+                                args: vec![("arg0".to_string(), t.clone())],
+                                rettype: otherwise.clone(),
+                                microstatements: Vec::new(),
+                                kind: FnKind::Derived,
+                            });
+                            println!("fs {:?}", fs);
                             args.push((format!("arg{}", i), otherwise.clone()));
                         }
                     }
