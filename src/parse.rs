@@ -1161,7 +1161,7 @@ named_and!(functionbody: FunctionBody =>
     a: String as optwhitespace,
     statements: Vec<Statement> as statements,
     b: String as optwhitespace,
-    closecurly:String as closecurly,
+    closecurly: String as closecurly,
 );
 test!(functionbody =>
     pass "{  if maybe.isSome() {\n    return maybe.getMaybe().toString();\n  } else {\n    return 'none';\n  } }";
@@ -1245,11 +1245,12 @@ test!(statement =>
     pass "return maybe.getMaybe().toString();";
     pass "if maybe.isSome() {\n    return maybe.getMaybe().toString();\n  } else {\n    return 'none';\n  }";
 );
-list!(statements: Statement => statement);
+list!(opt statements: Statement => statement);
 test!(statements =>
     pass "return maybe.getMaybe().toString();";
     pass "if maybe.isSome() {\n    return maybe.getMaybe().toString();\n  } else {\n    return 'none';\n  }";
     pass "let hm = HashMap{Hashable, any}(Array{KeyVal{Hashable, any}}(), Array{Array{int64}}(Array{int64}()) * 128 // 1KB of space\n  );\n  return hm.set(firstKey, firstVal);" => "";
+    pass "";
 );
 list!(opt assignablelist: Vec<WithOperators> => assignables, sep);
 named_and!(arraybase: ArrayBase =>
