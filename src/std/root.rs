@@ -2870,6 +2870,38 @@ fn repeatarray<T: std::clone::Clone>(a: &Vec<T>, c: &i64) -> Vec<T> {
     out
 }
 
+/// `storearray` inserts a new value at the specified index, but fails if the index is greater than
+/// the length of the length of the array (so there would be at least one "gap" in the array in
+/// that situation)
+#[inline(always)]
+fn storearray<T: std::clone::Clone>(a: &mut Vec<T>, i: &i64, v: &T) -> Result<(), AlanError> {
+    match (*i as usize) > a.len() {
+        true => Err(format!(
+            "Provided array index {} is greater than the length of the array",
+            i
+        )
+        .into()),
+        false => {
+            a.insert(*i as usize, v.clone());
+            Ok(())
+        }
+    }
+}
+
+/// `deletearray` deletes a value at the specified index, but fails if the index is out-of-bounds.
+/// If it succeeds, it returns the value wrapped in a Fallible.
+#[inline(always)]
+fn deletearray<T: std::clone::Clone>(a: &mut Vec<T>, i: &i64) -> Result<T, AlanError> {
+    match (*i as usize) >= a.len() {
+        true => Err(format!(
+            "Provided array index {} is beyond the bounds of the array",
+            i
+        )
+        .into()),
+        false => Ok(a.remove(*i as usize).clone()),
+    }
+}
+
 /// Buffer-related functions
 
 /// `getbuffer` returns the value at the given index presuming it exists
@@ -3005,6 +3037,24 @@ fn repeatbuffertoarray<T: std::clone::Clone, const S: usize>(a: &[T; S], c: &i64
         }
     }
     out
+}
+
+/// `storebuffer` stores the provided value in the specified index. If the index is out-of-bounds
+/// for the buffer it fails, otherwise it returns the old value.
+#[inline(always)]
+fn storebuffer<T: std::clone::Clone, const S: usize>(
+    a: &mut [T; S],
+    i: &i64,
+    v: &T,
+) -> Result<T, AlanError> {
+    match (*i as usize) < a.len() {
+        false => Err(format!(
+            "The provided index {} is out-of-bounds for the specified buffer",
+            i
+        )
+        .into()),
+        true => Ok(std::mem::replace(a.each_mut()[*i as usize], v.clone())),
+    }
 }
 
 /// Dictionary-related bindings

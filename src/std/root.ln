@@ -583,6 +583,8 @@ export fn has{T}(a: Array{T}, f: (T) -> bool) -> bool binds hasfnarray;
 export fn find{T}(a: Array{T}, f: (T) -> bool) -> Maybe{T} binds findarray;
 export fn every{T}(a: Array{T}, f: (T) -> bool) -> bool binds everyarray;
 export fn repeat{T}(a: Array{T}, c: i64) -> Array{T} binds repeatarray;
+export fn store{T}(a: Array{T}, i: i64, v: T) -> Fallible{void} binds storearray;
+export fn delete{T}(a: Array{T}, i: i64) -> Fallible{T} binds deletearray;
 
 /// Buffer related bindings
 export fn get{T, S}(b: T[S], i: i64) -> Maybe{T} binds getbuffer;
@@ -608,6 +610,7 @@ export fn concat{T, S, N}(a: Buffer{T, S}, b: Buffer{T, N}) -> Buffer{T, S + N} 
 // TODO: Be able to resolve explicit integer constant values as the integer type so it can be
 // grabbed by the type inference system. For now, repeat for buffers outputs an array, instead.
 export fn repeat{T, S}(b: Buffer{T, S}, c: i64) -> Array{T} binds repeatbuffertoarray;
+export fn store{T, S}(b: Buffer{T, S}, i: i64, v: T) -> Fallible{T} binds storebuffer;
 
 /// Dictionary-related bindings
 export fn Dict{K, V}() -> Dict{K, V} binds newdict;
