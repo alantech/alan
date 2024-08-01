@@ -306,13 +306,13 @@ pub fn from_microstatement(
                                 let accessor_field = ts
                                     .iter()
                                     .filter(|t1| match t1 {
-                                        CType::Field(_, t2) => match &**t2 {
+                                        CType::Field(_, t2) => !matches!(
+                                            &**t2,
                                             CType::TString(_)
-                                            | CType::Int(_)
-                                            | CType::Float(_)
-                                            | CType::Bool(_) => false,
-                                            _ => true,
-                                        },
+                                                | CType::Int(_)
+                                                | CType::Float(_)
+                                                | CType::Bool(_)
+                                        ),
                                         CType::TString(_)
                                         | CType::Int(_)
                                         | CType::Float(_)
@@ -735,13 +735,13 @@ pub fn from_microstatement(
                                     == ts
                                         .iter()
                                         .filter(|t| match t {
-                                            CType::Field(_, t) => match &**t {
+                                            CType::Field(_, t) => !matches!(
+                                                &**t,
                                                 CType::Int(_)
-                                                | CType::Float(_)
-                                                | CType::Bool(_)
-                                                | CType::TString(_) => false,
-                                                _ => true,
-                                            },
+                                                    | CType::Float(_)
+                                                    | CType::Bool(_)
+                                                    | CType::TString(_),
+                                            ),
                                             CType::Int(_)
                                             | CType::Float(_)
                                             | CType::Bool(_)

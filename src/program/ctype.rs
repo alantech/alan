@@ -1453,12 +1453,10 @@ impl CType {
                 let mut args = Vec::new();
                 // Create accessor functions for static tag values in the tuple, if any exist
                 for ti in ts.iter().filter(|t1| match t1 {
-                    CType::Field(_, t2) => match &**t2 {
-                        CType::TString(_) | CType::Int(_) | CType::Float(_) | CType::Bool(_) => {
-                            true
-                        }
-                        _ => false,
-                    },
+                    CType::Field(_, t2) => matches!(
+                        &**t2,
+                        CType::TString(_) | CType::Int(_) | CType::Float(_) | CType::Bool(_)
+                    ),
                     CType::TString(_) | CType::Int(_) | CType::Float(_) | CType::Bool(_) => true,
                     _ => false,
                 }) {
@@ -1544,13 +1542,10 @@ impl CType {
                 for (i, ti) in ts
                     .iter()
                     .filter(|t1| match t1 {
-                        CType::Field(_, t2) => match &**t2 {
-                            CType::TString(_)
-                            | CType::Int(_)
-                            | CType::Float(_)
-                            | CType::Bool(_) => false,
-                            _ => true,
-                        },
+                        CType::Field(_, t2) => !matches!(
+                            &**t2,
+                            CType::TString(_) | CType::Int(_) | CType::Float(_) | CType::Bool(_)
+                        ),
                         CType::TString(_) | CType::Int(_) | CType::Float(_) | CType::Bool(_) => {
                             false
                         }
