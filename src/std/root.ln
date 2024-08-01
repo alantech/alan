@@ -141,6 +141,7 @@ export fn hash(v: string) -> i64 binds hashstring;
 export fn hash{T}(v: T) -> i64 binds hash;
 export fn void{T}(v: T) -> void {}
 export fn void() -> void {}
+export fn store{T}(a: T, b: T) -> T binds storeswap;
 
 /// Fallible, Maybe, and Either functions
 export fn getOr{T}(v: Maybe{T}, d: T) -> T binds maybe_get_or;
@@ -740,4 +741,4 @@ export infix shl as << precedence 2;
 export infix shr as >> precedence 2;
 export infix wrl as <<< precedence 2;
 export infix wrr as >>> precedence 2;
-export infix set as = precedence 0;
+export infix store as = precedence 0;

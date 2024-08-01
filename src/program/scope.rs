@@ -305,7 +305,8 @@ impl<'a> Scope<'a> {
                     FnKind::Normal
                     | FnKind::Bind(_)
                     | FnKind::Derived
-                    | FnKind::DerivedVariadic => None,
+                    | FnKind::DerivedVariadic
+                    | FnKind::Static => None,
                     FnKind::Generic(gs, _) | FnKind::BoundGeneric(gs, _) => {
                         Some(gs.iter().map(|(g, _)| g.clone()).collect::<Vec<String>>())
                     }
@@ -404,9 +405,11 @@ impl<'a> Scope<'a> {
         let mut generic_fs = Vec::new();
         for f in &fs {
             match &f.kind {
-                FnKind::Normal | FnKind::Bind(_) | FnKind::Derived | FnKind::DerivedVariadic => {
-                    /* Do nothing */
-                }
+                FnKind::Normal
+                | FnKind::Bind(_)
+                | FnKind::Derived
+                | FnKind::DerivedVariadic
+                | FnKind::Static => { /* Do nothing */ }
                 FnKind::Generic(g, _) | FnKind::BoundGeneric(g, _) => {
                     // TODO: Check interface constraints once interfaces exist
                     if g.len() != generic_types.len() {
@@ -569,7 +572,7 @@ impl<'a> Scope<'a> {
                         return None;
                     }
                 }
-                FnKind::Normal | FnKind::Bind(_) | FnKind::Derived => {
+                FnKind::Normal | FnKind::Bind(_) | FnKind::Derived | FnKind::Static => {
                     if args.len() != f.args.len() {
                         continue;
                     }
@@ -665,7 +668,7 @@ impl<'a> Scope<'a> {
                         return Some(f);
                     }
                 }
-                FnKind::Normal | FnKind::Bind(_) | FnKind::Derived => {
+                FnKind::Normal | FnKind::Bind(_) | FnKind::Derived | FnKind::Static => {
                     if args.len() != f.args.len() {
                         continue;
                     }

@@ -71,7 +71,7 @@ pub fn ctype_to_rtype(
         CType::Int(i) => Ok(i.to_string()),
         CType::Float(f) => Ok(f.to_string()),
         CType::Bool(b) => Ok(b.to_string()),
-        CType::TString(s) => Ok(s.clone()),
+        CType::TString(s) => Ok(s.replace(['"', '\''], "_")),
         CType::Group(g) => Ok(format!("({})", ctype_to_rtype(g, in_function_type)?)),
         CType::Function(i, o) => {
             if let CType::Void = **i {

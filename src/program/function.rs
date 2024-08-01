@@ -391,7 +391,11 @@ impl Function {
         generic_types: Vec<CType>,
     ) -> Result<&'a Function, Box<dyn std::error::Error>> {
         match &generic_function.kind {
-            FnKind::Normal | FnKind::Bind(_) | FnKind::Derived | FnKind::DerivedVariadic => {
+            FnKind::Normal
+            | FnKind::Bind(_)
+            | FnKind::Derived
+            | FnKind::DerivedVariadic
+            | FnKind::Static => {
                 Err("Should be impossible. Attempted to realize a non-generic function".into())
             }
             FnKind::BoundGeneric(gen_args, generic_fn_string) => {

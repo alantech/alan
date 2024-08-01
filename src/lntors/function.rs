@@ -86,7 +86,8 @@ pub fn from_microstatement(
                             FnKind::Normal
                             | FnKind::Generic(..)
                             | FnKind::Derived
-                            | FnKind::DerivedVariadic => {
+                            | FnKind::DerivedVariadic
+                            | FnKind::Static => {
                                 let mut arg_strs = Vec::new();
                                 for arg in &fun.args {
                                     match typen::ctype_to_rtype(&arg.1, false) {
@@ -186,7 +187,11 @@ pub fn from_microstatement(
                         let arg_type = arg.get_type();
                         match arg_type {
                             CType::Function(..) => argstrs.push(a.to_string()),
-                            _ => argstrs.push(format!("&mut {}", a)),
+                            _ => argstrs.push(if a.starts_with("&mut ") {
+                                a
+                            } else {
+                                format!("&mut {}", a)
+                            }),
                         }
                     }
                     Ok((
@@ -205,13 +210,27 @@ pub fn from_microstatement(
                         let arg_type = arg.get_type();
                         match arg_type {
                             CType::Function(..) => argstrs.push(a.to_string()),
-                            _ => argstrs.push(format!("&mut {}", a)),
+                            _ => argstrs.push(if a.starts_with("&mut ") {
+                                a
+                            } else {
+                                format!("&mut {}", a)
+                            }),
                         }
                     }
                     Ok((
                         format!("{}({})", rustname, argstrs.join(", ")).to_string(),
                         out,
                     ))
+                }
+                FnKind::Static => {
+                    // Static functions just replace the function call with their static value
+                    // calculated at compile time.
+                    match &function.microstatements[0] {
+                        Microstatement::Value { representation, .. } => {
+                            Ok((representation.clone(), out))
+                        }
+                        _ => unreachable!(),
+                    }
                 }
                 FnKind::Derived | FnKind::DerivedVariadic => {
                     // The initial work to get the values to construct the type is the same as
@@ -228,7 +247,11 @@ pub fn from_microstatement(
                         let arg_type = arg.get_type();
                         match arg_type {
                             CType::Function(..) => argstrs.push(a.to_string()),
-                            _ => argstrs.push(format!("&mut {}", a)),
+                            _ => argstrs.push(if a.starts_with("&mut ") {
+                                a
+                            } else {
+                                format!("&mut {}", a)
+                            }),
                         }
                     }
                     // The behavior of the generated code depends on the structure of the
@@ -280,13 +303,33 @@ pub fn from_microstatement(
                                 if let Ok(i) = function.name.parse::<i64>() {
                                     return Ok((format!("{}.{}", argstrs[0], i), out));
                                 }
-                                let accessor_field = ts.iter().enumerate().find(|(_, t)| match t {
-                                    CType::Field(n, _) => *n == function.name,
-                                    _ => false,
-                                });
+                                let accessor_field = ts
+                                    .iter()
+                                    .filter(|t1| match t1 {
+                                        CType::Field(_, t2) => match &**t2 {
+                                            CType::TString(_)
+                                            | CType::Int(_)
+                                            | CType::Float(_)
+                                            | CType::Bool(_) => false,
+                                            _ => true,
+                                        },
+                                        CType::TString(_)
+                                        | CType::Int(_)
+                                        | CType::Float(_)
+                                        | CType::Bool(_) => false,
+                                        _ => true,
+                                    })
+                                    .enumerate()
+                                    .find(|(_, t)| match t {
+                                        CType::Field(n, _) => *n == function.name,
+                                        _ => false,
+                                    });
                                 if let Some((i, _)) = accessor_field {
                                     return Ok((format!("{}.{}", argstrs[0], i), out));
                                 }
+                            }
+                            CType::Field(..) => {
+                                return Ok((format!("{}.0", argstrs[0]), out));
                             }
                             CType::Either(ts) => {
                                 // The kinds of types allowed here are `Type`, `Bound`, and
@@ -688,21 +731,53 @@ pub fn from_microstatement(
                             CType::Tuple(ts) => {
                                 // TODO: Better type checking here, but it's *probably* being
                                 // done at a higher layer
-                                if argstrs.len() == ts.len() {
-                                    return Ok((
-                                        format!(
-                                            "({})",
-                                            argstrs
-                                                .iter()
-                                                .map(|a| match a.strip_prefix("&mut ") {
+                                if argstrs.len()
+                                    == ts
+                                        .iter()
+                                        .filter(|t| match t {
+                                            CType::Field(_, t) => match &**t {
+                                                CType::Int(_)
+                                                | CType::Float(_)
+                                                | CType::Bool(_)
+                                                | CType::TString(_) => false,
+                                                _ => true,
+                                            },
+                                            CType::Int(_)
+                                            | CType::Float(_)
+                                            | CType::Bool(_)
+                                            | CType::TString(_) => false,
+                                            _ => true,
+                                        })
+                                        .collect::<Vec<&CType>>()
+                                        .len()
+                                {
+                                    if argstrs.len() == 1 {
+                                        return Ok((
+                                            format!(
+                                                "({},)",
+                                                match argstrs[0].strip_prefix("&mut ") {
                                                     Some(s) => s.to_string(),
-                                                    None => a.to_string(),
-                                                })
-                                                .collect::<Vec<String>>()
-                                                .join(", ")
-                                        ),
-                                        out,
-                                    ));
+                                                    None => argstrs[0].clone(),
+                                                }
+                                            ),
+                                            out,
+                                        ));
+                                    } else {
+                                        return Ok((
+                                            format!(
+                                                "({})",
+                                                argstrs
+                                                    .iter()
+                                                    .map(|a| match a.strip_prefix("&mut ") {
+                                                        Some(s) => s.to_string(),
+                                                        None => a.to_string(),
+                                                    })
+                                                    .collect::<Vec<String>>()
+                                                    .join(", ")
+                                            ),
+                                            out,
+                                        ));
+                                    }
                                 } else {
                                     return Err(format!(
                                         "{} has {} fields but {} provided",
@@ -712,6 +787,18 @@ pub fn from_microstatement(
                                     )
                                     .into());
                                 }
+                            }
+                            CType::Field(..) => {
+                                return Ok((
+                                    format!(
+                                        "({},)",
+                                        match argstrs[0].strip_prefix("&mut ") {
+                                            Some(s) => s.to_string(),
+                                            None => argstrs[0].clone(),
+                                        }
+                                    ),
+                                    out,
+                                ));
                             }
                             CType::Bound(_, _) => {
                                 // TODO: Is this the right thing to do for aliases to bound
@@ -742,7 +829,11 @@ pub fn from_microstatement(
                 let arg_type = arg.get_type();
                 match arg_type {
                     CType::Function(..) => argstrs.push(a.to_string()),
-                    _ => argstrs.push(format!("&mut {}", a)),
+                    _ => argstrs.push(if a.starts_with("&mut ") {
+                        a
+                    } else {
+                        format!("&mut {}", a)
+                    }),
                 }
             }
             Ok((format!("{}({})", name, argstrs.join(", ")).to_string(), out))

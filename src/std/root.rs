@@ -79,6 +79,12 @@ fn hashstring(v: &String) -> i64 {
     hasher.finish() as i64
 }
 
+/// `storeswap` swaps the input and output
+#[inline(always)]
+fn storeswap<T: std::clone::Clone>(a: &mut T, b: &mut T) -> T {
+    std::mem::replace(a, b.clone())
+}
+
 /// Fallible, Maybe, and Either functions
 
 /// `maybe_get_or` gets the Option's value or returns the default if not present.
