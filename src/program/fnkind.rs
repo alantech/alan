@@ -10,4 +10,5 @@ pub enum FnKind {
     BoundGeneric(Vec<(String, CType)>, String),
     Derived,
     DerivedVariadic,
+    Static,
 }

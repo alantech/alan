@@ -1451,7 +1451,108 @@ impl CType {
                 // that is marked as a field, we also want to create an accessor
                 // function for it to simulate structs better.
                 let mut args = Vec::new();
-                for (i, ti) in ts.iter().enumerate() {
+                // Create accessor functions for static tag values in the tuple, if any exist
+                for ti in ts.iter().filter(|t1| match t1 {
+                    CType::Field(_, t2) => matches!(
+                        &**t2,
+                        CType::TString(_) | CType::Int(_) | CType::Float(_) | CType::Bool(_)
+                    ),
+                    CType::TString(_) | CType::Int(_) | CType::Float(_) | CType::Bool(_) => true,
+                    _ => false,
+                }) {
+                    match ti {
+                        CType::Field(n, f) => {
+                            match &**f {
+                                CType::TString(s) => {
+                                    // Create an accessor function for this value, but do not add
+                                    // it to the args array to construct it. The accessor function
+                                    // will return this value as a string.
+                                    let string =
+                                        CType::Bound("string".to_string(), "String".to_string());
+                                    fs.push(Function {
+                                        name: n.clone(),
+                                        args: vec![("arg0".to_string(), t.clone())],
+                                        rettype: string.clone(),
+                                        microstatements: vec![Microstatement::Value {
+                                            typen: string,
+                                            representation: s.clone(),
+                                        }],
+                                        kind: FnKind::Static,
+                                    });
+                                }
+                                CType::Int(i) => {
+                                    // Create an accessor function for this value, but do not add
+                                    // it to the args array to construct it. The accessor function
+                                    // will return this value as an i64.
+                                    let int64 = CType::Bound("i64".to_string(), "i64".to_string());
+                                    fs.push(Function {
+                                        name: n.clone(),
+                                        args: vec![("arg0".to_string(), t.clone())],
+                                        rettype: int64.clone(),
+                                        microstatements: vec![Microstatement::Value {
+                                            typen: int64,
+                                            representation: format!("{}", i),
+                                        }],
+                                        kind: FnKind::Static,
+                                    });
+                                }
+                                CType::Float(f) => {
+                                    // Create an accessor function for this value, but do not add
+                                    // it to the args array to construct it. The accessor function
+                                    // will return this value as an f64.
+                                    let float64 =
+                                        CType::Bound("f64".to_string(), "f64".to_string());
+                                    fs.push(Function {
+                                        name: n.clone(),
+                                        args: vec![("arg0".to_string(), t.clone())],
+                                        rettype: float64.clone(),
+                                        microstatements: vec![Microstatement::Value {
+                                            typen: float64,
+                                            representation: format!("{}", f),
+                                        }],
+                                        kind: FnKind::Static,
+                                    });
+                                }
+                                CType::Bool(b) => {
+                                    // Create an accessor function for this value, but do not add
+                                    // it to the args array to construct it. The accessor function
+                                    // will return this value as a bool.
+                                    let booln =
+                                        CType::Bound("bool".to_string(), "bool".to_string());
+                                    fs.push(Function {
+                                        name: n.clone(),
+                                        args: vec![("arg0".to_string(), t.clone())],
+                                        rettype: booln.clone(),
+                                        microstatements: vec![Microstatement::Value {
+                                            typen: booln,
+                                            representation: match b {
+                                                true => "true".to_string(),
+                                                false => "false".to_string(),
+                                            },
+                                        }],
+                                        kind: FnKind::Static,
+                                    });
+                                }
+                                _ => { /* Do nothing */ }
+                            }
+                        }
+                        _ => { /* Do nothing */ }
+                    }
+                }
+                for (i, ti) in ts
+                    .iter()
+                    .filter(|t1| match t1 {
+                        CType::Field(_, t2) => !matches!(
+                            &**t2,
+                            CType::TString(_) | CType::Int(_) | CType::Float(_) | CType::Bool(_)
+                        ),
+                        CType::TString(_) | CType::Int(_) | CType::Float(_) | CType::Bool(_) => {
+                            false
+                        }
+                        _ => true,
+                    })
+                    .enumerate()
+                {
                     match ti {
                         CType::Field(n, f) => {
                             // Create an accessor function
@@ -1475,9 +1576,100 @@ impl CType {
                                 microstatements: Vec::new(),
                                 kind: FnKind::Derived,
                             });
-                            println!("fs {:?}", fs);
                             args.push((format!("arg{}", i), otherwise.clone()));
                         }
+                    }
+                }
+                // Define the constructor function
+                fs.push(Function {
+                    name: constructor_fn_name.clone(),
+                    args,
+                    rettype: t.clone(),
+                    microstatements: Vec::new(),
+                    kind: FnKind::Derived,
+                });
+            }
+            CType::Field(n, f) => {
+                // This is a "baby tuple" of just one value. So we follow the Tuple logic, but
+                // simplified.
+                let mut args = Vec::new();
+                match &**f {
+                    CType::TString(s) => {
+                        // Create an accessor function for this value, but do not add
+                        // it to the args array to construct it. The accessor function
+                        // will return this value as a string.
+                        let string = CType::Bound("string".to_string(), "String".to_string());
+                        fs.push(Function {
+                            name: n.clone(),
+                            args: vec![("arg0".to_string(), t.clone())],
+                            rettype: string.clone(),
+                            microstatements: vec![Microstatement::Value {
+                                typen: string,
+                                representation: s.clone(),
+                            }],
+                            kind: FnKind::Static,
+                        });
+                    }
+                    CType::Int(i) => {
+                        // Create an accessor function for this value, but do not add
+                        // it to the args array to construct it. The accessor function
+                        // will return this value as an i64.
+                        let int64 = CType::Bound("i64".to_string(), "i64".to_string());
+                        fs.push(Function {
+                            name: n.clone(),
+                            args: vec![("arg0".to_string(), t.clone())],
+                            rettype: int64.clone(),
+                            microstatements: vec![Microstatement::Value {
+                                typen: int64,
+                                representation: format!("{}", i),
+                            }],
+                            kind: FnKind::Static,
+                        });
+                    }
+                    CType::Float(f) => {
+                        // Create an accessor function for this value, but do not add
+                        // it to the args array to construct it. The accessor function
+                        // will return this value as an f64.
+                        let float64 = CType::Bound("f64".to_string(), "f64".to_string());
+                        fs.push(Function {
+                            name: n.clone(),
+                            args: vec![("arg0".to_string(), t.clone())],
+                            rettype: float64.clone(),
+                            microstatements: vec![Microstatement::Value {
+                                typen: float64,
+                                representation: format!("{}", f),
+                            }],
+                            kind: FnKind::Static,
+                        });
+                    }
+                    CType::Bool(b) => {
+                        // Create an accessor function for this value, but do not add
+                        // it to the args array to construct it. The accessor function
+                        // will return this value as a bool.
+                        let booln = CType::Bound("bool".to_string(), "bool".to_string());
+                        fs.push(Function {
+                            name: n.clone(),
+                            args: vec![("arg0".to_string(), t.clone())],
+                            rettype: booln.clone(),
+                            microstatements: vec![Microstatement::Value {
+                                typen: booln,
+                                representation: match b {
+                                    true => "true".to_string(),
+                                    false => "false".to_string(),
+                                },
+                            }],
+                            kind: FnKind::Static,
+                        });
+                    }
+                    otherwise => {
+                        fs.push(Function {
+                            name: n.clone(),
+                            args: vec![("arg0".to_string(), t.clone())],
+                            rettype: *f.clone(),
+                            microstatements: Vec::new(),
+                            kind: FnKind::Derived,
+                        });
+                        args.push(("arg0".to_string(), otherwise.clone()));
                     }
                 }
                 // Define the constructor function
@@ -1750,6 +1942,7 @@ impl CType {
             }
         }
         scope.types.insert(name, t.clone());
+        scope.types.insert(t.to_callable_string(), t.clone());
         if !fs.is_empty() {
             let mut name_fn_pairs = HashMap::new();
             for f in fs {
@@ -1777,7 +1970,8 @@ impl CType {
     pub fn from_ctype(scope: &mut Scope, name: String, ctype: CType) {
         scope.exports.insert(name.clone(), Export::Type);
         let (_, fs) = ctype.to_functions(name.clone());
-        scope.types.insert(name, ctype);
+        scope.types.insert(name, ctype.clone());
+        scope.types.insert(ctype.to_callable_string(), ctype);
         if !fs.is_empty() {
             let mut name_fn_pairs = HashMap::new();
             for f in fs {
@@ -3126,7 +3320,7 @@ pub fn typebaselist_to_ctype(
                             }
                         }
                     }
-                    None => CType::fail(&format!("{} is not a valid generic type name", var)),
+                    None => CType::fail(&format!("{} is not a valid type name", var)),
                 })
             }
             parse::TypeBase::GnCall(_) => { /* We always process GnCall in the Variable path */ }

@@ -1717,34 +1717,22 @@ test!(object_literals => r#"
     }"#;
     stdout "foo!\ntrue\n";
 );
-test_ignore!(object_and_array_reassignment => r#"
-    type Foo {
-      bar: bool
-    }
+test!(object_and_array_reassignment => r#"
+    type Foo =
+      bar: bool;
 
     export fn main {
-      let test = new Array{int64} [ 1, 2, 3 ];
+      let test = [ 1, 2, 3 ];
       print(test[0]);
-      test.set(0, 0);
+      test.store(0, 0);
       print(test[0]);
 
-      let test2 = new Array{Foo} [
-        new Foo {
-          bar: true
-        },
-        new Foo {
-          bar: false
-        }
-      ];
-      let test3 = test2[0] || new Foo {
-        bar: false
-      };
+      let test2 = [Foo(true), Foo(false)];
+      let test3 = test2[0].getOr(Foo(false));
       print(test3.bar);
       test3.bar = false;
-      test2.set(0, test3); // TODO: is the a better way to do nested updates?
-      const test4 = test2[0] || new Foo {
-        bar: true
-      };
+      test2.store(0, test3); // TODO: is the a better way to do nested updates?
+      const test4 = test2[0].getOr(Foo(true));
       print(test4.bar);
     }"#;
     stdout "1\n0\ntrue\nfalse\n";
@@ -2056,6 +2044,7 @@ test!(basic_dict => r#"
       print(test.vals.map(string).join(', '));
       print(test.len);
       print(test.get('foo'));
+      test['bar'].print;
     }"#;
     stdout r#"key: foo
 val: 1
@@ -2067,6 +2056,7 @@ foo, bar, baz
 1, 2, 99
 3
 1
+2
 "#;
 );
 test!(keyval_array_to_dict => r#"
@@ -2168,7 +2158,7 @@ test_compile_error!(invalid_generics => r#"
       let stringBox = box{string}(true, 'str');
       stringBox.val = 8;
     }"#;
-    error "Could not find a function with a call signature of set(string, i64)";
+    error "Could not find a function with a call signature of store(string, i64)";
 ); // TODO: Make a better error message
 
 // Interfaces
@@ -2602,19 +2592,28 @@ test!(user_types_and_generics => r#"
 
     type foo2 = foo{i64, f64};
 
+    type tagged{A, B} =
+      tag: A,
+      value: B;
+
+    type taggedInt = tagged{"integer", i64};
+
     export fn main {
       let a = foo{string, i64}('bar', 0);
       let b = foo{i64, bool}(0, true);
       let c = foo2(0, 1.23);
       let d = foo{i64, f64}(1, 3.14);
       let e = {i64?}(2);
+      let f = taggedInt(5);
       print(a.bar);
       print(b.bar);
       print(c.bar);
       print(d.bar);
       print(e.i64);
+      print(f.tag);
+      print(f.value);
     }"#;
-    stdout "bar\n0\n0\n1\n2\n";
+    stdout "bar\n0\n0\n1\n2\ninteger\n5\n";
 );
 /* Pending multi-file support
  *
