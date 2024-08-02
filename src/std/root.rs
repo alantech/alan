@@ -1,6 +1,7 @@
 /// Rust functions that the root scope binds.
 use std::collections::HashSet;
-use std::hash::Hasher;
+use std::hash::{Hash, Hasher};
+use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 use std::sync::OnceLock;
 
@@ -2375,6 +2376,13 @@ fn repeatstring(a: &String, n: &i64) -> String {
     a.repeat(*n as usize).to_string()
 }
 
+/// `replacestring` replaces all instances of one string with another string within the first
+/// string
+#[inline(always)]
+fn replacestring(s: &String, o: &String, n: &String) -> String {
+    s.replace(o, n)
+}
+
 /// `splitstring` creates a vector of strings split by the specified separator string
 #[inline(always)]
 fn splitstring(a: &String, b: &String) -> Vec<String> {
@@ -3122,6 +3130,31 @@ fn arraydict<K: std::clone::Clone, V: std::clone::Clone>(d: &OrderedHashMap<K, V
         .collect::<Vec<(K, V)>>()
 }
 
+/// `concatdict` returns a new dictionary containing the key-value pairs of the original two
+/// dictionaries. Insertion order follows the first dictionary followed by the second dictionary.
+/// In cases of key collision, the insertion order of the first dictionary is followed but with the
+/// second dictionary's value.
+#[inline(always)]
+fn concatdict<K: std::clone::Clone + std::hash::Hash + Eq, V: std::clone::Clone>(
+    a: &OrderedHashMap<K, V>,
+    b: &OrderedHashMap<K, V>,
+) -> OrderedHashMap<K, V> {
+    let mut out = OrderedHashMap::new();
+    for k in a.keys() {
+        if b.contains_key(k) {
+            out.insert(k.clone(), b.get(k).unwrap().clone());
+        } else {
+            out.insert(k.clone(), a.get(k).unwrap().clone());
+        }
+    }
+    for k in b.keys() {
+        if !a.contains_key(k) {
+            out.insert(k.clone(), b.get(k).unwrap().clone());
+        }
+    }
+    out
+}
+
 /// Set-related bindings
 
 /// `newset` creates a new set
@@ -3262,6 +3295,14 @@ fn elapsed(i: &std::time::Instant) -> std::time::Duration {
     i.elapsed()
 }
 
+/// Uuid-related functions
+
+/// `uuidstring` converts a UUID into a string
+#[inline(always)]
+fn uuidstring(u: &uuid::Uuid) -> String {
+    format!("{}", u)
+}
+
 /// GPU-related functions and types
 
 struct GPU {
@@ -3321,30 +3362,60 @@ fn gpu() -> &'static GPU {
     }
 }
 
-fn create_buffer_init(usage: &mut wgpu::BufferUsages, vals: &mut Vec<i32>) -> Rc<wgpu::Buffer> {
+#[derive(Clone)]
+struct GBuffer(Rc<wgpu::Buffer>);
+
+impl PartialEq for GBuffer {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.global_id() == other.0.global_id()
+    }
+}
+
+impl Eq for GBuffer {}
+
+impl Hash for GBuffer {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.global_id().hash(state);
+    }
+}
+
+impl Deref for GBuffer {
+    type Target = Rc<wgpu::Buffer>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for GBuffer {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+fn create_buffer_init(usage: &mut wgpu::BufferUsages, vals: &mut Vec<i32>) -> GBuffer {
     let g = gpu();
     let val_slice = &vals[..];
     let val_ptr = val_slice.as_ptr();
     let val_u8_len = vals.len() * 4;
     let val_u8: &[u8] = unsafe { std::slice::from_raw_parts(val_ptr as *const u8, val_u8_len) };
-    Rc::new(wgpu::util::DeviceExt::create_buffer_init(
+    GBuffer(Rc::new(wgpu::util::DeviceExt::create_buffer_init(
         &g.device,
         &wgpu::util::BufferInitDescriptor {
             label: None, // TODO: Add a label for easier debugging?
             contents: val_u8,
             usage: *usage,
         },
-    ))
+    )))
 }
 
-fn create_empty_buffer(usage: &mut wgpu::BufferUsages, size: &mut i64) -> Rc<wgpu::Buffer> {
+fn create_empty_buffer(usage: &mut wgpu::BufferUsages, size: &mut i64) -> GBuffer {
     let g = gpu();
-    Rc::new(g.device.create_buffer(&wgpu::BufferDescriptor {
+    GBuffer(Rc::new(g.device.create_buffer(&wgpu::BufferDescriptor {
         label: None, // TODO: Add a label for easier debugging?
         size: *size as u64,
         usage: *usage,
         mapped_at_creation: false, // TODO: With `create_buffer_init` does this make any sense?
-    }))
+    })))
 }
 
 // TODO: Either add the ability to bind to const values, or come up with a better solution. For
@@ -3360,7 +3431,7 @@ fn storage_buffer_type() -> wgpu::BufferUsages {
 }
 
 #[inline(always)]
-fn buffer_id(b: &Rc<wgpu::Buffer>) -> String {
+fn buffer_id(b: &GBuffer) -> String {
     let mut out = format!("{:?}", b.global_id());
     out.retain(|c| {
         ('A'..='Z').contains(&c) || ('a'..='z').contains(&c) || ('0'..='9').contains(&c)
@@ -3371,16 +3442,12 @@ fn buffer_id(b: &Rc<wgpu::Buffer>) -> String {
 struct GPGPU {
     pub source: String,
     pub entrypoint: String,
-    pub buffers: Vec<Vec<Rc<wgpu::Buffer>>>,
+    pub buffers: Vec<Vec<GBuffer>>,
     pub workgroup_sizes: [i64; 3],
 }
 
 impl GPGPU {
-    fn new(
-        source: String,
-        buffers: Vec<Vec<Rc<wgpu::Buffer>>>,
-        workgroup_sizes: [i64; 3],
-    ) -> GPGPU {
+    fn new(source: String, buffers: Vec<Vec<GBuffer>>, workgroup_sizes: [i64; 3]) -> GPGPU {
         GPGPU {
             source,
             entrypoint: "main".to_string(),
@@ -3393,13 +3460,13 @@ impl GPGPU {
 #[inline(always)]
 fn GPGPU_new(
     source: &mut String,
-    buffers: &mut Vec<Vec<Rc<wgpu::Buffer>>>,
+    buffers: &mut Vec<Vec<GBuffer>>,
     max_global_id: &mut [i64; 3],
 ) -> GPGPU {
     GPGPU::new(source.clone(), buffers.clone(), *max_global_id)
 }
 
-fn GPGPU_new_easy(source: &mut String, buffer: &mut Rc<wgpu::Buffer>) -> GPGPU {
+fn GPGPU_new_easy(source: &mut String, buffer: &mut GBuffer) -> GPGPU {
     // In order to support larger arrays, we need to split the buffer length across them. Each of
     // indices is allowed to be up to 65535 (yes, a 16-bit integer) leading to a maximum length of
     // 65535^3, or about 2.815x10^14 elements (about 281 trillion elements). Not quite up to the
@@ -3483,7 +3550,7 @@ fn gpu_run(gg: &mut GPGPU) {
     g.queue.submit(Some(encoder.finish()));
 }
 
-fn read_buffer(b: &mut Rc<wgpu::Buffer>) -> Vec<i32> {
+fn read_buffer(b: &mut GBuffer) -> Vec<i32> {
     // TODO: Support other value types
     let g = gpu();
     let temp_buffer = create_empty_buffer(

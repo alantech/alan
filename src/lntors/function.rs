@@ -90,20 +90,7 @@ pub fn from_microstatement(
                             | FnKind::Static => {
                                 let mut arg_strs = Vec::new();
                                 for arg in &fun.args {
-                                    match typen::ctype_to_rtype(&arg.1, false) {
-                                        Err(e) => Err(e),
-                                        Ok(s) => {
-                                            arg_strs.push(
-                                                s.replace(
-                                                    ['<', '>', ',', '[', ']', ';', '-', '(', ')'],
-                                                    "_",
-                                                )
-                                                .replace(' ', ""),
-                                            );
-                                            /* TODO: Handle generic types better, also type inference */
-                                            Ok(())
-                                        }
-                                    }?;
+                                    arg_strs.push(arg.1.to_callable_string());
                                 }
                                 // Come up with a function name that is unique so Rust doesn't choke on
                                 // duplicate function names that are allowed in Alan
@@ -142,7 +129,7 @@ pub fn from_microstatement(
                 let (_, o) = typen::generate(&arg_type, out)?;
                 out = o;
                 arg_types.push(arg_type.clone());
-                match typen::ctype_to_rtype(&arg_type, false) {
+                match typen::ctype_to_rtype(&arg_type, true) {
                     Err(e) => Err(e),
                     Ok(s) => {
                         arg_type_strs.push(s);
@@ -159,17 +146,7 @@ pub fn from_microstatement(
                     out = o;
                     let mut arg_strs = Vec::new();
                     for arg in &function.args {
-                        match typen::ctype_to_rtype(&arg.1, false) {
-                            Err(e) => Err(e),
-                            Ok(s) => {
-                                arg_strs.push(
-                                    s.replace(['<', '>', ',', '[', ']', ';', '-', '(', ')'], "_")
-                                        .replace(' ', ""),
-                                );
-                                /* TODO: Handle generic types better, also type inference */
-                                Ok(())
-                            }
-                        }?;
+                        arg_strs.push(arg.1.to_callable_string());
                     }
                     // Come up with a function name that is unique so Rust doesn't choke on
                     // duplicate function names that are allowed in Alan

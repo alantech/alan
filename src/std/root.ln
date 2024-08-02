@@ -124,6 +124,9 @@ export type ExitCode binds std::process::ExitCode;
 export type Instant binds std::time::Instant;
 export type Duration binds std::time::Duration;
 
+// Binding the uuid type
+export type uuid binds uuid::Uuid;
+
 // Binding the Dict and Set types
 export type Dict{K, V} binds OrderedHashMap<K, V>;
 export type Set{V} binds std::collections::HashSet<V>;
@@ -458,10 +461,10 @@ export fn f32(i: i8) -> f32 binds i8tof32;
 export fn f32(i: i16) -> f32 binds i16tof32;
 export fn f32(i: i32) -> f32 binds i32tof32;
 export fn f32(i: i64) -> f32 binds i64tof32;
-export fn f32(i: u8) -> f32 binds u8tof32;
-export fn f32(i: u16) -> f32 binds u16tof32;
-export fn f32(i: u32) -> f32 binds u32tof32;
-export fn f32(i: i64) -> f32 binds u64tof32;
+export fn f32(u: u8) -> f32 binds u8tof32;
+export fn f32(u: u16) -> f32 binds u16tof32;
+export fn f32(u: u32) -> f32 binds u32tof32;
+export fn f32(u: u64) -> f32 binds u64tof32;
 export fn f32(f: f32) -> f32 = f;
 export fn f32(f: f64) -> f32 binds f64tof32;
 export fn f32(s: string) -> Fallible{f32} binds stringtof32;
@@ -486,10 +489,10 @@ export fn f64(i: i8) -> f64 binds i8tof64;
 export fn f64(i: i16) -> f64 binds i16tof64;
 export fn f64(i: i32) -> f64 binds i32tof64;
 export fn f64(i: i64) -> f64 binds i64tof64;
-export fn f64(i: u8) -> f64 binds u8tof64;
-export fn f64(i: u16) -> f64 binds u16tof64;
-export fn f64(i: u32) -> f64 binds u32tof64;
-export fn f64(i: u64) -> f64 binds u64tof64;
+export fn f64(u: u8) -> f64 binds u8tof64;
+export fn f64(u: u16) -> f64 binds u16tof64;
+export fn f64(u: u32) -> f64 binds u32tof64;
+export fn f64(u: u64) -> f64 binds u64tof64;
 export fn f64(f: f32) -> f64 binds f32tof64;
 export fn f64(f: f64) -> f64 = f;
 export fn f64(s: string) -> Fallible{f64} binds stringtof64;
@@ -524,6 +527,7 @@ export fn string(b: bool) -> string binds booltostring;
 export fn string(s: string) -> string = s;
 export fn concat(a: string, b: string) -> string binds concatstring;
 export fn repeat(a: string, n: i64) -> string binds repeatstring;
+export fn replace(s: string, o: string, n: string) -> string binds replacestring;
 export fn split(a: string, b: string) -> string[] binds splitstring;
 export fn len(a: string) -> i64 binds lenstring;
 export fn get(a: string, i: i64) -> Fallible{string} binds getstring;
@@ -631,6 +635,7 @@ export fn len{K, V}(d: Dict{K, V}) -> i64 binds lendict;
 export fn keys{K, V}(d: Dict{K, V}) -> Array{K} binds keysdict;
 export fn vals{K, V}(d: Dict{K, V}) -> Array{V} binds valsdict;
 export fn Array{K, V}(d: Dict{K, V}) -> Array{(K, V)} binds arraydict;
+export fn concat{K, V}(a: Dict{K, V}, b: Dict{K, V}) -> Dict{K, V} binds concatdict;
 
 /// Set-related bindings
 export fn Set{V}() -> Set{V} binds newset;
@@ -677,9 +682,16 @@ export fn wait(t: i64) binds wait;
 export fn now() -> Instant binds now;
 export fn elapsed(i: Instant) -> Duration binds elapsed;
 
+/// Uuid-related bindings
+export fn uuid() -> uuid binds uuid::Uuid::new_v4;
+export fn string(uuid) -> string binds uuidstring;
+
 /// GPU-related bindings
+
+// The base bindings to create buffers of memory on the GPU, construct a plan for a compute shader,
+// execute it, and read the buffer back to the CPU
 export type BufferUsages binds wgpu::BufferUsages;
-export type GBuffer binds Rc<wgpu::Buffer>;
+export type GBuffer binds GBuffer;
 export type GPGPU binds GPGPU;
 export fn mapReadBuffer() -> BufferUsages binds map_read_buffer_type;
 export fn storageBuffer() -> BufferUsages binds storage_buffer_type;
@@ -692,6 +704,523 @@ export fn GPGPU(source: string, buffers: Array{Array{GBuffer}}, maxGlobalId: i64
 export fn GPGPU(source: string, buffer: GBuffer) -> GPGPU binds GPGPU_new_easy;
 export fn run(gg: GPGPU) binds gpu_run;
 export fn read{T}(b: GBuffer) -> Array{T} binds read_buffer;
+
+// The WgpuType provides a mechanism to build up the logic for a compute shader with normal-looking
+// Alan code, not requiring to think in two different languages at the same time. All of the GPU
+// types hereafter are derivative of this type
+export type WgpuType{N} =
+  typeName: N,
+  varName: string, // Key to the next field
+  statements: Dict{string, string},
+  buffers: Set{GBuffer};
+
+// Scalar types and constructors
+export type gu32 = WgpuType{"u32"};
+export type gi32 = WgpuType{"i32"};
+export type gf32 = WgpuType{"f32"};
+export type gbool = WgpuType{"bool"};
+
+// TODO: Better constraining on the input types allowed. It will still fail to compile, but the
+// error message isn't great at the moment.
+export fn build{N}(ret: N) -> GPGPU {
+  // TODO: Don't assume all of the buffers involved here are storage buffers
+  // Also TODO: Support other buffer types than i32
+  let bufferArray = Array{GBuffer}().concat(ret.buffers.Array); // TODO: Shouldn't need this concat
+  // let bufferArray = ret.buffers.Array;
+  let wgslHeader = bufferArray.map(fn (gb: GBuffer, i: i64) -> string {
+    return "@group(0)\n@binding("
+      .concat(i.string)
+      .concat(")\nvar<storage, read_write> ")
+      .concat(gb.id)
+      .concat(": array<i32>;\n");
+  }).join("\n");
+  let wgslFunctionHeader = "@compute\n@workgroup_size(1)\nfn main(@builtin(global_invocation_id) id: vec3u) {\n";
+  let wgslFunctionBody = ret.statements.Array.map(fn (kv: (string, string)) -> string {
+    return cond(kv.0 == "@builtin(global_invocation_id) id: vec3u", fn () -> string = "", fn () -> string {
+      return "  ".concat(kv.1).concat(";\n");
+    });
+  }).join("");
+  let wgsl = wgslHeader.concat(wgslFunctionHeader).concat(wgslFunctionBody).concat("}");
+  let maxGlobalIdArray = ret
+    .statements['@builtin(global_invocation_id) id: vec3u']
+    .getOr('0,0,0')
+    .split(',')
+    .map(fn (s: string) -> i64 = s.i64.getOr(0));
+  let maxGlobalId = {i64[3]}(
+    maxGlobalIdArray[0].getOr(0),
+    maxGlobalIdArray[1].getOr(0),
+    maxGlobalIdArray[2].getOr(0)
+  );
+  let buffers = Array{Array{GBuffer}}();
+  buffers.push(bufferArray);
+  return GPGPU(wgsl, buffers, maxGlobalId);
+}
+
+export fn gu32(u: u32) -> gu32 = gu32(u.string, Dict{string, string}(), Set{GBuffer}());
+export fn gu32(gi: gi32) -> gu32 {
+  let varName = "u32_".concat(uuid().string.replace('-', '_'));
+  let statement = "var ".concat(varName).concat(" = u32(").concat(gi.varName).concat(")");
+  let statements = gi.statements.clone().concat(Dict(varName, statement));
+  let buffers = gi.buffers.clone();
+  return gu32(varName, statements, buffers);
+}
+export fn gu32(gf: gf32) -> gu32 {
+  let varName = "u32_".concat(uuid().string.replace('-', '_'));
+  let statement = "var ".concat(varName).concat(" = u32(").concat(gf.varName).concat(")");
+  let statements = gf.statements.clone().concat(Dict(varName, statement));
+  let buffers = gf.buffers.clone();
+  return gu32(varName, statements, buffers);
+}
+export fn gu32(gb: gbool) -> gu32 {
+  let varName = "u32_".concat(uuid().string.replace('-', '_'));
+  let statement = "var ".concat(varName).concat(" = u32(").concat(gb.varName).concat(")");
+  let statements = gb.statements.clone().concat(Dict(varName, statement));
+  let buffers = gb.buffers.clone();
+  return gu32(varName, statements, buffers);
+}
+export fn gu32{T}(u: T) -> gu32 = gu32(u.u32);
+
+export fn gi32(i: i32) -> gi32 = gi32(i.string, Dict{string, string}(), Set{GBuffer}());
+export fn gi32(gu: gu32) -> gi32 {
+  let varName = "i32_".concat(uuid().string.replace('-', '_'));
+  let statement = "var ".concat(varName).concat(" = i32(").concat(gu.varName).concat(")");
+  let statements = gu.statements.clone().concat(Dict(varName, statement));
+  let buffers = gu.buffers.clone();
+  return gi32(varName, statements, buffers);
+}
+export fn gi32(gf: gf32) -> gi32 {
+  let varName = "i32_".concat(uuid().string.replace('-', '_'));
+  let statement = "var ".concat(varName).concat(" = i32(").concat(gf.varName).concat(")");
+  let statements = gf.statements.clone().concat(Dict(varName, statement));
+  let buffers = gf.buffers.clone();
+  return gi32(varName, statements, buffers);
+}
+export fn gi32(gb: gbool) -> gi32 {
+  let varName = "i32_".concat(uuid().string.replace('-', '_'));
+  let statement = "var ".concat(varName).concat(" = i32(").concat(gb.varName).concat(")");
+  let statements = gb.statements.clone().concat(Dict(varName, statement));
+  let buffers = gb.buffers.clone();
+  return gi32(varName, statements, buffers);
+}
+export fn gi32{T}(i: T) -> gi32 = gi32(i.i32);
+
+export fn gf32(f: f32) -> gf32 = gf32(f.string, Dict{string, string}(), Set{GBuffer}());
+export fn gf32(gu: gu32) -> gf32 {
+  let varName = "f32_".concat(uuid().string.replace('-', '_'));
+  let statement = "var ".concat(varName).concat(" = f32(").concat(gu.varName).concat(")");
+  let statements = gu.statements.clone().concat(Dict(varName, statement));
+  let buffers = gu.buffers.clone();
+  return gf32(varName, statements, buffers);
+}
+export fn gf32(gi: gi32) -> gf32 {
+  let varName = "f32_".concat(uuid().string.replace('-', '_'));
+  let statement = "var ".concat(varName).concat(" = f32(").concat(gi.varName).concat(")");
+  let statements = gi.statements.clone().concat(Dict(varName, statement));
+  let buffers = gi.buffers.clone();
+  return gf32(varName, statements, buffers);
+}
+export fn gf32(gb: gbool) -> gf32 {
+  let varName = "f32_".concat(uuid().string.replace('-', '_'));
+  let statement = "var ".concat(varName).concat(" = f32(").concat(gb.varName).concat(")");
+  let statements = gb.statements.clone().concat(Dict(varName, statement));
+  let buffers = gb.buffers.clone();
+  return gf32(varName, statements, buffers);
+}
+export fn gf32{T}(f: T) -> gf32 = gf32(f.f32);
+
+export fn gbool(b: bool) -> gbool = gbool(b.string, Dict{string, string}(), Set{GBuffer}());
+export fn gbool(gu: gu32) -> gbool {
+  let varName = "bool_".concat(uuid().string.replace('-', '_'));
+  let statement = "var ".concat(varName).concat(" = bool(").concat(gu.varName).concat(")");
+  let statements = gu.statements.clone().concat(Dict(varName, statement));
+  let buffers = gu.buffers.clone();
+  return gbool(varName, statements, buffers);
+}
+export fn gbool(gi: gi32) -> gbool {
+  let varName = "bool_".concat(uuid().string.replace('-', '_'));
+  let statement = "var ".concat(varName).concat(" = bool(").concat(gi.varName).concat(")");
+  let statements = gi.statements.clone().concat(Dict(varName, statement));
+  let buffers = gi.buffers.clone();
+  return gbool(varName, statements, buffers);
+}
+export fn gbool(gf: gf32) -> gbool {
+  let varName = "bool_".concat(uuid().string.replace('-', '_'));
+  let statement = "var ".concat(varName).concat(" = bool(").concat(gf.varName).concat(")");
+  let statements = gf.statements.clone().concat(Dict(varName, statement));
+  let buffers = gf.buffers.clone();
+  return gbool(varName, statements, buffers);
+}
+export fn gbool{T}(b: T) -> gbool = gbool(b.bool);
+
+// Vector types and constructors
+export type gvec2u = WgpuType{"vec2u"};
+export type gvec2i = WgpuType{"vec2i"};
+export type gvec2f = WgpuType{"vec2f"};
+export type gvec2b = WgpuType{"vec2<bool>"};
+export type gvec3u = WgpuType{"vec3u"};
+export type gvec3i = WgpuType{"vec3i"};
+export type gvec3f = WgpuType{"vec3f"};
+export type gvec3b = WgpuType{"vec3<bool>"};
+export type gvec4u = WgpuType{"vec4u"};
+export type gvec4i = WgpuType{"vec4i"};
+export type gvec4f = WgpuType{"vec4f"};
+export type gvec4b = WgpuType{"vec4<bool>"};
+
+export fn gvec2u() -> gvec2u = gvec2u("vec2u()", Dict{string, string}(), Set{GBuffer}());
+export fn gvec2u(a: gu32, b: gu32) -> gvec2u {
+  let statement = "vec2u(".concat(a.varName).concat(", ").concat(b.varName).concat(")");
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2u(statement, statements, buffers);
+}
+export fn gvec2u{T}(a: T, b: T) -> gvec2u = gvec2u(a.gu32, b.gu32);
+
+export fn gvec2i() -> gvec2i = gvec2i("vec2i()", Dict{string, string}(), Set{GBuffer}());
+export fn gvec2i(a: gi32, b: gi32) -> gvec2i {
+  let statement = "vec2i(".concat(a.varName).concat(", ").concat(b.varName).concat(")");
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2i(statement, statements, buffers);
+}
+export fn gvec2i{T}(a: T, b: T) -> gvec2i = gvec2i(a.gi32, b.gi32);
+
+export fn gvec2f() -> gvec2f = gvec2f("vec2f()", Dict{string, string}(), Set{GBuffer}());
+export fn gvec2f(a: gf32, b: gf32) -> gvec2f {
+  let statement = "vec2f(".concat(a.varName).concat(", ").concat(b.varName).concat(")");
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2f(statement, statements, buffers);
+}
+export fn gvec2f{T}(a: T, b: T) -> gvec2f = gvec2f(a.gf32, b.gf32);
+
+export fn gvec2b() -> gvec2b = gvec2b("vec2<bool>()", Dict{string, string}(), Set{GBuffer}());
+export fn gvec2b(a: gbool, b: gbool) -> gvec2b {
+  let statement = "vec2<bool>(".concat(a.varName).concat(", ").concat(b.varName).concat(")");
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2b(statement, statements, buffers);
+}
+export fn gvec2b{T}(a: T, b: T) -> gvec2b = gvec2b(a.gbool, b.gbool);
+
+export fn gvec3u() -> gvec3u = gvec3u("vec3u()", Dict{string, string}(), Set{GBuffer}());
+export fn gvec3u(a: gu32, b: gu32, c: gu32) -> gvec3u {
+  let statement = "vec3u(".concat(a.varName).concat(", ").concat(b.varName).concat(", ").concat(c.varName).concat(")");
+  let statements = a.statements.concat(b.statements).concat(c.statements);
+  let buffers = a.buffers.union(b.buffers).union(c.buffers);
+  return gvec3u(statement, statements, buffers);
+}
+export fn gvec3u{T}(a: T, b: T, c: T) -> gvec3u = gvec3u(a.gu32, b.gu32, c.gu32);
+
+export fn gvec3i() -> gvec3i = gvec3i("vec3i()", Dict{string, string}(), Set{GBuffer}());
+export fn gvec3i(a: gi32, b: gi32, c: gi32) -> gvec3i {
+  let statement = "vec3i(".concat(a.varName).concat(", ").concat(b.varName).concat(", ").concat(c.varName).concat(")");
+  let statements = a.statements.concat(b.statements).concat(c.statements);
+  let buffers = a.buffers.union(b.buffers).union(c.buffers);
+  return gvec3i(statement, statements, buffers);
+}
+export fn gvec3i{T}(a: T, b: T, c: T) -> gvec3i = gvec3i(a.gi32, b.gi32, c.gi32);
+
+export fn gvec3f() -> gvec3f = gvec3f("vec3f()", Dict{string, string}(), Set{GBuffer}());
+export fn gvec3f(a: gf32, b: gf32, c: gf32) -> gvec3f {
+  let statement = "vec3f(".concat(a.varName).concat(", ").concat(b.varName).concat(", ").concat(c.varName).concat(")");
+  let statements = a.statements.concat(b.statements).concat(c.statements);
+  let buffers = a.buffers.union(b.buffers).union(c.buffers);
+  return gvec3f(statement, statements, buffers);
+}
+export fn gvec3f{T}(a: T, b: T, c: T) -> gvec3f = gvec3f(a.gf32, b.gf32, c.gf32);
+
+export fn gvec3b() -> gvec3b = gvec3b("vec3<bool>()", Dict{string, string}(), Set{GBuffer}());
+export fn gvec3b(a: gbool, b: gbool, c: gbool) -> gvec3b {
+  let statement = "vec3<bool>(".concat(a.varName).concat(", ").concat(b.varName).concat(", ").concat(c.varName).concat(")");
+  let statements = a.statements.concat(b.statements).concat(c.statements);
+  let buffers = a.buffers.union(b.buffers).union(c.buffers);
+  return gvec3b(statement, statements, buffers);
+}
+export fn gvec3b{T}(a: T, b: T, c: T) -> gvec3b = gvec3b(a.gbool, b.gbool, c.gbool);
+
+export fn gvec4u() -> gvec4u = gvec4u("vec4u()", Dict{string, string}(), Set{GBuffer}());
+export fn gvec4u(a: gu32, b: gu32, c: gu32, d: gu32) -> gvec4u {
+  let statement = "vec4u(".concat(a.varName).concat(", ").concat(b.varName).concat(", ").concat(c.varName).concat(", ").concat(d.varName).concat(")");
+  let statements = a.statements.concat(b.statements).concat(c.statements).concat(d.statements);
+  let buffers = a.buffers.union(b.buffers).union(c.buffers).union(d.buffers);
+  return gvec4u(statement, statements, buffers);
+}
+export fn gvec4u{T}(a: T, b: T, c: T, d: T) -> gvec4u = gvec4u(a.gu32, b.gu32, c.gu32, d.gu32);
+
+export fn gvec4i() -> gvec4i = gvec4i("vec4i()", Dict{string, string}(), Set{GBuffer}());
+export fn gvec4i(a: gi32, b: gi32, c: gi32, d: gi32) -> gvec4i {
+  let statement = "vec4i(".concat(a.varName).concat(", ").concat(b.varName).concat(", ").concat(c.varName).concat(", ").concat(d.varName).concat(")");
+  let statements = a.statements.concat(b.statements).concat(c.statements).concat(d.statements);
+  let buffers = a.buffers.union(b.buffers).union(c.buffers).union(d.buffers);
+  return gvec4i(statement, statements, buffers);
+}
+export fn gvec4i{T}(a: T, b: T, c: T, d: T) -> gvec4i = gvec4i(a.gi32, b.gi32, c.gi32, d.gi32);
+
+export fn gvec4f() -> gvec4f = gvec4f("vec4f()", Dict{string, string}(), Set{GBuffer}());
+export fn gvec4f(a: gf32, b: gf32, c: gf32, d: gf32) -> gvec4f {
+  let statement = "vec4f(".concat(a.varName).concat(", ").concat(b.varName).concat(", ").concat(c.varName).concat(", ").concat(d.varName).concat(")");
+  let statements = a.statements.concat(b.statements).concat(c.statements).concat(d.statements);
+  let buffers = a.buffers.union(b.buffers).union(c.buffers).union(d.buffers);
+  return gvec4f(statement, statements, buffers);
+}
+export fn gvec4f{T}(a: T, b: T, c: T, d: T) -> gvec4f = gvec4f(a.gf32, b.gf32, c.gf32, d.gf32);
+
+export fn gvec4b() -> gvec4b = gvec4b("vec4<bool>()", Dict{string, string}(), Set{GBuffer}());
+export fn gvec4b(a: gbool, b: gbool, c: gbool, d: gbool) -> gvec4b {
+  let statement = "vec4<bool>(".concat(a.varName).concat(", ").concat(b.varName).concat(", ").concat(c.varName).concat(", ").concat(d.varName).concat(")");
+  let statements = a.statements.concat(b.statements).concat(c.statements).concat(d.statements);
+  let buffers = a.buffers.union(b.buffers).union(c.buffers).union(d.buffers);
+  return gvec4b(statement, statements, buffers);
+}
+export fn gvec4b{T}(a: T, b: T, c: T, d: T) -> gvec4b = gvec4b(a.gbool, b.gbool, c.gbool, d.gbool);
+
+// The max global id; the entry value to a compute shader, and it's constructor, a specialized
+// version of gvec3u that initializes a bit differently.
+export fn gFor(x: u32, y: u32, z: u32) -> gvec3u {
+  let initialStatement = "@builtin(global_invocation_id) id: vec3u";
+  let statements = Dict(initialStatement, x.string.concat(',').concat(y.string).concat(',').concat(z.string));
+  return gvec3u('id', statements, Set{GBuffer}());
+}
+export fn gFor{T}(x: T, y: T, z: T) -> gvec3u = gFor(x.u32, y.u32, z.u32);
+export fn gFor{T}(x: T, y: T) -> gvec3u = gFor(x.u32, y.u32, 1.u32);
+export fn gFor{T}(x: T) -> gvec3u = gFor(x.u32, 1.u32, 1.u32);
+
+// Matrix types
+export type gmat2x2f = WgpuType{"mat2x2f"};
+export type gmat2x3f = WgpuType{"mat2x3f"};
+export type gmat2x4f = WgpuType{"mat2x4f"};
+export type gmat3x2f = WgpuType{"mat3x2f"};
+export type gmat3x3f = WgpuType{"mat3x3f"};
+export type gmat3x4f = WgpuType{"mat3x4f"};
+export type gmat4x2f = WgpuType{"mat4x2f"};
+export type gmat4x3f = WgpuType{"mat4x3f"};
+export type gmat4x4f = WgpuType{"mat4x4f"};
+
+// TODO: Constructors for matrix types
+
+// TODO: Fixed-length buffers within wgsl
+
+// TODO: How to handle structs?
+
+// GPU Type accessors
+
+export fn x(v: gvec2u) -> gu32 {
+  let varName = v.varName.concat('.x');
+  return gu32(varName, v.statements, v.buffers);
+}
+
+export fn y(v: gvec2u) -> gu32 {
+  let varName = v.varName.concat('.y');
+  return gu32(varName, v.statements, v.buffers);
+}
+
+export fn x(v: gvec2i) -> gi32 {
+  let varName = v.varName.concat('.x');
+  return gi32(varName, v.statements, v.buffers);
+}
+
+export fn y(v: gvec2i) -> gi32 {
+  let varName = v.varName.concat('.y');
+  return gi32(varName, v.statements, v.buffers);
+}
+
+export fn x(v: gvec2f) -> gf32 {
+  let varName = v.varName.concat('.x');
+  return gf32(varName, v.statements, v.buffers);
+}
+
+export fn y(v: gvec2f) -> gf32 {
+  let varName = v.varName.concat('.y');
+  return gf32(varName, v.statements, v.buffers);
+}
+
+export fn x(v: gvec2b) -> gbool {
+  let varName = v.varName.concat('.x');
+  return gbool(varName, v.statements, v.buffers);
+}
+
+export fn y(v: gvec2b) -> gbool {
+  let varName = v.varName.concat('.y');
+  return gbool(varName, v.statements, v.buffers);
+}
+
+export fn x(v: gvec3u) -> gu32 {
+  let varName = v.varName.concat('.x');
+  return gu32(varName, v.statements, v.buffers);
+}
+
+export fn y(v: gvec3u) -> gu32 {
+  let varName = v.varName.concat('.y');
+  return gu32(varName, v.statements, v.buffers);
+}
+
+export fn z(v: gvec3u) -> gu32 {
+  let varName = v.varName.concat('.z');
+  return gu32(varName, v.statements, v.buffers);
+}
+
+export fn x(v: gvec3i) -> gi32 {
+  let varName = v.varName.concat('.x');
+  return gi32(varName, v.statements, v.buffers);
+}
+
+export fn y(v: gvec3i) -> gi32 {
+  let varName = v.varName.concat('.y');
+  return gi32(varName, v.statements, v.buffers);
+}
+
+export fn z(v: gvec3i) -> gi32 {
+  let varName = v.varName.concat('.z');
+  return gi32(varName, v.statements, v.buffers);
+}
+
+export fn x(v: gvec3f) -> gf32 {
+  let varName = v.varName.concat('.x');
+  return gf32(varName, v.statements, v.buffers);
+}
+
+export fn y(v: gvec3f) -> gf32 {
+  let varName = v.varName.concat('.y');
+  return gf32(varName, v.statements, v.buffers);
+}
+
+export fn z(v: gvec3f) -> gf32 {
+  let varName = v.varName.concat('.z');
+  return gf32(varName, v.statements, v.buffers);
+}
+
+export fn x(v: gvec3b) -> gbool {
+  let varName = v.varName.concat('.x');
+  return gbool(varName, v.statements, v.buffers);
+}
+
+export fn y(v: gvec3b) -> gbool {
+  let varName = v.varName.concat('.y');
+  return gbool(varName, v.statements, v.buffers);
+}
+
+export fn z(v: gvec3b) -> gbool {
+  let varName = v.varName.concat('.z');
+  return gbool(varName, v.statements, v.buffers);
+}
+
+export fn x(v: gvec4u) -> gu32 {
+  let varName = v.varName.concat('.x');
+  return gu32(varName, v.statements, v.buffers);
+}
+
+export fn y(v: gvec4u) -> gu32 {
+  let varName = v.varName.concat('.y');
+  return gu32(varName, v.statements, v.buffers);
+}
+
+export fn z(v: gvec4u) -> gu32 {
+  let varName = v.varName.concat('.z');
+  return gu32(varName, v.statements, v.buffers);
+}
+
+export fn w(v: gvec4u) -> gu32 {
+  let varName = v.varName.concat('.w');
+  return gu32(varName, v.statements, v.buffers);
+}
+
+export fn x(v: gvec4i) -> gi32 {
+  let varName = v.varName.concat('.x');
+  return gi32(varName, v.statements, v.buffers);
+}
+
+export fn y(v: gvec4i) -> gi32 {
+  let varName = v.varName.concat('.y');
+  return gi32(varName, v.statements, v.buffers);
+}
+
+export fn z(v: gvec4i) -> gi32 {
+  let varName = v.varName.concat('.z');
+  return gi32(varName, v.statements, v.buffers);
+}
+
+export fn w(v: gvec4i) -> gi32 {
+  let varName = v.varName.concat('.w');
+  return gi32(varName, v.statements, v.buffers);
+}
+
+export fn x(v: gvec4f) -> gf32 {
+  let varName = v.varName.concat('.x');
+  return gf32(varName, v.statements, v.buffers);
+}
+
+export fn y(v: gvec4f) -> gf32 {
+  let varName = v.varName.concat('.y');
+  return gf32(varName, v.statements, v.buffers);
+}
+
+export fn z(v: gvec4f) -> gf32 {
+  let varName = v.varName.concat('.z');
+  return gf32(varName, v.statements, v.buffers);
+}
+
+export fn w(v: gvec4f) -> gf32 {
+  let varName = v.varName.concat('.w');
+  return gf32(varName, v.statements, v.buffers);
+}
+
+export fn x(v: gvec4b) -> gbool {
+  let varName = v.varName.concat('.x');
+  return gbool(varName, v.statements, v.buffers);
+}
+
+export fn y(v: gvec4b) -> gbool {
+  let varName = v.varName.concat('.y');
+  return gbool(varName, v.statements, v.buffers);
+}
+
+export fn z(v: gvec4b) -> gbool {
+  let varName = v.varName.concat('.z');
+  return gbool(varName, v.statements, v.buffers);
+}
+
+export fn w(v: gvec4b) -> gbool {
+  let varName = v.varName.concat('.w');
+  return gbool(varName, v.statements, v.buffers);
+}
+
+// TODO: Improve GBuffer to support other buffer types
+export fn get(gb: GBuffer, i: gu32) -> gi32 {
+  let statement = gb.id.concat('[').concat(i.varName).concat(']');
+  let buffers = i.buffers.union(Set(gb));
+  return gi32(statement, i.statements, buffers);
+}
+
+// TODO: This is supposed to be named `store` but it's not resolving properly
+export fn save(a: gi32, b: gi32) -> gi32 {
+    let statement = a.varName.concat(" = ").concat(b.varName);
+    let statements = a.statements.concat(b.statements).concat(Dict(statement, statement));
+    let buffers = a.buffers.union(b.buffers);
+    return gi32(statement, statements, buffers);
+}
+
+// GPU Math
+
+export fn mul(a: gu32, b: gu32) -> gu32 {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gu32(varName, statements, buffers);
+}
+
+export fn mul(a: gi32, b: gi32) -> gi32 {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gi32(varName, statements, buffers);
+}
+
+export fn mul(a: gf32, b: gf32) -> gf32 {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gf32(varName, statements, buffers);
+}
 
 /// Stdout/stderr-related bindings
 // TODO: Rework this to just print anything that can be converted to `string` via interfaces
