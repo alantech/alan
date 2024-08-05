@@ -755,10 +755,21 @@ test!(hello_gpu => r#"
         @compute
         @workgroup_size(1)
         fn main(@builtin(global_invocation_id) id: vec3<u32>) {
-          vals[id.x] = vals[id.x] * bitcast<i32>(id.x);
+          vals[id.x] = vals[id.x] * i32(id.x);
         }
       ", b);
       plan.run;
+      b.read{i32}.print;
+    }"#;
+    stdout "[0, 2, 4, 6]\n";
+);
+test!(hello_gpu_new => r#"
+    export fn main {
+      let b = GBuffer(filled(2.i32, 4));
+      let id = gFor(4);
+      // TODO: `save` should be `store`, but there's a function resolution bug
+      let compute = b[id.x].save(b[id.x] * id.x.gi32);
+      compute.build.run;
       b.read{i32}.print;
     }"#;
     stdout "[0, 2, 4, 6]\n";
@@ -2045,6 +2056,11 @@ test!(basic_dict => r#"
       print(test.len);
       print(test.get('foo'));
       test['bar'].print;
+      let test2 = Dict('foo', 3);
+      test2.store('bay', 4);
+      test.concat(test2).Array.map(fn (n: (string, i64)) -> string {
+        return 'key: '.concat(n.0).concat("\nval: ").concat(n.1.string);
+      }).join("\n").print;
     }"#;
     stdout r#"key: foo
 val: 1
@@ -2057,6 +2073,14 @@ foo, bar, baz
 3
 1
 2
+key: foo
+val: 3
+key: bar
+val: 2
+key: baz
+val: 99
+key: bay
+val: 4
 "#;
 );
 test!(keyval_array_to_dict => r#"

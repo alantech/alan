@@ -498,21 +498,21 @@ impl CType {
             CType::Int(_) | CType::Float(_) => format!(
                 "_{}",
                 self.to_functional_string()
-                    .replace([' ', ',', '{', '}'], "_")
+                    .replace([' ', ',', '{', '}', '"', '\''], "_")
             ),
             CType::Type(_, t) => match **t {
                 CType::Int(_) | CType::Float(_) => format!(
                     "_{}",
                     self.to_functional_string()
-                        .replace([' ', ',', '{', '}'], "_")
+                        .replace([' ', ',', '{', '}', '"', '\''], "_")
                 ),
                 _ => self
                     .to_functional_string()
-                    .replace([' ', ',', '{', '}'], "_"),
+                    .replace([' ', ',', '{', '}', '"', '\''], "_"),
             },
             _ => self
                 .to_functional_string()
-                .replace([' ', ',', '{', '}'], "_"),
+                .replace([' ', ',', '{', '}', '"', '\''], "_"),
         }
     }
     pub fn degroup(&self) -> CType {
@@ -2742,8 +2742,8 @@ pub fn withtypeoperatorslist_to_ctype(
         let mut largest_operator_index: i64 = -1;
         for (i, assignable_or_operator) in queue.iter().enumerate() {
             if let parse::WithTypeOperators::Operators(o) = assignable_or_operator {
-                let operatorname = o.trim();
-                let operator = match scope.resolve_typeoperator(&operatorname.to_string()) {
+                let operatorname = &o.op;
+                let operator = match scope.resolve_typeoperator(operatorname) {
                     Some(o) => Ok(o),
                     None => Err(format!("Operator {} not found", operatorname)),
                 }?;
@@ -2761,10 +2761,10 @@ pub fn withtypeoperatorslist_to_ctype(
         if largest_operator_index > -1 {
             // We have at least one operator, and this is the one to dig into
             let operatorname = match &queue[largest_operator_index as usize] {
-                parse::WithTypeOperators::Operators(o) => o.trim(),
+                parse::WithTypeOperators::Operators(o) => &o.op,
                 _ => unreachable!(),
             };
-            let operator = match scope.resolve_typeoperator(&operatorname.to_string()) {
+            let operator = match scope.resolve_typeoperator(operatorname) {
                 Some(o) => Ok(o),
                 None => Err(format!("Operator {} not found", operatorname)),
             }?;
@@ -2796,7 +2796,7 @@ pub fn withtypeoperatorslist_to_ctype(
                     parse::WithTypeOperators::TypeBaseList(typebaselist) => Ok(typebaselist),
                     parse::WithTypeOperators::Operators(o) => Err(format!(
                         "Operator {} is an infix operator but preceded by another operator {}",
-                        operatorname, o
+                        operatorname, o.op
                     )),
                 }?;
                 let second_arg = match match queue.get(largest_operator_index as usize + 1) {
@@ -2804,7 +2804,7 @@ pub fn withtypeoperatorslist_to_ctype(
                     None => Err(format!("Operator {} is an infix operator but missing a right-hand side value", operatorname)),
                 }? {
                     parse::WithTypeOperators::TypeBaseList(typebaselist) => Ok(typebaselist),
-                    parse::WithTypeOperators::Operators(o) => Err(format!("Operator{} is an infix operator but followed by a lower precedence operator {}", operatorname, o)),
+                    parse::WithTypeOperators::Operators(o) => Err(format!("Operator{} is an infix operator but followed by a lower precedence operator {}", operatorname, o.op)),
                 }?;
                 // We're gonna rewrite the operator and base assignables into a function call, eg
                 // we take `a + b` and turn it into `add(a, b)`
@@ -2815,7 +2815,13 @@ pub fn withtypeoperatorslist_to_ctype(
                         a: "".to_string(),
                         typecalllist: vec![
                             parse::WithTypeOperators::TypeBaseList(first_arg.to_vec()),
-                            parse::WithTypeOperators::Operators(",".to_string()),
+                            parse::WithTypeOperators::Operators(
+                                parse::TypeOperatorsWithWhitespace {
+                                    a: " ".to_string(),
+                                    op: ",".to_string(),
+                                    b: " ".to_string(),
+                                },
+                            ),
                             parse::WithTypeOperators::TypeBaseList(second_arg.to_vec()),
                         ],
                         b: "".to_string(),
@@ -2842,7 +2848,7 @@ pub fn withtypeoperatorslist_to_ctype(
                     parse::WithTypeOperators::TypeBaseList(typebaselist) => Ok(typebaselist),
                     parse::WithTypeOperators::Operators(o) => Err(format!(
                         "Operator {} is an prefix operator but followed by another operator {}",
-                        operatorname, o
+                        operatorname, o.op
                     )),
                 }?;
                 // We're gonna rewrite the operator and base assignables into a function call, eg
@@ -2875,7 +2881,7 @@ pub fn withtypeoperatorslist_to_ctype(
                     parse::WithTypeOperators::TypeBaseList(typebaselist) => Ok(typebaselist),
                     parse::WithTypeOperators::Operators(o) => Err(format!(
                         "Operator {} is a postfix operator but preceded by another operator {}",
-                        operatorname, o
+                        operatorname, o.op
                     )),
                 }?;
                 // We're gonna rewrite the operator and base assignables into a function call, eg
@@ -3187,8 +3193,8 @@ pub fn typebaselist_to_ctype(
                                             }
                                             let mut arg_block = Vec::new();
                                             for arg in temp_args {
-                                                if let parse::WithTypeOperators::Operators(a) = &arg {
-                                                    if a.trim() == "," {
+                                                if let parse::WithTypeOperators::Operators(o) = &arg {
+                                                    if o.op == "," {
                                                         // Process the arg block that has
                                                         // accumulated
                                                         args.push(withtypeoperatorslist_to_ctype(&arg_block, scope)?);

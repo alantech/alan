@@ -828,9 +828,14 @@ impl FullTypename {
         .to_string()
     }
 }
+named_and!(typeoperatorswithwhitespace: TypeOperatorsWithWhitespace =>
+    a: String as optwhitespace,
+    op: String as typeoperators,
+    b: String as optwhitespace,
+);
 named_or!(withtypeoperators: WithTypeOperators =>
     TypeBaseList: Vec<TypeBase> as typebaselist,
-    Operators: String as and!(optwhitespace, typeoperators, optwhitespace),
+    Operators: TypeOperatorsWithWhitespace as typeoperatorswithwhitespace,
 );
 impl WithTypeOperators {
     #[allow(clippy::inherent_to_string)]
@@ -842,7 +847,7 @@ impl WithTypeOperators {
                 .collect::<Vec<String>>()
                 .join("")
                 .to_string(),
-            WithTypeOperators::Operators(o) => o.clone(),
+            WithTypeOperators::Operators(o) => format!(" {} ", o.op),
         }
     }
 }
@@ -1383,7 +1388,11 @@ test!(functiontypeline =>
           b: "".to_string(),
           closeparen: ")".to_string(),
         })]),
-        super::WithTypeOperators::Operators(" -> ".to_string()),
+        super::WithTypeOperators::Operators(super::TypeOperatorsWithWhitespace {
+            a: " ".to_string(),
+            op: "->".to_string(),
+            b: " ".to_string(),
+        }),
         super::WithTypeOperators::TypeBaseList(vec![super::TypeBase::Variable("string".to_string())]),
       ]};
 );
@@ -1401,7 +1410,11 @@ test!(interfaceline =>
           b: "".to_string(),
           closeparen: ")".to_string(),
         })]),
-        super::WithTypeOperators::Operators(" -> ".to_string()),
+        super::WithTypeOperators::Operators(super::TypeOperatorsWithWhitespace {
+            a: " ".to_string(),
+            op: "->".to_string(),
+            b: " ".to_string(),
+        }),
         super::WithTypeOperators::TypeBaseList(vec![super::TypeBase::Variable("string".to_string())]),
       ]});
 );
@@ -1417,7 +1430,11 @@ test!(interfacelist =>
           b: "".to_string(),
           closeparen: ")".to_string(),
         })]),
-        super::WithTypeOperators::Operators(" -> ".to_string()),
+        super::WithTypeOperators::Operators(super::TypeOperatorsWithWhitespace {
+            a: " ".to_string(),
+            op: "->".to_string(),
+            b: " ".to_string(),
+        }),
         super::WithTypeOperators::TypeBaseList(vec![super::TypeBase::Variable("string".to_string())]),
       ]})];
 );

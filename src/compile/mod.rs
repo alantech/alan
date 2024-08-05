@@ -76,6 +76,7 @@ edition = "2021"
 flume = "0.11.0"
 futures = "0.3.30"
 ordered_hash_map = "0.4.0"
+uuid = { version = "1.10.0", features = ["v4", "fast-rng"] }
 wgpu = "0.20.1""#;
     let cargo_path = {
         let mut c = project_dir.clone();

@@ -87,7 +87,14 @@ pub fn ctype_to_rtype(
         CType::Tuple(ts) => {
             let mut out = Vec::new();
             for t in ts {
-                out.push(ctype_to_rtype(t, in_function_type)?);
+                match t {
+                    CType::Field(_, t2) => {
+                        if !matches!(&**t2, CType::Int(_) | CType::Float(_) | CType::Bool(_) | CType::TString(_)) {
+                            out.push(ctype_to_rtype(t, in_function_type)?);
+                        }
+                    }
+                    t => out.push(ctype_to_rtype(t, in_function_type)?),
+                }
             }
             Ok(format!("({})", out.join(", ")))
         }
@@ -144,12 +151,18 @@ pub fn generate(
         // output, while the `Structlike` type requires a new struct to be created and inserted
         // into the source definition, potentially inserting inner types as needed
         CType::Bound(_name, rtype) => Ok((rtype.clone(), out)),
-        CType::Type(name, t) => {
-            let res = generate(t, out)?;
-            out = res.1;
-            out.insert(name.clone(), ctype_to_rtype(typen, false)?);
-            Ok((name.clone(), out))
-        }
+        // TODO: The complexity of this function indicates more fundamental issues in the type
+        // generation. This needs a rethink and rewrite.
+        CType::Type(name, t) => match &**t {
+            CType::Either(_) => {
+                let res = generate(t, out)?;
+                out = res.1;
+                out.insert(name.clone(), ctype_to_rtype(typen, false)?);
+                Ok((name.clone(), out))
+            }
+            _ => Ok((ctype_to_rtype(t, true)?, out)),
+        },
+        CType::Tuple(_) => Ok((ctype_to_rtype(typen, true)?, out)),
         CType::Void => {
             out.insert("void".to_string(), "type void = ();".to_string());
             Ok(("()".to_string(), out))
