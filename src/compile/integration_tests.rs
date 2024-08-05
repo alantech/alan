@@ -774,6 +774,17 @@ test!(hello_gpu_new => r#"
     stdout "[0, 2, 4, 6]\n";
 );
 
+test!(hello_gpu_odd => r#"
+    export fn main {
+      let b = GBuffer(filled(2.i32, 4));
+      let idx = gFor(4, 1);
+      let compute = b[idx.i].store(b[idx.i] * idx.i.gi32 + 1);
+      compute.build.run;
+      b.read{i32}.print;
+    }"#;
+    stdout "[1, 3, 5, 7]\n";
+);
+
 // Bitwise Math
 
 test!(i8_bitwise => r#"
