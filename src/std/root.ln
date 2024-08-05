@@ -1191,8 +1191,7 @@ export fn get(gb: GBuffer, i: gu32) -> gi32 {
   return gi32(statement, i.statements, buffers);
 }
 
-// TODO: This is supposed to be named `store` but it's not resolving properly
-export fn save(a: gi32, b: gi32) -> gi32 {
+export fn store(a: gi32, b: gi32) -> gi32 {
     let statement = a.varName.concat(" = ").concat(b.varName);
     let statements = a.statements.concat(b.statements).concat(Dict(statement, statement));
     let buffers = a.buffers.union(b.buffers);
