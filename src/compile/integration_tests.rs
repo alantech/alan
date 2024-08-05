@@ -766,8 +766,8 @@ test!(hello_gpu => r#"
 test!(hello_gpu_new => r#"
     export fn main {
       let b = GBuffer(filled(2.i32, 4));
-      let id = gFor(4);
-      let compute = b[id.x].store(b[id.x] * id.x.gi32);
+      let idx = gFor(4);
+      let compute = b[idx].store(b[idx] * idx.gi32);
       compute.build.run;
       b.read{i32}.print;
     }"#;

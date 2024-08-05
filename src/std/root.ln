@@ -983,7 +983,7 @@ export fn gFor(x: u32, y: u32, z: u32) -> gvec3u {
 }
 export fn gFor{T}(x: T, y: T, z: T) -> gvec3u = gFor(x.u32, y.u32, z.u32);
 export fn gFor{T}(x: T, y: T) -> gvec3u = gFor(x.u32, y.u32, 1.u32);
-export fn gFor{T}(x: T) -> gvec3u = gFor(x.u32, 1.u32, 1.u32);
+export fn gFor{T}(x: T) -> gu32 = gFor(x.u32, 1.u32, 1.u32).x;
 
 // Matrix types
 export type gmat2x2f = WgpuType{"mat2x2f"};
