@@ -25,6 +25,7 @@ macro_rules! test {
                     }
                 };
                 std::env::set_var("ALAN_TARGET", "test");
+                std::thread::sleep(std::time::Duration::from_millis(10)); // Race condition?
                 match crate::compile::build(filename.to_string()) {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
