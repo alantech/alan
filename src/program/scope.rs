@@ -506,14 +506,11 @@ impl<'a> Scope<'a> {
     }
 
     pub fn resolve_function(&'a mut self, function: &String, args: &[CType]) -> Option<&Function> {
-        // We should prefer the "normal" function, it it matches, use it, otherwise try to go with
+        // We should prefer the "normal" function, if it matches, use it, otherwise try to go with
         // a generic function, if possible.
         // TODO: This boolean *shouldn't* be necessary, but I can't convince the borrow checker
         // otherwise
-        let is_normal = match self.resolve_normal_function(function, args) {
-            Some(_) => true,
-            None => false,
-        };
+        let is_normal = self.resolve_normal_function(function, args).is_some();
         if is_normal {
             self.resolve_normal_function(function, args)
         } else {
