@@ -358,7 +358,7 @@ pub fn from_microstatement(
                             }
                             _ => {}
                         }
-                    } else if function.args.len() == 0 {
+                    } else if function.args.is_empty() {
                         let inner_ret_type = match &function.rettype.degroup() {
                             CType::Field(_, t) => *t.clone(),
                             CType::Type(_, t) => *t.clone(),
