@@ -2805,6 +2805,26 @@ fn reduce_sametype<A: std::clone::Clone>(v: &Vec<A>, mut f: impl FnMut(&A, &A) -
     }
 }
 
+/// `reduce_sametype_idx` runs the provided function to reduce the vector into a singular value
+#[inline(always)]
+fn reduce_sametype_idx<A: std::clone::Clone>(
+    v: &Vec<A>,
+    mut f: impl FnMut(&A, &A, &i64) -> A,
+) -> Option<A> {
+    // The built-in iter `reduce` is awkward for our use case
+    if v.len() == 0 {
+        None
+    } else if v.len() == 1 {
+        Some(v[0].clone())
+    } else {
+        let mut out = v[0].clone();
+        for i in 1..v.len() {
+            out = f(&out, &v[i], &(i as i64));
+        }
+        Some(out)
+    }
+}
+
 /// `reduce_difftype` runs the provided function and initial value to reduce the vector into a
 /// singular value. Because an initial value is provided, it always returns at least that value
 #[inline(always)]
@@ -2816,6 +2836,21 @@ fn reduce_difftype<A: std::clone::Clone, B: std::clone::Clone>(
     let mut out = i.clone();
     for i in 0..v.len() {
         out = f(&out, &v[i]);
+    }
+    out
+}
+
+/// `reduce_difftype_idx` runs the provided function and initial value to reduce the vector into a
+/// singular value. Because an initial value is provided, it always returns at least that value
+#[inline(always)]
+fn reduce_difftype_idx<A: std::clone::Clone, B: std::clone::Clone>(
+    v: &Vec<A>,
+    i: &B,
+    mut f: impl FnMut(&B, &A, &i64) -> B,
+) -> B {
+    let mut out = i.clone();
+    for i in 0..v.len() {
+        out = f(&out, &v[i], &(i as i64));
     }
     out
 }
@@ -2870,6 +2905,17 @@ fn everyarray<T>(a: &Vec<T>, mut f: impl FnMut(&T) -> bool) -> bool {
         }
     }
     return true;
+}
+
+/// `somearray` returns true if any value in the vector matches the check function
+#[inline(always)]
+fn somearray<T>(a: &Vec<T>, mut f: impl FnMut(&T) -> bool) -> bool {
+    for v in a {
+        if f(v) {
+            return true;
+        }
+    }
+    return false;
 }
 
 /// `repeatarray` returns a new array with the original array repeated N times

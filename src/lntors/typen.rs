@@ -78,8 +78,8 @@ pub fn ctype_to_rtype(
                 Ok(format!("impl Fn() -> {}", ctype_to_rtype(o, true)?))
             } else {
                 Ok(format!(
-                    "impl Fn({}) -> {}",
-                    ctype_to_rtype(i, true)?,
+                    "impl Fn(&{}) -> {}",
+                    ctype_to_rtype(i, true)?.split(',').collect::<Vec<&str>>().join(", &"),
                     ctype_to_rtype(o, true)?
                 ))
             }
