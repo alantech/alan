@@ -580,13 +580,46 @@ export fn parmap{T, U}(a: Array{T}, m: T -> U) -> Array{U} binds parmap_onearg;
 export fn filter{T}(a: Array{T}, f: T -> bool) -> Array{T} binds filter_onearg;
 export fn filter{T}(a: Array{T}, f: (T, i64) -> bool) -> Array{T} binds filter_twoarg;
 export fn reduce{T}(a: Array{T}, f: (T, T) -> T) -> Maybe{T} binds reduce_sametype;
+export fn reduce{T}(a: Array{T}, f: (T, T, i64) -> T) -> Maybe{T} binds reduce_sametype_idx;
 export fn reduce{T, U}(a: Array{T}, i: U, f: (U, T) -> U) -> U binds reduce_difftype;
+export fn reduce{T, U}(a: Array{T}, i: U, f: (U, T, i64) -> U) -> U binds reduce_difftype_idx;
 export fn concat{T}(a: Array{T}, b: Array{T}) -> Array{T} binds concat;
 export fn filled{T}(v: T, l: i64) -> Array{T} binds filled;
 export fn has{T}(a: Array{T}, v: T) -> bool binds hasarray;
 export fn has{T}(a: Array{T}, f: (T) -> bool) -> bool binds hasfnarray;
 export fn find{T}(a: Array{T}, f: (T) -> bool) -> Maybe{T} binds findarray;
+// TODO: The `if` syntactic sugar will make these `cond` calls much nicer (though so would return
+// type inference, to be honest)
+export fn index{T}(a: Array{T}, v: T) -> Maybe{i64} = a.reduce(
+  none{i64}(),
+  fn (out: Maybe{i64}, val: T, idx: i64) -> Maybe{i64} = cond(
+    out.exists,
+    fn () -> Maybe{i64} = out,
+    fn () -> Maybe{i64} = cond(
+      val == v,
+      fn () -> Maybe{i64} = Maybe(idx),
+      fn () -> Maybe{i64} = out
+    )
+  )
+);
+export fn index{T}(a: Array{T}, f: (T) -> bool) -> Maybe{i64} = a.reduce(
+  none{i64}(),
+  fn (out: Maybe{i64}, val: T, idx: i64) -> Maybe{i64} = cond(
+    out.exists,
+    fn () -> Maybe{i64} = out,
+    fn () -> Maybe{i64} = cond(
+      f(val),
+      fn () -> i64 = idx)));
+export fn index{T}(a: Array{T}, f: (T, i64) -> bool) -> Maybe{i64} = a.reduce(
+  none{i64}(),
+  fn (out: Maybe{i64}, val: T, idx: i64) -> Maybe{i64} = cond(
+    out.exists,
+    fn () -> Maybe{i64} = out,
+    fn () -> Maybe{i64} = cond(
+      f(val, idx),
+      fn () -> i64 = idx)));
 export fn every{T}(a: Array{T}, f: (T) -> bool) -> bool binds everyarray;
+export fn some{T}(a: Array{T}, f: (T) -> bool) -> bool binds somearray;
 export fn repeat{T}(a: Array{T}, c: i64) -> Array{T} binds repeatarray;
 export fn store{T}(a: Array{T}, i: i64, v: T) -> Fallible{void} binds storearray;
 export fn delete{T}(a: Array{T}, i: i64) -> Fallible{T} binds deletearray;

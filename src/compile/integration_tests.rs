@@ -1894,6 +1894,24 @@ test!(array_every => r#"
     }"#;
     stdout "false\n";
 );
+test!(array_some => r#"
+    fn odd(x: i64) -> bool = x % 2 == 1;
+
+    export fn main {
+        const test = [ 1, 1, 2, 3, 5, 8 ];
+        test.some(odd).print;
+    }"#;
+    stdout "true\n";
+);
+test!(array_index => r#"
+    fn odd(x: i64) -> bool = x % 2 == 1;
+
+    export fn main {
+        const test = [ 1, 1, 2, 3, 5, 8 ];
+        test.index(odd).print;
+    }"#;
+    stdout "0\n";
+);
 test!(array_concat => r#"
     export fn main {
         const test = [ 1, 1, 2, 3, 5, 8 ];
