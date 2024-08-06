@@ -150,7 +150,6 @@ export fn store{T}(a: T, b: T) -> T binds storeswap;
 export fn getOr{T}(v: Maybe{T}, d: T) -> T binds maybe_get_or;
 export fn getOr{T}(v: Fallible{T}, d: T) -> T binds fallible_get_or;
 export fn getOr{T, U}(v: U, d: T) -> T = {T}(v).getOr(d);
-export fn none{T}() -> Maybe{T} binds maybe_none;
 export fn error{T}(m: string) -> Fallible{T} binds fallible_error;
 export fn exists{T}(v: Maybe{T}) -> bool binds maybe_exists;
 
@@ -567,7 +566,7 @@ export fn xnor(a: bool, b: bool) -> bool binds xnorbool;
 export fn eq(a: bool, b: bool) -> bool binds eqbool;
 export fn neq(a: bool, b: bool) -> bool binds neqbool;
 export fn cond{T}(c: bool, t: () -> T, f: () -> T) -> T binds condbool;
-export fn cond{T}(c: bool, t: () -> T) -> Maybe{T} = cond(c, fn = Maybe{T}(t()), fn = none{T}());
+export fn cond{T}(c: bool, t: () -> T) -> Maybe{T} = cond(c, fn = Maybe{T}(t()), fn = Maybe{T}());
 
 /// Array related bindings
 export fn get{T}(a: T[], i: i64) -> Maybe{T} binds getarray;
@@ -591,7 +590,7 @@ export fn find{T}(a: Array{T}, f: (T) -> bool) -> Maybe{T} binds findarray;
 // TODO: The `if` syntactic sugar will make these `cond` calls much nicer (though so would return
 // type inference, to be honest)
 export fn index{T}(a: Array{T}, v: T) -> Maybe{i64} = a.reduce(
-  none{i64}(),
+  Maybe{i64}(),
   fn (out: Maybe{i64}, val: T, idx: i64) -> Maybe{i64} = cond(
     out.exists,
     fn () -> Maybe{i64} = out,
@@ -603,7 +602,7 @@ export fn index{T}(a: Array{T}, v: T) -> Maybe{i64} = a.reduce(
   )
 );
 export fn index{T}(a: Array{T}, f: (T) -> bool) -> Maybe{i64} = a.reduce(
-  none{i64}(),
+  Maybe{i64}(),
   fn (out: Maybe{i64}, val: T, idx: i64) -> Maybe{i64} = cond(
     out.exists,
     fn () -> Maybe{i64} = out,
@@ -611,7 +610,7 @@ export fn index{T}(a: Array{T}, f: (T) -> bool) -> Maybe{i64} = a.reduce(
       f(val),
       fn () -> i64 = idx)));
 export fn index{T}(a: Array{T}, f: (T, i64) -> bool) -> Maybe{i64} = a.reduce(
-  none{i64}(),
+  Maybe{i64}(),
   fn (out: Maybe{i64}, val: T, idx: i64) -> Maybe{i64} = cond(
     out.exists,
     fn () -> Maybe{i64} = out,

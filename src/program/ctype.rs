@@ -1693,6 +1693,16 @@ impl CType {
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
                     });
+                    if let CType::Void = &e {
+                        // Have a zero-arg constructor function produce the void type, if possible.
+                        fs.push(Function {
+                            name: constructor_fn_name.clone(),
+                            args: vec![],
+                            rettype: t.clone(),
+                            microstatements: Vec::new(),
+                            kind: FnKind::Derived,
+                        });
+                    }
                     // Create the accessor function, the name of the function will
                     // depend on the kind of type this is
                     match e {

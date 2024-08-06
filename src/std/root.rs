@@ -107,12 +107,6 @@ fn fallible_get_or<T: std::clone::Clone>(v: &Result<T, AlanError>, d: &T) -> T {
     }
 }
 
-/// `maybe_none` creates a None for the given maybe type
-#[inline(always)]
-fn maybe_none<T>() -> Option<T> {
-    None
-}
-
 /// `fallible_error` create an Err for the given fallible type
 #[inline(always)]
 fn fallible_error<T>(m: &String) -> Result<T, AlanError> {
