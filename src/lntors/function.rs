@@ -358,6 +358,15 @@ pub fn from_microstatement(
                             }
                             _ => {}
                         }
+                    } else if function.args.len() == 0 {
+                        let inner_ret_type = match &function.rettype.degroup() {
+                            CType::Field(_, t) => *t.clone(),
+                            CType::Type(_, t) => *t.clone(),
+                            t => t.clone(),
+                        };
+                        if let CType::Either(_) = inner_ret_type {
+                            return Ok(("None".to_string(), out));
+                        }
                     }
                     let ret_type = &function.rettype.degroup();
                     let ret_name = ret_type.to_callable_string();

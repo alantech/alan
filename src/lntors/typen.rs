@@ -157,7 +157,7 @@ pub fn generate(
             CType::Either(_) => {
                 let res = generate(t, out)?;
                 out = res.1;
-                out.insert(name.clone(), ctype_to_rtype(typen, false)?);
+                out.insert(t.to_callable_string(), ctype_to_rtype(typen, false)?);
                 Ok((name.clone(), out))
             }
             _ => Ok((ctype_to_rtype(t, true)?, out)),
