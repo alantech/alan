@@ -31,12 +31,12 @@
 Currently, the only way to install `alan` is to have a working `rust` development environment along with `git` to clone this repo and install it manually:
 
 ```bash
-git clone git@github.com:alantech/alan
+git clone https://github.com/alantech/alan
 cd alan
 cargo install --path .
 ```
 
-alan v0.2 has only been tested on Linux so far, but it is expected to work fine on MacOS and fail on Windows, at the moment, but full support for all platforms is planned.
+alan v0.2 has been tested on x86-64 for Windows, Mac, and Linux, ARM64 for Linux and Mac, and RISC-V for Linux.
 
 <br/>
 <h2 align="center">Usage</h2>
@@ -59,7 +59,7 @@ This will create a file with the name `<source>` that you can run (or error if i
 If you wish to contribute to Alan, you'll need a development environment to build Alan locally:
 
 * git (any recent version should work)
-* Rust >=1.75.0
+* Rust >=1.76.0
 * A complete C toolchain (gcc, clang, msvc)
 
 Once those are installed, simply follow the install instructions above, replacing `cargo install --path .` with a simple `cargo build` to compile and `cargo test` to run the test suite.
