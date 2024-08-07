@@ -49,6 +49,20 @@ pub fn ctype_to_rtype(
                         enum_type_strs.join(", ")
                     ))
                 }
+                CType::Tuple(ts) => {
+                    let mut out = Vec::new();
+                    for t in ts {
+                        match t {
+                            CType::Field(_, t2) => {
+                                if !matches!(&**t2, CType::Int(_) | CType::Float(_) | CType::Bool(_) | CType::TString(_)) {
+                                    out.push(ctype_to_rtype(t, in_function_type)?);
+                                }
+                            }
+                            t => out.push(ctype_to_rtype(t, in_function_type)?),
+                        }
+                    }
+                    Ok(format!("({})", out.join(", ")))
+                }
                 _ => Ok("".to_string()), // TODO: Is this correct?
             }
         }
@@ -79,7 +93,7 @@ pub fn ctype_to_rtype(
             } else {
                 Ok(format!(
                     "impl Fn(&{}) -> {}",
-                    ctype_to_rtype(i, true)?.split(',').collect::<Vec<&str>>().join(", &"),
+                    ctype_to_rtype(i, true)?,
                     ctype_to_rtype(o, true)?
                 ))
             }
