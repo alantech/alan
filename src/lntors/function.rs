@@ -858,7 +858,7 @@ pub fn generate(
         let (l, t) = arg;
         let (t_str, o) = typen::generate(t, out)?;
         out = o;
-        if t_str.starts_with("impl") {
+        if t_str.starts_with("impl") || t_str.starts_with("&") {
             arg_strs.push(format!("{}: {}", l, t_str));
         } else {
             arg_strs.push(format!("{}: &{}", l, t_str));
@@ -870,7 +870,10 @@ pub fn generate(
         otherwise => {
             let (t_str, o) = typen::generate(otherwise, out)?;
             out = o;
-            Some(t_str)
+            match t_str.strip_prefix("&") {
+                Some(s) => Some(s.to_string()),
+                None => Some(t_str),
+            }
         }
     };
     // Start generating the function output. We can do this eagerly like this because, at least for

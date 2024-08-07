@@ -730,7 +730,9 @@ export fn storageBuffer() -> BufferUsages binds storage_buffer_type;
 export fn GBuffer(usage: BufferUsages, vals: Array{i32}) -> GBuffer binds create_buffer_init;
 export fn GBuffer(usage: BufferUsages, size: i64) -> GBuffer binds create_empty_buffer;
 export fn GBuffer(vals: Array{i32}) -> GBuffer = GBuffer(storageBuffer(), vals);
+export fn GBuffer{T}(vals: Array{T}) -> GBuffer = GBuffer(storageBuffer(), vals.map(fn (v: T) -> i32 = v.i32));
 export fn GBuffer(size: i64) -> GBuffer = GBuffer(storageBuffer(), size);
+export fn len(gb: GBuffer) -> i64 binds bufferlen;
 export fn id(b: GBuffer) -> string binds buffer_id;
 export fn GPGPU(source: string, buffers: Array{Array{GBuffer}}, maxGlobalId: i64[3]) -> GPGPU binds GPGPU_new;
 export fn GPGPU(source: string, buffer: GBuffer) -> GPGPU binds GPGPU_new_easy;
@@ -768,7 +770,7 @@ export fn build{N}(ret: N) -> GPGPU {
   }).join("\n");
   let wgslFunctionHeader = "@compute\n@workgroup_size(1)\nfn main(@builtin(global_invocation_id) id: vec3u) {\n";
   let wgslFunctionBody = ret.statements.Array.map(fn (kv: (string, string)) -> string {
-    return cond(kv.0 == "@builtin(global_invocation_id) id: vec3u", fn () -> string = "", fn () -> string {
+    return cond(kv.0.eq("@builtin(global_invocation_id) id: vec3u"), fn () -> string = "", fn () -> string {
       return "  ".concat(kv.1).concat(";\n");
     });
   }).join("");
@@ -1297,6 +1299,18 @@ export fn mul(a: gf32, b: gf32) -> gf32 {
 }
 export fn mul{T}(a: gf32, b: T) -> gf32 = mul(a, b.gf32);
 export fn mul{T}(a: T, b: gf32) -> gf32 = mul(a.gf32, b);
+
+// GBuffer methods
+
+// TODO: Support more than i32 for GBuffer
+export fn map(gb: GBuffer, f: (gi32) -> gi32) -> GBuffer {
+  let idx = gFor(gb.len);
+  let val = gb[idx];
+  let out = GBuffer(gb.len.mul(4));
+  let compute = out[idx].store(f(val));
+  compute.build.run;
+  return out;
+}
 
 /// Stdout/stderr-related bindings
 // TODO: Rework this to just print anything that can be converted to `string` via interfaces

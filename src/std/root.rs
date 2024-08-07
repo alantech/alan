@@ -3471,6 +3471,11 @@ fn storage_buffer_type() -> wgpu::BufferUsages {
 }
 
 #[inline(always)]
+fn bufferlen(gb: &GBuffer) -> i64 {
+    (gb.size() / 4) as i64 // TODO: Support more than i32/u32/f32 values
+}
+
+#[inline(always)]
 fn buffer_id(b: &GBuffer) -> String {
     let mut out = format!("{:?}", b.global_id());
     out.retain(|c| {

@@ -785,6 +785,15 @@ test!(hello_gpu_odd => r#"
     stdout "[1, 3, 5, 7]\n";
 );
 
+test!(gpu_map => r#"
+    export fn main {
+        let b = GBuffer([1, 2, 3, 4]);
+        let out = b.map(fn (val: gi32) -> gi32 = val + 2);
+        out.read{i32}.print;
+    }"#;
+    stdout "[3, 4, 5, 6]\n";
+);
+
 // Bitwise Math
 
 test!(i8_bitwise => r#"
