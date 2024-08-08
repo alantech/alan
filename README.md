@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://alan-lang.org/logo.png" alt="drawing" width="180"/>
+  <img src="https://docs.alan-lang.org/assets/logo.png" alt="drawing" width="180"/>
   <h2>The Alan Programming Language</h2>
 </div>
 
