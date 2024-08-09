@@ -437,9 +437,9 @@ build!(
             normalints,
             dot,
             natural,
-            opt(and!(or!(token!("e"), token!("E")), natural))
+            opt(and!(or!(token!("e"), token!("E")), normalints))
         ),
-        and!(normalints, or!(token!("e"), token!("E")), natural),
+        and!(normalints, or!(token!("e"), token!("E")), normalints),
     )
 );
 test!(real =>
