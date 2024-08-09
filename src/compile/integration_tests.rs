@@ -218,18 +218,20 @@ test!(other_integer_syntaxes => r#"
       print(0b10 == 2);
       print(0o10 == 8);
       print(0x10 == 16);
+      print(0xF == 15);
     }
 "#;
-    stdout "true\ntrue\ntrue\n";
+    stdout "true\ntrue\ntrue\ntrue\n";
 );
 test!(scientific_notation => r#"
     export fn main {
       print(15.0 == 1.5e1);
       print(-5.0 == -5e0);
       print(1e3 == 1000.0);
+      print(1e-3 == 0.001);
     }
 "#;
-    stdout "true\ntrue\ntrue\n";
+    stdout "true\ntrue\ntrue\ntrue\n";
 );
 test!(void_values => r#"
     export fn main {
