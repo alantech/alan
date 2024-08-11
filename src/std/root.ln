@@ -1327,14 +1327,9 @@ export fn eprint{T}(v: Maybe{T}) binds eprintln_maybe;
 export fn eprint{T}(v: T) binds eprintln;
 
 /// Built-in operator definitions
-// TODO: New plan is to make operators only map to one function per symbol and *kind* of operator,
-// so you can have an infix and prefix operator with the same symbol linked to different functions,
-// but you can't have an infix operator of the same symbol linked to multiple functions. This does
-// produce some ambiguity of what kind of operator an operator is, but should still be unambiguous
-// to humans to "read" the symbol as whatever kind of function it represents.
 export infix add as + precedence 3;
 export infix sub as - precedence 3;
-export prefix neg as - precedence 2;
+export prefix neg as - precedence 6;
 export infix mul as * precedence 4;
 export infix div as / precedence 4;
 export infix mod as % precedence 4;
