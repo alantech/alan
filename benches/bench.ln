@@ -15,7 +15,7 @@ fn bench(l: i64) {
   t2.elapsed.print;
   let t3 = now();
   // My laptop GPU can't handle a billion i32s in a single buffer, so that case is split in two
-  cond(l <= 100_000_000, fn {
+  if(l <= 100_000_000, fn {
     let b = GBuffer(storageBuffer(), v);
     let plan = GPGPU("
       @group(0)
