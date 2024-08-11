@@ -1572,11 +1572,11 @@ to barto bar3
 
 // Conditionals
 
-test!(cond_fn => r#"
+test!(if_fn => r#"
     export fn main {
-        cond(1 == 0, fn = print('What!?'), fn = print('Math is sane...'));
-        cond(1 == 2, fn () -> string = 'Uhh...').print;
-        cond(1 == 1, fn () -> string = 'Correct!').print;
+        if(1 == 0, fn = print('What!?'), fn = print('Math is sane...'));
+        if(1 == 2, fn () -> string = 'Uhh...').print;
+        if(1 == 1, fn () -> string = 'Correct!').print;
     }"#;
     stdout "Math is sane...\nvoid\nCorrect!\n";
 );

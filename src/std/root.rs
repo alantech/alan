@@ -2609,10 +2609,10 @@ fn neqbool(a: &bool, b: &bool) -> bool {
     *a != *b
 }
 
-/// `condbool` executes the true function on true, and the false function on false, returning the
+/// `ifbool` executes the true function on true, and the false function on false, returning the
 /// value returned by either function
 #[inline(always)]
-fn condbool<T>(c: &bool, mut t: impl FnMut() -> T, mut f: impl FnMut() -> T) -> T {
+fn ifbool<T>(c: &bool, mut t: impl FnMut() -> T, mut f: impl FnMut() -> T) -> T {
     if *c {
         t()
     } else {

@@ -565,8 +565,8 @@ export fn nor(a: bool, b: bool) -> bool binds norbool;
 export fn xnor(a: bool, b: bool) -> bool binds xnorbool;
 export fn eq(a: bool, b: bool) -> bool binds eqbool;
 export fn neq(a: bool, b: bool) -> bool binds neqbool;
-export fn cond{T}(c: bool, t: () -> T, f: () -> T) -> T binds condbool;
-export fn cond{T}(c: bool, t: () -> T) -> Maybe{T} = cond(c, fn = Maybe{T}(t()), fn = Maybe{T}());
+export fn if{T}(c: bool, t: () -> T, f: () -> T) -> T binds ifbool;
+export fn if{T}(c: bool, t: () -> T) -> Maybe{T} = if(c, fn = Maybe{T}(t()), fn = Maybe{T}());
 
 /// Array related bindings
 export fn get{T}(a: T[], i: i64) -> Maybe{T} binds getarray;
@@ -587,15 +587,15 @@ export fn filled{T}(v: T, l: i64) -> Array{T} binds filled;
 export fn has{T}(a: Array{T}, v: T) -> bool binds hasarray;
 export fn has{T}(a: Array{T}, f: (T) -> bool) -> bool binds hasfnarray;
 export fn find{T}(a: Array{T}, f: (T) -> bool) -> Maybe{T} binds findarray;
-// TODO: The `if` syntactic sugar will make these `cond` calls much nicer (though so would return
+// TODO: The `if` syntactic sugar will make these `if` calls much nicer (though so would return
 // type inference, to be honest)
 export fn index{T}(a: Array{T}, v: T) -> Maybe{i64} = a.reduce(
   Maybe{i64}(),
-  fn (out: Maybe{i64}, val: T, idx: i64) -> Maybe{i64} = cond(
+  fn (out: Maybe{i64}, val: T, idx: i64) -> Maybe{i64} = if(
     out.exists,
     fn () -> Maybe{i64} = out,
-    fn () -> Maybe{i64} = cond(
-      val == v,
+    fn () -> Maybe{i64} = if(
+      val.eq(v),
       fn () -> Maybe{i64} = Maybe(idx),
       fn () -> Maybe{i64} = out
     )
@@ -603,18 +603,18 @@ export fn index{T}(a: Array{T}, v: T) -> Maybe{i64} = a.reduce(
 );
 export fn index{T}(a: Array{T}, f: (T) -> bool) -> Maybe{i64} = a.reduce(
   Maybe{i64}(),
-  fn (out: Maybe{i64}, val: T, idx: i64) -> Maybe{i64} = cond(
+  fn (out: Maybe{i64}, val: T, idx: i64) -> Maybe{i64} = if(
     out.exists,
     fn () -> Maybe{i64} = out,
-    fn () -> Maybe{i64} = cond(
+    fn () -> Maybe{i64} = if(
       f(val),
       fn () -> i64 = idx)));
 export fn index{T}(a: Array{T}, f: (T, i64) -> bool) -> Maybe{i64} = a.reduce(
   Maybe{i64}(),
-  fn (out: Maybe{i64}, val: T, idx: i64) -> Maybe{i64} = cond(
+  fn (out: Maybe{i64}, val: T, idx: i64) -> Maybe{i64} = if(
     out.exists,
     fn () -> Maybe{i64} = out,
-    fn () -> Maybe{i64} = cond(
+    fn () -> Maybe{i64} = if(
       f(val, idx),
       fn () -> i64 = idx)));
 export fn every{T}(a: Array{T}, f: (T) -> bool) -> bool binds everyarray;
@@ -770,7 +770,7 @@ export fn build{N}(ret: N) -> GPGPU {
   }).join("\n");
   let wgslFunctionHeader = "@compute\n@workgroup_size(1)\nfn main(@builtin(global_invocation_id) id: vec3u) {\n";
   let wgslFunctionBody = ret.statements.Array.map(fn (kv: (string, string)) -> string {
-    return cond(kv.0.eq("@builtin(global_invocation_id) id: vec3u"), fn () -> string = "", fn () -> string {
+    return if(kv.0.eq("@builtin(global_invocation_id) id: vec3u"), fn () -> string = "", fn () -> string {
       return "  ".concat(kv.1).concat(";\n");
     });
   }).join("");
