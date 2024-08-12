@@ -1239,10 +1239,22 @@ named_and!(assignablestatement: AssignableStatement =>
     assignables: Vec<WithOperators> as assignables,
     semicolon: String as semicolon,
 );
+// TODO: Can I do this better inside of the normal Assignables path?
+named_and!(arrayassignment: ArrayAssignment =>
+    name: BaseAssignable as baseassignable,
+    a: String as optwhitespace,
+    array: ArrayBase as arraybase,
+    b: String as optwhitespace,
+    eq: String as eq,
+    c: String as optwhitespace,
+    assignables: Vec<WithOperators> as assignables,
+    semicolon: String as semicolon,
+);
 named_or!(statement: Statement =>
     Declarations: Declarations as declarations,
     Returns: Returns as returns,
     Conditional: Conditional as conditional,
+    ArrayAssignment: ArrayAssignment as arrayassignment,
     Assignables: AssignableStatement as assignablestatement,
     A: String as whitespace,
 );
