@@ -1693,6 +1693,17 @@ impl CType {
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
                     });
+                    // Create a store fn to re-assign-and-auto-wrap a value
+                    fs.push(Function {
+                        name: "store".to_string(),
+                        args: vec![
+                            ("arg0".to_string(), t.clone()),
+                            ("arg1".to_string(), e.clone()),
+                        ],
+                        rettype: t.clone(),
+                        microstatements: Vec::new(),
+                        kind: FnKind::Derived,
+                    });
                     if let CType::Void = &e {
                         // Have a zero-arg constructor function produce the void type, if possible.
                         fs.push(Function {
