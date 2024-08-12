@@ -1758,16 +1758,18 @@ test!(object_and_array_reassignment => r#"
       print(test[0]);
       test.store(0, 0);
       print(test[0]);
+      test[0] = 2;
+      print(test[0]);
 
       let test2 = [Foo(true), Foo(false)];
       let test3 = test2[0].getOr(Foo(false));
       print(test3.bar);
       test3.bar = false;
-      test2.store(0, test3); // TODO: is the a better way to do nested updates?
+      test2[0] = test3; // TODO: is the a better way to do nested updates?
       const test4 = test2[0].getOr(Foo(true));
       print(test4.bar);
     }"#;
-    stdout "1\n0\ntrue\nfalse\n";
+    stdout "1\n0\n2\ntrue\nfalse\n";
 );
 /* Pending
 test_ignore!(map_support => r#"
@@ -1960,7 +1962,7 @@ test!(array_store_and_delete => r#"
     export fn main {
         const test = [ 1, 2, 5 ];
         test.store(2, 3);
-        test.store(3, 4);
+        test[3] = 4;
         test.print;
         test.delete(4).print;
         test.print;
@@ -2059,8 +2061,10 @@ test!(buffer_store => r#"
         print(buf);
         buf.store(2, 3).print;
         print(buf);
+        buf[2] = 4;
+        print(buf);
     }"#;
-    stdout "[1, 2, 5]\n5\n[1, 2, 3]\n";
+    stdout "[1, 2, 5]\n5\n[1, 2, 3]\n[1, 2, 4]\n";
 );
 
 // Hashing
@@ -2086,7 +2090,7 @@ test!(basic_dict => r#"
       // let test = Dict{string, i64}();
       // test.store('foo', 1);
       test.store('bar', 2);
-      test.store('baz', 99);
+      test['baz'] = 99;
       print(test.Array.map(fn (n: (string, i64)) -> string {
         return 'key: '.concat(n.0).concat("\nval: ").concat(string(n.1));
       }).join("\n"));
@@ -2096,7 +2100,7 @@ test!(basic_dict => r#"
       print(test.get('foo'));
       test['bar'].print;
       let test2 = Dict('foo', 3);
-      test2.store('bay', 4);
+      test2['bay'] = 4;
       test.concat(test2).Array.map(fn (n: (string, i64)) -> string {
         return 'key: '.concat(n.0).concat("\nval: ").concat(n.1.string);
       }).join("\n").print;

@@ -1465,6 +1465,42 @@ pub fn statement_to_microstatements(
             scope,
             microstatements,
         )?),
+        parse::Statement::ArrayAssignment(arrayassignment) => {
+            println!("Hi!");
+            let mut args = Vec::new();
+            let mut ms = baseassignablelist_to_microstatements(
+                &[arrayassignment.name.clone()],
+                scope,
+                microstatements,
+            )?;
+            args.push(ms.pop().unwrap());
+            for arg in &arrayassignment.array.assignablelist {
+                ms = withoperatorslist_to_microstatements(arg, scope, ms)?;
+                args.push(ms.pop().unwrap());
+            }
+            ms = withoperatorslist_to_microstatements(&arrayassignment.assignables, scope, ms)?;
+            args.push(ms.pop().unwrap());
+            let arg_types = args.iter().map(|a| a.get_type()).collect::<Vec<CType>>();
+            let store_fn = {
+                let mut temp_scope = scope.child();
+                match temp_scope.resolve_function(&"store".to_string(), &arg_types) {
+                    Some(f) => Ok(f.clone()),
+                    None => Err(format!(
+                        "Could not find store function with arguments {}",
+                        arg_types
+                            .iter()
+                            .map(|a| a.to_strict_string(false))
+                            .collect::<Vec<String>>()
+                            .join(", "),
+                    )),
+                }?
+            };
+            ms.push(Microstatement::FnCall {
+                function: store_fn,
+                args,
+            });
+            Ok(ms)
+        }
         parse::Statement::Assignables(assignable) => Ok(assignablestatement_to_microstatements(
             assignable,
             scope,
