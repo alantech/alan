@@ -2638,6 +2638,13 @@ test!(either => r#"
       print(someI64.i64);
       print(someI64.getOr(0));
       print(someI64.getOr('text'));
+
+      let either = strOrI64(3);
+      either.string.print;
+      either.i64.print;
+      either = 'text';
+      either.string.print;
+      either.i64.print;
     }"#;
     stdout r#"string
 void
@@ -2647,6 +2654,10 @@ void
 3
 3
 text
+void
+3
+text
+void
 "#;
 );
 
