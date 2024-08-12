@@ -1124,8 +1124,7 @@ pub fn withoperatorslist_to_microstatements(
     // are associated, then put those results in the same "slot" as before and check again. Because
     // users can define these operators, that makes it theoretically possible for the same operator
     // to be used in both an infix or prefix manner, or with different precedence levels, depending
-    // on the types of the data involved, which makes things *really* complicated here. TODO:
-    // Actually implement that complexity, for now, just pretend operators have only one binding.
+    // on the types of the data involved, which makes things *really* complicated here.
     let mut queue = withoperatorslist.clone();
     while !queue.is_empty() {
         let mut largest_operator_level: i8 = -1;
@@ -1152,8 +1151,12 @@ pub fn withoperatorslist_to_microstatements(
                     let local_level = match local_op {
                         Some(o) => match o {
                             OperatorMapping::Prefix { level, .. } => {
-                                match queue.get(i.wrapping_add(1)) {
-                                    Some(parse::WithOperators::BaseAssignableList(_)) => *level,
+                                match (queue.get(i.wrapping_sub(1)), queue.get(i.wrapping_add(1))) {
+                                    (None, Some(parse::WithOperators::BaseAssignableList(_)))
+                                    | (
+                                        Some(parse::WithOperators::Operators(_)),
+                                        Some(parse::WithOperators::BaseAssignableList(_)),
+                                    ) => *level,
                                     _ => -1,
                                 }
                             }
@@ -1167,8 +1170,12 @@ pub fn withoperatorslist_to_microstatements(
                                 }
                             }
                             OperatorMapping::Postfix { level, .. } => {
-                                match queue.get(i.wrapping_sub(1)) {
-                                    Some(parse::WithOperators::BaseAssignableList(_)) => *level,
+                                match (queue.get(i.wrapping_sub(1)), queue.get(i.wrapping_add(1))) {
+                                    (Some(parse::WithOperators::BaseAssignableList(_)), None)
+                                    | (
+                                        Some(parse::WithOperators::BaseAssignableList(_)),
+                                        Some(parse::WithOperators::Operators(_)),
+                                    ) => *level,
                                     _ => -1,
                                 }
                             }
